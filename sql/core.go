@@ -6,11 +6,11 @@ type Nameable interface {
 
 type Node interface {
 	Schema() Schema
-	Children() []*Node
+	Children() []Node
+	RowIter() (RowIter, error)
 }
 
 type PhysicalRelation interface {
 	Nameable
 	Node
-	RowIter() (RowIter, error)
 }
