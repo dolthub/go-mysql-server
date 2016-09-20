@@ -3,39 +3,26 @@ package expression
 import (
 	"testing"
 
-	"github.com/mvader/gitql/mem"
 	"github.com/mvader/gitql/sql"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestExpressions(t *testing.T) {
 	assert := assert.New(t)
-	childSchema := sql.Schema{
-		sql.Field{"col1", sql.String},
-		sql.Field{"col2", sql.String},
-		sql.Field{"col3", sql.Integer},
-		sql.Field{"col4", sql.Boolean},
-		sql.Field{"col5", sql.Integer},
-	}
-	child := mem.NewTable("test", childSchema)
-	child.Insert("col1_1", "col2_1", 111, false, 111)
-	child.Insert("col1_2", "col2_2", 222, true, 111)
-	child.Insert("col1_3", "col2_3", 333, true, 111)
-	child.Insert("col1_4", "col2_4", 111, false, 111)
+	row1 := sql.NewMemoryRow("col1_1", "col2_1", int32(111), false, int32(111))
+	row2 := sql.NewMemoryRow("col1_2", "col2_2", int32(222), true, int32(111))
 
-	eq := NewEquals(NewGetField(2, sql.Integer), NewLiteral(111, sql.Integer))
-	dis := NewEquals(NewNot(NewGetField(3, sql.Boolean)),
-		NewEquals(NewGetField(2, sql.Integer), NewGetField(4, sql.Integer)))
-	iter, err := child.RowIter()
+	eq := NewEquals(NewGetField(2, sql.Integer, "col3"), NewLiteral(int32(111), sql.Integer))
+
+	not, err := NewNot(NewGetField(3, sql.Boolean, "col4"))
 
 	assert.Nil(err)
 
-	row, err := iter.Next()
+	dis := NewEquals(not, NewEquals(NewGetField(2, sql.Integer, "col3"), NewGetField(4, sql.Integer, "col5")))
 
-	assert.Equal(eq.Eval(row), true)
-	assert.Equal(dis.Eval(row), true)
-	row, err = iter.Next()
+	assert.Equal(eq.Eval(row1), true)
+	assert.Equal(dis.Eval(row1), true)
 
-	assert.Equal(eq.Eval(row), false)
-	assert.Equal(dis.Eval(row), true)
+	assert.Equal(eq.Eval(row2), false)
+	assert.Equal(dis.Eval(row2), true)
 }

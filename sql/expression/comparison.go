@@ -21,3 +21,7 @@ func (e Equals) Type() sql.Type {
 func (e Equals) Eval(row sql.Row) interface{} {
 	return e.left.Eval(row) == e.right.Eval(row)
 }
+
+func (e Equals) Name() string {
+	return e.left.Name() + "==" + e.right.Name()
+}
