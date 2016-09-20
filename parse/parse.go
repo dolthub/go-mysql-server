@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/mvader/gitql/sql"
 	"github.com/mvader/gitql/sql/plan"
 )
 
@@ -36,13 +37,15 @@ type parser struct {
 	opStack    *tokenStack
 	err        error
 
-	projection []interface{}
+	projection []sql.Expression
 }
 
 func newParser(input io.Reader) *parser {
+	state := newStateStack()
+	state.put(SelectState)
 	return &parser{
 		lexer:      NewLexer(input),
-		stateStack: newStateStack(),
+		stateStack: state,
 		opStack:    newTokenStack(),
 	}
 }
@@ -52,10 +55,10 @@ func (p *parser) parse() error {
 		return err
 	}
 
-	state := p.stateStack.peek()
-	for state != DoneState && state != ErrorState {
+	for state := p.stateStack.peek(); state != DoneState && state != ErrorState; state = p.stateStack.peek() {
 		p.prevState = state
 		var t *Token
+	OuterSwitch:
 		switch state {
 		case SelectState:
 			t = p.lexer.Next()
@@ -64,7 +67,6 @@ func (p *parser) parse() error {
 			} else if t.Type != KeywordToken || !kwMatches(t.Value, "select") {
 				p.errorf("expecting 'SELECT', %q received", t.Value)
 			} else {
-				p.stateStack.pop()
 				p.stateStack.put(SelectFieldList)
 			}
 
@@ -73,15 +75,10 @@ func (p *parser) parse() error {
 			if t == nil {
 				p.errorf("expecting select field list expression, nothing received")
 			} else if t.Type == KeywordToken && kwMatches(t.Value, "from") {
-				if len(p.projection) > 0 {
-					p.lexer.Backup()
-					p.stateStack.pop()
-					p.stateStack.put(FromState)
-				} else {
-					p.errorf(`unexpected "FROM", expecting select field list expression`)
-				}
+				p.errorf(`unexpected "FROM", expecting select field list expression`)
 			} else {
 				p.lexer.Backup()
+				p.stateStack.pop()
 				p.stateStack.put(ExprState)
 			}
 
@@ -89,9 +86,11 @@ func (p *parser) parse() error {
 			expr, err := parseExpr(p.lexer)
 			if err != nil {
 				p.error(err)
+				break
 			} else {
 				p.projection = append(p.projection, expr)
 			}
+			p.stateStack.pop()
 			p.stateStack.put(ExprEnd)
 
 		case ExprEnd:
@@ -123,13 +122,13 @@ func (p *parser) parse() error {
 			if t != nil {
 				switch t.Type {
 				case CommaToken:
-					break
+					p.stateStack.put(ExprState)
+					break OuterSwitch
 				case KeywordToken:
 					if kwMatches(t.Value, breakKeyword) {
 						p.stateStack.pop()
-						p.stateStack.pop()
 						p.stateStack.put(nextState)
-						break
+						break OuterSwitch
 					}
 				}
 			}
@@ -139,6 +138,8 @@ func (p *parser) parse() error {
 			} else {
 				p.errorf(`expecting "," or end of sentence`)
 			}
+		case FromState:
+			p.errorf("not implemented yet")
 		}
 	}
 
@@ -181,9 +182,9 @@ type tokenQueue interface {
 	Next() *Token
 }
 
-func parseExpr(q tokenQueue) (interface{}, error) {
+func parseExpr(q tokenQueue) (sql.Expression, error) {
 	var (
-		output []*Token
+		output = newTokenStack()
 		stack  = newTokenStack()
 	)
 
@@ -196,7 +197,7 @@ OuterLoop:
 
 		switch tk.Type {
 		case IntToken, StringToken, FloatToken:
-			output = append(output, tk)
+			output.put(tk)
 
 		case IdentifierToken:
 			nt := q.Next()
@@ -205,7 +206,7 @@ OuterLoop:
 				tk.Type = FunctionToken
 				stack.put(tk)
 			} else {
-				output = append(output, tk)
+				output.put(tk)
 			}
 
 		case LeftParenToken:
@@ -222,18 +223,18 @@ OuterLoop:
 					stack.pop()
 					t = stack.peek()
 					if t != nil && t.Type == FunctionToken {
-						output = append(output, stack.pop())
+						output.put(stack.pop())
 					}
 					break
 				}
 
-				output = append(output, stack.pop())
+				output.put(stack.pop())
 			}
 
 		case CommaToken:
 			for {
 				t := stack.peek()
-				if t != nil {
+				if t == nil {
 					q.Backup()
 					break OuterLoop
 				}
@@ -242,7 +243,7 @@ OuterLoop:
 					break
 				}
 
-				output = append(output, stack.pop())
+				output.put(stack.pop())
 			}
 
 		case KeywordToken:
@@ -265,7 +266,7 @@ OuterLoop:
 				o2 := opTable[t.Value]
 				if o1.isLeftAssoc() && o1.comparePrecedence(o2) <= 0 ||
 					o1.isRightAssoc() && o1.comparePrecedence(o2) < 0 {
-					output = append(output, stack.pop())
+					output.put(stack.pop())
 				} else {
 					break
 				}
@@ -284,10 +285,10 @@ OuterLoop:
 			return nil, errors.New(`missing closing ")"`)
 		}
 
-		output = append(output, tk)
+		output.put(tk)
 	}
 
-	return nil, nil
+	return assembleExpression(output)
 }
 
 func (p *parser) errorf(msg string, args ...interface{}) {

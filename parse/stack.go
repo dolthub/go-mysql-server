@@ -7,6 +7,9 @@ func (s tokenStack) isEmpty() bool {
 }
 
 func (s tokenStack) peek() *Token {
+	if len(s) < 1 {
+		return nil
+	}
 	return s[len(s)-1]
 }
 
@@ -15,6 +18,9 @@ func (s *tokenStack) put(t *Token) {
 }
 
 func (s *tokenStack) pop() *Token {
+	if len(*s) < 1 {
+		return nil
+	}
 	t := (*s)[len(*s)-1]
 	*s = (*s)[:len(*s)-1]
 	return t
@@ -31,6 +37,9 @@ func (s stateStack) isEmpty() bool {
 }
 
 func (s stateStack) peek() ParseState {
+	if len(s) < 1 {
+		return ErrorState
+	}
 	return s[len(s)-1]
 }
 

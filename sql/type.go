@@ -15,9 +15,10 @@ type Field struct {
 }
 
 var (
-	Integer = Type{"integer", reflect.Int32}
+	Integer    = Type{"integer", reflect.Int32}
 	BigInteger = Type{"biginteger", reflect.Int64}
-	String = Type{"string", reflect.String}
-	Timestamp = Type{"timestamp", reflect.Int64}
-	Boolean = Type{"boolean", reflect.Bool}
+	String     = Type{"string", reflect.String}
+	Timestamp  = Type{"timestamp", reflect.Int64}
+	Boolean    = Type{"boolean", reflect.Bool}
+	Float      = Type{"float", reflect.Float64}
 )
