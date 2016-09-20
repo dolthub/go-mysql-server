@@ -3,7 +3,7 @@ package sql
 import "reflect"
 
 type Type struct {
-	Name string
+	Name         string
 	InternalType reflect.Kind
 }
 
@@ -19,4 +19,5 @@ var (
 	BigInteger = Type{"biginteger", reflect.Int64}
 	String = Type{"string", reflect.String}
 	Timestamp = Type{"timestamp", reflect.Int64}
+	Boolean = Type{"boolean", reflect.Bool}
 )
