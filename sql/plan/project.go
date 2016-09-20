@@ -3,37 +3,26 @@ package plan
 import "github.com/mvader/gitql/sql"
 
 type Project struct {
-	fieldIndexes []int
-	schema       sql.Schema
-	child        sql.Node
+	expressions []sql.Expression
+	schema      sql.Schema
+	child       sql.Node
 }
 
-func NewProject(fieldNames []string, child sql.Node) *Project {
-	indexes := []int{}
-	childSchema := child.Schema()
+func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	schema := sql.Schema{}
-
-	if len(fieldNames) == 0 {
-		for idx, field := range childSchema {
-			indexes = append(indexes, idx)
-			schema = append(schema, field)
-		}
-	} else {
-		for _, name := range fieldNames {
-			for idx, field := range childSchema {
-				if name == field.Name {
-					indexes = append(indexes, idx)
-					schema = append(schema, field)
-					break
-				}
+	childSchema := child.Schema()
+	for _, expr := range expressions {
+		for _, field := range childSchema {
+			if expr.Name() == field.Name {
+				schema = append(schema, field)
+				break
 			}
 		}
 	}
-
 	return &Project{
-		fieldIndexes: indexes,
-		schema:       schema,
-		child:        child,
+		expressions: expressions,
+		schema:      schema,
+		child:       child,
 	}
 }
 
@@ -63,14 +52,13 @@ func (i *iter) Next() (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
-	return filterRow(i.p.fieldIndexes, childRow), nil
+	return filterRow(i.p.expressions, childRow), nil
 }
 
-func filterRow(indexes []int, row sql.Row) sql.Row {
-	childFields := row.Fields()
+func filterRow(expressions []sql.Expression, row sql.Row) sql.Row {
 	fields := []interface{}{}
-	for _, idx := range indexes {
-		fields = append(fields, childFields[idx])
+	for _, expr := range expressions {
+		fields = append(fields, expr.Eval(row))
 	}
 	return sql.NewMemoryRow(fields...)
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/mvader/gitql/mem"
 	"github.com/mvader/gitql/sql"
+	"github.com/mvader/gitql/sql/expression"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,7 +23,11 @@ func TestFilter(t *testing.T) {
 	err = child.Insert("col1_2", "col2_2", int32(3333), int64(4444))
 	assert.Nil(err)
 
-	f := NewFilter("col1", child, "col1_1")
+	f := NewFilter(
+		expression.NewEquals(
+			expression.NewGetField(0, sql.String, "col1"),
+			expression.NewLiteral("col1_1", sql.String)),
+		child)
 
 	assert.Equal(1, len(f.Children()))
 
@@ -41,7 +46,10 @@ func TestFilter(t *testing.T) {
 	assert.NotNil(err)
 	assert.Nil(row)
 
-	f = NewFilter("col3", child, int32(1111))
+	f = NewFilter(expression.NewEquals(
+		expression.NewGetField(2, sql.String, "col3"),
+		expression.NewLiteral(int32(1111),
+			sql.String)), child)
 
 	iter, err = f.RowIter()
 	assert.Nil(err)
@@ -54,7 +62,10 @@ func TestFilter(t *testing.T) {
 	assert.Equal(int32(1111), row.Fields()[2])
 	assert.Equal(int64(2222), row.Fields()[3])
 
-	f = NewFilter("col4", child, int64(4444))
+	f = NewFilter(expression.NewEquals(
+		expression.NewGetField(3, sql.String, "col4"),
+		expression.NewLiteral(int64(4444), sql.BigInteger)),
+		child)
 
 	iter, err = f.RowIter()
 	assert.Nil(err)

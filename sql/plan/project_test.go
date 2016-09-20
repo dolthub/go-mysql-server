@@ -6,6 +6,7 @@ import (
 
 	"github.com/mvader/gitql/mem"
 	"github.com/mvader/gitql/sql"
+	"github.com/mvader/gitql/sql/expression"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +19,7 @@ func TestProject(t *testing.T) {
 	child := mem.NewTable("test", childSchema)
 	child.Insert("col1_1", "col2_1")
 	child.Insert("col1_2", "col2_2")
-	p := NewProject([]string{"col2"}, child)
+	p := NewProject([]sql.Expression{expression.NewGetField(1, sql.String, "col2")}, child)
 	require.Equal(1, len(p.Children()))
 	schema := sql.Schema{
 		sql.Field{"col2", sql.String},
@@ -44,5 +45,5 @@ func TestProject(t *testing.T) {
 	require.Nil(row)
 
 	p = NewProject(nil, child)
-	require.Equal(2, len(p.schema))
+	require.Equal(0, len(p.schema))
 }

@@ -17,3 +17,7 @@ func (e Not) Type() sql.Type {
 func (e Not) Eval(row sql.Row) interface{} {
 	return !e.child.Eval(row).(bool)
 }
+
+func (e Not) Name() string {
+	return "Not(" + e.child.Name() + ")"
+}
