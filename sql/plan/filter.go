@@ -18,6 +18,10 @@ func (p *Filter) Schema() sql.Schema {
 	return p.UnaryNode.Child.Schema()
 }
 
+func (p *Filter) Resolved() bool {
+	return p.UnaryNode.Child.Resolved()
+}
+
 func (p *Filter) RowIter() (sql.RowIter, error) {
 	i, err := p.Child.RowIter()
 	if err != nil {
