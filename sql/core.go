@@ -1,5 +1,7 @@
 package sql
 
+import "errors"
+
 type Nameable interface {
 	Name() string
 }
@@ -14,3 +16,5 @@ type PhysicalRelation interface {
 	Nameable
 	Node
 }
+
+var ErrInvalidType = errors.New("invalid type")
