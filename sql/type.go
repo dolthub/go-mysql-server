@@ -3,6 +3,7 @@ package sql
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 type Schema []Field
@@ -17,6 +18,7 @@ type Type interface {
 	InternalType() reflect.Kind
 	Check(interface{}) bool
 	Convert(interface{}) (interface{}, error)
+	Compare(interface{}, interface{}) int
 }
 
 var Integer = integerType{}
@@ -39,6 +41,10 @@ func (t integerType) Convert(v interface{}) (interface{}, error) {
 	return convertToInt32(v)
 }
 
+func (t integerType) Compare(a interface{}, b interface{}) int {
+	return compareInt32(a, b)
+}
+
 var BigInteger = bigIntegerType{}
 
 type bigIntegerType struct{}
@@ -57,6 +63,10 @@ func (t bigIntegerType) Check(v interface{}) bool {
 
 func (t bigIntegerType) Convert(v interface{}) (interface{}, error) {
 	return convertToInt64(v)
+}
+
+func (t bigIntegerType) Compare(a interface{}, b interface{}) int {
+	return compareInt64(a, b)
 }
 
 var Timestamp = timestampType{}
@@ -79,6 +89,10 @@ func (t timestampType) Convert(v interface{}) (interface{}, error) {
 	return convertToInt64(v)
 }
 
+func (t timestampType) Compare(a interface{}, b interface{}) int {
+	return compareInt64(a, b)
+}
+
 var String = stringType{}
 
 type stringType struct{}
@@ -97,6 +111,10 @@ func (t stringType) Check(v interface{}) bool {
 
 func (t stringType) Convert(v interface{}) (interface{}, error) {
 	return convertToString(v)
+}
+
+func (t stringType) Compare(a interface{}, b interface{}) int {
+	return compareString(a, b)
 }
 
 var Boolean Type = booleanType{}
@@ -119,6 +137,18 @@ func (t booleanType) Convert(v interface{}) (interface{}, error) {
 	return convertToString(v)
 }
 
+func (t booleanType) Compare(a interface{}, b interface{}) int {
+	av := a.(bool)
+	bv := b.(bool)
+	if av == bv {
+		return 0
+	} else if av == false {
+		return -1
+	} else {
+		return 1
+	}
+}
+
 func checkString(v interface{}) bool {
 	switch v.(type) {
 	case string:
@@ -137,6 +167,12 @@ func convertToString(v interface{}) (interface{}, error) {
 	default:
 		return nil, ErrInvalidType
 	}
+}
+
+func compareString(a interface{}, b interface{}) int {
+	av := a.(string)
+	bv := b.(string)
+	return strings.Compare(av, bv)
 }
 
 func checkInt32(v interface{}) bool {
@@ -161,6 +197,17 @@ func convertToInt32(v interface{}) (interface{}, error) {
 	default:
 		return nil, ErrInvalidType
 	}
+}
+
+func compareInt32(a interface{}, b interface{}) int {
+	av := a.(int32)
+	bv := b.(int32)
+	if av < bv {
+		return -1
+	} else if av > bv {
+		return 1
+	}
+	return 0
 }
 
 func checkInt64(v interface{}) bool {
@@ -201,4 +248,15 @@ func convertToBool(v interface{}) (interface{}, error) {
 	default:
 		return nil, ErrInvalidType
 	}
+}
+
+func compareInt64(a interface{}, b interface{}) int {
+	av := a.(int64)
+	bv := b.(int64)
+	if av < bv {
+		return -1
+	} else if av > bv {
+		return 1
+	}
+	return 0
 }
