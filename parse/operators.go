@@ -30,6 +30,7 @@ func (o *operator) comparePrecedence(o2 *operator) int {
 }
 
 var opTable = map[string]*operator{
+	"not":  newOperator("not", RightAssoc, 7),
 	"-u":   newOperator("-", RightAssoc, 7), // unary minus
 	"+":    newOperator("+", LeftAssoc, 6),
 	"-":    newOperator("-", LeftAssoc, 6),
@@ -44,6 +45,7 @@ var opTable = map[string]*operator{
 	"<>":   newOperator("<>", LeftAssoc, 5),
 	"like": newOperator("like", LeftAssoc, 5),
 	"is":   newOperator("is", LeftAssoc, 5),
+	"as":   newOperator("as", LeftAssoc, 5),
 	"in":   newOperator("in", LeftAssoc, 5),
 	"and":  newOperator("and", LeftAssoc, 4),
 	"xor":  newOperator("xor", LeftAssoc, 4),

@@ -22,6 +22,7 @@ const (
 	FloatToken
 	StringToken
 	OpToken
+	FunctionToken
 )
 
 func NewToken(typ TokenType, value string, line, pos uint) *Token {

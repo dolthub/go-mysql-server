@@ -6,13 +6,8 @@ type Not struct {
 	child sql.Expression
 }
 
-func NewNot(child sql.Expression) *Not {
-	if child.Type() != sql.Boolean {
-		panic("Invalid type")
-	}
-	return &Not{
-		child: child,
-	}
+func NewNot(child sql.Expression) (*Not, error) {
+	return &Not{child: child}, nil
 }
 
 func (e Not) Type() sql.Type {
