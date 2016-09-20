@@ -16,6 +16,10 @@ func NewLiteral(value interface{}, fieldType sql.Type) *Literal {
 	}
 }
 
+func (p Literal) Resolved() bool {
+	return true
+}
+
 func (p Literal) Type() sql.Type {
 	return p.fieldType
 }

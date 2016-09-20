@@ -6,7 +6,12 @@ type Nameable interface {
 	Name() string
 }
 
+type Resolvable interface {
+	Resolved() bool
+}
+
 type Node interface {
+	Resolvable
 	Schema() Schema
 	Children() []Node
 	RowIter() (RowIter, error)

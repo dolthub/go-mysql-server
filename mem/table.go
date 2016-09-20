@@ -21,6 +21,10 @@ func NewTable(name string, schema sql.Schema) *Table {
 	}
 }
 
+func (Table) Resolved() bool {
+	return true
+}
+
 func (t *Table) Name() string {
 	return t.name
 }

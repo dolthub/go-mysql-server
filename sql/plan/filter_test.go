@@ -47,9 +47,9 @@ func TestFilter(t *testing.T) {
 	assert.Nil(row)
 
 	f = NewFilter(expression.NewEquals(
-		expression.NewGetField(2, sql.String, "col3"),
+		expression.NewGetField(2, sql.Integer, "col3"),
 		expression.NewLiteral(int32(1111),
-			sql.String)), child)
+			sql.Integer)), child)
 
 	iter, err = f.RowIter()
 	assert.Nil(err)
@@ -63,7 +63,7 @@ func TestFilter(t *testing.T) {
 	assert.Equal(int64(2222), row.Fields()[3])
 
 	f = NewFilter(expression.NewEquals(
-		expression.NewGetField(3, sql.String, "col4"),
+		expression.NewGetField(3, sql.BigInteger, "col4"),
 		expression.NewLiteral(int64(4444), sql.BigInteger)),
 		child)
 

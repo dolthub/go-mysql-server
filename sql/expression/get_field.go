@@ -16,6 +16,10 @@ func NewGetField(index int, fieldType sql.Type, fieldName string) *GetField {
 	}
 }
 
+func (p GetField) Resolved() bool {
+	return true
+}
+
 func (p GetField) Type() sql.Type {
 	return p.fieldType
 }
