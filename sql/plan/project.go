@@ -1,11 +1,13 @@
 package plan
 
-import "github.com/mvader/gitql/sql"
+import (
+	"github.com/mvader/gitql/sql"
+)
 
 type Project struct {
+	UnaryNode
 	expressions []sql.Expression
 	schema      sql.Schema
-	child       sql.Node
 }
 
 func NewProject(expressions []sql.Expression, child sql.Node) *Project {
@@ -20,14 +22,10 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 		}
 	}
 	return &Project{
+		UnaryNode:   UnaryNode{child},
 		expressions: expressions,
 		schema:      schema,
-		child:       child,
 	}
-}
-
-func (p *Project) Children() []sql.Node {
-	return []sql.Node{p.child}
 }
 
 func (p *Project) Schema() sql.Schema {
@@ -35,7 +33,7 @@ func (p *Project) Schema() sql.Schema {
 }
 
 func (p *Project) RowIter() (sql.RowIter, error) {
-	i, err := p.child.RowIter()
+	i, err := p.Child.RowIter()
 	if err != nil {
 		return nil, err
 	}
