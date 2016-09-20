@@ -18,7 +18,7 @@ const (
 	SelectState
 	SelectFieldList
 	FromState
-	FromListState
+	FromRelationState
 	WhereState
 	WhereClauseState
 	OrderState
@@ -39,9 +39,9 @@ type parser struct {
 	err        error
 
 	projection    []sql.Expression
-	relations     []sql.Expression
+	relation      string
 	filterClauses []sql.Expression
-	orderClauses  []sql.Expression
+	sortFields    []plan.SortField
 }
 
 func newParser(input io.Reader) *parser {
@@ -99,9 +99,6 @@ func (p *parser) parse() error {
 			case SelectState:
 				p.projection = append(p.projection, expr)
 
-			case FromState:
-				p.relations = append(p.relations, expr)
-
 			case WhereState:
 				p.filterClauses = append(p.filterClauses, expr)
 			}
@@ -121,9 +118,6 @@ func (p *parser) parse() error {
 			case SelectState:
 				breakKeyword = "from"
 				nextState = FromState
-			case FromState:
-				breakKeyword = "where"
-				nextState = WhereState
 			case WhereState:
 				breakKeyword = "order"
 				nextState = OrderState
@@ -164,17 +158,20 @@ func (p *parser) parse() error {
 			} else if t.Type != KeywordToken || !kwMatches(t.Value, "from") {
 				p.errorf("expecting 'FROM', %q received", t.Value)
 			} else {
-				p.stateStack.put(FromListState)
+				p.stateStack.pop()
+				p.stateStack.put(FromRelationState)
 			}
 
-		case FromListState:
+		case FromRelationState:
 			t = p.lexer.Next()
 			if t == nil || t.Type == EOFToken {
-				p.errorf("expecting from expression, nothing received")
+				p.errorf("expecting table name, nothing received")
+			} else if t.Type != IdentifierToken {
+				p.errorf("expecting table name, %q received instead", t.Value)
 			} else {
-				p.lexer.Backup()
+				p.relation = t.Value
 				p.stateStack.pop()
-				p.stateStack.put(ExprState)
+				p.stateStack.put(WhereState)
 			}
 
 		case WhereState:
@@ -220,11 +217,11 @@ func (p *parser) parse() error {
 			}
 
 		case OrderClauseState:
-			clauses, err := parseOrderClause(p.lexer)
+			fields, err := parseOrderClause(p.lexer)
 			if err != nil {
 				p.error(err)
 			} else {
-				p.orderClauses = clauses
+				p.sortFields = fields
 				p.stateStack.pop()
 				p.stateStack.put(DoneState)
 			}
@@ -234,7 +231,26 @@ func (p *parser) parse() error {
 	return nil
 }
 
-func (p *parser) buildTree() *plan.Project {
+func (p *parser) buildPlan(relations []sql.PhysicalRelation) (sql.Node, error) {
+	var node sql.Node = nil
+	for _, r := range relations {
+		if r.Name() == p.relation {
+			node = r.Node
+			break
+		}
+	}
+
+	if node == nil {
+		return nil, fmt.Errorf("unknown table name %q", p.relation)
+	}
+
+	if len(p.filterClauses) > 0 {
+		NewFilter()
+	}
+
+	if len(p.sortFields) > 0 {
+		plan.NewSort(p.sortFields)
+	}
 	/*var fields []string
 	if p.projection.typ == projectionFields {
 		for _, f := range p.projection.fields {
@@ -247,13 +263,13 @@ func (p *parser) buildTree() *plan.Project {
 	return nil
 }
 
-func Parse(input io.Reader) (*plan.Project, error) {
+func Parse(input io.Reader, relations []sql.PhysicalRelation) (sql.Node, error) {
 	p := newParser(input)
 	if err := p.parse(); err != nil {
 		return nil, err
 	}
 
-	return p.buildTree(), nil
+	return p.buildPlan(relations)
 }
 
 func LastStates(input io.Reader) (ParseState, ParseState, error) {
@@ -270,9 +286,54 @@ type tokenQueue interface {
 	Next() *Token
 }
 
-func parseOrderClause(q tokenQueue) ([]sql.Expression, error) {
-	// TODO
-	return nil, nil
+func parseOrderClause(q tokenQueue) ([]plan.SortField, error) {
+	var (
+		fields []plan.SortField
+		field  *plan.SortField
+	)
+
+	for {
+		tk := q.Next()
+		if tk == nil {
+			return nil, errors.New("unexpected end of input")
+		}
+		switch tk.Type {
+		case IdentifierToken:
+			if field != nil {
+				return nil, fmt.Errorf(`expecting "DESC", "ASC" or ",", received %q`, tk.Value)
+			}
+
+			field = &plan.SortField{Column: tk.Value}
+		case KeywordToken:
+			if field == nil {
+				return nil, fmt.Errorf(`unexpected keyword %q, expecting identifier`, tk.Value)
+			}
+
+			if kwMatches(tk.Value, "desc") {
+				field.Order = plan.Descending
+			} else if kwMatches(tk.Value, "asc") {
+				field.Order = plan.Ascending
+			} else {
+				return nil, fmt.Errorf(`unexpected keyword %q, expecting "ASC", "DESC" or ","`, tk.Value)
+			}
+		case CommaToken:
+			if field == nil {
+				return nil, errors.New(`unexpected ",", expecting identifier`)
+			}
+
+			fields = append(fields, *field)
+			field = nil
+		case EOFToken:
+			if field == nil || len(fields) == 0 {
+				return nil, errors.New(`unexpected end of input, expecting identifier`)
+			}
+
+			fields = append(fields, *field)
+			return fields, nil
+		default:
+			return nil, fmt.Errorf(`unexpected token %q on order by field list`, tk.Value)
+		}
+	}
 }
 
 func parseExpr(q tokenQueue) (sql.Expression, error) {
