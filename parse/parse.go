@@ -22,11 +22,12 @@ const (
 	WhereState
 	WhereClauseState
 	OrderState
+	OrderByState
 	OrderClauseState
 	DoneState
 
 	ExprState
-	ExprEnd
+	ExprEndState
 )
 
 type parser struct {
@@ -37,7 +38,10 @@ type parser struct {
 	opStack    *tokenStack
 	err        error
 
-	projection []sql.Expression
+	projection    []sql.Expression
+	relations     []sql.Expression
+	filterClauses []sql.Expression
+	orderClauses  []sql.Expression
 }
 
 func newParser(input io.Reader) *parser {
@@ -62,7 +66,7 @@ func (p *parser) parse() error {
 		switch state {
 		case SelectState:
 			t = p.lexer.Next()
-			if t == nil {
+			if t == nil || t.Type == EOFToken {
 				p.errorf("expecting 'SELECT', nothing received")
 			} else if t.Type != KeywordToken || !kwMatches(t.Value, "select") {
 				p.errorf("expecting 'SELECT', %q received", t.Value)
@@ -72,7 +76,7 @@ func (p *parser) parse() error {
 
 		case SelectFieldList:
 			t = p.lexer.Next()
-			if t == nil {
+			if t == nil || t.Type == EOFToken {
 				p.errorf("expecting select field list expression, nothing received")
 			} else if t.Type == KeywordToken && kwMatches(t.Value, "from") {
 				p.errorf(`unexpected "FROM", expecting select field list expression`)
@@ -87,13 +91,24 @@ func (p *parser) parse() error {
 			if err != nil {
 				p.error(err)
 				break
-			} else {
-				p.projection = append(p.projection, expr)
 			}
-			p.stateStack.pop()
-			p.stateStack.put(ExprEnd)
 
-		case ExprEnd:
+			p.stateStack.pop()
+			state := p.stateStack.peek()
+			switch state {
+			case SelectState:
+				p.projection = append(p.projection, expr)
+
+			case FromState:
+				p.relations = append(p.relations, expr)
+
+			case WhereState:
+				p.filterClauses = append(p.filterClauses, expr)
+			}
+
+			p.stateStack.put(ExprEndState)
+
+		case ExprEndState:
 			t = p.lexer.Next()
 			p.stateStack.pop()
 			state := p.stateStack.peek()
@@ -112,8 +127,6 @@ func (p *parser) parse() error {
 			case WhereState:
 				breakKeyword = "order"
 				nextState = OrderState
-			case OrderState:
-			// empty on purpose
 			default:
 				p.errorf(`unexpected token %q`, t.Value)
 				break
@@ -126,10 +139,15 @@ func (p *parser) parse() error {
 					break OuterSwitch
 				case KeywordToken:
 					if kwMatches(t.Value, breakKeyword) {
+						p.lexer.Backup()
 						p.stateStack.pop()
 						p.stateStack.put(nextState)
 						break OuterSwitch
 					}
+				case EOFToken:
+					p.stateStack.pop()
+					p.stateStack.put(DoneState)
+					break OuterSwitch
 				}
 			}
 
@@ -138,8 +156,78 @@ func (p *parser) parse() error {
 			} else {
 				p.errorf(`expecting "," or end of sentence`)
 			}
+
 		case FromState:
-			p.errorf("not implemented yet")
+			t = p.lexer.Next()
+			if t == nil || t.Type == EOFToken {
+				p.errorf("expecting 'FROM', nothing received")
+			} else if t.Type != KeywordToken || !kwMatches(t.Value, "from") {
+				p.errorf("expecting 'FROM', %q received", t.Value)
+			} else {
+				p.stateStack.put(FromListState)
+			}
+
+		case FromListState:
+			t = p.lexer.Next()
+			if t == nil || t.Type == EOFToken {
+				p.errorf("expecting from expression, nothing received")
+			} else {
+				p.lexer.Backup()
+				p.stateStack.pop()
+				p.stateStack.put(ExprState)
+			}
+
+		case WhereState:
+			t = p.lexer.Next()
+			if t == nil || t.Type == EOFToken {
+				p.stateStack.pop()
+				p.stateStack.put(DoneState)
+			} else if t.Type != KeywordToken || !kwMatches(t.Value, "where") {
+				p.errorf("expecting 'WHERE', %q received", t.Value)
+			} else {
+				p.stateStack.put(WhereClauseState)
+			}
+
+		case WhereClauseState:
+			t = p.lexer.Next()
+			if t == nil || t.Type == EOFToken {
+				p.errorf("expecting where clause, nothing received")
+			} else {
+				p.lexer.Backup()
+				p.stateStack.pop()
+				p.stateStack.put(ExprState)
+			}
+
+		case OrderState:
+			t = p.lexer.Next()
+			if t == nil || t.Type == EOFToken {
+				p.stateStack.pop()
+				p.stateStack.put(DoneState)
+			} else if t.Type != KeywordToken || !kwMatches(t.Value, "order") {
+				p.errorf("expecting 'ORDER', %q received", t.Value)
+			} else {
+				p.stateStack.put(OrderByState)
+			}
+
+		case OrderByState:
+			t = p.lexer.Next()
+			if t == nil || t.Type == EOFToken {
+				p.errorf(`expecting "BY", nothing received`)
+			} else if t.Type != KeywordToken || !kwMatches(t.Value, "by") {
+				p.errorf("expecting 'BY', %q received", t.Value)
+			} else {
+				p.stateStack.put(OrderClauseState)
+			}
+
+		case OrderClauseState:
+			clauses, err := parseOrderClause(p.lexer)
+			if err != nil {
+				p.error(err)
+			} else {
+				p.orderClauses = clauses
+				p.stateStack.pop()
+				p.stateStack.put(DoneState)
+			}
 		}
 	}
 
@@ -180,6 +268,11 @@ func LastStates(input io.Reader) (ParseState, ParseState, error) {
 type tokenQueue interface {
 	Backup()
 	Next() *Token
+}
+
+func parseOrderClause(q tokenQueue) ([]sql.Expression, error) {
+	// TODO
+	return nil, nil
 }
 
 func parseExpr(q tokenQueue) (sql.Expression, error) {
@@ -230,6 +323,10 @@ OuterLoop:
 
 				output.put(stack.pop())
 			}
+
+		case EOFToken:
+			q.Backup()
+			break OuterLoop
 
 		case CommaToken:
 			for {

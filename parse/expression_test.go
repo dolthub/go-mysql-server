@@ -55,8 +55,8 @@ func TestAssembleExpression(t *testing.T) {
 				tk(OpToken, "="),
 			},
 			expression.NewEquals(
-				expression.NewIdentifier("foo"),
 				expression.NewLiteral(int64(42), sql.BigInteger),
+				expression.NewIdentifier("foo"),
 			),
 		},
 	}

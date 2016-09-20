@@ -16,13 +16,13 @@ func assembleExpression(s *tokenStack) (sql.Expression, error) {
 		op := strings.ToLower(tk.Value)
 		var left, right sql.Expression
 		var err error
-		left, err = assembleExpression(s)
+		right, err = assembleExpression(s)
 		if err != nil {
 			return nil, err
 		}
 
 		if op != "not" {
-			right, err = assembleExpression(s)
+			left, err = assembleExpression(s)
 			if err != nil {
 				return nil, err
 			}
@@ -30,7 +30,7 @@ func assembleExpression(s *tokenStack) (sql.Expression, error) {
 
 		switch tk.Value {
 		case "not":
-			return expression.NewNot(left)
+			return expression.NewNot(right)
 		case "=":
 			return expression.NewEquals(left, right), nil
 		}
