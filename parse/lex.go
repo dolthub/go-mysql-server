@@ -222,8 +222,8 @@ func lexNumber(l *Lexer) (stateFunc, error) {
 }
 
 var keywords = []string{
-	"select", "from", "where", "in", "order", "by", "asc",
-	"desc", "and", "or", "distinct", "limit", "offset", "as",
+	"select", "from", "where", "in", "order", "by", "asc", "like",
+	"desc", "and", "or", "distinct", "limit", "offset", "as", "xor",
 }
 
 func isKeyword(kw string) bool {
