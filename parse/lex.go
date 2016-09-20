@@ -111,6 +111,10 @@ func (l *Lexer) Next() *Token {
 	return tk
 }
 
+func (l *Lexer) Backup() {
+	l.idx--
+}
+
 const (
 	eof         rune = -1
 	comma            = ','

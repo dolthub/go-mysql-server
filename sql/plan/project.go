@@ -4,34 +4,42 @@ import "github.com/mvader/gitql/sql"
 
 type Project struct {
 	fieldIndexes []int
-	schema sql.Schema
-	child sql.Node
+	schema       sql.Schema
+	child        sql.Node
 }
 
 func NewProject(fieldNames []string, child sql.Node) *Project {
 	indexes := []int{}
 	childSchema := child.Schema()
 	schema := sql.Schema{}
-	for _, name := range fieldNames {
+
+	if len(fieldNames) == 0 {
 		for idx, field := range childSchema {
-			if name == field.Name {
-				indexes = append(indexes, idx)
-				schema = append(schema, field)
-				break
+			indexes = append(indexes, idx)
+			schema = append(schema, field)
+		}
+	} else {
+		for _, name := range fieldNames {
+			for idx, field := range childSchema {
+				if name == field.Name {
+					indexes = append(indexes, idx)
+					schema = append(schema, field)
+					break
+				}
 			}
 		}
 	}
+
 	return &Project{
 		fieldIndexes: indexes,
-		schema: schema,
-		child: child,
+		schema:       schema,
+		child:        child,
 	}
 }
 
 func (p *Project) Children() []sql.Node {
 	return []sql.Node{p.child}
 }
-
 
 func (p *Project) Schema() sql.Schema {
 	return p.schema
