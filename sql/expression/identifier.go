@@ -20,3 +20,7 @@ func (i Identifier) Eval(row sql.Row) interface{} {
 	// TODO: return real value
 	return i.name
 }
+
+func (i Identifier) Name() string {
+	return i.name
+}
