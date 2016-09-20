@@ -1,4 +1,4 @@
-package sql
+package plan
 
 import "github.com/mvader/gitql/sql"
 
