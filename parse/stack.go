@@ -1,25 +1,49 @@
 package parse
 
-type stack []*Token
+type tokenStack []*Token
 
-func (s stack) isEmpty() bool {
+func (s tokenStack) isEmpty() bool {
 	return len(s) == 0
 }
 
-func (s stack) peek() *Token {
+func (s tokenStack) peek() *Token {
 	return s[len(s)-1]
 }
 
-func (s *stack) put(t *Token) {
+func (s *tokenStack) put(t *Token) {
 	*s = append(*s, t)
 }
 
-func (s *stack) pop() *Token {
+func (s *tokenStack) pop() *Token {
 	t := (*s)[len(*s)-1]
 	*s = (*s)[:len(*s)-1]
 	return t
 }
 
-func newStack() *stack {
-	return new(stack)
+func newTokenStack() *tokenStack {
+	return new(tokenStack)
+}
+
+type stateStack []ParseState
+
+func (s stateStack) isEmpty() bool {
+	return len(s) == 0
+}
+
+func (s stateStack) peek() ParseState {
+	return s[len(s)-1]
+}
+
+func (s *stateStack) put(st ParseState) {
+	*s = append(*s, st)
+}
+
+func (s *stateStack) pop() ParseState {
+	st := (*s)[len(*s)-1]
+	*s = (*s)[:len(*s)-1]
+	return st
+}
+
+func newStateStack() *stateStack {
+	return new(stateStack)
 }

@@ -23,40 +23,27 @@ const (
 	OrderState
 	OrderClauseState
 	DoneState
+
+	ExprState
+	ExprEnd
 )
-
-type projection struct {
-	typ    projectionType
-	fields []*projectionField
-}
-
-type projectionType byte
-
-const (
-	projectionAll projectionType = iota
-	projectionFields
-)
-
-type projectionField struct {
-	parent string
-	name   string
-}
 
 type parser struct {
-	prevState ParseState
-	state     ParseState
-	lexer     *Lexer
-	output    []*Token
-	opStack   *stack
-	err       error
+	prevState  ParseState
+	stateStack *stateStack
+	lexer      *Lexer
+	output     []*Token
+	opStack    *tokenStack
+	err        error
 
-	projection *projection
+	projection []interface{}
 }
 
 func newParser(input io.Reader) *parser {
 	return &parser{
-		lexer:   NewLexer(input),
-		opStack: newStack(),
+		lexer:      NewLexer(input),
+		stateStack: newStateStack(),
+		opStack:    newTokenStack(),
 	}
 }
 
@@ -65,10 +52,11 @@ func (p *parser) parse() error {
 		return err
 	}
 
-	for p.state != DoneState && p.state != ErrorState {
-		p.prevState = p.state
+	state := p.stateStack.peek()
+	for state != DoneState && state != ErrorState {
+		p.prevState = state
 		var t *Token
-		switch p.state {
+		switch state {
 		case SelectState:
 			t = p.lexer.Next()
 			if t == nil {
@@ -76,16 +64,80 @@ func (p *parser) parse() error {
 			} else if t.Type != KeywordToken || !kwMatches(t.Value, "select") {
 				p.errorf("expecting 'SELECT', %q received", t.Value)
 			} else {
-				p.state = SelectFieldList
-				p.projection = &projection{}
+				p.stateStack.pop()
+				p.stateStack.put(SelectFieldList)
 			}
+
 		case SelectFieldList:
-			proj, err := parseSelectFields(p.lexer)
+			t = p.lexer.Next()
+			if t == nil {
+				p.errorf("expecting select field list expression, nothing received")
+			} else if t.Type == KeywordToken && kwMatches(t.Value, "from") {
+				if len(p.projection) > 0 {
+					p.lexer.Backup()
+					p.stateStack.pop()
+					p.stateStack.put(FromState)
+				} else {
+					p.errorf(`unexpected "FROM", expecting select field list expression`)
+				}
+			} else {
+				p.lexer.Backup()
+				p.stateStack.put(ExprState)
+			}
+
+		case ExprState:
+			expr, err := parseExpr(p.lexer)
 			if err != nil {
 				p.error(err)
 			} else {
-				p.projection = proj
-				p.state = FromState
+				p.projection = append(p.projection, expr)
+			}
+			p.stateStack.put(ExprEnd)
+
+		case ExprEnd:
+			t = p.lexer.Next()
+			p.stateStack.pop()
+			state := p.stateStack.peek()
+			var (
+				breakKeyword string
+				nextState    ParseState
+			)
+
+			switch state {
+			case SelectState:
+				breakKeyword = "from"
+				nextState = FromState
+			case FromState:
+				breakKeyword = "where"
+				nextState = WhereState
+			case WhereState:
+				breakKeyword = "order"
+				nextState = OrderState
+			case OrderState:
+			// empty on purpose
+			default:
+				p.errorf(`unexpected token %q`, t.Value)
+				break
+			}
+
+			if t != nil {
+				switch t.Type {
+				case CommaToken:
+					break
+				case KeywordToken:
+					if kwMatches(t.Value, breakKeyword) {
+						p.stateStack.pop()
+						p.stateStack.pop()
+						p.stateStack.put(nextState)
+						break
+					}
+				}
+			}
+
+			if breakKeyword != "" {
+				p.errorf(`expecting "," or %q`, breakKeyword)
+			} else {
+				p.errorf(`expecting "," or end of sentence`)
 			}
 		}
 	}
@@ -94,7 +146,7 @@ func (p *parser) parse() error {
 }
 
 func (p *parser) buildTree() *plan.Project {
-	var fields []string
+	/*var fields []string
 	if p.projection.typ == projectionFields {
 		for _, f := range p.projection.fields {
 			fields = append(fields, f.name)
@@ -102,7 +154,8 @@ func (p *parser) buildTree() *plan.Project {
 	}
 
 	// TODO: build child
-	return plan.NewProject(fields, nil)
+	return plan.NewProject(fields, nil)*/
+	return nil
 }
 
 func Parse(input io.Reader) (*plan.Project, error) {
@@ -120,7 +173,7 @@ func LastStates(input io.Reader) (ParseState, ParseState, error) {
 		return NilState, NilState, err
 	}
 
-	return p.state, p.prevState, nil
+	return p.stateStack.pop(), p.prevState, nil
 }
 
 type tokenQueue interface {
@@ -128,79 +181,123 @@ type tokenQueue interface {
 	Next() *Token
 }
 
-func parseSelectFields(q tokenQueue) (*projection, error) {
-	t := q.Next()
-
-	if t == nil {
-		return nil, errors.New("expecting fields to select, nothing found")
-	}
-
-	if t.Type == OpToken {
-		if t.Value != "*" {
-			return nil, fmt.Errorf("unexpected operator %q found in select field list", t.Value)
-		}
-
-		return &projection{typ: projectionAll}, nil
-	}
-
-	q.Backup()
-	return parseSelectFieldList(q)
-}
-
-func parseSelectFieldList(q tokenQueue) (*projection, error) {
+func parseExpr(q tokenQueue) (interface{}, error) {
 	var (
-		projection = &projection{typ: projectionFields}
-		f          *projectionField
+		output []*Token
+		stack  = newTokenStack()
 	)
 
+OuterLoop:
 	for {
-		t := q.Next()
-		switch t.Type {
+		tk := q.Next()
+		if tk == nil {
+			break
+		}
+
+		switch tk.Type {
+		case IntToken, StringToken, FloatToken:
+			output = append(output, tk)
+
 		case IdentifierToken:
-			if f != nil && f.name != "" {
-				return nil, fmt.Errorf(`expecting "," identifier %q received instead`, t.Value)
-			}
-
-			if f == nil {
-				f = &projectionField{name: t.Value}
-			} else {
-				f.name = t.Value
-			}
-		case DotToken:
-			if f == nil || f.name == "" {
-				return nil, errors.New(`unexpected ".", expecting identifier`)
-			}
-
-			if f.parent != "" {
-				return nil, errors.New(`unexpected ".", expecting ","`)
-			}
-
-			f = &projectionField{f.name, ""}
-		case CommaToken:
-			if f == nil || f.name == "" {
-				return nil, errors.New(`unexpected ",", expecting identifier`)
-			}
-
-			projection.fields = append(projection.fields, f)
-			f = nil
-		default:
+			nt := q.Next()
 			q.Backup()
-			if f != nil {
-				projection.fields = append(projection.fields, f)
+			if nt != nil && nt.Type == LeftParenToken {
+				tk.Type = FunctionToken
+				stack.put(tk)
+			} else {
+				output = append(output, tk)
 			}
-			return projection, nil
+
+		case LeftParenToken:
+			stack.put(tk)
+
+		case RightParenToken:
+			for {
+				t := stack.peek()
+				if t == nil {
+					return nil, errors.New(`unexpected ")"`)
+				}
+
+				if t.Type == LeftParenToken {
+					stack.pop()
+					t = stack.peek()
+					if t != nil && t.Type == FunctionToken {
+						output = append(output, stack.pop())
+					}
+					break
+				}
+
+				output = append(output, stack.pop())
+			}
+
+		case CommaToken:
+			for {
+				t := stack.peek()
+				if t != nil {
+					q.Backup()
+					break OuterLoop
+				}
+
+				if t.Type == LeftParenToken {
+					break
+				}
+
+				output = append(output, stack.pop())
+			}
+
+		case KeywordToken:
+			op := opTable[tk.Value]
+			if op == nil {
+				q.Backup()
+				break OuterLoop
+			}
+
+			tk.Type = OpToken
+			fallthrough
+		case OpToken:
+			for {
+				t := stack.peek()
+				if t == nil || t.Type != OpToken {
+					break
+				}
+
+				o1 := opTable[tk.Value]
+				o2 := opTable[t.Value]
+				if o1.isLeftAssoc() && o1.comparePrecedence(o2) <= 0 ||
+					o1.isRightAssoc() && o1.comparePrecedence(o2) < 0 {
+					output = append(output, stack.pop())
+				} else {
+					break
+				}
+			}
+			stack.put(tk)
 		}
 	}
+
+	for {
+		tk := stack.pop()
+		if tk == nil {
+			break
+		}
+
+		if tk.Type == LeftParenToken {
+			return nil, errors.New(`missing closing ")"`)
+		}
+
+		output = append(output, tk)
+	}
+
+	return nil, nil
 }
 
 func (p *parser) errorf(msg string, args ...interface{}) {
 	p.err = fmt.Errorf(msg, args...)
-	p.state = ErrorState
+	p.stateStack.put(ErrorState)
 }
 
 func (p *parser) error(err error) {
 	p.err = err
-	p.state = ErrorState
+	p.stateStack.put(ErrorState)
 }
 
 func kwMatches(tested, expected string) bool {
