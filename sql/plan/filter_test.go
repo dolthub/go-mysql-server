@@ -17,8 +17,10 @@ func TestFilter(t *testing.T) {
 		sql.Field{"col4", sql.BigInteger},
 	}
 	child := mem.NewTable("test", childSchema)
-	child.Insert("col1_1", "col2_1", 1111, int64(2222))
-	child.Insert("col1_2", "col2_2", 3333, int64(4444))
+	err := child.Insert("col1_1", "col2_1", int32(1111), int64(2222))
+	assert.Nil(err)
+	err = child.Insert("col1_2", "col2_2", int32(3333), int64(4444))
+	assert.Nil(err)
 
 	f := NewFilter("col1", child, "col1_1")
 
@@ -39,7 +41,7 @@ func TestFilter(t *testing.T) {
 	assert.NotNil(err)
 	assert.Nil(row)
 
-	f = NewFilter("col3", child, 1111)
+	f = NewFilter("col3", child, int32(1111))
 
 	iter, err = f.RowIter()
 	assert.Nil(err)
@@ -49,7 +51,7 @@ func TestFilter(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(row)
 
-	assert.Equal(1111, row.Fields()[2])
+	assert.Equal(int32(1111), row.Fields()[2])
 	assert.Equal(int64(2222), row.Fields()[3])
 
 	f = NewFilter("col4", child, int64(4444))
@@ -62,6 +64,6 @@ func TestFilter(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(row)
 
-	assert.Equal(3333, row.Fields()[2])
+	assert.Equal(int32(3333), row.Fields()[2])
 	assert.Equal(int64(4444), row.Fields()[3])
 }
