@@ -18,6 +18,10 @@ func (p *Filter) Children() []sql.Node {
 	return []sql.Node{p.child}
 }
 
+func (p *Filter) Schema() sql.Schema {
+	return p.child.Schema()
+}
+
 func (p *Filter) RowIter() (sql.RowIter, error) {
 	i, err := p.child.RowIter()
 	if err != nil {

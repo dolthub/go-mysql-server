@@ -232,10 +232,10 @@ func (p *parser) parse() error {
 }
 
 func (p *parser) buildPlan(relations []sql.PhysicalRelation) (sql.Node, error) {
-	var node sql.Node = nil
+	var node sql.Node
 	for _, r := range relations {
 		if r.Name() == p.relation {
-			node = r.Node
+			node = r
 			break
 		}
 	}
@@ -245,22 +245,15 @@ func (p *parser) buildPlan(relations []sql.PhysicalRelation) (sql.Node, error) {
 	}
 
 	if len(p.filterClauses) > 0 {
-		NewFilter()
+		node = plan.NewFilter(p.filterClauses[0], node)
 	}
 
+	node = plan.NewProject(p.projection, node)
 	if len(p.sortFields) > 0 {
-		plan.NewSort(p.sortFields)
-	}
-	/*var fields []string
-	if p.projection.typ == projectionFields {
-		for _, f := range p.projection.fields {
-			fields = append(fields, f.name)
-		}
+		node = plan.NewSort(p.sortFields, node)
 	}
 
-	// TODO: build child
-	return plan.NewProject(fields, nil)*/
-	return nil
+	return node, nil
 }
 
 func Parse(input io.Reader, relations []sql.PhysicalRelation) (sql.Node, error) {

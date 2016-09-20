@@ -20,9 +20,7 @@ func TestParseSelectFromWhere(t *testing.T) {
 		expression.NewIdentifier("bar"),
 	})
 
-	require.Equal(t, p.relations, []sql.Expression{
-		expression.NewIdentifier("foo"),
-	})
+	require.Equal(t, p.relation, "foo")
 
 	require.Equal(t, p.filterClauses, []sql.Expression{
 		expression.NewEquals(
@@ -31,7 +29,7 @@ func TestParseSelectFromWhere(t *testing.T) {
 		),
 	})
 
-	require.Nil(t, p.orderClauses)
+	require.Nil(t, p.sortFields)
 	require.Nil(t, p.err)
 	require.Equal(t, DoneState, p.stateStack.pop())
 }
