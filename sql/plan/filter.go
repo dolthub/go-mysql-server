@@ -3,27 +3,15 @@ package plan
 import "github.com/mvader/gitql/sql"
 
 type Filter struct {
-	fieldIndex int
-	value      interface{}
+	expression sql.Expression
 	child      sql.Node
 }
 
-func NewFilter(fieldName string, child sql.Node, value interface{}) *Filter {
-	childSchema := child.Schema()
-	var i int
-	for index, field := range childSchema {
-		if fieldName == field.Name {
-			i = index
-			break
-		}
-	}
-
+func NewFilter(expression sql.Expression, child sql.Node) *Filter {
 	return &Filter{
-		fieldIndex: i,
-		value:      value,
+		expression: expression,
 		child:      child,
 	}
-
 }
 
 func (p *Filter) Children() []sql.Node {
@@ -44,13 +32,12 @@ type filterIter struct {
 }
 
 func (i *filterIter) Next() (sql.Row, error) {
-	index := i.f.fieldIndex
 	for {
 		row, err := i.childIter.Next()
 
 		if err != nil {
 			return nil, err
-		} else if row.Fields()[index] == i.f.value {
+		} else if i.f.expression.Eval(row) != false {
 			return row, nil
 		}
 	}

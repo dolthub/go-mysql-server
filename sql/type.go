@@ -131,11 +131,11 @@ func (t booleanType) InternalType() reflect.Kind {
 }
 
 func (t booleanType) Check(v interface{}) bool {
-	return checkString(v)
+	return checkBoolean(v)
 }
 
 func (t booleanType) Convert(v interface{}) (interface{}, error) {
-	return convertToString(v)
+	return convertToBool(v)
 }
 
 func (t booleanType) Compare(a interface{}, b interface{}) int {
