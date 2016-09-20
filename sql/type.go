@@ -3,6 +3,7 @@ package sql
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -138,24 +139,12 @@ func (t booleanType) Convert(v interface{}) (interface{}, error) {
 }
 
 func (t booleanType) Compare(a interface{}, b interface{}) int {
-	av := a.(bool)
-	bv := b.(bool)
-	if av == bv {
-		return 0
-	} else if av == false {
-		return -1
-	} else {
-		return 1
-	}
+	return compareBool(a, b)
 }
 
 func checkString(v interface{}) bool {
-	switch v.(type) {
-	case string:
-		return true
-	default:
-		return false
-	}
+	_, ok := v.(string)
+	return ok
 }
 
 func convertToString(v interface{}) (interface{}, error) {
@@ -176,12 +165,8 @@ func compareString(a interface{}, b interface{}) int {
 }
 
 func checkInt32(v interface{}) bool {
-	switch v.(type) {
-	case int32:
-		return true
-	default:
-		return false
-	}
+	_, ok := v.(int32)
+	return ok
 }
 
 func convertToInt32(v interface{}) (interface{}, error) {
@@ -194,6 +179,41 @@ func convertToInt32(v interface{}) (interface{}, error) {
 		return int32(v.(int16)), nil
 	case int32:
 		return v.(int32), nil
+	case int64:
+		i64 := v.(int64)
+		if i64 > (1<<31)-1 || i64 < -(1<<31) {
+			return nil, fmt.Errorf("value %d overflows int32", i64)
+		}
+		return int32(i64), nil
+	case uint8:
+		return int32(v.(uint8)), nil
+	case uint16:
+		return int32(v.(uint16)), nil
+	case uint:
+		u := v.(uint)
+		if u > (1<<31)-1 {
+			return nil, fmt.Errorf("value %d overflows int32", v)
+		}
+		return int32(u), nil
+	case uint32:
+		u := v.(uint32)
+		if u > (1<<31)-1 {
+			return nil, fmt.Errorf("value %d overflows int32", v)
+		}
+		return int32(u), nil
+	case uint64:
+		u := v.(uint64)
+		if u > (1<<31)-1 {
+			return nil, fmt.Errorf("value %d overflows int32", v)
+		}
+		return int32(u), nil
+	case string:
+		s := v.(string)
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			return nil, fmt.Errorf("value %q can't be converted to int32", v)
+		}
+		return int32(i), nil
 	default:
 		return nil, ErrInvalidType
 	}
@@ -211,12 +231,8 @@ func compareInt32(a interface{}, b interface{}) int {
 }
 
 func checkInt64(v interface{}) bool {
-	switch v.(type) {
-	case int64:
-		return true
-	default:
-		return false
-	}
+	_, ok := v.(int64)
+	return ok
 }
 
 func convertToInt64(v interface{}) (interface{}, error) {
@@ -231,9 +247,41 @@ func convertToInt64(v interface{}) (interface{}, error) {
 		return int64(v.(int32)), nil
 	case int64:
 		return v.(int64), nil
+	case uint:
+		return int64(v.(uint)), nil
+	case uint8:
+		return int64(v.(uint8)), nil
+	case uint16:
+		return int64(v.(uint16)), nil
+	case uint32:
+		return int64(v.(uint32)), nil
+	case uint64:
+		u := v.(uint64)
+		if u >= 1<<63 {
+			return nil, fmt.Errorf("value %d overflows int64", v)
+		}
+		return int64(u), nil
+	case string:
+		s := v.(string)
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			return nil, fmt.Errorf("value %q can't be converted to int64", v)
+		}
+		return int64(i), nil
 	default:
 		return nil, ErrInvalidType
 	}
+}
+
+func compareInt64(a interface{}, b interface{}) int {
+	av := a.(int64)
+	bv := b.(int64)
+	if av < bv {
+		return -1
+	} else if av > bv {
+		return 1
+	}
+	return 0
 }
 
 func checkBoolean(v interface{}) bool {
@@ -250,13 +298,14 @@ func convertToBool(v interface{}) (interface{}, error) {
 	}
 }
 
-func compareInt64(a interface{}, b interface{}) int {
-	av := a.(int64)
-	bv := b.(int64)
-	if av < bv {
+func compareBool(a interface{}, b interface{}) int {
+	av := a.(bool)
+	bv := b.(bool)
+	if av == bv {
+		return 0
+	} else if av == false {
 		return -1
-	} else if av > bv {
+	} else {
 		return 1
 	}
-	return 0
 }
