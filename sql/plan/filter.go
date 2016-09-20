@@ -3,27 +3,23 @@ package plan
 import "github.com/mvader/gitql/sql"
 
 type Filter struct {
+	UnaryNode
 	expression sql.Expression
-	child      sql.Node
 }
 
 func NewFilter(expression sql.Expression, child sql.Node) *Filter {
 	return &Filter{
+		UnaryNode:  UnaryNode{Child: child},
 		expression: expression,
-		child:      child,
 	}
 }
 
-func (p *Filter) Children() []sql.Node {
-	return []sql.Node{p.child}
-}
-
 func (p *Filter) Schema() sql.Schema {
-	return p.child.Schema()
+	return p.UnaryNode.Child.Schema()
 }
 
 func (p *Filter) RowIter() (sql.RowIter, error) {
-	i, err := p.child.RowIter()
+	i, err := p.Child.RowIter()
 	if err != nil {
 		return nil, err
 	}

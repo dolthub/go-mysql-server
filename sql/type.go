@@ -142,6 +142,30 @@ func (t booleanType) Compare(a interface{}, b interface{}) int {
 	return compareBool(a, b)
 }
 
+var Float Type = floatType{}
+
+type floatType struct{}
+
+func (t floatType) Name() string {
+	return "float"
+}
+
+func (t floatType) InternalType() reflect.Kind {
+	return reflect.Float64
+}
+
+func (t floatType) Check(v interface{}) bool {
+	return checkFloat64(v)
+}
+
+func (t floatType) Convert(v interface{}) (interface{}, error) {
+	return convertToFloat64(v)
+}
+
+func (t floatType) Compare(a interface{}, b interface{}) int {
+	return compareFloat64(a, b)
+}
+
 func checkString(v interface{}) bool {
 	_, ok := v.(string)
 	return ok
@@ -308,4 +332,29 @@ func compareBool(a interface{}, b interface{}) int {
 	} else {
 		return 1
 	}
+}
+
+func checkFloat64(v interface{}) bool {
+	_, ok := v.(float32)
+	return ok
+}
+
+func convertToFloat64(v interface{}) (interface{}, error) {
+	switch v.(type) {
+	case float32:
+		return v.(float32), nil
+	default:
+		return nil, ErrInvalidType
+	}
+}
+
+func compareFloat64(a interface{}, b interface{}) int {
+	av := a.(float32)
+	bv := b.(float32)
+	if av < bv {
+		return -1
+	} else if av > bv {
+		return 1
+	}
+	return 0
 }
