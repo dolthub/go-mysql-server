@@ -96,7 +96,7 @@ func (e LessThanOrEqual) Eval(row sql.Row) interface{} {
 }
 
 func checkEqualTypes(a sql.Expression, b sql.Expression) {
-	if a.Type() != b.Type() {
+	if a.Resolved() && b.Resolved() && a.Type() != b.Type() {
 		panic(fmt.Errorf("both types should be equal: %v and %v\n", a, b))
 	}
 }

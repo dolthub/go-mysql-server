@@ -3,11 +3,11 @@ package expression
 import "github.com/mvader/gitql/sql"
 
 type Not struct {
-	child sql.Expression
+	UnaryExpression
 }
 
-func NewNot(child sql.Expression) (*Not, error) {
-	return &Not{child: child}, nil
+func NewNot(child sql.Expression) *Not {
+	return &Not{UnaryExpression{child}}
 }
 
 func (e Not) Type() sql.Type {
@@ -15,9 +15,9 @@ func (e Not) Type() sql.Type {
 }
 
 func (e Not) Eval(row sql.Row) interface{} {
-	return !e.child.Eval(row).(bool)
+	return !e.Child.Eval(row).(bool)
 }
 
 func (e Not) Name() string {
-	return "Not(" + e.child.Name() + ")"
+	return "Not(" + e.Child.Name() + ")"
 }
