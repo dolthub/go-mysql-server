@@ -15,7 +15,7 @@ func TestAssembleExpression(t *testing.T) {
 	}{
 		{
 			[]*Token{tk(IdentifierToken, "foo")},
-			expression.NewIdentifier("foo"),
+			expression.NewUnresolvedColumn("foo"),
 		},
 		{
 			[]*Token{tk(StringToken, `"foo"`)},
@@ -47,7 +47,7 @@ func TestAssembleExpression(t *testing.T) {
 				tk(IdentifierToken, "foo"),
 				tk(OpToken, "not"),
 			},
-			noErr(expression.NewNot(expression.NewIdentifier("foo"))),
+			expression.NewNot(expression.NewUnresolvedColumn("foo")),
 		},
 		{
 			[]*Token{
@@ -57,7 +57,7 @@ func TestAssembleExpression(t *testing.T) {
 			},
 			expression.NewEquals(
 				expression.NewLiteral(int64(42), sql.BigInteger),
-				expression.NewIdentifier("foo"),
+				expression.NewUnresolvedColumn("foo"),
 			),
 		},
 	}

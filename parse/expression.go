@@ -30,7 +30,7 @@ func assembleExpression(s *tokenStack) (sql.Expression, error) {
 
 		switch tk.Value {
 		case "not":
-			return expression.NewNot(right)
+			return expression.NewNot(right), nil
 		case "=":
 			return expression.NewEquals(left, right), nil
 		}
@@ -43,7 +43,7 @@ func assembleExpression(s *tokenStack) (sql.Expression, error) {
 			return expression.NewLiteral(false, sql.Boolean), nil
 		}
 
-		return expression.NewIdentifier(tk.Value), nil
+		return expression.NewUnresolvedColumn(tk.Value), nil
 	case StringToken:
 		// TODO: Parse timestamp
 		return expression.NewLiteral(

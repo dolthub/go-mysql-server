@@ -51,6 +51,10 @@ func NewSort(sortFields []SortField, child sql.Node) *Sort {
 	}
 }
 
+func (s *Sort) Resolved() bool {
+	return s.child.Resolved()
+}
+
 func (s *Sort) Children() []sql.Node {
 	return []sql.Node{s.child}
 }

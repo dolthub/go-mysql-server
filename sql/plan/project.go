@@ -32,6 +32,10 @@ func (p *Project) Schema() sql.Schema {
 	return p.schema
 }
 
+func (p *Project) Resolved() bool {
+	return p.UnaryNode.Child.Resolved()
+}
+
 func (p *Project) RowIter() (sql.RowIter, error) {
 	i, err := p.Child.RowIter()
 	if err != nil {

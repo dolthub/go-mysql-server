@@ -16,16 +16,16 @@ func TestParseSelectFromWhere(t *testing.T) {
 	require.Nil(t, p.parse())
 
 	require.Equal(t, p.projection, []sql.Expression{
-		expression.NewIdentifier("foo"),
-		expression.NewIdentifier("bar"),
+		expression.NewUnresolvedColumn("foo"),
+		expression.NewUnresolvedColumn("bar"),
 	})
 
 	require.Equal(t, p.relation, "foo")
 
 	require.Equal(t, p.filterClauses, []sql.Expression{
 		expression.NewEquals(
-			expression.NewIdentifier("foo"),
-			expression.NewIdentifier("bar"),
+			expression.NewUnresolvedColumn("foo"),
+			expression.NewUnresolvedColumn("bar"),
 		),
 	})
 
