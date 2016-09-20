@@ -73,7 +73,7 @@ func (p *parser) parse() error {
 			t = p.lexer.Next()
 			if t == nil {
 				p.errorf("expecting 'SELECT', nothing received")
-			} else if t.Type != KeywordToken || kwMatches(t.Value, "select") {
+			} else if t.Type != KeywordToken || !kwMatches(t.Value, "select") {
 				p.errorf("expecting 'SELECT', %q received", t.Value)
 			} else {
 				p.state = SelectFieldList
