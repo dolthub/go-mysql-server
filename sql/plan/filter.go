@@ -14,6 +14,10 @@ func NewFilter(expression sql.Expression, child sql.Node) *Filter {
 	}
 }
 
+func (p *Filter) Schema() sql.Schema {
+	return p.UnaryNode.Child.Schema()
+}
+
 func (p *Filter) RowIter() (sql.RowIter, error) {
 	i, err := p.Child.RowIter()
 	if err != nil {
