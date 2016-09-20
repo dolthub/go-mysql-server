@@ -20,7 +20,8 @@ type Equals struct {
 }
 
 func NewEquals(left sql.Expression, right sql.Expression) *Equals {
-	checkEqualTypes(left, right)
+	// FIXME: enable this again
+	// checkEqualTypes(left, right)
 	return &Equals{Comparsion{BinaryExpression{left, right}, left.Type()}}
 }
 
@@ -35,7 +36,8 @@ type GreaterThan struct {
 }
 
 func NewGreaterThan(left sql.Expression, right sql.Expression) *GreaterThan {
-	checkEqualTypes(left, right)
+	// FIXME: enable this again
+	// checkEqualTypes(left, right)
 	return &GreaterThan{Comparsion{BinaryExpression{left, right}, left.Type()}}
 }
 
@@ -50,7 +52,8 @@ type LessThan struct {
 }
 
 func NewLessThan(left sql.Expression, right sql.Expression) *LessThan {
-	checkEqualTypes(left, right)
+	// FIXME: enable this again
+	// checkEqualTypes(left, right)
 	return &LessThan{Comparsion{BinaryExpression{left, right}, left.Type()}}
 }
 
@@ -65,7 +68,8 @@ type GreaterThanOrEqual struct {
 }
 
 func NewGreaterThanOrEqual(left sql.Expression, right sql.Expression) *GreaterThanOrEqual {
-	checkEqualTypes(left, right)
+	// FIXME: enable this again
+	// checkEqualTypes(left, right)
 	return &GreaterThanOrEqual{Comparsion{BinaryExpression{left, right}, left.Type()}}
 }
 
@@ -80,7 +84,8 @@ type LessThanOrEqual struct {
 }
 
 func NewLessThanOrEqual(left sql.Expression, right sql.Expression) *LessThanOrEqual {
-	checkEqualTypes(left, right)
+	// FIXME: enable this again
+	// checkEqualTypes(left, right)
 	return &LessThanOrEqual{Comparsion{BinaryExpression{left, right}, left.Type()}}
 }
 
