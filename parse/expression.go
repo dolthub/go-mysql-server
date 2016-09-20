@@ -33,6 +33,14 @@ func assembleExpression(s *tokenStack) (sql.Expression, error) {
 			return expression.NewNot(right), nil
 		case "=":
 			return expression.NewEquals(left, right), nil
+		case ">":
+			return expression.NewGreaterThan(left, right), nil
+		case "<":
+			return expression.NewLessThan(left, right), nil
+		case ">=":
+			return expression.NewGreaterThanOrEqual(left, right), nil
+		case "<=":
+			return expression.NewLessThanOrEqual(left, right), nil
 		}
 	case IdentifierToken:
 		if kwMatches(tk.Value, "true") {

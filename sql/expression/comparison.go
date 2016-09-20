@@ -6,23 +6,27 @@ import (
 	"github.com/mvader/gitql/sql"
 )
 
-type Comparsion struct {
+type Comparison struct {
 	BinaryExpression
 	ChildType sql.Type
 }
 
-func (*Comparsion) Type() sql.Type {
+func (*Comparison) Type() sql.Type {
 	return sql.Boolean
 }
 
+func (*Comparison) Name() string {
+	return ""
+}
+
 type Equals struct {
-	Comparsion
+	Comparison
 }
 
 func NewEquals(left sql.Expression, right sql.Expression) *Equals {
 	// FIXME: enable this again
 	// checkEqualTypes(left, right)
-	return &Equals{Comparsion{BinaryExpression{left, right}, left.Type()}}
+	return &Equals{Comparison{BinaryExpression{left, right}, left.Type()}}
 }
 
 func (e Equals) Eval(row sql.Row) interface{} {
@@ -32,13 +36,13 @@ func (e Equals) Eval(row sql.Row) interface{} {
 }
 
 type GreaterThan struct {
-	Comparsion
+	Comparison
 }
 
 func NewGreaterThan(left sql.Expression, right sql.Expression) *GreaterThan {
 	// FIXME: enable this again
 	// checkEqualTypes(left, right)
-	return &GreaterThan{Comparsion{BinaryExpression{left, right}, left.Type()}}
+	return &GreaterThan{Comparison{BinaryExpression{left, right}, left.Type()}}
 }
 
 func (e GreaterThan) Eval(row sql.Row) interface{} {
@@ -48,13 +52,13 @@ func (e GreaterThan) Eval(row sql.Row) interface{} {
 }
 
 type LessThan struct {
-	Comparsion
+	Comparison
 }
 
 func NewLessThan(left sql.Expression, right sql.Expression) *LessThan {
 	// FIXME: enable this again
 	// checkEqualTypes(left, right)
-	return &LessThan{Comparsion{BinaryExpression{left, right}, left.Type()}}
+	return &LessThan{Comparison{BinaryExpression{left, right}, left.Type()}}
 }
 
 func (e LessThan) Eval(row sql.Row) interface{} {
@@ -64,13 +68,13 @@ func (e LessThan) Eval(row sql.Row) interface{} {
 }
 
 type GreaterThanOrEqual struct {
-	Comparsion
+	Comparison
 }
 
 func NewGreaterThanOrEqual(left sql.Expression, right sql.Expression) *GreaterThanOrEqual {
 	// FIXME: enable this again
 	// checkEqualTypes(left, right)
-	return &GreaterThanOrEqual{Comparsion{BinaryExpression{left, right}, left.Type()}}
+	return &GreaterThanOrEqual{Comparison{BinaryExpression{left, right}, left.Type()}}
 }
 
 func (e GreaterThanOrEqual) Eval(row sql.Row) interface{} {
@@ -80,13 +84,13 @@ func (e GreaterThanOrEqual) Eval(row sql.Row) interface{} {
 }
 
 type LessThanOrEqual struct {
-	Comparsion
+	Comparison
 }
 
 func NewLessThanOrEqual(left sql.Expression, right sql.Expression) *LessThanOrEqual {
 	// FIXME: enable this again
 	// checkEqualTypes(left, right)
-	return &LessThanOrEqual{Comparsion{BinaryExpression{left, right}, left.Type()}}
+	return &LessThanOrEqual{Comparison{BinaryExpression{left, right}, left.Type()}}
 }
 
 func (e LessThanOrEqual) Eval(row sql.Row) interface{} {
