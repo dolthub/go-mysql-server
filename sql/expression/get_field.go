@@ -31,3 +31,8 @@ func (p GetField) Eval(row sql.Row) interface{} {
 func (p GetField) Name() string {
 	return p.fieldName
 }
+
+func (p *GetField) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
+	n := *p
+	return f(&n)
+}

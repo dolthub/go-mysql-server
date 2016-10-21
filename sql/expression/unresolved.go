@@ -25,3 +25,8 @@ func (c UnresolvedColumn) Name() string {
 func (UnresolvedColumn) Eval(r sql.Row) interface{} {
 	return "FAIL" //FIXME
 }
+
+func (p *UnresolvedColumn) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
+	n := *p
+	return f(&n)
+}

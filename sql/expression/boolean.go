@@ -21,3 +21,10 @@ func (e Not) Eval(row sql.Row) interface{} {
 func (e Not) Name() string {
 	return "Not(" + e.Child.Name() + ")"
 }
+
+func (e *Not) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
+	c := e.UnaryExpression.Child.TransformUp(f)
+	n := &Not{UnaryExpression{c}}
+
+	return f(n)
+}

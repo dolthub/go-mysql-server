@@ -5,4 +5,5 @@ type Expression interface {
 	Type() Type
 	Name() string
 	Eval(Row) interface{}
+	TransformUp(func(Expression) Expression) Expression
 }
