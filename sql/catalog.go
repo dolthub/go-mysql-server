@@ -4,10 +4,12 @@ import (
 	"fmt"
 )
 
-type Catalog []Database
+type Catalog struct {
+	Databases []Database
+}
 
 func (c Catalog) Database(name string) (Database, error) {
-	for _, db := range []Database(c) {
+	for _, db := range c.Databases {
 		if db.Name() == name {
 			return db, nil
 		}

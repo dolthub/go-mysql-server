@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/mvader/gitql/mem"
@@ -25,11 +24,10 @@ func TestTransformUp(t *testing.T) {
 	table := mem.NewTable("resolved", schema)
 
 	pt := p.TransformUp(func(n sql.Node) sql.Node {
-		switch t := n.(type) {
+		switch n.(type) {
 		case *UnresolvedRelation:
 			return table
 		default:
-			fmt.Printf("unexpected type %T\n", t)
 			return n
 		}
 	})

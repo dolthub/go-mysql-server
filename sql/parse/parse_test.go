@@ -9,10 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testSelect = `SELECT foo, bar FROM foo WHERE foo = bar;`
+const testSelectFromWhere = `SELECT foo, bar FROM foo WHERE foo = bar;`
+const testSelectFrom = `SELECT foo, bar FROM foo;`
 
 func TestParseSelectFromWhere(t *testing.T) {
-	p := newParser(strings.NewReader(testSelect))
+	p := newParser(strings.NewReader(testSelectFromWhere))
 	require.Nil(t, p.parse())
 
 	require.Equal(t, p.projection, []sql.Expression{
@@ -28,6 +29,22 @@ func TestParseSelectFromWhere(t *testing.T) {
 			expression.NewUnresolvedColumn("bar"),
 		),
 	})
+
+	require.Nil(t, p.sortFields)
+	require.Nil(t, p.err)
+	require.Equal(t, DoneState, p.stateStack.pop())
+}
+
+func TestParseSelectFrom(t *testing.T) {
+	p := newParser(strings.NewReader(testSelectFrom))
+	require.Nil(t, p.parse())
+
+	require.Equal(t, p.projection, []sql.Expression{
+		expression.NewUnresolvedColumn("foo"),
+		expression.NewUnresolvedColumn("bar"),
+	})
+
+	require.Equal(t, p.relation, "foo")
 
 	require.Nil(t, p.sortFields)
 	require.Nil(t, p.err)

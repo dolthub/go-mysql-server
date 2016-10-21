@@ -7,9 +7,9 @@ type Database struct {
 	tables map[string]sql.PhysicalRelation
 }
 
-func NewDatabase(name string) Database {
-	return Database{
-		name:   name,
+func NewDatabase(name string) *Database {
+	return &Database{
+		name: name,
 		tables: map[string]sql.PhysicalRelation{},
 	}
 }

@@ -232,18 +232,12 @@ func (p *parser) parse() error {
 	return nil
 }
 
-func (p *parser) buildPlan(relations []sql.PhysicalRelation) (sql.Node, error) {
-	var node sql.Node
-	for _, r := range relations {
-		if r.Name() == p.relation {
-			node = r
-			break
-		}
+func (p *parser) buildPlan() (sql.Node, error) {
+	if p.relation == "" {
+		return nil, errors.New("missing relation name")
 	}
 
-	if node == nil {
-		return nil, fmt.Errorf("unknown table name %q", p.relation)
-	}
+	var node sql.Node = plan.NewUnresolvedRelation(p.relation)
 
 	if len(p.filterClauses) > 0 {
 		node = plan.NewFilter(p.filterClauses[0], node)
@@ -257,13 +251,13 @@ func (p *parser) buildPlan(relations []sql.PhysicalRelation) (sql.Node, error) {
 	return node, nil
 }
 
-func Parse(input io.Reader, relations []sql.PhysicalRelation) (sql.Node, error) {
+func Parse(input io.Reader) (sql.Node, error) {
 	p := newParser(input)
 	if err := p.parse(); err != nil {
 		return nil, err
 	}
 
-	return p.buildPlan(relations)
+	return p.buildPlan()
 }
 
 func LastStates(input io.Reader) (ParseState, ParseState, error) {

@@ -31,7 +31,7 @@ func (*UnresolvedRelation) RowIter() (sql.RowIter, error) {
 }
 
 func (p *UnresolvedRelation) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	return f(&UnresolvedRelation{p.Name})
+	return f(NewUnresolvedRelation(p.Name))
 }
 
 func (p *UnresolvedRelation) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {

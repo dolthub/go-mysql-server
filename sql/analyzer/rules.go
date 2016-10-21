@@ -1,7 +1,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"github.com/mvader/gitql/sql"
 	"github.com/mvader/gitql/sql/expression"
 	"github.com/mvader/gitql/sql/plan"
@@ -20,6 +19,7 @@ func resolveTables(a *Analyzer, n sql.Node) sql.Node {
 		}
 
 		rt, err := a.Catalog.Table(a.CurrentDatabase, t.Name)
+
 		if err != nil {
 			return n
 		}

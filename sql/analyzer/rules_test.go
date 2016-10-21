@@ -20,7 +20,7 @@ func Test_resolveTables(t *testing.T) {
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 
-	catalog := sql.Catalog{db}
+	catalog := &sql.Catalog{Databases:[]sql.Database{db}}
 
 	a := analyzer.New(catalog)
 	a.Rules = []analyzer.Rule{f}
@@ -48,7 +48,7 @@ func Test_resolveTables_Nested(t *testing.T) {
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 
-	catalog := sql.Catalog{db}
+	catalog := &sql.Catalog{Databases:[]sql.Database{db}}
 
 	a := analyzer.New(catalog)
 	a.Rules = []analyzer.Rule{f}
