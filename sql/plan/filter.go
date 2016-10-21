@@ -19,7 +19,7 @@ func (p *Filter) Schema() sql.Schema {
 }
 
 func (p *Filter) Resolved() bool {
-	return p.UnaryNode.Child.Resolved()
+	return p.UnaryNode.Child.Resolved() && p.expression.Resolved()
 }
 
 func (p *Filter) RowIter() (sql.RowIter, error) {

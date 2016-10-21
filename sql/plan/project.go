@@ -33,7 +33,16 @@ func (p *Project) Schema() sql.Schema {
 }
 
 func (p *Project) Resolved() bool {
-	return p.UnaryNode.Child.Resolved()
+	return p.UnaryNode.Child.Resolved() && p.expressionsResolved()
+}
+
+func (p *Project) expressionsResolved() bool {
+	for _, e := range p.expressions {
+		if !e.Resolved() {
+			return false
+		}
+	}
+	return true
 }
 
 func (p *Project) RowIter() (sql.RowIter, error) {

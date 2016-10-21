@@ -32,7 +32,16 @@ func NewSort(sortFields []SortField, child sql.Node) *Sort {
 }
 
 func (s *Sort) Resolved() bool {
-	return s.UnaryNode.Child.Resolved()
+	return s.UnaryNode.Child.Resolved() && s.expressionsResolved()
+}
+
+func (p *Sort) expressionsResolved() bool {
+	for _, f := range p.sortFields {
+		if !f.Column.Resolved() {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Sort) Schema() sql.Schema {
