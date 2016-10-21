@@ -30,6 +30,13 @@ func (p *Filter) RowIter() (sql.RowIter, error) {
 	return &filterIter{p, i}, nil
 }
 
+func (p *Filter) TransformUp(f func(sql.Node) sql.Node) sql.Node {
+	c := p.UnaryNode.Child.TransformUp(f)
+	n := NewFilter(p.expression, c)
+
+	return f(n)
+}
+
 type filterIter struct {
 	f         *Filter
 	childIter sql.RowIter

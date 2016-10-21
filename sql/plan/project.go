@@ -44,6 +44,13 @@ func (p *Project) RowIter() (sql.RowIter, error) {
 	return &iter{p, i}, nil
 }
 
+func (p *Project) TransformUp(f func(sql.Node) sql.Node) sql.Node {
+	c := p.UnaryNode.Child.TransformUp(f)
+	n := NewProject(p.expressions, c)
+
+	return f(n)
+}
+
 type iter struct {
 	p         *Project
 	childIter sql.RowIter

@@ -9,9 +9,10 @@ import (
 )
 
 type Sort struct {
+	UnaryNode
 	fieldIndexes []int
 	fieldTypes   []sql.Type
-	child        sql.Node
+	sortFields   []SortField
 }
 
 type SortOrder byte
@@ -47,28 +48,32 @@ func NewSort(sortFields []SortField, child sql.Node) *Sort {
 	return &Sort{
 		fieldIndexes: indexes,
 		fieldTypes:   types,
-		child:        child,
+		UnaryNode:    UnaryNode{child},
+		sortFields:   sortFields,
 	}
 }
 
 func (s *Sort) Resolved() bool {
-	return s.child.Resolved()
-}
-
-func (s *Sort) Children() []sql.Node {
-	return []sql.Node{s.child}
+	return s.UnaryNode.Child.Resolved()
 }
 
 func (s *Sort) Schema() sql.Schema {
-	return s.child.Schema()
+	return s.UnaryNode.Child.Schema()
 }
 
 func (s *Sort) RowIter() (sql.RowIter, error) {
-	i, err := s.child.RowIter()
+	i, err := s.UnaryNode.Child.RowIter()
 	if err != nil {
 		return nil, err
 	}
 	return newSortIter(s, i), nil
+}
+
+func (s *Sort) TransformUp(f func(sql.Node) sql.Node) sql.Node {
+	c := s.UnaryNode.Child.TransformUp(f)
+	n := NewSort(s.sortFields, c)
+
+	return f(n)
 }
 
 type sortIter struct {

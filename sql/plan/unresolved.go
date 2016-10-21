@@ -25,3 +25,7 @@ func (UnresolvedRelation) Schema() sql.Schema {
 func (UnresolvedRelation) RowIter() (sql.RowIter, error) {
 	return nil, fmt.Errorf("unresolved relation")
 }
+
+func (p UnresolvedRelation) TransformUp(f func(sql.Node) sql.Node) sql.Node {
+	return f(&UnresolvedRelation{p.Name})
+}

@@ -1,23 +1,23 @@
 package mem
 
 import (
-	"io"
 	"fmt"
+	"io"
 
 	"github.com/mvader/gitql/sql"
 )
 
 type Table struct {
-	name string
+	name   string
 	schema sql.Schema
-	data [][]interface{}
+	data   [][]interface{}
 }
 
 func NewTable(name string, schema sql.Schema) *Table {
 	return &Table{
-		name: name,
+		name:   name,
 		schema: schema,
-		data: [][]interface{}{},
+		data:   [][]interface{}{},
 	}
 }
 
@@ -41,6 +41,10 @@ func (t *Table) RowIter() (sql.RowIter, error) {
 	return &iter{data: t.data}, nil
 }
 
+func (t *Table) TransformUp(f func(sql.Node) sql.Node) sql.Node {
+	return f(NewTable(t.name, t.schema))
+}
+
 func (t *Table) Insert(values ...interface{}) error {
 	if len(values) != len(t.schema) {
 		return fmt.Errorf("insert expected %d values, got %d", len(t.schema), len(values))
@@ -56,7 +60,7 @@ func (t *Table) Insert(values ...interface{}) error {
 }
 
 type iter struct {
-	idx int
+	idx  int
 	data [][]interface{}
 }
 
