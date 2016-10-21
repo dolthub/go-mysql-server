@@ -9,6 +9,6 @@ import (
 
 func TestUnresolvedRelation(t *testing.T) {
 	assert := assert.New(t)
-	var r sql.Node = &UnresolvedRelation{"test_table"}
+	var r sql.Node = NewUnresolvedRelation("test_table")
 	assert.NotNil(r)
 }

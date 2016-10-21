@@ -10,6 +10,10 @@ type UnresolvedRelation struct {
 	Name string
 }
 
+func NewUnresolvedRelation(name string) *UnresolvedRelation {
+	return &UnresolvedRelation{name}
+}
+
 func (*UnresolvedRelation) Resolved() bool {
 	return false
 }

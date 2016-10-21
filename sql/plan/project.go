@@ -64,7 +64,8 @@ func (p *Project) TransformExpressionsUp(f func(sql.Expression) sql.Expression) 
 	c := p.UnaryNode.Child.TransformExpressionsUp(f)
 	es := []sql.Expression{}
 	for _, e := range p.expressions {
-		es = append(es, e.TransformUp(f))
+		te := e.TransformUp(f)
+		es = append(es, te)
 	}
 	n := NewProject(es, c)
 

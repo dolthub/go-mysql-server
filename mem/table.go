@@ -42,7 +42,7 @@ func (t *Table) RowIter() (sql.RowIter, error) {
 }
 
 func (t *Table) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	return f(NewTable(t.name, t.schema))
+	return f(t)
 }
 
 func (t *Table) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
