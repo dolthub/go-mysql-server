@@ -45,6 +45,10 @@ func (t *Table) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	return f(NewTable(t.name, t.schema))
 }
 
+func (t *Table) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
+	return t
+}
+
 func (t *Table) Insert(values ...interface{}) error {
 	if len(values) != len(t.schema) {
 		return fmt.Errorf("insert expected %d values, got %d", len(t.schema), len(values))

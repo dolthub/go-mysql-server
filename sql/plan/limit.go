@@ -41,6 +41,13 @@ func (l *Limit) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	return f(n)
 }
 
+func (l *Limit) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
+	c := l.UnaryNode.Child.TransformExpressionsUp(f)
+	n := NewLimit(l.size, c)
+
+	return n
+}
+
 type limitIter struct {
 	l          *Limit
 	currentPos int64

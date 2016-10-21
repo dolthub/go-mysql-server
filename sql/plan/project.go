@@ -51,6 +51,17 @@ func (p *Project) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	return f(n)
 }
 
+func (p *Project) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
+	c := p.UnaryNode.Child.TransformExpressionsUp(f)
+	es := []sql.Expression{}
+	for _, e := range p.expressions {
+		es = append(es, e.TransformUp(f))
+	}
+	n := NewProject(es, c)
+
+	return n
+}
+
 type iter struct {
 	p         *Project
 	childIter sql.RowIter

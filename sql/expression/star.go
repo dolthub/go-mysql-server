@@ -24,3 +24,7 @@ func (Star) Name() string {
 func (Star) Eval(r sql.Row) interface{} {
 	return "FAIL" //FIXME
 }
+
+func (s *Star) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
+	return f(s)
+}

@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"fmt"
 	"io"
 	"sort"
 
@@ -10,9 +9,7 @@ import (
 
 type Sort struct {
 	UnaryNode
-	fieldIndexes []int
-	fieldTypes   []sql.Type
-	sortFields   []SortField
+	sortFields []SortField
 }
 
 type SortOrder byte
@@ -23,33 +20,14 @@ const (
 )
 
 type SortField struct {
-	Column string
+	Column sql.Expression
 	Order  SortOrder
 }
 
 func NewSort(sortFields []SortField, child sql.Node) *Sort {
-	indexes := []int{}
-	types := []sql.Type{}
-	childSchema := child.Schema()
-	for _, sortField := range sortFields {
-		found := false
-		for idx, field := range childSchema {
-			if field.Name == sortField.Column {
-				indexes = append(indexes, idx)
-				types = append(types, field.Type)
-				found = true
-				break
-			}
-		}
-		if found == false {
-			panic(fmt.Errorf("Field %s not found in child", sortField.Column))
-		}
-	}
 	return &Sort{
-		fieldIndexes: indexes,
-		fieldTypes:   types,
-		UnaryNode:    UnaryNode{child},
-		sortFields:   sortFields,
+		UnaryNode:  UnaryNode{child},
+		sortFields: sortFields,
 	}
 }
 
@@ -62,6 +40,7 @@ func (s *Sort) Schema() sql.Schema {
 }
 
 func (s *Sort) RowIter() (sql.RowIter, error) {
+
 	i, err := s.UnaryNode.Child.RowIter()
 	if err != nil {
 		return nil, err
@@ -74,6 +53,17 @@ func (s *Sort) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	n := NewSort(s.sortFields, c)
 
 	return f(n)
+}
+
+func (s *Sort) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
+	c := s.UnaryNode.Child.TransformExpressionsUp(f)
+	sfs := []SortField{}
+	for _, sf := range s.sortFields {
+		sfs = append(sfs, SortField{sf.Column.TransformUp(f), sf.Order})
+	}
+	n := NewSort(sfs, c)
+
+	return n
 }
 
 type sortIter struct {
@@ -123,18 +113,16 @@ func (i *sortIter) computeSortedRows() error {
 		rows = append(rows, childRow)
 	}
 	sort.Sort(&sorter{
-		indexes: i.s.fieldIndexes,
-		types:   i.s.fieldTypes,
-		rows:    rows,
+		sortFields: i.s.sortFields,
+		rows:       rows,
 	})
 	i.sortedRows = rows
 	return nil
 }
 
 type sorter struct {
-	indexes []int
-	types   []sql.Type
-	rows    []sql.Row
+	sortFields []SortField
+	rows       []sql.Row
 }
 
 func (s *sorter) Len() int {
@@ -146,12 +134,12 @@ func (s *sorter) Swap(i, j int) {
 }
 
 func (s *sorter) Less(i, j int) bool {
-	a := s.rows[i].Fields()
-	b := s.rows[j].Fields()
-	for i, idx := range s.indexes {
-		typ := s.types[i]
-		av := a[idx]
-		bv := b[idx]
+	a := s.rows[i]
+	b := s.rows[j]
+	for _, sf := range s.sortFields {
+		typ := sf.Column.Type()
+		av := sf.Column.Eval(a)
+		bv := sf.Column.Eval(b)
 		if typ.Compare(av, bv) == -1 {
 			return true
 		}

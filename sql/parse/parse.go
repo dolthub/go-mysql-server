@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/mvader/gitql/sql"
+	"github.com/mvader/gitql/sql/expression"
 	"github.com/mvader/gitql/sql/plan"
 )
 
@@ -296,7 +297,7 @@ func parseOrderClause(q tokenQueue) ([]plan.SortField, error) {
 				return nil, fmt.Errorf(`expecting "DESC", "ASC" or ",", received %q`, tk.Value)
 			}
 
-			field = &plan.SortField{Column: tk.Value}
+			field = &plan.SortField{Column: expression.NewUnresolvedColumn(tk.Value)}
 		case KeywordToken:
 			if field == nil {
 				return nil, fmt.Errorf(`unexpected keyword %q, expecting identifier`, tk.Value)

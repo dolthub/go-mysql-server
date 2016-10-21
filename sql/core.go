@@ -12,6 +12,7 @@ type Resolvable interface {
 
 type Transformable interface {
 	TransformUp(func(Node) Node) Node
+	TransformExpressionsUp(func(Expression) Expression) Node
 }
 
 type Node interface {

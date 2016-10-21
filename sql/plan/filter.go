@@ -37,6 +37,14 @@ func (p *Filter) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	return f(n)
 }
 
+func (p *Filter) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
+	c := p.UnaryNode.Child.TransformExpressionsUp(f)
+	e := p.expression.TransformUp(f)
+	n := NewFilter(e, c)
+
+	return n
+}
+
 type filterIter struct {
 	f         *Filter
 	childIter sql.RowIter

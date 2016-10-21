@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTransform(t *testing.T) {
+func TestTransformUp(t *testing.T) {
 	require := require.New(t)
 
 	aCol := expression.NewUnresolvedColumn("a")
 	bCol := expression.NewUnresolvedColumn("a")
-	ur := UnresolvedRelation{"unresolved"}
+	ur := &UnresolvedRelation{"unresolved"}
 	p := NewProject([]sql.Expression{aCol, bCol}, NewFilter(expression.NewEquals(aCol, bCol), ur))
 
 	schema := sql.Schema{

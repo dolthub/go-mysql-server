@@ -6,6 +6,7 @@ import (
 
 	"github.com/mvader/gitql/mem"
 	"github.com/mvader/gitql/sql"
+	"github.com/mvader/gitql/sql/expression"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,8 +21,8 @@ func TestSort(t *testing.T) {
 	child.Insert("b", int32(3))
 	child.Insert("c", int32(1))
 	sf := []SortField{
-		{Column: "col2", Order: Ascending},
-		{Column: "col1", Order: Descending},
+		{Column: expression.NewGetField(1, sql.Integer, "col2"), Order: Ascending},
+		{Column: expression.NewGetField(0, sql.String, "col1"), Order: Descending},
 	}
 	s := NewSort(sf, child)
 	assert.Equal(childSchema, s.Schema())
