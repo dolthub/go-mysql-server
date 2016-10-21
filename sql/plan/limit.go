@@ -22,6 +22,10 @@ func (l *Limit) Schema() sql.Schema {
 	return l.UnaryNode.Child.Schema()
 }
 
+func (l *Limit) Resolved() bool {
+	return true
+}
+
 func (l *Limit) RowIter() (sql.RowIter, error) {
 	li, err := l.Child.RowIter()
 	if err != nil {

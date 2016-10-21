@@ -3,6 +3,7 @@ package plan
 import (
 	"fmt"
 	"io"
+	"reflect"
 	"testing"
 
 	"github.com/mvader/gitql/mem"
@@ -22,6 +23,17 @@ func TestLimitPlan(t *testing.T) {
 	iterator, err := getLimitedIterator(1)
 	assert.Nil(err)
 	assert.NotNil(iterator)
+}
+
+func TestLimitImplementsNode(t *testing.T) {
+	assert := assert.New(t)
+	table, _ := getTestingTable()
+	limitPlan := NewLimit(0, table)
+	childSchema := table.Schema()
+	nodeSchema := limitPlan.Schema()
+	assert.True(reflect.DeepEqual(childSchema, nodeSchema))
+	assert.True(receivesNode(limitPlan))
+	assert.True(limitPlan.Resolved())
 }
 
 func TestLimit0(t *testing.T) {
@@ -89,4 +101,8 @@ func getLimitedIterator(limitSize int64) (sql.RowIter, error) {
 	table, _ := getTestingTable()
 	limitPlan := NewLimit(limitSize, table)
 	return limitPlan.RowIter()
+}
+
+func receivesNode(n sql.Node) bool {
+	return true
 }
