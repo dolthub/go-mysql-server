@@ -9,6 +9,7 @@ import (
 	"github.com/gitql/gitql/sql/analyzer"
 	"github.com/gitql/gitql/sql/expression"
 	"github.com/gitql/gitql/sql/plan"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +20,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 
-	catalog := &sql.Catalog{Databases:[]sql.Database{db}}
+	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 	a := analyzer.New(catalog)
 	a.CurrentDatabase = "mydb"
 

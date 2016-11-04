@@ -3,9 +3,9 @@ package gitql
 import (
 	"strings"
 
+	"github.com/gitql/gitql/sql"
 	"github.com/gitql/gitql/sql/analyzer"
 	"github.com/gitql/gitql/sql/parse"
-	"github.com/gitql/gitql/sql"
 )
 
 type Engine struct {

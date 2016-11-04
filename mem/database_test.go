@@ -3,8 +3,9 @@ package mem
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/gitql/gitql/sql"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDatabase_Name(t *testing.T) {

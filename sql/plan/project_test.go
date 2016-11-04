@@ -4,10 +4,11 @@ import (
 	"io"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/gitql/gitql/mem"
 	"github.com/gitql/gitql/sql"
 	"github.com/gitql/gitql/sql/expression"
-	"github.com/stretchr/testify/require"
 )
 
 func TestProject(t *testing.T) {

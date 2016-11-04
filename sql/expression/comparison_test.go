@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/gitql/gitql/sql"
+
 	"github.com/stretchr/testify/require"
 )
 

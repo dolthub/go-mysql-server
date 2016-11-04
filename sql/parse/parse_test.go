@@ -6,6 +6,7 @@ import (
 
 	"github.com/gitql/gitql/sql"
 	"github.com/gitql/gitql/sql/expression"
+
 	"github.com/stretchr/testify/require"
 )
 

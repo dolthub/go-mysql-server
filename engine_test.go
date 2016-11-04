@@ -1,13 +1,14 @@
 package gitql_test
 
 import (
-	"testing"
 	"io"
+	"testing"
+
+	"github.com/gitql/gitql"
+	"github.com/gitql/gitql/mem"
+	"github.com/gitql/gitql/sql"
 
 	"github.com/stretchr/testify/require"
-	"github.com/gitql/gitql/sql"
-	"github.com/gitql/gitql/mem"
-	"github.com/gitql/gitql"
 )
 
 func TestEngine_Query(t *testing.T) {
@@ -46,4 +47,3 @@ func TestEngine_Query(t *testing.T) {
 	assert.Equal(sql.NewMemoryRow(int32(2)), results[1])
 	assert.Equal(sql.NewMemoryRow(int32(3)), results[2])
 }
-

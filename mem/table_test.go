@@ -4,8 +4,9 @@ import (
 	"io"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/gitql/gitql/sql"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTable_Name(t *testing.T) {

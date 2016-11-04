@@ -1,6 +1,5 @@
 package sql
 
-
 import (
 	"testing"
 

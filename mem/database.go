@@ -9,7 +9,7 @@ type Database struct {
 
 func NewDatabase(name string) *Database {
 	return &Database{
-		name: name,
+		name:   name,
 		tables: map[string]sql.PhysicalRelation{},
 	}
 }
