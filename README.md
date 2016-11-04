@@ -54,5 +54,4 @@ gitql supports a subset of the SQL standard, currently including:
 
 ## License
 
-gitql is licensed under the
-https://github.com/gitql/gitql/blob/master/LICENSE[MIT License].
+gitql is licensed under the [MIT License](https://github.com/gitql/gitql/blob/master/LICENSE).
