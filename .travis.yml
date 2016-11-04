@@ -2,12 +2,19 @@ language: go
 sudo: false
 go:
   - 1.7
-
 before_install:
   - go get -t -v ./...
-
+install:
+  - go build -ldflags="-X main.version=$TRAVIS_TAG" -v -o gitql ./cmd/...
 script:
   - sh ./go.test.sh
-
 after_success:
   - bash <(curl -s https://codecov.io/bash)
+deploy:
+  provider: releases
+  api_key:
+    secure: YUASK1+EaHQo1WPIDfSQZLynvPh/bFPVV8WNrbqWkqox+Y58MLeYCEGnDjP70pVsL5YmjZzeEGv4XRYIl359wqL7YxnB70mJGAmbi8xQ8DS+ecbpJXz+kDES/QqX6BVJYXMWRm2hM/XdyIDvPa5kaVBbeFlO86uizI0OSHE/2O4aticeaRUajTM+Bv7/R2ygVCiB+1gVdGqPmRy2w/bFUOAfR1LTC8TLDQFJUvgjtuJJVKhffKhcqfnibNyBtTEd9nwSuY4MAuva9ghgFvl1B9uJ266ktEDkqAjNX3Cg1UNyAPXs50M61gBUEFV/MAscCHrtHDdtzyrKPaUZ224TcTVjgEZiOG8Zus+0wvwyhf7wyxSHx73ZXGedu54/oazLqFudj9u2AM+qMrXoRtFcygtSXBdG4SaN0OL/EUXnxiJLPbfFT/oM7VpdEscZn8okMo7RtbGxszrJQOIvrcNd16IZHK10S/nVnGNHNNNuArwf5B15DK49gveB1+sv/8FkoTx3LXJFHHiA1C8l5sH+Of6v/YKa5Zspkub7wkKrE3fQ/zPc3D0AVvrMt/k6S0LBtQR6eJqqtasVLlmtrRujyOxWLWO7fwmRTsI6qT1O4fspGBaONg8cr9xuwsOGBcGIEaPCKv3RZrY8+hx2J7cLzV0qjaJtmucamnenxic7a6o=
+  file: gitql
+  skip_cleanup: true
+  on:
+    tags: true
