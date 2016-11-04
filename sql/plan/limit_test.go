@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/mvader/gitql/mem"
-	"github.com/mvader/gitql/sql"
+	"github.com/gitql/gitql/mem"
+	"github.com/gitql/gitql/sql"
 	"github.com/stretchr/testify/assert"
 )
 

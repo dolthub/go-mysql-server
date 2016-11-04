@@ -3,9 +3,9 @@ package plan
 import (
 	"testing"
 
-	"github.com/mvader/gitql/mem"
-	"github.com/mvader/gitql/sql"
-	"github.com/mvader/gitql/sql/expression"
+	"github.com/gitql/gitql/mem"
+	"github.com/gitql/gitql/sql"
+	"github.com/gitql/gitql/sql/expression"
 	"github.com/stretchr/testify/require"
 )
 

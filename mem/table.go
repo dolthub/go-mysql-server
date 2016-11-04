@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/mvader/gitql/sql"
+	"github.com/gitql/gitql/sql"
 )
 
 type Table struct {

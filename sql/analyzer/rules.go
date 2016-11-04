@@ -1,9 +1,9 @@
 package analyzer
 
 import (
-	"github.com/mvader/gitql/sql"
-	"github.com/mvader/gitql/sql/expression"
-	"github.com/mvader/gitql/sql/plan"
+	"github.com/gitql/gitql/sql"
+	"github.com/gitql/gitql/sql/expression"
+	"github.com/gitql/gitql/sql/plan"
 )
 
 var DefaultRules = []Rule{

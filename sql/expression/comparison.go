@@ -3,7 +3,7 @@ package expression
 import (
 	"fmt"
 
-	"github.com/mvader/gitql/sql"
+	"github.com/gitql/gitql/sql"
 )
 
 type Comparison struct {

@@ -3,11 +3,11 @@ package analyzer_test
 import (
 	"testing"
 
-	"github.com/mvader/gitql/mem"
-	"github.com/mvader/gitql/sql"
-	"github.com/mvader/gitql/sql/analyzer"
-	"github.com/mvader/gitql/sql/expression"
-	"github.com/mvader/gitql/sql/plan"
+	"github.com/gitql/gitql/mem"
+	"github.com/gitql/gitql/sql"
+	"github.com/gitql/gitql/sql/analyzer"
+	"github.com/gitql/gitql/sql/expression"
+	"github.com/gitql/gitql/sql/plan"
 	"github.com/stretchr/testify/assert"
 )
 

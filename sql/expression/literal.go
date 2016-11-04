@@ -1,6 +1,6 @@
 package expression
 
-import "github.com/mvader/gitql/sql"
+import "github.com/gitql/gitql/sql"
 
 type Literal struct {
 	value     interface{}

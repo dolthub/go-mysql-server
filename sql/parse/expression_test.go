@@ -3,8 +3,8 @@ package parse
 import (
 	"testing"
 
-	"github.com/mvader/gitql/sql"
-	"github.com/mvader/gitql/sql/expression"
+	"github.com/gitql/gitql/sql"
+	"github.com/gitql/gitql/sql/expression"
 	"github.com/stretchr/testify/require"
 )
 

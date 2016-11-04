@@ -1,6 +1,6 @@
 package plan
 
-import "github.com/mvader/gitql/sql"
+import "github.com/gitql/gitql/sql"
 
 type UnaryNode struct {
 	Child sql.Node

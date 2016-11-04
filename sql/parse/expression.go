@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mvader/gitql/sql"
-	"github.com/mvader/gitql/sql/expression"
+	"github.com/gitql/gitql/sql"
+	"github.com/gitql/gitql/sql/expression"
 )
 
 func assembleExpression(s *tokenStack) (sql.Expression, error) {

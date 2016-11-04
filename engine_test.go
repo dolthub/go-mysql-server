@@ -5,9 +5,9 @@ import (
 	"io"
 
 	"github.com/stretchr/testify/require"
-	"github.com/mvader/gitql/sql"
-	"github.com/mvader/gitql/mem"
-	"github.com/mvader/gitql"
+	"github.com/gitql/gitql/sql"
+	"github.com/gitql/gitql/mem"
+	"github.com/gitql/gitql"
 )
 
 func TestEngine_Query(t *testing.T) {

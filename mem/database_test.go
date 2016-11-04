@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/mvader/gitql/sql"
+	"github.com/gitql/gitql/sql"
 )
 
 func TestDatabase_Name(t *testing.T) {

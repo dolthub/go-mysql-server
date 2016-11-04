@@ -3,7 +3,7 @@ package expression
 import (
 	"testing"
 
-	"github.com/mvader/gitql/sql"
+	"github.com/gitql/gitql/sql"
 	"github.com/stretchr/testify/require"
 )
 

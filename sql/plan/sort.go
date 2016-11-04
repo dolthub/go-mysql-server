@@ -4,7 +4,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/mvader/gitql/sql"
+	"github.com/gitql/gitql/sql"
 )
 
 type Sort struct {

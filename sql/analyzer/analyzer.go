@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/mvader/gitql/sql"
+	"github.com/gitql/gitql/sql"
 )
 
 const maxAnalysisIterations = 1000

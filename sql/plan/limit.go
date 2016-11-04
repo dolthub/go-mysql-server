@@ -3,7 +3,7 @@ package plan
 import (
 	"io"
 
-	"github.com/mvader/gitql/sql"
+	"github.com/gitql/gitql/sql"
 )
 
 type Limit struct {

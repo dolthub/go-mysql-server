@@ -3,7 +3,7 @@ package plan
 import (
 	"fmt"
 
-	"github.com/mvader/gitql/sql"
+	"github.com/gitql/gitql/sql"
 )
 
 type UnresolvedRelation struct {
