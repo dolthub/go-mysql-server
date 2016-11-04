@@ -45,31 +45,31 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedRelation("foo"),
 		),
 	),
-	`SELECT foo, bar FROM foo LIMIT 10;`: plan.NewLimit(int64(10),
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewUnresolvedColumn("foo"),
-				expression.NewUnresolvedColumn("bar"),
-			},
+	`SELECT foo, bar FROM foo LIMIT 10;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("foo"),
+			expression.NewUnresolvedColumn("bar"),
+		},
+		plan.NewLimit(int64(10),
 			plan.NewUnresolvedRelation("foo"),
 		),
 	),
-	`SELECT foo, bar FROM foo ORDER BY baz DESC;`: plan.NewSort(
-		[]plan.SortField{{expression.NewUnresolvedColumn("baz"), plan.Descending}},
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewUnresolvedColumn("foo"),
-				expression.NewUnresolvedColumn("bar"),
-			},
+	`SELECT foo, bar FROM foo ORDER BY baz DESC;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("foo"),
+			expression.NewUnresolvedColumn("bar"),
+		},
+		plan.NewSort(
+			[]plan.SortField{{expression.NewUnresolvedColumn("baz"), plan.Descending}},
 			plan.NewUnresolvedRelation("foo"),
 		),
 	),
-	`SELECT foo, bar FROM foo WHERE foo = bar LIMIT 10;`: plan.NewLimit(int64(10),
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewUnresolvedColumn("foo"),
-				expression.NewUnresolvedColumn("bar"),
-			},
+	`SELECT foo, bar FROM foo WHERE foo = bar LIMIT 10;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("foo"),
+			expression.NewUnresolvedColumn("bar"),
+		},
+		plan.NewLimit(int64(10),
 			plan.NewFilter(
 				expression.NewEquals(
 					expression.NewUnresolvedColumn("foo"),
@@ -79,26 +79,26 @@ var fixtures = map[string]sql.Node{
 			),
 		),
 	),
-	`SELECT foo, bar FROM foo ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(int64(1),
-		plan.NewSort(
-			[]plan.SortField{{expression.NewUnresolvedColumn("baz"), plan.Descending}},
-			plan.NewProject(
-				[]sql.Expression{
-					expression.NewUnresolvedColumn("foo"),
-					expression.NewUnresolvedColumn("bar"),
-				},
+	`SELECT foo, bar FROM foo ORDER BY baz DESC LIMIT 1;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("foo"),
+			expression.NewUnresolvedColumn("bar"),
+		},
+		plan.NewLimit(int64(1),
+			plan.NewSort(
+				[]plan.SortField{{expression.NewUnresolvedColumn("baz"), plan.Descending}},
 				plan.NewUnresolvedRelation("foo"),
 			),
 		),
 	),
-	`SELECT foo, bar FROM foo WHERE qux = 1 ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(int64(1),
-		plan.NewSort(
-			[]plan.SortField{{expression.NewUnresolvedColumn("baz"), plan.Descending}},
-			plan.NewProject(
-				[]sql.Expression{
-					expression.NewUnresolvedColumn("foo"),
-					expression.NewUnresolvedColumn("bar"),
-				},
+	`SELECT foo, bar FROM foo WHERE qux = 1 ORDER BY baz DESC LIMIT 1;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("foo"),
+			expression.NewUnresolvedColumn("bar"),
+		},
+		plan.NewLimit(int64(1),
+			plan.NewSort(
+				[]plan.SortField{{expression.NewUnresolvedColumn("baz"), plan.Descending}},
 				plan.NewFilter(
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("qux"),

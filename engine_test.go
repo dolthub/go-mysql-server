@@ -37,6 +37,20 @@ func TestEngine_Query(t *testing.T) {
 			sql.NewMemoryRow(int64(1)),
 		},
 	)
+
+	testQuery(t, e,
+		"SELECT i FROM mytable WHERE s = 'a' ORDER BY i DESC;",
+		[]sql.Row{
+			sql.NewMemoryRow(int64(1)),
+		},
+	)
+
+	testQuery(t, e,
+		"SELECT i FROM mytable WHERE s = 'a' ORDER BY i DESC LIMIT 1;",
+		[]sql.Row{
+			sql.NewMemoryRow(int64(1)),
+		},
+	)
 }
 
 func testQuery(t *testing.T, e *gitql.Engine, q string, r []sql.Row) {
@@ -66,10 +80,13 @@ func testQuery(t *testing.T, e *gitql.Engine, q string, r []sql.Row) {
 func newEngine(t *testing.T) *gitql.Engine {
 	assert := require.New(t)
 
-	table := mem.NewTable("mytable", sql.Schema{{"i", sql.BigInteger}})
-	assert.Nil(table.Insert(int64(1)))
-	assert.Nil(table.Insert(int64(2)))
-	assert.Nil(table.Insert(int64(3)))
+	table := mem.NewTable("mytable", sql.Schema{
+		{"i", sql.BigInteger},
+		{"s", sql.String},
+	})
+	assert.Nil(table.Insert(int64(1), "a"))
+	assert.Nil(table.Insert(int64(2), "b"))
+	assert.Nil(table.Insert(int64(3), "c"))
 
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)

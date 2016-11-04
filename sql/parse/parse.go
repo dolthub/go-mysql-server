@@ -282,7 +282,6 @@ func (p *parser) buildPlan() (sql.Node, error) {
 		node = plan.NewFilter(p.filterClauses[0], node)
 	}
 
-	node = plan.NewProject(p.projection, node)
 	if len(p.sortFields) > 0 {
 		node = plan.NewSort(p.sortFields, node)
 	}
@@ -290,6 +289,8 @@ func (p *parser) buildPlan() (sql.Node, error) {
 	if p.limit != nil {
 		node = plan.NewLimit(int64(*p.limit), node)
 	}
+
+	node = plan.NewProject(p.projection, node)
 
 	return node, nil
 }
