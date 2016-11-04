@@ -41,14 +41,20 @@ SELECT hash, author_email, author_name FROM commits LIMIT 2;
 
 ## Tables
 
-*TODO*
+gitql exposes the following tables:
+
+* commits (hash, author_name, author_email, author_time, comitter_name, comitter_email, comitter_time, message)
+* blobs (hash, size)
+* references (hash, name, is_branch, is_note, is_remote, is_tag, target)
+* tags (hash, name, tagger_email, tagger_name, tagger_when, message, target)
+* tree_entries (tree_hash, entry_hash, mode, name)
 
 ## SQL syntax
 
 gitql supports a subset of the SQL standard, currently including:
 
-* `SELECT`
-* `WHERE`
+* `SELECT` (`*` not supported yet)
+* `WHERE` (`=` only)
 * `ORDER BY` (with `ASC` and `DESC`)
 * `LIMIT`
 
