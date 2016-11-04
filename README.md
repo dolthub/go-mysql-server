@@ -4,6 +4,8 @@ image:https://travis-ci.org/gitql/gitql.svg?branch=master[Build Status,link=http
 
 **gitql** is a SQL interface to Git repositories, written in Go.
 
+**WARNING: gitql is still in a very early stage of development. It is considered experimental.**
+
 ## Installation
 
 Check the [Releases](https://github.com/gitql/gitql/releases) page to download
