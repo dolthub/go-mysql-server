@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 func TestEngine_Query(t *testing.T) {
 	e := newEngine(t)
 	testQuery(t, e,
@@ -29,8 +28,16 @@ func TestEngine_Query(t *testing.T) {
 			sql.NewMemoryRow(int64(2)),
 		},
 	)
-}
 
+	testQuery(t, e,
+		"SELECT i FROM mytable ORDER BY i DESC;",
+		[]sql.Row{
+			sql.NewMemoryRow(int64(3)),
+			sql.NewMemoryRow(int64(2)),
+			sql.NewMemoryRow(int64(1)),
+		},
+	)
+}
 
 func testQuery(t *testing.T, e *gitql.Engine, q string, r []sql.Row) {
 	assert := require.New(t)

@@ -19,6 +19,9 @@ func TestType_String(t *testing.T) {
 	v, err = String.Convert(1)
 	assert.Equal(ErrInvalidType, err)
 	assert.Nil(v)
+	assert.Equal(-1, String.Compare("a", "b"))
+	assert.Equal(0, String.Compare("a", "a"))
+	assert.Equal(1, String.Compare("b", "a"))
 }
 
 func TestType_Integer(t *testing.T) {
@@ -50,6 +53,9 @@ func TestType_Integer(t *testing.T) {
 	v, err = Integer.Convert(uint64(18446744073709551615))
 	assert.NotNil(err)
 	assert.Nil(v)
+	assert.Equal(-1, Integer.Compare(int32(1), int32(2)))
+	assert.Equal(0, Integer.Compare(int32(1), int32(1)))
+	assert.Equal(1, Integer.Compare(int32(2), int32(1)))
 }
 
 func TestType_BigInteger(t *testing.T) {
@@ -81,4 +87,7 @@ func TestType_BigInteger(t *testing.T) {
 	v, err = BigInteger.Convert("")
 	assert.NotNil(err)
 	assert.Nil(v)
+	assert.Equal(-1, BigInteger.Compare(int64(1), int64(2)))
+	assert.Equal(0, BigInteger.Compare(int64(1), int64(1)))
+	assert.Equal(1, BigInteger.Compare(int64(2), int64(1)))
 }

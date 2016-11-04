@@ -93,14 +93,12 @@ func newSortIter(s *Sort, child sql.RowIter) *sortIter {
 
 func (i *sortIter) Next() (sql.Row, error) {
 	if i.idx == -1 {
-		println("computing sorted rows")
 		err := i.computeSortedRows()
 		if err != nil {
 			return nil, err
 		}
 		i.idx = 0
 	}
-	println("sorted rows: ", i.sortedRows)
 	if i.idx >= len(i.sortedRows) {
 		return nil, io.EOF
 	}
@@ -149,9 +147,18 @@ func (s *sorter) Less(i, j int) bool {
 		typ := sf.Column.Type()
 		av := sf.Column.Eval(a)
 		bv := sf.Column.Eval(b)
-		if typ.Compare(av, bv) == -1 {
+
+		if sf.Order == Descending {
+			av, bv = bv, av
+		}
+
+		switch typ.Compare(av, bv) {
+		case -1:
 			return true
+		case 1:
+			return false
 		}
 	}
+
 	return false
 }
