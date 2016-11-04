@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/gitql/gitql/sql"
@@ -25,6 +26,8 @@ const (
 	OrderState
 	OrderByState
 	OrderClauseState
+	LimitState
+	LimitNumberState
 	DoneState
 
 	ExprState
@@ -43,6 +46,7 @@ type parser struct {
 	relation      string
 	filterClauses []sql.Expression
 	sortFields    []plan.SortField
+	limit         *int
 }
 
 func newParser(input io.Reader) *parser {
@@ -111,16 +115,16 @@ func (p *parser) parse() error {
 			p.stateStack.pop()
 			state := p.stateStack.peek()
 			var (
-				breakKeyword string
-				nextState    ParseState
+				breakKeywords []string
+				nextState     ParseState
 			)
 
 			switch state {
 			case SelectState:
-				breakKeyword = "from"
+				breakKeywords = []string{"from"}
 				nextState = FromState
 			case WhereState:
-				breakKeyword = "order"
+				breakKeywords = []string{"order", "limit"}
 				nextState = OrderState
 			default:
 				p.errorf(`unexpected token %q`, t.Value)
@@ -133,11 +137,13 @@ func (p *parser) parse() error {
 					p.stateStack.put(ExprState)
 					break OuterSwitch
 				case KeywordToken:
-					if kwMatches(t.Value, breakKeyword) {
-						p.lexer.Backup()
-						p.stateStack.pop()
-						p.stateStack.put(nextState)
-						break OuterSwitch
+					for _, kw := range breakKeywords {
+						if kwMatches(t.Value, kw) {
+							p.lexer.Backup()
+							p.stateStack.pop()
+							p.stateStack.put(nextState)
+							break OuterSwitch
+						}
 					}
 				case EOFToken:
 					p.stateStack.pop()
@@ -146,8 +152,8 @@ func (p *parser) parse() error {
 				}
 			}
 
-			if breakKeyword != "" {
-				p.errorf(`expecting "," or %q`, breakKeyword)
+			if len(breakKeywords) > 0 {
+				p.errorf(`expecting "," or %q`, breakKeywords)
 			} else {
 				p.errorf(`expecting "," or end of sentence`)
 			}
@@ -181,7 +187,9 @@ func (p *parser) parse() error {
 				p.stateStack.pop()
 				p.stateStack.put(DoneState)
 			} else if t.Type != KeywordToken || !kwMatches(t.Value, "where") {
-				p.errorf("expecting 'WHERE', %q received", t.Value)
+				p.lexer.Backup()
+				p.stateStack.pop()
+				p.stateStack.put(OrderState)
 			} else {
 				p.stateStack.put(WhereClauseState)
 			}
@@ -202,7 +210,9 @@ func (p *parser) parse() error {
 				p.stateStack.pop()
 				p.stateStack.put(DoneState)
 			} else if t.Type != KeywordToken || !kwMatches(t.Value, "order") {
-				p.errorf("expecting 'ORDER', %q received", t.Value)
+				p.lexer.Backup()
+				p.stateStack.pop()
+				p.stateStack.put(LimitState)
 			} else {
 				p.stateStack.put(OrderByState)
 			}
@@ -223,6 +233,35 @@ func (p *parser) parse() error {
 				p.error(err)
 			} else {
 				p.sortFields = fields
+				p.stateStack.pop()
+				p.stateStack.put(LimitState)
+			}
+
+		case LimitState:
+			t = p.lexer.Next()
+			if t == nil || t.Type == EOFToken {
+				p.stateStack.pop()
+				p.stateStack.put(DoneState)
+			} else if t.Type != KeywordToken || !kwMatches(t.Value, "limit") {
+				p.errorf("expecting 'LIMIT', %q received", t.Value)
+			} else {
+				p.stateStack.pop()
+				p.stateStack.put(LimitNumberState)
+			}
+
+		case LimitNumberState:
+			t = p.lexer.Next()
+			if t == nil || t.Type == EOFToken {
+				p.errorf("expecting integer, nothing received")
+			} else if t.Type != IntToken {
+				p.errorf("expecting integer, %q received", t.Value)
+			} else {
+				i, err := strconv.Atoi(t.Value)
+				if err != nil {
+					p.errorf("error parsing integer: %q", err)
+				}
+
+				p.limit = &i
 				p.stateStack.pop()
 				p.stateStack.put(DoneState)
 			}
@@ -246,6 +285,10 @@ func (p *parser) buildPlan() (sql.Node, error) {
 	node = plan.NewProject(p.projection, node)
 	if len(p.sortFields) > 0 {
 		node = plan.NewSort(p.sortFields, node)
+	}
+
+	if p.limit != nil {
+		node = plan.NewLimit(int64(*p.limit), node)
 	}
 
 	return node, nil
@@ -301,6 +344,14 @@ func parseOrderClause(q tokenQueue) ([]plan.SortField, error) {
 				field.Order = plan.Descending
 			} else if kwMatches(tk.Value, "asc") {
 				field.Order = plan.Ascending
+			} else if kwMatches(tk.Value, "limit") {
+				if field == nil {
+					return nil, errors.New(`unexpected LIMIT, expecting identifier`)
+				}
+
+				q.Backup()
+				fields = append(fields, *field)
+				return fields, nil
 			} else {
 				return nil, fmt.Errorf(`unexpected keyword %q, expecting "ASC", "DESC" or ","`, tk.Value)
 			}
@@ -312,7 +363,7 @@ func parseOrderClause(q tokenQueue) ([]plan.SortField, error) {
 			fields = append(fields, *field)
 			field = nil
 		case EOFToken:
-			if field == nil || len(fields) == 0 {
+			if field == nil {
 				return nil, errors.New(`unexpected end of input, expecting identifier`)
 			}
 
