@@ -1,6 +1,6 @@
-<img src="https://rawgit.com/gitql/gitql/master/gitql-logo.svg" alt="gitql" width="250"/> 
+# ![gitql](https://rawgit.com/gitql/gitql/master/gitql-logo.svg)
 
-image:https://travis-ci.org/gitql/gitql.svg?branch=master[Build Status,link=https://travis-ci.org/gitql/gitql] image:https://codecov.io/gh/gitql/gitql/branch/master/graph/badge.svg[codecov,link=https://codecov.io/gh/gitql/gitql] image:https://godoc.org/github.com/gitql/gitql?status.svg[GoDoc,link=https://godoc.org/github.com/gitql/gitql]
+[![Build Status](https://travis-ci.org/gitql/gitql.svg?branch=master)](https://travis-ci.org/gitql/gitql) [![codecov](https://codecov.io/gh/gitql/gitql/branch/master/graph/badge.svg)](https://codecov.io/gh/gitql/gitql) [![GoDoc](https://godoc.org/github.com/gitql/gitql?status.svg)](https://godoc.org/github.com/gitql/gitql)
 
 **gitql** is a SQL interface to Git repositories, written in Go.
 
