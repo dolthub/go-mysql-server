@@ -49,6 +49,30 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	assert.Nil(err)
 	assert.Equal(expected, analyzed)
+
+	notAnalyzed = plan.NewProject(
+		[]sql.Expression{expression.NewUnresolvedColumn("i")},
+		plan.NewFilter(
+			expression.NewEquals(
+				expression.NewUnresolvedColumn("i"),
+				expression.NewLiteral(int32(1), sql.Integer),
+			),
+			plan.NewUnresolvedRelation("mytable"),
+		),
+	)
+	analyzed, err = a.Analyze(notAnalyzed)
+	expected = plan.NewProject(
+		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i")},
+		plan.NewFilter(
+			expression.NewEquals(
+				expression.NewGetField(0, sql.Integer, "i"),
+				expression.NewLiteral(int32(1), sql.Integer),
+			),
+			table,
+		),
+	)
+	assert.Nil(err)
+	assert.Equal(expected, analyzed)
 }
 
 func TestAnalyzer_Analyze_MaxIterations(t *testing.T) {

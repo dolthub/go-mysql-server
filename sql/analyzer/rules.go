@@ -38,9 +38,6 @@ func resolveColumns(a *Analyzer, n sql.Node) sql.Node {
 	}
 
 	child := n.Children()[0]
-	if !child.Resolved() {
-		return n
-	}
 
 	colMap := map[string]*expression.GetField{}
 	for idx, child := range child.Schema() {
