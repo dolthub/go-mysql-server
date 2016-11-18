@@ -22,6 +22,36 @@ type Type interface {
 	Compare(interface{}, interface{}) int
 }
 
+var Null = nullType{}
+
+type nullType struct{}
+
+func (t nullType) Name() string {
+	return "null"
+}
+
+func (t nullType) InternalType() reflect.Kind {
+	return reflect.Interface
+}
+
+func (t nullType) Check(v interface{}) bool {
+	return v == nil
+}
+
+func (t nullType) Convert(v interface{}) (interface{}, error) {
+	if v != nil {
+		return nil, fmt.Errorf("value not nil: %#v", v)
+	}
+
+	return nil, nil
+}
+
+func (t nullType) Compare(a interface{}, b interface{}) int {
+	//XXX: Note that while this returns 0 (equals) for ordering purposes, in
+	//     SQL NULL != NULL.
+	return 0
+}
+
 var Integer = integerType{}
 
 type integerType struct{}

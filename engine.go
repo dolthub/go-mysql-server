@@ -1,8 +1,6 @@
 package gitql
 
 import (
-	"strings"
-
 	"github.com/gitql/gitql/sql"
 	"github.com/gitql/gitql/sql/analyzer"
 	"github.com/gitql/gitql/sql/parse"
@@ -25,7 +23,7 @@ func (e *Engine) AddDatabase(db sql.Database) {
 }
 
 func (e *Engine) Query(query string) (sql.Schema, sql.RowIter, error) {
-	parsed, err := parse.Parse(strings.NewReader(query))
+	parsed, err := parse.Parse(query)
 	if err != nil {
 		return nil, nil, err
 	}

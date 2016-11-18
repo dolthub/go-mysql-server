@@ -1,7 +1,6 @@
 package parse
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/gitql/gitql/sql"
@@ -114,8 +113,8 @@ var fixtures = map[string]sql.Node{
 func TestParse(t *testing.T) {
 	assert := assert.New(t)
 	for query, expectedPlan := range fixtures {
-		p, err := Parse(strings.NewReader(query))
-		assert.Nil(err)
+		p, err := Parse(query)
+		assert.Nil(err, "error for query '%s'", query)
 		assert.Exactly(expectedPlan, p,
 			"plans do not match for query '%s'", query)
 	}
