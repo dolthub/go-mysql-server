@@ -15,32 +15,32 @@ const (
 )
 
 var comparisonCases = map[sql.Type]map[int][][]interface{}{
-	sql.String: map[int][][]interface{}{
-		testEqual: [][]interface{}{
-			[]interface{}{"foo", "foo"},
-			[]interface{}{"", ""},
+	sql.String: {
+		testEqual: {
+			{"foo", "foo"},
+			{"", ""},
 		},
-		testLess: [][]interface{}{
-			[]interface{}{"a", "b"},
-			[]interface{}{"", "1"},
+		testLess: {
+			{"a", "b"},
+			{"", "1"},
 		},
-		testGreater: [][]interface{}{
-			[]interface{}{"b", "a"},
-			[]interface{}{"1", ""},
+		testGreater: {
+			{"b", "a"},
+			{"1", ""},
 		},
 	},
-	sql.Integer: map[int][][]interface{}{
-		testEqual: [][]interface{}{
-			[]interface{}{int32(1), int32(1)},
-			[]interface{}{int32(0), int32(0)},
+	sql.Integer: {
+		testEqual: {
+			{int32(1), int32(1)},
+			{int32(0), int32(0)},
 		},
-		testLess: [][]interface{}{
-			[]interface{}{int32(-1), int32(0)},
-			[]interface{}{int32(1), int32(2)},
+		testLess: {
+			{int32(-1), int32(0)},
+			{int32(1), int32(2)},
 		},
-		testGreater: [][]interface{}{
-			[]interface{}{int32(2), int32(1)},
-			[]interface{}{int32(0), int32(-1)},
+		testGreater: {
+			{int32(2), int32(1)},
+			{int32(0), int32(-1)},
 		},
 	},
 }

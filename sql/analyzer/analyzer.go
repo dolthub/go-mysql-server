@@ -35,18 +35,13 @@ func (a *Analyzer) Analyze(n sql.Node) (sql.Node, error) {
 	for !reflect.DeepEqual(prev, cur) {
 		prev = cur
 		cur = a.analyzeOnce(n)
-		i += 1
+		i++
 		if i >= maxAnalysisIterations {
 			return cur, fmt.Errorf("exceeded max analysis iterations (%d)", maxAnalysisIterations)
 		}
 	}
 
-	err := a.validate(cur)
-	if err != nil {
-		return cur, err
-	}
-
-	return cur, nil
+	return cur, a.validate(cur)
 }
 
 func (a *Analyzer) analyzeOnce(n sql.Node) sql.Node {
