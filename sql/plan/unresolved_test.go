@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUnresolvedRelation(t *testing.T) {
+func TestUnresolvedTable(t *testing.T) {
 	assert := assert.New(t)
-	var r sql.Node = NewUnresolvedRelation("test_table")
-	assert.NotNil(r)
+	var n sql.Node = NewUnresolvedTable("test_table")
+	assert.NotNil(n)
 }

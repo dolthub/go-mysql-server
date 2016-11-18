@@ -18,13 +18,13 @@ func (c Catalog) Database(name string) (Database, error) {
 	return nil, fmt.Errorf("database not found: %s", name)
 }
 
-func (c Catalog) Table(dbName string, tableName string) (PhysicalRelation, error) {
+func (c Catalog) Table(dbName string, tableName string) (Table, error) {
 	db, err := c.Database(dbName)
 	if err != nil {
 		return nil, err
 	}
 
-	tables := db.Relations()
+	tables := db.Tables()
 	table, found := tables[tableName]
 	if !found {
 		return nil, fmt.Errorf("table not found: %s", tableName)

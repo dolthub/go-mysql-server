@@ -27,11 +27,11 @@ func Test_resolveTables(t *testing.T) {
 	a.Rules = []analyzer.Rule{f}
 
 	a.CurrentDatabase = "mydb"
-	var notAnalyzed sql.Node = plan.NewUnresolvedRelation("mytable")
+	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
 	analyzed := f.Apply(a, notAnalyzed)
 	assert.Equal(table, analyzed)
 
-	notAnalyzed = plan.NewUnresolvedRelation("nonexistant")
+	notAnalyzed = plan.NewUnresolvedTable("nonexistant")
 	analyzed = f.Apply(a, notAnalyzed)
 	assert.Equal(notAnalyzed, analyzed)
 
@@ -57,7 +57,7 @@ func Test_resolveTables_Nested(t *testing.T) {
 
 	notAnalyzed := plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i")},
-		plan.NewUnresolvedRelation("mytable"),
+		plan.NewUnresolvedTable("mytable"),
 	)
 	analyzed := f.Apply(a, notAnalyzed)
 	expected := plan.NewProject(

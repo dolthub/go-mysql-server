@@ -20,7 +20,7 @@ const (
 	SelectState
 	SelectFieldList
 	FromState
-	FromRelationState
+	FromTableState
 	WhereState
 	WhereClauseState
 	OrderState
@@ -43,7 +43,7 @@ type parser struct {
 	err        error
 
 	projection    []sql.Expression
-	relation      string
+	table         string
 	filterClauses []sql.Expression
 	sortFields    []plan.SortField
 	limit         *int
@@ -166,17 +166,17 @@ func (p *parser) parse() error {
 				p.errorf("expecting 'FROM', %q received", t.Value)
 			} else {
 				p.stateStack.pop()
-				p.stateStack.put(FromRelationState)
+				p.stateStack.put(FromTableState)
 			}
 
-		case FromRelationState:
+		case FromTableState:
 			t = p.lexer.Next()
 			if t == nil || t.Type == EOFToken {
 				p.errorf("expecting table name, nothing received")
 			} else if t.Type != IdentifierToken {
 				p.errorf("expecting table name, %q received instead", t.Value)
 			} else {
-				p.relation = t.Value
+				p.table = t.Value
 				p.stateStack.pop()
 				p.stateStack.put(WhereState)
 			}
@@ -272,11 +272,11 @@ func (p *parser) parse() error {
 }
 
 func (p *parser) buildPlan() (sql.Node, error) {
-	if p.relation == "" {
-		return nil, errors.New("missing relation name")
+	if p.table == "" {
+		return nil, errors.New("missing table name")
 	}
 
-	var node sql.Node = plan.NewUnresolvedRelation(p.relation)
+	var node sql.Node = plan.NewUnresolvedTable(p.table)
 
 	if len(p.filterClauses) > 0 {
 		node = plan.NewFilter(p.filterClauses[0], node)

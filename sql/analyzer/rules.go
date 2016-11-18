@@ -13,7 +13,7 @@ var DefaultRules = []Rule{
 
 func resolveTables(a *Analyzer, n sql.Node) sql.Node {
 	return n.TransformUp(func(n sql.Node) sql.Node {
-		t, ok := n.(*plan.UnresolvedRelation)
+		t, ok := n.(*plan.UnresolvedTable)
 		if !ok {
 			return n
 		}

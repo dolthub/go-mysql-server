@@ -17,7 +17,7 @@ var fixtures = map[string]sql.Node{
 			expression.NewUnresolvedColumn("foo"),
 			expression.NewUnresolvedColumn("bar"),
 		},
-		plan.NewUnresolvedRelation("foo"),
+		plan.NewUnresolvedTable("foo"),
 	),
 	`SELECT foo, bar FROM foo WHERE foo = bar;`: plan.NewProject(
 		[]sql.Expression{
@@ -29,7 +29,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("foo"),
 				expression.NewUnresolvedColumn("bar"),
 			),
-			plan.NewUnresolvedRelation("foo"),
+			plan.NewUnresolvedTable("foo"),
 		),
 	),
 	`SELECT foo, bar FROM foo WHERE foo = 'bar';`: plan.NewProject(
@@ -42,7 +42,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("foo"),
 				expression.NewLiteral("bar", sql.String),
 			),
-			plan.NewUnresolvedRelation("foo"),
+			plan.NewUnresolvedTable("foo"),
 		),
 	),
 	`SELECT foo, bar FROM foo LIMIT 10;`: plan.NewProject(
@@ -51,7 +51,7 @@ var fixtures = map[string]sql.Node{
 			expression.NewUnresolvedColumn("bar"),
 		},
 		plan.NewLimit(int64(10),
-			plan.NewUnresolvedRelation("foo"),
+			plan.NewUnresolvedTable("foo"),
 		),
 	),
 	`SELECT foo, bar FROM foo ORDER BY baz DESC;`: plan.NewProject(
@@ -61,7 +61,7 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewSort(
 			[]plan.SortField{{expression.NewUnresolvedColumn("baz"), plan.Descending}},
-			plan.NewUnresolvedRelation("foo"),
+			plan.NewUnresolvedTable("foo"),
 		),
 	),
 	`SELECT foo, bar FROM foo WHERE foo = bar LIMIT 10;`: plan.NewProject(
@@ -75,7 +75,7 @@ var fixtures = map[string]sql.Node{
 					expression.NewUnresolvedColumn("foo"),
 					expression.NewUnresolvedColumn("bar"),
 				),
-				plan.NewUnresolvedRelation("foo"),
+				plan.NewUnresolvedTable("foo"),
 			),
 		),
 	),
@@ -87,7 +87,7 @@ var fixtures = map[string]sql.Node{
 		plan.NewLimit(int64(1),
 			plan.NewSort(
 				[]plan.SortField{{expression.NewUnresolvedColumn("baz"), plan.Descending}},
-				plan.NewUnresolvedRelation("foo"),
+				plan.NewUnresolvedTable("foo"),
 			),
 		),
 	),
@@ -104,7 +104,7 @@ var fixtures = map[string]sql.Node{
 						expression.NewUnresolvedColumn("qux"),
 						expression.NewLiteral(int64(1), sql.BigInteger),
 					),
-					plan.NewUnresolvedRelation("foo"),
+					plan.NewUnresolvedTable("foo"),
 				),
 			),
 		),

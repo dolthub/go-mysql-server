@@ -23,7 +23,7 @@ type Node interface {
 	RowIter() (RowIter, error)
 }
 
-type PhysicalRelation interface {
+type Table interface {
 	Nameable
 	Node
 }

@@ -24,12 +24,12 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	a := analyzer.New(catalog)
 	a.CurrentDatabase = "mydb"
 
-	var notAnalyzed sql.Node = plan.NewUnresolvedRelation("mytable")
+	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
 	analyzed, err := a.Analyze(notAnalyzed)
 	assert.Nil(err)
 	assert.Equal(table, analyzed)
 
-	notAnalyzed = plan.NewUnresolvedRelation("nonexistant")
+	notAnalyzed = plan.NewUnresolvedTable("nonexistant")
 	analyzed, err = a.Analyze(notAnalyzed)
 	assert.NotNil(err)
 	assert.Equal(notAnalyzed, analyzed)
@@ -40,7 +40,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewUnresolvedColumn("i")},
-		plan.NewUnresolvedRelation("mytable"),
+		plan.NewUnresolvedTable("mytable"),
 	)
 	analyzed, err = a.Analyze(notAnalyzed)
 	expected := plan.NewProject(
@@ -57,7 +57,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 				expression.NewUnresolvedColumn("i"),
 				expression.NewLiteral(int32(1), sql.Integer),
 			),
-			plan.NewUnresolvedRelation("mytable"),
+			plan.NewUnresolvedTable("mytable"),
 		),
 	)
 	analyzed, err = a.Analyze(notAnalyzed)
@@ -87,12 +87,12 @@ func TestAnalyzer_Analyze_MaxIterations(t *testing.T) {
 		"infinite",
 		func(a *analyzer.Analyzer, n sql.Node) sql.Node {
 			i += 1
-			return plan.NewUnresolvedRelation(fmt.Sprintf("rel%d", i))
+			return plan.NewUnresolvedTable(fmt.Sprintf("table%d", i))
 		},
 	}}
 
-	notAnalyzed := plan.NewUnresolvedRelation("mytable")
+	notAnalyzed := plan.NewUnresolvedTable("mytable")
 	analyzed, err := a.Analyze(notAnalyzed)
 	assert.NotNil(err)
-	assert.Equal(plan.NewUnresolvedRelation("rel1001"), analyzed)
+	assert.Equal(plan.NewUnresolvedTable("table1001"), analyzed)
 }

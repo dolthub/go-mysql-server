@@ -6,34 +6,34 @@ import (
 	"github.com/gitql/gitql/sql"
 )
 
-type UnresolvedRelation struct {
+type UnresolvedTable struct {
 	Name string
 }
 
-func NewUnresolvedRelation(name string) *UnresolvedRelation {
-	return &UnresolvedRelation{name}
+func NewUnresolvedTable(name string) *UnresolvedTable {
+	return &UnresolvedTable{name}
 }
 
-func (*UnresolvedRelation) Resolved() bool {
+func (*UnresolvedTable) Resolved() bool {
 	return false
 }
 
-func (*UnresolvedRelation) Children() []sql.Node {
+func (*UnresolvedTable) Children() []sql.Node {
 	return []sql.Node{}
 }
 
-func (*UnresolvedRelation) Schema() sql.Schema {
+func (*UnresolvedTable) Schema() sql.Schema {
 	return sql.Schema{}
 }
 
-func (*UnresolvedRelation) RowIter() (sql.RowIter, error) {
-	return nil, fmt.Errorf("unresolved relation")
+func (*UnresolvedTable) RowIter() (sql.RowIter, error) {
+	return nil, fmt.Errorf("unresolved table")
 }
 
-func (p *UnresolvedRelation) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	return f(NewUnresolvedRelation(p.Name))
+func (p *UnresolvedTable) TransformUp(f func(sql.Node) sql.Node) sql.Node {
+	return f(NewUnresolvedTable(p.Name))
 }
 
-func (p *UnresolvedRelation) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
+func (p *UnresolvedTable) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
 	return p
 }

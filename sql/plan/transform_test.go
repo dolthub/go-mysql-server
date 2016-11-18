@@ -15,7 +15,7 @@ func TestTransformUp(t *testing.T) {
 
 	aCol := expression.NewUnresolvedColumn("a")
 	bCol := expression.NewUnresolvedColumn("a")
-	ur := &UnresolvedRelation{"unresolved"}
+	ur := &UnresolvedTable{"unresolved"}
 	p := NewProject([]sql.Expression{aCol, bCol}, NewFilter(expression.NewEquals(aCol, bCol), ur))
 
 	schema := sql.Schema{
@@ -26,7 +26,7 @@ func TestTransformUp(t *testing.T) {
 
 	pt := p.TransformUp(func(n sql.Node) sql.Node {
 		switch n.(type) {
-		case *UnresolvedRelation:
+		case *UnresolvedTable:
 			return table
 		default:
 			return n
