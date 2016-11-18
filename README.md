@@ -58,6 +58,7 @@ gitql supports a subset of the SQL standard, currently including:
 * `ORDER BY` (with `ASC` and `DESC`)
 * `LIMIT`
 * `SHOW TABLES`
+* `DESCRIBE TABLE`
 
 ## License
 

@@ -11,6 +11,9 @@ import (
 )
 
 var fixtures = map[string]sql.Node{
+	`DESCRIBE TABLE foo;`: plan.NewDescribe(
+		plan.NewUnresolvedTable("foo"),
+	),
 	`SELECT foo, bar FROM foo;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("foo"),

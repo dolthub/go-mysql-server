@@ -6,6 +6,10 @@ type UnaryNode struct {
 	Child sql.Node
 }
 
+func (n UnaryNode) Resolved() bool {
+	return n.Child.Resolved()
+}
+
 func (n UnaryNode) Children() []sql.Node {
 	return []sql.Node{n.Child}
 }

@@ -45,10 +45,18 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		plan.NewUnresolvedTable("mytable"),
 	)
 	analyzed, err = a.Analyze(notAnalyzed)
-	expected := plan.NewProject(
+	var expected sql.Node = plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i")},
 		table,
 	)
+	assert.Nil(err)
+	assert.Equal(expected, analyzed)
+
+	notAnalyzed = plan.NewDescribe(
+		plan.NewUnresolvedTable("mytable"),
+	)
+	analyzed, err = a.Analyze(notAnalyzed)
+	expected = plan.NewDescribe(table)
 	assert.Nil(err)
 	assert.Equal(expected, analyzed)
 

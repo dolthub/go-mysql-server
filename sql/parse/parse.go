@@ -2,6 +2,7 @@ package parse
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -32,6 +33,11 @@ func Parse(s string) (sql.Node, error) {
 	// TODO implement it into the parser
 	if strings.ToUpper(s) == showTables {
 		return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
+	}
+
+	t := regexp.MustCompile(`^describe\s+table\s+(.*)`).FindStringSubmatch(strings.ToLower(s))
+	if len(t) == 2 && t[1] != "" {
+		return plan.NewDescribe(plan.NewUnresolvedTable(t[1])), nil
 	}
 
 	stmt, err := sqlparser.Parse(s)
