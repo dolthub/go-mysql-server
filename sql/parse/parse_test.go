@@ -18,6 +18,15 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("foo"),
 	),
+	`SELECT foo AS bar FROM foo;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewAlias(
+				expression.NewUnresolvedColumn("foo"),
+				"bar",
+			),
+		},
+		plan.NewUnresolvedTable("foo"),
+	),
 	`SELECT foo, bar FROM foo WHERE foo = bar;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("foo"),

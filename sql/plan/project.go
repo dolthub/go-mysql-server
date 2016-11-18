@@ -7,29 +7,25 @@ import (
 type Project struct {
 	UnaryNode
 	expressions []sql.Expression
-	schema      sql.Schema
 }
 
 func NewProject(expressions []sql.Expression, child sql.Node) *Project {
-	schema := sql.Schema{}
-	childSchema := child.Schema()
-	for _, expr := range expressions {
-		for _, field := range childSchema {
-			if expr.Name() == field.Name {
-				schema = append(schema, field)
-				break
-			}
-		}
-	}
 	return &Project{
 		UnaryNode:   UnaryNode{child},
 		expressions: expressions,
-		schema:      schema,
 	}
 }
 
 func (p *Project) Schema() sql.Schema {
-	return p.schema
+	var s sql.Schema
+	for _, e := range p.expressions {
+		f := sql.Field{
+			Name: e.Name(),
+			Type: e.Type(),
+		}
+		s = append(s, f)
+	}
+	return s
 }
 
 func (p *Project) Resolved() bool {

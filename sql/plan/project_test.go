@@ -46,5 +46,16 @@ func TestProject(t *testing.T) {
 	require.Nil(row)
 
 	p = NewProject(nil, child)
-	require.Equal(0, len(p.schema))
+	require.Equal(0, len(p.Schema()))
+
+	p = NewProject([]sql.Expression{
+		expression.NewAlias(
+			expression.NewGetField(1, sql.String, "col2"),
+			"foo",
+		),
+	}, child)
+	schema = sql.Schema{
+		sql.Field{"foo", sql.String},
+	}
+	require.Equal(schema, p.Schema())
 }

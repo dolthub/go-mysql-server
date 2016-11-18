@@ -175,6 +175,25 @@ func selectToProject(se sqlparser.SelectExprs, child sql.Node) (*plan.Project, e
 	return plan.NewProject(exprs, child), nil
 }
 
+func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
+	be, ok := e.(sqlparser.BoolExpr)
+	if ok {
+		return boolExprToExpression(be)
+	}
+
+	c, ok := e.(*sqlparser.ComparisonExpr)
+	if ok {
+		return comparisonExprToExpression(c)
+	}
+
+	v, ok := e.(sqlparser.ValExpr)
+	if ok {
+		return valExprToExpression(v)
+	}
+
+	return nil, errUnsupported(e)
+}
+
 func boolExprToExpression(be sqlparser.BoolExpr) (sql.Expression, error) {
 	switch b := be.(type) {
 	default:
@@ -239,6 +258,7 @@ func valExprToExpression(ve sqlparser.ValExpr) (sql.Expression, error) {
 		//TODO
 		return expression.NewLiteral(nil, sql.Null), nil
 	case *sqlparser.ColName:
+		//TODO: add handling of case sensitiveness.
 		return expression.NewUnresolvedColumn(v.Name.Lowered()), nil
 	}
 }
@@ -251,14 +271,16 @@ func selectExprToExpression(se sqlparser.SelectExpr) (sql.Expression, error) {
 		//TODO: Add support for qualified start.
 		return expression.NewStar(), nil
 	case *sqlparser.NonStarExpr:
-		//TODO: Add support for aliases and functions.
-		cn, ok := e.Expr.(*sqlparser.ColName)
-		if !ok {
-			return nil, errUnsupportedFeature("column aliases or functions")
+		expr, err := exprToExpression(e.Expr)
+		if err != nil {
+			return nil, err
 		}
 
-		//TODO: Add support for column qualifiers.
+		if e.As.String() == "" {
+			return expr, nil
+		}
+
 		//TODO: Handle case-sensitiveness when needed.
-		return expression.NewUnresolvedColumn(cn.Name.Lowered()), nil
+		return expression.NewAlias(expr, e.As.Lowered()), nil
 	}
 }
