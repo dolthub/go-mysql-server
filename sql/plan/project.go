@@ -6,19 +6,19 @@ import (
 
 type Project struct {
 	UnaryNode
-	expressions []sql.Expression
+	Expressions []sql.Expression
 }
 
 func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	return &Project{
 		UnaryNode:   UnaryNode{child},
-		expressions: expressions,
+		Expressions: expressions,
 	}
 }
 
 func (p *Project) Schema() sql.Schema {
 	var s sql.Schema
-	for _, e := range p.expressions {
+	for _, e := range p.Expressions {
 		f := sql.Field{
 			Name: e.Name(),
 			Type: e.Type(),
@@ -33,7 +33,7 @@ func (p *Project) Resolved() bool {
 }
 
 func (p *Project) expressionsResolved() bool {
-	for _, e := range p.expressions {
+	for _, e := range p.Expressions {
 		if !e.Resolved() {
 			return false
 		}
@@ -51,7 +51,7 @@ func (p *Project) RowIter() (sql.RowIter, error) {
 
 func (p *Project) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	c := p.UnaryNode.Child.TransformUp(f)
-	n := NewProject(p.expressions, c)
+	n := NewProject(p.Expressions, c)
 
 	return f(n)
 }
@@ -59,7 +59,7 @@ func (p *Project) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 func (p *Project) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
 	c := p.UnaryNode.Child.TransformExpressionsUp(f)
 	es := []sql.Expression{}
-	for _, e := range p.expressions {
+	for _, e := range p.Expressions {
 		te := e.TransformUp(f)
 		es = append(es, te)
 	}
@@ -78,7 +78,7 @@ func (i *iter) Next() (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
-	return filterRow(i.p.expressions, childRow), nil
+	return filterRow(i.p.Expressions, childRow), nil
 }
 
 func filterRow(expressions []sql.Expression, row sql.Row) sql.Row {

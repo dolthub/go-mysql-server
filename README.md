@@ -53,7 +53,7 @@ gitql exposes the following tables:
 
 gitql supports a subset of the SQL standard, currently including:
 
-* `SELECT` (`*` not supported yet)
+* `SELECT`
 * `WHERE` (`=` only)
 * `ORDER BY` (with `ASC` and `DESC`)
 * `LIMIT`

@@ -9,6 +9,7 @@ import (
 var DefaultRules = []Rule{
 	{"resolve_tables", resolveTables},
 	{"resolve_columns", resolveColumns},
+	{"resolve_star", resolveStar},
 }
 
 func resolveTables(a *Analyzer, n sql.Node) sql.Node {
@@ -26,6 +27,33 @@ func resolveTables(a *Analyzer, n sql.Node) sql.Node {
 
 		return rt
 	})
+}
+
+func resolveStar(a *Analyzer, n sql.Node) sql.Node {
+	if n.Resolved() {
+		return n
+	}
+
+	p, ok := n.(*plan.Project)
+	if !ok {
+		return n
+	}
+
+	if len(p.Expressions) != 1 {
+		return n
+	}
+
+	if _, ok := p.Expressions[0].(*expression.Star); !ok {
+		return n
+	}
+
+	var exprs []sql.Expression
+	for i, e := range p.Child.Schema() {
+		gf := expression.NewGetField(i, e.Type, e.Name)
+		exprs = append(exprs, gf)
+	}
+
+	return plan.NewProject(exprs, p.Child)
 }
 
 func resolveColumns(a *Analyzer, n sql.Node) sql.Node {
