@@ -93,11 +93,34 @@ func convertSelect(s *sqlparser.Select) (sql.Node, error) {
 }
 
 func tableExprsToTable(te sqlparser.TableExprs) (sql.Node, error) {
-	if len(te) != 1 {
-		return nil, errUnsupportedFeature("more than one table")
+	if len(te) == 0 {
+		return nil, errUnsupportedFeature("zero tables in FROM")
 	}
 
-	switch t := (te[0]).(type) {
+	var nodes []sql.Node
+	for _, t := range te {
+		n, err := tableExprToTable(t)
+		if err != nil {
+			return nil, err
+		}
+
+		nodes = append(nodes, n)
+	}
+
+	if len(nodes) == 1 {
+		return nodes[0], nil
+	}
+
+	if len(nodes) == 2 {
+		return plan.NewCrossJoin(nodes[0], nodes[1]), nil
+	}
+
+	//TODO: Support N tables in JOIN.
+	return nil, errUnsupportedFeature("more than 2 tables in JOIN")
+}
+
+func tableExprToTable(te sqlparser.TableExpr) (sql.Node, error) {
+	switch t := (te).(type) {
 	default:
 		return nil, errUnsupported(te)
 	case *sqlparser.AliasedTableExpr:

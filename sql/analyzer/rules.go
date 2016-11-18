@@ -39,6 +39,7 @@ func resolveColumns(a *Analyzer, n sql.Node) sql.Node {
 
 	child := n.Children()[0]
 
+	//TODO: Fail when there is no unambiguous resolution.
 	colMap := map[string]*expression.GetField{}
 	for idx, child := range child.Schema() {
 		colMap[child.Name] = expression.NewGetField(idx, child.Type, child.Name)

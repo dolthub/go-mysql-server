@@ -10,21 +10,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var lSchema = sql.Schema{
+	sql.Field{"lcol1", sql.String},
+	sql.Field{"lcol2", sql.String},
+	sql.Field{"lcol3", sql.Integer},
+	sql.Field{"lcol4", sql.BigInteger},
+}
+
+var rSchema = sql.Schema{
+	sql.Field{"rcol1", sql.String},
+	sql.Field{"rcol2", sql.String},
+	sql.Field{"rcol3", sql.Integer},
+	sql.Field{"rcol4", sql.BigInteger},
+}
+
 func TestCrossJoin(t *testing.T) {
 	assert := assert.New(t)
-	lSchema := sql.Schema{
-		sql.Field{"lcol1", sql.String},
-		sql.Field{"lcol2", sql.String},
-		sql.Field{"lcol3", sql.Integer},
-		sql.Field{"lcol4", sql.BigInteger},
-	}
-
-	rSchema := sql.Schema{
-		sql.Field{"rcol1", sql.String},
-		sql.Field{"rcol2", sql.String},
-		sql.Field{"rcol3", sql.Integer},
-		sql.Field{"rcol4", sql.BigInteger},
-	}
 
 	resultSchema := sql.Schema{
 		sql.Field{"lcol1", sql.String},
@@ -44,7 +45,7 @@ func TestCrossJoin(t *testing.T) {
 
 	j := NewCrossJoin(ltable, rtable)
 
-	assert.Equal(j.Schema(), resultSchema)
+	assert.Equal(resultSchema, j.Schema())
 
 	iter, err := j.RowIter()
 	assert.Nil(err)
@@ -88,6 +89,38 @@ func TestCrossJoin(t *testing.T) {
 	row, err = iter.Next()
 	assert.NotNil(err)
 	assert.Equal(err, io.EOF)
+	assert.Nil(row)
+}
+
+func TestCrossJoin_Empty(t *testing.T) {
+	assert := assert.New(t)
+
+	ltable := mem.NewTable("left", lSchema)
+	rtable := mem.NewTable("right", rSchema)
+	insertData(assert, ltable)
+
+	j := NewCrossJoin(ltable, rtable)
+
+	iter, err := j.RowIter()
+	assert.Nil(err)
+	assert.NotNil(iter)
+
+	row, err := iter.Next()
+	assert.Equal(io.EOF, err)
+	assert.Nil(row)
+
+	ltable = mem.NewTable("left", lSchema)
+	rtable = mem.NewTable("right", rSchema)
+	insertData(assert, rtable)
+
+	j = NewCrossJoin(ltable, rtable)
+
+	iter, err = j.RowIter()
+	assert.Nil(err)
+	assert.NotNil(iter)
+
+	row, err = iter.Next()
+	assert.Equal(io.EOF, err)
 	assert.Nil(row)
 }
 

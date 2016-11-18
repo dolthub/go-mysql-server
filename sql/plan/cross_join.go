@@ -71,33 +71,34 @@ type crossJoinIterator struct {
 }
 
 func (i *crossJoinIterator) Next() (sql.Row, error) {
-	for {
-		if i.leftRow == nil {
-			lr, err := i.li.Next()
-			if err != nil {
-				return nil, err
-			}
-
-			i.leftRow = lr
+	if len(i.rightRows) == 0 {
+		if err := i.fillRows(); err != io.EOF {
+			return nil, err
 		}
 
 		if len(i.rightRows) == 0 {
-			err := i.fillRows()
-			if err != nil && err != io.EOF {
-				return nil, err
-			}
+			return nil, io.EOF
 		}
+	}
 
-		if i.index <= len(i.rightRows)-1 {
-			fields := append(i.leftRow.Fields(), i.rightRows[i.index].Fields()...)
-			i.index++
-
-			return sql.NewMemoryRow(fields...), nil
+	if i.leftRow == nil {
+		lr, err := i.li.Next()
+		if err != nil {
+			return nil, err
 		}
 
 		i.index = 0
+		i.leftRow = lr
+	}
+
+	fields := append(i.leftRow.Fields(), i.rightRows[i.index].Fields()...)
+	i.index++
+	if i.index >= len(i.rightRows) {
+		i.index = 0
 		i.leftRow = nil
 	}
+
+	return sql.NewMemoryRow(fields...), nil
 }
 
 func (i *crossJoinIterator) fillRows() error {

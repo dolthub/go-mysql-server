@@ -117,6 +117,16 @@ var fixtures = map[string]sql.Node{
 			),
 		),
 	),
+	`SELECT foo, bar FROM t1, t2;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("foo"),
+			expression.NewUnresolvedColumn("bar"),
+		},
+		plan.NewCrossJoin(
+			plan.NewUnresolvedTable("t1"),
+			plan.NewUnresolvedTable("t2"),
+		),
+	),
 }
 
 func TestParse(t *testing.T) {
