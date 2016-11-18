@@ -54,7 +54,7 @@ gitql exposes the following tables:
 gitql supports a subset of the SQL standard, currently including:
 
 * `SELECT`
-* `WHERE` (`=` only)
+* `WHERE`
 * `ORDER BY` (with `ASC` and `DESC`)
 * `LIMIT`
 * `SHOW TABLES`
