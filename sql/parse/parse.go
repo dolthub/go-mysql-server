@@ -12,6 +12,10 @@ import (
 	"github.com/youtube/vitess/go/vt/sqlparser"
 )
 
+const (
+	showTables = "SHOW TABLES"
+)
+
 func errUnsupported(n sqlparser.SQLNode) error {
 	return fmt.Errorf("unsupported syntax: %#v", n)
 }
@@ -23,6 +27,11 @@ func errUnsupportedFeature(feature string) error {
 func Parse(s string) (sql.Node, error) {
 	if strings.HasSuffix(s, ";") {
 		s = s[:len(s)-1]
+	}
+
+	// TODO implement it into the parser
+	if strings.ToUpper(s) == showTables {
+		return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
 	}
 
 	stmt, err := sqlparser.Parse(s)

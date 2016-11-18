@@ -28,4 +28,9 @@ type Table interface {
 	Node
 }
 
+type Database interface {
+	Nameable
+	Tables() map[string]Table
+}
+
 var ErrInvalidType = errors.New("invalid type")

@@ -9,7 +9,22 @@ import (
 var DefaultRules = []Rule{
 	{"resolve_tables", resolveTables},
 	{"resolve_columns", resolveColumns},
+	{"resolve_database", resolveDatabase},
 	{"resolve_star", resolveStar},
+}
+
+func resolveDatabase(a *Analyzer, n sql.Node) sql.Node {
+	_, ok := n.(*plan.ShowTables)
+	if !ok {
+		return n
+	}
+
+	db, err := a.Catalog.Database(a.CurrentDatabase)
+	if err != nil {
+		return n
+	}
+
+	return plan.NewShowTables(db)
 }
 
 func resolveTables(a *Analyzer, n sql.Node) sql.Node {
