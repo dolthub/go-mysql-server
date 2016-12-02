@@ -1,7 +1,6 @@
 package mem
 
 import (
-	"io"
 	"testing"
 
 	"github.com/gitql/gitql/sql"
@@ -23,24 +22,23 @@ func TestTable_Insert_RowIter(t *testing.T) {
 	s := sql.Schema{
 		sql.Field{"col1", sql.String},
 	}
+
 	table := NewTable("test", s)
-	iter, err := table.RowIter()
+
+	rows, err := sql.NodeToRows(table)
 	assert.Nil(err)
-	assert.NotNil(iter)
-	_, err = iter.Next()
-	assert.Equal(io.EOF, err)
+	assert.Len(rows, 0)
+
 	err = table.Insert("foo")
+	rows, err = sql.NodeToRows(table)
 	assert.Nil(err)
+	assert.Len(rows, 1)
+	assert.Nil(s.CheckRow(rows[0]))
+
 	err = table.Insert("bar")
+	rows, err = sql.NodeToRows(table)
 	assert.Nil(err)
-	iter, err = table.RowIter()
-	row, err := iter.Next()
-	assert.NotNil(row)
-	assert.Nil(err)
-	assert.Equal("foo", row.Fields()[0])
-	row, err = iter.Next()
-	assert.Equal("bar", row.Fields()[0])
-	row, err = iter.Next()
-	assert.Nil(row)
-	assert.Equal(io.EOF, err)
+	assert.Len(rows, 2)
+	assert.Nil(s.CheckRow(rows[0]))
+	assert.Nil(s.CheckRow(rows[1]))
 }
