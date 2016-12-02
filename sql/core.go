@@ -15,6 +15,14 @@ type Transformable interface {
 	TransformExpressionsUp(func(Expression) Expression) Node
 }
 
+type Expression interface {
+	Resolvable
+	Type() Type
+	Name() string
+	Eval(Row) interface{}
+	TransformUp(func(Expression) Expression) Expression
+}
+
 type Node interface {
 	Resolvable
 	Transformable
