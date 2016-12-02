@@ -56,6 +56,18 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo"),
 		),
 	),
+	`SELECT * FROM foo WHERE foo != 'bar';`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewStar(),
+		},
+		plan.NewFilter(
+			expression.NewNot(expression.NewEquals(
+				expression.NewUnresolvedColumn("foo"),
+				expression.NewLiteral("bar", sql.String),
+			)),
+			plan.NewUnresolvedTable("foo"),
+		),
+	),
 	`SELECT foo, bar FROM foo LIMIT 10;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("foo"),

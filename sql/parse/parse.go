@@ -274,6 +274,10 @@ func comparisonExprToExpression(c *sqlparser.ComparisonExpr) (sql.Expression,
 		return expression.NewGreaterThan(left, right), nil
 	case sqlparser.GreaterEqualStr:
 		return expression.NewGreaterThanOrEqual(left, right), nil
+	case sqlparser.NotEqualStr:
+		return expression.NewNot(
+			expression.NewEquals(left, right),
+		), nil
 	}
 }
 
