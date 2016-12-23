@@ -146,7 +146,7 @@ func tableExprToTable(te sqlparser.TableExpr) (sql.Node, error) {
 			return nil, errUnsupportedFeature("non simple tables")
 		}
 
-		return plan.NewUnresolvedTable(string(tn.Name)), nil
+		return plan.NewUnresolvedTable(tn.Name.String()), nil
 	}
 }
 
