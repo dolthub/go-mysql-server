@@ -11,6 +11,7 @@ var DefaultRules = []Rule{
 	{"resolve_columns", resolveColumns},
 	{"resolve_database", resolveDatabase},
 	{"resolve_star", resolveStar},
+	{"resolve_functions", resolveFunctions},
 }
 
 func resolveDatabase(a *Analyzer, n sql.Node) sql.Node {
@@ -100,5 +101,31 @@ func resolveColumns(a *Analyzer, n sql.Node) sql.Node {
 		}
 
 		return gf
+	})
+}
+
+func resolveFunctions(a *Analyzer, n sql.Node) sql.Node {
+	if n.Resolved() {
+		return n
+	}
+
+	return n.TransformExpressionsUp(func(e sql.Expression) sql.Expression {
+		uf, ok := e.(*expression.UnresolvedFunction)
+		if !ok {
+			return e
+		}
+
+		n := uf.Name()
+		f, err := a.Catalog.Function(n)
+		if err != nil {
+			return e
+		}
+
+		rf, err := f.Build(uf.Children...)
+		if err != nil {
+			return e
+		}
+
+		return rf
 	})
 }

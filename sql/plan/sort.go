@@ -44,10 +44,6 @@ func (p *Sort) expressionsResolved() bool {
 	return true
 }
 
-func (s *Sort) Schema() sql.Schema {
-	return s.UnaryNode.Child.Schema()
-}
-
 func (s *Sort) RowIter() (sql.RowIter, error) {
 
 	i, err := s.UnaryNode.Child.RowIter()

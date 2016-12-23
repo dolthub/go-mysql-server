@@ -18,10 +18,6 @@ func NewLimit(size int64, child sql.Node) *Limit {
 	}
 }
 
-func (l *Limit) Schema() sql.Schema {
-	return l.UnaryNode.Child.Schema()
-}
-
 func (p *Limit) Resolved() bool {
 	return p.UnaryNode.Child.Resolved()
 }

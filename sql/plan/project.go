@@ -29,16 +29,8 @@ func (p *Project) Schema() sql.Schema {
 }
 
 func (p *Project) Resolved() bool {
-	return p.UnaryNode.Child.Resolved() && p.expressionsResolved()
-}
-
-func (p *Project) expressionsResolved() bool {
-	for _, e := range p.Expressions {
-		if !e.Resolved() {
-			return false
-		}
-	}
-	return true
+	return p.UnaryNode.Child.Resolved() &&
+		expressionsResolved(p.Expressions...)
 }
 
 func (p *Project) RowIter() (sql.RowIter, error) {
@@ -58,11 +50,7 @@ func (p *Project) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 
 func (p *Project) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
 	c := p.UnaryNode.Child.TransformExpressionsUp(f)
-	es := []sql.Expression{}
-	for _, e := range p.Expressions {
-		te := e.TransformUp(f)
-		es = append(es, te)
-	}
+	es := transformExpressionsUp(f, p.Expressions)
 	n := NewProject(es, c)
 
 	return n

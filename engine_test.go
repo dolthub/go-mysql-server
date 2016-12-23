@@ -51,6 +51,13 @@ func TestEngine_Query(t *testing.T) {
 			sql.NewMemoryRow(int64(1)),
 		},
 	)
+
+	testQuery(t, e,
+		"SELECT COUNT(*) FROM mytable;",
+		[]sql.Row{
+			sql.NewMemoryRow(int32(3)),
+		},
+	)
 }
 
 func testQuery(t *testing.T, e *gitql.Engine, q string, r []sql.Row) {

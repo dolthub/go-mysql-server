@@ -14,10 +14,6 @@ func NewFilter(expression sql.Expression, child sql.Node) *Filter {
 	}
 }
 
-func (p *Filter) Schema() sql.Schema {
-	return p.UnaryNode.Child.Schema()
-}
-
 func (p *Filter) Resolved() bool {
 	return p.UnaryNode.Child.Resolved() && p.expression.Resolved()
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/gitql/gitql/sql"
 	"github.com/gitql/gitql/sql/analyzer"
 	"github.com/gitql/gitql/sql/parse"
+	"github.com/gitql/gitql/sql/expression"
 )
 
 type Engine struct {
@@ -12,7 +13,12 @@ type Engine struct {
 }
 
 func New() *Engine {
-	c := &sql.Catalog{}
+	c := sql.NewCatalog()
+	err := expression.RegisterDefaults(c)
+	if err != nil {
+		panic(err)
+	}
+
 	a := analyzer.New(c)
 	return &Engine{c, a}
 }

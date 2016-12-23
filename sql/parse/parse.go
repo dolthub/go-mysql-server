@@ -69,10 +69,6 @@ func convertSelect(s *sqlparser.Select) (sql.Node, error) {
 		return nil, errUnsupportedFeature("DISTINCT")
 	}
 
-	if len(s.GroupBy) != 0 {
-		return nil, errUnsupportedFeature("GROUP BY")
-	}
-
 	if s.Having != nil {
 		return nil, errUnsupportedFeature("HAVING")
 	}
@@ -99,12 +95,7 @@ func convertSelect(s *sqlparser.Select) (sql.Node, error) {
 		}
 	}
 
-	node, err = selectToProject(s.SelectExprs, node)
-	if err != nil {
-		return nil, err
-	}
-
-	return node, nil
+	return selectToProjectOrGroupBy(s.SelectExprs, s.GroupBy, node)
 }
 
 func tableExprsToTable(te sqlparser.TableExprs) (sql.Node, error) {
@@ -199,7 +190,34 @@ func limitToLimit(o sqlparser.ValExpr, child sql.Node) (*plan.Limit, error) {
 	return plan.NewLimit(n, child), nil
 }
 
-func selectToProject(se sqlparser.SelectExprs, child sql.Node) (*plan.Project, error) {
+func selectToProjectOrGroupBy(se sqlparser.SelectExprs, g sqlparser.GroupBy, child sql.Node) (sql.Node, error) {
+	selectExprs, err := selectExprsToExpressions(se)
+	if err != nil {
+		return nil, err
+	}
+
+	isAgg := len(g) > 0
+	if !isAgg {
+		for _, e := range selectExprs {
+			if u, ok := e.(*expression.UnresolvedFunction); ok {
+				isAgg = u.IsAggregate
+			}
+		}
+	}
+
+	if isAgg {
+		groupingExprs, err := groupByToExpressions(g)
+		if err != nil {
+			return nil, err
+		}
+
+		return plan.NewGroupBy(selectExprs, groupingExprs, child), nil
+	}
+
+	return plan.NewProject(selectExprs, child), nil
+}
+
+func selectExprsToExpressions(se sqlparser.SelectExprs) ([]sql.Expression, error) {
 	var exprs []sql.Expression
 	for _, e := range se {
 		pe, err := selectExprToExpression(e)
@@ -210,7 +228,7 @@ func selectToProject(se sqlparser.SelectExprs, child sql.Node) (*plan.Project, e
 		exprs = append(exprs, pe)
 	}
 
-	return plan.NewProject(exprs, child), nil
+	return exprs, nil
 }
 
 func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
@@ -281,6 +299,20 @@ func comparisonExprToExpression(c *sqlparser.ComparisonExpr) (sql.Expression,
 	}
 }
 
+func groupByToExpressions(g sqlparser.GroupBy) ([]sql.Expression, error) {
+	es := make([]sql.Expression, len(g))
+	for i, ve := range g {
+		e, err := valExprToExpression(ve)
+		if err != nil {
+			return nil, err
+		}
+
+		es[i] = e
+	}
+
+	return es, nil
+}
+
 func valExprToExpression(ve sqlparser.ValExpr) (sql.Expression, error) {
 	switch v := ve.(type) {
 	default:
@@ -302,6 +334,14 @@ func valExprToExpression(ve sqlparser.ValExpr) (sql.Expression, error) {
 	case *sqlparser.ColName:
 		//TODO: add handling of case sensitiveness.
 		return expression.NewUnresolvedColumn(v.Name.Lowered()), nil
+	case *sqlparser.FuncExpr:
+		exprs, err := selectExprsToExpressions(v.Exprs)
+		if err != nil {
+			return nil, err
+		}
+
+		return expression.NewUnresolvedFunction(v.Name.Lowered(),
+			v.IsAggregate(), exprs...), nil
 	}
 }
 
