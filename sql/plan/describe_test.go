@@ -24,11 +24,11 @@ func TestDescribe(t *testing.T) {
 
 	n, err := iter.Next()
 	assert.Nil(err)
-	assert.Equal(sql.NewMemoryRow("c1", "string"), n)
+	assert.Equal(sql.NewRow("c1", "string"), n)
 
 	n, err = iter.Next()
 	assert.Nil(err)
-	assert.Equal(sql.NewMemoryRow("c2", "integer"), n)
+	assert.Equal(sql.NewRow("c2", "integer"), n)
 
 	n, err = iter.Next()
 	assert.Equal(io.EOF, err)

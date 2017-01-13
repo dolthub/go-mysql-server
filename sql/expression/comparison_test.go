@@ -57,7 +57,7 @@ func TestComparisons_Equals(t *testing.T) {
 		assert.Equal(sql.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
-				row := sql.NewMemoryRow(pair[0], pair[1])
+				row := sql.NewRow(pair[0], pair[1])
 				assert.NotNil(row)
 				cmp := eq.Eval(row)
 				assert.NotNil(cmp)
@@ -83,7 +83,7 @@ func TestComparisons_LessThan(t *testing.T) {
 		assert.Equal(sql.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
-				row := sql.NewMemoryRow(pair[0], pair[1])
+				row := sql.NewRow(pair[0], pair[1])
 				assert.NotNil(row)
 				cmp := eq.Eval(row)
 				assert.NotNil(cmp)
@@ -109,7 +109,7 @@ func TestComparisons_GreaterThan(t *testing.T) {
 		assert.Equal(sql.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
-				row := sql.NewMemoryRow(pair[0], pair[1])
+				row := sql.NewRow(pair[0], pair[1])
 				assert.NotNil(row)
 				cmp := eq.Eval(row)
 				assert.NotNil(cmp)

@@ -25,7 +25,7 @@ func (p GetField) Type() sql.Type {
 }
 
 func (p GetField) Eval(row sql.Row) interface{} {
-	return row.Fields()[p.fieldIndex]
+	return row[p.fieldIndex]
 }
 
 func (p GetField) Name() string {

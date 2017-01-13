@@ -22,15 +22,15 @@ func TestCount_Eval_1(t *testing.T) {
 	b := c.NewBuffer()
 	assert.Equal(int32(0), c.Eval(b))
 
-	c.Update(b, sql.NewMemoryRow())
-	c.Update(b, sql.NewMemoryRow("foo"))
-	c.Update(b, sql.NewMemoryRow(1))
-	c.Update(b, sql.NewMemoryRow(1, 2, 3))
+	c.Update(b, nil)
+	c.Update(b, sql.NewRow("foo"))
+	c.Update(b, sql.NewRow(1))
+	c.Update(b, sql.NewRow(1, 2, 3))
 	assert.Equal(int32(4), c.Eval(b))
 
 	b2 := c.NewBuffer()
-	c.Update(b2, sql.NewMemoryRow())
-	c.Update(b2, sql.NewMemoryRow("foo"))
+	c.Update(b2, nil)
+	c.Update(b2, sql.NewRow("foo"))
 	c.Merge(b, b2)
 	assert.Equal(int32(6), c.Eval(b))
 }
@@ -42,15 +42,15 @@ func TestCount_Eval_Star(t *testing.T) {
 	b := c.NewBuffer()
 	assert.Equal(int32(0), c.Eval(b))
 
-	c.Update(b, sql.NewMemoryRow())
-	c.Update(b, sql.NewMemoryRow("foo"))
-	c.Update(b, sql.NewMemoryRow(1))
-	c.Update(b, sql.NewMemoryRow(1, 2, 3))
+	c.Update(b, nil)
+	c.Update(b, sql.NewRow("foo"))
+	c.Update(b, sql.NewRow(1))
+	c.Update(b, sql.NewRow(1, 2, 3))
 	assert.Equal(int32(4), c.Eval(b))
 
 	b2 := c.NewBuffer()
-	c.Update(b2, sql.NewMemoryRow())
-	c.Update(b2, sql.NewMemoryRow("foo"))
+	c.Update(b2, sql.NewRow())
+	c.Update(b2, sql.NewRow("foo"))
 	c.Merge(b, b2)
 	assert.Equal(int32(6), c.Eval(b))
 }
@@ -62,10 +62,10 @@ func TestCount_Eval_String(t *testing.T) {
 	b := c.NewBuffer()
 	assert.Equal(int32(0), c.Eval(b))
 
-	c.Update(b, sql.NewMemoryRow("foo"))
+	c.Update(b, sql.NewRow("foo"))
 	assert.Equal(int32(1), c.Eval(b))
 
-	c.Update(b, sql.NewMemoryRow(nil))
+	c.Update(b, sql.NewRow(nil))
 	assert.Equal(int32(1), c.Eval(b))
 }
 
@@ -83,14 +83,14 @@ func TestFirst_Eval(t *testing.T) {
 	b := c.NewBuffer()
 	assert.Nil(c.Eval(b))
 
-	c.Update(b, sql.NewMemoryRow(int32(1)))
+	c.Update(b, sql.NewRow(int32(1)))
 	assert.Equal(int32(1), c.Eval(b))
 
-	c.Update(b, sql.NewMemoryRow(int32(2)))
+	c.Update(b, sql.NewRow(int32(2)))
 	assert.Equal(int32(1), c.Eval(b))
 
 	b2 := c.NewBuffer()
-	c.Update(b2, sql.NewMemoryRow(int32(2)))
+	c.Update(b2, sql.NewRow(int32(2)))
 	c.Merge(b, b2)
 	assert.Equal(int32(1), c.Eval(b))
 }

@@ -19,9 +19,9 @@ func TestSort(t *testing.T) {
 	}
 
 	child := mem.NewTable("test", childSchema)
-	child.Insert("a", int32(3))
-	child.Insert("b", int32(3))
-	child.Insert("c", int32(1))
+	child.Insert(sql.NewRow("a", int32(3)))
+	child.Insert(sql.NewRow("b", int32(3)))
+	child.Insert(sql.NewRow("c", int32(1)))
 
 	sf := []SortField{
 		{Column: expression.NewGetField(1, sql.Integer, "col2"), Order: Ascending},
@@ -36,15 +36,15 @@ func TestSort(t *testing.T) {
 	row, err := iter.Next()
 	assert.Nil(err)
 	assert.NotNil(row)
-	assert.Equal("c", row.Fields()[0])
+	assert.Equal("c", row[0])
 	row, err = iter.Next()
 	assert.Nil(err)
 	assert.NotNil(row)
-	assert.Equal("b", row.Fields()[0])
+	assert.Equal("b", row[0])
 	row, err = iter.Next()
 	assert.Nil(err)
 	assert.NotNil(row)
-	assert.Equal("a", row.Fields()[0])
+	assert.Equal("a", row[0])
 	row, err = iter.Next()
 	assert.Equal(io.EOF, err)
 	assert.Nil(row)
@@ -57,9 +57,9 @@ func TestSort_Ascending(t *testing.T) {
 	}
 
 	child := mem.NewTable("test", childSchema)
-	child.Insert("b")
-	child.Insert("c")
-	child.Insert("a")
+	child.Insert(sql.NewRow("b"))
+	child.Insert(sql.NewRow("c"))
+	child.Insert(sql.NewRow("a"))
 
 	sf := []SortField{
 		{Column: expression.NewGetField(0, sql.String, "col1"), Order: Ascending},
@@ -73,15 +73,15 @@ func TestSort_Ascending(t *testing.T) {
 	row, err := iter.Next()
 	assert.Nil(err)
 	assert.NotNil(row)
-	assert.Equal("a", row.Fields()[0])
+	assert.Equal("a", row[0])
 	row, err = iter.Next()
 	assert.Nil(err)
 	assert.NotNil(row)
-	assert.Equal("b", row.Fields()[0])
+	assert.Equal("b", row[0])
 	row, err = iter.Next()
 	assert.Nil(err)
 	assert.NotNil(row)
-	assert.Equal("c", row.Fields()[0])
+	assert.Equal("c", row[0])
 	row, err = iter.Next()
 	assert.Equal(io.EOF, err)
 	assert.Nil(row)
@@ -94,9 +94,9 @@ func TestSort_Descending(t *testing.T) {
 	}
 
 	child := mem.NewTable("test", childSchema)
-	child.Insert("a")
-	child.Insert("c")
-	child.Insert("b")
+	child.Insert(sql.NewRow("a"))
+	child.Insert(sql.NewRow("c"))
+	child.Insert(sql.NewRow("b"))
 
 	sf := []SortField{
 		{Column: expression.NewGetField(0, sql.String, "col1"), Order: Descending},
@@ -110,15 +110,15 @@ func TestSort_Descending(t *testing.T) {
 	row, err := iter.Next()
 	assert.Nil(err)
 	assert.NotNil(row)
-	assert.Equal("c", row.Fields()[0])
+	assert.Equal("c", row[0])
 	row, err = iter.Next()
 	assert.Nil(err)
 	assert.NotNil(row)
-	assert.Equal("b", row.Fields()[0])
+	assert.Equal("b", row[0])
 	row, err = iter.Next()
 	assert.Nil(err)
 	assert.NotNil(row)
-	assert.Equal("a", row.Fields()[0])
+	assert.Equal("a", row[0])
 	row, err = iter.Next()
 	assert.Equal(io.EOF, err)
 	assert.Nil(row)

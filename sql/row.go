@@ -1,23 +1,30 @@
 package sql
 
-import "io"
+import (
+	"io"
+)
 
-type Row interface {
-	Fields() []interface{}
+type Row []Value
+
+func NewRow(values ...interface{}) Row {
+	row := make([]Value, len(values))
+	for i := 0; i < len(values); i++ {
+		row[i] = Value(values[i])
+	}
+
+	return row
 }
+
+func (r Row) Copy() Row {
+	crow := make([]Value, len(r))
+	copy(crow, r)
+	return r
+}
+
+type Value interface{}
 
 type RowIter interface {
 	Next() (Row, error)
-}
-
-type MemoryRow []interface{}
-
-func NewMemoryRow(fields ...interface{}) MemoryRow {
-	return MemoryRow(fields)
-}
-
-func (r MemoryRow) Fields() []interface{} {
-	return []interface{}(r)
 }
 
 func RowIterToRows(i RowIter) ([]Row, error) {

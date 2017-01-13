@@ -74,5 +74,5 @@ func filterRow(expressions []sql.Expression, row sql.Row) sql.Row {
 	for _, expr := range expressions {
 		fields = append(fields, expr.Eval(row))
 	}
-	return sql.NewMemoryRow(fields...)
+	return sql.NewRow(fields...)
 }

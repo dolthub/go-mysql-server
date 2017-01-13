@@ -55,29 +55,29 @@ func TestCrossJoin(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(row)
 
-	assert.Equal(8, len(row.Fields()))
+	assert.Equal(8, len(row))
 
-	assert.Equal("col1_1", row.Fields()[0])
-	assert.Equal("col2_1", row.Fields()[1])
-	assert.Equal(int32(1111), row.Fields()[2])
-	assert.Equal(int64(2222), row.Fields()[3])
-	assert.Equal("col1_1", row.Fields()[4])
-	assert.Equal("col2_1", row.Fields()[5])
-	assert.Equal(int32(1111), row.Fields()[6])
-	assert.Equal(int64(2222), row.Fields()[7])
+	assert.Equal("col1_1", row[0])
+	assert.Equal("col2_1", row[1])
+	assert.Equal(int32(1111), row[2])
+	assert.Equal(int64(2222), row[3])
+	assert.Equal("col1_1", row[4])
+	assert.Equal("col2_1", row[5])
+	assert.Equal(int32(1111), row[6])
+	assert.Equal(int64(2222), row[7])
 
 	row, err = iter.Next()
 	assert.Nil(err)
 	assert.NotNil(row)
 
-	assert.Equal("col1_1", row.Fields()[0])
-	assert.Equal("col2_1", row.Fields()[1])
-	assert.Equal(int32(1111), row.Fields()[2])
-	assert.Equal(int64(2222), row.Fields()[3])
-	assert.Equal("col1_2", row.Fields()[4])
-	assert.Equal("col2_2", row.Fields()[5])
-	assert.Equal(int32(3333), row.Fields()[6])
-	assert.Equal(int64(4444), row.Fields()[7])
+	assert.Equal("col1_1", row[0])
+	assert.Equal("col2_1", row[1])
+	assert.Equal(int32(1111), row[2])
+	assert.Equal(int64(2222), row[3])
+	assert.Equal("col1_2", row[4])
+	assert.Equal("col2_2", row[5])
+	assert.Equal(int32(3333), row[6])
+	assert.Equal(int64(4444), row[7])
 
 	for i := 0; i < 2; i++ {
 		row, err = iter.Next()
@@ -125,8 +125,8 @@ func TestCrossJoin_Empty(t *testing.T) {
 }
 
 func insertData(assert *assert.Assertions, table *mem.Table) {
-	err := table.Insert("col1_1", "col2_1", int32(1111), int64(2222))
+	err := table.Insert(sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)))
 	assert.Nil(err)
-	err = table.Insert("col1_2", "col2_2", int32(3333), int64(4444))
+	err = table.Insert(sql.NewRow("col1_2", "col2_2", int32(3333), int64(4444)))
 	assert.Nil(err)
 }

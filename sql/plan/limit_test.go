@@ -90,9 +90,9 @@ func getTestingTable() (*mem.Table, int) {
 		sql.Field{"col1", sql.String},
 	}
 	testingTable = mem.NewTable("test", childSchema)
-	testingTable.Insert("11a")
-	testingTable.Insert("22a")
-	testingTable.Insert("33a")
+	testingTable.Insert(sql.NewRow("11a"))
+	testingTable.Insert(sql.NewRow("22a"))
+	testingTable.Insert(sql.NewRow("33a"))
 	testingTableSize = 3
 
 	return testingTable, testingTableSize

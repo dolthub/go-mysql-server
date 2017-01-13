@@ -15,7 +15,7 @@ func NewCount(e sql.Expression) *Count {
 }
 
 func (c *Count) NewBuffer() sql.Row {
-	return sql.NewMemoryRow(int32(0))
+	return sql.NewRow(int32(0))
 }
 
 func (c *Count) Type() sql.Type {
@@ -40,7 +40,6 @@ func (c *Count) TransformUp(f func(sql.Expression) sql.Expression) sql.Expressio
 }
 
 func (c *Count) Update(buffer, row sql.Row) {
-	mr := buffer.(sql.MemoryRow)
 	var inc bool
 	if _, ok := c.Child.(*Star); ok {
 		inc = true
@@ -52,17 +51,16 @@ func (c *Count) Update(buffer, row sql.Row) {
 	}
 
 	if inc {
-		mr[0] = getInt32At(buffer, 0) + int32(1)
+		buffer[0] = buffer[0].(int32) + int32(1)
 	}
 }
 
 func (c *Count) Merge(buffer, partial sql.Row) {
-	mb := buffer.(sql.MemoryRow)
-	mb[0] = getInt32At(buffer, 0) + getInt32At(partial, 0)
+	buffer[0] = buffer[0].(int32) + partial[0].(int32)
 }
 
 func (c *Count) Eval(buffer sql.Row) interface{} {
-	return getInt32At(buffer, 0)
+	return buffer[0]
 }
 
 type First struct {
@@ -74,7 +72,7 @@ func NewFirst(e sql.Expression) *First {
 }
 
 func (e *First) NewBuffer() sql.Row {
-	return sql.NewMemoryRow(nil)
+	return sql.NewRow(nil)
 }
 
 func (e *First) Type() sql.Type {
@@ -91,25 +89,17 @@ func (e *First) TransformUp(f func(sql.Expression) sql.Expression) sql.Expressio
 }
 
 func (e *First) Update(buffer, row sql.Row) {
-	mr := buffer.(sql.MemoryRow)
-	if mr[0] == nil {
-		mr[0] = e.Child.Eval(row)
+	if buffer[0] == nil {
+		buffer[0] = e.Child.Eval(row)
 	}
 }
 
 func (e *First) Merge(buffer, partial sql.Row) {
-	mb := buffer.(sql.MemoryRow)
-	if mb[0] == nil {
-		mp := partial.(sql.MemoryRow)
-		mb[0] = mp[0]
+	if buffer[0] == nil {
+		buffer[0] = partial[0]
 	}
 }
 
 func (e *First) Eval(buffer sql.Row) interface{} {
-	return buffer.Fields()[0]
-}
-
-func getInt32At(row sql.Row, i int) int32 {
-	f := row.Fields()
-	return f[i].(int32)
+	return buffer[0]
 }

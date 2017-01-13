@@ -11,15 +11,14 @@ import (
 type Schema []Field
 
 func (s Schema) CheckRow(row Row) error {
-	fields := row.Fields()
 	expected := len(s)
-	got := len(fields)
+	got := len(row)
 	if expected != got {
 		return fmt.Errorf("expected %d values, got %d", expected, got)
 	}
 
 	for idx, f := range s {
-		v := fields[idx]
+		v := row[idx]
 		if f.Type.Check(v) {
 			continue
 		}

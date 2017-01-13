@@ -19,9 +19,9 @@ func TestFilter(t *testing.T) {
 		sql.Field{"col4", sql.BigInteger},
 	}
 	child := mem.NewTable("test", childSchema)
-	err := child.Insert("col1_1", "col2_1", int32(1111), int64(2222))
+	err := child.Insert(sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)))
 	assert.Nil(err)
-	err = child.Insert("col1_2", "col2_2", int32(3333), int64(4444))
+	err = child.Insert(sql.NewRow("col1_2", "col2_2", int32(3333), int64(4444)))
 	assert.Nil(err)
 
 	f := NewFilter(
@@ -40,8 +40,8 @@ func TestFilter(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(row)
 
-	assert.Equal("col1_1", row.Fields()[0])
-	assert.Equal("col2_1", row.Fields()[1])
+	assert.Equal("col1_1", row[0])
+	assert.Equal("col2_1", row[1])
 
 	row, err = iter.Next()
 	assert.NotNil(err)
@@ -60,8 +60,8 @@ func TestFilter(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(row)
 
-	assert.Equal(int32(1111), row.Fields()[2])
-	assert.Equal(int64(2222), row.Fields()[3])
+	assert.Equal(int32(1111), row[2])
+	assert.Equal(int64(2222), row[3])
 
 	f = NewFilter(expression.NewEquals(
 		expression.NewGetField(3, sql.BigInteger, "col4"),
@@ -76,6 +76,6 @@ func TestFilter(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(row)
 
-	assert.Equal(int32(3333), row.Fields()[2])
-	assert.Equal(int64(4444), row.Fields()[3])
+	assert.Equal(int32(3333), row[2])
+	assert.Equal(int64(4444), row[3])
 }

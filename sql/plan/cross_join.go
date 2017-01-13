@@ -91,14 +91,14 @@ func (i *crossJoinIterator) Next() (sql.Row, error) {
 		i.leftRow = lr
 	}
 
-	fields := append(i.leftRow.Fields(), i.rightRows[i.index].Fields()...)
+	row := append(i.leftRow, i.rightRows[i.index]...)
 	i.index++
 	if i.index >= len(i.rightRows) {
 		i.index = 0
 		i.leftRow = nil
 	}
 
-	return sql.NewMemoryRow(fields...), nil
+	return row, nil
 }
 
 func (i *crossJoinIterator) fillRows() error {

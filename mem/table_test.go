@@ -29,13 +29,13 @@ func TestTable_Insert_RowIter(t *testing.T) {
 	assert.Nil(err)
 	assert.Len(rows, 0)
 
-	err = table.Insert("foo")
+	err = table.Insert(sql.NewRow("foo"))
 	rows, err = sql.NodeToRows(table)
 	assert.Nil(err)
 	assert.Len(rows, 1)
 	assert.Nil(s.CheckRow(rows[0]))
 
-	err = table.Insert("bar")
+	err = table.Insert(sql.NewRow("bar"))
 	rows, err = sql.NodeToRows(table)
 	assert.Nil(err)
 	assert.Len(rows, 2)

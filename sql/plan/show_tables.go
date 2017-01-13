@@ -60,7 +60,7 @@ func (i *showTablesIter) Next() (sql.Row, error) {
 	if i.idx >= len(i.tableNames) {
 		return nil, io.EOF
 	}
-	row := sql.NewMemoryRow(i.tableNames[i.idx])
+	row := sql.NewRow(i.tableNames[i.idx])
 	i.idx++
 
 	return row, nil

@@ -172,7 +172,7 @@ func aggregate(exprs []sql.Expression, rows []sql.Row) sql.Row {
 		fields = append(fields, agg.Eval(buffers[i]))
 	}
 
-	return sql.NewMemoryRow(fields...)
+	return sql.NewRow(fields...)
 }
 
 func exprsToAggregateExprs(exprs []sql.Expression) []sql.AggregationExpression {

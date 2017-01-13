@@ -57,5 +57,5 @@ func (i *describeIter) Next() (sql.Row, error) {
 
 	f := i.schema[i.i]
 	i.i++
-	return sql.NewMemoryRow(f.Name, f.Type.Name()), nil
+	return sql.NewRow(f.Name, f.Type.Name()), nil
 }

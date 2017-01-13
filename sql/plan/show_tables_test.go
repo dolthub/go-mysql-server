@@ -31,15 +31,15 @@ func TestShowTables(t *testing.T) {
 
 	res, err := iter.Next()
 	assert.Nil(err)
-	assert.Equal("test1", res.Fields()[0])
+	assert.Equal("test1", res[0])
 
 	res, err = iter.Next()
 	assert.Nil(err)
-	assert.Equal("test2", res.Fields()[0])
+	assert.Equal("test2", res[0])
 
 	res, err = iter.Next()
 	assert.Nil(err)
-	assert.Equal("test3", res.Fields()[0])
+	assert.Equal("test3", res[0])
 
 	_, err = iter.Next()
 	assert.Equal(io.EOF, err)

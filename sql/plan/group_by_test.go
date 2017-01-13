@@ -49,11 +49,11 @@ func TestGroupBy_RowIter(t *testing.T) {
 		sql.Field{"col2", sql.BigInteger},
 	}
 	child := mem.NewTable("test", childSchema)
-	child.Insert("col1_1", int64(1111))
-	child.Insert("col1_1", int64(1111))
-	child.Insert("col1_2", int64(4444))
-	child.Insert("col1_1", int64(1111))
-	child.Insert("col1_2", int64(4444))
+	child.Insert(sql.NewRow("col1_1", int64(1111)))
+	child.Insert(sql.NewRow("col1_1", int64(1111)))
+	child.Insert(sql.NewRow("col1_2", int64(4444)))
+	child.Insert(sql.NewRow("col1_1", int64(1111)))
+	child.Insert(sql.NewRow("col1_2", int64(4444)))
 
 	p := NewSort(
 		[]SortField{
@@ -83,6 +83,6 @@ func TestGroupBy_RowIter(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(rows, 2)
 
-	assert.Equal(sql.NewMemoryRow("col1_1", int64(1111)), rows[0])
-	assert.Equal(sql.NewMemoryRow("col1_2", int64(4444)), rows[1])
+	assert.Equal(sql.NewRow("col1_1", int64(1111)), rows[0])
+	assert.Equal(sql.NewRow("col1_2", int64(4444)), rows[1])
 }

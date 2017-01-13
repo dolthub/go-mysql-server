@@ -10,14 +10,13 @@ import (
 type Table struct {
 	name   string
 	schema sql.Schema
-	data   [][]interface{}
+	data   []sql.Row
 }
 
 func NewTable(name string, schema sql.Schema) *Table {
 	return &Table{
 		name:   name,
 		schema: schema,
-		data:   [][]interface{}{},
 	}
 }
 
@@ -38,7 +37,7 @@ func (t *Table) Children() []sql.Node {
 }
 
 func (t *Table) RowIter() (sql.RowIter, error) {
-	return &iter{data: t.data}, nil
+	return &iter{rows: t.data}, nil
 }
 
 func (t *Table) TransformUp(f func(sql.Node) sql.Node) sql.Node {
@@ -49,30 +48,33 @@ func (t *Table) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sq
 	return t
 }
 
-func (t *Table) Insert(values ...interface{}) error {
-	if len(values) != len(t.schema) {
-		return fmt.Errorf("insert expected %d values, got %d", len(t.schema), len(values))
+func (t *Table) Insert(row sql.Row) error {
+	if len(row) != len(t.schema) {
+		return fmt.Errorf("insert expected %d values, got %d", len(t.schema), len(row))
 	}
-	for idx, value := range values {
+
+	for idx, value := range row {
 		f := t.schema[idx]
 		if !f.Type.Check(value) {
 			return sql.ErrInvalidType
 		}
 	}
-	t.data = append(t.data, values)
+
+	t.data = append(t.data, row.Copy())
 	return nil
 }
 
 type iter struct {
 	idx  int
-	data [][]interface{}
+	rows []sql.Row
 }
 
 func (i *iter) Next() (sql.Row, error) {
-	if i.idx >= len(i.data) {
+	if i.idx >= len(i.rows) {
 		return nil, io.EOF
 	}
-	row := sql.NewMemoryRow(i.data[i.idx]...)
+
+	row := i.rows[i.idx]
 	i.idx++
-	return row, nil
+	return row.Copy(), nil
 }

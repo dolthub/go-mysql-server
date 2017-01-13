@@ -16,46 +16,46 @@ func TestEngine_Query(t *testing.T) {
 	testQuery(t, e,
 		"SELECT i FROM mytable;",
 		[]sql.Row{
-			sql.NewMemoryRow(int64(1)),
-			sql.NewMemoryRow(int64(2)),
-			sql.NewMemoryRow(int64(3)),
+			sql.NewRow(int64(1)),
+			sql.NewRow(int64(2)),
+			sql.NewRow(int64(3)),
 		},
 	)
 
 	testQuery(t, e,
 		"SELECT i FROM mytable WHERE i = 2;",
 		[]sql.Row{
-			sql.NewMemoryRow(int64(2)),
+			sql.NewRow(int64(2)),
 		},
 	)
 
 	testQuery(t, e,
 		"SELECT i FROM mytable ORDER BY i DESC;",
 		[]sql.Row{
-			sql.NewMemoryRow(int64(3)),
-			sql.NewMemoryRow(int64(2)),
-			sql.NewMemoryRow(int64(1)),
+			sql.NewRow(int64(3)),
+			sql.NewRow(int64(2)),
+			sql.NewRow(int64(1)),
 		},
 	)
 
 	testQuery(t, e,
 		"SELECT i FROM mytable WHERE s = 'a' ORDER BY i DESC;",
 		[]sql.Row{
-			sql.NewMemoryRow(int64(1)),
+			sql.NewRow(int64(1)),
 		},
 	)
 
 	testQuery(t, e,
 		"SELECT i FROM mytable WHERE s = 'a' ORDER BY i DESC LIMIT 1;",
 		[]sql.Row{
-			sql.NewMemoryRow(int64(1)),
+			sql.NewRow(int64(1)),
 		},
 	)
 
 	testQuery(t, e,
 		"SELECT COUNT(*) FROM mytable;",
 		[]sql.Row{
-			sql.NewMemoryRow(int32(3)),
+			sql.NewRow(int32(3)),
 		},
 	)
 }
@@ -91,9 +91,9 @@ func newEngine(t *testing.T) *gitql.Engine {
 		{"i", sql.BigInteger},
 		{"s", sql.String},
 	})
-	assert.Nil(table.Insert(int64(1), "a"))
-	assert.Nil(table.Insert(int64(2), "b"))
-	assert.Nil(table.Insert(int64(3), "c"))
+	assert.Nil(table.Insert(sql.NewRow(int64(1), "a")))
+	assert.Nil(table.Insert(sql.NewRow(int64(2), "b")))
+	assert.Nil(table.Insert(sql.NewRow(int64(3), "c")))
 
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)

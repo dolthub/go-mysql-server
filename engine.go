@@ -3,8 +3,8 @@ package gitql
 import (
 	"github.com/gitql/gitql/sql"
 	"github.com/gitql/gitql/sql/analyzer"
-	"github.com/gitql/gitql/sql/parse"
 	"github.com/gitql/gitql/sql/expression"
+	"github.com/gitql/gitql/sql/parse"
 )
 
 type Engine struct {
