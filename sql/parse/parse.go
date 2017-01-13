@@ -10,7 +10,7 @@ import (
 	"github.com/gitql/gitql/sql/expression"
 	"github.com/gitql/gitql/sql/plan"
 
-	"github.com/youtube/vitess/go/vt/sqlparser"
+	"github.com/gitql/vitess/go/vt/sqlparser"
 )
 
 const (
@@ -317,17 +317,23 @@ func valExprToExpression(ve sqlparser.ValExpr) (sql.Expression, error) {
 	switch v := ve.(type) {
 	default:
 		return nil, errUnsupported(v)
-	case sqlparser.StrVal:
-		return expression.NewLiteral(string(v), sql.String), nil
-	//TODO: case sqlparser.BoolVal:
-	//	return expression.NewLiteral(bool(v), sql.Boolean), nil
-	case sqlparser.NumVal:
-		//TODO: Use smallest integer representation and widen later.
-		n, _ := strconv.ParseInt(string(v), 10, 64)
-		return expression.NewLiteral(n, sql.BigInteger), nil
-	case sqlparser.HexVal:
-		//TODO
-		return nil, errUnsupported(v)
+	case *sqlparser.SQLVal:
+		switch v.Type {
+		case sqlparser.StrVal:
+			return expression.NewLiteral(string(v.Val), sql.String), nil
+		case sqlparser.IntVal:
+			//TODO: Use smallest integer representation and widen later.
+			n, _ := strconv.ParseInt(string(v.Val), 10, 64)
+			return expression.NewLiteral(n, sql.BigInteger), nil
+		case sqlparser.HexVal:
+			//TODO
+			return nil, errUnsupported(v)
+		default:
+			//TODO
+			return nil, errUnsupported(v)
+		}
+	case sqlparser.BoolVal:
+		return expression.NewLiteral(bool(v), sql.Boolean), nil
 	case *sqlparser.NullVal:
 		//TODO
 		return expression.NewLiteral(nil, sql.Null), nil
