@@ -103,6 +103,11 @@ func (i *sortIter) Next() (sql.Row, error) {
 	return row, nil
 }
 
+func (i *sortIter) Close() error {
+	i.sortedRows = nil
+	return i.childIter.Close()
+}
+
 func (i *sortIter) computeSortedRows() error {
 	rows := []sql.Row{}
 	for {

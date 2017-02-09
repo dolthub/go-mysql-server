@@ -65,3 +65,8 @@ func (i *showTablesIter) Next() (sql.Row, error) {
 
 	return row, nil
 }
+
+func (i *showTablesIter) Close() error {
+	i.tableNames = nil
+	return nil
+}

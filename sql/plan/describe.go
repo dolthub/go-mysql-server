@@ -59,3 +59,7 @@ func (i *describeIter) Next() (sql.Row, error) {
 	i.i++
 	return sql.NewRow(f.Name, f.Type.Name()), nil
 }
+
+func (i *describeIter) Close() error {
+	return nil
+}

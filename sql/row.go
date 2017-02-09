@@ -25,6 +25,7 @@ type Value interface{}
 
 type RowIter interface {
 	Next() (Row, error)
+	Close() error
 }
 
 func RowIterToRows(i RowIter) ([]Row, error) {
@@ -42,7 +43,7 @@ func RowIterToRows(i RowIter) ([]Row, error) {
 		rows = append(rows, row)
 	}
 
-	return rows, nil
+	return rows, i.Close()
 }
 
 func NodeToRows(n Node) ([]Row, error) {

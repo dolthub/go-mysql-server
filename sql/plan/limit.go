@@ -61,3 +61,7 @@ func (li *limitIter) Next() (sql.Row, error) {
 	}
 	return childRow, nil
 }
+
+func (li *limitIter) Close() error {
+	return li.childIter.Close()
+}

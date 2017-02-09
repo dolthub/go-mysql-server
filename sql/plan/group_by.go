@@ -99,6 +99,11 @@ func (i *groupByIter) Next() (sql.Row, error) {
 	return row, nil
 }
 
+func (i *groupByIter) Close() error {
+	i.rows = nil
+	return i.childIter.Close()
+}
+
 func (i *groupByIter) computeRows() error {
 	rows := []sql.Row{}
 	for {

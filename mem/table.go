@@ -78,3 +78,8 @@ func (i *iter) Next() (sql.Row, error) {
 	i.idx++
 	return row.Copy(), nil
 }
+
+func (i *iter) Close() error {
+	i.rows = nil
+	return nil
+}

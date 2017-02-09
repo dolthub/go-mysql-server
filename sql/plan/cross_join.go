@@ -101,6 +101,15 @@ func (i *crossJoinIterator) Next() (sql.Row, error) {
 	return row, nil
 }
 
+func (i *crossJoinIterator) Close() error {
+	if err := i.li.Close(); err != nil {
+		_ = i.ri.Close()
+		return err
+	}
+
+	return i.ri.Close()
+}
+
 func (i *crossJoinIterator) fillRows() error {
 	for {
 		rr, err := i.ri.Next()

@@ -57,3 +57,7 @@ func (i *filterIter) Next() (sql.Row, error) {
 		}
 	}
 }
+
+func (i *filterIter) Close() error {
+	return i.childIter.Close()
+}

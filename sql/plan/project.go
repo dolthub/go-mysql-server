@@ -69,6 +69,10 @@ func (i *iter) Next() (sql.Row, error) {
 	return filterRow(i.p.Expressions, childRow), nil
 }
 
+func (i *iter) Close() error {
+	return i.childIter.Close()
+}
+
 func filterRow(expressions []sql.Expression, row sql.Row) sql.Row {
 	fields := []interface{}{}
 	for _, expr := range expressions {
