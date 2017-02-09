@@ -11,31 +11,31 @@ import (
 )
 
 var lSchema = sql.Schema{
-	sql.Field{"lcol1", sql.String},
-	sql.Field{"lcol2", sql.String},
-	sql.Field{"lcol3", sql.Integer},
-	sql.Field{"lcol4", sql.BigInteger},
+	sql.Column{"lcol1", sql.String},
+	sql.Column{"lcol2", sql.String},
+	sql.Column{"lcol3", sql.Integer},
+	sql.Column{"lcol4", sql.BigInteger},
 }
 
 var rSchema = sql.Schema{
-	sql.Field{"rcol1", sql.String},
-	sql.Field{"rcol2", sql.String},
-	sql.Field{"rcol3", sql.Integer},
-	sql.Field{"rcol4", sql.BigInteger},
+	sql.Column{"rcol1", sql.String},
+	sql.Column{"rcol2", sql.String},
+	sql.Column{"rcol3", sql.Integer},
+	sql.Column{"rcol4", sql.BigInteger},
 }
 
 func TestCrossJoin(t *testing.T) {
 	assert := assert.New(t)
 
 	resultSchema := sql.Schema{
-		sql.Field{"lcol1", sql.String},
-		sql.Field{"lcol2", sql.String},
-		sql.Field{"lcol3", sql.Integer},
-		sql.Field{"lcol4", sql.BigInteger},
-		sql.Field{"rcol1", sql.String},
-		sql.Field{"rcol2", sql.String},
-		sql.Field{"rcol3", sql.Integer},
-		sql.Field{"rcol4", sql.BigInteger},
+		sql.Column{"lcol1", sql.String},
+		sql.Column{"lcol2", sql.String},
+		sql.Column{"lcol3", sql.Integer},
+		sql.Column{"lcol4", sql.BigInteger},
+		sql.Column{"rcol1", sql.String},
+		sql.Column{"rcol2", sql.String},
+		sql.Column{"rcol3", sql.Integer},
+		sql.Column{"rcol4", sql.BigInteger},
 	}
 
 	ltable := mem.NewTable("left", lSchema)

@@ -13,8 +13,8 @@ func TestDescribe(t *testing.T) {
 	assert := assert.New(t)
 
 	table := mem.NewTable("test", sql.Schema{
-		sql.Field{Name: "c1", Type: sql.String},
-		sql.Field{Name: "c2", Type: sql.Integer},
+		sql.Column{Name: "c1", Type: sql.String},
+		sql.Column{Name: "c2", Type: sql.Integer},
 	})
 
 	d := NewDescribe(table)

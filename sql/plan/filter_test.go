@@ -13,10 +13,10 @@ import (
 func TestFilter(t *testing.T) {
 	assert := assert.New(t)
 	childSchema := sql.Schema{
-		sql.Field{"col1", sql.String},
-		sql.Field{"col2", sql.String},
-		sql.Field{"col3", sql.Integer},
-		sql.Field{"col4", sql.BigInteger},
+		sql.Column{"col1", sql.String},
+		sql.Column{"col2", sql.String},
+		sql.Column{"col3", sql.Integer},
+		sql.Column{"col4", sql.BigInteger},
 	}
 	child := mem.NewTable("test", childSchema)
 	err := child.Insert(sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)))

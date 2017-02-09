@@ -16,11 +16,11 @@ func NewDescribe(child sql.Node) *Describe {
 
 func (d *Describe) Schema() sql.Schema {
 	return sql.Schema{
-		sql.Field{
+		sql.Column{
 			Name: "name",
 			Type: sql.String,
 		},
-		sql.Field{
+		sql.Column{
 			Name: "type",
 			Type: sql.String,
 		},

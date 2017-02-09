@@ -19,7 +19,7 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 func (p *Project) Schema() sql.Schema {
 	var s sql.Schema
 	for _, e := range p.Expressions {
-		f := sql.Field{
+		f := sql.Column{
 			Name: e.Name(),
 			Type: e.Type(),
 		}

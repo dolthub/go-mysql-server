@@ -34,7 +34,7 @@ func (p *GroupBy) Resolved() bool {
 func (p *GroupBy) Schema() sql.Schema {
 	s := sql.Schema{}
 	for _, e := range p.aggregate {
-		s = append(s, sql.Field{
+		s = append(s, sql.Column{
 			Name: e.Name(),
 			Type: e.Type(),
 		})

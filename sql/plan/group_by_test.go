@@ -20,8 +20,8 @@ func TestGroupBy_Schema(t *testing.T) {
 	}
 	gb := NewGroupBy(agg, nil, child)
 	assert.Equal(sql.Schema{
-		sql.Field{Name: "c1", Type: sql.String},
-		sql.Field{Name: "c2", Type: sql.Integer},
+		sql.Column{Name: "c1", Type: sql.String},
+		sql.Column{Name: "c2", Type: sql.Integer},
 	}, gb.Schema())
 }
 
@@ -45,8 +45,8 @@ func TestGroupBy_Resolved(t *testing.T) {
 func TestGroupBy_RowIter(t *testing.T) {
 	assert := assert.New(t)
 	childSchema := sql.Schema{
-		sql.Field{"col1", sql.String},
-		sql.Field{"col2", sql.BigInteger},
+		sql.Column{"col1", sql.String},
+		sql.Column{"col2", sql.BigInteger},
 	}
 	child := mem.NewTable("test", childSchema)
 	child.Insert(sql.NewRow("col1_1", int64(1111)))

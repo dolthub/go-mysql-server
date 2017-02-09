@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-type Schema []Field
+type Schema []Column
 
 func (s Schema) CheckRow(row Row) error {
 	expected := len(s)
@@ -32,7 +32,7 @@ func (s Schema) CheckRow(row Row) error {
 	return nil
 }
 
-type Field struct {
+type Column struct {
 	Name string
 	Type Type
 }

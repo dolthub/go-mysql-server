@@ -11,7 +11,7 @@ import (
 func TestTable_Name(t *testing.T) {
 	assert := assert.New(t)
 	s := sql.Schema{
-		sql.Field{"col1", sql.String},
+		sql.Column{"col1", sql.String},
 	}
 	table := NewTable("test", s)
 	assert.Equal("test", table.Name())
@@ -20,7 +20,7 @@ func TestTable_Name(t *testing.T) {
 func TestTable_Insert_RowIter(t *testing.T) {
 	assert := assert.New(t)
 	s := sql.Schema{
-		sql.Field{"col1", sql.String},
+		sql.Column{"col1", sql.String},
 	}
 
 	table := NewTable("test", s)

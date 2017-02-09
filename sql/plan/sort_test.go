@@ -14,8 +14,8 @@ import (
 func TestSort(t *testing.T) {
 	assert := assert.New(t)
 	childSchema := sql.Schema{
-		sql.Field{"col1", sql.String},
-		sql.Field{"col2", sql.Integer},
+		sql.Column{"col1", sql.String},
+		sql.Column{"col2", sql.Integer},
 	}
 
 	child := mem.NewTable("test", childSchema)
@@ -53,7 +53,7 @@ func TestSort(t *testing.T) {
 func TestSort_Ascending(t *testing.T) {
 	assert := assert.New(t)
 	childSchema := sql.Schema{
-		sql.Field{"col1", sql.String},
+		sql.Column{"col1", sql.String},
 	}
 
 	child := mem.NewTable("test", childSchema)
@@ -90,7 +90,7 @@ func TestSort_Ascending(t *testing.T) {
 func TestSort_Descending(t *testing.T) {
 	assert := assert.New(t)
 	childSchema := sql.Schema{
-		sql.Field{"col1", sql.String},
+		sql.Column{"col1", sql.String},
 	}
 
 	child := mem.NewTable("test", childSchema)

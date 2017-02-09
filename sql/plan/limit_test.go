@@ -87,7 +87,7 @@ func getTestingTable() (*mem.Table, int) {
 	}
 
 	childSchema := sql.Schema{
-		sql.Field{"col1", sql.String},
+		sql.Column{"col1", sql.String},
 	}
 	testingTable = mem.NewTable("test", childSchema)
 	testingTable.Insert(sql.NewRow("11a"))

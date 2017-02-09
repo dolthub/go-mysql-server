@@ -14,8 +14,8 @@ import (
 func TestProject(t *testing.T) {
 	require := require.New(t)
 	childSchema := sql.Schema{
-		sql.Field{"col1", sql.String},
-		sql.Field{"col2", sql.String},
+		sql.Column{"col1", sql.String},
+		sql.Column{"col2", sql.String},
 	}
 	child := mem.NewTable("test", childSchema)
 	child.Insert(sql.NewRow("col1_1", "col2_1"))
@@ -23,7 +23,7 @@ func TestProject(t *testing.T) {
 	p := NewProject([]sql.Expression{expression.NewGetField(1, sql.String, "col2")}, child)
 	require.Equal(1, len(p.Children()))
 	schema := sql.Schema{
-		sql.Field{"col2", sql.String},
+		sql.Column{"col2", sql.String},
 	}
 	require.Equal(schema, p.Schema())
 	iter, err := p.RowIter()
@@ -53,7 +53,7 @@ func TestProject(t *testing.T) {
 		),
 	}, child)
 	schema = sql.Schema{
-		sql.Field{"foo", sql.String},
+		sql.Column{"foo", sql.String},
 	}
 	require.Equal(schema, p.Schema())
 }
