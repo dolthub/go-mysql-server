@@ -161,6 +161,18 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("t1"),
 	),
+	`SELECT a FROM t1 where a regexp '.*test.*';`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+		},
+		plan.NewFilter(
+			expression.NewRegexp(
+				expression.NewUnresolvedColumn("a"),
+				expression.NewLiteral(".*test.*", sql.String),
+			),
+			plan.NewUnresolvedTable("t1"),
+		),
+	),
 }
 
 func TestParse(t *testing.T) {

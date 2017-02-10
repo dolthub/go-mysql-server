@@ -2,6 +2,7 @@ package expression
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/gitql/gitql/sql"
 )
@@ -40,6 +41,50 @@ func (c *Equals) TransformUp(f func(sql.Expression) sql.Expression) sql.Expressi
 	rc := c.BinaryExpression.Right.TransformUp(f)
 
 	return f(NewEquals(lc, rc))
+}
+
+func (e Equals) Name() string {
+	return e.Left.Name() + "==" + e.Right.Name()
+}
+
+type Regexp struct {
+	Comparison
+}
+
+func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
+	// FIXME: enable this again
+	// checkEqualTypes(left, right)
+	return &Regexp{Comparison{BinaryExpression{left, right}, left.Type()}}
+}
+
+func (e Regexp) Eval(row sql.Row) interface{} {
+	l := e.Left.Eval(row)
+	r := e.Right.Eval(row)
+
+	sl, okl := l.(string)
+	sr, okr := r.(string)
+
+	if !okl || !okr {
+		return e.ChildType.Compare(l, r) == 0
+	}
+
+	reg, err := regexp.Compile(sr)
+	if err != nil {
+		return false
+	}
+
+	return reg.MatchString(sl)
+}
+
+func (c *Regexp) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
+	lc := c.BinaryExpression.Left.TransformUp(f)
+	rc := c.BinaryExpression.Right.TransformUp(f)
+
+	return f(NewRegexp(lc, rc))
+}
+
+func (e Regexp) Name() string {
+	return e.Left.Name() + " REGEXP " + e.Right.Name()
 }
 
 type GreaterThan struct {
@@ -138,8 +183,4 @@ func checkEqualTypes(a sql.Expression, b sql.Expression) {
 	if a.Resolved() && b.Resolved() && a.Type() != b.Type() {
 		panic(fmt.Errorf("both types should be equal: %v and %v\n", a, b))
 	}
-}
-
-func (e Equals) Name() string {
-	return e.Left.Name() + "==" + e.Right.Name()
 }
