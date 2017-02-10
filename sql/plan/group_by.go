@@ -183,12 +183,19 @@ func aggregate(exprs []sql.Expression, rows []sql.Row) sql.Row {
 func exprsToAggregateExprs(exprs []sql.Expression) []sql.AggregationExpression {
 	var r []sql.AggregationExpression
 	for _, e := range exprs {
-		if ae, ok := e.(sql.AggregationExpression); ok {
-			r = append(r, ae)
-		} else {
-			r = append(r, expression.NewFirst(e))
-		}
+		r = append(r, exprToAggregateExpr(e))
 	}
 
 	return r
+}
+
+func exprToAggregateExpr(e sql.Expression) sql.AggregationExpression {
+	switch v := e.(type) {
+	case sql.AggregationExpression:
+		return v
+	case *expression.Alias:
+		return exprToAggregateExpr(v.Child)
+	default:
+		return expression.NewFirst(e)
+	}
 }

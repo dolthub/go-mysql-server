@@ -190,6 +190,17 @@ func limitToLimit(o sqlparser.Expr, child sql.Node) (*plan.Limit, error) {
 	return plan.NewLimit(n, child), nil
 }
 
+func isAggregate(e sql.Expression) bool {
+	switch v := e.(type) {
+	case *expression.UnresolvedFunction:
+		return v.IsAggregate
+	case *expression.Alias:
+		return isAggregate(v.Child)
+	default:
+		return false
+	}
+}
+
 func selectToProjectOrGroupBy(se sqlparser.SelectExprs, g sqlparser.GroupBy, child sql.Node) (sql.Node, error) {
 	selectExprs, err := selectExprsToExpressions(se)
 	if err != nil {
@@ -199,8 +210,9 @@ func selectToProjectOrGroupBy(se sqlparser.SelectExprs, g sqlparser.GroupBy, chi
 	isAgg := len(g) > 0
 	if !isAgg {
 		for _, e := range selectExprs {
-			if u, ok := e.(*expression.UnresolvedFunction); ok {
-				isAgg = u.IsAggregate
+			if isAggregate(e) {
+				isAgg = true
+				break
 			}
 		}
 	}

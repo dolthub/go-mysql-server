@@ -47,6 +47,11 @@ func TestEngine_Query(t *testing.T) {
 		"SELECT COUNT(*) FROM mytable;",
 		[][]interface{}{{int64(3)}},
 	)
+
+	testQuery(t, e,
+		"SELECT COUNT(*) AS c FROM mytable;",
+		[][]interface{}{{int64(3)}},
+	)
 }
 
 func testQuery(t *testing.T, e *gitql.Engine, q string, r [][]interface{}) {
@@ -64,29 +69,26 @@ func testQuery(t *testing.T, e *gitql.Engine, q string, r [][]interface{}) {
 	assert.NoError(err)
 	assert.Equal(len(r[0]), len(cols))
 
+	vals := make([]interface{}, len(cols))
+	valPtrs := make([]interface{}, len(cols))
+	for i := 0; i < len(cols); i++ {
+		valPtrs[i] = &vals[i]
+	}
+
 	i := 0
 	for {
 		if !res.Next() {
 			break
 		}
 
-		expectedRow := r[i]
+		err := res.Scan(valPtrs...)
+		assert.NoError(err)
+
+		assert.Equal(r[i], vals)
 		i++
-
-		row := make([]interface{}, len(expectedRow))
-		for i := range row {
-			i64 := int64(0)
-			row[i] = &i64
-		}
-
-		assert.NoError(res.Scan(row...))
-		for i := range row {
-			row[i] = *(row[i].(*int64))
-		}
-
-		assert.Equal(expectedRow, row)
 	}
 
+	assert.NoError(res.Err())
 	assert.Equal(len(r), i)
 }
 
