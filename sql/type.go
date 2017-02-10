@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -43,6 +44,7 @@ type Type interface {
 	Check(interface{}) bool
 	Convert(interface{}) (interface{}, error)
 	Compare(interface{}, interface{}) int
+	Native(interface{}) driver.Value
 }
 
 var Null = nullType{}
@@ -75,6 +77,10 @@ func (t nullType) Compare(a interface{}, b interface{}) int {
 	return 0
 }
 
+func (t nullType) Native(v interface{}) driver.Value {
+	return driver.Value(nil)
+}
+
 var Integer = integerType{}
 
 type integerType struct{}
@@ -99,6 +105,10 @@ func (t integerType) Compare(a interface{}, b interface{}) int {
 	return compareInt32(a, b)
 }
 
+func (t integerType) Native(v interface{}) driver.Value {
+	return driver.Value(int64(v.(int32)))
+}
+
 var BigInteger = bigIntegerType{}
 
 type bigIntegerType struct{}
@@ -121,6 +131,10 @@ func (t bigIntegerType) Convert(v interface{}) (interface{}, error) {
 
 func (t bigIntegerType) Compare(a interface{}, b interface{}) int {
 	return compareInt64(a, b)
+}
+
+func (t bigIntegerType) Native(v interface{}) driver.Value {
+	return driver.Value(v.(int64))
 }
 
 // TimestampWithTimezone is a timestamp with timezone.
@@ -148,6 +162,10 @@ func (t timestampWithTimeZoneType) Compare(a interface{}, b interface{}) int {
 	return compareTimestamp(a, b)
 }
 
+func (t timestampWithTimeZoneType) Native(v interface{}) driver.Value {
+	return driver.Value(v.(time.Time))
+}
+
 var String = stringType{}
 
 type stringType struct{}
@@ -170,6 +188,10 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 
 func (t stringType) Compare(a interface{}, b interface{}) int {
 	return compareString(a, b)
+}
+
+func (t stringType) Native(v interface{}) driver.Value {
+	return driver.Value(v.(string))
 }
 
 var Boolean Type = booleanType{}
@@ -196,6 +218,10 @@ func (t booleanType) Compare(a interface{}, b interface{}) int {
 	return compareBool(a, b)
 }
 
+func (t booleanType) Native(v interface{}) driver.Value {
+	return driver.Value(v.(bool))
+}
+
 var Float Type = floatType{}
 
 type floatType struct{}
@@ -218,6 +244,10 @@ func (t floatType) Convert(v interface{}) (interface{}, error) {
 
 func (t floatType) Compare(a interface{}, b interface{}) int {
 	return compareFloat64(a, b)
+}
+
+func (t floatType) Native(v interface{}) driver.Value {
+	return driver.Value(v.(float64))
 }
 
 func checkString(v interface{}) bool {
