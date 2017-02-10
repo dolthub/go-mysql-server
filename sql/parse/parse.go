@@ -142,7 +142,7 @@ func tableExprToTable(te sqlparser.TableExpr) (sql.Node, error) {
 }
 
 func whereToFilter(w *sqlparser.Where, child sql.Node) (*plan.Filter, error) {
-	c, err := boolExprToExpression(w.Expr)
+	c, err := exprToExpression(w.Expr)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func whereToFilter(w *sqlparser.Where, child sql.Node) (*plan.Filter, error) {
 func orderByToSort(ob sqlparser.OrderBy, child sql.Node) (*plan.Sort, error) {
 	var sortFields []plan.SortField
 	for _, o := range ob {
-		e, err := valExprToExpression(o.Expr)
+		e, err := exprToExpression(o.Expr)
 		if err != nil {
 			return nil, err
 		}
@@ -175,8 +175,8 @@ func orderByToSort(ob sqlparser.OrderBy, child sql.Node) (*plan.Sort, error) {
 	return plan.NewSort(sortFields, child), nil
 }
 
-func limitToLimit(o sqlparser.ValExpr, child sql.Node) (*plan.Limit, error) {
-	e, err := valExprToExpression(o)
+func limitToLimit(o sqlparser.Expr, child sql.Node) (*plan.Limit, error) {
+	e, err := exprToExpression(o)
 	if err != nil {
 		return nil, err
 	}
@@ -232,91 +232,18 @@ func selectExprsToExpressions(se sqlparser.SelectExprs) ([]sql.Expression, error
 }
 
 func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
-	be, ok := e.(sqlparser.BoolExpr)
-	if ok {
-		return boolExprToExpression(be)
-	}
-
-	c, ok := e.(*sqlparser.ComparisonExpr)
-	if ok {
-		return comparisonExprToExpression(c)
-	}
-
-	v, ok := e.(sqlparser.ValExpr)
-	if ok {
-		return valExprToExpression(v)
-	}
-
-	return nil, errUnsupported(e)
-}
-
-func boolExprToExpression(be sqlparser.BoolExpr) (sql.Expression, error) {
-	switch b := be.(type) {
+	switch v := e.(type) {
 	default:
-		return nil, errUnsupported(b)
+		return nil, errUnsupported(e)
 	case *sqlparser.ComparisonExpr:
-		return comparisonExprToExpression(b)
+		return comparisonExprToExpression(v)
 	case *sqlparser.NotExpr:
-		c, err := boolExprToExpression(b.Expr)
+		c, err := exprToExpression(v.Expr)
 		if err != nil {
 			return nil, err
 		}
 
 		return expression.NewNot(c), nil
-	}
-}
-
-func comparisonExprToExpression(c *sqlparser.ComparisonExpr) (sql.Expression,
-	error) {
-
-	left, err := valExprToExpression(c.Left)
-	if err != nil {
-		return nil, err
-	}
-
-	right, err := valExprToExpression(c.Right)
-	if err != nil {
-		return nil, err
-	}
-
-	switch c.Operator {
-	default:
-		return nil, errUnsupportedFeature(c.Operator)
-	case sqlparser.EqualStr:
-		return expression.NewEquals(left, right), nil
-	case sqlparser.LessThanStr:
-		return expression.NewLessThan(left, right), nil
-	case sqlparser.LessEqualStr:
-		return expression.NewLessThanOrEqual(left, right), nil
-	case sqlparser.GreaterThanStr:
-		return expression.NewGreaterThan(left, right), nil
-	case sqlparser.GreaterEqualStr:
-		return expression.NewGreaterThanOrEqual(left, right), nil
-	case sqlparser.NotEqualStr:
-		return expression.NewNot(
-			expression.NewEquals(left, right),
-		), nil
-	}
-}
-
-func groupByToExpressions(g sqlparser.GroupBy) ([]sql.Expression, error) {
-	es := make([]sql.Expression, len(g))
-	for i, ve := range g {
-		e, err := valExprToExpression(ve)
-		if err != nil {
-			return nil, err
-		}
-
-		es[i] = e
-	}
-
-	return es, nil
-}
-
-func valExprToExpression(ve sqlparser.ValExpr) (sql.Expression, error) {
-	switch v := ve.(type) {
-	default:
-		return nil, errUnsupported(v)
 	case *sqlparser.SQLVal:
 		switch v.Type {
 		case sqlparser.StrVal:
@@ -349,6 +276,53 @@ func valExprToExpression(ve sqlparser.ValExpr) (sql.Expression, error) {
 		return expression.NewUnresolvedFunction(v.Name.Lowered(),
 			v.IsAggregate(), exprs...), nil
 	}
+}
+
+func comparisonExprToExpression(c *sqlparser.ComparisonExpr) (sql.Expression,
+	error) {
+
+	left, err := exprToExpression(c.Left)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := exprToExpression(c.Right)
+	if err != nil {
+		return nil, err
+	}
+
+	switch c.Operator {
+	default:
+		return nil, errUnsupportedFeature(c.Operator)
+	case sqlparser.EqualStr:
+		return expression.NewEquals(left, right), nil
+	case sqlparser.LessThanStr:
+		return expression.NewLessThan(left, right), nil
+	case sqlparser.LessEqualStr:
+		return expression.NewLessThanOrEqual(left, right), nil
+	case sqlparser.GreaterThanStr:
+		return expression.NewGreaterThan(left, right), nil
+	case sqlparser.GreaterEqualStr:
+		return expression.NewGreaterThanOrEqual(left, right), nil
+	case sqlparser.NotEqualStr:
+		return expression.NewNot(
+			expression.NewEquals(left, right),
+		), nil
+	}
+}
+
+func groupByToExpressions(g sqlparser.GroupBy) ([]sql.Expression, error) {
+	es := make([]sql.Expression, len(g))
+	for i, ve := range g {
+		e, err := exprToExpression(ve)
+		if err != nil {
+			return nil, err
+		}
+
+		es[i] = e
+	}
+
+	return es, nil
 }
 
 func selectExprToExpression(se sqlparser.SelectExpr) (sql.Expression, error) {
