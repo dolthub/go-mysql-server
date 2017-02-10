@@ -1,7 +1,7 @@
 package gitql_test
 
 import (
-	"io"
+	gosql "database/sql"
 	"testing"
 
 	"github.com/gitql/gitql"
@@ -11,77 +11,83 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	driverName = "engine_tests"
+)
+
 func TestEngine_Query(t *testing.T) {
 	e := newEngine(t)
+	gosql.Register(driverName, e)
 	testQuery(t, e,
 		"SELECT i FROM mytable;",
-		[]sql.Row{
-			sql.NewRow(int64(1)),
-			sql.NewRow(int64(2)),
-			sql.NewRow(int64(3)),
-		},
+		[][]interface{}{{int64(1)}, {int64(2)}, {int64(3)}},
 	)
 
 	testQuery(t, e,
 		"SELECT i FROM mytable WHERE i = 2;",
-		[]sql.Row{
-			sql.NewRow(int64(2)),
-		},
+		[][]interface{}{{int64(2)}},
 	)
 
 	testQuery(t, e,
 		"SELECT i FROM mytable ORDER BY i DESC;",
-		[]sql.Row{
-			sql.NewRow(int64(3)),
-			sql.NewRow(int64(2)),
-			sql.NewRow(int64(1)),
-		},
+		[][]interface{}{{int64(3)}, {int64(2)}, {int64(1)}},
 	)
 
 	testQuery(t, e,
 		"SELECT i FROM mytable WHERE s = 'a' ORDER BY i DESC;",
-		[]sql.Row{
-			sql.NewRow(int64(1)),
-		},
+		[][]interface{}{{int64(1)}},
 	)
 
 	testQuery(t, e,
 		"SELECT i FROM mytable WHERE s = 'a' ORDER BY i DESC LIMIT 1;",
-		[]sql.Row{
-			sql.NewRow(int64(1)),
-		},
+		[][]interface{}{{int64(1)}},
 	)
 
 	testQuery(t, e,
 		"SELECT COUNT(*) FROM mytable;",
-		[]sql.Row{
-			sql.NewRow(int32(3)),
-		},
+		[][]interface{}{{int64(3)}},
 	)
 }
 
-func testQuery(t *testing.T, e *gitql.Engine, q string, r []sql.Row) {
+func testQuery(t *testing.T, e *gitql.Engine, q string, r [][]interface{}) {
 	assert := require.New(t)
 
-	schema, iter, err := e.Query(q)
-	assert.Nil(err)
-	assert.NotNil(iter)
-	assert.NotNil(schema)
+	db, err := gosql.Open(driverName, "")
+	assert.NoError(err)
+	defer func() { assert.NoError(db.Close()) }()
 
-	results := []sql.Row{}
+	res, err := db.Query(q)
+	assert.NoError(err)
+	defer func() { assert.NoError(res.Close()) }()
+
+	cols, err := res.Columns()
+	assert.NoError(err)
+	assert.Equal(len(r[0]), len(cols))
+
+	i := 0
 	for {
-		el, err := iter.Next()
-		if err == io.EOF {
+		if !res.Next() {
 			break
 		}
-		if err != nil {
-			assert.Fail("returned err distinct of io.EOF: %q", err)
+
+		expectedRow := r[i]
+		i++
+
+		row := make([]interface{}, len(expectedRow))
+		for i := range row {
+			i64 := int64(0)
+			row[i] = &i64
 		}
-		results = append(results, el)
+
+		assert.NoError(res.Scan(row...))
+		for i := range row {
+			row[i] = *(row[i].(*int64))
+		}
+
+		assert.Equal(expectedRow, row)
 	}
 
-	assert.Len(results, len(r))
-	assert.Equal(results, r)
+	assert.Equal(len(r), i)
 }
 
 func newEngine(t *testing.T) *gitql.Engine {
