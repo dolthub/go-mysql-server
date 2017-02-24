@@ -2,10 +2,18 @@ language: go
 sudo: false
 go:
   - 1.7
-before_install:
-  - go get -t -v ./...
+  - 1.8
+  - tip
+matrix:
+  - fast_finish: true
+  - allow_failures:
+    - go: tip
 install:
-  - go build -ldflags="-X main.version=$TRAVIS_TAG" -v -o gitql ./cmd/...
+  - rm -rf $GOPATH/src/gopkg.in/sqle
+  - mkdir -p $GOPATH/src/gopkg.in/sqle
+  - ln -s $PWD $GOPATH/src/gopkg.in/sqle/sqle.v0
+  - cd $GOPATH/src/gopkg.in/sqle/sqle.v0
+  - go get -t -v ./...
 script:
   - sh ./go.test.sh
 after_success:
