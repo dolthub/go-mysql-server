@@ -11,6 +11,21 @@
   <a href="https://godoc.org/gopkg.in/sqle/sqle.v0"><img alt="GoDoc" src="https://godoc.org/gopkg.in/sqle/sqle.v0?status.svg" /></a>
 </p>
 
+## Installation
+
+The import path for the package is `gopkg.in/sqle/sqle.v0`.
+
+To install it, run:
+
+```
+go get gopkg.in/sqle/sqle.v0
+```
+
+## Documentation
+
+* [sqle godoc](https://godoc.org/gopkg.in/sqle/sqle.v0)
+
+
 ## SQL syntax
 
 We are continuously adding more functionality to gitql. We support a subset of the SQL standard, currently including:
