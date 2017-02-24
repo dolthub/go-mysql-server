@@ -15,81 +15,84 @@ const (
 	driverName = "engine_tests"
 )
 
-func TestEngine_Query(t *testing.T) {
-	e := newEngine(t)
-	gosql.Register(driverName, e)
-	testQuery(t, e,
+func TestQueries(t *testing.T) {
+	testQuery(t,
 		"SELECT i FROM mytable;",
 		[][]interface{}{{int64(1)}, {int64(2)}, {int64(3)}},
 	)
 
-	testQuery(t, e,
+	testQuery(t,
 		"SELECT i FROM mytable WHERE i = 2;",
 		[][]interface{}{{int64(2)}},
 	)
 
-	testQuery(t, e,
+	testQuery(t,
 		"SELECT i FROM mytable ORDER BY i DESC;",
 		[][]interface{}{{int64(3)}, {int64(2)}, {int64(1)}},
 	)
 
-	testQuery(t, e,
+	testQuery(t,
 		"SELECT i FROM mytable WHERE s = 'a' ORDER BY i DESC;",
 		[][]interface{}{{int64(1)}},
 	)
 
-	testQuery(t, e,
+	testQuery(t,
 		"SELECT i FROM mytable WHERE s = 'a' ORDER BY i DESC LIMIT 1;",
 		[][]interface{}{{int64(1)}},
 	)
 
-	testQuery(t, e,
+	testQuery(t,
 		"SELECT COUNT(*) FROM mytable;",
 		[][]interface{}{{int64(3)}},
 	)
 
-	testQuery(t, e,
+	testQuery(t,
 		"SELECT COUNT(*) AS c FROM mytable;",
 		[][]interface{}{{int64(3)}},
 	)
 }
 
-func testQuery(t *testing.T, e *sqle.Engine, q string, r [][]interface{}) {
-	assert := require.New(t)
+func testQuery(t *testing.T, q string, r [][]interface{}) {
+	t.Run(q, func(t *testing.T) {
+		assert := require.New(t)
 
-	db, err := gosql.Open(driverName, "")
-	assert.NoError(err)
-	defer func() { assert.NoError(db.Close()) }()
+		e := newEngine(t)
+		sqle.DefaultEngine = e
 
-	res, err := db.Query(q)
-	assert.NoError(err)
-	defer func() { assert.NoError(res.Close()) }()
+		db, err := gosql.Open(sqle.DriverName, "")
+		assert.NoError(err)
+		defer func() { assert.NoError(db.Close()) }()
 
-	cols, err := res.Columns()
-	assert.NoError(err)
-	assert.Equal(len(r[0]), len(cols))
+		res, err := db.Query(q)
+		assert.NoError(err)
+		defer func() { assert.NoError(res.Close()) }()
 
-	vals := make([]interface{}, len(cols))
-	valPtrs := make([]interface{}, len(cols))
-	for i := 0; i < len(cols); i++ {
-		valPtrs[i] = &vals[i]
-	}
+		cols, err := res.Columns()
+		assert.NoError(err)
+		assert.Equal(len(r[0]), len(cols))
 
-	i := 0
-	for {
-		if !res.Next() {
-			break
+		vals := make([]interface{}, len(cols))
+		valPtrs := make([]interface{}, len(cols))
+		for i := 0; i < len(cols); i++ {
+			valPtrs[i] = &vals[i]
 		}
 
-		err := res.Scan(valPtrs...)
-		assert.NoError(err)
+		i := 0
+		for {
+			if !res.Next() {
+				break
+			}
 
-		assert.Equal(r[i], vals)
-		i++
-	}
+			err := res.Scan(valPtrs...)
+			assert.NoError(err)
 
-	assert.NoError(res.Err())
-	assert.Equal(len(r), i)
+			assert.Equal(r[i], vals)
+			i++
+		}
+
+		assert.NoError(res.Err())
+		assert.Equal(len(r), i)
+	})
 }
 
 func newEngine(t *testing.T) *sqle.Engine {

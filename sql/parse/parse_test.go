@@ -176,11 +176,14 @@ var fixtures = map[string]sql.Node{
 }
 
 func TestParse(t *testing.T) {
-	assert := assert.New(t)
 	for query, expectedPlan := range fixtures {
-		p, err := Parse(query)
-		assert.Nil(err, "error for query '%s'", query)
-		assert.Exactly(expectedPlan, p,
-			"plans do not match for query '%s'", query)
+		t.Run(query, func(t *testing.T) {
+			assert := assert.New(t)
+			p, err := Parse(query)
+			assert.Nil(err, "error for query '%s'", query)
+			assert.Exactly(expectedPlan, p,
+				"plans do not match for query '%s'", query)
+		})
+
 	}
 }
