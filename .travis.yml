@@ -5,8 +5,8 @@ go:
   - 1.8
   - tip
 matrix:
-  - fast_finish: true
-  - allow_failures:
+  fast_finish: true
+  allow_failures:
     - go: tip
 install:
   - rm -rf $GOPATH/src/gopkg.in/sqle
