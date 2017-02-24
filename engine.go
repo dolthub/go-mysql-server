@@ -1,4 +1,4 @@
-package gitql
+package sqle
 
 import (
 	gosql "database/sql"
@@ -17,7 +17,7 @@ var (
 )
 
 const (
-	DriverName = "gitql"
+	DriverName = "sqle"
 )
 
 func init() {

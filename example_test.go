@@ -1,4 +1,4 @@
-package gitql_test
+package sqle_test
 
 import (
 	"database/sql"
@@ -11,10 +11,10 @@ import (
 
 func Example() {
 	// Create a test memory database and register it to the default engine.
-	gitql.DefaultEngine.AddDatabase(createTestDatabase())
+	sqle.DefaultEngine.AddDatabase(createTestDatabase())
 
 	// Open a sql connection with the default engine.
-	conn, err := sql.Open(gitql.DriverName, "")
+	conn, err := sql.Open(sqle.DriverName, "")
 	checkIfError(err)
 
 	// Prepare a query.

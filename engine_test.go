@@ -1,4 +1,4 @@
-package gitql_test
+package sqle_test
 
 import (
 	gosql "database/sql"
@@ -54,7 +54,7 @@ func TestEngine_Query(t *testing.T) {
 	)
 }
 
-func testQuery(t *testing.T, e *gitql.Engine, q string, r [][]interface{}) {
+func testQuery(t *testing.T, e *sqle.Engine, q string, r [][]interface{}) {
 	assert := require.New(t)
 
 	db, err := gosql.Open(driverName, "")
@@ -92,7 +92,7 @@ func testQuery(t *testing.T, e *gitql.Engine, q string, r [][]interface{}) {
 	assert.Equal(len(r), i)
 }
 
-func newEngine(t *testing.T) *gitql.Engine {
+func newEngine(t *testing.T) *sqle.Engine {
 	assert := require.New(t)
 
 	table := mem.NewTable("mytable", sql.Schema{
@@ -106,7 +106,7 @@ func newEngine(t *testing.T) *gitql.Engine {
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 
-	e := gitql.New()
+	e := sqle.New()
 	e.AddDatabase(db)
 
 	return e
