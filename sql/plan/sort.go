@@ -9,7 +9,7 @@ import (
 
 type Sort struct {
 	UnaryNode
-	sortFields []SortField
+	SortFields []SortField
 }
 
 type SortOrder byte
@@ -27,7 +27,7 @@ type SortField struct {
 func NewSort(sortFields []SortField, child sql.Node) *Sort {
 	return &Sort{
 		UnaryNode:  UnaryNode{child},
-		sortFields: sortFields,
+		SortFields: sortFields,
 	}
 }
 
@@ -36,7 +36,7 @@ func (s *Sort) Resolved() bool {
 }
 
 func (p *Sort) expressionsResolved() bool {
-	for _, f := range p.sortFields {
+	for _, f := range p.SortFields {
 		if !f.Column.Resolved() {
 			return false
 		}
@@ -55,7 +55,7 @@ func (s *Sort) RowIter() (sql.RowIter, error) {
 
 func (s *Sort) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	c := s.UnaryNode.Child.TransformUp(f)
-	n := NewSort(s.sortFields, c)
+	n := NewSort(s.SortFields, c)
 
 	return f(n)
 }
@@ -63,7 +63,7 @@ func (s *Sort) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 func (s *Sort) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
 	c := s.UnaryNode.Child.TransformExpressionsUp(f)
 	sfs := []SortField{}
-	for _, sf := range s.sortFields {
+	for _, sf := range s.SortFields {
 		sfs = append(sfs, SortField{sf.Column.TransformUp(f), sf.Order})
 	}
 	n := NewSort(sfs, c)
@@ -121,7 +121,7 @@ func (i *sortIter) computeSortedRows() error {
 		rows = append(rows, childRow)
 	}
 	sort.Sort(&sorter{
-		sortFields: i.s.sortFields,
+		sortFields: i.s.SortFields,
 		rows:       rows,
 	})
 	i.sortedRows = rows
