@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/gitql/gitql/mem"
-	"github.com/gitql/gitql/sql"
-	"github.com/gitql/gitql/sql/expression"
+	"gopkg.in/sqle/sqle.v0/mem"
+	"gopkg.in/sqle/sqle.v0/sql"
+	"gopkg.in/sqle/sqle.v0/sql/expression"
 )
 
 func TestProject(t *testing.T) {

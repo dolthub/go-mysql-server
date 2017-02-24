@@ -4,9 +4,9 @@ import (
 	"io"
 	"testing"
 
-	"github.com/gitql/gitql/mem"
-	"github.com/gitql/gitql/sql"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/sqle/sqle.v0/mem"
+	"gopkg.in/sqle/sqle.v0/sql"
 )
 
 func TestDescribe(t *testing.T) {

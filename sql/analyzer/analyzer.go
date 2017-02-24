@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/gitql/gitql/sql"
+	"gopkg.in/sqle/sqle.v0/sql"
 )
 
 const maxAnalysisIterations = 1000

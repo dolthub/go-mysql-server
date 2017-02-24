@@ -1,6 +1,6 @@
 package plan
 
-import "github.com/gitql/gitql/sql"
+import "gopkg.in/sqle/sqle.v0/sql"
 
 type UnaryNode struct {
 	Child sql.Node

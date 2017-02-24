@@ -3,7 +3,7 @@ package plan
 import (
 	"fmt"
 
-	"github.com/gitql/gitql/sql"
+	"gopkg.in/sqle/sqle.v0/sql"
 )
 
 type UnresolvedTable struct {

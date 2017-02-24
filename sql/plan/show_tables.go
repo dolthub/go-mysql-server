@@ -4,7 +4,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/gitql/gitql/sql"
+	"gopkg.in/sqle/sqle.v0/sql"
 )
 
 type ShowTables struct {

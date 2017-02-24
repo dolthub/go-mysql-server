@@ -3,11 +3,11 @@ package analyzer_test
 import (
 	"testing"
 
-	"github.com/gitql/gitql/mem"
-	"github.com/gitql/gitql/sql"
-	"github.com/gitql/gitql/sql/analyzer"
-	"github.com/gitql/gitql/sql/expression"
-	"github.com/gitql/gitql/sql/plan"
+	"gopkg.in/sqle/sqle.v0/mem"
+	"gopkg.in/sqle/sqle.v0/sql"
+	"gopkg.in/sqle/sqle.v0/sql/analyzer"
+	"gopkg.in/sqle/sqle.v0/sql/expression"
+	"gopkg.in/sqle/sqle.v0/sql/plan"
 
 	"github.com/stretchr/testify/assert"
 )

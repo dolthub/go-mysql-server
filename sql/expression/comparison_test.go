@@ -3,15 +3,15 @@ package expression
 import (
 	"testing"
 
-	"github.com/gitql/gitql/sql"
+	"gopkg.in/sqle/sqle.v0/sql"
 
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	testEqual   = 1
-	testLess    = 2
-	testGreater = 3
+	testEqual     = 1
+	testLess      = 2
+	testGreater   = 3
 	testRegexp    = 4
 	testNotRegexp = 5
 )

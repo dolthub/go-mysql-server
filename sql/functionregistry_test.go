@@ -3,8 +3,8 @@ package sql_test
 import (
 	"testing"
 
-	"github.com/gitql/gitql/sql"
-	"github.com/gitql/gitql/sql/expression"
+	"gopkg.in/sqle/sqle.v0/sql"
+	"gopkg.in/sqle/sqle.v0/sql/expression"
 
 	"github.com/stretchr/testify/assert"
 )

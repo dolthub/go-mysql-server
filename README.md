@@ -9,14 +9,14 @@
  
   <a href="https://codecov.io/gh/gitql/gitql"><img alt="codecov" src="https://codecov.io/gh/gitql/gitql/branch/master/graph/badge.svg" /></a>
   
-  <a href="https://godoc.org/github.com/gitql/gitql"><img alt="GoDoc" src="https://godoc.org/github.com/gitql/gitql?status.svg" /></a>
+  <a href="https://godoc.org/gopkg.in/sqle/sqle.v0"><img alt="GoDoc" src="https://godoc.org/gopkg.in/sqle/sqle.v0?status.svg" /></a>
 </p>
 
 <a href="https://asciinema.org/a/102733?autoplay=1" target="_blank"><img src="https://asciinema.org/a/102733.png" width="979"/></a>
 
 ## Installation
 
-Check the [Releases](https://github.com/gitql/gitql/releases) page to download
+Check the [Releases](https://gopkg.in/sqle/sqle.v0/releases) page to download
 the gitql binary.
 
 ## Usage
@@ -95,4 +95,4 @@ We are continuously adding more functionality to gitql. We support a subset of t
 
 ## License
 
-gitql is licensed under the [MIT License](https://github.com/gitql/gitql/blob/master/LICENSE).
+gitql is licensed under the [MIT License](https://gopkg.in/sqle/sqle.v0/blob/master/LICENSE).

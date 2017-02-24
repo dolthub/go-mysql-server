@@ -1,6 +1,6 @@
 package expression
 
-import "github.com/gitql/gitql/sql"
+import "gopkg.in/sqle/sqle.v0/sql"
 
 type UnaryExpression struct {
 	Child sql.Expression
