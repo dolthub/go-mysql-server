@@ -60,6 +60,10 @@ type Table interface {
 	Node
 }
 
+type Inserter interface {
+	Insert(row Row) error
+}
+
 type Database interface {
 	Nameable
 	Tables() map[string]Table

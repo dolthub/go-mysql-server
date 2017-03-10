@@ -54,6 +54,8 @@ func convert(stmt sqlparser.Statement) (sql.Node, error) {
 		return nil, errUnsupported(n)
 	case *sqlparser.Select:
 		return convertSelect(n)
+	case *sqlparser.Insert:
+		return convertInsert(n)
 	}
 }
 
@@ -101,6 +103,67 @@ func convertSelect(s *sqlparser.Select) (sql.Node, error) {
 	}
 
 	return node, nil
+}
+
+func convertInsert(i *sqlparser.Insert) (sql.Node, error) {
+	if len(i.OnDup) > 0 {
+		return nil, errUnsupportedFeature("ON DUPLICATE KEY")
+	}
+
+	if len(i.Ignore) > 0 {
+		return nil, errUnsupported(i)
+	}
+
+	src, err := insertRowsToNode(i.Rows)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewInsertInto(
+		plan.NewUnresolvedTable(i.Table.Name.String()),
+		src,
+		columnsToStrings(i.Columns),
+	), nil
+}
+
+func columnsToStrings(cols sqlparser.Columns) []string {
+	res := make([]string, len(cols))
+	for i, c := range cols {
+		res[i] = c.String()
+	}
+
+	return res
+}
+
+func insertRowsToNode(ir sqlparser.InsertRows) (sql.Node, error) {
+	switch v := ir.(type) {
+	case *sqlparser.Select:
+		return convertSelect(v)
+	case *sqlparser.Union:
+		return nil, errUnsupportedFeature("UNION")
+	case sqlparser.Values:
+		return valuesToValues(v)
+	default:
+		return nil, errUnsupported(ir)
+	}
+}
+
+func valuesToValues(v sqlparser.Values) (sql.Node, error) {
+	exprTuples := make([][]sql.Expression, len(v))
+	for i, vt := range v {
+		exprs := make([]sql.Expression, len(vt))
+		exprTuples[i] = exprs
+		for j, e := range vt {
+			expr, err := exprToExpression(e)
+			if err != nil {
+				return nil, err
+			}
+
+			exprs[j] = expr
+		}
+	}
+
+	return plan.NewValues(exprTuples), nil
 }
 
 func tableExprsToTable(te sqlparser.TableExprs) (sql.Node, error) {

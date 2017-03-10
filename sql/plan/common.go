@@ -27,6 +27,10 @@ func (n BinaryNode) Children() []sql.Node {
 	return []sql.Node{n.Left, n.Right}
 }
 
+func (n BinaryNode) Resolved() bool {
+	return n.Left.Resolved() && n.Right.Resolved()
+}
+
 func expressionsResolved(exprs ...sql.Expression) bool {
 	for _, e := range exprs {
 		if !e.Resolved() {

@@ -45,6 +45,7 @@ type Type interface {
 	Convert(interface{}) (interface{}, error)
 	Compare(interface{}, interface{}) int
 	Native(interface{}) driver.Value
+	Default() interface{}
 }
 
 var Null = nullType{}
@@ -81,6 +82,10 @@ func (t nullType) Native(v interface{}) driver.Value {
 	return driver.Value(nil)
 }
 
+func (t nullType) Default() interface{} {
+	return nil
+}
+
 var Integer = integerType{}
 
 type integerType struct{}
@@ -109,6 +114,10 @@ func (t integerType) Native(v interface{}) driver.Value {
 	return driver.Value(int64(v.(int32)))
 }
 
+func (t integerType) Default() interface{} {
+	return int32(0)
+}
+
 var BigInteger = bigIntegerType{}
 
 type bigIntegerType struct{}
@@ -135,6 +144,10 @@ func (t bigIntegerType) Compare(a interface{}, b interface{}) int {
 
 func (t bigIntegerType) Native(v interface{}) driver.Value {
 	return driver.Value(v.(int64))
+}
+
+func (t bigIntegerType) Default() interface{} {
+	return int64(0)
 }
 
 // TimestampWithTimezone is a timestamp with timezone.
@@ -166,6 +179,10 @@ func (t timestampWithTimeZoneType) Native(v interface{}) driver.Value {
 	return driver.Value(v.(time.Time))
 }
 
+func (t timestampWithTimeZoneType) Default() interface{} {
+	return time.Time{}
+}
+
 var String = stringType{}
 
 type stringType struct{}
@@ -192,6 +209,10 @@ func (t stringType) Compare(a interface{}, b interface{}) int {
 
 func (t stringType) Native(v interface{}) driver.Value {
 	return driver.Value(v.(string))
+}
+
+func (t stringType) Default() interface{} {
+	return ""
 }
 
 var Boolean Type = booleanType{}
@@ -222,6 +243,10 @@ func (t booleanType) Native(v interface{}) driver.Value {
 	return driver.Value(v.(bool))
 }
 
+func (t booleanType) Default() interface{} {
+	return false
+}
+
 var Float Type = floatType{}
 
 type floatType struct{}
@@ -248,6 +273,10 @@ func (t floatType) Compare(a interface{}, b interface{}) int {
 
 func (t floatType) Native(v interface{}) driver.Value {
 	return driver.Value(v.(float64))
+}
+
+func (t floatType) Default() interface{} {
+	return float64(0)
 }
 
 func checkString(v interface{}) bool {

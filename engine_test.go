@@ -16,52 +16,66 @@ const (
 )
 
 func TestQueries(t *testing.T) {
-	testQuery(t,
+	e := newEngine(t)
+
+	testQuery(t, e,
 		"SELECT i FROM mytable;",
 		[][]interface{}{{int64(1)}, {int64(2)}, {int64(3)}},
 	)
 
-	testQuery(t,
+	testQuery(t, e,
 		"SELECT i FROM mytable WHERE i = 2;",
 		[][]interface{}{{int64(2)}},
 	)
 
-	testQuery(t,
+	testQuery(t, e,
 		"SELECT i FROM mytable ORDER BY i DESC;",
 		[][]interface{}{{int64(3)}, {int64(2)}, {int64(1)}},
 	)
 
-	testQuery(t,
+	testQuery(t, e,
 		"SELECT i FROM mytable WHERE s = 'a' ORDER BY i DESC;",
 		[][]interface{}{{int64(1)}},
 	)
 
-	testQuery(t,
+	testQuery(t, e,
 		"SELECT i FROM mytable WHERE s = 'a' ORDER BY i DESC LIMIT 1;",
 		[][]interface{}{{int64(1)}},
 	)
 
-	testQuery(t,
+	testQuery(t, e,
 		"SELECT COUNT(*) FROM mytable;",
 		[][]interface{}{{int64(3)}},
 	)
 
-	testQuery(t,
+	testQuery(t, e,
 		"SELECT COUNT(*) FROM mytable LIMIT 1;",
 		[][]interface{}{{int64(3)}},
 	)
 
-	testQuery(t,
+	testQuery(t, e,
 		"SELECT COUNT(*) AS c FROM mytable;",
 		[][]interface{}{{int64(3)}},
 	)
 }
 
-func testQuery(t *testing.T, q string, r [][]interface{}) {
+func TestInsertInto(t *testing.T) {
+	e := newEngine(t)
+	testQuery(t, e,
+		"INSERT INTO mytable (s, i) VALUES ('x', 999);",
+		[][]interface{}{{int64(1)}},
+	)
+
+	testQuery(t, e,
+		"SELECT i FROM mytable WHERE s = 'x';",
+		[][]interface{}{{int64(999)}},
+	)
+}
+
+func testQuery(t *testing.T, e *sqle.Engine, q string, r [][]interface{}) {
 	t.Run(q, func(t *testing.T) {
 		assert := require.New(t)
 
-		e := newEngine(t)
 		sqle.DefaultEngine = e
 
 		db, err := gosql.Open(sqle.DriverName, "")

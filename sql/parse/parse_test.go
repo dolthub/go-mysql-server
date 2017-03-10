@@ -173,6 +173,14 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("t1"),
 		),
 	),
+	`INSERT INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
+		plan.NewUnresolvedTable("t1"),
+		plan.NewValues([][]sql.Expression{{
+			expression.NewLiteral("a", sql.String),
+			expression.NewLiteral(int64(1), sql.BigInteger),
+		}}),
+		[]string{"col1", "col2"},
+	),
 }
 
 func TestParse(t *testing.T) {
