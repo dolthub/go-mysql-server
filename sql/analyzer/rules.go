@@ -36,7 +36,6 @@ func resolveTables(a *Analyzer, n sql.Node) sql.Node {
 		}
 
 		rt, err := a.Catalog.Table(a.CurrentDatabase, t.Name)
-
 		if err != nil {
 			return n
 		}
@@ -46,86 +45,99 @@ func resolveTables(a *Analyzer, n sql.Node) sql.Node {
 }
 
 func resolveStar(a *Analyzer, n sql.Node) sql.Node {
-	if n.Resolved() {
-		return n
-	}
+	return n.TransformUp(func(n sql.Node) sql.Node {
+		if n.Resolved() {
+			return n
+		}
 
-	p, ok := n.(*plan.Project)
-	if !ok {
-		return n
-	}
+		p, ok := n.(*plan.Project)
+		if !ok {
+			return n
+		}
 
-	if len(p.Expressions) != 1 {
-		return n
-	}
+		if len(p.Expressions) != 1 {
+			return n
+		}
 
-	if _, ok := p.Expressions[0].(*expression.Star); !ok {
-		return n
-	}
+		if _, ok := p.Expressions[0].(*expression.Star); !ok {
+			return n
+		}
 
-	var exprs []sql.Expression
-	for i, e := range p.Child.Schema() {
-		gf := expression.NewGetField(i, e.Type, e.Name)
-		exprs = append(exprs, gf)
-	}
+		var exprs []sql.Expression
+		for i, e := range p.Child.Schema() {
+			gf := expression.NewGetField(i, e.Type, e.Name)
+			exprs = append(exprs, gf)
+		}
 
-	return plan.NewProject(exprs, p.Child)
+		return plan.NewProject(exprs, p.Child)
+	})
 }
 
 func resolveColumns(a *Analyzer, n sql.Node) sql.Node {
-	if n.Resolved() {
-		return n
-	}
-
-	if len(n.Children()) != 1 {
-		return n
-	}
-
-	child := n.Children()[0]
-
-	//TODO: Fail when there is no unambiguous resolution.
-	colMap := map[string]*expression.GetField{}
-	for idx, child := range child.Schema() {
-		colMap[child.Name] = expression.NewGetField(idx, child.Type, child.Name)
-	}
-
-	return n.TransformExpressionsUp(func(e sql.Expression) sql.Expression {
-		uc, ok := e.(*expression.UnresolvedColumn)
-		if !ok {
-			return e
+	return n.TransformUp(func(n sql.Node) sql.Node {
+		if n.Resolved() {
+			return n
 		}
 
-		gf, ok := colMap[uc.Name()]
-		if !ok {
-			return e
+		if len(n.Children()) != 1 {
+			return n
 		}
 
-		return gf
+		child := n.Children()[0]
+		if !child.Resolved() {
+			return n
+		}
+
+		colMap := map[string]*expression.GetField{}
+		for idx, child := range child.Schema() {
+			if _, ok := colMap[child.Name]; ok {
+				// There is no unambiguous resolution
+				return n
+			}
+
+			colMap[child.Name] = expression.NewGetField(idx, child.Type, child.Name)
+		}
+
+		return n.TransformExpressionsUp(func(e sql.Expression) sql.Expression {
+			uc, ok := e.(*expression.UnresolvedColumn)
+			if !ok {
+				return e
+			}
+
+			gf, ok := colMap[uc.Name()]
+			if !ok {
+				return e
+			}
+
+			return gf
+		})
 	})
 }
 
 func resolveFunctions(a *Analyzer, n sql.Node) sql.Node {
-	if n.Resolved() {
-		return n
-	}
-
-	return n.TransformExpressionsUp(func(e sql.Expression) sql.Expression {
-		uf, ok := e.(*expression.UnresolvedFunction)
-		if !ok {
-			return e
+	return n.TransformUp(func(n sql.Node) sql.Node {
+		if n.Resolved() {
+			return n
 		}
 
-		n := uf.Name()
-		f, err := a.Catalog.Function(n)
-		if err != nil {
-			return e
-		}
+		return n.TransformExpressionsUp(func(e sql.Expression) sql.Expression {
+			uf, ok := e.(*expression.UnresolvedFunction)
+			if !ok {
+				return e
+			}
 
-		rf, err := f.Build(uf.Children...)
-		if err != nil {
-			return e
-		}
+			n := uf.Name()
+			f, err := a.Catalog.Function(n)
+			if err != nil {
+				return e
+			}
 
-		return rf
+			rf, err := f.Build(uf.Children...)
+			if err != nil {
+				return e
+			}
+
+			return rf
+		})
 	})
 }

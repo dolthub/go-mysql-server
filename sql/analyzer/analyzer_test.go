@@ -28,17 +28,24 @@ func TestAnalyzer_Analyze(t *testing.T) {
 
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
 	analyzed, err := a.Analyze(notAnalyzed)
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal(table, analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("nonexistant")
 	analyzed, err = a.Analyze(notAnalyzed)
-	assert.NotNil(err)
+	assert.Error(err)
 	assert.Equal(notAnalyzed, analyzed)
 
 	analyzed, err = a.Analyze(table)
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal(table, analyzed)
+
+	notAnalyzed = plan.NewProject(
+		[]sql.Expression{expression.NewUnresolvedColumn("o")},
+		plan.NewUnresolvedTable("mytable"),
+	)
+	_, err = a.Analyze(notAnalyzed)
+	assert.Error(err)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewUnresolvedColumn("i")},
@@ -49,7 +56,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i")},
 		table,
 	)
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal(expected, analyzed)
 
 	notAnalyzed = plan.NewDescribe(
@@ -57,7 +64,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(notAnalyzed)
 	expected = plan.NewDescribe(table)
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal(expected, analyzed)
 
 	notAnalyzed = plan.NewProject(
@@ -69,7 +76,25 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i")},
 		table,
 	)
-	assert.Nil(err)
+	assert.NoError(err)
+	assert.Equal(expected, analyzed)
+
+	notAnalyzed = plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewProject(
+			[]sql.Expression{expression.NewStar()},
+			plan.NewUnresolvedTable("mytable"),
+		),
+	)
+	analyzed, err = a.Analyze(notAnalyzed)
+	expected = plan.NewProject(
+		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i")},
+		plan.NewProject(
+			[]sql.Expression{expression.NewGetField(0, sql.Integer, "i")},
+			table,
+		),
+	)
+	assert.NoError(err)
 	assert.Equal(expected, analyzed)
 
 	notAnalyzed = plan.NewProject(
@@ -91,7 +116,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		},
 		table,
 	)
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal(expected, analyzed)
 
 	notAnalyzed = plan.NewProject(
@@ -115,7 +140,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			table,
 		),
 	)
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal(expected, analyzed)
 
 	notAnalyzed = plan.NewProject(
@@ -136,7 +161,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		},
 		plan.NewCrossJoin(table, table2),
 	)
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal(expected, analyzed)
 }
 
