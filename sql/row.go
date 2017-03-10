@@ -54,3 +54,28 @@ func NodeToRows(n Node) ([]Row, error) {
 
 	return RowIterToRows(i)
 }
+
+// RowsToRowIter creates a RowIter that iterates over the given rows.
+func RowsToRowIter(rows ...Row) RowIter {
+	return &sliceRowIter{rows: rows}
+}
+
+type sliceRowIter struct {
+	rows []Row
+	idx  int
+}
+
+func (i *sliceRowIter) Next() (Row, error) {
+	if i.idx >= len(i.rows) {
+		return nil, io.EOF
+	}
+
+	r := i.rows[i.idx]
+	i.idx++
+	return r.Copy(), nil
+}
+
+func (i *sliceRowIter) Close() error {
+	i.rows = nil
+	return nil
+}

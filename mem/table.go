@@ -2,7 +2,6 @@ package mem
 
 import (
 	"fmt"
-	"io"
 
 	"gopkg.in/sqle/sqle.v0/sql"
 )
@@ -37,7 +36,7 @@ func (t *Table) Children() []sql.Node {
 }
 
 func (t *Table) RowIter() (sql.RowIter, error) {
-	return &iter{rows: t.data}, nil
+	return sql.RowsToRowIter(t.data...), nil
 }
 
 func (t *Table) TransformUp(f func(sql.Node) sql.Node) sql.Node {
@@ -61,25 +60,5 @@ func (t *Table) Insert(row sql.Row) error {
 	}
 
 	t.data = append(t.data, row.Copy())
-	return nil
-}
-
-type iter struct {
-	idx  int
-	rows []sql.Row
-}
-
-func (i *iter) Next() (sql.Row, error) {
-	if i.idx >= len(i.rows) {
-		return nil, io.EOF
-	}
-
-	row := i.rows[i.idx]
-	i.idx++
-	return row.Copy(), nil
-}
-
-func (i *iter) Close() error {
-	i.rows = nil
 	return nil
 }
