@@ -87,6 +87,11 @@ func convertSelect(s *sqlparser.Select) (sql.Node, error) {
 		}
 	}
 
+	node, err = selectToProjectOrGroupBy(s.SelectExprs, s.GroupBy, node)
+	if err != nil {
+		return nil, err
+	}
+
 	if s.Limit != nil {
 		//TODO: Add support for offset
 		node, err = limitToLimit(s.Limit.Rowcount, node)
@@ -95,7 +100,7 @@ func convertSelect(s *sqlparser.Select) (sql.Node, error) {
 		}
 	}
 
-	return selectToProjectOrGroupBy(s.SelectExprs, s.GroupBy, node)
+	return node, nil
 }
 
 func tableExprsToTable(te sqlparser.TableExprs) (sql.Node, error) {

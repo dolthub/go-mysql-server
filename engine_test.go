@@ -47,6 +47,11 @@ func TestQueries(t *testing.T) {
 	)
 
 	testQuery(t,
+		"SELECT COUNT(*) FROM mytable LIMIT 1;",
+		[][]interface{}{{int64(3)}},
+	)
+
+	testQuery(t,
 		"SELECT COUNT(*) AS c FROM mytable;",
 		[][]interface{}{{int64(3)}},
 	)
