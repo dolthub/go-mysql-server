@@ -1,15 +1,9 @@
 # sqle
 
-<p align="center"> 
-
-  <a href="https://codebeat.co/projects/github-com-sqle-sqle"><img alt="codebeat badge" src="https://codebeat.co/badges/10f09016-1074-43d3-916a-4b4e628e79c0" /></a>
- 
-  <a href="https://travis-ci.org/sqle/sqle"><img alt="Build Status" src="https://travis-ci.org/sqle/sqle.svg?branch=master" /></a>
- 
-  <a href="https://codecov.io/gh/sqle/sqle"><img alt="codecov" src="https://codecov.io/gh/sqle/sqle/branch/master/graph/badge.svg" /></a>
-  
-  <a href="https://godoc.org/gopkg.in/sqle/sqle.v0"><img alt="GoDoc" src="https://godoc.org/gopkg.in/sqle/sqle.v0?status.svg" /></a>
-</p>
+<a href="https://codebeat.co/projects/github-com-sqle-sqle"><img alt="codebeat badge" src="https://codebeat.co/badges/10f09016-1074-43d3-916a-4b4e628e79c0" /></a>
+<a href="https://travis-ci.org/sqle/sqle"><img alt="Build Status" src="https://travis-ci.org/sqle/sqle.svg?branch=master" /></a>
+<a href="https://codecov.io/gh/sqle/sqle"><img alt="codecov" src="https://codecov.io/gh/sqle/sqle/branch/master/graph/badge.svg" /></a>
+<a href="https://godoc.org/gopkg.in/sqle/sqle.v0"><img alt="GoDoc" src="https://godoc.org/gopkg.in/sqle/sqle.v0?status.svg" /></a>
 
 ## Installation
 
