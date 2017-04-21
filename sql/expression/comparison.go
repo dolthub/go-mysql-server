@@ -33,6 +33,10 @@ func NewEquals(left sql.Expression, right sql.Expression) *Equals {
 func (e Equals) Eval(row sql.Row) interface{} {
 	a := e.Left.Eval(row)
 	b := e.Right.Eval(row)
+	if a == nil || b == nil {
+		return nil
+	}
+
 	return e.ChildType.Compare(a, b) == 0
 }
 
@@ -60,6 +64,9 @@ func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
 func (e Regexp) Eval(row sql.Row) interface{} {
 	l := e.Left.Eval(row)
 	r := e.Right.Eval(row)
+	if l == nil || r == nil {
+		return nil
+	}
 
 	sl, okl := l.(string)
 	sr, okr := r.(string)
@@ -100,6 +107,10 @@ func NewGreaterThan(left sql.Expression, right sql.Expression) *GreaterThan {
 func (e GreaterThan) Eval(row sql.Row) interface{} {
 	a := e.Left.Eval(row)
 	b := e.Right.Eval(row)
+	if a == nil || b == nil {
+		return nil
+	}
+
 	return e.ChildType.Compare(a, b) == 1
 }
 
@@ -123,6 +134,10 @@ func NewLessThan(left sql.Expression, right sql.Expression) *LessThan {
 func (e LessThan) Eval(row sql.Row) interface{} {
 	a := e.Left.Eval(row)
 	b := e.Right.Eval(row)
+	if a == nil || b == nil {
+		return nil
+	}
+
 	return e.ChildType.Compare(a, b) == -1
 }
 
@@ -146,6 +161,10 @@ func NewGreaterThanOrEqual(left sql.Expression, right sql.Expression) *GreaterTh
 func (e GreaterThanOrEqual) Eval(row sql.Row) interface{} {
 	a := e.Left.Eval(row)
 	b := e.Right.Eval(row)
+	if a == nil || b == nil {
+		return nil
+	}
+
 	return e.ChildType.Compare(a, b) > -1
 }
 
@@ -169,6 +188,10 @@ func NewLessThanOrEqual(left sql.Expression, right sql.Expression) *LessThanOrEq
 func (e LessThanOrEqual) Eval(row sql.Row) interface{} {
 	a := e.Left.Eval(row)
 	b := e.Right.Eval(row)
+	if a == nil || b == nil {
+		return nil
+	}
+
 	return e.ChildType.Compare(a, b) < 1
 }
 

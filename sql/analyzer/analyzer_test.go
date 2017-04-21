@@ -16,8 +16,8 @@ import (
 func TestAnalyzer_Analyze(t *testing.T) {
 	assert := require.New(t)
 
-	table := mem.NewTable("mytable", sql.Schema{{"i", sql.Integer}})
-	table2 := mem.NewTable("mytable2", sql.Schema{{"i2", sql.Integer}})
+	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Integer}})
+	table2 := mem.NewTable("mytable2", sql.Schema{{Name: "i2", Type: sql.Integer}})
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
@@ -53,7 +53,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(notAnalyzed)
 	var expected sql.Node = plan.NewProject(
-		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i")},
+		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i", false)},
 		table,
 	)
 	assert.NoError(err)
@@ -73,7 +73,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(notAnalyzed)
 	expected = plan.NewProject(
-		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i")},
+		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i", false)},
 		table,
 	)
 	assert.NoError(err)
@@ -88,9 +88,9 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(notAnalyzed)
 	expected = plan.NewProject(
-		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i")},
+		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i", false)},
 		plan.NewProject(
-			[]sql.Expression{expression.NewGetField(0, sql.Integer, "i")},
+			[]sql.Expression{expression.NewGetField(0, sql.Integer, "i", false)},
 			table,
 		),
 	)
@@ -110,7 +110,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	expected = plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias(
-				expression.NewGetField(0, sql.Integer, "i"),
+				expression.NewGetField(0, sql.Integer, "i", false),
 				"foo",
 			),
 		},
@@ -131,10 +131,10 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(notAnalyzed)
 	expected = plan.NewProject(
-		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i")},
+		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i", false)},
 		plan.NewFilter(
 			expression.NewEquals(
-				expression.NewGetField(0, sql.Integer, "i"),
+				expression.NewGetField(0, sql.Integer, "i", false),
 				expression.NewLiteral(int32(1), sql.Integer),
 			),
 			table,
@@ -156,8 +156,8 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	analyzed, err = a.Analyze(notAnalyzed)
 	expected = plan.NewProject(
 		[]sql.Expression{
-			expression.NewGetField(0, sql.Integer, "i"),
-			expression.NewGetField(1, sql.Integer, "i2"),
+			expression.NewGetField(0, sql.Integer, "i", false),
+			expression.NewGetField(1, sql.Integer, "i2", false),
 		},
 		plan.NewCrossJoin(table, table2),
 	)
@@ -176,7 +176,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	expected = plan.NewLimit(int64(1),
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewGetField(0, sql.Integer, "i"),
+				expression.NewGetField(0, sql.Integer, "i", false),
 			},
 			table,
 		),

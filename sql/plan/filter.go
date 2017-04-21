@@ -52,7 +52,7 @@ func (i *filterIter) Next() (sql.Row, error) {
 
 		if err != nil {
 			return nil, err
-		} else if i.f.expression.Eval(row) != false {
+		} else if i.f.expression.Eval(row) == true {
 			return row, nil
 		}
 	}

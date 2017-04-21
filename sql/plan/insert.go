@@ -21,7 +21,12 @@ func NewInsertInto(dst, src sql.Node, cols []string) *InsertInto {
 }
 
 func (p *InsertInto) Schema() sql.Schema {
-	return sql.Schema{{"updated", sql.BigInteger}}
+	return sql.Schema{{
+		Name:     "updated",
+		Type:     sql.BigInteger,
+		Default:  int64(0),
+		Nullable: false,
+	}}
 }
 
 func (p *InsertInto) Execute() (int, error) {
@@ -36,7 +41,7 @@ func (p *InsertInto) Execute() (int, error) {
 		found := false
 		for j, col := range p.Columns {
 			if f.Name == col {
-				projExprs[i] = expression.NewGetField(j, f.Type, f.Name)
+				projExprs[i] = expression.NewGetField(j, f.Type, f.Name, f.Nullable)
 				found = true
 				break
 			}

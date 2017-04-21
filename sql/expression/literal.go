@@ -20,6 +20,10 @@ func (p Literal) Resolved() bool {
 	return true
 }
 
+func (p Literal) IsNullable() bool {
+	return p.value == nil
+}
+
 func (p Literal) Type() sql.Type {
 	return p.fieldType
 }

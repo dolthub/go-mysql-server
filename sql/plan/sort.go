@@ -19,9 +19,17 @@ const (
 	Descending SortOrder = 2
 )
 
+type NullOrdering byte
+
+const (
+	NullsFirst NullOrdering = iota
+	NullsLast  NullOrdering = 2
+)
+
 type SortField struct {
-	Column sql.Expression
-	Order  SortOrder
+	Column       sql.Expression
+	Order        SortOrder
+	NullOrdering NullOrdering
 }
 
 func NewSort(sortFields []SortField, child sql.Node) *Sort {
@@ -64,7 +72,7 @@ func (s *Sort) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql
 	c := s.UnaryNode.Child.TransformExpressionsUp(f)
 	sfs := []SortField{}
 	for _, sf := range s.SortFields {
-		sfs = append(sfs, SortField{sf.Column.TransformUp(f), sf.Order})
+		sfs = append(sfs, SortField{sf.Column.TransformUp(f), sf.Order, sf.NullOrdering})
 	}
 	n := NewSort(sfs, c)
 
@@ -148,6 +156,14 @@ func (s *sorter) Less(i, j int) bool {
 		typ := sf.Column.Type()
 		av := sf.Column.Eval(a)
 		bv := sf.Column.Eval(b)
+
+		if av == nil {
+			return sf.NullOrdering == NullsFirst
+		}
+
+		if bv == nil {
+			return sf.NullOrdering != NullsFirst
+		}
 
 		if sf.Order == Descending {
 			av, bv = bv, av

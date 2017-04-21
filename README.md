@@ -27,6 +27,7 @@ We are continuously adding more functionality to gitql. We support a subset of t
 |                        |                                     Supported                                     |
 |:----------------------:|:---------------------------------------------------------------------------------:|
 | Comparison expressions |                                !=, ==, >, <, >=,<=                                |
+| Null check expressions |                                IS NULL, IS NOT NULL                               |
 |  Grouping expressions  |                                    COUNT, FIRST                                   |
 |  Standard expressions  |                              ALIAS, LITERAL, STAR (*)                             |
 |       Statements       | CROSS JOIN, DESCRIBE, FILTER (WHERE), GROUP BY, LIMIT, SELECT, SHOW TABLES, SORT  |

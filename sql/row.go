@@ -4,24 +4,17 @@ import (
 	"io"
 )
 
-type Row []Value
+type Row []interface{}
 
 func NewRow(values ...interface{}) Row {
-	row := make([]Value, len(values))
-	for i := 0; i < len(values); i++ {
-		row[i] = Value(values[i])
-	}
-
+	row := make([]interface{}, len(values))
+	copy(row, values)
 	return row
 }
 
 func (r Row) Copy() Row {
-	crow := make([]Value, len(r))
-	copy(crow, r)
-	return r
+	return NewRow(r...)
 }
-
-type Value interface{}
 
 type RowIter interface {
 	Next() (Row, error)

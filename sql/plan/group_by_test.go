@@ -20,8 +20,8 @@ func TestGroupBy_Schema(t *testing.T) {
 	}
 	gb := NewGroupBy(agg, nil, child)
 	assert.Equal(sql.Schema{
-		sql.Column{Name: "c1", Type: sql.String},
-		sql.Column{Name: "c2", Type: sql.Integer},
+		{Name: "c1", Type: sql.String},
+		{Name: "c2", Type: sql.Integer},
 	}, gb.Schema())
 }
 
@@ -45,8 +45,8 @@ func TestGroupBy_Resolved(t *testing.T) {
 func TestGroupBy_RowIter(t *testing.T) {
 	assert := assert.New(t)
 	childSchema := sql.Schema{
-		sql.Column{"col1", sql.String},
-		sql.Column{"col2", sql.BigInteger},
+		{Name: "col1", Type: sql.String},
+		{Name: "col2", Type: sql.BigInteger},
 	}
 	child := mem.NewTable("test", childSchema)
 	child.Insert(sql.NewRow("col1_1", int64(1111)))
@@ -58,21 +58,21 @@ func TestGroupBy_RowIter(t *testing.T) {
 	p := NewSort(
 		[]SortField{
 			{
-				Column: expression.NewGetField(0, sql.String, "col1"),
+				Column: expression.NewGetField(0, sql.String, "col1", true),
 				Order:  Ascending,
 			}, {
-				Column: expression.NewGetField(1, sql.BigInteger, "col2"),
+				Column: expression.NewGetField(1, sql.BigInteger, "col2", true),
 				Order:  Ascending,
 			},
 		},
 		NewGroupBy(
 			[]sql.Expression{
-				expression.NewGetField(0, sql.String, "col1"),
-				expression.NewGetField(1, sql.BigInteger, "col2"),
+				expression.NewGetField(0, sql.String, "col1", true),
+				expression.NewGetField(1, sql.BigInteger, "col2", true),
 			},
 			[]sql.Expression{
-				expression.NewGetField(0, sql.String, "col1"),
-				expression.NewGetField(1, sql.BigInteger, "col2"),
+				expression.NewGetField(0, sql.String, "col1", true),
+				expression.NewGetField(1, sql.BigInteger, "col2", true),
 			},
 			child,
 		))

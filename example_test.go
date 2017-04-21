@@ -54,8 +54,8 @@ func checkIfError(err error) {
 func createTestDatabase() *mem.Database {
 	db := mem.NewDatabase("test")
 	table := mem.NewTable("mytable", gitqlsql.Schema{
-		gitqlsql.Column{Name: "name", Type: gitqlsql.String},
-		gitqlsql.Column{Name: "email", Type: gitqlsql.String},
+		{Name: "name", Type: gitqlsql.String},
+		{Name: "email", Type: gitqlsql.String},
 	})
 	db.AddTable("mytable", table)
 	table.Insert(gitqlsql.NewRow("John Doe", "john@doe.com"))

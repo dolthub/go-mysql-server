@@ -14,6 +14,10 @@ func (UnresolvedColumn) Resolved() bool {
 	return false
 }
 
+func (UnresolvedColumn) IsNullable() bool {
+	return true
+}
+
 func (UnresolvedColumn) Type() sql.Type {
 	return sql.String //FIXME
 }
@@ -44,6 +48,10 @@ func NewUnresolvedFunction(name string, agg bool,
 
 func (UnresolvedFunction) Resolved() bool {
 	return false
+}
+
+func (UnresolvedFunction) IsNullable() bool {
+	return true
 }
 
 func (UnresolvedFunction) Type() sql.Type {

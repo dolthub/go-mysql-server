@@ -39,8 +39,9 @@ func Test_orderBy(t *testing.T) {
 	assert.NoError(err)
 
 	err = vr.Apply(nil, plan.NewSort(
-		[]plan.SortField{{expression.NewCount(nil),
-			plan.Descending}}, nil))
+		[]plan.SortField{{Column: expression.NewCount(nil), Order: plan.Descending}},
+		nil,
+	))
 	assert.Error(err)
 }
 

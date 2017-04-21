@@ -21,6 +21,13 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("foo"),
 	),
+	`SELECT foo IS NULL, bar IS NOT NULL FROM foo;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewIsNull(expression.NewUnresolvedColumn("foo")),
+			expression.NewNot(expression.NewIsNull(expression.NewUnresolvedColumn("bar"))),
+		},
+		plan.NewUnresolvedTable("foo"),
+	),
 	`SELECT foo AS bar FROM foo;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias(
@@ -83,7 +90,7 @@ var fixtures = map[string]sql.Node{
 			expression.NewUnresolvedColumn("bar"),
 		},
 		plan.NewSort(
-			[]plan.SortField{{expression.NewUnresolvedColumn("baz"), plan.Descending}},
+			[]plan.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
 			plan.NewUnresolvedTable("foo"),
 		),
 	),
@@ -109,7 +116,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("bar"),
 			},
 			plan.NewSort(
-				[]plan.SortField{{expression.NewUnresolvedColumn("baz"), plan.Descending}},
+				[]plan.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
 				plan.NewUnresolvedTable("foo"),
 			),
 		),
@@ -121,7 +128,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("bar"),
 			},
 			plan.NewSort(
-				[]plan.SortField{{expression.NewUnresolvedColumn("baz"), plan.Descending}},
+				[]plan.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
 				plan.NewFilter(
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("qux"),

@@ -19,8 +19,8 @@ func TestTransformUp(t *testing.T) {
 	p := NewProject([]sql.Expression{aCol, bCol}, NewFilter(expression.NewEquals(aCol, bCol), ur))
 
 	schema := sql.Schema{
-		sql.Column{"a", sql.String},
-		sql.Column{"b", sql.String},
+		{Name: "a", Type: sql.String},
+		{Name: "b", Type: sql.String},
 	}
 	table := mem.NewTable("resolved", schema)
 

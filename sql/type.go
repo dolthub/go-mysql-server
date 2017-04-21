@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type Schema []Column
+type Schema []*Column
 
 func (s Schema) CheckRow(row Row) error {
 	expected := len(s)
@@ -20,7 +20,7 @@ func (s Schema) CheckRow(row Row) error {
 
 	for idx, f := range s {
 		v := row[idx]
-		if f.Type.Check(v) {
+		if f.Check(v) {
 			continue
 		}
 
@@ -33,9 +33,28 @@ func (s Schema) CheckRow(row Row) error {
 	return nil
 }
 
+// Column is the definition of a table column.
+// As SQL:2016 puts it:
+//   A column is a named component of a table. It has a data type, a default,
+//   and a nullability characteristic.
 type Column struct {
+	// Name is the name of the column.
 	Name string
+	// Type is the data type of the column.
 	Type Type
+	// Default contains the default value of the column or nil if it is NULL.
+	Default interface{}
+	// Nullable is true if the column can contain NULL values, or false
+	// otherwise.
+	Nullable bool
+}
+
+func (c *Column) Check(v interface{}) bool {
+	if v == nil {
+		return c.Nullable
+	}
+
+	return c.Type.Check(v)
 }
 
 type Type interface {
@@ -111,6 +130,10 @@ func (t integerType) Compare(a interface{}, b interface{}) int {
 }
 
 func (t integerType) Native(v interface{}) driver.Value {
+	if v == nil {
+		return driver.Value(nil)
+	}
+
 	return driver.Value(int64(v.(int32)))
 }
 
@@ -143,6 +166,10 @@ func (t bigIntegerType) Compare(a interface{}, b interface{}) int {
 }
 
 func (t bigIntegerType) Native(v interface{}) driver.Value {
+	if v == nil {
+		return driver.Value(nil)
+	}
+
 	return driver.Value(v.(int64))
 }
 
@@ -176,6 +203,10 @@ func (t timestampWithTimeZoneType) Compare(a interface{}, b interface{}) int {
 }
 
 func (t timestampWithTimeZoneType) Native(v interface{}) driver.Value {
+	if v == nil {
+		return driver.Value(nil)
+	}
+
 	return driver.Value(v.(time.Time))
 }
 
@@ -208,6 +239,10 @@ func (t stringType) Compare(a interface{}, b interface{}) int {
 }
 
 func (t stringType) Native(v interface{}) driver.Value {
+	if v == nil {
+		return driver.Value(nil)
+	}
+
 	return driver.Value(v.(string))
 }
 
@@ -240,6 +275,10 @@ func (t booleanType) Compare(a interface{}, b interface{}) int {
 }
 
 func (t booleanType) Native(v interface{}) driver.Value {
+	if v == nil {
+		return driver.Value(nil)
+	}
+
 	return driver.Value(v.(bool))
 }
 
@@ -272,6 +311,10 @@ func (t floatType) Compare(a interface{}, b interface{}) int {
 }
 
 func (t floatType) Native(v interface{}) driver.Value {
+	if v == nil {
+		return driver.Value(nil)
+	}
+
 	return driver.Value(v.(float64))
 }
 

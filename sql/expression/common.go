@@ -10,6 +10,10 @@ func (p UnaryExpression) Resolved() bool {
 	return p.Child.Resolved()
 }
 
+func (p UnaryExpression) IsNullable() bool {
+	return p.Child.IsNullable()
+}
+
 type BinaryExpression struct {
 	Left  sql.Expression
 	Right sql.Expression
@@ -17,6 +21,10 @@ type BinaryExpression struct {
 
 func (p BinaryExpression) Resolved() bool {
 	return p.Left.Resolved() && p.Right.Resolved()
+}
+
+func (p BinaryExpression) IsNullable() bool {
+	return p.Left.IsNullable() || p.Right.IsNullable()
 }
 
 var defaultFunctions = map[string]interface{}{

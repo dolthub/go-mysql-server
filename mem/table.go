@@ -53,8 +53,8 @@ func (t *Table) Insert(row sql.Row) error {
 	}
 
 	for idx, value := range row {
-		f := t.schema[idx]
-		if !f.Type.Check(value) {
+		c := t.schema[idx]
+		if !c.Check(value) {
 			return sql.ErrInvalidType
 		}
 	}

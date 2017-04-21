@@ -22,6 +22,10 @@ func (c *Count) Type() sql.Type {
 	return sql.Integer
 }
 
+func (c *Count) IsNullable() bool {
+	return false
+}
+
 func (c *Count) Resolved() bool {
 	if _, ok := c.Child.(*Star); ok {
 		return true

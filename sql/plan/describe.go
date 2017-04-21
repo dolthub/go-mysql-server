@@ -15,16 +15,13 @@ func NewDescribe(child sql.Node) *Describe {
 }
 
 func (d *Describe) Schema() sql.Schema {
-	return sql.Schema{
-		sql.Column{
-			Name: "name",
-			Type: sql.String,
-		},
-		sql.Column{
-			Name: "type",
-			Type: sql.String,
-		},
-	}
+	return sql.Schema{{
+		Name: "name",
+		Type: sql.String,
+	}, {
+		Name: "type",
+		Type: sql.String,
+	}}
 }
 
 func (d *Describe) RowIter() (sql.RowIter, error) {

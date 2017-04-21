@@ -28,7 +28,9 @@ func (*ShowTables) Children() []sql.Node {
 
 func (*ShowTables) Schema() sql.Schema {
 	return sql.Schema{{
-		"table", sql.String,
+		Name:     "table",
+		Type:     sql.String,
+		Nullable: false,
 	}}
 }
 

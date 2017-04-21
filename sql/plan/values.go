@@ -20,9 +20,10 @@ func (p *Values) Schema() sql.Schema {
 	exprs := p.ExpressionTuples[0]
 	s := make(sql.Schema, len(exprs))
 	for i, e := range exprs {
-		s[i] = sql.Column{
-			Name: e.Name(),
-			Type: e.Type(),
+		s[i] = &sql.Column{
+			Name:     e.Name(),
+			Type:     e.Type(),
+			Nullable: e.IsNullable(),
 		}
 	}
 

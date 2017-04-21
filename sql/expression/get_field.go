@@ -6,18 +6,24 @@ type GetField struct {
 	fieldIndex int
 	fieldName  string
 	fieldType  sql.Type
+	nullable   bool
 }
 
-func NewGetField(index int, fieldType sql.Type, fieldName string) *GetField {
+func NewGetField(index int, fieldType sql.Type, fieldName string, nullable bool) *GetField {
 	return &GetField{
 		fieldIndex: index,
 		fieldType:  fieldType,
 		fieldName:  fieldName,
+		nullable:   nullable,
 	}
 }
 
 func (p GetField) Resolved() bool {
 	return true
+}
+
+func (p GetField) IsNullable() bool {
+	return p.nullable
 }
 
 func (p GetField) Type() sql.Type {

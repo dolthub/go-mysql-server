@@ -21,6 +21,7 @@ type Expression interface {
 	Resolvable
 	Type() Type
 	Name() string
+	IsNullable() bool
 	Eval(Row) interface{}
 	TransformUp(func(Expression) Expression) Expression
 }

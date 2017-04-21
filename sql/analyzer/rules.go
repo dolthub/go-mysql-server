@@ -65,7 +65,7 @@ func resolveStar(a *Analyzer, n sql.Node) sql.Node {
 
 		var exprs []sql.Expression
 		for i, e := range p.Child.Schema() {
-			gf := expression.NewGetField(i, e.Type, e.Name)
+			gf := expression.NewGetField(i, e.Type, e.Name, e.Nullable)
 			exprs = append(exprs, gf)
 		}
 
@@ -95,7 +95,7 @@ func resolveColumns(a *Analyzer, n sql.Node) sql.Node {
 				return n
 			}
 
-			colMap[child.Name] = expression.NewGetField(idx, child.Type, child.Name)
+			colMap[child.Name] = expression.NewGetField(idx, child.Type, child.Name, child.Nullable)
 		}
 
 		return n.TransformExpressionsUp(func(e sql.Expression) sql.Expression {

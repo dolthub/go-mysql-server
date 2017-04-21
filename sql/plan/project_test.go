@@ -14,16 +14,16 @@ import (
 func TestProject(t *testing.T) {
 	require := require.New(t)
 	childSchema := sql.Schema{
-		sql.Column{"col1", sql.String},
-		sql.Column{"col2", sql.String},
+		{Name: "col1", Type: sql.String, Nullable: true},
+		{Name: "col2", Type: sql.String, Nullable: true},
 	}
 	child := mem.NewTable("test", childSchema)
 	child.Insert(sql.NewRow("col1_1", "col2_1"))
 	child.Insert(sql.NewRow("col1_2", "col2_2"))
-	p := NewProject([]sql.Expression{expression.NewGetField(1, sql.String, "col2")}, child)
+	p := NewProject([]sql.Expression{expression.NewGetField(1, sql.String, "col2", true)}, child)
 	require.Equal(1, len(p.Children()))
 	schema := sql.Schema{
-		sql.Column{"col2", sql.String},
+		{Name: "col2", Type: sql.String, Nullable: true},
 	}
 	require.Equal(schema, p.Schema())
 	iter, err := p.RowIter()
@@ -48,12 +48,12 @@ func TestProject(t *testing.T) {
 
 	p = NewProject([]sql.Expression{
 		expression.NewAlias(
-			expression.NewGetField(1, sql.String, "col2"),
+			expression.NewGetField(1, sql.String, "col2", true),
 			"foo",
 		),
 	}, child)
 	schema = sql.Schema{
-		sql.Column{"foo", sql.String},
+		{Name: "foo", Type: sql.String, Nullable: true},
 	}
 	require.Equal(schema, p.Schema())
 }

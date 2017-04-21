@@ -118,8 +118,8 @@ func newEngine(t *testing.T) *sqle.Engine {
 	assert := require.New(t)
 
 	table := mem.NewTable("mytable", sql.Schema{
-		{"i", sql.BigInteger},
-		{"s", sql.String},
+		{Name: "i", Type: sql.BigInteger},
+		{Name: "s", Type: sql.String},
 	})
 	assert.Nil(table.Insert(sql.NewRow(int64(1), "a")))
 	assert.Nil(table.Insert(sql.NewRow(int64(2), "b")))

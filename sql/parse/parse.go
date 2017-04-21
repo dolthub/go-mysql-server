@@ -317,6 +317,8 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		return nil, errUnsupported(e)
 	case *sqlparser.ComparisonExpr:
 		return comparisonExprToExpression(v)
+	case *sqlparser.IsExpr:
+		return isExprToExpression(v)
 	case *sqlparser.NotExpr:
 		c, err := exprToExpression(v.Expr)
 		if err != nil {
@@ -342,7 +344,6 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 	case sqlparser.BoolVal:
 		return expression.NewLiteral(bool(v), sql.Boolean), nil
 	case *sqlparser.NullVal:
-		//TODO
 		return expression.NewLiteral(nil, sql.Null), nil
 	case *sqlparser.ColName:
 		//TODO: add handling of case sensitiveness.
@@ -355,6 +356,22 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 
 		return expression.NewUnresolvedFunction(v.Name.Lowered(),
 			v.IsAggregate(), exprs...), nil
+	}
+}
+
+func isExprToExpression(c *sqlparser.IsExpr) (sql.Expression, error) {
+	e, err := exprToExpression(c.Expr)
+	if err != nil {
+		return nil, err
+	}
+
+	switch c.Operator {
+	case sqlparser.IsNullStr:
+		return expression.NewIsNull(e), nil
+	case sqlparser.IsNotNullStr:
+		return expression.NewNot(expression.NewIsNull(e)), nil
+	default:
+		return nil, errUnsupported(c)
 	}
 }
 

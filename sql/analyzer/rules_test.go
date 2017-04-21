@@ -17,7 +17,7 @@ func Test_resolveTables(t *testing.T) {
 
 	f := getRule("resolve_tables")
 
-	table := mem.NewTable("mytable", sql.Schema{{"i", sql.Integer}})
+	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Integer}})
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 
@@ -45,7 +45,7 @@ func Test_resolveTables_Nested(t *testing.T) {
 
 	f := getRule("resolve_tables")
 
-	table := mem.NewTable("mytable", sql.Schema{{"i", sql.Integer}})
+	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Integer}})
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 
@@ -56,12 +56,12 @@ func Test_resolveTables_Nested(t *testing.T) {
 	a.CurrentDatabase = "mydb"
 
 	notAnalyzed := plan.NewProject(
-		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i")},
+		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i", true)},
 		plan.NewUnresolvedTable("mytable"),
 	)
 	analyzed := f.Apply(a, notAnalyzed)
 	expected := plan.NewProject(
-		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i")},
+		[]sql.Expression{expression.NewGetField(0, sql.Integer, "i", true)},
 		table,
 	)
 	assert.Equal(expected, analyzed)

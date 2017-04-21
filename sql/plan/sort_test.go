@@ -1,125 +1,130 @@
 package plan
 
 import (
-	"io"
 	"testing"
 
 	"gopkg.in/sqle/sqle.v0/mem"
 	"gopkg.in/sqle/sqle.v0/sql"
 	"gopkg.in/sqle/sqle.v0/sql/expression"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSort(t *testing.T) {
-	assert := assert.New(t)
-	childSchema := sql.Schema{
-		sql.Column{"col1", sql.String},
-		sql.Column{"col2", sql.Integer},
+	require := require.New(t)
+
+	data := []sql.Row{
+		sql.NewRow("c", nil),
+		sql.NewRow("a", int32(3)),
+		sql.NewRow("b", int32(3)),
+		sql.NewRow("c", int32(1)),
+		sql.NewRow(nil, int32(1)),
 	}
 
-	child := mem.NewTable("test", childSchema)
-	child.Insert(sql.NewRow("a", int32(3)))
-	child.Insert(sql.NewRow("b", int32(3)))
-	child.Insert(sql.NewRow("c", int32(1)))
+	schema := sql.Schema{
+		{Name: "col1", Type: sql.String, Nullable: true},
+		{Name: "col2", Type: sql.Integer, Nullable: true},
+	}
+
+	child := mem.NewTable("test", schema)
+	for _, row := range data {
+		require.NoError(child.Insert(row))
+	}
 
 	sf := []SortField{
-		{Column: expression.NewGetField(1, sql.Integer, "col2"), Order: Ascending},
-		{Column: expression.NewGetField(0, sql.String, "col1"), Order: Descending},
+		{Column: expression.NewGetField(1, sql.Integer, "col2", true), Order: Ascending, NullOrdering: NullsFirst},
+		{Column: expression.NewGetField(0, sql.String, "col1", true), Order: Descending, NullOrdering: NullsLast},
 	}
 	s := NewSort(sf, child)
-	assert.Equal(childSchema, s.Schema())
-	iter, err := s.RowIter()
-	assert.Nil(err)
-	assert.NotNil(iter)
+	require.Equal(schema, s.Schema())
 
-	row, err := iter.Next()
-	assert.Nil(err)
-	assert.NotNil(row)
-	assert.Equal("c", row[0])
-	row, err = iter.Next()
-	assert.Nil(err)
-	assert.NotNil(row)
-	assert.Equal("b", row[0])
-	row, err = iter.Next()
-	assert.Nil(err)
-	assert.NotNil(row)
-	assert.Equal("a", row[0])
-	row, err = iter.Next()
-	assert.Equal(io.EOF, err)
-	assert.Nil(row)
+	expected := []sql.Row{
+		sql.NewRow("c", nil),
+		sql.NewRow("c", int32(1)),
+		sql.NewRow(nil, int32(1)),
+		sql.NewRow("b", int32(3)),
+		sql.NewRow("a", int32(3)),
+	}
+
+	actual, err := sql.NodeToRows(s)
+	require.NoError(err)
+	require.Equal(expected, actual)
 }
 
-func TestSort_Ascending(t *testing.T) {
-	assert := assert.New(t)
-	childSchema := sql.Schema{
-		sql.Column{"col1", sql.String},
+func TestSortAscending(t *testing.T) {
+	require := require.New(t)
+
+	data := []sql.Row{
+		sql.NewRow("c"),
+		sql.NewRow("a"),
+		sql.NewRow("d"),
+		sql.NewRow(nil),
+		sql.NewRow("b"),
 	}
 
-	child := mem.NewTable("test", childSchema)
-	child.Insert(sql.NewRow("b"))
-	child.Insert(sql.NewRow("c"))
-	child.Insert(sql.NewRow("a"))
+	schema := sql.Schema{
+		{Name: "col1", Type: sql.String, Nullable: true},
+	}
+
+	child := mem.NewTable("test", schema)
+	for _, row := range data {
+		require.NoError(child.Insert(row))
+	}
 
 	sf := []SortField{
-		{Column: expression.NewGetField(0, sql.String, "col1"), Order: Ascending},
+		{Column: expression.NewGetField(0, sql.String, "col1", true), Order: Ascending, NullOrdering: NullsFirst},
 	}
 	s := NewSort(sf, child)
-	assert.Equal(childSchema, s.Schema())
-	iter, err := s.RowIter()
-	assert.Nil(err)
-	assert.NotNil(iter)
+	require.Equal(schema, s.Schema())
 
-	row, err := iter.Next()
-	assert.Nil(err)
-	assert.NotNil(row)
-	assert.Equal("a", row[0])
-	row, err = iter.Next()
-	assert.Nil(err)
-	assert.NotNil(row)
-	assert.Equal("b", row[0])
-	row, err = iter.Next()
-	assert.Nil(err)
-	assert.NotNil(row)
-	assert.Equal("c", row[0])
-	row, err = iter.Next()
-	assert.Equal(io.EOF, err)
-	assert.Nil(row)
+	expected := []sql.Row{
+		sql.NewRow(nil),
+		sql.NewRow("a"),
+		sql.NewRow("b"),
+		sql.NewRow("c"),
+		sql.NewRow("d"),
+	}
+
+	actual, err := sql.NodeToRows(s)
+	require.NoError(err)
+	require.Equal(expected, actual)
 }
 
-func TestSort_Descending(t *testing.T) {
-	assert := assert.New(t)
-	childSchema := sql.Schema{
-		sql.Column{"col1", sql.String},
+func TestSortDescending(t *testing.T) {
+	require := require.New(t)
+
+	data := []sql.Row{
+		sql.NewRow("c"),
+		sql.NewRow("a"),
+		sql.NewRow("d"),
+		sql.NewRow(nil),
+		sql.NewRow("b"),
 	}
 
-	child := mem.NewTable("test", childSchema)
-	child.Insert(sql.NewRow("a"))
-	child.Insert(sql.NewRow("c"))
-	child.Insert(sql.NewRow("b"))
+	schema := sql.Schema{
+		{Name: "col1", Type: sql.String, Nullable: true},
+	}
+
+	child := mem.NewTable("test", schema)
+	for _, row := range data {
+		require.NoError(child.Insert(row))
+	}
 
 	sf := []SortField{
-		{Column: expression.NewGetField(0, sql.String, "col1"), Order: Descending},
+		{Column: expression.NewGetField(0, sql.String, "col1", true), Order: Descending, NullOrdering: NullsFirst},
 	}
 	s := NewSort(sf, child)
-	assert.Equal(childSchema, s.Schema())
-	iter, err := s.RowIter()
-	assert.Nil(err)
-	assert.NotNil(iter)
+	require.Equal(schema, s.Schema())
 
-	row, err := iter.Next()
-	assert.Nil(err)
-	assert.NotNil(row)
-	assert.Equal("c", row[0])
-	row, err = iter.Next()
-	assert.Nil(err)
-	assert.NotNil(row)
-	assert.Equal("b", row[0])
-	row, err = iter.Next()
-	assert.Nil(err)
-	assert.NotNil(row)
-	assert.Equal("a", row[0])
-	row, err = iter.Next()
-	assert.Equal(io.EOF, err)
-	assert.Nil(row)
+	expected := []sql.Row{
+		sql.NewRow(nil),
+		sql.NewRow("d"),
+		sql.NewRow("c"),
+		sql.NewRow("b"),
+		sql.NewRow("a"),
+	}
+
+	actual, err := sql.NodeToRows(s)
+	require.NoError(err)
+	require.Equal(expected, actual)
 }

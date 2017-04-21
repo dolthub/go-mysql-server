@@ -13,6 +13,10 @@ func (Star) Resolved() bool {
 	return false
 }
 
+func (Star) IsNullable() bool {
+	return true
+}
+
 func (Star) Type() sql.Type {
 	return sql.String //FIXME
 }
