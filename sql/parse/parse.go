@@ -10,7 +10,7 @@ import (
 	"gopkg.in/sqle/sqle.v0/sql/expression"
 	"gopkg.in/sqle/sqle.v0/sql/plan"
 
-	"gopkg.in/sqle/vitess-go.v1/vt/sqlparser"
+	"gopkg.in/sqle/vitess-go.v2/vt/sqlparser"
 )
 
 const (
