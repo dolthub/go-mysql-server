@@ -1,6 +1,7 @@
 package sqle
 
 import (
+	"context"
 	gosql "database/sql"
 	"database/sql/driver"
 	"errors"
@@ -122,7 +123,7 @@ func (s *session) Close() error {
 	return nil
 }
 
-// Begin starts and returns a new transaction.
+// Begin (Deprecated) starts and returns a new transaction.
 func (s *session) Begin() (driver.Tx, error) {
 	return nil, fmt.Errorf("transactions not supported")
 }
@@ -157,17 +158,33 @@ func (s *stmt) NumInput() int {
 	return -1
 }
 
-// Exec executes a query that doesn't return rows, such as an INSERT or UPDATE.
+// Exec (Deprecated) executes a query that doesn't return rows, such as an
+// INSERT or UPDATE.
 func (s *stmt) Exec(args []driver.Value) (driver.Result, error) {
+	if len(args) > 0 {
+		return nil, ErrNotSupported
+	}
+
+	return s.ExecContext(context.TODO(), nil)
+}
+
+// ExecContext executes a query that doesn't return rows, such as an INSERT or
+// UPDATE.
+func (s *stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
 	return nil, ErrNotSupported
 }
 
-// Query executes a query that may return rows, such as a SELECT.
+// Query (Deprecated) executes a query that may return rows, such as a SELECT.
 func (s *stmt) Query(args []driver.Value) (driver.Rows, error) {
 	if len(args) > 0 {
 		return nil, ErrNotSupported
 	}
 
+	return s.QueryContext(context.TODO(), nil)
+}
+
+// QueryContext executes a query that may return rows, such as a SELECT.
+func (s *stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
 	schema, iter, err := s.session.Engine.Query(s.query)
 	if err != nil {
 		return nil, err
