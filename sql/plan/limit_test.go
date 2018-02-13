@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"gopkg.in/sqle/sqle.v0/mem"
-	"gopkg.in/sqle/sqle.v0/sql"
+	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/sql"
 
 	"github.com/stretchr/testify/assert"
 )

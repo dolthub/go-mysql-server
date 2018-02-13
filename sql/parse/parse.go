@@ -6,11 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/sqle/sqle.v0/sql"
-	"gopkg.in/sqle/sqle.v0/sql/expression"
-	"gopkg.in/sqle/sqle.v0/sql/plan"
-
-	"gopkg.in/sqle/vitess-go.v2/vt/sqlparser"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/src-d/go-mysql-server/sql/plan"
+	"github.com/src-d/go-vitess/vt/sqlparser"
 )
 
 const (
@@ -200,7 +199,7 @@ func tableExprToTable(te sqlparser.TableExpr) (sql.Node, error) {
 	case *sqlparser.AliasedTableExpr:
 		//TODO: Add support for table alias.
 		//TODO: Add support for qualifier.
-		tn, ok := t.Expr.(*sqlparser.TableName)
+		tn, ok := t.Expr.(sqlparser.TableName)
 		if !ok {
 			return nil, errUnsupportedFeature("non simple tables")
 		}
@@ -431,7 +430,7 @@ func selectExprToExpression(se sqlparser.SelectExpr) (sql.Expression, error) {
 	case *sqlparser.StarExpr:
 		//TODO: Add support for qualified start.
 		return expression.NewStar(), nil
-	case *sqlparser.NonStarExpr:
+	case *sqlparser.AliasedExpr:
 		expr, err := exprToExpression(e.Expr)
 		if err != nil {
 			return nil, err

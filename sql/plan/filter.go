@@ -1,6 +1,6 @@
 package plan
 
-import "gopkg.in/sqle/sqle.v0/sql"
+import "github.com/src-d/go-mysql-server/sql"
 
 type Filter struct {
 	UnaryNode

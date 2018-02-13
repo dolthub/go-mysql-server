@@ -3,9 +3,9 @@ package parse
 import (
 	"testing"
 
-	"gopkg.in/sqle/sqle.v0/sql"
-	"gopkg.in/sqle/sqle.v0/sql/expression"
-	"gopkg.in/sqle/sqle.v0/sql/plan"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/src-d/go-mysql-server/sql/plan"
 
 	"github.com/stretchr/testify/assert"
 )

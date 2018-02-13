@@ -7,10 +7,10 @@ import (
 	"errors"
 	"fmt"
 
-	"gopkg.in/sqle/sqle.v0/sql"
-	"gopkg.in/sqle/sqle.v0/sql/analyzer"
-	"gopkg.in/sqle/sqle.v0/sql/expression"
-	"gopkg.in/sqle/sqle.v0/sql/parse"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/analyzer"
+	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/src-d/go-mysql-server/sql/parse"
 )
 
 var (

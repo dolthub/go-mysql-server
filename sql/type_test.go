@@ -91,3 +91,24 @@ func TestType_BigInteger(t *testing.T) {
 	assert.Equal(0, BigInteger.Compare(int64(1), int64(1)))
 	assert.Equal(1, BigInteger.Compare(int64(2), int64(1)))
 }
+
+func TestType_Blob(t *testing.T) {
+	var v interface{}
+	var err error
+	assert := assert.New(t)
+	assert.True(Blob.Check([]byte{}))
+	assert.False(Blob.Check(1))
+	assert.False(Blob.Check(int32(1)))
+
+	v, err = Blob.Convert("")
+	assert.Nil(err)
+	assert.Equal([]byte{}, v)
+
+	v, err = Blob.Convert(1)
+	assert.Equal(ErrInvalidType, err)
+	assert.Nil(v)
+
+	assert.Equal(-1, Blob.Compare([]byte{'A'}, []byte{'B'}))
+	assert.Equal(0, Blob.Compare([]byte{'A'}, []byte{'A'}))
+	assert.Equal(1, Blob.Compare([]byte{'B'}, []byte{'A'}))
+}

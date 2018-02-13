@@ -3,8 +3,8 @@ package sql_test
 import (
 	"testing"
 
-	"gopkg.in/sqle/sqle.v0/sql"
-	"gopkg.in/sqle/sqle.v0/sql/expression"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
 
 	"github.com/stretchr/testify/assert"
 )

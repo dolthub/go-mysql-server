@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 
-	"gopkg.in/sqle/sqle.v0"
-	"gopkg.in/sqle/sqle.v0/mem"
-	gitqlsql "gopkg.in/sqle/sqle.v0/sql"
+	"github.com/src-d/go-mysql-server"
+	"github.com/src-d/go-mysql-server/mem"
+	gitqlsql "github.com/src-d/go-mysql-server/sql"
 )
 
 func Example() {

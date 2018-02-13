@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"bytes"
 	"database/sql/driver"
 	"fmt"
 	"reflect"
@@ -527,7 +528,7 @@ func convertToTimestamp(v interface{}) (interface{}, error) {
 	case string:
 		t, err := time.Parse(timestampLayout, v.(string))
 		if err != nil {
-			return nil, fmt.Errorf("value %q can't be converted to int64", v)
+			return nil, fmt.Errorf("value %q can't be converted to time.Time", v)
 		}
 		return t, nil
 	default:
@@ -553,4 +554,52 @@ func compareTimestamp(a interface{}, b interface{}) int {
 		return 1
 	}
 	return 0
+}
+
+var Blob = blobType{}
+
+type blobType struct{}
+
+func (t blobType) Name() string {
+	return "blob"
+}
+
+func (t blobType) InternalType() reflect.Kind {
+	return reflect.String
+}
+
+func (t blobType) Check(v interface{}) bool {
+	_, ok := v.([]byte)
+	return ok
+}
+
+func (t blobType) Convert(v interface{}) (interface{}, error) {
+	switch value := v.(type) {
+	case []byte:
+		return value, nil
+	case string:
+		return []byte(value), nil
+	case fmt.Stringer:
+		return []byte(value.String()), nil
+	default:
+		return nil, ErrInvalidType
+	}
+}
+
+func (t blobType) Compare(a interface{}, b interface{}) int {
+	av := a.([]byte)
+	bv := b.([]byte)
+	return bytes.Compare(av, bv)
+}
+
+func (t blobType) Native(v interface{}) driver.Value {
+	if v == nil {
+		return driver.Value(nil)
+	}
+
+	return driver.Value(v.([]byte))
+}
+
+func (t blobType) Default() interface{} {
+	return []byte{}
 }
