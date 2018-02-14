@@ -1,0 +1,56 @@
+package main
+
+import (
+	"time"
+
+	"github.com/src-d/go-mysql-server"
+	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/server"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-vitess/mysql"
+)
+
+// Example of how to implement a MySQL server based on a Engine:
+//
+// ```
+// > mysql --host=127.0.0.1 --port=5123 -u user1 -ppassword1 db -e "SELECT * FROM mytable"
+// +----------+-------------------+---------------------+
+// | name     | email             | created_at          |
+// +----------+-------------------+---------------------+
+// | John Doe | john@doe.com      | 2018-02-14 01:15:40 |
+// | John Doe | johnalt@doe.com   | 2018-02-14 01:15:40 |
+// | Jane Doe | jane@doe.com      | 2018-02-14 01:15:40 |
+// | Evil Bob | evilbob@gmail.com | 2018-02-14 01:15:40 |
+// +----------+-------------------+---------------------+
+// ```
+func main() {
+	driver := sqle.New()
+	driver.AddDatabase(createTestDatabase())
+
+	auth := mysql.NewAuthServerStatic()
+	auth.Entries["user1"] = []*mysql.AuthServerStaticEntry{{
+		Password: "password1",
+	}}
+
+	s, err := server.NewServer("tcp", "localhost:5123", auth, driver)
+	if err != nil {
+		panic(err)
+	}
+
+	s.Start()
+}
+
+func createTestDatabase() *mem.Database {
+	db := mem.NewDatabase("test")
+	table := mem.NewTable("mytable", sql.Schema{
+		{Name: "name", Type: sql.String},
+		{Name: "email", Type: sql.String},
+		{Name: "created_at", Type: sql.TimestampWithTimezone},
+	})
+	db.AddTable("mytable", table)
+	table.Insert(sql.NewRow("John Doe", "john@doe.com", time.Now()))
+	table.Insert(sql.NewRow("John Doe", "johnalt@doe.com", time.Now()))
+	table.Insert(sql.NewRow("Jane Doe", "jane@doe.com", time.Now()))
+	table.Insert(sql.NewRow("Evil Bob", "evilbob@gmail.com", time.Now()))
+	return db
+}

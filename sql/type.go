@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/src-d/go-vitess/sqltypes"
+	"github.com/src-d/go-vitess/vt/proto/query"
 )
 
 type Schema []*Column
@@ -66,6 +69,10 @@ type Type interface {
 	Compare(interface{}, interface{}) int
 	Native(interface{}) driver.Value
 	Default() interface{}
+	// Type returns the query.Type for the given Type.
+	Type() query.Type
+	// SQL returns the sqltypes.Value for the given value.
+	SQL(interface{}) sqltypes.Value
 }
 
 var Null = nullType{}
@@ -74,6 +81,14 @@ type nullType struct{}
 
 func (t nullType) Name() string {
 	return "null"
+}
+
+func (t nullType) Type() query.Type {
+	return sqltypes.Null
+}
+
+func (t nullType) SQL(interface{}) sqltypes.Value {
+	return sqltypes.NULL
 }
 
 func (t nullType) InternalType() reflect.Kind {
@@ -114,6 +129,14 @@ func (t integerType) Name() string {
 	return "integer"
 }
 
+func (t integerType) Type() query.Type {
+	return sqltypes.Int32
+}
+
+func (t integerType) SQL(v interface{}) sqltypes.Value {
+	return sqltypes.NewInt32(MustConvert(t, v).(int32))
+}
+
 func (t integerType) InternalType() reflect.Kind {
 	return reflect.Int32
 }
@@ -148,6 +171,14 @@ type bigIntegerType struct{}
 
 func (t bigIntegerType) Name() string {
 	return "biginteger"
+}
+
+func (t bigIntegerType) Type() query.Type {
+	return sqltypes.Int64
+}
+
+func (t bigIntegerType) SQL(v interface{}) sqltypes.Value {
+	return sqltypes.NewInt64(MustConvert(t, v).(int64))
 }
 
 func (t bigIntegerType) InternalType() reflect.Kind {
@@ -187,6 +218,17 @@ func (t timestampWithTimeZoneType) Name() string {
 	return "timestamp with timezone"
 }
 
+func (t timestampWithTimeZoneType) Type() query.Type {
+	return sqltypes.Timestamp
+}
+
+func (t timestampWithTimeZoneType) SQL(v interface{}) sqltypes.Value {
+	time := MustConvert(t, v).(time.Time)
+	return sqltypes.MakeTrusted(sqltypes.Timestamp,
+		[]byte(time.Format("2006-01-02 15:04:05")),
+	)
+}
+
 func (t timestampWithTimeZoneType) InternalType() reflect.Kind {
 	return reflect.Struct
 }
@@ -223,6 +265,14 @@ func (t stringType) Name() string {
 	return "string"
 }
 
+func (t stringType) Type() query.Type {
+	return sqltypes.Text
+}
+
+func (t stringType) SQL(v interface{}) sqltypes.Value {
+	return sqltypes.MakeTrusted(sqltypes.Text, []byte(MustConvert(t, v).(string)))
+}
+
 func (t stringType) InternalType() reflect.Kind {
 	return reflect.String
 }
@@ -257,6 +307,19 @@ type booleanType struct{}
 
 func (t booleanType) Name() string {
 	return "boolean"
+}
+
+func (t booleanType) Type() query.Type {
+	return sqltypes.Bit
+}
+
+func (t booleanType) SQL(v interface{}) sqltypes.Value {
+	b := []byte{'0'}
+	if MustConvert(t, v).(bool) {
+		b[0] = '1'
+	}
+
+	return sqltypes.MakeTrusted(sqltypes.Bit, b)
 }
 
 func (t booleanType) InternalType() reflect.Kind {
@@ -297,6 +360,14 @@ func (t floatType) Name() string {
 
 func (t floatType) InternalType() reflect.Kind {
 	return reflect.Float64
+}
+
+func (t floatType) Type() query.Type {
+	return sqltypes.Float64
+}
+
+func (t floatType) SQL(v interface{}) sqltypes.Value {
+	return sqltypes.NewFloat64(MustConvert(t, v).(float64))
 }
 
 func (t floatType) Check(v interface{}) bool {
@@ -524,9 +595,11 @@ func checkTimestamp(v interface{}) bool {
 const timestampLayout = "2006-01-02 15:04:05.000000"
 
 func convertToTimestamp(v interface{}) (interface{}, error) {
-	switch v.(type) {
+	switch value := v.(type) {
+	case time.Time:
+		return value, nil
 	case string:
-		t, err := time.Parse(timestampLayout, v.(string))
+		t, err := time.Parse(timestampLayout, value)
 		if err != nil {
 			return nil, fmt.Errorf("value %q can't be converted to time.Time", v)
 		}
@@ -568,6 +641,14 @@ func (t blobType) InternalType() reflect.Kind {
 	return reflect.String
 }
 
+func (t blobType) Type() query.Type {
+	return sqltypes.Blob
+}
+
+func (t blobType) SQL(v interface{}) sqltypes.Value {
+	return sqltypes.MakeTrusted(sqltypes.Blob, MustConvert(t, v).([]byte))
+}
+
 func (t blobType) Check(v interface{}) bool {
 	_, ok := v.([]byte)
 	return ok
@@ -602,4 +683,14 @@ func (t blobType) Native(v interface{}) driver.Value {
 
 func (t blobType) Default() interface{} {
 	return []byte{}
+}
+
+func MustConvert(t Type, v interface{}) interface{} {
+	c, err := t.Convert(v)
+	if err != nil {
+		fmt.Println(err)
+		panic(err)
+	}
+
+	return c
 }
