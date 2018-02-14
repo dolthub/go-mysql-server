@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"database/sql/driver"
 	"errors"
 )
 
@@ -69,11 +68,6 @@ type Inserter interface {
 type Database interface {
 	Nameable
 	Tables() map[string]Table
-}
-
-type Rows interface {
-	driver.Rows
-	Schema() Schema
 }
 
 var ErrInvalidType = errors.New("invalid type")

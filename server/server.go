@@ -1,7 +1,7 @@
 package server
 
 import (
-	"database/sql/driver"
+	"github.com/src-d/go-mysql-server"
 
 	"github.com/src-d/go-vitess/mysql"
 )
@@ -10,8 +10,8 @@ type Server struct {
 	Listener *mysql.Listener
 }
 
-func NewServer(protocol, address string, auth mysql.AuthServer, d driver.Driver) (*Server, error) {
-	l, err := mysql.NewListener(protocol, address, auth, NewHandler(d))
+func NewServer(protocol, address string, auth mysql.AuthServer, e *sqle.Engine) (*Server, error) {
+	l, err := mysql.NewListener(protocol, address, auth, NewHandler(e))
 	if err != nil {
 		return nil, err
 	}

@@ -206,10 +206,6 @@ type rows struct {
 	iter   sql.RowIter
 }
 
-func (rs *rows) Schema() sql.Schema {
-	return rs.schema
-}
-
 // Columns returns the names of the columns.
 func (rs *rows) Columns() []string {
 	c := make([]string, len(rs.schema))
