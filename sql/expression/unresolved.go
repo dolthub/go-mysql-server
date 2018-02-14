@@ -19,7 +19,7 @@ func (UnresolvedColumn) IsNullable() bool {
 }
 
 func (UnresolvedColumn) Type() sql.Type {
-	return sql.String //FIXME
+	return sql.Text //FIXME
 }
 
 func (c UnresolvedColumn) Name() string {
@@ -55,7 +55,7 @@ func (UnresolvedFunction) IsNullable() bool {
 }
 
 func (UnresolvedFunction) Type() sql.Type {
-	return sql.String //FIXME
+	return sql.Text //FIXME
 }
 
 func (c UnresolvedFunction) Name() string {

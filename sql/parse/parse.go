@@ -249,7 +249,7 @@ func limitToLimit(o sqlparser.Expr, child sql.Node) (*plan.Limit, error) {
 	}
 
 	nl, ok := e.(*expression.Literal)
-	if !ok || nl.Type() != sql.BigInteger {
+	if !ok || nl.Type() != sql.Int64 {
 		return nil, errUnsupportedFeature("LIMIT with non-integer literal")
 	}
 
@@ -328,11 +328,11 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 	case *sqlparser.SQLVal:
 		switch v.Type {
 		case sqlparser.StrVal:
-			return expression.NewLiteral(string(v.Val), sql.String), nil
+			return expression.NewLiteral(string(v.Val), sql.Text), nil
 		case sqlparser.IntVal:
 			//TODO: Use smallest integer representation and widen later.
 			n, _ := strconv.ParseInt(string(v.Val), 10, 64)
-			return expression.NewLiteral(n, sql.BigInteger), nil
+			return expression.NewLiteral(n, sql.Int64), nil
 		case sqlparser.HexVal:
 			//TODO
 			return nil, errUnsupported(v)

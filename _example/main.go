@@ -43,14 +43,15 @@ func main() {
 func createTestDatabase() *mem.Database {
 	db := mem.NewDatabase("test")
 	table := mem.NewTable("mytable", sql.Schema{
-		{Name: "name", Type: sql.String},
-		{Name: "email", Type: sql.String},
-		{Name: "created_at", Type: sql.TimestampWithTimezone},
+		{Name: "name", Type: sql.Text},
+		{Name: "email", Type: sql.Text},
+		{Name: "phone_numbers", Type: sql.JSON},
+		{Name: "created_at", Type: sql.Timestamp},
 	})
 	db.AddTable("mytable", table)
-	table.Insert(sql.NewRow("John Doe", "john@doe.com", time.Now()))
-	table.Insert(sql.NewRow("John Doe", "johnalt@doe.com", time.Now()))
-	table.Insert(sql.NewRow("Jane Doe", "jane@doe.com", time.Now()))
-	table.Insert(sql.NewRow("Evil Bob", "evilbob@gmail.com", time.Now()))
+	table.Insert(sql.NewRow("John Doe", "john@doe.com", []string{"555-555-555"}, time.Now()))
+	table.Insert(sql.NewRow("John Doe", "johnalt@doe.com", []string{}, time.Now()))
+	table.Insert(sql.NewRow("Jane Doe", "jane@doe.com", []string{}, time.Now()))
+	table.Insert(sql.NewRow("Evil Bob", "evilbob@gmail.com", []string{"555-666-555", "666-666-666"}, time.Now()))
 	return db
 }

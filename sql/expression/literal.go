@@ -12,7 +12,7 @@ func NewLiteral(value interface{}, fieldType sql.Type) *Literal {
 	return &Literal{
 		value:     value,
 		fieldType: fieldType,
-		name:      "literal_" + fieldType.Name(),
+		name:      "literal_" + fieldType.Type().String(),
 	}
 }
 

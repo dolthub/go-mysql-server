@@ -18,7 +18,7 @@ func (Star) IsNullable() bool {
 }
 
 func (Star) Type() sql.Type {
-	return sql.String //FIXME
+	return sql.Text //FIXME
 }
 
 func (Star) Name() string {

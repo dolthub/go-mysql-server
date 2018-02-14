@@ -19,7 +19,7 @@ func (c *Count) NewBuffer() sql.Row {
 }
 
 func (c *Count) Type() sql.Type {
-	return sql.Integer
+	return sql.Int32
 }
 
 func (c *Count) IsNullable() bool {
