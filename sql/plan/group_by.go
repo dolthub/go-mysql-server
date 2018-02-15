@@ -9,15 +9,19 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 )
 
+// GroupBy groups the rows by some expressions.
 type GroupBy struct {
 	UnaryNode
 	aggregate []sql.Expression
 	grouping  []sql.Expression
 }
 
-func NewGroupBy(aggregate []sql.Expression, grouping []sql.Expression,
-	child sql.Node) *GroupBy {
-
+// NewGroupBy creates a new GroupBy node.
+func NewGroupBy(
+	aggregate []sql.Expression,
+	grouping []sql.Expression,
+	child sql.Node,
+) *GroupBy {
 	return &GroupBy{
 		UnaryNode: UnaryNode{Child: child},
 		aggregate: aggregate,
@@ -25,12 +29,14 @@ func NewGroupBy(aggregate []sql.Expression, grouping []sql.Expression,
 	}
 }
 
+// Resolved implements the Resolvable interface.
 func (p *GroupBy) Resolved() bool {
 	return p.UnaryNode.Child.Resolved() &&
 		expressionsResolved(p.aggregate...) &&
 		expressionsResolved(p.grouping...)
 }
 
+// Schema implements the Node interface.
 func (p *GroupBy) Schema() sql.Schema {
 	s := sql.Schema{}
 	for _, e := range p.aggregate {
@@ -44,6 +50,7 @@ func (p *GroupBy) Schema() sql.Schema {
 	return s
 }
 
+// RowIter implements the Node interface.
 func (p *GroupBy) RowIter() (sql.RowIter, error) {
 	i, err := p.Child.RowIter()
 	if err != nil {
@@ -52,6 +59,7 @@ func (p *GroupBy) RowIter() (sql.RowIter, error) {
 	return newGroupByIter(p, i), nil
 }
 
+// TransformUp implements the Transformable interface.
 func (p *GroupBy) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	c := p.UnaryNode.Child.TransformUp(f)
 	n := NewGroupBy(p.aggregate, p.grouping, c)
@@ -59,6 +67,7 @@ func (p *GroupBy) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	return f(n)
 }
 
+// TransformExpressionsUp implements the Transformable interface.
 func (p *GroupBy) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
 	c := p.UnaryNode.Child.TransformExpressionsUp(f)
 	aes := transformExpressionsUp(f, p.aggregate)

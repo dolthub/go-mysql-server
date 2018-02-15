@@ -4,23 +4,31 @@ import (
 	"io"
 )
 
+// Row is a tuple of values.
 type Row []interface{}
 
+// NewRow creates a row from the given values.
 func NewRow(values ...interface{}) Row {
 	row := make([]interface{}, len(values))
 	copy(row, values)
 	return row
 }
 
+// Copy creates a new row with the same values as the current one.
 func (r Row) Copy() Row {
 	return NewRow(r...)
 }
 
+// RowIter is an iterator that produces rows.
 type RowIter interface {
+	// Next retrieves the next row. It will return io.EOF if it's the last row.
+	// After retrieving the last row, Close will be automatically closed.
 	Next() (Row, error)
+	// Close the iterator.
 	Close() error
 }
 
+// RowIterToRows converts a row iterator to a slice of rows.
 func RowIterToRows(i RowIter) ([]Row, error) {
 	var rows []Row
 	for {
@@ -39,6 +47,7 @@ func RowIterToRows(i RowIter) ([]Row, error) {
 	return rows, i.Close()
 }
 
+// NodeToRows converts a node to a slice of rows.
 func NodeToRows(n Node) ([]Row, error) {
 	i, err := n.RowIter()
 	if err != nil {

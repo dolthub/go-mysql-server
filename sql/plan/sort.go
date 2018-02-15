@@ -7,31 +7,43 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
+// Sort is the sort node.
 type Sort struct {
 	UnaryNode
 	SortFields []SortField
 }
 
+// SortOrder represents the order of the sort (ascending or descending).
 type SortOrder byte
 
 const (
-	Ascending  SortOrder = 1
+	// Ascending order.
+	Ascending SortOrder = 1
+	// Descending order.
 	Descending SortOrder = 2
 )
 
+// NullOrdering represents how to order based on null values.
 type NullOrdering byte
 
 const (
+	// NullsFirst puts the null values before any other values.
 	NullsFirst NullOrdering = iota
-	NullsLast  NullOrdering = 2
+	// NullsLast puts the null values after all other values.
+	NullsLast NullOrdering = 2
 )
 
+// SortField is a field by which the query will be sorted.
 type SortField struct {
-	Column       sql.Expression
-	Order        SortOrder
+	// Column to order by.
+	Column sql.Expression
+	// Order type.
+	Order SortOrder
+	// NullOrdering defining how nulls will be ordered.
 	NullOrdering NullOrdering
 }
 
+// NewSort creates a new Sort node.
 func NewSort(sortFields []SortField, child sql.Node) *Sort {
 	return &Sort{
 		UnaryNode:  UnaryNode{child},
@@ -39,12 +51,13 @@ func NewSort(sortFields []SortField, child sql.Node) *Sort {
 	}
 }
 
+// Resolved implements the Resolvable interface.
 func (s *Sort) Resolved() bool {
 	return s.UnaryNode.Child.Resolved() && s.expressionsResolved()
 }
 
-func (p *Sort) expressionsResolved() bool {
-	for _, f := range p.SortFields {
+func (s *Sort) expressionsResolved() bool {
+	for _, f := range s.SortFields {
 		if !f.Column.Resolved() {
 			return false
 		}
@@ -52,6 +65,7 @@ func (p *Sort) expressionsResolved() bool {
 	return true
 }
 
+// RowIter implements the Node interface.
 func (s *Sort) RowIter() (sql.RowIter, error) {
 
 	i, err := s.UnaryNode.Child.RowIter()
@@ -61,6 +75,7 @@ func (s *Sort) RowIter() (sql.RowIter, error) {
 	return newSortIter(s, i), nil
 }
 
+// TransformUp implements the Transformable interface.
 func (s *Sort) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	c := s.UnaryNode.Child.TransformUp(f)
 	n := NewSort(s.SortFields, c)
@@ -68,6 +83,7 @@ func (s *Sort) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	return f(n)
 }
 
+// TransformExpressionsUp implements the Transformable interface.
 func (s *Sort) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
 	c := s.UnaryNode.Child.TransformExpressionsUp(f)
 	sfs := []SortField{}

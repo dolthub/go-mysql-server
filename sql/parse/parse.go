@@ -20,6 +20,7 @@ func errUnsupportedFeature(feature string) error {
 	return fmt.Errorf("unsupported feature: %s", feature)
 }
 
+// Parse parses the given SQL sentence and returns the corresponding node.
 func Parse(s string) (sql.Node, error) {
 	if strings.HasSuffix(s, ";") {
 		s = s[:len(s)-1]

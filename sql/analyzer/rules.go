@@ -6,6 +6,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
+// DefaultRules to apply when analyzing nodes.
 var DefaultRules = []Rule{
 	{"resolve_tables", resolveTables},
 	{"resolve_columns", resolveColumns},

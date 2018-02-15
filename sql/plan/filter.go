@@ -2,11 +2,13 @@ package plan
 
 import "gopkg.in/src-d/go-mysql-server.v0/sql"
 
+// Filter skips rows that don't match a certain expression.
 type Filter struct {
 	UnaryNode
 	expression sql.Expression
 }
 
+// NewFilter creates a new filter node.
 func NewFilter(expression sql.Expression, child sql.Node) *Filter {
 	return &Filter{
 		UnaryNode:  UnaryNode{Child: child},
@@ -14,10 +16,12 @@ func NewFilter(expression sql.Expression, child sql.Node) *Filter {
 	}
 }
 
+// Resolved implements the Resolvable interface.
 func (p *Filter) Resolved() bool {
 	return p.UnaryNode.Child.Resolved() && p.expression.Resolved()
 }
 
+// RowIter implements the Node interface.
 func (p *Filter) RowIter() (sql.RowIter, error) {
 	i, err := p.Child.RowIter()
 	if err != nil {
@@ -26,6 +30,7 @@ func (p *Filter) RowIter() (sql.RowIter, error) {
 	return &filterIter{p, i}, nil
 }
 
+// TransformUp implements the Transformable interface.
 func (p *Filter) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	c := p.UnaryNode.Child.TransformUp(f)
 	n := NewFilter(p.expression, c)
@@ -33,6 +38,7 @@ func (p *Filter) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	return f(n)
 }
 
+// TransformExpressionsUp implements the Transformable interface.
 func (p *Filter) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
 	c := p.UnaryNode.Child.TransformExpressionsUp(f)
 	e := p.expression.TransformUp(f)

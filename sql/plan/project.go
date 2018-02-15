@@ -4,11 +4,14 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
+// Project is a projection of certain expression from the children node.
 type Project struct {
 	UnaryNode
+	// Expression projected.
 	Expressions []sql.Expression
 }
 
+// NewProject creates a new projection.
 func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	return &Project{
 		UnaryNode:   UnaryNode{child},
@@ -16,6 +19,7 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	}
 }
 
+// Schema implements the Node interface.
 func (p *Project) Schema() sql.Schema {
 	var s sql.Schema
 	for _, e := range p.Expressions {
@@ -29,11 +33,13 @@ func (p *Project) Schema() sql.Schema {
 	return s
 }
 
+// Resolved implements the Resolvable interface.
 func (p *Project) Resolved() bool {
 	return p.UnaryNode.Child.Resolved() &&
 		expressionsResolved(p.Expressions...)
 }
 
+// RowIter implements the Node interface.
 func (p *Project) RowIter() (sql.RowIter, error) {
 	i, err := p.Child.RowIter()
 	if err != nil {
@@ -42,6 +48,7 @@ func (p *Project) RowIter() (sql.RowIter, error) {
 	return &iter{p, i}, nil
 }
 
+// TransformUp implements the Transformable interface.
 func (p *Project) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	c := p.UnaryNode.Child.TransformUp(f)
 	n := NewProject(p.Expressions, c)
@@ -49,6 +56,7 @@ func (p *Project) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	return f(n)
 }
 
+// TransformExpressionsUp implements the Transformable interface.
 func (p *Project) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
 	c := p.UnaryNode.Child.TransformExpressionsUp(f)
 	es := transformExpressionsUp(f, p.Expressions)

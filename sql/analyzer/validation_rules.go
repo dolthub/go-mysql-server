@@ -7,6 +7,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
+// DefaultValidationRules to apply while analyzing nodes.
 var DefaultValidationRules = []ValidationRule{
 	{"validate_resolved", validateIsResolved},
 	{"validate_order_by", validateOrderBy},
