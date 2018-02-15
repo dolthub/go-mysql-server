@@ -188,6 +188,7 @@ var fixtures = map[string]sql.Node{
 		}}),
 		[]string{"col1", "col2"},
 	),
+	`SHOW TABLES`: plan.NewShowTables(&sql.UnresolvedDatabase{}),
 }
 
 func TestParse(t *testing.T) {
@@ -200,5 +201,20 @@ func TestParse(t *testing.T) {
 				"plans do not match for query '%s'", query)
 		})
 
+	}
+}
+
+var fixturesErrors = map[string]error{
+	`SHOW METHEMONEY`: errUnsupportedFeature(`SHOW METHEMONEY`),
+}
+
+func TestParseErrors(t *testing.T) {
+	for query, expectedError := range fixturesErrors {
+		t.Run(query, func(t *testing.T) {
+			assert := assert.New(t)
+			_, err := Parse(query)
+			assert.Error(err)
+			assert.Equal(expectedError, err)
+		})
 	}
 }

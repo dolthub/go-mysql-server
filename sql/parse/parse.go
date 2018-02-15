@@ -12,10 +12,6 @@ import (
 	"github.com/src-d/go-vitess/vt/sqlparser"
 )
 
-const (
-	showTables = "SHOW TABLES"
-)
-
 func errUnsupported(n sqlparser.SQLNode) error {
 	return fmt.Errorf("unsupported syntax: %#v", n)
 }
@@ -27,11 +23,6 @@ func errUnsupportedFeature(feature string) error {
 func Parse(s string) (sql.Node, error) {
 	if strings.HasSuffix(s, ";") {
 		s = s[:len(s)-1]
-	}
-
-	// TODO implement it into the parser
-	if strings.ToUpper(s) == showTables {
-		return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
 	}
 
 	t := regexp.MustCompile(`^describe\s+table\s+(.*)`).FindStringSubmatch(strings.ToLower(s))
@@ -51,11 +42,22 @@ func convert(stmt sqlparser.Statement) (sql.Node, error) {
 	switch n := stmt.(type) {
 	default:
 		return nil, errUnsupported(n)
+	case *sqlparser.Show:
+		return convertShow(n)
 	case *sqlparser.Select:
 		return convertSelect(n)
 	case *sqlparser.Insert:
 		return convertInsert(n)
 	}
+}
+
+func convertShow(s *sqlparser.Show) (sql.Node, error) {
+	if s.Type != sqlparser.KeywordString(sqlparser.TABLES) {
+		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
+		return nil, errUnsupportedFeature(unsupportedShow)
+	}
+
+	return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
 }
 
 func convertSelect(s *sqlparser.Select) (sql.Node, error) {
