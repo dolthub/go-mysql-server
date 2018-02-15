@@ -3,7 +3,7 @@ package plan
 import (
 	"testing"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
 
 	"github.com/stretchr/testify/assert"
 )

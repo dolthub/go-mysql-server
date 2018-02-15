@@ -4,8 +4,8 @@ import (
 	"io"
 	"sync"
 
-	"github.com/src-d/go-mysql-server"
-	"github.com/src-d/go-mysql-server/sql"
+	"gopkg.in/src-d/go-mysql-server.v0"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
 
 	"github.com/sirupsen/logrus"
 	"github.com/src-d/go-vitess/mysql"

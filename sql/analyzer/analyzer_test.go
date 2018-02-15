@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/src-d/go-mysql-server/mem"
-	"github.com/src-d/go-mysql-server/sql"
-	"github.com/src-d/go-mysql-server/sql/analyzer"
-	"github.com/src-d/go-mysql-server/sql/expression"
-	"github.com/src-d/go-mysql-server/sql/plan"
+	"gopkg.in/src-d/go-mysql-server.v0/mem"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 
 	"github.com/stretchr/testify/require"
 )

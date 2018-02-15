@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
 const maxAnalysisIterations = 1000

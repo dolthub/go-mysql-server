@@ -1,7 +1,7 @@
 package plan
 
 import (
-	"github.com/src-d/go-mysql-server/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
 type Values struct {

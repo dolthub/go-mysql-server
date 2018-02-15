@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/src-d/go-mysql-server"
+	"gopkg.in/src-d/go-mysql-server.v0"
 
 	"github.com/src-d/go-vitess/mysql"
 )
