@@ -1,20 +1,20 @@
 language: go
-sudo: false
+
 go:
-  - 1.7
-  - 1.8
+  - 1.9
   - tip
+
+go_import_path: github.com/src-d/go-mysql-server
+
 matrix:
   fast_finish: true
   allow_failures:
     - go: tip
+
+sudo: required
+
 install:
-  - rm -rf $GOPATH/src/gopkg.in/sqle
-  - mkdir -p $GOPATH/src/gopkg.in/sqle
-  - ln -s $PWD $GOPATH/src/gopkg.in/sqle/sqle.v0
-  - cd $GOPATH/src/gopkg.in/sqle/sqle.v0
-  - go get -t -v ./...
+  - make dependencies
+
 script:
-  - sh ./go.test.sh
-after_success:
-  - bash <(curl -s https://codecov.io/bash)
+  - make test-coverage

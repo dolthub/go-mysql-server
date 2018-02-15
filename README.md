@@ -1,23 +1,23 @@
 # sqle
 
 <a href="https://codebeat.co/projects/github-com-sqle-sqle"><img alt="codebeat badge" src="https://codebeat.co/badges/10f09016-1074-43d3-916a-4b4e628e79c0" /></a>
-<a href="https://travis-ci.org/sqle/sqle"><img alt="Build Status" src="https://travis-ci.org/sqle/sqle.svg?branch=master" /></a>
-<a href="https://codecov.io/gh/sqle/sqle"><img alt="codecov" src="https://codecov.io/gh/sqle/sqle/branch/master/graph/badge.svg" /></a>
-<a href="https://godoc.org/gopkg.in/sqle/sqle.v0"><img alt="GoDoc" src="https://godoc.org/gopkg.in/sqle/sqle.v0?status.svg" /></a>
+<a href="https://travis-ci.org/src-d/go-mysql-server"><img alt="Build Status" src="https://travis-ci.org/src-d/go-mysql-server.svg?branch=master" /></a>
+<a href="https://codecov.io/gh/src-d/go-mysql-server"><img alt="codecov" src="https://codecov.io/gh/src-d/go-mysql-server/branch/master/graph/badge.svg" /></a>
+<a href="https://godoc.org/github.com/src-d/go-mysql-server"><img alt="GoDoc" src="https://godoc.org/github.com/src-d/go-mysql-server?status.svg" /></a>
 
 ## Installation
 
-The import path for the package is `gopkg.in/sqle/sqle.v0`.
+The import path for the package is `github.com/src-d/go-mysql-server`.
 
 To install it, run:
 
 ```
-go get gopkg.in/sqle/sqle.v0
+go get github.com/src-d/go-mysql-server
 ```
 
 ## Documentation
 
-* [sqle godoc](https://godoc.org/gopkg.in/sqle/sqle.v0)
+* [sqle godoc](https://godoc.org/github.com/src-d/go-mysql-server)
 
 
 ## SQL syntax

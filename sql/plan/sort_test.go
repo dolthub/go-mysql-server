@@ -22,8 +22,8 @@ func TestSort(t *testing.T) {
 	}
 
 	schema := sql.Schema{
-		{Name: "col1", Type: sql.String, Nullable: true},
-		{Name: "col2", Type: sql.Integer, Nullable: true},
+		{Name: "col1", Type: sql.Text, Nullable: true},
+		{Name: "col2", Type: sql.Int32, Nullable: true},
 	}
 
 	child := mem.NewTable("test", schema)
@@ -32,8 +32,8 @@ func TestSort(t *testing.T) {
 	}
 
 	sf := []SortField{
-		{Column: expression.NewGetField(1, sql.Integer, "col2", true), Order: Ascending, NullOrdering: NullsFirst},
-		{Column: expression.NewGetField(0, sql.String, "col1", true), Order: Descending, NullOrdering: NullsLast},
+		{Column: expression.NewGetField(1, sql.Int32, "col2", true), Order: Ascending, NullOrdering: NullsFirst},
+		{Column: expression.NewGetField(0, sql.Text, "col1", true), Order: Descending, NullOrdering: NullsLast},
 	}
 	s := NewSort(sf, child)
 	require.Equal(schema, s.Schema())
@@ -63,7 +63,7 @@ func TestSortAscending(t *testing.T) {
 	}
 
 	schema := sql.Schema{
-		{Name: "col1", Type: sql.String, Nullable: true},
+		{Name: "col1", Type: sql.Text, Nullable: true},
 	}
 
 	child := mem.NewTable("test", schema)
@@ -72,7 +72,7 @@ func TestSortAscending(t *testing.T) {
 	}
 
 	sf := []SortField{
-		{Column: expression.NewGetField(0, sql.String, "col1", true), Order: Ascending, NullOrdering: NullsFirst},
+		{Column: expression.NewGetField(0, sql.Text, "col1", true), Order: Ascending, NullOrdering: NullsFirst},
 	}
 	s := NewSort(sf, child)
 	require.Equal(schema, s.Schema())
@@ -102,7 +102,7 @@ func TestSortDescending(t *testing.T) {
 	}
 
 	schema := sql.Schema{
-		{Name: "col1", Type: sql.String, Nullable: true},
+		{Name: "col1", Type: sql.Text, Nullable: true},
 	}
 
 	child := mem.NewTable("test", schema)
@@ -111,7 +111,7 @@ func TestSortDescending(t *testing.T) {
 	}
 
 	sf := []SortField{
-		{Column: expression.NewGetField(0, sql.String, "col1", true), Order: Descending, NullOrdering: NullsFirst},
+		{Column: expression.NewGetField(0, sql.Text, "col1", true), Order: Descending, NullOrdering: NullsFirst},
 	}
 	s := NewSort(sf, child)
 	require.Equal(schema, s.Schema())

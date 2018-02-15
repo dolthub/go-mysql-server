@@ -11,14 +11,14 @@ import (
 func TestCount_Name(t *testing.T) {
 	assert := require.New(t)
 
-	c := NewCount(NewLiteral("foo", sql.String))
-	assert.Equal("count(literal_string)", c.Name())
+	c := NewCount(NewLiteral("foo", sql.Text))
+	assert.Equal("count(literal_TEXT)", c.Name())
 }
 
 func TestCount_Eval_1(t *testing.T) {
 	assert := require.New(t)
 
-	c := NewCount(NewLiteral(1, sql.Integer))
+	c := NewCount(NewLiteral(1, sql.Int32))
 	b := c.NewBuffer()
 	assert.Equal(int32(0), c.Eval(b))
 
@@ -60,7 +60,7 @@ func TestCount_Eval_Star(t *testing.T) {
 func TestCount_Eval_String(t *testing.T) {
 	assert := require.New(t)
 
-	c := NewCount(NewGetField(0, sql.String, "", true))
+	c := NewCount(NewGetField(0, sql.Text, "", true))
 	b := c.NewBuffer()
 	assert.Equal(int32(0), c.Eval(b))
 
@@ -74,14 +74,14 @@ func TestCount_Eval_String(t *testing.T) {
 func TestFirst_Name(t *testing.T) {
 	assert := require.New(t)
 
-	c := NewFirst(NewGetField(0, sql.Integer, "field", true))
+	c := NewFirst(NewGetField(0, sql.Int32, "field", true))
 	assert.Equal("first(field)", c.Name())
 }
 
 func TestFirst_Eval(t *testing.T) {
 	assert := require.New(t)
 
-	c := NewFirst(NewGetField(0, sql.Integer, "field", true))
+	c := NewFirst(NewGetField(0, sql.Int32, "field", true))
 	b := c.NewBuffer()
 	assert.Nil(c.Eval(b))
 

@@ -1,7 +1,7 @@
 package sqle_test
 
 import (
-	gosql "database/sql"
+	"io"
 	"testing"
 
 	"github.com/src-d/go-mysql-server"
@@ -45,17 +45,17 @@ func TestQueries(t *testing.T) {
 
 	testQuery(t, e,
 		"SELECT COUNT(*) FROM mytable;",
-		[][]interface{}{{int64(3)}},
+		[][]interface{}{{int32(3)}},
 	)
 
 	testQuery(t, e,
 		"SELECT COUNT(*) FROM mytable LIMIT 1;",
-		[][]interface{}{{int64(3)}},
+		[][]interface{}{{int32(3)}},
 	)
 
 	testQuery(t, e,
 		"SELECT COUNT(*) AS c FROM mytable;",
-		[][]interface{}{{int64(3)}},
+		[][]interface{}{{int32(3)}},
 	)
 }
 
@@ -76,40 +76,24 @@ func testQuery(t *testing.T, e *sqle.Engine, q string, r [][]interface{}) {
 	t.Run(q, func(t *testing.T) {
 		assert := require.New(t)
 
-		sqle.DefaultEngine = e
-
-		db, err := gosql.Open(sqle.DriverName, "")
+		_, rows, err := e.Query(q)
 		assert.NoError(err)
-		defer func() { assert.NoError(db.Close()) }()
-
-		res, err := db.Query(q)
-		assert.NoError(err)
-		defer func() { assert.NoError(res.Close()) }()
-
-		cols, err := res.Columns()
-		assert.NoError(err)
-		assert.Equal(len(r[0]), len(cols))
-
-		vals := make([]interface{}, len(cols))
-		valPtrs := make([]interface{}, len(cols))
-		for i := 0; i < len(cols); i++ {
-			valPtrs[i] = &vals[i]
-		}
 
 		i := 0
 		for {
-			if !res.Next() {
+			row, err := rows.Next()
+			if err == io.EOF {
 				break
 			}
-
-			err := res.Scan(valPtrs...)
 			assert.NoError(err)
+			for j, c := range row {
+				cc := r[i][j]
+				assert.Equal(cc, c)
+			}
 
-			assert.Equal(r[i], vals)
 			i++
 		}
 
-		assert.NoError(res.Err())
 		assert.Equal(len(r), i)
 	})
 }
@@ -118,8 +102,8 @@ func newEngine(t *testing.T) *sqle.Engine {
 	assert := require.New(t)
 
 	table := mem.NewTable("mytable", sql.Schema{
-		{Name: "i", Type: sql.BigInteger},
-		{Name: "s", Type: sql.String},
+		{Name: "i", Type: sql.Int64},
+		{Name: "s", Type: sql.Text},
 	})
 	assert.Nil(table.Insert(sql.NewRow(int64(1), "a")))
 	assert.Nil(table.Insert(sql.NewRow(int64(2), "b")))

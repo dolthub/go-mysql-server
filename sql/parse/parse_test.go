@@ -58,7 +58,7 @@ var fixtures = map[string]sql.Node{
 		plan.NewFilter(
 			expression.NewEquals(
 				expression.NewUnresolvedColumn("foo"),
-				expression.NewLiteral("bar", sql.String),
+				expression.NewLiteral("bar", sql.Text),
 			),
 			plan.NewUnresolvedTable("foo"),
 		),
@@ -70,7 +70,7 @@ var fixtures = map[string]sql.Node{
 		plan.NewFilter(
 			expression.NewNot(expression.NewEquals(
 				expression.NewUnresolvedColumn("foo"),
-				expression.NewLiteral("bar", sql.String),
+				expression.NewLiteral("bar", sql.Text),
 			)),
 			plan.NewUnresolvedTable("foo"),
 		),
@@ -132,7 +132,7 @@ var fixtures = map[string]sql.Node{
 				plan.NewFilter(
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("qux"),
-						expression.NewLiteral(int64(1), sql.BigInteger),
+						expression.NewLiteral(int64(1), sql.Int64),
 					),
 					plan.NewUnresolvedTable("foo"),
 				),
@@ -175,7 +175,7 @@ var fixtures = map[string]sql.Node{
 		plan.NewFilter(
 			expression.NewRegexp(
 				expression.NewUnresolvedColumn("a"),
-				expression.NewLiteral(".*test.*", sql.String),
+				expression.NewLiteral(".*test.*", sql.Text),
 			),
 			plan.NewUnresolvedTable("t1"),
 		),
@@ -183,8 +183,8 @@ var fixtures = map[string]sql.Node{
 	`INSERT INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
 		plan.NewUnresolvedTable("t1"),
 		plan.NewValues([][]sql.Expression{{
-			expression.NewLiteral("a", sql.String),
-			expression.NewLiteral(int64(1), sql.BigInteger),
+			expression.NewLiteral("a", sql.Text),
+			expression.NewLiteral(int64(1), sql.Int64),
 		}}),
 		[]string{"col1", "col2"},
 	),

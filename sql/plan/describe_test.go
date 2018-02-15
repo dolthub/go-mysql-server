@@ -4,17 +4,17 @@ import (
 	"io"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/src-d/go-mysql-server/mem"
 	"github.com/src-d/go-mysql-server/sql"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDescribe(t *testing.T) {
 	assert := assert.New(t)
 
 	table := mem.NewTable("test", sql.Schema{
-		{Name: "c1", Type: sql.String},
-		{Name: "c2", Type: sql.Integer},
+		{Name: "c1", Type: sql.Text},
+		{Name: "c2", Type: sql.Int32},
 	})
 
 	d := NewDescribe(table)
@@ -24,11 +24,11 @@ func TestDescribe(t *testing.T) {
 
 	n, err := iter.Next()
 	assert.Nil(err)
-	assert.Equal(sql.NewRow("c1", "string"), n)
+	assert.Equal(sql.NewRow("c1", "TEXT"), n)
 
 	n, err = iter.Next()
 	assert.Nil(err)
-	assert.Equal(sql.NewRow("c2", "integer"), n)
+	assert.Equal(sql.NewRow("c2", "INT32"), n)
 
 	n, err = iter.Next()
 	assert.Equal(io.EOF, err)
