@@ -97,8 +97,14 @@ func convertSelect(s *sqlparser.Select) (sql.Node, error) {
 	}
 
 	if s.Limit != nil {
-		//TODO: Add support for offset
 		node, err = limitToLimit(s.Limit.Rowcount, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if s.Limit != nil && s.Limit.Offset != nil {
+		node, err = offsetToOffset(s.Limit.Offset, node)
 		if err != nil {
 			return nil, err
 		}
@@ -245,8 +251,8 @@ func orderByToSort(ob sqlparser.OrderBy, child sql.Node) (*plan.Sort, error) {
 	return plan.NewSort(sortFields, child), nil
 }
 
-func limitToLimit(o sqlparser.Expr, child sql.Node) (*plan.Limit, error) {
-	e, err := exprToExpression(o)
+func limitToLimit(limit sqlparser.Expr, child sql.Node) (*plan.Limit, error) {
+	e, err := exprToExpression(limit)
 	if err != nil {
 		return nil, err
 	}
@@ -256,8 +262,23 @@ func limitToLimit(o sqlparser.Expr, child sql.Node) (*plan.Limit, error) {
 		return nil, errUnsupportedFeature("LIMIT with non-integer literal")
 	}
 
-	n := (nl.Eval(nil)).(int64)
+	n := nl.Eval(nil).(int64)
 	return plan.NewLimit(n, child), nil
+}
+
+func offsetToOffset(offset sqlparser.Expr, child sql.Node) (*plan.Offset, error) {
+	e, err := exprToExpression(offset)
+	if err != nil {
+		return nil, err
+	}
+
+	nl, ok := e.(*expression.Literal)
+	if !ok || nl.Type() != sql.Int64 {
+		return nil, errUnsupportedFeature("OFFSET with non-integer literal")
+	}
+
+	n := nl.Eval(nil).(int64)
+	return plan.NewOffset(n, child), nil
 }
 
 func isAggregate(e sql.Expression) bool {
