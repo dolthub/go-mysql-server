@@ -37,9 +37,6 @@ var defaultFunctions = map[string]sql.Function{
 	"count": sql.Function1(func(e sql.Expression) sql.Expression {
 		return NewCount(e)
 	}),
-	"first": sql.Function1(func(e sql.Expression) sql.Expression {
-		return NewFirst(e)
-	}),
 	"is_binary": sql.Function1(NewIsBinary),
 	"substring": sql.FunctionN(NewSubstring),
 }
