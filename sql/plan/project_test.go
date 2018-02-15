@@ -57,3 +57,30 @@ func TestProject(t *testing.T) {
 	}
 	require.Equal(schema, p.Schema())
 }
+
+func BenchmarkProject(b *testing.B) {
+	require := require.New(b)
+	for i := 0; i < b.N; i++ {
+		d := NewProject([]sql.Expression{
+			expression.NewGetField(0, sql.Text, "strfield", true),
+			expression.NewGetField(1, sql.Float64, "floatfield", true),
+			expression.NewGetField(2, sql.Boolean, "boolfield", false),
+			expression.NewGetField(3, sql.Int32, "intfield", false),
+			expression.NewGetField(4, sql.Int64, "bigintfield", false),
+			expression.NewGetField(5, sql.Blob, "blobfield", false),
+		}, benchtable)
+
+		iter, err := d.RowIter()
+		require.Nil(err)
+		require.NotNil(iter)
+
+		for {
+			_, err := iter.Next()
+			if err == io.EOF {
+				break
+			}
+
+			require.NoError(err)
+		}
+	}
+}

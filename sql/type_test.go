@@ -108,7 +108,8 @@ func TestType_Blob(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal([]byte{}, v)
 	v, err = Blob.Convert(1)
-	assert.Equal(ErrInvalidType, err)
+	assert.NotNil(err)
+	assert.True(ErrInvalidType.Is(err))
 	assert.Nil(v)
 
 	assert.Equal(-1, Blob.Compare([]byte{'A'}, []byte{'B'}))

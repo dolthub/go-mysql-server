@@ -141,9 +141,10 @@ func (t numberT) Convert(v interface{}) (interface{}, error) {
 		return cast.ToFloat32E(v)
 	case sqltypes.Float64:
 		return cast.ToFloat64E(v)
+	default:
+		return nil, ErrInvalidType.New(t.t)
 	}
 
-	return nil, ErrInvalidType
 }
 
 // Compare implements Type interface.
@@ -220,7 +221,7 @@ func (t timestampT) Convert(v interface{}) (interface{}, error) {
 	default:
 		ts, err := Int64.Convert(v)
 		if err != nil {
-			return nil, ErrInvalidType
+			return nil, ErrInvalidType.New(reflect.TypeOf(v))
 		}
 
 		return time.Unix(ts.(int64), 0), nil
@@ -324,7 +325,7 @@ func (t blobT) Convert(v interface{}) (interface{}, error) {
 	case fmt.Stringer:
 		return []byte(value.String()), nil
 	default:
-		return nil, ErrInvalidType
+		return nil, ErrInvalidType.New(reflect.TypeOf(v))
 	}
 }
 
@@ -361,7 +362,6 @@ func (t jsonT) Compare(a interface{}, b interface{}) int {
 func MustConvert(t Type, v interface{}) interface{} {
 	c, err := t.Convert(v)
 	if err != nil {
-		fmt.Println(err)
 		panic(err)
 	}
 
