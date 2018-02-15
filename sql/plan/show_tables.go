@@ -29,7 +29,7 @@ func (*ShowTables) Children() []sql.Node {
 func (*ShowTables) Schema() sql.Schema {
 	return sql.Schema{{
 		Name:     "table",
-		Type:     sql.String,
+		Type:     sql.Text,
 		Nullable: false,
 	}}
 }

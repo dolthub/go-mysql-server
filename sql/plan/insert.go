@@ -23,7 +23,7 @@ func NewInsertInto(dst, src sql.Node, cols []string) *InsertInto {
 func (p *InsertInto) Schema() sql.Schema {
 	return sql.Schema{{
 		Name:     "updated",
-		Type:     sql.BigInteger,
+		Type:     sql.Int64,
 		Default:  int64(0),
 		Nullable: false,
 	}}
@@ -48,7 +48,8 @@ func (p *InsertInto) Execute() (int, error) {
 		}
 
 		if !found {
-			projExprs[i] = expression.NewLiteral(f.Type.Default(), f.Type)
+			def, _ := f.Type.Convert(nil)
+			projExprs[i] = expression.NewLiteral(def, f.Type)
 		}
 	}
 

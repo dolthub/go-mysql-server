@@ -17,10 +17,10 @@ func NewDescribe(child sql.Node) *Describe {
 func (d *Describe) Schema() sql.Schema {
 	return sql.Schema{{
 		Name: "name",
-		Type: sql.String,
+		Type: sql.Text,
 	}, {
 		Name: "type",
-		Type: sql.String,
+		Type: sql.Text,
 	}}
 }
 
@@ -54,7 +54,7 @@ func (i *describeIter) Next() (sql.Row, error) {
 
 	f := i.schema[i.i]
 	i.i++
-	return sql.NewRow(f.Name, f.Type.Name()), nil
+	return sql.NewRow(f.Name, f.Type.Type().String()), nil
 }
 
 func (i *describeIter) Close() error {
