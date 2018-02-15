@@ -157,3 +157,63 @@ func (m *Min) Merge(buffer, partial sql.Row) error {
 func (m *Min) Eval(buffer sql.Row) (interface{}, error) {
 	return buffer[0], nil
 }
+
+// Max agregation returns the greatest value of the selected column.
+// It implements the AggregationExpression interface
+type Max struct {
+	UnaryExpression
+}
+
+func NewMax(e sql.Expression) *Max {
+	return &Max{UnaryExpression{e}}
+}
+
+func (m *Max) Resolved() bool {
+	return m.Child.Resolved()
+}
+
+func (m *Max) Type() sql.Type {
+	return m.Child.Type()
+}
+
+func (m *Max) Name() string {
+	return fmt.Sprintf("max(%s)", m.Child.Name())
+}
+
+func (m *Max) IsNullable() bool {
+	return false
+}
+
+func (m *Max) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
+	nm := m.UnaryExpression.Child.TransformUp(f)
+	return f(NewMax(nm))
+}
+
+func (m *Max) NewBuffer() sql.Row {
+	return sql.NewRow(nil)
+}
+
+func (m *Max) Update(buffer, row sql.Row) error {
+	v, err := m.Child.Eval(row)
+	if err != nil {
+		return err
+	}
+
+	if buffer[0] == nil {
+		buffer[0] = v
+	}
+
+	if m.Child.Type().Compare(v, buffer[0]) == 1 {
+		buffer[0] = v
+	}
+
+	return nil
+}
+
+func (m *Max) Merge(buffer, partial sql.Row) error {
+	return m.Update(buffer, partial)
+}
+
+func (m *Max) Eval(buffer sql.Row) (interface{}, error) {
+	return buffer[0], nil
+}
