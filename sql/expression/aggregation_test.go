@@ -2,6 +2,7 @@ package expression
 
 import (
 	"testing"
+	"time"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 
@@ -69,4 +70,54 @@ func TestCount_Eval_String(t *testing.T) {
 
 	c.Update(b, sql.NewRow(nil))
 	require.Equal(int32(1), eval(t, c, b))
+}
+
+func TestMin_Name(t *testing.T) {
+	assert := require.New(t)
+
+	m := NewMin(NewGetField(0, sql.Int32, "field", true))
+	assert.Equal("min(field)", m.Name())
+}
+
+func TestMin_Eval_Int32(t *testing.T) {
+	assert := require.New(t)
+
+	m := NewMin(NewGetField(0, sql.Int32, "field", true))
+	b := m.NewBuffer()
+
+	m.Update(b, sql.NewRow(int32(7)))
+	m.Update(b, sql.NewRow(int32(2)))
+	m.Update(b, sql.NewRow(int32(6)))
+
+	assert.Equal(int32(2), m.Eval(b))
+}
+
+func TestMin_Eval_Text(t *testing.T) {
+	assert := require.New(t)
+
+	m := NewMin(NewGetField(0, sql.Text, "field", true))
+	b := m.NewBuffer()
+
+	m.Update(b, sql.NewRow("a"))
+	m.Update(b, sql.NewRow("A"))
+	m.Update(b, sql.NewRow("b"))
+
+	assert.Equal("A", m.Eval(b))
+}
+
+func TestMin_Eval_Timestamp(t *testing.T) {
+	assert := require.New(t)
+
+	m := NewMin(NewGetField(0, sql.Timestamp, "field", true))
+	b := m.NewBuffer()
+
+	expected, _ := time.Parse(sql.TimestampLayout, "2006-01-02 15:04:05")
+	someTime, _ := time.Parse(sql.TimestampLayout, "2007-01-02 15:04:05")
+	otherTime, _ := time.Parse(sql.TimestampLayout, "2008-01-02 15:04:05")
+
+	m.Update(b, sql.NewRow(someTime))
+	m.Update(b, sql.NewRow(expected))
+	m.Update(b, sql.NewRow(otherTime))
+
+	assert.Equal(expected, m.Eval(b))
 }

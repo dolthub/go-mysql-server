@@ -84,3 +84,57 @@ func (c *Count) Merge(buffer, partial sql.Row) error {
 func (c *Count) Eval(buffer sql.Row) (interface{}, error) {
 	return buffer[0], nil
 }
+
+// Min aggregation returns the smallest value of the selected column.
+// It implements the AggregationExpression interface
+type Min struct {
+	UnaryExpression
+}
+
+func NewMin(e sql.Expression) *Min {
+	return &Min{UnaryExpression{e}}
+}
+
+func (m *Min) Resolved() bool {
+	return m.Child.Resolved()
+}
+
+func (m *Min) Type() sql.Type {
+	return m.Child.Type()
+}
+
+func (m *Min) Name() string {
+	return fmt.Sprintf("min(%s)", m.Child.Name())
+}
+
+func (m *Min) IsNullable() bool {
+	return false
+}
+
+func (m *Min) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
+	nm := m.UnaryExpression.Child.TransformUp(f)
+	return f(NewMin(nm))
+}
+
+func (m *Min) NewBuffer() sql.Row {
+	return sql.NewRow(nil)
+}
+
+func (m *Min) Update(buffer, row sql.Row) {
+	v := m.Child.Eval(row)
+	if buffer[0] == nil {
+		buffer[0] = v
+	}
+
+	if m.Child.Type().Compare(v, buffer[0]) == -1 {
+		buffer[0] = v
+	}
+}
+
+func (m *Min) Merge(buffer, partial sql.Row) {
+	m.Update(buffer, partial)
+}
+
+func (m *Min) Eval(buffer sql.Row) interface{} {
+	return buffer[0]
+}
