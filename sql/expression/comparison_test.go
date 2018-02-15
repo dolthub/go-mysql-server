@@ -18,7 +18,7 @@ const (
 )
 
 var comparisonCases = map[sql.Type]map[int][][]interface{}{
-	sql.String: {
+	sql.Text: {
 		testEqual: {
 			{"foo", "foo"},
 			{"", ""},
@@ -37,7 +37,7 @@ var comparisonCases = map[sql.Type]map[int][][]interface{}{
 			{nil, nil},
 		},
 	},
-	sql.Integer: {
+	sql.Int32: {
 		testEqual: {
 			{int32(1), int32(1)},
 			{int32(0), int32(0)},
@@ -59,7 +59,7 @@ var comparisonCases = map[sql.Type]map[int][][]interface{}{
 }
 
 var likeComparisonCases = map[sql.Type]map[int][][]interface{}{
-	sql.String: {
+	sql.Text: {
 		testRegexp: {
 			{"foobar", ".*bar"},
 			{"foobarfoo", ".*bar.*"},
@@ -78,7 +78,7 @@ var likeComparisonCases = map[sql.Type]map[int][][]interface{}{
 			{nil, nil},
 		},
 	},
-	sql.Integer: {
+	sql.Int32: {
 		testRegexp: {
 			{int32(1), int32(1)},
 			{int32(0), int32(0)},

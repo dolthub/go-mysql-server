@@ -13,10 +13,10 @@ import (
 func TestFilter(t *testing.T) {
 	assert := assert.New(t)
 	childSchema := sql.Schema{
-		{Name: "col1", Type: sql.String, Nullable: true},
-		{Name: "col2", Type: sql.String, Nullable: true},
-		{Name: "col3", Type: sql.Integer, Nullable: true},
-		{Name: "col4", Type: sql.BigInteger, Nullable: true},
+		{Name: "col1", Type: sql.Text, Nullable: true},
+		{Name: "col2", Type: sql.Text, Nullable: true},
+		{Name: "col3", Type: sql.Int32, Nullable: true},
+		{Name: "col4", Type: sql.Int64, Nullable: true},
 	}
 	child := mem.NewTable("test", childSchema)
 	err := child.Insert(sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)))
@@ -28,8 +28,8 @@ func TestFilter(t *testing.T) {
 
 	f := NewFilter(
 		expression.NewEquals(
-			expression.NewGetField(0, sql.String, "col1", true),
-			expression.NewLiteral("col1_1", sql.String)),
+			expression.NewGetField(0, sql.Text, "col1", true),
+			expression.NewLiteral("col1_1", sql.Text)),
 		child)
 
 	assert.Equal(1, len(f.Children()))
@@ -50,9 +50,9 @@ func TestFilter(t *testing.T) {
 	assert.Nil(row)
 
 	f = NewFilter(expression.NewEquals(
-		expression.NewGetField(2, sql.Integer, "col3", true),
+		expression.NewGetField(2, sql.Int32, "col3", true),
 		expression.NewLiteral(int32(1111),
-			sql.Integer)), child)
+			sql.Int32)), child)
 
 	iter, err = f.RowIter()
 	assert.Nil(err)
@@ -66,8 +66,8 @@ func TestFilter(t *testing.T) {
 	assert.Equal(int64(2222), row[3])
 
 	f = NewFilter(expression.NewEquals(
-		expression.NewGetField(3, sql.BigInteger, "col4", true),
-		expression.NewLiteral(int64(4444), sql.BigInteger)),
+		expression.NewGetField(3, sql.Int64, "col4", true),
+		expression.NewLiteral(int64(4444), sql.Int64)),
 		child)
 
 	iter, err = f.RowIter()

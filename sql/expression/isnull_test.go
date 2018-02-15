@@ -11,7 +11,7 @@ import (
 func TestIsNull(t *testing.T) {
 	require := require.New(t)
 
-	get0 := NewGetField(0, sql.String, "col1", true)
+	get0 := NewGetField(0, sql.Text, "col1", true)
 	e := NewIsNull(get0)
 	require.Equal(sql.Boolean, e.Type())
 	require.Equal(false, e.IsNullable())
