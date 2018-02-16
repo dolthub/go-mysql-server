@@ -44,14 +44,22 @@ func NewEquals(left sql.Expression, right sql.Expression) *Equals {
 }
 
 // Eval implements the Expression interface.
-func (e Equals) Eval(row sql.Row) interface{} {
-	a := e.Left.Eval(row)
-	b := e.Right.Eval(row)
-	if a == nil || b == nil {
-		return nil
+func (e Equals) Eval(row sql.Row) (interface{}, error) {
+	a, err := e.Left.Eval(row)
+	if err != nil {
+		return nil, err
 	}
 
-	return e.Compare(a, b) == 0
+	b, err := e.Right.Eval(row)
+	if err != nil {
+		return nil, err
+	}
+
+	if a == nil || b == nil {
+		return nil, nil
+	}
+
+	return e.Compare(a, b) == 0, nil
 }
 
 // TransformUp implements the Expression interface.
@@ -78,26 +86,33 @@ func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
 }
 
 // Eval implements the Expression interface.
-func (re Regexp) Eval(row sql.Row) interface{} {
-	l := re.Left.Eval(row)
-	r := re.Right.Eval(row)
+func (re Regexp) Eval(row sql.Row) (interface{}, error) {
+	l, err := re.Left.Eval(row)
+	if err != nil {
+		return nil, err
+	}
+	r, err := re.Right.Eval(row)
+	if err != nil {
+		return nil, err
+	}
+
 	if l == nil || r == nil {
-		return nil
+		return nil, nil
 	}
 
 	sl, okl := l.(string)
 	sr, okr := r.(string)
 
 	if !okl || !okr {
-		return re.Compare(l, r) == 0
+		return re.Compare(l, r) == 0, nil
 	}
 
 	reg, err := regexp.Compile(sr)
 	if err != nil {
-		return false
+		return false, err
 	}
 
-	return reg.MatchString(sl)
+	return reg.MatchString(sl), nil
 }
 
 // TransformUp implements the Expression interface.
@@ -124,14 +139,20 @@ func NewGreaterThan(left sql.Expression, right sql.Expression) *GreaterThan {
 }
 
 // Eval implements the Expression interface.
-func (gt GreaterThan) Eval(row sql.Row) interface{} {
-	a := gt.Left.Eval(row)
-	b := gt.Right.Eval(row)
+func (gt GreaterThan) Eval(row sql.Row) (interface{}, error) {
+	a, err := gt.Left.Eval(row)
+	if err != nil {
+		return nil, err
+	}
+	b, err := gt.Right.Eval(row)
+	if err != nil {
+		return nil, err
+	}
 	if a == nil || b == nil {
-		return nil
+		return nil, nil
 	}
 
-	return gt.Compare(a, b) == 1
+	return gt.Compare(a, b) == 1, nil
 }
 
 // TransformUp implements the Expression interface.
@@ -153,14 +174,21 @@ func NewLessThan(left sql.Expression, right sql.Expression) *LessThan {
 }
 
 // Eval implements the expression interface.
-func (lt LessThan) Eval(row sql.Row) interface{} {
-	a := lt.Left.Eval(row)
-	b := lt.Right.Eval(row)
-	if a == nil || b == nil {
-		return nil
+func (lt LessThan) Eval(row sql.Row) (interface{}, error) {
+	a, err := lt.Left.Eval(row)
+	if err != nil {
+		return nil, err
 	}
 
-	return lt.Compare(a, b) == -1
+	b, err := lt.Right.Eval(row)
+	if err != nil {
+		return nil, err
+	}
+	if a == nil || b == nil {
+		return nil, nil
+	}
+
+	return lt.Compare(a, b) == -1, nil
 }
 
 // TransformUp implements the Expression interface.
@@ -183,14 +211,22 @@ func NewGreaterThanOrEqual(left sql.Expression, right sql.Expression) *GreaterTh
 }
 
 // Eval implements the Expression interface.
-func (gte GreaterThanOrEqual) Eval(row sql.Row) interface{} {
-	a := gte.Left.Eval(row)
-	b := gte.Right.Eval(row)
-	if a == nil || b == nil {
-		return nil
+func (gte GreaterThanOrEqual) Eval(row sql.Row) (interface{}, error) {
+	a, err := gte.Left.Eval(row)
+	if err != nil {
+		return nil, err
 	}
 
-	return gte.Compare(a, b) > -1
+	b, err := gte.Right.Eval(row)
+	if err != nil {
+		return nil, err
+	}
+
+	if a == nil || b == nil {
+		return nil, nil
+	}
+
+	return gte.Compare(a, b) > -1, nil
 }
 
 // TransformUp implements the Expression interface.
@@ -213,14 +249,21 @@ func NewLessThanOrEqual(left sql.Expression, right sql.Expression) *LessThanOrEq
 }
 
 // Eval implements the Expression interface.
-func (lte LessThanOrEqual) Eval(row sql.Row) interface{} {
-	a := lte.Left.Eval(row)
-	b := lte.Right.Eval(row)
-	if a == nil || b == nil {
-		return nil
+func (lte LessThanOrEqual) Eval(row sql.Row) (interface{}, error) {
+	a, err := lte.Left.Eval(row)
+	if err != nil {
+		return nil, err
+	}
+	b, err := lte.Right.Eval(row)
+	if err != nil {
+		return nil, err
 	}
 
-	return lte.Compare(a, b) < 1
+	if a == nil || b == nil {
+		return nil, nil
+	}
+
+	return lte.Compare(a, b) < 1, nil
 }
 
 // TransformUp implements the Expression interface.

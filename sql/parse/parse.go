@@ -262,8 +262,11 @@ func limitToLimit(limit sqlparser.Expr, child sql.Node) (*plan.Limit, error) {
 		return nil, errUnsupportedFeature("LIMIT with non-integer literal")
 	}
 
-	n := nl.Eval(nil).(int64)
-	return plan.NewLimit(n, child), nil
+	n, err := nl.Eval(nil)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewLimit(n.(int64), child), nil
 }
 
 func offsetToOffset(offset sqlparser.Expr, child sql.Node) (*plan.Offset, error) {
@@ -277,8 +280,11 @@ func offsetToOffset(offset sqlparser.Expr, child sql.Node) (*plan.Offset, error)
 		return nil, errUnsupportedFeature("OFFSET with non-integer literal")
 	}
 
-	n := nl.Eval(nil).(int64)
-	return plan.NewOffset(n, child), nil
+	n, err := nl.Eval(nil)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewOffset(n.(int64), child), nil
 }
 
 func isAggregate(e sql.Expression) bool {

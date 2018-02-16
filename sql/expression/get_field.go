@@ -36,8 +36,8 @@ func (p GetField) Type() sql.Type {
 }
 
 // Eval implements the Expression interface.
-func (p GetField) Eval(row sql.Row) interface{} {
-	return row[p.fieldIndex]
+func (p GetField) Eval(row sql.Row) (interface{}, error) {
+	return row[p.fieldIndex], nil
 }
 
 // Name returns the name of the field.

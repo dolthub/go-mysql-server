@@ -19,7 +19,7 @@ func (e *Alias) Type() sql.Type {
 }
 
 // Eval implements the Expression interface.
-func (e *Alias) Eval(row sql.Row) interface{} {
+func (e *Alias) Eval(row sql.Row) (interface{}, error) {
 	return e.Child.Eval(row)
 }
 

@@ -35,7 +35,7 @@ func (uc UnresolvedColumn) Name() string {
 }
 
 // Eval implements the Expression interface.
-func (UnresolvedColumn) Eval(r sql.Row) interface{} {
+func (UnresolvedColumn) Eval(r sql.Row) (interface{}, error) {
 	panic("unresolved column is a placeholder node, but Eval was called")
 }
 
@@ -86,7 +86,7 @@ func (uf UnresolvedFunction) Name() string {
 }
 
 // Eval implements the Expression interface.
-func (UnresolvedFunction) Eval(r sql.Row) interface{} {
+func (UnresolvedFunction) Eval(r sql.Row) (interface{}, error) {
 	panic("unresolved function is a placeholder node, but Eval was called")
 }
 
