@@ -36,18 +36,14 @@ func (l *Limit) RowIter() (sql.RowIter, error) {
 
 // TransformUp implements the Transformable interface.
 func (l *Limit) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	c := l.UnaryNode.Child.TransformUp(f)
-	n := NewLimit(l.size, c)
-
-	return f(n)
+	c := l.Child.TransformUp(f)
+	return f(NewLimit(l.size, c))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
 func (l *Limit) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
-	c := l.UnaryNode.Child.TransformExpressionsUp(f)
-	n := NewLimit(l.size, c)
-
-	return n
+	c := l.Child.TransformExpressionsUp(f)
+	return NewLimit(l.size, c)
 }
 
 type limitIter struct {
@@ -57,15 +53,18 @@ type limitIter struct {
 }
 
 func (li *limitIter) Next() (sql.Row, error) {
-	if li.currentPos >= li.l.size {
-		return nil, io.EOF
+	for {
+		if li.currentPos >= li.l.size {
+			return nil, io.EOF
+		}
+		childRow, err := li.childIter.Next()
+		li.currentPos++
+		if err != nil {
+			return nil, err
+		}
+
+		return childRow, nil
 	}
-	childRow, err := li.childIter.Next()
-	li.currentPos++
-	if err != nil {
-		return nil, err
-	}
-	return childRow, nil
 }
 
 func (li *limitIter) Close() error {

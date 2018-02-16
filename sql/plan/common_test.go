@@ -3,7 +3,10 @@ package plan
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"testing"
 
+	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
@@ -57,4 +60,25 @@ func repeatStr(str string, n int) string {
 		buf.WriteString(str)
 	}
 	return buf.String()
+}
+
+func assertRows(t *testing.T, iter sql.RowIter, expected int64) {
+	t.Helper()
+	require := require.New(t)
+
+	var rows int64
+	for {
+		_, err := iter.Next()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			require.NoError(err)
+		}
+
+		rows++
+	}
+
+	require.Equal(expected, rows)
 }
