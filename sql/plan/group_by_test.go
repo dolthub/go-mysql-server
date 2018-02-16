@@ -3,15 +3,14 @@ package plan
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestGroupBy_Schema(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	child := mem.NewTable("test", sql.Schema{})
 	agg := []sql.Expression{
@@ -19,31 +18,31 @@ func TestGroupBy_Schema(t *testing.T) {
 		expression.NewAlias(expression.NewCount(expression.NewStar()), "c2"),
 	}
 	gb := NewGroupBy(agg, nil, child)
-	assert.Equal(sql.Schema{
+	require.Equal(sql.Schema{
 		{Name: "c1", Type: sql.Text},
 		{Name: "c2", Type: sql.Int32},
 	}, gb.Schema())
 }
 
 func TestGroupBy_Resolved(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	child := mem.NewTable("test", sql.Schema{})
 	agg := []sql.Expression{
 		expression.NewAlias(expression.NewCount(expression.NewStar()), "c2"),
 	}
 	gb := NewGroupBy(agg, nil, child)
-	assert.True(gb.Resolved())
+	require.True(gb.Resolved())
 
 	agg = []sql.Expression{
 		expression.NewStar(),
 	}
 	gb = NewGroupBy(agg, nil, child)
-	assert.False(gb.Resolved())
+	require.False(gb.Resolved())
 }
 
 func TestGroupBy_RowIter(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	childSchema := sql.Schema{
 		{Name: "col1", Type: sql.Text},
 		{Name: "col2", Type: sql.Int64},
@@ -77,12 +76,12 @@ func TestGroupBy_RowIter(t *testing.T) {
 			child,
 		))
 
-	assert.Equal(1, len(p.Children()))
+	require.Equal(1, len(p.Children()))
 
 	rows, err := sql.NodeToRows(p)
-	assert.NoError(err)
-	assert.Len(rows, 2)
+	require.NoError(err)
+	require.Len(rows, 2)
 
-	assert.Equal(sql.NewRow("col1_1", int64(1111)), rows[0])
-	assert.Equal(sql.NewRow("col1_2", int64(4444)), rows[1])
+	require.Equal(sql.NewRow("col1_1", int64(1111)), rows[0])
+	require.Equal(sql.NewRow("col1_2", int64(4444)), rows[1])
 }

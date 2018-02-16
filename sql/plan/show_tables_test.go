@@ -4,18 +4,18 @@ import (
 	"io"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
 func TestShowTables(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	unresolvedShowTables := NewShowTables(&sql.UnresolvedDatabase{})
 
-	assert.False(unresolvedShowTables.Resolved())
-	assert.Nil(unresolvedShowTables.Children())
+	require.False(unresolvedShowTables.Resolved())
+	require.Nil(unresolvedShowTables.Children())
 
 	db := mem.NewDatabase("test")
 	db.AddTable("test1", mem.NewTable("test1", nil))
@@ -23,24 +23,24 @@ func TestShowTables(t *testing.T) {
 	db.AddTable("test3", mem.NewTable("test3", nil))
 
 	resolvedShowTables := NewShowTables(db)
-	assert.True(resolvedShowTables.Resolved())
-	assert.Nil(resolvedShowTables.Children())
+	require.True(resolvedShowTables.Resolved())
+	require.Nil(resolvedShowTables.Children())
 
 	iter, err := resolvedShowTables.RowIter()
-	assert.Nil(err)
+	require.Nil(err)
 
 	res, err := iter.Next()
-	assert.Nil(err)
-	assert.Equal("test1", res[0])
+	require.Nil(err)
+	require.Equal("test1", res[0])
 
 	res, err = iter.Next()
-	assert.Nil(err)
-	assert.Equal("test2", res[0])
+	require.Nil(err)
+	require.Equal("test2", res[0])
 
 	res, err = iter.Next()
-	assert.Nil(err)
-	assert.Equal("test3", res[0])
+	require.Nil(err)
+	require.Equal("test3", res[0])
 
 	_, err = iter.Next()
-	assert.Equal(io.EOF, err)
+	require.Equal(io.EOF, err)
 }

@@ -12,37 +12,37 @@ import (
 )
 
 func Test_resolved(t *testing.T) {
-	assert := require.New(t)
+	require := require.New(t)
 
 	vr := getValidationRule("validate_resolved")
 
-	assert.Equal(vr.Name, "validate_resolved")
+	require.Equal(vr.Name, "validate_resolved")
 
 	err := vr.Apply(nil, dummyNode{true})
-	assert.NoError(err)
+	require.NoError(err)
 
 	err = vr.Apply(nil, dummyNode{false})
-	assert.Error(err)
+	require.Error(err)
 
 }
 
 func Test_orderBy(t *testing.T) {
-	assert := require.New(t)
+	require := require.New(t)
 
 	vr := getValidationRule("validate_order_by")
 
-	assert.Equal(vr.Name, "validate_order_by")
+	require.Equal(vr.Name, "validate_order_by")
 
 	err := vr.Apply(nil, dummyNode{true})
-	assert.NoError(err)
+	require.NoError(err)
 	err = vr.Apply(nil, dummyNode{false})
-	assert.NoError(err)
+	require.NoError(err)
 
 	err = vr.Apply(nil, plan.NewSort(
 		[]plan.SortField{{Column: expression.NewCount(nil), Order: plan.Descending}},
 		nil,
 	))
-	assert.Error(err)
+	require.Error(err)
 }
 
 type dummyNode struct{ resolved bool }

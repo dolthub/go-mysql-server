@@ -14,7 +14,7 @@ import (
 )
 
 func TestAnalyzer_Analyze(t *testing.T) {
-	assert := require.New(t)
+	require := require.New(t)
 
 	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
 	table2 := mem.NewTable("mytable2", sql.Schema{{Name: "i2", Type: sql.Int32}})
@@ -28,24 +28,24 @@ func TestAnalyzer_Analyze(t *testing.T) {
 
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
 	analyzed, err := a.Analyze(notAnalyzed)
-	assert.NoError(err)
-	assert.Equal(table, analyzed)
+	require.NoError(err)
+	require.Equal(table, analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("nonexistant")
 	analyzed, err = a.Analyze(notAnalyzed)
-	assert.Error(err)
-	assert.Equal(notAnalyzed, analyzed)
+	require.Error(err)
+	require.Equal(notAnalyzed, analyzed)
 
 	analyzed, err = a.Analyze(table)
-	assert.NoError(err)
-	assert.Equal(table, analyzed)
+	require.NoError(err)
+	require.Equal(table, analyzed)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewUnresolvedColumn("o")},
 		plan.NewUnresolvedTable("mytable"),
 	)
 	_, err = a.Analyze(notAnalyzed)
-	assert.Error(err)
+	require.Error(err)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewUnresolvedColumn("i")},
@@ -56,16 +56,16 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", false)},
 		table,
 	)
-	assert.NoError(err)
-	assert.Equal(expected, analyzed)
+	require.NoError(err)
+	require.Equal(expected, analyzed)
 
 	notAnalyzed = plan.NewDescribe(
 		plan.NewUnresolvedTable("mytable"),
 	)
 	analyzed, err = a.Analyze(notAnalyzed)
 	expected = plan.NewDescribe(table)
-	assert.NoError(err)
-	assert.Equal(expected, analyzed)
+	require.NoError(err)
+	require.Equal(expected, analyzed)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
@@ -76,8 +76,8 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", false)},
 		table,
 	)
-	assert.NoError(err)
-	assert.Equal(expected, analyzed)
+	require.NoError(err)
+	require.Equal(expected, analyzed)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
@@ -94,8 +94,8 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			table,
 		),
 	)
-	assert.NoError(err)
-	assert.Equal(expected, analyzed)
+	require.NoError(err)
+	require.Equal(expected, analyzed)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{
@@ -116,8 +116,8 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		},
 		table,
 	)
-	assert.NoError(err)
-	assert.Equal(expected, analyzed)
+	require.NoError(err)
+	require.Equal(expected, analyzed)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewUnresolvedColumn("i")},
@@ -140,8 +140,8 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			table,
 		),
 	)
-	assert.NoError(err)
-	assert.Equal(expected, analyzed)
+	require.NoError(err)
+	require.Equal(expected, analyzed)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{
@@ -161,8 +161,8 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		},
 		plan.NewCrossJoin(table, table2),
 	)
-	assert.NoError(err)
-	assert.Equal(expected, analyzed)
+	require.NoError(err)
+	require.Equal(expected, analyzed)
 
 	notAnalyzed = plan.NewLimit(int64(1),
 		plan.NewProject(
@@ -181,12 +181,12 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			table,
 		),
 	)
-	assert.Nil(err)
-	assert.Equal(expected, analyzed)
+	require.Nil(err)
+	require.Equal(expected, analyzed)
 }
 
 func TestAnalyzer_Analyze_MaxIterations(t *testing.T) {
-	assert := require.New(t)
+	require := require.New(t)
 
 	catalog := &sql.Catalog{}
 	a := analyzer.New(catalog)
@@ -203,6 +203,6 @@ func TestAnalyzer_Analyze_MaxIterations(t *testing.T) {
 
 	notAnalyzed := plan.NewUnresolvedTable("mytable")
 	analyzed, err := a.Analyze(notAnalyzed)
-	assert.NotNil(err)
-	assert.Equal(plan.NewUnresolvedTable("table1001"), analyzed)
+	require.NotNil(err)
+	require.Equal(plan.NewUnresolvedTable("table1001"), analyzed)
 }

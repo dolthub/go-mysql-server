@@ -3,14 +3,13 @@ package expression
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestStar(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	var e sql.Expression = NewStar()
-	assert.NotNil(e)
-	assert.Equal("*", e.Name())
+	require.NotNil(e)
+	require.Equal("*", e.Name())
 }

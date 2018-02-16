@@ -3,14 +3,13 @@ package sql_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestFunctionRegistry_RegisterFunction_NoArgs(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	c := sql.NewCatalog()
 	name := "func"
@@ -18,26 +17,26 @@ func TestFunctionRegistry_RegisterFunction_NoArgs(t *testing.T) {
 	err := c.RegisterFunction(name, func() sql.Expression {
 		return expected
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
 	f, err := c.Function(name)
-	assert.Nil(err)
+	require.Nil(err)
 
 	e, err := f.Build()
-	assert.Nil(err)
-	assert.Equal(expected, e)
+	require.Nil(err)
+	require.Equal(expected, e)
 
 	e, err = f.Build(expression.NewStar())
-	assert.NotNil(err)
-	assert.Nil(e)
+	require.NotNil(err)
+	require.Nil(e)
 
 	e, err = f.Build(expression.NewStar(), expression.NewStar())
-	assert.NotNil(err)
-	assert.Nil(e)
+	require.NotNil(err)
+	require.Nil(e)
 }
 
 func TestFunctionRegistry_RegisterFunction_OneArg(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	c := sql.NewCatalog()
 	name := "func"
@@ -45,26 +44,26 @@ func TestFunctionRegistry_RegisterFunction_OneArg(t *testing.T) {
 	err := c.RegisterFunction(name, func(sql.Expression) sql.Expression {
 		return expected
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
 	f, err := c.Function(name)
-	assert.Nil(err)
+	require.Nil(err)
 
 	e, err := f.Build()
-	assert.NotNil(err)
-	assert.Nil(e)
+	require.NotNil(err)
+	require.Nil(e)
 
 	e, err = f.Build(expression.NewStar())
-	assert.Nil(err)
-	assert.Equal(expected, e)
+	require.Nil(err)
+	require.Equal(expected, e)
 
 	e, err = f.Build(expression.NewStar(), expression.NewStar())
-	assert.NotNil(err)
-	assert.Nil(e)
+	require.NotNil(err)
+	require.Nil(e)
 }
 
 func TestFunctionRegistry_RegisterFunction_Variadic(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	c := sql.NewCatalog()
 	name := "func"
@@ -72,26 +71,26 @@ func TestFunctionRegistry_RegisterFunction_Variadic(t *testing.T) {
 	err := c.RegisterFunction(name, func(...sql.Expression) sql.Expression {
 		return expected
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
 	f, err := c.Function(name)
-	assert.Nil(err)
+	require.Nil(err)
 
 	e, err := f.Build()
-	assert.Nil(err)
-	assert.Equal(expected, e)
+	require.Nil(err)
+	require.Equal(expected, e)
 
 	e, err = f.Build(expression.NewStar())
-	assert.Nil(err)
-	assert.Equal(expected, e)
+	require.Nil(err)
+	require.Equal(expected, e)
 
 	e, err = f.Build(expression.NewStar(), expression.NewStar())
-	assert.Nil(err)
-	assert.Equal(expected, e)
+	require.Nil(err)
+	require.Equal(expected, e)
 }
 
 func TestFunctionRegistry_RegisterFunction_OneAndVariadic(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	c := sql.NewCatalog()
 	name := "func"
@@ -99,53 +98,53 @@ func TestFunctionRegistry_RegisterFunction_OneAndVariadic(t *testing.T) {
 	err := c.RegisterFunction(name, func(sql.Expression, ...sql.Expression) sql.Expression {
 		return expected
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
 	f, err := c.Function(name)
-	assert.Nil(err)
+	require.Nil(err)
 
 	e, err := f.Build()
-	assert.NotNil(err)
-	assert.Nil(e)
+	require.NotNil(err)
+	require.Nil(e)
 
 	e, err = f.Build(expression.NewStar())
-	assert.Nil(err)
-	assert.Equal(expected, e)
+	require.Nil(err)
+	require.Equal(expected, e)
 
 	e, err = f.Build(expression.NewStar(), expression.NewStar())
-	assert.Nil(err)
-	assert.Equal(expected, e)
+	require.Nil(err)
+	require.Equal(expected, e)
 }
 
 func TestFunctionRegistry_RegisterFunction_Invalid(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	c := sql.NewCatalog()
 	name := "func"
 	err := c.RegisterFunction(name, func(sql.Table) sql.Expression {
 		return nil
 	})
-	assert.NotNil(err)
+	require.NotNil(err)
 
 	err = c.RegisterFunction(name, func(sql.Expression) sql.Table {
 		return nil
 	})
-	assert.NotNil(err)
+	require.NotNil(err)
 
 	err = c.RegisterFunction(name, func(sql.Expression) (sql.Table, error) {
 		return nil, nil
 	})
-	assert.NotNil(err)
+	require.NotNil(err)
 
 	err = c.RegisterFunction(name, 1)
-	assert.NotNil(err)
+	require.NotNil(err)
 }
 
 func TestFunctionRegistry_Function_NotExist(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	c := sql.NewCatalog()
 	f, err := c.Function("func")
-	assert.NotNil(err)
-	assert.Nil(f)
+	require.NotNil(err)
+	require.Nil(f)
 }

@@ -4,10 +4,9 @@ import (
 	"io"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
-
-	"github.com/stretchr/testify/assert"
 )
 
 var lSchema = sql.Schema{
@@ -25,7 +24,7 @@ var rSchema = sql.Schema{
 }
 
 func TestCrossJoin(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	resultSchema := sql.Schema{
 		{Name: "lcol1", Type: sql.Text},
@@ -40,93 +39,95 @@ func TestCrossJoin(t *testing.T) {
 
 	ltable := mem.NewTable("left", lSchema)
 	rtable := mem.NewTable("right", rSchema)
-	insertData(assert, ltable)
-	insertData(assert, rtable)
+	insertData(t, ltable)
+	insertData(t, rtable)
 
 	j := NewCrossJoin(ltable, rtable)
 
-	assert.Equal(resultSchema, j.Schema())
+	require.Equal(resultSchema, j.Schema())
 
 	iter, err := j.RowIter()
-	assert.Nil(err)
-	assert.NotNil(iter)
+	require.Nil(err)
+	require.NotNil(iter)
 
 	row, err := iter.Next()
-	assert.Nil(err)
-	assert.NotNil(row)
+	require.Nil(err)
+	require.NotNil(row)
 
-	assert.Equal(8, len(row))
+	require.Equal(8, len(row))
 
-	assert.Equal("col1_1", row[0])
-	assert.Equal("col2_1", row[1])
-	assert.Equal(int32(1111), row[2])
-	assert.Equal(int64(2222), row[3])
-	assert.Equal("col1_1", row[4])
-	assert.Equal("col2_1", row[5])
-	assert.Equal(int32(1111), row[6])
-	assert.Equal(int64(2222), row[7])
+	require.Equal("col1_1", row[0])
+	require.Equal("col2_1", row[1])
+	require.Equal(int32(1111), row[2])
+	require.Equal(int64(2222), row[3])
+	require.Equal("col1_1", row[4])
+	require.Equal("col2_1", row[5])
+	require.Equal(int32(1111), row[6])
+	require.Equal(int64(2222), row[7])
 
 	row, err = iter.Next()
-	assert.Nil(err)
-	assert.NotNil(row)
+	require.Nil(err)
+	require.NotNil(row)
 
-	assert.Equal("col1_1", row[0])
-	assert.Equal("col2_1", row[1])
-	assert.Equal(int32(1111), row[2])
-	assert.Equal(int64(2222), row[3])
-	assert.Equal("col1_2", row[4])
-	assert.Equal("col2_2", row[5])
-	assert.Equal(int32(3333), row[6])
-	assert.Equal(int64(4444), row[7])
+	require.Equal("col1_1", row[0])
+	require.Equal("col2_1", row[1])
+	require.Equal(int32(1111), row[2])
+	require.Equal(int64(2222), row[3])
+	require.Equal("col1_2", row[4])
+	require.Equal("col2_2", row[5])
+	require.Equal(int32(3333), row[6])
+	require.Equal(int64(4444), row[7])
 
 	for i := 0; i < 2; i++ {
 		row, err = iter.Next()
-		assert.Nil(err)
-		assert.NotNil(row)
+		require.Nil(err)
+		require.NotNil(row)
 	}
 
 	// total: 4 rows
 	row, err = iter.Next()
-	assert.NotNil(err)
-	assert.Equal(err, io.EOF)
-	assert.Nil(row)
+	require.NotNil(err)
+	require.Equal(err, io.EOF)
+	require.Nil(row)
 }
 
 func TestCrossJoin_Empty(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	ltable := mem.NewTable("left", lSchema)
 	rtable := mem.NewTable("right", rSchema)
-	insertData(assert, ltable)
+	insertData(t, ltable)
 
 	j := NewCrossJoin(ltable, rtable)
 
 	iter, err := j.RowIter()
-	assert.Nil(err)
-	assert.NotNil(iter)
+	require.Nil(err)
+	require.NotNil(iter)
 
 	row, err := iter.Next()
-	assert.Equal(io.EOF, err)
-	assert.Nil(row)
+	require.Equal(io.EOF, err)
+	require.Nil(row)
 
 	ltable = mem.NewTable("left", lSchema)
 	rtable = mem.NewTable("right", rSchema)
-	insertData(assert, rtable)
+	insertData(t, rtable)
 
 	j = NewCrossJoin(ltable, rtable)
 
 	iter, err = j.RowIter()
-	assert.Nil(err)
-	assert.NotNil(iter)
+	require.Nil(err)
+	require.NotNil(iter)
 
 	row, err = iter.Next()
-	assert.Equal(io.EOF, err)
-	assert.Nil(row)
+	require.Equal(io.EOF, err)
+	require.Nil(row)
 }
 
-func insertData(assert *assert.Assertions, table *mem.Table) {
+func insertData(t *testing.T, table *mem.Table) {
+	t.Helper()
+	require := require.New(t)
 	err := table.Insert(sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)))
-	assert.Nil(err)
+	require.Nil(err)
 	err = table.Insert(sql.NewRow("col1_2", "col2_2", int32(3333), int64(4444)))
-	assert.Nil(err)
+	require.Nil(err)
 }

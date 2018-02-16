@@ -3,22 +3,21 @@ package mem
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestTable_Name(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	s := sql.Schema{
 		{"col1", sql.Text, nil, true},
 	}
 	table := NewTable("test", s)
-	assert.Equal("test", table.Name())
+	require.Equal("test", table.Name())
 }
 
 func TestTable_Insert_RowIter(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	s := sql.Schema{
 		{"col1", sql.Text, nil, true},
 	}
@@ -26,19 +25,19 @@ func TestTable_Insert_RowIter(t *testing.T) {
 	table := NewTable("test", s)
 
 	rows, err := sql.NodeToRows(table)
-	assert.Nil(err)
-	assert.Len(rows, 0)
+	require.Nil(err)
+	require.Len(rows, 0)
 
 	err = table.Insert(sql.NewRow("foo"))
 	rows, err = sql.NodeToRows(table)
-	assert.Nil(err)
-	assert.Len(rows, 1)
-	assert.Nil(s.CheckRow(rows[0]))
+	require.Nil(err)
+	require.Len(rows, 1)
+	require.Nil(s.CheckRow(rows[0]))
 
 	err = table.Insert(sql.NewRow("bar"))
 	rows, err = sql.NodeToRows(table)
-	assert.Nil(err)
-	assert.Len(rows, 2)
-	assert.Nil(s.CheckRow(rows[0]))
-	assert.Nil(s.CheckRow(rows[1]))
+	require.Nil(err)
+	require.Len(rows, 2)
+	require.Nil(s.CheckRow(rows[0]))
+	require.Nil(s.CheckRow(rows[1]))
 }

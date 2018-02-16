@@ -3,11 +3,10 @@ package parse
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
-
-	"github.com/stretchr/testify/assert"
 )
 
 var fixtures = map[string]sql.Node{
@@ -203,10 +202,10 @@ var fixtures = map[string]sql.Node{
 func TestParse(t *testing.T) {
 	for query, expectedPlan := range fixtures {
 		t.Run(query, func(t *testing.T) {
-			assert := assert.New(t)
+			require := require.New(t)
 			p, err := Parse(query)
-			assert.Nil(err, "error for query '%s'", query)
-			assert.Exactly(expectedPlan, p,
+			require.Nil(err, "error for query '%s'", query)
+			require.Exactly(expectedPlan, p,
 				"plans do not match for query '%s'", query)
 		})
 
@@ -220,10 +219,10 @@ var fixturesErrors = map[string]error{
 func TestParseErrors(t *testing.T) {
 	for query, expectedError := range fixturesErrors {
 		t.Run(query, func(t *testing.T) {
-			assert := assert.New(t)
+			require := require.New(t)
 			_, err := Parse(query)
-			assert.Error(err)
-			assert.Equal(expectedError, err)
+			require.Error(err)
+			require.Equal(expectedError, err)
 		})
 	}
 }
