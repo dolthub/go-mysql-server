@@ -18,7 +18,7 @@ func NewLiteral(value interface{}, fieldType sql.Type) *Literal {
 	}
 }
 
-// Resolved implements the Resolvable interface.
+// Resolved implements the Expression interface.
 func (p Literal) Resolved() bool {
 	return true
 }
@@ -43,7 +43,7 @@ func (p Literal) Name() string {
 	return p.name
 }
 
-// TransformUp implements the Transformable interface.
+// TransformUp implements the Expression interface.
 func (p *Literal) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
 	n := *p
 	return f(&n)

@@ -12,7 +12,7 @@ func NewStar() *Star {
 	return new(Star)
 }
 
-// Resolved implements the Resolvable interface.
+// Resolved implements the Expression interface.
 func (Star) Resolved() bool {
 	return false
 }
@@ -37,7 +37,7 @@ func (Star) Eval(r sql.Row) interface{} {
 	panic("star is just a placeholder node, but Eval was called")
 }
 
-// TransformUp implements the Transformable interface.
+// TransformUp implements the Expression interface.
 func (s *Star) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
 	return f(s)
 }
