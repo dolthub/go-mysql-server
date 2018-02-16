@@ -3,15 +3,14 @@ package plan
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestFilter(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	childSchema := sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
 		{Name: "col2", Type: sql.Text, Nullable: true},
@@ -20,11 +19,11 @@ func TestFilter(t *testing.T) {
 	}
 	child := mem.NewTable("test", childSchema)
 	err := child.Insert(sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)))
-	assert.Nil(err)
+	require.Nil(err)
 	err = child.Insert(sql.NewRow("col1_2", "col2_2", int32(3333), int64(4444)))
-	assert.Nil(err)
+	require.Nil(err)
 	err = child.Insert(sql.NewRow("col1_3", "col2_3", nil, int64(4444)))
-	assert.Nil(err)
+	require.Nil(err)
 
 	f := NewFilter(
 		expression.NewEquals(
@@ -32,22 +31,22 @@ func TestFilter(t *testing.T) {
 			expression.NewLiteral("col1_1", sql.Text)),
 		child)
 
-	assert.Equal(1, len(f.Children()))
+	require.Equal(1, len(f.Children()))
 
 	iter, err := f.RowIter()
-	assert.Nil(err)
-	assert.NotNil(iter)
+	require.Nil(err)
+	require.NotNil(iter)
 
 	row, err := iter.Next()
-	assert.Nil(err)
-	assert.NotNil(row)
+	require.Nil(err)
+	require.NotNil(row)
 
-	assert.Equal("col1_1", row[0])
-	assert.Equal("col2_1", row[1])
+	require.Equal("col1_1", row[0])
+	require.Equal("col2_1", row[1])
 
 	row, err = iter.Next()
-	assert.NotNil(err)
-	assert.Nil(row)
+	require.NotNil(err)
+	require.Nil(row)
 
 	f = NewFilter(expression.NewEquals(
 		expression.NewGetField(2, sql.Int32, "col3", true),
@@ -55,15 +54,15 @@ func TestFilter(t *testing.T) {
 			sql.Int32)), child)
 
 	iter, err = f.RowIter()
-	assert.Nil(err)
-	assert.NotNil(iter)
+	require.Nil(err)
+	require.NotNil(iter)
 
 	row, err = iter.Next()
-	assert.Nil(err)
-	assert.NotNil(row)
+	require.Nil(err)
+	require.NotNil(row)
 
-	assert.Equal(int32(1111), row[2])
-	assert.Equal(int64(2222), row[3])
+	require.Equal(int32(1111), row[2])
+	require.Equal(int64(2222), row[3])
 
 	f = NewFilter(expression.NewEquals(
 		expression.NewGetField(3, sql.Int64, "col4", true),
@@ -71,13 +70,13 @@ func TestFilter(t *testing.T) {
 		child)
 
 	iter, err = f.RowIter()
-	assert.Nil(err)
-	assert.NotNil(iter)
+	require.Nil(err)
+	require.NotNil(iter)
 
 	row, err = iter.Next()
-	assert.Nil(err)
-	assert.NotNil(row)
+	require.Nil(err)
+	require.NotNil(row)
 
-	assert.Equal(int32(3333), row[2])
-	assert.Equal(int64(4444), row[3])
+	require.Equal(int32(3333), row[2])
+	require.Equal(int64(4444), row[3])
 }

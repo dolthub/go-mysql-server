@@ -91,26 +91,26 @@ var likeComparisonCases = map[sql.Type]map[int][][]interface{}{
 }
 
 func TestComparisons_Equals(t *testing.T) {
-	assert := require.New(t)
+	require := require.New(t)
 	for resultType, cmpCase := range comparisonCases {
 		get0 := NewGetField(0, resultType, "col1", true)
-		assert.NotNil(get0)
+		require.NotNil(get0)
 		get1 := NewGetField(1, resultType, "col2", true)
-		assert.NotNil(get1)
+		require.NotNil(get1)
 		eq := NewEquals(get0, get1)
-		assert.NotNil(eq)
-		assert.Equal(sql.Boolean, eq.Type())
+		require.NotNil(eq)
+		require.Equal(sql.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
-				assert.NotNil(row)
+				require.NotNil(row)
 				cmp := eq.Eval(row)
 				if cmpResult == testEqual {
-					assert.Equal(true, cmp)
+					require.Equal(true, cmp)
 				} else if cmpResult == testNil {
-					assert.Nil(cmp)
+					require.Nil(cmp)
 				} else {
-					assert.Equal(false, cmp)
+					require.Equal(false, cmp)
 				}
 			}
 		}
@@ -118,26 +118,26 @@ func TestComparisons_Equals(t *testing.T) {
 }
 
 func TestComparisons_LessThan(t *testing.T) {
-	assert := require.New(t)
+	require := require.New(t)
 	for resultType, cmpCase := range comparisonCases {
 		get0 := NewGetField(0, resultType, "col1", true)
-		assert.NotNil(get0)
+		require.NotNil(get0)
 		get1 := NewGetField(1, resultType, "col2", true)
-		assert.NotNil(get1)
+		require.NotNil(get1)
 		eq := NewLessThan(get0, get1)
-		assert.NotNil(eq)
-		assert.Equal(sql.Boolean, eq.Type())
+		require.NotNil(eq)
+		require.Equal(sql.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
-				assert.NotNil(row)
+				require.NotNil(row)
 				cmp := eq.Eval(row)
 				if cmpResult == testLess {
-					assert.Equal(true, cmp, "%v < %v", pair[0], pair[1])
+					require.Equal(true, cmp, "%v < %v", pair[0], pair[1])
 				} else if cmpResult == testNil {
-					assert.Nil(cmp)
+					require.Nil(cmp)
 				} else {
-					assert.Equal(false, cmp)
+					require.Equal(false, cmp)
 				}
 			}
 		}
@@ -145,26 +145,26 @@ func TestComparisons_LessThan(t *testing.T) {
 }
 
 func TestComparisons_GreaterThan(t *testing.T) {
-	assert := require.New(t)
+	require := require.New(t)
 	for resultType, cmpCase := range comparisonCases {
 		get0 := NewGetField(0, resultType, "col1", true)
-		assert.NotNil(get0)
+		require.NotNil(get0)
 		get1 := NewGetField(1, resultType, "col2", true)
-		assert.NotNil(get1)
+		require.NotNil(get1)
 		eq := NewGreaterThan(get0, get1)
-		assert.NotNil(eq)
-		assert.Equal(sql.Boolean, eq.Type())
+		require.NotNil(eq)
+		require.Equal(sql.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
-				assert.NotNil(row)
+				require.NotNil(row)
 				cmp := eq.Eval(row)
 				if cmpResult == testGreater {
-					assert.Equal(true, cmp)
+					require.Equal(true, cmp)
 				} else if cmpResult == testNil {
-					assert.Nil(cmp)
+					require.Nil(cmp)
 				} else {
-					assert.Equal(false, cmp)
+					require.Equal(false, cmp)
 				}
 			}
 		}
@@ -172,26 +172,26 @@ func TestComparisons_GreaterThan(t *testing.T) {
 }
 
 func TestComparisons_Regexp(t *testing.T) {
-	assert := require.New(t)
+	require := require.New(t)
 	for resultType, cmpCase := range likeComparisonCases {
 		get0 := NewGetField(0, resultType, "col1", true)
-		assert.NotNil(get0)
+		require.NotNil(get0)
 		get1 := NewGetField(1, resultType, "col2", true)
-		assert.NotNil(get1)
+		require.NotNil(get1)
 		eq := NewRegexp(get0, get1)
-		assert.NotNil(eq)
-		assert.Equal(sql.Boolean, eq.Type())
+		require.NotNil(eq)
+		require.Equal(sql.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
-				assert.NotNil(row)
+				require.NotNil(row)
 				cmp := eq.Eval(row)
 				if cmpResult == testRegexp {
-					assert.Equal(true, cmp)
+					require.Equal(true, cmp)
 				} else if cmpResult == testNil {
-					assert.Nil(cmp)
+					require.Nil(cmp)
 				} else {
-					assert.Equal(false, cmp)
+					require.Equal(false, cmp)
 				}
 			}
 		}

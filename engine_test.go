@@ -74,10 +74,10 @@ func TestInsertInto(t *testing.T) {
 
 func testQuery(t *testing.T, e *sqle.Engine, q string, r [][]interface{}) {
 	t.Run(q, func(t *testing.T) {
-		assert := require.New(t)
+		require := require.New(t)
 
 		_, rows, err := e.Query(q)
-		assert.NoError(err)
+		require.NoError(err)
 
 		i := 0
 		for {
@@ -85,29 +85,29 @@ func testQuery(t *testing.T, e *sqle.Engine, q string, r [][]interface{}) {
 			if err == io.EOF {
 				break
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			for j, c := range row {
 				cc := r[i][j]
-				assert.Equal(cc, c)
+				require.Equal(cc, c)
 			}
 
 			i++
 		}
 
-		assert.Equal(len(r), i)
+		require.Equal(len(r), i)
 	})
 }
 
 func newEngine(t *testing.T) *sqle.Engine {
-	assert := require.New(t)
+	require := require.New(t)
 
 	table := mem.NewTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int64},
 		{Name: "s", Type: sql.Text},
 	})
-	assert.Nil(table.Insert(sql.NewRow(int64(1), "a")))
-	assert.Nil(table.Insert(sql.NewRow(int64(2), "b")))
-	assert.Nil(table.Insert(sql.NewRow(int64(3), "c")))
+	require.Nil(table.Insert(sql.NewRow(int64(1), "a")))
+	require.Nil(table.Insert(sql.NewRow(int64(2), "b")))
+	require.Nil(table.Insert(sql.NewRow(int64(3), "c")))
 
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)

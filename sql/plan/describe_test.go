@@ -4,13 +4,13 @@ import (
 	"io"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDescribe(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	table := mem.NewTable("test", sql.Schema{
 		{Name: "c1", Type: sql.Text},
@@ -19,32 +19,32 @@ func TestDescribe(t *testing.T) {
 
 	d := NewDescribe(table)
 	iter, err := d.RowIter()
-	assert.Nil(err)
-	assert.NotNil(iter)
+	require.Nil(err)
+	require.NotNil(iter)
 
 	n, err := iter.Next()
-	assert.Nil(err)
-	assert.Equal(sql.NewRow("c1", "TEXT"), n)
+	require.Nil(err)
+	require.Equal(sql.NewRow("c1", "TEXT"), n)
 
 	n, err = iter.Next()
-	assert.Nil(err)
-	assert.Equal(sql.NewRow("c2", "INT32"), n)
+	require.Nil(err)
+	require.Equal(sql.NewRow("c2", "INT32"), n)
 
 	n, err = iter.Next()
-	assert.Equal(io.EOF, err)
-	assert.Nil(n)
+	require.Equal(io.EOF, err)
+	require.Nil(n)
 }
 
 func TestDescribe_Empty(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	d := NewDescribe(NewUnresolvedTable("test_table"))
 
 	iter, err := d.RowIter()
-	assert.Nil(err)
-	assert.NotNil(iter)
+	require.Nil(err)
+	require.NotNil(iter)
 
 	n, err := iter.Next()
-	assert.Equal(io.EOF, err)
-	assert.Nil(n)
+	require.Equal(io.EOF, err)
+	require.Nil(n)
 }

@@ -3,17 +3,16 @@ package analyzer_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func Test_resolveTables(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	f := getRule("resolve_tables")
 
@@ -29,19 +28,19 @@ func Test_resolveTables(t *testing.T) {
 	a.CurrentDatabase = "mydb"
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
 	analyzed := f.Apply(a, notAnalyzed)
-	assert.Equal(table, analyzed)
+	require.Equal(table, analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("nonexistant")
 	analyzed = f.Apply(a, notAnalyzed)
-	assert.Equal(notAnalyzed, analyzed)
+	require.Equal(notAnalyzed, analyzed)
 
 	analyzed = f.Apply(a, table)
-	assert.Equal(table, analyzed)
+	require.Equal(table, analyzed)
 
 }
 
 func Test_resolveTables_Nested(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	f := getRule("resolve_tables")
 
@@ -64,7 +63,7 @@ func Test_resolveTables_Nested(t *testing.T) {
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},
 		table,
 	)
-	assert.Equal(expected, analyzed)
+	require.Equal(expected, analyzed)
 }
 
 func getRule(name string) analyzer.Rule {

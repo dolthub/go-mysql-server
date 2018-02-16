@@ -3,17 +3,16 @@ package expression
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestUnresolvedExpression(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	var e sql.Expression = NewUnresolvedColumn("test_col")
-	assert.NotNil(e)
+	require.NotNil(e)
 	var o sql.Expression = NewEquals(e, e)
-	assert.NotNil(o)
+	require.NotNil(o)
 	o = NewNot(e)
-	assert.NotNil(o)
+	require.NotNil(o)
 }
