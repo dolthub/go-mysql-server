@@ -164,35 +164,43 @@ type Max struct {
 	UnaryExpression
 }
 
+// NewMax returns a new Max node.
 func NewMax(e sql.Expression) *Max {
 	return &Max{UnaryExpression{e}}
 }
 
+// Resolved implements the Resolvable interface.
 func (m *Max) Resolved() bool {
 	return m.Child.Resolved()
 }
 
+// Type returns the resultant type of the aggregation.
 func (m *Max) Type() sql.Type {
 	return m.Child.Type()
 }
 
+// Name returns the name of the node.
 func (m *Max) Name() string {
 	return fmt.Sprintf("max(%s)", m.Child.Name())
 }
 
+// IsNullable returns whether the return value can be null.
 func (m *Max) IsNullable() bool {
 	return false
 }
 
+// TransformUp implements the Transformable interface.
 func (m *Max) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
 	nm := m.UnaryExpression.Child.TransformUp(f)
 	return f(NewMax(nm))
 }
 
+// NewBuffer creates a new buffer to compute the result.
 func (m *Max) NewBuffer() sql.Row {
 	return sql.NewRow(nil)
 }
 
+// Update implements the Aggregation interface.
 func (m *Max) Update(buffer, row sql.Row) error {
 	v, err := m.Child.Eval(row)
 	if err != nil {
@@ -210,10 +218,12 @@ func (m *Max) Update(buffer, row sql.Row) error {
 	return nil
 }
 
+// Merge implements the Aggregation interface.
 func (m *Max) Merge(buffer, partial sql.Row) error {
 	return m.Update(buffer, partial)
 }
 
+// Eval implements the Aggregation interface.
 func (m *Max) Eval(buffer sql.Row) (interface{}, error) {
 	return buffer[0], nil
 }
