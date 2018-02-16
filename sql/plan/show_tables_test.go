@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/src-d/go-mysql-server/mem"
-	"github.com/src-d/go-mysql-server/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/mem"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
 func TestShowTables(t *testing.T) {

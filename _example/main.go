@@ -3,11 +3,11 @@ package main
 import (
 	"time"
 
-	"github.com/src-d/go-mysql-server"
-	"github.com/src-d/go-mysql-server/mem"
-	"github.com/src-d/go-mysql-server/server"
-	"github.com/src-d/go-mysql-server/sql"
-	"github.com/src-d/go-vitess/mysql"
+	"gopkg.in/src-d/go-mysql-server.v0"
+	"gopkg.in/src-d/go-mysql-server.v0/mem"
+	"gopkg.in/src-d/go-mysql-server.v0/server"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-vitess.v0/mysql"
 )
 
 // Example of how to implement a MySQL server based on a Engine:

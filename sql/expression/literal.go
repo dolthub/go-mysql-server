@@ -1,6 +1,6 @@
 package expression
 
-import "github.com/src-d/go-mysql-server/sql"
+import "gopkg.in/src-d/go-mysql-server.v0/sql"
 
 type Literal struct {
 	value     interface{}

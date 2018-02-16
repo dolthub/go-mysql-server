@@ -7,12 +7,12 @@
 
 ## Installation
 
-The import path for the package is `github.com/src-d/go-mysql-server`.
+The import path for the package is `gopkg.in/src-d/go-mysql-server.v0`.
 
 To install it, run:
 
 ```
-go get github.com/src-d/go-mysql-server
+go get gopkg.in/src-d/go-mysql-server.v0
 ```
 
 ## Documentation

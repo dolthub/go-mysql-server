@@ -3,8 +3,8 @@ package analyzer
 import (
 	"errors"
 
-	"github.com/src-d/go-mysql-server/sql"
-	"github.com/src-d/go-mysql-server/sql/plan"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
 var DefaultValidationRules = []ValidationRule{

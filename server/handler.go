@@ -4,13 +4,13 @@ import (
 	"io"
 	"sync"
 
-	"github.com/src-d/go-mysql-server"
-	"github.com/src-d/go-mysql-server/sql"
+	"gopkg.in/src-d/go-mysql-server.v0"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
 
 	"github.com/sirupsen/logrus"
-	"github.com/src-d/go-vitess/mysql"
-	"github.com/src-d/go-vitess/sqltypes"
-	"github.com/src-d/go-vitess/vt/proto/query"
+	"gopkg.in/src-d/go-vitess.v0/mysql"
+	"gopkg.in/src-d/go-vitess.v0/sqltypes"
+	"gopkg.in/src-d/go-vitess.v0/vt/proto/query"
 )
 
 type Handler struct {
