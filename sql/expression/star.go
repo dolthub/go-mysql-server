@@ -3,12 +3,13 @@ package expression
 import "gopkg.in/src-d/go-mysql-server.v0/sql"
 
 // Star represents the selection of all available fields.
-type Star struct {
-}
+// This is just a placeholder node, it will not actually be evaluated
+// but converted to a series of GetFields when the query is analyzed.
+type Star struct{}
 
 // NewStar returns a new Star expression.
 func NewStar() *Star {
-	return &Star{}
+	return new(Star)
 }
 
 // Resolved implements the Resolvable interface.
@@ -18,12 +19,12 @@ func (Star) Resolved() bool {
 
 // IsNullable implements the Expression interface.
 func (Star) IsNullable() bool {
-	return true
+	panic("star is just a placeholder node, but IsNullable was called")
 }
 
 // Type implements the Expression interface.
 func (Star) Type() sql.Type {
-	return sql.Text //FIXME
+	panic("star is just a placeholder node, but Type was called")
 }
 
 // Name implements the Expression interface.
@@ -32,9 +33,8 @@ func (Star) Name() string {
 }
 
 // Eval implements the Expression interface.
-// TODO: this is not implemented yet.
 func (Star) Eval(r sql.Row) interface{} {
-	return "FAIL" //FIXME
+	panic("star is just a placeholder node, but Eval was called")
 }
 
 // TransformUp implements the Transformable interface.
