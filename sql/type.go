@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/spf13/cast"
-	"github.com/src-d/go-vitess/sqltypes"
-	"github.com/src-d/go-vitess/vt/proto/query"
+	"gopkg.in/src-d/go-vitess.v0/sqltypes"
+	"gopkg.in/src-d/go-vitess.v0/vt/proto/query"
 )
 
 type Schema []*Column

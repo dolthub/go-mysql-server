@@ -9,7 +9,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
-	"github.com/src-d/go-vitess/vt/sqlparser"
+	"gopkg.in/src-d/go-vitess.v0/vt/sqlparser"
 )
 
 const (
