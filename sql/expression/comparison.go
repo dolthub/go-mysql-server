@@ -1,7 +1,6 @@
 package expression
 
 import (
-	"fmt"
 	"regexp"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -31,8 +30,6 @@ type Equals struct {
 
 // NewEquals returns a new Equals expression.
 func NewEquals(left sql.Expression, right sql.Expression) *Equals {
-	// FIXME: enable this again
-	// checkEqualTypes(left, right)
 	return &Equals{Comparison{BinaryExpression{left, right}, left.Type()}}
 }
 
@@ -67,8 +64,6 @@ type Regexp struct {
 
 // NewRegexp creates a new Regexp expression.
 func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
-	// FIXME: enable this again
-	// checkEqualTypes(left, right)
 	return &Regexp{Comparison{BinaryExpression{left, right}, left.Type()}}
 }
 
@@ -115,8 +110,6 @@ type GreaterThan struct {
 
 // NewGreaterThan creates a new GreaterThan expression.
 func NewGreaterThan(left sql.Expression, right sql.Expression) *GreaterThan {
-	// FIXME: enable this again
-	// checkEqualTypes(left, right)
 	return &GreaterThan{Comparison{BinaryExpression{left, right}, left.Type()}}
 }
 
@@ -146,8 +139,6 @@ type LessThan struct {
 
 // NewLessThan creates a new LessThan expression.
 func NewLessThan(left sql.Expression, right sql.Expression) *LessThan {
-	// FIXME: enable this again
-	// checkEqualTypes(left, right)
 	return &LessThan{Comparison{BinaryExpression{left, right}, left.Type()}}
 }
 
@@ -178,8 +169,6 @@ type GreaterThanOrEqual struct {
 
 // NewGreaterThanOrEqual creates a new GreaterThanOrEqual
 func NewGreaterThanOrEqual(left sql.Expression, right sql.Expression) *GreaterThanOrEqual {
-	// FIXME: enable this again
-	// checkEqualTypes(left, right)
 	return &GreaterThanOrEqual{Comparison{BinaryExpression{left, right}, left.Type()}}
 }
 
@@ -210,8 +199,6 @@ type LessThanOrEqual struct {
 
 // NewLessThanOrEqual creates a LessThanOrEqual expression.
 func NewLessThanOrEqual(left sql.Expression, right sql.Expression) *LessThanOrEqual {
-	// FIXME: enable this again
-	// checkEqualTypes(left, right)
 	return &LessThanOrEqual{Comparison{BinaryExpression{left, right}, left.Type()}}
 }
 
@@ -232,10 +219,4 @@ func (lte *LessThanOrEqual) TransformUp(f func(sql.Expression) sql.Expression) s
 	rc := lte.BinaryExpression.Right.TransformUp(f)
 
 	return f(NewLessThanOrEqual(lc, rc))
-}
-
-func checkEqualTypes(a sql.Expression, b sql.Expression) {
-	if a.Resolved() && b.Resolved() && a.Type() != b.Type() {
-		panic(fmt.Errorf("both types should be equal: %v and %v", a, b))
-	}
 }
