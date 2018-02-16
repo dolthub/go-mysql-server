@@ -189,6 +189,15 @@ var fixtures = map[string]sql.Node{
 		[]string{"col1", "col2"},
 	),
 	`SHOW TABLES`: plan.NewShowTables(&sql.UnresolvedDatabase{}),
+	`SELECT DISTINCT foo, bar FROM foo;`: plan.NewDistinct(
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewUnresolvedColumn("foo"),
+				expression.NewUnresolvedColumn("bar"),
+			},
+			plan.NewUnresolvedTable("foo"),
+		),
+	),
 }
 
 func TestParse(t *testing.T) {

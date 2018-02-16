@@ -1,7 +1,7 @@
 package sql
 
 import (
-	"errors"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 type Nameable interface {
@@ -70,4 +70,4 @@ type Database interface {
 	Tables() map[string]Table
 }
 
-var ErrInvalidType = errors.New("invalid type")
+var ErrInvalidType = errors.NewKind("invalid type: %s")

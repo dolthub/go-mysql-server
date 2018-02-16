@@ -68,10 +68,6 @@ func convertSelect(s *sqlparser.Select) (sql.Node, error) {
 		return nil, err
 	}
 
-	if s.Distinct != "" {
-		return nil, errUnsupportedFeature("DISTINCT")
-	}
-
 	if s.Having != nil {
 		return nil, errUnsupportedFeature("HAVING")
 	}
@@ -93,6 +89,10 @@ func convertSelect(s *sqlparser.Select) (sql.Node, error) {
 	node, err = selectToProjectOrGroupBy(s.SelectExprs, s.GroupBy, node)
 	if err != nil {
 		return nil, err
+	}
+
+	if s.Distinct != "" {
+		node = plan.NewDistinct(node)
 	}
 
 	if s.Limit != nil {
