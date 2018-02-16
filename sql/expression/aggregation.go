@@ -91,37 +91,49 @@ type Min struct {
 	UnaryExpression
 }
 
+// NewMin creates a new Min node.
 func NewMin(e sql.Expression) *Min {
 	return &Min{UnaryExpression{e}}
 }
 
+// Resolved implements the Resolvable interface.
 func (m *Min) Resolved() bool {
 	return m.Child.Resolved()
 }
 
+// Type returns the resultant type of the aggregation.
 func (m *Min) Type() sql.Type {
 	return m.Child.Type()
 }
 
+// Name returns the name of the node.
 func (m *Min) Name() string {
 	return fmt.Sprintf("min(%s)", m.Child.Name())
 }
 
+// IsNullable returns whether the return value can be null.
 func (m *Min) IsNullable() bool {
 	return false
 }
 
+// TransformUp implements the Transformable interface.
 func (m *Min) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
 	nm := m.UnaryExpression.Child.TransformUp(f)
 	return f(NewMin(nm))
 }
 
+// NewBuffer creates a new buffer to compute the result.
 func (m *Min) NewBuffer() sql.Row {
 	return sql.NewRow(nil)
 }
 
-func (m *Min) Update(buffer, row sql.Row) {
-	v := m.Child.Eval(row)
+// Update implements the Aggregation interface.
+func (m *Min) Update(buffer, row sql.Row) error {
+	v, err := m.Child.Eval(row)
+	if err != nil {
+		return err
+	}
+
 	if buffer[0] == nil {
 		buffer[0] = v
 	}
@@ -129,12 +141,16 @@ func (m *Min) Update(buffer, row sql.Row) {
 	if m.Child.Type().Compare(v, buffer[0]) == -1 {
 		buffer[0] = v
 	}
+
+	return nil
 }
 
-func (m *Min) Merge(buffer, partial sql.Row) {
-	m.Update(buffer, partial)
+// Merge implements the Aggregation interface.
+func (m *Min) Merge(buffer, partial sql.Row) error {
+	return m.Update(buffer, partial)
 }
 
-func (m *Min) Eval(buffer sql.Row) interface{} {
-	return buffer[0]
+// Eval implements the Aggregation interface
+func (m *Min) Eval(buffer sql.Row) (interface{}, error) {
+	return buffer[0], nil
 }

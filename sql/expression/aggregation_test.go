@@ -89,7 +89,9 @@ func TestMin_Eval_Int32(t *testing.T) {
 	m.Update(b, sql.NewRow(int32(2)))
 	m.Update(b, sql.NewRow(int32(6)))
 
-	assert.Equal(int32(2), m.Eval(b))
+	v, err := m.Eval(b)
+	assert.NoError(err)
+	assert.Equal(int32(2), v)
 }
 
 func TestMin_Eval_Text(t *testing.T) {
@@ -102,7 +104,9 @@ func TestMin_Eval_Text(t *testing.T) {
 	m.Update(b, sql.NewRow("A"))
 	m.Update(b, sql.NewRow("b"))
 
-	assert.Equal("A", m.Eval(b))
+	v, err := m.Eval(b)
+	assert.NoError(err)
+	assert.Equal("A", v)
 }
 
 func TestMin_Eval_Timestamp(t *testing.T) {
@@ -119,5 +123,7 @@ func TestMin_Eval_Timestamp(t *testing.T) {
 	m.Update(b, sql.NewRow(expected))
 	m.Update(b, sql.NewRow(otherTime))
 
-	assert.Equal(expected, m.Eval(b))
+	v, err := m.Eval(b)
+	assert.NoError(err)
+	assert.Equal(expected, v)
 }
