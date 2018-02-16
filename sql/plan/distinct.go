@@ -7,20 +7,24 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
+// Distinct is a node that ensures all rows that come from it are unique.
 type Distinct struct {
 	UnaryNode
 }
 
+// NewDistinct creates a new Distinct node.
 func NewDistinct(child sql.Node) *Distinct {
 	return &Distinct{
 		UnaryNode: UnaryNode{Child: child},
 	}
 }
 
+// Resolved implements the Resolvable interface.
 func (d *Distinct) Resolved() bool {
 	return d.UnaryNode.Child.Resolved()
 }
 
+// RowIter implements the Node interface.
 func (d *Distinct) RowIter() (sql.RowIter, error) {
 	it, err := d.Child.RowIter()
 	if err != nil {
@@ -29,10 +33,12 @@ func (d *Distinct) RowIter() (sql.RowIter, error) {
 	return newDistinctIter(it), nil
 }
 
+// TransformUp implements the Transformable interface.
 func (d *Distinct) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	return f(NewDistinct(d.Child.TransformUp(f)))
 }
 
+// TransformExpressionsUp implements the Transformable interface.
 func (d *Distinct) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
 	return NewDistinct(d.Child.TransformExpressionsUp(f))
 }
