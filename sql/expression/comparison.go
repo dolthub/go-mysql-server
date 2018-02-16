@@ -9,8 +9,18 @@ import (
 // Comparison is an expression that compares an expression against another.
 type Comparison struct {
 	BinaryExpression
-	// ChildType is the type of the resultant value after the comparison.
-	ChildType sql.Type
+}
+
+// NewComparison creates a new comparison between two expressions.
+func NewComparison(left, right sql.Expression) Comparison {
+	return Comparison{BinaryExpression{left, right}}
+}
+
+// Compare the two given values using the types of the expressions in the comparison.
+// Since both types should be equal, it does not matter which type is used, but for
+// reference, the left type is always used.
+func (c *Comparison) Compare(a, b interface{}) int {
+	return c.Left.Type().Compare(a, b)
 }
 
 // Type implements the Expression interface.
@@ -30,7 +40,7 @@ type Equals struct {
 
 // NewEquals returns a new Equals expression.
 func NewEquals(left sql.Expression, right sql.Expression) *Equals {
-	return &Equals{Comparison{BinaryExpression{left, right}, left.Type()}}
+	return &Equals{NewComparison(left, right)}
 }
 
 // Eval implements the Expression interface.
@@ -41,7 +51,7 @@ func (e Equals) Eval(row sql.Row) interface{} {
 		return nil
 	}
 
-	return e.ChildType.Compare(a, b) == 0
+	return e.Compare(a, b) == 0
 }
 
 // TransformUp implements the Transformable interface.
@@ -64,7 +74,7 @@ type Regexp struct {
 
 // NewRegexp creates a new Regexp expression.
 func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
-	return &Regexp{Comparison{BinaryExpression{left, right}, left.Type()}}
+	return &Regexp{NewComparison(left, right)}
 }
 
 // Eval implements the Expression interface.
@@ -79,7 +89,7 @@ func (re Regexp) Eval(row sql.Row) interface{} {
 	sr, okr := r.(string)
 
 	if !okl || !okr {
-		return re.ChildType.Compare(l, r) == 0
+		return re.Compare(l, r) == 0
 	}
 
 	reg, err := regexp.Compile(sr)
@@ -110,7 +120,7 @@ type GreaterThan struct {
 
 // NewGreaterThan creates a new GreaterThan expression.
 func NewGreaterThan(left sql.Expression, right sql.Expression) *GreaterThan {
-	return &GreaterThan{Comparison{BinaryExpression{left, right}, left.Type()}}
+	return &GreaterThan{NewComparison(left, right)}
 }
 
 // Eval implements the Expression interface.
@@ -121,7 +131,7 @@ func (gt GreaterThan) Eval(row sql.Row) interface{} {
 		return nil
 	}
 
-	return gt.ChildType.Compare(a, b) == 1
+	return gt.Compare(a, b) == 1
 }
 
 // TransformUp implements the Transformable interface.
@@ -139,7 +149,7 @@ type LessThan struct {
 
 // NewLessThan creates a new LessThan expression.
 func NewLessThan(left sql.Expression, right sql.Expression) *LessThan {
-	return &LessThan{Comparison{BinaryExpression{left, right}, left.Type()}}
+	return &LessThan{NewComparison(left, right)}
 }
 
 // Eval implements the expression interface.
@@ -150,7 +160,7 @@ func (lt LessThan) Eval(row sql.Row) interface{} {
 		return nil
 	}
 
-	return lt.ChildType.Compare(a, b) == -1
+	return lt.Compare(a, b) == -1
 }
 
 // TransformUp implements the Transformable interface.
@@ -169,7 +179,7 @@ type GreaterThanOrEqual struct {
 
 // NewGreaterThanOrEqual creates a new GreaterThanOrEqual
 func NewGreaterThanOrEqual(left sql.Expression, right sql.Expression) *GreaterThanOrEqual {
-	return &GreaterThanOrEqual{Comparison{BinaryExpression{left, right}, left.Type()}}
+	return &GreaterThanOrEqual{NewComparison(left, right)}
 }
 
 // Eval implements the Expression interface.
@@ -180,7 +190,7 @@ func (gte GreaterThanOrEqual) Eval(row sql.Row) interface{} {
 		return nil
 	}
 
-	return gte.ChildType.Compare(a, b) > -1
+	return gte.Compare(a, b) > -1
 }
 
 // TransformUp implements the Transformable interface.
@@ -199,7 +209,7 @@ type LessThanOrEqual struct {
 
 // NewLessThanOrEqual creates a LessThanOrEqual expression.
 func NewLessThanOrEqual(left sql.Expression, right sql.Expression) *LessThanOrEqual {
-	return &LessThanOrEqual{Comparison{BinaryExpression{left, right}, left.Type()}}
+	return &LessThanOrEqual{NewComparison(left, right)}
 }
 
 // Eval implements the Expression interface.
@@ -210,7 +220,7 @@ func (lte LessThanOrEqual) Eval(row sql.Row) interface{} {
 		return nil
 	}
 
-	return lte.ChildType.Compare(a, b) < 1
+	return lte.Compare(a, b) < 1
 }
 
 // TransformUp implements the Transformable interface.
