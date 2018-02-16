@@ -2,11 +2,13 @@ package plan
 
 import "gopkg.in/src-d/go-mysql-server.v0/sql"
 
+// Offset is a node that skips the first N rows.
 type Offset struct {
 	UnaryNode
 	n int64
 }
 
+// NewOffset creates a new Offset node.
 func NewOffset(n int64, child sql.Node) *Offset {
 	return &Offset{
 		UnaryNode: UnaryNode{Child: child},
@@ -14,10 +16,12 @@ func NewOffset(n int64, child sql.Node) *Offset {
 	}
 }
 
+// Resolved implements the Resolvable interface.
 func (o *Offset) Resolved() bool {
 	return o.Child.Resolved()
 }
 
+// RowIter implements the Node interface.
 func (o *Offset) RowIter() (sql.RowIter, error) {
 	it, err := o.Child.RowIter()
 	if err != nil {
@@ -26,11 +30,13 @@ func (o *Offset) RowIter() (sql.RowIter, error) {
 	return &offsetIter{o.n, it}, nil
 }
 
+// TransformUp implements the Transformable interface.
 func (o *Offset) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	c := o.Child.TransformUp(f)
 	return f(NewOffset(o.n, c))
 }
 
+// TransformExpressionsUp implements the Transformable interface.
 func (o *Offset) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
 	c := o.Child.TransformExpressionsUp(f)
 	return NewOffset(o.n, c)
@@ -43,13 +49,13 @@ type offsetIter struct {
 
 func (i *offsetIter) Next() (sql.Row, error) {
 	if i.skip > 0 {
-		for j := int64(0); j < i.skip; j++ {
+		for i.skip > 0 {
 			_, err := i.childIter.Next()
 			if err != nil {
 				return nil, err
 			}
+			i.skip--
 		}
-		i.skip = 0
 	}
 
 	row, err := i.childIter.Next()
