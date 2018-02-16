@@ -6,10 +6,12 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
+// CrossJoin is a cross join between two tables.
 type CrossJoin struct {
 	BinaryNode
 }
 
+// NewCrossJoin creates a new cross join node from two tables.
 func NewCrossJoin(left sql.Node, right sql.Node) *CrossJoin {
 	return &CrossJoin{
 		BinaryNode: BinaryNode{
@@ -19,14 +21,17 @@ func NewCrossJoin(left sql.Node, right sql.Node) *CrossJoin {
 	}
 }
 
+// Schema implements the Node interface.
 func (p *CrossJoin) Schema() sql.Schema {
 	return append(p.Left.Schema(), p.Right.Schema()...)
 }
 
+// Resolved implements the Resolvable interface.
 func (p *CrossJoin) Resolved() bool {
 	return p.Left.Resolved() && p.Right.Resolved()
 }
 
+// RowIter implements the Node interface.
 func (p *CrossJoin) RowIter() (sql.RowIter, error) {
 	li, err := p.Left.RowIter()
 	if err != nil {
@@ -44,6 +49,7 @@ func (p *CrossJoin) RowIter() (sql.RowIter, error) {
 	}, nil
 }
 
+// TransformUp implements the Transformable interface.
 func (p *CrossJoin) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	ln := p.BinaryNode.Left.TransformUp(f)
 	rn := p.BinaryNode.Right.TransformUp(f)
@@ -53,6 +59,7 @@ func (p *CrossJoin) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	return f(n)
 }
 
+// TransformExpressionsUp implements the Transformable interface.
 func (p *CrossJoin) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
 	ln := p.BinaryNode.Left.TransformExpressionsUp(f)
 	rn := p.BinaryNode.Right.TransformExpressionsUp(f)

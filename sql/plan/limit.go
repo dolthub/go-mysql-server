@@ -6,11 +6,13 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
+// Limit is a node that only allows up to N rows to be retrieved.
 type Limit struct {
 	UnaryNode
 	size int64
 }
 
+// NewLimit creates a new Limit node with the given size.
 func NewLimit(size int64, child sql.Node) *Limit {
 	return &Limit{
 		UnaryNode: UnaryNode{Child: child},
@@ -18,10 +20,12 @@ func NewLimit(size int64, child sql.Node) *Limit {
 	}
 }
 
-func (p *Limit) Resolved() bool {
-	return p.UnaryNode.Child.Resolved()
+// Resolved implements the Resolvable interface.
+func (l *Limit) Resolved() bool {
+	return l.UnaryNode.Child.Resolved()
 }
 
+// RowIter implements the Node interface.
 func (l *Limit) RowIter() (sql.RowIter, error) {
 	li, err := l.Child.RowIter()
 	if err != nil {
@@ -30,6 +34,7 @@ func (l *Limit) RowIter() (sql.RowIter, error) {
 	return &limitIter{l, 0, li}, nil
 }
 
+// TransformUp implements the Transformable interface.
 func (l *Limit) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	c := l.UnaryNode.Child.TransformUp(f)
 	n := NewLimit(l.size, c)
@@ -37,6 +42,7 @@ func (l *Limit) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	return f(n)
 }
 
+// TransformExpressionsUp implements the Transformable interface.
 func (l *Limit) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
 	c := l.UnaryNode.Child.TransformExpressionsUp(f)
 	n := NewLimit(l.size, c)

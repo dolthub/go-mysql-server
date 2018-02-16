@@ -14,8 +14,10 @@ import (
 	"gopkg.in/src-d/go-vitess.v0/vt/proto/query"
 )
 
+// Schema is the definition of a table.
 type Schema []*Column
 
+// CheckRow checks the row conforms to the schema.
 func (s Schema) CheckRow(row Row) error {
 	expected := len(s)
 	got := len(row)
@@ -54,6 +56,7 @@ type Column struct {
 	Nullable bool
 }
 
+// Check ensures the value is correct for this column.
 func (c *Column) Check(v interface{}) bool {
 	if v == nil {
 		return c.Nullable
@@ -76,7 +79,36 @@ type Type interface {
 	SQL(interface{}) sqltypes.Value
 }
 
-var Null = nullT{}
+var (
+	// Null represents the null type.
+	Null nullT
+
+	// Numeric types
+
+	// Int32 is an integer of 32 bits.
+	Int32 = numberT{t: sqltypes.Int32}
+	// Int64 is an integer of 64 bytes.
+	Int64 = numberT{t: sqltypes.Int64}
+	// Uint32 is an unsigned integer of 32 bytes.
+	Uint32 = numberT{t: sqltypes.Uint32}
+	// Uint64 is an unsigned integer of 64 bytes.
+	Uint64 = numberT{t: sqltypes.Uint64}
+	// Float32 is a floating point number of 32 bytes.
+	Float32 = numberT{t: sqltypes.Float32}
+	// Float64 is a floating point number of 64 bytes.
+	Float64 = numberT{t: sqltypes.Float64}
+
+	// Timestamp is an UNIX timestamp.
+	Timestamp timestampT
+	// Text is a string type.
+	Text textT
+	// Boolean is a boolean type.
+	Boolean booleanT
+	// JSON is a type that holds any valid JSON object.
+	JSON jsonT
+	// Blob is a type that holds a chunk of binary data.
+	Blob blobT
+)
 
 type nullT struct{}
 
@@ -104,13 +136,6 @@ func (t nullT) Convert(v interface{}) (interface{}, error) {
 func (t nullT) Compare(a interface{}, b interface{}) int {
 	return 0
 }
-
-var Int32 = numberT{t: sqltypes.Int32}
-var Int64 = numberT{t: sqltypes.Int64}
-var Uint32 = numberT{t: sqltypes.Uint32}
-var Uint64 = numberT{t: sqltypes.Uint64}
-var Float32 = numberT{t: sqltypes.Float32}
-var Float64 = numberT{t: sqltypes.Float64}
 
 type numberT struct {
 	t query.Type
@@ -187,8 +212,6 @@ func (t numberT) Compare(a interface{}, b interface{}) int {
 	return +1
 }
 
-var Timestamp = timestampT{}
-
 type timestampT struct{}
 
 // Type implements Type interface.
@@ -196,6 +219,8 @@ func (t timestampT) Type() query.Type {
 	return sqltypes.Timestamp
 }
 
+// TimestampLayout is the formatting string with the layout of the timestamp
+// using the format of Go "time" package.
 const TimestampLayout = "2006-01-02 15:04:05"
 
 // SQL implements Type interface.
@@ -240,8 +265,6 @@ func (t timestampT) Compare(a interface{}, b interface{}) int {
 	return 0
 }
 
-var Text = textT{}
-
 type textT struct{}
 
 // Type implements Type interface.
@@ -263,8 +286,6 @@ func (t textT) Convert(v interface{}) (interface{}, error) {
 func (t textT) Compare(a interface{}, b interface{}) int {
 	return strings.Compare(a.(string), b.(string))
 }
-
-var Boolean Type = booleanT{}
 
 type booleanT struct{}
 
@@ -301,8 +322,6 @@ func (t booleanT) Compare(a interface{}, b interface{}) int {
 	return +1
 }
 
-var Blob = blobT{}
-
 type blobT struct{}
 
 // Type implements Type interface.
@@ -333,8 +352,6 @@ func (t blobT) Convert(v interface{}) (interface{}, error) {
 func (t blobT) Compare(a interface{}, b interface{}) int {
 	return bytes.Compare(a.([]byte), b.([]byte))
 }
-
-var JSON = jsonT{}
 
 type jsonT struct{}
 

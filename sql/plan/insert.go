@@ -8,11 +8,13 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 )
 
+// InsertInto is a node describing the insertion into some table.
 type InsertInto struct {
 	BinaryNode
 	Columns []string
 }
 
+// NewInsertInto creates an InsertInto node.
 func NewInsertInto(dst, src sql.Node, cols []string) *InsertInto {
 	return &InsertInto{
 		BinaryNode: BinaryNode{Left: dst, Right: src},
@@ -20,6 +22,7 @@ func NewInsertInto(dst, src sql.Node, cols []string) *InsertInto {
 	}
 }
 
+// Schema implements the Node interface.
 func (p *InsertInto) Schema() sql.Schema {
 	return sql.Schema{{
 		Name:     "updated",
@@ -29,6 +32,7 @@ func (p *InsertInto) Schema() sql.Schema {
 	}}
 }
 
+// Execute inserts the rows in the database.
 func (p *InsertInto) Execute() (int, error) {
 	insertable, ok := p.Left.(sql.Inserter)
 	if !ok {
@@ -83,6 +87,7 @@ func (p *InsertInto) Execute() (int, error) {
 	return i, nil
 }
 
+// RowIter implements the Node interface.
 func (p *InsertInto) RowIter() (sql.RowIter, error) {
 	n, err := p.Execute()
 	if err != nil {
@@ -92,6 +97,7 @@ func (p *InsertInto) RowIter() (sql.RowIter, error) {
 	return sql.RowsToRowIter(sql.NewRow(int64(n))), nil
 }
 
+// TransformUp implements the Transformable interface.
 func (p *InsertInto) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	ln := p.BinaryNode.Left.TransformUp(f)
 	rn := p.BinaryNode.Right.TransformUp(f)
@@ -100,6 +106,7 @@ func (p *InsertInto) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	return f(n)
 }
 
+// TransformExpressionsUp implements the Transformable interface.
 func (p *InsertInto) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
 	ln := p.BinaryNode.Left.TransformExpressionsUp(f)
 	rn := p.BinaryNode.Right.TransformExpressionsUp(f)

@@ -194,8 +194,8 @@ func TestAnalyzer_Analyze_MaxIterations(t *testing.T) {
 
 	i := 0
 	a.Rules = []analyzer.Rule{{
-		"infinite",
-		func(a *analyzer.Analyzer, n sql.Node) sql.Node {
+		Name: "infinite",
+		Apply: func(a *analyzer.Analyzer, n sql.Node) sql.Node {
 			i += 1
 			return plan.NewUnresolvedTable(fmt.Sprintf("table%d", i))
 		},

@@ -13,23 +13,28 @@ import (
 	"gopkg.in/src-d/go-vitess.v0/vt/proto/query"
 )
 
+// Handler is a connection handler for a SQLe engine.
 type Handler struct {
 	mu sync.Mutex
 	e  *sqle.Engine
 }
 
+// NewHandler creates a new Handler given a SQLe engine.
 func NewHandler(e *sqle.Engine) *Handler {
 	return &Handler{e: e}
 }
 
+// NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
 	logrus.Infof("NewConnection: client %v", c.ConnectionID)
 }
 
+// ConnectionClosed reports that a connection has been closed.
 func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 	logrus.Infof("ConnectionClosed: client %v", c.ConnectionID)
 }
 
+// ComQuery executes a SQL query on the SQLe engine.
 func (h *Handler) ComQuery(c *mysql.Conn, query string, callback func(*sqltypes.Result) error) error {
 	schema, rows, err := h.e.Query(query)
 	if err != nil {

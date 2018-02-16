@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	// ErrNotSupported is thrown when a feature which is not supported is used.
 	ErrNotSupported = errors.New("feature not supported yet")
 )
 
@@ -53,6 +54,7 @@ func (e *Engine) Query(query string) (sql.Schema, sql.RowIter, error) {
 	return analyzed.Schema(), iter, nil
 }
 
+// AddDatabase adds the given database to the catalog.
 func (e *Engine) AddDatabase(db sql.Database) {
 	e.Catalog.Databases = append(e.Catalog.Databases, db)
 	e.Analyzer.CurrentDatabase = db.Name()

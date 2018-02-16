@@ -4,28 +4,42 @@ import (
 	"fmt"
 	"reflect"
 
+	multierror "github.com/hashicorp/go-multierror"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
 const maxAnalysisIterations = 1000
 
+// Analyzer analyzes nodes of the execution plan and applies rules and validations
+// to them.
 type Analyzer struct {
-	Rules           []Rule
+	// Rules to apply.
+	Rules []Rule
+	// ValidationRules to apply.
 	ValidationRules []ValidationRule
-	Catalog         *sql.Catalog
+	// Catalog of databases and registered functions.
+	Catalog *sql.Catalog
+	// CurrentDatabase in use.
 	CurrentDatabase string
 }
 
+// Rule to transform nodes.
 type Rule struct {
-	Name  string
+	// Name of the rule.
+	Name string
+	// Apply transforms a node.
 	Apply func(*Analyzer, sql.Node) sql.Node
 }
 
+// ValidationRule validates the given nodes.
 type ValidationRule struct {
-	Name  string
+	// Name of the rule.
+	Name string
+	// Apply validates the given node.
 	Apply func(*Analyzer, sql.Node) error
 }
 
+// New returns a new Analyzer given a catalog.
 func New(catalog *sql.Catalog) *Analyzer {
 	return &Analyzer{
 		Rules:           DefaultRules,
@@ -34,6 +48,7 @@ func New(catalog *sql.Catalog) *Analyzer {
 	}
 }
 
+// Analyze the node and all its children.
 func (a *Analyzer) Analyze(n sql.Node) (sql.Node, error) {
 	prev := n
 	cur := a.analyzeOnce(n)
@@ -47,9 +62,12 @@ func (a *Analyzer) Analyze(n sql.Node) (sql.Node, error) {
 		}
 	}
 
-	// TODO improve error handling
 	if errs := a.validate(cur); len(errs) != 0 {
-		return cur, errs[0]
+		var err error
+		for _, e := range errs {
+			err = multierror.Append(err, e)
+		}
+		return cur, err
 	}
 
 	return cur, nil

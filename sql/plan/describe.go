@@ -6,14 +6,17 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
+// Describe is a node that describes its children.
 type Describe struct {
 	UnaryNode
 }
 
+// NewDescribe creates a new Describe node.
 func NewDescribe(child sql.Node) *Describe {
 	return &Describe{UnaryNode{child}}
 }
 
+// Schema implements the Node interface.
 func (d *Describe) Schema() sql.Schema {
 	return sql.Schema{{
 		Name: "name",
@@ -24,10 +27,12 @@ func (d *Describe) Schema() sql.Schema {
 	}}
 }
 
+// RowIter implements the Node interface.
 func (d *Describe) RowIter() (sql.RowIter, error) {
 	return &describeIter{schema: d.Child.Schema()}, nil
 }
 
+// TransformUp implements the Transformable interface.
 func (d *Describe) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	c := d.UnaryNode.Child.TransformUp(f)
 	n := NewDescribe(c)
@@ -35,6 +40,7 @@ func (d *Describe) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	return f(n)
 }
 
+// TransformExpressionsUp implements the Transformable interface.
 func (d *Describe) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
 	c := d.UnaryNode.Child.TransformExpressionsUp(f)
 	n := NewDescribe(c)
