@@ -12,11 +12,11 @@ DEPENDENCIES := \
 VITESS_SRC := ${GOPATH}/src/${PACKAGE}
 PACKAGES := $(VITESS_PKG) $(shell go list -f '{{ join .Deps "\n" }}' ${VITESS_PKG} | grep -i vitess)
 FOLDERS := $(shell echo ${PACKAGES} | sed -e 's/github.com\/youtube\/vitess\///g')
-GIT_COMMIT := $(shell cd ${VITESS_SRC} && git log --format='%H' -n 1)
+GIT_COMMIT := $(shell cd ${VITESS_SRC} && git show-ref refs/original/refs/heads/master --hash)
 ETC_PATH := $(PWD)/etc
 
 all: prepare-package
-prepare-package: | filter-branch rename-packages prepare-git
+prepare-package: | filter-branch rename-packages replace-glog prepare-git commit
 
 $(VITESS_SRC):
 	git clone --single-branch --no-tags ${VITESS_GIT} $@
@@ -30,12 +30,20 @@ filter-branch: $(VITESS_SRC)
 	--prune-empty \
 	-- --all
 
+commit:
+	cd ${VITESS_SRC} && \
+		cp -rf ${ETC_PATH}/* . && git add * && \
+		git commit -m "update from upstream ${VITESS_GIT}/commit/${GIT_COMMIT}" -a -s
+
 rename-packages:
 	cd ${VITESS_SRC} && \
 		git mv go/* . && \
-		gorep -from=github.com/youtube/vitess/go -to=${PACKAGE} && \
-		cp -rf ${ETC_PATH}/* . && git add * && \
-		git commit -m "update from upstream ${VITESS_GIT}/commit/${GIT_COMMIT}" -a -s
+		gorep -from=github.com/youtube/vitess/go -to=${PACKAGE}
+
+replace-glog:
+	cd ${VITESS_SRC} && \
+		gorep -from=github.com/golang/glog -to=github.com/sirupsen/logrus  && \
+		grep -lr --exclude-dir=".git" -e "Exitf" . | xargs sed -i 's/log\.Exitf/log\.Panicf/g'
 
 prepare-git:
 	cd ${VITESS_SRC} && \
