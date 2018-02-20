@@ -32,7 +32,7 @@ func (e *IsNull) Name() string {
 	return "IsNull(" + e.Child.Name() + ")"
 }
 
-// TransformUp implements the Transformable interface.
+// TransformUp implements the Expression interface.
 func (e *IsNull) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
 	c := e.UnaryExpression.Child.TransformUp(f)
 	n := &IsNull{UnaryExpression{c}}

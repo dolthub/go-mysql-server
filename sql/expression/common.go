@@ -7,7 +7,7 @@ type UnaryExpression struct {
 	Child sql.Expression
 }
 
-// Resolved implements the Resolvable interface.
+// Resolved implements the Expression interface.
 func (p UnaryExpression) Resolved() bool {
 	return p.Child.Resolved()
 }
@@ -23,7 +23,7 @@ type BinaryExpression struct {
 	Right sql.Expression
 }
 
-// Resolved implements the Resolvable interface.
+// Resolved implements the Expression interface.
 func (p BinaryExpression) Resolved() bool {
 	return p.Left.Resolved() && p.Right.Resolved()
 }

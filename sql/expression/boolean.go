@@ -27,7 +27,7 @@ func (e Not) Name() string {
 	return "Not(" + e.Child.Name() + ")"
 }
 
-// TransformUp implements the Transformable interface.
+// TransformUp implements the Expression interface.
 func (e *Not) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
 	c := e.UnaryExpression.Child.TransformUp(f)
 	n := &Not{UnaryExpression{c}}

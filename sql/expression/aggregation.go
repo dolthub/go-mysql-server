@@ -31,7 +31,7 @@ func (c *Count) IsNullable() bool {
 	return false
 }
 
-// Resolved implements the Resolvable interface.
+// Resolved implements the Expression interface.
 func (c *Count) Resolved() bool {
 	if _, ok := c.Child.(*Star); ok {
 		return true
@@ -45,7 +45,7 @@ func (c *Count) Name() string {
 	return fmt.Sprintf("count(%s)", c.Child.Name())
 }
 
-// TransformUp implements the Transformable interface.
+// TransformUp implements the Expression interface.
 func (c *Count) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
 	nc := c.UnaryExpression.Child.TransformUp(f)
 	return f(NewCount(nc))
@@ -103,7 +103,7 @@ func (e *First) Name() string {
 	return fmt.Sprintf("first(%s)", e.Child.Name())
 }
 
-// TransformUp implements the Transformable interface.
+// TransformUp implements the Expression interface.
 func (e *First) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
 	nc := e.UnaryExpression.Child.TransformUp(f)
 	return f(NewFirst(nc))
