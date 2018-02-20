@@ -3,6 +3,8 @@ package expression
 import "gopkg.in/src-d/go-mysql-server.v0/sql"
 
 // UnresolvedColumn is an expression of a column that is not yet resolved.
+// This is a placeholder node, so its methods Type, IsNullable and Eval are not
+// supposed to be called.
 type UnresolvedColumn struct {
 	name string
 }
@@ -19,12 +21,12 @@ func (UnresolvedColumn) Resolved() bool {
 
 // IsNullable implements the Expression interface.
 func (UnresolvedColumn) IsNullable() bool {
-	return true
+	panic("unresolved column is a placeholder node, but IsNullable was called")
 }
 
 // Type implements the Expression interface.
 func (UnresolvedColumn) Type() sql.Type {
-	return sql.Text //FIXME
+	panic("unresolved column is a placeholder node, but Type was called")
 }
 
 // Name implements the Expression interface.
@@ -34,7 +36,7 @@ func (uc UnresolvedColumn) Name() string {
 
 // Eval implements the Expression interface.
 func (UnresolvedColumn) Eval(r sql.Row) interface{} {
-	return "FAIL" //FIXME
+	panic("unresolved column is a placeholder node, but Eval was called")
 }
 
 // TransformUp implements the Transformable interface.
@@ -44,6 +46,8 @@ func (uc *UnresolvedColumn) TransformUp(f func(sql.Expression) sql.Expression) s
 }
 
 // UnresolvedFunction represents a function that is not yet resolved.
+// This is a placeholder node, so its methods Type, IsNullable and Eval are not
+// supposed to be called.
 type UnresolvedFunction struct {
 	name string
 	// IsAggregate or not.
@@ -68,12 +72,12 @@ func (UnresolvedFunction) Resolved() bool {
 
 // IsNullable implements the Expression interface.
 func (UnresolvedFunction) IsNullable() bool {
-	return true
+	panic("unresolved function is a placeholder node, but IsNullable was called")
 }
 
 // Type implements the Expression interface.
 func (UnresolvedFunction) Type() sql.Type {
-	return sql.Text //FIXME
+	panic("unresolved function is a placeholder node, but Type was called")
 }
 
 // Name implements the Expression interface.
@@ -83,7 +87,7 @@ func (uf UnresolvedFunction) Name() string {
 
 // Eval implements the Expression interface.
 func (UnresolvedFunction) Eval(r sql.Row) interface{} {
-	return "FAIL" //FIXME
+	panic("unresolved function is a placeholder node, but Eval was called")
 }
 
 // TransformUp implements the Transformable interface.
