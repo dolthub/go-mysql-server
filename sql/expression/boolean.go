@@ -1,6 +1,8 @@
 package expression
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import (
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+)
 
 // Not is a node that negates an expression.
 type Not struct {
@@ -18,8 +20,13 @@ func (e Not) Type() sql.Type {
 }
 
 // Eval implements the Expression interface.
-func (e Not) Eval(row sql.Row) interface{} {
-	return !e.Child.Eval(row).(bool)
+func (e Not) Eval(row sql.Row) (interface{}, error) {
+	v, err := e.Child.Eval(row)
+	if err != nil {
+		return nil, err
+	}
+
+	return !v.(bool), nil
 }
 
 // Name implements the Expression interface.

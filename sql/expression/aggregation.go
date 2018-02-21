@@ -52,30 +52,37 @@ func (c *Count) TransformUp(f func(sql.Expression) sql.Expression) sql.Expressio
 }
 
 // Update implements the Aggregation interface.
-func (c *Count) Update(buffer, row sql.Row) {
+func (c *Count) Update(buffer, row sql.Row) error {
 	var inc bool
 	if _, ok := c.Child.(*Star); ok {
 		inc = true
 	} else {
-		v := c.Child.Eval(row)
+		v, err := c.Child.Eval(row)
 		if v != nil {
 			inc = true
+		}
+
+		if err != nil {
+			return err
 		}
 	}
 
 	if inc {
 		buffer[0] = buffer[0].(int32) + int32(1)
 	}
+
+	return nil
 }
 
 // Merge implements the Aggregation interface.
-func (c *Count) Merge(buffer, partial sql.Row) {
+func (c *Count) Merge(buffer, partial sql.Row) error {
 	buffer[0] = buffer[0].(int32) + partial[0].(int32)
+	return nil
 }
 
 // Eval implements the Aggregation interface.
-func (c *Count) Eval(buffer sql.Row) interface{} {
-	return buffer[0]
+func (c *Count) Eval(buffer sql.Row) (interface{}, error) {
+	return buffer[0], nil
 }
 
 // First is a node that returns only the first row of all available ones.
@@ -110,20 +117,26 @@ func (e *First) TransformUp(f func(sql.Expression) sql.Expression) sql.Expressio
 }
 
 // Update implements the Aggregation interface.
-func (e *First) Update(buffer, row sql.Row) {
+func (e *First) Update(buffer, row sql.Row) error {
 	if buffer[0] == nil {
-		buffer[0] = e.Child.Eval(row)
+		var err error
+		buffer[0], err = e.Child.Eval(row)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // Merge implements the Aggregation interface.
-func (e *First) Merge(buffer, partial sql.Row) {
+func (e *First) Merge(buffer, partial sql.Row) error {
 	if buffer[0] == nil {
 		buffer[0] = partial[0]
 	}
+	return nil
 }
 
 // Eval implements the Aggregation interface.
-func (e *First) Eval(buffer sql.Row) interface{} {
-	return buffer[0]
+func (e *First) Eval(buffer sql.Row) (interface{}, error) {
+	return buffer[0], nil
 }

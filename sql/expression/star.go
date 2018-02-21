@@ -33,7 +33,7 @@ func (Star) Name() string {
 }
 
 // Eval implements the Expression interface.
-func (Star) Eval(r sql.Row) interface{} {
+func (Star) Eval(r sql.Row) (interface{}, error) {
 	panic("star is just a placeholder node, but Eval was called")
 }
 

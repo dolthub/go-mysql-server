@@ -34,8 +34,8 @@ func (p Literal) Type() sql.Type {
 }
 
 // Eval implements the Expression interface.
-func (p Literal) Eval(row sql.Row) interface{} {
-	return p.value
+func (p Literal) Eval(row sql.Row) (interface{}, error) {
+	return p.value, nil
 }
 
 // Name implements the Expression interface.

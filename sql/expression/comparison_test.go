@@ -104,7 +104,7 @@ func TestComparisons_Equals(t *testing.T) {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
 				require.NotNil(row)
-				cmp := eq.Eval(row)
+				cmp := eval(t, eq, row)
 				if cmpResult == testEqual {
 					require.Equal(true, cmp)
 				} else if cmpResult == testNil {
@@ -131,7 +131,7 @@ func TestComparisons_LessThan(t *testing.T) {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
 				require.NotNil(row)
-				cmp := eq.Eval(row)
+				cmp := eval(t, eq, row)
 				if cmpResult == testLess {
 					require.Equal(true, cmp, "%v < %v", pair[0], pair[1])
 				} else if cmpResult == testNil {
@@ -158,7 +158,7 @@ func TestComparisons_GreaterThan(t *testing.T) {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
 				require.NotNil(row)
-				cmp := eq.Eval(row)
+				cmp := eval(t, eq, row)
 				if cmpResult == testGreater {
 					require.Equal(true, cmp)
 				} else if cmpResult == testNil {
@@ -185,7 +185,7 @@ func TestComparisons_Regexp(t *testing.T) {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
 				require.NotNil(row)
-				cmp := eq.Eval(row)
+				cmp := eval(t, eq, row)
 				if cmpResult == testRegexp {
 					require.Equal(true, cmp)
 				} else if cmpResult == testNil {

@@ -55,7 +55,11 @@ func (p *Values) RowIter() (sql.RowIter, error) {
 	for i, et := range p.ExpressionTuples {
 		vals := make([]interface{}, len(et))
 		for j, e := range et {
-			vals[j] = e.Eval(nil)
+			var err error
+			vals[j], err = e.Eval(nil)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		rows[i] = sql.NewRow(vals...)

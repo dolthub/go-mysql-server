@@ -145,30 +145,40 @@ func groupBy(rows []sql.Row, aggExpr []sql.Expression,
 
 	hrows := map[interface{}][]sql.Row{}
 	for _, row := range rows {
-		key := groupingKey(groupExpr, row)
+		key, err := groupingKey(groupExpr, row)
+		if err != nil {
+			return nil, err
+		}
 		hrows[key] = append(hrows[key], row)
 	}
 
 	result := make([]sql.Row, 0, len(hrows))
 	for _, rows := range hrows {
-		row := aggregate(aggExpr, rows)
+		row, err := aggregate(aggExpr, rows)
+		if err != nil {
+			return nil, err
+		}
 		result = append(result, row)
 	}
 
 	return result, nil
 }
 
-func groupingKey(exprs []sql.Expression, row sql.Row) interface{} {
+func groupingKey(exprs []sql.Expression, row sql.Row) (interface{}, error) {
 	//TODO: use a more robust/efficient way of calculating grouping keys.
 	vals := make([]string, 0, len(exprs))
 	for _, expr := range exprs {
-		vals = append(vals, fmt.Sprintf("%#v", expr.Eval(row)))
+		v, err := expr.Eval(row)
+		if err != nil {
+			return nil, err
+		}
+		vals = append(vals, fmt.Sprintf("%#v", v))
 	}
 
-	return strings.Join(vals, ",")
+	return strings.Join(vals, ","), nil
 }
 
-func aggregate(exprs []sql.Expression, rows []sql.Row) sql.Row {
+func aggregate(exprs []sql.Expression, rows []sql.Row) (sql.Row, error) {
 	aggs := exprsToAggregateExprs(exprs)
 
 	buffers := make([]sql.Row, len(aggs))
@@ -184,10 +194,14 @@ func aggregate(exprs []sql.Expression, rows []sql.Row) sql.Row {
 
 	fields := make([]interface{}, 0, len(exprs))
 	for i, agg := range aggs {
-		fields = append(fields, agg.Eval(buffers[i]))
+		f, err := agg.Eval(buffers[i])
+		if err != nil {
+			return nil, err
+		}
+		fields = append(fields, f)
 	}
 
-	return sql.NewRow(fields...)
+	return sql.NewRow(fields...), nil
 }
 
 func exprsToAggregateExprs(exprs []sql.Expression) []sql.AggregationExpression {
