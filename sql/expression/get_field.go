@@ -20,7 +20,7 @@ func NewGetField(index int, fieldType sql.Type, fieldName string, nullable bool)
 	}
 }
 
-// Resolved implements the Resolvable interface.
+// Resolved implements the Expression interface.
 func (p GetField) Resolved() bool {
 	return true
 }
@@ -36,8 +36,8 @@ func (p GetField) Type() sql.Type {
 }
 
 // Eval implements the Expression interface.
-func (p GetField) Eval(row sql.Row) interface{} {
-	return row[p.fieldIndex]
+func (p GetField) Eval(row sql.Row) (interface{}, error) {
+	return row[p.fieldIndex], nil
 }
 
 // Name returns the name of the field.
@@ -45,7 +45,7 @@ func (p GetField) Name() string {
 	return p.fieldName
 }
 
-// TransformUp implements the Transformable interface.
+// TransformUp implements the Expression interface.
 func (p *GetField) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
 	n := *p
 	return f(&n)

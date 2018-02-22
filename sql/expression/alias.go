@@ -19,7 +19,7 @@ func (e *Alias) Type() sql.Type {
 }
 
 // Eval implements the Expression interface.
-func (e *Alias) Eval(row sql.Row) interface{} {
+func (e *Alias) Eval(row sql.Row) (interface{}, error) {
 	return e.Child.Eval(row)
 }
 
@@ -28,7 +28,7 @@ func (e *Alias) Name() string {
 	return e.name
 }
 
-// TransformUp implements the Transformable interface.
+// TransformUp implements the Expression interface.
 func (e *Alias) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
 	c := e.Child.TransformUp(f)
 	n := NewAlias(c, e.name)

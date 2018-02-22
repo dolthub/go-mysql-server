@@ -35,7 +35,7 @@ type Expression interface {
 	// IsNullable returns whether the expression can be null.
 	IsNullable() bool
 	// Eval evaluates the given row and returns a result.
-	Eval(Row) interface{}
+	Eval(Row) (interface{}, error)
 	// TransformUp transforms the expression and all its children with the
 	// given transform function.
 	TransformUp(func(Expression) Expression) Expression
@@ -52,9 +52,9 @@ type AggregationExpression interface {
 	// NewBuffer creates a new aggregation buffer and returns it as a Row.
 	NewBuffer() Row
 	// Update updates the given buffer with the given row.
-	Update(buffer, row Row)
+	Update(buffer, row Row) error
 	// Merge merges a partial buffer into a global one.
-	Merge(buffer, partial Row)
+	Merge(buffer, partial Row) error
 }
 
 // Aggregation is a node which take the value of several rows and produces a single

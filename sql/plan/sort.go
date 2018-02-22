@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"fmt"
 	"io"
 	"sort"
 
@@ -133,7 +134,7 @@ func (i *sortIter) Close() error {
 }
 
 func (i *sortIter) computeSortedRows() error {
-	rows := []sql.Row{}
+	var rows []sql.Row
 	for {
 		childRow, err := i.childIter.Next()
 		if err == io.EOF {
@@ -144,10 +145,16 @@ func (i *sortIter) computeSortedRows() error {
 		}
 		rows = append(rows, childRow)
 	}
-	sort.Sort(&sorter{
+
+	sorter := &sorter{
 		sortFields: i.s.SortFields,
 		rows:       rows,
-	})
+		lastError:  nil,
+	}
+	sort.Sort(sorter)
+	if sorter.lastError != nil {
+		return sorter.lastError
+	}
 	i.sortedRows = rows
 	return nil
 }
@@ -155,6 +162,7 @@ func (i *sortIter) computeSortedRows() error {
 type sorter struct {
 	sortFields []SortField
 	rows       []sql.Row
+	lastError  error
 }
 
 func (s *sorter) Len() int {
@@ -166,12 +174,25 @@ func (s *sorter) Swap(i, j int) {
 }
 
 func (s *sorter) Less(i, j int) bool {
+	if s.lastError != nil {
+		return false
+	}
+
 	a := s.rows[i]
 	b := s.rows[j]
 	for _, sf := range s.sortFields {
 		typ := sf.Column.Type()
-		av := sf.Column.Eval(a)
-		bv := sf.Column.Eval(b)
+		av, err := sf.Column.Eval(a)
+		if err != nil {
+			s.lastError = fmt.Errorf("unable to sort: %s", err)
+			return false
+		}
+
+		bv, err := sf.Column.Eval(b)
+		if err != nil {
+			s.lastError = fmt.Errorf("unable to sort: %s", err)
+			return false
+		}
 
 		if av == nil {
 			return sf.NullOrdering == NullsFirst

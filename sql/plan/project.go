@@ -75,17 +75,21 @@ func (i *iter) Next() (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
-	return filterRow(i.p.Expressions, childRow), nil
+	return filterRow(i.p.Expressions, childRow)
 }
 
 func (i *iter) Close() error {
 	return i.childIter.Close()
 }
 
-func filterRow(expressions []sql.Expression, row sql.Row) sql.Row {
-	fields := []interface{}{}
+func filterRow(expressions []sql.Expression, row sql.Row) (sql.Row, error) {
+	var fields []interface{}
 	for _, expr := range expressions {
-		fields = append(fields, expr.Eval(row))
+		f, err := expr.Eval(row)
+		if err != nil {
+			return nil, err
+		}
+		fields = append(fields, f)
 	}
-	return sql.NewRow(fields...)
+	return sql.NewRow(fields...), nil
 }
