@@ -193,12 +193,12 @@ func tableExprsToTable(te sqlparser.TableExprs) (sql.Node, error) {
 		return nodes[0], nil
 	}
 
-	if len(nodes) == 2 {
-		return plan.NewCrossJoin(nodes[0], nodes[1]), nil
+	join := plan.NewCrossJoin(nodes[0], nodes[1])
+	for i := 2; i < len(nodes); i++ {
+		join = plan.NewCrossJoin(join, nodes[i])
 	}
 
-	//TODO: Support N tables in JOIN.
-	return nil, errUnsupportedFeature("more than 2 tables in JOIN")
+	return join, nil
 }
 
 func tableExprToTable(te sqlparser.TableExpr) (sql.Node, error) {
