@@ -1,36 +1,80 @@
 package analyzer
 
 import (
-	"errors"
-
+	errors "gopkg.in/src-d/go-errors.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
+const (
+	validateResolvedRule = "validate_resolved"
+	validateOrderByRule  = "validate_order_by"
+	validateGroupByRule  = "validate_group_by"
+)
+
+var (
+	ValidationResolvedErr = errors.NewKind("plan is not resolved because of node the '%T'")
+	ValidationOrderByErr  = errors.NewKind("OrderBy does not support aggregation expressions")
+	ValidationGroupByErr  = errors.NewKind("GroupBy aggregate expression '%v' doesn't appear in the grouping columns")
+)
+
 // DefaultValidationRules to apply while analyzing nodes.
 var DefaultValidationRules = []ValidationRule{
-	{"validate_resolved", validateIsResolved},
-	{"validate_order_by", validateOrderBy},
+	{validateResolvedRule, validateIsResolved},
+	{validateOrderByRule, validateOrderBy},
+	{validateGroupByRule, validateGroupBy},
 }
 
-func validateIsResolved(a *Analyzer, n sql.Node) error {
+func validateIsResolved(n sql.Node) error {
 	if !n.Resolved() {
-		return errors.New("plan is not resolved")
+		return ValidationResolvedErr.New(n)
 	}
 
 	return nil
 }
 
-func validateOrderBy(a *Analyzer, n sql.Node) error {
+func validateOrderBy(n sql.Node) error {
 	switch n := n.(type) {
 	case *plan.Sort:
 		for _, field := range n.SortFields {
 			switch field.Column.(type) {
 			case sql.AggregationExpression:
-				return errors.New("OrderBy does not support aggregation expressions")
+				return ValidationOrderByErr.New()
 			}
 		}
 	}
 
 	return nil
+}
+
+func validateGroupBy(n sql.Node) error {
+	switch n := n.(type) {
+	case *plan.GroupBy:
+		validAggs := []string{}
+		for _, expr := range n.Grouping {
+			validAggs = append(validAggs, expr.Name())
+		}
+
+		for _, expr := range n.Aggregate {
+			if _, ok := expr.(sql.AggregationExpression); !ok {
+				if !isValidAgg(validAggs, expr) {
+					return ValidationGroupByErr.New(expr.Name())
+				}
+			}
+		}
+
+		return nil
+	}
+
+	return nil
+}
+
+func isValidAgg(validAggs []string, expr sql.Expression) bool {
+	for _, validAgg := range validAggs {
+		if validAgg == expr.Name() {
+			return true
+		}
+	}
+
+	return false
 }
