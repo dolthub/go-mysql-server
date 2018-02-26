@@ -237,6 +237,38 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("qux"),
 		),
 	),
+	`SELECT * FROM foo WHERE a = b AND c = d`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			expression.NewAnd(
+				expression.NewEquals(
+					expression.NewUnresolvedColumn("a"),
+					expression.NewUnresolvedColumn("b"),
+				),
+				expression.NewEquals(
+					expression.NewUnresolvedColumn("c"),
+					expression.NewUnresolvedColumn("d"),
+				),
+			),
+			plan.NewUnresolvedTable("foo"),
+		),
+	),
+	`SELECT * FROM foo WHERE a = b OR c = d`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			expression.NewOr(
+				expression.NewEquals(
+					expression.NewUnresolvedColumn("a"),
+					expression.NewUnresolvedColumn("b"),
+				),
+				expression.NewEquals(
+					expression.NewUnresolvedColumn("c"),
+					expression.NewUnresolvedColumn("d"),
+				),
+			),
+			plan.NewUnresolvedTable("foo"),
+		),
+	),
 }
 
 func TestParse(t *testing.T) {
