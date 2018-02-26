@@ -385,6 +385,8 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 
 		return expression.NewUnresolvedFunction(v.Name.Lowered(),
 			v.IsAggregate(), exprs...), nil
+	case *sqlparser.ParenExpr:
+		return exprToExpression(v.Expr)
 	}
 }
 
