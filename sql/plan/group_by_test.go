@@ -85,3 +85,34 @@ func TestGroupBy_RowIter(t *testing.T) {
 	require.Equal(sql.NewRow("col1_1", int64(1111)), rows[0])
 	require.Equal(sql.NewRow("col1_2", int64(4444)), rows[1])
 }
+
+func TestGroupBy_Error(t *testing.T) {
+	require := require.New(t)
+
+	childSchema := sql.Schema{
+		{Name: "col1", Type: sql.Text},
+		{Name: "col2", Type: sql.Int64},
+	}
+
+	child := mem.NewTable("test", childSchema)
+	child.Insert(sql.NewRow("col1_1", int64(1111)))
+	child.Insert(sql.NewRow("col1_1", int64(2222)))
+	child.Insert(sql.NewRow("col1_2", int64(4444)))
+	child.Insert(sql.NewRow("col1_1", int64(1111)))
+	child.Insert(sql.NewRow("col1_2", int64(4444)))
+
+	p := NewGroupBy(
+		[]sql.Expression{
+			expression.NewCount(expression.NewGetField(0, sql.Text, "col1", true)),
+			expression.NewIsNull(expression.NewGetField(1, sql.Int64, "col2", true)),
+		},
+		[]sql.Expression{
+			expression.NewCount(expression.NewGetField(0, sql.Text, "col1", true)),
+			expression.NewGetField(1, sql.Int64, "col2", true),
+		},
+		child,
+	)
+
+	_, err := sql.NodeToRows(p)
+	require.Error(err)
+}
