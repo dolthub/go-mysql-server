@@ -212,6 +212,18 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo"),
 		)),
 	),
+	`SELECT * FROM foo WHERE (a = 1)`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewStar(),
+		},
+		plan.NewFilter(
+			expression.NewEquals(
+				expression.NewUnresolvedColumn("a"),
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+			plan.NewUnresolvedTable("foo"),
+		),
+	),
 }
 
 func TestParse(t *testing.T) {
