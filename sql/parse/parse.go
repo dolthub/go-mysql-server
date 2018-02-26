@@ -387,6 +387,30 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 			v.IsAggregate(), exprs...), nil
 	case *sqlparser.ParenExpr:
 		return exprToExpression(v.Expr)
+	case *sqlparser.AndExpr:
+		lhs, err := exprToExpression(v.Left)
+		if err != nil {
+			return nil, err
+		}
+
+		rhs, err := exprToExpression(v.Right)
+		if err != nil {
+			return nil, err
+		}
+
+		return expression.NewAnd(lhs, rhs), nil
+	case *sqlparser.OrExpr:
+		lhs, err := exprToExpression(v.Left)
+		if err != nil {
+			return nil, err
+		}
+
+		rhs, err := exprToExpression(v.Right)
+		if err != nil {
+			return nil, err
+		}
+
+		return expression.NewOr(lhs, rhs), nil
 	}
 }
 
