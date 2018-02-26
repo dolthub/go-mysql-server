@@ -133,7 +133,7 @@ func resolveFunctions(a *Analyzer, n sql.Node) sql.Node {
 				return e
 			}
 
-			rf, err := f.Build(uf.Children...)
+			rf, err := f.Call(uf.Children...)
 			if err != nil {
 				return e
 			}

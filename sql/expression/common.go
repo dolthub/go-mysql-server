@@ -33,17 +33,19 @@ func (p BinaryExpression) IsNullable() bool {
 	return p.Left.IsNullable() || p.Right.IsNullable()
 }
 
-var defaultFunctions = map[string]interface{}{
-	"count": NewCount,
-	"first": NewFirst,
+var defaultFunctions = map[string]sql.Function{
+	"count": sql.Function1(func(e sql.Expression) sql.Expression {
+		return NewCount(e)
+	}),
+	"first": sql.Function1(func(e sql.Expression) sql.Expression {
+		return NewFirst(e)
+	}),
 }
 
 // RegisterDefaults registers the aggregations in the catalog.
 func RegisterDefaults(c *sql.Catalog) error {
 	for k, v := range defaultFunctions {
-		if err := c.RegisterFunction(k, v); err != nil {
-			return err
-		}
+		c.RegisterFunction(k, v)
 	}
 
 	return nil
