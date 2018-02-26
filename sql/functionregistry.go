@@ -115,7 +115,7 @@ func (FunctionN) isFunction() {}
 
 // ErrInvalidArgumentNumber is returned when the number of arguments to call a
 // function is different from the function arity.
-var ErrInvalidArgumentNumber = errors.NewKind("expecting %d arguments for calling this function, %d received")
+var ErrInvalidArgumentNumber = errors.NewKind("expecting %v arguments for calling this function, %d received")
 
 // FunctionRegistry is used to register functions. It is used both for builtin
 // and User-Defined Functions.

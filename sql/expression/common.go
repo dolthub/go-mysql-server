@@ -41,6 +41,7 @@ var defaultFunctions = map[string]sql.Function{
 		return NewFirst(e)
 	}),
 	"is_binary": sql.Function1(NewIsBinary),
+	"substring": sql.FunctionN(NewSubstring),
 }
 
 // RegisterDefaults registers the aggregations in the catalog.
