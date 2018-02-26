@@ -206,14 +206,29 @@ func tableExprToTable(te sqlparser.TableExpr) (sql.Node, error) {
 	default:
 		return nil, errUnsupported(te)
 	case *sqlparser.AliasedTableExpr:
-		//TODO: Add support for table alias.
-		//TODO: Add support for qualifier.
-		tn, ok := t.Expr.(sqlparser.TableName)
-		if !ok {
-			return nil, errUnsupportedFeature("non simple tables")
+		// TODO: Add support for qualifier.
+		var node sql.Node
+		switch e := t.Expr.(type) {
+		case sqlparser.TableName:
+			if !e.Qualifier.IsEmpty() {
+				return nil, errUnsupportedFeature("table name qualifiers")
+			}
+			node = plan.NewUnresolvedTable(e.Name.String())
+		case *sqlparser.Subquery:
+			var err error
+			node, err = convert(e.Select)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, errUnsupported(te)
 		}
 
-		return plan.NewUnresolvedTable(tn.Name.String()), nil
+		if !t.As.IsEmpty() {
+			node = plan.NewTableAlias(t.As.String(), node)
+		}
+
+		return node, nil
 	}
 }
 
