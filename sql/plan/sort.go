@@ -241,7 +241,13 @@ func (s *sorter) Less(i, j int) bool {
 			av, bv = bv, av
 		}
 
-		switch typ.Compare(av, bv) {
+		cmp, err := typ.Compare(av, bv)
+		if err != nil {
+			s.lastError = err
+			return false
+		}
+
+		switch cmp {
 		case -1:
 			return true
 		case 1:

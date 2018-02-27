@@ -147,7 +147,11 @@ func (m *Min) Update(session sql.Session, buffer, row sql.Row) error {
 		buffer[0] = v
 	}
 
-	if m.Child.Type().Compare(v, buffer[0]) == -1 {
+	cmp, err := m.Child.Type().Compare(v, buffer[0])
+	if err != nil {
+		return err
+	}
+	if cmp == -1 {
 		buffer[0] = v
 	}
 
@@ -223,7 +227,11 @@ func (m *Max) Update(session sql.Session, buffer, row sql.Row) error {
 		buffer[0] = v
 	}
 
-	if m.Child.Type().Compare(v, buffer[0]) == 1 {
+	cmp, err := m.Child.Type().Compare(v, buffer[0])
+	if err != nil {
+		return err
+	}
+	if cmp == 1 {
 		buffer[0] = v
 	}
 

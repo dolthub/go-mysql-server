@@ -461,20 +461,7 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 
 		return expression.NewNot(c), nil
 	case *sqlparser.SQLVal:
-		switch v.Type {
-		case sqlparser.StrVal:
-			return expression.NewLiteral(string(v.Val), sql.Text), nil
-		case sqlparser.IntVal:
-			//TODO: Use smallest integer representation and widen later.
-			n, _ := strconv.ParseInt(string(v.Val), 10, 64)
-			return expression.NewLiteral(n, sql.Int64), nil
-		case sqlparser.HexVal:
-			//TODO
-			return nil, ErrUnsupportedSyntax.New(v)
-		default:
-			//TODO
-			return nil, ErrUnsupportedSyntax.New(v)
-		}
+		return convertVal(v)
 	case sqlparser.BoolVal:
 		return expression.NewLiteral(bool(v), sql.Boolean), nil
 	case *sqlparser.NullVal:
@@ -553,7 +540,62 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		default:
 			return nil, ErrUnsupportedFeature.New(fmt.Sprintf("RangeCond with operator: %s", v.Operator))
 		}
+	case sqlparser.ValTuple:
+		var exprs = make([]sql.Expression, len(v))
+		for i, e := range v {
+			expr, err := exprToExpression(e)
+			if err != nil {
+				return nil, err
+			}
+			exprs[i] = expr
+		}
+		return expression.NewTuple(exprs...), nil
 	}
+}
+
+func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {
+	switch v.Type {
+	case sqlparser.StrVal:
+		return expression.NewLiteral(string(v.Val), sql.Text), nil
+	case sqlparser.IntVal:
+		//TODO: Use smallest integer representation and widen later.
+		val, err := strconv.ParseInt(string(v.Val), 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return expression.NewLiteral(val, sql.Int64), nil
+	case sqlparser.FloatVal:
+		val, err := strconv.ParseFloat(string(v.Val), 64)
+		if err != nil {
+			return nil, err
+		}
+		return expression.NewLiteral(val, sql.Float64), nil
+	case sqlparser.HexNum:
+		v := strings.ToLower(string(v.Val))
+		if strings.HasPrefix(v, "0x") {
+			v = v[2:]
+		} else if strings.HasPrefix(v, "x") {
+			v = strings.Trim(v[1:], "'")
+		}
+
+		val, err := strconv.ParseInt(v, 16, 64)
+		if err != nil {
+			return nil, err
+		}
+		return expression.NewLiteral(val, sql.Int64), nil
+	case sqlparser.HexVal:
+		val, err := v.HexDecode()
+		if err != nil {
+			return nil, err
+		}
+		return expression.NewLiteral(val, sql.Blob), nil
+	case sqlparser.ValArg:
+		return expression.NewLiteral(string(v.Val), sql.Text), nil
+	case sqlparser.BitVal:
+		return expression.NewLiteral(v.Val[0] == '1', sql.Boolean), nil
+	}
+
+	panic(fmt.Errorf("unreachable: invalid SQLVal of type: %d", v.Type))
 }
 
 func isExprToExpression(c *sqlparser.IsExpr) (sql.Expression, error) {
@@ -642,7 +684,7 @@ func selectExprToExpression(se sqlparser.SelectExpr) (sql.Expression, error) {
 			return expr, nil
 		}
 
-		//TODO: Handle case-sensitiveness when needed.
+		// TODO: Handle case-sensitiveness when needed.
 		return expression.NewAlias(expr, e.As.Lowered()), nil
 	}
 }

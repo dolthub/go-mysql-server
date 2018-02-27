@@ -180,6 +180,81 @@ func TestValidateSchemaSource(t *testing.T) {
 	}
 }
 
+func TestValidateProjectTuples(t *testing.T) {
+	testCases := []struct {
+		name string
+		node sql.Node
+		ok   bool
+	}{
+		{
+			"project with no tuple",
+			plan.NewProject([]sql.Expression{
+				expression.NewLiteral(1, sql.Int64),
+			}, nil),
+			true,
+		},
+		{
+			"project with a 1 elem tuple",
+			plan.NewProject([]sql.Expression{
+				expression.NewTuple(
+					expression.NewLiteral(1, sql.Int64),
+				),
+			}, nil),
+			true,
+		},
+		{
+			"project with a 2 elem tuple",
+			plan.NewProject([]sql.Expression{
+				expression.NewTuple(
+					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, sql.Int64),
+				),
+			}, nil),
+			false,
+		},
+		{
+			"groupby with no tuple",
+			plan.NewGroupBy([]sql.Expression{
+				expression.NewLiteral(1, sql.Int64),
+			}, nil, nil),
+			true,
+		},
+		{
+			"groupby with a 1 elem tuple",
+			plan.NewGroupBy([]sql.Expression{
+				expression.NewTuple(
+					expression.NewLiteral(1, sql.Int64),
+				),
+			}, nil, nil),
+			true,
+		},
+		{
+			"groupby with a 2 elem tuple",
+			plan.NewGroupBy([]sql.Expression{
+				expression.NewTuple(
+					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, sql.Int64),
+				),
+			}, nil, nil),
+			false,
+		},
+	}
+
+	rule := getValidationRule(validateProjectTuplesRule)
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			err := rule.Apply(tt.node)
+			if tt.ok {
+				require.NoError(err)
+			} else {
+				require.Error(err)
+				require.True(ErrProjectTuple.Is(err))
+			}
+		})
+	}
+}
+
 type dummyNode struct{ resolved bool }
 
 func (n dummyNode) String() string                                               { return "dummynode" }

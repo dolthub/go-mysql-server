@@ -80,7 +80,17 @@ func (b *Between) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return typ.Compare(val, lower) >= 0 && typ.Compare(val, upper) <= 0, nil
+	cmpLower, err := typ.Compare(val, lower)
+	if err != nil {
+		return nil, err
+	}
+
+	cmpUpper, err := typ.Compare(val, upper)
+	if err != nil {
+		return nil, err
+	}
+
+	return cmpLower >= 0 && cmpUpper <= 0, nil
 }
 
 // TransformUp implements the Expression interface.

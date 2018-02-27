@@ -42,7 +42,7 @@ func (c *comparison) Compare(session sql.Session, row sql.Row) (int, error) {
 	}
 
 	if c.Left().Type() == c.Right().Type() {
-		return c.Left().Type().Compare(left, right), nil
+		return c.Left().Type().Compare(left, right)
 	}
 
 	left, right, err = c.castLeftAndRight(left, right)
@@ -50,7 +50,7 @@ func (c *comparison) Compare(session sql.Session, row sql.Row) (int, error) {
 		return 0, err
 	}
 
-	return c.compareType.Compare(left, right), nil
+	return c.compareType.Compare(left, right)
 }
 
 func (c *comparison) evalLeftAndRight(session sql.Session, row sql.Row) (interface{}, interface{}, error) {

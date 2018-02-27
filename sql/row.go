@@ -20,19 +20,23 @@ func (r Row) Copy() Row {
 }
 
 // Equals checks whether two rows are equal given a schema.
-func (r Row) Equals(row Row, schema Schema) bool {
+func (r Row) Equals(row Row, schema Schema) (bool, error) {
 	if len(row) != len(r) || len(row) != len(schema) {
-		return false
+		return false, nil
 	}
 
 	for i, colLeft := range r {
 		colRight := row[i]
-		if schema[i].Type.Compare(colLeft, colRight) != 0 {
-			return false
+		cmp, err := schema[i].Type.Compare(colLeft, colRight)
+		if err != nil {
+			return false, err
+		}
+		if cmp != 0 {
+			return false, nil
 		}
 	}
 
-	return true
+	return true, nil
 }
 
 // RowIter is an iterator that produces rows.

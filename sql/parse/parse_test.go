@@ -354,6 +354,46 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo"),
 		),
 	),
+	`SELECT 0x01AF`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewLiteral(int64(431), sql.Int64),
+		},
+		plan.NewUnresolvedTable("dual"),
+	),
+	`SELECT X'41'`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewLiteral([]byte{'A'}, sql.Blob),
+		},
+		plan.NewUnresolvedTable("dual"),
+	),
+	`SELECT * FROM b WHERE SOMEFUNC((1, 2), (3, 4))`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			expression.NewUnresolvedFunction(
+				"somefunc",
+				false,
+				expression.NewTuple(
+					expression.NewLiteral(int64(1), sql.Int64),
+					expression.NewLiteral(int64(2), sql.Int64),
+				),
+				expression.NewTuple(
+					expression.NewLiteral(int64(3), sql.Int64),
+					expression.NewLiteral(int64(4), sql.Int64),
+				),
+			),
+			plan.NewUnresolvedTable("b"),
+		),
+	),
+	`SELECT * FROM foo WHERE :foo_id = 2`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			expression.NewEquals(
+				expression.NewLiteral(":foo_id", sql.Text),
+				expression.NewLiteral(int64(2), sql.Int64),
+			),
+			plan.NewUnresolvedTable("foo"),
+		),
+	),
 	`SELECT * FROM foo INNER JOIN bar ON a = b`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewInnerJoin(
