@@ -34,12 +34,12 @@ func TestQueries(t *testing.T) {
 	)
 
 	testQuery(t, e,
-		"SELECT i FROM mytable WHERE s = 'a' ORDER BY i DESC;",
+		"SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC;",
 		[][]interface{}{{int64(1)}},
 	)
 
 	testQuery(t, e,
-		"SELECT i FROM mytable WHERE s = 'a' ORDER BY i DESC LIMIT 1;",
+		"SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT 1;",
 		[][]interface{}{{int64(1)}},
 	)
 
@@ -56,6 +56,11 @@ func TestQueries(t *testing.T) {
 	testQuery(t, e,
 		"SELECT COUNT(*) AS c FROM mytable;",
 		[][]interface{}{{int32(3)}},
+	)
+
+	testQuery(t, e,
+		"SELECT substring(s, 2, 3) FROM mytable",
+		[][]interface{}{{"irs"}, {"eco"}, {"hir"}},
 	)
 }
 
@@ -105,9 +110,9 @@ func newEngine(t *testing.T) *sqle.Engine {
 		{Name: "i", Type: sql.Int64},
 		{Name: "s", Type: sql.Text},
 	})
-	require.Nil(table.Insert(sql.NewRow(int64(1), "a")))
-	require.Nil(table.Insert(sql.NewRow(int64(2), "b")))
-	require.Nil(table.Insert(sql.NewRow(int64(3), "c")))
+	require.Nil(table.Insert(sql.NewRow(int64(1), "first row")))
+	require.Nil(table.Insert(sql.NewRow(int64(2), "second row")))
+	require.Nil(table.Insert(sql.NewRow(int64(3), "third row")))
 
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
