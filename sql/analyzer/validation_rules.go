@@ -13,7 +13,7 @@ const (
 )
 
 var (
-	ValidationResolvedErr = errors.NewKind("plan is not resolved because of node the '%T'")
+	ValidationResolvedErr = errors.NewKind("plan is not resolved because of node '%T'")
 	ValidationOrderByErr  = errors.NewKind("OrderBy does not support aggregation expressions")
 	ValidationGroupByErr  = errors.NewKind("GroupBy aggregate expression '%v' doesn't appear in the grouping columns")
 )
@@ -51,7 +51,7 @@ func validateGroupBy(n sql.Node) error {
 	switch n := n.(type) {
 	case *plan.GroupBy:
 		// Allow the parser use the GroupBy node to eval the aggregation functions
-		// for sql statementes that aren't really make use of the GROUP BY expression.
+		// for sql statementes that don't make use of the GROUP BY expression.
 		if len(n.Grouping) == 0 {
 			return nil
 		}
