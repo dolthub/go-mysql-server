@@ -167,10 +167,12 @@ func TestMax_Eval_Int32(t *testing.T) {
 	b := m.NewBuffer()
 
 	m.Update(b, sql.NewRow(int32(7)))
-	m.Update(b, sql.NewRow(int32(2)))
+	m.Update(b, sql.NewRow(nil))
 	m.Update(b, sql.NewRow(int32(6)))
 
-	assert.Equal(int32(7), m.Eval(b))
+	v, err := m.Eval(b)
+	assert.NoError(err)
+	assert.Equal(int32(7), v)
 }
 
 func TestMax_Eval_Text(t *testing.T) {
@@ -183,7 +185,9 @@ func TestMax_Eval_Text(t *testing.T) {
 	m.Update(b, sql.NewRow("A"))
 	m.Update(b, sql.NewRow("b"))
 
-	assert.Equal("b", m.Eval(b))
+	v, err := m.Eval(b)
+	assert.NoError(err)
+	assert.Equal("b", v)
 }
 
 func TestMax_Eval_Timestamp(t *testing.T) {
@@ -200,5 +204,32 @@ func TestMax_Eval_Timestamp(t *testing.T) {
 	m.Update(b, sql.NewRow(expected))
 	m.Update(b, sql.NewRow(otherTime))
 
-	assert.Equal(expected, m.Eval(b))
+	v, err := m.Eval(b)
+	assert.NoError(err)
+	assert.Equal(expected, v)
+}
+func TestMax_Eval_NULL(t *testing.T) {
+	assert := require.New(t)
+
+	m := NewMax(NewGetField(0, sql.Int32, "field", true))
+	b := m.NewBuffer()
+
+	m.Update(b, sql.NewRow(nil))
+	m.Update(b, sql.NewRow(nil))
+	m.Update(b, sql.NewRow(nil))
+
+	v, err := m.Eval(b)
+	assert.NoError(err)
+	assert.Equal(nil, v)
+}
+
+func TestMax_Eval_Empty(t *testing.T) {
+	assert := require.New(t)
+
+	m := NewMax(NewGetField(0, sql.Int32, "field", true))
+	b := m.NewBuffer()
+
+	v, err := m.Eval(b)
+	assert.NoError(err)
+	assert.Equal(nil, v)
 }

@@ -191,8 +191,7 @@ func (m *Max) IsNullable() bool {
 
 // TransformUp implements the Transformable interface.
 func (m *Max) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	nm := m.UnaryExpression.Child.TransformUp(f)
-	return f(NewMax(nm))
+	return f(NewMax(m.Child.TransformUp(f)))
 }
 
 // NewBuffer creates a new buffer to compute the result.
@@ -205,6 +204,10 @@ func (m *Max) Update(buffer, row sql.Row) error {
 	v, err := m.Child.Eval(row)
 	if err != nil {
 		return err
+	}
+
+	if reflect.TypeOf(v) == nil {
+		return nil
 	}
 
 	if buffer[0] == nil {
