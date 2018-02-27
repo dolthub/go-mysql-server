@@ -52,11 +52,6 @@ func executeQueries(b *testing.B, e *sqle.Engine) error {
 		}
 
 		b.Run(info.Name(), func(b *testing.B) {
-			skip, msg := shouldSkip(info.Name())
-			if skip {
-				b.Skip(msg)
-			}
-
 			for n := 0; n < b.N; n++ {
 				query, err := ioutil.ReadFile(path.Join(base, info.Name()))
 				if err != nil {
@@ -83,35 +78,6 @@ func executeQueries(b *testing.B, e *sqle.Engine) error {
 	}
 
 	return nil
-}
-
-func shouldSkip(name string) (skip bool, msg string) {
-	skip = true
-
-	switch name {
-	case "16.sql", "17.sql":
-		msg = "Unsupported syntax: " +
-			"&sqlparser.AndExpr{Left:(*sqlparser.AndExpr)(0xc42899c480), Right:(*sqlparser.ComparisonExpr)(0xc4289c4340)}"
-	case "19.sql":
-		msg = "Unsupported syntax: " +
-			"&sqlparser.OrExpr{Left:(*sqlparser.OrExpr)(0xc42899c960), Right:(*sqlparser.ParenExpr)(0xc449f96f40)}"
-	case "22.sql":
-		msg = "SUBSTRING function not implemented"
-	case "8.sql", "7.sql", "9.sql":
-		msg = "YEAR function not implemented"
-	case "1.sql", "3.sql", "4.sql", "5.sql", "6.sql", "10.sql", "12.sql", "14.sql", "20.sql":
-		msg = "Date type not supported"
-	case "18.sql", "2.sql", "21.sql", "11.sql":
-		msg = "unsupported feature: more than 2 tables in JOIN"
-	case "13.sql":
-		msg = "Aliased tables not supported"
-	case "15.sql":
-		msg = "Views not supported"
-	default:
-		skip = false
-	}
-
-	return
 }
 
 func genDB(b *testing.B) (sql.Database, error) {
