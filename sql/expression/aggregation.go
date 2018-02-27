@@ -2,6 +2,7 @@ package expression
 
 import (
 	"fmt"
+	"reflect"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
@@ -118,8 +119,7 @@ func (m *Min) IsNullable() bool {
 
 // TransformUp implements the Transformable interface.
 func (m *Min) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	nm := m.UnaryExpression.Child.TransformUp(f)
-	return f(NewMin(nm))
+	return f(NewMin(m.Child.TransformUp(f)))
 }
 
 // NewBuffer creates a new buffer to compute the result.
@@ -132,6 +132,10 @@ func (m *Min) Update(buffer, row sql.Row) error {
 	v, err := m.Child.Eval(row)
 	if err != nil {
 		return err
+	}
+
+	if reflect.TypeOf(v) == nil {
+		return nil
 	}
 
 	if buffer[0] == nil {

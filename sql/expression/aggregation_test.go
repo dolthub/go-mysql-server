@@ -87,7 +87,7 @@ func TestMin_Eval_Int32(t *testing.T) {
 
 	m.Update(b, sql.NewRow(int32(7)))
 	m.Update(b, sql.NewRow(int32(2)))
-	m.Update(b, sql.NewRow(int32(6)))
+	m.Update(b, sql.NewRow(nil))
 
 	v, err := m.Eval(b)
 	assert.NoError(err)
@@ -126,4 +126,19 @@ func TestMin_Eval_Timestamp(t *testing.T) {
 	v, err := m.Eval(b)
 	assert.NoError(err)
 	assert.Equal(expected, v)
+}
+
+func TestMin_Eval_NULL(t *testing.T) {
+	assert := require.New(t)
+
+	m := NewMin(NewGetField(0, sql.Int32, "field", true))
+	b := m.NewBuffer()
+
+	m.Update(b, sql.NewRow(nil))
+	m.Update(b, sql.NewRow(nil))
+	m.Update(b, sql.NewRow(nil))
+
+	v, err := m.Eval(b)
+	assert.NoError(err)
+	assert.Equal(nil, v)
 }

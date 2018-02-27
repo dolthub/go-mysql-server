@@ -40,7 +40,7 @@ var defaultFunctions = map[string]sql.Function{
 	"is_binary": sql.Function1(NewIsBinary),
 	"substring": sql.FunctionN(NewSubstring),
 	"min": sql.Function1(func(e sql.Expression) sql.Expression {
-		return NewCount(e)
+		return NewMin(e)
 	}),
 }
 
