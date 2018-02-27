@@ -50,6 +50,12 @@ func validateOrderBy(n sql.Node) error {
 func validateGroupBy(n sql.Node) error {
 	switch n := n.(type) {
 	case *plan.GroupBy:
+		// Allow the parser use the GroupBy node to eval the aggregation functions
+		// for sql statementes that aren't really make use of the GROUP BY expression.
+		if len(n.Grouping) == 0 {
+			return nil
+		}
+
 		validAggs := []string{}
 		for _, expr := range n.Grouping {
 			validAggs = append(validAggs, expr.Name())

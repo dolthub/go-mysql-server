@@ -185,12 +185,7 @@ func groupingKey(exprs []sql.Expression, row sql.Row) (interface{}, error) {
 func aggregate(exprs []sql.Expression, rows []sql.Row) (sql.Row, error) {
 	buffers := make([]sql.Row, len(exprs))
 	for i, expr := range exprs {
-		switch n := expr.(type) {
-		case sql.AggregationExpression:
-			buffers[i] = n.NewBuffer()
-		default:
-			buffers[i] = sql.NewRow(nil)
-		}
+		buffers[i] = fillBuffer(expr)
 	}
 
 	for _, row := range rows {
@@ -212,6 +207,17 @@ func aggregate(exprs []sql.Expression, rows []sql.Row) (sql.Row, error) {
 	}
 
 	return sql.NewRow(fields...), nil
+}
+
+func fillBuffer(expr sql.Expression) sql.Row {
+	switch n := expr.(type) {
+	case sql.AggregationExpression:
+		return n.NewBuffer()
+	case *expression.Alias:
+		return fillBuffer(n.Child)
+	default:
+		return sql.NewRow(nil)
+	}
 }
 
 func updateBuffer(buffers []sql.Row, idx int, expr sql.Expression, row sql.Row) error {
