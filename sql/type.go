@@ -100,6 +100,8 @@ var (
 
 	// Timestamp is an UNIX timestamp.
 	Timestamp timestampT
+	// Date is a date with day, month and year.
+	Date dateT
 	// Text is a string type.
 	Text textT
 	// Boolean is a boolean type.
@@ -257,6 +259,59 @@ func (t timestampT) Convert(v interface{}) (interface{}, error) {
 func (t timestampT) Compare(a interface{}, b interface{}) int {
 	av := a.(time.Time)
 	bv := b.(time.Time)
+	if av.Before(bv) {
+		return -1
+	} else if av.After(bv) {
+		return 1
+	}
+	return 0
+}
+
+type dateT struct{}
+
+// DateLayout is the layout of the MySQL date format in the representation
+// Go understands.
+const DateLayout = "2006-01-02"
+
+func truncateDate(t time.Time) time.Time {
+	return t.Truncate(24 * time.Hour)
+}
+
+func (t dateT) Type() query.Type {
+	return sqltypes.Date
+}
+
+func (t dateT) SQL(v interface{}) sqltypes.Value {
+	time := MustConvert(t, v).(time.Time)
+	return sqltypes.MakeTrusted(
+		sqltypes.Timestamp,
+		[]byte(time.Format(DateLayout)),
+	)
+}
+
+func (t dateT) Convert(v interface{}) (interface{}, error) {
+	switch value := v.(type) {
+	case time.Time:
+		return truncateDate(value), nil
+	case string:
+		t, err := time.Parse(DateLayout, value)
+		if err != nil {
+			return nil, fmt.Errorf("value %q can't be converted to time.Time", v)
+		}
+		return truncateDate(t), nil
+	default:
+		ts, err := Int64.Convert(v)
+		if err != nil {
+			return nil, ErrInvalidType.New(reflect.TypeOf(v))
+		}
+
+		return truncateDate(time.Unix(ts.(int64), 0)), nil
+	}
+}
+
+func (t dateT) Compare(a, b interface{}) int {
+	av := truncateDate(a.(time.Time))
+	bv := truncateDate(b.(time.Time))
 	if av.Before(bv) {
 		return -1
 	} else if av.After(bv) {
