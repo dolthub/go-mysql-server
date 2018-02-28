@@ -179,6 +179,20 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("t1"),
 		),
 	),
+	`SELECT a FROM t1 where a not regexp '.*test.*';`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+		},
+		plan.NewFilter(
+			expression.NewNot(
+				expression.NewRegexp(
+					expression.NewUnresolvedColumn("a"),
+					expression.NewLiteral(".*test.*", sql.Text),
+				),
+			),
+			plan.NewUnresolvedTable("t1"),
+		),
+	),
 	`INSERT INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
 		plan.NewUnresolvedTable("t1"),
 		plan.NewValues([][]sql.Expression{{
