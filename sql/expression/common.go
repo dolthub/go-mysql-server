@@ -43,6 +43,9 @@ var defaultFunctions = map[string]sql.Function{
 	"max": sql.Function1(func(e sql.Expression) sql.Expression {
 		return NewMax(e)
 	}),
+	"avg": sql.Function1(func(e sql.Expression) sql.Expression {
+		return NewAvg(e)
+	}),
 	"is_binary": sql.Function1(NewIsBinary),
 	"substring": sql.FunctionN(NewSubstring),
 	"year":      sql.Function1(NewYear),

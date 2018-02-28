@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	errors "gopkg.in/src-d/go-errors.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -229,4 +230,110 @@ func (m *Max) Merge(buffer, partial sql.Row) error {
 // Eval implements the Aggregation interface.
 func (m *Max) Eval(buffer sql.Row) (interface{}, error) {
 	return buffer[0], nil
+}
+
+// Avg node to calculate the average from numeric column
+type Avg struct {
+	UnaryExpression
+}
+
+var AverageNoNumericErr = errors.NewKind("avg aggregation can only be applied on numeric columns")
+
+// NewAvg creates a new Avg node.
+func NewAvg(e sql.Expression) *Avg {
+	return &Avg{UnaryExpression{e}}
+}
+
+// Name implements Nameable interface.
+func (a *Avg) Name() string {
+	return fmt.Sprintf("avg(%s)", a.Child.Name())
+}
+
+// Resolved implements AggregationExpression interface. (AggregationExpression[Expression[Resolvable]]])
+func (a *Avg) Resolved() bool {
+	return true
+}
+
+// Type implements AggregationExpression interface. (AggregationExpression[Expression]])
+func (a *Avg) Type() sql.Type {
+	return sql.Float64
+}
+
+// IsNullable implements AggregationExpression interface. (AggregationExpression[Expression]])
+func (a *Avg) IsNullable() bool {
+	return true
+}
+
+// Eval implements AggregationExpression interface. (AggregationExpression[Expression]])
+func (a *Avg) Eval(buffer sql.Row) (interface{}, error) {
+	if buffer[1].(float64) == 0 {
+		return nil, nil
+	}
+
+	return buffer[0], nil
+}
+
+// TransformUp implements AggregationExpression interface. (AggregationExpression[Expression]])
+func (a *Avg) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
+	return f(NewAvg(a.Child.TransformUp(f)))
+}
+
+// NewBuffer implements AggregationExpression interface. (AggregationExpression)
+func (a *Avg) NewBuffer() sql.Row {
+	const (
+		currentAvg = float64(0)
+		rowsCount  = float64(0)
+	)
+
+	return sql.NewRow(currentAvg, rowsCount)
+}
+
+// Update implements AggregationExpression interface. (AggregationExpression)
+func (a *Avg) Update(buffer, row sql.Row) error {
+	v, err := a.Child.Eval(row)
+	if err != nil {
+		return err
+	}
+
+	if reflect.TypeOf(v) == nil {
+		return nil
+	}
+
+	var num float64
+	switch n := row[0].(type) {
+	case int, int16, int32, int64:
+		num = float64(reflect.ValueOf(n).Int())
+	case uint, uint8, uint16, uint32, uint64:
+		num = float64(reflect.ValueOf(n).Uint())
+	case float32, float64:
+		num = float64(reflect.ValueOf(n).Float())
+	default:
+		return AverageNoNumericErr.New()
+	}
+
+	prevAvg := buffer[0].(float64)
+	numRows := buffer[1].(float64)
+	nextAvg := (prevAvg*numRows + num) / (numRows + 1)
+	buffer[0] = nextAvg
+	buffer[1] = numRows + 1
+
+	return nil
+
+}
+
+// Merge implements AggregationExpression interface. (AggregationExpression)
+func (a *Avg) Merge(buffer, partial sql.Row) error {
+	bufferAvg := buffer[0].(float64)
+	bufferRows := buffer[1].(float64)
+
+	partialAvg := partial[0].(float64)
+	partialRows := partial[1].(float64)
+
+	totalRows := bufferRows + partialRows
+	nextAvg := ((bufferAvg * bufferRows) + (partialAvg * partialRows)) / totalRows
+
+	buffer[0] = nextAvg
+	buffer[1] = totalRows
+
+	return nil
 }
