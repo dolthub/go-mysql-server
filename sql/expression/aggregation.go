@@ -2,6 +2,7 @@ package expression
 
 import (
 	"fmt"
+	"reflect"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
@@ -82,5 +83,78 @@ func (c *Count) Merge(buffer, partial sql.Row) error {
 
 // Eval implements the Aggregation interface.
 func (c *Count) Eval(buffer sql.Row) (interface{}, error) {
+	return buffer[0], nil
+}
+
+// Min aggregation returns the smallest value of the selected column.
+// It implements the AggregationExpression interface
+type Min struct {
+	UnaryExpression
+}
+
+// NewMin creates a new Min node.
+func NewMin(e sql.Expression) *Min {
+	return &Min{UnaryExpression{e}}
+}
+
+// Resolved implements the Resolvable interface.
+func (m *Min) Resolved() bool {
+	return m.Child.Resolved()
+}
+
+// Type returns the resultant type of the aggregation.
+func (m *Min) Type() sql.Type {
+	return m.Child.Type()
+}
+
+// Name returns the name of the node.
+func (m *Min) Name() string {
+	return fmt.Sprintf("min(%s)", m.Child.Name())
+}
+
+// IsNullable returns whether the return value can be null.
+func (m *Min) IsNullable() bool {
+	return false
+}
+
+// TransformUp implements the Transformable interface.
+func (m *Min) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
+	return f(NewMin(m.Child.TransformUp(f)))
+}
+
+// NewBuffer creates a new buffer to compute the result.
+func (m *Min) NewBuffer() sql.Row {
+	return sql.NewRow(nil)
+}
+
+// Update implements the Aggregation interface.
+func (m *Min) Update(buffer, row sql.Row) error {
+	v, err := m.Child.Eval(row)
+	if err != nil {
+		return err
+	}
+
+	if reflect.TypeOf(v) == nil {
+		return nil
+	}
+
+	if buffer[0] == nil {
+		buffer[0] = v
+	}
+
+	if m.Child.Type().Compare(v, buffer[0]) == -1 {
+		buffer[0] = v
+	}
+
+	return nil
+}
+
+// Merge implements the Aggregation interface.
+func (m *Min) Merge(buffer, partial sql.Row) error {
+	return m.Update(buffer, partial)
+}
+
+// Eval implements the Aggregation interface
+func (m *Min) Eval(buffer sql.Row) (interface{}, error) {
 	return buffer[0], nil
 }
