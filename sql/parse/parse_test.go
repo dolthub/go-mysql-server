@@ -300,7 +300,6 @@ var fixtures = map[string]sql.Node{
 			),
 		),
 	),
-<<<<<<< HEAD
 	`SELECT * FROM foo WHERE 1 NOT BETWEEN 2 AND 5`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewFilter(
@@ -323,7 +322,8 @@ var fixtures = map[string]sql.Node{
 				expression.NewLiteral(int64(5), sql.Int64),
 			),
 			plan.NewUnresolvedTable("foo"),
-=======
+		),
+	),
 	`SELECT * FROM foo INNER JOIN bar ON a = b`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewInnerJoin(
@@ -333,7 +333,6 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("a"),
 				expression.NewUnresolvedColumn("b"),
 			),
->>>>>>> sql/(parse,plan): implement inner join
 		),
 	),
 }

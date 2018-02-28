@@ -27,7 +27,7 @@ func (p *Filter) RowIter() (sql.RowIter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &filterIter{p, i}, nil
+	return &filterIter{p.expression, i}, nil
 }
 
 // TransformUp implements the Transformable interface.
@@ -41,7 +41,7 @@ func (p *Filter) TransformExpressionsUp(f func(sql.Expression) sql.Expression) s
 }
 
 type filterIter struct {
-	f         *Filter
+	cond      sql.Expression
 	childIter sql.RowIter
 }
 
@@ -52,7 +52,7 @@ func (i *filterIter) Next() (sql.Row, error) {
 			return nil, err
 		}
 
-		result, err := i.f.expression.Eval(row)
+		result, err := i.cond.Eval(row)
 		if err != nil {
 			return nil, err
 		}
