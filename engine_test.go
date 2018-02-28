@@ -62,6 +62,11 @@ func TestQueries(t *testing.T) {
 		"SELECT substring(s, 2, 3) FROM mytable",
 		[][]interface{}{{"irs"}, {"eco"}, {"hir"}},
 	)
+
+	testQuery(t, e,
+		"SELECT YEAR('2007-12-11') FROM mytable",
+		[][]interface{}{{int32(2007)}, {int32(2007)}, {int32(2007)}},
+	)
 }
 
 func TestInsertInto(t *testing.T) {

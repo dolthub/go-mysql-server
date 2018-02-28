@@ -42,6 +42,7 @@ var defaultFunctions = map[string]sql.Function{
 	"min": sql.Function1(func(e sql.Expression) sql.Expression {
 		return NewMin(e)
 	}),
+	"year": sql.Function1(NewYear),
 }
 
 // RegisterDefaults registers the aggregations in the catalog.
