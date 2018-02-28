@@ -38,14 +38,9 @@ func (p *CrossJoin) RowIter() (sql.RowIter, error) {
 		return nil, err
 	}
 
-	ri, err := p.Right.RowIter()
-	if err != nil {
-		return nil, err
-	}
-
 	return &crossJoinIterator{
-		li: li,
-		ri: ri,
+		l:  li,
+		rp: p.Right,
 	}, nil
 }
 
@@ -62,63 +57,64 @@ func (p *CrossJoin) TransformExpressionsUp(f func(sql.Expression) sql.Expression
 	)
 }
 
-type crossJoinIterator struct {
-	li sql.RowIter
-	ri sql.RowIter
+type rowIterProvider interface {
+	RowIter() (sql.RowIter, error)
+}
 
-	// TODO use a method to reset right iterator in order to not duplicate rows into memory
-	rightRows []sql.Row
-	index     int
-	leftRow   sql.Row
+type crossJoinIterator struct {
+	l  sql.RowIter
+	rp rowIterProvider
+	r  sql.RowIter
+
+	leftRow sql.Row
 }
 
 func (i *crossJoinIterator) Next() (sql.Row, error) {
-	if len(i.rightRows) == 0 {
-		if err := i.fillRows(); err != io.EOF {
-			return nil, err
+	for {
+		if i.leftRow == nil {
+			r, err := i.l.Next()
+			if err != nil {
+				return nil, err
+			}
+
+			i.leftRow = r
 		}
 
-		if len(i.rightRows) == 0 {
-			return nil, io.EOF
-		}
-	}
+		if i.r == nil {
+			iter, err := i.rp.RowIter()
+			if err != nil {
+				return nil, err
+			}
 
-	if i.leftRow == nil {
-		lr, err := i.li.Next()
+			i.r = iter
+		}
+
+		rightRow, err := i.r.Next()
+		if err == io.EOF {
+			i.r = nil
+			i.leftRow = nil
+			continue
+		}
+
 		if err != nil {
 			return nil, err
 		}
 
-		i.index = 0
-		i.leftRow = lr
+		return append(i.leftRow, rightRow...), nil
 	}
-
-	row := append(i.leftRow, i.rightRows[i.index]...)
-	i.index++
-	if i.index >= len(i.rightRows) {
-		i.index = 0
-		i.leftRow = nil
-	}
-
-	return row, nil
 }
 
 func (i *crossJoinIterator) Close() error {
-	if err := i.li.Close(); err != nil {
-		_ = i.ri.Close()
+	if err := i.l.Close(); err != nil {
+		if i.r != nil {
+			_ = i.r.Close()
+		}
 		return err
 	}
 
-	return i.ri.Close()
-}
-
-func (i *crossJoinIterator) fillRows() error {
-	for {
-		rr, err := i.ri.Next()
-		if err != nil {
-			return err
-		}
-
-		i.rightRows = append(i.rightRows, rr)
+	if i.r != nil {
+		return i.r.Close()
 	}
+
+	return nil
 }

@@ -324,6 +324,17 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo"),
 		),
 	),
+	`SELECT * FROM foo INNER JOIN bar ON a = b`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewInnerJoin(
+			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("bar"),
+			expression.NewEquals(
+				expression.NewUnresolvedColumn("a"),
+				expression.NewUnresolvedColumn("b"),
+			),
+		),
+	),
 }
 
 func TestParse(t *testing.T) {
