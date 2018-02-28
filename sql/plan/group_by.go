@@ -5,15 +5,18 @@ import (
 	"io"
 	"strings"
 
+	errors "gopkg.in/src-d/go-errors.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 )
 
+var GroupByErr = errors.NewKind("group by aggregation '%v' not supported")
+
 // GroupBy groups the rows by some expressions.
 type GroupBy struct {
 	UnaryNode
-	aggregate []sql.Expression
-	grouping  []sql.Expression
+	Aggregate []sql.Expression
+	Grouping  []sql.Expression
 }
 
 // NewGroupBy creates a new GroupBy node.
@@ -22,24 +25,25 @@ func NewGroupBy(
 	grouping []sql.Expression,
 	child sql.Node,
 ) *GroupBy {
+
 	return &GroupBy{
 		UnaryNode: UnaryNode{Child: child},
-		aggregate: aggregate,
-		grouping:  grouping,
+		Aggregate: aggregate,
+		Grouping:  grouping,
 	}
 }
 
 // Resolved implements the Resolvable interface.
 func (p *GroupBy) Resolved() bool {
 	return p.UnaryNode.Child.Resolved() &&
-		expressionsResolved(p.aggregate...) &&
-		expressionsResolved(p.grouping...)
+		expressionsResolved(p.Aggregate...) &&
+		expressionsResolved(p.Grouping...)
 }
 
 // Schema implements the Node interface.
 func (p *GroupBy) Schema() sql.Schema {
 	s := sql.Schema{}
-	for _, e := range p.aggregate {
+	for _, e := range p.Aggregate {
 		s = append(s, &sql.Column{
 			Name:     e.Name(),
 			Type:     e.Type(),
@@ -62,7 +66,7 @@ func (p *GroupBy) RowIter() (sql.RowIter, error) {
 // TransformUp implements the Transformable interface.
 func (p *GroupBy) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 	c := p.UnaryNode.Child.TransformUp(f)
-	n := NewGroupBy(p.aggregate, p.grouping, c)
+	n := NewGroupBy(p.Aggregate, p.Grouping, c)
 
 	return f(n)
 }
@@ -70,8 +74,8 @@ func (p *GroupBy) TransformUp(f func(sql.Node) sql.Node) sql.Node {
 // TransformExpressionsUp implements the Transformable interface.
 func (p *GroupBy) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
 	c := p.UnaryNode.Child.TransformExpressionsUp(f)
-	aes := transformExpressionsUp(f, p.aggregate)
-	ges := transformExpressionsUp(f, p.grouping)
+	aes := transformExpressionsUp(f, p.Aggregate)
+	ges := transformExpressionsUp(f, p.Grouping)
 	n := NewGroupBy(aes, ges, c)
 
 	return n
@@ -127,7 +131,7 @@ func (i *groupByIter) computeRows() error {
 		rows = append(rows, childRow)
 	}
 
-	rows, err := groupBy(rows, i.p.aggregate, i.p.grouping)
+	rows, err := groupBy(rows, i.p.Aggregate, i.p.Grouping)
 	if err != nil {
 		return err
 	}
@@ -179,47 +183,55 @@ func groupingKey(exprs []sql.Expression, row sql.Row) (interface{}, error) {
 }
 
 func aggregate(exprs []sql.Expression, rows []sql.Row) (sql.Row, error) {
-	aggs := exprsToAggregateExprs(exprs)
-
-	buffers := make([]sql.Row, len(aggs))
-	for i, agg := range aggs {
-		buffers[i] = agg.NewBuffer()
+	buffers := make([]sql.Row, len(exprs))
+	for i, expr := range exprs {
+		buffers[i] = fillBuffer(expr)
 	}
 
 	for _, row := range rows {
-		for i, agg := range aggs {
-			agg.Update(buffers[i], row)
+		for i, expr := range exprs {
+			if err := updateBuffer(buffers, i, expr, row); err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	fields := make([]interface{}, 0, len(exprs))
-	for i, agg := range aggs {
-		f, err := agg.Eval(buffers[i])
+	for i, expr := range exprs {
+		field, err := expr.Eval(buffers[i])
 		if err != nil {
 			return nil, err
 		}
-		fields = append(fields, f)
+
+		fields = append(fields, field)
 	}
 
 	return sql.NewRow(fields...), nil
 }
 
-func exprsToAggregateExprs(exprs []sql.Expression) []sql.AggregationExpression {
-	var r []sql.AggregationExpression
-	for _, e := range exprs {
-		r = append(r, exprToAggregateExpr(e))
+func fillBuffer(expr sql.Expression) sql.Row {
+	switch n := expr.(type) {
+	case sql.AggregationExpression:
+		return n.NewBuffer()
+	case *expression.Alias:
+		return fillBuffer(n.Child)
+	default:
+		return sql.NewRow(nil)
 	}
-
-	return r
 }
 
-func exprToAggregateExpr(e sql.Expression) sql.AggregationExpression {
-	switch v := e.(type) {
+func updateBuffer(buffers []sql.Row, idx int, expr sql.Expression, row sql.Row) error {
+	switch n := expr.(type) {
 	case sql.AggregationExpression:
-		return v
+		n.Update(buffers[idx], row)
+		return nil
 	case *expression.Alias:
-		return exprToAggregateExpr(v.Child)
+		return updateBuffer(buffers, idx, n.Child, row)
+	case *expression.GetField:
+		buffers[idx] = row
+		return nil
 	default:
-		return expression.NewFirst(e)
+		return GroupByErr.New(n.Name())
+
 	}
 }

@@ -36,7 +36,7 @@ type ValidationRule struct {
 	// Name of the rule.
 	Name string
 	// Apply validates the given node.
-	Apply func(*Analyzer, sql.Node) error
+	Apply func(sql.Node) error
 }
 
 // New returns a new Analyzer given a catalog.
@@ -93,7 +93,7 @@ func (a *Analyzer) validate(n sql.Node) (validationErrors []error) {
 
 func (a *Analyzer) validateOnce(n sql.Node) (validationErrors []error) {
 	for _, rule := range a.ValidationRules {
-		err := rule.Apply(a, n)
+		err := rule.Apply(n)
 		if err != nil {
 			validationErrors = append(validationErrors, err)
 		}
