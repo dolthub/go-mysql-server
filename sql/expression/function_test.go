@@ -71,6 +71,8 @@ func TestSubstring(t *testing.T) {
 		err      bool
 	}{
 		{"null string", sql.NewRow(nil, 1, 1), nil, false},
+		{"null start", sql.NewRow("foo", nil, 1), nil, false},
+		{"null len", sql.NewRow("foo", 1, nil), nil, false},
 		{"negative start", sql.NewRow("foo", -1, 10), "o", false},
 		{"negative length", sql.NewRow("foo", 1, -1), "", false},
 		{"length 0", sql.NewRow("foo", 1, 0), "", false},

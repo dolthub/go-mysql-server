@@ -113,7 +113,7 @@ func (m *Min) Name() string {
 
 // IsNullable returns whether the return value can be null.
 func (m *Min) IsNullable() bool {
-	return false
+	return true
 }
 
 // TransformUp implements the Transformable interface.
