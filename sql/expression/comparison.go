@@ -138,10 +138,12 @@ func (gt GreaterThan) Eval(row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	b, err := gt.Right.Eval(row)
 	if err != nil {
 		return nil, err
 	}
+
 	if a == nil || b == nil {
 		return nil, nil
 	}
@@ -175,6 +177,7 @@ func (lt LessThan) Eval(row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if a == nil || b == nil {
 		return nil, nil
 	}
@@ -239,6 +242,7 @@ func (lte LessThanOrEqual) Eval(row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	b, err := lte.Right.Eval(row)
 	if err != nil {
 		return nil, err

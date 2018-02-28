@@ -142,3 +142,14 @@ func TestMin_Eval_NULL(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(nil, v)
 }
+
+func TestMin_Eval_Empty(t *testing.T) {
+	assert := require.New(t)
+
+	m := NewMin(NewGetField(0, sql.Int32, "field", true))
+	b := m.NewBuffer()
+
+	v, err := m.Eval(b)
+	assert.NoError(err)
+	assert.Equal(nil, v)
+}

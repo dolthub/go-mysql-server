@@ -29,7 +29,7 @@ func (a *And) Eval(row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	if lval != true {
+	if lval == false {
 		return false, nil
 	}
 
@@ -38,7 +38,15 @@ func (a *And) Eval(row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return rval == true, nil
+	if rval == false {
+		return false, nil
+	}
+
+	if lval == nil || rval == nil {
+		return nil, nil
+	}
+
+	return true, nil
 }
 
 // TransformUp implements the Expression interface.
@@ -83,6 +91,10 @@ func (o *Or) Eval(row sql.Row) (interface{}, error) {
 	rval, err := o.Right.Eval(row)
 	if err != nil {
 		return nil, err
+	}
+
+	if lval == nil && rval == nil {
+		return nil, nil
 	}
 
 	return rval == true, nil

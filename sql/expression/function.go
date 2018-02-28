@@ -122,6 +122,10 @@ func (s *Substring) Eval(row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	if start == nil {
+		return nil, nil
+	}
+
 	start, err = sql.Int64.Convert(start)
 	if err != nil {
 		return nil, err
@@ -133,6 +137,10 @@ func (s *Substring) Eval(row sql.Row) (interface{}, error) {
 		len, err := s.len.Eval(row)
 		if err != nil {
 			return nil, err
+		}
+
+		if len == nil {
+			return nil, nil
 		}
 
 		len, err = sql.Int64.Convert(len)
