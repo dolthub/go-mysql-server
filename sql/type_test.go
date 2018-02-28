@@ -101,6 +101,42 @@ func TestType_Timestamp(t *testing.T) {
 	require.Equal(1, Timestamp.Compare(after, now))
 }
 
+func TestType_Date(t *testing.T) {
+	require := require.New(t)
+
+	now := time.Now()
+	v, err := Date.Convert(now)
+	require.Nil(err)
+	require.Equal(now.Format(DateLayout), v.(time.Time).Format(DateLayout))
+
+	v, err = Date.Convert(now.Format(DateLayout))
+	require.Nil(err)
+	require.Equal(
+		now.Format(DateLayout),
+		v.(time.Time).Format(DateLayout),
+	)
+
+	v, err = Date.Convert(now.Unix())
+	require.Nil(err)
+	require.Equal(
+		now.Format(DateLayout),
+		v.(time.Time).Format(DateLayout),
+	)
+
+	sql := Date.SQL(now)
+	require.Equal([]byte(now.Format(DateLayout)), sql.Raw())
+
+	after := now.Add(time.Second)
+	require.Equal(0, Date.Compare(now, after))
+	require.Equal(0, Date.Compare(now, now))
+	require.Equal(0, Date.Compare(after, now))
+
+	after = now.Add(26 * time.Hour)
+	require.Equal(-1, Date.Compare(now, after))
+	require.Equal(0, Date.Compare(now, now))
+	require.Equal(1, Date.Compare(after, now))
+}
+
 func TestType_Blob(t *testing.T) {
 	require := require.New(t)
 
