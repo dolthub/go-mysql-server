@@ -426,6 +426,30 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		}
 
 		return expression.NewOr(lhs, rhs), nil
+	case *sqlparser.RangeCond:
+		val, err := exprToExpression(v.Left)
+		if err != nil {
+			return nil, err
+		}
+
+		lower, err := exprToExpression(v.From)
+		if err != nil {
+			return nil, err
+		}
+
+		upper, err := exprToExpression(v.To)
+		if err != nil {
+			return nil, err
+		}
+
+		switch v.Operator {
+		case sqlparser.BetweenStr:
+			return expression.NewBetween(val, lower, upper), nil
+		case sqlparser.NotBetweenStr:
+			return expression.NewNot(expression.NewBetween(val, lower, upper)), nil
+		default:
+			return nil, errUnsupportedFeature(fmt.Sprintf("RangeCond with operator: %s", v.Operator))
+		}
 	}
 }
 

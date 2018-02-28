@@ -26,6 +26,10 @@ func (e Not) Eval(row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	if v == nil {
+		return nil, nil
+	}
+
 	return !v.(bool), nil
 }
 

@@ -67,6 +67,16 @@ func TestQueries(t *testing.T) {
 		"SELECT YEAR('2007-12-11') FROM mytable",
 		[][]interface{}{{int32(2007)}, {int32(2007)}, {int32(2007)}},
 	)
+
+	testQuery(t, e,
+		"SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
+		[][]interface{}{{int64(1)}, {int64(2)}},
+	)
+
+	testQuery(t, e,
+		"SELECT i FROM mytable WHERE i NOT BETWEEN 1 AND 2",
+		[][]interface{}{{int64(3)}},
+	)
 }
 
 func TestInsertInto(t *testing.T) {
