@@ -300,6 +300,30 @@ var fixtures = map[string]sql.Node{
 			),
 		),
 	),
+	`SELECT * FROM foo WHERE 1 NOT BETWEEN 2 AND 5`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			expression.NewNot(
+				expression.NewBetween(
+					expression.NewLiteral(int64(1), sql.Int64),
+					expression.NewLiteral(int64(2), sql.Int64),
+					expression.NewLiteral(int64(5), sql.Int64),
+				),
+			),
+			plan.NewUnresolvedTable("foo"),
+		),
+	),
+	`SELECT * FROM foo WHERE 1 BETWEEN 2 AND 5`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			expression.NewBetween(
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(2), sql.Int64),
+				expression.NewLiteral(int64(5), sql.Int64),
+			),
+			plan.NewUnresolvedTable("foo"),
+		),
+	),
 }
 
 func TestParse(t *testing.T) {
