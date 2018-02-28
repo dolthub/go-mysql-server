@@ -229,6 +229,34 @@ func tableExprToTable(te sqlparser.TableExpr) (sql.Node, error) {
 		}
 
 		return node, nil
+	case *sqlparser.JoinTableExpr:
+		// TODO: add support for the rest of joins
+		if t.Join != sqlparser.JoinStr {
+			return nil, errUnsupportedFeature(t.Join)
+		}
+
+		// TODO: add support for using, once we have proper table
+		// qualification of fields
+		if len(t.Condition.Using) > 0 {
+			return nil, errUnsupportedFeature("using clause on join")
+		}
+
+		left, err := tableExprToTable(t.LeftExpr)
+		if err != nil {
+			return nil, err
+		}
+
+		right, err := tableExprToTable(t.RightExpr)
+		if err != nil {
+			return nil, err
+		}
+
+		cond, err := exprToExpression(t.Condition.On)
+		if err != nil {
+			return nil, err
+		}
+
+		return plan.NewInnerJoin(left, right, cond), nil
 	}
 }
 

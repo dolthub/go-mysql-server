@@ -77,6 +77,15 @@ func TestQueries(t *testing.T) {
 		"SELECT i FROM mytable WHERE i NOT BETWEEN 1 AND 2",
 		[][]interface{}{{int64(3)}},
 	)
+
+	testQuery(t, e,
+		"SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2",
+		[][]interface{}{
+			{int64(1), int64(1), "third"},
+			{int64(2), int64(2), "second"},
+			{int64(3), int64(3), "first"},
+		},
+	)
 }
 
 func TestInsertInto(t *testing.T) {
@@ -99,22 +108,18 @@ func testQuery(t *testing.T, e *sqle.Engine, q string, r [][]interface{}) {
 		_, rows, err := e.Query(q)
 		require.NoError(err)
 
-		i := 0
+		var rs [][]interface{}
 		for {
 			row, err := rows.Next()
 			if err == io.EOF {
 				break
 			}
 			require.NoError(err)
-			for j, c := range row {
-				cc := r[i][j]
-				require.Equal(cc, c)
-			}
 
-			i++
+			rs = append(rs, row)
 		}
 
-		require.Equal(len(r), i)
+		require.Equal(r, rs)
 	})
 }
 
@@ -129,8 +134,17 @@ func newEngine(t *testing.T) *sqle.Engine {
 	require.Nil(table.Insert(sql.NewRow(int64(2), "second row")))
 	require.Nil(table.Insert(sql.NewRow(int64(3), "third row")))
 
+	table2 := mem.NewTable("othertable", sql.Schema{
+		{Name: "s2", Type: sql.Text},
+		{Name: "i2", Type: sql.Int64},
+	})
+	require.Nil(table2.Insert(sql.NewRow("first", int64(3))))
+	require.Nil(table2.Insert(sql.NewRow("second", int64(2))))
+	require.Nil(table2.Insert(sql.NewRow("third", int64(1))))
+
 	db := mem.NewDatabase("mydb")
-	db.AddTable("mytable", table)
+	db.AddTable(table.Name(), table)
+	db.AddTable(table2.Name(), table2)
 
 	e := sqle.New()
 	e.AddDatabase(db)

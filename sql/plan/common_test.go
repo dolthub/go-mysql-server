@@ -82,3 +82,20 @@ func assertRows(t *testing.T, iter sql.RowIter, expected int64) {
 
 	require.Equal(expected, rows)
 }
+
+func collectRows(t *testing.T, node sql.Node) []sql.Row {
+	t.Helper()
+
+	iter, err := node.RowIter()
+	require.NoError(t, err)
+
+	var rows []sql.Row
+	for {
+		row, err := iter.Next()
+		if err == io.EOF {
+			return rows
+		}
+		require.NoError(t, err)
+		rows = append(rows, row)
+	}
+}
