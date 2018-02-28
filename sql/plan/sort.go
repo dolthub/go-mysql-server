@@ -78,22 +78,17 @@ func (s *Sort) RowIter() (sql.RowIter, error) {
 
 // TransformUp implements the Transformable interface.
 func (s *Sort) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	c := s.UnaryNode.Child.TransformUp(f)
-	n := NewSort(s.SortFields, c)
-
-	return f(n)
+	return f(NewSort(s.SortFields, s.Child.TransformUp(f)))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
 func (s *Sort) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
-	c := s.UnaryNode.Child.TransformExpressionsUp(f)
-	sfs := []SortField{}
-	for _, sf := range s.SortFields {
-		sfs = append(sfs, SortField{sf.Column.TransformUp(f), sf.Order, sf.NullOrdering})
+	var sfs = make([]SortField, len(s.SortFields))
+	for i, sf := range s.SortFields {
+		sfs[i] = SortField{sf.Column.TransformUp(f), sf.Order, sf.NullOrdering}
 	}
-	n := NewSort(sfs, c)
 
-	return n
+	return NewSort(sfs, s.Child.TransformExpressionsUp(f))
 }
 
 type sortIter struct {

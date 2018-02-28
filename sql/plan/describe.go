@@ -34,18 +34,12 @@ func (d *Describe) RowIter() (sql.RowIter, error) {
 
 // TransformUp implements the Transformable interface.
 func (d *Describe) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	c := d.UnaryNode.Child.TransformUp(f)
-	n := NewDescribe(c)
-
-	return f(n)
+	return f(NewDescribe(d.Child.TransformUp(f)))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
 func (d *Describe) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
-	c := d.UnaryNode.Child.TransformExpressionsUp(f)
-	n := NewDescribe(c)
-
-	return n
+	return NewDescribe(d.Child.TransformExpressionsUp(f))
 }
 
 type describeIter struct {

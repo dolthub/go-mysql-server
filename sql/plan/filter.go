@@ -32,19 +32,12 @@ func (p *Filter) RowIter() (sql.RowIter, error) {
 
 // TransformUp implements the Transformable interface.
 func (p *Filter) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	c := p.UnaryNode.Child.TransformUp(f)
-	n := NewFilter(p.expression, c)
-
-	return f(n)
+	return f(NewFilter(p.expression, p.Child.TransformUp(f)))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
 func (p *Filter) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
-	c := p.UnaryNode.Child.TransformExpressionsUp(f)
-	e := p.expression.TransformUp(f)
-	n := NewFilter(e, c)
-
-	return n
+	return NewFilter(p.expression.TransformUp(f), p.Child.TransformExpressionsUp(f))
 }
 
 type filterIter struct {

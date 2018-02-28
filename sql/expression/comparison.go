@@ -64,10 +64,7 @@ func (e Equals) Eval(row sql.Row) (interface{}, error) {
 
 // TransformUp implements the Expression interface.
 func (e *Equals) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	lc := e.BinaryExpression.Left.TransformUp(f)
-	rc := e.BinaryExpression.Right.TransformUp(f)
-
-	return f(NewEquals(lc, rc))
+	return f(NewEquals(e.Left.TransformUp(f), e.Right.TransformUp(f)))
 }
 
 // Name implements the Expression interface.
@@ -117,10 +114,7 @@ func (re Regexp) Eval(row sql.Row) (interface{}, error) {
 
 // TransformUp implements the Expression interface.
 func (re *Regexp) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	lc := re.BinaryExpression.Left.TransformUp(f)
-	rc := re.BinaryExpression.Right.TransformUp(f)
-
-	return f(NewRegexp(lc, rc))
+	return f(NewRegexp(re.Left.TransformUp(f), re.Right.TransformUp(f)))
 }
 
 // Name implements the Expression interface.
@@ -157,10 +151,7 @@ func (gt GreaterThan) Eval(row sql.Row) (interface{}, error) {
 
 // TransformUp implements the Expression interface.
 func (gt *GreaterThan) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	lc := gt.BinaryExpression.Left.TransformUp(f)
-	rc := gt.BinaryExpression.Right.TransformUp(f)
-
-	return f(NewGreaterThan(lc, rc))
+	return f(NewGreaterThan(gt.Left.TransformUp(f), gt.Right.TransformUp(f)))
 }
 
 // LessThan is a comparison that checks an expression is less than another.
@@ -193,10 +184,7 @@ func (lt LessThan) Eval(row sql.Row) (interface{}, error) {
 
 // TransformUp implements the Expression interface.
 func (lt *LessThan) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	lc := lt.BinaryExpression.Left.TransformUp(f)
-	rc := lt.BinaryExpression.Right.TransformUp(f)
-
-	return f(NewLessThan(lc, rc))
+	return f(NewLessThan(lt.Left.TransformUp(f), lt.Right.TransformUp(f)))
 }
 
 // GreaterThanOrEqual is a comparison that checks an expression is greater or equal to
@@ -231,10 +219,7 @@ func (gte GreaterThanOrEqual) Eval(row sql.Row) (interface{}, error) {
 
 // TransformUp implements the Expression interface.
 func (gte *GreaterThanOrEqual) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	lc := gte.BinaryExpression.Left.TransformUp(f)
-	rc := gte.BinaryExpression.Right.TransformUp(f)
-
-	return f(NewGreaterThanOrEqual(lc, rc))
+	return f(NewGreaterThanOrEqual(gte.Left.TransformUp(f), gte.Right.TransformUp(f)))
 }
 
 // LessThanOrEqual is a comparison that checks an expression is equal or lower than
@@ -268,8 +253,5 @@ func (lte LessThanOrEqual) Eval(row sql.Row) (interface{}, error) {
 
 // TransformUp implements the Expression interface.
 func (lte *LessThanOrEqual) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	lc := lte.BinaryExpression.Left.TransformUp(f)
-	rc := lte.BinaryExpression.Right.TransformUp(f)
-
-	return f(NewLessThanOrEqual(lc, rc))
+	return f(NewLessThanOrEqual(lte.Left.TransformUp(f), lte.Right.TransformUp(f)))
 }

@@ -44,7 +44,7 @@ func (ib *IsBinary) Name() string {
 
 // TransformUp implements the Expression interface.
 func (ib *IsBinary) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return NewIsBinary(f(ib.Child))
+	return NewIsBinary(ib.Child.TransformUp(f))
 }
 
 // Type implements the Expression interface.
@@ -184,9 +184,9 @@ func (s *Substring) TransformUp(f func(sql.Expression) sql.Expression) sql.Expre
 	// and that's the only error NewSubstring can return.
 	var sub sql.Expression
 	if s.len != nil {
-		sub, _ = NewSubstring(f(s.str), f(s.start), f(s.len))
+		sub, _ = NewSubstring(s.str.TransformUp(f), s.start.TransformUp(f), s.len.TransformUp(f))
 	} else {
-		sub, _ = NewSubstring(f(s.str), f(s.start))
+		sub, _ = NewSubstring(s.str.TransformUp(f), s.start.TransformUp(f))
 	}
 	return f(sub)
 }

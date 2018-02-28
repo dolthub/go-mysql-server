@@ -94,7 +94,7 @@ func (UnresolvedFunction) Eval(r sql.Row) (interface{}, error) {
 func (uf *UnresolvedFunction) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
 	var rc []sql.Expression
 	for _, c := range uf.Children {
-		rc = append(rc, f(c))
+		rc = append(rc, c.TransformUp(f))
 	}
 
 	return f(NewUnresolvedFunction(uf.name, uf.IsAggregate, rc...))

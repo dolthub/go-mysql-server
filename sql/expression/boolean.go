@@ -36,8 +36,5 @@ func (e Not) Name() string {
 
 // TransformUp implements the Expression interface.
 func (e *Not) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	c := e.UnaryExpression.Child.TransformUp(f)
-	n := &Not{UnaryExpression{c}}
-
-	return f(n)
+	return f(NewNot(e.Child.TransformUp(f)))
 }

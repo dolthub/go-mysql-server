@@ -50,19 +50,15 @@ func (p *Project) RowIter() (sql.RowIter, error) {
 
 // TransformUp implements the Transformable interface.
 func (p *Project) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	c := p.UnaryNode.Child.TransformUp(f)
-	n := NewProject(p.Expressions, c)
-
-	return f(n)
+	return f(NewProject(p.Expressions, p.Child.TransformUp(f)))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
 func (p *Project) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
-	c := p.UnaryNode.Child.TransformExpressionsUp(f)
-	es := transformExpressionsUp(f, p.Expressions)
-	n := NewProject(es, c)
-
-	return n
+	return NewProject(
+		transformExpressionsUp(f, p.Expressions),
+		p.Child.TransformExpressionsUp(f),
+	)
 }
 
 type iter struct {

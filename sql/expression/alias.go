@@ -30,8 +30,5 @@ func (e *Alias) Name() string {
 
 // TransformUp implements the Expression interface.
 func (e *Alias) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	c := e.Child.TransformUp(f)
-	n := NewAlias(c, e.name)
-
-	return f(n)
+	return f(NewAlias(e.Child.TransformUp(f), e.name))
 }
