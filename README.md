@@ -1,9 +1,10 @@
-# sqle
+# go-mysql-server
 
-<a href="https://codebeat.co/projects/github-com-sqle-sqle"><img alt="codebeat badge" src="https://codebeat.co/badges/10f09016-1074-43d3-916a-4b4e628e79c0" /></a>
 <a href="https://travis-ci.org/src-d/go-mysql-server"><img alt="Build Status" src="https://travis-ci.org/src-d/go-mysql-server.svg?branch=master" /></a>
 <a href="https://codecov.io/gh/src-d/go-mysql-server"><img alt="codecov" src="https://codecov.io/gh/src-d/go-mysql-server/branch/master/graph/badge.svg" /></a>
 <a href="https://godoc.org/github.com/src-d/go-mysql-server"><img alt="GoDoc" src="https://godoc.org/github.com/src-d/go-mysql-server?status.svg" /></a>
+
+**go-mysql-server** is an extensible MySQL server implementation in Go.
 
 ## Installation
 
@@ -17,26 +18,31 @@ go get gopkg.in/src-d/go-mysql-server.v0
 
 ## Documentation
 
-* [sqle godoc](https://godoc.org/github.com/src-d/go-mysql-server)
+* [go-mysql-server godoc](https://godoc.org/github.com/src-d/go-mysql-server)
 
 
 ## SQL syntax
 
-We are continuously adding more functionality to gitql. We support a subset of the SQL standard, currently including:
+We are continuously adding more functionality to go-mysql-server. We support a subset of what is supported in MySQL, currently including:
 
 |                        |                                     Supported                                     |
 |:----------------------:|:---------------------------------------------------------------------------------:|
-| Comparison expressions |                                !=, ==, >, <, >=,<=                                |
-| Null check expressions |                                IS NULL, IS NOT NULL                               |
-|  Grouping expressions  |                                    COUNT, FIRST                                   |
-|  Standard expressions  |                              ALIAS, LITERAL, STAR (*)                             |
-|       Statements       | CROSS JOIN, DESCRIBE, FILTER (WHERE), GROUP BY, LIMIT, SELECT, SHOW TABLES, SORT  |
+| Comparison expressions | !=, ==, >, <, >=,<=, BETWEEN                                |
+| Null check expressions | IS NULL, IS NOT NULL                               |
+|  Grouping expressions  | COUNT, MIN, MAX                                   |
+|  Standard expressions  | ALIAS, LITERAL, STAR (*)                             |
+| Statements       | CROSS JOIN, INNER JOIN, DESCRIBE, FILTER (WHERE), GROUP BY, LIMIT, SELECT, SHOW TABLES, SORT, DISTINCT  |
+| Functions | SUBSTRING, YEAR |
 
-## Powered by sqle
+## Custom functions
 
-* [gitql](https://github.com/sqle/gitql)
+- `IS_BINARY(blob)`: returns whether a BLOB is a binary file or not       
+
+## Powered by go-mysql-server
+
+* [gitquery](https://github.com/src-d/gitquery)
 
 ## License
 
-sqle is licensed under the [MIT License](https://github.com/sqle/sqle/blob/master/LICENSE).
+go-mysql-server is licensed under the [MIT License](/LICENSE).
 
