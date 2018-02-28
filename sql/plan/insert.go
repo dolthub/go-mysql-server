@@ -99,17 +99,18 @@ func (p *InsertInto) RowIter() (sql.RowIter, error) {
 
 // TransformUp implements the Transformable interface.
 func (p *InsertInto) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	ln := p.BinaryNode.Left.TransformUp(f)
-	rn := p.BinaryNode.Right.TransformUp(f)
-
-	n := NewInsertInto(ln, rn, p.Columns)
-	return f(n)
+	return f(NewInsertInto(
+		p.Left.TransformUp(f),
+		p.Right.TransformUp(f),
+		p.Columns,
+	))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
 func (p *InsertInto) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
-	ln := p.BinaryNode.Left.TransformExpressionsUp(f)
-	rn := p.BinaryNode.Right.TransformExpressionsUp(f)
-
-	return NewInsertInto(ln, rn, p.Columns)
+	return NewInsertInto(
+		p.Left.TransformExpressionsUp(f),
+		p.Right.TransformExpressionsUp(f),
+		p.Columns,
+	)
 }

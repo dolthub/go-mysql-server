@@ -39,8 +39,5 @@ func (e *IsNull) Name() string {
 
 // TransformUp implements the Expression interface.
 func (e *IsNull) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	c := e.UnaryExpression.Child.TransformUp(f)
-	n := &IsNull{UnaryExpression{c}}
-
-	return f(n)
+	return f(NewIsNull(e.Child.TransformUp(f)))
 }

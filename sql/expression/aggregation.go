@@ -48,8 +48,7 @@ func (c *Count) Name() string {
 
 // TransformUp implements the Expression interface.
 func (c *Count) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	nc := c.UnaryExpression.Child.TransformUp(f)
-	return f(NewCount(nc))
+	return f(NewCount(c.Child.TransformUp(f)))
 }
 
 // Update implements the Aggregation interface.

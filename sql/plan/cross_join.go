@@ -51,20 +51,15 @@ func (p *CrossJoin) RowIter() (sql.RowIter, error) {
 
 // TransformUp implements the Transformable interface.
 func (p *CrossJoin) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	ln := p.BinaryNode.Left.TransformUp(f)
-	rn := p.BinaryNode.Right.TransformUp(f)
-
-	n := NewCrossJoin(ln, rn)
-
-	return f(n)
+	return f(NewCrossJoin(p.Left.TransformUp(f), p.Right.TransformUp(f)))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
 func (p *CrossJoin) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
-	ln := p.BinaryNode.Left.TransformExpressionsUp(f)
-	rn := p.BinaryNode.Right.TransformExpressionsUp(f)
-
-	return NewCrossJoin(ln, rn)
+	return NewCrossJoin(
+		p.Left.TransformExpressionsUp(f),
+		p.Right.TransformExpressionsUp(f),
+	)
 }
 
 type crossJoinIterator struct {

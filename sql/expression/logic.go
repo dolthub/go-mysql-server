@@ -44,8 +44,8 @@ func (a *And) Eval(row sql.Row) (interface{}, error) {
 // TransformUp implements the Expression interface.
 func (a *And) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
 	return f(NewAnd(
-		f(a.Left),
-		f(a.Right),
+		a.Left.TransformUp(f),
+		a.Right.TransformUp(f),
 	))
 }
 
@@ -91,7 +91,7 @@ func (o *Or) Eval(row sql.Row) (interface{}, error) {
 // TransformUp implements the Expression interface.
 func (o *Or) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
 	return f(NewOr(
-		f(o.Left),
-		f(o.Right),
+		o.Left.TransformUp(f),
+		o.Right.TransformUp(f),
 	))
 }

@@ -39,5 +39,6 @@ func (Star) Eval(r sql.Row) (interface{}, error) {
 
 // TransformUp implements the Expression interface.
 func (s *Star) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(s)
+	n := *s
+	return f(&n)
 }
