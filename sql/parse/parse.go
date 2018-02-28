@@ -463,6 +463,8 @@ func comparisonExprToExpression(c *sqlparser.ComparisonExpr) (sql.Expression,
 		return nil, errUnsupportedFeature(c.Operator)
 	case sqlparser.RegexpStr:
 		return expression.NewRegexp(left, right), nil
+	case sqlparser.NotRegexpStr:
+		return expression.NewNot(expression.NewRegexp(left, right)), nil
 	case sqlparser.EqualStr:
 		return expression.NewEquals(left, right), nil
 	case sqlparser.LessThanStr:
