@@ -70,29 +70,3 @@ func TestCount_Eval_String(t *testing.T) {
 	c.Update(b, sql.NewRow(nil))
 	require.Equal(int32(1), eval(t, c, b))
 }
-
-func TestFirst_Name(t *testing.T) {
-	require := require.New(t)
-
-	c := NewFirst(NewGetField(0, sql.Int32, "field", true))
-	require.Equal("first(field)", c.Name())
-}
-
-func TestFirst_Eval(t *testing.T) {
-	require := require.New(t)
-
-	c := NewFirst(NewGetField(0, sql.Int32, "field", true))
-	b := c.NewBuffer()
-	require.Nil(c.Eval(b))
-
-	c.Update(b, sql.NewRow(int32(1)))
-	require.Equal(int32(1), eval(t, c, b))
-
-	c.Update(b, sql.NewRow(int32(2)))
-	require.Equal(int32(1), eval(t, c, b))
-
-	b2 := c.NewBuffer()
-	c.Update(b2, sql.NewRow(int32(2)))
-	c.Merge(b, b2)
-	require.Equal(int32(1), eval(t, c, b))
-}
