@@ -57,17 +57,6 @@ type AggregationExpression interface {
 	Merge(buffer, partial Row) error
 }
 
-// Aggregation is a node which take the value of several rows and produces a single
-// value with all that data grouped together.
-type Aggregation interface {
-	// Updates the current row with the given row.
-	Update(Row) (Row, error)
-	// Merge the given row, which is partially grouped, with the current one.
-	Merge(Row)
-	// Eval returns the value of the grouped data.
-	Eval() interface{}
-}
-
 // Node is a node in the execution plan tree.
 type Node interface {
 	Resolvable
