@@ -86,7 +86,7 @@ func (c *Count) Eval(buffer sql.Row) (interface{}, error) {
 }
 
 // Min aggregation returns the smallest value of the selected column.
-// It implements the AggregationExpression interface
+// It implements the Aggregation interface
 type Min struct {
 	UnaryExpression
 }
@@ -159,7 +159,7 @@ func (m *Min) Eval(buffer sql.Row) (interface{}, error) {
 }
 
 // Max agregation returns the greatest value of the selected column.
-// It implements the AggregationExpression interface
+// It implements the Aggregation interface
 type Max struct {
 	UnaryExpression
 }
