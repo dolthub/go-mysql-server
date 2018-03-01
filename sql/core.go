@@ -41,13 +41,13 @@ type Expression interface {
 	TransformUp(func(Expression) Expression) Expression
 }
 
-// AggregationExpression implements an aggregation expression, where an
+// Aggregation implements an aggregation expression, where an
 // aggregation buffer is created for each grouping (NewBuffer) and rows in the
 // grouping are fed to the buffer (Update). Multiple buffers can be merged
 // (Merge), making partial aggregations possible.
 // Note that Eval must be called with the final aggregation buffer in order to
 // get the final result.
-type AggregationExpression interface {
+type Aggregation interface {
 	Expression
 	// NewBuffer creates a new aggregation buffer and returns it as a Row.
 	NewBuffer() Row
@@ -55,17 +55,6 @@ type AggregationExpression interface {
 	Update(buffer, row Row) error
 	// Merge merges a partial buffer into a global one.
 	Merge(buffer, partial Row) error
-}
-
-// Aggregation is a node which take the value of several rows and produces a single
-// value with all that data grouped together.
-type Aggregation interface {
-	// Updates the current row with the given row.
-	Update(Row) (Row, error)
-	// Merge the given row, which is partially grouped, with the current one.
-	Merge(Row)
-	// Eval returns the value of the grouped data.
-	Eval() interface{}
 }
 
 // Node is a node in the execution plan tree.

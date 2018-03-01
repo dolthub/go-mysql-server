@@ -38,7 +38,7 @@ func validateOrderBy(n sql.Node) error {
 	case *plan.Sort:
 		for _, field := range n.SortFields {
 			switch field.Column.(type) {
-			case sql.AggregationExpression:
+			case sql.Aggregation:
 				return ValidationOrderByErr.New()
 			}
 		}
@@ -62,7 +62,7 @@ func validateGroupBy(n sql.Node) error {
 		}
 
 		for _, expr := range n.Aggregate {
-			if _, ok := expr.(sql.AggregationExpression); !ok {
+			if _, ok := expr.(sql.Aggregation); !ok {
 				if !isValidAgg(validAggs, expr) {
 					return ValidationGroupByErr.New(expr.Name())
 				}

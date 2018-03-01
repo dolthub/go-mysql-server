@@ -207,7 +207,7 @@ func aggregate(exprs []sql.Expression, rows []sql.Row) (sql.Row, error) {
 
 func fillBuffer(expr sql.Expression) sql.Row {
 	switch n := expr.(type) {
-	case sql.AggregationExpression:
+	case sql.Aggregation:
 		return n.NewBuffer()
 	case *expression.Alias:
 		return fillBuffer(n.Child)
@@ -218,7 +218,7 @@ func fillBuffer(expr sql.Expression) sql.Row {
 
 func updateBuffer(buffers []sql.Row, idx int, expr sql.Expression, row sql.Row) error {
 	switch n := expr.(type) {
-	case sql.AggregationExpression:
+	case sql.Aggregation:
 		n.Update(buffers[idx], row)
 		return nil
 	case *expression.Alias:
