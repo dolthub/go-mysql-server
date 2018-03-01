@@ -270,7 +270,7 @@ func TestAvg_Eval_UINT64(t *testing.T) {
 	require.Equal(float64(1.5), eval(t, avgNode, buffer))
 }
 
-func TestAvg_Eval_Text(t *testing.T) {
+func TestAvg_Eval_NoNum(t *testing.T) {
 	require := require.New(t)
 
 	avgNode := NewAvg(NewGetField(0, sql.Text, "col1", true))
@@ -278,7 +278,8 @@ func TestAvg_Eval_Text(t *testing.T) {
 	require.Zero(avgNode.Eval(buffer))
 
 	err := avgNode.Update(buffer, sql.NewRow("foo"))
-	require.Error(err)
+	require.NoError(err)
+	require.Equal(float64(0), eval(t, avgNode, buffer))
 }
 
 func TestAvg_Merge(t *testing.T) {

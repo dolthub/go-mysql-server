@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 
-	errors "gopkg.in/src-d/go-errors.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -237,8 +236,6 @@ type Avg struct {
 	UnaryExpression
 }
 
-var AverageNoNumericErr = errors.NewKind("avg aggregation can only be applied on numeric columns")
-
 // NewAvg creates a new Avg node.
 func NewAvg(e sql.Expression) *Avg {
 	return &Avg{UnaryExpression{e}}
@@ -266,11 +263,18 @@ func (a *Avg) IsNullable() bool {
 
 // Eval implements AggregationExpression interface. (AggregationExpression[Expression]])
 func (a *Avg) Eval(buffer sql.Row) (interface{}, error) {
-	if buffer[1].(float64) == 0 {
+	isNoNum := buffer[2].(bool)
+	if isNoNum {
+		return float64(0), nil
+	}
+
+	noNullRows := buffer[1].(float64)
+	if noNullRows == 0 {
 		return nil, nil
 	}
 
-	return buffer[0], nil
+	avg := buffer[0]
+	return avg, nil
 }
 
 // TransformUp implements AggregationExpression interface. (AggregationExpression[Expression]])
@@ -283,9 +287,10 @@ func (a *Avg) NewBuffer() sql.Row {
 	const (
 		currentAvg = float64(0)
 		rowsCount  = float64(0)
+		noNum      = false
 	)
 
-	return sql.NewRow(currentAvg, rowsCount)
+	return sql.NewRow(currentAvg, rowsCount, noNum)
 }
 
 // Update implements AggregationExpression interface. (AggregationExpression)
@@ -308,7 +313,8 @@ func (a *Avg) Update(buffer, row sql.Row) error {
 	case float32, float64:
 		num = float64(reflect.ValueOf(n).Float())
 	default:
-		return AverageNoNumericErr.New()
+		buffer[2] = true
+		return nil
 	}
 
 	prevAvg := buffer[0].(float64)
