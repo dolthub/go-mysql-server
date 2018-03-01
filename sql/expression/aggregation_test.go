@@ -153,3 +153,83 @@ func TestMin_Eval_Empty(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(nil, v)
 }
+func TestMax_Name(t *testing.T) {
+	assert := require.New(t)
+
+	m := NewMax(NewGetField(0, sql.Int32, "field", true))
+	assert.Equal("max(field)", m.Name())
+}
+
+func TestMax_Eval_Int32(t *testing.T) {
+	assert := require.New(t)
+
+	m := NewMax(NewGetField(0, sql.Int32, "field", true))
+	b := m.NewBuffer()
+
+	m.Update(b, sql.NewRow(int32(7)))
+	m.Update(b, sql.NewRow(nil))
+	m.Update(b, sql.NewRow(int32(6)))
+
+	v, err := m.Eval(b)
+	assert.NoError(err)
+	assert.Equal(int32(7), v)
+}
+
+func TestMax_Eval_Text(t *testing.T) {
+	assert := require.New(t)
+
+	m := NewMax(NewGetField(0, sql.Text, "field", true))
+	b := m.NewBuffer()
+
+	m.Update(b, sql.NewRow("a"))
+	m.Update(b, sql.NewRow("A"))
+	m.Update(b, sql.NewRow("b"))
+
+	v, err := m.Eval(b)
+	assert.NoError(err)
+	assert.Equal("b", v)
+}
+
+func TestMax_Eval_Timestamp(t *testing.T) {
+	assert := require.New(t)
+
+	m := NewMax(NewGetField(0, sql.Timestamp, "field", true))
+	b := m.NewBuffer()
+
+	expected, _ := time.Parse(sql.TimestampLayout, "2008-01-02 15:04:05")
+	someTime, _ := time.Parse(sql.TimestampLayout, "2007-01-02 15:04:05")
+	otherTime, _ := time.Parse(sql.TimestampLayout, "2006-01-02 15:04:05")
+
+	m.Update(b, sql.NewRow(someTime))
+	m.Update(b, sql.NewRow(expected))
+	m.Update(b, sql.NewRow(otherTime))
+
+	v, err := m.Eval(b)
+	assert.NoError(err)
+	assert.Equal(expected, v)
+}
+func TestMax_Eval_NULL(t *testing.T) {
+	assert := require.New(t)
+
+	m := NewMax(NewGetField(0, sql.Int32, "field", true))
+	b := m.NewBuffer()
+
+	m.Update(b, sql.NewRow(nil))
+	m.Update(b, sql.NewRow(nil))
+	m.Update(b, sql.NewRow(nil))
+
+	v, err := m.Eval(b)
+	assert.NoError(err)
+	assert.Equal(nil, v)
+}
+
+func TestMax_Eval_Empty(t *testing.T) {
+	assert := require.New(t)
+
+	m := NewMax(NewGetField(0, sql.Int32, "field", true))
+	b := m.NewBuffer()
+
+	v, err := m.Eval(b)
+	assert.NoError(err)
+	assert.Equal(nil, v)
+}

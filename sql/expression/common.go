@@ -37,12 +37,15 @@ var defaultFunctions = map[string]sql.Function{
 	"count": sql.Function1(func(e sql.Expression) sql.Expression {
 		return NewCount(e)
 	}),
-	"is_binary": sql.Function1(NewIsBinary),
-	"substring": sql.FunctionN(NewSubstring),
 	"min": sql.Function1(func(e sql.Expression) sql.Expression {
 		return NewMin(e)
 	}),
-	"year": sql.Function1(NewYear),
+	"max": sql.Function1(func(e sql.Expression) sql.Expression {
+		return NewMax(e)
+	}),
+	"is_binary": sql.Function1(NewIsBinary),
+	"substring": sql.FunctionN(NewSubstring),
+	"year":      sql.Function1(NewYear),
 }
 
 // RegisterDefaults registers the aggregations in the catalog.
