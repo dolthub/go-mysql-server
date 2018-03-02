@@ -266,3 +266,43 @@ func (y *Year) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.
 	}
 	return f(NewYear(child))
 }
+
+// Month is a function that returns the month of a date.
+type Month struct {
+	UnaryExpression
+}
+
+// NewMonth creates a new Month UDF.
+func NewMonth(date sql.Expression) sql.Expression {
+	return &Month{UnaryExpression{Child: date}}
+}
+
+// Name implements the Expression interface.
+func (m *Month) Name() string { return "month" }
+
+// Type implements the Expression interface.
+func (m *Month) Type() sql.Type { return sql.Int32 }
+
+// Eval implements the Expression interface.
+func (m *Month) Eval(row sql.Row) (interface{}, error) {
+	val, err := m.Child.Eval(row)
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	date, err := sql.Date.Convert(val)
+	if err != nil {
+		return nil, err
+	}
+
+	return int32(date.(time.Time).Month()), nil
+}
+
+// TransformUp implements the Expression interface.
+func (m *Month) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
+	return f(NewMonth(m.Child.TransformUp(f)))
+}
