@@ -32,8 +32,8 @@ func (j *InnerJoin) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (j *InnerJoin) RowIter() (sql.RowIter, error) {
-	l, err := j.Left.RowIter()
+func (j *InnerJoin) RowIter(session sql.Session) (sql.RowIter, error) {
+	l, err := j.Left.RowIter(session)
 	if err != nil {
 		return nil, err
 	}

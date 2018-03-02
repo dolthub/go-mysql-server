@@ -341,7 +341,8 @@ func TestParse(t *testing.T) {
 	for query, expectedPlan := range fixtures {
 		t.Run(query, func(t *testing.T) {
 			require := require.New(t)
-			p, err := Parse(query)
+			session := sql.NewBaseSession()
+			p, err := Parse(session, query)
 			require.Nil(err, "error for query '%s'", query)
 			require.Exactly(expectedPlan, p,
 				"plans do not match for query '%s'", query)
@@ -358,7 +359,8 @@ func TestParseErrors(t *testing.T) {
 	for query, expectedError := range fixturesErrors {
 		t.Run(query, func(t *testing.T) {
 			require := require.New(t)
-			_, err := Parse(query)
+			session := sql.NewBaseSession()
+			_, err := Parse(session, query)
 			require.Error(err)
 			require.Equal(expectedError, err)
 		})

@@ -22,8 +22,8 @@ func (o *Offset) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (o *Offset) RowIter() (sql.RowIter, error) {
-	it, err := o.Child.RowIter()
+func (o *Offset) RowIter(session sql.Session) (sql.RowIter, error) {
+	it, err := o.Child.RowIter(session)
 	if err != nil {
 		return nil, err
 	}

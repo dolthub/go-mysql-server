@@ -48,8 +48,8 @@ func RowIterToRows(i RowIter) ([]Row, error) {
 }
 
 // NodeToRows converts a node to a slice of rows.
-func NodeToRows(n Node) ([]Row, error) {
-	i, err := n.RowIter()
+func NodeToRows(session Session, n Node) ([]Row, error) {
+	i, err := n.RowIter(session)
 	if err != nil {
 		return nil, err
 	}

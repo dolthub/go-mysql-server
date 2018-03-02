@@ -44,13 +44,13 @@ func NewEquals(left sql.Expression, right sql.Expression) *Equals {
 }
 
 // Eval implements the Expression interface.
-func (e Equals) Eval(row sql.Row) (interface{}, error) {
-	a, err := e.Left.Eval(row)
+func (e Equals) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	a, err := e.Left.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
 
-	b, err := e.Right.Eval(row)
+	b, err := e.Right.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
@@ -83,12 +83,12 @@ func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
 }
 
 // Eval implements the Expression interface.
-func (re Regexp) Eval(row sql.Row) (interface{}, error) {
-	l, err := re.Left.Eval(row)
+func (re Regexp) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	l, err := re.Left.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
-	r, err := re.Right.Eval(row)
+	r, err := re.Right.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
@@ -133,13 +133,16 @@ func NewGreaterThan(left sql.Expression, right sql.Expression) *GreaterThan {
 }
 
 // Eval implements the Expression interface.
-func (gt GreaterThan) Eval(row sql.Row) (interface{}, error) {
-	a, err := gt.Left.Eval(row)
+func (gt GreaterThan) Eval(
+	session sql.Session,
+	row sql.Row,
+) (interface{}, error) {
+	a, err := gt.Left.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
 
-	b, err := gt.Right.Eval(row)
+	b, err := gt.Right.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
@@ -167,13 +170,13 @@ func NewLessThan(left sql.Expression, right sql.Expression) *LessThan {
 }
 
 // Eval implements the expression interface.
-func (lt LessThan) Eval(row sql.Row) (interface{}, error) {
-	a, err := lt.Left.Eval(row)
+func (lt LessThan) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	a, err := lt.Left.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
 
-	b, err := lt.Right.Eval(row)
+	b, err := lt.Right.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
@@ -202,13 +205,16 @@ func NewGreaterThanOrEqual(left sql.Expression, right sql.Expression) *GreaterTh
 }
 
 // Eval implements the Expression interface.
-func (gte GreaterThanOrEqual) Eval(row sql.Row) (interface{}, error) {
-	a, err := gte.Left.Eval(row)
+func (gte GreaterThanOrEqual) Eval(
+	session sql.Session,
+	row sql.Row,
+) (interface{}, error) {
+	a, err := gte.Left.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
 
-	b, err := gte.Right.Eval(row)
+	b, err := gte.Right.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
@@ -237,13 +243,16 @@ func NewLessThanOrEqual(left sql.Expression, right sql.Expression) *LessThanOrEq
 }
 
 // Eval implements the Expression interface.
-func (lte LessThanOrEqual) Eval(row sql.Row) (interface{}, error) {
-	a, err := lte.Left.Eval(row)
+func (lte LessThanOrEqual) Eval(
+	session sql.Session,
+	row sql.Row,
+) (interface{}, error) {
+	a, err := lte.Left.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
 
-	b, err := lte.Right.Eval(row)
+	b, err := lte.Right.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}

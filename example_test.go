@@ -11,10 +11,12 @@ import (
 
 func Example() {
 	e := sqle.New()
+	session := gitqlsql.NewBaseSession()
+
 	// Create a test memory database and register it to the default engine.
 	e.AddDatabase(createTestDatabase())
 
-	_, r, err := e.Query(`SELECT name, count(*) FROM mytable
+	_, r, err := e.Query(session, `SELECT name, count(*) FROM mytable
 	WHERE name = 'John Doe'
 	GROUP BY name`)
 	checkIfError(err)

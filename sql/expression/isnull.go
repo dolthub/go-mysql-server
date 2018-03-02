@@ -23,8 +23,8 @@ func (e *IsNull) IsNullable() bool {
 }
 
 // Eval implements the Expression interface.
-func (e *IsNull) Eval(row sql.Row) (interface{}, error) {
-	v, err := e.Child.Eval(row)
+func (e *IsNull) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	v, err := e.Child.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}

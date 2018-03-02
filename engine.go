@@ -35,8 +35,11 @@ func New() *Engine {
 }
 
 // Query executes a query without attaching to any session.
-func (e *Engine) Query(query string) (sql.Schema, sql.RowIter, error) {
-	parsed, err := parse.Parse(query)
+func (e *Engine) Query(
+	session sql.Session,
+	query string,
+) (sql.Schema, sql.RowIter, error) {
+	parsed, err := parse.Parse(session, query)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -46,7 +49,7 @@ func (e *Engine) Query(query string) (sql.Schema, sql.RowIter, error) {
 		return nil, nil, err
 	}
 
-	iter, err := analyzed.RowIter()
+	iter, err := analyzed.RowIter(session)
 	if err != nil {
 		return nil, nil, err
 	}

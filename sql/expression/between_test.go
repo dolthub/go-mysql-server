@@ -35,7 +35,9 @@ func TestBetween(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			result, err := b.Eval(tt.row)
+			session := sql.NewBaseSession()
+
+			result, err := b.Eval(session, tt.row)
 			if tt.err {
 				require.Error(err)
 			} else {

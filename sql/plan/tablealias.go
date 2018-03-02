@@ -29,6 +29,6 @@ func (t *TableAlias) TransformExpressionsUp(f func(sql.Expression) sql.Expressio
 }
 
 // RowIter implements the Node interface.
-func (t *TableAlias) RowIter() (sql.RowIter, error) {
-	return t.Child.RowIter()
+func (t *TableAlias) RowIter(session sql.Session) (sql.RowIter, error) {
+	return t.Child.RowIter(session)
 }

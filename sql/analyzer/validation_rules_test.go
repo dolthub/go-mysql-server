@@ -127,7 +127,7 @@ type dummyNode struct{ resolved bool }
 func (n dummyNode) Resolved() bool                             { return n.resolved }
 func (dummyNode) Schema() sql.Schema                           { return sql.Schema{} }
 func (dummyNode) Children() []sql.Node                         { return nil }
-func (dummyNode) RowIter() (sql.RowIter, error)                { return nil, nil }
+func (dummyNode) RowIter(sql.Session) (sql.RowIter, error)     { return nil, nil }
 func (dummyNode) TransformUp(func(sql.Node) sql.Node) sql.Node { return nil }
 func (dummyNode) TransformExpressionsUp(
 	func(sql.Expression) sql.Expression) sql.Node {

@@ -99,9 +99,10 @@ func getTestingTable() (*mem.Table, int) {
 }
 
 func getLimitedIterator(limitSize int64) (sql.RowIter, error) {
+	session := sql.NewBaseSession()
 	table, _ := getTestingTable()
 	limitPlan := NewLimit(limitSize, table)
-	return limitPlan.RowIter()
+	return limitPlan.RowIter(session)
 }
 
 func receivesNode(n sql.Node) bool {

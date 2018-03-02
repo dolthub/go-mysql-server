@@ -40,12 +40,12 @@ func (p *Project) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (p *Project) RowIter() (sql.RowIter, error) {
-	i, err := p.Child.RowIter()
+func (p *Project) RowIter(session sql.Session) (sql.RowIter, error) {
+	i, err := p.Child.RowIter(session)
 	if err != nil {
 		return nil, err
 	}
-	return &iter{p, i}, nil
+	return &iter{p, i, session}, nil
 }
 
 // TransformUp implements the Transformable interface.
@@ -64,6 +64,7 @@ func (p *Project) TransformExpressionsUp(f func(sql.Expression) sql.Expression) 
 type iter struct {
 	p         *Project
 	childIter sql.RowIter
+	session   sql.Session
 }
 
 func (i *iter) Next() (sql.Row, error) {
@@ -71,17 +72,21 @@ func (i *iter) Next() (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
-	return filterRow(i.p.Expressions, childRow)
+	return filterRow(i.session, i.p.Expressions, childRow)
 }
 
 func (i *iter) Close() error {
 	return i.childIter.Close()
 }
 
-func filterRow(expressions []sql.Expression, row sql.Row) (sql.Row, error) {
+func filterRow(
+	s sql.Session,
+	expressions []sql.Expression,
+	row sql.Row,
+) (sql.Row, error) {
 	var fields []interface{}
 	for _, expr := range expressions {
-		f, err := expr.Eval(row)
+		f, err := expr.Eval(s, row)
 		if err != nil {
 			return nil, err
 		}
