@@ -2,6 +2,7 @@ package plan
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"testing"
@@ -85,7 +86,7 @@ func assertRows(t *testing.T, iter sql.RowIter, expected int64) {
 
 func collectRows(t *testing.T, node sql.Node) []sql.Row {
 	t.Helper()
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	iter, err := node.RowIter(session)
 	require.NoError(t, err)

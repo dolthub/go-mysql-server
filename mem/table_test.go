@@ -1,6 +1,7 @@
 package mem
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,7 @@ func TestTable_Name(t *testing.T) {
 
 func TestTable_Insert_RowIter(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	s := sql.Schema{
 		{"col1", sql.Text, nil, true},

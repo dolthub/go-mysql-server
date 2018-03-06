@@ -15,8 +15,8 @@ type BaseSession struct {
 }
 
 // NewBaseSession creates a new basic session
-func NewBaseSession() Session {
+func NewBaseSession(ctx context.Context) Session {
 	return &BaseSession{
-		Context: context.TODO(),
+		Context: ctx,
 	}
 }

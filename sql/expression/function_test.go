@@ -1,6 +1,7 @@
 package expression
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -87,7 +88,7 @@ func TestSubstring(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			session := sql.NewBaseSession()
+			session := sql.NewBaseSession(context.TODO())
 
 			v, err := f.Eval(session, tt.row)
 			if tt.err {
@@ -119,7 +120,7 @@ func TestYear(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			session := sql.NewBaseSession()
+			session := sql.NewBaseSession(context.TODO())
 
 			val, err := f.Eval(session, tt.row)
 			if tt.err {

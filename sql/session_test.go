@@ -64,7 +64,7 @@ func (t *testNodeIterator) Close() error {
 func TestSessionIterator(t *testing.T) {
 	require := require.New(t)
 	ctx, cancelFunc := context.WithCancel(context.TODO())
-	session := &BaseSession{ctx}
+	session := NewBaseSession(ctx)
 
 	node := &testNode{}
 	iter, err := node.RowIter(session)

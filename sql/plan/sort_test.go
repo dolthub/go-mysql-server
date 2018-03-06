@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"testing"
 
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
@@ -12,7 +13,7 @@ import (
 
 func TestSort(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	data := []sql.Row{
 		sql.NewRow("c", nil),
@@ -54,7 +55,7 @@ func TestSort(t *testing.T) {
 
 func TestSortAscending(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	data := []sql.Row{
 		sql.NewRow("c"),
@@ -94,7 +95,7 @@ func TestSortAscending(t *testing.T) {
 
 func TestSortDescending(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	data := []sql.Row{
 		sql.NewRow("c"),

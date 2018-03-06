@@ -1,6 +1,7 @@
 package parse
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -341,7 +342,7 @@ func TestParse(t *testing.T) {
 	for query, expectedPlan := range fixtures {
 		t.Run(query, func(t *testing.T) {
 			require := require.New(t)
-			session := sql.NewBaseSession()
+			session := sql.NewBaseSession(context.TODO())
 			p, err := Parse(session, query)
 			require.Nil(err, "error for query '%s'", query)
 			require.Exactly(expectedPlan, p,
@@ -359,7 +360,7 @@ func TestParseErrors(t *testing.T) {
 	for query, expectedError := range fixturesErrors {
 		t.Run(query, func(t *testing.T) {
 			require := require.New(t)
-			session := sql.NewBaseSession()
+			session := sql.NewBaseSession(context.TODO())
 			_, err := Parse(session, query)
 			require.Error(err)
 			require.Equal(expectedError, err)

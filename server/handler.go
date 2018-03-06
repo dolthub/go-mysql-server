@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"io"
 	"sync"
 
@@ -41,7 +42,7 @@ func (h *Handler) ComQuery(
 	callback func(*sqltypes.Result) error,
 ) error {
 	// TODO: create proper session
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	schema, rows, err := h.e.Query(session, query)
 	if err != nil {

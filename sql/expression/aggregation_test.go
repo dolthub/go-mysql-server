@@ -1,6 +1,7 @@
 package expression
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -17,7 +18,7 @@ func TestCount_Name(t *testing.T) {
 
 func TestCount_Eval_1(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	c := NewCount(NewLiteral(1, sql.Int32))
 	b := c.NewBuffer()
@@ -39,7 +40,7 @@ func TestCount_Eval_1(t *testing.T) {
 
 func TestCount_Eval_Star(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	c := NewCount(NewStar())
 	b := c.NewBuffer()
@@ -61,7 +62,7 @@ func TestCount_Eval_Star(t *testing.T) {
 
 func TestCount_Eval_String(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	c := NewCount(NewGetField(0, sql.Text, "", true))
 	b := c.NewBuffer()
@@ -83,7 +84,7 @@ func TestMin_Name(t *testing.T) {
 
 func TestMin_Eval_Int32(t *testing.T) {
 	assert := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	m := NewMin(NewGetField(0, sql.Int32, "field", true))
 	b := m.NewBuffer()
@@ -99,7 +100,7 @@ func TestMin_Eval_Int32(t *testing.T) {
 
 func TestMin_Eval_Text(t *testing.T) {
 	assert := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	m := NewMin(NewGetField(0, sql.Text, "field", true))
 	b := m.NewBuffer()
@@ -115,7 +116,7 @@ func TestMin_Eval_Text(t *testing.T) {
 
 func TestMin_Eval_Timestamp(t *testing.T) {
 	assert := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	m := NewMin(NewGetField(0, sql.Timestamp, "field", true))
 	b := m.NewBuffer()
@@ -135,7 +136,7 @@ func TestMin_Eval_Timestamp(t *testing.T) {
 
 func TestMin_Eval_NULL(t *testing.T) {
 	assert := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	m := NewMin(NewGetField(0, sql.Int32, "field", true))
 	b := m.NewBuffer()
@@ -151,7 +152,7 @@ func TestMin_Eval_NULL(t *testing.T) {
 
 func TestMin_Eval_Empty(t *testing.T) {
 	assert := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	m := NewMin(NewGetField(0, sql.Int32, "field", true))
 	b := m.NewBuffer()
@@ -169,7 +170,7 @@ func TestMax_Name(t *testing.T) {
 
 func TestMax_Eval_Int32(t *testing.T) {
 	assert := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	m := NewMax(NewGetField(0, sql.Int32, "field", true))
 	b := m.NewBuffer()
@@ -185,7 +186,7 @@ func TestMax_Eval_Int32(t *testing.T) {
 
 func TestMax_Eval_Text(t *testing.T) {
 	assert := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	m := NewMax(NewGetField(0, sql.Text, "field", true))
 	b := m.NewBuffer()
@@ -201,7 +202,7 @@ func TestMax_Eval_Text(t *testing.T) {
 
 func TestMax_Eval_Timestamp(t *testing.T) {
 	assert := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	m := NewMax(NewGetField(0, sql.Timestamp, "field", true))
 	b := m.NewBuffer()
@@ -220,7 +221,7 @@ func TestMax_Eval_Timestamp(t *testing.T) {
 }
 func TestMax_Eval_NULL(t *testing.T) {
 	assert := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	m := NewMax(NewGetField(0, sql.Int32, "field", true))
 	b := m.NewBuffer()
@@ -236,7 +237,7 @@ func TestMax_Eval_NULL(t *testing.T) {
 
 func TestMax_Eval_Empty(t *testing.T) {
 	assert := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	m := NewMax(NewGetField(0, sql.Int32, "field", true))
 	b := m.NewBuffer()
@@ -255,7 +256,7 @@ func TestAvg_Name(t *testing.T) {
 
 func TestAvg_Eval_INT32(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	avgNode := NewAvg(NewGetField(0, sql.Int32, "col1", true))
 	buffer := avgNode.NewBuffer()
@@ -270,7 +271,7 @@ func TestAvg_Eval_INT32(t *testing.T) {
 
 func TestAvg_Eval_UINT64(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	avgNode := NewAvg(NewGetField(0, sql.Uint64, "col1", true))
 	buffer := avgNode.NewBuffer()
@@ -287,7 +288,7 @@ func TestAvg_Eval_UINT64(t *testing.T) {
 
 func TestAvg_Eval_NoNum(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	avgNode := NewAvg(NewGetField(0, sql.Text, "col1", true))
 	buffer := avgNode.NewBuffer()
@@ -300,7 +301,7 @@ func TestAvg_Eval_NoNum(t *testing.T) {
 
 func TestAvg_Merge(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	avgNode := NewAvg(NewGetField(0, sql.Float32, "col1", true))
 	require.NotNil(avgNode)
@@ -330,7 +331,7 @@ func TestAvg_Merge(t *testing.T) {
 
 func TestAvg_NULL(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession()
+	session := sql.NewBaseSession(context.TODO())
 
 	avgNode := NewAvg(NewGetField(0, sql.Uint64, "col1", true))
 	buffer := avgNode.NewBuffer()
