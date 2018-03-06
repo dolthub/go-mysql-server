@@ -32,7 +32,8 @@ We are continuously adding more functionality to go-mysql-server. We support a s
 |  Grouping expressions  | COUNT, MIN, MAX ,AVG                                  |
 |  Standard expressions  | ALIAS, LITERAL, STAR (*)                             |
 | Statements       | CROSS JOIN, INNER JOIN, DESCRIBE, FILTER (WHERE), GROUP BY, LIMIT, SELECT, SHOW TABLES, SORT, DISTINCT  |
-| Functions | SUBSTRING, YEAR, MONTH |
+| Functions | SUBSTRING |
+| Time functions | YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, DAYOFYEAR |
 
 ## Custom functions
 
