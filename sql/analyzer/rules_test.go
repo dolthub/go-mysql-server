@@ -18,7 +18,10 @@ func TestResolveTables(t *testing.T) {
 
 	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
 	db := mem.NewDatabase("mydb")
-	db.AddTable("mytable", table)
+	memDb, ok := db.(*mem.Database)
+	require.True(ok)
+
+	memDb.AddTable("mytable", table)
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 
@@ -48,7 +51,10 @@ func TestResolveTablesNested(t *testing.T) {
 
 	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
 	db := mem.NewDatabase("mydb")
-	db.AddTable("mytable", table)
+	memDb, ok := db.(*mem.Database)
+	require.True(ok)
+
+	memDb.AddTable("mytable", table)
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 
@@ -75,7 +81,10 @@ func TestResolveStar(t *testing.T) {
 
 	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
 	db := mem.NewDatabase("mydb")
-	db.AddTable("mytable", table)
+	memDb, ok := db.(*mem.Database)
+	require.True(ok)
+
+	memDb.AddTable("mytable", table)
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 

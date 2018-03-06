@@ -18,8 +18,12 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32, Source: "mytable"}})
 	table2 := mem.NewTable("mytable2", sql.Schema{{Name: "i2", Type: sql.Int32, Source: "mytable2"}})
 	db := mem.NewDatabase("mydb")
-	db.AddTable("mytable", table)
-	db.AddTable("mytable2", table2)
+
+	memDb, ok := db.(*mem.Database)
+	require.True(ok)
+
+	memDb.AddTable("mytable", table)
+	memDb.AddTable("mytable2", table2)
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 	a := New(catalog)

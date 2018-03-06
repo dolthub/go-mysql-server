@@ -18,11 +18,19 @@ func TestDatabase_AddTable(t *testing.T) {
 	db := NewDatabase("test")
 	tables := db.Tables()
 	require.Equal(0, len(tables))
-	table := &Table{"test_table", sql.Schema{}, nil}
-	db.AddTable("test_table", table)
+
+	altDb, ok := db.(sql.Alterable)
+	require.True(ok)
+
+	err := altDb.Create("test_table", sql.Schema{})
+	require.NoError(err)
+
 	tables = db.Tables()
 	require.Equal(1, len(tables))
 	tt, ok := tables["test_table"]
 	require.True(ok)
 	require.NotNil(tt)
+
+	err = altDb.Create("test_table", sql.Schema{})
+	require.Error(err)
 }

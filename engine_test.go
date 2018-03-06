@@ -152,8 +152,12 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 	require.Nil(table2.Insert(sql.NewRow("pux", int64(1))))
 
 	db := mem.NewDatabase("mydb")
-	db.AddTable(table.Name(), table)
-	db.AddTable(table2.Name(), table2)
+
+	memDb, ok := db.(*mem.Database)
+	require.True(ok)
+
+	memDb.AddTable(table.Name(), table)
+	memDb.AddTable(table2.Name(), table2)
 
 	e := sqle.New()
 	e.AddDatabase(db)
@@ -182,6 +186,34 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 	}
 
 	require.Equal(expected, rs)
+}
+
+func TestDDL(t *testing.T) {
+	require := require.New(t)
+
+	e := newEngine(t)
+	testQuery(t, e,
+		"CREATE TABLE t1(a INTEGER, b TEXT, c DATE,"+
+			"d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL)",
+		[][]interface{}(nil),
+	)
+
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	testTable, ok := db.Tables()["t1"]
+	require.True(ok)
+
+	s := sql.Schema{
+		{Name: "a", Type: sql.Int32, Nullable: true},
+		{Name: "b", Type: sql.Text, Nullable: true},
+		{Name: "c", Type: sql.Date, Nullable: true},
+		{Name: "d", Type: sql.Timestamp, Nullable: true},
+		{Name: "e", Type: sql.Text, Nullable: true},
+		{Name: "f", Type: sql.Blob},
+	}
+
+	require.Equal(s, testTable.Schema())
 }
 
 func testQuery(t *testing.T, e *sqle.Engine, q string, r [][]interface{}) {
@@ -227,8 +259,11 @@ func newEngine(t *testing.T) *sqle.Engine {
 	require.Nil(table2.Insert(sql.NewRow("third", int64(1))))
 
 	db := mem.NewDatabase("mydb")
-	db.AddTable(table.Name(), table)
-	db.AddTable(table2.Name(), table2)
+	memDb, ok := db.(*mem.Database)
+	require.True(ok)
+
+	memDb.AddTable(table.Name(), table)
+	memDb.AddTable(table2.Name(), table2)
 
 	e := sqle.New()
 	e.AddDatabase(db)

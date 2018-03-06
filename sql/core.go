@@ -111,6 +111,11 @@ type Database interface {
 	Tables() map[string]Table
 }
 
+// Alterable should be implemented by databases that can handle DDL statements
+type Alterable interface {
+	Create(name string, schema Schema) error
+}
+
 // ErrInvalidType is thrown when there is an unexpected type at some part of
 // the execution tree.
 var ErrInvalidType = errors.NewKind("invalid type: %s")

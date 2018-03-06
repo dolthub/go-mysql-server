@@ -11,6 +11,35 @@ import (
 )
 
 var fixtures = map[string]sql.Node{
+	`CREATE TABLE t1(a INTEGER, b TEXT, c DATE, d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL)`: plan.NewCreateTable(
+		&sql.UnresolvedDatabase{},
+		"t1",
+		sql.Schema{{
+			Name:     "a",
+			Type:     sql.Int32,
+			Nullable: true,
+		}, {
+			Name:     "b",
+			Type:     sql.Text,
+			Nullable: true,
+		}, {
+			Name:     "c",
+			Type:     sql.Date,
+			Nullable: true,
+		}, {
+			Name:     "d",
+			Type:     sql.Timestamp,
+			Nullable: true,
+		}, {
+			Name:     "e",
+			Type:     sql.Text,
+			Nullable: true,
+		}, {
+			Name:     "f",
+			Type:     sql.Blob,
+			Nullable: false,
+		}},
+	),
 	`DESCRIBE TABLE foo;`: plan.NewDescribe(
 		plan.NewUnresolvedTable("foo"),
 	),
