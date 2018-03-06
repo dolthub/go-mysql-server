@@ -433,6 +433,12 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		return expression.NewLiteral(nil, sql.Null), nil
 	case *sqlparser.ColName:
 		//TODO: add handling of case sensitiveness.
+		if !v.Qualifier.IsEmpty() {
+			return expression.NewUnresolvedQualifiedColumn(
+				v.Qualifier.Name.String(),
+				v.Name.Lowered(),
+			), nil
+		}
 		return expression.NewUnresolvedColumn(v.Name.Lowered()), nil
 	case *sqlparser.FuncExpr:
 		exprs, err := selectExprsToExpressions(v.Exprs)

@@ -48,15 +48,36 @@ func (j *InnerJoin) RowIter(session sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Transformable interface.
-func (j *InnerJoin) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	return f(NewInnerJoin(j.Left.TransformUp(f), j.Right.TransformUp(f), j.Cond))
+func (j *InnerJoin) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+	left, err := j.Left.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := j.Right.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewInnerJoin(left, right, j.Cond))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (j *InnerJoin) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
-	return NewInnerJoin(
-		j.Left.TransformExpressionsUp(f),
-		j.Right.TransformExpressionsUp(f),
-		j.Cond.TransformUp(f),
-	)
+func (j *InnerJoin) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+	left, err := j.Left.TransformExpressionsUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := j.Right.TransformExpressionsUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	cond, err := j.Cond.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewInnerJoin(left, right, cond), nil
 }

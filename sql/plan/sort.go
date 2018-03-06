@@ -68,7 +68,6 @@ func (s *Sort) expressionsResolved() bool {
 
 // RowIter implements the Node interface.
 func (s *Sort) RowIter(session sql.Session) (sql.RowIter, error) {
-
 	i, err := s.UnaryNode.Child.RowIter(session)
 	if err != nil {
 		return nil, err
@@ -77,18 +76,31 @@ func (s *Sort) RowIter(session sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Transformable interface.
-func (s *Sort) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	return f(NewSort(s.SortFields, s.Child.TransformUp(f)))
+func (s *Sort) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+	child, err := s.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return f(NewSort(s.SortFields, child))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (s *Sort) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
+func (s *Sort) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
 	var sfs = make([]SortField, len(s.SortFields))
 	for i, sf := range s.SortFields {
-		sfs[i] = SortField{sf.Column.TransformUp(f), sf.Order, sf.NullOrdering}
+		col, err := sf.Column.TransformUp(f)
+		if err != nil {
+			return nil, err
+		}
+		sfs[i] = SortField{col, sf.Order, sf.NullOrdering}
 	}
 
-	return NewSort(sfs, s.Child.TransformExpressionsUp(f))
+	child, err := s.Child.TransformExpressionsUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewSort(sfs, child), nil
 }
 
 type sortIter struct {

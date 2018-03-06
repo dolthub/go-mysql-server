@@ -46,8 +46,12 @@ func (ib *IsBinary) Name() string {
 }
 
 // TransformUp implements the Expression interface.
-func (ib *IsBinary) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return NewIsBinary(ib.Child.TransformUp(f))
+func (ib *IsBinary) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	child, err := ib.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return f(NewIsBinary(child))
 }
 
 // Type implements the Expression interface.
@@ -192,15 +196,29 @@ func (Substring) Resolved() bool { return true }
 func (Substring) Type() sql.Type { return sql.Text }
 
 // TransformUp implements the Expression interface.
-func (s *Substring) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
+func (s *Substring) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	str, err := s.str.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	start, err := s.start.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
 	// It is safe to omit the errors of NewSubstring here because to be able to call
 	// this method, you need a valid instance of Substring, so the arity must be correct
 	// and that's the only error NewSubstring can return.
 	var sub sql.Expression
 	if s.len != nil {
-		sub, _ = NewSubstring(s.str.TransformUp(f), s.start.TransformUp(f), s.len.TransformUp(f))
+		len, err := s.len.TransformUp(f)
+		if err != nil {
+			return nil, err
+		}
+		sub, _ = NewSubstring(str, start, len)
 	} else {
-		sub, _ = NewSubstring(s.str.TransformUp(f), s.start.TransformUp(f))
+		sub, _ = NewSubstring(str, start)
 	}
 	return f(sub)
 }
@@ -241,6 +259,10 @@ func (y *Year) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (y *Year) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewYear(y.Child.TransformUp(f)))
+func (y *Year) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	child, err := y.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return f(NewYear(child))
 }

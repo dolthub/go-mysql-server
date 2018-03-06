@@ -336,6 +336,12 @@ var fixtures = map[string]sql.Node{
 			),
 		),
 	),
+	`SELECT foo.a FROM foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedQualifiedColumn("foo", "a"),
+		},
+		plan.NewUnresolvedTable("foo"),
+	),
 }
 
 func TestParse(t *testing.T) {

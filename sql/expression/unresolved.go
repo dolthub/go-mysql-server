@@ -6,12 +6,19 @@ import "gopkg.in/src-d/go-mysql-server.v0/sql"
 // This is a placeholder node, so its methods Type, IsNullable and Eval are not
 // supposed to be called.
 type UnresolvedColumn struct {
-	name string
+	name  string
+	table string
 }
 
 // NewUnresolvedColumn creates a new UnresolvedColumn expression.
 func NewUnresolvedColumn(name string) *UnresolvedColumn {
-	return &UnresolvedColumn{name}
+	return &UnresolvedColumn{name: name}
+}
+
+// NewUnresolvedQualifiedColumn creates a new UnresolvedColumn expression
+// with a table qualifier.
+func NewUnresolvedQualifiedColumn(table, name string) *UnresolvedColumn {
+	return &UnresolvedColumn{name, table}
 }
 
 // Resolved implements the Expression interface.
@@ -34,13 +41,18 @@ func (uc UnresolvedColumn) Name() string {
 	return uc.name
 }
 
+// Table returns the Table name.
+func (uc UnresolvedColumn) Table() string {
+	return uc.table
+}
+
 // Eval implements the Expression interface.
 func (UnresolvedColumn) Eval(s sql.Session, r sql.Row) (interface{}, error) {
 	panic("unresolved column is a placeholder node, but Eval was called")
 }
 
 // TransformUp implements the Expression interface.
-func (uc *UnresolvedColumn) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
+func (uc *UnresolvedColumn) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
 	n := *uc
 	return f(&n)
 }
@@ -91,10 +103,14 @@ func (UnresolvedFunction) Eval(s sql.Session, r sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (uf *UnresolvedFunction) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
+func (uf *UnresolvedFunction) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
 	var rc []sql.Expression
 	for _, c := range uf.Children {
-		rc = append(rc, c.TransformUp(f))
+		c, err := c.TransformUp(f)
+		if err != nil {
+			return nil, err
+		}
+		rc = append(rc, c)
 	}
 
 	return f(NewUnresolvedFunction(uf.name, uf.IsAggregate, rc...))

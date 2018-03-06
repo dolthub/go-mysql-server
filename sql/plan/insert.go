@@ -98,19 +98,31 @@ func (p *InsertInto) RowIter(session sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Transformable interface.
-func (p *InsertInto) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	return f(NewInsertInto(
-		p.Left.TransformUp(f),
-		p.Right.TransformUp(f),
-		p.Columns,
-	))
+func (p *InsertInto) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+	left, err := p.Left.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := p.Right.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewInsertInto(left, right, p.Columns))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (p *InsertInto) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
-	return NewInsertInto(
-		p.Left.TransformExpressionsUp(f),
-		p.Right.TransformExpressionsUp(f),
-		p.Columns,
-	)
+func (p *InsertInto) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+	left, err := p.Left.TransformExpressionsUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := p.Right.TransformExpressionsUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewInsertInto(left, right, p.Columns), nil
 }

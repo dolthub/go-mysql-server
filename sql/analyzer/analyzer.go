@@ -28,7 +28,7 @@ type Rule struct {
 	// Name of the rule.
 	Name string
 	// Apply transforms a node.
-	Apply func(*Analyzer, sql.Node) sql.Node
+	Apply func(*Analyzer, sql.Node) (sql.Node, error)
 }
 
 // ValidationRule validates the given nodes.
@@ -51,11 +51,19 @@ func New(catalog *sql.Catalog) *Analyzer {
 // Analyze the node and all its children.
 func (a *Analyzer) Analyze(n sql.Node) (sql.Node, error) {
 	prev := n
-	cur := a.analyzeOnce(n)
+	cur, err := a.analyzeOnce(n)
+	if err != nil {
+		return nil, err
+	}
+
 	i := 0
 	for !reflect.DeepEqual(prev, cur) {
 		prev = cur
-		cur = a.analyzeOnce(n)
+		cur, err = a.analyzeOnce(n)
+		if err != nil {
+			return nil, err
+		}
+
 		i++
 		if i >= maxAnalysisIterations {
 			return cur, fmt.Errorf("exceeded max analysis iterations (%d)", maxAnalysisIterations)
@@ -73,12 +81,16 @@ func (a *Analyzer) Analyze(n sql.Node) (sql.Node, error) {
 	return cur, nil
 }
 
-func (a *Analyzer) analyzeOnce(n sql.Node) sql.Node {
+func (a *Analyzer) analyzeOnce(n sql.Node) (sql.Node, error) {
 	result := n
 	for _, rule := range a.Rules {
-		result = rule.Apply(a, result)
+		var err error
+		result, err = rule.Apply(a, result)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return result
+	return result, nil
 }
 
 func (a *Analyzer) validate(n sql.Node) (validationErrors []error) {

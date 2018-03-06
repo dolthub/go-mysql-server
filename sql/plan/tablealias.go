@@ -19,13 +19,21 @@ func (t *TableAlias) Name() string {
 }
 
 // TransformUp implements the Transformable interface.
-func (t *TableAlias) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	return f(NewTableAlias(t.name, t.Child.TransformUp(f)))
+func (t *TableAlias) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+	child, err := t.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return f(NewTableAlias(t.name, child))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (t *TableAlias) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
-	return NewTableAlias(t.name, t.Child.TransformExpressionsUp(f))
+func (t *TableAlias) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+	child, err := t.Child.TransformExpressionsUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return NewTableAlias(t.name, child), nil
 }
 
 // RowIter implements the Node interface.

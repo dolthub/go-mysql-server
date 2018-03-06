@@ -34,7 +34,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	notAnalyzed = plan.NewUnresolvedTable("nonexistant")
 	analyzed, err = a.Analyze(notAnalyzed)
 	require.Error(err)
-	require.Equal(notAnalyzed, analyzed)
+	require.Nil(analyzed)
 
 	analyzed, err = a.Analyze(table)
 	require.NoError(err)
@@ -53,7 +53,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(notAnalyzed)
 	var expected sql.Node = plan.NewProject(
-		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", false)},
+		[]sql.Expression{expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false)},
 		table,
 	)
 	require.NoError(err)
@@ -110,7 +110,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	expected = plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias(
-				expression.NewGetField(0, sql.Int32, "i", false),
+				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 				"foo",
 			),
 		},
@@ -131,10 +131,12 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(notAnalyzed)
 	expected = plan.NewProject(
-		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", false)},
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+		},
 		plan.NewFilter(
 			expression.NewEquals(
-				expression.NewGetField(0, sql.Int32, "i", false),
+				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 				expression.NewLiteral(int32(1), sql.Int32),
 			),
 			table,
@@ -156,8 +158,8 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	analyzed, err = a.Analyze(notAnalyzed)
 	expected = plan.NewProject(
 		[]sql.Expression{
-			expression.NewGetField(0, sql.Int32, "i", false),
-			expression.NewGetField(1, sql.Int32, "i2", false),
+			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+			expression.NewGetFieldWithTable(1, sql.Int32, "mytable2", "i2", false),
 		},
 		plan.NewCrossJoin(table, table2),
 	)
@@ -176,7 +178,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	expected = plan.NewLimit(int64(1),
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewGetField(0, sql.Int32, "i", false),
+				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 			},
 			table,
 		),
@@ -195,9 +197,9 @@ func TestAnalyzer_Analyze_MaxIterations(t *testing.T) {
 	i := 0
 	a.Rules = []analyzer.Rule{{
 		Name: "infinite",
-		Apply: func(a *analyzer.Analyzer, n sql.Node) sql.Node {
+		Apply: func(a *analyzer.Analyzer, n sql.Node) (sql.Node, error) {
 			i += 1
-			return plan.NewUnresolvedTable(fmt.Sprintf("table%d", i))
+			return plan.NewUnresolvedTable(fmt.Sprintf("table%d", i)), nil
 		},
 	}}
 
