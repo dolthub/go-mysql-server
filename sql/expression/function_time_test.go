@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	tsDate     = 1258893345 // Sunday, November 22, 2009 1:35:45 PM GMT+01:00
+	tsDate     = 1258882545 // Sunday, November 22, 2009 10:35:45 PM GMT+01:00
 	stringDate = "2007-01-02 14:15:16"
 )
 
@@ -116,7 +116,7 @@ func TestTime_Hour(t *testing.T) {
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, true},
 		{"date as string", sql.NewRow(stringDate), int32(14), false},
 		{"date as time", sql.NewRow(time.Now()), int32(time.Now().Hour()), false},
-		{"date as unix timestamp", sql.NewRow(int64(tsDate)), int32(13), false},
+		{"date as unix timestamp", sql.NewRow(int64(tsDate)), int32(9), false},
 	}
 
 	for _, tt := range testCases {
