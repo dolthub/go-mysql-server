@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"io"
 	"sync"
 
@@ -18,11 +17,12 @@ import (
 type Handler struct {
 	mu sync.Mutex
 	e  *sqle.Engine
+	sm *SessionManager
 }
 
 // NewHandler creates a new Handler given a SQLe engine.
-func NewHandler(e *sqle.Engine) *Handler {
-	return &Handler{e: e}
+func NewHandler(e *sqle.Engine, sm *SessionManager) *Handler {
+	return &Handler{e: e, sm: sm}
 }
 
 // NewConnection reports that a new connection has been established.
@@ -32,6 +32,7 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 
 // ConnectionClosed reports that a connection has been closed.
 func (h *Handler) ConnectionClosed(c *mysql.Conn) {
+	h.sm.CloseConn(c)
 	logrus.Infof("ConnectionClosed: client %v", c.ConnectionID)
 }
 
@@ -41,8 +42,12 @@ func (h *Handler) ComQuery(
 	query string,
 	callback func(*sqltypes.Result) error,
 ) error {
-	// TODO: create proper session
-	session := sql.NewBaseSession(context.TODO())
+	session, done, err := h.sm.NewSession(c)
+	if err != nil {
+		return err
+	}
+
+	defer done()
 
 	schema, rows, err := h.e.Query(session, query)
 	if err != nil {
