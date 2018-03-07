@@ -15,8 +15,6 @@ var (
 )
 
 // Engine is a SQL engine.
-// It implements the standard database/sql/driver/Driver interface, so it can
-// be registered as a database/sql driver.
 type Engine struct {
 	Catalog  *sql.Catalog
 	Analyzer *analyzer.Analyzer
