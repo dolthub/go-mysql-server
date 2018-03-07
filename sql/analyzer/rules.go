@@ -17,6 +17,7 @@ var DefaultRules = []Rule{
 	{"resolve_database", resolveDatabase},
 	{"resolve_star", resolveStar},
 	{"resolve_functions", resolveFunctions},
+	{"pushdown", pushdown},
 	{"optimize_distinct", optimizeDistinct},
 }
 
@@ -278,4 +279,87 @@ func dedupStrings(in []string) []string {
 		}
 	}
 	return result
+}
+
+func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
+	var fieldsByTable = make(map[string][]string)
+	var exprsByTable = make(map[string][]sql.Expression)
+	type tableField struct {
+		table string
+		field string
+	}
+	var tableFields = make(map[tableField]struct{})
+
+	// First step is to find all col exprs and group them by the table they mention.
+	// Even if they appear multiple times, only the first one will be used.
+	_, _ = n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
+		if e, ok := e.(*expression.GetField); ok {
+			tf := tableField{e.Table(), e.Name()}
+			if _, ok := tableFields[tf]; !ok {
+				tableFields[tf] = struct{}{}
+				fieldsByTable[e.Table()] = append(fieldsByTable[e.Table()], e.Name())
+				exprsByTable[e.Table()] = append(exprsByTable[e.Table()], e)
+			}
+		}
+		return e, nil
+	})
+
+	// then find all filters, also by table. Note that filters that mention
+	// more than one table will not be passed to neither.
+	filters := make(filters)
+	node, err := n.TransformUp(func(node sql.Node) (sql.Node, error) {
+		switch node := node.(type) {
+		case *plan.Filter:
+			filters.merge(exprToTableFilters(node.Expression))
+		case *plan.TableAlias:
+			// handle subqueries
+			if _, ok := node.Child.(*plan.Project); ok {
+				subquery, err := pushdown(a, node.Child)
+				if err != nil {
+					return nil, err
+				}
+				return plan.NewTableAlias(node.Name(), subquery), nil
+			}
+		}
+
+		return node, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Now all nodes can be transformed. Since traversal of the tree is done
+	// from inner to outer the filters have to be processed first so they get
+	// to the tables.
+	var handledFilters []sql.Expression
+	return node.TransformUp(func(node sql.Node) (sql.Node, error) {
+		switch node := node.(type) {
+		case *plan.Filter:
+			unhandled := getUnhandledFilters(
+				splitExpression(node.Expression),
+				handledFilters,
+			)
+			if len(unhandled) == 0 {
+				return node.Child, nil
+			}
+
+			return plan.NewFilter(filtersToExpression(unhandled), node.Child), nil
+		case sql.PushdownProjectionAndFiltersTable:
+			cols := exprsByTable[node.Name()]
+			tableFilters := filters[node.Name()]
+			handled := node.HandledFilters(tableFilters)
+			handledFilters = append(handledFilters, handled...)
+
+			return plan.NewPushdownProjectionAndFiltersTable(
+				cols,
+				handled,
+				node,
+			), nil
+		case sql.PushdownProjectionTable:
+			cols := fieldsByTable[node.Name()]
+			return plan.NewPushdownProjectionTable(cols, node), nil
+		}
+		return node, nil
+	})
 }
