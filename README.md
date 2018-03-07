@@ -29,14 +29,14 @@ We are continuously adding more functionality to go-mysql-server. We support a s
 |:----------------------:|:---------------------------------------------------------------------------------:|
 | Comparison expressions | !=, ==, >, <, >=,<=, BETWEEN                                |
 | Null check expressions | IS NULL, IS NOT NULL                               |
-|  Grouping expressions  | COUNT, MIN, MAX                                   |
+|  Grouping expressions  | COUNT, MIN, MAX ,AVG                                  |
 |  Standard expressions  | ALIAS, LITERAL, STAR (*)                             |
 | Statements       | CROSS JOIN, INNER JOIN, DESCRIBE, FILTER (WHERE), GROUP BY, LIMIT, SELECT, SHOW TABLES, SORT, DISTINCT  |
 | Functions | SUBSTRING, YEAR |
 
 ## Custom functions
 
-- `IS_BINARY(blob)`: returns whether a BLOB is a binary file or not       
+- `IS_BINARY(blob)`: returns whether a BLOB is a binary file or not
 
 ## Powered by go-mysql-server
 
@@ -45,4 +45,3 @@ We are continuously adding more functionality to go-mysql-server. We support a s
 ## License
 
 go-mysql-server is licensed under the [MIT License](/LICENSE).
-
