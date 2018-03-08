@@ -32,8 +32,8 @@ func (p *CrossJoin) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (p *CrossJoin) RowIter() (sql.RowIter, error) {
-	li, err := p.Left.RowIter()
+func (p *CrossJoin) RowIter(session sql.Session) (sql.RowIter, error) {
+	li, err := p.Left.RowIter(session)
 	if err != nil {
 		return nil, err
 	}
@@ -41,6 +41,7 @@ func (p *CrossJoin) RowIter() (sql.RowIter, error) {
 	return &crossJoinIterator{
 		l:  li,
 		rp: p.Right,
+		s:  session,
 	}, nil
 }
 
@@ -58,13 +59,14 @@ func (p *CrossJoin) TransformExpressionsUp(f func(sql.Expression) sql.Expression
 }
 
 type rowIterProvider interface {
-	RowIter() (sql.RowIter, error)
+	RowIter(sql.Session) (sql.RowIter, error)
 }
 
 type crossJoinIterator struct {
 	l  sql.RowIter
 	rp rowIterProvider
 	r  sql.RowIter
+	s  sql.Session
 
 	leftRow sql.Row
 }
@@ -81,7 +83,7 @@ func (i *crossJoinIterator) Next() (sql.Row, error) {
 		}
 
 		if i.r == nil {
-			iter, err := i.rp.RowIter()
+			iter, err := i.rp.RowIter(i.s)
 			if err != nil {
 				return nil, err
 			}

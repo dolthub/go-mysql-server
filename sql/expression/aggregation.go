@@ -52,12 +52,12 @@ func (c *Count) TransformUp(f func(sql.Expression) sql.Expression) sql.Expressio
 }
 
 // Update implements the Aggregation interface.
-func (c *Count) Update(buffer, row sql.Row) error {
+func (c *Count) Update(session sql.Session, buffer, row sql.Row) error {
 	var inc bool
 	if _, ok := c.Child.(*Star); ok {
 		inc = true
 	} else {
-		v, err := c.Child.Eval(row)
+		v, err := c.Child.Eval(session, row)
 		if v != nil {
 			inc = true
 		}
@@ -75,13 +75,13 @@ func (c *Count) Update(buffer, row sql.Row) error {
 }
 
 // Merge implements the Aggregation interface.
-func (c *Count) Merge(buffer, partial sql.Row) error {
+func (c *Count) Merge(session sql.Session, buffer, partial sql.Row) error {
 	buffer[0] = buffer[0].(int32) + partial[0].(int32)
 	return nil
 }
 
 // Eval implements the Aggregation interface.
-func (c *Count) Eval(buffer sql.Row) (interface{}, error) {
+func (c *Count) Eval(session sql.Session, buffer sql.Row) (interface{}, error) {
 	return buffer[0], nil
 }
 
@@ -127,8 +127,8 @@ func (m *Min) NewBuffer() sql.Row {
 }
 
 // Update implements the Aggregation interface.
-func (m *Min) Update(buffer, row sql.Row) error {
-	v, err := m.Child.Eval(row)
+func (m *Min) Update(session sql.Session, buffer, row sql.Row) error {
+	v, err := m.Child.Eval(session, row)
 	if err != nil {
 		return err
 	}
@@ -149,12 +149,12 @@ func (m *Min) Update(buffer, row sql.Row) error {
 }
 
 // Merge implements the Aggregation interface.
-func (m *Min) Merge(buffer, partial sql.Row) error {
-	return m.Update(buffer, partial)
+func (m *Min) Merge(session sql.Session, buffer, partial sql.Row) error {
+	return m.Update(session, buffer, partial)
 }
 
 // Eval implements the Aggregation interface
-func (m *Min) Eval(buffer sql.Row) (interface{}, error) {
+func (m *Min) Eval(session sql.Session, buffer sql.Row) (interface{}, error) {
 	return buffer[0], nil
 }
 
@@ -200,8 +200,8 @@ func (m *Max) NewBuffer() sql.Row {
 }
 
 // Update implements the Aggregation interface.
-func (m *Max) Update(buffer, row sql.Row) error {
-	v, err := m.Child.Eval(row)
+func (m *Max) Update(session sql.Session, buffer, row sql.Row) error {
+	v, err := m.Child.Eval(session, row)
 	if err != nil {
 		return err
 	}
@@ -222,12 +222,12 @@ func (m *Max) Update(buffer, row sql.Row) error {
 }
 
 // Merge implements the Aggregation interface.
-func (m *Max) Merge(buffer, partial sql.Row) error {
-	return m.Update(buffer, partial)
+func (m *Max) Merge(session sql.Session, buffer, partial sql.Row) error {
+	return m.Update(session, buffer, partial)
 }
 
 // Eval implements the Aggregation interface.
-func (m *Max) Eval(buffer sql.Row) (interface{}, error) {
+func (m *Max) Eval(session sql.Session, buffer sql.Row) (interface{}, error) {
 	return buffer[0], nil
 }
 
@@ -262,7 +262,7 @@ func (a *Avg) IsNullable() bool {
 }
 
 // Eval implements AggregationExpression interface. (AggregationExpression[Expression]])
-func (a *Avg) Eval(buffer sql.Row) (interface{}, error) {
+func (a *Avg) Eval(session sql.Session, buffer sql.Row) (interface{}, error) {
 	isNoNum := buffer[2].(bool)
 	if isNoNum {
 		return float64(0), nil
@@ -294,8 +294,8 @@ func (a *Avg) NewBuffer() sql.Row {
 }
 
 // Update implements AggregationExpression interface. (AggregationExpression)
-func (a *Avg) Update(buffer, row sql.Row) error {
-	v, err := a.Child.Eval(row)
+func (a *Avg) Update(session sql.Session, buffer, row sql.Row) error {
+	v, err := a.Child.Eval(session, row)
 	if err != nil {
 		return err
 	}
@@ -328,7 +328,7 @@ func (a *Avg) Update(buffer, row sql.Row) error {
 }
 
 // Merge implements AggregationExpression interface. (AggregationExpression)
-func (a *Avg) Merge(buffer, partial sql.Row) error {
+func (a *Avg) Merge(session sql.Session, buffer, partial sql.Row) error {
 	bufferAvg := buffer[0].(float64)
 	bufferRows := buffer[1].(float64)
 

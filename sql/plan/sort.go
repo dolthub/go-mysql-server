@@ -67,9 +67,9 @@ func (s *Sort) expressionsResolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (s *Sort) RowIter() (sql.RowIter, error) {
+func (s *Sort) RowIter(session sql.Session) (sql.RowIter, error) {
 
-	i, err := s.UnaryNode.Child.RowIter()
+	i, err := s.UnaryNode.Child.RowIter(session)
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +158,7 @@ type sorter struct {
 	sortFields []SortField
 	rows       []sql.Row
 	lastError  error
+	session    sql.Session
 }
 
 func (s *sorter) Len() int {
@@ -177,13 +178,13 @@ func (s *sorter) Less(i, j int) bool {
 	b := s.rows[j]
 	for _, sf := range s.sortFields {
 		typ := sf.Column.Type()
-		av, err := sf.Column.Eval(a)
+		av, err := sf.Column.Eval(s.session, a)
 		if err != nil {
 			s.lastError = fmt.Errorf("unable to sort: %s", err)
 			return false
 		}
 
-		bv, err := sf.Column.Eval(b)
+		bv, err := sf.Column.Eval(s.session, b)
 		if err != nil {
 			s.lastError = fmt.Errorf("unable to sort: %s", err)
 			return false

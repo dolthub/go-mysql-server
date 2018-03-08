@@ -21,7 +21,7 @@ func errUnsupportedFeature(feature string) error {
 }
 
 // Parse parses the given SQL sentence and returns the corresponding node.
-func Parse(s string) (sql.Node, error) {
+func Parse(session sql.Session, s string) (sql.Node, error) {
 	if strings.HasSuffix(s, ";") {
 		s = s[:len(s)-1]
 	}
@@ -36,19 +36,19 @@ func Parse(s string) (sql.Node, error) {
 		return nil, err
 	}
 
-	return convert(stmt)
+	return convert(session, stmt)
 }
 
-func convert(stmt sqlparser.Statement) (sql.Node, error) {
+func convert(session sql.Session, stmt sqlparser.Statement) (sql.Node, error) {
 	switch n := stmt.(type) {
 	default:
 		return nil, errUnsupported(n)
 	case *sqlparser.Show:
 		return convertShow(n)
 	case *sqlparser.Select:
-		return convertSelect(n)
+		return convertSelect(session, n)
 	case *sqlparser.Insert:
-		return convertInsert(n)
+		return convertInsert(session, n)
 	}
 }
 
@@ -61,10 +61,10 @@ func convertShow(s *sqlparser.Show) (sql.Node, error) {
 	return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
 }
 
-func convertSelect(s *sqlparser.Select) (sql.Node, error) {
+func convertSelect(session sql.Session, s *sqlparser.Select) (sql.Node, error) {
 	var node sql.Node
 
-	node, err := tableExprsToTable(s.From)
+	node, err := tableExprsToTable(session, s.From)
 	if err != nil {
 		return nil, err
 	}
@@ -97,14 +97,14 @@ func convertSelect(s *sqlparser.Select) (sql.Node, error) {
 	}
 
 	if s.Limit != nil {
-		node, err = limitToLimit(s.Limit.Rowcount, node)
+		node, err = limitToLimit(session, s.Limit.Rowcount, node)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if s.Limit != nil && s.Limit.Offset != nil {
-		node, err = offsetToOffset(s.Limit.Offset, node)
+		node, err = offsetToOffset(session, s.Limit.Offset, node)
 		if err != nil {
 			return nil, err
 		}
@@ -113,7 +113,7 @@ func convertSelect(s *sqlparser.Select) (sql.Node, error) {
 	return node, nil
 }
 
-func convertInsert(i *sqlparser.Insert) (sql.Node, error) {
+func convertInsert(session sql.Session, i *sqlparser.Insert) (sql.Node, error) {
 	if len(i.OnDup) > 0 {
 		return nil, errUnsupportedFeature("ON DUPLICATE KEY")
 	}
@@ -122,7 +122,7 @@ func convertInsert(i *sqlparser.Insert) (sql.Node, error) {
 		return nil, errUnsupported(i)
 	}
 
-	src, err := insertRowsToNode(i.Rows)
+	src, err := insertRowsToNode(session, i.Rows)
 	if err != nil {
 		return nil, err
 	}
@@ -143,10 +143,10 @@ func columnsToStrings(cols sqlparser.Columns) []string {
 	return res
 }
 
-func insertRowsToNode(ir sqlparser.InsertRows) (sql.Node, error) {
+func insertRowsToNode(session sql.Session, ir sqlparser.InsertRows) (sql.Node, error) {
 	switch v := ir.(type) {
 	case *sqlparser.Select:
-		return convertSelect(v)
+		return convertSelect(session, v)
 	case *sqlparser.Union:
 		return nil, errUnsupportedFeature("UNION")
 	case sqlparser.Values:
@@ -174,14 +174,17 @@ func valuesToValues(v sqlparser.Values) (sql.Node, error) {
 	return plan.NewValues(exprTuples), nil
 }
 
-func tableExprsToTable(te sqlparser.TableExprs) (sql.Node, error) {
+func tableExprsToTable(
+	session sql.Session,
+	te sqlparser.TableExprs,
+) (sql.Node, error) {
 	if len(te) == 0 {
 		return nil, errUnsupportedFeature("zero tables in FROM")
 	}
 
 	var nodes []sql.Node
 	for _, t := range te {
-		n, err := tableExprToTable(t)
+		n, err := tableExprToTable(session, t)
 		if err != nil {
 			return nil, err
 		}
@@ -201,7 +204,10 @@ func tableExprsToTable(te sqlparser.TableExprs) (sql.Node, error) {
 	return join, nil
 }
 
-func tableExprToTable(te sqlparser.TableExpr) (sql.Node, error) {
+func tableExprToTable(
+	session sql.Session,
+	te sqlparser.TableExpr,
+) (sql.Node, error) {
 	switch t := (te).(type) {
 	default:
 		return nil, errUnsupported(te)
@@ -216,7 +222,7 @@ func tableExprToTable(te sqlparser.TableExpr) (sql.Node, error) {
 			node = plan.NewUnresolvedTable(e.Name.String())
 		case *sqlparser.Subquery:
 			var err error
-			node, err = convert(e.Select)
+			node, err = convert(session, e.Select)
 			if err != nil {
 				return nil, err
 			}
@@ -241,12 +247,12 @@ func tableExprToTable(te sqlparser.TableExpr) (sql.Node, error) {
 			return nil, errUnsupportedFeature("using clause on join")
 		}
 
-		left, err := tableExprToTable(t.LeftExpr)
+		left, err := tableExprToTable(session, t.LeftExpr)
 		if err != nil {
 			return nil, err
 		}
 
-		right, err := tableExprToTable(t.RightExpr)
+		right, err := tableExprToTable(session, t.RightExpr)
 		if err != nil {
 			return nil, err
 		}
@@ -294,7 +300,11 @@ func orderByToSort(ob sqlparser.OrderBy, child sql.Node) (*plan.Sort, error) {
 	return plan.NewSort(sortFields, child), nil
 }
 
-func limitToLimit(limit sqlparser.Expr, child sql.Node) (*plan.Limit, error) {
+func limitToLimit(
+	session sql.Session,
+	limit sqlparser.Expr,
+	child sql.Node,
+) (*plan.Limit, error) {
 	e, err := exprToExpression(limit)
 	if err != nil {
 		return nil, err
@@ -305,14 +315,18 @@ func limitToLimit(limit sqlparser.Expr, child sql.Node) (*plan.Limit, error) {
 		return nil, errUnsupportedFeature("LIMIT with non-integer literal")
 	}
 
-	n, err := nl.Eval(nil)
+	n, err := nl.Eval(session, nil)
 	if err != nil {
 		return nil, err
 	}
 	return plan.NewLimit(n.(int64), child), nil
 }
 
-func offsetToOffset(offset sqlparser.Expr, child sql.Node) (*plan.Offset, error) {
+func offsetToOffset(
+	session sql.Session,
+	offset sqlparser.Expr,
+	child sql.Node,
+) (*plan.Offset, error) {
 	e, err := exprToExpression(offset)
 	if err != nil {
 		return nil, err
@@ -323,7 +337,7 @@ func offsetToOffset(offset sqlparser.Expr, child sql.Node) (*plan.Offset, error)
 		return nil, errUnsupportedFeature("OFFSET with non-integer literal")
 	}
 
-	n, err := nl.Eval(nil)
+	n, err := nl.Eval(session, nil)
 	if err != nil {
 		return nil, err
 	}

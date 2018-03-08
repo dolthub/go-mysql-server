@@ -35,7 +35,7 @@ type Expression interface {
 	// IsNullable returns whether the expression can be null.
 	IsNullable() bool
 	// Eval evaluates the given row and returns a result.
-	Eval(Row) (interface{}, error)
+	Eval(Session, Row) (interface{}, error)
 	// TransformUp transforms the expression and all its children with the
 	// given transform function.
 	TransformUp(func(Expression) Expression) Expression
@@ -52,9 +52,9 @@ type Aggregation interface {
 	// NewBuffer creates a new aggregation buffer and returns it as a Row.
 	NewBuffer() Row
 	// Update updates the given buffer with the given row.
-	Update(buffer, row Row) error
+	Update(session Session, buffer, row Row) error
 	// Merge merges a partial buffer into a global one.
-	Merge(buffer, partial Row) error
+	Merge(session Session, buffer, partial Row) error
 }
 
 // Node is a node in the execution plan tree.
@@ -66,7 +66,7 @@ type Node interface {
 	// Children nodes.
 	Children() []Node
 	// RowIter produces a row iterator from this node.
-	RowIter() (RowIter, error)
+	RowIter(Session) (RowIter, error)
 }
 
 // Table represents a SQL table.

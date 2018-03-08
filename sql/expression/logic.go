@@ -23,8 +23,8 @@ func (And) Type() sql.Type {
 }
 
 // Eval implements the Expression interface.
-func (a *And) Eval(row sql.Row) (interface{}, error) {
-	lval, err := a.Left.Eval(row)
+func (a *And) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	lval, err := a.Left.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (a *And) Eval(row sql.Row) (interface{}, error) {
 		return false, nil
 	}
 
-	rval, err := a.Right.Eval(row)
+	rval, err := a.Right.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
@@ -78,8 +78,8 @@ func (Or) Type() sql.Type {
 }
 
 // Eval implements the Expression interface.
-func (o *Or) Eval(row sql.Row) (interface{}, error) {
-	lval, err := o.Left.Eval(row)
+func (o *Or) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	lval, err := o.Left.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (o *Or) Eval(row sql.Row) (interface{}, error) {
 		return true, nil
 	}
 
-	rval, err := o.Right.Eval(row)
+	rval, err := o.Right.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}

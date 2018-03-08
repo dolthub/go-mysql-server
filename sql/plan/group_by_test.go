@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -43,6 +44,8 @@ func TestGroupBy_Resolved(t *testing.T) {
 
 func TestGroupBy_RowIter(t *testing.T) {
 	require := require.New(t)
+	session := sql.NewBaseSession(context.TODO())
+
 	childSchema := sql.Schema{
 		{Name: "col1", Type: sql.Text},
 		{Name: "col2", Type: sql.Int64},
@@ -78,7 +81,7 @@ func TestGroupBy_RowIter(t *testing.T) {
 
 	require.Equal(1, len(p.Children()))
 
-	rows, err := sql.NodeToRows(p)
+	rows, err := sql.NodeToRows(session, p)
 	require.NoError(err)
 	require.Len(rows, 2)
 
@@ -88,6 +91,7 @@ func TestGroupBy_RowIter(t *testing.T) {
 
 func TestGroupBy_Error(t *testing.T) {
 	require := require.New(t)
+	session := sql.NewBaseSession(context.TODO())
 
 	childSchema := sql.Schema{
 		{Name: "col1", Type: sql.Text},
@@ -113,6 +117,6 @@ func TestGroupBy_Error(t *testing.T) {
 		child,
 	)
 
-	_, err := sql.NodeToRows(p)
+	_, err := sql.NodeToRows(session, p)
 	require.Error(err)
 }

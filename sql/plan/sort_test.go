@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"testing"
 
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
@@ -12,6 +13,7 @@ import (
 
 func TestSort(t *testing.T) {
 	require := require.New(t)
+	session := sql.NewBaseSession(context.TODO())
 
 	data := []sql.Row{
 		sql.NewRow("c", nil),
@@ -46,13 +48,14 @@ func TestSort(t *testing.T) {
 		sql.NewRow("a", int32(3)),
 	}
 
-	actual, err := sql.NodeToRows(s)
+	actual, err := sql.NodeToRows(session, s)
 	require.NoError(err)
 	require.Equal(expected, actual)
 }
 
 func TestSortAscending(t *testing.T) {
 	require := require.New(t)
+	session := sql.NewBaseSession(context.TODO())
 
 	data := []sql.Row{
 		sql.NewRow("c"),
@@ -85,13 +88,14 @@ func TestSortAscending(t *testing.T) {
 		sql.NewRow("d"),
 	}
 
-	actual, err := sql.NodeToRows(s)
+	actual, err := sql.NodeToRows(session, s)
 	require.NoError(err)
 	require.Equal(expected, actual)
 }
 
 func TestSortDescending(t *testing.T) {
 	require := require.New(t)
+	session := sql.NewBaseSession(context.TODO())
 
 	data := []sql.Row{
 		sql.NewRow("c"),
@@ -124,7 +128,7 @@ func TestSortDescending(t *testing.T) {
 		sql.NewRow("a"),
 	}
 
-	actual, err := sql.NodeToRows(s)
+	actual, err := sql.NodeToRows(session, s)
 	require.NoError(err)
 	require.Equal(expected, actual)
 }

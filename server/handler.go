@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"io"
 	"sync"
 
@@ -35,8 +36,15 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 }
 
 // ComQuery executes a SQL query on the SQLe engine.
-func (h *Handler) ComQuery(c *mysql.Conn, query string, callback func(*sqltypes.Result) error) error {
-	schema, rows, err := h.e.Query(query)
+func (h *Handler) ComQuery(
+	c *mysql.Conn,
+	query string,
+	callback func(*sqltypes.Result) error,
+) error {
+	// TODO: create proper session
+	session := sql.NewBaseSession(context.TODO())
+
+	schema, rows, err := h.e.Query(session, query)
 	if err != nil {
 		return err
 	}

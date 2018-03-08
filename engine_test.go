@@ -1,6 +1,7 @@
 package sqle_test
 
 import (
+	"context"
 	"io"
 	"testing"
 
@@ -104,8 +105,9 @@ func TestInsertInto(t *testing.T) {
 func testQuery(t *testing.T, e *sqle.Engine, q string, r [][]interface{}) {
 	t.Run(q, func(t *testing.T) {
 		require := require.New(t)
+		session := sql.NewBaseSession(context.TODO())
 
-		_, rows, err := e.Query(q)
+		_, rows, err := e.Query(session, q)
 		require.NoError(err)
 
 		var rs [][]interface{}

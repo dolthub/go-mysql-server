@@ -33,7 +33,7 @@ func (*UnresolvedTable) Schema() sql.Schema {
 }
 
 // RowIter implements the RowIter interface.
-func (*UnresolvedTable) RowIter() (sql.RowIter, error) {
+func (*UnresolvedTable) RowIter(session sql.Session) (sql.RowIter, error) {
 	return nil, fmt.Errorf("unresolved table")
 }
 

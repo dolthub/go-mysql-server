@@ -25,8 +25,8 @@ func (d *Distinct) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (d *Distinct) RowIter() (sql.RowIter, error) {
-	it, err := d.Child.RowIter()
+func (d *Distinct) RowIter(session sql.Session) (sql.RowIter, error) {
+	it, err := d.Child.RowIter(session)
 	if err != nil {
 		return nil, err
 	}

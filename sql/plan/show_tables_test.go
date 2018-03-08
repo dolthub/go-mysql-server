@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"io"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 
 func TestShowTables(t *testing.T) {
 	require := require.New(t)
+	session := sql.NewBaseSession(context.TODO())
 
 	unresolvedShowTables := NewShowTables(&sql.UnresolvedDatabase{})
 
@@ -26,7 +28,7 @@ func TestShowTables(t *testing.T) {
 	require.True(resolvedShowTables.Resolved())
 	require.Nil(resolvedShowTables.Children())
 
-	iter, err := resolvedShowTables.RowIter()
+	iter, err := resolvedShowTables.RowIter(session)
 	require.Nil(err)
 
 	res, err := iter.Next()

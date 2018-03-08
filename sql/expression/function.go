@@ -19,8 +19,11 @@ func NewIsBinary(e sql.Expression) sql.Expression {
 }
 
 // Eval implements the Expression interface.
-func (ib *IsBinary) Eval(row sql.Row) (interface{}, error) {
-	v, err := ib.Child.Eval(row)
+func (ib *IsBinary) Eval(
+	session sql.Session,
+	row sql.Row,
+) (interface{}, error) {
+	v, err := ib.Child.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
@@ -99,8 +102,11 @@ func NewSubstring(args ...sql.Expression) (sql.Expression, error) {
 }
 
 // Eval implements the Expression interface.
-func (s *Substring) Eval(row sql.Row) (interface{}, error) {
-	str, err := s.str.Eval(row)
+func (s *Substring) Eval(
+	session sql.Session,
+	row sql.Row,
+) (interface{}, error) {
+	str, err := s.str.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +123,7 @@ func (s *Substring) Eval(row sql.Row) (interface{}, error) {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
 	}
 
-	start, err := s.start.Eval(row)
+	start, err := s.start.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +140,7 @@ func (s *Substring) Eval(row sql.Row) (interface{}, error) {
 	var length int64
 	runeCount := int64(len(text))
 	if s.len != nil {
-		len, err := s.len.Eval(row)
+		len, err := s.len.Eval(session, row)
 		if err != nil {
 			return nil, err
 		}
@@ -216,8 +222,8 @@ func (y *Year) Name() string { return "year" }
 func (y *Year) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
-func (y *Year) Eval(row sql.Row) (interface{}, error) {
-	val, err := y.Child.Eval(row)
+func (y *Year) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	val, err := y.Child.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}

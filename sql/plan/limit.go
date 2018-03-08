@@ -6,6 +6,8 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
+var _ sql.Node = &Limit{}
+
 // Limit is a node that only allows up to N rows to be retrieved.
 type Limit struct {
 	UnaryNode
@@ -26,8 +28,8 @@ func (l *Limit) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (l *Limit) RowIter() (sql.RowIter, error) {
-	li, err := l.Child.RowIter()
+func (l *Limit) RowIter(session sql.Session) (sql.RowIter, error) {
+	li, err := l.Child.RowIter(session)
 	if err != nil {
 		return nil, err
 	}

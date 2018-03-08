@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"io"
 	"testing"
 
@@ -12,6 +13,8 @@ import (
 
 func TestDistinct(t *testing.T) {
 	require := require.New(t)
+	session := sql.NewBaseSession(context.TODO())
+
 	childSchema := sql.Schema{
 		{Name: "name", Type: sql.Text, Nullable: true},
 		{Name: "email", Type: sql.Text, Nullable: true},
@@ -28,7 +31,7 @@ func TestDistinct(t *testing.T) {
 	}, child)
 	d := NewDistinct(p)
 
-	iter, err := d.RowIter()
+	iter, err := d.RowIter(session)
 	require.Nil(err)
 	require.NotNil(iter)
 
@@ -50,6 +53,8 @@ func TestDistinct(t *testing.T) {
 
 func BenchmarkDistinct(b *testing.B) {
 	require := require.New(b)
+	session := sql.NewBaseSession(context.TODO())
+
 	for i := 0; i < b.N; i++ {
 		p := NewProject([]sql.Expression{
 			expression.NewGetField(0, sql.Text, "strfield", true),
@@ -61,7 +66,7 @@ func BenchmarkDistinct(b *testing.B) {
 		}, benchtable)
 		d := NewDistinct(p)
 
-		iter, err := d.RowIter()
+		iter, err := d.RowIter(session)
 		require.Nil(err)
 		require.NotNil(iter)
 

@@ -1,6 +1,7 @@
 package expression
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -27,11 +28,12 @@ func TestAnd(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
+			session := sql.NewBaseSession(context.TODO())
 
 			result, err := NewAnd(
 				NewLiteral(tt.left, sql.Boolean),
 				NewLiteral(tt.right, sql.Boolean),
-			).Eval(sql.NewRow())
+			).Eval(session, sql.NewRow())
 			require.NoError(err)
 			require.Equal(tt.expected, result)
 		})
@@ -56,11 +58,12 @@ func TestOr(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
+			session := sql.NewBaseSession(context.TODO())
 
 			result, err := NewOr(
 				NewLiteral(tt.left, sql.Boolean),
 				NewLiteral(tt.right, sql.Boolean),
-			).Eval(sql.NewRow())
+			).Eval(session, sql.NewRow())
 			require.NoError(err)
 			require.Equal(tt.expected, result)
 		})

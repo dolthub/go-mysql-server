@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"io"
 	"testing"
 
@@ -25,6 +26,7 @@ var rSchema = sql.Schema{
 
 func TestCrossJoin(t *testing.T) {
 	require := require.New(t)
+	session := sql.NewBaseSession(context.TODO())
 
 	resultSchema := sql.Schema{
 		{Name: "lcol1", Type: sql.Text},
@@ -46,7 +48,7 @@ func TestCrossJoin(t *testing.T) {
 
 	require.Equal(resultSchema, j.Schema())
 
-	iter, err := j.RowIter()
+	iter, err := j.RowIter(session)
 	require.Nil(err)
 	require.NotNil(iter)
 
@@ -93,6 +95,7 @@ func TestCrossJoin(t *testing.T) {
 
 func TestCrossJoin_Empty(t *testing.T) {
 	require := require.New(t)
+	session := sql.NewBaseSession(context.TODO())
 
 	ltable := mem.NewTable("left", lSchema)
 	rtable := mem.NewTable("right", rSchema)
@@ -100,7 +103,7 @@ func TestCrossJoin_Empty(t *testing.T) {
 
 	j := NewCrossJoin(ltable, rtable)
 
-	iter, err := j.RowIter()
+	iter, err := j.RowIter(session)
 	require.Nil(err)
 	require.NotNil(iter)
 
@@ -114,7 +117,7 @@ func TestCrossJoin_Empty(t *testing.T) {
 
 	j = NewCrossJoin(ltable, rtable)
 
-	iter, err = j.RowIter()
+	iter, err = j.RowIter(session)
 	require.Nil(err)
 	require.NotNil(iter)
 

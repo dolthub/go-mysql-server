@@ -28,7 +28,7 @@ func (d *Describe) Schema() sql.Schema {
 }
 
 // RowIter implements the Node interface.
-func (d *Describe) RowIter() (sql.RowIter, error) {
+func (d *Describe) RowIter(session sql.Session) (sql.RowIter, error) {
 	return &describeIter{schema: d.Child.Schema()}, nil
 }
 
