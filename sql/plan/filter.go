@@ -27,7 +27,7 @@ func (p *Filter) RowIter(session sql.Session) (sql.RowIter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &filterIter{p.Expression, i, session}, nil
+	return NewFilterIter(session, p.Expression, i), nil
 }
 
 // TransformUp implements the Transformable interface.
@@ -54,13 +54,25 @@ func (p *Filter) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, 
 	return NewFilter(expr, child), nil
 }
 
-type filterIter struct {
+// FilterIter is an iterator that filters another iterator and skips rows that
+// don't match the given condition.
+type FilterIter struct {
 	cond      sql.Expression
 	childIter sql.RowIter
 	session   sql.Session
 }
 
-func (i *filterIter) Next() (sql.Row, error) {
+// NewFilterIter creates a new FilterIter.
+func NewFilterIter(
+	session sql.Session,
+	cond sql.Expression,
+	child sql.RowIter,
+) *FilterIter {
+	return &FilterIter{cond, child, session}
+}
+
+// Next implements the RowIter interface.
+func (i *FilterIter) Next() (sql.Row, error) {
 	for {
 		row, err := i.childIter.Next()
 		if err != nil {
@@ -78,6 +90,7 @@ func (i *filterIter) Next() (sql.Row, error) {
 	}
 }
 
-func (i *filterIter) Close() error {
+// Close implements the RowIter interface.
+func (i *FilterIter) Close() error {
 	return i.childIter.Close()
 }

@@ -38,13 +38,14 @@ func (j *InnerJoin) RowIter(session sql.Session) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return &filterIter{
-		childIter: &crossJoinIterator{
+	return NewFilterIter(
+		session,
+		j.Cond,
+		&crossJoinIterator{
 			l:  l,
 			rp: j.Right,
 		},
-		cond: j.Cond,
-	}, nil
+	), nil
 }
 
 // TransformUp implements the Transformable interface.

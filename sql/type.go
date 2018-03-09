@@ -40,6 +40,16 @@ func (s Schema) CheckRow(row Row) error {
 	return nil
 }
 
+// Contains returns whether the schema contains a column with the given name.
+func (s Schema) Contains(column string) bool {
+	for _, col := range s {
+		if col.Name == column {
+			return true
+		}
+	}
+	return false
+}
+
 // Column is the definition of a table column.
 // As SQL:2016 puts it:
 //   A column is a named component of a table. It has a data type, a default,
