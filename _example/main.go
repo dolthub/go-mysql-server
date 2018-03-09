@@ -32,7 +32,7 @@ func main() {
 		Password: "password1",
 	}}
 
-	s, err := server.NewServer("tcp", "localhost:5123", auth, driver)
+	s, err := server.NewDefaultServer("tcp", "localhost:5123", auth, driver)
 	if err != nil {
 		panic(err)
 	}
