@@ -4,6 +4,7 @@ import "gopkg.in/src-d/go-mysql-server.v0/sql"
 
 // GetField is an expression to get the field of a table.
 type GetField struct {
+	table      string
 	fieldIndex int
 	fieldName  string
 	fieldType  sql.Type
@@ -12,12 +13,23 @@ type GetField struct {
 
 // NewGetField creates a GetField expression.
 func NewGetField(index int, fieldType sql.Type, fieldName string, nullable bool) *GetField {
+	return NewGetFieldWithTable(index, fieldType, "", fieldName, nullable)
+}
+
+// NewGetFieldWithTable creates a GetField expression with table name.
+func NewGetFieldWithTable(index int, fieldType sql.Type, table, fieldName string, nullable bool) *GetField {
 	return &GetField{
+		table:      table,
 		fieldIndex: index,
 		fieldType:  fieldType,
 		fieldName:  fieldName,
 		nullable:   nullable,
 	}
+}
+
+// Table returns the name of the field table.
+func (p GetField) Table() string {
+	return p.table
 }
 
 // Resolved implements the Expression interface.
@@ -46,7 +58,7 @@ func (p GetField) Name() string {
 }
 
 // TransformUp implements the Expression interface.
-func (p *GetField) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
+func (p *GetField) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
 	n := *p
 	return f(&n)
 }

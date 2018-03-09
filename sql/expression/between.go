@@ -81,10 +81,21 @@ func (b *Between) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (b *Between) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewBetween(
-		b.Val.TransformUp(f),
-		b.Lower.TransformUp(f),
-		b.Upper.TransformUp(f),
-	))
+func (b *Between) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	val, err := b.Val.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	lower, err := b.Lower.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	upper, err := b.Upper.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewBetween(val, lower, upper))
 }

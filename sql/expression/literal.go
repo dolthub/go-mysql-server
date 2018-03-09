@@ -44,7 +44,7 @@ func (p Literal) Name() string {
 }
 
 // TransformUp implements the Expression interface.
-func (p *Literal) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
+func (p *Literal) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
 	n := *p
 	return f(&n)
 }

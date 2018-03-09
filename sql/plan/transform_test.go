@@ -24,14 +24,15 @@ func TestTransformUp(t *testing.T) {
 	}
 	table := mem.NewTable("resolved", schema)
 
-	pt := p.TransformUp(func(n sql.Node) sql.Node {
+	pt, err := p.TransformUp(func(n sql.Node) (sql.Node, error) {
 		switch n.(type) {
 		case *UnresolvedTable:
-			return table
+			return table, nil
 		default:
-			return n
+			return n, nil
 		}
 	})
+	require.NoError(err)
 
 	ep := NewProject([]sql.Expression{aCol, bCol}, NewFilter(expression.NewEquals(aCol, bCol), table))
 	require.Equal(ep, pt)

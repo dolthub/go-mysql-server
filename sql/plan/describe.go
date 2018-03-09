@@ -33,13 +33,21 @@ func (d *Describe) RowIter(session sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Transformable interface.
-func (d *Describe) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	return f(NewDescribe(d.Child.TransformUp(f)))
+func (d *Describe) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+	child, err := d.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return f(NewDescribe(child))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (d *Describe) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
-	return NewDescribe(d.Child.TransformExpressionsUp(f))
+func (d *Describe) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+	child, err := d.Child.TransformExpressionsUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return NewDescribe(child), nil
 }
 
 type describeIter struct {

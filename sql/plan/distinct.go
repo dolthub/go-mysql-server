@@ -34,13 +34,21 @@ func (d *Distinct) RowIter(session sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Transformable interface.
-func (d *Distinct) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	return f(NewDistinct(d.Child.TransformUp(f)))
+func (d *Distinct) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+	child, err := d.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return f(NewDistinct(child))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (d *Distinct) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
-	return NewDistinct(d.Child.TransformExpressionsUp(f))
+func (d *Distinct) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+	child, err := d.Child.TransformExpressionsUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return NewDistinct(child), nil
 }
 
 // distinctIter keeps track of the hashes of all rows that have been emitted.

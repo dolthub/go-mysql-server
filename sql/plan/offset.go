@@ -31,13 +31,21 @@ func (o *Offset) RowIter(session sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Transformable interface.
-func (o *Offset) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	return f(NewOffset(o.n, o.Child.TransformUp(f)))
+func (o *Offset) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+	child, err := o.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return f(NewOffset(o.n, child))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (o *Offset) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
-	return NewOffset(o.n, o.Child.TransformExpressionsUp(f))
+func (o *Offset) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+	child, err := o.Child.TransformExpressionsUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return NewOffset(o.n, child), nil
 }
 
 type offsetIter struct {

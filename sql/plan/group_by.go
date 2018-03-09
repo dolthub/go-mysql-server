@@ -66,17 +66,32 @@ func (p *GroupBy) RowIter(session sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Transformable interface.
-func (p *GroupBy) TransformUp(f func(sql.Node) sql.Node) sql.Node {
-	return f(NewGroupBy(p.Aggregate, p.Grouping, p.Child.TransformUp(f)))
+func (p *GroupBy) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+	child, err := p.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return f(NewGroupBy(p.Aggregate, p.Grouping, child))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (p *GroupBy) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
-	return NewGroupBy(
-		transformExpressionsUp(f, p.Aggregate),
-		transformExpressionsUp(f, p.Grouping),
-		p.Child.TransformExpressionsUp(f),
-	)
+func (p *GroupBy) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+	aggregate, err := transformExpressionsUp(f, p.Aggregate)
+	if err != nil {
+		return nil, err
+	}
+
+	grouping, err := transformExpressionsUp(f, p.Grouping)
+	if err != nil {
+		return nil, err
+	}
+
+	child, err := p.Child.TransformExpressionsUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewGroupBy(aggregate, grouping, child), nil
 }
 
 type groupByIter struct {

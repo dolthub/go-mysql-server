@@ -28,16 +28,18 @@ func TestResolveTables(t *testing.T) {
 
 	a.CurrentDatabase = "mydb"
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
-	analyzed := f.Apply(a, notAnalyzed)
+	analyzed, err := f.Apply(a, notAnalyzed)
+	require.NoError(err)
 	require.Equal(table, analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("nonexistant")
-	analyzed = f.Apply(a, notAnalyzed)
-	require.Equal(notAnalyzed, analyzed)
+	analyzed, err = f.Apply(a, notAnalyzed)
+	require.Error(err)
+	require.Nil(analyzed)
 
-	analyzed = f.Apply(a, table)
+	analyzed, err = f.Apply(a, table)
+	require.NoError(err)
 	require.Equal(table, analyzed)
-
 }
 
 func TestResolveTablesNested(t *testing.T) {
@@ -59,7 +61,8 @@ func TestResolveTablesNested(t *testing.T) {
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},
 		plan.NewUnresolvedTable("mytable"),
 	)
-	analyzed := f.Apply(a, notAnalyzed)
+	analyzed, err := f.Apply(a, notAnalyzed)
+	require.NoError(err)
 	expected := plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},
 		table,
@@ -85,12 +88,101 @@ func TestResolveStar(t *testing.T) {
 		[]sql.Expression{expression.NewStar()},
 		table,
 	)
-	analyzed := f.Apply(a, notAnalyzed)
+	analyzed, err := f.Apply(a, notAnalyzed)
+	require.NoError(err)
 	expected := plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", false)},
 		table,
 	)
 	require.Equal(expected, analyzed)
+}
+
+func TestQualifyColumns(t *testing.T) {
+	require := require.New(t)
+	f := getRule("qualify_columns")
+
+	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
+	table2 := mem.NewTable("mytable2", sql.Schema{{Name: "i", Type: sql.Int32}})
+
+	node := plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("i"),
+		},
+		table,
+	)
+
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+		},
+		table,
+	)
+
+	result, err := f.Apply(nil, node)
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	node = plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+		},
+		table,
+	)
+
+	result, err = f.Apply(nil, node)
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	node = plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedQualifiedColumn("a", "i"),
+		},
+		plan.NewTableAlias("a", table),
+	)
+
+	expected = plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+		},
+		plan.NewTableAlias("a", table),
+	)
+
+	result, err = f.Apply(nil, node)
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	node = plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedQualifiedColumn("foo", "i"),
+		},
+		plan.NewTableAlias("a", table),
+	)
+
+	result, err = f.Apply(nil, node)
+	require.Error(err)
+	require.True(analyzer.ErrTableNotFound.Is(err))
+
+	node = plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("b"),
+		},
+		plan.NewTableAlias("a", table),
+	)
+
+	_, err = f.Apply(nil, node)
+	require.Error(err)
+	require.True(analyzer.ErrColumnTableNotFound.Is(err))
+
+	node = plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("i"),
+		},
+		plan.NewCrossJoin(table, table2),
+	)
+
+	_, err = f.Apply(nil, node)
+	require.Error(err)
+	require.True(analyzer.ErrAmbiguousColumnName.Is(err))
 }
 
 func getRule(name string) analyzer.Rule {

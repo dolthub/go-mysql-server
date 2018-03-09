@@ -52,13 +52,13 @@ func (p *ShowTables) RowIter(session sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Transformable interface.
-func (p *ShowTables) TransformUp(f func(sql.Node) sql.Node) sql.Node {
+func (p *ShowTables) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
 	return f(NewShowTables(p.database))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (p *ShowTables) TransformExpressionsUp(f func(sql.Expression) sql.Expression) sql.Node {
-	return p
+func (p *ShowTables) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+	return p, nil
 }
 
 type showTablesIter struct {

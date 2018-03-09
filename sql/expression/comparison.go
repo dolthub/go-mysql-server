@@ -63,8 +63,18 @@ func (e Equals) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (e *Equals) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewEquals(e.Left.TransformUp(f), e.Right.TransformUp(f)))
+func (e *Equals) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	left, err := e.Left.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := e.Right.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewEquals(left, right))
 }
 
 // Name implements the Expression interface.
@@ -113,8 +123,18 @@ func (re Regexp) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (re *Regexp) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewRegexp(re.Left.TransformUp(f), re.Right.TransformUp(f)))
+func (re *Regexp) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	left, err := re.Left.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := re.Right.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewRegexp(left, right))
 }
 
 // Name implements the Expression interface.
@@ -155,8 +175,18 @@ func (gt GreaterThan) Eval(
 }
 
 // TransformUp implements the Expression interface.
-func (gt *GreaterThan) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewGreaterThan(gt.Left.TransformUp(f), gt.Right.TransformUp(f)))
+func (gt *GreaterThan) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	left, err := gt.Left.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := gt.Right.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewGreaterThan(left, right))
 }
 
 // LessThan is a comparison that checks an expression is less than another.
@@ -189,8 +219,18 @@ func (lt LessThan) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (lt *LessThan) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewLessThan(lt.Left.TransformUp(f), lt.Right.TransformUp(f)))
+func (lt *LessThan) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	left, err := lt.Left.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := lt.Right.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewLessThan(left, right))
 }
 
 // GreaterThanOrEqual is a comparison that checks an expression is greater or equal to
@@ -227,8 +267,18 @@ func (gte GreaterThanOrEqual) Eval(
 }
 
 // TransformUp implements the Expression interface.
-func (gte *GreaterThanOrEqual) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewGreaterThanOrEqual(gte.Left.TransformUp(f), gte.Right.TransformUp(f)))
+func (gte *GreaterThanOrEqual) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	left, err := gte.Left.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := gte.Right.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewGreaterThanOrEqual(left, right))
 }
 
 // LessThanOrEqual is a comparison that checks an expression is equal or lower than
@@ -265,6 +315,16 @@ func (lte LessThanOrEqual) Eval(
 }
 
 // TransformUp implements the Expression interface.
-func (lte *LessThanOrEqual) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewLessThanOrEqual(lte.Left.TransformUp(f), lte.Right.TransformUp(f)))
+func (lte *LessThanOrEqual) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	left, err := lte.Left.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := lte.Right.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewLessThanOrEqual(left, right))
 }

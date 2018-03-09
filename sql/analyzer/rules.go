@@ -1,6 +1,9 @@
 package analyzer
 
 import (
+	"strings"
+
+	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
@@ -9,59 +12,142 @@ import (
 // DefaultRules to apply when analyzing nodes.
 var DefaultRules = []Rule{
 	{"resolve_tables", resolveTables},
+	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
 	{"resolve_database", resolveDatabase},
 	{"resolve_star", resolveStar},
 	{"resolve_functions", resolveFunctions},
 }
 
-func resolveDatabase(a *Analyzer, n sql.Node) sql.Node {
+var (
+	// ErrColumnTableNotFound is returned when the column does not exist in a
+	// the table.
+	ErrColumnTableNotFound = errors.NewKind("column %q is not present in table %q")
+	// ErrAmbiguousColumnName is returned when there is a column reference that
+	// is present in more than one table.
+	ErrAmbiguousColumnName = errors.NewKind("ambiguous column name %q, it's present in all these tables: %v")
+	// ErrTableNotFound is returned when the table is not available from the
+	// current scope.
+	ErrTableNotFound = errors.NewKind("table not found in scope: %s")
+)
+
+func qualifyColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
+	tables := make(map[string]sql.Node)
+	tableAliases := make(map[string]string)
+	colIndex := make(map[string][]string)
+
+	indexCols := func(table string, schema sql.Schema) {
+		for _, col := range schema {
+			colIndex[col.Name] = append(colIndex[col.Name], table)
+		}
+	}
+
+	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.TableAlias:
+			switch t := n.Child.(type) {
+			case *plan.Project:
+				// it's a subquery, index it but return
+				tables[n.Name()] = n.Child
+				indexCols(n.Name(), n.Schema())
+				return n, nil
+			case sql.Table:
+				tableAliases[n.Name()] = t.Name()
+			default:
+				tables[n.Name()] = n.Child
+				indexCols(n.Name(), n.Schema())
+			}
+		case sql.Table:
+			tables[n.Name()] = n
+			indexCols(n.Name(), n.Schema())
+		}
+
+		return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
+			col, ok := e.(*expression.UnresolvedColumn)
+			if !ok {
+				return e, nil
+			}
+
+			col = expression.NewUnresolvedQualifiedColumn(col.Table(), col.Name())
+
+			if col.Table() == "" {
+				tables := colIndex[col.Name()]
+				switch len(tables) {
+				case 0:
+					return nil, ErrColumnTableNotFound.New(col.Table(), col.Name())
+				case 1:
+					col = expression.NewUnresolvedQualifiedColumn(
+						tables[0],
+						col.Name(),
+					)
+				default:
+					return nil, ErrAmbiguousColumnName.New(col.Name(), strings.Join(tables, ", "))
+				}
+			} else {
+				if real, ok := tableAliases[col.Table()]; ok {
+					col = expression.NewUnresolvedQualifiedColumn(
+						real,
+						col.Name(),
+					)
+				}
+
+				if _, ok := tables[col.Table()]; !ok {
+					return nil, ErrTableNotFound.New(col.Table())
+				}
+			}
+
+			return col, nil
+		})
+	})
+}
+
+func resolveDatabase(a *Analyzer, n sql.Node) (sql.Node, error) {
 	_, ok := n.(*plan.ShowTables)
 	if !ok {
-		return n
+		return n, nil
 	}
 
 	db, err := a.Catalog.Database(a.CurrentDatabase)
 	if err != nil {
-		return n
+		return n, nil
 	}
 
-	return plan.NewShowTables(db)
+	return plan.NewShowTables(db), nil
 }
 
-func resolveTables(a *Analyzer, n sql.Node) sql.Node {
-	return n.TransformUp(func(n sql.Node) sql.Node {
+func resolveTables(a *Analyzer, n sql.Node) (sql.Node, error) {
+	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		t, ok := n.(*plan.UnresolvedTable)
 		if !ok {
-			return n
+			return n, nil
 		}
 
 		rt, err := a.Catalog.Table(a.CurrentDatabase, t.Name)
 		if err != nil {
-			return n
+			return nil, err
 		}
 
-		return rt
+		return rt, nil
 	})
 }
 
-func resolveStar(a *Analyzer, n sql.Node) sql.Node {
-	return n.TransformUp(func(n sql.Node) sql.Node {
+func resolveStar(a *Analyzer, n sql.Node) (sql.Node, error) {
+	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		if n.Resolved() {
-			return n
+			return n, nil
 		}
 
 		p, ok := n.(*plan.Project)
 		if !ok {
-			return n
+			return n, nil
 		}
 
 		if len(p.Expressions) != 1 {
-			return n
+			return n, nil
 		}
 
 		if _, ok := p.Expressions[0].(*expression.Star); !ok {
-			return n
+			return n, nil
 		}
 
 		var exprs []sql.Expression
@@ -70,75 +156,88 @@ func resolveStar(a *Analyzer, n sql.Node) sql.Node {
 			exprs = append(exprs, gf)
 		}
 
-		return plan.NewProject(exprs, p.Child)
+		return plan.NewProject(exprs, p.Child), nil
 	})
 }
 
-func resolveColumns(a *Analyzer, n sql.Node) sql.Node {
-	return n.TransformUp(func(n sql.Node) sql.Node {
+type columnInfo struct {
+	idx      int
+	typ      sql.Type
+	name     string
+	nullable bool
+}
+
+func resolveColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
+	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		if n.Resolved() {
-			return n
+			return n, nil
 		}
 
 		if len(n.Children()) != 1 {
-			return n
+			return n, nil
 		}
 
 		child := n.Children()[0]
 		if !child.Resolved() {
-			return n
+			return n, nil
 		}
 
-		colMap := map[string]*expression.GetField{}
+		colMap := make(map[string]columnInfo)
 		for idx, child := range child.Schema() {
 			if _, ok := colMap[child.Name]; ok {
-				// There is no unambiguous resolution
-				return n
+				// TODO: There is no unambiguous resolution
+				return n, nil
 			}
 
-			colMap[child.Name] = expression.NewGetField(idx, child.Type, child.Name, child.Nullable)
+			colMap[child.Name] = columnInfo{idx, child.Type, child.Name, child.Nullable}
 		}
 
-		return n.TransformExpressionsUp(func(e sql.Expression) sql.Expression {
+		return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
 			uc, ok := e.(*expression.UnresolvedColumn)
 			if !ok {
-				return e
+				return e, nil
 			}
 
-			gf, ok := colMap[uc.Name()]
+			ci, ok := colMap[uc.Name()]
 			if !ok {
-				return e
+				return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
 			}
 
-			return gf
+			return expression.NewGetFieldWithTable(
+				ci.idx,
+				ci.typ,
+				uc.Table(),
+				ci.name,
+				ci.nullable,
+			), nil
 		})
 	})
 }
 
-func resolveFunctions(a *Analyzer, n sql.Node) sql.Node {
-	return n.TransformUp(func(n sql.Node) sql.Node {
+func resolveFunctions(a *Analyzer, n sql.Node) (sql.Node, error) {
+	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		if n.Resolved() {
-			return n
+			return n, nil
 		}
 
-		return n.TransformExpressionsUp(func(e sql.Expression) sql.Expression {
+		return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
 			uf, ok := e.(*expression.UnresolvedFunction)
 			if !ok {
-				return e
+				return e, nil
 			}
 
 			n := uf.Name()
 			f, err := a.Catalog.Function(n)
 			if err != nil {
-				return e
+				return nil, err
 			}
 
 			rf, err := f.Call(uf.Children...)
 			if err != nil {
-				return e
+				return nil, err
 			}
 
-			return rf
+			return rf, nil
 		})
 	})
 }

@@ -19,10 +19,10 @@ type Resolvable interface {
 // Transformable is a node which can be transformed.
 type Transformable interface {
 	// TransformUp transforms all nodes and returns the result of this transformation.
-	TransformUp(func(Node) Node) Node
+	TransformUp(func(Node) (Node, error)) (Node, error)
 	// TransformExpressionsUp transforms all expressions inside the node and all its
 	// children and returns a node with the result of the transformations.
-	TransformExpressionsUp(func(Expression) Expression) Node
+	TransformExpressionsUp(func(Expression) (Expression, error)) (Node, error)
 }
 
 // Expression is a combination of one or more SQL expressions.
@@ -38,7 +38,7 @@ type Expression interface {
 	Eval(Session, Row) (interface{}, error)
 	// TransformUp transforms the expression and all its children with the
 	// given transform function.
-	TransformUp(func(Expression) Expression) Expression
+	TransformUp(func(Expression) (Expression, error)) (Expression, error)
 }
 
 // Aggregation implements an aggregation expression, where an

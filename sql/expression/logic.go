@@ -50,11 +50,18 @@ func (a *And) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (a *And) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewAnd(
-		a.Left.TransformUp(f),
-		a.Right.TransformUp(f),
-	))
+func (a *And) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	left, err := a.Left.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := a.Right.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewAnd(left, right))
 }
 
 // Or checks whether one of the two given expressions is true.
@@ -101,9 +108,16 @@ func (o *Or) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (o *Or) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewOr(
-		o.Left.TransformUp(f),
-		o.Right.TransformUp(f),
-	))
+func (o *Or) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	left, err := o.Left.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := o.Right.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewOr(left, right))
 }

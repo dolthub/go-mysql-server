@@ -47,8 +47,12 @@ func (c *Count) Name() string {
 }
 
 // TransformUp implements the Expression interface.
-func (c *Count) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewCount(c.Child.TransformUp(f)))
+func (c *Count) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	child, err := c.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return f(NewCount(child))
 }
 
 // Update implements the Aggregation interface.
@@ -117,8 +121,12 @@ func (m *Min) IsNullable() bool {
 }
 
 // TransformUp implements the Transformable interface.
-func (m *Min) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewMin(m.Child.TransformUp(f)))
+func (m *Min) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	child, err := m.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return f(NewMin(child))
 }
 
 // NewBuffer creates a new buffer to compute the result.
@@ -190,8 +198,12 @@ func (m *Max) IsNullable() bool {
 }
 
 // TransformUp implements the Transformable interface.
-func (m *Max) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewMax(m.Child.TransformUp(f)))
+func (m *Max) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	child, err := m.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return f(NewMax(child))
 }
 
 // NewBuffer creates a new buffer to compute the result.
@@ -278,8 +290,12 @@ func (a *Avg) Eval(session sql.Session, buffer sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements AggregationExpression interface. (AggregationExpression[Expression]])
-func (a *Avg) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewAvg(a.Child.TransformUp(f)))
+func (a *Avg) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	child, err := a.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+	return f(NewAvg(child))
 }
 
 // NewBuffer implements AggregationExpression interface. (AggregationExpression)
