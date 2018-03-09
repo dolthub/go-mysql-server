@@ -17,6 +17,7 @@ var DefaultRules = []Rule{
 	{"resolve_database", resolveDatabase},
 	{"resolve_star", resolveStar},
 	{"resolve_functions", resolveFunctions},
+	{"optimize_distinct", optimizeDistinct},
 }
 
 var (
@@ -240,4 +241,22 @@ func resolveFunctions(a *Analyzer, n sql.Node) (sql.Node, error) {
 			return rf, nil
 		})
 	})
+}
+
+func optimizeDistinct(a *Analyzer, node sql.Node) (sql.Node, error) {
+	if node, ok := node.(*plan.Distinct); ok {
+		var isSorted bool
+		_, _ = node.TransformUp(func(node sql.Node) (sql.Node, error) {
+			if _, ok := node.(*plan.Sort); ok {
+				isSorted = true
+			}
+			return node, nil
+		})
+
+		if isSorted {
+			return plan.NewOrderedDistinct(node.Child), nil
+		}
+	}
+
+	return node, nil
 }
