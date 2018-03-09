@@ -11,7 +11,7 @@ import (
 func TestTable_Name(t *testing.T) {
 	require := require.New(t)
 	s := sql.Schema{
-		{"col1", sql.Text, nil, true},
+		{"col1", sql.Text, nil, true, ""},
 	}
 	table := NewTable("test", s)
 	require.Equal("test", table.Name())
@@ -22,7 +22,7 @@ func TestTable_Insert_RowIter(t *testing.T) {
 	session := sql.NewBaseSession(context.TODO())
 
 	s := sql.Schema{
-		{"col1", sql.Text, nil, true},
+		{"col1", sql.Text, nil, true, ""},
 	}
 
 	table := NewTable("test", s)

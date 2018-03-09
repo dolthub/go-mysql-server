@@ -1,4 +1,4 @@
-package analyzer_test
+package analyzer
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 
@@ -16,14 +15,14 @@ import (
 func TestAnalyzer_Analyze(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
-	table2 := mem.NewTable("mytable2", sql.Schema{{Name: "i2", Type: sql.Int32}})
+	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32, Source: "mytable"}})
+	table2 := mem.NewTable("mytable2", sql.Schema{{Name: "i2", Type: sql.Int32, Source: "mytable2"}})
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
-	a := analyzer.New(catalog)
+	a := New(catalog)
 	a.CurrentDatabase = "mydb"
 
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
@@ -191,14 +190,14 @@ func TestAnalyzer_Analyze_MaxIterations(t *testing.T) {
 	require := require.New(t)
 
 	catalog := &sql.Catalog{}
-	a := analyzer.New(catalog)
+	a := New(catalog)
 	a.CurrentDatabase = "mydb"
 
 	i := 0
-	a.Rules = []analyzer.Rule{{
+	a.Rules = []Rule{{
 		Name: "infinite",
-		Apply: func(a *analyzer.Analyzer, n sql.Node) (sql.Node, error) {
-			i += 1
+		Apply: func(a *Analyzer, n sql.Node) (sql.Node, error) {
+			i++
 			return plan.NewUnresolvedTable(fmt.Sprintf("table%d", i)), nil
 		},
 	}}
