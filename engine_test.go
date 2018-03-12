@@ -70,6 +70,36 @@ func TestQueries(t *testing.T) {
 	)
 
 	testQuery(t, e,
+		"SELECT MONTH('2007-12-11') FROM mytable",
+		[][]interface{}{{int32(12)}, {int32(12)}, {int32(12)}},
+	)
+
+	testQuery(t, e,
+		"SELECT DAY('2007-12-11') FROM mytable",
+		[][]interface{}{{int32(11)}, {int32(11)}, {int32(11)}},
+	)
+
+	testQuery(t, e,
+		"SELECT HOUR('2007-12-11 20:21:22') FROM mytable",
+		[][]interface{}{{int32(20)}, {int32(20)}, {int32(20)}},
+	)
+
+	testQuery(t, e,
+		"SELECT MINUTE('2007-12-11 20:21:22') FROM mytable",
+		[][]interface{}{{int32(21)}, {int32(21)}, {int32(21)}},
+	)
+
+	testQuery(t, e,
+		"SELECT SECOND('2007-12-11 20:21:22') FROM mytable",
+		[][]interface{}{{int32(22)}, {int32(22)}, {int32(22)}},
+	)
+
+	testQuery(t, e,
+		"SELECT DAYOFYEAR('2007-12-11 20:21:22') FROM mytable",
+		[][]interface{}{{int32(345)}, {int32(345)}, {int32(345)}},
+	)
+
+	testQuery(t, e,
 		"SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
 		[][]interface{}{{int64(1)}, {int64(2)}},
 	)

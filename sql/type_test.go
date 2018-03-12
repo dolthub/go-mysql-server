@@ -73,7 +73,7 @@ func TestType_Int64(t *testing.T) {
 func TestType_Timestamp(t *testing.T) {
 	require := require.New(t)
 
-	now := time.Now()
+	now := time.Now().UTC()
 	v, err := Timestamp.Convert(now)
 	require.Nil(err)
 	require.Equal(now, v)

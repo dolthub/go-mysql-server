@@ -49,6 +49,12 @@ var defaultFunctions = map[string]sql.Function{
 	"is_binary": sql.Function1(NewIsBinary),
 	"substring": sql.FunctionN(NewSubstring),
 	"year":      sql.Function1(NewYear),
+	"month":     sql.Function1(NewMonth),
+	"day":       sql.Function1(NewDay),
+	"hour":      sql.Function1(NewHour),
+	"minute":    sql.Function1(NewMinute),
+	"second":    sql.Function1(NewSecond),
+	"dayofyear": sql.Function1(NewDayOfYear),
 }
 
 // RegisterDefaults registers the aggregations in the catalog.

@@ -238,20 +238,20 @@ func (t timestampT) SQL(v interface{}) sqltypes.Value {
 func (t timestampT) Convert(v interface{}) (interface{}, error) {
 	switch value := v.(type) {
 	case time.Time:
-		return value, nil
+		return value.UTC(), nil
 	case string:
 		t, err := time.Parse(TimestampLayout, value)
 		if err != nil {
 			return nil, fmt.Errorf("value %q can't be converted to time.Time", v)
 		}
-		return t, nil
+		return t.UTC(), nil
 	default:
 		ts, err := Int64.Convert(v)
 		if err != nil {
 			return nil, ErrInvalidType.New(reflect.TypeOf(v))
 		}
 
-		return time.Unix(ts.(int64), 0), nil
+		return time.Unix(ts.(int64), 0).UTC(), nil
 	}
 }
 
