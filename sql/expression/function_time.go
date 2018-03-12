@@ -6,8 +6,8 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
-func getDatePart(u UnaryExpression, row sql.Row, f func(time.Time) int) (interface{}, error) {
-	val, err := u.Child.Eval(row)
+func getDatePart(session sql.Session, u UnaryExpression, row sql.Row, f func(time.Time) int) (interface{}, error) {
+	val, err := u.Child.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
@@ -44,13 +44,18 @@ func (y *Year) Name() string { return "year" }
 func (y *Year) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
-func (y *Year) Eval(row sql.Row) (interface{}, error) {
-	return getDatePart(y.UnaryExpression, row, (time.Time).Year)
+func (y *Year) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	return getDatePart(session, y.UnaryExpression, row, (time.Time).Year)
 }
 
 // TransformUp implements the Expression interface.
-func (y *Year) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewYear(y.Child.TransformUp(f)))
+func (y *Year) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	child, err := y.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewYear(child))
 }
 
 // Month is a function that returns the month of a date.
@@ -70,17 +75,22 @@ func (m *Month) Name() string { return "month" }
 func (m *Month) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
-func (m *Month) Eval(row sql.Row) (interface{}, error) {
+func (m *Month) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 	monthFunc := func(t time.Time) int {
 		return int(t.Month())
 	}
 
-	return getDatePart(m.UnaryExpression, row, monthFunc)
+	return getDatePart(session, m.UnaryExpression, row, monthFunc)
 }
 
 // TransformUp implements the Expression interface.
-func (m *Month) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewMonth(m.Child.TransformUp(f)))
+func (m *Month) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	child, err := m.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewMonth(child))
 }
 
 // Day is a function that returns the day of a date.
@@ -100,13 +110,18 @@ func (d *Day) Name() string { return "day" }
 func (d *Day) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
-func (d *Day) Eval(row sql.Row) (interface{}, error) {
-	return getDatePart(d.UnaryExpression, row, (time.Time).Day)
+func (d *Day) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	return getDatePart(session, d.UnaryExpression, row, (time.Time).Day)
 }
 
 // TransformUp implements the Expression interface.
-func (d *Day) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewDay(d.Child.TransformUp(f)))
+func (d *Day) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	child, err := d.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewDay(child))
 }
 
 // Hour is a function that returns the hour of a date.
@@ -126,13 +141,18 @@ func (h *Hour) Name() string { return "hour" }
 func (h *Hour) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
-func (h *Hour) Eval(row sql.Row) (interface{}, error) {
-	return getDatePart(h.UnaryExpression, row, (time.Time).Hour)
+func (h *Hour) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	return getDatePart(session, h.UnaryExpression, row, (time.Time).Hour)
 }
 
 // TransformUp implements the Expression interface.
-func (h *Hour) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewHour(h.Child.TransformUp(f)))
+func (h *Hour) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	child, err := h.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewHour(child))
 }
 
 // Minute is a function that returns the minute of a date.
@@ -152,13 +172,18 @@ func (m *Minute) Name() string { return "minute" }
 func (m *Minute) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
-func (m *Minute) Eval(row sql.Row) (interface{}, error) {
-	return getDatePart(m.UnaryExpression, row, (time.Time).Minute)
+func (m *Minute) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	return getDatePart(session, m.UnaryExpression, row, (time.Time).Minute)
 }
 
 // TransformUp implements the Expression interface.
-func (m *Minute) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewMinute(m.Child.TransformUp(f)))
+func (m *Minute) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	child, err := m.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewMinute(child))
 }
 
 // Second is a function that returns the second of a date.
@@ -178,13 +203,18 @@ func (s *Second) Name() string { return "second" }
 func (s *Second) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
-func (s *Second) Eval(row sql.Row) (interface{}, error) {
-	return getDatePart(s.UnaryExpression, row, (time.Time).Second)
+func (s *Second) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	return getDatePart(session, s.UnaryExpression, row, (time.Time).Second)
 }
 
 // TransformUp implements the Expression interface.
-func (s *Second) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewSecond(s.Child.TransformUp(f)))
+func (s *Second) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	child, err := s.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewSecond(child))
 }
 
 // DayOfYear is a function that returns the day of the year from a date.
@@ -204,11 +234,16 @@ func (d *DayOfYear) Name() string { return "dayofyear" }
 func (d *DayOfYear) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
-func (d *DayOfYear) Eval(row sql.Row) (interface{}, error) {
-	return getDatePart(d.UnaryExpression, row, (time.Time).YearDay)
+func (d *DayOfYear) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	return getDatePart(session, d.UnaryExpression, row, (time.Time).YearDay)
 }
 
 // TransformUp implements the Expression interface.
-func (d *DayOfYear) TransformUp(f func(sql.Expression) sql.Expression) sql.Expression {
-	return f(NewDayOfYear(d.Child.TransformUp(f)))
+func (d *DayOfYear) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	child, err := d.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewDayOfYear(child))
 }
