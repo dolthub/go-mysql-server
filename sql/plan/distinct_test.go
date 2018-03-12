@@ -51,6 +51,46 @@ func TestDistinct(t *testing.T) {
 	require.Equal([]string{"john", "jane", "martha"}, results)
 }
 
+func TestOrderedDistinct(t *testing.T) {
+	require := require.New(t)
+	session := sql.NewBaseSession(context.TODO())
+
+	childSchema := sql.Schema{
+		{Name: "name", Type: sql.Text, Nullable: true},
+		{Name: "email", Type: sql.Text, Nullable: true},
+	}
+	child := mem.NewTable("test", childSchema)
+	require.NoError(child.Insert(sql.NewRow("jane", "jane@doe.com")))
+	require.NoError(child.Insert(sql.NewRow("john", "john@doe.com")))
+	require.NoError(child.Insert(sql.NewRow("john", "johnx@doe.com")))
+	require.NoError(child.Insert(sql.NewRow("martha", "martha@doe.com")))
+	require.NoError(child.Insert(sql.NewRow("martha", "marthax@doe.com")))
+
+	p := NewProject([]sql.Expression{
+		expression.NewGetField(0, sql.Text, "name", true),
+	}, child)
+	d := NewOrderedDistinct(p)
+
+	iter, err := d.RowIter(session)
+	require.Nil(err)
+	require.NotNil(iter)
+
+	var results []string
+	for {
+		row, err := iter.Next()
+		if err == io.EOF {
+			break
+		}
+
+		require.NoError(err)
+		result, ok := row[0].(string)
+		require.True(ok, "first row column should be string, but is %T", row[0])
+		results = append(results, result)
+	}
+
+	require.Equal([]string{"jane", "john", "martha"}, results)
+}
+
 func BenchmarkDistinct(b *testing.B) {
 	require := require.New(b)
 	session := sql.NewBaseSession(context.TODO())
@@ -65,6 +105,39 @@ func BenchmarkDistinct(b *testing.B) {
 			expression.NewGetField(5, sql.Blob, "blobfield", false),
 		}, benchtable)
 		d := NewDistinct(p)
+
+		iter, err := d.RowIter(session)
+		require.Nil(err)
+		require.NotNil(iter)
+
+		var rows int
+		for {
+			_, err := iter.Next()
+			if err == io.EOF {
+				break
+			}
+
+			require.NoError(err)
+			rows++
+		}
+		require.Equal(100, rows)
+	}
+}
+
+func BenchmarkOrderedDistinct(b *testing.B) {
+	require := require.New(b)
+	session := sql.NewBaseSession(context.TODO())
+
+	for i := 0; i < b.N; i++ {
+		p := NewProject([]sql.Expression{
+			expression.NewGetField(0, sql.Text, "strfield", true),
+			expression.NewGetField(1, sql.Float64, "floatfield", true),
+			expression.NewGetField(2, sql.Boolean, "boolfield", false),
+			expression.NewGetField(3, sql.Int32, "intfield", false),
+			expression.NewGetField(4, sql.Int64, "bigintfield", false),
+			expression.NewGetField(5, sql.Blob, "blobfield", false),
+		}, benchtable)
+		d := NewOrderedDistinct(p)
 
 		iter, err := d.RowIter(session)
 		require.Nil(err)

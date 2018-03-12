@@ -185,6 +185,23 @@ func TestQualifyColumns(t *testing.T) {
 	require.True(analyzer.ErrAmbiguousColumnName.Is(err))
 }
 
+func TestOptimizeDistinct(t *testing.T) {
+	require := require.New(t)
+	notSorted := plan.NewDistinct(mem.NewTable("foo", nil))
+	sorted := plan.NewDistinct(plan.NewSort(nil, mem.NewTable("foo", nil)))
+
+	rule := getRule("optimize_distinct")
+
+	analyzedNotSorted, err := rule.Apply(nil, notSorted)
+	require.NoError(err)
+
+	analyzedSorted, err := rule.Apply(nil, sorted)
+	require.NoError(err)
+
+	require.Equal(notSorted, analyzedNotSorted)
+	require.Equal(plan.NewOrderedDistinct(sorted.Child), analyzedSorted)
+}
+
 func getRule(name string) analyzer.Rule {
 	for _, rule := range analyzer.DefaultRules {
 		if rule.Name == name {

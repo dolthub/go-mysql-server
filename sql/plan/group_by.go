@@ -10,9 +10,8 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 )
 
-var GroupByErr = errors.NewKind("group by aggregation '%v' not supported")
-
-var _ sql.Node = &GroupBy{}
+// ErrGroupBy is returned when the aggregation is not supported.
+var ErrGroupBy = errors.NewKind("group by aggregation '%v' not supported")
 
 // GroupBy groups the rows by some expressions.
 type GroupBy struct {
@@ -263,6 +262,6 @@ func updateBuffer(
 		buffers[idx] = row
 		return nil
 	default:
-		return GroupByErr.New(n.Name())
+		return ErrGroupBy.New(n.Name())
 	}
 }

@@ -19,6 +19,22 @@ func (r Row) Copy() Row {
 	return NewRow(r...)
 }
 
+// Equals checks whether two rows are equal given a schema.
+func (r Row) Equals(row Row, schema Schema) bool {
+	if len(row) != len(r) || len(row) != len(schema) {
+		return false
+	}
+
+	for i, colLeft := range r {
+		colRight := row[i]
+		if schema[i].Type.Compare(colLeft, colRight) != 0 {
+			return false
+		}
+	}
+
+	return true
+}
+
 // RowIter is an iterator that produces rows.
 type RowIter interface {
 	// Next retrieves the next row. It will return io.EOF if it's the last row.
