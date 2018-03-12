@@ -124,6 +124,40 @@ var (
 	Blob blobT
 )
 
+// MysqlTypeToType gets the column type using the mysql type
+func MysqlTypeToType(sql query.Type) (Type, error) {
+	switch sql {
+	case sqltypes.Null:
+		return Null, nil
+	case sqltypes.Int32:
+		return Int32, nil
+	case sqltypes.Int64:
+		return Int64, nil
+	case sqltypes.Uint32:
+		return Uint32, nil
+	case sqltypes.Uint64:
+		return Uint64, nil
+	case sqltypes.Float32:
+		return Float32, nil
+	case sqltypes.Float64:
+		return Float64, nil
+	case sqltypes.Timestamp:
+		return Timestamp, nil
+	case sqltypes.Date:
+		return Date, nil
+	case sqltypes.Text, sqltypes.VarChar:
+		return Text, nil
+	case sqltypes.Bit:
+		return Boolean, nil
+	case sqltypes.TypeJSON:
+		return JSON, nil
+	case sqltypes.Blob:
+		return Blob, nil
+	default:
+		return nil, fmt.Errorf("Type not supported: %s", sql)
+	}
+}
+
 type nullT struct{}
 
 // Type implements Type interface.

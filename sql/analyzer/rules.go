@@ -104,17 +104,26 @@ func qualifyColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 }
 
 func resolveDatabase(a *Analyzer, n sql.Node) (sql.Node, error) {
-	_, ok := n.(*plan.ShowTables)
-	if !ok {
-		return n, nil
+	// TODO Database should implement node,
+	// and ShowTables and CreateTable nodes should be binaryNodes
+	switch v := n.(type) {
+	case *plan.ShowTables:
+		db, err := a.Catalog.Database(a.CurrentDatabase)
+		if err != nil {
+			return n, err
+		}
+
+		v.Database = db
+	case *plan.CreateTable:
+		db, err := a.Catalog.Database(a.CurrentDatabase)
+		if err != nil {
+			return n, err
+		}
+
+		v.Database = db
 	}
 
-	db, err := a.Catalog.Database(a.CurrentDatabase)
-	if err != nil {
-		return n, nil
-	}
-
-	return plan.NewShowTables(db), nil
+	return n, nil
 }
 
 func resolveTables(a *Analyzer, n sql.Node) (sql.Node, error) {

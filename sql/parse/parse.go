@@ -49,6 +49,8 @@ func convert(session sql.Session, stmt sqlparser.Statement) (sql.Node, error) {
 		return convertSelect(session, n)
 	case *sqlparser.Insert:
 		return convertInsert(session, n)
+	case *sqlparser.DDL:
+		return convertDDL(n)
 	}
 }
 
@@ -113,6 +115,28 @@ func convertSelect(session sql.Session, s *sqlparser.Select) (sql.Node, error) {
 	return node, nil
 }
 
+func convertDDL(c *sqlparser.DDL) (sql.Node, error) {
+	switch c.Action {
+	case sqlparser.CreateStr:
+		return convertCreateTable(c)
+	default:
+		return nil, errUnsupported(c)
+	}
+}
+
+func convertCreateTable(c *sqlparser.DDL) (sql.Node, error) {
+	schema, err := columnDefinitionToSchema(c.TableSpec.Columns)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewCreateTable(
+		&sql.UnresolvedDatabase{},
+		c.NewName.Name.String(),
+		schema,
+	), nil
+}
+
 func convertInsert(session sql.Session, i *sqlparser.Insert) (sql.Node, error) {
 	if len(i.OnDup) > 0 {
 		return nil, errUnsupportedFeature("ON DUPLICATE KEY")
@@ -132,6 +156,27 @@ func convertInsert(session sql.Session, i *sqlparser.Insert) (sql.Node, error) {
 		src,
 		columnsToStrings(i.Columns),
 	), nil
+}
+
+func columnDefinitionToSchema(colDef []*sqlparser.ColumnDefinition) (sql.Schema, error) {
+	var schema sql.Schema
+	for _, cd := range colDef {
+		typ := cd.Type
+		internalTyp, err := sql.MysqlTypeToType(typ.SQLType())
+		if err != nil {
+			return nil, err
+		}
+
+		schema = append(schema, &sql.Column{
+			Nullable: !bool(typ.NotNull),
+			Type:     internalTyp,
+			Name:     cd.Name.String(),
+			// TODO
+			Default: nil,
+		})
+	}
+
+	return schema, nil
 }
 
 func columnsToStrings(cols sqlparser.Columns) []string {

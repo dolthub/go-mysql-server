@@ -45,16 +45,19 @@ func checkIfError(err error) {
 	}
 }
 
-func createTestDatabase() *mem.Database {
+func createTestDatabase() gitqlsql.Database {
 	db := mem.NewDatabase("test")
 	table := mem.NewTable("mytable", gitqlsql.Schema{
 		{Name: "name", Type: gitqlsql.Text, Source: "mytable"},
 		{Name: "email", Type: gitqlsql.Text, Source: "mytable"},
 	})
-	db.AddTable("mytable", table)
+	memDb, _ := db.(*mem.Database)
+
+	memDb.AddTable("mytable", table)
 	table.Insert(gitqlsql.NewRow("John Doe", "john@doe.com"))
 	table.Insert(gitqlsql.NewRow("John Doe", "johnalt@doe.com"))
 	table.Insert(gitqlsql.NewRow("Jane Doe", "jane@doe.com"))
 	table.Insert(gitqlsql.NewRow("Evil Bob", "evilbob@gmail.com"))
+
 	return db
 }
