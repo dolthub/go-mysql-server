@@ -201,6 +201,192 @@ func TestOptimizeDistinct(t *testing.T) {
 	require.Equal(plan.NewOrderedDistinct(sorted.Child), analyzedSorted)
 }
 
+func TestPushdownProjection(t *testing.T) {
+	require := require.New(t)
+	f := getRule("pushdown")
+
+	table := &pushdownProjectionTable{mem.NewTable("mytable", sql.Schema{
+		{Name: "i", Type: sql.Int32},
+		{Name: "f", Type: sql.Float64},
+		{Name: "t", Type: sql.Text},
+	})}
+
+	table2 := &pushdownProjectionTable{mem.NewTable("mytable2", sql.Schema{
+		{Name: "i2", Type: sql.Int32},
+		{Name: "f2", Type: sql.Float64},
+		{Name: "t2", Type: sql.Text},
+	})}
+
+	node := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+		},
+		plan.NewFilter(
+			expression.NewAnd(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+					expression.NewLiteral(3.14, sql.Float64),
+				),
+				expression.NewIsNull(
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+				),
+			),
+			plan.NewCrossJoin(table, table2),
+		),
+	)
+
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+		},
+		plan.NewFilter(
+			expression.NewAnd(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+					expression.NewLiteral(3.14, sql.Float64),
+				),
+				expression.NewIsNull(
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+				),
+			),
+			plan.NewCrossJoin(
+				plan.NewPushdownProjectionTable([]string{"i", "f"}, table),
+				plan.NewPushdownProjectionTable([]string{"i2"}, table2),
+			),
+		),
+	)
+
+	result, err := f.Apply(nil, node)
+	require.NoError(err)
+	require.Equal(expected, result)
+}
+
+func TestPushdownProjectionAndFilters(t *testing.T) {
+	require := require.New(t)
+	f := getRule("pushdown")
+
+	table := &pushdownProjectionAndFiltersTable{mem.NewTable("mytable", sql.Schema{
+		{Name: "i", Type: sql.Int32},
+		{Name: "f", Type: sql.Float64},
+		{Name: "t", Type: sql.Text},
+	})}
+
+	table2 := &pushdownProjectionAndFiltersTable{mem.NewTable("mytable2", sql.Schema{
+		{Name: "i2", Type: sql.Int32},
+		{Name: "f2", Type: sql.Float64},
+		{Name: "t2", Type: sql.Text},
+	})}
+
+	node := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+		},
+		plan.NewFilter(
+			expression.NewAnd(
+				expression.NewAnd(
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+						expression.NewLiteral(3.14, sql.Float64),
+					),
+					expression.NewGreaterThan(
+						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+						expression.NewLiteral(3., sql.Float64),
+					),
+				),
+				expression.NewIsNull(
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+				),
+			),
+			plan.NewCrossJoin(table, table2),
+		),
+	)
+
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+		},
+		plan.NewFilter(
+			expression.NewAnd(
+				expression.NewGreaterThan(
+					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+					expression.NewLiteral(3., sql.Float64),
+				),
+				expression.NewIsNull(
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+				),
+			),
+			plan.NewCrossJoin(
+				plan.NewPushdownProjectionAndFiltersTable(
+					[]sql.Expression{
+						expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+					},
+					[]sql.Expression{
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+					},
+					table,
+				),
+				plan.NewPushdownProjectionAndFiltersTable(
+					[]sql.Expression{
+						expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+					},
+					nil,
+					table2,
+				),
+			),
+		),
+	)
+
+	result, err := f.Apply(nil, node)
+	require.NoError(err)
+	require.Equal(expected, result)
+}
+
+type pushdownProjectionTable struct {
+	sql.Table
+}
+
+func (pushdownProjectionTable) WithProject(sql.Session, []string) (sql.RowIter, error) {
+	panic("not implemented")
+}
+
+func (t *pushdownProjectionTable) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+	table, err := f(t.Table)
+	if err != nil {
+		return nil, err
+	}
+	return f(&pushdownProjectionTable{table.(sql.Table)})
+}
+
+type pushdownProjectionAndFiltersTable struct {
+	sql.Table
+}
+
+func (pushdownProjectionAndFiltersTable) HandledFilters(filters []sql.Expression) []sql.Expression {
+	var handled []sql.Expression
+	for _, f := range filters {
+		if eq, ok := f.(*expression.Equals); ok {
+			handled = append(handled, eq)
+		}
+	}
+	return handled
+}
+
+func (pushdownProjectionAndFiltersTable) WithProjectAndFilters(_ sql.Session, cols, filters []sql.Expression) (sql.RowIter, error) {
+	panic("not implemented")
+}
+
+func (t *pushdownProjectionAndFiltersTable) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+	table, err := f(t.Table)
+	if err != nil {
+		return nil, err
+	}
+	return f(&pushdownProjectionAndFiltersTable{table.(sql.Table)})
+}
+
 func getRule(name string) Rule {
 	for _, rule := range DefaultRules {
 		if rule.Name == name {

@@ -75,6 +75,29 @@ type Table interface {
 	Node
 }
 
+// PushdownProjectionTable is a table that can produce a specific RowIter
+// that's more optimized given the columns that are projected.
+type PushdownProjectionTable interface {
+	Table
+	// WithProject replaces the RowIter method of the table and returns a new
+	// row iterator given the column names that are projected.
+	WithProject(session Session, colNames []string) (RowIter, error)
+}
+
+// PushdownProjectionAndFiltersTable is a table that can produce a specific
+// RowIter that's more optimized given the columns that are projected and
+// the filters for this table.
+type PushdownProjectionAndFiltersTable interface {
+	Table
+	// HandledFilters returns the subset of filters that can be handled by this
+	// table.
+	HandledFilters(filters []Expression) []Expression
+	// WithProjectAndFilters replaces the RowIter method of the table and
+	// return a new row iterator given the column names that are projected
+	// and the filters applied to this table.
+	WithProjectAndFilters(session Session, columns, filters []Expression) (RowIter, error)
+}
+
 // Inserter allow rows to be inserted in them.
 type Inserter interface {
 	// Insert the given row.
