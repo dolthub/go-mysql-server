@@ -39,4 +39,8 @@ func TestCreateTable(t *testing.T) {
 	require.True(ok)
 
 	require.Equal(newTable.Schema(), s)
+
+	for _, s := range newTable.Schema() {
+		require.Equal(newTable.Name(), s.Source)
+	}
 }

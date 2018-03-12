@@ -15,6 +15,10 @@ type CreateTable struct {
 
 // NewCreateTable creates a new CreateTable node
 func NewCreateTable(db sql.Database, name string, schema sql.Schema) *CreateTable {
+	for _, s := range schema {
+		s.Source = name
+	}
+
 	return &CreateTable{
 		Database: db,
 		name:     name,

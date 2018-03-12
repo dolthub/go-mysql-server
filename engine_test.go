@@ -205,12 +205,12 @@ func TestDDL(t *testing.T) {
 	require.True(ok)
 
 	s := sql.Schema{
-		{Name: "a", Type: sql.Int32, Nullable: true},
-		{Name: "b", Type: sql.Text, Nullable: true},
-		{Name: "c", Type: sql.Date, Nullable: true},
-		{Name: "d", Type: sql.Timestamp, Nullable: true},
-		{Name: "e", Type: sql.Text, Nullable: true},
-		{Name: "f", Type: sql.Blob},
+		{Name: "a", Type: sql.Int32, Nullable: true, Source: "t1"},
+		{Name: "b", Type: sql.Text, Nullable: true, Source: "t1"},
+		{Name: "c", Type: sql.Date, Nullable: true, Source: "t1"},
+		{Name: "d", Type: sql.Timestamp, Nullable: true, Source: "t1"},
+		{Name: "e", Type: sql.Text, Nullable: true, Source: "t1"},
+		{Name: "f", Type: sql.Blob, Source: "t1"},
 	}
 
 	require.Equal(s, testTable.Schema())
