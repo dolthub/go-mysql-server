@@ -132,6 +132,58 @@ func TestInsertInto(t *testing.T) {
 	)
 }
 
+func TestAmbiguousColumnResolution(t *testing.T) {
+	require := require.New(t)
+
+	table := mem.NewTable("foo", sql.Schema{
+		{Name: "a", Type: sql.Int64, Source: "foo"},
+		{Name: "b", Type: sql.Text, Source: "foo"},
+	})
+	require.Nil(table.Insert(sql.NewRow(int64(1), "foo")))
+	require.Nil(table.Insert(sql.NewRow(int64(2), "bar")))
+	require.Nil(table.Insert(sql.NewRow(int64(3), "baz")))
+
+	table2 := mem.NewTable("bar", sql.Schema{
+		{Name: "b", Type: sql.Text, Source: "bar"},
+		{Name: "c", Type: sql.Int64, Source: "bar"},
+	})
+	require.Nil(table2.Insert(sql.NewRow("qux", int64(3))))
+	require.Nil(table2.Insert(sql.NewRow("mux", int64(2))))
+	require.Nil(table2.Insert(sql.NewRow("pux", int64(1))))
+
+	db := mem.NewDatabase("mydb")
+	db.AddTable(table.Name(), table)
+	db.AddTable(table2.Name(), table2)
+
+	e := sqle.New()
+	e.AddDatabase(db)
+
+	q := `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c`
+	session := sql.NewBaseSession(context.TODO())
+
+	_, rows, err := e.Query(session, q)
+	require.NoError(err)
+
+	var rs [][]interface{}
+	for {
+		row, err := rows.Next()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(err)
+
+		rs = append(rs, row)
+	}
+
+	expected := [][]interface{}{
+		{int64(1), "pux", "foo"},
+		{int64(2), "mux", "bar"},
+		{int64(3), "qux", "baz"},
+	}
+
+	require.Equal(expected, rs)
+}
+
 func testQuery(t *testing.T, e *sqle.Engine, q string, r [][]interface{}) {
 	t.Run(q, func(t *testing.T) {
 		require := require.New(t)
@@ -159,16 +211,16 @@ func newEngine(t *testing.T) *sqle.Engine {
 	require := require.New(t)
 
 	table := mem.NewTable("mytable", sql.Schema{
-		{Name: "i", Type: sql.Int64},
-		{Name: "s", Type: sql.Text},
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
 	})
 	require.Nil(table.Insert(sql.NewRow(int64(1), "first row")))
 	require.Nil(table.Insert(sql.NewRow(int64(2), "second row")))
 	require.Nil(table.Insert(sql.NewRow(int64(3), "third row")))
 
 	table2 := mem.NewTable("othertable", sql.Schema{
-		{Name: "s2", Type: sql.Text},
-		{Name: "i2", Type: sql.Int64},
+		{Name: "s2", Type: sql.Text, Source: "othertable"},
+		{Name: "i2", Type: sql.Int64, Source: "othertable"},
 	})
 	require.Nil(table2.Insert(sql.NewRow("first", int64(3))))
 	require.Nil(table2.Insert(sql.NewRow("second", int64(2))))

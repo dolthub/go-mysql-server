@@ -1,38 +1,32 @@
-package analyzer_test
+package analyzer
 
 import (
 	"testing"
 
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 
 	"github.com/stretchr/testify/require"
 )
 
-func Test_resolved(t *testing.T) {
+func TestValidateResolved(t *testing.T) {
 	require := require.New(t)
 
-	vr := getValidationRule("validate_resolved")
-
-	require.Equal(vr.Name, "validate_resolved")
+	vr := getValidationRule(validateResolvedRule)
 
 	err := vr.Apply(dummyNode{true})
 	require.NoError(err)
 
 	err = vr.Apply(dummyNode{false})
 	require.Error(err)
-
 }
 
-func Test_orderBy(t *testing.T) {
+func TestValidateOrderBy(t *testing.T) {
 	require := require.New(t)
 
-	vr := getValidationRule("validate_order_by")
-
-	require.Equal(vr.Name, "validate_order_by")
+	vr := getValidationRule(validateOrderByRule)
 
 	err := vr.Apply(dummyNode{true})
 	require.NoError(err)
@@ -46,11 +40,10 @@ func Test_orderBy(t *testing.T) {
 	require.Error(err)
 }
 
-func Test_GroupBy(t *testing.T) {
+func TestValidateGroupBy(t *testing.T) {
 	require := require.New(t)
 
-	vr := getValidationRule("validate_group_by")
-	require.Equal(vr.Name, "validate_group_by")
+	vr := getValidationRule(validateGroupByRule)
 
 	err := vr.Apply(dummyNode{true})
 	require.NoError(err)
@@ -84,11 +77,10 @@ func Test_GroupBy(t *testing.T) {
 	require.NoError(err)
 }
 
-func Test_GroupBy_Err(t *testing.T) {
+func TestValidateGroupByErr(t *testing.T) {
 	require := require.New(t)
 
-	vr := getValidationRule("validate_group_by")
-	require.Equal(vr.Name, "validate_group_by")
+	vr := getValidationRule(validateGroupByRule)
 
 	err := vr.Apply(dummyNode{true})
 	require.NoError(err)
@@ -122,6 +114,71 @@ func Test_GroupBy_Err(t *testing.T) {
 	require.Error(err)
 }
 
+func TestValidateSchemaSource(t *testing.T) {
+	testCases := []struct {
+		name string
+		node sql.Node
+		ok   bool
+	}{
+		{
+			"some random node",
+			plan.NewProject(nil, nil),
+			true,
+		},
+		{
+			"table with valid schema",
+			mem.NewTable("mytable", sql.Schema{
+				{Name: "foo", Source: "mytable"},
+				{Name: "bar", Source: "mytable"},
+			}),
+			true,
+		},
+		{
+			"table with invalid schema",
+			mem.NewTable("mytable", sql.Schema{
+				{Name: "foo", Source: "mytable"},
+				{Name: "bar", Source: "something"},
+			}),
+			false,
+		},
+		{
+			"table alias with table",
+			plan.NewTableAlias("foo", mem.NewTable("mytable", sql.Schema{
+				{Name: "foo", Source: "mytable"},
+			})),
+			true,
+		},
+		{
+			"table alias with subquery",
+			plan.NewTableAlias(
+				"foo",
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, sql.Text, "bar", false),
+						expression.NewGetField(1, sql.Int64, "baz", false),
+					},
+					nil,
+				),
+			),
+			true,
+		},
+	}
+
+	rule := getValidationRule(validateSchemaSourceRule)
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			err := rule.Apply(tt.node)
+			if tt.ok {
+				require.NoError(err)
+			} else {
+				require.Error(err)
+				require.True(ErrValidationSchemaSource.Is(err))
+			}
+		})
+	}
+}
+
 type dummyNode struct{ resolved bool }
 
 func (n dummyNode) Resolved() bool                                               { return n.resolved }
@@ -135,8 +192,8 @@ func (dummyNode) TransformExpressionsUp(
 	return nil, nil
 }
 
-func getValidationRule(name string) analyzer.ValidationRule {
-	for _, rule := range analyzer.DefaultValidationRules {
+func getValidationRule(name string) ValidationRule {
+	for _, rule := range DefaultValidationRules {
 		if rule.Name == name {
 			return rule
 		}

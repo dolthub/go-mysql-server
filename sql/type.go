@@ -54,6 +54,8 @@ type Column struct {
 	// Nullable is true if the column can contain NULL values, or false
 	// otherwise.
 	Nullable bool
+	// Source is the name of the table this column came from.
+	Source string
 }
 
 // Check ensures the value is correct for this column.

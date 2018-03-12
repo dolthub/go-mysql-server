@@ -72,7 +72,7 @@ func qualifyColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 			col = expression.NewUnresolvedQualifiedColumn(col.Table(), col.Name())
 
 			if col.Table() == "" {
-				tables := colIndex[col.Name()]
+				tables := dedupStrings(colIndex[col.Name()])
 				switch len(tables) {
 				case 0:
 					return nil, ErrColumnTableNotFound.New(col.Table(), col.Name())
@@ -162,10 +162,8 @@ func resolveStar(a *Analyzer, n sql.Node) (sql.Node, error) {
 }
 
 type columnInfo struct {
-	idx      int
-	typ      sql.Type
-	name     string
-	nullable bool
+	idx int
+	col *sql.Column
 }
 
 func resolveColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -183,14 +181,9 @@ func resolveColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 			return n, nil
 		}
 
-		colMap := make(map[string]columnInfo)
-		for idx, child := range child.Schema() {
-			if _, ok := colMap[child.Name]; ok {
-				// TODO: There is no unambiguous resolution
-				return n, nil
-			}
-
-			colMap[child.Name] = columnInfo{idx, child.Type, child.Name, child.Nullable}
+		colMap := make(map[string][]columnInfo)
+		for idx, col := range child.Schema() {
+			colMap[col.Name] = append(colMap[col.Name], columnInfo{idx, col})
 		}
 
 		return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
@@ -199,17 +192,31 @@ func resolveColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 				return e, nil
 			}
 
-			ci, ok := colMap[uc.Name()]
+			columnsInfo, ok := colMap[uc.Name()]
 			if !ok {
+				return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
+			}
+
+			var ci columnInfo
+			var found bool
+			for _, c := range columnsInfo {
+				if c.col.Source == uc.Table() {
+					ci = c
+					found = true
+					break
+				}
+			}
+
+			if !found {
 				return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
 			}
 
 			return expression.NewGetFieldWithTable(
 				ci.idx,
-				ci.typ,
-				uc.Table(),
-				ci.name,
-				ci.nullable,
+				ci.col.Type,
+				ci.col.Source,
+				ci.col.Name,
+				ci.col.Nullable,
 			), nil
 		})
 	})
@@ -259,4 +266,16 @@ func optimizeDistinct(a *Analyzer, node sql.Node) (sql.Node, error) {
 	}
 
 	return node, nil
+}
+
+func dedupStrings(in []string) []string {
+	var seen = make(map[string]struct{})
+	var result []string
+	for _, s := range in {
+		if _, ok := seen[s]; !ok {
+			seen[s] = struct{}{}
+			result = append(result, s)
+		}
+	}
+	return result
 }

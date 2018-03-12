@@ -1,4 +1,4 @@
-package analyzer_test
+package analyzer
 
 import (
 	"testing"
@@ -7,7 +7,6 @@ import (
 
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
@@ -23,8 +22,8 @@ func TestResolveTables(t *testing.T) {
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 
-	a := analyzer.New(catalog)
-	a.Rules = []analyzer.Rule{f}
+	a := New(catalog)
+	a.Rules = []Rule{f}
 
 	a.CurrentDatabase = "mydb"
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
@@ -53,8 +52,8 @@ func TestResolveTablesNested(t *testing.T) {
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 
-	a := analyzer.New(catalog)
-	a.Rules = []analyzer.Rule{f}
+	a := New(catalog)
+	a.Rules = []Rule{f}
 	a.CurrentDatabase = "mydb"
 
 	notAnalyzed := plan.NewProject(
@@ -80,8 +79,8 @@ func TestResolveStar(t *testing.T) {
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 
-	a := analyzer.New(catalog)
-	a.Rules = []analyzer.Rule{f}
+	a := New(catalog)
+	a.Rules = []Rule{f}
 	a.CurrentDatabase = "mydb"
 
 	notAnalyzed := plan.NewProject(
@@ -160,7 +159,7 @@ func TestQualifyColumns(t *testing.T) {
 
 	result, err = f.Apply(nil, node)
 	require.Error(err)
-	require.True(analyzer.ErrTableNotFound.Is(err))
+	require.True(ErrTableNotFound.Is(err))
 
 	node = plan.NewProject(
 		[]sql.Expression{
@@ -171,7 +170,7 @@ func TestQualifyColumns(t *testing.T) {
 
 	_, err = f.Apply(nil, node)
 	require.Error(err)
-	require.True(analyzer.ErrColumnTableNotFound.Is(err))
+	require.True(ErrColumnTableNotFound.Is(err))
 
 	node = plan.NewProject(
 		[]sql.Expression{
@@ -182,7 +181,7 @@ func TestQualifyColumns(t *testing.T) {
 
 	_, err = f.Apply(nil, node)
 	require.Error(err)
-	require.True(analyzer.ErrAmbiguousColumnName.Is(err))
+	require.True(ErrAmbiguousColumnName.Is(err))
 }
 
 func TestOptimizeDistinct(t *testing.T) {
@@ -202,8 +201,8 @@ func TestOptimizeDistinct(t *testing.T) {
 	require.Equal(plan.NewOrderedDistinct(sorted.Child), analyzedSorted)
 }
 
-func getRule(name string) analyzer.Rule {
-	for _, rule := range analyzer.DefaultRules {
+func getRule(name string) Rule {
+	for _, rule := range DefaultRules {
 		if rule.Name == name {
 			return rule
 		}
