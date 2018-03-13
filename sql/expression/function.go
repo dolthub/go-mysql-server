@@ -181,7 +181,9 @@ func (s *Substring) Eval(
 }
 
 // IsNullable implements the Expression interface.
-func (s *Substring) IsNullable() bool { return true }
+func (s *Substring) IsNullable() bool {
+	return s.str.IsNullable() || s.start.IsNullable() || (s.len != nil && s.len.IsNullable())
+}
 
 // Name implements the Expression interface.
 func (Substring) Name() string {
@@ -189,7 +191,9 @@ func (Substring) Name() string {
 }
 
 // Resolved implements the Expression interface.
-func (Substring) Resolved() bool { return true }
+func (s Substring) Resolved() bool {
+	return s.start.Resolved() && s.str.Resolved() && (s.len == nil || s.len.Resolved())
+}
 
 // Type implements the Expression interface.
 func (Substring) Type() sql.Type { return sql.Text }
