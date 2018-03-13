@@ -24,7 +24,7 @@ var DefaultRules = []Rule{
 var (
 	// ErrColumnTableNotFound is returned when the column does not exist in a
 	// the table.
-	ErrColumnTableNotFound = errors.NewKind("column %q is not present in table %q")
+	ErrColumnTableNotFound = errors.NewKind("table %q does not have column %q")
 	// ErrAmbiguousColumnName is returned when there is a column reference that
 	// is present in more than one table.
 	ErrAmbiguousColumnName = errors.NewKind("ambiguous column name %q, it's present in all these tables: %v")
