@@ -182,18 +182,17 @@ func resolveColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 			return n, nil
 		}
 
-		if len(n.Children()) != 1 {
-			return n, nil
-		}
-
-		child := n.Children()[0]
-		if !child.Resolved() {
-			return n, nil
-		}
-
 		colMap := make(map[string][]columnInfo)
-		for idx, col := range child.Schema() {
-			colMap[col.Name] = append(colMap[col.Name], columnInfo{idx, col})
+		idx := 0
+		for _, child := range n.Children() {
+			if !child.Resolved() {
+				return n, nil
+			}
+
+			for _, col := range child.Schema() {
+				colMap[col.Name] = append(colMap[col.Name], columnInfo{idx, col})
+				idx++
+			}
 		}
 
 		return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {

@@ -59,7 +59,7 @@ func (a *Analyzer) Analyze(n sql.Node) (sql.Node, error) {
 	i := 0
 	for !reflect.DeepEqual(prev, cur) {
 		prev = cur
-		cur, err = a.analyzeOnce(n)
+		cur, err = a.analyzeOnce(cur)
 		if err != nil {
 			return nil, err
 		}

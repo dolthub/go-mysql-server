@@ -117,6 +117,16 @@ func TestQueries(t *testing.T) {
 			{int64(3), int64(3), "first"},
 		},
 	)
+
+	testQuery(t, e,
+		"SELECT s FROM mytable INNER JOIN othertable "+
+			"ON substring(s2, 1, 2) != '' AND i = i2",
+		[][]interface{}{
+			{"first row"},
+			{"second row"},
+			{"third row"},
+		},
+	)
 }
 
 func TestInsertInto(t *testing.T) {
