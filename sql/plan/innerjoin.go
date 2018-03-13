@@ -28,7 +28,7 @@ func (j *InnerJoin) Schema() sql.Schema {
 
 // Resolved implements the Resolvable interface.
 func (j *InnerJoin) Resolved() bool {
-	return j.Left.Resolved() && j.Right.Resolved()
+	return j.Left.Resolved() && j.Right.Resolved() && j.Cond.Resolved()
 }
 
 // RowIter implements the Node interface.
