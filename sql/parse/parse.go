@@ -258,28 +258,32 @@ func tableExprToTable(
 		return nil, errUnsupported(te)
 	case *sqlparser.AliasedTableExpr:
 		// TODO: Add support for qualifier.
-		var node sql.Node
 		switch e := t.Expr.(type) {
 		case sqlparser.TableName:
 			if !e.Qualifier.IsEmpty() {
 				return nil, errUnsupportedFeature("table name qualifiers")
 			}
-			node = plan.NewUnresolvedTable(e.Name.String())
+
+			node := plan.NewUnresolvedTable(e.Name.String())
+			if !t.As.IsEmpty() {
+				return plan.NewTableAlias(t.As.String(), node), nil
+			}
+
+			return node, nil
 		case *sqlparser.Subquery:
-			var err error
-			node, err = convert(session, e.Select)
+			node, err := convert(session, e.Select)
 			if err != nil {
 				return nil, err
 			}
+
+			if t.As.IsEmpty() {
+				return nil, errUnsupportedFeature("subquery without alias")
+			}
+
+			return plan.NewSubqueryAlias(t.As.String(), node), nil
 		default:
 			return nil, errUnsupported(te)
 		}
-
-		if !t.As.IsEmpty() {
-			node = plan.NewTableAlias(t.As.String(), node)
-		}
-
-		return node, nil
 	case *sqlparser.JoinTableExpr:
 		// TODO: add support for the rest of joins
 		if t.Join != sqlparser.JoinStr {

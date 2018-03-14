@@ -127,6 +127,19 @@ func TestQueries(t *testing.T) {
 			{"third row"},
 		},
 	)
+
+	testQuery(t, e,
+		`SELECT COUNT(*) as cnt, fi FROM (
+			SELECT tbl.s AS fi
+			FROM mytable tbl
+		) t
+		GROUP BY fi`,
+		[][]interface{}{
+			{int32(1), "first row"},
+			{int32(1), "second row"},
+			{int32(1), "third row"},
+		},
+	)
 }
 
 func TestInsertInto(t *testing.T) {

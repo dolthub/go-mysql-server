@@ -322,7 +322,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT * FROM (SELECT * FROM foo) AS bar`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
-		plan.NewTableAlias(
+		plan.NewSubqueryAlias(
 			"bar",
 			plan.NewProject(
 				[]sql.Expression{expression.NewStar()},

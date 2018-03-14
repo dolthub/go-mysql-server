@@ -19,9 +19,11 @@ type Resolvable interface {
 // Transformable is a node which can be transformed.
 type Transformable interface {
 	// TransformUp transforms all nodes and returns the result of this transformation.
+	// Transformation is not propagated to subqueries.
 	TransformUp(func(Node) (Node, error)) (Node, error)
 	// TransformExpressionsUp transforms all expressions inside the node and all its
 	// children and returns a node with the result of the transformations.
+	// Transformation is not propagated to subqueries.
 	TransformExpressionsUp(func(Expression) (Expression, error)) (Node, error)
 }
 

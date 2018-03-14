@@ -64,6 +64,7 @@ func TestValidateGroupBy(t *testing.T) {
 
 	p := plan.NewGroupBy(
 		[]sql.Expression{
+			expression.NewAlias(expression.NewGetField(0, sql.Text, "col1", true), "alias"),
 			expression.NewGetField(0, sql.Text, "col1", true),
 			expression.NewCount(expression.NewGetField(1, sql.Int64, "col2", true)),
 		},

@@ -3,6 +3,7 @@ package analyzer
 import (
 	errors "gopkg.in/src-d/go-errors.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
@@ -66,11 +67,14 @@ func validateGroupBy(n sql.Node) error {
 			return nil
 		}
 
-		validAggs := []string{}
+		var validAggs []string
 		for _, expr := range n.Grouping {
 			validAggs = append(validAggs, expr.Name())
 		}
 
+		// TODO: validate columns inside aggregations
+		// and allow any kind of expression that make use of the grouping
+		// columns.
 		for _, expr := range n.Aggregate {
 			if _, ok := expr.(sql.Aggregation); !ok {
 				if !isValidAgg(validAggs, expr) {
@@ -86,26 +90,23 @@ func validateGroupBy(n sql.Node) error {
 }
 
 func isValidAgg(validAggs []string, expr sql.Expression) bool {
-	for _, validAgg := range validAggs {
-		if validAgg == expr.Name() {
-			return true
-		}
+	switch expr := expr.(type) {
+	case sql.Aggregation:
+		return true
+	case *expression.Alias:
+		return isValidAgg(validAggs, expr.Child)
+	default:
+		return stringContains(validAggs, expr.Name())
 	}
-
-	return false
 }
 
 func validateSchemaSource(n sql.Node) error {
 	switch n := n.(type) {
 	case *plan.TableAlias:
-		// table aliases are expected to bypass this validation only if what's
-		// inside of them is not a subquery, because by definition, their
-		// schema will have a different name.
-		if _, ok := n.Child.(*plan.Project); !ok {
-			return nil
+		// table aliases should not be validated
+		if child, ok := n.Child.(sql.Table); ok {
+			return validateSchema(child)
 		}
-
-		return validateSchema(n)
 	case sql.Table:
 		return validateSchema(n)
 	}
@@ -120,4 +121,13 @@ func validateSchema(t sql.Table) error {
 		}
 	}
 	return nil
+}
+
+func stringContains(strs []string, target string) bool {
+	for _, s := range strs {
+		if s == target {
+			return true
+		}
+	}
+	return false
 }
