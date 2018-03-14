@@ -13,6 +13,9 @@ import (
 	"gopkg.in/src-d/go-vitess.v0/vt/proto/query"
 )
 
+// TODO parametrize
+const rowsBatch = 100
+
 // Handler is a connection handler for a SQLe engine.
 type Handler struct {
 	mu sync.Mutex
@@ -54,13 +57,28 @@ func (h *Handler) ComQuery(
 		return err
 	}
 
-	r := &sqltypes.Result{Fields: schemaToFields(schema)}
+	var r *sqltypes.Result
 	for {
+		if r == nil {
+			r = &sqltypes.Result{Fields: schemaToFields(schema)}
+		}
+
+		if r.RowsAffected == rowsBatch {
+			if err := callback(r); err != nil {
+				return err
+			}
+
+			r = nil
+
+			continue
+		}
+
 		row, err := rows.Next()
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
+
 			return err
 		}
 
@@ -68,7 +86,13 @@ func (h *Handler) ComQuery(
 		r.RowsAffected++
 	}
 
-	return callback(r)
+	if r != nil && r.RowsAffected != 0 {
+		if err := callback(r); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func rowToSQL(s sql.Schema, row sql.Row) []sqltypes.Value {
