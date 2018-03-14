@@ -2,9 +2,11 @@ package analyzer
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 
 	multierror "github.com/hashicorp/go-multierror"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -13,6 +15,7 @@ const maxAnalysisIterations = 1000
 // Analyzer analyzes nodes of the execution plan and applies rules and validations
 // to them.
 type Analyzer struct {
+	Debug bool
 	// Rules to apply.
 	Rules []Rule
 	// ValidationRules to apply.
@@ -39,18 +42,32 @@ type ValidationRule struct {
 	Apply func(sql.Node) error
 }
 
+const debugAnalyzerKey = "DEBUG_ANALYZER"
+
 // New returns a new Analyzer given a catalog.
 func New(catalog *sql.Catalog) *Analyzer {
+	_, debug := os.LookupEnv(debugAnalyzerKey)
 	return &Analyzer{
+		Debug:           debug,
 		Rules:           DefaultRules,
 		ValidationRules: DefaultValidationRules,
 		Catalog:         catalog,
 	}
 }
 
+// Log prints an INFO message to stdout with the given message and args
+// if the analyzer is in debug mode.
+func (a *Analyzer) Log(msg string, args ...interface{}) {
+	if a != nil && a.Debug {
+		logrus.Infof(msg, args...)
+	}
+}
+
 // Analyze the node and all its children.
 func (a *Analyzer) Analyze(n sql.Node) (sql.Node, error) {
 	prev := n
+
+	a.Log("starting analysis of node of type: %T", n)
 	cur, err := a.analyzeOnce(n)
 	if err != nil {
 		return nil, err
@@ -58,6 +75,7 @@ func (a *Analyzer) Analyze(n sql.Node) (sql.Node, error) {
 
 	i := 0
 	for !reflect.DeepEqual(prev, cur) {
+		a.Log("previous node does not match new node, analyzing again, iteration: %d", i)
 		prev = cur
 		cur, err = a.analyzeOnce(cur)
 		if err != nil {

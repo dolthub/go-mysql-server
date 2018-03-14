@@ -34,6 +34,7 @@ var (
 )
 
 func qualifyColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
+	a.Log("qualify columns")
 	tables := make(map[string]sql.Node)
 	tableAliases := make(map[string]string)
 	colIndex := make(map[string][]string)
@@ -45,6 +46,7 @@ func qualifyColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 	}
 
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+		a.Log("transforming node of type: %T", n)
 		switch n := n.(type) {
 		case *plan.TableAlias:
 			switch t := n.Child.(type) {
@@ -65,6 +67,7 @@ func qualifyColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 		}
 
 		return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
+			a.Log("transforming expression of type: %T", e)
 			col, ok := e.(*expression.UnresolvedColumn)
 			if !ok {
 				return e, nil
@@ -98,12 +101,15 @@ func qualifyColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 				}
 			}
 
+			a.Log("column %q was qualified with table %q", col.Name(), col.Table())
 			return col, nil
 		})
 	})
 }
 
 func resolveDatabase(a *Analyzer, n sql.Node) (sql.Node, error) {
+	a.Log("resolve database, node of type: %T", n)
+
 	// TODO Database should implement node,
 	// and ShowTables and CreateTable nodes should be binaryNodes
 	switch v := n.(type) {
@@ -127,7 +133,9 @@ func resolveDatabase(a *Analyzer, n sql.Node) (sql.Node, error) {
 }
 
 func resolveTables(a *Analyzer, n sql.Node) (sql.Node, error) {
+	a.Log("resolve table, node of type: %T", n)
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+		a.Log("transforming node of type: %T", n)
 		t, ok := n.(*plan.UnresolvedTable)
 		if !ok {
 			return n, nil
@@ -138,12 +146,16 @@ func resolveTables(a *Analyzer, n sql.Node) (sql.Node, error) {
 			return nil, err
 		}
 
+		a.Log("table resolved: %q", rt.Name())
+
 		return rt, nil
 	})
 }
 
 func resolveStar(a *Analyzer, n sql.Node) (sql.Node, error) {
+	a.Log("resolving star, node of type: %T", n)
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+		a.Log("transforming node of type: %T", n)
 		if n.Resolved() {
 			return n, nil
 		}
@@ -167,6 +179,8 @@ func resolveStar(a *Analyzer, n sql.Node) (sql.Node, error) {
 			exprs = append(exprs, gf)
 		}
 
+		a.Log("star replace with %d fields", len(exprs))
+
 		return plan.NewProject(exprs, p.Child), nil
 	})
 }
@@ -177,7 +191,9 @@ type columnInfo struct {
 }
 
 func resolveColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
+	a.Log("resolve columns, node of type: %T", n)
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+		a.Log("transforming node of type: %T", n)
 		if n.Resolved() {
 			return n, nil
 		}
@@ -196,6 +212,7 @@ func resolveColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 		}
 
 		return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
+			a.Log("transforming expression of type: %T", e)
 			uc, ok := e.(*expression.UnresolvedColumn)
 			if !ok {
 				return e, nil
@@ -220,6 +237,8 @@ func resolveColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 				return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
 			}
 
+			a.Log("column resolved to %q.%q", ci.col.Source, ci.col.Name)
+
 			return expression.NewGetFieldWithTable(
 				ci.idx,
 				ci.col.Type,
@@ -232,12 +251,15 @@ func resolveColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 }
 
 func resolveFunctions(a *Analyzer, n sql.Node) (sql.Node, error) {
+	a.Log("resolve functions, node of type %T", n)
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+		a.Log("transforming node of type: %T", n)
 		if n.Resolved() {
 			return n, nil
 		}
 
 		return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
+			a.Log("transforming expression of type: %T", e)
 			uf, ok := e.(*expression.UnresolvedFunction)
 			if !ok {
 				return e, nil
@@ -254,15 +276,19 @@ func resolveFunctions(a *Analyzer, n sql.Node) (sql.Node, error) {
 				return nil, err
 			}
 
+			a.Log("resolved function %q", n)
+
 			return rf, nil
 		})
 	})
 }
 
 func optimizeDistinct(a *Analyzer, node sql.Node) (sql.Node, error) {
+	a.Log("optimize distinct, node of type: %T", node)
 	if node, ok := node.(*plan.Distinct); ok {
 		var isSorted bool
 		_, _ = node.TransformUp(func(node sql.Node) (sql.Node, error) {
+			a.Log("checking for optimization in node of type: %T", node)
 			if _, ok := node.(*plan.Sort); ok {
 				isSorted = true
 			}
@@ -270,6 +296,7 @@ func optimizeDistinct(a *Analyzer, node sql.Node) (sql.Node, error) {
 		})
 
 		if isSorted {
+			a.Log("distinct optimized for ordered output")
 			return plan.NewOrderedDistinct(node.Child), nil
 		}
 	}
@@ -290,6 +317,7 @@ func dedupStrings(in []string) []string {
 }
 
 func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
+	a.Log("pushdown, node of type: %T", n)
 	var fieldsByTable = make(map[string][]string)
 	var exprsByTable = make(map[string][]sql.Expression)
 	type tableField struct {
@@ -312,16 +340,20 @@ func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 		return e, nil
 	})
 
+	a.Log("finding filters in node")
+
 	// then find all filters, also by table. Note that filters that mention
 	// more than one table will not be passed to neither.
 	filters := make(filters)
 	node, err := n.TransformUp(func(node sql.Node) (sql.Node, error) {
+		a.Log("transforming node of type: %T", node)
 		switch node := node.(type) {
 		case *plan.Filter:
 			filters.merge(exprToTableFilters(node.Expression))
 		case *plan.TableAlias:
 			// handle subqueries
 			if _, ok := node.Child.(*plan.Project); ok {
+				a.Log("subquery found")
 				subquery, err := pushdown(a, node.Child)
 				if err != nil {
 					return nil, err
@@ -337,11 +369,14 @@ func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 		return nil, err
 	}
 
+	a.Log("transforming nodes with pushdown of filters and projections")
+
 	// Now all nodes can be transformed. Since traversal of the tree is done
 	// from inner to outer the filters have to be processed first so they get
 	// to the tables.
 	var handledFilters []sql.Expression
 	return node.TransformUp(func(node sql.Node) (sql.Node, error) {
+		a.Log("transforming node of type: %T", node)
 		switch node := node.(type) {
 		case *plan.Filter:
 			unhandled := getUnhandledFilters(
@@ -352,12 +387,16 @@ func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 				return node.Child, nil
 			}
 
+			a.Log("handled filters removed from filter node")
+
 			return plan.NewFilter(filtersToExpression(unhandled), node.Child), nil
 		case sql.PushdownProjectionAndFiltersTable:
 			cols := exprsByTable[node.Name()]
 			tableFilters := filters[node.Name()]
 			handled := node.HandledFilters(tableFilters)
 			handledFilters = append(handledFilters, handled...)
+
+			a.Log("table %q transformed with pushdown of projection and filters", node.Name())
 
 			return plan.NewPushdownProjectionAndFiltersTable(
 				cols,
@@ -366,6 +405,7 @@ func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 			), nil
 		case sql.PushdownProjectionTable:
 			cols := fieldsByTable[node.Name()]
+			a.Log("table %q transformed with pushdown of projection", node.Name())
 			return plan.NewPushdownProjectionTable(cols, node), nil
 		}
 		return node, nil
