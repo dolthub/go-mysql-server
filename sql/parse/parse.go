@@ -522,6 +522,13 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		}
 
 		return expression.NewOr(lhs, rhs), nil
+	case *sqlparser.ConvertExpr:
+		expr, err := exprToExpression(v.Expr)
+		if err != nil {
+			return nil, err
+		}
+
+		return expression.NewConvert(expr, v.Type.Type), nil
 	case *sqlparser.RangeCond:
 		val, err := exprToExpression(v.Left)
 		if err != nil {

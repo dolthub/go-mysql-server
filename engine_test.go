@@ -141,6 +141,24 @@ func TestQueries(t *testing.T) {
 			{int32(1), "third row"},
 		},
 	)
+
+	testQuery(t, e,
+		"SELECT CAST(-3 AS UNSIGNED) FROM mytable",
+		[][]interface{}{
+			{uint64(18446744073709551613)},
+			{uint64(18446744073709551613)},
+			{uint64(18446744073709551613)},
+		},
+	)
+
+	testQuery(t, e,
+		"SELECT CONVERT(-3, UNSIGNED) FROM mytable",
+		[][]interface{}{
+			{uint64(18446744073709551613)},
+			{uint64(18446744073709551613)},
+			{uint64(18446744073709551613)},
+		},
+	)
 }
 
 func TestInsertInto(t *testing.T) {
