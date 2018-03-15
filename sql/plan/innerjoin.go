@@ -44,6 +44,7 @@ func (j *InnerJoin) RowIter(session sql.Session) (sql.RowIter, error) {
 		&crossJoinIterator{
 			l:  l,
 			rp: j.Right,
+			s:  session,
 		},
 	), nil
 }

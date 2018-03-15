@@ -49,5 +49,10 @@ func TestInnerJoinEmpty(t *testing.T) {
 
 	iter, err := j.RowIter(session)
 	require.NoError(err)
+
+	filter, ok := iter.(*FilterIter)
+	require.True(ok)
+	require.Equal(session, filter.session)
+
 	assertRows(t, iter, 0)
 }
