@@ -161,15 +161,6 @@ func TestQueries(t *testing.T) {
 	)
 
 	testQuery(t, e,
-		"SELECT '3' > 2 FROM mytable",
-		[][]interface{}{
-			{true},
-			{true},
-			{true},
-		},
-	)
-
-	testQuery(t, e,
 		"SELECT '3' > 2 FROM tabletest",
 		[][]interface{}{
 			{true},
@@ -198,6 +189,13 @@ func TestQueries(t *testing.T) {
 			{"a", int32(1)},
 			{"b", int32(2)},
 			{"c", int32(3)},
+		},
+	)
+
+	testQuery(t, e,
+		"SELECT * FROM tabletest WHERE text = 'a'",
+		[][]interface{}{
+			{"a", int32(1)},
 		},
 	)
 }
