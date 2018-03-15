@@ -20,7 +20,6 @@ var DefaultRules = []Rule{
 	{"resolve_functions", resolveFunctions},
 	{"pushdown", pushdown},
 	{"optimize_distinct", optimizeDistinct},
-	{"cast_compares", castCompares},
 }
 
 var (
@@ -423,72 +422,4 @@ func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 		}
 		return node, nil
 	})
-}
-
-func castCompares(a *Analyzer, n sql.Node) (sql.Node, error) {
-	return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
-		c, ok := e.(expression.Comparer)
-		if !ok {
-			return e, nil
-		}
-
-		left := c.Left()
-		right := c.Right()
-
-		if left.Type() == right.Type() {
-			return e, nil
-		}
-
-		if isNumber(left.Type()) || isNumber(right.Type()) {
-			left, right = convertExpressionsToNumber(left, right)
-			c.SetLeft(left)
-			c.SetRight(right)
-			return c.(sql.Expression), nil
-		}
-
-		left, right = convertExpressionsToText(left, right)
-		c.SetLeft(left)
-		c.SetRight(right)
-		return c.(sql.Expression), nil
-	})
-}
-
-func isNumber(t sql.Type) bool {
-	return isSigned(t) || isUnsigned(t) || isDecimal(t)
-}
-
-func isSigned(t sql.Type) bool {
-	return t == sql.Int32 || t == sql.Int64
-}
-
-func isUnsigned(t sql.Type) bool {
-	return t == sql.Uint32 || t == sql.Uint64
-}
-
-func isDecimal(t sql.Type) bool {
-	return t == sql.Float32 || t == sql.Float64
-}
-
-func convertExpressionsToNumber(left, right sql.Expression) (sql.Expression, sql.Expression) {
-	if isDecimal(left.Type()) || isDecimal(right.Type()) {
-		left = expression.NewConvert(left, expression.ConvertToDecimal)
-		right = expression.NewConvert(right, expression.ConvertToDecimal)
-		return left, right
-	}
-
-	if isSigned(left.Type()) || isSigned(right.Type()) {
-		left = expression.NewConvert(left, expression.ConvertToSigned)
-		right = expression.NewConvert(right, expression.ConvertToSigned)
-		return left, right
-	}
-
-	left = expression.NewConvert(left, expression.ConvertToUnsigned)
-	right = expression.NewConvert(right, expression.ConvertToUnsigned)
-	return left, right
-}
-
-func convertExpressionsToText(left, right sql.Expression) (sql.Expression, sql.Expression) {
-	left = expression.NewConvert(left, expression.ConvertToChar)
-	right = expression.NewConvert(right, expression.ConvertToChar)
-	return left, right
 }
