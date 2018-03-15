@@ -349,20 +349,20 @@ func (t dateT) SQL(v interface{}) sqltypes.Value {
 func (t dateT) Convert(v interface{}) (interface{}, error) {
 	switch value := v.(type) {
 	case time.Time:
-		return truncateDate(value), nil
+		return truncateDate(value).UTC(), nil
 	case string:
 		t, err := time.Parse(DateLayout, value)
 		if err != nil {
 			return nil, ErrConvertingToTime.Wrap(err, v)
 		}
-		return truncateDate(t), nil
+		return truncateDate(t).UTC(), nil
 	default:
 		ts, err := Int64.Convert(v)
 		if err != nil {
 			return nil, ErrInvalidType.New(reflect.TypeOf(v))
 		}
 
-		return truncateDate(time.Unix(ts.(int64), 0)), nil
+		return truncateDate(time.Unix(ts.(int64), 0)).UTC(), nil
 	}
 }
 
@@ -495,4 +495,29 @@ func MustConvert(t Type, v interface{}) interface{} {
 	}
 
 	return c
+}
+
+// IsNumber checks if t is a number type
+func IsNumber(t Type) bool {
+	return IsSigned(t) || IsUnsigned(t) || IsDecimal(t)
+}
+
+// IsSigned checks if t is a signed type.
+func IsSigned(t Type) bool {
+	return t == Int32 || t == Int64
+}
+
+// IsUnsigned checks if t is an unsigned type.
+func IsUnsigned(t Type) bool {
+	return t == Uint32 || t == Uint64
+}
+
+// IsDecimal checks if t is decimal type.
+func IsDecimal(t Type) bool {
+	return t == Float32 || t == Float64
+}
+
+// IsText checks if t is a text type.
+func IsText(t Type) bool {
+	return t == Text || t == Blob || t == JSON
 }
