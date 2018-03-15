@@ -4,32 +4,120 @@ import (
 	"fmt"
 	"regexp"
 
+	errors "gopkg.in/src-d/go-errors.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
 // Compararer implements a comparison expression.
 type Comparer interface {
 	sql.Expression
-	IsComparison() bool
+	Compare(session sql.Session, row sql.Row) (int, error)
 	Left() sql.Expression
 	Right() sql.Expression
-	SetLeft(sql.Expression)
-	SetRight(sql.Expression)
 }
+
+var ErrNilOperand = errors.NewKind("nil operand found in comparison")
 
 type comparison struct {
 	BinaryExpression
+	compareType sql.Type
 }
 
 func newComparison(left, right sql.Expression) comparison {
-	return comparison{BinaryExpression{left, right}}
+	return comparison{BinaryExpression{left, right}, nil}
 }
 
 // Compare the two given values using the types of the expressions in the comparison.
 // Since both types should be equal, it does not matter which type is used, but for
 // reference, the left type is always used.
-func (c *comparison) Compare(a, b interface{}) int {
-	return c.BinaryExpression.Left.Type().Compare(a, b)
+func (c *comparison) Compare(session sql.Session, row sql.Row) (int, error) {
+	left, right, err := c.evalLeftAndRight(session, row)
+	if err != nil {
+		return 0, err
+	}
+
+	if left == nil || right == nil {
+		return 0, ErrNilOperand.New()
+	}
+
+	if c.Left().Type() == c.Right().Type() {
+		return c.Left().Type().Compare(left, right), nil
+	}
+
+	left, right, err = c.castLeftAndRight(left, right)
+	if err != nil {
+		return 0, err
+	}
+
+	return c.compareType.Compare(left, right), nil
+}
+
+func (c *comparison) evalLeftAndRight(session sql.Session, row sql.Row) (interface{}, interface{}, error) {
+	left, err := c.Left().Eval(session, row)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	right, err := c.Right().Eval(session, row)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return left, right, nil
+}
+
+func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, interface{}, error) {
+	if sql.IsNumber(c.Left().Type()) || sql.IsNumber(c.Right().Type()) {
+		if sql.IsDecimal(c.Left().Type()) || sql.IsDecimal(c.Right().Type()) {
+			left, right, err := convertLeftAndRight(left, right, ConvertToDecimal)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			c.compareType = sql.Float64
+			return left, right, nil
+		}
+
+		if sql.IsSigned(c.Left().Type()) || sql.IsSigned(c.Right().Type()) {
+			left, right, err := convertLeftAndRight(left, right, ConvertToSigned)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			c.compareType = sql.Int64
+			return left, right, nil
+		}
+
+		left, right, err := convertLeftAndRight(left, right, ConvertToUnsigned)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		c.compareType = sql.Uint64
+		return left, right, nil
+	}
+
+	left, right, err := convertLeftAndRight(left, right, ConvertToChar)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	c.compareType = sql.Text
+	return left, right, nil
+}
+
+func convertLeftAndRight(left, right interface{}, convertTo string) (interface{}, interface{}, error) {
+	l, err := ConvertValue(left, convertTo)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	r, err := ConvertValue(right, convertTo)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return l, r, nil
 }
 
 // Type implements the Expression interface.
@@ -37,20 +125,11 @@ func (*comparison) Type() sql.Type {
 	return sql.Boolean
 }
 
-// IsComparison implements Comaparer interface
-func (*comparison) IsComparison() bool { return true }
-
-// Left implements Comaparer interface
+// Left implements Comparer interface
 func (c *comparison) Left() sql.Expression { return c.BinaryExpression.Left }
 
-// Right implements Comaparer interface
+// Right implements Comparer interface
 func (c *comparison) Right() sql.Expression { return c.BinaryExpression.Right }
-
-// Left implements Comaparer interface
-func (c *comparison) SetLeft(left sql.Expression) { c.BinaryExpression.Left = left }
-
-// Right implements Comaparer interface
-func (c *comparison) SetRight(right sql.Expression) { c.BinaryExpression.Right = right }
 
 // Equals is a comparison that checks an expression is equal to another.
 type Equals struct {
@@ -63,32 +142,27 @@ func NewEquals(left sql.Expression, right sql.Expression) *Equals {
 }
 
 // Eval implements the Expression interface.
-func (e Equals) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	a, err := e.BinaryExpression.Left.Eval(session, row)
+func (e *Equals) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	result, err := e.Compare(session, row)
 	if err != nil {
+		if ErrNilOperand.Is(err) {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 
-	b, err := e.BinaryExpression.Right.Eval(session, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if a == nil || b == nil {
-		return nil, nil
-	}
-
-	return e.Compare(a, b) == 0, nil
+	return result == 0, nil
 }
 
 // TransformUp implements the Expression interface.
 func (e *Equals) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
-	left, err := e.BinaryExpression.Left.TransformUp(f)
+	left, err := e.Left().TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
 
-	right, err := e.BinaryExpression.Right.TransformUp(f)
+	right, err := e.Right().TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
@@ -111,43 +185,59 @@ func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
 }
 
 // Eval implements the Expression interface.
-func (re Regexp) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	l, err := re.BinaryExpression.Left.Eval(session, row)
+func (re *Regexp) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	if sql.IsText(re.Left().Type()) && sql.IsText(re.Right().Type()) {
+		return re.compareRegexp(session, row)
+	}
+
+	result, err := re.Compare(session, row)
 	if err != nil {
+		if ErrNilOperand.Is(err) {
+			return nil, nil
+		}
+
 		return nil, err
 	}
-	r, err := re.BinaryExpression.Right.Eval(session, row)
+
+	return result == 0, nil
+}
+
+func (re *Regexp) compareRegexp(session sql.Session, row sql.Row) (interface{}, error) {
+	left, right, err := re.evalLeftAndRight(session, row)
 	if err != nil {
 		return nil, err
 	}
 
-	if l == nil || r == nil {
+	if left == nil || right == nil {
 		return nil, nil
 	}
 
-	sl, okl := l.(string)
-	sr, okr := r.(string)
-
-	if !okl || !okr {
-		return re.Compare(l, r) == 0, nil
+	left, err = sql.Text.Convert(left)
+	if err != nil {
+		return nil, err
 	}
 
-	reg, err := regexp.Compile(sr)
+	right, err = sql.Text.Convert(right)
+	if err != nil {
+		return nil, err
+	}
+
+	reg, err := regexp.Compile(right.(string))
 	if err != nil {
 		return false, err
 	}
 
-	return reg.MatchString(sl), nil
+	return reg.MatchString(left.(string)), nil
 }
 
 // TransformUp implements the Expression interface.
 func (re *Regexp) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
-	left, err := re.BinaryExpression.Left.TransformUp(f)
+	left, err := re.Left().TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
 
-	right, err := re.BinaryExpression.Right.TransformUp(f)
+	right, err := re.Right().TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +245,7 @@ func (re *Regexp) TransformUp(f func(sql.Expression) (sql.Expression, error)) (s
 	return f(NewRegexp(left, right))
 }
 
-func (re Regexp) String() string {
+func (re *Regexp) String() string {
 	return fmt.Sprintf("%s REGEXP %s", re.Left(), re.Right())
 }
 
@@ -170,35 +260,27 @@ func NewGreaterThan(left sql.Expression, right sql.Expression) *GreaterThan {
 }
 
 // Eval implements the Expression interface.
-func (gt GreaterThan) Eval(
-	session sql.Session,
-	row sql.Row,
-) (interface{}, error) {
-	a, err := gt.BinaryExpression.Left.Eval(session, row)
+func (gt *GreaterThan) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	result, err := gt.Compare(session, row)
 	if err != nil {
+		if ErrNilOperand.Is(err) {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 
-	b, err := gt.BinaryExpression.Right.Eval(session, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if a == nil || b == nil {
-		return nil, nil
-	}
-
-	return gt.Compare(a, b) == 1, nil
+	return result == 1, nil
 }
 
 // TransformUp implements the Expression interface.
 func (gt *GreaterThan) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
-	left, err := gt.BinaryExpression.Left.TransformUp(f)
+	left, err := gt.Left().TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
 
-	right, err := gt.BinaryExpression.Right.TransformUp(f)
+	right, err := gt.Right().TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +288,7 @@ func (gt *GreaterThan) TransformUp(f func(sql.Expression) (sql.Expression, error
 	return f(NewGreaterThan(left, right))
 }
 
-func (gt GreaterThan) String() string {
+func (gt *GreaterThan) String() string {
 	return fmt.Sprintf("%s > %s", gt.Left(), gt.Right())
 }
 
@@ -221,32 +303,27 @@ func NewLessThan(left sql.Expression, right sql.Expression) *LessThan {
 }
 
 // Eval implements the expression interface.
-func (lt LessThan) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	a, err := lt.BinaryExpression.Left.Eval(session, row)
+func (lt *LessThan) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	result, err := lt.Compare(session, row)
 	if err != nil {
+		if ErrNilOperand.Is(err) {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 
-	b, err := lt.BinaryExpression.Right.Eval(session, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if a == nil || b == nil {
-		return nil, nil
-	}
-
-	return lt.Compare(a, b) == -1, nil
+	return result == -1, nil
 }
 
 // TransformUp implements the Expression interface.
 func (lt *LessThan) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
-	left, err := lt.BinaryExpression.Left.TransformUp(f)
+	left, err := lt.Left().TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
 
-	right, err := lt.BinaryExpression.Right.TransformUp(f)
+	right, err := lt.Right().TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +331,7 @@ func (lt *LessThan) TransformUp(f func(sql.Expression) (sql.Expression, error)) 
 	return f(NewLessThan(left, right))
 }
 
-func (lt LessThan) String() string {
+func (lt *LessThan) String() string {
 	return fmt.Sprintf("%s < %s", lt.Left(), lt.Right())
 }
 
@@ -270,35 +347,27 @@ func NewGreaterThanOrEqual(left sql.Expression, right sql.Expression) *GreaterTh
 }
 
 // Eval implements the Expression interface.
-func (gte GreaterThanOrEqual) Eval(
-	session sql.Session,
-	row sql.Row,
-) (interface{}, error) {
-	a, err := gte.BinaryExpression.Left.Eval(session, row)
+func (gte *GreaterThanOrEqual) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	result, err := gte.Compare(session, row)
 	if err != nil {
+		if ErrNilOperand.Is(err) {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 
-	b, err := gte.BinaryExpression.Right.Eval(session, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if a == nil || b == nil {
-		return nil, nil
-	}
-
-	return gte.Compare(a, b) > -1, nil
+	return result > -1, nil
 }
 
 // TransformUp implements the Expression interface.
 func (gte *GreaterThanOrEqual) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
-	left, err := gte.BinaryExpression.Left.TransformUp(f)
+	left, err := gte.Left().TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
 
-	right, err := gte.BinaryExpression.Right.TransformUp(f)
+	right, err := gte.Right().TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +375,7 @@ func (gte *GreaterThanOrEqual) TransformUp(f func(sql.Expression) (sql.Expressio
 	return f(NewGreaterThanOrEqual(left, right))
 }
 
-func (gte GreaterThanOrEqual) String() string {
+func (gte *GreaterThanOrEqual) String() string {
 	return fmt.Sprintf("%s >= %s", gte.Left(), gte.Right())
 }
 
@@ -322,35 +391,27 @@ func NewLessThanOrEqual(left sql.Expression, right sql.Expression) *LessThanOrEq
 }
 
 // Eval implements the Expression interface.
-func (lte LessThanOrEqual) Eval(
-	session sql.Session,
-	row sql.Row,
-) (interface{}, error) {
-	a, err := lte.BinaryExpression.Left.Eval(session, row)
+func (lte *LessThanOrEqual) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	result, err := lte.Compare(session, row)
 	if err != nil {
+		if ErrNilOperand.Is(err) {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 
-	b, err := lte.BinaryExpression.Right.Eval(session, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if a == nil || b == nil {
-		return nil, nil
-	}
-
-	return lte.Compare(a, b) < 1, nil
+	return result < 1, nil
 }
 
 // TransformUp implements the Expression interface.
 func (lte *LessThanOrEqual) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
-	left, err := lte.BinaryExpression.Left.TransformUp(f)
+	left, err := lte.Left().TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
 
-	right, err := lte.BinaryExpression.Right.TransformUp(f)
+	right, err := lte.Right().TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
@@ -358,6 +419,6 @@ func (lte *LessThanOrEqual) TransformUp(f func(sql.Expression) (sql.Expression, 
 	return f(NewLessThanOrEqual(left, right))
 }
 
-func (lte LessThanOrEqual) String() string {
+func (lte *LessThanOrEqual) String() string {
 	return fmt.Sprintf("%s <= %s", lte.Left(), lte.Right())
 }
