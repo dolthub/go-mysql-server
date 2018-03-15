@@ -182,6 +182,7 @@ func TestValidateSchemaSource(t *testing.T) {
 
 type dummyNode struct{ resolved bool }
 
+func (n dummyNode) String() string                                               { return "dummynode" }
 func (n dummyNode) Resolved() bool                                               { return n.resolved }
 func (dummyNode) Schema() sql.Schema                                             { return sql.Schema{} }
 func (dummyNode) Children() []sql.Node                                           { return nil }

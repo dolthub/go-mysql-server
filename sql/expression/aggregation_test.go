@@ -9,11 +9,11 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
-func TestCount_Name(t *testing.T) {
+func TestCount_String(t *testing.T) {
 	require := require.New(t)
 
 	c := NewCount(NewLiteral("foo", sql.Text))
-	require.Equal("count(literal_TEXT)", c.Name())
+	require.Equal(`COUNT("foo")`, c.String())
 }
 
 func TestCount_Eval_1(t *testing.T) {
@@ -79,7 +79,7 @@ func TestMin_Name(t *testing.T) {
 	assert := require.New(t)
 
 	m := NewMin(NewGetField(0, sql.Int32, "field", true))
-	assert.Equal("min(field)", m.Name())
+	assert.Equal("MIN(field)", m.String())
 }
 
 func TestMin_Eval_Int32(t *testing.T) {
@@ -161,11 +161,10 @@ func TestMin_Eval_Empty(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(nil, v)
 }
-func TestMax_Name(t *testing.T) {
+func TestMax_String(t *testing.T) {
 	assert := require.New(t)
-
 	m := NewMax(NewGetField(0, sql.Int32, "field", true))
-	assert.Equal("max(field)", m.Name())
+	assert.Equal("MAX(field)", m.String())
 }
 
 func TestMax_Eval_Int32(t *testing.T) {
@@ -247,11 +246,11 @@ func TestMax_Eval_Empty(t *testing.T) {
 	assert.Equal(nil, v)
 }
 
-func TestAvg_Name(t *testing.T) {
+func TestAvg_String(t *testing.T) {
 	require := require.New(t)
 
-	avgNode := NewAvg(NewGetField(0, sql.Int32, "col1", true))
-	require.Equal("avg(col1)", avgNode.Name())
+	avg := NewAvg(NewGetField(0, sql.Int32, "col1", true))
+	require.Equal("AVG(col1)", avg.String())
 }
 
 func TestAvg_Eval_INT32(t *testing.T) {

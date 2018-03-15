@@ -27,8 +27,7 @@ func (Star) Type() sql.Type {
 	panic("star is just a placeholder node, but Type was called")
 }
 
-// Name implements the Expression interface.
-func (Star) Name() string {
+func (Star) String() string {
 	return "*"
 }
 

@@ -51,6 +51,13 @@ func (d *Distinct) TransformExpressionsUp(f func(sql.Expression) (sql.Expression
 	return NewDistinct(child), nil
 }
 
+func (d Distinct) String() string {
+	p := sql.NewTreePrinter()
+	_ = p.WriteNode("Distinct")
+	_ = p.WriteChildren(d.Child.String())
+	return p.String()
+}
+
 // distinctIter keeps track of the hashes of all rows that have been emitted.
 // It does not emit any rows whose hashes have been seen already.
 // TODO: come up with a way to use less memory than keeping all hashes in mem.
@@ -136,6 +143,13 @@ func (d *OrderedDistinct) TransformExpressionsUp(f func(sql.Expression) (sql.Exp
 		return nil, err
 	}
 	return NewOrderedDistinct(child), nil
+}
+
+func (d OrderedDistinct) String() string {
+	p := sql.NewTreePrinter()
+	_ = p.WriteNode("OrderedDistinct")
+	_ = p.WriteChildren(d.Child.String())
+	return p.String()
 }
 
 // orderedDistinctIter iterates the children iterator and skips all the

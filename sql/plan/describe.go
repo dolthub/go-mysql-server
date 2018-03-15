@@ -50,6 +50,10 @@ func (d *Describe) TransformExpressionsUp(f func(sql.Expression) (sql.Expression
 	return NewDescribe(child), nil
 }
 
+func (d Describe) String() string {
+	return "Describe"
+}
+
 type describeIter struct {
 	schema sql.Schema
 	i      int

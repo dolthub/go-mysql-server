@@ -75,6 +75,13 @@ func (p *CrossJoin) TransformExpressionsUp(f func(sql.Expression) (sql.Expressio
 	return NewCrossJoin(left, right), nil
 }
 
+func (p *CrossJoin) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("CrossJoin")
+	_ = pr.WriteChildren(p.Left.String(), p.Right.String())
+	return pr.String()
+}
+
 type rowIterProvider interface {
 	RowIter(sql.Session) (sql.RowIter, error)
 }

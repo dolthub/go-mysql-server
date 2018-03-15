@@ -3,6 +3,7 @@ package plan
 import (
 	"errors"
 	"io"
+	"strings"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
@@ -125,4 +126,11 @@ func (p *InsertInto) TransformExpressionsUp(f func(sql.Expression) (sql.Expressi
 	}
 
 	return NewInsertInto(left, right, p.Columns), nil
+}
+
+func (p InsertInto) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Insert(%s)", strings.Join(p.Columns, ", "))
+	_ = pr.WriteChildren(p.Left.String(), p.Right.String())
+	return pr.String()
 }

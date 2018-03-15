@@ -47,3 +47,10 @@ func (n *SubqueryAlias) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Nod
 func (n *SubqueryAlias) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
 	return n, nil
 }
+
+func (n SubqueryAlias) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("SubqueryAlias(%s)", n.name)
+	_ = pr.WriteChildren(n.Child.String())
+	return pr.String()
+}

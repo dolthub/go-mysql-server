@@ -1,12 +1,16 @@
 package expression
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import (
+	"fmt"
+
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+)
 
 // GetField is an expression to get the field of a table.
 type GetField struct {
 	table      string
 	fieldIndex int
-	fieldName  string
+	name       string
 	fieldType  sql.Type
 	nullable   bool
 }
@@ -22,20 +26,21 @@ func NewGetFieldWithTable(index int, fieldType sql.Type, table, fieldName string
 		table:      table,
 		fieldIndex: index,
 		fieldType:  fieldType,
-		fieldName:  fieldName,
+		name:       fieldName,
 		nullable:   nullable,
 	}
 }
 
 // Table returns the name of the field table.
-func (p GetField) Table() string {
-	return p.table
-}
+func (p GetField) Table() string { return p.table }
 
 // Resolved implements the Expression interface.
 func (p GetField) Resolved() bool {
 	return true
 }
+
+// Name implements the Nameable interface.
+func (p GetField) Name() string { return p.name }
 
 // IsNullable returns whether the field is nullable or not.
 func (p GetField) IsNullable() bool {
@@ -52,13 +57,15 @@ func (p GetField) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 	return row[p.fieldIndex], nil
 }
 
-// Name returns the name of the field.
-func (p GetField) Name() string {
-	return p.fieldName
-}
-
 // TransformUp implements the Expression interface.
 func (p *GetField) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
 	n := *p
 	return f(&n)
+}
+
+func (p GetField) String() string {
+	if p.table == "" {
+		return p.name
+	}
+	return fmt.Sprintf("%s.%s", p.table, p.name)
 }

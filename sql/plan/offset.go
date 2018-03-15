@@ -48,6 +48,13 @@ func (o *Offset) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, 
 	return NewOffset(o.n, child), nil
 }
 
+func (o Offset) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Offset(%d)", o.n)
+	_ = pr.WriteChildren(o.Child.String())
+	return pr.String()
+}
+
 type offsetIter struct {
 	skip      int64
 	childIter sql.RowIter

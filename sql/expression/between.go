@@ -1,6 +1,8 @@
 package expression
 
 import (
+	"fmt"
+
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -16,8 +18,9 @@ func NewBetween(val, lower, upper sql.Expression) *Between {
 	return &Between{val, lower, upper}
 }
 
-// Name implements the Expression interface.
-func (Between) Name() string { return "between" }
+func (b Between) String() string {
+	return fmt.Sprintf("BETWEEN(%s, %s, %s)", b.Val, b.Lower, b.Upper)
+}
 
 // Type implements the Expression interface.
 func (Between) Type() sql.Type { return sql.Boolean }

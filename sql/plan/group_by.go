@@ -43,13 +43,20 @@ func (p *GroupBy) Resolved() bool {
 
 // Schema implements the Node interface.
 func (p *GroupBy) Schema() sql.Schema {
-	s := sql.Schema{}
-	for _, e := range p.Aggregate {
-		s = append(s, &sql.Column{
-			Name:     e.Name(),
+	var s = make(sql.Schema, len(p.Aggregate))
+	for i, e := range p.Aggregate {
+		var name string
+		if n, ok := e.(sql.Nameable); ok {
+			name = n.Name()
+		} else {
+			name = e.String()
+		}
+
+		s[i] = &sql.Column{
+			Name:     name,
 			Type:     e.Type(),
 			Nullable: e.IsNullable(),
-		})
+		}
 	}
 
 	return s
@@ -91,6 +98,28 @@ func (p *GroupBy) TransformExpressionsUp(f func(sql.Expression) (sql.Expression,
 	}
 
 	return NewGroupBy(aggregate, grouping, child), nil
+}
+
+func (p GroupBy) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("GroupBy")
+
+	var aggregate = make([]string, len(p.Aggregate))
+	for i, agg := range p.Aggregate {
+		aggregate[i] = agg.String()
+	}
+
+	var grouping = make([]string, len(p.Grouping))
+	for i, g := range p.Grouping {
+		grouping[i] = g.String()
+	}
+
+	_ = pr.WriteChildren(
+		fmt.Sprintf("Aggregate(%s)", strings.Join(aggregate, ", ")),
+		fmt.Sprintf("Grouping(%s)", strings.Join(grouping, ", ")),
+		p.Child.String(),
+	)
+	return pr.String()
 }
 
 type groupByIter struct {
@@ -262,6 +291,6 @@ func updateBuffer(
 		buffers[idx] = row
 		return nil
 	default:
-		return ErrGroupBy.New(n.Name())
+		return ErrGroupBy.New(n.String())
 	}
 }

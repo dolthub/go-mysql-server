@@ -83,3 +83,10 @@ func (j *InnerJoin) TransformExpressionsUp(f func(sql.Expression) (sql.Expressio
 
 	return NewInnerJoin(left, right, cond), nil
 }
+
+func (j InnerJoin) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("InnerJoin(%s)", j.Cond)
+	_ = pr.WriteChildren(j.Left.String(), j.Right.String())
+	return pr.String()
+}

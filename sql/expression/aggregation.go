@@ -41,9 +41,8 @@ func (c *Count) Resolved() bool {
 	return c.Child.Resolved()
 }
 
-// Name returns the name of the node.
-func (c *Count) Name() string {
-	return fmt.Sprintf("count(%s)", c.Child.Name())
+func (c Count) String() string {
+	return fmt.Sprintf("COUNT(%s)", c.Child)
 }
 
 // TransformUp implements the Expression interface.
@@ -110,9 +109,8 @@ func (m *Min) Type() sql.Type {
 	return m.Child.Type()
 }
 
-// Name returns the name of the node.
-func (m *Min) Name() string {
-	return fmt.Sprintf("min(%s)", m.Child.Name())
+func (m Min) String() string {
+	return fmt.Sprintf("MIN(%s)", m.Child)
 }
 
 // IsNullable returns whether the return value can be null.
@@ -187,9 +185,8 @@ func (m *Max) Type() sql.Type {
 	return m.Child.Type()
 }
 
-// Name returns the name of the node.
-func (m *Max) Name() string {
-	return fmt.Sprintf("max(%s)", m.Child.Name())
+func (m Max) String() string {
+	return fmt.Sprintf("MAX(%s)", m.Child)
 }
 
 // IsNullable returns whether the return value can be null.
@@ -253,9 +250,8 @@ func NewAvg(e sql.Expression) *Avg {
 	return &Avg{UnaryExpression{e}}
 }
 
-// Name implements Nameable interface.
-func (a *Avg) Name() string {
-	return fmt.Sprintf("avg(%s)", a.Child.Name())
+func (a Avg) String() string {
+	return fmt.Sprintf("AVG(%s)", a.Child)
 }
 
 // Resolved implements AggregationExpression interface. (AggregationExpression[Expression[Resolvable]]])

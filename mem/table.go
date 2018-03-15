@@ -38,7 +38,7 @@ func (t *Table) Schema() sql.Schema {
 
 // Children implements the Node interface.
 func (t *Table) Children() []sql.Node {
-	return []sql.Node{}
+	return nil
 }
 
 // RowIter implements the Node interface.
@@ -71,4 +71,20 @@ func (t *Table) Insert(row sql.Row) error {
 
 	t.data = append(t.data, row.Copy())
 	return nil
+}
+
+func (t Table) String() string {
+	p := sql.NewTreePrinter()
+	_ = p.WriteNode("Table(%s)", t.name)
+	var schema = make([]string, len(t.schema))
+	for i, col := range t.schema {
+		schema[i] = fmt.Sprintf(
+			"Column(%s, %s, nullable=%v)",
+			col.Name,
+			col.Type.Type().String(),
+			col.Nullable,
+		)
+	}
+	_ = p.WriteChildren(schema...)
+	return p.String()
 }
