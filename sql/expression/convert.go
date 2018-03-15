@@ -72,7 +72,7 @@ func (c *Convert) Name() string {
 
 // TransformUp implements the Expression interface.
 func (c *Convert) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
-	child, err := c.UnaryExpression.Child.TransformUp(f)
+	child, err := c.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (c *Convert) TransformUp(f func(sql.Expression) (sql.Expression, error)) (s
 
 // Eval implements the Expression interface.
 func (c *Convert) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	val, err := c.UnaryExpression.Child.Eval(session, row)
+	val, err := c.Child.Eval(session, row)
 	if err != nil {
 		return nil, err
 	}
@@ -91,36 +91,52 @@ func (c *Convert) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	switch c.castToType {
+	casted, err := ConvertValue(val, c.castToType)
+	if err != nil {
+		return nil, ErrConvertExpression.Wrap(err, c.Name(), c.castToType)
+	}
+
+	return casted, nil
+}
+
+// ConvetValue cast the value of val to castTo throw the Convert expression rules.
+func ConvertValue(val interface{}, castTo string) (interface{}, error) {
+	switch castTo {
 	case ConvertToBinary:
-		s, err := cast.ToStringE(val)
+		s, err := sql.Text.Convert(val)
 		if err != nil {
-			return nil, ErrConvertExpression.Wrap(err, c.Name(), c.castToType)
+			return nil, err
 		}
 
-		return []byte(s), nil
+		b, err := sql.Blob.Convert(s)
+		if err != nil {
+			return nil, err
+		}
+
+		return b, nil
 	case ConvertToChar, ConvertToNChar:
-		s, err := cast.ToStringE(val)
+		s, err := sql.Text.Convert(val)
 		if err != nil {
-			return nil, ErrConvertExpression.Wrap(err, c.Name(), c.castToType)
+			return nil, err
 		}
 
-		return s, err
+		return s, nil
 	case ConvertToDate, ConvertToDatetime:
-		switch date := val.(type) {
-		case string:
-			t, err := time.Parse(sql.TimestampLayout, date)
-			if err != nil {
-				t, err = time.Parse(sql.DateLayout, date)
-				if err != nil {
-					return nil, nil
-				}
-			}
-
-			return t.UTC(), nil
-		default:
+		_, isTime := val.(time.Time)
+		_, isString := val.(string)
+		if !(isTime || isString) {
 			return nil, nil
 		}
+
+		d, err := sql.Timestamp.Convert(val)
+		if err != nil {
+			d, err = sql.Date.Convert(val)
+			if err != nil {
+				return nil, nil
+			}
+		}
+
+		return d, nil
 	case ConvertToDecimal:
 		d, err := cast.ToFloat64E(val)
 		if err != nil {
@@ -131,31 +147,32 @@ func (c *Convert) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 	case ConvertToJSON:
 		s, err := cast.ToStringE(val)
 		if err != nil {
-			return nil, ErrConvertExpression.Wrap(err, c.Name(), c.castToType)
+			return nil, err
 		}
 
 		var jsn interface{}
 		err = json.Unmarshal([]byte(s), &jsn)
 		if err != nil {
-			return nil, ErrConvertExpression.Wrap(err, c.Name(), c.castToType)
+			return nil, err
 		}
 
 		return []byte(s), nil
 	case ConvertToSigned:
-		num, err := cast.ToInt64E(val)
+		num, err := sql.Int64.Convert(val)
 		if err != nil {
 			return int64(0), nil
 		}
+
 		return num, nil
 	case ConvertToUnsigned:
-		num, err := cast.ToUint64E(val)
+		num, err := sql.Uint64.Convert(val)
 		if err != nil {
 			num = handleUnsignedErrors(err, val)
 		}
 
 		return num, nil
 	default:
-		return nil, ErrConvertExpression.New(c.Name(), c.castToType)
+		return nil, nil
 	}
 }
 
