@@ -11,6 +11,101 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
+func TestResolveSubqueries(t *testing.T) {
+	require := require.New(t)
+
+	table1 := mem.NewTable("foo", sql.Schema{{Name: "a", Type: sql.Int64, Source: "foo"}})
+	table2 := mem.NewTable("bar", sql.Schema{{Name: "b", Type: sql.Int64, Source: "bar"}})
+	table3 := mem.NewTable("baz", sql.Schema{{Name: "c", Type: sql.Int64, Source: "baz"}})
+	db := mem.NewDatabase("mydb")
+	memDb, ok := db.(*mem.Database)
+	require.True(ok)
+
+	memDb.AddTable("foo", table1)
+	memDb.AddTable("bar", table2)
+	memDb.AddTable("baz", table3)
+
+	catalog := &sql.Catalog{Databases: []sql.Database{db}}
+	a := New(catalog)
+	a.CurrentDatabase = "mydb"
+
+	// SELECT * FROM
+	// 	(SELECT a FROM foo) t1,
+	// 	(SELECT b FROM (SELECT b FROM bar) t2alias) t2,
+	//  baz
+	node := plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewCrossJoin(
+			plan.NewCrossJoin(
+				plan.NewSubqueryAlias(
+					"t1",
+					plan.NewProject(
+						[]sql.Expression{expression.NewUnresolvedColumn("a")},
+						plan.NewUnresolvedTable("foo"),
+					),
+				),
+				plan.NewSubqueryAlias(
+					"t2",
+					plan.NewProject(
+						[]sql.Expression{expression.NewUnresolvedColumn("b")},
+						plan.NewSubqueryAlias(
+							"t2alias",
+							plan.NewProject(
+								[]sql.Expression{expression.NewUnresolvedColumn("b")},
+								plan.NewUnresolvedTable("bar"),
+							),
+						),
+					),
+				),
+			),
+			plan.NewUnresolvedTable("baz"),
+		),
+	)
+
+	subquery := plan.NewSubqueryAlias(
+		"t2alias",
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewGetFieldWithTable(0, sql.Int64, "bar", "b", false),
+			},
+			table2,
+		),
+	)
+	_ = subquery.Schema()
+
+	expected := plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewCrossJoin(
+			plan.NewCrossJoin(
+				plan.NewSubqueryAlias(
+					"t1",
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+						},
+						table1,
+					),
+				),
+				plan.NewSubqueryAlias(
+					"t2",
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewGetFieldWithTable(0, sql.Int64, "t2alias", "b", false),
+						},
+						subquery,
+					),
+				),
+			),
+			plan.NewUnresolvedTable("baz"),
+		),
+	)
+
+	result, err := resolveSubqueries(a, node)
+	require.NoError(err)
+
+	require.Equal(expected, result)
+}
+
 func TestResolveTables(t *testing.T) {
 	require := require.New(t)
 
@@ -191,6 +286,42 @@ func TestQualifyColumns(t *testing.T) {
 	_, err = f.Apply(nil, node)
 	require.Error(err)
 	require.True(ErrAmbiguousColumnName.Is(err))
+
+	subquery := plan.NewSubqueryAlias(
+		"b",
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+			},
+			table,
+		),
+	)
+	// preload schema
+	_ = subquery.Schema()
+
+	node = plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedQualifiedColumn("a", "i"),
+		},
+		plan.NewCrossJoin(
+			plan.NewTableAlias("a", table),
+			subquery,
+		),
+	)
+
+	expected = plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+		},
+		plan.NewCrossJoin(
+			plan.NewTableAlias("a", table),
+			subquery,
+		),
+	)
+
+	result, err = f.Apply(nil, node)
+	require.NoError(err)
+	require.Equal(expected, result)
 }
 
 func TestOptimizeDistinct(t *testing.T) {

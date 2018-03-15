@@ -1,12 +1,13 @@
 package plan
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import (
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+)
 
 // TableAlias is a node that acts as a table with a given name.
 type TableAlias struct {
 	*UnaryNode
-	name   string
-	schema sql.Schema
+	name string
 }
 
 // NewTableAlias returns a new Table alias node.
@@ -17,26 +18,6 @@ func NewTableAlias(name string, node sql.Node) *TableAlias {
 // Name implements the Nameable interface.
 func (t *TableAlias) Name() string {
 	return t.name
-}
-
-// Schema implements the Node interface.
-func (t *TableAlias) Schema() sql.Schema {
-	if t.schema == nil {
-		// only add the name to it if it's a subquery what is being aliased
-		if _, ok := t.Child.(*Project); ok {
-			schema := t.Child.Schema()
-			t.schema = make(sql.Schema, len(schema))
-			for i, col := range schema {
-				c := *col
-				c.Source = t.Name()
-				t.schema[i] = &c
-			}
-		} else {
-			t.schema = t.Child.Schema()
-		}
-	}
-
-	return t.schema
 }
 
 // TransformUp implements the Transformable interface.

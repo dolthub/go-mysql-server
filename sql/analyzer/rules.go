@@ -11,6 +11,7 @@ import (
 
 // DefaultRules to apply when analyzing nodes.
 var DefaultRules = []Rule{
+	{"resolve_subqueries", resolveSubqueries},
 	{"resolve_tables", resolveTables},
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
@@ -33,6 +34,23 @@ var (
 	ErrTableNotFound = errors.NewKind("table not found in scope: %s")
 )
 
+func resolveSubqueries(a *Analyzer, n sql.Node) (sql.Node, error) {
+	a.Log("resolving subqueries")
+	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.SubqueryAlias:
+			a.Log("found subquery %q with child of type %T", n.Name(), n.Child)
+			child, err := a.Analyze(n.Child)
+			if err != nil {
+				return nil, err
+			}
+			return plan.NewSubqueryAlias(n.Name(), child), nil
+		default:
+			return n, nil
+		}
+	})
+}
+
 func qualifyColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 	a.Log("qualify columns")
 	tables := make(map[string]sql.Node)
@@ -50,11 +68,6 @@ func qualifyColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.TableAlias:
 			switch t := n.Child.(type) {
-			case *plan.Project:
-				// it's a subquery, index it but return
-				tables[n.Name()] = n.Child
-				indexCols(n.Name(), n.Schema())
-				return n, nil
 			case sql.Table:
 				tableAliases[n.Name()] = t.Name()
 			default:
@@ -136,6 +149,10 @@ func resolveTables(a *Analyzer, n sql.Node) (sql.Node, error) {
 	a.Log("resolve table, node of type: %T", n)
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
+		if n.Resolved() {
+			return n, nil
+		}
+
 		t, ok := n.(*plan.UnresolvedTable)
 		if !ok {
 			return n, nil
@@ -213,6 +230,10 @@ func resolveColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 
 		return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
 			a.Log("transforming expression of type: %T", e)
+			if n.Resolved() {
+				return e, nil
+			}
+
 			uc, ok := e.(*expression.UnresolvedColumn)
 			if !ok {
 				return e, nil
@@ -260,6 +281,10 @@ func resolveFunctions(a *Analyzer, n sql.Node) (sql.Node, error) {
 
 		return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
 			a.Log("transforming expression of type: %T", e)
+			if e.Resolved() {
+				return e, nil
+			}
+
 			uf, ok := e.(*expression.UnresolvedFunction)
 			if !ok {
 				return e, nil
@@ -350,16 +375,6 @@ func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 		switch node := node.(type) {
 		case *plan.Filter:
 			filters.merge(exprToTableFilters(node.Expression))
-		case *plan.TableAlias:
-			// handle subqueries
-			if _, ok := node.Child.(*plan.Project); ok {
-				a.Log("subquery found")
-				subquery, err := pushdown(a, node.Child)
-				if err != nil {
-					return nil, err
-				}
-				return plan.NewTableAlias(node.Name(), subquery), nil
-			}
 		}
 
 		return node, nil
