@@ -141,6 +141,63 @@ func TestQueries(t *testing.T) {
 			{int32(1), "third row"},
 		},
 	)
+
+	testQuery(t, e,
+		"SELECT CAST(-3 AS UNSIGNED) FROM mytable",
+		[][]interface{}{
+			{uint64(18446744073709551613)},
+			{uint64(18446744073709551613)},
+			{uint64(18446744073709551613)},
+		},
+	)
+
+	testQuery(t, e,
+		"SELECT CONVERT(-3, UNSIGNED) FROM mytable",
+		[][]interface{}{
+			{uint64(18446744073709551613)},
+			{uint64(18446744073709551613)},
+			{uint64(18446744073709551613)},
+		},
+	)
+
+	testQuery(t, e,
+		"SELECT '3' > 2 FROM tabletest",
+		[][]interface{}{
+			{true},
+			{true},
+			{true},
+		},
+	)
+
+	testQuery(t, e,
+		"SELECT text > 2 FROM tabletest",
+		[][]interface{}{
+			{false},
+			{false},
+			{false},
+		},
+	)
+
+	testQuery(t, e,
+		"SELECT * FROM tabletest WHERE text > 0",
+		nil,
+	)
+
+	testQuery(t, e,
+		"SELECT * FROM tabletest WHERE text = 0",
+		[][]interface{}{
+			{"a", int32(1)},
+			{"b", int32(2)},
+			{"c", int32(3)},
+		},
+	)
+
+	testQuery(t, e,
+		"SELECT * FROM tabletest WHERE text = 'a'",
+		[][]interface{}{
+			{"a", int32(1)},
+		},
+	)
 }
 
 func TestInsertInto(t *testing.T) {
@@ -282,12 +339,21 @@ func newEngine(t *testing.T) *sqle.Engine {
 	require.Nil(table2.Insert(sql.NewRow("second", int64(2))))
 	require.Nil(table2.Insert(sql.NewRow("third", int64(1))))
 
+	table3 := mem.NewTable("tabletest", sql.Schema{
+		{Name: "text", Type: sql.Text, Source: "tabletest"},
+		{Name: "number", Type: sql.Int32, Source: "tabletest"},
+	})
+	require.Nil(table3.Insert(sql.NewRow("a", int32(1))))
+	require.Nil(table3.Insert(sql.NewRow("b", int32(2))))
+	require.Nil(table3.Insert(sql.NewRow("c", int32(3))))
+
 	db := mem.NewDatabase("mydb")
 	memDb, ok := db.(*mem.Database)
 	require.True(ok)
 
 	memDb.AddTable(table.Name(), table)
 	memDb.AddTable(table2.Name(), table2)
+	memDb.AddTable(table3.Name(), table3)
 
 	e := sqle.New()
 	e.AddDatabase(db)

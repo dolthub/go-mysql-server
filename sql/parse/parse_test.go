@@ -371,6 +371,12 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("foo"),
 	),
+	`SELECT CAST(-3 AS UNSIGNED) FROM foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewConvert(expression.NewLiteral(int64(-3), sql.Int64), expression.ConvertToUnsigned),
+		},
+		plan.NewUnresolvedTable("foo"),
+	),
 }
 
 func TestParse(t *testing.T) {
