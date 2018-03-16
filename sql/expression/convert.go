@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/cast"
-	errors "gopkg.in/src-d/go-errors.v0"
+	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -91,7 +91,7 @@ func (c *Convert) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	casted, err := ConvertValue(val, c.castToType)
+	casted, err := convertValue(val, c.castToType)
 	if err != nil {
 		return nil, ErrConvertExpression.Wrap(err, c.Name(), c.castToType)
 	}
@@ -99,8 +99,7 @@ func (c *Convert) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 	return casted, nil
 }
 
-// ConvetValue cast the value of val to castTo throw the Convert expression rules.
-func ConvertValue(val interface{}, castTo string) (interface{}, error) {
+func convertValue(val interface{}, castTo string) (interface{}, error) {
 	switch castTo {
 	case ConvertToBinary:
 		s, err := sql.Text.Convert(val)

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	errors "gopkg.in/src-d/go-errors.v0"
+	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -16,6 +16,7 @@ type Comparer interface {
 	Right() sql.Expression
 }
 
+// ErrNilOperand ir returned if some or both of the comparison's operands is nil.
 var ErrNilOperand = errors.NewKind("nil operand found in comparison")
 
 type comparison struct {
@@ -107,12 +108,12 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 }
 
 func convertLeftAndRight(left, right interface{}, convertTo string) (interface{}, interface{}, error) {
-	l, err := ConvertValue(left, convertTo)
+	l, err := convertValue(left, convertTo)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	r, err := ConvertValue(right, convertTo)
+	r, err := convertValue(right, convertTo)
 	if err != nil {
 		return nil, nil, err
 	}
