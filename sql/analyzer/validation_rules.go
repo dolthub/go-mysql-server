@@ -133,13 +133,13 @@ func validateProjectTuples(n sql.Node) error {
 	case *plan.Project:
 		for i, e := range n.Expressions {
 			if sql.IsTuple(e.Type()) {
-				return ErrProjectTuple.New(i+1, sql.TupleElems(e.Type()))
+				return ErrProjectTuple.New(i+1, sql.NumColumns(e.Type()))
 			}
 		}
 	case *plan.GroupBy:
 		for i, e := range n.Aggregate {
 			if sql.IsTuple(e.Type()) {
-				return ErrProjectTuple.New(i+1, sql.TupleElems(e.Type()))
+				return ErrProjectTuple.New(i+1, sql.NumColumns(e.Type()))
 			}
 		}
 	}

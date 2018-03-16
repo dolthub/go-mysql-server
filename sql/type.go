@@ -600,8 +600,9 @@ func IsTuple(t Type) bool {
 	return ok && len(v) > 1
 }
 
-// TupleElems returns the number of elements in a tuple type.
-func TupleElems(t Type) int {
+// NumColumns returns the number of columns in a type. This is one for all
+// types, except tuples.
+func NumColumns(t Type) int {
 	v, ok := t.(tupleT)
 	if !ok {
 		return 1

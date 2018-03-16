@@ -453,6 +453,32 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("foo"),
 	),
+	`SELECT * FROM foo WHERE 1 IN ('1', 2)`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			expression.NewIn(
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewTuple(
+					expression.NewLiteral("1", sql.Text),
+					expression.NewLiteral(int64(2), sql.Int64),
+				),
+			),
+			plan.NewUnresolvedTable("foo"),
+		),
+	),
+	`SELECT * FROM foo WHERE 1 NOT IN ('1', 2)`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			expression.NewNotIn(
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewTuple(
+					expression.NewLiteral("1", sql.Text),
+					expression.NewLiteral(int64(2), sql.Int64),
+				),
+			),
+			plan.NewUnresolvedTable("foo"),
+		),
+	),
 }
 
 func TestParse(t *testing.T) {

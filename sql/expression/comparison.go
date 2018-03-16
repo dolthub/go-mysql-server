@@ -8,7 +8,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
-// Compararer implements a comparison expression.
+// Comparer implements a comparison expression.
 type Comparer interface {
 	sql.Expression
 	Compare(session sql.Session, row sql.Row) (int, error)
@@ -422,4 +422,179 @@ func (lte *LessThanOrEqual) TransformUp(f func(sql.Expression) (sql.Expression, 
 
 func (lte *LessThanOrEqual) String() string {
 	return fmt.Sprintf("%s <= %s", lte.Left(), lte.Right())
+}
+
+var (
+	// ErrUnsupportedInOperand is returned when there is an invalid righthand
+	// operand in an IN operator.
+	ErrUnsupportedInOperand = errors.NewKind("right operand in IN operation must be tuple, but is %T")
+	// ErrInvalidOperandColumns is returned when the columns in the left operand
+	// and the elements of the right operand don't match.
+	ErrInvalidOperandColumns = errors.NewKind("operand should have %d columns, but has %d")
+)
+
+// In is a comparison that checks an expression is inside a list of expressions.
+type In struct {
+	comparison
+}
+
+// NewIn creates a In expression.
+func NewIn(left sql.Expression, right sql.Expression) *In {
+	return &In{newComparison(left, right)}
+}
+
+// Eval implements the Expression interface.
+func (in *In) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	typ := in.Left().Type()
+	leftElems := sql.NumColumns(typ)
+	left, err := in.Left().Eval(session, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if left == nil {
+		return nil, err
+	}
+
+	left, err = typ.Convert(left)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: support subqueries
+	switch right := in.Right().(type) {
+	case Tuple:
+		for _, el := range right {
+			if sql.NumColumns(el.Type()) != leftElems {
+				return nil, ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(el.Type()))
+			}
+		}
+
+		for _, el := range right {
+			right, err := el.Eval(session, row)
+			if err != nil {
+				return nil, err
+			}
+
+			right, err = typ.Convert(right)
+			if err != nil {
+				return nil, err
+			}
+
+			cmp, err := typ.Compare(left, right)
+			if err != nil {
+				return nil, err
+			}
+
+			if cmp == 0 {
+				return true, nil
+			}
+		}
+
+		return false, nil
+	default:
+		return nil, ErrUnsupportedInOperand.New(right)
+	}
+}
+
+// TransformUp implements the Expression interface.
+func (in *In) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	left, err := in.Left().TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := in.Right().TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewIn(left, right))
+}
+
+func (in *In) String() string {
+	return fmt.Sprintf("%s IN %s", in.Left(), in.Right())
+}
+
+// NotIn is a comparison that checks an expression is not inside a list of expressions.
+type NotIn struct {
+	comparison
+}
+
+// NewNotIn creates a In expression.
+func NewNotIn(left sql.Expression, right sql.Expression) *NotIn {
+	return &NotIn{newComparison(left, right)}
+}
+
+// Eval implements the Expression interface.
+func (in *NotIn) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+	typ := in.Left().Type()
+	leftElems := sql.NumColumns(typ)
+	left, err := in.Left().Eval(session, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if left == nil {
+		return nil, err
+	}
+
+	left, err = typ.Convert(left)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: support subqueries
+	switch right := in.Right().(type) {
+	case Tuple:
+		for _, el := range right {
+			if sql.NumColumns(el.Type()) != leftElems {
+				return nil, ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(el.Type()))
+			}
+		}
+
+		for _, el := range right {
+			right, err := el.Eval(session, row)
+			if err != nil {
+				return nil, err
+			}
+
+			right, err = typ.Convert(right)
+			if err != nil {
+				return nil, err
+			}
+
+			cmp, err := typ.Compare(left, right)
+			if err != nil {
+				return nil, err
+			}
+
+			if cmp == 0 {
+				return false, nil
+			}
+		}
+
+		return true, nil
+	default:
+		return nil, ErrUnsupportedInOperand.New(right)
+	}
+}
+
+// TransformUp implements the Expression interface.
+func (in *NotIn) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+	left, err := in.Left().TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := in.Right().TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewNotIn(left, right))
+}
+
+func (in *NotIn) String() string {
+	return fmt.Sprintf("%s NOT IN %s", in.Left(), in.Right())
 }

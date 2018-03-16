@@ -3,6 +3,7 @@ package expression
 import (
 	"testing"
 
+	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 
 	"github.com/stretchr/testify/require"
@@ -90,7 +91,7 @@ var likeComparisonCases = map[sql.Type]map[int][][]interface{}{
 	},
 }
 
-func TestComparisons_Equals(t *testing.T) {
+func TestEquals(t *testing.T) {
 	require := require.New(t)
 	for resultType, cmpCase := range comparisonCases {
 		get0 := NewGetField(0, resultType, "col1", true)
@@ -117,7 +118,7 @@ func TestComparisons_Equals(t *testing.T) {
 	}
 }
 
-func TestComparisons_LessThan(t *testing.T) {
+func TestLessThan(t *testing.T) {
 	require := require.New(t)
 	for resultType, cmpCase := range comparisonCases {
 		get0 := NewGetField(0, resultType, "col1", true)
@@ -144,7 +145,7 @@ func TestComparisons_LessThan(t *testing.T) {
 	}
 }
 
-func TestComparisons_GreaterThan(t *testing.T) {
+func TestGreaterThan(t *testing.T) {
 	require := require.New(t)
 	for resultType, cmpCase := range comparisonCases {
 		get0 := NewGetField(0, resultType, "col1", true)
@@ -171,7 +172,7 @@ func TestComparisons_GreaterThan(t *testing.T) {
 	}
 }
 
-func TestComparisons_Regexp(t *testing.T) {
+func TestRegexp(t *testing.T) {
 	require := require.New(t)
 	for resultType, cmpCase := range likeComparisonCases {
 		get0 := NewGetField(0, resultType, "col1", true)
@@ -195,5 +196,169 @@ func TestComparisons_Regexp(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestIn(t *testing.T) {
+	testCases := []struct {
+		name   string
+		left   sql.Expression
+		right  sql.Expression
+		row    sql.Row
+		result interface{}
+		err    *errors.Kind
+	}{
+		{
+			"left is nil",
+			NewLiteral(nil, sql.Null),
+			NewTuple(
+				NewLiteral(int64(1), sql.Int64),
+				NewLiteral(int64(2), sql.Int64),
+			),
+			nil,
+			nil,
+			nil,
+		},
+		{
+			"left and right don't have the same cols",
+			NewLiteral(1, sql.Int64),
+			NewTuple(
+				NewTuple(
+					NewLiteral(int64(1), sql.Int64),
+					NewLiteral(int64(1), sql.Int64),
+				),
+				NewLiteral(int64(2), sql.Int64),
+			),
+			nil,
+			nil,
+			ErrInvalidOperandColumns,
+		},
+		{
+			"right is an unsupported operand",
+			NewLiteral(1, sql.Int64),
+			NewLiteral(int64(2), sql.Int64),
+			nil,
+			nil,
+			ErrUnsupportedInOperand,
+		},
+		{
+			"left is in right",
+			NewGetField(0, sql.Int64, "foo", false),
+			NewTuple(
+				NewGetField(0, sql.Int64, "foo", false),
+				NewLiteral(int64(2), sql.Int64),
+			),
+			sql.NewRow(int64(1)),
+			true,
+			nil,
+		},
+		{
+			"left is not in right",
+			NewGetField(0, sql.Int64, "foo", false),
+			NewTuple(
+				NewGetField(1, sql.Int64, "bar", false),
+				NewLiteral(int64(2), sql.Int64),
+			),
+			sql.NewRow(int64(1), int64(3)),
+			false,
+			nil,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+
+			result, err := NewIn(tt.left, tt.right).Eval(nil, tt.row)
+			if tt.err != nil {
+				require.Error(err)
+				require.True(tt.err.Is(err))
+			} else {
+				require.NoError(err)
+				require.Equal(tt.result, result)
+			}
+		})
+	}
+}
+
+func TestNotIn(t *testing.T) {
+	testCases := []struct {
+		name   string
+		left   sql.Expression
+		right  sql.Expression
+		row    sql.Row
+		result interface{}
+		err    *errors.Kind
+	}{
+		{
+			"left is nil",
+			NewLiteral(nil, sql.Null),
+			NewTuple(
+				NewLiteral(int64(1), sql.Int64),
+				NewLiteral(int64(2), sql.Int64),
+			),
+			nil,
+			nil,
+			nil,
+		},
+		{
+			"left and right don't have the same cols",
+			NewLiteral(1, sql.Int64),
+			NewTuple(
+				NewTuple(
+					NewLiteral(int64(1), sql.Int64),
+					NewLiteral(int64(1), sql.Int64),
+				),
+				NewLiteral(int64(2), sql.Int64),
+			),
+			nil,
+			nil,
+			ErrInvalidOperandColumns,
+		},
+		{
+			"right is an unsupported operand",
+			NewLiteral(1, sql.Int64),
+			NewLiteral(int64(2), sql.Int64),
+			nil,
+			nil,
+			ErrUnsupportedInOperand,
+		},
+		{
+			"left is in right",
+			NewGetField(0, sql.Int64, "foo", false),
+			NewTuple(
+				NewGetField(0, sql.Int64, "foo", false),
+				NewLiteral(int64(2), sql.Int64),
+			),
+			sql.NewRow(int64(1)),
+			false,
+			nil,
+		},
+		{
+			"left is not in right",
+			NewGetField(0, sql.Int64, "foo", false),
+			NewTuple(
+				NewGetField(1, sql.Int64, "bar", false),
+				NewLiteral(int64(2), sql.Int64),
+			),
+			sql.NewRow(int64(1), int64(3)),
+			true,
+			nil,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+
+			result, err := NewNotIn(tt.left, tt.right).Eval(nil, tt.row)
+			if tt.err != nil {
+				require.Error(err)
+				require.True(tt.err.Is(err))
+			} else {
+				require.NoError(err)
+				require.Equal(tt.result, result)
+			}
+		})
 	}
 }

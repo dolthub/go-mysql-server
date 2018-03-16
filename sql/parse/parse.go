@@ -648,6 +648,10 @@ func comparisonExprToExpression(c *sqlparser.ComparisonExpr) (sql.Expression,
 		return expression.NewNot(
 			expression.NewEquals(left, right),
 		), nil
+	case sqlparser.InStr:
+		return expression.NewIn(left, right), nil
+	case sqlparser.NotInStr:
+		return expression.NewNotIn(left, right), nil
 	}
 }
 
