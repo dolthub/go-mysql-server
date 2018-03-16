@@ -258,7 +258,7 @@ func testQuery(t *testing.T, e *sqle.Engine, q string, r [][]interface{}) {
 			rs = append(rs, row)
 		}
 
-		require.Equal(r, rs)
+		require.ElementsMatch(r, rs)
 	})
 }
 
