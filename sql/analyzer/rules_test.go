@@ -471,7 +471,7 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 				),
 				plan.NewPushdownProjectionAndFiltersTable(
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
+						expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
 					},
 					nil,
 					table2,
