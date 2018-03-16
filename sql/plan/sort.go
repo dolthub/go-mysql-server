@@ -6,8 +6,12 @@ import (
 	"sort"
 	"strings"
 
+	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
+
+// ErrUnableSort is thrown when something happens on sorting
+var ErrUnableSort = errors.NewKind("unable to sort")
 
 // Sort is the sort node.
 type Sort struct {
@@ -215,13 +219,13 @@ func (s *sorter) Less(i, j int) bool {
 		typ := sf.Column.Type()
 		av, err := sf.Column.Eval(s.session, a)
 		if err != nil {
-			s.lastError = fmt.Errorf("unable to sort: %s", err)
+			s.lastError = ErrUnableSort.Wrap(err)
 			return false
 		}
 
 		bv, err := sf.Column.Eval(s.session, b)
 		if err != nil {
-			s.lastError = fmt.Errorf("unable to sort: %s", err)
+			s.lastError = ErrUnableSort.Wrap(err)
 			return false
 		}
 

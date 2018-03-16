@@ -1,17 +1,10 @@
 package sqle
 
 import (
-	"errors"
-
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/parse"
-)
-
-var (
-	// ErrNotSupported is thrown when a feature which is not supported is used.
-	ErrNotSupported = errors.New("feature not supported yet")
 )
 
 // Engine is a SQL engine.

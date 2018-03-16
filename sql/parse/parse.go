@@ -6,19 +6,18 @@ import (
 	"strconv"
 	"strings"
 
+	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 	"gopkg.in/src-d/go-vitess.v0/vt/sqlparser"
 )
 
-func errUnsupported(n sqlparser.SQLNode) error {
-	return fmt.Errorf("unsupported syntax: %#v", n)
-}
+// ErrUnsupportedSyntax is thrown when a specific syntax is not already supported
+var ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %#v")
 
-func errUnsupportedFeature(feature string) error {
-	return fmt.Errorf("unsupported feature: %s", feature)
-}
+// ErrUnsupportedFeature us thrown when a feature is not already supported
+var ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
 
 // Parse parses the given SQL sentence and returns the corresponding node.
 func Parse(session sql.Session, s string) (sql.Node, error) {
@@ -42,7 +41,7 @@ func Parse(session sql.Session, s string) (sql.Node, error) {
 func convert(session sql.Session, stmt sqlparser.Statement) (sql.Node, error) {
 	switch n := stmt.(type) {
 	default:
-		return nil, errUnsupported(n)
+		return nil, ErrUnsupportedSyntax.New(n)
 	case *sqlparser.Show:
 		return convertShow(n)
 	case *sqlparser.Select:
@@ -57,7 +56,7 @@ func convert(session sql.Session, stmt sqlparser.Statement) (sql.Node, error) {
 func convertShow(s *sqlparser.Show) (sql.Node, error) {
 	if s.Type != sqlparser.KeywordString(sqlparser.TABLES) {
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
-		return nil, errUnsupportedFeature(unsupportedShow)
+		return nil, ErrUnsupportedFeature.New(unsupportedShow)
 	}
 
 	return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
@@ -72,7 +71,7 @@ func convertSelect(session sql.Session, s *sqlparser.Select) (sql.Node, error) {
 	}
 
 	if s.Having != nil {
-		return nil, errUnsupportedFeature("HAVING")
+		return nil, ErrUnsupportedFeature.New("HAVING")
 	}
 
 	if s.Where != nil {
@@ -120,7 +119,7 @@ func convertDDL(c *sqlparser.DDL) (sql.Node, error) {
 	case sqlparser.CreateStr:
 		return convertCreateTable(c)
 	default:
-		return nil, errUnsupported(c)
+		return nil, ErrUnsupportedSyntax.New(c)
 	}
 }
 
@@ -139,11 +138,11 @@ func convertCreateTable(c *sqlparser.DDL) (sql.Node, error) {
 
 func convertInsert(session sql.Session, i *sqlparser.Insert) (sql.Node, error) {
 	if len(i.OnDup) > 0 {
-		return nil, errUnsupportedFeature("ON DUPLICATE KEY")
+		return nil, ErrUnsupportedFeature.New("ON DUPLICATE KEY")
 	}
 
 	if len(i.Ignore) > 0 {
-		return nil, errUnsupported(i)
+		return nil, ErrUnsupportedSyntax.New(i)
 	}
 
 	src, err := insertRowsToNode(session, i.Rows)
@@ -193,11 +192,11 @@ func insertRowsToNode(session sql.Session, ir sqlparser.InsertRows) (sql.Node, e
 	case *sqlparser.Select:
 		return convertSelect(session, v)
 	case *sqlparser.Union:
-		return nil, errUnsupportedFeature("UNION")
+		return nil, ErrUnsupportedFeature.New("UNION")
 	case sqlparser.Values:
 		return valuesToValues(v)
 	default:
-		return nil, errUnsupported(ir)
+		return nil, ErrUnsupportedSyntax.New(ir)
 	}
 }
 
@@ -224,7 +223,7 @@ func tableExprsToTable(
 	te sqlparser.TableExprs,
 ) (sql.Node, error) {
 	if len(te) == 0 {
-		return nil, errUnsupportedFeature("zero tables in FROM")
+		return nil, ErrUnsupportedFeature.New("zero tables in FROM")
 	}
 
 	var nodes []sql.Node
@@ -255,13 +254,13 @@ func tableExprToTable(
 ) (sql.Node, error) {
 	switch t := (te).(type) {
 	default:
-		return nil, errUnsupported(te)
+		return nil, ErrUnsupportedSyntax.New(te)
 	case *sqlparser.AliasedTableExpr:
 		// TODO: Add support for qualifier.
 		switch e := t.Expr.(type) {
 		case sqlparser.TableName:
 			if !e.Qualifier.IsEmpty() {
-				return nil, errUnsupportedFeature("table name qualifiers")
+				return nil, ErrUnsupportedFeature.New("table name qualifiers")
 			}
 
 			node := plan.NewUnresolvedTable(e.Name.String())
@@ -277,23 +276,23 @@ func tableExprToTable(
 			}
 
 			if t.As.IsEmpty() {
-				return nil, errUnsupportedFeature("subquery without alias")
+				return nil, ErrUnsupportedFeature.New("subquery without alias")
 			}
 
 			return plan.NewSubqueryAlias(t.As.String(), node), nil
 		default:
-			return nil, errUnsupported(te)
+			return nil, ErrUnsupportedSyntax.New(te)
 		}
 	case *sqlparser.JoinTableExpr:
 		// TODO: add support for the rest of joins
 		if t.Join != sqlparser.JoinStr {
-			return nil, errUnsupportedFeature(t.Join)
+			return nil, ErrUnsupportedFeature.New(t.Join)
 		}
 
 		// TODO: add support for using, once we have proper table
 		// qualification of fields
 		if len(t.Condition.Using) > 0 {
-			return nil, errUnsupportedFeature("using clause on join")
+			return nil, ErrUnsupportedFeature.New("using clause on join")
 		}
 
 		left, err := tableExprToTable(session, t.LeftExpr)
@@ -361,7 +360,7 @@ func limitToLimit(
 
 	nl, ok := e.(*expression.Literal)
 	if !ok || nl.Type() != sql.Int64 {
-		return nil, errUnsupportedFeature("LIMIT with non-integer literal")
+		return nil, ErrUnsupportedFeature.New("LIMIT with non-integer literal")
 	}
 
 	n, err := nl.Eval(session, nil)
@@ -383,7 +382,7 @@ func offsetToOffset(
 
 	nl, ok := e.(*expression.Literal)
 	if !ok || nl.Type() != sql.Int64 {
-		return nil, errUnsupportedFeature("OFFSET with non-integer literal")
+		return nil, ErrUnsupportedFeature.New("OFFSET with non-integer literal")
 	}
 
 	n, err := nl.Eval(session, nil)
@@ -449,7 +448,7 @@ func selectExprsToExpressions(se sqlparser.SelectExprs) ([]sql.Expression, error
 func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 	switch v := e.(type) {
 	default:
-		return nil, errUnsupported(e)
+		return nil, ErrUnsupportedSyntax.New(e)
 	case *sqlparser.ComparisonExpr:
 		return comparisonExprToExpression(v)
 	case *sqlparser.IsExpr:
@@ -471,10 +470,10 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 			return expression.NewLiteral(n, sql.Int64), nil
 		case sqlparser.HexVal:
 			//TODO
-			return nil, errUnsupported(v)
+			return nil, ErrUnsupportedSyntax.New(v)
 		default:
 			//TODO
-			return nil, errUnsupported(v)
+			return nil, ErrUnsupportedSyntax.New(v)
 		}
 	case sqlparser.BoolVal:
 		return expression.NewLiteral(bool(v), sql.Boolean), nil
@@ -545,7 +544,7 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		case sqlparser.NotBetweenStr:
 			return expression.NewNot(expression.NewBetween(val, lower, upper)), nil
 		default:
-			return nil, errUnsupportedFeature(fmt.Sprintf("RangeCond with operator: %s", v.Operator))
+			return nil, ErrUnsupportedFeature.New(fmt.Sprintf("RangeCond with operator: %s", v.Operator))
 		}
 	}
 }
@@ -562,7 +561,7 @@ func isExprToExpression(c *sqlparser.IsExpr) (sql.Expression, error) {
 	case sqlparser.IsNotNullStr:
 		return expression.NewNot(expression.NewIsNull(e)), nil
 	default:
-		return nil, errUnsupported(c)
+		return nil, ErrUnsupportedSyntax.New(c)
 	}
 }
 
@@ -581,7 +580,7 @@ func comparisonExprToExpression(c *sqlparser.ComparisonExpr) (sql.Expression,
 
 	switch c.Operator {
 	default:
-		return nil, errUnsupportedFeature(c.Operator)
+		return nil, ErrUnsupportedFeature.New(c.Operator)
 	case sqlparser.RegexpStr:
 		return expression.NewRegexp(left, right), nil
 	case sqlparser.NotRegexpStr:
@@ -620,7 +619,7 @@ func groupByToExpressions(g sqlparser.GroupBy) ([]sql.Expression, error) {
 func selectExprToExpression(se sqlparser.SelectExpr) (sql.Expression, error) {
 	switch e := se.(type) {
 	default:
-		return nil, errUnsupported(e)
+		return nil, ErrUnsupportedSyntax.New(e)
 	case *sqlparser.StarExpr:
 		//TODO: Add support for qualified start.
 		return expression.NewStar(), nil

@@ -1,13 +1,16 @@
 package plan
 
 import (
-	"errors"
 	"io"
 	"strings"
 
+	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 )
+
+// ErrInsertIntoNotSupported is thrown when a table doesn't support inserts
+var ErrInsertIntoNotSupported = errors.NewKind("table doesn't support INSERT INTO")
 
 // InsertInto is a node describing the insertion into some table.
 type InsertInto struct {
@@ -37,7 +40,7 @@ func (p *InsertInto) Schema() sql.Schema {
 func (p *InsertInto) Execute(session sql.Session) (int, error) {
 	insertable, ok := p.Left.(sql.Inserter)
 	if !ok {
-		return 0, errors.New("destination table does not support INSERT TO")
+		return 0, ErrInsertIntoNotSupported.New()
 	}
 
 	dstSchema := p.Left.Schema()

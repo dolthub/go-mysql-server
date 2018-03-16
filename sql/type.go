@@ -10,9 +10,22 @@ import (
 	"time"
 
 	"github.com/spf13/cast"
+	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-vitess.v0/sqltypes"
 	"gopkg.in/src-d/go-vitess.v0/vt/proto/query"
 )
+
+// ErrTypeNotSupported is thrown when a specific type is not supported
+var ErrTypeNotSupported = errors.NewKind("Type not supported: %s")
+
+// ErrUnexpectedType is thrown when a received type is not the expected
+var ErrUnexpectedType = errors.NewKind("value at %d has unexpected type: %s")
+
+// ErrConvertingToTime is thrown when a value cannot be converted to a Time
+var ErrConvertingToTime = errors.NewKind("value %q can't be converted to time.Time")
+
+// ErrValueNotNil is thrown when a value that was expected to be nil, is not
+var ErrValueNotNil = errors.NewKind("value not nil: %#v")
 
 // Schema is the definition of a table.
 type Schema []*Column
@@ -22,7 +35,7 @@ func (s Schema) CheckRow(row Row) error {
 	expected := len(s)
 	got := len(row)
 	if expected != got {
-		return fmt.Errorf("expected %d values, got %d", expected, got)
+		return ErrUnexpectedRowLength.New(expected, got)
 	}
 
 	for idx, f := range s {
@@ -32,9 +45,7 @@ func (s Schema) CheckRow(row Row) error {
 		}
 
 		typ := reflect.TypeOf(v).String()
-		return fmt.Errorf("value at %d has unexpected type: %s",
-			idx, typ)
-
+		return ErrUnexpectedType.New(idx, typ)
 	}
 
 	return nil
@@ -154,7 +165,7 @@ func MysqlTypeToType(sql query.Type) (Type, error) {
 	case sqltypes.Blob:
 		return Blob, nil
 	default:
-		return nil, fmt.Errorf("Type not supported: %s", sql)
+		return nil, ErrTypeNotSupported.New(sql)
 	}
 }
 
@@ -173,7 +184,7 @@ func (t nullT) SQL(interface{}) sqltypes.Value {
 // Convert implements Type interface.
 func (t nullT) Convert(v interface{}) (interface{}, error) {
 	if v != nil {
-		return nil, fmt.Errorf("value not nil: %#v", v)
+		return nil, ErrValueNotNil.New(v)
 	}
 
 	return nil, nil
@@ -288,7 +299,7 @@ func (t timestampT) Convert(v interface{}) (interface{}, error) {
 	case string:
 		t, err := time.Parse(TimestampLayout, value)
 		if err != nil {
-			return nil, fmt.Errorf("value %q can't be converted to time.Time", v)
+			return nil, ErrConvertingToTime.Wrap(err, v)
 		}
 		return t.UTC(), nil
 	default:
@@ -342,7 +353,7 @@ func (t dateT) Convert(v interface{}) (interface{}, error) {
 	case string:
 		t, err := time.Parse(DateLayout, value)
 		if err != nil {
-			return nil, fmt.Errorf("value %q can't be converted to time.Time", v)
+			return nil, ErrConvertingToTime.Wrap(err, v)
 		}
 		return truncateDate(t), nil
 	default:

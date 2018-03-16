@@ -1,8 +1,6 @@
 package mem
 
 import (
-	"fmt"
-
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -39,7 +37,7 @@ func (d *Database) AddTable(name string, t *Table) {
 func (d *Database) Create(name string, schema sql.Schema) error {
 	_, ok := d.tables[name]
 	if ok {
-		return fmt.Errorf("table with name %s already exists", name)
+		return sql.ErrTableAlreadyExists.New(name)
 	}
 
 	d.tables[name] = NewTable(name, schema)

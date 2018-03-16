@@ -1,10 +1,12 @@
 package plan
 
 import (
-	"fmt"
-
+	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
+
+// ErrCreateTable is thrown when the database doesn't support table creation
+var ErrCreateTable = errors.NewKind("tables cannot be created on database %s")
 
 // CreateTable is a node describing the creation of some table.
 type CreateTable struct {
@@ -36,7 +38,7 @@ func (c *CreateTable) Resolved() bool {
 func (c *CreateTable) RowIter(s sql.Session) (sql.RowIter, error) {
 	d, ok := c.Database.(sql.Alterable)
 	if !ok {
-		return nil, fmt.Errorf("tables cannot be created on database %s", c.Database.Name())
+		return nil, ErrCreateTable.New(c.Database.Name())
 	}
 
 	return sql.RowsToRowIter(), d.Create(c.name, c.schema)

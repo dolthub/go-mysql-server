@@ -1,8 +1,11 @@
 package sql
 
 import (
-	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 )
+
+// ErrDatabaseNotFound is thrown when a database is not found
+var ErrDatabaseNotFound = errors.NewKind("database not found: %s")
 
 // Catalog holds databases, tables and functions.
 type Catalog struct {
@@ -29,7 +32,7 @@ func (d Databases) Database(name string) (Database, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("database not found: %s", name)
+	return nil, ErrDatabaseNotFound.New(name)
 }
 
 // Table returns the Table with the given name if it exists.
@@ -42,7 +45,7 @@ func (d Databases) Table(dbName string, tableName string) (Table, error) {
 	tables := db.Tables()
 	table, found := tables[tableName]
 	if !found {
-		return nil, fmt.Errorf("table not found: %s", tableName)
+		return nil, ErrTableNotFound.New(tableName)
 	}
 
 	return table, nil
