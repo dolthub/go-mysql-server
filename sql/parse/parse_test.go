@@ -377,6 +377,42 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("foo"),
 	),
+	`SELECT *, bar FROM foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewStar(),
+			expression.NewUnresolvedColumn("bar"),
+		},
+		plan.NewUnresolvedTable("foo"),
+	),
+	`SELECT *, foo.* FROM foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewStar(),
+			expression.NewQualifiedStar("foo"),
+		},
+		plan.NewUnresolvedTable("foo"),
+	),
+	`SELECT bar, foo.* FROM foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("bar"),
+			expression.NewQualifiedStar("foo"),
+		},
+		plan.NewUnresolvedTable("foo"),
+	),
+	`SELECT bar, *, foo.* FROM foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("bar"),
+			expression.NewStar(),
+			expression.NewQualifiedStar("foo"),
+		},
+		plan.NewUnresolvedTable("foo"),
+	),
+	`SELECT *, * FROM foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewStar(),
+			expression.NewStar(),
+		},
+		plan.NewUnresolvedTable("foo"),
+	),
 }
 
 func TestParse(t *testing.T) {

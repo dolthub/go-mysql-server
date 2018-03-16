@@ -171,33 +171,104 @@ func TestResolveTablesNested(t *testing.T) {
 }
 
 func TestResolveStar(t *testing.T) {
-	require := require.New(t)
 	f := getRule("resolve_star")
 
-	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
-	db := mem.NewDatabase("mydb")
-	memDb, ok := db.(*mem.Database)
-	require.True(ok)
+	table := mem.NewTable("mytable", sql.Schema{
+		{Name: "a", Type: sql.Int32, Source: "mytable"},
+		{Name: "b", Type: sql.Int32, Source: "mytable"},
+	})
 
-	memDb.AddTable("mytable", table)
+	table2 := mem.NewTable("mytable2", sql.Schema{
+		{Name: "c", Type: sql.Int32, Source: "mytable2"},
+		{Name: "d", Type: sql.Int32, Source: "mytable2"},
+	})
 
-	catalog := &sql.Catalog{Databases: []sql.Database{db}}
+	testCases := []struct {
+		name     string
+		node     sql.Node
+		expected sql.Node
+	}{
+		{
+			"unqualified star",
+			plan.NewProject(
+				[]sql.Expression{expression.NewStar()},
+				table,
+			),
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+				},
+				table,
+			),
+		},
+		{
+			"qualified star",
+			plan.NewProject(
+				[]sql.Expression{expression.NewQualifiedStar("mytable2")},
+				plan.NewCrossJoin(table, table2),
+			),
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "c", false),
+					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
+				},
+				plan.NewCrossJoin(table, table2),
+			),
+		},
+		{
+			"qualified star and unqualified star",
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewStar(),
+					expression.NewQualifiedStar("mytable2"),
+				},
+				plan.NewCrossJoin(table, table2),
+			),
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "c", false),
+					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
+					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "c", false),
+					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
+				},
+				plan.NewCrossJoin(table, table2),
+			),
+		},
+		{
+			"stars mixed with other expressions",
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewStar(),
+					expression.NewUnresolvedColumn("foo"),
+					expression.NewQualifiedStar("mytable2"),
+				},
+				plan.NewCrossJoin(table, table2),
+			),
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "c", false),
+					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
+					expression.NewUnresolvedColumn("foo"),
+					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "c", false),
+					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
+				},
+				plan.NewCrossJoin(table, table2),
+			),
+		},
+	}
 
-	a := New(catalog)
-	a.Rules = []Rule{f}
-	a.CurrentDatabase = "mydb"
-
-	notAnalyzed := plan.NewProject(
-		[]sql.Expression{expression.NewStar()},
-		table,
-	)
-	analyzed, err := f.Apply(a, notAnalyzed)
-	require.NoError(err)
-	expected := plan.NewProject(
-		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", false)},
-		table,
-	)
-	require.Equal(expected, analyzed)
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := f.Apply(nil, tt.node)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, result)
+		})
+	}
 }
 
 func TestQualifyColumns(t *testing.T) {
@@ -253,6 +324,17 @@ func TestQualifyColumns(t *testing.T) {
 	result, err = f.Apply(nil, node)
 	require.NoError(err)
 	require.Equal(expected, result)
+
+	node = plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("z"),
+		},
+		plan.NewTableAlias("a", table),
+	)
+
+	result, err = f.Apply(nil, node)
+	require.Error(err)
+	require.True(ErrColumnTableNotFound.Is(err))
 
 	node = plan.NewProject(
 		[]sql.Expression{

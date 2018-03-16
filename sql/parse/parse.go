@@ -628,8 +628,10 @@ func selectExprToExpression(se sqlparser.SelectExpr) (sql.Expression, error) {
 	default:
 		return nil, ErrUnsupportedSyntax.New(e)
 	case *sqlparser.StarExpr:
-		//TODO: Add support for qualified start.
-		return expression.NewStar(), nil
+		if e.TableName.IsEmpty() {
+			return expression.NewStar(), nil
+		}
+		return expression.NewQualifiedStar(e.TableName.Name.String()), nil
 	case *sqlparser.AliasedExpr:
 		expr, err := exprToExpression(e.Expr)
 		if err != nil {
