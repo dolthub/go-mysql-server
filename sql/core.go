@@ -124,9 +124,9 @@ type Alterable interface {
 // the execution tree.
 var ErrInvalidType = errors.NewKind("invalid type: %s")
 
-// ErrTableAlreadyExist is thrown when someone tries to create a
+// ErrTableAlreadyExists is thrown when someone tries to create a
 // table with a name of an existing one
-var ErrTableAlreadyExist = errors.NewKind("table with name %s already exists")
+var ErrTableAlreadyExists = errors.NewKind("table with name %s already exists")
 
 // ErrTableNotFound is returned when the table is not available from the
 // current scope.

@@ -37,7 +37,7 @@ func (d *Database) AddTable(name string, t *Table) {
 func (d *Database) Create(name string, schema sql.Schema) error {
 	_, ok := d.tables[name]
 	if ok {
-		return sql.ErrTableAlreadyExist.New(name)
+		return sql.ErrTableAlreadyExists.New(name)
 	}
 
 	d.tables[name] = NewTable(name, schema)
