@@ -83,32 +83,6 @@ func TestSplitExpression(t *testing.T) {
 	)
 }
 
-func TestFiltersToExpression(t *testing.T) {
-	require := require.New(t)
-
-	require.Nil(filtersToExpression(nil))
-
-	require.Equal(
-		expression.NewNot(nil),
-		filtersToExpression([]sql.Expression{expression.NewNot(nil)}),
-	)
-
-	require.Equal(
-		expression.NewAnd(
-			expression.NewAnd(
-				expression.NewIsNull(nil),
-				expression.NewEquals(nil, nil),
-			),
-			expression.NewNot(nil),
-		),
-		filtersToExpression([]sql.Expression{
-			expression.NewIsNull(nil),
-			expression.NewEquals(nil, nil),
-			expression.NewNot(nil),
-		}),
-	)
-}
-
 func TestGetUnhandledFilters(t *testing.T) {
 	filters := []sql.Expression{
 		expression.NewIsNull(nil),
@@ -128,4 +102,43 @@ func TestGetUnhandledFilters(t *testing.T) {
 		[]sql.Expression{filters[0], filters[2]},
 		unhandled,
 	)
+}
+
+func TestExprToTableFilters(t *testing.T) {
+	require := require.New(t)
+	expr := expression.NewAnd(
+		expression.NewAnd(
+			expression.NewEquals(
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
+				expression.NewLiteral(3.14, sql.Float64),
+			),
+			expression.NewGreaterThan(
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
+				expression.NewLiteral(3., sql.Float64),
+			),
+		),
+		expression.NewIsNull(
+			expression.NewGetFieldWithTable(0, sql.Int64, "mytable2", "i2", false),
+		),
+	)
+
+	expected := filters{
+		"mytable": []sql.Expression{
+			expression.NewEquals(
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
+				expression.NewLiteral(3.14, sql.Float64),
+			),
+			expression.NewGreaterThan(
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
+				expression.NewLiteral(3., sql.Float64),
+			),
+		},
+		"mytable2": []sql.Expression{
+			expression.NewIsNull(
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable2", "i2", false),
+			),
+		},
+	}
+
+	require.Equal(expected, exprToTableFilters(expr))
 }

@@ -10,6 +10,7 @@ import (
 // PushdownProjectionTable is a node wrapping a table implementing the
 // sql.PushdownProjectionTable interface so it returns a RowIter with
 // custom logic given the set of used columns that need to be projected.
+// PushdownProjectionTable nodes don't propagate transformations.
 type PushdownProjectionTable struct {
 	sql.PushdownProjectionTable
 	columns []string
@@ -38,6 +39,23 @@ func (t *PushdownProjectionTable) TransformUp(f func(sql.Node) (sql.Node, error)
 	return f(NewPushdownProjectionTable(t.columns, table))
 }
 
+// TransformExpressionsUp implements the Node interface.
+func (t *PushdownProjectionTable) TransformExpressionsUp(
+	f func(sql.Expression) (sql.Expression, error),
+) (sql.Node, error) {
+	node, err := t.PushdownProjectionTable.TransformExpressionsUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	table, ok := node.(sql.PushdownProjectionTable)
+	if !ok {
+		return node, nil
+	}
+
+	return NewPushdownProjectionTable(t.columns, table), nil
+}
+
 // RowIter implements the Node interface.
 func (t *PushdownProjectionTable) RowIter(session sql.Session) (sql.RowIter, error) {
 	return t.WithProject(session, t.columns)
@@ -54,6 +72,7 @@ func (t PushdownProjectionTable) String() string {
 // the sql.PushdownProjectionAndFiltersTable interface so it returns a RowIter
 // with custom logic given the set of used columns that need to be projected
 // and the filters that apply to that table.
+// PushdownProjectionAndFiltersTable nodes don't propagate transformations.
 type PushdownProjectionAndFiltersTable struct {
 	sql.PushdownProjectionAndFiltersTable
 	columns []sql.Expression
@@ -71,18 +90,22 @@ func NewPushdownProjectionAndFiltersTable(
 }
 
 // TransformUp implements the Node interface.
-func (t *PushdownProjectionAndFiltersTable) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
-	node, err := t.PushdownProjectionAndFiltersTable.TransformUp(f)
+func (t *PushdownProjectionAndFiltersTable) TransformUp(
+	f func(sql.Node) (sql.Node, error),
+) (sql.Node, error) {
+	return f(t)
+}
+
+// TransformExpressionsUp implements the Node interface.
+func (t *PushdownProjectionAndFiltersTable) TransformExpressionsUp(
+	f func(sql.Expression) (sql.Expression, error),
+) (sql.Node, error) {
+	filters, err := transformExpressionsUp(f, t.filters)
 	if err != nil {
 		return nil, err
 	}
 
-	table, ok := node.(sql.PushdownProjectionAndFiltersTable)
-	if !ok {
-		return node, nil
-	}
-
-	return f(NewPushdownProjectionAndFiltersTable(t.columns, t.filters, table))
+	return NewPushdownProjectionAndFiltersTable(t.columns, filters, t.PushdownProjectionAndFiltersTable), nil
 }
 
 // RowIter implements the Node interface.

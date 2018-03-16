@@ -48,21 +48,6 @@ func splitExpression(expr sql.Expression) []sql.Expression {
 	)
 }
 
-func filtersToExpression(filters []sql.Expression) sql.Expression {
-	switch len(filters) {
-	case 0:
-		return nil
-	case 1:
-		return filters[0]
-	default:
-		node := expression.NewAnd(filters[0], filters[1])
-		for _, f := range filters[2:] {
-			node = expression.NewAnd(node, f)
-		}
-		return node
-	}
-}
-
 func getUnhandledFilters(all, handled []sql.Expression) []sql.Expression {
 	var unhandledFilters []sql.Expression
 

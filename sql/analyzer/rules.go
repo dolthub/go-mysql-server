@@ -343,6 +343,10 @@ func dedupStrings(in []string) []string {
 
 func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 	a.Log("pushdown, node of type: %T", n)
+	if !n.Resolved() {
+		return n, nil
+	}
+
 	var fieldsByTable = make(map[string][]string)
 	var exprsByTable = make(map[string][]sql.Expression)
 	type tableField struct {
@@ -351,12 +355,15 @@ func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 	}
 	var tableFields = make(map[tableField]struct{})
 
+	a.Log("finding used columns in node")
+
 	// First step is to find all col exprs and group them by the table they mention.
 	// Even if they appear multiple times, only the first one will be used.
 	_, _ = n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
 		if e, ok := e.(*expression.GetField); ok {
 			tf := tableField{e.Table(), e.Name()}
 			if _, ok := tableFields[tf]; !ok {
+				a.Log("found used column %s.%s", e.Table(), e.Name())
 				tableFields[tf] = struct{}{}
 				fieldsByTable[e.Table()] = append(fieldsByTable[e.Table()], e.Name())
 				exprsByTable[e.Table()] = append(exprsByTable[e.Table()], e)
@@ -374,12 +381,13 @@ func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", node)
 		switch node := node.(type) {
 		case *plan.Filter:
-			filters.merge(exprToTableFilters(node.Expression))
+			fs := exprToTableFilters(node.Expression)
+			a.Log("found filters for %d tables %s", len(fs), node.Expression)
+			filters.merge(fs)
 		}
 
 		return node, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -394,24 +402,44 @@ func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", node)
 		switch node := node.(type) {
 		case *plan.Filter:
+			if len(handledFilters) == 0 {
+				a.Log("no handled filters, leaving filter untouched")
+				return node, nil
+			}
+
 			unhandled := getUnhandledFilters(
 				splitExpression(node.Expression),
 				handledFilters,
 			)
+
 			if len(unhandled) == 0 {
+				a.Log("filter node has no unhandled filters, so it will be removed")
 				return node.Child, nil
 			}
 
-			a.Log("handled filters removed from filter node")
+			a.Log(
+				"%d handled filters removed from filter node, filter has now %d filters",
+				len(handledFilters),
+				len(unhandled),
+			)
 
-			return plan.NewFilter(filtersToExpression(unhandled), node.Child), nil
+			return plan.NewFilter(expression.JoinAnd(unhandled...), node.Child), nil
+		case *plan.PushdownProjectionAndFiltersTable, *plan.PushdownProjectionTable:
+			// they also implement the interfaces for pushdown, so we better return
+			// or there will be a very nice infinite loop
+			return node, nil
 		case sql.PushdownProjectionAndFiltersTable:
 			cols := exprsByTable[node.Name()]
 			tableFilters := filters[node.Name()]
 			handled := node.HandledFilters(tableFilters)
 			handledFilters = append(handledFilters, handled...)
 
-			a.Log("table %q transformed with pushdown of projection and filters", node.Name())
+			a.Log(
+				"table %q transformed with pushdown of projection and filters, %d filters handled of %d",
+				node.Name(),
+				len(handled),
+				len(tableFilters),
+			)
 
 			return plan.NewPushdownProjectionAndFiltersTable(
 				cols,
