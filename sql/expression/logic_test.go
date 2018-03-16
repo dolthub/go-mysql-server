@@ -69,3 +69,29 @@ func TestOr(t *testing.T) {
 		})
 	}
 }
+
+func TestJoinAnd(t *testing.T) {
+	require := require.New(t)
+
+	require.Nil(JoinAnd())
+
+	require.Equal(
+		NewNot(nil),
+		JoinAnd(NewNot(nil)),
+	)
+
+	require.Equal(
+		NewAnd(
+			NewAnd(
+				NewIsNull(nil),
+				NewEquals(nil, nil),
+			),
+			NewNot(nil),
+		),
+		JoinAnd(
+			NewIsNull(nil),
+			NewEquals(nil, nil),
+			NewNot(nil),
+		),
+	)
+}

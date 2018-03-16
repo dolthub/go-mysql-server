@@ -16,6 +16,22 @@ func NewAnd(left, right sql.Expression) sql.Expression {
 	return &And{BinaryExpression{Left: left, Right: right}}
 }
 
+// JoinAnd joins several expressions with And.
+func JoinAnd(exprs ...sql.Expression) sql.Expression {
+	switch len(exprs) {
+	case 0:
+		return nil
+	case 1:
+		return exprs[0]
+	default:
+		result := NewAnd(exprs[0], exprs[1])
+		for _, e := range exprs[2:] {
+			result = NewAnd(result, e)
+		}
+		return result
+	}
+}
+
 func (a And) String() string {
 	return fmt.Sprintf("%s AND %s", a.Left, a.Right)
 }

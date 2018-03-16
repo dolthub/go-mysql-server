@@ -403,38 +403,38 @@ func TestPushdownProjection(t *testing.T) {
 
 func TestPushdownProjectionAndFilters(t *testing.T) {
 	require := require.New(t)
-	f := getRule("pushdown")
+	a := New(nil)
 
 	table := &pushdownProjectionAndFiltersTable{mem.NewTable("mytable", sql.Schema{
-		{Name: "i", Type: sql.Int32},
-		{Name: "f", Type: sql.Float64},
-		{Name: "t", Type: sql.Text},
+		{Name: "i", Type: sql.Int32, Source: "mytable"},
+		{Name: "f", Type: sql.Float64, Source: "mytable"},
+		{Name: "t", Type: sql.Text, Source: "mytable"},
 	})}
 
 	table2 := &pushdownProjectionAndFiltersTable{mem.NewTable("mytable2", sql.Schema{
-		{Name: "i2", Type: sql.Int32},
-		{Name: "f2", Type: sql.Float64},
-		{Name: "t2", Type: sql.Text},
+		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
+		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
+		{Name: "t2", Type: sql.Text, Source: "mytable2"},
 	})}
 
 	node := plan.NewProject(
 		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+			expression.NewUnresolvedQualifiedColumn("mytable", "i"),
 		},
 		plan.NewFilter(
 			expression.NewAnd(
 				expression.NewAnd(
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+						expression.NewUnresolvedQualifiedColumn("mytable", "f"),
 						expression.NewLiteral(3.14, sql.Float64),
 					),
 					expression.NewGreaterThan(
-						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+						expression.NewUnresolvedQualifiedColumn("mytable", "f"),
 						expression.NewLiteral(3., sql.Float64),
 					),
 				),
 				expression.NewIsNull(
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+					expression.NewUnresolvedQualifiedColumn("mytable2", "i2"),
 				),
 			),
 			plan.NewCrossJoin(table, table2),
@@ -452,7 +452,7 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 					expression.NewLiteral(3., sql.Float64),
 				),
 				expression.NewIsNull(
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
 				),
 			),
 			plan.NewCrossJoin(
@@ -471,7 +471,7 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 				),
 				plan.NewPushdownProjectionAndFiltersTable(
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+						expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
 					},
 					nil,
 					table2,
@@ -480,7 +480,7 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 		),
 	)
 
-	result, err := f.Apply(nil, node)
+	result, err := a.Analyze(node)
 	require.NoError(err)
 	require.Equal(expected, result)
 }
@@ -489,21 +489,25 @@ type pushdownProjectionTable struct {
 	sql.Table
 }
 
+var _ sql.PushdownProjectionTable = (*pushdownProjectionTable)(nil)
+
 func (pushdownProjectionTable) WithProject(sql.Session, []string) (sql.RowIter, error) {
 	panic("not implemented")
 }
 
 func (t *pushdownProjectionTable) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
-	table, err := f(t.Table)
-	if err != nil {
-		return nil, err
-	}
-	return f(&pushdownProjectionTable{table.(sql.Table)})
+	return f(t)
+}
+
+func (t *pushdownProjectionTable) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+	return t, nil
 }
 
 type pushdownProjectionAndFiltersTable struct {
 	sql.Table
 }
+
+var _ sql.PushdownProjectionAndFiltersTable = (*pushdownProjectionAndFiltersTable)(nil)
 
 func (pushdownProjectionAndFiltersTable) HandledFilters(filters []sql.Expression) []sql.Expression {
 	var handled []sql.Expression
@@ -520,11 +524,11 @@ func (pushdownProjectionAndFiltersTable) WithProjectAndFilters(_ sql.Session, co
 }
 
 func (t *pushdownProjectionAndFiltersTable) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
-	table, err := f(t.Table)
-	if err != nil {
-		return nil, err
-	}
-	return f(&pushdownProjectionAndFiltersTable{table.(sql.Table)})
+	return f(t)
+}
+
+func (t *pushdownProjectionAndFiltersTable) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+	return t, nil
 }
 
 func getRule(name string) Rule {
