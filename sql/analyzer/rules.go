@@ -29,6 +29,8 @@ var (
 	// ErrAmbiguousColumnName is returned when there is a column reference that
 	// is present in more than one table.
 	ErrAmbiguousColumnName = errors.NewKind("ambiguous column name %q, it's present in all these tables: %v")
+	// ErrFieldMissing is returned when the field is not on the schema.
+	ErrFieldMissing = errors.NewKind("field %q is not on schema")
 )
 
 func resolveSubqueries(a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -438,6 +440,17 @@ func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 				len(tableFilters),
 			)
 
+			schema := node.Schema()
+			cols, err := fixFieldIndexesOnExpressions(schema, cols...)
+			if err != nil {
+				return nil, err
+			}
+
+			handled, err = fixFieldIndexesOnExpressions(schema, handled...)
+			if err != nil {
+				return nil, err
+			}
+
 			return plan.NewPushdownProjectionAndFiltersTable(
 				cols,
 				handled,
@@ -449,5 +462,45 @@ func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 			return plan.NewPushdownProjectionTable(cols, node), nil
 		}
 		return node, nil
+	})
+}
+
+// fixFieldIndexesOnExpressions executes fixFieldIndexes on a list of exprs.
+func fixFieldIndexesOnExpressions(schema sql.Schema, expressions ...sql.Expression) ([]sql.Expression, error) {
+	var result = make([]sql.Expression, len(expressions))
+	for i, e := range expressions {
+		var err error
+		result[i], err = fixFieldIndexes(schema, e)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+// fixFieldIndexes transforms the given expression setting correct indexes
+// for GetField expressions according to the schema of the row in the table
+// and not the one where the filter came from.
+func fixFieldIndexes(schema sql.Schema, exp sql.Expression) (sql.Expression, error) {
+	return exp.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+		switch e := e.(type) {
+		case *expression.GetField:
+			// we need to rewrite the indexes for the table row
+			for i, col := range schema {
+				if e.Name() == col.Name {
+					return expression.NewGetFieldWithTable(
+						i,
+						e.Type(),
+						e.Table(),
+						e.Name(),
+						e.IsNullable(),
+					), nil
+				}
+			}
+
+			return nil, ErrFieldMissing.New(e.Name())
+		}
+
+		return e, nil
 	})
 }
