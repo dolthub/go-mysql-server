@@ -123,3 +123,14 @@ type Alterable interface {
 // ErrInvalidType is thrown when there is an unexpected type at some part of
 // the execution tree.
 var ErrInvalidType = errors.NewKind("invalid type: %s")
+
+// ErrTableAlreadyExist is thrown when someone tries to create a
+// table with a name of an existing one
+var ErrTableAlreadyExist = errors.NewKind("table with name %s already exists")
+
+// ErrTableNotFound is returned when the table is not available from the
+// current scope.
+var ErrTableNotFound = errors.NewKind("table not found: %s")
+
+//ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
+var ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")

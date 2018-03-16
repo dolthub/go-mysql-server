@@ -388,7 +388,7 @@ func TestParse(t *testing.T) {
 }
 
 var fixturesErrors = map[string]error{
-	`SHOW METHEMONEY`: errUnsupportedFeature(`SHOW METHEMONEY`),
+	`SHOW METHEMONEY`: ErrUnsupportedFeature.New(`SHOW METHEMONEY`),
 }
 
 func TestParseErrors(t *testing.T) {
@@ -398,7 +398,7 @@ func TestParseErrors(t *testing.T) {
 			session := sql.NewBaseSession(context.TODO())
 			_, err := Parse(session, query)
 			require.Error(err)
-			require.Equal(expectedError, err)
+			require.Equal(expectedError.Error(), err.Error())
 		})
 	}
 }

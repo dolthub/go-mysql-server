@@ -263,7 +263,7 @@ func TestQualifyColumns(t *testing.T) {
 
 	result, err = f.Apply(nil, node)
 	require.Error(err)
-	require.True(ErrTableNotFound.Is(err))
+	require.True(sql.ErrTableNotFound.Is(err))
 
 	node = plan.NewProject(
 		[]sql.Expression{

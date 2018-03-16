@@ -1,16 +1,19 @@
 package analyzer
 
 import (
-	"fmt"
 	"os"
 	"reflect"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
 const maxAnalysisIterations = 1000
+
+// ErrMaxAnalysisIters is thrown when the analysis iterations are exceeded
+var ErrMaxAnalysisIters = errors.NewKind("exceeded max analysis iterations (%d)")
 
 // Analyzer analyzes nodes of the execution plan and applies rules and validations
 // to them.
@@ -84,7 +87,7 @@ func (a *Analyzer) Analyze(n sql.Node) (sql.Node, error) {
 
 		i++
 		if i >= maxAnalysisIterations {
-			return cur, fmt.Errorf("exceeded max analysis iterations (%d)", maxAnalysisIterations)
+			return cur, ErrMaxAnalysisIters.New(maxAnalysisIterations)
 		}
 	}
 

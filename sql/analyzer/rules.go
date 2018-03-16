@@ -29,9 +29,6 @@ var (
 	// ErrAmbiguousColumnName is returned when there is a column reference that
 	// is present in more than one table.
 	ErrAmbiguousColumnName = errors.NewKind("ambiguous column name %q, it's present in all these tables: %v")
-	// ErrTableNotFound is returned when the table is not available from the
-	// current scope.
-	ErrTableNotFound = errors.NewKind("table not found in scope: %s")
 )
 
 func resolveSubqueries(a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -110,7 +107,7 @@ func qualifyColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 				}
 
 				if _, ok := tables[col.Table()]; !ok {
-					return nil, ErrTableNotFound.New(col.Table())
+					return nil, sql.ErrTableNotFound.New(col.Table())
 				}
 			}
 

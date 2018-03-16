@@ -3,8 +3,12 @@ package plan
 import (
 	"fmt"
 
+	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
+
+// ErrUnresolvedTable is thrown when a table cannot be resolved
+var ErrUnresolvedTable = errors.NewKind("unresolved table")
 
 // UnresolvedTable is a table that has not been resolved yet but whose name is known.
 type UnresolvedTable struct {
@@ -34,7 +38,7 @@ func (*UnresolvedTable) Schema() sql.Schema {
 
 // RowIter implements the RowIter interface.
 func (*UnresolvedTable) RowIter(session sql.Session) (sql.RowIter, error) {
-	return nil, fmt.Errorf("unresolved table")
+	return nil, ErrUnresolvedTable.New()
 }
 
 // TransformUp implements the Transformable interface.

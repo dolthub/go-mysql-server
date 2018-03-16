@@ -1,10 +1,15 @@
 package sql
 
 import (
-	"fmt"
-
 	"gopkg.in/src-d/go-errors.v1"
 )
+
+// ErrFunctionNotFound is thrown when a function is not found
+var ErrFunctionNotFound = errors.NewKind("function not found: %s")
+
+// ErrInvalidArgumentNumber is returned when the number of arguments to call a
+// function is different from the function arity.
+var ErrInvalidArgumentNumber = errors.NewKind("expecting %v arguments for calling this function, %d received")
 
 // Function is a function defined by the user that can be applied in a SQL
 // query.
@@ -113,10 +118,6 @@ func (Function6) isFunction() {}
 func (Function7) isFunction() {}
 func (FunctionN) isFunction() {}
 
-// ErrInvalidArgumentNumber is returned when the number of arguments to call a
-// function is different from the function arity.
-var ErrInvalidArgumentNumber = errors.NewKind("expecting %v arguments for calling this function, %d received")
-
 // FunctionRegistry is used to register functions. It is used both for builtin
 // and User-Defined Functions.
 type FunctionRegistry map[string]Function
@@ -135,7 +136,7 @@ func (r FunctionRegistry) RegisterFunction(name string, f Function) {
 func (r FunctionRegistry) Function(name string) (Function, error) {
 	e, ok := r[name]
 	if !ok {
-		return nil, fmt.Errorf("function not found: %s", name)
+		return nil, ErrFunctionNotFound.New(name)
 	}
 
 	return e, nil

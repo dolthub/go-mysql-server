@@ -59,7 +59,7 @@ func (t *Table) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, e
 // Insert a new row into the table.
 func (t *Table) Insert(row sql.Row) error {
 	if len(row) != len(t.schema) {
-		return fmt.Errorf("insert expected %d values, got %d", len(t.schema), len(row))
+		return sql.ErrUnexpectedRowLength.New(len(t.schema), len(row))
 	}
 
 	for idx, value := range row {
