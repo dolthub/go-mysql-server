@@ -61,3 +61,7 @@ func (c *CreateTable) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node,
 func (c *CreateTable) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
 	return c, nil
 }
+
+func (c *CreateTable) String() string {
+	return "CreateTable"
+}

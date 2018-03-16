@@ -32,9 +32,8 @@ func (e *IsNull) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 	return v == nil, nil
 }
 
-// Name implements the Expression interface.
-func (e *IsNull) Name() string {
-	return "IsNull(" + e.Child.Name() + ")"
+func (e IsNull) String() string {
+	return e.Child.String() + " IS NULL"
 }
 
 // TransformUp implements the Expression interface.

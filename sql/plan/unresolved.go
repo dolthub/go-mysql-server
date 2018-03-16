@@ -46,3 +46,7 @@ func (t *UnresolvedTable) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.N
 func (t *UnresolvedTable) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
 	return t, nil
 }
+
+func (t UnresolvedTable) String() string {
+	return fmt.Sprintf("UnresolvedTable(%s)", t.Name)
+}

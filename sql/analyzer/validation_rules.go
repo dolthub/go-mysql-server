@@ -69,7 +69,7 @@ func validateGroupBy(n sql.Node) error {
 
 		var validAggs []string
 		for _, expr := range n.Grouping {
-			validAggs = append(validAggs, expr.Name())
+			validAggs = append(validAggs, expr.String())
 		}
 
 		// TODO: validate columns inside aggregations
@@ -78,7 +78,7 @@ func validateGroupBy(n sql.Node) error {
 		for _, expr := range n.Aggregate {
 			if _, ok := expr.(sql.Aggregation); !ok {
 				if !isValidAgg(validAggs, expr) {
-					return ErrValidationGroupBy.New(expr.Name())
+					return ErrValidationGroupBy.New(expr.String())
 				}
 			}
 		}
@@ -96,7 +96,7 @@ func isValidAgg(validAggs []string, expr sql.Expression) bool {
 	case *expression.Alias:
 		return isValidAgg(validAggs, expr.Child)
 	default:
-		return stringContains(validAggs, expr.Name())
+		return stringContains(validAggs, expr.String())
 	}
 }
 

@@ -1,6 +1,8 @@
 package sql
 
 import (
+	"fmt"
+
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -30,10 +32,9 @@ type Transformable interface {
 // Expression is a combination of one or more SQL expressions.
 type Expression interface {
 	Resolvable
+	fmt.Stringer
 	// Type returns the expression type.
 	Type() Type
-	// Name returns the expression name.
-	Name() string
 	// IsNullable returns whether the expression can be null.
 	IsNullable() bool
 	// Eval evaluates the given row and returns a result.
@@ -63,6 +64,7 @@ type Aggregation interface {
 type Node interface {
 	Resolvable
 	Transformable
+	fmt.Stringer
 	// Schema of the node.
 	Schema() Schema
 	// Children nodes.

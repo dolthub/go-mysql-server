@@ -1,6 +1,8 @@
 package expression
 
 import (
+	"fmt"
+
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -33,9 +35,8 @@ func (e Not) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 	return !v.(bool), nil
 }
 
-// Name implements the Expression interface.
-func (e Not) Name() string {
-	return "Not(" + e.Child.Name() + ")"
+func (e Not) String() string {
+	return fmt.Sprintf("NOT(%s)", e.Child)
 }
 
 // TransformUp implements the Expression interface.

@@ -42,3 +42,10 @@ func (t *TableAlias) TransformExpressionsUp(f func(sql.Expression) (sql.Expressi
 func (t *TableAlias) RowIter(session sql.Session) (sql.RowIter, error) {
 	return t.Child.RowIter(session)
 }
+
+func (t TableAlias) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("TableAlias(%s)", t.name)
+	_ = pr.WriteChildren(t.Child.String())
+	return pr.String()
+}

@@ -1,6 +1,7 @@
 package expression
 
 import (
+	"fmt"
 	"regexp"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -26,11 +27,6 @@ func (c *Comparison) Compare(a, b interface{}) int {
 // Type implements the Expression interface.
 func (*Comparison) Type() sql.Type {
 	return sql.Boolean
-}
-
-// Name implements the Expression interface.
-func (*Comparison) Name() string {
-	return ""
 }
 
 // Equals is a comparison that checks an expression is equal to another.
@@ -77,9 +73,8 @@ func (e *Equals) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sq
 	return f(NewEquals(left, right))
 }
 
-// Name implements the Expression interface.
-func (e Equals) Name() string {
-	return e.Left.Name() + "==" + e.Right.Name()
+func (e Equals) String() string {
+	return fmt.Sprintf("%s = %s", e.Left, e.Right)
 }
 
 // Regexp is a comparison that checks an expression matches a regexp.
@@ -137,9 +132,8 @@ func (re *Regexp) TransformUp(f func(sql.Expression) (sql.Expression, error)) (s
 	return f(NewRegexp(left, right))
 }
 
-// Name implements the Expression interface.
-func (re Regexp) Name() string {
-	return re.Left.Name() + " REGEXP " + re.Right.Name()
+func (re Regexp) String() string {
+	return fmt.Sprintf("%s REGEXP %s", re.Left, re.Right)
 }
 
 // GreaterThan is a comparison that checks an expression is greater than another.
@@ -189,6 +183,10 @@ func (gt *GreaterThan) TransformUp(f func(sql.Expression) (sql.Expression, error
 	return f(NewGreaterThan(left, right))
 }
 
+func (gt GreaterThan) String() string {
+	return fmt.Sprintf("%s > %s", gt.Left, gt.Right)
+}
+
 // LessThan is a comparison that checks an expression is less than another.
 type LessThan struct {
 	Comparison
@@ -231,6 +229,10 @@ func (lt *LessThan) TransformUp(f func(sql.Expression) (sql.Expression, error)) 
 	}
 
 	return f(NewLessThan(left, right))
+}
+
+func (lt LessThan) String() string {
+	return fmt.Sprintf("%s < %s", lt.Left, lt.Right)
 }
 
 // GreaterThanOrEqual is a comparison that checks an expression is greater or equal to
@@ -281,6 +283,10 @@ func (gte *GreaterThanOrEqual) TransformUp(f func(sql.Expression) (sql.Expressio
 	return f(NewGreaterThanOrEqual(left, right))
 }
 
+func (gte GreaterThanOrEqual) String() string {
+	return fmt.Sprintf("%s >= %s", gte.Left, gte.Right)
+}
+
 // LessThanOrEqual is a comparison that checks an expression is equal or lower than
 // another.
 type LessThanOrEqual struct {
@@ -327,4 +333,8 @@ func (lte *LessThanOrEqual) TransformUp(f func(sql.Expression) (sql.Expression, 
 	}
 
 	return f(NewLessThanOrEqual(left, right))
+}
+
+func (lte LessThanOrEqual) String() string {
+	return fmt.Sprintf("%s <= %s", lte.Left, lte.Right)
 }

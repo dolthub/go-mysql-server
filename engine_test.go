@@ -8,6 +8,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/parse"
 
 	"github.com/stretchr/testify/require"
 )
@@ -292,4 +293,28 @@ func newEngine(t *testing.T) *sqle.Engine {
 	e.AddDatabase(db)
 
 	return e
+}
+
+const expectedTree = `Offset(2)
+ └─ Limit(5)
+     └─ Project(t.foo, bar.baz)
+         └─ Filter(foo > qux)
+             └─ InnerJoin(foo = baz)
+                 ├─ TableAlias(t)
+                 │   └─ UnresolvedTable(tbl)
+                 └─ UnresolvedTable(bar)
+`
+
+func TestPrintTree(t *testing.T) {
+	require := require.New(t)
+	node, err := parse.Parse(nil, `
+		SELECT t.foo, bar.baz 
+		FROM tbl t 
+		INNER JOIN bar 
+			ON foo = baz 
+		WHERE foo > qux 
+		LIMIT 5 
+		OFFSET 2`)
+	require.NoError(err)
+	require.Equal(expectedTree, node.String())
 }

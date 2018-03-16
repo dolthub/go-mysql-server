@@ -2,6 +2,7 @@ package expression
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -39,9 +40,8 @@ func (ib *IsBinary) Eval(
 	return isBinary(blob.([]byte)), nil
 }
 
-// Name implements the Expression interface.
-func (ib *IsBinary) Name() string {
-	return "is_binary"
+func (ib IsBinary) String() string {
+	return fmt.Sprintf("IS_BINARY(%s)", ib.Child)
 }
 
 // TransformUp implements the Expression interface.
@@ -185,9 +185,11 @@ func (s *Substring) IsNullable() bool {
 	return s.str.IsNullable() || s.start.IsNullable() || (s.len != nil && s.len.IsNullable())
 }
 
-// Name implements the Expression interface.
-func (Substring) Name() string {
-	return "substring"
+func (s Substring) String() string {
+	if s.len == nil {
+		return fmt.Sprintf("SUBSTRING(%s, %s)", s.str, s.start)
+	}
+	return fmt.Sprintf("SUBSTRING(%s, %s, %s)", s.str, s.start, s.len)
 }
 
 // Resolved implements the Expression interface.

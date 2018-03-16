@@ -1,6 +1,11 @@
 package expression
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import (
+	"fmt"
+	"strings"
+
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+)
 
 // UnresolvedColumn is an expression of a column that is not yet resolved.
 // This is a placeholder node, so its methods Type, IsNullable and Eval are not
@@ -18,7 +23,7 @@ func NewUnresolvedColumn(name string) *UnresolvedColumn {
 // NewUnresolvedQualifiedColumn creates a new UnresolvedColumn expression
 // with a table qualifier.
 func NewUnresolvedQualifiedColumn(table, name string) *UnresolvedColumn {
-	return &UnresolvedColumn{name, table}
+	return &UnresolvedColumn{name: name, table: table}
 }
 
 // Resolved implements the Expression interface.
@@ -36,14 +41,17 @@ func (UnresolvedColumn) Type() sql.Type {
 	panic("unresolved column is a placeholder node, but Type was called")
 }
 
-// Name implements the Expression interface.
-func (uc UnresolvedColumn) Name() string {
-	return uc.name
-}
+// Name implements the Nameable interface.
+func (uc UnresolvedColumn) Name() string { return uc.name }
 
-// Table returns the Table name.
-func (uc UnresolvedColumn) Table() string {
-	return uc.table
+// Table returns the table name.
+func (uc UnresolvedColumn) Table() string { return uc.table }
+
+func (uc UnresolvedColumn) String() string {
+	if uc.table == "" {
+		return uc.name
+	}
+	return fmt.Sprintf("%s.%s", uc.table, uc.name)
 }
 
 // Eval implements the Expression interface.
@@ -92,9 +100,15 @@ func (UnresolvedFunction) Type() sql.Type {
 	panic("unresolved function is a placeholder node, but Type was called")
 }
 
-// Name implements the Expression interface.
-func (uf UnresolvedFunction) Name() string {
-	return uf.name
+// Name implements the Nameable interface.
+func (uf UnresolvedFunction) Name() string { return uf.name }
+
+func (uf UnresolvedFunction) String() string {
+	var exprs = make([]string, len(uf.Children))
+	for i, e := range uf.Children {
+		exprs[i] = e.String()
+	}
+	return fmt.Sprintf("%s(%s)", uf.name, strings.Join(exprs, ", "))
 }
 
 // Eval implements the Expression interface.

@@ -1,6 +1,8 @@
 package plan
 
 import (
+	"strings"
+
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -21,14 +23,19 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 
 // Schema implements the Node interface.
 func (p *Project) Schema() sql.Schema {
-	var s sql.Schema
-	for _, e := range p.Expressions {
-		f := &sql.Column{
-			Name:     e.Name(),
+	var s = make(sql.Schema, len(p.Expressions))
+	for i, e := range p.Expressions {
+		var name string
+		if n, ok := e.(sql.Nameable); ok {
+			name = n.Name()
+		} else {
+			name = e.String()
+		}
+		s[i] = &sql.Column{
+			Name:     name,
 			Type:     e.Type(),
 			Nullable: e.IsNullable(),
 		}
-		s = append(s, f)
 	}
 	return s
 }
@@ -70,6 +77,17 @@ func (p *Project) TransformExpressionsUp(f func(sql.Expression) (sql.Expression,
 	}
 
 	return NewProject(exprs, child), nil
+}
+
+func (p Project) String() string {
+	pr := sql.NewTreePrinter()
+	var exprs = make([]string, len(p.Expressions))
+	for i, expr := range p.Expressions {
+		exprs[i] = expr.String()
+	}
+	_ = pr.WriteNode("Project(%s)", strings.Join(exprs, ", "))
+	_ = pr.WriteChildren(p.Child.String())
+	return pr.String()
 }
 
 type iter struct {

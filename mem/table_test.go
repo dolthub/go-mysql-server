@@ -17,6 +17,20 @@ func TestTable_Name(t *testing.T) {
 	require.Equal("test", table.Name())
 }
 
+const expectedString = `Table(foo)
+ ├─ Column(col1, TEXT, nullable=true)
+ └─ Column(col2, INT64, nullable=false)
+`
+
+func TestTableString(t *testing.T) {
+	require := require.New(t)
+	table := NewTable("foo", sql.Schema{
+		{"col1", sql.Text, nil, true, ""},
+		{"col2", sql.Int64, nil, false, ""},
+	})
+	require.Equal(expectedString, table.String())
+}
+
 func TestTable_Insert_RowIter(t *testing.T) {
 	require := require.New(t)
 	session := sql.NewBaseSession(context.TODO())

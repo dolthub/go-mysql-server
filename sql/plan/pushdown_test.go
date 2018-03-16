@@ -125,9 +125,11 @@ func (t *pushdownProjectionAndFiltersTable) WithProjectAndFilters(session sql.Se
 Loop:
 	for i, col := range t.Schema() {
 		for _, c := range cols {
-			if c.Name() == col.Name {
-				fields = append(fields, i)
-				continue Loop
+			if c, ok := c.(sql.Nameable); ok {
+				if c.Name() == col.Name {
+					fields = append(fields, i)
+					continue Loop
+				}
 			}
 		}
 	}

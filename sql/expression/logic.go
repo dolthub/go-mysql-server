@@ -1,6 +1,10 @@
 package expression
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import (
+	"fmt"
+
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+)
 
 // And checks whether two expressions are true.
 type And struct {
@@ -12,9 +16,8 @@ func NewAnd(left, right sql.Expression) sql.Expression {
 	return &And{BinaryExpression{Left: left, Right: right}}
 }
 
-// Name implements the Expression interface.
-func (And) Name() string {
-	return "AND"
+func (a And) String() string {
+	return fmt.Sprintf("%s AND %s", a.Left, a.Right)
 }
 
 // Type implements the Expression interface.
@@ -74,9 +77,8 @@ func NewOr(left, right sql.Expression) sql.Expression {
 	return &Or{BinaryExpression{Left: left, Right: right}}
 }
 
-// Name implements the Expression interface.
-func (Or) Name() string {
-	return "OR"
+func (o Or) String() string {
+	return fmt.Sprintf("%s OR %s", o.Left, o.Right)
 }
 
 // Type implements the Expression interface.

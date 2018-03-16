@@ -61,6 +61,10 @@ func (p *ShowTables) TransformExpressionsUp(f func(sql.Expression) (sql.Expressi
 	return p, nil
 }
 
+func (p ShowTables) String() string {
+	return "ShowTables"
+}
+
 type showTablesIter struct {
 	tableNames []string
 	idx        int

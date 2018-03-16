@@ -1,6 +1,8 @@
 package plan
 
 import (
+	"fmt"
+
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -23,8 +25,14 @@ func (p *Values) Schema() sql.Schema {
 	exprs := p.ExpressionTuples[0]
 	s := make(sql.Schema, len(exprs))
 	for i, e := range exprs {
+		var name string
+		if n, ok := e.(sql.Nameable); ok {
+			name = n.Name()
+		} else {
+			name = e.String()
+		}
 		s[i] = &sql.Column{
-			Name:     e.Name(),
+			Name:     name,
 			Type:     e.Type(),
 			Nullable: e.IsNullable(),
 		}
@@ -85,4 +93,8 @@ func (p *Values) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, 
 	}
 
 	return NewValues(ets), nil
+}
+
+func (p Values) String() string {
+	return fmt.Sprintf("Values(%d tuples)", len(p.ExpressionTuples))
 }

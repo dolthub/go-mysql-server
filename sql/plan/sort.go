@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
@@ -23,6 +24,17 @@ const (
 	// Descending order.
 	Descending SortOrder = 2
 )
+
+func (s SortOrder) String() string {
+	switch s {
+	case Ascending:
+		return "ASC"
+	case Descending:
+		return "DESC"
+	default:
+		return "invalid SortOrder"
+	}
+}
 
 // NullOrdering represents how to order based on null values.
 type NullOrdering byte
@@ -101,6 +113,17 @@ func (s *Sort) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, er
 	}
 
 	return NewSort(sfs, child), nil
+}
+
+func (s Sort) String() string {
+	pr := sql.NewTreePrinter()
+	var fields = make([]string, len(s.SortFields))
+	for i, f := range s.SortFields {
+		fields[i] = fmt.Sprintf("%s %s", f.Column, f.Order)
+	}
+	_ = pr.WriteNode("Sort(%s)", strings.Join(fields, ", "))
+	_ = pr.WriteChildren(s.Child.String())
+	return pr.String()
 }
 
 type sortIter struct {

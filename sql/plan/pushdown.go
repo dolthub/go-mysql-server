@@ -1,6 +1,11 @@
 package plan
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import (
+	"fmt"
+	"strings"
+
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+)
 
 // PushdownProjectionTable is a node wrapping a table implementing the
 // sql.PushdownProjectionTable interface so it returns a RowIter with
@@ -36,6 +41,13 @@ func (t *PushdownProjectionTable) TransformUp(f func(sql.Node) (sql.Node, error)
 // RowIter implements the Node interface.
 func (t *PushdownProjectionTable) RowIter(session sql.Session) (sql.RowIter, error) {
 	return t.WithProject(session, t.columns)
+}
+
+func (t PushdownProjectionTable) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("PushdownProjectionTable(%s)", strings.Join(t.columns, ", "))
+	_ = pr.WriteChildren(t.PushdownProjectionTable.String())
+	return pr.String()
 }
 
 // PushdownProjectionAndFiltersTable is a node wrapping a table implementing
@@ -76,4 +88,27 @@ func (t *PushdownProjectionAndFiltersTable) TransformUp(f func(sql.Node) (sql.No
 // RowIter implements the Node interface.
 func (t *PushdownProjectionAndFiltersTable) RowIter(session sql.Session) (sql.RowIter, error) {
 	return t.WithProjectAndFilters(session, t.columns, t.filters)
+}
+
+func (t PushdownProjectionAndFiltersTable) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("PushdownProjectionAndFiltersTable")
+
+	var columns = make([]string, len(t.columns))
+	for i, col := range t.columns {
+		columns[i] = col.String()
+	}
+
+	var filters = make([]string, len(t.filters))
+	for i, f := range t.filters {
+		filters[i] = f.String()
+	}
+
+	_ = pr.WriteChildren(
+		fmt.Sprintf("Columns(%s)", strings.Join(columns, ", ")),
+		fmt.Sprintf("Filters(%s)", strings.Join(filters, ", ")),
+		t.PushdownProjectionAndFiltersTable.String(),
+	)
+
+	return pr.String()
 }

@@ -1,12 +1,15 @@
 package expression
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import (
+	"fmt"
+
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+)
 
 // Literal represents a literal expression (string, number, bool, ...).
 type Literal struct {
 	value     interface{}
 	fieldType sql.Type
-	name      string
 }
 
 // NewLiteral creates a new Literal expression.
@@ -14,7 +17,6 @@ func NewLiteral(value interface{}, fieldType sql.Type) *Literal {
 	return &Literal{
 		value:     value,
 		fieldType: fieldType,
-		name:      "literal_" + fieldType.Type().String(),
 	}
 }
 
@@ -38,9 +40,15 @@ func (p Literal) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 	return p.value, nil
 }
 
-// Name implements the Expression interface.
-func (p Literal) Name() string {
-	return p.name
+func (p Literal) String() string {
+	switch v := p.value.(type) {
+	case string:
+		return fmt.Sprintf("%q", v)
+	case []byte:
+		return "BLOB"
+	default:
+		return fmt.Sprint(v)
+	}
 }
 
 // TransformUp implements the Expression interface.

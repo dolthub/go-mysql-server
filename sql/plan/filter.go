@@ -54,6 +54,13 @@ func (p *Filter) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, 
 	return NewFilter(expr, child), nil
 }
 
+func (p Filter) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Filter(%s)", p.Expression)
+	_ = pr.WriteChildren(p.Child.String())
+	return pr.String()
+}
+
 // FilterIter is an iterator that filters another iterator and skips rows that
 // don't match the given condition.
 type FilterIter struct {

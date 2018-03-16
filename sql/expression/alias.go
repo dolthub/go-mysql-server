@@ -1,6 +1,10 @@
 package expression
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import (
+	"fmt"
+
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+)
 
 // Alias is a node that gives a name to an expression.
 type Alias struct {
@@ -23,9 +27,8 @@ func (e *Alias) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 	return e.Child.Eval(session, row)
 }
 
-// Name implements the Expression interface.
-func (e *Alias) Name() string {
-	return e.name
+func (e Alias) String() string {
+	return fmt.Sprintf("%s as %s", e.Child, e.name)
 }
 
 // TransformUp implements the Expression interface.
@@ -36,3 +39,6 @@ func (e *Alias) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql
 	}
 	return f(NewAlias(child, e.name))
 }
+
+// Name implements the Nameable interface.
+func (e *Alias) Name() string { return e.name }

@@ -54,6 +54,13 @@ func (l *Limit) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, e
 	return NewLimit(l.size, child), nil
 }
 
+func (l Limit) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Limit(%d)", l.size)
+	_ = pr.WriteChildren(l.Child.String())
+	return pr.String()
+}
+
 type limitIter struct {
 	l          *Limit
 	currentPos int64
