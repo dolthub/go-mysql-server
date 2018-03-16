@@ -66,8 +66,8 @@ func (c *Convert) Type() sql.Type {
 }
 
 // Name implements the Expression interface.
-func (c *Convert) Name() string {
-	return fmt.Sprintf("convert(%v, %v)", c.Child.Name(), c.castToType)
+func (c *Convert) String() string {
+	return fmt.Sprintf("convert(%v, %v)", c.Child, c.castToType)
 }
 
 // TransformUp implements the Expression interface.
@@ -93,7 +93,7 @@ func (c *Convert) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 
 	casted, err := convertValue(val, c.castToType)
 	if err != nil {
-		return nil, ErrConvertExpression.Wrap(err, c.Name(), c.castToType)
+		return nil, ErrConvertExpression.Wrap(err, c.String(), c.castToType)
 	}
 
 	return casted, nil
