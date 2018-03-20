@@ -334,7 +334,7 @@ func TestQualifyColumns(t *testing.T) {
 
 	result, err = f.Apply(nil, node)
 	require.Error(err)
-	require.True(ErrColumnTableNotFound.Is(err))
+	require.True(ErrColumnNotFound.Is(err))
 
 	node = plan.NewProject(
 		[]sql.Expression{
@@ -356,7 +356,7 @@ func TestQualifyColumns(t *testing.T) {
 
 	_, err = f.Apply(nil, node)
 	require.Error(err)
-	require.True(ErrColumnTableNotFound.Is(err))
+	require.True(ErrColumnNotFound.Is(err))
 
 	node = plan.NewProject(
 		[]sql.Expression{
