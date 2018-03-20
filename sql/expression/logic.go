@@ -69,7 +69,7 @@ func (a *And) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (a *And) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (a *And) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	left, err := a.Left.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func (o *Or) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (o *Or) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (o *Or) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	left, err := o.Left.TransformUp(f)
 	if err != nil {
 		return nil, err

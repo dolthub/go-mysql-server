@@ -58,7 +58,7 @@ func (p GetField) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (p *GetField) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (p *GetField) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	n := *p
 	return f(&n)
 }

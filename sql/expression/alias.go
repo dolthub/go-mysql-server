@@ -32,7 +32,7 @@ func (e Alias) String() string {
 }
 
 // TransformUp implements the Expression interface.
-func (e *Alias) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (e *Alias) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := e.Child.TransformUp(f)
 	if err != nil {
 		return nil, err

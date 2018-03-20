@@ -60,7 +60,7 @@ func (UnresolvedColumn) Eval(s sql.Session, r sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (uc *UnresolvedColumn) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (uc *UnresolvedColumn) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	n := *uc
 	return f(&n)
 }
@@ -117,7 +117,7 @@ func (UnresolvedFunction) Eval(s sql.Session, r sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (uf *UnresolvedFunction) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (uf *UnresolvedFunction) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	var rc []sql.Expression
 	for _, c := range uf.Children {
 		c, err := c.TransformUp(f)

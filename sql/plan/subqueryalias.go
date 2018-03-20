@@ -39,12 +39,12 @@ func (n *SubqueryAlias) RowIter(sess sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Node interface.
-func (n *SubqueryAlias) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+func (n *SubqueryAlias) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
 	return f(n)
 }
 
 // TransformExpressionsUp implements the Node interface.
-func (n *SubqueryAlias) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+func (n *SubqueryAlias) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return n, nil
 }
 

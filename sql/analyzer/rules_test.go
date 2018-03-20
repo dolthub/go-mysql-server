@@ -577,11 +577,11 @@ func (pushdownProjectionTable) WithProject(sql.Session, []string) (sql.RowIter, 
 	panic("not implemented")
 }
 
-func (t *pushdownProjectionTable) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+func (t *pushdownProjectionTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
 	return f(t)
 }
 
-func (t *pushdownProjectionTable) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+func (t *pushdownProjectionTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return t, nil
 }
 
@@ -605,11 +605,11 @@ func (pushdownProjectionAndFiltersTable) WithProjectAndFilters(_ sql.Session, co
 	panic("not implemented")
 }
 
-func (t *pushdownProjectionAndFiltersTable) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+func (t *pushdownProjectionAndFiltersTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
 	return f(t)
 }
 
-func (t *pushdownProjectionAndFiltersTable) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+func (t *pushdownProjectionAndFiltersTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return t, nil
 }
 

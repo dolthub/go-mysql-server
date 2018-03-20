@@ -46,7 +46,7 @@ func (p *CrossJoin) RowIter(session sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Transformable interface.
-func (p *CrossJoin) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+func (p *CrossJoin) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
 	left, err := p.Left.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (p *CrossJoin) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, e
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (p *CrossJoin) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+func (p *CrossJoin) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	left, err := p.Left.TransformExpressionsUp(f)
 	if err != nil {
 		return nil, err

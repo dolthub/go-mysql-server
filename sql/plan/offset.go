@@ -31,7 +31,7 @@ func (o *Offset) RowIter(session sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Transformable interface.
-func (o *Offset) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+func (o *Offset) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
 	child, err := o.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func (o *Offset) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, erro
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (o *Offset) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+func (o *Offset) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	child, err := o.Child.TransformExpressionsUp(f)
 	if err != nil {
 		return nil, err

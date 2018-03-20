@@ -182,14 +182,14 @@ func TestValidateSchemaSource(t *testing.T) {
 
 type dummyNode struct{ resolved bool }
 
-func (n dummyNode) String() string                                               { return "dummynode" }
-func (n dummyNode) Resolved() bool                                               { return n.resolved }
-func (dummyNode) Schema() sql.Schema                                             { return sql.Schema{} }
-func (dummyNode) Children() []sql.Node                                           { return nil }
-func (dummyNode) RowIter(sql.Session) (sql.RowIter, error)                       { return nil, nil }
-func (dummyNode) TransformUp(func(sql.Node) (sql.Node, error)) (sql.Node, error) { return nil, nil }
+func (n dummyNode) String() string                                    { return "dummynode" }
+func (n dummyNode) Resolved() bool                                    { return n.resolved }
+func (dummyNode) Schema() sql.Schema                                  { return sql.Schema{} }
+func (dummyNode) Children() []sql.Node                                { return nil }
+func (dummyNode) RowIter(sql.Session) (sql.RowIter, error)            { return nil, nil }
+func (dummyNode) TransformUp(sql.TransformNodeFunc) (sql.Node, error) { return nil, nil }
 func (dummyNode) TransformExpressionsUp(
-	func(sql.Expression) (sql.Expression, error),
+	sql.TransformExprFunc,
 ) (sql.Node, error) {
 	return nil, nil
 }

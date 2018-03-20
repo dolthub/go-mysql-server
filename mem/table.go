@@ -47,12 +47,12 @@ func (t *Table) RowIter(session sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Transformer interface.
-func (t *Table) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+func (t *Table) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
 	return f(t)
 }
 
 // TransformExpressionsUp implements the Transformer interface.
-func (t *Table) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+func (t *Table) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return t, nil
 }
 

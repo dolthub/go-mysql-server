@@ -22,12 +22,20 @@ type Resolvable interface {
 type Transformable interface {
 	// TransformUp transforms all nodes and returns the result of this transformation.
 	// Transformation is not propagated to subqueries.
-	TransformUp(func(Node) (Node, error)) (Node, error)
+	TransformUp(TransformNodeFunc) (Node, error)
 	// TransformExpressionsUp transforms all expressions inside the node and all its
 	// children and returns a node with the result of the transformations.
 	// Transformation is not propagated to subqueries.
-	TransformExpressionsUp(func(Expression) (Expression, error)) (Node, error)
+	TransformExpressionsUp(TransformExprFunc) (Node, error)
 }
+
+// TransformNodeFunc is a function that given a node will return that node
+// as is or transformed along with an error, if any.
+type TransformNodeFunc func(Node) (Node, error)
+
+// TransformExprFunc is a function that given an expression will return that
+// expression as is or transformed along with an error, if any.
+type TransformExprFunc func(Expression) (Expression, error)
 
 // Expression is a combination of one or more SQL expressions.
 type Expression interface {
@@ -41,7 +49,7 @@ type Expression interface {
 	Eval(Session, Row) (interface{}, error)
 	// TransformUp transforms the expression and all its children with the
 	// given transform function.
-	TransformUp(func(Expression) (Expression, error)) (Expression, error)
+	TransformUp(TransformExprFunc) (Expression, error)
 }
 
 // Aggregation implements an aggregation expression, where an
