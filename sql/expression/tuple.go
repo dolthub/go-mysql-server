@@ -78,7 +78,7 @@ func (t Tuple) Type() sql.Type {
 }
 
 // TransformUp implements the Expression interface.
-func (t Tuple) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (t Tuple) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	var exprs = make([]sql.Expression, len(t))
 	for i, e := range t {
 		var err error

@@ -1,13 +1,19 @@
-package expression
+package function
 
 import (
 	"fmt"
 	"time"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 )
 
-func getDatePart(session sql.Session, u UnaryExpression, row sql.Row, f func(time.Time) int) (interface{}, error) {
+func getDatePart(
+	session sql.Session,
+	u expression.UnaryExpression,
+	row sql.Row,
+	f func(time.Time) int,
+) (interface{}, error) {
 	val, err := u.Child.Eval(session, row)
 	if err != nil {
 		return nil, err
@@ -30,12 +36,12 @@ func getDatePart(session sql.Session, u UnaryExpression, row sql.Row, f func(tim
 
 // Year is a function that returns the year of a date.
 type Year struct {
-	UnaryExpression
+	expression.UnaryExpression
 }
 
 // NewYear creates a new Year UDF.
 func NewYear(date sql.Expression) sql.Expression {
-	return &Year{UnaryExpression{Child: date}}
+	return &Year{expression.UnaryExpression{Child: date}}
 }
 
 func (y Year) String() string { return fmt.Sprintf("YEAR(%s)", y.Child) }
@@ -60,12 +66,12 @@ func (y *Year) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 
 // Month is a function that returns the month of a date.
 type Month struct {
-	UnaryExpression
+	expression.UnaryExpression
 }
 
 // NewMonth creates a new Month UDF.
 func NewMonth(date sql.Expression) sql.Expression {
-	return &Month{UnaryExpression{Child: date}}
+	return &Month{expression.UnaryExpression{Child: date}}
 }
 
 func (m Month) String() string { return fmt.Sprintf("MONTH(%s)", m.Child) }
@@ -94,12 +100,12 @@ func (m *Month) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 
 // Day is a function that returns the day of a date.
 type Day struct {
-	UnaryExpression
+	expression.UnaryExpression
 }
 
 // NewDay creates a new Day UDF.
 func NewDay(date sql.Expression) sql.Expression {
-	return &Day{UnaryExpression{Child: date}}
+	return &Day{expression.UnaryExpression{Child: date}}
 }
 
 func (d Day) String() string { return fmt.Sprintf("DAY(%s)", d.Child) }
@@ -124,12 +130,12 @@ func (d *Day) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 
 // Hour is a function that returns the hour of a date.
 type Hour struct {
-	UnaryExpression
+	expression.UnaryExpression
 }
 
 // NewHour creates a new Hour UDF.
 func NewHour(date sql.Expression) sql.Expression {
-	return &Hour{UnaryExpression{Child: date}}
+	return &Hour{expression.UnaryExpression{Child: date}}
 }
 
 func (h Hour) String() string { return fmt.Sprintf("HOUR(%s)", h.Child) }
@@ -154,12 +160,12 @@ func (h *Hour) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 
 // Minute is a function that returns the minute of a date.
 type Minute struct {
-	UnaryExpression
+	expression.UnaryExpression
 }
 
 // NewMinute creates a new Minute UDF.
 func NewMinute(date sql.Expression) sql.Expression {
-	return &Minute{UnaryExpression{Child: date}}
+	return &Minute{expression.UnaryExpression{Child: date}}
 }
 
 func (m Minute) String() string { return fmt.Sprintf("MINUTE(%d)", m.Child) }
@@ -184,12 +190,12 @@ func (m *Minute) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 
 // Second is a function that returns the second of a date.
 type Second struct {
-	UnaryExpression
+	expression.UnaryExpression
 }
 
 // NewSecond creates a new Second UDF.
 func NewSecond(date sql.Expression) sql.Expression {
-	return &Second{UnaryExpression{Child: date}}
+	return &Second{expression.UnaryExpression{Child: date}}
 }
 
 func (s Second) String() string { return fmt.Sprintf("SECOND(%s)", s.Child) }
@@ -214,12 +220,12 @@ func (s *Second) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 
 // DayOfYear is a function that returns the day of the year from a date.
 type DayOfYear struct {
-	UnaryExpression
+	expression.UnaryExpression
 }
 
 // NewDayOfYear creates a new DayOfYear UDF.
 func NewDayOfYear(date sql.Expression) sql.Expression {
-	return &DayOfYear{UnaryExpression{Child: date}}
+	return &DayOfYear{expression.UnaryExpression{Child: date}}
 }
 
 func (d DayOfYear) String() string { return fmt.Sprintf("DAYOFYEAR(%s)", d.Child) }

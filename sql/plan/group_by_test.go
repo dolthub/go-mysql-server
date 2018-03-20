@@ -8,6 +8,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function/aggregation"
 )
 
 func TestGroupBy_Schema(t *testing.T) {
@@ -16,7 +17,7 @@ func TestGroupBy_Schema(t *testing.T) {
 	child := mem.NewTable("test", sql.Schema{})
 	agg := []sql.Expression{
 		expression.NewAlias(expression.NewLiteral("s", sql.Text), "c1"),
-		expression.NewAlias(expression.NewCount(expression.NewStar()), "c2"),
+		expression.NewAlias(aggregation.NewCount(expression.NewStar()), "c2"),
 	}
 	gb := NewGroupBy(agg, nil, child)
 	require.Equal(sql.Schema{
@@ -30,7 +31,7 @@ func TestGroupBy_Resolved(t *testing.T) {
 
 	child := mem.NewTable("test", sql.Schema{})
 	agg := []sql.Expression{
-		expression.NewAlias(expression.NewCount(expression.NewStar()), "c2"),
+		expression.NewAlias(aggregation.NewCount(expression.NewStar()), "c2"),
 	}
 	gb := NewGroupBy(agg, nil, child)
 	require.True(gb.Resolved())
@@ -107,11 +108,11 @@ func TestGroupBy_Error(t *testing.T) {
 
 	p := NewGroupBy(
 		[]sql.Expression{
-			expression.NewCount(expression.NewGetField(0, sql.Text, "col1", true)),
+			aggregation.NewCount(expression.NewGetField(0, sql.Text, "col1", true)),
 			expression.NewIsNull(expression.NewGetField(1, sql.Int64, "col2", true)),
 		},
 		[]sql.Expression{
-			expression.NewCount(expression.NewGetField(0, sql.Text, "col1", true)),
+			aggregation.NewCount(expression.NewGetField(0, sql.Text, "col1", true)),
 			expression.NewGetField(1, sql.Int64, "col2", true),
 		},
 		child,

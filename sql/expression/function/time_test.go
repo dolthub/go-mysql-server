@@ -1,4 +1,4 @@
-package expression
+package function
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 )
 
 const (
@@ -15,7 +16,7 @@ const (
 )
 
 func TestTime_Year(t *testing.T) {
-	f := NewYear(NewGetField(0, sql.Text, "foo", false))
+	f := NewYear(expression.NewGetField(0, sql.Text, "foo", false))
 	session := sql.NewBaseSession(context.TODO())
 
 	testCases := []struct {
@@ -46,7 +47,7 @@ func TestTime_Year(t *testing.T) {
 }
 
 func TestTime_Month(t *testing.T) {
-	f := NewMonth(NewGetField(0, sql.Text, "foo", false))
+	f := NewMonth(expression.NewGetField(0, sql.Text, "foo", false))
 	session := sql.NewBaseSession(context.TODO())
 
 	testCases := []struct {
@@ -77,7 +78,7 @@ func TestTime_Month(t *testing.T) {
 }
 
 func TestTime_Day(t *testing.T) {
-	f := NewDay(NewGetField(0, sql.Text, "foo", false))
+	f := NewDay(expression.NewGetField(0, sql.Text, "foo", false))
 	session := sql.NewBaseSession(context.TODO())
 
 	testCases := []struct {
@@ -108,7 +109,7 @@ func TestTime_Day(t *testing.T) {
 }
 
 func TestTime_Hour(t *testing.T) {
-	f := NewHour(NewGetField(0, sql.Text, "foo", false))
+	f := NewHour(expression.NewGetField(0, sql.Text, "foo", false))
 	session := sql.NewBaseSession(context.TODO())
 
 	testCases := []struct {
@@ -139,7 +140,7 @@ func TestTime_Hour(t *testing.T) {
 }
 
 func TestTime_Minute(t *testing.T) {
-	f := NewMinute(NewGetField(0, sql.Text, "foo", false))
+	f := NewMinute(expression.NewGetField(0, sql.Text, "foo", false))
 	session := sql.NewBaseSession(context.TODO())
 
 	testCases := []struct {
@@ -170,7 +171,7 @@ func TestTime_Minute(t *testing.T) {
 }
 
 func TestTime_Second(t *testing.T) {
-	f := NewSecond(NewGetField(0, sql.Text, "foo", false))
+	f := NewSecond(expression.NewGetField(0, sql.Text, "foo", false))
 	session := sql.NewBaseSession(context.TODO())
 	testCases := []struct {
 		name     string
@@ -200,7 +201,7 @@ func TestTime_Second(t *testing.T) {
 }
 
 func TestTime_DayOfYear(t *testing.T) {
-	f := NewDayOfYear(NewGetField(0, sql.Text, "foo", false))
+	f := NewDayOfYear(expression.NewGetField(0, sql.Text, "foo", false))
 	session := sql.NewBaseSession(context.TODO())
 
 	testCases := []struct {

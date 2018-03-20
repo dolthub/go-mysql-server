@@ -498,7 +498,7 @@ func (in *In) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (in *In) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (in *In) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	left, err := in.Left().TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -581,7 +581,7 @@ func (in *NotIn) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (in *NotIn) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (in *NotIn) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	left, err := in.Left().TransformUp(f)
 	if err != nil {
 		return nil, err

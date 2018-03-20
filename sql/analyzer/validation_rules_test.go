@@ -6,6 +6,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function/aggregation"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 
 	"github.com/stretchr/testify/require"
@@ -34,7 +35,7 @@ func TestValidateOrderBy(t *testing.T) {
 	require.NoError(err)
 
 	err = vr.Apply(plan.NewSort(
-		[]plan.SortField{{Column: expression.NewCount(nil), Order: plan.Descending}},
+		[]plan.SortField{{Column: aggregation.NewCount(nil), Order: plan.Descending}},
 		nil,
 	))
 	require.Error(err)
@@ -66,7 +67,7 @@ func TestValidateGroupBy(t *testing.T) {
 		[]sql.Expression{
 			expression.NewAlias(expression.NewGetField(0, sql.Text, "col1", true), "alias"),
 			expression.NewGetField(0, sql.Text, "col1", true),
-			expression.NewCount(expression.NewGetField(1, sql.Int64, "col2", true)),
+			aggregation.NewCount(expression.NewGetField(1, sql.Int64, "col2", true)),
 		},
 		[]sql.Expression{
 			expression.NewGetField(0, sql.Text, "col1", true),
