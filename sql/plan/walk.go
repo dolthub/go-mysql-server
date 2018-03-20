@@ -1,6 +1,9 @@
 package plan
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import (
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+)
 
 // Visitor visits nodes in the plan.
 type Visitor interface {
@@ -43,4 +46,63 @@ func (f inspector) Visit(node sql.Node) Visitor {
 // f(nil).
 func Inspect(node sql.Node, f func(sql.Node) bool) {
 	Walk(inspector(f), node)
+}
+
+// WalkExpressions traverses the plan and calls expression.Walk on any
+// expression it finds.
+func WalkExpressions(v expression.Visitor, node sql.Node) {
+	Inspect(node, func(node sql.Node) bool {
+		switch node := node.(type) {
+		case *Project:
+			for _, e := range node.Expressions {
+				expression.Walk(v, e)
+			}
+		case *Filter:
+			expression.Walk(v, node.Expression)
+		case *Values:
+			for _, tuple := range node.ExpressionTuples {
+				for _, e := range tuple {
+					expression.Walk(v, e)
+				}
+			}
+		case *PushdownProjectionAndFiltersTable:
+			for _, f := range node.columns {
+				expression.Walk(v, f)
+			}
+
+			for _, f := range node.filters {
+				expression.Walk(v, f)
+			}
+		case *GroupBy:
+			for _, e := range node.Aggregate {
+				expression.Walk(v, e)
+			}
+
+			for _, e := range node.Grouping {
+				expression.Walk(v, e)
+			}
+		case *InnerJoin:
+			expression.Walk(v, node.Cond)
+		case *Sort:
+			for _, f := range node.SortFields {
+				expression.Walk(v, f.Column)
+			}
+		}
+		return true
+	})
+}
+
+// InspectExpressions traverses the plan and calls expression.Inspect on any
+// expression it finds.
+func InspectExpressions(node sql.Node, f func(sql.Expression) bool) {
+	WalkExpressions(exprInspector(f), node)
+}
+
+type exprInspector func(sql.Expression) bool
+
+func (f exprInspector) Visit(e sql.Expression) expression.Visitor {
+	if f(e) {
+		return f
+	}
+	return nil
 }
