@@ -120,7 +120,11 @@ func (h *Handler) ComQuery(
 		r.RowsAffected++
 	}
 
-	if r != nil && r.RowsAffected != 0 {
+	// Even if r.RowsAffected = 0, the callback must be
+	// called to update the state in the go-vitess' listener
+	// an avoid to return errors when the query doesn't
+	// produce results.
+	if r != nil {
 		if err := callback(r); err != nil {
 			return err
 		}

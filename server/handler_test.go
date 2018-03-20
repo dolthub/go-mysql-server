@@ -46,12 +46,14 @@ func TestHandlerOutput(t *testing.T) {
 	var lastRows int
 	err := handler.ComQuery(dummyConn, "SELECT * FROM test limit 100", func(res *sqltypes.Result) error {
 		c++
-		lastRowsAffected = res.RowsAffected
-		lastRows = len(res.Rows)
+		if res.RowsAffected != 0 {
+			lastRowsAffected = res.RowsAffected
+			lastRows = len(res.Rows)
+		}
 		return nil
 	})
 	require.NoError(err)
-	require.Equal(1, c)
+	require.Equal(2, c)
 	require.Equal(100, lastRows)
 	require.Equal(uint64(100), lastRowsAffected)
 
