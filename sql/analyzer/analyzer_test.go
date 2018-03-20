@@ -76,7 +76,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(notAnalyzed)
 	expected = plan.NewProject(
-		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", false)},
+		[]sql.Expression{expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false)},
 		table,
 	)
 	require.NoError(err)
@@ -93,7 +93,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	expected = plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", false)},
 		plan.NewProject(
-			[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", false)},
+			[]sql.Expression{expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false)},
 			table,
 		),
 	)
