@@ -28,6 +28,11 @@ func (Star) Resolved() bool {
 	return false
 }
 
+// Children implements the Expression interface.
+func (Star) Children() []sql.Expression {
+	return nil
+}
+
 // IsNullable implements the Expression interface.
 func (Star) IsNullable() bool {
 	panic("star is just a placeholder node, but IsNullable was called")

@@ -56,3 +56,8 @@ func (p *Literal) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	n := *p
 	return f(&n)
 }
+
+// Children implements the Expression interface.
+func (Literal) Children() []sql.Expression {
+	return nil
+}

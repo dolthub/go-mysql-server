@@ -323,7 +323,7 @@ func resolveFunctions(a *Analyzer, n sql.Node) (sql.Node, error) {
 				return nil, err
 			}
 
-			rf, err := f.Call(uf.Children...)
+			rf, err := f.Call(uf.Arguments...)
 			if err != nil {
 				return nil, err
 			}
