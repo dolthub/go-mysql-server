@@ -12,8 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHandlerOutput(t *testing.T) {
-	require := require.New(t)
+func setupMemDB(require *require.Assertions) *sqle.Engine {
 	e := sqle.New()
 	db := mem.NewDatabase("test")
 	e.AddDatabase(db)
@@ -28,6 +27,13 @@ func TestHandlerOutput(t *testing.T) {
 	}
 
 	memDb.AddTable("test", t1)
+
+	return e
+}
+
+func TestHandlerOutput(t *testing.T) {
+	require := require.New(t)
+	e := setupMemDB(require)
 
 	dummyConn := &mysql.Conn{ConnectionID: 1}
 
@@ -61,4 +67,47 @@ func TestHandlerOutput(t *testing.T) {
 	require.Equal(1, lastRows)
 	require.Equal(uint64(1), lastRowsAffected)
 
+}
+
+func newConn(id uint32) *mysql.Conn {
+	return &mysql.Conn{
+		ConnectionID: id,
+	}
+}
+
+func TestHandlerKill(t *testing.T) {
+	require := require.New(t)
+	e := setupMemDB(require)
+
+	handler := NewHandler(e,
+		NewSessionManager(func(conn *mysql.Conn) sql.Session {
+			return sql.NewBaseSession()
+		}))
+
+	require.Len(handler.c, 0)
+
+	conn1 := newConn(1)
+
+	handler.NewConnection(conn1)
+
+	require.Len(handler.c, 1)
+	c, ok := handler.c[1]
+	require.True(ok)
+	require.Equal(conn1, c)
+
+	conn2 := newConn(2)
+
+	err := handler.ComQuery(conn2, "KILL QUERY 1", func(res *sqltypes.Result) error {
+		return nil
+	})
+
+	require.NoError(err)
+
+	require.Len(handler.c, 1)
+	c, ok = handler.c[1]
+	require.True(ok)
+	require.Equal(conn1, c)
+
+	// Cannot test KILL CONNECTION as the connection can not be mocked. Calling
+	// mysql.Conn.Close panics.
 }
