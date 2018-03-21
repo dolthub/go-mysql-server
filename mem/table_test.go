@@ -33,7 +33,7 @@ func TestTableString(t *testing.T) {
 
 func TestTable_Insert_RowIter(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	s := sql.Schema{
 		{"col1", sql.Text, nil, true, ""},
@@ -41,18 +41,18 @@ func TestTable_Insert_RowIter(t *testing.T) {
 
 	table := NewTable("test", s)
 
-	rows, err := sql.NodeToRows(session, table)
+	rows, err := sql.NodeToRows(ctx, table)
 	require.Nil(err)
 	require.Len(rows, 0)
 
 	err = table.Insert(sql.NewRow("foo"))
-	rows, err = sql.NodeToRows(session, table)
+	rows, err = sql.NodeToRows(ctx, table)
 	require.Nil(err)
 	require.Len(rows, 1)
 	require.Nil(s.CheckRow(rows[0]))
 
 	err = table.Insert(sql.NewRow("bar"))
-	rows, err = sql.NodeToRows(session, table)
+	rows, err = sql.NodeToRows(ctx, table)
 	require.Nil(err)
 	require.Len(rows, 2)
 	require.Nil(s.CheckRow(rows[0]))

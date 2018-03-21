@@ -22,12 +22,12 @@ func (p *Filter) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (p *Filter) RowIter(session sql.Session) (sql.RowIter, error) {
-	i, err := p.Child.RowIter(session)
+func (p *Filter) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	i, err := p.Child.RowIter(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return NewFilterIter(session, p.Expression, i), nil
+	return NewFilterIter(ctx, p.Expression, i), nil
 }
 
 // TransformUp implements the Transformable interface.
@@ -66,16 +66,16 @@ func (p Filter) String() string {
 type FilterIter struct {
 	cond      sql.Expression
 	childIter sql.RowIter
-	session   sql.Session
+	ctx       *sql.Context
 }
 
 // NewFilterIter creates a new FilterIter.
 func NewFilterIter(
-	session sql.Session,
+	ctx *sql.Context,
 	cond sql.Expression,
 	child sql.RowIter,
 ) *FilterIter {
-	return &FilterIter{cond, child, session}
+	return &FilterIter{cond, child, ctx}
 }
 
 // Next implements the RowIter interface.
@@ -86,7 +86,7 @@ func (i *FilterIter) Next() (sql.Row, error) {
 			return nil, err
 		}
 
-		result, err := i.cond.Eval(i.session, row)
+		result, err := i.cond.Eval(i.ctx, row)
 		if err != nil {
 			return nil, err
 		}

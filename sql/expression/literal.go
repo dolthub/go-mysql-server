@@ -36,7 +36,7 @@ func (p Literal) Type() sql.Type {
 }
 
 // Eval implements the Expression interface.
-func (p Literal) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+func (p Literal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return p.value, nil
 }
 

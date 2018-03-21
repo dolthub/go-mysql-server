@@ -30,25 +30,25 @@ func (t *testNode) Children() []Node {
 	panic("not implemented")
 }
 
-func (t *testNode) RowIter(session Session) (RowIter, error) {
-	return newTestNodeIterator(session), nil
+func (t *testNode) RowIter(ctx *Context) (RowIter, error) {
+	return newTestNodeIterator(ctx), nil
 }
 
 type testNodeIterator struct {
-	session context.Context
+	ctx     context.Context
 	Counter int
 }
 
-func newTestNodeIterator(session Session) RowIter {
+func newTestNodeIterator(ctx *Context) RowIter {
 	return &testNodeIterator{
-		session: session,
+		ctx:     ctx,
 		Counter: 0,
 	}
 }
 
 func (t *testNodeIterator) Next() (Row, error) {
 	select {
-	case <-t.session.Done():
+	case <-t.ctx.Done():
 		return nil, io.EOF
 
 	default:
@@ -64,10 +64,10 @@ func (t *testNodeIterator) Close() error {
 func TestSessionIterator(t *testing.T) {
 	require := require.New(t)
 	ctx, cancelFunc := context.WithCancel(context.TODO())
-	session := NewBaseSession(ctx)
+	session := NewBaseSession()
 
 	node := &testNode{}
-	iter, err := node.RowIter(session)
+	iter, err := node.RowIter(NewContext(ctx, session))
 	require.NoError(err)
 
 	counter := 0

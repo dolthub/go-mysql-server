@@ -37,7 +37,7 @@ func (p *InsertInto) Schema() sql.Schema {
 }
 
 // Execute inserts the rows in the database.
-func (p *InsertInto) Execute(session sql.Session) (int, error) {
+func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 	insertable, ok := p.Left.(sql.Inserter)
 	if !ok {
 		return 0, ErrInsertIntoNotSupported.New()
@@ -63,7 +63,7 @@ func (p *InsertInto) Execute(session sql.Session) (int, error) {
 
 	proj := NewProject(projExprs, p.Right)
 
-	iter, err := proj.RowIter(session)
+	iter, err := proj.RowIter(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -92,8 +92,8 @@ func (p *InsertInto) Execute(session sql.Session) (int, error) {
 }
 
 // RowIter implements the Node interface.
-func (p *InsertInto) RowIter(session sql.Session) (sql.RowIter, error) {
-	n, err := p.Execute(session)
+func (p *InsertInto) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	n, err := p.Execute(ctx)
 	if err != nil {
 		return nil, err
 	}

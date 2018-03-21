@@ -86,9 +86,9 @@ func assertRows(t *testing.T, iter sql.RowIter, expected int64) {
 
 func collectRows(t *testing.T, node sql.Node) []sql.Row {
 	t.Helper()
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
-	iter, err := node.RowIter(session)
+	iter, err := node.RowIter(ctx)
 	require.NoError(t, err)
 
 	var rows []sql.Row

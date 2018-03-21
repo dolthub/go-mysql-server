@@ -11,7 +11,7 @@ import (
 // Comparer implements a comparison expression.
 type Comparer interface {
 	sql.Expression
-	Compare(session sql.Session, row sql.Row) (int, error)
+	Compare(ctx *sql.Context, row sql.Row) (int, error)
 	Left() sql.Expression
 	Right() sql.Expression
 }
@@ -31,8 +31,8 @@ func newComparison(left, right sql.Expression) comparison {
 // Compare the two given values using the types of the expressions in the comparison.
 // Since both types should be equal, it does not matter which type is used, but for
 // reference, the left type is always used.
-func (c *comparison) Compare(session sql.Session, row sql.Row) (int, error) {
-	left, right, err := c.evalLeftAndRight(session, row)
+func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
+	left, right, err := c.evalLeftAndRight(ctx, row)
 	if err != nil {
 		return 0, err
 	}
@@ -53,13 +53,13 @@ func (c *comparison) Compare(session sql.Session, row sql.Row) (int, error) {
 	return c.compareType.Compare(left, right)
 }
 
-func (c *comparison) evalLeftAndRight(session sql.Session, row sql.Row) (interface{}, interface{}, error) {
-	left, err := c.Left().Eval(session, row)
+func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
+	left, err := c.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	right, err := c.Right().Eval(session, row)
+	right, err := c.Right().Eval(ctx, row)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -143,8 +143,8 @@ func NewEquals(left sql.Expression, right sql.Expression) *Equals {
 }
 
 // Eval implements the Expression interface.
-func (e *Equals) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	result, err := e.Compare(session, row)
+func (e *Equals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	result, err := e.Compare(ctx, row)
 	if err != nil {
 		if ErrNilOperand.Is(err) {
 			return nil, nil
@@ -186,12 +186,12 @@ func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
 }
 
 // Eval implements the Expression interface.
-func (re *Regexp) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+func (re *Regexp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if sql.IsText(re.Left().Type()) && sql.IsText(re.Right().Type()) {
-		return re.compareRegexp(session, row)
+		return re.compareRegexp(ctx, row)
 	}
 
-	result, err := re.Compare(session, row)
+	result, err := re.Compare(ctx, row)
 	if err != nil {
 		if ErrNilOperand.Is(err) {
 			return nil, nil
@@ -203,8 +203,8 @@ func (re *Regexp) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 	return result == 0, nil
 }
 
-func (re *Regexp) compareRegexp(session sql.Session, row sql.Row) (interface{}, error) {
-	left, right, err := re.evalLeftAndRight(session, row)
+func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	left, right, err := re.evalLeftAndRight(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -261,8 +261,8 @@ func NewGreaterThan(left sql.Expression, right sql.Expression) *GreaterThan {
 }
 
 // Eval implements the Expression interface.
-func (gt *GreaterThan) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	result, err := gt.Compare(session, row)
+func (gt *GreaterThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	result, err := gt.Compare(ctx, row)
 	if err != nil {
 		if ErrNilOperand.Is(err) {
 			return nil, nil
@@ -304,8 +304,8 @@ func NewLessThan(left sql.Expression, right sql.Expression) *LessThan {
 }
 
 // Eval implements the expression interface.
-func (lt *LessThan) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	result, err := lt.Compare(session, row)
+func (lt *LessThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	result, err := lt.Compare(ctx, row)
 	if err != nil {
 		if ErrNilOperand.Is(err) {
 			return nil, nil
@@ -348,8 +348,8 @@ func NewGreaterThanOrEqual(left sql.Expression, right sql.Expression) *GreaterTh
 }
 
 // Eval implements the Expression interface.
-func (gte *GreaterThanOrEqual) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	result, err := gte.Compare(session, row)
+func (gte *GreaterThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	result, err := gte.Compare(ctx, row)
 	if err != nil {
 		if ErrNilOperand.Is(err) {
 			return nil, nil
@@ -392,8 +392,8 @@ func NewLessThanOrEqual(left sql.Expression, right sql.Expression) *LessThanOrEq
 }
 
 // Eval implements the Expression interface.
-func (lte *LessThanOrEqual) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	result, err := lte.Compare(session, row)
+func (lte *LessThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	result, err := lte.Compare(ctx, row)
 	if err != nil {
 		if ErrNilOperand.Is(err) {
 			return nil, nil
@@ -444,10 +444,10 @@ func NewIn(left sql.Expression, right sql.Expression) *In {
 }
 
 // Eval implements the Expression interface.
-func (in *In) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+func (in *In) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	typ := in.Left().Type()
 	leftElems := sql.NumColumns(typ)
-	left, err := in.Left().Eval(session, row)
+	left, err := in.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -471,7 +471,7 @@ func (in *In) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 		}
 
 		for _, el := range right {
-			right, err := el.Eval(session, row)
+			right, err := el.Eval(ctx, row)
 			if err != nil {
 				return nil, err
 			}
@@ -527,10 +527,10 @@ func NewNotIn(left sql.Expression, right sql.Expression) *NotIn {
 }
 
 // Eval implements the Expression interface.
-func (in *NotIn) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+func (in *NotIn) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	typ := in.Left().Type()
 	leftElems := sql.NumColumns(typ)
-	left, err := in.Left().Eval(session, row)
+	left, err := in.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -554,7 +554,7 @@ func (in *NotIn) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 		}
 
 		for _, el := range right {
-			right, err := el.Eval(session, row)
+			right, err := el.Eval(ctx, row)
 			if err != nil {
 				return nil, err
 			}

@@ -1,22 +1,29 @@
 package sql
 
-import (
-	"context"
-)
+import "context"
 
-// Session holds context and session data
+// Session holds the session data.
 type Session interface {
-	context.Context
+	// TODO: add config
 }
 
-// BaseSession is the basic session type
+// BaseSession is the basic session type.
 type BaseSession struct {
-	context.Context
+	// TODO: add config
 }
 
-// NewBaseSession creates a new basic session
-func NewBaseSession(ctx context.Context) Session {
-	return &BaseSession{
-		Context: ctx,
-	}
+// NewBaseSession creates a new basic session.
+func NewBaseSession() Session {
+	return &BaseSession{}
+}
+
+// Context of the query execution.
+type Context struct {
+	context.Context
+	Session
+}
+
+// NewContext creates a new query context.
+func NewContext(ctx context.Context, session Session) *Context {
+	return &Context{ctx, session}
 }

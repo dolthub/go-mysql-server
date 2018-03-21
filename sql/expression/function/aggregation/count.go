@@ -55,12 +55,12 @@ func (c *Count) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 }
 
 // Update implements the Aggregation interface.
-func (c *Count) Update(session sql.Session, buffer, row sql.Row) error {
+func (c *Count) Update(ctx *sql.Context, buffer, row sql.Row) error {
 	var inc bool
 	if _, ok := c.Child.(*expression.Star); ok {
 		inc = true
 	} else {
-		v, err := c.Child.Eval(session, row)
+		v, err := c.Child.Eval(ctx, row)
 		if v != nil {
 			inc = true
 		}
@@ -78,12 +78,12 @@ func (c *Count) Update(session sql.Session, buffer, row sql.Row) error {
 }
 
 // Merge implements the Aggregation interface.
-func (c *Count) Merge(session sql.Session, buffer, partial sql.Row) error {
+func (c *Count) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 	buffer[0] = buffer[0].(int32) + partial[0].(int32)
 	return nil
 }
 
 // Eval implements the Aggregation interface.
-func (c *Count) Eval(session sql.Session, buffer sql.Row) (interface{}, error) {
+func (c *Count) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	return buffer[0], nil
 }

@@ -14,7 +14,7 @@ import (
 
 func TestProject(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 	childSchema := sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
 		{Name: "col2", Type: sql.Text, Nullable: true},
@@ -28,7 +28,7 @@ func TestProject(t *testing.T) {
 		{Name: "col2", Type: sql.Text, Nullable: true},
 	}
 	require.Equal(schema, p.Schema())
-	iter, err := p.RowIter(session)
+	iter, err := p.RowIter(ctx)
 	require.Nil(err)
 	require.NotNil(iter)
 	row, err := iter.Next()
@@ -62,7 +62,7 @@ func TestProject(t *testing.T) {
 
 func BenchmarkProject(b *testing.B) {
 	require := require.New(b)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	for i := 0; i < b.N; i++ {
 		d := NewProject([]sql.Expression{
@@ -74,7 +74,7 @@ func BenchmarkProject(b *testing.B) {
 			expression.NewGetField(5, sql.Blob, "blobfield", false),
 		}, benchtable)
 
-		iter, err := d.RowIter(session)
+		iter, err := d.RowIter(ctx)
 		require.Nil(err)
 		require.NotNil(iter)
 

@@ -53,8 +53,8 @@ func (m *Min) NewBuffer() sql.Row {
 }
 
 // Update implements the Aggregation interface.
-func (m *Min) Update(session sql.Session, buffer, row sql.Row) error {
-	v, err := m.Child.Eval(session, row)
+func (m *Min) Update(ctx *sql.Context, buffer, row sql.Row) error {
+	v, err := m.Child.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -79,11 +79,11 @@ func (m *Min) Update(session sql.Session, buffer, row sql.Row) error {
 }
 
 // Merge implements the Aggregation interface.
-func (m *Min) Merge(session sql.Session, buffer, partial sql.Row) error {
-	return m.Update(session, buffer, partial)
+func (m *Min) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
+	return m.Update(ctx, buffer, partial)
 }
 
 // Eval implements the Aggregation interface
-func (m *Min) Eval(session sql.Session, buffer sql.Row) (interface{}, error) {
+func (m *Min) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	return buffer[0], nil
 }

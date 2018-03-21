@@ -89,8 +89,8 @@ func (c *Convert) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 }
 
 // Eval implements the Expression interface.
-func (c *Convert) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	val, err := c.Child.Eval(session, row)
+func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := c.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}

@@ -573,7 +573,7 @@ type pushdownProjectionTable struct {
 
 var _ sql.PushdownProjectionTable = (*pushdownProjectionTable)(nil)
 
-func (pushdownProjectionTable) WithProject(sql.Session, []string) (sql.RowIter, error) {
+func (pushdownProjectionTable) WithProject(*sql.Context, []string) (sql.RowIter, error) {
 	panic("not implemented")
 }
 
@@ -601,7 +601,7 @@ func (pushdownProjectionAndFiltersTable) HandledFilters(filters []sql.Expression
 	return handled
 }
 
-func (pushdownProjectionAndFiltersTable) WithProjectAndFilters(_ sql.Session, cols, filters []sql.Expression) (sql.RowIter, error) {
+func (pushdownProjectionAndFiltersTable) WithProjectAndFilters(_ *sql.Context, cols, filters []sql.Expression) (sql.RowIter, error) {
 	panic("not implemented")
 }
 

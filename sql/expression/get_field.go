@@ -53,7 +53,7 @@ func (p GetField) Type() sql.Type {
 }
 
 // Eval implements the Expression interface.
-func (p GetField) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+func (p GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return row[p.fieldIndex], nil
 }
 

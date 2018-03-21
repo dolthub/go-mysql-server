@@ -20,10 +20,10 @@ func NewIsBinary(e sql.Expression) sql.Expression {
 
 // Eval implements the Expression interface.
 func (ib *IsBinary) Eval(
-	session sql.Session,
+	ctx *sql.Context,
 	row sql.Row,
 ) (interface{}, error) {
-	v, err := ib.Child.Eval(session, row)
+	v, err := ib.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}

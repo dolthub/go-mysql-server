@@ -257,9 +257,9 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 	e.AddDatabase(db)
 
 	q := `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c`
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
-	_, rows, err := e.Query(session, q)
+	_, rows, err := e.Query(ctx, q)
 	require.NoError(err)
 
 	var rs [][]interface{}
@@ -313,7 +313,7 @@ func TestDDL(t *testing.T) {
 func testQuery(t *testing.T, e *sqle.Engine, q string, r [][]interface{}) {
 	t.Run(q, func(t *testing.T) {
 		require := require.New(t)
-		session := sql.NewBaseSession(context.TODO())
+		session := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 		_, rows, err := e.Query(session, q)
 		require.NoError(err)

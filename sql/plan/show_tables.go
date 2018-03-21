@@ -40,7 +40,7 @@ func (*ShowTables) Schema() sql.Schema {
 }
 
 // RowIter implements the Node interface.
-func (p *ShowTables) RowIter(session sql.Session) (sql.RowIter, error) {
+func (p *ShowTables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	tableNames := []string{}
 	for key := range p.Database.Tables() {
 		tableNames = append(tableNames, key)

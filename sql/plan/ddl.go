@@ -35,7 +35,7 @@ func (c *CreateTable) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (c *CreateTable) RowIter(s sql.Session) (sql.RowIter, error) {
+func (c *CreateTable) RowIter(s *sql.Context) (sql.RowIter, error) {
 	d, ok := c.Database.(sql.Alterable)
 	if !ok {
 		return nil, ErrCreateTable.New(c.Database.Name())

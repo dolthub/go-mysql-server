@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"testing"
 
 	"gopkg.in/src-d/go-mysql-server.v0"
@@ -32,10 +31,7 @@ func TestHandlerOutput(t *testing.T) {
 
 	dummyConn := &mysql.Conn{ConnectionID: 1}
 
-	handler := NewHandler(e,
-		NewSessionManager(func(ctx context.Context, conn *mysql.Conn) sql.Session {
-			return sql.NewBaseSession(ctx)
-		}))
+	handler := NewHandler(e, NewSessionManager(DefaultSessionBuilder))
 
 	c := 0
 	var lastRowsAffected uint64

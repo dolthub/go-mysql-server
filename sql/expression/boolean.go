@@ -22,8 +22,8 @@ func (e Not) Type() sql.Type {
 }
 
 // Eval implements the Expression interface.
-func (e Not) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	v, err := e.Child.Eval(session, row)
+func (e Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	v, err := e.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}

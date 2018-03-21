@@ -37,7 +37,7 @@ func (*UnresolvedTable) Schema() sql.Schema {
 }
 
 // RowIter implements the RowIter interface.
-func (*UnresolvedTable) RowIter(session sql.Session) (sql.RowIter, error) {
+func (*UnresolvedTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return nil, ErrUnresolvedTable.New()
 }
 

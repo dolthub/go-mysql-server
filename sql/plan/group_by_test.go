@@ -45,7 +45,7 @@ func TestGroupBy_Resolved(t *testing.T) {
 
 func TestGroupBy_RowIter(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	childSchema := sql.Schema{
 		{Name: "col1", Type: sql.Text},
@@ -82,7 +82,7 @@ func TestGroupBy_RowIter(t *testing.T) {
 
 	require.Equal(1, len(p.Children()))
 
-	rows, err := sql.NodeToRows(session, p)
+	rows, err := sql.NodeToRows(ctx, p)
 	require.NoError(err)
 	require.Len(rows, 2)
 
@@ -92,7 +92,7 @@ func TestGroupBy_RowIter(t *testing.T) {
 
 func TestGroupBy_Error(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	childSchema := sql.Schema{
 		{Name: "col1", Type: sql.Text},
@@ -118,6 +118,6 @@ func TestGroupBy_Error(t *testing.T) {
 		child,
 	)
 
-	_, err := sql.NodeToRows(session, p)
+	_, err := sql.NodeToRows(ctx, p)
 	require.Error(err)
 }

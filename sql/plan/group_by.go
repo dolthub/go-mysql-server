@@ -63,12 +63,12 @@ func (p *GroupBy) Schema() sql.Schema {
 }
 
 // RowIter implements the Node interface.
-func (p *GroupBy) RowIter(session sql.Session) (sql.RowIter, error) {
-	i, err := p.Child.RowIter(session)
+func (p *GroupBy) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	i, err := p.Child.RowIter(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return newGroupByIter(session, p, i), nil
+	return newGroupByIter(ctx, p, i), nil
 }
 
 // TransformUp implements the Transformable interface.
@@ -127,16 +127,16 @@ type groupByIter struct {
 	childIter sql.RowIter
 	rows      []sql.Row
 	idx       int
-	session   sql.Session
+	ctx       *sql.Context
 }
 
-func newGroupByIter(s sql.Session, p *GroupBy, child sql.RowIter) *groupByIter {
+func newGroupByIter(s *sql.Context, p *GroupBy, child sql.RowIter) *groupByIter {
 	return &groupByIter{
 		p:         p,
 		childIter: child,
 		rows:      nil,
 		idx:       -1,
-		session:   s,
+		ctx:       s,
 	}
 }
 
@@ -174,7 +174,7 @@ func (i *groupByIter) computeRows() error {
 		rows = append(rows, childRow)
 	}
 
-	rows, err := groupBy(i.session, rows, i.p.Aggregate, i.p.Grouping)
+	rows, err := groupBy(i.ctx, rows, i.p.Aggregate, i.p.Grouping)
 	if err != nil {
 		return err
 	}
@@ -184,7 +184,7 @@ func (i *groupByIter) computeRows() error {
 }
 
 func groupBy(
-	session sql.Session,
+	ctx *sql.Context,
 	rows []sql.Row,
 	aggExpr []sql.Expression,
 	groupExpr []sql.Expression,
@@ -195,7 +195,7 @@ func groupBy(
 
 	hrows := map[interface{}][]sql.Row{}
 	for _, row := range rows {
-		key, err := groupingKey(session, groupExpr, row)
+		key, err := groupingKey(ctx, groupExpr, row)
 		if err != nil {
 			return nil, err
 		}
@@ -204,7 +204,7 @@ func groupBy(
 
 	result := make([]sql.Row, 0, len(hrows))
 	for _, rows := range hrows {
-		row, err := aggregate(session, aggExpr, rows)
+		row, err := aggregate(ctx, aggExpr, rows)
 		if err != nil {
 			return nil, err
 		}
@@ -215,14 +215,14 @@ func groupBy(
 }
 
 func groupingKey(
-	session sql.Session,
+	ctx *sql.Context,
 	exprs []sql.Expression,
 	row sql.Row,
 ) (interface{}, error) {
 	//TODO: use a more robust/efficient way of calculating grouping keys.
 	vals := make([]string, 0, len(exprs))
 	for _, expr := range exprs {
-		v, err := expr.Eval(session, row)
+		v, err := expr.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -233,7 +233,7 @@ func groupingKey(
 }
 
 func aggregate(
-	session sql.Session,
+	ctx *sql.Context,
 	exprs []sql.Expression,
 	rows []sql.Row,
 ) (sql.Row, error) {
@@ -244,7 +244,7 @@ func aggregate(
 
 	for _, row := range rows {
 		for i, expr := range exprs {
-			if err := updateBuffer(session, buffers, i, expr, row); err != nil {
+			if err := updateBuffer(ctx, buffers, i, expr, row); err != nil {
 				return nil, err
 			}
 		}
@@ -252,7 +252,7 @@ func aggregate(
 
 	fields := make([]interface{}, 0, len(exprs))
 	for i, expr := range exprs {
-		field, err := expr.Eval(session, buffers[i])
+		field, err := expr.Eval(ctx, buffers[i])
 		if err != nil {
 			return nil, err
 		}
@@ -275,7 +275,7 @@ func fillBuffer(expr sql.Expression) sql.Row {
 }
 
 func updateBuffer(
-	session sql.Session,
+	ctx *sql.Context,
 	buffers []sql.Row,
 	idx int,
 	expr sql.Expression,
@@ -283,10 +283,10 @@ func updateBuffer(
 ) error {
 	switch n := expr.(type) {
 	case sql.Aggregation:
-		n.Update(session, buffers[idx], row)
+		n.Update(ctx, buffers[idx], row)
 		return nil
 	case *expression.Alias:
-		return updateBuffer(session, buffers, idx, n.Child, row)
+		return updateBuffer(ctx, buffers, idx, n.Child, row)
 	case *expression.GetField:
 		buffers[idx] = row
 		return nil

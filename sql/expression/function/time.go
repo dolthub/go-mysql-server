@@ -9,12 +9,12 @@ import (
 )
 
 func getDatePart(
-	session sql.Session,
+	ctx *sql.Context,
 	u expression.UnaryExpression,
 	row sql.Row,
 	f func(time.Time) int,
 ) (interface{}, error) {
-	val, err := u.Child.Eval(session, row)
+	val, err := u.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +50,8 @@ func (y Year) String() string { return fmt.Sprintf("YEAR(%s)", y.Child) }
 func (y *Year) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
-func (y *Year) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	return getDatePart(session, y.UnaryExpression, row, (time.Time).Year)
+func (y *Year) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return getDatePart(ctx, y.UnaryExpression, row, (time.Time).Year)
 }
 
 // TransformUp implements the Expression interface.
@@ -80,12 +80,12 @@ func (m Month) String() string { return fmt.Sprintf("MONTH(%s)", m.Child) }
 func (m *Month) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
-func (m *Month) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+func (m *Month) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	monthFunc := func(t time.Time) int {
 		return int(t.Month())
 	}
 
-	return getDatePart(session, m.UnaryExpression, row, monthFunc)
+	return getDatePart(ctx, m.UnaryExpression, row, monthFunc)
 }
 
 // TransformUp implements the Expression interface.
@@ -114,8 +114,8 @@ func (d Day) String() string { return fmt.Sprintf("DAY(%s)", d.Child) }
 func (d *Day) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
-func (d *Day) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	return getDatePart(session, d.UnaryExpression, row, (time.Time).Day)
+func (d *Day) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return getDatePart(ctx, d.UnaryExpression, row, (time.Time).Day)
 }
 
 // TransformUp implements the Expression interface.
@@ -144,8 +144,8 @@ func (h Hour) String() string { return fmt.Sprintf("HOUR(%s)", h.Child) }
 func (h *Hour) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
-func (h *Hour) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	return getDatePart(session, h.UnaryExpression, row, (time.Time).Hour)
+func (h *Hour) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return getDatePart(ctx, h.UnaryExpression, row, (time.Time).Hour)
 }
 
 // TransformUp implements the Expression interface.
@@ -174,8 +174,8 @@ func (m Minute) String() string { return fmt.Sprintf("MINUTE(%d)", m.Child) }
 func (m *Minute) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
-func (m *Minute) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	return getDatePart(session, m.UnaryExpression, row, (time.Time).Minute)
+func (m *Minute) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return getDatePart(ctx, m.UnaryExpression, row, (time.Time).Minute)
 }
 
 // TransformUp implements the Expression interface.
@@ -204,8 +204,8 @@ func (s Second) String() string { return fmt.Sprintf("SECOND(%s)", s.Child) }
 func (s *Second) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
-func (s *Second) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	return getDatePart(session, s.UnaryExpression, row, (time.Time).Second)
+func (s *Second) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return getDatePart(ctx, s.UnaryExpression, row, (time.Time).Second)
 }
 
 // TransformUp implements the Expression interface.
@@ -234,8 +234,8 @@ func (d DayOfYear) String() string { return fmt.Sprintf("DAYOFYEAR(%s)", d.Child
 func (d *DayOfYear) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
-func (d *DayOfYear) Eval(session sql.Session, row sql.Row) (interface{}, error) {
-	return getDatePart(session, d.UnaryExpression, row, (time.Time).YearDay)
+func (d *DayOfYear) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return getDatePart(ctx, d.UnaryExpression, row, (time.Time).YearDay)
 }
 
 // TransformUp implements the Expression interface.

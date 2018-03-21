@@ -32,19 +32,19 @@ func (j *InnerJoin) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (j *InnerJoin) RowIter(session sql.Session) (sql.RowIter, error) {
-	l, err := j.Left.RowIter(session)
+func (j *InnerJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	l, err := j.Left.RowIter(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	return NewFilterIter(
-		session,
+		ctx,
 		j.Cond,
 		&crossJoinIterator{
 			l:  l,
 			rp: j.Right,
-			s:  session,
+			s:  ctx,
 		},
 	), nil
 }

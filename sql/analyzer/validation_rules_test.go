@@ -262,7 +262,7 @@ func (n dummyNode) String() string                                    { return "
 func (n dummyNode) Resolved() bool                                    { return n.resolved }
 func (dummyNode) Schema() sql.Schema                                  { return sql.Schema{} }
 func (dummyNode) Children() []sql.Node                                { return nil }
-func (dummyNode) RowIter(sql.Session) (sql.RowIter, error)            { return nil, nil }
+func (dummyNode) RowIter(*sql.Context) (sql.RowIter, error)           { return nil, nil }
 func (dummyNode) TransformUp(sql.TransformNodeFunc) (sql.Node, error) { return nil, nil }
 func (dummyNode) TransformExpressionsUp(
 	sql.TransformExprFunc,

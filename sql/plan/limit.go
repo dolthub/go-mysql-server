@@ -28,8 +28,8 @@ func (l *Limit) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (l *Limit) RowIter(session sql.Session) (sql.RowIter, error) {
-	li, err := l.Child.RowIter(session)
+func (l *Limit) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	li, err := l.Child.RowIter(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -19,39 +19,39 @@ func TestMin_Name(t *testing.T) {
 
 func TestMin_Eval_Int32(t *testing.T) {
 	assert := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
 	b := m.NewBuffer()
 
-	m.Update(session, b, sql.NewRow(int32(7)))
-	m.Update(session, b, sql.NewRow(int32(2)))
-	m.Update(session, b, sql.NewRow(nil))
+	m.Update(ctx, b, sql.NewRow(int32(7)))
+	m.Update(ctx, b, sql.NewRow(int32(2)))
+	m.Update(ctx, b, sql.NewRow(nil))
 
-	v, err := m.Eval(session, b)
+	v, err := m.Eval(ctx, b)
 	assert.NoError(err)
 	assert.Equal(int32(2), v)
 }
 
 func TestMin_Eval_Text(t *testing.T) {
 	assert := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	m := NewMin(expression.NewGetField(0, sql.Text, "field", true))
 	b := m.NewBuffer()
 
-	m.Update(session, b, sql.NewRow("a"))
-	m.Update(session, b, sql.NewRow("A"))
-	m.Update(session, b, sql.NewRow("b"))
+	m.Update(ctx, b, sql.NewRow("a"))
+	m.Update(ctx, b, sql.NewRow("A"))
+	m.Update(ctx, b, sql.NewRow("b"))
 
-	v, err := m.Eval(session, b)
+	v, err := m.Eval(ctx, b)
 	assert.NoError(err)
 	assert.Equal("A", v)
 }
 
 func TestMin_Eval_Timestamp(t *testing.T) {
 	assert := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	m := NewMin(expression.NewGetField(0, sql.Timestamp, "field", true))
 	b := m.NewBuffer()
@@ -60,39 +60,39 @@ func TestMin_Eval_Timestamp(t *testing.T) {
 	someTime, _ := time.Parse(sql.TimestampLayout, "2007-01-02 15:04:05")
 	otherTime, _ := time.Parse(sql.TimestampLayout, "2008-01-02 15:04:05")
 
-	m.Update(session, b, sql.NewRow(someTime))
-	m.Update(session, b, sql.NewRow(expected))
-	m.Update(session, b, sql.NewRow(otherTime))
+	m.Update(ctx, b, sql.NewRow(someTime))
+	m.Update(ctx, b, sql.NewRow(expected))
+	m.Update(ctx, b, sql.NewRow(otherTime))
 
-	v, err := m.Eval(session, b)
+	v, err := m.Eval(ctx, b)
 	assert.NoError(err)
 	assert.Equal(expected, v)
 }
 
 func TestMin_Eval_NULL(t *testing.T) {
 	assert := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
 	b := m.NewBuffer()
 
-	m.Update(session, b, sql.NewRow(nil))
-	m.Update(session, b, sql.NewRow(nil))
-	m.Update(session, b, sql.NewRow(nil))
+	m.Update(ctx, b, sql.NewRow(nil))
+	m.Update(ctx, b, sql.NewRow(nil))
+	m.Update(ctx, b, sql.NewRow(nil))
 
-	v, err := m.Eval(session, b)
+	v, err := m.Eval(ctx, b)
 	assert.NoError(err)
 	assert.Equal(nil, v)
 }
 
 func TestMin_Eval_Empty(t *testing.T) {
 	assert := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
 	b := m.NewBuffer()
 
-	v, err := m.Eval(session, b)
+	v, err := m.Eval(ctx, b)
 	assert.NoError(err)
 	assert.Equal(nil, v)
 }

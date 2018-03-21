@@ -13,7 +13,7 @@ import (
 
 func TestDistinct(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	childSchema := sql.Schema{
 		{Name: "name", Type: sql.Text, Nullable: true},
@@ -31,7 +31,7 @@ func TestDistinct(t *testing.T) {
 	}, child)
 	d := NewDistinct(p)
 
-	iter, err := d.RowIter(session)
+	iter, err := d.RowIter(ctx)
 	require.Nil(err)
 	require.NotNil(iter)
 
@@ -53,7 +53,7 @@ func TestDistinct(t *testing.T) {
 
 func TestOrderedDistinct(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	childSchema := sql.Schema{
 		{Name: "name", Type: sql.Text, Nullable: true},
@@ -71,7 +71,7 @@ func TestOrderedDistinct(t *testing.T) {
 	}, child)
 	d := NewOrderedDistinct(p)
 
-	iter, err := d.RowIter(session)
+	iter, err := d.RowIter(ctx)
 	require.Nil(err)
 	require.NotNil(iter)
 
@@ -93,7 +93,7 @@ func TestOrderedDistinct(t *testing.T) {
 
 func BenchmarkDistinct(b *testing.B) {
 	require := require.New(b)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	for i := 0; i < b.N; i++ {
 		p := NewProject([]sql.Expression{
@@ -106,7 +106,7 @@ func BenchmarkDistinct(b *testing.B) {
 		}, benchtable)
 		d := NewDistinct(p)
 
-		iter, err := d.RowIter(session)
+		iter, err := d.RowIter(ctx)
 		require.Nil(err)
 		require.NotNil(iter)
 
@@ -126,7 +126,7 @@ func BenchmarkDistinct(b *testing.B) {
 
 func BenchmarkOrderedDistinct(b *testing.B) {
 	require := require.New(b)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	for i := 0; i < b.N; i++ {
 		p := NewProject([]sql.Expression{
@@ -139,7 +139,7 @@ func BenchmarkOrderedDistinct(b *testing.B) {
 		}, benchtable)
 		d := NewOrderedDistinct(p)
 
-		iter, err := d.RowIter(session)
+		iter, err := d.RowIter(ctx)
 		require.Nil(err)
 		require.NotNil(iter)
 
