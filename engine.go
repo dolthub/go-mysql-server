@@ -22,12 +22,12 @@ func New() *Engine {
 	return &Engine{c, a}
 }
 
-// Query executes a query without attaching to any session.
+// Query executes a query without attaching to any context.
 func (e *Engine) Query(
-	session sql.Session,
+	ctx *sql.Context,
 	query string,
 ) (sql.Schema, sql.RowIter, error) {
-	parsed, err := parse.Parse(session, query)
+	parsed, err := parse.Parse(ctx, query)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -37,7 +37,7 @@ func (e *Engine) Query(
 		return nil, nil, err
 	}
 
-	iter, err := analyzed.RowIter(session)
+	iter, err := analyzed.RowIter(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

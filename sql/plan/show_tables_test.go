@@ -12,7 +12,7 @@ import (
 
 func TestShowTables(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	unresolvedShowTables := NewShowTables(&sql.UnresolvedDatabase{})
 
@@ -33,7 +33,7 @@ func TestShowTables(t *testing.T) {
 	require.True(resolvedShowTables.Resolved())
 	require.Nil(resolvedShowTables.Children())
 
-	iter, err := resolvedShowTables.RowIter(session)
+	iter, err := resolvedShowTables.RowIter(ctx)
 	require.Nil(err)
 
 	res, err := iter.Next()

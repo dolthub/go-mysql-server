@@ -10,11 +10,11 @@ import (
 )
 
 func TestConvert(t *testing.T) {
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	tests := []struct {
 		name        string
-		session     sql.Session
+		ctx         *sql.Context
 		row         sql.Row
 		expression  sql.Expression
 		castTo      string
@@ -23,7 +23,7 @@ func TestConvert(t *testing.T) {
 	}{
 		{
 			name:        "convert int32 to signed",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			expression:  NewLiteral(int32(1), sql.Int32),
 			castTo:      ConvertToSigned,
@@ -32,7 +32,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "convert int32 to unsigned",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			expression:  NewLiteral(int32(-5), sql.Int32),
 			castTo:      ConvertToUnsigned,
@@ -41,7 +41,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "convert string to signed",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			expression:  NewLiteral("-3", sql.Text),
 			castTo:      ConvertToSigned,
@@ -50,7 +50,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "convert string to unsigned",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			expression:  NewLiteral("-3", sql.Int32),
 			castTo:      ConvertToUnsigned,
@@ -59,7 +59,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "convert int to string",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			expression:  NewLiteral(-3, sql.Int32),
 			castTo:      ConvertToChar,
@@ -68,7 +68,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "impossible conversion string to unsigned",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			expression:  NewLiteral("hello", sql.Text),
 			castTo:      ConvertToUnsigned,
@@ -77,7 +77,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "imposible conversion string to signed",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToSigned,
 			expression:  NewLiteral("A", sql.Text),
@@ -86,7 +86,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "string to datetime",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			expression:  NewLiteral("2017-12-12", sql.Text),
 			castTo:      ConvertToDatetime,
@@ -95,7 +95,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "impossible conversion string to datetime",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToDatetime,
 			expression:  NewLiteral(1, sql.Int32),
@@ -104,7 +104,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "string to date",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToDate,
 			expression:  NewLiteral("2017-12-12 11:12:13", sql.Int32),
@@ -113,7 +113,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "impossible conversion string to date",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToDate,
 			expression:  NewLiteral(1, sql.Int32),
@@ -122,7 +122,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "float to binary",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToBinary,
 			expression:  NewLiteral(float64(-2.3), sql.Float64),
@@ -131,7 +131,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "string to json",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToJSON,
 			expression:  NewLiteral(`{"a":2}`, sql.Text),
@@ -140,7 +140,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "int to json",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToJSON,
 			expression:  NewLiteral(2, sql.Int32),
@@ -149,7 +149,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "imposible conversion string to json",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToJSON,
 			expression:  NewLiteral("3>2", sql.Text),
@@ -158,7 +158,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "bool to signed",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToSigned,
 			expression:  NewLiteral(true, sql.Boolean),
@@ -167,7 +167,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "bool to datetime",
-			session:     session,
+			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToDatetime,
 			expression:  NewLiteral(true, sql.Boolean),
@@ -180,7 +180,7 @@ func TestConvert(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			require := require.New(t)
 			convert := NewConvert(test.expression, test.castTo)
-			val, err := convert.Eval(test.session, test.row)
+			val, err := convert.Eval(test.ctx, test.row)
 			if test.expectedErr {
 				require.Error(err)
 			} else {

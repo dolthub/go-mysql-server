@@ -38,7 +38,7 @@ func (a *Avg) IsNullable() bool {
 }
 
 // Eval implements AggregationExpression interface. (AggregationExpression[Expression]])
-func (a *Avg) Eval(session sql.Session, buffer sql.Row) (interface{}, error) {
+func (a *Avg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	isNoNum := buffer[2].(bool)
 	if isNoNum {
 		return float64(0), nil
@@ -74,8 +74,8 @@ func (a *Avg) NewBuffer() sql.Row {
 }
 
 // Update implements AggregationExpression interface. (AggregationExpression)
-func (a *Avg) Update(session sql.Session, buffer, row sql.Row) error {
-	v, err := a.Child.Eval(session, row)
+func (a *Avg) Update(ctx *sql.Context, buffer, row sql.Row) error {
+	v, err := a.Child.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (a *Avg) Update(session sql.Session, buffer, row sql.Row) error {
 }
 
 // Merge implements AggregationExpression interface. (AggregationExpression)
-func (a *Avg) Merge(session sql.Session, buffer, partial sql.Row) error {
+func (a *Avg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 	bufferAvg := buffer[0].(float64)
 	bufferRows := buffer[1].(float64)
 

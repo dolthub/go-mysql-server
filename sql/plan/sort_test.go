@@ -13,7 +13,7 @@ import (
 
 func TestSort(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	data := []sql.Row{
 		sql.NewRow("c", nil),
@@ -48,14 +48,14 @@ func TestSort(t *testing.T) {
 		sql.NewRow("a", int32(3)),
 	}
 
-	actual, err := sql.NodeToRows(session, s)
+	actual, err := sql.NodeToRows(ctx, s)
 	require.NoError(err)
 	require.Equal(expected, actual)
 }
 
 func TestSortAscending(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	data := []sql.Row{
 		sql.NewRow("c"),
@@ -88,14 +88,14 @@ func TestSortAscending(t *testing.T) {
 		sql.NewRow("d"),
 	}
 
-	actual, err := sql.NodeToRows(session, s)
+	actual, err := sql.NodeToRows(ctx, s)
 	require.NoError(err)
 	require.Equal(expected, actual)
 }
 
 func TestSortDescending(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	data := []sql.Row{
 		sql.NewRow("c"),
@@ -128,7 +128,7 @@ func TestSortDescending(t *testing.T) {
 		sql.NewRow("a"),
 	}
 
-	actual, err := sql.NodeToRows(session, s)
+	actual, err := sql.NodeToRows(ctx, s)
 	require.NoError(err)
 	require.Equal(expected, actual)
 }

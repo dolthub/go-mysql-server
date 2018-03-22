@@ -12,7 +12,7 @@ import (
 
 func TestTableAlias(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	table := mem.NewTable("bar", sql.Schema{
 		{Name: "a", Type: sql.Text, Nullable: true},
@@ -31,7 +31,7 @@ func TestTableAlias(t *testing.T) {
 	}
 
 	require.Equal(table.Schema(), alias.Schema())
-	iter, err := alias.RowIter(session)
+	iter, err := alias.RowIter(ctx)
 	require.NoError(err)
 
 	var i int

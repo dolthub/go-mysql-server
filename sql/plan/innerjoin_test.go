@@ -37,7 +37,7 @@ func TestInnerJoin(t *testing.T) {
 
 func TestInnerJoinEmpty(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	ltable := mem.NewTable("left", lSchema)
 	rtable := mem.NewTable("right", rSchema)
@@ -47,12 +47,12 @@ func TestInnerJoinEmpty(t *testing.T) {
 		expression.NewGetField(4, sql.Text, "rcol1", false),
 	))
 
-	iter, err := j.RowIter(session)
+	iter, err := j.RowIter(ctx)
 	require.NoError(err)
 
 	filter, ok := iter.(*FilterIter)
 	require.True(ok)
-	require.Equal(session, filter.session)
+	require.Equal(ctx, filter.ctx)
 
 	assertRows(t, iter, 0)
 }

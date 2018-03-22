@@ -46,7 +46,7 @@ type Expression interface {
 	// IsNullable returns whether the expression can be null.
 	IsNullable() bool
 	// Eval evaluates the given row and returns a result.
-	Eval(Session, Row) (interface{}, error)
+	Eval(*Context, Row) (interface{}, error)
 	// TransformUp transforms the expression and all its children with the
 	// given transform function.
 	TransformUp(TransformExprFunc) (Expression, error)
@@ -63,9 +63,9 @@ type Aggregation interface {
 	// NewBuffer creates a new aggregation buffer and returns it as a Row.
 	NewBuffer() Row
 	// Update updates the given buffer with the given row.
-	Update(session Session, buffer, row Row) error
+	Update(ctx *Context, buffer, row Row) error
 	// Merge merges a partial buffer into a global one.
-	Merge(session Session, buffer, partial Row) error
+	Merge(ctx *Context, buffer, partial Row) error
 }
 
 // Node is a node in the execution plan tree.
@@ -78,7 +78,7 @@ type Node interface {
 	// Children nodes.
 	Children() []Node
 	// RowIter produces a row iterator from this node.
-	RowIter(Session) (RowIter, error)
+	RowIter(*Context) (RowIter, error)
 }
 
 // Table represents a SQL table.
@@ -93,7 +93,7 @@ type PushdownProjectionTable interface {
 	Table
 	// WithProject replaces the RowIter method of the table and returns a new
 	// row iterator given the column names that are projected.
-	WithProject(session Session, colNames []string) (RowIter, error)
+	WithProject(ctx *Context, colNames []string) (RowIter, error)
 }
 
 // PushdownProjectionAndFiltersTable is a table that can produce a specific
@@ -107,7 +107,7 @@ type PushdownProjectionAndFiltersTable interface {
 	// WithProjectAndFilters replaces the RowIter method of the table and
 	// return a new row iterator given the column names that are projected
 	// and the filters applied to this table.
-	WithProjectAndFilters(session Session, columns, filters []Expression) (RowIter, error)
+	WithProjectAndFilters(ctx *Context, columns, filters []Expression) (RowIter, error)
 }
 
 // Inserter allow rows to be inserted in them.

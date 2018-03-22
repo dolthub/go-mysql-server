@@ -47,12 +47,12 @@ func (p *Project) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (p *Project) RowIter(session sql.Session) (sql.RowIter, error) {
-	i, err := p.Child.RowIter(session)
+func (p *Project) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	i, err := p.Child.RowIter(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &iter{p, i, session}, nil
+	return &iter{p, i, ctx}, nil
 }
 
 // TransformUp implements the Transformable interface.
@@ -93,7 +93,7 @@ func (p Project) String() string {
 type iter struct {
 	p         *Project
 	childIter sql.RowIter
-	session   sql.Session
+	ctx       *sql.Context
 }
 
 func (i *iter) Next() (sql.Row, error) {
@@ -101,7 +101,7 @@ func (i *iter) Next() (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
-	return filterRow(i.session, i.p.Expressions, childRow)
+	return filterRow(i.ctx, i.p.Expressions, childRow)
 }
 
 func (i *iter) Close() error {
@@ -109,7 +109,7 @@ func (i *iter) Close() error {
 }
 
 func filterRow(
-	s sql.Session,
+	s *sql.Context,
 	expressions []sql.Expression,
 	row sql.Row,
 ) (sql.Row, error) {

@@ -25,7 +25,7 @@ func TestCreateTable(t *testing.T) {
 
 	c := NewCreateTable(db, "testTable", s)
 
-	rows, err := c.RowIter(sql.NewBaseSession(context.TODO()))
+	rows, err := c.RowIter(sql.NewContext(context.TODO(), sql.NewBaseSession()))
 
 	require.NoError(err)
 

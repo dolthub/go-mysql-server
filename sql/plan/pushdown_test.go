@@ -73,7 +73,7 @@ type pushdownProjectionTable struct {
 	sql.Table
 }
 
-func (t *pushdownProjectionTable) WithProject(_ sql.Session, cols []string) (sql.RowIter, error) {
+func (t *pushdownProjectionTable) WithProject(_ *sql.Context, cols []string) (sql.RowIter, error) {
 	var fields []int
 Loop:
 	for i, col := range t.Schema() {
@@ -120,7 +120,7 @@ func (pushdownProjectionAndFiltersTable) HandledFilters([]sql.Expression) []sql.
 	panic("not implemented")
 }
 
-func (t *pushdownProjectionAndFiltersTable) WithProjectAndFilters(session sql.Session, cols, filters []sql.Expression) (sql.RowIter, error) {
+func (t *pushdownProjectionAndFiltersTable) WithProjectAndFilters(ctx *sql.Context, cols, filters []sql.Expression) (sql.RowIter, error) {
 	var fields []int
 Loop:
 	for i, col := range t.Schema() {
@@ -136,14 +136,14 @@ Loop:
 
 	return &pushdownProjectionAndFiltersIter{
 		&pushdownProjectionIter{len(t.Schema()), fields, 0},
-		session,
+		ctx,
 		filters,
 	}, nil
 }
 
 type pushdownProjectionAndFiltersIter struct {
 	sql.RowIter
-	session sql.Session
+	ctx     *sql.Context
 	filters []sql.Expression
 }
 
@@ -156,7 +156,7 @@ Loop:
 		}
 
 		for _, f := range it.filters {
-			result, err := f.Eval(it.session, row)
+			result, err := f.Eval(it.ctx, row)
 			if err != nil {
 				return nil, err
 			}

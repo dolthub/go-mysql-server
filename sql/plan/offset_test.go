@@ -10,25 +10,25 @@ import (
 
 func TestOffsetPlan(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	table, _ := getTestingTable()
 	offset := NewOffset(0, table)
 	require.Equal(1, len(offset.Children()))
 
-	iter, err := offset.RowIter(session)
+	iter, err := offset.RowIter(ctx)
 	require.NoError(err)
 	require.NotNil(iter)
 }
 
 func TestOffset(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	table, n := getTestingTable()
 	offset := NewOffset(1, table)
 
-	iter, err := offset.RowIter(session)
+	iter, err := offset.RowIter(ctx)
 	require.NoError(err)
 	assertRows(t, iter, int64(n-1))
 }

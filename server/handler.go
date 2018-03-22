@@ -30,6 +30,7 @@ func NewHandler(e *sqle.Engine, sm *SessionManager) *Handler {
 
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
+	h.sm.NewSession(c)
 	logrus.Infof("NewConnection: client %v", c.ConnectionID)
 }
 
@@ -45,14 +46,14 @@ func (h *Handler) ComQuery(
 	query string,
 	callback func(*sqltypes.Result) error,
 ) error {
-	session, done, err := h.sm.NewSession(c)
+	ctx, done, err := h.sm.NewContext(c)
 	if err != nil {
 		return err
 	}
 
 	defer done()
 
-	schema, rows, err := h.e.Query(session, query)
+	schema, rows, err := h.e.Query(ctx, query)
 	if err != nil {
 		return err
 	}

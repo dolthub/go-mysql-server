@@ -34,7 +34,7 @@ func (n *SubqueryAlias) Schema() sql.Schema {
 }
 
 // RowIter implements the Node interface.
-func (n *SubqueryAlias) RowIter(sess sql.Session) (sql.RowIter, error) {
+func (n *SubqueryAlias) RowIter(sess *sql.Context) (sql.RowIter, error) {
 	return n.Child.RowIter(sess)
 }
 

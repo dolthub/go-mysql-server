@@ -42,7 +42,7 @@ func (t *Table) Children() []sql.Node {
 }
 
 // RowIter implements the Node interface.
-func (t *Table) RowIter(session sql.Session) (sql.RowIter, error) {
+func (t *Table) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.RowsToRowIter(t.data...), nil
 }
 

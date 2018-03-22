@@ -47,7 +47,7 @@ func executeQueries(b *testing.B, e *sqle.Engine) error {
 		return err
 	}
 
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	for _, info := range infos {
 		if info.IsDir() {
@@ -61,7 +61,7 @@ func executeQueries(b *testing.B, e *sqle.Engine) error {
 					b.Fatal(err)
 				}
 
-				_, iter, err := e.Query(session, string(query))
+				_, iter, err := e.Query(ctx, string(query))
 				if err != nil {
 					b.Fatal(err)
 				}

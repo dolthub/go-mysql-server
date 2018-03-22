@@ -36,9 +36,9 @@ func (b *Between) Resolved() bool {
 }
 
 // Eval implements the Expression interface.
-func (b *Between) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	typ := b.Val.Type()
-	val, err := b.Val.Eval(session, row)
+	val, err := b.Val.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (b *Between) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	lower, err := b.Lower.Eval(session, row)
+	lower, err := b.Lower.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (b *Between) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	upper, err := b.Upper.Eval(session, row)
+	upper, err := b.Upper.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}

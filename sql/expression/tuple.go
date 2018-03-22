@@ -17,14 +17,14 @@ func NewTuple(exprs ...sql.Expression) Tuple {
 }
 
 // Eval implements the Expression interface.
-func (t Tuple) Eval(session sql.Session, row sql.Row) (interface{}, error) {
+func (t Tuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if len(t) == 1 {
-		return t[0].Eval(session, row)
+		return t[0].Eval(ctx, row)
 	}
 
 	var result = make([]interface{}, len(t))
 	for i, e := range t {
-		v, err := e.Eval(session, row)
+		v, err := e.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}

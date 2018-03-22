@@ -12,7 +12,7 @@ import (
 
 func TestFilter(t *testing.T) {
 	require := require.New(t)
-	session := sql.NewBaseSession(context.TODO())
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	childSchema := sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
@@ -36,7 +36,7 @@ func TestFilter(t *testing.T) {
 
 	require.Equal(1, len(f.Children()))
 
-	iter, err := f.RowIter(session)
+	iter, err := f.RowIter(ctx)
 	require.Nil(err)
 	require.NotNil(iter)
 
@@ -56,7 +56,7 @@ func TestFilter(t *testing.T) {
 		expression.NewLiteral(int32(1111),
 			sql.Int32)), child)
 
-	iter, err = f.RowIter(session)
+	iter, err = f.RowIter(ctx)
 	require.Nil(err)
 	require.NotNil(iter)
 
@@ -72,7 +72,7 @@ func TestFilter(t *testing.T) {
 		expression.NewLiteral(int64(4444), sql.Int64)),
 		child)
 
-	iter, err = f.RowIter(session)
+	iter, err = f.RowIter(ctx)
 	require.Nil(err)
 	require.NotNil(iter)
 
