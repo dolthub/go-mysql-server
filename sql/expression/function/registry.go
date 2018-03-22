@@ -5,7 +5,8 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function/aggregation"
 )
 
-var defaultFunctions = map[string]sql.Function{
+// Defaults is the function map with all the default functions.
+var Defaults = sql.Functions{
 	"count": sql.Function1(func(e sql.Expression) sql.Expression {
 		return aggregation.NewCount(e)
 	}),
@@ -27,13 +28,4 @@ var defaultFunctions = map[string]sql.Function{
 	"minute":    sql.Function1(NewMinute),
 	"second":    sql.Function1(NewSecond),
 	"dayofyear": sql.Function1(NewDayOfYear),
-}
-
-// RegisterDefaults registers the aggregations in the catalog.
-func RegisterDefaults(c *sql.Catalog) error {
-	for k, v := range defaultFunctions {
-		c.RegisterFunction(k, v)
-	}
-
-	return nil
 }
