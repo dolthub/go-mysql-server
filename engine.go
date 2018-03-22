@@ -3,7 +3,7 @@ package sqle
 import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/parse"
 )
 
@@ -16,10 +16,7 @@ type Engine struct {
 // New creates a new Engine.
 func New() *Engine {
 	c := sql.NewCatalog()
-	err := expression.RegisterDefaults(c)
-	if err != nil {
-		panic(err)
-	}
+	c.RegisterFunctions(function.Defaults)
 
 	a := analyzer.New(c)
 	return &Engine{c, a}

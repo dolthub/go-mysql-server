@@ -122,6 +122,9 @@ func (FunctionN) isFunction() {}
 // and User-Defined Functions.
 type FunctionRegistry map[string]Function
 
+// Functions is a map of functions identified by their name.
+type Functions map[string]Function
+
 // NewFunctionRegistry creates a new FunctionRegistry.
 func NewFunctionRegistry() FunctionRegistry {
 	return make(FunctionRegistry)
@@ -130,6 +133,13 @@ func NewFunctionRegistry() FunctionRegistry {
 // RegisterFunction registers a function with the given name.
 func (r FunctionRegistry) RegisterFunction(name string, f Function) {
 	r[name] = f
+}
+
+// RegisterFunctions registers a map of functions.
+func (r FunctionRegistry) RegisterFunctions(funcs Functions) {
+	for name, f := range funcs {
+		r[name] = f
+	}
 }
 
 // Function returns a function with the given name.
