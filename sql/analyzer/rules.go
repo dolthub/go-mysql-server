@@ -26,6 +26,9 @@ var (
 	// ErrColumnTableNotFound is returned when the column does not exist in a
 	// the table.
 	ErrColumnTableNotFound = errors.NewKind("table %q does not have column %q")
+	// ErrColumnNotFound is returned when the column does not exist in any
+	// table in scope.
+	ErrColumnNotFound = errors.NewKind("column %q could not be found in any table in scope")
 	// ErrAmbiguousColumnName is returned when there is a column reference that
 	// is present in more than one table.
 	ErrAmbiguousColumnName = errors.NewKind("ambiguous column name %q, it's present in all these tables: %v")
@@ -88,7 +91,7 @@ func qualifyColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 					tables := dedupStrings(colIndex[col.Name()])
 					switch len(tables) {
 					case 0:
-						return nil, ErrColumnTableNotFound.New(col.Table(), col.Name())
+						return nil, ErrColumnNotFound.New(col.Name())
 					case 1:
 						col = expression.NewUnresolvedQualifiedColumn(
 							tables[0],
@@ -259,7 +262,10 @@ func resolveColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 
 			columnsInfo, ok := colMap[uc.Name()]
 			if !ok {
-				return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
+				if uc.Table() != "" {
+					return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
+				}
+				return nil, ErrColumnNotFound.New(uc.Name())
 			}
 
 			var ci columnInfo
@@ -273,7 +279,10 @@ func resolveColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 			}
 
 			if !found {
-				return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
+				if uc.Table() != "" {
+					return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
+				}
+				return nil, ErrColumnNotFound.New(uc.Name())
 			}
 
 			a.Log("column resolved to %q.%q", ci.col.Source, ci.col.Name)
