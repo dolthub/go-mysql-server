@@ -13,11 +13,19 @@ import (
 	"gopkg.in/src-d/go-vitess.v0/vt/sqlparser"
 )
 
-// ErrUnsupportedSyntax is thrown when a specific syntax is not already supported
-var ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %#v")
+var (
+	// ErrUnsupportedSyntax is thrown when a specific syntax is not already supported
+	ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %#v")
 
-// ErrUnsupportedFeature us thrown when a feature is not already supported
-var ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
+	// ErrUnsupportedFeature is thrown when a feature is not already supported
+	ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
+
+	// ErrInvalidSQLValType is returned when a SQLVal type is not valid.
+	ErrInvalidSQLValType = errors.NewKind("invalid SQLVal of type: %d")
+
+	// ErrInvalidSortOrder is returned when a sort order is not valid.
+	ErrInvalidSortOrder = errors.NewKind("invalod sort order: %s")
+)
 
 // Parse parses the given SQL sentence and returns the corresponding node.
 func Parse(session sql.Session, s string) (sql.Node, error) {
@@ -334,7 +342,7 @@ func orderByToSort(ob sqlparser.OrderBy, child sql.Node) (*plan.Sort, error) {
 		var so plan.SortOrder
 		switch o.Direction {
 		default:
-			panic(fmt.Errorf("invalid sort order: %s", o.Direction))
+			return nil, ErrInvalidSortOrder.New(o.Direction)
 		case sqlparser.AscScr:
 			so = plan.Ascending
 		case sqlparser.DescScr:
@@ -595,7 +603,7 @@ func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {
 		return expression.NewLiteral(v.Val[0] == '1', sql.Boolean), nil
 	}
 
-	panic(fmt.Errorf("unreachable: invalid SQLVal of type: %d", v.Type))
+	return nil, ErrInvalidSQLValType.New(v.Type)
 }
 
 func isExprToExpression(c *sqlparser.IsExpr) (sql.Expression, error) {
@@ -614,9 +622,7 @@ func isExprToExpression(c *sqlparser.IsExpr) (sql.Expression, error) {
 	}
 }
 
-func comparisonExprToExpression(c *sqlparser.ComparisonExpr) (sql.Expression,
-	error) {
-
+func comparisonExprToExpression(c *sqlparser.ComparisonExpr) (sql.Expression, error) {
 	left, err := exprToExpression(c.Left)
 	if err != nil {
 		return nil, err
