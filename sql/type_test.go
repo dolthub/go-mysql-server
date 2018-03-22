@@ -5,72 +5,43 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-vitess.v0/sqltypes"
 )
 
-func TestType_Text(t *testing.T) {
-	require := require.New(t)
+func TestText(t *testing.T) {
+	convert(t, Text, "", "")
+	convert(t, Text, 1, "1")
 
-	v, err := Text.Convert("")
-	require.Nil(err)
-	require.Equal("", v)
-	v, err = Text.Convert(1)
-	require.Nil(err)
-	require.Equal("1", v)
-
-	require.Equal(-1, Text.Compare("a", "b"))
-	require.Equal(0, Text.Compare("a", "a"))
-	require.Equal(1, Text.Compare("b", "a"))
+	lt(t, Text, "a", "b")
+	eq(t, Text, "a", "a")
+	gt(t, Text, "b", "a")
 }
 
-func TestType_Int32(t *testing.T) {
-	require := require.New(t)
+func TestInt32(t *testing.T) {
+	convert(t, Int32, int32(1), int32(1))
+	convert(t, Int32, 1, int32(1))
+	convert(t, Int32, int64(1), int32(1))
+	convert(t, Int32, "5", int32(5))
+	convertErr(t, Int32, "")
 
-	v, err := Int32.Convert(int32(1))
-	require.Nil(err)
-	require.Equal(int32(1), v)
-	v, err = Int32.Convert(1)
-	require.Nil(err)
-	require.Equal(int32(1), v)
-	v, err = Int32.Convert(int64(1))
-	require.Nil(err)
-	require.Equal(int32(1), v)
-	v, err = Int32.Convert("")
-	require.NotNil(err)
-	require.Equal(int32(0), v)
-
-	require.Equal(-1, Int32.Compare(int32(1), int32(2)))
-	require.Equal(0, Int32.Compare(int32(1), int32(1)))
-	require.Equal(1, Int32.Compare(int32(2), int32(1)))
+	lt(t, Int32, int32(1), int32(2))
+	eq(t, Int32, int32(1), int32(1))
+	gt(t, Int32, int32(3), int32(2))
 }
 
-func TestType_Int64(t *testing.T) {
-	require := require.New(t)
+func TestInt64(t *testing.T) {
+	convert(t, Int64, int32(1), int64(1))
+	convert(t, Int64, 1, int64(1))
+	convert(t, Int64, int64(1), int64(1))
+	convertErr(t, Int64, "")
+	convert(t, Int64, "5", int64(5))
 
-	v, err := Int64.Convert(int64(1))
-	require.Nil(err)
-	require.Equal(int64(1), v)
-	v, err = Int64.Convert(1)
-	require.Nil(err)
-	require.Equal(int64(1), v)
-	v, err = Int64.Convert(int32(1))
-	require.Nil(err)
-	require.Equal(int64(1), v)
-	v, err = Int64.Convert(int64(9223372036854775807))
-	require.Nil(err)
-	require.Equal(int64(9223372036854775807), v)
-	v, err = Int64.Convert(uint32(4294967295))
-	require.Nil(err)
-	require.Equal(int64(4294967295), v)
-	v, err = Int64.Convert("")
-	require.NotNil(err)
-	require.Equal(int64(0), v)
-
-	require.Equal(-1, Int64.Compare(int64(1), int64(2)))
-	require.Equal(0, Int64.Compare(int64(1), int64(1)))
-	require.Equal(1, Int64.Compare(int64(2), int64(1)))
+	lt(t, Int64, int64(1), int64(2))
+	eq(t, Int64, int64(1), int64(1))
+	gt(t, Int64, int64(3), int64(2))
 }
 
-func TestType_Timestamp(t *testing.T) {
+func TestTimestamp(t *testing.T) {
 	require := require.New(t)
 
 	now := time.Now().UTC()
@@ -96,12 +67,12 @@ func TestType_Timestamp(t *testing.T) {
 	require.Equal([]byte(now.Format(TimestampLayout)), sql.Raw())
 
 	after := now.Add(time.Second)
-	require.Equal(-1, Timestamp.Compare(now, after))
-	require.Equal(0, Timestamp.Compare(now, now))
-	require.Equal(1, Timestamp.Compare(after, now))
+	lt(t, Timestamp, now, after)
+	eq(t, Timestamp, now, now)
+	gt(t, Timestamp, after, now)
 }
 
-func TestType_Date(t *testing.T) {
+func TestDate(t *testing.T) {
 	require := require.New(t)
 
 	now := time.Now()
@@ -127,43 +98,98 @@ func TestType_Date(t *testing.T) {
 	require.Equal([]byte(now.Format(DateLayout)), sql.Raw())
 
 	after := now.Add(time.Second)
-	require.Equal(0, Date.Compare(now, after))
-	require.Equal(0, Date.Compare(now, now))
-	require.Equal(0, Date.Compare(after, now))
+	eq(t, Date, now, after)
+	eq(t, Date, now, now)
+	eq(t, Date, after, now)
 
 	after = now.Add(26 * time.Hour)
-	require.Equal(-1, Date.Compare(now, after))
-	require.Equal(0, Date.Compare(now, now))
-	require.Equal(1, Date.Compare(after, now))
+	lt(t, Date, now, after)
+	eq(t, Date, now, now)
+	gt(t, Date, after, now)
 }
 
-func TestType_Blob(t *testing.T) {
+func TestBlob(t *testing.T) {
 	require := require.New(t)
 
-	v, err := Blob.Convert("")
-	require.Nil(err)
-	require.Equal([]byte{}, v)
-	v, err = Blob.Convert(1)
+	convert(t, Blob, "", []byte{})
+
+	_, err := Blob.Convert(1)
 	require.NotNil(err)
 	require.True(ErrInvalidType.Is(err))
-	require.Nil(v)
 
-	require.Equal(-1, Blob.Compare([]byte{'A'}, []byte{'B'}))
-	require.Equal(0, Blob.Compare([]byte{'A'}, []byte{'A'}))
-	require.Equal(1, Blob.Compare([]byte{'B'}, []byte{'A'}))
+	lt(t, Blob, []byte("A"), []byte("B"))
+	eq(t, Blob, []byte("A"), []byte("A"))
+	gt(t, Blob, []byte("C"), []byte("B"))
 }
 
-func TestType_JSON(t *testing.T) {
+func TestJSON(t *testing.T) {
+	convert(t, JSON, "", []byte(`""`))
+	convert(t, JSON, []int{1, 2}, []byte("[1,2]"))
+
+	lt(t, JSON, []byte("A"), []byte("B"))
+	eq(t, JSON, []byte("A"), []byte("A"))
+	gt(t, JSON, []byte("C"), []byte("B"))
+}
+
+func TestTuple(t *testing.T) {
 	require := require.New(t)
 
-	v, err := JSON.Convert("")
-	require.Nil(err)
-	require.Equal([]byte(`""`), v)
-	v, err = JSON.Convert([]int{1, 2})
-	require.Nil(err)
-	require.Equal([]byte("[1,2]"), v.([]byte))
+	typ := Tuple(Int32, Text, Int64)
+	_, err := typ.Convert("foo")
+	require.Error(err)
+	require.True(ErrNotTuple.Is(err))
 
-	require.Equal(-1, JSON.Compare([]byte{'A'}, []byte{'B'}))
-	require.Equal(0, JSON.Compare([]byte{'A'}, []byte{'A'}))
-	require.Equal(1, JSON.Compare([]byte{'B'}, []byte{'A'}))
+	_, err = typ.Convert([]interface{}{1, 2})
+	require.Error(err)
+	require.True(ErrInvalidColumnNumber.Is(err))
+
+	convert(t, typ, []interface{}{1, 2, 3}, []interface{}{int32(1), "2", int64(3)})
+
+	require.Panics(func() {
+		typ.SQL(nil)
+	})
+
+	require.Equal(sqltypes.Expression, typ.Type())
+
+	lt(t, typ, []interface{}{1, 2, 3}, []interface{}{2, 2, 3})
+	lt(t, typ, []interface{}{1, 2, 3}, []interface{}{1, 3, 3})
+	lt(t, typ, []interface{}{1, 2, 3}, []interface{}{1, 2, 4})
+	eq(t, typ, []interface{}{1, 2, 3}, []interface{}{1, 2, 3})
+	gt(t, typ, []interface{}{2, 2, 3}, []interface{}{1, 2, 3})
+	gt(t, typ, []interface{}{1, 3, 3}, []interface{}{1, 2, 3})
+	gt(t, typ, []interface{}{1, 2, 4}, []interface{}{1, 2, 3})
+}
+
+func eq(t *testing.T, typ Type, a, b interface{}) {
+	t.Helper()
+	cmp, err := typ.Compare(a, b)
+	require.NoError(t, err)
+	require.Equal(t, 0, cmp)
+}
+
+func lt(t *testing.T, typ Type, a, b interface{}) {
+	t.Helper()
+	cmp, err := typ.Compare(a, b)
+	require.NoError(t, err)
+	require.Equal(t, -1, cmp)
+}
+
+func gt(t *testing.T, typ Type, a, b interface{}) {
+	t.Helper()
+	cmp, err := typ.Compare(a, b)
+	require.NoError(t, err)
+	require.Equal(t, 1, cmp)
+}
+
+func convert(t *testing.T, typ Type, val interface{}, to interface{}) {
+	t.Helper()
+	v, err := typ.Convert(val)
+	require.NoError(t, err)
+	require.Equal(t, to, v)
+}
+
+func convertErr(t *testing.T, typ Type, val interface{}) {
+	t.Helper()
+	_, err := typ.Convert(val)
+	require.Error(t, err)
 }

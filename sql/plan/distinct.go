@@ -171,12 +171,18 @@ func (di *orderedDistinctIter) Next() (sql.Row, error) {
 			return nil, err
 		}
 
-		if di.prevRow != nil && di.prevRow.Equals(row, di.schema) {
-			continue
+		if di.prevRow != nil {
+			ok, err := di.prevRow.Equals(row, di.schema)
+			if err != nil {
+				return nil, err
+			}
+
+			if ok {
+				continue
+			}
 		}
 
 		di.prevRow = row
-
 		return row, nil
 	}
 }

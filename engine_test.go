@@ -13,9 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	driverName = "engine_tests"
-)
+const driverName = "engine_tests"
 
 func TestQueries(t *testing.T) {
 	e := newEngine(t)
@@ -196,6 +194,21 @@ func TestQueries(t *testing.T) {
 		"SELECT * FROM tabletest WHERE text = 'a'",
 		[][]interface{}{
 			{"a", int32(1)},
+		},
+	)
+
+	testQuery(t, e,
+		"SELECT s FROM mytable WHERE i IN (1, 2, 5)",
+		[][]interface{}{
+			{"first row"},
+			{"second row"},
+		},
+	)
+
+	testQuery(t, e,
+		"SELECT s FROM mytable WHERE i NOT IN (1, 2, 5)",
+		[][]interface{}{
+			{"third row"},
 		},
 	)
 }

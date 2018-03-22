@@ -8,10 +8,11 @@ import (
 )
 
 const (
-	validateResolvedRule     = "validate_resolved"
-	validateOrderByRule      = "validate_order_by"
-	validateGroupByRule      = "validate_group_by"
-	validateSchemaSourceRule = "validate_schema_source"
+	validateResolvedRule      = "validate_resolved"
+	validateOrderByRule       = "validate_order_by"
+	validateGroupByRule       = "validate_group_by"
+	validateSchemaSourceRule  = "validate_schema_source"
+	validateProjectTuplesRule = "validate_project_tuples"
 )
 
 var (
@@ -26,6 +27,9 @@ var (
 	// ErrValidationSchemaSource is returned when there is any column source
 	// that does not match the table name.
 	ErrValidationSchemaSource = errors.NewKind("all schema column sources don't match table name, expecting %q, but found: %s")
+	// ErrProjectTuple is returned when there is a tuple of more than 1 column
+	// inside a projection.
+	ErrProjectTuple = errors.NewKind("selected field %d should have 1 column, but has %d")
 )
 
 // DefaultValidationRules to apply while analyzing nodes.
@@ -34,6 +38,7 @@ var DefaultValidationRules = []ValidationRule{
 	{validateOrderByRule, validateOrderBy},
 	{validateGroupByRule, validateGroupBy},
 	{validateSchemaSourceRule, validateSchemaSource},
+	{validateProjectTuplesRule, validateProjectTuples},
 }
 
 func validateIsResolved(n sql.Node) error {
@@ -118,6 +123,24 @@ func validateSchema(t sql.Table) error {
 	for _, col := range t.Schema() {
 		if col.Source != name {
 			return ErrValidationSchemaSource.New(name, col.Source)
+		}
+	}
+	return nil
+}
+
+func validateProjectTuples(n sql.Node) error {
+	switch n := n.(type) {
+	case *plan.Project:
+		for i, e := range n.Expressions {
+			if sql.IsTuple(e.Type()) {
+				return ErrProjectTuple.New(i+1, sql.NumColumns(e.Type()))
+			}
+		}
+	case *plan.GroupBy:
+		for i, e := range n.Aggregate {
+			if sql.IsTuple(e.Type()) {
+				return ErrProjectTuple.New(i+1, sql.NumColumns(e.Type()))
+			}
 		}
 	}
 	return nil

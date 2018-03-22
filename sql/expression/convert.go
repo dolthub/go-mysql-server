@@ -16,15 +16,23 @@ import (
 var ErrConvertExpression = errors.NewKind("expression '%v': couldn't convert to %v")
 
 const (
-	// ConvertTo represents those conversion types Convert accepts.
-	ConvertToBinary   = "binary"
-	ConvertToChar     = "char"
-	ConvertToNChar    = "nchar"
-	ConvertToDate     = "date"
+	// ConvertToBinary is a conversion to binary.
+	ConvertToBinary = "binary"
+	// ConvertToChar is a conversion to char.
+	ConvertToChar = "char"
+	// ConvertToNChar is a conversion to nchar.
+	ConvertToNChar = "nchar"
+	// ConvertToDate is a conversion to date.
+	ConvertToDate = "date"
+	// ConvertToDatetime is a conversion to datetune.
 	ConvertToDatetime = "datetime"
-	ConvertToDecimal  = "decimal"
-	ConvertToJSON     = "json"
-	ConvertToSigned   = "signed"
+	// ConvertToDecimal is a conversion to decimal.
+	ConvertToDecimal = "decimal"
+	// ConvertToJSON is a conversion to json.
+	ConvertToJSON = "json"
+	// ConvertToSigned is a conversion to signed.
+	ConvertToSigned = "signed"
+	// ConvertToUnsigned is a conversion to unsigned.
 	ConvertToUnsigned = "unsigned"
 )
 

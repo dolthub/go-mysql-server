@@ -15,17 +15,25 @@ import (
 	"gopkg.in/src-d/go-vitess.v0/vt/proto/query"
 )
 
-// ErrTypeNotSupported is thrown when a specific type is not supported
-var ErrTypeNotSupported = errors.NewKind("Type not supported: %s")
+var (
+	// ErrTypeNotSupported is thrown when a specific type is not supported
+	ErrTypeNotSupported = errors.NewKind("Type not supported: %s")
 
-// ErrUnexpectedType is thrown when a received type is not the expected
-var ErrUnexpectedType = errors.NewKind("value at %d has unexpected type: %s")
+	// ErrUnexpectedType is thrown when a received type is not the expected
+	ErrUnexpectedType = errors.NewKind("value at %d has unexpected type: %s")
 
-// ErrConvertingToTime is thrown when a value cannot be converted to a Time
-var ErrConvertingToTime = errors.NewKind("value %q can't be converted to time.Time")
+	// ErrConvertingToTime is thrown when a value cannot be converted to a Time
+	ErrConvertingToTime = errors.NewKind("value %q can't be converted to time.Time")
 
-// ErrValueNotNil is thrown when a value that was expected to be nil, is not
-var ErrValueNotNil = errors.NewKind("value not nil: %#v")
+	// ErrValueNotNil is thrown when a value that was expected to be nil, is not
+	ErrValueNotNil = errors.NewKind("value not nil: %#v")
+
+	// ErrNotTuple is retuned when the value is not a tuple.
+	ErrNotTuple = errors.NewKind("value of type %T is not a tuple")
+	// ErrInvalidColumnNumber is returned when a tuple has an invalid number of
+	// arguments.
+	ErrInvalidColumnNumber = errors.NewKind("tuple should contain %d column(s), but has %d")
+)
 
 // Schema is the definition of a table.
 type Schema []*Column
@@ -97,7 +105,7 @@ type Type interface {
 	Convert(interface{}) (interface{}, error)
 	// Compare returns an integer comparing two values.
 	// The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
-	Compare(interface{}, interface{}) int
+	Compare(interface{}, interface{}) (int, error)
 	// SQL returns the sqltypes.Value for the given value.
 	SQL(interface{}) sqltypes.Value
 }
@@ -134,6 +142,11 @@ var (
 	// Blob is a type that holds a chunk of binary data.
 	Blob blobT
 )
+
+// Tuple returns a new tuple type with the given element types.
+func Tuple(types ...Type) Type {
+	return tupleT(types)
+}
 
 // MysqlTypeToType gets the column type using the mysql type
 func MysqlTypeToType(sql query.Type) (Type, error) {
@@ -192,8 +205,8 @@ func (t nullT) Convert(v interface{}) (interface{}, error) {
 
 // Compare implements Type interface. Note that while this returns 0 (equals)
 // for ordering purposes, in SQL NULL != NULL.
-func (t nullT) Compare(a interface{}, b interface{}) int {
-	return 0
+func (t nullT) Compare(a interface{}, b interface{}) (int, error) {
+	return 0, nil
 }
 
 type numberT struct {
@@ -232,43 +245,43 @@ func (t numberT) Convert(v interface{}) (interface{}, error) {
 }
 
 // Compare implements Type interface.
-func (t numberT) Compare(a interface{}, b interface{}) int {
+func (t numberT) Compare(a interface{}, b interface{}) (int, error) {
 	if a == b {
-		return 0
+		return 0, nil
 	}
 
 	switch t.t {
 	case sqltypes.Int32:
 		if a.(int32) < b.(int32) {
-			return -1
+			return -1, nil
 		}
 	case sqltypes.Int64:
 		if a.(int64) < b.(int64) {
-			return -1
+			return -1, nil
 		}
 	case sqltypes.Uint32:
 		if a.(uint32) < b.(uint32) {
-			return -1
+			return -1, nil
 		}
 	case sqltypes.Uint64:
 		if a.(uint64) < b.(uint64) {
-			return -1
+			return -1, nil
 		}
 	case sqltypes.Float32:
 		if a.(float32) < b.(float32) {
-			return -1
+			return -1, nil
 		}
 	case sqltypes.Float64:
 		if a.(float64) < b.(float64) {
-			return -1
+			return -1, nil
 		}
 	default:
 		if cast.ToInt64(a) < cast.ToInt64(b) {
-			return -1
+			return -1, nil
 		}
 	}
 
-	return +1
+	return +1, nil
 }
 
 type timestampT struct{}
@@ -313,15 +326,15 @@ func (t timestampT) Convert(v interface{}) (interface{}, error) {
 }
 
 // Compare implements Type interface.
-func (t timestampT) Compare(a interface{}, b interface{}) int {
+func (t timestampT) Compare(a interface{}, b interface{}) (int, error) {
 	av := a.(time.Time)
 	bv := b.(time.Time)
 	if av.Before(bv) {
-		return -1
+		return -1, nil
 	} else if av.After(bv) {
-		return 1
+		return 1, nil
 	}
-	return 0
+	return 0, nil
 }
 
 type dateT struct{}
@@ -366,15 +379,15 @@ func (t dateT) Convert(v interface{}) (interface{}, error) {
 	}
 }
 
-func (t dateT) Compare(a, b interface{}) int {
+func (t dateT) Compare(a, b interface{}) (int, error) {
 	av := truncateDate(a.(time.Time))
 	bv := truncateDate(b.(time.Time))
 	if av.Before(bv) {
-		return -1
+		return -1, nil
 	} else if av.After(bv) {
-		return 1
+		return 1, nil
 	}
-	return 0
+	return 0, nil
 }
 
 type textT struct{}
@@ -395,8 +408,8 @@ func (t textT) Convert(v interface{}) (interface{}, error) {
 }
 
 // Compare implements Type interface.
-func (t textT) Compare(a interface{}, b interface{}) int {
-	return strings.Compare(a.(string), b.(string))
+func (t textT) Compare(a interface{}, b interface{}) (int, error) {
+	return strings.Compare(a.(string), b.(string)), nil
 }
 
 type booleanT struct{}
@@ -422,16 +435,16 @@ func (t booleanT) Convert(v interface{}) (interface{}, error) {
 }
 
 // Compare implements Type interface.
-func (t booleanT) Compare(a interface{}, b interface{}) int {
+func (t booleanT) Compare(a interface{}, b interface{}) (int, error) {
 	if a == b {
-		return 0
+		return 0, nil
 	}
 
 	if a.(bool) == false {
-		return -1
+		return -1, nil
 	}
 
-	return +1
+	return +1, nil
 }
 
 type blobT struct{}
@@ -461,8 +474,8 @@ func (t blobT) Convert(v interface{}) (interface{}, error) {
 }
 
 // Compare implements Type interface.
-func (t blobT) Compare(a interface{}, b interface{}) int {
-	return bytes.Compare(a.([]byte), b.([]byte))
+func (t blobT) Compare(a interface{}, b interface{}) (int, error) {
+	return bytes.Compare(a.([]byte), b.([]byte)), nil
 }
 
 type jsonT struct{}
@@ -483,8 +496,65 @@ func (t jsonT) Convert(v interface{}) (interface{}, error) {
 }
 
 // Compare implements Type interface.
-func (t jsonT) Compare(a interface{}, b interface{}) int {
-	return bytes.Compare(a.([]byte), b.([]byte))
+func (t jsonT) Compare(a interface{}, b interface{}) (int, error) {
+	return bytes.Compare(a.([]byte), b.([]byte)), nil
+}
+
+type tupleT []Type
+
+func (t tupleT) Type() query.Type {
+	return sqltypes.Expression
+}
+
+func (t tupleT) SQL(v interface{}) sqltypes.Value {
+	panic("unable to convert tuple type to SQL")
+}
+
+func (t tupleT) Convert(v interface{}) (interface{}, error) {
+	if vals, ok := v.([]interface{}); ok {
+		if len(vals) != len(t) {
+			return nil, ErrInvalidColumnNumber.New(len(t), len(vals))
+		}
+
+		var result = make([]interface{}, len(t))
+		for i, typ := range t {
+			var err error
+			result[i], err = typ.Convert(vals[i])
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return result, nil
+	}
+	return nil, ErrNotTuple.New(v)
+}
+
+func (t tupleT) Compare(a, b interface{}) (int, error) {
+	a, err := t.Convert(a)
+	if err != nil {
+		return 0, err
+	}
+
+	b, err = t.Convert(b)
+	if err != nil {
+		return 0, err
+	}
+
+	left := a.([]interface{})
+	right := b.([]interface{})
+	for i := range left {
+		cmp, err := t[i].Compare(left[i], right[i])
+		if err != nil {
+			return 0, err
+		}
+
+		if cmp != 0 {
+			return cmp, nil
+		}
+	}
+
+	return 0, nil
 }
 
 // MustConvert calls the Convert function from a given Type, it err panics.
@@ -520,4 +590,22 @@ func IsDecimal(t Type) bool {
 // IsText checks if t is a text type.
 func IsText(t Type) bool {
 	return t == Text || t == Blob || t == JSON
+}
+
+// IsTuple checks if t is a tuple type.
+// Note that tupleT instances with just 1 value are not considered
+// as a tuple, but a parenthesized value.
+func IsTuple(t Type) bool {
+	v, ok := t.(tupleT)
+	return ok && len(v) > 1
+}
+
+// NumColumns returns the number of columns in a type. This is one for all
+// types, except tuples.
+func NumColumns(t Type) int {
+	v, ok := t.(tupleT)
+	if !ok {
+		return 1
+	}
+	return len(v)
 }

@@ -13,11 +13,19 @@ import (
 	"gopkg.in/src-d/go-vitess.v0/vt/sqlparser"
 )
 
-// ErrUnsupportedSyntax is thrown when a specific syntax is not already supported
-var ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %#v")
+var (
+	// ErrUnsupportedSyntax is thrown when a specific syntax is not already supported
+	ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %#v")
 
-// ErrUnsupportedFeature us thrown when a feature is not already supported
-var ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
+	// ErrUnsupportedFeature is thrown when a feature is not already supported
+	ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
+
+	// ErrInvalidSQLValType is returned when a SQLVal type is not valid.
+	ErrInvalidSQLValType = errors.NewKind("invalid SQLVal of type: %d")
+
+	// ErrInvalidSortOrder is returned when a sort order is not valid.
+	ErrInvalidSortOrder = errors.NewKind("invalod sort order: %s")
+)
 
 // Parse parses the given SQL sentence and returns the corresponding node.
 func Parse(session sql.Session, s string) (sql.Node, error) {
@@ -334,7 +342,7 @@ func orderByToSort(ob sqlparser.OrderBy, child sql.Node) (*plan.Sort, error) {
 		var so plan.SortOrder
 		switch o.Direction {
 		default:
-			panic(fmt.Errorf("invalid sort order: %s", o.Direction))
+			return nil, ErrInvalidSortOrder.New(o.Direction)
 		case sqlparser.AscScr:
 			so = plan.Ascending
 		case sqlparser.DescScr:
@@ -461,20 +469,7 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 
 		return expression.NewNot(c), nil
 	case *sqlparser.SQLVal:
-		switch v.Type {
-		case sqlparser.StrVal:
-			return expression.NewLiteral(string(v.Val), sql.Text), nil
-		case sqlparser.IntVal:
-			//TODO: Use smallest integer representation and widen later.
-			n, _ := strconv.ParseInt(string(v.Val), 10, 64)
-			return expression.NewLiteral(n, sql.Int64), nil
-		case sqlparser.HexVal:
-			//TODO
-			return nil, ErrUnsupportedSyntax.New(v)
-		default:
-			//TODO
-			return nil, ErrUnsupportedSyntax.New(v)
-		}
+		return convertVal(v)
 	case sqlparser.BoolVal:
 		return expression.NewLiteral(bool(v), sql.Boolean), nil
 	case *sqlparser.NullVal:
@@ -553,7 +548,62 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		default:
 			return nil, ErrUnsupportedFeature.New(fmt.Sprintf("RangeCond with operator: %s", v.Operator))
 		}
+	case sqlparser.ValTuple:
+		var exprs = make([]sql.Expression, len(v))
+		for i, e := range v {
+			expr, err := exprToExpression(e)
+			if err != nil {
+				return nil, err
+			}
+			exprs[i] = expr
+		}
+		return expression.NewTuple(exprs...), nil
 	}
+}
+
+func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {
+	switch v.Type {
+	case sqlparser.StrVal:
+		return expression.NewLiteral(string(v.Val), sql.Text), nil
+	case sqlparser.IntVal:
+		//TODO: Use smallest integer representation and widen later.
+		val, err := strconv.ParseInt(string(v.Val), 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return expression.NewLiteral(val, sql.Int64), nil
+	case sqlparser.FloatVal:
+		val, err := strconv.ParseFloat(string(v.Val), 64)
+		if err != nil {
+			return nil, err
+		}
+		return expression.NewLiteral(val, sql.Float64), nil
+	case sqlparser.HexNum:
+		v := strings.ToLower(string(v.Val))
+		if strings.HasPrefix(v, "0x") {
+			v = v[2:]
+		} else if strings.HasPrefix(v, "x") {
+			v = strings.Trim(v[1:], "'")
+		}
+
+		val, err := strconv.ParseInt(v, 16, 64)
+		if err != nil {
+			return nil, err
+		}
+		return expression.NewLiteral(val, sql.Int64), nil
+	case sqlparser.HexVal:
+		val, err := v.HexDecode()
+		if err != nil {
+			return nil, err
+		}
+		return expression.NewLiteral(val, sql.Blob), nil
+	case sqlparser.ValArg:
+		return expression.NewLiteral(string(v.Val), sql.Text), nil
+	case sqlparser.BitVal:
+		return expression.NewLiteral(v.Val[0] == '1', sql.Boolean), nil
+	}
+
+	return nil, ErrInvalidSQLValType.New(v.Type)
 }
 
 func isExprToExpression(c *sqlparser.IsExpr) (sql.Expression, error) {
@@ -572,9 +622,7 @@ func isExprToExpression(c *sqlparser.IsExpr) (sql.Expression, error) {
 	}
 }
 
-func comparisonExprToExpression(c *sqlparser.ComparisonExpr) (sql.Expression,
-	error) {
-
+func comparisonExprToExpression(c *sqlparser.ComparisonExpr) (sql.Expression, error) {
 	left, err := exprToExpression(c.Left)
 	if err != nil {
 		return nil, err
@@ -606,6 +654,10 @@ func comparisonExprToExpression(c *sqlparser.ComparisonExpr) (sql.Expression,
 		return expression.NewNot(
 			expression.NewEquals(left, right),
 		), nil
+	case sqlparser.InStr:
+		return expression.NewIn(left, right), nil
+	case sqlparser.NotInStr:
+		return expression.NewNotIn(left, right), nil
 	}
 }
 
@@ -642,7 +694,7 @@ func selectExprToExpression(se sqlparser.SelectExpr) (sql.Expression, error) {
 			return expr, nil
 		}
 
-		//TODO: Handle case-sensitiveness when needed.
+		// TODO: Handle case-sensitiveness when needed.
 		return expression.NewAlias(expr, e.As.Lowered()), nil
 	}
 }
