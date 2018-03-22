@@ -19,13 +19,14 @@ var Defaults = sql.Functions{
 	"avg": sql.Function1(func(e sql.Expression) sql.Expression {
 		return aggregation.NewAvg(e)
 	}),
-	"is_binary": sql.Function1(NewIsBinary),
-	"substring": sql.FunctionN(NewSubstring),
-	"year":      sql.Function1(NewYear),
-	"month":     sql.Function1(NewMonth),
-	"day":       sql.Function1(NewDay),
-	"hour":      sql.Function1(NewHour),
-	"minute":    sql.Function1(NewMinute),
-	"second":    sql.Function1(NewSecond),
-	"dayofyear": sql.Function1(NewDayOfYear),
+	"is_binary":    sql.Function1(NewIsBinary),
+	"substring":    sql.FunctionN(NewSubstring),
+	"year":         sql.Function1(NewYear),
+	"month":        sql.Function1(NewMonth),
+	"day":          sql.Function1(NewDay),
+	"hour":         sql.Function1(NewHour),
+	"minute":       sql.Function1(NewMinute),
+	"second":       sql.Function1(NewSecond),
+	"dayofyear":    sql.Function1(NewDayOfYear),
+	"array_length": sql.Function1(NewArrayLength),
 }
