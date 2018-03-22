@@ -43,9 +43,11 @@ func NewHandler(e *sqle.Engine, sm *SessionManager) *Handler {
 
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
+	h.mu.Lock()
 	if _, ok := h.c[c.ConnectionID]; !ok {
 		h.c[c.ConnectionID] = c
 	}
+	h.mu.Unlock()
 
 	h.sm.NewSession(c)
 	logrus.Infof("NewConnection: client %v", c.ConnectionID)
