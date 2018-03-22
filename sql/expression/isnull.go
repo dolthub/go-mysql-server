@@ -37,7 +37,7 @@ func (e IsNull) String() string {
 }
 
 // TransformUp implements the Expression interface.
-func (e *IsNull) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (e *IsNull) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := e.Child.TransformUp(f)
 	if err != nil {
 		return nil, err

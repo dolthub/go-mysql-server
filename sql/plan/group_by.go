@@ -72,7 +72,7 @@ func (p *GroupBy) RowIter(session sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Transformable interface.
-func (p *GroupBy) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+func (p *GroupBy) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
 	child, err := p.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (p *GroupBy) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, err
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (p *GroupBy) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+func (p *GroupBy) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	aggregate, err := transformExpressionsUp(f, p.Aggregate)
 	if err != nil {
 		return nil, err

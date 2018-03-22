@@ -79,7 +79,7 @@ func (c *Convert) String() string {
 }
 
 // TransformUp implements the Expression interface.
-func (c *Convert) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (c *Convert) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := c.Child.TransformUp(f)
 	if err != nil {
 		return nil, err

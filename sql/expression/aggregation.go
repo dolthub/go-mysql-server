@@ -46,7 +46,7 @@ func (c Count) String() string {
 }
 
 // TransformUp implements the Expression interface.
-func (c *Count) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (c *Count) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := c.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -119,7 +119,7 @@ func (m *Min) IsNullable() bool {
 }
 
 // TransformUp implements the Transformable interface.
-func (m *Min) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (m *Min) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := m.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -199,7 +199,7 @@ func (m *Max) IsNullable() bool {
 }
 
 // TransformUp implements the Transformable interface.
-func (m *Max) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (m *Max) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := m.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -294,7 +294,7 @@ func (a *Avg) Eval(session sql.Session, buffer sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements AggregationExpression interface. (AggregationExpression[Expression]])
-func (a *Avg) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (a *Avg) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := a.Child.TransformUp(f)
 	if err != nil {
 		return nil, err

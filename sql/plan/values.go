@@ -77,12 +77,12 @@ func (p *Values) RowIter(session sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Transformable interface.
-func (p *Values) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+func (p *Values) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
 	return f(p)
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (p *Values) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+func (p *Values) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	ets := make([][]sql.Expression, len(p.ExpressionTuples))
 	var err error
 	for i, et := range p.ExpressionTuples {

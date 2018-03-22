@@ -55,12 +55,12 @@ func (c *CreateTable) Children() []sql.Node {
 }
 
 // TransformUp implements the Transformable interface.
-func (c *CreateTable) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+func (c *CreateTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
 	return f(NewCreateTable(c.Database, c.name, c.schema))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (c *CreateTable) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+func (c *CreateTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return c, nil
 }
 

@@ -21,7 +21,7 @@ func (t *TableAlias) Name() string {
 }
 
 // TransformUp implements the Transformable interface.
-func (t *TableAlias) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+func (t *TableAlias) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
 	child, err := t.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func (t *TableAlias) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, 
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (t *TableAlias) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+func (t *TableAlias) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	child, err := t.Child.TransformExpressionsUp(f)
 	if err != nil {
 		return nil, err

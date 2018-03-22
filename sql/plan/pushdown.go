@@ -25,7 +25,7 @@ func NewPushdownProjectionTable(
 }
 
 // TransformUp implements the Node interface.
-func (t *PushdownProjectionTable) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+func (t *PushdownProjectionTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
 	node, err := t.PushdownProjectionTable.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (t *PushdownProjectionTable) TransformUp(f func(sql.Node) (sql.Node, error)
 
 // TransformExpressionsUp implements the Node interface.
 func (t *PushdownProjectionTable) TransformExpressionsUp(
-	f func(sql.Expression) (sql.Expression, error),
+	f sql.TransformExprFunc,
 ) (sql.Node, error) {
 	node, err := t.PushdownProjectionTable.TransformExpressionsUp(f)
 	if err != nil {
@@ -91,14 +91,14 @@ func NewPushdownProjectionAndFiltersTable(
 
 // TransformUp implements the Node interface.
 func (t *PushdownProjectionAndFiltersTable) TransformUp(
-	f func(sql.Node) (sql.Node, error),
+	f sql.TransformNodeFunc,
 ) (sql.Node, error) {
 	return f(t)
 }
 
 // TransformExpressionsUp implements the Node interface.
 func (t *PushdownProjectionAndFiltersTable) TransformExpressionsUp(
-	f func(sql.Expression) (sql.Expression, error),
+	f sql.TransformExprFunc,
 ) (sql.Node, error) {
 	filters, err := transformExpressionsUp(f, t.filters)
 	if err != nil {

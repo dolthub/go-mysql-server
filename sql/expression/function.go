@@ -45,7 +45,7 @@ func (ib IsBinary) String() string {
 }
 
 // TransformUp implements the Expression interface.
-func (ib *IsBinary) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (ib *IsBinary) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := ib.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -201,7 +201,7 @@ func (s Substring) Resolved() bool {
 func (Substring) Type() sql.Type { return sql.Text }
 
 // TransformUp implements the Expression interface.
-func (s *Substring) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (s *Substring) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	str, err := s.str.TransformUp(f)
 	if err != nil {
 		return nil, err

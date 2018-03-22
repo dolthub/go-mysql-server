@@ -92,7 +92,7 @@ func (s *Sort) RowIter(session sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Transformable interface.
-func (s *Sort) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+func (s *Sort) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
 	child, err := s.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func (s *Sort) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error)
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (s *Sort) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+func (s *Sort) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	var sfs = make([]SortField, len(s.SortFields))
 	for i, sf := range s.SortFields {
 		col, err := sf.Column.TransformUp(f)

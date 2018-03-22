@@ -49,7 +49,7 @@ func (y *Year) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (y *Year) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (y *Year) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := y.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func (m *Month) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (m *Month) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (m *Month) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := m.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func (d *Day) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (d *Day) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (d *Day) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := d.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func (h *Hour) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (h *Hour) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (h *Hour) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := h.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -173,7 +173,7 @@ func (m *Minute) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (m *Minute) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (m *Minute) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := m.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -203,7 +203,7 @@ func (s *Second) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (s *Second) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (s *Second) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := s.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -233,7 +233,7 @@ func (d *DayOfYear) Eval(session sql.Session, row sql.Row) (interface{}, error) 
 }
 
 // TransformUp implements the Expression interface.
-func (d *DayOfYear) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (d *DayOfYear) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := d.Child.TransformUp(f)
 	if err != nil {
 		return nil, err

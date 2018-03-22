@@ -42,12 +42,12 @@ func (*UnresolvedTable) RowIter(session sql.Session) (sql.RowIter, error) {
 }
 
 // TransformUp implements the Transformable interface.
-func (t *UnresolvedTable) TransformUp(f func(sql.Node) (sql.Node, error)) (sql.Node, error) {
+func (t *UnresolvedTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
 	return f(NewUnresolvedTable(t.Name))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
-func (t *UnresolvedTable) TransformExpressionsUp(f func(sql.Expression) (sql.Expression, error)) (sql.Node, error) {
+func (t *UnresolvedTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return t, nil
 }
 

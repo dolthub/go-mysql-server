@@ -157,7 +157,7 @@ func (e *Equals) Eval(session sql.Session, row sql.Row) (interface{}, error) {
 }
 
 // TransformUp implements the Expression interface.
-func (e *Equals) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (e *Equals) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	left, err := e.Left().TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -232,7 +232,7 @@ func (re *Regexp) compareRegexp(session sql.Session, row sql.Row) (interface{}, 
 }
 
 // TransformUp implements the Expression interface.
-func (re *Regexp) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (re *Regexp) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	left, err := re.Left().TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -275,7 +275,7 @@ func (gt *GreaterThan) Eval(session sql.Session, row sql.Row) (interface{}, erro
 }
 
 // TransformUp implements the Expression interface.
-func (gt *GreaterThan) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (gt *GreaterThan) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	left, err := gt.Left().TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -318,7 +318,7 @@ func (lt *LessThan) Eval(session sql.Session, row sql.Row) (interface{}, error) 
 }
 
 // TransformUp implements the Expression interface.
-func (lt *LessThan) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (lt *LessThan) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	left, err := lt.Left().TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -362,7 +362,7 @@ func (gte *GreaterThanOrEqual) Eval(session sql.Session, row sql.Row) (interface
 }
 
 // TransformUp implements the Expression interface.
-func (gte *GreaterThanOrEqual) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (gte *GreaterThanOrEqual) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	left, err := gte.Left().TransformUp(f)
 	if err != nil {
 		return nil, err
@@ -406,7 +406,7 @@ func (lte *LessThanOrEqual) Eval(session sql.Session, row sql.Row) (interface{},
 }
 
 // TransformUp implements the Expression interface.
-func (lte *LessThanOrEqual) TransformUp(f func(sql.Expression) (sql.Expression, error)) (sql.Expression, error) {
+func (lte *LessThanOrEqual) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	left, err := lte.Left().TransformUp(f)
 	if err != nil {
 		return nil, err
