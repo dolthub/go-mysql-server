@@ -2,8 +2,12 @@ package server
 
 import (
 	"io"
+	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 
+	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 
@@ -13,6 +17,10 @@ import (
 	"gopkg.in/src-d/go-vitess.v0/vt/proto/query"
 )
 
+var regKillCmd = regexp.MustCompile(`^kill (?:(query|connection) )?(\d+)$`)
+
+var errConnectionNotFound = errors.NewKind("Connection not found: %c")
+
 // TODO parametrize
 const rowsBatch = 100
 
@@ -21,15 +29,26 @@ type Handler struct {
 	mu sync.Mutex
 	e  *sqle.Engine
 	sm *SessionManager
+	c  map[uint32]*mysql.Conn
 }
 
 // NewHandler creates a new Handler given a SQLe engine.
 func NewHandler(e *sqle.Engine, sm *SessionManager) *Handler {
-	return &Handler{e: e, sm: sm}
+	return &Handler{
+		e:  e,
+		sm: sm,
+		c:  make(map[uint32]*mysql.Conn),
+	}
 }
 
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
+	h.mu.Lock()
+	if _, ok := h.c[c.ConnectionID]; !ok {
+		h.c[c.ConnectionID] = c
+	}
+	h.mu.Unlock()
+
 	h.sm.NewSession(c)
 	logrus.Infof("NewConnection: client %v", c.ConnectionID)
 }
@@ -37,6 +56,11 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 // ConnectionClosed reports that a connection has been closed.
 func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 	h.sm.CloseConn(c)
+
+	h.mu.Lock()
+	delete(h.c, c.ConnectionID)
+	h.mu.Unlock()
+
 	logrus.Infof("ConnectionClosed: client %v", c.ConnectionID)
 }
 
@@ -52,6 +76,15 @@ func (h *Handler) ComQuery(
 	}
 
 	defer done()
+
+	handled, err := h.handleKill(query)
+	if err != nil {
+		return err
+	}
+
+	if handled {
+		return nil
+	}
 
 	schema, rows, err := h.e.Query(ctx, query)
 	if err != nil {
@@ -94,6 +127,45 @@ func (h *Handler) ComQuery(
 	}
 
 	return nil
+}
+
+func (h *Handler) handleKill(query string) (bool, error) {
+	q := strings.ToLower(query)
+	s := regKillCmd.FindStringSubmatch(q)
+	if s == nil {
+		return false, nil
+	}
+
+	id, err := strconv.Atoi(s[2])
+	if err != nil {
+		return false, err
+	}
+
+	logrus.Infof("handleKill: id %v", id)
+
+	h.mu.Lock()
+	c, ok := h.c[uint32(id)]
+	h.mu.Unlock()
+	if !ok {
+		return false, errConnectionNotFound.New(id)
+	}
+
+	h.sm.CloseConn(c)
+
+	// KILL CONNECTION and KILL should close the connection. KILL QUERY only
+	// cancels the query.
+	//
+	// https://dev.mysql.com/doc/refman/5.7/en/kill.html
+
+	if s[1] != "query" {
+		c.Close()
+
+		h.mu.Lock()
+		delete(h.c, uint32(id))
+		h.mu.Unlock()
+	}
+
+	return true, nil
 }
 
 func rowToSQL(s sql.Schema, row sql.Row) []sqltypes.Value {
