@@ -671,6 +671,12 @@ func IsTuple(t Type) bool {
 	return ok && len(v) > 1
 }
 
+// IsArray returns whether the given type is an array.
+func IsArray(t Type) bool {
+	_, ok := t.(arrayT)
+	return ok
+}
+
 // NumColumns returns the number of columns in a type. This is one for all
 // types, except tuples.
 func NumColumns(t Type) int {
