@@ -37,6 +37,14 @@ func NewSubstring(args ...sql.Expression) (sql.Expression, error) {
 	return &Substring{str, start, ln}, nil
 }
 
+// Children implements the Expression interface.
+func (s Substring) Children() []sql.Expression {
+	if s.len == nil {
+		return []sql.Expression{s.str, s.start}
+	}
+	return []sql.Expression{s.str, s.start, s.len}
+}
+
 // Eval implements the Expression interface.
 func (s *Substring) Eval(
 	ctx *sql.Context,

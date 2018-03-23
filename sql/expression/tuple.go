@@ -90,3 +90,8 @@ func (t Tuple) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 
 	return f(Tuple(exprs))
 }
+
+// Children implements the Expression interface.
+func (t Tuple) Children() []sql.Expression {
+	return t
+}

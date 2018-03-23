@@ -50,6 +50,8 @@ type Expression interface {
 	// TransformUp transforms the expression and all its children with the
 	// given transform function.
 	TransformUp(TransformExprFunc) (Expression, error)
+	// Children returns the children expressions of this expression.
+	Children() []Expression
 }
 
 // Aggregation implements an aggregation expression, where an
@@ -79,6 +81,12 @@ type Node interface {
 	Children() []Node
 	// RowIter produces a row iterator from this node.
 	RowIter(*Context) (RowIter, error)
+}
+
+// Expressioner is a node that contains expressions.
+type Expressioner interface {
+	// Expressions returns the list of expressions contained by the node.
+	Expressions() []Expression
 }
 
 // Table represents a SQL table.

@@ -135,3 +135,11 @@ func (t PushdownProjectionAndFiltersTable) String() string {
 
 	return pr.String()
 }
+
+// Expressions implements the Expressioner interface.
+func (t PushdownProjectionAndFiltersTable) Expressions() []sql.Expression {
+	var exprs []sql.Expression
+	exprs = append(exprs, t.columns...)
+	exprs = append(exprs, t.filters...)
+	return exprs
+}

@@ -9,6 +9,11 @@ type UnaryExpression struct {
 	Child sql.Expression
 }
 
+// Children implements the Expression interface.
+func (p UnaryExpression) Children() []sql.Expression {
+	return []sql.Expression{p.Child}
+}
+
 // Resolved implements the Expression interface.
 func (p UnaryExpression) Resolved() bool {
 	return p.Child.Resolved()
@@ -23,6 +28,11 @@ func (p UnaryExpression) IsNullable() bool {
 type BinaryExpression struct {
 	Left  sql.Expression
 	Right sql.Expression
+}
+
+// Children implements the Expression interface.
+func (p BinaryExpression) Children() []sql.Expression {
+	return []sql.Expression{p.Left, p.Right}
 }
 
 // Resolved implements the Expression interface.

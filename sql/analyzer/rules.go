@@ -197,7 +197,7 @@ func resolveStar(a *Analyzer, n sql.Node) (sql.Node, error) {
 
 		var expressions []sql.Expression
 		schema := p.Child.Schema()
-		for _, e := range p.Expressions {
+		for _, e := range p.Projections {
 			if s, ok := e.(*expression.Star); ok {
 				var exprs []sql.Expression
 				for i, col := range schema {
@@ -323,7 +323,7 @@ func resolveFunctions(a *Analyzer, n sql.Node) (sql.Node, error) {
 				return nil, err
 			}
 
-			rf, err := f.Call(uf.Children...)
+			rf, err := f.Call(uf.Arguments...)
 			if err != nil {
 				return nil, err
 			}
@@ -386,7 +386,7 @@ func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 
 	// First step is to find all col exprs and group them by the table they mention.
 	// Even if they appear multiple times, only the first one will be used.
-	_, _ = n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
 		if e, ok := e.(*expression.GetField); ok {
 			tf := tableField{e.Table(), e.Name()}
 			if _, ok := tableFields[tf]; !ok {
@@ -396,7 +396,7 @@ func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 				exprsByTable[e.Table()] = append(exprsByTable[e.Table()], e)
 			}
 		}
-		return e, nil
+		return true
 	})
 
 	a.Log("finding filters in node")
@@ -404,20 +404,16 @@ func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 	// then find all filters, also by table. Note that filters that mention
 	// more than one table will not be passed to neither.
 	filters := make(filters)
-	node, err := n.TransformUp(func(node sql.Node) (sql.Node, error) {
-		a.Log("transforming node of type: %T", node)
+	plan.Inspect(n, func(node sql.Node) bool {
+		a.Log("inspecting node of type: %T", node)
 		switch node := node.(type) {
 		case *plan.Filter:
 			fs := exprToTableFilters(node.Expression)
 			a.Log("found filters for %d tables %s", len(fs), node.Expression)
 			filters.merge(fs)
 		}
-
-		return node, nil
+		return true
 	})
-	if err != nil {
-		return nil, err
-	}
 
 	a.Log("transforming nodes with pushdown of filters and projections")
 
@@ -425,7 +421,7 @@ func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
 	// from inner to outer the filters have to be processed first so they get
 	// to the tables.
 	var handledFilters []sql.Expression
-	return node.TransformUp(func(node sql.Node) (sql.Node, error) {
+	return n.TransformUp(func(node sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", node)
 		switch node := node.(type) {
 		case *plan.Filter:

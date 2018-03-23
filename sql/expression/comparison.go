@@ -516,6 +516,11 @@ func (in *In) String() string {
 	return fmt.Sprintf("%s IN %s", in.Left(), in.Right())
 }
 
+// Children implements the Expression interface.
+func (in *In) Children() []sql.Expression {
+	return []sql.Expression{in.Left(), in.Right()}
+}
+
 // NotIn is a comparison that checks an expression is not inside a list of expressions.
 type NotIn struct {
 	comparison
@@ -597,4 +602,9 @@ func (in *NotIn) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 
 func (in *NotIn) String() string {
 	return fmt.Sprintf("%s NOT IN %s", in.Left(), in.Right())
+}
+
+// Children implements the Expression interface.
+func (in *NotIn) Children() []sql.Expression {
+	return []sql.Expression{in.Left(), in.Right()}
 }
