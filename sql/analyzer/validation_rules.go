@@ -131,7 +131,7 @@ func validateSchema(t sql.Table) error {
 func validateProjectTuples(n sql.Node) error {
 	switch n := n.(type) {
 	case *plan.Project:
-		for i, e := range n.Expressions {
+		for i, e := range n.Projections {
 			if sql.IsTuple(e.Type()) {
 				return ErrProjectTuple.New(i+1, sql.NumColumns(e.Type()))
 			}

@@ -61,6 +61,11 @@ func (p Filter) String() string {
 	return pr.String()
 }
 
+// Expressions implements the Expressioner interface.
+func (p Filter) Expressions() []sql.Expression {
+	return []sql.Expression{p.Expression}
+}
+
 // FilterIter is an iterator that filters another iterator and skips rows that
 // don't match the given condition.
 type FilterIter struct {

@@ -98,3 +98,12 @@ func (p *Values) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, erro
 func (p Values) String() string {
 	return fmt.Sprintf("Values(%d tuples)", len(p.ExpressionTuples))
 }
+
+// Expressions implements the Expressioner interface.
+func (p Values) Expressions() []sql.Expression {
+	var exprs []sql.Expression
+	for _, tuple := range p.ExpressionTuples {
+		exprs = append(exprs, tuple...)
+	}
+	return exprs
+}

@@ -122,6 +122,14 @@ func (p GroupBy) String() string {
 	return pr.String()
 }
 
+// Expressions implements the Expressioner interface.
+func (p GroupBy) Expressions() []sql.Expression {
+	var exprs []sql.Expression
+	exprs = append(exprs, p.Aggregate...)
+	exprs = append(exprs, p.Grouping...)
+	return exprs
+}
+
 type groupByIter struct {
 	p         *GroupBy
 	childIter sql.RowIter

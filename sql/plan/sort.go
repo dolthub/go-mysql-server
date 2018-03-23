@@ -130,6 +130,15 @@ func (s Sort) String() string {
 	return pr.String()
 }
 
+// Expressions implements the Expressioner interface.
+func (s Sort) Expressions() []sql.Expression {
+	var exprs = make([]sql.Expression, len(s.SortFields))
+	for i, f := range s.SortFields {
+		exprs[i] = f.Column
+	}
+	return exprs
+}
+
 type sortIter struct {
 	s          *Sort
 	childIter  sql.RowIter

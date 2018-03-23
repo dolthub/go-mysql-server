@@ -83,6 +83,12 @@ type Node interface {
 	RowIter(*Context) (RowIter, error)
 }
 
+// Expressioner is a node that contains expressions.
+type Expressioner interface {
+	// Expressions returns the list of expressions contained by the node.
+	Expressions() []Expression
+}
+
 // Table represents a SQL table.
 type Table interface {
 	Nameable

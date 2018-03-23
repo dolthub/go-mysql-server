@@ -90,3 +90,8 @@ func (j InnerJoin) String() string {
 	_ = pr.WriteChildren(j.Left.String(), j.Right.String())
 	return pr.String()
 }
+
+// Expressions implements the Expressioner interface.
+func (j InnerJoin) Expressions() []sql.Expression {
+	return []sql.Expression{j.Cond}
+}

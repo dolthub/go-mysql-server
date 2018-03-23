@@ -197,7 +197,7 @@ func resolveStar(a *Analyzer, n sql.Node) (sql.Node, error) {
 
 		var expressions []sql.Expression
 		schema := p.Child.Schema()
-		for _, e := range p.Expressions {
+		for _, e := range p.Projections {
 			if s, ok := e.(*expression.Star); ok {
 				var exprs []sql.Expression
 				for i, col := range schema {
