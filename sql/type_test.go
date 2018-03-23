@@ -160,6 +160,29 @@ func TestTuple(t *testing.T) {
 	gt(t, typ, []interface{}{1, 2, 4}, []interface{}{1, 2, 3})
 }
 
+func TestArray(t *testing.T) {
+	require := require.New(t)
+
+	typ := Array(Int64)
+	_, err := typ.Convert("foo")
+	require.Error(err)
+	require.True(ErrNotArray.Is(err))
+
+	convert(t, typ, []interface{}{1, 2, 3}, []interface{}{int64(1), int64(2), int64(3)})
+
+	require.Equal(sqltypes.TypeJSON, typ.Type())
+
+	lt(t, typ, []interface{}{5, 6}, []interface{}{2, 2, 3})
+	lt(t, typ, []interface{}{1, 2, 3}, []interface{}{2, 2, 3})
+	lt(t, typ, []interface{}{1, 2, 3}, []interface{}{1, 3, 3})
+	lt(t, typ, []interface{}{1, 2, 3}, []interface{}{1, 2, 4})
+	eq(t, typ, []interface{}{1, 2, 3}, []interface{}{1, 2, 3})
+	gt(t, typ, []interface{}{2, 2, 3}, []interface{}{1, 2, 3})
+	gt(t, typ, []interface{}{1, 3, 3}, []interface{}{1, 2, 3})
+	gt(t, typ, []interface{}{1, 2, 4}, []interface{}{1, 2, 3})
+	gt(t, typ, []interface{}{1, 2, 4}, []interface{}{5, 6})
+}
+
 func eq(t *testing.T, typ Type, a, b interface{}) {
 	t.Helper()
 	cmp, err := typ.Compare(a, b)
