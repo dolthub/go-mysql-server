@@ -30,16 +30,16 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	a.CurrentDatabase = "mydb"
 
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
-	analyzed, err := a.Analyze(notAnalyzed)
+	analyzed, err := a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NoError(err)
 	require.Equal(table, analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("nonexistant")
-	analyzed, err = a.Analyze(notAnalyzed)
+	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.Error(err)
 	require.Nil(analyzed)
 
-	analyzed, err = a.Analyze(table)
+	analyzed, err = a.Analyze(sql.NewEmptyContext(), table)
 	require.NoError(err)
 	require.Equal(table, analyzed)
 
@@ -47,14 +47,14 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		[]sql.Expression{expression.NewUnresolvedColumn("o")},
 		plan.NewUnresolvedTable("mytable"),
 	)
-	_, err = a.Analyze(notAnalyzed)
+	_, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.Error(err)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewUnresolvedColumn("i")},
 		plan.NewUnresolvedTable("mytable"),
 	)
-	analyzed, err = a.Analyze(notAnalyzed)
+	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	var expected sql.Node = plan.NewProject(
 		[]sql.Expression{expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false)},
 		table,
@@ -65,7 +65,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	notAnalyzed = plan.NewDescribe(
 		plan.NewUnresolvedTable("mytable"),
 	)
-	analyzed, err = a.Analyze(notAnalyzed)
+	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	expected = plan.NewDescribe(table)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
@@ -74,7 +74,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		[]sql.Expression{expression.NewStar()},
 		plan.NewUnresolvedTable("mytable"),
 	)
-	analyzed, err = a.Analyze(notAnalyzed)
+	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	expected = plan.NewProject(
 		[]sql.Expression{expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false)},
 		table,
@@ -89,7 +89,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			plan.NewUnresolvedTable("mytable"),
 		),
 	)
-	analyzed, err = a.Analyze(notAnalyzed)
+	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	expected = plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", false)},
 		plan.NewProject(
@@ -109,7 +109,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		},
 		plan.NewUnresolvedTable("mytable"),
 	)
-	analyzed, err = a.Analyze(notAnalyzed)
+	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	expected = plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias(
@@ -132,7 +132,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			plan.NewUnresolvedTable("mytable"),
 		),
 	)
-	analyzed, err = a.Analyze(notAnalyzed)
+	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	expected = plan.NewProject(
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
@@ -158,7 +158,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			plan.NewUnresolvedTable("mytable2"),
 		),
 	)
-	analyzed, err = a.Analyze(notAnalyzed)
+	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	expected = plan.NewProject(
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
@@ -177,7 +177,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			plan.NewUnresolvedTable("mytable"),
 		),
 	)
-	analyzed, err = a.Analyze(notAnalyzed)
+	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	expected = plan.NewLimit(int64(1),
 		plan.NewProject(
 			[]sql.Expression{
@@ -200,14 +200,14 @@ func TestAnalyzer_Analyze_MaxIterations(t *testing.T) {
 	i := 0
 	a.Rules = []Rule{{
 		Name: "infinite",
-		Apply: func(a *Analyzer, n sql.Node) (sql.Node, error) {
+		Apply: func(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 			i++
 			return plan.NewUnresolvedTable(fmt.Sprintf("table%d", i)), nil
 		},
 	}}
 
 	notAnalyzed := plan.NewUnresolvedTable("mytable")
-	analyzed, err := a.Analyze(notAnalyzed)
+	analyzed, err := a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NotNil(err)
 	require.Equal(plan.NewUnresolvedTable("table1001"), analyzed)
 }

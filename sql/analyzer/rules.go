@@ -36,13 +36,13 @@ var (
 	ErrFieldMissing = errors.NewKind("field %q is not on schema")
 )
 
-func resolveSubqueries(a *Analyzer, n sql.Node) (sql.Node, error) {
+func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	a.Log("resolving subqueries")
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
 			a.Log("found subquery %q with child of type %T", n.Name(), n.Child)
-			child, err := a.Analyze(n.Child)
+			child, err := a.Analyze(ctx, n.Child)
 			if err != nil {
 				return nil, err
 			}
@@ -53,7 +53,7 @@ func resolveSubqueries(a *Analyzer, n sql.Node) (sql.Node, error) {
 	})
 }
 
-func qualifyColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
+func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	a.Log("qualify columns")
 	tables := make(map[string]sql.Node)
 	tableAliases := make(map[string]string)
@@ -133,7 +133,7 @@ func qualifyColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 	})
 }
 
-func resolveDatabase(a *Analyzer, n sql.Node) (sql.Node, error) {
+func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	a.Log("resolve database, node of type: %T", n)
 
 	// TODO Database should implement node,
@@ -158,7 +158,7 @@ func resolveDatabase(a *Analyzer, n sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-func resolveTables(a *Analyzer, n sql.Node) (sql.Node, error) {
+func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	a.Log("resolve table, node of type: %T", n)
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
@@ -182,7 +182,7 @@ func resolveTables(a *Analyzer, n sql.Node) (sql.Node, error) {
 	})
 }
 
-func resolveStar(a *Analyzer, n sql.Node) (sql.Node, error) {
+func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	a.Log("resolving star, node of type: %T", n)
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
@@ -228,7 +228,7 @@ type columnInfo struct {
 	col *sql.Column
 }
 
-func resolveColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
+func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	a.Log("resolve columns, node of type: %T", n)
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
@@ -298,7 +298,7 @@ func resolveColumns(a *Analyzer, n sql.Node) (sql.Node, error) {
 	})
 }
 
-func resolveFunctions(a *Analyzer, n sql.Node) (sql.Node, error) {
+func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	a.Log("resolve functions, node of type %T", n)
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
@@ -335,7 +335,7 @@ func resolveFunctions(a *Analyzer, n sql.Node) (sql.Node, error) {
 	})
 }
 
-func optimizeDistinct(a *Analyzer, node sql.Node) (sql.Node, error) {
+func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
 	a.Log("optimize distinct, node of type: %T", node)
 	if node, ok := node.(*plan.Distinct); ok {
 		var isSorted bool
@@ -368,7 +368,7 @@ func dedupStrings(in []string) []string {
 	return result
 }
 
-func pushdown(a *Analyzer, n sql.Node) (sql.Node, error) {
+func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	a.Log("pushdown, node of type: %T", n)
 	if !n.Resolved() {
 		return n, nil
