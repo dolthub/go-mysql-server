@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"context"
 	"io"
 	"testing"
 
@@ -14,7 +13,7 @@ import (
 
 func TestProject(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 	childSchema := sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
 		{Name: "col2", Type: sql.Text, Nullable: true},
@@ -62,7 +61,7 @@ func TestProject(t *testing.T) {
 
 func BenchmarkProject(b *testing.B) {
 	require := require.New(b)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	for i := 0; i < b.N; i++ {
 		d := NewProject([]sql.Expression{

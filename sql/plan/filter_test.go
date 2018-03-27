@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,7 +11,7 @@ import (
 
 func TestFilter(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	childSchema := sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},

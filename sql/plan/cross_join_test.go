@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"context"
 	"io"
 	"testing"
 
@@ -26,7 +25,7 @@ var rSchema = sql.Schema{
 
 func TestCrossJoin(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	resultSchema := sql.Schema{
 		{Name: "lcol1", Type: sql.Text},
@@ -95,7 +94,7 @@ func TestCrossJoin(t *testing.T) {
 
 func TestCrossJoin_Empty(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	ltable := mem.NewTable("left", lSchema)
 	rtable := mem.NewTable("right", rSchema)

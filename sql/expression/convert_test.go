@@ -1,7 +1,6 @@
 package expression
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -10,11 +9,8 @@ import (
 )
 
 func TestConvert(t *testing.T) {
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
-
 	tests := []struct {
 		name        string
-		ctx         *sql.Context
 		row         sql.Row
 		expression  sql.Expression
 		castTo      string
@@ -23,7 +19,6 @@ func TestConvert(t *testing.T) {
 	}{
 		{
 			name:        "convert int32 to signed",
-			ctx:         ctx,
 			row:         nil,
 			expression:  NewLiteral(int32(1), sql.Int32),
 			castTo:      ConvertToSigned,
@@ -32,7 +27,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "convert int32 to unsigned",
-			ctx:         ctx,
 			row:         nil,
 			expression:  NewLiteral(int32(-5), sql.Int32),
 			castTo:      ConvertToUnsigned,
@@ -41,7 +35,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "convert string to signed",
-			ctx:         ctx,
 			row:         nil,
 			expression:  NewLiteral("-3", sql.Text),
 			castTo:      ConvertToSigned,
@@ -50,7 +43,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "convert string to unsigned",
-			ctx:         ctx,
 			row:         nil,
 			expression:  NewLiteral("-3", sql.Int32),
 			castTo:      ConvertToUnsigned,
@@ -59,7 +51,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "convert int to string",
-			ctx:         ctx,
 			row:         nil,
 			expression:  NewLiteral(-3, sql.Int32),
 			castTo:      ConvertToChar,
@@ -68,7 +59,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "impossible conversion string to unsigned",
-			ctx:         ctx,
 			row:         nil,
 			expression:  NewLiteral("hello", sql.Text),
 			castTo:      ConvertToUnsigned,
@@ -77,7 +67,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "imposible conversion string to signed",
-			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToSigned,
 			expression:  NewLiteral("A", sql.Text),
@@ -86,7 +75,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "string to datetime",
-			ctx:         ctx,
 			row:         nil,
 			expression:  NewLiteral("2017-12-12", sql.Text),
 			castTo:      ConvertToDatetime,
@@ -95,7 +83,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "impossible conversion string to datetime",
-			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToDatetime,
 			expression:  NewLiteral(1, sql.Int32),
@@ -104,7 +91,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "string to date",
-			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToDate,
 			expression:  NewLiteral("2017-12-12 11:12:13", sql.Int32),
@@ -113,7 +99,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "impossible conversion string to date",
-			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToDate,
 			expression:  NewLiteral(1, sql.Int32),
@@ -122,7 +107,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "float to binary",
-			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToBinary,
 			expression:  NewLiteral(float64(-2.3), sql.Float64),
@@ -131,7 +115,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "string to json",
-			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToJSON,
 			expression:  NewLiteral(`{"a":2}`, sql.Text),
@@ -140,7 +123,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "int to json",
-			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToJSON,
 			expression:  NewLiteral(2, sql.Int32),
@@ -149,7 +131,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "imposible conversion string to json",
-			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToJSON,
 			expression:  NewLiteral("3>2", sql.Text),
@@ -158,7 +139,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "bool to signed",
-			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToSigned,
 			expression:  NewLiteral(true, sql.Boolean),
@@ -167,7 +147,6 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:        "bool to datetime",
-			ctx:         ctx,
 			row:         nil,
 			castTo:      ConvertToDatetime,
 			expression:  NewLiteral(true, sql.Boolean),
@@ -180,7 +159,7 @@ func TestConvert(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			require := require.New(t)
 			convert := NewConvert(test.expression, test.castTo)
-			val, err := convert.Eval(test.ctx, test.row)
+			val, err := convert.Eval(sql.NewEmptyContext(), test.row)
 			if test.expectedErr {
 				require.Error(err)
 			} else {

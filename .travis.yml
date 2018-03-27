@@ -14,6 +14,8 @@ matrix:
 sudo: required
 
 install:
+  - go get -v github.com/golang/dep/...
+  - dep ensure
   - make dependencies
 
 script:

@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"context"
 	"io"
 	"testing"
 
@@ -13,7 +12,7 @@ import (
 
 func TestDistinct(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	childSchema := sql.Schema{
 		{Name: "name", Type: sql.Text, Nullable: true},
@@ -53,7 +52,7 @@ func TestDistinct(t *testing.T) {
 
 func TestOrderedDistinct(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	childSchema := sql.Schema{
 		{Name: "name", Type: sql.Text, Nullable: true},
@@ -93,7 +92,7 @@ func TestOrderedDistinct(t *testing.T) {
 
 func BenchmarkDistinct(b *testing.B) {
 	require := require.New(b)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	for i := 0; i < b.N; i++ {
 		p := NewProject([]sql.Expression{
@@ -126,7 +125,7 @@ func BenchmarkDistinct(b *testing.B) {
 
 func BenchmarkOrderedDistinct(b *testing.B) {
 	require := require.New(b)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	for i := 0; i < b.N; i++ {
 		p := NewProject([]sql.Expression{

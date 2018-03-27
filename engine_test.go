@@ -1,7 +1,6 @@
 package sqle_test
 
 import (
-	"context"
 	"io"
 	"testing"
 
@@ -257,7 +256,7 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 	e.AddDatabase(db)
 
 	q := `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c`
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	_, rows, err := e.Query(ctx, q)
 	require.NoError(err)
@@ -313,7 +312,7 @@ func TestDDL(t *testing.T) {
 func testQuery(t *testing.T, e *sqle.Engine, q string, r [][]interface{}) {
 	t.Run(q, func(t *testing.T) {
 		require := require.New(t)
-		session := sql.NewContext(context.TODO(), sql.NewBaseSession())
+		session := sql.NewEmptyContext()
 
 		_, rows, err := e.Query(session, q)
 		require.NoError(err)
@@ -386,7 +385,7 @@ const expectedTree = `Offset(2)
 
 func TestPrintTree(t *testing.T) {
 	require := require.New(t)
-	node, err := parse.Parse(nil, `
+	node, err := parse.Parse(sql.NewEmptyContext(), `
 		SELECT t.foo, bar.baz 
 		FROM tbl t 
 		INNER JOIN bar 

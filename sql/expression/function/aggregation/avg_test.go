@@ -1,7 +1,6 @@
 package aggregation
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,7 +17,7 @@ func TestAvg_String(t *testing.T) {
 
 func TestAvg_Eval_INT32(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	avgNode := NewAvg(expression.NewGetField(0, sql.Int32, "col1", true))
 	buffer := avgNode.NewBuffer()
@@ -33,7 +32,7 @@ func TestAvg_Eval_INT32(t *testing.T) {
 
 func TestAvg_Eval_UINT64(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	avgNode := NewAvg(expression.NewGetField(0, sql.Uint64, "col1", true))
 	buffer := avgNode.NewBuffer()
@@ -50,7 +49,7 @@ func TestAvg_Eval_UINT64(t *testing.T) {
 
 func TestAvg_Eval_NoNum(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	avgNode := NewAvg(expression.NewGetField(0, sql.Text, "col1", true))
 	buffer := avgNode.NewBuffer()
@@ -63,7 +62,7 @@ func TestAvg_Eval_NoNum(t *testing.T) {
 
 func TestAvg_Merge(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	avgNode := NewAvg(expression.NewGetField(0, sql.Float32, "col1", true))
 	require.NotNil(avgNode)
@@ -93,13 +92,12 @@ func TestAvg_Merge(t *testing.T) {
 
 func TestAvg_NULL(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
 
 	avgNode := NewAvg(expression.NewGetField(0, sql.Uint64, "col1", true))
 	buffer := avgNode.NewBuffer()
-	require.Zero(avgNode.Eval(ctx, buffer))
+	require.Zero(avgNode.Eval(nil, buffer))
 
-	err := avgNode.Update(ctx, buffer, sql.NewRow(nil))
+	err := avgNode.Update(nil, buffer, sql.NewRow(nil))
 	require.NoError(err)
 	require.Equal(nil, eval(t, avgNode, buffer))
 }
