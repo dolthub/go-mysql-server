@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"reflect"
@@ -100,7 +99,7 @@ func getTestingTable() (*mem.Table, int) {
 }
 
 func getLimitedIterator(limitSize int64) (sql.RowIter, error) {
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 	table, _ := getTestingTable()
 	limitPlan := NewLimit(limitSize, table)
 	return limitPlan.RowIter(ctx)

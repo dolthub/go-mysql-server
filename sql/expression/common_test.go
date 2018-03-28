@@ -1,7 +1,6 @@
 package expression
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -9,10 +8,8 @@ import (
 )
 
 func eval(t *testing.T, e sql.Expression, row sql.Row) interface{} {
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
-
 	t.Helper()
-	v, err := e.Eval(ctx, row)
+	v, err := e.Eval(sql.NewEmptyContext(), row)
 	require.NoError(t, err)
 	return v
 }

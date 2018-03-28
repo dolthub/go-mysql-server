@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"context"
 	"io"
 	"testing"
 
@@ -25,7 +24,7 @@ func TestCreateTable(t *testing.T) {
 
 	c := NewCreateTable(db, "testTable", s)
 
-	rows, err := c.RowIter(sql.NewContext(context.TODO(), sql.NewBaseSession()))
+	rows, err := c.RowIter(sql.NewEmptyContext())
 
 	require.NoError(err)
 

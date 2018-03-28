@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -10,7 +9,7 @@ import (
 
 func TestOffsetPlan(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	table, _ := getTestingTable()
 	offset := NewOffset(0, table)
@@ -23,7 +22,7 @@ func TestOffsetPlan(t *testing.T) {
 
 func TestOffset(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	table, n := getTestingTable()
 	offset := NewOffset(1, table)

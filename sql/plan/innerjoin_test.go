@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -37,7 +36,7 @@ func TestInnerJoin(t *testing.T) {
 
 func TestInnerJoinEmpty(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	ltable := mem.NewTable("left", lSchema)
 	rtable := mem.NewTable("right", rSchema)

@@ -3,6 +3,8 @@ package server
 import (
 	"testing"
 
+	"github.com/opentracing/opentracing-go"
+
 	"gopkg.in/src-d/go-mysql-server.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -37,7 +39,7 @@ func TestHandlerOutput(t *testing.T) {
 
 	dummyConn := &mysql.Conn{ConnectionID: 1}
 
-	handler := NewHandler(e, NewSessionManager(DefaultSessionBuilder))
+	handler := NewHandler(e, NewSessionManager(DefaultSessionBuilder, opentracing.NoopTracer{}))
 
 	c := 0
 	var lastRowsAffected uint64
@@ -82,7 +84,7 @@ func TestHandlerKill(t *testing.T) {
 	handler := NewHandler(e,
 		NewSessionManager(func(conn *mysql.Conn) sql.Session {
 			return sql.NewBaseSession()
-		}))
+		}, opentracing.NoopTracer{}))
 
 	require.Len(handler.c, 0)
 

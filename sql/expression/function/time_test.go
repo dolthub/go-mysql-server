@@ -1,7 +1,6 @@
 package function
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -17,7 +16,7 @@ const (
 
 func TestTime_Year(t *testing.T) {
 	f := NewYear(expression.NewGetField(0, sql.Text, "foo", false))
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	testCases := []struct {
 		name     string
@@ -48,7 +47,7 @@ func TestTime_Year(t *testing.T) {
 
 func TestTime_Month(t *testing.T) {
 	f := NewMonth(expression.NewGetField(0, sql.Text, "foo", false))
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	testCases := []struct {
 		name     string
@@ -79,7 +78,7 @@ func TestTime_Month(t *testing.T) {
 
 func TestTime_Day(t *testing.T) {
 	f := NewDay(expression.NewGetField(0, sql.Text, "foo", false))
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	testCases := []struct {
 		name     string
@@ -110,7 +109,7 @@ func TestTime_Day(t *testing.T) {
 
 func TestTime_Hour(t *testing.T) {
 	f := NewHour(expression.NewGetField(0, sql.Text, "foo", false))
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	testCases := []struct {
 		name     string
@@ -141,7 +140,7 @@ func TestTime_Hour(t *testing.T) {
 
 func TestTime_Minute(t *testing.T) {
 	f := NewMinute(expression.NewGetField(0, sql.Text, "foo", false))
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	testCases := []struct {
 		name     string
@@ -172,7 +171,7 @@ func TestTime_Minute(t *testing.T) {
 
 func TestTime_Second(t *testing.T) {
 	f := NewSecond(expression.NewGetField(0, sql.Text, "foo", false))
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -202,7 +201,7 @@ func TestTime_Second(t *testing.T) {
 
 func TestTime_DayOfYear(t *testing.T) {
 	f := NewDayOfYear(expression.NewGetField(0, sql.Text, "foo", false))
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	testCases := []struct {
 		name     string

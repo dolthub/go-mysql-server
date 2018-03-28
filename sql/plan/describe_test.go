@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"context"
 	"io"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 
 func TestDescribe(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	table := mem.NewTable("test", sql.Schema{
 		{Name: "c1", Type: sql.Text},
@@ -39,7 +38,7 @@ func TestDescribe(t *testing.T) {
 
 func TestDescribe_Empty(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	d := NewDescribe(NewUnresolvedTable("test_table"))
 

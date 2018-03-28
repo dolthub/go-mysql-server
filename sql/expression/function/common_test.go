@@ -1,7 +1,6 @@
 package function
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -9,7 +8,7 @@ import (
 )
 
 func eval(t *testing.T, e sql.Expression, row sql.Row) interface{} {
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	t.Helper()
 	v, err := e.Eval(ctx, row)

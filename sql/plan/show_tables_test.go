@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"context"
 	"io"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 
 func TestShowTables(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	unresolvedShowTables := NewShowTables(&sql.UnresolvedDatabase{})
 

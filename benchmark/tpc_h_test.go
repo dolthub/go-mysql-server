@@ -1,7 +1,6 @@
 package benchmark
 
 import (
-	"context"
 	"encoding/csv"
 	"io"
 	"io/ioutil"
@@ -47,7 +46,7 @@ func executeQueries(b *testing.B, e *sqle.Engine) error {
 		return err
 	}
 
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	for _, info := range infos {
 		if info.IsDir() {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	uuid "github.com/satori/go.uuid"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-vitess.v0/mysql"
@@ -25,6 +26,7 @@ func DefaultSessionBuilder(_ *mysql.Conn) sql.Session {
 // connections and keep track of which sessions are in each connection, so
 // they can be cancelled is the connection is closed.
 type SessionManager struct {
+	tracer          opentracing.Tracer
 	mu              *sync.Mutex
 	builder         SessionBuilder
 	sessions        map[uint32]sql.Session
@@ -33,8 +35,9 @@ type SessionManager struct {
 }
 
 // NewSessionManager creates a SessionManager with the given ContextBuilder.
-func NewSessionManager(builder SessionBuilder) *SessionManager {
+func NewSessionManager(builder SessionBuilder, tracer opentracing.Tracer) *SessionManager {
 	return &SessionManager{
+		tracer:          tracer,
 		mu:              new(sync.Mutex),
 		builder:         builder,
 		sessions:        make(map[uint32]sql.Session),
@@ -56,7 +59,7 @@ func (s *SessionManager) NewContext(conn *mysql.Conn) (*sql.Context, DoneFunc, e
 	s.mu.Lock()
 	sess := s.sessions[conn.ConnectionID]
 	s.mu.Unlock()
-	context := sql.NewContext(ctx, sess)
+	context := sql.NewContext(ctx, sess, s.tracer)
 	id, err := uuid.NewV4()
 	if err != nil {
 		cancel()

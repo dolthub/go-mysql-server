@@ -1,7 +1,6 @@
 package aggregation
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,7 +17,7 @@ func TestCount_String(t *testing.T) {
 
 func TestCount_Eval_1(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	c := NewCount(expression.NewLiteral(1, sql.Int32))
 	b := c.NewBuffer()
@@ -40,7 +39,7 @@ func TestCount_Eval_1(t *testing.T) {
 
 func TestCount_Eval_Star(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	c := NewCount(expression.NewStar())
 	b := c.NewBuffer()
@@ -62,7 +61,7 @@ func TestCount_Eval_Star(t *testing.T) {
 
 func TestCount_Eval_String(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	c := NewCount(expression.NewGetField(0, sql.Text, "", true))
 	b := c.NewBuffer()

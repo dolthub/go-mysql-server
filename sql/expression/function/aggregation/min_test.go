@@ -1,7 +1,6 @@
 package aggregation
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -19,7 +18,7 @@ func TestMin_Name(t *testing.T) {
 
 func TestMin_Eval_Int32(t *testing.T) {
 	assert := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
 	b := m.NewBuffer()
@@ -35,7 +34,7 @@ func TestMin_Eval_Int32(t *testing.T) {
 
 func TestMin_Eval_Text(t *testing.T) {
 	assert := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	m := NewMin(expression.NewGetField(0, sql.Text, "field", true))
 	b := m.NewBuffer()
@@ -51,7 +50,7 @@ func TestMin_Eval_Text(t *testing.T) {
 
 func TestMin_Eval_Timestamp(t *testing.T) {
 	assert := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	m := NewMin(expression.NewGetField(0, sql.Timestamp, "field", true))
 	b := m.NewBuffer()
@@ -71,7 +70,7 @@ func TestMin_Eval_Timestamp(t *testing.T) {
 
 func TestMin_Eval_NULL(t *testing.T) {
 	assert := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
 	b := m.NewBuffer()
@@ -87,7 +86,7 @@ func TestMin_Eval_NULL(t *testing.T) {
 
 func TestMin_Eval_Empty(t *testing.T) {
 	assert := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
 	b := m.NewBuffer()

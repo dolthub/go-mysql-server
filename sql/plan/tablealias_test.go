@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"context"
 	"io"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 
 func TestTableAlias(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	table := mem.NewTable("bar", sql.Schema{
 		{Name: "a", Type: sql.Text, Nullable: true},

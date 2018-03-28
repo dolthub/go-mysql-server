@@ -1,18 +1,17 @@
 package sqle_test
 
 import (
-	"context"
 	"fmt"
 	"io"
 
 	"gopkg.in/src-d/go-mysql-server.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
-	gitqlsql "gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
 func Example() {
 	e := sqle.New()
-	ctx := gitqlsql.NewContext(context.TODO(), gitqlsql.NewBaseSession())
+	ctx := sql.NewEmptyContext()
 
 	// Create a test memory database and register it to the default engine.
 	e.AddDatabase(createTestDatabase())
@@ -45,19 +44,19 @@ func checkIfError(err error) {
 	}
 }
 
-func createTestDatabase() gitqlsql.Database {
+func createTestDatabase() sql.Database {
 	db := mem.NewDatabase("test")
-	table := mem.NewTable("mytable", gitqlsql.Schema{
-		{Name: "name", Type: gitqlsql.Text, Source: "mytable"},
-		{Name: "email", Type: gitqlsql.Text, Source: "mytable"},
+	table := mem.NewTable("mytable", sql.Schema{
+		{Name: "name", Type: sql.Text, Source: "mytable"},
+		{Name: "email", Type: sql.Text, Source: "mytable"},
 	})
 	memDb, _ := db.(*mem.Database)
 
 	memDb.AddTable("mytable", table)
-	table.Insert(gitqlsql.NewRow("John Doe", "john@doe.com"))
-	table.Insert(gitqlsql.NewRow("John Doe", "johnalt@doe.com"))
-	table.Insert(gitqlsql.NewRow("Jane Doe", "jane@doe.com"))
-	table.Insert(gitqlsql.NewRow("Evil Bob", "evilbob@gmail.com"))
+	table.Insert(sql.NewRow("John Doe", "john@doe.com"))
+	table.Insert(sql.NewRow("John Doe", "johnalt@doe.com"))
+	table.Insert(sql.NewRow("Jane Doe", "jane@doe.com"))
+	table.Insert(sql.NewRow("Evil Bob", "evilbob@gmail.com"))
 
 	return db
 }
