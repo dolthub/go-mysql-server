@@ -1,6 +1,9 @@
 package plan
 
 import (
+	"reflect"
+
+	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -33,12 +36,31 @@ func (j *InnerJoin) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (j *InnerJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	var left, right string
+	if leftTable, ok := j.Left.(sql.Nameable); ok {
+		left = leftTable.Name()
+	} else {
+		left = reflect.TypeOf(j.Left).String()
+	}
+
+	if rightTable, ok := j.Right.(sql.Nameable); ok {
+		right = rightTable.Name()
+	} else {
+		right = reflect.TypeOf(j.Right).String()
+	}
+
+	span, ctx := ctx.Span("plan.InnerJoin", opentracing.Tags{
+		"left":  left,
+		"right": right,
+	})
+
 	l, err := j.Left.RowIter(ctx)
 	if err != nil {
+		span.Finish()
 		return nil, err
 	}
 
-	return NewFilterIter(
+	return sql.NewSpanIter(span, NewFilterIter(
 		ctx,
 		j.Cond,
 		&crossJoinIterator{
@@ -46,7 +68,7 @@ func (j *InnerJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 			rp: j.Right,
 			s:  ctx,
 		},
-	), nil
+	)), nil
 }
 
 // TransformUp implements the Transformable interface.

@@ -3,6 +3,7 @@ package plan
 import (
 	"io"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -29,11 +30,14 @@ func (l *Limit) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (l *Limit) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	span, ctx := ctx.Span("plan.Limit", opentracing.Tag{Key: "limit", Value: l.size})
+
 	li, err := l.Child.RowIter(ctx)
 	if err != nil {
+		span.Finish()
 		return nil, err
 	}
-	return &limitIter{l, 0, li}, nil
+	return sql.NewSpanIter(span, &limitIter{l, 0, li}), nil
 }
 
 // TransformUp implements the Transformable interface.

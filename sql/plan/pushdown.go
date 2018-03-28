@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -58,7 +59,18 @@ func (t *PushdownProjectionTable) TransformExpressionsUp(
 
 // RowIter implements the Node interface.
 func (t *PushdownProjectionTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	return t.WithProject(ctx, t.columns)
+	span, ctx := ctx.Span("plan.PushdownProjectionTable", opentracing.Tags{
+		"columns": len(t.columns),
+		"table":   t.Name(),
+	})
+
+	iter, err := t.WithProject(ctx, t.columns)
+	if err != nil {
+		span.Finish()
+		return nil, err
+	}
+
+	return sql.NewSpanIter(span, iter), nil
 }
 
 func (t PushdownProjectionTable) String() string {
@@ -110,7 +122,19 @@ func (t *PushdownProjectionAndFiltersTable) TransformExpressionsUp(
 
 // RowIter implements the Node interface.
 func (t *PushdownProjectionAndFiltersTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	return t.WithProjectAndFilters(ctx, t.columns, t.filters)
+	span, ctx := ctx.Span("plan.PushdownProjectionAndFiltersTable", opentracing.Tags{
+		"columns": len(t.columns),
+		"filters": len(t.filters),
+		"table":   t.Name(),
+	})
+
+	iter, err := t.WithProjectAndFilters(ctx, t.columns, t.filters)
+	if err != nil {
+		span.Finish()
+		return nil, err
+	}
+
+	return sql.NewSpanIter(span, iter), nil
 }
 
 func (t PushdownProjectionAndFiltersTable) String() string {

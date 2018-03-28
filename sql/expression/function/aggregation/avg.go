@@ -75,6 +75,9 @@ func (a *Avg) NewBuffer() sql.Row {
 
 // Update implements AggregationExpression interface. (AggregationExpression)
 func (a *Avg) Update(ctx *sql.Context, buffer, row sql.Row) error {
+	span, ctx := ctx.Span("aggregation.Avg_Update")
+	defer span.Finish()
+
 	v, err := a.Child.Eval(ctx, row)
 	if err != nil {
 		return err
@@ -109,6 +112,9 @@ func (a *Avg) Update(ctx *sql.Context, buffer, row sql.Row) error {
 
 // Merge implements AggregationExpression interface. (AggregationExpression)
 func (a *Avg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
+	span, _ := ctx.Span("aggregation.Avg_Merge")
+	defer span.Finish()
+
 	bufferAvg := buffer[0].(float64)
 	bufferRows := buffer[1].(float64)
 

@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
@@ -64,11 +65,17 @@ func (p *GroupBy) Schema() sql.Schema {
 
 // RowIter implements the Node interface.
 func (p *GroupBy) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	span, ctx := ctx.Span("plan.GroupBy", opentracing.Tags{
+		"groupings":  len(p.Grouping),
+		"aggregates": len(p.Aggregate),
+	})
+
 	i, err := p.Child.RowIter(ctx)
 	if err != nil {
+		span.Finish()
 		return nil, err
 	}
-	return newGroupByIter(ctx, p, i), nil
+	return sql.NewSpanIter(span, newGroupByIter(ctx, p, i)), nil
 }
 
 // TransformUp implements the Transformable interface.

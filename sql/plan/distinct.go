@@ -26,11 +26,15 @@ func (d *Distinct) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (d *Distinct) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	span, ctx := ctx.Span("plan.Distinct")
+
 	it, err := d.Child.RowIter(ctx)
 	if err != nil {
+		span.Finish()
 		return nil, err
 	}
-	return newDistinctIter(it), nil
+
+	return sql.NewSpanIter(span, newDistinctIter(it)), nil
 }
 
 // TransformUp implements the Transformable interface.
@@ -120,11 +124,15 @@ func (d *OrderedDistinct) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (d *OrderedDistinct) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	span, ctx := ctx.Span("plan.OrderedDistinct")
+
 	it, err := d.Child.RowIter(ctx)
 	if err != nil {
+		span.Finish()
 		return nil, err
 	}
-	return newOrderedDistinctIter(it, d.Child.Schema()), nil
+
+	return sql.NewSpanIter(span, newOrderedDistinctIter(it, d.Child.Schema())), nil
 }
 
 // TransformUp implements the Transformable interface.

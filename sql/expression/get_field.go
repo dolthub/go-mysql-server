@@ -3,6 +3,7 @@ package expression
 import (
 	"fmt"
 
+	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -57,8 +58,14 @@ func (p GetField) Type() sql.Type {
 	return p.fieldType
 }
 
+// ErrIndexOutOfBounds is returned when the field index is out of the bounds.
+var ErrIndexOutOfBounds = errors.NewKind("unable to find field with index %d in row of %d columns")
+
 // Eval implements the Expression interface.
 func (p GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if p.fieldIndex < 0 || p.fieldIndex >= len(row) {
+		return nil, ErrIndexOutOfBounds.New(p.fieldIndex, len(row))
+	}
 	return row[p.fieldIndex], nil
 }
 

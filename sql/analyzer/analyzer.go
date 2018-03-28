@@ -68,6 +68,9 @@ func (a *Analyzer) Log(msg string, args ...interface{}) {
 
 // Analyze the node and all its children.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node) (sql.Node, error) {
+	span, ctx := ctx.Span("analyze")
+	defer span.Finish()
+
 	prev := n
 
 	a.Log("starting analysis of node of type: %T", n)
@@ -103,6 +106,9 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node) (sql.Node, error) {
 }
 
 func (a *Analyzer) analyzeOnce(ctx *sql.Context, n sql.Node) (sql.Node, error) {
+	span, ctx := ctx.Span("analyze_once")
+	defer span.Finish()
+
 	result := n
 	for _, rule := range a.Rules {
 		var err error
@@ -115,6 +121,9 @@ func (a *Analyzer) analyzeOnce(ctx *sql.Context, n sql.Node) (sql.Node, error) {
 }
 
 func (a *Analyzer) validate(ctx *sql.Context, n sql.Node) (validationErrors []error) {
+	span, ctx := ctx.Span("validate")
+	defer span.Finish()
+
 	validationErrors = append(validationErrors, a.validateOnce(ctx, n)...)
 
 	for _, node := range n.Children() {
@@ -125,6 +134,9 @@ func (a *Analyzer) validate(ctx *sql.Context, n sql.Node) (validationErrors []er
 }
 
 func (a *Analyzer) validateOnce(ctx *sql.Context, n sql.Node) (validationErrors []error) {
+	span, ctx := ctx.Span("validate_once")
+	defer span.Finish()
+
 	for _, rule := range a.ValidationRules {
 		err := rule.Apply(ctx, n)
 		if err != nil {

@@ -23,11 +23,15 @@ func (p *Filter) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (p *Filter) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	span, ctx := ctx.Span("plan.Filter")
+
 	i, err := p.Child.RowIter(ctx)
 	if err != nil {
+		span.Finish()
 		return nil, err
 	}
-	return NewFilterIter(ctx, p.Expression, i), nil
+
+	return sql.NewSpanIter(span, NewFilterIter(ctx, p.Expression, i)), nil
 }
 
 // TransformUp implements the Transformable interface.

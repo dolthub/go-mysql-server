@@ -54,6 +54,9 @@ func (m *Max) NewBuffer() sql.Row {
 
 // Update implements the Aggregation interface.
 func (m *Max) Update(ctx *sql.Context, buffer, row sql.Row) error {
+	span, ctx := ctx.Span("aggregation.Max_Update")
+	defer span.Finish()
+
 	v, err := m.Child.Eval(ctx, row)
 	if err != nil {
 		return err
@@ -80,6 +83,8 @@ func (m *Max) Update(ctx *sql.Context, buffer, row sql.Row) error {
 
 // Merge implements the Aggregation interface.
 func (m *Max) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
+	span, ctx := ctx.Span("aggregation.Max_Merge")
+	defer span.Finish()
 	return m.Update(ctx, buffer, partial)
 }
 

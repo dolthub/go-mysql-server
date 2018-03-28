@@ -51,6 +51,8 @@ func (y *Year) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
 func (y *Year) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	span, ctx := ctx.Span("function.Year")
+	defer span.Finish()
 	return getDatePart(ctx, y.UnaryExpression, row, (time.Time).Year)
 }
 
@@ -81,6 +83,9 @@ func (m *Month) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
 func (m *Month) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	span, ctx := ctx.Span("function.Month")
+	defer span.Finish()
+
 	monthFunc := func(t time.Time) int {
 		return int(t.Month())
 	}
@@ -115,6 +120,8 @@ func (d *Day) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
 func (d *Day) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	span, ctx := ctx.Span("function.Day")
+	defer span.Finish()
 	return getDatePart(ctx, d.UnaryExpression, row, (time.Time).Day)
 }
 
@@ -145,6 +152,8 @@ func (h *Hour) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
 func (h *Hour) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	span, ctx := ctx.Span("function.Hour")
+	defer span.Finish()
 	return getDatePart(ctx, h.UnaryExpression, row, (time.Time).Hour)
 }
 
@@ -175,6 +184,8 @@ func (m *Minute) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
 func (m *Minute) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	span, ctx := ctx.Span("function.Minute")
+	defer span.Finish()
 	return getDatePart(ctx, m.UnaryExpression, row, (time.Time).Minute)
 }
 
@@ -205,6 +216,8 @@ func (s *Second) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
 func (s *Second) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	span, ctx := ctx.Span("function.Second")
+	defer span.Finish()
 	return getDatePart(ctx, s.UnaryExpression, row, (time.Time).Second)
 }
 
@@ -235,6 +248,8 @@ func (d *DayOfYear) Type() sql.Type { return sql.Int32 }
 
 // Eval implements the Expression interface.
 func (d *DayOfYear) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	span, ctx := ctx.Span("function.DayOfYear")
+	defer span.Finish()
 	return getDatePart(ctx, d.UnaryExpression, row, (time.Time).YearDay)
 }
 

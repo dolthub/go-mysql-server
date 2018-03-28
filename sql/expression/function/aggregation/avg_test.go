@@ -92,12 +92,13 @@ func TestAvg_Merge(t *testing.T) {
 
 func TestAvg_NULL(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
 
 	avgNode := NewAvg(expression.NewGetField(0, sql.Uint64, "col1", true))
 	buffer := avgNode.NewBuffer()
-	require.Zero(avgNode.Eval(nil, buffer))
+	require.Zero(avgNode.Eval(ctx, buffer))
 
-	err := avgNode.Update(nil, buffer, sql.NewRow(nil))
+	err := avgNode.Update(ctx, buffer, sql.NewRow(nil))
 	require.NoError(err)
 	require.Equal(nil, eval(t, avgNode, buffer))
 }

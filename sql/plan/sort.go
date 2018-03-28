@@ -84,11 +84,13 @@ func (s *Sort) expressionsResolved() bool {
 
 // RowIter implements the Node interface.
 func (s *Sort) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	span, ctx := ctx.Span("plan.Sort")
 	i, err := s.UnaryNode.Child.RowIter(ctx)
 	if err != nil {
+		span.Finish()
 		return nil, err
 	}
-	return newSortIter(s, i), nil
+	return sql.NewSpanIter(span, newSortIter(s, i)), nil
 }
 
 // TransformUp implements the Transformable interface.

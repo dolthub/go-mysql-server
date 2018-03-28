@@ -24,6 +24,9 @@ func (e *IsNull) IsNullable() bool {
 
 // Eval implements the Expression interface.
 func (e *IsNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	span, ctx := ctx.Span("expression.IsNull")
+	defer span.Finish()
+
 	v, err := e.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err

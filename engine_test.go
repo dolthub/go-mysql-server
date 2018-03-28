@@ -1,7 +1,9 @@
 package sqle_test
 
 import (
+	"context"
 	"io"
+	"strings"
 	"testing"
 
 	"gopkg.in/src-d/go-mysql-server.v0"
@@ -10,6 +12,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/parse"
 
 	"github.com/stretchr/testify/require"
+	jaeger "github.com/uber/jaeger-client-go"
 )
 
 const driverName = "engine_tests"
@@ -395,4 +398,57 @@ func TestPrintTree(t *testing.T) {
 		OFFSET 2`)
 	require.NoError(err)
 	require.Equal(expectedTree, node.String())
+}
+
+func TestTracing(t *testing.T) {
+	require := require.New(t)
+	e := newEngine(t)
+
+	reporter := jaeger.NewInMemoryReporter()
+	tracer, closer := jaeger.NewTracer("go-mysql-server", jaeger.NewConstSampler(true), reporter)
+	defer func() {
+		require.NoError(closer.Close())
+	}()
+
+	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession(), tracer)
+
+	_, iter, err := e.Query(ctx, `SELECT DISTINCT i 
+		FROM mytable 
+		WHERE s = 'first row' 
+		ORDER BY i DESC 
+		LIMIT 1`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.Len(rows, 1)
+	require.NoError(err)
+
+	spans := reporter.GetSpans()
+
+	var expectedSpans = []string{
+		"expression.Equals",
+		"expression.Equals",
+		"expression.Equals",
+		"plan.Filter",
+		"plan.Limit",
+		"plan.Distinct",
+		"plan.Project",
+		"plan.Sort",
+	}
+
+	require.Len(spans, 76)
+
+	var spanOperations []string
+	for _, s := range spans {
+		name := s.(*jaeger.Span).OperationName()
+		// only check the ones inside the execution tree
+		if strings.HasPrefix(name, "plan.") ||
+			strings.HasPrefix(name, "expression.") ||
+			strings.HasPrefix(name, "function.") ||
+			strings.HasPrefix(name, "aggregation.") {
+			spanOperations = append(spanOperations, name)
+		}
+	}
+
+	require.Equal(expectedSpans, spanOperations)
 }
