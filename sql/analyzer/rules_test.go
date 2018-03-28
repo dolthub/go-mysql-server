@@ -100,7 +100,7 @@ func TestResolveSubqueries(t *testing.T) {
 		),
 	)
 
-	result, err := resolveSubqueries(a, node)
+	result, err := resolveSubqueries(sql.NewEmptyContext(), a, node)
 	require.NoError(err)
 
 	require.Equal(expected, result)
@@ -125,16 +125,16 @@ func TestResolveTables(t *testing.T) {
 
 	a.CurrentDatabase = "mydb"
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
-	analyzed, err := f.Apply(a, notAnalyzed)
+	analyzed, err := f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.NoError(err)
 	require.Equal(table, analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("nonexistant")
-	analyzed, err = f.Apply(a, notAnalyzed)
+	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.Error(err)
 	require.Nil(analyzed)
 
-	analyzed, err = f.Apply(a, table)
+	analyzed, err = f.Apply(sql.NewEmptyContext(), a, table)
 	require.NoError(err)
 	require.Equal(table, analyzed)
 }
@@ -161,7 +161,7 @@ func TestResolveTablesNested(t *testing.T) {
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},
 		plan.NewUnresolvedTable("mytable"),
 	)
-	analyzed, err := f.Apply(a, notAnalyzed)
+	analyzed, err := f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.NoError(err)
 	expected := plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},
@@ -264,7 +264,7 @@ func TestResolveStar(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := f.Apply(nil, tt.node)
+			result, err := f.Apply(sql.NewEmptyContext(), nil, tt.node)
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, result)
 		})
@@ -292,7 +292,7 @@ func TestQualifyColumns(t *testing.T) {
 		table,
 	)
 
-	result, err := f.Apply(nil, node)
+	result, err := f.Apply(sql.NewEmptyContext(), nil, node)
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -303,7 +303,7 @@ func TestQualifyColumns(t *testing.T) {
 		table,
 	)
 
-	result, err = f.Apply(nil, node)
+	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -321,7 +321,7 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewTableAlias("a", table),
 	)
 
-	result, err = f.Apply(nil, node)
+	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -332,7 +332,7 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewTableAlias("a", table),
 	)
 
-	result, err = f.Apply(nil, node)
+	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
 	require.Error(err)
 	require.True(ErrColumnNotFound.Is(err))
 
@@ -343,7 +343,7 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewTableAlias("a", table),
 	)
 
-	result, err = f.Apply(nil, node)
+	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
 	require.Error(err)
 	require.True(sql.ErrTableNotFound.Is(err))
 
@@ -354,7 +354,7 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewTableAlias("a", table),
 	)
 
-	_, err = f.Apply(nil, node)
+	_, err = f.Apply(sql.NewEmptyContext(), nil, node)
 	require.Error(err)
 	require.True(ErrColumnNotFound.Is(err))
 
@@ -365,7 +365,7 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewCrossJoin(table, table2),
 	)
 
-	_, err = f.Apply(nil, node)
+	_, err = f.Apply(sql.NewEmptyContext(), nil, node)
 	require.Error(err)
 	require.True(ErrAmbiguousColumnName.Is(err))
 
@@ -401,7 +401,7 @@ func TestQualifyColumns(t *testing.T) {
 		),
 	)
 
-	result, err = f.Apply(nil, node)
+	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
 	require.NoError(err)
 	require.Equal(expected, result)
 }
@@ -413,10 +413,10 @@ func TestOptimizeDistinct(t *testing.T) {
 
 	rule := getRule("optimize_distinct")
 
-	analyzedNotSorted, err := rule.Apply(nil, notSorted)
+	analyzedNotSorted, err := rule.Apply(sql.NewEmptyContext(), nil, notSorted)
 	require.NoError(err)
 
-	analyzedSorted, err := rule.Apply(nil, sorted)
+	analyzedSorted, err := rule.Apply(sql.NewEmptyContext(), nil, sorted)
 	require.NoError(err)
 
 	require.Equal(notSorted, analyzedNotSorted)
@@ -478,7 +478,7 @@ func TestPushdownProjection(t *testing.T) {
 		),
 	)
 
-	result, err := f.Apply(nil, node)
+	result, err := f.Apply(sql.NewEmptyContext(), nil, node)
 	require.NoError(err)
 	require.Equal(expected, result)
 }
@@ -562,7 +562,7 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 		),
 	)
 
-	result, err := a.Analyze(node)
+	result, err := a.Analyze(sql.NewEmptyContext(), node)
 	require.NoError(err)
 	require.Equal(expected, result)
 }

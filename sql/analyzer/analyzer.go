@@ -34,7 +34,7 @@ type Rule struct {
 	// Name of the rule.
 	Name string
 	// Apply transforms a node.
-	Apply func(*Analyzer, sql.Node) (sql.Node, error)
+	Apply func(*sql.Context, *Analyzer, sql.Node) (sql.Node, error)
 }
 
 // ValidationRule validates the given nodes.
@@ -42,7 +42,7 @@ type ValidationRule struct {
 	// Name of the rule.
 	Name string
 	// Apply validates the given node.
-	Apply func(sql.Node) error
+	Apply func(*sql.Context, sql.Node) error
 }
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"
@@ -67,11 +67,11 @@ func (a *Analyzer) Log(msg string, args ...interface{}) {
 }
 
 // Analyze the node and all its children.
-func (a *Analyzer) Analyze(n sql.Node) (sql.Node, error) {
+func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node) (sql.Node, error) {
 	prev := n
 
 	a.Log("starting analysis of node of type: %T", n)
-	cur, err := a.analyzeOnce(n)
+	cur, err := a.analyzeOnce(ctx, n)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (a *Analyzer) Analyze(n sql.Node) (sql.Node, error) {
 	for !reflect.DeepEqual(prev, cur) {
 		a.Log("previous node does not match new node, analyzing again, iteration: %d", i)
 		prev = cur
-		cur, err = a.analyzeOnce(cur)
+		cur, err = a.analyzeOnce(ctx, cur)
 		if err != nil {
 			return nil, err
 		}
@@ -91,7 +91,7 @@ func (a *Analyzer) Analyze(n sql.Node) (sql.Node, error) {
 		}
 	}
 
-	if errs := a.validate(cur); len(errs) != 0 {
+	if errs := a.validate(ctx, cur); len(errs) != 0 {
 		var err error
 		for _, e := range errs {
 			err = multierror.Append(err, e)
@@ -102,11 +102,11 @@ func (a *Analyzer) Analyze(n sql.Node) (sql.Node, error) {
 	return cur, nil
 }
 
-func (a *Analyzer) analyzeOnce(n sql.Node) (sql.Node, error) {
+func (a *Analyzer) analyzeOnce(ctx *sql.Context, n sql.Node) (sql.Node, error) {
 	result := n
 	for _, rule := range a.Rules {
 		var err error
-		result, err = rule.Apply(a, result)
+		result, err = rule.Apply(ctx, a, result)
 		if err != nil {
 			return nil, err
 		}
@@ -114,19 +114,19 @@ func (a *Analyzer) analyzeOnce(n sql.Node) (sql.Node, error) {
 	return result, nil
 }
 
-func (a *Analyzer) validate(n sql.Node) (validationErrors []error) {
-	validationErrors = append(validationErrors, a.validateOnce(n)...)
+func (a *Analyzer) validate(ctx *sql.Context, n sql.Node) (validationErrors []error) {
+	validationErrors = append(validationErrors, a.validateOnce(ctx, n)...)
 
 	for _, node := range n.Children() {
-		validationErrors = append(validationErrors, a.validate(node)...)
+		validationErrors = append(validationErrors, a.validate(ctx, node)...)
 	}
 
 	return validationErrors
 }
 
-func (a *Analyzer) validateOnce(n sql.Node) (validationErrors []error) {
+func (a *Analyzer) validateOnce(ctx *sql.Context, n sql.Node) (validationErrors []error) {
 	for _, rule := range a.ValidationRules {
-		err := rule.Apply(n)
+		err := rule.Apply(ctx, n)
 		if err != nil {
 			validationErrors = append(validationErrors, err)
 		}
