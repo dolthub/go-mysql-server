@@ -29,6 +29,20 @@ func TestInt32(t *testing.T) {
 	gt(t, Int32, int32(3), int32(2))
 }
 
+func TestNumberComparison(t *testing.T) {
+	eq(t, Int64, int32(1), int32(1))
+	eq(t, Int64, int32(1), int64(1))
+	gt(t, Int64, int64(5), int32(1))
+	gt(t, Int64, int32(5), int64(1))
+	lt(t, Int32, int64(1), int32(5))
+
+	eq(t, Uint32, int32(1), uint32(1))
+	eq(t, Uint32, int32(1), int64(1))
+	gt(t, Uint32, int64(5), uint32(1))
+	gt(t, Uint32, uint32(5), int64(1))
+	lt(t, Uint32, uint64(1), int32(5))
+}
+
 func TestInt64(t *testing.T) {
 	convert(t, Int64, int32(1), int64(1))
 	convert(t, Int64, 1, int64(1))
