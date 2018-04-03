@@ -53,7 +53,7 @@ func TestHandlerOutput(t *testing.T) {
 		return nil
 	})
 	require.NoError(err)
-	require.Equal(2, c)
+	require.Equal(1, c)
 	require.Equal(100, lastRows)
 	require.Equal(uint64(100), lastRowsAffected)
 

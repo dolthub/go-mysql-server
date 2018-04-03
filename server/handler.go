@@ -92,6 +92,7 @@ func (h *Handler) ComQuery(
 	}
 
 	var r *sqltypes.Result
+	var proccesedAtLeastOneBatch bool
 	for {
 		if r == nil {
 			r = &sqltypes.Result{Fields: schemaToFields(schema)}
@@ -103,6 +104,7 @@ func (h *Handler) ComQuery(
 			}
 
 			r = nil
+			proccesedAtLeastOneBatch = true
 
 			continue
 		}
@@ -124,7 +126,7 @@ func (h *Handler) ComQuery(
 	// called to update the state in the go-vitess' listener
 	// an avoid to return errors when the query doesn't
 	// produce results.
-	if r != nil {
+	if r != nil && !proccesedAtLeastOneBatch {
 		if err := callback(r); err != nil {
 			return err
 		}
