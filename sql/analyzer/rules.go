@@ -13,6 +13,7 @@ import (
 var DefaultRules = []Rule{
 	{"resolve_subqueries", resolveSubqueries},
 	{"resolve_tables", resolveTables},
+	{"resolve_orderby_literals", resolveOrderByLiterals},
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
 	{"resolve_database", resolveDatabase},
@@ -34,6 +35,9 @@ var (
 	ErrAmbiguousColumnName = errors.NewKind("ambiguous column name %q, it's present in all these tables: %v")
 	// ErrFieldMissing is returned when the field is not on the schema.
 	ErrFieldMissing = errors.NewKind("field %q is not on schema")
+	// ErrOrderByColumnIndex is returned when in an order clause there is a
+	// column that is unknown.
+	ErrOrderByColumnIndex = errors.NewKind("unknown column %d in order by clause")
 )
 
 func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -50,6 +54,53 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 		default:
 			return n, nil
 		}
+	})
+}
+
+func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	a.Log("resolve order by literals")
+
+	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+		sort, ok := n.(*plan.Sort)
+		if !ok {
+			return n, nil
+		}
+
+		var fields = make([]plan.SortField, len(sort.SortFields))
+		for i, f := range sort.SortFields {
+			if lit, ok := f.Column.(*expression.Literal); ok && sql.IsNumber(f.Column.Type()) {
+				// it is safe to eval literals with no context and/or row
+				v, err := lit.Eval(nil, nil)
+				if err != nil {
+					return nil, err
+				}
+
+				v, err = sql.Int64.Convert(v)
+				if err != nil {
+					return nil, err
+				}
+
+				// column access is 1-indexed
+				idx := int(v.(int64)) - 1
+
+				schema := sort.Child.Schema()
+				if idx >= len(schema) || idx < 0 {
+					return nil, ErrOrderByColumnIndex.New(idx + 1)
+				}
+
+				fields[i] = plan.SortField{
+					Column:       expression.NewUnresolvedColumn(schema[idx].Name),
+					Order:        f.Order,
+					NullOrdering: f.NullOrdering,
+				}
+
+				a.Log("replaced order by column %d with %s", idx+1, schema[idx].Name)
+			} else {
+				fields[i] = f
+			}
+		}
+
+		return plan.NewSort(fields, sort.Child), nil
 	})
 }
 

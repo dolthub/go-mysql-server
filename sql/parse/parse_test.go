@@ -478,6 +478,27 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo"),
 		),
 	),
+	`SELECT a, b FROM t ORDER BY 2, 1`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewUnresolvedColumn("b"),
+		},
+		plan.NewSort(
+			[]plan.SortField{
+				{
+					Column:       expression.NewLiteral(int64(2), sql.Int64),
+					Order:        plan.Ascending,
+					NullOrdering: plan.NullsFirst,
+				},
+				{
+					Column:       expression.NewLiteral(int64(1), sql.Int64),
+					Order:        plan.Ascending,
+					NullOrdering: plan.NullsFirst,
+				},
+			},
+			plan.NewUnresolvedTable("t"),
+		),
+	),
 }
 
 func TestParse(t *testing.T) {

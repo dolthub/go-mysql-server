@@ -212,6 +212,26 @@ func TestQueries(t *testing.T) {
 	)
 }
 
+func TestOrderByColumns(t *testing.T) {
+	require := require.New(t)
+	e := newEngine(t)
+
+	_, iter, err := e.Query(sql.NewEmptyContext(), "SELECT s, i FROM mytable ORDER BY 2 DESC")
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Equal(
+		[]sql.Row{
+			{"third row", int64(3)},
+			{"second row", int64(2)},
+			{"first row", int64(1)},
+		},
+		rows,
+	)
+}
+
 func TestInsertInto(t *testing.T) {
 	e := newEngine(t)
 	testQuery(t, e,
