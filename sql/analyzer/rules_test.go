@@ -170,6 +170,50 @@ func TestResolveTablesNested(t *testing.T) {
 	require.Equal(expected, analyzed)
 }
 
+func TestResolveOrderByLiterals(t *testing.T) {
+	require := require.New(t)
+	f := getRule("resolve_orderby_literals")
+
+	table := mem.NewTable("t", sql.Schema{
+		{Name: "a", Type: sql.Int64, Source: "t"},
+		{Name: "b", Type: sql.Int64, Source: "t"},
+	})
+
+	node := plan.NewSort(
+		[]plan.SortField{
+			{Column: expression.NewLiteral(int64(2), sql.Int64)},
+			{Column: expression.NewLiteral(int64(1), sql.Int64)},
+		},
+		table,
+	)
+
+	result, err := f.Apply(sql.NewEmptyContext(), New(nil), node)
+	require.NoError(err)
+
+	require.Equal(
+		plan.NewSort(
+			[]plan.SortField{
+				{Column: expression.NewUnresolvedColumn("b")},
+				{Column: expression.NewUnresolvedColumn("a")},
+			},
+			table,
+		),
+		result,
+	)
+
+	node = plan.NewSort(
+		[]plan.SortField{
+			{Column: expression.NewLiteral(int64(3), sql.Int64)},
+			{Column: expression.NewLiteral(int64(1), sql.Int64)},
+		},
+		table,
+	)
+
+	_, err = f.Apply(sql.NewEmptyContext(), New(nil), node)
+	require.Error(err)
+	require.True(ErrOrderByColumnIndex.Is(err))
+}
+
 func TestResolveStar(t *testing.T) {
 	f := getRule("resolve_star")
 
