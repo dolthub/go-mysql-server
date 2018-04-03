@@ -124,15 +124,13 @@ func (h *Handler) ComQuery(
 
 	// Even if r.RowsAffected = 0, the callback must be
 	// called to update the state in the go-vitess' listener
-	// an avoid to return errors when the query doesn't
-	// produce results.
-	if r != nil && !proccesedAtLeastOneBatch {
-		if err := callback(r); err != nil {
-			return err
-		}
+	// and avoid returning errors when the query doesn't
+	// produce any results.
+	if r != nil && (r.RowsAffected == 0 && proccesedAtLeastOneBatch) {
+		return nil
 	}
 
-	return nil
+	return callback(r)
 }
 
 func (h *Handler) handleKill(query string) (bool, error) {
