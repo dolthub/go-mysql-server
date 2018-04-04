@@ -1,6 +1,9 @@
 package plan
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import (
+	opentracing "github.com/opentracing/opentracing-go"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+)
 
 // Offset is a node that skips the first N rows.
 type Offset struct {
@@ -23,11 +26,14 @@ func (o *Offset) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (o *Offset) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	span, ctx := ctx.Span("plan.Offset", opentracing.Tag{Key: "offset", Value: o.n})
+
 	it, err := o.Child.RowIter(ctx)
 	if err != nil {
+		span.Finish()
 		return nil, err
 	}
-	return &offsetIter{o.n, it}, nil
+	return sql.NewSpanIter(span, &offsetIter{o.n, it}), nil
 }
 
 // TransformUp implements the Transformable interface.

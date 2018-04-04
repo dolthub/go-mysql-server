@@ -3,6 +3,10 @@ package function
 import (
 	"bytes"
 	"fmt"
+	"time"
+
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
@@ -23,6 +27,21 @@ func (ib *IsBinary) Eval(
 	ctx *sql.Context,
 	row sql.Row,
 ) (interface{}, error) {
+	var blobSize int
+	span, ctx := ctx.Span("function.IsBinary")
+	defer func() {
+		span.FinishWithOptions(opentracing.FinishOptions{
+			LogRecords: []opentracing.LogRecord{
+				{
+					Timestamp: time.Now(),
+					Fields: []log.Field{
+						log.Int("blobsize", blobSize),
+					},
+				},
+			},
+		})
+	}()
+
 	v, err := ib.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -37,7 +56,9 @@ func (ib *IsBinary) Eval(
 		return nil, err
 	}
 
-	return isBinary(blob.([]byte)), nil
+	blobBytes := blob.([]byte)
+	blobSize = len(blobBytes)
+	return isBinary(blobBytes), nil
 }
 
 func (ib IsBinary) String() string {

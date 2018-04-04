@@ -16,11 +16,13 @@ func TestTuple(t *testing.T) {
 		NewLiteral("foo", sql.Text),
 	)
 
+	ctx := sql.NewEmptyContext()
+
 	require.False(tup.IsNullable())
 	require.True(tup.Resolved())
 	require.Equal(sql.Tuple(sql.Int64, sql.Float64, sql.Text), tup.Type())
 
-	result, err := tup.Eval(nil, nil)
+	result, err := tup.Eval(ctx, nil)
 	require.NoError(err)
 	require.Equal([]interface{}{int64(1), float64(3.14), "foo"}, result)
 
@@ -32,7 +34,7 @@ func TestTuple(t *testing.T) {
 	require.True(tup.Resolved())
 	require.Equal(sql.Text, tup.Type())
 
-	result, err = tup.Eval(nil, sql.NewRow("foo"))
+	result, err = tup.Eval(ctx, sql.NewRow("foo"))
 	require.NoError(err)
 	require.Equal("foo", result)
 
@@ -45,7 +47,7 @@ func TestTuple(t *testing.T) {
 	require.True(tup.Resolved())
 	require.Equal(sql.Tuple(sql.Text, sql.Text), tup.Type())
 
-	result, err = tup.Eval(nil, sql.NewRow("foo"))
+	result, err = tup.Eval(ctx, sql.NewRow("foo"))
 	require.NoError(err)
 	require.Equal([]interface{}{"foo", "bar"}, result)
 

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
@@ -29,6 +30,9 @@ var (
 
 // Parse parses the given SQL sentence and returns the corresponding node.
 func Parse(ctx *sql.Context, s string) (sql.Node, error) {
+	span, ctx := ctx.Span("parse_query", opentracing.Tag{Key: "query", Value: s})
+	defer span.Finish()
+
 	if strings.HasSuffix(s, ";") {
 		s = s[:len(s)-1]
 	}

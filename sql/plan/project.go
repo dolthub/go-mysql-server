@@ -3,6 +3,7 @@ package plan
 import (
 	"strings"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -48,11 +49,17 @@ func (p *Project) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (p *Project) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	span, ctx := ctx.Span("plan.Project", opentracing.Tag{
+		Key:   "projections",
+		Value: len(p.Projections),
+	})
+
 	i, err := p.Child.RowIter(ctx)
 	if err != nil {
+		span.Finish()
 		return nil, err
 	}
-	return &iter{p, i, ctx}, nil
+	return sql.NewSpanIter(span, &iter{p, i, ctx}), nil
 }
 
 // TransformUp implements the Transformable interface.

@@ -2,8 +2,11 @@ package sql
 
 import (
 	"context"
+	"io"
+	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
 )
 
 // Session holds the session data.
@@ -64,4 +67,67 @@ func (c *Context) Span(
 
 	ctx := opentracing.ContextWithSpan(c.Context, span)
 	return span, &Context{ctx, c.Session, c.tracer}
+}
+
+// NewSpanIter creates a RowIter executed in the given span.
+func NewSpanIter(span opentracing.Span, iter RowIter) RowIter {
+	return &spanIter{span, iter, 0, false}
+}
+
+type spanIter struct {
+	span  opentracing.Span
+	iter  RowIter
+	count int
+	done  bool
+}
+
+func (i *spanIter) Next() (Row, error) {
+	if i.done {
+		return nil, io.EOF
+	}
+
+	row, err := i.iter.Next()
+	if err == io.EOF {
+		i.finish()
+		return nil, err
+	}
+
+	if err != nil {
+		i.finishWithError(err)
+		return nil, err
+	}
+
+	i.count++
+	return row, nil
+}
+
+func (i *spanIter) finish() {
+	i.span.FinishWithOptions(opentracing.FinishOptions{
+		LogRecords: []opentracing.LogRecord{
+			{
+				Timestamp: time.Now(),
+				Fields:    []log.Field{log.Int("rows", i.count)},
+			},
+		},
+	})
+	i.done = true
+}
+
+func (i *spanIter) finishWithError(err error) {
+	i.span.FinishWithOptions(opentracing.FinishOptions{
+		LogRecords: []opentracing.LogRecord{
+			{
+				Timestamp: time.Now(),
+				Fields:    []log.Field{log.String("error", err.Error())},
+			},
+		},
+	})
+	i.done = true
+}
+
+func (i *spanIter) Close() error {
+	if !i.done {
+		i.finish()
+	}
+	return i.iter.Close()
 }

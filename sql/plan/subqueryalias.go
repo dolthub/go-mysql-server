@@ -34,8 +34,15 @@ func (n *SubqueryAlias) Schema() sql.Schema {
 }
 
 // RowIter implements the Node interface.
-func (n *SubqueryAlias) RowIter(sess *sql.Context) (sql.RowIter, error) {
-	return n.Child.RowIter(sess)
+func (n *SubqueryAlias) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	span, ctx := ctx.Span("plan.SubqueryAlias")
+	iter, err := n.Child.RowIter(ctx)
+	if err != nil {
+		span.Finish()
+		return nil, err
+	}
+
+	return sql.NewSpanIter(span, iter), nil
 }
 
 // TransformUp implements the Node interface.

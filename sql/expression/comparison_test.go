@@ -269,7 +269,7 @@ func TestIn(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 
-			result, err := NewIn(tt.left, tt.right).Eval(nil, tt.row)
+			result, err := NewIn(tt.left, tt.right).Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err != nil {
 				require.Error(err)
 				require.True(tt.err.Is(err))
@@ -351,7 +351,7 @@ func TestNotIn(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 
-			result, err := NewNotIn(tt.left, tt.right).Eval(nil, tt.row)
+			result, err := NewNotIn(tt.left, tt.right).Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err != nil {
 				require.Error(err)
 				require.True(tt.err.Is(err))

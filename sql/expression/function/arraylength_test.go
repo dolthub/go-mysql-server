@@ -27,7 +27,7 @@ func TestArrayLength(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 
-			result, err := f.Eval(nil, tt.row)
+			result, err := f.Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err != nil {
 				require.Error(err)
 				require.True(tt.err.Is(err))
@@ -40,7 +40,7 @@ func TestArrayLength(t *testing.T) {
 
 	f = NewArrayLength(expression.NewGetField(0, sql.Tuple(sql.Int64, sql.Int64), "", false))
 	require := require.New(t)
-	_, err := f.Eval(nil, []interface{}{int64(1), int64(2)})
+	_, err := f.Eval(sql.NewEmptyContext(), []interface{}{int64(1), int64(2)})
 	require.Error(err)
 	require.True(sql.ErrInvalidType.Is(err))
 }

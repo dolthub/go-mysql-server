@@ -41,6 +41,9 @@ var (
 )
 
 func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	span, ctx := ctx.Span("resolve_subqueries")
+	defer span.Finish()
+
 	a.Log("resolving subqueries")
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
@@ -105,6 +108,9 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 }
 
 func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	span, ctx := ctx.Span("qualify_columns")
+	defer span.Finish()
+
 	a.Log("qualify columns")
 	tables := make(map[string]sql.Node)
 	tableAliases := make(map[string]string)
@@ -185,6 +191,9 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 }
 
 func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	span, ctx := ctx.Span("resolve_database")
+	defer span.Finish()
+
 	a.Log("resolve database, node of type: %T", n)
 
 	// TODO Database should implement node,
@@ -210,6 +219,9 @@ func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 }
 
 func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	span, ctx := ctx.Span("resolve_tables")
+	defer span.Finish()
+
 	a.Log("resolve table, node of type: %T", n)
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
@@ -234,6 +246,9 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 }
 
 func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	span, ctx := ctx.Span("resolve_star")
+	defer span.Finish()
+
 	a.Log("resolving star, node of type: %T", n)
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
@@ -280,6 +295,9 @@ type columnInfo struct {
 }
 
 func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	span, ctx := ctx.Span("resolve_columns")
+	defer span.Finish()
+
 	a.Log("resolve columns, node of type: %T", n)
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
@@ -350,6 +368,9 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 }
 
 func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	span, ctx := ctx.Span("resolve_functions")
+	defer span.Finish()
+
 	a.Log("resolve functions, node of type %T", n)
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
@@ -387,6 +408,9 @@ func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, erro
 }
 
 func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
+	span, ctx := ctx.Span("optimize_distinct")
+	defer span.Finish()
+
 	a.Log("optimize distinct, node of type: %T", node)
 	if node, ok := node.(*plan.Distinct); ok {
 		var isSorted bool
@@ -420,6 +444,9 @@ func dedupStrings(in []string) []string {
 }
 
 func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	span, ctx := ctx.Span("pushdown")
+	defer span.Finish()
+
 	a.Log("pushdown, node of type: %T", n)
 	if !n.Resolved() {
 		return n, nil
@@ -434,6 +461,8 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	var tableFields = make(map[tableField]struct{})
 
 	a.Log("finding used columns in node")
+
+	colSpan, _ := ctx.Span("find_pushdown_columns")
 
 	// First step is to find all col exprs and group them by the table they mention.
 	// Even if they appear multiple times, only the first one will be used.
@@ -450,7 +479,11 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return true
 	})
 
+	colSpan.Finish()
+
 	a.Log("finding filters in node")
+
+	filterSpan, _ := ctx.Span("find_pushdown_filters")
 
 	// then find all filters, also by table. Note that filters that mention
 	// more than one table will not be passed to neither.
@@ -465,6 +498,8 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		}
 		return true
 	})
+
+	filterSpan.Finish()
 
 	a.Log("transforming nodes with pushdown of filters and projections")
 

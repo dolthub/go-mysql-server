@@ -1,6 +1,9 @@
 package plan
 
 import (
+	"reflect"
+
+	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -40,7 +43,22 @@ func (t *TableAlias) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, 
 
 // RowIter implements the Node interface.
 func (t *TableAlias) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	return t.Child.RowIter(ctx)
+	var table string
+	if tbl, ok := t.Child.(sql.Nameable); ok {
+		table = tbl.Name()
+	} else {
+		table = reflect.TypeOf(t.Child).String()
+	}
+
+	span, ctx := ctx.Span("sql.TableAlias", opentracing.Tag{Key: "table", Value: table})
+
+	iter, err := t.Child.RowIter(ctx)
+	if err != nil {
+		span.Finish()
+		return nil, err
+	}
+
+	return sql.NewSpanIter(span, iter), nil
 }
 
 func (t TableAlias) String() string {

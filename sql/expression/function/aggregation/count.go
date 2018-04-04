@@ -56,6 +56,9 @@ func (c *Count) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 
 // Update implements the Aggregation interface.
 func (c *Count) Update(ctx *sql.Context, buffer, row sql.Row) error {
+	span, ctx := ctx.Span("aggregation.Count_Update")
+	defer span.Finish()
+
 	var inc bool
 	if _, ok := c.Child.(*expression.Star); ok {
 		inc = true
@@ -79,6 +82,9 @@ func (c *Count) Update(ctx *sql.Context, buffer, row sql.Row) error {
 
 // Merge implements the Aggregation interface.
 func (c *Count) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
+	span, _ := ctx.Span("aggregation.Count_Merge")
+	defer span.Finish()
+
 	buffer[0] = buffer[0].(int32) + partial[0].(int32)
 	return nil
 }
