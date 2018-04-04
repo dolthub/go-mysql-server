@@ -29,12 +29,18 @@ type Analyzer struct {
 	CurrentDatabase string
 }
 
+// RuleFunc is the function to be applied in a rule.
+type RuleFunc func(*sql.Context, *Analyzer, sql.Node) (sql.Node, error)
+
+// ValidationRuleFunc is the function to be used in a validation rule.
+type ValidationRuleFunc func(*sql.Context, sql.Node) error
+
 // Rule to transform nodes.
 type Rule struct {
 	// Name of the rule.
 	Name string
 	// Apply transforms a node.
-	Apply func(*sql.Context, *Analyzer, sql.Node) (sql.Node, error)
+	Apply RuleFunc
 }
 
 // ValidationRule validates the given nodes.
@@ -42,7 +48,7 @@ type ValidationRule struct {
 	// Name of the rule.
 	Name string
 	// Apply validates the given node.
-	Apply func(*sql.Context, sql.Node) error
+	Apply ValidationRuleFunc
 }
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"
@@ -56,6 +62,16 @@ func New(catalog *sql.Catalog) *Analyzer {
 		ValidationRules: DefaultValidationRules,
 		Catalog:         catalog,
 	}
+}
+
+// AddRule adds a new rule to the analyzer.
+func (a *Analyzer) AddRule(name string, fn RuleFunc) {
+	a.Rules = append(a.Rules, Rule{name, fn})
+}
+
+// AddValidationRule adds a new validation rule to the analyzer.
+func (a *Analyzer) AddValidationRule(name string, fn ValidationRuleFunc) {
+	a.ValidationRules = append(a.ValidationRules, ValidationRule{name, fn})
 }
 
 // Log prints an INFO message to stdout with the given message and args
