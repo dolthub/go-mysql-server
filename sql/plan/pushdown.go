@@ -14,7 +14,7 @@ import (
 // PushdownProjectionTable nodes don't propagate transformations.
 type PushdownProjectionTable struct {
 	sql.PushdownProjectionTable
-	columns []string
+	Columns []string
 }
 
 // NewPushdownProjectionTable creates a new PushdownProjectionTable node.
@@ -37,7 +37,7 @@ func (t *PushdownProjectionTable) TransformUp(f sql.TransformNodeFunc) (sql.Node
 		return node, nil
 	}
 
-	return f(NewPushdownProjectionTable(t.columns, table))
+	return f(NewPushdownProjectionTable(t.Columns, table))
 }
 
 // TransformExpressionsUp implements the Node interface.
@@ -54,17 +54,17 @@ func (t *PushdownProjectionTable) TransformExpressionsUp(
 		return node, nil
 	}
 
-	return NewPushdownProjectionTable(t.columns, table), nil
+	return NewPushdownProjectionTable(t.Columns, table), nil
 }
 
 // RowIter implements the Node interface.
 func (t *PushdownProjectionTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.PushdownProjectionTable", opentracing.Tags{
-		"columns": len(t.columns),
+		"columns": len(t.Columns),
 		"table":   t.Name(),
 	})
 
-	iter, err := t.WithProject(ctx, t.columns)
+	iter, err := t.WithProject(ctx, t.Columns)
 	if err != nil {
 		span.Finish()
 		return nil, err
@@ -75,7 +75,7 @@ func (t *PushdownProjectionTable) RowIter(ctx *sql.Context) (sql.RowIter, error)
 
 func (t PushdownProjectionTable) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("PushdownProjectionTable(%s)", strings.Join(t.columns, ", "))
+	_ = pr.WriteNode("PushdownProjectionTable(%s)", strings.Join(t.Columns, ", "))
 	_ = pr.WriteChildren(t.PushdownProjectionTable.String())
 	return pr.String()
 }
@@ -87,8 +87,8 @@ func (t PushdownProjectionTable) String() string {
 // PushdownProjectionAndFiltersTable nodes don't propagate transformations.
 type PushdownProjectionAndFiltersTable struct {
 	sql.PushdownProjectionAndFiltersTable
-	columns []sql.Expression
-	filters []sql.Expression
+	Columns []sql.Expression
+	Filters []sql.Expression
 }
 
 // NewPushdownProjectionAndFiltersTable creates a new
@@ -112,23 +112,23 @@ func (t *PushdownProjectionAndFiltersTable) TransformUp(
 func (t *PushdownProjectionAndFiltersTable) TransformExpressionsUp(
 	f sql.TransformExprFunc,
 ) (sql.Node, error) {
-	filters, err := transformExpressionsUp(f, t.filters)
+	filters, err := transformExpressionsUp(f, t.Filters)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewPushdownProjectionAndFiltersTable(t.columns, filters, t.PushdownProjectionAndFiltersTable), nil
+	return NewPushdownProjectionAndFiltersTable(t.Columns, filters, t.PushdownProjectionAndFiltersTable), nil
 }
 
 // RowIter implements the Node interface.
 func (t *PushdownProjectionAndFiltersTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.PushdownProjectionAndFiltersTable", opentracing.Tags{
-		"columns": len(t.columns),
-		"filters": len(t.filters),
+		"columns": len(t.Columns),
+		"filters": len(t.Filters),
 		"table":   t.Name(),
 	})
 
-	iter, err := t.WithProjectAndFilters(ctx, t.columns, t.filters)
+	iter, err := t.WithProjectAndFilters(ctx, t.Columns, t.Filters)
 	if err != nil {
 		span.Finish()
 		return nil, err
@@ -141,13 +141,13 @@ func (t PushdownProjectionAndFiltersTable) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("PushdownProjectionAndFiltersTable")
 
-	var columns = make([]string, len(t.columns))
-	for i, col := range t.columns {
+	var columns = make([]string, len(t.Columns))
+	for i, col := range t.Columns {
 		columns[i] = col.String()
 	}
 
-	var filters = make([]string, len(t.filters))
-	for i, f := range t.filters {
+	var filters = make([]string, len(t.Filters))
+	for i, f := range t.Filters {
 		filters[i] = f.String()
 	}
 
@@ -163,7 +163,7 @@ func (t PushdownProjectionAndFiltersTable) String() string {
 // Expressions implements the Expressioner interface.
 func (t PushdownProjectionAndFiltersTable) Expressions() []sql.Expression {
 	var exprs []sql.Expression
-	exprs = append(exprs, t.columns...)
-	exprs = append(exprs, t.filters...)
+	exprs = append(exprs, t.Columns...)
+	exprs = append(exprs, t.Filters...)
 	return exprs
 }
