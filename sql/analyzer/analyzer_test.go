@@ -211,3 +211,21 @@ func TestAnalyzer_Analyze_MaxIterations(t *testing.T) {
 	require.NotNil(err)
 	require.Equal(plan.NewUnresolvedTable("table1001"), analyzed)
 }
+
+func TestAddRule(t *testing.T) {
+	require := require.New(t)
+
+	a := New(nil)
+	require.Len(a.Rules, 10)
+	a.AddRule("foo", pushdown)
+	require.Len(a.Rules, 11)
+}
+
+func TestAddValidationRule(t *testing.T) {
+	require := require.New(t)
+
+	a := New(nil)
+	require.Len(a.ValidationRules, 5)
+	a.AddValidationRule("foo", validateGroupBy)
+	require.Len(a.ValidationRules, 6)
+}
