@@ -26,3 +26,5 @@ _testmain.go
 # Tpc-h tbl files
 benchmark/*tbl
 vendor
+Makefile.main
+.ci/
