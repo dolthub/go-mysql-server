@@ -707,21 +707,33 @@ func selectExprToExpression(se sqlparser.SelectExpr) (sql.Expression, error) {
 }
 
 func binaryExprToExpression(be *sqlparser.BinaryExpr) (sql.Expression, error) {
-	l, err := exprToExpression(be.Left)
-	if err != nil {
-		return nil, err
-	}
-
-	r, err := exprToExpression(be.Right)
-	if err != nil {
-		return nil, err
-	}
-
 	switch be.Operator {
+	case
+		sqlparser.PlusStr,
+		sqlparser.MinusStr,
+		sqlparser.MultStr,
+		sqlparser.DivStr,
+		sqlparser.ShiftLeftStr,
+		sqlparser.ShiftRightStr,
+		sqlparser.BitAndStr,
+		sqlparser.BitOrStr,
+		sqlparser.BitXorStr,
+		sqlparser.IntDivStr,
+		sqlparser.ModStr:
+
+		l, err := exprToExpression(be.Left)
+		if err != nil {
+			return nil, err
+		}
+
+		r, err := exprToExpression(be.Right)
+		if err != nil {
+			return nil, err
+		}
+
+		return expression.NewArithmetic(l, r, be.Operator), nil
+
 	default:
 		return nil, ErrUnsupportedFeature.New(be.Operator)
-
-	case sqlparser.PlusStr:
-		return expression.NewPlus(l, r), nil
 	}
 }

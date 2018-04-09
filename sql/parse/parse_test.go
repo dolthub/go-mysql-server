@@ -511,9 +511,27 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("dual"),
 	),
-	`SELECT 1 + (2 + 1);`: plan.NewProject(
+	`SELECT 1 * (2 + 1);`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewPlus(expression.NewLiteral(int64(1), sql.Int64), expression.NewPlus(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64))),
+			expression.NewMult(expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewPlus(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64))),
+		},
+		plan.NewUnresolvedTable("dual"),
+	),
+	`SELECT (0 - 1) * (1 | 1);`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewMult(
+				expression.NewMinus(expression.NewLiteral(int64(0), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
+				expression.NewBitOr(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
+			),
+		},
+		plan.NewUnresolvedTable("dual"),
+	),
+	`SELECT (1 << 3) % (2 div 1);`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewMod(
+				expression.NewShiftLeft(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(3), sql.Int64)),
+				expression.NewIntDiv(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64))),
 		},
 		plan.NewUnresolvedTable("dual"),
 	),
