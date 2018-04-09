@@ -416,6 +416,12 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("foo"),
 	),
+	`SELECT 2 = 2 FROM foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewEquals(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(2), sql.Int64)),
+		},
+		plan.NewUnresolvedTable("foo"),
+	),
 	`SELECT *, bar FROM foo`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewStar(),
@@ -498,6 +504,18 @@ var fixtures = map[string]sql.Node{
 			},
 			plan.NewUnresolvedTable("t"),
 		),
+	),
+	`SELECT 1 + 1;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewPlus(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
+		},
+		plan.NewUnresolvedTable("dual"),
+	),
+	`SELECT 1 + (2 + 1);`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewPlus(expression.NewLiteral(int64(1), sql.Int64), expression.NewPlus(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64))),
+		},
+		plan.NewUnresolvedTable("dual"),
 	),
 }
 

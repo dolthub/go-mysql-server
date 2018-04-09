@@ -562,6 +562,9 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 			exprs[i] = expr
 		}
 		return expression.NewTuple(exprs...), nil
+
+	case *sqlparser.BinaryExpr:
+		return binaryExprToExpression(v)
 	}
 }
 
@@ -700,5 +703,25 @@ func selectExprToExpression(se sqlparser.SelectExpr) (sql.Expression, error) {
 
 		// TODO: Handle case-sensitiveness when needed.
 		return expression.NewAlias(expr, e.As.Lowered()), nil
+	}
+}
+
+func binaryExprToExpression(be *sqlparser.BinaryExpr) (sql.Expression, error) {
+	l, err := exprToExpression(be.Left)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := exprToExpression(be.Right)
+	if err != nil {
+		return nil, err
+	}
+
+	switch be.Operator {
+	default:
+		return nil, ErrUnsupportedFeature.New(be.Operator)
+
+	case sqlparser.PlusStr:
+		return expression.NewPlus(l, r), nil
 	}
 }
