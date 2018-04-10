@@ -1,7 +1,6 @@
 package expression
 
 import (
-	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -106,17 +105,6 @@ func TestDiv(t *testing.T) {
 			require.Equal(tt.expected, result)
 		})
 	}
-
-	result, err := NewDiv(
-		NewLiteral(0, sql.Float64),
-		NewLiteral(0, sql.Float64),
-	).Eval(sql.NewEmptyContext(), sql.NewRow())
-
-	require := require.New(t)
-	require.NoError(err)
-	nan, ok := result.(float64)
-	require.Truef(ok, "Result %v is not a float64 number", result)
-	require.True(math.IsNaN(nan))
 }
 
 func TestShiftLeft(t *testing.T) {
