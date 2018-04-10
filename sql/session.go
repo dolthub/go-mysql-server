@@ -31,24 +31,40 @@ type Context struct {
 	tracer opentracing.Tracer
 }
 
-// NewContext creates a new query context.
-func NewContext(
-	ctx context.Context,
-	session Session,
-	tracer opentracing.Tracer,
-) *Context {
-	return &Context{ctx, session, tracer}
-}
+// ContextOption is a function to configure the context.
+type ContextOption func(*Context)
 
-// NewEmptyContext create a new context that is completely empty, useful for
-// testing.
-func NewEmptyContext() *Context {
-	return &Context{
-		context.TODO(),
-		NewBaseSession(),
-		opentracing.NoopTracer{},
+// WithSession adds the given session to the context.
+func WithSession(s Session) ContextOption {
+	return func(ctx *Context) {
+		ctx.Session = s
 	}
 }
+
+// WithTracer adds the given tracer to the context.
+func WithTracer(t opentracing.Tracer) ContextOption {
+	return func(ctx *Context) {
+		ctx.tracer = t
+	}
+}
+
+// NewContext creates a new query context. Options can be passed to configure
+// the context. If some aspect of the context is not configure, the default
+// value will be used.
+// By default, the context will have an empty base session and a noop tracer.
+func NewContext(
+	ctx context.Context,
+	opts ...ContextOption,
+) *Context {
+	c := &Context{ctx, NewBaseSession(), opentracing.NoopTracer{}}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
+}
+
+// NewEmptyContext returns a default context with default values.
+func NewEmptyContext() *Context { return NewContext(context.TODO()) }
 
 // Span creates a new tracing span with the given context.
 // It will return the span and a new context that should be passed to all

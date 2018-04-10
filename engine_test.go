@@ -430,7 +430,7 @@ func TestTracing(t *testing.T) {
 		require.NoError(closer.Close())
 	}()
 
-	ctx := sql.NewContext(context.TODO(), sql.NewBaseSession(), tracer)
+	ctx := sql.NewContext(context.TODO(), sql.WithTracer(tracer))
 
 	_, iter, err := e.Query(ctx, `SELECT DISTINCT i 
 		FROM mytable 
