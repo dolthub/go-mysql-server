@@ -535,6 +535,15 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("dual"),
 	),
+	`SELECT 1.0 * a + 2.0 * b FROM t;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewPlus(
+				expression.NewMult(expression.NewLiteral(float64(1.0), sql.Float64), expression.NewUnresolvedColumn("a")),
+				expression.NewMult(expression.NewLiteral(float64(2.0), sql.Float64), expression.NewUnresolvedColumn("b")),
+			),
+		},
+		plan.NewUnresolvedTable("t"),
+	),
 }
 
 func TestParse(t *testing.T) {
