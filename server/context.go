@@ -59,7 +59,7 @@ func (s *SessionManager) NewContext(conn *mysql.Conn) (*sql.Context, DoneFunc, e
 	s.mu.Lock()
 	sess := s.sessions[conn.ConnectionID]
 	s.mu.Unlock()
-	context := sql.NewContext(ctx, sess, s.tracer)
+	context := sql.NewContext(ctx, sql.WithSession(sess), sql.WithTracer(s.tracer))
 	id, err := uuid.NewV4()
 	if err != nil {
 		cancel()
