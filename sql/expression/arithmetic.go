@@ -10,10 +10,10 @@ import (
 )
 
 var (
-	// ErrUnableToCast means that we could not find common type for two arithemtic objects
+	// errUnableToCast means that we could not find common type for two arithemtic objects
 	errUnableToCast = errors.NewKind("Unable to cast between types: %T, %T")
 
-	// ErrUnableToEval means that we could not evaluate an expression
+	// errUnableToEval means that we could not evaluate an expression
 	errUnableToEval = errors.NewKind("Unable to evaluate an expression: %v %s %v")
 )
 
@@ -132,12 +132,12 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("expression.(" + a.op + ")")
 	defer span.Finish()
 
-	lval, rval, err := a.eval2(ctx, row)
+	lval, rval, err := a.evalLeftRight(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	lval, rval, err = a.convert2(lval, rval)
+	lval, rval, err = a.convertLeftRight(lval, rval)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return nil, errUnableToEval.New(lval, a.op, rval)
 }
 
-func (a *Arithmetic) eval2(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
+func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
 	lval, err := a.Left.Eval(ctx, row)
 	if err != nil {
 		return nil, nil, err
@@ -184,7 +184,7 @@ func (a *Arithmetic) eval2(ctx *sql.Context, row sql.Row) (interface{}, interfac
 	return lval, rval, nil
 }
 
-func (a *Arithmetic) convert2(lval interface{}, rval interface{}) (interface{}, interface{}, error) {
+func (a *Arithmetic) convertLeftRight(lval interface{}, rval interface{}) (interface{}, interface{}, error) {
 	typ := a.Type()
 
 	lval64, err := typ.Convert(lval)
