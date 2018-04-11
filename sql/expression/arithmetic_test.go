@@ -30,6 +30,12 @@ func TestPlus(t *testing.T) {
 			require.Equal(tt.expected, result)
 		})
 	}
+
+	require := require.New(t)
+	result, err := NewPlus(NewLiteral("2", sql.Text), NewLiteral(3, sql.Float64)).
+		Eval(sql.NewEmptyContext(), sql.NewRow())
+	require.NoError(err)
+	require.Equal(float64(5), result)
 }
 
 func TestMinus(t *testing.T) {
@@ -55,6 +61,12 @@ func TestMinus(t *testing.T) {
 			require.Equal(tt.expected, result)
 		})
 	}
+
+	require := require.New(t)
+	result, err := NewMinus(NewLiteral("10", sql.Text), NewLiteral(10, sql.Int64)).
+		Eval(sql.NewEmptyContext(), sql.NewRow())
+	require.NoError(err)
+	require.Equal(float64(0), result)
 }
 
 func TestMult(t *testing.T) {
@@ -80,6 +92,12 @@ func TestMult(t *testing.T) {
 			require.Equal(tt.expected, result)
 		})
 	}
+
+	require := require.New(t)
+	result, err := NewMult(NewLiteral("10", sql.Text), NewLiteral("10", sql.Text)).
+		Eval(sql.NewEmptyContext(), sql.NewRow())
+	require.NoError(err)
+	require.Equal(float64(100), result)
 }
 
 func TestDiv(t *testing.T) {

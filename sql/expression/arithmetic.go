@@ -97,6 +97,7 @@ func (a *Arithmetic) Type() sql.Type {
 			}
 			return sql.Int64
 		}
+
 		return sql.Float64
 
 	case sqlparser.ShiftLeftStr, sqlparser.ShiftRightStr:
