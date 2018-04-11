@@ -1,7 +1,6 @@
 package expression
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -340,29 +339,6 @@ func TestAllInt64(t *testing.T) {
 			require.Equal(tt.expected, result)
 
 			lval = NewLiteral(result, sql.Int64)
-		})
-	}
-}
-
-func TestCommonKind(t *testing.T) {
-	var testCases = []struct {
-		lval interface{}
-		rval interface{}
-		kind reflect.Kind
-	}{
-		{int(123), int8(1), reflect.Int},
-		{uint8(1), int8(23), reflect.Uint8},
-		{float32(3.3), int(3), reflect.Float32},
-		{int64(1), int(1), reflect.Int64},
-		{uint8(123), float64(123), reflect.Float64},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.kind.String(), func(t *testing.T) {
-			require := require.New(t)
-			result, err := commonKind(tt.lval, tt.rval)
-			require.NoError(err)
-			require.Equal(tt.kind, result)
 		})
 	}
 }
