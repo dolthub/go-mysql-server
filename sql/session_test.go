@@ -5,7 +5,6 @@ import (
 	"io"
 	"testing"
 
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,10 +64,9 @@ func (t *testNodeIterator) Close() error {
 func TestSessionIterator(t *testing.T) {
 	require := require.New(t)
 	ctx, cancelFunc := context.WithCancel(context.TODO())
-	session := NewBaseSession()
 
 	node := &testNode{}
-	iter, err := node.RowIter(NewContext(ctx, session, opentracing.NoopTracer{}))
+	iter, err := node.RowIter(NewContext(ctx))
 	require.NoError(err)
 
 	counter := 0
