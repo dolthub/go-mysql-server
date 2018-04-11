@@ -21,26 +21,26 @@ func NewLiteral(value interface{}, fieldType sql.Type) *Literal {
 }
 
 // Resolved implements the Expression interface.
-func (p Literal) Resolved() bool {
+func (p *Literal) Resolved() bool {
 	return true
 }
 
 // IsNullable implements the Expression interface.
-func (p Literal) IsNullable() bool {
+func (p *Literal) IsNullable() bool {
 	return p.value == nil
 }
 
 // Type implements the Expression interface.
-func (p Literal) Type() sql.Type {
+func (p *Literal) Type() sql.Type {
 	return p.fieldType
 }
 
 // Eval implements the Expression interface.
-func (p Literal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (p *Literal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return p.value, nil
 }
 
-func (p Literal) String() string {
+func (p *Literal) String() string {
 	switch v := p.value.(type) {
 	case string:
 		return fmt.Sprintf("%q", v)
@@ -58,6 +58,6 @@ func (p *Literal) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 }
 
 // Children implements the Expression interface.
-func (Literal) Children() []sql.Expression {
+func (*Literal) Children() []sql.Expression {
 	return nil
 }
