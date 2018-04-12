@@ -24,26 +24,26 @@ func NewQualifiedStar(table string) *Star {
 }
 
 // Resolved implements the Expression interface.
-func (Star) Resolved() bool {
+func (*Star) Resolved() bool {
 	return false
 }
 
 // Children implements the Expression interface.
-func (Star) Children() []sql.Expression {
+func (*Star) Children() []sql.Expression {
 	return nil
 }
 
 // IsNullable implements the Expression interface.
-func (Star) IsNullable() bool {
+func (*Star) IsNullable() bool {
 	panic("star is just a placeholder node, but IsNullable was called")
 }
 
 // Type implements the Expression interface.
-func (Star) Type() sql.Type {
+func (*Star) Type() sql.Type {
 	panic("star is just a placeholder node, but Type was called")
 }
 
-func (s Star) String() string {
+func (s *Star) String() string {
 	if s.Table != "" {
 		return fmt.Sprintf("%s.*", s.Table)
 	}
@@ -51,7 +51,7 @@ func (s Star) String() string {
 }
 
 // Eval implements the Expression interface.
-func (Star) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
+func (*Star) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
 	panic("star is just a placeholder node, but Eval was called")
 }
 

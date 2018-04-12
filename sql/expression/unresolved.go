@@ -27,32 +27,32 @@ func NewUnresolvedQualifiedColumn(table, name string) *UnresolvedColumn {
 }
 
 // Children implements the Expression interface.
-func (UnresolvedColumn) Children() []sql.Expression {
+func (*UnresolvedColumn) Children() []sql.Expression {
 	return nil
 }
 
 // Resolved implements the Expression interface.
-func (UnresolvedColumn) Resolved() bool {
+func (*UnresolvedColumn) Resolved() bool {
 	return false
 }
 
 // IsNullable implements the Expression interface.
-func (UnresolvedColumn) IsNullable() bool {
+func (*UnresolvedColumn) IsNullable() bool {
 	panic("unresolved column is a placeholder node, but IsNullable was called")
 }
 
 // Type implements the Expression interface.
-func (UnresolvedColumn) Type() sql.Type {
+func (*UnresolvedColumn) Type() sql.Type {
 	panic("unresolved column is a placeholder node, but Type was called")
 }
 
 // Name implements the Nameable interface.
-func (uc UnresolvedColumn) Name() string { return uc.name }
+func (uc *UnresolvedColumn) Name() string { return uc.name }
 
 // Table returns the table name.
-func (uc UnresolvedColumn) Table() string { return uc.table }
+func (uc *UnresolvedColumn) Table() string { return uc.table }
 
-func (uc UnresolvedColumn) String() string {
+func (uc *UnresolvedColumn) String() string {
 	if uc.table == "" {
 		return uc.name
 	}
@@ -60,7 +60,7 @@ func (uc UnresolvedColumn) String() string {
 }
 
 // Eval implements the Expression interface.
-func (UnresolvedColumn) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
+func (*UnresolvedColumn) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
 	panic("unresolved column is a placeholder node, but Eval was called")
 }
 
@@ -91,29 +91,29 @@ func NewUnresolvedFunction(
 }
 
 // Children implements the Expression interface.
-func (uf UnresolvedFunction) Children() []sql.Expression {
+func (uf *UnresolvedFunction) Children() []sql.Expression {
 	return uf.Arguments
 }
 
 // Resolved implements the Expression interface.
-func (UnresolvedFunction) Resolved() bool {
+func (*UnresolvedFunction) Resolved() bool {
 	return false
 }
 
 // IsNullable implements the Expression interface.
-func (UnresolvedFunction) IsNullable() bool {
+func (*UnresolvedFunction) IsNullable() bool {
 	panic("unresolved function is a placeholder node, but IsNullable was called")
 }
 
 // Type implements the Expression interface.
-func (UnresolvedFunction) Type() sql.Type {
+func (*UnresolvedFunction) Type() sql.Type {
 	panic("unresolved function is a placeholder node, but Type was called")
 }
 
 // Name implements the Nameable interface.
-func (uf UnresolvedFunction) Name() string { return uf.name }
+func (uf *UnresolvedFunction) Name() string { return uf.name }
 
-func (uf UnresolvedFunction) String() string {
+func (uf *UnresolvedFunction) String() string {
 	var exprs = make([]string, len(uf.Arguments))
 	for i, e := range uf.Arguments {
 		exprs[i] = e.String()
@@ -122,7 +122,7 @@ func (uf UnresolvedFunction) String() string {
 }
 
 // Eval implements the Expression interface.
-func (UnresolvedFunction) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
+func (*UnresolvedFunction) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
 	panic("unresolved function is a placeholder node, but Eval was called")
 }
 

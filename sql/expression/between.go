@@ -18,17 +18,17 @@ func NewBetween(val, lower, upper sql.Expression) *Between {
 	return &Between{val, lower, upper}
 }
 
-func (b Between) String() string {
+func (b *Between) String() string {
 	return fmt.Sprintf("BETWEEN(%s, %s, %s)", b.Val, b.Lower, b.Upper)
 }
 
 // Children implements the Expression interface.
-func (b Between) Children() []sql.Expression {
+func (b *Between) Children() []sql.Expression {
 	return []sql.Expression{b.Val, b.Lower, b.Upper}
 }
 
 // Type implements the Expression interface.
-func (Between) Type() sql.Type { return sql.Boolean }
+func (*Between) Type() sql.Type { return sql.Boolean }
 
 // IsNullable implements the Expression interface.
 func (b *Between) IsNullable() bool {

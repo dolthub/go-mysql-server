@@ -44,7 +44,7 @@ func NewYear(date sql.Expression) sql.Expression {
 	return &Year{expression.UnaryExpression{Child: date}}
 }
 
-func (y Year) String() string { return fmt.Sprintf("YEAR(%s)", y.Child) }
+func (y *Year) String() string { return fmt.Sprintf("YEAR(%s)", y.Child) }
 
 // Type implements the Expression interface.
 func (y *Year) Type() sql.Type { return sql.Int32 }
@@ -76,7 +76,7 @@ func NewMonth(date sql.Expression) sql.Expression {
 	return &Month{expression.UnaryExpression{Child: date}}
 }
 
-func (m Month) String() string { return fmt.Sprintf("MONTH(%s)", m.Child) }
+func (m *Month) String() string { return fmt.Sprintf("MONTH(%s)", m.Child) }
 
 // Type implements the Expression interface.
 func (m *Month) Type() sql.Type { return sql.Int32 }
@@ -113,7 +113,7 @@ func NewDay(date sql.Expression) sql.Expression {
 	return &Day{expression.UnaryExpression{Child: date}}
 }
 
-func (d Day) String() string { return fmt.Sprintf("DAY(%s)", d.Child) }
+func (d *Day) String() string { return fmt.Sprintf("DAY(%s)", d.Child) }
 
 // Type implements the Expression interface.
 func (d *Day) Type() sql.Type { return sql.Int32 }
@@ -145,7 +145,7 @@ func NewHour(date sql.Expression) sql.Expression {
 	return &Hour{expression.UnaryExpression{Child: date}}
 }
 
-func (h Hour) String() string { return fmt.Sprintf("HOUR(%s)", h.Child) }
+func (h *Hour) String() string { return fmt.Sprintf("HOUR(%s)", h.Child) }
 
 // Type implements the Expression interface.
 func (h *Hour) Type() sql.Type { return sql.Int32 }
@@ -177,7 +177,7 @@ func NewMinute(date sql.Expression) sql.Expression {
 	return &Minute{expression.UnaryExpression{Child: date}}
 }
 
-func (m Minute) String() string { return fmt.Sprintf("MINUTE(%d)", m.Child) }
+func (m *Minute) String() string { return fmt.Sprintf("MINUTE(%d)", m.Child) }
 
 // Type implements the Expression interface.
 func (m *Minute) Type() sql.Type { return sql.Int32 }
@@ -209,7 +209,7 @@ func NewSecond(date sql.Expression) sql.Expression {
 	return &Second{expression.UnaryExpression{Child: date}}
 }
 
-func (s Second) String() string { return fmt.Sprintf("SECOND(%s)", s.Child) }
+func (s *Second) String() string { return fmt.Sprintf("SECOND(%s)", s.Child) }
 
 // Type implements the Expression interface.
 func (s *Second) Type() sql.Type { return sql.Int32 }
@@ -241,7 +241,7 @@ func NewDayOfYear(date sql.Expression) sql.Expression {
 	return &DayOfYear{expression.UnaryExpression{Child: date}}
 }
 
-func (d DayOfYear) String() string { return fmt.Sprintf("DAYOFYEAR(%s)", d.Child) }
+func (d *DayOfYear) String() string { return fmt.Sprintf("DAYOFYEAR(%s)", d.Child) }
 
 // Type implements the Expression interface.
 func (d *DayOfYear) Type() sql.Type { return sql.Int32 }

@@ -41,7 +41,7 @@ func (c *Count) Resolved() bool {
 	return c.Child.Resolved()
 }
 
-func (c Count) String() string {
+func (c *Count) String() string {
 	return fmt.Sprintf("COUNT(%s)", c.Child)
 }
 

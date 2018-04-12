@@ -32,12 +32,12 @@ func JoinAnd(exprs ...sql.Expression) sql.Expression {
 	}
 }
 
-func (a And) String() string {
+func (a *And) String() string {
 	return fmt.Sprintf("%s AND %s", a.Left, a.Right)
 }
 
 // Type implements the Expression interface.
-func (And) Type() sql.Type {
+func (*And) Type() sql.Type {
 	return sql.Boolean
 }
 
@@ -96,12 +96,12 @@ func NewOr(left, right sql.Expression) sql.Expression {
 	return &Or{BinaryExpression{Left: left, Right: right}}
 }
 
-func (o Or) String() string {
+func (o *Or) String() string {
 	return fmt.Sprintf("%s OR %s", o.Left, o.Right)
 }
 
 // Type implements the Expression interface.
-func (Or) Type() sql.Type {
+func (*Or) Type() sql.Type {
 	return sql.Boolean
 }
 

@@ -19,16 +19,16 @@ func NewArrayLength(array sql.Expression) sql.Expression {
 }
 
 // Type implements the Expression interface.
-func (ArrayLength) Type() sql.Type {
+func (*ArrayLength) Type() sql.Type {
 	return sql.Int32
 }
 
-func (f ArrayLength) String() string {
+func (f *ArrayLength) String() string {
 	return fmt.Sprintf("array_length(%s)", f.Child)
 }
 
 // TransformUp implements the Expression interface.
-func (f ArrayLength) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
+func (f *ArrayLength) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := f.Child.TransformUp(fn)
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func (f ArrayLength) TransformUp(fn sql.TransformExprFunc) (sql.Expression, erro
 }
 
 // Eval implements the Expression interface.
-func (f ArrayLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (f *ArrayLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.ArrayLength")
 	defer span.Finish()
 
