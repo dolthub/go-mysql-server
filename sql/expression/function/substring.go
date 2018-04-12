@@ -38,7 +38,7 @@ func NewSubstring(args ...sql.Expression) (sql.Expression, error) {
 }
 
 // Children implements the Expression interface.
-func (s Substring) Children() []sql.Expression {
+func (s *Substring) Children() []sql.Expression {
 	if s.len == nil {
 		return []sql.Expression{s.str, s.start}
 	}
@@ -129,7 +129,7 @@ func (s *Substring) IsNullable() bool {
 	return s.str.IsNullable() || s.start.IsNullable() || (s.len != nil && s.len.IsNullable())
 }
 
-func (s Substring) String() string {
+func (s *Substring) String() string {
 	if s.len == nil {
 		return fmt.Sprintf("SUBSTRING(%s, %s)", s.str, s.start)
 	}
@@ -137,12 +137,12 @@ func (s Substring) String() string {
 }
 
 // Resolved implements the Expression interface.
-func (s Substring) Resolved() bool {
+func (s *Substring) Resolved() bool {
 	return s.start.Resolved() && s.str.Resolved() && (s.len == nil || s.len.Resolved())
 }
 
 // Type implements the Expression interface.
-func (Substring) Type() sql.Type { return sql.Text }
+func (*Substring) Type() sql.Type { return sql.Text }
 
 // TransformUp implements the Expression interface.
 func (s *Substring) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {

@@ -17,12 +17,12 @@ func NewNot(child sql.Expression) *Not {
 }
 
 // Type implements the Expression interface.
-func (e Not) Type() sql.Type {
+func (e *Not) Type() sql.Type {
 	return sql.Boolean
 }
 
 // Eval implements the Expression interface.
-func (e Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (e *Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("expression.Not")
 	defer span.Finish()
 
@@ -38,7 +38,7 @@ func (e Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return !v.(bool), nil
 }
 
-func (e Not) String() string {
+func (e *Not) String() string {
 	return fmt.Sprintf("NOT(%s)", e.Child)
 }
 

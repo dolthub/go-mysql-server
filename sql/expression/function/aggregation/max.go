@@ -29,7 +29,7 @@ func (m *Max) Type() sql.Type {
 	return m.Child.Type()
 }
 
-func (m Max) String() string {
+func (m *Max) String() string {
 	return fmt.Sprintf("MAX(%s)", m.Child)
 }
 

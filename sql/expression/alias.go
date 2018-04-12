@@ -27,7 +27,7 @@ func (e *Alias) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return e.Child.Eval(ctx, row)
 }
 
-func (e Alias) String() string {
+func (e *Alias) String() string {
 	return fmt.Sprintf("%s as %s", e.Child, e.name)
 }
 

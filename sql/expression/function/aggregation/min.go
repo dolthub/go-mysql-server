@@ -29,7 +29,7 @@ func (m *Min) Type() sql.Type {
 	return m.Child.Type()
 }
 
-func (m Min) String() string {
+func (m *Min) String() string {
 	return fmt.Sprintf("MIN(%s)", m.Child)
 }
 

@@ -18,7 +18,7 @@ func NewAvg(e sql.Expression) *Avg {
 	return &Avg{expression.UnaryExpression{Child: e}}
 }
 
-func (a Avg) String() string {
+func (a *Avg) String() string {
 	return fmt.Sprintf("AVG(%s)", a.Child)
 }
 

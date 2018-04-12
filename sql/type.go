@@ -255,39 +255,50 @@ func (t numberT) Convert(v interface{}) (interface{}, error) {
 
 // Compare implements Type interface.
 func (t numberT) Compare(a interface{}, b interface{}) (int, error) {
-	if a == b {
+	if IsUnsigned(t) {
+		return compareUnsigned(a, b)
+	}
+
+	return compareSigned(a, b)
+}
+
+func compareSigned(a interface{}, b interface{}) (int, error) {
+	ca, err := cast.ToInt64E(a)
+	if err != nil {
+		return 0, err
+	}
+	cb, err := cast.ToInt64E(b)
+	if err != nil {
+		return 0, err
+	}
+
+	if ca == cb {
 		return 0, nil
 	}
 
-	switch t.t {
-	case sqltypes.Int32:
-		if a.(int32) < b.(int32) {
-			return -1, nil
-		}
-	case sqltypes.Int64:
-		if a.(int64) < b.(int64) {
-			return -1, nil
-		}
-	case sqltypes.Uint32:
-		if a.(uint32) < b.(uint32) {
-			return -1, nil
-		}
-	case sqltypes.Uint64:
-		if a.(uint64) < b.(uint64) {
-			return -1, nil
-		}
-	case sqltypes.Float32:
-		if a.(float32) < b.(float32) {
-			return -1, nil
-		}
-	case sqltypes.Float64:
-		if a.(float64) < b.(float64) {
-			return -1, nil
-		}
-	default:
-		if cast.ToInt64(a) < cast.ToInt64(b) {
-			return -1, nil
-		}
+	if ca < cb {
+		return -1, nil
+	}
+
+	return +1, nil
+}
+
+func compareUnsigned(a interface{}, b interface{}) (int, error) {
+	ca, err := cast.ToUint64E(a)
+	if err != nil {
+		return 0, err
+	}
+	cb, err := cast.ToUint64E(b)
+	if err != nil {
+		return 0, err
+	}
+
+	if ca == cb {
+		return 0, nil
+	}
+
+	if ca < cb {
+		return -1, nil
 	}
 
 	return +1, nil

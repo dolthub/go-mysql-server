@@ -61,7 +61,7 @@ func (ib *IsBinary) Eval(
 	return isBinary(blobBytes), nil
 }
 
-func (ib IsBinary) String() string {
+func (ib *IsBinary) String() string {
 	return fmt.Sprintf("IS_BINARY(%s)", ib.Child)
 }
 
