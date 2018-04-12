@@ -416,6 +416,12 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("foo"),
 	),
+	`SELECT 2 = 2 FROM foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewEquals(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(2), sql.Int64)),
+		},
+		plan.NewUnresolvedTable("foo"),
+	),
 	`SELECT *, bar FROM foo`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewStar(),
@@ -498,6 +504,61 @@ var fixtures = map[string]sql.Node{
 			},
 			plan.NewUnresolvedTable("t"),
 		),
+	),
+	`SELECT 1 + 1;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewPlus(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
+		},
+		plan.NewUnresolvedTable("dual"),
+	),
+	`SELECT 1 * (2 + 1);`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewMult(expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewPlus(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64))),
+		},
+		plan.NewUnresolvedTable("dual"),
+	),
+	`SELECT (0 - 1) * (1 | 1);`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewMult(
+				expression.NewMinus(expression.NewLiteral(int64(0), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
+				expression.NewBitOr(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
+			),
+		},
+		plan.NewUnresolvedTable("dual"),
+	),
+	`SELECT (1 << 3) % (2 div 1);`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewMod(
+				expression.NewShiftLeft(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(3), sql.Int64)),
+				expression.NewIntDiv(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64))),
+		},
+		plan.NewUnresolvedTable("dual"),
+	),
+	`SELECT 1.0 * a + 2.0 * b FROM t;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewPlus(
+				expression.NewMult(expression.NewLiteral(float64(1.0), sql.Float64), expression.NewUnresolvedColumn("a")),
+				expression.NewMult(expression.NewLiteral(float64(2.0), sql.Float64), expression.NewUnresolvedColumn("b")),
+			),
+		},
+		plan.NewUnresolvedTable("t"),
+	),
+	`SELECT '1.0' + 2;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewPlus(
+				expression.NewLiteral("1.0", sql.Text), expression.NewLiteral(int64(2), sql.Int64),
+			),
+		},
+		plan.NewUnresolvedTable("dual"),
+	),
+	`SELECT '1' + '2';`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewPlus(
+				expression.NewLiteral("1", sql.Text), expression.NewLiteral("2", sql.Text),
+			),
+		},
+		plan.NewUnresolvedTable("dual"),
 	),
 }
 

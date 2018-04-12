@@ -651,7 +651,7 @@ func MustConvert(t Type, v interface{}) interface{} {
 
 // IsNumber checks if t is a number type
 func IsNumber(t Type) bool {
-	return IsSigned(t) || IsUnsigned(t) || IsDecimal(t)
+	return IsInteger(t) || IsDecimal(t)
 }
 
 // IsSigned checks if t is a signed type.
@@ -662,6 +662,11 @@ func IsSigned(t Type) bool {
 // IsUnsigned checks if t is an unsigned type.
 func IsUnsigned(t Type) bool {
 	return t == Uint32 || t == Uint64
+}
+
+// IsInteger check if t is a (U)Int32/64 type
+func IsInteger(t Type) bool {
+	return IsSigned(t) || IsUnsigned(t)
 }
 
 // IsDecimal checks if t is decimal type.
