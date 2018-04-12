@@ -544,6 +544,22 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("t"),
 	),
+	`SELECT '1.0' + 2;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewPlus(
+				expression.NewLiteral("1.0", sql.Text), expression.NewLiteral(int64(2), sql.Int64),
+			),
+		},
+		plan.NewUnresolvedTable("dual"),
+	),
+	`SELECT '1' + '2';`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewPlus(
+				expression.NewLiteral("1", sql.Text), expression.NewLiteral("2", sql.Text),
+			),
+		},
+		plan.NewUnresolvedTable("dual"),
+	),
 }
 
 func TestParse(t *testing.T) {
