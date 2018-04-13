@@ -85,18 +85,23 @@ func (a *Analyzer) Log(msg string, args ...interface{}) {
 // Analyze the node and all its children.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("analyze")
-	defer span.Finish()
+	span.LogKV("plan", n.String())
 
 	prev := n
-
 	a.Log("starting analysis of node of type: %T", n)
 	cur, err := a.analyzeOnce(ctx, n)
+	defer func() {
+		if cur != nil {
+			span.SetTag("IsResolved", cur.Resolved())
+		}
+		span.Finish()
+	}()
+
 	if err != nil {
 		return nil, err
 	}
 
-	i := 0
-	for !reflect.DeepEqual(prev, cur) {
+	for i := 0; !reflect.DeepEqual(prev, cur); {
 		a.Log("previous node does not match new node, analyzing again, iteration: %d", i)
 		prev = cur
 		cur, err = a.analyzeOnce(ctx, cur)
@@ -111,18 +116,17 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node) (sql.Node, error) {
 	}
 
 	if errs := a.validate(ctx, cur); len(errs) != 0 {
-		var err error
 		for _, e := range errs {
 			err = multierror.Append(err, e)
 		}
-		return cur, err
 	}
 
-	return cur, nil
+	return cur, err
 }
 
 func (a *Analyzer) analyzeOnce(ctx *sql.Context, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("analyze_once")
+	span.LogKV("plan", n.String())
 	defer span.Finish()
 
 	result := n

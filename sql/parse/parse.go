@@ -30,7 +30,7 @@ var (
 
 // Parse parses the given SQL sentence and returns the corresponding node.
 func Parse(ctx *sql.Context, s string) (sql.Node, error) {
-	span, ctx := ctx.Span("parse_query", opentracing.Tag{Key: "query", Value: s})
+	span, ctx := ctx.Span("parse", opentracing.Tag{Key: "query", Value: s})
 	defer span.Finish()
 
 	if strings.HasSuffix(s, ";") {
@@ -75,8 +75,6 @@ func convertShow(s *sqlparser.Show) (sql.Node, error) {
 }
 
 func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
-	var node sql.Node
-
 	node, err := tableExprsToTable(ctx, s.From)
 	if err != nil {
 		return nil, err

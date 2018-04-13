@@ -101,11 +101,15 @@
   name = "github.com/uber/jaeger-client-go"
   packages = [
     ".",
+    "config",
     "internal/baggage",
+    "internal/baggage/remote",
     "internal/spanlog",
     "internal/throttler",
     "log",
+    "rpcmetrics",
     "thrift-gen/agent",
+    "thrift-gen/baggage",
     "thrift-gen/jaeger",
     "thrift-gen/sampling",
     "thrift-gen/zipkincore",
@@ -189,6 +193,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3c85c1642185eb6432cd6000e66ec6b84c9a9286a7d5190af1dc073b08b9c679"
+  inputs-digest = "48891907c05909828ee351b3bf03705667333195b5da11ba51215955b7935118"
   solver-name = "gps-cdcl"
   solver-version = 1
