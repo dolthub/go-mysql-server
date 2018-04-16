@@ -32,7 +32,7 @@ func main() {
 		Password: "password1",
 	}}
 
-	s, err := server.NewDefaultServer("tcp", "localhost:5123", auth, driver)
+	s, err := server.NewDefaultServer(server.Config{"tcp", "localhost:5123", auth}, driver)
 	if err != nil {
 		panic(err)
 	}
@@ -41,7 +41,7 @@ func main() {
 }
 
 func createTestDatabase() *mem.Database {
-	db := mem.NewDatabase("test")
+	db := mem.NewDatabase("test").(*mem.Database)
 	table := mem.NewTable("mytable", sql.Schema{
 		{Name: "name", Type: sql.Text},
 		{Name: "email", Type: sql.Text},
