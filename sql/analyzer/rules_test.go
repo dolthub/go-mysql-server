@@ -137,6 +137,11 @@ func TestResolveTables(t *testing.T) {
 	analyzed, err = f.Apply(sql.NewEmptyContext(), a, table)
 	require.NoError(err)
 	require.Equal(table, analyzed)
+
+	notAnalyzed = plan.NewUnresolvedTable("dual")
+	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
+	require.NoError(err)
+	require.Equal(dualTable, analyzed)
 }
 
 func TestResolveTablesNested(t *testing.T) {

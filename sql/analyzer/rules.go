@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
@@ -218,6 +219,14 @@ func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 	return n, nil
 }
 
+var dualTable = func() sql.Table {
+	t := mem.NewTable("dual", sql.Schema{
+		{Name: "dummy", Source: "dual", Type: sql.Text, Nullable: false},
+	})
+	_ = t.Insert(sql.NewRow("x"))
+	return t
+}()
+
 func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("resolve_tables")
 	defer span.Finish()
@@ -236,7 +245,11 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 
 		rt, err := a.Catalog.Table(a.CurrentDatabase, t.Name)
 		if err != nil {
-			return nil, err
+			if sql.ErrTableNotFound.Is(err) && t.Name == dualTable.Name() {
+				rt = dualTable
+			} else {
+				return nil, err
+			}
 		}
 
 		a.Log("table resolved: %q", rt.Name())
