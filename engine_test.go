@@ -213,6 +213,13 @@ func TestQueries(t *testing.T) {
 			{"third row"},
 		},
 	)
+
+	testQuery(t, e,
+		"SELECT 1 + 2",
+		[][]interface{}{
+			{int64(3)},
+		},
+	)
 }
 
 func TestOrderByColumns(t *testing.T) {
