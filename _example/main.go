@@ -32,15 +32,17 @@ func main() {
 		Password: "password1",
 	}}
 
-	if s, err := server.NewDefaultServer(server.Config{
+	s, err := server.NewDefaultServer(server.Config{
 		Protocol: "tcp",
 		Address:  "localhost:5123",
 		Auth:     auth,
-	}, driver); err != nil {
+	}, driver)
+
+	if err != nil {
 		panic(err)
-	} else {
-		s.Start()
 	}
+
+	s.Start()
 }
 
 func createTestDatabase() *mem.Database {

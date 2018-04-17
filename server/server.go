@@ -3,6 +3,7 @@ package server
 import (
 	"io"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-mysql-server.v0"
 
 	"gopkg.in/src-d/go-vitess.v0/mysql"
@@ -26,6 +27,7 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	opentracing.SetGlobalTracer(tracer)
 
 	handler := NewHandler(e, NewSessionManager(sb, tracer))
 	l, err := mysql.NewListener(cfg.Protocol, cfg.Address, cfg.Auth, handler)

@@ -115,8 +115,8 @@
     "thrift-gen/zipkincore",
     "utils"
   ]
-  revision = "c107110d057826281414cb964f167bce5be17588"
-  version = "v2.12.0"
+  revision = "3205d4aabc55c1a13b1e48d3db793bc8cd37bd16"
+  version = "v2.13.0"
 
 [[projects]]
   name = "github.com/uber/jaeger-lib"
@@ -193,6 +193,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "48891907c05909828ee351b3bf03705667333195b5da11ba51215955b7935118"
+  inputs-digest = "bde70c0f74976ec97e5a77561c55492c69de0521c3f855b2ffd753d7dd364b65"
   solver-name = "gps-cdcl"
   solver-version = 1
