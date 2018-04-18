@@ -52,15 +52,15 @@ func createTestDatabase() *mem.Database {
 		tableName = "mytable"
 	)
 
-	db := mem.NewDatabase("test").(*mem.Database)
-	table := mem.NewTable("mytable", sql.Schema{
+	db := mem.NewDatabase(dbName).(*mem.Database)
+	table := mem.NewTable(tableName, sql.Schema{
 		{Name: "name", Type: sql.Text, Nullable: false, Source: tableName},
 		{Name: "email", Type: sql.Text, Nullable: false, Source: tableName},
 		{Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: tableName},
 		{Name: "created_at", Type: sql.Timestamp, Nullable: false, Source: tableName},
 	})
 
-	db.AddTable("mytable", table)
+	db.AddTable(tableName, table)
 	table.Insert(sql.NewRow("John Doe", "john@doe.com", []string{"555-555-555"}, time.Now()))
 	table.Insert(sql.NewRow("John Doe", "johnalt@doe.com", []string{}, time.Now()))
 	table.Insert(sql.NewRow("Jane Doe", "jane@doe.com", []string{}, time.Now()))
