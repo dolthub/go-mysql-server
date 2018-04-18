@@ -55,7 +55,7 @@ auth.Entries["user"] = []*mysql.AuthServerStaticEntry{{
 
 config := server.Config{
     Protocol: "tcp",
-    Address:  "localhost:5432",
+    Address:  "localhost:3306",
     Auth:     auth,
 }
 
@@ -70,7 +70,7 @@ s.Start()
 
 Then, you can connect to the server with any mysql client:
 ```bash
-> mysql --host=127.0.0.1 --port=5123 -u user -ppass db -e "SELECT * FROM mytable"
+> mysql --host=127.0.0.1 --port=3306 -u user -ppass db -e "SELECT * FROM mytable"
 +----------+-------------------+-------------------------------+---------------------+
 | name     | email             | phone_numbers                 | created_at          |
 +----------+-------------------+-------------------------------+---------------------+

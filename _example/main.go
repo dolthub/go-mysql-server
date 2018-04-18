@@ -34,7 +34,7 @@ func main() {
 
 	config := server.Config{
 		Protocol: "tcp",
-		Address:  "localhost:5432",
+		Address:  "localhost:3306",
 		Auth:     auth,
 	}
 
