@@ -32,7 +32,12 @@ func main() {
 		Password: "password1",
 	}}
 
-	s, err := server.NewDefaultServer("tcp", "localhost:5123", auth, driver)
+	s, err := server.NewDefaultServer(server.Config{
+		Protocol: "tcp",
+		Address:  "localhost:5123",
+		Auth:     auth,
+	}, driver)
+
 	if err != nil {
 		panic(err)
 	}
@@ -41,12 +46,12 @@ func main() {
 }
 
 func createTestDatabase() *mem.Database {
-	db := mem.NewDatabase("test")
+	db := mem.NewDatabase("test").(*mem.Database)
 	table := mem.NewTable("mytable", sql.Schema{
-		{Name: "name", Type: sql.Text},
-		{Name: "email", Type: sql.Text},
-		{Name: "phone_numbers", Type: sql.JSON},
-		{Name: "created_at", Type: sql.Timestamp},
+		{Name: "name", Type: sql.Text, Source: "mytable"},
+		{Name: "email", Type: sql.Text, Source: "mytable"},
+		{Name: "phone_numbers", Type: sql.JSON, Source: "mytable"},
+		{Name: "created_at", Type: sql.Timestamp, Source: "mytable"},
 	})
 	db.AddTable("mytable", table)
 	table.Insert(sql.NewRow("John Doe", "john@doe.com", []string{"555-555-555"}, time.Now()))

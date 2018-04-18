@@ -416,12 +416,12 @@ const expectedTree = `Offset(2)
 func TestPrintTree(t *testing.T) {
 	require := require.New(t)
 	node, err := parse.Parse(sql.NewEmptyContext(), `
-		SELECT t.foo, bar.baz 
-		FROM tbl t 
-		INNER JOIN bar 
-			ON foo = baz 
-		WHERE foo > qux 
-		LIMIT 5 
+		SELECT t.foo, bar.baz
+		FROM tbl t
+		INNER JOIN bar
+			ON foo = baz
+		WHERE foo > qux
+		LIMIT 5
 		OFFSET 2`)
 	require.NoError(err)
 	require.Equal(expectedTree, node.String())
@@ -439,10 +439,10 @@ func TestTracing(t *testing.T) {
 
 	ctx := sql.NewContext(context.TODO(), sql.WithTracer(tracer))
 
-	_, iter, err := e.Query(ctx, `SELECT DISTINCT i 
-		FROM mytable 
-		WHERE s = 'first row' 
-		ORDER BY i DESC 
+	_, iter, err := e.Query(ctx, `SELECT DISTINCT i
+		FROM mytable
+		WHERE s = 'first row'
+		ORDER BY i DESC
 		LIMIT 1`)
 	require.NoError(err)
 
@@ -463,7 +463,7 @@ func TestTracing(t *testing.T) {
 		"plan.Sort",
 	}
 
-	require.Len(spans, 76)
+	require.Len(spans, 77)
 
 	var spanOperations []string
 	for _, s := range spans {

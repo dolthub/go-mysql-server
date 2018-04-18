@@ -73,15 +73,13 @@ func (c *Context) Span(
 	opName string,
 	opts ...opentracing.StartSpanOption,
 ) (opentracing.Span, *Context) {
-	var span opentracing.Span
-	if parentSpan := opentracing.SpanFromContext(c.Context); parentSpan != nil {
+	parentSpan := opentracing.SpanFromContext(c.Context)
+	if parentSpan != nil {
 		opts = append(opts, opentracing.ChildOf(parentSpan.Context()))
-		span = c.tracer.StartSpan(opName, opts...)
-	} else {
-		span = c.tracer.StartSpan(opName, opts...)
 	}
-
+	span := c.tracer.StartSpan(opName, opts...)
 	ctx := opentracing.ContextWithSpan(c.Context, span)
+
 	return span, &Context{ctx, c.Session, c.tracer}
 }
 

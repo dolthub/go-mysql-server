@@ -1,6 +1,7 @@
 package sqle
 
 import (
+	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
@@ -27,6 +28,9 @@ func (e *Engine) Query(
 	ctx *sql.Context,
 	query string,
 ) (sql.Schema, sql.RowIter, error) {
+	span, ctx := ctx.Span("query", opentracing.Tag{Key: "query", Value: query})
+	defer span.Finish()
+
 	parsed, err := parse.Parse(ctx, query)
 	if err != nil {
 		return nil, nil, err
