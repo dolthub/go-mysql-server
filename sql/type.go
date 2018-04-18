@@ -73,6 +73,21 @@ func (s Schema) Contains(column string) bool {
 	return false
 }
 
+// Equals checks whether the given schema is equal to this one.
+func (s Schema) Equals(s2 Schema) bool {
+	if len(s) != len(s2) {
+		return false
+	}
+
+	for i := range s {
+		if !s[i].Equals(s2[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 // Column is the definition of a table column.
 // As SQL:2016 puts it:
 //   A column is a named component of a table. It has a data type, a default,
@@ -99,6 +114,15 @@ func (c *Column) Check(v interface{}) bool {
 
 	_, err := c.Type.Convert(v)
 	return err == nil
+}
+
+// Equals checks whether two columns are equal.
+func (c *Column) Equals(c2 *Column) bool {
+	return c.Name == c2.Name &&
+		c.Source == c2.Source &&
+		c.Nullable == c2.Nullable &&
+		reflect.DeepEqual(c.Default, c2.Default) &&
+		reflect.DeepEqual(c.Type, c2.Type)
 }
 
 // Type represent a SQL type.

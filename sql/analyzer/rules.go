@@ -20,8 +20,10 @@ var DefaultRules = []Rule{
 	{"resolve_database", resolveDatabase},
 	{"resolve_star", resolveStar},
 	{"resolve_functions", resolveFunctions},
+	{"reorder_projection", reorderProjection},
 	{"pushdown", pushdown},
 	{"optimize_distinct", optimizeDistinct},
+	{"erase_projection", eraseProjection},
 }
 
 var (
@@ -149,7 +151,10 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 					tables := dedupStrings(colIndex[col.Name()])
 					switch len(tables) {
 					case 0:
-						return nil, ErrColumnNotFound.New(col.Name())
+						// If there are no tables that have any column with the column
+						// name let's just return it as it is. This may be an alias, so
+						// we'll wait for the reorder of the
+						return col, nil
 					case 1:
 						col = expression.NewUnresolvedQualifiedColumn(
 							tables[0],
@@ -307,6 +312,24 @@ type columnInfo struct {
 	col *sql.Column
 }
 
+// maybeAlias is a wrapper on UnresolvedColumn used only to defer the
+// resolution of the column because it could be an alias and that
+// phase of the analyzer has not run yet.
+type maybeAlias struct {
+	*expression.UnresolvedColumn
+}
+
+func (e maybeAlias) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
+	return fn(e)
+}
+
+// column is the common interface that groups UnresolvedColumn and maybeAlias.
+type column interface {
+	sql.Nameable
+	sql.Tableable
+	sql.Expression
+}
+
 func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.Finish()
@@ -337,7 +360,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				return e, nil
 			}
 
-			uc, ok := e.(*expression.UnresolvedColumn)
+			uc, ok := e.(column)
 			if !ok {
 				return e, nil
 			}
@@ -347,7 +370,13 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				if uc.Table() != "" {
 					return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
 				}
-				return nil, ErrColumnNotFound.New(uc.Name())
+
+				switch uc := uc.(type) {
+				case *expression.UnresolvedColumn:
+					return &maybeAlias{uc}, nil
+				default:
+					return nil, ErrColumnNotFound.New(uc.Name())
+				}
 			}
 
 			var ci columnInfo
@@ -364,7 +393,13 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				if uc.Table() != "" {
 					return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
 				}
-				return nil, ErrColumnNotFound.New(uc.Name())
+
+				switch uc := uc.(type) {
+				case *expression.UnresolvedColumn:
+					return &maybeAlias{uc}, nil
+				default:
+					return nil, ErrColumnNotFound.New(uc.Name())
+				}
 			}
 
 			a.Log("column resolved to %q.%q", ci.col.Source, ci.col.Name)
@@ -442,6 +477,153 @@ func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, e
 	}
 
 	return node, nil
+}
+
+var errInvalidNodeType = errors.NewKind("reorder projection: invalid node of type: %T")
+
+func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	span, ctx := ctx.Span("reorder_projection")
+	defer span.Finish()
+
+	if n.Resolved() {
+		return n, nil
+	}
+
+	a.Log("reorder projection, node of type: %T", n)
+
+	// Then we transform the projection
+	return n.TransformUp(func(node sql.Node) (sql.Node, error) {
+		project, ok := node.(*plan.Project)
+		if !ok {
+			return node, nil
+		}
+
+		// We must find all columns that may need to be moved inside the
+		// projection.
+		//var movedColumns = make(map[string]sql.Expression)
+		var newColumns = make(map[string]sql.Expression)
+		for _, col := range project.Projections {
+			alias, ok := col.(*expression.Alias)
+			if ok {
+				newColumns[alias.Name()] = col
+			}
+		}
+
+		// And add projection nodes where needed in the child tree.
+		var didNeedReorder bool
+		child, err := project.Child.TransformUp(func(node sql.Node) (sql.Node, error) {
+			var requiredColumns []string
+			switch node := node.(type) {
+			case *plan.Sort, *plan.Filter:
+				for _, expr := range node.(sql.Expressioner).Expressions() {
+					expression.Inspect(expr, func(e sql.Expression) bool {
+						if e != nil && e.Resolved() {
+							return true
+						}
+
+						uc, ok := e.(column)
+						if ok && uc.Table() == "" {
+							if _, ok := newColumns[uc.Name()]; ok {
+								requiredColumns = append(requiredColumns, uc.Name())
+							}
+						}
+
+						return true
+					})
+				}
+			default:
+				return node, nil
+			}
+
+			didNeedReorder = true
+
+			// Only add the required columns for that node in the projection.
+			child := node.Children()[0]
+			schema := child.Schema()
+			var projections = make([]sql.Expression, 0, len(schema)+len(requiredColumns))
+			for i, col := range schema {
+				projections = append(projections, expression.NewGetFieldWithTable(
+					i, col.Type, col.Source, col.Name, col.Nullable,
+				))
+			}
+
+			for _, col := range requiredColumns {
+				projections = append(projections, newColumns[col])
+				delete(newColumns, col)
+			}
+
+			child = plan.NewProject(projections, child)
+			switch node := node.(type) {
+			case *plan.Filter:
+				return plan.NewFilter(node.Expression, child), nil
+			case *plan.Sort:
+				return plan.NewSort(node.SortFields, child), nil
+			default:
+				return nil, errInvalidNodeType.New(node)
+			}
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		if !didNeedReorder {
+			return project, nil
+		}
+
+		child, err = resolveColumns(ctx, a, child)
+		if err != nil {
+			return nil, err
+		}
+
+		childSchema := child.Schema()
+		// Finally, replace the columns we moved with GetFields since they
+		// have already been projected.
+		var projections = make([]sql.Expression, len(project.Projections))
+		for i, p := range project.Projections {
+			if alias, ok := p.(*expression.Alias); ok {
+				var found bool
+				for idx, col := range childSchema {
+					if col.Name == alias.Name() {
+						projections[i] = expression.NewGetField(
+							idx, col.Type, col.Name, col.Nullable,
+						)
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					projections[i] = p
+				}
+			} else {
+				projections[i] = p
+			}
+		}
+
+		return plan.NewProject(projections, child), nil
+	})
+}
+
+func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
+	span, ctx := ctx.Span("erase_projection")
+	defer span.Finish()
+
+	if !node.Resolved() {
+		return node, nil
+	}
+
+	a.Log("erase projection, node of type: %T", node)
+
+	return node.TransformUp(func(node sql.Node) (sql.Node, error) {
+		project, ok := node.(*plan.Project)
+		if ok && project.Schema().Equals(project.Child.Schema()) {
+			a.Log("project erased")
+			return project.Child, nil
+		}
+
+		return node, nil
+	})
 }
 
 func dedupStrings(in []string) []string {
