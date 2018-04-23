@@ -15,7 +15,10 @@ func TestResolveSubqueries(t *testing.T) {
 	require := require.New(t)
 
 	table1 := mem.NewTable("foo", sql.Schema{{Name: "a", Type: sql.Int64, Source: "foo"}})
-	table2 := mem.NewTable("bar", sql.Schema{{Name: "b", Type: sql.Int64, Source: "bar"}})
+	table2 := mem.NewTable("bar", sql.Schema{
+		{Name: "b", Type: sql.Int64, Source: "bar"},
+		{Name: "k", Type: sql.Int64, Source: "bar"},
+	})
 	table3 := mem.NewTable("baz", sql.Schema{{Name: "c", Type: sql.Int64, Source: "baz"}})
 	db := mem.NewDatabase("mydb")
 	memDb, ok := db.(*mem.Database)
@@ -79,21 +82,11 @@ func TestResolveSubqueries(t *testing.T) {
 			plan.NewCrossJoin(
 				plan.NewSubqueryAlias(
 					"t1",
-					plan.NewProject(
-						[]sql.Expression{
-							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-						},
-						table1,
-					),
+					table1,
 				),
 				plan.NewSubqueryAlias(
 					"t2",
-					plan.NewProject(
-						[]sql.Expression{
-							expression.NewGetFieldWithTable(0, sql.Int64, "t2alias", "b", false),
-						},
-						subquery,
-					),
+					subquery,
 				),
 			),
 			plan.NewUnresolvedTable("baz"),
@@ -382,8 +375,8 @@ func TestQualifyColumns(t *testing.T) {
 	)
 
 	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
-	require.Error(err)
-	require.True(ErrColumnNotFound.Is(err))
+	require.NoError(err)
+	require.Equal(node, result)
 
 	node = plan.NewProject(
 		[]sql.Expression{
@@ -395,17 +388,6 @@ func TestQualifyColumns(t *testing.T) {
 	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
 	require.Error(err)
 	require.True(sql.ErrTableNotFound.Is(err))
-
-	node = plan.NewProject(
-		[]sql.Expression{
-			expression.NewUnresolvedColumn("b"),
-		},
-		plan.NewTableAlias("a", table),
-	)
-
-	_, err = f.Apply(sql.NewEmptyContext(), nil, node)
-	require.Error(err)
-	require.True(ErrColumnNotFound.Is(err))
 
 	node = plan.NewProject(
 		[]sql.Expression{
@@ -452,6 +434,123 @@ func TestQualifyColumns(t *testing.T) {
 
 	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
 	require.NoError(err)
+	require.Equal(expected, result)
+}
+
+func TestReorderProjection(t *testing.T) {
+	require := require.New(t)
+	f := getRule("reorder_projection")
+
+	table := mem.NewTable("mytable", sql.Schema{{
+		Name: "i", Source: "mytable", Type: sql.Int64,
+	}})
+
+	node := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+			expression.NewAlias(expression.NewLiteral(1, sql.Int64), "foo"),
+			expression.NewAlias(expression.NewLiteral(2, sql.Int64), "bar"),
+		},
+		plan.NewSort(
+			[]plan.SortField{
+				{Column: expression.NewUnresolvedColumn("foo")},
+			},
+			plan.NewFilter(
+				expression.NewEquals(
+					expression.NewLiteral(1, sql.Int64),
+					expression.NewUnresolvedColumn("bar"),
+				),
+				table,
+			),
+		),
+	)
+
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+			expression.NewGetField(2, sql.Int64, "foo", false),
+			expression.NewGetField(1, sql.Int64, "bar", false),
+		},
+		plan.NewSort(
+			[]plan.SortField{{Column: expression.NewGetField(2, sql.Int64, "foo", false)}},
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+					expression.NewGetField(1, sql.Int64, "bar", false),
+					expression.NewAlias(expression.NewLiteral(1, sql.Int64), "foo"),
+				},
+				plan.NewFilter(
+					expression.NewEquals(
+						expression.NewLiteral(1, sql.Int64),
+						expression.NewGetField(1, sql.Int64, "bar", false),
+					),
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+							expression.NewAlias(expression.NewLiteral(2, sql.Int64), "bar"),
+						},
+						table,
+					),
+				),
+			),
+		),
+	)
+
+	result, err := f.Apply(sql.NewEmptyContext(), New(nil), node)
+	require.NoError(err)
+
+	require.Equal(expected, result)
+}
+
+func TestEraseProjection(t *testing.T) {
+	require := require.New(t)
+	f := getRule("erase_projection")
+
+	table := mem.NewTable("mytable", sql.Schema{{
+		Name: "i", Source: "mytable", Type: sql.Int64,
+	}})
+
+	expected := plan.NewSort(
+		[]plan.SortField{{Column: expression.NewGetField(2, sql.Int64, "foo", false)}},
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+				expression.NewGetField(1, sql.Int64, "bar", false),
+				expression.NewAlias(expression.NewLiteral(1, sql.Int64), "foo"),
+			},
+			plan.NewFilter(
+				expression.NewEquals(
+					expression.NewLiteral(1, sql.Int64),
+					expression.NewGetField(1, sql.Int64, "bar", false),
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+						expression.NewAlias(expression.NewLiteral(2, sql.Int64), "bar"),
+					},
+					table,
+				),
+			),
+		),
+	)
+
+	node := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+			expression.NewGetField(1, sql.Int64, "bar", false),
+			expression.NewGetField(2, sql.Int64, "foo", false),
+		},
+		expected,
+	)
+
+	result, err := f.Apply(sql.NewEmptyContext(), New(nil), node)
+	require.NoError(err)
+
+	require.Equal(expected, result)
+
+	result, err = f.Apply(sql.NewEmptyContext(), New(nil), expected)
+	require.NoError(err)
+
 	require.Equal(expected, result)
 }
 

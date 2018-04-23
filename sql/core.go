@@ -12,6 +12,12 @@ type Nameable interface {
 	Name() string
 }
 
+// Tableable is something that has a table.
+type Tableable interface {
+	// Table returns the table name.
+	Table() string
+}
+
 // Resolvable is something that can be resolved or not.
 type Resolvable interface {
 	// Resolved returns whether the node is resolved.

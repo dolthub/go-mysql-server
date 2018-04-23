@@ -17,209 +17,192 @@ import (
 
 const driverName = "engine_tests"
 
-func TestQueries(t *testing.T) {
-	e := newEngine(t)
-
-	testQuery(t, e,
+var queries = []struct {
+	query    string
+	expected []sql.Row
+}{
+	{
 		"SELECT i FROM mytable;",
-		[][]interface{}{{int64(1)}, {int64(2)}, {int64(3)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
 		"SELECT i FROM mytable WHERE i = 2;",
-		[][]interface{}{{int64(2)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int64(2)}},
+	},
+	{
 		"SELECT i FROM mytable ORDER BY i DESC;",
-		[][]interface{}{{int64(3)}, {int64(2)}, {int64(1)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int64(3)}, {int64(2)}, {int64(1)}},
+	},
+	{
 		"SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC;",
-		[][]interface{}{{int64(1)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int64(1)}},
+	},
+	{
 		"SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT 1;",
-		[][]interface{}{{int64(1)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int64(1)}},
+	},
+	{
 		"SELECT COUNT(*) FROM mytable;",
-		[][]interface{}{{int32(3)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int32(3)}},
+	},
+	{
 		"SELECT COUNT(*) FROM mytable LIMIT 1;",
-		[][]interface{}{{int32(3)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int32(3)}},
+	},
+	{
 		"SELECT COUNT(*) AS c FROM mytable;",
-		[][]interface{}{{int32(3)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int32(3)}},
+	},
+	{
 		"SELECT substring(s, 2, 3) FROM mytable",
-		[][]interface{}{{"irs"}, {"eco"}, {"hir"}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{"irs"}, {"eco"}, {"hir"}},
+	},
+	{
 		"SELECT YEAR('2007-12-11') FROM mytable",
-		[][]interface{}{{int32(2007)}, {int32(2007)}, {int32(2007)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int32(2007)}, {int32(2007)}, {int32(2007)}},
+	},
+	{
 		"SELECT MONTH('2007-12-11') FROM mytable",
-		[][]interface{}{{int32(12)}, {int32(12)}, {int32(12)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int32(12)}, {int32(12)}, {int32(12)}},
+	},
+	{
 		"SELECT DAY('2007-12-11') FROM mytable",
-		[][]interface{}{{int32(11)}, {int32(11)}, {int32(11)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int32(11)}, {int32(11)}, {int32(11)}},
+	},
+	{
 		"SELECT HOUR('2007-12-11 20:21:22') FROM mytable",
-		[][]interface{}{{int32(20)}, {int32(20)}, {int32(20)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int32(20)}, {int32(20)}, {int32(20)}},
+	},
+	{
 		"SELECT MINUTE('2007-12-11 20:21:22') FROM mytable",
-		[][]interface{}{{int32(21)}, {int32(21)}, {int32(21)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int32(21)}, {int32(21)}, {int32(21)}},
+	},
+	{
 		"SELECT SECOND('2007-12-11 20:21:22') FROM mytable",
-		[][]interface{}{{int32(22)}, {int32(22)}, {int32(22)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int32(22)}, {int32(22)}, {int32(22)}},
+	},
+	{
 		"SELECT DAYOFYEAR('2007-12-11 20:21:22') FROM mytable",
-		[][]interface{}{{int32(345)}, {int32(345)}, {int32(345)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
+	},
+	{
 		"SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
-		[][]interface{}{{int64(1)}, {int64(2)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int64(1)}, {int64(2)}},
+	},
+	{
 		"SELECT i FROM mytable WHERE i NOT BETWEEN 1 AND 2",
-		[][]interface{}{{int64(3)}},
-	)
-
-	testQuery(t, e,
+		[]sql.Row{{int64(3)}},
+	},
+	{
 		"SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2",
-		[][]interface{}{
+		[]sql.Row{
 			{int64(1), int64(1), "third"},
 			{int64(2), int64(2), "second"},
 			{int64(3), int64(3), "first"},
 		},
-	)
-
-	testQuery(t, e,
-		"SELECT s FROM mytable INNER JOIN othertable "+
+	},
+	{
+		"SELECT s FROM mytable INNER JOIN othertable " +
 			"ON substring(s2, 1, 2) != '' AND i = i2",
-		[][]interface{}{
+		[]sql.Row{
 			{"first row"},
 			{"second row"},
 			{"third row"},
 		},
-	)
-
-	testQuery(t, e,
+	},
+	{
 		`SELECT COUNT(*) as cnt, fi FROM (
 			SELECT tbl.s AS fi
 			FROM mytable tbl
 		) t
 		GROUP BY fi`,
-		[][]interface{}{
+		[]sql.Row{
 			{int32(1), "first row"},
 			{int32(1), "second row"},
 			{int32(1), "third row"},
 		},
-	)
-
-	testQuery(t, e,
+	},
+	{
 		"SELECT CAST(-3 AS UNSIGNED) FROM mytable",
-		[][]interface{}{
+		[]sql.Row{
 			{uint64(18446744073709551613)},
 			{uint64(18446744073709551613)},
 			{uint64(18446744073709551613)},
 		},
-	)
-
-	testQuery(t, e,
+	},
+	{
 		"SELECT CONVERT(-3, UNSIGNED) FROM mytable",
-		[][]interface{}{
+		[]sql.Row{
 			{uint64(18446744073709551613)},
 			{uint64(18446744073709551613)},
 			{uint64(18446744073709551613)},
 		},
-	)
-
-	testQuery(t, e,
+	},
+	{
 		"SELECT '3' > 2 FROM tabletest",
-		[][]interface{}{
+		[]sql.Row{
 			{true},
 			{true},
 			{true},
 		},
-	)
-
-	testQuery(t, e,
+	},
+	{
 		"SELECT text > 2 FROM tabletest",
-		[][]interface{}{
+		[]sql.Row{
 			{false},
 			{false},
 			{false},
 		},
-	)
-
-	testQuery(t, e,
+	},
+	{
 		"SELECT * FROM tabletest WHERE text > 0",
 		nil,
-	)
-
-	testQuery(t, e,
+	},
+	{
 		"SELECT * FROM tabletest WHERE text = 0",
-		[][]interface{}{
+		[]sql.Row{
 			{"a", int32(1)},
 			{"b", int32(2)},
 			{"c", int32(3)},
 		},
-	)
-
-	testQuery(t, e,
+	},
+	{
 		"SELECT * FROM tabletest WHERE text = 'a'",
-		[][]interface{}{
+		[]sql.Row{
 			{"a", int32(1)},
 		},
-	)
-
-	testQuery(t, e,
+	},
+	{
 		"SELECT s FROM mytable WHERE i IN (1, 2, 5)",
-		[][]interface{}{
+		[]sql.Row{
 			{"first row"},
 			{"second row"},
 		},
-	)
-
-	testQuery(t, e,
+	},
+	{
 		"SELECT s FROM mytable WHERE i NOT IN (1, 2, 5)",
-		[][]interface{}{
+		[]sql.Row{
 			{"third row"},
 		},
-	)
-
-	testQuery(t, e,
+	},
+	{
 		"SELECT 1 + 2",
-		[][]interface{}{
+		[]sql.Row{
 			{int64(3)},
 		},
-	)
+	},
+	{
+		`SELECT i AS foo FROM mytable WHERE foo NOT IN (1, 2, 5)`,
+		[]sql.Row{{int64(3)}},
+	},
+}
+
+func TestQueries(t *testing.T) {
+	e := newEngine(t)
+
+	for _, tt := range queries {
+		testQuery(t, e, tt.query, tt.expected)
+	}
 }
 
 func TestOrderByColumns(t *testing.T) {
@@ -246,12 +229,12 @@ func TestInsertInto(t *testing.T) {
 	e := newEngine(t)
 	testQuery(t, e,
 		"INSERT INTO mytable (s, i) VALUES ('x', 999);",
-		[][]interface{}{{int64(1)}},
+		[]sql.Row{{int64(1)}},
 	)
 
 	testQuery(t, e,
 		"SELECT i FROM mytable WHERE s = 'x';",
-		[][]interface{}{{int64(999)}},
+		[]sql.Row{{int64(999)}},
 	)
 }
 
@@ -318,7 +301,7 @@ func TestDDL(t *testing.T) {
 	testQuery(t, e,
 		"CREATE TABLE t1(a INTEGER, b TEXT, c DATE,"+
 			"d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL)",
-		[][]interface{}(nil),
+		[]sql.Row(nil),
 	)
 
 	db, err := e.Catalog.Database("mydb")
@@ -339,7 +322,7 @@ func TestDDL(t *testing.T) {
 	require.Equal(s, testTable.Schema())
 }
 
-func testQuery(t *testing.T, e *sqle.Engine, q string, r [][]interface{}) {
+func testQuery(t *testing.T, e *sqle.Engine, q string, r []sql.Row) {
 	t.Run(q, func(t *testing.T) {
 		require := require.New(t)
 		session := sql.NewEmptyContext()
@@ -347,7 +330,7 @@ func testQuery(t *testing.T, e *sqle.Engine, q string, r [][]interface{}) {
 		_, rows, err := e.Query(session, q)
 		require.NoError(err)
 
-		var rs [][]interface{}
+		var rs []sql.Row
 		for {
 			row, err := rows.Next()
 			if err == io.EOF {
@@ -462,8 +445,6 @@ func TestTracing(t *testing.T) {
 		"plan.Project",
 		"plan.Sort",
 	}
-
-	require.Len(spans, 77)
 
 	var spanOperations []string
 	for _, s := range spans {
