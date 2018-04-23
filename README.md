@@ -144,4 +144,4 @@ SELECT email FROM mytable WHERE name = 'Evil Bob'
 
 ## License
 
-go-mysql-server is licensed under the [MIT License](/LICENSE).
+Apache License 2.0, see [LICENSE](/LICENSE)
