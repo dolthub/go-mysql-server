@@ -1,8 +1,6 @@
 package server
 
 import (
-	"io"
-
 	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-mysql-server.v0"
 
@@ -12,7 +10,19 @@ import (
 // Server is a MySQL server for SQLe engines.
 type Server struct {
 	Listener *mysql.Listener
-	closer   io.Closer
+}
+
+// Config for the mysql server.
+type Config struct {
+	// Protocol for the connection.
+	Protocol string
+	// Address of the server.
+	Address string
+	// Auth of the server.
+	Auth mysql.AuthServer
+	// Tracer to use in the server. By default, a noop tracer will be used if
+	// no tracer is provided.
+	Tracer opentracing.Tracer
 }
 
 // NewDefaultServer creates a Server with the default session builder.
@@ -23,11 +33,12 @@ func NewDefaultServer(cfg Config, e *sqle.Engine) (*Server, error) {
 // NewServer creates a server with the given protocol, address, authentication
 // details given a SQLe engine and a session builder.
 func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
-	tracer, close, err := cfg.Tracer()
-	if err != nil {
-		return nil, err
+	var tracer opentracing.Tracer
+	if cfg.Tracer != nil {
+		tracer = cfg.Tracer
+	} else {
+		tracer = opentracing.NoopTracer{}
 	}
-	opentracing.SetGlobalTracer(tracer)
 
 	handler := NewHandler(e, NewSessionManager(sb, tracer))
 	l, err := mysql.NewListener(cfg.Protocol, cfg.Address, cfg.Auth, handler)
@@ -35,7 +46,7 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 		return nil, err
 	}
 
-	return &Server{Listener: l, closer: close}, nil
+	return &Server{Listener: l}, nil
 }
 
 // Start starts accepting connections on the server.
@@ -47,5 +58,5 @@ func (s *Server) Start() error {
 // Close closes the server connection.
 func (s *Server) Close() error {
 	s.Listener.Close()
-	return s.closer.Close()
+	return nil
 }
