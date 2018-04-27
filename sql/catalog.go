@@ -11,6 +11,7 @@ var ErrDatabaseNotFound = errors.NewKind("database not found: %s")
 type Catalog struct {
 	Databases
 	FunctionRegistry
+	*IndexRegistry
 }
 
 // NewCatalog returns a new empty Catalog.
@@ -18,6 +19,7 @@ func NewCatalog() *Catalog {
 	return &Catalog{
 		Databases:        Databases{},
 		FunctionRegistry: NewFunctionRegistry(),
+		IndexRegistry:    NewIndexRegistry(),
 	}
 }
 
