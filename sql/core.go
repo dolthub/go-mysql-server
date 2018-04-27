@@ -6,6 +6,23 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 )
 
+var (
+	// ErrInvalidType is thrown when there is an unexpected type at some part of
+	// the execution tree.
+	ErrInvalidType = errors.NewKind("invalid type: %s")
+
+	// ErrTableAlreadyExists is thrown when someone tries to create a
+	// table with a name of an existing one
+	ErrTableAlreadyExists = errors.NewKind("table with name %s already exists")
+
+	// ErrTableNotFound is returned when the table is not available from the
+	// current scope.
+	ErrTableNotFound = errors.NewKind("table not found: %s")
+
+	//ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
+	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
+)
+
 // Nameable is something that has a name.
 type Nameable interface {
 	// Name returns the name.
@@ -141,18 +158,3 @@ type Database interface {
 type Alterable interface {
 	Create(name string, schema Schema) error
 }
-
-// ErrInvalidType is thrown when there is an unexpected type at some part of
-// the execution tree.
-var ErrInvalidType = errors.NewKind("invalid type: %s")
-
-// ErrTableAlreadyExists is thrown when someone tries to create a
-// table with a name of an existing one
-var ErrTableAlreadyExists = errors.NewKind("table with name %s already exists")
-
-// ErrTableNotFound is returned when the table is not available from the
-// current scope.
-var ErrTableNotFound = errors.NewKind("table not found: %s")
-
-//ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
-var ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
