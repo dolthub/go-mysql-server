@@ -101,6 +101,19 @@ type Table interface {
 	Node
 }
 
+// Indexable represents a table that supports being indexed and receiving
+// indexes to be able to speed up its execution.
+type Indexable interface {
+	// IndexKeyValueIter returns an iterator with the values of each row in
+	// the table for the given column names.
+	IndexKeyValueIter(colNames []string) (IndexKeyValueIter, error)
+	// WithProjectFiltersAndIndex is meant to be called instead of RowIter
+	// method of the table. Returns a new iterator given the columns,
+	// filters and the index so the table can improve its speed instead of
+	// making a full scan.
+	WithProjectFiltersAndIndex(columns, filters []Expression, index IndexValueIter) (RowIter, error)
+}
+
 // PushdownProjectionTable is a table that can produce a specific RowIter
 // that's more optimized given the columns that are projected.
 type PushdownProjectionTable interface {
