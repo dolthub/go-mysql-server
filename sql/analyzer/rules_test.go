@@ -21,12 +21,9 @@ func TestResolveSubqueries(t *testing.T) {
 	})
 	table3 := mem.NewTable("baz", sql.Schema{{Name: "c", Type: sql.Int64, Source: "baz"}})
 	db := mem.NewDatabase("mydb")
-	memDb, ok := db.(*mem.Database)
-	require.True(ok)
-
-	memDb.AddTable("foo", table1)
-	memDb.AddTable("bar", table2)
-	memDb.AddTable("baz", table3)
+	db.AddTable("foo", table1)
+	db.AddTable("bar", table2)
+	db.AddTable("baz", table3)
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 	a := New(catalog)
@@ -106,10 +103,7 @@ func TestResolveTables(t *testing.T) {
 
 	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
 	db := mem.NewDatabase("mydb")
-	memDb, ok := db.(*mem.Database)
-	require.True(ok)
-
-	memDb.AddTable("mytable", table)
+	db.AddTable("mytable", table)
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 
@@ -144,10 +138,7 @@ func TestResolveTablesNested(t *testing.T) {
 
 	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
 	db := mem.NewDatabase("mydb")
-	memDb, ok := db.(*mem.Database)
-	require.True(ok)
-
-	memDb.AddTable("mytable", table)
+	db.AddTable("mytable", table)
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 

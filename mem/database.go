@@ -11,7 +11,7 @@ type Database struct {
 }
 
 // NewDatabase creates a new database with the given name.
-func NewDatabase(name string) sql.Database {
+func NewDatabase(name string) *Database {
 	return &Database{
 		name:   name,
 		tables: map[string]sql.Table{},
@@ -29,7 +29,7 @@ func (d *Database) Tables() map[string]sql.Table {
 }
 
 // AddTable adds a new table to the database.
-func (d *Database) AddTable(name string, t *Table) {
+func (d *Database) AddTable(name string, t sql.Table) {
 	d.tables[name] = t
 }
 

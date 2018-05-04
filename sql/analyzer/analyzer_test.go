@@ -21,12 +21,8 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	})
 	table2 := mem.NewTable("mytable2", sql.Schema{{Name: "i2", Type: sql.Int32, Source: "mytable2"}})
 	db := mem.NewDatabase("mydb")
-
-	memDb, ok := db.(*mem.Database)
-	require.True(ok)
-
-	memDb.AddTable("mytable", table)
-	memDb.AddTable("mytable2", table2)
+	db.AddTable("mytable", table)
+	db.AddTable("mytable2", table2)
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 	a := New(catalog)
@@ -208,16 +204,16 @@ func TestAddRule(t *testing.T) {
 	require := require.New(t)
 
 	a := New(nil)
-	require.Len(a.Rules, 12)
-	a.AddRule("foo", pushdown)
 	require.Len(a.Rules, 13)
+	a.AddRule("foo", pushdown)
+	require.Len(a.Rules, 14)
 }
 
 func TestAddValidationRule(t *testing.T) {
 	require := require.New(t)
 
 	a := New(nil)
-	require.Len(a.ValidationRules, 5)
-	a.AddValidationRule("foo", validateGroupBy)
 	require.Len(a.ValidationRules, 6)
+	a.AddValidationRule("foo", validateGroupBy)
+	require.Len(a.ValidationRules, 7)
 }

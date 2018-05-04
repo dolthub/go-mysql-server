@@ -24,6 +24,7 @@ var DefaultRules = []Rule{
 	{"pushdown", pushdown},
 	{"optimize_distinct", optimizeDistinct},
 	{"erase_projection", eraseProjection},
+	{"index_catalog", indexCatalog},
 }
 
 var (
@@ -636,6 +637,27 @@ func dedupStrings(in []string) []string {
 		}
 	}
 	return result
+}
+
+// indexCatalog sets the catalog in the CreateIndex nodes.
+func indexCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	if !n.Resolved() {
+		return n, nil
+	}
+
+	ci, ok := n.(*plan.CreateIndex)
+	if !ok {
+		return n, nil
+	}
+
+	span, ctx := ctx.Span("index_catalog")
+	defer span.Finish()
+
+	nc := *ci
+	ci.Catalog = a.Catalog
+	ci.CurrentDatabase = a.CurrentDatabase
+
+	return &nc, nil
 }
 
 func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {

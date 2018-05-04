@@ -114,7 +114,7 @@ type dummyIdx struct {
 
 var _ Index = (*dummyIdx)(nil)
 
-func (i dummyIdx) Expression() Expression               { return i.expr }
+func (i dummyIdx) Expressions() []Expression            { return []Expression{i.expr} }
 func (i dummyIdx) ID() string                           { return i.id }
 func (i dummyIdx) Get(interface{}) (IndexLookup, error) { panic("not implemented") }
 func (i dummyIdx) Has(interface{}) (bool, error)        { panic("not implemented") }

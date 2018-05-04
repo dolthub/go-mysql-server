@@ -23,14 +23,14 @@ func Example() {
 
 	// Iterate results and print them.
 	for {
-		ro, err := r.Next()
+		row, err := r.Next()
 		if err == io.EOF {
 			break
 		}
 		checkIfError(err)
 
-		name := ro[0]
-		count := ro[1]
+		name := row[0]
+		count := row[1]
 
 		fmt.Println(name, count)
 	}
@@ -50,9 +50,7 @@ func createTestDatabase() sql.Database {
 		{Name: "name", Type: sql.Text, Source: "mytable"},
 		{Name: "email", Type: sql.Text, Source: "mytable"},
 	})
-	memDb, _ := db.(*mem.Database)
-
-	memDb.AddTable("mytable", table)
+	db.AddTable("mytable", table)
 	table.Insert(sql.NewRow("John Doe", "john@doe.com"))
 	table.Insert(sql.NewRow("John Doe", "johnalt@doe.com"))
 	table.Insert(sql.NewRow("Jane Doe", "jane@doe.com"))

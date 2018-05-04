@@ -18,16 +18,13 @@ func setupMemDB(require *require.Assertions) *sqle.Engine {
 	db := mem.NewDatabase("test")
 	e.AddDatabase(db)
 
-	memDb, ok := db.(*mem.Database)
-	require.True(ok)
-
 	tableTest := mem.NewTable("test", sql.Schema{{Name: "c1", Type: sql.Int32, Source: "test"}})
 
 	for i := 0; i < 1010; i++ {
 		require.NoError(tableTest.Insert(sql.NewRow(int32(i))))
 	}
 
-	memDb.AddTable("test", tableTest)
+	db.AddTable("test", tableTest)
 
 	return e
 }

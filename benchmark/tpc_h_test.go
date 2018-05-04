@@ -85,11 +85,6 @@ func executeQueries(b *testing.B, e *sqle.Engine) error {
 func genDB(b *testing.B) (sql.Database, error) {
 	db := mem.NewDatabase("tpch")
 
-	memDb, ok := db.(*mem.Database)
-	if !ok {
-		b.Fatal("database cannot be casted to mem database")
-	}
-
 	for _, m := range tpchTableMetadata {
 		b.Log("generating table", m.name)
 		t := mem.NewTable(m.name, m.schema)
@@ -97,7 +92,7 @@ func genDB(b *testing.B) (sql.Database, error) {
 			return nil, err
 		}
 
-		memDb.AddTable(m.name, t)
+		db.AddTable(m.name, t)
 	}
 
 	return db, nil

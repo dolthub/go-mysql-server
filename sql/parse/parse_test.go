@@ -560,6 +560,16 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("dual"),
 	),
+	`CREATE INDEX idx ON foo(fn(bar, baz))`: plan.NewCreateIndex(
+		"idx",
+		plan.NewUnresolvedTable("foo"),
+		[]sql.Expression{expression.NewUnresolvedFunction(
+			"fn", false,
+			expression.NewUnresolvedColumn("bar"),
+			expression.NewUnresolvedColumn("baz"),
+		)},
+		"",
+	),
 }
 
 func TestParse(t *testing.T) {

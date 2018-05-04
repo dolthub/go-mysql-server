@@ -1,0 +1,111 @@
+package plan
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+
+	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-mysql-server.v0/mem"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+)
+
+func TestCreateIndex(t *testing.T) {
+	require := require.New(t)
+
+	table := &indexableTable{mem.NewTable("foo", sql.Schema{
+		{Name: "a", Source: "foo"},
+		{Name: "b", Source: "foo"},
+		{Name: "c", Source: "foo"},
+	})}
+
+	driver := new(mockDriver)
+	catalog := sql.NewCatalog()
+	catalog.RegisterIndexDriver(driver)
+	db := mem.NewDatabase("foo")
+	db.AddTable("foo", table)
+	catalog.Databases = append(catalog.Databases, db)
+
+	exprs := []sql.Expression{
+		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
+	}
+
+	ci := NewCreateIndex("idx", table, exprs, "mock")
+	ci.Catalog = catalog
+	ci.CurrentDatabase = "foo"
+
+	_, err := ci.RowIter(sql.NewEmptyContext())
+	require.NoError(err)
+
+	time.Sleep(50 * time.Millisecond)
+
+	require.Len(driver.deleted, 0)
+	require.Equal([]string{"idx"}, driver.saved)
+	idx := catalog.IndexRegistry.Index("foo", "idx")
+	require.NotNil(idx)
+	require.Equal(&mockIndex{"idx", "foo", "foo", []sql.Expression{
+		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
+	}}, idx)
+}
+
+type mockIndex struct {
+	id    string
+	table string
+	db    string
+	exprs []sql.Expression
+}
+
+var _ sql.Index = (*mockIndex)(nil)
+
+func (i *mockIndex) ID() string                    { return i.id }
+func (i *mockIndex) Table() string                 { return i.table }
+func (i *mockIndex) Database() string              { return i.db }
+func (i *mockIndex) Expressions() []sql.Expression { return i.exprs }
+func (i *mockIndex) Get(key interface{}) (sql.IndexLookup, error) {
+	panic("unimplemented")
+}
+func (i *mockIndex) Has(key interface{}) (bool, error) {
+	panic("unimplemented")
+}
+
+type mockDriver struct {
+	deleted []string
+	saved   []string
+}
+
+var _ sql.IndexDriver = (*mockDriver)(nil)
+
+func (*mockDriver) ID() string { return "mock" }
+func (*mockDriver) Create(path, db, table, id string, exprs []sql.Expression) (sql.Index, error) {
+	return &mockIndex{id, table, db, exprs}, nil
+}
+func (*mockDriver) Load(path string) (sql.Index, error) {
+	panic("not implemented")
+}
+func (d *mockDriver) Save(ctx context.Context, path string, index sql.Index, iter sql.IndexKeyValueIter) error {
+	d.saved = append(d.saved, index.ID())
+	return nil
+}
+func (d *mockDriver) Delete(path string, index sql.Index) error {
+	d.deleted = append(d.deleted, index.ID())
+	return nil
+}
+
+type indexableTable struct {
+	sql.Table
+}
+
+func (indexableTable) IndexKeyValueIter(colNames []string) (sql.IndexKeyValueIter, error) {
+	return nil, nil
+}
+
+func (indexableTable) WithProjectFiltersAndIndex(
+	columns, filters []sql.Expression,
+	index sql.IndexValueIter,
+) (sql.RowIter, error) {
+	return nil, nil
+}

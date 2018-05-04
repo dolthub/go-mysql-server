@@ -259,12 +259,8 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 	require.Nil(table2.Insert(sql.NewRow("pux", int64(1))))
 
 	db := mem.NewDatabase("mydb")
-
-	memDb, ok := db.(*mem.Database)
-	require.True(ok)
-
-	memDb.AddTable(table.Name(), table)
-	memDb.AddTable(table2.Name(), table2)
+	db.AddTable(table.Name(), table)
+	db.AddTable(table2.Name(), table2)
 
 	e := sqle.New()
 	e.AddDatabase(db)
@@ -374,12 +370,9 @@ func newEngine(t *testing.T) *sqle.Engine {
 	require.Nil(table3.Insert(sql.NewRow("c", int32(3))))
 
 	db := mem.NewDatabase("mydb")
-	memDb, ok := db.(*mem.Database)
-	require.True(ok)
-
-	memDb.AddTable(table.Name(), table)
-	memDb.AddTable(table2.Name(), table2)
-	memDb.AddTable(table3.Name(), table3)
+	db.AddTable(table.Name(), table)
+	db.AddTable(table2.Name(), table2)
+	db.AddTable(table3.Name(), table3)
 
 	e := sqle.New()
 	e.AddDatabase(db)
