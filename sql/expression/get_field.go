@@ -32,29 +32,32 @@ func NewGetFieldWithTable(index int, fieldType sql.Type, table, fieldName string
 	}
 }
 
+// Index returns the index where the GetField will look for the value from a sql.Row.
+func (p *GetField) Index() int { return p.fieldIndex }
+
 // Children implements the Expression interface.
-func (GetField) Children() []sql.Expression {
+func (*GetField) Children() []sql.Expression {
 	return nil
 }
 
 // Table returns the name of the field table.
-func (p GetField) Table() string { return p.table }
+func (p *GetField) Table() string { return p.table }
 
 // Resolved implements the Expression interface.
-func (p GetField) Resolved() bool {
+func (p *GetField) Resolved() bool {
 	return true
 }
 
 // Name implements the Nameable interface.
-func (p GetField) Name() string { return p.name }
+func (p *GetField) Name() string { return p.name }
 
 // IsNullable returns whether the field is nullable or not.
-func (p GetField) IsNullable() bool {
+func (p *GetField) IsNullable() bool {
 	return p.nullable
 }
 
 // Type returns the type of the field.
-func (p GetField) Type() sql.Type {
+func (p *GetField) Type() sql.Type {
 	return p.fieldType
 }
 
@@ -62,7 +65,7 @@ func (p GetField) Type() sql.Type {
 var ErrIndexOutOfBounds = errors.NewKind("unable to find field with index %d in row of %d columns")
 
 // Eval implements the Expression interface.
-func (p GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (p *GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if p.fieldIndex < 0 || p.fieldIndex >= len(row) {
 		return nil, ErrIndexOutOfBounds.New(p.fieldIndex, len(row))
 	}
@@ -75,7 +78,7 @@ func (p *GetField) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) 
 	return f(&n)
 }
 
-func (p GetField) String() string {
+func (p *GetField) String() string {
 	if p.table == "" {
 		return p.name
 	}

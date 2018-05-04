@@ -154,7 +154,7 @@ func validateIndexCreation(ctx *sql.Context, n sql.Node) error {
 		expression.Inspect(expr, func(e sql.Expression) bool {
 			gf, ok := e.(*expression.GetField)
 			if ok {
-				if gf.Table() != table || !schema.Contains(gf.Name()) {
+				if gf.Table() != table || !schema.Contains(gf.Name(), gf.Table()) {
 					unknownColumns = append(unknownColumns, gf.Name())
 				}
 			}

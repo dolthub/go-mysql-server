@@ -106,7 +106,7 @@ func (j *InnerJoin) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, e
 	return NewInnerJoin(left, right, cond), nil
 }
 
-func (j InnerJoin) String() string {
+func (j *InnerJoin) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("InnerJoin(%s)", j.Cond)
 	_ = pr.WriteChildren(j.Left.String(), j.Right.String())
@@ -114,6 +114,16 @@ func (j InnerJoin) String() string {
 }
 
 // Expressions implements the Expressioner interface.
-func (j InnerJoin) Expressions() []sql.Expression {
+func (j *InnerJoin) Expressions() []sql.Expression {
 	return []sql.Expression{j.Cond}
+}
+
+// TransformExpressions implements the Expressioner interface.
+func (j *InnerJoin) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
+	cond, err := j.Cond.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewInnerJoin(j.Left, j.Right, cond), nil
 }

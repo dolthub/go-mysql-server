@@ -196,6 +196,20 @@ var queries = []struct {
 		`SELECT i AS foo FROM mytable WHERE foo NOT IN (1, 2, 5)`,
 		[]sql.Row{{int64(3)}},
 	},
+	{
+		`SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2`,
+		[]sql.Row{
+			{"a", int32(1), int64(1), "first row", "third", int64(1)},
+			{"a", int32(1), int64(2), "second row", "second", int64(2)},
+			{"a", int32(1), int64(3), "third row", "first", int64(3)},
+			{"b", int32(2), int64(1), "first row", "third", int64(1)},
+			{"b", int32(2), int64(2), "second row", "second", int64(2)},
+			{"b", int32(2), int64(3), "third row", "first", int64(3)},
+			{"c", int32(3), int64(1), "first row", "third", int64(1)},
+			{"c", int32(3), int64(2), "second row", "second", int64(2)},
+			{"c", int32(3), int64(3), "third row", "first", int64(3)},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {

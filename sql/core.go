@@ -110,6 +110,10 @@ type Node interface {
 type Expressioner interface {
 	// Expressions returns the list of expressions contained by the node.
 	Expressions() []Expression
+	// TransformExpressions applies for each expression in this node
+	// the expression's TransformUp method with the given function, and
+	// return a new node with the transformed expressions.
+	TransformExpressions(TransformExprFunc) (Node, error)
 }
 
 // Table represents a SQL table.

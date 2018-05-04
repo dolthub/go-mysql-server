@@ -204,9 +204,9 @@ func TestAddRule(t *testing.T) {
 	require := require.New(t)
 
 	a := New(nil)
-	require.Len(a.Rules, 13)
+	require.Len(a.Rules, len(DefaultRules))
 	a.AddRule("foo", pushdown)
-	require.Len(a.Rules, 14)
+	require.Len(a.Rules, len(DefaultRules)+1)
 }
 
 func TestAddValidationRule(t *testing.T) {
