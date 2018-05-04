@@ -52,6 +52,7 @@ func parseCreateIndex(s string) (sql.Node, error) {
 			readKeyValue(config),
 			skipSpaces,
 		),
+		checkEOF,
 	}
 
 	for _, step := range steps {
@@ -193,6 +194,36 @@ func readValue(val *string) parseFunc {
 		*val = strings.ToLower(buf.String())
 		return nil
 	}
+}
+
+func parseDropIndex(str string) (sql.Node, error) {
+	r := bufio.NewReader(strings.NewReader(str))
+
+	var name, table string
+	steps := []parseFunc{
+		expect("drop"),
+		skipSpaces,
+		expect("index"),
+		skipSpaces,
+		readIdent(&name),
+		skipSpaces,
+		expect("on"),
+		skipSpaces,
+		readIdent(&table),
+		skipSpaces,
+		checkEOF,
+	}
+
+	for _, step := range steps {
+		if err := step(r); err != nil {
+			return nil, err
+		}
+	}
+
+	return plan.NewDropIndex(
+		name,
+		plan.NewUnresolvedTable(table),
+	), nil
 }
 
 func parseIndexExpr(str string) (sql.Expression, error) {
@@ -367,4 +398,13 @@ func skipSpaces(r *bufio.Reader) error {
 			return r.UnreadRune()
 		}
 	}
+}
+
+func checkEOF(rd *bufio.Reader) error {
+	r, _, err := rd.ReadRune()
+	if err == io.EOF {
+		return nil
+	}
+
+	return errUnexpectedSyntax.New("EOF", r)
 }

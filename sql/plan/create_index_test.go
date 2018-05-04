@@ -71,6 +71,7 @@ func (i *mockIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 func (i *mockIndex) Has(key ...interface{}) (bool, error) {
 	panic("unimplemented")
 }
+func (*mockIndex) Driver() string { return "mock" }
 
 type mockDriver struct {
 	deleted []string

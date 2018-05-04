@@ -91,6 +91,8 @@ func (idx *pilosaIndex) ExpressionHashes() []sql.ExpressionHash {
 	return idx.expressions
 }
 
+func (pilosaIndex) Driver() string { return DriverID }
+
 type indexLookup struct {
 	keys        []interface{}
 	indexName   string
