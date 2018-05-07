@@ -1,6 +1,7 @@
 package parse
 
 import (
+	"bufio"
 	"strings"
 	"testing"
 
@@ -56,6 +57,7 @@ func TestParseCreateIndex(t *testing.T) {
 					),
 				},
 				"",
+				make(map[string]string),
 			),
 			nil,
 		},
@@ -66,6 +68,7 @@ func TestParseCreateIndex(t *testing.T) {
 				plan.NewUnresolvedTable("foo"),
 				[]sql.Expression{expression.NewUnresolvedColumn("bar")},
 				"",
+				make(map[string]string),
 			),
 			nil,
 		},
@@ -79,6 +82,51 @@ func TestParseCreateIndex(t *testing.T) {
 					expression.NewUnresolvedColumn("baz"),
 				},
 				"",
+				make(map[string]string),
+			),
+			nil,
+		},
+		{
+			"CREATE INDEX idx ON foo USING bar (baz)",
+			plan.NewCreateIndex(
+				"idx",
+				plan.NewUnresolvedTable("foo"),
+				[]sql.Expression{
+					expression.NewUnresolvedColumn("baz"),
+				},
+				"bar",
+				make(map[string]string),
+			),
+			nil,
+		},
+		{
+			"CREATE INDEX idx ON foo USING bar",
+			nil,
+			errUnexpectedSyntax,
+		},
+		{
+			"CREATE INDEX idx ON foo USING bar (baz) WITH (foo = bar)",
+			plan.NewCreateIndex(
+				"idx",
+				plan.NewUnresolvedTable("foo"),
+				[]sql.Expression{
+					expression.NewUnresolvedColumn("baz"),
+				},
+				"bar",
+				map[string]string{"foo": "bar"},
+			),
+			nil,
+		},
+		{
+			"CREATE INDEX idx ON foo USING bar (baz) WITH (foo = bar, qux = 'mux')",
+			plan.NewCreateIndex(
+				"idx",
+				plan.NewUnresolvedTable("foo"),
+				[]sql.Expression{
+					expression.NewUnresolvedColumn("baz"),
+				},
+				"bar",
+				map[string]string{"foo": "bar", "qux": "mux"},
 			),
 			nil,
 		},
@@ -95,6 +143,69 @@ func TestParseCreateIndex(t *testing.T) {
 			} else {
 				require.NoError(err)
 				require.Equal(tt.result, result)
+			}
+		})
+	}
+}
+
+func TestReadValue(t *testing.T) {
+	testCases := []struct {
+		str      string
+		expected string
+		err      bool
+	}{
+		{`"foo bar"`, `foo bar`, false},
+		{`"foo \" foo \" bar"`, `foo " foo " bar`, false},
+		{`"foo \" foo " bar"`, `foo " foo `, false},
+		{`'foo bar'`, `foo bar`, false},
+		{`'foo \' foo \' bar'`, `foo ' foo ' bar`, false},
+		{`'foo \' foo ' bar'`, `foo ' foo `, false},
+		{`1234   `, `1234`, false},
+		{`off   `, `off`, false},
+		{`123off`, `123off`, false},
+		{`{}`, ``, false},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.str, func(t *testing.T) {
+			var value string
+			err := readValue(&value)(bufio.NewReader(strings.NewReader(tt.str)))
+			if !tt.err {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, value)
+			} else {
+				require.Error(t, err)
+			}
+		})
+	}
+}
+
+func TestReadExprs(t *testing.T) {
+	testCases := []struct {
+		str      string
+		expected []string
+		err      bool
+	}{
+		{`(foo('bar'))`, []string{"foo('bar')"}, false},
+		{`(foo("bar"))`, []string{`foo("bar")`}, false},
+		{`(foo('(()bar'))`, []string{"foo('(()bar')"}, false},
+		{`(foo("(()bar"))`, []string{`foo("(()bar")`}, false},
+		{`(foo("\""))`, []string{`foo("\"")`}, false},
+		{`(foo("""))`, nil, true},
+		{`(foo('\''))`, []string{`foo('\'')`}, false},
+		{`(foo('''))`, nil, true},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.str, func(t *testing.T) {
+			require := require.New(t)
+			var exprs []string
+			err := readExprs(&exprs)(bufio.NewReader(strings.NewReader(tt.str)))
+			if tt.err {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+				require.Equal(tt.expected, exprs)
 			}
 		})
 	}

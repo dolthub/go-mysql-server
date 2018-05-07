@@ -109,7 +109,7 @@ type IndexDriver interface {
 	// Create a new index. If exprs is more than one expression, it means the
 	// index has multiple columns indexed. If it's just one, it means it may
 	// be an expression or a column.
-	Create(path, table, db, id string, exprs []Expression) (Index, error)
+	Create(path, table, db, id string, exprs []Expression, config map[string]string) (Index, error)
 	// Load the index at the given path.
 	Load(path string) (Index, error)
 	// Save the given index at the given path.

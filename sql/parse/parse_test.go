@@ -569,6 +569,7 @@ var fixtures = map[string]sql.Node{
 			expression.NewUnresolvedColumn("baz"),
 		)},
 		"",
+		make(map[string]string),
 	),
 }
 

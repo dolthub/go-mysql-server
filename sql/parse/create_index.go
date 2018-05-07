@@ -24,8 +24,9 @@ type parseFunc func(*bufio.Reader) error
 func parseCreateIndex(s string) (sql.Node, error) {
 	r := bufio.NewReader(strings.NewReader(s))
 
-	var name, table string
+	var name, table, driver string
 	var exprs []string
+	var config = make(map[string]string)
 	steps := []parseFunc{
 		expect("create"),
 		skipSpaces,
@@ -37,8 +38,20 @@ func parseCreateIndex(s string) (sql.Node, error) {
 		skipSpaces,
 		readIdent(&table),
 		skipSpaces,
+		optional(
+			expect("using"),
+			skipSpaces,
+			readIdent(&driver),
+			skipSpaces,
+		),
 		readExprs(&exprs),
 		skipSpaces,
+		optional(
+			expect("with"),
+			skipSpaces,
+			readKeyValue(config),
+			skipSpaces,
+		),
 	}
 
 	for _, step := range steps {
@@ -46,9 +59,6 @@ func parseCreateIndex(s string) (sql.Node, error) {
 			return nil, err
 		}
 	}
-
-	// TODO: parse using
-	// TODO: parse config
 
 	var indexExprs = make([]sql.Expression, len(exprs))
 	for i, e := range exprs {
@@ -63,8 +73,126 @@ func parseCreateIndex(s string) (sql.Node, error) {
 		name,
 		plan.NewUnresolvedTable(table),
 		indexExprs,
-		"",
+		driver,
+		config,
 	), nil
+}
+
+func optional(steps ...parseFunc) parseFunc {
+	return func(rd *bufio.Reader) error {
+		for _, step := range steps {
+			err := step(rd)
+			if err == io.EOF || errUnexpectedSyntax.Is(err) {
+				return nil
+			}
+
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
+func readKeyValue(kv map[string]string) parseFunc {
+	return func(rd *bufio.Reader) error {
+		r, _, err := rd.ReadRune()
+		if err != nil {
+			return err
+		}
+
+		if r != '(' {
+			return errUnexpectedSyntax.New("(", string(r))
+		}
+
+		for {
+			var key, value string
+			steps := []parseFunc{
+				skipSpaces,
+				readIdent(&key),
+				skipSpaces,
+				expectRune('='),
+				skipSpaces,
+				readValue(&value),
+				skipSpaces,
+			}
+
+			for _, step := range steps {
+				if err := step(rd); err != nil {
+					return err
+				}
+			}
+
+			r, _, err := rd.ReadRune()
+			if err != nil {
+				return err
+			}
+
+			switch r {
+			case ')':
+				kv[key] = value
+				return nil
+			case ',':
+				kv[key] = value
+				continue
+			default:
+				return errUnexpectedSyntax.New(", or )", string(r))
+			}
+		}
+	}
+}
+
+func readValue(val *string) parseFunc {
+	return func(rd *bufio.Reader) error {
+		var buf bytes.Buffer
+		var singleQuote, doubleQuote, ignoreNext bool
+		var first = true
+		for {
+			r, _, err := rd.ReadRune()
+			if err == io.EOF {
+				break
+			}
+
+			if err != nil {
+				return err
+			}
+
+			if singleQuote || doubleQuote {
+				switch true {
+				case ignoreNext:
+					ignoreNext = false
+				case r == '\\':
+					ignoreNext = true
+					continue
+				case r == '\'' && singleQuote:
+					singleQuote = false
+					continue
+				case r == '"' && doubleQuote:
+					doubleQuote = false
+					continue
+				}
+			} else if first && (r == '\'' || r == '"') {
+				if r == '\'' {
+					singleQuote = true
+				} else {
+					doubleQuote = true
+				}
+				first = false
+				continue
+			} else if !unicode.IsLetter(r) && !unicode.IsNumber(r) && r != '_' {
+				if err := rd.UnreadRune(); err != nil {
+					return err
+				}
+				break
+			}
+
+			buf.WriteRune(r)
+		}
+
+		*val = strings.ToLower(buf.String())
+		return nil
+	}
 }
 
 func parseIndexExpr(str string) (sql.Expression, error) {
@@ -123,15 +251,20 @@ func readExprs(exprs *[]string) parseFunc {
 		var buf bytes.Buffer
 		r, _, err := rd.ReadRune()
 		if err != nil {
+			if err == io.EOF {
+				return errUnexpectedSyntax.New("(", "EOF")
+			}
 			return err
 		}
 
 		if r != '(' {
-			return errUnexpectedSyntax.New("(", r)
+			return errUnexpectedSyntax.New("(", string(r))
 		}
 
 		var level int
 		var hasNonIdentChars bool
+		var singleQuote, doubleQuote bool
+		var ignoreNext bool
 		for {
 			r, _, err := rd.ReadRune()
 			if err != nil {
@@ -139,6 +272,17 @@ func readExprs(exprs *[]string) parseFunc {
 			}
 
 			switch true {
+			case singleQuote || doubleQuote:
+				switch true {
+				case ignoreNext:
+					ignoreNext = false
+				case r == '\\':
+					ignoreNext = true
+				case r == '"' && doubleQuote:
+					doubleQuote = false
+				case r == '\'' && singleQuote:
+					singleQuote = false
+				}
 			case unicode.IsLetter(r) || r == '_':
 			case r == '(':
 				level++
@@ -154,6 +298,12 @@ func readExprs(exprs *[]string) parseFunc {
 					buf.Reset()
 					return nil
 				}
+			case r == '"':
+				hasNonIdentChars = true
+				doubleQuote = true
+			case r == '\'':
+				hasNonIdentChars = true
+				singleQuote = true
 			case r == ',' && level == 0:
 				if hasNonIdentChars {
 					return errUnexpectedSyntax.New(",", ")")
@@ -171,9 +321,25 @@ func readExprs(exprs *[]string) parseFunc {
 	}
 }
 
+func expectRune(expected rune) parseFunc {
+	return func(rd *bufio.Reader) error {
+		r, _, err := rd.ReadRune()
+		if err != nil {
+			return err
+		}
+
+		if r != expected {
+			return errUnexpectedSyntax.New(expected, string(r))
+		}
+
+		return nil
+	}
+}
+
 func expect(expected string) parseFunc {
 	return func(r *bufio.Reader) error {
 		var ident string
+
 		if err := readIdent(&ident)(r); err != nil {
 			return err
 		}
@@ -198,10 +364,7 @@ func skipSpaces(r *bufio.Reader) error {
 		}
 
 		if !unicode.IsSpace(ru) {
-			if err := r.UnreadRune(); err != nil {
-				return err
-			}
-			return nil
+			return r.UnreadRune()
 		}
 	}
 }

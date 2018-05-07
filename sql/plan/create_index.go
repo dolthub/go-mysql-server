@@ -33,13 +33,19 @@ type CreateIndex struct {
 }
 
 // NewCreateIndex creates a new CreateIndex node.
-func NewCreateIndex(name string, table sql.Node, exprs []sql.Expression, driver string) *CreateIndex {
+func NewCreateIndex(
+	name string,
+	table sql.Node,
+	exprs []sql.Expression,
+	driver string,
+	config map[string]string,
+) *CreateIndex {
 	return &CreateIndex{
 		Name:   name,
 		Table:  table,
 		Exprs:  exprs,
 		Driver: driver,
-		Config: make(map[string]string),
+		Config: config,
 	}
 }
 
@@ -89,6 +95,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		c.CurrentDatabase,
 		c.Name,
 		exprs,
+		c.Config,
 	)
 	if err != nil {
 		return nil, err

@@ -33,7 +33,7 @@ func TestCreateIndex(t *testing.T) {
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
 	}
 
-	ci := NewCreateIndex("idx", table, exprs, "mock")
+	ci := NewCreateIndex("idx", table, exprs, "mock", make(map[string]string))
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
@@ -80,7 +80,7 @@ type mockDriver struct {
 var _ sql.IndexDriver = (*mockDriver)(nil)
 
 func (*mockDriver) ID() string { return "mock" }
-func (*mockDriver) Create(path, db, table, id string, exprs []sql.Expression) (sql.Index, error) {
+func (*mockDriver) Create(path, db, table, id string, exprs []sql.Expression, config map[string]string) (sql.Index, error) {
 	return &mockIndex{id, table, db, exprs}, nil
 }
 func (*mockDriver) Load(path string) (sql.Index, error) {
