@@ -41,11 +41,7 @@ func TestCatalog_Table(t *testing.T) {
 	require.Nil(table)
 
 	mytable := mem.NewTable("bar", sql.Schema{})
-
-	memDb, ok := db.(*mem.Database)
-	require.True(ok)
-
-	memDb.AddTable("bar", mytable)
+	db.AddTable("bar", mytable)
 
 	table, err = c.Table("foo", "bar")
 	require.NoError(err)

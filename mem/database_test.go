@@ -19,9 +19,7 @@ func TestDatabase_AddTable(t *testing.T) {
 	tables := db.Tables()
 	require.Equal(0, len(tables))
 
-	altDb, ok := db.(sql.Alterable)
-	require.True(ok)
-
+	var altDb sql.Alterable = db
 	err := altDb.Create("test_table", sql.Schema{})
 	require.NoError(err)
 
