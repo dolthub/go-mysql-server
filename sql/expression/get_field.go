@@ -84,3 +84,10 @@ func (p *GetField) String() string {
 	}
 	return fmt.Sprintf("%s.%s", p.table, p.name)
 }
+
+// WithIndex returns this same GetField with a new index.
+func (p *GetField) WithIndex(n int) sql.Expression {
+	p2 := *p
+	p2.fieldIndex = n
+	return &p2
+}

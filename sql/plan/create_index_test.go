@@ -99,8 +99,18 @@ type indexableTable struct {
 	sql.Table
 }
 
-func (indexableTable) IndexKeyValueIter(ctx *sql.Context, colNames []string) (sql.IndexKeyValueIter, error) {
+var _ sql.Indexable = (*indexableTable)(nil)
+
+func (indexableTable) HandledFilters([]sql.Expression) []sql.Expression {
+	panic("not implemented")
+}
+
+func (indexableTable) IndexKeyValueIter(_ *sql.Context, colNames []string) (sql.IndexKeyValueIter, error) {
 	return nil, nil
+}
+
+func (indexableTable) WithProjectAndFilters(ctx *sql.Context, columns, filters []sql.Expression) (sql.RowIter, error) {
+	panic("not implemented")
 }
 
 func (indexableTable) WithProjectFiltersAndIndex(

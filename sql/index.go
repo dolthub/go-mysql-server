@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"io"
@@ -233,6 +234,25 @@ func (r *IndexRegistry) IndexByExpression(db string, expr ...Expression) Index {
 	return nil
 }
 
+type withIndexer interface {
+	WithIndex(int) Expression
+}
+
+func removeIndexes(e Expression) (Expression, error) {
+	i, ok := e.(withIndexer)
+	if !ok {
+		return e, nil
+	}
+
+	return i.WithIndex(-1), nil
+}
+
+func expressionsEqual(a, b Expression) bool {
+	a, _ = a.TransformUp(removeIndexes)
+	b, _ = b.TransformUp(removeIndexes)
+	return reflect.DeepEqual(a, b)
+}
+
 var (
 	// ErrIndexIDAlreadyRegistered is the error returned when there is already
 	// an index with the same ID.
@@ -277,14 +297,16 @@ func (r *IndexRegistry) validateIndexToAdd(idx Index) error {
 
 func exprListsEqual(a, b []ExpressionHash) bool {
 	var visited = make([]bool, len(b))
+
 	for _, va := range a {
 		found := false
+
 		for j, vb := range b {
 			if visited[j] {
 				continue
 			}
 
-			if reflect.DeepEqual(va, vb) {
+			if bytes.Equal(va, vb) {
 				visited[j] = true
 				found = true
 				break

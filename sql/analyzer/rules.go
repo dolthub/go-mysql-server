@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"strings"
 
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -22,6 +23,7 @@ var DefaultRules = []Rule{
 	{"resolve_star", resolveStar},
 	{"resolve_functions", resolveFunctions},
 	{"reorder_projection", reorderProjection},
+	{"assign_indexes", assignIndexes},
 	{"pushdown", pushdown},
 	{"optimize_distinct", optimizeDistinct},
 	{"erase_projection", eraseProjection},
@@ -880,7 +882,9 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 			)
 
 			return plan.NewFilter(expression.JoinAnd(unhandled...), node.Child), nil
-		case *plan.PushdownProjectionAndFiltersTable, *plan.PushdownProjectionTable:
+		case *plan.PushdownProjectionAndFiltersTable,
+			*plan.PushdownProjectionTable,
+			*plan.IndexableTable:
 			// they also implement the interfaces for pushdown, so we better return
 			// or there will be a very nice infinite loop
 			return node, nil
@@ -889,13 +893,6 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 			tableFilters := filters[node.Name()]
 			handled := node.HandledFilters(tableFilters)
 			handledFilters = append(handledFilters, handled...)
-
-			a.Log(
-				"table %q transformed with pushdown of projection and filters, %d filters handled of %d",
-				node.Name(),
-				len(handled),
-				len(tableFilters),
-			)
 
 			schema := node.Schema()
 			cols, err := fixFieldIndexesOnExpressions(schema, cols...)
@@ -908,10 +905,34 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 				return nil, err
 			}
 
-			return plan.NewPushdownProjectionAndFiltersTable(
+			indexable, ok := node.(*indexable)
+			if !ok {
+				a.Log(
+					"table %q transformed with pushdown of projection and filters, %d filters handled of %d",
+					node.Name(),
+					len(handled),
+					len(tableFilters),
+				)
+
+				return plan.NewPushdownProjectionAndFiltersTable(
+					cols,
+					handled,
+					node,
+				), nil
+			}
+
+			a.Log(
+				"table %q transformed with pushdown of projection, filters and index, %d filters handled of %d",
+				node.Name(),
+				len(handled),
+				len(tableFilters),
+			)
+
+			return plan.NewIndexableTable(
 				cols,
 				handled,
-				node,
+				indexable.lookup,
+				indexable.Indexable,
 			), nil
 		case sql.PushdownProjectionTable:
 			cols := fieldsByTable[node.Name()]
@@ -960,4 +981,238 @@ func fixFieldIndexes(schema sql.Schema, exp sql.Expression) (sql.Expression, err
 
 		return e, nil
 	})
+}
+
+func assignIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
+	if !node.Resolved() {
+		return node, nil
+	}
+
+	var indexes map[string]sql.IndexLookup
+	var err error
+	plan.Inspect(node, func(node sql.Node) bool {
+		filter, ok := node.(*plan.Filter)
+		if !ok {
+			return true
+		}
+
+		var result map[string]sql.IndexLookup
+		result, err = getIndexes(filter.Expression, a)
+		if err != nil {
+			return false
+		}
+
+		if indexes != nil {
+			indexes = indexesIntersection(indexes, result)
+		} else {
+			indexes = result
+		}
+
+		return true
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return node.TransformUp(func(node sql.Node) (sql.Node, error) {
+		table, ok := node.(sql.Indexable)
+		if !ok {
+			return node, nil
+		}
+
+		lookup, ok := indexes[table.Name()]
+		if !ok {
+			return node, nil
+		}
+
+		return &indexable{lookup, table}, nil
+	})
+}
+
+func containsColumns(e sql.Expression) bool {
+	var result bool
+	expression.Inspect(e, func(e sql.Expression) bool {
+		if _, ok := e.(*expression.GetField); ok {
+			result = true
+		}
+		return true
+	})
+	return result
+}
+
+var errInvalidInRightEvaluation = errors.NewKind("expecting evaluation of IN expression right hand side to be a tuple, but it is %T")
+
+func getIndexes(e sql.Expression, a *Analyzer) (map[string]sql.IndexLookup, error) {
+	var result = make(map[string]sql.IndexLookup)
+	switch e := e.(type) {
+	case *expression.Or:
+		leftIndexes, err := getIndexes(e.Left, a)
+		if err != nil {
+			return nil, err
+		}
+
+		rightIndexes, err := getIndexes(e.Right, a)
+		if err != nil {
+			return nil, err
+		}
+
+		for table, lookup := range leftIndexes {
+			if lookup2, ok := rightIndexes[table]; ok && canMergeIndexes(lookup, lookup2) {
+				lookup = lookup.(sql.SetOperations).Union(lookup2)
+			}
+			result[table] = lookup
+		}
+
+		// Put in the result map the indexes for tables we don't have indexes yet.
+		// The others were already handled by the previous loop.
+		for table, lookup := range rightIndexes {
+			if _, ok := result[table]; !ok {
+				result[table] = lookup
+			}
+		}
+	case *expression.Equals:
+		left, right := e.Left(), e.Right()
+		// if the form is SOMETHING = INDEXABLE EXPR, swap it, so it's INDEXABLE EXPR = SOMETING
+		if !isEvaluable(right) {
+			left, right = right, left
+		}
+
+		if !isEvaluable(left) && isEvaluable(right) {
+			index := a.Catalog.IndexByExpression(a.CurrentDatabase, left)
+			if index != nil {
+				value, err := right.Eval(sql.NewEmptyContext(), nil)
+				if err != nil {
+					return nil, err
+				}
+
+				lookup, err := index.Get(value)
+				if err != nil {
+					return nil, err
+				}
+
+				result[index.Table()] = lookup
+			}
+		}
+	case *expression.In:
+		// Take the index of a SOMETHING IN SOMETHING expression only if:
+		// the right branch is evaluable and the indexlookup supports set
+		// operations.
+		if !isEvaluable(e.Left()) && isEvaluable(e.Right()) {
+			index := a.Catalog.IndexByExpression(a.CurrentDatabase, e.Left())
+			if index != nil {
+				value, err := e.Right().Eval(sql.NewEmptyContext(), nil)
+				if err != nil {
+					return nil, err
+				}
+
+				values, ok := value.([]interface{})
+				if !ok {
+					return nil, errInvalidInRightEvaluation.New(value)
+				}
+
+				lookup, err := index.Get(values[0])
+				if err != nil {
+					return nil, err
+				}
+
+				for _, v := range values[1:] {
+					lookup2, err := index.Get(v)
+					if err != nil {
+						return nil, err
+					}
+
+					// if one of the indexes cannot be merged, return already
+					if !canMergeIndexes(lookup, lookup2) {
+						return result, nil
+					}
+
+					lookup = lookup.(sql.SetOperations).Union(lookup2)
+				}
+
+				result[index.Table()] = lookup
+			}
+		}
+	case *expression.And:
+		leftIndexes, err := getIndexes(e.Left, a)
+		if err != nil {
+			return nil, err
+		}
+
+		rightIndexes, err := getIndexes(e.Right, a)
+		if err != nil {
+			return nil, err
+		}
+
+		return indexesIntersection(leftIndexes, rightIndexes), nil
+	}
+
+	return result, nil
+}
+
+func indexesIntersection(left, right map[string]sql.IndexLookup) map[string]sql.IndexLookup {
+	var result = make(map[string]sql.IndexLookup)
+
+	for table, lookup := range left {
+		if lookup2, ok := right[table]; ok && canMergeIndexes(lookup, lookup2) {
+			lookup = lookup.(sql.SetOperations).Intersection(lookup2)
+		}
+		result[table] = lookup
+	}
+
+	// Put in the result map the indexes for tables we don't have indexes yet.
+	// The others were already handled by the previous loop.
+	for table, lookup := range right {
+		if _, ok := result[table]; !ok {
+			result[table] = lookup
+		}
+	}
+
+	return result
+}
+
+func isColumn(e sql.Expression) bool {
+	_, ok := e.(*expression.GetField)
+	return ok
+}
+
+func isEvaluable(e sql.Expression) bool {
+	return !containsColumns(e)
+}
+
+func canMergeIndexes(a, b sql.IndexLookup) bool {
+	m, ok := a.(sql.Mergeable)
+	if !ok {
+		return false
+	}
+
+	if !m.IsMergeable(b) {
+		return false
+	}
+
+	_, ok = a.(sql.SetOperations)
+	return ok
+}
+
+// indexable is a wrapper to hold some information along with the table.
+// It's meant to be used by the pushdown rule to finally wrap the Indexable
+// table with all it requires.
+type indexable struct {
+	lookup sql.IndexLookup
+	sql.Indexable
+}
+
+func (i *indexable) Children() []sql.Node { return nil }
+func (i *indexable) Name() string         { return i.Indexable.Name() }
+func (i *indexable) Resolved() bool       { return i.Indexable.Resolved() }
+func (i *indexable) RowIter(*sql.Context) (sql.RowIter, error) {
+	return nil, fmt.Errorf("indexable is a placeholder node, but RowIter was called")
+}
+func (i *indexable) Schema() sql.Schema { return i.Indexable.Schema() }
+func (i *indexable) String() string     { return i.Indexable.String() }
+func (i *indexable) TransformUp(fn sql.TransformNodeFunc) (sql.Node, error) {
+	return fn(i)
+}
+func (i *indexable) TransformExpressionsUp(fn sql.TransformExprFunc) (sql.Node, error) {
+	return i, nil
 }

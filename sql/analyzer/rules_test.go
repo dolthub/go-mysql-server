@@ -1,7 +1,10 @@
 package analyzer
 
 import (
+	"crypto/sha1"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -765,7 +768,7 @@ func TestPushdownProjection(t *testing.T) {
 
 func TestPushdownProjectionAndFilters(t *testing.T) {
 	require := require.New(t)
-	a := New(nil)
+	a := New(sql.NewCatalog())
 
 	table := &pushdownProjectionAndFiltersTable{mem.NewTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
@@ -847,6 +850,100 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 	require.Equal(expected, result)
 }
 
+func TestPushdownIndexable(t *testing.T) {
+	require := require.New(t)
+	a := New(sql.NewCatalog())
+
+	var index, index2 dummyIndexLookup
+
+	table := &indexable{
+		index,
+		&indexableTable{&pushdownProjectionAndFiltersTable{mem.NewTable("mytable", sql.Schema{
+			{Name: "i", Type: sql.Int32, Source: "mytable"},
+			{Name: "f", Type: sql.Float64, Source: "mytable"},
+			{Name: "t", Type: sql.Text, Source: "mytable"},
+		})}},
+	}
+
+	table2 := &indexable{
+		index2,
+		&indexableTable{&pushdownProjectionAndFiltersTable{mem.NewTable("mytable2", sql.Schema{
+			{Name: "i2", Type: sql.Int32, Source: "mytable2"},
+			{Name: "f2", Type: sql.Float64, Source: "mytable2"},
+			{Name: "t2", Type: sql.Text, Source: "mytable2"},
+		})}},
+	}
+
+	node := plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+		},
+		plan.NewFilter(
+			expression.NewAnd(
+				expression.NewAnd(
+					expression.NewEquals(
+						expression.NewUnresolvedQualifiedColumn("mytable", "f"),
+						expression.NewLiteral(3.14, sql.Float64),
+					),
+					expression.NewGreaterThan(
+						expression.NewUnresolvedQualifiedColumn("mytable", "f"),
+						expression.NewLiteral(3., sql.Float64),
+					),
+				),
+				expression.NewIsNull(
+					expression.NewUnresolvedQualifiedColumn("mytable2", "i2"),
+				),
+			),
+			plan.NewCrossJoin(table, table2),
+		),
+	)
+
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+		},
+		plan.NewFilter(
+			expression.NewAnd(
+				expression.NewGreaterThan(
+					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+					expression.NewLiteral(3., sql.Float64),
+				),
+				expression.NewIsNull(
+					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
+				),
+			),
+			plan.NewCrossJoin(
+				plan.NewIndexableTable(
+					[]sql.Expression{
+						expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+					},
+					[]sql.Expression{
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+					},
+					index,
+					table.Indexable,
+				),
+				plan.NewIndexableTable(
+					[]sql.Expression{
+						expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+					},
+					nil,
+					index2,
+					table2.Indexable,
+				),
+			),
+		),
+	)
+
+	result, err := a.Analyze(sql.NewEmptyContext(), node)
+	require.NoError(err)
+	require.Equal(expected, result)
+}
+
 type pushdownProjectionTable struct {
 	sql.Table
 }
@@ -891,6 +988,395 @@ func (t *pushdownProjectionAndFiltersTable) TransformUp(f sql.TransformNodeFunc)
 
 func (t *pushdownProjectionAndFiltersTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return t, nil
+}
+
+type dummyIndexLookup struct{}
+
+func (dummyIndexLookup) Values() sql.IndexValueIter {
+	return nil
+}
+
+type indexableTable struct {
+	sql.PushdownProjectionAndFiltersTable
+}
+
+func (i *indexableTable) IndexKeyValueIter(_ *sql.Context, colNames []string) (sql.IndexKeyValueIter, error) {
+	panic("not implemented")
+}
+
+func (i *indexableTable) WithProjectFiltersAndIndex(
+	ctx *sql.Context,
+	columns, filters []sql.Expression,
+	index sql.IndexValueIter,
+) (sql.RowIter, error) {
+	panic("not implemented")
+}
+
+func (i *indexableTable) TransformUp(fn sql.TransformNodeFunc) (sql.Node, error) {
+	return fn(i)
+}
+
+func (i *indexableTable) TransformExpressionsUp(fn sql.TransformExprFunc) (sql.Node, error) {
+	return i, nil
+}
+
+func TestAssignIndexes(t *testing.T) {
+	require := require.New(t)
+
+	catalog := sql.NewCatalog()
+	done, err := catalog.AddIndex(&dummyIndex{
+		"t2",
+		expression.NewGetFieldWithTable(0, sql.Int64, "t2", "bar", false),
+	})
+	require.NoError(err)
+	close(done)
+
+	done, err = catalog.AddIndex(&dummyIndex{
+		"t1",
+		expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
+	})
+	require.NoError(err)
+	close(done)
+
+	time.Sleep(50 * time.Millisecond)
+	a := New(catalog)
+
+	t1 := &indexableTable{
+		&pushdownProjectionAndFiltersTable{
+			mem.NewTable("t1", sql.Schema{
+				{Name: "foo", Type: sql.Int64, Source: "t1"},
+			}),
+		},
+	}
+
+	t2 := &indexableTable{
+		&pushdownProjectionAndFiltersTable{
+			mem.NewTable("t2", sql.Schema{
+				{Name: "bar", Type: sql.Int64, Source: "t2"},
+				{Name: "baz", Type: sql.Int64, Source: "t2"},
+			}),
+		},
+	}
+
+	node := plan.NewProject(
+		[]sql.Expression{},
+		plan.NewFilter(
+			expression.NewOr(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "t2", "bar", false),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
+					expression.NewLiteral(int64(2), sql.Int64),
+				),
+			),
+			plan.NewInnerJoin(
+				t1,
+				t2,
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
+					expression.NewGetFieldWithTable(0, sql.Int64, "t2", "baz", false),
+				),
+			),
+		),
+	)
+
+	expected := plan.NewProject(
+		[]sql.Expression{},
+		plan.NewFilter(
+			expression.NewOr(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "t2", "bar", false),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
+					expression.NewLiteral(int64(2), sql.Int64),
+				),
+			),
+			plan.NewInnerJoin(
+				&indexable{&mergeableIndexLookup{id: "2"}, t1},
+				&indexable{&mergeableIndexLookup{id: "1"}, t2},
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
+					expression.NewGetFieldWithTable(0, sql.Int64, "t2", "baz", false),
+				),
+			),
+		),
+	)
+
+	result, err := assignIndexes(sql.NewEmptyContext(), a, node)
+	require.NoError(err)
+
+	require.Equal(expected, result)
+}
+
+func TestGetIndexes(t *testing.T) {
+	testCases := []struct {
+		expr     sql.Expression
+		expected map[string]sql.IndexLookup
+		ok       bool
+	}{
+		{
+			expression.NewEquals(
+				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+				expression.NewGetFieldWithTable(1, sql.Int64, "foo", "baz", false),
+			),
+			map[string]sql.IndexLookup{},
+			true,
+		},
+		{
+			expression.NewEquals(
+				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+			map[string]sql.IndexLookup{
+				"t1": &mergeableIndexLookup{id: "1"},
+			},
+			true,
+		},
+		{
+			expression.NewOr(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+					expression.NewLiteral(int64(2), sql.Int64),
+				),
+			),
+			map[string]sql.IndexLookup{
+				"t1": &mergeableIndexLookup{id: "1", unions: []string{"2"}},
+			},
+			true,
+		},
+		{
+			expression.NewAnd(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+					expression.NewLiteral(int64(2), sql.Int64),
+				),
+			),
+			map[string]sql.IndexLookup{
+				"t1": &mergeableIndexLookup{id: "1", intersections: []string{"2"}},
+			},
+			true,
+		},
+		{
+			expression.NewAnd(
+				expression.NewOr(
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						expression.NewLiteral(int64(1), sql.Int64),
+					),
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						expression.NewLiteral(int64(2), sql.Int64),
+					),
+				),
+				expression.NewOr(
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						expression.NewLiteral(int64(3), sql.Int64),
+					),
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						expression.NewLiteral(int64(4), sql.Int64),
+					),
+				),
+			),
+			map[string]sql.IndexLookup{
+				"t1": &mergeableIndexLookup{id: "1", unions: []string{"2", "4"}, intersections: []string{"3"}},
+			},
+			true,
+		},
+		{
+			expression.NewOr(
+				expression.NewOr(
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(1, sql.Int64, "foo", "bar", false),
+						expression.NewLiteral(int64(1), sql.Int64),
+					),
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						expression.NewLiteral(int64(2), sql.Int64),
+					),
+				),
+				expression.NewOr(
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						expression.NewLiteral(int64(3), sql.Int64),
+					),
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						expression.NewLiteral(int64(4), sql.Int64),
+					),
+				),
+			),
+			map[string]sql.IndexLookup{
+				"t1": &mergeableIndexLookup{id: "1", unions: []string{"2", "3", "4"}},
+			},
+			true,
+		},
+		{
+			expression.NewIn(
+				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+				expression.NewTuple(
+					expression.NewLiteral(int64(1), sql.Int64),
+					expression.NewLiteral(int64(2), sql.Int64),
+					expression.NewLiteral(int64(3), sql.Int64),
+					expression.NewLiteral(int64(4), sql.Int64),
+				),
+			),
+			map[string]sql.IndexLookup{
+				"t1": &mergeableIndexLookup{id: "1", unions: []string{"2", "3", "4"}},
+			},
+			true,
+		},
+	}
+
+	catalog := sql.NewCatalog()
+
+	done, err := catalog.AddIndex(&dummyIndex{
+		"t1",
+		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+	})
+	require.NoError(t, err)
+	close(done)
+
+	time.Sleep(50 * time.Millisecond)
+	a := New(catalog)
+
+	for _, tt := range testCases {
+		t.Run(tt.expr.String(), func(t *testing.T) {
+			require := require.New(t)
+
+			result, err := getIndexes(tt.expr, a)
+			if tt.ok {
+				require.NoError(err)
+				require.Equal(tt.expected, result)
+			} else {
+				require.Error(err)
+			}
+		})
+	}
+}
+
+type dummyIndex struct {
+	table string
+	expr  sql.Expression
+}
+
+var _ sql.Index = (*dummyIndex)(nil)
+
+func (dummyIndex) Database() string { return "" }
+func (i dummyIndex) ExpressionHashes() []sql.ExpressionHash {
+	h := sha1.New()
+	h.Write([]byte(i.expr.String()))
+	return []sql.ExpressionHash{h.Sum(nil)}
+}
+func (i dummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
+	if len(key) != 1 {
+		return &mergeableIndexLookup{id: fmt.Sprint(key)}, nil
+	}
+	return &mergeableIndexLookup{id: fmt.Sprint(key[0])}, nil
+}
+func (i dummyIndex) Has(key ...interface{}) (bool, error) {
+	panic("not implemented")
+}
+func (i dummyIndex) ID() string    { return i.expr.String() }
+func (i dummyIndex) Table() string { return i.table }
+
+func TestIndexesIntersection(t *testing.T) {
+	require := require.New(t)
+
+	left := map[string]sql.IndexLookup{
+		"a": &mergeableIndexLookup{id: "a"},
+		"b": &mergeableIndexLookup{id: "b"},
+		"c": new(dummyIndexLookup),
+	}
+
+	right := map[string]sql.IndexLookup{
+		"b": &mergeableIndexLookup{id: "b2"},
+		"c": &mergeableIndexLookup{id: "c"},
+		"d": &mergeableIndexLookup{id: "d"},
+	}
+
+	require.Equal(
+		map[string]sql.IndexLookup{
+			"a": &mergeableIndexLookup{id: "a"},
+			"b": &mergeableIndexLookup{
+				id:            "b",
+				intersections: []string{"b2"},
+			},
+			"c": new(dummyIndexLookup),
+			"d": &mergeableIndexLookup{id: "d"},
+		},
+		indexesIntersection(left, right),
+	)
+}
+
+func TestCanMergeIndexes(t *testing.T) {
+	require := require.New(t)
+
+	require.False(canMergeIndexes(new(mergeableIndexLookup), new(dummyIndexLookup)))
+	require.True(canMergeIndexes(new(mergeableIndexLookup), new(mergeableIndexLookup)))
+}
+
+type mergeableIndexLookup struct {
+	id            string
+	unions        []string
+	intersections []string
+}
+
+var _ sql.Mergeable = (*mergeableIndexLookup)(nil)
+var _ sql.SetOperations = (*mergeableIndexLookup)(nil)
+
+func (i *mergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
+	_, ok := lookup.(*mergeableIndexLookup)
+	return ok
+}
+
+func (i *mergeableIndexLookup) Values() sql.IndexValueIter {
+	panic("not implemented")
+}
+
+func (i *mergeableIndexLookup) Difference(indexes ...sql.IndexLookup) sql.IndexLookup {
+	panic("not implemented")
+}
+
+func (i *mergeableIndexLookup) Intersection(indexes ...sql.IndexLookup) sql.IndexLookup {
+	var intersections, unions []string
+	for _, idx := range indexes {
+		intersections = append(intersections, idx.(*mergeableIndexLookup).id)
+		intersections = append(intersections, idx.(*mergeableIndexLookup).intersections...)
+		unions = append(unions, idx.(*mergeableIndexLookup).unions...)
+	}
+	return &mergeableIndexLookup{
+		i.id,
+		append(i.unions, unions...),
+		append(i.intersections, intersections...),
+	}
+}
+
+func (i *mergeableIndexLookup) Union(indexes ...sql.IndexLookup) sql.IndexLookup {
+	var intersections, unions []string
+	for _, idx := range indexes {
+		unions = append(unions, idx.(*mergeableIndexLookup).id)
+		unions = append(unions, idx.(*mergeableIndexLookup).unions...)
+		intersections = append(intersections, idx.(*mergeableIndexLookup).intersections...)
+	}
+	return &mergeableIndexLookup{
+		i.id,
+		append(i.unions, unions...),
+		append(i.intersections, intersections...),
+	}
 }
 
 func getRule(name string) Rule {

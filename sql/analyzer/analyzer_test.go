@@ -24,7 +24,8 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
-	catalog := &sql.Catalog{Databases: []sql.Database{db}}
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
 	a := New(catalog)
 	a.CurrentDatabase = "mydb"
 
