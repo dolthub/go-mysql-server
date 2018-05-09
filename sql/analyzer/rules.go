@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -1204,17 +1205,28 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 			}
 		}
 	case *expression.And:
-		leftIndexes, err := getIndexes(e.Left, a)
+		exprs := splitExpression(e)
+		used := make(map[sql.Expression]struct{})
+
+		result, err := getMultiColumnIndexes(exprs, a, used)
 		if err != nil {
 			return nil, err
 		}
 
-		rightIndexes, err := getIndexes(e.Right, a)
-		if err != nil {
-			return nil, err
+		for _, e := range exprs {
+			if _, ok := used[e]; ok {
+				continue
+			}
+
+			indexes, err := getIndexes(e, a)
+			if err != nil {
+				return nil, err
+			}
+
+			result = indexesIntersection(result, indexes)
 		}
 
-		return indexesIntersection(leftIndexes, rightIndexes), nil
+		return result, nil
 	}
 
 	return result, nil
@@ -1237,6 +1249,101 @@ func indexesIntersection(left, right map[string]*indexLookup) map[string]*indexL
 		if _, ok := result[table]; !ok {
 			result[table] = lookup
 		}
+	}
+
+	return result
+}
+
+func getMultiColumnIndexes(
+	exprs []sql.Expression,
+	a *Analyzer,
+	used map[sql.Expression]struct{},
+) (map[string]*indexLookup, error) {
+	result := make(map[string]*indexLookup)
+	columnExprs := columnExprsByTable(exprs)
+	for table, exps := range columnExprs {
+		cols := make([]sql.Expression, len(exps))
+		var colMap []columnExpr
+
+		for i, e := range exps {
+			cols[i] = e.col
+			colMap = append(colMap, e)
+		}
+
+		exprList := a.Catalog.ExpressionsWithIndexes(a.CurrentDatabase, cols...)
+
+		var selected []sql.Expression
+		for _, l := range exprList {
+			if len(l) > len(selected) {
+				selected = l
+			}
+		}
+
+		if len(selected) > 0 {
+			index := a.Catalog.IndexByExpression(a.CurrentDatabase, selected...)
+			if index != nil {
+				var values = make([]interface{}, len(selected))
+				for i, e := range index.ExpressionHashes() {
+					col := findColumnByHash(colMap, e)
+					used[col.expr] = struct{}{}
+					val, err := col.val.Eval(sql.NewEmptyContext(), nil)
+					if err != nil {
+						return nil, err
+					}
+					values[i] = val
+				}
+				lookup, err := index.Get(values...)
+				if err != nil {
+					return nil, err
+				}
+
+				result[table] = &indexLookup{lookup, []sql.Index{index}}
+			}
+		}
+	}
+
+	return result, nil
+}
+
+type columnExpr struct {
+	col  *expression.GetField
+	val  sql.Expression
+	expr sql.Expression
+}
+
+func findColumnByHash(cols []columnExpr, hash sql.ExpressionHash) *columnExpr {
+	for _, col := range cols {
+		if bytes.Compare(sql.NewExpressionHash(col.col), hash) == 0 {
+			return &col
+		}
+	}
+	return nil
+}
+
+func columnExprsByTable(exprs []sql.Expression) map[string][]columnExpr {
+	var result = make(map[string][]columnExpr)
+
+	for _, expr := range exprs {
+		eq, ok := expr.(*expression.Equals)
+		if !ok {
+			continue
+		}
+
+		left, right := eq.Left(), eq.Right()
+		if !isEvaluable(right) {
+			left, right = right, left
+		}
+
+		if !isEvaluable(right) {
+			continue
+		}
+
+		col, ok := left.(*expression.GetField)
+		if !ok {
+			continue
+		}
+
+		result[col.Table()] = append(result[col.Table()], columnExpr{col, right, expr})
 	}
 
 	return result
