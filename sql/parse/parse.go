@@ -1,4 +1,4 @@
-package parse
+package parse // import "gopkg.in/src-d/go-mysql-server.v0/sql/parse"
 
 import (
 	"fmt"

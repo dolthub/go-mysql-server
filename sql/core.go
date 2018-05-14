@@ -1,4 +1,4 @@
-package sql
+package sql // import "gopkg.in/src-d/go-mysql-server.v0/sql"
 
 import (
 	"crypto/sha1"

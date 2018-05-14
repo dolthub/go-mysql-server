@@ -1,4 +1,4 @@
-package server
+package server // import "gopkg.in/src-d/go-mysql-server.v0/server"
 
 import (
 	opentracing "github.com/opentracing/opentracing-go"
