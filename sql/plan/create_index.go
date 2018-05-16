@@ -101,7 +101,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	iter, err := table.IndexKeyValueIter(columns)
+	iter, err := table.IndexKeyValueIter(ctx, columns)
 	if err != nil {
 		return nil, err
 	}
