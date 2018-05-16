@@ -334,6 +334,10 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 			}
 		}
 
+		if len(conditions) == 0 {
+			return plan.NewCrossJoin(join.Left, join.Right), nil
+		}
+
 		for i, col := range rightSchema {
 			if _, ok := seen[col.Name]; !ok {
 				right = append(

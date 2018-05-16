@@ -363,6 +363,96 @@ func TestNaturalJoin(t *testing.T) {
 	)
 }
 
+func TestNaturalJoinEqual(t *testing.T) {
+	require := require.New(t)
+
+	t1 := mem.NewTable("t1", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t1"},
+		{Name: "b", Type: sql.Text, Source: "t1"},
+		{Name: "c", Type: sql.Text, Source: "t1"},
+	})
+	require.Nil(t1.Insert(sql.NewRow("a_1", "b_1", "c_1")))
+	require.Nil(t1.Insert(sql.NewRow("a_2", "b_2", "c_2")))
+	require.Nil(t1.Insert(sql.NewRow("a_3", "b_3", "c_3")))
+
+	t2 := mem.NewTable("t2", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t2"},
+		{Name: "b", Type: sql.Text, Source: "t2"},
+		{Name: "c", Type: sql.Text, Source: "t2"},
+	})
+	require.Nil(t2.Insert(sql.NewRow("a_1", "b_1", "c_1")))
+	require.Nil(t2.Insert(sql.NewRow("a_2", "b_2", "c_2")))
+	require.Nil(t2.Insert(sql.NewRow("a_3", "b_3", "c_3")))
+
+	db := mem.NewDatabase("mydb")
+	db.AddTable(t1.Name(), t1)
+	db.AddTable(t2.Name(), t2)
+
+	e := sqle.New()
+	e.AddDatabase(db)
+
+	_, iter, err := e.Query(sql.NewEmptyContext(), `SELECT * FROM t1 NATURAL JOIN t2`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Equal(
+		[]sql.Row{
+			{"a_1", "b_1", "c_1"},
+			{"a_2", "b_2", "c_2"},
+			{"a_3", "b_3", "c_3"},
+		},
+		rows,
+	)
+}
+
+func TestNaturalJoinDisjoint(t *testing.T) {
+	require := require.New(t)
+
+	t1 := mem.NewTable("t1", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t1"},
+	})
+	require.Nil(t1.Insert(sql.NewRow("a1")))
+	require.Nil(t1.Insert(sql.NewRow("a2")))
+	require.Nil(t1.Insert(sql.NewRow("a3")))
+
+	t2 := mem.NewTable("t2", sql.Schema{
+		{Name: "b", Type: sql.Text, Source: "t2"},
+	})
+	require.NoError(t2.Insert(sql.NewRow("b1")))
+	require.NoError(t2.Insert(sql.NewRow("b2")))
+	require.NoError(t2.Insert(sql.NewRow("b3")))
+
+	db := mem.NewDatabase("mydb")
+	db.AddTable(t1.Name(), t1)
+	db.AddTable(t2.Name(), t2)
+
+	e := sqle.New()
+	e.AddDatabase(db)
+
+	_, iter, err := e.Query(sql.NewEmptyContext(), `SELECT * FROM t1 NATURAL JOIN t2`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Equal(
+		[]sql.Row{
+			{"a1", "b1"},
+			{"a1", "b2"},
+			{"a1", "b3"},
+			{"a2", "b1"},
+			{"a2", "b2"},
+			{"a2", "b3"},
+			{"a3", "b1"},
+			{"a3", "b2"},
+			{"a3", "b3"},
+		},
+		rows,
+	)
+}
+
 func testQuery(t *testing.T, e *sqle.Engine, q string, r []sql.Row) {
 	t.Run(q, func(t *testing.T) {
 		require := require.New(t)
