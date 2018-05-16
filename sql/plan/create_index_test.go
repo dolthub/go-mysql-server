@@ -99,11 +99,12 @@ type indexableTable struct {
 	sql.Table
 }
 
-func (indexableTable) IndexKeyValueIter(colNames []string) (sql.IndexKeyValueIter, error) {
+func (indexableTable) IndexKeyValueIter(ctx *sql.Context, colNames []string) (sql.IndexKeyValueIter, error) {
 	return nil, nil
 }
 
 func (indexableTable) WithProjectFiltersAndIndex(
+	ctx *sql.Context,
 	columns, filters []sql.Expression,
 	index sql.IndexValueIter,
 ) (sql.RowIter, error) {
