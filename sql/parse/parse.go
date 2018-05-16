@@ -312,7 +312,7 @@ func tableExprToTable(
 		}
 	case *sqlparser.JoinTableExpr:
 		// TODO: add support for the rest of joins
-		if t.Join != sqlparser.JoinStr {
+		if t.Join != sqlparser.JoinStr && t.Join != sqlparser.NaturalJoinStr {
 			return nil, ErrUnsupportedFeature.New(t.Join)
 		}
 
@@ -330,6 +330,10 @@ func tableExprToTable(
 		right, err := tableExprToTable(ctx, t.RightExpr)
 		if err != nil {
 			return nil, err
+		}
+
+		if t.Join == sqlparser.NaturalJoinStr {
+			return plan.NewNaturalJoin(left, right), nil
 		}
 
 		cond, err := exprToExpression(t.Condition.On)
@@ -494,7 +498,7 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 	case *sqlparser.NullVal:
 		return expression.NewLiteral(nil, sql.Null), nil
 	case *sqlparser.ColName:
-		//TODO: add handling of case sensitiveness.
+		// TODO: add handling of case sensitiveness.
 		if !v.Qualifier.IsEmpty() {
 			return expression.NewUnresolvedQualifiedColumn(
 				v.Qualifier.Name.String(),
