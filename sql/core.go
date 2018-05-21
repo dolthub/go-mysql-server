@@ -1,7 +1,9 @@
 package sql
 
 import (
+	"crypto/sha1"
 	"fmt"
+	"hash"
 
 	"gopkg.in/src-d/go-errors.v1"
 )
@@ -75,6 +77,14 @@ type Expression interface {
 	TransformUp(TransformExprFunc) (Expression, error)
 	// Children returns the children expressions of this expression.
 	Children() []Expression
+}
+
+// NewExpressionHash returns a new Hash for given Expression instance.
+// Hash (sha1) checksum will be calculated based on ex.String().
+func NewExpressionHash(ex Expression) hash.Hash {
+	h := sha1.New()
+	h.Write([]byte(ex.String()))
+	return h
 }
 
 // Aggregation implements an aggregation expression, where an

@@ -2,6 +2,8 @@ package sql
 
 import (
 	"context"
+	"fmt"
+	"hash"
 	"io"
 	"reflect"
 	"strings"
@@ -43,7 +45,7 @@ type Index interface {
 	// Expressions returns the indexed expressions. If the result is more than
 	// one expression, it means the index has multiple columns indexed. If it's
 	// just one, it means it may be an expression or a column.
-	Expressions() []Expression
+	ExpressionHashes() []hash.Hash
 }
 
 // AscendIndex is an index that is sorted in ascending order.
@@ -109,13 +111,13 @@ type IndexDriver interface {
 	// Create a new index. If exprs is more than one expression, it means the
 	// index has multiple columns indexed. If it's just one, it means it may
 	// be an expression or a column.
-	Create(path, table, db, id string, exprs []Expression, config map[string]string) (Index, error)
+	Create(table, db, id string, expressionHashes []hash.Hash, config map[string]string) (Index, error)
 	// Load the index at the given path.
-	Load(path string) (Index, error)
+	Load(table, db string) ([]Index, error)
 	// Save the given index at the given path.
-	Save(ctx context.Context, path string, index Index, iter IndexKeyValueIter) error
+	Save(ctx context.Context, index Index, iter IndexKeyValueIter) error
 	// Delete the index with the given path.
-	Delete(path string, index Index) error
+	Delete(index Index) error
 }
 
 type indexKey struct {
@@ -211,13 +213,18 @@ func (r *IndexRegistry) Index(db, id string) Index {
 // IndexByExpression returns an index by the given expression. It will return
 // nil it the index is not found. If more than one expression is given, all
 // of them must match for the index to be matched.
-func (r *IndexRegistry) IndexByExpression(db string, exprs ...Expression) Index {
+func (r *IndexRegistry) IndexByExpression(db string, expr ...Expression) Index {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
 
+	var expressionHashes []hash.Hash
+	for _, e := range expr {
+		expressionHashes = append(expressionHashes, NewExpressionHash(e))
+	}
+
 	for _, idx := range r.indexes {
 		if idx.Database() == db {
-			if exprListsEqual(idx.Expressions(), exprs) {
+			if exprListsEqual(idx.ExpressionHashes(), expressionHashes) {
 				r.retainIndex(db, idx.ID())
 				return idx
 			}
@@ -257,10 +264,10 @@ func (r *IndexRegistry) validateIndexToAdd(idx Index) error {
 			return ErrIndexIDAlreadyRegistered.New(idx.ID())
 		}
 
-		if exprListsEqual(i.Expressions(), idx.Expressions()) {
-			var exprs = make([]string, len(idx.Expressions()))
-			for i, e := range idx.Expressions() {
-				exprs[i] = e.String()
+		if exprListsEqual(i.ExpressionHashes(), idx.ExpressionHashes()) {
+			var exprs = make([]string, len(idx.ExpressionHashes()))
+			for i, e := range idx.ExpressionHashes() {
+				exprs[i] = fmt.Sprintf("%x", e.Sum(nil))
 			}
 			return ErrIndexExpressionAlreadyRegistered.New(strings.Join(exprs, ", "))
 		}
@@ -269,7 +276,7 @@ func (r *IndexRegistry) validateIndexToAdd(idx Index) error {
 	return nil
 }
 
-func exprListsEqual(a, b []Expression) bool {
+func exprListsEqual(a, b []hash.Hash) bool {
 	var visited = make([]bool, len(b))
 	for _, va := range a {
 		found := false
@@ -278,7 +285,7 @@ func exprListsEqual(a, b []Expression) bool {
 				continue
 			}
 
-			if reflect.DeepEqual(va, vb) {
+			if reflect.DeepEqual(va.Sum(nil), vb.Sum(nil)) {
 				visited[j] = true
 				found = true
 				break
