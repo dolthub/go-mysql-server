@@ -15,15 +15,15 @@ import (
 type IndexKeyValueIter interface {
 	// Next returns the next tuple of index key values. The length of the
 	// returned slice will be the same as the number of columns used to
-	// create this iterator.
-	Next() ([]interface{}, error)
+	// create this iterator. The second returned parameter is a repo's location.
+	Next() ([]interface{}, []byte, error)
 	io.Closer
 }
 
 // IndexValueIter is an iterator of index values.
 type IndexValueIter interface {
-	// Next returns the next index value.
-	Next() (interface{}, error)
+	// Next returns the next value (repo's location) - see IndexKeyValueIter.
+	Next() ([]byte, error)
 	io.Closer
 }
 
