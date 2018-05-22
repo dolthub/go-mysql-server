@@ -64,13 +64,19 @@ func (s Schema) CheckRow(row Row) error {
 }
 
 // Contains returns whether the schema contains a column with the given name.
-func (s Schema) Contains(column string) bool {
-	for _, col := range s {
-		if col.Name == column {
-			return true
+func (s Schema) Contains(column string, source string) bool {
+	return s.IndexOf(column, source) >= 0
+}
+
+// IndexOf returns the index of the given column in the schema or -1 if it's
+// not present.
+func (s Schema) IndexOf(column, source string) int {
+	for i, col := range s {
+		if col.Name == column && col.Source == source {
+			return i
 		}
 	}
-	return false
+	return -1
 }
 
 // Equals checks whether the given schema is equal to this one.

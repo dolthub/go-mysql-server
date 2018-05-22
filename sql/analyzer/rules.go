@@ -410,11 +410,6 @@ func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	})
 }
 
-type columnInfo struct {
-	idx int
-	col *sql.Column
-}
-
 // maybeAlias is a wrapper on UnresolvedColumn used only to defer the
 // resolution of the column because it could be an alias and that
 // phase of the analyzer has not run yet.
@@ -444,20 +439,23 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			return n, nil
 		}
 
-		colMap := make(map[string][]columnInfo)
-		idx := 0
+		colMap := make(map[string][]*sql.Column)
 		for _, child := range n.Children() {
 			if !child.Resolved() {
 				return n, nil
 			}
 
 			for _, col := range child.Schema() {
-				colMap[col.Name] = append(colMap[col.Name], columnInfo{idx, col})
-				idx++
+				colMap[col.Name] = append(colMap[col.Name], col)
 			}
 		}
 
-		return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
+		expressioner, ok := n.(sql.Expressioner)
+		if !ok {
+			return n, nil
+		}
+
+		return expressioner.TransformExpressions(func(e sql.Expression) (sql.Expression, error) {
 			a.Log("transforming expression of type: %T", e)
 			if e.Resolved() {
 				return e, nil
@@ -468,7 +466,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				return e, nil
 			}
 
-			columnsInfo, ok := colMap[uc.Name()]
+			columns, ok := colMap[uc.Name()]
 			if !ok {
 				if uc.Table() != "" {
 					return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
@@ -482,11 +480,11 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				}
 			}
 
-			var ci columnInfo
+			var col *sql.Column
 			var found bool
-			for _, c := range columnsInfo {
-				if c.col.Source == uc.Table() {
-					ci = c
+			for _, c := range columns {
+				if c.Source == uc.Table() {
+					col = c
 					found = true
 					break
 				}
@@ -505,14 +503,30 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				}
 			}
 
-			a.Log("column resolved to %q.%q", ci.col.Source, ci.col.Name)
+			var schema sql.Schema
+			switch n := n.(type) {
+			// If expressioner and unary node we must take the
+			// child's schema to correctly select the indexes
+			// in the row is going to be evaluated in this node
+			case *plan.Project, *plan.Filter, *plan.GroupBy, *plan.Sort:
+				schema = n.Children()[0].Schema()
+			default:
+				schema = n.Schema()
+			}
+
+			idx := schema.IndexOf(col.Name, col.Source)
+			if idx < 0 {
+				return nil, ErrColumnNotFound.New(col.Name)
+			}
+
+			a.Log("column resolved to %q.%q", col.Source, col.Name)
 
 			return expression.NewGetFieldWithTable(
-				ci.idx,
-				ci.col.Type,
-				ci.col.Source,
-				ci.col.Name,
-				ci.col.Nullable,
+				idx,
+				col.Type,
+				col.Source,
+				col.Name,
+				col.Nullable,
 			), nil
 		})
 	})

@@ -95,15 +95,29 @@ func (p *Values) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, erro
 	return NewValues(ets), nil
 }
 
-func (p Values) String() string {
+func (p *Values) String() string {
 	return fmt.Sprintf("Values(%d tuples)", len(p.ExpressionTuples))
 }
 
 // Expressions implements the Expressioner interface.
-func (p Values) Expressions() []sql.Expression {
+func (p *Values) Expressions() []sql.Expression {
 	var exprs []sql.Expression
 	for _, tuple := range p.ExpressionTuples {
 		exprs = append(exprs, tuple...)
 	}
 	return exprs
+}
+
+// TransformExpressions implements the Expressioner interface.
+func (p *Values) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
+	tuples := [][]sql.Expression{}
+	for _, tuple := range p.ExpressionTuples {
+		transformed, err := transformExpressionsUp(f, tuple)
+		if err != nil {
+			return nil, err
+		}
+		tuples = append(tuples, transformed)
+	}
+
+	return NewValues(tuples), nil
 }
