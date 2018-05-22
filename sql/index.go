@@ -111,9 +111,9 @@ type IndexDriver interface {
 	// Create a new index. If exprs is more than one expression, it means the
 	// index has multiple columns indexed. If it's just one, it means it may
 	// be an expression or a column.
-	Create(table, db, id string, expressionHashes []hash.Hash, config map[string]string) (Index, error)
+	Create(db, table, id string, expressionHashes []hash.Hash, config map[string]string) (Index, error)
 	// Load the index at the given path.
-	Load(table, db string) ([]Index, error)
+	Load(db, table string) ([]Index, error)
 	// Save the given index at the given path.
 	Save(ctx context.Context, index Index, iter IndexKeyValueIter) error
 	// Delete the index with the given path.
