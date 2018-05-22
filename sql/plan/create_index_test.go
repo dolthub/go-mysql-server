@@ -2,6 +2,7 @@ package plan
 
 import (
 	"context"
+	"hash"
 	"testing"
 	"time"
 
@@ -46,17 +47,17 @@ func TestCreateIndex(t *testing.T) {
 	require.Equal([]string{"idx"}, driver.saved)
 	idx := catalog.IndexRegistry.Index("foo", "idx")
 	require.NotNil(idx)
-	require.Equal(&mockIndex{"idx", "foo", "foo", []sql.Expression{
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
+	require.Equal(&mockIndex{"foo", "foo", "idx", []hash.Hash{
+		sql.NewExpressionHash(expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true)),
+		sql.NewExpressionHash(expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true)),
 	}}, idx)
 }
 
 type mockIndex struct {
-	id    string
-	table string
 	db    string
-	exprs []sql.Expression
+	table string
+	id    string
+	exprs []hash.Hash
 }
 
 var _ sql.Index = (*mockIndex)(nil)
@@ -64,7 +65,7 @@ var _ sql.Index = (*mockIndex)(nil)
 func (i *mockIndex) ID() string                    { return i.id }
 func (i *mockIndex) Table() string                 { return i.table }
 func (i *mockIndex) Database() string              { return i.db }
-func (i *mockIndex) Expressions() []sql.Expression { return i.exprs }
+func (i *mockIndex) ExpressionHashes() []hash.Hash { return i.exprs }
 func (i *mockIndex) Get(key interface{}) (sql.IndexLookup, error) {
 	panic("unimplemented")
 }
@@ -80,17 +81,17 @@ type mockDriver struct {
 var _ sql.IndexDriver = (*mockDriver)(nil)
 
 func (*mockDriver) ID() string { return "mock" }
-func (*mockDriver) Create(path, db, table, id string, exprs []sql.Expression, config map[string]string) (sql.Index, error) {
-	return &mockIndex{id, table, db, exprs}, nil
+func (*mockDriver) Create(db, table, id string, exprs []hash.Hash, config map[string]string) (sql.Index, error) {
+	return &mockIndex{db, table, id, exprs}, nil
 }
-func (*mockDriver) Load(path string) (sql.Index, error) {
+func (*mockDriver) Load(db, table string) ([]sql.Index, error) {
 	panic("not implemented")
 }
-func (d *mockDriver) Save(ctx context.Context, path string, index sql.Index, iter sql.IndexKeyValueIter) error {
+func (d *mockDriver) Save(ctx context.Context, index sql.Index, iter sql.IndexKeyValueIter) error {
 	d.saved = append(d.saved, index.ID())
 	return nil
 }
-func (d *mockDriver) Delete(path string, index sql.Index) error {
+func (d *mockDriver) Delete(index sql.Index) error {
 	d.deleted = append(d.deleted, index.ID())
 	return nil
 }
