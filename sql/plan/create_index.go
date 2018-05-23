@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"hash"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -90,9 +91,8 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}
 
 	index, err := driver.Create(
-		c.Catalog.IndexRegistry.Root,
-		nameable.Name(),
 		c.CurrentDatabase,
+		nameable.Name(),
 		c.Name,
 		exprs,
 		c.Config,
@@ -112,7 +112,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}
 
 	go func() {
-		err := driver.Save(ctx, c.Catalog.IndexRegistry.Root, index, iter)
+		err := driver.Save(ctx, index, iter)
 		close(done)
 		if err != nil {
 			logrus.WithField("err", err).Error("unable to save the index")
@@ -187,14 +187,13 @@ func (c *CreateIndex) TransformUp(fn sql.TransformNodeFunc) (sql.Node, error) {
 // to match a row with only the returned columns in that same order.
 func getColumnsAndPrepareExpressions(
 	exprs []sql.Expression,
-) ([]string, []sql.Expression, error) {
+) ([]string, []hash.Hash, error) {
 	var columns []string
 	var seen = make(map[string]int)
-	var expressions = make([]sql.Expression, len(exprs))
+	var expressions = make([]hash.Hash, len(exprs))
 
 	for i, e := range exprs {
-		var err error
-		expressions[i], err = e.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+		ex, err := e.TransformUp(func(e sql.Expression) (sql.Expression, error) {
 			gf, ok := e.(*expression.GetField)
 			if !ok {
 				return e, nil
@@ -221,6 +220,8 @@ func getColumnsAndPrepareExpressions(
 		if err != nil {
 			return nil, nil, err
 		}
+
+		expressions[i] = sql.NewExpressionHash(ex)
 	}
 
 	return columns, expressions, nil

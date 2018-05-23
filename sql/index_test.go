@@ -1,6 +1,9 @@
 package sql
 
 import (
+	"crypto/sha1"
+	"fmt"
+	"hash"
 	"testing"
 	"time"
 
@@ -114,7 +117,11 @@ type dummyIdx struct {
 
 var _ Index = (*dummyIdx)(nil)
 
-func (i dummyIdx) Expressions() []Expression            { return []Expression{i.expr} }
+func (i dummyIdx) ExpressionHashes() []hash.Hash {
+	h := sha1.New()
+	h.Write([]byte(i.expr.String()))
+	return []hash.Hash{h}
+}
 func (i dummyIdx) ID() string                           { return i.id }
 func (i dummyIdx) Get(interface{}) (IndexLookup, error) { panic("not implemented") }
 func (i dummyIdx) Has(interface{}) (bool, error)        { panic("not implemented") }
@@ -131,7 +138,9 @@ var _ Expression = (*dummyExpr)(nil)
 func (dummyExpr) Children() []Expression                               { return nil }
 func (dummyExpr) Eval(*Context, Row) (interface{}, error)              { panic("not implemented") }
 func (dummyExpr) TransformUp(fn TransformExprFunc) (Expression, error) { panic("not implemented") }
-func (dummyExpr) String() string                                       { return "dummyExpr" }
-func (dummyExpr) IsNullable() bool                                     { return false }
-func (dummyExpr) Resolved() bool                                       { return false }
-func (dummyExpr) Type() Type                                           { panic("not implemented") }
+func (d dummyExpr) String() string {
+	return fmt.Sprintf("dummyExpr{foo: %d, bar: %s}", d.foo, d.bar)
+}
+func (dummyExpr) IsNullable() bool { return false }
+func (dummyExpr) Resolved() bool   { return false }
+func (dummyExpr) Type() Type       { panic("not implemented") }
