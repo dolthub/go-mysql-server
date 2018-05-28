@@ -377,37 +377,51 @@ func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 			return n, nil
 		}
 
-		p, ok := n.(*plan.Project)
-		if !ok {
+		switch n := n.(type) {
+		case *plan.Project:
+			expressions, err := expandStars(n.Projections, n.Child.Schema())
+			if err != nil {
+				return nil, err
+			}
+
+			return plan.NewProject(expressions, n.Child), nil
+		case *plan.GroupBy:
+			aggregate, err := expandStars(n.Aggregate, n.Child.Schema())
+			if err != nil {
+				return nil, err
+			}
+
+			return plan.NewGroupBy(aggregate, n.Grouping, n.Child), nil
+		default:
 			return n, nil
 		}
-
-		var expressions []sql.Expression
-		schema := p.Child.Schema()
-		for _, e := range p.Projections {
-			if s, ok := e.(*expression.Star); ok {
-				var exprs []sql.Expression
-				for i, col := range schema {
-					if s.Table == "" || s.Table == col.Source {
-						exprs = append(exprs, expression.NewGetFieldWithTable(
-							i, col.Type, col.Source, col.Name, col.Nullable,
-						))
-					}
-				}
-
-				if len(exprs) == 0 && s.Table != "" {
-					return nil, sql.ErrTableNotFound.New(s.Table)
-				}
-
-				a.Log("%s replaced with %d fields", e, len(exprs))
-				expressions = append(expressions, exprs...)
-			} else {
-				expressions = append(expressions, e)
-			}
-		}
-
-		return plan.NewProject(expressions, p.Child), nil
 	})
+}
+
+func expandStars(exprs []sql.Expression, schema sql.Schema) ([]sql.Expression, error) {
+	var expressions []sql.Expression
+	for _, e := range exprs {
+		if s, ok := e.(*expression.Star); ok {
+			var exprs []sql.Expression
+			for i, col := range schema {
+				if s.Table == "" || s.Table == col.Source {
+					exprs = append(exprs, expression.NewGetFieldWithTable(
+						i, col.Type, col.Source, col.Name, col.Nullable,
+					))
+				}
+			}
+
+			if len(exprs) == 0 && s.Table != "" {
+				return nil, sql.ErrTableNotFound.New(s.Table)
+			}
+
+			expressions = append(expressions, exprs...)
+		} else {
+			expressions = append(expressions, e)
+		}
+	}
+
+	return expressions, nil
 }
 
 // maybeAlias is a wrapper on UnresolvedColumn used only to defer the

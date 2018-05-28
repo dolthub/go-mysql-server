@@ -552,6 +552,21 @@ func TestPrintTree(t *testing.T) {
 	require.Equal(expectedTree, node.String())
 }
 
+// see: https://github.com/src-d/go-mysql-server/issues/197
+func TestStarPanic197(t *testing.T) {
+	require := require.New(t)
+	e := newEngine(t)
+
+	ctx := sql.NewEmptyContext()
+	_, iter, err := e.Query(ctx, `SELECT * FROM mytable GROUP BY i, s`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Len(rows, 3)
+}
+
 func TestTracing(t *testing.T) {
 	require := require.New(t)
 	e := newEngine(t)

@@ -416,6 +416,24 @@ func TestResolveStar(t *testing.T) {
 				plan.NewCrossJoin(table, table2),
 			),
 		},
+		{
+			"star in groupby",
+			plan.NewGroupBy(
+				[]sql.Expression{
+					expression.NewStar(),
+				},
+				nil,
+				table,
+			),
+			plan.NewGroupBy(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+				},
+				nil,
+				table,
+			),
+		},
 	}
 
 	for _, tt := range testCases {
