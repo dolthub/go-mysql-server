@@ -147,7 +147,11 @@ func (i *crossJoinIterator) Next() (sql.Row, error) {
 			return nil, err
 		}
 
-		return append(i.leftRow, rightRow...), nil
+		var row sql.Row
+		row = append(row, i.leftRow...)
+		row = append(row, rightRow...)
+
+		return row, nil
 	}
 }
 
