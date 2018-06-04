@@ -2,6 +2,7 @@ package sql
 
 import (
 	"context"
+	"encoding/hex"
 	"io"
 	"reflect"
 	"strings"
@@ -15,15 +16,15 @@ import (
 type IndexKeyValueIter interface {
 	// Next returns the next tuple of index key values. The length of the
 	// returned slice will be the same as the number of columns used to
-	// create this iterator.
-	Next() ([]interface{}, error)
+	// create this iterator. The second returned parameter is a repo's location.
+	Next() ([]interface{}, []byte, error)
 	io.Closer
 }
 
 // IndexValueIter is an iterator of index values.
 type IndexValueIter interface {
-	// Next returns the next index value.
-	Next() (interface{}, error)
+	// Next returns the next value (repo's location) - see IndexKeyValueIter.
+	Next() ([]byte, error)
 	io.Closer
 }
 
@@ -31,17 +32,19 @@ type IndexValueIter interface {
 // more functionality by implementing more specific interfaces.
 type Index interface {
 	// Get returns an IndexLookup for the given key in the index.
-	Get(key interface{}) (IndexLookup, error)
+	Get(key ...interface{}) (IndexLookup, error)
 	// Has checks if the given key is present in the index.
-	Has(key interface{}) (bool, error)
+	Has(key ...interface{}) (bool, error)
 	// ID returns the identifier of the index.
 	ID() string
 	// Database returns the database name this index belongs to.
 	Database() string
 	// Table returns the table name this index belongs to.
 	Table() string
-	// Expression returns the indexed expression.
-	Expression() Expression
+	// Expressions returns the indexed expressions. If the result is more than
+	// one expression, it means the index has multiple columns indexed. If it's
+	// just one, it means it may be an expression or a column.
+	ExpressionHashes() []ExpressionHash
 }
 
 // AscendIndex is an index that is sorted in ascending order.
@@ -100,18 +103,20 @@ type Mergeable interface {
 }
 
 // IndexDriver manages the coordination between the indexes and their
-// representation in disk.
+// representation on disk.
 type IndexDriver interface {
 	// ID returns the unique name of the driver.
 	ID() string
-	// Create a new index for the given expression and id.
-	Create(path, db, id string, expr Expression) (Index, error)
-	// Load the index at the given path.
-	Load(path string) (Index, error)
-	// Save the given index at the given path.
-	Save(ctx context.Context, path string, index Index, iter IndexKeyValueIter) error
-	// Delete the index with the given path.
-	Delete(path string, index Index) error
+	// Create a new index. If exprs is more than one expression, it means the
+	// index has multiple columns indexed. If it's just one, it means it may
+	// be an expression or a column.
+	Create(db, table, id string, expressionHashes []ExpressionHash, config map[string]string) (Index, error)
+	// LoadAll loads all indexes for given db and table
+	LoadAll(db, table string) ([]Index, error)
+	// Save the given index
+	Save(ctx context.Context, index Index, iter IndexKeyValueIter) error
+	// Delete the given index.
+	Delete(index Index) error
 }
 
 type indexKey struct {
@@ -120,7 +125,8 @@ type indexKey struct {
 
 // IndexRegistry keeps track of all indexes in the engine.
 type IndexRegistry struct {
-	root string
+	// Root path where all the data of the indexes is stored on disk.
+	Root string
 
 	mut      sync.RWMutex
 	indexes  map[indexKey]Index
@@ -204,17 +210,26 @@ func (r *IndexRegistry) Index(db, id string) Index {
 }
 
 // IndexByExpression returns an index by the given expression. It will return
-// nil it the index is not found.
-func (r *IndexRegistry) IndexByExpression(db string, expr Expression) Index {
+// nil it the index is not found. If more than one expression is given, all
+// of them must match for the index to be matched.
+func (r *IndexRegistry) IndexByExpression(db string, expr ...Expression) Index {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
 
+	var expressionHashes []ExpressionHash
+	for _, e := range expr {
+		expressionHashes = append(expressionHashes, NewExpressionHash(e))
+	}
+
 	for _, idx := range r.indexes {
-		if reflect.DeepEqual(idx.Expression(), expr) && idx.Database() == db {
-			r.retainIndex(db, idx.ID())
-			return idx
+		if idx.Database() == db {
+			if exprListsEqual(idx.ExpressionHashes(), expressionHashes) {
+				r.retainIndex(db, idx.ID())
+				return idx
+			}
 		}
 	}
+
 	return nil
 }
 
@@ -225,7 +240,7 @@ var (
 
 	// ErrIndexExpressionAlreadyRegistered is the error returned when there is
 	// already an index with the same expression.
-	ErrIndexExpressionAlreadyRegistered = errors.NewKind("there is already an index registered for the expression %q")
+	ErrIndexExpressionAlreadyRegistered = errors.NewKind("there is already an index registered for the expressions: %s")
 
 	// ErrIndexNotFound is returned when the index could not be found.
 	ErrIndexNotFound = errors.NewKind("index %q	was not found")
@@ -248,12 +263,40 @@ func (r *IndexRegistry) validateIndexToAdd(idx Index) error {
 			return ErrIndexIDAlreadyRegistered.New(idx.ID())
 		}
 
-		if reflect.DeepEqual(i.Expression(), idx.Expression()) {
-			return ErrIndexExpressionAlreadyRegistered.New(idx.Expression())
+		if exprListsEqual(i.ExpressionHashes(), idx.ExpressionHashes()) {
+			var exprs = make([]string, len(idx.ExpressionHashes()))
+			for i, e := range idx.ExpressionHashes() {
+				exprs[i] = hex.EncodeToString(e)
+			}
+			return ErrIndexExpressionAlreadyRegistered.New(strings.Join(exprs, ", "))
 		}
 	}
 
 	return nil
+}
+
+func exprListsEqual(a, b []ExpressionHash) bool {
+	var visited = make([]bool, len(b))
+	for _, va := range a {
+		found := false
+		for j, vb := range b {
+			if visited[j] {
+				continue
+			}
+
+			if reflect.DeepEqual(va, vb) {
+				visited[j] = true
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return false
+		}
+	}
+
+	return true
 }
 
 // AddIndex adds the given index to the registry. The added index will be

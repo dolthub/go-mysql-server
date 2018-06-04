@@ -21,12 +21,9 @@ func TestResolveSubqueries(t *testing.T) {
 	})
 	table3 := mem.NewTable("baz", sql.Schema{{Name: "c", Type: sql.Int64, Source: "baz"}})
 	db := mem.NewDatabase("mydb")
-	memDb, ok := db.(*mem.Database)
-	require.True(ok)
-
-	memDb.AddTable("foo", table1)
-	memDb.AddTable("bar", table2)
-	memDb.AddTable("baz", table3)
+	db.AddTable("foo", table1)
+	db.AddTable("bar", table2)
+	db.AddTable("baz", table3)
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 	a := New(catalog)
@@ -106,10 +103,7 @@ func TestResolveTables(t *testing.T) {
 
 	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
 	db := mem.NewDatabase("mydb")
-	memDb, ok := db.(*mem.Database)
-	require.True(ok)
-
-	memDb.AddTable("mytable", table)
+	db.AddTable("mytable", table)
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 
@@ -144,10 +138,7 @@ func TestResolveTablesNested(t *testing.T) {
 
 	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
 	db := mem.NewDatabase("mydb")
-	memDb, ok := db.(*mem.Database)
-	require.True(ok)
-
-	memDb.AddTable("mytable", table)
+	db.AddTable("mytable", table)
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 
@@ -166,6 +157,129 @@ func TestResolveTablesNested(t *testing.T) {
 		table,
 	)
 	require.Equal(expected, analyzed)
+}
+
+func TestResolveNaturalJoins(t *testing.T) {
+	require := require.New(t)
+
+	left := mem.NewTable("t1", sql.Schema{
+		{Name: "a", Type: sql.Int64, Source: "t1"},
+		{Name: "b", Type: sql.Int64, Source: "t1"},
+		{Name: "c", Type: sql.Int64, Source: "t1"},
+	})
+
+	right := mem.NewTable("t2", sql.Schema{
+		{Name: "d", Type: sql.Int64, Source: "t2"},
+		{Name: "c", Type: sql.Int64, Source: "t2"},
+		{Name: "b", Type: sql.Int64, Source: "t2"},
+		{Name: "e", Type: sql.Int64, Source: "t2"},
+	})
+
+	node := plan.NewNaturalJoin(left, right)
+	rule := getRule("resolve_natural_joins")
+
+	result, err := rule.Apply(sql.NewEmptyContext(), New(nil), node)
+	require.NoError(err)
+
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
+			expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
+			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "a", false),
+			expression.NewGetFieldWithTable(3, sql.Int64, "t2", "d", false),
+			expression.NewGetFieldWithTable(6, sql.Int64, "t2", "e", false),
+		},
+		plan.NewInnerJoin(
+			left,
+			right,
+			expression.JoinAnd(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
+					expression.NewGetFieldWithTable(5, sql.Int64, "t2", "b", false),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
+					expression.NewGetFieldWithTable(4, sql.Int64, "t2", "c", false),
+				),
+			),
+		),
+	)
+
+	require.Equal(expected, result)
+}
+
+func TestResolveNaturalJoinsEqual(t *testing.T) {
+	require := require.New(t)
+
+	left := mem.NewTable("t1", sql.Schema{
+		{Name: "a", Type: sql.Int64, Source: "t1"},
+		{Name: "b", Type: sql.Int64, Source: "t1"},
+		{Name: "c", Type: sql.Int64, Source: "t1"},
+	})
+
+	right := mem.NewTable("t2", sql.Schema{
+		{Name: "a", Type: sql.Int64, Source: "t2"},
+		{Name: "b", Type: sql.Int64, Source: "t2"},
+		{Name: "c", Type: sql.Int64, Source: "t2"},
+	})
+
+	node := plan.NewNaturalJoin(left, right)
+	rule := getRule("resolve_natural_joins")
+
+	result, err := rule.Apply(sql.NewEmptyContext(), New(nil), node)
+	require.NoError(err)
+
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "a", false),
+			expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
+			expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
+		},
+		plan.NewInnerJoin(
+			left,
+			right,
+			expression.JoinAnd(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "a", false),
+					expression.NewGetFieldWithTable(3, sql.Int64, "t2", "a", false),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
+					expression.NewGetFieldWithTable(4, sql.Int64, "t2", "b", false),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
+					expression.NewGetFieldWithTable(5, sql.Int64, "t2", "c", false),
+				),
+			),
+		),
+	)
+
+	require.Equal(expected, result)
+}
+
+func TestResolveNaturalJoinsDisjoint(t *testing.T) {
+	require := require.New(t)
+
+	left := mem.NewTable("t1", sql.Schema{
+		{Name: "a", Type: sql.Int64, Source: "t1"},
+		{Name: "b", Type: sql.Int64, Source: "t1"},
+		{Name: "c", Type: sql.Int64, Source: "t1"},
+	})
+
+	right := mem.NewTable("t2", sql.Schema{
+		{Name: "d", Type: sql.Int64, Source: "t2"},
+		{Name: "e", Type: sql.Int64, Source: "t2"},
+	})
+
+	node := plan.NewNaturalJoin(left, right)
+	rule := getRule("resolve_natural_joins")
+
+	result, err := rule.Apply(sql.NewEmptyContext(), New(nil), node)
+	require.NoError(err)
+
+	expected := plan.NewCrossJoin(left, right)
+	require.Equal(expected, result)
 }
 
 func TestResolveOrderByLiterals(t *testing.T) {
@@ -300,6 +414,24 @@ func TestResolveStar(t *testing.T) {
 					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
 				},
 				plan.NewCrossJoin(table, table2),
+			),
+		},
+		{
+			"star in groupby",
+			plan.NewGroupBy(
+				[]sql.Expression{
+					expression.NewStar(),
+				},
+				nil,
+				table,
+			),
+			plan.NewGroupBy(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+				},
+				nil,
+				table,
 			),
 		},
 	}

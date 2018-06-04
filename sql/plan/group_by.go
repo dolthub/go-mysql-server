@@ -107,7 +107,7 @@ func (p *GroupBy) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, err
 	return NewGroupBy(aggregate, grouping, child), nil
 }
 
-func (p GroupBy) String() string {
+func (p *GroupBy) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("GroupBy")
 
@@ -130,11 +130,26 @@ func (p GroupBy) String() string {
 }
 
 // Expressions implements the Expressioner interface.
-func (p GroupBy) Expressions() []sql.Expression {
+func (p *GroupBy) Expressions() []sql.Expression {
 	var exprs []sql.Expression
 	exprs = append(exprs, p.Aggregate...)
 	exprs = append(exprs, p.Grouping...)
 	return exprs
+}
+
+// TransformExpressions implements the Expressioner interface.
+func (p *GroupBy) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
+	agg, err := transformExpressionsUp(f, p.Aggregate)
+	if err != nil {
+		return nil, err
+	}
+
+	group, err := transformExpressionsUp(f, p.Grouping)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewGroupBy(agg, group, p.Child), nil
 }
 
 type groupByIter struct {

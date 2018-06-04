@@ -1,6 +1,8 @@
 package sql
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -77,6 +79,30 @@ type Expression interface {
 	Children() []Expression
 }
 
+// ExpressionHash is a SHA-1 checksum
+type ExpressionHash []byte
+
+// NewExpressionHash returns a new SHA1 hash for given Expression instance.
+// SHA1 checksum will be calculated based on ex.String().
+func NewExpressionHash(ex Expression) ExpressionHash {
+	h := sha1.Sum([]byte(ex.String()))
+	return ExpressionHash(h[:])
+}
+
+// DecodeExpressionHash  decodes a hexadecimal string to ExpressionHash
+func DecodeExpressionHash(hexstr string) (ExpressionHash, error) {
+	h, err := hex.DecodeString(hexstr)
+	if err != nil {
+		return nil, err
+	}
+	return ExpressionHash(h), nil
+}
+
+// EncodeExpressionHash encodes an ExpressionHash to hexadecimal string
+func EncodeExpressionHash(h ExpressionHash) string {
+	return hex.EncodeToString(h)
+}
+
 // Aggregation implements an aggregation expression, where an
 // aggregation buffer is created for each grouping (NewBuffer) and rows in the
 // grouping are fed to the buffer (Update). Multiple buffers can be merged
@@ -110,6 +136,10 @@ type Node interface {
 type Expressioner interface {
 	// Expressions returns the list of expressions contained by the node.
 	Expressions() []Expression
+	// TransformExpressions applies for each expression in this node
+	// the expression's TransformUp method with the given function, and
+	// return a new node with the transformed expressions.
+	TransformExpressions(TransformExprFunc) (Node, error)
 }
 
 // Table represents a SQL table.
@@ -123,12 +153,12 @@ type Table interface {
 type Indexable interface {
 	// IndexKeyValueIter returns an iterator with the values of each row in
 	// the table for the given column names.
-	IndexKeyValueIter(colNames []string) (IndexKeyValueIter, error)
+	IndexKeyValueIter(ctx *Context, colNames []string) (IndexKeyValueIter, error)
 	// WithProjectFiltersAndIndex is meant to be called instead of RowIter
 	// method of the table. Returns a new iterator given the columns,
 	// filters and the index so the table can improve its speed instead of
 	// making a full scan.
-	WithProjectFiltersAndIndex(columns, filters []Expression, index IndexValueIter) (RowIter, error)
+	WithProjectFiltersAndIndex(ctx *Context, columns, filters []Expression, index IndexValueIter) (RowIter, error)
 }
 
 // PushdownProjectionTable is a table that can produce a specific RowIter

@@ -137,7 +137,7 @@ func (t *PushdownProjectionAndFiltersTable) RowIter(ctx *sql.Context) (sql.RowIt
 	return sql.NewSpanIter(span, iter), nil
 }
 
-func (t PushdownProjectionAndFiltersTable) String() string {
+func (t *PushdownProjectionAndFiltersTable) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("PushdownProjectionAndFiltersTable")
 
@@ -161,9 +161,28 @@ func (t PushdownProjectionAndFiltersTable) String() string {
 }
 
 // Expressions implements the Expressioner interface.
-func (t PushdownProjectionAndFiltersTable) Expressions() []sql.Expression {
+func (t *PushdownProjectionAndFiltersTable) Expressions() []sql.Expression {
 	var exprs []sql.Expression
 	exprs = append(exprs, t.Columns...)
 	exprs = append(exprs, t.Filters...)
 	return exprs
+}
+
+// TransformExpressions implements the Expressioner interface.
+func (t *PushdownProjectionAndFiltersTable) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
+	cols, err := transformExpressionsUp(f, t.Columns)
+	if err != nil {
+		return nil, err
+	}
+
+	filters, err := transformExpressionsUp(f, t.Filters)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewPushdownProjectionAndFiltersTable(
+		cols,
+		filters,
+		t.PushdownProjectionAndFiltersTable,
+	), nil
 }

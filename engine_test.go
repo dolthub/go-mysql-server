@@ -196,6 +196,20 @@ var queries = []struct {
 		`SELECT i AS foo FROM mytable WHERE foo NOT IN (1, 2, 5)`,
 		[]sql.Row{{int64(3)}},
 	},
+	{
+		`SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2`,
+		[]sql.Row{
+			{"a", int32(1), int64(1), "first row", "third", int64(1)},
+			{"a", int32(1), int64(2), "second row", "second", int64(2)},
+			{"a", int32(1), int64(3), "third row", "first", int64(3)},
+			{"b", int32(2), int64(1), "first row", "third", int64(1)},
+			{"b", int32(2), int64(2), "second row", "second", int64(2)},
+			{"b", int32(2), int64(3), "third row", "first", int64(3)},
+			{"c", int32(3), int64(1), "first row", "third", int64(1)},
+			{"c", int32(3), int64(2), "second row", "second", int64(2)},
+			{"c", int32(3), int64(3), "third row", "first", int64(3)},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {
@@ -259,12 +273,8 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 	require.Nil(table2.Insert(sql.NewRow("pux", int64(1))))
 
 	db := mem.NewDatabase("mydb")
-
-	memDb, ok := db.(*mem.Database)
-	require.True(ok)
-
-	memDb.AddTable(table.Name(), table)
-	memDb.AddTable(table2.Name(), table2)
+	db.AddTable(table.Name(), table)
+	db.AddTable(table2.Name(), table2)
 
 	e := sqle.New()
 	e.AddDatabase(db)
@@ -323,6 +333,140 @@ func TestDDL(t *testing.T) {
 	require.Equal(s, testTable.Schema())
 }
 
+func TestNaturalJoin(t *testing.T) {
+	require := require.New(t)
+
+	t1 := mem.NewTable("t1", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t1"},
+		{Name: "b", Type: sql.Text, Source: "t1"},
+		{Name: "c", Type: sql.Text, Source: "t1"},
+	})
+	require.Nil(t1.Insert(sql.NewRow("a_1", "b_1", "c_1")))
+	require.Nil(t1.Insert(sql.NewRow("a_2", "b_2", "c_2")))
+	require.Nil(t1.Insert(sql.NewRow("a_3", "b_3", "c_3")))
+
+	t2 := mem.NewTable("t2", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t2"},
+		{Name: "b", Type: sql.Text, Source: "t2"},
+		{Name: "d", Type: sql.Text, Source: "t2"},
+	})
+	require.NoError(t2.Insert(sql.NewRow("a_1", "b_1", "d_1")))
+	require.NoError(t2.Insert(sql.NewRow("a_2", "b_2", "d_2")))
+	require.NoError(t2.Insert(sql.NewRow("a_3", "b_3", "d_3")))
+
+	db := mem.NewDatabase("mydb")
+	db.AddTable(t1.Name(), t1)
+	db.AddTable(t2.Name(), t2)
+
+	e := sqle.New()
+	e.AddDatabase(db)
+
+	_, iter, err := e.Query(sql.NewEmptyContext(), `SELECT * FROM t1 NATURAL JOIN t2`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Equal(
+		[]sql.Row{
+			{"a_1", "b_1", "c_1", "d_1"},
+			{"a_2", "b_2", "c_2", "d_2"},
+			{"a_3", "b_3", "c_3", "d_3"},
+		},
+		rows,
+	)
+}
+
+func TestNaturalJoinEqual(t *testing.T) {
+	require := require.New(t)
+
+	t1 := mem.NewTable("t1", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t1"},
+		{Name: "b", Type: sql.Text, Source: "t1"},
+		{Name: "c", Type: sql.Text, Source: "t1"},
+	})
+	require.Nil(t1.Insert(sql.NewRow("a_1", "b_1", "c_1")))
+	require.Nil(t1.Insert(sql.NewRow("a_2", "b_2", "c_2")))
+	require.Nil(t1.Insert(sql.NewRow("a_3", "b_3", "c_3")))
+
+	t2 := mem.NewTable("t2", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t2"},
+		{Name: "b", Type: sql.Text, Source: "t2"},
+		{Name: "c", Type: sql.Text, Source: "t2"},
+	})
+	require.Nil(t2.Insert(sql.NewRow("a_1", "b_1", "c_1")))
+	require.Nil(t2.Insert(sql.NewRow("a_2", "b_2", "c_2")))
+	require.Nil(t2.Insert(sql.NewRow("a_3", "b_3", "c_3")))
+
+	db := mem.NewDatabase("mydb")
+	db.AddTable(t1.Name(), t1)
+	db.AddTable(t2.Name(), t2)
+
+	e := sqle.New()
+	e.AddDatabase(db)
+
+	_, iter, err := e.Query(sql.NewEmptyContext(), `SELECT * FROM t1 NATURAL JOIN t2`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Equal(
+		[]sql.Row{
+			{"a_1", "b_1", "c_1"},
+			{"a_2", "b_2", "c_2"},
+			{"a_3", "b_3", "c_3"},
+		},
+		rows,
+	)
+}
+
+func TestNaturalJoinDisjoint(t *testing.T) {
+	require := require.New(t)
+
+	t1 := mem.NewTable("t1", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t1"},
+	})
+	require.Nil(t1.Insert(sql.NewRow("a1")))
+	require.Nil(t1.Insert(sql.NewRow("a2")))
+	require.Nil(t1.Insert(sql.NewRow("a3")))
+
+	t2 := mem.NewTable("t2", sql.Schema{
+		{Name: "b", Type: sql.Text, Source: "t2"},
+	})
+	require.NoError(t2.Insert(sql.NewRow("b1")))
+	require.NoError(t2.Insert(sql.NewRow("b2")))
+	require.NoError(t2.Insert(sql.NewRow("b3")))
+
+	db := mem.NewDatabase("mydb")
+	db.AddTable(t1.Name(), t1)
+	db.AddTable(t2.Name(), t2)
+
+	e := sqle.New()
+	e.AddDatabase(db)
+
+	_, iter, err := e.Query(sql.NewEmptyContext(), `SELECT * FROM t1 NATURAL JOIN t2`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Equal(
+		[]sql.Row{
+			{"a1", "b1"},
+			{"a1", "b2"},
+			{"a1", "b3"},
+			{"a2", "b1"},
+			{"a2", "b2"},
+			{"a2", "b3"},
+			{"a3", "b1"},
+			{"a3", "b2"},
+			{"a3", "b3"},
+		},
+		rows,
+	)
+}
+
 func testQuery(t *testing.T, e *sqle.Engine, q string, r []sql.Row) {
 	t.Run(q, func(t *testing.T) {
 		require := require.New(t)
@@ -353,33 +497,30 @@ func newEngine(t *testing.T) *sqle.Engine {
 		{Name: "i", Type: sql.Int64, Source: "mytable"},
 		{Name: "s", Type: sql.Text, Source: "mytable"},
 	})
-	require.Nil(table.Insert(sql.NewRow(int64(1), "first row")))
-	require.Nil(table.Insert(sql.NewRow(int64(2), "second row")))
-	require.Nil(table.Insert(sql.NewRow(int64(3), "third row")))
+	require.NoError(table.Insert(sql.NewRow(int64(1), "first row")))
+	require.NoError(table.Insert(sql.NewRow(int64(2), "second row")))
+	require.NoError(table.Insert(sql.NewRow(int64(3), "third row")))
 
 	table2 := mem.NewTable("othertable", sql.Schema{
 		{Name: "s2", Type: sql.Text, Source: "othertable"},
 		{Name: "i2", Type: sql.Int64, Source: "othertable"},
 	})
-	require.Nil(table2.Insert(sql.NewRow("first", int64(3))))
-	require.Nil(table2.Insert(sql.NewRow("second", int64(2))))
-	require.Nil(table2.Insert(sql.NewRow("third", int64(1))))
+	require.NoError(table2.Insert(sql.NewRow("first", int64(3))))
+	require.NoError(table2.Insert(sql.NewRow("second", int64(2))))
+	require.NoError(table2.Insert(sql.NewRow("third", int64(1))))
 
 	table3 := mem.NewTable("tabletest", sql.Schema{
 		{Name: "text", Type: sql.Text, Source: "tabletest"},
 		{Name: "number", Type: sql.Int32, Source: "tabletest"},
 	})
-	require.Nil(table3.Insert(sql.NewRow("a", int32(1))))
-	require.Nil(table3.Insert(sql.NewRow("b", int32(2))))
-	require.Nil(table3.Insert(sql.NewRow("c", int32(3))))
+	require.NoError(table3.Insert(sql.NewRow("a", int32(1))))
+	require.NoError(table3.Insert(sql.NewRow("b", int32(2))))
+	require.NoError(table3.Insert(sql.NewRow("c", int32(3))))
 
 	db := mem.NewDatabase("mydb")
-	memDb, ok := db.(*mem.Database)
-	require.True(ok)
-
-	memDb.AddTable(table.Name(), table)
-	memDb.AddTable(table2.Name(), table2)
-	memDb.AddTable(table3.Name(), table3)
+	db.AddTable(table.Name(), table)
+	db.AddTable(table2.Name(), table2)
+	db.AddTable(table3.Name(), table3)
 
 	e := sqle.New()
 	e.AddDatabase(db)
@@ -409,6 +550,21 @@ func TestPrintTree(t *testing.T) {
 		OFFSET 2`)
 	require.NoError(err)
 	require.Equal(expectedTree, node.String())
+}
+
+// see: https://github.com/src-d/go-mysql-server/issues/197
+func TestStarPanic197(t *testing.T) {
+	require := require.New(t)
+	e := newEngine(t)
+
+	ctx := sql.NewEmptyContext()
+	_, iter, err := e.Query(ctx, `SELECT * FROM mytable GROUP BY i, s`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Len(rows, 3)
 }
 
 func TestTracing(t *testing.T) {

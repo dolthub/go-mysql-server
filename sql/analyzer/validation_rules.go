@@ -1,6 +1,8 @@
 package analyzer
 
 import (
+	"strings"
+
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
@@ -13,6 +15,7 @@ const (
 	validateGroupByRule       = "validate_group_by"
 	validateSchemaSourceRule  = "validate_schema_source"
 	validateProjectTuplesRule = "validate_project_tuples"
+	validateIndexCreationRule = "validate_index_creation"
 )
 
 var (
@@ -30,6 +33,9 @@ var (
 	// ErrProjectTuple is returned when there is a tuple of more than 1 column
 	// inside a projection.
 	ErrProjectTuple = errors.NewKind("selected field %d should have 1 column, but has %d")
+	// ErrUnknownIndexColumns is returned when there are columns in the expr
+	// to index that are unknown in the table.
+	ErrUnknownIndexColumns = errors.NewKind("unknown columns to index for table %q: %s")
 )
 
 // DefaultValidationRules to apply while analyzing nodes.
@@ -39,6 +45,7 @@ var DefaultValidationRules = []ValidationRule{
 	{validateGroupByRule, validateGroupBy},
 	{validateSchemaSourceRule, validateSchemaSource},
 	{validateProjectTuplesRule, validateProjectTuples},
+	{validateIndexCreationRule, validateIndexCreation},
 }
 
 func validateIsResolved(ctx *sql.Context, n sql.Node) error {
@@ -127,6 +134,38 @@ func validateSchemaSource(ctx *sql.Context, n sql.Node) error {
 	case sql.Table:
 		return validateSchema(n)
 	}
+	return nil
+}
+
+func validateIndexCreation(ctx *sql.Context, n sql.Node) error {
+	span, ctx := ctx.Span("validate_index_creation")
+	defer span.Finish()
+
+	ci, ok := n.(*plan.CreateIndex)
+	if !ok {
+		return nil
+	}
+
+	schema := ci.Table.Schema()
+	table := schema[0].Source
+
+	var unknownColumns []string
+	for _, expr := range ci.Exprs {
+		expression.Inspect(expr, func(e sql.Expression) bool {
+			gf, ok := e.(*expression.GetField)
+			if ok {
+				if gf.Table() != table || !schema.Contains(gf.Name(), gf.Table()) {
+					unknownColumns = append(unknownColumns, gf.Name())
+				}
+			}
+			return true
+		})
+	}
+
+	if len(unknownColumns) > 0 {
+		return ErrUnknownIndexColumns.New(table, strings.Join(unknownColumns, ", "))
+	}
+
 	return nil
 }
 

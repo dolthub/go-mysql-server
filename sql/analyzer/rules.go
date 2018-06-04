@@ -14,6 +14,7 @@ import (
 var DefaultRules = []Rule{
 	{"resolve_subqueries", resolveSubqueries},
 	{"resolve_tables", resolveTables},
+	{"resolve_natural_joins", resolveNaturalJoins},
 	{"resolve_orderby_literals", resolveOrderByLiterals},
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
@@ -24,6 +25,7 @@ var DefaultRules = []Rule{
 	{"pushdown", pushdown},
 	{"optimize_distinct", optimizeDistinct},
 	{"erase_projection", eraseProjection},
+	{"index_catalog", indexCatalog},
 }
 
 var (
@@ -263,6 +265,107 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 	})
 }
 
+func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	span, ctx := ctx.Span("resolve_natural_joins")
+	defer span.Finish()
+
+	if n.Resolved() {
+		return n, nil
+	}
+
+	a.Log("resolving natural joins, node of type %T", n)
+	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+		a.Log("transforming node of type: %T", n)
+		if n.Resolved() {
+			return n, nil
+		}
+
+		join, ok := n.(*plan.NaturalJoin)
+		if !ok {
+			return n, nil
+		}
+
+		// we need both leaves resolved before resolving this one
+		if !join.Left.Resolved() || !join.Right.Resolved() {
+			return n, nil
+		}
+
+		leftSchema, rightSchema := join.Left.Schema(), join.Right.Schema()
+
+		var conditions, common, left, right []sql.Expression
+		var seen = make(map[string]struct{})
+
+		for i, lcol := range leftSchema {
+			var found bool
+			leftCol := expression.NewGetFieldWithTable(
+				i,
+				lcol.Type,
+				lcol.Source,
+				lcol.Name,
+				lcol.Nullable,
+			)
+
+			for j, rcol := range rightSchema {
+				if lcol.Name == rcol.Name {
+					common = append(common, leftCol)
+
+					conditions = append(
+						conditions,
+						expression.NewEquals(
+							leftCol,
+							expression.NewGetFieldWithTable(
+								len(leftSchema)+j,
+								rcol.Type,
+								rcol.Source,
+								rcol.Name,
+								rcol.Nullable,
+							),
+						),
+					)
+
+					found = true
+					seen[lcol.Name] = struct{}{}
+					break
+				}
+			}
+
+			if !found {
+				left = append(left, leftCol)
+			}
+		}
+
+		if len(conditions) == 0 {
+			return plan.NewCrossJoin(join.Left, join.Right), nil
+		}
+
+		for i, col := range rightSchema {
+			if _, ok := seen[col.Name]; !ok {
+				right = append(
+					right,
+					expression.NewGetFieldWithTable(
+						len(leftSchema)+i,
+						col.Type,
+						col.Source,
+						col.Name,
+						col.Nullable,
+					),
+				)
+			}
+		}
+
+		projections := append(append(common, left...), right...)
+
+		return plan.NewProject(
+			projections,
+			plan.NewInnerJoin(
+				join.Left,
+				join.Right,
+				expression.JoinAnd(conditions...),
+			),
+		), nil
+	})
+}
+
 func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("resolve_star")
 	defer span.Finish()
@@ -274,42 +377,51 @@ func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 			return n, nil
 		}
 
-		p, ok := n.(*plan.Project)
-		if !ok {
+		switch n := n.(type) {
+		case *plan.Project:
+			expressions, err := expandStars(n.Projections, n.Child.Schema())
+			if err != nil {
+				return nil, err
+			}
+
+			return plan.NewProject(expressions, n.Child), nil
+		case *plan.GroupBy:
+			aggregate, err := expandStars(n.Aggregate, n.Child.Schema())
+			if err != nil {
+				return nil, err
+			}
+
+			return plan.NewGroupBy(aggregate, n.Grouping, n.Child), nil
+		default:
 			return n, nil
 		}
-
-		var expressions []sql.Expression
-		schema := p.Child.Schema()
-		for _, e := range p.Projections {
-			if s, ok := e.(*expression.Star); ok {
-				var exprs []sql.Expression
-				for i, col := range schema {
-					if s.Table == "" || s.Table == col.Source {
-						exprs = append(exprs, expression.NewGetFieldWithTable(
-							i, col.Type, col.Source, col.Name, col.Nullable,
-						))
-					}
-				}
-
-				if len(exprs) == 0 && s.Table != "" {
-					return nil, sql.ErrTableNotFound.New(s.Table)
-				}
-
-				a.Log("%s replaced with %d fields", e, len(exprs))
-				expressions = append(expressions, exprs...)
-			} else {
-				expressions = append(expressions, e)
-			}
-		}
-
-		return plan.NewProject(expressions, p.Child), nil
 	})
 }
 
-type columnInfo struct {
-	idx int
-	col *sql.Column
+func expandStars(exprs []sql.Expression, schema sql.Schema) ([]sql.Expression, error) {
+	var expressions []sql.Expression
+	for _, e := range exprs {
+		if s, ok := e.(*expression.Star); ok {
+			var exprs []sql.Expression
+			for i, col := range schema {
+				if s.Table == "" || s.Table == col.Source {
+					exprs = append(exprs, expression.NewGetFieldWithTable(
+						i, col.Type, col.Source, col.Name, col.Nullable,
+					))
+				}
+			}
+
+			if len(exprs) == 0 && s.Table != "" {
+				return nil, sql.ErrTableNotFound.New(s.Table)
+			}
+
+			expressions = append(expressions, exprs...)
+		} else {
+			expressions = append(expressions, e)
+		}
+	}
+
+	return expressions, nil
 }
 
 // maybeAlias is a wrapper on UnresolvedColumn used only to defer the
@@ -341,22 +453,25 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			return n, nil
 		}
 
-		colMap := make(map[string][]columnInfo)
-		idx := 0
+		colMap := make(map[string][]*sql.Column)
 		for _, child := range n.Children() {
 			if !child.Resolved() {
 				return n, nil
 			}
 
 			for _, col := range child.Schema() {
-				colMap[col.Name] = append(colMap[col.Name], columnInfo{idx, col})
-				idx++
+				colMap[col.Name] = append(colMap[col.Name], col)
 			}
 		}
 
-		return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
+		expressioner, ok := n.(sql.Expressioner)
+		if !ok {
+			return n, nil
+		}
+
+		return expressioner.TransformExpressions(func(e sql.Expression) (sql.Expression, error) {
 			a.Log("transforming expression of type: %T", e)
-			if n.Resolved() {
+			if e.Resolved() {
 				return e, nil
 			}
 
@@ -365,7 +480,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				return e, nil
 			}
 
-			columnsInfo, ok := colMap[uc.Name()]
+			columns, ok := colMap[uc.Name()]
 			if !ok {
 				if uc.Table() != "" {
 					return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
@@ -379,11 +494,11 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				}
 			}
 
-			var ci columnInfo
+			var col *sql.Column
 			var found bool
-			for _, c := range columnsInfo {
-				if c.col.Source == uc.Table() {
-					ci = c
+			for _, c := range columns {
+				if c.Source == uc.Table() {
+					col = c
 					found = true
 					break
 				}
@@ -402,14 +517,30 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				}
 			}
 
-			a.Log("column resolved to %q.%q", ci.col.Source, ci.col.Name)
+			var schema sql.Schema
+			switch n := n.(type) {
+			// If expressioner and unary node we must take the
+			// child's schema to correctly select the indexes
+			// in the row is going to be evaluated in this node
+			case *plan.Project, *plan.Filter, *plan.GroupBy, *plan.Sort:
+				schema = n.Children()[0].Schema()
+			default:
+				schema = n.Schema()
+			}
+
+			idx := schema.IndexOf(col.Name, col.Source)
+			if idx < 0 {
+				return nil, ErrColumnNotFound.New(col.Name)
+			}
+
+			a.Log("column resolved to %q.%q", col.Source, col.Name)
 
 			return expression.NewGetFieldWithTable(
-				ci.idx,
-				ci.col.Type,
-				ci.col.Source,
-				ci.col.Name,
-				ci.col.Nullable,
+				idx,
+				col.Type,
+				col.Source,
+				col.Name,
+				col.Nullable,
 			), nil
 		})
 	})
@@ -636,6 +767,27 @@ func dedupStrings(in []string) []string {
 		}
 	}
 	return result
+}
+
+// indexCatalog sets the catalog in the CreateIndex nodes.
+func indexCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	if !n.Resolved() {
+		return n, nil
+	}
+
+	ci, ok := n.(*plan.CreateIndex)
+	if !ok {
+		return n, nil
+	}
+
+	span, ctx := ctx.Span("index_catalog")
+	defer span.Finish()
+
+	nc := *ci
+	ci.Catalog = a.Catalog
+	ci.CurrentDatabase = a.CurrentDatabase
+
+	return &nc, nil
 }
 
 func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {

@@ -256,6 +256,73 @@ func TestValidateProjectTuples(t *testing.T) {
 	}
 }
 
+func TestValidateIndexCreation(t *testing.T) {
+	table := mem.NewTable("foo", sql.Schema{
+		{Name: "a", Source: "foo"},
+		{Name: "b", Source: "foo"},
+	})
+
+	testCases := []struct {
+		name string
+		node sql.Node
+		ok   bool
+	}{
+		{
+			"columns from another table",
+			plan.NewCreateIndex(
+				"idx", table,
+				[]sql.Expression{expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+					expression.NewGetFieldWithTable(0, sql.Int64, "bar", "b", false),
+				)},
+				"",
+				make(map[string]string),
+			),
+			false,
+		},
+		{
+			"columns that don't exist",
+			plan.NewCreateIndex(
+				"idx", table,
+				[]sql.Expression{expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", false),
+				)},
+				"",
+				make(map[string]string),
+			),
+			false,
+		},
+		{
+			"columns only from table",
+			plan.NewCreateIndex(
+				"idx", table,
+				[]sql.Expression{expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+				)},
+				"",
+				make(map[string]string),
+			),
+			true,
+		},
+	}
+
+	rule := getValidationRule(validateIndexCreationRule)
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			err := rule.Apply(sql.NewEmptyContext(), tt.node)
+			if tt.ok {
+				require.NoError(err)
+			} else {
+				require.Error(err)
+				require.True(ErrUnknownIndexColumns.Is(err))
+			}
+		})
+	}
+}
+
 type dummyNode struct{ resolved bool }
 
 func (n dummyNode) String() string                                    { return "dummynode" }

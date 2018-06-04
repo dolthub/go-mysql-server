@@ -1,6 +1,8 @@
 package plan
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import (
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+)
 
 // Filter skips rows that don't match a certain expression.
 type Filter struct {
@@ -58,7 +60,7 @@ func (p *Filter) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, erro
 	return NewFilter(expr, child), nil
 }
 
-func (p Filter) String() string {
+func (p *Filter) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Filter(%s)", p.Expression)
 	_ = pr.WriteChildren(p.Child.String())
@@ -66,8 +68,18 @@ func (p Filter) String() string {
 }
 
 // Expressions implements the Expressioner interface.
-func (p Filter) Expressions() []sql.Expression {
+func (p *Filter) Expressions() []sql.Expression {
 	return []sql.Expression{p.Expression}
+}
+
+// TransformExpressions implements the Expressioner interface.
+func (p *Filter) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
+	e, err := p.Expression.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewFilter(e, p.Child), nil
 }
 
 // FilterIter is an iterator that filters another iterator and skips rows that

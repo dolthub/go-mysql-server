@@ -28,6 +28,11 @@ var (
 	ErrInvalidSortOrder = errors.NewKind("invalod sort order: %s")
 )
 
+var (
+	describeTablesRegex = regexp.MustCompile(`^describe\s+table\s+(.*)`)
+	createIndexRegex    = regexp.MustCompile(`^create\s+index\s+`)
+)
+
 // Parse parses the given SQL sentence and returns the corresponding node.
 func Parse(ctx *sql.Context, s string) (sql.Node, error) {
 	span, ctx := ctx.Span("parse", opentracing.Tag{Key: "query", Value: s})
@@ -37,9 +42,12 @@ func Parse(ctx *sql.Context, s string) (sql.Node, error) {
 		s = s[:len(s)-1]
 	}
 
-	t := regexp.MustCompile(`^describe\s+table\s+(.*)`).FindStringSubmatch(strings.ToLower(s))
-	if len(t) == 2 && t[1] != "" {
-		return plan.NewDescribe(plan.NewUnresolvedTable(t[1])), nil
+	lowerQuery := strings.ToLower(s)
+	switch true {
+	case describeTablesRegex.MatchString(lowerQuery):
+		return parseDescribeTables(lowerQuery)
+	case createIndexRegex.MatchString(lowerQuery):
+		return parseCreateIndex(s)
 	}
 
 	stmt, err := sqlparser.Parse(s)
@@ -47,10 +55,19 @@ func Parse(ctx *sql.Context, s string) (sql.Node, error) {
 		return nil, err
 	}
 
-	return convert(ctx, stmt)
+	return convert(ctx, stmt, s)
 }
 
-func convert(ctx *sql.Context, stmt sqlparser.Statement) (sql.Node, error) {
+func parseDescribeTables(s string) (sql.Node, error) {
+	t := describeTablesRegex.FindStringSubmatch(s)
+	if len(t) == 2 && t[1] != "" {
+		return plan.NewDescribe(plan.NewUnresolvedTable(t[1])), nil
+	}
+
+	return nil, ErrUnsupportedSyntax.New(s)
+}
+
+func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node, error) {
 	switch n := stmt.(type) {
 	default:
 		return nil, ErrUnsupportedSyntax.New(n)
@@ -61,7 +78,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement) (sql.Node, error) {
 	case *sqlparser.Insert:
 		return convertInsert(ctx, n)
 	case *sqlparser.DDL:
-		return convertDDL(n)
+		return convertDDL(n, query)
 	}
 }
 
@@ -124,7 +141,7 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 	return node, nil
 }
 
-func convertDDL(c *sqlparser.DDL) (sql.Node, error) {
+func convertDDL(c *sqlparser.DDL, query string) (sql.Node, error) {
 	switch c.Action {
 	case sqlparser.CreateStr:
 		return convertCreateTable(c)
@@ -280,7 +297,7 @@ func tableExprToTable(
 
 			return node, nil
 		case *sqlparser.Subquery:
-			node, err := convert(ctx, e.Select)
+			node, err := convert(ctx, e.Select, "")
 			if err != nil {
 				return nil, err
 			}
@@ -295,7 +312,7 @@ func tableExprToTable(
 		}
 	case *sqlparser.JoinTableExpr:
 		// TODO: add support for the rest of joins
-		if t.Join != sqlparser.JoinStr {
+		if t.Join != sqlparser.JoinStr && t.Join != sqlparser.NaturalJoinStr {
 			return nil, ErrUnsupportedFeature.New(t.Join)
 		}
 
@@ -313,6 +330,10 @@ func tableExprToTable(
 		right, err := tableExprToTable(ctx, t.RightExpr)
 		if err != nil {
 			return nil, err
+		}
+
+		if t.Join == sqlparser.NaturalJoinStr {
+			return plan.NewNaturalJoin(left, right), nil
 		}
 
 		cond, err := exprToExpression(t.Condition.On)
@@ -477,7 +498,7 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 	case *sqlparser.NullVal:
 		return expression.NewLiteral(nil, sql.Null), nil
 	case *sqlparser.ColName:
-		//TODO: add handling of case sensitiveness.
+		// TODO: add handling of case sensitiveness.
 		if !v.Qualifier.IsEmpty() {
 			return expression.NewUnresolvedQualifiedColumn(
 				v.Qualifier.Name.String(),

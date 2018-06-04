@@ -1,6 +1,8 @@
 package sql
 
 import (
+	"crypto/sha1"
+	"fmt"
 	"testing"
 	"time"
 
@@ -114,12 +116,16 @@ type dummyIdx struct {
 
 var _ Index = (*dummyIdx)(nil)
 
-func (i dummyIdx) Expression() Expression               { return i.expr }
-func (i dummyIdx) ID() string                           { return i.id }
-func (i dummyIdx) Get(interface{}) (IndexLookup, error) { panic("not implemented") }
-func (i dummyIdx) Has(interface{}) (bool, error)        { panic("not implemented") }
-func (i dummyIdx) Database() string                     { return i.database }
-func (i dummyIdx) Table() string                        { return i.table }
+func (i dummyIdx) ExpressionHashes() []ExpressionHash {
+	h := sha1.New()
+	h.Write([]byte(i.expr.String()))
+	return []ExpressionHash{h.Sum(nil)}
+}
+func (i dummyIdx) ID() string                              { return i.id }
+func (i dummyIdx) Get(...interface{}) (IndexLookup, error) { panic("not implemented") }
+func (i dummyIdx) Has(...interface{}) (bool, error)        { panic("not implemented") }
+func (i dummyIdx) Database() string                        { return i.database }
+func (i dummyIdx) Table() string                           { return i.table }
 
 type dummyExpr struct {
 	foo int
@@ -131,7 +137,9 @@ var _ Expression = (*dummyExpr)(nil)
 func (dummyExpr) Children() []Expression                               { return nil }
 func (dummyExpr) Eval(*Context, Row) (interface{}, error)              { panic("not implemented") }
 func (dummyExpr) TransformUp(fn TransformExprFunc) (Expression, error) { panic("not implemented") }
-func (dummyExpr) String() string                                       { return "dummyExpr" }
-func (dummyExpr) IsNullable() bool                                     { return false }
-func (dummyExpr) Resolved() bool                                       { return false }
-func (dummyExpr) Type() Type                                           { panic("not implemented") }
+func (d dummyExpr) String() string {
+	return fmt.Sprintf("dummyExpr{foo: %d, bar: %s}", d.foo, d.bar)
+}
+func (dummyExpr) IsNullable() bool { return false }
+func (dummyExpr) Resolved() bool   { return false }
+func (dummyExpr) Type() Type       { panic("not implemented") }

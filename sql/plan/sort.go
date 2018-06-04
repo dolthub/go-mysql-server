@@ -121,7 +121,7 @@ func (s *Sort) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error)
 	return NewSort(sfs, child), nil
 }
 
-func (s Sort) String() string {
+func (s *Sort) String() string {
 	pr := sql.NewTreePrinter()
 	var fields = make([]string, len(s.SortFields))
 	for i, f := range s.SortFields {
@@ -133,12 +133,30 @@ func (s Sort) String() string {
 }
 
 // Expressions implements the Expressioner interface.
-func (s Sort) Expressions() []sql.Expression {
+func (s *Sort) Expressions() []sql.Expression {
 	var exprs = make([]sql.Expression, len(s.SortFields))
 	for i, f := range s.SortFields {
 		exprs[i] = f.Column
 	}
 	return exprs
+}
+
+// TransformExpressions implements the Expressioner interface.
+func (s *Sort) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
+	var sortFields = make([]SortField, len(s.SortFields))
+	for i, field := range s.SortFields {
+		transformed, err := field.Column.TransformUp(f)
+		if err != nil {
+			return nil, err
+		}
+		sortFields[i] = SortField{
+			Column:       transformed,
+			Order:        field.Order,
+			NullOrdering: field.NullOrdering,
+		}
+	}
+
+	return NewSort(sortFields, s.Child), nil
 }
 
 type sortIter struct {
@@ -188,6 +206,7 @@ func (i *sortIter) computeSortedRows() error {
 		if err != nil {
 			return err
 		}
+
 		rows = append(rows, childRow)
 	}
 
