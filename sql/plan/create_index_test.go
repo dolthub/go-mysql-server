@@ -2,7 +2,6 @@ package plan
 
 import (
 	"context"
-	"hash"
 	"testing"
 	"time"
 
@@ -47,7 +46,7 @@ func TestCreateIndex(t *testing.T) {
 	require.Equal([]string{"idx"}, driver.saved)
 	idx := catalog.IndexRegistry.Index("foo", "idx")
 	require.NotNil(idx)
-	require.Equal(&mockIndex{"foo", "foo", "idx", []hash.Hash{
+	require.Equal(&mockIndex{"foo", "foo", "idx", []sql.ExpressionHash{
 		sql.NewExpressionHash(expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true)),
 		sql.NewExpressionHash(expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true)),
 	}}, idx)
@@ -57,19 +56,19 @@ type mockIndex struct {
 	db    string
 	table string
 	id    string
-	exprs []hash.Hash
+	exprs []sql.ExpressionHash
 }
 
 var _ sql.Index = (*mockIndex)(nil)
 
-func (i *mockIndex) ID() string                    { return i.id }
-func (i *mockIndex) Table() string                 { return i.table }
-func (i *mockIndex) Database() string              { return i.db }
-func (i *mockIndex) ExpressionHashes() []hash.Hash { return i.exprs }
-func (i *mockIndex) Get(key interface{}) (sql.IndexLookup, error) {
+func (i *mockIndex) ID() string                             { return i.id }
+func (i *mockIndex) Table() string                          { return i.table }
+func (i *mockIndex) Database() string                       { return i.db }
+func (i *mockIndex) ExpressionHashes() []sql.ExpressionHash { return i.exprs }
+func (i *mockIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 	panic("unimplemented")
 }
-func (i *mockIndex) Has(key interface{}) (bool, error) {
+func (i *mockIndex) Has(key ...interface{}) (bool, error) {
 	panic("unimplemented")
 }
 
@@ -81,10 +80,10 @@ type mockDriver struct {
 var _ sql.IndexDriver = (*mockDriver)(nil)
 
 func (*mockDriver) ID() string { return "mock" }
-func (*mockDriver) Create(db, table, id string, exprs []hash.Hash, config map[string]string) (sql.Index, error) {
+func (*mockDriver) Create(db, table, id string, exprs []sql.ExpressionHash, config map[string]string) (sql.Index, error) {
 	return &mockIndex{db, table, id, exprs}, nil
 }
-func (*mockDriver) Load(db, table string) ([]sql.Index, error) {
+func (*mockDriver) LoadAll(db, table string) ([]sql.Index, error) {
 	panic("not implemented")
 }
 func (d *mockDriver) Save(ctx context.Context, index sql.Index, iter sql.IndexKeyValueIter) error {

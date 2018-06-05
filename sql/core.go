@@ -2,8 +2,8 @@ package sql
 
 import (
 	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
-	"hash"
 
 	"gopkg.in/src-d/go-errors.v1"
 )
@@ -79,12 +79,28 @@ type Expression interface {
 	Children() []Expression
 }
 
-// NewExpressionHash returns a new Hash for given Expression instance.
-// Hash (sha1) checksum will be calculated based on ex.String().
-func NewExpressionHash(ex Expression) hash.Hash {
-	h := sha1.New()
-	h.Write([]byte(ex.String()))
-	return h
+// ExpressionHash is a SHA-1 checksum
+type ExpressionHash []byte
+
+// NewExpressionHash returns a new SHA1 hash for given Expression instance.
+// SHA1 checksum will be calculated based on ex.String().
+func NewExpressionHash(ex Expression) ExpressionHash {
+	h := sha1.Sum([]byte(ex.String()))
+	return ExpressionHash(h[:])
+}
+
+// DecodeExpressionHash  decodes a hexadecimal string to ExpressionHash
+func DecodeExpressionHash(hexstr string) (ExpressionHash, error) {
+	h, err := hex.DecodeString(hexstr)
+	if err != nil {
+		return nil, err
+	}
+	return ExpressionHash(h), nil
+}
+
+// EncodeExpressionHash encodes an ExpressionHash to hexadecimal string
+func EncodeExpressionHash(h ExpressionHash) string {
+	return hex.EncodeToString(h)
 }
 
 // Aggregation implements an aggregation expression, where an

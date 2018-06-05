@@ -3,7 +3,6 @@ package sql
 import (
 	"crypto/sha1"
 	"fmt"
-	"hash"
 	"testing"
 	"time"
 
@@ -117,16 +116,16 @@ type dummyIdx struct {
 
 var _ Index = (*dummyIdx)(nil)
 
-func (i dummyIdx) ExpressionHashes() []hash.Hash {
+func (i dummyIdx) ExpressionHashes() []ExpressionHash {
 	h := sha1.New()
 	h.Write([]byte(i.expr.String()))
-	return []hash.Hash{h}
+	return []ExpressionHash{h.Sum(nil)}
 }
-func (i dummyIdx) ID() string                           { return i.id }
-func (i dummyIdx) Get(interface{}) (IndexLookup, error) { panic("not implemented") }
-func (i dummyIdx) Has(interface{}) (bool, error)        { panic("not implemented") }
-func (i dummyIdx) Database() string                     { return i.database }
-func (i dummyIdx) Table() string                        { return i.table }
+func (i dummyIdx) ID() string                              { return i.id }
+func (i dummyIdx) Get(...interface{}) (IndexLookup, error) { panic("not implemented") }
+func (i dummyIdx) Has(...interface{}) (bool, error)        { panic("not implemented") }
+func (i dummyIdx) Database() string                        { return i.database }
+func (i dummyIdx) Table() string                           { return i.table }
 
 type dummyExpr struct {
 	foo int

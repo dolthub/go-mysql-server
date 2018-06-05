@@ -2,7 +2,6 @@ package plan
 
 import (
 	"fmt"
-	"hash"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -187,10 +186,10 @@ func (c *CreateIndex) TransformUp(fn sql.TransformNodeFunc) (sql.Node, error) {
 // to match a row with only the returned columns in that same order.
 func getColumnsAndPrepareExpressions(
 	exprs []sql.Expression,
-) ([]string, []hash.Hash, error) {
+) ([]string, []sql.ExpressionHash, error) {
 	var columns []string
 	var seen = make(map[string]int)
-	var expressions = make([]hash.Hash, len(exprs))
+	var expressions = make([]sql.ExpressionHash, len(exprs))
 
 	for i, e := range exprs {
 		ex, err := e.TransformUp(func(e sql.Expression) (sql.Expression, error) {

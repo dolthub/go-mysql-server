@@ -2,8 +2,7 @@ package sql
 
 import (
 	"context"
-	"fmt"
-	"hash"
+	"encoding/hex"
 	"io"
 	"reflect"
 	"strings"
@@ -33,9 +32,9 @@ type IndexValueIter interface {
 // more functionality by implementing more specific interfaces.
 type Index interface {
 	// Get returns an IndexLookup for the given key in the index.
-	Get(key interface{}) (IndexLookup, error)
+	Get(key ...interface{}) (IndexLookup, error)
 	// Has checks if the given key is present in the index.
-	Has(key interface{}) (bool, error)
+	Has(key ...interface{}) (bool, error)
 	// ID returns the identifier of the index.
 	ID() string
 	// Database returns the database name this index belongs to.
@@ -45,7 +44,7 @@ type Index interface {
 	// Expressions returns the indexed expressions. If the result is more than
 	// one expression, it means the index has multiple columns indexed. If it's
 	// just one, it means it may be an expression or a column.
-	ExpressionHashes() []hash.Hash
+	ExpressionHashes() []ExpressionHash
 }
 
 // AscendIndex is an index that is sorted in ascending order.
@@ -104,19 +103,19 @@ type Mergeable interface {
 }
 
 // IndexDriver manages the coordination between the indexes and their
-// representation in disk.
+// representation on disk.
 type IndexDriver interface {
 	// ID returns the unique name of the driver.
 	ID() string
 	// Create a new index. If exprs is more than one expression, it means the
 	// index has multiple columns indexed. If it's just one, it means it may
 	// be an expression or a column.
-	Create(db, table, id string, expressionHashes []hash.Hash, config map[string]string) (Index, error)
-	// Load the index at the given path.
-	Load(db, table string) ([]Index, error)
-	// Save the given index at the given path.
+	Create(db, table, id string, expressionHashes []ExpressionHash, config map[string]string) (Index, error)
+	// LoadAll loads all indexes for given db and table
+	LoadAll(db, table string) ([]Index, error)
+	// Save the given index
 	Save(ctx context.Context, index Index, iter IndexKeyValueIter) error
-	// Delete the index with the given path.
+	// Delete the given index.
 	Delete(index Index) error
 }
 
@@ -217,7 +216,7 @@ func (r *IndexRegistry) IndexByExpression(db string, expr ...Expression) Index {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
 
-	var expressionHashes []hash.Hash
+	var expressionHashes []ExpressionHash
 	for _, e := range expr {
 		expressionHashes = append(expressionHashes, NewExpressionHash(e))
 	}
@@ -267,7 +266,7 @@ func (r *IndexRegistry) validateIndexToAdd(idx Index) error {
 		if exprListsEqual(i.ExpressionHashes(), idx.ExpressionHashes()) {
 			var exprs = make([]string, len(idx.ExpressionHashes()))
 			for i, e := range idx.ExpressionHashes() {
-				exprs[i] = fmt.Sprintf("%x", e.Sum(nil))
+				exprs[i] = hex.EncodeToString(e)
 			}
 			return ErrIndexExpressionAlreadyRegistered.New(strings.Join(exprs, ", "))
 		}
@@ -276,7 +275,7 @@ func (r *IndexRegistry) validateIndexToAdd(idx Index) error {
 	return nil
 }
 
-func exprListsEqual(a, b []hash.Hash) bool {
+func exprListsEqual(a, b []ExpressionHash) bool {
 	var visited = make([]bool, len(b))
 	for _, va := range a {
 		found := false
@@ -285,7 +284,7 @@ func exprListsEqual(a, b []hash.Hash) bool {
 				continue
 			}
 
-			if reflect.DeepEqual(va.Sum(nil), vb.Sum(nil)) {
+			if reflect.DeepEqual(va, vb) {
 				visited[j] = true
 				found = true
 				break
