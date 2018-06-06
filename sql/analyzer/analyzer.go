@@ -1,4 +1,4 @@
-package analyzer
+package analyzer // import "gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
 
 import (
 	"os"

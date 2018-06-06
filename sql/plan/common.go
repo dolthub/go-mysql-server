@@ -1,4 +1,4 @@
-package plan
+package plan // import "gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 
 import "gopkg.in/src-d/go-mysql-server.v0/sql"
 

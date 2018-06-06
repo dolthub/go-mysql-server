@@ -1,4 +1,4 @@
-package sqle
+package sqle // import "gopkg.in/src-d/go-mysql-server.v0"
 
 import (
 	opentracing "github.com/opentracing/opentracing-go"
