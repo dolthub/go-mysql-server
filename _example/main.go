@@ -52,7 +52,7 @@ func createTestDatabase() *mem.Database {
 		tableName = "mytable"
 	)
 
-	db := mem.NewDatabase(dbName).(*mem.Database)
+	db := mem.NewDatabase(dbName)
 	table := mem.NewTable(tableName, sql.Schema{
 		{Name: "name", Type: sql.Text, Nullable: false, Source: tableName},
 		{Name: "email", Type: sql.Text, Nullable: false, Source: tableName},
