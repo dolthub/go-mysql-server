@@ -211,7 +211,9 @@ func (t *pushdownIndexableTable) WithProjectFiltersAndIndex(
 	require := require.New(t.t)
 	require.Equal(t.columns, columns)
 	require.Equal(t.filters, filters)
-	require.Equal(t.index.Values(), index)
+	values, err := t.index.Values()
+	require.NoError(err)
+	require.Equal(values, index)
 	return sql.RowsToRowIter(), nil
 }
 
@@ -225,8 +227,8 @@ type indexLookup struct {
 	values []interface{}
 }
 
-func (l indexLookup) Values() sql.IndexValueIter {
-	return &indexValueIter{l.values, 0}
+func (l indexLookup) Values() (sql.IndexValueIter, error) {
+	return &indexValueIter{l.values, 0}, nil
 }
 
 type indexValueIter struct {

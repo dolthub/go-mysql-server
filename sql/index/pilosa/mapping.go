@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"path/filepath"
+	"sync"
 
 	"github.com/boltdb/bolt"
 )
@@ -19,27 +20,74 @@ const (
 // - index name: columndID uint64 -> location []byte
 // - frame name: value []byte (gob encoding) -> rowID uint64
 type mapping struct {
-	db *bolt.DB
+	dir string
+
+	mut sync.RWMutex
+	db  *bolt.DB
+
+	clientMut sync.Mutex
+	clients   int
 }
 
-func openMapping(dir string) (*mapping, error) {
-	db, err := bolt.Open(filepath.Join(dir, mappingFileName), 0640, nil)
-	if err != nil {
-		return nil, err
-	}
+func newMapping(dir string) *mapping {
+	return &mapping{dir: dir}
+}
 
-	return &mapping{db: db}, nil
+func (m *mapping) open() {
+	m.clientMut.Lock()
+	defer m.clientMut.Unlock()
+	m.clients++
 }
 
 func (m *mapping) close() error {
+	m.clientMut.Lock()
+	defer m.clientMut.Unlock()
+
+	if m.clients > 1 {
+		m.clients--
+		return nil
+	}
+
+	m.clients = 0
+
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
 	if m.db != nil {
-		return m.db.Close()
+		if err := m.db.Close(); err != nil {
+			return err
+		}
+		m.db = nil
+	}
+
+	return nil
+}
+
+func (m *mapping) ensureOpened() error {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	if m.db != nil {
+		return nil
+	}
+
+	var err error
+	m.db, err = bolt.Open(filepath.Join(m.dir, mappingFileName), 0640, nil)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
 func (m *mapping) getRowID(frameName string, value interface{}) (uint64, error) {
+	if err := m.ensureOpened(); err != nil {
+		return 0, err
+	}
+
+	m.mut.RLock()
+	defer m.mut.RUnlock()
+
 	var (
 		id  uint64
 		buf bytes.Buffer
@@ -75,6 +123,12 @@ func (m *mapping) getRowID(frameName string, value interface{}) (uint64, error) 
 }
 
 func (m *mapping) putLocation(indexName string, colID uint64, location []byte) error {
+	if err := m.ensureOpened(); err != nil {
+		return err
+	}
+
+	m.mut.RLock()
+	defer m.mut.RUnlock()
 	return m.db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists([]byte(indexName))
 		if err != nil {
@@ -89,6 +143,13 @@ func (m *mapping) putLocation(indexName string, colID uint64, location []byte) e
 }
 
 func (m *mapping) getLocation(indexName string, colID uint64) ([]byte, error) {
+	if err := m.ensureOpened(); err != nil {
+		return nil, err
+	}
+
+	m.mut.RLock()
+	defer m.mut.RUnlock()
+
 	var location []byte
 
 	err := m.db.View(func(tx *bolt.Tx) error {
@@ -108,6 +169,13 @@ func (m *mapping) getLocation(indexName string, colID uint64) ([]byte, error) {
 }
 
 func (m *mapping) getLocationN(indexName string) (int, error) {
+	if err := m.ensureOpened(); err != nil {
+		return 0, err
+	}
+
+	m.mut.RLock()
+	defer m.mut.RUnlock()
+
 	n := 0
 	err := m.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(indexName))
@@ -123,6 +191,13 @@ func (m *mapping) getLocationN(indexName string) (int, error) {
 }
 
 func (m *mapping) get(name string, key interface{}) ([]byte, error) {
+	if err := m.ensureOpened(); err != nil {
+		return nil, err
+	}
+
+	m.mut.RLock()
+	defer m.mut.RUnlock()
+
 	var (
 		value []byte
 		buf   bytes.Buffer

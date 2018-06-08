@@ -78,7 +78,7 @@ type DescendIndex interface {
 // implemented to grant more capabilities to the index lookup.
 type IndexLookup interface {
 	// Values returns the values in the subset of the index.
-	Values() IndexValueIter
+	Values() (IndexValueIter, error)
 }
 
 // SetOperations is a specialization of IndexLookup that enables set operations
@@ -170,7 +170,7 @@ func (r *IndexRegistry) retainIndex(db, id string) {
 	r.rcmut.Lock()
 	defer r.rcmut.Unlock()
 	key := indexKey{db, id}
-	r.refCounts[key] = r.refCounts[key] + 1
+	r.refCounts[key]++
 }
 
 // CanUseIndex returns whether the given index is ready to use or not.
@@ -190,8 +190,7 @@ func (r *IndexRegistry) ReleaseIndex(idx Index) {
 	r.rcmut.Lock()
 	defer r.rcmut.Unlock()
 	key := indexKey{idx.Database(), idx.ID()}
-	r.refCounts[key] = r.refCounts[key] - 1
-
+	r.refCounts[key]--
 	if r.refCounts[key] > 0 {
 		return
 	}

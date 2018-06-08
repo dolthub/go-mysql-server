@@ -71,7 +71,9 @@ func TestResolveSubqueries(t *testing.T) {
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(0, sql.Int64, "bar", "b", false),
 			},
-			table2,
+			plan.NewPushdownProjectionAndFiltersTable([]sql.Expression{
+				expression.NewGetFieldWithTable(0, sql.Int64, "bar", "b", false),
+			}, nil, table2),
 		),
 	)
 	_ = subquery.Schema()
@@ -82,7 +84,9 @@ func TestResolveSubqueries(t *testing.T) {
 			plan.NewCrossJoin(
 				plan.NewSubqueryAlias(
 					"t1",
-					table1,
+					plan.NewPushdownProjectionAndFiltersTable([]sql.Expression{
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+					}, nil, table1),
 				),
 				plan.NewSubqueryAlias(
 					"t2",
@@ -854,10 +858,10 @@ func TestPushdownIndexable(t *testing.T) {
 	require := require.New(t)
 	a := New(sql.NewCatalog())
 
-	var index, index2 dummyIndexLookup
+	var idx, idx2 dummyIndexLookup
 
 	table := &indexable{
-		index,
+		&index{idx, nil},
 		&indexableTable{&pushdownProjectionAndFiltersTable{mem.NewTable("mytable", sql.Schema{
 			{Name: "i", Type: sql.Int32, Source: "mytable"},
 			{Name: "f", Type: sql.Float64, Source: "mytable"},
@@ -866,7 +870,7 @@ func TestPushdownIndexable(t *testing.T) {
 	}
 
 	table2 := &indexable{
-		index2,
+		&index{idx2, nil},
 		&indexableTable{&pushdownProjectionAndFiltersTable{mem.NewTable("mytable2", sql.Schema{
 			{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 			{Name: "f2", Type: sql.Float64, Source: "mytable2"},
@@ -924,7 +928,7 @@ func TestPushdownIndexable(t *testing.T) {
 							expression.NewLiteral(3.14, sql.Float64),
 						),
 					},
-					index,
+					&releaserIndexLookup{lookup: idx},
 					table.Indexable,
 				),
 				plan.NewIndexableTable(
@@ -932,7 +936,7 @@ func TestPushdownIndexable(t *testing.T) {
 						expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
 					},
 					nil,
-					index2,
+					&releaserIndexLookup{lookup: idx2},
 					table2.Indexable,
 				),
 			),
@@ -941,6 +945,20 @@ func TestPushdownIndexable(t *testing.T) {
 
 	result, err := a.Analyze(sql.NewEmptyContext(), node)
 	require.NoError(err)
+
+	// we need to remove the release function to compare, otherwise it will fail
+	result, err = result.TransformUp(func(node sql.Node) (sql.Node, error) {
+		switch node := node.(type) {
+		case *plan.IndexableTable:
+			index := node.Index.(*releaserIndexLookup)
+			index.release = nil
+			return plan.NewIndexableTable(node.Columns, node.Filters, index, node.Indexable), nil
+		default:
+			return node, nil
+		}
+	})
+	require.NoError(err)
+
 	require.Equal(expected, result)
 }
 
@@ -992,8 +1010,8 @@ func (t *pushdownProjectionAndFiltersTable) TransformExpressionsUp(f sql.Transfo
 
 type dummyIndexLookup struct{}
 
-func (dummyIndexLookup) Values() sql.IndexValueIter {
-	return nil
+func (dummyIndexLookup) Values() (sql.IndexValueIter, error) {
+	return nil, nil
 }
 
 type indexableTable struct {
@@ -1024,17 +1042,19 @@ func TestAssignIndexes(t *testing.T) {
 	require := require.New(t)
 
 	catalog := sql.NewCatalog()
-	done, err := catalog.AddIndex(&dummyIndex{
+	idx1 := &dummyIndex{
 		"t2",
 		expression.NewGetFieldWithTable(0, sql.Int64, "t2", "bar", false),
-	})
+	}
+	done, err := catalog.AddIndex(idx1)
 	require.NoError(err)
 	close(done)
 
-	done, err = catalog.AddIndex(&dummyIndex{
+	idx2 := &dummyIndex{
 		"t1",
 		expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
-	})
+	}
+	done, err = catalog.AddIndex(idx2)
 	require.NoError(err)
 	close(done)
 
@@ -1096,8 +1116,14 @@ func TestAssignIndexes(t *testing.T) {
 				),
 			),
 			plan.NewInnerJoin(
-				&indexable{&mergeableIndexLookup{id: "2"}, t1},
-				&indexable{&mergeableIndexLookup{id: "1"}, t2},
+				&indexable{&index{
+					&mergeableIndexLookup{id: "2"},
+					[]sql.Index{idx2},
+				}, t1},
+				&indexable{&index{
+					&mergeableIndexLookup{id: "1"},
+					[]sql.Index{idx1},
+				}, t2},
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
 					expression.NewGetFieldWithTable(0, sql.Int64, "t2", "baz", false),
@@ -1115,7 +1141,7 @@ func TestAssignIndexes(t *testing.T) {
 func TestGetIndexes(t *testing.T) {
 	testCases := []struct {
 		expr     sql.Expression
-		expected map[string]sql.IndexLookup
+		expected map[string]*index
 		ok       bool
 	}{
 		{
@@ -1123,7 +1149,7 @@ func TestGetIndexes(t *testing.T) {
 				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
 				expression.NewGetFieldWithTable(1, sql.Int64, "foo", "baz", false),
 			),
-			map[string]sql.IndexLookup{},
+			map[string]*index{},
 			true,
 		},
 		{
@@ -1131,8 +1157,16 @@ func TestGetIndexes(t *testing.T) {
 				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
 				expression.NewLiteral(int64(1), sql.Int64),
 			),
-			map[string]sql.IndexLookup{
-				"t1": &mergeableIndexLookup{id: "1"},
+			map[string]*index{
+				"t1": &index{
+					&mergeableIndexLookup{id: "1"},
+					[]sql.Index{
+						&dummyIndex{
+							table: "t1",
+							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						},
+					},
+				},
 			},
 			true,
 		},
@@ -1147,8 +1181,20 @@ func TestGetIndexes(t *testing.T) {
 					expression.NewLiteral(int64(2), sql.Int64),
 				),
 			),
-			map[string]sql.IndexLookup{
-				"t1": &mergeableIndexLookup{id: "1", unions: []string{"2"}},
+			map[string]*index{
+				"t1": &index{
+					&mergeableIndexLookup{id: "1", unions: []string{"2"}},
+					[]sql.Index{
+						&dummyIndex{
+							table: "t1",
+							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						},
+						&dummyIndex{
+							table: "t1",
+							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						},
+					},
+				},
 			},
 			true,
 		},
@@ -1163,8 +1209,20 @@ func TestGetIndexes(t *testing.T) {
 					expression.NewLiteral(int64(2), sql.Int64),
 				),
 			),
-			map[string]sql.IndexLookup{
-				"t1": &mergeableIndexLookup{id: "1", intersections: []string{"2"}},
+			map[string]*index{
+				"t1": &index{
+					&mergeableIndexLookup{id: "1", intersections: []string{"2"}},
+					[]sql.Index{
+						&dummyIndex{
+							table: "t1",
+							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						},
+						&dummyIndex{
+							table: "t1",
+							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						},
+					},
+				},
 			},
 			true,
 		},
@@ -1191,8 +1249,28 @@ func TestGetIndexes(t *testing.T) {
 					),
 				),
 			),
-			map[string]sql.IndexLookup{
-				"t1": &mergeableIndexLookup{id: "1", unions: []string{"2", "4"}, intersections: []string{"3"}},
+			map[string]*index{
+				"t1": &index{
+					&mergeableIndexLookup{id: "1", unions: []string{"2", "4"}, intersections: []string{"3"}},
+					[]sql.Index{
+						&dummyIndex{
+							table: "t1",
+							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						},
+						&dummyIndex{
+							table: "t1",
+							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						},
+						&dummyIndex{
+							table: "t1",
+							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						},
+						&dummyIndex{
+							table: "t1",
+							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						},
+					},
+				},
 			},
 			true,
 		},
@@ -1219,8 +1297,28 @@ func TestGetIndexes(t *testing.T) {
 					),
 				),
 			),
-			map[string]sql.IndexLookup{
-				"t1": &mergeableIndexLookup{id: "1", unions: []string{"2", "3", "4"}},
+			map[string]*index{
+				"t1": &index{
+					&mergeableIndexLookup{id: "1", unions: []string{"2", "3", "4"}},
+					[]sql.Index{
+						&dummyIndex{
+							table: "t1",
+							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						},
+						&dummyIndex{
+							table: "t1",
+							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						},
+						&dummyIndex{
+							table: "t1",
+							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						},
+						&dummyIndex{
+							table: "t1",
+							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						},
+					},
+				},
 			},
 			true,
 		},
@@ -1234,8 +1332,14 @@ func TestGetIndexes(t *testing.T) {
 					expression.NewLiteral(int64(4), sql.Int64),
 				),
 			),
-			map[string]sql.IndexLookup{
-				"t1": &mergeableIndexLookup{id: "1", unions: []string{"2", "3", "4"}},
+			map[string]*index{
+				"t1": &index{
+					&mergeableIndexLookup{id: "1", unions: []string{"2", "3", "4"}},
+					[]sql.Index{&dummyIndex{
+						table: "t1",
+						expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+					}},
+				},
 			},
 			true,
 		},
@@ -1296,27 +1400,32 @@ func (i dummyIndex) Table() string { return i.table }
 func TestIndexesIntersection(t *testing.T) {
 	require := require.New(t)
 
-	left := map[string]sql.IndexLookup{
-		"a": &mergeableIndexLookup{id: "a"},
-		"b": &mergeableIndexLookup{id: "b"},
-		"c": new(dummyIndexLookup),
+	idx1, idx2 := &dummyIndex{table: "bar"}, &dummyIndex{table: "foo"}
+
+	left := map[string]*index{
+		"a": &index{&mergeableIndexLookup{id: "a"}, nil},
+		"b": &index{&mergeableIndexLookup{id: "b"}, []sql.Index{idx1}},
+		"c": &index{new(dummyIndexLookup), nil},
 	}
 
-	right := map[string]sql.IndexLookup{
-		"b": &mergeableIndexLookup{id: "b2"},
-		"c": &mergeableIndexLookup{id: "c"},
-		"d": &mergeableIndexLookup{id: "d"},
+	right := map[string]*index{
+		"b": &index{&mergeableIndexLookup{id: "b2"}, []sql.Index{idx2}},
+		"c": &index{&mergeableIndexLookup{id: "c"}, nil},
+		"d": &index{&mergeableIndexLookup{id: "d"}, nil},
 	}
 
 	require.Equal(
-		map[string]sql.IndexLookup{
-			"a": &mergeableIndexLookup{id: "a"},
-			"b": &mergeableIndexLookup{
-				id:            "b",
-				intersections: []string{"b2"},
+		map[string]*index{
+			"a": &index{&mergeableIndexLookup{id: "a"}, nil},
+			"b": &index{
+				&mergeableIndexLookup{
+					id:            "b",
+					intersections: []string{"b2"},
+				},
+				[]sql.Index{idx1, idx2},
 			},
-			"c": new(dummyIndexLookup),
-			"d": &mergeableIndexLookup{id: "d"},
+			"c": &index{new(dummyIndexLookup), nil},
+			"d": &index{&mergeableIndexLookup{id: "d"}, nil},
 		},
 		indexesIntersection(left, right),
 	)
@@ -1343,7 +1452,7 @@ func (i *mergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	return ok
 }
 
-func (i *mergeableIndexLookup) Values() sql.IndexValueIter {
+func (i *mergeableIndexLookup) Values() (sql.IndexValueIter, error) {
 	panic("not implemented")
 }
 

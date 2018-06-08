@@ -3,7 +3,6 @@ package pilosa
 import (
 	"context"
 	"crypto/sha1"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"strings"
 
 	pilosa "github.com/pilosa/go-pilosa"
+	errors "gopkg.in/src-d/go-errors.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/index"
 )
@@ -62,7 +62,7 @@ func (d *Driver) Create(db, table, id string, expr []sql.ExpressionHash, config 
 		return nil, err
 	}
 
-	return &sqlIndex{
+	return &pilosaIndex{
 		path:        path,
 		client:      d.client,
 		db:          db,
@@ -94,7 +94,7 @@ func (d *Driver) LoadAll(db, table string) ([]sql.Index, error) {
 				return filepath.SkipDir
 			}
 
-			indexes = append(indexes, &sqlIndex{
+			indexes = append(indexes, &pilosaIndex{
 				path:        path,
 				client:      d.client,
 				db:          cfg.DB,
@@ -113,8 +113,15 @@ func (d *Driver) LoadAll(db, table string) ([]sql.Index, error) {
 	return indexes, err
 }
 
+var errInvalidIndexType = errors.NewKind("expecting a pilosa index, instead got %T")
+
 // Save the given index (mapping and bitmap)
-func (d *Driver) Save(ctx context.Context, idx sql.Index, iter sql.IndexKeyValueIter) error {
+func (d *Driver) Save(ctx context.Context, i sql.Index, iter sql.IndexKeyValueIter) error {
+	idx, ok := i.(*pilosaIndex)
+	if !ok {
+		return errInvalidIndexType.New(i)
+	}
+
 	path, err := mkdir(d.root, idx.Database(), idx.Table(), idx.ID())
 	if err != nil {
 		return err
@@ -145,11 +152,9 @@ func (d *Driver) Save(ctx context.Context, idx sql.Index, iter sql.IndexKeyValue
 		return err
 	}
 
-	mapping, err := openMapping(path)
-	if err != nil {
-		return err
-	}
-	defer mapping.close()
+	idx.mapping = newMapping(path)
+	idx.mapping.open()
+	defer idx.mapping.close()
 
 	for colID := uint64(0); err == nil; colID++ {
 		select {
@@ -167,7 +172,7 @@ func (d *Driver) Save(ctx context.Context, idx sql.Index, iter sql.IndexKeyValue
 			}
 
 			for i, frm := range frames {
-				rowID, err := mapping.getRowID(frm.Name(), values[i])
+				rowID, err := idx.mapping.getRowID(frm.Name(), values[i])
 				if err != nil {
 					return err
 				}
@@ -177,10 +182,10 @@ func (d *Driver) Save(ctx context.Context, idx sql.Index, iter sql.IndexKeyValue
 					return err
 				}
 				if !resp.Success {
-					return errors.New(resp.ErrorMessage)
+					return errPilosaQuery.New(resp.ErrorMessage)
 				}
 			}
-			err = mapping.putLocation(index.Name(), colID, location)
+			err = idx.mapping.putLocation(index.Name(), colID, location)
 		}
 	}
 

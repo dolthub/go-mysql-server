@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -801,6 +802,11 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return n, nil
 	}
 
+	// don't do pushdown on insert queries
+	if _, ok := n.(*plan.InsertInto); ok {
+		return n, nil
+	}
+
 	var fieldsByTable = make(map[string][]string)
 	var exprsByTable = make(map[string][]sql.Expression)
 	type tableField struct {
@@ -928,10 +934,21 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 				len(tableFilters),
 			)
 
+			release := func() {
+				for _, index := range indexable.index.indexes {
+					a.Catalog.ReleaseIndex(index)
+				}
+			}
+
+			lookup := &releaserIndexLookup{
+				lookup:  indexable.index.lookup,
+				release: release,
+			}
+
 			return plan.NewIndexableTable(
 				cols,
 				handled,
-				indexable.lookup,
+				lookup,
 				indexable.Indexable,
 			), nil
 		case sql.PushdownProjectionTable:
@@ -985,10 +1002,26 @@ func fixFieldIndexes(schema sql.Schema, exp sql.Expression) (sql.Expression, err
 
 func assignIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
 	if !node.Resolved() {
+		a.Log("node is not resolved, skipping assigning indexes")
 		return node, nil
 	}
 
-	var indexes map[string]sql.IndexLookup
+	a.Log("assigning indexes, node of type: %T", node)
+
+	var indexes map[string]*indexLookup
+	// release all unused indexes
+	defer func() {
+		if indexes == nil {
+			return
+		}
+
+		for _, i := range indexes {
+			for _, index := range i.indexes {
+				a.Catalog.ReleaseIndex(index)
+			}
+		}
+	}()
+
 	var err error
 	plan.Inspect(node, func(node sql.Node) bool {
 		filter, ok := node.(*plan.Filter)
@@ -996,7 +1029,7 @@ func assignIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, erro
 			return true
 		}
 
-		var result map[string]sql.IndexLookup
+		var result map[string]*indexLookup
 		result, err = getIndexes(filter.Expression, a)
 		if err != nil {
 			return false
@@ -1021,12 +1054,21 @@ func assignIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, erro
 			return node, nil
 		}
 
-		lookup, ok := indexes[table.Name()]
+		// if we assign indexes to already assigned tables there will be
+		// an infinite loop
+		switch table.(type) {
+		case *plan.IndexableTable, *indexable:
+			return node, nil
+		}
+
+		index, ok := indexes[table.Name()]
 		if !ok {
 			return node, nil
 		}
 
-		return &indexable{lookup, table}, nil
+		delete(indexes, table.Name())
+
+		return &indexable{index, table}, nil
 	})
 }
 
@@ -1043,8 +1085,15 @@ func containsColumns(e sql.Expression) bool {
 
 var errInvalidInRightEvaluation = errors.NewKind("expecting evaluation of IN expression right hand side to be a tuple, but it is %T")
 
-func getIndexes(e sql.Expression, a *Analyzer) (map[string]sql.IndexLookup, error) {
-	var result = make(map[string]sql.IndexLookup)
+// indexLookup contains an sql.IndexLookup and all sql.Index that are involved
+// in it.
+type indexLookup struct {
+	lookup  sql.IndexLookup
+	indexes []sql.Index
+}
+
+func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) {
+	var result = make(map[string]*indexLookup)
 	switch e := e.(type) {
 	case *expression.Or:
 		leftIndexes, err := getIndexes(e.Left, a)
@@ -1057,11 +1106,12 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]sql.IndexLookup, erro
 			return nil, err
 		}
 
-		for table, lookup := range leftIndexes {
-			if lookup2, ok := rightIndexes[table]; ok && canMergeIndexes(lookup, lookup2) {
-				lookup = lookup.(sql.SetOperations).Union(lookup2)
+		for table, idx := range leftIndexes {
+			if idx2, ok := rightIndexes[table]; ok && canMergeIndexes(idx.lookup, idx2.lookup) {
+				idx.lookup = idx.lookup.(sql.SetOperations).Union(idx2.lookup)
+				idx.indexes = append(idx.indexes, idx2.indexes...)
 			}
-			result[table] = lookup
+			result[table] = idx
 		}
 
 		// Put in the result map the indexes for tables we don't have indexes yet.
@@ -1079,19 +1129,29 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]sql.IndexLookup, erro
 		}
 
 		if !isEvaluable(left) && isEvaluable(right) {
-			index := a.Catalog.IndexByExpression(a.CurrentDatabase, left)
-			if index != nil {
+			idx := a.Catalog.IndexByExpression(a.CurrentDatabase, left)
+			if idx != nil {
+				// release the index if it was not used
+				defer func() {
+					if _, ok := result[idx.Table()]; !ok {
+						a.Catalog.ReleaseIndex(idx)
+					}
+				}()
+
 				value, err := right.Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
 					return nil, err
 				}
 
-				lookup, err := index.Get(value)
+				lookup, err := idx.Get(value)
 				if err != nil {
 					return nil, err
 				}
 
-				result[index.Table()] = lookup
+				result[idx.Table()] = &indexLookup{
+					lookup:  lookup,
+					indexes: []sql.Index{idx},
+				}
 			}
 		}
 	case *expression.In:
@@ -1099,8 +1159,15 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]sql.IndexLookup, erro
 		// the right branch is evaluable and the indexlookup supports set
 		// operations.
 		if !isEvaluable(e.Left()) && isEvaluable(e.Right()) {
-			index := a.Catalog.IndexByExpression(a.CurrentDatabase, e.Left())
-			if index != nil {
+			idx := a.Catalog.IndexByExpression(a.CurrentDatabase, e.Left())
+			if idx != nil {
+				// release the index if it was not used
+				defer func() {
+					if _, ok := result[idx.Table()]; !ok {
+						a.Catalog.ReleaseIndex(idx)
+					}
+				}()
+
 				value, err := e.Right().Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
 					return nil, err
@@ -1111,13 +1178,13 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]sql.IndexLookup, erro
 					return nil, errInvalidInRightEvaluation.New(value)
 				}
 
-				lookup, err := index.Get(values[0])
+				lookup, err := idx.Get(values[0])
 				if err != nil {
 					return nil, err
 				}
 
 				for _, v := range values[1:] {
-					lookup2, err := index.Get(v)
+					lookup2, err := idx.Get(v)
 					if err != nil {
 						return nil, err
 					}
@@ -1130,7 +1197,10 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]sql.IndexLookup, erro
 					lookup = lookup.(sql.SetOperations).Union(lookup2)
 				}
 
-				result[index.Table()] = lookup
+				result[idx.Table()] = &indexLookup{
+					indexes: []sql.Index{idx},
+					lookup:  lookup,
+				}
 			}
 		}
 	case *expression.And:
@@ -1150,14 +1220,15 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]sql.IndexLookup, erro
 	return result, nil
 }
 
-func indexesIntersection(left, right map[string]sql.IndexLookup) map[string]sql.IndexLookup {
-	var result = make(map[string]sql.IndexLookup)
+func indexesIntersection(left, right map[string]*indexLookup) map[string]*indexLookup {
+	var result = make(map[string]*indexLookup)
 
-	for table, lookup := range left {
-		if lookup2, ok := right[table]; ok && canMergeIndexes(lookup, lookup2) {
-			lookup = lookup.(sql.SetOperations).Intersection(lookup2)
+	for table, idx := range left {
+		if idx2, ok := right[table]; ok && canMergeIndexes(idx.lookup, idx2.lookup) {
+			idx.lookup = idx.lookup.(sql.SetOperations).Intersection(idx2.lookup)
+			idx.indexes = append(idx.indexes, idx2.indexes...)
 		}
-		result[table] = lookup
+		result[table] = idx
 	}
 
 	// Put in the result map the indexes for tables we don't have indexes yet.
@@ -1198,7 +1269,7 @@ func canMergeIndexes(a, b sql.IndexLookup) bool {
 // It's meant to be used by the pushdown rule to finally wrap the Indexable
 // table with all it requires.
 type indexable struct {
-	lookup sql.IndexLookup
+	index *indexLookup
 	sql.Indexable
 }
 
@@ -1215,4 +1286,61 @@ func (i *indexable) TransformUp(fn sql.TransformNodeFunc) (sql.Node, error) {
 }
 func (i *indexable) TransformExpressionsUp(fn sql.TransformExprFunc) (sql.Node, error) {
 	return i, nil
+}
+
+// releaserIndexLookup is a wrapper around index lookup that is in charge of
+// passing down a release function to release the index once the values of the
+// lookup are consumed.
+type releaserIndexLookup struct {
+	lookup  sql.IndexLookup
+	release func()
+	used    bool
+}
+
+var errLookupUsed = errors.NewKind("unable to reuse this sql.IndexLookup, index already released")
+
+func (l *releaserIndexLookup) Values() (sql.IndexValueIter, error) {
+	if l.used {
+		return nil, errLookupUsed.New()
+	}
+
+	l.used = true
+	iter, err := l.lookup.Values()
+	if err != nil {
+		l.release()
+		return nil, err
+	}
+
+	return &releaserValueIter{iter, l.release}, nil
+}
+
+// releaserValueIter is a sql.IndexValueIter capable of releasing the index
+// when the iterator has been either drained or closed.
+type releaserValueIter struct {
+	iter    sql.IndexValueIter
+	release func()
+}
+
+func (i *releaserValueIter) Next() ([]byte, error) {
+	v, err := i.iter.Next()
+	if err != nil {
+		if err == io.EOF {
+			i.Release()
+		}
+		return nil, err
+	}
+
+	return v, nil
+}
+
+func (i *releaserValueIter) Release() {
+	if i.release != nil {
+		i.release()
+		i.release = nil
+	}
+}
+
+func (i *releaserValueIter) Close() error {
+	i.Release()
+	return i.iter.Close()
 }

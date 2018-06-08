@@ -29,10 +29,15 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	a := New(catalog)
 	a.CurrentDatabase = "mydb"
 
+	emptyCols := []sql.Expression{}
+
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
 	analyzed, err := a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NoError(err)
-	require.Equal(table, analyzed)
+	require.Equal(
+		plan.NewPushdownProjectionAndFiltersTable(emptyCols, nil, table),
+		analyzed,
+	)
 
 	notAnalyzed = plan.NewUnresolvedTable("nonexistant")
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
@@ -41,7 +46,10 @@ func TestAnalyzer_Analyze(t *testing.T) {
 
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), table)
 	require.NoError(err)
-	require.Equal(table, analyzed)
+	require.Equal(
+		plan.NewPushdownProjectionAndFiltersTable(emptyCols, nil, table),
+		analyzed,
+	)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewUnresolvedColumn("o")},
@@ -57,7 +65,11 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	var expected sql.Node = plan.NewProject(
 		[]sql.Expression{expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false)},
-		table,
+		plan.NewPushdownProjectionAndFiltersTable(
+			[]sql.Expression{expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false)},
+			nil,
+			table,
+		),
 	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
@@ -66,7 +78,9 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		plan.NewUnresolvedTable("mytable"),
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
-	expected = plan.NewDescribe(table)
+	expected = plan.NewDescribe(
+		plan.NewPushdownProjectionAndFiltersTable(emptyCols, nil, table),
+	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
 
@@ -76,7 +90,17 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NoError(err)
-	require.Equal(table, analyzed)
+	require.Equal(
+		plan.NewPushdownProjectionAndFiltersTable(
+			[]sql.Expression{
+				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "t", false),
+			},
+			nil,
+			table,
+		),
+		analyzed,
+	)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
@@ -87,7 +111,17 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NoError(err)
-	require.Equal(table, analyzed)
+	require.Equal(
+		plan.NewPushdownProjectionAndFiltersTable(
+			[]sql.Expression{
+				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "t", false),
+			},
+			nil,
+			table,
+		),
+		analyzed,
+	)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{
@@ -106,7 +140,13 @@ func TestAnalyzer_Analyze(t *testing.T) {
 				"foo",
 			),
 		},
-		table,
+		plan.NewPushdownProjectionAndFiltersTable(
+			[]sql.Expression{
+				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+			},
+			nil,
+			table,
+		),
 	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
@@ -131,7 +171,13 @@ func TestAnalyzer_Analyze(t *testing.T) {
 				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 				expression.NewLiteral(int32(1), sql.Int32),
 			),
-			table,
+			plan.NewPushdownProjectionAndFiltersTable(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+				},
+				nil,
+				table,
+			),
 		),
 	)
 	require.NoError(err)
@@ -153,7 +199,22 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 			expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "i2", false),
 		},
-		plan.NewCrossJoin(table, table2),
+		plan.NewCrossJoin(
+			plan.NewPushdownProjectionAndFiltersTable(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+				},
+				nil,
+				table,
+			),
+			plan.NewPushdownProjectionAndFiltersTable(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+				},
+				nil,
+				table2,
+			),
+		),
 	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
@@ -172,7 +233,13 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 			},
-			table,
+			plan.NewPushdownProjectionAndFiltersTable(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+				},
+				nil,
+				table,
+			),
 		),
 	)
 	require.Nil(err)

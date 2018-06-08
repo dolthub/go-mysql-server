@@ -3,12 +3,16 @@ package sqle_test
 import (
 	"context"
 	"io"
+	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
 	"gopkg.in/src-d/go-mysql-server.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/index/pilosa"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/parse"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -567,6 +571,51 @@ func TestStarPanic197(t *testing.T) {
 	require.Len(rows, 3)
 }
 
+func TestIndexes(t *testing.T) {
+	require := require.New(t)
+	e := newEngine(t)
+
+	tmpDir, err := ioutil.TempDir(os.TempDir(), "pilosa-test")
+	require.NoError(err)
+
+	require.NoError(os.MkdirAll(tmpDir, 0644))
+	e.Catalog.RegisterIndexDriver(pilosa.NewIndexDriver(tmpDir))
+
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+	table := db.Tables()["mytable"].(sql.Indexable)
+
+	driver := e.Catalog.IndexDriver(pilosa.DriverID)
+	conf := make(map[string]string)
+	expr := sql.NewExpressionHash(expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false))
+	idx, err := driver.Create("mydb", "mytable", "myidx", []sql.ExpressionHash{expr}, conf)
+	require.NoError(err)
+
+	created, err := e.Catalog.AddIndex(idx)
+	require.NoError(err)
+
+	iter, err := table.IndexKeyValueIter(sql.NewEmptyContext(), []string{"i"})
+	require.NoError(err)
+
+	require.NoError(driver.Save(context.TODO(), idx, iter))
+	created <- struct{}{}
+
+	defer func() {
+		done, err := e.Catalog.DeleteIndex("foo", "myidx")
+		require.NoError(err)
+		<-done
+	}()
+
+	_, it, err := e.Query(sql.NewEmptyContext(), "SELECT * FROM mytable WHERE i = 2")
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(it)
+	require.NoError(err)
+
+	expected := []sql.Row{{int64(2), "second row"}}
+	require.Equal(expected, rows)
+}
+
 func TestTracing(t *testing.T) {
 	require := require.New(t)
 	e := newEngine(t)
@@ -594,6 +643,7 @@ func TestTracing(t *testing.T) {
 		"plan.Project",
 		"plan.Sort",
 		"plan.Filter",
+		"plan.PushdownProjectionAndFiltersTable",
 		"expression.Equals",
 		"expression.Equals",
 		"expression.Equals",

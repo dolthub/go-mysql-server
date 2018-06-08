@@ -234,7 +234,12 @@ func (t *IndexableTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		"table":   t.Name(),
 	})
 
-	iter, err := t.WithProjectFiltersAndIndex(ctx, t.Columns, t.Filters, t.Index.Values())
+	values, err := t.Index.Values()
+	if err != nil {
+		return nil, err
+	}
+
+	iter, err := t.WithProjectFiltersAndIndex(ctx, t.Columns, t.Filters, values)
 	if err != nil {
 		span.Finish()
 		return nil, err
@@ -273,3 +278,6 @@ func (t IndexableTable) Expressions() []sql.Expression {
 	exprs = append(exprs, t.Filters...)
 	return exprs
 }
+
+// Children implements the Node interface.
+func (t IndexableTable) Children() []sql.Node { return nil }
