@@ -63,59 +63,53 @@ func (m *mapping) close() error {
 	return nil
 }
 
-func (m *mapping) ensureOpened() error {
+func (m *mapping) query(fn func() error) error {
 	m.mut.Lock()
-	defer m.mut.Unlock()
-
-	if m.db != nil {
-		return nil
+	if m.db == nil {
+		var err error
+		m.db, err = bolt.Open(filepath.Join(m.dir, mappingFileName), 0640, nil)
+		if err != nil {
+			m.mut.Unlock()
+			return err
+		}
 	}
-
-	var err error
-	m.db, err = bolt.Open(filepath.Join(m.dir, mappingFileName), 0640, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *mapping) getRowID(frameName string, value interface{}) (uint64, error) {
-	if err := m.ensureOpened(); err != nil {
-		return 0, err
-	}
+	m.mut.Unlock()
 
 	m.mut.RLock()
 	defer m.mut.RUnlock()
+	return fn()
+}
 
-	var (
-		id  uint64
-		buf bytes.Buffer
-	)
-
-	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(value)
-	if err != nil {
-		return id, err
-	}
-
-	err = m.db.Update(func(tx *bolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists([]byte(frameName))
+func (m *mapping) getRowID(frameName string, value interface{}) (uint64, error) {
+	var id uint64
+	err := m.query(func() error {
+		var buf bytes.Buffer
+		enc := gob.NewEncoder(&buf)
+		err := enc.Encode(value)
 		if err != nil {
 			return err
 		}
 
-		key := buf.Bytes()
-		val := b.Get(key)
-		if val != nil {
-			id = binary.LittleEndian.Uint64(val)
-			return nil
-		}
+		err = m.db.Update(func(tx *bolt.Tx) error {
+			b, err := tx.CreateBucketIfNotExists([]byte(frameName))
+			if err != nil {
+				return err
+			}
 
-		id = uint64(b.Stats().KeyN)
-		val = make([]byte, 8)
-		binary.LittleEndian.PutUint64(val, id)
-		err = b.Put(key, val)
+			key := buf.Bytes()
+			val := b.Get(key)
+			if val != nil {
+				id = binary.LittleEndian.Uint64(val)
+				return nil
+			}
+
+			id = uint64(b.Stats().KeyN)
+			val = make([]byte, 8)
+			binary.LittleEndian.PutUint64(val, id)
+			err = b.Put(key, val)
+			return err
+		})
+
 		return err
 	})
 
@@ -123,101 +117,84 @@ func (m *mapping) getRowID(frameName string, value interface{}) (uint64, error) 
 }
 
 func (m *mapping) putLocation(indexName string, colID uint64, location []byte) error {
-	if err := m.ensureOpened(); err != nil {
-		return err
-	}
+	return m.query(func() error {
+		return m.db.Update(func(tx *bolt.Tx) error {
+			b, err := tx.CreateBucketIfNotExists([]byte(indexName))
+			if err != nil {
+				return err
+			}
 
-	m.mut.RLock()
-	defer m.mut.RUnlock()
-	return m.db.Update(func(tx *bolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists([]byte(indexName))
-		if err != nil {
-			return err
-		}
+			key := make([]byte, 8)
+			binary.LittleEndian.PutUint64(key, colID)
 
-		key := make([]byte, 8)
-		binary.LittleEndian.PutUint64(key, colID)
-
-		return b.Put(key, location)
+			return b.Put(key, location)
+		})
 	})
 }
 
 func (m *mapping) getLocation(indexName string, colID uint64) ([]byte, error) {
-	if err := m.ensureOpened(); err != nil {
-		return nil, err
-	}
-
-	m.mut.RLock()
-	defer m.mut.RUnlock()
-
 	var location []byte
 
-	err := m.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(indexName))
-		if b == nil {
-			return fmt.Errorf("Bucket %s not found", indexName)
-		}
+	err := m.query(func() error {
+		err := m.db.View(func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte(indexName))
+			if b == nil {
+				return fmt.Errorf("Bucket %s not found", indexName)
+			}
 
-		key := make([]byte, 8)
-		binary.LittleEndian.PutUint64(key, colID)
+			key := make([]byte, 8)
+			binary.LittleEndian.PutUint64(key, colID)
 
-		location = b.Get(key)
-		return nil
+			location = b.Get(key)
+			return nil
+		})
+
+		return err
 	})
 
 	return location, err
 }
 
 func (m *mapping) getLocationN(indexName string) (int, error) {
-	if err := m.ensureOpened(); err != nil {
-		return 0, err
-	}
+	var n int
+	err := m.query(func() error {
+		err := m.db.View(func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte(indexName))
+			if b == nil {
+				return fmt.Errorf("Bucket %s not found", indexName)
+			}
 
-	m.mut.RLock()
-	defer m.mut.RUnlock()
+			n = b.Stats().KeyN
+			return nil
+		})
 
-	n := 0
-	err := m.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(indexName))
-		if b == nil {
-			return fmt.Errorf("Bucket %s not found", indexName)
-		}
-
-		n = b.Stats().KeyN
-		return nil
+		return err
 	})
-
 	return n, err
 }
 
 func (m *mapping) get(name string, key interface{}) ([]byte, error) {
-	if err := m.ensureOpened(); err != nil {
-		return nil, err
-	}
+	var value []byte
 
-	m.mut.RLock()
-	defer m.mut.RUnlock()
-
-	var (
-		value []byte
-		buf   bytes.Buffer
-	)
-
-	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(key)
-	if err != nil {
-		return nil, err
-	}
-
-	err = m.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(name))
-		if b != nil {
-			value = b.Get(buf.Bytes())
-			return nil
+	err := m.query(func() error {
+		var buf bytes.Buffer
+		enc := gob.NewEncoder(&buf)
+		err := enc.Encode(key)
+		if err != nil {
+			return err
 		}
 
-		return fmt.Errorf("%s not found", name)
-	})
+		err = m.db.View(func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte(name))
+			if b != nil {
+				value = b.Get(buf.Bytes())
+				return nil
+			}
 
+			return fmt.Errorf("%s not found", name)
+		})
+
+		return err
+	})
 	return value, err
 }

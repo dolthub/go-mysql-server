@@ -69,6 +69,7 @@ func (d *Driver) Create(db, table, id string, expr []sql.ExpressionHash, config 
 		table:       table,
 		id:          id,
 		expressions: expr,
+		mapping:     newMapping(path),
 	}, nil
 }
 
@@ -122,11 +123,6 @@ func (d *Driver) Save(ctx context.Context, i sql.Index, iter sql.IndexKeyValueIt
 		return errInvalidIndexType.New(i)
 	}
 
-	path, err := mkdir(d.root, idx.Database(), idx.Table(), idx.ID())
-	if err != nil {
-		return err
-	}
-
 	// Retrieve the pilosa schema
 	schema, err := d.client.Schema()
 	if err != nil {
@@ -152,7 +148,6 @@ func (d *Driver) Save(ctx context.Context, i sql.Index, iter sql.IndexKeyValueIt
 		return err
 	}
 
-	idx.mapping = newMapping(path)
 	idx.mapping.open()
 	defer idx.mapping.close()
 

@@ -6,6 +6,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	pilosa "github.com/pilosa/go-pilosa"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -160,7 +161,8 @@ type indexValueIter struct {
 func (it *indexValueIter) Next() ([]byte, error) {
 	if it.offset >= it.total {
 		if err := it.Close(); err != nil {
-			return nil, err
+			logrus.WithField("err", err.Error()).
+				Error("unable to close the pilosa index value iterator")
 		}
 		return nil, io.EOF
 	}

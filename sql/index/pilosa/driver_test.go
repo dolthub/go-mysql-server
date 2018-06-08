@@ -57,9 +57,9 @@ func TestLoadAll(t *testing.T) {
 
 	for _, idx := range indexes {
 		if idx.ID() == "id1" {
-			require.Truef(reflect.DeepEqual(idx1, idx), "Expected: %v\nGot: %v\n", idx1, idx)
+			assertEqualIndexes(t, idx1, idx)
 		} else {
-			require.Truef(reflect.DeepEqual(idx2, idx), "Expected: %v\nGot: %v\n", idx2, idx)
+			assertEqualIndexes(t, idx2, idx)
 		}
 	}
 }
