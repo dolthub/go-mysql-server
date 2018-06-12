@@ -134,12 +134,12 @@ type dummyExpr struct {
 
 var _ Expression = (*dummyExpr)(nil)
 
-func (dummyExpr) Children() []Expression                               { return nil }
-func (dummyExpr) Eval(*Context, Row) (interface{}, error)              { panic("not implemented") }
-func (dummyExpr) TransformUp(fn TransformExprFunc) (Expression, error) { panic("not implemented") }
-func (d dummyExpr) String() string {
-	return fmt.Sprintf("dummyExpr{foo: %d, bar: %s}", d.foo, d.bar)
+func (dummyExpr) Children() []Expression                  { return nil }
+func (dummyExpr) Eval(*Context, Row) (interface{}, error) { panic("not implemented") }
+func (e dummyExpr) TransformUp(fn TransformExprFunc) (Expression, error) {
+	return fn(e)
 }
+func (e dummyExpr) String() string { return fmt.Sprintf("dummyExpr{%d, %q}", e.foo, e.bar) }
 func (dummyExpr) IsNullable() bool { return false }
 func (dummyExpr) Resolved() bool   { return false }
 func (dummyExpr) Type() Type       { panic("not implemented") }

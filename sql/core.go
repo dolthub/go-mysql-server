@@ -151,6 +151,7 @@ type Table interface {
 // Indexable represents a table that supports being indexed and receiving
 // indexes to be able to speed up its execution.
 type Indexable interface {
+	PushdownProjectionAndFiltersTable
 	// IndexKeyValueIter returns an iterator with the values of each row in
 	// the table for the given column names.
 	IndexKeyValueIter(ctx *Context, colNames []string) (IndexKeyValueIter, error)
@@ -158,7 +159,11 @@ type Indexable interface {
 	// method of the table. Returns a new iterator given the columns,
 	// filters and the index so the table can improve its speed instead of
 	// making a full scan.
-	WithProjectFiltersAndIndex(ctx *Context, columns, filters []Expression, index IndexValueIter) (RowIter, error)
+	WithProjectFiltersAndIndex(
+		ctx *Context,
+		columns, filters []Expression,
+		index IndexValueIter,
+	) (RowIter, error)
 }
 
 // PushdownProjectionTable is a table that can produce a specific RowIter

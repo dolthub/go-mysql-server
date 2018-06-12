@@ -37,6 +37,11 @@ func (d Databases) Database(name string) (Database, error) {
 	return nil, ErrDatabaseNotFound.New(name)
 }
 
+// AddDatabase adds a new database.
+func (d *Databases) AddDatabase(db Database) {
+	*d = append(*d, db)
+}
+
 // Table returns the Table with the given name if it exists.
 func (d Databases) Table(dbName string, tableName string) (Table, error) {
 	db, err := d.Database(dbName)

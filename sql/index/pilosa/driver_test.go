@@ -57,11 +57,25 @@ func TestLoadAll(t *testing.T) {
 
 	for _, idx := range indexes {
 		if idx.ID() == "id1" {
-			require.Truef(reflect.DeepEqual(idx1, idx), "Expected: %v\nGot: %v\n", idx1, idx)
+			assertEqualIndexes(t, idx1, idx)
 		} else {
-			require.Truef(reflect.DeepEqual(idx2, idx), "Expected: %v\nGot: %v\n", idx2, idx)
+			assertEqualIndexes(t, idx2, idx)
 		}
 	}
+}
+
+func assertEqualIndexes(t *testing.T, a, b sql.Index) {
+	t.Helper()
+	require.Equal(t, withoutMapping(a), withoutMapping(b))
+}
+
+func withoutMapping(a sql.Index) sql.Index {
+	if i, ok := a.(*pilosaIndex); ok {
+		b := *i
+		b.mapping = nil
+		return &b
+	}
+	return a
 }
 
 func TestSaveAndLoad(t *testing.T) {
@@ -93,14 +107,16 @@ func TestSaveAndLoad(t *testing.T) {
 	indexes, err := d.LoadAll(db, table)
 	require.Nil(err)
 	require.Equal(1, len(indexes))
-	require.Truef(reflect.DeepEqual(sqlIdx, indexes[0]), "Not equal indexes")
+	assertEqualIndexes(t, sqlIdx, indexes[0])
 
 	for _, r := range it.records {
 		lookup, err := sqlIdx.Get(r.values...)
-		require.Nil(err)
+		require.NoError(err)
 
 		found, foundLoc := false, []string{}
-		lit := lookup.Values()
+		lit, err := lookup.Values()
+		require.NoError(err)
+
 		for i := 0; ; i++ {
 			loc, err := lit.Next()
 			t.Logf("[%d] values: %v location: %x loc: %x err: %v\n", i, r.values, r.location, loc, err)
@@ -150,26 +166,11 @@ func TestSaveAndGetAll(t *testing.T) {
 	indexes, err := d.LoadAll(db, table)
 	require.Nil(err)
 	require.Equal(1, len(indexes))
-	require.Truef(reflect.DeepEqual(sqlIdx, indexes[0]), "Not equal indexes")
+	assertEqualIndexes(t, sqlIdx, indexes[0])
 
-	lookup, err := sqlIdx.Get()
-	require.Nil(err)
-
-	lit := lookup.Values()
-	for i := 0; ; i++ {
-		loc, err := lit.Next()
-		if err == io.EOF {
-			break
-		}
-		require.Nil(err)
-
-		t.Logf("[%d] values: %v location: %x loc: %x err: %v\n", i, it.records[i].values, it.records[i].location, loc, err)
-		require.Truef(reflect.DeepEqual(it.records[i].location, loc),
-			"Expected: %v\nGot: %v\n", it.records[i].location, loc)
-	}
-
-	err = lit.Close()
-	require.Nil(err)
+	_, err = sqlIdx.Get()
+	require.Error(err)
+	require.True(errInvalidKeys.Is(err))
 }
 
 func TestPilosaHiccup(t *testing.T) {
@@ -217,7 +218,7 @@ func TestPilosaHiccup(t *testing.T) {
 	indexes, err := d.LoadAll(db, table)
 	require.Nil(err)
 	require.Equal(1, len(indexes))
-	require.Truef(reflect.DeepEqual(sqlIdx, indexes[0]), "Not equal indexes")
+	assertEqualIndexes(t, sqlIdx, indexes[0])
 
 	for i, r := range it.records {
 		var lookup sql.IndexLookup
@@ -229,9 +230,11 @@ func TestPilosaHiccup(t *testing.T) {
 			}
 			return err
 		})
-		require.Nil(err)
+		require.NoError(err)
 
-		lit := lookup.Values()
+		lit, err := lookup.Values()
+		require.NoError(err)
+
 		loc, err := lit.Next()
 		t.Logf("[%d] values: %v location: %x loc: %x err: %v\n", i, r.values, r.location, loc, err)
 		if err == io.EOF {

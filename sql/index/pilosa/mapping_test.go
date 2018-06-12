@@ -15,8 +15,8 @@ func TestRowID(t *testing.T) {
 	require.Nil(err)
 	defer os.RemoveAll(path)
 
-	m, err := openMapping(path)
-	require.Nil(err)
+	m := newMapping(path)
+	m.open()
 	defer m.close()
 
 	cases := []int{0, 1, 2, 3, 4, 5, 5, 0, 3, 2, 1, 5}
@@ -36,8 +36,8 @@ func TestLocation(t *testing.T) {
 	require.Nil(err)
 	defer os.RemoveAll(path)
 
-	m, err := openMapping(path)
-	require.Nil(err)
+	m := newMapping(path)
+	m.open()
 	defer m.close()
 
 	cases := map[uint64]string{
@@ -67,8 +67,8 @@ func TestGet(t *testing.T) {
 	require.Nil(err)
 	defer os.RemoveAll(path)
 
-	m, err := openMapping(path)
-	require.Nil(err)
+	m := newMapping(path)
+	m.open()
 	defer m.close()
 
 	cases := []int{0, 1, 2, 3, 4, 5, 5, 0, 3, 2, 1, 5}

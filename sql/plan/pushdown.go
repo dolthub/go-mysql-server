@@ -171,10 +171,6 @@ func (t *PushdownProjectionAndFiltersTable) Expressions() []sql.Expression {
 // TransformExpressions implements the Expressioner interface.
 func (t *PushdownProjectionAndFiltersTable) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
 	cols, err := transformExpressionsUp(f, t.Columns)
-	if err != nil {
-		return nil, err
-	}
-
 	filters, err := transformExpressionsUp(f, t.Filters)
 	if err != nil {
 		return nil, err
@@ -186,3 +182,102 @@ func (t *PushdownProjectionAndFiltersTable) TransformExpressions(f sql.Transform
 		t.PushdownProjectionAndFiltersTable,
 	), nil
 }
+
+// IndexableTable is a node wrapping a table implementing the sql.Inedxable
+// interface so it returns a RowIter with custom logic given the set of used
+// columns that need to be projected, the filtes that apply to that table and
+// the indexes to use.
+// IndexableTable nodes don't propagate transformations to the underlying
+// table.
+type IndexableTable struct {
+	sql.Indexable
+	Columns []sql.Expression
+	Filters []sql.Expression
+	Index   sql.IndexLookup
+}
+
+// NewPushdownProjectionAndFiltersTable creates a new
+// PushdownProjectionAndFiltersTable node.
+func NewIndexableTable(
+	columns []sql.Expression,
+	filters []sql.Expression,
+	index sql.IndexLookup,
+	table sql.Indexable,
+) *IndexableTable {
+	return &IndexableTable{table, columns, filters, index}
+}
+
+// TransformUp implements the Node interface.
+func (t *IndexableTable) TransformUp(
+	f sql.TransformNodeFunc,
+) (sql.Node, error) {
+	return f(t)
+}
+
+// TransformExpressionsUp implements the Node interface.
+func (t *IndexableTable) TransformExpressionsUp(
+	f sql.TransformExprFunc,
+) (sql.Node, error) {
+	filters, err := transformExpressionsUp(f, t.Filters)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewIndexableTable(t.Columns, filters, t.Index, t.Indexable), nil
+}
+
+// RowIter implements the Node interface.
+func (t *IndexableTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	span, ctx := ctx.Span("plan.IndexableTable", opentracing.Tags{
+		"columns": len(t.Columns),
+		"filters": len(t.Filters),
+		"table":   t.Name(),
+	})
+
+	values, err := t.Index.Values()
+	if err != nil {
+		return nil, err
+	}
+
+	iter, err := t.WithProjectFiltersAndIndex(ctx, t.Columns, t.Filters, values)
+	if err != nil {
+		span.Finish()
+		return nil, err
+	}
+
+	return sql.NewSpanIter(span, iter), nil
+}
+
+func (t IndexableTable) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("IndexableTable")
+
+	var columns = make([]string, len(t.Columns))
+	for i, col := range t.Columns {
+		columns[i] = col.String()
+	}
+
+	var filters = make([]string, len(t.Filters))
+	for i, f := range t.Filters {
+		filters[i] = f.String()
+	}
+
+	_ = pr.WriteChildren(
+		fmt.Sprintf("Columns(%s)", strings.Join(columns, ", ")),
+		fmt.Sprintf("Filters(%s)", strings.Join(filters, ", ")),
+		t.Indexable.String(),
+	)
+
+	return pr.String()
+}
+
+// Expressions implements the Expressioner interface.
+func (t IndexableTable) Expressions() []sql.Expression {
+	var exprs []sql.Expression
+	exprs = append(exprs, t.Columns...)
+	exprs = append(exprs, t.Filters...)
+	return exprs
+}
+
+// Children implements the Node interface.
+func (t IndexableTable) Children() []sql.Node { return nil }

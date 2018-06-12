@@ -1,6 +1,8 @@
 package plan
 
 import (
+	"bytes"
+	"encoding/gob"
 	"io"
 	"testing"
 
@@ -168,4 +170,87 @@ Loop:
 
 		return row, nil
 	}
+}
+
+func TestPushdownIndexableTable(t *testing.T) {
+	require := require.New(t)
+
+	index := &indexLookup{[]interface{}{1, 2, 3}}
+	filters := []sql.Expression{
+		expression.NewLiteral(1, sql.Int64),
+		expression.NewLiteral(2, sql.Int64),
+	}
+	columns := []sql.Expression{
+		expression.NewLiteral(3, sql.Int64),
+		expression.NewLiteral(4, sql.Int64),
+	}
+
+	table := &pushdownIndexableTable{nil, t, columns, filters, index, false}
+
+	pushdownIndexableTable := NewIndexableTable(columns, filters, index, table)
+
+	_, err := pushdownIndexableTable.RowIter(sql.NewEmptyContext())
+	require.NoError(err)
+	require.True(table.called)
+}
+
+type pushdownIndexableTable struct {
+	sql.PushdownProjectionAndFiltersTable
+	t                *testing.T
+	columns, filters []sql.Expression
+	index            sql.IndexLookup
+	called           bool
+}
+
+func (t *pushdownIndexableTable) WithProjectFiltersAndIndex(
+	ctx *sql.Context,
+	columns, filters []sql.Expression,
+	index sql.IndexValueIter,
+) (sql.RowIter, error) {
+	t.called = true
+	require := require.New(t.t)
+	require.Equal(t.columns, columns)
+	require.Equal(t.filters, filters)
+	values, err := t.index.Values()
+	require.NoError(err)
+	require.Equal(values, index)
+	return sql.RowsToRowIter(), nil
+}
+
+func (t *pushdownIndexableTable) IndexKeyValueIter(_ *sql.Context, colNames []string) (sql.IndexKeyValueIter, error) {
+	panic("not implemented")
+}
+
+func (t *pushdownIndexableTable) Name() string { return "name" }
+
+type indexLookup struct {
+	values []interface{}
+}
+
+func (l indexLookup) Values() (sql.IndexValueIter, error) {
+	return &indexValueIter{l.values, 0}, nil
+}
+
+type indexValueIter struct {
+	values []interface{}
+	pos    int
+}
+
+func (i *indexValueIter) Next() ([]byte, error) {
+	if i.pos >= len(i.values) {
+		return nil, io.EOF
+	}
+
+	i.pos++
+
+	var buf bytes.Buffer
+	if err := gob.NewEncoder(&buf).Encode(i.values[i.pos-1]); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (i *indexValueIter) Close() error {
+	i.pos = len(i.values)
+	return nil
 }

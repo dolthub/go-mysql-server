@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"io"
@@ -77,7 +78,7 @@ type DescendIndex interface {
 // implemented to grant more capabilities to the index lookup.
 type IndexLookup interface {
 	// Values returns the values in the subset of the index.
-	Values() IndexValueIter
+	Values() (IndexValueIter, error)
 }
 
 // SetOperations is a specialization of IndexLookup that enables set operations
@@ -169,7 +170,7 @@ func (r *IndexRegistry) retainIndex(db, id string) {
 	r.rcmut.Lock()
 	defer r.rcmut.Unlock()
 	key := indexKey{db, id}
-	r.refCounts[key] = r.refCounts[key] + 1
+	r.refCounts[key]++
 }
 
 // CanUseIndex returns whether the given index is ready to use or not.
@@ -189,8 +190,7 @@ func (r *IndexRegistry) ReleaseIndex(idx Index) {
 	r.rcmut.Lock()
 	defer r.rcmut.Unlock()
 	key := indexKey{idx.Database(), idx.ID()}
-	r.refCounts[key] = r.refCounts[key] - 1
-
+	r.refCounts[key]--
 	if r.refCounts[key] > 0 {
 		return
 	}
@@ -231,6 +231,25 @@ func (r *IndexRegistry) IndexByExpression(db string, expr ...Expression) Index {
 	}
 
 	return nil
+}
+
+type withIndexer interface {
+	WithIndex(int) Expression
+}
+
+func removeIndexes(e Expression) (Expression, error) {
+	i, ok := e.(withIndexer)
+	if !ok {
+		return e, nil
+	}
+
+	return i.WithIndex(-1), nil
+}
+
+func expressionsEqual(a, b Expression) bool {
+	a, _ = a.TransformUp(removeIndexes)
+	b, _ = b.TransformUp(removeIndexes)
+	return reflect.DeepEqual(a, b)
 }
 
 var (
@@ -277,14 +296,16 @@ func (r *IndexRegistry) validateIndexToAdd(idx Index) error {
 
 func exprListsEqual(a, b []ExpressionHash) bool {
 	var visited = make([]bool, len(b))
+
 	for _, va := range a {
 		found := false
+
 		for j, vb := range b {
 			if visited[j] {
 				continue
 			}
 
-			if reflect.DeepEqual(va, vb) {
+			if bytes.Equal(va, vb) {
 				visited[j] = true
 				found = true
 				break
