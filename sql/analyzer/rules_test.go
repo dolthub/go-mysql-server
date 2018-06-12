@@ -3,6 +3,7 @@ package analyzer
 import (
 	"crypto/sha1"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -1044,7 +1045,9 @@ func TestAssignIndexes(t *testing.T) {
 	catalog := sql.NewCatalog()
 	idx1 := &dummyIndex{
 		"t2",
-		expression.NewGetFieldWithTable(0, sql.Int64, "t2", "bar", false),
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int64, "t2", "bar", false),
+		},
 	}
 	done, err := catalog.AddIndex(idx1)
 	require.NoError(err)
@@ -1052,9 +1055,12 @@ func TestAssignIndexes(t *testing.T) {
 
 	idx2 := &dummyIndex{
 		"t1",
-		expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
+		},
 	}
 	done, err = catalog.AddIndex(idx2)
+
 	require.NoError(err)
 	close(done)
 
@@ -1145,17 +1151,17 @@ func TestGetIndexes(t *testing.T) {
 		ok       bool
 	}{
 		{
-			expression.NewEquals(
-				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
-				expression.NewGetFieldWithTable(1, sql.Int64, "foo", "baz", false),
+			eq(
+				col(0, "t1", "bar"),
+				col(1, "t1", "baz"),
 			),
 			map[string]*indexLookup{},
 			true,
 		},
 		{
-			expression.NewEquals(
-				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
-				expression.NewLiteral(int64(1), sql.Int64),
+			eq(
+				col(0, "t1", "bar"),
+				lit(1),
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
@@ -1163,7 +1169,9 @@ func TestGetIndexes(t *testing.T) {
 					[]sql.Index{
 						&dummyIndex{
 							table: "t1",
-							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+							expr: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+							},
 						},
 					},
 				},
@@ -1171,14 +1179,14 @@ func TestGetIndexes(t *testing.T) {
 			true,
 		},
 		{
-			expression.NewOr(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
-					expression.NewLiteral(int64(1), sql.Int64),
+			or(
+				eq(
+					col(0, "t1", "bar"),
+					lit(1),
 				),
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
-					expression.NewLiteral(int64(2), sql.Int64),
+				eq(
+					col(0, "t1", "bar"),
+					lit(2),
 				),
 			),
 			map[string]*indexLookup{
@@ -1187,11 +1195,15 @@ func TestGetIndexes(t *testing.T) {
 					[]sql.Index{
 						&dummyIndex{
 							table: "t1",
-							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+							expr: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+							},
 						},
 						&dummyIndex{
 							table: "t1",
-							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+							expr: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+							},
 						},
 					},
 				},
@@ -1199,14 +1211,14 @@ func TestGetIndexes(t *testing.T) {
 			true,
 		},
 		{
-			expression.NewAnd(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
-					expression.NewLiteral(int64(1), sql.Int64),
+			and(
+				eq(
+					col(0, "t1", "bar"),
+					lit(1),
 				),
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
-					expression.NewLiteral(int64(2), sql.Int64),
+				eq(
+					col(0, "t1", "bar"),
+					lit(2),
 				),
 			),
 			map[string]*indexLookup{
@@ -1215,11 +1227,15 @@ func TestGetIndexes(t *testing.T) {
 					[]sql.Index{
 						&dummyIndex{
 							table: "t1",
-							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+							expr: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+							},
 						},
 						&dummyIndex{
 							table: "t1",
-							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+							expr: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+							},
 						},
 					},
 				},
@@ -1227,25 +1243,25 @@ func TestGetIndexes(t *testing.T) {
 			true,
 		},
 		{
-			expression.NewAnd(
-				expression.NewOr(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
-						expression.NewLiteral(int64(1), sql.Int64),
+			and(
+				or(
+					eq(
+						col(0, "t1", "bar"),
+						lit(1),
 					),
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
-						expression.NewLiteral(int64(2), sql.Int64),
+					eq(
+						col(0, "t1", "bar"),
+						lit(2),
 					),
 				),
-				expression.NewOr(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
-						expression.NewLiteral(int64(3), sql.Int64),
+				or(
+					eq(
+						col(0, "t1", "bar"),
+						lit(3),
 					),
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
-						expression.NewLiteral(int64(4), sql.Int64),
+					eq(
+						col(0, "t1", "bar"),
+						lit(4),
 					),
 				),
 			),
@@ -1255,19 +1271,27 @@ func TestGetIndexes(t *testing.T) {
 					[]sql.Index{
 						&dummyIndex{
 							table: "t1",
-							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+							expr: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+							},
 						},
 						&dummyIndex{
 							table: "t1",
-							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+							expr: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+							},
 						},
 						&dummyIndex{
 							table: "t1",
-							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+							expr: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+							},
 						},
 						&dummyIndex{
 							table: "t1",
-							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+							expr: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+							},
 						},
 					},
 				},
@@ -1275,25 +1299,25 @@ func TestGetIndexes(t *testing.T) {
 			true,
 		},
 		{
-			expression.NewOr(
-				expression.NewOr(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(1, sql.Int64, "foo", "bar", false),
-						expression.NewLiteral(int64(1), sql.Int64),
+			or(
+				or(
+					eq(
+						col(0, "t1", "bar"),
+						lit(1),
 					),
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
-						expression.NewLiteral(int64(2), sql.Int64),
+					eq(
+						col(0, "t1", "bar"),
+						lit(2),
 					),
 				),
-				expression.NewOr(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
-						expression.NewLiteral(int64(3), sql.Int64),
+				or(
+					eq(
+						col(0, "t1", "bar"),
+						lit(3),
 					),
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
-						expression.NewLiteral(int64(4), sql.Int64),
+					eq(
+						col(0, "t1", "bar"),
+						lit(4),
 					),
 				),
 			),
@@ -1303,19 +1327,27 @@ func TestGetIndexes(t *testing.T) {
 					[]sql.Index{
 						&dummyIndex{
 							table: "t1",
-							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+							expr: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+							},
 						},
 						&dummyIndex{
 							table: "t1",
-							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+							expr: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+							},
 						},
 						&dummyIndex{
 							table: "t1",
-							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+							expr: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+							},
 						},
 						&dummyIndex{
 							table: "t1",
-							expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+							expr: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+							},
 						},
 					},
 				},
@@ -1324,12 +1356,12 @@ func TestGetIndexes(t *testing.T) {
 		},
 		{
 			expression.NewIn(
-				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+				col(0, "t1", "bar"),
 				expression.NewTuple(
-					expression.NewLiteral(int64(1), sql.Int64),
-					expression.NewLiteral(int64(2), sql.Int64),
-					expression.NewLiteral(int64(3), sql.Int64),
-					expression.NewLiteral(int64(4), sql.Int64),
+					lit(1),
+					lit(2),
+					lit(3),
+					lit(4),
 				),
 			),
 			map[string]*indexLookup{
@@ -1337,22 +1369,150 @@ func TestGetIndexes(t *testing.T) {
 					&mergeableIndexLookup{id: "1", unions: []string{"2", "3", "4"}},
 					[]sql.Index{&dummyIndex{
 						table: "t1",
-						expr:  expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
+						expr: []sql.Expression{
+							expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+						},
 					}},
+				},
+			},
+			true,
+		},
+		{
+			and(
+				eq(
+					col(0, "t2", "foo"),
+					lit(1),
+				),
+				and(
+					eq(
+						col(0, "t2", "baz"),
+						lit(4),
+					),
+					and(
+						eq(
+							col(0, "t2", "bar"),
+							lit(2),
+						),
+						eq(
+							col(0, "t1", "bar"),
+							lit(3),
+						),
+					),
+				),
+			),
+			map[string]*indexLookup{
+				"t1": &indexLookup{
+					&mergeableIndexLookup{id: "3"},
+					[]sql.Index{&dummyIndex{
+						table: "t1",
+						expr: []sql.Expression{
+							expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+						},
+					}},
+				},
+				"t2": &indexLookup{
+					&mergeableIndexLookup{id: "1, 2"},
+					[]sql.Index{&dummyIndex{
+						table: "t2",
+						expr: []sql.Expression{
+							expression.NewGetFieldWithTable(0, sql.Int64, "t2", "foo", false),
+							expression.NewGetFieldWithTable(0, sql.Int64, "t2", "bar", false),
+						},
+					}},
+				},
+			},
+			true,
+		},
+		{
+			or(
+				eq(
+					col(0, "t2", "bar"),
+					lit(5),
+				),
+				and(
+					eq(
+						col(0, "t2", "foo"),
+						lit(1),
+					),
+					and(
+						eq(
+							col(0, "t2", "baz"),
+							lit(4),
+						),
+						and(
+							eq(
+								col(0, "t2", "bar"),
+								lit(2),
+							),
+							eq(
+								col(0, "t1", "bar"),
+								lit(3),
+							),
+						),
+					),
+				),
+			),
+			map[string]*indexLookup{
+				"t1": &indexLookup{
+					&mergeableIndexLookup{id: "3"},
+					[]sql.Index{&dummyIndex{
+						table: "t1",
+						expr: []sql.Expression{
+							expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+						},
+					}},
+				},
+				"t2": &indexLookup{
+					&mergeableIndexLookup{id: "5", unions: []string{"1, 2"}},
+					[]sql.Index{
+						&dummyIndex{
+							table: "t2",
+							expr: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "t2", "bar", false),
+							},
+						},
+						&dummyIndex{
+							table: "t2",
+							expr: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "t2", "foo", false),
+								expression.NewGetFieldWithTable(0, sql.Int64, "t2", "bar", false),
+							},
+						},
+					},
 				},
 			},
 			true,
 		},
 	}
 
-	catalog := sql.NewCatalog()
+	indexes := []*dummyIndex{
+		{
+			"t1",
+			[]sql.Expression{
+				col(0, "t1", "bar"),
+			},
+		},
+		{
+			"t2",
+			[]sql.Expression{
+				col(0, "t2", "foo"),
+				col(0, "t2", "bar"),
+			},
+		},
+		{
+			"t2",
+			[]sql.Expression{
+				col(0, "t2", "bar"),
+			},
+		},
+	}
 
-	done, err := catalog.AddIndex(&dummyIndex{
-		"t1",
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "bar", false),
-	})
-	require.NoError(t, err)
-	close(done)
+	catalog := sql.NewCatalog()
+	for _, idx := range indexes {
+		done, err := catalog.AddIndex(idx)
+		require.NoError(t, err)
+		close(done)
+	}
 
 	time.Sleep(50 * time.Millisecond)
 	a := New(catalog)
@@ -1372,29 +1532,162 @@ func TestGetIndexes(t *testing.T) {
 	}
 }
 
+func TestGetMultiColumnIndexes(t *testing.T) {
+	require := require.New(t)
+
+	catalog := sql.NewCatalog()
+	indexes := []*dummyIndex{
+		{
+			"t1",
+			[]sql.Expression{
+				col(1, "t1", "foo"),
+				col(2, "t1", "bar"),
+			},
+		},
+		{
+			"t2",
+			[]sql.Expression{
+				col(0, "t2", "foo"),
+				col(1, "t2", "bar"),
+				col(2, "t2", "baz"),
+			},
+		},
+		{
+			"t2",
+			[]sql.Expression{
+				col(0, "t2", "foo"),
+				col(0, "t2", "bar"),
+			},
+		},
+		{
+			"t3",
+			[]sql.Expression{col(0, "t3", "foo")},
+		},
+	}
+
+	for _, idx := range indexes {
+		done, err := catalog.AddIndex(idx)
+		require.NoError(err)
+		close(done)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+	a := New(catalog)
+
+	used := make(map[sql.Expression]struct{})
+	exprs := []sql.Expression{
+		eq(
+			col(2, "t2", "bar"),
+			lit(2),
+		),
+		eq(
+			col(2, "t2", "foo"),
+			lit(1),
+		),
+		eq(
+			lit(3),
+			col(2, "t2", "baz"),
+		),
+		eq(
+			col(2, "t3", "foo"),
+			lit(4),
+		),
+		eq(
+			col(2, "t1", "foo"),
+			lit(5),
+		),
+		eq(
+			col(2, "t1", "bar"),
+			lit(6),
+		),
+	}
+	result, err := getMultiColumnIndexes(exprs, a, used)
+	require.NoError(err)
+
+	expected := map[string]*indexLookup{
+		"t1": &indexLookup{
+			&mergeableIndexLookup{id: "5, 6"},
+			[]sql.Index{indexes[0]},
+		},
+		"t2": &indexLookup{
+			&mergeableIndexLookup{id: "1, 2, 3"},
+			[]sql.Index{indexes[1]},
+		},
+	}
+
+	require.Equal(expected, result)
+
+	expectedUsed := map[sql.Expression]struct{}{
+		exprs[0]: struct{}{},
+		exprs[1]: struct{}{},
+		exprs[2]: struct{}{},
+		exprs[4]: struct{}{},
+		exprs[5]: struct{}{},
+	}
+	require.Equal(expectedUsed, used)
+}
+
+func or(left, right sql.Expression) sql.Expression {
+	return expression.NewOr(left, right)
+}
+
+func and(left, right sql.Expression) sql.Expression {
+	return expression.NewAnd(left, right)
+}
+
+func col(idx int, table, col string) sql.Expression {
+	return expression.NewGetFieldWithTable(idx, sql.Int64, table, col, false)
+}
+
+func eq(left, right sql.Expression) sql.Expression {
+	return expression.NewEquals(left, right)
+}
+
+func lit(n int64) sql.Expression {
+	return expression.NewLiteral(n, sql.Int64)
+}
+
 type dummyIndex struct {
 	table string
-	expr  sql.Expression
+	expr  []sql.Expression
 }
 
 var _ sql.Index = (*dummyIndex)(nil)
 
 func (dummyIndex) Database() string { return "" }
 func (i dummyIndex) ExpressionHashes() []sql.ExpressionHash {
-	h := sha1.New()
-	h.Write([]byte(i.expr.String()))
-	return []sql.ExpressionHash{h.Sum(nil)}
+	var hashes []sql.ExpressionHash
+	for _, e := range i.expr {
+		h := sha1.New()
+		h.Write([]byte(e.String()))
+		hashes = append(hashes, h.Sum(nil))
+	}
+	return hashes
 }
 func (i dummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 	if len(key) != 1 {
-		return &mergeableIndexLookup{id: fmt.Sprint(key)}, nil
+		var parts = make([]string, len(key))
+		for i, p := range key {
+			parts[i] = fmt.Sprint(p)
+		}
+		return &mergeableIndexLookup{id: strings.Join(parts, ", ")}, nil
 	}
 	return &mergeableIndexLookup{id: fmt.Sprint(key[0])}, nil
 }
 func (i dummyIndex) Has(key ...interface{}) (bool, error) {
 	panic("not implemented")
 }
-func (i dummyIndex) ID() string    { return i.expr.String() }
+func (i dummyIndex) ID() string {
+	if len(i.expr) == 1 {
+		return i.expr[0].String()
+	}
+	var parts = make([]string, len(i.expr))
+	for i, e := range i.expr {
+		parts[i] = e.String()
+	}
+
+	return "(" + strings.Join(parts, ", ") + ")"
+}
 func (i dummyIndex) Table() string { return i.table }
 
 func TestIndexesIntersection(t *testing.T) {

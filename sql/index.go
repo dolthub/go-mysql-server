@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/hex"
 	"io"
-	"reflect"
 	"strings"
 	"sync"
 
@@ -129,9 +128,10 @@ type IndexRegistry struct {
 	// Root path where all the data of the indexes is stored on disk.
 	Root string
 
-	mut      sync.RWMutex
-	indexes  map[indexKey]Index
-	statuses map[indexKey]IndexStatus
+	mut        sync.RWMutex
+	indexes    map[indexKey]Index
+	indexOrder []indexKey
+	statuses   map[indexKey]IndexStatus
 
 	driversMut sync.RWMutex
 	drivers    map[string]IndexDriver
@@ -221,9 +221,10 @@ func (r *IndexRegistry) IndexByExpression(db string, expr ...Expression) Index {
 		expressionHashes = append(expressionHashes, NewExpressionHash(e))
 	}
 
-	for _, idx := range r.indexes {
+	for _, k := range r.indexOrder {
+		idx := r.indexes[k]
 		if idx.Database() == db {
-			if exprListsEqual(idx.ExpressionHashes(), expressionHashes) {
+			if exprListsMatch(idx.ExpressionHashes(), expressionHashes) {
 				r.retainIndex(db, idx.ID())
 				return idx
 			}
@@ -231,6 +232,48 @@ func (r *IndexRegistry) IndexByExpression(db string, expr ...Expression) Index {
 	}
 
 	return nil
+}
+
+// ExpressionsWithIndexes finds all the combinations of expressions with
+// matching indexes. This only matches multi-column indexes.
+func (r *IndexRegistry) ExpressionsWithIndexes(
+	db string,
+	exprs ...Expression,
+) [][]Expression {
+	r.mut.RLock()
+	defer r.mut.RUnlock()
+
+	var results [][]Expression
+Indexes:
+	for _, idx := range r.indexes {
+		if ln := len(idx.ExpressionHashes()); ln <= len(exprs) && ln > 1 {
+			var used = make(map[int]struct{})
+			var matched []Expression
+			for _, ie := range idx.ExpressionHashes() {
+				var found bool
+				for i, e := range exprs {
+					if _, ok := used[i]; ok {
+						continue
+					}
+
+					if expressionsEqual(ie, NewExpressionHash(e)) {
+						used[i] = struct{}{}
+						found = true
+						matched = append(matched, e)
+						break
+					}
+				}
+
+				if !found {
+					continue Indexes
+				}
+			}
+
+			results = append(results, matched)
+		}
+	}
+
+	return results
 }
 
 type withIndexer interface {
@@ -246,10 +289,8 @@ func removeIndexes(e Expression) (Expression, error) {
 	return i.WithIndex(-1), nil
 }
 
-func expressionsEqual(a, b Expression) bool {
-	a, _ = a.TransformUp(removeIndexes)
-	b, _ = b.TransformUp(removeIndexes)
-	return reflect.DeepEqual(a, b)
+func expressionsEqual(a, b ExpressionHash) bool {
+	return bytes.Compare(a, b) == 0
 }
 
 var (
@@ -294,7 +335,39 @@ func (r *IndexRegistry) validateIndexToAdd(idx Index) error {
 	return nil
 }
 
+// exprListsMatch returns whether any subset of a is the entirety of b.
+func exprListsMatch(a, b []ExpressionHash) bool {
+	var visited = make([]bool, len(b))
+
+	for _, va := range a {
+		found := false
+
+		for j, vb := range b {
+			if visited[j] {
+				continue
+			}
+
+			if bytes.Equal(va, vb) {
+				visited[j] = true
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return false
+		}
+	}
+
+	return true
+}
+
+// exprListsEqual returns whether a and b have the same items.
 func exprListsEqual(a, b []ExpressionHash) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
 	var visited = make([]bool, len(b))
 
 	for _, va := range a {
@@ -332,7 +405,9 @@ func (r *IndexRegistry) AddIndex(idx Index) (chan<- struct{}, error) {
 
 	r.mut.Lock()
 	r.setStatus(idx, IndexNotReady)
-	r.indexes[indexKey{idx.Database(), idx.ID()}] = idx
+	key := indexKey{idx.Database(), idx.ID()}
+	r.indexes[key] = idx
+	r.indexOrder = append(r.indexOrder, key)
 	r.mut.Unlock()
 
 	var created = make(chan struct{})
@@ -380,6 +455,16 @@ func (r *IndexRegistry) DeleteIndex(db, id string) (<-chan struct{}, error) {
 		defer r.rcmut.Unlock()
 
 		delete(r.indexes, key)
+		var pos = -1
+		for i, k := range r.indexOrder {
+			if k == key {
+				pos = i
+				break
+			}
+		}
+		if pos >= 0 {
+			r.indexOrder = append(r.indexOrder[:pos], r.indexOrder[pos+1:]...)
+		}
 		close(done)
 		return done, nil
 	}

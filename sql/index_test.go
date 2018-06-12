@@ -13,9 +13,10 @@ func TestIndexByExpression(t *testing.T) {
 	require := require.New(t)
 
 	r := NewIndexRegistry()
+	r.indexOrder = []indexKey{{"foo", ""}}
 	r.indexes[indexKey{"foo", ""}] = &dummyIdx{
 		database: "foo",
-		expr:     dummyExpr{1, "2"},
+		expr:     []Expression{dummyExpr{1, "2"}},
 	}
 
 	idx := r.IndexByExpression("bar", dummyExpr{1, "2"})
@@ -24,7 +25,7 @@ func TestIndexByExpression(t *testing.T) {
 	idx = r.IndexByExpression("foo", dummyExpr{1, "2"})
 	require.NotNil(idx)
 
-	idx = r.IndexByExpression("foo", dummyExpr{2, "2"})
+	idx = r.IndexByExpression("foo", dummyExpr{2, "3"})
 	require.Nil(idx)
 }
 
@@ -33,7 +34,7 @@ func TestAddIndex(t *testing.T) {
 	r := NewIndexRegistry()
 	idx := &dummyIdx{
 		id:       "foo",
-		expr:     new(dummyExpr),
+		expr:     []Expression{new(dummyExpr)},
 		database: "foo",
 		table:    "foo",
 	}
@@ -56,7 +57,7 @@ func TestAddIndex(t *testing.T) {
 
 	_, err = r.AddIndex(&dummyIdx{
 		id:       "another",
-		expr:     new(dummyExpr),
+		expr:     []Expression{new(dummyExpr)},
 		database: "foo",
 		table:    "foo",
 	})
@@ -107,9 +108,74 @@ func TestDeleteIndex_InUse(t *testing.T) {
 	require.Len(r.indexes, 0)
 }
 
+func TestExpressionsWithIndexes(t *testing.T) {
+	require := require.New(t)
+
+	r := NewIndexRegistry()
+
+	var indexes = []*dummyIdx{
+		{
+			"idx1",
+			[]Expression{
+				&dummyExpr{0, "foo"},
+				&dummyExpr{1, "bar"},
+			},
+			"foo",
+			"foo",
+		},
+		{
+			"idx2",
+			[]Expression{
+				&dummyExpr{0, "foo"},
+				&dummyExpr{1, "bar"},
+				&dummyExpr{3, "baz"},
+			},
+			"foo",
+			"foo",
+		},
+		{
+			"idx3",
+			[]Expression{
+				&dummyExpr{0, "foo"},
+			},
+			"foo",
+			"foo",
+		},
+	}
+
+	for _, idx := range indexes {
+		done, err := r.AddIndex(idx)
+		require.NoError(err)
+		close(done)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+
+	exprs := r.ExpressionsWithIndexes(
+		"foo",
+		&dummyExpr{0, "foo"},
+		&dummyExpr{1, "bar"},
+		&dummyExpr{3, "baz"},
+	)
+
+	expected := [][]Expression{
+		{
+			&dummyExpr{0, "foo"},
+			&dummyExpr{1, "bar"},
+			&dummyExpr{3, "baz"},
+		},
+		{
+			&dummyExpr{0, "foo"},
+			&dummyExpr{1, "bar"},
+		},
+	}
+
+	require.ElementsMatch(expected, exprs)
+}
+
 type dummyIdx struct {
 	id       string
-	expr     Expression
+	expr     []Expression
 	database string
 	table    string
 }
@@ -117,9 +183,13 @@ type dummyIdx struct {
 var _ Index = (*dummyIdx)(nil)
 
 func (i dummyIdx) ExpressionHashes() []ExpressionHash {
-	h := sha1.New()
-	h.Write([]byte(i.expr.String()))
-	return []ExpressionHash{h.Sum(nil)}
+	var hashes []ExpressionHash
+	for _, e := range i.expr {
+		h := sha1.New()
+		h.Write([]byte(e.String()))
+		hashes = append(hashes, h.Sum(nil))
+	}
+	return hashes
 }
 func (i dummyIdx) ID() string                              { return i.id }
 func (i dummyIdx) Get(...interface{}) (IndexLookup, error) { panic("not implemented") }
@@ -128,8 +198,8 @@ func (i dummyIdx) Database() string                        { return i.database }
 func (i dummyIdx) Table() string                           { return i.table }
 
 type dummyExpr struct {
-	foo int
-	bar string
+	index   int
+	colName string
 }
 
 var _ Expression = (*dummyExpr)(nil)
@@ -139,7 +209,10 @@ func (dummyExpr) Eval(*Context, Row) (interface{}, error) { panic("not implement
 func (e dummyExpr) TransformUp(fn TransformExprFunc) (Expression, error) {
 	return fn(e)
 }
-func (e dummyExpr) String() string { return fmt.Sprintf("dummyExpr{%d, %q}", e.foo, e.bar) }
+func (e dummyExpr) String() string { return fmt.Sprintf("dummyExpr{%d, %s}", e.index, e.colName) }
 func (dummyExpr) IsNullable() bool { return false }
 func (dummyExpr) Resolved() bool   { return false }
 func (dummyExpr) Type() Type       { panic("not implemented") }
+func (e dummyExpr) WithIndex(idx int) Expression {
+	return &dummyExpr{idx, e.colName}
+}
