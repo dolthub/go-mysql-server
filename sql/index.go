@@ -159,6 +159,21 @@ func (r *IndexRegistry) IndexDriver(id string) IndexDriver {
 	return r.drivers[id]
 }
 
+// DefaultIndexDriver returns the default index driver, which is the only
+// driver when there is 1 driver in the registry. If there are more than
+// 1 drivers in the registry, this will return the empty string, as there
+// is no clear default driver.
+func (r *IndexRegistry) DefaultIndexDriver() IndexDriver {
+	r.driversMut.RLock()
+	defer r.driversMut.RUnlock()
+	if len(r.drivers) == 1 {
+		for _, d := range r.drivers {
+			return d
+		}
+	}
+	return nil
+}
+
 // RegisterIndexDriver registers a new index driver.
 func (r *IndexRegistry) RegisterIndexDriver(driver IndexDriver) {
 	r.driversMut.Lock()
