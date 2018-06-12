@@ -528,6 +528,8 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			// in the row is going to be evaluated in this node
 			case *plan.Project, *plan.Filter, *plan.GroupBy, *plan.Sort:
 				schema = n.Children()[0].Schema()
+			case *plan.CreateIndex:
+				schema = n.Table.Schema()
 			default:
 				schema = n.Schema()
 			}
@@ -788,8 +790,8 @@ func indexCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	defer span.Finish()
 
 	nc := *ci
-	ci.Catalog = a.Catalog
-	ci.CurrentDatabase = a.CurrentDatabase
+	nc.Catalog = a.Catalog
+	nc.CurrentDatabase = a.CurrentDatabase
 
 	return &nc, nil
 }
@@ -803,8 +805,9 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return n, nil
 	}
 
-	// don't do pushdown on insert queries
-	if _, ok := n.(*plan.InsertInto); ok {
+	// don't do pushdown on certain queries
+	switch n.(type) {
+	case *plan.InsertInto, *plan.CreateIndex:
 		return n, nil
 	}
 

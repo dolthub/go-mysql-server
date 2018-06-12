@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"gopkg.in/src-d/go-mysql-server.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
@@ -614,6 +615,32 @@ func TestIndexes(t *testing.T) {
 
 	expected := []sql.Row{{int64(2), "second row"}}
 	require.Equal(expected, rows)
+}
+
+func TestCreateIndex(t *testing.T) {
+	require := require.New(t)
+	e := newEngine(t)
+
+	tmpDir, err := ioutil.TempDir(os.TempDir(), "pilosa-test")
+	require.NoError(err)
+
+	require.NoError(os.MkdirAll(tmpDir, 0644))
+	e.Catalog.RegisterIndexDriver(pilosa.NewIndexDriver(tmpDir))
+
+	_, iter, err := e.Query(sql.NewEmptyContext(), "CREATE INDEX myidx ON mytable (i)")
+	require.NoError(err)
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+	require.Len(rows, 0)
+
+	defer func() {
+		time.Sleep(1 * time.Second)
+		done, err := e.Catalog.DeleteIndex("foo", "myidx")
+		require.NoError(err)
+		<-done
+
+		require.NoError(os.RemoveAll(tmpDir))
+	}()
 }
 
 func TestTracing(t *testing.T) {

@@ -79,7 +79,13 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, ErrTableNotNameable.New()
 	}
 
-	driver := c.Catalog.IndexDriver(c.Driver)
+	var driver sql.IndexDriver
+	if c.Driver == "" {
+		driver = c.Catalog.DefaultIndexDriver()
+	} else {
+		driver = c.Catalog.IndexDriver(c.Driver)
+	}
+
 	if driver == nil {
 		return nil, ErrInvalidIndexDriver.New(c.Driver)
 	}
@@ -144,6 +150,28 @@ func (c *CreateIndex) String() string {
 		c.Table.String(),
 	)
 	return pr.String()
+}
+
+// Expressions implements the Expressioner interface.
+func (c *CreateIndex) Expressions() []sql.Expression {
+	return c.Exprs
+}
+
+// TransformExpressions implements the Expressioner interface.
+func (c *CreateIndex) TransformExpressions(fn sql.TransformExprFunc) (sql.Node, error) {
+	var exprs = make([]sql.Expression, len(c.Exprs))
+	var err error
+	for i, e := range c.Exprs {
+		exprs[i], err = e.TransformUp(fn)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	nc := *c
+	nc.Exprs = exprs
+
+	return &nc, nil
 }
 
 // TransformExpressionsUp implements the Node interface.
