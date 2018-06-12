@@ -13,6 +13,7 @@ func TestIndexByExpression(t *testing.T) {
 	require := require.New(t)
 
 	r := NewIndexRegistry()
+	r.indexOrder = []indexKey{{"foo", ""}}
 	r.indexes[indexKey{"foo", ""}] = &dummyIdx{
 		database: "foo",
 		expr:     []Expression{dummyExpr{1, "2"}},

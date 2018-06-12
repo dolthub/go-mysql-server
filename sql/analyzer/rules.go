@@ -1263,11 +1263,8 @@ func getMultiColumnIndexes(
 	columnExprs := columnExprsByTable(exprs)
 	for table, exps := range columnExprs {
 		cols := make([]sql.Expression, len(exps))
-		var colMap []columnExpr
-
 		for i, e := range exps {
 			cols[i] = e.col
-			colMap = append(colMap, e)
 		}
 
 		exprList := a.Catalog.ExpressionsWithIndexes(a.CurrentDatabase, cols...)
@@ -1282,9 +1279,9 @@ func getMultiColumnIndexes(
 		if len(selected) > 0 {
 			index := a.Catalog.IndexByExpression(a.CurrentDatabase, selected...)
 			if index != nil {
-				var values = make([]interface{}, len(selected))
+				var values = make([]interface{}, len(index.ExpressionHashes()))
 				for i, e := range index.ExpressionHashes() {
-					col := findColumnByHash(colMap, e)
+					col := findColumnByHash(exps, e)
 					used[col.expr] = struct{}{}
 					val, err := col.val.Eval(sql.NewEmptyContext(), nil)
 					if err != nil {

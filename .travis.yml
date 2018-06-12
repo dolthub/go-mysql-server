@@ -23,6 +23,8 @@ before_install:
   - docker ps -a
 
 install:
+  - go get -u github.com/pilosa/go-pilosa
+  - cd "$GOPATH/src/github.com/pilosa/go-pilosa" && git checkout master && cd "$TRAVIS_BUILD_DIR"
   - make dependencies
 
 script:

@@ -128,9 +128,10 @@ type IndexRegistry struct {
 	// Root path where all the data of the indexes is stored on disk.
 	Root string
 
-	mut      sync.RWMutex
-	indexes  map[indexKey]Index
-	statuses map[indexKey]IndexStatus
+	mut        sync.RWMutex
+	indexes    map[indexKey]Index
+	indexOrder []indexKey
+	statuses   map[indexKey]IndexStatus
 
 	driversMut sync.RWMutex
 	drivers    map[string]IndexDriver
@@ -220,7 +221,8 @@ func (r *IndexRegistry) IndexByExpression(db string, expr ...Expression) Index {
 		expressionHashes = append(expressionHashes, NewExpressionHash(e))
 	}
 
-	for _, idx := range r.indexes {
+	for _, k := range r.indexOrder {
+		idx := r.indexes[k]
 		if idx.Database() == db {
 			if exprListsMatch(idx.ExpressionHashes(), expressionHashes) {
 				r.retainIndex(db, idx.ID())
@@ -403,7 +405,9 @@ func (r *IndexRegistry) AddIndex(idx Index) (chan<- struct{}, error) {
 
 	r.mut.Lock()
 	r.setStatus(idx, IndexNotReady)
-	r.indexes[indexKey{idx.Database(), idx.ID()}] = idx
+	key := indexKey{idx.Database(), idx.ID()}
+	r.indexes[key] = idx
+	r.indexOrder = append(r.indexOrder, key)
 	r.mut.Unlock()
 
 	var created = make(chan struct{})
@@ -451,6 +455,16 @@ func (r *IndexRegistry) DeleteIndex(db, id string) (<-chan struct{}, error) {
 		defer r.rcmut.Unlock()
 
 		delete(r.indexes, key)
+		var pos = -1
+		for i, k := range r.indexOrder {
+			if k == key {
+				pos = i
+				break
+			}
+		}
+		if pos >= 0 {
+			r.indexOrder = append(r.indexOrder[:pos], r.indexOrder[pos+1:]...)
+		}
 		close(done)
 		return done, nil
 	}
