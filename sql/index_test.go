@@ -1,11 +1,13 @@
 package sql
 
 import (
+	"context"
 	"crypto/sha1"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 )
 
@@ -13,11 +15,22 @@ func TestIndexByExpression(t *testing.T) {
 	require := require.New(t)
 
 	r := NewIndexRegistry()
-	r.indexOrder = []indexKey{{"foo", ""}}
-	r.indexes[indexKey{"foo", ""}] = &dummyIdx{
-		database: "foo",
-		expr:     []Expression{dummyExpr{1, "2"}},
+	r.indexOrder = []indexKey{
+		{"foo", ""},
+		{"foo", "bar"},
 	}
+	r.indexes = map[indexKey]Index{
+		indexKey{"foo", ""}: &dummyIdx{
+			database: "foo",
+			expr:     []Expression{dummyExpr{1, "2"}},
+		},
+		indexKey{"foo", "bar"}: &dummyIdx{
+			database: "foo",
+			id:       "bar",
+			expr:     []Expression{dummyExpr{2, "3"}},
+		},
+	}
+	r.statuses[indexKey{"foo", ""}] = IndexReady
 
 	idx := r.IndexByExpression("bar", dummyExpr{1, "2"})
 	require.Nil(idx)
@@ -26,6 +39,9 @@ func TestIndexByExpression(t *testing.T) {
 	require.NotNil(idx)
 
 	idx = r.IndexByExpression("foo", dummyExpr{2, "3"})
+	require.Nil(idx)
+
+	idx = r.IndexByExpression("foo", dummyExpr{3, "4"})
 	require.Nil(idx)
 }
 
@@ -172,6 +188,89 @@ func TestExpressionsWithIndexes(t *testing.T) {
 
 	require.ElementsMatch(expected, exprs)
 }
+
+func TestLoadIndexes(t *testing.T) {
+	require := require.New(t)
+
+	d1 := &loadDriver{id: "d1", indexes: []Index{
+		&dummyIdx{id: "idx1", database: "db1", table: "t1"},
+		&dummyIdx{id: "idx2", database: "db2", table: "t3"},
+	}}
+
+	d2 := &loadDriver{id: "d2", indexes: []Index{
+		&dummyIdx{id: "idx3", database: "db1", table: "t2"},
+		&dummyIdx{id: "idx4", database: "db2", table: "t4"},
+	}}
+
+	registry := NewIndexRegistry()
+	registry.RegisterIndexDriver(d1)
+	registry.RegisterIndexDriver(d2)
+
+	dbs := Databases{
+		dummyDB{
+			name: "db1",
+			tables: map[string]Table{
+				"t1": &dummyTable{name: "t1"},
+				"t2": &dummyTable{name: "t2"},
+			},
+		},
+		dummyDB{
+			name: "db2",
+			tables: map[string]Table{
+				"t3": &dummyTable{name: "t3"},
+				"t4": &dummyTable{name: "t4"},
+			},
+		},
+	}
+
+	require.NoError(registry.LoadIndexes(dbs))
+
+	expected := append(d1.indexes[:], d2.indexes...)
+	var result []Index
+	for _, idx := range registry.indexes {
+		result = append(result, idx)
+	}
+
+	spew.Dump(result)
+
+	require.ElementsMatch(expected, result)
+}
+
+type dummyDB struct {
+	name   string
+	tables map[string]Table
+}
+
+func (d dummyDB) Name() string             { return d.name }
+func (d dummyDB) Tables() map[string]Table { return d.tables }
+
+type dummyTable struct {
+	Table
+	name string
+}
+
+func (t dummyTable) Name() string { return t.name }
+
+type loadDriver struct {
+	indexes []Index
+	id      string
+}
+
+func (d loadDriver) ID() string { return d.id }
+func (loadDriver) Create(db, table, id string, expressionHashes []ExpressionHash, config map[string]string) (Index, error) {
+	panic("create is a placeholder")
+}
+func (d loadDriver) LoadAll(db, table string) ([]Index, error) {
+	var result []Index
+	for _, i := range d.indexes {
+		if i.Table() == table && i.Database() == db {
+			result = append(result, i)
+		}
+	}
+	return result, nil
+}
+func (loadDriver) Save(ctx context.Context, index Index, iter IndexKeyValueIter) error { return nil }
+func (loadDriver) Delete(index Index) error                                            { return nil }
 
 type dummyIdx struct {
 	id       string

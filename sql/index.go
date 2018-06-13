@@ -181,6 +181,33 @@ func (r *IndexRegistry) RegisterIndexDriver(driver IndexDriver) {
 	r.drivers[driver.ID()] = driver
 }
 
+// LoadIndexes loads all indexes for all dbs, tables and drivers.
+func (r *IndexRegistry) LoadIndexes(dbs Databases) error {
+	r.driversMut.RLock()
+	defer r.driversMut.RUnlock()
+	r.mut.Lock()
+	defer r.mut.Unlock()
+
+	for _, driver := range r.drivers {
+		for _, db := range dbs {
+			for t := range db.Tables() {
+				indexes, err := driver.LoadAll(db.Name(), t)
+				if err != nil {
+					return err
+				}
+
+				for _, idx := range indexes {
+					k := indexKey{db.Name(), idx.ID()}
+					r.indexes[k] = idx
+					r.indexOrder = append(r.indexOrder, k)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 func (r *IndexRegistry) retainIndex(db, id string) {
 	r.rcmut.Lock()
 	defer r.rcmut.Unlock()
@@ -192,7 +219,14 @@ func (r *IndexRegistry) retainIndex(db, id string) {
 func (r *IndexRegistry) CanUseIndex(idx Index) bool {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
-	return bool(r.statuses[indexKey{idx.Database(), idx.ID()}])
+	return r.canUseIndex(idx)
+}
+
+func (r *IndexRegistry) canUseIndex(idx Index) bool {
+	if idx == nil {
+		return false
+	}
+	return r.statuses[indexKey{idx.Database(), idx.ID()}].IsUsable()
 }
 
 // setStatus is not thread-safe, it should be guarded using mut.
@@ -221,7 +255,12 @@ func (r *IndexRegistry) ReleaseIndex(idx Index) {
 func (r *IndexRegistry) Index(db, id string) Index {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
-	return r.indexes[indexKey{db, strings.ToLower(id)}]
+	idx := r.indexes[indexKey{db, strings.ToLower(id)}]
+	if idx != nil && !r.canUseIndex(idx) {
+		return nil
+	}
+
+	return idx
 }
 
 // IndexByExpression returns an index by the given expression. It will return
@@ -238,6 +277,10 @@ func (r *IndexRegistry) IndexByExpression(db string, expr ...Expression) Index {
 
 	for _, k := range r.indexOrder {
 		idx := r.indexes[k]
+		if !r.canUseIndex(idx) {
+			continue
+		}
+
 		if idx.Database() == db {
 			if exprListsMatch(idx.ExpressionHashes(), expressionHashes) {
 				r.retainIndex(db, idx.ID())
@@ -261,6 +304,10 @@ func (r *IndexRegistry) ExpressionsWithIndexes(
 	var results [][]Expression
 Indexes:
 	for _, idx := range r.indexes {
+		if !r.canUseIndex(idx) {
+			continue
+		}
+
 		if ln := len(idx.ExpressionHashes()); ln <= len(exprs) && ln > 1 {
 			var used = make(map[int]struct{})
 			var matched []Expression
