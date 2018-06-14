@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"reflect"
@@ -274,6 +275,21 @@ func TestDelete(t *testing.T) {
 
 	err = d.Delete(sqlIdx)
 	require.Nil(err)
+}
+
+func TestLoadAllDirectoryDoesNotExist(t *testing.T) {
+	require := require.New(t)
+	tmpDir, err := ioutil.TempDir(os.TempDir(), "pilosa-")
+	require.NoError(err)
+
+	defer func() {
+		require.NoError(os.RemoveAll(tmpDir))
+	}()
+
+	driver := &Driver{root: tmpDir}
+	drivers, err := driver.LoadAll("foo", "bar")
+	require.NoError(err)
+	require.Len(drivers, 0)
 }
 
 // test implementation of sql.IndexKeyValueIter interface
