@@ -101,7 +101,7 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node) (sql.Node, error) {
 		return nil, err
 	}
 
-	for i := 0; !reflect.DeepEqual(prev, cur); {
+	for i := 0; !nodesEqual(prev, cur); {
 		a.Log("previous node does not match new node, analyzing again, iteration: %d", i)
 		prev = cur
 		cur, err = a.analyzeOnce(ctx, cur)
@@ -165,4 +165,20 @@ func (a *Analyzer) validateOnce(ctx *sql.Context, n sql.Node) (validationErrors 
 	}
 
 	return validationErrors
+}
+
+type equaler interface {
+	Equal(sql.Node) bool
+}
+
+func nodesEqual(a, b sql.Node) bool {
+	if e, ok := a.(equaler); ok {
+		return e.Equal(b)
+	}
+
+	if e, ok := b.(equaler); ok {
+		return e.Equal(a)
+	}
+
+	return reflect.DeepEqual(a, b)
 }
