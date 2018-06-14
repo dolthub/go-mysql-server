@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 )
 
@@ -231,9 +230,11 @@ func TestLoadIndexes(t *testing.T) {
 		result = append(result, idx)
 	}
 
-	spew.Dump(result)
-
 	require.ElementsMatch(expected, result)
+
+	for _, idx := range expected {
+		require.Equal(registry.statuses[indexKey{idx.Database(), idx.ID()}], IndexReady)
+	}
 }
 
 type dummyDB struct {
