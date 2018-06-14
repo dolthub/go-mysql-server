@@ -200,6 +200,7 @@ func (r *IndexRegistry) LoadIndexes(dbs Databases) error {
 					k := indexKey{db.Name(), idx.ID()}
 					r.indexes[k] = idx
 					r.indexOrder = append(r.indexOrder, k)
+					r.statuses[k] = IndexReady
 				}
 			}
 		}
