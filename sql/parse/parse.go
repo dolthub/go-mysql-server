@@ -32,6 +32,7 @@ var (
 	describeTablesRegex = regexp.MustCompile(`^describe\s+table\s+(.*)`)
 	createIndexRegex    = regexp.MustCompile(`^create\s+index\s+`)
 	dropIndexRegex      = regexp.MustCompile(`^drop\s+index\s+`)
+	describeRegex       = regexp.MustCompile(`^(describe|desc|explain)\s+(.*)\s+`)
 )
 
 // Parse parses the given SQL sentence and returns the corresponding node.
@@ -51,6 +52,8 @@ func Parse(ctx *sql.Context, s string) (sql.Node, error) {
 		return parseCreateIndex(s)
 	case dropIndexRegex.MatchString(lowerQuery):
 		return parseDropIndex(s)
+	case describeRegex.MatchString(lowerQuery):
+		return parseDescribeQuery(ctx, s)
 	}
 
 	stmt, err := sqlparser.Parse(s)
