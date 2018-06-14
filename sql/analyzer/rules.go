@@ -3,8 +3,9 @@ package analyzer
 import (
 	"bytes"
 	"fmt"
-	"io"
+	"reflect"
 	"strings"
+	"sync"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
@@ -866,7 +867,8 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	// from inner to outer the filters have to be processed first so they get
 	// to the tables.
 	var handledFilters []sql.Expression
-	return n.TransformUp(func(node sql.Node) (sql.Node, error) {
+	var queryIndexes []sql.Index
+	node, err := n.TransformUp(func(node sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", node)
 		switch node := node.(type) {
 		case *plan.Filter:
@@ -938,21 +940,11 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 				len(tableFilters),
 			)
 
-			release := func() {
-				for _, index := range indexable.index.indexes {
-					a.Catalog.ReleaseIndex(index)
-				}
-			}
-
-			lookup := &releaserIndexLookup{
-				lookup:  indexable.index.lookup,
-				release: release,
-			}
-
+			queryIndexes = append(queryIndexes, indexable.index.indexes...)
 			return plan.NewIndexableTable(
 				cols,
 				handled,
-				lookup,
+				indexable.index.lookup,
 				indexable.Indexable,
 			), nil
 		case sql.PushdownProjectionTable:
@@ -962,6 +954,23 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		}
 		return node, nil
 	})
+
+	release := func() {
+		for _, idx := range queryIndexes {
+			a.Catalog.ReleaseIndex(idx)
+		}
+	}
+
+	if err != nil {
+		release()
+		return nil, err
+	}
+
+	if len(queryIndexes) > 0 {
+		return &releaser{node, release}, nil
+	}
+
+	return node, nil
 }
 
 // fixFieldIndexesOnExpressions executes fixFieldIndexes on a list of exprs.
@@ -1395,59 +1404,78 @@ func (i *indexable) TransformExpressionsUp(fn sql.TransformExprFunc) (sql.Node, 
 	return i, nil
 }
 
-// releaserIndexLookup is a wrapper around index lookup that is in charge of
-// passing down a release function to release the index once the values of the
-// lookup are consumed.
-type releaserIndexLookup struct {
-	lookup  sql.IndexLookup
-	release func()
-	used    bool
+type releaser struct {
+	Child   sql.Node
+	Release func()
 }
 
-var errLookupUsed = errors.NewKind("unable to reuse this sql.IndexLookup, index already released")
+var _ sql.Node = (*releaser)(nil)
 
-func (l *releaserIndexLookup) Values() (sql.IndexValueIter, error) {
-	if l.used {
-		return nil, errLookupUsed.New()
-	}
+func (r *releaser) Resolved() bool {
+	return r.Child.Resolved()
+}
 
-	l.used = true
-	iter, err := l.lookup.Values()
+func (r *releaser) Children() []sql.Node {
+	return []sql.Node{r.Child}
+}
+
+func (r *releaser) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	iter, err := r.Child.RowIter(ctx)
 	if err != nil {
-		l.release()
+		r.Release()
 		return nil, err
 	}
 
-	return &releaserValueIter{iter, l.release}, nil
+	return &releaseIter{child: iter, release: r.Release}, nil
 }
 
-// releaserValueIter is a sql.IndexValueIter capable of releasing the index
-// when the iterator has been either drained or closed.
-type releaserValueIter struct {
-	iter    sql.IndexValueIter
-	release func()
+func (r *releaser) Schema() sql.Schema {
+	return r.Child.Schema()
 }
 
-func (i *releaserValueIter) Next() ([]byte, error) {
-	v, err := i.iter.Next()
+func (r *releaser) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
+	child, err := r.Child.TransformUp(f)
 	if err != nil {
-		if err == io.EOF {
-			i.Release()
-		}
 		return nil, err
 	}
-
-	return v, nil
+	return f(&releaser{child, r.Release})
 }
 
-func (i *releaserValueIter) Release() {
-	if i.release != nil {
-		i.release()
-		i.release = nil
+func (r *releaser) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
+	child, err := r.Child.TransformExpressionsUp(f)
+	if err != nil {
+		return nil, err
 	}
+	return &releaser{child, r.Release}, nil
 }
 
-func (i *releaserValueIter) Close() error {
-	i.Release()
-	return i.iter.Close()
+func (r *releaser) String() string {
+	return r.Child.String()
+}
+
+func (r *releaser) Equal(n sql.Node) bool {
+	if r2, ok := n.(*releaser); ok {
+		return reflect.DeepEqual(r.Child, r2.Child)
+	}
+	return false
+}
+
+type releaseIter struct {
+	child   sql.RowIter
+	release func()
+	once    sync.Once
+}
+
+func (i *releaseIter) Next() (sql.Row, error) {
+	row, err := i.child.Next()
+	if err != nil {
+		_ = i.Close()
+		return nil, err
+	}
+	return row, nil
+}
+
+func (i *releaseIter) Close() error {
+	i.once.Do(i.release)
+	return nil
 }

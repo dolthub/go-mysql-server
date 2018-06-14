@@ -859,10 +859,11 @@ func TestPushdownIndexable(t *testing.T) {
 	require := require.New(t)
 	a := New(sql.NewCatalog())
 
-	var idx, idx2 dummyIndexLookup
+	var index1, index2, index3 dummyIndex
+	var lookup, lookup2 dummyIndexLookup
 
 	table := &indexable{
-		&indexLookup{idx, nil},
+		&indexLookup{lookup, []sql.Index{index1, index2}},
 		&indexableTable{&pushdownProjectionAndFiltersTable{mem.NewTable("mytable", sql.Schema{
 			{Name: "i", Type: sql.Int32, Source: "mytable"},
 			{Name: "f", Type: sql.Float64, Source: "mytable"},
@@ -871,7 +872,7 @@ func TestPushdownIndexable(t *testing.T) {
 	}
 
 	table2 := &indexable{
-		&indexLookup{idx2, nil},
+		&indexLookup{lookup2, []sql.Index{index3}},
 		&indexableTable{&pushdownProjectionAndFiltersTable{mem.NewTable("mytable2", sql.Schema{
 			{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 			{Name: "f2", Type: sql.Float64, Source: "mytable2"},
@@ -903,7 +904,7 @@ func TestPushdownIndexable(t *testing.T) {
 		),
 	)
 
-	expected := plan.NewProject(
+	expected := &releaser{plan.NewProject(
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 		},
@@ -929,7 +930,7 @@ func TestPushdownIndexable(t *testing.T) {
 							expression.NewLiteral(3.14, sql.Float64),
 						),
 					},
-					&releaserIndexLookup{lookup: idx},
+					lookup,
 					table.Indexable,
 				),
 				plan.NewIndexableTable(
@@ -937,12 +938,14 @@ func TestPushdownIndexable(t *testing.T) {
 						expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
 					},
 					nil,
-					&releaserIndexLookup{lookup: idx2},
+					lookup2,
 					table2.Indexable,
 				),
 			),
 		),
-	)
+	),
+		nil,
+	}
 
 	result, err := a.Analyze(sql.NewEmptyContext(), node)
 	require.NoError(err)
@@ -950,10 +953,8 @@ func TestPushdownIndexable(t *testing.T) {
 	// we need to remove the release function to compare, otherwise it will fail
 	result, err = result.TransformUp(func(node sql.Node) (sql.Node, error) {
 		switch node := node.(type) {
-		case *plan.IndexableTable:
-			index := node.Index.(*releaserIndexLookup)
-			index.release = nil
-			return plan.NewIndexableTable(node.Columns, node.Filters, index, node.Indexable), nil
+		case *releaser:
+			return &releaser{Child: node.Child}, nil
 		default:
 			return node, nil
 		}
