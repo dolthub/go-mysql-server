@@ -30,7 +30,7 @@ func BenchmarkTpch(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	e := sqle.New()
+	e := sqle.NewDefault()
 	e.AddDatabase(db)
 	b.ResetTimer()
 

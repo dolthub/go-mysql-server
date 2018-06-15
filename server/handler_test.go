@@ -14,7 +14,7 @@ import (
 )
 
 func setupMemDB(require *require.Assertions) *sqle.Engine {
-	e := sqle.New()
+	e := sqle.NewDefault()
 	db := mem.NewDatabase("test")
 	e.AddDatabase(db)
 

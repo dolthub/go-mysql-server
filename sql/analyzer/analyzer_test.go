@@ -26,7 +26,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
-	a := New(catalog)
+	a := NewDefault(catalog)
 	a.CurrentDatabase = "mydb"
 
 	emptyCols := []sql.Expression{}
@@ -246,42 +246,89 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	require.Equal(expected, analyzed)
 }
 
-func TestAnalyzer_Analyze_MaxIterations(t *testing.T) {
+func TestMaxIterations(t *testing.T) {
 	require := require.New(t)
+	tName := "my-table"
+	table := mem.NewTable(tName, sql.Schema{
+		{Name: "i", Type: sql.Int32, Source: tName},
+		{Name: "t", Type: sql.Text, Source: tName},
+	})
+	db := mem.NewDatabase("mydb")
+	db.AddTable(tName, table)
 
-	catalog := &sql.Catalog{}
-	a := New(catalog)
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
+
+	count := 0
+	a := NewBuilder(catalog).AddPostAnalyzeRule("loop",
+		func(c *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+
+			switch n.(type) {
+			case *plan.PushdownProjectionAndFiltersTable:
+				tName := fmt.Sprintf("mytable-%v", count)
+				table := mem.NewTable(tName, sql.Schema{
+					{Name: "i", Type: sql.Int32, Source: tName},
+					{Name: "t", Type: sql.Text, Source: tName},
+				})
+
+				n = plan.NewPushdownProjectionAndFiltersTable([]sql.Expression{}, nil, table)
+				count++
+			}
+
+			return n, nil
+		}).Build()
+
 	a.CurrentDatabase = "mydb"
 
-	i := 0
-	a.Rules = []Rule{{
-		Name: "infinite",
-		Apply: func(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-			i++
-			return plan.NewUnresolvedTable(fmt.Sprintf("table%d", i)), nil
-		},
-	}}
-
-	notAnalyzed := plan.NewUnresolvedTable("mytable")
+	notAnalyzed := plan.NewUnresolvedTable(tName)
 	analyzed, err := a.Analyze(sql.NewEmptyContext(), notAnalyzed)
-	require.NotNil(err)
-	require.Equal(plan.NewUnresolvedTable("table1001"), analyzed)
+	require.NoError(err)
+	require.Equal(
+		plan.NewPushdownProjectionAndFiltersTable([]sql.Expression{}, nil,
+			mem.NewTable("mytable-1000", sql.Schema{
+				{Name: "i", Type: sql.Int32, Source: "mytable-1000"},
+				{Name: "t", Type: sql.Text, Source: "mytable-1000"},
+			})),
+		analyzed,
+	)
+	require.Equal(1001, count)
 }
 
 func TestAddRule(t *testing.T) {
 	require := require.New(t)
 
-	a := New(nil)
-	require.Len(a.Rules, len(DefaultRules))
-	a.AddRule("foo", pushdown)
-	require.Len(a.Rules, len(DefaultRules)+1)
+	defRulesCount := countRules(NewDefault(nil).Batches)
+
+	a := NewBuilder(nil).AddPostAnalyzeRule("foo", pushdown).Build()
+
+	require.Equal(countRules(a.Batches), defRulesCount+1)
 }
 
-func TestAddValidationRule(t *testing.T) {
+func TestAddPreValidationRule(t *testing.T) {
 	require := require.New(t)
 
-	a := New(nil)
-	require.Len(a.ValidationRules, len(DefaultValidationRules))
-	a.AddValidationRule("foo", validateGroupBy)
-	require.Len(a.ValidationRules, len(DefaultValidationRules)+1)
+	defRulesCount := countRules(NewDefault(nil).Batches)
+
+	a := NewBuilder(nil).AddPreValidationRule("foo", pushdown).Build()
+
+	require.Equal(countRules(a.Batches), defRulesCount+1)
+}
+
+func TestAddPostValidationRule(t *testing.T) {
+	require := require.New(t)
+
+	defRulesCount := countRules(NewDefault(nil).Batches)
+
+	a := NewBuilder(nil).AddPostValidationRule("foo", pushdown).Build()
+
+	require.Equal(countRules(a.Batches), defRulesCount+1)
+}
+
+func countRules(batches []*Batch) int {
+	var count int
+	for _, b := range batches {
+		count = count + len(b.Rules)
+	}
+	return count
+
 }

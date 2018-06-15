@@ -292,7 +292,7 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 	db.AddTable(table.Name(), table)
 	db.AddTable(table2.Name(), table2)
 
-	e := sqle.New()
+	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
 	q := `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c`
@@ -374,7 +374,7 @@ func TestNaturalJoin(t *testing.T) {
 	db.AddTable(t1.Name(), t1)
 	db.AddTable(t2.Name(), t2)
 
-	e := sqle.New()
+	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
 	_, iter, err := e.Query(sql.NewEmptyContext(), `SELECT * FROM t1 NATURAL JOIN t2`)
@@ -418,7 +418,7 @@ func TestNaturalJoinEqual(t *testing.T) {
 	db.AddTable(t1.Name(), t1)
 	db.AddTable(t2.Name(), t2)
 
-	e := sqle.New()
+	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
 	_, iter, err := e.Query(sql.NewEmptyContext(), `SELECT * FROM t1 NATURAL JOIN t2`)
@@ -458,7 +458,7 @@ func TestNaturalJoinDisjoint(t *testing.T) {
 	db.AddTable(t1.Name(), t1)
 	db.AddTable(t2.Name(), t2)
 
-	e := sqle.New()
+	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
 	_, iter, err := e.Query(sql.NewEmptyContext(), `SELECT * FROM t1 NATURAL JOIN t2`)
@@ -538,7 +538,7 @@ func newEngine(t *testing.T) *sqle.Engine {
 	db.AddTable(table2.Name(), table2)
 	db.AddTable(table3.Name(), table3)
 
-	e := sqle.New()
+	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
 	return e

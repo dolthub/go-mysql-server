@@ -39,7 +39,7 @@ var (
 )
 
 // DefaultValidationRules to apply while analyzing nodes.
-var DefaultValidationRules = []ValidationRule{
+var DefaultValidationRules = []Rule{
 	{validateResolvedRule, validateIsResolved},
 	{validateOrderByRule, validateOrderBy},
 	{validateGroupByRule, validateGroupBy},
@@ -48,18 +48,18 @@ var DefaultValidationRules = []ValidationRule{
 	{validateIndexCreationRule, validateIndexCreation},
 }
 
-func validateIsResolved(ctx *sql.Context, n sql.Node) error {
+func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("validate_is_resolved")
 	defer span.Finish()
 
 	if !n.Resolved() {
-		return ErrValidationResolved.New(n)
+		return nil, ErrValidationResolved.New(n)
 	}
 
-	return nil
+	return n, nil
 }
 
-func validateOrderBy(ctx *sql.Context, n sql.Node) error {
+func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("validate_order_by")
 	defer span.Finish()
 
@@ -68,15 +68,15 @@ func validateOrderBy(ctx *sql.Context, n sql.Node) error {
 		for _, field := range n.SortFields {
 			switch field.Column.(type) {
 			case sql.Aggregation:
-				return ErrValidationOrderBy.New()
+				return nil, ErrValidationOrderBy.New()
 			}
 		}
 	}
 
-	return nil
+	return n, nil
 }
 
-func validateGroupBy(ctx *sql.Context, n sql.Node) error {
+func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("validate_order_by")
 	defer span.Finish()
 
@@ -85,7 +85,7 @@ func validateGroupBy(ctx *sql.Context, n sql.Node) error {
 		// Allow the parser use the GroupBy node to eval the aggregation functions
 		// for sql statementes that don't make use of the GROUP BY expression.
 		if len(n.Grouping) == 0 {
-			return nil
+			return n, nil
 		}
 
 		var validAggs []string
@@ -99,15 +99,15 @@ func validateGroupBy(ctx *sql.Context, n sql.Node) error {
 		for _, expr := range n.Aggregate {
 			if _, ok := expr.(sql.Aggregation); !ok {
 				if !isValidAgg(validAggs, expr) {
-					return ErrValidationGroupBy.New(expr.String())
+					return nil, ErrValidationGroupBy.New(expr.String())
 				}
 			}
 		}
 
-		return nil
+		return n, nil
 	}
 
-	return nil
+	return n, nil
 }
 
 func isValidAgg(validAggs []string, expr sql.Expression) bool {
@@ -121,7 +121,7 @@ func isValidAgg(validAggs []string, expr sql.Expression) bool {
 	}
 }
 
-func validateSchemaSource(ctx *sql.Context, n sql.Node) error {
+func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("validate_schema_source")
 	defer span.Finish()
 
@@ -129,21 +129,21 @@ func validateSchemaSource(ctx *sql.Context, n sql.Node) error {
 	case *plan.TableAlias:
 		// table aliases should not be validated
 		if child, ok := n.Child.(sql.Table); ok {
-			return validateSchema(child)
+			return n, validateSchema(child)
 		}
 	case sql.Table:
-		return validateSchema(n)
+		return n, validateSchema(n)
 	}
-	return nil
+	return n, nil
 }
 
-func validateIndexCreation(ctx *sql.Context, n sql.Node) error {
+func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("validate_index_creation")
 	defer span.Finish()
 
 	ci, ok := n.(*plan.CreateIndex)
 	if !ok {
-		return nil
+		return n, nil
 	}
 
 	schema := ci.Table.Schema()
@@ -163,10 +163,10 @@ func validateIndexCreation(ctx *sql.Context, n sql.Node) error {
 	}
 
 	if len(unknownColumns) > 0 {
-		return ErrUnknownIndexColumns.New(table, strings.Join(unknownColumns, ", "))
+		return nil, ErrUnknownIndexColumns.New(table, strings.Join(unknownColumns, ", "))
 	}
 
-	return nil
+	return n, nil
 }
 
 func validateSchema(t sql.Table) error {
@@ -179,7 +179,7 @@ func validateSchema(t sql.Table) error {
 	return nil
 }
 
-func validateProjectTuples(ctx *sql.Context, n sql.Node) error {
+func validateProjectTuples(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("validate_project_tuples")
 	defer span.Finish()
 
@@ -187,17 +187,17 @@ func validateProjectTuples(ctx *sql.Context, n sql.Node) error {
 	case *plan.Project:
 		for i, e := range n.Projections {
 			if sql.IsTuple(e.Type()) {
-				return ErrProjectTuple.New(i+1, sql.NumColumns(e.Type()))
+				return nil, ErrProjectTuple.New(i+1, sql.NumColumns(e.Type()))
 			}
 		}
 	case *plan.GroupBy:
 		for i, e := range n.Aggregate {
 			if sql.IsTuple(e.Type()) {
-				return ErrProjectTuple.New(i+1, sql.NumColumns(e.Type()))
+				return nil, ErrProjectTuple.New(i+1, sql.NumColumns(e.Type()))
 			}
 		}
 	}
-	return nil
+	return n, nil
 }
 
 func stringContains(strs []string, target string) bool {
