@@ -577,6 +577,33 @@ func TestQualifyColumns(t *testing.T) {
 	require.Equal(expected, result)
 }
 
+func TestCatalogIndex(t *testing.T) {
+	require := require.New(t)
+	f := getRule("index_catalog")
+
+	c := sql.NewCatalog()
+	a := New(c)
+	a.CurrentDatabase = "foo"
+
+	tbl := mem.NewTable("foo", nil)
+
+	node, err := f.Apply(sql.NewEmptyContext(), a, plan.NewCreateIndex("", tbl, nil, "", make(map[string]string)))
+	require.NoError(err)
+
+	ci, ok := node.(*plan.CreateIndex)
+	require.True(ok)
+	require.Equal(c, ci.Catalog)
+	require.Equal("foo", ci.CurrentDatabase)
+
+	node, err = f.Apply(sql.NewEmptyContext(), a, plan.NewDropIndex("foo", tbl))
+	require.NoError(err)
+
+	di, ok := node.(*plan.DropIndex)
+	require.True(ok)
+	require.Equal(c, di.Catalog)
+	require.Equal("foo", di.CurrentDatabase)
+}
+
 func TestReorderProjection(t *testing.T) {
 	require := require.New(t)
 	f := getRule("reorder_projection")
@@ -1656,6 +1683,7 @@ type dummyIndex struct {
 var _ sql.Index = (*dummyIndex)(nil)
 
 func (dummyIndex) Database() string { return "" }
+func (dummyIndex) Driver() string   { return "" }
 func (i dummyIndex) ExpressionHashes() []sql.ExpressionHash {
 	var hashes []sql.ExpressionHash
 	for _, e := range i.expr {

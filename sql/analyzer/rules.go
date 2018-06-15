@@ -776,25 +776,29 @@ func dedupStrings(in []string) []string {
 	return result
 }
 
-// indexCatalog sets the catalog in the CreateIndex nodes.
+// indexCatalog sets the catalog in the CreateIndex and DropIndex nodes.
 func indexCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	if !n.Resolved() {
-		return n, nil
-	}
-
-	ci, ok := n.(*plan.CreateIndex)
-	if !ok {
 		return n, nil
 	}
 
 	span, ctx := ctx.Span("index_catalog")
 	defer span.Finish()
 
-	nc := *ci
-	nc.Catalog = a.Catalog
-	nc.CurrentDatabase = a.CurrentDatabase
-
-	return &nc, nil
+	switch node := n.(type) {
+	case *plan.CreateIndex:
+		nc := *node
+		nc.Catalog = a.Catalog
+		nc.CurrentDatabase = a.CurrentDatabase
+		return &nc, nil
+	case *plan.DropIndex:
+		nc := *node
+		nc.Catalog = a.Catalog
+		nc.CurrentDatabase = a.CurrentDatabase
+		return &nc, nil
+	default:
+		return n, nil
+	}
 }
 
 func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
