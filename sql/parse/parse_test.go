@@ -593,6 +593,13 @@ var fixtures = map[string]sql.Node{
 		"foo",
 		plan.NewUnresolvedTable("bar"),
 	),
+	`DESCRIBE FORMAT=TREE SELECT * FROM foo`: plan.NewDescribeQuery(
+		"tree",
+		plan.NewProject(
+			[]sql.Expression{expression.NewStar()},
+			plan.NewUnresolvedTable("foo"),
+		),
+	),
 }
 
 func TestParse(t *testing.T) {
