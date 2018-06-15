@@ -21,11 +21,11 @@ func TestFilter(t *testing.T) {
 	}
 	child := mem.NewTable("test", childSchema)
 	err := child.Insert(sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)))
-	require.Nil(err)
+	require.NoError(err)
 	err = child.Insert(sql.NewRow("col1_2", "col2_2", int32(3333), int64(4444)))
-	require.Nil(err)
+	require.NoError(err)
 	err = child.Insert(sql.NewRow("col1_3", "col2_3", nil, int64(4444)))
-	require.Nil(err)
+	require.NoError(err)
 
 	f := NewFilter(
 		expression.NewEquals(
@@ -36,11 +36,11 @@ func TestFilter(t *testing.T) {
 	require.Equal(1, len(f.Children()))
 
 	iter, err := f.RowIter(ctx)
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(iter)
 
 	row, err := iter.Next()
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(row)
 
 	require.Equal("col1_1", row[0])
@@ -56,11 +56,11 @@ func TestFilter(t *testing.T) {
 			sql.Int32)), child)
 
 	iter, err = f.RowIter(ctx)
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(iter)
 
 	row, err = iter.Next()
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(row)
 
 	require.Equal(int32(1111), row[2])
@@ -72,11 +72,11 @@ func TestFilter(t *testing.T) {
 		child)
 
 	iter, err = f.RowIter(ctx)
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(iter)
 
 	row, err = iter.Next()
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(row)
 
 	require.Equal(int32(3333), row[2])

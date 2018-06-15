@@ -31,7 +31,7 @@ func TestDistinct(t *testing.T) {
 	d := NewDistinct(p)
 
 	iter, err := d.RowIter(ctx)
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(iter)
 
 	var results []string
@@ -71,7 +71,7 @@ func TestOrderedDistinct(t *testing.T) {
 	d := NewOrderedDistinct(p)
 
 	iter, err := d.RowIter(ctx)
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(iter)
 
 	var results []string
@@ -106,7 +106,7 @@ func BenchmarkDistinct(b *testing.B) {
 		d := NewDistinct(p)
 
 		iter, err := d.RowIter(ctx)
-		require.Nil(err)
+		require.NoError(err)
 		require.NotNil(iter)
 
 		var rows int
@@ -139,7 +139,7 @@ func BenchmarkOrderedDistinct(b *testing.B) {
 		d := NewOrderedDistinct(p)
 
 		iter, err := d.RowIter(ctx)
-		require.Nil(err)
+		require.NoError(err)
 		require.NotNil(iter)
 
 		var rows int

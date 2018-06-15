@@ -242,7 +242,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			),
 		),
 	)
-	require.Nil(err)
+	require.NoError(err)
 	require.Equal(expected, analyzed)
 }
 

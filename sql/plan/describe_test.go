@@ -20,15 +20,15 @@ func TestDescribe(t *testing.T) {
 
 	d := NewDescribe(table)
 	iter, err := d.RowIter(ctx)
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(iter)
 
 	n, err := iter.Next()
-	require.Nil(err)
+	require.NoError(err)
 	require.Equal(sql.NewRow("c1", "TEXT"), n)
 
 	n, err = iter.Next()
-	require.Nil(err)
+	require.NoError(err)
 	require.Equal(sql.NewRow("c2", "INT32"), n)
 
 	n, err = iter.Next()
@@ -43,7 +43,7 @@ func TestDescribe_Empty(t *testing.T) {
 	d := NewDescribe(NewUnresolvedTable("test_table"))
 
 	iter, err := d.RowIter(ctx)
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(iter)
 
 	n, err := iter.Next()

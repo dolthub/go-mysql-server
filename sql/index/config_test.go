@@ -18,7 +18,7 @@ func TestConfig(t *testing.T) {
 	path := filepath.Join(os.TempDir(), db, table, id)
 	err := os.MkdirAll(path, 0750)
 
-	require.Nil(err)
+	require.NoError(err)
 	defer os.RemoveAll(path)
 
 	h1 := sha1.Sum([]byte("h1"))
@@ -39,7 +39,7 @@ func TestConfig(t *testing.T) {
 	)
 
 	err = WriteConfigFile(path, cfg1)
-	require.Nil(err)
+	require.NoError(err)
 
 	cfg2, err := ReadConfigFile(path)
 	require.Equal(cfg1.DB, cfg2.DB)

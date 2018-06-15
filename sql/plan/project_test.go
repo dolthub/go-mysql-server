@@ -28,15 +28,15 @@ func TestProject(t *testing.T) {
 	}
 	require.Equal(schema, p.Schema())
 	iter, err := p.RowIter(ctx)
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(iter)
 	row, err := iter.Next()
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(row)
 	require.Equal(1, len(row))
 	require.Equal("col2_1", row[0])
 	row, err = iter.Next()
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(row)
 	require.Equal(1, len(row))
 	require.Equal("col2_2", row[0])
@@ -74,7 +74,7 @@ func BenchmarkProject(b *testing.B) {
 		}, benchtable)
 
 		iter, err := d.RowIter(ctx)
-		require.Nil(err)
+		require.NoError(err)
 		require.NotNil(iter)
 
 		for {

@@ -44,18 +44,18 @@ func TestTable_Insert_RowIter(t *testing.T) {
 	table := NewTable("test", s)
 
 	rows, err := sql.NodeToRows(ctx, table)
-	require.Nil(err)
+	require.NoError(err)
 	require.Len(rows, 0)
 
 	err = table.Insert(sql.NewRow("foo"))
 	rows, err = sql.NodeToRows(ctx, table)
-	require.Nil(err)
+	require.NoError(err)
 	require.Len(rows, 1)
 	require.Nil(s.CheckRow(rows[0]))
 
 	err = table.Insert(sql.NewRow("bar"))
 	rows, err = sql.NodeToRows(ctx, table)
-	require.Nil(err)
+	require.NoError(err)
 	require.Len(rows, 2)
 	require.Nil(s.CheckRow(rows[0]))
 	require.Nil(s.CheckRow(rows[1]))

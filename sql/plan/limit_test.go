@@ -22,7 +22,7 @@ func TestLimitPlan(t *testing.T) {
 	require.Equal(1, len(limitPlan.Children()))
 
 	iterator, err := getLimitedIterator(1)
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(iterator)
 }
 

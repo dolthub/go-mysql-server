@@ -60,18 +60,18 @@ func TestTimestamp(t *testing.T) {
 
 	now := time.Now().UTC()
 	v, err := Timestamp.Convert(now)
-	require.Nil(err)
+	require.NoError(err)
 	require.Equal(now, v)
 
 	v, err = Timestamp.Convert(now.Format(TimestampLayout))
-	require.Nil(err)
+	require.NoError(err)
 	require.Equal(
 		now.Format(TimestampLayout),
 		v.(time.Time).Format(TimestampLayout),
 	)
 
 	v, err = Timestamp.Convert(now.Unix())
-	require.Nil(err)
+	require.NoError(err)
 	require.Equal(
 		now.Format(TimestampLayout),
 		v.(time.Time).Format(TimestampLayout),
@@ -91,18 +91,18 @@ func TestDate(t *testing.T) {
 
 	now := time.Now()
 	v, err := Date.Convert(now)
-	require.Nil(err)
+	require.NoError(err)
 	require.Equal(now.Format(DateLayout), v.(time.Time).Format(DateLayout))
 
 	v, err = Date.Convert(now.Format(DateLayout))
-	require.Nil(err)
+	require.NoError(err)
 	require.Equal(
 		now.Format(DateLayout),
 		v.(time.Time).Format(DateLayout),
 	)
 
 	v, err = Date.Convert(now.Unix())
-	require.Nil(err)
+	require.NoError(err)
 	require.Equal(
 		now.Format(DateLayout),
 		v.(time.Time).Format(DateLayout),
