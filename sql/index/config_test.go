@@ -4,7 +4,6 @@ import (
 	"crypto/sha1"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -42,13 +41,12 @@ func TestConfig(t *testing.T) {
 	require.NoError(err)
 
 	cfg2, err := ReadConfigFile(path)
-	require.Equal(cfg1.DB, cfg2.DB)
-	require.Equal(cfg1.Table, cfg2.Table)
-	require.Equal(cfg1.ID, cfg2.ID)
-	require.Truef(reflect.DeepEqual(cfg1.Expressions, cfg2.Expressions),
-		"Expected: %v\nGot: %v\n", cfg1.Expressions, cfg2.Expressions)
-	require.Truef(reflect.DeepEqual(cfg1.Drivers, cfg2.Drivers),
-		"Expected %v\nGot: %v\n", cfg1.Drivers, cfg2.Drivers)
-	require.Truef(reflect.DeepEqual(cfg1.Driver("DriverID"), cfg2.Driver("DriverID")),
-		"Expected %v\nGot: %v\n", cfg1.Driver("DriverID"), cfg2.Driver("DriverID"))
+	require.NoError(err)
+	require.Equal(cfg1, cfg2)
+
+	require.NoError(SetConfigFileReady(path))
+
+	cfg3, err := ReadConfigFile(path)
+	require.NoError(err)
+	require.True(cfg3.Ready)
 }

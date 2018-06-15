@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -16,6 +17,7 @@ import (
 	pilosa "github.com/pilosa/go-pilosa"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/index"
 )
 
 // Pilosa tests require running docker. If `docker ps` command returned an error
@@ -42,7 +44,7 @@ func TestID(t *testing.T) {
 func TestLoadAll(t *testing.T) {
 	require := require.New(t)
 
-	path, err := mkdir(os.TempDir(), "indexes")
+	path, err := ioutil.TempDir(os.TempDir(), "indexes")
 	require.NoError(err)
 	defer os.RemoveAll(path)
 
@@ -87,7 +89,7 @@ func TestSaveAndLoad(t *testing.T) {
 
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions("lang", "hash")
-	path, err := mkdir(os.TempDir(), "indexes")
+	path, err := ioutil.TempDir(os.TempDir(), "indexes")
 	require.NoError(err)
 	defer os.RemoveAll(path)
 
@@ -146,7 +148,7 @@ func TestSaveAndGetAll(t *testing.T) {
 
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions("lang", "hash")
-	path, err := mkdir(os.TempDir(), "indexes")
+	path, err := ioutil.TempDir(os.TempDir(), "indexes")
 	require.NoError(err)
 	defer os.RemoveAll(path)
 
@@ -174,6 +176,74 @@ func TestSaveAndGetAll(t *testing.T) {
 	require.True(errInvalidKeys.Is(err))
 }
 
+func TestLoadAllCorruptedConfigFile(t *testing.T) {
+	require := require.New(t)
+	path, err := ioutil.TempDir(os.TempDir(), "indexes")
+	require.NoError(err)
+	defer os.RemoveAll(path)
+
+	root, err := mkdir(path, "foo", "bar")
+	require.NoError(err)
+
+	filePath := filepath.Join(root, index.ConfigFileName)
+	f, err := os.Create(filePath)
+	require.NoError(err)
+	_, err = f.WriteString("yada yada something something")
+	require.NoError(err)
+	require.NoError(f.Close())
+
+	driver := new(Driver)
+	_, err = driver.loadIndex(root)
+	require.Error(err)
+	require.True(errCorruptIndex.Is(err))
+
+	_, err = os.Stat(root)
+	require.Error(err)
+	require.True(os.IsNotExist(err))
+}
+
+func TestLoadCorruptedIndex(t *testing.T) {
+	if !dockerIsRunning {
+		t.Skipf("Skip TestSaveAndGetAll: %s", dockerCmdOutput)
+	}
+	require := require.New(t)
+
+	db, table, id := "db_name", "table_name", "index_id"
+	expressions := makeExpressions("lang", "hash")
+	path, err := ioutil.TempDir(os.TempDir(), "indexes")
+	require.NoError(err)
+	defer os.RemoveAll(path)
+
+	d := NewDriver(path, newClientWithTimeout(200*time.Millisecond))
+	sqlIdx, err := d.Create(db, table, id, expressions, nil)
+	require.NoError(err)
+
+	it := &testIndexKeyValueIter{
+		offset:      0,
+		total:       64,
+		expressions: expressions,
+		location:    randLocation,
+	}
+
+	err = d.Save(context.Background(), sqlIdx, it)
+	require.NoError(err)
+
+	root := filepath.Join(path, db, table, id)
+	cfg, err := index.ReadConfigFile(root)
+	require.NoError(err)
+
+	cfg.Ready = false
+	require.NoError(index.WriteConfigFile(root, cfg))
+
+	_, err = d.loadIndex(root)
+	require.Error(err)
+	require.True(errCorruptIndex.Is(err))
+
+	_, err = os.Stat(root)
+	require.Error(err)
+	require.True(os.IsNotExist(err))
+}
+
 func TestPilosaHiccup(t *testing.T) {
 	if !dockerIsRunning {
 		t.Skipf("Skip TestPilosaHiccup: %s", dockerCmdOutput)
@@ -185,7 +255,7 @@ func TestPilosaHiccup(t *testing.T) {
 
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions("lang", "hash")
-	path, err := mkdir(os.TempDir(), "indexes")
+	path, err := ioutil.TempDir(os.TempDir(), "indexes")
 	require.NoError(err)
 	defer os.RemoveAll(path)
 
@@ -257,7 +327,7 @@ func TestDelete(t *testing.T) {
 	require := require.New(t)
 
 	db, table, id := "db_name", "table_name", "index_id"
-	path, err := mkdir(os.TempDir(), "indexes")
+	path, err := ioutil.TempDir(os.TempDir(), "indexes")
 	require.NoError(err)
 	defer os.RemoveAll(path)
 

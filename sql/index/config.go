@@ -22,6 +22,7 @@ type Config struct {
 	ID          string
 	Expressions []string
 	Drivers     map[string]map[string]string
+	Ready       bool
 }
 
 // NewConfig creates a new Config instance for given driver's configuration
@@ -109,4 +110,15 @@ func ReadConfigFile(dir string) (*Config, error) {
 	defer f.Close()
 
 	return ReadConfig(f)
+}
+
+// SetConfigFileReady changes the config file so it's marked as ready.
+func SetConfigFileReady(path string) error {
+	cfg, err := ReadConfigFile(path)
+	if err != nil {
+		return err
+	}
+
+	cfg.Ready = true
+	return WriteConfigFile(path, cfg)
 }

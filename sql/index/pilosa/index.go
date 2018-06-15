@@ -8,6 +8,7 @@ import (
 	pilosa "github.com/pilosa/go-pilosa"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/index"
 )
 
 // pilosaIndex is an pilosa implementation of sql.Index interface
@@ -20,6 +21,18 @@ type pilosaIndex struct {
 	table       string
 	id          string
 	expressions []sql.ExpressionHash
+}
+
+func newPilosaIndex(path string, client *pilosa.Client, cfg *index.Config) *pilosaIndex {
+	return &pilosaIndex{
+		path:        path,
+		client:      client,
+		db:          cfg.DB,
+		table:       cfg.Table,
+		id:          cfg.ID,
+		expressions: cfg.ExpressionHashes(),
+		mapping:     newMapping(path),
+	}
 }
 
 var (

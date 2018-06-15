@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	pilosa "github.com/pilosa/go-pilosa"
+	"github.com/sirupsen/logrus"
 	errors "gopkg.in/src-d/go-errors.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/index"
@@ -62,15 +63,7 @@ func (d *Driver) Create(db, table, id string, expr []sql.ExpressionHash, config 
 		return nil, err
 	}
 
-	return &pilosaIndex{
-		path:        path,
-		client:      d.client,
-		db:          db,
-		table:       table,
-		id:          id,
-		expressions: expr,
-		mapping:     newMapping(path),
-	}, nil
+	return newPilosaIndex(path, d.client, cfg), nil
 }
 
 // LoadAll loads all indexes for given db and table
@@ -84,27 +77,23 @@ func (d *Driver) LoadAll(db, table string) ([]sql.Index, error) {
 	)
 	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			if path == root && !os.IsNotExist(err) {
+			if path != root || !os.IsNotExist(err) {
 				errors = append(errors, err.Error())
 			}
 			return filepath.SkipDir
 		}
 
 		if info.IsDir() && path != root && info.Name() != "." && info.Name() != ".." {
-			cfg, err := index.ReadConfigFile(path)
+			idx, err := d.loadIndex(path)
 			if err != nil {
-				errors = append(errors, err.Error())
+				if !errCorruptIndex.Is(err) {
+					errors = append(errors, err.Error())
+				}
+
 				return filepath.SkipDir
 			}
 
-			indexes = append(indexes, &pilosaIndex{
-				path:        path,
-				client:      d.client,
-				db:          cfg.DB,
-				table:       cfg.Table,
-				id:          cfg.ID,
-				expressions: cfg.ExpressionHashes(),
-			})
+			indexes = append(indexes, idx)
 		}
 
 		return nil
@@ -114,6 +103,50 @@ func (d *Driver) LoadAll(db, table string) ([]sql.Index, error) {
 		err = fmt.Errorf(strings.Join(errors, "\n"))
 	}
 	return indexes, err
+}
+
+var errCorruptIndex = errors.NewKind("the index in %q is corrupt")
+
+func (d *Driver) loadIndex(path string) (sql.Index, error) {
+	cfg, err := index.ReadConfigFile(path)
+	// If config file cannot be read, we should delete the directory of the index.
+	// The error is not really relevant here, that's why it's just logged.
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"err":  err,
+			"path": path,
+		}).Warn("could not read index file, index is corrupt and will be deleted")
+
+		if err := os.RemoveAll(path); err != nil {
+			logrus.WithFields(logrus.Fields{
+				"err":  err,
+				"path": path,
+			}).Warn("unable to remove folder of corrupted index")
+		}
+
+		return nil, errCorruptIndex.New(path)
+	}
+
+	idx := newPilosaIndex(path, d.client, cfg)
+
+	// If the index is not ready when loading, it means it's either a partial index or
+	// a corrupted one.
+	if !cfg.Ready {
+		log := logrus.WithFields(logrus.Fields{
+			"id":    cfg.ID,
+			"db":    cfg.DB,
+			"table": cfg.Table,
+		})
+		log.Warn("found a partial index, so it will be deleted")
+
+		if err := d.Delete(idx); err != nil {
+			log.WithField("err", err).Error("unable to delete corrupted index")
+		}
+
+		return nil, errCorruptIndex.New(path)
+	}
+
+	return idx, nil
 }
 
 var errInvalidIndexType = errors.NewKind("expecting a pilosa index, instead got %T")
@@ -130,15 +163,16 @@ func (d *Driver) Save(ctx context.Context, i sql.Index, iter sql.IndexKeyValueIt
 	if err != nil {
 		return err
 	}
+
 	// Create a pilosa index and frame objects in memory
-	index, err := schema.Index(indexName(idx.Database(), idx.Table(), idx.ID()))
+	pilosaIndex, err := schema.Index(indexName(idx.Database(), idx.Table(), idx.ID()))
 	if err != nil {
 		return err
 	}
 
 	frames := make([]*pilosa.Frame, len(idx.ExpressionHashes()))
 	for i, e := range idx.ExpressionHashes() {
-		frames[i], err = index.Frame(frameName(e))
+		frames[i], err = pilosaIndex.Frame(frameName(e))
 		if err != nil {
 			return err
 		}
@@ -182,7 +216,7 @@ func (d *Driver) Save(ctx context.Context, i sql.Index, iter sql.IndexKeyValueIt
 					return errPilosaQuery.New(resp.ErrorMessage)
 				}
 			}
-			err = idx.mapping.putLocation(index.Name(), colID, location)
+			err = idx.mapping.putLocation(pilosaIndex.Name(), colID, location)
 		}
 	}
 
@@ -190,18 +224,26 @@ func (d *Driver) Save(ctx context.Context, i sql.Index, iter sql.IndexKeyValueIt
 		return err
 	}
 
-	return nil
+	path, err := mkdir(d.root, i.Database(), i.Table(), i.ID())
+	if err != nil {
+		return err
+	}
+
+	return index.SetConfigFileReady(path)
 }
 
 // Delete the index with the given path.
 func (d *Driver) Delete(idx sql.Index) error {
 	path := filepath.Join(d.root, idx.Database(), idx.Table(), idx.ID())
-	os.RemoveAll(path)
+	if err := os.RemoveAll(path); err != nil {
+		return err
+	}
 
 	index, err := pilosa.NewIndex(indexName(idx.Database(), idx.Table(), idx.ID()))
 	if err != nil {
 		return err
 	}
+
 	return d.client.DeleteIndex(index)
 }
 
