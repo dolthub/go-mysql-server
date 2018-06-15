@@ -108,44 +108,31 @@ func (d *Driver) LoadAll(db, table string) ([]sql.Index, error) {
 var errCorruptIndex = errors.NewKind("the index in %q is corrupt")
 
 func (d *Driver) loadIndex(path string) (sql.Index, error) {
-	cfg, err := index.ReadConfigFile(path)
-	// If config file cannot be read, we should delete the directory of the index.
-	// The error is not really relevant here, that's why it's just logged.
+	ok, err := index.ExistsProcessingFile(path)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
+		return nil, err
+	}
+
+	if ok {
+		log := logrus.WithFields(logrus.Fields{
 			"err":  err,
 			"path": path,
-		}).Warn("could not read index file, index is corrupt and will be deleted")
+		})
+		log.Warn("could not read index file, index is corrupt and will be deleted")
 
 		if err := os.RemoveAll(path); err != nil {
-			logrus.WithFields(logrus.Fields{
-				"err":  err,
-				"path": path,
-			}).Warn("unable to remove folder of corrupted index")
+			log.Warn("unable to remove folder of corrupted index")
 		}
 
 		return nil, errCorruptIndex.New(path)
+	}
+
+	cfg, err := index.ReadConfigFile(path)
+	if err != nil {
+		return nil, err
 	}
 
 	idx := newPilosaIndex(path, d.client, cfg)
-
-	// If the index is not ready when loading, it means it's either a partial index or
-	// a corrupted one.
-	if !cfg.Ready {
-		log := logrus.WithFields(logrus.Fields{
-			"id":    cfg.ID,
-			"db":    cfg.DB,
-			"table": cfg.Table,
-		})
-		log.Warn("found a partial index, so it will be deleted")
-
-		if err := d.Delete(idx); err != nil {
-			log.WithField("err", err).Error("unable to delete corrupted index")
-		}
-
-		return nil, errCorruptIndex.New(path)
-	}
-
 	return idx, nil
 }
 
@@ -156,6 +143,15 @@ func (d *Driver) Save(ctx context.Context, i sql.Index, iter sql.IndexKeyValueIt
 	idx, ok := i.(*pilosaIndex)
 	if !ok {
 		return errInvalidIndexType.New(i)
+	}
+
+	path, err := mkdir(d.root, i.Database(), i.Table(), i.ID())
+	if err != nil {
+		return err
+	}
+
+	if err := index.CreateProcessingFile(path); err != nil {
+		return err
 	}
 
 	// Retrieve the pilosa schema
@@ -224,12 +220,7 @@ func (d *Driver) Save(ctx context.Context, i sql.Index, iter sql.IndexKeyValueIt
 		return err
 	}
 
-	path, err := mkdir(d.root, i.Database(), i.Table(), i.ID())
-	if err != nil {
-		return err
-	}
-
-	return index.SetConfigFileReady(path)
+	return index.RemoveProcessingFile(path)
 }
 
 // Delete the index with the given path.

@@ -2,6 +2,7 @@ package index
 
 import (
 	"crypto/sha1"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -43,10 +44,30 @@ func TestConfig(t *testing.T) {
 	cfg2, err := ReadConfigFile(path)
 	require.NoError(err)
 	require.Equal(cfg1, cfg2)
+}
 
-	require.NoError(SetConfigFileReady(path))
+func TestProcessingFile(t *testing.T) {
+	require := require.New(t)
 
-	cfg3, err := ReadConfigFile(path)
+	dir, err := ioutil.TempDir(os.TempDir(), "processing-file")
 	require.NoError(err)
-	require.True(cfg3.Ready)
+	defer func() {
+		require.NoError(os.RemoveAll(dir))
+	}()
+
+	ok, err := ExistsProcessingFile(dir)
+	require.NoError(err)
+	require.False(ok)
+
+	require.NoError(CreateProcessingFile(dir))
+
+	ok, err = ExistsProcessingFile(dir)
+	require.NoError(err)
+	require.True(ok)
+
+	require.NoError(RemoveProcessingFile(dir))
+
+	ok, err = ExistsProcessingFile(dir)
+	require.NoError(err)
+	require.False(ok)
 }

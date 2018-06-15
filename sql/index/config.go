@@ -11,8 +11,10 @@ import (
 )
 
 const (
-	// ConfigFileName name of an index config file.
+	// ConfigFileName is the name of an index config file.
 	ConfigFileName = "config.yml"
+	// ProcessingFileName is the name of the processing index file.
+	ProcessingFileName = ".processing"
 )
 
 // Config represents index configuration
@@ -22,7 +24,6 @@ type Config struct {
 	ID          string
 	Expressions []string
 	Drivers     map[string]map[string]string
-	Ready       bool
 }
 
 // NewConfig creates a new Config instance for given driver's configuration
@@ -112,13 +113,35 @@ func ReadConfigFile(dir string) (*Config, error) {
 	return ReadConfig(f)
 }
 
-// SetConfigFileReady changes the config file so it's marked as ready.
-func SetConfigFileReady(path string) error {
-	cfg, err := ReadConfigFile(path)
+// CreateProcessingFile creates a file inside the directory saying whether
+// the index is being created.
+func CreateProcessingFile(dir string) error {
+	f, err := os.Create(filepath.Join(dir, ProcessingFileName))
 	if err != nil {
 		return err
 	}
 
-	cfg.Ready = true
-	return WriteConfigFile(path, cfg)
+	// we don't care about errors closing here
+	_ = f.Close()
+	return nil
+}
+
+// RemoveProcessingFile removes the file that says whether the index is still
+// being created.
+func RemoveProcessingFile(dir string) error {
+	return os.Remove(filepath.Join(dir, ProcessingFileName))
+}
+
+// ExistsProcessingFile returns whether the processing file exists inside an
+// index directory.
+func ExistsProcessingFile(dir string) (bool, error) {
+	_, err := os.Stat(filepath.Join(dir, ProcessingFileName))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
 }

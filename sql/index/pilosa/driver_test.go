@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -176,70 +175,19 @@ func TestSaveAndGetAll(t *testing.T) {
 	require.True(errInvalidKeys.Is(err))
 }
 
-func TestLoadAllCorruptedConfigFile(t *testing.T) {
-	require := require.New(t)
-	path, err := ioutil.TempDir(os.TempDir(), "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(path)
-
-	root, err := mkdir(path, "foo", "bar")
-	require.NoError(err)
-
-	filePath := filepath.Join(root, index.ConfigFileName)
-	f, err := os.Create(filePath)
-	require.NoError(err)
-	_, err = f.WriteString("yada yada something something")
-	require.NoError(err)
-	require.NoError(f.Close())
-
-	driver := new(Driver)
-	_, err = driver.loadIndex(root)
-	require.Error(err)
-	require.True(errCorruptIndex.Is(err))
-
-	_, err = os.Stat(root)
-	require.Error(err)
-	require.True(os.IsNotExist(err))
-}
-
 func TestLoadCorruptedIndex(t *testing.T) {
-	if !dockerIsRunning {
-		t.Skipf("Skip TestSaveAndGetAll: %s", dockerCmdOutput)
-	}
 	require := require.New(t)
-
-	db, table, id := "db_name", "table_name", "index_id"
-	expressions := makeExpressions("lang", "hash")
 	path, err := ioutil.TempDir(os.TempDir(), "indexes")
 	require.NoError(err)
 	defer os.RemoveAll(path)
 
-	d := NewDriver(path, newClientWithTimeout(200*time.Millisecond))
-	sqlIdx, err := d.Create(db, table, id, expressions, nil)
-	require.NoError(err)
+	require.NoError(index.CreateProcessingFile(path))
 
-	it := &testIndexKeyValueIter{
-		offset:      0,
-		total:       64,
-		expressions: expressions,
-		location:    randLocation,
-	}
-
-	err = d.Save(context.Background(), sqlIdx, it)
-	require.NoError(err)
-
-	root := filepath.Join(path, db, table, id)
-	cfg, err := index.ReadConfigFile(root)
-	require.NoError(err)
-
-	cfg.Ready = false
-	require.NoError(index.WriteConfigFile(root, cfg))
-
-	_, err = d.loadIndex(root)
+	_, err = new(Driver).loadIndex(path)
 	require.Error(err)
 	require.True(errCorruptIndex.Is(err))
 
-	_, err = os.Stat(root)
+	_, err = os.Stat(path)
 	require.Error(err)
 	require.True(os.IsNotExist(err))
 }
