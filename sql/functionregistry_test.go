@@ -19,7 +19,7 @@ func TestFunctionRegistry(t *testing.T) {
 	}))
 
 	f, err := c.Function(name)
-	require.Nil(err)
+	require.NoError(err)
 
 	e, err := f.Call()
 	require.Error(err)

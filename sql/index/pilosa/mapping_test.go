@@ -12,7 +12,7 @@ func TestRowID(t *testing.T) {
 	require := require.New(t)
 
 	path, err := mkdir(os.TempDir(), "mapping_test")
-	require.Nil(err)
+	require.NoError(err)
 	defer os.RemoveAll(path)
 
 	m := newMapping(path)
@@ -24,7 +24,7 @@ func TestRowID(t *testing.T) {
 
 	for i, c := range cases {
 		rowID, err := m.getRowID("frame name", c)
-		require.Nil(err)
+		require.NoError(err)
 		require.Equal(expected[i], rowID)
 	}
 }
@@ -33,7 +33,7 @@ func TestLocation(t *testing.T) {
 	require := require.New(t)
 
 	path, err := mkdir(os.TempDir(), "mapping_test")
-	require.Nil(err)
+	require.NoError(err)
 	defer os.RemoveAll(path)
 
 	m := newMapping(path)
@@ -50,12 +50,12 @@ func TestLocation(t *testing.T) {
 
 	for colID, loc := range cases {
 		err = m.putLocation("index name", colID, []byte(loc))
-		require.Nil(err)
+		require.NoError(err)
 	}
 
 	for colID, loc := range cases {
 		b, err := m.getLocation("index name", colID)
-		require.Nil(err)
+		require.NoError(err)
 		require.Equal(loc, string(b))
 	}
 }
@@ -64,7 +64,7 @@ func TestGet(t *testing.T) {
 	require := require.New(t)
 
 	path, err := mkdir(os.TempDir(), "mapping_test")
-	require.Nil(err)
+	require.NoError(err)
 	defer os.RemoveAll(path)
 
 	m := newMapping(path)
@@ -80,7 +80,7 @@ func TestGet(t *testing.T) {
 		id, err := m.get("frame name", c)
 		val := binary.LittleEndian.Uint64(id)
 
-		require.Nil(err)
+		require.NoError(err)
 		require.Equal(expected[i], val)
 	}
 }

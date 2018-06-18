@@ -2,9 +2,9 @@ package index
 
 import (
 	"crypto/sha1"
+	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,7 +18,7 @@ func TestConfig(t *testing.T) {
 	path := filepath.Join(os.TempDir(), db, table, id)
 	err := os.MkdirAll(path, 0750)
 
-	require.Nil(err)
+	require.NoError(err)
 	defer os.RemoveAll(path)
 
 	h1 := sha1.Sum([]byte("h1"))
@@ -39,16 +39,35 @@ func TestConfig(t *testing.T) {
 	)
 
 	err = WriteConfigFile(path, cfg1)
-	require.Nil(err)
+	require.NoError(err)
 
 	cfg2, err := ReadConfigFile(path)
-	require.Equal(cfg1.DB, cfg2.DB)
-	require.Equal(cfg1.Table, cfg2.Table)
-	require.Equal(cfg1.ID, cfg2.ID)
-	require.Truef(reflect.DeepEqual(cfg1.Expressions, cfg2.Expressions),
-		"Expected: %v\nGot: %v\n", cfg1.Expressions, cfg2.Expressions)
-	require.Truef(reflect.DeepEqual(cfg1.Drivers, cfg2.Drivers),
-		"Expected %v\nGot: %v\n", cfg1.Drivers, cfg2.Drivers)
-	require.Truef(reflect.DeepEqual(cfg1.Driver("DriverID"), cfg2.Driver("DriverID")),
-		"Expected %v\nGot: %v\n", cfg1.Driver("DriverID"), cfg2.Driver("DriverID"))
+	require.NoError(err)
+	require.Equal(cfg1, cfg2)
+}
+
+func TestProcessingFile(t *testing.T) {
+	require := require.New(t)
+
+	dir, err := ioutil.TempDir(os.TempDir(), "processing-file")
+	require.NoError(err)
+	defer func() {
+		require.NoError(os.RemoveAll(dir))
+	}()
+
+	ok, err := ExistsProcessingFile(dir)
+	require.NoError(err)
+	require.False(ok)
+
+	require.NoError(CreateProcessingFile(dir))
+
+	ok, err = ExistsProcessingFile(dir)
+	require.NoError(err)
+	require.True(ok)
+
+	require.NoError(RemoveProcessingFile(dir))
+
+	ok, err = ExistsProcessingFile(dir)
+	require.NoError(err)
+	require.False(ok)
 }

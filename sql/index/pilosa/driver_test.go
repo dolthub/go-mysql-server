@@ -16,6 +16,7 @@ import (
 	pilosa "github.com/pilosa/go-pilosa"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/index"
 )
 
 // Pilosa tests require running docker. If `docker ps` command returned an error
@@ -42,19 +43,19 @@ func TestID(t *testing.T) {
 func TestLoadAll(t *testing.T) {
 	require := require.New(t)
 
-	path, err := mkdir(os.TempDir(), "indexes")
-	require.Nil(err)
+	path, err := ioutil.TempDir(os.TempDir(), "indexes")
+	require.NoError(err)
 	defer os.RemoveAll(path)
 
 	d := NewIndexDriver(path)
 	idx1, err := d.Create("db", "table", "id1", makeExpressions("hash1"), nil)
-	require.Nil(err)
+	require.NoError(err)
 
 	idx2, err := d.Create("db", "table", "id2", makeExpressions("hash1"), nil)
-	require.Nil(err)
+	require.NoError(err)
 
 	indexes, err := d.LoadAll("db", "table")
-	require.Nil(err)
+	require.NoError(err)
 
 	for _, idx := range indexes {
 		if idx.ID() == "id1" {
@@ -87,13 +88,13 @@ func TestSaveAndLoad(t *testing.T) {
 
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions("lang", "hash")
-	path, err := mkdir(os.TempDir(), "indexes")
-	require.Nil(err)
+	path, err := ioutil.TempDir(os.TempDir(), "indexes")
+	require.NoError(err)
 	defer os.RemoveAll(path)
 
 	d := NewDriver(path, newClientWithTimeout(200*time.Millisecond))
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
-	require.Nil(err)
+	require.NoError(err)
 
 	it := &testIndexKeyValueIter{
 		offset:      0,
@@ -103,10 +104,10 @@ func TestSaveAndLoad(t *testing.T) {
 	}
 
 	err = d.Save(context.Background(), sqlIdx, it)
-	require.Nil(err)
+	require.NoError(err)
 
 	indexes, err := d.LoadAll(db, table)
-	require.Nil(err)
+	require.NoError(err)
 	require.Equal(1, len(indexes))
 	assertEqualIndexes(t, sqlIdx, indexes[0])
 
@@ -127,14 +128,14 @@ func TestSaveAndLoad(t *testing.T) {
 				break
 			}
 
-			require.Nil(err)
+			require.NoError(err)
 			found = found || reflect.DeepEqual(r.location, loc)
 			foundLoc = append(foundLoc, hex.EncodeToString(loc))
 		}
 		require.Truef(found, "Expected: %s\nGot: %v\n", hex.EncodeToString(r.location), foundLoc)
 
 		err = lit.Close()
-		require.Nil(err)
+		require.NoError(err)
 	}
 }
 
@@ -146,13 +147,13 @@ func TestSaveAndGetAll(t *testing.T) {
 
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions("lang", "hash")
-	path, err := mkdir(os.TempDir(), "indexes")
-	require.Nil(err)
+	path, err := ioutil.TempDir(os.TempDir(), "indexes")
+	require.NoError(err)
 	defer os.RemoveAll(path)
 
 	d := NewDriver(path, newClientWithTimeout(200*time.Millisecond))
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
-	require.Nil(err)
+	require.NoError(err)
 
 	it := &testIndexKeyValueIter{
 		offset:      0,
@@ -162,16 +163,33 @@ func TestSaveAndGetAll(t *testing.T) {
 	}
 
 	err = d.Save(context.Background(), sqlIdx, it)
-	require.Nil(err)
+	require.NoError(err)
 
 	indexes, err := d.LoadAll(db, table)
-	require.Nil(err)
+	require.NoError(err)
 	require.Equal(1, len(indexes))
 	assertEqualIndexes(t, sqlIdx, indexes[0])
 
 	_, err = sqlIdx.Get()
 	require.Error(err)
 	require.True(errInvalidKeys.Is(err))
+}
+
+func TestLoadCorruptedIndex(t *testing.T) {
+	require := require.New(t)
+	path, err := ioutil.TempDir(os.TempDir(), "indexes")
+	require.NoError(err)
+	defer os.RemoveAll(path)
+
+	require.NoError(index.CreateProcessingFile(path))
+
+	_, err = new(Driver).loadIndex(path)
+	require.Error(err)
+	require.True(errCorruptIndex.Is(err))
+
+	_, err = os.Stat(path)
+	require.Error(err)
+	require.True(os.IsNotExist(err))
 }
 
 func TestPilosaHiccup(t *testing.T) {
@@ -185,13 +203,13 @@ func TestPilosaHiccup(t *testing.T) {
 
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions("lang", "hash")
-	path, err := mkdir(os.TempDir(), "indexes")
-	require.Nil(err)
+	path, err := ioutil.TempDir(os.TempDir(), "indexes")
+	require.NoError(err)
 	defer os.RemoveAll(path)
 
 	d := NewDriver(path, newClientWithTimeout(time.Second))
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
-	require.Nil(err)
+	require.NoError(err)
 
 	it := &testIndexKeyValueIter{
 		offset:      0,
@@ -213,11 +231,11 @@ func TestPilosaHiccup(t *testing.T) {
 		}
 		return nil
 	})
-	require.Nil(err)
+	require.NoError(err)
 
 	// load indexes - it doesn't require pilosa, yet.
 	indexes, err := d.LoadAll(db, table)
-	require.Nil(err)
+	require.NoError(err)
 	require.Equal(1, len(indexes))
 	assertEqualIndexes(t, sqlIdx, indexes[0])
 
@@ -242,11 +260,11 @@ func TestPilosaHiccup(t *testing.T) {
 			break
 		}
 
-		require.Nil(err)
+		require.NoError(err)
 		require.True(reflect.DeepEqual(r.location, loc), "Expected: %s\nGot: %v\n", hex.EncodeToString(r.location), hex.EncodeToString(loc))
 
 		err = lit.Close()
-		require.Nil(err)
+		require.NoError(err)
 	}
 }
 
@@ -257,8 +275,8 @@ func TestDelete(t *testing.T) {
 	require := require.New(t)
 
 	db, table, id := "db_name", "table_name", "index_id"
-	path, err := mkdir(os.TempDir(), "indexes")
-	require.Nil(err)
+	path, err := ioutil.TempDir(os.TempDir(), "indexes")
+	require.NoError(err)
 	defer os.RemoveAll(path)
 
 	h1 := sha1.Sum([]byte("lang"))
@@ -271,10 +289,10 @@ func TestDelete(t *testing.T) {
 
 	d := NewIndexDriver(path)
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
-	require.Nil(err)
+	require.NoError(err)
 
 	err = d.Delete(sqlIdx)
-	require.Nil(err)
+	require.NoError(err)
 }
 
 func TestLoadAllDirectoryDoesNotExist(t *testing.T) {

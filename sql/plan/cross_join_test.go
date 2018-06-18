@@ -48,11 +48,11 @@ func TestCrossJoin(t *testing.T) {
 	require.Equal(resultSchema, j.Schema())
 
 	iter, err := j.RowIter(ctx)
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(iter)
 
 	row, err := iter.Next()
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(row)
 
 	require.Equal(8, len(row))
@@ -67,7 +67,7 @@ func TestCrossJoin(t *testing.T) {
 	require.Equal(int64(2222), row[7])
 
 	row, err = iter.Next()
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(row)
 
 	require.Equal("col1_1", row[0])
@@ -81,7 +81,7 @@ func TestCrossJoin(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		row, err = iter.Next()
-		require.Nil(err)
+		require.NoError(err)
 		require.NotNil(row)
 	}
 
@@ -103,7 +103,7 @@ func TestCrossJoin_Empty(t *testing.T) {
 	j := NewCrossJoin(ltable, rtable)
 
 	iter, err := j.RowIter(ctx)
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(iter)
 
 	row, err := iter.Next()
@@ -117,7 +117,7 @@ func TestCrossJoin_Empty(t *testing.T) {
 	j = NewCrossJoin(ltable, rtable)
 
 	iter, err = j.RowIter(ctx)
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(iter)
 
 	row, err = iter.Next()
@@ -129,7 +129,7 @@ func insertData(t *testing.T, table *mem.Table) {
 	t.Helper()
 	require := require.New(t)
 	err := table.Insert(sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)))
-	require.Nil(err)
+	require.NoError(err)
 	err = table.Insert(sql.NewRow("col1_2", "col2_2", int32(3333), int64(4444)))
-	require.Nil(err)
+	require.NoError(err)
 }
