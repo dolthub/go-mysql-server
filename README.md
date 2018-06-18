@@ -27,17 +27,7 @@ go get gopkg.in/src-d/go-mysql-server.v0
 
 ## SQL syntax
 
-We are continuously adding more functionality to go-mysql-server. We support a subset of what is supported in MySQL, currently including:
-
-|                        |                                     Supported                                     |
-|:----------------------:|:---------------------------------------------------------------------------------:|
-| Comparison expressions | !=, ==, >, <, >=,<=, BETWEEN, REGEXP, IN, NOT IN |
-| Null check expressions  | IS NULL, IS NOT NULL |
-| Grouping expressions | COUNT, MIN, MAX ,AVG |
-| Standard expressions  | ALIAS, LITERAL, STAR (*) |
-| Statements  | CROSS JOIN, INNER JOIN, DESCRIBE, FILTER (WHERE), GROUP BY, LIMIT/OFFSET, SELECT, SHOW TABLES, SORT, DISTINCT, CREATE TABLE, INSERT |
-| Functions | SUBSTRING, ARRAY_LENGTH |
-| Time functions | YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, DAYOFYEAR |
+We are continuously adding more functionality to go-mysql-server. We support a subset of what is supported in MySQL, to see what is currently included check the [SUPPORTED](./SUPPORTED.md) file.
 
 ## Custom functions
 
