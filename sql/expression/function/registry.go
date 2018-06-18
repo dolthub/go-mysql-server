@@ -29,4 +29,5 @@ var Defaults = sql.Functions{
 	"second":       sql.Function1(NewSecond),
 	"dayofyear":    sql.Function1(NewDayOfYear),
 	"array_length": sql.Function1(NewArrayLength),
+	"split":        sql.Function2(NewSplit),
 }

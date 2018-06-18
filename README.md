@@ -45,6 +45,7 @@ We are continuously adding more functionality to go-mysql-server. We support a s
 - `SUBSTRING(str,pos)`, ` SUBSTRING(str,pos,len)`: return a substring from the provided string.
 - Date and Timestamp functions: `YEAR(date)`, `MONTH(date)`, `DAY(date)`, `HOUR(date)`, `MINUTE(date)`, `SECOND(date)`, `DAYOFYEAR(date)`.
 - `ARRAY_LENGTH(json)`: If the json representation is an array, this function returns its size.
+- `SPLIT(str,sep)`: receives a string and a delimiter and returns the parts of the string splitted by the delimiter as a JSON array of strings.
 
 ## Example
 

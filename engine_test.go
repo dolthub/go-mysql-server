@@ -226,6 +226,22 @@ var queries = []struct {
 			{"     └─ Column(s, TEXT, nullable=false)"},
 		},
 	},
+	{
+		`SELECT split(s," ") FROM mytable`,
+		[]sql.Row{
+			sql.NewRow([]interface{}{"first", "row"}),
+			sql.NewRow([]interface{}{"second", "row"}),
+			sql.NewRow([]interface{}{"third", "row"}),
+		},
+	},
+	{
+		`SELECT split(s,"s") FROM mytable`,
+		[]sql.Row{
+			sql.NewRow([]interface{}{"fir", "t row"}),
+			sql.NewRow([]interface{}{"", "econd row"}),
+			sql.NewRow([]interface{}{"third row"}),
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {
