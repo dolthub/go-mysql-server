@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"sync"
 
 	"github.com/boltdb/bolt"
@@ -132,6 +133,49 @@ func (m *mapping) putLocation(indexName string, colID uint64, location []byte) e
 	})
 }
 
+func (m *mapping) sortedLocations(indexName string, cols []uint64, reverse bool) ([][]byte, error) {
+	var result [][]byte
+	err := m.query(func() error {
+		return m.db.View(func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte(indexName))
+			if b == nil {
+				return fmt.Errorf("bucket %s not found", indexName)
+			}
+
+			for _, col := range cols {
+				key := make([]byte, 8)
+				binary.LittleEndian.PutUint64(key, col)
+				val := b.Get(key)
+
+				// val will point to mmap addresses, so we need to copy the slice
+				dst := make([]byte, len(val))
+				copy(dst, val)
+				result = append(result, dst)
+			}
+
+			return nil
+		})
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if reverse {
+		sort.Stable(sort.Reverse(byBytes(result)))
+	} else {
+		sort.Stable(byBytes(result))
+	}
+
+	return result, nil
+}
+
+type byBytes [][]byte
+
+func (b byBytes) Len() int           { return len(b) }
+func (b byBytes) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
+func (b byBytes) Less(i, j int) bool { return bytes.Compare(b[i], b[j]) < 0 }
+
 func (m *mapping) getLocation(indexName string, colID uint64) ([]byte, error) {
 	var location []byte
 
@@ -139,7 +183,7 @@ func (m *mapping) getLocation(indexName string, colID uint64) ([]byte, error) {
 		err := m.db.View(func(tx *bolt.Tx) error {
 			b := tx.Bucket([]byte(indexName))
 			if b == nil {
-				return fmt.Errorf("Bucket %s not found", indexName)
+				return fmt.Errorf("bucket %s not found", indexName)
 			}
 
 			key := make([]byte, 8)
@@ -197,4 +241,32 @@ func (m *mapping) get(name string, key interface{}) ([]byte, error) {
 		return err
 	})
 	return value, err
+}
+
+func (m *mapping) filter(name string, fn func([]byte) (bool, error)) ([]uint64, error) {
+	var result []uint64
+
+	err := m.query(func() error {
+		return m.db.View(func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte(name))
+			if b == nil {
+				return nil
+			}
+
+			return b.ForEach(func(k, v []byte) error {
+				ok, err := fn(k)
+				if err != nil {
+					return err
+				}
+
+				if ok {
+					result = append(result, binary.LittleEndian.Uint64(v))
+				}
+
+				return nil
+			})
+		})
+	})
+
+	return result, err
 }

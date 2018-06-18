@@ -52,27 +52,27 @@ type Index interface {
 // AscendIndex is an index that is sorted in ascending order.
 type AscendIndex interface {
 	// AscendGreaterOrEqual returns an IndexLookup for keys that are greater
-	// or equal to the given key.
-	AscendGreaterOrEqual(key interface{}) (IndexLookup, error)
+	// or equal to the given keys.
+	AscendGreaterOrEqual(keys ...interface{}) (IndexLookup, error)
 	// AscendLessThan returns an IndexLookup for keys that are less than the
-	// given key.
-	AscendLessThan(key interface{}) (IndexLookup, error)
+	// given keys.
+	AscendLessThan(keys ...interface{}) (IndexLookup, error)
 	// AscendRange returns an IndexLookup for keys that are within the given
 	// range.
-	AscendRange(greaterOrEqual, lessThan interface{}) (IndexLookup, error)
+	AscendRange(greaterOrEqual, lessThan []interface{}) (IndexLookup, error)
 }
 
 // DescendIndex is an index that is sorted in descending order.
 type DescendIndex interface {
 	// DescendGreater returns an IndexLookup for keys that are greater
-	// than the given key.
-	DescendGreater(key interface{}) (IndexLookup, error)
+	// than the given keys.
+	DescendGreater(keys ...interface{}) (IndexLookup, error)
 	// DescendLessOrEqual returns an IndexLookup for keys that are less than or
-	// equal to the given key.
-	DescendLessOrEqual(key interface{}) (IndexLookup, error)
+	// equal to the given keys.
+	DescendLessOrEqual(keys ...interface{}) (IndexLookup, error)
 	// DescendRange returns an IndexLookup for keys that are within the given
 	// range.
-	DescendRange(lessOrEqual, greaterThan interface{}) (IndexLookup, error)
+	DescendRange(lessOrEqual, greaterThan []interface{}) (IndexLookup, error)
 }
 
 // IndexLookup is a subset of an index. More specific interfaces can be
