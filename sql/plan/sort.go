@@ -215,7 +215,7 @@ func (i *sortIter) computeSortedRows() error {
 		rows:       rows,
 		lastError:  nil,
 	}
-	sort.Sort(sorter)
+	sort.Stable(sorter)
 	if sorter.lastError != nil {
 		return sorter.lastError
 	}

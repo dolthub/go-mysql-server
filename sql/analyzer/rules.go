@@ -83,6 +83,11 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 			return n, nil
 		}
 
+		// wait for the child to be resolved
+		if !sort.Child.Resolved() {
+			return n, nil
+		}
+
 		var fields = make([]plan.SortField, len(sort.SortFields))
 		for i, f := range sort.SortFields {
 			if lit, ok := f.Column.(*expression.Literal); ok && sql.IsNumber(f.Column.Type()) {

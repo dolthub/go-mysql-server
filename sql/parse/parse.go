@@ -114,13 +114,6 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		}
 	}
 
-	if len(s.OrderBy) != 0 {
-		node, err = orderByToSort(s.OrderBy, node)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	node, err = selectToProjectOrGroupBy(s.SelectExprs, s.GroupBy, node)
 	if err != nil {
 		return nil, err
@@ -128,6 +121,13 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 
 	if s.Distinct != "" {
 		node = plan.NewDistinct(node)
+	}
+
+	if len(s.OrderBy) != 0 {
+		node, err = orderByToSort(s.OrderBy, node)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if s.Limit != nil {
