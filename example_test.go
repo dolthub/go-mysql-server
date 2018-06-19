@@ -10,7 +10,7 @@ import (
 )
 
 func Example() {
-	e := sqle.New()
+	e := sqle.NewDefault()
 	ctx := sql.NewEmptyContext()
 
 	// Create a test memory database and register it to the default engine.

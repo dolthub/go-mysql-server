@@ -14,12 +14,17 @@ type Engine struct {
 	Analyzer *analyzer.Analyzer
 }
 
-// New creates a new Engine.
-func New() *Engine {
+// New creates a new Engine
+func New(c *sql.Catalog, a *analyzer.Analyzer) *Engine {
+	return &Engine{c, a}
+}
+
+// NewDefault creates a new default Engine.
+func NewDefault() *Engine {
 	c := sql.NewCatalog()
 	c.RegisterFunctions(function.Defaults)
 
-	a := analyzer.New(c)
+	a := analyzer.NewDefault(c)
 	return &Engine{c, a}
 }
 

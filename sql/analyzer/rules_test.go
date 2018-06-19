@@ -30,7 +30,7 @@ func TestResolveSubqueries(t *testing.T) {
 	db.AddTable("baz", table3)
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
-	a := New(catalog)
+	a := NewDefault(catalog)
 	a.CurrentDatabase = "mydb"
 
 	// SELECT * FROM
@@ -115,8 +115,7 @@ func TestResolveTables(t *testing.T) {
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 
-	a := New(catalog)
-	a.Rules = []Rule{f}
+	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
 
 	a.CurrentDatabase = "mydb"
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
@@ -150,8 +149,8 @@ func TestResolveTablesNested(t *testing.T) {
 
 	catalog := &sql.Catalog{Databases: []sql.Database{db}}
 
-	a := New(catalog)
-	a.Rules = []Rule{f}
+	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
+
 	a.CurrentDatabase = "mydb"
 
 	notAnalyzed := plan.NewProject(
@@ -186,7 +185,7 @@ func TestResolveNaturalJoins(t *testing.T) {
 	node := plan.NewNaturalJoin(left, right)
 	rule := getRule("resolve_natural_joins")
 
-	result, err := rule.Apply(sql.NewEmptyContext(), New(nil), node)
+	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -234,7 +233,7 @@ func TestResolveNaturalJoinsEqual(t *testing.T) {
 	node := plan.NewNaturalJoin(left, right)
 	rule := getRule("resolve_natural_joins")
 
-	result, err := rule.Apply(sql.NewEmptyContext(), New(nil), node)
+	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -283,7 +282,7 @@ func TestResolveNaturalJoinsDisjoint(t *testing.T) {
 	node := plan.NewNaturalJoin(left, right)
 	rule := getRule("resolve_natural_joins")
 
-	result, err := rule.Apply(sql.NewEmptyContext(), New(nil), node)
+	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
 	require.NoError(err)
 
 	expected := plan.NewCrossJoin(left, right)
@@ -307,7 +306,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 		table,
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), New(nil), node)
+	result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
 	require.NoError(err)
 
 	require.Equal(
@@ -329,7 +328,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 		table,
 	)
 
-	_, err = f.Apply(sql.NewEmptyContext(), New(nil), node)
+	_, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
 	require.Error(err)
 	require.True(ErrOrderByColumnIndex.Is(err))
 }
@@ -582,7 +581,7 @@ func TestCatalogIndex(t *testing.T) {
 	f := getRule("index_catalog")
 
 	c := sql.NewCatalog()
-	a := New(c)
+	a := NewDefault(c)
 	a.CurrentDatabase = "foo"
 
 	tbl := mem.NewTable("foo", nil)
@@ -663,7 +662,7 @@ func TestReorderProjection(t *testing.T) {
 		),
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), New(nil), node)
+	result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
 	require.NoError(err)
 
 	require.Equal(expected, result)
@@ -710,12 +709,12 @@ func TestEraseProjection(t *testing.T) {
 		expected,
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), New(nil), node)
+	result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
 	require.NoError(err)
 
 	require.Equal(expected, result)
 
-	result, err = f.Apply(sql.NewEmptyContext(), New(nil), expected)
+	result, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), expected)
 	require.NoError(err)
 
 	require.Equal(expected, result)
@@ -800,7 +799,7 @@ func TestPushdownProjection(t *testing.T) {
 
 func TestPushdownProjectionAndFilters(t *testing.T) {
 	require := require.New(t)
-	a := New(sql.NewCatalog())
+	a := NewDefault(sql.NewCatalog())
 
 	table := &pushdownProjectionAndFiltersTable{mem.NewTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
@@ -884,7 +883,7 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 
 func TestPushdownIndexable(t *testing.T) {
 	require := require.New(t)
-	a := New(sql.NewCatalog())
+	a := NewDefault(sql.NewCatalog())
 
 	var index1, index2, index3 dummyIndex
 	var lookup, lookup2 dummyIndexLookup
@@ -1093,7 +1092,7 @@ func TestAssignIndexes(t *testing.T) {
 	close(done)
 
 	time.Sleep(50 * time.Millisecond)
-	a := New(catalog)
+	a := NewDefault(catalog)
 
 	t1 := &indexableTable{
 		&pushdownProjectionAndFiltersTable{
@@ -1543,7 +1542,7 @@ func TestGetIndexes(t *testing.T) {
 	}
 
 	time.Sleep(50 * time.Millisecond)
-	a := New(catalog)
+	a := NewDefault(catalog)
 
 	for _, tt := range testCases {
 		t.Run(tt.expr.String(), func(t *testing.T) {
@@ -1600,7 +1599,7 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 	}
 
 	time.Sleep(50 * time.Millisecond)
-	a := New(catalog)
+	a := NewDefault(catalog)
 
 	used := make(map[sql.Expression]struct{})
 	exprs := []sql.Expression{
