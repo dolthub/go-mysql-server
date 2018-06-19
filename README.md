@@ -4,11 +4,31 @@
 <a href="https://codecov.io/gh/src-d/go-mysql-server"><img alt="codecov" src="https://codecov.io/gh/src-d/go-mysql-server/branch/master/graph/badge.svg" /></a>
 <a href="https://godoc.org/github.com/src-d/go-mysql-server"><img alt="GoDoc" src="https://godoc.org/github.com/src-d/go-mysql-server?status.svg" /></a>
 
-**go-mysql-server** is a standard SQL parser based on MySQL syntax, that is able to resolve and optimize queries.
-It provides simple interfaces to allow you to implement any tabular data source.
+**go-mysql-server** is a SQL engine which parses standard SQL (based on MySQL syntax), resolves and optimizes queries.
+It provides simple interfaces to allow custom tabular data source implementations.
 
 **go-mysql-server** also provides a server implementation compatible with the MySQL wire protocol.
 That means it is compatible with MySQL ODBC, JDBC, or the default MySQL client shell interface.
+
+## Scope of this project
+
+These are the goals of **go-mysql-server**:
+
+- Be a generic extensible SQL engine that performs queries on your data sources.
+- Provide interfaces so you can implement your own custom data sources without providing any (except for the `mem` data source that is used for testing purposes).
+- Have a runnable server you can use on your specific implementation.
+- Parse and optimize queries while still allow specific implementations to add their own analysis steps and optimizations.
+- Provide some common index driver implementations so the user does not have to bring their own index implementation, and still be able to do so if they need to.
+
+What are not the goals of **go-mysql-server**:
+
+- Be a drop-in MySQL database replacement.
+- Be an application/server you can use directly.
+- Provide any kind of backend implementation (other than the `mem` one used for testing) such as json, csv, yaml, ... That's for clients to implement and use.
+
+What's the use case of **go-mysql-server**?
+
+Having data in another format that you want as tabular data to query using SQL, such as git. As an example of this, we have [gitbase](https://github.com/src-d/gitbase).
 
 ## Installation
 
