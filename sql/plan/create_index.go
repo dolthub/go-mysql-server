@@ -116,8 +116,13 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
+	log := logrus.WithFields(logrus.Fields{
+		"id":     index.ID(),
+		"driver": index.Driver(),
+	})
+
 	go func() {
-		err := driver.Save(ctx, index, iter)
+		err := driver.Save(ctx, index, &loggingKeyValueIter{log: log, iter: iter})
 		close(done)
 		if err != nil {
 			logrus.WithField("err", err).Error("unable to save the index")
@@ -127,8 +132,12 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 			} else {
 				<-deleted
 			}
+		} else {
+			log.Info("index successfully created")
 		}
 	}()
+
+	log.Info("starting to save the index")
 
 	return sql.RowsToRowIter(), nil
 }
@@ -253,3 +262,20 @@ func getColumnsAndPrepareExpressions(
 
 	return columns, expressions, nil
 }
+
+type loggingKeyValueIter struct {
+	log  *logrus.Entry
+	iter sql.IndexKeyValueIter
+	rows uint64
+}
+
+func (i *loggingKeyValueIter) Next() ([]interface{}, []byte, error) {
+	i.rows++
+	if i.rows%100 == 0 {
+		i.log.Debugf("still creating index: %d rows saved so far", i.rows)
+	}
+
+	return i.iter.Next()
+}
+
+func (i *loggingKeyValueIter) Close() error { return i.iter.Close() }
