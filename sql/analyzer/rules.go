@@ -384,6 +384,10 @@ func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 		switch n := n.(type) {
 		case *plan.Project:
+			if !n.Child.Resolved() {
+				return n, nil
+			}
+
 			expressions, err := expandStars(n.Projections, n.Child.Schema())
 			if err != nil {
 				return nil, err
@@ -391,6 +395,10 @@ func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 			return plan.NewProject(expressions, n.Child), nil
 		case *plan.GroupBy:
+			if !n.Child.Resolved() {
+				return n, nil
+			}
+
 			aggregate, err := expandStars(n.Aggregate, n.Child.Schema())
 			if err != nil {
 				return nil, err

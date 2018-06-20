@@ -499,6 +499,64 @@ func TestNaturalJoinDisjoint(t *testing.T) {
 	)
 }
 
+func TestInnerNestedInNaturalJoins(t *testing.T) {
+	require := require.New(t)
+
+	table1 := mem.NewTable("table1", sql.Schema{
+		{Name: "i", Type: sql.Int32, Source: "table1"},
+		{Name: "f", Type: sql.Float64, Source: "table1"},
+		{Name: "t", Type: sql.Text, Source: "table1"},
+	})
+
+	require.Nil(table1.Insert(sql.NewRow(int32(1), float64(2.1), "table1")))
+	require.Nil(table1.Insert(sql.NewRow(int32(1), float64(2.1), "table1")))
+	require.Nil(table1.Insert(sql.NewRow(int32(10), float64(2.1), "table1")))
+
+	table2 := mem.NewTable("table2", sql.Schema{
+		{Name: "i2", Type: sql.Int32, Source: "table2"},
+		{Name: "f2", Type: sql.Float64, Source: "table2"},
+		{Name: "t2", Type: sql.Text, Source: "table2"},
+	})
+
+	require.Nil(table2.Insert(sql.NewRow(int32(1), float64(2.2), "table2")))
+	require.Nil(table2.Insert(sql.NewRow(int32(1), float64(2.2), "table2")))
+	require.Nil(table2.Insert(sql.NewRow(int32(20), float64(2.2), "table2")))
+
+	table3 := mem.NewTable("table3", sql.Schema{
+		{Name: "i", Type: sql.Int32, Source: "table3"},
+		{Name: "f2", Type: sql.Float64, Source: "table3"},
+		{Name: "t3", Type: sql.Text, Source: "table3"},
+	})
+
+	require.Nil(table3.Insert(sql.NewRow(int32(1), float64(2.3), "table3")))
+	require.Nil(table3.Insert(sql.NewRow(int32(2), float64(2.3), "table3")))
+	require.Nil(table3.Insert(sql.NewRow(int32(30), float64(2.3), "table3")))
+
+	db := mem.NewDatabase("mydb")
+	db.AddTable("table1", table1)
+	db.AddTable("table2", table2)
+	db.AddTable("table3", table3)
+
+	e := sqle.NewDefault()
+	e.AddDatabase(db)
+
+	_, iter, err := e.Query(sql.NewEmptyContext(), `SELECT * FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Equal(
+		[]sql.Row{
+			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
+			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
+			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
+			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
+		},
+		rows,
+	)
+}
+
 func testQuery(t *testing.T, e *sqle.Engine, q string, r []sql.Row) {
 	t.Run(q, func(t *testing.T) {
 		require := require.New(t)
