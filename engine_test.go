@@ -629,7 +629,7 @@ func TestIndexes(t *testing.T) {
 	created <- struct{}{}
 
 	defer func() {
-		done, err := e.Catalog.DeleteIndex("foo", "myidx")
+		done, err := e.Catalog.DeleteIndex("foo", "myidx", true)
 		require.NoError(err)
 		<-done
 	}()
@@ -662,7 +662,7 @@ func TestCreateIndex(t *testing.T) {
 
 	defer func() {
 		time.Sleep(1 * time.Second)
-		done, err := e.Catalog.DeleteIndex("foo", "myidx")
+		done, err := e.Catalog.DeleteIndex("foo", "myidx", true)
 		require.NoError(err)
 		<-done
 

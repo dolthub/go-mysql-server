@@ -121,7 +121,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		close(done)
 		if err != nil {
 			logrus.WithField("err", err).Error("unable to save the index")
-			deleted, err := c.Catalog.DeleteIndex(index.Database(), index.ID())
+			deleted, err := c.Catalog.DeleteIndex(index.Database(), index.ID(), true)
 			if err != nil {
 				logrus.WithField("err", err).Error("unable to delete the index")
 			} else {

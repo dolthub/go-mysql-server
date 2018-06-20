@@ -52,7 +52,7 @@ func (d *DropIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}
 	d.Catalog.ReleaseIndex(index)
 
-	done, err := d.Catalog.DeleteIndex(db.Name(), d.Name)
+	done, err := d.Catalog.DeleteIndex(db.Name(), d.Name, false)
 	if err != nil {
 		return nil, err
 	}
