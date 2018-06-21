@@ -21,6 +21,7 @@
 - COUNT
 - MAX
 - MIN
+- SUM (always returns DOUBLE)
 
 ## Standard expressions
 - ALIAS (AS)
