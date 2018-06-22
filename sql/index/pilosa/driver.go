@@ -199,6 +199,10 @@ func (d *Driver) Save(ctx context.Context, i sql.Index, iter sql.IndexKeyValueIt
 			}
 
 			for i, frm := range frames {
+				if values[i] == nil {
+					continue
+				}
+
 				rowID, err := idx.mapping.getRowID(frm.Name(), values[i])
 				if err != nil {
 					return err

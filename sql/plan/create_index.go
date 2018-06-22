@@ -90,7 +90,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, ErrInvalidIndexDriver.New(c.Driver)
 	}
 
-	columns, exprs, err := getColumnsAndPrepareExpressions(c.Exprs)
+	columns, exprs, exprHashes, err := getColumnsAndPrepareExpressions(c.Exprs)
 	if err != nil {
 		return nil, err
 	}
@@ -99,14 +99,14 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		c.CurrentDatabase,
 		nameable.Name(),
 		c.Name,
-		exprs,
+		exprHashes,
 		c.Config,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	iter, err := table.IndexKeyValueIter(ctx, columns)
+	iter, err := getIndexKeyValueIter(ctx, table, columns, exprs)
 	if err != nil {
 		return nil, err
 	}
@@ -223,10 +223,11 @@ func (c *CreateIndex) TransformUp(fn sql.TransformNodeFunc) (sql.Node, error) {
 // to match a row with only the returned columns in that same order.
 func getColumnsAndPrepareExpressions(
 	exprs []sql.Expression,
-) ([]string, []sql.ExpressionHash, error) {
+) ([]string, []sql.Expression, []sql.ExpressionHash, error) {
 	var columns []string
 	var seen = make(map[string]int)
-	var expressions = make([]sql.ExpressionHash, len(exprs))
+	var expressions = make([]sql.Expression, len(exprs))
+	var expressionHashes = make([]sql.ExpressionHash, len(exprs))
 
 	for i, e := range exprs {
 		ex, err := e.TransformUp(func(e sql.Expression) (sql.Expression, error) {
@@ -254,13 +255,59 @@ func getColumnsAndPrepareExpressions(
 		})
 
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
-		expressions[i] = sql.NewExpressionHash(ex)
+		expressions[i] = ex
+		expressionHashes[i] = sql.NewExpressionHash(ex)
 	}
 
-	return columns, expressions, nil
+	return columns, expressions, expressionHashes, nil
+}
+
+type evalKeyValueIter struct {
+	iter sql.IndexKeyValueIter
+	eval func(values []interface{}) ([]interface{}, error)
+}
+
+func (eit *evalKeyValueIter) Next() ([]interface{}, []byte, error) {
+	vals, loc, err := eit.iter.Next()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if eit.eval != nil {
+		vals, err = eit.eval(vals)
+	}
+	return vals, loc, err
+}
+
+func (eit *evalKeyValueIter) Close() error {
+	return eit.iter.Close()
+}
+
+func getIndexKeyValueIter(ctx *sql.Context, table sql.Indexable, columns []string, exprs []sql.Expression) (*evalKeyValueIter, error) {
+	iter, err := table.IndexKeyValueIter(ctx, columns)
+	if err != nil {
+		return nil, err
+	}
+
+	eit := &evalKeyValueIter{iter: iter}
+	eit.eval = func(values []interface{}) ([]interface{}, error) {
+		row := sql.NewRow(values...)
+		evals := make([]interface{}, len(exprs))
+		for i, ex := range exprs {
+			val, err := ex.Eval(ctx, row)
+			if err != nil {
+				return nil, err
+			}
+
+			evals[i] = val
+		}
+		return evals, nil
+	}
+
+	return eit, err
 }
 
 type loggingKeyValueIter struct {
@@ -278,4 +325,6 @@ func (i *loggingKeyValueIter) Next() ([]interface{}, []byte, error) {
 	return i.iter.Next()
 }
 
-func (i *loggingKeyValueIter) Close() error { return i.iter.Close() }
+func (i *loggingKeyValueIter) Close() error {
+	return i.iter.Close()
+}

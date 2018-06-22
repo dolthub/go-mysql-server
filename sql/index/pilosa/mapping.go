@@ -80,6 +80,18 @@ func (m *mapping) query(fn func() error) error {
 	return fn()
 }
 
+func (m *mapping) rowID(frameName string, value interface{}) (uint64, error) {
+	val, err := m.get(frameName, value)
+	if err != nil {
+		return 0, err
+	}
+	if val == nil {
+		return 0, fmt.Errorf("id is nil")
+	}
+
+	return binary.LittleEndian.Uint64(val), err
+}
+
 func (m *mapping) getRowID(frameName string, value interface{}) (uint64, error) {
 	var id uint64
 	err := m.query(func() error {
