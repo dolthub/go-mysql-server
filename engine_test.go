@@ -242,6 +242,10 @@ var queries = []struct {
 			sql.NewRow([]interface{}{"third row"}),
 		},
 	},
+	{
+		`SELECT SUM(i) FROM mytable`,
+		[]sql.Row{{float64(6)}},
+	},
 }
 
 func TestQueries(t *testing.T) {

@@ -19,6 +19,9 @@ var Defaults = sql.Functions{
 	"avg": sql.Function1(func(e sql.Expression) sql.Expression {
 		return aggregation.NewAvg(e)
 	}),
+	"sum": sql.Function1(func(e sql.Expression) sql.Expression {
+		return aggregation.NewSum(e)
+	}),
 	"is_binary":    sql.Function1(NewIsBinary),
 	"substring":    sql.FunctionN(NewSubstring),
 	"year":         sql.Function1(NewYear),
