@@ -1763,6 +1763,152 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 	require.Equal(expectedUsed, used)
 }
 
+func TestContainsSources(t *testing.T) {
+	testCases := []struct {
+		name     string
+		haystack []string
+		needle   []string
+		expected bool
+	}{
+		{
+			"needle is in haystack",
+			[]string{"a", "b", "c"},
+			[]string{"c", "b"},
+			true,
+		},
+		{
+			"needle is not in haystack",
+			[]string{"a", "b", "c"},
+			[]string{"d", "b"},
+			false,
+		},
+		{
+			"no elements in needle",
+			[]string{"a", "b", "c"},
+			nil,
+			true,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(
+				t,
+				containsSources(tt.haystack, tt.needle),
+				tt.expected,
+			)
+		})
+	}
+}
+
+func TestNodeSources(t *testing.T) {
+	sources := nodeSources(mem.NewTable("foo", sql.Schema{
+		{Source: "foo"},
+		{Source: "foo"},
+		{Source: "bar"},
+		{Source: "baz"},
+	}))
+
+	expected := []string{"foo", "bar", "baz"}
+	require.Equal(t, expected, sources)
+}
+
+func TestExpressionSources(t *testing.T) {
+	sources := expressionSources(expression.JoinAnd(
+		col(0, "foo", "bar"),
+		col(0, "foo", "qux"),
+		and(
+			eq(
+				col(0, "bar", "baz"),
+				lit(1),
+			),
+			eq(
+				col(0, "baz", "baz"),
+				lit(2),
+			),
+		),
+	))
+
+	expected := []string{"foo", "bar", "baz"}
+	require.Equal(t, expected, sources)
+}
+
+func TestMoveJoinConditionsToFilter(t *testing.T) {
+	t1 := mem.NewTable("t1", sql.Schema{
+		{Name: "a", Source: "t1"},
+		{Name: "b", Source: "t1"},
+	})
+
+	t2 := mem.NewTable("t2", sql.Schema{
+		{Name: "c", Source: "t2"},
+		{Name: "d", Source: "t2"},
+	})
+
+	t3 := mem.NewTable("t3", sql.Schema{
+		{Name: "e", Source: "t3"},
+		{Name: "f", Source: "t3"},
+	})
+
+	rule := getRule("move_join_conds_to_filter")
+	require := require.New(t)
+
+	node := plan.NewInnerJoin(
+		t1,
+		plan.NewCrossJoin(t2, t3),
+		expression.JoinAnd(
+			eq(col(0, "t1", "a"), col(2, "t2", "c")),
+			eq(col(0, "t1", "a"), col(4, "t3", "e")),
+			eq(col(2, "t2", "c"), col(4, "t3", "e")),
+			eq(col(0, "t1", "a"), lit(5)),
+		),
+	)
+
+	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	require.NoError(err)
+
+	var expected sql.Node = plan.NewInnerJoin(
+		plan.NewFilter(
+			eq(col(0, "t1", "a"), lit(5)),
+			t1,
+		),
+		plan.NewFilter(
+			eq(col(0, "t2", "c"), col(2, "t3", "e")),
+			plan.NewCrossJoin(t2, t3),
+		),
+		and(
+			eq(col(0, "t1", "a"), col(2, "t2", "c")),
+			eq(col(0, "t1", "a"), col(4, "t3", "e")),
+		),
+	)
+
+	require.Equal(expected, result)
+
+	node = plan.NewInnerJoin(
+		t1,
+		plan.NewCrossJoin(t2, t3),
+		expression.JoinAnd(
+			eq(col(0, "t2", "c"), col(0, "t3", "e")),
+			eq(col(0, "t1", "a"), lit(5)),
+		),
+	)
+
+	result, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	require.NoError(err)
+
+	expected = plan.NewCrossJoin(
+		plan.NewFilter(
+			eq(col(0, "t1", "a"), lit(5)),
+			t1,
+		),
+		plan.NewFilter(
+			eq(col(0, "t2", "c"), col(2, "t3", "e")),
+			plan.NewCrossJoin(t2, t3),
+		),
+	)
+
+	require.Equal(result, expected)
+}
+
 func or(left, right sql.Expression) sql.Expression {
 	return expression.NewOr(left, right)
 }
