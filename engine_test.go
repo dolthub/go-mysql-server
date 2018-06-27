@@ -246,6 +246,12 @@ var queries = []struct {
 		`SELECT SUM(i) FROM mytable`,
 		[]sql.Row{{float64(6)}},
 	},
+	{
+		`SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2`,
+		[]sql.Row{
+			{int64(3), "third row", "first", int64(3)},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {
