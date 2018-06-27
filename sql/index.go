@@ -492,12 +492,14 @@ func (r *IndexRegistry) AddIndex(idx Index) (chan<- struct{}, error) {
 // the index for deletion but does not remove it, so queries that are using it
 // may still do so. The returned channel will send a message when the index can
 // be deleted from disk.
-func (r *IndexRegistry) DeleteIndex(db, id string) (<-chan struct{}, error) {
+// If force is true, it will delete the index even if it's not ready for usage.
+// Only use that parameter if you know what you're doing.
+func (r *IndexRegistry) DeleteIndex(db, id string, force bool) (<-chan struct{}, error) {
 	r.mut.RLock()
 	var key indexKey
 	for k, idx := range r.indexes {
 		if strings.ToLower(id) == idx.ID() {
-			if !r.CanUseIndex(idx) {
+			if !force && !r.CanUseIndex(idx) {
 				r.mut.RUnlock()
 				return nil, ErrIndexDeleteInvalidStatus.New(id)
 			}
