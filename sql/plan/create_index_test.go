@@ -5,11 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
-
-	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"gopkg.in/src-d/go-mysql-server.v0/test"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateIndex(t *testing.T) {
@@ -37,7 +38,9 @@ func TestCreateIndex(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	_, err := ci.RowIter(sql.NewEmptyContext())
+	tracer := new(test.MemTracer)
+	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer))
+	_, err := ci.RowIter(ctx)
 	require.NoError(err)
 
 	time.Sleep(50 * time.Millisecond)
@@ -50,6 +53,16 @@ func TestCreateIndex(t *testing.T) {
 		sql.NewExpressionHash(expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true)),
 		sql.NewExpressionHash(expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true)),
 	}}, idx)
+
+	found := false
+	for _, span := range tracer.Spans {
+		if span == "plan.backgroundIndexCreate" {
+			found = true
+			break
+		}
+	}
+
+	require.True(found)
 }
 
 type mockIndex struct {
@@ -87,7 +100,7 @@ func (*mockDriver) Create(db, table, id string, exprs []sql.ExpressionHash, conf
 func (*mockDriver) LoadAll(db, table string) ([]sql.Index, error) {
 	panic("not implemented")
 }
-func (d *mockDriver) Save(ctx context.Context, index sql.Index, iter sql.IndexKeyValueIter) error {
+func (d *mockDriver) Save(ctx *sql.Context, index sql.Index, iter sql.IndexKeyValueIter) error {
 	d.saved = append(d.saved, index.ID())
 	return nil
 }

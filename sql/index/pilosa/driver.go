@@ -1,7 +1,6 @@
 package pilosa
 
 import (
-	"context"
 	"crypto/sha1"
 	"fmt"
 	"io"
@@ -139,7 +138,16 @@ func (d *Driver) loadIndex(path string) (sql.Index, error) {
 var errInvalidIndexType = errors.NewKind("expecting a pilosa index, instead got %T")
 
 // Save the given index (mapping and bitmap)
-func (d *Driver) Save(ctx context.Context, i sql.Index, iter sql.IndexKeyValueIter) error {
+func (d *Driver) Save(
+	ctx *sql.Context,
+	i sql.Index,
+	iter sql.IndexKeyValueIter,
+) error {
+	span, ctx := ctx.Span("pilosa.Save")
+	span.LogKV("name", i.ID())
+
+	defer span.Finish()
+
 	idx, ok := i.(*pilosaIndex)
 	if !ok {
 		return errInvalidIndexType.New(i)
@@ -150,7 +158,7 @@ func (d *Driver) Save(ctx context.Context, i sql.Index, iter sql.IndexKeyValueIt
 		return err
 	}
 
-	if err := index.CreateProcessingFile(path); err != nil {
+	if err = index.CreateProcessingFile(path); err != nil {
 		return err
 	}
 

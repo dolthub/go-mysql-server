@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"context"
 	"crypto/sha1"
 	"fmt"
 	"testing"
@@ -275,8 +274,8 @@ func (d loadDriver) LoadAll(db, table string) ([]Index, error) {
 	}
 	return result, nil
 }
-func (loadDriver) Save(ctx context.Context, index Index, iter IndexKeyValueIter) error { return nil }
-func (loadDriver) Delete(index Index) error                                            { return nil }
+func (loadDriver) Save(ctx *Context, index Index, iter IndexKeyValueIter) error { return nil }
+func (loadDriver) Delete(index Index) error                                     { return nil }
 
 type dummyIdx struct {
 	id       string

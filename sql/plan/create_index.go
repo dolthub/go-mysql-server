@@ -3,7 +3,10 @@ package plan
 import (
 	"fmt"
 	"strings"
+	"time"
 
+	opentracing "github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/sirupsen/logrus"
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -121,25 +124,55 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		"driver": index.Driver(),
 	})
 
-	go func() {
-		err := driver.Save(ctx, index, &loggingKeyValueIter{log: log, iter: iter})
-		close(done)
-		if err != nil {
-			logrus.WithField("err", err).Error("unable to save the index")
-			deleted, err := c.Catalog.DeleteIndex(index.Database(), index.ID(), true)
-			if err != nil {
-				logrus.WithField("err", err).Error("unable to delete the index")
-			} else {
-				<-deleted
-			}
-		} else {
-			log.Info("index successfully created")
-		}
-	}()
+	go c.backgroundIndexCreate(ctx, log, driver, index, iter, done)
 
 	log.Info("starting to save the index")
 
 	return sql.RowsToRowIter(), nil
+}
+
+func (c *CreateIndex) backgroundIndexCreate(
+	ctx *sql.Context,
+	log *logrus.Entry,
+	driver sql.IndexDriver,
+	index sql.Index,
+	iter sql.IndexKeyValueIter,
+	done chan<- struct{},
+) {
+	span, ctx := ctx.Span("plan.backgroundIndexCreate")
+	span.LogKV(
+		"index", index.ID(),
+		"table", index.Table(),
+		"driver", index.Driver(),
+	)
+
+	err := driver.Save(ctx, index, newLoggingKeyValueIter(span, log, iter))
+	close(done)
+
+	if err != nil {
+		span.FinishWithOptions(opentracing.FinishOptions{
+			LogRecords: []opentracing.LogRecord{
+				{
+					Timestamp: time.Now(),
+					Fields: []otlog.Field{
+						otlog.String("error", err.Error()),
+					},
+				},
+			},
+		})
+
+		logrus.WithField("err", err).Error("unable to save the index")
+
+		deleted, err := c.Catalog.DeleteIndex(index.Database(), index.ID(), true)
+		if err != nil {
+			logrus.WithField("err", err).Error("unable to delete the index")
+		} else {
+			<-deleted
+		}
+	} else {
+		span.Finish()
+		log.Info("index successfully created")
+	}
 }
 
 // Schema implements the Node interface.
@@ -264,15 +297,41 @@ func getColumnsAndPrepareExpressions(
 }
 
 type loggingKeyValueIter struct {
-	log  *logrus.Entry
-	iter sql.IndexKeyValueIter
-	rows uint64
+	span  opentracing.Span
+	log   *logrus.Entry
+	iter  sql.IndexKeyValueIter
+	rows  uint64
+	start time.Time
+}
+
+func newLoggingKeyValueIter(
+	span opentracing.Span,
+	log *logrus.Entry,
+	iter sql.IndexKeyValueIter,
+) sql.IndexKeyValueIter {
+	return &loggingKeyValueIter{
+		span:  span,
+		log:   log,
+		iter:  iter,
+		start: time.Now(),
+	}
 }
 
 func (i *loggingKeyValueIter) Next() ([]interface{}, []byte, error) {
 	i.rows++
 	if i.rows%100 == 0 {
-		i.log.Debugf("still creating index: %d rows saved so far", i.rows)
+		duration := time.Since(i.start)
+
+		i.log.WithField("duration", duration).
+			Debugf("still creating index: %d rows saved so far", i.rows)
+
+		i.span.LogFields(
+			otlog.String("event", "saved rows"),
+			otlog.Uint64("rows", i.rows),
+			otlog.String("duration", duration.String()),
+		)
+
+		i.start = time.Now()
 	}
 
 	return i.iter.Next()
