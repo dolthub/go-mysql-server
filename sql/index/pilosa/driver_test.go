@@ -310,6 +310,141 @@ func TestLoadAllDirectoryDoesNotExist(t *testing.T) {
 	require.Len(drivers, 0)
 }
 
+func TestAscendDescendIndex(t *testing.T) {
+	idx, cleanup := setupAscendDescend(t)
+	defer cleanup()
+
+	must := func(lookup sql.IndexLookup, err error) sql.IndexLookup {
+		require.NoError(t, err)
+		return lookup
+	}
+
+	testCases := []struct {
+		name     string
+		lookup   sql.IndexLookup
+		expected []string
+	}{
+		{
+			"ascend range",
+			must(idx.AscendRange(
+				[]interface{}{int64(1), int64(1)},
+				[]interface{}{int64(7), int64(10)},
+			)),
+			[]string{"1", "5", "6", "7", "8", "9"},
+		},
+		{
+			"ascend greater or equal",
+			must(idx.AscendGreaterOrEqual(int64(7), int64(6))),
+			[]string{"2", "4"},
+		},
+		{
+			"ascend less than",
+			must(idx.AscendLessThan(int64(5), int64(3))),
+			[]string{"1", "10"},
+		},
+		{
+			"descend range",
+			must(idx.DescendRange(
+				[]interface{}{int64(6), int64(9)},
+				[]interface{}{int64(0), int64(0)},
+			)),
+			[]string{"9", "8", "7", "6", "5", "1"},
+		},
+		{
+			"descend less or equal",
+			must(idx.DescendLessOrEqual(int64(4), int64(2))),
+			[]string{"10", "1"},
+		},
+		{
+			"descend greater",
+			must(idx.DescendGreater(int64(6), int64(5))),
+			[]string{"4", "2"},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			iter, err := tt.lookup.Values()
+			require.NoError(err)
+
+			var result []string
+			for {
+				k, err := iter.Next()
+				if err == io.EOF {
+					break
+				}
+				require.NoError(err)
+
+				result = append(result, string(k))
+			}
+
+			require.Equal(tt.expected, result)
+		})
+	}
+}
+
+func setupAscendDescend(t *testing.T) (*pilosaIndex, func()) {
+	t.Helper()
+	if !dockerIsRunning {
+		t.Skipf("Skip test: %s", dockerCmdOutput)
+	}
+	require := require.New(t)
+
+	db, table, id := "db_name", "table_name", "index_id"
+	expressions := makeExpressions("a", "b")
+	path, err := mkdir(os.TempDir(), "indexes")
+	require.NoError(err)
+
+	d := NewDriver(path, newClientWithTimeout(200*time.Millisecond))
+	sqlIdx, err := d.Create(db, table, id, expressions, nil)
+	require.NoError(err)
+
+	it := &fixtureKeyValueIter{
+		fixtures: []kvfixture{
+			{"9", []interface{}{int64(2), int64(6)}},
+			{"3", []interface{}{int64(7), int64(5)}},
+			{"1", []interface{}{int64(1), int64(2)}},
+			{"7", []interface{}{int64(1), int64(3)}},
+			{"4", []interface{}{int64(7), int64(6)}},
+			{"2", []interface{}{int64(10), int64(6)}},
+			{"5", []interface{}{int64(5), int64(1)}},
+			{"6", []interface{}{int64(6), int64(2)}},
+			{"10", []interface{}{int64(4), int64(0)}},
+			{"8", []interface{}{int64(3), int64(5)}},
+		},
+	}
+
+	err = d.Save(context.Background(), sqlIdx, it)
+	require.NoError(err)
+
+	return sqlIdx.(*pilosaIndex), func() {
+		require.NoError(os.RemoveAll(path))
+	}
+}
+
+type kvfixture struct {
+	key    string
+	values []interface{}
+}
+
+type fixtureKeyValueIter struct {
+	fixtures []kvfixture
+	pos      int
+}
+
+func (i *fixtureKeyValueIter) Next() ([]interface{}, []byte, error) {
+	if i.pos >= len(i.fixtures) {
+		return nil, nil, io.EOF
+	}
+
+	f := i.fixtures[i.pos]
+	i.pos++
+	return f.values, []byte(f.key), nil
+}
+
+func (i *fixtureKeyValueIter) Close() error { return nil }
+
 // test implementation of sql.IndexKeyValueIter interface
 type testIndexKeyValueIter struct {
 	offset      int

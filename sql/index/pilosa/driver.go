@@ -136,7 +136,10 @@ func (d *Driver) loadIndex(path string) (sql.Index, error) {
 	return idx, nil
 }
 
-var errInvalidIndexType = errors.NewKind("expecting a pilosa index, instead got %T")
+var (
+	errInvalidIndexType  = errors.NewKind("expecting a pilosa index, instead got %T")
+	errDeletePilosaIndex = errors.NewKind("error deleting pilosa index %s: %s")
+)
 
 // Save the given index (mapping and bitmap)
 func (d *Driver) Save(ctx context.Context, i sql.Index, iter sql.IndexKeyValueIter) error {
@@ -164,6 +167,12 @@ func (d *Driver) Save(ctx context.Context, i sql.Index, iter sql.IndexKeyValueIt
 	pilosaIndex, err := schema.Index(indexName(idx.Database(), idx.Table(), idx.ID()))
 	if err != nil {
 		return err
+	}
+
+	// make sure we delete the index in every run before inserting, since there may
+	// be previous data
+	if err = d.client.DeleteIndex(pilosaIndex); err != nil {
+		return errDeletePilosaIndex.New(pilosaIndex.Name(), err)
 	}
 
 	frames := make([]*pilosa.Frame, len(idx.ExpressionHashes()))
