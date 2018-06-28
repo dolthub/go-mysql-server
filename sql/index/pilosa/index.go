@@ -252,7 +252,7 @@ func (l *indexLookup) Values() (sql.IndexValueIter, error) {
 			return nil, err
 		}
 
-		rowID, err := l.mapping.getRowID(frm.Name(), l.keys[i])
+		rowID, err := l.mapping.rowID(frm.Name(), l.keys[i])
 		if err != nil {
 			return nil, err
 		}

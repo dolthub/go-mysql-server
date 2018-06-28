@@ -2,6 +2,7 @@ package plan
 
 import (
 	"context"
+	"math"
 	"testing"
 	"time"
 
@@ -50,6 +51,60 @@ func TestCreateIndex(t *testing.T) {
 		sql.NewExpressionHash(expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true)),
 		sql.NewExpressionHash(expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true)),
 	}}, idx)
+}
+
+func TestCreateIndexWithIter(t *testing.T) {
+	require := require.New(t)
+	foo := mem.NewTable("foo", sql.Schema{
+		{Name: "one", Source: "foo", Type: sql.Int64},
+		{Name: "two", Source: "foo", Type: sql.Int64},
+	})
+
+	rows := [][2]int64{
+		{1, 2},
+		{-1, -2},
+		{0, 0},
+		{math.MaxInt64, math.MinInt64},
+	}
+	for _, r := range rows {
+		err := foo.Insert(sql.NewRow(r[0], r[1]))
+		require.NoError(err)
+	}
+
+	table := &indexableTable{foo}
+	exprs := []sql.Expression{expression.NewPlus(
+		expression.NewGetField(0, sql.Int64, "one", false),
+		expression.NewGetField(0, sql.Int64, "two", false)),
+	}
+
+	driver := new(mockDriver)
+	catalog := sql.NewCatalog()
+	catalog.RegisterIndexDriver(driver)
+	db := mem.NewDatabase("foo")
+	db.AddTable("foo", table)
+	catalog.Databases = append(catalog.Databases, db)
+
+	ci := NewCreateIndex("idx", table, exprs, "mock", make(map[string]string))
+	ci.Catalog = catalog
+	ci.CurrentDatabase = "foo"
+
+	columns, exprs, _, err := getColumnsAndPrepareExpressions(ci.Exprs)
+	require.NoError(err)
+
+	iter, err := getIndexKeyValueIter(sql.NewEmptyContext(), table, columns, exprs)
+	require.NoError(err)
+
+	var (
+		vals []interface{}
+	)
+	for i := 0; err == nil; i++ {
+		vals, _, err = iter.Next()
+		if err == nil {
+			require.Equal(1, len(vals))
+			require.Equal(rows[i][0]+rows[i][1], vals[0])
+		}
+	}
+	require.NoError(iter.Close())
 }
 
 type mockIndex struct {
@@ -106,8 +161,13 @@ func (indexableTable) HandledFilters([]sql.Expression) []sql.Expression {
 	panic("not implemented")
 }
 
-func (indexableTable) IndexKeyValueIter(_ *sql.Context, colNames []string) (sql.IndexKeyValueIter, error) {
-	return nil, nil
+func (it *indexableTable) IndexKeyValueIter(ctx *sql.Context, colNames []string) (sql.IndexKeyValueIter, error) {
+	t, ok := it.Table.(*mem.Table)
+	if !ok {
+		return nil, nil
+	}
+
+	return t.IndexKeyValueIter(ctx, colNames)
 }
 
 func (indexableTable) WithProjectAndFilters(ctx *sql.Context, columns, filters []sql.Expression) (sql.RowIter, error) {
