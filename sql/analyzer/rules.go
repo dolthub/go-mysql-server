@@ -49,6 +49,9 @@ var (
 	// ErrOrderByColumnIndex is returned when in an order clause there is a
 	// column that is unknown.
 	ErrOrderByColumnIndex = errors.NewKind("unknown column %d in order by clause")
+	// ErrMisusedAlias is returned when a alias is defined and used in the same projection.
+	ErrMisusedAlias = errors.NewKind("column %q does not exist in scope, but there is an alias defined in" +
+		" this projection with that name. Aliases cannot be used in the same projection they're defined in")
 )
 
 func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -478,6 +481,16 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			}
 		}
 
+		var aliasMap = map[string]struct{}{}
+		var exists = struct{}{}
+		if project, ok := n.(*plan.Project); ok {
+			for _, e := range project.Projections {
+				if alias, ok := e.(*expression.Alias); ok {
+					aliasMap[alias.Name()] = exists
+				}
+			}
+		}
+
 		expressioner, ok := n.(sql.Expressioner)
 		if !ok {
 			return n, nil
@@ -504,6 +517,10 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				case *expression.UnresolvedColumn:
 					return &maybeAlias{uc}, nil
 				default:
+					if _, ok := aliasMap[uc.Name()]; ok {
+						return nil, ErrMisusedAlias.New(uc.Name())
+					}
+
 					return nil, ErrColumnNotFound.New(uc.Name())
 				}
 			}
