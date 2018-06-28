@@ -526,7 +526,7 @@ func newClientWithTimeout(timeout time.Duration) *pilosa.Client {
 func retry(ctx context.Context, fn func() error) error {
 	var (
 		backoffDuration = 200 * time.Millisecond
-		maxRetries      = 5
+		maxRetries      = 10
 
 		err error
 	)
