@@ -15,9 +15,8 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/index/pilosa"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/parse"
+	"gopkg.in/src-d/go-mysql-server.v0/test"
 
-	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/log"
 	"github.com/stretchr/testify/require"
 )
 
@@ -693,7 +692,7 @@ func TestIndexes(t *testing.T) {
 	iter, err := table.IndexKeyValueIter(sql.NewEmptyContext(), []string{"i"})
 	require.NoError(err)
 
-	require.NoError(driver.Save(context.TODO(), idx, iter))
+	require.NoError(driver.Save(sql.NewEmptyContext(), idx, iter))
 	created <- struct{}{}
 
 	defer func() {
@@ -742,7 +741,7 @@ func TestTracing(t *testing.T) {
 	require := require.New(t)
 	e := newEngine(t)
 
-	tracer := new(memTracer)
+	tracer := new(test.MemTracer)
 
 	ctx := sql.NewContext(context.TODO(), sql.WithTracer(tracer))
 
@@ -757,7 +756,7 @@ func TestTracing(t *testing.T) {
 	require.Len(rows, 1)
 	require.NoError(err)
 
-	spans := tracer.spans
+	spans := tracer.Spans
 
 	var expectedSpans = []string{
 		"plan.Limit",
@@ -784,41 +783,3 @@ func TestTracing(t *testing.T) {
 
 	require.Equal(expectedSpans, spanOperations)
 }
-
-type memTracer struct {
-	spans []string
-}
-
-type memSpan struct {
-	opName string
-}
-
-func (t *memTracer) StartSpan(operationName string, opts ...opentracing.StartSpanOption) opentracing.Span {
-	t.spans = append(t.spans, operationName)
-	return &memSpan{operationName}
-}
-
-func (t *memTracer) Inject(sm opentracing.SpanContext, format interface{}, carrier interface{}) error {
-	panic("not implemented")
-}
-
-func (t *memTracer) Extract(format interface{}, carrier interface{}) (opentracing.SpanContext, error) {
-	panic("not implemented")
-}
-
-func (m memSpan) Context() opentracing.SpanContext                      { return m }
-func (m memSpan) SetBaggageItem(key, val string) opentracing.Span       { return m }
-func (m memSpan) BaggageItem(key string) string                         { return "" }
-func (m memSpan) SetTag(key string, value interface{}) opentracing.Span { return m }
-func (m memSpan) LogFields(fields ...log.Field)                         {}
-func (m memSpan) LogKV(keyVals ...interface{})                          {}
-func (m memSpan) Finish()                                               {}
-func (m memSpan) FinishWithOptions(opts opentracing.FinishOptions)      {}
-func (m memSpan) SetOperationName(operationName string) opentracing.Span {
-	return &memSpan{operationName}
-}
-func (m memSpan) Tracer() opentracing.Tracer                            { return &memTracer{} }
-func (m memSpan) LogEvent(event string)                                 {}
-func (m memSpan) LogEventWithPayload(event string, payload interface{}) {}
-func (m memSpan) Log(data opentracing.LogData)                          {}
-func (m memSpan) ForeachBaggageItem(handler func(k, v string) bool)     {}

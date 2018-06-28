@@ -2,7 +2,6 @@ package sql
 
 import (
 	"bytes"
-	"context"
 	"encoding/hex"
 	"io"
 	"strings"
@@ -116,7 +115,7 @@ type IndexDriver interface {
 	// LoadAll loads all indexes for given db and table
 	LoadAll(db, table string) ([]Index, error)
 	// Save the given index
-	Save(ctx context.Context, index Index, iter IndexKeyValueIter) error
+	Save(ctx *Context, index Index, iter IndexKeyValueIter) error
 	// Delete the given index.
 	Delete(index Index) error
 }

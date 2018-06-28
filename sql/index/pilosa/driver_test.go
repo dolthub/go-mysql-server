@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/index"
+	"gopkg.in/src-d/go-mysql-server.v0/test"
 )
 
 // Pilosa tests require running docker. If `docker ps` command returned an error
@@ -103,7 +104,9 @@ func TestSaveAndLoad(t *testing.T) {
 		location:    randLocation,
 	}
 
-	err = d.Save(context.Background(), sqlIdx, it)
+	tracer := new(test.MemTracer)
+	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer))
+	err = d.Save(ctx, sqlIdx, it)
 	require.NoError(err)
 
 	indexes, err := d.LoadAll(db, table)
@@ -137,6 +140,16 @@ func TestSaveAndLoad(t *testing.T) {
 		err = lit.Close()
 		require.NoError(err)
 	}
+
+	found := false
+	for _, span := range tracer.Spans {
+		if span == "pilosa.Save" {
+			found = true
+			break
+		}
+	}
+
+	require.True(found)
 }
 
 func TestSaveAndGetAll(t *testing.T) {
@@ -162,7 +175,7 @@ func TestSaveAndGetAll(t *testing.T) {
 		location:    randLocation,
 	}
 
-	err = d.Save(context.Background(), sqlIdx, it)
+	err = d.Save(sql.NewEmptyContext(), sqlIdx, it)
 	require.NoError(err)
 
 	indexes, err := d.LoadAll(db, table)
@@ -223,7 +236,7 @@ func TestPilosaHiccup(t *testing.T) {
 
 	// retry save index - if pilosa failed, reset iterator and start over
 	err = retry(ctx, func() error {
-		if e := d.Save(ctx, sqlIdx, it); e != nil {
+		if e := d.Save(sql.NewContext(ctx), sqlIdx, it); e != nil {
 			t.Logf("Save err: %s", e)
 			// reset iterator!
 			it.Close()
