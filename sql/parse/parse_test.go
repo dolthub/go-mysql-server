@@ -113,13 +113,13 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo"),
 		),
 	),
-	`SELECT foo, bar FROM foo ORDER BY baz DESC;`: plan.NewProject(
-		[]sql.Expression{
-			expression.NewUnresolvedColumn("foo"),
-			expression.NewUnresolvedColumn("bar"),
-		},
-		plan.NewSort(
-			[]plan.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
+	`SELECT foo, bar FROM foo ORDER BY baz DESC;`: plan.NewSort(
+		[]plan.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewUnresolvedColumn("foo"),
+				expression.NewUnresolvedColumn("bar"),
+			},
 			plan.NewUnresolvedTable("foo"),
 		),
 	),
@@ -139,25 +139,25 @@ var fixtures = map[string]sql.Node{
 		),
 	),
 	`SELECT foo, bar FROM foo ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(1,
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewUnresolvedColumn("foo"),
-				expression.NewUnresolvedColumn("bar"),
-			},
-			plan.NewSort(
-				[]plan.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
+		plan.NewSort(
+			[]plan.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewUnresolvedColumn("foo"),
+					expression.NewUnresolvedColumn("bar"),
+				},
 				plan.NewUnresolvedTable("foo"),
 			),
 		),
 	),
 	`SELECT foo, bar FROM foo WHERE qux = 1 ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(1,
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewUnresolvedColumn("foo"),
-				expression.NewUnresolvedColumn("bar"),
-			},
-			plan.NewSort(
-				[]plan.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
+		plan.NewSort(
+			[]plan.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewUnresolvedColumn("foo"),
+					expression.NewUnresolvedColumn("bar"),
+				},
 				plan.NewFilter(
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("qux"),
@@ -485,23 +485,23 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo"),
 		),
 	),
-	`SELECT a, b FROM t ORDER BY 2, 1`: plan.NewProject(
-		[]sql.Expression{
-			expression.NewUnresolvedColumn("a"),
-			expression.NewUnresolvedColumn("b"),
+	`SELECT a, b FROM t ORDER BY 2, 1`: plan.NewSort(
+		[]plan.SortField{
+			{
+				Column:       expression.NewLiteral(int64(2), sql.Int64),
+				Order:        plan.Ascending,
+				NullOrdering: plan.NullsFirst,
+			},
+			{
+				Column:       expression.NewLiteral(int64(1), sql.Int64),
+				Order:        plan.Ascending,
+				NullOrdering: plan.NullsFirst,
+			},
 		},
-		plan.NewSort(
-			[]plan.SortField{
-				{
-					Column:       expression.NewLiteral(int64(2), sql.Int64),
-					Order:        plan.Ascending,
-					NullOrdering: plan.NullsFirst,
-				},
-				{
-					Column:       expression.NewLiteral(int64(1), sql.Int64),
-					Order:        plan.Ascending,
-					NullOrdering: plan.NullsFirst,
-				},
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewUnresolvedColumn("a"),
+				expression.NewUnresolvedColumn("b"),
 			},
 			plan.NewUnresolvedTable("t"),
 		),

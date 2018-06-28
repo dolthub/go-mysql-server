@@ -737,6 +737,44 @@ func TestCreateIndex(t *testing.T) {
 	}()
 }
 
+func TestOrderByGroupBy(t *testing.T) {
+	require := require.New(t)
+
+	table := mem.NewTable("members", sql.Schema{
+		{Name: "id", Type: sql.Int64, Source: "members"},
+		{Name: "team", Type: sql.Text, Source: "members"},
+	})
+	require.NoError(table.Insert(sql.NewRow(int64(3), "red")))
+	require.NoError(table.Insert(sql.NewRow(int64(4), "red")))
+	require.NoError(table.Insert(sql.NewRow(int64(5), "orange")))
+	require.NoError(table.Insert(sql.NewRow(int64(6), "orange")))
+	require.NoError(table.Insert(sql.NewRow(int64(7), "orange")))
+	require.NoError(table.Insert(sql.NewRow(int64(8), "purple")))
+
+	db := mem.NewDatabase("db")
+	db.AddTable(table.Name(), table)
+
+	e := sqle.NewDefault()
+	e.AddDatabase(db)
+
+	_, iter, err := e.Query(
+		sql.NewEmptyContext(),
+		"SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY 2",
+	)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	expected := []sql.Row{
+		{"purple", int32(1)},
+		{"red", int32(2)},
+		{"orange", int32(3)},
+	}
+
+	require.Equal(expected, rows)
+}
+
 func TestTracing(t *testing.T) {
 	require := require.New(t)
 	e := newEngine(t)
@@ -757,12 +795,11 @@ func TestTracing(t *testing.T) {
 	require.NoError(err)
 
 	spans := tracer.Spans
-
 	var expectedSpans = []string{
 		"plan.Limit",
+		"plan.Sort",
 		"plan.Distinct",
 		"plan.Project",
-		"plan.Sort",
 		"plan.Filter",
 		"plan.PushdownProjectionAndFiltersTable",
 		"expression.Equals",

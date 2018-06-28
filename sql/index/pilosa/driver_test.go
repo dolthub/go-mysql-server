@@ -428,7 +428,7 @@ func setupAscendDescend(t *testing.T) (*pilosaIndex, func()) {
 		},
 	}
 
-	err = d.Save(context.Background(), sqlIdx, it)
+	err = d.Save(sql.NewEmptyContext(), sqlIdx, it)
 	require.NoError(err)
 
 	return sqlIdx.(*pilosaIndex), func() {
