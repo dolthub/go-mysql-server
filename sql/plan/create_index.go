@@ -266,8 +266,9 @@ func getColumnsAndPrepareExpressions(
 }
 
 type evalKeyValueIter struct {
-	iter sql.IndexKeyValueIter
-	eval func(values []interface{}) ([]interface{}, error)
+	ctx   *sql.Context
+	iter  sql.IndexKeyValueIter
+	exprs []sql.Expression
 }
 
 func (eit *evalKeyValueIter) Next() ([]interface{}, []byte, error) {
@@ -275,11 +276,18 @@ func (eit *evalKeyValueIter) Next() ([]interface{}, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	row := sql.NewRow(vals...)
+	evals := make([]interface{}, len(eit.exprs))
+	for i, ex := range eit.exprs {
+		eval, err := ex.Eval(eit.ctx, row)
+		if err != nil {
+			return nil, nil, err
+		}
 
-	if eit.eval != nil {
-		vals, err = eit.eval(vals)
+		evals[i] = eval
 	}
-	return vals, loc, err
+
+	return evals, loc, nil
 }
 
 func (eit *evalKeyValueIter) Close() error {
@@ -292,22 +300,7 @@ func getIndexKeyValueIter(ctx *sql.Context, table sql.Indexable, columns []strin
 		return nil, err
 	}
 
-	eit := &evalKeyValueIter{iter: iter}
-	eit.eval = func(values []interface{}) ([]interface{}, error) {
-		row := sql.NewRow(values...)
-		evals := make([]interface{}, len(exprs))
-		for i, ex := range exprs {
-			val, err := ex.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
-
-			evals[i] = val
-		}
-		return evals, nil
-	}
-
-	return eit, err
+	return &evalKeyValueIter{ctx, iter, exprs}, nil
 }
 
 type loggingKeyValueIter struct {
