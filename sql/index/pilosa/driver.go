@@ -22,6 +22,8 @@ const (
 	IndexNamePrefix = "idx"
 	// FrameNamePrefix the pilosa's frames prefix
 	FrameNamePrefix = "frm"
+	// BatchSize is the number of objects to save when creating indexes.
+	BatchSize = 10000
 )
 
 // Driver implements sql.IndexDriver interface.
@@ -140,12 +142,50 @@ var (
 	errDeletePilosaIndex = errors.NewKind("error deleting pilosa index %s: %s")
 )
 
+type bitBatch struct {
+	size uint64
+	bits []pilosa.Bit
+	pos  uint64
+}
+
+func newBitBatch(size uint64) *bitBatch {
+	b := &bitBatch{size: size}
+	b.Clean()
+
+	return b
+}
+
+func (b *bitBatch) Clean() {
+	b.bits = make([]pilosa.Bit, 0, b.size)
+	b.pos = 0
+}
+
+func (b *bitBatch) Add(row, col uint64) {
+	b.bits = append(b.bits, pilosa.Bit{
+		RowID:    row,
+		ColumnID: col,
+	})
+}
+
+func (b *bitBatch) NextRecord() (pilosa.Record, error) {
+	if b.pos >= uint64(len(b.bits)) {
+		return nil, io.EOF
+	}
+
+	b.pos++
+	return b.bits[b.pos-1], nil
+}
+
+func (b *bitBatch) Send(frame *pilosa.Frame, client *pilosa.Client) error {
+	return client.ImportFrame(frame, b)
+}
+
 // Save the given index (mapping and bitmap)
 func (d *Driver) Save(
 	ctx *sql.Context,
 	i sql.Index,
 	iter sql.IndexKeyValueIter,
-) error {
+) (err error) {
 	span, ctx := ctx.Span("pilosa.Save")
 	span.LogKV("name", i.ID())
 
@@ -197,10 +237,46 @@ func (d *Driver) Save(
 		return err
 	}
 
-	idx.mapping.open()
-	defer idx.mapping.close()
+	// Open mapping in create mode. After finishing the transaction is rolled
+	// back unless all goes well and rollback value is changed.
+	rollback := true
+	idx.mapping.openCreate(true)
+	defer func() {
+		if rollback {
+			idx.mapping.rollback()
+		} else {
+			e := idx.mapping.commit(false)
+			if e != nil && err == nil {
+				err = e
+			}
+		}
+
+		idx.mapping.close()
+	}()
+
+	bitBatch := make([]*bitBatch, len(frames))
+	for i := range bitBatch {
+		bitBatch[i] = newBitBatch(BatchSize)
+	}
 
 	for colID := uint64(0); err == nil; colID++ {
+		// commit each batch of objects (pilosa and boltdb)
+		if colID%BatchSize == 0 && colID != 0 {
+			for i, frm := range frames {
+				err = bitBatch[i].Send(frm, d.client)
+				if err != nil {
+					return err
+				}
+
+				bitBatch[i].Clean()
+			}
+
+			err = idx.mapping.commit(true)
+			if err != nil {
+				return err
+			}
+		}
+
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -225,13 +301,7 @@ func (d *Driver) Save(
 					return err
 				}
 
-				resp, err := d.client.Query(frm.SetBit(rowID, colID))
-				if err != nil {
-					return err
-				}
-				if !resp.Success {
-					return errPilosaQuery.New(resp.ErrorMessage)
-				}
+				bitBatch[i].Add(rowID, colID)
 			}
 			err = idx.mapping.putLocation(pilosaIndex.Name(), colID, location)
 		}
@@ -239,6 +309,15 @@ func (d *Driver) Save(
 
 	if err != nil && err != io.EOF {
 		return err
+	}
+
+	rollback = false
+
+	for i, frm := range frames {
+		err = bitBatch[i].Send(frm, d.client)
+		if err != nil {
+			return err
+		}
 	}
 
 	return index.RemoveProcessingFile(path)
