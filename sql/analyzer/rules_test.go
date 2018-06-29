@@ -15,6 +15,234 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
+func TestResolveOrderBy(t *testing.T) {
+	rule := getRule("resolve_orderby")
+	a := NewDefault(nil)
+	ctx := sql.NewEmptyContext()
+
+	table := mem.NewTable("foo", sql.Schema{
+		{Name: "a", Type: sql.Int64, Source: "foo"},
+		{Name: "b", Type: sql.Int64, Source: "foo"},
+	})
+
+	t.Run("with project", func(t *testing.T) {
+		require := require.New(t)
+		node := plan.NewSort(
+			[]plan.SortField{
+				{Column: expression.NewUnresolvedColumn("x")},
+			},
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewAlias(
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+						"x",
+					),
+				},
+				table,
+			),
+		)
+
+		result, err := rule.Apply(ctx, a, node)
+		require.NoError(err)
+
+		require.Equal(node, result)
+
+		node = plan.NewSort(
+			[]plan.SortField{
+				{Column: expression.NewUnresolvedColumn("a")},
+			},
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewAlias(
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+						"x",
+					),
+				},
+				table,
+			),
+		)
+
+		expected := plan.NewProject(
+			[]sql.Expression{
+				expression.NewAlias(
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+					"x",
+				),
+			},
+			plan.NewSort(
+				[]plan.SortField{
+					{Column: expression.NewUnresolvedColumn("a")},
+				},
+				table,
+			),
+		)
+
+		result, err = rule.Apply(ctx, a, node)
+		require.NoError(err)
+
+		require.Equal(expected, result)
+
+		node = plan.NewSort(
+			[]plan.SortField{
+				{Column: expression.NewUnresolvedColumn("a")},
+				{Column: expression.NewUnresolvedColumn("x")},
+			},
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewAlias(
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+						"x",
+					),
+				},
+				table,
+			),
+		)
+
+		expected = plan.NewProject(
+			[]sql.Expression{
+				expression.NewGetFieldWithTable(0, sql.Int64, "", "x", false),
+			},
+			plan.NewSort(
+				[]plan.SortField{
+					{Column: expression.NewUnresolvedColumn("a")},
+					{Column: expression.NewUnresolvedColumn("x")},
+				},
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewAlias(
+							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+							"x",
+						),
+						expression.NewUnresolvedColumn("a"),
+					},
+					table,
+				),
+			),
+		)
+
+		result, err = rule.Apply(ctx, a, node)
+		require.NoError(err)
+
+		require.Equal(expected, result)
+	})
+
+	t.Run("with group by", func(t *testing.T) {
+		require := require.New(t)
+		node := plan.NewSort(
+			[]plan.SortField{
+				{Column: expression.NewUnresolvedColumn("x")},
+			},
+			plan.NewGroupBy(
+				[]sql.Expression{
+					expression.NewAlias(
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+						"x",
+					),
+				},
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+				},
+				table,
+			),
+		)
+
+		result, err := rule.Apply(ctx, a, node)
+		require.NoError(err)
+
+		require.Equal(node, result)
+
+		node = plan.NewSort(
+			[]plan.SortField{
+				{Column: expression.NewUnresolvedColumn("a")},
+			},
+			plan.NewGroupBy(
+				[]sql.Expression{
+					expression.NewAlias(
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+						"x",
+					),
+				},
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+				},
+				table,
+			),
+		)
+
+		var expected sql.Node = plan.NewGroupBy(
+			[]sql.Expression{
+				expression.NewAlias(
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+					"x",
+				),
+			},
+			[]sql.Expression{
+				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+			},
+			plan.NewSort(
+				[]plan.SortField{
+					{Column: expression.NewUnresolvedColumn("a")},
+				},
+				table,
+			),
+		)
+
+		result, err = rule.Apply(ctx, a, node)
+		require.NoError(err)
+
+		require.Equal(expected, result)
+
+		node = plan.NewSort(
+			[]plan.SortField{
+				{Column: expression.NewUnresolvedColumn("a")},
+				{Column: expression.NewUnresolvedColumn("x")},
+			},
+			plan.NewGroupBy(
+				[]sql.Expression{
+					expression.NewAlias(
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+						"x",
+					),
+				},
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+				},
+				table,
+			),
+		)
+
+		expected = plan.NewProject(
+			[]sql.Expression{
+				expression.NewGetFieldWithTable(0, sql.Int64, "", "x", false),
+			},
+			plan.NewSort(
+				[]plan.SortField{
+					{Column: expression.NewUnresolvedColumn("a")},
+					{Column: expression.NewUnresolvedColumn("x")},
+				},
+				plan.NewGroupBy(
+					[]sql.Expression{
+						expression.NewAlias(
+							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+							"x",
+						),
+						expression.NewUnresolvedColumn("a"),
+					},
+					[]sql.Expression{
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+					},
+					table,
+				),
+			),
+		)
+
+		result, err = rule.Apply(ctx, a, node)
+		require.NoError(err)
+
+		require.Equal(expected, result)
+	})
+}
+
 func TestResolveSubqueries(t *testing.T) {
 	require := require.New(t)
 
