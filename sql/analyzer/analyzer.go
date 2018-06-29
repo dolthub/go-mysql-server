@@ -17,6 +17,7 @@ var ErrMaxAnalysisIters = errors.NewKind("exceeded max analysis iterations (%d)"
 
 // Builder provides an easy way to generate Analyzer with custom rules and options.
 type Builder struct {
+	preAnalyzeRules     []Rule
 	postAnalyzeRules    []Rule
 	preValidationRules  []Rule
 	postValidationRules []Rule
@@ -30,9 +31,21 @@ func NewBuilder(c *sql.Catalog) *Builder {
 	return &Builder{catalog: c}
 }
 
-// WithDebug activates debug on the Analyzer
+// WithDebug activates debug on the Analyzer.
 func (ab *Builder) WithDebug() *Builder {
 	ab.debug = true
+
+	return ab
+}
+
+// ReadOnly adds a rule that only allows read queries.
+func (ab *Builder) ReadOnly() *Builder {
+	return ab.AddPreAnalyzeRule(EnsureReadOnlyRule, EnsureReadOnly)
+}
+
+// AddPreAnalyzeRule adds a new rule to the analyze before the standard analyzer rules.
+func (ab *Builder) AddPreAnalyzeRule(name string, fn RuleFunc) *Builder {
+	ab.preAnalyzeRules = append(ab.preAnalyzeRules, Rule{name, fn})
 
 	return ab
 }
@@ -62,6 +75,11 @@ func (ab *Builder) AddPostValidationRule(name string, fn RuleFunc) *Builder {
 func (ab *Builder) Build() *Analyzer {
 	_, debug := os.LookupEnv(debugAnalyzerKey)
 	var batches = []*Batch{
+		&Batch{
+			Desc:       "pre-analyzer rules",
+			Iterations: maxAnalysisIterations,
+			Rules:      ab.preAnalyzeRules,
+		},
 		&Batch{
 			Desc:       "analyzer rules",
 			Iterations: maxAnalysisIterations,
