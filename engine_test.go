@@ -12,6 +12,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/index/pilosa"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/parse"
@@ -843,4 +844,38 @@ func TestTracing(t *testing.T) {
 	}
 
 	require.Equal(expectedSpans, spanOperations)
+}
+
+func TestReadOnly(t *testing.T) {
+	require := require.New(t)
+
+	table := mem.NewTable("mytable", sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+	})
+
+	db := mem.NewDatabase("mydb")
+	db.AddTable(table.Name(), table)
+
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
+
+	a := analyzer.NewBuilder(catalog).ReadOnly().Build()
+	a.CurrentDatabase = "mydb"
+	e := sqle.New(catalog, a)
+
+	_, _, err := e.Query(sql.NewEmptyContext(), `SELECT i FROM mytable`)
+	require.NoError(err)
+
+	_, _, err = e.Query(sql.NewEmptyContext(), `CREATE INDEX foo ON mytable (i, s)`)
+	require.Error(err)
+	require.True(analyzer.ErrQueryNotAllowed.Is(err))
+
+	_, _, err = e.Query(sql.NewEmptyContext(), `DROP INDEX foo ON mytable`)
+	require.Error(err)
+	require.True(analyzer.ErrQueryNotAllowed.Is(err))
+
+	_, _, err = e.Query(sql.NewEmptyContext(), `INSERT INTO foo (i, s) VALUES(42, 'yolo')`)
+	require.Error(err)
+	require.True(analyzer.ErrQueryNotAllowed.Is(err))
 }
