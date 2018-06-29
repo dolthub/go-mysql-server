@@ -84,7 +84,9 @@ func (d *DropIndex) TransformExpressionsUp(fn sql.TransformExprFunc) (sql.Node, 
 		return nil, err
 	}
 
-	return NewDropIndex(d.Name, t), nil
+	nc := *d
+	nc.Table = t
+	return &nc, nil
 }
 
 // TransformUp implements the Node interface.
@@ -94,5 +96,7 @@ func (d *DropIndex) TransformUp(fn sql.TransformNodeFunc) (sql.Node, error) {
 		return nil, err
 	}
 
-	return fn(NewDropIndex(d.Name, t))
+	nc := *d
+	nc.Table = t
+	return fn(&nc)
 }
