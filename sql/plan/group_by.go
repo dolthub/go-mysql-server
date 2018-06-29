@@ -53,10 +53,16 @@ func (p *GroupBy) Schema() sql.Schema {
 			name = e.String()
 		}
 
+		var table string
+		if t, ok := e.(sql.Tableable); ok {
+			table = t.Table()
+		}
+
 		s[i] = &sql.Column{
 			Name:     name,
 			Type:     e.Type(),
 			Nullable: e.IsNullable(),
+			Source:   table,
 		}
 	}
 
