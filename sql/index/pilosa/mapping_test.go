@@ -20,7 +20,7 @@ func TestRowID(t *testing.T) {
 	defer m.close()
 
 	cases := []int{0, 1, 2, 3, 4, 5, 5, 0, 3, 2, 1, 5}
-	expected := []uint64{0, 1, 2, 3, 4, 5, 5, 0, 3, 2, 1, 5}
+	expected := []uint64{1, 2, 3, 4, 5, 6, 6, 1, 4, 3, 2, 6}
 
 	for i, c := range cases {
 		rowID, err := m.getRowID("frame name", c)
@@ -72,7 +72,7 @@ func TestGet(t *testing.T) {
 	defer m.close()
 
 	cases := []int{0, 1, 2, 3, 4, 5, 5, 0, 3, 2, 1, 5}
-	expected := []uint64{0, 1, 2, 3, 4, 5, 5, 0, 3, 2, 1, 5}
+	expected := []uint64{1, 2, 3, 4, 5, 6, 6, 1, 4, 3, 2, 6}
 
 	for i, c := range cases {
 		m.getRowID("frame name", c)

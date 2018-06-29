@@ -196,7 +196,10 @@ func (m *mapping) getRowID(frameName string, value interface{}) (uint64, error) 
 				return nil
 			}
 
+			// the first NextSequence is 1 so the first id will be 1
+			// this can only fail if the transaction is closed
 			id, _ = b.NextSequence()
+
 			val = make([]byte, 8)
 			binary.LittleEndian.PutUint64(val, id)
 			err = b.Put(key, val)
