@@ -12,7 +12,7 @@ func getDatePart(
 	ctx *sql.Context,
 	u expression.UnaryExpression,
 	row sql.Row,
-	f func(time.Time) int,
+	f func(interface{}) interface{},
 ) (interface{}, error) {
 	val, err := u.Child.Eval(ctx, row)
 	if err != nil {
@@ -27,11 +27,11 @@ func getDatePart(
 	if err != nil {
 		date, err = sql.Date.Convert(val)
 		if err != nil {
-			return nil, err
+			date = nil
 		}
 	}
 
-	return int32(f(date.(time.Time))), nil
+	return f(date), nil
 }
 
 // Year is a function that returns the year of a date.
@@ -53,7 +53,7 @@ func (y *Year) Type() sql.Type { return sql.Int32 }
 func (y *Year) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.Year")
 	defer span.Finish()
-	return getDatePart(ctx, y.UnaryExpression, row, (time.Time).Year)
+	return getDatePart(ctx, y.UnaryExpression, row, year)
 }
 
 // TransformUp implements the Expression interface.
@@ -85,12 +85,7 @@ func (m *Month) Type() sql.Type { return sql.Int32 }
 func (m *Month) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.Month")
 	defer span.Finish()
-
-	monthFunc := func(t time.Time) int {
-		return int(t.Month())
-	}
-
-	return getDatePart(ctx, m.UnaryExpression, row, monthFunc)
+	return getDatePart(ctx, m.UnaryExpression, row, month)
 }
 
 // TransformUp implements the Expression interface.
@@ -122,7 +117,7 @@ func (d *Day) Type() sql.Type { return sql.Int32 }
 func (d *Day) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.Day")
 	defer span.Finish()
-	return getDatePart(ctx, d.UnaryExpression, row, (time.Time).Day)
+	return getDatePart(ctx, d.UnaryExpression, row, day)
 }
 
 // TransformUp implements the Expression interface.
@@ -154,7 +149,7 @@ func (h *Hour) Type() sql.Type { return sql.Int32 }
 func (h *Hour) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.Hour")
 	defer span.Finish()
-	return getDatePart(ctx, h.UnaryExpression, row, (time.Time).Hour)
+	return getDatePart(ctx, h.UnaryExpression, row, hour)
 }
 
 // TransformUp implements the Expression interface.
@@ -186,7 +181,7 @@ func (m *Minute) Type() sql.Type { return sql.Int32 }
 func (m *Minute) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.Minute")
 	defer span.Finish()
-	return getDatePart(ctx, m.UnaryExpression, row, (time.Time).Minute)
+	return getDatePart(ctx, m.UnaryExpression, row, minute)
 }
 
 // TransformUp implements the Expression interface.
@@ -218,7 +213,7 @@ func (s *Second) Type() sql.Type { return sql.Int32 }
 func (s *Second) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.Second")
 	defer span.Finish()
-	return getDatePart(ctx, s.UnaryExpression, row, (time.Time).Second)
+	return getDatePart(ctx, s.UnaryExpression, row, second)
 }
 
 // TransformUp implements the Expression interface.
@@ -250,7 +245,7 @@ func (d *DayOfYear) Type() sql.Type { return sql.Int32 }
 func (d *DayOfYear) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.DayOfYear")
 	defer span.Finish()
-	return getDatePart(ctx, d.UnaryExpression, row, (time.Time).YearDay)
+	return getDatePart(ctx, d.UnaryExpression, row, dayOfYear)
 }
 
 // TransformUp implements the Expression interface.
@@ -262,3 +257,23 @@ func (d *DayOfYear) TransformUp(f sql.TransformExprFunc) (sql.Expression, error)
 
 	return f(NewDayOfYear(child))
 }
+
+func datePartFunc(fn func(time.Time) int) func(interface{}) interface{} {
+	return func(v interface{}) interface{} {
+		if v == nil {
+			return nil
+		}
+
+		return int32(fn(v.(time.Time)))
+	}
+}
+
+var (
+	year      = datePartFunc((time.Time).Year)
+	month     = datePartFunc(func(t time.Time) int { return int(t.Month()) })
+	day       = datePartFunc((time.Time).Day)
+	hour      = datePartFunc((time.Time).Hour)
+	minute    = datePartFunc((time.Time).Minute)
+	second    = datePartFunc((time.Time).Second)
+	dayOfYear = datePartFunc((time.Time).YearDay)
+)
