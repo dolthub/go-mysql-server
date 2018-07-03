@@ -294,6 +294,47 @@ func (m *mapping) getLocation(indexName string, colID uint64) ([]byte, error) {
 	return location, err
 }
 
+func (m *mapping) getLocationFromBucket(
+	bucket *bolt.Bucket,
+	colID uint64,
+) ([]byte, error) {
+	var location []byte
+
+	err := m.query(func() error {
+		key := make([]byte, 8)
+		binary.LittleEndian.PutUint64(key, colID)
+
+		location = bucket.Get(key)
+		return nil
+	})
+
+	return location, err
+}
+
+func (m *mapping) getBucket(
+	indexName string,
+	writable bool,
+) (*bolt.Bucket, error) {
+	var bucket *bolt.Bucket
+
+	err := m.query(func() error {
+		tx, err := m.db.Begin(writable)
+		if err != nil {
+			return err
+		}
+
+		bucket = tx.Bucket([]byte(indexName))
+		if bucket == nil {
+			tx.Rollback()
+			return fmt.Errorf("bucket %s not found", indexName)
+		}
+
+		return nil
+	})
+
+	return bucket, err
+}
+
 func (m *mapping) getLocationN(indexName string) (int, error) {
 	var n int
 	err := m.query(func() error {

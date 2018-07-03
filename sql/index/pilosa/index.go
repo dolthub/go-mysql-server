@@ -9,6 +9,7 @@ import (
 
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/boltdb/bolt"
 	pilosa "github.com/pilosa/go-pilosa"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -471,14 +472,33 @@ type indexValueIter struct {
 	bits      []uint64
 	mapping   *mapping
 	indexName string
+
+	// share transaction and bucket on all getLocation calls
+	bucket *bolt.Bucket
+	tx     *bolt.Tx
 }
 
 func (it *indexValueIter) Next() ([]byte, error) {
+	if it.bucket == nil {
+		bucket, err := it.mapping.getBucket(it.indexName, false)
+		if err != nil {
+			return nil, err
+		}
+
+		it.bucket = bucket
+		it.tx = bucket.Tx()
+	}
+
 	if it.offset >= it.total {
 		if err := it.Close(); err != nil {
 			logrus.WithField("err", err.Error()).
 				Error("unable to close the pilosa index value iterator")
 		}
+
+		if it.tx != nil {
+			it.tx.Rollback()
+		}
+
 		return nil, io.EOF
 	}
 
@@ -491,10 +511,16 @@ func (it *indexValueIter) Next() ([]byte, error) {
 
 	it.offset++
 
-	return it.mapping.getLocation(it.indexName, colID)
+	return it.mapping.getLocationFromBucket(it.bucket, colID)
 }
 
-func (it *indexValueIter) Close() error { return it.mapping.close() }
+func (it *indexValueIter) Close() error {
+	if it.tx != nil {
+		it.tx.Rollback()
+	}
+
+	return it.mapping.close()
+}
 
 var (
 	errUnknownType  = errors.NewKind("unknown type %T received as value")
