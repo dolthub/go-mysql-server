@@ -73,10 +73,7 @@ func (m *Sum) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 
 // Eval implements the Aggregation interface.
 func (m *Sum) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("aggregation.Sum_Eval")
 	sum := buffer[0]
-	span.LogKV("sum", sum)
-	span.Finish()
 
 	return sum, nil
 }

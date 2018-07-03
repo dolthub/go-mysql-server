@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -19,9 +18,6 @@ func NewTuple(exprs ...sql.Expression) Tuple {
 
 // Eval implements the Expression interface.
 func (t Tuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.Tuple", opentracing.Tag{Key: "elems", Value: len(t)})
-	defer span.Finish()
-
 	if len(t) == 1 {
 		return t[0].Eval(ctx, row)
 	}
