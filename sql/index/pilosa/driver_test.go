@@ -143,7 +143,7 @@ func TestSaveAndLoad(t *testing.T) {
 
 	found := false
 	for _, span := range tracer.Spans {
-		if span == "pilosa.Save" {
+		if span == "pilosa.Save.bitBatch" {
 			found = true
 			break
 		}
