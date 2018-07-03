@@ -33,4 +33,5 @@ var Defaults = sql.Functions{
 	"dayofyear":    sql.Function1(NewDayOfYear),
 	"array_length": sql.Function1(NewArrayLength),
 	"split":        sql.Function2(NewSplit),
+	"concat":       sql.FunctionN(NewConcat),
 }
