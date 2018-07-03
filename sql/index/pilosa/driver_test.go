@@ -141,6 +141,14 @@ func TestSaveAndLoad(t *testing.T) {
 		require.NoError(err)
 	}
 
+	// test that not found values do not cause error
+	lookup, err := sqlIdx.Get("do not exist", "none")
+	require.NoError(err)
+	lit, err := lookup.Values()
+	require.NoError(err)
+	_, err = lit.Next()
+	require.Equal(io.EOF, err)
+
 	found := false
 	for _, span := range tracer.Spans {
 		if span == "pilosa.Save.bitBatch" {

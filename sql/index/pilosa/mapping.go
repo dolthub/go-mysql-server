@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
+	"io"
 	"path/filepath"
 	"sort"
 	"sync"
@@ -98,7 +99,7 @@ func (m *mapping) rowID(frameName string, value interface{}) (uint64, error) {
 		return 0, err
 	}
 	if val == nil {
-		return 0, fmt.Errorf("id is nil")
+		return 0, io.EOF
 	}
 
 	return binary.LittleEndian.Uint64(val), err

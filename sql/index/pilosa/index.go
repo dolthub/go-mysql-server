@@ -254,11 +254,19 @@ func (l *indexLookup) Values() (sql.IndexValueIter, error) {
 		}
 
 		rowID, err := l.mapping.rowID(frm.Name(), l.keys[i])
+		if err == io.EOF {
+			continue
+		}
+
 		if err != nil {
 			return nil, err
 		}
 
 		bitmaps = append(bitmaps, frm.Bitmap(rowID))
+	}
+
+	if len(bitmaps) == 0 {
+		return &indexValueIter{mapping: l.mapping, indexName: l.indexName}, nil
 	}
 
 	resp, err := l.client.Query(index.Intersect(bitmaps...))
