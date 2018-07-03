@@ -16,6 +16,7 @@ type Engine struct {
 
 // New creates a new Engine
 func New(c *sql.Catalog, a *analyzer.Analyzer) *Engine {
+	c.RegisterFunctions(function.Defaults)
 	return &Engine{c, a}
 }
 
