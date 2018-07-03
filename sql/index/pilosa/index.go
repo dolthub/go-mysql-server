@@ -480,7 +480,7 @@ type indexValueIter struct {
 
 func (it *indexValueIter) Next() ([]byte, error) {
 	if it.bucket == nil {
-		bucket, err := it.mapping.getBucket(it.indexName, true)
+		bucket, err := it.mapping.getBucket(it.indexName, false)
 		if err != nil {
 			return nil, err
 		}
@@ -496,7 +496,7 @@ func (it *indexValueIter) Next() ([]byte, error) {
 		}
 
 		if it.tx != nil {
-			it.tx.Commit()
+			it.tx.Rollback()
 		}
 
 		return nil, io.EOF
@@ -516,7 +516,7 @@ func (it *indexValueIter) Next() ([]byte, error) {
 
 func (it *indexValueIter) Close() error {
 	if it.tx != nil {
-		it.tx.Commit()
+		it.tx.Rollback()
 	}
 
 	return it.mapping.close()
