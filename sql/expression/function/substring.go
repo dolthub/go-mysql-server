@@ -50,9 +50,6 @@ func (s *Substring) Eval(
 	ctx *sql.Context,
 	row sql.Row,
 ) (interface{}, error) {
-	span, ctx := ctx.Span("function.Substring")
-	defer span.Finish()
-
 	str, err := s.str.Eval(ctx, row)
 	if err != nil {
 		return nil, err

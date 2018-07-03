@@ -3,6 +3,7 @@ package analyzer // import "gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
 import (
 	"os"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -142,8 +143,9 @@ func (a *Analyzer) Log(msg string, args ...interface{}) {
 
 // Analyze the node and all its children.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("analyze")
-	span.LogKV("plan", n.String())
+	span, ctx := ctx.Span("analyze", opentracing.Tags{
+		"plan": n.String(),
+	})
 
 	prev := n
 	var err error

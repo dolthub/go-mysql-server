@@ -827,9 +827,6 @@ func TestTracing(t *testing.T) {
 		"plan.Project",
 		"plan.Filter",
 		"plan.PushdownProjectionAndFiltersTable",
-		"expression.Equals",
-		"expression.Equals",
-		"expression.Equals",
 	}
 
 	var spanOperations []string

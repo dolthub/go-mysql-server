@@ -43,9 +43,6 @@ func (*And) Type() sql.Type {
 
 // Eval implements the Expression interface.
 func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.And")
-	defer span.Finish()
-
 	lval, err := a.Left.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -107,9 +104,6 @@ func (*Or) Type() sql.Type {
 
 // Eval implements the Expression interface.
 func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.Or")
-	defer span.Finish()
-
 	lval, err := o.Left.Eval(ctx, row)
 	if err != nil {
 		return nil, err

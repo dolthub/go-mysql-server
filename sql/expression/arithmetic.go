@@ -130,9 +130,6 @@ func (a *Arithmetic) TransformUp(f sql.TransformExprFunc) (sql.Expression, error
 
 // Eval implements the Expression interface.
 func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.(" + a.op + ")")
-	defer span.Finish()
-
 	lval, rval, err := a.evalLeftRight(ctx, row)
 	if err != nil {
 		return nil, err

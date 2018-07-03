@@ -85,10 +85,6 @@ func (c *Count) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 
 // Eval implements the Aggregation interface.
 func (c *Count) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("aggregation.Count_Eval")
 	count := buffer[0]
-	span.LogKV("count", count)
-	span.Finish()
-
 	return count, nil
 }

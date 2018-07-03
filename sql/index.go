@@ -10,6 +10,9 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 )
 
+// IndexBatchSize is the number of rows to save at a time when creating indexes.
+var IndexBatchSize = uint64(10000)
+
 // IndexKeyValueIter is an iterator of index key values, that is, a tuple of
 // the values that will be index keys.
 type IndexKeyValueIter interface {

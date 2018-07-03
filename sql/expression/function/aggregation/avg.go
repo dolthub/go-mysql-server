@@ -39,9 +39,6 @@ func (a *Avg) IsNullable() bool {
 
 // Eval implements AggregationExpression interface. (AggregationExpression[Expression]])
 func (a *Avg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("aggregation.Avg_Eval")
-	defer span.Finish()
-
 	isNoNum := buffer[2].(bool)
 	if isNoNum {
 		return float64(0), nil
@@ -53,7 +50,6 @@ func (a *Avg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	}
 
 	avg := buffer[0]
-	span.LogKV("avg", avg)
 	return avg, nil
 }
 

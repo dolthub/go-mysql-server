@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	pilosa "github.com/pilosa/go-pilosa"
 	"github.com/sirupsen/logrus"
 	errors "gopkg.in/src-d/go-errors.v0"
@@ -22,14 +24,18 @@ const (
 	IndexNamePrefix = "idx"
 	// FrameNamePrefix the pilosa's frames prefix
 	FrameNamePrefix = "frm"
-	// BatchSize is the number of objects to save when creating indexes.
-	BatchSize = 10000
 )
 
 // Driver implements sql.IndexDriver interface.
 type Driver struct {
 	root   string
 	client *pilosa.Client
+
+	// used for saving
+	bitBatches  []*bitBatch
+	frames      []*pilosa.Frame
+	timePilosa  time.Duration
+	timeMapping time.Duration
 }
 
 // NewDriver returns a new instance of pilosa.Driver
@@ -142,54 +148,14 @@ var (
 	errDeletePilosaIndex = errors.NewKind("error deleting pilosa index %s: %s")
 )
 
-type bitBatch struct {
-	size uint64
-	bits []pilosa.Bit
-	pos  uint64
-}
-
-func newBitBatch(size uint64) *bitBatch {
-	b := &bitBatch{size: size}
-	b.Clean()
-
-	return b
-}
-
-func (b *bitBatch) Clean() {
-	b.bits = make([]pilosa.Bit, 0, b.size)
-	b.pos = 0
-}
-
-func (b *bitBatch) Add(row, col uint64) {
-	b.bits = append(b.bits, pilosa.Bit{
-		RowID:    row,
-		ColumnID: col,
-	})
-}
-
-func (b *bitBatch) NextRecord() (pilosa.Record, error) {
-	if b.pos >= uint64(len(b.bits)) {
-		return nil, io.EOF
-	}
-
-	b.pos++
-	return b.bits[b.pos-1], nil
-}
-
-func (b *bitBatch) Send(frame *pilosa.Frame, client *pilosa.Client) error {
-	return client.ImportFrame(frame, b)
-}
-
 // Save the given index (mapping and bitmap)
 func (d *Driver) Save(
 	ctx *sql.Context,
 	i sql.Index,
 	iter sql.IndexKeyValueIter,
 ) (err error) {
-	span, ctx := ctx.Span("pilosa.Save")
-	span.LogKV("name", i.ID())
-
-	defer span.Finish()
+	var colID uint64
+	start := time.Now()
 
 	idx, ok := i.(*pilosaIndex)
 	if !ok {
@@ -223,9 +189,9 @@ func (d *Driver) Save(
 		return errDeletePilosaIndex.New(pilosaIndex.Name(), err)
 	}
 
-	frames := make([]*pilosa.Frame, len(idx.ExpressionHashes()))
+	d.frames = make([]*pilosa.Frame, len(idx.ExpressionHashes()))
 	for i, e := range idx.ExpressionHashes() {
-		frames[i], err = pilosaIndex.Frame(frameName(e))
+		d.frames[i], err = pilosaIndex.Frame(frameName(e))
 		if err != nil {
 			return err
 		}
@@ -245,7 +211,7 @@ func (d *Driver) Save(
 		if rollback {
 			idx.mapping.rollback()
 		} else {
-			e := idx.mapping.commit(false)
+			e := d.saveMapping(ctx, idx.mapping, colID, false)
 			if e != nil && err == nil {
 				err = e
 			}
@@ -254,27 +220,15 @@ func (d *Driver) Save(
 		idx.mapping.close()
 	}()
 
-	bitBatch := make([]*bitBatch, len(frames))
-	for i := range bitBatch {
-		bitBatch[i] = newBitBatch(BatchSize)
+	d.bitBatches = make([]*bitBatch, len(d.frames))
+	for i := range d.bitBatches {
+		d.bitBatches[i] = newBitBatch(sql.IndexBatchSize)
 	}
 
-	for colID := uint64(0); err == nil; colID++ {
+	for colID = uint64(0); err == nil; colID++ {
 		// commit each batch of objects (pilosa and boltdb)
-		if colID%BatchSize == 0 && colID != 0 {
-			for i, frm := range frames {
-				err = bitBatch[i].Send(frm, d.client)
-				if err != nil {
-					return err
-				}
-
-				bitBatch[i].Clean()
-			}
-
-			err = idx.mapping.commit(true)
-			if err != nil {
-				return err
-			}
+		if colID%sql.IndexBatchSize == 0 && colID != 0 {
+			d.saveBatch(ctx, idx.mapping, colID)
 		}
 
 		select {
@@ -291,7 +245,7 @@ func (d *Driver) Save(
 				break
 			}
 
-			for i, frm := range frames {
+			for i, frm := range d.frames {
 				if values[i] == nil {
 					continue
 				}
@@ -301,7 +255,7 @@ func (d *Driver) Save(
 					return err
 				}
 
-				bitBatch[i].Add(rowID, colID)
+				d.bitBatches[i].Add(rowID, colID)
 			}
 			err = idx.mapping.putLocation(pilosaIndex.Name(), colID, location)
 		}
@@ -313,12 +267,18 @@ func (d *Driver) Save(
 
 	rollback = false
 
-	for i, frm := range frames {
-		err = bitBatch[i].Send(frm, d.client)
-		if err != nil {
-			return err
-		}
+	err = d.savePilosa(ctx, colID)
+	if err != nil {
+		return err
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"duration": time.Since(start),
+		"pilosa":   d.timePilosa,
+		"mapping":  d.timeMapping,
+		"rows":     colID,
+		"id":       i.ID(),
+	}).Debugf("finished pilosa indexing")
 
 	return index.RemoveProcessingFile(path)
 }
@@ -336,6 +296,98 @@ func (d *Driver) Delete(idx sql.Index) error {
 	}
 
 	return d.client.DeleteIndex(index)
+}
+
+func (d *Driver) saveBatch(ctx *sql.Context, m *mapping, colID uint64) error {
+	err := d.savePilosa(ctx, colID)
+	if err != nil {
+		return err
+	}
+
+	return d.saveMapping(ctx, m, colID, true)
+}
+
+func (d *Driver) savePilosa(ctx *sql.Context, colID uint64) error {
+	span, _ := ctx.Span("pilosa.Save.bitBatch",
+		opentracing.Tag{Key: "cols", Value: colID},
+		opentracing.Tag{Key: "frames", Value: len(d.frames)},
+	)
+	defer span.Finish()
+
+	start := time.Now()
+
+	for i, frm := range d.frames {
+		err := d.client.ImportFrame(frm, d.bitBatches[i])
+		if err != nil {
+			span.LogKV("error", err)
+			return err
+		}
+
+		d.bitBatches[i].Clean()
+	}
+
+	d.timePilosa += time.Since(start)
+
+	return nil
+}
+
+func (d *Driver) saveMapping(
+	ctx *sql.Context,
+	m *mapping,
+	colID uint64,
+	cont bool,
+) error {
+	span, _ := ctx.Span("pilosa.Save.mapping",
+		opentracing.Tag{Key: "cols", Value: colID},
+		opentracing.Tag{Key: "continues", Value: cont},
+	)
+	defer span.Finish()
+
+	start := time.Now()
+
+	err := m.commit(cont)
+	if err != nil {
+		span.LogKV("error", err)
+		return err
+	}
+
+	d.timeMapping += time.Since(start)
+
+	return nil
+}
+
+type bitBatch struct {
+	size uint64
+	bits []pilosa.Bit
+	pos  uint64
+}
+
+func newBitBatch(size uint64) *bitBatch {
+	b := &bitBatch{size: size}
+	b.Clean()
+
+	return b
+}
+
+func (b *bitBatch) Clean() {
+	b.bits = make([]pilosa.Bit, 0, b.size)
+	b.pos = 0
+}
+
+func (b *bitBatch) Add(row, col uint64) {
+	b.bits = append(b.bits, pilosa.Bit{
+		RowID:    row,
+		ColumnID: col,
+	})
+}
+
+func (b *bitBatch) NextRecord() (pilosa.Record, error) {
+	if b.pos >= uint64(len(b.bits)) {
+		return nil, io.EOF
+	}
+
+	b.pos++
+	return b.bits[b.pos-1], nil
 }
 
 func indexName(db, table, id string) string {

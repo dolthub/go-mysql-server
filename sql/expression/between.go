@@ -42,9 +42,6 @@ func (b *Between) Resolved() bool {
 
 // Eval implements the Expression interface.
 func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.Between")
-	defer span.Finish()
-
 	typ := b.Val.Type()
 	val, err := b.Val.Eval(ctx, row)
 	if err != nil {

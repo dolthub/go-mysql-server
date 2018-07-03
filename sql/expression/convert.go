@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/spf13/cast"
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -91,9 +90,6 @@ func (c *Convert) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 
 // Eval implements the Expression interface.
 func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.Convert", opentracing.Tag{Key: "type", Value: c.castToType})
-	defer span.Finish()
-
 	val, err := c.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err

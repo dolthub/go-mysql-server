@@ -38,9 +38,6 @@ func (f *ArrayLength) TransformUp(fn sql.TransformExprFunc) (sql.Expression, err
 
 // Eval implements the Expression interface.
 func (f *ArrayLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("function.ArrayLength")
-	defer span.Finish()
-
 	if !sql.IsArray(f.Child.Type()) {
 		return nil, sql.ErrInvalidType.New(f.Child.Type().Type().String())
 	}

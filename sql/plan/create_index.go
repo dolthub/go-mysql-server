@@ -139,14 +139,16 @@ func (c *CreateIndex) backgroundIndexCreate(
 	iter sql.IndexKeyValueIter,
 	done chan<- struct{},
 ) {
-	span, ctx := ctx.Span("plan.backgroundIndexCreate")
-	span.LogKV(
-		"index", index.ID(),
-		"table", index.Table(),
-		"driver", index.Driver(),
-	)
+	span, ctx := ctx.Span("plan.backgroundIndexCreate",
+		opentracing.Tags{
+			"index":  index.ID(),
+			"table":  index.Table(),
+			"driver": index.Driver(),
+		})
 
-	err := driver.Save(ctx, index, newLoggingKeyValueIter(span, log, iter))
+	l := log.WithField("id", index.ID())
+
+	err := driver.Save(ctx, index, newLoggingKeyValueIter(ctx, l, iter))
 	close(done)
 
 	if err != nil {
@@ -337,6 +339,7 @@ func getIndexKeyValueIter(ctx *sql.Context, table sql.Indexable, columns []strin
 }
 
 type loggingKeyValueIter struct {
+	ctx   *sql.Context
 	span  opentracing.Span
 	log   *logrus.Entry
 	iter  sql.IndexKeyValueIter
@@ -345,12 +348,12 @@ type loggingKeyValueIter struct {
 }
 
 func newLoggingKeyValueIter(
-	span opentracing.Span,
+	ctx *sql.Context,
 	log *logrus.Entry,
 	iter sql.IndexKeyValueIter,
 ) sql.IndexKeyValueIter {
 	return &loggingKeyValueIter{
-		span:  span,
+		ctx:   ctx,
 		log:   log,
 		iter:  iter,
 		start: time.Now(),
@@ -358,23 +361,40 @@ func newLoggingKeyValueIter(
 }
 
 func (i *loggingKeyValueIter) Next() ([]interface{}, []byte, error) {
+	if i.span == nil {
+		i.span, _ = i.ctx.Span("plan.backgroundIndexCreate.iterator",
+			opentracing.Tags{
+				"start": i.rows,
+			},
+		)
+	}
+
 	i.rows++
-	if i.rows%100 == 0 {
+	if i.rows%sql.IndexBatchSize == 0 {
 		duration := time.Since(i.start)
 
-		i.log.WithField("duration", duration).
-			Debugf("still creating index: %d rows saved so far", i.rows)
+		i.log.WithFields(logrus.Fields{
+			"duration": duration,
+			"rows":     i.rows,
+		}).Debugf("still creating index")
 
-		i.span.LogFields(
-			otlog.String("event", "saved rows"),
-			otlog.Uint64("rows", i.rows),
-			otlog.String("duration", duration.String()),
-		)
+		if i.span != nil {
+			i.span.LogKV("duration", duration.String())
+			i.span.Finish()
+			i.span = nil
+		}
 
 		i.start = time.Now()
 	}
 
-	return i.iter.Next()
+	val, loc, err := i.iter.Next()
+	if err != nil {
+		i.span.LogKV("error", err)
+		i.span.Finish()
+		i.span = nil
+	}
+
+	return val, loc, err
 }
 
 func (i *loggingKeyValueIter) Close() error {

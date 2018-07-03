@@ -144,9 +144,6 @@ func NewEquals(left sql.Expression, right sql.Expression) *Equals {
 
 // Eval implements the Expression interface.
 func (e *Equals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.Equals")
-	defer span.Finish()
-
 	result, err := e.Compare(ctx, row)
 	if err != nil {
 		if ErrNilOperand.Is(err) {
@@ -190,9 +187,6 @@ func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
 
 // Eval implements the Expression interface.
 func (re *Regexp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.Regexp")
-	defer span.Finish()
-
 	if sql.IsText(re.Left().Type()) && sql.IsText(re.Right().Type()) {
 		return re.compareRegexp(ctx, row)
 	}
@@ -268,9 +262,6 @@ func NewGreaterThan(left sql.Expression, right sql.Expression) *GreaterThan {
 
 // Eval implements the Expression interface.
 func (gt *GreaterThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.GreaterThan")
-	defer span.Finish()
-
 	result, err := gt.Compare(ctx, row)
 	if err != nil {
 		if ErrNilOperand.Is(err) {
@@ -314,9 +305,6 @@ func NewLessThan(left sql.Expression, right sql.Expression) *LessThan {
 
 // Eval implements the expression interface.
 func (lt *LessThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.LessThan")
-	defer span.Finish()
-
 	result, err := lt.Compare(ctx, row)
 	if err != nil {
 		if ErrNilOperand.Is(err) {
@@ -361,9 +349,6 @@ func NewGreaterThanOrEqual(left sql.Expression, right sql.Expression) *GreaterTh
 
 // Eval implements the Expression interface.
 func (gte *GreaterThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.GreaterThanOrEqual")
-	defer span.Finish()
-
 	result, err := gte.Compare(ctx, row)
 	if err != nil {
 		if ErrNilOperand.Is(err) {
@@ -408,9 +393,6 @@ func NewLessThanOrEqual(left sql.Expression, right sql.Expression) *LessThanOrEq
 
 // Eval implements the Expression interface.
 func (lte *LessThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.LessThanOrEqual")
-	defer span.Finish()
-
 	result, err := lte.Compare(ctx, row)
 	if err != nil {
 		if ErrNilOperand.Is(err) {
@@ -463,9 +445,6 @@ func NewIn(left sql.Expression, right sql.Expression) *In {
 
 // Eval implements the Expression interface.
 func (in *In) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.In")
-	defer span.Finish()
-
 	typ := in.Left().Type()
 	leftElems := sql.NumColumns(typ)
 	left, err := in.Left().Eval(ctx, row)
@@ -554,9 +533,6 @@ func NewNotIn(left sql.Expression, right sql.Expression) *NotIn {
 
 // Eval implements the Expression interface.
 func (in *NotIn) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.NotIn")
-	defer span.Finish()
-
 	typ := in.Left().Type()
 	leftElems := sql.NumColumns(typ)
 	left, err := in.Left().Eval(ctx, row)

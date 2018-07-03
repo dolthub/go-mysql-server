@@ -23,9 +23,6 @@ func (e *Not) Type() sql.Type {
 
 // Eval implements the Expression interface.
 func (e *Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.Not")
-	defer span.Finish()
-
 	v, err := e.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
