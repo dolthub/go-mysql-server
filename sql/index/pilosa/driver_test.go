@@ -81,6 +81,11 @@ func withoutMapping(a sql.Index) sql.Index {
 	return a
 }
 
+type logLoc struct {
+	loc []byte
+	err error
+}
+
 func TestSaveAndLoad(t *testing.T) {
 	if !dockerIsRunning {
 		t.Skipf("Skip TestSaveAndLoad: %s", dockerCmdOutput)
@@ -122,12 +127,27 @@ func TestSaveAndLoad(t *testing.T) {
 		lit, err := lookup.Values()
 		require.NoError(err)
 
+		var logs []logLoc
 		for i := 0; ; i++ {
 			loc, err := lit.Next()
-			t.Logf("[%d] values: %v location: %x loc: %x err: %v\n", i, r.values, r.location, loc, err)
+
+			// make a copy of location to save in the log
+			loc2 := make([]byte, len(loc))
+			copy(loc2, loc)
+			logs = append(logs, logLoc{loc2, err})
 
 			if err == io.EOF {
-				require.Truef(i > 0, "No data for r.values: %v\tr.location: %x", r.values, r.location)
+				if i == 0 {
+					for j, l := range logs {
+						t.Logf("[%d] values: %v location: %x loc: %x err: %v\n",
+							j, r.values, r.location, l.loc, l.err)
+					}
+
+					t.Errorf("No data for r.values: %v\tr.location: %x",
+						r.values, r.location)
+					t.FailNow()
+				}
+
 				break
 			}
 
@@ -264,7 +284,8 @@ func TestPilosaHiccup(t *testing.T) {
 	require.Equal(1, len(indexes))
 	assertEqualIndexes(t, sqlIdx, indexes[0])
 
-	for i, r := range it.records {
+	var logs []logLoc
+	for _, r := range it.records {
 		var lookup sql.IndexLookup
 		// retry to get the next location - pilosa should recover
 		err = retry(ctx, func() error {
@@ -280,13 +301,26 @@ func TestPilosaHiccup(t *testing.T) {
 		require.NoError(err)
 
 		loc, err := lit.Next()
-		t.Logf("[%d] values: %v location: %x loc: %x err: %v\n", i, r.values, r.location, loc, err)
+
+		// make a copy of location to save in the log
+		loc2 := make([]byte, len(loc))
+		copy(loc2, loc)
+		logs = append(logs, logLoc{loc2, err})
+
 		if err == io.EOF {
 			break
 		}
 
 		require.NoError(err)
-		require.True(reflect.DeepEqual(r.location, loc), "Expected: %s\nGot: %v\n", hex.EncodeToString(r.location), hex.EncodeToString(loc))
+		if !reflect.DeepEqual(r.location, loc) {
+			for j, l := range logs {
+				t.Logf("[%d] values: %v location: %x loc: %x err: %v\n",
+					j, r.values, r.location, l.loc, l.err)
+			}
+			t.Errorf("Expected: %s\nGot: %v\n",
+				hex.EncodeToString(r.location), hex.EncodeToString(loc))
+			t.FailNow()
+		}
 
 		err = lit.Close()
 		require.NoError(err)
