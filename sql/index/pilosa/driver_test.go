@@ -214,9 +214,13 @@ func TestLoadCorruptedIndex(t *testing.T) {
 }
 
 func TestPilosaHiccup(t *testing.T) {
-	if !dockerIsRunning {
+	switch {
+	case !dockerIsRunning:
 		t.Skipf("Skip TestPilosaHiccup: %s", dockerCmdOutput)
+	case os.Getenv("TRAVIS") != "true":
+		t.Skipf("Skip TestPilosaHiccup: not running in travis")
 	}
+
 	require := require.New(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
