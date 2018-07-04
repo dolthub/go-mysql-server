@@ -81,6 +81,11 @@ func withoutMapping(a sql.Index) sql.Index {
 	return a
 }
 
+type logLoc struct {
+	loc []byte
+	err error
+}
+
 func TestSaveAndLoad(t *testing.T) {
 	if !dockerIsRunning {
 		t.Skipf("Skip TestSaveAndLoad: %s", dockerCmdOutput)
@@ -122,12 +127,27 @@ func TestSaveAndLoad(t *testing.T) {
 		lit, err := lookup.Values()
 		require.NoError(err)
 
+		var logs []logLoc
 		for i := 0; ; i++ {
 			loc, err := lit.Next()
-			t.Logf("[%d] values: %v location: %x loc: %x err: %v\n", i, r.values, r.location, loc, err)
+
+			// make a copy of location to save in the log
+			loc2 := make([]byte, len(loc))
+			copy(loc2, loc)
+			logs = append(logs, logLoc{loc2, err})
 
 			if err == io.EOF {
-				require.Truef(i > 0, "No data for r.values: %v\tr.location: %x", r.values, r.location)
+				if i == 0 {
+					for j, l := range logs {
+						t.Logf("[%d] values: %v location: %x loc: %x err: %v\n",
+							j, r.values, r.location, l.loc, l.err)
+					}
+
+					t.Errorf("No data for r.values: %v\tr.location: %x",
+						r.values, r.location)
+					t.FailNow()
+				}
+
 				break
 			}
 
@@ -211,82 +231,6 @@ func TestLoadCorruptedIndex(t *testing.T) {
 	_, err = os.Stat(path)
 	require.Error(err)
 	require.True(os.IsNotExist(err))
-}
-
-func TestPilosaHiccup(t *testing.T) {
-	if !dockerIsRunning {
-		t.Skipf("Skip TestPilosaHiccup: %s", dockerCmdOutput)
-	}
-	require := require.New(t)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	db, table, id := "db_name", "table_name", "index_id"
-	expressions := makeExpressions("lang", "hash")
-	path, err := ioutil.TempDir(os.TempDir(), "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(path)
-
-	d := NewDriver(path, newClientWithTimeout(time.Second))
-	sqlIdx, err := d.Create(db, table, id, expressions, nil)
-	require.NoError(err)
-
-	it := &testIndexKeyValueIter{
-		offset:      0,
-		total:       64,
-		expressions: expressions,
-		location:    offsetLocation,
-	}
-
-	// restart pilosa container every second
-	go pilosaHiccup(ctx, time.Second)
-
-	// retry save index - if pilosa failed, reset iterator and start over
-	err = retry(ctx, func() error {
-		if e := d.Save(sql.NewContext(ctx), sqlIdx, it); e != nil {
-			t.Logf("Save err: %s", e)
-			// reset iterator!
-			it.Close()
-			return e
-		}
-		return nil
-	})
-	require.NoError(err)
-
-	// load indexes - it doesn't require pilosa, yet.
-	indexes, err := d.LoadAll(db, table)
-	require.NoError(err)
-	require.Equal(1, len(indexes))
-	assertEqualIndexes(t, sqlIdx, indexes[0])
-
-	for i, r := range it.records {
-		var lookup sql.IndexLookup
-		// retry to get the next location - pilosa should recover
-		err = retry(ctx, func() error {
-			lookup, err = sqlIdx.Get(r.values...)
-			if err != nil {
-				t.Logf("Get err: %s", err)
-			}
-			return err
-		})
-		require.NoError(err)
-
-		lit, err := lookup.Values()
-		require.NoError(err)
-
-		loc, err := lit.Next()
-		t.Logf("[%d] values: %v location: %x loc: %x err: %v\n", i, r.values, r.location, loc, err)
-		if err == io.EOF {
-			break
-		}
-
-		require.NoError(err)
-		require.True(reflect.DeepEqual(r.location, loc), "Expected: %s\nGot: %v\n", hex.EncodeToString(r.location), hex.EncodeToString(loc))
-
-		err = lit.Close()
-		require.NoError(err)
-	}
 }
 
 func TestDelete(t *testing.T) {
