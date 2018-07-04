@@ -449,8 +449,10 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 		return n, nil
 	}
 
+	var transformed sql.Node
+	var colsToUnresolve = map[string][]string{}
 	a.Log("resolving natural joins, node of type %T", n)
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	node, err := n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
 		if n.Resolved() {
 			return n, nil
@@ -501,6 +503,7 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 
 					found = true
 					seen[lcol.Name] = struct{}{}
+					colsToUnresolve[lcol.Name] = []string{lcol.Source, rcol.Source}
 					break
 				}
 			}
@@ -531,14 +534,82 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 
 		projections := append(append(common, left...), right...)
 
-		return plan.NewProject(
+		transformed = plan.NewProject(
 			projections,
 			plan.NewInnerJoin(
 				join.Left,
 				join.Right,
 				expression.JoinAnd(conditions...),
 			),
-		), nil
+		)
+
+		return transformed, nil
+	})
+
+	if err != nil || transformed == nil {
+		return node, err
+	}
+
+	var nodesToUnresolve []sql.Node
+	plan.Inspect(node, func(n sql.Node) bool {
+		if n == transformed || n == nil {
+			return false
+		}
+
+		nodesToUnresolve = append(nodesToUnresolve, n)
+		return true
+	})
+
+	if len(nodesToUnresolve) == 0 {
+		return node, err
+	}
+
+	return node.TransformUp(func(node sql.Node) (sql.Node, error) {
+		var found bool
+		for _, nu := range nodesToUnresolve {
+			if reflect.DeepEqual(nu, node) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return node, nil
+		}
+
+		expressioner, ok := node.(sql.Expressioner)
+		if !ok {
+			return node, nil
+		}
+
+		return expressioner.TransformExpressions(func(e sql.Expression) (sql.Expression, error) {
+			var col, table string
+			switch e := e.(type) {
+			case *expression.GetField:
+				col, table = e.Name(), e.Table()
+			case *expression.UnresolvedColumn:
+				col, table = e.Name(), e.Table()
+			default:
+				return e, nil
+			}
+
+			sources, ok := colsToUnresolve[col]
+			if !ok {
+				return e, nil
+			}
+
+			correctSource := sources[0]
+			wrongSource := sources[1]
+
+			if table != wrongSource {
+				return e, nil
+			}
+
+			return expression.NewUnresolvedQualifiedColumn(
+				correctSource,
+				col,
+			), nil
+		})
 	})
 }
 
