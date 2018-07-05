@@ -57,6 +57,7 @@ We are continuously adding more functionality to go-mysql-server. We support a s
 - `ARRAY_LENGTH(json)`: If the json representation is an array, this function returns its size.
 - `SPLIT(str,sep)`: Receives a string and a separator and returns the parts of the string split by the separator as a JSON array of strings.
 - `CONCAT(...)`: Concatenate any group of fields into a single string.
+
 ## Example
 
 `go-mysql-server` contains a SQL engine and server implementation. So, if you want to start a server, first instantiate the engine and pass your `sql.Database` implementation.
@@ -157,6 +158,7 @@ SELECT email FROM mytable WHERE name = 'Evil Bob'
 | evilbob@gmail.com |
 +-------------------+
 ```
+
 ## Custom data source implementation
 
 To be able to create your own data source implementation you need to implement the following interfaces:
@@ -173,6 +175,15 @@ To be able to create your own data source implementation you need to implement t
 - If you need some custom tree modifications, you can also implement your own `analyzer.Rules`.
 
 You can see a really simple data source implementation on our `mem` package.
+
+## Indexes
+
+`go-mysql-server` exposes a series of interfaces to allow you to implement your own indexes so you can speedup your queries.
+
+Taking a look at the main [index interface](https://github.com/src-d/go-mysql-server/blob/master/sql/index.go#L35), you must note a couple of constraints:
+
+- This abstraction lets you create an index for multiple columns (one or more) or for **only one** expression (e.g. function applied on multiple columns).
+- If you want to index an expression that is not a column you will only be able to index **one and only one** expression at a time.
 
 ## Powered by go-mysql-server
 
