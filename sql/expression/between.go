@@ -19,7 +19,7 @@ func NewBetween(val, lower, upper sql.Expression) *Between {
 }
 
 func (b *Between) String() string {
-	return fmt.Sprintf("BETWEEN(%s, %s, %s)", b.Val, b.Lower, b.Upper)
+	return fmt.Sprintf("%s BETWEEN %s AND %s", b.Val, b.Lower, b.Upper)
 }
 
 // Children implements the Expression interface.
