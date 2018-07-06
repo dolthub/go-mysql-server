@@ -39,11 +39,11 @@ func TestDeleteIndex(t *testing.T) {
 		hashes = append(hashes, exh)
 	}
 
-	done, err := catalog.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: hashes})
+	done, ready, err := catalog.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: hashes})
 	require.NoError(err)
 	close(done)
+	<-ready
 
-	time.Sleep(50 * time.Millisecond)
 	idx := catalog.Index("foo", "idx")
 	require.NotNil(idx)
 	catalog.ReleaseIndex(idx)

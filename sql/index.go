@@ -467,9 +467,12 @@ func exprListsEqual(a, b []ExpressionHash) bool {
 // expression or id while the other is still being created.
 // When something is sent through the returned channel, it means the index has
 // finished it's creation and will be marked as ready.
-func (r *IndexRegistry) AddIndex(idx Index) (chan<- struct{}, error) {
+// Another channel is returned to notify the user when the index is ready.
+func (r *IndexRegistry) AddIndex(
+	idx Index,
+) (created chan<- struct{}, ready <-chan struct{}, err error) {
 	if err := r.validateIndexToAdd(idx); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	r.mut.Lock()
@@ -479,15 +482,17 @@ func (r *IndexRegistry) AddIndex(idx Index) (chan<- struct{}, error) {
 	r.indexOrder = append(r.indexOrder, key)
 	r.mut.Unlock()
 
-	var created = make(chan struct{})
+	var _created = make(chan struct{})
+	var _ready = make(chan struct{})
 	go func() {
-		<-created
+		<-_created
 		r.mut.Lock()
 		defer r.mut.Unlock()
 		r.setStatus(idx, IndexReady)
+		close(_ready)
 	}()
 
-	return created, nil
+	return _created, _ready, nil
 }
 
 // DeleteIndex deletes an index from the registry by its id. First, it marks
