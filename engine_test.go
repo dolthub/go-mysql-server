@@ -13,7 +13,6 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/index/pilosa"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/parse"
 	"gopkg.in/src-d/go-mysql-server.v0/test"
@@ -715,27 +714,11 @@ func TestIndexes(t *testing.T) {
 	require.NoError(os.MkdirAll(tmpDir, 0644))
 	e.Catalog.RegisterIndexDriver(pilosa.NewIndexDriver(tmpDir))
 
-	db, err := e.Catalog.Database("mydb")
+	_, _, err = e.Query(sql.NewEmptyContext(), "CREATE INDEX myidx ON mytable (i) WITH (async = false)")
 	require.NoError(err)
-	table := db.Tables()["mytable"].(sql.Indexable)
-
-	driver := e.Catalog.IndexDriver(pilosa.DriverID)
-	conf := make(map[string]string)
-	expr := sql.NewExpressionHash(expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false))
-	idx, err := driver.Create("mydb", "mytable", "myidx", []sql.ExpressionHash{expr}, conf)
-	require.NoError(err)
-
-	created, err := e.Catalog.AddIndex(idx)
-	require.NoError(err)
-
-	iter, err := table.IndexKeyValueIter(sql.NewEmptyContext(), []string{"i"})
-	require.NoError(err)
-
-	require.NoError(driver.Save(sql.NewEmptyContext(), idx, iter))
-	created <- struct{}{}
 
 	defer func() {
-		done, err := e.Catalog.DeleteIndex("foo", "myidx", true)
+		done, err := e.Catalog.DeleteIndex("mydb", "myidx", true)
 		require.NoError(err)
 		<-done
 	}()

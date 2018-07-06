@@ -57,7 +57,60 @@ func TestCreateIndex(t *testing.T) {
 
 	found := false
 	for _, span := range tracer.Spans {
-		if span == "plan.backgroundIndexCreate" {
+		if span == "plan.createIndex" {
+			found = true
+			break
+		}
+	}
+
+	require.True(found)
+}
+
+func TestCreateIndexSync(t *testing.T) {
+	require := require.New(t)
+
+	table := &indexableTable{mem.NewTable("foo", sql.Schema{
+		{Name: "a", Source: "foo"},
+		{Name: "b", Source: "foo"},
+		{Name: "c", Source: "foo"},
+	})}
+
+	driver := new(mockDriver)
+	catalog := sql.NewCatalog()
+	catalog.RegisterIndexDriver(driver)
+	db := mem.NewDatabase("foo")
+	db.AddTable("foo", table)
+	catalog.Databases = append(catalog.Databases, db)
+
+	exprs := []sql.Expression{
+		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
+	}
+
+	ci := NewCreateIndex(
+		"idx", table, exprs, "mock",
+		map[string]string{"async": "false"},
+	)
+	ci.Catalog = catalog
+	ci.CurrentDatabase = "foo"
+
+	tracer := new(test.MemTracer)
+	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer))
+	_, err := ci.RowIter(ctx)
+	require.NoError(err)
+
+	require.Len(driver.deleted, 0)
+	require.Equal([]string{"idx"}, driver.saved)
+	idx := catalog.IndexRegistry.Index("foo", "idx")
+	require.NotNil(idx)
+	require.Equal(&mockIndex{"foo", "foo", "idx", []sql.ExpressionHash{
+		sql.NewExpressionHash(expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true)),
+		sql.NewExpressionHash(expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true)),
+	}}, idx)
+
+	found := false
+	for _, span := range tracer.Spans {
+		if span == "plan.createIndex" {
 			found = true
 			break
 		}

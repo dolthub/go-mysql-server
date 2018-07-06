@@ -4,7 +4,6 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -53,7 +52,7 @@ func TestAddIndex(t *testing.T) {
 		table:    "foo",
 	}
 
-	done, err := r.AddIndex(idx)
+	done, ready, err := r.AddIndex(idx)
 	require.NoError(err)
 
 	i := r.Index("foo", "foo")
@@ -61,15 +60,15 @@ func TestAddIndex(t *testing.T) {
 
 	done <- struct{}{}
 
-	<-time.After(25 * time.Millisecond)
+	<-ready
 	i = r.Index("foo", "foo")
 	require.True(r.CanUseIndex(i))
 
-	_, err = r.AddIndex(idx)
+	_, _, err = r.AddIndex(idx)
 	require.Error(err)
 	require.True(ErrIndexIDAlreadyRegistered.Is(err))
 
-	_, err = r.AddIndex(&dummyIdx{
+	_, _, err = r.AddIndex(&dummyIdx{
 		id:       "another",
 		expr:     []Expression{new(dummyExpr)},
 		database: "foo",
@@ -163,12 +162,11 @@ func TestExpressionsWithIndexes(t *testing.T) {
 	}
 
 	for _, idx := range indexes {
-		done, err := r.AddIndex(idx)
+		done, ready, err := r.AddIndex(idx)
 		require.NoError(err)
 		close(done)
+		<-ready
 	}
-
-	time.Sleep(50 * time.Millisecond)
 
 	exprs := r.ExpressionsWithIndexes(
 		"foo",

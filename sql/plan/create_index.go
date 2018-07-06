@@ -33,6 +33,7 @@ type CreateIndex struct {
 	Config          map[string]string
 	Catalog         *sql.Catalog
 	CurrentDatabase string
+	Async           bool
 }
 
 // NewCreateIndex creates a new CreateIndex node.
@@ -49,6 +50,7 @@ func NewCreateIndex(
 		Exprs:  exprs,
 		Driver: driver,
 		Config: config,
+		Async:  config["async"] != "false",
 	}
 }
 
@@ -114,7 +116,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	done, err := c.Catalog.AddIndex(index)
+	created, ready, err := c.Catalog.AddIndex(index)
 	if err != nil {
 		return nil, err
 	}
@@ -124,22 +126,31 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		"driver": index.Driver(),
 	})
 
-	go c.backgroundIndexCreate(ctx, log, driver, index, iter, done)
+	createIndex := func() {
+		c.createIndex(ctx, log, driver, index, iter, created, ready)
+	}
 
-	log.Info("starting to save the index")
+	log.WithField("async", c.Async).Info("starting to save the index")
+
+	if c.Async {
+		go createIndex()
+	} else {
+		createIndex()
+	}
 
 	return sql.RowsToRowIter(), nil
 }
 
-func (c *CreateIndex) backgroundIndexCreate(
+func (c *CreateIndex) createIndex(
 	ctx *sql.Context,
 	log *logrus.Entry,
 	driver sql.IndexDriver,
 	index sql.Index,
 	iter sql.IndexKeyValueIter,
 	done chan<- struct{},
+	ready <-chan struct{},
 ) {
-	span, ctx := ctx.Span("plan.backgroundIndexCreate",
+	span, ctx := ctx.Span("plan.createIndex",
 		opentracing.Tags{
 			"index":  index.ID(),
 			"table":  index.Table(),
@@ -172,6 +183,7 @@ func (c *CreateIndex) backgroundIndexCreate(
 			<-deleted
 		}
 	} else {
+		<-ready
 		span.Finish()
 		log.Info("index successfully created")
 	}
@@ -362,7 +374,7 @@ func newLoggingKeyValueIter(
 
 func (i *loggingKeyValueIter) Next() ([]interface{}, []byte, error) {
 	if i.span == nil {
-		i.span, _ = i.ctx.Span("plan.backgroundIndexCreate.iterator",
+		i.span, _ = i.ctx.Span("plan.createIndex.iterator",
 			opentracing.Tags{
 				"start": i.rows,
 			},
