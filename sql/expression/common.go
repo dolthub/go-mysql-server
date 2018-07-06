@@ -4,6 +4,16 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
+// IsUnary returns whether the expression is unary or not.
+func IsUnary(e sql.Expression) bool {
+	return len(e.Children()) == 1
+}
+
+// IsBinary returns whether the expression is binary or not.
+func IsBinary(e sql.Expression) bool {
+	return len(e.Children()) == 2
+}
+
 // UnaryExpression is an expression that has only one children.
 type UnaryExpression struct {
 	Child sql.Expression

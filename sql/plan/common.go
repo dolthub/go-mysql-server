@@ -2,6 +2,16 @@ package plan // import "gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 
 import "gopkg.in/src-d/go-mysql-server.v0/sql"
 
+// IsUnary returns whether the node is unary or not.
+func IsUnary(node sql.Node) bool {
+	return len(node.Children()) == 1
+}
+
+// IsBinary returns whether the node is binary or not.
+func IsBinary(node sql.Node) bool {
+	return len(node.Children()) == 2
+}
+
 // UnaryNode is a node that has only one children.
 type UnaryNode struct {
 	Child sql.Node
