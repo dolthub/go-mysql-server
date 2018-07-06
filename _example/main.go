@@ -13,7 +13,7 @@ import (
 // Example of how to implement a MySQL server based on a Engine:
 //
 // ```
-// > mysql --host=127.0.0.1 --port=5123 -u user1 -ppassword1 db -e "SELECT * FROM mytable"
+// > mysql --host=127.0.0.1 --port=5123 -u user -ppass db -e "SELECT * FROM mytable"
 // +----------+-------------------+-------------------------------+---------------------+
 // | name     | email             | phone_numbers                 | created_at          |
 // +----------+-------------------+-------------------------------+---------------------+
@@ -24,7 +24,7 @@ import (
 // +----------+-------------------+-------------------------------+---------------------+
 // ```
 func main() {
-	driver := sqle.New()
+	driver := sqle.NewDefault()
 	driver.AddDatabase(createTestDatabase())
 
 	auth := mysql.NewAuthServerStatic()
