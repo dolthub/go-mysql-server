@@ -796,15 +796,12 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			}
 
 			var schema sql.Schema
-			switch n := n.(type) {
 			// If expressioner and unary node we must take the
 			// child's schema to correctly select the indexes
 			// in the row is going to be evaluated in this node
-			case *plan.Project, *plan.Filter, *plan.GroupBy, *plan.Sort:
+			if plan.IsUnary(n) {
 				schema = n.Children()[0].Schema()
-			case *plan.CreateIndex:
-				schema = n.Table.Schema()
-			default:
+			} else {
 				schema = n.Schema()
 			}
 

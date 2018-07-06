@@ -100,3 +100,19 @@ func collectRows(t *testing.T, node sql.Node) []sql.Row {
 		rows = append(rows, row)
 	}
 }
+
+func TestIsUnary(t *testing.T) {
+	require := require.New(t)
+	table := mem.NewTable("foo", nil)
+
+	require.True(IsUnary(NewFilter(nil, table)))
+	require.False(IsUnary(NewCrossJoin(table, table)))
+}
+
+func TestIsBinary(t *testing.T) {
+	require := require.New(t)
+	table := mem.NewTable("foo", nil)
+
+	require.False(IsBinary(NewFilter(nil, table)))
+	require.True(IsBinary(NewCrossJoin(table, table)))
+}

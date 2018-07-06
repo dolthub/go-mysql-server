@@ -196,8 +196,7 @@ type IndexableTable struct {
 	Index   sql.IndexLookup
 }
 
-// NewPushdownProjectionAndFiltersTable creates a new
-// PushdownProjectionAndFiltersTable node.
+// NewIndexableTable creates a new IndexableTable node.
 func NewIndexableTable(
 	columns []sql.Expression,
 	filters []sql.Expression,
