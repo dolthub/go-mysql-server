@@ -728,6 +728,43 @@ func TestResolveStar(t *testing.T) {
 				table,
 			),
 		},
+		{ // note that this behaviour deviates from MySQL
+			"star after some expressions",
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewUnresolvedColumn("foo"),
+					expression.NewStar(),
+				},
+				table,
+			),
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewUnresolvedColumn("foo"),
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+				},
+				table,
+			),
+		},
+		{ // note that this behaviour deviates from MySQL
+			"unqualified star used multiple times",
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewStar(),
+					expression.NewStar(),
+				},
+				table,
+			),
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+				},
+				table,
+			),
+		},
 	}
 
 	for _, tt := range testCases {
