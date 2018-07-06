@@ -336,24 +336,6 @@ func (m *mapping) getBucket(
 	return bucket, err
 }
 
-func (m *mapping) getLocationN(indexName string) (int, error) {
-	var n int
-	err := m.query(func() error {
-		err := m.transaction(false, func(tx *bolt.Tx) error {
-			b := tx.Bucket([]byte(indexName))
-			if b == nil {
-				return fmt.Errorf("Bucket %s not found", indexName)
-			}
-
-			n = b.Stats().KeyN
-			return nil
-		})
-
-		return err
-	})
-	return n, err
-}
-
 func (m *mapping) get(name string, key interface{}) ([]byte, error) {
 	var value []byte
 

@@ -53,11 +53,22 @@ func (idx *pilosaIndex) Get(keys ...interface{}) (sql.IndexLookup, error) {
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
 
+	schema, err := idx.client.Schema()
+	if err != nil {
+		return nil, err
+	}
+
+	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
+	if err != nil {
+		return nil, err
+	}
+
 	return &indexLookup{
-		indexName:   indexName(idx.Database(), idx.Table(), idx.ID()),
+		id:          idx.id,
 		mapping:     idx.mapping,
-		keys:        keys,
+		index:       index,
 		client:      idx.client,
+		keys:        keys,
 		expressions: idx.expressions,
 	}, nil
 }
@@ -76,7 +87,7 @@ func (idx *pilosaIndex) Has(key ...interface{}) (bool, error) {
 	// For how many (maximum) keys will be asked by one function call?
 	for i := 0; i < n; i++ {
 		expr := idx.expressions[i]
-		name := frameName(expr)
+		name := frameName(idx.ID(), expr)
 
 		val, err := idx.mapping.get(name, key[i])
 		if err != nil || val == nil {
@@ -116,10 +127,21 @@ func (idx *pilosaIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLook
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
 
+	schema, err := idx.client.Schema()
+	if err != nil {
+		return nil, err
+	}
+
+	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
+	if err != nil {
+		return nil, err
+	}
+
 	return &ascendLookup{
 		filteredLookup: &filteredLookup{
-			indexName:   indexName(idx.Database(), idx.Table(), idx.ID()),
+			id:          idx.ID(),
 			mapping:     idx.mapping,
+			index:       index,
 			client:      idx.client,
 			expressions: idx.expressions,
 		},
@@ -133,10 +155,21 @@ func (idx *pilosaIndex) AscendLessThan(keys ...interface{}) (sql.IndexLookup, er
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
 
+	schema, err := idx.client.Schema()
+	if err != nil {
+		return nil, err
+	}
+
+	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
+	if err != nil {
+		return nil, err
+	}
+
 	return &ascendLookup{
 		filteredLookup: &filteredLookup{
-			indexName:   indexName(idx.Database(), idx.Table(), idx.ID()),
+			id:          idx.ID(),
 			mapping:     idx.mapping,
+			index:       index,
 			client:      idx.client,
 			expressions: idx.expressions,
 		},
@@ -154,10 +187,21 @@ func (idx *pilosaIndex) AscendRange(greaterOrEqual, lessThan []interface{}) (sql
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(lessThan))
 	}
 
+	schema, err := idx.client.Schema()
+	if err != nil {
+		return nil, err
+	}
+
+	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
+	if err != nil {
+		return nil, err
+	}
+
 	return &ascendLookup{
 		filteredLookup: &filteredLookup{
-			indexName:   indexName(idx.Database(), idx.Table(), idx.ID()),
+			id:          idx.ID(),
 			mapping:     idx.mapping,
+			index:       index,
 			client:      idx.client,
 			expressions: idx.expressions,
 		},
@@ -171,10 +215,21 @@ func (idx *pilosaIndex) DescendGreater(keys ...interface{}) (sql.IndexLookup, er
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
 
+	schema, err := idx.client.Schema()
+	if err != nil {
+		return nil, err
+	}
+
+	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
+	if err != nil {
+		return nil, err
+	}
+
 	return &descendLookup{
 		filteredLookup: &filteredLookup{
-			indexName:   indexName(idx.Database(), idx.Table(), idx.ID()),
+			id:          idx.ID(),
 			mapping:     idx.mapping,
+			index:       index,
 			client:      idx.client,
 			expressions: idx.expressions,
 			reverse:     true,
@@ -189,10 +244,21 @@ func (idx *pilosaIndex) DescendLessOrEqual(keys ...interface{}) (sql.IndexLookup
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
 
+	schema, err := idx.client.Schema()
+	if err != nil {
+		return nil, err
+	}
+
+	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
+	if err != nil {
+		return nil, err
+	}
+
 	return &descendLookup{
 		filteredLookup: &filteredLookup{
-			indexName:   indexName(idx.Database(), idx.Table(), idx.ID()),
+			id:          idx.ID(),
 			mapping:     idx.mapping,
+			index:       index,
 			client:      idx.client,
 			expressions: idx.expressions,
 			reverse:     true,
@@ -211,10 +277,21 @@ func (idx *pilosaIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sq
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(greaterThan))
 	}
 
+	schema, err := idx.client.Schema()
+	if err != nil {
+		return nil, err
+	}
+
+	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
+	if err != nil {
+		return nil, err
+	}
+
 	return &descendLookup{
 		filteredLookup: &filteredLookup{
-			indexName:   indexName(idx.Database(), idx.Table(), idx.ID()),
+			id:          idx.ID(),
 			mapping:     idx.mapping,
+			index:       index,
 			client:      idx.client,
 			expressions: idx.expressions,
 			reverse:     true,
@@ -225,30 +302,22 @@ func (idx *pilosaIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sq
 }
 
 type indexLookup struct {
+	id      string
+	mapping *mapping
+	index   *pilosa.Index
+	client  *pilosa.Client
+
 	keys        []interface{}
-	indexName   string
-	mapping     *mapping
-	client      *pilosa.Client
 	expressions []sql.ExpressionHash
 }
 
 func (l *indexLookup) Values() (sql.IndexValueIter, error) {
 	l.mapping.open()
 
-	schema, err := l.client.Schema()
-	if err != nil {
-		return nil, err
-	}
-
-	index, err := schema.Index(l.indexName)
-	if err != nil {
-		return nil, err
-	}
-
 	// Compute Intersection of bitmaps
 	var bitmaps []*pilosa.PQLBitmapQuery
 	for i := 0; i < len(l.keys); i++ {
-		frm, err := index.Frame(frameName(l.expressions[i]))
+		frm, err := l.index.Frame(frameName(l.id, l.expressions[i]))
 		if err != nil {
 			return nil, err
 		}
@@ -266,10 +335,10 @@ func (l *indexLookup) Values() (sql.IndexValueIter, error) {
 	}
 
 	if len(bitmaps) == 0 {
-		return &indexValueIter{mapping: l.mapping, indexName: l.indexName}, nil
+		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
 	}
 
-	resp, err := l.client.Query(index.Intersect(bitmaps...))
+	resp, err := l.client.Query(l.index.Intersect(bitmaps...))
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +348,7 @@ func (l *indexLookup) Values() (sql.IndexValueIter, error) {
 	}
 
 	if resp.Result() == nil {
-		return &indexValueIter{mapping: l.mapping, indexName: l.indexName}, nil
+		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
 	}
 
 	bits := resp.Result().Bitmap().Bits
@@ -287,14 +356,16 @@ func (l *indexLookup) Values() (sql.IndexValueIter, error) {
 		total:     uint64(len(bits)),
 		bits:      bits,
 		mapping:   l.mapping,
-		indexName: l.indexName,
+		indexName: l.index.Name(),
 	}, nil
 }
 
 type filteredLookup struct {
-	indexName   string
-	mapping     *mapping
-	client      *pilosa.Client
+	id      string
+	mapping *mapping
+	index   *pilosa.Index
+	client  *pilosa.Client
+
 	expressions []sql.ExpressionHash
 	reverse     bool
 }
@@ -303,20 +374,10 @@ func (l *filteredLookup) values(filter func(int, []byte) (bool, error)) (sql.Ind
 	l.mapping.open()
 	defer l.mapping.close()
 
-	schema, err := l.client.Schema()
-	if err != nil {
-		return nil, err
-	}
-
-	index, err := schema.Index(l.indexName)
-	if err != nil {
-		return nil, err
-	}
-
 	// Compute Intersection of bitmaps
 	var bitmaps []*pilosa.PQLBitmapQuery
 	for i := 0; i < len(l.expressions); i++ {
-		frm, err := index.Frame(frameName(l.expressions[i]))
+		frm, err := l.index.Frame(frameName(l.id, l.expressions[i]))
 		if err != nil {
 			return nil, err
 		}
@@ -334,10 +395,10 @@ func (l *filteredLookup) values(filter func(int, []byte) (bool, error)) (sql.Ind
 			bs = append(bs, frm.Bitmap(row))
 		}
 
-		bitmaps = append(bitmaps, index.Union(bs...))
+		bitmaps = append(bitmaps, l.index.Union(bs...))
 	}
 
-	resp, err := l.client.Query(index.Intersect(bitmaps...))
+	resp, err := l.client.Query(l.index.Intersect(bitmaps...))
 	if err != nil {
 		return nil, err
 	}
@@ -347,11 +408,11 @@ func (l *filteredLookup) values(filter func(int, []byte) (bool, error)) (sql.Ind
 	}
 
 	if resp.Result() == nil {
-		return &indexValueIter{mapping: l.mapping, indexName: l.indexName}, nil
+		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
 	}
 
 	bits := resp.Result().Bitmap().Bits
-	locations, err := l.mapping.sortedLocations(l.indexName, bits, l.reverse)
+	locations, err := l.mapping.sortedLocations(l.index.Name(), bits, l.reverse)
 	if err != nil {
 		return nil, err
 	}
