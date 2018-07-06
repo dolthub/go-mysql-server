@@ -1323,7 +1323,7 @@ func assignIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, erro
 		}
 
 		if indexes != nil {
-			indexes = indexesIntersection(indexes, result)
+			indexes = indexesIntersection(a, indexes, result)
 		} else {
 			indexes = result
 		}
@@ -1526,39 +1526,6 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 				result[table] = lookup
 			}
 		}
-	case *expression.Equals:
-		left, right := e.Left(), e.Right()
-		// if the form is SOMETHING = INDEXABLE EXPR, swap it, so it's INDEXABLE EXPR = SOMETING
-		if !isEvaluable(right) {
-			left, right = right, left
-		}
-
-		if !isEvaluable(left) && isEvaluable(right) {
-			idx := a.Catalog.IndexByExpression(a.CurrentDatabase, left)
-			if idx != nil {
-				// release the index if it was not used
-				defer func() {
-					if _, ok := result[idx.Table()]; !ok {
-						a.Catalog.ReleaseIndex(idx)
-					}
-				}()
-
-				value, err := right.Eval(sql.NewEmptyContext(), nil)
-				if err != nil {
-					return nil, err
-				}
-
-				lookup, err := idx.Get(value)
-				if err != nil {
-					return nil, err
-				}
-
-				result[idx.Table()] = &indexLookup{
-					lookup:  lookup,
-					indexes: []sql.Index{idx},
-				}
-			}
-		}
 	case *expression.In:
 		// Take the index of a SOMETHING IN SOMETHING expression only if:
 		// the right branch is evaluable and the indexlookup supports set
@@ -1608,6 +1575,58 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 				}
 			}
 		}
+	case *expression.Equals,
+		*expression.LessThan,
+		*expression.GreaterThan,
+		*expression.LessThanOrEqual,
+		*expression.GreaterThanOrEqual:
+		idx, lookup, err := getComparisonIndex(a, e.(expression.Comparer))
+		if err != nil || lookup == nil {
+			return result, err
+		}
+
+		result[idx.Table()] = &indexLookup{
+			indexes: []sql.Index{idx},
+			lookup:  lookup,
+		}
+	case *expression.Between:
+		if !isEvaluable(e.Val) && isEvaluable(e.Upper) && isEvaluable(e.Lower) {
+			idx := a.Catalog.IndexByExpression(a.CurrentDatabase, e.Val)
+			if idx != nil {
+				// release the index if it was not used
+				defer func() {
+					if _, ok := result[idx.Table()]; !ok {
+						a.Catalog.ReleaseIndex(idx)
+					}
+				}()
+
+				upper, err := e.Upper.Eval(sql.NewEmptyContext(), nil)
+				if err != nil {
+					return nil, err
+				}
+
+				lower, err := e.Lower.Eval(sql.NewEmptyContext(), nil)
+				if err != nil {
+					return nil, err
+				}
+
+				lookup, err := betweenIndexLookup(
+					idx,
+					[]interface{}{upper},
+					[]interface{}{lower},
+				)
+				if err != nil {
+					return nil, err
+				}
+
+				if lookup != nil {
+					result[idx.Table()] = &indexLookup{
+						indexes: []sql.Index{idx},
+						lookup:  lookup,
+					}
+				}
+			}
+		}
 	case *expression.And:
 		exprs := splitExpression(e)
 		used := make(map[sql.Expression]struct{})
@@ -1627,7 +1646,7 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 				return nil, err
 			}
 
-			result = indexesIntersection(result, indexes)
+			result = indexesIntersection(a, result, indexes)
 		}
 
 		return result, nil
@@ -1636,13 +1655,121 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 	return result, nil
 }
 
-func indexesIntersection(left, right map[string]*indexLookup) map[string]*indexLookup {
+func betweenIndexLookup(index sql.Index, upper, lower []interface{}) (sql.IndexLookup, error) {
+	ai, isAscend := index.(sql.AscendIndex)
+	di, isDescend := index.(sql.DescendIndex)
+	if isAscend && isDescend {
+		ascendLookup, err := ai.AscendRange(lower, upper)
+		if err != nil {
+			return nil, err
+		}
+
+		descendLookup, err := di.DescendRange(upper, lower)
+		if err != nil {
+			return nil, err
+		}
+
+		m, ok := ascendLookup.(sql.Mergeable)
+		if ok && m.IsMergeable(descendLookup) {
+			return ascendLookup.(sql.SetOperations).Union(descendLookup), nil
+		}
+	}
+
+	return nil, nil
+}
+
+// getComparisonIndex returns the index and index lookup for the given
+// comparison if any index can be found.
+// It works for the following comparisons: eq, lt, gt, gte and lte.
+// TODO(erizocosmico): add support for BETWEEN once the appropiate interfaces
+// can handle inclusiveness on both sides.
+func getComparisonIndex(
+	a *Analyzer,
+	e expression.Comparer,
+) (sql.Index, sql.IndexLookup, error) {
+	left, right := e.Left(), e.Right()
+	// if the form is SOMETHING OP {INDEXABLE EXPR}, swap it, so it's {INDEXABLE EXPR} OP SOMETHING
+	if !isEvaluable(right) {
+		left, right = right, left
+	}
+
+	if !isEvaluable(left) && isEvaluable(right) {
+		idx := a.Catalog.IndexByExpression(a.CurrentDatabase, left)
+		if idx != nil {
+			value, err := right.Eval(sql.NewEmptyContext(), nil)
+			if err != nil {
+				a.Catalog.ReleaseIndex(idx)
+				return nil, nil, err
+			}
+
+			lookup, err := comparisonIndexLookup(e, idx, value)
+			if err != nil || lookup == nil {
+				a.Catalog.ReleaseIndex(idx)
+				return nil, nil, err
+			}
+
+			return idx, lookup, nil
+		}
+	}
+
+	return nil, nil, nil
+}
+
+func comparisonIndexLookup(
+	c expression.Comparer,
+	idx sql.Index,
+	values ...interface{},
+) (sql.IndexLookup, error) {
+	switch c.(type) {
+	case *expression.Equals:
+		return idx.Get(values...)
+	case *expression.GreaterThan:
+		index, ok := idx.(sql.DescendIndex)
+		if !ok {
+			return nil, nil
+		}
+
+		return index.DescendGreater(values...)
+	case *expression.GreaterThanOrEqual:
+		index, ok := idx.(sql.AscendIndex)
+		if !ok {
+			return nil, nil
+		}
+
+		return index.AscendGreaterOrEqual(values...)
+	case *expression.LessThan:
+		index, ok := idx.(sql.AscendIndex)
+		if !ok {
+			return nil, nil
+		}
+
+		return index.AscendLessThan(values...)
+	case *expression.LessThanOrEqual:
+		index, ok := idx.(sql.DescendIndex)
+		if !ok {
+			return nil, nil
+		}
+
+		return index.DescendLessOrEqual(values...)
+	}
+
+	return nil, nil
+}
+
+func indexesIntersection(
+	a *Analyzer,
+	left, right map[string]*indexLookup,
+) map[string]*indexLookup {
 	var result = make(map[string]*indexLookup)
 
 	for table, idx := range left {
 		if idx2, ok := right[table]; ok && canMergeIndexes(idx.lookup, idx2.lookup) {
 			idx.lookup = idx.lookup.(sql.SetOperations).Intersection(idx2.lookup)
 			idx.indexes = append(idx.indexes, idx2.indexes...)
+		} else if ok {
+			for _, idx := range idx2.indexes {
+				a.Catalog.ReleaseIndex(idx)
+			}
 		}
 		result[table] = idx
 	}
@@ -1666,44 +1793,135 @@ func getMultiColumnIndexes(
 	result := make(map[string]*indexLookup)
 	columnExprs := columnExprsByTable(exprs)
 	for table, exps := range columnExprs {
-		cols := make([]sql.Expression, len(exps))
-		for i, e := range exps {
-			cols[i] = e.col
-		}
-
-		exprList := a.Catalog.ExpressionsWithIndexes(a.CurrentDatabase, cols...)
-
-		var selected []sql.Expression
-		for _, l := range exprList {
-			if len(l) > len(selected) {
-				selected = l
+		exprsByOp := groupExpressionsByOperator(exps)
+		for _, exps := range exprsByOp {
+			cols := make([]sql.Expression, len(exps))
+			for i, e := range exps {
+				cols[i] = e.col
 			}
-		}
 
-		if len(selected) > 0 {
-			index := a.Catalog.IndexByExpression(a.CurrentDatabase, selected...)
-			if index != nil {
-				var values = make([]interface{}, len(index.ExpressionHashes()))
-				for i, e := range index.ExpressionHashes() {
-					col := findColumnByHash(exps, e)
-					used[col.expr] = struct{}{}
-					val, err := col.val.Eval(sql.NewEmptyContext(), nil)
+			exprList := a.Catalog.ExpressionsWithIndexes(a.CurrentDatabase, cols...)
+
+			var selected []sql.Expression
+			for _, l := range exprList {
+				if len(l) > len(selected) {
+					selected = l
+				}
+			}
+
+			if len(selected) > 0 {
+				index, lookup, err := getMultiColumnIndexForExpressions(a, selected, exps, used)
+				if err != nil || lookup == nil {
+					if index != nil {
+						a.Catalog.ReleaseIndex(index)
+					}
+
 					if err != nil {
 						return nil, err
 					}
-					values[i] = val
-				}
-				lookup, err := index.Get(values...)
-				if err != nil {
-					return nil, err
 				}
 
-				result[table] = &indexLookup{lookup, []sql.Index{index}}
+				if lookup != nil {
+					if _, ok := result[table]; ok {
+						result = indexesIntersection(a, result, map[string]*indexLookup{
+							table: &indexLookup{lookup, []sql.Index{index}},
+						})
+					} else {
+						result[table] = &indexLookup{lookup, []sql.Index{index}}
+					}
+				}
 			}
 		}
 	}
 
 	return result, nil
+}
+
+func getMultiColumnIndexForExpressions(
+	a *Analyzer,
+	selected []sql.Expression,
+	exprs []columnExpr,
+	used map[sql.Expression]struct{},
+) (index sql.Index, lookup sql.IndexLookup, err error) {
+	index = a.Catalog.IndexByExpression(a.CurrentDatabase, selected...)
+	if index != nil {
+		var first sql.Expression
+		for _, e := range exprs {
+			if e.col == selected[0] {
+				first = e.expr
+				break
+			}
+		}
+
+		if first == nil {
+			return
+		}
+
+		switch e := first.(type) {
+		case *expression.Equals,
+			*expression.LessThan,
+			*expression.GreaterThan,
+			*expression.LessThanOrEqual,
+			*expression.GreaterThanOrEqual:
+			var values = make([]interface{}, len(index.ExpressionHashes()))
+			for i, e := range index.ExpressionHashes() {
+				col := findColumnByHash(exprs, e)
+				used[col.expr] = struct{}{}
+				var val interface{}
+				val, err = col.val.Eval(sql.NewEmptyContext(), nil)
+				if err != nil {
+					return
+				}
+				values[i] = val
+			}
+
+			lookup, err = comparisonIndexLookup(e.(expression.Comparer), index, values...)
+		case *expression.Between:
+			var lowers = make([]interface{}, len(index.ExpressionHashes()))
+			var uppers = make([]interface{}, len(index.ExpressionHashes()))
+			for i, e := range index.ExpressionHashes() {
+				col := findColumnByHash(exprs, e)
+				used[col.expr] = struct{}{}
+				between := col.expr.(*expression.Between)
+				lowers[i], err = between.Lower.Eval(sql.NewEmptyContext(), nil)
+				if err != nil {
+					return
+				}
+
+				uppers[i], err = between.Upper.Eval(sql.NewEmptyContext(), nil)
+				if err != nil {
+					return
+				}
+			}
+
+			lookup, err = betweenIndexLookup(index, uppers, lowers)
+		}
+	}
+
+	return
+}
+
+func groupExpressionsByOperator(exprs []columnExpr) [][]columnExpr {
+	var result [][]columnExpr
+
+	for _, e := range exprs {
+		var found bool
+		for i, group := range result {
+			t1 := reflect.TypeOf(group[0].expr)
+			t2 := reflect.TypeOf(e.expr)
+			if t1 == t2 {
+				result[i] = append(result[i], e)
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			result = append(result, []columnExpr{e})
+		}
+	}
+
+	return result
 }
 
 type columnExpr struct {
@@ -1725,26 +1943,43 @@ func columnExprsByTable(exprs []sql.Expression) map[string][]columnExpr {
 	var result = make(map[string][]columnExpr)
 
 	for _, expr := range exprs {
-		eq, ok := expr.(*expression.Equals)
-		if !ok {
+		var left, right sql.Expression
+		switch e := expr.(type) {
+		case *expression.Equals,
+			*expression.GreaterThan,
+			*expression.LessThan,
+			*expression.GreaterThanOrEqual,
+			*expression.LessThanOrEqual:
+			cmp := e.(expression.Comparer)
+			left, right = cmp.Left(), cmp.Right()
+			if !isEvaluable(right) {
+				left, right = right, left
+			}
+
+			if !isEvaluable(right) {
+				continue
+			}
+
+			col, ok := left.(*expression.GetField)
+			if !ok {
+				continue
+			}
+
+			result[col.Table()] = append(result[col.Table()], columnExpr{col, right, e})
+		case *expression.Between:
+			if !isEvaluable(e.Upper) || !isEvaluable(e.Lower) || isEvaluable(e.Val) {
+				continue
+			}
+
+			col, ok := e.Val.(*expression.GetField)
+			if !ok {
+				continue
+			}
+
+			result[col.Table()] = append(result[col.Table()], columnExpr{col, nil, e})
+		default:
 			continue
 		}
-
-		left, right := eq.Left(), eq.Right()
-		if !isEvaluable(right) {
-			left, right = right, left
-		}
-
-		if !isEvaluable(right) {
-			continue
-		}
-
-		col, ok := left.(*expression.GetField)
-		if !ok {
-			continue
-		}
-
-		result[col.Table()] = append(result[col.Table()], columnExpr{col, right, expr})
 	}
 
 	return result

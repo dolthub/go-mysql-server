@@ -705,32 +705,102 @@ func TestStarPanic197(t *testing.T) {
 }
 
 func TestIndexes(t *testing.T) {
-	require := require.New(t)
 	e := newEngine(t)
 
 	tmpDir, err := ioutil.TempDir(os.TempDir(), "pilosa-test")
-	require.NoError(err)
+	require.NoError(t, err)
 
-	require.NoError(os.MkdirAll(tmpDir, 0644))
+	require.NoError(t, os.MkdirAll(tmpDir, 0644))
 	e.Catalog.RegisterIndexDriver(pilosa.NewIndexDriver(tmpDir))
 
-	_, _, err = e.Query(sql.NewEmptyContext(), "CREATE INDEX myidx ON mytable (i) WITH (async = false)")
-	require.NoError(err)
+	_, _, err = e.Query(
+		sql.NewEmptyContext(),
+		"CREATE INDEX myidx ON mytable (i) WITH (async = false)",
+	)
+	require.NoError(t, err)
+
+	_, _, err = e.Query(
+		sql.NewEmptyContext(),
+		"CREATE INDEX myidx_multi ON mytable (i, s) WITH (async = false)",
+	)
+	require.NoError(t, err)
 
 	defer func() {
 		done, err := e.Catalog.DeleteIndex("mydb", "myidx", true)
-		require.NoError(err)
+		require.NoError(t, err)
+		<-done
+
+		done, err = e.Catalog.DeleteIndex("foo", "myidx_multi", true)
+		require.NoError(t, err)
 		<-done
 	}()
 
-	_, it, err := e.Query(sql.NewEmptyContext(), "SELECT * FROM mytable WHERE i = 2")
-	require.NoError(err)
+	testCases := []struct {
+		query    string
+		expected []sql.Row
+	}{
+		{
+			"SELECT * FROM mytable WHERE i = 2",
+			[]sql.Row{
+				{int64(2), "second row"},
+			},
+		},
+		{
+			"SELECT * FROM mytable WHERE i > 1",
+			[]sql.Row{
+				{int64(3), "third row"},
+				{int64(2), "second row"},
+			},
+		},
+		{
+			"SELECT * FROM mytable WHERE i < 3",
+			[]sql.Row{
+				{int64(1), "first row"},
+				{int64(2), "second row"},
+			},
+		},
+		{
+			"SELECT * FROM mytable WHERE i <= 2",
+			[]sql.Row{
+				{int64(2), "second row"},
+				{int64(1), "first row"},
+			},
+		},
+		{
+			"SELECT * FROM mytable WHERE i >= 2",
+			[]sql.Row{
+				{int64(2), "second row"},
+				{int64(3), "third row"},
+			},
+		},
+		{
+			"SELECT * FROM mytable WHERE i = 2 AND s = 'second row'",
+			[]sql.Row{
+				{int64(2), "second row"},
+			},
+		},
+		{
+			"SELECT * FROM mytable WHERE i = 2 AND s = 'third row'",
+			([]sql.Row)(nil),
+		},
+		// TODO(erizocosmico): BETWEEN cannot be tested because SetOperations
+		// is still not implemented in pilosa.
+		// TODO(erizocosmico): AND and OR cannot be tested because SetOperations
+		// is still not implemented in pilosa.
+	}
 
-	rows, err := sql.RowIterToRows(it)
-	require.NoError(err)
+	for _, tt := range testCases {
+		t.Run(tt.query, func(t *testing.T) {
+			require := require.New(t)
+			_, it, err := e.Query(sql.NewEmptyContext(), tt.query)
+			require.NoError(err)
 
-	expected := []sql.Row{{int64(2), "second row"}}
-	require.Equal(expected, rows)
+			rows, err := sql.RowIterToRows(it)
+			require.NoError(err)
+
+			require.Equal(tt.expected, rows)
+		})
+	}
 }
 
 func TestCreateIndex(t *testing.T) {
