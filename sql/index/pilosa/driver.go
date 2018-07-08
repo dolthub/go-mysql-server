@@ -29,7 +29,7 @@ const (
 var (
 	errCorruptedIndex    = errors.NewKind("the index in %q is corrupted")
 	errInvalidIndexType  = errors.NewKind("expecting a pilosa index, instead got %T")
-	errDeletePilosaIndex = errors.NewKind("error deleting pilosa index %s: %s")
+	errDeletePilosaFrame = errors.NewKind("error deleting pilosa frame %s: %s")
 )
 
 // Driver implements sql.IndexDriver interface.
@@ -182,19 +182,21 @@ func (d *Driver) Save(
 		return err
 	}
 
-	// make sure we delete the index in every run before inserting, since there may
-	// be previous data
-	if err = d.client.DeleteIndex(pilosaIndex); err != nil {
-		return errDeletePilosaIndex.New(pilosaIndex.Name(), err)
-	}
-
 	d.frames = make([]*pilosa.Frame, len(idx.ExpressionHashes()))
 	for i, e := range idx.ExpressionHashes() {
-		d.frames[i], err = pilosaIndex.Frame(frameName(idx.ID(), e))
+		frm, err := pilosaIndex.Frame(frameName(idx.ID(), e))
 		if err != nil {
-			fmt.Println(err, frameName(idx.ID(), e))
 			return err
 		}
+
+		// make sure we delete the index in every run before inserting, since there may
+		// be previous data
+		err = d.client.DeleteFrame(frm)
+		if err != nil {
+			return errDeletePilosaFrame.New(frm.Name(), err)
+		}
+
+		d.frames[i] = frm
 	}
 
 	// Make sure the index and frames exists on the server
