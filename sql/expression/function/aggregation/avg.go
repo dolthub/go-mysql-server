@@ -2,7 +2,6 @@ package aggregation // import "gopkg.in/src-d/go-mysql-server.v0/sql/expression/
 
 import (
 	"fmt"
-	"reflect"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
@@ -39,18 +38,19 @@ func (a *Avg) IsNullable() bool {
 
 // Eval implements AggregationExpression interface. (AggregationExpression[Expression]])
 func (a *Avg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	isNoNum := buffer[2].(bool)
-	if isNoNum {
-		return float64(0), nil
-	}
-
-	noNullRows := buffer[1].(float64)
-	if noNullRows == 0 {
+	nulls := buffer[2].(bool)
+	if nulls {
 		return nil, nil
 	}
 
-	avg := buffer[0]
-	return avg, nil
+	sum := buffer[0].(float64)
+	rows := buffer[1].(int64)
+
+	if rows == 0 {
+		return float64(0), nil
+	}
+
+	return sum / float64(rows), nil
 }
 
 // TransformUp implements AggregationExpression interface.
@@ -65,61 +65,55 @@ func (a *Avg) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 // NewBuffer implements AggregationExpression interface. (AggregationExpression)
 func (a *Avg) NewBuffer() sql.Row {
 	const (
-		currentAvg = float64(0)
-		rowsCount  = float64(0)
-		noNum      = false
+		sum   = float64(0)
+		rows  = int64(0)
+		nulls = false
 	)
 
-	return sql.NewRow(currentAvg, rowsCount, noNum)
+	return sql.NewRow(sum, rows, nulls)
 }
 
 // Update implements AggregationExpression interface. (AggregationExpression)
 func (a *Avg) Update(ctx *sql.Context, buffer, row sql.Row) error {
+	// if there are nulls already skip all the remainiing rows
+	if buffer[2].(bool) {
+		return nil
+	}
+
 	v, err := a.Child.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
 
-	if reflect.TypeOf(v) == nil {
-		return nil
-	}
-
-	var num float64
-	switch n := row[0].(type) {
-	case int, int16, int32, int64:
-		num = float64(reflect.ValueOf(n).Int())
-	case uint, uint8, uint16, uint32, uint64:
-		num = float64(reflect.ValueOf(n).Uint())
-	case float32, float64:
-		num = float64(reflect.ValueOf(n).Float())
-	default:
+	if v == nil {
 		buffer[2] = true
 		return nil
 	}
 
-	prevAvg := buffer[0].(float64)
-	numRows := buffer[1].(float64)
-	nextAvg := (prevAvg*numRows + num) / (numRows + 1)
-	buffer[0] = nextAvg
-	buffer[1] = numRows + 1
+	v, err = sql.Float64.Convert(v)
+	if err != nil {
+		v = float64(0)
+	}
+
+	buffer[0] = buffer[0].(float64) + v.(float64)
+	buffer[1] = buffer[1].(int64) + 1
 
 	return nil
-
 }
 
 // Merge implements AggregationExpression interface. (AggregationExpression)
 func (a *Avg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	bufferAvg := buffer[0].(float64)
-	bufferRows := buffer[1].(float64)
+	bsum := buffer[0].(float64)
+	brows := buffer[1].(int64)
+	bnulls := buffer[2].(bool)
 
-	partialAvg := partial[0].(float64)
-	partialRows := partial[1].(float64)
+	psum := partial[0].(float64)
+	prows := partial[1].(int64)
+	pnulls := buffer[2].(bool)
 
-	totalRows := bufferRows + partialRows
-	nextAvg := ((bufferAvg * bufferRows) + (partialAvg * partialRows)) / totalRows
-
-	buffer[0] = nextAvg
-	buffer[1] = totalRows
+	buffer[0] = bsum + psum
+	buffer[1] = brows + prows
+	buffer[2] = bnulls || pnulls
 
 	return nil
 }
