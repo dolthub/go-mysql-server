@@ -332,3 +332,112 @@ func countRules(batches []*Batch) int {
 	return count
 
 }
+
+func TestMixInnerAndNaturalJoins(t *testing.T) {
+	require := require.New(t)
+
+	table := &pushdownProjectionAndFiltersTable{mem.NewTable("mytable", sql.Schema{
+		{Name: "i", Type: sql.Int32, Source: "mytable"},
+		{Name: "f", Type: sql.Float64, Source: "mytable"},
+		{Name: "t", Type: sql.Text, Source: "mytable"},
+	})}
+
+	table2 := &pushdownProjectionAndFiltersTable{mem.NewTable("mytable2", sql.Schema{
+		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
+		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
+		{Name: "t2", Type: sql.Text, Source: "mytable2"},
+	})}
+
+	table3 := &pushdownProjectionAndFiltersTable{mem.NewTable("mytable3", sql.Schema{
+		{Name: "i", Type: sql.Int32, Source: "mytable3"},
+		{Name: "f2", Type: sql.Float64, Source: "mytable3"},
+		{Name: "t3", Type: sql.Text, Source: "mytable3"},
+	})}
+
+	db := mem.NewDatabase("mydb")
+	db.AddTable("mytable", table)
+	db.AddTable("mytable2", table2)
+	db.AddTable("mytable3", table3)
+
+	catalog := &sql.Catalog{Databases: []sql.Database{db}}
+	a := NewDefault(catalog)
+	a.CurrentDatabase = "mydb"
+
+	node := plan.NewProject(
+		[]sql.Expression{
+			expression.NewStar(),
+		},
+		plan.NewNaturalJoin(
+			plan.NewInnerJoin(
+				plan.NewUnresolvedTable("mytable"),
+				plan.NewUnresolvedTable("mytable2"),
+				expression.NewEquals(
+					expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+					expression.NewUnresolvedQualifiedColumn("mytable2", "i2"),
+				),
+			),
+			plan.NewUnresolvedTable("mytable3"),
+		),
+	)
+
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+			expression.NewGetFieldWithTable(4, sql.Float64, "mytable2", "f2", false),
+			expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+			expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", false),
+			expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
+			expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
+			expression.NewGetFieldWithTable(8, sql.Text, "mytable3", "t3", false),
+		},
+		plan.NewInnerJoin(
+			plan.NewInnerJoin(
+				plan.NewPushdownProjectionAndFiltersTable(
+					[]sql.Expression{
+						expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+						expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", false),
+					},
+					nil,
+					table,
+				),
+				plan.NewPushdownProjectionAndFiltersTable(
+					[]sql.Expression{
+						expression.NewGetFieldWithTable(1, sql.Float64, "mytable2", "f2", false),
+						expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+						expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
+					},
+					nil,
+					table2,
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
+				),
+			),
+			plan.NewPushdownProjectionAndFiltersTable(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(2, sql.Text, "mytable3", "t3", false),
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable3", "i", false),
+					expression.NewGetFieldWithTable(1, sql.Float64, "mytable3", "f2", false),
+				},
+				nil,
+				table3,
+			),
+			expression.NewAnd(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+					expression.NewGetFieldWithTable(6, sql.Int32, "mytable3", "i", false),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(4, sql.Float64, "mytable2", "f2", false),
+					expression.NewGetFieldWithTable(7, sql.Float64, "mytable3", "f2", false),
+				),
+			),
+		),
+	)
+
+	result, err := a.Analyze(sql.NewEmptyContext(), node)
+	require.NoError(err)
+	require.Equal(expected, result)
+}
