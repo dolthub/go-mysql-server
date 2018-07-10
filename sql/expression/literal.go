@@ -61,3 +61,8 @@ func (p *Literal) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 func (*Literal) Children() []sql.Expression {
 	return nil
 }
+
+// Value returns the literal value.
+func (p *Literal) Value() interface{} {
+	return p.value
+}

@@ -20,6 +20,7 @@ var DefaultRules = []Rule{
 	{"assign_indexes", assignIndexes},
 	{"pushdown", pushdown},
 	{"move_join_conds_to_filter", moveJoinConditionsToFilter},
+	{"eval_filter", evalFilter},
 	{"optimize_distinct", optimizeDistinct},
 	{"erase_projection", eraseProjection},
 	{"index_catalog", indexCatalog},

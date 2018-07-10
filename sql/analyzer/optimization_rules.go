@@ -295,3 +295,108 @@ func expressionSources(expr sql.Expression) []string {
 
 	return result
 }
+
+func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
+	if !node.Resolved() {
+		return node, nil
+	}
+
+	a.Log("evaluating filters, node of type: %T", node)
+
+	return node.TransformUp(func(node sql.Node) (sql.Node, error) {
+		filter, ok := node.(*plan.Filter)
+		if !ok {
+			return node, nil
+		}
+
+		e, err := filter.Expression.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+			switch e := e.(type) {
+			case *expression.Or:
+				if isTrue(e.Left) {
+					return e.Left, nil
+				}
+
+				if isTrue(e.Right) {
+					return e.Right, nil
+				}
+
+				if isFalse(e.Left) {
+					return e.Right, nil
+				}
+
+				if isFalse(e.Right) {
+					return e.Left, nil
+				}
+
+				return e, nil
+			case *expression.And:
+				if isFalse(e.Left) {
+					return e.Left, nil
+				}
+
+				if isFalse(e.Right) {
+					return e.Right, nil
+				}
+
+				if isTrue(e.Left) {
+					return e.Right, nil
+				}
+
+				if isTrue(e.Right) {
+					return e.Left, nil
+				}
+
+				return e, nil
+			default:
+				if !isEvaluable(e) {
+					return e, nil
+				}
+
+				if _, ok := e.(*expression.Literal); ok {
+					return e, nil
+				}
+
+				val, err := e.Eval(ctx, nil)
+				if err != nil {
+					return nil, err
+				}
+
+				val, err = sql.Boolean.Convert(val)
+				if err != nil {
+					// don't make it fail because of this, just return the
+					// original expression
+					return e, nil
+				}
+
+				return expression.NewLiteral(val.(bool), sql.Boolean), nil
+			}
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		if isFalse(e) {
+			return plan.EmptyTable, nil
+		}
+
+		if isTrue(e) {
+			return filter.Child, nil
+		}
+
+		return plan.NewFilter(e, filter.Child), nil
+	})
+}
+
+func isFalse(e sql.Expression) bool {
+	lit, ok := e.(*expression.Literal)
+	return ok &&
+		lit.Type() == sql.Boolean &&
+		!lit.Value().(bool)
+}
+
+func isTrue(e sql.Expression) bool {
+	lit, ok := e.(*expression.Literal)
+	return ok &&
+		lit.Type() == sql.Boolean &&
+		lit.Value().(bool)
+}
