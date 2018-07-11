@@ -572,6 +572,17 @@ var fixtures = map[string]sql.Node{
 		"",
 		make(map[string]string),
 	),
+	`      CREATE INDEX idx ON foo(fn(bar, baz))`: plan.NewCreateIndex(
+		"idx",
+		plan.NewUnresolvedTable("foo"),
+		[]sql.Expression{expression.NewUnresolvedFunction(
+			"fn", false,
+			expression.NewUnresolvedColumn("bar"),
+			expression.NewUnresolvedColumn("baz"),
+		)},
+		"",
+		make(map[string]string),
+	),
 	`SELECT * FROM foo NATURAL JOIN bar`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewNaturalJoin(
