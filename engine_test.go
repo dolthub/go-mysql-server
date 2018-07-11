@@ -295,6 +295,10 @@ var queries = []struct {
 			{string("8.0.11-go-mysql-server")},
 		},
 	},
+	{
+		"SELECT * FROM mytable WHERE 1 > 5",
+		[]sql.Row{},
+	},
 }
 
 func TestQueries(t *testing.T) {

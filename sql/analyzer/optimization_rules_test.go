@@ -219,3 +219,106 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 
 	require.Equal(result, expected)
 }
+
+func TestEvalFilter(t *testing.T) {
+	inner := mem.NewTable("foo", nil)
+	rule := getRule("eval_filter")
+
+	testCases := []struct {
+		filter   sql.Expression
+		expected sql.Node
+	}{
+		{
+			and(
+				eq(lit(5), lit(5)),
+				eq(col(0, "foo", "bar"), lit(5)),
+			),
+			plan.NewFilter(
+				eq(col(0, "foo", "bar"), lit(5)),
+				inner,
+			),
+		},
+		{
+			and(
+				eq(col(0, "foo", "bar"), lit(5)),
+				eq(lit(5), lit(5)),
+			),
+			plan.NewFilter(
+				eq(col(0, "foo", "bar"), lit(5)),
+				inner,
+			),
+		},
+		{
+			and(
+				eq(lit(5), lit(4)),
+				eq(col(0, "foo", "bar"), lit(5)),
+			),
+			plan.EmptyTable,
+		},
+		{
+			and(
+				eq(col(0, "foo", "bar"), lit(5)),
+				eq(lit(5), lit(4)),
+			),
+			plan.EmptyTable,
+		},
+		{
+			and(
+				eq(lit(4), lit(4)),
+				eq(lit(5), lit(5)),
+			),
+			inner,
+		},
+		{
+			or(
+				eq(lit(5), lit(4)),
+				eq(col(0, "foo", "bar"), lit(5)),
+			),
+			plan.NewFilter(
+				eq(col(0, "foo", "bar"), lit(5)),
+				inner,
+			),
+		},
+		{
+			or(
+				eq(col(0, "foo", "bar"), lit(5)),
+				eq(lit(5), lit(4)),
+			),
+			plan.NewFilter(
+				eq(col(0, "foo", "bar"), lit(5)),
+				inner,
+			),
+		},
+		{
+			or(
+				eq(lit(5), lit(5)),
+				eq(col(0, "foo", "bar"), lit(5)),
+			),
+			inner,
+		},
+		{
+			or(
+				eq(col(0, "foo", "bar"), lit(5)),
+				eq(lit(5), lit(5)),
+			),
+			inner,
+		},
+		{
+			or(
+				eq(lit(5), lit(4)),
+				eq(lit(5), lit(4)),
+			),
+			plan.EmptyTable,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.filter.String(), func(t *testing.T) {
+			require := require.New(t)
+			node := plan.NewFilter(tt.filter, inner)
+			result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+			require.NoError(err)
+			require.Equal(tt.expected, result)
+		})
+	}
+}
