@@ -40,6 +40,7 @@ func Parse(ctx *sql.Context, s string) (sql.Node, error) {
 	span, ctx := ctx.Span("parse", opentracing.Tag{Key: "query", Value: s})
 	defer span.Finish()
 
+	s = strings.TrimSpace(s)
 	if strings.HasSuffix(s, ";") {
 		s = s[:len(s)-1]
 	}
