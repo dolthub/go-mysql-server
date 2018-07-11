@@ -2,6 +2,7 @@ package sqle // import "gopkg.in/src-d/go-mysql-server.v0"
 
 import (
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
@@ -36,6 +37,8 @@ func (e *Engine) Query(
 ) (sql.Schema, sql.RowIter, error) {
 	span, ctx := ctx.Span("query", opentracing.Tag{Key: "query", Value: query})
 	defer span.Finish()
+
+	logrus.WithField("query", query).Debug("executing query")
 
 	parsed, err := parse.Parse(ctx, query)
 	if err != nil {
