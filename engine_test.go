@@ -289,6 +289,12 @@ var queries = []struct {
 			{string("third row3")},
 		},
 	},
+	{
+		"SELECT version()",
+		[]sql.Row{
+			{string("8.0.11-go-mysql-server")},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {
@@ -926,7 +932,7 @@ func TestReadOnly(t *testing.T) {
 
 	a := analyzer.NewBuilder(catalog).ReadOnly().Build()
 	a.CurrentDatabase = "mydb"
-	e := sqle.New(catalog, a)
+	e := sqle.New(catalog, a, "")
 
 	_, _, err := e.Query(sql.NewEmptyContext(), `SELECT i FROM mytable`)
 	require.NoError(err)
