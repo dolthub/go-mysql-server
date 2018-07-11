@@ -226,7 +226,7 @@ func TestLoadCorruptedIndex(t *testing.T) {
 
 	_, err = new(Driver).loadIndex(path)
 	require.Error(err)
-	require.True(errCorruptIndex.Is(err))
+	require.True(errCorruptedIndex.Is(err))
 
 	_, err = os.Stat(path)
 	require.Error(err)

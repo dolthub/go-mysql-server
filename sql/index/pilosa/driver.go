@@ -12,7 +12,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	pilosa "github.com/pilosa/go-pilosa"
 	"github.com/sirupsen/logrus"
-	errors "gopkg.in/src-d/go-errors.v0"
+	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/index"
 )
@@ -24,6 +24,12 @@ const (
 	IndexNamePrefix = "idx"
 	// FrameNamePrefix the pilosa's frames prefix
 	FrameNamePrefix = "frm"
+)
+
+var (
+	errCorruptedIndex    = errors.NewKind("the index in %q is corrupted")
+	errInvalidIndexType  = errors.NewKind("expecting a pilosa index, instead got %T")
+	errDeletePilosaFrame = errors.NewKind("error deleting pilosa frame %s: %s")
 )
 
 // Driver implements sql.IndexDriver interface.
@@ -93,7 +99,7 @@ func (d *Driver) LoadAll(db, table string) ([]sql.Index, error) {
 		if info.IsDir() && path != root && info.Name() != "." && info.Name() != ".." {
 			idx, err := d.loadIndex(path)
 			if err != nil {
-				if !errCorruptIndex.Is(err) {
+				if !errCorruptedIndex.Is(err) {
 					errors = append(errors, err.Error())
 				}
 
@@ -112,8 +118,6 @@ func (d *Driver) LoadAll(db, table string) ([]sql.Index, error) {
 	return indexes, err
 }
 
-var errCorruptIndex = errors.NewKind("the index in %q is corrupt")
-
 func (d *Driver) loadIndex(path string) (sql.Index, error) {
 	ok, err := index.ExistsProcessingFile(path)
 	if err != nil {
@@ -131,7 +135,7 @@ func (d *Driver) loadIndex(path string) (sql.Index, error) {
 			log.Warn("unable to remove folder of corrupted index")
 		}
 
-		return nil, errCorruptIndex.New(path)
+		return nil, errCorruptedIndex.New(path)
 	}
 
 	cfg, err := index.ReadConfigFile(path)
@@ -142,11 +146,6 @@ func (d *Driver) loadIndex(path string) (sql.Index, error) {
 	idx := newPilosaIndex(path, d.client, cfg)
 	return idx, nil
 }
-
-var (
-	errInvalidIndexType  = errors.NewKind("expecting a pilosa index, instead got %T")
-	errDeletePilosaIndex = errors.NewKind("error deleting pilosa index %s: %s")
-)
 
 // Save the given index (mapping and bitmap)
 func (d *Driver) Save(
@@ -178,23 +177,26 @@ func (d *Driver) Save(
 	}
 
 	// Create a pilosa index and frame objects in memory
-	pilosaIndex, err := schema.Index(indexName(idx.Database(), idx.Table(), idx.ID()))
+	pilosaIndex, err := schema.Index(indexName(idx.Database(), idx.Table()))
 	if err != nil {
 		return err
 	}
 
-	// make sure we delete the index in every run before inserting, since there may
-	// be previous data
-	if err = d.client.DeleteIndex(pilosaIndex); err != nil {
-		return errDeletePilosaIndex.New(pilosaIndex.Name(), err)
-	}
-
 	d.frames = make([]*pilosa.Frame, len(idx.ExpressionHashes()))
 	for i, e := range idx.ExpressionHashes() {
-		d.frames[i], err = pilosaIndex.Frame(frameName(e))
+		frm, err := pilosaIndex.Frame(frameName(idx.ID(), e))
 		if err != nil {
 			return err
 		}
+
+		// make sure we delete the index in every run before inserting, since there may
+		// be previous data
+		err = d.client.DeleteFrame(frm)
+		if err != nil {
+			return errDeletePilosaFrame.New(frm.Name(), err)
+		}
+
+		d.frames[i] = frm
 	}
 
 	// Make sure the index and frames exists on the server
@@ -290,12 +292,23 @@ func (d *Driver) Delete(idx sql.Index) error {
 		return err
 	}
 
-	index, err := pilosa.NewIndex(indexName(idx.Database(), idx.Table(), idx.ID()))
+	index, err := pilosa.NewIndex(indexName(idx.Database(), idx.Table()))
 	if err != nil {
 		return err
 	}
 
-	return d.client.DeleteIndex(index)
+	frames := index.Frames()
+	for _, ex := range idx.ExpressionHashes() {
+		frm, ok := frames[frameName(idx.ID(), ex)]
+		if !ok {
+			continue
+		}
+
+		if err = d.client.DeleteFrame(frm); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (d *Driver) saveBatch(ctx *sql.Context, m *mapping, colID uint64) error {
@@ -390,17 +403,19 @@ func (b *bitBatch) NextRecord() (pilosa.Record, error) {
 	return b.bits[b.pos-1], nil
 }
 
-func indexName(db, table, id string) string {
+func indexName(db, table string) string {
 	h := sha1.New()
 	io.WriteString(h, db)
 	io.WriteString(h, table)
-	io.WriteString(h, id)
 
 	return fmt.Sprintf("%s-%x", IndexNamePrefix, h.Sum(nil))
 }
 
-func frameName(ex sql.ExpressionHash) string {
-	return fmt.Sprintf("%s-%x", FrameNamePrefix, ex)
+func frameName(id string, ex sql.ExpressionHash) string {
+	h := sha1.New()
+	io.WriteString(h, id)
+	h.Write(ex)
+	return fmt.Sprintf("%s-%x", FrameNamePrefix, h.Sum(nil))
 }
 
 // mkdir makes an empty index directory (if doesn't exist) and returns a path.
