@@ -52,7 +52,6 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 
 		// We must find all columns that may need to be moved inside the
 		// projection.
-		//var movedColumns = make(map[string]sql.Expression)
 		var newColumns = make(map[string]sql.Expression)
 		for _, col := range project.Projections {
 			alias, ok := col.(*expression.Alias)
