@@ -1,17 +1,9 @@
 package pilosa
 
 import (
-	"bytes"
-	"encoding/gob"
-	"io"
-	"strings"
-	"time"
+	errors "gopkg.in/src-d/go-errors.v1"
 
-	"gopkg.in/src-d/go-errors.v1"
-
-	"github.com/boltdb/bolt"
 	pilosa "github.com/pilosa/go-pilosa"
-	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/index"
 )
@@ -57,17 +49,16 @@ func (idx *pilosaIndex) Get(keys ...interface{}) (sql.IndexLookup, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
 	if err != nil {
 		return nil, err
 	}
 
 	return &indexLookup{
-		id:          idx.id,
-		mapping:     idx.mapping,
-		index:       index,
+		id:          idx.ID(),
 		client:      idx.client,
+		index:       index,
+		mapping:     idx.mapping,
 		keys:        keys,
 		expressions: idx.expressions,
 	}, nil
@@ -85,8 +76,7 @@ func (idx *pilosaIndex) Has(key ...interface{}) (bool, error) {
 
 	// We can make this loop parallel, but does it make sense?
 	// For how many (maximum) keys will be asked by one function call?
-	for i := 0; i < n; i++ {
-		expr := idx.expressions[i]
+	for i, expr := range idx.expressions {
 		name := frameName(idx.ID(), expr)
 
 		val, err := idx.mapping.get(name, key[i])
@@ -131,23 +121,26 @@ func (idx *pilosaIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLook
 	if err != nil {
 		return nil, err
 	}
-
 	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
 	if err != nil {
 		return nil, err
 	}
 
-	return &ascendLookup{
+	l := &ascendLookup{
 		filteredLookup: &filteredLookup{
 			id:          idx.ID(),
-			mapping:     idx.mapping,
-			index:       index,
 			client:      idx.client,
+			index:       index,
+			mapping:     idx.mapping,
+			keys:        keys,
 			expressions: idx.expressions,
 		},
 		gte: keys,
 		lt:  nil,
-	}, nil
+	}
+	l.initFilter()
+
+	return l, nil
 }
 
 func (idx *pilosaIndex) AscendLessThan(keys ...interface{}) (sql.IndexLookup, error) {
@@ -159,23 +152,26 @@ func (idx *pilosaIndex) AscendLessThan(keys ...interface{}) (sql.IndexLookup, er
 	if err != nil {
 		return nil, err
 	}
-
 	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
 	if err != nil {
 		return nil, err
 	}
 
-	return &ascendLookup{
+	l := &ascendLookup{
 		filteredLookup: &filteredLookup{
 			id:          idx.ID(),
-			mapping:     idx.mapping,
-			index:       index,
 			client:      idx.client,
+			index:       index,
+			mapping:     idx.mapping,
+			keys:        keys,
 			expressions: idx.expressions,
 		},
 		gte: nil,
 		lt:  keys,
-	}, nil
+	}
+	l.initFilter()
+
+	return l, nil
 }
 
 func (idx *pilosaIndex) AscendRange(greaterOrEqual, lessThan []interface{}) (sql.IndexLookup, error) {
@@ -191,23 +187,25 @@ func (idx *pilosaIndex) AscendRange(greaterOrEqual, lessThan []interface{}) (sql
 	if err != nil {
 		return nil, err
 	}
-
 	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
 	if err != nil {
 		return nil, err
 	}
 
-	return &ascendLookup{
+	l := &ascendLookup{
 		filteredLookup: &filteredLookup{
 			id:          idx.ID(),
-			mapping:     idx.mapping,
-			index:       index,
 			client:      idx.client,
+			index:       index,
+			mapping:     idx.mapping,
 			expressions: idx.expressions,
 		},
 		gte: greaterOrEqual,
 		lt:  lessThan,
-	}, nil
+	}
+	l.initFilter()
+
+	return l, nil
 }
 
 func (idx *pilosaIndex) DescendGreater(keys ...interface{}) (sql.IndexLookup, error) {
@@ -219,24 +217,27 @@ func (idx *pilosaIndex) DescendGreater(keys ...interface{}) (sql.IndexLookup, er
 	if err != nil {
 		return nil, err
 	}
-
 	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
 	if err != nil {
 		return nil, err
 	}
 
-	return &descendLookup{
+	l := &descendLookup{
 		filteredLookup: &filteredLookup{
 			id:          idx.ID(),
-			mapping:     idx.mapping,
-			index:       index,
 			client:      idx.client,
+			index:       index,
+			mapping:     idx.mapping,
+			keys:        keys,
 			expressions: idx.expressions,
 			reverse:     true,
 		},
 		gt:  keys,
 		lte: nil,
-	}, nil
+	}
+	l.initFilter()
+
+	return l, nil
 }
 
 func (idx *pilosaIndex) DescendLessOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
@@ -248,24 +249,27 @@ func (idx *pilosaIndex) DescendLessOrEqual(keys ...interface{}) (sql.IndexLookup
 	if err != nil {
 		return nil, err
 	}
-
 	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
 	if err != nil {
 		return nil, err
 	}
 
-	return &descendLookup{
+	l := &descendLookup{
 		filteredLookup: &filteredLookup{
 			id:          idx.ID(),
-			mapping:     idx.mapping,
-			index:       index,
 			client:      idx.client,
+			index:       index,
+			mapping:     idx.mapping,
+			keys:        keys,
 			expressions: idx.expressions,
 			reverse:     true,
 		},
 		gt:  nil,
 		lte: keys,
-	}, nil
+	}
+	l.initFilter()
+
+	return l, nil
 }
 
 func (idx *pilosaIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sql.IndexLookup, error) {
@@ -281,519 +285,24 @@ func (idx *pilosaIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sq
 	if err != nil {
 		return nil, err
 	}
-
 	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
 	if err != nil {
 		return nil, err
 	}
 
-	return &descendLookup{
+	l := &descendLookup{
 		filteredLookup: &filteredLookup{
 			id:          idx.ID(),
-			mapping:     idx.mapping,
-			index:       index,
 			client:      idx.client,
+			index:       index,
+			mapping:     idx.mapping,
 			expressions: idx.expressions,
 			reverse:     true,
 		},
 		gt:  greaterThan,
 		lte: lessOrEqual,
-	}, nil
-}
-
-type indexLookup struct {
-	id      string
-	mapping *mapping
-	index   *pilosa.Index
-	client  *pilosa.Client
-
-	keys        []interface{}
-	expressions []sql.ExpressionHash
-}
-
-func (l *indexLookup) Values() (sql.IndexValueIter, error) {
-	l.mapping.open()
-
-	// Compute Intersection of bitmaps
-	var bitmaps []*pilosa.PQLBitmapQuery
-	for i := 0; i < len(l.keys); i++ {
-		frm, err := l.index.Frame(frameName(l.id, l.expressions[i]))
-		if err != nil {
-			return nil, err
-		}
-
-		rowID, err := l.mapping.rowID(frm.Name(), l.keys[i])
-		if err == io.EOF {
-			continue
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		bitmaps = append(bitmaps, frm.Bitmap(rowID))
 	}
+	l.initFilter()
 
-	if len(bitmaps) == 0 {
-		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
-	}
-
-	resp, err := l.client.Query(l.index.Intersect(bitmaps...))
-	if err != nil {
-		return nil, err
-	}
-
-	if !resp.Success {
-		return nil, errPilosaQuery.New(resp.ErrorMessage)
-	}
-
-	if resp.Result() == nil {
-		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
-	}
-
-	bits := resp.Result().Bitmap().Bits
-	return &indexValueIter{
-		total:     uint64(len(bits)),
-		bits:      bits,
-		mapping:   l.mapping,
-		indexName: l.index.Name(),
-	}, nil
-}
-
-type filteredLookup struct {
-	id      string
-	mapping *mapping
-	index   *pilosa.Index
-	client  *pilosa.Client
-
-	expressions []sql.ExpressionHash
-	reverse     bool
-}
-
-func (l *filteredLookup) values(filter func(int, []byte) (bool, error)) (sql.IndexValueIter, error) {
-	l.mapping.open()
-	defer l.mapping.close()
-
-	// Compute Intersection of bitmaps
-	var bitmaps []*pilosa.PQLBitmapQuery
-	for i := 0; i < len(l.expressions); i++ {
-		frm, err := l.index.Frame(frameName(l.id, l.expressions[i]))
-		if err != nil {
-			return nil, err
-		}
-
-		rows, err := l.mapping.filter(frm.Name(), func(b []byte) (bool, error) {
-			return filter(i, b)
-		})
-
-		if err != nil {
-			return nil, err
-		}
-
-		var bs []*pilosa.PQLBitmapQuery
-		for _, row := range rows {
-			bs = append(bs, frm.Bitmap(row))
-		}
-
-		bitmaps = append(bitmaps, l.index.Union(bs...))
-	}
-
-	resp, err := l.client.Query(l.index.Intersect(bitmaps...))
-	if err != nil {
-		return nil, err
-	}
-
-	if !resp.Success {
-		return nil, errPilosaQuery.New(resp.ErrorMessage)
-	}
-
-	if resp.Result() == nil {
-		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
-	}
-
-	bits := resp.Result().Bitmap().Bits
-	locations, err := l.mapping.sortedLocations(l.index.Name(), bits, l.reverse)
-	if err != nil {
-		return nil, err
-	}
-
-	return &locationValueIter{locations: locations}, nil
-}
-
-type locationValueIter struct {
-	locations [][]byte
-	pos       int
-}
-
-func (i *locationValueIter) Next() ([]byte, error) {
-	if i.pos >= len(i.locations) {
-		return nil, io.EOF
-	}
-
-	i.pos++
-	return i.locations[i.pos-1], nil
-}
-
-func (i *locationValueIter) Close() error {
-	i.locations = nil
-	return nil
-}
-
-type ascendLookup struct {
-	*filteredLookup
-	gte []interface{}
-	lt  []interface{}
-}
-
-func (l *ascendLookup) Values() (sql.IndexValueIter, error) {
-	return l.values(func(i int, value []byte) (bool, error) {
-		var v interface{}
-		var err error
-		if len(l.gte) > 0 {
-			v, err = decodeGob(value, l.gte[i])
-			if err != nil {
-				return false, err
-			}
-
-			cmp, err := compare(v, l.gte[i])
-			if err != nil {
-				return false, err
-			}
-
-			if cmp < 0 {
-				return false, nil
-			}
-		}
-
-		if len(l.lt) > 0 {
-			if v == nil {
-				v, err = decodeGob(value, l.lt[i])
-				if err != nil {
-					return false, err
-				}
-			}
-
-			cmp, err := compare(v, l.lt[i])
-			if err != nil {
-				return false, err
-			}
-
-			if cmp >= 0 {
-				return false, nil
-			}
-		}
-
-		return true, nil
-	})
-}
-
-type descendLookup struct {
-	*filteredLookup
-	gt  []interface{}
-	lte []interface{}
-}
-
-func (l *descendLookup) Values() (sql.IndexValueIter, error) {
-	return l.values(func(i int, value []byte) (bool, error) {
-		var v interface{}
-		var err error
-		if len(l.gt) > 0 {
-			v, err = decodeGob(value, l.gt[i])
-			if err != nil {
-				return false, err
-			}
-
-			cmp, err := compare(v, l.gt[i])
-			if err != nil {
-				return false, err
-			}
-
-			if cmp <= 0 {
-				return false, nil
-			}
-		}
-
-		if len(l.lte) > 0 {
-			if v == nil {
-				v, err = decodeGob(value, l.lte[i])
-				if err != nil {
-					return false, err
-				}
-			}
-
-			cmp, err := compare(v, l.lte[i])
-			if err != nil {
-				return false, err
-			}
-
-			if cmp > 0 {
-				return false, nil
-			}
-		}
-
-		return true, nil
-	})
-}
-
-type indexValueIter struct {
-	offset    uint64
-	total     uint64
-	bits      []uint64
-	mapping   *mapping
-	indexName string
-
-	// share transaction and bucket on all getLocation calls
-	bucket *bolt.Bucket
-	tx     *bolt.Tx
-}
-
-func (it *indexValueIter) Next() ([]byte, error) {
-	if it.bucket == nil {
-		bucket, err := it.mapping.getBucket(it.indexName, false)
-		if err != nil {
-			return nil, err
-		}
-
-		it.bucket = bucket
-		it.tx = bucket.Tx()
-	}
-
-	if it.offset >= it.total {
-		if err := it.Close(); err != nil {
-			logrus.WithField("err", err.Error()).
-				Error("unable to close the pilosa index value iterator")
-		}
-
-		if it.tx != nil {
-			it.tx.Rollback()
-		}
-
-		return nil, io.EOF
-	}
-
-	var colID uint64
-	if it.bits == nil {
-		colID = it.offset
-	} else {
-		colID = it.bits[it.offset]
-	}
-
-	it.offset++
-
-	return it.mapping.getLocationFromBucket(it.bucket, colID)
-}
-
-func (it *indexValueIter) Close() error {
-	if it.tx != nil {
-		it.tx.Rollback()
-	}
-
-	return it.mapping.close()
-}
-
-var (
-	errUnknownType  = errors.NewKind("unknown type %T received as value")
-	errTypeMismatch = errors.NewKind("cannot compare type %T with type %T")
-)
-
-func decodeGob(k []byte, value interface{}) (interface{}, error) {
-	decoder := gob.NewDecoder(bytes.NewBuffer(k))
-
-	switch value.(type) {
-	case string:
-		var v string
-		err := decoder.Decode(&v)
-		return v, err
-	case int32:
-		var v int32
-		err := decoder.Decode(&v)
-		return v, err
-	case int64:
-		var v int64
-		err := decoder.Decode(&v)
-		return v, err
-	case uint32:
-		var v uint32
-		err := decoder.Decode(&v)
-		return v, err
-	case uint64:
-		var v uint64
-		err := decoder.Decode(&v)
-		return v, err
-	case float64:
-		var v float64
-		err := decoder.Decode(&v)
-		return v, err
-	case time.Time:
-		var v time.Time
-		err := decoder.Decode(&v)
-		return v, err
-	case []byte:
-		var v []byte
-		err := decoder.Decode(&v)
-		return v, err
-	case bool:
-		var v bool
-		err := decoder.Decode(&v)
-		return v, err
-	case []interface{}:
-		var v []interface{}
-		err := decoder.Decode(&v)
-		return v, err
-	default:
-		return nil, errUnknownType.New(value)
-	}
-}
-
-// compare two values of the same underlying type. The values MUST be of the
-// same type.
-func compare(a, b interface{}) (int, error) {
-	switch a := a.(type) {
-	case bool:
-		v, ok := b.(bool)
-		if !ok {
-			return 0, errTypeMismatch.New(a, b)
-		}
-
-		if a == v {
-			return 0, nil
-		}
-
-		if a == false {
-			return -1, nil
-		}
-
-		return 1, nil
-	case string:
-		v, ok := b.(string)
-		if !ok {
-			return 0, errTypeMismatch.New(a, b)
-		}
-
-		return strings.Compare(a, v), nil
-	case int32:
-		v, ok := b.(int32)
-		if !ok {
-			return 0, errTypeMismatch.New(a, b)
-		}
-
-		if a == v {
-			return 0, nil
-		}
-
-		if a < v {
-			return -1, nil
-		}
-
-		return 1, nil
-	case int64:
-		v, ok := b.(int64)
-		if !ok {
-			return 0, errTypeMismatch.New(a, b)
-		}
-
-		if a == v {
-			return 0, nil
-		}
-
-		if a < v {
-			return -1, nil
-		}
-
-		return 1, nil
-	case uint32:
-		v, ok := b.(uint32)
-		if !ok {
-			return 0, errTypeMismatch.New(a, b)
-		}
-
-		if a == v {
-			return 0, nil
-		}
-
-		if a < v {
-			return -1, nil
-		}
-
-		return 1, nil
-	case uint64:
-		v, ok := b.(uint64)
-		if !ok {
-			return 0, errTypeMismatch.New(a, b)
-		}
-
-		if a == v {
-			return 0, nil
-		}
-
-		if a < v {
-			return -1, nil
-		}
-
-		return 1, nil
-	case float64:
-		v, ok := b.(float64)
-		if !ok {
-			return 0, errTypeMismatch.New(a, b)
-		}
-
-		if a == v {
-			return 0, nil
-		}
-
-		if a < v {
-			return -1, nil
-		}
-
-		return 1, nil
-	case []byte:
-		v, ok := b.([]byte)
-		if !ok {
-			return 0, errTypeMismatch.New(a, b)
-		}
-		return bytes.Compare(a, v), nil
-	case []interface{}:
-		v, ok := b.([]interface{})
-		if !ok {
-			return 0, errTypeMismatch.New(a, b)
-		}
-
-		if len(a) < len(v) {
-			return -1, nil
-		}
-
-		if len(a) > len(v) {
-			return 1, nil
-		}
-
-		for i := range a {
-			cmp, err := compare(a[i], v[i])
-			if err != nil {
-				return 0, err
-			}
-
-			if cmp != 0 {
-				return cmp, nil
-			}
-		}
-
-		return 0, nil
-	case time.Time:
-		v, ok := b.(time.Time)
-		if !ok {
-			return 0, errTypeMismatch.New(a, b)
-		}
-
-		if a.Equal(v) {
-			return 0, nil
-		}
-
-		if a.Before(v) {
-			return -1, nil
-		}
-
-		return 1, nil
-	default:
-		return 0, errUnknownType.New(a)
-	}
+	return l, nil
 }

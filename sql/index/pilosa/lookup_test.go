@@ -7,8 +7,10 @@ import (
 	"testing"
 	"time"
 
+	pilosa "github.com/pilosa/go-pilosa"
 	"github.com/stretchr/testify/require"
 	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
 func TestCompare(t *testing.T) {
@@ -116,5 +118,58 @@ func TestDecodeGob(t *testing.T) {
 			require.NoError(err)
 			require.Equal(tt, result)
 		})
+	}
+}
+
+func TestMergeable(t *testing.T) {
+	require := require.New(t)
+
+	i1, err := pilosa.NewIndex("i1")
+	require.NoError(err)
+	i2, err := pilosa.NewIndex("i2")
+	require.NoError(err)
+
+	testCases := []struct {
+		i1       sql.IndexLookup
+		i2       sql.IndexLookup
+		expected bool
+	}{
+		{
+			i1:       &indexLookup{index: i1},
+			i2:       &indexLookup{index: i1},
+			expected: true,
+		},
+		{
+			i1:       &indexLookup{index: i1},
+			i2:       &indexLookup{index: i2},
+			expected: false,
+		},
+		{
+			i1:       &indexLookup{index: i1},
+			i2:       &ascendLookup{filteredLookup: &filteredLookup{index: i1}},
+			expected: true,
+		},
+		{
+			i1:       &descendLookup{filteredLookup: &filteredLookup{index: i1}},
+			i2:       &ascendLookup{filteredLookup: &filteredLookup{index: i1}},
+			expected: true,
+		},
+		{
+			i1:       &descendLookup{filteredLookup: &filteredLookup{index: i1}},
+			i2:       &indexLookup{index: i2},
+			expected: false,
+		},
+		{
+			i1:       &descendLookup{filteredLookup: &filteredLookup{index: i1}},
+			i2:       &descendLookup{filteredLookup: &filteredLookup{index: i2}},
+			expected: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		m1, ok := tc.i1.(sql.Mergeable)
+		require.True(ok)
+
+		require.Equal(tc.expected, m1.IsMergeable(tc.i2))
 	}
 }

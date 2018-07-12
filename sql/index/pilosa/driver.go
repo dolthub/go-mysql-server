@@ -188,11 +188,9 @@ func (d *Driver) Save(
 		if err != nil {
 			return err
 		}
-
 		// make sure we delete the index in every run before inserting, since there may
 		// be previous data
-		err = d.client.DeleteFrame(frm)
-		if err != nil {
+		if err = d.client.DeleteFrame(frm); err != nil {
 			return errDeletePilosaFrame.New(frm.Name(), err)
 		}
 

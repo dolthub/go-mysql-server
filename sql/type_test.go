@@ -88,8 +88,7 @@ func TestTimestamp(t *testing.T) {
 
 func TestDate(t *testing.T) {
 	require := require.New(t)
-
-	now := time.Now()
+	now := time.Now().UTC()
 	v, err := Date.Convert(now)
 	require.NoError(err)
 	require.Equal(now.Format(DateLayout), v.(time.Time).Format(DateLayout))
