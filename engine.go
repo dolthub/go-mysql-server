@@ -9,14 +9,26 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/parse"
 )
 
+// Config for the Engine.
+type Config struct {
+	// VersionPostfix to display with the `VERSION()` UDF.
+	VersionPostfix string
+}
+
 // Engine is a SQL engine.
 type Engine struct {
 	Catalog  *sql.Catalog
 	Analyzer *analyzer.Analyzer
 }
 
-// New creates a new Engine
-func New(c *sql.Catalog, a *analyzer.Analyzer, versionPostfix string) *Engine {
+// New creates a new Engine with custom configuration. To create an Engine with
+// the default settings use `NewDefault`.
+func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
+	var versionPostfix string
+	if cfg != nil {
+		versionPostfix = cfg.VersionPostfix
+	}
+
 	c.RegisterFunctions(function.Defaults)
 	c.RegisterFunction("version", sql.FunctionN(function.NewVersion(versionPostfix)))
 
@@ -28,7 +40,7 @@ func NewDefault() *Engine {
 	c := sql.NewCatalog()
 	a := analyzer.NewDefault(c)
 
-	return New(c, a, "go-mysql-server")
+	return New(c, a, nil)
 }
 
 // Query executes a query without attaching to any context.
