@@ -22,6 +22,10 @@ var (
 
 	// ErrTableNotNameable is returned when the table name can't be obtained.
 	ErrTableNotNameable = errors.NewKind("can't get the name from the table")
+
+	// ErrExprTypeNotIndexable is returned when the expression type cannot be
+	// indexed, such as BLOB or JSON.
+	ErrExprTypeNotIndexable = errors.NewKind("expression %q with type %s cannot be indexed")
 )
 
 // CreateIndex is a node to create an index.
@@ -98,6 +102,12 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	columns, exprs, exprHashes, err := getColumnsAndPrepareExpressions(c.Exprs)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, e := range exprs {
+		if e.Type() == sql.Blob || e.Type() == sql.JSON {
+			return nil, ErrExprTypeNotIndexable.New(e, e.Type())
+		}
 	}
 
 	index, err := driver.Create(
