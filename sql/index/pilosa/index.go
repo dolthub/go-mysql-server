@@ -306,3 +306,28 @@ func (idx *pilosaIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sq
 
 	return l, nil
 }
+
+func (idx *pilosaIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
+	if len(keys) != len(idx.expressions) {
+		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
+	}
+
+	schema, err := idx.client.Schema()
+	if err != nil {
+		return nil, err
+	}
+
+	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
+	if err != nil {
+		return nil, err
+	}
+
+	return &negateLookup{
+		id:          idx.ID(),
+		client:      idx.client,
+		index:       index,
+		mapping:     idx.mapping,
+		keys:        keys,
+		expressions: idx.expressions,
+	}, nil
+}

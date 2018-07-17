@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"io"
+	"math"
 	"strings"
 	"time"
 
@@ -18,25 +19,29 @@ var (
 	errUnmergeableType = errors.NewKind("unmergeable type %T")
 )
 
-type (
+type lookupOperation struct {
+	lookup    sql.IndexLookup
+	operation func(...*pilosa.PQLBitmapQuery) *pilosa.PQLBitmapQuery
+}
 
-	// indexLookup implement following interfaces:
-	// sql.IndexLookup, sql.Mergeable, sql.SetOperations
-	indexLookup struct {
-		id          string
-		client      *pilosa.Client
-		index       *pilosa.Index
-		mapping     *mapping
-		keys        []interface{}
-		expressions []sql.ExpressionHash
-		operations  []*lookupOperation
-	}
+type pilosaLookup interface {
+	bitmapQuery() (*pilosa.PQLBitmapQuery, error)
+	indexName() string
+}
 
-	lookupOperation struct {
-		lookup    sql.IndexLookup
-		operation func(...*pilosa.PQLBitmapQuery) *pilosa.PQLBitmapQuery
-	}
-)
+// indexLookup implement following interfaces:
+// sql.IndexLookup, sql.Mergeable, sql.SetOperations
+type indexLookup struct {
+	id          string
+	client      *pilosa.Client
+	index       *pilosa.Index
+	mapping     *mapping
+	keys        []interface{}
+	expressions []sql.ExpressionHash
+	operations  []*lookupOperation
+}
+
+func (l *indexLookup) indexName() string { return l.index.Name() }
 
 func (l *indexLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 	l.mapping.open()
@@ -75,11 +80,7 @@ func (l *indexLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 		)
 
 		switch il := op.lookup.(type) {
-		case *indexLookup:
-			b, e = il.bitmapQuery()
-		case *ascendLookup:
-			b, e = il.bitmapQuery()
-		case *descendLookup:
+		case pilosaLookup:
 			b, e = il.bitmapQuery()
 		default:
 			return nil, errUnmergeableType.New(op.lookup)
@@ -135,13 +136,8 @@ func (l *indexLookup) Values() (sql.IndexValueIter, error) {
 // IsMergeable implements sql.Mergeable interface.
 func (l *indexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	switch il := lookup.(type) {
-	case *indexLookup:
-		return il.index.Name() == l.index.Name()
-	case *ascendLookup:
-		return il.index.Name() == l.index.Name()
-	case *descendLookup:
-		return il.index.Name() == l.index.Name()
-
+	case pilosaLookup:
+		return l.indexName() == il.indexName()
 	}
 
 	return false
@@ -214,6 +210,8 @@ type filteredLookup struct {
 	filter  func(int, []byte) (bool, error)
 }
 
+func (l *filteredLookup) indexName() string { return l.index.Name() }
+
 func (l *filteredLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 	l.mapping.open()
 	defer l.mapping.close()
@@ -254,11 +252,7 @@ func (l *filteredLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 		)
 
 		switch il := op.lookup.(type) {
-		case *indexLookup:
-			b, e = il.bitmapQuery()
-		case *ascendLookup:
-			b, e = il.bitmapQuery()
-		case *descendLookup:
+		case pilosaLookup:
 			b, e = il.bitmapQuery()
 		default:
 			return nil, errUnmergeableType.New(op.lookup)
@@ -365,12 +359,8 @@ func (l *ascendLookup) Values() (sql.IndexValueIter, error) {
 // IsMergeable implements sql.Mergeable interface.
 func (l *ascendLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	switch il := lookup.(type) {
-	case *indexLookup:
-		return il.index.Name() == l.index.Name()
-	case *ascendLookup:
-		return il.index.Name() == l.index.Name()
-	case *descendLookup:
-		return il.index.Name() == l.index.Name()
+	case pilosaLookup:
+		return il.indexName() == l.indexName()
 	}
 
 	return false
@@ -503,12 +493,8 @@ func (l *descendLookup) Values() (sql.IndexValueIter, error) {
 // IsMergeable implements sql.Mergeable interface.
 func (l *descendLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	switch il := lookup.(type) {
-	case *indexLookup:
-		return il.index.Name() == l.index.Name()
-	case *ascendLookup:
-		return il.index.Name() == l.index.Name()
-	case *descendLookup:
-		return il.index.Name() == l.index.Name()
+	case pilosaLookup:
+		return il.indexName() == l.indexName()
 	}
 
 	return false
@@ -786,4 +772,194 @@ func compare(a, b interface{}) (int, error) {
 	default:
 		return 0, errUnknownType.New(a)
 	}
+}
+
+type negateLookup struct {
+	id          string
+	client      *pilosa.Client
+	index       *pilosa.Index
+	mapping     *mapping
+	keys        []interface{}
+	expressions []sql.ExpressionHash
+	operations  []*lookupOperation
+}
+
+var (
+	zeroTime time.Time
+	maxTime  = time.Unix(math.MaxInt64, math.MaxInt64)
+)
+
+func (l *negateLookup) indexName() string { return l.index.Name() }
+
+func (l *negateLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
+	l.mapping.open()
+	defer l.mapping.close()
+
+	var bitmaps []*pilosa.PQLBitmapQuery
+	for i, expr := range l.expressions {
+		frm, err := l.index.Frame(frameName(l.id, expr))
+		if err != nil {
+			return nil, err
+		}
+
+		maxRowID, err := l.mapping.getMaxRowID(frm.Name())
+		if err != nil {
+			return nil, err
+		}
+
+		// Since Pilosa does not have a negation in PQL (see:
+		// https://github.com/pilosa/pilosa/issues/807), we have to get all the
+		// ones in all the rows and join them, and then make difference between
+		// them and the ones in the row of the given value.
+		var rows []*pilosa.PQLBitmapQuery
+		// rowIDs start with 1
+		for i := uint64(1); i <= maxRowID; i++ {
+			rows = append(rows, frm.Bitmap(i))
+		}
+		all := l.index.Union(rows...)
+
+		rowID, err := l.mapping.rowID(frm.Name(), l.keys[i])
+		if err == io.EOF {
+			continue
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		bitmaps = append(
+			bitmaps,
+			l.index.Difference(all, frm.Bitmap(rowID)),
+		)
+	}
+	if len(bitmaps) == 0 {
+		return nil, nil
+	}
+
+	// Compute Intersection of expression bitmaps
+	bmp := l.index.Intersect(bitmaps...)
+
+	// Compute composition operations
+	for _, op := range l.operations {
+		var (
+			b *pilosa.PQLBitmapQuery
+			e error
+		)
+
+		switch il := op.lookup.(type) {
+		case pilosaLookup:
+			b, e = il.bitmapQuery()
+		default:
+			return nil, errUnmergeableType.New(op.lookup)
+		}
+
+		if e != nil {
+			return nil, e
+		}
+		if e = b.Error(); e != nil {
+			return nil, e
+		}
+
+		bmp = op.operation(bmp, b)
+	}
+
+	return bmp, nil
+}
+
+// Values implements sql.IndexLookup.Values
+func (l *negateLookup) Values() (sql.IndexValueIter, error) {
+	bmp, err := l.bitmapQuery()
+	if err != nil {
+		return nil, err
+	}
+
+	l.mapping.open()
+	if bmp == nil {
+		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
+	}
+
+	resp, err := l.client.Query(bmp)
+	if err != nil {
+		return nil, err
+	}
+
+	if !resp.Success {
+		return nil, errPilosaQuery.New(resp.ErrorMessage)
+	}
+
+	if resp.Result() == nil {
+		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
+	}
+
+	bits := resp.Result().Bitmap().Bits
+	return &indexValueIter{
+		total:     uint64(len(bits)),
+		bits:      bits,
+		mapping:   l.mapping,
+		indexName: l.index.Name(),
+	}, nil
+}
+
+// IsMergeable implements sql.Mergeable interface.
+func (l *negateLookup) IsMergeable(lookup sql.IndexLookup) bool {
+	switch il := lookup.(type) {
+	case pilosaLookup:
+		return il.indexName() == l.indexName()
+	}
+
+	return false
+}
+
+// Intersection implements sql.SetOperations interface
+func (l *negateLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
+	lookup := &negateLookup{
+		id:          l.id,
+		client:      l.client,
+		index:       l.index,
+		mapping:     l.mapping,
+		keys:        l.keys,
+		expressions: l.expressions,
+		operations:  l.operations,
+	}
+	for _, li := range lookups {
+		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Intersect})
+	}
+
+	return lookup
+}
+
+// Union implements sql.SetOperations interface
+func (l *negateLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
+	lookup := &negateLookup{
+		id:          l.id,
+		client:      l.client,
+		index:       l.index,
+		mapping:     l.mapping,
+		keys:        l.keys,
+		expressions: l.expressions,
+		operations:  l.operations,
+	}
+	for _, li := range lookups {
+		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Union})
+	}
+
+	return lookup
+}
+
+// Difference implements sql.SetOperations interface
+func (l *negateLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
+	lookup := &negateLookup{
+		id:          l.id,
+		client:      l.client,
+		index:       l.index,
+		mapping:     l.mapping,
+		keys:        l.keys,
+		expressions: l.expressions,
+		operations:  l.operations,
+	}
+	for _, li := range lookups {
+		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Difference})
+	}
+
+	return lookup
 }

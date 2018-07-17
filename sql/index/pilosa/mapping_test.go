@@ -27,6 +27,10 @@ func TestRowID(t *testing.T) {
 		require.NoError(err)
 		require.Equal(expected[i], rowID)
 	}
+
+	maxRowID, err := m.getMaxRowID("frame name")
+	require.NoError(err)
+	require.Equal(uint64(6), maxRowID)
 }
 
 func TestLocation(t *testing.T) {
