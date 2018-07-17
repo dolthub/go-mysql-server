@@ -611,6 +611,19 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo"),
 		),
 	),
+	`SELECT MAX(i)/2 FROM foo`: plan.NewGroupBy(
+		[]sql.Expression{
+			expression.NewArithmetic(
+				expression.NewUnresolvedFunction(
+					"max", true, expression.NewUnresolvedColumn("i"),
+				),
+				expression.NewLiteral(int64(2), sql.Int64),
+				"/",
+			),
+		},
+		[]sql.Expression{},
+		plan.NewUnresolvedTable("foo"),
+	),
 }
 
 func TestParse(t *testing.T) {

@@ -299,6 +299,14 @@ var queries = []struct {
 		"SELECT * FROM mytable WHERE 1 > 5",
 		[]sql.Row{},
 	},
+	{
+		"SELECT SUM(i) + 1, i FROM mytable GROUP BY i ORDER BY i",
+		[]sql.Row{
+			{float64(2), int64(1)},
+			{float64(3), int64(2)},
+			{float64(4), int64(3)},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {

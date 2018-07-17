@@ -16,6 +16,7 @@ var DefaultRules = []Rule{
 	{"resolve_database", resolveDatabase},
 	{"resolve_star", resolveStar},
 	{"resolve_functions", resolveFunctions},
+	{"reorder_aggregations", reorderAggregations},
 	{"reorder_projection", reorderProjection},
 	{"assign_indexes", assignIndexes},
 	{"pushdown", pushdown},
