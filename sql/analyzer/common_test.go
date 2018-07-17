@@ -5,6 +5,26 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 )
 
+func not(e sql.Expression) sql.Expression {
+	return expression.NewNot(e)
+}
+
+func gt(left, right sql.Expression) sql.Expression {
+	return expression.NewGreaterThan(left, right)
+}
+
+func gte(left, right sql.Expression) sql.Expression {
+	return expression.NewGreaterThanOrEqual(left, right)
+}
+
+func lt(left, right sql.Expression) sql.Expression {
+	return expression.NewLessThan(left, right)
+}
+
+func lte(left, right sql.Expression) sql.Expression {
+	return expression.NewLessThanOrEqual(left, right)
+}
+
 func or(left, right sql.Expression) sql.Expression {
 	return expression.NewOr(left, right)
 }
