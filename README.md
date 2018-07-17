@@ -185,6 +185,26 @@ Taking a look at the main [index interface](https://github.com/src-d/go-mysql-se
 - This abstraction lets you create an index for multiple columns (one or more) or for **only one** expression (e.g. function applied on multiple columns).
 - If you want to index an expression that is not a column you will only be able to index **one and only one** expression at a time.
 
+## Custom index driver implementation
+
+Index drivers provide different backends for storing and querying indexes. To implement a custom index driver you need to implement a few things:
+
+- `sql.IndexDriver` interface, which will be the driver itself. Not that your driver must return an unique ID in the `ID` method. This ID is unique for your driver and should not clash with any other registered driver. It's the driver's responsibility to be fault tolerant and be able to automatically detect and recover from corruption in indexes.
+- `sql.Index` interface, returned by your driver when an index is loaded or created.
+  - Your `sql.Index` may optionally implement the `sql.AscendIndex` and/or `sql.DescendIndex` interfaces, if you want to support more comparison operators like `>`, `<`, `>=`, `<=` or `BETWEEN`.
+- `sql.IndexLookup` interface, returned by your index in any of the implemented operations to get a subset of the indexed values.
+  - Your `sql.IndexLookup` may optionally implement the `sql.Mergeable` and `sql.SetOperations` interfaces if you want to support set operations to merge your index lookups.
+- `sql.IndexValueIter` interface, which will be returned by your `sql.IndexLookup` and should return the values of the index.
+- Don't forget to register the index driver in your `sql.Catalog` using `catalog.RegisterIndexDriver(mydriver)` to be able to use it.
+
+To create indexes using your custom index driver you need to use `USING driverid` on the index creation query. For example:
+
+```sql
+CREATE INDEX foo ON table(col1, col2) USING driverid
+```
+
+You can see an example of a driver implementation inside the `sql/index/pilosa` package, where the pilosa driver is implemented.
+
 ## Powered by go-mysql-server
 
 * [gitbase](https://github.com/src-d/gitbase)
