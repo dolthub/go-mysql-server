@@ -121,13 +121,28 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 				result[table] = lookup
 			}
 		}
-	case *expression.In:
+	case *expression.In, *expression.NotIn:
+		c, ok := e.(expression.Comparer)
+		if !ok {
+			return nil, nil
+		}
+
+		_, negate := e.(*expression.NotIn)
+
 		// Take the index of a SOMETHING IN SOMETHING expression only if:
 		// the right branch is evaluable and the indexlookup supports set
 		// operations.
-		if !isEvaluable(e.Left()) && isEvaluable(e.Right()) {
-			idx := a.Catalog.IndexByExpression(a.CurrentDatabase, e.Left())
+		if !isEvaluable(c.Left()) && isEvaluable(c.Right()) {
+			idx := a.Catalog.IndexByExpression(a.CurrentDatabase, c.Left())
 			if idx != nil {
+				var nidx sql.NegateIndex
+				if negate {
+					nidx, ok = idx.(sql.NegateIndex)
+					if !ok {
+						return nil, nil
+					}
+				}
+
 				// release the index if it was not used
 				defer func() {
 					if _, ok := result[idx.Table()]; !ok {
@@ -135,7 +150,7 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 					}
 				}()
 
-				value, err := e.Right().Eval(sql.NewEmptyContext(), nil)
+				value, err := c.Right().Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
 					return nil, err
 				}
@@ -145,14 +160,30 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 					return nil, errInvalidInRightEvaluation.New(value)
 				}
 
-				lookup, err := idx.Get(values[0])
-				if err != nil {
+				var lookup sql.IndexLookup
+				var errLookup error
+				if negate {
+					lookup, errLookup = nidx.Not(values[0])
+				} else {
+					lookup, errLookup = idx.Get(values[0])
+
+				}
+
+				if errLookup != nil {
 					return nil, err
 				}
 
 				for _, v := range values[1:] {
-					lookup2, err := idx.Get(v)
-					if err != nil {
+					var lookup2 sql.IndexLookup
+					var errLookup error
+					if negate {
+						lookup2, errLookup = nidx.Not(v)
+					} else {
+						lookup2, errLookup = idx.Get(v)
+
+					}
+
+					if errLookup != nil {
 						return nil, err
 					}
 
@@ -161,7 +192,11 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 						return result, nil
 					}
 
-					lookup = lookup.(sql.SetOperations).Union(lookup2)
+					if negate {
+						lookup = lookup.(sql.SetOperations).Intersection(lookup2)
+					} else {
+						lookup = lookup.(sql.SetOperations).Union(lookup2)
+					}
 				}
 
 				result[idx.Table()] = &indexLookup{

@@ -692,6 +692,27 @@ func TestGetIndexes(t *testing.T) {
 			},
 			true,
 		},
+		{
+			expression.NewNotIn(
+				col(0, "t1", "bar"),
+				expression.NewTuple(
+					lit(1),
+					lit(2),
+					lit(3),
+					lit(4),
+				),
+			),
+			map[string]*indexLookup{
+				"t1": &indexLookup{
+					&mergeableIndexLookup{
+						id:            "not 1",
+						intersections: []string{"not 2", "not 3", "not 4"},
+					},
+					[]sql.Index{indexes[0]},
+				},
+			},
+			true,
+		},
 	}
 
 	catalog := sql.NewCatalog()
@@ -1175,7 +1196,7 @@ func (i *mergeableIndexLookup) Unions() []string        { return i.unions }
 func (i *mergeableIndexLookup) Intersections() []string { return i.intersections }
 
 func (i *mergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
-	_, ok := lookup.(*mergeableIndexLookup)
+	_, ok := lookup.(mergeableLookup)
 	return ok
 }
 
