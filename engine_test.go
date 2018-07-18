@@ -801,22 +801,41 @@ func TestIndexes(t *testing.T) {
 			"SELECT * FROM mytable WHERE i = 2 AND s = 'third row'",
 			([]sql.Row)(nil),
 		},
-		// TODO(erizocosmico): BETWEEN cannot be tested because SetOperations
-		// is still not implemented in pilosa.
-		// TODO(erizocosmico): AND and OR cannot be tested because SetOperations
-		// is still not implemented in pilosa.
+		{
+			"SELECT * FROM mytable WHERE i BETWEEN 1 AND 2",
+			[]sql.Row{
+				{int64(1), "first row"},
+				{int64(2), "second row"},
+			},
+		},
+		{
+			"SELECT * FROM mytable WHERE i = 1 OR i = 2",
+			[]sql.Row{
+				{int64(1), "first row"},
+				{int64(2), "second row"},
+			},
+		},
+		{
+			"SELECT * FROM mytable WHERE i = 1 AND i = 2",
+			([]sql.Row)(nil),
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.query, func(t *testing.T) {
 			require := require.New(t)
-			_, it, err := e.Query(sql.NewEmptyContext(), tt.query)
+
+			tracer := new(test.MemTracer)
+			ctx := sql.NewContext(context.TODO(), sql.WithTracer(tracer))
+
+			_, it, err := e.Query(ctx, tt.query)
 			require.NoError(err)
 
 			rows, err := sql.RowIterToRows(it)
 			require.NoError(err)
 
 			require.Equal(tt.expected, rows)
+			require.Equal("plan.IndexableTable", tracer.Spans[len(tracer.Spans)-1])
 		})
 	}
 }
