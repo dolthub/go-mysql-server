@@ -77,6 +77,13 @@ type DescendIndex interface {
 	DescendRange(lessOrEqual, greaterThan []interface{}) (IndexLookup, error)
 }
 
+// NegateIndex is an index that supports retrieving negated values.
+type NegateIndex interface {
+	// Not returns an IndexLookup for keys that are not equal
+	// to the given keys.
+	Not(keys ...interface{}) (IndexLookup, error)
+}
+
 // IndexLookup is a subset of an index. More specific interfaces can be
 // implemented to grant more capabilities to the index lookup.
 type IndexLookup interface {

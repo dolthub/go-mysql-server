@@ -13,6 +13,71 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
+func TestNegateIndex(t *testing.T) {
+	require := require.New(t)
+
+	catalog := sql.NewCatalog()
+	idx1 := &dummyIndex{
+		"t1",
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
+		},
+	}
+	done, ready, err := catalog.AddIndex(idx1)
+	require.NoError(err)
+	close(done)
+	<-ready
+
+	a := NewDefault(catalog)
+
+	t1 := &indexableTable{
+		&pushdownProjectionAndFiltersTable{
+			mem.NewTable("t1", sql.Schema{
+				{Name: "foo", Type: sql.Int64, Source: "t1"},
+			}),
+		},
+	}
+
+	node := plan.NewProject(
+		[]sql.Expression{},
+		plan.NewFilter(
+			expression.NewNot(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+			),
+			t1,
+		),
+	)
+
+	expected := plan.NewProject(
+		[]sql.Expression{},
+		plan.NewFilter(
+			expression.NewNot(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+			),
+			&indexable{
+				&indexLookup{
+					&negateIndexLookup{
+						value: "1",
+					},
+					[]sql.Index{idx1},
+				},
+				t1,
+			},
+		),
+	)
+
+	result, err := assignIndexes(sql.NewEmptyContext(), a, node)
+	require.NoError(err)
+
+	require.Equal(expected, result)
+}
+
 func TestAssignIndexes(t *testing.T) {
 	require := require.New(t)
 
@@ -382,7 +447,7 @@ func TestGetIndexes(t *testing.T) {
 			true,
 		},
 		{
-			expression.NewGreaterThan(
+			gt(
 				col(0, "t1", "bar"),
 				lit(1),
 			),
@@ -395,7 +460,7 @@ func TestGetIndexes(t *testing.T) {
 			true,
 		},
 		{
-			expression.NewLessThan(
+			lt(
 				col(0, "t1", "bar"),
 				lit(1),
 			),
@@ -408,7 +473,7 @@ func TestGetIndexes(t *testing.T) {
 			true,
 		},
 		{
-			expression.NewGreaterThanOrEqual(
+			gte(
 				col(0, "t1", "bar"),
 				lit(1),
 			),
@@ -421,7 +486,7 @@ func TestGetIndexes(t *testing.T) {
 			true,
 		},
 		{
-			expression.NewLessThanOrEqual(
+			lte(
 				col(0, "t1", "bar"),
 				lit(1),
 			),
@@ -452,6 +517,196 @@ func TestGetIndexes(t *testing.T) {
 								lte: []interface{}{int64(5)},
 							},
 						},
+					},
+					[]sql.Index{indexes[0]},
+				},
+			},
+			true,
+		},
+		{
+			not(
+				eq(
+					col(0, "t1", "bar"),
+					lit(1),
+				),
+			),
+			map[string]*indexLookup{
+				"t1": &indexLookup{
+					&negateIndexLookup{
+						value: "1",
+					},
+					[]sql.Index{indexes[0]},
+				},
+			},
+			true,
+		},
+		{
+
+			not(
+				gt(
+					col(0, "t1", "bar"),
+					lit(10),
+				),
+			),
+			map[string]*indexLookup{
+				"t1": &indexLookup{
+					&descendIndexLookup{lte: []interface{}{int64(10)}},
+					[]sql.Index{indexes[0]},
+				},
+			},
+			true,
+		},
+		{
+
+			not(
+				gte(
+					col(0, "t1", "bar"),
+					lit(10),
+				),
+			),
+			map[string]*indexLookup{
+				"t1": &indexLookup{
+					&ascendIndexLookup{lt: []interface{}{int64(10)}},
+					[]sql.Index{indexes[0]},
+				},
+			},
+			true,
+		},
+		{
+
+			not(
+				lte(
+					col(0, "t1", "bar"),
+					lit(10),
+				),
+			),
+			map[string]*indexLookup{
+				"t1": &indexLookup{
+					&descendIndexLookup{gt: []interface{}{int64(10)}},
+					[]sql.Index{indexes[0]},
+				},
+			},
+			true,
+		},
+		{
+
+			not(
+				lt(
+					col(0, "t1", "bar"),
+					lit(10),
+				),
+			),
+			map[string]*indexLookup{
+				"t1": &indexLookup{
+					&ascendIndexLookup{gte: []interface{}{int64(10)}},
+					[]sql.Index{indexes[0]},
+				},
+			},
+			true,
+		},
+		{
+			not(
+				and(
+					eq(
+						col(0, "t1", "bar"),
+						lit(10),
+					),
+					eq(
+						col(0, "t1", "bar"),
+						lit(11),
+					),
+				),
+			),
+			map[string]*indexLookup{
+				"t1": &indexLookup{
+					&mergedIndexLookup{
+						children: []sql.IndexLookup{
+							&negateIndexLookup{
+								value: "10",
+							},
+							&negateIndexLookup{
+								value: "11",
+							},
+						},
+					},
+					[]sql.Index{
+						indexes[0],
+						indexes[0],
+					},
+				},
+			},
+			true,
+		},
+		{
+			not(
+				or(
+					eq(
+						col(0, "t1", "bar"),
+						lit(10),
+					),
+					eq(
+						col(0, "t1", "bar"),
+						lit(11),
+					),
+				),
+			),
+			map[string]*indexLookup{
+				"t1": &indexLookup{
+					&mergeableIndexLookup{
+						id:            "not 10",
+						intersections: []string{"not 11"},
+					},
+					[]sql.Index{
+						indexes[0],
+						indexes[0],
+					},
+				},
+			},
+			true,
+		},
+		{
+			// `NOT` doesn't work for multicolumn indexes, so the expression
+			// will use indexes if there are indexes for the single columns
+			// involved. In this case there is a index for the column `t2.bar`.
+			not(
+				or(
+					eq(
+						col(0, "t2", "foo"),
+						lit(100),
+					),
+					eq(
+						col(0, "t2", "bar"),
+						lit(110),
+					),
+				),
+			),
+			map[string]*indexLookup{
+				"t2": &indexLookup{
+					&negateIndexLookup{
+						value: "110",
+					},
+					[]sql.Index{
+						indexes[2],
+					},
+				},
+			},
+			true,
+		},
+		{
+			expression.NewNotIn(
+				col(0, "t1", "bar"),
+				expression.NewTuple(
+					lit(1),
+					lit(2),
+					lit(3),
+					lit(4),
+				),
+			),
+			map[string]*indexLookup{
+				"t1": &indexLookup{
+					&mergeableIndexLookup{
+						id:            "not 1",
+						intersections: []string{"not 2", "not 3", "not 4"},
 					},
 					[]sql.Index{indexes[0]},
 				},
@@ -690,6 +945,7 @@ type dummyIndex struct {
 var _ sql.Index = (*dummyIndex)(nil)
 var _ sql.AscendIndex = (*dummyIndex)(nil)
 var _ sql.DescendIndex = (*dummyIndex)(nil)
+var _ sql.NegateIndex = (*dummyIndex)(nil)
 
 func (dummyIndex) Database() string { return "" }
 func (dummyIndex) Driver() string   { return "" }
@@ -727,14 +983,26 @@ func (i dummyIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sql.In
 	return &descendIndexLookup{gt: greaterThan, lte: lessOrEqual}, nil
 }
 
+func (i dummyIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
+	lookup, err := i.Get(keys...)
+	if err != nil {
+		return nil, err
+	}
+
+	mergeable, _ := lookup.(*mergeableIndexLookup)
+	return &negateIndexLookup{value: mergeable.id}, nil
+}
+
 func (i dummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 	if len(key) != 1 {
 		var parts = make([]string, len(key))
 		for i, p := range key {
 			parts[i] = fmt.Sprint(p)
 		}
+
 		return &mergeableIndexLookup{id: strings.Join(parts, ", ")}, nil
 	}
+
 	return &mergeableIndexLookup{id: fmt.Sprint(key[0])}, nil
 }
 func (i dummyIndex) Has(key ...interface{}) (bool, error) {
@@ -775,6 +1043,46 @@ func (mergedIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
 
 func (mergedIndexLookup) Intersection(...sql.IndexLookup) sql.IndexLookup {
 	panic("mergedIndexLookup.Intersection is not implemented")
+}
+
+type negateIndexLookup struct {
+	value         string
+	intersections []string
+	unions        []string
+}
+
+func (l *negateIndexLookup) ID() string              { return "not " + l.value }
+func (l *negateIndexLookup) Unions() []string        { return l.unions }
+func (l *negateIndexLookup) Intersections() []string { return l.intersections }
+
+func (*negateIndexLookup) Values() (sql.IndexValueIter, error) {
+	panic("negateIndexLookup.Values is a placeholder")
+}
+
+func (*negateIndexLookup) IsMergeable(sql.IndexLookup) bool {
+	return true
+}
+
+func (l *negateIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
+	return &mergedIndexLookup{append([]sql.IndexLookup{l}, lookups...)}
+}
+
+func (*negateIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
+	panic("negateIndexLookup.Difference is not implemented")
+}
+
+func (l *negateIndexLookup) Intersection(indexes ...sql.IndexLookup) sql.IndexLookup {
+	var intersections, unions []string
+	for _, idx := range indexes {
+		intersections = append(intersections, idx.(mergeableLookup).ID())
+		intersections = append(intersections, idx.(mergeableLookup).Intersections()...)
+		unions = append(unions, idx.(mergeableLookup).Unions()...)
+	}
+	return &mergeableIndexLookup{
+		l.ID(),
+		append(l.unions, unions...),
+		append(l.intersections, intersections...),
+	}
 }
 
 type ascendIndexLookup struct {
@@ -868,6 +1176,12 @@ func TestCanMergeIndexes(t *testing.T) {
 	require.True(canMergeIndexes(new(mergeableIndexLookup), new(mergeableIndexLookup)))
 }
 
+type mergeableLookup interface {
+	ID() string
+	Unions() []string
+	Intersections() []string
+}
+
 type mergeableIndexLookup struct {
 	id            string
 	unions        []string
@@ -877,8 +1191,12 @@ type mergeableIndexLookup struct {
 var _ sql.Mergeable = (*mergeableIndexLookup)(nil)
 var _ sql.SetOperations = (*mergeableIndexLookup)(nil)
 
+func (i *mergeableIndexLookup) ID() string              { return i.id }
+func (i *mergeableIndexLookup) Unions() []string        { return i.unions }
+func (i *mergeableIndexLookup) Intersections() []string { return i.intersections }
+
 func (i *mergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
-	_, ok := lookup.(*mergeableIndexLookup)
+	_, ok := lookup.(mergeableLookup)
 	return ok
 }
 
@@ -893,9 +1211,9 @@ func (i *mergeableIndexLookup) Difference(indexes ...sql.IndexLookup) sql.IndexL
 func (i *mergeableIndexLookup) Intersection(indexes ...sql.IndexLookup) sql.IndexLookup {
 	var intersections, unions []string
 	for _, idx := range indexes {
-		intersections = append(intersections, idx.(*mergeableIndexLookup).id)
-		intersections = append(intersections, idx.(*mergeableIndexLookup).intersections...)
-		unions = append(unions, idx.(*mergeableIndexLookup).unions...)
+		intersections = append(intersections, idx.(mergeableLookup).ID())
+		intersections = append(intersections, idx.(mergeableLookup).Intersections()...)
+		unions = append(unions, idx.(mergeableLookup).Unions()...)
 	}
 	return &mergeableIndexLookup{
 		i.id,

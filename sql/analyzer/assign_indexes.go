@@ -121,13 +121,28 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 				result[table] = lookup
 			}
 		}
-	case *expression.In:
+	case *expression.In, *expression.NotIn:
+		c, ok := e.(expression.Comparer)
+		if !ok {
+			return nil, nil
+		}
+
+		_, negate := e.(*expression.NotIn)
+
 		// Take the index of a SOMETHING IN SOMETHING expression only if:
 		// the right branch is evaluable and the indexlookup supports set
 		// operations.
-		if !isEvaluable(e.Left()) && isEvaluable(e.Right()) {
-			idx := a.Catalog.IndexByExpression(a.CurrentDatabase, e.Left())
+		if !isEvaluable(c.Left()) && isEvaluable(c.Right()) {
+			idx := a.Catalog.IndexByExpression(a.CurrentDatabase, c.Left())
 			if idx != nil {
+				var nidx sql.NegateIndex
+				if negate {
+					nidx, ok = idx.(sql.NegateIndex)
+					if !ok {
+						return nil, nil
+					}
+				}
+
 				// release the index if it was not used
 				defer func() {
 					if _, ok := result[idx.Table()]; !ok {
@@ -135,7 +150,7 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 					}
 				}()
 
-				value, err := e.Right().Eval(sql.NewEmptyContext(), nil)
+				value, err := c.Right().Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
 					return nil, err
 				}
@@ -145,14 +160,30 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 					return nil, errInvalidInRightEvaluation.New(value)
 				}
 
-				lookup, err := idx.Get(values[0])
-				if err != nil {
+				var lookup sql.IndexLookup
+				var errLookup error
+				if negate {
+					lookup, errLookup = nidx.Not(values[0])
+				} else {
+					lookup, errLookup = idx.Get(values[0])
+
+				}
+
+				if errLookup != nil {
 					return nil, err
 				}
 
 				for _, v := range values[1:] {
-					lookup2, err := idx.Get(v)
-					if err != nil {
+					var lookup2 sql.IndexLookup
+					var errLookup error
+					if negate {
+						lookup2, errLookup = nidx.Not(v)
+					} else {
+						lookup2, errLookup = idx.Get(v)
+
+					}
+
+					if errLookup != nil {
 						return nil, err
 					}
 
@@ -161,7 +192,11 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 						return result, nil
 					}
 
-					lookup = lookup.(sql.SetOperations).Union(lookup2)
+					if negate {
+						lookup = lookup.(sql.SetOperations).Intersection(lookup2)
+					} else {
+						lookup = lookup.(sql.SetOperations).Union(lookup2)
+					}
 				}
 
 				result[idx.Table()] = &indexLookup{
@@ -183,6 +218,15 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 		result[idx.Table()] = &indexLookup{
 			indexes: []sql.Index{idx},
 			lookup:  lookup,
+		}
+	case *expression.Not:
+		r, err := getNegatedIndexes(a, e)
+		if err != nil {
+			return nil, err
+		}
+
+		for table, indexLookup := range r {
+			result[table] = indexLookup
 		}
 	case *expression.Between:
 		if !isEvaluable(e.Val) && isEvaluable(e.Upper) && isEvaluable(e.Lower) {
@@ -351,6 +395,90 @@ func comparisonIndexLookup(
 	return nil, nil
 }
 
+func getNegatedIndexes(a *Analyzer, not *expression.Not) (map[string]*indexLookup, error) {
+	switch e := not.Child.(type) {
+	case *expression.Not:
+		return getIndexes(e.Child, a)
+	case *expression.Equals:
+		left, right := e.Left(), e.Right()
+		// if the form is SOMETHING OP {INDEXABLE EXPR}, swap it, so it's {INDEXABLE EXPR} OP SOMETHING
+		if !isEvaluable(right) {
+			left, right = right, left
+		}
+
+		if isEvaluable(left) || !isEvaluable(right) {
+			return nil, nil
+		}
+
+		idx := a.Catalog.IndexByExpression(a.CurrentDatabase, left)
+		if idx == nil {
+			return nil, nil
+		}
+
+		index, ok := idx.(sql.NegateIndex)
+		if !ok {
+			return nil, nil
+		}
+
+		value, err := right.Eval(sql.NewEmptyContext(), nil)
+		if err != nil {
+			a.Catalog.ReleaseIndex(idx)
+			return nil, err
+		}
+
+		lookup, err := index.Not(value)
+		if err != nil || lookup == nil {
+			a.Catalog.ReleaseIndex(idx)
+			return nil, err
+		}
+
+		result := map[string]*indexLookup{
+			idx.Table(): &indexLookup{
+				indexes: []sql.Index{idx},
+				lookup:  lookup,
+			},
+		}
+
+		return result, nil
+	case *expression.GreaterThan:
+		lte := expression.NewLessThanOrEqual(e.Left(), e.Right())
+		return getIndexes(lte, a)
+	case *expression.GreaterThanOrEqual:
+		lt := expression.NewLessThan(e.Left(), e.Right())
+		return getIndexes(lt, a)
+	case *expression.LessThan:
+		gte := expression.NewGreaterThanOrEqual(e.Left(), e.Right())
+		return getIndexes(gte, a)
+	case *expression.LessThanOrEqual:
+		gt := expression.NewGreaterThan(e.Left(), e.Right())
+		return getIndexes(gt, a)
+	case *expression.Between:
+		or := expression.NewOr(
+			expression.NewLessThan(e.Val, e.Lower),
+			expression.NewGreaterThan(e.Val, e.Upper),
+		)
+
+		return getIndexes(or, a)
+	case *expression.Or:
+		and := expression.NewAnd(
+			expression.NewNot(e.Left),
+			expression.NewNot(e.Right),
+		)
+
+		return getIndexes(and, a)
+	case *expression.And:
+		or := expression.NewOr(
+			expression.NewNot(e.Left),
+			expression.NewNot(e.Right),
+		)
+
+		return getIndexes(or, a)
+	default:
+		return nil, nil
+
+	}
+}
+
 func indexesIntersection(
 	a *Analyzer,
 	left, right map[string]*indexLookup,
@@ -366,6 +494,7 @@ func indexesIntersection(
 				a.Catalog.ReleaseIndex(idx)
 			}
 		}
+
 		result[table] = idx
 	}
 
@@ -538,46 +667,65 @@ func columnExprsByTable(exprs []sql.Expression) map[string][]columnExpr {
 	var result = make(map[string][]columnExpr)
 
 	for _, expr := range exprs {
-		var left, right sql.Expression
-		switch e := expr.(type) {
-		case *expression.Equals,
-			*expression.GreaterThan,
-			*expression.LessThan,
-			*expression.GreaterThanOrEqual,
-			*expression.LessThanOrEqual:
-			cmp := e.(expression.Comparer)
-			left, right = cmp.Left(), cmp.Right()
-			if !isEvaluable(right) {
-				left, right = right, left
-			}
-
-			if !isEvaluable(right) {
-				continue
-			}
-
-			col, ok := left.(*expression.GetField)
-			if !ok {
-				continue
-			}
-
-			result[col.Table()] = append(result[col.Table()], columnExpr{col, right, e})
-		case *expression.Between:
-			if !isEvaluable(e.Upper) || !isEvaluable(e.Lower) || isEvaluable(e.Val) {
-				continue
-			}
-
-			col, ok := e.Val.(*expression.GetField)
-			if !ok {
-				continue
-			}
-
-			result[col.Table()] = append(result[col.Table()], columnExpr{col, nil, e})
-		default:
+		table, colExpr := extractColumnExpr(expr)
+		if colExpr == nil {
 			continue
 		}
+
+		result[table] = append(result[table], *colExpr)
 	}
 
 	return result
+}
+
+func extractColumnExpr(e sql.Expression) (string, *columnExpr) {
+	switch e := e.(type) {
+	case *expression.Not:
+		table, colExpr := extractColumnExpr(e.Child)
+		if colExpr != nil {
+			colExpr = &columnExpr{
+				col:  colExpr.col,
+				val:  colExpr.val,
+				expr: expression.NewNot(colExpr.expr),
+			}
+		}
+
+		return table, colExpr
+	case *expression.Equals,
+		*expression.GreaterThan,
+		*expression.LessThan,
+		*expression.GreaterThanOrEqual,
+		*expression.LessThanOrEqual:
+		cmp := e.(expression.Comparer)
+		left, right := cmp.Left(), cmp.Right()
+		if !isEvaluable(right) {
+			left, right = right, left
+		}
+
+		if !isEvaluable(right) {
+			return "", nil
+		}
+
+		col, ok := left.(*expression.GetField)
+		if !ok {
+			return "", nil
+		}
+
+		return col.Table(), &columnExpr{col, right, e}
+	case *expression.Between:
+		if !isEvaluable(e.Upper) || !isEvaluable(e.Lower) || isEvaluable(e.Val) {
+			return "", nil
+		}
+
+		col, ok := e.Val.(*expression.GetField)
+		if !ok {
+			return "", nil
+		}
+
+		return col.Table(), &columnExpr{col, nil, e}
+	default:
+		return "", nil
+	}
 }
 
 func containsColumns(e sql.Expression) bool {
