@@ -19,8 +19,8 @@ func TestProject(t *testing.T) {
 		{Name: "col2", Type: sql.Text, Nullable: true},
 	}
 	child := mem.NewTable("test", childSchema)
-	child.Insert(sql.NewRow("col1_1", "col2_1"))
-	child.Insert(sql.NewRow("col1_2", "col2_2"))
+	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_1", "col2_1"))
+	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_2", "col2_2"))
 	p := NewProject([]sql.Expression{expression.NewGetField(1, sql.Text, "col2", true)}, child)
 	require.Equal(1, len(p.Children()))
 	schema := sql.Schema{

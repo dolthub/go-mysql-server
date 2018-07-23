@@ -29,7 +29,7 @@ func TestSort(t *testing.T) {
 
 	child := mem.NewTable("test", schema)
 	for _, row := range data {
-		require.NoError(child.Insert(row))
+		require.NoError(child.Insert(sql.NewEmptyContext(), row))
 	}
 
 	sf := []SortField{
@@ -70,7 +70,7 @@ func TestSortAscending(t *testing.T) {
 
 	child := mem.NewTable("test", schema)
 	for _, row := range data {
-		require.NoError(child.Insert(row))
+		require.NoError(child.Insert(sql.NewEmptyContext(), row))
 	}
 
 	sf := []SortField{
@@ -110,7 +110,7 @@ func TestSortDescending(t *testing.T) {
 
 	child := mem.NewTable("test", schema)
 	for _, row := range data {
-		require.NoError(child.Insert(row))
+		require.NoError(child.Insert(sql.NewEmptyContext(), row))
 	}
 
 	sf := []SortField{

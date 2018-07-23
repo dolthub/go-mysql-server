@@ -128,8 +128,13 @@ func TestCrossJoin_Empty(t *testing.T) {
 func insertData(t *testing.T, table *mem.Table) {
 	t.Helper()
 	require := require.New(t)
-	err := table.Insert(sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)))
-	require.NoError(err)
-	err = table.Insert(sql.NewRow("col1_2", "col2_2", int32(3333), int64(4444)))
-	require.NoError(err)
+
+	rows := []sql.Row{
+		sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)),
+		sql.NewRow("col1_2", "col2_2", int32(3333), int64(4444)),
+	}
+
+	for _, r := range rows {
+		require.NoError(table.Insert(sql.NewEmptyContext(), r))
+	}
 }

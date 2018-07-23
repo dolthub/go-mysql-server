@@ -80,7 +80,7 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 			return i, err
 		}
 
-		if err := insertable.Insert(row); err != nil {
+		if err := insertable.Insert(ctx, row); err != nil {
 			_ = iter.Close()
 			return i, err
 		}

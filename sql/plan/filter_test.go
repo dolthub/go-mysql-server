@@ -20,12 +20,16 @@ func TestFilter(t *testing.T) {
 		{Name: "col4", Type: sql.Int64, Nullable: true},
 	}
 	child := mem.NewTable("test", childSchema)
-	err := child.Insert(sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)))
-	require.NoError(err)
-	err = child.Insert(sql.NewRow("col1_2", "col2_2", int32(3333), int64(4444)))
-	require.NoError(err)
-	err = child.Insert(sql.NewRow("col1_3", "col2_3", nil, int64(4444)))
-	require.NoError(err)
+
+	rows := []sql.Row{
+		sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)),
+		sql.NewRow("col1_2", "col2_2", int32(3333), int64(4444)),
+		sql.NewRow("col1_3", "col2_3", nil, int64(4444)),
+	}
+
+	for _, r := range rows {
+		require.NoError(child.Insert(sql.NewEmptyContext(), r))
+	}
 
 	f := NewFilter(
 		expression.NewEquals(

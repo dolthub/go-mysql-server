@@ -61,7 +61,7 @@ func (t *Table) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error
 }
 
 // Insert a new row into the table.
-func (t *Table) Insert(row sql.Row) error {
+func (t *Table) Insert(ctx *sql.Context, row sql.Row) error {
 	if len(row) != len(t.schema) {
 		return sql.ErrUnexpectedRowLength.New(len(t.schema), len(row))
 	}
