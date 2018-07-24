@@ -24,7 +24,7 @@ before_install:
 
 install:
   - go get -u github.com/pilosa/go-pilosa
-  - cd "$GOPATH/src/github.com/pilosa/go-pilosa" && git checkout master && cd "$TRAVIS_BUILD_DIR"
+  - cd "$GOPATH/src/github.com/pilosa/go-pilosa" && git checkout v0.9.0 && cd "$TRAVIS_BUILD_DIR"
   - make dependencies
 
 script:
