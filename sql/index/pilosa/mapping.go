@@ -213,6 +213,23 @@ func (m *mapping) getRowID(frameName string, value interface{}) (uint64, error) 
 	return id, err
 }
 
+func (m *mapping) getMaxRowID(frameName string) (uint64, error) {
+	var id uint64
+	err := m.query(func() error {
+		return m.transaction(true, func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte(frameName))
+			if b == nil {
+				return nil
+			}
+
+			id = b.Sequence()
+			return nil
+		})
+	})
+
+	return id, err
+}
+
 func (m *mapping) putLocation(indexName string, colID uint64, location []byte) error {
 	return m.query(func() error {
 		return m.transaction(true, func(tx *bolt.Tx) error {

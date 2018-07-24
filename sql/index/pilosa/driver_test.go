@@ -330,23 +330,85 @@ func TestAscendDescendIndex(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			iter, err := tt.lookup.Values()
+			result, err := lookupValues(tt.lookup)
 			require.NoError(err)
-
-			var result []string
-			for {
-				k, err := iter.Next()
-				if err == io.EOF {
-					break
-				}
-				require.NoError(err)
-
-				result = append(result, string(k))
-			}
-
 			require.Equal(tt.expected, result)
 		})
 	}
+}
+
+func TestNegateIndex(t *testing.T) {
+	if !dockerIsRunning {
+		t.Skipf("Skip test: %s", dockerCmdOutput)
+	}
+	require := require.New(t)
+
+	db, table := "db_name", "table_name"
+	path, err := mkdir(os.TempDir(), "indexes")
+	require.NoError(err)
+	defer func() {
+		require.NoError(os.RemoveAll(path))
+	}()
+
+	d := NewDriver(path, newClientWithTimeout(200*time.Millisecond))
+	idx, err := d.Create(db, table, "index_id", makeExpressions("a"), nil)
+	require.NoError(err)
+
+	multiIdx, err := d.Create(
+		db, table, "multi_index_id",
+		makeExpressions("a", "b"),
+		nil,
+	)
+	require.NoError(err)
+
+	it := &fixtureKeyValueIter{
+		fixtures: []kvfixture{
+			{"1", []interface{}{int64(2)}},
+			{"2", []interface{}{int64(7)}},
+			{"3", []interface{}{int64(1)}},
+			{"4", []interface{}{int64(1)}},
+			{"5", []interface{}{int64(7)}},
+		},
+	}
+
+	err = d.Save(sql.NewEmptyContext(), idx, it)
+	require.NoError(err)
+
+	multiIt := &fixtureKeyValueIter{
+		fixtures: []kvfixture{
+			{"1", []interface{}{int64(2), int64(6)}},
+			{"2", []interface{}{int64(7), int64(5)}},
+			{"3", []interface{}{int64(1), int64(2)}},
+			{"4", []interface{}{int64(1), int64(3)}},
+			{"5", []interface{}{int64(7), int64(6)}},
+			{"6", []interface{}{int64(10), int64(6)}},
+			{"7", []interface{}{int64(5), int64(1)}},
+			{"8", []interface{}{int64(6), int64(2)}},
+			{"9", []interface{}{int64(4), int64(0)}},
+			{"10", []interface{}{int64(3), int64(5)}},
+		},
+	}
+
+	err = d.Save(sql.NewEmptyContext(), multiIdx, multiIt)
+	require.NoError(err)
+
+	lookup, err := idx.(sql.NegateIndex).Not(int64(1))
+	require.NoError(err)
+
+	values, err := lookupValues(lookup)
+	require.NoError(err)
+
+	expected := []string{"1", "2", "5"}
+	require.Equal(expected, values)
+
+	lookup, err = multiIdx.(sql.NegateIndex).Not(int64(1), int64(6))
+	require.NoError(err)
+
+	values, err = lookupValues(lookup)
+	require.NoError(err)
+
+	expected = []string{"2", "7", "8", "9", "10"}
+	require.Equal(expected, values)
 }
 
 func TestIntersection(t *testing.T) {
@@ -744,6 +806,29 @@ func setupAscendDescend(t *testing.T) (*pilosaIndex, func()) {
 	return sqlIdx.(*pilosaIndex), func() {
 		require.NoError(os.RemoveAll(path))
 	}
+}
+
+func lookupValues(lookup sql.IndexLookup) ([]string, error) {
+	iter, err := lookup.Values()
+	if err != nil {
+		return nil, err
+	}
+
+	var result []string
+	for {
+		k, err := iter.Next()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, string(k))
+	}
+
+	return result, nil
 }
 
 type kvfixture struct {

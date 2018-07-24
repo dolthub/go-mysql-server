@@ -164,6 +164,31 @@ func TestMergeable(t *testing.T) {
 			i2:       &descendLookup{filteredLookup: &filteredLookup{index: i2}},
 			expected: false,
 		},
+		{
+			i1:       &negateLookup{index: i1},
+			i2:       &negateLookup{index: i1},
+			expected: true,
+		},
+		{
+			i1:       &negateLookup{index: i1},
+			i2:       &negateLookup{index: i2},
+			expected: false,
+		},
+		{
+			i1:       &negateLookup{index: i1},
+			i2:       &indexLookup{index: i1},
+			expected: true,
+		},
+		{
+			i1:       &negateLookup{index: i1},
+			i2:       &descendLookup{filteredLookup: &filteredLookup{index: i1}},
+			expected: true,
+		},
+		{
+			i1:       &negateLookup{index: i1},
+			i2:       &ascendLookup{filteredLookup: &filteredLookup{index: i1}},
+			expected: true,
+		},
 	}
 
 	for _, tc := range testCases {
