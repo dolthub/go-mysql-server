@@ -21,7 +21,10 @@ func setupMemDB(require *require.Assertions) *sqle.Engine {
 	tableTest := mem.NewTable("test", sql.Schema{{Name: "c1", Type: sql.Int32, Source: "test"}})
 
 	for i := 0; i < 1010; i++ {
-		require.NoError(tableTest.Insert(sql.NewRow(int32(i))))
+		require.NoError(tableTest.Insert(
+			sql.NewEmptyContext(),
+			sql.NewRow(int32(i)),
+		))
 	}
 
 	db.AddTable("test", tableTest)

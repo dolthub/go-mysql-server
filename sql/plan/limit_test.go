@@ -17,18 +17,18 @@ var testingTableSize int
 
 func TestLimitPlan(t *testing.T) {
 	require := require.New(t)
-	table, _ := getTestingTable()
+	table, _ := getTestingTable(t)
 	limitPlan := NewLimit(0, table)
 	require.Equal(1, len(limitPlan.Children()))
 
-	iterator, err := getLimitedIterator(1)
+	iterator, err := getLimitedIterator(t, 1)
 	require.NoError(err)
 	require.NotNil(iterator)
 }
 
 func TestLimitImplementsNode(t *testing.T) {
 	require := require.New(t)
-	table, _ := getTestingTable()
+	table, _ := getTestingTable(t)
 	limitPlan := NewLimit(0, table)
 	childSchema := table.Schema()
 	nodeSchema := limitPlan.Schema()
@@ -38,30 +38,30 @@ func TestLimitImplementsNode(t *testing.T) {
 }
 
 func TestLimit0(t *testing.T) {
-	_, testingTableSize := getTestingTable()
+	_, testingTableSize := getTestingTable(t)
 	testingLimit := 0
-	iterator, _ := getLimitedIterator(int64(testingLimit))
+	iterator, _ := getLimitedIterator(t, int64(testingLimit))
 	testLimitOverflow(t, iterator, testingLimit, testingTableSize)
 }
 
 func TestLimitLessThanTotal(t *testing.T) {
-	_, testingTableSize := getTestingTable()
+	_, testingTableSize := getTestingTable(t)
 	testingLimit := testingTableSize - 1
-	iterator, _ := getLimitedIterator(int64(testingLimit))
+	iterator, _ := getLimitedIterator(t, int64(testingLimit))
 	testLimitOverflow(t, iterator, testingLimit, testingTableSize)
 }
 
 func TestLimitEqualThanTotal(t *testing.T) {
-	_, testingTableSize := getTestingTable()
+	_, testingTableSize := getTestingTable(t)
 	testingLimit := testingTableSize
-	iterator, _ := getLimitedIterator(int64(testingLimit))
+	iterator, _ := getLimitedIterator(t, int64(testingLimit))
 	testLimitOverflow(t, iterator, testingLimit, testingTableSize)
 }
 
 func TestLimitGreaterThanTotal(t *testing.T) {
-	_, testingTableSize := getTestingTable()
+	_, testingTableSize := getTestingTable(t)
 	testingLimit := testingTableSize + 1
-	iterator, _ := getLimitedIterator(int64(testingLimit))
+	iterator, _ := getLimitedIterator(t, int64(testingLimit))
 	testLimitOverflow(t, iterator, testingLimit, testingTableSize)
 }
 
@@ -80,8 +80,8 @@ func testLimitOverflow(t *testing.T, iter sql.RowIter, limit int, dataSize int) 
 	}
 }
 
-func getTestingTable() (*mem.Table, int) {
-
+func getTestingTable(t *testing.T) (*mem.Table, int) {
+	t.Helper()
 	if &testingTable == nil {
 		return testingTable, testingTableSize
 	}
@@ -90,17 +90,24 @@ func getTestingTable() (*mem.Table, int) {
 		{Name: "col1", Type: sql.Text},
 	}
 	testingTable = mem.NewTable("test", childSchema)
-	testingTable.Insert(sql.NewRow("11a"))
-	testingTable.Insert(sql.NewRow("22a"))
-	testingTable.Insert(sql.NewRow("33a"))
-	testingTableSize = 3
 
-	return testingTable, testingTableSize
+	rows := []sql.Row{
+		sql.NewRow("11a"),
+		sql.NewRow("22a"),
+		sql.NewRow("33a"),
+	}
+
+	for _, r := range rows {
+		require.NoError(t, testingTable.Insert(sql.NewEmptyContext(), r))
+	}
+
+	return testingTable, len(rows)
 }
 
-func getLimitedIterator(limitSize int64) (sql.RowIter, error) {
+func getLimitedIterator(t *testing.T, limitSize int64) (sql.RowIter, error) {
+	t.Helper()
 	ctx := sql.NewEmptyContext()
-	table, _ := getTestingTable()
+	table, _ := getTestingTable(t)
 	limitPlan := NewLimit(limitSize, table)
 	return limitPlan.RowIter(ctx)
 }

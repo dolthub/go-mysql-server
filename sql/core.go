@@ -192,7 +192,7 @@ type PushdownProjectionAndFiltersTable interface {
 // Inserter allow rows to be inserted in them.
 type Inserter interface {
 	// Insert the given row.
-	Insert(row Row) error
+	Insert(*Context, Row) error
 }
 
 // Database represents the database.

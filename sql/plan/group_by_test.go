@@ -51,11 +51,18 @@ func TestGroupBy_RowIter(t *testing.T) {
 		{Name: "col2", Type: sql.Int64},
 	}
 	child := mem.NewTable("test", childSchema)
-	child.Insert(sql.NewRow("col1_1", int64(1111)))
-	child.Insert(sql.NewRow("col1_1", int64(1111)))
-	child.Insert(sql.NewRow("col1_2", int64(4444)))
-	child.Insert(sql.NewRow("col1_1", int64(1111)))
-	child.Insert(sql.NewRow("col1_2", int64(4444)))
+
+	rows := []sql.Row{
+		sql.NewRow("col1_1", int64(1111)),
+		sql.NewRow("col1_1", int64(1111)),
+		sql.NewRow("col1_2", int64(4444)),
+		sql.NewRow("col1_1", int64(1111)),
+		sql.NewRow("col1_2", int64(4444)),
+	}
+
+	for _, r := range rows {
+		require.NoError(child.Insert(sql.NewEmptyContext(), r))
+	}
 
 	p := NewSort(
 		[]SortField{
@@ -99,11 +106,18 @@ func TestGroupBy_Error(t *testing.T) {
 	}
 
 	child := mem.NewTable("test", childSchema)
-	child.Insert(sql.NewRow("col1_1", int64(1111)))
-	child.Insert(sql.NewRow("col1_1", int64(2222)))
-	child.Insert(sql.NewRow("col1_2", int64(4444)))
-	child.Insert(sql.NewRow("col1_1", int64(1111)))
-	child.Insert(sql.NewRow("col1_2", int64(4444)))
+
+	rows := []sql.Row{
+		sql.NewRow("col1_1", int64(1111)),
+		sql.NewRow("col1_1", int64(1111)),
+		sql.NewRow("col1_2", int64(4444)),
+		sql.NewRow("col1_1", int64(1111)),
+		sql.NewRow("col1_2", int64(4444)),
+	}
+
+	for _, r := range rows {
+		require.NoError(child.Insert(sql.NewEmptyContext(), r))
+	}
 
 	p := NewGroupBy(
 		[]sql.Expression{

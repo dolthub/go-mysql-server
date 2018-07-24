@@ -10,7 +10,7 @@ var dualTable = func() sql.Table {
 	t := mem.NewTable("dual", sql.Schema{
 		{Name: "dummy", Source: "dual", Type: sql.Text, Nullable: false},
 	})
-	_ = t.Insert(sql.NewRow("x"))
+	_ = t.Insert(sql.NewEmptyContext(), sql.NewRow("x"))
 	return t
 }()
 

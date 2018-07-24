@@ -19,11 +19,18 @@ func TestDistinct(t *testing.T) {
 		{Name: "email", Type: sql.Text, Nullable: true},
 	}
 	child := mem.NewTable("test", childSchema)
-	require.NoError(child.Insert(sql.NewRow("john", "john@doe.com")))
-	require.NoError(child.Insert(sql.NewRow("jane", "jane@doe.com")))
-	require.NoError(child.Insert(sql.NewRow("john", "johnx@doe.com")))
-	require.NoError(child.Insert(sql.NewRow("martha", "marthax@doe.com")))
-	require.NoError(child.Insert(sql.NewRow("martha", "martha@doe.com")))
+
+	rows := []sql.Row{
+		sql.NewRow("john", "john@doe.com"),
+		sql.NewRow("jane", "jane@doe.com"),
+		sql.NewRow("john", "johnx@doe.com"),
+		sql.NewRow("martha", "marthax@doe.com"),
+		sql.NewRow("martha", "martha@doe.com"),
+	}
+
+	for _, r := range rows {
+		require.NoError(child.Insert(sql.NewEmptyContext(), r))
+	}
 
 	p := NewProject([]sql.Expression{
 		expression.NewGetField(0, sql.Text, "name", true),
@@ -59,11 +66,18 @@ func TestOrderedDistinct(t *testing.T) {
 		{Name: "email", Type: sql.Text, Nullable: true},
 	}
 	child := mem.NewTable("test", childSchema)
-	require.NoError(child.Insert(sql.NewRow("jane", "jane@doe.com")))
-	require.NoError(child.Insert(sql.NewRow("john", "john@doe.com")))
-	require.NoError(child.Insert(sql.NewRow("john", "johnx@doe.com")))
-	require.NoError(child.Insert(sql.NewRow("martha", "martha@doe.com")))
-	require.NoError(child.Insert(sql.NewRow("martha", "marthax@doe.com")))
+
+	rows := []sql.Row{
+		sql.NewRow("jane", "jane@doe.com"),
+		sql.NewRow("john", "john@doe.com"),
+		sql.NewRow("john", "johnx@doe.com"),
+		sql.NewRow("martha", "martha@doe.com"),
+		sql.NewRow("martha", "marthax@doe.com"),
+	}
+
+	for _, r := range rows {
+		require.NoError(child.Insert(sql.NewEmptyContext(), r))
+	}
 
 	p := NewProject([]sql.Expression{
 		expression.NewGetField(0, sql.Text, "name", true),

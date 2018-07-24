@@ -51,10 +51,18 @@ func createTestDatabase() sql.Database {
 		{Name: "email", Type: sql.Text, Source: "mytable"},
 	})
 	db.AddTable("mytable", table)
-	table.Insert(sql.NewRow("John Doe", "john@doe.com"))
-	table.Insert(sql.NewRow("John Doe", "johnalt@doe.com"))
-	table.Insert(sql.NewRow("Jane Doe", "jane@doe.com"))
-	table.Insert(sql.NewRow("Evil Bob", "evilbob@gmail.com"))
+	ctx := sql.NewEmptyContext()
+
+	rows := []sql.Row{
+		sql.NewRow("John Doe", "john@doe.com"),
+		sql.NewRow("John Doe", "johnalt@doe.com"),
+		sql.NewRow("Jane Doe", "jane@doe.com"),
+		sql.NewRow("Evil Bob", "evilbob@gmail.com"),
+	}
+
+	for _, row := range rows {
+		table.Insert(ctx, row)
+	}
 
 	return db
 }

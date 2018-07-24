@@ -122,7 +122,7 @@ func insertDataToTable(t *mem.Table, columnCount int) error {
 			return err
 		}
 
-		if err := t.Insert(row); err != nil {
+		if err := t.Insert(sql.NewEmptyContext(), row); err != nil {
 			return err
 		}
 	}

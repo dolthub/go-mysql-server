@@ -182,7 +182,7 @@ func TestCreateIndexWithIter(t *testing.T) {
 		{math.MaxInt64, math.MinInt64},
 	}
 	for _, r := range rows {
-		err := foo.Insert(sql.NewRow(r[0], r[1]))
+		err := foo.Insert(sql.NewEmptyContext(), sql.NewRow(r[0], r[1]))
 		require.NoError(err)
 	}
 

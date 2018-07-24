@@ -26,7 +26,7 @@ func TestTableAlias(t *testing.T) {
 	}
 
 	for _, r := range rows {
-		require.NoError(table.Insert(r))
+		require.NoError(table.Insert(sql.NewEmptyContext(), r))
 	}
 
 	require.Equal(table.Schema(), alias.Schema())

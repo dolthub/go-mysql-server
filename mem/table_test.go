@@ -10,7 +10,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
-func TestTable_Name(t *testing.T) {
+func TestTableName(t *testing.T) {
 	require := require.New(t)
 	s := sql.Schema{
 		{"col1", sql.Text, nil, true, ""},
@@ -33,7 +33,7 @@ func TestTableString(t *testing.T) {
 	require.Equal(expectedString, table.String())
 }
 
-func TestTable_Insert_RowIter(t *testing.T) {
+func TestTableInsert(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
@@ -47,13 +47,13 @@ func TestTable_Insert_RowIter(t *testing.T) {
 	require.NoError(err)
 	require.Len(rows, 0)
 
-	err = table.Insert(sql.NewRow("foo"))
+	err = table.Insert(sql.NewEmptyContext(), sql.NewRow("foo"))
 	rows, err = sql.NodeToRows(ctx, table)
 	require.NoError(err)
 	require.Len(rows, 1)
 	require.Nil(s.CheckRow(rows[0]))
 
-	err = table.Insert(sql.NewRow("bar"))
+	err = table.Insert(sql.NewEmptyContext(), sql.NewRow("bar"))
 	rows, err = sql.NodeToRows(ctx, table)
 	require.NoError(err)
 	require.Len(rows, 2)
@@ -69,9 +69,15 @@ func TestTableIndexKeyValueIter(t *testing.T) {
 		{Name: "bar", Type: sql.Int64},
 	})
 
-	require.NoError(table.Insert(sql.NewRow("foo", int64(1))))
-	require.NoError(table.Insert(sql.NewRow("bar", int64(2))))
-	require.NoError(table.Insert(sql.NewRow("baz", int64(3))))
+	rows := []sql.Row{
+		sql.NewRow("foo", int64(1)),
+		sql.NewRow("bar", int64(2)),
+		sql.NewRow("baz", int64(3)),
+	}
+
+	for _, r := range rows {
+		require.NoError(table.Insert(sql.NewEmptyContext(), r))
+	}
 
 	iter, err := table.IndexKeyValueIter(sql.NewEmptyContext(), []string{"bar"})
 	require.NoError(err)
@@ -111,10 +117,16 @@ func TestTableIndex(t *testing.T) {
 		{Name: "bar", Type: sql.Int64},
 	})
 
-	require.NoError(table.Insert(sql.NewRow("foo", int64(1))))
-	require.NoError(table.Insert(sql.NewRow("bar", int64(2))))
-	require.NoError(table.Insert(sql.NewRow("baz", int64(3))))
-	require.NoError(table.Insert(sql.NewRow("qux", int64(4))))
+	rows := []sql.Row{
+		sql.NewRow("foo", int64(1)),
+		sql.NewRow("bar", int64(2)),
+		sql.NewRow("baz", int64(3)),
+		sql.NewRow("qux", int64(4)),
+	}
+
+	for _, r := range rows {
+		require.NoError(table.Insert(sql.NewEmptyContext(), r))
+	}
 
 	index := &index{keys: []int64{1, 2}}
 

@@ -24,27 +24,33 @@ var benchtable = func() *mem.Table {
 
 	for i := 0; i < 100; i++ {
 		n := fmt.Sprint(i)
-		err := t.Insert(sql.NewRow(
-			repeatStr(n, i%10+1),
-			float64(i),
-			i%2 == 0,
-			int32(i),
-			int64(i),
-			[]byte(repeatStr(n, 100+(i%100))),
-		))
-		if err != nil {
-			panic(err)
-		}
-
-		if i%2 == 0 {
-			err := t.Insert(sql.NewRow(
+		err := t.Insert(
+			sql.NewEmptyContext(),
+			sql.NewRow(
 				repeatStr(n, i%10+1),
 				float64(i),
 				i%2 == 0,
 				int32(i),
 				int64(i),
 				[]byte(repeatStr(n, 100+(i%100))),
-			))
+			),
+		)
+		if err != nil {
+			panic(err)
+		}
+
+		if i%2 == 0 {
+			err := t.Insert(
+				sql.NewEmptyContext(),
+				sql.NewRow(
+					repeatStr(n, i%10+1),
+					float64(i),
+					i%2 == 0,
+					int32(i),
+					int64(i),
+					[]byte(repeatStr(n, 100+(i%100))),
+				),
+			)
 			if err != nil {
 				panic(err)
 			}
