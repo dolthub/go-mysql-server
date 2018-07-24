@@ -10,7 +10,12 @@ import (
 
 type transformedJoin struct {
 	node     sql.Node
-	condCols map[string][]string
+	condCols map[string]*transformedSource
+}
+
+type transformedSource struct {
+	correct string
+	wrong   []string
 }
 
 func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -23,6 +28,7 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 
 	var transformed []*transformedJoin
 	var aliasTables = map[string][]string{}
+	var colsToUnresolve = map[string]*transformedSource{}
 	a.Log("resolving natural joins, node of type %T", n)
 	node, err := n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
@@ -51,7 +57,6 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 
 		var conditions, common, left, right []sql.Expression
 		var seen = make(map[string]struct{})
-		var colsToUnresolve = map[string][]string{}
 
 		for i, lcol := range leftSchema {
 			var found bool
@@ -83,7 +88,16 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 
 					found = true
 					seen[lcol.Name] = struct{}{}
-					colsToUnresolve[lcol.Name] = []string{lcol.Source, rcol.Source}
+					if source, ok := colsToUnresolve[lcol.Name]; ok {
+						source.correct = lcol.Source
+						source.wrong = append(source.wrong, rcol.Source)
+					} else {
+						colsToUnresolve[lcol.Name] = &transformedSource{
+							correct: lcol.Source,
+							wrong:   []string{rcol.Source},
+						}
+					}
+
 					break
 				}
 			}
@@ -135,9 +149,14 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 		return node, err
 	}
 
+	var transformedSeen bool
 	return node.TransformUp(func(node sql.Node) (sql.Node, error) {
-		above, colsToUnresolve := isOverTranformedNode(node, transformed)
-		if !above {
+		if ok, _ := isTransformedNode(node, transformed); ok {
+			transformedSeen = true
+			return node, nil
+		}
+
+		if !transformedSeen {
 			return node, nil
 		}
 
@@ -162,43 +181,34 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 				return e, nil
 			}
 
-			correctSource := sources[0]
-			wrongSource := sources[1]
-
-			if !mustUnresolve(aliasTables, table, wrongSource) {
+			if !mustUnresolve(aliasTables, table, sources.wrong) {
 				return e, nil
 			}
 
 			return expression.NewUnresolvedQualifiedColumn(
-				correctSource,
+				sources.correct,
 				col,
 			), nil
 		})
 	})
 }
 
-func isOverTranformedNode(node sql.Node, transformed []*transformedJoin) (over bool, colsToUnresolve map[string][]string) {
-	plan.Inspect(node, func(n sql.Node) bool {
-		if is, cols := isTransformedNode(n, transformed); is {
-			if n != node {
-				over, colsToUnresolve = is, cols
-			}
+func isTransformedNode(node sql.Node, transformed []*transformedJoin) (is bool, colsToUnresolve map[string]*transformedSource) {
+	var project *plan.Project
+	var join *plan.InnerJoin
+	switch n := node.(type) {
+	case *plan.Project:
+		var ok bool
+		join, ok = n.Child.(*plan.InnerJoin)
+		if !ok {
+			return
 		}
 
-		return true
-	})
+		project = n
+	case *plan.InnerJoin:
+		join = n
 
-	return
-}
-
-func isTransformedNode(node sql.Node, transformed []*transformedJoin) (is bool, colsToUnresolve map[string][]string) {
-	project, ok := node.(*plan.Project)
-	if !ok {
-		return
-	}
-
-	join, ok := project.Child.(*plan.InnerJoin)
-	if !ok {
+	default:
 		return
 	}
 
@@ -213,8 +223,11 @@ func isTransformedNode(node sql.Node, transformed []*transformedJoin) (is bool, 
 			return
 		}
 
-		if reflect.DeepEqual(project.Projections, tproject.Projections) &&
-			reflect.DeepEqual(join.Cond, tjoin.Cond) {
+		if project != nil && !reflect.DeepEqual(project.Projections, tproject.Projections) {
+			continue
+		}
+
+		if reflect.DeepEqual(join.Cond, tjoin.Cond) {
 			is = true
 			colsToUnresolve = t.condCols
 		}
@@ -223,18 +236,28 @@ func isTransformedNode(node sql.Node, transformed []*transformedJoin) (is bool, 
 	return
 }
 
-func mustUnresolve(aliasTable map[string][]string, table, wrongSource string) bool {
-	return table == wrongSource || isAliasFor(aliasTable, table, wrongSource)
+func mustUnresolve(aliasTable map[string][]string, table string, wrongSources []string) bool {
+	return isIn(table, wrongSources) || isAliasFor(aliasTable, table, wrongSources)
 }
 
-func isAliasFor(aliasTable map[string][]string, table, wrongSource string) bool {
+func isIn(s string, l []string) bool {
+	for _, e := range l {
+		if s == e {
+			return true
+		}
+	}
+
+	return false
+}
+
+func isAliasFor(aliasTable map[string][]string, table string, wrongSources []string) bool {
 	tables, ok := aliasTable[table]
 	if !ok {
 		return false
 	}
 
 	for _, t := range tables {
-		if t == wrongSource {
+		if isIn(t, wrongSources) {
 			return true
 		}
 	}
