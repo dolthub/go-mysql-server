@@ -74,23 +74,18 @@ func (l *indexLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 
 	// Compute composition operations
 	for _, op := range l.operations {
-		var (
-			b *pilosa.PQLBitmapQuery
-			e error
-		)
-
-		switch il := op.lookup.(type) {
-		case pilosaLookup:
-			b, e = il.bitmapQuery()
-		default:
+		il, ok := op.lookup.(pilosaLookup)
+		if !ok {
 			return nil, errUnmergeableType.New(op.lookup)
 		}
 
-		if e != nil {
-			return nil, e
+		b, err := il.bitmapQuery()
+		if err != nil {
+			return nil, err
 		}
-		if e = b.Error(); e != nil {
-			return nil, e
+
+		if b.Error() != nil {
+			return nil, b.Error()
 		}
 
 		bmp = op.operation(bmp, b)
@@ -135,9 +130,8 @@ func (l *indexLookup) Values() (sql.IndexValueIter, error) {
 
 // IsMergeable implements sql.Mergeable interface.
 func (l *indexLookup) IsMergeable(lookup sql.IndexLookup) bool {
-	switch il := lookup.(type) {
-	case pilosaLookup:
-		return l.indexName() == il.indexName()
+	if il, ok := lookup.(pilosaLookup); ok {
+		return il.indexName() == l.indexName()
 	}
 
 	return false
@@ -246,23 +240,18 @@ func (l *filteredLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 	bmp := l.index.Intersect(bitmaps...)
 	// Compute composition operations
 	for _, op := range l.operations {
-		var (
-			b *pilosa.PQLBitmapQuery
-			e error
-		)
-
-		switch il := op.lookup.(type) {
-		case pilosaLookup:
-			b, e = il.bitmapQuery()
-		default:
+		il, ok := op.lookup.(pilosaLookup)
+		if !ok {
 			return nil, errUnmergeableType.New(op.lookup)
 		}
 
-		if e != nil {
-			return nil, e
+		b, err := il.bitmapQuery()
+		if err != nil {
+			return nil, err
 		}
-		if e = b.Error(); e != nil {
-			return nil, e
+
+		if b.Error() != nil {
+			return nil, b.Error()
 		}
 
 		bmp = op.operation(bmp, b)
@@ -358,8 +347,7 @@ func (l *ascendLookup) Values() (sql.IndexValueIter, error) {
 
 // IsMergeable implements sql.Mergeable interface.
 func (l *ascendLookup) IsMergeable(lookup sql.IndexLookup) bool {
-	switch il := lookup.(type) {
-	case pilosaLookup:
+	if il, ok := lookup.(pilosaLookup); ok {
 		return il.indexName() == l.indexName()
 	}
 
@@ -492,8 +480,7 @@ func (l *descendLookup) Values() (sql.IndexValueIter, error) {
 
 // IsMergeable implements sql.Mergeable interface.
 func (l *descendLookup) IsMergeable(lookup sql.IndexLookup) bool {
-	switch il := lookup.(type) {
-	case pilosaLookup:
+	if il, ok := lookup.(pilosaLookup); ok {
 		return il.indexName() == l.indexName()
 	}
 
@@ -841,23 +828,18 @@ func (l *negateLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 
 	// Compute composition operations
 	for _, op := range l.operations {
-		var (
-			b *pilosa.PQLBitmapQuery
-			e error
-		)
-
-		switch il := op.lookup.(type) {
-		case pilosaLookup:
-			b, e = il.bitmapQuery()
-		default:
+		il, ok := op.lookup.(pilosaLookup)
+		if !ok {
 			return nil, errUnmergeableType.New(op.lookup)
 		}
 
-		if e != nil {
-			return nil, e
+		b, err := il.bitmapQuery()
+		if err != nil {
+			return nil, err
 		}
-		if e = b.Error(); e != nil {
-			return nil, e
+
+		if b.Error() != nil {
+			return nil, b.Error()
 		}
 
 		bmp = op.operation(bmp, b)
@@ -902,8 +884,7 @@ func (l *negateLookup) Values() (sql.IndexValueIter, error) {
 
 // IsMergeable implements sql.Mergeable interface.
 func (l *negateLookup) IsMergeable(lookup sql.IndexLookup) bool {
-	switch il := lookup.(type) {
-	case pilosaLookup:
+	if il, ok := lookup.(pilosaLookup); ok {
 		return il.indexName() == l.indexName()
 	}
 
