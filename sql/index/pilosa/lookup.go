@@ -139,56 +139,35 @@ func (l *indexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 
 // Intersection implements sql.SetOperations interface
 func (l *indexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
-	lookup := &indexLookup{
-		id:          l.id,
-		client:      l.client,
-		index:       l.index,
-		mapping:     l.mapping,
-		keys:        l.keys,
-		expressions: l.expressions,
-		operations:  l.operations,
-	}
+	lookup := *l
+
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Intersect})
 	}
 
-	return lookup
+	return &lookup
 }
 
 // Union implements sql.SetOperations interface
 func (l *indexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	lookup := &indexLookup{
-		id:          l.id,
-		client:      l.client,
-		index:       l.index,
-		mapping:     l.mapping,
-		keys:        l.keys,
-		expressions: l.expressions,
-		operations:  l.operations,
-	}
+	lookup := *l
+
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Union})
 	}
 
-	return lookup
+	return &lookup
 }
 
 // Difference implements sql.SetOperations interface
 func (l *indexLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
-	lookup := &indexLookup{
-		id:          l.id,
-		client:      l.client,
-		index:       l.index,
-		mapping:     l.mapping,
-		keys:        l.keys,
-		expressions: l.expressions,
-		operations:  l.operations,
-	}
+	lookup := *l
+
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Difference})
 	}
 
-	return lookup
+	return &lookup
 }
 
 type filteredLookup struct {
@@ -356,21 +335,13 @@ func (l *ascendLookup) IsMergeable(lookup sql.IndexLookup) bool {
 
 // Intersection implements sql.SetOperations interface
 func (l *ascendLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
+	filteredLookup := *l.filteredLookup
 	lookup := &ascendLookup{
-		filteredLookup: &filteredLookup{
-			id:          l.id,
-			client:      l.client,
-			index:       l.index,
-			mapping:     l.mapping,
-			keys:        l.keys,
-			expressions: l.expressions,
-			operations:  l.operations,
-			reverse:     l.reverse,
-			filter:      l.filter,
-		},
-		gte: l.gte,
-		lt:  l.lt,
+		filteredLookup: &filteredLookup,
+		gte:            l.gte,
+		lt:             l.lt,
 	}
+
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Intersect})
 	}
@@ -380,21 +351,13 @@ func (l *ascendLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup 
 
 // Union implements sql.SetOperations interface
 func (l *ascendLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
+	filteredLookup := *l.filteredLookup
 	lookup := &ascendLookup{
-		filteredLookup: &filteredLookup{
-			id:          l.id,
-			client:      l.client,
-			index:       l.index,
-			mapping:     l.mapping,
-			keys:        l.keys,
-			expressions: l.expressions,
-			operations:  l.operations,
-			reverse:     l.reverse,
-			filter:      l.filter,
-		},
-		gte: l.gte,
-		lt:  l.lt,
+		filteredLookup: &filteredLookup,
+		gte:            l.gte,
+		lt:             l.lt,
 	}
+
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Union})
 	}
@@ -404,21 +367,13 @@ func (l *ascendLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 
 // Difference implements sql.SetOperations interface
 func (l *ascendLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
+	filteredLookup := *l.filteredLookup
 	lookup := &ascendLookup{
-		filteredLookup: &filteredLookup{
-			id:          l.id,
-			client:      l.client,
-			index:       l.index,
-			mapping:     l.mapping,
-			keys:        l.keys,
-			expressions: l.expressions,
-			operations:  l.operations,
-			reverse:     l.reverse,
-			filter:      l.filter,
-		},
-		gte: l.gte,
-		lt:  l.lt,
+		filteredLookup: &filteredLookup,
+		gte:            l.gte,
+		lt:             l.lt,
 	}
+
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Difference})
 	}
@@ -489,21 +444,13 @@ func (l *descendLookup) IsMergeable(lookup sql.IndexLookup) bool {
 
 // Intersection implements sql.SetOperations interface
 func (l *descendLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
+	filteredLookup := *l.filteredLookup
 	lookup := &descendLookup{
-		filteredLookup: &filteredLookup{
-			id:          l.id,
-			client:      l.client,
-			index:       l.index,
-			mapping:     l.mapping,
-			keys:        l.keys,
-			expressions: l.expressions,
-			operations:  l.operations,
-			reverse:     l.reverse,
-			filter:      l.filter,
-		},
-		gt:  l.gt,
-		lte: l.lte,
+		filteredLookup: &filteredLookup,
+		gt:             l.gt,
+		lte:            l.lte,
 	}
+
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Intersect})
 	}
@@ -513,21 +460,13 @@ func (l *descendLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup
 
 // Union implements sql.SetOperations interface
 func (l *descendLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
+	filteredLookup := *l.filteredLookup
 	lookup := &descendLookup{
-		filteredLookup: &filteredLookup{
-			id:          l.id,
-			client:      l.client,
-			index:       l.index,
-			mapping:     l.mapping,
-			keys:        l.keys,
-			expressions: l.expressions,
-			operations:  l.operations,
-			reverse:     l.reverse,
-			filter:      l.filter,
-		},
-		gt:  l.gt,
-		lte: l.lte,
+		filteredLookup: &filteredLookup,
+		gt:             l.gt,
+		lte:            l.lte,
 	}
+
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Union})
 	}
@@ -537,21 +476,13 @@ func (l *descendLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 
 // Difference implements sql.SetOperations interface
 func (l *descendLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
+	filteredLookup := *l.filteredLookup
 	lookup := &descendLookup{
-		filteredLookup: &filteredLookup{
-			id:          l.id,
-			client:      l.client,
-			index:       l.index,
-			mapping:     l.mapping,
-			keys:        l.keys,
-			expressions: l.expressions,
-			operations:  l.operations,
-			reverse:     l.reverse,
-			filter:      l.filter,
-		},
-		gt:  l.gt,
-		lte: l.lte,
+		filteredLookup: &filteredLookup,
+		gt:             l.gt,
+		lte:            l.lte,
 	}
+
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Difference})
 	}
@@ -893,54 +824,33 @@ func (l *negateLookup) IsMergeable(lookup sql.IndexLookup) bool {
 
 // Intersection implements sql.SetOperations interface
 func (l *negateLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
-	lookup := &negateLookup{
-		id:          l.id,
-		client:      l.client,
-		index:       l.index,
-		mapping:     l.mapping,
-		keys:        l.keys,
-		expressions: l.expressions,
-		operations:  l.operations,
-	}
+	lookup := *l
+
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Intersect})
 	}
 
-	return lookup
+	return &lookup
 }
 
 // Union implements sql.SetOperations interface
 func (l *negateLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	lookup := &negateLookup{
-		id:          l.id,
-		client:      l.client,
-		index:       l.index,
-		mapping:     l.mapping,
-		keys:        l.keys,
-		expressions: l.expressions,
-		operations:  l.operations,
-	}
+	lookup := *l
+
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Union})
 	}
 
-	return lookup
+	return &lookup
 }
 
 // Difference implements sql.SetOperations interface
 func (l *negateLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
-	lookup := &negateLookup{
-		id:          l.id,
-		client:      l.client,
-		index:       l.index,
-		mapping:     l.mapping,
-		keys:        l.keys,
-		expressions: l.expressions,
-		operations:  l.operations,
-	}
+	lookup := *l
+
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Difference})
 	}
 
-	return lookup
+	return &lookup
 }
