@@ -106,7 +106,17 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 
 					return col, nil
 				}
+			default:
+				// If any other kind of expression has a star, just replace it
+				// with an unqualified star because it cannot be expanded.
+				return e.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+					if _, ok := e.(*expression.Star); ok {
+						return expression.NewStar(), nil
+					}
+					return e, nil
+				})
 			}
+
 			return e, nil
 		})
 	})

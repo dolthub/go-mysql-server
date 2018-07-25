@@ -159,3 +159,36 @@ func TestQualifyColumns(t *testing.T) {
 	require.NoError(err)
 	require.Equal(expected, result)
 }
+
+func TestQualifyColumnsQualifiedStar(t *testing.T) {
+	require := require.New(t)
+	f := getRule("qualify_columns")
+
+	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
+
+	node := plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedFunction(
+				"count",
+				true,
+				expression.NewQualifiedStar("mytable"),
+			),
+		},
+		table,
+	)
+
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedFunction(
+				"count",
+				true,
+				expression.NewStar(),
+			),
+		},
+		table,
+	)
+
+	result, err := f.Apply(sql.NewEmptyContext(), nil, node)
+	require.NoError(err)
+	require.Equal(expected, result)
+}
