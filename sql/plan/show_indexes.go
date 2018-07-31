@@ -27,7 +27,7 @@ func (n *ShowIndexes) Resolved() bool {
 
 // TransformUp implements the Transformable interface.
 func (n *ShowIndexes) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(NewShowTables(n.Database))
+	return f(NewShowIndexes(n.Database, n.Table, n.Registry))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
