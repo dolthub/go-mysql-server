@@ -624,6 +624,12 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo"),
 	),
+	`SHOW INDEXES FROM foo`: plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
+	`SHOW INDEX FROM foo`:   plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
+	`SHOW KEYS FROM foo`:    plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
+	`SHOW INDEXES IN foo`:   plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
+	`SHOW INDEX IN foo`:     plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
+	`SHOW KEYS IN foo`:      plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
 }
 
 func TestParse(t *testing.T) {
