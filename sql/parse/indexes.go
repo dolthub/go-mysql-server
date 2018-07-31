@@ -13,6 +13,35 @@ import (
 	"gopkg.in/src-d/go-vitess.v0/vt/sqlparser"
 )
 
+func parseShowIndex(s string) (sql.Node, error) {
+	r := bufio.NewReader(strings.NewReader(s))
+
+	var table string
+	steps := []parseFunc{
+		expect("show"),
+		skipSpaces,
+		oneOf("index", "indexes", "keys"),
+		skipSpaces,
+		oneOf("from", "in"),
+		skipSpaces,
+		readIdent(&table),
+		skipSpaces,
+		checkEOF,
+	}
+
+	for _, step := range steps {
+		if err := step(r); err != nil {
+			return nil, err
+		}
+	}
+
+	return plan.NewShowIndexes(
+		&sql.UnresolvedDatabase{},
+		table,
+		nil,
+	), nil
+}
+
 func parseCreateIndex(s string) (sql.Node, error) {
 	r := bufio.NewReader(strings.NewReader(s))
 

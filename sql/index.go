@@ -277,6 +277,25 @@ func (r *IndexRegistry) Index(db, id string) Index {
 	return idx
 }
 
+// IndexesByTable returns a slice of all the indexes existing on the given table.
+func (r *IndexRegistry) IndexesByTable(db, table string) []Index {
+	r.mut.RLock()
+	defer r.mut.RUnlock()
+
+	indexes := []Index{}
+	for _, key := range r.indexOrder {
+		idx := r.indexes[key]
+		if idx.Database() == db &&
+			idx.Table() == table && r.statuses[key] == IndexReady {
+
+			indexes = append(indexes, idx)
+			r.retainIndex(db, idx.ID())
+		}
+	}
+
+	return indexes
+}
+
 // IndexByExpression returns an index by the given expression. It will return
 // nil it the index is not found. If more than one expression is given, all
 // of them must match for the index to be matched.

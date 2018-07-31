@@ -624,6 +624,7 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo"),
 	),
+	`SHOW INDEXES FROM foo`: plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
 }
 
 func TestParse(t *testing.T) {

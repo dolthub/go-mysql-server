@@ -8,6 +8,67 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestIndexesByTable(t *testing.T) {
+	var require = require.New(t)
+
+	var r = NewIndexRegistry()
+	r.indexOrder = []indexKey{
+		{"foo", "bar_idx_1"},
+		{"foo", "bar_idx_2"},
+		{"foo", "bar_idx_3"},
+		{"foo", "baz_idx_1"},
+		{"oof", "rab_idx_1"},
+	}
+
+	r.indexes = map[indexKey]Index{
+		indexKey{"foo", "bar_idx_1"}: &dummyIdx{
+			database: "foo",
+			table:    "bar",
+			id:       "bar_idx_1",
+			expr:     []Expression{dummyExpr{1, "2"}},
+		},
+		indexKey{"foo", "bar_idx_2"}: &dummyIdx{
+			database: "foo",
+			table:    "bar",
+			id:       "bar_idx_2",
+			expr:     []Expression{dummyExpr{2, "3"}},
+		},
+		indexKey{"foo", "bar_idx_3"}: &dummyIdx{
+			database: "foo",
+			table:    "bar",
+			id:       "bar_idx_3",
+			expr:     []Expression{dummyExpr{3, "4"}},
+		},
+		indexKey{"foo", "baz_idx_1"}: &dummyIdx{
+			database: "foo",
+			table:    "baz",
+			id:       "baz_idx_1",
+			expr:     []Expression{dummyExpr{4, "5"}},
+		},
+		indexKey{"oof", "rab_idx_1"}: &dummyIdx{
+			database: "oof",
+			table:    "rab",
+			id:       "rab_idx_1",
+			expr:     []Expression{dummyExpr{5, "6"}},
+		},
+	}
+
+	r.statuses[indexKey{"foo", "bar_idx_1"}] = IndexReady
+	r.statuses[indexKey{"foo", "bar_idx_2"}] = IndexReady
+	r.statuses[indexKey{"foo", "bar_idx_3"}] = IndexNotReady
+	r.statuses[indexKey{"foo", "baz_idx_1"}] = IndexReady
+	r.statuses[indexKey{"oof", "rab_idx_1"}] = IndexReady
+
+	indexes := r.IndexesByTable("foo", "bar")
+	require.Len(indexes, 2)
+
+	for i, idx := range indexes {
+		expected := r.indexes[r.indexOrder[i]]
+		require.Equal(expected, idx)
+		r.ReleaseIndex(idx)
+	}
+}
+
 func TestIndexByExpression(t *testing.T) {
 	require := require.New(t)
 

@@ -14,6 +14,14 @@ func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 	// TODO Database should implement node,
 	// and ShowTables and CreateTable nodes should be binaryNodes
 	switch v := n.(type) {
+	case *plan.ShowIndexes:
+		db, err := a.Catalog.Database(a.CurrentDatabase)
+		if err != nil {
+			return n, err
+		}
+
+		v.Database = db
+		v.Registry = a.Catalog.IndexRegistry
 	case *plan.ShowTables:
 		db, err := a.Catalog.Database(a.CurrentDatabase)
 		if err != nil {
