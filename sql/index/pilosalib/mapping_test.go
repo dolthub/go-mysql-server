@@ -1,4 +1,4 @@
-package pilosa
+package pilosalib
 
 import (
 	"encoding/binary"

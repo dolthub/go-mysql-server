@@ -2,7 +2,6 @@ package index
 
 import (
 	"crypto/sha1"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,12 +13,15 @@ import (
 func TestConfig(t *testing.T) {
 	require := require.New(t)
 
+	driver := "driver"
 	db, table, id := "db_name", "table_name", "index_id"
-	path := filepath.Join(os.TempDir(), db, table, id)
-	err := os.MkdirAll(path, 0750)
-
+	dir := filepath.Join(os.TempDir(), driver)
+	subdir := filepath.Join(dir, db, table)
+	err := os.MkdirAll(subdir, 0750)
 	require.NoError(err)
-	defer os.RemoveAll(path)
+	file := filepath.Join(subdir, id+".cfg")
+
+	defer os.RemoveAll(dir)
 
 	h1 := sha1.Sum([]byte("h1"))
 	h2 := sha1.Sum([]byte("h2"))
@@ -31,43 +33,41 @@ func TestConfig(t *testing.T) {
 		table,
 		id,
 		[]sql.ExpressionHash{exh1, exh2},
-		"DriverID",
+		"pilosa",
 		map[string]string{
 			"port": "10101",
 			"host": "localhost",
 		},
 	)
 
-	err = WriteConfigFile(path, cfg1)
+	err = WriteConfigFile(file, cfg1)
 	require.NoError(err)
 
-	cfg2, err := ReadConfigFile(path)
+	cfg2, err := ReadConfigFile(file)
 	require.NoError(err)
 	require.Equal(cfg1, cfg2)
 }
 
-func TestProcessingFile(t *testing.T) {
+func TestLockFile(t *testing.T) {
 	require := require.New(t)
 
-	dir, err := ioutil.TempDir(os.TempDir(), "processing-file")
-	require.NoError(err)
-	defer func() {
-		require.NoError(os.RemoveAll(dir))
-	}()
+	dir := os.TempDir()
+	file := filepath.Join(dir, ".processing")
+	defer require.NoError(os.RemoveAll(file))
 
-	ok, err := ExistsProcessingFile(dir)
+	ok, err := ExistsProcessingFile(file)
 	require.NoError(err)
 	require.False(ok)
 
-	require.NoError(CreateProcessingFile(dir))
+	require.NoError(CreateProcessingFile(file))
 
-	ok, err = ExistsProcessingFile(dir)
+	ok, err = ExistsProcessingFile(file)
 	require.NoError(err)
 	require.True(ok)
 
-	require.NoError(RemoveProcessingFile(dir))
+	require.NoError(RemoveProcessingFile(file))
 
-	ok, err = ExistsProcessingFile(dir)
+	ok, err = ExistsProcessingFile(file)
 	require.NoError(err)
 	require.False(ok)
 }
