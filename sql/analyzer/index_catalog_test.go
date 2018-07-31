@@ -13,9 +13,13 @@ func TestCatalogIndex(t *testing.T) {
 	require := require.New(t)
 	f := getRule("index_catalog")
 
+	db := mem.NewDatabase("foo")
 	c := sql.NewCatalog()
+	c.AddDatabase(db)
+
 	a := NewDefault(c)
 	a.CurrentDatabase = "foo"
+	a.Catalog.IndexRegistry = sql.NewIndexRegistry()
 
 	tbl := mem.NewTable("foo", nil)
 
@@ -34,4 +38,12 @@ func TestCatalogIndex(t *testing.T) {
 	require.True(ok)
 	require.Equal(c, di.Catalog)
 	require.Equal("foo", di.CurrentDatabase)
+
+	node, err = f.Apply(sql.NewEmptyContext(), a, plan.NewShowIndexes(db, "table-test", nil))
+	require.NoError(err)
+
+	si, ok := node.(*plan.ShowIndexes)
+	require.True(ok)
+	require.Equal(db, si.Database)
+	require.Equal(c.IndexRegistry, si.Registry)
 }

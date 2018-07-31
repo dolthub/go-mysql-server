@@ -17,11 +17,10 @@ func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 	case *plan.ShowIndexes:
 		db, err := a.Catalog.Database(a.CurrentDatabase)
 		if err != nil {
-			return n, err
+			return nil, err
 		}
 
 		v.Database = db
-		v.Registry = a.Catalog.IndexRegistry
 	case *plan.ShowTables:
 		db, err := a.Catalog.Database(a.CurrentDatabase)
 		if err != nil {

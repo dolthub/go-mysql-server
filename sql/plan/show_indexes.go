@@ -22,7 +22,7 @@ func NewShowIndexes(db sql.Database, table string, registry *sql.IndexRegistry) 
 // Resolved implements the Resolvable interface.
 func (n *ShowIndexes) Resolved() bool {
 	_, ok := n.Database.(*sql.UnresolvedDatabase)
-	return !ok && n.Registry != nil
+	return !ok
 }
 
 // TransformUp implements the Transformable interface.
@@ -82,6 +82,10 @@ type showIndexesIter struct {
 }
 
 func (i *showIndexesIter) Next() (sql.Row, error) {
+	if i.registry == nil {
+		return nil, io.EOF
+	}
+
 	if i.indexes == nil {
 		i.indexes = i.registry.IndexesByTable(i.db, i.table)
 	}
