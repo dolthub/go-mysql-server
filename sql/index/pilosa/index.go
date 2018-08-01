@@ -1,12 +1,21 @@
 package pilosa
 
 import (
+	"crypto/sha1"
+
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	pilosa "github.com/pilosa/go-pilosa"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/index"
 )
+
+type expressionHash []byte
+
+func newExpressionHash(ex string) expressionHash {
+	h := sha1.Sum([]byte(ex))
+	return expressionHash(h[:])
+}
 
 // pilosaIndex is an pilosa implementation of sql.Index interface
 type pilosaIndex struct {
@@ -17,17 +26,24 @@ type pilosaIndex struct {
 	db          string
 	table       string
 	id          string
-	expressions []sql.ExpressionHash
+	expressions []string
+	hashes      []expressionHash
 }
 
 func newPilosaIndex(path string, client *pilosa.Client, cfg *index.Config) *pilosaIndex {
+	hashes := make([]expressionHash, len(cfg.Expressions))
+	for i, e := range cfg.Expressions {
+		hashes[i] = newExpressionHash(e)
+	}
+
 	return &pilosaIndex{
 		path:        path,
 		client:      client,
 		db:          cfg.DB,
 		table:       cfg.Table,
 		id:          cfg.ID,
-		expressions: cfg.ExpressionHashes(),
+		expressions: cfg.Expressions,
+		hashes:      hashes,
 		mapping:     newMapping(path),
 	}
 }
@@ -60,7 +76,7 @@ func (idx *pilosaIndex) Get(keys ...interface{}) (sql.IndexLookup, error) {
 		index:       index,
 		mapping:     idx.mapping,
 		keys:        keys,
-		expressions: idx.expressions,
+		expressions: idx.expressionHashes(),
 	}, nil
 }
 
@@ -76,7 +92,7 @@ func (idx *pilosaIndex) Has(key ...interface{}) (bool, error) {
 
 	// We can make this loop parallel, but does it make sense?
 	// For how many (maximum) keys will be asked by one function call?
-	for i, expr := range idx.expressions {
+	for i, expr := range idx.expressionHashes() {
 		name := frameName(idx.ID(), expr)
 
 		val, err := idx.mapping.get(name, key[i])
@@ -106,8 +122,13 @@ func (idx *pilosaIndex) ID() string {
 // Expressions returns the indexed expressions. If the result is more than
 // one expression, it means the index has multiple columns indexed. If it's
 // just one, it means it may be an expression or a column.
-func (idx *pilosaIndex) ExpressionHashes() []sql.ExpressionHash {
+func (idx *pilosaIndex) Expressions() []string {
 	return idx.expressions
+}
+
+// expressionHashes returns the hashes of the indexed expressions.
+func (idx *pilosaIndex) expressionHashes() []expressionHash {
+	return idx.hashes
 }
 
 func (pilosaIndex) Driver() string { return DriverID }
@@ -133,7 +154,7 @@ func (idx *pilosaIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLook
 			index:       index,
 			mapping:     idx.mapping,
 			keys:        keys,
-			expressions: idx.expressions,
+			expressions: idx.expressionHashes(),
 		},
 		gte: keys,
 		lt:  nil,
@@ -164,7 +185,7 @@ func (idx *pilosaIndex) AscendLessThan(keys ...interface{}) (sql.IndexLookup, er
 			index:       index,
 			mapping:     idx.mapping,
 			keys:        keys,
-			expressions: idx.expressions,
+			expressions: idx.expressionHashes(),
 		},
 		gte: nil,
 		lt:  keys,
@@ -198,7 +219,7 @@ func (idx *pilosaIndex) AscendRange(greaterOrEqual, lessThan []interface{}) (sql
 			client:      idx.client,
 			index:       index,
 			mapping:     idx.mapping,
-			expressions: idx.expressions,
+			expressions: idx.expressionHashes(),
 		},
 		gte: greaterOrEqual,
 		lt:  lessThan,
@@ -229,7 +250,7 @@ func (idx *pilosaIndex) DescendGreater(keys ...interface{}) (sql.IndexLookup, er
 			index:       index,
 			mapping:     idx.mapping,
 			keys:        keys,
-			expressions: idx.expressions,
+			expressions: idx.expressionHashes(),
 			reverse:     true,
 		},
 		gt:  keys,
@@ -261,7 +282,7 @@ func (idx *pilosaIndex) DescendLessOrEqual(keys ...interface{}) (sql.IndexLookup
 			index:       index,
 			mapping:     idx.mapping,
 			keys:        keys,
-			expressions: idx.expressions,
+			expressions: idx.expressionHashes(),
 			reverse:     true,
 		},
 		gt:  nil,
@@ -296,7 +317,7 @@ func (idx *pilosaIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sq
 			client:      idx.client,
 			index:       index,
 			mapping:     idx.mapping,
-			expressions: idx.expressions,
+			expressions: idx.expressionHashes(),
 			reverse:     true,
 		},
 		gt:  greaterThan,
@@ -328,6 +349,6 @@ func (idx *pilosaIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
 		index:       index,
 		mapping:     idx.mapping,
 		keys:        keys,
-		expressions: idx.expressions,
+		expressions: idx.expressionHashes(),
 	}, nil
 }
