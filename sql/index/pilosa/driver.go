@@ -187,8 +187,8 @@ func (d *Driver) Save(
 		return err
 	}
 
-	d.frames = make([]*pilosa.Frame, len(idx.expressionHashes()))
-	for i, e := range idx.expressionHashes() {
+	d.frames = make([]*pilosa.Frame, len(idx.Expressions()))
+	for i, e := range idx.Expressions() {
 		frm, err := pilosaIndex.Frame(frameName(idx.ID(), e))
 		if err != nil {
 			return err
@@ -302,7 +302,7 @@ func (d *Driver) Delete(idx sql.Index) error {
 
 	frames := index.Frames()
 	for _, ex := range idx.Expressions() {
-		frm, ok := frames[frameName(idx.ID(), newExpressionHash(ex))]
+		frm, ok := frames[frameName(idx.ID(), ex)]
 		if !ok {
 			continue
 		}
@@ -414,10 +414,10 @@ func indexName(db, table string) string {
 	return fmt.Sprintf("%s-%x", IndexNamePrefix, h.Sum(nil))
 }
 
-func frameName(id string, ex expressionHash) string {
+func frameName(id string, ex string) string {
 	h := sha1.New()
 	io.WriteString(h, id)
-	h.Write(ex)
+	io.WriteString(h, ex)
 	return fmt.Sprintf("%s-%x", FrameNamePrefix, h.Sum(nil))
 }
 

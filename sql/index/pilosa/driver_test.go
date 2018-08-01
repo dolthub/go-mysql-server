@@ -102,13 +102,10 @@ func TestSaveAndLoad(t *testing.T) {
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
-	idx, ok := sqlIdx.(*pilosaIndex)
-	require.True(ok)
-
 	it := &testIndexKeyValueIter{
 		offset:      0,
 		total:       64,
-		expressions: idx.expressionHashes(),
+		expressions: sqlIdx.Expressions(),
 		location:    randLocation,
 	}
 
@@ -199,13 +196,10 @@ func TestSaveAndGetAll(t *testing.T) {
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
-	idx, ok := sqlIdx.(*pilosaIndex)
-	require.True(ok)
-
 	it := &testIndexKeyValueIter{
 		offset:      0,
 		total:       64,
-		expressions: idx.expressionHashes(),
+		expressions: sqlIdx.Expressions(),
 		location:    randLocation,
 	}
 
@@ -435,23 +429,17 @@ func TestIntersection(t *testing.T) {
 	sqlIdxPath, err := d.Create(db, table, idxPath, expPath, nil)
 	require.NoError(err)
 
-	idxl, ok := sqlIdxLang.(*pilosaIndex)
-	require.True(ok)
-
-	idxp, ok := sqlIdxPath.(*pilosaIndex)
-	require.True(ok)
-
 	itLang := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: idxl.expressionHashes(),
+		expressions: sqlIdxLang.Expressions(),
 		location:    offsetLocation,
 	}
 
 	itPath := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: idxp.expressionHashes(),
+		expressions: sqlIdxPath.Expressions(),
 		location:    offsetLocation,
 	}
 
@@ -519,23 +507,17 @@ func TestUnion(t *testing.T) {
 	sqlIdxPath, err := d.Create(db, table, idxPath, expPath, nil)
 	require.NoError(err)
 
-	idxl, ok := sqlIdxLang.(*pilosaIndex)
-	require.True(ok)
-
-	idxp, ok := sqlIdxPath.(*pilosaIndex)
-	require.True(ok)
-
 	itLang := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: idxl.expressionHashes(),
+		expressions: sqlIdxLang.Expressions(),
 		location:    offsetLocation,
 	}
 
 	itPath := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: idxp.expressionHashes(),
+		expressions: sqlIdxPath.Expressions(),
 		location:    offsetLocation,
 	}
 
@@ -614,23 +596,18 @@ func TestDifference(t *testing.T) {
 
 	sqlIdxPath, err := d.Create(db, table, idxPath, expPath, nil)
 	require.NoError(err)
-	idxl, ok := sqlIdxLang.(*pilosaIndex)
-	require.True(ok)
-
-	idxp, ok := sqlIdxPath.(*pilosaIndex)
-	require.True(ok)
 
 	itLang := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: idxl.expressionHashes(),
+		expressions: sqlIdxLang.Expressions(),
 		location:    offsetLocation,
 	}
 
 	itPath := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: idxp.expressionHashes(),
+		expressions: sqlIdxPath.Expressions(),
 		location:    offsetLocation,
 	}
 
@@ -693,7 +670,7 @@ func TestUnionDiffAsc(t *testing.T) {
 	it := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: pilosaIdx.expressionHashes(),
+		expressions: pilosaIdx.Expressions(),
 		location:    offsetLocation,
 	}
 
@@ -753,7 +730,7 @@ func TestInterRanges(t *testing.T) {
 	it := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: pilosaIdx.expressionHashes(),
+		expressions: pilosaIdx.Expressions(),
 		location:    offsetLocation,
 	}
 
@@ -877,7 +854,7 @@ func (i *fixtureKeyValueIter) Close() error { return nil }
 type testIndexKeyValueIter struct {
 	offset      int
 	total       int
-	expressions []expressionHash
+	expressions []string
 	location    func(int) []byte
 
 	records []struct {
@@ -895,7 +872,7 @@ func (it *testIndexKeyValueIter) Next() ([]interface{}, []byte, error) {
 
 	values := make([]interface{}, len(it.expressions))
 	for i, e := range it.expressions {
-		values[i] = hex.EncodeToString(e) + "-" + hex.EncodeToString(b)
+		values[i] = e + "-" + hex.EncodeToString(b)
 	}
 
 	it.records = append(it.records, struct {
