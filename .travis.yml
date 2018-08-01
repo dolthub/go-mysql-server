@@ -25,7 +25,7 @@ before_install:
 install:
   - go get -u github.com/golang/dep/cmd/dep
   - touch Gopkg.toml
-  - dep ensure -v -add "github.com/pilosa/go-pilosa@0.9.0" "github.com/pilosa/pilosa@master"
+  - dep ensure -v -add "github.com/pilosa/go-pilosa@0.9.0" "github.com/pilosa/pilosa@edf6fa9c67caeab6019fb17ab82425a74fdfaf87"
   - make dependencies
 
 script:
