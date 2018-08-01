@@ -1,7 +1,6 @@
 package analyzer
 
 import (
-	"crypto/sha1"
 	"fmt"
 	"strings"
 	"testing"
@@ -949,14 +948,12 @@ var _ sql.NegateIndex = (*dummyIndex)(nil)
 
 func (dummyIndex) Database() string { return "" }
 func (dummyIndex) Driver() string   { return "" }
-func (i dummyIndex) ExpressionHashes() []sql.ExpressionHash {
-	var hashes []sql.ExpressionHash
+func (i dummyIndex) Expressions() []string {
+	var exprs []string
 	for _, e := range i.expr {
-		h := sha1.New()
-		h.Write([]byte(e.String()))
-		hashes = append(hashes, h.Sum(nil))
+		exprs = append(exprs, e.String())
 	}
-	return hashes
+	return exprs
 }
 
 func (i dummyIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLookup, error) {

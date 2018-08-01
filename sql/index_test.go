@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"crypto/sha1"
 	"fmt"
 	"testing"
 
@@ -321,7 +320,7 @@ type loadDriver struct {
 }
 
 func (d loadDriver) ID() string { return d.id }
-func (loadDriver) Create(db, table, id string, expressionHashes []ExpressionHash, config map[string]string) (Index, error) {
+func (loadDriver) Create(db, table, id string, expressions []Expression, config map[string]string) (Index, error) {
 	panic("create is a placeholder")
 }
 func (d loadDriver) LoadAll(db, table string) ([]Index, error) {
@@ -345,14 +344,12 @@ type dummyIdx struct {
 
 var _ Index = (*dummyIdx)(nil)
 
-func (i dummyIdx) ExpressionHashes() []ExpressionHash {
-	var hashes []ExpressionHash
+func (i dummyIdx) Expressions() []string {
+	var exprs []string
 	for _, e := range i.expr {
-		h := sha1.New()
-		h.Write([]byte(e.String()))
-		hashes = append(hashes, h.Sum(nil))
+		exprs = append(exprs, e.String())
 	}
-	return hashes
+	return exprs
 }
 func (i dummyIdx) ID() string                              { return i.id }
 func (i dummyIdx) Get(...interface{}) (IndexLookup, error) { panic("not implemented") }

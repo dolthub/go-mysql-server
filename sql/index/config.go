@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -28,15 +27,9 @@ type Config struct {
 
 // NewConfig creates a new Config instance for given driver's configuration
 func NewConfig(db, table, id string,
-	expressionHashes []sql.ExpressionHash,
+	expressions []string,
 	driverID string,
 	driverConfig map[string]string) *Config {
-
-	expressions := make([]string, len(expressionHashes))
-
-	for i, h := range expressionHashes {
-		expressions[i] = sql.EncodeExpressionHash(h)
-	}
 
 	cfg := &Config{
 		DB:          db,
@@ -48,16 +41,6 @@ func NewConfig(db, table, id string,
 	cfg.Drivers[driverID] = driverConfig
 
 	return cfg
-}
-
-// ExpressionHashes returns a slice of ExpressionHash for this configuration.
-// Implementation decodes hex strings into byte slices.
-func (cfg *Config) ExpressionHashes() []sql.ExpressionHash {
-	h := make([]sql.ExpressionHash, len(cfg.Expressions))
-	for i, hexstr := range cfg.Expressions {
-		h[i], _ = sql.DecodeExpressionHash(hexstr)
-	}
-	return h
 }
 
 // Driver returns an configuration for the particular driverID.

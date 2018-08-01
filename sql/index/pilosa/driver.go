@@ -64,13 +64,18 @@ func (*Driver) ID() string {
 }
 
 // Create a new index.
-func (d *Driver) Create(db, table, id string, expr []sql.ExpressionHash, config map[string]string) (sql.Index, error) {
+func (d *Driver) Create(db, table, id string, expressions []sql.Expression, config map[string]string) (sql.Index, error) {
 	path, err := mkdir(d.root, db, table, id)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg := index.NewConfig(db, table, id, expr, d.ID(), config)
+	exprs := make([]string, len(expressions))
+	for i, e := range expressions {
+		exprs[i] = e.String()
+	}
+
+	cfg := index.NewConfig(db, table, id, exprs, d.ID(), config)
 	err = index.WriteConfigFile(path, cfg)
 	if err != nil {
 		return nil, err
@@ -182,8 +187,8 @@ func (d *Driver) Save(
 		return err
 	}
 
-	d.frames = make([]*pilosa.Frame, len(idx.ExpressionHashes()))
-	for i, e := range idx.ExpressionHashes() {
+	d.frames = make([]*pilosa.Frame, len(idx.Expressions()))
+	for i, e := range idx.Expressions() {
 		frm, err := pilosaIndex.Frame(frameName(idx.ID(), e))
 		if err != nil {
 			return err
@@ -296,7 +301,7 @@ func (d *Driver) Delete(idx sql.Index) error {
 	}
 
 	frames := index.Frames()
-	for _, ex := range idx.ExpressionHashes() {
+	for _, ex := range idx.Expressions() {
 		frm, ok := frames[frameName(idx.ID(), ex)]
 		if !ok {
 			continue
@@ -409,10 +414,10 @@ func indexName(db, table string) string {
 	return fmt.Sprintf("%s-%x", IndexNamePrefix, h.Sum(nil))
 }
 
-func frameName(id string, ex sql.ExpressionHash) string {
+func frameName(id string, ex string) string {
 	h := sha1.New()
 	io.WriteString(h, id)
-	h.Write(ex)
+	io.WriteString(h, ex)
 	return fmt.Sprintf("%s-%x", FrameNamePrefix, h.Sum(nil))
 }
 

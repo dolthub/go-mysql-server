@@ -50,9 +50,9 @@ func TestCreateIndex(t *testing.T) {
 	require.Equal([]string{"idx"}, driver.saved)
 	idx := catalog.IndexRegistry.Index("foo", "idx")
 	require.NotNil(idx)
-	require.Equal(&mockIndex{"foo", "foo", "idx", []sql.ExpressionHash{
-		sql.NewExpressionHash(expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true)),
-		sql.NewExpressionHash(expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true)),
+	require.Equal(&mockIndex{"foo", "foo", "idx", []sql.Expression{
+		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
 	}}, idx)
 
 	found := false
@@ -152,9 +152,9 @@ func TestCreateIndexSync(t *testing.T) {
 	require.Equal([]string{"idx"}, driver.saved)
 	idx := catalog.IndexRegistry.Index("foo", "idx")
 	require.NotNil(idx)
-	require.Equal(&mockIndex{"foo", "foo", "idx", []sql.ExpressionHash{
-		sql.NewExpressionHash(expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true)),
-		sql.NewExpressionHash(expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true)),
+	require.Equal(&mockIndex{"foo", "foo", "idx", []sql.Expression{
+		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
 	}}, idx)
 
 	found := false
@@ -203,7 +203,7 @@ func TestCreateIndexWithIter(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	columns, exprs, _, err := getColumnsAndPrepareExpressions(ci.Exprs)
+	columns, exprs, err := getColumnsAndPrepareExpressions(ci.Exprs)
 	require.NoError(err)
 
 	iter, err := getIndexKeyValueIter(sql.NewEmptyContext(), table, columns, exprs)
@@ -226,15 +226,22 @@ type mockIndex struct {
 	db    string
 	table string
 	id    string
-	exprs []sql.ExpressionHash
+	exprs []sql.Expression
 }
 
 var _ sql.Index = (*mockIndex)(nil)
 
-func (i *mockIndex) ID() string                             { return i.id }
-func (i *mockIndex) Table() string                          { return i.table }
-func (i *mockIndex) Database() string                       { return i.db }
-func (i *mockIndex) ExpressionHashes() []sql.ExpressionHash { return i.exprs }
+func (i *mockIndex) ID() string       { return i.id }
+func (i *mockIndex) Table() string    { return i.table }
+func (i *mockIndex) Database() string { return i.db }
+func (i *mockIndex) Expressions() []string {
+	exprs := make([]string, len(i.exprs))
+	for i, e := range i.exprs {
+		exprs[i] = e.String()
+	}
+
+	return exprs
+}
 func (i *mockIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 	panic("unimplemented")
 }
@@ -251,7 +258,7 @@ type mockDriver struct {
 var _ sql.IndexDriver = (*mockDriver)(nil)
 
 func (*mockDriver) ID() string { return "mock" }
-func (*mockDriver) Create(db, table, id string, exprs []sql.ExpressionHash, config map[string]string) (sql.Index, error) {
+func (*mockDriver) Create(db, table, id string, exprs []sql.Expression, config map[string]string) (sql.Index, error) {
 	return &mockIndex{db, table, id, exprs}, nil
 }
 func (*mockDriver) LoadAll(db, table string) ([]sql.Index, error) {

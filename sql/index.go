@@ -1,8 +1,6 @@
 package sql
 
 import (
-	"bytes"
-	"encoding/hex"
 	"io"
 	"strings"
 	"sync"
@@ -46,7 +44,7 @@ type Index interface {
 	// Expressions returns the indexed expressions. If the result is more than
 	// one expression, it means the index has multiple columns indexed. If it's
 	// just one, it means it may be an expression or a column.
-	ExpressionHashes() []ExpressionHash
+	Expressions() []string
 	// Driver ID of the index.
 	Driver() string
 }
@@ -121,7 +119,7 @@ type IndexDriver interface {
 	// Create a new index. If exprs is more than one expression, it means the
 	// index has multiple columns indexed. If it's just one, it means it may
 	// be an expression or a column.
-	Create(db, table, id string, expressionHashes []ExpressionHash, config map[string]string) (Index, error)
+	Create(db, table, id string, expressions []Expression, config map[string]string) (Index, error)
 	// LoadAll loads all indexes for given db and table
 	LoadAll(db, table string) ([]Index, error)
 	// Save the given index
@@ -303,9 +301,9 @@ func (r *IndexRegistry) IndexByExpression(db string, expr ...Expression) Index {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
 
-	var expressionHashes []ExpressionHash
-	for _, e := range expr {
-		expressionHashes = append(expressionHashes, NewExpressionHash(e))
+	expressions := make([]string, len(expr))
+	for i, e := range expr {
+		expressions[i] = e.String()
 	}
 
 	for _, k := range r.indexOrder {
@@ -315,7 +313,7 @@ func (r *IndexRegistry) IndexByExpression(db string, expr ...Expression) Index {
 		}
 
 		if idx.Database() == db {
-			if exprListsMatch(idx.ExpressionHashes(), expressionHashes) {
+			if exprListsMatch(idx.Expressions(), expressions) {
 				r.retainIndex(db, idx.ID())
 				return idx
 			}
@@ -341,17 +339,17 @@ Indexes:
 			continue
 		}
 
-		if ln := len(idx.ExpressionHashes()); ln <= len(exprs) && ln > 1 {
+		if ln := len(idx.Expressions()); ln <= len(exprs) && ln > 1 {
 			var used = make(map[int]struct{})
 			var matched []Expression
-			for _, ie := range idx.ExpressionHashes() {
+			for _, ie := range idx.Expressions() {
 				var found bool
 				for i, e := range exprs {
 					if _, ok := used[i]; ok {
 						continue
 					}
 
-					if expressionsEqual(ie, NewExpressionHash(e)) {
+					if ie == e.String() {
 						used[i] = struct{}{}
 						found = true
 						matched = append(matched, e)
@@ -384,10 +382,6 @@ func removeIndexes(e Expression) (Expression, error) {
 	return i.WithIndex(-1), nil
 }
 
-func expressionsEqual(a, b ExpressionHash) bool {
-	return bytes.Compare(a, b) == 0
-}
-
 var (
 	// ErrIndexIDAlreadyRegistered is the error returned when there is already
 	// an index with the same ID.
@@ -418,12 +412,10 @@ func (r *IndexRegistry) validateIndexToAdd(idx Index) error {
 			return ErrIndexIDAlreadyRegistered.New(idx.ID())
 		}
 
-		if exprListsEqual(i.ExpressionHashes(), idx.ExpressionHashes()) {
-			var exprs = make([]string, len(idx.ExpressionHashes()))
-			for i, e := range idx.ExpressionHashes() {
-				exprs[i] = hex.EncodeToString(e)
-			}
-			return ErrIndexExpressionAlreadyRegistered.New(strings.Join(exprs, ", "))
+		if exprListsEqual(i.Expressions(), idx.Expressions()) {
+			return ErrIndexExpressionAlreadyRegistered.New(
+				strings.Join(idx.Expressions(), ", "),
+			)
 		}
 	}
 
@@ -431,7 +423,7 @@ func (r *IndexRegistry) validateIndexToAdd(idx Index) error {
 }
 
 // exprListsMatch returns whether any subset of a is the entirety of b.
-func exprListsMatch(a, b []ExpressionHash) bool {
+func exprListsMatch(a, b []string) bool {
 	var visited = make([]bool, len(b))
 
 	for _, va := range a {
@@ -442,7 +434,7 @@ func exprListsMatch(a, b []ExpressionHash) bool {
 				continue
 			}
 
-			if bytes.Equal(va, vb) {
+			if va == vb {
 				visited[j] = true
 				found = true
 				break
@@ -458,34 +450,12 @@ func exprListsMatch(a, b []ExpressionHash) bool {
 }
 
 // exprListsEqual returns whether a and b have the same items.
-func exprListsEqual(a, b []ExpressionHash) bool {
+func exprListsEqual(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}
 
-	var visited = make([]bool, len(b))
-
-	for _, va := range a {
-		found := false
-
-		for j, vb := range b {
-			if visited[j] {
-				continue
-			}
-
-			if bytes.Equal(va, vb) {
-				visited[j] = true
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			return false
-		}
-	}
-
-	return true
+	return exprListsMatch(a, b)
 }
 
 // AddIndex adds the given index to the registry. The added index will be

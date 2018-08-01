@@ -99,7 +99,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, ErrInvalidIndexDriver.New(c.Driver)
 	}
 
-	columns, exprs, exprHashes, err := getColumnsAndPrepareExpressions(c.Exprs)
+	columns, exprs, err := getColumnsAndPrepareExpressions(c.Exprs)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		c.CurrentDatabase,
 		nameable.Name(),
 		c.Name,
-		exprHashes,
+		exprs,
 		c.Config,
 	)
 	if err != nil {
@@ -280,11 +280,10 @@ func (c *CreateIndex) TransformUp(fn sql.TransformNodeFunc) (sql.Node, error) {
 // to match a row with only the returned columns in that same order.
 func getColumnsAndPrepareExpressions(
 	exprs []sql.Expression,
-) ([]string, []sql.Expression, []sql.ExpressionHash, error) {
+) ([]string, []sql.Expression, error) {
 	var columns []string
 	var seen = make(map[string]int)
 	var expressions = make([]sql.Expression, len(exprs))
-	var expressionHashes = make([]sql.ExpressionHash, len(exprs))
 
 	for i, e := range exprs {
 		ex, err := e.TransformUp(func(e sql.Expression) (sql.Expression, error) {
@@ -312,14 +311,13 @@ func getColumnsAndPrepareExpressions(
 		})
 
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 
 		expressions[i] = ex
-		expressionHashes[i] = sql.NewExpressionHash(ex)
 	}
 
-	return columns, expressions, expressionHashes, nil
+	return columns, expressions, nil
 }
 
 type evalKeyValueIter struct {
