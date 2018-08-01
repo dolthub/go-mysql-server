@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"crypto/sha1"
 	"testing"
 	"time"
 
@@ -31,15 +30,8 @@ func TestDeleteIndex(t *testing.T) {
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
 		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
 	}
-	var hashes []sql.ExpressionHash
 
-	for _, e := range expressions {
-		h := sha1.Sum([]byte(e.String()))
-		exh := sql.ExpressionHash(h[:])
-		hashes = append(hashes, exh)
-	}
-
-	done, ready, err := catalog.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: hashes})
+	done, ready, err := catalog.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: expressions})
 	require.NoError(err)
 	close(done)
 	<-ready

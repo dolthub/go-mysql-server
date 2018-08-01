@@ -47,7 +47,7 @@ type (
 		index       *pilosa.Index
 		mapping     *mapping
 		keys        []interface{}
-		expressions []sql.ExpressionHash
+		expressions []string
 		operations  []*lookupOperation
 	}
 
@@ -183,7 +183,7 @@ type filteredLookup struct {
 	index       *pilosa.Index
 	mapping     *mapping
 	keys        []interface{}
-	expressions []sql.ExpressionHash
+	expressions []string
 	operations  []*lookupOperation
 
 	reverse bool
@@ -329,7 +329,7 @@ type negateLookup struct {
 	index       *pilosa.Index
 	mapping     *mapping
 	keys        []interface{}
-	expressions []sql.ExpressionHash
+	expressions []string
 	operations  []*lookupOperation
 }
 

@@ -1,14 +1,12 @@
 package index
 
 import (
-	"crypto/sha1"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
 func TestConfig(t *testing.T) {
@@ -25,17 +23,12 @@ func TestConfig(t *testing.T) {
 	require.NoError(err)
 	file := filepath.Join(subdir, id+".cfg")
 
-	h1 := sha1.Sum([]byte("h1"))
-	h2 := sha1.Sum([]byte("h2"))
-	exh1 := sql.ExpressionHash(h1[:])
-	exh2 := sql.ExpressionHash(h2[:])
-
 	cfg1 := NewConfig(
 		db,
 		table,
 		id,
-		[]sql.ExpressionHash{exh1, exh2},
-		"pilosa",
+		[]string{"h1", "h2"},
+		"DriverID",
 		map[string]string{
 			"port": "10101",
 			"host": "localhost",

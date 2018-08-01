@@ -27,10 +27,8 @@ func TestShowIndexes(t *testing.T) {
 			db:    "test",
 			table: table,
 			id:    "idx_" + table + "_foo",
-			exprs: []sql.ExpressionHash{
-				sql.NewExpressionHash(
-					expression.NewGetFieldWithTable(0, sql.Int32, table, "foo", false),
-				),
+			exprs: []sql.Expression{
+				expression.NewGetFieldWithTable(0, sql.Int32, table, "foo", false),
 			},
 		}
 

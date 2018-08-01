@@ -1,7 +1,6 @@
 package analyzer
 
 import (
-	"bytes"
 	"fmt"
 	"reflect"
 
@@ -587,9 +586,9 @@ func getMultiColumnIndexForExpressions(
 			*expression.GreaterThan,
 			*expression.LessThanOrEqual,
 			*expression.GreaterThanOrEqual:
-			var values = make([]interface{}, len(index.ExpressionHashes()))
-			for i, e := range index.ExpressionHashes() {
-				col := findColumnByHash(exprs, e)
+			var values = make([]interface{}, len(index.Expressions()))
+			for i, e := range index.Expressions() {
+				col := findColumn(exprs, e)
 				used[col.expr] = struct{}{}
 				var val interface{}
 				val, err = col.val.Eval(sql.NewEmptyContext(), nil)
@@ -601,10 +600,10 @@ func getMultiColumnIndexForExpressions(
 
 			lookup, err = comparisonIndexLookup(e.(expression.Comparer), index, values...)
 		case *expression.Between:
-			var lowers = make([]interface{}, len(index.ExpressionHashes()))
-			var uppers = make([]interface{}, len(index.ExpressionHashes()))
-			for i, e := range index.ExpressionHashes() {
-				col := findColumnByHash(exprs, e)
+			var lowers = make([]interface{}, len(index.Expressions()))
+			var uppers = make([]interface{}, len(index.Expressions()))
+			for i, e := range index.Expressions() {
+				col := findColumn(exprs, e)
 				used[col.expr] = struct{}{}
 				between := col.expr.(*expression.Between)
 				lowers[i], err = between.Lower.Eval(sql.NewEmptyContext(), nil)
@@ -654,9 +653,9 @@ type columnExpr struct {
 	expr sql.Expression
 }
 
-func findColumnByHash(cols []columnExpr, hash sql.ExpressionHash) *columnExpr {
+func findColumn(cols []columnExpr, column string) *columnExpr {
 	for _, col := range cols {
-		if bytes.Compare(sql.NewExpressionHash(col.col), hash) == 0 {
+		if col.col.String() == column {
 			return &col
 		}
 	}

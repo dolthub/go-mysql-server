@@ -3,7 +3,6 @@ package pilosalib
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -15,6 +14,7 @@ import (
 	"github.com/pilosa/pilosa"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/index"
 	"gopkg.in/src-d/go-mysql-server.v0/test"
 )
@@ -50,10 +50,10 @@ func TestLoadAll(t *testing.T) {
 	defer cleanup(t)
 
 	d := NewDriver(tmpDir)
-	idx1, err := d.Create("db", "table", "id1", makeExpressions("hash1"), nil)
+	idx1, err := d.Create("db", "table", "id1", makeExpressions("table", "hash1"), nil)
 	require.NoError(err)
 
-	idx2, err := d.Create("db", "table", "id2", makeExpressions("hash1"), nil)
+	idx2, err := d.Create("db", "table", "id2", makeExpressions("table", "hash1"), nil)
 	require.NoError(err)
 
 	indexes, err := d.LoadAll("db", "table")
@@ -79,7 +79,7 @@ func TestSaveAndLoad(t *testing.T) {
 	defer cleanup(t)
 
 	db, table, id := "db_name", "table_name", "index_id"
-	expressions := makeExpressions("lang", "hash")
+	expressions := makeExpressions(table, "lang", "hash")
 
 	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
@@ -88,7 +88,7 @@ func TestSaveAndLoad(t *testing.T) {
 	it := &testIndexKeyValueIter{
 		offset:      0,
 		total:       64,
-		expressions: expressions,
+		expressions: sqlIdx.Expressions(),
 		location:    randLocation,
 	}
 
@@ -168,7 +168,7 @@ func TestSaveAndGetAll(t *testing.T) {
 	defer cleanup(t)
 
 	db, table, id := "db_name", "table_name", "index_id"
-	expressions := makeExpressions("lang", "hash")
+	expressions := makeExpressions(table, "lang", "hash")
 
 	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
@@ -177,7 +177,7 @@ func TestSaveAndGetAll(t *testing.T) {
 	it := &testIndexKeyValueIter{
 		offset:      0,
 		total:       64,
-		expressions: expressions,
+		expressions: sqlIdx.Expressions(),
 		location:    randLocation,
 	}
 
@@ -220,13 +220,10 @@ func TestDelete(t *testing.T) {
 
 	db, table, id := "db_name", "table_name", "index_id"
 
-	h1 := sha1.Sum([]byte("lang"))
-	exh1 := sql.ExpressionHash(h1[:])
-
-	h2 := sha1.Sum([]byte("hash"))
-	exh2 := sql.ExpressionHash(h2[:])
-
-	expressions := []sql.ExpressionHash{exh1, exh2}
+	expressions := []sql.Expression{
+		expression.NewGetFieldWithTable(0, sql.Int64, table, "lang", true),
+		expression.NewGetFieldWithTable(1, sql.Int64, table, "field", true),
+	}
 
 	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
@@ -328,8 +325,8 @@ func TestIntersection(t *testing.T) {
 	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
-	idxLang, expLang := "idx_lang", makeExpressions("lang")
-	idxPath, expPath := "idx_path", makeExpressions("path")
+	idxLang, expLang := "idx_lang", makeExpressions(table, "lang")
+	idxPath, expPath := "idx_path", makeExpressions(table, "path")
 
 	d := NewDriver(tmpDir)
 	sqlIdxLang, err := d.Create(db, table, idxLang, expLang, nil)
@@ -341,14 +338,14 @@ func TestIntersection(t *testing.T) {
 	itLang := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: expLang,
+		expressions: sqlIdxLang.Expressions(),
 		location:    offsetLocation,
 	}
 
 	itPath := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: expPath,
+		expressions: sqlIdxPath.Expressions(),
 		location:    offsetLocation,
 	}
 
@@ -401,8 +398,8 @@ func TestUnion(t *testing.T) {
 	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
-	idxLang, expLang := "idx_lang", makeExpressions("lang")
-	idxPath, expPath := "idx_path", makeExpressions("path")
+	idxLang, expLang := "idx_lang", makeExpressions(table, "lang")
+	idxPath, expPath := "idx_path", makeExpressions(table, "path")
 
 	d := NewDriver(tmpDir)
 	sqlIdxLang, err := d.Create(db, table, idxLang, expLang, nil)
@@ -414,14 +411,14 @@ func TestUnion(t *testing.T) {
 	itLang := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: expLang,
+		expressions: sqlIdxLang.Expressions(),
 		location:    offsetLocation,
 	}
 
 	itPath := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: expPath,
+		expressions: sqlIdxPath.Expressions(),
 		location:    offsetLocation,
 	}
 
@@ -486,8 +483,8 @@ func TestDifference(t *testing.T) {
 	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
-	idxLang, expLang := "idx_lang", makeExpressions("lang")
-	idxPath, expPath := "idx_path", makeExpressions("path")
+	idxLang, expLang := "idx_lang", makeExpressions(table, "lang")
+	idxPath, expPath := "idx_path", makeExpressions(table, "path")
 
 	d := NewDriver(tmpDir)
 	sqlIdxLang, err := d.Create(db, table, idxLang, expLang, nil)
@@ -499,14 +496,14 @@ func TestDifference(t *testing.T) {
 	itLang := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: expLang,
+		expressions: sqlIdxLang.Expressions(),
 		location:    offsetLocation,
 	}
 
 	itPath := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: expPath,
+		expressions: sqlIdxPath.Expressions(),
 		location:    offsetLocation,
 	}
 
@@ -554,7 +551,7 @@ func TestUnionDiffAsc(t *testing.T) {
 	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
-	idx, exp := "idx_lang", makeExpressions("lang")
+	idx, exp := "idx_lang", makeExpressions(table, "lang")
 
 	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, idx, exp, nil)
@@ -564,7 +561,7 @@ func TestUnionDiffAsc(t *testing.T) {
 	it := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: exp,
+		expressions: sqlIdx.Expressions(),
 		location:    offsetLocation,
 	}
 
@@ -609,7 +606,7 @@ func TestInterRanges(t *testing.T) {
 	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
-	idx, exp := "idx_lang", makeExpressions("lang")
+	idx, exp := "idx_lang", makeExpressions(table, "lang")
 
 	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, idx, exp, nil)
@@ -619,7 +616,7 @@ func TestInterRanges(t *testing.T) {
 	it := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: exp,
+		expressions: sqlIdx.Expressions(),
 		location:    offsetLocation,
 	}
 
@@ -663,12 +660,12 @@ func TestNegateIndex(t *testing.T) {
 	db, table := "db_name", "table_name"
 
 	d := NewDriver(tmpDir)
-	idx, err := d.Create(db, table, "index_id", makeExpressions("a"), nil)
+	idx, err := d.Create(db, table, "index_id", makeExpressions(table, "a"), nil)
 	require.NoError(err)
 
 	multiIdx, err := d.Create(
 		db, table, "multi_index_id",
-		makeExpressions("a", "b"),
+		makeExpressions(table, "a", "b"),
 		nil,
 	)
 	require.NoError(err)
@@ -838,13 +835,12 @@ func TestPilosaHolder(t *testing.T) {
 	require.NoError(err)
 }
 
-func makeExpressions(names ...string) []sql.ExpressionHash {
-	var expressions []sql.ExpressionHash
+func makeExpressions(table string, names ...string) []sql.Expression {
+	var expressions []sql.Expression
 
-	for _, n := range names {
-		h := sha1.Sum([]byte(n))
-		exh := sql.ExpressionHash(h[:])
-		expressions = append(expressions, sql.ExpressionHash(exh))
+	for i, n := range names {
+		expressions = append(expressions,
+			expression.NewGetFieldWithTable(i, sql.Int64, table, n, true))
 	}
 
 	return expressions
@@ -866,7 +862,7 @@ func offsetLocation(offset int) []byte {
 type testIndexKeyValueIter struct {
 	offset      int
 	total       int
-	expressions []sql.ExpressionHash
+	expressions []string
 	location    func(int) []byte
 
 	records []struct {
@@ -884,7 +880,7 @@ func (it *testIndexKeyValueIter) Next() ([]interface{}, []byte, error) {
 
 	values := make([]interface{}, len(it.expressions))
 	for i, e := range it.expressions {
-		values[i] = hex.EncodeToString(e) + "-" + hex.EncodeToString(b)
+		values[i] = e + "-" + hex.EncodeToString(b)
 	}
 
 	it.records = append(it.records, struct {
@@ -911,7 +907,7 @@ func setupAscendDescend(t *testing.T) (*pilosaIndex, func()) {
 	setup(t)
 
 	db, table, id := "db_name", "table_name", "index_id"
-	expressions := makeExpressions("a", "b")
+	expressions := makeExpressions(table, "a", "b")
 
 	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)

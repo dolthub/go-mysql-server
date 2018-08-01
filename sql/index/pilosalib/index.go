@@ -19,7 +19,7 @@ type pilosaIndex struct {
 	db          string
 	table       string
 	id          string
-	expressions []sql.ExpressionHash
+	expressions []string
 }
 
 func newPilosaIndex(idx *pilosa.Index, mapping *mapping, cfg *index.Config) *pilosaIndex {
@@ -28,7 +28,7 @@ func newPilosaIndex(idx *pilosa.Index, mapping *mapping, cfg *index.Config) *pil
 		db:          cfg.DB,
 		table:       cfg.Table,
 		id:          cfg.ID,
-		expressions: cfg.ExpressionHashes(),
+		expressions: cfg.Expressions,
 		mapping:     mapping,
 	}
 }
@@ -90,7 +90,7 @@ func (idx *pilosaIndex) ID() string {
 // Expressions returns the indexed expressions. If the result is more than
 // one expression, it means the index has multiple columns indexed. If it's
 // just one, it means it may be an expression or a column.
-func (idx *pilosaIndex) ExpressionHashes() []sql.ExpressionHash {
+func (idx *pilosaIndex) Expressions() []string {
 	return idx.expressions
 }
 
