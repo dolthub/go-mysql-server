@@ -25,6 +25,8 @@ import (
 var (
 	dockerIsRunning bool
 	dockerCmdOutput string
+
+	tmpDir string
 )
 
 func init() {
@@ -32,6 +34,22 @@ func init() {
 	b, err := cmd.CombinedOutput()
 
 	dockerCmdOutput, dockerIsRunning = string(b), (err == nil)
+}
+
+func setup(t *testing.T) {
+	var err error
+
+	tmpDir, err = ioutil.TempDir("", "pilosa")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func cleanup(t *testing.T) {
+	err := os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestID(t *testing.T) {
@@ -44,11 +62,10 @@ func TestID(t *testing.T) {
 func TestLoadAll(t *testing.T) {
 	require := require.New(t)
 
-	path, err := ioutil.TempDir(os.TempDir(), "indexes-")
-	require.NoError(err)
-	defer os.RemoveAll(path)
+	setup(t)
+	defer cleanup(t)
 
-	d := NewIndexDriver(path)
+	d := NewIndexDriver(tmpDir)
 	idx1, err := d.Create("db", "table", "id1", makeExpressions("hash1"), nil)
 	require.NoError(err)
 
@@ -91,14 +108,13 @@ func TestSaveAndLoad(t *testing.T) {
 		t.Skipf("Skip TestSaveAndLoad: %s", dockerCmdOutput)
 	}
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions("lang", "hash")
-	path, err := ioutil.TempDir("", "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(path)
 
-	d := NewDriver(path, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
@@ -184,15 +200,13 @@ func TestSaveAndGetAll(t *testing.T) {
 	if !dockerIsRunning {
 		t.Skipf("Skip TestSaveAndGetAll: %s", dockerCmdOutput)
 	}
+	setup(t)
+	defer cleanup(t)
 	require := require.New(t)
 
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions("lang", "hash")
-	path, err := ioutil.TempDir("", "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(path)
-
-	d := NewDriver(path, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
@@ -218,12 +232,11 @@ func TestSaveAndGetAll(t *testing.T) {
 
 func TestLoadCorruptedIndex(t *testing.T) {
 	require := require.New(t)
-	path, err := ioutil.TempDir("", "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(path)
+	setup(t)
+	defer cleanup(t)
 
-	d := NewIndexDriver(path).(*Driver)
-	_, err = d.Create("db", "table", "id", nil, nil)
+	d := NewIndexDriver(tmpDir).(*Driver)
+	_, err := d.Create("db", "table", "id", nil, nil)
 	require.NoError(err)
 
 	require.NoError(index.CreateProcessingFile(d.processingFileName("db", "table", "id")))
@@ -242,11 +255,10 @@ func TestDelete(t *testing.T) {
 		t.Skipf("Skip TestDelete: %s", dockerCmdOutput)
 	}
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table, id := "db_name", "table_name", "index_id"
-	root, err := ioutil.TempDir("", "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(root)
 
 	h1 := sha1.Sum([]byte("lang"))
 	exh1 := sql.ExpressionHash(h1[:])
@@ -256,7 +268,7 @@ func TestDelete(t *testing.T) {
 
 	expressions := []sql.ExpressionHash{exh1, exh2}
 
-	d := NewIndexDriver(root)
+	d := NewIndexDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
@@ -266,12 +278,8 @@ func TestDelete(t *testing.T) {
 
 func TestLoadAllDirectoryDoesNotExist(t *testing.T) {
 	require := require.New(t)
-	tmpDir, err := ioutil.TempDir("", "pilosa-")
-	require.NoError(err)
-
-	defer func() {
-		require.NoError(os.RemoveAll(tmpDir))
-	}()
+	setup(t)
+	defer cleanup(t)
 
 	driver := &Driver{root: tmpDir}
 	drivers, err := driver.LoadAll("foo", "bar")
@@ -346,15 +354,11 @@ func TestNegateIndex(t *testing.T) {
 		t.Skipf("Skip test: %s", dockerCmdOutput)
 	}
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
-	path, err := mkdir(os.TempDir(), "indexes")
-	require.NoError(err)
-	defer func() {
-		require.NoError(os.RemoveAll(path))
-	}()
-
-	d := NewDriver(path, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
 	idx, err := d.Create(db, table, "index_id", makeExpressions("a"), nil)
 	require.NoError(err)
 
@@ -420,16 +424,14 @@ func TestIntersection(t *testing.T) {
 		t.Skipf("Skip TestUnion: %s", dockerCmdOutput)
 	}
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
 	idxLang, expLang := "idx_lang", makeExpressions("lang")
 	idxPath, expPath := "idx_path", makeExpressions("path")
 
-	path, err := ioutil.TempDir(os.TempDir(), "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(path)
-
-	d := NewDriver(path, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
 	sqlIdxLang, err := d.Create(db, table, idxLang, expLang, nil)
 	require.NoError(err)
 
@@ -498,16 +500,14 @@ func TestUnion(t *testing.T) {
 		t.Skipf("Skip TestUnion: %s", dockerCmdOutput)
 	}
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
 	idxLang, expLang := "idx_lang", makeExpressions("lang")
 	idxPath, expPath := "idx_path", makeExpressions("path")
 
-	path, err := ioutil.TempDir(os.TempDir(), "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(path)
-
-	d := NewDriver(path, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
 	sqlIdxLang, err := d.Create(db, table, idxLang, expLang, nil)
 	require.NoError(err)
 
@@ -588,16 +588,14 @@ func TestDifference(t *testing.T) {
 		t.Skipf("Skip TestUnion: %s", dockerCmdOutput)
 	}
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
 	idxLang, expLang := "idx_lang", makeExpressions("lang")
 	idxPath, expPath := "idx_path", makeExpressions("path")
 
-	path, err := ioutil.TempDir(os.TempDir(), "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(path)
-
-	d := NewDriver(path, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
 	sqlIdxLang, err := d.Create(db, table, idxLang, expLang, nil)
 	require.NoError(err)
 
@@ -661,15 +659,13 @@ func TestUnionDiffAsc(t *testing.T) {
 		t.Skipf("Skip TestUnion: %s", dockerCmdOutput)
 	}
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
 	idx, exp := "idx_lang", makeExpressions("lang")
 
-	path, err := ioutil.TempDir(os.TempDir(), "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(path)
-
-	d := NewDriver(path, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
 	sqlIdx, err := d.Create(db, table, idx, exp, nil)
 	require.NoError(err)
 	pilosaIdx, ok := sqlIdx.(*pilosaIndex)
@@ -721,15 +717,13 @@ func TestInterRanges(t *testing.T) {
 		t.Skipf("Skip TestUnion: %s", dockerCmdOutput)
 	}
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
 	idx, exp := "idx_lang", makeExpressions("lang")
 
-	path, err := ioutil.TempDir(os.TempDir(), "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(path)
-
-	d := NewDriver(path, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
 	sqlIdx, err := d.Create(db, table, idx, exp, nil)
 	require.NoError(err)
 	pilosaIdx, ok := sqlIdx.(*pilosaIndex)
@@ -782,10 +776,9 @@ func setupAscendDescend(t *testing.T) (*pilosaIndex, func()) {
 
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions("a", "b")
-	path, err := mkdir(os.TempDir(), "indexes")
-	require.NoError(err)
+	setup(t)
 
-	d := NewDriver(path, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
@@ -808,7 +801,7 @@ func setupAscendDescend(t *testing.T) (*pilosaIndex, func()) {
 	require.NoError(err)
 
 	return sqlIdx.(*pilosaIndex), func() {
-		require.NoError(os.RemoveAll(path))
+		cleanup(t)
 	}
 }
 

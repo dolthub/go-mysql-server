@@ -2,7 +2,6 @@ package pilosalib
 
 import (
 	"encoding/binary"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -11,12 +10,9 @@ import (
 
 func TestRowID(t *testing.T) {
 	require := require.New(t)
-
-	root, err := mkdir(os.TempDir(), "mapping_test")
-	require.NoError(err)
-	defer os.RemoveAll(root)
-
-	m := newMapping(filepath.Join(root, "id.map"))
+	setup(t)
+	defer cleanup(t)
+	m := newMapping(filepath.Join(tmpDir, "id.map"))
 	m.open()
 	defer m.close()
 
@@ -36,12 +32,10 @@ func TestRowID(t *testing.T) {
 
 func TestLocation(t *testing.T) {
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
-	root, err := mkdir(os.TempDir(), "mapping_test")
-	require.NoError(err)
-	defer os.RemoveAll(root)
-
-	m := newMapping(filepath.Join(root, "id.map"))
+	m := newMapping(filepath.Join(tmpDir, "id.map"))
 	m.open()
 	defer m.close()
 
@@ -54,7 +48,7 @@ func TestLocation(t *testing.T) {
 	}
 
 	for colID, loc := range cases {
-		err = m.putLocation("index name", colID, []byte(loc))
+		err := m.putLocation("index name", colID, []byte(loc))
 		require.NoError(err)
 	}
 
@@ -67,12 +61,10 @@ func TestLocation(t *testing.T) {
 
 func TestGet(t *testing.T) {
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
-	root, err := mkdir(os.TempDir(), "mapping_test")
-	require.NoError(err)
-	defer os.RemoveAll(root)
-
-	m := newMapping(filepath.Join(root, "id.map"))
+	m := newMapping(filepath.Join(tmpDir, "id.map"))
 	m.open()
 	defer m.close()
 

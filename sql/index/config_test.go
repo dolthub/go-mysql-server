@@ -2,6 +2,7 @@ package index
 
 import (
 	"crypto/sha1"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,16 +13,17 @@ import (
 
 func TestConfig(t *testing.T) {
 	require := require.New(t)
+	tmpDir, err := ioutil.TempDir("", "index")
+	require.NoError(err)
+	defer func() { require.NoError(os.RemoveAll(tmpDir)) }()
 
 	driver := "driver"
 	db, table, id := "db_name", "table_name", "index_id"
-	dir := filepath.Join(os.TempDir(), driver)
+	dir := filepath.Join(tmpDir, driver)
 	subdir := filepath.Join(dir, db, table)
-	err := os.MkdirAll(subdir, 0750)
+	err = os.MkdirAll(subdir, 0750)
 	require.NoError(err)
 	file := filepath.Join(subdir, id+".cfg")
-
-	defer os.RemoveAll(dir)
 
 	h1 := sha1.Sum([]byte("h1"))
 	h2 := sha1.Sum([]byte("h2"))
@@ -48,12 +50,13 @@ func TestConfig(t *testing.T) {
 	require.Equal(cfg1, cfg2)
 }
 
-func TestLockFile(t *testing.T) {
+func TestProcessingFile(t *testing.T) {
 	require := require.New(t)
+	tmpDir, err := ioutil.TempDir("", "index")
+	require.NoError(err)
+	defer func() { require.NoError(os.RemoveAll(tmpDir)) }()
 
-	dir := os.TempDir()
-	file := filepath.Join(dir, ".processing")
-	defer require.NoError(os.RemoveAll(file))
+	file := filepath.Join(tmpDir, ".processing")
 
 	ok, err := ExistsProcessingFile(file)
 	require.NoError(err)

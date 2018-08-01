@@ -19,6 +19,24 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/test"
 )
 
+var tmpDir string
+
+func setup(t *testing.T) {
+	var err error
+
+	tmpDir, err = ioutil.TempDir("", "pilosalib")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func cleanup(t *testing.T) {
+	err := os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestID(t *testing.T) {
 	d := &Driver{}
 
@@ -28,12 +46,10 @@ func TestID(t *testing.T) {
 
 func TestLoadAll(t *testing.T) {
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
-	root, err := ioutil.TempDir("", "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(root)
-
-	d := NewDriver(root)
+	d := NewDriver(tmpDir)
 	idx1, err := d.Create("db", "table", "id1", makeExpressions("hash1"), nil)
 	require.NoError(err)
 
@@ -59,14 +75,13 @@ type logLoc struct {
 
 func TestSaveAndLoad(t *testing.T) {
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions("lang", "hash")
-	root, err := ioutil.TempDir("", "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(root)
 
-	d := NewDriver(root)
+	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
@@ -149,14 +164,13 @@ func TestSaveAndLoad(t *testing.T) {
 
 func TestSaveAndGetAll(t *testing.T) {
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions("lang", "hash")
-	root, err := ioutil.TempDir("", "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(root)
 
-	d := NewDriver(root)
+	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
@@ -181,12 +195,11 @@ func TestSaveAndGetAll(t *testing.T) {
 
 func TestLoadCorruptedIndex(t *testing.T) {
 	require := require.New(t)
-	root, err := ioutil.TempDir("", "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(root)
+	setup(t)
+	defer cleanup(t)
 
-	d := NewDriver(root)
-	_, err = d.Create("db", "table", "id", nil, nil)
+	d := NewDriver(tmpDir)
+	_, err := d.Create("db", "table", "id", nil, nil)
 	require.NoError(err)
 
 	require.NoError(index.CreateProcessingFile(d.processingFileName("db", "table", "id")))
@@ -202,11 +215,10 @@ func TestLoadCorruptedIndex(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table, id := "db_name", "table_name", "index_id"
-	root, err := ioutil.TempDir("", "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(root)
 
 	h1 := sha1.Sum([]byte("lang"))
 	exh1 := sql.ExpressionHash(h1[:])
@@ -216,7 +228,7 @@ func TestDelete(t *testing.T) {
 
 	expressions := []sql.ExpressionHash{exh1, exh2}
 
-	d := NewDriver(root)
+	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
@@ -226,14 +238,10 @@ func TestDelete(t *testing.T) {
 
 func TestLoadAllDirectoryDoesNotExist(t *testing.T) {
 	require := require.New(t)
-	root, err := ioutil.TempDir("", "pilosa-")
-	require.NoError(err)
+	setup(t)
+	defer cleanup(t)
 
-	defer func() {
-		require.NoError(os.RemoveAll(root))
-	}()
-
-	driver := NewDriver(root)
+	driver := NewDriver(tmpDir)
 	indexes, err := driver.LoadAll("foo", "bar")
 	require.NoError(err)
 	require.Len(indexes, 0)
@@ -316,16 +324,14 @@ func TestAscendDescendIndex(t *testing.T) {
 func TestIntersection(t *testing.T) {
 	ctx := sql.NewContext(context.Background())
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
 	idxLang, expLang := "idx_lang", makeExpressions("lang")
 	idxPath, expPath := "idx_path", makeExpressions("path")
 
-	root, err := ioutil.TempDir("", "indexes-")
-	require.NoError(err)
-	defer os.RemoveAll(root)
-
-	d := NewDriver(root)
+	d := NewDriver(tmpDir)
 	sqlIdxLang, err := d.Create(db, table, idxLang, expLang, nil)
 	require.NoError(err)
 
@@ -391,16 +397,14 @@ func TestIntersection(t *testing.T) {
 
 func TestUnion(t *testing.T) {
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
 	idxLang, expLang := "idx_lang", makeExpressions("lang")
 	idxPath, expPath := "idx_path", makeExpressions("path")
 
-	root, err := ioutil.TempDir("", "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(root)
-
-	d := NewDriver(root)
+	d := NewDriver(tmpDir)
 	sqlIdxLang, err := d.Create(db, table, idxLang, expLang, nil)
 	require.NoError(err)
 
@@ -478,16 +482,14 @@ func TestUnion(t *testing.T) {
 
 func TestDifference(t *testing.T) {
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
 	idxLang, expLang := "idx_lang", makeExpressions("lang")
 	idxPath, expPath := "idx_path", makeExpressions("path")
 
-	root, err := ioutil.TempDir("", "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(root)
-
-	d := NewDriver(root)
+	d := NewDriver(tmpDir)
 	sqlIdxLang, err := d.Create(db, table, idxLang, expLang, nil)
 	require.NoError(err)
 
@@ -548,15 +550,13 @@ func TestDifference(t *testing.T) {
 
 func TestUnionDiffAsc(t *testing.T) {
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
 	idx, exp := "idx_lang", makeExpressions("lang")
 
-	root, err := ioutil.TempDir("", "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(root)
-
-	d := NewDriver(root)
+	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, idx, exp, nil)
 	require.NoError(err)
 	pilosaIdx, ok := sqlIdx.(*pilosaIndex)
@@ -605,15 +605,13 @@ func TestUnionDiffAsc(t *testing.T) {
 
 func TestInterRanges(t *testing.T) {
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
 	idx, exp := "idx_lang", makeExpressions("lang")
 
-	root, err := ioutil.TempDir("", "indexes")
-	require.NoError(err)
-	defer os.RemoveAll(root)
-
-	d := NewDriver(root)
+	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, idx, exp, nil)
 	require.NoError(err)
 	pilosaIdx, ok := sqlIdx.(*pilosaIndex)
@@ -659,15 +657,12 @@ func TestInterRanges(t *testing.T) {
 
 func TestNegateIndex(t *testing.T) {
 	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
 
 	db, table := "db_name", "table_name"
-	root, err := mkdir(os.TempDir(), "indexes")
-	require.NoError(err)
-	defer func() {
-		require.NoError(os.RemoveAll(root))
-	}()
 
-	d := NewDriver(root)
+	d := NewDriver(tmpDir)
 	idx, err := d.Create(db, table, "index_id", makeExpressions("a"), nil)
 	require.NoError(err)
 
@@ -730,15 +725,12 @@ func TestNegateIndex(t *testing.T) {
 
 func TestPilosaHolder(t *testing.T) {
 	require := require.New(t)
-
-	path, err := ioutil.TempDir("", "indexes-")
-	require.NoError(err)
-	defer os.RemoveAll(path)
+	setup(t)
+	defer cleanup(t)
 
 	h := pilosa.NewHolder()
-
-	h.Path = path
-	err = h.Open()
+	h.Path = tmpDir
+	err := h.Open()
 	require.NoError(err)
 
 	idx1, err := h.CreateIndexIfNotExists("idx", pilosa.IndexOptions{})
@@ -916,13 +908,12 @@ func (it *testIndexKeyValueIter) Close() error {
 func setupAscendDescend(t *testing.T) (*pilosaIndex, func()) {
 	t.Helper()
 	require := require.New(t)
+	setup(t)
 
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions("a", "b")
-	root, err := mkdir(os.TempDir(), "indexes")
-	require.NoError(err)
 
-	d := NewDriver(root)
+	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
@@ -945,7 +936,7 @@ func setupAscendDescend(t *testing.T) (*pilosaIndex, func()) {
 	require.NoError(err)
 
 	return sqlIdx.(*pilosaIndex), func() {
-		require.NoError(os.RemoveAll(root))
+		cleanup(t)
 	}
 }
 
