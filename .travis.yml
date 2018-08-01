@@ -24,7 +24,6 @@ before_install:
 
 install:
   - go get -u github.com/golang/dep/cmd/dep
-  - cd "$TRAVIS_BUILD_DIR"
   - touch Gopkg.toml
   - dep ensure -v -add "github.com/pilosa/go-pilosa@0.9.0" "github.com/pilosa/pilosa@master"
   - make dependencies
