@@ -1,4 +1,4 @@
-package pilosa
+package pilosalib
 
 import (
 	"encoding/binary"
@@ -12,7 +12,6 @@ func TestRowID(t *testing.T) {
 	require := require.New(t)
 	setup(t)
 	defer cleanup(t)
-
 	m := newMapping(filepath.Join(tmpDir, "id.map"))
 	m.open()
 	defer m.close()

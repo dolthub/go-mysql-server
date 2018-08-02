@@ -1,16 +1,19 @@
-package pilosa
+package pilosalib
 
 import (
+	"github.com/pilosa/pilosa"
 	errors "gopkg.in/src-d/go-errors.v1"
-
-	pilosa "github.com/pilosa/go-pilosa"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/index"
 )
 
+var (
+	errInvalidKeys = errors.NewKind("expecting %d keys for index %q, got %d")
+)
+
 // pilosaIndex is an pilosa implementation of sql.Index interface
 type pilosaIndex struct {
-	client  *pilosa.Client
+	index   *pilosa.Index
 	mapping *mapping
 
 	db          string
@@ -19,21 +22,16 @@ type pilosaIndex struct {
 	expressions []string
 }
 
-func newPilosaIndex(mappingfile string, client *pilosa.Client, cfg *index.Config) *pilosaIndex {
+func newPilosaIndex(idx *pilosa.Index, mapping *mapping, cfg *index.Config) *pilosaIndex {
 	return &pilosaIndex{
-		client:      client,
+		index:       idx,
 		db:          cfg.DB,
 		table:       cfg.Table,
 		id:          cfg.ID,
 		expressions: cfg.Expressions,
-		mapping:     newMapping(mappingfile),
+		mapping:     mapping,
 	}
 }
-
-var (
-	errInvalidKeys = errors.NewKind("expecting %d keys for index %q, got %d")
-	errPilosaQuery = errors.NewKind("error executing pilosa query: %s")
-)
 
 // Get returns an IndexLookup for the given key in the index.
 // If key parameter is not present then the returned iterator
@@ -43,19 +41,9 @@ func (idx *pilosaIndex) Get(keys ...interface{}) (sql.IndexLookup, error) {
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
 
-	schema, err := idx.client.Schema()
-	if err != nil {
-		return nil, err
-	}
-	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
-	if err != nil {
-		return nil, err
-	}
-
 	return &indexLookup{
 		id:          idx.ID(),
-		client:      idx.client,
-		index:       index,
+		index:       idx.index,
 		mapping:     idx.mapping,
 		keys:        keys,
 		expressions: idx.expressions,
@@ -72,10 +60,8 @@ func (idx *pilosaIndex) Has(key ...interface{}) (bool, error) {
 		n = len(idx.expressions)
 	}
 
-	// We can make this loop parallel, but does it make sense?
-	// For how many (maximum) keys will be asked by one function call?
 	for i, expr := range idx.expressions {
-		name := frameName(idx.ID(), expr)
+		name := fieldName(idx.ID(), expr)
 
 		val, err := idx.mapping.get(name, key[i])
 		if err != nil || val == nil {
@@ -115,30 +101,13 @@ func (idx *pilosaIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLook
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
 
-	schema, err := idx.client.Schema()
-	if err != nil {
-		return nil, err
-	}
-	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
-	if err != nil {
-		return nil, err
-	}
-
-	l := &ascendLookup{
-		filteredLookup: &filteredLookup{
-			id:          idx.ID(),
-			client:      idx.client,
-			index:       index,
-			mapping:     idx.mapping,
-			keys:        keys,
-			expressions: idx.expressions,
-		},
-		gte: keys,
-		lt:  nil,
-	}
-	l.initFilter()
-
-	return l, nil
+	return newAscendLookup(&filteredLookup{
+		id:          idx.ID(),
+		index:       idx.index,
+		mapping:     idx.mapping,
+		keys:        keys,
+		expressions: idx.expressions,
+	}, keys, nil), nil
 }
 
 func (idx *pilosaIndex) AscendLessThan(keys ...interface{}) (sql.IndexLookup, error) {
@@ -146,30 +115,13 @@ func (idx *pilosaIndex) AscendLessThan(keys ...interface{}) (sql.IndexLookup, er
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
 
-	schema, err := idx.client.Schema()
-	if err != nil {
-		return nil, err
-	}
-	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
-	if err != nil {
-		return nil, err
-	}
-
-	l := &ascendLookup{
-		filteredLookup: &filteredLookup{
-			id:          idx.ID(),
-			client:      idx.client,
-			index:       index,
-			mapping:     idx.mapping,
-			keys:        keys,
-			expressions: idx.expressions,
-		},
-		gte: nil,
-		lt:  keys,
-	}
-	l.initFilter()
-
-	return l, nil
+	return newAscendLookup(&filteredLookup{
+		id:          idx.ID(),
+		index:       idx.index,
+		mapping:     idx.mapping,
+		keys:        keys,
+		expressions: idx.expressions,
+	}, nil, keys), nil
 }
 
 func (idx *pilosaIndex) AscendRange(greaterOrEqual, lessThan []interface{}) (sql.IndexLookup, error) {
@@ -181,29 +133,12 @@ func (idx *pilosaIndex) AscendRange(greaterOrEqual, lessThan []interface{}) (sql
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(lessThan))
 	}
 
-	schema, err := idx.client.Schema()
-	if err != nil {
-		return nil, err
-	}
-	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
-	if err != nil {
-		return nil, err
-	}
-
-	l := &ascendLookup{
-		filteredLookup: &filteredLookup{
-			id:          idx.ID(),
-			client:      idx.client,
-			index:       index,
-			mapping:     idx.mapping,
-			expressions: idx.expressions,
-		},
-		gte: greaterOrEqual,
-		lt:  lessThan,
-	}
-	l.initFilter()
-
-	return l, nil
+	return newAscendLookup(&filteredLookup{
+		id:          idx.ID(),
+		index:       idx.index,
+		mapping:     idx.mapping,
+		expressions: idx.expressions,
+	}, greaterOrEqual, lessThan), nil
 }
 
 func (idx *pilosaIndex) DescendGreater(keys ...interface{}) (sql.IndexLookup, error) {
@@ -211,31 +146,14 @@ func (idx *pilosaIndex) DescendGreater(keys ...interface{}) (sql.IndexLookup, er
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
 
-	schema, err := idx.client.Schema()
-	if err != nil {
-		return nil, err
-	}
-	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
-	if err != nil {
-		return nil, err
-	}
-
-	l := &descendLookup{
-		filteredLookup: &filteredLookup{
-			id:          idx.ID(),
-			client:      idx.client,
-			index:       index,
-			mapping:     idx.mapping,
-			keys:        keys,
-			expressions: idx.expressions,
-			reverse:     true,
-		},
-		gt:  keys,
-		lte: nil,
-	}
-	l.initFilter()
-
-	return l, nil
+	return newDescendLookup(&filteredLookup{
+		id:          idx.ID(),
+		index:       idx.index,
+		mapping:     idx.mapping,
+		keys:        keys,
+		expressions: idx.expressions,
+		reverse:     true,
+	}, keys, nil), nil
 }
 
 func (idx *pilosaIndex) DescendLessOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
@@ -243,31 +161,14 @@ func (idx *pilosaIndex) DescendLessOrEqual(keys ...interface{}) (sql.IndexLookup
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
 
-	schema, err := idx.client.Schema()
-	if err != nil {
-		return nil, err
-	}
-	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
-	if err != nil {
-		return nil, err
-	}
-
-	l := &descendLookup{
-		filteredLookup: &filteredLookup{
-			id:          idx.ID(),
-			client:      idx.client,
-			index:       index,
-			mapping:     idx.mapping,
-			keys:        keys,
-			expressions: idx.expressions,
-			reverse:     true,
-		},
-		gt:  nil,
-		lte: keys,
-	}
-	l.initFilter()
-
-	return l, nil
+	return newDescendLookup(&filteredLookup{
+		id:          idx.ID(),
+		index:       idx.index,
+		mapping:     idx.mapping,
+		keys:        keys,
+		expressions: idx.expressions,
+		reverse:     true,
+	}, nil, keys), nil
 }
 
 func (idx *pilosaIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sql.IndexLookup, error) {
@@ -279,30 +180,13 @@ func (idx *pilosaIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sq
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(greaterThan))
 	}
 
-	schema, err := idx.client.Schema()
-	if err != nil {
-		return nil, err
-	}
-	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
-	if err != nil {
-		return nil, err
-	}
-
-	l := &descendLookup{
-		filteredLookup: &filteredLookup{
-			id:          idx.ID(),
-			client:      idx.client,
-			index:       index,
-			mapping:     idx.mapping,
-			expressions: idx.expressions,
-			reverse:     true,
-		},
-		gt:  greaterThan,
-		lte: lessOrEqual,
-	}
-	l.initFilter()
-
-	return l, nil
+	return newDescendLookup(&filteredLookup{
+		id:          idx.ID(),
+		index:       idx.index,
+		mapping:     idx.mapping,
+		expressions: idx.expressions,
+		reverse:     true,
+	}, greaterThan, lessOrEqual), nil
 }
 
 func (idx *pilosaIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
@@ -310,22 +194,103 @@ func (idx *pilosaIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
 
-	schema, err := idx.client.Schema()
-	if err != nil {
-		return nil, err
-	}
-
-	index, err := schema.Index(indexName(idx.Database(), idx.Table()))
-	if err != nil {
-		return nil, err
-	}
-
 	return &negateLookup{
 		id:          idx.ID(),
-		client:      idx.client,
-		index:       index,
+		index:       idx.index,
 		mapping:     idx.mapping,
 		keys:        keys,
 		expressions: idx.expressions,
 	}, nil
+}
+
+func newAscendLookup(f *filteredLookup, gte []interface{}, lt []interface{}) *ascendLookup {
+	l := &ascendLookup{filteredLookup: f, gte: gte, lt: lt}
+	if l.filter == nil {
+		l.filter = func(i int, value []byte) (bool, error) {
+			var v interface{}
+			var err error
+			if len(l.gte) > 0 {
+				v, err = decodeGob(value, l.gte[i])
+				if err != nil {
+					return false, err
+				}
+
+				cmp, err := compare(v, l.gte[i])
+				if err != nil {
+					return false, err
+				}
+
+				if cmp < 0 {
+					return false, nil
+				}
+			}
+
+			if len(l.lt) > 0 {
+				if v == nil {
+					v, err = decodeGob(value, l.lt[i])
+					if err != nil {
+						return false, err
+					}
+				}
+
+				cmp, err := compare(v, l.lt[i])
+				if err != nil {
+					return false, err
+				}
+
+				if cmp >= 0 {
+					return false, nil
+				}
+			}
+
+			return true, nil
+		}
+	}
+	return l
+}
+
+func newDescendLookup(f *filteredLookup, gt []interface{}, lte []interface{}) *descendLookup {
+	l := &descendLookup{filteredLookup: f, gt: gt, lte: lte}
+	if l.filter == nil {
+		l.filter = func(i int, value []byte) (bool, error) {
+			var v interface{}
+			var err error
+			if len(l.gt) > 0 {
+				v, err = decodeGob(value, l.gt[i])
+				if err != nil {
+					return false, err
+				}
+
+				cmp, err := compare(v, l.gt[i])
+				if err != nil {
+					return false, err
+				}
+
+				if cmp <= 0 {
+					return false, nil
+				}
+			}
+
+			if len(l.lte) > 0 {
+				if v == nil {
+					v, err = decodeGob(value, l.lte[i])
+					if err != nil {
+						return false, err
+					}
+				}
+
+				cmp, err := compare(v, l.lte[i])
+				if err != nil {
+					return false, err
+				}
+
+				if cmp > 0 {
+					return false, nil
+				}
+			}
+
+			return true, nil
+		}
+	}
+	return l
 }

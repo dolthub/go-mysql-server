@@ -11,13 +11,17 @@ import (
 
 func TestConfig(t *testing.T) {
 	require := require.New(t)
-
-	db, table, id := "db_name", "table_name", "index_id"
-	path := filepath.Join(os.TempDir(), db, table, id)
-	err := os.MkdirAll(path, 0750)
-
+	tmpDir, err := ioutil.TempDir("", "index")
 	require.NoError(err)
-	defer os.RemoveAll(path)
+	defer func() { require.NoError(os.RemoveAll(tmpDir)) }()
+
+	driver := "driver"
+	db, table, id := "db_name", "table_name", "index_id"
+	dir := filepath.Join(tmpDir, driver)
+	subdir := filepath.Join(dir, db, table)
+	err = os.MkdirAll(subdir, 0750)
+	require.NoError(err)
+	file := filepath.Join(subdir, id+".cfg")
 
 	cfg1 := NewConfig(
 		db,
@@ -31,36 +35,35 @@ func TestConfig(t *testing.T) {
 		},
 	)
 
-	err = WriteConfigFile(path, cfg1)
+	err = WriteConfigFile(file, cfg1)
 	require.NoError(err)
 
-	cfg2, err := ReadConfigFile(path)
+	cfg2, err := ReadConfigFile(file)
 	require.NoError(err)
 	require.Equal(cfg1, cfg2)
 }
 
 func TestProcessingFile(t *testing.T) {
 	require := require.New(t)
-
-	dir, err := ioutil.TempDir(os.TempDir(), "processing-file")
+	tmpDir, err := ioutil.TempDir("", "index")
 	require.NoError(err)
-	defer func() {
-		require.NoError(os.RemoveAll(dir))
-	}()
+	defer func() { require.NoError(os.RemoveAll(tmpDir)) }()
 
-	ok, err := ExistsProcessingFile(dir)
+	file := filepath.Join(tmpDir, ".processing")
+
+	ok, err := ExistsProcessingFile(file)
 	require.NoError(err)
 	require.False(ok)
 
-	require.NoError(CreateProcessingFile(dir))
+	require.NoError(CreateProcessingFile(file))
 
-	ok, err = ExistsProcessingFile(dir)
+	ok, err = ExistsProcessingFile(file)
 	require.NoError(err)
 	require.True(ok)
 
-	require.NoError(RemoveProcessingFile(dir))
+	require.NoError(RemoveProcessingFile(file))
 
-	ok, err = ExistsProcessingFile(dir)
+	ok, err = ExistsProcessingFile(file)
 	require.NoError(err)
 	require.False(ok)
 }

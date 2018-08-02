@@ -60,11 +60,7 @@ func (s *SessionManager) NewContext(conn *mysql.Conn) (*sql.Context, DoneFunc, e
 	sess := s.sessions[conn.ConnectionID]
 	s.mu.Unlock()
 	context := sql.NewContext(ctx, sql.WithSession(sess), sql.WithTracer(s.tracer))
-	id, err := uuid.NewV4()
-	if err != nil {
-		cancel()
-		return nil, nil, err
-	}
+	id := uuid.NewV4()
 
 	s.mu.Lock()
 	s.sessionContexts[conn.ConnectionID] = append(s.sessionContexts[conn.ConnectionID], id)

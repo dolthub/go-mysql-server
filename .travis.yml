@@ -23,8 +23,9 @@ before_install:
   - docker ps -a
 
 install:
-  - go get -u github.com/pilosa/go-pilosa
-  - cd "$GOPATH/src/github.com/pilosa/go-pilosa" && git checkout v0.9.0 && cd "$TRAVIS_BUILD_DIR"
+  - go get -u github.com/golang/dep/cmd/dep
+  - touch Gopkg.toml
+  - dep ensure -v -add "github.com/pilosa/go-pilosa@0.9.0" "github.com/pilosa/pilosa@1.0.2"
   - make dependencies
 
 script:

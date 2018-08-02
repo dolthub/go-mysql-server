@@ -1,18 +1,17 @@
-package pilosa
+package pilosalib
 
 import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"reflect"
 	"testing"
-	"time"
 
-	pilosa "github.com/pilosa/go-pilosa"
+	"github.com/pilosa/pilosa"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
@@ -20,26 +19,12 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/test"
 )
 
-// Pilosa tests require running docker. If `docker ps` command returned an error
-// we skip some of the tests
-var (
-	dockerIsRunning bool
-	dockerCmdOutput string
-
-	tmpDir string
-)
-
-func init() {
-	cmd := exec.Command("docker", "ps")
-	b, err := cmd.CombinedOutput()
-
-	dockerCmdOutput, dockerIsRunning = string(b), (err == nil)
-}
+var tmpDir string
 
 func setup(t *testing.T) {
 	var err error
 
-	tmpDir, err = ioutil.TempDir("", "pilosa")
+	tmpDir, err = ioutil.TempDir("", "pilosalib")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,41 +46,26 @@ func TestID(t *testing.T) {
 
 func TestLoadAll(t *testing.T) {
 	require := require.New(t)
-
 	setup(t)
 	defer cleanup(t)
 
-	d := NewIndexDriver(tmpDir)
-	idx1, err := d.Create("db", "table", "id1", makeExpressions("table", "field1"), nil)
+	d := NewDriver(tmpDir)
+	idx1, err := d.Create("db", "table", "id1", makeExpressions("table", "hash1"), nil)
 	require.NoError(err)
 
-	idx2, err := d.Create("db", "table", "id2", makeExpressions("table", "field1"), nil)
+	idx2, err := d.Create("db", "table", "id2", makeExpressions("table", "hash1"), nil)
 	require.NoError(err)
 
 	indexes, err := d.LoadAll("db", "table")
 	require.NoError(err)
 
-	for _, idx := range indexes {
-		if idx.ID() == "id1" {
-			assertEqualIndexes(t, idx1, idx)
-		} else {
-			assertEqualIndexes(t, idx2, idx)
-		}
-	}
-}
+	require.Equal(2, len(indexes))
+	i1, ok := idx1.(*pilosaIndex)
+	require.True(ok)
+	i2, ok := idx2.(*pilosaIndex)
+	require.True(ok)
 
-func assertEqualIndexes(t *testing.T, a, b sql.Index) {
-	t.Helper()
-	require.Equal(t, withoutMapping(a), withoutMapping(b))
-}
-
-func withoutMapping(a sql.Index) sql.Index {
-	if i, ok := a.(*pilosaIndex); ok {
-		b := *i
-		b.mapping = nil
-		return &b
-	}
-	return a
+	require.Equal(i1.index.Name(), i2.index.Name())
 }
 
 type logLoc struct {
@@ -104,9 +74,6 @@ type logLoc struct {
 }
 
 func TestSaveAndLoad(t *testing.T) {
-	if !dockerIsRunning {
-		t.Skipf("Skip TestSaveAndLoad: %s", dockerCmdOutput)
-	}
 	require := require.New(t)
 	setup(t)
 	defer cleanup(t)
@@ -114,7 +81,7 @@ func TestSaveAndLoad(t *testing.T) {
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions(table, "lang", "hash")
 
-	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
@@ -133,7 +100,6 @@ func TestSaveAndLoad(t *testing.T) {
 	indexes, err := d.LoadAll(db, table)
 	require.NoError(err)
 	require.Equal(1, len(indexes))
-	assertEqualIndexes(t, sqlIdx, indexes[0])
 
 	for _, r := range it.records {
 		lookup, err := sqlIdx.Get(r.values...)
@@ -197,16 +163,14 @@ func TestSaveAndLoad(t *testing.T) {
 }
 
 func TestSaveAndGetAll(t *testing.T) {
-	if !dockerIsRunning {
-		t.Skipf("Skip TestSaveAndGetAll: %s", dockerCmdOutput)
-	}
+	require := require.New(t)
 	setup(t)
 	defer cleanup(t)
-	require := require.New(t)
 
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions(table, "lang", "hash")
-	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
+
+	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
@@ -223,7 +187,6 @@ func TestSaveAndGetAll(t *testing.T) {
 	indexes, err := d.LoadAll(db, table)
 	require.NoError(err)
 	require.Equal(1, len(indexes))
-	assertEqualIndexes(t, sqlIdx, indexes[0])
 
 	_, err = sqlIdx.Get()
 	require.Error(err)
@@ -235,7 +198,7 @@ func TestLoadCorruptedIndex(t *testing.T) {
 	setup(t)
 	defer cleanup(t)
 
-	d := NewIndexDriver(tmpDir).(*Driver)
+	d := NewDriver(tmpDir)
 	_, err := d.Create("db", "table", "id", nil, nil)
 	require.NoError(err)
 
@@ -251,9 +214,6 @@ func TestLoadCorruptedIndex(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	if !dockerIsRunning {
-		t.Skipf("Skip TestDelete: %s", dockerCmdOutput)
-	}
 	require := require.New(t)
 	setup(t)
 	defer cleanup(t)
@@ -265,7 +225,7 @@ func TestDelete(t *testing.T) {
 		expression.NewGetFieldWithTable(1, sql.Int64, table, "field", true),
 	}
 
-	d := NewIndexDriver(tmpDir)
+	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
@@ -278,10 +238,10 @@ func TestLoadAllDirectoryDoesNotExist(t *testing.T) {
 	setup(t)
 	defer cleanup(t)
 
-	driver := &Driver{root: tmpDir}
-	drivers, err := driver.LoadAll("foo", "bar")
+	driver := NewDriver(tmpDir)
+	indexes, err := driver.LoadAll("foo", "bar")
 	require.NoError(err)
-	require.Len(drivers, 0)
+	require.Len(indexes, 0)
 }
 
 func TestAscendDescendIndex(t *testing.T) {
@@ -339,87 +299,27 @@ func TestAscendDescendIndex(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			result, err := lookupValues(tt.lookup)
+			iter, err := tt.lookup.Values()
 			require.NoError(err)
+
+			var result []string
+			for {
+				k, err := iter.Next()
+				if err == io.EOF {
+					break
+				}
+				require.NoError(err)
+
+				result = append(result, string(k))
+			}
+
 			require.Equal(tt.expected, result)
 		})
 	}
 }
 
-func TestNegateIndex(t *testing.T) {
-	if !dockerIsRunning {
-		t.Skipf("Skip test: %s", dockerCmdOutput)
-	}
-	require := require.New(t)
-	setup(t)
-	defer cleanup(t)
-
-	db, table := "db_name", "table_name"
-	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
-	idx, err := d.Create(db, table, "index_id", makeExpressions(table, "a"), nil)
-	require.NoError(err)
-
-	multiIdx, err := d.Create(
-		db, table, "multi_index_id",
-		makeExpressions(table, "a", "b"),
-		nil,
-	)
-	require.NoError(err)
-
-	it := &fixtureKeyValueIter{
-		fixtures: []kvfixture{
-			{"1", []interface{}{int64(2)}},
-			{"2", []interface{}{int64(7)}},
-			{"3", []interface{}{int64(1)}},
-			{"4", []interface{}{int64(1)}},
-			{"5", []interface{}{int64(7)}},
-		},
-	}
-
-	err = d.Save(sql.NewEmptyContext(), idx, it)
-	require.NoError(err)
-
-	multiIt := &fixtureKeyValueIter{
-		fixtures: []kvfixture{
-			{"1", []interface{}{int64(2), int64(6)}},
-			{"2", []interface{}{int64(7), int64(5)}},
-			{"3", []interface{}{int64(1), int64(2)}},
-			{"4", []interface{}{int64(1), int64(3)}},
-			{"5", []interface{}{int64(7), int64(6)}},
-			{"6", []interface{}{int64(10), int64(6)}},
-			{"7", []interface{}{int64(5), int64(1)}},
-			{"8", []interface{}{int64(6), int64(2)}},
-			{"9", []interface{}{int64(4), int64(0)}},
-			{"10", []interface{}{int64(3), int64(5)}},
-		},
-	}
-
-	err = d.Save(sql.NewEmptyContext(), multiIdx, multiIt)
-	require.NoError(err)
-
-	lookup, err := idx.(sql.NegateIndex).Not(int64(1))
-	require.NoError(err)
-
-	values, err := lookupValues(lookup)
-	require.NoError(err)
-
-	expected := []string{"1", "2", "5"}
-	require.Equal(expected, values)
-
-	lookup, err = multiIdx.(sql.NegateIndex).Not(int64(1), int64(6))
-	require.NoError(err)
-
-	values, err = lookupValues(lookup)
-	require.NoError(err)
-
-	expected = []string{"2", "7", "8", "9", "10"}
-	require.Equal(expected, values)
-}
-
 func TestIntersection(t *testing.T) {
-	if !dockerIsRunning {
-		t.Skipf("Skip TestUnion: %s", dockerCmdOutput)
-	}
+	ctx := sql.NewContext(context.Background())
 	require := require.New(t)
 	setup(t)
 	defer cleanup(t)
@@ -428,7 +328,7 @@ func TestIntersection(t *testing.T) {
 	idxLang, expLang := "idx_lang", makeExpressions(table, "lang")
 	idxPath, expPath := "idx_path", makeExpressions(table, "path")
 
-	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir)
 	sqlIdxLang, err := d.Create(db, table, idxLang, expLang, nil)
 	require.NoError(err)
 
@@ -449,8 +349,6 @@ func TestIntersection(t *testing.T) {
 		location:    offsetLocation,
 	}
 
-	ctx := sql.NewContext(context.Background())
-
 	err = d.Save(ctx, sqlIdxLang, itLang)
 	require.NoError(err)
 
@@ -470,7 +368,9 @@ func TestIntersection(t *testing.T) {
 	require.True(ok)
 	interIt, err := interLookup.Intersection(lookupPath).Values()
 	require.NoError(err)
-	_, err = interIt.Next()
+	loc, err := interIt.Next()
+	fmt.Println(loc, err, err == io.EOF)
+
 	require.True(err == io.EOF)
 	require.NoError(interIt.Close())
 
@@ -483,7 +383,7 @@ func TestIntersection(t *testing.T) {
 	require.True(ok)
 	interIt, err = interLookup.Intersection(lookupLang).Values()
 	require.NoError(err)
-	loc, err := interIt.Next()
+	loc, err = interIt.Next()
 	require.NoError(err)
 	require.Equal(loc, itPath.records[0].location)
 	_, err = interIt.Next()
@@ -493,9 +393,6 @@ func TestIntersection(t *testing.T) {
 }
 
 func TestUnion(t *testing.T) {
-	if !dockerIsRunning {
-		t.Skipf("Skip TestUnion: %s", dockerCmdOutput)
-	}
 	require := require.New(t)
 	setup(t)
 	defer cleanup(t)
@@ -504,7 +401,7 @@ func TestUnion(t *testing.T) {
 	idxLang, expLang := "idx_lang", makeExpressions(table, "lang")
 	idxPath, expPath := "idx_path", makeExpressions(table, "path")
 
-	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir)
 	sqlIdxLang, err := d.Create(db, table, idxLang, expLang, nil)
 	require.NoError(err)
 
@@ -581,9 +478,6 @@ func TestUnion(t *testing.T) {
 }
 
 func TestDifference(t *testing.T) {
-	if !dockerIsRunning {
-		t.Skipf("Skip TestUnion: %s", dockerCmdOutput)
-	}
 	require := require.New(t)
 	setup(t)
 	defer cleanup(t)
@@ -592,7 +486,7 @@ func TestDifference(t *testing.T) {
 	idxLang, expLang := "idx_lang", makeExpressions(table, "lang")
 	idxPath, expPath := "idx_path", makeExpressions(table, "path")
 
-	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir)
 	sqlIdxLang, err := d.Create(db, table, idxLang, expLang, nil)
 	require.NoError(err)
 
@@ -652,9 +546,6 @@ func TestDifference(t *testing.T) {
 }
 
 func TestUnionDiffAsc(t *testing.T) {
-	if !dockerIsRunning {
-		t.Skipf("Skip TestUnion: %s", dockerCmdOutput)
-	}
 	require := require.New(t)
 	setup(t)
 	defer cleanup(t)
@@ -662,7 +553,7 @@ func TestUnionDiffAsc(t *testing.T) {
 	db, table := "db_name", "table_name"
 	idx, exp := "idx_lang", makeExpressions(table, "lang")
 
-	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, idx, exp, nil)
 	require.NoError(err)
 	pilosaIdx, ok := sqlIdx.(*pilosaIndex)
@@ -670,7 +561,7 @@ func TestUnionDiffAsc(t *testing.T) {
 	it := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: pilosaIdx.Expressions(),
+		expressions: sqlIdx.Expressions(),
 		location:    offsetLocation,
 	}
 
@@ -710,9 +601,6 @@ func TestUnionDiffAsc(t *testing.T) {
 }
 
 func TestInterRanges(t *testing.T) {
-	if !dockerIsRunning {
-		t.Skipf("Skip TestUnion: %s", dockerCmdOutput)
-	}
 	require := require.New(t)
 	setup(t)
 	defer cleanup(t)
@@ -720,7 +608,7 @@ func TestInterRanges(t *testing.T) {
 	db, table := "db_name", "table_name"
 	idx, exp := "idx_lang", makeExpressions(table, "lang")
 
-	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, idx, exp, nil)
 	require.NoError(err)
 	pilosaIdx, ok := sqlIdx.(*pilosaIndex)
@@ -728,7 +616,7 @@ func TestInterRanges(t *testing.T) {
 	it := &testIndexKeyValueIter{
 		offset:      0,
 		total:       10,
-		expressions: pilosaIdx.Expressions(),
+		expressions: sqlIdx.Expressions(),
 		location:    offsetLocation,
 	}
 
@@ -764,18 +652,264 @@ func TestInterRanges(t *testing.T) {
 	require.NoError(interIt.Close())
 }
 
+func TestNegateIndex(t *testing.T) {
+	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
+
+	db, table := "db_name", "table_name"
+
+	d := NewDriver(tmpDir)
+	idx, err := d.Create(db, table, "index_id", makeExpressions(table, "a"), nil)
+	require.NoError(err)
+
+	multiIdx, err := d.Create(
+		db, table, "multi_index_id",
+		makeExpressions(table, "a", "b"),
+		nil,
+	)
+	require.NoError(err)
+
+	it := &fixtureKeyValueIter{
+		fixtures: []kvfixture{
+			{"1", []interface{}{int64(2)}},
+			{"2", []interface{}{int64(7)}},
+			{"3", []interface{}{int64(1)}},
+			{"4", []interface{}{int64(1)}},
+			{"5", []interface{}{int64(7)}},
+		},
+	}
+
+	err = d.Save(sql.NewEmptyContext(), idx, it)
+	require.NoError(err)
+
+	multiIt := &fixtureKeyValueIter{
+		fixtures: []kvfixture{
+			{"1", []interface{}{int64(2), int64(6)}},
+			{"2", []interface{}{int64(7), int64(5)}},
+			{"3", []interface{}{int64(1), int64(2)}},
+			{"4", []interface{}{int64(1), int64(3)}},
+			{"5", []interface{}{int64(7), int64(6)}},
+			{"6", []interface{}{int64(10), int64(6)}},
+			{"7", []interface{}{int64(5), int64(1)}},
+			{"8", []interface{}{int64(6), int64(2)}},
+			{"9", []interface{}{int64(4), int64(0)}},
+			{"10", []interface{}{int64(3), int64(5)}},
+		},
+	}
+
+	err = d.Save(sql.NewEmptyContext(), multiIdx, multiIt)
+	require.NoError(err)
+
+	lookup, err := idx.(sql.NegateIndex).Not(int64(1))
+	require.NoError(err)
+
+	values, err := lookupValues(lookup)
+	require.NoError(err)
+
+	expected := []string{"1", "2", "5"}
+	require.Equal(expected, values)
+
+	lookup, err = multiIdx.(sql.NegateIndex).Not(int64(1), int64(6))
+	require.NoError(err)
+
+	values, err = lookupValues(lookup)
+	require.NoError(err)
+
+	expected = []string{"2", "7", "8", "9", "10"}
+	require.Equal(expected, values)
+}
+
+func TestPilosaHolder(t *testing.T) {
+	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
+
+	h := pilosa.NewHolder()
+	h.Path = tmpDir
+	err := h.Open()
+	require.NoError(err)
+
+	idx1, err := h.CreateIndexIfNotExists("idx", pilosa.IndexOptions{})
+	require.NoError(err)
+	err = idx1.Open()
+	require.NoError(err)
+
+	f1, err := idx1.CreateFieldIfNotExists("f1", pilosa.OptFieldTypeDefault())
+	require.NoError(err)
+
+	_, err = f1.SetBit(0, 0, nil)
+	require.NoError(err)
+	_, err = f1.SetBit(0, 2, nil)
+	require.NoError(err)
+	r0, err := f1.Row(0)
+	require.NoError(err)
+
+	_, err = f1.SetBit(1, 0, nil)
+	require.NoError(err)
+	_, err = f1.SetBit(1, 1, nil)
+	require.NoError(err)
+	r1, err := f1.Row(1)
+	require.NoError(err)
+
+	_, err = f1.SetBit(2, 2, nil)
+	require.NoError(err)
+	_, err = f1.SetBit(2, 3, nil)
+	require.NoError(err)
+	r2, err := f1.Row(2)
+	require.NoError(err)
+
+	row := r0.Intersect(r1).Union(r2)
+	cols := row.Columns()
+	require.Equal(3, len(cols))
+	require.Equal(uint64(0), cols[0])
+	require.Equal(uint64(2), cols[1])
+	require.Equal(uint64(3), cols[2])
+
+	f2, err := idx1.CreateFieldIfNotExists("f2", pilosa.OptFieldTypeDefault())
+	require.NoError(err)
+
+	rowIDs := []uint64{0, 0, 1, 1}
+	colIDs := []uint64{1, 2, 0, 3}
+	err = f2.Import(rowIDs, colIDs, nil)
+	require.NoError(err)
+
+	r0, err = f2.Row(0)
+	require.NoError(err)
+
+	r1, err = f2.Row(1)
+	require.NoError(err)
+
+	row = r0.Union(r1)
+	cols = row.Columns()
+	require.Equal(4, len(cols))
+	require.Equal(uint64(0), cols[0])
+	require.Equal(uint64(1), cols[1])
+	require.Equal(uint64(2), cols[2])
+	require.Equal(uint64(3), cols[3])
+
+	r1, err = f1.Row(1)
+	require.NoError(err)
+	r0, err = f2.Row(0)
+	require.NoError(err)
+
+	row = r1.Intersect(r0)
+	cols = row.Columns()
+	require.Equal(1, len(cols))
+	require.Equal(uint64(1), cols[0])
+
+	err = idx1.Close()
+	require.NoError(err)
+	// -------------------------------------------------------------------------
+
+	idx2, err := h.CreateIndexIfNotExists("idx", pilosa.IndexOptions{})
+	require.NoError(err)
+	err = idx2.Open()
+	require.NoError(err)
+
+	f1 = idx2.Field("f1")
+
+	r2, err = f1.Row(2)
+	require.NoError(err)
+
+	f2 = idx2.Field("f2")
+
+	r0, err = f2.Row(0)
+	require.NoError(err)
+
+	r1, err = f2.Row(1)
+	require.NoError(err)
+
+	row = r0.Union(r1)
+	cols = row.Columns()
+	require.Equal(4, len(cols))
+	require.Equal(uint64(0), cols[0])
+	require.Equal(uint64(1), cols[1])
+	require.Equal(uint64(2), cols[2])
+	require.Equal(uint64(3), cols[3])
+
+	err = idx2.Close()
+	require.NoError(err)
+
+	err = h.Close()
+	require.NoError(err)
+}
+
+func makeExpressions(table string, names ...string) []sql.Expression {
+	var expressions []sql.Expression
+
+	for i, n := range names {
+		expressions = append(expressions,
+			expression.NewGetFieldWithTable(i, sql.Int64, table, n, true))
+	}
+
+	return expressions
+}
+
+func randLocation(offset int) []byte {
+	b := make([]byte, 1)
+	rand.Read(b)
+	return b
+}
+
+func offsetLocation(offset int) []byte {
+	b := make([]byte, 1)
+	b[0] = byte(offset % 10)
+	return b
+}
+
+// test implementation of sql.IndexKeyValueIter interface
+type testIndexKeyValueIter struct {
+	offset      int
+	total       int
+	expressions []string
+	location    func(int) []byte
+
+	records []struct {
+		values   []interface{}
+		location []byte
+	}
+}
+
+func (it *testIndexKeyValueIter) Next() ([]interface{}, []byte, error) {
+	if it.offset >= it.total {
+		return nil, nil, io.EOF
+	}
+
+	b := it.location(it.offset)
+
+	values := make([]interface{}, len(it.expressions))
+	for i, e := range it.expressions {
+		values[i] = e + "-" + hex.EncodeToString(b)
+	}
+
+	it.records = append(it.records, struct {
+		values   []interface{}
+		location []byte
+	}{
+		values,
+		b,
+	})
+	it.offset++
+
+	return values, b, nil
+}
+
+func (it *testIndexKeyValueIter) Close() error {
+	it.offset = 0
+	it.records = nil
+	return nil
+}
+
 func setupAscendDescend(t *testing.T) (*pilosaIndex, func()) {
 	t.Helper()
-	if !dockerIsRunning {
-		t.Skipf("Skip test: %s", dockerCmdOutput)
-	}
 	require := require.New(t)
+	setup(t)
 
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions(table, "a", "b")
-	setup(t)
 
-	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
+	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
@@ -846,106 +980,3 @@ func (i *fixtureKeyValueIter) Next() ([]interface{}, []byte, error) {
 }
 
 func (i *fixtureKeyValueIter) Close() error { return nil }
-
-// test implementation of sql.IndexKeyValueIter interface
-type testIndexKeyValueIter struct {
-	offset      int
-	total       int
-	expressions []string
-	location    func(int) []byte
-
-	records []struct {
-		values   []interface{}
-		location []byte
-	}
-}
-
-func (it *testIndexKeyValueIter) Next() ([]interface{}, []byte, error) {
-	if it.offset >= it.total {
-		return nil, nil, io.EOF
-	}
-
-	b := it.location(it.offset)
-
-	values := make([]interface{}, len(it.expressions))
-	for i, e := range it.expressions {
-		values[i] = e + "-" + hex.EncodeToString(b)
-	}
-
-	it.records = append(it.records, struct {
-		values   []interface{}
-		location []byte
-	}{
-		values,
-		b,
-	})
-	it.offset++
-
-	return values, b, nil
-}
-
-func (it *testIndexKeyValueIter) Close() error {
-	it.offset = 0
-	it.records = nil
-	return nil
-}
-
-func makeExpressions(table string, names ...string) []sql.Expression {
-	var expressions []sql.Expression
-
-	for i, n := range names {
-		expressions = append(expressions,
-			expression.NewGetFieldWithTable(i, sql.Int64, table, n, true))
-	}
-
-	return expressions
-}
-
-func randLocation(offset int) []byte {
-	b := make([]byte, 1)
-	rand.Read(b)
-	return b
-}
-
-func offsetLocation(offset int) []byte {
-	b := make([]byte, 1)
-	b[0] = byte(offset % 10)
-	return b
-}
-
-func newClientWithTimeout(timeout time.Duration) *pilosa.Client {
-	cli, err := pilosa.NewClient(pilosa.DefaultURI(),
-		pilosa.OptClientConnectTimeout(timeout),
-		pilosa.OptClientSocketTimeout(timeout))
-	if err != nil {
-		panic(err)
-	}
-
-	return cli
-}
-
-func retry(ctx context.Context, fn func() error) error {
-	var (
-		backoffDuration = 200 * time.Millisecond
-		maxRetries      = 10
-
-		err error
-	)
-
-	for i := 0; i < maxRetries; i++ {
-		err = fn()
-		if err == nil {
-			break
-		}
-
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-
-		case <-time.After(backoffDuration):
-
-		}
-	}
-
-	return err
-}
