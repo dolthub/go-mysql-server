@@ -123,6 +123,13 @@ func (d *Driver) LoadAll(db, table string) ([]sql.Index, error) {
 	)
 
 	d.holder.Path = d.pilosaDirPath(db, table)
+	if _, err := os.Stat(d.holder.Path); err != nil {
+		if os.IsNotExist(err) {
+			return indexes, nil
+		}
+		return nil, err
+	}
+
 	err := d.holder.Open()
 	if err != nil {
 		return nil, err
