@@ -202,13 +202,13 @@ func TestLoadCorruptedIndex(t *testing.T) {
 	_, err := d.Create("db", "table", "id", nil, nil)
 	require.NoError(err)
 
-	require.NoError(index.CreateProcessingFile(d.processingFileName("db", "table", "id")))
+	require.NoError(index.CreateProcessingFile(d.processingFilePath("db", "table", "id")))
 
 	_, err = d.loadIndex("db", "table", "id")
 	require.Error(err)
 	require.True(errCorruptedIndex.Is(err))
 
-	_, err = os.Stat(d.processingFileName("db", "table", "id"))
+	_, err = os.Stat(d.processingFilePath("db", "table", "id"))
 	require.Error(err)
 	require.True(os.IsNotExist(err))
 }

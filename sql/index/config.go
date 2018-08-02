@@ -53,8 +53,8 @@ func WriteConfig(w io.Writer, cfg *Config) error {
 }
 
 // WriteConfigFile writes the configuration to file.
-func WriteConfigFile(file string, cfg *Config) error {
-	f, err := os.Create(file)
+func WriteConfigFile(path string, cfg *Config) error {
+	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}
@@ -75,9 +75,9 @@ func ReadConfig(r io.Reader) (*Config, error) {
 	return &cfg, err
 }
 
-// ReadConfigFile reads an configuration from  file.
-func ReadConfigFile(file string) (*Config, error) {
-	f, err := os.Open(file)
+// ReadConfigFile reads an configuration from file.
+func ReadConfigFile(path string) (*Config, error) {
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
@@ -87,8 +87,8 @@ func ReadConfigFile(file string) (*Config, error) {
 }
 
 // CreateProcessingFile creates a file  saying whether the index is being created.
-func CreateProcessingFile(file string) error {
-	f, err := os.Create(file)
+func CreateProcessingFile(path string) error {
+	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}
@@ -99,13 +99,13 @@ func CreateProcessingFile(file string) error {
 }
 
 // RemoveProcessingFile removes the file that says whether the index is still being created.
-func RemoveProcessingFile(file string) error {
-	return os.Remove(file)
+func RemoveProcessingFile(path string) error {
+	return os.Remove(path)
 }
 
 // ExistsProcessingFile returns whether the processing file exists.
-func ExistsProcessingFile(file string) (bool, error) {
-	_, err := os.Stat(file)
+func ExistsProcessingFile(path string) (bool, error) {
+	_, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
