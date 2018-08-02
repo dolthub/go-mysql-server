@@ -67,18 +67,18 @@ func (n *ShowIndexes) Children() []sql.Node { return nil }
 // RowIter implements the Node interface.
 func (n *ShowIndexes) RowIter(*sql.Context) (sql.RowIter, error) {
 	return &showIndexesIter{
-		db:       n.Database.Name(),
+		db:       n.Database,
 		table:    n.Table,
 		registry: n.Registry,
 	}, nil
 }
 
 type showIndexesIter struct {
-	db       string
+	db       sql.Database
 	table    string
 	registry *sql.IndexRegistry
-	indexes  []sql.Index
-	pos      int
+
+	idxs *indexesToShow
 }
 
 func (i *showIndexesIter) Next() (sql.Row, error) {
@@ -86,41 +86,99 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 		return nil, io.EOF
 	}
 
-	if i.indexes == nil {
-		i.indexes = i.registry.IndexesByTable(i.db, i.table)
+	if i.idxs == nil {
+		i.idxs = &indexesToShow{
+			indexes: i.registry.IndexesByTable(i.db.Name(), i.table),
+		}
 	}
 
-	if i.pos >= len(i.indexes) {
-		i.Close()
-		return nil, io.EOF
+	show, err := i.idxs.next()
+	if err != nil {
+		return nil, err
 	}
 
-	idx := i.indexes[i.pos]
+	var nullable string
+	columnName, expression := "NULL", show.expression
+	if ok, null := isColumn(show.expression, i.db.Tables()[i.table]); ok {
+		columnName, expression = expression, columnName
+		if null {
+			nullable = "YES"
+		}
+	}
 
-	i.pos++
 	return sql.NewRow(
-		i.table,      // "Table" string
-		int32(1),     // "Non_unique" int32
-		idx.ID(),     // "Key_name" string
-		int32(0),     // "Seq_in_index" int32
-		"NULL",       // "Column_name" string
-		"",           // "Collation" string
-		int64(0),     // "Cardinality" int64
-		int64(0),     // "Sub_part" int64
-		"",           // "Packed" string
-		"",           // "Null" sting
-		idx.Driver(), // "Index_type" string
-		"",           // "Comment" string
-		"",           // "Index_comment" string
-		"YES",        // "Visible" string
-		"NULL",       // "Expression" string
+		i.table,             // "Table" string
+		int32(1),            // "Non_unique" int32, Values [0, 1]
+		show.index.ID(),     // "Key_name" string
+		show.exPosition+1,   // "Seq_in_index" int32
+		columnName,          // "Column_name" string
+		"NULL",              // "Collation" string, Values [A, D, NULL]
+		int64(0),            // "Cardinality" int64 (returning 0, it is not being calculated for the moment)
+		"NULL",              // "Sub_part" int64
+		"NULL",              // "Packed" string
+		nullable,            // "Null" string, Values [YES, '']
+		show.index.Driver(), // "Index_type" string
+		"",                  // "Comment" string
+		"",                  // "Index_comment" string
+		"YES",               // "Visible" string, Values [YES, NO]
+		expression,          // "Expression" string
 	), nil
 }
 
+func isColumn(ex string, table sql.Table) (bool, bool) {
+	for _, col := range table.Schema() {
+		if col.Source+"."+col.Name == ex {
+			return true, col.Nullable
+		}
+	}
+
+	return false, false
+}
+
 func (i *showIndexesIter) Close() error {
-	for _, idx := range i.indexes {
+	for _, idx := range i.idxs.indexes {
 		i.registry.ReleaseIndex(idx)
 	}
 
 	return nil
+}
+
+type indexesToShow struct {
+	indexes []sql.Index
+	pos     int
+	epos    int
+}
+
+type idxToShow struct {
+	index      sql.Index
+	expression string
+	exPosition int
+}
+
+func (i *indexesToShow) next() (*idxToShow, error) {
+	if len(i.indexes) == 0 {
+		return nil, io.EOF
+	}
+
+	index := i.indexes[i.pos]
+	expressions := index.Expressions()
+	if i.epos >= len(expressions) {
+		i.pos++
+		if i.pos >= len(i.indexes) {
+			return nil, io.EOF
+		}
+
+		index = i.indexes[i.pos]
+		i.epos = 0
+		expressions = index.Expressions()
+	}
+
+	show := &idxToShow{
+		index:      index,
+		expression: expressions[i.epos],
+		exPosition: i.epos,
+	}
+
+	i.epos++
+	return show, nil
 }

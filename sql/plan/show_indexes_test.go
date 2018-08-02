@@ -17,45 +17,125 @@ func TestShowIndexes(t *testing.T) {
 	require.Nil(unresolved.Children())
 
 	db := mem.NewDatabase("test")
-	db.AddTable("test1", mem.NewTable("test1", nil))
-	db.AddTable("test2", mem.NewTable("test2", nil))
-	db.AddTable("test3", mem.NewTable("test3", nil))
+
+	tests := []struct {
+		name         string
+		table        sql.Table
+		isExpression bool
+	}{
+		{
+			name: "test1",
+			table: mem.NewTable(
+				"test1",
+				sql.Schema{
+					&sql.Column{Name: "foo", Type: sql.Int32, Source: "test1", Default: int32(0), Nullable: false},
+				},
+			),
+		},
+		{
+			name: "test2",
+			table: mem.NewTable(
+				"test2",
+				sql.Schema{
+					&sql.Column{Name: "bar", Type: sql.Int64, Source: "test2", Default: int64(0), Nullable: true},
+					&sql.Column{Name: "rab", Type: sql.Int64, Source: "test2", Default: int32(0), Nullable: false},
+				},
+			),
+		},
+		{
+			name: "test3",
+			table: mem.NewTable(
+				"test3",
+				sql.Schema{
+					&sql.Column{Name: "baz", Type: sql.Text, Source: "test3", Default: "", Nullable: false},
+					&sql.Column{Name: "zab", Type: sql.Int32, Source: "test3", Default: int32(0), Nullable: true},
+					&sql.Column{Name: "bza", Type: sql.Int64, Source: "test3", Default: int64(0), Nullable: true},
+				},
+			),
+		},
+		{
+			name: "test4",
+			table: mem.NewTable(
+				"test4",
+				sql.Schema{
+					&sql.Column{Name: "oof", Type: sql.Text, Source: "test4", Default: "", Nullable: false},
+				},
+			),
+			isExpression: true,
+		},
+	}
 
 	r := sql.NewIndexRegistry()
-	for table := range db.Tables() {
-		idx := &mockIndex{
-			db:    "test",
-			table: table,
-			id:    "idx_" + table + "_foo",
-			exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(0, sql.Int32, table, "foo", false),
-			},
-		}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			db.AddTable(test.table.Name(), test.table)
 
-		created, ready, err := r.AddIndex(idx)
-		require.NoError(err)
-		close(created)
-		<-ready
+			expressions := make([]sql.Expression, len(test.table.Schema()))
+			for i, col := range test.table.Schema() {
+				var ex sql.Expression = expression.NewGetFieldWithTable(
+					i, col.Type, test.table.Name(), col.Name, col.Nullable,
+				)
 
-		showIdxs := NewShowIndexes(db, table, r)
+				if test.isExpression {
+					ex = expression.NewEquals(ex, expression.NewLiteral("a", sql.Text))
+				}
 
-		ctx := sql.NewEmptyContext()
-		rowIter, err := showIdxs.RowIter(ctx)
-		require.NoError(err)
+				expressions[i] = ex
+			}
 
-		rows, err := sql.RowIterToRows(rowIter)
-		require.NoError(err)
-		require.Len(rows, 1)
+			idx := &mockIndex{
+				db:    "test",
+				table: test.table.Name(),
+				id:    test.name + "_idx",
+				exprs: expressions,
+			}
 
-		require.Equal(
-			sql.NewRow(
-				table, int32(1), idx.ID(),
-				int32(0), "NULL", "",
-				int64(0), int64(0), "",
-				"", idx.Driver(), "",
-				"", "YES", "NULL",
-			),
-			rows[0],
-		)
+			created, ready, err := r.AddIndex(idx)
+			require.NoError(err)
+			close(created)
+			<-ready
+
+			showIdxs := NewShowIndexes(db, test.table.Name(), r)
+
+			ctx := sql.NewEmptyContext()
+			rowIter, err := showIdxs.RowIter(ctx)
+			require.NoError(err)
+
+			rows, err := sql.RowIterToRows(rowIter)
+			require.NoError(err)
+			require.Len(rows, len(expressions))
+
+			for i, row := range rows {
+				var nullable string
+				columnName, ex := "NULL", expressions[i].String()
+				if ok, null := isColumn(ex, test.table); ok {
+					columnName, ex = ex, columnName
+					if null {
+						nullable = "YES"
+					}
+				}
+
+				expected := sql.NewRow(
+					test.table.Name(),
+					int32(1),
+					idx.ID(),
+					i+1,
+					columnName,
+					"NULL",
+					int64(0),
+					"NULL",
+					"NULL",
+					nullable,
+					idx.Driver(),
+					"",
+					"",
+					"YES",
+					ex,
+				)
+
+				require.Equal(expected, row)
+			}
+
+		})
 	}
 }
