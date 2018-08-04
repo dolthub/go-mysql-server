@@ -461,6 +461,13 @@ func TestUnion(t *testing.T) {
 	require.True(m.IsMergeable(lookupPath))
 
 	unionLookup, ok := lookupLang.(sql.SetOperations)
+
+	lookupNonExisting, err := sqlIdxPath.Get(itPath.total)
+	require.NoError(err)
+
+	unionLookup, ok = unionLookup.Union(lookupNonExisting).(sql.SetOperations)
+	require.True(ok)
+
 	unionIt, err := unionLookup.Union(lookupPath).Values()
 	require.NoError(err)
 	// 0
