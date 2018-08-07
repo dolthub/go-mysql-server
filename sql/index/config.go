@@ -98,6 +98,12 @@ func CreateProcessingFile(path string) error {
 	return nil
 }
 
+// WriteProcessingFile write data to the processing file either truncating it
+// before or creating it if it doesn't exist.
+func WriteProcessingFile(path string, data []byte) error {
+	return ioutil.WriteFile(path, data, 0666)
+}
+
 // RemoveProcessingFile removes the file that says whether the index is still being created.
 func RemoveProcessingFile(path string) error {
 	return os.Remove(path)

@@ -61,6 +61,12 @@ func TestProcessingFile(t *testing.T) {
 	require.NoError(err)
 	require.True(ok)
 
+	require.NoError(WriteProcessingFile(file, []byte("test")))
+
+	ok, err = ExistsProcessingFile(file)
+	require.NoError(err)
+	require.True(ok)
+
 	require.NoError(RemoveProcessingFile(file))
 
 	ok, err = ExistsProcessingFile(file)
