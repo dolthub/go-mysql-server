@@ -110,6 +110,17 @@ func (d *Driver) Create(db, table, id string, expressions []sql.Expression, conf
 		return nil, err
 	}
 
+	d.holder.Path = d.pilosaDirPath(db, table)
+	idx, err := d.holder.CreateIndexIfNotExists(
+		indexName(db, table),
+		pilosa.IndexOptions{},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	mapping := newMapping(d.mappingFilePath(db, table, id))
+
 	processingFile := d.processingFilePath(db, table, id)
 	if err := index.WriteProcessingFile(
 		processingFile,
@@ -118,10 +129,7 @@ func (d *Driver) Create(db, table, id string, expressions []sql.Expression, conf
 		return nil, err
 	}
 
-	d.holder.Path = d.pilosaDirPath(db, table)
-	mapping := newMapping(d.mappingFilePath(db, table, id))
-
-	return newPilosaIndex(nil, mapping, cfg), nil
+	return newPilosaIndex(idx, mapping, cfg), nil
 }
 
 // LoadAll loads all indexes for given db and table
@@ -230,10 +238,6 @@ func (d *Driver) Save(ctx *sql.Context, i sql.Index, iter sql.IndexKeyValueIter)
 	}
 
 	processingFile := d.processingFilePath(i.Database(), i.Table(), i.ID())
-	if _, err := os.Stat(processingFile); err != nil {
-		return err
-	}
-
 	if err := index.WriteProcessingFile(
 		processingFile,
 		[]byte{processingFileOnSave},
@@ -242,20 +246,6 @@ func (d *Driver) Save(ctx *sql.Context, i sql.Index, iter sql.IndexKeyValueIter)
 	}
 
 	pilosaIndex := idx.index
-	if pilosaIndex == nil {
-		var err error
-		pilosaIndex, err = d.holder.CreateIndexIfNotExists(
-			indexName(i.Database(), i.Table()),
-			pilosa.IndexOptions{},
-		)
-
-		if err != nil {
-			return err
-		}
-
-		idx.index = pilosaIndex
-	}
-
 	if err = pilosaIndex.Open(); err != nil {
 		return err
 	}

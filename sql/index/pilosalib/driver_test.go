@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/index"
 	"gopkg.in/src-d/go-mysql-server.v0/test"
 )
 
@@ -215,20 +214,8 @@ func TestLoadCorruptedIndex(t *testing.T) {
 	d := NewDriver(tmpDir)
 	processingFile := d.processingFilePath("db", "table", "id")
 
-	idx, err := d.Create("db", "table", "id", nil, nil)
+	_, err := d.Create("db", "table", "id", nil, nil)
 	require.NoError(err)
-	it := &testIndexKeyValueIter{
-		offset:      0,
-		total:       64,
-		expressions: idx.Expressions(),
-		location:    randLocation,
-	}
-	require.NoError(d.Save(sql.NewEmptyContext(), idx, it))
-
-	require.NoError(index.WriteProcessingFile(
-		processingFile,
-		[]byte{processingFileOnSave},
-	))
 
 	_, err = d.loadIndex("db", "table", "id")
 	require.Error(err)
@@ -254,13 +241,6 @@ func TestDelete(t *testing.T) {
 	d := NewDriver(tmpDir)
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
-	it := &testIndexKeyValueIter{
-		offset:      0,
-		total:       64,
-		expressions: sqlIdx.Expressions(),
-		location:    randLocation,
-	}
-	require.NoError(d.Save(sql.NewEmptyContext(), sqlIdx, it))
 
 	err = d.Delete(sqlIdx)
 	require.NoError(err)
