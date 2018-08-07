@@ -38,6 +38,11 @@ const (
 	MappingFileName = "mapping.db"
 )
 
+const (
+	processingFileOnCreate = 'C'
+	processingFileOnSave   = 'S'
+)
+
 var (
 	errCorruptedIndex    = errors.NewKind("the index db: %s, table: %s, id: %s is corrupted")
 	errLoadingIndex      = errors.NewKind("cannot load pilosa index: %s")
@@ -86,10 +91,11 @@ func (d *Driver) Create(db, table, id string, expressions []sql.Expression, conf
 	if err != nil {
 		return nil, err
 	}
-	name := indexName(db, table)
+
 	if config == nil {
 		config = make(map[string]string)
 	}
+
 	exprs := make([]string, len(expressions))
 	for i, e := range expressions {
 		name := e.String()
@@ -104,14 +110,18 @@ func (d *Driver) Create(db, table, id string, expressions []sql.Expression, conf
 		return nil, err
 	}
 
-	d.holder.Path = d.pilosaDirPath(db, table)
-	idx, err := d.holder.CreateIndexIfNotExists(name, pilosa.IndexOptions{})
-	if err != nil {
+	processingFile := d.processingFilePath(db, table, id)
+	if err := index.WriteProcessingFile(
+		processingFile,
+		[]byte{processingFileOnCreate},
+	); err != nil {
 		return nil, err
 	}
+
+	d.holder.Path = d.pilosaDirPath(db, table)
 	mapping := newMapping(d.mappingFilePath(db, table, id))
 
-	return newPilosaIndex(idx, mapping, cfg), nil
+	return newPilosaIndex(nil, mapping, cfg), nil
 }
 
 // LoadAll loads all indexes for given db and table
@@ -219,12 +229,33 @@ func (d *Driver) Save(ctx *sql.Context, i sql.Index, iter sql.IndexKeyValueIter)
 		return errInvalidIndexType.New(i)
 	}
 
-	processingFile := d.processingFilePath(idx.Database(), idx.Table(), idx.ID())
-	if err = index.CreateProcessingFile(processingFile); err != nil {
+	processingFile := d.processingFilePath(i.Database(), i.Table(), i.ID())
+	if _, err := os.Stat(processingFile); err != nil {
+		return err
+	}
+
+	if err := index.WriteProcessingFile(
+		processingFile,
+		[]byte{processingFileOnSave},
+	); err != nil {
 		return err
 	}
 
 	pilosaIndex := idx.index
+	if pilosaIndex == nil {
+		var err error
+		pilosaIndex, err = d.holder.CreateIndexIfNotExists(
+			indexName(i.Database(), i.Table()),
+			pilosa.IndexOptions{},
+		)
+
+		if err != nil {
+			return err
+		}
+
+		idx.index = pilosaIndex
+	}
+
 	if err = pilosaIndex.Open(); err != nil {
 		return err
 	}
