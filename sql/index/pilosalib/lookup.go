@@ -18,22 +18,36 @@ var (
 	errUnmergeableType = errors.NewKind("unmergeable type %T")
 
 	// operation functors
+	// r1 AND r2
 	intersect = func(r1, r2 *pilosa.Row) *pilosa.Row {
 		if r1 == nil {
 			return r2
 		}
+		if r2 == nil {
+			return nil
+		}
 		return r1.Intersect(r2)
 	}
+	// r1 OR r2
 	union = func(r1, r2 *pilosa.Row) *pilosa.Row {
 		if r1 == nil {
 			return r2
 		}
+		if r2 == nil {
+			return r1
+		}
+
 		return r1.Union(r2)
 	}
+	// r1 AND NOT r2
 	difference = func(r1, r2 *pilosa.Row) *pilosa.Row {
 		if r1 == nil {
 			return r2
 		}
+		if r2 == nil {
+			return r1
+		}
+
 		return r1.Difference(r2)
 	}
 )
