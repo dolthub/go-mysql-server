@@ -17,11 +17,45 @@ var (
 	errUnknownType     = errors.NewKind("unknown type %T received as value")
 	errTypeMismatch    = errors.NewKind("cannot compare type %T with type %T")
 	errUnmergeableType = errors.NewKind("unmergeable type %T")
+
+	// operation functors
+	// r1 AND r2
+	intersect = func(b1, b2 *pilosa.PQLBitmapQuery) *pilosa.PQLBitmapQuery {
+		if b1 == nil {
+			return nil
+		}
+		if b2 == nil {
+			return nil
+		}
+		return b1.Index().Intersect(b1, b2)
+	}
+	// r1 OR r2
+	union = func(b1, b2 *pilosa.PQLBitmapQuery) *pilosa.PQLBitmapQuery {
+		if b1 == nil {
+			return b2
+		}
+		if b2 == nil {
+			return b1
+		}
+
+		return b1.Index().Union(b1, b2)
+	}
+	// r1 AND NOT r2
+	difference = func(b1, b2 *pilosa.PQLBitmapQuery) *pilosa.PQLBitmapQuery {
+		if b1 == nil {
+			return nil
+		}
+		if b2 == nil {
+			return b1
+		}
+
+		return b1.Index().Difference(b1, b2)
+	}
 )
 
 type lookupOperation struct {
 	lookup    sql.IndexLookup
-	operation func(...*pilosa.PQLBitmapQuery) *pilosa.PQLBitmapQuery
+	operation func(*pilosa.PQLBitmapQuery, *pilosa.PQLBitmapQuery) *pilosa.PQLBitmapQuery
 }
 
 type pilosaLookup interface {
@@ -47,7 +81,10 @@ func (l *indexLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 	l.mapping.open()
 	defer l.mapping.close()
 
-	var bitmaps []*pilosa.PQLBitmapQuery
+	var (
+		bmp     *pilosa.PQLBitmapQuery
+		bitmaps []*pilosa.PQLBitmapQuery
+	)
 	for i, expr := range l.expressions {
 		frm, err := l.index.Frame(frameName(l.id, expr))
 		if err != nil {
@@ -65,12 +102,10 @@ func (l *indexLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 
 		bitmaps = append(bitmaps, frm.Bitmap(rowID))
 	}
-	if len(bitmaps) == 0 {
-		return nil, nil
+	if len(bitmaps) > 0 {
+		// Compute Intersection of expression bitmaps
+		bmp = l.index.Intersect(bitmaps...)
 	}
-
-	// Compute Intersection of expression bitmaps
-	bmp := l.index.Intersect(bitmaps...)
 
 	// Compute composition operations
 	for _, op := range l.operations {
@@ -82,10 +117,6 @@ func (l *indexLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 		b, err := il.bitmapQuery()
 		if err != nil {
 			return nil, err
-		}
-
-		if b.Error() != nil {
-			return nil, b.Error()
 		}
 
 		bmp = op.operation(bmp, b)
@@ -142,7 +173,7 @@ func (l *indexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 
 	for _, li := range lookups {
-		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Intersect})
+		lookup.operations = append(lookup.operations, &lookupOperation{li, intersect})
 	}
 
 	return &lookup
@@ -153,7 +184,7 @@ func (l *indexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 
 	for _, li := range lookups {
-		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Union})
+		lookup.operations = append(lookup.operations, &lookupOperation{li, union})
 	}
 
 	return &lookup
@@ -164,7 +195,7 @@ func (l *indexLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 
 	for _, li := range lookups {
-		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Difference})
+		lookup.operations = append(lookup.operations, &lookupOperation{li, difference})
 	}
 
 	return &lookup
@@ -190,7 +221,10 @@ func (l *filteredLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 	defer l.mapping.close()
 
 	// Compute Intersection of bitmaps
-	var bitmaps []*pilosa.PQLBitmapQuery
+	var (
+		bmp     *pilosa.PQLBitmapQuery
+		bitmaps []*pilosa.PQLBitmapQuery
+	)
 	for i, expr := range l.expressions {
 		frm, err := l.index.Frame(frameName(l.id, expr))
 		if err != nil {
@@ -212,11 +246,11 @@ func (l *filteredLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 
 		bitmaps = append(bitmaps, l.index.Union(bs...))
 	}
-	if len(bitmaps) == 0 {
-		return nil, nil
+	if len(bitmaps) > 0 {
+		// Compute Intersection of expression bitmaps
+		bmp = l.index.Intersect(bitmaps...)
 	}
 
-	bmp := l.index.Intersect(bitmaps...)
 	// Compute composition operations
 	for _, op := range l.operations {
 		il, ok := op.lookup.(pilosaLookup)
@@ -227,10 +261,6 @@ func (l *filteredLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 		b, err := il.bitmapQuery()
 		if err != nil {
 			return nil, err
-		}
-
-		if b.Error() != nil {
-			return nil, b.Error()
 		}
 
 		bmp = op.operation(bmp, b)
@@ -343,7 +373,7 @@ func (l *ascendLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup 
 	}
 
 	for _, li := range lookups {
-		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Intersect})
+		lookup.operations = append(lookup.operations, &lookupOperation{li, intersect})
 	}
 
 	return lookup
@@ -359,7 +389,7 @@ func (l *ascendLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 	}
 
 	for _, li := range lookups {
-		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Union})
+		lookup.operations = append(lookup.operations, &lookupOperation{li, union})
 	}
 
 	return lookup
@@ -375,7 +405,7 @@ func (l *ascendLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
 	}
 
 	for _, li := range lookups {
-		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Difference})
+		lookup.operations = append(lookup.operations, &lookupOperation{li, difference})
 	}
 
 	return lookup
@@ -452,7 +482,7 @@ func (l *descendLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup
 	}
 
 	for _, li := range lookups {
-		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Intersect})
+		lookup.operations = append(lookup.operations, &lookupOperation{li, intersect})
 	}
 
 	return lookup
@@ -468,7 +498,7 @@ func (l *descendLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 	}
 
 	for _, li := range lookups {
-		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Union})
+		lookup.operations = append(lookup.operations, &lookupOperation{li, union})
 	}
 
 	return lookup
@@ -484,7 +514,7 @@ func (l *descendLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
 	}
 
 	for _, li := range lookups {
-		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Difference})
+		lookup.operations = append(lookup.operations, &lookupOperation{li, difference})
 	}
 
 	return lookup
@@ -713,7 +743,10 @@ func (l *negateLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 	l.mapping.open()
 	defer l.mapping.close()
 
-	var bitmaps []*pilosa.PQLBitmapQuery
+	var (
+		bmp     *pilosa.PQLBitmapQuery
+		bitmaps []*pilosa.PQLBitmapQuery
+	)
 	for i, expr := range l.expressions {
 		frm, err := l.index.Frame(frameName(l.id, expr))
 		if err != nil {
@@ -750,12 +783,10 @@ func (l *negateLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 			l.index.Difference(all, frm.Bitmap(rowID)),
 		)
 	}
-	if len(bitmaps) == 0 {
-		return nil, nil
+	if len(bitmaps) > 0 {
+		// Compute Intersection of expression bitmaps
+		bmp = l.index.Intersect(bitmaps...)
 	}
-
-	// Compute Intersection of expression bitmaps
-	bmp := l.index.Intersect(bitmaps...)
 
 	// Compute composition operations
 	for _, op := range l.operations {
@@ -767,10 +798,6 @@ func (l *negateLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 		b, err := il.bitmapQuery()
 		if err != nil {
 			return nil, err
-		}
-
-		if b.Error() != nil {
-			return nil, b.Error()
 		}
 
 		bmp = op.operation(bmp, b)
@@ -827,7 +854,7 @@ func (l *negateLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup 
 	lookup := *l
 
 	for _, li := range lookups {
-		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Intersect})
+		lookup.operations = append(lookup.operations, &lookupOperation{li, intersect})
 	}
 
 	return &lookup
@@ -838,7 +865,7 @@ func (l *negateLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 
 	for _, li := range lookups {
-		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Union})
+		lookup.operations = append(lookup.operations, &lookupOperation{li, union})
 	}
 
 	return &lookup
@@ -849,7 +876,7 @@ func (l *negateLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 
 	for _, li := range lookups {
-		lookup.operations = append(lookup.operations, &lookupOperation{li, l.index.Difference})
+		lookup.operations = append(lookup.operations, &lookupOperation{li, difference})
 	}
 
 	return &lookup

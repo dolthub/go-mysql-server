@@ -102,9 +102,6 @@ func (l *indexLookup) values() (*pilosa.Row, error) {
 
 		row = intersect(row, r)
 	}
-	if row == nil {
-		return nil, nil
-	}
 
 	// evaluate composition of operations
 	for _, op := range l.operations {
@@ -233,10 +230,6 @@ func (l *filteredLookup) values() (*pilosa.Row, error) {
 		}
 
 		row = intersect(row, r)
-	}
-
-	if row == nil {
-		return nil, nil
 	}
 
 	// evaluate composition of operations
@@ -390,9 +383,6 @@ func (l *negateLookup) values() (*pilosa.Row, error) {
 		r = difference(r, rr)
 
 		row = intersect(row, r)
-	}
-	if row == nil {
-		return nil, nil
 	}
 
 	// evaluate composition of operations
