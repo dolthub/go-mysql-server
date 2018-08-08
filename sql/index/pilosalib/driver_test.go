@@ -730,6 +730,16 @@ func TestNegateIndex(t *testing.T) {
 	expected := []string{"1", "2", "5"}
 	require.Equal(expected, values)
 
+	// test non existing values
+	lookup, err = idx.(sql.NegateIndex).Not(int64(12739487))
+	require.NoError(err)
+
+	values, err = lookupValues(lookup)
+	require.NoError(err)
+
+	expected = []string{"1", "2", "3", "4", "5"}
+	require.Equal(expected, values)
+
 	lookup, err = multiIdx.(sql.NegateIndex).Not(int64(1), int64(6))
 	require.NoError(err)
 

@@ -369,10 +369,7 @@ func (l *negateLookup) values() (*pilosa.Row, error) {
 		}
 
 		rowID, err := l.mapping.rowID(field.Name(), l.keys[i])
-		if err == io.EOF {
-			continue
-		}
-		if err != nil {
+		if err != nil && err != io.EOF {
 			return nil, err
 		}
 

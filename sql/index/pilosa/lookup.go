@@ -770,11 +770,7 @@ func (l *negateLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 		all := l.index.Union(rows...)
 
 		rowID, err := l.mapping.rowID(frm.Name(), l.keys[i])
-		if err == io.EOF {
-			continue
-		}
-
-		if err != nil {
+		if err != nil && err != io.EOF {
 			return nil, err
 		}
 
