@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/index"
 	"gopkg.in/src-d/go-mysql-server.v0/test"
 )
 
@@ -52,9 +51,23 @@ func TestLoadAll(t *testing.T) {
 	d := NewDriver(tmpDir)
 	idx1, err := d.Create("db", "table", "id1", makeExpressions("table", "hash1"), nil)
 	require.NoError(err)
+	it1 := &testIndexKeyValueIter{
+		offset:      0,
+		total:       64,
+		expressions: idx1.Expressions(),
+		location:    randLocation,
+	}
+	require.NoError(d.Save(sql.NewEmptyContext(), idx1, it1))
 
 	idx2, err := d.Create("db", "table", "id2", makeExpressions("table", "hash1"), nil)
 	require.NoError(err)
+	it2 := &testIndexKeyValueIter{
+		offset:      0,
+		total:       64,
+		expressions: idx2.Expressions(),
+		location:    randLocation,
+	}
+	require.NoError(d.Save(sql.NewEmptyContext(), idx2, it2))
 
 	indexes, err := d.LoadAll("db", "table")
 	require.NoError(err)
@@ -199,16 +212,16 @@ func TestLoadCorruptedIndex(t *testing.T) {
 	defer cleanup(t)
 
 	d := NewDriver(tmpDir)
+	processingFile := d.processingFilePath("db", "table", "id")
+
 	_, err := d.Create("db", "table", "id", nil, nil)
 	require.NoError(err)
-
-	require.NoError(index.CreateProcessingFile(d.processingFilePath("db", "table", "id")))
 
 	_, err = d.loadIndex("db", "table", "id")
 	require.Error(err)
 	require.True(errCorruptedIndex.Is(err))
 
-	_, err = os.Stat(d.processingFilePath("db", "table", "id"))
+	_, err = os.Stat(processingFile)
 	require.Error(err)
 	require.True(os.IsNotExist(err))
 }
