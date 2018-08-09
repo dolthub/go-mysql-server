@@ -44,6 +44,7 @@
 ## Index expressions
 - CREATE INDEX (an index can be created using either column names or a single arbitrary expression).
 - DROP INDEX
+- SHOW {INDEXES | INDEX | KEYS} {FROM | IN} [table name]
 
 ## Join expressions
 - CROSS JOIN
