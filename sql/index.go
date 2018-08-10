@@ -86,7 +86,8 @@ type NegateIndex interface {
 // implemented to grant more capabilities to the index lookup.
 type IndexLookup interface {
 	// Values returns the values in the subset of the index.
-	Values() (IndexValueIter, error)
+	Values(Partition) (IndexValueIter, error)
+
 	// Indexes returns the IDs of all indexes involved in this lookup.
 	Indexes() []string
 }

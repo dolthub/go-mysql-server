@@ -117,51 +117,47 @@ type Expressioner interface {
 	TransformExpressions(TransformExprFunc) (Node, error)
 }
 
-// Table represents a SQL table.
+// Partition represents a partition from a SQL table.
+type Partition interface {
+	Key() []byte
+}
+
+// PartitionIter is an iterator that retrieves partitions.
+type PartitionIter interface {
+	io.Closer
+	Next() (Partition, error)
+}
+
+// Table represents the backend of a SQL table.
 type Table interface {
-	Nameable
-	Node
+	String() string
+	Insert(*Context, Row) error
+	Schema() Schema
+	Partitions(ctx *Context) (PartitionIter, error)
+	PartitionRows(Partition) (RowIter, error)
 }
 
-// Indexable represents a table that supports being indexed and receiving
-// indexes to be able to speed up its execution.
-type Indexable interface {
-	PushdownProjectionAndFiltersTable
-	// IndexKeyValueIter returns an iterator with the values of each row in
-	// the table for the given column names.
-	IndexKeyValueIter(ctx *Context, colNames []string) (IndexKeyValueIter, error)
-	// WithProjectFiltersAndIndex is meant to be called instead of RowIter
-	// method of the table. Returns a new iterator given the columns,
-	// filters and the index so the table can improve its speed instead of
-	// making a full scan.
-	WithProjectFiltersAndIndex(
-		ctx *Context,
-		columns, filters []Expression,
-		index IndexValueIter,
-	) (RowIter, error)
-}
-
-// PushdownProjectionTable is a table that can produce a specific RowIter
-// that's more optimized given the columns that are projected.
-type PushdownProjectionTable interface {
+//FilteredTable is a table that can produce a specific RowIter
+// that's more optimized given the filters.
+type FilteredTable interface {
 	Table
-	// WithProject replaces the RowIter method of the table and returns a new
-	// row iterator given the column names that are projected.
-	WithProject(ctx *Context, colNames []string) (RowIter, error)
-}
-
-// PushdownProjectionAndFiltersTable is a table that can produce a specific
-// RowIter that's more optimized given the columns that are projected and
-// the filters for this table.
-type PushdownProjectionAndFiltersTable interface {
-	Table
-	// HandledFilters returns the subset of filters that can be handled by this
-	// table.
 	HandledFilters(filters []Expression) []Expression
-	// WithProjectAndFilters replaces the RowIter method of the table and
-	// return a new row iterator given the column names that are projected
-	// and the filters applied to this table.
-	WithProjectAndFilters(ctx *Context, columns, filters []Expression) (RowIter, error)
+	WithFilters(filters []Expression) Table
+}
+
+// ProjectedTable is a table that can produce a specific RowIter
+// that's more optimized given the columns that are projected.
+type ProjectedTable interface {
+	Table
+	WithProjection(colNames []string) Table
+}
+
+// IndexableTable represents a table that supports being indexed and
+// receiving indexes to be able to speed up its execution.
+type IndexableTable interface {
+	Table
+	WithIndexLookup(IndexLookup) Table
+	IndexKeyValues(*Context, []string, Partition) (IndexKeyValueIter, error)
 }
 
 // Inserter allow rows to be inserted in them.
