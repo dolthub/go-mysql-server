@@ -2,6 +2,7 @@ package sql // import "gopkg.in/src-d/go-mysql-server.v0/sql"
 
 import (
 	"fmt"
+	"io"
 
 	"gopkg.in/src-d/go-errors.v1"
 )
@@ -179,4 +180,22 @@ type Database interface {
 // Alterable should be implemented by databases that can handle DDL statements
 type Alterable interface {
 	Create(name string, schema Schema) error
+}
+
+type Partition interface {
+	Key() []byte
+}
+
+type PartitionIter interface {
+	io.Closer
+	Next() (Partition, error)
+}
+
+type Partitionable interface {
+	Partitions(*Context) (PartitionIter, error)
+}
+
+type PartitionRowsProvider interface {
+	Schema() Schema
+	PartitionRows(*Context, Partition) (RowIter, error)
 }
