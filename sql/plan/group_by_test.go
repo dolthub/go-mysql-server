@@ -134,3 +134,75 @@ func TestGroupBy_Error(t *testing.T) {
 	_, err := sql.NodeToRows(ctx, p)
 	require.Error(err)
 }
+
+func BenchmarkGroupBy(b *testing.B) {
+	table := benchmarkTable(b)
+
+	node := NewGroupBy(
+		[]sql.Expression{
+			aggregation.NewMax(
+				expression.NewGetField(1, sql.Int64, "b", false),
+			),
+		},
+		nil,
+		table,
+	)
+
+	expected := []sql.Row{{int64(200)}}
+
+	bench := func(node sql.Node, expected []sql.Row) func(*testing.B) {
+		return func(b *testing.B) {
+			require := require.New(b)
+
+			for i := 0; i < b.N; i++ {
+				iter, err := node.RowIter(sql.NewEmptyContext())
+				require.NoError(err)
+
+				rows, err := sql.RowIterToRows(iter)
+				require.NoError(err)
+				require.ElementsMatch(expected, rows)
+			}
+		}
+	}
+
+	b.Run("no grouping", bench(node, expected))
+
+	node = NewGroupBy(
+		[]sql.Expression{
+			expression.NewGetField(0, sql.Int64, "a", false),
+			aggregation.NewMax(
+				expression.NewGetField(1, sql.Int64, "b", false),
+			),
+		},
+		[]sql.Expression{
+			expression.NewGetField(0, sql.Int64, "a", false),
+		},
+		table,
+	)
+
+	expected = []sql.Row{}
+	for i := int64(0); i < 50; i++ {
+		expected = append(expected, sql.NewRow(i, int64(200)))
+	}
+
+	b.Run("grouping", bench(node, expected))
+}
+
+func benchmarkTable(t testing.TB) sql.Table {
+	t.Helper()
+	require := require.New(t)
+
+	table := mem.NewTable("test", sql.Schema{
+		{Name: "a", Type: sql.Int64},
+		{Name: "b", Type: sql.Int64},
+	})
+
+	for i := int64(0); i < 50; i++ {
+		for j := int64(200); j > 0; j-- {
+			row := sql.NewRow(i, j)
+			require.NoError(table.Insert(sql.NewEmptyContext(), row))
+		}
+	}
+
+	return table
+}
