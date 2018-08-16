@@ -384,7 +384,7 @@ func (d *Driver) saveBatch(ctx *sql.Context, m *mapping, colID uint64) error {
 func (d *Driver) savePilosa(ctx *sql.Context, colID uint64) error {
 	span, _ := ctx.Span("pilosa.Save.bitBatch",
 		opentracing.Tag{Key: "cols", Value: colID},
-		opentracing.Tag{Key: "frames", Value: len(d.fields)},
+		opentracing.Tag{Key: "fields", Value: len(d.fields)},
 	)
 	defer span.Finish()
 
@@ -439,7 +439,7 @@ func newBitBatch(size uint64) *bitBatch {
 
 func (b *bitBatch) Clean() {
 	b.rows = make([]uint64, 0, b.size)
-	b.rows = make([]uint64, 0, b.size)
+	b.cols = make([]uint64, 0, b.size)
 	b.pos = 0
 }
 
