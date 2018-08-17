@@ -2,86 +2,284 @@ package mem
 
 import (
 	"bytes"
-	"encoding/binary"
+	"encoding/gob"
 	"fmt"
 	"io"
+	"strconv"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 )
 
 // Table represents an in-memory database table.
 type Table struct {
-	name   string
-	schema sql.Schema
-	data   []sql.Row
+	name       string
+	schema     sql.Schema
+	partitions map[string][]sql.Row
+	keys       [][]byte
+
+	insert int
+
+	Filters []sql.Expression
+	Columns []int
+	Lookup  sql.IndexLookup
 }
+
+var _ sql.Table = (*Table)(nil)
+var _ sql.Inserter = (*Table)(nil)
+var _ sql.FilteredTable = (*Table)(nil)
+var _ sql.ProjectedTable = (*Table)(nil)
+var _ sql.IndexableTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema.
 func NewTable(name string, schema sql.Schema) *Table {
+	return NewPartitionedTable(name, schema, 0)
+}
+
+// NewPartitionedTable creates a new Table with the given name, schema and number of partitions.
+func NewPartitionedTable(name string, schema sql.Schema, numPartitions int) *Table {
+	var keys [][]byte
+	var partitions = map[string][]sql.Row{}
+
+	if numPartitions < 1 {
+		numPartitions = 1
+	}
+
+	for i := 0; i < numPartitions; i++ {
+		key := strconv.Itoa(i)
+		keys = append(keys, []byte(key))
+		partitions[key] = []sql.Row{}
+	}
+
 	return &Table{
-		name:   name,
-		schema: schema,
+		name:       name,
+		schema:     schema,
+		partitions: partitions,
+		keys:       keys,
 	}
 }
 
-// Resolved implements the Resolvable interface.
-func (Table) Resolved() bool {
-	return true
-}
-
-// Name returns the table name.
-func (t *Table) Name() string {
-	return t.name
-}
-
-// Schema implements the Node interface.
+// Schema implements the sql.Table interface.
 func (t *Table) Schema() sql.Schema {
 	return t.schema
 }
 
-// Children implements the Node interface.
-func (t *Table) Children() []sql.Node {
-	return nil
+// Partitions implements the sql.Table interface.
+func (t *Table) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
+	return &partitionIter{keys: t.keys}, nil
 }
 
-// RowIter implements the Node interface.
-func (t *Table) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	return sql.RowsToRowIter(t.data...), nil
+// PartitionRows implements the sql.PartitionRows interface.
+func (t *Table) PartitionRows(partition sql.Partition) (sql.RowIter, error) {
+	key := string(partition.Key())
+	rows, ok := t.partitions[key]
+	if !ok {
+		return nil, fmt.Errorf(
+			"partition not found: %q", partition.Key(),
+		)
+	}
+
+	var values sql.IndexValueIter
+	if t.Lookup != nil {
+		var err error
+		values, err = t.Lookup.Values(partition)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &tableIter{
+		rows:        rows,
+		columns:     t.Columns,
+		filters:     t.Filters,
+		indexValues: values,
+	}, nil
 }
 
-// TransformUp implements the Transformer interface.
-func (t *Table) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(t)
+type partition struct {
+	key []byte
 }
 
-// TransformExpressionsUp implements the Transformer interface.
-func (t *Table) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	return t, nil
+func (p *partition) Key() []byte { return p.key }
+
+type partitionIter struct {
+	keys [][]byte
+	pos  int
+}
+
+func (p *partitionIter) Next() (sql.Partition, error) {
+	if p.pos >= len(p.keys) {
+		return nil, io.EOF
+	}
+
+	key := p.keys[p.pos]
+	p.pos++
+	return &partition{key}, nil
+}
+
+func (p *partitionIter) Close() error { return nil }
+
+type tableIter struct {
+	columns []int
+	filters []sql.Expression
+
+	rows        []sql.Row
+	indexValues sql.IndexValueIter
+	pos         int
+}
+
+var _ sql.RowIter = (*tableIter)(nil)
+
+func (i *tableIter) Next() (sql.Row, error) {
+	row, err := i.getRow()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, f := range i.filters {
+		result, err := f.Eval(sql.NewEmptyContext(), row)
+		if err != nil {
+			return nil, err
+		}
+
+		if result != true {
+			return i.Next()
+		}
+	}
+
+	return projectOnRow(i.columns, row), nil
+}
+
+func (i *tableIter) Close() error {
+	if i.indexValues == nil {
+		return nil
+	}
+
+	return i.indexValues.Close()
+}
+
+func (i *tableIter) getRow() (sql.Row, error) {
+	if i.indexValues != nil {
+		return i.getFromIndex()
+	}
+
+	if i.pos >= len(i.rows) {
+		return nil, io.EOF
+	}
+
+	row := i.rows[i.pos]
+	i.pos++
+	return row, nil
+}
+
+func projectOnRow(columns []int, row sql.Row) sql.Row {
+	if len(columns) < 1 {
+		return row
+	}
+
+	projected := make([]interface{}, len(columns))
+	for i, selected := range columns {
+		projected[i] = row[selected]
+	}
+
+	return projected
+}
+
+func (i *tableIter) getFromIndex() (sql.Row, error) {
+	data, err := i.indexValues.Next()
+	if err != nil {
+		return nil, err
+	}
+
+	value, err := decodeIndexValue(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return i.rows[value.Pos], nil
+}
+
+type indexValue struct {
+	Key string
+	Pos int
+}
+
+func decodeIndexValue(data []byte) (*indexValue, error) {
+	dec := gob.NewDecoder(bytes.NewReader(data))
+	var value indexValue
+	if err := dec.Decode(&value); err != nil {
+		return nil, err
+	}
+
+	return &value, nil
+}
+
+func encodeIndexValue(value *indexValue) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	if err := enc.Encode(value); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 // Insert a new row into the table.
 func (t *Table) Insert(ctx *sql.Context, row sql.Row) error {
-	if len(row) != len(t.schema) {
-		return sql.ErrUnexpectedRowLength.New(len(t.schema), len(row))
+	if err := checkRow(t.schema, row); err != nil {
+		return err
 	}
 
-	for idx, value := range row {
-		c := t.schema[idx]
+	key := string(t.keys[t.insert])
+	t.insert++
+	if t.insert == len(t.keys) {
+		t.insert = 0
+	}
+
+	t.partitions[key] = append(t.partitions[key], row)
+	return nil
+}
+
+func checkRow(schema sql.Schema, row sql.Row) error {
+	if len(row) != len(schema) {
+		return sql.ErrUnexpectedRowLength.New(len(schema), len(row))
+	}
+
+	for i, value := range row {
+		c := schema[i]
 		if !c.Check(value) {
 			return sql.ErrInvalidType.New(value)
 		}
 	}
 
-	t.data = append(t.data, row.Copy())
 	return nil
 }
 
-func (t Table) String() string {
+// String implements the sql.Table inteface.
+func (t *Table) String() string {
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode("Table(%s)", t.name)
-	var schema = make([]string, len(t.schema))
-	for i, col := range t.schema {
+
+	kind := ""
+	if len(t.Columns) > 0 {
+		kind += "Projected "
+	}
+
+	if len(t.Filters) > 0 {
+		kind += "Filtered "
+	}
+
+	if t.Lookup != nil {
+		kind += "Indexed"
+	}
+
+	if kind != "" {
+		kind = ": " + kind
+	}
+
+	_ = p.WriteNode("Table(%s)%s", t.name, kind)
+	var schema = make([]string, len(t.Schema()))
+	for i, col := range t.Schema() {
 		schema[i] = fmt.Sprintf(
 			"Column(%s, %s, nullable=%v)",
 			col.Name,
@@ -93,101 +291,163 @@ func (t Table) String() string {
 	return p.String()
 }
 
-var _ sql.Indexable = (*Table)(nil)
-
-var errColumnNotFound = errors.NewKind("could not find column %s")
-
-// IndexKeyValueIter implements the Indexable interface.
-func (t *Table) IndexKeyValueIter(ctx *sql.Context, colNames []string) (sql.IndexKeyValueIter, error) {
-	var columns = make([]int, len(colNames))
-	for i, name := range colNames {
-		var found bool
-		for j, col := range t.schema {
-			if col.Name == name {
-				columns[i] = j
-				found = true
-				break
+// HandledFilters implements the sql.FilteredTable interface.
+func (t *Table) HandledFilters(filters []sql.Expression) []sql.Expression {
+	var handled []sql.Expression
+	for _, f := range filters {
+		var hasOtherFields bool
+		f.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+			if e, ok := e.(*expression.GetField); ok {
+				if e.Table() != t.name || !t.schema.Contains(e.Name(), t.name) {
+					hasOtherFields = true
+				}
 			}
+
+			return e, nil
+		})
+
+		if !hasOtherFields {
+			handled = append(handled, f)
+		}
+	}
+
+	return handled
+}
+
+// WithFilters implements the sql.FilteredTable interface.
+func (t *Table) WithFilters(filters []sql.Expression) sql.Table {
+	if len(filters) < 1 {
+		return t
+	}
+
+	if t.Filters != nil {
+		filters = append(filters, t.Filters...)
+	}
+
+	return &Table{
+		name:       t.name,
+		schema:     t.schema,
+		partitions: t.partitions,
+		keys:       t.keys,
+		insert:     t.insert,
+		Filters:    filters,
+		Columns:    t.Columns,
+		Lookup:     t.Lookup,
+	}
+
+}
+
+// WithProjection implements the sql.ProjectedTable interface.
+func (t *Table) WithProjection(colNames []string) sql.Table {
+	if len(colNames) < 1 {
+		return t
+	}
+
+	columns, schema, _ := t.newColumnIndexesAndSchema(colNames)
+	return &Table{
+		name:       t.name,
+		schema:     schema,
+		partitions: t.partitions,
+		keys:       t.keys,
+		insert:     t.insert,
+		Filters:    t.Filters,
+		Columns:    columns,
+		Lookup:     t.Lookup,
+	}
+}
+
+func (t *Table) newColumnIndexesAndSchema(colNames []string) ([]int, sql.Schema, error) {
+	columns := []int{}
+	schema := []*sql.Column{}
+
+	for _, name := range colNames {
+		i := t.schema.IndexOf(name, t.name)
+		if i == -1 {
+			return nil, nil, errColumnNotFound.New(name)
 		}
 
-		if !found {
-			return nil, errColumnNotFound.New(name)
+		if len(t.Columns) == 0 {
+			// if the table hasn't been projected before
+			// match against the origianl schema
+			columns = append(columns, i)
+		} else {
+			// get indexes for the new projections from
+			// the orginal indexes.
+			columns = append(columns, t.Columns[i])
 		}
+
+		schema = append(schema, t.schema[i])
 	}
 
-	return &keyValueIter{t.data, columns, 0}, nil
+	return columns, schema, nil
 }
 
-// HandledFilters implements the PushdownProjectionAndFiltersTable interface.
-func (t *Table) HandledFilters([]sql.Expression) []sql.Expression {
-	return nil
+// WithIndexLookup implements the sql.IndexableTable interface.
+func (t *Table) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
+	if lookup == nil {
+		return t
+	}
+
+	return &Table{
+		name:       t.name,
+		schema:     t.schema,
+		partitions: t.partitions,
+		keys:       t.keys,
+		insert:     t.insert,
+		Filters:    t.Filters,
+		Columns:    t.Columns,
+		Lookup:     lookup,
+	}
 }
 
-// WithProjectAndFilters implements the PushdownProjectionAndFiltersTable interface.
-func (t *Table) WithProjectAndFilters(
+// IndexKeyValues implements the sql.IndexableTable interface.
+func (t *Table) IndexKeyValues(
 	ctx *sql.Context,
-	columns, filters []sql.Expression,
-) (sql.RowIter, error) {
-	return t.RowIter(ctx)
-}
+	colNames []string,
+	partition sql.Partition) (sql.IndexKeyValueIter, error) {
 
-// WithProjectFiltersAndIndex implements the Indexable interface.
-func (t *Table) WithProjectFiltersAndIndex(
-	ctx *sql.Context,
-	columns, filters []sql.Expression,
-	index sql.IndexValueIter,
-) (sql.RowIter, error) {
-	return &indexIter{t.data, index}, nil
-}
-
-type keyValueIter struct {
-	data    []sql.Row
-	columns []int
-	pos     int
-}
-
-func (i *keyValueIter) Next() ([]interface{}, []byte, error) {
-	if i.pos >= len(i.data) {
-		return nil, nil, io.EOF
-	}
-
-	var buf bytes.Buffer
-	if err := binary.Write(&buf, binary.LittleEndian, int64(i.pos)); err != nil {
-		return nil, nil, err
-	}
-
-	var values = make([]interface{}, len(i.columns))
-	for j, col := range i.columns {
-		values[j] = i.data[i.pos][col]
-	}
-
-	i.pos++
-
-	return values, buf.Bytes(), nil
-}
-
-func (i *keyValueIter) Close() error {
-	i.pos = len(i.data)
-	return nil
-}
-
-type indexIter struct {
-	data  []sql.Row
-	index sql.IndexValueIter
-}
-
-func (i *indexIter) Next() (sql.Row, error) {
-	data, err := i.index.Next()
+	rowIter, err := t.PartitionRows(partition)
 	if err != nil {
 		return nil, err
 	}
 
-	var pos int64
-	if err := binary.Read(bytes.NewBuffer(data), binary.LittleEndian, &pos); err != nil {
+	columns, _, err := t.newColumnIndexesAndSchema(colNames)
+	if err != nil {
 		return nil, err
 	}
 
-	return i.data[int(pos)], nil
+	return &idxKVIter{
+		key:     string(partition.Key()),
+		iter:    rowIter,
+		columns: columns,
+	}, nil
 }
 
-func (i *indexIter) Close() error { return i.index.Close() }
+var errColumnNotFound = errors.NewKind("could not find column %s")
+
+type idxKVIter struct {
+	key     string
+	iter    sql.RowIter
+	columns []int
+	pos     int
+}
+
+func (i *idxKVIter) Next() ([]interface{}, []byte, error) {
+	row, err := i.iter.Next()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	value := &indexValue{Key: i.key, Pos: i.pos}
+	data, err := encodeIndexValue(value)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	i.pos++
+	return projectOnRow(i.columns, row), data, nil
+}
+
+func (i *idxKVIter) Close() error {
+	return i.iter.Close()
+}

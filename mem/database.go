@@ -41,6 +41,5 @@ func (d *Database) Create(name string, schema sql.Schema) error {
 	}
 
 	d.tables[name] = NewTable(name, schema)
-
 	return nil
 }
