@@ -128,10 +128,10 @@ func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, 
 	switch n := n.(type) {
 	case *plan.TableAlias:
 		// table aliases should not be validated
-		if child, ok := n.Child.(sql.Table); ok {
+		if child, ok := n.Child.(*plan.ResolvedTable); ok {
 			return n, validateSchema(child)
 		}
-	case sql.Table:
+	case *plan.ResolvedTable:
 		return n, validateSchema(n)
 	}
 	return n, nil
@@ -169,7 +169,7 @@ func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node,
 	return n, nil
 }
 
-func validateSchema(t sql.Table) error {
+func validateSchema(t *plan.ResolvedTable) error {
 	name := t.Name()
 	for _, col := range t.Schema() {
 		if col.Source != name {

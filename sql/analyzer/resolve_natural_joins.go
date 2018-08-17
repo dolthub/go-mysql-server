@@ -34,7 +34,7 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 		a.Log("transforming node of type: %T", n)
 
 		if alias, ok := n.(*plan.TableAlias); ok {
-			table := alias.Child.(sql.Table).Name()
+			table := alias.Child.(*plan.ResolvedTable).Name()
 			aliasTables[alias.Name()] = append(aliasTables[alias.Name()], table)
 			return n, nil
 		}
