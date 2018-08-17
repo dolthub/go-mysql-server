@@ -231,6 +231,10 @@ func (l indexLookup) Values() (sql.IndexValueIter, error) {
 	return &indexValueIter{l.values, 0}, nil
 }
 
+func (indexLookup) Indexes() []string {
+	return nil
+}
+
 type indexValueIter struct {
 	values []interface{}
 	pos    int

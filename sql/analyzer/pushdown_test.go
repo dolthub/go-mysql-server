@@ -315,6 +315,10 @@ func (dummyIndexLookup) Values() (sql.IndexValueIter, error) {
 	return nil, nil
 }
 
+func (dummyIndexLookup) Indexes() []string {
+	return nil
+}
+
 type indexableTable struct {
 	sql.PushdownProjectionAndFiltersTable
 }
