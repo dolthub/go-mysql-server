@@ -92,6 +92,21 @@ func TestCompare(t *testing.T) {
 	}
 }
 
+func TestIndexes(t *testing.T) {
+	testCases := []sql.IndexLookup{
+		&indexLookup{id: "foo"},
+		&negateLookup{id: "foo"},
+		&ascendLookup{filteredLookup: &filteredLookup{id: "foo"}},
+		&descendLookup{filteredLookup: &filteredLookup{id: "foo"}},
+	}
+
+	for _, tt := range testCases {
+		t.Run(fmt.Sprintf("%T", tt), func(t *testing.T) {
+			require.Equal(t, []string{"foo"}, tt.Indexes())
+		})
+	}
+}
+
 func TestDecodeGob(t *testing.T) {
 	testCases := []interface{}{
 		"foo",
