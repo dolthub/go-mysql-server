@@ -10,103 +10,49 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
-func TestPushdownProjection(t *testing.T) {
+func TestPushdownProjectionAndFilters(t *testing.T) {
 	require := require.New(t)
 	f := getRule("pushdown")
 
-	table := &pushdownProjectionTable{mem.NewTable("mytable", sql.Schema{
-		{Name: "i", Type: sql.Int32},
-		{Name: "f", Type: sql.Float64},
-		{Name: "t", Type: sql.Text},
-	})}
-
-	table2 := &pushdownProjectionTable{mem.NewTable("mytable2", sql.Schema{
-		{Name: "i2", Type: sql.Int32},
-		{Name: "f2", Type: sql.Float64},
-		{Name: "t2", Type: sql.Text},
-	})}
-
-	node := plan.NewProject(
-		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-		},
-		plan.NewFilter(
-			expression.NewAnd(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-					expression.NewLiteral(3.14, sql.Float64),
-				),
-				expression.NewIsNull(
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
-				),
-			),
-			plan.NewCrossJoin(table, table2),
-		),
-	)
-
-	expected := plan.NewProject(
-		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-		},
-		plan.NewFilter(
-			expression.NewAnd(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-					expression.NewLiteral(3.14, sql.Float64),
-				),
-				expression.NewIsNull(
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
-				),
-			),
-			plan.NewCrossJoin(
-				plan.NewPushdownProjectionTable([]string{"i", "f"}, table),
-				plan.NewPushdownProjectionTable([]string{"i2"}, table2),
-			),
-		),
-	)
-
-	result, err := f.Apply(sql.NewEmptyContext(), nil, node)
-	require.NoError(err)
-	require.Equal(expected, result)
-}
-
-func TestPushdownProjectionAndFilters(t *testing.T) {
-	require := require.New(t)
-	a := NewDefault(sql.NewCatalog())
-
-	table := &pushdownProjectionAndFiltersTable{mem.NewTable("mytable", sql.Schema{
+	table := mem.NewTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
-	})}
+	})
 
-	table2 := &pushdownProjectionAndFiltersTable{mem.NewTable("mytable2", sql.Schema{
+	table2 := mem.NewTable("mytable2", sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
-	})}
+	})
+
+	db := mem.NewDatabase("mydb")
+	db.AddTable("mytable", table)
+	db.AddTable("mytable2", table2)
+
+	catalog := sql.NewCatalog()
+	catalog.Databases = []sql.Database{db}
+	a := NewDefault(catalog)
+	a.CurrentDatabase = "mydb"
 
 	node := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 		},
 		plan.NewFilter(
 			expression.NewAnd(
-				expression.NewAnd(
-					expression.NewEquals(
-						expression.NewUnresolvedQualifiedColumn("mytable", "f"),
-						expression.NewLiteral(3.14, sql.Float64),
-					),
-					expression.NewGreaterThan(
-						expression.NewUnresolvedQualifiedColumn("mytable", "f"),
-						expression.NewLiteral(3., sql.Float64),
-					),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+					expression.NewLiteral(3.14, sql.Float64),
 				),
 				expression.NewIsNull(
-					expression.NewUnresolvedQualifiedColumn("mytable2", "i2"),
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
 				),
 			),
-			plan.NewCrossJoin(table, table2),
+			plan.NewCrossJoin(
+				plan.NewResolvedTable("mytable", table),
+				plan.NewResolvedTable("mytable2", table2),
+			),
 		),
 	)
 
@@ -114,70 +60,90 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 		},
-		plan.NewFilter(
-			expression.NewAnd(
-				expression.NewGreaterThan(
-					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-					expression.NewLiteral(3., sql.Float64),
-				),
-				expression.NewIsNull(
-					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
-				),
-			),
-			plan.NewCrossJoin(
-				plan.NewPushdownProjectionAndFiltersTable(
-					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+		plan.NewCrossJoin(
+			plan.NewResolvedTable(
+				"mytable",
+				table.WithFilters([]sql.Expression{
+					expression.NewEquals(
 						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-					},
-					[]sql.Expression{
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-							expression.NewLiteral(3.14, sql.Float64),
-						),
-					},
-					table,
-				),
-				plan.NewPushdownProjectionAndFiltersTable(
-					[]sql.Expression{
+						expression.NewLiteral(3.14, sql.Float64),
+					),
+				}).(*mem.Table).WithProjection([]string{"i", "f"}),
+			),
+			plan.NewResolvedTable(
+				"mytable2",
+				table2.WithFilters([]sql.Expression{
+					expression.NewIsNull(
 						expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
-					},
-					nil,
-					table2,
-				),
+					),
+				}).(*mem.Table).WithProjection([]string{"i2"}),
 			),
 		),
 	)
 
-	result, err := a.Analyze(sql.NewEmptyContext(), node)
+	result, err := f.Apply(sql.NewEmptyContext(), a, node)
 	require.NoError(err)
 	require.Equal(expected, result)
 }
 
 func TestPushdownIndexable(t *testing.T) {
 	require := require.New(t)
-	a := NewDefault(sql.NewCatalog())
 
-	var index1, index2, index3 dummyIndex
-	var lookup, lookup2 dummyIndexLookup
+	table := mem.NewTable("mytable", sql.Schema{
+		{Name: "i", Type: sql.Int32, Source: "mytable"},
+		{Name: "f", Type: sql.Float64, Source: "mytable"},
+		{Name: "t", Type: sql.Text, Source: "mytable"},
+	})
 
-	table := &indexable{
-		&indexLookup{lookup, []sql.Index{index1, index2}},
-		&indexableTable{&pushdownProjectionAndFiltersTable{mem.NewTable("mytable", sql.Schema{
-			{Name: "i", Type: sql.Int32, Source: "mytable"},
-			{Name: "f", Type: sql.Float64, Source: "mytable"},
-			{Name: "t", Type: sql.Text, Source: "mytable"},
-		})}},
+	table2 := mem.NewTable("mytable2", sql.Schema{
+		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
+		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
+		{Name: "t2", Type: sql.Text, Source: "mytable2"},
+	})
+
+	db := mem.NewDatabase("")
+	db.AddTable("mytable", table)
+	db.AddTable("mytable2", table2)
+
+	catalog := sql.NewCatalog()
+	catalog.Databases = []sql.Database{db}
+
+	idx1 := &dummyIndex{
+		"mytable",
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+		},
 	}
+	done, ready, err := catalog.AddIndex(idx1)
+	require.NoError(err)
+	close(done)
+	<-ready
 
-	table2 := &indexable{
-		&indexLookup{lookup2, []sql.Index{index3}},
-		&indexableTable{&pushdownProjectionAndFiltersTable{mem.NewTable("mytable2", sql.Schema{
-			{Name: "i2", Type: sql.Int32, Source: "mytable2"},
-			{Name: "f2", Type: sql.Float64, Source: "mytable2"},
-			{Name: "t2", Type: sql.Text, Source: "mytable2"},
-		})}},
+	idx2 := &dummyIndex{
+		"mytable",
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+		},
 	}
+	done, ready, err = catalog.AddIndex(idx2)
+	require.NoError(err)
+	close(done)
+	<-ready
+
+	idx3 := &dummyIndex{
+		"mytable2",
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+		},
+	}
+	done, ready, err = catalog.AddIndex(idx3)
+
+	require.NoError(err)
+	close(done)
+	<-ready
+
+	a := NewDefault(catalog)
+	a.CurrentDatabase = ""
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -191,58 +157,60 @@ func TestPushdownIndexable(t *testing.T) {
 						expression.NewLiteral(3.14, sql.Float64),
 					),
 					expression.NewGreaterThan(
-						expression.NewUnresolvedQualifiedColumn("mytable", "f"),
-						expression.NewLiteral(3., sql.Float64),
+						expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+						expression.NewLiteral(1, sql.Int32),
 					),
 				),
-				expression.NewIsNull(
-					expression.NewUnresolvedQualifiedColumn("mytable2", "i2"),
-				),
-			),
-			plan.NewCrossJoin(table, table2),
-		),
-	)
-
-	expected := &releaser{plan.NewProject(
-		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-		},
-		plan.NewFilter(
-			expression.NewAnd(
-				expression.NewGreaterThan(
-					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-					expression.NewLiteral(3., sql.Float64),
-				),
-				expression.NewIsNull(
-					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
+				expression.NewNot(
+					expression.NewEquals(
+						expression.NewUnresolvedQualifiedColumn("mytable2", "i2"),
+						expression.NewLiteral(2, sql.Int32),
+					),
 				),
 			),
 			plan.NewCrossJoin(
-				plan.NewIndexableTable(
-					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-					},
-					[]sql.Expression{
+				plan.NewResolvedTable("mytable", table),
+				plan.NewResolvedTable("mytable2", table2),
+			),
+		),
+	)
+
+	expected := &releaser{
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+			},
+			plan.NewCrossJoin(
+				plan.NewResolvedTable(
+					"mytable",
+					table.WithFilters([]sql.Expression{
 						expression.NewEquals(
 							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
 							expression.NewLiteral(3.14, sql.Float64),
 						),
-					},
-					lookup,
-					table.Indexable,
+						expression.NewGreaterThan(
+							expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+							expression.NewLiteral(1, sql.Int32),
+						),
+					}).(*mem.Table).
+						WithProjection([]string{"i", "f"}).(*mem.Table).
+						WithIndexLookup(&mergeableIndexLookup{id: "3.14"}),
 				),
-				plan.NewIndexableTable(
-					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
-					},
-					nil,
-					lookup2,
-					table2.Indexable,
+				plan.NewResolvedTable(
+					"mytable2",
+					table2.WithFilters([]sql.Expression{
+						expression.NewNot(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+								expression.NewLiteral(2, sql.Int32),
+							),
+						),
+					}).(*mem.Table).
+						WithProjection([]string{"i2"}).(*mem.Table).
+						WithIndexLookup(&negateIndexLookup{value: "2"}),
 				),
 			),
 		),
-	),
 		nil,
 	}
 
@@ -261,84 +229,4 @@ func TestPushdownIndexable(t *testing.T) {
 	require.NoError(err)
 
 	require.Equal(expected, result)
-}
-
-type pushdownProjectionTable struct {
-	sql.Table
-}
-
-var _ sql.PushdownProjectionTable = (*pushdownProjectionTable)(nil)
-
-func (pushdownProjectionTable) WithProject(*sql.Context, []string) (sql.RowIter, error) {
-	panic("not implemented")
-}
-
-func (t *pushdownProjectionTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(t)
-}
-
-func (t *pushdownProjectionTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	return t, nil
-}
-
-type pushdownProjectionAndFiltersTable struct {
-	sql.Table
-}
-
-var _ sql.PushdownProjectionAndFiltersTable = (*pushdownProjectionAndFiltersTable)(nil)
-
-func (pushdownProjectionAndFiltersTable) HandledFilters(filters []sql.Expression) []sql.Expression {
-	var handled []sql.Expression
-	for _, f := range filters {
-		if eq, ok := f.(*expression.Equals); ok {
-			handled = append(handled, eq)
-		}
-	}
-	return handled
-}
-
-func (pushdownProjectionAndFiltersTable) WithProjectAndFilters(_ *sql.Context, cols, filters []sql.Expression) (sql.RowIter, error) {
-	panic("not implemented")
-}
-
-func (t *pushdownProjectionAndFiltersTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(t)
-}
-
-func (t *pushdownProjectionAndFiltersTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	return t, nil
-}
-
-type dummyIndexLookup struct{}
-
-func (dummyIndexLookup) Values() (sql.IndexValueIter, error) {
-	return nil, nil
-}
-
-func (dummyIndexLookup) Indexes() []string {
-	return nil
-}
-
-type indexableTable struct {
-	sql.PushdownProjectionAndFiltersTable
-}
-
-func (i *indexableTable) IndexKeyValueIter(_ *sql.Context, colNames []string) (sql.IndexKeyValueIter, error) {
-	panic("not implemented")
-}
-
-func (i *indexableTable) WithProjectFiltersAndIndex(
-	ctx *sql.Context,
-	columns, filters []sql.Expression,
-	index sql.IndexValueIter,
-) (sql.RowIter, error) {
-	panic("not implemented")
-}
-
-func (i *indexableTable) TransformUp(fn sql.TransformNodeFunc) (sql.Node, error) {
-	return fn(i)
-}
-
-func (i *indexableTable) TransformExpressionsUp(fn sql.TransformExprFunc) (sql.Node, error) {
-	return i, nil
 }

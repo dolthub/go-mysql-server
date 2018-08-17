@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -78,14 +79,14 @@ func (c *CreateIndex) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	table, ok := c.Table.(sql.Indexable)
+	table, ok := c.Table.(*ResolvedTable)
 	if !ok {
 		return nil, ErrNotIndexable.New()
 	}
 
-	nameable, ok := c.Table.(sql.Nameable)
+	indexable, ok := table.Table.(sql.IndexableTable)
 	if !ok {
-		return nil, ErrTableNotNameable.New()
+		return nil, ErrNotIndexable.New()
 	}
 
 	var driver sql.IndexDriver
@@ -112,7 +113,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 
 	index, err := driver.Create(
 		c.CurrentDatabase,
-		nameable.Name(),
+		table.Name(),
 		c.Name,
 		exprs,
 		c.Config,
@@ -121,7 +122,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	iter, err := getIndexKeyValueIter(ctx, table, columns, exprs)
+	iter, err := getIndexKeyValueIter(ctx, indexable, columns, exprs)
 	if err != nil {
 		return nil, err
 	}
@@ -321,16 +322,47 @@ func getColumnsAndPrepareExpressions(
 }
 
 type evalKeyValueIter struct {
-	ctx   *sql.Context
-	iter  sql.IndexKeyValueIter
-	exprs []sql.Expression
+	indexable sql.IndexableTable
+	ctx       *sql.Context
+
+	piter   sql.PartitionIter
+	iter    sql.IndexKeyValueIter
+	columns []string
+	exprs   []sql.Expression
 }
 
 func (eit *evalKeyValueIter) Next() ([]interface{}, []byte, error) {
+	if eit.iter == nil {
+		if eit.piter == nil {
+			return nil, nil, io.EOF
+		}
+
+		partition, err := eit.piter.Next()
+		if err != nil {
+			return nil, nil, err
+		}
+
+		iter, err := eit.indexable.IndexKeyValues(
+			eit.ctx, eit.columns, partition,
+		)
+
+		if err != nil {
+			return nil, nil, err
+		}
+
+		eit.iter = iter
+	}
+
 	vals, loc, err := eit.iter.Next()
 	if err != nil {
+		if err == io.EOF {
+			eit.iter = nil
+			return eit.Next()
+		}
+
 		return nil, nil, err
 	}
+
 	row := sql.NewRow(vals...)
 	evals := make([]interface{}, len(eit.exprs))
 	for i, ex := range eit.exprs {
@@ -346,16 +378,21 @@ func (eit *evalKeyValueIter) Next() ([]interface{}, []byte, error) {
 }
 
 func (eit *evalKeyValueIter) Close() error {
-	return eit.iter.Close()
+	return eit.piter.Close()
 }
 
-func getIndexKeyValueIter(ctx *sql.Context, table sql.Indexable, columns []string, exprs []sql.Expression) (*evalKeyValueIter, error) {
-	iter, err := table.IndexKeyValueIter(ctx, columns)
+func getIndexKeyValueIter(ctx *sql.Context, table sql.IndexableTable, columns []string, exprs []sql.Expression) (*evalKeyValueIter, error) {
+	piter, err := table.Partitions(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &evalKeyValueIter{ctx, iter, exprs}, nil
+	return &evalKeyValueIter{
+		indexable: table,
+		ctx:       ctx,
+		piter:     piter,
+		columns:   columns,
+		exprs:     exprs}, nil
 }
 
 type loggingKeyValueIter struct {

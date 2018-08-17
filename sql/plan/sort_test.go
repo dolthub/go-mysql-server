@@ -36,7 +36,7 @@ func TestSort(t *testing.T) {
 		{Column: expression.NewGetField(1, sql.Int32, "col2", true), Order: Ascending, NullOrdering: NullsFirst},
 		{Column: expression.NewGetField(0, sql.Text, "col1", true), Order: Descending, NullOrdering: NullsLast},
 	}
-	s := NewSort(sf, child)
+	s := NewSort(sf, NewResolvedTable("test", child))
 	require.Equal(schema, s.Schema())
 
 	expected := []sql.Row{
@@ -76,7 +76,7 @@ func TestSortAscending(t *testing.T) {
 	sf := []SortField{
 		{Column: expression.NewGetField(0, sql.Text, "col1", true), Order: Ascending, NullOrdering: NullsFirst},
 	}
-	s := NewSort(sf, child)
+	s := NewSort(sf, NewResolvedTable("test", child))
 	require.Equal(schema, s.Schema())
 
 	expected := []sql.Row{
@@ -116,7 +116,7 @@ func TestSortDescending(t *testing.T) {
 	sf := []SortField{
 		{Column: expression.NewGetField(0, sql.Text, "col1", true), Order: Descending, NullOrdering: NullsFirst},
 	}
-	s := NewSort(sf, child)
+	s := NewSort(sf, NewResolvedTable("test", child))
 	require.Equal(schema, s.Schema())
 
 	expected := []sql.Row{

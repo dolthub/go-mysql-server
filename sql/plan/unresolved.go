@@ -13,12 +13,17 @@ var ErrUnresolvedTable = errors.NewKind("unresolved table")
 // UnresolvedTable is a table that has not been resolved yet but whose name is known.
 type UnresolvedTable struct {
 	// Name of the table.
-	Name string
+	name string
 }
 
 // NewUnresolvedTable creates a new Unresolved table.
 func NewUnresolvedTable(name string) *UnresolvedTable {
 	return &UnresolvedTable{name}
+}
+
+// Name implements the Nameable interface.
+func (t *UnresolvedTable) Name() string {
+	return t.name
 }
 
 // Resolved implements the Resolvable interface.
@@ -43,7 +48,7 @@ func (*UnresolvedTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 
 // TransformUp implements the Transformable interface.
 func (t *UnresolvedTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(NewUnresolvedTable(t.Name))
+	return f(NewUnresolvedTable(t.name))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
@@ -52,5 +57,5 @@ func (t *UnresolvedTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.N
 }
 
 func (t UnresolvedTable) String() string {
-	return fmt.Sprintf("UnresolvedTable(%s)", t.Name)
+	return fmt.Sprintf("UnresolvedTable(%s)", t.name)
 }

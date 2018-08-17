@@ -26,7 +26,10 @@ func TestResolveNaturalJoins(t *testing.T) {
 		{Name: "e", Type: sql.Int64, Source: "t2"},
 	})
 
-	node := plan.NewNaturalJoin(left, right)
+	node := plan.NewNaturalJoin(
+		plan.NewResolvedTable("t1", left),
+		plan.NewResolvedTable("t2", right),
+	)
 	rule := getRule("resolve_natural_joins")
 
 	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
@@ -41,8 +44,8 @@ func TestResolveNaturalJoins(t *testing.T) {
 			expression.NewGetFieldWithTable(6, sql.Int64, "t2", "e", false),
 		},
 		plan.NewInnerJoin(
-			left,
-			right,
+			plan.NewResolvedTable("t1", left),
+			plan.NewResolvedTable("t2", right),
 			expression.JoinAnd(
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
@@ -80,7 +83,10 @@ func TestResolveNaturalJoinsColumns(t *testing.T) {
 		[]sql.Expression{
 			expression.NewUnresolvedQualifiedColumn("t2", "b"),
 		},
-		plan.NewNaturalJoin(left, right),
+		plan.NewNaturalJoin(
+			plan.NewResolvedTable("t1", left),
+			plan.NewResolvedTable("t2", right),
+		),
 	)
 
 	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
@@ -99,8 +105,8 @@ func TestResolveNaturalJoinsColumns(t *testing.T) {
 				expression.NewGetFieldWithTable(6, sql.Int64, "t2", "e", false),
 			},
 			plan.NewInnerJoin(
-				left,
-				right,
+				plan.NewResolvedTable("t1", left),
+				plan.NewResolvedTable("t2", right),
 				expression.JoinAnd(
 					expression.NewEquals(
 						expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
@@ -141,8 +147,8 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 			expression.NewUnresolvedQualifiedColumn("t2-alias", "c"),
 		},
 		plan.NewNaturalJoin(
-			left,
-			plan.NewTableAlias("t2-alias", right),
+			plan.NewResolvedTable("t1", left),
+			plan.NewTableAlias("t2-alias", plan.NewResolvedTable("t2", right)),
 		),
 	)
 
@@ -163,8 +169,8 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 				expression.NewGetFieldWithTable(6, sql.Int64, "t2", "e", false),
 			},
 			plan.NewInnerJoin(
-				left,
-				plan.NewTableAlias("t2-alias", right),
+				plan.NewResolvedTable("t1", left),
+				plan.NewTableAlias("t2-alias", plan.NewResolvedTable("t2", right)),
 				expression.JoinAnd(
 					expression.NewEquals(
 						expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
@@ -215,10 +221,10 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 		},
 		plan.NewNaturalJoin(
 			plan.NewNaturalJoin(
-				left,
-				plan.NewTableAlias("t2-alias", right),
+				plan.NewResolvedTable("t1", left),
+				plan.NewTableAlias("t2-alias", plan.NewResolvedTable("t2", right)),
 			),
-			plan.NewTableAlias("t3-alias", upperRight),
+			plan.NewTableAlias("t3-alias", plan.NewResolvedTable("t3", upperRight)),
 		),
 	)
 
@@ -252,8 +258,8 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 						expression.NewGetFieldWithTable(7, sql.Int64, "t2", "e", false),
 					},
 					plan.NewInnerJoin(
-						left,
-						plan.NewTableAlias("t2-alias", right),
+						plan.NewResolvedTable("t1", left),
+						plan.NewTableAlias("t2-alias", plan.NewResolvedTable("t2", right)),
 						expression.JoinAnd(
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
@@ -266,7 +272,7 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 						),
 					),
 				),
-				plan.NewTableAlias("t3-alias", upperRight),
+				plan.NewTableAlias("t3-alias", plan.NewResolvedTable("t3", upperRight)),
 				expression.JoinAnd(
 					expression.NewEquals(
 						expression.NewGetFieldWithTable(0, sql.Int64, "t1", "b", false),
@@ -303,7 +309,10 @@ func TestResolveNaturalJoinsEqual(t *testing.T) {
 		{Name: "c", Type: sql.Int64, Source: "t2"},
 	})
 
-	node := plan.NewNaturalJoin(left, right)
+	node := plan.NewNaturalJoin(
+		plan.NewResolvedTable("t1", left),
+		plan.NewResolvedTable("t2", right),
+	)
 	rule := getRule("resolve_natural_joins")
 
 	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
@@ -316,8 +325,8 @@ func TestResolveNaturalJoinsEqual(t *testing.T) {
 			expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
 		},
 		plan.NewInnerJoin(
-			left,
-			right,
+			plan.NewResolvedTable("t1", left),
+			plan.NewResolvedTable("t2", right),
 			expression.JoinAnd(
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "a", false),
@@ -352,12 +361,18 @@ func TestResolveNaturalJoinsDisjoint(t *testing.T) {
 		{Name: "e", Type: sql.Int64, Source: "t2"},
 	})
 
-	node := plan.NewNaturalJoin(left, right)
+	node := plan.NewNaturalJoin(
+		plan.NewResolvedTable("t1", left),
+		plan.NewResolvedTable("t2", right),
+	)
 	rule := getRule("resolve_natural_joins")
 
 	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
 	require.NoError(err)
 
-	expected := plan.NewCrossJoin(left, right)
+	expected := plan.NewCrossJoin(
+		plan.NewResolvedTable("t1", left),
+		plan.NewResolvedTable("t2", right),
+	)
 	require.Equal(expected, result)
 }

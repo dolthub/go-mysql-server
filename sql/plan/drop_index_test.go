@@ -13,11 +13,11 @@ import (
 func TestDeleteIndex(t *testing.T) {
 	require := require.New(t)
 
-	table := &indexableTable{mem.NewTable("foo", sql.Schema{
+	table := mem.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
-	})}
+	})
 
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
@@ -40,7 +40,7 @@ func TestDeleteIndex(t *testing.T) {
 	require.NotNil(idx)
 	catalog.ReleaseIndex(idx)
 
-	di := NewDropIndex("idx", table)
+	di := NewDropIndex("idx", NewResolvedTable("foo", table))
 	di.Catalog = catalog
 	di.CurrentDatabase = "foo"
 

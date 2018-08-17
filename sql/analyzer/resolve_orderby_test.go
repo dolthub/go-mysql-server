@@ -33,7 +33,7 @@ func TestResolveOrderBy(t *testing.T) {
 						"x",
 					),
 				},
-				table,
+				plan.NewResolvedTable("foo", table),
 			),
 		)
 
@@ -53,7 +53,7 @@ func TestResolveOrderBy(t *testing.T) {
 						"x",
 					),
 				},
-				table,
+				plan.NewResolvedTable("foo", table),
 			),
 		)
 
@@ -68,7 +68,7 @@ func TestResolveOrderBy(t *testing.T) {
 				[]plan.SortField{
 					{Column: expression.NewUnresolvedColumn("a")},
 				},
-				table,
+				plan.NewResolvedTable("foo", table),
 			),
 		)
 
@@ -89,7 +89,7 @@ func TestResolveOrderBy(t *testing.T) {
 						"x",
 					),
 				},
-				table,
+				plan.NewResolvedTable("foo", table),
 			),
 		)
 
@@ -110,7 +110,7 @@ func TestResolveOrderBy(t *testing.T) {
 						),
 						expression.NewUnresolvedColumn("a"),
 					},
-					table,
+					plan.NewResolvedTable("foo", table),
 				),
 			),
 		)
@@ -137,7 +137,7 @@ func TestResolveOrderBy(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 				},
-				table,
+				plan.NewResolvedTable("foo", table),
 			),
 		)
 
@@ -160,7 +160,7 @@ func TestResolveOrderBy(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 				},
-				table,
+				plan.NewResolvedTable("foo", table),
 			),
 		)
 
@@ -178,7 +178,7 @@ func TestResolveOrderBy(t *testing.T) {
 				[]plan.SortField{
 					{Column: expression.NewUnresolvedColumn("a")},
 				},
-				table,
+				plan.NewResolvedTable("foo", table),
 			),
 		)
 
@@ -202,7 +202,7 @@ func TestResolveOrderBy(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 				},
-				table,
+				plan.NewResolvedTable("foo", table),
 			),
 		)
 
@@ -226,7 +226,7 @@ func TestResolveOrderBy(t *testing.T) {
 					[]sql.Expression{
 						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 					},
-					table,
+					plan.NewResolvedTable("foo", table),
 				),
 			),
 		)
@@ -252,7 +252,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 			{Column: expression.NewLiteral(int64(2), sql.Int64)},
 			{Column: expression.NewLiteral(int64(1), sql.Int64)},
 		},
-		table,
+		plan.NewResolvedTable("t", table),
 	)
 
 	result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
@@ -264,7 +264,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 				{Column: expression.NewUnresolvedColumn("b")},
 				{Column: expression.NewUnresolvedColumn("a")},
 			},
-			table,
+			plan.NewResolvedTable("t", table),
 		),
 		result,
 	)
@@ -274,7 +274,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 			{Column: expression.NewLiteral(int64(3), sql.Int64)},
 			{Column: expression.NewLiteral(int64(1), sql.Int64)},
 		},
-		table,
+		plan.NewResolvedTable("t", table),
 	)
 
 	_, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), node)

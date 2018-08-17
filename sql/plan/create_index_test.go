@@ -17,11 +17,11 @@ import (
 func TestCreateIndex(t *testing.T) {
 	require := require.New(t)
 
-	table := &indexableTable{mem.NewTable("foo", sql.Schema{
+	table := mem.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
-	})}
+	})
 
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
@@ -35,7 +35,7 @@ func TestCreateIndex(t *testing.T) {
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
 	}
 
-	ci := NewCreateIndex("idx", table, exprs, "mock", make(map[string]string))
+	ci := NewCreateIndex("idx", NewResolvedTable("foo", table), exprs, "mock", make(map[string]string))
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
@@ -69,11 +69,11 @@ func TestCreateIndex(t *testing.T) {
 func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	require := require.New(t)
 
-	table := &indexableTable{mem.NewTable("foo", sql.Schema{
+	table := mem.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Blob},
 		{Name: "b", Source: "foo", Type: sql.JSON},
 		{Name: "c", Source: "foo", Type: sql.Text},
-	})}
+	})
 
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
@@ -84,7 +84,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 
 	ci := NewCreateIndex(
 		"idx",
-		table,
+		NewResolvedTable("foo", table),
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Blob, "foo", "a", true),
 		},
@@ -100,7 +100,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 
 	ci = NewCreateIndex(
 		"idx",
-		table,
+		NewResolvedTable("foo", table),
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(1, sql.JSON, "foo", "a", true),
 		},
@@ -118,11 +118,11 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 func TestCreateIndexSync(t *testing.T) {
 	require := require.New(t)
 
-	table := &indexableTable{mem.NewTable("foo", sql.Schema{
+	table := mem.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
-	})}
+	})
 
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
@@ -137,7 +137,7 @@ func TestCreateIndexSync(t *testing.T) {
 	}
 
 	ci := NewCreateIndex(
-		"idx", table, exprs, "mock",
+		"idx", NewResolvedTable("foo", table), exprs, "mock",
 		map[string]string{"async": "false"},
 	)
 	ci.Catalog = catalog
@@ -186,7 +186,6 @@ func TestCreateIndexWithIter(t *testing.T) {
 		require.NoError(err)
 	}
 
-	table := &indexableTable{foo}
 	exprs := []sql.Expression{expression.NewPlus(
 		expression.NewGetField(0, sql.Int64, "one", false),
 		expression.NewGetField(0, sql.Int64, "two", false)),
@@ -196,17 +195,17 @@ func TestCreateIndexWithIter(t *testing.T) {
 	catalog := sql.NewCatalog()
 	catalog.RegisterIndexDriver(driver)
 	db := mem.NewDatabase("foo")
-	db.AddTable("foo", table)
+	db.AddTable("foo", foo)
 	catalog.Databases = append(catalog.Databases, db)
 
-	ci := NewCreateIndex("idx", table, exprs, "mock", make(map[string]string))
+	ci := NewCreateIndex("idx", NewResolvedTable("foo", foo), exprs, "mock", make(map[string]string))
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
 	columns, exprs, err := getColumnsAndPrepareExpressions(ci.Exprs)
 	require.NoError(err)
 
-	iter, err := getIndexKeyValueIter(sql.NewEmptyContext(), table, columns, exprs)
+	iter, err := getIndexKeyValueIter(sql.NewEmptyContext(), foo, columns, exprs)
 	require.NoError(err)
 
 	var (
@@ -271,35 +270,4 @@ func (d *mockDriver) Save(ctx *sql.Context, index sql.Index, iter sql.IndexKeyVa
 func (d *mockDriver) Delete(index sql.Index) error {
 	d.deleted = append(d.deleted, index.ID())
 	return nil
-}
-
-type indexableTable struct {
-	sql.Table
-}
-
-var _ sql.Indexable = (*indexableTable)(nil)
-
-func (indexableTable) HandledFilters([]sql.Expression) []sql.Expression {
-	panic("not implemented")
-}
-
-func (it *indexableTable) IndexKeyValueIter(ctx *sql.Context, colNames []string) (sql.IndexKeyValueIter, error) {
-	t, ok := it.Table.(*mem.Table)
-	if !ok {
-		return nil, nil
-	}
-
-	return t.IndexKeyValueIter(ctx, colNames)
-}
-
-func (indexableTable) WithProjectAndFilters(ctx *sql.Context, columns, filters []sql.Expression) (sql.RowIter, error) {
-	panic("not implemented")
-}
-
-func (indexableTable) WithProjectFiltersAndIndex(
-	ctx *sql.Context,
-	columns, filters []sql.Expression,
-	index sql.IndexValueIter,
-) (sql.RowIter, error) {
-	return nil, nil
 }

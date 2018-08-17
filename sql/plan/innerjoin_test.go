@@ -18,10 +18,13 @@ func TestInnerJoin(t *testing.T) {
 	insertData(t, ltable)
 	insertData(t, rtable)
 
-	j := NewInnerJoin(ltable, rtable, expression.NewEquals(
-		expression.NewGetField(0, sql.Text, "lcol1", false),
-		expression.NewGetField(4, sql.Text, "rcol1", false),
-	))
+	j := NewInnerJoin(
+		NewResolvedTable("left", ltable),
+		NewResolvedTable("right", rtable),
+		expression.NewEquals(
+			expression.NewGetField(0, sql.Text, "lcol1", false),
+			expression.NewGetField(4, sql.Text, "rcol1", false),
+		))
 
 	require.Equal(finalSchema, j.Schema())
 
@@ -41,10 +44,13 @@ func TestInnerJoinEmpty(t *testing.T) {
 	ltable := mem.NewTable("left", lSchema)
 	rtable := mem.NewTable("right", rSchema)
 
-	j := NewInnerJoin(ltable, rtable, expression.NewEquals(
-		expression.NewGetField(0, sql.Text, "lcol1", false),
-		expression.NewGetField(4, sql.Text, "rcol1", false),
-	))
+	j := NewInnerJoin(
+		NewResolvedTable("left", ltable),
+		NewResolvedTable("right", rtable),
+		expression.NewEquals(
+			expression.NewGetField(0, sql.Text, "lcol1", false),
+			expression.NewGetField(4, sql.Text, "rcol1", false),
+		))
 
 	iter, err := j.RowIter(ctx)
 	require.NoError(err)

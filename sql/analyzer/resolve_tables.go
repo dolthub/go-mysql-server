@@ -11,7 +11,7 @@ const dualTableName = "dual"
 var dualTable = func() sql.Table {
 	t := mem.NewTable(dualTableName, sql.Schema{
 		{Name: "dummy", Source: dualTableName, Type: sql.Text, Nullable: false},
-	}, 0)
+	})
 	_ = t.Insert(sql.NewEmptyContext(), sql.NewRow("x"))
 	return t
 }()

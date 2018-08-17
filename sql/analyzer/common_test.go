@@ -51,5 +51,18 @@ func getRule(name string) Rule {
 			return rule
 		}
 	}
+
+	for _, rule := range PushdownRules {
+		if rule.Name == name {
+			return rule
+		}
+	}
+
+	for _, rule := range OnceRules {
+		if rule.Name == name {
+			return rule
+		}
+	}
+
 	panic("missing rule")
 }
