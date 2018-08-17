@@ -87,6 +87,8 @@ type NegateIndex interface {
 type IndexLookup interface {
 	// Values returns the values in the subset of the index.
 	Values() (IndexValueIter, error)
+	// Indexes returns the IDs of all indexes involved in this lookup.
+	Indexes() []string
 }
 
 // SetOperations is a specialization of IndexLookup that enables set operations

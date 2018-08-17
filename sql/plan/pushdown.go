@@ -261,9 +261,12 @@ func (t IndexableTable) String() string {
 		filters[i] = f.String()
 	}
 
+	indexes := t.Index.Indexes()
+
 	_ = pr.WriteChildren(
 		fmt.Sprintf("Columns(%s)", strings.Join(columns, ", ")),
 		fmt.Sprintf("Filters(%s)", strings.Join(filters, ", ")),
+		fmt.Sprintf("Indexes(%s)", strings.Join(indexes, ", ")),
 		t.Indexable.String(),
 	)
 

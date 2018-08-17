@@ -159,6 +159,10 @@ func (l *indexLookup) Values() (sql.IndexValueIter, error) {
 	}, nil
 }
 
+func (l *indexLookup) Indexes() []string {
+	return []string{l.id}
+}
+
 // IsMergeable implements sql.Mergeable interface.
 func (l *indexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	if il, ok := lookup.(pilosaLookup); ok {
@@ -354,6 +358,10 @@ func (l *ascendLookup) Values() (sql.IndexValueIter, error) {
 	return l.values()
 }
 
+func (l *ascendLookup) Indexes() []string {
+	return []string{l.id}
+}
+
 // IsMergeable implements sql.Mergeable interface.
 func (l *ascendLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	if il, ok := lookup.(pilosaLookup); ok {
@@ -461,6 +469,10 @@ func (l *descendLookup) initFilter() {
 
 func (l *descendLookup) Values() (sql.IndexValueIter, error) {
 	return l.values()
+}
+
+func (l *descendLookup) Indexes() []string {
+	return []string{l.id}
 }
 
 // IsMergeable implements sql.Mergeable interface.
@@ -834,6 +846,10 @@ func (l *negateLookup) Values() (sql.IndexValueIter, error) {
 		mapping:   l.mapping,
 		indexName: l.index.Name(),
 	}, nil
+}
+
+func (l *negateLookup) Indexes() []string {
+	return []string{l.id}
 }
 
 // IsMergeable implements sql.Mergeable interface.

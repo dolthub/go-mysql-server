@@ -1026,6 +1026,14 @@ func (mergedIndexLookup) Values() (sql.IndexValueIter, error) {
 	panic("mergedIndexLookup.Values is a placeholder")
 }
 
+func (i *mergedIndexLookup) Indexes() []string {
+	var indexes []string
+	for _, c := range i.children {
+		indexes = append(indexes, c.Indexes()...)
+	}
+	return indexes
+}
+
 func (l *mergedIndexLookup) IsMergeable(sql.IndexLookup) bool {
 	return true
 }
@@ -1056,6 +1064,10 @@ func (*negateIndexLookup) Values() (sql.IndexValueIter, error) {
 	panic("negateIndexLookup.Values is a placeholder")
 }
 
+func (l *negateIndexLookup) Indexes() []string {
+	return []string{l.ID()}
+}
+
 func (*negateIndexLookup) IsMergeable(sql.IndexLookup) bool {
 	return true
 }
@@ -1083,12 +1095,17 @@ func (l *negateIndexLookup) Intersection(indexes ...sql.IndexLookup) sql.IndexLo
 }
 
 type ascendIndexLookup struct {
+	id  string
 	gte []interface{}
 	lt  []interface{}
 }
 
 func (ascendIndexLookup) Values() (sql.IndexValueIter, error) {
 	panic("ascendIndexLookup.Values is a placeholder")
+}
+
+func (l *ascendIndexLookup) Indexes() []string {
+	return []string{l.id}
 }
 
 func (l *ascendIndexLookup) IsMergeable(sql.IndexLookup) bool {
@@ -1108,12 +1125,17 @@ func (ascendIndexLookup) Intersection(...sql.IndexLookup) sql.IndexLookup {
 }
 
 type descendIndexLookup struct {
+	id  string
 	gt  []interface{}
 	lte []interface{}
 }
 
 func (descendIndexLookup) Values() (sql.IndexValueIter, error) {
 	panic("descendIndexLookup.Values is a placeholder")
+}
+
+func (l *descendIndexLookup) Indexes() []string {
+	return []string{l.id}
 }
 
 func (l *descendIndexLookup) IsMergeable(sql.IndexLookup) bool {
@@ -1199,6 +1221,10 @@ func (i *mergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 
 func (i *mergeableIndexLookup) Values() (sql.IndexValueIter, error) {
 	panic("not implemented")
+}
+
+func (i *mergeableIndexLookup) Indexes() []string {
+	return []string{i.ID()}
 }
 
 func (i *mergeableIndexLookup) Difference(indexes ...sql.IndexLookup) sql.IndexLookup {
