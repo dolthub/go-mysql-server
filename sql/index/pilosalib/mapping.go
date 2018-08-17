@@ -15,7 +15,7 @@ import (
 // mapping
 // buckets:
 // - index name: columndID uint64 -> location []byte
-// - frame name: value []byte (gob encoding) -> rowID uint64
+// - field name: value []byte (gob encoding) -> rowID uint64
 type mapping struct {
 	path string
 
@@ -88,8 +88,8 @@ func (m *mapping) query(fn func() error) error {
 	return fn()
 }
 
-func (m *mapping) rowID(frameName string, value interface{}) (uint64, error) {
-	val, err := m.get(frameName, value)
+func (m *mapping) rowID(fieldName string, value interface{}) (uint64, error) {
+	val, err := m.get(fieldName, value)
 	if err != nil {
 		return 0, err
 	}
@@ -169,7 +169,7 @@ func (m *mapping) transaction(writable bool, f func(*bolt.Tx) error) error {
 	return tx.Commit()
 }
 
-func (m *mapping) getRowID(frameName string, value interface{}) (uint64, error) {
+func (m *mapping) getRowID(fieldName string, value interface{}) (uint64, error) {
 	var id uint64
 	err := m.query(func() error {
 		var buf bytes.Buffer
@@ -180,7 +180,7 @@ func (m *mapping) getRowID(frameName string, value interface{}) (uint64, error) 
 		}
 
 		err = m.transaction(true, func(tx *bolt.Tx) error {
-			b, err := tx.CreateBucketIfNotExists([]byte(frameName))
+			b, err := tx.CreateBucketIfNotExists([]byte(fieldName))
 			if err != nil {
 				return err
 			}
@@ -208,11 +208,11 @@ func (m *mapping) getRowID(frameName string, value interface{}) (uint64, error) 
 	return id, err
 }
 
-func (m *mapping) getMaxRowID(frameName string) (uint64, error) {
+func (m *mapping) getMaxRowID(fieldName string) (uint64, error) {
 	var id uint64
 	err := m.query(func() error {
 		return m.transaction(true, func(tx *bolt.Tx) error {
-			b := tx.Bucket([]byte(frameName))
+			b := tx.Bucket([]byte(fieldName))
 			if b == nil {
 				return nil
 			}
