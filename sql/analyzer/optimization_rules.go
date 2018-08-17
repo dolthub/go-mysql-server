@@ -156,27 +156,6 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 	})
 }
 
-func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("erase_projection")
-	defer span.Finish()
-
-	if !node.Resolved() {
-		return node, nil
-	}
-
-	a.Log("erase projection, node of type: %T", node)
-
-	return node.TransformUp(func(node sql.Node) (sql.Node, error) {
-		project, ok := node.(*plan.Project)
-		if ok && project.Schema().Equals(project.Child.Schema()) {
-			a.Log("project erased")
-			return project.Child, nil
-		}
-
-		return node, nil
-	})
-}
-
 func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	if !n.Resolved() {
 		a.Log("node is not resolved, skip moving join conditions to filter")

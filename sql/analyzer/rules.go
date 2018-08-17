@@ -6,8 +6,6 @@ import (
 
 // DefaultRules to apply when analyzing nodes.
 var DefaultRules = []Rule{
-	{"resolve_subqueries", resolveSubqueries},
-	{"resolve_tables", resolveTables},
 	{"resolve_natural_joins", resolveNaturalJoins},
 	{"resolve_orderby_literals", resolveOrderByLiterals},
 	{"resolve_orderby", resolveOrderBy},
@@ -18,13 +16,22 @@ var DefaultRules = []Rule{
 	{"resolve_functions", resolveFunctions},
 	{"reorder_aggregations", reorderAggregations},
 	{"reorder_projection", reorderProjection},
-	{"assign_indexes", assignIndexes},
-	{"pushdown", pushdown},
 	{"move_join_conds_to_filter", moveJoinConditionsToFilter},
 	{"eval_filter", evalFilter},
 	{"optimize_distinct", optimizeDistinct},
-	{"erase_projection", eraseProjection},
+}
+
+// OnceRules to apply just once.
+var OnceRules = []Rule{
+	{"resolve_subqueries", resolveSubqueries},
+	{"resolve_tables", resolveTables},
 	{"index_catalog", indexCatalog},
+}
+
+// PushdownRules to apply just once for pushdown filters and projections.
+var PushdownRules = []Rule{
+	{"pushdown", pushdown},
+	{"erase_projection", eraseProjection},
 }
 
 var (

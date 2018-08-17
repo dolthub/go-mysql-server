@@ -82,9 +82,19 @@ func (ab *Builder) Build() *Analyzer {
 			Rules:      ab.preAnalyzeRules,
 		},
 		&Batch{
+			Desc:       "analyzer rules once",
+			Iterations: 1,
+			Rules:      OnceRules,
+		},
+		&Batch{
 			Desc:       "analyzer rules",
 			Iterations: maxAnalysisIterations,
 			Rules:      DefaultRules,
+		},
+		&Batch{
+			Desc:       "pushdown rules",
+			Iterations: 1,
+			Rules:      PushdownRules,
 		},
 		&Batch{
 			Desc:       "post-analyzer rules",
