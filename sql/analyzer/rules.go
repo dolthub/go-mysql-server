@@ -21,15 +21,15 @@ var DefaultRules = []Rule{
 	{"optimize_distinct", optimizeDistinct},
 }
 
-// OnceRules to apply just once.
-var OnceRules = []Rule{
+// OnceBeforeDefault contains the rules to be applied just once before the DefaultRules.
+var OnceBeforeDefault = []Rule{
 	{"resolve_subqueries", resolveSubqueries},
 	{"resolve_tables", resolveTables},
 	{"index_catalog", indexCatalog},
 }
 
-// PushdownRules to apply just once for pushdown filters and projections.
-var PushdownRules = []Rule{
+// OnceAfterDefault contains the rules to be applied just once after the DefaultRules.
+var OnceAfterDefault = []Rule{
 	{"pushdown", pushdown},
 	{"erase_projection", eraseProjection},
 }
