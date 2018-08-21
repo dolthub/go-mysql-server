@@ -32,6 +32,7 @@ var OnceBeforeDefault = []Rule{
 var OnceAfterDefault = []Rule{
 	{"pushdown", pushdown},
 	{"erase_projection", eraseProjection},
+	{"parallelize", parallelize},
 }
 
 var (

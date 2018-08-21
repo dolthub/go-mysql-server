@@ -9,7 +9,7 @@ import (
 )
 
 // IndexBatchSize is the number of rows to save at a time when creating indexes.
-var IndexBatchSize = uint64(10000)
+const IndexBatchSize = uint64(10000)
 
 // IndexKeyValueIter is an iterator of index key values, that is, a tuple of
 // the values that will be index keys.
