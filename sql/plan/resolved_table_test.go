@@ -88,7 +88,7 @@ func (t *dummyTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	return &partitionIter{keys: t.keys}, nil
 }
 
-func (t *dummyTable) PartitionRows(partition sql.Partition) (sql.RowIter, error) {
+func (t *dummyTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	rows, ok := t.partitions[string(partition.Key())]
 	if !ok {
 		return nil, fmt.Errorf(

@@ -33,19 +33,19 @@ func NewExchange(
 
 // RowIter implements the sql.Node interface.
 func (e *Exchange) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	var partitionable sql.Partitionable
+	var t sql.Table
 	Inspect(e.Child, func(n sql.Node) bool {
-		if p, ok := n.(sql.Partitionable); ok {
-			partitionable = p
+		if table, ok := n.(sql.Table); ok {
+			t = table
 			return false
 		}
 		return true
 	})
-	if partitionable == nil {
+	if t == nil {
 		return nil, ErrNoPartitionable.New()
 	}
 
-	partitions, err := partitionable.Partitions(ctx)
+	partitions, err := t.Partitions(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -206,8 +206,8 @@ func (it *exchangeRowIter) iterPartitions(ch chan<- sql.Partition) {
 
 func (it *exchangeRowIter) iterPartition(p sql.Partition) {
 	node, err := it.tree.TransformUp(func(n sql.Node) (sql.Node, error) {
-		if pr, ok := n.(sql.PartitionRowsProvider); ok {
-			return &partition{p, pr}, nil
+		if t, ok := n.(sql.Table); ok {
+			return &exchangePartition{p, t}, nil
 		}
 
 		return n, nil
@@ -279,31 +279,33 @@ func (it *exchangeRowIter) Close() error {
 	return nil
 }
 
-type partition struct {
+type exchangePartition struct {
 	sql.Partition
-	provider sql.PartitionRowsProvider
+	table sql.Table
 }
 
-func (p *partition) String() string {
+var _ sql.Node = (*exchangePartition)(nil)
+
+func (p *exchangePartition) String() string {
 	return fmt.Sprintf("Partition(%s)", string(p.Key()))
 }
 
-func (partition) Children() []sql.Node { return nil }
+func (exchangePartition) Children() []sql.Node { return nil }
 
-func (partition) Resolved() bool { return true }
+func (exchangePartition) Resolved() bool { return true }
 
-func (p *partition) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	return p.provider.PartitionRows(ctx, p.Partition)
+func (p *exchangePartition) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	return p.table.PartitionRows(ctx, p.Partition)
 }
 
-func (p *partition) Schema() sql.Schema {
-	return p.provider.Schema()
+func (p *exchangePartition) Schema() sql.Schema {
+	return p.table.Schema()
 }
 
-func (p *partition) TransformExpressionsUp(sql.TransformExprFunc) (sql.Node, error) {
+func (p *exchangePartition) TransformExpressionsUp(sql.TransformExprFunc) (sql.Node, error) {
 	return p, nil
 }
 
-func (p *partition) TransformUp(sql.TransformNodeFunc) (sql.Node, error) {
+func (p *exchangePartition) TransformUp(sql.TransformNodeFunc) (sql.Node, error) {
 	return p, nil
 }

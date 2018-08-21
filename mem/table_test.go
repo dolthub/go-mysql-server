@@ -187,7 +187,7 @@ func TestTable(t *testing.T) {
 				p, err := pIter.Next()
 				require.NoError(err)
 
-				iter, err := table.PartitionRows(p)
+				iter, err := table.PartitionRows(sql.NewEmptyContext(), p)
 				require.NoError(err)
 
 				rows, err := sql.RowIterToRows(iter)
@@ -292,7 +292,7 @@ func TestIndexed(t *testing.T) {
 
 			require.ElementsMatch(indexed.Schema(), test.expectedSchema)
 
-			iter, err := indexed.PartitionRows(test.partition)
+			iter, err := indexed.PartitionRows(sql.NewEmptyContext(), test.partition)
 			require.NoError(err)
 
 			rows, err := sql.RowIterToRows(iter)
@@ -322,7 +322,7 @@ func testFlatRows(t *testing.T, table sql.Table) []sql.Row {
 			require.NoError(err)
 		}
 
-		iter, err := table.PartitionRows(p)
+		iter, err := table.PartitionRows(sql.NewEmptyContext(), p)
 		require.NoError(err)
 
 		rows, err := sql.RowIterToRows(iter)

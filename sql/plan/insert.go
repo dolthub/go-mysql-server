@@ -36,11 +36,25 @@ func (p *InsertInto) Schema() sql.Schema {
 	}}
 }
 
+func getInsertable(node sql.Node) (sql.Inserter, error) {
+	switch node := node.(type) {
+	case sql.Inserter:
+		return node, nil
+	case *ResolvedTable:
+		if insertable, ok := node.Table.(sql.Inserter); ok {
+			return insertable, nil
+		}
+		return nil, ErrInsertIntoNotSupported.New()
+	default:
+		return nil, ErrInsertIntoNotSupported.New()
+	}
+}
+
 // Execute inserts the rows in the database.
 func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
-	insertable, ok := p.Left.(sql.Inserter)
-	if !ok {
-		return 0, ErrInsertIntoNotSupported.New()
+	insertable, err := getInsertable(p.Left)
+	if err != nil {
+		return 0, err
 	}
 
 	dstSchema := p.Left.Schema()

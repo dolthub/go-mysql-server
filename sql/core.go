@@ -131,10 +131,9 @@ type PartitionIter interface {
 // Table represents the backend of a SQL table.
 type Table interface {
 	String() string
-	Insert(*Context, Row) error
 	Schema() Schema
-	Partitions(ctx *Context) (PartitionIter, error)
-	PartitionRows(Partition) (RowIter, error)
+	Partitions(*Context) (PartitionIter, error)
+	PartitionRows(*Context, Partition) (RowIter, error)
 }
 
 //FilteredTable is a table that can produce a specific RowIter
@@ -176,22 +175,4 @@ type Database interface {
 // Alterable should be implemented by databases that can handle DDL statements
 type Alterable interface {
 	Create(name string, schema Schema) error
-}
-
-type Partition interface {
-	Key() []byte
-}
-
-type PartitionIter interface {
-	io.Closer
-	Next() (Partition, error)
-}
-
-type Partitionable interface {
-	Partitions(*Context) (PartitionIter, error)
-}
-
-type PartitionRowsProvider interface {
-	Schema() Schema
-	PartitionRows(*Context, Partition) (RowIter, error)
 }

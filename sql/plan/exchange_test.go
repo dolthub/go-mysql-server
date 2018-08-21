@@ -73,7 +73,7 @@ func (p *partitionable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Nod
 func (partitionable) Children() []sql.Node { return nil }
 
 func (p partitionable) Partitions(*sql.Context) (sql.PartitionIter, error) {
-	return &partitionIter{p.partitions}, nil
+	return &exchangePartitionIter{p.partitions}, nil
 }
 
 func (p partitionable) PartitionRows(_ *sql.Context, part sql.Partition) (sql.RowIter, error) {
@@ -93,11 +93,11 @@ func (p Partition) Key() []byte {
 	return []byte(p)
 }
 
-type partitionIter struct {
+type exchangePartitionIter struct {
 	num int
 }
 
-func (i *partitionIter) Next() (sql.Partition, error) {
+func (i *exchangePartitionIter) Next() (sql.Partition, error) {
 	if i.num <= 0 {
 		return nil, io.EOF
 	}
@@ -106,7 +106,7 @@ func (i *partitionIter) Next() (sql.Partition, error) {
 	return Partition(fmt.Sprint(i.num + 1)), nil
 }
 
-func (i *partitionIter) Close() error {
+func (i *exchangePartitionIter) Close() error {
 	i.num = -1
 	return nil
 }

@@ -71,7 +71,7 @@ func (t *Table) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 }
 
 // PartitionRows implements the sql.PartitionRows interface.
-func (t *Table) PartitionRows(partition sql.Partition) (sql.RowIter, error) {
+func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	key := string(partition.Key())
 	rows, ok := t.partitions[key]
 	if !ok {
@@ -404,9 +404,9 @@ func (t *Table) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
 func (t *Table) IndexKeyValues(
 	ctx *sql.Context,
 	colNames []string,
-	partition sql.Partition) (sql.IndexKeyValueIter, error) {
-
-	rowIter, err := t.PartitionRows(partition)
+	partition sql.Partition,
+) (sql.IndexKeyValueIter, error) {
+	rowIter, err := t.PartitionRows(ctx, partition)
 	if err != nil {
 		return nil, err
 	}

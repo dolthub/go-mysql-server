@@ -41,7 +41,11 @@ func (t *ResolvedTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return &tableIter{table: t.Table, partitions: partitions}, nil
+	return &tableIter{
+		ctx:        ctx,
+		table:      t.Table,
+		partitions: partitions,
+	}, nil
 }
 
 // TransformUp implements the Transformable interface.
@@ -55,6 +59,7 @@ func (t *ResolvedTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Nod
 }
 
 type tableIter struct {
+	ctx        *sql.Context
 	table      sql.Table
 	partitions sql.PartitionIter
 	partition  sql.Partition
@@ -78,7 +83,7 @@ func (i *tableIter) Next() (sql.Row, error) {
 	}
 
 	if i.rows == nil {
-		rows, err := i.table.PartitionRows(i.partition)
+		rows, err := i.table.PartitionRows(i.ctx, i.partition)
 		if err != nil {
 			return nil, err
 		}
