@@ -59,12 +59,10 @@ func parseCreateIndex(s string) (sql.Node, error) {
 		skipSpaces,
 		readIdent(&table),
 		skipSpaces,
-		optional(
-			expect("using"),
-			skipSpaces,
-			readIdent(&driver),
-			skipSpaces,
-		),
+		expect("using"),
+		skipSpaces,
+		readIdent(&driver),
+		skipSpaces,
 		readExprs(&exprs),
 		skipSpaces,
 		optional(

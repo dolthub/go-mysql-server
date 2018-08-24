@@ -561,7 +561,7 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("dual"),
 	),
-	`CREATE INDEX idx ON foo(fn(bar, baz))`: plan.NewCreateIndex(
+	`CREATE INDEX idx ON foo USING bar (fn(bar, baz))`: plan.NewCreateIndex(
 		"idx",
 		plan.NewUnresolvedTable("foo"),
 		[]sql.Expression{expression.NewUnresolvedFunction(
@@ -569,10 +569,10 @@ var fixtures = map[string]sql.Node{
 			expression.NewUnresolvedColumn("bar"),
 			expression.NewUnresolvedColumn("baz"),
 		)},
-		"",
+		"bar",
 		make(map[string]string),
 	),
-	`      CREATE INDEX idx ON foo(fn(bar, baz))`: plan.NewCreateIndex(
+	`      CREATE INDEX idx ON foo USING bar (fn(bar, baz))`: plan.NewCreateIndex(
 		"idx",
 		plan.NewUnresolvedTable("foo"),
 		[]sql.Expression{expression.NewUnresolvedFunction(
@@ -580,7 +580,7 @@ var fixtures = map[string]sql.Node{
 			expression.NewUnresolvedColumn("bar"),
 			expression.NewUnresolvedColumn("baz"),
 		)},
-		"",
+		"bar",
 		make(map[string]string),
 	),
 	`SELECT * FROM foo NATURAL JOIN bar`: plan.NewProject(
@@ -630,6 +630,13 @@ var fixtures = map[string]sql.Node{
 	`SHOW INDEXES IN foo`:   plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
 	`SHOW INDEX IN foo`:     plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
 	`SHOW KEYS IN foo`:      plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
+	`create index foo on bar using qux (baz)`: plan.NewCreateIndex(
+		"foo",
+		plan.NewUnresolvedTable("bar"),
+		[]sql.Expression{expression.NewUnresolvedColumn("baz")},
+		"qux",
+		make(map[string]string),
+	),
 }
 
 func TestParse(t *testing.T) {

@@ -32,6 +32,11 @@ func TestParseCreateIndex(t *testing.T) {
 		{
 			"CREATE INDEX idx ON foo(*)",
 			nil,
+			errUnexpectedSyntax,
+		},
+		{
+			"CREATE INDEX idx ON foo USING foo (*)",
+			nil,
 			errInvalidIndexExpression,
 		},
 		{
@@ -46,6 +51,11 @@ func TestParseCreateIndex(t *testing.T) {
 		},
 		{
 			"CREATE INDEX idx ON foo(fn(bar, baz))",
+			nil,
+			errUnexpectedSyntax,
+		},
+		{
+			"CREATE INDEX idx ON foo USING foo (fn(bar, baz))",
 			plan.NewCreateIndex(
 				"idx",
 				plan.NewUnresolvedTable("foo"),
@@ -56,24 +66,24 @@ func TestParseCreateIndex(t *testing.T) {
 						expression.NewUnresolvedColumn("baz"),
 					),
 				},
-				"",
+				"foo",
 				make(map[string]string),
 			),
 			nil,
 		},
 		{
-			"CREATE INDEX idx ON foo(bar)",
+			"CREATE INDEX idx ON foo USING foo (bar)",
 			plan.NewCreateIndex(
 				"idx",
 				plan.NewUnresolvedTable("foo"),
 				[]sql.Expression{expression.NewUnresolvedColumn("bar")},
-				"",
+				"foo",
 				make(map[string]string),
 			),
 			nil,
 		},
 		{
-			"CREATE INDEX idx ON foo(bar, baz)",
+			"CREATE INDEX idx ON foo USING foo (bar, baz)",
 			plan.NewCreateIndex(
 				"idx",
 				plan.NewUnresolvedTable("foo"),
@@ -81,7 +91,7 @@ func TestParseCreateIndex(t *testing.T) {
 					expression.NewUnresolvedColumn("bar"),
 					expression.NewUnresolvedColumn("baz"),
 				},
-				"",
+				"foo",
 				make(map[string]string),
 			),
 			nil,

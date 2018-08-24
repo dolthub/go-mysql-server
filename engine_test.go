@@ -781,13 +781,13 @@ func TestIndexes(t *testing.T) {
 
 	_, _, err = e.Query(
 		sql.NewEmptyContext(),
-		"CREATE INDEX myidx ON mytable (i) WITH (async = false)",
+		"CREATE INDEX myidx ON mytable USING pilosa (i) WITH (async = false)",
 	)
 	require.NoError(t, err)
 
 	_, _, err = e.Query(
 		sql.NewEmptyContext(),
-		"CREATE INDEX myidx_multi ON mytable (i, s) WITH (async = false)",
+		"CREATE INDEX myidx_multi ON mytable USING pilosa (i, s) WITH (async = false)",
 	)
 	require.NoError(t, err)
 
@@ -898,7 +898,7 @@ func TestCreateIndex(t *testing.T) {
 	require.NoError(os.MkdirAll(tmpDir, 0644))
 	e.Catalog.RegisterIndexDriver(pilosa.NewIndexDriver(tmpDir))
 
-	_, iter, err := e.Query(sql.NewEmptyContext(), "CREATE INDEX myidx ON mytable (i)")
+	_, iter, err := e.Query(sql.NewEmptyContext(), "CREATE INDEX myidx ON mytable USING pilosa (i)")
 	require.NoError(err)
 	rows, err := sql.RowIterToRows(iter)
 	require.NoError(err)
@@ -1020,7 +1020,7 @@ func TestReadOnly(t *testing.T) {
 	_, _, err := e.Query(sql.NewEmptyContext(), `SELECT i FROM mytable`)
 	require.NoError(err)
 
-	_, _, err = e.Query(sql.NewEmptyContext(), `CREATE INDEX foo ON mytable (i, s)`)
+	_, _, err = e.Query(sql.NewEmptyContext(), `CREATE INDEX foo ON mytable USING pilosa (i, s)`)
 	require.Error(err)
 	require.True(analyzer.ErrQueryNotAllowed.Is(err))
 
