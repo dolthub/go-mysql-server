@@ -218,7 +218,7 @@ Index drivers provide different backends for storing and querying indexes. To im
 To create indexes using your custom index driver you need to use `USING driverid` on the index creation query. For example:
 
 ```sql
-CREATE INDEX foo ON table(col1, col2) USING driverid
+CREATE INDEX foo ON table USING driverid (col1, col2)
 ```
 
 You can see an example of a driver implementation inside the `sql/index/pilosa` package, where the pilosa driver is implemented.
