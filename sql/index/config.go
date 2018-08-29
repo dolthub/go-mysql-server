@@ -18,10 +18,12 @@ type Config struct {
 }
 
 // NewConfig creates a new Config instance for given driver's configuration
-func NewConfig(db, table, id string,
+func NewConfig(
+	db, table, id string,
 	expressions []string,
 	driverID string,
-	driverConfig map[string]string) *Config {
+	driverConfig map[string]string,
+) *Config {
 
 	cfg := &Config{
 		DB:          db,

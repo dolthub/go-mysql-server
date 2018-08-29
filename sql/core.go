@@ -156,7 +156,7 @@ type ProjectedTable interface {
 type IndexableTable interface {
 	Table
 	WithIndexLookup(IndexLookup) Table
-	IndexKeyValues(*Context, []string, Partition) (IndexKeyValueIter, error)
+	IndexKeyValues(*Context, []string) (PartitionIndexKeyValueIter, error)
 }
 
 // Inserter allow rows to be inserted in them.

@@ -359,7 +359,7 @@ func (m *mapping) get(name string, key interface{}) ([]byte, error) {
 			return err
 		}
 
-		err = m.transaction(true, func(tx *bolt.Tx) error {
+		return m.transaction(true, func(tx *bolt.Tx) error {
 			b := tx.Bucket([]byte(name))
 			if b != nil {
 				value = b.Get(buf.Bytes())
@@ -368,8 +368,6 @@ func (m *mapping) get(name string, key interface{}) ([]byte, error) {
 
 			return fmt.Errorf("%s not found", name)
 		})
-
-		return err
 	})
 	return value, err
 }

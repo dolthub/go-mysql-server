@@ -67,7 +67,13 @@ func (t *Table) Schema() sql.Schema {
 
 // Partitions implements the sql.Table interface.
 func (t *Table) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
-	return &partitionIter{keys: t.keys}, nil
+	var keys [][]byte
+	for _, k := range t.keys {
+		if rows, ok := t.partitions[string(k)]; ok && len(rows) > 0 {
+			keys = append(keys, k)
+		}
+	}
+	return &partitionIter{keys: keys}, nil
 }
 
 // PartitionRows implements the sql.PartitionRows interface.
@@ -404,9 +410,8 @@ func (t *Table) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
 func (t *Table) IndexKeyValues(
 	ctx *sql.Context,
 	colNames []string,
-	partition sql.Partition,
-) (sql.IndexKeyValueIter, error) {
-	rowIter, err := t.PartitionRows(ctx, partition)
+) (sql.PartitionIndexKeyValueIter, error) {
+	iter, err := t.Partitions(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -416,23 +421,53 @@ func (t *Table) IndexKeyValues(
 		return nil, err
 	}
 
-	return &idxKVIter{
-		key:     string(partition.Key()),
-		iter:    rowIter,
+	return &partitionIndexKeyValueIter{
+		table:   t,
+		iter:    iter,
 		columns: columns,
+		ctx:     ctx,
 	}, nil
+}
+
+type partitionIndexKeyValueIter struct {
+	table   *Table
+	iter    sql.PartitionIter
+	columns []int
+	ctx     *sql.Context
+}
+
+func (i *partitionIndexKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, error) {
+	p, err := i.iter.Next()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	iter, err := i.table.PartitionRows(i.ctx, p)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return p, &indexKeyValueIter{
+		key:     string(p.Key()),
+		iter:    iter,
+		columns: i.columns,
+	}, nil
+}
+
+func (i *partitionIndexKeyValueIter) Close() error {
+	return i.iter.Close()
 }
 
 var errColumnNotFound = errors.NewKind("could not find column %s")
 
-type idxKVIter struct {
+type indexKeyValueIter struct {
 	key     string
 	iter    sql.RowIter
 	columns []int
 	pos     int
 }
 
-func (i *idxKVIter) Next() ([]interface{}, []byte, error) {
+func (i *indexKeyValueIter) Next() ([]interface{}, []byte, error) {
 	row, err := i.iter.Next()
 	if err != nil {
 		return nil, nil, err
@@ -448,6 +483,6 @@ func (i *idxKVIter) Next() ([]interface{}, []byte, error) {
 	return projectOnRow(i.columns, row), data, nil
 }
 
-func (i *idxKVIter) Close() error {
+func (i *indexKeyValueIter) Close() error {
 	return i.iter.Close()
 }

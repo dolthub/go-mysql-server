@@ -880,8 +880,8 @@ func TestIndexes(t *testing.T) {
 			rows, err := sql.RowIterToRows(it)
 			require.NoError(err)
 
-			require.Equal(tt.expected, rows)
-			require.Equal("plan.IndexableTable", tracer.Spans[len(tracer.Spans)-1])
+			require.ElementsMatch(tt.expected, rows)
+			require.Equal("plan.ResolvedTable", tracer.Spans[len(tracer.Spans)-1])
 		})
 	}
 }
@@ -979,6 +979,7 @@ func TestTracing(t *testing.T) {
 		"plan.Sort",
 		"plan.Distinct",
 		"plan.Project",
+		"plan.ResolvedTable",
 	}
 
 	var spanOperations []string

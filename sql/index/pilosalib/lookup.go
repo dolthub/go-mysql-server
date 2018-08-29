@@ -72,7 +72,7 @@ type (
 
 	pilosaLookup interface {
 		indexName() string
-		values() (*pilosa.Row, error)
+		values(sql.Partition) (*pilosa.Row, error)
 	}
 )
 
@@ -80,13 +80,13 @@ func (l *indexLookup) indexName() string {
 	return l.index.Name()
 }
 
-func (l *indexLookup) values() (*pilosa.Row, error) {
+func (l *indexLookup) values(p sql.Partition) (*pilosa.Row, error) {
 	l.mapping.open()
 	defer l.mapping.close()
 
 	var row *pilosa.Row
 	for i, expr := range l.expressions {
-		field := l.index.Field(fieldName(l.id, expr))
+		field := l.index.Field(fieldName(l.id, expr, p))
 		rowID, err := l.mapping.rowID(field.Name(), l.keys[i])
 		if err == io.EOF {
 			continue
@@ -115,7 +115,7 @@ func (l *indexLookup) values() (*pilosa.Row, error) {
 			return nil, errUnmergeableType.New(op.lookup)
 		}
 
-		r, e = il.values()
+		r, e = il.values(p)
 		if e != nil {
 			return nil, e
 		}
@@ -127,11 +127,11 @@ func (l *indexLookup) values() (*pilosa.Row, error) {
 }
 
 // Values implements sql.IndexLookup.Values
-func (l *indexLookup) Values() (sql.IndexValueIter, error) {
+func (l *indexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	l.index.Open()
 	defer l.index.Close()
 
-	row, err := l.values()
+	row, err := l.values(p)
 	if err != nil {
 		return nil, err
 	}
@@ -209,14 +209,14 @@ func (l *filteredLookup) indexName() string {
 	return l.index.Name()
 }
 
-func (l *filteredLookup) values() (*pilosa.Row, error) {
+func (l *filteredLookup) values(p sql.Partition) (*pilosa.Row, error) {
 	l.mapping.open()
 	defer l.mapping.close()
 
 	// evaluate Intersection of bitmaps
 	var row *pilosa.Row
 	for i, expr := range l.expressions {
-		field := l.index.Field(fieldName(l.id, expr))
+		field := l.index.Field(fieldName(l.id, expr, p))
 		rows, err := l.mapping.filter(field.Name(), func(b []byte) (bool, error) {
 			return l.filter(i, b)
 		})
@@ -248,7 +248,7 @@ func (l *filteredLookup) values() (*pilosa.Row, error) {
 			return nil, errUnmergeableType.New(op.lookup)
 		}
 
-		r, e = il.values()
+		r, e = il.values(p)
 		if e != nil {
 			return nil, e
 		}
@@ -262,11 +262,11 @@ func (l *filteredLookup) values() (*pilosa.Row, error) {
 	return row, nil
 }
 
-func (l *filteredLookup) Values() (sql.IndexValueIter, error) {
+func (l *filteredLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	l.index.Open()
 	defer l.index.Close()
 
-	row, err := l.values()
+	row, err := l.values(p)
 	if err != nil {
 		return nil, err
 	}
@@ -350,13 +350,13 @@ type negateLookup struct {
 
 func (l *negateLookup) indexName() string { return l.index.Name() }
 
-func (l *negateLookup) values() (*pilosa.Row, error) {
+func (l *negateLookup) values(p sql.Partition) (*pilosa.Row, error) {
 	l.mapping.open()
 	defer l.mapping.close()
 
 	var row *pilosa.Row
 	for i, expr := range l.expressions {
-		field := l.index.Field(fieldName(l.id, expr))
+		field := l.index.Field(fieldName(l.id, expr, p))
 		maxRowID, err := l.mapping.getMaxRowID(field.Name())
 		if err != nil {
 			return nil, err
@@ -402,7 +402,7 @@ func (l *negateLookup) values() (*pilosa.Row, error) {
 			return nil, errUnmergeableType.New(op.lookup)
 		}
 
-		r, e = il.values()
+		r, e = il.values(p)
 		if e != nil {
 			return nil, e
 		}
@@ -418,11 +418,11 @@ func (l *negateLookup) values() (*pilosa.Row, error) {
 }
 
 // Values implements sql.IndexLookup.Values
-func (l *negateLookup) Values() (sql.IndexValueIter, error) {
+func (l *negateLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	l.index.Open()
 	defer l.index.Close()
 
-	row, err := l.values()
+	row, err := l.values(p)
 	if err != nil {
 		return nil, err
 	}

@@ -345,14 +345,17 @@ func TestTableIndexKeyValueIter(t *testing.T) {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
-			pIter, err := table.Partitions(sql.NewEmptyContext())
+			pIter, err := table.IndexKeyValues(
+				sql.NewEmptyContext(),
+				[]string{test.schema[0].Name, test.schema[2].Name},
+			)
 			require.NoError(err)
 
 			var iter sql.IndexKeyValueIter
 			idxKVs := []*indexKeyValue{}
 			for {
 				if iter == nil {
-					p, err := pIter.Next()
+					_, iter, err = pIter.Next()
 					if err != nil {
 						if err == io.EOF {
 							iter = nil
@@ -361,10 +364,6 @@ func TestTableIndexKeyValueIter(t *testing.T) {
 
 						require.NoError(err)
 					}
-
-					iter, err = table.IndexKeyValues(sql.NewEmptyContext(),
-						[]string{test.schema[0].Name, test.schema[2].Name}, p)
-					require.NoError(err)
 				}
 
 				row, data, err := iter.Next()

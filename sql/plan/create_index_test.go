@@ -2,6 +2,7 @@ package plan
 
 import (
 	"context"
+	"io"
 	"math"
 	"testing"
 	"time"
@@ -170,10 +171,10 @@ func TestCreateIndexSync(t *testing.T) {
 
 func TestCreateIndexWithIter(t *testing.T) {
 	require := require.New(t)
-	foo := mem.NewTable("foo", sql.Schema{
+	foo := mem.NewPartitionedTable("foo", sql.Schema{
 		{Name: "one", Source: "foo", Type: sql.Int64},
 		{Name: "two", Source: "foo", Type: sql.Int64},
-	})
+	}, 2)
 
 	rows := [][2]int64{
 		{1, 2},
@@ -205,20 +206,50 @@ func TestCreateIndexWithIter(t *testing.T) {
 	columns, exprs, err := getColumnsAndPrepareExpressions(ci.Exprs)
 	require.NoError(err)
 
-	iter, err := getIndexKeyValueIter(sql.NewEmptyContext(), foo, columns, exprs)
+	iter, err := foo.IndexKeyValues(sql.NewEmptyContext(), columns)
 	require.NoError(err)
 
+	iter = &evalPartitionKeyValueIter{
+		ctx:     sql.NewEmptyContext(),
+		columns: columns,
+		exprs:   exprs,
+		iter:    iter,
+	}
+
 	var (
-		vals []interface{}
+		vals [][]interface{}
+		i    int
 	)
-	for i := 0; err == nil; i++ {
-		vals, _, err = iter.Next()
-		if err == nil {
-			require.Equal(1, len(vals))
-			require.Equal(rows[i][0]+rows[i][1], vals[0])
+
+	for {
+		_, kviter, err := iter.Next()
+		if err == io.EOF {
+			break
 		}
+		require.NoError(err)
+
+		vals = append(vals, nil)
+
+		for {
+			values, _, err := kviter.Next()
+			if err == io.EOF {
+				break
+			}
+			require.NoError(err)
+
+			vals[i] = append(vals[i], values...)
+		}
+
+		require.NoError(kviter.Close())
+
+		i++
 	}
 	require.NoError(iter.Close())
+
+	require.Equal([][]interface{}{
+		{int64(3), int64(0)},
+		{int64(-3), int64(-1)},
+	}, vals)
 }
 
 type mockIndex struct {
@@ -244,7 +275,7 @@ func (i *mockIndex) Expressions() []string {
 func (i *mockIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 	panic("unimplemented")
 }
-func (i *mockIndex) Has(key ...interface{}) (bool, error) {
+func (i *mockIndex) Has(sql.Partition, ...interface{}) (bool, error) {
 	panic("unimplemented")
 }
 func (*mockIndex) Driver() string { return "mock" }
@@ -263,11 +294,12 @@ func (*mockDriver) Create(db, table, id string, exprs []sql.Expression, config m
 func (*mockDriver) LoadAll(db, table string) ([]sql.Index, error) {
 	panic("not implemented")
 }
-func (d *mockDriver) Save(ctx *sql.Context, index sql.Index, iter sql.IndexKeyValueIter) error {
+
+func (d *mockDriver) Save(ctx *sql.Context, index sql.Index, iter sql.PartitionIndexKeyValueIter) error {
 	d.saved = append(d.saved, index.ID())
 	return nil
 }
-func (d *mockDriver) Delete(index sql.Index) error {
+func (d *mockDriver) Delete(index sql.Index, _ sql.PartitionIter) error {
 	d.deleted = append(d.deleted, index.ID())
 	return nil
 }

@@ -967,7 +967,7 @@ func (i dummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 
 	return &mergeableIndexLookup{id: fmt.Sprint(key[0])}, nil
 }
-func (i dummyIndex) Has(key ...interface{}) (bool, error) {
+func (i dummyIndex) Has(sql.Partition, ...interface{}) (bool, error) {
 	panic("not implemented")
 }
 func (i dummyIndex) ID() string {

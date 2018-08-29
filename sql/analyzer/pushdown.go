@@ -147,7 +147,6 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 					queryIndexes = append(queryIndexes, indexLookup.indexes...)
 					table = it.WithIndexLookup(indexLookup.lookup)
 					a.Log("table %q transformed with pushdown of index", node.Name())
-
 				}
 			}
 

@@ -59,7 +59,7 @@ type lookupOperation struct {
 }
 
 type pilosaLookup interface {
-	bitmapQuery() (*pilosa.PQLBitmapQuery, error)
+	bitmapQuery(sql.Partition) (*pilosa.PQLBitmapQuery, error)
 	indexName() string
 }
 
@@ -77,7 +77,7 @@ type indexLookup struct {
 
 func (l *indexLookup) indexName() string { return l.index.Name() }
 
-func (l *indexLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
+func (l *indexLookup) bitmapQuery(p sql.Partition) (*pilosa.PQLBitmapQuery, error) {
 	l.mapping.open()
 	defer l.mapping.close()
 
@@ -85,8 +85,9 @@ func (l *indexLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 		bmp     *pilosa.PQLBitmapQuery
 		bitmaps []*pilosa.PQLBitmapQuery
 	)
+
 	for i, expr := range l.expressions {
-		frm, err := l.index.Frame(frameName(l.id, expr))
+		frm, err := l.index.Frame(frameName(l.id, expr, p))
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +115,7 @@ func (l *indexLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 			return nil, errUnmergeableType.New(op.lookup)
 		}
 
-		b, err := il.bitmapQuery()
+		b, err := il.bitmapQuery(p)
 		if err != nil {
 			return nil, err
 		}
@@ -126,8 +127,8 @@ func (l *indexLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 }
 
 // Values implements sql.IndexLookup.Values
-func (l *indexLookup) Values() (sql.IndexValueIter, error) {
-	bmp, err := l.bitmapQuery()
+func (l *indexLookup) Values(partition sql.Partition) (sql.IndexValueIter, error) {
+	bmp, err := l.bitmapQuery(partition)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +221,7 @@ type filteredLookup struct {
 
 func (l *filteredLookup) indexName() string { return l.index.Name() }
 
-func (l *filteredLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
+func (l *filteredLookup) bitmapQuery(partition sql.Partition) (*pilosa.PQLBitmapQuery, error) {
 	l.mapping.open()
 	defer l.mapping.close()
 
@@ -230,7 +231,7 @@ func (l *filteredLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 		bitmaps []*pilosa.PQLBitmapQuery
 	)
 	for i, expr := range l.expressions {
-		frm, err := l.index.Frame(frameName(l.id, expr))
+		frm, err := l.index.Frame(frameName(l.id, expr, partition))
 		if err != nil {
 			return nil, err
 		}
@@ -262,7 +263,7 @@ func (l *filteredLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 			return nil, errUnmergeableType.New(op.lookup)
 		}
 
-		b, err := il.bitmapQuery()
+		b, err := il.bitmapQuery(partition)
 		if err != nil {
 			return nil, err
 		}
@@ -273,8 +274,8 @@ func (l *filteredLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 	return bmp, nil
 }
 
-func (l *filteredLookup) values() (sql.IndexValueIter, error) {
-	bmp, err := l.bitmapQuery()
+func (l *filteredLookup) values(p sql.Partition) (sql.IndexValueIter, error) {
+	bmp, err := l.bitmapQuery(p)
 	if err != nil {
 		return nil, err
 	}
@@ -354,8 +355,8 @@ func (l *ascendLookup) initFilter() {
 	}
 }
 
-func (l *ascendLookup) Values() (sql.IndexValueIter, error) {
-	return l.values()
+func (l *ascendLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
+	return l.values(p)
 }
 
 func (l *ascendLookup) Indexes() []string {
@@ -467,8 +468,8 @@ func (l *descendLookup) initFilter() {
 	}
 }
 
-func (l *descendLookup) Values() (sql.IndexValueIter, error) {
-	return l.values()
+func (l *descendLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
+	return l.values(p)
 }
 
 func (l *descendLookup) Indexes() []string {
@@ -751,7 +752,7 @@ var (
 
 func (l *negateLookup) indexName() string { return l.index.Name() }
 
-func (l *negateLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
+func (l *negateLookup) bitmapQuery(p sql.Partition) (*pilosa.PQLBitmapQuery, error) {
 	l.mapping.open()
 	defer l.mapping.close()
 
@@ -760,7 +761,7 @@ func (l *negateLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 		bitmaps []*pilosa.PQLBitmapQuery
 	)
 	for i, expr := range l.expressions {
-		frm, err := l.index.Frame(frameName(l.id, expr))
+		frm, err := l.index.Frame(frameName(l.id, expr, p))
 		if err != nil {
 			return nil, err
 		}
@@ -803,7 +804,7 @@ func (l *negateLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 			return nil, errUnmergeableType.New(op.lookup)
 		}
 
-		b, err := il.bitmapQuery()
+		b, err := il.bitmapQuery(p)
 		if err != nil {
 			return nil, err
 		}
@@ -815,8 +816,8 @@ func (l *negateLookup) bitmapQuery() (*pilosa.PQLBitmapQuery, error) {
 }
 
 // Values implements sql.IndexLookup.Values
-func (l *negateLookup) Values() (sql.IndexValueIter, error) {
-	bmp, err := l.bitmapQuery()
+func (l *negateLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
+	bmp, err := l.bitmapQuery(p)
 	if err != nil {
 		return nil, err
 	}
