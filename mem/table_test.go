@@ -43,6 +43,8 @@ type dummyLookup struct {
 	values map[string][]*indexValue
 }
 
+func (dummyLookup) Indexes() []string { return nil }
+
 func (i *dummyLookup) Values(partition sql.Partition) (sql.IndexValueIter, error) {
 	key := string(partition.Key())
 	values, ok := i.values[key]

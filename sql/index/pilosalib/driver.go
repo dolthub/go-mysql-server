@@ -375,7 +375,7 @@ func (d *Driver) Save(
 	return index.RemoveProcessingFile(processingFile)
 }
 
-// Delete the index with the given path.
+// Delete the given index for all partitions in the iterator.
 func (d *Driver) Delete(i sql.Index, partitions sql.PartitionIter) error {
 	if err := os.RemoveAll(filepath.Join(d.root, i.Database(), i.Table(), i.ID())); err != nil {
 		return err

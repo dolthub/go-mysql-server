@@ -25,11 +25,11 @@ var DefaultRules = []Rule{
 var OnceBeforeDefault = []Rule{
 	{"resolve_subqueries", resolveSubqueries},
 	{"resolve_tables", resolveTables},
-	{"index_catalog", indexCatalog},
 }
 
 // OnceAfterDefault contains the rules to be applied just once after the DefaultRules.
 var OnceAfterDefault = []Rule{
+	{"index_catalog", indexCatalog},
 	{"pushdown", pushdown},
 	{"erase_projection", eraseProjection},
 	{"parallelize", parallelize},

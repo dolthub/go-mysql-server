@@ -132,11 +132,11 @@ type IndexDriver interface {
 	// index has multiple columns indexed. If it's just one, it means it may
 	// be an expression or a column.
 	Create(db, table, id string, expressions []Expression, config map[string]string) (Index, error)
-	// LoadAll loads all indexes for given db and table
+	// LoadAll loads all indexes for given db and table.
 	LoadAll(db, table string) ([]Index, error)
-	// Save the given index
+	// Save the given index for all partitions.
 	Save(*Context, Index, PartitionIndexKeyValueIter) error
-	// Delete the given index.
+	// Delete the given index for all partitions in the iterator.
 	Delete(Index, PartitionIter) error
 }
 

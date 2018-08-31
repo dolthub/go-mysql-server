@@ -897,6 +897,8 @@ func TestExpressionSources(t *testing.T) {
 
 type dummyIndexLookup struct{}
 
+func (dummyIndexLookup) Indexes() []string { return nil }
+
 func (dummyIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
 	return nil, nil
 }

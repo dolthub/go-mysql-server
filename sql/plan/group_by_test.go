@@ -145,7 +145,7 @@ func BenchmarkGroupBy(b *testing.B) {
 			),
 		},
 		nil,
-		table,
+		NewResolvedTable("foo", table),
 	)
 
 	expected := []sql.Row{{int64(200)}}
@@ -177,7 +177,7 @@ func BenchmarkGroupBy(b *testing.B) {
 		[]sql.Expression{
 			expression.NewGetField(0, sql.Int64, "a", false),
 		},
-		table,
+		NewResolvedTable("foo", table),
 	)
 
 	expected = []sql.Row{}
