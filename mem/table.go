@@ -21,9 +21,10 @@ type Table struct {
 
 	insert int
 
-	Filters []sql.Expression
-	Columns []int
-	Lookup  sql.IndexLookup
+	filters    []sql.Expression
+	projection []string
+	columns    []int
+	lookup     sql.IndexLookup
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -87,9 +88,9 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	}
 
 	var values sql.IndexValueIter
-	if t.Lookup != nil {
+	if t.lookup != nil {
 		var err error
-		values, err = t.Lookup.Values(partition)
+		values, err = t.lookup.Values(partition)
 		if err != nil {
 			return nil, err
 		}
@@ -97,8 +98,8 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 
 	return &tableIter{
 		rows:        rows,
-		columns:     t.Columns,
-		filters:     t.Filters,
+		columns:     t.columns,
+		filters:     t.filters,
 		indexValues: values,
 	}, nil
 }
@@ -267,15 +268,15 @@ func (t *Table) String() string {
 	p := sql.NewTreePrinter()
 
 	kind := ""
-	if len(t.Columns) > 0 {
+	if len(t.columns) > 0 {
 		kind += "Projected "
 	}
 
-	if len(t.Filters) > 0 {
+	if len(t.filters) > 0 {
 		kind += "Filtered "
 	}
 
-	if t.Lookup != nil {
+	if t.lookup != nil {
 		kind += "Indexed"
 	}
 
@@ -322,49 +323,33 @@ func (t *Table) HandledFilters(filters []sql.Expression) []sql.Expression {
 
 // WithFilters implements the sql.FilteredTable interface.
 func (t *Table) WithFilters(filters []sql.Expression) sql.Table {
-	if len(filters) < 1 {
+	if len(filters) == 0 {
 		return t
 	}
 
-	if t.Filters != nil {
-		filters = append(filters, t.Filters...)
-	}
-
-	return &Table{
-		name:       t.name,
-		schema:     t.schema,
-		partitions: t.partitions,
-		keys:       t.keys,
-		insert:     t.insert,
-		Filters:    filters,
-		Columns:    t.Columns,
-		Lookup:     t.Lookup,
-	}
-
+	nt := *t
+	nt.filters = filters
+	return &nt
 }
 
 // WithProjection implements the sql.ProjectedTable interface.
 func (t *Table) WithProjection(colNames []string) sql.Table {
-	if len(colNames) < 1 {
+	if len(colNames) == 0 {
 		return t
 	}
 
-	columns, schema, _ := t.newColumnIndexesAndSchema(colNames)
-	return &Table{
-		name:       t.name,
-		schema:     schema,
-		partitions: t.partitions,
-		keys:       t.keys,
-		insert:     t.insert,
-		Filters:    t.Filters,
-		Columns:    columns,
-		Lookup:     t.Lookup,
-	}
+	nt := *t
+	columns, schema, _ := nt.newColumnIndexesAndSchema(colNames)
+	nt.columns = columns
+	nt.projection = colNames
+	nt.schema = schema
+
+	return &nt
 }
 
 func (t *Table) newColumnIndexesAndSchema(colNames []string) ([]int, sql.Schema, error) {
-	columns := []int{}
-	schema := []*sql.Column{}
+	var columns []int
+	var schema []*sql.Column
 
 	for _, name := range colNames {
 		i := t.schema.IndexOf(name, t.name)
@@ -372,14 +357,14 @@ func (t *Table) newColumnIndexesAndSchema(colNames []string) ([]int, sql.Schema,
 			return nil, nil, errColumnNotFound.New(name)
 		}
 
-		if len(t.Columns) == 0 {
+		if len(t.columns) == 0 {
 			// if the table hasn't been projected before
 			// match against the origianl schema
 			columns = append(columns, i)
 		} else {
 			// get indexes for the new projections from
 			// the orginal indexes.
-			columns = append(columns, t.Columns[i])
+			columns = append(columns, t.columns[i])
 		}
 
 		schema = append(schema, t.schema[i])
@@ -394,16 +379,10 @@ func (t *Table) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
 		return t
 	}
 
-	return &Table{
-		name:       t.name,
-		schema:     t.schema,
-		partitions: t.partitions,
-		keys:       t.keys,
-		insert:     t.insert,
-		Filters:    t.Filters,
-		Columns:    t.Columns,
-		Lookup:     lookup,
-	}
+	nt := *t
+	nt.lookup = lookup
+
+	return &nt
 }
 
 // IndexKeyValues implements the sql.IndexableTable interface.
@@ -427,6 +406,18 @@ func (t *Table) IndexKeyValues(
 		columns: columns,
 		ctx:     ctx,
 	}, nil
+}
+
+func (t *Table) Projection() []string {
+	return t.projection
+}
+
+func (t *Table) Filters() []sql.Expression {
+	return t.filters
+}
+
+func (t *Table) IndexLookup() sql.IndexLookup {
+	return t.lookup
 }
 
 type partitionIndexKeyValueIter struct {

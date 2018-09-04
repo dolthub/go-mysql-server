@@ -17,7 +17,6 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/parse"
 	"gopkg.in/src-d/go-mysql-server.v0/test"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 )
 
@@ -882,7 +881,6 @@ func TestIndexes(t *testing.T) {
 			require.NoError(err)
 
 			require.ElementsMatch(tt.expected, rows)
-			spew.Dump(tracer.Spans)
 			require.Equal("plan.ResolvedTable", tracer.Spans[len(tracer.Spans)-1])
 		})
 	}
