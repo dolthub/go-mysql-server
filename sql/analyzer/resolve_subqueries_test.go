@@ -63,14 +63,7 @@ func TestResolveSubqueries(t *testing.T) {
 
 	subquery := plan.NewSubqueryAlias(
 		"t2alias",
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewGetFieldWithTable(0, sql.Int64, "bar", "b", false),
-			},
-			plan.NewPushdownProjectionAndFiltersTable([]sql.Expression{
-				expression.NewGetFieldWithTable(0, sql.Int64, "bar", "b", false),
-			}, nil, table2),
-		),
+		plan.NewResolvedTable("bar", table2.WithProjection([]string{"b"})),
 	)
 	_ = subquery.Schema()
 
@@ -80,9 +73,7 @@ func TestResolveSubqueries(t *testing.T) {
 			plan.NewCrossJoin(
 				plan.NewSubqueryAlias(
 					"t1",
-					plan.NewPushdownProjectionAndFiltersTable([]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-					}, nil, table1),
+					plan.NewResolvedTable("foo", table1.WithProjection([]string{"a"})),
 				),
 				plan.NewSubqueryAlias(
 					"t2",
@@ -95,6 +86,5 @@ func TestResolveSubqueries(t *testing.T) {
 
 	result, err := resolveSubqueries(sql.NewEmptyContext(), a, node)
 	require.NoError(err)
-
 	require.Equal(expected, result)
 }

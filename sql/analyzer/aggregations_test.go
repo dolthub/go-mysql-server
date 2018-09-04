@@ -34,7 +34,7 @@ func TestReorderAggregations(t *testing.T) {
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 		},
-		table,
+		plan.NewResolvedTable("foo", table),
 	)
 
 	expected := plan.NewProject(
@@ -54,7 +54,7 @@ func TestReorderAggregations(t *testing.T) {
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 			},
-			table,
+			plan.NewResolvedTable("foo", table),
 		),
 	)
 
@@ -91,7 +91,7 @@ func TestReorderAggregationsMultiple(t *testing.T) {
 			expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 			expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),
 		},
-		table,
+		plan.NewResolvedTable("foo", table),
 	)
 
 	expected := plan.NewProject(
@@ -117,7 +117,7 @@ func TestReorderAggregationsMultiple(t *testing.T) {
 				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 				expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),
 			},
-			table,
+			plan.NewResolvedTable("foo", table),
 		),
 	)
 

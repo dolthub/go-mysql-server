@@ -54,8 +54,8 @@ func (idx *pilosaIndex) Get(keys ...interface{}) (sql.IndexLookup, error) {
 
 	return &indexLookup{
 		id:          idx.ID(),
-		client:      idx.client,
 		index:       index,
+		client:      idx.client,
 		mapping:     idx.mapping,
 		keys:        keys,
 		expressions: idx.expressions,
@@ -63,7 +63,7 @@ func (idx *pilosaIndex) Get(keys ...interface{}) (sql.IndexLookup, error) {
 }
 
 // Has checks if the given key is present in the index mapping
-func (idx *pilosaIndex) Has(key ...interface{}) (bool, error) {
+func (idx *pilosaIndex) Has(p sql.Partition, key ...interface{}) (bool, error) {
 	idx.mapping.open()
 	defer idx.mapping.close()
 
@@ -75,7 +75,7 @@ func (idx *pilosaIndex) Has(key ...interface{}) (bool, error) {
 	// We can make this loop parallel, but does it make sense?
 	// For how many (maximum) keys will be asked by one function call?
 	for i, expr := range idx.expressions {
-		name := frameName(idx.ID(), expr)
+		name := frameName(idx.ID(), expr, p)
 
 		val, err := idx.mapping.get(name, key[i])
 		if err != nil || val == nil {

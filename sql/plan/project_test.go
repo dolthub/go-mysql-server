@@ -21,7 +21,10 @@ func TestProject(t *testing.T) {
 	child := mem.NewTable("test", childSchema)
 	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_1", "col2_1"))
 	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_2", "col2_2"))
-	p := NewProject([]sql.Expression{expression.NewGetField(1, sql.Text, "col2", true)}, child)
+	p := NewProject(
+		[]sql.Expression{expression.NewGetField(1, sql.Text, "col2", true)},
+		NewResolvedTable("test", child),
+	)
 	require.Equal(1, len(p.Children()))
 	schema := sql.Schema{
 		{Name: "col2", Type: sql.Text, Nullable: true},
@@ -44,7 +47,7 @@ func TestProject(t *testing.T) {
 	require.Equal(io.EOF, err)
 	require.Nil(row)
 
-	p = NewProject(nil, child)
+	p = NewProject(nil, NewResolvedTable("test", child))
 	require.Equal(0, len(p.Schema()))
 
 	p = NewProject([]sql.Expression{
@@ -52,7 +55,7 @@ func TestProject(t *testing.T) {
 			expression.NewGetField(1, sql.Text, "col2", true),
 			"foo",
 		),
-	}, child)
+	}, NewResolvedTable("test", child))
 	schema = sql.Schema{
 		{Name: "foo", Type: sql.Text, Nullable: true},
 	}
@@ -71,7 +74,7 @@ func BenchmarkProject(b *testing.B) {
 			expression.NewGetField(3, sql.Int32, "intfield", false),
 			expression.NewGetField(4, sql.Int64, "bigintfield", false),
 			expression.NewGetField(5, sql.Blob, "blobfield", false),
-		}, benchtable)
+		}, NewResolvedTable("test", benchtable))
 
 		iter, err := d.RowIter(ctx)
 		require.NoError(err)

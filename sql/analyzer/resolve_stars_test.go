@@ -32,28 +32,34 @@ func TestResolveStar(t *testing.T) {
 			"unqualified star",
 			plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
-				table,
+				plan.NewResolvedTable("mytable", table),
 			),
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 				},
-				table,
+				plan.NewResolvedTable("mytable", table),
 			),
 		},
 		{
 			"qualified star",
 			plan.NewProject(
 				[]sql.Expression{expression.NewQualifiedStar("mytable2")},
-				plan.NewCrossJoin(table, table2),
+				plan.NewCrossJoin(
+					plan.NewResolvedTable("mytable", table),
+					plan.NewResolvedTable("mytable2", table2),
+				),
 			),
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "c", false),
 					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
 				},
-				plan.NewCrossJoin(table, table2),
+				plan.NewCrossJoin(
+					plan.NewResolvedTable("mytable", table),
+					plan.NewResolvedTable("mytable2", table2),
+				),
 			),
 		},
 		{
@@ -63,7 +69,10 @@ func TestResolveStar(t *testing.T) {
 					expression.NewStar(),
 					expression.NewQualifiedStar("mytable2"),
 				},
-				plan.NewCrossJoin(table, table2),
+				plan.NewCrossJoin(
+					plan.NewResolvedTable("mytable", table),
+					plan.NewResolvedTable("mytable2", table2),
+				),
 			),
 			plan.NewProject(
 				[]sql.Expression{
@@ -74,7 +83,10 @@ func TestResolveStar(t *testing.T) {
 					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "c", false),
 					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
 				},
-				plan.NewCrossJoin(table, table2),
+				plan.NewCrossJoin(
+					plan.NewResolvedTable("mytable", table),
+					plan.NewResolvedTable("mytable2", table2),
+				),
 			),
 		},
 		{
@@ -85,7 +97,10 @@ func TestResolveStar(t *testing.T) {
 					expression.NewUnresolvedColumn("foo"),
 					expression.NewQualifiedStar("mytable2"),
 				},
-				plan.NewCrossJoin(table, table2),
+				plan.NewCrossJoin(
+					plan.NewResolvedTable("mytable", table),
+					plan.NewResolvedTable("mytable2", table2),
+				),
 			),
 			plan.NewProject(
 				[]sql.Expression{
@@ -97,7 +112,10 @@ func TestResolveStar(t *testing.T) {
 					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "c", false),
 					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
 				},
-				plan.NewCrossJoin(table, table2),
+				plan.NewCrossJoin(
+					plan.NewResolvedTable("mytable", table),
+					plan.NewResolvedTable("mytable2", table2),
+				),
 			),
 		},
 		{
@@ -107,7 +125,7 @@ func TestResolveStar(t *testing.T) {
 					expression.NewStar(),
 				},
 				nil,
-				table,
+				plan.NewResolvedTable("mytable", table),
 			),
 			plan.NewGroupBy(
 				[]sql.Expression{
@@ -115,7 +133,7 @@ func TestResolveStar(t *testing.T) {
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 				},
 				nil,
-				table,
+				plan.NewResolvedTable("mytable", table),
 			),
 		},
 		{ // note that this behaviour deviates from MySQL
@@ -125,7 +143,7 @@ func TestResolveStar(t *testing.T) {
 					expression.NewUnresolvedColumn("foo"),
 					expression.NewStar(),
 				},
-				table,
+				plan.NewResolvedTable("mytable", table),
 			),
 			plan.NewProject(
 				[]sql.Expression{
@@ -133,7 +151,7 @@ func TestResolveStar(t *testing.T) {
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 				},
-				table,
+				plan.NewResolvedTable("mytable", table),
 			),
 		},
 		{ // note that this behaviour deviates from MySQL
@@ -143,7 +161,7 @@ func TestResolveStar(t *testing.T) {
 					expression.NewStar(),
 					expression.NewStar(),
 				},
-				table,
+				plan.NewResolvedTable("mytable", table),
 			),
 			plan.NewProject(
 				[]sql.Expression{
@@ -152,7 +170,7 @@ func TestResolveStar(t *testing.T) {
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 				},
-				table,
+				plan.NewResolvedTable("mytable", table),
 			),
 		},
 	}

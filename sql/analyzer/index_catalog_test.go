@@ -23,7 +23,8 @@ func TestCatalogIndex(t *testing.T) {
 
 	tbl := mem.NewTable("foo", nil)
 
-	node, err := f.Apply(sql.NewEmptyContext(), a, plan.NewCreateIndex("", tbl, nil, "", make(map[string]string)))
+	node, err := f.Apply(sql.NewEmptyContext(), a,
+		plan.NewCreateIndex("", plan.NewResolvedTable("foo", tbl), nil, "", make(map[string]string)))
 	require.NoError(err)
 
 	ci, ok := node.(*plan.CreateIndex)
@@ -31,7 +32,8 @@ func TestCatalogIndex(t *testing.T) {
 	require.Equal(c, ci.Catalog)
 	require.Equal("foo", ci.CurrentDatabase)
 
-	node, err = f.Apply(sql.NewEmptyContext(), a, plan.NewDropIndex("foo", tbl))
+	node, err = f.Apply(sql.NewEmptyContext(), a,
+		plan.NewDropIndex("foo", plan.NewResolvedTable("foo", tbl)))
 	require.NoError(err)
 
 	di, ok := node.(*plan.DropIndex)

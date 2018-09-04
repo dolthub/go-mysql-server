@@ -9,7 +9,16 @@ import (
 )
 
 // IndexBatchSize is the number of rows to save at a time when creating indexes.
-var IndexBatchSize = uint64(10000)
+const IndexBatchSize = uint64(10000)
+
+// PartitionIndexKeyValueIter is an iterator of partitions that will return
+// the partition and the IndexKeyValueIter of that partition.
+type PartitionIndexKeyValueIter interface {
+	// Next returns the next partition and the IndexKeyValueIter for that
+	// partition.
+	Next() (Partition, IndexKeyValueIter, error)
+	io.Closer
+}
 
 // IndexKeyValueIter is an iterator of index key values, that is, a tuple of
 // the values that will be index keys.
@@ -34,7 +43,7 @@ type Index interface {
 	// Get returns an IndexLookup for the given key in the index.
 	Get(key ...interface{}) (IndexLookup, error)
 	// Has checks if the given key is present in the index.
-	Has(key ...interface{}) (bool, error)
+	Has(partition Partition, key ...interface{}) (bool, error)
 	// ID returns the identifier of the index.
 	ID() string
 	// Database returns the database name this index belongs to.
@@ -86,7 +95,8 @@ type NegateIndex interface {
 // implemented to grant more capabilities to the index lookup.
 type IndexLookup interface {
 	// Values returns the values in the subset of the index.
-	Values() (IndexValueIter, error)
+	Values(Partition) (IndexValueIter, error)
+
 	// Indexes returns the IDs of all indexes involved in this lookup.
 	Indexes() []string
 }
@@ -122,12 +132,12 @@ type IndexDriver interface {
 	// index has multiple columns indexed. If it's just one, it means it may
 	// be an expression or a column.
 	Create(db, table, id string, expressions []Expression, config map[string]string) (Index, error)
-	// LoadAll loads all indexes for given db and table
+	// LoadAll loads all indexes for given db and table.
 	LoadAll(db, table string) ([]Index, error)
-	// Save the given index
-	Save(ctx *Context, index Index, iter IndexKeyValueIter) error
-	// Delete the given index.
-	Delete(index Index) error
+	// Save the given index for all partitions.
+	Save(*Context, Index, PartitionIndexKeyValueIter) error
+	// Delete the given index for all partitions in the iterator.
+	Delete(Index, PartitionIter) error
 }
 
 type indexKey struct {
@@ -523,7 +533,7 @@ func (r *IndexRegistry) DeleteIndex(db, id string, force bool) (<-chan struct{},
 
 	r.rcmut.Lock()
 	// If no query is using this index just delete it right away
-	if r.refCounts[key] == 0 {
+	if r.refCounts[key] <= 0 {
 		r.mut.Lock()
 		defer r.mut.Unlock()
 		defer r.rcmut.Unlock()

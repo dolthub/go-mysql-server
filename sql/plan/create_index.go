@@ -20,9 +20,6 @@ var (
 	// ErrInvalidIndexDriver is returned when the index driver can't be found.
 	ErrInvalidIndexDriver = errors.NewKind("invalid driver index %q")
 
-	// ErrTableNotNameable is returned when the table name can't be obtained.
-	ErrTableNotNameable = errors.NewKind("can't get the name from the table")
-
 	// ErrExprTypeNotIndexable is returned when the expression type cannot be
 	// indexed, such as BLOB or JSON.
 	ErrExprTypeNotIndexable = errors.NewKind("expression %q with type %s cannot be indexed")
@@ -78,14 +75,14 @@ func (c *CreateIndex) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	table, ok := c.Table.(sql.Indexable)
+	table, ok := c.Table.(*ResolvedTable)
 	if !ok {
 		return nil, ErrNotIndexable.New()
 	}
 
-	nameable, ok := c.Table.(sql.Nameable)
+	indexable, ok := table.Table.(sql.IndexableTable)
 	if !ok {
-		return nil, ErrTableNotNameable.New()
+		return nil, ErrNotIndexable.New()
 	}
 
 	var driver sql.IndexDriver
@@ -112,7 +109,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 
 	index, err := driver.Create(
 		c.CurrentDatabase,
-		nameable.Name(),
+		table.Name(),
 		c.Name,
 		exprs,
 		c.Config,
@@ -121,9 +118,16 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	iter, err := getIndexKeyValueIter(ctx, table, columns, exprs)
+	iter, err := indexable.IndexKeyValues(ctx, columns)
 	if err != nil {
 		return nil, err
+	}
+
+	iter = &evalPartitionKeyValueIter{
+		ctx:     ctx,
+		columns: columns,
+		exprs:   exprs,
+		iter:    iter,
 	}
 
 	created, ready, err := c.Catalog.AddIndex(index)
@@ -156,7 +160,7 @@ func (c *CreateIndex) createIndex(
 	log *logrus.Entry,
 	driver sql.IndexDriver,
 	index sql.Index,
-	iter sql.IndexKeyValueIter,
+	iter sql.PartitionIndexKeyValueIter,
 	done chan<- struct{},
 	ready <-chan struct{},
 ) {
@@ -169,7 +173,7 @@ func (c *CreateIndex) createIndex(
 
 	l := log.WithField("id", index.ID())
 
-	err := driver.Save(ctx, index, newLoggingKeyValueIter(ctx, l, iter))
+	err := driver.Save(ctx, index, newLoggingPartitionKeyValueIter(ctx, l, iter))
 	close(done)
 
 	if err != nil {
@@ -320,42 +324,92 @@ func getColumnsAndPrepareExpressions(
 	return columns, expressions, nil
 }
 
-type evalKeyValueIter struct {
-	ctx   *sql.Context
-	iter  sql.IndexKeyValueIter
-	exprs []sql.Expression
+type evalPartitionKeyValueIter struct {
+	table   sql.IndexableTable
+	iter    sql.PartitionIndexKeyValueIter
+	columns []string
+	exprs   []sql.Expression
+	ctx     *sql.Context
 }
 
-func (eit *evalKeyValueIter) Next() ([]interface{}, []byte, error) {
-	vals, loc, err := eit.iter.Next()
+func (i *evalPartitionKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, error) {
+	p, iter, err := i.iter.Next()
 	if err != nil {
 		return nil, nil, err
 	}
+
+	return p, &evalKeyValueIter{
+		ctx:     i.ctx,
+		columns: i.columns,
+		exprs:   i.exprs,
+		iter:    iter,
+	}, nil
+}
+
+func (i *evalPartitionKeyValueIter) Close() error {
+	return i.iter.Close()
+}
+
+type evalKeyValueIter struct {
+	ctx     *sql.Context
+	iter    sql.IndexKeyValueIter
+	columns []string
+	exprs   []sql.Expression
+}
+
+func (i *evalKeyValueIter) Next() ([]interface{}, []byte, error) {
+	vals, loc, err := i.iter.Next()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	row := sql.NewRow(vals...)
-	evals := make([]interface{}, len(eit.exprs))
-	for i, ex := range eit.exprs {
-		eval, err := ex.Eval(eit.ctx, row)
+	evals := make([]interface{}, len(i.exprs))
+	for j, ex := range i.exprs {
+		eval, err := ex.Eval(i.ctx, row)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		evals[i] = eval
+		evals[j] = eval
 	}
 
 	return evals, loc, nil
 }
 
-func (eit *evalKeyValueIter) Close() error {
-	return eit.iter.Close()
+func (i *evalKeyValueIter) Close() error {
+	return i.iter.Close()
 }
 
-func getIndexKeyValueIter(ctx *sql.Context, table sql.Indexable, columns []string, exprs []sql.Expression) (*evalKeyValueIter, error) {
-	iter, err := table.IndexKeyValueIter(ctx, columns)
+type loggingPartitionKeyValueIter struct {
+	ctx  *sql.Context
+	log  *logrus.Entry
+	iter sql.PartitionIndexKeyValueIter
+}
+
+func newLoggingPartitionKeyValueIter(
+	ctx *sql.Context,
+	log *logrus.Entry,
+	iter sql.PartitionIndexKeyValueIter,
+) *loggingPartitionKeyValueIter {
+	return &loggingPartitionKeyValueIter{
+		ctx:  ctx,
+		log:  log,
+		iter: iter,
+	}
+}
+
+func (i *loggingPartitionKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, error) {
+	p, iter, err := i.iter.Next()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &evalKeyValueIter{ctx, iter, exprs}, nil
+	return p, newLoggingKeyValueIter(i.ctx, i.log, iter), nil
+}
+
+func (i *loggingPartitionKeyValueIter) Close() error {
+	return i.iter.Close()
 }
 
 type loggingKeyValueIter struct {
@@ -371,7 +425,7 @@ func newLoggingKeyValueIter(
 	ctx *sql.Context,
 	log *logrus.Entry,
 	iter sql.IndexKeyValueIter,
-) sql.IndexKeyValueIter {
+) *loggingKeyValueIter {
 	return &loggingKeyValueIter{
 		ctx:   ctx,
 		log:   log,

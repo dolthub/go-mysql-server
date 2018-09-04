@@ -51,7 +51,7 @@ func (idx *pilosaIndex) Get(keys ...interface{}) (sql.IndexLookup, error) {
 }
 
 // Has checks if the given key is present in the index mapping
-func (idx *pilosaIndex) Has(key ...interface{}) (bool, error) {
+func (idx *pilosaIndex) Has(p sql.Partition, key ...interface{}) (bool, error) {
 	idx.mapping.open()
 	defer idx.mapping.close()
 
@@ -61,7 +61,7 @@ func (idx *pilosaIndex) Has(key ...interface{}) (bool, error) {
 	}
 
 	for i, expr := range idx.expressions {
-		name := fieldName(idx.ID(), expr)
+		name := fieldName(idx.ID(), expr, p)
 
 		val, err := idx.mapping.get(name, key[i])
 		if err != nil || val == nil {

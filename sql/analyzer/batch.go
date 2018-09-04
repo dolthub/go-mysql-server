@@ -30,13 +30,21 @@ type Batch struct {
 // If max number of iterations is reached, this method will return the actual
 // processed Node and ErrMaxAnalysisIters error.
 func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	if b.Iterations == 0 {
+		return n, nil
+	}
+
 	prev := n
 	cur, err := b.evalOnce(ctx, a, n)
 	if err != nil {
 		return nil, err
 	}
 
-	for i := 0; !nodesEqual(prev, cur); {
+	if b.Iterations == 1 {
+		return cur, nil
+	}
+
+	for i := 1; !nodesEqual(prev, cur); {
 		prev = cur
 		cur, err = b.evalOnce(ctx, a, cur)
 		if err != nil {

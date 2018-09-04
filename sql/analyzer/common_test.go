@@ -45,11 +45,29 @@ func lit(n int64) sql.Expression {
 	return expression.NewLiteral(n, sql.Int64)
 }
 
+var analyzeRules = [][]Rule{
+	OnceBeforeDefault,
+	DefaultRules,
+	OnceAfterDefault,
+}
+
 func getRule(name string) Rule {
-	for _, rule := range DefaultRules {
-		if rule.Name == name {
-			return rule
+	for _, rules := range analyzeRules {
+		rule := getRuleFrom(rules, name)
+		if rule != nil {
+			return *rule
 		}
 	}
+
 	panic("missing rule")
+}
+
+func getRuleFrom(rules []Rule, name string) *Rule {
+	for _, rule := range rules {
+		if rule.Name == name {
+			return &rule
+		}
+	}
+
+	return nil
 }

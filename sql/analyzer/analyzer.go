@@ -24,6 +24,7 @@ type Builder struct {
 	postValidationRules []Rule
 	catalog             *sql.Catalog
 	debug               bool
+	parallelism         int
 }
 
 // NewBuilder creates a new Builder from a specific catalog.
@@ -36,6 +37,12 @@ func NewBuilder(c *sql.Catalog) *Builder {
 func (ab *Builder) WithDebug() *Builder {
 	ab.debug = true
 
+	return ab
+}
+
+// WithParallelism sets the parallelism level on the analyzer.
+func (ab *Builder) WithParallelism(parallelism int) *Builder {
+	ab.parallelism = parallelism
 	return ab
 }
 
@@ -82,9 +89,19 @@ func (ab *Builder) Build() *Analyzer {
 			Rules:      ab.preAnalyzeRules,
 		},
 		&Batch{
+			Desc:       "once execution rule before default",
+			Iterations: 1,
+			Rules:      OnceBeforeDefault,
+		},
+		&Batch{
 			Desc:       "analyzer rules",
 			Iterations: maxAnalysisIterations,
 			Rules:      DefaultRules,
+		},
+		&Batch{
+			Desc:       "once execution rules after default",
+			Iterations: 1,
+			Rules:      OnceAfterDefault,
 		},
 		&Batch{
 			Desc:       "post-analyzer rules",
@@ -109,16 +126,18 @@ func (ab *Builder) Build() *Analyzer {
 	}
 
 	return &Analyzer{
-		Debug:   debug || ab.debug,
-		Batches: batches,
-		Catalog: ab.catalog,
+		Debug:       debug || ab.debug,
+		Batches:     batches,
+		Catalog:     ab.catalog,
+		Parallelism: ab.parallelism,
 	}
 }
 
 // Analyzer analyzes nodes of the execution plan and applies rules and validations
 // to them.
 type Analyzer struct {
-	Debug bool
+	Debug       bool
+	Parallelism int
 	// Batches of Rules to apply.
 	Batches []*Batch
 	// Catalog of databases and registered functions.

@@ -29,7 +29,7 @@ func TestSubqueryAliasSchema(t *testing.T) {
 			expression.NewGetField(0, sql.Text, "foo", false),
 			expression.NewGetField(1, sql.Text, "baz", false),
 		},
-		table,
+		NewResolvedTable("bar", table),
 	)
 
 	require.Equal(

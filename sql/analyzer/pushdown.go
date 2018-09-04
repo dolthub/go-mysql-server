@@ -73,13 +73,21 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 	filterSpan.Finish()
 
-	a.Log("transforming nodes with pushdown of filters and projections")
+	indexSpan, _ := ctx.Span("assign_indexes")
+	indexes, err := assignIndexes(a, n)
+	if err != nil {
+		return nil, err
+	}
+	indexSpan.Finish()
+
+	a.Log("transforming nodes with pushdown of filters, projections and indexes")
 
 	// Now all nodes can be transformed. Since traversal of the tree is done
 	// from inner to outer the filters have to be processed first so they get
 	// to the tables.
 	var handledFilters []sql.Expression
 	var queryIndexes []sql.Index
+
 	node, err := n.TransformUp(func(node sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", node)
 		switch node := node.(type) {
@@ -106,65 +114,90 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 			)
 
 			return plan.NewFilter(expression.JoinAnd(unhandled...), node.Child), nil
-		case *plan.PushdownProjectionAndFiltersTable,
-			*plan.PushdownProjectionTable,
-			*plan.IndexableTable:
-			// they also implement the interfaces for pushdown, so we better return
-			// or there will be a very nice infinite loop
-			return node, nil
-		case sql.PushdownProjectionAndFiltersTable:
-			cols := exprsByTable[node.Name()]
-			tableFilters := filters[node.Name()]
-			handled := node.HandledFilters(tableFilters)
-			handledFilters = append(handledFilters, handled...)
+		case *plan.ResolvedTable:
+			var table = node.Table
 
-			schema := node.Schema()
-			cols, err := fixFieldIndexesOnExpressions(schema, cols...)
-			if err != nil {
-				return nil, err
-			}
+			if ft, ok := table.(sql.FilteredTable); ok {
+				tableFilters := filters[node.Name()]
+				handled := ft.HandledFilters(tableFilters)
+				handledFilters = append(handledFilters, handled...)
+				schema := node.Schema()
+				handled, err = fixFieldIndexesOnExpressions(schema, handled...)
+				if err != nil {
+					return nil, err
+				}
 
-			handled, err = fixFieldIndexesOnExpressions(schema, handled...)
-			if err != nil {
-				return nil, err
-			}
-
-			indexable, ok := node.(*indexable)
-			if !ok {
+				table = ft.WithFilters(handled)
 				a.Log(
-					"table %q transformed with pushdown of projection and filters, %d filters handled of %d",
+					"table %q transformed with pushdown of filters, %d filters handled of %d",
 					node.Name(),
 					len(handled),
 					len(tableFilters),
 				)
-
-				return plan.NewPushdownProjectionAndFiltersTable(
-					cols,
-					handled,
-					node,
-				), nil
 			}
 
-			a.Log(
-				"table %q transformed with pushdown of projection, filters and index, %d filters handled of %d",
-				node.Name(),
-				len(handled),
-				len(tableFilters),
-			)
+			if pt, ok := table.(sql.ProjectedTable); ok {
+				table = pt.WithProjection(fieldsByTable[node.Name()])
+				a.Log("table %q transformed with pushdown of projection", node.Name())
+			}
 
-			queryIndexes = append(queryIndexes, indexable.index.indexes...)
-			return plan.NewIndexableTable(
-				cols,
-				handled,
-				indexable.index.lookup,
-				indexable.Indexable,
-			), nil
-		case sql.PushdownProjectionTable:
-			cols := fieldsByTable[node.Name()]
-			a.Log("table %q transformed with pushdown of projection", node.Name())
-			return plan.NewPushdownProjectionTable(cols, node), nil
+			if it, ok := table.(sql.IndexableTable); ok {
+				indexLookup, ok := indexes[node.Name()]
+				if ok {
+					queryIndexes = append(queryIndexes, indexLookup.indexes...)
+					table = it.WithIndexLookup(indexLookup.lookup)
+					a.Log("table %q transformed with pushdown of index", node.Name())
+				}
+			}
+
+			return plan.NewResolvedTable(node.Name(), table), nil
+		default:
+			expressioner, ok := node.(sql.Expressioner)
+			if !ok {
+				return node, nil
+			}
+
+			schemas := []sql.Schema{}
+			for _, child := range node.Children() {
+				schemas = append(schemas, child.Schema())
+			}
+
+			if len(schemas) < 1 {
+				return node, nil
+			}
+
+			n, err := expressioner.TransformExpressions(func(e sql.Expression) (sql.Expression, error) {
+				for _, schema := range schemas {
+					fixed, err := fixFieldIndexes(schema, e)
+					if err == nil {
+						return fixed, nil
+					}
+
+					if ErrFieldMissing.Is(err) {
+						continue
+					}
+
+					return nil, err
+				}
+
+				return e, nil
+			})
+
+			if err != nil {
+				return nil, err
+			}
+
+			if ij, ok := n.(*plan.InnerJoin); ok {
+				cond, err := fixFieldIndexes(ij.Schema(), ij.Cond)
+				if err != nil {
+					return nil, err
+				}
+
+				n = plan.NewInnerJoin(ij.Left, ij.Right, cond)
+			}
+
+			return n, nil
 		}
-		return node, nil
 	})
 
 	release := func() {
@@ -207,7 +240,7 @@ func fixFieldIndexes(schema sql.Schema, exp sql.Expression) (sql.Expression, err
 		case *expression.GetField:
 			// we need to rewrite the indexes for the table row
 			for i, col := range schema {
-				if e.Name() == col.Name {
+				if e.Name() == col.Name && e.Table() == col.Source {
 					return expression.NewGetFieldWithTable(
 						i,
 						e.Type(),

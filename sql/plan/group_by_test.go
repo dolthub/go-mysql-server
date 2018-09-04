@@ -18,7 +18,7 @@ func TestGroupBy_Schema(t *testing.T) {
 		expression.NewAlias(expression.NewLiteral("s", sql.Text), "c1"),
 		expression.NewAlias(aggregation.NewCount(expression.NewStar()), "c2"),
 	}
-	gb := NewGroupBy(agg, nil, child)
+	gb := NewGroupBy(agg, nil, NewResolvedTable("test", child))
 	require.Equal(sql.Schema{
 		{Name: "c1", Type: sql.Text},
 		{Name: "c2", Type: sql.Int32},
@@ -32,13 +32,13 @@ func TestGroupBy_Resolved(t *testing.T) {
 	agg := []sql.Expression{
 		expression.NewAlias(aggregation.NewCount(expression.NewStar()), "c2"),
 	}
-	gb := NewGroupBy(agg, nil, child)
+	gb := NewGroupBy(agg, nil, NewResolvedTable("test", child))
 	require.True(gb.Resolved())
 
 	agg = []sql.Expression{
 		expression.NewStar(),
 	}
-	gb = NewGroupBy(agg, nil, child)
+	gb = NewGroupBy(agg, nil, NewResolvedTable("test", child))
 	require.False(gb.Resolved())
 }
 
@@ -83,7 +83,7 @@ func TestGroupBy_RowIter(t *testing.T) {
 				expression.NewGetField(0, sql.Text, "col1", true),
 				expression.NewGetField(1, sql.Int64, "col2", true),
 			},
-			child,
+			NewResolvedTable("test", child),
 		))
 
 	require.Equal(1, len(p.Children()))
@@ -128,7 +128,7 @@ func TestGroupBy_Error(t *testing.T) {
 			aggregation.NewCount(expression.NewGetField(0, sql.Text, "col1", true)),
 			expression.NewGetField(1, sql.Int64, "col2", true),
 		},
-		child,
+		NewResolvedTable("test", child),
 	)
 
 	_, err := sql.NodeToRows(ctx, p)
@@ -145,7 +145,7 @@ func BenchmarkGroupBy(b *testing.B) {
 			),
 		},
 		nil,
-		table,
+		NewResolvedTable("foo", table),
 	)
 
 	expected := []sql.Row{{int64(200)}}
@@ -177,7 +177,7 @@ func BenchmarkGroupBy(b *testing.B) {
 		[]sql.Expression{
 			expression.NewGetField(0, sql.Int64, "a", false),
 		},
-		table,
+		NewResolvedTable("foo", table),
 	)
 
 	expected = []sql.Row{}

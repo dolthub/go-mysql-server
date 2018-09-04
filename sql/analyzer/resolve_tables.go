@@ -6,9 +6,11 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
+const dualTableName = "dual"
+
 var dualTable = func() sql.Table {
-	t := mem.NewTable("dual", sql.Schema{
-		{Name: "dummy", Source: "dual", Type: sql.Text, Nullable: false},
+	t := mem.NewTable(dualTableName, sql.Schema{
+		{Name: "dummy", Source: dualTableName, Type: sql.Text, Nullable: false},
 	})
 	_ = t.Insert(sql.NewEmptyContext(), sql.NewRow("x"))
 	return t
@@ -30,17 +32,19 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 			return n, nil
 		}
 
-		rt, err := a.Catalog.Table(a.CurrentDatabase, t.Name)
+		name := t.Name()
+		rt, err := a.Catalog.Table(a.CurrentDatabase, name)
 		if err != nil {
-			if sql.ErrTableNotFound.Is(err) && t.Name == dualTable.Name() {
+			if sql.ErrTableNotFound.Is(err) && name == dualTableName {
 				rt = dualTable
+				name = dualTableName
 			} else {
 				return nil, err
 			}
 		}
 
-		a.Log("table resolved: %q", rt.Name())
+		a.Log("table resolved: %q", t.Name())
 
-		return rt, nil
+		return plan.NewResolvedTable(t.Name(), rt), nil
 	})
 }

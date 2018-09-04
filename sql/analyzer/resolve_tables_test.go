@@ -27,21 +27,21 @@ func TestResolveTables(t *testing.T) {
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
 	analyzed, err := f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.NoError(err)
-	require.Equal(table, analyzed)
+	require.Equal(plan.NewResolvedTable("mytable", table), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("nonexistant")
 	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.Error(err)
 	require.Nil(analyzed)
 
-	analyzed, err = f.Apply(sql.NewEmptyContext(), a, table)
+	analyzed, err = f.Apply(sql.NewEmptyContext(), a, plan.NewResolvedTable("mytable", table))
 	require.NoError(err)
-	require.Equal(table, analyzed)
+	require.Equal(plan.NewResolvedTable("mytable", table), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("dual")
 	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.NoError(err)
-	require.Equal(dualTable, analyzed)
+	require.Equal(plan.NewResolvedTable(dualTableName, dualTable), analyzed)
 }
 
 func TestResolveTablesNested(t *testing.T) {
@@ -67,7 +67,7 @@ func TestResolveTablesNested(t *testing.T) {
 	require.NoError(err)
 	expected := plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},
-		table,
+		plan.NewResolvedTable("mytable", table),
 	)
 	require.Equal(expected, analyzed)
 }

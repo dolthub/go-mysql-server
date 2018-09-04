@@ -46,15 +46,17 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 		switch n := n.(type) {
 		case *plan.TableAlias:
 			switch t := n.Child.(type) {
-			case sql.Table:
-				tableAliases[n.Name()] = t.Name()
+			case *plan.ResolvedTable, *plan.UnresolvedTable:
+				name := t.(sql.Nameable).Name()
+				tableAliases[n.Name()] = name
 			default:
 				tables[n.Name()] = n.Child
 				indexCols(n.Name(), n.Schema())
 			}
-		case sql.Table:
-			tables[n.Name()] = n
-			indexCols(n.Name(), n.Schema())
+		case *plan.ResolvedTable, *plan.SubqueryAlias:
+			name := n.(sql.Nameable).Name()
+			tables[name] = n
+			indexCols(name, n.Schema())
 		}
 
 		return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {

@@ -33,7 +33,7 @@ func TestReorderProjection(t *testing.T) {
 					expression.NewLiteral(1, sql.Int64),
 					expression.NewUnresolvedColumn("bar"),
 				),
-				table,
+				plan.NewResolvedTable("mytable", table),
 			),
 		),
 	)
@@ -62,7 +62,7 @@ func TestReorderProjection(t *testing.T) {
 							expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
 							expression.NewAlias(expression.NewLiteral(2, sql.Int64), "bar"),
 						},
-						table,
+						plan.NewResolvedTable("mytable", table),
 					),
 				),
 			),
@@ -101,7 +101,7 @@ func TestEraseProjection(t *testing.T) {
 						expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
 						expression.NewAlias(expression.NewLiteral(2, sql.Int64), "bar"),
 					},
-					table,
+					plan.NewResolvedTable("mytable", table),
 				),
 			),
 		),
@@ -129,8 +129,12 @@ func TestEraseProjection(t *testing.T) {
 
 func TestOptimizeDistinct(t *testing.T) {
 	require := require.New(t)
-	notSorted := plan.NewDistinct(mem.NewTable("foo", nil))
-	sorted := plan.NewDistinct(plan.NewSort(nil, mem.NewTable("foo", nil)))
+
+	t1 := mem.NewTable("foo", nil)
+	t2 := mem.NewTable("foo", nil)
+
+	notSorted := plan.NewDistinct(plan.NewResolvedTable("foo", t1))
+	sorted := plan.NewDistinct(plan.NewSort(nil, plan.NewResolvedTable("foo", t2)))
 
 	rule := getRule("optimize_distinct")
 
@@ -146,26 +150,29 @@ func TestOptimizeDistinct(t *testing.T) {
 
 func TestMoveJoinConditionsToFilter(t *testing.T) {
 	t1 := mem.NewTable("t1", sql.Schema{
-		{Name: "a", Source: "t1"},
-		{Name: "b", Source: "t1"},
+		{Name: "a", Source: "t1", Type: sql.Int64},
+		{Name: "b", Source: "t1", Type: sql.Int64},
 	})
 
 	t2 := mem.NewTable("t2", sql.Schema{
-		{Name: "c", Source: "t2"},
-		{Name: "d", Source: "t2"},
+		{Name: "c", Source: "t2", Type: sql.Int64},
+		{Name: "d", Source: "t2", Type: sql.Int64},
 	})
 
 	t3 := mem.NewTable("t3", sql.Schema{
-		{Name: "e", Source: "t3"},
-		{Name: "f", Source: "t3"},
+		{Name: "e", Source: "t3", Type: sql.Int64},
+		{Name: "f", Source: "t3", Type: sql.Int64},
 	})
 
 	rule := getRule("move_join_conds_to_filter")
 	require := require.New(t)
 
 	node := plan.NewInnerJoin(
-		t1,
-		plan.NewCrossJoin(t2, t3),
+		plan.NewResolvedTable("t1", t1),
+		plan.NewCrossJoin(
+			plan.NewResolvedTable("t2", t2),
+			plan.NewResolvedTable("t3", t3),
+		),
 		expression.JoinAnd(
 			eq(col(0, "t1", "a"), col(2, "t2", "c")),
 			eq(col(0, "t1", "a"), col(4, "t3", "e")),
@@ -180,11 +187,14 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 	var expected sql.Node = plan.NewInnerJoin(
 		plan.NewFilter(
 			eq(col(0, "t1", "a"), lit(5)),
-			t1,
+			plan.NewResolvedTable("t1", t1),
 		),
 		plan.NewFilter(
 			eq(col(0, "t2", "c"), col(2, "t3", "e")),
-			plan.NewCrossJoin(t2, t3),
+			plan.NewCrossJoin(
+				plan.NewResolvedTable("t2", t2),
+				plan.NewResolvedTable("t3", t3),
+			),
 		),
 		and(
 			eq(col(0, "t1", "a"), col(2, "t2", "c")),
@@ -195,8 +205,11 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 	require.Equal(expected, result)
 
 	node = plan.NewInnerJoin(
-		t1,
-		plan.NewCrossJoin(t2, t3),
+		plan.NewResolvedTable("t1", t1),
+		plan.NewCrossJoin(
+			plan.NewResolvedTable("t2", t2),
+			plan.NewResolvedTable("t3", t3),
+		),
 		expression.JoinAnd(
 			eq(col(0, "t2", "c"), col(0, "t3", "e")),
 			eq(col(0, "t1", "a"), lit(5)),
@@ -209,11 +222,14 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 	expected = plan.NewCrossJoin(
 		plan.NewFilter(
 			eq(col(0, "t1", "a"), lit(5)),
-			t1,
+			plan.NewResolvedTable("t1", t1),
 		),
 		plan.NewFilter(
 			eq(col(0, "t2", "c"), col(2, "t3", "e")),
-			plan.NewCrossJoin(t2, t3),
+			plan.NewCrossJoin(
+				plan.NewResolvedTable("t2", t2),
+				plan.NewResolvedTable("t3", t3),
+			),
 		),
 	)
 
@@ -235,7 +251,7 @@ func TestEvalFilter(t *testing.T) {
 			),
 			plan.NewFilter(
 				eq(col(0, "foo", "bar"), lit(5)),
-				inner,
+				plan.NewResolvedTable("foo", inner),
 			),
 		},
 		{
@@ -245,7 +261,7 @@ func TestEvalFilter(t *testing.T) {
 			),
 			plan.NewFilter(
 				eq(col(0, "foo", "bar"), lit(5)),
-				inner,
+				plan.NewResolvedTable("foo", inner),
 			),
 		},
 		{
@@ -267,7 +283,7 @@ func TestEvalFilter(t *testing.T) {
 				eq(lit(4), lit(4)),
 				eq(lit(5), lit(5)),
 			),
-			inner,
+			plan.NewResolvedTable("foo", inner),
 		},
 		{
 			or(
@@ -276,7 +292,7 @@ func TestEvalFilter(t *testing.T) {
 			),
 			plan.NewFilter(
 				eq(col(0, "foo", "bar"), lit(5)),
-				inner,
+				plan.NewResolvedTable("foo", inner),
 			),
 		},
 		{
@@ -286,7 +302,7 @@ func TestEvalFilter(t *testing.T) {
 			),
 			plan.NewFilter(
 				eq(col(0, "foo", "bar"), lit(5)),
-				inner,
+				plan.NewResolvedTable("foo", inner),
 			),
 		},
 		{
@@ -294,14 +310,14 @@ func TestEvalFilter(t *testing.T) {
 				eq(lit(5), lit(5)),
 				eq(col(0, "foo", "bar"), lit(5)),
 			),
-			inner,
+			plan.NewResolvedTable("foo", inner),
 		},
 		{
 			or(
 				eq(col(0, "foo", "bar"), lit(5)),
 				eq(lit(5), lit(5)),
 			),
-			inner,
+			plan.NewResolvedTable("foo", inner),
 		},
 		{
 			or(
@@ -315,7 +331,7 @@ func TestEvalFilter(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.filter.String(), func(t *testing.T) {
 			require := require.New(t)
-			node := plan.NewFilter(tt.filter, inner)
+			node := plan.NewFilter(tt.filter, plan.NewResolvedTable("foo", inner))
 			result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
 			require.NoError(err)
 			require.Equal(tt.expected, result)

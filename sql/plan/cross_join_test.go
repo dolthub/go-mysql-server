@@ -43,7 +43,10 @@ func TestCrossJoin(t *testing.T) {
 	insertData(t, ltable)
 	insertData(t, rtable)
 
-	j := NewCrossJoin(ltable, rtable)
+	j := NewCrossJoin(
+		NewResolvedTable("left", ltable),
+		NewResolvedTable("right", rtable),
+	)
 
 	require.Equal(resultSchema, j.Schema())
 
@@ -100,7 +103,10 @@ func TestCrossJoin_Empty(t *testing.T) {
 	rtable := mem.NewTable("right", rSchema)
 	insertData(t, ltable)
 
-	j := NewCrossJoin(ltable, rtable)
+	j := NewCrossJoin(
+		NewResolvedTable("left", ltable),
+		NewResolvedTable("right", rtable),
+	)
 
 	iter, err := j.RowIter(ctx)
 	require.NoError(err)
@@ -114,7 +120,10 @@ func TestCrossJoin_Empty(t *testing.T) {
 	rtable = mem.NewTable("right", rSchema)
 	insertData(t, rtable)
 
-	j = NewCrossJoin(ltable, rtable)
+	j = NewCrossJoin(
+		NewResolvedTable("left", ltable),
+		NewResolvedTable("right", rtable),
+	)
 
 	iter, err = j.RowIter(ctx)
 	require.NoError(err)

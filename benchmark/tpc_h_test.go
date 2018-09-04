@@ -88,7 +88,7 @@ func genDB(b *testing.B) (sql.Database, error) {
 	for _, m := range tpchTableMetadata {
 		b.Log("generating table", m.name)
 		t := mem.NewTable(m.name, m.schema)
-		if err := insertDataToTable(t, len(m.schema)); err != nil {
+		if err := insertDataToTable(m.name, t, len(m.schema)); err != nil {
 			return nil, err
 		}
 
@@ -98,8 +98,8 @@ func genDB(b *testing.B) (sql.Database, error) {
 	return db, nil
 }
 
-func insertDataToTable(t *mem.Table, columnCount int) error {
-	f, err := os.Open(t.Name() + ".tbl")
+func insertDataToTable(name string, t *mem.Table, columnCount int) error {
+	f, err := os.Open(name + ".tbl")
 	if err != nil {
 		return err
 	}

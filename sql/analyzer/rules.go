@@ -6,8 +6,6 @@ import (
 
 // DefaultRules to apply when analyzing nodes.
 var DefaultRules = []Rule{
-	{"resolve_subqueries", resolveSubqueries},
-	{"resolve_tables", resolveTables},
 	{"resolve_natural_joins", resolveNaturalJoins},
 	{"resolve_orderby_literals", resolveOrderByLiterals},
 	{"resolve_orderby", resolveOrderBy},
@@ -18,13 +16,23 @@ var DefaultRules = []Rule{
 	{"resolve_functions", resolveFunctions},
 	{"reorder_aggregations", reorderAggregations},
 	{"reorder_projection", reorderProjection},
-	{"assign_indexes", assignIndexes},
-	{"pushdown", pushdown},
 	{"move_join_conds_to_filter", moveJoinConditionsToFilter},
 	{"eval_filter", evalFilter},
 	{"optimize_distinct", optimizeDistinct},
-	{"erase_projection", eraseProjection},
+}
+
+// OnceBeforeDefault contains the rules to be applied just once before the DefaultRules.
+var OnceBeforeDefault = []Rule{
+	{"resolve_subqueries", resolveSubqueries},
+	{"resolve_tables", resolveTables},
+}
+
+// OnceAfterDefault contains the rules to be applied just once after the DefaultRules.
+var OnceAfterDefault = []Rule{
 	{"index_catalog", indexCatalog},
+	{"pushdown", pushdown},
+	{"erase_projection", eraseProjection},
+	{"parallelize", parallelize},
 }
 
 var (

@@ -29,13 +29,9 @@ func TestNegateIndex(t *testing.T) {
 
 	a := NewDefault(catalog)
 
-	t1 := &indexableTable{
-		&pushdownProjectionAndFiltersTable{
-			mem.NewTable("t1", sql.Schema{
-				{Name: "foo", Type: sql.Int64, Source: "t1"},
-			}),
-		},
-	}
+	t1 := mem.NewTable("t1", sql.Schema{
+		{Name: "foo", Type: sql.Int64, Source: "t1"},
+	})
 
 	node := plan.NewProject(
 		[]sql.Expression{},
@@ -46,35 +42,19 @@ func TestNegateIndex(t *testing.T) {
 					expression.NewLiteral(int64(1), sql.Int64),
 				),
 			),
-			t1,
+			plan.NewResolvedTable("t1", t1),
 		),
 	)
 
-	expected := plan.NewProject(
-		[]sql.Expression{},
-		plan.NewFilter(
-			expression.NewNot(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
-					expression.NewLiteral(int64(1), sql.Int64),
-				),
-			),
-			&indexable{
-				&indexLookup{
-					&negateIndexLookup{
-						value: "1",
-					},
-					[]sql.Index{idx1},
-				},
-				t1,
-			},
-		),
-	)
-
-	result, err := assignIndexes(sql.NewEmptyContext(), a, node)
+	result, err := assignIndexes(a, node)
 	require.NoError(err)
 
-	require.Equal(expected, result)
+	lookupIdxs, ok := result["t1"]
+	require.True(ok)
+
+	negate, ok := lookupIdxs.lookup.(*negateIndexLookup)
+	require.True(ok)
+	require.True(negate.value == "1")
 }
 
 func TestAssignIndexes(t *testing.T) {
@@ -106,22 +86,14 @@ func TestAssignIndexes(t *testing.T) {
 
 	a := NewDefault(catalog)
 
-	t1 := &indexableTable{
-		&pushdownProjectionAndFiltersTable{
-			mem.NewTable("t1", sql.Schema{
-				{Name: "foo", Type: sql.Int64, Source: "t1"},
-			}),
-		},
-	}
+	t1 := mem.NewTable("t1", sql.Schema{
+		{Name: "foo", Type: sql.Int64, Source: "t1"},
+	})
 
-	t2 := &indexableTable{
-		&pushdownProjectionAndFiltersTable{
-			mem.NewTable("t2", sql.Schema{
-				{Name: "bar", Type: sql.Int64, Source: "t2"},
-				{Name: "baz", Type: sql.Int64, Source: "t2"},
-			}),
-		},
-	}
+	t2 := mem.NewTable("t2", sql.Schema{
+		{Name: "bar", Type: sql.Int64, Source: "t2"},
+		{Name: "baz", Type: sql.Int64, Source: "t2"},
+	})
 
 	node := plan.NewProject(
 		[]sql.Expression{},
@@ -137,8 +109,8 @@ func TestAssignIndexes(t *testing.T) {
 				),
 			),
 			plan.NewInnerJoin(
-				t1,
-				t2,
+				plan.NewResolvedTable("t1", t1),
+				plan.NewResolvedTable("t2", t2),
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
 					expression.NewGetFieldWithTable(0, sql.Int64, "t2", "baz", false),
@@ -147,40 +119,22 @@ func TestAssignIndexes(t *testing.T) {
 		),
 	)
 
-	expected := plan.NewProject(
-		[]sql.Expression{},
-		plan.NewFilter(
-			expression.NewOr(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "t2", "bar", false),
-					expression.NewLiteral(int64(1), sql.Int64),
-				),
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
-					expression.NewLiteral(int64(2), sql.Int64),
-				),
-			),
-			plan.NewInnerJoin(
-				&indexable{&indexLookup{
-					&mergeableIndexLookup{id: "2"},
-					[]sql.Index{idx2},
-				}, t1},
-				&indexable{&indexLookup{
-					&mergeableIndexLookup{id: "1"},
-					[]sql.Index{idx1},
-				}, t2},
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
-					expression.NewGetFieldWithTable(0, sql.Int64, "t2", "baz", false),
-				),
-			),
-		),
-	)
-
-	result, err := assignIndexes(sql.NewEmptyContext(), a, node)
+	result, err := assignIndexes(a, node)
 	require.NoError(err)
 
-	require.Equal(expected, result)
+	lookupIdxs, ok := result["t1"]
+	require.True(ok)
+
+	mergeable, ok := lookupIdxs.lookup.(*mergeableIndexLookup)
+	require.True(ok)
+	require.True(mergeable.id == "2")
+
+	lookupIdxs, ok = result["t2"]
+	require.True(ok)
+
+	mergeable, ok = lookupIdxs.lookup.(*mergeableIndexLookup)
+	require.True(ok)
+	require.True(mergeable.id == "1")
 }
 
 func TestGetIndexes(t *testing.T) {
@@ -905,12 +859,17 @@ func TestContainsSources(t *testing.T) {
 }
 
 func TestNodeSources(t *testing.T) {
-	sources := nodeSources(mem.NewTable("foo", sql.Schema{
-		{Source: "foo"},
-		{Source: "foo"},
-		{Source: "bar"},
-		{Source: "baz"},
-	}))
+	sources := nodeSources(
+		plan.NewResolvedTable(
+			"foo",
+			mem.NewTable("foo", sql.Schema{
+				{Source: "foo"},
+				{Source: "foo"},
+				{Source: "bar"},
+				{Source: "baz"},
+			}),
+		),
+	)
 
 	expected := []string{"foo", "bar", "baz"}
 	require.Equal(t, expected, sources)
@@ -934,6 +893,14 @@ func TestExpressionSources(t *testing.T) {
 
 	expected := []string{"foo", "bar", "baz"}
 	require.Equal(t, expected, sources)
+}
+
+type dummyIndexLookup struct{}
+
+func (dummyIndexLookup) Indexes() []string { return nil }
+
+func (dummyIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
+	return nil, nil
 }
 
 type dummyIndex struct {
@@ -1002,7 +969,7 @@ func (i dummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 
 	return &mergeableIndexLookup{id: fmt.Sprint(key[0])}, nil
 }
-func (i dummyIndex) Has(key ...interface{}) (bool, error) {
+func (i dummyIndex) Has(sql.Partition, ...interface{}) (bool, error) {
 	panic("not implemented")
 }
 func (i dummyIndex) ID() string {
@@ -1022,7 +989,7 @@ type mergedIndexLookup struct {
 	children []sql.IndexLookup
 }
 
-func (mergedIndexLookup) Values() (sql.IndexValueIter, error) {
+func (mergedIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
 	panic("mergedIndexLookup.Values is a placeholder")
 }
 
@@ -1060,7 +1027,7 @@ func (l *negateIndexLookup) ID() string              { return "not " + l.value }
 func (l *negateIndexLookup) Unions() []string        { return l.unions }
 func (l *negateIndexLookup) Intersections() []string { return l.intersections }
 
-func (*negateIndexLookup) Values() (sql.IndexValueIter, error) {
+func (*negateIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
 	panic("negateIndexLookup.Values is a placeholder")
 }
 
@@ -1100,7 +1067,7 @@ type ascendIndexLookup struct {
 	lt  []interface{}
 }
 
-func (ascendIndexLookup) Values() (sql.IndexValueIter, error) {
+func (ascendIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
 	panic("ascendIndexLookup.Values is a placeholder")
 }
 
@@ -1130,7 +1097,7 @@ type descendIndexLookup struct {
 	lte []interface{}
 }
 
-func (descendIndexLookup) Values() (sql.IndexValueIter, error) {
+func (descendIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
 	panic("descendIndexLookup.Values is a placeholder")
 }
 
@@ -1219,7 +1186,7 @@ func (i *mergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	return ok
 }
 
-func (i *mergeableIndexLookup) Values() (sql.IndexValueIter, error) {
+func (i *mergeableIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
 	panic("not implemented")
 }
 

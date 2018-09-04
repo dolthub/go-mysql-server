@@ -68,12 +68,12 @@ func TestShowIndexes(t *testing.T) {
 	r := sql.NewIndexRegistry()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db.AddTable(test.table.Name(), test.table)
+			db.AddTable(test.name, test.table)
 
 			expressions := make([]sql.Expression, len(test.table.Schema()))
 			for i, col := range test.table.Schema() {
 				var ex sql.Expression = expression.NewGetFieldWithTable(
-					i, col.Type, test.table.Name(), col.Name, col.Nullable,
+					i, col.Type, test.name, col.Name, col.Nullable,
 				)
 
 				if test.isExpression {
@@ -85,7 +85,7 @@ func TestShowIndexes(t *testing.T) {
 
 			idx := &mockIndex{
 				db:    "test",
-				table: test.table.Name(),
+				table: test.name,
 				id:    test.name + "_idx",
 				exprs: expressions,
 			}
@@ -95,7 +95,7 @@ func TestShowIndexes(t *testing.T) {
 			close(created)
 			<-ready
 
-			showIdxs := NewShowIndexes(db, test.table.Name(), r)
+			showIdxs := NewShowIndexes(db, test.name, r)
 
 			ctx := sql.NewEmptyContext()
 			rowIter, err := showIdxs.RowIter(ctx)
@@ -116,7 +116,7 @@ func TestShowIndexes(t *testing.T) {
 				}
 
 				expected := sql.NewRow(
-					test.table.Name(),
+					test.name,
 					int32(1),
 					idx.ID(),
 					i+1,

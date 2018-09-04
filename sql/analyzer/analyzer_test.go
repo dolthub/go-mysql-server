@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestAnalyzer_Analyze(t *testing.T) {
@@ -19,7 +18,11 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
 	})
-	table2 := mem.NewTable("mytable2", sql.Schema{{Name: "i2", Type: sql.Int32, Source: "mytable2"}})
+
+	table2 := mem.NewTable("mytable2", sql.Schema{
+		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
+	})
+
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
@@ -29,13 +32,11 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	a := NewDefault(catalog)
 	a.CurrentDatabase = "mydb"
 
-	emptyCols := []sql.Expression{}
-
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
 	analyzed, err := a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NoError(err)
 	require.Equal(
-		plan.NewPushdownProjectionAndFiltersTable(emptyCols, nil, table),
+		plan.NewResolvedTable("mytable", table),
 		analyzed,
 	)
 
@@ -44,10 +45,10 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	require.Error(err)
 	require.Nil(analyzed)
 
-	analyzed, err = a.Analyze(sql.NewEmptyContext(), table)
+	analyzed, err = a.Analyze(sql.NewEmptyContext(), plan.NewResolvedTable("mytable", table))
 	require.NoError(err)
 	require.Equal(
-		plan.NewPushdownProjectionAndFiltersTable(emptyCols, nil, table),
+		plan.NewResolvedTable("mytable", table),
 		analyzed,
 	)
 
@@ -63,13 +64,9 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		plan.NewUnresolvedTable("mytable"),
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
-	var expected sql.Node = plan.NewProject(
-		[]sql.Expression{expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false)},
-		plan.NewPushdownProjectionAndFiltersTable(
-			[]sql.Expression{expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false)},
-			nil,
-			table,
-		),
+	var expected sql.Node = plan.NewResolvedTable(
+		"mytable",
+		table.WithProjection([]string{"i"}),
 	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
@@ -79,7 +76,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	expected = plan.NewDescribe(
-		plan.NewPushdownProjectionAndFiltersTable(emptyCols, nil, table),
+		plan.NewResolvedTable("mytable", table),
 	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
@@ -91,14 +88,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NoError(err)
 	require.Equal(
-		plan.NewPushdownProjectionAndFiltersTable(
-			[]sql.Expression{
-				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "t", false),
-			},
-			nil,
-			table,
-		),
+		plan.NewResolvedTable("mytable", table.WithProjection([]string{"i", "t"})),
 		analyzed,
 	)
 
@@ -112,14 +102,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NoError(err)
 	require.Equal(
-		plan.NewPushdownProjectionAndFiltersTable(
-			[]sql.Expression{
-				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "t", false),
-			},
-			nil,
-			table,
-		),
+		plan.NewResolvedTable("mytable", table.WithProjection([]string{"i", "t"})),
 		analyzed,
 	)
 
@@ -140,13 +123,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 				"foo",
 			),
 		},
-		plan.NewPushdownProjectionAndFiltersTable(
-			[]sql.Expression{
-				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-			},
-			nil,
-			table,
-		),
+		plan.NewResolvedTable("mytable", table.WithProjection([]string{"i"})),
 	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
@@ -162,27 +139,19 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		),
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
-	expected = plan.NewProject(
-		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-		},
-		plan.NewFilter(
+	expected = plan.NewResolvedTable(
+		"mytable",
+		table.WithFilters([]sql.Expression{
 			expression.NewEquals(
 				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 				expression.NewLiteral(int32(1), sql.Int32),
 			),
-			plan.NewPushdownProjectionAndFiltersTable(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-				},
-				nil,
-				table,
-			),
-		),
+		}).(*mem.Table).WithProjection([]string{"i"}),
 	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
 
+	//
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("i"),
@@ -194,27 +163,9 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		),
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
-	expected = plan.NewProject(
-		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-			expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "i2", false),
-		},
-		plan.NewCrossJoin(
-			plan.NewPushdownProjectionAndFiltersTable(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-				},
-				nil,
-				table,
-			),
-			plan.NewPushdownProjectionAndFiltersTable(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
-				},
-				nil,
-				table2,
-			),
-		),
+	expected = plan.NewCrossJoin(
+		plan.NewResolvedTable("mytable", table.WithProjection([]string{"i"})),
+		plan.NewResolvedTable("mytable2", table2.WithProjection([]string{"i2"})),
 	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
@@ -228,19 +179,9 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		),
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
-	expected = plan.NewLimit(int64(1),
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-			},
-			plan.NewPushdownProjectionAndFiltersTable(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-				},
-				nil,
-				table,
-			),
-		),
+	expected = plan.NewLimit(
+		int64(1),
+		plan.NewResolvedTable("mytable", table.WithProjection([]string{"i"})),
 	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
@@ -264,15 +205,14 @@ func TestMaxIterations(t *testing.T) {
 		func(c *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 			switch n.(type) {
-			case *plan.PushdownProjectionAndFiltersTable:
-				tName := fmt.Sprintf("mytable-%v", count)
-				table := mem.NewTable(tName, sql.Schema{
-					{Name: "i", Type: sql.Int32, Source: tName},
-					{Name: "t", Type: sql.Text, Source: tName},
-				})
-
-				n = plan.NewPushdownProjectionAndFiltersTable([]sql.Expression{}, nil, table)
+			case *plan.ResolvedTable:
 				count++
+				name := fmt.Sprintf("mytable-%v", count)
+				table := mem.NewTable(name, sql.Schema{
+					{Name: "i", Type: sql.Int32, Source: name},
+					{Name: "t", Type: sql.Text, Source: name},
+				})
+				n = plan.NewResolvedTable(name, table)
 			}
 
 			return n, nil
@@ -284,14 +224,16 @@ func TestMaxIterations(t *testing.T) {
 	analyzed, err := a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NoError(err)
 	require.Equal(
-		plan.NewPushdownProjectionAndFiltersTable([]sql.Expression{}, nil,
+		plan.NewResolvedTable(
+			"mytable-1000",
 			mem.NewTable("mytable-1000", sql.Schema{
 				{Name: "i", Type: sql.Int32, Source: "mytable-1000"},
 				{Name: "t", Type: sql.Text, Source: "mytable-1000"},
-			})),
+			}),
+		),
 		analyzed,
 	)
-	require.Equal(1001, count)
+	require.Equal(1000, count)
 }
 
 func TestAddRule(t *testing.T) {
@@ -334,25 +276,25 @@ func countRules(batches []*Batch) int {
 }
 
 func TestMixInnerAndNaturalJoins(t *testing.T) {
-	require := require.New(t)
+	var require = require.New(t)
 
-	table := &pushdownProjectionAndFiltersTable{mem.NewTable("mytable", sql.Schema{
+	table := mem.NewTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
-	})}
+	})
 
-	table2 := &pushdownProjectionAndFiltersTable{mem.NewTable("mytable2", sql.Schema{
+	table2 := mem.NewTable("mytable2", sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
-	})}
+	})
 
-	table3 := &pushdownProjectionAndFiltersTable{mem.NewTable("mytable3", sql.Schema{
+	table3 := mem.NewTable("mytable3", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable3"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable3"},
 		{Name: "t3", Type: sql.Text, Source: "mytable3"},
-	})}
+	})
 
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
@@ -383,55 +325,31 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 	expected := plan.NewProject(
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-			expression.NewGetFieldWithTable(4, sql.Float64, "mytable2", "f2", false),
+			expression.NewGetFieldWithTable(3, sql.Float64, "mytable2", "f2", false),
 			expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
 			expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", false),
-			expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
+			expression.NewGetFieldWithTable(4, sql.Int32, "mytable2", "i2", false),
 			expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
-			expression.NewGetFieldWithTable(8, sql.Text, "mytable3", "t3", false),
+			expression.NewGetFieldWithTable(6, sql.Text, "mytable3", "t3", false),
 		},
 		plan.NewInnerJoin(
 			plan.NewInnerJoin(
-				plan.NewPushdownProjectionAndFiltersTable(
-					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-						expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", false),
-					},
-					nil,
-					table,
-				),
-				plan.NewPushdownProjectionAndFiltersTable(
-					[]sql.Expression{
-						expression.NewGetFieldWithTable(1, sql.Float64, "mytable2", "f2", false),
-						expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
-						expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
-					},
-					nil,
-					table2,
-				),
+				plan.NewResolvedTable("mytable", table.WithProjection([]string{"i", "f", "t"})),
+				plan.NewResolvedTable("mytable2", table2.WithProjection([]string{"f2", "i2", "t2"})),
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
+					expression.NewGetFieldWithTable(4, sql.Int32, "mytable2", "i2", false),
 				),
 			),
-			plan.NewPushdownProjectionAndFiltersTable(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(2, sql.Text, "mytable3", "t3", false),
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable3", "i", false),
-					expression.NewGetFieldWithTable(1, sql.Float64, "mytable3", "f2", false),
-				},
-				nil,
-				table3,
-			),
+			plan.NewResolvedTable("mytable3", table3.WithProjection([]string{"t3", "i", "f2"})),
 			expression.NewAnd(
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-					expression.NewGetFieldWithTable(6, sql.Int32, "mytable3", "i", false),
+					expression.NewGetFieldWithTable(7, sql.Int32, "mytable3", "i", false),
 				),
 				expression.NewEquals(
-					expression.NewGetFieldWithTable(4, sql.Float64, "mytable2", "f2", false),
-					expression.NewGetFieldWithTable(7, sql.Float64, "mytable3", "f2", false),
+					expression.NewGetFieldWithTable(3, sql.Float64, "mytable2", "f2", false),
+					expression.NewGetFieldWithTable(8, sql.Float64, "mytable3", "f2", false),
 				),
 			),
 		),

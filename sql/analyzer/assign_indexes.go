@@ -1,7 +1,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"reflect"
 
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -19,12 +18,7 @@ type indexLookup struct {
 	indexes []sql.Index
 }
 
-func assignIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
-	if !node.Resolved() {
-		a.Log("node is not resolved, skipping assigning indexes")
-		return node, nil
-	}
-
+func assignIndexes(a *Analyzer, node sql.Node) (map[string]*indexLookup, error) {
 	a.Log("assigning indexes, node of type: %T", node)
 
 	var indexes map[string]*indexLookup
@@ -63,32 +57,7 @@ func assignIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, erro
 		return true
 	})
 
-	if err != nil {
-		return nil, err
-	}
-
-	return node.TransformUp(func(node sql.Node) (sql.Node, error) {
-		table, ok := node.(sql.Indexable)
-		if !ok {
-			return node, nil
-		}
-
-		// if we assign indexes to already assigned tables there will be
-		// an infinite loop
-		switch table.(type) {
-		case *plan.IndexableTable, *indexable:
-			return node, nil
-		}
-
-		index, ok := indexes[table.Name()]
-		if !ok {
-			return node, nil
-		}
-
-		delete(indexes, table.Name())
-
-		return &indexable{index, table}, nil
-	})
+	return indexes, err
 }
 
 func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) {
@@ -759,27 +728,4 @@ func canMergeIndexes(a, b sql.IndexLookup) bool {
 
 	_, ok = a.(sql.SetOperations)
 	return ok
-}
-
-// indexable is a wrapper to hold some information along with the table.
-// It's meant to be used by the pushdown rule to finally wrap the Indexable
-// table with all it requires.
-type indexable struct {
-	index *indexLookup
-	sql.Indexable
-}
-
-func (i *indexable) Children() []sql.Node { return nil }
-func (i *indexable) Name() string         { return i.Indexable.Name() }
-func (i *indexable) Resolved() bool       { return i.Indexable.Resolved() }
-func (i *indexable) RowIter(*sql.Context) (sql.RowIter, error) {
-	return nil, fmt.Errorf("indexable is a placeholder node, but RowIter was called")
-}
-func (i *indexable) Schema() sql.Schema { return i.Indexable.Schema() }
-func (i *indexable) String() string     { return i.Indexable.String() }
-func (i *indexable) TransformUp(fn sql.TransformNodeFunc) (sql.Node, error) {
-	return fn(i)
-}
-func (i *indexable) TransformExpressionsUp(fn sql.TransformExprFunc) (sql.Node, error) {
-	return i, nil
 }

@@ -332,8 +332,8 @@ func (d loadDriver) LoadAll(db, table string) ([]Index, error) {
 	}
 	return result, nil
 }
-func (loadDriver) Save(ctx *Context, index Index, iter IndexKeyValueIter) error { return nil }
-func (loadDriver) Delete(index Index) error                                     { return nil }
+func (loadDriver) Save(ctx *Context, index Index, iter PartitionIndexKeyValueIter) error { return nil }
+func (loadDriver) Delete(Index, PartitionIter) error                                     { return nil }
 
 type dummyIdx struct {
 	id       string
@@ -351,12 +351,12 @@ func (i dummyIdx) Expressions() []string {
 	}
 	return exprs
 }
-func (i dummyIdx) ID() string                              { return i.id }
-func (i dummyIdx) Get(...interface{}) (IndexLookup, error) { panic("not implemented") }
-func (i dummyIdx) Has(...interface{}) (bool, error)        { panic("not implemented") }
-func (i dummyIdx) Database() string                        { return i.database }
-func (i dummyIdx) Table() string                           { return i.table }
-func (i dummyIdx) Driver() string                          { return "dummy" }
+func (i dummyIdx) ID() string                                  { return i.id }
+func (i dummyIdx) Get(...interface{}) (IndexLookup, error)     { panic("not implemented") }
+func (i dummyIdx) Has(Partition, ...interface{}) (bool, error) { panic("not implemented") }
+func (i dummyIdx) Database() string                            { return i.database }
+func (i dummyIdx) Table() string                               { return i.table }
+func (i dummyIdx) Driver() string                              { return "dummy" }
 
 type dummyExpr struct {
 	index   int

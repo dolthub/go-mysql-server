@@ -5,8 +5,14 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
-// ErrIndexNotFound is returned when the index cannot be found.
-var ErrIndexNotFound = errors.NewKind("unable to find index %q on table %q of database %q")
+var (
+	// ErrIndexNotFound is returned when the index cannot be found.
+	ErrIndexNotFound = errors.NewKind("unable to find index %q on table %q of database %q")
+	// ErrTableNotValid is returned when the table is not valid
+	ErrTableNotValid = errors.NewKind("table is not valid")
+	// ErrTableNotNameable is returned when the table is not nameable.
+	ErrTableNotNameable = errors.NewKind("can't get name from table")
+)
 
 // DropIndex is a node to drop an index.
 type DropIndex struct {
@@ -37,18 +43,19 @@ func (d *DropIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	table, ok := d.Table.(sql.Nameable)
+	n, ok := d.Table.(sql.Nameable)
 	if !ok {
 		return nil, ErrTableNotNameable.New()
 	}
 
-	if _, ok = db.Tables()[table.Name()]; !ok {
-		return nil, sql.ErrTableNotFound.New(table.Name())
+	table, ok := db.Tables()[n.Name()]
+	if !ok {
+		return nil, sql.ErrTableNotFound.New(n.Name())
 	}
 
 	index := d.Catalog.Index(db.Name(), d.Name)
 	if index == nil {
-		return nil, ErrIndexNotFound.New(d.Name, table.Name(), db.Name())
+		return nil, ErrIndexNotFound.New(d.Name, n.Name(), db.Name())
 	}
 	d.Catalog.ReleaseIndex(index)
 
@@ -63,7 +70,13 @@ func (d *DropIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}
 
 	<-done
-	if err := driver.Delete(index); err != nil {
+
+	partitions, err := table.Partitions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := driver.Delete(index, partitions); err != nil {
 		return nil, err
 	}
 

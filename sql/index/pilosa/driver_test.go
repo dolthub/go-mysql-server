@@ -3,12 +3,11 @@ package pilosa
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"reflect"
 	"testing"
 	"time"
 
@@ -118,11 +117,12 @@ func TestSaveAndLoad(t *testing.T) {
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
-	it := &testIndexKeyValueIter{
+	it := &partitionKeyValueIter{
+		partitions:  2,
 		offset:      0,
-		total:       64,
+		total:       2,
 		expressions: sqlIdx.Expressions(),
-		location:    randLocation,
+		location:    offsetLocation,
 	}
 
 	tracer := new(test.MemTracer)
@@ -133,54 +133,41 @@ func TestSaveAndLoad(t *testing.T) {
 	indexes, err := d.LoadAll(db, table)
 	require.NoError(err)
 	require.Equal(1, len(indexes))
-	assertEqualIndexes(t, sqlIdx, indexes[0])
 
-	for _, r := range it.records {
-		lookup, err := sqlIdx.Get(r.values...)
-		require.NoError(err)
-
-		found, foundLoc := false, []string{}
-		lit, err := lookup.Values()
-		require.NoError(err)
-
-		var logs []logLoc
-		for i := 0; ; i++ {
-			loc, err := lit.Next()
-
-			// make a copy of location to save in the log
-			loc2 := make([]byte, len(loc))
-			copy(loc2, loc)
-			logs = append(logs, logLoc{loc2, err})
-
-			if err == io.EOF {
-				if i == 0 {
-					for j, l := range logs {
-						t.Logf("[%d] values: %v location: %x loc: %x err: %v\n",
-							j, r.values, r.location, l.loc, l.err)
-					}
-
-					t.Errorf("No data for r.values: %v\tr.location: %x",
-						r.values, r.location)
-					t.FailNow()
-				}
-
-				break
-			}
-
+	var locations = make([][]string, len(it.records))
+	for partition, records := range it.records {
+		for _, r := range records {
+			lookup, err := sqlIdx.Get(r.values...)
 			require.NoError(err)
-			found = found || reflect.DeepEqual(r.location, loc)
-			foundLoc = append(foundLoc, hex.EncodeToString(loc))
-		}
-		require.Truef(found, "Expected: %s\nGot: %v\n", hex.EncodeToString(r.location), foundLoc)
 
-		err = lit.Close()
-		require.NoError(err)
+			lit, err := lookup.Values(testPartition(partition))
+			require.NoError(err)
+
+			for {
+				loc, err := lit.Next()
+				if err == io.EOF {
+					break
+				}
+				require.NoError(err)
+
+				locations[partition] = append(locations[partition], string(loc))
+			}
+			err = lit.Close()
+			require.NoError(err)
+		}
 	}
+
+	expectedLocations := [][]string{
+		{"0-0", "0-1"},
+		{"1-0", "1-1"},
+	}
+
+	require.ElementsMatch(expectedLocations, locations)
 
 	// test that not found values do not cause error
 	lookup, err := sqlIdx.Get("do not exist", "none")
 	require.NoError(err)
-	lit, err := lookup.Values()
+	lit, err := lookup.Values(testPartition(0))
 	require.NoError(err)
 	_, err = lit.Next()
 	require.Equal(io.EOF, err)
@@ -210,7 +197,8 @@ func TestSaveAndGetAll(t *testing.T) {
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
-	it := &testIndexKeyValueIter{
+	it := &partitionKeyValueIter{
+		partitions:  2,
 		offset:      0,
 		total:       64,
 		expressions: sqlIdx.Expressions(),
@@ -269,7 +257,7 @@ func TestDelete(t *testing.T) {
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
-	err = d.Delete(sqlIdx)
+	err = d.Delete(sqlIdx, new(partitionIter))
 	require.NoError(err)
 }
 
@@ -339,8 +327,20 @@ func TestAscendDescendIndex(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			result, err := lookupValues(tt.lookup)
+			iter, err := tt.lookup.Values(testPartition(0))
 			require.NoError(err)
+
+			var result []string
+			for {
+				k, err := iter.Next()
+				if err == io.EOF {
+					break
+				}
+				require.NoError(err)
+
+				result = append(result, string(k))
+			}
+
 			require.Equal(tt.expected, result)
 		})
 	}
@@ -366,31 +366,48 @@ func TestNegateIndex(t *testing.T) {
 	)
 	require.NoError(err)
 
-	it := &fixtureKeyValueIter{
-		fixtures: []kvfixture{
-			{"1", []interface{}{int64(2)}},
-			{"2", []interface{}{int64(7)}},
-			{"3", []interface{}{int64(1)}},
-			{"4", []interface{}{int64(1)}},
-			{"5", []interface{}{int64(7)}},
+	it := &fixturePartitionKeyValueIter{
+		fixtures: []partitionKeyValueFixture{
+			{
+				testPartition(0),
+				[]kvfixture{
+					{"1", []interface{}{int64(2)}},
+					{"2", []interface{}{int64(7)}},
+					{"3", []interface{}{int64(1)}},
+					{"4", []interface{}{int64(1)}},
+					{"5", []interface{}{int64(7)}},
+				},
+			},
+			{
+				testPartition(1),
+				[]kvfixture{
+					{"1", []interface{}{int64(2)}},
+					{"2", []interface{}{int64(7)}},
+				},
+			},
 		},
 	}
 
 	err = d.Save(sql.NewEmptyContext(), idx, it)
 	require.NoError(err)
 
-	multiIt := &fixtureKeyValueIter{
-		fixtures: []kvfixture{
-			{"1", []interface{}{int64(2), int64(6)}},
-			{"2", []interface{}{int64(7), int64(5)}},
-			{"3", []interface{}{int64(1), int64(2)}},
-			{"4", []interface{}{int64(1), int64(3)}},
-			{"5", []interface{}{int64(7), int64(6)}},
-			{"6", []interface{}{int64(10), int64(6)}},
-			{"7", []interface{}{int64(5), int64(1)}},
-			{"8", []interface{}{int64(6), int64(2)}},
-			{"9", []interface{}{int64(4), int64(0)}},
-			{"10", []interface{}{int64(3), int64(5)}},
+	fixtures := []kvfixture{
+		{"1", []interface{}{int64(2), int64(6)}},
+		{"2", []interface{}{int64(7), int64(5)}},
+		{"3", []interface{}{int64(1), int64(2)}},
+		{"4", []interface{}{int64(1), int64(3)}},
+		{"5", []interface{}{int64(7), int64(6)}},
+		{"6", []interface{}{int64(10), int64(6)}},
+		{"7", []interface{}{int64(5), int64(1)}},
+		{"8", []interface{}{int64(6), int64(2)}},
+		{"9", []interface{}{int64(4), int64(0)}},
+		{"10", []interface{}{int64(3), int64(5)}},
+	}
+
+	multiIt := &fixturePartitionKeyValueIter{
+		fixtures: []partitionKeyValueFixture{
+			{testPartition(0), fixtures},
+			{testPartition(1), fixtures[4:]},
 		},
 	}
 
@@ -445,14 +462,16 @@ func TestIntersection(t *testing.T) {
 	sqlIdxPath, err := d.Create(db, table, idxPath, expPath, nil)
 	require.NoError(err)
 
-	itLang := &testIndexKeyValueIter{
+	itLang := &partitionKeyValueIter{
+		partitions:  2,
 		offset:      0,
 		total:       10,
 		expressions: sqlIdxLang.Expressions(),
 		location:    offsetLocation,
 	}
 
-	itPath := &testIndexKeyValueIter{
+	itPath := &partitionKeyValueIter{
+		partitions:  2,
 		offset:      0,
 		total:       10,
 		expressions: sqlIdxPath.Expressions(),
@@ -467,9 +486,9 @@ func TestIntersection(t *testing.T) {
 	err = d.Save(ctx, sqlIdxPath, itPath)
 	require.NoError(err)
 
-	lookupLang, err := sqlIdxLang.Get(itLang.records[0].values...)
+	lookupLang, err := sqlIdxLang.Get(itLang.records[0][0].values...)
 	require.NoError(err)
-	lookupPath, err := sqlIdxPath.Get(itPath.records[itPath.total-1].values...)
+	lookupPath, err := sqlIdxPath.Get(itPath.records[0][itPath.total-1].values...)
 	require.NoError(err)
 
 	m, ok := lookupLang.(sql.Mergeable)
@@ -478,24 +497,24 @@ func TestIntersection(t *testing.T) {
 
 	interLookup, ok := lookupLang.(sql.SetOperations)
 	require.True(ok)
-	interIt, err := interLookup.Intersection(lookupPath).Values()
+	interIt, err := interLookup.Intersection(lookupPath).Values(testPartition(0))
 	require.NoError(err)
 	_, err = interIt.Next()
 	require.True(err == io.EOF)
 	require.NoError(interIt.Close())
 
-	lookupLang, err = sqlIdxLang.Get(itLang.records[0].values...)
+	lookupLang, err = sqlIdxLang.Get(itLang.records[0][0].values...)
 	require.NoError(err)
-	lookupPath, err = sqlIdxPath.Get(itPath.records[0].values...)
+	lookupPath, err = sqlIdxPath.Get(itPath.records[0][0].values...)
 	require.NoError(err)
 
 	interLookup, ok = lookupPath.(sql.SetOperations)
 	require.True(ok)
-	interIt, err = interLookup.Intersection(lookupLang).Values()
+	interIt, err = interLookup.Intersection(lookupLang).Values(testPartition(0))
 	require.NoError(err)
 	loc, err := interIt.Next()
 	require.NoError(err)
-	require.Equal(loc, itPath.records[0].location)
+	require.Equal(loc, itPath.records[0][0].location)
 	_, err = interIt.Next()
 	require.True(err == io.EOF)
 
@@ -521,14 +540,16 @@ func TestUnion(t *testing.T) {
 	sqlIdxPath, err := d.Create(db, table, idxPath, expPath, nil)
 	require.NoError(err)
 
-	itLang := &testIndexKeyValueIter{
+	itLang := &partitionKeyValueIter{
+		partitions:  2,
 		offset:      0,
 		total:       10,
 		expressions: sqlIdxLang.Expressions(),
 		location:    offsetLocation,
 	}
 
-	itPath := &testIndexKeyValueIter{
+	itPath := &partitionKeyValueIter{
+		partitions:  2,
 		offset:      0,
 		total:       10,
 		expressions: sqlIdxPath.Expressions(),
@@ -543,27 +564,27 @@ func TestUnion(t *testing.T) {
 	err = d.Save(ctx, sqlIdxPath, itPath)
 	require.NoError(err)
 
-	lookupLang, err := sqlIdxLang.Get(itLang.records[0].values...)
+	lookupLang, err := sqlIdxLang.Get(itLang.records[0][0].values...)
 	require.NoError(err)
-	litLang, err := lookupLang.Values()
+	litLang, err := lookupLang.Values(testPartition(0))
 	require.NoError(err)
 
 	loc, err := litLang.Next()
 	require.NoError(err)
-	require.Equal(itLang.records[0].location, loc)
+	require.Equal(itLang.records[0][0].location, loc)
 	_, err = litLang.Next()
 	require.True(err == io.EOF)
 	err = litLang.Close()
 	require.NoError(err)
 
-	lookupPath, err := sqlIdxPath.Get(itPath.records[itPath.total-1].values...)
+	lookupPath, err := sqlIdxPath.Get(itPath.records[0][itPath.total-1].values...)
 	require.NoError(err)
-	litPath, err := lookupPath.Values()
+	litPath, err := lookupPath.Values(testPartition(0))
 	require.NoError(err)
 
 	loc, err = litPath.Next()
 	require.NoError(err)
-	require.Equal(itPath.records[itPath.total-1].location, loc)
+	require.Equal(itPath.records[0][itPath.total-1].location, loc)
 	_, err = litPath.Next()
 	require.True(err == io.EOF)
 	err = litLang.Close()
@@ -574,15 +595,15 @@ func TestUnion(t *testing.T) {
 	require.True(m.IsMergeable(lookupPath))
 
 	unionLookup, ok := lookupLang.(sql.SetOperations)
-	unionIt, err := unionLookup.Union(lookupPath).Values()
+	unionIt, err := unionLookup.Union(lookupPath).Values(testPartition(0))
 	require.NoError(err)
 	// 0
 	loc, err = unionIt.Next()
-	require.Equal(itLang.records[0].location, loc)
+	require.Equal(itLang.records[0][0].location, loc)
 
 	// total-1
 	loc, err = unionIt.Next()
-	require.Equal(itPath.records[itPath.total-1].location, loc)
+	require.Equal(itPath.records[0][itPath.total-1].location, loc)
 
 	_, err = unionIt.Next()
 	require.True(err == io.EOF)
@@ -609,14 +630,16 @@ func TestDifference(t *testing.T) {
 	sqlIdxPath, err := d.Create(db, table, idxPath, expPath, nil)
 	require.NoError(err)
 
-	itLang := &testIndexKeyValueIter{
+	itLang := &partitionKeyValueIter{
+		partitions:  2,
 		offset:      0,
 		total:       10,
 		expressions: sqlIdxLang.Expressions(),
 		location:    offsetLocation,
 	}
 
-	itPath := &testIndexKeyValueIter{
+	itPath := &partitionKeyValueIter{
+		partitions:  2,
 		offset:      0,
 		total:       10,
 		expressions: sqlIdxPath.Expressions(),
@@ -631,10 +654,10 @@ func TestDifference(t *testing.T) {
 	err = d.Save(ctx, sqlIdxPath, itPath)
 	require.NoError(err)
 
-	lookupLang, err := sqlIdxLang.Get(itLang.records[0].values...)
+	lookupLang, err := sqlIdxLang.Get(itLang.records[0][0].values...)
 	require.NoError(err)
 
-	lookupPath, err := sqlIdxPath.Get(itPath.records[itPath.total-1].values...)
+	lookupPath, err := sqlIdxPath.Get(itPath.records[0][itPath.total-1].values...)
 	require.NoError(err)
 
 	m, ok := lookupLang.(sql.Mergeable)
@@ -647,13 +670,13 @@ func TestDifference(t *testing.T) {
 	require.True(ok)
 
 	diffLookup := unionLookup.Difference(lookupLang)
-	diffIt, err := diffLookup.Values()
+	diffIt, err := diffLookup.Values(testPartition(0))
 	require.NoError(err)
 
 	// total-1
 	loc, err := diffIt.Next()
 	require.NoError(err)
-	require.Equal(itPath.records[itPath.total-1].location, loc)
+	require.Equal(itPath.records[0][itPath.total-1].location, loc)
 
 	_, err = diffIt.Next()
 	require.True(err == io.EOF)
@@ -677,10 +700,11 @@ func TestUnionDiffAsc(t *testing.T) {
 	require.NoError(err)
 	pilosaIdx, ok := sqlIdx.(*pilosaIndex)
 	require.True(ok)
-	it := &testIndexKeyValueIter{
+	it := &partitionKeyValueIter{
+		partitions:  2,
 		offset:      0,
 		total:       10,
-		expressions: pilosaIdx.Expressions(),
+		expressions: sqlIdx.Expressions(),
 		location:    offsetLocation,
 	}
 
@@ -689,29 +713,32 @@ func TestUnionDiffAsc(t *testing.T) {
 	err = d.Save(ctx, pilosaIdx, it)
 	require.NoError(err)
 
-	sqlLookup, err := pilosaIdx.AscendLessThan(it.records[it.total-1].values...)
+	sqlLookup, err := pilosaIdx.AscendLessThan(it.records[0][it.total-1].values...)
 	require.NoError(err)
 	ascLookup, ok := sqlLookup.(*ascendLookup)
 	require.True(ok)
 
-	ls := make([]*indexLookup, it.total)
-	for i, r := range it.records {
-		l, err := pilosaIdx.Get(r.values...)
-		require.NoError(err)
-		ls[i], _ = l.(*indexLookup)
+	ls := make([][]*indexLookup, it.partitions)
+	for partition, records := range it.records {
+		ls[partition] = make([]*indexLookup, it.total)
+		for i, r := range records {
+			l, err := pilosaIdx.Get(r.values...)
+			require.NoError(err)
+			ls[partition][i], _ = l.(*indexLookup)
+		}
 	}
 
-	unionLookup := ls[0].Union(ls[2], ls[4], ls[6], ls[8])
+	unionLookup := ls[0][0].Union(ls[0][2], ls[0][4], ls[0][6], ls[0][8])
 
 	diffLookup := ascLookup.Difference(unionLookup)
-	diffIt, err := diffLookup.Values()
+	diffIt, err := diffLookup.Values(testPartition(0))
 	require.NoError(err)
 
 	for i := 1; i < it.total-1; i += 2 {
 		loc, err := diffIt.Next()
 		require.NoError(err)
 
-		require.Equal(it.records[i].location, loc)
+		require.Equal(it.records[0][i].location, loc)
 	}
 
 	_, err = diffIt.Next()
@@ -735,10 +762,11 @@ func TestInterRanges(t *testing.T) {
 	require.NoError(err)
 	pilosaIdx, ok := sqlIdx.(*pilosaIndex)
 	require.True(ok)
-	it := &testIndexKeyValueIter{
+	it := &partitionKeyValueIter{
+		partitions:  2,
 		offset:      0,
 		total:       10,
-		expressions: pilosaIdx.Expressions(),
+		expressions: sqlIdx.Expressions(),
 		location:    offsetLocation,
 	}
 
@@ -748,25 +776,25 @@ func TestInterRanges(t *testing.T) {
 	require.NoError(err)
 
 	ranges := [2]int{3, 9}
-	sqlLookup, err := pilosaIdx.AscendLessThan(it.records[ranges[1]].values...)
+	sqlLookup, err := pilosaIdx.AscendLessThan(it.records[0][ranges[1]].values...)
 	require.NoError(err)
 	lessLookup, ok := sqlLookup.(*ascendLookup)
 	require.True(ok)
 
-	sqlLookup, err = pilosaIdx.AscendGreaterOrEqual(it.records[ranges[0]].values...)
+	sqlLookup, err = pilosaIdx.AscendGreaterOrEqual(it.records[0][ranges[0]].values...)
 	require.NoError(err)
 	greaterLookup, ok := sqlLookup.(*ascendLookup)
 	require.True(ok)
 
 	interLookup := lessLookup.Intersection(greaterLookup)
 	require.NotNil(interLookup)
-	interIt, err := interLookup.Values()
+	interIt, err := interLookup.Values(testPartition(0))
 	require.NoError(err)
 
 	for i := ranges[0]; i < ranges[1]; i++ {
 		loc, err := interIt.Next()
 		require.NoError(err)
-		require.Equal(it.records[i].location, loc)
+		require.Equal(it.records[0][i].location, loc)
 	}
 
 	_, err = interIt.Next()
@@ -783,24 +811,28 @@ func setupAscendDescend(t *testing.T) (*pilosaIndex, func()) {
 
 	db, table, id := "db_name", "table_name", "index_id"
 	expressions := makeExpressions(table, "a", "b")
-	setup(t)
 
 	d := NewDriver(tmpDir, newClientWithTimeout(200*time.Millisecond))
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
-	it := &fixtureKeyValueIter{
-		fixtures: []kvfixture{
-			{"9", []interface{}{int64(2), int64(6)}},
-			{"3", []interface{}{int64(7), int64(5)}},
-			{"1", []interface{}{int64(1), int64(2)}},
-			{"7", []interface{}{int64(1), int64(3)}},
-			{"4", []interface{}{int64(7), int64(6)}},
-			{"2", []interface{}{int64(10), int64(6)}},
-			{"5", []interface{}{int64(5), int64(1)}},
-			{"6", []interface{}{int64(6), int64(2)}},
-			{"10", []interface{}{int64(4), int64(0)}},
-			{"8", []interface{}{int64(3), int64(5)}},
+	fixtures := []kvfixture{
+		{"9", []interface{}{int64(2), int64(6)}},
+		{"3", []interface{}{int64(7), int64(5)}},
+		{"1", []interface{}{int64(1), int64(2)}},
+		{"7", []interface{}{int64(1), int64(3)}},
+		{"4", []interface{}{int64(7), int64(6)}},
+		{"2", []interface{}{int64(10), int64(6)}},
+		{"5", []interface{}{int64(5), int64(1)}},
+		{"6", []interface{}{int64(6), int64(2)}},
+		{"10", []interface{}{int64(4), int64(0)}},
+		{"8", []interface{}{int64(3), int64(5)}},
+	}
+
+	it := &fixturePartitionKeyValueIter{
+		fixtures: []partitionKeyValueFixture{
+			{testPartition(0), fixtures},
+			{testPartition(1), fixtures[4:]},
 		},
 	}
 
@@ -813,7 +845,7 @@ func setupAscendDescend(t *testing.T) (*pilosaIndex, func()) {
 }
 
 func lookupValues(lookup sql.IndexLookup) ([]string, error) {
-	iter, err := lookup.Values()
+	iter, err := lookup.Values(testPartition(0))
 	if err != nil {
 		return nil, err
 	}
@@ -833,6 +865,43 @@ func lookupValues(lookup sql.IndexLookup) ([]string, error) {
 	}
 
 	return result, nil
+}
+
+func randLocation(partition sql.Partition, offset int) string {
+	b := make([]byte, 1)
+	rand.Read(b)
+	return string(partition.Key()) + "-" + string(b)
+}
+
+func offsetLocation(partition sql.Partition, offset int) string {
+	return string(partition.Key()) + "-" + fmt.Sprint(offset)
+}
+
+type partitionKeyValueFixture struct {
+	partition sql.Partition
+	kv        []kvfixture
+}
+
+type fixturePartitionKeyValueIter struct {
+	fixtures []partitionKeyValueFixture
+	pos      int
+}
+
+func (i *fixturePartitionKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, error) {
+	if i.pos >= len(i.fixtures) {
+		return nil, nil, io.EOF
+	}
+
+	f := i.fixtures[i.pos]
+	i.pos++
+	return f.partition, &fixtureKeyValueIter{
+		fixtures: f.kv,
+	}, nil
+}
+
+func (i *fixturePartitionKeyValueIter) Close() error {
+	i.pos = len(i.fixtures)
+	return nil
 }
 
 type kvfixture struct {
@@ -857,46 +926,68 @@ func (i *fixtureKeyValueIter) Next() ([]interface{}, []byte, error) {
 
 func (i *fixtureKeyValueIter) Close() error { return nil }
 
-// test implementation of sql.IndexKeyValueIter interface
-type testIndexKeyValueIter struct {
+type partitionKeyValueIter struct {
+	partitions int
+
 	offset      int
 	total       int
 	expressions []string
-	location    func(int) []byte
+	location    func(sql.Partition, int) string
 
-	records []struct {
+	pos     int
+	records [][]struct {
 		values   []interface{}
 		location []byte
 	}
 }
 
-func (it *testIndexKeyValueIter) Next() ([]interface{}, []byte, error) {
-	if it.offset >= it.total {
+func (i *partitionKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, error) {
+	if i.pos >= i.partitions {
 		return nil, nil, io.EOF
 	}
 
-	b := it.location(it.offset)
-
-	values := make([]interface{}, len(it.expressions))
-	for i, e := range it.expressions {
-		values[i] = e + "-" + hex.EncodeToString(b)
-	}
-
-	it.records = append(it.records, struct {
+	i.pos++
+	i.records = append(i.records, []struct {
 		values   []interface{}
 		location []byte
-	}{
-		values,
-		b,
-	})
-	it.offset++
-
-	return values, b, nil
+	}{})
+	return testPartition(i.pos - 1), &testIndexKeyValueIter{
+		offset:      i.offset,
+		total:       i.total,
+		expressions: i.expressions,
+		location:    i.location,
+		partition:   testPartition(i.pos - 1),
+		records:     &i.records[i.pos-1],
+	}, nil
 }
 
-func (it *testIndexKeyValueIter) Close() error {
-	it.offset = 0
-	it.records = nil
+func (i *partitionKeyValueIter) Close() error {
+	i.pos = i.partitions
+	return nil
+}
+
+type testPartition int
+
+func (p testPartition) Key() []byte {
+	return []byte(fmt.Sprint(p))
+}
+
+type partitionIter struct {
+	partitions int
+	pos        int
+}
+
+func (i *partitionIter) Next() (sql.Partition, error) {
+	if i.pos >= i.partitions {
+		return nil, io.EOF
+	}
+
+	i.pos++
+	return testPartition(i.pos), nil
+}
+
+func (i *partitionIter) Close() error {
+	i.pos = i.partitions
 	return nil
 }
 
@@ -909,18 +1000,6 @@ func makeExpressions(table string, names ...string) []sql.Expression {
 	}
 
 	return expressions
-}
-
-func randLocation(offset int) []byte {
-	b := make([]byte, 1)
-	rand.Read(b)
-	return b
-}
-
-func offsetLocation(offset int) []byte {
-	b := make([]byte, 1)
-	b[0] = byte(offset % 10)
-	return b
 }
 
 func newClientWithTimeout(timeout time.Duration) *pilosa.Client {
@@ -958,4 +1037,48 @@ func retry(ctx context.Context, fn func() error) error {
 	}
 
 	return err
+}
+
+// test implementation of sql.IndexKeyValueIter interface
+type testIndexKeyValueIter struct {
+	offset      int
+	total       int
+	expressions []string
+	location    func(sql.Partition, int) string
+	partition   sql.Partition
+
+	records *[]struct {
+		values   []interface{}
+		location []byte
+	}
+}
+
+func (it *testIndexKeyValueIter) Next() ([]interface{}, []byte, error) {
+	if it.offset >= it.total {
+		return nil, nil, io.EOF
+	}
+
+	loc := it.location(it.partition, it.offset)
+
+	values := make([]interface{}, len(it.expressions))
+	for i, e := range it.expressions {
+		values[i] = e + "-" + loc + "-" + string(it.partition.Key())
+	}
+
+	*it.records = append(*it.records, struct {
+		values   []interface{}
+		location []byte
+	}{
+		values,
+		[]byte(loc),
+	})
+	it.offset++
+
+	return values, []byte(loc), nil
+}
+
+func (it *testIndexKeyValueIter) Close() error {
+	it.offset = 0
+	it.records = nil
+	return nil
 }
