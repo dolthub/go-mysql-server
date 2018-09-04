@@ -69,7 +69,7 @@ func isParallelizable(node sql.Node) bool {
 			*plan.OrderedDistinct:
 			ok = false
 			return false
-		case *plan.ResolvedTable:
+		case sql.Table:
 			lastWasTable = true
 			tableSeen = true
 		}
