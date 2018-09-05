@@ -33,14 +33,14 @@ func TestParallelize(t *testing.T) {
 		nil,
 		plan.NewInnerJoin(
 			plan.NewExchange(
-				1,
+				2,
 				plan.NewFilter(
 					expression.NewLiteral(1, sql.Int64),
 					plan.NewResolvedTable("bar", table),
 				),
 			),
 			plan.NewExchange(
-				1,
+				2,
 				plan.NewFilter(
 					expression.NewLiteral(1, sql.Int64),
 					plan.NewResolvedTable("foo", table),
@@ -50,9 +50,26 @@ func TestParallelize(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 1}, node)
+	result, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 2}, node)
 	require.NoError(err)
 	require.Equal(expected, result)
+}
+
+func TestParallelizeCreateIndex(t *testing.T) {
+	require := require.New(t)
+	table := mem.NewTable("t", nil)
+	rule := getRule("parallelize")
+	node := plan.NewCreateIndex(
+		"",
+		plan.NewResolvedTable("bar", table),
+		nil,
+		"",
+		nil,
+	)
+
+	result, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 1}, node)
+	require.NoError(err)
+	require.Equal(node, result)
 }
 
 func TestIsParallelizable(t *testing.T) {

@@ -6,7 +6,13 @@ import (
 )
 
 func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
-	if a.Parallelism <= 0 || !node.Resolved() {
+	if a.Parallelism <= 1 || !node.Resolved() {
+		return node, nil
+	}
+
+	// Do not try to parallelize index operations.
+	switch node.(type) {
+	case *plan.CreateIndex, *plan.DropIndex:
 		return node, nil
 	}
 
