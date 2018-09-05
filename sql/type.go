@@ -512,6 +512,8 @@ func (t blobT) SQL(v interface{}) sqltypes.Value {
 // Convert implements Type interface.
 func (t blobT) Convert(v interface{}) (interface{}, error) {
 	switch value := v.(type) {
+	case nil:
+		return []byte(nil), nil
 	case []byte:
 		return value, nil
 	case string:
