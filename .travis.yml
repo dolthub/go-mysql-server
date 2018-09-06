@@ -34,4 +34,4 @@ install:
   - make dependencies
 
 script:
-  - make test-coverage
+  - make ci-script

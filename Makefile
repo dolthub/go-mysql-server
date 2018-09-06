@@ -1,7 +1,7 @@
 # Package configuration
 PROJECT = go-mysql-server
 COMMANDS =
-GOFLAGS = -tags oniguruma
+GO_TAGS = oniguruma
 
 # Including ci Makefile
 CI_REPOSITORY ?= https://github.com/src-d/ci.git
