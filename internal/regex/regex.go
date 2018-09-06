@@ -76,7 +76,7 @@ func Default() string {
 		return "oniguruma"
 	}
 
-	return "native"
+	return "go"
 }
 
 // SetDefault sets the regex engine returned by Default.

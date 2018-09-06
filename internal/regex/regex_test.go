@@ -15,7 +15,7 @@ func getDefault() string {
 		}
 	}
 
-	return "native"
+	return "go"
 }
 
 func TestRegistration(t *testing.T) {
@@ -33,7 +33,7 @@ func TestRegistration(t *testing.T) {
 	engines = Engines()
 	require.Len(engines, number)
 
-	err = Register("native", dummy)
+	err = Register("go", dummy)
 	require.Equal(true, ErrRegexAlreadyRegistered.Is(err))
 
 	err = Register("nil", dummy)
