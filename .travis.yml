@@ -1,8 +1,8 @@
 language: go
 
 go:
-  - 1.9.x
   - 1.10.x
+  - 1.11.x
   - tip
 
 go_import_path: gopkg.in/src-d/go-mysql-server.v0
