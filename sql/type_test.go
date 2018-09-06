@@ -125,6 +125,8 @@ func TestBlob(t *testing.T) {
 	require := require.New(t)
 
 	convert(t, Blob, "", []byte{})
+	convert(t, Blob, nil, []byte(nil))
+	MustConvert(Blob, nil)
 
 	_, err := Blob.Convert(1)
 	require.NotNil(err)
