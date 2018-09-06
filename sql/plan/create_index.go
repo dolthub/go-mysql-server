@@ -73,6 +73,17 @@ func (c *CreateIndex) Resolved() bool {
 	return true
 }
 
+func getIndexableTable(t sql.Table) (sql.IndexableTable, error) {
+	switch t := t.(type) {
+	case sql.TableWrapper:
+		return getIndexableTable(t.Underlying())
+	case sql.IndexableTable:
+		return t, nil
+	default:
+		return nil, ErrInsertIntoNotSupported.New()
+	}
+}
+
 // RowIter implements the Node interface.
 func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	table, ok := c.Table.(*ResolvedTable)
@@ -80,9 +91,9 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, ErrNotIndexable.New()
 	}
 
-	indexable, ok := table.Table.(sql.IndexableTable)
-	if !ok {
-		return nil, ErrNotIndexable.New()
+	indexable, err := getIndexableTable(table.Table)
+	if err != nil {
+		return nil, err
 	}
 
 	var driver sql.IndexDriver

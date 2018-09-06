@@ -10,6 +10,14 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 )
 
+func TestTablePartitionsCount(t *testing.T) {
+	require := require.New(t)
+	table := NewPartitionedTable("foo", nil, 5)
+	count, err := table.PartitionCount(sql.NewEmptyContext())
+	require.NoError(err)
+	require.Equal(int64(5), count)
+}
+
 func TestTableName(t *testing.T) {
 	require := require.New(t)
 	s := sql.Schema{

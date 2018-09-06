@@ -1,0 +1,45 @@
+package plan
+
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+)
+
+func TestShowProcessList(t *testing.T) {
+	require := require.New(t)
+
+	n := NewShowProcessList()
+	p := sql.NewProcessList()
+	sess := sql.NewSession("0.0.0.0:1234", "foo")
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+
+	pid := p.AddProcess(ctx, sql.QueryProcess, "SELECT foo")
+	p.AddProgressItem(pid, "a", 5)
+	p.AddProgressItem(pid, "b", 6)
+
+	pid = p.AddProcess(ctx, sql.CreateIndexProcess, "SELECT bar")
+	p.AddProgressItem(pid, "foo", 2)
+
+	p.UpdateProgress(1, "a", 3)
+	p.UpdateProgress(1, "a", 1)
+	p.UpdateProgress(1, "b", 2)
+	p.UpdateProgress(2, "foo", 1)
+
+	n.ProcessList = p
+	n.Database = "foo"
+
+	iter, err := n.RowIter(ctx)
+	require.NoError(err)
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	expected := []sql.Row{
+		{int64(1), "foo", "0.0.0.0:1234", "foo", "query", int64(0), "a(4/5), b(2/6)", "SELECT foo"},
+		{int64(2), "foo", "0.0.0.0:1234", "foo", "create_index", int64(0), "foo(1/2)", "SELECT bar"},
+	}
+
+	require.ElementsMatch(expected, rows)
+}

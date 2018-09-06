@@ -77,6 +77,11 @@ func (t *Table) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	return &partitionIter{keys: keys}, nil
 }
 
+// PartitionCount implements the sql.PartitionCounter interface.
+func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
+	return int64(len(t.partitions)), nil
+}
+
 // PartitionRows implements the sql.PartitionRows interface.
 func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	key := string(partition.Key())

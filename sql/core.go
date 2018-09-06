@@ -136,6 +136,19 @@ type Table interface {
 	PartitionRows(*Context, Partition) (RowIter, error)
 }
 
+// TableWrapper is a node that wraps the real table. This is needed because
+// wrappers cannot implement some methods the table may implement.
+type TableWrapper interface {
+	// Underlying returns the underlying table.
+	Underlying() Table
+}
+
+// PartitionCounter can return the number of partitions.
+type PartitionCounter interface {
+	// PartitionCount returns the number of partitions.
+	PartitionCount(*Context) (int64, error)
+}
+
 //FilteredTable is a table that can produce a specific RowIter
 // that's more optimized given the filters.
 type FilteredTable interface {

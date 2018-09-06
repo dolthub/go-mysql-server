@@ -123,6 +123,11 @@ func (ab *Builder) Build() *Analyzer {
 			Iterations: 1,
 			Rules:      ab.postValidationRules,
 		},
+		&Batch{
+			Desc:       "after-all rules",
+			Iterations: 1,
+			Rules:      OnceAfterAll,
+		},
 	}
 
 	return &Analyzer{

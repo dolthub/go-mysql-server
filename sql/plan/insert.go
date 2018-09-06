@@ -41,10 +41,18 @@ func getInsertable(node sql.Node) (sql.Inserter, error) {
 	case sql.Inserter:
 		return node, nil
 	case *ResolvedTable:
-		if insertable, ok := node.Table.(sql.Inserter); ok {
-			return insertable, nil
-		}
+		return getInsertableTable(node.Table)
+	default:
 		return nil, ErrInsertIntoNotSupported.New()
+	}
+}
+
+func getInsertableTable(t sql.Table) (sql.Inserter, error) {
+	switch t := t.(type) {
+	case sql.TableWrapper:
+		return getInsertableTable(t.Underlying())
+	case sql.Inserter:
+		return t, nil
 	default:
 		return nil, ErrInsertIntoNotSupported.New()
 	}

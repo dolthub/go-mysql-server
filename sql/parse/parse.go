@@ -29,11 +29,12 @@ var (
 )
 
 var (
-	describeTablesRegex = regexp.MustCompile(`^describe\s+table\s+(.*)`)
-	createIndexRegex    = regexp.MustCompile(`^create\s+index\s+`)
-	dropIndexRegex      = regexp.MustCompile(`^drop\s+index\s+`)
-	showIndexRegex      = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
-	describeRegex       = regexp.MustCompile(`^(describe|desc|explain)\s+(.*)\s+`)
+	describeTablesRegex  = regexp.MustCompile(`^describe\s+table\s+(.*)`)
+	createIndexRegex     = regexp.MustCompile(`^create\s+index\s+`)
+	dropIndexRegex       = regexp.MustCompile(`^drop\s+index\s+`)
+	showIndexRegex       = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
+	describeRegex        = regexp.MustCompile(`^(describe|desc|explain)\s+(.*)\s+`)
+	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
 )
 
 // Parse parses the given SQL sentence and returns the corresponding node.
@@ -58,6 +59,8 @@ func Parse(ctx *sql.Context, s string) (sql.Node, error) {
 		return parseShowIndex(s)
 	case describeRegex.MatchString(lowerQuery):
 		return parseDescribeQuery(ctx, s)
+	case fullProcessListRegex.MatchString(lowerQuery):
+		return plan.NewShowProcessList(), nil
 	}
 
 	stmt, err := sqlparser.Parse(s)

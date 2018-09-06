@@ -24,7 +24,8 @@ func TestResolveSubqueries(t *testing.T) {
 	db.AddTable("bar", table2)
 	db.AddTable("baz", table3)
 
-	catalog := &sql.Catalog{Databases: []sql.Database{db}}
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
 	a := NewDefault(catalog)
 	a.CurrentDatabase = "mydb"
 
@@ -86,5 +87,5 @@ func TestResolveSubqueries(t *testing.T) {
 
 	result, err := resolveSubqueries(sql.NewEmptyContext(), a, node)
 	require.NoError(err)
-	require.Equal(expected, result)
+	require.Equal(expected, removeProcessNodes(t, result))
 }

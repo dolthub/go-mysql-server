@@ -228,5 +228,5 @@ func TestPushdownIndexable(t *testing.T) {
 	})
 	require.NoError(err)
 
-	require.Equal(expected, result)
+	require.Equal(expected, removeProcessNodes(t, result))
 }

@@ -9,17 +9,37 @@ import (
 	"github.com/opentracing/opentracing-go/log"
 )
 
+type key uint
+
+const (
+	// QueryKey to access query in the context.
+	QueryKey key = iota
+)
+
 // Session holds the session data.
 type Session interface {
-	// TODO: add config
+	Address() string
+	User() string
 }
 
 // BaseSession is the basic session type.
 type BaseSession struct {
-	// TODO: add config
+	addr string
+	user string
 }
 
-// NewBaseSession creates a new basic session.
+// User returns the current user of the session.
+func (s BaseSession) User() string { return s.user }
+
+// Address returns the server address.
+func (s BaseSession) Address() string { return s.addr }
+
+// NewSession creates a new session with data.
+func NewSession(address string, user string) Session {
+	return &BaseSession{addr: address, user: user}
+}
+
+// NewBaseSession creates a new empty session.
 func NewBaseSession() Session {
 	return &BaseSession{}
 }
@@ -81,6 +101,13 @@ func (c *Context) Span(
 	ctx := opentracing.ContextWithSpan(c.Context, span)
 
 	return span, &Context{ctx, c.Session, c.tracer}
+}
+
+// WithQuery adds the query to the context.
+func (c *Context) WithQuery(query string) *Context {
+	nc := *c
+	nc.Context = context.WithValue(c.Context, QueryKey, query)
+	return &nc
 }
 
 // NewSpanIter creates a RowIter executed in the given span.
