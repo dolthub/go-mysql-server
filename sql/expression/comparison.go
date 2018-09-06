@@ -2,9 +2,9 @@ package expression
 
 import (
 	"fmt"
-	"regexp"
 
 	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-mysql-server.v0/internal/regex"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -178,11 +178,12 @@ func (e *Equals) String() string {
 // Regexp is a comparison that checks an expression matches a regexp.
 type Regexp struct {
 	comparison
+	r regex.Matcher
 }
 
 // NewRegexp creates a new Regexp expression.
 func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
-	return &Regexp{newComparison(left, right)}
+	return &Regexp{newComparison(left, right), nil}
 }
 
 // Eval implements the Expression interface.
@@ -223,12 +224,14 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 		return nil, err
 	}
 
-	reg, err := regexp.Compile(right.(string))
-	if err != nil {
-		return false, err
+	if re.r == nil {
+		re.r, err = regex.New(regex.Default(), right.(string))
+		if err != nil {
+			return false, err
+		}
 	}
 
-	return reg.MatchString(left.(string)), nil
+	return re.r.Match(left.(string)), nil
 }
 
 // TransformUp implements the Expression interface.

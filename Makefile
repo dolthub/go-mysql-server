@@ -1,6 +1,7 @@
 # Package configuration
 PROJECT = go-mysql-server
 COMMANDS =
+GOFLAGS = -tags oniguruma
 
 # Including ci Makefile
 MAKEFILE = Makefile.main

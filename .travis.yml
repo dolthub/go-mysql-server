@@ -7,6 +7,11 @@ go:
 
 go_import_path: gopkg.in/src-d/go-mysql-server.v0
 
+addons:
+  apt:
+    packages:
+      - libonig-dev
+
 matrix:
   fast_finish: true
   allow_failures:
@@ -25,7 +30,7 @@ before_install:
 install:
   - go get -u github.com/golang/dep/cmd/dep
   - touch Gopkg.toml
-  - dep ensure -v -add "github.com/pilosa/go-pilosa@0.9.0" "github.com/pilosa/pilosa@1.0.2"
+  - dep ensure -v -add "github.com/pilosa/go-pilosa@0.9.0" "github.com/pilosa/pilosa@1.0.2" "github.com/moovweb/rubex@b3d9ff6ad7d9b14f94a91c8271cd9ad9e77132e5"
   - make dependencies
 
 script:

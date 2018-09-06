@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-mysql-server.v0/internal/regex"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 
 	"github.com/stretchr/testify/require"
@@ -173,17 +174,27 @@ func TestGreaterThan(t *testing.T) {
 }
 
 func TestRegexp(t *testing.T) {
+	for _, engine := range regex.Engines() {
+		regex.SetDefault(engine)
+		t.Run(engine, testRegexpCases)
+	}
+}
+
+func testRegexpCases(t *testing.T) {
+	t.Helper()
 	require := require.New(t)
+
 	for resultType, cmpCase := range likeComparisonCases {
 		get0 := NewGetField(0, resultType, "col1", true)
 		require.NotNil(get0)
 		get1 := NewGetField(1, resultType, "col2", true)
 		require.NotNil(get1)
-		eq := NewRegexp(get0, get1)
-		require.NotNil(eq)
-		require.Equal(sql.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
+				eq := NewRegexp(get0, get1)
+				require.NotNil(eq)
+				require.Equal(sql.Boolean, eq.Type())
+
 				row := sql.NewRow(pair[0], pair[1])
 				require.NotNil(row)
 				cmp := eval(t, eq, row)
