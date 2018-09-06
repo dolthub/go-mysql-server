@@ -1,6 +1,9 @@
 package pilosa
 
 import (
+	"context"
+	"sync"
+
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	pilosa "github.com/pilosa/go-pilosa"
@@ -12,6 +15,8 @@ import (
 type pilosaIndex struct {
 	client  *pilosa.Client
 	mapping *mapping
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 
 	db          string
 	table       string

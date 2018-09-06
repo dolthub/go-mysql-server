@@ -92,6 +92,7 @@ func withoutMapping(a sql.Index) sql.Index {
 	if i, ok := a.(*pilosaIndex); ok {
 		b := *i
 		b.mapping = nil
+		b.cancel = nil
 		return &b
 	}
 	return a

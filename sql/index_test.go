@@ -59,7 +59,7 @@ func TestIndexesByTable(t *testing.T) {
 	r.statuses[indexKey{"oof", "rab_idx_1"}] = IndexReady
 
 	indexes := r.IndexesByTable("foo", "bar")
-	require.Len(indexes, 2)
+	require.Len(indexes, 3)
 
 	for i, idx := range indexes {
 		expected := r.indexes[r.indexOrder[i]]

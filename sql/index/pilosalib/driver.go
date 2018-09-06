@@ -1,6 +1,7 @@
 package pilosalib
 
 import (
+	"context"
 	"crypto/sha1"
 	"fmt"
 	"io"
@@ -272,20 +273,21 @@ func (d *Driver) savePartition(
 	for colID = offset; err == nil; colID++ {
 		// commit each batch of objects (pilosa and boltdb)
 		if colID%sql.IndexBatchSize == 0 && colID != 0 {
-			d.saveBatch(ctx, idx.mapping, colID)
+			if err = d.saveBatch(ctx, idx.mapping, colID); err != nil {
+				return 0, err
+			}
 		}
 
 		select {
-		case <-ctx.Done():
-			return 0, ctx.Err()
+		case <-ctx.Context.Done():
+			return 0, ctx.Context.Err()
 
 		default:
 			var (
 				values   []interface{}
 				location []byte
 			)
-			values, location, err = kviter.Next()
-			if err != nil {
+			if values, location, err = kviter.Next(); err != nil {
 				break
 			}
 
@@ -332,6 +334,9 @@ func (d *Driver) Save(
 		return errInvalidIndexType.New(i)
 	}
 
+	idx.wg.Add(1)
+	defer idx.wg.Done()
+	ctx.Context, idx.cancel = context.WithCancel(ctx.Context)
 	processingFile := d.processingFilePath(i.Database(), i.Table(), i.ID())
 	if err := index.WriteProcessingFile(
 		processingFile,
@@ -377,13 +382,17 @@ func (d *Driver) Save(
 
 // Delete the given index for all partitions in the iterator.
 func (d *Driver) Delete(i sql.Index, partitions sql.PartitionIter) error {
-	if err := os.RemoveAll(filepath.Join(d.root, i.Database(), i.Table(), i.ID())); err != nil {
-		return err
-	}
-
 	idx, ok := i.(*pilosaIndex)
 	if !ok {
 		return errInvalidIndexType.New(i)
+	}
+	if idx.cancel != nil {
+		idx.cancel()
+		idx.wg.Wait()
+	}
+
+	if err := os.RemoveAll(filepath.Join(d.root, i.Database(), i.Table(), i.ID())); err != nil {
+		return err
 	}
 
 	err := idx.index.Open()
@@ -435,8 +444,8 @@ func (d *Driver) savePilosa(ctx *sql.Context, colID uint64) error {
 
 	start := time.Now()
 
-	for i, frm := range d.fields {
-		err := frm.Import(d.bitBatches[i].rows, d.bitBatches[i].cols, nil)
+	for i, fld := range d.fields {
+		err := fld.Import(d.bitBatches[i].rows, d.bitBatches[i].cols, nil)
 		if err != nil {
 			span.LogKV("error", err)
 			return err
