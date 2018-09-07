@@ -97,7 +97,10 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 		return nil, err
 	}
 
-	var nullable string
+	var (
+		nullable string
+		visible  string
+	)
 	columnName, expression := "NULL", show.expression
 	if ok, null := isColumn(show.expression, i.db.Tables()[i.table]); ok {
 		columnName, expression = expression, columnName
@@ -105,7 +108,11 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 			nullable = "YES"
 		}
 	}
-
+	if i.registry.CanUseIndex(show.index) {
+		visible = "YES"
+	} else {
+		visible = "NO"
+	}
 	return sql.NewRow(
 		i.table,             // "Table" string
 		int32(1),            // "Non_unique" int32, Values [0, 1]
@@ -120,7 +127,7 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 		show.index.Driver(), // "Index_type" string
 		"",                  // "Comment" string
 		"",                  // "Index_comment" string
-		"YES",               // "Visible" string, Values [YES, NO]
+		visible,             // "Visible" string, Values [YES, NO]
 		expression,          // "Expression" string
 	), nil
 }

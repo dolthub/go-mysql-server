@@ -279,12 +279,7 @@ func (r *IndexRegistry) Index(db, id string) Index {
 	defer r.mut.RUnlock()
 
 	r.retainIndex(db, id)
-	idx := r.indexes[indexKey{db, strings.ToLower(id)}]
-	if idx != nil && !r.canUseIndex(idx) {
-		return nil
-	}
-
-	return idx
+	return r.indexes[indexKey{db, strings.ToLower(id)}]
 }
 
 // IndexesByTable returns a slice of all the indexes existing on the given table.
@@ -295,9 +290,7 @@ func (r *IndexRegistry) IndexesByTable(db, table string) []Index {
 	indexes := []Index{}
 	for _, key := range r.indexOrder {
 		idx := r.indexes[key]
-		if idx.Database() == db &&
-			idx.Table() == table && r.statuses[key] == IndexReady {
-
+		if idx.Database() == db && idx.Table() == table {
 			indexes = append(indexes, idx)
 			r.retainIndex(db, idx.ID())
 		}
@@ -533,7 +526,7 @@ func (r *IndexRegistry) DeleteIndex(db, id string, force bool) (<-chan struct{},
 
 	r.rcmut.Lock()
 	// If no query is using this index just delete it right away
-	if r.refCounts[key] <= 0 {
+	if force || r.refCounts[key] <= 0 {
 		r.mut.Lock()
 		defer r.mut.Unlock()
 		defer r.rcmut.Unlock()

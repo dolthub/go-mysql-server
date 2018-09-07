@@ -1,6 +1,7 @@
 package pilosa
 
 import (
+	"context"
 	"crypto/sha1"
 	"fmt"
 	"io"
@@ -232,20 +233,21 @@ func (d *Driver) savePartition(
 	for colID = offset; err == nil; colID++ {
 		// commit each batch of objects (pilosa and boltdb)
 		if colID%sql.IndexBatchSize == 0 && colID != 0 {
-			d.saveBatch(ctx, idx.mapping, colID)
+			if err = d.saveBatch(ctx, idx.mapping, colID); err != nil {
+				return 0, err
+			}
 		}
 
 		select {
-		case <-ctx.Done():
-			return 0, ctx.Err()
+		case <-ctx.Context.Done():
+			return 0, ctx.Context.Err()
 
 		default:
 			var (
 				values   []interface{}
 				location []byte
 			)
-			values, location, err = kviter.Next()
-			if err != nil {
+			if values, location, err = kviter.Next(); err != nil {
 				break
 			}
 
@@ -291,7 +293,9 @@ func (d *Driver) Save(
 	if !ok {
 		return errInvalidIndexType.New(i)
 	}
-
+	idx.wg.Add(1)
+	defer idx.wg.Done()
+	ctx.Context, idx.cancel = context.WithCancel(ctx.Context)
 	processingFile := d.processingFilePath(idx.Database(), idx.Table(), idx.ID())
 	if err = index.CreateProcessingFile(processingFile); err != nil {
 		return err
@@ -337,7 +341,16 @@ func (d *Driver) Save(
 }
 
 // Delete the given index for all partitions in the iterator.
-func (d *Driver) Delete(idx sql.Index, partitions sql.PartitionIter) error {
+func (d *Driver) Delete(i sql.Index, partitions sql.PartitionIter) error {
+	idx, ok := i.(*pilosaIndex)
+	if !ok {
+		return errInvalidIndexType.New(i)
+	}
+	if idx.cancel != nil {
+		idx.cancel()
+		idx.wg.Wait()
+	}
+
 	if err := os.RemoveAll(filepath.Join(d.root, idx.Database(), idx.Table(), idx.ID())); err != nil {
 		return err
 	}

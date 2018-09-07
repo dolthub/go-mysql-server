@@ -1,6 +1,9 @@
 package pilosalib
 
 import (
+	"context"
+	"sync"
+
 	"github.com/pilosa/pilosa"
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -15,6 +18,8 @@ var (
 type pilosaIndex struct {
 	index   *pilosa.Index
 	mapping *mapping
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 
 	db          string
 	table       string

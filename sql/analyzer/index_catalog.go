@@ -5,7 +5,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
-// indexCatalog sets the catalog in the CreateIndexm, DropIndex and ShowIndexes nodes.
+// indexCatalog sets the catalog in the CreateIndex, DropIndex and ShowIndexes nodes.
 func indexCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	if !n.Resolved() {
 		return n, nil

@@ -92,6 +92,7 @@ func withoutMapping(a sql.Index) sql.Index {
 	if i, ok := a.(*pilosaIndex); ok {
 		b := *i
 		b.mapping = nil
+		b.cancel = nil
 		return &b
 	}
 	return a
@@ -257,6 +258,41 @@ func TestDelete(t *testing.T) {
 	sqlIdx, err := d.Create(db, table, id, expressions, nil)
 	require.NoError(err)
 
+	err = d.Delete(sqlIdx, new(partitionIter))
+	require.NoError(err)
+}
+
+func TestDeleteInProgress(t *testing.T) {
+	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
+
+	db, table, id := "db_name", "table_name", "index_id"
+
+	expressions := []sql.Expression{
+		expression.NewGetFieldWithTable(0, sql.Int64, table, "lang", true),
+		expression.NewGetFieldWithTable(1, sql.Int64, table, "hash", true),
+	}
+
+	d := NewIndexDriver(tmpDir)
+	sqlIdx, err := d.Create(db, table, id, expressions, nil)
+	require.NoError(err)
+
+	it := &partitionKeyValueIter{
+		partitions:  2,
+		offset:      0,
+		total:       1024,
+		expressions: sqlIdx.Expressions(),
+		location:    slowRandLocation,
+	}
+
+	go func() {
+		if e := d.Save(sql.NewEmptyContext(), sqlIdx, it); e != nil {
+			t.Log(e)
+		}
+	}()
+
+	time.Sleep(time.Second)
 	err = d.Delete(sqlIdx, new(partitionIter))
 	require.NoError(err)
 }
@@ -871,6 +907,12 @@ func randLocation(partition sql.Partition, offset int) string {
 	b := make([]byte, 1)
 	rand.Read(b)
 	return string(partition.Key()) + "-" + string(b)
+}
+
+func slowRandLocation(partition sql.Partition, offset int) string {
+	defer time.Sleep(200 * time.Millisecond)
+
+	return randLocation(partition, offset)
 }
 
 func offsetLocation(partition sql.Partition, offset int) string {
