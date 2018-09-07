@@ -140,6 +140,19 @@ func TestParseCreateIndex(t *testing.T) {
 			),
 			nil,
 		},
+		{
+			"CREATE INDEX idx_2 ON foo USING bar (baz)",
+			plan.NewCreateIndex(
+				"idx_2",
+				plan.NewUnresolvedTable("foo"),
+				[]sql.Expression{
+					expression.NewUnresolvedColumn("baz"),
+				},
+				"bar",
+				make(map[string]string),
+			),
+			nil,
+		},
 	}
 
 	for _, tt := range testCases {
