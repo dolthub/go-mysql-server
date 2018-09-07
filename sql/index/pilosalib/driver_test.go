@@ -237,7 +237,7 @@ func TestDelete(t *testing.T) {
 	require.NoError(err)
 }
 
-func TestDeleteSlow(t *testing.T) {
+func TestDeleteInProgress(t *testing.T) {
 	require := require.New(t)
 	setup(t)
 	defer cleanup(t)
