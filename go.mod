@@ -10,7 +10,7 @@ require (
 	github.com/moovweb/rubex v0.0.1
 	github.com/opentracing/opentracing-go v1.0.2
 	github.com/pilosa/go-pilosa v0.10.0
-	github.com/pilosa/pilosa v1.0.2
+	github.com/pilosa/pilosa v1.1.0
 	github.com/pkg/errors v0.8.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/satori/go.uuid v1.2.0
