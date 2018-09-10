@@ -78,25 +78,8 @@ func (t *tableNodeAdapter) TransformExpressionsUp(f sql.TransformExprFunc) (sql.
 	return t, nil
 }
 
-func removeProcessNodes(t *testing.T, n sql.Node) sql.Node {
-	n, err := n.TransformUp(func(n sql.Node) (sql.Node, error) {
-		switch n := n.(type) {
-		case *plan.ResolvedTable:
-			if pt, ok := n.Table.(*processTable); ok {
-				return plan.NewResolvedTable(pt.Table), nil
-			}
-		case *plan.SubqueryAlias:
-			nc := *n
-			nc.Child = removeProcessNodes(t, n.Child)
-			return &nc, nil
-		}
-		return n, nil
-	})
-	require.NoError(t, err)
-
-	if p, ok := n.(*queryProcess); ok {
-		return p.Node
-	}
-
-	return n
+func withoutProcessTracking(a *Analyzer) *Analyzer {
+	afterAll := a.Batches[len(a.Batches)-1]
+	afterAll.Rules = afterAll.Rules[1:]
+	return a
 }

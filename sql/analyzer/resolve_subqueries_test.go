@@ -26,7 +26,7 @@ func TestResolveSubqueries(t *testing.T) {
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
-	a := NewDefault(catalog)
+	a := withoutProcessTracking(NewDefault(catalog))
 	a.CurrentDatabase = "mydb"
 
 	// SELECT * FROM
@@ -87,5 +87,5 @@ func TestResolveSubqueries(t *testing.T) {
 
 	result, err := resolveSubqueries(sql.NewEmptyContext(), a, node)
 	require.NoError(err)
-	require.Equal(expected, removeProcessNodes(t, result))
+	require.Equal(expected, result)
 }

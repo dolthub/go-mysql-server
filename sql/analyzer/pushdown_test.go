@@ -140,7 +140,7 @@ func TestPushdownIndexable(t *testing.T) {
 	close(done)
 	<-ready
 
-	a := NewDefault(catalog)
+	a := withoutProcessTracking(NewDefault(catalog))
 	a.CurrentDatabase = ""
 
 	node := plan.NewProject(
@@ -224,5 +224,5 @@ func TestPushdownIndexable(t *testing.T) {
 	})
 	require.NoError(err)
 
-	require.Equal(expected, removeProcessNodes(t, result))
+	require.Equal(expected, result)
 }
