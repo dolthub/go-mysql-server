@@ -20,7 +20,7 @@ var (
 
 	// operation functors
 	// r1 AND r2
-	intersect = func(b1, b2 *pilosa.PQLBitmapQuery) *pilosa.PQLBitmapQuery {
+	intersect = func(b1, b2 *pilosa.PQLRowQuery) *pilosa.PQLRowQuery {
 		if b1 == nil {
 			return nil
 		}
@@ -30,7 +30,7 @@ var (
 		return b1.Index().Intersect(b1, b2)
 	}
 	// r1 OR r2
-	union = func(b1, b2 *pilosa.PQLBitmapQuery) *pilosa.PQLBitmapQuery {
+	union = func(b1, b2 *pilosa.PQLRowQuery) *pilosa.PQLRowQuery {
 		if b1 == nil {
 			return b2
 		}
@@ -41,7 +41,7 @@ var (
 		return b1.Index().Union(b1, b2)
 	}
 	// r1 AND NOT r2
-	difference = func(b1, b2 *pilosa.PQLBitmapQuery) *pilosa.PQLBitmapQuery {
+	difference = func(b1, b2 *pilosa.PQLRowQuery) *pilosa.PQLRowQuery {
 		if b1 == nil {
 			return nil
 		}
@@ -55,11 +55,11 @@ var (
 
 type lookupOperation struct {
 	lookup    sql.IndexLookup
-	operation func(*pilosa.PQLBitmapQuery, *pilosa.PQLBitmapQuery) *pilosa.PQLBitmapQuery
+	operation func(*pilosa.PQLRowQuery, *pilosa.PQLRowQuery) *pilosa.PQLRowQuery
 }
 
 type pilosaLookup interface {
-	bitmapQuery(sql.Partition) (*pilosa.PQLBitmapQuery, error)
+	bitmapQuery(sql.Partition) (*pilosa.PQLRowQuery, error)
 	indexName() string
 }
 
@@ -77,22 +77,22 @@ type indexLookup struct {
 
 func (l *indexLookup) indexName() string { return l.index.Name() }
 
-func (l *indexLookup) bitmapQuery(p sql.Partition) (*pilosa.PQLBitmapQuery, error) {
+func (l *indexLookup) bitmapQuery(p sql.Partition) (*pilosa.PQLRowQuery, error) {
 	l.mapping.open()
 	defer l.mapping.close()
 
 	var (
-		bmp     *pilosa.PQLBitmapQuery
-		bitmaps []*pilosa.PQLBitmapQuery
+		bmp     *pilosa.PQLRowQuery
+		bitmaps []*pilosa.PQLRowQuery
 	)
 
 	for i, expr := range l.expressions {
-		frm, err := l.index.Frame(frameName(l.id, expr, p))
-		if err != nil {
+		f := l.index.Field(fieldName(l.id, expr, p))
+		if err := l.client.EnsureField(f); err != nil {
 			return nil, err
 		}
 
-		rowID, err := l.mapping.rowID(frm.Name(), l.keys[i])
+		rowID, err := l.mapping.rowID(f.Name(), l.keys[i])
 		if err == io.EOF {
 			continue
 		}
@@ -101,7 +101,7 @@ func (l *indexLookup) bitmapQuery(p sql.Partition) (*pilosa.PQLBitmapQuery, erro
 			return nil, err
 		}
 
-		bitmaps = append(bitmaps, frm.Bitmap(rowID))
+		bitmaps = append(bitmaps, f.Row(rowID))
 	}
 	if len(bitmaps) > 0 {
 		// Compute Intersection of expression bitmaps
@@ -151,7 +151,7 @@ func (l *indexLookup) Values(partition sql.Partition) (sql.IndexValueIter, error
 		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
 	}
 
-	bits := resp.Result().Bitmap().Bits
+	bits := resp.Result().Row().Columns
 	return &indexValueIter{
 		total:     uint64(len(bits)),
 		bits:      bits,
@@ -221,22 +221,22 @@ type filteredLookup struct {
 
 func (l *filteredLookup) indexName() string { return l.index.Name() }
 
-func (l *filteredLookup) bitmapQuery(partition sql.Partition) (*pilosa.PQLBitmapQuery, error) {
+func (l *filteredLookup) bitmapQuery(partition sql.Partition) (*pilosa.PQLRowQuery, error) {
 	l.mapping.open()
 	defer l.mapping.close()
 
 	// Compute Intersection of bitmaps
 	var (
-		bmp     *pilosa.PQLBitmapQuery
-		bitmaps []*pilosa.PQLBitmapQuery
+		bmp     *pilosa.PQLRowQuery
+		bitmaps []*pilosa.PQLRowQuery
 	)
 	for i, expr := range l.expressions {
-		frm, err := l.index.Frame(frameName(l.id, expr, partition))
-		if err != nil {
+		f := l.index.Field(fieldName(l.id, expr, partition))
+		if err := l.client.EnsureField(f); err != nil {
 			return nil, err
 		}
 
-		rows, err := l.mapping.filter(frm.Name(), func(b []byte) (bool, error) {
+		rows, err := l.mapping.filter(f.Name(), func(b []byte) (bool, error) {
 			return l.filter(i, b)
 		})
 
@@ -244,9 +244,9 @@ func (l *filteredLookup) bitmapQuery(partition sql.Partition) (*pilosa.PQLBitmap
 			return nil, err
 		}
 
-		var bs []*pilosa.PQLBitmapQuery
+		var bs []*pilosa.PQLRowQuery
 		for _, row := range rows {
-			bs = append(bs, frm.Bitmap(row))
+			bs = append(bs, f.Row(row))
 		}
 
 		bitmaps = append(bitmaps, l.index.Union(bs...))
@@ -298,7 +298,7 @@ func (l *filteredLookup) values(p sql.Partition) (sql.IndexValueIter, error) {
 		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
 	}
 
-	bits := resp.Result().Bitmap().Bits
+	bits := resp.Result().Row().Columns
 	locations, err := l.mapping.sortedLocations(l.index.Name(), bits, l.reverse)
 	if err != nil {
 		return nil, err
@@ -752,21 +752,21 @@ var (
 
 func (l *negateLookup) indexName() string { return l.index.Name() }
 
-func (l *negateLookup) bitmapQuery(p sql.Partition) (*pilosa.PQLBitmapQuery, error) {
+func (l *negateLookup) bitmapQuery(p sql.Partition) (*pilosa.PQLRowQuery, error) {
 	l.mapping.open()
 	defer l.mapping.close()
 
 	var (
-		bmp     *pilosa.PQLBitmapQuery
-		bitmaps []*pilosa.PQLBitmapQuery
+		bmp     *pilosa.PQLRowQuery
+		bitmaps []*pilosa.PQLRowQuery
 	)
 	for i, expr := range l.expressions {
-		frm, err := l.index.Frame(frameName(l.id, expr, p))
-		if err != nil {
+		f := l.index.Field(fieldName(l.id, expr, p))
+		if err := l.client.EnsureField(f); err != nil {
 			return nil, err
 		}
 
-		maxRowID, err := l.mapping.getMaxRowID(frm.Name())
+		maxRowID, err := l.mapping.getMaxRowID(f.Name())
 		if err != nil {
 			return nil, err
 		}
@@ -775,21 +775,21 @@ func (l *negateLookup) bitmapQuery(p sql.Partition) (*pilosa.PQLBitmapQuery, err
 		// https://github.com/pilosa/pilosa/issues/807), we have to get all the
 		// ones in all the rows and join them, and then make difference between
 		// them and the ones in the row of the given value.
-		var rows []*pilosa.PQLBitmapQuery
+		var rows []*pilosa.PQLRowQuery
 		// rowIDs start with 1
 		for i := uint64(1); i <= maxRowID; i++ {
-			rows = append(rows, frm.Bitmap(i))
+			rows = append(rows, f.Row(i))
 		}
 		all := l.index.Union(rows...)
 
-		rowID, err := l.mapping.rowID(frm.Name(), l.keys[i])
+		rowID, err := l.mapping.rowID(f.Name(), l.keys[i])
 		if err != nil && err != io.EOF {
 			return nil, err
 		}
 
 		bitmaps = append(
 			bitmaps,
-			l.index.Difference(all, frm.Bitmap(rowID)),
+			l.index.Difference(all, f.Row(rowID)),
 		)
 	}
 	if len(bitmaps) > 0 {
@@ -840,7 +840,7 @@ func (l *negateLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
 	}
 
-	bits := resp.Result().Bitmap().Bits
+	bits := resp.Result().Row().Columns
 	return &indexValueIter{
 		total:     uint64(len(bits)),
 		bits:      bits,

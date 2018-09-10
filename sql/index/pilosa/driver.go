@@ -22,10 +22,10 @@ import (
 const (
 	// DriverID the unique name of the pilosa driver.
 	DriverID = "pilosa"
-	// IndexNamePrefix the pilosa's indexes prefix
+	// IndexNamePrefix the pilosa's indexes prefix.
 	IndexNamePrefix = "idx"
-	// FrameNamePrefix the pilosa's frames prefix
-	FrameNamePrefix = "frm"
+	// FieldNamePrefix the pilosa's field prefix.
+	FieldNamePrefix = "fld"
 
 	// ConfigFileName is the name of an index config file.
 	ConfigFileName = "config.yml"
@@ -40,7 +40,7 @@ const (
 var (
 	errCorruptedIndex    = errors.NewKind("the index in %q is corrupted")
 	errInvalidIndexType  = errors.NewKind("expecting a pilosa index, instead got %T")
-	errDeletePilosaFrame = errors.NewKind("error deleting pilosa frame %s: %s")
+	errDeletePilosaField = errors.NewKind("error deleting pilosa field %s: %s")
 )
 
 // Driver implements sql.IndexDriver interface.
@@ -50,7 +50,7 @@ type Driver struct {
 
 	// used for saving
 	bitBatches  []*bitBatch
-	frames      []*pilosa.Frame
+	fields      []*pilosa.Field
 	timePilosa  time.Duration
 	timeMapping time.Duration
 }
@@ -164,6 +164,7 @@ func (d *Driver) loadIndex(db, table, id string) (sql.Index, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if cfg.Driver(DriverID) == nil {
 		return nil, errCorruptedIndex.New(dir)
 	}
@@ -181,31 +182,43 @@ func (d *Driver) savePartition(
 	offset uint64,
 ) (uint64, error) {
 	var colID uint64
+	var err error
 	// Create a pilosa index and frame objects in memory
-	pilosaIndex, err := schema.Index(indexName(idx.Database(), idx.Table()))
-	if err != nil {
+	pilosaIndex := schema.Index(indexName(idx.Database(), idx.Table()))
+	if err := d.client.EnsureIndex(pilosaIndex); err != nil {
 		return 0, err
 	}
 
-	d.frames = make([]*pilosa.Frame, len(idx.Expressions()))
+	d.fields = make([]*pilosa.Field, len(idx.Expressions()))
 	for i, e := range idx.Expressions() {
-		frm, err := pilosaIndex.Frame(frameName(idx.ID(), e, partition))
-		if err != nil {
-			return 0, err
-		}
-		// make sure we delete the index in every run before inserting, since there may
-		// be previous data
-		if err = d.client.DeleteFrame(frm); err != nil {
-			return 0, errDeletePilosaFrame.New(frm.Name(), err)
+		name := fieldName(idx.ID(), e, partition)
+		field := pilosaIndex.Field(name, pilosa.OptFieldTypeSet(
+			pilosa.CacheTypeDefault,
+			pilosa.CacheSizeDefault,
+		))
+
+		if err := d.client.CreateField(field); err != nil {
+			if err == pilosa.ErrFieldExists {
+				// make sure we delete the index in every run before inserting,
+				// since there may be previous data
+				if err := d.client.DeleteField(field); err != nil {
+					return 0, errDeletePilosaField.New(field.Name(), err)
+				}
+
+				if err := d.client.CreateField(field); err != nil {
+					return 0, fmt.Errorf("failed to create field after delete: %s", err)
+				}
+			} else {
+				return 0, fmt.Errorf("failed to create pilosa field: %s", err)
+			}
 		}
 
-		d.frames[i] = frm
+		d.fields[i] = field
 	}
 
 	// Make sure the index and frames exists on the server
-	err = d.client.SyncSchema(schema)
-	if err != nil {
-		return 0, err
+	if err = d.client.SyncSchema(schema); err != nil {
+		return 0, fmt.Errorf("unable to sync schema: %s", err)
 	}
 
 	// Open mapping in create mode. After finishing the transaction is rolled
@@ -225,7 +238,7 @@ func (d *Driver) savePartition(
 		idx.mapping.close()
 	}()
 
-	d.bitBatches = make([]*bitBatch, len(d.frames))
+	d.bitBatches = make([]*bitBatch, len(d.fields))
 	for i := range d.bitBatches {
 		d.bitBatches[i] = newBitBatch(sql.IndexBatchSize)
 	}
@@ -251,7 +264,7 @@ func (d *Driver) savePartition(
 				break
 			}
 
-			for i, frm := range d.frames {
+			for i, frm := range d.fields {
 				if values[i] == nil {
 					continue
 				}
@@ -355,8 +368,8 @@ func (d *Driver) Delete(i sql.Index, partitions sql.PartitionIter) error {
 		return err
 	}
 
-	index, err := pilosa.NewIndex(indexName(idx.Database(), idx.Table()))
-	if err != nil {
+	index := pilosa.NewIndex(indexName(idx.Database(), idx.Table()))
+	if err := d.client.EnsureIndex(index); err != nil {
 		return err
 	}
 
@@ -369,14 +382,14 @@ func (d *Driver) Delete(i sql.Index, partitions sql.PartitionIter) error {
 			return err
 		}
 
-		frames := index.Frames()
+		fields := index.Fields()
 		for _, ex := range idx.Expressions() {
-			frm, ok := frames[frameName(idx.ID(), ex, p)]
+			f, ok := fields[fieldName(idx.ID(), ex, p)]
 			if !ok {
 				continue
 			}
 
-			if err = d.client.DeleteFrame(frm); err != nil {
+			if err = d.client.DeleteField(f); err != nil {
 				return err
 			}
 		}
@@ -397,14 +410,14 @@ func (d *Driver) saveBatch(ctx *sql.Context, m *mapping, colID uint64) error {
 func (d *Driver) savePilosa(ctx *sql.Context, colID uint64) error {
 	span, _ := ctx.Span("pilosa.Save.bitBatch",
 		opentracing.Tag{Key: "cols", Value: colID},
-		opentracing.Tag{Key: "frames", Value: len(d.frames)},
+		opentracing.Tag{Key: "fields", Value: len(d.fields)},
 	)
 	defer span.Finish()
 
 	start := time.Now()
 
-	for i, frm := range d.frames {
-		err := d.client.ImportFrame(frm, d.bitBatches[i])
+	for i, f := range d.fields {
+		err := d.client.ImportField(f, d.bitBatches[i])
 		if err != nil {
 			span.LogKV("error", err)
 			return err
@@ -445,7 +458,8 @@ func (d *Driver) saveMapping(
 
 type bitBatch struct {
 	size uint64
-	bits []pilosa.Bit
+	rows []uint64
+	cols []uint64
 	pos  uint64
 }
 
@@ -457,24 +471,26 @@ func newBitBatch(size uint64) *bitBatch {
 }
 
 func (b *bitBatch) Clean() {
-	b.bits = make([]pilosa.Bit, 0, b.size)
+	b.cols = make([]uint64, 0, b.size)
+	b.rows = make([]uint64, 0, b.size)
 	b.pos = 0
 }
 
 func (b *bitBatch) Add(row, col uint64) {
-	b.bits = append(b.bits, pilosa.Bit{
-		RowID:    row,
-		ColumnID: col,
-	})
+	b.rows = append(b.rows, row)
+	b.cols = append(b.cols, col)
 }
 
 func (b *bitBatch) NextRecord() (pilosa.Record, error) {
-	if b.pos >= uint64(len(b.bits)) {
+	if b.pos >= uint64(len(b.rows)) {
 		return nil, io.EOF
 	}
 
 	b.pos++
-	return b.bits[b.pos-1], nil
+	return pilosa.Column{
+		RowID:    b.rows[b.pos-1],
+		ColumnID: b.cols[b.pos-1],
+	}, nil
 }
 
 func indexName(db, table string) string {
@@ -485,12 +501,12 @@ func indexName(db, table string) string {
 	return fmt.Sprintf("%s-%x", IndexNamePrefix, h.Sum(nil))
 }
 
-func frameName(id string, ex string, p sql.Partition) string {
+func fieldName(id string, ex string, p sql.Partition) string {
 	h := sha1.New()
 	io.WriteString(h, id)
 	io.WriteString(h, ex)
 	h.Write(p.Key())
-	return fmt.Sprintf("%s-%x", FrameNamePrefix, h.Sum(nil))
+	return fmt.Sprintf("%s-%x", FieldNamePrefix, h.Sum(nil))
 }
 
 // mkdir makes an empty index directory (if doesn't exist) and returns a path.

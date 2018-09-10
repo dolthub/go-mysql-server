@@ -139,10 +139,8 @@ func TestDecodeGob(t *testing.T) {
 func TestMergeable(t *testing.T) {
 	require := require.New(t)
 
-	i1, err := pilosa.NewIndex("i1")
-	require.NoError(err)
-	i2, err := pilosa.NewIndex("i2")
-	require.NoError(err)
+	i1 := pilosa.NewIndex("i1")
+	i2 := pilosa.NewIndex("i2")
 
 	testCases := []struct {
 		i1       sql.IndexLookup

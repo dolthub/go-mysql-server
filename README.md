@@ -44,10 +44,10 @@ You might run into trouble using `go get` on the library because of breaking cha
 
 ```
 cd $GOPATH/src/github.com/pilosa/go-pilosa
-git checkout v0.9.0
+git checkout v0.10.0
 ```
 
-Right now, we only support versions v0.9.x from pilosa. In the future, a more robust solution to this problem will be provided.
+Right now, we only support versions v1.x from pilosa. In the future, a more robust solution to this problem will be provided.
 
 ## Documentation
 
