@@ -130,6 +130,7 @@ type PartitionIter interface {
 
 // Table represents the backend of a SQL table.
 type Table interface {
+	Nameable
 	String() string
 	Schema() Schema
 	Partitions(*Context) (PartitionIter, error)

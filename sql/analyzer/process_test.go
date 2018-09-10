@@ -17,7 +17,7 @@ func TestTrackProcess(t *testing.T) {
 	a := NewDefault(catalog)
 
 	node := plan.NewInnerJoin(
-		plan.NewResolvedTable("foo", mem.NewPartitionedTable("", nil, 2)),
+		plan.NewResolvedTable(mem.NewPartitionedTable("foo", nil, 2)),
 		&tableNodeAdapter{"bar", mem.NewPartitionedTable("bar", nil, 4)},
 		expression.NewLiteral(int64(1), sql.Int64),
 	)
@@ -83,7 +83,7 @@ func removeProcessNodes(t *testing.T, n sql.Node) sql.Node {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			if pt, ok := n.Table.(*processTable); ok {
-				return plan.NewResolvedTable(n.Name(), pt.Table), nil
+				return plan.NewResolvedTable(pt.Table), nil
 			}
 		case *plan.SubqueryAlias:
 			nc := *n

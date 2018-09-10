@@ -24,7 +24,7 @@ func TestAssignCatalog(t *testing.T) {
 	tbl := mem.NewTable("foo", nil)
 
 	node, err := f.Apply(sql.NewEmptyContext(), a,
-		plan.NewCreateIndex("", plan.NewResolvedTable("foo", tbl), nil, "", make(map[string]string)))
+		plan.NewCreateIndex("", plan.NewResolvedTable(tbl), nil, "", make(map[string]string)))
 	require.NoError(err)
 
 	ci, ok := node.(*plan.CreateIndex)
@@ -33,7 +33,7 @@ func TestAssignCatalog(t *testing.T) {
 	require.Equal("foo", ci.CurrentDatabase)
 
 	node, err = f.Apply(sql.NewEmptyContext(), a,
-		plan.NewDropIndex("foo", plan.NewResolvedTable("foo", tbl)))
+		plan.NewDropIndex("foo", plan.NewResolvedTable(tbl)))
 	require.NoError(err)
 
 	di, ok := node.(*plan.DropIndex)

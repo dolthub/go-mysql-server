@@ -40,7 +40,7 @@ func TestDeleteIndex(t *testing.T) {
 	require.NotNil(idx)
 	catalog.ReleaseIndex(idx)
 
-	di := NewDropIndex("idx", NewResolvedTable("foo", table))
+	di := NewDropIndex("idx", NewResolvedTable(table))
 	di.Catalog = catalog
 	di.CurrentDatabase = "foo"
 

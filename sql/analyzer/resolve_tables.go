@@ -45,6 +45,6 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 
 		a.Log("table resolved: %q", t.Name())
 
-		return plan.NewResolvedTable(t.Name(), rt), nil
+		return plan.NewResolvedTable(rt), nil
 	})
 }

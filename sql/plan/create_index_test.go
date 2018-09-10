@@ -36,7 +36,7 @@ func TestCreateIndex(t *testing.T) {
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
 	}
 
-	ci := NewCreateIndex("idx", NewResolvedTable("foo", table), exprs, "mock", make(map[string]string))
+	ci := NewCreateIndex("idx", NewResolvedTable(table), exprs, "mock", make(map[string]string))
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
@@ -85,7 +85,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 
 	ci := NewCreateIndex(
 		"idx",
-		NewResolvedTable("foo", table),
+		NewResolvedTable(table),
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Blob, "foo", "a", true),
 		},
@@ -101,7 +101,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 
 	ci = NewCreateIndex(
 		"idx",
-		NewResolvedTable("foo", table),
+		NewResolvedTable(table),
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(1, sql.JSON, "foo", "a", true),
 		},
@@ -138,7 +138,7 @@ func TestCreateIndexSync(t *testing.T) {
 	}
 
 	ci := NewCreateIndex(
-		"idx", NewResolvedTable("foo", table), exprs, "mock",
+		"idx", NewResolvedTable(table), exprs, "mock",
 		map[string]string{"async": "false"},
 	)
 	ci.Catalog = catalog
@@ -199,7 +199,7 @@ func TestCreateIndexWithIter(t *testing.T) {
 	db.AddTable("foo", foo)
 	catalog.Databases = append(catalog.Databases, db)
 
-	ci := NewCreateIndex("idx", NewResolvedTable("foo", foo), exprs, "mock", make(map[string]string))
+	ci := NewCreateIndex("idx", NewResolvedTable(foo), exprs, "mock", make(map[string]string))
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 

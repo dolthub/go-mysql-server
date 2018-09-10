@@ -1,8 +1,6 @@
 package analyzer
 
 import (
-	"fmt"
-	"hash/crc32"
 	"io"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -32,7 +30,8 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	pid := processList.AddProcess(ctx, typ, query)
 
 	var seen = make(map[string]struct{})
-	wrapTable := func(name string, t sql.Table) (sql.Table, error) {
+	wrapTable := func(t sql.Table) (sql.Table, error) {
+		name := t.Name()
 		if _, ok := seen[name]; ok {
 			return t, nil
 		}
@@ -60,26 +59,19 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 				return n, nil
 			}
 
-			t, err := wrapTable(n.Name(), n.Table)
+			t, err := wrapTable(n.Table)
 			if err != nil {
 				return nil, err
 			}
 
-			return plan.NewResolvedTable(n.Name(), t), nil
+			return plan.NewResolvedTable(t), nil
 		case sql.Table:
-			var name string
-			if nameable, ok := n.(sql.Nameable); ok {
-				name = nameable.Name()
-			} else {
-				name = fmt.Sprintf("unnamed[%d]", crc32.ChecksumIEEE([]byte(n.String())))
-			}
-
-			t, err := wrapTable(name, n)
+			t, err := wrapTable(n)
 			if err != nil {
 				return nil, err
 			}
 
-			return plan.NewResolvedTable(name, t), nil
+			return plan.NewResolvedTable(t), nil
 		default:
 			return n, nil
 		}

@@ -12,7 +12,7 @@ import (
 func TestResolvedTable(t *testing.T) {
 	var require = require.New(t)
 
-	table := NewResolvedTable("test", newTableTest("test"))
+	table := NewResolvedTable(newTableTest("test"))
 	require.NotNil(table)
 
 	iter, err := table.RowIter(sql.NewEmptyContext())
@@ -73,6 +73,8 @@ type dummyTable struct {
 }
 
 var _ sql.Table = (*dummyTable)(nil)
+
+func (t *dummyTable) Name() string { return "dummy" }
 
 func (t *dummyTable) String() string {
 	panic("not implemented")
