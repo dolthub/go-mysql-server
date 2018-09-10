@@ -309,9 +309,19 @@ var queries = []struct {
 func TestQueries(t *testing.T) {
 	e := newEngine(t)
 
-	for _, tt := range queries {
-		testQuery(t, e, tt.query, tt.expected)
-	}
+	ep := newEngineWithParallelism(t, 2)
+
+	t.Run("sequential", func(t *testing.T) {
+		for _, tt := range queries {
+			testQuery(t, e, tt.query, tt.expected)
+		}
+	})
+
+	t.Run("parallel", func(t *testing.T) {
+		for _, tt := range queries {
+			testQuery(t, ep, tt.query, tt.expected)
+		}
+	})
 }
 
 func TestOrderByColumns(t *testing.T) {
@@ -660,29 +670,26 @@ func TestInnerNestedInNaturalJoins(t *testing.T) {
 	)
 }
 
-func testQuery(t *testing.T, e *sqle.Engine, q string, r []sql.Row) {
+func testQuery(t *testing.T, e *sqle.Engine, q string, expected []sql.Row) {
 	t.Run(q, func(t *testing.T) {
 		require := require.New(t)
 		session := sql.NewEmptyContext()
 
-		_, rows, err := e.Query(session, q)
+		_, iter, err := e.Query(session, q)
 		require.NoError(err)
 
-		var rs []sql.Row
-		for {
-			row, err := rows.Next()
-			if err == io.EOF {
-				break
-			}
-			require.NoError(err)
-			rs = append(rs, row)
-		}
+		rows, err := sql.RowIterToRows(iter)
+		require.NoError(err)
 
-		require.ElementsMatch(r, rs)
+		require.ElementsMatch(expected, rows)
 	})
 }
 
 func newEngine(t *testing.T) *sqle.Engine {
+	return newEngineWithParallelism(t, 1)
+}
+
+func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 	table := mem.NewPartitionedTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable"},
 		{Name: "s", Type: sql.Text, Source: "mytable"},
@@ -723,10 +730,19 @@ func newEngine(t *testing.T) *sqle.Engine {
 	db.AddTable("othertable", table2)
 	db.AddTable("tabletest", table3)
 
-	e := sqle.NewDefault()
-	e.AddDatabase(db)
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
 
-	return e
+	var a *analyzer.Analyzer
+	if parallelism > 1 {
+		a = analyzer.NewBuilder(catalog).WithParallelism(parallelism).Build()
+	} else {
+		a = analyzer.NewDefault(catalog)
+	}
+
+	a.CurrentDatabase = "mydb"
+
+	return sqle.New(catalog, a, new(sqle.Config))
 }
 
 const expectedTree = `Offset(2)

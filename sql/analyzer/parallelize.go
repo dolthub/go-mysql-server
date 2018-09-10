@@ -12,7 +12,7 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error)
 
 	// Do not try to parallelize index operations.
 	switch node.(type) {
-	case *plan.CreateIndex, *plan.DropIndex:
+	case *plan.CreateIndex, *plan.DropIndex, *plan.Describe, *plan.DescribeQuery:
 		return node, nil
 	}
 
@@ -65,19 +65,18 @@ func isParallelizable(node sql.Node) bool {
 		}
 
 		switch node.(type) {
-		// These nodes, even if they're unary, can't be parallelized because
-		// they need all the rows to be effectively computed.
-		case *plan.Limit,
-			*plan.GroupBy,
-			*plan.Sort,
-			*plan.Offset,
-			*plan.Distinct,
-			*plan.OrderedDistinct:
-			ok = false
-			return false
+		// These are the only unary nodes that can be parallelized. Any other
+		// unary nodes will not.
+		case *plan.Filter,
+			*plan.Project,
+			*plan.TableAlias,
+			*plan.Exchange:
 		case sql.Table:
 			lastWasTable = true
 			tableSeen = true
+		default:
+			ok = false
+			return false
 		}
 
 		return true

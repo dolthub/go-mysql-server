@@ -52,7 +52,10 @@ func (d *Describe) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, er
 }
 
 func (d Describe) String() string {
-	return "Describe"
+	p := sql.NewTreePrinter()
+	_ = p.WriteNode("Describe")
+	_ = p.WriteChildren(d.Child.String())
+	return p.String()
 }
 
 type describeIter struct {
