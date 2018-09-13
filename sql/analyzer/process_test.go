@@ -36,20 +36,20 @@ func TestTrackProcess(t *testing.T) {
 		"bar": sql.Progress{Total: 4},
 	}, processes[0].Progress)
 
-	proc, ok := result.(*queryProcess)
+	proc, ok := result.(*plan.QueryProcess)
 	require.True(ok)
 
-	join, ok := proc.Node.(*plan.InnerJoin)
+	join, ok := proc.Child.(*plan.InnerJoin)
 	require.True(ok)
 
 	lhs, ok := join.Left.(*plan.ResolvedTable)
 	require.True(ok)
-	_, ok = lhs.Table.(*processTable)
+	_, ok = lhs.Table.(*plan.ProcessTable)
 	require.True(ok)
 
 	rhs, ok := join.Right.(*plan.ResolvedTable)
 	require.True(ok)
-	_, ok = rhs.Table.(*processTable)
+	_, ok = rhs.Table.(*plan.ProcessTable)
 	require.True(ok)
 
 	iter, err := proc.RowIter(ctx)
