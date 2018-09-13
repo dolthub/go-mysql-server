@@ -1046,6 +1046,24 @@ func TestReadOnly(t *testing.T) {
 	require.True(analyzer.ErrQueryNotAllowed.Is(err))
 }
 
+func TestSessionVariables(t *testing.T) {
+	require := require.New(t)
+
+	e := newEngine(t)
+
+	ctx := sql.NewEmptyContext()
+	_, _, err := e.Query(ctx, `SET autocommit=1, @@session.foo="bar"`)
+	require.NoError(err)
+
+	_, iter, err := e.Query(ctx, `SELECT @@autocommit, @@session.foo`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Equal([]sql.Row{{int64(1), "bar"}}, rows)
+}
+
 func insertRows(t *testing.T, table sql.Inserter, rows ...sql.Row) {
 	t.Helper()
 

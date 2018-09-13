@@ -8,6 +8,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestSessionConfig(t *testing.T) {
+	require := require.New(t)
+
+	sess := NewSession("foo", "bar")
+
+	typ, v := sess.Get("foo")
+	require.Equal(Null, typ)
+	require.Equal(nil, v)
+
+	sess.Set("foo", Int64, 1)
+
+	typ, v = sess.Get("foo")
+	require.Equal(Int64, typ)
+	require.Equal(1, v)
+}
+
 type testNode struct{}
 
 func (t *testNode) Resolved() bool {
