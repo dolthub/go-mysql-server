@@ -24,8 +24,9 @@ func TestResolveSubqueries(t *testing.T) {
 	db.AddTable("bar", table2)
 	db.AddTable("baz", table3)
 
-	catalog := &sql.Catalog{Databases: []sql.Database{db}}
-	a := NewDefault(catalog)
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
+	a := withoutProcessTracking(NewDefault(catalog))
 	a.CurrentDatabase = "mydb"
 
 	// SELECT * FROM
@@ -63,7 +64,7 @@ func TestResolveSubqueries(t *testing.T) {
 
 	subquery := plan.NewSubqueryAlias(
 		"t2alias",
-		plan.NewResolvedTable("bar", table2.WithProjection([]string{"b"})),
+		plan.NewResolvedTable(table2.WithProjection([]string{"b"})),
 	)
 	_ = subquery.Schema()
 
@@ -73,7 +74,7 @@ func TestResolveSubqueries(t *testing.T) {
 			plan.NewCrossJoin(
 				plan.NewSubqueryAlias(
 					"t1",
-					plan.NewResolvedTable("foo", table1.WithProjection([]string{"a"})),
+					plan.NewResolvedTable(table1.WithProjection([]string{"a"})),
 				),
 				plan.NewSubqueryAlias(
 					"t2",

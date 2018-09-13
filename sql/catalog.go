@@ -12,6 +12,7 @@ type Catalog struct {
 	Databases
 	FunctionRegistry
 	*IndexRegistry
+	*ProcessList
 }
 
 // NewCatalog returns a new empty Catalog.
@@ -20,6 +21,7 @@ func NewCatalog() *Catalog {
 		Databases:        Databases{},
 		FunctionRegistry: NewFunctionRegistry(),
 		IndexRegistry:    NewIndexRegistry(),
+		ProcessList:      NewProcessList(),
 	}
 }
 

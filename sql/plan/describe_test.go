@@ -19,7 +19,7 @@ func TestDescribe(t *testing.T) {
 		{Name: "c2", Type: sql.Int32},
 	})
 
-	d := NewDescribe(NewResolvedTable("test", table))
+	d := NewDescribe(NewResolvedTable(table))
 	iter, err := d.RowIter(ctx)
 	require.NoError(err)
 	require.NotNil(iter)
@@ -70,7 +70,7 @@ func TestDescribeQuery(t *testing.T) {
 				expression.NewGetFieldWithTable(0, sql.Text, "foo", "a", false),
 				expression.NewLiteral("foo", sql.Text),
 			),
-			NewResolvedTable("foo", table),
+			NewResolvedTable(table),
 		),
 	))
 

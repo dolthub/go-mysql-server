@@ -19,8 +19,8 @@ func TestInnerJoin(t *testing.T) {
 	insertData(t, rtable)
 
 	j := NewInnerJoin(
-		NewResolvedTable("left", ltable),
-		NewResolvedTable("right", rtable),
+		NewResolvedTable(ltable),
+		NewResolvedTable(rtable),
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Text, "lcol1", false),
 			expression.NewGetField(4, sql.Text, "rcol1", false),
@@ -45,8 +45,8 @@ func TestInnerJoinEmpty(t *testing.T) {
 	rtable := mem.NewTable("right", rSchema)
 
 	j := NewInnerJoin(
-		NewResolvedTable("left", ltable),
-		NewResolvedTable("right", rtable),
+		NewResolvedTable(ltable),
+		NewResolvedTable(rtable),
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Text, "lcol1", false),
 			expression.NewGetField(4, sql.Text, "rcol1", false),

@@ -637,6 +637,8 @@ var fixtures = map[string]sql.Node{
 		"qux",
 		make(map[string]string),
 	),
+	`SHOW FULL PROCESSLIST`: plan.NewShowProcessList(),
+	`SHOW PROCESSLIST`:      plan.NewShowProcessList(),
 }
 
 func TestParse(t *testing.T) {

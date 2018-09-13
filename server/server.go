@@ -40,7 +40,7 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 		tracer = opentracing.NoopTracer{}
 	}
 
-	handler := NewHandler(e, NewSessionManager(sb, tracer))
+	handler := NewHandler(e, NewSessionManager(sb, tracer, cfg.Address))
 	l, err := mysql.NewListener(cfg.Protocol, cfg.Address, cfg.Auth, handler)
 	if err != nil {
 		return nil, err

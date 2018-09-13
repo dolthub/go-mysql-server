@@ -5,13 +5,13 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
-// indexCatalog sets the catalog in the CreateIndex, DropIndex and ShowIndexes nodes.
-func indexCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+// assignCatalog sets the catalog in the required nodes.
+func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	if !n.Resolved() {
 		return n, nil
 	}
 
-	span, ctx := ctx.Span("index_catalog")
+	span, ctx := ctx.Span("assign_catalog")
 	defer span.Finish()
 
 	switch node := n.(type) {
@@ -26,8 +26,14 @@ func indexCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		nc.CurrentDatabase = a.CurrentDatabase
 		return &nc, nil
 	case *plan.ShowIndexes:
-		node.Registry = a.Catalog.IndexRegistry
-		return node, nil
+		nc := *node
+		nc.Registry = a.Catalog.IndexRegistry
+		return &nc, nil
+	case *plan.ShowProcessList:
+		nc := *node
+		nc.Database = a.CurrentDatabase
+		nc.ProcessList = a.Catalog.ProcessList
+		return &nc, nil
 	default:
 		return n, nil
 	}

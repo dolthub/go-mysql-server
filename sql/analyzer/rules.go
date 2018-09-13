@@ -21,18 +21,26 @@ var DefaultRules = []Rule{
 	{"optimize_distinct", optimizeDistinct},
 }
 
-// OnceBeforeDefault contains the rules to be applied just once before the DefaultRules.
+// OnceBeforeDefault contains the rules to be applied just once before the
+// DefaultRules.
 var OnceBeforeDefault = []Rule{
 	{"resolve_subqueries", resolveSubqueries},
 	{"resolve_tables", resolveTables},
 }
 
-// OnceAfterDefault contains the rules to be applied just once after the DefaultRules.
+// OnceAfterDefault contains the rules to be applied just once after the
+// DefaultRules.
 var OnceAfterDefault = []Rule{
-	{"index_catalog", indexCatalog},
+	{"assign_catalog", assignCatalog},
 	{"pushdown", pushdown},
 	{"erase_projection", eraseProjection},
 	{"parallelize", parallelize},
+}
+
+// OnceAfterAll contains the rules to be applied just once after all other
+// rules have been applied.
+var OnceAfterAll = []Rule{
+	{"track_process", trackProcess},
 }
 
 var (

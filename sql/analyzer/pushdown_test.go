@@ -50,8 +50,8 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 				),
 			),
 			plan.NewCrossJoin(
-				plan.NewResolvedTable("mytable", table),
-				plan.NewResolvedTable("mytable2", table2),
+				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table2),
 			),
 		),
 	)
@@ -62,7 +62,6 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 		},
 		plan.NewCrossJoin(
 			plan.NewResolvedTable(
-				"mytable",
 				table.WithFilters([]sql.Expression{
 					expression.NewEquals(
 						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
@@ -71,7 +70,6 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 				}).(*mem.Table).WithProjection([]string{"i", "f"}),
 			),
 			plan.NewResolvedTable(
-				"mytable2",
 				table2.WithFilters([]sql.Expression{
 					expression.NewIsNull(
 						expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
@@ -142,7 +140,7 @@ func TestPushdownIndexable(t *testing.T) {
 	close(done)
 	<-ready
 
-	a := NewDefault(catalog)
+	a := withoutProcessTracking(NewDefault(catalog))
 	a.CurrentDatabase = ""
 
 	node := plan.NewProject(
@@ -169,8 +167,8 @@ func TestPushdownIndexable(t *testing.T) {
 				),
 			),
 			plan.NewCrossJoin(
-				plan.NewResolvedTable("mytable", table),
-				plan.NewResolvedTable("mytable2", table2),
+				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table2),
 			),
 		),
 	)
@@ -182,7 +180,6 @@ func TestPushdownIndexable(t *testing.T) {
 			},
 			plan.NewCrossJoin(
 				plan.NewResolvedTable(
-					"mytable",
 					table.WithFilters([]sql.Expression{
 						expression.NewEquals(
 							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
@@ -197,7 +194,6 @@ func TestPushdownIndexable(t *testing.T) {
 						WithIndexLookup(&mergeableIndexLookup{id: "3.14"}),
 				),
 				plan.NewResolvedTable(
-					"mytable2",
 					table2.WithFilters([]sql.Expression{
 						expression.NewNot(
 							expression.NewEquals(

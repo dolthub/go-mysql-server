@@ -61,6 +61,11 @@ func NewPartitionedTable(name string, schema sql.Schema, numPartitions int) *Tab
 	}
 }
 
+// Name implements the sql.Table interface.
+func (t *Table) Name() string {
+	return t.name
+}
+
 // Schema implements the sql.Table interface.
 func (t *Table) Schema() sql.Schema {
 	return t.schema
@@ -75,6 +80,11 @@ func (t *Table) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 		}
 	}
 	return &partitionIter{keys: keys}, nil
+}
+
+// PartitionCount implements the sql.PartitionCounter interface.
+func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
+	return int64(len(t.partitions)), nil
 }
 
 // PartitionRows implements the sql.PartitionRows interface.

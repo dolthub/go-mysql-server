@@ -9,9 +9,9 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
-func TestCatalogIndex(t *testing.T) {
+func TestAssignCatalog(t *testing.T) {
 	require := require.New(t)
-	f := getRule("index_catalog")
+	f := getRule("assign_catalog")
 
 	db := mem.NewDatabase("foo")
 	c := sql.NewCatalog()
@@ -24,7 +24,7 @@ func TestCatalogIndex(t *testing.T) {
 	tbl := mem.NewTable("foo", nil)
 
 	node, err := f.Apply(sql.NewEmptyContext(), a,
-		plan.NewCreateIndex("", plan.NewResolvedTable("foo", tbl), nil, "", make(map[string]string)))
+		plan.NewCreateIndex("", plan.NewResolvedTable(tbl), nil, "", make(map[string]string)))
 	require.NoError(err)
 
 	ci, ok := node.(*plan.CreateIndex)
@@ -33,7 +33,7 @@ func TestCatalogIndex(t *testing.T) {
 	require.Equal("foo", ci.CurrentDatabase)
 
 	node, err = f.Apply(sql.NewEmptyContext(), a,
-		plan.NewDropIndex("foo", plan.NewResolvedTable("foo", tbl)))
+		plan.NewDropIndex("foo", plan.NewResolvedTable(tbl)))
 	require.NoError(err)
 
 	di, ok := node.(*plan.DropIndex)
@@ -48,4 +48,12 @@ func TestCatalogIndex(t *testing.T) {
 	require.True(ok)
 	require.Equal(db, si.Database)
 	require.Equal(c.IndexRegistry, si.Registry)
+
+	node, err = f.Apply(sql.NewEmptyContext(), a, plan.NewShowProcessList())
+	require.NoError(err)
+
+	pl, ok := node.(*plan.ShowProcessList)
+	require.True(ok)
+	require.Equal(db.Name(), pl.Database)
+	require.Equal(c.ProcessList, pl.ProcessList)
 }

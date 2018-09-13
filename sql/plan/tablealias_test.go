@@ -17,7 +17,7 @@ func TestTableAlias(t *testing.T) {
 		{Name: "a", Type: sql.Text, Nullable: true},
 		{Name: "b", Type: sql.Text, Nullable: true},
 	})
-	alias := NewTableAlias("foo", NewResolvedTable("bar", table))
+	alias := NewTableAlias("foo", NewResolvedTable(table))
 
 	var rows = []sql.Row{
 		sql.NewRow("1", "2"),

@@ -19,11 +19,11 @@ func TestParallelize(t *testing.T) {
 		plan.NewInnerJoin(
 			plan.NewFilter(
 				expression.NewLiteral(1, sql.Int64),
-				plan.NewResolvedTable("bar", table),
+				plan.NewResolvedTable(table),
 			),
 			plan.NewFilter(
 				expression.NewLiteral(1, sql.Int64),
-				plan.NewResolvedTable("foo", table),
+				plan.NewResolvedTable(table),
 			),
 			expression.NewLiteral(1, sql.Int64),
 		),
@@ -36,14 +36,14 @@ func TestParallelize(t *testing.T) {
 				2,
 				plan.NewFilter(
 					expression.NewLiteral(1, sql.Int64),
-					plan.NewResolvedTable("bar", table),
+					plan.NewResolvedTable(table),
 				),
 			),
 			plan.NewExchange(
 				2,
 				plan.NewFilter(
 					expression.NewLiteral(1, sql.Int64),
-					plan.NewResolvedTable("foo", table),
+					plan.NewResolvedTable(table),
 				),
 			),
 			expression.NewLiteral(1, sql.Int64),
@@ -61,7 +61,7 @@ func TestParallelizeCreateIndex(t *testing.T) {
 	rule := getRule("parallelize")
 	node := plan.NewCreateIndex(
 		"",
-		plan.NewResolvedTable("bar", table),
+		plan.NewResolvedTable(table),
 		nil,
 		"",
 		nil,
@@ -82,14 +82,14 @@ func TestIsParallelizable(t *testing.T) {
 	}{
 		{
 			"just table",
-			plan.NewResolvedTable("foo", table),
+			plan.NewResolvedTable(table),
 			true,
 		},
 		{
 			"filter",
 			plan.NewFilter(
 				expression.NewLiteral(1, sql.Int64),
-				plan.NewResolvedTable("foo", table),
+				plan.NewResolvedTable(table),
 			),
 			true,
 		},
@@ -99,7 +99,7 @@ func TestIsParallelizable(t *testing.T) {
 				nil,
 				plan.NewFilter(
 					expression.NewLiteral(1, sql.Int64),
-					plan.NewResolvedTable("foo", table),
+					plan.NewResolvedTable(table),
 				),
 			),
 			true,
@@ -107,8 +107,8 @@ func TestIsParallelizable(t *testing.T) {
 		{
 			"join",
 			plan.NewInnerJoin(
-				plan.NewResolvedTable("foo", table),
-				plan.NewResolvedTable("bar", table),
+				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table),
 				expression.NewLiteral(1, sql.Int64),
 			),
 			false,
@@ -118,7 +118,7 @@ func TestIsParallelizable(t *testing.T) {
 			plan.NewGroupBy(
 				nil,
 				nil,
-				plan.NewResolvedTable("foo", nil),
+				plan.NewResolvedTable(nil),
 			),
 			false,
 		},
@@ -126,7 +126,7 @@ func TestIsParallelizable(t *testing.T) {
 			"limit",
 			plan.NewLimit(
 				5,
-				plan.NewResolvedTable("foo", nil),
+				plan.NewResolvedTable(nil),
 			),
 			false,
 		},
@@ -134,7 +134,7 @@ func TestIsParallelizable(t *testing.T) {
 			"offset",
 			plan.NewOffset(
 				5,
-				plan.NewResolvedTable("foo", nil),
+				plan.NewResolvedTable(nil),
 			),
 			false,
 		},
@@ -142,21 +142,21 @@ func TestIsParallelizable(t *testing.T) {
 			"sort",
 			plan.NewSort(
 				nil,
-				plan.NewResolvedTable("foo", nil),
+				plan.NewResolvedTable(nil),
 			),
 			false,
 		},
 		{
 			"distinct",
 			plan.NewDistinct(
-				plan.NewResolvedTable("foo", nil),
+				plan.NewResolvedTable(nil),
 			),
 			false,
 		},
 		{
 			"ordered distinct",
 			plan.NewOrderedDistinct(
-				plan.NewResolvedTable("foo", nil),
+				plan.NewResolvedTable(nil),
 			),
 			false,
 		},
@@ -183,7 +183,7 @@ func TestRemoveRedundantExchanges(t *testing.T) {
 					expression.NewLiteral(1, sql.Int64),
 					plan.NewExchange(
 						1,
-						plan.NewResolvedTable("bar", table),
+						plan.NewResolvedTable(table),
 					),
 				),
 			),
@@ -193,7 +193,7 @@ func TestRemoveRedundantExchanges(t *testing.T) {
 					expression.NewLiteral(1, sql.Int64),
 					plan.NewExchange(
 						1,
-						plan.NewResolvedTable("foo", table),
+						plan.NewResolvedTable(table),
 					),
 				),
 			),
@@ -208,14 +208,14 @@ func TestRemoveRedundantExchanges(t *testing.T) {
 				1,
 				plan.NewFilter(
 					expression.NewLiteral(1, sql.Int64),
-					plan.NewResolvedTable("bar", table),
+					plan.NewResolvedTable(table),
 				),
 			),
 			plan.NewExchange(
 				1,
 				plan.NewFilter(
 					expression.NewLiteral(1, sql.Int64),
-					plan.NewResolvedTable("foo", table),
+					plan.NewResolvedTable(table),
 				),
 			),
 			expression.NewLiteral(1, sql.Int64),

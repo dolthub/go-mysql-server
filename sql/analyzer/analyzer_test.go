@@ -29,14 +29,14 @@ func TestAnalyzer_Analyze(t *testing.T) {
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
-	a := NewDefault(catalog)
+	a := withoutProcessTracking(NewDefault(catalog))
 	a.CurrentDatabase = "mydb"
 
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
 	analyzed, err := a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NoError(err)
 	require.Equal(
-		plan.NewResolvedTable("mytable", table),
+		plan.NewResolvedTable(table),
 		analyzed,
 	)
 
@@ -45,10 +45,10 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	require.Error(err)
 	require.Nil(analyzed)
 
-	analyzed, err = a.Analyze(sql.NewEmptyContext(), plan.NewResolvedTable("mytable", table))
+	analyzed, err = a.Analyze(sql.NewEmptyContext(), plan.NewResolvedTable(table))
 	require.NoError(err)
 	require.Equal(
-		plan.NewResolvedTable("mytable", table),
+		plan.NewResolvedTable(table),
 		analyzed,
 	)
 
@@ -65,7 +65,6 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	var expected sql.Node = plan.NewResolvedTable(
-		"mytable",
 		table.WithProjection([]string{"i"}),
 	)
 	require.NoError(err)
@@ -76,7 +75,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	expected = plan.NewDescribe(
-		plan.NewResolvedTable("mytable", table),
+		plan.NewResolvedTable(table),
 	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
@@ -88,7 +87,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NoError(err)
 	require.Equal(
-		plan.NewResolvedTable("mytable", table.WithProjection([]string{"i", "t"})),
+		plan.NewResolvedTable(table.WithProjection([]string{"i", "t"})),
 		analyzed,
 	)
 
@@ -102,7 +101,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NoError(err)
 	require.Equal(
-		plan.NewResolvedTable("mytable", table.WithProjection([]string{"i", "t"})),
+		plan.NewResolvedTable(table.WithProjection([]string{"i", "t"})),
 		analyzed,
 	)
 
@@ -123,7 +122,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 				"foo",
 			),
 		},
-		plan.NewResolvedTable("mytable", table.WithProjection([]string{"i"})),
+		plan.NewResolvedTable(table.WithProjection([]string{"i"})),
 	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
@@ -140,7 +139,6 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	expected = plan.NewResolvedTable(
-		"mytable",
 		table.WithFilters([]sql.Expression{
 			expression.NewEquals(
 				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
@@ -164,8 +162,8 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	expected = plan.NewCrossJoin(
-		plan.NewResolvedTable("mytable", table.WithProjection([]string{"i"})),
-		plan.NewResolvedTable("mytable2", table2.WithProjection([]string{"i2"})),
+		plan.NewResolvedTable(table.WithProjection([]string{"i"})),
+		plan.NewResolvedTable(table2.WithProjection([]string{"i2"})),
 	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
@@ -181,7 +179,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	expected = plan.NewLimit(
 		int64(1),
-		plan.NewResolvedTable("mytable", table.WithProjection([]string{"i"})),
+		plan.NewResolvedTable(table.WithProjection([]string{"i"})),
 	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
@@ -201,7 +199,7 @@ func TestMaxIterations(t *testing.T) {
 	catalog.AddDatabase(db)
 
 	count := 0
-	a := NewBuilder(catalog).AddPostAnalyzeRule("loop",
+	a := withoutProcessTracking(NewBuilder(catalog).AddPostAnalyzeRule("loop",
 		func(c *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 			switch n.(type) {
@@ -212,11 +210,11 @@ func TestMaxIterations(t *testing.T) {
 					{Name: "i", Type: sql.Int32, Source: name},
 					{Name: "t", Type: sql.Text, Source: name},
 				})
-				n = plan.NewResolvedTable(name, table)
+				n = plan.NewResolvedTable(table)
 			}
 
 			return n, nil
-		}).Build()
+		}).Build())
 
 	a.CurrentDatabase = "mydb"
 
@@ -225,7 +223,6 @@ func TestMaxIterations(t *testing.T) {
 	require.NoError(err)
 	require.Equal(
 		plan.NewResolvedTable(
-			"mytable-1000",
 			mem.NewTable("mytable-1000", sql.Schema{
 				{Name: "i", Type: sql.Int32, Source: "mytable-1000"},
 				{Name: "t", Type: sql.Text, Source: "mytable-1000"},
@@ -301,8 +298,9 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 	db.AddTable("mytable2", table2)
 	db.AddTable("mytable3", table3)
 
-	catalog := &sql.Catalog{Databases: []sql.Database{db}}
-	a := NewDefault(catalog)
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
+	a := withoutProcessTracking(NewDefault(catalog))
 	a.CurrentDatabase = "mydb"
 
 	node := plan.NewProject(
@@ -334,14 +332,14 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 		},
 		plan.NewInnerJoin(
 			plan.NewInnerJoin(
-				plan.NewResolvedTable("mytable", table.WithProjection([]string{"i", "f", "t"})),
-				plan.NewResolvedTable("mytable2", table2.WithProjection([]string{"f2", "i2", "t2"})),
+				plan.NewResolvedTable(table.WithProjection([]string{"i", "f", "t"})),
+				plan.NewResolvedTable(table2.WithProjection([]string{"f2", "i2", "t2"})),
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 					expression.NewGetFieldWithTable(4, sql.Int32, "mytable2", "i2", false),
 				),
 			),
-			plan.NewResolvedTable("mytable3", table3.WithProjection([]string{"t3", "i", "f2"})),
+			plan.NewResolvedTable(table3.WithProjection([]string{"t3", "i", "f2"})),
 			expression.NewAnd(
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),

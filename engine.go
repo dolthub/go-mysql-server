@@ -48,7 +48,8 @@ func (e *Engine) Query(
 	ctx *sql.Context,
 	query string,
 ) (sql.Schema, sql.RowIter, error) {
-	span, ctx := ctx.Span("query", opentracing.Tag{Key: "query", Value: query})
+	span, ctx := ctx.WithQuery(query).
+		Span("query", opentracing.Tag{Key: "query", Value: query})
 	defer span.Finish()
 
 	logrus.WithField("query", query).Debug("executing query")

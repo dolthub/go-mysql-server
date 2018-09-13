@@ -79,7 +79,7 @@ func TestValidateGroupBy(t *testing.T) {
 		[]sql.Expression{
 			expression.NewGetField(0, sql.Text, "col1", true),
 		},
-		plan.NewResolvedTable("test", child),
+		plan.NewResolvedTable(child),
 	)
 
 	_, err = vr.Apply(sql.NewEmptyContext(), nil, p)
@@ -123,7 +123,7 @@ func TestValidateGroupByErr(t *testing.T) {
 		[]sql.Expression{
 			expression.NewGetField(0, sql.Text, "col1", true),
 		},
-		plan.NewResolvedTable("test", child),
+		plan.NewResolvedTable(child),
 	)
 
 	_, err = vr.Apply(sql.NewEmptyContext(), nil, p)
@@ -144,7 +144,6 @@ func TestValidateSchemaSource(t *testing.T) {
 		{
 			"table with valid schema",
 			plan.NewResolvedTable(
-				"mytable",
 				mem.NewTable(
 					"mytable",
 					sql.Schema{
@@ -158,11 +157,10 @@ func TestValidateSchemaSource(t *testing.T) {
 		{
 			"table with invalid schema",
 			plan.NewResolvedTable(
-				"mytable",
 				mem.NewTable(
 					"mytable",
 					sql.Schema{
-						{Name: "foo", Source: "mytable"},
+						{Name: "foo", Source: ""},
 						{Name: "bar", Source: "something"},
 					},
 				),
@@ -171,7 +169,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table alias with table",
-			plan.NewTableAlias("foo", plan.NewResolvedTable("mytable",
+			plan.NewTableAlias("foo", plan.NewResolvedTable(
 				mem.NewTable("mytable", sql.Schema{
 					{Name: "foo", Source: "mytable"},
 				}),
@@ -298,7 +296,7 @@ func TestValidateIndexCreation(t *testing.T) {
 		{
 			"columns from another table",
 			plan.NewCreateIndex(
-				"idx", plan.NewResolvedTable("foo", table),
+				"idx", plan.NewResolvedTable(table),
 				[]sql.Expression{expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 					expression.NewGetFieldWithTable(0, sql.Int64, "bar", "b", false),
@@ -311,7 +309,7 @@ func TestValidateIndexCreation(t *testing.T) {
 		{
 			"columns that don't exist",
 			plan.NewCreateIndex(
-				"idx", plan.NewResolvedTable("foo", table),
+				"idx", plan.NewResolvedTable(table),
 				[]sql.Expression{expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", false),
@@ -324,7 +322,7 @@ func TestValidateIndexCreation(t *testing.T) {
 		{
 			"columns only from table",
 			plan.NewCreateIndex(
-				"idx", plan.NewResolvedTable("foo", table),
+				"idx", plan.NewResolvedTable(table),
 				[]sql.Expression{expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),

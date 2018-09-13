@@ -42,7 +42,7 @@ func TestNegateIndex(t *testing.T) {
 					expression.NewLiteral(int64(1), sql.Int64),
 				),
 			),
-			plan.NewResolvedTable("t1", t1),
+			plan.NewResolvedTable(t1),
 		),
 	)
 
@@ -109,8 +109,8 @@ func TestAssignIndexes(t *testing.T) {
 				),
 			),
 			plan.NewInnerJoin(
-				plan.NewResolvedTable("t1", t1),
-				plan.NewResolvedTable("t2", t2),
+				plan.NewResolvedTable(t1),
+				plan.NewResolvedTable(t2),
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
 					expression.NewGetFieldWithTable(0, sql.Int64, "t2", "baz", false),
@@ -861,7 +861,6 @@ func TestContainsSources(t *testing.T) {
 func TestNodeSources(t *testing.T) {
 	sources := nodeSources(
 		plan.NewResolvedTable(
-			"foo",
 			mem.NewTable("foo", sql.Schema{
 				{Source: "foo"},
 				{Source: "foo"},
@@ -1001,12 +1000,12 @@ func (i *mergedIndexLookup) Indexes() []string {
 	return indexes
 }
 
-func (l *mergedIndexLookup) IsMergeable(sql.IndexLookup) bool {
+func (i *mergedIndexLookup) IsMergeable(sql.IndexLookup) bool {
 	return true
 }
 
-func (l *mergedIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return &mergedIndexLookup{append(l.children, lookups...)}
+func (i *mergedIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
+	return &mergedIndexLookup{append(i.children, lookups...)}
 }
 
 func (mergedIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {

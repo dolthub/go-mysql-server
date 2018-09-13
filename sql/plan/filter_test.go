@@ -35,7 +35,7 @@ func TestFilter(t *testing.T) {
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Text, "col1", true),
 			expression.NewLiteral("col1_1", sql.Text)),
-		NewResolvedTable("test", child))
+		NewResolvedTable(child))
 
 	require.Equal(1, len(f.Children()))
 
@@ -57,7 +57,7 @@ func TestFilter(t *testing.T) {
 	f = NewFilter(expression.NewEquals(
 		expression.NewGetField(2, sql.Int32, "col3", true),
 		expression.NewLiteral(int32(1111),
-			sql.Int32)), NewResolvedTable("test", child))
+			sql.Int32)), NewResolvedTable(child))
 
 	iter, err = f.RowIter(ctx)
 	require.NoError(err)
@@ -73,7 +73,7 @@ func TestFilter(t *testing.T) {
 	f = NewFilter(expression.NewEquals(
 		expression.NewGetField(3, sql.Int64, "col4", true),
 		expression.NewLiteral(int64(4444), sql.Int64)),
-		NewResolvedTable("test", child))
+		NewResolvedTable(child))
 
 	iter, err = f.RowIter(ctx)
 	require.NoError(err)

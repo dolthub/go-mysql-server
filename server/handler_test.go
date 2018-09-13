@@ -35,7 +35,8 @@ func setupMemDB(require *require.Assertions) *sqle.Engine {
 func TestHandlerOutput(t *testing.T) {
 	e := setupMemDB(require.New(t))
 	dummyConn := &mysql.Conn{ConnectionID: 1}
-	handler := NewHandler(e, NewSessionManager(DefaultSessionBuilder, opentracing.NoopTracer{}))
+	handler := NewHandler(e, NewSessionManager(DefaultSessionBuilder, opentracing.NoopTracer{}, "foo"))
+	handler.NewConnection(dummyConn)
 
 	type exptectedValues struct {
 		callsToCallback  int
@@ -138,10 +139,16 @@ func TestHandlerKill(t *testing.T) {
 	require := require.New(t)
 	e := setupMemDB(require)
 
-	handler := NewHandler(e,
-		NewSessionManager(func(conn *mysql.Conn) sql.Session {
-			return sql.NewBaseSession()
-		}, opentracing.NoopTracer{}))
+	handler := NewHandler(
+		e,
+		NewSessionManager(
+			func(conn *mysql.Conn, addr string) sql.Session {
+				return sql.NewBaseSession()
+			},
+			opentracing.NoopTracer{},
+			"foo",
+		),
+	)
 
 	require.Len(handler.c, 0)
 

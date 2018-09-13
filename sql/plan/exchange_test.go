@@ -87,6 +87,8 @@ func (partitionable) Schema() sql.Schema {
 	}
 }
 
+func (partitionable) Name() string { return "partitionable" }
+
 type Partition string
 
 func (p Partition) Key() []byte {
