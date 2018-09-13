@@ -30,28 +30,6 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	pid := processList.AddProcess(ctx, typ, query)
 
 	var seen = make(map[string]struct{})
-	wrapTable := func(t sql.Table) (sql.Table, error) {
-		name := t.Name()
-		if _, ok := seen[name]; ok {
-			return t, nil
-		}
-
-		var total int64 = -1
-		if counter, ok := t.(sql.PartitionCounter); ok {
-			count, err := counter.PartitionCount(ctx)
-			if err != nil {
-				return nil, err
-			}
-			total = count
-		}
-		processList.AddProgressItem(pid, name, total)
-
-		seen[name] = struct{}{}
-		return &processTable{t, func() {
-			processList.UpdateProgress(pid, name, 1)
-		}}, nil
-	}
-
 	n, err := n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
@@ -59,17 +37,25 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 				return n, nil
 			}
 
-			t, err := wrapTable(n.Table)
-			if err != nil {
-				return nil, err
+			name := n.Table.Name()
+			if _, ok := seen[name]; ok {
+				return n, nil
 			}
 
-			return plan.NewResolvedTable(t), nil
-		case sql.Table:
-			t, err := wrapTable(n)
-			if err != nil {
-				return nil, err
+			var total int64 = -1
+			if counter, ok := n.Table.(sql.PartitionCounter); ok {
+				count, err := counter.PartitionCount(ctx)
+				if err != nil {
+					return nil, err
+				}
+				total = count
 			}
+			processList.AddProgressItem(pid, name, total)
+
+			seen[name] = struct{}{}
+			t := &processTable{n.Table, func() {
+				processList.UpdateProgress(pid, name, 1)
+			}}
 
 			return plan.NewResolvedTable(t), nil
 		default:

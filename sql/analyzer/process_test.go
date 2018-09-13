@@ -18,7 +18,7 @@ func TestTrackProcess(t *testing.T) {
 
 	node := plan.NewInnerJoin(
 		plan.NewResolvedTable(mem.NewPartitionedTable("foo", nil, 2)),
-		&tableNodeAdapter{"bar", mem.NewPartitionedTable("bar", nil, 4)},
+		plan.NewResolvedTable(mem.NewPartitionedTable("bar", nil, 4)),
 		expression.NewLiteral(int64(1), sql.Int64),
 	)
 
@@ -58,24 +58,6 @@ func TestTrackProcess(t *testing.T) {
 	require.NoError(err)
 
 	require.Len(catalog.Processes(), 0)
-}
-
-type tableNodeAdapter struct {
-	name string
-	*mem.Table
-}
-
-func (t *tableNodeAdapter) Name() string      { return t.name }
-func (tableNodeAdapter) Children() []sql.Node { return nil }
-func (tableNodeAdapter) Resolved() bool       { return true }
-func (tableNodeAdapter) RowIter(*sql.Context) (sql.RowIter, error) {
-	panic("RowIter of tableNodeAdapter is a placeholder")
-}
-func (t *tableNodeAdapter) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(t)
-}
-func (t *tableNodeAdapter) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	return t, nil
 }
 
 func withoutProcessTracking(a *Analyzer) *Analyzer {

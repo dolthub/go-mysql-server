@@ -10,7 +10,7 @@ import (
 	"gopkg.in/src-d/go-vitess.v0/mysql"
 )
 
-// SessionBuilder creates sessions given a context and a MySQL connection.
+// SessionBuilder creates sessions given a MySQL connection and a server address.
 type SessionBuilder func(conn *mysql.Conn, addr string) sql.Session
 
 // DoneFunc is a function that must be executed when the session is used and
@@ -35,7 +35,7 @@ type SessionManager struct {
 	contexts        map[uuid.UUID]context.CancelFunc
 }
 
-// NewSessionManager creates a SessionManager with the given ContextBuilder.
+// NewSessionManager creates a SessionManager with the given SessionBuilder.
 func NewSessionManager(
 	builder SessionBuilder,
 	tracer opentracing.Tracer,
