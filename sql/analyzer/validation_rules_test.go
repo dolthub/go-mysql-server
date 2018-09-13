@@ -160,7 +160,7 @@ func TestValidateSchemaSource(t *testing.T) {
 				mem.NewTable(
 					"mytable",
 					sql.Schema{
-						{Name: "foo", Source: "mytable"},
+						{Name: "foo", Source: ""},
 						{Name: "bar", Source: "something"},
 					},
 				),
