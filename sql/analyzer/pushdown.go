@@ -157,7 +157,7 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 				return node, nil
 			}
 
-			schemas := []sql.Schema{}
+			var schemas []sql.Schema
 			for _, child := range node.Children() {
 				schemas = append(schemas, child.Schema())
 			}

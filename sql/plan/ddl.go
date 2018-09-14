@@ -45,14 +45,10 @@ func (c *CreateTable) RowIter(s *sql.Context) (sql.RowIter, error) {
 }
 
 // Schema implements the Node interface.
-func (c *CreateTable) Schema() sql.Schema {
-	return sql.Schema{}
-}
+func (c *CreateTable) Schema() sql.Schema { return nil }
 
 // Children implements the Node interface.
-func (c *CreateTable) Children() []sql.Node {
-	return nil
-}
+func (c *CreateTable) Children() []sql.Node { return nil }
 
 // TransformUp implements the Transformable interface.
 func (c *CreateTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
