@@ -13,7 +13,7 @@ func TestRowID(t *testing.T) {
 	setup(t)
 	defer cleanup(t)
 	m := newMapping(filepath.Join(tmpDir, "id.map"))
-	m.open()
+	require.NoError(m.open())
 	defer m.close()
 
 	cases := []int{0, 1, 2, 3, 4, 5, 5, 0, 3, 2, 1, 5}
@@ -36,7 +36,7 @@ func TestLocation(t *testing.T) {
 	defer cleanup(t)
 
 	m := newMapping(filepath.Join(tmpDir, "id.map"))
-	m.open()
+	require.NoError(m.open())
 	defer m.close()
 
 	cases := map[uint64]string{
@@ -65,7 +65,7 @@ func TestGet(t *testing.T) {
 	defer cleanup(t)
 
 	m := newMapping(filepath.Join(tmpDir, "id.map"))
-	m.open()
+	require.NoError(m.open())
 	defer m.close()
 
 	cases := []int{0, 1, 2, 3, 4, 5, 5, 0, 3, 2, 1, 5}

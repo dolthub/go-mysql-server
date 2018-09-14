@@ -234,7 +234,7 @@ func (d *Driver) savePartition(
 	p sql.Partition,
 	kviter sql.IndexKeyValueIter,
 	idx *pilosaIndex,
-	pilosaIndex *pilosa.Index,
+	pilosaIndex *concurrentPilosaIndex,
 	offset uint64,
 ) (uint64, error) {
 	var colID uint64
@@ -251,7 +251,10 @@ func (d *Driver) savePartition(
 	}
 
 	rollback := true
-	idx.mapping.openCreate(true)
+	if err := idx.mapping.openCreate(true); err != nil {
+		return 0, err
+	}
+
 	defer func() {
 		if rollback {
 			idx.mapping.rollback()
@@ -316,6 +319,12 @@ func (d *Driver) savePartition(
 	err = d.savePilosa(ctx, colID)
 	if err != nil {
 		return 0, err
+	}
+
+	for _, f := range d.fields {
+		if err := f.Close(); err != nil {
+			return 0, err
+		}
 	}
 
 	return colID - offset, err
