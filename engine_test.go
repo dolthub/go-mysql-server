@@ -1052,16 +1052,16 @@ func TestSessionVariables(t *testing.T) {
 	e := newEngine(t)
 
 	ctx := sql.NewEmptyContext()
-	_, _, err := e.Query(ctx, `SET autocommit=1, @@session.foo="bar"`)
+	_, _, err := e.Query(ctx, `set autocommit=1, sql_mode = concat(@@sql_mode,',STRICT_TRANS_TABLES')`)
 	require.NoError(err)
 
-	_, iter, err := e.Query(ctx, `SELECT @@autocommit, @@session.foo`)
+	_, iter, err := e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode`)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
 	require.NoError(err)
 
-	require.Equal([]sql.Row{{int64(1), "bar"}}, rows)
+	require.Equal([]sql.Row{{int64(1), ",STRICT_TRANS_TABLES"}}, rows)
 }
 
 func insertRows(t *testing.T, table sql.Inserter, rows ...sql.Row) {
