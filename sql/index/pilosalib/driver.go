@@ -320,7 +320,7 @@ func (d *Driver) savePartition(
 		return 0, err
 	}
 
-	for _, f := range d.fields {
+	for _, f := range b.fields {
 		if err := f.Close(); err != nil {
 			return 0, err
 		}
