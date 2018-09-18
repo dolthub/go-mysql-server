@@ -24,6 +24,12 @@ func NewConcat(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	for _, arg := range args {
+		// Don't perform this check until it's resolved. Otherwise we
+		// can't get the type for sure.
+		if !arg.Resolved() {
+			continue
+		}
+
 		if len(args) > 1 && sql.IsArray(arg.Type()) {
 			return nil, ErrConcatArrayWithOthers.New()
 		}
@@ -67,7 +73,13 @@ func (f *Concat) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
 		}
 		args[i] = arg
 	}
-	return fn(&Concat{args})
+
+	expr, err := NewConcat(args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return fn(expr)
 }
 
 // Resolved implements the Expression interface.

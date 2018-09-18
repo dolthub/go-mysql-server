@@ -3,6 +3,7 @@ package sql
 import (
 	"context"
 	"io"
+	"math"
 	"sync"
 	"time"
 
@@ -67,18 +68,28 @@ type typedValue struct {
 	value interface{}
 }
 
+func defaultSessionConfig() map[string]typedValue {
+	return map[string]typedValue{
+		"auto_increment_increment": typedValue{Int64, int64(1)},
+		"time_zone":                typedValue{Text, time.Local.String()},
+		"system_time_zone":         typedValue{Text, time.Local.String()},
+		"max_allowed_packet":       typedValue{Int32, math.MaxInt32},
+		"sql_mode":                 typedValue{Text, ""},
+	}
+}
+
 // NewSession creates a new session with data.
 func NewSession(address string, user string) Session {
 	return &BaseSession{
 		addr:   address,
 		user:   user,
-		config: make(map[string]typedValue),
+		config: defaultSessionConfig(),
 	}
 }
 
 // NewBaseSession creates a new empty session.
 func NewBaseSession() Session {
-	return &BaseSession{config: make(map[string]typedValue)}
+	return &BaseSession{config: defaultSessionConfig()}
 }
 
 // Context of the query execution.
