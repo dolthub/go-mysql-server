@@ -36,12 +36,18 @@ type indexValueIter struct {
 	// share transaction and bucket on all getLocation calls
 	bucket *bolt.Bucket
 	tx     *bolt.Tx
+	closed bool
 }
 
 func (it *indexValueIter) Next() ([]byte, error) {
 	if it.bucket == nil {
+		if err := it.mapping.open(); err != nil {
+			return nil, err
+		}
+
 		bucket, err := it.mapping.getBucket(it.indexName, false)
 		if err != nil {
+			_ = it.Close()
 			return nil, err
 		}
 
@@ -56,7 +62,7 @@ func (it *indexValueIter) Next() ([]byte, error) {
 		}
 
 		if it.tx != nil {
-			it.tx.Rollback()
+			_ = it.tx.Rollback()
 		}
 
 		return nil, io.EOF
@@ -75,9 +81,18 @@ func (it *indexValueIter) Next() ([]byte, error) {
 }
 
 func (it *indexValueIter) Close() error {
-	if it.tx != nil {
-		it.tx.Rollback()
+	if it.closed {
+		return nil
 	}
 
-	return it.mapping.close()
+	it.closed = true
+	if it.tx != nil {
+		_ = it.tx.Rollback()
+	}
+
+	if it.bucket != nil {
+		return it.mapping.close()
+	}
+
+	return nil
 }

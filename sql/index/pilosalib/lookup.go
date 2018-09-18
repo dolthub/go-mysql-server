@@ -58,7 +58,7 @@ type (
 	// sql.IndexLookup, sql.Mergeable, sql.SetOperations
 	indexLookup struct {
 		id          string
-		index       *pilosa.Index
+		index       *concurrentPilosaIndex
 		mapping     *mapping
 		keys        []interface{}
 		expressions []string
@@ -81,7 +81,10 @@ func (l *indexLookup) indexName() string {
 }
 
 func (l *indexLookup) values(p sql.Partition) (*pilosa.Row, error) {
-	l.mapping.open()
+	if err := l.mapping.open(); err != nil {
+		return nil, err
+	}
+
 	defer l.mapping.close()
 
 	var row *pilosa.Row
@@ -136,7 +139,6 @@ func (l *indexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 		return nil, err
 	}
 
-	l.mapping.open()
 	if row == nil {
 		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
 	}
@@ -195,7 +197,7 @@ func (l *indexLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
 
 type filteredLookup struct {
 	id          string
-	index       *pilosa.Index
+	index       *concurrentPilosaIndex
 	mapping     *mapping
 	keys        []interface{}
 	expressions []string
@@ -210,7 +212,9 @@ func (l *filteredLookup) indexName() string {
 }
 
 func (l *filteredLookup) values(p sql.Partition) (*pilosa.Row, error) {
-	l.mapping.open()
+	if err := l.mapping.open(); err != nil {
+		return nil, err
+	}
 	defer l.mapping.close()
 
 	// evaluate Intersection of bitmaps
@@ -271,12 +275,15 @@ func (l *filteredLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 		return nil, err
 	}
 
-	l.mapping.open()
 	if row == nil {
 		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
 	}
 
 	bits := row.Columns()
+	if err := l.mapping.open(); err != nil {
+		return nil, err
+	}
+	defer l.mapping.close()
 	locations, err := l.mapping.sortedLocations(l.index.Name(), bits, l.reverse)
 	if err != nil {
 		return nil, err
@@ -341,7 +348,7 @@ type descendLookup struct {
 
 type negateLookup struct {
 	id          string
-	index       *pilosa.Index
+	index       *concurrentPilosaIndex
 	mapping     *mapping
 	keys        []interface{}
 	expressions []string
@@ -351,12 +358,15 @@ type negateLookup struct {
 func (l *negateLookup) indexName() string { return l.index.Name() }
 
 func (l *negateLookup) values(p sql.Partition) (*pilosa.Row, error) {
-	l.mapping.open()
+	if err := l.mapping.open(); err != nil {
+		return nil, err
+	}
 	defer l.mapping.close()
 
 	var row *pilosa.Row
 	for i, expr := range l.expressions {
 		field := l.index.Field(fieldName(l.id, expr, p))
+
 		maxRowID, err := l.mapping.getMaxRowID(field.Name())
 		if err != nil {
 			return nil, err
@@ -427,7 +437,6 @@ func (l *negateLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 		return nil, err
 	}
 
-	l.mapping.open()
 	if row == nil {
 		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
 	}

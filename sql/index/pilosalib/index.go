@@ -10,13 +10,55 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/index"
 )
 
+// concurrentPilosaIndex is a wrapper of pilosa.Index that can be opened and closed
+// concurrently.
+type concurrentPilosaIndex struct {
+	*pilosa.Index
+	m  sync.Mutex
+	rc int
+}
+
+func newConcurrentPilosaIndex(idx *pilosa.Index) *concurrentPilosaIndex {
+	return &concurrentPilosaIndex{Index: idx}
+}
+
+func (i *concurrentPilosaIndex) Open() error {
+	i.m.Lock()
+	defer i.m.Unlock()
+
+	if i.rc == 0 {
+		if err := i.Index.Open(); err != nil {
+			return err
+		}
+	}
+
+	i.rc++
+	return nil
+}
+
+func (i *concurrentPilosaIndex) Close() error {
+	i.m.Lock()
+	defer i.m.Unlock()
+
+	i.rc--
+	if i.rc < 0 {
+		i.rc = 0
+	}
+
+	if i.rc == 0 {
+		return i.Index.Close()
+	}
+
+	return nil
+}
+
 var (
 	errInvalidKeys = errors.NewKind("expecting %d keys for index %q, got %d")
 )
 
 // pilosaIndex is an pilosa implementation of sql.Index interface
 type pilosaIndex struct {
-	index   *pilosa.Index
+	index   *concurrentPilosaIndex
 	mapping *mapping
 	cancel  context.CancelFunc
 	wg      sync.WaitGroup
@@ -29,7 +71,7 @@ type pilosaIndex struct {
 
 func newPilosaIndex(idx *pilosa.Index, mapping *mapping, cfg *index.Config) *pilosaIndex {
 	return &pilosaIndex{
-		index:       idx,
+		index:       newConcurrentPilosaIndex(idx),
 		db:          cfg.DB,
 		table:       cfg.Table,
 		id:          cfg.ID,
@@ -57,7 +99,9 @@ func (idx *pilosaIndex) Get(keys ...interface{}) (sql.IndexLookup, error) {
 
 // Has checks if the given key is present in the index mapping
 func (idx *pilosaIndex) Has(p sql.Partition, key ...interface{}) (bool, error) {
-	idx.mapping.open()
+	if err := idx.mapping.open(); err != nil {
+		return false, err
+	}
 	defer idx.mapping.close()
 
 	n := len(key)
