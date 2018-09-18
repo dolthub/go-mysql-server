@@ -59,16 +59,18 @@ type (
 		pos  uint64
 	}
 
-	// Driver implements sql.IndexDriver interface.
-	Driver struct {
-		root   string
-		holder *pilosa.Holder
-
-		// used for saving
+	// used for saving
+	batch struct {
 		bitBatches  []*bitBatch
 		fields      []*pilosa.Field
 		timePilosa  time.Duration
 		timeMapping time.Duration
+	}
+
+	// Driver implements sql.IndexDriver interface.
+	Driver struct {
+		root   string
+		holder *pilosa.Holder
 	}
 )
 
@@ -236,10 +238,12 @@ func (d *Driver) savePartition(
 	idx *pilosaIndex,
 	pilosaIndex *pilosa.Index,
 	offset uint64,
+	b *batch,
 ) (uint64, error) {
-	var colID uint64
-	var err error
-	d.fields = make([]*pilosa.Field, len(idx.Expressions()))
+	var (
+		colID uint64
+		err   error
+	)
 	for i, e := range idx.Expressions() {
 		name := fieldName(idx.ID(), e, p)
 		pilosaIndex.DeleteField(name)
@@ -247,7 +251,8 @@ func (d *Driver) savePartition(
 		if err != nil {
 			return 0, err
 		}
-		d.fields[i] = field
+		b.fields[i] = field
+		b.bitBatches[i] = newBitBatch(sql.IndexBatchSize)
 	}
 
 	rollback := true
@@ -256,7 +261,7 @@ func (d *Driver) savePartition(
 		if rollback {
 			idx.mapping.rollback()
 		} else {
-			e := d.saveMapping(ctx, idx.mapping, colID, false)
+			e := d.saveMapping(ctx, idx.mapping, colID, false, b)
 			if e != nil && err == nil {
 				err = e
 			}
@@ -265,15 +270,10 @@ func (d *Driver) savePartition(
 		idx.mapping.close()
 	}()
 
-	d.bitBatches = make([]*bitBatch, len(d.fields))
-	for i := range d.bitBatches {
-		d.bitBatches[i] = newBitBatch(sql.IndexBatchSize)
-	}
-
 	for colID = offset; err == nil; colID++ {
 		// commit each batch of objects (pilosa and boltdb)
 		if colID%sql.IndexBatchSize == 0 && colID != 0 {
-			if err = d.saveBatch(ctx, idx.mapping, colID); err != nil {
+			if err = d.saveBatch(ctx, idx.mapping, colID, b); err != nil {
 				return 0, err
 			}
 		}
@@ -291,7 +291,7 @@ func (d *Driver) savePartition(
 				break
 			}
 
-			for i, field := range d.fields {
+			for i, field := range b.fields {
 				if values[i] == nil {
 					continue
 				}
@@ -300,8 +300,7 @@ func (d *Driver) savePartition(
 				if err != nil {
 					return 0, err
 				}
-
-				d.bitBatches[i].Add(rowID, colID)
+				b.bitBatches[i].Add(rowID, colID)
 			}
 			err = idx.mapping.putLocation(pilosaIndex.Name(), colID, location)
 		}
@@ -313,7 +312,7 @@ func (d *Driver) savePartition(
 
 	rollback = false
 
-	err = d.savePilosa(ctx, colID)
+	err = d.savePilosa(ctx, colID, b)
 	if err != nil {
 		return 0, err
 	}
@@ -333,9 +332,14 @@ func (d *Driver) Save(
 	if !ok {
 		return errInvalidIndexType.New(i)
 	}
-
 	idx.wg.Add(1)
 	defer idx.wg.Done()
+
+	var b = batch{
+		fields:     make([]*pilosa.Field, len(idx.Expressions())),
+		bitBatches: make([]*bitBatch, len(idx.Expressions())),
+	}
+
 	ctx.Context, idx.cancel = context.WithCancel(ctx.Context)
 	processingFile := d.processingFilePath(i.Database(), i.Table(), i.ID())
 	if err := index.WriteProcessingFile(
@@ -361,7 +365,7 @@ func (d *Driver) Save(
 			return err
 		}
 
-		numRows, err := d.savePartition(ctx, p, kviter, idx, pilosaIndex, rows)
+		numRows, err := d.savePartition(ctx, p, kviter, idx, pilosaIndex, rows, &b)
 		if err != nil {
 			return err
 		}
@@ -371,8 +375,8 @@ func (d *Driver) Save(
 
 	logrus.WithFields(logrus.Fields{
 		"duration": time.Since(start),
-		"pilosa":   d.timePilosa,
-		"mapping":  d.timeMapping,
+		"pilosa":   b.timePilosa,
+		"mapping":  b.timeMapping,
 		"rows":     rows,
 		"id":       i.ID(),
 	}).Debugf("finished pilosa indexing")
@@ -426,35 +430,35 @@ func (d *Driver) Delete(i sql.Index, partitions sql.PartitionIter) error {
 	return partitions.Close()
 }
 
-func (d *Driver) saveBatch(ctx *sql.Context, m *mapping, colID uint64) error {
-	err := d.savePilosa(ctx, colID)
+func (d *Driver) saveBatch(ctx *sql.Context, m *mapping, colID uint64, b *batch) error {
+	err := d.savePilosa(ctx, colID, b)
 	if err != nil {
 		return err
 	}
 
-	return d.saveMapping(ctx, m, colID, true)
+	return d.saveMapping(ctx, m, colID, true, b)
 }
 
-func (d *Driver) savePilosa(ctx *sql.Context, colID uint64) error {
+func (d *Driver) savePilosa(ctx *sql.Context, colID uint64, b *batch) error {
 	span, _ := ctx.Span("pilosa.Save.bitBatch",
 		opentracing.Tag{Key: "cols", Value: colID},
-		opentracing.Tag{Key: "fields", Value: len(d.fields)},
+		opentracing.Tag{Key: "fields", Value: len(b.fields)},
 	)
 	defer span.Finish()
 
 	start := time.Now()
 
-	for i, fld := range d.fields {
-		err := fld.Import(d.bitBatches[i].rows, d.bitBatches[i].cols, nil)
+	for i, fld := range b.fields {
+		err := fld.Import(b.bitBatches[i].rows, b.bitBatches[i].cols, nil)
 		if err != nil {
 			span.LogKV("error", err)
 			return err
 		}
 
-		d.bitBatches[i].Clean()
+		b.bitBatches[i].Clean()
 	}
 
-	d.timePilosa += time.Since(start)
+	b.timePilosa += time.Since(start)
 
 	return nil
 }
@@ -464,6 +468,7 @@ func (d *Driver) saveMapping(
 	m *mapping,
 	colID uint64,
 	cont bool,
+	b *batch,
 ) error {
 	span, _ := ctx.Span("pilosa.Save.mapping",
 		opentracing.Tag{Key: "cols", Value: colID},
@@ -479,7 +484,7 @@ func (d *Driver) saveMapping(
 		return err
 	}
 
-	d.timeMapping += time.Since(start)
+	b.timeMapping += time.Since(start)
 
 	return nil
 }
