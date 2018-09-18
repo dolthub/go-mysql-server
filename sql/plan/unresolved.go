@@ -32,14 +32,10 @@ func (*UnresolvedTable) Resolved() bool {
 }
 
 // Children implements the Node interface.
-func (*UnresolvedTable) Children() []sql.Node {
-	return []sql.Node{}
-}
+func (*UnresolvedTable) Children() []sql.Node { return nil }
 
 // Schema implements the Node interface.
-func (*UnresolvedTable) Schema() sql.Schema {
-	return sql.Schema{}
-}
+func (*UnresolvedTable) Schema() sql.Schema { return nil }
 
 // RowIter implements the RowIter interface.
 func (*UnresolvedTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {

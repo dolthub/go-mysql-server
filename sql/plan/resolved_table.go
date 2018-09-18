@@ -11,9 +11,7 @@ type ResolvedTable struct {
 	sql.Table
 }
 
-var _ sql.Table = (*ResolvedTable)(nil)
 var _ sql.Node = (*ResolvedTable)(nil)
-var _ sql.Nameable = (*ResolvedTable)(nil)
 
 // NewResolvedTable creates a new instance of ResolvedTable.
 func NewResolvedTable(table sql.Table) *ResolvedTable {
@@ -26,9 +24,7 @@ func (*ResolvedTable) Resolved() bool {
 }
 
 // Children implements the Node interface.
-func (*ResolvedTable) Children() []sql.Node {
-	return []sql.Node{}
-}
+func (*ResolvedTable) Children() []sql.Node { return nil }
 
 // RowIter implements the RowIter interface.
 func (t *ResolvedTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
@@ -92,6 +88,10 @@ func (i *tableIter) Next() (sql.Row, error) {
 
 	row, err := i.rows.Next()
 	if err != nil && err == io.EOF {
+		if err := i.rows.Close(); err != nil {
+			return nil, err
+		}
+
 		i.partition = nil
 		i.rows = nil
 		return i.Next()
@@ -101,5 +101,11 @@ func (i *tableIter) Next() (sql.Row, error) {
 }
 
 func (i *tableIter) Close() error {
+	if i.rows != nil {
+		if err := i.rows.Close(); err != nil {
+			_ = i.partitions.Close()
+			return err
+		}
+	}
 	return i.partitions.Close()
 }

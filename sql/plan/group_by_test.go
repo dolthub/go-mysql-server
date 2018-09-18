@@ -13,7 +13,7 @@ import (
 func TestGroupBy_Schema(t *testing.T) {
 	require := require.New(t)
 
-	child := mem.NewTable("test", sql.Schema{})
+	child := mem.NewTable("test", nil)
 	agg := []sql.Expression{
 		expression.NewAlias(expression.NewLiteral("s", sql.Text), "c1"),
 		expression.NewAlias(aggregation.NewCount(expression.NewStar()), "c2"),
@@ -28,7 +28,7 @@ func TestGroupBy_Schema(t *testing.T) {
 func TestGroupBy_Resolved(t *testing.T) {
 	require := require.New(t)
 
-	child := mem.NewTable("test", sql.Schema{})
+	child := mem.NewTable("test", nil)
 	agg := []sql.Expression{
 		expression.NewAlias(aggregation.NewCount(expression.NewStar()), "c2"),
 	}

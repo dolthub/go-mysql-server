@@ -40,7 +40,7 @@ func TestCatalog_Table(t *testing.T) {
 	require.EqualError(err, "table not found: bar")
 	require.Nil(table)
 
-	mytable := mem.NewTable("bar", sql.Schema{})
+	mytable := mem.NewTable("bar", nil)
 	db.AddTable("bar", mytable)
 
 	table, err = c.Table("foo", "bar")
