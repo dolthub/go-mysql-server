@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -195,5 +196,33 @@ func TestQualifyColumnsQualifiedStar(t *testing.T) {
 
 	result, err := f.Apply(sql.NewEmptyContext(), nil, node)
 	require.NoError(err)
+	require.Equal(expected, result)
+}
+
+func TestResolveColumnsSession(t *testing.T) {
+	require := require.New(t)
+
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
+	ctx.Set("foo_bar", sql.Int64, int64(42))
+
+	node := plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("@@foo_bar"),
+			expression.NewUnresolvedColumn("@@bar_baz"),
+		},
+		plan.NewResolvedTable(dualTable),
+	)
+
+	result, err := resolveColumns(ctx, NewDefault(nil), node)
+	require.NoError(err)
+
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetSessionField("@@foo_bar", sql.Int64, int64(42)),
+			expression.NewGetSessionField("@@bar_baz", sql.Null, nil),
+		},
+		plan.NewResolvedTable(dualTable),
+	)
+
 	require.Equal(expected, result)
 }

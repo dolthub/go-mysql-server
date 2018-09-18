@@ -91,3 +91,40 @@ func (p *GetField) WithIndex(n int) sql.Expression {
 	p2.fieldIndex = n
 	return &p2
 }
+
+// GetSessionField is an expression that returns the value of a session configuration.
+type GetSessionField struct {
+	name  string
+	typ   sql.Type
+	value interface{}
+}
+
+// NewGetSessionField creates a new GetSessionField expression.
+func NewGetSessionField(name string, typ sql.Type, value interface{}) *GetSessionField {
+	return &GetSessionField{name, typ, value}
+}
+
+// Children implements the sql.Expression interface.
+func (f *GetSessionField) Children() []sql.Expression { return nil }
+
+// Eval implements the sql.Expression interface.
+func (f *GetSessionField) Eval(*sql.Context, sql.Row) (interface{}, error) {
+	return f.value, nil
+}
+
+// Type implements the sql.Expression interface.
+func (f *GetSessionField) Type() sql.Type { return f.typ }
+
+// IsNullable implements the sql.Expression interface.
+func (f *GetSessionField) IsNullable() bool { return f.value == nil }
+
+// Resolved implements the sql.Expression interface.
+func (f *GetSessionField) Resolved() bool { return true }
+
+// String implements the sql.Expression interface.
+func (f *GetSessionField) String() string { return "@@" + f.name }
+
+// TransformUp implements the sql.Expression interface.
+func (f *GetSessionField) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
+	return fn(f)
+}

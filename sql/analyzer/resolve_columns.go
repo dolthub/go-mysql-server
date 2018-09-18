@@ -3,6 +3,7 @@ package analyzer
 import (
 	"strings"
 
+	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
@@ -63,6 +64,11 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			a.Log("transforming expression of type: %T", e)
 			switch col := e.(type) {
 			case *expression.UnresolvedColumn:
+				// Skip this step for global and session variables
+				if isGlobalOrSessionColumn(col) {
+					return col, nil
+				}
+
 				col = expression.NewUnresolvedQualifiedColumn(col.Table(), col.Name())
 
 				if col.Table() == "" {
@@ -124,6 +130,8 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 	})
 }
 
+var errGlobalVariablesNotSupported = errors.NewKind("can't resolve global variable, %s was requested")
+
 func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.Finish()
@@ -184,6 +192,15 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			if !ok {
 				switch uc := uc.(type) {
 				case *expression.UnresolvedColumn:
+					if isGlobalOrSessionColumn(uc) {
+						if uc.Table() != "" && strings.ToLower(uc.Table()) != "@@session" {
+							return nil, errGlobalVariablesNotSupported.New(uc)
+						}
+
+						typ, value := ctx.Get(strings.TrimLeft(uc.Name(), "@"))
+						return expression.NewGetSessionField(uc.Name(), typ, value), nil
+					}
+
 					a.Log("evaluation of column %q was deferred", uc.Name())
 					return &deferredColumn{uc}, nil
 				default:
@@ -260,4 +277,8 @@ func dedupStrings(in []string) []string {
 		}
 	}
 	return result
+}
+
+func isGlobalOrSessionColumn(col *expression.UnresolvedColumn) bool {
+	return strings.HasPrefix(col.Name(), "@@") || strings.HasPrefix(col.Table(), "@@")
 }
