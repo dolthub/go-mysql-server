@@ -45,13 +45,14 @@ func NewCreateIndex(
 	driver string,
 	config map[string]string,
 ) *CreateIndex {
+	async, ok := config["async"]
 	return &CreateIndex{
 		Name:   name,
 		Table:  table,
 		Exprs:  exprs,
 		Driver: driver,
 		Config: config,
-		Async:  config["async"] != "false",
+		Async:  async != "false" || !ok,
 	}
 }
 

@@ -223,6 +223,12 @@ CREATE INDEX foo ON table USING driverid (col1, col2)
 
 You can see an example of a driver implementation inside the `sql/index/pilosa` package, where the pilosa driver is implemented.
 
+Index creation is synchronous by default, to make it asynchronous, use `WITH (async = true)`, for example:
+
+```sql
+CREATE INDEX foo ON table USING driverid (col1, col2) WITH (async = true)
+```
+
 ## Powered by go-mysql-server
 
 * [gitbase](https://github.com/src-d/gitbase)

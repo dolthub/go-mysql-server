@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateIndex(t *testing.T) {
+func TestCreateIndexAsync(t *testing.T) {
 	require := require.New(t)
 
 	table := mem.NewTable("foo", sql.Schema{
@@ -36,7 +36,9 @@ func TestCreateIndex(t *testing.T) {
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
 	}
 
-	ci := NewCreateIndex("idx", NewResolvedTable(table), exprs, "mock", make(map[string]string))
+	ci := NewCreateIndex("idx", NewResolvedTable(table), exprs, "mock", map[string]string{
+		"async": "true",
+	})
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
