@@ -226,3 +226,70 @@ func TestResolveColumnsSession(t *testing.T) {
 
 	require.Equal(expected, result)
 }
+
+func TestResolveGroupingColumns(t *testing.T) {
+	require := require.New(t)
+
+	a := NewDefault(nil)
+	node := plan.NewGroupBy(
+		[]sql.Expression{
+			expression.NewAlias(
+				expression.NewUnresolvedFunction("foo", true,
+					expression.NewUnresolvedColumn("c"),
+				),
+				"c",
+			),
+			expression.NewAlias(
+				expression.NewUnresolvedColumn("d"),
+				"b",
+			),
+			expression.NewUnresolvedFunction("bar", false,
+				expression.NewUnresolvedColumn("b"),
+			),
+		},
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewUnresolvedColumn("b"),
+		},
+		plan.NewResolvedTable(mem.NewTable("table", nil)),
+	)
+
+	expected := plan.NewGroupBy(
+		[]sql.Expression{
+			expression.NewAlias(
+				expression.NewUnresolvedFunction("foo", true,
+					expression.NewUnresolvedColumn("c"),
+				),
+				"c",
+			),
+			expression.NewUnresolvedColumn("b"),
+			expression.NewUnresolvedFunction("bar", false,
+				expression.NewUnresolvedColumn("b_01"),
+			),
+		},
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewUnresolvedColumn("b"),
+		},
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewAlias(
+					expression.NewUnresolvedColumn("d"),
+					"b",
+				),
+				expression.NewUnresolvedColumn("a"),
+				expression.NewAlias(
+					expression.NewUnresolvedColumn("b"),
+					"b_01",
+				),
+				expression.NewUnresolvedColumn("c"),
+			},
+			plan.NewResolvedTable(mem.NewTable("table", nil)),
+		),
+	)
+
+	result, err := resolveGroupingColumns(sql.NewEmptyContext(), a, node)
+	require.NoError(err)
+
+	require.Equal(expected, result)
+}

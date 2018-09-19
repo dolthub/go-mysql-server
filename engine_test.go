@@ -128,6 +128,14 @@ var queries = []struct {
 		},
 	},
 	{
+		`SELECT COUNT(*) as cnt, s as fi FROM mytable GROUP BY fi`,
+		[]sql.Row{
+			{int32(1), "first row"},
+			{int32(1), "second row"},
+			{int32(1), "third row"},
+		},
+	},
+	{
 		"SELECT CAST(-3 AS UNSIGNED) FROM mytable",
 		[]sql.Row{
 			{uint64(18446744073709551613)},
