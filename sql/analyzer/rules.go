@@ -9,6 +9,7 @@ var DefaultRules = []Rule{
 	{"resolve_natural_joins", resolveNaturalJoins},
 	{"resolve_orderby_literals", resolveOrderByLiterals},
 	{"resolve_orderby", resolveOrderBy},
+	{"resolve_grouping_columns", resolveGroupingColumns},
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
 	{"resolve_database", resolveDatabase},
