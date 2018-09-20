@@ -22,15 +22,10 @@ sudo: required
 services:
   - docker
 
-before_install:
-  - docker pull pilosa/pilosa:v1.1.0
-  - docker run -d --name pilosa -p 127.0.0.1:10101:10101 pilosa/pilosa:v1.1.0
-  - docker ps -a
-
 install:
   - go get -u github.com/golang/dep/cmd/dep
   - touch Gopkg.toml
-  - dep ensure -v -add "github.com/pilosa/go-pilosa@0.10.0" "github.com/pilosa/pilosa@1.1.0" "github.com/moovweb/rubex@b3d9ff6ad7d9b14f94a91c8271cd9ad9e77132e5"
+  - dep ensure -v -add "github.com/pilosa/pilosa@1.1.0" "github.com/moovweb/rubex@b3d9ff6ad7d9b14f94a91c8271cd9ad9e77132e5"
   - make dependencies
 
 script:

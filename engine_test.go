@@ -799,7 +799,7 @@ func TestIndexes(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, os.MkdirAll(tmpDir, 0644))
-	e.Catalog.RegisterIndexDriver(pilosa.NewIndexDriver(tmpDir))
+	e.Catalog.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
 
 	_, _, err = e.Query(
 		sql.NewEmptyContext(),
@@ -918,7 +918,7 @@ func TestCreateIndex(t *testing.T) {
 	require.NoError(err)
 
 	require.NoError(os.MkdirAll(tmpDir, 0644))
-	e.Catalog.RegisterIndexDriver(pilosa.NewIndexDriver(tmpDir))
+	e.Catalog.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
 
 	_, iter, err := e.Query(sql.NewEmptyContext(), "CREATE INDEX myidx ON mytable USING pilosa (i)")
 	require.NoError(err)

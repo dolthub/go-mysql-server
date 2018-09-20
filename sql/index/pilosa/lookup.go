@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"encoding/gob"
 	"io"
-	"math"
 	"strings"
 	"time"
 
-	pilosa "github.com/pilosa/go-pilosa"
+	"github.com/pilosa/pilosa"
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
@@ -20,138 +19,131 @@ var (
 
 	// operation functors
 	// r1 AND r2
-	intersect = func(b1, b2 *pilosa.PQLRowQuery) *pilosa.PQLRowQuery {
-		if b1 == nil {
+	intersect = func(r1, r2 *pilosa.Row) *pilosa.Row {
+		if r1 == nil {
+			return r2
+		}
+		if r2 == nil {
 			return nil
 		}
-		if b2 == nil {
-			return nil
-		}
-		return b1.Index().Intersect(b1, b2)
+		return r1.Intersect(r2)
 	}
 	// r1 OR r2
-	union = func(b1, b2 *pilosa.PQLRowQuery) *pilosa.PQLRowQuery {
-		if b1 == nil {
-			return b2
+	union = func(r1, r2 *pilosa.Row) *pilosa.Row {
+		if r1 == nil {
+			return r2
 		}
-		if b2 == nil {
-			return b1
+		if r2 == nil {
+			return r1
 		}
 
-		return b1.Index().Union(b1, b2)
+		return r1.Union(r2)
 	}
 	// r1 AND NOT r2
-	difference = func(b1, b2 *pilosa.PQLRowQuery) *pilosa.PQLRowQuery {
-		if b1 == nil {
-			return nil
+	difference = func(r1, r2 *pilosa.Row) *pilosa.Row {
+		if r1 == nil {
+			return r2
 		}
-		if b2 == nil {
-			return b1
+		if r2 == nil {
+			return r1
 		}
 
-		return b1.Index().Difference(b1, b2)
+		return r1.Difference(r2)
 	}
 )
 
-type lookupOperation struct {
-	lookup    sql.IndexLookup
-	operation func(*pilosa.PQLRowQuery, *pilosa.PQLRowQuery) *pilosa.PQLRowQuery
+type (
+
+	// indexLookup implement following interfaces:
+	// sql.IndexLookup, sql.Mergeable, sql.SetOperations
+	indexLookup struct {
+		id          string
+		index       *concurrentPilosaIndex
+		mapping     *mapping
+		keys        []interface{}
+		expressions []string
+		operations  []*lookupOperation
+	}
+
+	lookupOperation struct {
+		lookup    sql.IndexLookup
+		operation func(*pilosa.Row, *pilosa.Row) *pilosa.Row
+	}
+
+	pilosaLookup interface {
+		indexName() string
+		values(sql.Partition) (*pilosa.Row, error)
+	}
+)
+
+func (l *indexLookup) indexName() string {
+	return l.index.Name()
 }
 
-type pilosaLookup interface {
-	bitmapQuery(sql.Partition) (*pilosa.PQLRowQuery, error)
-	indexName() string
-}
+func (l *indexLookup) values(p sql.Partition) (*pilosa.Row, error) {
+	if err := l.mapping.open(); err != nil {
+		return nil, err
+	}
 
-// indexLookup implement following interfaces:
-// sql.IndexLookup, sql.Mergeable, sql.SetOperations
-type indexLookup struct {
-	id          string
-	client      *pilosa.Client
-	index       *pilosa.Index
-	mapping     *mapping
-	keys        []interface{}
-	expressions []string
-	operations  []*lookupOperation
-}
-
-func (l *indexLookup) indexName() string { return l.index.Name() }
-
-func (l *indexLookup) bitmapQuery(p sql.Partition) (*pilosa.PQLRowQuery, error) {
-	l.mapping.open()
 	defer l.mapping.close()
 
-	var (
-		bmp     *pilosa.PQLRowQuery
-		bitmaps []*pilosa.PQLRowQuery
-	)
-
+	var row *pilosa.Row
 	for i, expr := range l.expressions {
-		f := l.index.Field(fieldName(l.id, expr, p))
-		if err := l.client.EnsureField(f); err != nil {
-			return nil, err
-		}
-
-		rowID, err := l.mapping.rowID(f.Name(), l.keys[i])
+		field := l.index.Field(fieldName(l.id, expr, p))
+		rowID, err := l.mapping.rowID(field.Name(), l.keys[i])
 		if err == io.EOF {
 			continue
 		}
-
 		if err != nil {
 			return nil, err
 		}
 
-		bitmaps = append(bitmaps, f.Row(rowID))
-	}
-	if len(bitmaps) > 0 {
-		// Compute Intersection of expression bitmaps
-		bmp = l.index.Intersect(bitmaps...)
+		r, err := field.Row(rowID)
+		if err != nil {
+			return nil, err
+		}
+
+		row = intersect(row, r)
 	}
 
-	// Compute composition operations
+	// evaluate composition of operations
 	for _, op := range l.operations {
+		var (
+			r *pilosa.Row
+			e error
+		)
+
 		il, ok := op.lookup.(pilosaLookup)
 		if !ok {
 			return nil, errUnmergeableType.New(op.lookup)
 		}
 
-		b, err := il.bitmapQuery(p)
-		if err != nil {
-			return nil, err
+		r, e = il.values(p)
+		if e != nil {
+			return nil, e
 		}
 
-		bmp = op.operation(bmp, b)
+		row = op.operation(row, r)
 	}
 
-	return bmp, nil
+	return row, nil
 }
 
 // Values implements sql.IndexLookup.Values
-func (l *indexLookup) Values(partition sql.Partition) (sql.IndexValueIter, error) {
-	bmp, err := l.bitmapQuery(partition)
+func (l *indexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
+	l.index.Open()
+	defer l.index.Close()
+
+	row, err := l.values(p)
 	if err != nil {
 		return nil, err
 	}
 
-	l.mapping.open()
-	if bmp == nil {
+	if row == nil {
 		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
 	}
 
-	resp, err := l.client.Query(bmp)
-	if err != nil {
-		return nil, err
-	}
-
-	if !resp.Success {
-		return nil, errPilosaQuery.New(resp.ErrorMessage)
-	}
-
-	if resp.Result() == nil {
-		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
-	}
-
-	bits := resp.Result().Row().Columns
+	bits := row.Columns()
 	return &indexValueIter{
 		total:     uint64(len(bits)),
 		bits:      bits,
@@ -176,7 +168,6 @@ func (l *indexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 // Intersection implements sql.SetOperations interface
 func (l *indexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
-
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, intersect})
 	}
@@ -187,7 +178,6 @@ func (l *indexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
 // Union implements sql.SetOperations interface
 func (l *indexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
-
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, union})
 	}
@@ -198,7 +188,6 @@ func (l *indexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 // Difference implements sql.SetOperations interface
 func (l *indexLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
-
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, difference})
 	}
@@ -208,8 +197,7 @@ func (l *indexLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
 
 type filteredLookup struct {
 	id          string
-	client      *pilosa.Client
-	index       *pilosa.Index
+	index       *concurrentPilosaIndex
 	mapping     *mapping
 	keys        []interface{}
 	expressions []string
@@ -219,86 +207,83 @@ type filteredLookup struct {
 	filter  func(int, []byte) (bool, error)
 }
 
-func (l *filteredLookup) indexName() string { return l.index.Name() }
+func (l *filteredLookup) indexName() string {
+	return l.index.Name()
+}
 
-func (l *filteredLookup) bitmapQuery(partition sql.Partition) (*pilosa.PQLRowQuery, error) {
-	l.mapping.open()
+func (l *filteredLookup) values(p sql.Partition) (*pilosa.Row, error) {
+	if err := l.mapping.open(); err != nil {
+		return nil, err
+	}
 	defer l.mapping.close()
 
-	// Compute Intersection of bitmaps
-	var (
-		bmp     *pilosa.PQLRowQuery
-		bitmaps []*pilosa.PQLRowQuery
-	)
+	// evaluate Intersection of bitmaps
+	var row *pilosa.Row
 	for i, expr := range l.expressions {
-		f := l.index.Field(fieldName(l.id, expr, partition))
-		if err := l.client.EnsureField(f); err != nil {
-			return nil, err
-		}
-
-		rows, err := l.mapping.filter(f.Name(), func(b []byte) (bool, error) {
+		field := l.index.Field(fieldName(l.id, expr, p))
+		rows, err := l.mapping.filter(field.Name(), func(b []byte) (bool, error) {
 			return l.filter(i, b)
 		})
-
 		if err != nil {
 			return nil, err
 		}
 
-		var bs []*pilosa.PQLRowQuery
-		for _, row := range rows {
-			bs = append(bs, f.Row(row))
+		var r *pilosa.Row
+		for _, ri := range rows {
+			rr, err := field.Row(ri)
+			if err != nil {
+				return nil, err
+			}
+			r = union(r, rr)
 		}
 
-		bitmaps = append(bitmaps, l.index.Union(bs...))
-	}
-	if len(bitmaps) > 0 {
-		// Compute Intersection of expression bitmaps
-		bmp = l.index.Intersect(bitmaps...)
+		row = intersect(row, r)
 	}
 
-	// Compute composition operations
+	// evaluate composition of operations
 	for _, op := range l.operations {
+		var (
+			r *pilosa.Row
+			e error
+		)
+
 		il, ok := op.lookup.(pilosaLookup)
 		if !ok {
 			return nil, errUnmergeableType.New(op.lookup)
 		}
 
-		b, err := il.bitmapQuery(partition)
-		if err != nil {
-			return nil, err
+		r, e = il.values(p)
+		if e != nil {
+			return nil, e
+		}
+		if r == nil {
+			continue
 		}
 
-		bmp = op.operation(bmp, b)
+		row = op.operation(row, r)
 	}
 
-	return bmp, nil
+	return row, nil
 }
 
-func (l *filteredLookup) values(p sql.Partition) (sql.IndexValueIter, error) {
-	bmp, err := l.bitmapQuery(p)
+func (l *filteredLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
+	l.index.Open()
+	defer l.index.Close()
+
+	row, err := l.values(p)
 	if err != nil {
 		return nil, err
 	}
 
-	l.mapping.open()
-	if bmp == nil {
+	if row == nil {
 		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
 	}
 
-	resp, err := l.client.Query(bmp)
-	if err != nil {
+	bits := row.Columns()
+	if err := l.mapping.open(); err != nil {
 		return nil, err
 	}
-
-	if !resp.Success {
-		return nil, errPilosaQuery.New(resp.ErrorMessage)
-	}
-
-	if resp.Result() == nil {
-		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
-	}
-
-	bits := resp.Result().Row().Columns
+	defer l.mapping.close()
 	locations, err := l.mapping.sortedLocations(l.index.Name(), bits, l.reverse)
 	if err != nil {
 		return nil, err
@@ -307,117 +292,52 @@ func (l *filteredLookup) values(p sql.Partition) (sql.IndexValueIter, error) {
 	return &locationValueIter{locations: locations}, nil
 }
 
-type ascendLookup struct {
-	*filteredLookup
-	gte []interface{}
-	lt  []interface{}
-}
-
-func (l *ascendLookup) initFilter() {
-	l.filter = func(i int, value []byte) (bool, error) {
-		var v interface{}
-		var err error
-		if len(l.gte) > 0 {
-			v, err = decodeGob(value, l.gte[i])
-			if err != nil {
-				return false, err
-			}
-
-			cmp, err := compare(v, l.gte[i])
-			if err != nil {
-				return false, err
-			}
-
-			if cmp < 0 {
-				return false, nil
-			}
-		}
-
-		if len(l.lt) > 0 {
-			if v == nil {
-				v, err = decodeGob(value, l.lt[i])
-				if err != nil {
-					return false, err
-				}
-			}
-
-			cmp, err := compare(v, l.lt[i])
-			if err != nil {
-				return false, err
-			}
-
-			if cmp >= 0 {
-				return false, nil
-			}
-		}
-
-		return true, nil
-	}
-}
-
-func (l *ascendLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
-	return l.values(p)
-}
-
-func (l *ascendLookup) Indexes() []string {
+func (l *filteredLookup) Indexes() []string {
 	return []string{l.id}
 }
 
 // IsMergeable implements sql.Mergeable interface.
-func (l *ascendLookup) IsMergeable(lookup sql.IndexLookup) bool {
+func (l *filteredLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	if il, ok := lookup.(pilosaLookup); ok {
 		return il.indexName() == l.indexName()
 	}
-
 	return false
 }
 
 // Intersection implements sql.SetOperations interface
-func (l *ascendLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
-	filteredLookup := *l.filteredLookup
-	lookup := &ascendLookup{
-		filteredLookup: &filteredLookup,
-		gte:            l.gte,
-		lt:             l.lt,
-	}
-
+func (l *filteredLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
+	lookup := *l
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, intersect})
 	}
 
-	return lookup
+	return &lookup
 }
 
 // Union implements sql.SetOperations interface
-func (l *ascendLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	filteredLookup := *l.filteredLookup
-	lookup := &ascendLookup{
-		filteredLookup: &filteredLookup,
-		gte:            l.gte,
-		lt:             l.lt,
-	}
-
+func (l *filteredLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
+	lookup := *l
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, union})
 	}
 
-	return lookup
+	return &lookup
 }
 
 // Difference implements sql.SetOperations interface
-func (l *ascendLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
-	filteredLookup := *l.filteredLookup
-	lookup := &ascendLookup{
-		filteredLookup: &filteredLookup,
-		gte:            l.gte,
-		lt:             l.lt,
-	}
-
+func (l *filteredLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
+	lookup := *l
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, difference})
 	}
 
-	return lookup
+	return &lookup
+}
+
+type ascendLookup struct {
+	*filteredLookup
+	gte []interface{}
+	lt  []interface{}
 }
 
 type descendLookup struct {
@@ -426,58 +346,116 @@ type descendLookup struct {
 	lte []interface{}
 }
 
-func (l *descendLookup) initFilter() {
-	l.filter = func(i int, value []byte) (bool, error) {
-		var v interface{}
-		var err error
-		if len(l.gt) > 0 {
-			v, err = decodeGob(value, l.gt[i])
-			if err != nil {
-				return false, err
-			}
+type negateLookup struct {
+	id          string
+	index       *concurrentPilosaIndex
+	mapping     *mapping
+	keys        []interface{}
+	expressions []string
+	operations  []*lookupOperation
+}
 
-			cmp, err := compare(v, l.gt[i])
-			if err != nil {
-				return false, err
-			}
+func (l *negateLookup) indexName() string { return l.index.Name() }
 
-			if cmp <= 0 {
-				return false, nil
-			}
-		}
-
-		if len(l.lte) > 0 {
-			if v == nil {
-				v, err = decodeGob(value, l.lte[i])
-				if err != nil {
-					return false, err
-				}
-			}
-
-			cmp, err := compare(v, l.lte[i])
-			if err != nil {
-				return false, err
-			}
-
-			if cmp > 0 {
-				return false, nil
-			}
-		}
-
-		return true, nil
+func (l *negateLookup) values(p sql.Partition) (*pilosa.Row, error) {
+	if err := l.mapping.open(); err != nil {
+		return nil, err
 	}
+	defer l.mapping.close()
+
+	var row *pilosa.Row
+	for i, expr := range l.expressions {
+		field := l.index.Field(fieldName(l.id, expr, p))
+
+		maxRowID, err := l.mapping.getMaxRowID(field.Name())
+		if err != nil {
+			return nil, err
+		}
+
+		// Since Pilosa does not have a negation in PQL (see:
+		// https://github.com/pilosa/pilosa/issues/807), we have to get all the
+		// ones in all the rows and join them, and then make difference between
+		// them and the ones in the row of the given value.
+		var r *pilosa.Row
+		// rowIDs start with 1
+		for ri := uint64(1); ri <= maxRowID; ri++ {
+			rr, err := field.Row(ri)
+			if err != nil {
+				return nil, err
+			}
+			r = union(r, rr)
+		}
+
+		rowID, err := l.mapping.rowID(field.Name(), l.keys[i])
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
+
+		rr, err := field.Row(rowID)
+		if err != nil {
+			return nil, err
+		}
+		r = difference(r, rr)
+
+		row = intersect(row, r)
+	}
+
+	// evaluate composition of operations
+	for _, op := range l.operations {
+		var (
+			r *pilosa.Row
+			e error
+		)
+
+		il, ok := op.lookup.(pilosaLookup)
+		if !ok {
+			return nil, errUnmergeableType.New(op.lookup)
+		}
+
+		r, e = il.values(p)
+		if e != nil {
+			return nil, e
+		}
+
+		if r == nil {
+			continue
+		}
+
+		row = op.operation(row, r)
+	}
+
+	return row, nil
 }
 
-func (l *descendLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
-	return l.values(p)
+// Values implements sql.IndexLookup.Values
+func (l *negateLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
+	l.index.Open()
+	defer l.index.Close()
+
+	row, err := l.values(p)
+	if err != nil {
+		return nil, err
+	}
+
+	if row == nil {
+		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
+	}
+
+	bits := row.Columns()
+	return &indexValueIter{
+		total:     uint64(len(bits)),
+		bits:      bits,
+		mapping:   l.mapping,
+		indexName: l.index.Name(),
+	}, nil
 }
 
-func (l *descendLookup) Indexes() []string {
+func (l *negateLookup) Indexes() []string {
 	return []string{l.id}
 }
 
 // IsMergeable implements sql.Mergeable interface.
-func (l *descendLookup) IsMergeable(lookup sql.IndexLookup) bool {
+func (l *negateLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	if il, ok := lookup.(pilosaLookup); ok {
 		return il.indexName() == l.indexName()
 	}
@@ -486,51 +464,33 @@ func (l *descendLookup) IsMergeable(lookup sql.IndexLookup) bool {
 }
 
 // Intersection implements sql.SetOperations interface
-func (l *descendLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
-	filteredLookup := *l.filteredLookup
-	lookup := &descendLookup{
-		filteredLookup: &filteredLookup,
-		gt:             l.gt,
-		lte:            l.lte,
-	}
-
+func (l *negateLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
+	lookup := *l
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, intersect})
 	}
 
-	return lookup
+	return &lookup
 }
 
 // Union implements sql.SetOperations interface
-func (l *descendLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	filteredLookup := *l.filteredLookup
-	lookup := &descendLookup{
-		filteredLookup: &filteredLookup,
-		gt:             l.gt,
-		lte:            l.lte,
-	}
-
+func (l *negateLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
+	lookup := *l
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, union})
 	}
 
-	return lookup
+	return &lookup
 }
 
 // Difference implements sql.SetOperations interface
-func (l *descendLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
-	filteredLookup := *l.filteredLookup
-	lookup := &descendLookup{
-		filteredLookup: &filteredLookup,
-		gt:             l.gt,
-		lte:            l.lte,
-	}
-
+func (l *negateLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
+	lookup := *l
 	for _, li := range lookups {
 		lookup.operations = append(lookup.operations, &lookupOperation{li, difference})
 	}
 
-	return lookup
+	return &lookup
 }
 
 func decodeGob(k []byte, value interface{}) (interface{}, error) {
@@ -733,164 +693,4 @@ func compare(a, b interface{}) (int, error) {
 	default:
 		return 0, errUnknownType.New(a)
 	}
-}
-
-type negateLookup struct {
-	id          string
-	client      *pilosa.Client
-	index       *pilosa.Index
-	mapping     *mapping
-	keys        []interface{}
-	expressions []string
-	operations  []*lookupOperation
-}
-
-var (
-	zeroTime time.Time
-	maxTime  = time.Unix(math.MaxInt64, math.MaxInt64)
-)
-
-func (l *negateLookup) indexName() string { return l.index.Name() }
-
-func (l *negateLookup) bitmapQuery(p sql.Partition) (*pilosa.PQLRowQuery, error) {
-	l.mapping.open()
-	defer l.mapping.close()
-
-	var (
-		bmp     *pilosa.PQLRowQuery
-		bitmaps []*pilosa.PQLRowQuery
-	)
-	for i, expr := range l.expressions {
-		f := l.index.Field(fieldName(l.id, expr, p))
-		if err := l.client.EnsureField(f); err != nil {
-			return nil, err
-		}
-
-		maxRowID, err := l.mapping.getMaxRowID(f.Name())
-		if err != nil {
-			return nil, err
-		}
-
-		// Since Pilosa does not have a negation in PQL (see:
-		// https://github.com/pilosa/pilosa/issues/807), we have to get all the
-		// ones in all the rows and join them, and then make difference between
-		// them and the ones in the row of the given value.
-		var rows []*pilosa.PQLRowQuery
-		// rowIDs start with 1
-		for i := uint64(1); i <= maxRowID; i++ {
-			rows = append(rows, f.Row(i))
-		}
-		all := l.index.Union(rows...)
-
-		rowID, err := l.mapping.rowID(f.Name(), l.keys[i])
-		if err != nil && err != io.EOF {
-			return nil, err
-		}
-
-		bitmaps = append(
-			bitmaps,
-			l.index.Difference(all, f.Row(rowID)),
-		)
-	}
-	if len(bitmaps) > 0 {
-		// Compute Intersection of expression bitmaps
-		bmp = l.index.Intersect(bitmaps...)
-	}
-
-	// Compute composition operations
-	for _, op := range l.operations {
-		il, ok := op.lookup.(pilosaLookup)
-		if !ok {
-			return nil, errUnmergeableType.New(op.lookup)
-		}
-
-		b, err := il.bitmapQuery(p)
-		if err != nil {
-			return nil, err
-		}
-
-		bmp = op.operation(bmp, b)
-	}
-
-	return bmp, nil
-}
-
-// Values implements sql.IndexLookup.Values
-func (l *negateLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
-	bmp, err := l.bitmapQuery(p)
-	if err != nil {
-		return nil, err
-	}
-
-	l.mapping.open()
-	if bmp == nil {
-		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
-	}
-
-	resp, err := l.client.Query(bmp)
-	if err != nil {
-		return nil, err
-	}
-
-	if !resp.Success {
-		return nil, errPilosaQuery.New(resp.ErrorMessage)
-	}
-
-	if resp.Result() == nil {
-		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
-	}
-
-	bits := resp.Result().Row().Columns
-	return &indexValueIter{
-		total:     uint64(len(bits)),
-		bits:      bits,
-		mapping:   l.mapping,
-		indexName: l.index.Name(),
-	}, nil
-}
-
-func (l *negateLookup) Indexes() []string {
-	return []string{l.id}
-}
-
-// IsMergeable implements sql.Mergeable interface.
-func (l *negateLookup) IsMergeable(lookup sql.IndexLookup) bool {
-	if il, ok := lookup.(pilosaLookup); ok {
-		return il.indexName() == l.indexName()
-	}
-
-	return false
-}
-
-// Intersection implements sql.SetOperations interface
-func (l *negateLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
-	lookup := *l
-
-	for _, li := range lookups {
-		lookup.operations = append(lookup.operations, &lookupOperation{li, intersect})
-	}
-
-	return &lookup
-}
-
-// Union implements sql.SetOperations interface
-func (l *negateLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	lookup := *l
-
-	for _, li := range lookups {
-		lookup.operations = append(lookup.operations, &lookupOperation{li, union})
-	}
-
-	return &lookup
-}
-
-// Difference implements sql.SetOperations interface
-func (l *negateLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
-	lookup := *l
-
-	for _, li := range lookups {
-		lookup.operations = append(lookup.operations, &lookupOperation{li, difference})
-	}
-
-	return &lookup
 }
