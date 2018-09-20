@@ -1,9 +1,12 @@
 package sql
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
+
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // Progress between done items and total items.
@@ -44,13 +47,18 @@ func (p ProcessType) String() string {
 
 // Process represents a process in the SQL server.
 type Process struct {
-	Pid       uint64
-	User      string
-	Type      ProcessType
-	Query     string
-	Progress  map[string]Progress
-	StartedAt time.Time
+	Pid        uint64
+	Connection uint32
+	User       string
+	Type       ProcessType
+	Query      string
+	Progress   map[string]Progress
+	StartedAt  time.Time
+	Kill       context.CancelFunc
 }
+
+// Done needs to be called when this process has finished.
+func (p *Process) Done() { p.Kill() }
 
 // Seconds returns the number of seconds this process has been running.
 func (p *Process) Seconds() uint64 {
@@ -61,7 +69,6 @@ func (p *Process) Seconds() uint64 {
 // status.
 type ProcessList struct {
 	mu    sync.RWMutex
-	pid   uint64
 	procs map[uint64]*Process
 }
 
@@ -72,28 +79,41 @@ func NewProcessList() *ProcessList {
 	}
 }
 
+// ErrPidAlreadyUsed is returned when the pid is already registered.
+var ErrPidAlreadyUsed = errors.NewKind("pid %d is already in use")
+
 // AddProcess adds a new process to the list given a process type and a query.
 // Steps is a map between the name of the items that need to be completed and
 // the total amount in these items. -1 means unknown.
+// It returns a new context that should be passed around from now on. That
+// context will be cancelled if the process is killed.
 func (pl *ProcessList) AddProcess(
 	ctx *Context,
 	typ ProcessType,
 	query string,
-) (pid uint64) {
+) (*Context, error) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	pl.pid++
-	pl.procs[pl.pid] = &Process{
-		Pid:       pl.pid,
-		Type:      typ,
-		Query:     query,
-		Progress:  make(map[string]Progress),
-		User:      ctx.Session.User(),
-		StartedAt: time.Now(),
+	if _, ok := pl.procs[ctx.Pid()]; ok {
+		return nil, ErrPidAlreadyUsed.New(ctx.Pid())
 	}
 
-	return pl.pid
+	newCtx, cancel := context.WithCancel(ctx)
+	ctx = ctx.WithContext(newCtx)
+
+	pl.procs[ctx.Pid()] = &Process{
+		Pid:        ctx.Pid(),
+		Connection: ctx.ID(),
+		Type:       typ,
+		Query:      query,
+		Progress:   make(map[string]Progress),
+		User:       ctx.Session.User(),
+		StartedAt:  time.Now(),
+		Kill:       cancel,
+	}
+
+	return ctx, nil
 }
 
 // UpdateProgress updates the progress of the item with the given name for the
@@ -117,7 +137,7 @@ func (pl *ProcessList) UpdateProgress(pid uint64, name string, delta int64) {
 }
 
 // AddProgressItem adds a new item to track progress from to the proces with
-// the given pid.
+// the given pid. If the pid does not exist, it will do nothing.
 func (pl *ProcessList) AddProgressItem(pid uint64, name string, total int64) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
@@ -135,10 +155,42 @@ func (pl *ProcessList) AddProgressItem(pid uint64, name string, total int64) {
 	}
 }
 
+// Kill terminates a process if it exists.
+func (pl *ProcessList) Kill(pid uint64) {
+	pl.Done(pid)
+}
+
+// KillConnection kills all processes that have the same connection as the one
+// of the process with the given process id. If the process does not exist, it
+// will do nothing.
+func (pl *ProcessList) KillConnection(pid uint64) {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+
+	proc, ok := pl.procs[pid]
+	if !ok {
+		return
+	}
+
+	conn := proc.Connection
+	for pid, proc := range pl.procs {
+		if proc.Connection == conn {
+			proc.Kill()
+			delete(pl.procs, pid)
+		}
+	}
+}
+
 // Done removes the finished process with the given pid from the process list.
+// If the process does not exist, it will do nothing.
 func (pl *ProcessList) Done(pid uint64) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
+
+	if proc, ok := pl.procs[pid]; ok {
+		proc.Done()
+	}
+
 	delete(pl.procs, pid)
 }
 

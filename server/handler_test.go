@@ -1,7 +1,10 @@
 package server
 
 import (
+	"net"
+	"reflect"
 	"testing"
+	"unsafe"
 
 	"gopkg.in/src-d/go-mysql-server.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
@@ -130,10 +133,24 @@ func TestHandlerOutput(t *testing.T) {
 }
 
 func newConn(id uint32) *mysql.Conn {
-	return &mysql.Conn{
+	conn := &mysql.Conn{
 		ConnectionID: id,
 	}
+
+	// Set conn so it does not panic when we close it
+	val := reflect.ValueOf(conn).Elem()
+	field := val.FieldByName("conn")
+	field = reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem()
+	field.Set(reflect.ValueOf(new(mockConn)))
+
+	return conn
 }
+
+type mockConn struct {
+	net.Conn
+}
+
+func (c *mockConn) Close() error { return nil }
 
 func TestHandlerKill(t *testing.T) {
 	require := require.New(t)
@@ -153,15 +170,12 @@ func TestHandlerKill(t *testing.T) {
 	require.Len(handler.c, 0)
 
 	conn1 := newConn(1)
-
 	handler.NewConnection(conn1)
-
-	require.Len(handler.c, 1)
-	c, ok := handler.c[1]
-	require.True(ok)
-	require.Equal(conn1, c)
-
 	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+
+	require.Len(handler.sm.sessions, 2)
+	require.Len(handler.c, 2)
 
 	err := handler.ComQuery(conn2, "KILL QUERY 1", func(res *sqltypes.Result) error {
 		return nil
@@ -169,11 +183,17 @@ func TestHandlerKill(t *testing.T) {
 
 	require.NoError(err)
 
-	require.Len(handler.c, 1)
-	c, ok = handler.c[1]
-	require.True(ok)
-	require.Equal(conn1, c)
+	require.Len(handler.sm.sessions, 2)
+	require.Len(handler.c, 2)
+	require.Equal(conn1, handler.c[1])
+	require.Equal(conn2, handler.c[2])
 
-	// Cannot test KILL CONNECTION as the connection can not be mocked. Calling
-	// mysql.Conn.Close panics.
+	err = handler.ComQuery(conn2, "KILL 1", func(res *sqltypes.Result) error {
+		return nil
+	})
+	require.NoError(err)
+
+	require.Len(handler.sm.sessions, 1)
+	require.Len(handler.c, 1)
+	require.Equal(conn1, handler.c[1])
 }

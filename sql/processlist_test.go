@@ -12,33 +12,40 @@ func TestProcessList(t *testing.T) {
 	require := require.New(t)
 
 	p := NewProcessList()
-	sess := NewSession("0.0.0.0:1234", "foo")
-	ctx := NewContext(context.Background(), WithSession(sess))
-	pid := p.AddProcess(ctx, QueryProcess, "SELECT foo")
+	sess := NewSession("0.0.0.0:1234", "foo", 1)
+	ctx := NewContext(context.Background(), WithPid(1), WithSession(sess))
+	ctx, err := p.AddProcess(ctx, QueryProcess, "SELECT foo")
+	require.NoError(err)
 
-	require.Equal(uint64(1), pid)
+	require.Equal(uint64(1), ctx.Pid())
 	require.Len(p.procs, 1)
 
-	p.AddProgressItem(pid, "a", 5)
-	p.AddProgressItem(pid, "b", 6)
+	p.AddProgressItem(ctx.Pid(), "a", 5)
+	p.AddProgressItem(ctx.Pid(), "b", 6)
 
 	expectedProcess := &Process{
-		Pid:  1,
-		Type: QueryProcess,
+		Pid:        1,
+		Connection: 1,
+		Type:       QueryProcess,
 		Progress: map[string]Progress{
 			"a": Progress{0, 5},
 			"b": Progress{0, 6},
 		},
 		User:      "foo",
 		Query:     "SELECT foo",
-		StartedAt: p.procs[pid].StartedAt,
+		StartedAt: p.procs[ctx.Pid()].StartedAt,
 	}
-	require.Equal(expectedProcess, p.procs[pid])
+	require.NotNil(p.procs[ctx.Pid()].Kill)
+	p.procs[ctx.Pid()].Kill = nil
+	require.Equal(expectedProcess, p.procs[ctx.Pid()])
 
-	pid = p.AddProcess(ctx, CreateIndexProcess, "SELECT bar")
-	p.AddProgressItem(pid, "foo", 2)
+	ctx = NewContext(context.Background(), WithPid(2), WithSession(sess))
+	ctx, err = p.AddProcess(ctx, CreateIndexProcess, "SELECT bar")
+	require.NoError(err)
 
-	require.Equal(uint64(2), pid)
+	p.AddProgressItem(ctx.Pid(), "foo", 2)
+
+	require.Equal(uint64(2), ctx.Pid())
 	require.Len(p.procs, 2)
 
 	p.UpdateProgress(1, "a", 3)
@@ -52,10 +59,15 @@ func TestProcessList(t *testing.T) {
 
 	var expected []Process
 	for _, p := range p.procs {
-		expected = append(expected, *p)
+		np := *p
+		np.Kill = nil
+		expected = append(expected, np)
 	}
 
 	result := p.Processes()
+	for i := range result {
+		result[i].Kill = nil
+	}
 
 	sortByPid(expected)
 	sortByPid(result)

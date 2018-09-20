@@ -1,7 +1,9 @@
 package analyzer
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
@@ -22,7 +24,9 @@ func TestTrackProcess(t *testing.T) {
 		expression.NewLiteral(int64(1), sql.Int64),
 	)
 
-	ctx := sql.NewEmptyContext().WithQuery("SELECT foo")
+	ctx := sql.NewContext(context.Background(), sql.WithPid(1))
+	ctx, err := catalog.AddProcess(ctx, sql.QueryProcess, "SELECT foo")
+	require.NoError(err)
 
 	result, err := rule.Apply(ctx, a, node)
 	require.NoError(err)
@@ -58,6 +62,12 @@ func TestTrackProcess(t *testing.T) {
 	require.NoError(err)
 
 	require.Len(catalog.Processes(), 0)
+
+	select {
+	case <-ctx.Done():
+	case <-time.After(5 * time.Millisecond):
+		t.Errorf("expecting context to be cancelled")
+	}
 }
 
 func withoutProcessTracking(a *Analyzer) *Analyzer {

@@ -336,7 +336,7 @@ func TestOrderByColumns(t *testing.T) {
 	require := require.New(t)
 	e := newEngine(t)
 
-	_, iter, err := e.Query(sql.NewEmptyContext(), "SELECT s, i FROM mytable ORDER BY 2 DESC")
+	_, iter, err := e.Query(newCtx(), "SELECT s, i FROM mytable ORDER BY 2 DESC")
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
@@ -401,7 +401,7 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 	e.AddDatabase(db)
 
 	q := `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c`
-	ctx := sql.NewEmptyContext()
+	ctx := newCtx()
 
 	_, rows, err := e.Query(ctx, q)
 	require.NoError(err)
@@ -490,7 +490,7 @@ func TestNaturalJoin(t *testing.T) {
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	_, iter, err := e.Query(sql.NewEmptyContext(), `SELECT * FROM t1 NATURAL JOIN t2`)
+	_, iter, err := e.Query(newCtx(), `SELECT * FROM t1 NATURAL JOIN t2`)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
@@ -542,7 +542,7 @@ func TestNaturalJoinEqual(t *testing.T) {
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	_, iter, err := e.Query(sql.NewEmptyContext(), `SELECT * FROM t1 NATURAL JOIN t2`)
+	_, iter, err := e.Query(newCtx(), `SELECT * FROM t1 NATURAL JOIN t2`)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
@@ -589,7 +589,7 @@ func TestNaturalJoinDisjoint(t *testing.T) {
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	_, iter, err := e.Query(sql.NewEmptyContext(), `SELECT * FROM t1 NATURAL JOIN t2`)
+	_, iter, err := e.Query(newCtx(), `SELECT * FROM t1 NATURAL JOIN t2`)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
@@ -661,7 +661,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T) {
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	_, iter, err := e.Query(sql.NewEmptyContext(), `SELECT * FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`)
+	_, iter, err := e.Query(newCtx(), `SELECT * FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
@@ -681,7 +681,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T) {
 func testQuery(t *testing.T, e *sqle.Engine, q string, expected []sql.Row) {
 	t.Run(q, func(t *testing.T) {
 		require := require.New(t)
-		session := sql.NewEmptyContext()
+		session := newCtx()
 
 		_, iter, err := e.Query(session, q)
 		require.NoError(err)
@@ -765,7 +765,7 @@ const expectedTree = `Offset(2)
 
 func TestPrintTree(t *testing.T) {
 	require := require.New(t)
-	node, err := parse.Parse(sql.NewEmptyContext(), `
+	node, err := parse.Parse(newCtx(), `
 		SELECT t.foo, bar.baz
 		FROM tbl t
 		INNER JOIN bar
@@ -782,7 +782,7 @@ func TestStarPanic197(t *testing.T) {
 	require := require.New(t)
 	e := newEngine(t)
 
-	ctx := sql.NewEmptyContext()
+	ctx := newCtx()
 	_, iter, err := e.Query(ctx, `SELECT * FROM mytable GROUP BY i, s`)
 	require.NoError(err)
 
@@ -802,13 +802,13 @@ func TestIndexes(t *testing.T) {
 	e.Catalog.RegisterIndexDriver(pilosa.NewIndexDriver(tmpDir))
 
 	_, _, err = e.Query(
-		sql.NewEmptyContext(),
+		newCtx(),
 		"CREATE INDEX myidx ON mytable USING pilosa (i) WITH (async = false)",
 	)
 	require.NoError(t, err)
 
 	_, _, err = e.Query(
-		sql.NewEmptyContext(),
+		newCtx(),
 		"CREATE INDEX myidx_multi ON mytable USING pilosa (i, s) WITH (async = false)",
 	)
 	require.NoError(t, err)
@@ -920,7 +920,7 @@ func TestCreateIndex(t *testing.T) {
 	require.NoError(os.MkdirAll(tmpDir, 0644))
 	e.Catalog.RegisterIndexDriver(pilosa.NewIndexDriver(tmpDir))
 
-	_, iter, err := e.Query(sql.NewEmptyContext(), "CREATE INDEX myidx ON mytable USING pilosa (i)")
+	_, iter, err := e.Query(newCtx(), "CREATE INDEX myidx ON mytable USING pilosa (i)")
 	require.NoError(err)
 	rows, err := sql.RowIterToRows(iter)
 	require.NoError(err)
@@ -961,7 +961,7 @@ func TestOrderByGroupBy(t *testing.T) {
 	e.AddDatabase(db)
 
 	_, iter, err := e.Query(
-		sql.NewEmptyContext(),
+		newCtx(),
 		"SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY 2",
 	)
 	require.NoError(err)
@@ -1038,18 +1038,18 @@ func TestReadOnly(t *testing.T) {
 	a.CurrentDatabase = "mydb"
 	e := sqle.New(catalog, a, nil)
 
-	_, _, err := e.Query(sql.NewEmptyContext(), `SELECT i FROM mytable`)
+	_, _, err := e.Query(newCtx(), `SELECT i FROM mytable`)
 	require.NoError(err)
 
-	_, _, err = e.Query(sql.NewEmptyContext(), `CREATE INDEX foo ON mytable USING pilosa (i, s)`)
+	_, _, err = e.Query(newCtx(), `CREATE INDEX foo ON mytable USING pilosa (i, s)`)
 	require.Error(err)
 	require.True(analyzer.ErrQueryNotAllowed.Is(err))
 
-	_, _, err = e.Query(sql.NewEmptyContext(), `DROP INDEX foo ON mytable`)
+	_, _, err = e.Query(newCtx(), `DROP INDEX foo ON mytable`)
 	require.Error(err)
 	require.True(analyzer.ErrQueryNotAllowed.Is(err))
 
-	_, _, err = e.Query(sql.NewEmptyContext(), `INSERT INTO foo (i, s) VALUES(42, 'yolo')`)
+	_, _, err = e.Query(newCtx(), `INSERT INTO foo (i, s) VALUES(42, 'yolo')`)
 	require.Error(err)
 	require.True(analyzer.ErrQueryNotAllowed.Is(err))
 }
@@ -1059,9 +1059,13 @@ func TestSessionVariables(t *testing.T) {
 
 	e := newEngine(t)
 
-	ctx := sql.NewEmptyContext()
+	session := sql.NewBaseSession()
+	ctx := sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(1))
+
 	_, _, err := e.Query(ctx, `set autocommit=1, sql_mode = concat(@@sql_mode,',STRICT_TRANS_TABLES')`)
 	require.NoError(err)
+
+	ctx = sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(2))
 
 	_, iter, err := e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode`)
 	require.NoError(err)
@@ -1076,6 +1080,13 @@ func insertRows(t *testing.T, table sql.Inserter, rows ...sql.Row) {
 	t.Helper()
 
 	for _, r := range rows {
-		require.NoError(t, table.Insert(sql.NewEmptyContext(), r))
+		require.NoError(t, table.Insert(newCtx(), r))
 	}
+}
+
+var pid uint64
+
+func newCtx() *sql.Context {
+	pid++
+	return sql.NewContext(context.Background(), sql.WithPid(pid))
 }

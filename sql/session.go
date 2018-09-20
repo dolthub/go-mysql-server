@@ -28,10 +28,13 @@ type Session interface {
 	Set(key string, typ Type, value interface{})
 	// Get session configuration.
 	Get(key string) (Type, interface{})
+	// ID returns the unique ID of the connection.
+	ID() uint32
 }
 
 // BaseSession is the basic session type.
 type BaseSession struct {
+	id     uint32
 	addr   string
 	user   string
 	mu     sync.RWMutex
@@ -63,6 +66,9 @@ func (s *BaseSession) Get(key string) (Type, interface{}) {
 	return v.typ, v.value
 }
 
+// ID implements the Session interface.
+func (s *BaseSession) ID() uint32 { return s.id }
+
 type typedValue struct {
 	typ   Type
 	value interface{}
@@ -79,8 +85,9 @@ func defaultSessionConfig() map[string]typedValue {
 }
 
 // NewSession creates a new session with data.
-func NewSession(address string, user string) Session {
+func NewSession(address string, user string, id uint32) Session {
 	return &BaseSession{
+		id:     id,
 		addr:   address,
 		user:   user,
 		config: defaultSessionConfig(),
@@ -96,6 +103,7 @@ func NewBaseSession() Session {
 type Context struct {
 	context.Context
 	Session
+	pid    uint64
 	tracer opentracing.Tracer
 }
 
@@ -116,6 +124,13 @@ func WithTracer(t opentracing.Tracer) ContextOption {
 	}
 }
 
+// WithPid adds the given pid to the context.
+func WithPid(pid uint64) ContextOption {
+	return func(ctx *Context) {
+		ctx.pid = pid
+	}
+}
+
 // NewContext creates a new query context. Options can be passed to configure
 // the context. If some aspect of the context is not configure, the default
 // value will be used.
@@ -124,7 +139,7 @@ func NewContext(
 	ctx context.Context,
 	opts ...ContextOption,
 ) *Context {
-	c := &Context{ctx, NewBaseSession(), opentracing.NoopTracer{}}
+	c := &Context{ctx, NewBaseSession(), 0, opentracing.NoopTracer{}}
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -133,6 +148,9 @@ func NewContext(
 
 // NewEmptyContext returns a default context with default values.
 func NewEmptyContext() *Context { return NewContext(context.TODO()) }
+
+// Pid returns the process id associated with this context.
+func (c *Context) Pid() uint64 { return c.pid }
 
 // Span creates a new tracing span with the given context.
 // It will return the span and a new context that should be passed to all
@@ -148,14 +166,12 @@ func (c *Context) Span(
 	span := c.tracer.StartSpan(opName, opts...)
 	ctx := opentracing.ContextWithSpan(c.Context, span)
 
-	return span, &Context{ctx, c.Session, c.tracer}
+	return span, &Context{ctx, c.Session, c.Pid(), c.tracer}
 }
 
-// WithQuery adds the query to the context.
-func (c *Context) WithQuery(query string) *Context {
-	nc := *c
-	nc.Context = context.WithValue(c.Context, QueryKey, query)
-	return &nc
+// WithContext returns a new context with the given underlying context.
+func (c *Context) WithContext(ctx context.Context) *Context {
+	return &Context{ctx, c.Session, c.Pid(), c.tracer}
 }
 
 // NewSpanIter creates a RowIter executed in the given span.
