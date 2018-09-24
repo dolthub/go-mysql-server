@@ -35,13 +35,13 @@ var OnceAfterDefault = []Rule{
 	{"assign_catalog", assignCatalog},
 	{"pushdown", pushdown},
 	{"erase_projection", eraseProjection},
-	{"parallelize", parallelize},
 }
 
 // OnceAfterAll contains the rules to be applied just once after all other
 // rules have been applied.
 var OnceAfterAll = []Rule{
 	{"track_process", trackProcess},
+	{"parallelize", parallelize},
 }
 
 var (
