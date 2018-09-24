@@ -223,14 +223,6 @@ var queries = []struct {
 		},
 	},
 	{
-		`DESCRIBE FORMAT=TREE SELECT * FROM mytable`,
-		[]sql.Row{
-			sql.NewRow("Table(mytable): Projected "),
-			sql.NewRow(" ├─ Column(i, INT64, nullable=false)"),
-			sql.NewRow(" └─ Column(s, TEXT, nullable=false)"),
-		},
-	},
-	{
 		`SELECT split(s," ") FROM mytable`,
 		[]sql.Row{
 			sql.NewRow([]interface{}{"first", "row"}),
@@ -329,6 +321,33 @@ func TestQueries(t *testing.T) {
 		for _, tt := range queries {
 			testQuery(t, ep, tt.query, tt.expected)
 		}
+	})
+}
+func TestDescribe(t *testing.T) {
+	e := newEngine(t)
+
+	ep := newEngineWithParallelism(t, 2)
+
+	query := `DESCRIBE FORMAT=TREE SELECT * FROM mytable`
+	expectedSeq := []sql.Row{
+		sql.NewRow("Table(mytable): Projected "),
+		sql.NewRow(" ├─ Column(i, INT64, nullable=false)"),
+		sql.NewRow(" └─ Column(s, TEXT, nullable=false)"),
+	}
+
+	expectedParallel := []sql.Row{
+		{"Exchange(parallelism=2)"},
+		{" └─ Table(mytable): Projected "},
+		{"     ├─ Column(i, INT64, nullable=false)"},
+		{"     └─ Column(s, TEXT, nullable=false)"},
+	}
+
+	t.Run("sequential", func(t *testing.T) {
+		testQuery(t, e, query, expectedSeq)
+	})
+
+	t.Run("parallel", func(t *testing.T) {
+		testQuery(t, ep, query, expectedParallel)
 	})
 }
 

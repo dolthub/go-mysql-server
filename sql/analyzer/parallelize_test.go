@@ -13,7 +13,7 @@ import (
 func TestParallelize(t *testing.T) {
 	require := require.New(t)
 	table := mem.NewTable("t", nil)
-	rule := getRule("parallelize")
+	rule := getRuleFrom(OnceAfterAll, "parallelize")
 	node := plan.NewProject(
 		nil,
 		plan.NewInnerJoin(
@@ -58,7 +58,7 @@ func TestParallelize(t *testing.T) {
 func TestParallelizeCreateIndex(t *testing.T) {
 	require := require.New(t)
 	table := mem.NewTable("t", nil)
-	rule := getRule("parallelize")
+	rule := getRuleFrom(OnceAfterAll, "parallelize")
 	node := plan.NewCreateIndex(
 		"",
 		plan.NewResolvedTable(table),
