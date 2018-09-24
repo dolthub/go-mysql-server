@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
-	pilosa "github.com/pilosa/go-pilosa"
+	"github.com/pilosa/pilosa"
 	"github.com/stretchr/testify/require"
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -92,21 +93,6 @@ func TestCompare(t *testing.T) {
 	}
 }
 
-func TestIndexes(t *testing.T) {
-	testCases := []sql.IndexLookup{
-		&indexLookup{id: "foo"},
-		&negateLookup{id: "foo"},
-		&ascendLookup{filteredLookup: &filteredLookup{id: "foo"}},
-		&descendLookup{filteredLookup: &filteredLookup{id: "foo"}},
-	}
-
-	for _, tt := range testCases {
-		t.Run(fmt.Sprintf("%T", tt), func(t *testing.T) {
-			require.Equal(t, []string{"foo"}, tt.Indexes())
-		})
-	}
-}
-
 func TestDecodeGob(t *testing.T) {
 	testCases := []interface{}{
 		"foo",
@@ -138,9 +124,13 @@ func TestDecodeGob(t *testing.T) {
 
 func TestMergeable(t *testing.T) {
 	require := require.New(t)
+	h := pilosa.NewHolder()
+	h.Path = os.TempDir()
 
-	i1 := pilosa.NewIndex("i1")
-	i2 := pilosa.NewIndex("i2")
+	i1, err := h.CreateIndexIfNotExists("i1", pilosa.IndexOptions{})
+	require.NoError(err)
+	i2, err := h.CreateIndexIfNotExists("i2", pilosa.IndexOptions{})
+	require.NoError(err)
 
 	testCases := []struct {
 		i1       sql.IndexLookup
@@ -148,58 +138,58 @@ func TestMergeable(t *testing.T) {
 		expected bool
 	}{
 		{
-			i1:       &indexLookup{index: i1},
-			i2:       &indexLookup{index: i1},
+			i1:       &indexLookup{index: newConcurrentPilosaIndex(i1)},
+			i2:       &indexLookup{index: newConcurrentPilosaIndex(i1)},
 			expected: true,
 		},
 		{
-			i1:       &indexLookup{index: i1},
-			i2:       &indexLookup{index: i2},
+			i1:       &indexLookup{index: newConcurrentPilosaIndex(i1)},
+			i2:       &indexLookup{index: newConcurrentPilosaIndex(i2)},
 			expected: false,
 		},
 		{
-			i1:       &indexLookup{index: i1},
-			i2:       &ascendLookup{filteredLookup: &filteredLookup{index: i1}},
+			i1:       &indexLookup{index: newConcurrentPilosaIndex(i1)},
+			i2:       &ascendLookup{filteredLookup: &filteredLookup{index: newConcurrentPilosaIndex(i1)}},
 			expected: true,
 		},
 		{
-			i1:       &descendLookup{filteredLookup: &filteredLookup{index: i1}},
-			i2:       &ascendLookup{filteredLookup: &filteredLookup{index: i1}},
+			i1:       &descendLookup{filteredLookup: &filteredLookup{index: newConcurrentPilosaIndex(i1)}},
+			i2:       &ascendLookup{filteredLookup: &filteredLookup{index: newConcurrentPilosaIndex(i1)}},
 			expected: true,
 		},
 		{
-			i1:       &descendLookup{filteredLookup: &filteredLookup{index: i1}},
-			i2:       &indexLookup{index: i2},
+			i1:       &descendLookup{filteredLookup: &filteredLookup{index: newConcurrentPilosaIndex(i1)}},
+			i2:       &indexLookup{index: newConcurrentPilosaIndex(i2)},
 			expected: false,
 		},
 		{
-			i1:       &descendLookup{filteredLookup: &filteredLookup{index: i1}},
-			i2:       &descendLookup{filteredLookup: &filteredLookup{index: i2}},
+			i1:       &descendLookup{filteredLookup: &filteredLookup{index: newConcurrentPilosaIndex(i1)}},
+			i2:       &descendLookup{filteredLookup: &filteredLookup{index: newConcurrentPilosaIndex(i2)}},
 			expected: false,
 		},
 		{
-			i1:       &negateLookup{index: i1},
-			i2:       &negateLookup{index: i1},
+			i1:       &negateLookup{index: newConcurrentPilosaIndex(i1)},
+			i2:       &negateLookup{index: newConcurrentPilosaIndex(i1)},
 			expected: true,
 		},
 		{
-			i1:       &negateLookup{index: i1},
-			i2:       &negateLookup{index: i2},
+			i1:       &negateLookup{index: newConcurrentPilosaIndex(i1)},
+			i2:       &negateLookup{index: newConcurrentPilosaIndex(i2)},
 			expected: false,
 		},
 		{
-			i1:       &negateLookup{index: i1},
-			i2:       &indexLookup{index: i1},
+			i1:       &negateLookup{index: newConcurrentPilosaIndex(i1)},
+			i2:       &indexLookup{index: newConcurrentPilosaIndex(i1)},
 			expected: true,
 		},
 		{
-			i1:       &negateLookup{index: i1},
-			i2:       &descendLookup{filteredLookup: &filteredLookup{index: i1}},
+			i1:       &negateLookup{index: newConcurrentPilosaIndex(i1)},
+			i2:       &descendLookup{filteredLookup: &filteredLookup{index: newConcurrentPilosaIndex(i1)}},
 			expected: true,
 		},
 		{
-			i1:       &negateLookup{index: i1},
-			i2:       &ascendLookup{filteredLookup: &filteredLookup{index: i1}},
+			i1:       &negateLookup{index: newConcurrentPilosaIndex(i1)},
+			i2:       &ascendLookup{filteredLookup: &filteredLookup{index: newConcurrentPilosaIndex(i1)}},
 			expected: true,
 		},
 	}
@@ -209,5 +199,20 @@ func TestMergeable(t *testing.T) {
 		require.True(ok)
 
 		require.Equal(tc.expected, m1.IsMergeable(tc.i2))
+	}
+}
+
+func TestIndexes(t *testing.T) {
+	testCases := []sql.IndexLookup{
+		&indexLookup{id: "foo"},
+		&negateLookup{id: "foo"},
+		&ascendLookup{filteredLookup: &filteredLookup{id: "foo"}},
+		&descendLookup{filteredLookup: &filteredLookup{id: "foo"}},
+	}
+
+	for _, tt := range testCases {
+		t.Run(fmt.Sprintf("%T", tt), func(t *testing.T) {
+			require.Equal(t, []string{"foo"}, tt.Indexes())
+		})
 	}
 }
