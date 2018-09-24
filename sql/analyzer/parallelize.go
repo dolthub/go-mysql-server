@@ -10,10 +10,12 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error)
 		return node, nil
 	}
 
-	// Do not try to parallelize index operations.
-	switch node.(type) {
-	case *plan.CreateIndex, *plan.DropIndex, *plan.Describe, *plan.DescribeQuery:
-		return node, nil
+	if proc, ok := node.(*plan.QueryProcess); ok {
+		// Do not try to parallelize index operations.
+		switch proc.Child.(type) {
+		case *plan.CreateIndex, *plan.DropIndex, *plan.Describe, *plan.DescribeQuery:
+			return node, nil
+		}
 	}
 
 	node, err := node.TransformUp(func(node sql.Node) (sql.Node, error) {
