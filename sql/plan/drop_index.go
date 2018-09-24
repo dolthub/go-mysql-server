@@ -12,6 +12,9 @@ var (
 	ErrTableNotValid = errors.NewKind("table is not valid")
 	// ErrTableNotNameable is returned when the table is not nameable.
 	ErrTableNotNameable = errors.NewKind("can't get name from table")
+	// ErrIndexNotAvailable is returned when trying to delete an index that is
+	// still not ready for usage.
+	ErrIndexNotAvailable = errors.NewKind("index %q is still not ready for usage and can't be deleted")
 )
 
 // DropIndex is a node to drop an index.
@@ -58,6 +61,10 @@ func (d *DropIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, ErrIndexNotFound.New(d.Name, n.Name(), db.Name())
 	}
 	d.Catalog.ReleaseIndex(index)
+
+	if !d.Catalog.CanUseIndex(index) {
+		return nil, ErrIndexNotAvailable.New(d.Name)
+	}
 
 	done, err := d.Catalog.DeleteIndex(db.Name(), d.Name, true)
 	if err != nil {

@@ -13,15 +13,20 @@ func TestShowProcessList(t *testing.T) {
 
 	n := NewShowProcessList()
 	p := sql.NewProcessList()
-	sess := sql.NewSession("0.0.0.0:1234", "foo")
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	sess := sql.NewSession("0.0.0.0:1234", "foo", 1)
+	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
 
-	pid := p.AddProcess(ctx, sql.QueryProcess, "SELECT foo")
-	p.AddProgressItem(pid, "a", 5)
-	p.AddProgressItem(pid, "b", 6)
+	ctx, err := p.AddProcess(ctx, sql.QueryProcess, "SELECT foo")
+	require.NoError(err)
 
-	pid = p.AddProcess(ctx, sql.CreateIndexProcess, "SELECT bar")
-	p.AddProgressItem(pid, "foo", 2)
+	p.AddProgressItem(ctx.Pid(), "a", 5)
+	p.AddProgressItem(ctx.Pid(), "b", 6)
+
+	ctx = sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess))
+	ctx, err = p.AddProcess(ctx, sql.CreateIndexProcess, "SELECT bar")
+	require.NoError(err)
+
+	p.AddProgressItem(ctx.Pid(), "foo", 2)
 
 	p.UpdateProgress(1, "a", 3)
 	p.UpdateProgress(1, "a", 1)

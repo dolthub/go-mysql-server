@@ -154,6 +154,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 
 	createIndex := func() {
 		c.createIndex(ctx, log, driver, index, iter, created, ready)
+		c.Catalog.ProcessList.Done(ctx.Pid())
 	}
 
 	log.WithField("async", c.Async).Info("starting to save the index")

@@ -5,6 +5,8 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
+// trackProcess will wrap the query in a process node and add progress items
+// to the already existing process.
 func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	if !n.Resolved() {
 		return n, nil
@@ -14,18 +16,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return n, nil
 	}
 
-	var query string
-	if x, ok := ctx.Value(sql.QueryKey).(string); ok {
-		query = x
-	}
-
-	var typ = sql.QueryProcess
-	if _, ok := n.(*plan.CreateIndex); ok {
-		typ = sql.CreateIndexProcess
-	}
-
 	processList := a.Catalog.ProcessList
-	pid := processList.AddProcess(ctx, typ, query)
 
 	var seen = make(map[string]struct{})
 	n, err := n.TransformUp(func(n sql.Node) (sql.Node, error) {
@@ -48,11 +39,11 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 				}
 				total = count
 			}
-			processList.AddProgressItem(pid, name, total)
+			processList.AddProgressItem(ctx.Pid(), name, total)
 
 			seen[name] = struct{}{}
 			t := plan.NewProcessTable(n.Table, func() {
-				processList.UpdateProgress(pid, name, 1)
+				processList.UpdateProgress(ctx.Pid(), name, 1)
 			})
 
 			return plan.NewResolvedTable(t), nil
@@ -64,5 +55,11 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return nil, err
 	}
 
-	return plan.NewQueryProcess(n, func() { processList.Done(pid) }), nil
+	// Don't wrap CreateIndex in a QueryProcess, as it is a CreateIndexProcess.
+	// CreateIndex will take care of marking the process as done on its own.
+	if _, ok := n.(*plan.CreateIndex); ok {
+		return n, nil
+	}
+
+	return plan.NewQueryProcess(n, func() { processList.Done(ctx.Pid()) }), nil
 }

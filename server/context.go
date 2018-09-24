@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	uuid "github.com/satori/go.uuid"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-vitess.v0/mysql"
 )
@@ -19,20 +18,19 @@ type DoneFunc func()
 
 // DefaultSessionBuilder is a SessionBuilder that returns a base session.
 func DefaultSessionBuilder(c *mysql.Conn, addr string) sql.Session {
-	return sql.NewSession(addr, c.User)
+	return sql.NewSession(addr, c.User, c.ConnectionID)
 }
 
 // SessionManager is in charge of creating new sessions for the given
 // connections and keep track of which sessions are in each connection, so
 // they can be cancelled is the connection is closed.
 type SessionManager struct {
-	addr            string
-	tracer          opentracing.Tracer
-	mu              *sync.Mutex
-	builder         SessionBuilder
-	sessions        map[uint32]sql.Session
-	sessionContexts map[uint32][]uuid.UUID
-	contexts        map[uuid.UUID]context.CancelFunc
+	addr     string
+	tracer   opentracing.Tracer
+	mu       *sync.Mutex
+	builder  SessionBuilder
+	sessions map[uint32]sql.Session
+	pid      uint64
 }
 
 // NewSessionManager creates a SessionManager with the given SessionBuilder.
@@ -42,14 +40,19 @@ func NewSessionManager(
 	addr string,
 ) *SessionManager {
 	return &SessionManager{
-		addr:            addr,
-		tracer:          tracer,
-		mu:              new(sync.Mutex),
-		builder:         builder,
-		sessions:        make(map[uint32]sql.Session),
-		sessionContexts: make(map[uint32][]uuid.UUID),
-		contexts:        make(map[uuid.UUID]context.CancelFunc),
+		addr:     addr,
+		tracer:   tracer,
+		mu:       new(sync.Mutex),
+		builder:  builder,
+		sessions: make(map[uint32]sql.Session),
 	}
+}
+
+func (s *SessionManager) nextPid() uint64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.pid++
+	return s.pid
 }
 
 // NewSession creates a Session for the given connection.
@@ -60,32 +63,18 @@ func (s *SessionManager) NewSession(conn *mysql.Conn) {
 }
 
 // NewContext creates a new context for the session at the given conn.
-func (s *SessionManager) NewContext(conn *mysql.Conn) (*sql.Context, DoneFunc, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+func (s *SessionManager) NewContext(conn *mysql.Conn) *sql.Context {
 	s.mu.Lock()
 	sess := s.sessions[conn.ConnectionID]
 	s.mu.Unlock()
-	context := sql.NewContext(ctx, sql.WithSession(sess), sql.WithTracer(s.tracer))
-	id := uuid.NewV4()
+	context := sql.NewContext(
+		context.Background(),
+		sql.WithSession(sess),
+		sql.WithTracer(s.tracer),
+		sql.WithPid(s.nextPid()),
+	)
 
-	s.mu.Lock()
-	s.sessionContexts[conn.ConnectionID] = append(s.sessionContexts[conn.ConnectionID], id)
-	s.contexts[id] = cancel
-	s.mu.Unlock()
-
-	return context, func() {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-
-		delete(s.contexts, id)
-		ids := s.sessionContexts[conn.ConnectionID]
-		for i, sessID := range ids {
-			if sessID == id {
-				s.sessionContexts[conn.ConnectionID] = append(ids[:i], ids[i+1:]...)
-				break
-			}
-		}
-	}, nil
+	return context
 }
 
 // CloseConn closes the connection in the session manager and all its
@@ -93,10 +82,5 @@ func (s *SessionManager) NewContext(conn *mysql.Conn) (*sql.Context, DoneFunc, e
 func (s *SessionManager) CloseConn(conn *mysql.Conn) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	for _, id := range s.sessionContexts[conn.ConnectionID] {
-		s.contexts[id]()
-		delete(s.contexts, id)
-	}
-	delete(s.sessionContexts, conn.ConnectionID)
+	delete(s.sessions, conn.ConnectionID)
 }

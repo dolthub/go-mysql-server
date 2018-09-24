@@ -70,14 +70,9 @@ func (h *Handler) ComQuery(
 	query string,
 	callback func(*sqltypes.Result) error,
 ) error {
-	ctx, done, err := h.sm.NewContext(c)
-	if err != nil {
-		return err
-	}
+	ctx := h.sm.NewContext(c)
 
-	defer done()
-
-	handled, err := h.handleKill(query)
+	handled, err := h.handleKill(c, query)
 	if err != nil {
 		return err
 	}
@@ -122,6 +117,10 @@ func (h *Handler) ComQuery(
 		r.RowsAffected++
 	}
 
+	if err := rows.Close(); err != nil {
+		return err
+	}
+
 	// Even if r.RowsAffected = 0, the callback must be
 	// called to update the state in the go-vitess' listener
 	// and avoid returning errors when the query doesn't
@@ -133,40 +132,40 @@ func (h *Handler) ComQuery(
 	return callback(r)
 }
 
-func (h *Handler) handleKill(query string) (bool, error) {
+func (h *Handler) handleKill(conn *mysql.Conn, query string) (bool, error) {
 	q := strings.ToLower(query)
 	s := regKillCmd.FindStringSubmatch(q)
 	if s == nil {
 		return false, nil
 	}
 
-	id, err := strconv.Atoi(s[2])
+	id, err := strconv.ParseUint(s[2], 10, 64)
 	if err != nil {
 		return false, err
 	}
-
-	logrus.Infof("handleKill: id %v", id)
-
-	h.mu.Lock()
-	c, ok := h.c[uint32(id)]
-	h.mu.Unlock()
-	if !ok {
-		return false, errConnectionNotFound.New(id)
-	}
-
-	h.sm.CloseConn(c)
 
 	// KILL CONNECTION and KILL should close the connection. KILL QUERY only
 	// cancels the query.
 	//
 	// https://dev.mysql.com/doc/refman/5.7/en/kill.html
 
-	if s[1] != "query" {
-		c.Close()
-
+	if s[1] == "query" {
+		logrus.Infof("kill query: id %v", id)
+		h.e.Catalog.Kill(id)
+	} else {
+		logrus.Infof("kill connection: id %v, pid: %v", conn.ConnectionID, id)
 		h.mu.Lock()
-		delete(h.c, uint32(id))
+		c, ok := h.c[conn.ConnectionID]
+		delete(h.c, conn.ConnectionID)
 		h.mu.Unlock()
+
+		if !ok {
+			return false, errConnectionNotFound.New(conn.ConnectionID)
+		}
+
+		h.e.Catalog.KillConnection(id)
+		h.sm.CloseConn(c)
+		c.Close()
 	}
 
 	return true, nil

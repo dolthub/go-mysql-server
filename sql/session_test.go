@@ -11,7 +11,7 @@ import (
 func TestSessionConfig(t *testing.T) {
 	require := require.New(t)
 
-	sess := NewSession("foo", "bar")
+	sess := NewSession("foo", "bar", 1)
 
 	typ, v := sess.Get("foo")
 	require.Equal(Null, typ)
