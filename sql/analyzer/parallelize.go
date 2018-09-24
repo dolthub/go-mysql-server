@@ -5,17 +5,24 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
+func shouldParallelize(node sql.Node) bool {
+	// Do not try to parallelize index operations.
+	switch node.(type) {
+	case *plan.CreateIndex, *plan.DropIndex, *plan.Describe:
+		return false
+	default:
+		return true
+	}
+}
+
 func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
 	if a.Parallelism <= 1 || !node.Resolved() {
 		return node, nil
 	}
 
-	if proc, ok := node.(*plan.QueryProcess); ok {
-		// Do not try to parallelize index operations.
-		switch proc.Child.(type) {
-		case *plan.CreateIndex, *plan.DropIndex, *plan.Describe, *plan.DescribeQuery:
-			return node, nil
-		}
+	proc, ok := node.(*plan.QueryProcess)
+	if (ok && !shouldParallelize(proc.Child)) || !shouldParallelize(node) {
+		return node, nil
 	}
 
 	node, err := node.TransformUp(func(node sql.Node) (sql.Node, error) {
