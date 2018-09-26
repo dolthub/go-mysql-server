@@ -45,22 +45,44 @@ func TestQualifyColumns(t *testing.T) {
 
 	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
 	table2 := mem.NewTable("mytable2", sql.Schema{{Name: "i", Type: sql.Int32}})
+	sessionTable := mem.NewTable("@@session", sql.Schema{{Name: "autocommit", Type: sql.Int64}})
 
 	node := plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("@@autocommit"),
+		},
+		plan.NewResolvedTable(sessionTable),
+	)
+	col, ok := node.Projections[0].(*expression.UnresolvedColumn)
+	require.True(ok)
+	require.Truef(isGlobalOrSessionColumn(col), "@@autocommit is not session column")
+
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedQualifiedColumn("", "@@autocommit"),
+		},
+		plan.NewResolvedTable(sessionTable),
+	)
+
+	result, err := f.Apply(sql.NewEmptyContext(), nil, node)
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	node = plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("i"),
 		},
 		plan.NewResolvedTable(table),
 	)
 
-	expected := plan.NewProject(
+	expected = plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedQualifiedColumn("mytable", "i"),
 		},
 		plan.NewResolvedTable(table),
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), nil, node)
+	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -204,11 +226,13 @@ func TestResolveColumnsSession(t *testing.T) {
 
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
 	ctx.Set("foo_bar", sql.Int64, int64(42))
+	ctx.Set("autocommit", sql.Boolean, true)
 
 	node := plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("@@foo_bar"),
 			expression.NewUnresolvedColumn("@@bar_baz"),
+			expression.NewUnresolvedColumn("@@autocommit"),
 		},
 		plan.NewResolvedTable(dualTable),
 	)
@@ -218,8 +242,9 @@ func TestResolveColumnsSession(t *testing.T) {
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewGetSessionField("@@foo_bar", sql.Int64, int64(42)),
-			expression.NewGetSessionField("@@bar_baz", sql.Null, nil),
+			expression.NewGetSessionField("foo_bar", sql.Int64, int64(42)),
+			expression.NewGetSessionField("bar_baz", sql.Null, nil),
+			expression.NewGetSessionField("autocommit", sql.Boolean, true),
 		},
 		plan.NewResolvedTable(dualTable),
 	)

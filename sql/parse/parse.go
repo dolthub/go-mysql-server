@@ -6,12 +6,14 @@ import (
 	"strconv"
 	"strings"
 
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
+
 	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
-	"gopkg.in/src-d/go-vitess.v0/vt/sqlparser"
+	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
 )
 
 var (
@@ -109,15 +111,40 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 			return nil, err
 		}
 
-		fmt.Println(strings.TrimSpace(strings.ToLower(e.Name.Qualifier.Name.String())))
-		switch strings.TrimSpace(strings.ToLower(e.Name.Qualifier.Name.String())) {
-		case "@@session", "": // do nothing
-		default:
-			return nil, ErrUnsupportedFeature.New("qualifiers in set variable names other than @@session")
+		name := strings.TrimSpace(e.Name.Lowered())
+		if expr, err = expr.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+			if !e.Resolved() || e.Type() != sql.Text {
+				return e, nil
+			}
+
+			txt, err := e.Eval(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
+
+			val, ok := txt.(string)
+			if !ok {
+				return nil, ErrUnsupportedFeature.New("invalid qualifiers in set variable names")
+			}
+
+			switch strings.ToLower(val) {
+			case "on":
+				return expression.NewLiteral(int64(1), sql.Int64), nil
+			case "true":
+				return expression.NewLiteral(true, sql.Boolean), nil
+			case "off":
+				return expression.NewLiteral(int64(0), sql.Int64), nil
+			case "false":
+				return expression.NewLiteral(false, sql.Boolean), nil
+			}
+
+			return e, nil
+		}); err != nil {
+			return nil, err
 		}
 
 		variables[i] = plan.SetVariable{
-			Name:  e.Name.Name.Lowered(),
+			Name:  name,
 			Value: expr,
 		}
 	}
@@ -525,6 +552,20 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 	switch v := e.(type) {
 	default:
 		return nil, ErrUnsupportedSyntax.New(e)
+	case *sqlparser.SubstrExpr:
+		name, err := exprToExpression(v.Name)
+		if err != nil {
+			return nil, err
+		}
+		from, err := exprToExpression(v.From)
+		if err != nil {
+			return nil, err
+		}
+		to, err := exprToExpression(v.To)
+		if err != nil {
+			return nil, err
+		}
+		return function.NewSubstring(name, from, to)
 	case *sqlparser.ComparisonExpr:
 		return comparisonExprToExpression(v)
 	case *sqlparser.IsExpr:

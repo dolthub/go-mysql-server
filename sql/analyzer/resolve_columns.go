@@ -9,6 +9,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
+	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
 )
 
 // deferredColumn is a wrapper on UnresolvedColumn used only to defer the
@@ -190,17 +191,25 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				return e, nil
 			}
 
+			const (
+				sessionTable  = "@@" + sqlparser.SessionStr
+				sessionPrefix = sqlparser.SessionStr + "."
+			)
 			columns, ok := colMap[uc.Name()]
 			if !ok {
 				switch uc := uc.(type) {
 				case *expression.UnresolvedColumn:
 					if isGlobalOrSessionColumn(uc) {
-						if uc.Table() != "" && strings.ToLower(uc.Table()) != "@@session" {
+						if uc.Table() != "" && strings.ToLower(uc.Table()) != sessionTable {
 							return nil, errGlobalVariablesNotSupported.New(uc)
 						}
 
-						typ, value := ctx.Get(strings.TrimLeft(uc.Name(), "@"))
-						return expression.NewGetSessionField(uc.Name(), typ, value), nil
+						name := strings.TrimLeft(uc.Name(), "@")
+						if strings.HasPrefix(name, sessionPrefix) {
+							name = name[len(sessionPrefix):]
+						}
+						typ, value := ctx.Get(name)
+						return expression.NewGetSessionField(name, typ, value), nil
 					}
 
 					a.Log("evaluation of column %q was deferred", uc.Name())

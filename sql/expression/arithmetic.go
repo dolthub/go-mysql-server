@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	errors "gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-vitess.v0/vt/sqlparser"
+	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )

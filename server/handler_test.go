@@ -9,8 +9,8 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-vitess.v0/mysql"
-	"gopkg.in/src-d/go-vitess.v0/sqltypes"
+	"gopkg.in/src-d/go-vitess.v1/mysql"
+	"gopkg.in/src-d/go-vitess.v1/sqltypes"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/require"
