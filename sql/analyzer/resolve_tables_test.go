@@ -29,6 +29,11 @@ func TestResolveTables(t *testing.T) {
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table), analyzed)
 
+	notAnalyzed = plan.NewUnresolvedTable("MyTable")
+	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
+	require.NoError(err)
+	require.Equal(plan.NewResolvedTable(table), analyzed)
+
 	notAnalyzed = plan.NewUnresolvedTable("nonexistant")
 	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.Error(err)

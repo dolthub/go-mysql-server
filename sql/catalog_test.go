@@ -8,7 +8,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
-func TestCatalog_Database(t *testing.T) {
+func TestCatalogDatabase(t *testing.T) {
 	require := require.New(t)
 
 	c := sql.NewCatalog()
@@ -24,7 +24,7 @@ func TestCatalog_Database(t *testing.T) {
 	require.Equal(mydb, db)
 }
 
-func TestCatalog_Table(t *testing.T) {
+func TestCatalogTable(t *testing.T) {
 	require := require.New(t)
 
 	c := sql.NewCatalog()
@@ -44,6 +44,10 @@ func TestCatalog_Table(t *testing.T) {
 	db.AddTable("bar", mytable)
 
 	table, err = c.Table("foo", "bar")
+	require.NoError(err)
+	require.Equal(mytable, table)
+
+	table, err = c.Table("foo", "BAR")
 	require.NoError(err)
 	require.Equal(mytable, table)
 }
