@@ -69,7 +69,7 @@ Here you can see an example using the in-memory database implementation:
 ...
 
 func main() {
-    driver := sqle.New()
+    driver := sqle.NewDefault()
     driver.AddDatabase(createTestDatabase())
 
     auth := mysql.NewAuthServerStatic()
@@ -127,7 +127,7 @@ func createTestDatabase() *mem.Database {
 
 Then, you can connect to the server with any MySQL client:
 ```bash
-> mysql --host=127.0.0.1 --port=3306 -u user -ppass db -e "SELECT * FROM mytable"
+> mysql --host=127.0.0.1 --port=3306 -u user -ppass test -e "SELECT * FROM mytable"
 +----------+-------------------+-------------------------------+---------------------+
 | name     | email             | phone_numbers                 | created_at          |
 +----------+-------------------+-------------------------------+---------------------+
