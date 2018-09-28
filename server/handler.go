@@ -12,9 +12,9 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 
 	"github.com/sirupsen/logrus"
-	"gopkg.in/src-d/go-vitess.v0/mysql"
-	"gopkg.in/src-d/go-vitess.v0/sqltypes"
-	"gopkg.in/src-d/go-vitess.v0/vt/proto/query"
+	"gopkg.in/src-d/go-vitess.v1/mysql"
+	"gopkg.in/src-d/go-vitess.v1/sqltypes"
+	"gopkg.in/src-d/go-vitess.v1/vt/proto/query"
 )
 
 var regKillCmd = regexp.MustCompile(`^kill (?:(query|connection) )?(\d+)$`)

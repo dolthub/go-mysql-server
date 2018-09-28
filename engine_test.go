@@ -1095,6 +1095,28 @@ func TestSessionVariables(t *testing.T) {
 	require.Equal([]sql.Row{{int64(1), ",STRICT_TRANS_TABLES"}}, rows)
 }
 
+func TestSessionVariablesONOFF(t *testing.T) {
+	require := require.New(t)
+
+	e := newEngine(t)
+
+	session := sql.NewBaseSession()
+	ctx := sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(1))
+
+	_, _, err := e.Query(ctx, `set autocommit=ON, sql_mode = OFF, autoformat="true"`)
+	require.NoError(err)
+
+	ctx = sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(2))
+
+	_, iter, err := e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode, @@autoformat`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Equal([]sql.Row{{int64(1), int64(0), true}}, rows)
+}
+
 func insertRows(t *testing.T, table sql.Inserter, rows ...sql.Row) {
 	t.Helper()
 

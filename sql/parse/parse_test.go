@@ -654,12 +654,68 @@ var fixtures = map[string]sql.Node{
 	),
 	`SET @@session.autocommit=1, foo="bar"`: plan.NewSet(
 		plan.SetVariable{
-			Name:  "autocommit",
+			Name:  "@@session.autocommit",
 			Value: expression.NewLiteral(int64(1), sql.Int64),
 		},
 		plan.SetVariable{
 			Name:  "foo",
 			Value: expression.NewLiteral("bar", sql.Text),
+		},
+	),
+	`SET autocommit=ON, on="1"`: plan.NewSet(
+		plan.SetVariable{
+			Name:  "autocommit",
+			Value: expression.NewLiteral(int64(1), sql.Int64),
+		},
+		plan.SetVariable{
+			Name:  "on",
+			Value: expression.NewLiteral("1", sql.Text),
+		},
+	),
+	`SET @@session.autocommit=OFF, off="0"`: plan.NewSet(
+		plan.SetVariable{
+			Name:  "@@session.autocommit",
+			Value: expression.NewLiteral(int64(0), sql.Int64),
+		},
+		plan.SetVariable{
+			Name:  "off",
+			Value: expression.NewLiteral("0", sql.Text),
+		},
+	),
+	`SET @@session.autocommit=ON`: plan.NewSet(
+		plan.SetVariable{
+			Name:  "@@session.autocommit",
+			Value: expression.NewLiteral(int64(1), sql.Int64),
+		},
+	),
+	`SET autocommit=off`: plan.NewSet(
+		plan.SetVariable{
+			Name:  "autocommit",
+			Value: expression.NewLiteral(int64(0), sql.Int64),
+		},
+	),
+	`SET autocommit=true`: plan.NewSet(
+		plan.SetVariable{
+			Name:  "autocommit",
+			Value: expression.NewLiteral(true, sql.Boolean),
+		},
+	),
+	`SET autocommit="true"`: plan.NewSet(
+		plan.SetVariable{
+			Name:  "autocommit",
+			Value: expression.NewLiteral(true, sql.Boolean),
+		},
+	),
+	`SET autocommit=false`: plan.NewSet(
+		plan.SetVariable{
+			Name:  "autocommit",
+			Value: expression.NewLiteral(false, sql.Boolean),
+		},
+	),
+	`SET autocommit="false"`: plan.NewSet(
+		plan.SetVariable{
+			Name:  "autocommit",
+			Value: expression.NewLiteral(false, sql.Boolean),
 		},
 	),
 }

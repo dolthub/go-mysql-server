@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
 )
 
 // Set configuration variables. Right now, only session variables are supported.
@@ -77,13 +78,18 @@ func (s *Set) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Set")
 	defer span.Finish()
 
+	const sessionPrefix = sqlparser.SessionStr + "."
 	for _, v := range s.Variables {
 		value, err := v.Value.Eval(ctx, nil)
 		if err != nil {
 			return nil, err
 		}
 
-		ctx.Set(strings.TrimLeft(v.Name, "@"), v.Value.Type(), value)
+		name := strings.TrimLeft(v.Name, "@")
+		if strings.HasPrefix(name, sessionPrefix) {
+			name = name[len(sessionPrefix):]
+		}
+		ctx.Set(name, v.Value.Type(), value)
 	}
 
 	return sql.RowsToRowIter(), nil

@@ -10,7 +10,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-vitess.v0/vt/sqlparser"
+	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
 )
 
 func parseShowIndex(s string) (sql.Node, error) {

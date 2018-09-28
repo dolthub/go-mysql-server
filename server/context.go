@@ -6,7 +6,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-vitess.v0/mysql"
+	"gopkg.in/src-d/go-vitess.v1/mysql"
 )
 
 // SessionBuilder creates sessions given a MySQL connection and a server address.

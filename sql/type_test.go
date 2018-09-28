@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"gopkg.in/src-d/go-vitess.v0/sqltypes"
+	"gopkg.in/src-d/go-vitess.v1/sqltypes"
 )
 
 func TestText(t *testing.T) {
