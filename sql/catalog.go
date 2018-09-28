@@ -1,6 +1,8 @@
 package sql
 
 import (
+	"strings"
+
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -51,9 +53,20 @@ func (d Databases) Table(dbName string, tableName string) (Table, error) {
 		return nil, err
 	}
 
+	tableName = strings.ToLower(tableName)
+
 	tables := db.Tables()
-	table, found := tables[tableName]
-	if !found {
+	// Try to get the table by key, but if the name is not the same,
+	// then use the slow path and iterate over all tables comparing
+	// the name.
+	table, ok := tables[tableName]
+	if !ok {
+		for name, table := range tables {
+			if strings.ToLower(name) == tableName {
+				return table, nil
+			}
+		}
+
 		return nil, ErrTableNotFound.New(tableName)
 	}
 
