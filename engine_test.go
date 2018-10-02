@@ -1117,6 +1117,32 @@ func TestSessionVariablesONOFF(t *testing.T) {
 	require.Equal([]sql.Row{{int64(1), int64(0), true}}, rows)
 }
 
+func TestNestedAliases(t *testing.T) {
+	require := require.New(t)
+
+	table := mem.NewPartitionedTable("mytable", sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+	}, testNumPartitions)
+
+	db := mem.NewDatabase("mydb")
+	db.AddTable("mytable", table)
+
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
+
+	a := analyzer.NewBuilder(catalog).ReadOnly().Build()
+	a.CurrentDatabase = "mydb"
+	e := sqle.New(catalog, a, nil)
+
+	_, _, err := e.Query(newCtx(), `SELECT
+									SUBSTRING(s, 1, 10) AS sub_s,
+									SUBSTRING(sub_s, 2, 3) as sub_sub_s
+									FROM mytable`)
+	require.Error(err)
+	require.True(analyzer.ErrMisusedAlias.Is(err))
+}
+
 func insertRows(t *testing.T, table sql.Inserter, rows ...sql.Row) {
 	t.Helper()
 

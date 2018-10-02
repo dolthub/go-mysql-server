@@ -19,6 +19,11 @@ type deferredColumn struct {
 	*expression.UnresolvedColumn
 }
 
+// IsNullable implements the Expression interface.
+func (deferredColumn) IsNullable() bool {
+	return true
+}
+
 func (e deferredColumn) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
 	return fn(e)
 }
@@ -157,8 +162,10 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			}
 		}
 
-		var aliasMap = map[string]struct{}{}
-		var exists = struct{}{}
+		var (
+			aliasMap = make(map[string]struct{})
+			exists   = struct{}{}
+		)
 		if project, ok := n.(*plan.Project); ok {
 			for _, e := range project.Projections {
 				if alias, ok := e.(*expression.Alias); ok {
@@ -217,12 +224,14 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 
 					a.Log("evaluation of column %q was deferred", uc.Name())
 					return &deferredColumn{uc}, nil
+
 				default:
 					if uc.Table() != "" {
 						return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
 					}
 
 					if _, ok := aliasMap[uc.Name()]; ok {
+						// no nested aliases
 						return nil, ErrMisusedAlias.New(uc.Name())
 					}
 
