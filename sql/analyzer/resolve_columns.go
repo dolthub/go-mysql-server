@@ -194,6 +194,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			const (
 				sessionTable  = "@@" + sqlparser.SessionStr
 				sessionPrefix = sqlparser.SessionStr + "."
+				globalPrefix  = sqlparser.GlobalStr + "."
 			)
 			columns, ok := colMap[uc.Name()]
 			if !ok {
@@ -207,6 +208,8 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 						name := strings.TrimLeft(uc.Name(), "@")
 						if strings.HasPrefix(name, sessionPrefix) {
 							name = name[len(sessionPrefix):]
+						} else if strings.HasPrefix(name, globalPrefix) {
+							name = name[len(globalPrefix):]
 						}
 						typ, value := ctx.Get(name)
 						return expression.NewGetSessionField(name, typ, value), nil

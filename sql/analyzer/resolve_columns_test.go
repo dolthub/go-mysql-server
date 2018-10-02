@@ -46,25 +46,47 @@ func TestQualifyColumns(t *testing.T) {
 	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
 	table2 := mem.NewTable("mytable2", sql.Schema{{Name: "i", Type: sql.Int32}})
 	sessionTable := mem.NewTable("@@session", sql.Schema{{Name: "autocommit", Type: sql.Int64}})
+	globalTable := mem.NewTable("@@global", sql.Schema{{Name: "max_allowed_packet", Type: sql.Int64}})
 
 	node := plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("@@max_allowed_packet"),
+		},
+		plan.NewResolvedTable(globalTable),
+	)
+	col, ok := node.Projections[0].(*expression.UnresolvedColumn)
+	require.True(ok)
+	require.Truef(isGlobalOrSessionColumn(col), "@@max_allowed_packet is not global or session column")
+
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedQualifiedColumn("", "@@max_allowed_packet"),
+		},
+		plan.NewResolvedTable(globalTable),
+	)
+
+	result, err := f.Apply(sql.NewEmptyContext(), nil, node)
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	node = plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("@@autocommit"),
 		},
 		plan.NewResolvedTable(sessionTable),
 	)
-	col, ok := node.Projections[0].(*expression.UnresolvedColumn)
+	col, ok = node.Projections[0].(*expression.UnresolvedColumn)
 	require.True(ok)
-	require.Truef(isGlobalOrSessionColumn(col), "@@autocommit is not session column")
+	require.Truef(isGlobalOrSessionColumn(col), "@@autocommit is not global or session column")
 
-	expected := plan.NewProject(
+	expected = plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedQualifiedColumn("", "@@autocommit"),
 		},
 		plan.NewResolvedTable(sessionTable),
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), nil, node)
+	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
 	require.NoError(err)
 	require.Equal(expected, result)
 

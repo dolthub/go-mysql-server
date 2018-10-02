@@ -78,7 +78,10 @@ func (s *Set) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Set")
 	defer span.Finish()
 
-	const sessionPrefix = sqlparser.SessionStr + "."
+	const (
+		sessionPrefix = sqlparser.SessionStr + "."
+		globalPrefix  = sqlparser.GlobalStr + "."
+	)
 	for _, v := range s.Variables {
 		value, err := v.Value.Eval(ctx, nil)
 		if err != nil {
@@ -88,7 +91,10 @@ func (s *Set) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		name := strings.TrimLeft(v.Name, "@")
 		if strings.HasPrefix(name, sessionPrefix) {
 			name = name[len(sessionPrefix):]
+		} else if strings.HasPrefix(name, globalPrefix) {
+			name = name[len(globalPrefix):]
 		}
+
 		ctx.Set(name, v.Value.Type(), value)
 	}
 
