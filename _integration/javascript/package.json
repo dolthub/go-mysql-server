@@ -1,0 +1,15 @@
+{
+  "name": "go-mysql-server-js",
+  "version": "1.0.0",
+  "description": "go-mysql-server JS compat test",
+  "main": "index.js",
+  "scripts": {
+    "test": "./node_modules/.bin/ava"
+  },
+  "dependencies": {
+    "mysql": "github:mysqljs/mysql"
+  },
+  "devDependencies": {
+    "ava": "1.0.0-beta.8"
+  }
+}
