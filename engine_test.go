@@ -1117,6 +1117,16 @@ func TestSessionVariablesONOFF(t *testing.T) {
 	require.Equal([]sql.Row{{int64(1), int64(0), true}}, rows)
 }
 
+func TestNestedAliases(t *testing.T) {
+	require := require.New(t)
+
+	_, _, err := newEngine(t).Query(newCtx(), `
+	SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(sub_s, 2, 3) as sub_sub_s
+	FROM mytable`)
+	require.Error(err)
+	require.True(analyzer.ErrMisusedAlias.Is(err))
+}
+
 func insertRows(t *testing.T, table sql.Inserter, rows ...sql.Row) {
 	t.Helper()
 
