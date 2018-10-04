@@ -37,4 +37,5 @@ var Defaults = sql.Functions{
 	"ceiling":      sql.Function1(NewCeil),
 	"ceil":         sql.Function1(NewCeil),
 	"floor":        sql.Function1(NewFloor),
+	"round":        sql.Function2(NewRound),
 }

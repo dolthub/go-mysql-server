@@ -43,7 +43,7 @@ func (c *Ceil) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
 	if err != nil {
 		return nil, err
 	}
-	return fn(NewArrayLength(child))
+	return fn(NewCeil(child))
 }
 
 // Eval implements the Expression interface.
@@ -111,7 +111,7 @@ func (f *Floor) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
 	if err != nil {
 		return nil, err
 	}
-	return fn(NewArrayLength(child))
+	return fn(NewFloor(child))
 }
 
 // Eval implements the Expression interface.
@@ -142,4 +142,117 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	default:
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(num))
 	}
+}
+
+type Round struct {
+	expression.BinaryExpression
+}
+
+func NewRound(x, d sql.Expression) sql.Expression {
+	return &Round{expression.BinaryExpression{Left: x, Right: d}}
+}
+
+// Children implements the Expression interface.
+func (r *Round) Children() []sql.Expression {
+	if r.Right == nil {
+		return []sql.Expression{r.Left}
+	}
+
+	return r.Children()
+}
+
+// Eval implements the Expression interface.
+func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if !sql.IsNumber(r.Left.Type()) {
+		return nil, sql.ErrInvalidType.New(r.Left.Type().Type().String())
+	}
+
+	xVal, err := r.Left.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if xVal == nil {
+		return nil, nil
+	}
+
+	dVal := float64(0)
+
+	if r.Right != nil {
+		dTemp, err := r.Right.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+
+		if !sql.IsInteger(r.Right.Type()) {
+			return nil, sql.ErrInvalidType.New(r.Right.Type().Type().String())
+		}
+
+		if dTemp != nil {
+			switch dNum := dTemp.(type) {
+			case int64:
+				dVal = float64(dNum)
+			case int32:
+				dVal = float64(dNum)
+			case int:
+				dVal = float64(dNum)
+			default:
+				return nil, sql.ErrInvalidType.New(r.Right.Type().Type().String())
+			}
+		}
+	}
+
+	switch xNum := xVal.(type) {
+	case float64:
+		return math.Round(xNum*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal), nil
+	case float32:
+		return float32(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	case int64:
+		return int64(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	case int32:
+		return int32(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	case int:
+		return int(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	default:
+		return nil, sql.ErrInvalidType.New(r.Right.Type().Type().String())
+	}
+}
+
+// IsNullable implements the Expression interface.
+func (r *Round) IsNullable() bool {
+	return r.Left.IsNullable()
+}
+
+func (r *Round) String() string {
+	if r.Right == nil {
+		return fmt.Sprintf("ROUND(%s, 0)", r.Right.String())
+	}
+
+	return fmt.Sprintf("ROUND(%s, %s)", r.Right.String(), r.Left.String())
+}
+
+// Resolved implements the Expression interface.
+func (r *Round) Resolved() bool {
+	return r.Left.Resolved() && (r.Right == nil || r.Right.Resolved())
+}
+
+// Type implements the Expression interface.
+func (r *Round) Type() sql.Type { return r.Left.Type() }
+
+// TransformUp implements the Expression interface.
+func (r *Round) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
+	l, err := r.Left.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.Right != nil {
+		ri, err := r.Right.TransformUp(f)
+		if err != nil {
+			return nil, err
+		}
+		return f(NewRound(l, ri))
+	}
+
+	return f(NewRound(l, nil))
 }
