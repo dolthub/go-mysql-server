@@ -142,6 +142,7 @@ type Type interface {
 	Compare(interface{}, interface{}) (int, error)
 	// SQL returns the sqltypes.Value for the given value.
 	SQL(interface{}) sqltypes.Value
+	fmt.Stringer
 }
 
 var (
@@ -223,6 +224,8 @@ func MysqlTypeToType(sql query.Type) (Type, error) {
 
 type nullT struct{}
 
+func (t nullT) String() string { return "NULL" }
+
 // Type implements Type interface.
 func (t nullT) Type() query.Type {
 	return sqltypes.Null
@@ -292,6 +295,8 @@ func (t numberT) Compare(a interface{}, b interface{}) (int, error) {
 	return compareSigned(a, b)
 }
 
+func (t numberT) String() string { return t.t.String() }
+
 func compareSigned(a interface{}, b interface{}) (int, error) {
 	ca, err := cast.ToInt64E(a)
 	if err != nil {
@@ -335,6 +340,8 @@ func compareUnsigned(a interface{}, b interface{}) (int, error) {
 }
 
 type timestampT struct{}
+
+func (t timestampT) String() string { return "TIMESTAMP" }
 
 // Type implements Type interface.
 func (t timestampT) Type() query.Type {
@@ -397,6 +404,8 @@ func truncateDate(t time.Time) time.Time {
 	return t.Truncate(24 * time.Hour)
 }
 
+func (t dateT) String() string { return "DATE" }
+
 func (t dateT) Type() query.Type {
 	return sqltypes.Date
 }
@@ -442,6 +451,8 @@ func (t dateT) Compare(a, b interface{}) (int, error) {
 
 type textT struct{}
 
+func (t textT) String() string { return "TEXT" }
+
 // Type implements Type interface.
 func (t textT) Type() query.Type {
 	return sqltypes.Text
@@ -463,6 +474,8 @@ func (t textT) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 type booleanT struct{}
+
+func (t booleanT) String() string { return "BOOLEAN" }
 
 // Type implements Type interface.
 func (t booleanT) Type() query.Type {
@@ -499,6 +512,8 @@ func (t booleanT) Compare(a interface{}, b interface{}) (int, error) {
 
 type blobT struct{}
 
+func (t blobT) String() string { return "BLOB" }
+
 // Type implements Type interface.
 func (t blobT) Type() query.Type {
 	return sqltypes.Blob
@@ -532,6 +547,8 @@ func (t blobT) Compare(a interface{}, b interface{}) (int, error) {
 
 type jsonT struct{}
 
+func (t jsonT) String() string { return "JSON" }
+
 // Type implements Type interface.
 func (t jsonT) Type() query.Type {
 	return sqltypes.TypeJSON
@@ -553,6 +570,14 @@ func (t jsonT) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 type tupleT []Type
+
+func (t tupleT) String() string {
+	var elems = make([]string, len(t))
+	for i, el := range t {
+		elems[i] = el.String()
+	}
+	return fmt.Sprintf("TUPLE(%s)", strings.Join(elems, ", "))
+}
 
 func (t tupleT) Type() query.Type {
 	return sqltypes.Expression
@@ -612,6 +637,8 @@ func (t tupleT) Compare(a, b interface{}) (int, error) {
 type arrayT struct {
 	underlying Type
 }
+
+func (t arrayT) String() string { return fmt.Sprintf("ARRAY(%s)", t.underlying) }
 
 func (t arrayT) Type() query.Type {
 	return sqltypes.TypeJSON
