@@ -1,0 +1,17 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    minitest (5.11.3)
+    rake (12.3.1)
+    ruby-mysql (2.9.14)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  minitest (~> 5.11, >= 5.11.3)
+  rake
+  ruby-mysql (~> 2.9, >= 2.9.14)
+
+BUNDLED WITH
+   1.16.5
