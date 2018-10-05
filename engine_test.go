@@ -107,6 +107,23 @@ var queries = []struct {
 		},
 	},
 	{
+		"SELECT substring(s2, 1), substring(s2, 2), substring(s2, 3) FROM othertable ORDER BY i2",
+		[]sql.Row{
+			{"third", "hird", "ird"},
+			{"second", "econd", "cond"},
+			{"first", "irst", "rst"},
+		},
+	},
+	{
+		"SELECT substring(s2, -1), substring(s2, -2), substring(s2, -3) FROM othertable ORDER BY i2",
+		[]sql.Row{
+			{"d", "rd", "ird"},
+			{"d", "nd", "ond"},
+			{"t", "st", "rst"},
+		},
+	},
+
+	{
 		"SELECT s FROM mytable INNER JOIN othertable " +
 			"ON substring(s2, 1, 2) != '' AND i = i2",
 		[]sql.Row{
