@@ -13,24 +13,18 @@ type Ceil struct {
 	expression.UnaryExpression
 }
 
-func (c *Ceil) Resolved() bool {
-	return c.Child.Resolved()
+// NewCeil creates a new Ceil expression.
+func NewCeil(num sql.Expression) sql.Expression {
+	return &Ceil{expression.UnaryExpression{Child: num}}
 }
 
-func (c *Ceil) IsNullable() bool {
-	return c.Child.IsNullable()
-}
-
-func (c *Ceil) Children() []sql.Expression {
-	return c.Child.Children()
-}
-
-func NewCeil(array sql.Expression) sql.Expression {
-	return &Ceil{expression.UnaryExpression{Child: array}}
-}
-
+// Type implements the Expression interface.
 func (c *Ceil) Type() sql.Type {
-	return c.Child.Type()
+	childType := c.Child.Type()
+	if sql.IsNumber(childType) {
+		return childType
+	}
+	return sql.Int32
 }
 
 func (c *Ceil) String() string {
@@ -48,15 +42,7 @@ func (c *Ceil) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
 
 // Eval implements the Expression interface.
 func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if !sql.IsNumber(c.Child.Type()) {
-		return nil, sql.ErrInvalidType.New(c.Child.Type().Type().String())
-	}
-
 	child, err := c.Child.Eval(ctx, row)
-
-	if !sql.IsDecimal(c.Child.Type()) {
-		return child, err
-	}
 
 	if err != nil {
 		return nil, err
@@ -64,6 +50,14 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	if child == nil {
 		return nil, nil
+	}
+
+	if !sql.IsNumber(c.Child.Type()) {
+		return 0, nil
+	}
+
+	if !sql.IsDecimal(c.Child.Type()) {
+		return child, err
 	}
 
 	switch num := child.(type) {
@@ -81,24 +75,18 @@ type Floor struct {
 	expression.UnaryExpression
 }
 
-func (f *Floor) Resolved() bool {
-	return f.Child.Resolved()
+// NewFloor returns a new Floor expression.
+func NewFloor(num sql.Expression) sql.Expression {
+	return &Floor{expression.UnaryExpression{Child: num}}
 }
 
-func (f *Floor) IsNullable() bool {
-	return f.Child.IsNullable()
-}
-
-func (f *Floor) Children() []sql.Expression {
-	return f.Child.Children()
-}
-
-func NewFloor(array sql.Expression) sql.Expression {
-	return &Floor{expression.UnaryExpression{Child: array}}
-}
-
+// Type implements the Expression interface.
 func (f *Floor) Type() sql.Type {
-	return f.Child.Type()
+	childType := f.Child.Type()
+	if sql.IsNumber(childType) {
+		return childType
+	}
+	return sql.Int32
 }
 
 func (f *Floor) String() string {
@@ -116,15 +104,7 @@ func (f *Floor) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
 
 // Eval implements the Expression interface.
 func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if !sql.IsNumber(f.Child.Type()) {
-		return nil, sql.ErrInvalidType.New(f.Child.Type().Type().String())
-	}
-
 	child, err := f.Child.Eval(ctx, row)
-
-	if !sql.IsDecimal(f.Child.Type()) {
-		return child, err
-	}
 
 	if err != nil {
 		return nil, err
@@ -132,6 +112,14 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	if child == nil {
 		return nil, nil
+	}
+
+	if !sql.IsNumber(f.Child.Type()) {
+		return 0, nil
+	}
+
+	if !sql.IsDecimal(f.Child.Type()) {
+		return child, err
 	}
 
 	switch num := child.(type) {
@@ -144,12 +132,31 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
+// Round returns the number (x) with (d) requested decimal places.
+// If d is negative, the number is returned with the (abs(d)) least significant
+// digits of it's integer part set to 0. If d is not specified or nil/null
+// it defaults to 0.
 type Round struct {
 	expression.BinaryExpression
 }
 
-func NewRound(x, d sql.Expression) sql.Expression {
-	return &Round{expression.BinaryExpression{Left: x, Right: d}}
+// NewRound returns a new Round expression.
+func NewRound(args ...sql.Expression) (sql.Expression, error) {
+	argLen := len(args)
+	if argLen == 0 || argLen > 2 {
+		return nil, sql.ErrInvalidArgumentNumber.New("1 or 2", argLen)
+	}
+
+	d := func(i int) sql.Expression {
+		switch i {
+		case 2:
+			return args[1]
+		default:
+			return nil
+		}
+	}
+
+	return &Round{expression.BinaryExpression{Left: args[0], Right: d(argLen)}}, nil
 }
 
 // Children implements the Expression interface.
@@ -163,10 +170,6 @@ func (r *Round) Children() []sql.Expression {
 
 // Eval implements the Expression interface.
 func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if !sql.IsNumber(r.Left.Type()) {
-		return nil, sql.ErrInvalidType.New(r.Left.Type().Type().String())
-	}
-
 	xVal, err := r.Left.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -174,6 +177,10 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	if xVal == nil {
 		return nil, nil
+	}
+
+	if !sql.IsNumber(r.Left.Type()) {
+		return 0, nil
 	}
 
 	dVal := float64(0)
@@ -184,12 +191,12 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		if !sql.IsInteger(r.Right.Type()) {
-			return nil, sql.ErrInvalidType.New(r.Right.Type().Type().String())
-		}
-
 		if dTemp != nil {
 			switch dNum := dTemp.(type) {
+			case float64:
+				dVal = float64(int64(dNum))
+			case float32:
+				dVal = float64(int64(dNum))
 			case int64:
 				dVal = float64(dNum)
 			case int32:
@@ -197,7 +204,7 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			case int:
 				dVal = float64(dNum)
 			default:
-				return nil, sql.ErrInvalidType.New(r.Right.Type().Type().String())
+				dVal = 0
 			}
 		}
 	}
@@ -237,22 +244,37 @@ func (r *Round) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (r *Round) Type() sql.Type { return r.Left.Type() }
+func (r *Round) Type() sql.Type {
+	leftChildType := r.Left.Type()
+	if sql.IsNumber(leftChildType) {
+		return leftChildType
+	}
+	return sql.Int32
+}
 
 // TransformUp implements the Expression interface.
 func (r *Round) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	l, err := r.Left.TransformUp(f)
+	var args = make([]sql.Expression, 2)
+
+	arg, err := r.Left.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+	args[0] = arg
+
+	args[1] = nil
+	if r.Right != nil {
+		arg, err := r.Right.TransformUp(f)
+		if err != nil {
+			return nil, err
+		}
+		args[1] = arg
+	}
+
+	expr, err := NewRound(args...)
 	if err != nil {
 		return nil, err
 	}
 
-	if r.Right != nil {
-		ri, err := r.Right.TransformUp(f)
-		if err != nil {
-			return nil, err
-		}
-		return f(NewRound(l, ri))
-	}
-
-	return f(NewRound(l, nil))
+	return f(expr)
 }
