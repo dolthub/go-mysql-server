@@ -31,18 +31,12 @@ func (l *Lower) Eval(
 		return nil, nil
 	}
 
-	if !sql.IsText(l.Child.Type()) {
-		return v, nil
+	v, err = sql.Text.Convert(v)
+	if err != nil {
+		return nil, err
 	}
 
-	switch val := v.(type) {
-	case string:
-		return strings.ToLower(val), nil
-	case []byte:
-		return []byte(strings.ToLower(string(val))), nil
-	default:
-		return val, nil
-	}
+	return strings.ToLower(v.(string)), nil
 }
 
 func (l *Lower) String() string {
@@ -87,18 +81,12 @@ func (u *Upper) Eval(
 		return nil, nil
 	}
 
-	if !sql.IsText(u.Child.Type()) {
-		return v, nil
+	v, err = sql.Text.Convert(v)
+	if err != nil {
+		return nil, err
 	}
 
-	switch val := v.(type) {
-	case string:
-		return strings.ToUpper(val), nil
-	case []byte:
-		return []byte(strings.ToUpper(string(val))), nil
-	default:
-		return val, nil
-	}
+	return strings.ToUpper(v.(string)), nil
 }
 
 func (u *Upper) String() string {

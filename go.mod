@@ -11,6 +11,7 @@ require (
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.1.0
 	github.com/spf13/cast v1.2.0
+	github.com/stretchr/testify v1.2.2
 	golang.org/x/net v0.0.0-20180926154720-4dfa2610cdf3 // indirect
 	google.golang.org/grpc v1.15.0 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0
