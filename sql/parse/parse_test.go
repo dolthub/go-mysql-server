@@ -725,6 +725,7 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("foo"),
 	),
+	`SHOW DATABASES`: plan.NewShowDatabases(),
 }
 
 func TestParse(t *testing.T) {

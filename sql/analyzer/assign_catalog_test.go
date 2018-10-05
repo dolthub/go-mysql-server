@@ -56,4 +56,10 @@ func TestAssignCatalog(t *testing.T) {
 	require.True(ok)
 	require.Equal(db.Name(), pl.Database)
 	require.Equal(c.ProcessList, pl.ProcessList)
+
+	node, err = f.Apply(sql.NewEmptyContext(), a, plan.NewShowDatabases())
+	require.NoError(err)
+	sd, ok := node.(*plan.ShowDatabases)
+	require.True(ok)
+	require.Equal(c, sd.Catalog)
 }

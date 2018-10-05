@@ -162,12 +162,15 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 }
 
 func convertShow(s *sqlparser.Show) (sql.Node, error) {
-	if s.Type != sqlparser.KeywordString(sqlparser.TABLES) {
+	switch s.Type {
+	case sqlparser.KeywordString(sqlparser.TABLES):
+		return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
+	case sqlparser.KeywordString(sqlparser.DATABASES):
+		return plan.NewShowDatabases(), nil
+	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, ErrUnsupportedFeature.New(unsupportedShow)
 	}
-
-	return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
 }
 
 func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
