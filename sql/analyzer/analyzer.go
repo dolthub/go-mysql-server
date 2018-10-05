@@ -147,8 +147,6 @@ type Analyzer struct {
 	Batches []*Batch
 	// Catalog of databases and registered functions.
 	Catalog *sql.Catalog
-	// CurrentDatabase in use.
-	CurrentDatabase string
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.

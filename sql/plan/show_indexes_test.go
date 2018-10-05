@@ -12,7 +12,7 @@ import (
 func TestShowIndexes(t *testing.T) {
 	var require = require.New(t)
 
-	unresolved := NewShowIndexes(&sql.UnresolvedDatabase{}, "table-test", nil)
+	unresolved := NewShowIndexes(sql.UnresolvedDatabase(""), "table-test", nil)
 	require.False(unresolved.Resolved())
 	require.Nil(unresolved.Children())
 

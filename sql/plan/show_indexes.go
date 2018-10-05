@@ -21,7 +21,7 @@ func NewShowIndexes(db sql.Database, table string, registry *sql.IndexRegistry) 
 
 // Resolved implements the Resolvable interface.
 func (n *ShowIndexes) Resolved() bool {
-	_, ok := n.Database.(*sql.UnresolvedDatabase)
+	_, ok := n.Database.(sql.UnresolvedDatabase)
 	return !ok
 }
 

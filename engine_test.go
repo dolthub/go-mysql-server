@@ -339,7 +339,7 @@ var queries = []struct {
 	},
 	{
 		`SHOW DATABASES`,
-		[]sql.Row{{"mydb"}},
+		[]sql.Row{{"mydb"}, {"foo"}},
 	},
 	{
 		`SELECT s FROM mytable WHERE s LIKE '%d row'`,
@@ -856,6 +856,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
+	catalog.AddDatabase(mem.NewDatabase("foo"))
 
 	var a *analyzer.Analyzer
 	if parallelism > 1 {
@@ -863,8 +864,6 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 	} else {
 		a = analyzer.NewDefault(catalog)
 	}
-
-	a.CurrentDatabase = "mydb"
 
 	return sqle.New(catalog, a, new(sqle.Config))
 }
@@ -1151,7 +1150,6 @@ func TestReadOnly(t *testing.T) {
 	catalog.AddDatabase(db)
 
 	a := analyzer.NewBuilder(catalog).ReadOnly().Build()
-	a.CurrentDatabase = "mydb"
 	e := sqle.New(catalog, a, nil)
 
 	_, _, err := e.Query(newCtx(), `SELECT i FROM mytable`)
@@ -1222,6 +1220,23 @@ func TestNestedAliases(t *testing.T) {
 	FROM mytable`)
 	require.Error(err)
 	require.True(analyzer.ErrMisusedAlias.Is(err))
+}
+
+func TestUse(t *testing.T) {
+	require := require.New(t)
+	e := newEngine(t)
+
+	_, _, err := e.Query(newCtx(), "USE bar")
+	require.Error(err)
+
+	_, iter, err := e.Query(newCtx(), "USE foo")
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+	require.Len(rows, 0)
+
+	require.Equal("foo", e.Catalog.CurrentDatabase())
 }
 
 func insertRows(t *testing.T, table sql.Inserter, rows ...sql.Row) {

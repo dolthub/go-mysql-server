@@ -11,31 +11,44 @@ func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 
 	a.Log("resolve database, node of type: %T", n)
 
-	// TODO Database should implement node,
-	// and ShowTables and CreateTable nodes should be binaryNodes
 	switch v := n.(type) {
 	case *plan.ShowIndexes:
-		db, err := a.Catalog.Database(a.CurrentDatabase)
+		db, err := a.Catalog.Database(a.Catalog.CurrentDatabase())
 		if err != nil {
 			return nil, err
 		}
 
-		v.Database = db
+		nc := *v
+		nc.Database = db
+		return &nc, nil
 	case *plan.ShowTables:
-		db, err := a.Catalog.Database(a.CurrentDatabase)
+		db, err := a.Catalog.Database(a.Catalog.CurrentDatabase())
 		if err != nil {
-			return n, err
+			return nil, err
 		}
 
-		v.Database = db
+		nc := *v
+		nc.Database = db
+		return &nc, nil
 	case *plan.CreateTable:
-		db, err := a.Catalog.Database(a.CurrentDatabase)
+		db, err := a.Catalog.Database(a.Catalog.CurrentDatabase())
 		if err != nil {
-			return n, err
+			return nil, err
 		}
 
-		v.Database = db
-	}
+		nc := *v
+		nc.Database = db
+		return &nc, nil
+	case *plan.Use:
+		db, err := a.Catalog.Database(v.Database.Name())
+		if err != nil {
+			return nil, err
+		}
 
-	return n, nil
+		nc := *v
+		nc.Database = db
+		return &nc, nil
+	default:
+		return n, nil
+	}
 }

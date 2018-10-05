@@ -53,7 +53,7 @@ func (s *ShowTableStatus) Schema() sql.Schema { return showTableStatusSchema }
 func (s *ShowTableStatus) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	var rows []sql.Row
 	var tables []string
-	for _, db := range s.Catalog.Databases {
+	for _, db := range s.Catalog.AllDatabases() {
 		if len(s.Databases) > 0 && !stringContains(s.Databases, db.Name()) {
 			continue
 		}

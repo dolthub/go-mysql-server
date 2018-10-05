@@ -19,11 +19,11 @@ func TestResolveTables(t *testing.T) {
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 
-	catalog := &sql.Catalog{Databases: []sql.Database{db}}
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
 
 	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
 
-	a.CurrentDatabase = "mydb"
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
 	analyzed, err := f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.NoError(err)
@@ -57,12 +57,10 @@ func TestResolveTablesNested(t *testing.T) {
 	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
-
-	catalog := &sql.Catalog{Databases: []sql.Database{db}}
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
 
 	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
-
-	a.CurrentDatabase = "mydb"
 
 	notAnalyzed := plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},

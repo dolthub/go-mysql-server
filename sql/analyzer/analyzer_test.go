@@ -30,7 +30,6 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 	a := withoutProcessTracking(NewDefault(catalog))
-	a.CurrentDatabase = "mydb"
 
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
 	analyzed, err := a.Analyze(sql.NewEmptyContext(), notAnalyzed)
@@ -216,8 +215,6 @@ func TestMaxIterations(t *testing.T) {
 			return n, nil
 		}).Build())
 
-	a.CurrentDatabase = "mydb"
-
 	notAnalyzed := plan.NewUnresolvedTable(tName)
 	analyzed, err := a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NoError(err)
@@ -301,7 +298,6 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 	a := withoutProcessTracking(NewDefault(catalog))
-	a.CurrentDatabase = "mydb"
 
 	node := plan.NewProject(
 		[]sql.Expression{

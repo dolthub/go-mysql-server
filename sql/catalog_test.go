@@ -17,7 +17,7 @@ func TestCatalogDatabase(t *testing.T) {
 	require.Nil(db)
 
 	mydb := mem.NewDatabase("foo")
-	c.Databases = append(c.Databases, mydb)
+	c.AddDatabase(mydb)
 
 	db, err = c.Database("foo")
 	require.NoError(err)
@@ -34,7 +34,7 @@ func TestCatalogTable(t *testing.T) {
 	require.Nil(table)
 
 	db := mem.NewDatabase("foo")
-	c.Databases = append(c.Databases, db)
+	c.AddDatabase(db)
 
 	table, err = c.Table("foo", "bar")
 	require.EqualError(err, "table not found: bar")

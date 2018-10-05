@@ -106,7 +106,14 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertDDL(n)
 	case *sqlparser.Set:
 		return convertSet(ctx, n)
+	case *sqlparser.Use:
+		return convertUse(n)
 	}
+}
+
+func convertUse(n *sqlparser.Use) (sql.Node, error) {
+	name := n.DBName.String()
+	return plan.NewUse(sql.UnresolvedDatabase(name)), nil
 }
 
 func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
@@ -165,7 +172,7 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 func convertShow(s *sqlparser.Show, query string) (sql.Node, error) {
 	switch s.Type {
 	case sqlparser.KeywordString(sqlparser.TABLES):
-		return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
+		return plan.NewShowTables(sql.UnresolvedDatabase("")), nil
 	case sqlparser.KeywordString(sqlparser.DATABASES):
 		return plan.NewShowDatabases(), nil
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
@@ -273,7 +280,7 @@ func convertCreateTable(c *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	return plan.NewCreateTable(
-		&sql.UnresolvedDatabase{},
+		sql.UnresolvedDatabase(""),
 		c.NewName.Name.String(),
 		schema,
 	), nil

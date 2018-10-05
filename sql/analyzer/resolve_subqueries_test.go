@@ -27,7 +27,6 @@ func TestResolveSubqueries(t *testing.T) {
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 	a := withoutProcessTracking(NewDefault(catalog))
-	a.CurrentDatabase = "mydb"
 
 	// SELECT * FROM
 	// 	(SELECT a FROM foo) t1,

@@ -30,7 +30,7 @@ func NewCreateTable(db sql.Database, name string, schema sql.Schema) *CreateTabl
 
 // Resolved implements the Resolvable interface.
 func (c *CreateTable) Resolved() bool {
-	_, ok := c.Database.(*sql.UnresolvedDatabase)
+	_, ok := c.Database.(sql.UnresolvedDatabase)
 	return !ok
 }
 
