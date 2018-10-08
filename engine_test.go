@@ -342,6 +342,32 @@ var queries = []struct {
 			{"first row"},
 		},
 	},
+	{
+		`SHOW COLUMNS FROM mytable`,
+		[]sql.Row{
+			{"i", "INT64", "NO", "", "", ""},
+			{"s", "TEXT", "NO", "", "", ""},
+		},
+	},
+	{
+		`SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
+		[]sql.Row{
+			{"i", "INT64", "NO", "", "", ""},
+		},
+	},
+	{
+		`SHOW COLUMNS FROM mytable LIKE 'i'`,
+		[]sql.Row{
+			{"i", "INT64", "NO", "", "", ""},
+		},
+	},
+	{
+		`SHOW FULL COLUMNS FROM mytable`,
+		[]sql.Row{
+			{"i", "INT64", nil, "NO", "", "", "", "", ""},
+			{"s", "TEXT", "utf8_bin", "NO", "", "", "", "", ""},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {

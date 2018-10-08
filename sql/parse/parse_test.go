@@ -746,6 +746,22 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo"),
 		),
 	),
+	`SHOW FIELDS FROM foo`:       plan.NewShowColumns(false, plan.NewUnresolvedTable("foo")),
+	`SHOW FULL COLUMNS FROM foo`: plan.NewShowColumns(true, plan.NewUnresolvedTable("foo")),
+	`SHOW FIELDS FROM foo WHERE Field = 'bar'`: plan.NewFilter(
+		expression.NewEquals(
+			expression.NewUnresolvedColumn("Field"),
+			expression.NewLiteral("bar", sql.Text),
+		),
+		plan.NewShowColumns(false, plan.NewUnresolvedTable("foo")),
+	),
+	`SHOW FIELDS FROM foo LIKE 'bar'`: plan.NewFilter(
+		expression.NewLike(
+			expression.NewUnresolvedColumn("Field"),
+			expression.NewLiteral("bar", sql.Text),
+		),
+		plan.NewShowColumns(false, plan.NewUnresolvedTable("foo")),
+	),
 }
 
 func TestParse(t *testing.T) {

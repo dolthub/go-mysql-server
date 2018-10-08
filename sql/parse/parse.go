@@ -31,6 +31,10 @@ var (
 
 	// ErrInvalidSortOrder is returned when a sort order is not valid.
 	ErrInvalidSortOrder = errors.NewKind("invalod sort order: %s")
+
+	// ErrLikeNotSupported is returned when LIKE, which is not supported yet,
+	// is used in a query.
+	ErrLikeNotSupported = errors.NewKind("LIKE is not supported")
 )
 
 var (
@@ -167,6 +171,37 @@ func convertShow(s *sqlparser.Show) (sql.Node, error) {
 		return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
 	case sqlparser.KeywordString(sqlparser.DATABASES):
 		return plan.NewShowDatabases(), nil
+	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
+		// TODO(erizocosmico): vitess parser does not support EXTENDED.
+		table := plan.NewUnresolvedTable(s.OnTable.Name.String())
+		full := s.ShowTablesOpt.Full != ""
+
+		var node sql.Node = plan.NewShowColumns(full, table)
+
+		if s.ShowTablesOpt != nil && s.ShowTablesOpt.Filter != nil {
+			if s.ShowTablesOpt.Filter.Like != "" {
+				pattern := expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.Text)
+
+				node = plan.NewFilter(
+					expression.NewLike(
+						expression.NewUnresolvedColumn("Field"),
+						pattern,
+					),
+					node,
+				)
+			}
+
+			if s.ShowTablesOpt.Filter.Filter != nil {
+				filter, err := exprToExpression(s.ShowTablesOpt.Filter.Filter)
+				if err != nil {
+					return nil, err
+				}
+
+				node = plan.NewFilter(filter, node)
+			}
+		}
+
+		return node, nil
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, ErrUnsupportedFeature.New(unsupportedShow)
@@ -600,14 +635,13 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 	case *sqlparser.NullVal:
 		return expression.NewLiteral(nil, sql.Null), nil
 	case *sqlparser.ColName:
-		// TODO: add handling of case sensitiveness.
 		if !v.Qualifier.IsEmpty() {
 			return expression.NewUnresolvedQualifiedColumn(
 				v.Qualifier.Name.String(),
-				v.Name.Lowered(),
+				v.Name.String(),
 			), nil
 		}
-		return expression.NewUnresolvedColumn(v.Name.Lowered()), nil
+		return expression.NewUnresolvedColumn(v.Name.String()), nil
 	case *sqlparser.FuncExpr:
 		exprs, err := selectExprsToExpressions(v.Exprs)
 		if err != nil {
