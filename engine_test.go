@@ -329,6 +329,19 @@ var queries = []struct {
 		`SHOW DATABASES`,
 		[]sql.Row{{"mydb"}},
 	},
+	{
+		`SELECT s FROM mytable WHERE s LIKE '%d row'`,
+		[]sql.Row{
+			{"second row"},
+			{"third row"},
+		},
+	},
+	{
+		`SELECT s FROM mytable WHERE s NOT LIKE '%d row'`,
+		[]sql.Row{
+			{"first row"},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {
