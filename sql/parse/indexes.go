@@ -90,7 +90,7 @@ func parseCreateIndex(s string) (sql.Node, error) {
 
 	return plan.NewCreateIndex(
 		name,
-		plan.NewUnresolvedTable(table),
+		plan.NewUnresolvedTable(table, ""),
 		indexExprs,
 		driver,
 		config,
@@ -223,7 +223,7 @@ func parseDropIndex(str string) (sql.Node, error) {
 
 	return plan.NewDropIndex(
 		name,
-		plan.NewUnresolvedTable(table),
+		plan.NewUnresolvedTable(table, ""),
 	), nil
 }
 

@@ -40,7 +40,7 @@ func TestResolveSubqueries(t *testing.T) {
 					"t1",
 					plan.NewProject(
 						[]sql.Expression{expression.NewUnresolvedColumn("a")},
-						plan.NewUnresolvedTable("foo"),
+						plan.NewUnresolvedTable("foo", ""),
 					),
 				),
 				plan.NewSubqueryAlias(
@@ -51,13 +51,13 @@ func TestResolveSubqueries(t *testing.T) {
 							"t2alias",
 							plan.NewProject(
 								[]sql.Expression{expression.NewUnresolvedColumn("b")},
-								plan.NewUnresolvedTable("bar"),
+								plan.NewUnresolvedTable("bar", ""),
 							),
 						),
 					),
 				),
 			),
-			plan.NewUnresolvedTable("baz"),
+			plan.NewUnresolvedTable("baz", ""),
 		),
 	)
 
@@ -80,7 +80,7 @@ func TestResolveSubqueries(t *testing.T) {
 					subquery,
 				),
 			),
-			plan.NewUnresolvedTable("baz"),
+			plan.NewUnresolvedTable("baz", ""),
 		),
 	)
 
