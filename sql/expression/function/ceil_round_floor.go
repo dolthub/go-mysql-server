@@ -2,10 +2,13 @@ package function
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"math"
 	"reflect"
+)
+
+import (
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 )
 
 // Ceil returns the smallest integer value not less than X.
@@ -53,7 +56,7 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if !sql.IsNumber(c.Child.Type()) {
-		return 0, nil
+		return int32(0), nil
 	}
 
 	if !sql.IsDecimal(c.Child.Type()) {
@@ -115,7 +118,7 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if !sql.IsNumber(f.Child.Type()) {
-		return 0, nil
+		return int32(0), nil
 	}
 
 	if !sql.IsDecimal(f.Child.Type()) {
@@ -147,16 +150,12 @@ func NewRound(args ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidArgumentNumber.New("1 or 2", argLen)
 	}
 
-	d := func(i int) sql.Expression {
-		switch i {
-		case 2:
-			return args[1]
-		default:
-			return nil
-		}
+	var right sql.Expression = nil
+	if len(args) == 2 {
+		right = args[1]
 	}
 
-	return &Round{expression.BinaryExpression{Left: args[0], Right: d(argLen)}}, nil
+	return &Round{expression.BinaryExpression{Left: args[0], Right: right}}, nil
 }
 
 // Children implements the Expression interface.
@@ -180,7 +179,7 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if !sql.IsNumber(r.Left.Type()) {
-		return 0, nil
+		return int32(0), nil
 	}
 
 	dVal := float64(0)

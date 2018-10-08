@@ -26,7 +26,7 @@ func TestCeil(t *testing.T) {
 		{"int64 is nil", sql.Int64, sql.NewRow(nil), nil, nil},
 		{"int64 is ok", sql.Int64, sql.NewRow(int64(6)), int64(6), nil},
 		{"blob is nil", sql.Blob, sql.NewRow(nil), nil, nil},
-		{"blob is ok", sql.Blob, sql.NewRow([]byte{1, 2, 3}), int(0), nil},
+		{"blob is ok", sql.Blob, sql.NewRow([]byte{1, 2, 3}), int32(0), nil},
 	}
 
 	for _, tt := range testCases {
@@ -76,7 +76,7 @@ func TestFloor(t *testing.T) {
 		{"int64 is nil", sql.Int64, sql.NewRow(nil), nil, nil},
 		{"int64 is ok", sql.Int64, sql.NewRow(int64(6)), int64(6), nil},
 		{"blob is nil", sql.Blob, sql.NewRow(nil), nil, nil},
-		{"blob is ok", sql.Blob, sql.NewRow([]byte{1, 2, 3}), int(0), nil},
+		{"blob is ok", sql.Blob, sql.NewRow([]byte{1, 2, 3}), int32(0), nil},
 	}
 
 	for _, tt := range testCases {
@@ -147,7 +147,7 @@ func TestRound(t *testing.T) {
 		{"int32 with float negative d", sql.Int32, sql.Float64, sql.NewRow(int32(52), float32(-1)), int32(50), nil},
 		{"int32 with blob d", sql.Int32, sql.Blob, sql.NewRow(int32(5), []byte{1, 2, 3}), int32(5), nil},
 		{"blob is nil", sql.Blob, sql.Int32, sql.NewRow(nil, nil), nil, nil},
-		{"blob is ok", sql.Blob, sql.Int32, sql.NewRow([]byte{1, 2, 3}, nil), int(0), nil},
+		{"blob is ok", sql.Blob, sql.Int32, sql.NewRow([]byte{1, 2, 3}, nil), int32(0), nil},
 	}
 
 	for _, tt := range testCases {
@@ -196,5 +196,5 @@ func TestRound(t *testing.T) {
 
 	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow([]byte{1, 2, 3}, 2))
 
-	req.Equal(int(0), result)
+	req.Equal(int32(0), result)
 }
