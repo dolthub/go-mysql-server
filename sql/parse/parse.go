@@ -570,6 +570,10 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		if v.To == nil {
+			return function.NewSubstring(name, from)
+		}
 		to, err := exprToExpression(v.To)
 		if err != nil {
 			return nil, err
