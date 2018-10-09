@@ -10,7 +10,6 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
 )
 
 func parseShowIndex(s string) (sql.Node, error) {
@@ -83,7 +82,7 @@ func parseCreateIndex(s string) (sql.Node, error) {
 	var indexExprs = make([]sql.Expression, len(exprs))
 	for i, e := range exprs {
 		var err error
-		indexExprs[i], err = parseIndexExpr(e)
+		indexExprs[i], err = parseExpr(e)
 		if err != nil {
 			return nil, err
 		}
@@ -226,29 +225,6 @@ func parseDropIndex(str string) (sql.Node, error) {
 		name,
 		plan.NewUnresolvedTable(table),
 	), nil
-}
-
-func parseIndexExpr(str string) (sql.Expression, error) {
-	stmt, err := sqlparser.Parse("SELECT " + str)
-	if err != nil {
-		return nil, err
-	}
-
-	selectStmt, ok := stmt.(*sqlparser.Select)
-	if !ok {
-		return nil, errInvalidIndexExpression.New(str)
-	}
-
-	if len(selectStmt.SelectExprs) != 1 {
-		return nil, errInvalidIndexExpression.New(str)
-	}
-
-	selectExpr, ok := selectStmt.SelectExprs[0].(*sqlparser.AliasedExpr)
-	if !ok {
-		return nil, errInvalidIndexExpression.New(str)
-	}
-
-	return exprToExpression(selectExpr.Expr)
 }
 
 func readExprs(exprs *[]string) parseFunc {
