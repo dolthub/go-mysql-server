@@ -45,9 +45,9 @@ require (
         github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4 // indirect
 	github.com/sirupsen/logrus v1.1.0
 	github.com/spf13/cast v1.2.0
-        github.com/stretchr/testify v1.2.2
+	github.com/stretchr/testify v1.2.2
         github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926 // indirect
-	golang.org/x/net v0.0.0-20180926154720-4dfa2610cdf3 // indirect
+	      golang.org/x/net v0.0.0-20180926154720-4dfa2610cdf3 // indirect
 	google.golang.org/grpc v1.15.0 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 	gopkg.in/src-d/go-vitess.v1 v1.1.0
