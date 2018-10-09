@@ -49,6 +49,10 @@ go get gopkg.in/src-d/go-mysql-server.v0
 
 We are continuously adding more functionality to go-mysql-server. We support a subset of what is supported in MySQL, to see what is currently included check the [SUPPORTED](./SUPPORTED.md) file.
 
+# Third-party clients
+
+We support and actively test against certain third-party clients to ensure compatibility between them and go-mysql-server. You can check out the list of supported third party clients in the [SUPPORTED_CLIENTS](./SUPPORTED_CLIENTS.md) file along with some examples on how to connect to go-mysql-server using them.
+
 ## Custom functions
 
 - `IS_BINARY(blob)`: Returns whether a BLOB is a binary file or not.
@@ -69,7 +73,7 @@ Here you can see an example using the in-memory database implementation:
 ...
 
 func main() {
-    driver := sqle.New()
+    driver := sqle.NewDefault()
     driver.AddDatabase(createTestDatabase())
 
     auth := mysql.NewAuthServerStatic()
@@ -127,7 +131,7 @@ func createTestDatabase() *mem.Database {
 
 Then, you can connect to the server with any MySQL client:
 ```bash
-> mysql --host=127.0.0.1 --port=3306 -u user -ppass db -e "SELECT * FROM mytable"
+> mysql --host=127.0.0.1 --port=3306 -u user -ppass test -e "SELECT * FROM mytable"
 +----------+-------------------+-------------------------------+---------------------+
 | name     | email             | phone_numbers                 | created_at          |
 +----------+-------------------+-------------------------------+---------------------+

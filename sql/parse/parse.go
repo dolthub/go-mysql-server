@@ -3,13 +3,14 @@ package parse // import "gopkg.in/src-d/go-mysql-server.v0/sql/parse"
 import (
 	"bufio"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"regexp"
 	"strconv"
 	"strings"
-
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
-
 	"github.com/opentracing/opentracing-go"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
@@ -42,13 +43,19 @@ var (
 )
 
 // Parse parses the given SQL sentence and returns the corresponding node.
-func Parse(ctx *sql.Context, s string) (sql.Node, error) {
-	span, ctx := ctx.Span("parse", opentracing.Tag{Key: "query", Value: s})
+func Parse(ctx *sql.Context, query string) (sql.Node, error) {
+	span, ctx := ctx.Span("parse", opentracing.Tag{Key: "query", Value: query})
 	defer span.Finish()
 
-	s = strings.TrimSpace(s)
+	s := strings.TrimSpace(removeComments(query))
 	if strings.HasSuffix(s, ";") {
 		s = s[:len(s)-1]
+	}
+
+	if s == "" {
+		logrus.WithField("query", query).
+			Infof("query became empty, so it will be ignored")
+		return plan.Nothing, nil
 	}
 
 	lowerQuery := strings.ToLower(s)
@@ -117,7 +124,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	default:
 		return nil, ErrUnsupportedSyntax.New(n)
 	case *sqlparser.Show:
-		return convertShow(n)
+		return convertShow(n, query)
 	case *sqlparser.Select:
 		return convertSelect(ctx, n)
 	case *sqlparser.Insert:
@@ -182,13 +189,49 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 	return plan.NewSet(variables...), nil
 }
 
-func convertShow(s *sqlparser.Show) (sql.Node, error) {
-	if s.Type != sqlparser.KeywordString(sqlparser.TABLES) {
+func convertShow(s *sqlparser.Show, query string) (sql.Node, error) {
+	switch s.Type {
+	case sqlparser.KeywordString(sqlparser.TABLES):
+		return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
+	case sqlparser.KeywordString(sqlparser.DATABASES):
+		return plan.NewShowDatabases(), nil
+	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
+		// TODO(erizocosmico): vitess parser does not support EXTENDED.
+		table := plan.NewUnresolvedTable(s.OnTable.Name.String())
+		full := s.ShowTablesOpt.Full != ""
+
+		var node sql.Node = plan.NewShowColumns(full, table)
+
+		if s.ShowTablesOpt != nil && s.ShowTablesOpt.Filter != nil {
+			if s.ShowTablesOpt.Filter.Like != "" {
+				pattern := expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.Text)
+
+				node = plan.NewFilter(
+					expression.NewLike(
+						expression.NewUnresolvedColumn("Field"),
+						pattern,
+					),
+					node,
+				)
+			}
+
+			if s.ShowTablesOpt.Filter.Filter != nil {
+				filter, err := exprToExpression(s.ShowTablesOpt.Filter.Filter)
+				if err != nil {
+					return nil, err
+				}
+
+				node = plan.NewFilter(filter, node)
+			}
+		}
+
+		return node, nil
+	case sqlparser.KeywordString(sqlparser.TABLE):
+		return parseShowTableStatus(query)
+	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, ErrUnsupportedFeature.New(unsupportedShow)
 	}
-
-	return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
 }
 
 func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
@@ -591,6 +634,10 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		if v.To == nil {
+			return function.NewSubstring(name, from)
+		}
 		to, err := exprToExpression(v.To)
 		if err != nil {
 			return nil, err
@@ -614,14 +661,13 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 	case *sqlparser.NullVal:
 		return expression.NewLiteral(nil, sql.Null), nil
 	case *sqlparser.ColName:
-		// TODO: add handling of case sensitiveness.
 		if !v.Qualifier.IsEmpty() {
 			return expression.NewUnresolvedQualifiedColumn(
 				v.Qualifier.Name.String(),
-				v.Name.Lowered(),
+				v.Name.String(),
 			), nil
 		}
-		return expression.NewUnresolvedColumn(v.Name.Lowered()), nil
+		return expression.NewUnresolvedColumn(v.Name.String()), nil
 	case *sqlparser.FuncExpr:
 		exprs, err := selectExprsToExpressions(v.Exprs)
 		if err != nil {
@@ -800,6 +846,10 @@ func comparisonExprToExpression(c *sqlparser.ComparisonExpr) (sql.Expression, er
 		return expression.NewIn(left, right), nil
 	case sqlparser.NotInStr:
 		return expression.NewNotIn(left, right), nil
+	case sqlparser.LikeStr:
+		return expression.NewLike(left, right), nil
+	case sqlparser.NotLikeStr:
+		return expression.NewNot(expression.NewLike(left, right)), nil
 	}
 }
 
@@ -870,5 +920,168 @@ func binaryExprToExpression(be *sqlparser.BinaryExpr) (sql.Expression, error) {
 
 	default:
 		return nil, ErrUnsupportedFeature.New(be.Operator)
+	}
+}
+
+func removeComments(s string) string {
+	r := bufio.NewReader(strings.NewReader(s))
+	var result []rune
+	for {
+		ru, _, err := r.ReadRune()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			continue
+		}
+		switch ru {
+		case '\'', '"':
+			result = append(result, ru)
+			result = append(result, readString(r, ru == '\'')...)
+		case '-':
+			peeked, err := r.Peek(2)
+			if err == nil &&
+				len(peeked) == 2 &&
+				rune(peeked[0]) == '-' &&
+				rune(peeked[1]) == ' ' {
+				discardUntilEOL(r)
+			} else {
+				result = append(result, ru)
+			}
+		case '/':
+			peeked, err := r.Peek(1)
+			if err == nil &&
+				len(peeked) == 1 &&
+				rune(peeked[0]) == '*' {
+				// read the char we peeked
+				_, _, _ = r.ReadRune()
+				discardMultilineComment(r)
+			} else {
+				result = append(result, ru)
+			}
+		default:
+			result = append(result, ru)
+		}
+	}
+	return string(result)
+}
+func discardUntilEOL(r *bufio.Reader) {
+	for {
+		ru, _, err := r.ReadRune()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			continue
+		}
+		if ru == '\n' {
+			break
+		}
+	}
+}
+func discardMultilineComment(r *bufio.Reader) {
+	for {
+		ru, _, err := r.ReadRune()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			continue
+		}
+		if ru == '*' {
+			peeked, err := r.Peek(1)
+			if err == nil && len(peeked) == 1 && rune(peeked[0]) == '/' {
+				// read the rune we just peeked
+				_, _, _ = r.ReadRune()
+				break
+			}
+		}
+	}
+}
+func readString(r *bufio.Reader, single bool) []rune {
+	var result []rune
+	var escaped bool
+	for {
+		ru, _, err := r.ReadRune()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			continue
+		}
+		result = append(result, ru)
+		if (!single && ru == '"' && !escaped) ||
+			(single && ru == '\'' && !escaped) {
+			break
+		}
+		escaped = false
+		if ru == '\\' {
+			escaped = true
+		}
+	}
+	return result
+}
+
+func parseShowTableStatus(query string) (sql.Node, error) {
+	buf := bufio.NewReader(strings.NewReader(query))
+	steps := []parseFunc{
+		expect("show"),
+		skipSpaces,
+		expect("table"),
+		skipSpaces,
+		expect("status"),
+		skipSpaces,
+	}
+
+	for _, step := range steps {
+		if err := step(buf); err != nil {
+			return nil, err
+		}
+	}
+
+	var clause string
+	if err := readIdent(&clause)(buf); err != nil {
+		return nil, err
+	}
+
+	if err := skipSpaces(buf); err != nil {
+		return nil, err
+	}
+
+	switch strings.ToUpper(clause) {
+	case "FROM", "IN":
+		var db string
+		if err := readIdent(&db)(buf); err != nil {
+			return nil, err
+		}
+
+		return plan.NewShowTableStatus(db), nil
+	case "WHERE", "LIKE":
+		bs, err := ioutil.ReadAll(buf)
+		if err != nil {
+			return nil, err
+		}
+
+		expr, err := parseExpr(string(bs))
+		if err != nil {
+			return nil, err
+		}
+
+		var filter sql.Expression
+		if strings.ToUpper(clause) == "LIKE" {
+			filter = expression.NewLike(
+				expression.NewUnresolvedColumn("Name"),
+				expr,
+			)
+		} else {
+			filter = expr
+		}
+
+		return plan.NewFilter(
+			filter,
+			plan.NewShowTableStatus(),
+		), nil
+	default:
+		return nil, errUnexpectedSyntax.New("one of: FROM, IN, LIKE or WHERE", clause)
 	}
 }

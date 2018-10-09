@@ -718,6 +718,66 @@ var fixtures = map[string]sql.Node{
 			Value: expression.NewLiteral(false, sql.Boolean),
 		},
 	),
+	`/*!40101 SET NAMES utf8 */`: plan.Nothing,
+	`SELECT /*!40101 SET NAMES utf8 */ * FROM foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewStar(),
+		},
+		plan.NewUnresolvedTable("foo"),
+	),
+	`SHOW DATABASES`: plan.NewShowDatabases(),
+	`SELECT * FROM foo WHERE i LIKE 'foo'`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			expression.NewLike(
+				expression.NewUnresolvedColumn("i"),
+				expression.NewLiteral("foo", sql.Text),
+			),
+			plan.NewUnresolvedTable("foo"),
+		),
+	),
+	`SELECT * FROM foo WHERE i NOT LIKE 'foo'`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			expression.NewNot(expression.NewLike(
+				expression.NewUnresolvedColumn("i"),
+				expression.NewLiteral("foo", sql.Text),
+			)),
+			plan.NewUnresolvedTable("foo"),
+		),
+	),
+	`SHOW FIELDS FROM foo`:       plan.NewShowColumns(false, plan.NewUnresolvedTable("foo")),
+	`SHOW FULL COLUMNS FROM foo`: plan.NewShowColumns(true, plan.NewUnresolvedTable("foo")),
+	`SHOW FIELDS FROM foo WHERE Field = 'bar'`: plan.NewFilter(
+		expression.NewEquals(
+			expression.NewUnresolvedColumn("Field"),
+			expression.NewLiteral("bar", sql.Text),
+		),
+		plan.NewShowColumns(false, plan.NewUnresolvedTable("foo")),
+	),
+	`SHOW FIELDS FROM foo LIKE 'bar'`: plan.NewFilter(
+		expression.NewLike(
+			expression.NewUnresolvedColumn("Field"),
+			expression.NewLiteral("bar", sql.Text),
+		),
+		plan.NewShowColumns(false, plan.NewUnresolvedTable("foo")),
+	),
+	`SHOW TABLE STATUS LIKE 'foo'`: plan.NewFilter(
+		expression.NewLike(
+			expression.NewUnresolvedColumn("Name"),
+			expression.NewLiteral("foo", sql.Text),
+		),
+		plan.NewShowTableStatus(),
+	),
+	`SHOW TABLE STATUS FROM foo`: plan.NewShowTableStatus("foo"),
+	`SHOW TABLE STATUS IN foo`:   plan.NewShowTableStatus("foo"),
+	`SHOW TABLE STATUS WHERE Name = 'foo'`: plan.NewFilter(
+		expression.NewEquals(
+			expression.NewUnresolvedColumn("Name"),
+			expression.NewLiteral("foo", sql.Text),
+		),
+		plan.NewShowTableStatus(),
+	),
 }
 
 func TestParse(t *testing.T) {
@@ -746,6 +806,55 @@ func TestParseErrors(t *testing.T) {
 			_, err := Parse(ctx, query)
 			require.Error(err)
 			require.Equal(expectedError.Error(), err.Error())
+		})
+	}
+}
+
+func TestRemoveComments(t *testing.T) {
+	testCases := []struct {
+		input  string
+		output string
+	}{
+		{
+			`/* FOO BAR BAZ */`,
+			``,
+		},
+		{
+			`SELECT 1 -- something`,
+			`SELECT 1 `,
+		},
+		{
+			`SELECT 1 --something`,
+			`SELECT 1 --something`,
+		},
+		{
+			`SELECT ' -- something'`,
+			`SELECT ' -- something'`,
+		},
+		{
+			`SELECT /* FOO */ 1;`,
+			`SELECT  1;`,
+		},
+		{
+			`SELECT '/* FOO */ 1';`,
+			`SELECT '/* FOO */ 1';`,
+		},
+		{
+			`SELECT "\"/* FOO */ 1\"";`,
+			`SELECT "\"/* FOO */ 1\"";`,
+		},
+		{
+			`SELECT '\'/* FOO */ 1\'';`,
+			`SELECT '\'/* FOO */ 1\'';`,
+		},
+	}
+	for _, tt := range testCases {
+		t.Run(tt.input, func(t *testing.T) {
+			require.Equal(
+				t,
+				tt.output,
+				removeComments(tt.input),
+			)
 		})
 	}
 }

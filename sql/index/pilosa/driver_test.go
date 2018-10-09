@@ -80,6 +80,23 @@ func TestLoadAll(t *testing.T) {
 	require.True(ok)
 
 	require.Equal(i1.index.Name(), i2.index.Name())
+
+	// Load index from another table. Previously this panicked as the same
+	// pilosa.Holder was used for all indexes.
+
+	idx3, err := d.Create("db", "table2", "id1", makeExpressions("table2", "hash1"), nil)
+	require.NoError(err)
+	it3 := &partitionKeyValueIter{
+		partitions:  2,
+		offset:      0,
+		total:       64,
+		expressions: idx3.Expressions(),
+		location:    randLocation,
+	}
+	require.NoError(d.Save(sql.NewEmptyContext(), idx3, it3))
+
+	indexes, err = d.LoadAll("db", "table2")
+	require.NoError(err)
 }
 
 type logLoc struct {

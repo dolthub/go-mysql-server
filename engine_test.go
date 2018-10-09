@@ -107,6 +107,23 @@ var queries = []struct {
 		},
 	},
 	{
+		"SELECT substring(s2, 1), substring(s2, 2), substring(s2, 3) FROM othertable ORDER BY i2",
+		[]sql.Row{
+			{"third", "hird", "ird"},
+			{"second", "econd", "cond"},
+			{"first", "irst", "rst"},
+		},
+	},
+	{
+		"SELECT substring(s2, -1), substring(s2, -2), substring(s2, -3) FROM othertable ORDER BY i2",
+		[]sql.Row{
+			{"d", "rd", "ird"},
+			{"d", "nd", "ond"},
+			{"t", "st", "rst"},
+		},
+	},
+
+	{
 		"SELECT s FROM mytable INNER JOIN othertable " +
 			"ON substring(s2, 1, 2) != '' AND i = i2",
 		[]sql.Row{
@@ -302,6 +319,74 @@ var queries = []struct {
 			{float64(2), int64(1)},
 			{float64(3), int64(2)},
 			{float64(4), int64(3)},
+		},
+	},
+	{
+		`/*!40101 SET NAMES utf8 */`,
+		[]sql.Row{},
+	},
+	{
+		`SHOW DATABASES`,
+		[]sql.Row{{"mydb"}},
+	},
+	{
+		`SELECT s FROM mytable WHERE s LIKE '%d row'`,
+		[]sql.Row{
+			{"second row"},
+			{"third row"},
+		},
+	},
+	{
+		`SELECT s FROM mytable WHERE s NOT LIKE '%d row'`,
+		[]sql.Row{
+			{"first row"},
+		},
+	},
+	{
+		`SHOW COLUMNS FROM mytable`,
+		[]sql.Row{
+			{"i", "INT64", "NO", "", "", ""},
+			{"s", "TEXT", "NO", "", "", ""},
+		},
+	},
+	{
+		`SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
+		[]sql.Row{
+			{"i", "INT64", "NO", "", "", ""},
+		},
+	},
+	{
+		`SHOW COLUMNS FROM mytable LIKE 'i'`,
+		[]sql.Row{
+			{"i", "INT64", "NO", "", "", ""},
+		},
+	},
+	{
+		`SHOW FULL COLUMNS FROM mytable`,
+		[]sql.Row{
+			{"i", "INT64", nil, "NO", "", "", "", "", ""},
+			{"s", "TEXT", "utf8_bin", "NO", "", "", "", "", ""},
+		},
+	},
+	{
+		`SHOW TABLE STATUS FROM mydb`,
+		[]sql.Row{
+			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+		},
+	},
+	{
+		`SHOW TABLE STATUS LIKE '%table'`,
+		[]sql.Row{
+			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+		},
+	},
+	{
+		`SHOW TABLE STATUS WHERE Name = 'mytable'`,
+		[]sql.Row{
+			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 }
@@ -1115,6 +1200,16 @@ func TestSessionVariablesONOFF(t *testing.T) {
 	require.NoError(err)
 
 	require.Equal([]sql.Row{{int64(1), int64(0), true}}, rows)
+}
+
+func TestNestedAliases(t *testing.T) {
+	require := require.New(t)
+
+	_, _, err := newEngine(t).Query(newCtx(), `
+	SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(sub_s, 2, 3) as sub_sub_s
+	FROM mytable`)
+	require.Error(err)
+	require.True(analyzer.ErrMisusedAlias.Is(err))
 }
 
 func insertRows(t *testing.T, table sql.Inserter, rows ...sql.Row) {
