@@ -31,10 +31,6 @@ var (
 
 	// ErrInvalidSortOrder is returned when a sort order is not valid.
 	ErrInvalidSortOrder = errors.NewKind("invalod sort order: %s")
-
-	// ErrLikeNotSupported is returned when LIKE, which is not supported yet,
-	// is used in a query.
-	ErrLikeNotSupported = errors.NewKind("LIKE is not supported")
 )
 
 var (
