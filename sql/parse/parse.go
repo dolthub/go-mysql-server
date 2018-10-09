@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"regexp"
 	"strconv"
 	"strings"
@@ -96,7 +97,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	default:
 		return nil, ErrUnsupportedSyntax.New(n)
 	case *sqlparser.Show:
-		return convertShow(n)
+		return convertShow(n, query)
 	case *sqlparser.Select:
 		return convertSelect(ctx, n)
 	case *sqlparser.Insert:
@@ -161,7 +162,7 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 	return plan.NewSet(variables...), nil
 }
 
-func convertShow(s *sqlparser.Show) (sql.Node, error) {
+func convertShow(s *sqlparser.Show, query string) (sql.Node, error) {
 	switch s.Type {
 	case sqlparser.KeywordString(sqlparser.TABLES):
 		return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
@@ -198,6 +199,8 @@ func convertShow(s *sqlparser.Show) (sql.Node, error) {
 		}
 
 		return node, nil
+	case sqlparser.KeywordString(sqlparser.TABLE):
+		return parseShowTableStatus(query)
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, ErrUnsupportedFeature.New(unsupportedShow)
@@ -990,4 +993,68 @@ func readString(r *bufio.Reader, single bool) []rune {
 		}
 	}
 	return result
+}
+
+func parseShowTableStatus(query string) (sql.Node, error) {
+	buf := bufio.NewReader(strings.NewReader(query))
+	steps := []parseFunc{
+		expect("show"),
+		skipSpaces,
+		expect("table"),
+		skipSpaces,
+		expect("status"),
+		skipSpaces,
+	}
+
+	for _, step := range steps {
+		if err := step(buf); err != nil {
+			return nil, err
+		}
+	}
+
+	var clause string
+	if err := readIdent(&clause)(buf); err != nil {
+		return nil, err
+	}
+
+	if err := skipSpaces(buf); err != nil {
+		return nil, err
+	}
+
+	switch strings.ToUpper(clause) {
+	case "FROM", "IN":
+		var db string
+		if err := readIdent(&db)(buf); err != nil {
+			return nil, err
+		}
+
+		return plan.NewShowTableStatus(db), nil
+	case "WHERE", "LIKE":
+		bs, err := ioutil.ReadAll(buf)
+		if err != nil {
+			return nil, err
+		}
+
+		expr, err := parseExpr(string(bs))
+		if err != nil {
+			return nil, err
+		}
+
+		var filter sql.Expression
+		if strings.ToUpper(clause) == "LIKE" {
+			filter = expression.NewLike(
+				expression.NewUnresolvedColumn("Name"),
+				expr,
+			)
+		} else {
+			filter = expr
+		}
+
+		return plan.NewFilter(
+			filter,
+			plan.NewShowTableStatus(),
+		), nil
+	default:
+		return nil, errUnexpectedSyntax.New("one of: FROM, IN, LIKE or WHERE", clause)
+	}
 }

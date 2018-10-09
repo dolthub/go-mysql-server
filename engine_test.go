@@ -368,6 +368,27 @@ var queries = []struct {
 			{"s", "TEXT", "utf8_bin", "NO", "", "", "", "", ""},
 		},
 	},
+	{
+		`SHOW TABLE STATUS FROM mydb`,
+		[]sql.Row{
+			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+		},
+	},
+	{
+		`SHOW TABLE STATUS LIKE '%table'`,
+		[]sql.Row{
+			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+		},
+	},
+	{
+		`SHOW TABLE STATUS WHERE Name = 'mytable'`,
+		[]sql.Row{
+			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {
