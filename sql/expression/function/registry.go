@@ -41,4 +41,5 @@ var Defaults = sql.Functions{
 	"floor":        sql.Function1(NewFloor),
 	"round":        sql.FunctionN(NewRound),
 	"coalesce":     sql.FunctionN(NewCoalesce),
+	"json_extract": sql.FunctionN(NewJSONExtract),
 }

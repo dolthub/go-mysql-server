@@ -450,6 +450,10 @@ var queries = []struct {
 			{"gtid_mode", int32(0)},
 		},
 	},
+	{
+		`SELECT JSON_EXTRACT("foo", "$")`,
+		[]sql.Row{{"foo"}},
+	},
 }
 
 func TestQueries(t *testing.T) {
