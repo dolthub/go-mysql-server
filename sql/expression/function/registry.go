@@ -34,6 +34,10 @@ var Defaults = sql.Functions{
 	"array_length": sql.Function1(NewArrayLength),
 	"split":        sql.Function2(NewSplit),
 	"concat":       sql.FunctionN(NewConcat),
-	"lower": 		sql.Function1(NewLower),
-	"upper": 		sql.Function1(NewUpper),
+	"lower": 		    sql.Function1(NewLower),
+	"upper": 		    sql.Function1(NewUpper),
+	"ceiling":      sql.Function1(NewCeil),
+	"ceil":         sql.Function1(NewCeil),
+	"floor":        sql.Function1(NewFloor),
+	"round":        sql.FunctionN(NewRound),
 }

@@ -1,7 +1,9 @@
 package parse // import "gopkg.in/src-d/go-mysql-server.v0/sql/parse"
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"regexp"
 	"strconv"
 	"strings"
@@ -9,6 +11,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
 
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
@@ -40,13 +43,19 @@ var (
 )
 
 // Parse parses the given SQL sentence and returns the corresponding node.
-func Parse(ctx *sql.Context, s string) (sql.Node, error) {
-	span, ctx := ctx.Span("parse", opentracing.Tag{Key: "query", Value: s})
+func Parse(ctx *sql.Context, query string) (sql.Node, error) {
+	span, ctx := ctx.Span("parse", opentracing.Tag{Key: "query", Value: query})
 	defer span.Finish()
 
-	s = strings.TrimSpace(s)
+	s := strings.TrimSpace(removeComments(query))
 	if strings.HasSuffix(s, ";") {
 		s = s[:len(s)-1]
+	}
+
+	if s == "" {
+		logrus.WithField("query", query).
+			Infof("query became empty, so it will be ignored")
+		return plan.Nothing, nil
 	}
 
 	lowerQuery := strings.ToLower(s)
@@ -153,12 +162,15 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 }
 
 func convertShow(s *sqlparser.Show) (sql.Node, error) {
-	if s.Type != sqlparser.KeywordString(sqlparser.TABLES) {
+	switch s.Type {
+	case sqlparser.KeywordString(sqlparser.TABLES):
+		return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
+	case sqlparser.KeywordString(sqlparser.DATABASES):
+		return plan.NewShowDatabases(), nil
+	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, ErrUnsupportedFeature.New(unsupportedShow)
 	}
-
-	return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
 }
 
 func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
@@ -561,6 +573,10 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		if v.To == nil {
+			return function.NewSubstring(name, from)
+		}
 		to, err := exprToExpression(v.To)
 		if err != nil {
 			return nil, err
@@ -841,4 +857,103 @@ func binaryExprToExpression(be *sqlparser.BinaryExpr) (sql.Expression, error) {
 	default:
 		return nil, ErrUnsupportedFeature.New(be.Operator)
 	}
+}
+
+func removeComments(s string) string {
+	r := bufio.NewReader(strings.NewReader(s))
+	var result []rune
+	for {
+		ru, _, err := r.ReadRune()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			continue
+		}
+		switch ru {
+		case '\'', '"':
+			result = append(result, ru)
+			result = append(result, readString(r, ru == '\'')...)
+		case '-':
+			peeked, err := r.Peek(2)
+			if err == nil &&
+				len(peeked) == 2 &&
+				rune(peeked[0]) == '-' &&
+				rune(peeked[1]) == ' ' {
+				discardUntilEOL(r)
+			} else {
+				result = append(result, ru)
+			}
+		case '/':
+			peeked, err := r.Peek(1)
+			if err == nil &&
+				len(peeked) == 1 &&
+				rune(peeked[0]) == '*' {
+				// read the char we peeked
+				_, _, _ = r.ReadRune()
+				discardMultilineComment(r)
+			} else {
+				result = append(result, ru)
+			}
+		default:
+			result = append(result, ru)
+		}
+	}
+	return string(result)
+}
+func discardUntilEOL(r *bufio.Reader) {
+	for {
+		ru, _, err := r.ReadRune()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			continue
+		}
+		if ru == '\n' {
+			break
+		}
+	}
+}
+func discardMultilineComment(r *bufio.Reader) {
+	for {
+		ru, _, err := r.ReadRune()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			continue
+		}
+		if ru == '*' {
+			peeked, err := r.Peek(1)
+			if err == nil && len(peeked) == 1 && rune(peeked[0]) == '/' {
+				// read the rune we just peeked
+				_, _, _ = r.ReadRune()
+				break
+			}
+		}
+	}
+}
+func readString(r *bufio.Reader, single bool) []rune {
+	var result []rune
+	var escaped bool
+	for {
+		ru, _, err := r.ReadRune()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			continue
+		}
+		result = append(result, ru)
+		if (!single && ru == '"' && !escaped) ||
+			(single && ru == '\'' && !escaped) {
+			break
+		}
+		escaped = false
+		if ru == '\\' {
+			escaped = true
+		}
+	}
+	return result
 }
