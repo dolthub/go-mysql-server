@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"gopkg.in/src-d/go-mysql-server.v0/internal/regex"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -13,7 +14,7 @@ import (
 type Like struct {
 	BinaryExpression
 	canCacheRegex bool
-	regex         *regexp.Regexp
+	regex         regex.Matcher
 }
 
 // NewLike creates a new LIKE expression.
@@ -37,7 +38,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("expression.Like")
 	defer span.Finish()
 
-	var regex *regexp.Regexp
+	var re regex.Matcher
 	if l.regex == nil {
 		v, err := l.Right.Eval(ctx, row)
 		if err != nil {
@@ -49,16 +50,16 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		regex, err = regexp.Compile(patternToRegex(v.(string)))
+		re, err = regex.New(regex.Default(), patternToRegex(v.(string)))
 		if err != nil {
 			return nil, err
 		}
 
 		if l.canCacheRegex {
-			l.regex = regex
+			l.regex = re
 		}
 	} else {
-		regex = l.regex
+		re = l.regex
 	}
 
 	value, err := l.Left.Eval(ctx, row)
@@ -71,7 +72,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return regex.MatchString(value.(string)), nil
+	return re.Match(value.(string)), nil
 }
 
 func (l *Like) String() string {
