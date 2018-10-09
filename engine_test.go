@@ -304,6 +304,10 @@ var queries = []struct {
 			{float64(4), int64(3)},
 		},
 	},
+	{
+		`/*!40101 SET NAMES utf8 */`,
+		[]sql.Row{},
+	},
 }
 
 func TestQueries(t *testing.T) {
