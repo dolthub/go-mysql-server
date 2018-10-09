@@ -19,4 +19,4 @@ the issue neither pull requests aren't accepted to this repository.
 
 ## License
 
-Apache License 2.0, see [LICENSE.md](LICENSE.md).
+Apache License 2.0, see [LICENSE](LICENSE).
