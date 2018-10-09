@@ -726,6 +726,26 @@ var fixtures = map[string]sql.Node{
 		plan.NewUnresolvedTable("foo"),
 	),
 	`SHOW DATABASES`: plan.NewShowDatabases(),
+	`SELECT * FROM foo WHERE i LIKE 'foo'`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			expression.NewLike(
+				expression.NewUnresolvedColumn("i"),
+				expression.NewLiteral("foo", sql.Text),
+			),
+			plan.NewUnresolvedTable("foo"),
+		),
+	),
+	`SELECT * FROM foo WHERE i NOT LIKE 'foo'`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			expression.NewNot(expression.NewLike(
+				expression.NewUnresolvedColumn("i"),
+				expression.NewLiteral("foo", sql.Text),
+			)),
+			plan.NewUnresolvedTable("foo"),
+		),
+	),
 }
 
 func TestParse(t *testing.T) {
