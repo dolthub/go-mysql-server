@@ -296,6 +296,18 @@ var queries = []struct {
 		},
 	},
 	{
+		`SELECT COALESCE(NULL, NULL, NULL, 'example', NULL, 1234567890)`,
+		[]sql.Row{
+			{string("example")},
+		},
+	},
+	{
+		`SELECT COALESCE(NULL, NULL, NULL, COALESCE(NULL, 1234567890))`,
+		[]sql.Row{
+			{int64(1234567890)},
+		},
+	},
+	{
 		"SELECT concat(s, i) FROM mytable",
 		[]sql.Row{
 			{string("first row1")},
