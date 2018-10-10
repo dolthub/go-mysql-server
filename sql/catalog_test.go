@@ -8,6 +8,36 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
+func TestCatalogCurrentDatabase(t *testing.T) {
+	require := require.New(t)
+
+	c := sql.NewCatalog()
+	require.Equal("", c.CurrentDatabase())
+
+	c.AddDatabase(mem.NewDatabase("foo"))
+	require.Equal("foo", c.CurrentDatabase())
+
+	c.SetCurrentDatabase("bar")
+	require.Equal("bar", c.CurrentDatabase())
+}
+
+func TestAllDatabases(t *testing.T) {
+	require := require.New(t)
+
+	var dbs = sql.Databases{
+		mem.NewDatabase("a"),
+		mem.NewDatabase("b"),
+		mem.NewDatabase("c"),
+	}
+
+	c := sql.NewCatalog()
+	for _, db := range dbs {
+		c.AddDatabase(db)
+	}
+
+	require.Equal(dbs, c.AllDatabases())
+}
+
 func TestCatalogDatabase(t *testing.T) {
 	require := require.New(t)
 
@@ -17,7 +47,7 @@ func TestCatalogDatabase(t *testing.T) {
 	require.Nil(db)
 
 	mydb := mem.NewDatabase("foo")
-	c.Databases = append(c.Databases, mydb)
+	c.AddDatabase(mydb)
 
 	db, err = c.Database("foo")
 	require.NoError(err)
@@ -34,7 +64,7 @@ func TestCatalogTable(t *testing.T) {
 	require.Nil(table)
 
 	db := mem.NewDatabase("foo")
-	c.Databases = append(c.Databases, db)
+	c.AddDatabase(db)
 
 	table, err = c.Table("foo", "bar")
 	require.EqualError(err, "table not found: bar")

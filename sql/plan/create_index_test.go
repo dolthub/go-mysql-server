@@ -29,7 +29,7 @@ func TestCreateIndexAsync(t *testing.T) {
 	catalog.RegisterIndexDriver(driver)
 	db := mem.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog.Databases = append(catalog.Databases, db)
+	catalog.AddDatabase(db)
 
 	exprs := []sql.Expression{
 		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
@@ -83,7 +83,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	catalog.RegisterIndexDriver(driver)
 	db := mem.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog.Databases = append(catalog.Databases, db)
+	catalog.AddDatabase(db)
 
 	ci := NewCreateIndex(
 		"idx",
@@ -132,7 +132,7 @@ func TestCreateIndexSync(t *testing.T) {
 	catalog.RegisterIndexDriver(driver)
 	db := mem.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog.Databases = append(catalog.Databases, db)
+	catalog.AddDatabase(db)
 
 	exprs := []sql.Expression{
 		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
@@ -199,7 +199,7 @@ func TestCreateIndexWithIter(t *testing.T) {
 	catalog.RegisterIndexDriver(driver)
 	db := mem.NewDatabase("foo")
 	db.AddTable("foo", foo)
-	catalog.Databases = append(catalog.Databases, db)
+	catalog.AddDatabase(db)
 
 	ci := NewCreateIndex("idx", NewResolvedTable(foo), exprs, "mock", make(map[string]string))
 	ci.Catalog = catalog

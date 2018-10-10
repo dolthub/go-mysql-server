@@ -21,7 +21,7 @@ func NewShowTables(database sql.Database) *ShowTables {
 
 // Resolved implements the Resolvable interface.
 func (p *ShowTables) Resolved() bool {
-	_, ok := p.Database.(*sql.UnresolvedDatabase)
+	_, ok := p.Database.(sql.UnresolvedDatabase)
 	return !ok
 }
 

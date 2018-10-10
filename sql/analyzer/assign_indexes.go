@@ -101,7 +101,7 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 		// the right branch is evaluable and the indexlookup supports set
 		// operations.
 		if !isEvaluable(c.Left()) && isEvaluable(c.Right()) {
-			idx := a.Catalog.IndexByExpression(a.CurrentDatabase, c.Left())
+			idx := a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), c.Left())
 			if idx != nil {
 				var nidx sql.NegateIndex
 				if negate {
@@ -198,7 +198,7 @@ func getIndexes(e sql.Expression, a *Analyzer) (map[string]*indexLookup, error) 
 		}
 	case *expression.Between:
 		if !isEvaluable(e.Val) && isEvaluable(e.Upper) && isEvaluable(e.Lower) {
-			idx := a.Catalog.IndexByExpression(a.CurrentDatabase, e.Val)
+			idx := a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), e.Val)
 			if idx != nil {
 				// release the index if it was not used
 				defer func() {
@@ -301,7 +301,7 @@ func getComparisonIndex(
 	}
 
 	if !isEvaluable(left) && isEvaluable(right) {
-		idx := a.Catalog.IndexByExpression(a.CurrentDatabase, left)
+		idx := a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), left)
 		if idx != nil {
 			value, err := right.Eval(sql.NewEmptyContext(), nil)
 			if err != nil {
@@ -378,7 +378,7 @@ func getNegatedIndexes(a *Analyzer, not *expression.Not) (map[string]*indexLooku
 			return nil, nil
 		}
 
-		idx := a.Catalog.IndexByExpression(a.CurrentDatabase, left)
+		idx := a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), left)
 		if idx == nil {
 			return nil, nil
 		}
@@ -492,7 +492,7 @@ func getMultiColumnIndexes(
 				cols[i] = e.col
 			}
 
-			exprList := a.Catalog.ExpressionsWithIndexes(a.CurrentDatabase, cols...)
+			exprList := a.Catalog.ExpressionsWithIndexes(a.Catalog.CurrentDatabase(), cols...)
 
 			var selected []sql.Expression
 			for _, l := range exprList {
@@ -535,7 +535,7 @@ func getMultiColumnIndexForExpressions(
 	exprs []columnExpr,
 	used map[sql.Expression]struct{},
 ) (index sql.Index, lookup sql.IndexLookup, err error) {
-	index = a.Catalog.IndexByExpression(a.CurrentDatabase, selected...)
+	index = a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), selected...)
 	if index != nil {
 		var first sql.Expression
 		for _, e := range exprs {

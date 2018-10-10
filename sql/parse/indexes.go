@@ -35,7 +35,7 @@ func parseShowIndex(s string) (sql.Node, error) {
 	}
 
 	return plan.NewShowIndexes(
-		&sql.UnresolvedDatabase{},
+		sql.UnresolvedDatabase(""),
 		table,
 		nil,
 	), nil

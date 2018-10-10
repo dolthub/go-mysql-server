@@ -12,7 +12,7 @@ import (
 
 var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER, b TEXT, c DATE, d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL)`: plan.NewCreateTable(
-		&sql.UnresolvedDatabase{},
+		sql.UnresolvedDatabase(""),
 		"t1",
 		sql.Schema{{
 			Name:     "a",
@@ -231,7 +231,7 @@ var fixtures = map[string]sql.Node{
 		}}),
 		[]string{"col1", "col2"},
 	),
-	`SHOW TABLES`: plan.NewShowTables(&sql.UnresolvedDatabase{}),
+	`SHOW TABLES`: plan.NewShowTables(sql.UnresolvedDatabase("")),
 	`SELECT DISTINCT foo, bar FROM foo;`: plan.NewDistinct(
 		plan.NewProject(
 			[]sql.Expression{
@@ -624,12 +624,12 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo"),
 	),
-	`SHOW INDEXES FROM foo`: plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
-	`SHOW INDEX FROM foo`:   plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
-	`SHOW KEYS FROM foo`:    plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
-	`SHOW INDEXES IN foo`:   plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
-	`SHOW INDEX IN foo`:     plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
-	`SHOW KEYS IN foo`:      plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
+	`SHOW INDEXES FROM foo`: plan.NewShowIndexes(sql.UnresolvedDatabase(""), "foo", nil),
+	`SHOW INDEX FROM foo`:   plan.NewShowIndexes(sql.UnresolvedDatabase(""), "foo", nil),
+	`SHOW KEYS FROM foo`:    plan.NewShowIndexes(sql.UnresolvedDatabase(""), "foo", nil),
+	`SHOW INDEXES IN foo`:   plan.NewShowIndexes(sql.UnresolvedDatabase(""), "foo", nil),
+	`SHOW INDEX IN foo`:     plan.NewShowIndexes(sql.UnresolvedDatabase(""), "foo", nil),
+	`SHOW KEYS IN foo`:      plan.NewShowIndexes(sql.UnresolvedDatabase(""), "foo", nil),
 	`create index foo on bar using qux (baz)`: plan.NewCreateIndex(
 		"foo",
 		plan.NewUnresolvedTable("bar"),
@@ -778,6 +778,7 @@ var fixtures = map[string]sql.Node{
 		),
 		plan.NewShowTableStatus(),
 	),
+	`USE foo`: plan.NewUse(sql.UnresolvedDatabase("foo")),
 }
 
 func TestParse(t *testing.T) {
