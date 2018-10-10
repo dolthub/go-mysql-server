@@ -177,7 +177,7 @@ var queries = []struct {
 		},
 	},
 	{
-		"SELECT text > 2 FROM tabletest",
+		"SELECT s > 2 FROM tabletest",
 		[]sql.Row{
 			{false},
 			{false},
@@ -185,21 +185,21 @@ var queries = []struct {
 		},
 	},
 	{
-		"SELECT * FROM tabletest WHERE text > 0",
+		"SELECT * FROM tabletest WHERE s > 0",
 		nil,
 	},
 	{
-		"SELECT * FROM tabletest WHERE text = 0",
+		"SELECT * FROM tabletest WHERE s = 0",
 		[]sql.Row{
-			{"a", int32(1)},
-			{"b", int32(2)},
-			{"c", int32(3)},
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"},
 		},
 	},
 	{
-		"SELECT * FROM tabletest WHERE text = 'a'",
+		"SELECT * FROM tabletest WHERE s = 'first row'",
 		[]sql.Row{
-			{"a", int32(1)},
+			{int64(1), "first row"},
 		},
 	},
 	{
@@ -228,15 +228,15 @@ var queries = []struct {
 	{
 		`SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2`,
 		[]sql.Row{
-			{"a", int32(1), int64(1), "first row", "third", int64(1)},
-			{"a", int32(1), int64(2), "second row", "second", int64(2)},
-			{"a", int32(1), int64(3), "third row", "first", int64(3)},
-			{"b", int32(2), int64(1), "first row", "third", int64(1)},
-			{"b", int32(2), int64(2), "second row", "second", int64(2)},
-			{"b", int32(2), int64(3), "third row", "first", int64(3)},
-			{"c", int32(3), int64(1), "first row", "third", int64(1)},
-			{"c", int32(3), int64(2), "second row", "second", int64(2)},
-			{"c", int32(3), int64(3), "third row", "first", int64(3)},
+			{int64(1), "first row", int64(1), "first row", "third", int64(1)},
+			{int64(1), "first row", int64(2), "second row", "second", int64(2)},
+			{int64(1), "first row", int64(3), "third row", "first", int64(3)},
+			{int64(2), "second row", int64(1), "first row", "third", int64(1)},
+			{int64(2), "second row", int64(2), "second row", "second", int64(2)},
+			{int64(2), "second row", int64(3), "third row", "first", int64(3)},
+			{int64(3), "third row", int64(1), "first row", "third", int64(1)},
+			{int64(3), "third row", int64(2), "second row", "second", int64(2)},
+			{int64(3), "third row", int64(3), "third row", "first", int64(3)},
 		},
 	},
 	{
@@ -387,6 +387,14 @@ var queries = []struct {
 		`SHOW TABLE STATUS WHERE Name = 'mytable'`,
 		[]sql.Row{
 			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+		},
+	},
+	{
+		`SELECT i FROM mytable NATURAL JOIN tabletest`,
+		[]sql.Row{
+			{int64(1)},
+			{int64(2)},
+			{int64(3)},
 		},
 	},
 }
@@ -826,15 +834,15 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 	)
 
 	table3 := mem.NewPartitionedTable("tabletest", sql.Schema{
-		{Name: "text", Type: sql.Text, Source: "tabletest"},
-		{Name: "number", Type: sql.Int32, Source: "tabletest"},
+		{Name: "i", Type: sql.Int32, Source: "tabletest"},
+		{Name: "s", Type: sql.Text, Source: "tabletest"},
 	}, testNumPartitions)
 
 	insertRows(
 		t, table3,
-		sql.NewRow("a", int32(1)),
-		sql.NewRow("b", int32(2)),
-		sql.NewRow("c", int32(3)),
+		sql.NewRow(int64(1), "first row"),
+		sql.NewRow(int64(2), "second row"),
+		sql.NewRow(int64(3), "third row"),
 	)
 
 	db := mem.NewDatabase("mydb")
