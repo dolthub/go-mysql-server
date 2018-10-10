@@ -9,11 +9,6 @@ import (
 	"gopkg.in/src-d/go-vitess.v1/mysql"
 )
 
-const (
-	DefaultConnReadTimeout  = 30 * time.Second
-	DefaultConnWriteTimeout = 60 * time.Second
-)
-
 // Server is a MySQL server for SQLe engines.
 type Server struct {
 	Listener *mysql.Listener
@@ -50,12 +45,12 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 		tracer = opentracing.NoopTracer{}
 	}
 
-	if cfg.ConnReadTimeout == 0 {
-		cfg.ConnReadTimeout = DefaultConnReadTimeout
+	if cfg.ConnReadTimeout < 0 {
+		cfg.ConnReadTimeout = 0
 	}
 
-	if cfg.ConnWriteTimeout == 0 {
-		cfg.ConnWriteTimeout = DefaultConnWriteTimeout
+	if cfg.ConnWriteTimeout < 0 {
+		cfg.ConnWriteTimeout = 0
 	}
 
 	handler := NewHandler(e, NewSessionManager(sb, tracer, cfg.Address))
