@@ -47,7 +47,7 @@ func (n *ShowCreateTable) RowIter(*sql.Context) (sql.RowIter, error) {
 
 // String implements the Stringer interface.
 func (n *ShowCreateTable) String() string {
-	return fmt.Sprintf("ShowCreateTable(%s)", n.Table)
+	return fmt.Sprintf("SHOW CREATE TABLE %s", n.Table)
 }
 
 type createTableStmt struct {
@@ -82,15 +82,10 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 			createStmtPart = fmt.Sprintf("%sNOT NULL", createStmtPart)
 		}
 
-		if indx != len(schema)-1 {
-			colCreateStatements[indx] = createStmtPart + ",\n"
-			continue
-		}
-
 		colCreateStatements[indx] = createStmtPart
 	}
 
-	prettyColCreateStmts := fmt.Sprintf("%s", stripBrackets(colCreateStatements))
+	prettyColCreateStmts := fmt.Sprintf("%s", stripBrackets(strings.Join(colCreateStatements, ",\n")))
 
 	composedCreateTableStatement :=
 		fmt.Sprintf("CREATE TABLE `%s` (%s) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", i.table, prettyColCreateStmts)
