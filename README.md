@@ -61,6 +61,7 @@ We support and actively test against certain third-party clients to ensure compa
 - `ARRAY_LENGTH(json)`: If the json representation is an array, this function returns its size.
 - `SPLIT(str,sep)`: Receives a string and a separator and returns the parts of the string split by the separator as a JSON array of strings.
 - `CONCAT(...)`: Concatenate any group of fields into a single string.
+- `COALESCE(...)`: The function returns the first non-null value in a list.
 
 ## Example
 
@@ -122,7 +123,7 @@ func createTestDatabase() *mem.Database {
     for _, row := range rows {
         table.Insert(ctx, row)
     }
-    
+
     return db
 }
 

@@ -78,6 +78,7 @@
 - IS_BINARY
 - SPLIT
 - SUBSTRING
+- COALESCE
 
 ## Time functions
 - DAY
