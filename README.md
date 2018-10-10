@@ -62,6 +62,10 @@ We support and actively test against certain third-party clients to ensure compa
 - `SPLIT(str,sep)`: Receives a string and a separator and returns the parts of the string split by the separator as a JSON array of strings.
 - `CONCAT(...)`: Concatenate any group of fields into a single string.
 - `COALESCE(...)`: The function returns the first non-null value in a list.
+- `LOWER(str)`, `UPPER(str)`: Receives a string and modify it changing all the chars to upper or lower case.
+- `CEILING(number)`, `CEIL(number)`: Return the smallest integer value that is greater than or equal to `number`.
+- `FLOOR(number)`: Return the largest integer value that is less than or equal to `number`.
+- `ROUND(number, decimals)`: Round the `number` to `decimals` decimal places.
 
 ## Example
 
