@@ -11,6 +11,47 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
+func TestQualifyColumnsProject(t *testing.T) {
+	require := require.New(t)
+
+	table := mem.NewTable("foo", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "foo"},
+		{Name: "b", Type: sql.Text, Source: "foo"},
+	})
+
+	node := plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewUnresolvedColumn("b"),
+		},
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewUnresolvedQualifiedColumn("foo", "a"),
+			},
+			plan.NewResolvedTable(table),
+		),
+	)
+
+	result, err := qualifyColumns(sql.NewEmptyContext(), NewDefault(nil), node)
+	require.NoError(err)
+
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedQualifiedColumn("foo", "a"),
+			// b is not qualified because it's not projected
+			expression.NewUnresolvedColumn("b"),
+		},
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewUnresolvedQualifiedColumn("foo", "a"),
+			},
+			plan.NewResolvedTable(table),
+		),
+	)
+
+	require.Equal(expected, result)
+}
+
 func TestMisusedAlias(t *testing.T) {
 	require := require.New(t)
 	f := getRule("resolve_columns")
