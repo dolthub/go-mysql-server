@@ -50,6 +50,14 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 		}
 	}
 
+	var projects, seenProjects int
+	plan.Inspect(n, func(n sql.Node) bool {
+		if _, ok := n.(*plan.Project); ok {
+			projects++
+		}
+		return true
+	})
+
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
 		switch n := n.(type) {
@@ -68,7 +76,7 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			indexCols(name, n.Schema())
 		}
 
-		return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
+		result, err := n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
 			a.Log("transforming expression of type: %T", e)
 			switch col := e.(type) {
 			case *expression.UnresolvedColumn:
@@ -135,6 +143,51 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 
 			return e, nil
 		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		// We should ignore the topmost project, because some nodes are
+		// reordered, such as Sort, and they would not be resolved well.
+		if n, ok := result.(*plan.Project); ok && projects-seenProjects > 1 {
+			seenProjects++
+
+			// We need to modify the indexed columns to only contain what is
+			// projected in this project. If the column is not qualified by any
+			// table, just keep the ones that are currently in the index.
+			// If it is, then just make those tables available for the column.
+			// If we don't do this, columns that are not projected will be
+			// available in this step and may cause false errors or unintended
+			// results.
+			var projected = make(map[string][]string)
+			for _, p := range n.Projections {
+				var table, col string
+				switch p := p.(type) {
+				case column:
+					table = p.Table()
+					col = p.Name()
+				case *expression.GetField:
+					table = p.Table()
+					col = p.Name()
+				default:
+					continue
+				}
+
+				if table != "" {
+					projected[col] = append(projected[col], table)
+				} else {
+					projected[col] = append(projected[col], colIndex[col]...)
+				}
+			}
+
+			colIndex = make(map[string][]string)
+			for col, tables := range projected {
+				colIndex[col] = dedupStrings(tables)
+			}
+		}
+
+		return result, nil
 	})
 }
 
