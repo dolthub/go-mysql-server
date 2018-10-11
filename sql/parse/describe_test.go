@@ -35,7 +35,7 @@ func TestParseDescribeQuery(t *testing.T) {
 			"DESCRIBE FORMAT=tree SELECT * FROM foo",
 			plan.NewDescribeQuery("tree", plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
-				plan.NewUnresolvedTable("foo")),
+				plan.NewUnresolvedTable("foo", "")),
 			),
 			nil,
 		},
@@ -43,7 +43,7 @@ func TestParseDescribeQuery(t *testing.T) {
 			"DESC FORMAT=tree SELECT * FROM foo",
 			plan.NewDescribeQuery("tree", plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
-				plan.NewUnresolvedTable("foo")),
+				plan.NewUnresolvedTable("foo", "")),
 			),
 			nil,
 		},
@@ -51,7 +51,7 @@ func TestParseDescribeQuery(t *testing.T) {
 			"EXPLAIN FORMAT=tree SELECT * FROM foo",
 			plan.NewDescribeQuery("tree", plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
-				plan.NewUnresolvedTable("foo")),
+				plan.NewUnresolvedTable("foo", "")),
 			),
 			nil,
 		},

@@ -31,7 +31,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	catalog.AddDatabase(db)
 	a := withoutProcessTracking(NewDefault(catalog))
 
-	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable")
+	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable", "")
 	analyzed, err := a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NoError(err)
 	require.Equal(
@@ -39,7 +39,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		analyzed,
 	)
 
-	notAnalyzed = plan.NewUnresolvedTable("nonexistant")
+	notAnalyzed = plan.NewUnresolvedTable("nonexistant", "")
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.Error(err)
 	require.Nil(analyzed)
@@ -53,14 +53,14 @@ func TestAnalyzer_Analyze(t *testing.T) {
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewUnresolvedColumn("o")},
-		plan.NewUnresolvedTable("mytable"),
+		plan.NewUnresolvedTable("mytable", ""),
 	)
 	_, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.Error(err)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewUnresolvedColumn("i")},
-		plan.NewUnresolvedTable("mytable"),
+		plan.NewUnresolvedTable("mytable", ""),
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	var expected sql.Node = plan.NewResolvedTable(
@@ -70,7 +70,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	require.Equal(expected, analyzed)
 
 	notAnalyzed = plan.NewDescribe(
-		plan.NewUnresolvedTable("mytable"),
+		plan.NewUnresolvedTable("mytable", ""),
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	expected = plan.NewDescribe(
@@ -81,7 +81,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
-		plan.NewUnresolvedTable("mytable"),
+		plan.NewUnresolvedTable("mytable", ""),
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NoError(err)
@@ -94,7 +94,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		[]sql.Expression{expression.NewStar()},
 		plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
-			plan.NewUnresolvedTable("mytable"),
+			plan.NewUnresolvedTable("mytable", ""),
 		),
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
@@ -111,7 +111,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 				"foo",
 			),
 		},
-		plan.NewUnresolvedTable("mytable"),
+		plan.NewUnresolvedTable("mytable", ""),
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	expected = plan.NewProject(
@@ -133,7 +133,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 				expression.NewUnresolvedColumn("i"),
 				expression.NewLiteral(int32(1), sql.Int32),
 			),
-			plan.NewUnresolvedTable("mytable"),
+			plan.NewUnresolvedTable("mytable", ""),
 		),
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
@@ -155,8 +155,8 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			expression.NewUnresolvedColumn("i2"),
 		},
 		plan.NewCrossJoin(
-			plan.NewUnresolvedTable("mytable"),
-			plan.NewUnresolvedTable("mytable2"),
+			plan.NewUnresolvedTable("mytable", ""),
+			plan.NewUnresolvedTable("mytable2", ""),
 		),
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
@@ -172,7 +172,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("i"),
 			},
-			plan.NewUnresolvedTable("mytable"),
+			plan.NewUnresolvedTable("mytable", ""),
 		),
 	)
 	analyzed, err = a.Analyze(sql.NewEmptyContext(), notAnalyzed)
@@ -215,7 +215,7 @@ func TestMaxIterations(t *testing.T) {
 			return n, nil
 		}).Build())
 
-	notAnalyzed := plan.NewUnresolvedTable(tName)
+	notAnalyzed := plan.NewUnresolvedTable(tName, "")
 	analyzed, err := a.Analyze(sql.NewEmptyContext(), notAnalyzed)
 	require.NoError(err)
 	require.Equal(
@@ -305,14 +305,14 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 		},
 		plan.NewNaturalJoin(
 			plan.NewInnerJoin(
-				plan.NewUnresolvedTable("mytable"),
-				plan.NewUnresolvedTable("mytable2"),
+				plan.NewUnresolvedTable("mytable", ""),
+				plan.NewUnresolvedTable("mytable2", ""),
 				expression.NewEquals(
 					expression.NewUnresolvedQualifiedColumn("mytable", "i"),
 					expression.NewUnresolvedQualifiedColumn("mytable2", "i2"),
 				),
 			),
-			plan.NewUnresolvedTable("mytable3"),
+			plan.NewUnresolvedTable("mytable3", ""),
 		),
 	)
 

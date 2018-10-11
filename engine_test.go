@@ -393,6 +393,7 @@ var queries = []struct {
 		[]sql.Row{
 			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"other_table", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -407,6 +408,14 @@ var queries = []struct {
 			{int64(1)},
 			{int64(2)},
 			{int64(3)},
+		},
+	},
+	{
+		`SELECT * FROM foo.other_table`,
+		[]sql.Row{
+			{"a", int32(4)},
+			{"b", int32(2)},
+			{"c", int32(0)},
 		},
 	},
 }
@@ -838,6 +847,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		{Name: "s2", Type: sql.Text, Source: "othertable"},
 		{Name: "i2", Type: sql.Int64, Source: "othertable"},
 	}, testNumPartitions)
+
 	insertRows(
 		t, table2,
 		sql.NewRow("first", int64(3)),
@@ -857,14 +867,29 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow(int64(3), "third row"),
 	)
 
+	table4 := mem.NewPartitionedTable("other_table", sql.Schema{
+		{Name: "text", Type: sql.Text, Source: "tabletest"},
+		{Name: "number", Type: sql.Int32, Source: "tabletest"},
+	}, testNumPartitions)
+
+	insertRows(
+		t, table4,
+		sql.NewRow("a", int32(4)),
+		sql.NewRow("b", int32(2)),
+		sql.NewRow("c", int32(0)),
+	)
+
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 	db.AddTable("othertable", table2)
 	db.AddTable("tabletest", table3)
 
+	db2 := mem.NewDatabase("foo")
+	db2.AddTable("other_table", table4)
+
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
-	catalog.AddDatabase(mem.NewDatabase("foo"))
+	catalog.AddDatabase(db2)
 
 	var a *analyzer.Analyzer
 	if parallelism > 1 {
