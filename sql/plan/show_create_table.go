@@ -14,10 +14,8 @@ var ErrTableNotFound = errors.NewKind("Table `%s` not found")
 
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
-	DatabaseName string
-	Table        string
-	Registry     *sql.IndexRegistry
-	Catalog      *sql.Catalog
+	Table   string
+	Catalog *sql.Catalog
 }
 
 // Schema implements the Node interface.
@@ -35,38 +33,15 @@ func (n *ShowCreateTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.N
 
 // TransformUp implements the Transformable interface.
 func (n *ShowCreateTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	var datab sql.Database
-	if n.Catalog == nil {
-		datab = &sql.UnresolvedDatabase{}
-		return f(NewShowCreateTable(n.DatabaseName, n.Table, n.Registry))
-	}
-	datab, _ = n.Catalog.Database(n.DatabaseName)
-	if datab == nil {
-		datab = &sql.UnresolvedDatabase{}
-	}
-
-	return f(NewShowCreateTable(n.DatabaseName, n.Table, n.Registry))
+	return f(NewShowCreateTable(n.Catalog, n.Table))
 }
 
-// RowIter implements the Node interface.
-func (n *ShowCreateTable) RowIter(*sql.Context) (sql.RowIter, error) {
-	var datab sql.Database
-	if n.Catalog == nil {
-		datab = &sql.UnresolvedDatabase{}
-
-		return &showCreateTablesIter{
-			db:    datab,
-			table: n.Table,
-		}, nil
-	}
-
-	datab, _ = n.Catalog.Database(n.DatabaseName)
-	if datab == nil {
-		datab = &sql.UnresolvedDatabase{}
-	}
+// RowIter implements the Node interface
+func (n *ShowCreateTable) RowIter(c *sql.Context) (sql.RowIter, error) {
+	// Find correct db here?
 
 	return &showCreateTablesIter{
-		db:    datab,
+		db:    &sql.UnresolvedDatabase{},
 		table: n.Table,
 	}, nil
 }
@@ -131,10 +106,10 @@ func (i *showCreateTablesIter) Close() error {
 }
 
 // NewShowCreateTable creates a new ShowCreateTable node.
-func NewShowCreateTable(db string, table string, registry *sql.IndexRegistry) sql.Node {
-	return &ShowCreateTable{DatabaseName: db,
-		Table:    table,
-		Registry: registry}
+func NewShowCreateTable(ctl *sql.Catalog, table string) sql.Node {
+	return &ShowCreateTable{
+		Table:   table,
+		Catalog: ctl}
 }
 
 // Resolved implements the Resolvable interface.

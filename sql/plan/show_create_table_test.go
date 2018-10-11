@@ -22,8 +22,7 @@ func TestShowCreateTable(t *testing.T) {
 
 	db.AddTable(table.Name(), table)
 
-	showCreateTable := NewShowCreateTable(db.Name(), table.Name(), sql.NewIndexRegistry())
-	showCreateTable.(*ShowCreateTable).Catalog = &sql.Catalog{Databases: sql.Databases{db}}
+	showCreateTable := NewShowCreateTable(&sql.Catalog{Databases: sql.Databases{db}}, table.Name())
 
 	ctx := sql.NewEmptyContext()
 	rowIter, _ := showCreateTable.RowIter(ctx)

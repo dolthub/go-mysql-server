@@ -107,9 +107,8 @@ func parseShowCreateTable(s string) (sql.Node, error) {
 	}
 
 	return plan.NewShowCreateTable(
-		"",
-		table,
 		nil,
+		table,
 	), nil
 }
 
