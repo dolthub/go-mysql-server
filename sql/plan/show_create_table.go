@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"io"
 	"strings"
 )
 
@@ -65,14 +66,21 @@ type showCreateTablesIter struct {
 	db    sql.Database
 	table string
 
-	createStmt *createTableStmt
+	createStmt   *createTableStmt
+	didIteration bool
 }
 
 func (i *showCreateTablesIter) Next() (sql.Row, error) {
-	table := i.db.Tables()[i.table]
+	if i.didIteration {
+		return nil, io.EOF
+	}
 
-	if table == nil {
-		return nil, ErrTableNotFound.New(table)
+	i.didIteration = true
+
+	table, found := i.db.Tables()[i.table]
+
+	if !found {
+		return nil, ErrTableNotFound.New(i.table)
 	}
 
 	schema := table.Schema()

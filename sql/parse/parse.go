@@ -95,6 +95,7 @@ func parseShowCreateTable(s string) (sql.Node, error) {
 		expect("create"),
 		skipSpaces,
 		expect("table"),
+		skipSpaces,
 		readIdent(&table),
 		skipSpaces,
 		checkEOF,
