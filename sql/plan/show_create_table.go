@@ -14,8 +14,9 @@ var ErrTableNotFound = errors.NewKind("Table `%s` not found")
 
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
-	Table   string
-	Catalog *sql.Catalog
+	Catalog         *sql.Catalog
+	CurrentDatabase string
+	Table           string
 }
 
 // Schema implements the Node interface.
@@ -33,15 +34,19 @@ func (n *ShowCreateTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.N
 
 // TransformUp implements the Transformable interface.
 func (n *ShowCreateTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(NewShowCreateTable(n.Catalog, n.Table))
+	return f(NewShowCreateTable(n.CurrentDatabase, n.Catalog, n.Table))
 }
 
 // RowIter implements the Node interface
-func (n *ShowCreateTable) RowIter(c *sql.Context) (sql.RowIter, error) {
-	// Find correct db here?
+func (n *ShowCreateTable) RowIter(*sql.Context) (sql.RowIter, error) {
+	db, err := n.Catalog.Database(n.CurrentDatabase)
+
+	if err != nil {
+		return nil, sql.ErrDatabaseNotFound.New(n.CurrentDatabase)
+	}
 
 	return &showCreateTablesIter{
-		db:    &sql.UnresolvedDatabase{},
+		db:    db,
 		table: n.Table,
 	}, nil
 }
@@ -86,7 +91,7 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 		colCreateStatements[indx] = createStmtPart
 	}
 
-	prettyColCreateStmts := fmt.Sprintf("%s", stripBrackets(strings.Join(colCreateStatements, ",\n")))
+	prettyColCreateStmts := fmt.Sprintf("%s", strings.Join(colCreateStatements, ",\n"))
 
 	composedCreateTableStatement :=
 		fmt.Sprintf("CREATE TABLE `%s` (%s) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", i.table, prettyColCreateStmts)
@@ -97,24 +102,22 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 	), nil
 }
 
-func stripBrackets(val interface{}) string {
-	return strings.Trim(fmt.Sprintf("%s", val), "[]")
-}
-
 func (i *showCreateTablesIter) Close() error {
 	return nil
 }
 
 // NewShowCreateTable creates a new ShowCreateTable node.
-func NewShowCreateTable(ctl *sql.Catalog, table string) sql.Node {
+func NewShowCreateTable(db string, ctl *sql.Catalog, table string) sql.Node {
 	return &ShowCreateTable{
-		Table:   table,
-		Catalog: ctl}
+		CurrentDatabase: db,
+		Table:           table,
+		Catalog:         ctl}
 }
 
 // Resolved implements the Resolvable interface.
 func (n *ShowCreateTable) Resolved() bool {
 	return true
+	//return n.CurrentDatabase == (&sql.UnresolvedDatabase{}).Name()
 }
 
 // Children implements the Node interface.
