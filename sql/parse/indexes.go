@@ -16,7 +16,7 @@ func parseShowIndex(s string) (sql.Node, error) {
 	r := bufio.NewReader(strings.NewReader(s))
 
 	var table string
-	steps := []parseFunc{
+	err := parseFuncs{
 		expect("show"),
 		skipSpaces,
 		oneOf("index", "indexes", "keys"),
@@ -26,12 +26,10 @@ func parseShowIndex(s string) (sql.Node, error) {
 		readIdent(&table),
 		skipSpaces,
 		checkEOF,
-	}
+	}.exec(r)
 
-	for _, step := range steps {
-		if err := step(r); err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
 	}
 
 	return plan.NewShowIndexes(
@@ -47,7 +45,7 @@ func parseCreateIndex(s string) (sql.Node, error) {
 	var name, table, driver string
 	var exprs []string
 	var config = make(map[string]string)
-	steps := []parseFunc{
+	err := parseFuncs{
 		expect("create"),
 		skipSpaces,
 		expect("index"),
@@ -71,12 +69,10 @@ func parseCreateIndex(s string) (sql.Node, error) {
 			skipSpaces,
 		),
 		checkEOF,
-	}
+	}.exec(r)
 
-	for _, step := range steps {
-		if err := step(r); err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
 	}
 
 	var indexExprs = make([]sql.Expression, len(exprs))
@@ -110,7 +106,7 @@ func readKeyValue(kv map[string]string) parseFunc {
 
 		for {
 			var key, value string
-			steps := []parseFunc{
+			err := parseFuncs{
 				skipSpaces,
 				readIdent(&key),
 				skipSpaces,
@@ -118,12 +114,10 @@ func readKeyValue(kv map[string]string) parseFunc {
 				skipSpaces,
 				readValue(&value),
 				skipSpaces,
-			}
+			}.exec(rd)
 
-			for _, step := range steps {
-				if err := step(rd); err != nil {
-					return err
-				}
+			if err != nil {
+				return err
 			}
 
 			r, _, err := rd.ReadRune()
@@ -201,7 +195,7 @@ func parseDropIndex(str string) (sql.Node, error) {
 	r := bufio.NewReader(strings.NewReader(str))
 
 	var name, table string
-	steps := []parseFunc{
+	err := parseFuncs{
 		expect("drop"),
 		skipSpaces,
 		expect("index"),
@@ -213,12 +207,10 @@ func parseDropIndex(str string) (sql.Node, error) {
 		readIdent(&table),
 		skipSpaces,
 		checkEOF,
-	}
+	}.exec(r)
 
-	for _, step := range steps {
-		if err := step(r); err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
 	}
 
 	return plan.NewDropIndex(

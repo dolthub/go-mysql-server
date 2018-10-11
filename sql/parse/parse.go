@@ -42,6 +42,8 @@ var (
 	showVariablesRegex   = regexp.MustCompile(`^show\s+(.*)?variables\s*`)
 	describeRegex        = regexp.MustCompile(`^(describe|desc|explain)\s+(.*)\s+`)
 	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
+	unlockTablesRegex    = regexp.MustCompile(`^unlock\s+tables$`)
+	lockTablesRegex      = regexp.MustCompile(`^lock\s+tables\s`)
 )
 
 // Parse parses the given SQL sentence and returns the corresponding node.
@@ -78,6 +80,10 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return parseDescribeQuery(ctx, s)
 	case fullProcessListRegex.MatchString(lowerQuery):
 		return plan.NewShowProcessList(), nil
+	case unlockTablesRegex.MatchString(lowerQuery):
+		return plan.NewUnlockTables(), nil
+	case lockTablesRegex.MatchString(lowerQuery):
+		return parseLockTables(ctx, s)
 	}
 
 	stmt, err := sqlparser.Parse(s)
@@ -1020,19 +1026,17 @@ func readString(r *bufio.Reader, single bool) []rune {
 
 func parseShowTableStatus(query string) (sql.Node, error) {
 	buf := bufio.NewReader(strings.NewReader(query))
-	steps := []parseFunc{
+	err := parseFuncs{
 		expect("show"),
 		skipSpaces,
 		expect("table"),
 		skipSpaces,
 		expect("status"),
 		skipSpaces,
-	}
+	}.exec(buf)
 
-	for _, step := range steps {
-		if err := step(buf); err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
 	}
 
 	var clause string

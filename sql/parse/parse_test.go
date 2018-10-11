@@ -3,6 +3,7 @@ package parse
 import (
 	"testing"
 
+	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 
@@ -793,6 +794,34 @@ var fixtures = map[string]sql.Node{
 	`SHOW SESSION VARIABLES`:                   plan.NewShowVariables(sql.NewEmptyContext().GetAll(), ""),
 	`SHOW VARIABLES LIKE 'gtid_mode'`:          plan.NewShowVariables(sql.NewEmptyContext().GetAll(), "gtid_mode"),
 	`SHOW SESSION VARIABLES LIKE 'autocommit'`: plan.NewShowVariables(sql.NewEmptyContext().GetAll(), "autocommit"),
+	`UNLOCK TABLES`:                            plan.NewUnlockTables(),
+	`LOCK TABLES foo READ`: plan.NewLockTables([]*plan.TableLock{
+		{Table: plan.NewUnresolvedTable("foo", "")},
+	}),
+	`LOCK TABLES foo f READ`: plan.NewLockTables([]*plan.TableLock{
+		{Table: plan.NewUnresolvedTable("foo", "")},
+	}),
+	`LOCK TABLES foo AS f READ`: plan.NewLockTables([]*plan.TableLock{
+		{Table: plan.NewUnresolvedTable("foo", "")},
+	}),
+	`LOCK TABLES foo READ LOCAL`: plan.NewLockTables([]*plan.TableLock{
+		{Table: plan.NewUnresolvedTable("foo", "")},
+	}),
+	`LOCK TABLES foo WRITE`: plan.NewLockTables([]*plan.TableLock{
+		{Table: plan.NewUnresolvedTable("foo", ""), Write: true},
+	}),
+	`LOCK TABLES foo LOW_PRIORITY WRITE`: plan.NewLockTables([]*plan.TableLock{
+		{Table: plan.NewUnresolvedTable("foo", ""), Write: true},
+	}),
+	`LOCK TABLES foo WRITE, bar READ`: plan.NewLockTables([]*plan.TableLock{
+		{Table: plan.NewUnresolvedTable("foo", ""), Write: true},
+		{Table: plan.NewUnresolvedTable("bar", "")},
+	}),
+	`LOCK TABLES foo READ, bar WRITE, baz READ`: plan.NewLockTables([]*plan.TableLock{
+		{Table: plan.NewUnresolvedTable("foo", "")},
+		{Table: plan.NewUnresolvedTable("bar", ""), Write: true},
+		{Table: plan.NewUnresolvedTable("baz", "")},
+	}),
 }
 
 func TestParse(t *testing.T) {
@@ -809,8 +838,10 @@ func TestParse(t *testing.T) {
 	}
 }
 
-var fixturesErrors = map[string]error{
-	`SHOW METHEMONEY`: ErrUnsupportedFeature.New(`SHOW METHEMONEY`),
+var fixturesErrors = map[string]*errors.Kind{
+	`SHOW METHEMONEY`:                   ErrUnsupportedFeature,
+	`LOCK TABLES foo AS READ`:           errUnexpectedSyntax,
+	`LOCK TABLES foo LOW_PRIORITY READ`: errUnexpectedSyntax,
 }
 
 func TestParseErrors(t *testing.T) {
@@ -820,7 +851,7 @@ func TestParseErrors(t *testing.T) {
 			ctx := sql.NewEmptyContext()
 			_, err := Parse(ctx, query)
 			require.Error(err)
-			require.Equal(expectedError.Error(), err.Error())
+			require.True(expectedError.Is(err))
 		})
 	}
 }

@@ -81,3 +81,44 @@ func TestCatalogTable(t *testing.T) {
 	require.NoError(err)
 	require.Equal(mytable, table)
 }
+
+func TestCatalogUnlockTables(t *testing.T) {
+	require := require.New(t)
+
+	db := mem.NewDatabase("db")
+	t1 := newLockableTable(mem.NewTable("t1", nil))
+	t2 := newLockableTable(mem.NewTable("t2", nil))
+	db.AddTable("t1", t1)
+	db.AddTable("t2", t2)
+
+	c := sql.NewCatalog()
+	c.AddDatabase(db)
+
+	c.LockTable(1, "t1")
+	c.LockTable(1, "t2")
+
+	require.NoError(c.UnlockTables(nil, 1))
+
+	require.Equal(1, t1.unlocks)
+	require.Equal(1, t2.unlocks)
+}
+
+type lockableTable struct {
+	sql.Table
+	unlocks int
+}
+
+func newLockableTable(t sql.Table) *lockableTable {
+	return &lockableTable{Table: t}
+}
+
+var _ sql.Lockable = (*lockableTable)(nil)
+
+func (l *lockableTable) Lock(ctx *sql.Context, write bool) error {
+	return nil
+}
+
+func (l *lockableTable) Unlock(ctx *sql.Context, id uint32) error {
+	l.unlocks++
+	return nil
+}
