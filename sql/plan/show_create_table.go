@@ -14,9 +14,10 @@ var ErrTableNotFound = errors.NewKind("Table `%s` not found")
 
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
-	Database sql.Database
-	Table    string
-	Registry *sql.IndexRegistry
+	DatabaseName string
+	Table        string
+	Registry     *sql.IndexRegistry
+	Catalog      *sql.Catalog
 }
 
 // Schema implements the Node interface.
@@ -34,13 +35,23 @@ func (n *ShowCreateTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.N
 
 // TransformUp implements the Transformable interface.
 func (n *ShowCreateTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(NewShowCreateTable(n.Database, n.Table, n.Registry))
+	datab, _ := n.Catalog.Database(n.DatabaseName)
+	if datab == nil {
+		datab = &sql.UnresolvedDatabase{}
+	}
+
+	return f(NewShowCreateTable(n.DatabaseName, n.Table, n.Registry))
 }
 
 // RowIter implements the Node interface.
 func (n *ShowCreateTable) RowIter(*sql.Context) (sql.RowIter, error) {
+	datab, _ := n.Catalog.Database(n.DatabaseName)
+	if datab == nil {
+		datab = &sql.UnresolvedDatabase{}
+	}
+
 	return &showCreateTablesIter{
-		db:    n.Database,
+		db:    datab,
 		table: n.Table,
 	}, nil
 }
@@ -105,14 +116,20 @@ func (i *showCreateTablesIter) Close() error {
 }
 
 // NewShowCreateTable creates a new ShowCreateTable node.
-func NewShowCreateTable(db sql.Database, table string, registry *sql.IndexRegistry) sql.Node {
-	return &ShowCreateTable{db, table, registry}
+func NewShowCreateTable(db string, table string, registry *sql.IndexRegistry) sql.Node {
+	return &ShowCreateTable{DatabaseName: db,
+		Table:    table,
+		Registry: registry}
 }
 
 // Resolved implements the Resolvable interface.
 func (n *ShowCreateTable) Resolved() bool {
-	_, ok := n.Database.(*sql.UnresolvedDatabase)
-	return !ok
+	_, err := n.Catalog.Database(n.DatabaseName)
+	if err == nil {
+		return true
+	}
+
+	return false
 }
 
 // Children implements the Node interface.

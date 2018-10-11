@@ -10,7 +10,7 @@ import (
 func TestShowCreateTable(t *testing.T) {
 	var require = require.New(t)
 
-	db := mem.NewDatabase("test")
+	db := mem.NewDatabase("testdb")
 
 	table := mem.NewTable(
 		"test-table",
@@ -22,7 +22,8 @@ func TestShowCreateTable(t *testing.T) {
 
 	db.AddTable(table.Name(), table)
 
-	showCreateTable := NewShowCreateTable(db, table.Name(), sql.NewIndexRegistry())
+	showCreateTable := NewShowCreateTable(db.Name(), table.Name(), sql.NewIndexRegistry())
+	showCreateTable.(*ShowCreateTable).Catalog = &sql.Catalog{Databases: sql.Databases{db}}
 
 	ctx := sql.NewEmptyContext()
 	rowIter, _ := showCreateTable.RowIter(ctx)

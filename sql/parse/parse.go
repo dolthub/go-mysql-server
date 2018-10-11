@@ -3,19 +3,19 @@ package parse // import "gopkg.in/src-d/go-mysql-server.v0/sql/parse"
 import (
 	"bufio"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"regexp"
-	"strconv"
-	"strings"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
+	"io"
+	"io/ioutil"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
 var (
@@ -104,7 +104,7 @@ func parseShowCreateTable(s string) (sql.Node, error) {
 	}
 
 	return plan.NewShowCreateTable(
-		&sql.UnresolvedDatabase{},
+		"",
 		table,
 		nil,
 	), nil
