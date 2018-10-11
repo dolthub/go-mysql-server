@@ -90,8 +90,11 @@ func parseShowCreateTable(s string) (sql.Node, error) {
 
 	var table string
 	steps := []parseFunc{
-		expect("show create table"),
+		expect("show"),
 		skipSpaces,
+		expect("create"),
+		skipSpaces,
+		expect("table"),
 		readIdent(&table),
 		skipSpaces,
 		checkEOF,

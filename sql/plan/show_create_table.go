@@ -35,7 +35,12 @@ func (n *ShowCreateTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.N
 
 // TransformUp implements the Transformable interface.
 func (n *ShowCreateTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	datab, _ := n.Catalog.Database(n.DatabaseName)
+	var datab sql.Database
+	if n.Catalog == nil {
+		datab = &sql.UnresolvedDatabase{}
+		return f(NewShowCreateTable(n.DatabaseName, n.Table, n.Registry))
+	}
+	datab, _ = n.Catalog.Database(n.DatabaseName)
 	if datab == nil {
 		datab = &sql.UnresolvedDatabase{}
 	}
@@ -45,7 +50,17 @@ func (n *ShowCreateTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error)
 
 // RowIter implements the Node interface.
 func (n *ShowCreateTable) RowIter(*sql.Context) (sql.RowIter, error) {
-	datab, _ := n.Catalog.Database(n.DatabaseName)
+	var datab sql.Database
+	if n.Catalog == nil {
+		datab = &sql.UnresolvedDatabase{}
+
+		return &showCreateTablesIter{
+			db:    datab,
+			table: n.Table,
+		}, nil
+	}
+
+	datab, _ = n.Catalog.Database(n.DatabaseName)
 	if datab == nil {
 		datab = &sql.UnresolvedDatabase{}
 	}
@@ -124,12 +139,7 @@ func NewShowCreateTable(db string, table string, registry *sql.IndexRegistry) sq
 
 // Resolved implements the Resolvable interface.
 func (n *ShowCreateTable) Resolved() bool {
-	_, err := n.Catalog.Database(n.DatabaseName)
-	if err == nil {
-		return true
-	}
-
-	return false
+	return true
 }
 
 // Children implements the Node interface.
