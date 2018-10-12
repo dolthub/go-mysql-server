@@ -18,7 +18,7 @@ services:
 install:
   - go get -u github.com/golang/dep/cmd/dep
   - touch Gopkg.toml
-  - dep ensure -v -add "github.com/pilosa/pilosa@1.1.0" "github.com/moovweb/rubex@b3d9ff6ad7d9b14f94a91c8271cd9ad9e77132e5"
+  - dep ensure -v -add "github.com/pilosa/pilosa@f62dbc00b96f596a1f2ef8b4e87ba8ec847eda37" "github.com/moovweb/rubex@b3d9ff6ad7d9b14f94a91c8271cd9ad9e77132e5"
   - make dependencies
 
 before_script:
