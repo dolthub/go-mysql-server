@@ -67,13 +67,10 @@ type (
 		timeMapping time.Duration
 	}
 
-	tableMap map[string]*pilosa.Holder
-	dbMap    map[string]tableMap
-
 	// Driver implements sql.IndexDriver interface.
 	Driver struct {
-		root    string
-		holders dbMap
+		root   string
+		holder *pilosa.Holder
 	}
 )
 
@@ -81,8 +78,8 @@ type (
 // which satisfies sql.IndexDriver interface
 func NewDriver(root string) *Driver {
 	return &Driver{
-		root:    root,
-		holders: make(dbMap),
+		root:   root,
+		holder: pilosa.NewHolder(),
 	}
 }
 
@@ -117,9 +114,8 @@ func (d *Driver) Create(
 		return nil, err
 	}
 
-	holder := d.holder(db, table)
-	holder.Path = d.pilosaDirPath(db, table)
-	idx, err := holder.CreateIndexIfNotExists(
+	d.holder.Path = d.pilosaDirPath(db, table)
+	idx, err := d.holder.CreateIndexIfNotExists(
 		indexName(db, table),
 		pilosa.IndexOptions{},
 	)
@@ -148,20 +144,19 @@ func (d *Driver) LoadAll(db, table string) ([]sql.Index, error) {
 		root    = filepath.Join(d.root, db, table)
 	)
 
-	holder := d.holder(db, table)
-	holder.Path = d.pilosaDirPath(db, table)
-	if _, err := os.Stat(holder.Path); err != nil {
+	d.holder.Path = d.pilosaDirPath(db, table)
+	if _, err := os.Stat(d.holder.Path); err != nil {
 		if os.IsNotExist(err) {
 			return indexes, nil
 		}
 		return nil, err
 	}
 
-	err := holder.Open()
+	err := d.holder.Open()
 	if err != nil {
 		return nil, err
 	}
-	defer holder.Close()
+	defer d.holder.Close()
 
 	dirs, err := ioutil.ReadDir(root)
 	if err != nil {
@@ -190,27 +185,9 @@ func (d *Driver) LoadAll(db, table string) ([]sql.Index, error) {
 	return indexes, nil
 }
 
-func (d *Driver) holder(db, table string) *pilosa.Holder {
-	tables, ok := d.holders[db]
-	if !ok {
-		tables = make(tableMap)
-		d.holders[db] = tables
-	}
-
-	holder, ok := tables[table]
-	if !ok {
-		holder = pilosa.NewHolder()
-		tables[table] = holder
-		d.holders[db] = tables
-	}
-
-	return holder
-}
-
 func (d *Driver) loadIndex(db, table, id string) (*pilosaIndex, error) {
 	name := indexName(db, table)
-	holder := d.holder(db, table)
-	idx := holder.Index(name)
+	idx := d.holder.Index(name)
 	if idx == nil {
 		return nil, errLoadingIndex.New(name)
 	}
