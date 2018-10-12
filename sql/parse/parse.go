@@ -39,6 +39,7 @@ var (
 	createIndexRegex     = regexp.MustCompile(`^create\s+index\s+`)
 	dropIndexRegex       = regexp.MustCompile(`^drop\s+index\s+`)
 	showIndexRegex       = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
+	showVariablesRegex   = regexp.MustCompile(`^show\s+(.*)?variables\s*`)
 	describeRegex        = regexp.MustCompile(`^(describe|desc|explain)\s+(.*)\s+`)
 	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
 )
@@ -69,6 +70,8 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return parseDropIndex(s)
 	case showIndexRegex.MatchString(lowerQuery):
 		return parseShowIndex(s)
+	case showVariablesRegex.MatchString(lowerQuery):
+		return parseShowVariables(ctx, s)
 	case describeRegex.MatchString(lowerQuery):
 		return parseDescribeQuery(ctx, s)
 	case fullProcessListRegex.MatchString(lowerQuery):

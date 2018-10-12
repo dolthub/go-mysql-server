@@ -788,6 +788,11 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("bar", "foo"),
 	),
+	`SHOW VARIABLES`:                           plan.NewShowVariables(sql.NewEmptyContext().GetAll(), ""),
+	`SHOW GLOBAL VARIABLES`:                    plan.NewShowVariables(sql.NewEmptyContext().GetAll(), ""),
+	`SHOW SESSION VARIABLES`:                   plan.NewShowVariables(sql.NewEmptyContext().GetAll(), ""),
+	`SHOW VARIABLES LIKE 'gtid_mode'`:          plan.NewShowVariables(sql.NewEmptyContext().GetAll(), "gtid_mode"),
+	`SHOW SESSION VARIABLES LIKE 'autocommit'`: plan.NewShowVariables(sql.NewEmptyContext().GetAll(), "autocommit"),
 }
 
 func TestParse(t *testing.T) {
