@@ -3,6 +3,14 @@ package parse // import "gopkg.in/src-d/go-mysql-server.v0/sql/parse"
 import (
 	"bufio"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
@@ -11,11 +19,6 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
-	"io"
-	"io/ioutil"
-	"regexp"
-	"strconv"
-	"strings"
 )
 
 var (
@@ -37,7 +40,7 @@ var (
 	createIndexRegex     = regexp.MustCompile(`^create\s+index\s+`)
 	dropIndexRegex       = regexp.MustCompile(`^drop\s+index\s+`)
 	showIndexRegex       = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
-	showCreateTableRegex = regexp.MustCompile(`^show create table\s+\S+\s*`)
+	showCreate           = regexp.MustCompile(`^show create\s+\S+\s*`)
 	describeRegex        = regexp.MustCompile(`^(describe|desc|explain)\s+(.*)\s+`)
 	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
 )
@@ -68,8 +71,8 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return parseDropIndex(s)
 	case showIndexRegex.MatchString(lowerQuery):
 		return parseShowIndex(s)
-	case showCreateTableRegex.MatchString(lowerQuery):
-		return parseShowCreateTable(s)
+	case showCreate.MatchString(lowerQuery):
+		return parseShowCreate(s)
 	case describeRegex.MatchString(lowerQuery):
 		return parseDescribeQuery(ctx, s)
 	case fullProcessListRegex.MatchString(lowerQuery):
@@ -82,35 +85,6 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 	}
 
 	return convert(ctx, stmt, s)
-}
-
-//TODO: Move this to somewhere else perhaps?
-func parseShowCreateTable(s string) (sql.Node, error) {
-	r := bufio.NewReader(strings.NewReader(s))
-
-	var table string
-	steps := []parseFunc{
-		expect("show"),
-		skipSpaces,
-		expect("create"),
-		skipSpaces,
-		expect("table"),
-		skipSpaces,
-		readIdent(&table),
-		skipSpaces,
-		checkEOF,
-	}
-
-	for _, step := range steps {
-		if err := step(r); err != nil {
-			return nil, err
-		}
-	}
-
-	return plan.NewShowCreateTable(
-		(&sql.UnresolvedDatabase{}).Name(),
-		nil,
-		table), nil
 }
 
 func parseDescribeTables(s string) (sql.Node, error) {

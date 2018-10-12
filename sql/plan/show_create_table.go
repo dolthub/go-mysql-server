@@ -83,8 +83,18 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 		return nil, ErrTableNotFound.New(i.table)
 	}
 
+	composedCreateTableStatement := produceCreateStatement(table)
+
+	return sql.NewRow(
+		i.table,                      // "Table" string
+		composedCreateTableStatement, // "Create Table" string
+	), nil
+}
+
+func produceCreateStatement(table sql.Table) string {
 	schema := table.Schema()
 	colCreateStatements := make([]string, len(schema), len(schema))
+
 	// Statement creation parts for each column
 	for indx, col := range schema {
 		createStmtPart := fmt.Sprintf("`%s` %s", col.Name, col.Type.Type())
@@ -100,14 +110,10 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 	}
 
 	prettyColCreateStmts := fmt.Sprintf("%s", strings.Join(colCreateStatements, ",\n"))
-
 	composedCreateTableStatement :=
-		fmt.Sprintf("CREATE TABLE `%s` (%s) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", i.table, prettyColCreateStmts)
+		fmt.Sprintf("CREATE TABLE `%s` (%s) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", table.Name(), prettyColCreateStmts)
 
-	return sql.NewRow(
-		i.table,                      // "Table" string
-		composedCreateTableStatement, // "Create Table" string
-	), nil
+	return composedCreateTableStatement
 }
 
 func (i *showCreateTablesIter) Close() error {
@@ -125,7 +131,6 @@ func NewShowCreateTable(db string, ctl *sql.Catalog, table string) sql.Node {
 // Resolved implements the Resolvable interface.
 func (n *ShowCreateTable) Resolved() bool {
 	return true
-	//return n.CurrentDatabase == (&sql.UnresolvedDatabase{}).Name()
 }
 
 // Children implements the Node interface.
