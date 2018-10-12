@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 )
 
 // ShowVariables is a node that shows the global or session variables
@@ -15,13 +16,6 @@ type ShowVariables struct {
 }
 
 func NewShowVariables(config map[string]sql.TypedValue, pattern string) *ShowVariables {
-	if config == nil {
-		config = make(map[string]sql.TypedValue)
-	}
-	if _, exists := config["gtid_mode"]; !exists {
-		config["gtid_mode"] = sql.TypedValue{sql.Text, "OFF"}
-	}
-
 	return &ShowVariables{
 		config:  config,
 		pattern: pattern,
@@ -61,18 +55,29 @@ func (*ShowVariables) Schema() sql.Schema {
 func (*ShowVariables) Children() []sql.Node { return nil }
 
 // RowIter implements the Node interface.
-func (sv *ShowVariables) RowIter(*sql.Context) (sql.RowIter, error) {
-	n := len(sv.config)
-	it := &showVariablesIter{
-		names:  make([]string, n, n),
-		values: make([]sql.TypedValue, n, n),
-		offset: uint32(0),
-		total:  uint32(n),
-	}
+func (sv *ShowVariables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+
+	it := &showVariablesIter{}
+	like := expression.NewLike(
+		expression.NewGetField(0, sql.Text, "", false),
+		expression.NewGetField(1, sql.Text, sv.pattern, false),
+	)
+
 	for k, v := range sv.config {
-		it.names[n-1] = k
-		it.values[n-1] = v
-		n--
+		ok := (sv.pattern == "")
+		if !ok {
+			b, err := like.Eval(ctx, sql.NewRow(k, sv.pattern))
+			if err != nil {
+				return nil, err
+			}
+			ok = b.(bool)
+		}
+
+		if ok {
+			it.names = append(it.names, k)
+			it.values = append(it.values, v.Value)
+			it.total++
+		}
 	}
 
 	return it, nil
@@ -80,7 +85,7 @@ func (sv *ShowVariables) RowIter(*sql.Context) (sql.RowIter, error) {
 
 type showVariablesIter struct {
 	names  []string
-	values []sql.TypedValue
+	values []interface{}
 	offset uint32
 	total  uint32
 }
