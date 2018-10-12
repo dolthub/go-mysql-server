@@ -33,7 +33,7 @@ func TestShowCreateTable(t *testing.T) {
 
 	expected := sql.NewRow(
 		table.Name(),
-		"CREATE TABLE `test-table` (`baz` TEXT DEFAULT NOT NULL,\n"+
+		"CREATE TABLE `test-table` (`baz` TEXT NOT NULL,\n"+
 			"`zab` INT32 DEFAULT 0,\n"+
 			"`bza` INT64 DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 	)

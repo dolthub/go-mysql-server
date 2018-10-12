@@ -98,12 +98,20 @@ func produceCreateStatement(table sql.Table) string {
 	// Statement creation parts for each column
 	for indx, col := range schema {
 		createStmtPart := fmt.Sprintf("`%s` %s", col.Name, col.Type.Type())
-		if col.Default != nil {
-			createStmtPart = fmt.Sprintf("%s DEFAULT %v", createStmtPart, col.Default)
-		}
 
 		if !col.Nullable {
-			createStmtPart = fmt.Sprintf("%sNOT NULL", createStmtPart)
+			createStmtPart = fmt.Sprintf("%s NOT NULL", createStmtPart)
+		}
+
+		switch def := col.Default.(type) {
+		case string:
+			if def != "" {
+				createStmtPart = fmt.Sprintf("%s DEFAULT %s", createStmtPart, def)
+			}
+		default:
+			if def != nil {
+				createStmtPart = fmt.Sprintf("%s DEFAULT %v", createStmtPart, col.Default)
+			}
 		}
 
 		colCreateStatements[indx] = createStmtPart
