@@ -1,15 +1,14 @@
 package parse
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
-)
 
-import (
+	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
+s
 
 func TestParseShowCreateTableQuery(t *testing.T) {
 	testCases := []struct {

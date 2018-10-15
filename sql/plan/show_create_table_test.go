@@ -1,10 +1,11 @@
 package plan
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"testing"
 )
 
 func TestShowCreateTable(t *testing.T) {

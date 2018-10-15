@@ -8,9 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-)
 
-import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
