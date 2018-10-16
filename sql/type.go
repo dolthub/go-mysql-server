@@ -262,7 +262,22 @@ func (t numberT) Type() query.Type {
 
 // SQL implements Type interface.
 func (t numberT) SQL(v interface{}) sqltypes.Value {
-	return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10))
+	switch t.t {
+	case sqltypes.Int32:
+		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10))
+	case sqltypes.Int64:
+		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10))
+	case sqltypes.Uint32:
+		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10))
+	case sqltypes.Uint64:
+		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10))
+	case sqltypes.Float32:
+		return sqltypes.MakeTrusted(t.t, strconv.AppendFloat(nil, cast.ToFloat64(v), 'f', -1, 64))
+	case sqltypes.Float64:
+		return sqltypes.MakeTrusted(t.t, strconv.AppendFloat(nil, cast.ToFloat64(v), 'f', -1, 64))
+	default:
+		return sqltypes.MakeTrusted(t.t, []byte{})
+	}
 }
 
 // Convert implements Type interface.

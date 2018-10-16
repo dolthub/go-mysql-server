@@ -420,6 +420,12 @@ var queries = []struct {
 		},
 	},
 	{
+		`SELECT AVG(23.222000)`,
+		[]sql.Row{
+			{float64(23.222)},
+		},
+	},
+	{
 		`SHOW VARIABLES`,
 		[]sql.Row{
 			{"auto_increment_increment", int64(1)},
