@@ -86,6 +86,7 @@
 - FLOOR
 - ROUND
 - COALESCE
+- CONNECTION_ID
 
 ## Time functions
 - DAY

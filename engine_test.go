@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -459,6 +460,10 @@ var queries = []struct {
 	{
 		`SELECT JSON_EXTRACT("foo", "$")`,
 		[]sql.Row{{"foo"}},
+	},
+	{
+		`SELECT CONNECTION_ID()`,
+		[]sql.Row{{uint32(1)}},
 	},
 }
 
@@ -1325,6 +1330,10 @@ func insertRows(t *testing.T, table sql.Inserter, rows ...sql.Row) {
 var pid uint64
 
 func newCtx() *sql.Context {
-	pid++
-	return sql.NewContext(context.Background(), sql.WithPid(pid))
+	session := sql.NewSession("address", "user", 1)
+	return sql.NewContext(
+		context.Background(),
+		sql.WithPid(atomic.AddUint64(&pid, 1)),
+		sql.WithSession(session),
+	)
 }
