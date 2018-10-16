@@ -27,6 +27,8 @@ func TestCeil(t *testing.T) {
 		{"int64 is ok", sql.Int64, sql.NewRow(int64(6)), int64(6), nil},
 		{"blob is nil", sql.Blob, sql.NewRow(nil), nil, nil},
 		{"blob is ok", sql.Blob, sql.NewRow([]byte{1, 2, 3}), int32(0), nil},
+		{"string int is ok", sql.Text, sql.NewRow("1"), int32(1), nil},
+		{"string float is ok", sql.Text, sql.NewRow("1.2"), int32(2), nil},
 	}
 
 	for _, tt := range testCases {
@@ -77,6 +79,8 @@ func TestFloor(t *testing.T) {
 		{"int64 is ok", sql.Int64, sql.NewRow(int64(6)), int64(6), nil},
 		{"blob is nil", sql.Blob, sql.NewRow(nil), nil, nil},
 		{"blob is ok", sql.Blob, sql.NewRow([]byte{1, 2, 3}), int32(0), nil},
+		{"string int is ok", sql.Text, sql.NewRow("1"), int32(1), nil},
+		{"string float is ok", sql.Text, sql.NewRow("1.2"), int32(1), nil},
 	}
 
 	for _, tt := range testCases {
@@ -148,6 +152,17 @@ func TestRound(t *testing.T) {
 		{"int32 with blob d", sql.Int32, sql.Blob, sql.NewRow(int32(5), []byte{1, 2, 3}), int32(5), nil},
 		{"blob is nil", sql.Blob, sql.Int32, sql.NewRow(nil, nil), nil, nil},
 		{"blob is ok", sql.Blob, sql.Int32, sql.NewRow([]byte{1, 2, 3}, nil), int32(0), nil},
+		{"text int without d", sql.Text, sql.Int32, sql.NewRow("5", nil), int32(5), nil},
+		{"text int with d", sql.Text, sql.Int32, sql.NewRow("5", 2), int32(5), nil},
+		{"text int with negative d", sql.Text, sql.Int32, sql.NewRow("52", -1), int32(50), nil},
+		{"text int with float d", sql.Text, sql.Float64, sql.NewRow("5", float32(2.123)), int32(5), nil},
+		{"text int with float negative d", sql.Text, sql.Float64, sql.NewRow("52", float32(-1)), int32(50), nil},
+		{"text float without d", sql.Text, sql.Int32, sql.NewRow("5.8", nil), int32(6), nil},
+		{"text float with d", sql.Text, sql.Int32, sql.NewRow("5.855", 2), int32(5), nil},
+		{"text float with negative d", sql.Text, sql.Int32, sql.NewRow("52.855", -1), int32(50), nil},
+		{"text float with float d", sql.Text, sql.Float64, sql.NewRow("5.855", float64(2.123)), int32(5), nil},
+		{"text float with float negative d", sql.Text, sql.Float64, sql.NewRow("52.855", float64(-1)), int32(50), nil},
+		{"text float with blob d", sql.Text, sql.Blob, sql.NewRow("5.855", []byte{1, 2, 3}), int32(6), nil},
 	}
 
 	for _, tt := range testCases {
