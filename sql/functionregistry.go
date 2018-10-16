@@ -21,6 +21,8 @@ type Function interface {
 }
 
 type (
+	// Function0 is a function with 0 arguments.
+	Function0 func() Expression
 	// Function1 is a function with 1 argument.
 	Function1 func(e Expression) Expression
 	// Function2 is a function with 2 arguments.
@@ -40,6 +42,15 @@ type (
 	// match, since the check has to be done in the implementation.
 	FunctionN func(...Expression) (Expression, error)
 )
+
+// Call implements the Function interface.
+func (fn Function0) Call(args ...Expression) (Expression, error) {
+	if len(args) != 0 {
+		return nil, ErrInvalidArgumentNumber.New(0, len(args))
+	}
+
+	return fn(), nil
+}
 
 // Call implements the Function interface.
 func (fn Function1) Call(args ...Expression) (Expression, error) {
@@ -109,6 +120,7 @@ func (fn FunctionN) Call(args ...Expression) (Expression, error) {
 	return fn(args...)
 }
 
+func (Function0) isFunction() {}
 func (Function1) isFunction() {}
 func (Function2) isFunction() {}
 func (Function3) isFunction() {}
