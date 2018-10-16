@@ -231,10 +231,10 @@ func (r *Round) IsNullable() bool {
 
 func (r *Round) String() string {
 	if r.Right == nil {
-		return fmt.Sprintf("ROUND(%s, 0)", r.Right.String())
+		return fmt.Sprintf("ROUND(%s, 0)", r.Left.String())
 	}
 
-	return fmt.Sprintf("ROUND(%s, %s)", r.Right.String(), r.Left.String())
+	return fmt.Sprintf("ROUND(%s, %s)", r.Left.String(), r.Right.String())
 }
 
 // Resolved implements the Expression interface.
