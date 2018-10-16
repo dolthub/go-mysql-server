@@ -360,3 +360,31 @@ func TestAllInt64(t *testing.T) {
 		})
 	}
 }
+
+func TestUnaryMinus(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    interface{}
+		typ      sql.Type
+		expected interface{}
+	}{
+		{"int32", int32(1), sql.Int32, int32(-1)},
+		{"uint32", uint32(1), sql.Uint32, int32(-1)},
+		{"int64", int64(1), sql.Int64, int64(-1)},
+		{"uint64", uint64(1), sql.Uint64, int64(-1)},
+		{"float32", float32(1), sql.Float32, float32(-1)},
+		{"float64", float64(1), sql.Float64, float64(-1)},
+		{"int text", "1", sql.Text, float64(-1)},
+		{"float text", "1.2", sql.Text, float64(-1.2)},
+		{"nil", nil, sql.Text, nil},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			f := NewUnaryMinus(NewLiteral(tt.input, tt.typ))
+			result, err := f.Eval(sql.NewEmptyContext(), nil)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}

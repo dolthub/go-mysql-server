@@ -2,6 +2,7 @@ package expression
 
 import (
 	"fmt"
+	"reflect"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
@@ -406,4 +407,82 @@ func mod(lval, rval interface{}) (interface{}, error) {
 	}
 
 	return nil, errUnableToCast.New(lval, rval)
+}
+
+// UnaryMinus is an unary minus operator.
+type UnaryMinus struct {
+	UnaryExpression
+}
+
+// NewUnaryMinus creates a new UnaryMinus expression node.
+func NewUnaryMinus(child sql.Expression) *UnaryMinus {
+	return &UnaryMinus{UnaryExpression{Child: child}}
+}
+
+// Eval implements the sql.Expression interface.
+func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	child, err := e.Child.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if child == nil {
+		return nil, nil
+	}
+
+	if !sql.IsNumber(e.Child.Type()) {
+		child, err = sql.Float64.Convert(child)
+		if err != nil {
+			child = 0.0
+		}
+	}
+
+	switch n := child.(type) {
+	case float64:
+		return -n, nil
+	case float32:
+		return -n, nil
+	case int64:
+		return -n, nil
+	case uint64:
+		return -int64(n), nil
+	case int32:
+		return -n, nil
+	case uint32:
+		return -int32(n), nil
+	default:
+		return nil, sql.ErrInvalidType.New(reflect.TypeOf(n))
+	}
+}
+
+// Type implements the sql.Expression interface.
+func (e *UnaryMinus) Type() sql.Type {
+	typ := e.Child.Type()
+	if !sql.IsNumber(typ) {
+		return sql.Float64
+	}
+
+	if typ == sql.Uint32 {
+		return sql.Int32
+	}
+
+	if typ == sql.Uint64 {
+		return sql.Int64
+	}
+
+	return e.Child.Type()
+}
+
+func (e *UnaryMinus) String() string {
+	return fmt.Sprintf("-%s", e.Child)
+}
+
+// TransformUp implements the sql.Expression interface.
+func (e *UnaryMinus) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
+	c, err := e.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewUnaryMinus(c))
 }

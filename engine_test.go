@@ -513,6 +513,10 @@ var queries = []struct {
 			"CREATE DATABASE `mydb` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8_bin */",
 		}},
 	},
+	{
+		`SELECT -1`,
+		[]sql.Row{{int64(-1)}},
+	},
 }
 
 func TestQueries(t *testing.T) {
