@@ -66,6 +66,7 @@ We support and actively test against certain third-party clients to ensure compa
 - `CEILING(number)`, `CEIL(number)`: Return the smallest integer value that is greater than or equal to `number`.
 - `FLOOR(number)`: Return the largest integer value that is less than or equal to `number`.
 - `ROUND(number, decimals)`: Round the `number` to `decimals` decimal places.
+- `CONNECTION_ID()`: Return the current connection ID.
 
 ## Example
 
