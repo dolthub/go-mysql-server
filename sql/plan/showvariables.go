@@ -2,8 +2,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
-	"sync/atomic"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
@@ -63,54 +61,30 @@ func (*ShowVariables) Children() []sql.Node { return nil }
 // RowIter implements the sql.Node interface.
 // The function returns an iterator for filtered variables (based on like pattern)
 func (sv *ShowVariables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-
-	it := &showVariablesIter{}
-	like := expression.NewLike(
-		expression.NewGetField(0, sql.Text, "", false),
-		expression.NewGetField(1, sql.Text, sv.pattern, false),
+	var (
+		rows []sql.Row
+		like sql.Expression
 	)
+	if sv.pattern != "" {
+		like = expression.NewLike(
+			expression.NewGetField(0, sql.Text, "", false),
+			expression.NewGetField(1, sql.Text, sv.pattern, false),
+		)
+	}
 
 	for k, v := range sv.config {
-		ok := (sv.pattern == "")
-		if !ok {
+		if like != nil {
 			b, err := like.Eval(ctx, sql.NewRow(k, sv.pattern))
 			if err != nil {
 				return nil, err
 			}
-			ok = b.(bool)
+			if !b.(bool) {
+				continue
+			}
 		}
 
-		if ok {
-			it.names = append(it.names, k)
-			it.values = append(it.values, v.Value)
-			it.total++
-		}
+		rows = append(rows, sql.NewRow(k, v.Value))
 	}
 
-	return it, nil
-}
-
-type showVariablesIter struct {
-	names  []string
-	values []interface{}
-	offset uint32
-	total  uint32
-}
-
-func (it *showVariablesIter) Next() (sql.Row, error) {
-	i := atomic.LoadUint32(&it.offset)
-	if i >= it.total {
-		return nil, io.EOF
-	}
-	defer atomic.AddUint32(&it.offset, 1)
-
-	return sql.NewRow(it.names[i], it.values[i]), nil
-}
-
-func (it *showVariablesIter) Close() error {
-	atomic.StoreUint32(&it.total, 0)
-	atomic.StoreUint32(&it.offset, 0)
-	it.values = nil
-	it.names = nil
-	return nil
+	return sql.RowsToRowIter(rows...), nil
 }

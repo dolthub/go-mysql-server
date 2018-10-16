@@ -9,9 +9,7 @@ import (
 )
 
 func parseShowVariables(ctx *sql.Context, s string) (sql.Node, error) {
-	var (
-		pattern string
-	)
+	var pattern string
 
 	r := bufio.NewReader(strings.NewReader(s))
 	for _, fn := range []parseFunc{
