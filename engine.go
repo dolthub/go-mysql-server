@@ -90,11 +90,10 @@ func (e *Engine) Query(
 
 // AddDatabase adds the given database to the catalog.
 func (e *Engine) AddDatabase(db sql.Database) {
-	e.Catalog.Databases = append(e.Catalog.Databases, db)
-	e.Analyzer.CurrentDatabase = db.Name()
+	e.Catalog.AddDatabase(db)
 }
 
 // Init performs all the initialization requirements for the engine to work.
 func (e *Engine) Init() error {
-	return e.Catalog.LoadIndexes(e.Catalog.Databases)
+	return e.Catalog.LoadIndexes(e.Catalog.AllDatabases())
 }

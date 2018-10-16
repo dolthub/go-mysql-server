@@ -78,6 +78,14 @@
 - IS_BINARY
 - SPLIT
 - SUBSTRING
+- IS_BINARY
+- LOWER
+- UPPER
+- CEILING
+- CEIL
+- FLOOR
+- ROUND
+- COALESCE
 
 ## Time functions
 - DAY

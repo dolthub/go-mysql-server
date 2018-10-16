@@ -33,7 +33,12 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 		}
 
 		name := t.Name()
-		rt, err := a.Catalog.Table(a.CurrentDatabase, name)
+		db := t.Database
+		if db == "" {
+			db = a.Catalog.CurrentDatabase()
+		}
+
+		rt, err := a.Catalog.Table(db, name)
 		if err != nil {
 			if sql.ErrTableNotFound.Is(err) && name == dualTableName {
 				rt = dualTable

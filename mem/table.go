@@ -418,14 +418,17 @@ func (t *Table) IndexKeyValues(
 	}, nil
 }
 
+// Projection implements the sql.ProjectedTable interface.
 func (t *Table) Projection() []string {
 	return t.projection
 }
 
+// Filters implements the sql.FilteredTable interface.
 func (t *Table) Filters() []sql.Expression {
 	return t.filters
 }
 
+// IndexLookup implements the sql.IndexableTable interface.
 func (t *Table) IndexLookup() sql.IndexLookup {
 	return t.lookup
 }

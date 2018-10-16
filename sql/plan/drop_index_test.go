@@ -24,7 +24,7 @@ func TestDeleteIndex(t *testing.T) {
 	catalog.RegisterIndexDriver(driver)
 	db := mem.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog.Databases = append(catalog.Databases, db)
+	catalog.AddDatabase(db)
 
 	var expressions = []sql.Expression{
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
@@ -67,7 +67,7 @@ func TestDeleteIndexNotReady(t *testing.T) {
 	catalog.RegisterIndexDriver(driver)
 	db := mem.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog.Databases = append(catalog.Databases, db)
+	catalog.AddDatabase(db)
 
 	var expressions = []sql.Expression{
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),

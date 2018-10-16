@@ -120,8 +120,10 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 			}
 
 			for _, col := range requiredColumns {
-				projections = append(projections, newColumns[col])
-				delete(newColumns, col)
+				if c, ok := newColumns[col]; ok {
+					projections = append(projections, c)
+					delete(newColumns, col)
+				}
 			}
 
 			child = plan.NewProject(projections, child)

@@ -12,7 +12,7 @@ import (
 
 var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER, b TEXT, c DATE, d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL)`: plan.NewCreateTable(
-		&sql.UnresolvedDatabase{},
+		sql.UnresolvedDatabase(""),
 		"t1",
 		sql.Schema{{
 			Name:     "a",
@@ -41,21 +41,21 @@ var fixtures = map[string]sql.Node{
 		}},
 	),
 	`DESCRIBE TABLE foo;`: plan.NewDescribe(
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT foo, bar FROM foo;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("foo"),
 			expression.NewUnresolvedColumn("bar"),
 		},
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT foo IS NULL, bar IS NOT NULL FROM foo;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewIsNull(expression.NewUnresolvedColumn("foo")),
 			expression.NewNot(expression.NewIsNull(expression.NewUnresolvedColumn("bar"))),
 		},
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT foo AS bar FROM foo;`: plan.NewProject(
 		[]sql.Expression{
@@ -64,7 +64,7 @@ var fixtures = map[string]sql.Node{
 				"bar",
 			),
 		},
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT foo, bar FROM foo WHERE foo = bar;`: plan.NewProject(
 		[]sql.Expression{
@@ -76,7 +76,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("foo"),
 				expression.NewUnresolvedColumn("bar"),
 			),
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT foo, bar FROM foo WHERE foo = 'bar';`: plan.NewProject(
@@ -89,7 +89,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("foo"),
 				expression.NewLiteral("bar", sql.Text),
 			),
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT * FROM foo WHERE foo != 'bar';`: plan.NewProject(
@@ -101,7 +101,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("foo"),
 				expression.NewLiteral("bar", sql.Text),
 			)),
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT foo, bar FROM foo LIMIT 10;`: plan.NewLimit(10,
@@ -110,7 +110,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("foo"),
 				expression.NewUnresolvedColumn("bar"),
 			},
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT foo, bar FROM foo ORDER BY baz DESC;`: plan.NewSort(
@@ -120,7 +120,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("foo"),
 				expression.NewUnresolvedColumn("bar"),
 			},
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT foo, bar FROM foo WHERE foo = bar LIMIT 10;`: plan.NewLimit(10,
@@ -134,7 +134,7 @@ var fixtures = map[string]sql.Node{
 					expression.NewUnresolvedColumn("foo"),
 					expression.NewUnresolvedColumn("bar"),
 				),
-				plan.NewUnresolvedTable("foo"),
+				plan.NewUnresolvedTable("foo", ""),
 			),
 		),
 	),
@@ -146,7 +146,7 @@ var fixtures = map[string]sql.Node{
 					expression.NewUnresolvedColumn("foo"),
 					expression.NewUnresolvedColumn("bar"),
 				},
-				plan.NewUnresolvedTable("foo"),
+				plan.NewUnresolvedTable("foo", ""),
 			),
 		),
 	),
@@ -163,7 +163,7 @@ var fixtures = map[string]sql.Node{
 						expression.NewUnresolvedColumn("qux"),
 						expression.NewLiteral(int64(1), sql.Int64),
 					),
-					plan.NewUnresolvedTable("foo"),
+					plan.NewUnresolvedTable("foo", ""),
 				),
 			),
 		),
@@ -174,8 +174,8 @@ var fixtures = map[string]sql.Node{
 			expression.NewUnresolvedColumn("bar"),
 		},
 		plan.NewCrossJoin(
-			plan.NewUnresolvedTable("t1"),
-			plan.NewUnresolvedTable("t2"),
+			plan.NewUnresolvedTable("t1", ""),
+			plan.NewUnresolvedTable("t2", ""),
 		),
 	),
 	`SELECT foo, bar FROM t1 GROUP BY foo, bar;`: plan.NewGroupBy(
@@ -187,7 +187,7 @@ var fixtures = map[string]sql.Node{
 			expression.NewUnresolvedColumn("foo"),
 			expression.NewUnresolvedColumn("bar"),
 		},
-		plan.NewUnresolvedTable("t1"),
+		plan.NewUnresolvedTable("t1", ""),
 	),
 	`SELECT COUNT(*) FROM t1;`: plan.NewGroupBy(
 		[]sql.Expression{
@@ -195,7 +195,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewStar()),
 		},
 		[]sql.Expression{},
-		plan.NewUnresolvedTable("t1"),
+		plan.NewUnresolvedTable("t1", ""),
 	),
 	`SELECT a FROM t1 where a regexp '.*test.*';`: plan.NewProject(
 		[]sql.Expression{
@@ -206,7 +206,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("a"),
 				expression.NewLiteral(".*test.*", sql.Text),
 			),
-			plan.NewUnresolvedTable("t1"),
+			plan.NewUnresolvedTable("t1", ""),
 		),
 	),
 	`SELECT a FROM t1 where a not regexp '.*test.*';`: plan.NewProject(
@@ -220,32 +220,32 @@ var fixtures = map[string]sql.Node{
 					expression.NewLiteral(".*test.*", sql.Text),
 				),
 			),
-			plan.NewUnresolvedTable("t1"),
+			plan.NewUnresolvedTable("t1", ""),
 		),
 	),
 	`INSERT INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
-		plan.NewUnresolvedTable("t1"),
+		plan.NewUnresolvedTable("t1", ""),
 		plan.NewValues([][]sql.Expression{{
 			expression.NewLiteral("a", sql.Text),
 			expression.NewLiteral(int64(1), sql.Int64),
 		}}),
 		[]string{"col1", "col2"},
 	),
-	`SHOW TABLES`: plan.NewShowTables(&sql.UnresolvedDatabase{}),
+	`SHOW TABLES`: plan.NewShowTables(sql.UnresolvedDatabase("")),
 	`SELECT DISTINCT foo, bar FROM foo;`: plan.NewDistinct(
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("foo"),
 				expression.NewUnresolvedColumn("bar"),
 			},
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT * FROM foo`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewStar(),
 		},
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT foo, bar FROM foo LIMIT 2 OFFSET 5;`: plan.NewOffset(5,
 		plan.NewLimit(2, plan.NewProject(
@@ -253,7 +253,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("foo"),
 				expression.NewUnresolvedColumn("bar"),
 			},
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		)),
 	),
 	`SELECT * FROM foo WHERE (a = 1)`: plan.NewProject(
@@ -265,7 +265,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("a"),
 				expression.NewLiteral(int64(1), sql.Int64),
 			),
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT * FROM foo, bar, baz, qux`: plan.NewProject(
@@ -273,12 +273,12 @@ var fixtures = map[string]sql.Node{
 		plan.NewCrossJoin(
 			plan.NewCrossJoin(
 				plan.NewCrossJoin(
-					plan.NewUnresolvedTable("foo"),
-					plan.NewUnresolvedTable("bar"),
+					plan.NewUnresolvedTable("foo", ""),
+					plan.NewUnresolvedTable("bar", ""),
 				),
-				plan.NewUnresolvedTable("baz"),
+				plan.NewUnresolvedTable("baz", ""),
 			),
-			plan.NewUnresolvedTable("qux"),
+			plan.NewUnresolvedTable("qux", ""),
 		),
 	),
 	`SELECT * FROM foo WHERE a = b AND c = d`: plan.NewProject(
@@ -294,7 +294,7 @@ var fixtures = map[string]sql.Node{
 					expression.NewUnresolvedColumn("d"),
 				),
 			),
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT * FROM foo WHERE a = b OR c = d`: plan.NewProject(
@@ -310,14 +310,14 @@ var fixtures = map[string]sql.Node{
 					expression.NewUnresolvedColumn("d"),
 				),
 			),
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT * FROM foo as bar`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewTableAlias(
 			"bar",
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT * FROM (SELECT * FROM foo) AS bar`: plan.NewProject(
@@ -326,7 +326,7 @@ var fixtures = map[string]sql.Node{
 			"bar",
 			plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
-				plan.NewUnresolvedTable("foo"),
+				plan.NewUnresolvedTable("foo", ""),
 			),
 		),
 	),
@@ -340,7 +340,7 @@ var fixtures = map[string]sql.Node{
 					expression.NewLiteral(int64(5), sql.Int64),
 				),
 			),
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT * FROM foo WHERE 1 BETWEEN 2 AND 5`: plan.NewProject(
@@ -351,20 +351,20 @@ var fixtures = map[string]sql.Node{
 				expression.NewLiteral(int64(2), sql.Int64),
 				expression.NewLiteral(int64(5), sql.Int64),
 			),
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT 0x01AF`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewLiteral(int64(431), sql.Int64),
 		},
-		plan.NewUnresolvedTable("dual"),
+		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT X'41'`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewLiteral([]byte{'A'}, sql.Blob),
 		},
-		plan.NewUnresolvedTable("dual"),
+		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT * FROM b WHERE SOMEFUNC((1, 2), (3, 4))`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
@@ -381,7 +381,7 @@ var fixtures = map[string]sql.Node{
 					expression.NewLiteral(int64(4), sql.Int64),
 				),
 			),
-			plan.NewUnresolvedTable("b"),
+			plan.NewUnresolvedTable("b", ""),
 		),
 	),
 	`SELECT * FROM foo WHERE :foo_id = 2`: plan.NewProject(
@@ -391,14 +391,14 @@ var fixtures = map[string]sql.Node{
 				expression.NewLiteral(":foo_id", sql.Text),
 				expression.NewLiteral(int64(2), sql.Int64),
 			),
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT * FROM foo INNER JOIN bar ON a = b`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewInnerJoin(
-			plan.NewUnresolvedTable("foo"),
-			plan.NewUnresolvedTable("bar"),
+			plan.NewUnresolvedTable("foo", ""),
+			plan.NewUnresolvedTable("bar", ""),
 			expression.NewEquals(
 				expression.NewUnresolvedColumn("a"),
 				expression.NewUnresolvedColumn("b"),
@@ -409,40 +409,40 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{
 			expression.NewUnresolvedQualifiedColumn("foo", "a"),
 		},
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT CAST(-3 AS UNSIGNED) FROM foo`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewConvert(expression.NewLiteral(int64(-3), sql.Int64), expression.ConvertToUnsigned),
 		},
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT 2 = 2 FROM foo`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewEquals(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(2), sql.Int64)),
 		},
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT *, bar FROM foo`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewStar(),
 			expression.NewUnresolvedColumn("bar"),
 		},
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT *, foo.* FROM foo`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewStar(),
 			expression.NewQualifiedStar("foo"),
 		},
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT bar, foo.* FROM foo`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("bar"),
 			expression.NewQualifiedStar("foo"),
 		},
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT bar, *, foo.* FROM foo`: plan.NewProject(
 		[]sql.Expression{
@@ -450,14 +450,14 @@ var fixtures = map[string]sql.Node{
 			expression.NewStar(),
 			expression.NewQualifiedStar("foo"),
 		},
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT *, * FROM foo`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewStar(),
 			expression.NewStar(),
 		},
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT * FROM foo WHERE 1 IN ('1', 2)`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
@@ -469,7 +469,7 @@ var fixtures = map[string]sql.Node{
 					expression.NewLiteral(int64(2), sql.Int64),
 				),
 			),
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT * FROM foo WHERE 1 NOT IN ('1', 2)`: plan.NewProject(
@@ -482,7 +482,7 @@ var fixtures = map[string]sql.Node{
 					expression.NewLiteral(int64(2), sql.Int64),
 				),
 			),
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT a, b FROM t ORDER BY 2, 1`: plan.NewSort(
@@ -503,21 +503,21 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("a"),
 				expression.NewUnresolvedColumn("b"),
 			},
-			plan.NewUnresolvedTable("t"),
+			plan.NewUnresolvedTable("t", ""),
 		),
 	),
 	`SELECT 1 + 1;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewPlus(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
 		},
-		plan.NewUnresolvedTable("dual"),
+		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT 1 * (2 + 1);`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewMult(expression.NewLiteral(int64(1), sql.Int64),
 				expression.NewPlus(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64))),
 		},
-		plan.NewUnresolvedTable("dual"),
+		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT (0 - 1) * (1 | 1);`: plan.NewProject(
 		[]sql.Expression{
@@ -526,7 +526,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewBitOr(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
 			),
 		},
-		plan.NewUnresolvedTable("dual"),
+		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT (1 << 3) % (2 div 1);`: plan.NewProject(
 		[]sql.Expression{
@@ -534,7 +534,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewShiftLeft(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(3), sql.Int64)),
 				expression.NewIntDiv(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64))),
 		},
-		plan.NewUnresolvedTable("dual"),
+		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT 1.0 * a + 2.0 * b FROM t;`: plan.NewProject(
 		[]sql.Expression{
@@ -543,7 +543,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewMult(expression.NewLiteral(float64(2.0), sql.Float64), expression.NewUnresolvedColumn("b")),
 			),
 		},
-		plan.NewUnresolvedTable("t"),
+		plan.NewUnresolvedTable("t", ""),
 	),
 	`SELECT '1.0' + 2;`: plan.NewProject(
 		[]sql.Expression{
@@ -551,7 +551,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewLiteral("1.0", sql.Text), expression.NewLiteral(int64(2), sql.Int64),
 			),
 		},
-		plan.NewUnresolvedTable("dual"),
+		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT '1' + '2';`: plan.NewProject(
 		[]sql.Expression{
@@ -559,11 +559,11 @@ var fixtures = map[string]sql.Node{
 				expression.NewLiteral("1", sql.Text), expression.NewLiteral("2", sql.Text),
 			),
 		},
-		plan.NewUnresolvedTable("dual"),
+		plan.NewUnresolvedTable("dual", ""),
 	),
 	`CREATE INDEX idx ON foo USING bar (fn(bar, baz))`: plan.NewCreateIndex(
 		"idx",
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 		[]sql.Expression{expression.NewUnresolvedFunction(
 			"fn", false,
 			expression.NewUnresolvedColumn("bar"),
@@ -574,7 +574,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`      CREATE INDEX idx ON foo USING bar (fn(bar, baz))`: plan.NewCreateIndex(
 		"idx",
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 		[]sql.Expression{expression.NewUnresolvedFunction(
 			"fn", false,
 			expression.NewUnresolvedColumn("bar"),
@@ -586,29 +586,29 @@ var fixtures = map[string]sql.Node{
 	`SELECT * FROM foo NATURAL JOIN bar`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewNaturalJoin(
-			plan.NewUnresolvedTable("foo"),
-			plan.NewUnresolvedTable("bar"),
+			plan.NewUnresolvedTable("foo", ""),
+			plan.NewUnresolvedTable("bar", ""),
 		),
 	),
 	`SELECT * FROM foo NATURAL JOIN bar NATURAL JOIN baz`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewNaturalJoin(
 			plan.NewNaturalJoin(
-				plan.NewUnresolvedTable("foo"),
-				plan.NewUnresolvedTable("bar"),
+				plan.NewUnresolvedTable("foo", ""),
+				plan.NewUnresolvedTable("bar", ""),
 			),
-			plan.NewUnresolvedTable("baz"),
+			plan.NewUnresolvedTable("baz", ""),
 		),
 	),
 	`DROP INDEX foo ON bar`: plan.NewDropIndex(
 		"foo",
-		plan.NewUnresolvedTable("bar"),
+		plan.NewUnresolvedTable("bar", ""),
 	),
 	`DESCRIBE FORMAT=TREE SELECT * FROM foo`: plan.NewDescribeQuery(
 		"tree",
 		plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT MAX(i)/2 FROM foo`: plan.NewGroupBy(
@@ -622,17 +622,17 @@ var fixtures = map[string]sql.Node{
 			),
 		},
 		[]sql.Expression{},
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 	),
-	`SHOW INDEXES FROM foo`: plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
-	`SHOW INDEX FROM foo`:   plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
-	`SHOW KEYS FROM foo`:    plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
-	`SHOW INDEXES IN foo`:   plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
-	`SHOW INDEX IN foo`:     plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
-	`SHOW KEYS IN foo`:      plan.NewShowIndexes(&sql.UnresolvedDatabase{}, "foo", nil),
+	`SHOW INDEXES FROM foo`: plan.NewShowIndexes(sql.UnresolvedDatabase(""), "foo", nil),
+	`SHOW INDEX FROM foo`:   plan.NewShowIndexes(sql.UnresolvedDatabase(""), "foo", nil),
+	`SHOW KEYS FROM foo`:    plan.NewShowIndexes(sql.UnresolvedDatabase(""), "foo", nil),
+	`SHOW INDEXES IN foo`:   plan.NewShowIndexes(sql.UnresolvedDatabase(""), "foo", nil),
+	`SHOW INDEX IN foo`:     plan.NewShowIndexes(sql.UnresolvedDatabase(""), "foo", nil),
+	`SHOW KEYS IN foo`:      plan.NewShowIndexes(sql.UnresolvedDatabase(""), "foo", nil),
 	`create index foo on bar using qux (baz)`: plan.NewCreateIndex(
 		"foo",
-		plan.NewUnresolvedTable("bar"),
+		plan.NewUnresolvedTable("bar", ""),
 		[]sql.Expression{expression.NewUnresolvedColumn("baz")},
 		"qux",
 		make(map[string]string),
@@ -641,7 +641,7 @@ var fixtures = map[string]sql.Node{
 	`SHOW PROCESSLIST`:      plan.NewShowProcessList(),
 	`SELECT @@allowed_max_packet`: plan.NewProject([]sql.Expression{
 		expression.NewUnresolvedColumn("@@allowed_max_packet"),
-	}, plan.NewUnresolvedTable("dual")),
+	}, plan.NewUnresolvedTable("dual", "")),
 	`SET autocommit=1, foo="bar"`: plan.NewSet(
 		plan.SetVariable{
 			Name:  "autocommit",
@@ -723,7 +723,7 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{
 			expression.NewStar(),
 		},
-		plan.NewUnresolvedTable("foo"),
+		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SHOW DATABASES`: plan.NewShowDatabases(),
 	`SELECT * FROM foo WHERE i LIKE 'foo'`: plan.NewProject(
@@ -733,7 +733,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("i"),
 				expression.NewLiteral("foo", sql.Text),
 			),
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT * FROM foo WHERE i NOT LIKE 'foo'`: plan.NewProject(
@@ -743,24 +743,24 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedColumn("i"),
 				expression.NewLiteral("foo", sql.Text),
 			)),
-			plan.NewUnresolvedTable("foo"),
+			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
-	`SHOW FIELDS FROM foo`:       plan.NewShowColumns(false, plan.NewUnresolvedTable("foo")),
-	`SHOW FULL COLUMNS FROM foo`: plan.NewShowColumns(true, plan.NewUnresolvedTable("foo")),
+	`SHOW FIELDS FROM foo`:       plan.NewShowColumns(false, plan.NewUnresolvedTable("foo", "")),
+	`SHOW FULL COLUMNS FROM foo`: plan.NewShowColumns(true, plan.NewUnresolvedTable("foo", "")),
 	`SHOW FIELDS FROM foo WHERE Field = 'bar'`: plan.NewFilter(
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("Field"),
 			expression.NewLiteral("bar", sql.Text),
 		),
-		plan.NewShowColumns(false, plan.NewUnresolvedTable("foo")),
+		plan.NewShowColumns(false, plan.NewUnresolvedTable("foo", "")),
 	),
 	`SHOW FIELDS FROM foo LIKE 'bar'`: plan.NewFilter(
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Field"),
 			expression.NewLiteral("bar", sql.Text),
 		),
-		plan.NewShowColumns(false, plan.NewUnresolvedTable("foo")),
+		plan.NewShowColumns(false, plan.NewUnresolvedTable("foo", "")),
 	),
 	`SHOW TABLE STATUS LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
@@ -778,6 +778,21 @@ var fixtures = map[string]sql.Node{
 		),
 		plan.NewShowTableStatus(),
 	),
+	`USE foo`: plan.NewUse(sql.UnresolvedDatabase("foo")),
+	`DESCRIBE TABLE foo.bar`: plan.NewDescribe(
+		plan.NewUnresolvedTable("bar", "foo"),
+	),
+	`SELECT * FROM foo.bar`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewStar(),
+		},
+		plan.NewUnresolvedTable("bar", "foo"),
+	),
+	`SHOW VARIABLES`:                           plan.NewShowVariables(sql.NewEmptyContext().GetAll(), ""),
+	`SHOW GLOBAL VARIABLES`:                    plan.NewShowVariables(sql.NewEmptyContext().GetAll(), ""),
+	`SHOW SESSION VARIABLES`:                   plan.NewShowVariables(sql.NewEmptyContext().GetAll(), ""),
+	`SHOW VARIABLES LIKE 'gtid_mode'`:          plan.NewShowVariables(sql.NewEmptyContext().GetAll(), "gtid_mode"),
+	`SHOW SESSION VARIABLES LIKE 'autocommit'`: plan.NewShowVariables(sql.NewEmptyContext().GetAll(), "autocommit"),
 }
 
 func TestParse(t *testing.T) {

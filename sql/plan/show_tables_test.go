@@ -13,7 +13,7 @@ func TestShowTables(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	unresolvedShowTables := NewShowTables(&sql.UnresolvedDatabase{})
+	unresolvedShowTables := NewShowTables(sql.UnresolvedDatabase(""))
 
 	require.False(unresolvedShowTables.Resolved())
 	require.Nil(unresolvedShowTables.Children())

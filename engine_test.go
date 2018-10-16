@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"strings"
 	"testing"
@@ -177,7 +178,7 @@ var queries = []struct {
 		},
 	},
 	{
-		"SELECT text > 2 FROM tabletest",
+		"SELECT s > 2 FROM tabletest",
 		[]sql.Row{
 			{false},
 			{false},
@@ -185,21 +186,21 @@ var queries = []struct {
 		},
 	},
 	{
-		"SELECT * FROM tabletest WHERE text > 0",
+		"SELECT * FROM tabletest WHERE s > 0",
 		nil,
 	},
 	{
-		"SELECT * FROM tabletest WHERE text = 0",
+		"SELECT * FROM tabletest WHERE s = 0",
 		[]sql.Row{
-			{"a", int32(1)},
-			{"b", int32(2)},
-			{"c", int32(3)},
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"},
 		},
 	},
 	{
-		"SELECT * FROM tabletest WHERE text = 'a'",
+		"SELECT * FROM tabletest WHERE s = 'first row'",
 		[]sql.Row{
-			{"a", int32(1)},
+			{int64(1), "first row"},
 		},
 	},
 	{
@@ -228,15 +229,15 @@ var queries = []struct {
 	{
 		`SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2`,
 		[]sql.Row{
-			{"a", int32(1), int64(1), "first row", "third", int64(1)},
-			{"a", int32(1), int64(2), "second row", "second", int64(2)},
-			{"a", int32(1), int64(3), "third row", "first", int64(3)},
-			{"b", int32(2), int64(1), "first row", "third", int64(1)},
-			{"b", int32(2), int64(2), "second row", "second", int64(2)},
-			{"b", int32(2), int64(3), "third row", "first", int64(3)},
-			{"c", int32(3), int64(1), "first row", "third", int64(1)},
-			{"c", int32(3), int64(2), "second row", "second", int64(2)},
-			{"c", int32(3), int64(3), "third row", "first", int64(3)},
+			{int64(1), "first row", int64(1), "first row", "third", int64(1)},
+			{int64(1), "first row", int64(2), "second row", "second", int64(2)},
+			{int64(1), "first row", int64(3), "third row", "first", int64(3)},
+			{int64(2), "second row", int64(1), "first row", "third", int64(1)},
+			{int64(2), "second row", int64(2), "second row", "second", int64(2)},
+			{int64(2), "second row", int64(3), "third row", "first", int64(3)},
+			{int64(3), "third row", int64(1), "first row", "third", int64(1)},
+			{int64(3), "third row", int64(2), "second row", "second", int64(2)},
+			{int64(3), "third row", int64(3), "third row", "first", int64(3)},
 		},
 	},
 	{
@@ -296,6 +297,18 @@ var queries = []struct {
 		},
 	},
 	{
+		`SELECT COALESCE(NULL, NULL, NULL, 'example', NULL, 1234567890)`,
+		[]sql.Row{
+			{string("example")},
+		},
+	},
+	{
+		`SELECT COALESCE(NULL, NULL, NULL, COALESCE(NULL, 1234567890))`,
+		[]sql.Row{
+			{int64(1234567890)},
+		},
+	},
+	{
 		"SELECT concat(s, i) FROM mytable",
 		[]sql.Row{
 			{string("first row1")},
@@ -327,7 +340,7 @@ var queries = []struct {
 	},
 	{
 		`SHOW DATABASES`,
-		[]sql.Row{{"mydb"}},
+		[]sql.Row{{"mydb"}, {"foo"}},
 	},
 	{
 		`SELECT s FROM mytable WHERE s LIKE '%d row'`,
@@ -381,6 +394,7 @@ var queries = []struct {
 		[]sql.Row{
 			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"other_table", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -388,6 +402,57 @@ var queries = []struct {
 		[]sql.Row{
 			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
+	},
+	{
+		`SELECT i FROM mytable NATURAL JOIN tabletest`,
+		[]sql.Row{
+			{int64(1)},
+			{int64(2)},
+			{int64(3)},
+		},
+	},
+	{
+		`SELECT * FROM foo.other_table`,
+		[]sql.Row{
+			{"a", int32(4)},
+			{"b", int32(2)},
+			{"c", int32(0)},
+		},
+	},
+	{
+		`SHOW VARIABLES`,
+		[]sql.Row{
+			{"auto_increment_increment", int64(1)},
+			{"time_zone", time.Local.String()},
+			{"system_time_zone", time.Local.String()},
+			{"max_allowed_packet", math.MaxInt32},
+			{"sql_mode", ""},
+			{"gtid_mode", int32(0)},
+			{"ndbinfo_version", ""},
+		},
+	},
+	{
+		`SHOW VARIABLES LIKE 'gtid_mode`,
+		[]sql.Row{
+			{"gtid_mode", int32(0)},
+		},
+	},
+	{
+		`SHOW VARIABLES LIKE 'gtid%`,
+		[]sql.Row{
+			{"gtid_mode", int32(0)},
+		},
+	},
+	{
+		`SHOW GLOBAL VARIABLES LIKE '%mode`,
+		[]sql.Row{
+			{"sql_mode", ""},
+			{"gtid_mode", int32(0)},
+		},
+	},
+	{
+		`SELECT JSON_EXTRACT("foo", "$")`,
+		[]sql.Row{{"foo"}},
 	},
 }
 
@@ -818,6 +883,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		{Name: "s2", Type: sql.Text, Source: "othertable"},
 		{Name: "i2", Type: sql.Int64, Source: "othertable"},
 	}, testNumPartitions)
+
 	insertRows(
 		t, table2,
 		sql.NewRow("first", int64(3)),
@@ -826,15 +892,27 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 	)
 
 	table3 := mem.NewPartitionedTable("tabletest", sql.Schema{
+		{Name: "i", Type: sql.Int32, Source: "tabletest"},
+		{Name: "s", Type: sql.Text, Source: "tabletest"},
+	}, testNumPartitions)
+
+	insertRows(
+		t, table3,
+		sql.NewRow(int64(1), "first row"),
+		sql.NewRow(int64(2), "second row"),
+		sql.NewRow(int64(3), "third row"),
+	)
+
+	table4 := mem.NewPartitionedTable("other_table", sql.Schema{
 		{Name: "text", Type: sql.Text, Source: "tabletest"},
 		{Name: "number", Type: sql.Int32, Source: "tabletest"},
 	}, testNumPartitions)
 
 	insertRows(
-		t, table3,
-		sql.NewRow("a", int32(1)),
+		t, table4,
+		sql.NewRow("a", int32(4)),
 		sql.NewRow("b", int32(2)),
-		sql.NewRow("c", int32(3)),
+		sql.NewRow("c", int32(0)),
 	)
 
 	db := mem.NewDatabase("mydb")
@@ -842,8 +920,12 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 	db.AddTable("othertable", table2)
 	db.AddTable("tabletest", table3)
 
+	db2 := mem.NewDatabase("foo")
+	db2.AddTable("other_table", table4)
+
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
+	catalog.AddDatabase(db2)
 
 	var a *analyzer.Analyzer
 	if parallelism > 1 {
@@ -851,8 +933,6 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 	} else {
 		a = analyzer.NewDefault(catalog)
 	}
-
-	a.CurrentDatabase = "mydb"
 
 	return sqle.New(catalog, a, new(sqle.Config))
 }
@@ -1139,7 +1219,6 @@ func TestReadOnly(t *testing.T) {
 	catalog.AddDatabase(db)
 
 	a := analyzer.NewBuilder(catalog).ReadOnly().Build()
-	a.CurrentDatabase = "mydb"
 	e := sqle.New(catalog, a, nil)
 
 	_, _, err := e.Query(newCtx(), `SELECT i FROM mytable`)
@@ -1210,6 +1289,23 @@ func TestNestedAliases(t *testing.T) {
 	FROM mytable`)
 	require.Error(err)
 	require.True(analyzer.ErrMisusedAlias.Is(err))
+}
+
+func TestUse(t *testing.T) {
+	require := require.New(t)
+	e := newEngine(t)
+
+	_, _, err := e.Query(newCtx(), "USE bar")
+	require.Error(err)
+
+	_, iter, err := e.Query(newCtx(), "USE foo")
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+	require.Len(rows, 0)
+
+	require.Equal("foo", e.Catalog.CurrentDatabase())
 }
 
 func insertRows(t *testing.T, table sql.Inserter, rows ...sql.Row) {

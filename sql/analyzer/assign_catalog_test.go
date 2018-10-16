@@ -18,7 +18,6 @@ func TestAssignCatalog(t *testing.T) {
 	c.AddDatabase(db)
 
 	a := NewDefault(c)
-	a.CurrentDatabase = "foo"
 	a.Catalog.IndexRegistry = sql.NewIndexRegistry()
 
 	tbl := mem.NewTable("foo", nil)

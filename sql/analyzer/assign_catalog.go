@@ -19,12 +19,12 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 		case *plan.CreateIndex:
 			nc := *node
 			nc.Catalog = a.Catalog
-			nc.CurrentDatabase = a.CurrentDatabase
+			nc.CurrentDatabase = a.Catalog.CurrentDatabase()
 			return &nc, nil
 		case *plan.DropIndex:
 			nc := *node
 			nc.Catalog = a.Catalog
-			nc.CurrentDatabase = a.CurrentDatabase
+			nc.CurrentDatabase = a.Catalog.CurrentDatabase()
 			return &nc, nil
 		case *plan.ShowIndexes:
 			nc := *node
@@ -41,10 +41,14 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 			return &nc, nil
 		case *plan.ShowProcessList:
 			nc := *node
-			nc.Database = a.CurrentDatabase
+			nc.Database = a.Catalog.CurrentDatabase()
 			nc.ProcessList = a.Catalog.ProcessList
 			return &nc, nil
 		case *plan.ShowTableStatus:
+			nc := *node
+			nc.Catalog = a.Catalog
+			return &nc, nil
+		case *plan.Use:
 			nc := *node
 			nc.Catalog = a.Catalog
 			return &nc, nil

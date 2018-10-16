@@ -15,7 +15,7 @@ func TestTransformUp(t *testing.T) {
 
 	aCol := expression.NewUnresolvedColumn("a")
 	bCol := expression.NewUnresolvedColumn("a")
-	ur := &UnresolvedTable{"unresolved"}
+	ur := NewUnresolvedTable("unresolved", "")
 	p := NewProject([]sql.Expression{aCol, bCol}, NewFilter(expression.NewEquals(aCol, bCol), ur))
 
 	schema := sql.Schema{
