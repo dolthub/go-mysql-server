@@ -28,6 +28,8 @@ type Session interface {
 	Set(key string, typ Type, value interface{})
 	// Get session configuration.
 	Get(key string) (Type, interface{})
+	// GetAll returns a copy of session configuration
+	GetAll() map[string]TypedValue
 	// ID returns the unique ID of the connection.
 	ID() uint32
 }
@@ -38,7 +40,7 @@ type BaseSession struct {
 	addr   string
 	user   string
 	mu     sync.RWMutex
-	config map[string]typedValue
+	config map[string]TypedValue
 }
 
 // User returns the current user of the session.
@@ -51,7 +53,7 @@ func (s *BaseSession) Address() string { return s.addr }
 func (s *BaseSession) Set(key string, typ Type, value interface{}) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.config[key] = typedValue{typ, value}
+	s.config[key] = TypedValue{typ, value}
 }
 
 // Get implements the Session interface.
@@ -63,24 +65,38 @@ func (s *BaseSession) Get(key string) (Type, interface{}) {
 		return Null, nil
 	}
 
-	return v.typ, v.value
+	return v.Typ, v.Value
+}
+
+// GetAll returns a copy of session configuration
+func (s *BaseSession) GetAll() map[string]TypedValue {
+	m := make(map[string]TypedValue)
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for k, v := range s.config {
+		m[k] = v
+	}
+	return m
 }
 
 // ID implements the Session interface.
 func (s *BaseSession) ID() uint32 { return s.id }
 
-type typedValue struct {
-	typ   Type
-	value interface{}
+type TypedValue struct {
+	Typ   Type
+	Value interface{}
 }
 
-func defaultSessionConfig() map[string]typedValue {
-	return map[string]typedValue{
-		"auto_increment_increment": typedValue{Int64, int64(1)},
-		"time_zone":                typedValue{Text, time.Local.String()},
-		"system_time_zone":         typedValue{Text, time.Local.String()},
-		"max_allowed_packet":       typedValue{Int32, math.MaxInt32},
-		"sql_mode":                 typedValue{Text, ""},
+func defaultSessionConfig() map[string]TypedValue {
+	return map[string]TypedValue{
+		"auto_increment_increment": TypedValue{Int64, int64(1)},
+		"time_zone":                TypedValue{Text, time.Local.String()},
+		"system_time_zone":         TypedValue{Text, time.Local.String()},
+		"max_allowed_packet":       TypedValue{Int32, math.MaxInt32},
+		"sql_mode":                 TypedValue{Text, ""},
+		"gtid_mode":                TypedValue{Int32, int32(0)},
+		"ndbinfo_version":          TypedValue{Text, ""},
 	}
 }
 

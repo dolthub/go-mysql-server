@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"strings"
 	"testing"
@@ -416,6 +417,37 @@ var queries = []struct {
 			{"a", int32(4)},
 			{"b", int32(2)},
 			{"c", int32(0)},
+		},
+	},
+	{
+		`SHOW VARIABLES`,
+		[]sql.Row{
+			{"auto_increment_increment", int64(1)},
+			{"time_zone", time.Local.String()},
+			{"system_time_zone", time.Local.String()},
+			{"max_allowed_packet", math.MaxInt32},
+			{"sql_mode", ""},
+			{"gtid_mode", int32(0)},
+			{"ndbinfo_version", ""},
+		},
+	},
+	{
+		`SHOW VARIABLES LIKE 'gtid_mode`,
+		[]sql.Row{
+			{"gtid_mode", int32(0)},
+		},
+	},
+	{
+		`SHOW VARIABLES LIKE 'gtid%`,
+		[]sql.Row{
+			{"gtid_mode", int32(0)},
+		},
+	},
+	{
+		`SHOW GLOBAL VARIABLES LIKE '%mode`,
+		[]sql.Row{
+			{"sql_mode", ""},
+			{"gtid_mode", int32(0)},
 		},
 	},
 }
