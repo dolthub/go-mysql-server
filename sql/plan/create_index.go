@@ -76,10 +76,10 @@ func (c *CreateIndex) Resolved() bool {
 
 func getIndexableTable(t sql.Table) (sql.IndexableTable, error) {
 	switch t := t.(type) {
-	case sql.TableWrapper:
-		return getIndexableTable(t.Underlying())
 	case sql.IndexableTable:
 		return t, nil
+	case sql.TableWrapper:
+		return getIndexableTable(t.Underlying())
 	default:
 		return nil, ErrInsertIntoNotSupported.New()
 	}
