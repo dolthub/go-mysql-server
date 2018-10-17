@@ -8,7 +8,6 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
-s
 
 func TestParseShowCreateTableQuery(t *testing.T) {
 	testCases := []struct {
@@ -33,7 +32,7 @@ func TestParseShowCreateTableQuery(t *testing.T) {
 		},
 		{
 			"SHOW CREATE TABLE mytable",
-			plan.NewShowCreateTable((&sql.UnresolvedDatabase{}).Name(),
+			plan.NewShowCreateTable(sql.UnresolvedDatabase("").Name(),
 				nil,
 				"mytable"),
 			nil,

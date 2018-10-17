@@ -39,7 +39,7 @@ func parseShowCreate(s string) (sql.Node, error) {
 	switch strings.ToLower(thingToShow) {
 	case "table":
 		return plan.NewShowCreateTable(
-			(&sql.UnresolvedDatabase{}).Name(),
+			sql.UnresolvedDatabase("").Name(),
 			nil,
 			name), nil
 	default:

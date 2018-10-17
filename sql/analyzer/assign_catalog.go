@@ -37,7 +37,7 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 		case *plan.ShowCreateTable:
 			nc := *node
 			nc.Catalog = a.Catalog
-			nc.CurrentDatabase = a.CurrentDatabase
+			nc.CurrentDatabase = a.Catalog.CurrentDatabase()
 			return &nc, nil
 		case *plan.ShowProcessList:
 			nc := *node
