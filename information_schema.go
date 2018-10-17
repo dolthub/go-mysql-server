@@ -8,8 +8,11 @@ import (
 )
 
 const (
-	InformationSchemaDBName   = "information_schema"
-	FilesTableName            = "files"
+	// InformationSchemaDBName is the name of the information schema table.
+	InformationSchemaDBName = "information_schema"
+	// FilesTableName is the name of the files table.
+	FilesTableName = "files"
+	// ColumnStatisticsTableName is the name of the column statistics table.
 	ColumnStatisticsTableName = "column_statistics"
 )
 
