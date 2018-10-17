@@ -143,7 +143,7 @@ func (idx *pilosaIndex) Expressions() []string {
 	return idx.expressions
 }
 
-func (pilosaIndex) Driver() string { return DriverID }
+func (*pilosaIndex) Driver() string { return DriverID }
 
 func (idx *pilosaIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
 	if len(keys) != len(idx.expressions) {
