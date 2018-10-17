@@ -22,7 +22,8 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	n, err := n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
-			if _, ok := n.Table.(*plan.ProcessTable); ok {
+			switch n.Table.(type) {
+			case *plan.ProcessTable, *plan.ProcessIndexableTable:
 				return n, nil
 			}
 
@@ -42,9 +43,18 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 			processList.AddProgressItem(ctx.Pid(), name, total)
 
 			seen[name] = struct{}{}
-			t := plan.NewProcessTable(n.Table, func() {
+
+			notify := func() {
 				processList.UpdateProgress(ctx.Pid(), name, 1)
-			})
+			}
+
+			var t sql.Table
+			switch table := n.Table.(type) {
+			case sql.IndexableTable:
+				t = plan.NewProcessIndexableTable(table, notify)
+			default:
+				t = plan.NewProcessTable(table, notify)
+			}
 
 			return plan.NewResolvedTable(t), nil
 		default:
