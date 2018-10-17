@@ -17,32 +17,70 @@ func parseShowCreate(s string) (sql.Node, error) {
 	r := bufio.NewReader(strings.NewReader(s))
 
 	var thingToShow string
-	var name string
-	steps := []parseFunc{
+	err := parseFuncs{
 		expect("show"),
 		skipSpaces,
 		expect("create"),
 		skipSpaces,
 		readIdent(&thingToShow),
 		skipSpaces,
-		readIdent(&name),
-		skipSpaces,
-		checkEOF,
-	}
-
-	for _, step := range steps {
-		if err := step(r); err != nil {
-			return nil, err
-		}
+	}.exec(r)
+	if err != nil {
+		return nil, err
 	}
 
 	switch strings.ToLower(thingToShow) {
 	case "table":
+		var name string
+
+		err := parseFuncs{
+			readIdent(&name),
+			skipSpaces,
+			checkEOF,
+		}.exec(r)
+		if err != nil {
+			return nil, err
+		}
+
 		return plan.NewShowCreateTable(
 			sql.UnresolvedDatabase("").Name(),
 			nil,
 			name), nil
+	case "database", "schema":
+		var ifNotExists bool
+		var next string
+		if err := readIdent(&next)(r); err != nil {
+			return nil, err
+		}
+
+		if next == "if" {
+			ifNotExists = true
+			err := parseFuncs{
+				skipSpaces,
+				expect("not"),
+				skipSpaces,
+				expect("exists"),
+				skipSpaces,
+				readIdent(&next),
+			}.exec(r)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		err = parseFuncs{
+			skipSpaces,
+			checkEOF,
+		}.exec(r)
+		if err != nil {
+			return nil, err
+		}
+
+		return plan.NewShowCreateDatabase(
+			sql.UnresolvedDatabase(next),
+			ifNotExists,
+		), nil
 	default:
-		return nil, errUnsupportedShowCreateQuery.New(name)
+		return nil, errUnsupportedShowCreateQuery.New(thingToShow)
 	}
 }

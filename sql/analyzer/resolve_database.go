@@ -48,6 +48,15 @@ func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 		nc := *v
 		nc.Database = db
 		return &nc, nil
+	case *plan.ShowCreateDatabase:
+		db, err := a.Catalog.Database(v.Database.Name())
+		if err != nil {
+			return nil, err
+		}
+
+		nc := *v
+		nc.Database = db
+		return &nc, nil
 	default:
 		return n, nil
 	}
