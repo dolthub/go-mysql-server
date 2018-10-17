@@ -9,13 +9,12 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
-
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
 )
@@ -39,6 +38,7 @@ var (
 	createIndexRegex     = regexp.MustCompile(`^create\s+index\s+`)
 	dropIndexRegex       = regexp.MustCompile(`^drop\s+index\s+`)
 	showIndexRegex       = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
+	showCreateRegex      = regexp.MustCompile(`^show create\s+\S+\s*`)
 	showVariablesRegex   = regexp.MustCompile(`^show\s+(.*)?variables\s*`)
 	describeRegex        = regexp.MustCompile(`^(describe|desc|explain)\s+(.*)\s+`)
 	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
@@ -70,6 +70,8 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return parseDropIndex(s)
 	case showIndexRegex.MatchString(lowerQuery):
 		return parseShowIndex(s)
+	case showCreateRegex.MatchString(lowerQuery):
+		return parseShowCreate(s)
 	case showVariablesRegex.MatchString(lowerQuery):
 		return parseShowVariables(ctx, s)
 	case describeRegex.MatchString(lowerQuery):
