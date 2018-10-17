@@ -798,6 +798,9 @@ var fixtures = map[string]sql.Node{
 	`LOCK TABLES foo READ`: plan.NewLockTables([]*plan.TableLock{
 		{Table: plan.NewUnresolvedTable("foo", "")},
 	}),
+	`LOCK TABLES foo123 READ`: plan.NewLockTables([]*plan.TableLock{
+		{Table: plan.NewUnresolvedTable("foo123", "")},
+	}),
 	`LOCK TABLES foo f READ`: plan.NewLockTables([]*plan.TableLock{
 		{Table: plan.NewUnresolvedTable("foo", "")},
 	}),
