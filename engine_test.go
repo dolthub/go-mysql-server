@@ -341,7 +341,7 @@ var queries = []struct {
 	},
 	{
 		`SHOW DATABASES`,
-		[]sql.Row{{"mydb"}, {"foo"}},
+		[]sql.Row{{"mydb"}, {"foo"}, {"information_schema"}},
 	},
 	{
 		`SELECT s FROM mytable WHERE s LIKE '%d row'`,
@@ -464,6 +464,47 @@ var queries = []struct {
 	{
 		`SELECT CONNECTION_ID()`,
 		[]sql.Row{{uint32(1)}},
+	},
+	{
+		`
+		SELECT DISTINCT
+			tablespace_name, file_name, logfile_group_name, extent_size, initial_size, engine
+		FROM
+			information_schema.files
+		WHERE
+			file_type = 'DATAFILE'
+		ORDER BY tablespace_name, logfile_group_name
+		`,
+		[]sql.Row{},
+	},
+	{
+		`
+		SELECT
+			logfile_group_name, file_name, total_extents, initial_size, engine, extra
+		FROM
+			information_schema.files
+		WHERE
+			file_type = 'UNDO LOG' AND
+			file_name IS NOT NULL AND
+			logfile_group_name IS NOT NULL
+		GROUP BY
+			logfile_group_name, file_name, engine, total_extents, initial_size
+		ORDER BY
+			logfile_group_name
+		`,
+		[]sql.Row{},
+	},
+	{
+		`
+		SELECT
+			column_name
+		FROM
+			information_schema.column_statistics
+		WHERE
+			schema_name = 'foo' AND
+			table_name = 'bar';
+		`,
+		[]sql.Row{},
 	},
 }
 
@@ -937,6 +978,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 	catalog.AddDatabase(db2)
+	catalog.AddDatabase(sqle.NewInformationSchemaDB())
 
 	var a *analyzer.Analyzer
 	if parallelism > 1 {
