@@ -1361,6 +1361,42 @@ func TestUse(t *testing.T) {
 	require.Equal("foo", e.Catalog.CurrentDatabase())
 }
 
+func TestLocks(t *testing.T) {
+	require := require.New(t)
+
+	t1 := newLockableTable(mem.NewTable("t1", nil))
+	t2 := newLockableTable(mem.NewTable("t2", nil))
+	t3 := mem.NewTable("t3", nil)
+	catalog := sql.NewCatalog()
+	db := mem.NewDatabase("db")
+	db.AddTable("t1", t1)
+	db.AddTable("t2", t2)
+	db.AddTable("t3", t3)
+	catalog.AddDatabase(db)
+
+	analyzer := analyzer.NewDefault(catalog)
+	engine := sqle.New(catalog, analyzer, new(sqle.Config))
+
+	_, iter, err := engine.Query(newCtx(), "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
+	require.NoError(err)
+
+	_, err = sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	_, iter, err = engine.Query(newCtx(), "UNLOCK TABLES")
+	require.NoError(err)
+
+	_, err = sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Equal(1, t1.readLocks)
+	require.Equal(0, t1.writeLocks)
+	require.Equal(1, t1.unlocks)
+	require.Equal(0, t2.readLocks)
+	require.Equal(1, t2.writeLocks)
+	require.Equal(1, t2.unlocks)
+}
+
 func insertRows(t *testing.T, table sql.Inserter, rows ...sql.Row) {
 	t.Helper()
 
@@ -1378,4 +1414,31 @@ func newCtx() *sql.Context {
 		sql.WithPid(atomic.AddUint64(&pid, 1)),
 		sql.WithSession(session),
 	)
+}
+
+type lockableTable struct {
+	sql.Table
+	readLocks  int
+	writeLocks int
+	unlocks    int
+}
+
+func newLockableTable(t sql.Table) *lockableTable {
+	return &lockableTable{Table: t}
+}
+
+var _ sql.Lockable = (*lockableTable)(nil)
+
+func (l *lockableTable) Lock(ctx *sql.Context, write bool) error {
+	if write {
+		l.writeLocks++
+	} else {
+		l.readLocks++
+	}
+	return nil
+}
+
+func (l *lockableTable) Unlock(ctx *sql.Context, id uint32) error {
+	l.unlocks++
+	return nil
 }

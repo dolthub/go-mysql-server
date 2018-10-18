@@ -18,7 +18,7 @@ func parseDescribeQuery(ctx *sql.Context, s string) (sql.Node, error) {
 	r := bufio.NewReader(strings.NewReader(s))
 
 	var format, query string
-	steps := []parseFunc{
+	err := parseFuncs{
 		oneOf("describe", "desc", "explain"),
 		skipSpaces,
 		expect("format"),
@@ -28,12 +28,10 @@ func parseDescribeQuery(ctx *sql.Context, s string) (sql.Node, error) {
 		readIdent(&format),
 		skipSpaces,
 		readRemaining(&query),
-	}
+	}.exec(r)
 
-	for _, step := range steps {
-		if err := step(r); err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
 	}
 
 	if format != "tree" {

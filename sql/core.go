@@ -193,3 +193,19 @@ type Database interface {
 type Alterable interface {
 	Create(name string, schema Schema) error
 }
+
+// Lockable should be implemented by tables that can be locked and unlocked.
+type Lockable interface {
+	Nameable
+	// Lock locks the table either for reads or writes. Any session clients can
+	// read while the table is locked for read, but not write.
+	// When the table is locked for write, nobody can write except for the
+	// session client that requested the lock.
+	Lock(ctx *Context, write bool) error
+	// Unlock releases the lock for the current session client. It blocks until
+	// all reads or writes started during the lock are finished.
+	// Context may be nil if the unlock it's because the connection was closed.
+	// The id will always be provided, since in some cases context is not
+	// available.
+	Unlock(ctx *Context, id uint32) error
+}
