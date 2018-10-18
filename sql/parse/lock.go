@@ -2,6 +2,7 @@ package parse
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 )
 
 func parseLockTables(ctx *sql.Context, query string) (sql.Node, error) {
+	fmt.Println(query)
 	var r = bufio.NewReader(strings.NewReader(query))
 	var tables []*plan.TableLock
 	err := parseFuncs{
@@ -70,7 +72,7 @@ func readTableLock(rd *bufio.Reader) (*plan.TableLock, error) {
 	var write bool
 
 	err := parseFuncs{
-		readIdent(&tableName),
+		readQuotableIdent(&tableName),
 		skipSpaces,
 		maybeReadAlias,
 		skipSpaces,

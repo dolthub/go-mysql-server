@@ -145,7 +145,7 @@ func defaultSessionConfig() map[string]TypedValue {
 		"max_allowed_packet":       TypedValue{Int32, math.MaxInt32},
 		"sql_mode":                 TypedValue{Text, ""},
 		"gtid_mode":                TypedValue{Int32, int32(0)},
-		"ndbinfo_version":          TypedValue{Text, ""},
+		"collation_database":       TypedValue{Text, "utf8_bin"},
 	}
 }
 

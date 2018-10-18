@@ -353,7 +353,7 @@ var queries = []struct {
 	},
 	{
 		`SHOW DATABASES`,
-		[]sql.Row{{"mydb"}, {"foo"}, {"information_schema"}},
+		[]sql.Row{{"mydb"}, {"foo"}},
 	},
 	{
 		`SELECT s FROM mytable WHERE s LIKE '%d row'`,
@@ -447,7 +447,7 @@ var queries = []struct {
 			{"max_allowed_packet", math.MaxInt32},
 			{"sql_mode", ""},
 			{"gtid_mode", int32(0)},
-			{"ndbinfo_version", ""},
+			{"collation_database", "utf8_bin"},
 		},
 	},
 	{
@@ -479,42 +479,35 @@ var queries = []struct {
 	},
 	{
 		`
+		SELECT
+			LOGFILE_GROUP_NAME, FILE_NAME, TOTAL_EXTENTS, INITIAL_SIZE, ENGINE, EXTRA
+		FROM INFORMATION_SCHEMA.FILES
+		WHERE FILE_TYPE = 'UNDO LOG'
+			AND FILE_NAME IS NOT NULL
+			AND LOGFILE_GROUP_NAME IS NOT NULL
+		GROUP BY LOGFILE_GROUP_NAME, FILE_NAME, ENGINE, TOTAL_EXTENTS, INITIAL_SIZE
+		ORDER BY LOGFILE_GROUP_NAME
+		`,
+		[]sql.Row{},
+	},
+	{
+		`
 		SELECT DISTINCT
-			tablespace_name, file_name, logfile_group_name, extent_size, initial_size, engine
-		FROM
-			information_schema.files
-		WHERE
-			file_type = 'DATAFILE'
-		ORDER BY tablespace_name, logfile_group_name
+			TABLESPACE_NAME, FILE_NAME, LOGFILE_GROUP_NAME, EXTENT_SIZE, INITIAL_SIZE, ENGINE
+		FROM INFORMATION_SCHEMA.FILES
+		WHERE FILE_TYPE = 'DATAFILE'
+		ORDER BY TABLESPACE_NAME, LOGFILE_GROUP_NAME
 		`,
 		[]sql.Row{},
 	},
 	{
 		`
 		SELECT
-			logfile_group_name, file_name, total_extents, initial_size, engine, extra
-		FROM
-			information_schema.files
-		WHERE
-			file_type = 'UNDO LOG' AND
-			file_name IS NOT NULL AND
-			logfile_group_name IS NOT NULL
-		GROUP BY
-			logfile_group_name, file_name, engine, total_extents, initial_size
-		ORDER BY
-			logfile_group_name
-		`,
-		[]sql.Row{},
-	},
-	{
-		`
-		SELECT
-			column_name
-		FROM
-			information_schema.column_statistics
-		WHERE
-			schema_name = 'foo' AND
-			table_name = 'bar';
+			COLUMN_NAME,
+			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
+		FROM information_schema.COLUMN_STATISTICS
+		WHERE SCHEMA_NAME = 'mydb'
+		AND TABLE_NAME = 'mytable'
 		`,
 		[]sql.Row{},
 	},
@@ -536,9 +529,11 @@ var queries = []struct {
 		[]sql.Row{},
 	},
 	{
-		`
-		SHOW WARNINGS LIMIT 0
-		`,
+		`SHOW WARNINGS LIMIT 0`,
+		[]sql.Row{},
+	},
+	{
+		`SET SESSION NET_READ_TIMEOUT= 700, SESSION NET_WRITE_TIMEOUT= 700`,
 		[]sql.Row{},
 	},
 }
@@ -1130,7 +1125,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 	catalog.AddDatabase(db2)
-	catalog.AddDatabase(sqle.NewInformationSchemaDB())
+	catalog.AddDatabase(sql.NewInformationSchemaDB())
 
 	var a *analyzer.Analyzer
 	if parallelism > 1 {

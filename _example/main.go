@@ -24,8 +24,9 @@ import (
 // +----------+-------------------+-------------------------------+---------------------+
 // ```
 func main() {
-	driver := sqle.NewDefault()
-	driver.AddDatabase(createTestDatabase())
+	engine := sqle.NewDefault()
+	engine.AddDatabase(createTestDatabase())
+	engine.AddDatabase(sql.NewInformationSchemaDB())
 
 	auth := mysql.NewAuthServerStatic()
 	auth.Entries["user"] = []*mysql.AuthServerStaticEntry{{
@@ -38,7 +39,7 @@ func main() {
 		Auth:     auth,
 	}
 
-	s, err := server.NewDefaultServer(config, driver)
+	s, err := server.NewDefaultServer(config, engine)
 	if err != nil {
 		panic(err)
 	}
