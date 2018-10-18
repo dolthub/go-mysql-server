@@ -61,6 +61,10 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 	delete(h.c, c.ConnectionID)
 	h.mu.Unlock()
 
+	if err := h.e.Catalog.UnlockTables(nil, c.ConnectionID); err != nil {
+		logrus.Errorf("unable to unlock tables on session close: %s", err)
+	}
+
 	logrus.Infof("ConnectionClosed: client %v", c.ConnectionID)
 }
 

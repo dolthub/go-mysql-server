@@ -18,7 +18,6 @@ func TestAssignCatalog(t *testing.T) {
 	c.AddDatabase(db)
 
 	a := NewDefault(c)
-	a.CurrentDatabase = "foo"
 	a.Catalog.IndexRegistry = sql.NewIndexRegistry()
 
 	tbl := mem.NewTable("foo", nil)
@@ -62,4 +61,16 @@ func TestAssignCatalog(t *testing.T) {
 	sd, ok := node.(*plan.ShowDatabases)
 	require.True(ok)
 	require.Equal(c, sd.Catalog)
+
+	node, err = f.Apply(sql.NewEmptyContext(), a, plan.NewLockTables(nil))
+	require.NoError(err)
+	lt, ok := node.(*plan.LockTables)
+	require.True(ok)
+	require.Equal(c, lt.Catalog)
+
+	node, err = f.Apply(sql.NewEmptyContext(), a, plan.NewUnlockTables())
+	require.NoError(err)
+	ut, ok := node.(*plan.UnlockTables)
+	require.True(ok)
+	require.Equal(c, ut.Catalog)
 }

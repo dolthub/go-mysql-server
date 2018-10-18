@@ -9,13 +9,12 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
-
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
 )
@@ -39,8 +38,12 @@ var (
 	createIndexRegex     = regexp.MustCompile(`^create\s+index\s+`)
 	dropIndexRegex       = regexp.MustCompile(`^drop\s+index\s+`)
 	showIndexRegex       = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
+	showCreateRegex      = regexp.MustCompile(`^show create\s+\S+\s*`)
+	showVariablesRegex   = regexp.MustCompile(`^show\s+(.*)?variables\s*`)
 	describeRegex        = regexp.MustCompile(`^(describe|desc|explain)\s+(.*)\s+`)
 	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
+	unlockTablesRegex    = regexp.MustCompile(`^unlock\s+tables$`)
+	lockTablesRegex      = regexp.MustCompile(`^lock\s+tables\s`)
 )
 
 // Parse parses the given SQL sentence and returns the corresponding node.
@@ -69,10 +72,18 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return parseDropIndex(s)
 	case showIndexRegex.MatchString(lowerQuery):
 		return parseShowIndex(s)
+	case showCreateRegex.MatchString(lowerQuery):
+		return parseShowCreate(s)
+	case showVariablesRegex.MatchString(lowerQuery):
+		return parseShowVariables(ctx, s)
 	case describeRegex.MatchString(lowerQuery):
 		return parseDescribeQuery(ctx, s)
 	case fullProcessListRegex.MatchString(lowerQuery):
 		return plan.NewShowProcessList(), nil
+	case unlockTablesRegex.MatchString(lowerQuery):
+		return plan.NewUnlockTables(), nil
+	case lockTablesRegex.MatchString(lowerQuery):
+		return parseLockTables(ctx, s)
 	}
 
 	stmt, err := sqlparser.Parse(s)
@@ -86,7 +97,22 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 func parseDescribeTables(s string) (sql.Node, error) {
 	t := describeTablesRegex.FindStringSubmatch(s)
 	if len(t) == 2 && t[1] != "" {
-		return plan.NewDescribe(plan.NewUnresolvedTable(t[1])), nil
+		parts := strings.Split(t[1], ".")
+		var table, db string
+		switch len(parts) {
+		case 1:
+			table = parts[0]
+		case 2:
+			if parts[0] == "" || parts[1] == "" {
+				return nil, ErrUnsupportedSyntax.New(s)
+			}
+			db = parts[0]
+			table = parts[1]
+		default:
+			return nil, ErrUnsupportedSyntax.New(s)
+		}
+
+		return plan.NewDescribe(plan.NewUnresolvedTable(table, db)), nil
 	}
 
 	return nil, ErrUnsupportedSyntax.New(s)
@@ -106,7 +132,14 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertDDL(n)
 	case *sqlparser.Set:
 		return convertSet(ctx, n)
+	case *sqlparser.Use:
+		return convertUse(n)
 	}
+}
+
+func convertUse(n *sqlparser.Use) (sql.Node, error) {
+	name := n.DBName.String()
+	return plan.NewUse(sql.UnresolvedDatabase(name)), nil
 }
 
 func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
@@ -165,12 +198,12 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 func convertShow(s *sqlparser.Show, query string) (sql.Node, error) {
 	switch s.Type {
 	case sqlparser.KeywordString(sqlparser.TABLES):
-		return plan.NewShowTables(&sql.UnresolvedDatabase{}), nil
+		return plan.NewShowTables(sql.UnresolvedDatabase("")), nil
 	case sqlparser.KeywordString(sqlparser.DATABASES):
 		return plan.NewShowDatabases(), nil
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
 		// TODO(erizocosmico): vitess parser does not support EXTENDED.
-		table := plan.NewUnresolvedTable(s.OnTable.Name.String())
+		table := plan.NewUnresolvedTable(s.OnTable.Name.String(), s.OnTable.Qualifier.String())
 		full := s.ShowTablesOpt.Full != ""
 
 		var node sql.Node = plan.NewShowColumns(full, table)
@@ -273,7 +306,7 @@ func convertCreateTable(c *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	return plan.NewCreateTable(
-		&sql.UnresolvedDatabase{},
+		sql.UnresolvedDatabase(""),
 		c.NewName.Name.String(),
 		schema,
 	), nil
@@ -294,7 +327,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 	}
 
 	return plan.NewInsertInto(
-		plan.NewUnresolvedTable(i.Table.Name.String()),
+		plan.NewUnresolvedTable(i.Table.Name.String(), i.Table.Qualifier.String()),
 		src,
 		columnsToStrings(i.Columns),
 	), nil
@@ -402,11 +435,7 @@ func tableExprToTable(
 		// TODO: Add support for qualifier.
 		switch e := t.Expr.(type) {
 		case sqlparser.TableName:
-			if !e.Qualifier.IsEmpty() {
-				return nil, ErrUnsupportedFeature.New("table name qualifiers")
-			}
-
-			node := plan.NewUnresolvedTable(e.Name.String())
+			node := plan.NewUnresolvedTable(e.Name.String(), e.Qualifier.String())
 			if !t.As.IsEmpty() {
 				return plan.NewTableAlias(t.As.String(), node), nil
 			}
@@ -997,19 +1026,17 @@ func readString(r *bufio.Reader, single bool) []rune {
 
 func parseShowTableStatus(query string) (sql.Node, error) {
 	buf := bufio.NewReader(strings.NewReader(query))
-	steps := []parseFunc{
+	err := parseFuncs{
 		expect("show"),
 		skipSpaces,
 		expect("table"),
 		skipSpaces,
 		expect("status"),
 		skipSpaces,
-	}
+	}.exec(buf)
 
-	for _, step := range steps {
-		if err := step(buf); err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
 	}
 
 	var clause string

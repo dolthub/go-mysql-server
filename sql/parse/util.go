@@ -21,6 +21,17 @@ var (
 
 type parseFunc func(*bufio.Reader) error
 
+type parseFuncs []parseFunc
+
+func (f parseFuncs) exec(r *bufio.Reader) error {
+	for _, fn := range f {
+		if err := fn(r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func expectRune(expected rune) parseFunc {
 	return func(rd *bufio.Reader) error {
 		r, _, err := rd.ReadRune()
@@ -105,6 +116,13 @@ func readLetter(r *bufio.Reader, buf *bytes.Buffer) error {
 		return err
 	}
 
+	if !unicode.IsLetter(ru) {
+		if err := r.UnreadRune(); err != nil {
+			return err
+		}
+		return nil
+	}
+
 	buf.WriteRune(ru)
 	return nil
 }
@@ -124,6 +142,11 @@ func readValidIdentRune(r *bufio.Reader, buf *bytes.Buffer) error {
 
 	buf.WriteRune(ru)
 	return nil
+}
+
+func unreadString(r *bufio.Reader, str string) {
+	nr := *r
+	r.Reset(io.MultiReader(strings.NewReader(str), &nr))
 }
 
 func readIdent(ident *string) parseFunc {

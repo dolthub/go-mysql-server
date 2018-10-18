@@ -21,7 +21,7 @@ func TestTablePartitionsCount(t *testing.T) {
 func TestTableName(t *testing.T) {
 	require := require.New(t)
 	s := sql.Schema{
-		{"col1", sql.Text, nil, true, ""},
+		{Name: "col1", Type: sql.Text, Nullable: true},
 	}
 
 	table := NewTable("test", s)
@@ -36,8 +36,8 @@ const expectedString = `Table(foo)
 func TestTableString(t *testing.T) {
 	require := require.New(t)
 	table := NewTable("foo", sql.Schema{
-		{"col1", sql.Text, nil, true, ""},
-		{"col2", sql.Int64, nil, false, ""},
+		{Name: "col1", Type: sql.Text, Nullable: true},
+		{Name: "col2", Type: sql.Int64, Nullable: false},
 	})
 	require.Equal(expectedString, table.String())
 }

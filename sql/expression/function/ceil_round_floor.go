@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
-)
 
-import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 )
@@ -56,7 +54,12 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if !sql.IsNumber(c.Child.Type()) {
-		return int32(0), nil
+		child, err = sql.Float64.Convert(child)
+		if err != nil {
+			return int32(0), nil
+		}
+
+		return int32(math.Ceil(child.(float64))), nil
 	}
 
 	if !sql.IsDecimal(c.Child.Type()) {
@@ -118,7 +121,12 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if !sql.IsNumber(f.Child.Type()) {
-		return int32(0), nil
+		child, err = sql.Float64.Convert(child)
+		if err != nil {
+			return int32(0), nil
+		}
+
+		return int32(math.Floor(child.(float64))), nil
 	}
 
 	if !sql.IsDecimal(f.Child.Type()) {
@@ -150,7 +158,7 @@ func NewRound(args ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidArgumentNumber.New("1 or 2", argLen)
 	}
 
-	var right sql.Expression = nil
+	var right sql.Expression
 	if len(args) == 2 {
 		right = args[1]
 	}
@@ -178,10 +186,6 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	if !sql.IsNumber(r.Left.Type()) {
-		return int32(0), nil
-	}
-
 	dVal := float64(0)
 
 	if r.Right != nil {
@@ -203,9 +207,22 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			case int:
 				dVal = float64(dNum)
 			default:
-				dVal = 0
+				dTemp, err = sql.Float64.Convert(dTemp)
+				if err == nil {
+					dVal = dTemp.(float64)
+				}
 			}
 		}
+	}
+
+	if !sql.IsNumber(r.Left.Type()) {
+		xVal, err = sql.Float64.Convert(xVal)
+		if err != nil {
+			return int32(0), nil
+		}
+
+		xNum := xVal.(float64)
+		return int32(math.Round(xNum*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
 	}
 
 	switch xNum := xVal.(type) {
@@ -220,7 +237,7 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case int:
 		return int(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
 	default:
-		return nil, sql.ErrInvalidType.New(r.Right.Type().Type().String())
+		return nil, sql.ErrInvalidType.New(r.Left.Type().Type().String())
 	}
 }
 
@@ -231,10 +248,10 @@ func (r *Round) IsNullable() bool {
 
 func (r *Round) String() string {
 	if r.Right == nil {
-		return fmt.Sprintf("ROUND(%s, 0)", r.Right.String())
+		return fmt.Sprintf("ROUND(%s, 0)", r.Left.String())
 	}
 
-	return fmt.Sprintf("ROUND(%s, %s)", r.Right.String(), r.Left.String())
+	return fmt.Sprintf("ROUND(%s, %s)", r.Left.String(), r.Right.String())
 }
 
 // Resolved implements the Expression interface.

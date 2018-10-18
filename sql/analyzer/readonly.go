@@ -20,7 +20,7 @@ var ErrQueryNotAllowed = errors.NewKind("query of type %q not allowed in read-on
 // error if it's not the case.
 func EnsureReadOnly(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
 	switch node.(type) {
-	case *plan.InsertInto, *plan.DropIndex, *plan.CreateIndex:
+	case *plan.InsertInto, *plan.DropIndex, *plan.CreateIndex, *plan.UnlockTables, *plan.LockTables:
 		typ := strings.Split(reflect.TypeOf(node).String(), ".")[1]
 		return nil, ErrQueryNotAllowed.New(typ)
 	default:

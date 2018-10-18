@@ -41,7 +41,7 @@ func TestDescribe_Empty(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	d := NewDescribe(NewUnresolvedTable("test_table"))
+	d := NewDescribe(NewUnresolvedTable("test_table", ""))
 
 	iter, err := d.RowIter(ctx)
 	require.NoError(err)

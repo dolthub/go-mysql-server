@@ -61,6 +61,12 @@ We support and actively test against certain third-party clients to ensure compa
 - `ARRAY_LENGTH(json)`: If the json representation is an array, this function returns its size.
 - `SPLIT(str,sep)`: Receives a string and a separator and returns the parts of the string split by the separator as a JSON array of strings.
 - `CONCAT(...)`: Concatenate any group of fields into a single string.
+- `COALESCE(...)`: The function returns the first non-null value in a list.
+- `LOWER(str)`, `UPPER(str)`: Receives a string and modify it changing all the chars to upper or lower case.
+- `CEILING(number)`, `CEIL(number)`: Return the smallest integer value that is greater than or equal to `number`.
+- `FLOOR(number)`: Return the largest integer value that is less than or equal to `number`.
+- `ROUND(number, decimals)`: Round the `number` to `decimals` decimal places.
+- `CONNECTION_ID()`: Return the current connection ID.
 
 ## Example
 
@@ -122,7 +128,7 @@ func createTestDatabase() *mem.Database {
     for _, row := range rows {
         table.Insert(ctx, row)
     }
-    
+
     return db
 }
 

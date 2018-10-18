@@ -31,9 +31,8 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 	db.AddTable("mytable2", table2)
 
 	catalog := sql.NewCatalog()
-	catalog.Databases = []sql.Database{db}
+	catalog.AddDatabase(db)
 	a := NewDefault(catalog)
-	a.CurrentDatabase = "mydb"
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -104,7 +103,7 @@ func TestPushdownIndexable(t *testing.T) {
 	db.AddTable("mytable2", table2)
 
 	catalog := sql.NewCatalog()
-	catalog.Databases = []sql.Database{db}
+	catalog.AddDatabase(db)
 
 	idx1 := &dummyIndex{
 		"mytable",
@@ -141,7 +140,6 @@ func TestPushdownIndexable(t *testing.T) {
 	<-ready
 
 	a := withoutProcessTracking(NewDefault(catalog))
-	a.CurrentDatabase = ""
 
 	node := plan.NewProject(
 		[]sql.Expression{

@@ -58,7 +58,7 @@ func TestParseCreateIndex(t *testing.T) {
 			"CREATE INDEX idx ON foo USING foo (fn(bar, baz))",
 			plan.NewCreateIndex(
 				"idx",
-				plan.NewUnresolvedTable("foo"),
+				plan.NewUnresolvedTable("foo", ""),
 				[]sql.Expression{
 					expression.NewUnresolvedFunction(
 						"fn", false,
@@ -75,7 +75,7 @@ func TestParseCreateIndex(t *testing.T) {
 			"CREATE INDEX idx ON foo USING foo (bar)",
 			plan.NewCreateIndex(
 				"idx",
-				plan.NewUnresolvedTable("foo"),
+				plan.NewUnresolvedTable("foo", ""),
 				[]sql.Expression{expression.NewUnresolvedColumn("bar")},
 				"foo",
 				make(map[string]string),
@@ -86,7 +86,7 @@ func TestParseCreateIndex(t *testing.T) {
 			"CREATE INDEX idx ON foo USING foo (bar, baz)",
 			plan.NewCreateIndex(
 				"idx",
-				plan.NewUnresolvedTable("foo"),
+				plan.NewUnresolvedTable("foo", ""),
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("bar"),
 					expression.NewUnresolvedColumn("baz"),
@@ -100,7 +100,7 @@ func TestParseCreateIndex(t *testing.T) {
 			"CREATE INDEX idx ON foo USING bar (baz)",
 			plan.NewCreateIndex(
 				"idx",
-				plan.NewUnresolvedTable("foo"),
+				plan.NewUnresolvedTable("foo", ""),
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("baz"),
 				},
@@ -118,7 +118,7 @@ func TestParseCreateIndex(t *testing.T) {
 			"CREATE INDEX idx ON foo USING bar (baz) WITH (foo = bar)",
 			plan.NewCreateIndex(
 				"idx",
-				plan.NewUnresolvedTable("foo"),
+				plan.NewUnresolvedTable("foo", ""),
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("baz"),
 				},
@@ -131,7 +131,7 @@ func TestParseCreateIndex(t *testing.T) {
 			"CREATE INDEX idx ON foo USING bar (baz) WITH (foo = bar, qux = 'mux')",
 			plan.NewCreateIndex(
 				"idx",
-				plan.NewUnresolvedTable("foo"),
+				plan.NewUnresolvedTable("foo", ""),
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("baz"),
 				},
@@ -144,7 +144,7 @@ func TestParseCreateIndex(t *testing.T) {
 			"CREATE INDEX idx_2 ON foo USING bar (baz)",
 			plan.NewCreateIndex(
 				"idx_2",
-				plan.NewUnresolvedTable("foo"),
+				plan.NewUnresolvedTable("foo", ""),
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("baz"),
 				},

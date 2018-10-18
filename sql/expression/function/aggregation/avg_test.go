@@ -15,6 +15,17 @@ func TestAvg_String(t *testing.T) {
 	require.Equal("AVG(col1)", avg.String())
 }
 
+func TestAvg_Float64(t *testing.T) {
+	require := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	avg := NewAvg(expression.NewGetField(0, sql.Float64, "col1", true))
+	buffer := avg.NewBuffer()
+	avg.Update(ctx, buffer, sql.NewRow(float64(23.2220000)))
+
+	require.Equal(float64(23.222), eval(t, avg, buffer))
+}
+
 func TestAvg_Eval_INT32(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()

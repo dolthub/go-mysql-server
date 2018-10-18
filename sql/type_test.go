@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-vitess.v1/sqltypes"
+	"gopkg.in/src-d/go-vitess.v1/vt/proto/query"
 )
 
 func TestText(t *testing.T) {
@@ -53,6 +54,17 @@ func TestInt64(t *testing.T) {
 	lt(t, Int64, int64(1), int64(2))
 	eq(t, Int64, int64(1), int64(1))
 	gt(t, Int64, int64(3), int64(2))
+}
+
+func TestFloat64(t *testing.T) {
+	require := require.New(t)
+
+	var f = numberT{
+		t: query.Type_FLOAT64,
+	}
+	val := f.SQL(23.222)
+	require.True(val.IsFloat())
+	require.Equal(sqltypes.NewFloat64(23.222), val)
 }
 
 func TestTimestamp(t *testing.T) {

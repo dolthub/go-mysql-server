@@ -76,10 +76,10 @@ func (c *CreateIndex) Resolved() bool {
 
 func getIndexableTable(t sql.Table) (sql.IndexableTable, error) {
 	switch t := t.(type) {
-	case sql.TableWrapper:
-		return getIndexableTable(t.Underlying())
 	case sql.IndexableTable:
 		return t, nil
+	case sql.TableWrapper:
+		return getIndexableTable(t.Underlying())
 	default:
 		return nil, ErrInsertIntoNotSupported.New()
 	}
@@ -398,6 +398,7 @@ type loggingPartitionKeyValueIter struct {
 	ctx  *sql.Context
 	log  *logrus.Entry
 	iter sql.PartitionIndexKeyValueIter
+	rows uint64
 }
 
 func newLoggingPartitionKeyValueIter(
@@ -418,7 +419,7 @@ func (i *loggingPartitionKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueI
 		return nil, nil, err
 	}
 
-	return p, newLoggingKeyValueIter(i.ctx, i.log, iter), nil
+	return p, newLoggingKeyValueIter(i.ctx, i.log, iter, &i.rows), nil
 }
 
 func (i *loggingPartitionKeyValueIter) Close() error {
@@ -430,7 +431,7 @@ type loggingKeyValueIter struct {
 	span  opentracing.Span
 	log   *logrus.Entry
 	iter  sql.IndexKeyValueIter
-	rows  uint64
+	rows  *uint64
 	start time.Time
 }
 
@@ -438,12 +439,14 @@ func newLoggingKeyValueIter(
 	ctx *sql.Context,
 	log *logrus.Entry,
 	iter sql.IndexKeyValueIter,
+	rows *uint64,
 ) *loggingKeyValueIter {
 	return &loggingKeyValueIter{
 		ctx:   ctx,
 		log:   log,
 		iter:  iter,
 		start: time.Now(),
+		rows:  rows,
 	}
 }
 
@@ -456,13 +459,13 @@ func (i *loggingKeyValueIter) Next() ([]interface{}, []byte, error) {
 		)
 	}
 
-	i.rows++
-	if i.rows%sql.IndexBatchSize == 0 {
+	(*i.rows)++
+	if *i.rows%sql.IndexBatchSize == 0 {
 		duration := time.Since(i.start)
 
 		i.log.WithFields(logrus.Fields{
 			"duration": duration,
-			"rows":     i.rows,
+			"rows":     *i.rows,
 		}).Debugf("still creating index")
 
 		if i.span != nil {

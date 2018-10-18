@@ -19,7 +19,7 @@ func TestTrackProcess(t *testing.T) {
 	a := NewDefault(catalog)
 
 	node := plan.NewInnerJoin(
-		plan.NewResolvedTable(mem.NewPartitionedTable("foo", nil, 2)),
+		plan.NewResolvedTable(&table{mem.NewPartitionedTable("foo", nil, 2)}),
 		plan.NewResolvedTable(mem.NewPartitionedTable("bar", nil, 4)),
 		expression.NewLiteral(int64(1), sql.Int64),
 	)
@@ -53,7 +53,7 @@ func TestTrackProcess(t *testing.T) {
 
 	rhs, ok := join.Right.(*plan.ResolvedTable)
 	require.True(ok)
-	_, ok = rhs.Table.(*plan.ProcessTable)
+	_, ok = rhs.Table.(*plan.ProcessIndexableTable)
 	require.True(ok)
 
 	iter, err := proc.RowIter(ctx)
@@ -74,4 +74,15 @@ func withoutProcessTracking(a *Analyzer) *Analyzer {
 	afterAll := a.Batches[len(a.Batches)-1]
 	afterAll.Rules = afterAll.Rules[1:]
 	return a
+}
+
+// wrapper around sql.Table to make it not indexable
+type table struct {
+	sql.Table
+}
+
+var _ sql.PartitionCounter = (*table)(nil)
+
+func (t *table) PartitionCount(ctx *sql.Context) (int64, error) {
+	return t.Table.(sql.PartitionCounter).PartitionCount(ctx)
 }
