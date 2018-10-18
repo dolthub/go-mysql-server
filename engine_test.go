@@ -506,6 +506,13 @@ var queries = []struct {
 		`,
 		[]sql.Row{},
 	},
+	{
+		`SHOW CREATE DATABASE mydb`,
+		[]sql.Row{{
+			"mydb",
+			"CREATE DATABASE `mydb` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8_bin */",
+		}},
+	},
 }
 
 func TestQueries(t *testing.T) {

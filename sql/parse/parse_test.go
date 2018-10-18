@@ -825,6 +825,10 @@ var fixtures = map[string]sql.Node{
 		{Table: plan.NewUnresolvedTable("bar", ""), Write: true},
 		{Table: plan.NewUnresolvedTable("baz", "")},
 	}),
+	`SHOW CREATE DATABASE foo`:               plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
+	`SHOW CREATE SCHEMA foo`:                 plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
+	`SHOW CREATE DATABASE IF NOT EXISTS foo`: plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
+	`SHOW CREATE SCHEMA IF NOT EXISTS foo`:   plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
 }
 
 func TestParse(t *testing.T) {
