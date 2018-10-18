@@ -83,6 +83,7 @@ func (s *BaseSession) GetAll() map[string]TypedValue {
 // ID implements the Session interface.
 func (s *BaseSession) ID() uint32 { return s.id }
 
+// TypedValue is a value along with its type.
 type TypedValue struct {
 	Typ   Type
 	Value interface{}
@@ -192,20 +193,37 @@ func (c *Context) WithContext(ctx context.Context) *Context {
 
 // NewSpanIter creates a RowIter executed in the given span.
 func NewSpanIter(span opentracing.Span, iter RowIter) RowIter {
-	return &spanIter{span, iter, 0, false}
+	return &spanIter{
+		span: span,
+		iter: iter,
+	}
 }
 
 type spanIter struct {
 	span  opentracing.Span
 	iter  RowIter
 	count int
+	max   time.Duration
+	min   time.Duration
+	total time.Duration
 	done  bool
 }
 
-func (i *spanIter) Next() (Row, error) {
-	if i.done {
-		return nil, io.EOF
+func (i *spanIter) updateTimings(start time.Time) {
+	elapsed := time.Since(start)
+	if i.max < elapsed {
+		i.max = elapsed
 	}
+
+	if i.min > elapsed || i.min == 0 {
+		i.min = elapsed
+	}
+
+	i.total += elapsed
+}
+
+func (i *spanIter) Next() (Row, error) {
+	start := time.Now()
 
 	row, err := i.iter.Next()
 	if err == io.EOF {
@@ -219,15 +237,27 @@ func (i *spanIter) Next() (Row, error) {
 	}
 
 	i.count++
+	i.updateTimings(start)
 	return row, nil
 }
 
 func (i *spanIter) finish() {
+	var avg time.Duration
+	if i.count > 0 {
+		avg = i.total / time.Duration(i.count)
+	}
+
 	i.span.FinishWithOptions(opentracing.FinishOptions{
 		LogRecords: []opentracing.LogRecord{
 			{
 				Timestamp: time.Now(),
-				Fields:    []log.Field{log.Int("rows", i.count)},
+				Fields: []log.Field{
+					log.Int("rows", i.count),
+					log.String("total_time", i.total.String()),
+					log.String("max_time", i.max.String()),
+					log.String("min_time", i.min.String()),
+					log.String("avg_time", avg.String()),
+				},
 			},
 		},
 	})
