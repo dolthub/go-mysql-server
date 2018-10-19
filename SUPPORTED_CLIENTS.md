@@ -16,6 +16,7 @@ These are the clients we actively test against to check are compatible with go-m
   - [mariadb-java-client](#mariadb-java-client)
 - Go
   - [go-mysql-driver/mysql](#go-mysql-driver-mysql)
+- Grafana
 
 ## Example client usage
 
@@ -129,7 +130,7 @@ namespace something
         public async Task DoQuery()
         {
             var connectionString = "server=127.0.0.1;user id=user;password=pass;port=3306;database=dbname;";
-            
+
             using (var conn = new MySqlConnection(connectionString))
             {
                 await conn.OpenAsync();
