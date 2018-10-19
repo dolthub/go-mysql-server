@@ -201,10 +201,12 @@ func (c *CreateIndex) createIndex(
 			},
 		})
 
+		ctx.Error(0, "unable to save the index: %s", err)
 		logrus.WithField("err", err).Error("unable to save the index")
 
 		deleted, err := c.Catalog.DeleteIndex(index.Database(), index.ID(), true)
 		if err != nil {
+			ctx.Error(0, "unable to delete index: %s", err)
 			logrus.WithField("err", err).Error("unable to delete the index")
 		} else {
 			<-deleted

@@ -3,7 +3,6 @@ package plan
 import (
 	"fmt"
 
-	"github.com/sirupsen/logrus"
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
@@ -60,12 +59,12 @@ func (t *LockTables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		lockable, err := getLockable(l.Table)
 		if err != nil {
 			// If a table is not lockable, just skip it
-			logrus.Warn(err.Error())
+			ctx.Warn(0, err.Error())
 			continue
 		}
 
 		if err := lockable.Lock(ctx, l.Write); err != nil {
-			logrus.Error(err.Error())
+			ctx.Error(0, "unable to lock table: %s", err)
 		} else {
 			t.Catalog.LockTable(id, lockable.Name())
 		}

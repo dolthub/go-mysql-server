@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
@@ -58,8 +57,7 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 	}
 
 	if s == "" {
-		logrus.WithField("query", query).
-			Infof("query became empty, so it will be ignored")
+		ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
 		return plan.Nothing, nil
 	}
 
