@@ -748,6 +748,8 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 
 	case *sqlparser.BinaryExpr:
 		return binaryExprToExpression(v)
+	case *sqlparser.UnaryExpr:
+		return unaryExprToExpression(v)
 	}
 }
 
@@ -890,6 +892,21 @@ func selectExprToExpression(se sqlparser.SelectExpr) (sql.Expression, error) {
 
 		// TODO: Handle case-sensitiveness when needed.
 		return expression.NewAlias(expr, e.As.Lowered()), nil
+	}
+}
+
+func unaryExprToExpression(e *sqlparser.UnaryExpr) (sql.Expression, error) {
+	switch e.Operator {
+	case sqlparser.MinusStr:
+		expr, err := exprToExpression(e.Expr)
+		if err != nil {
+			return nil, err
+		}
+
+		return expression.NewUnaryMinus(expr), nil
+
+	default:
+		return nil, ErrUnsupportedFeature.New("unary operator: " + e.Operator)
 	}
 }
 
