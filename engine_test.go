@@ -93,6 +93,18 @@ var queries = []struct {
 		[]sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
 	},
 	{
+		"SELECT SECOND('2007-12-11T20:21:22Z') FROM mytable",
+		[]sql.Row{{int32(22)}, {int32(22)}, {int32(22)}},
+	},
+	{
+		"SELECT DAYOFYEAR('2007-12-11') FROM mytable",
+		[]sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
+	},
+	{
+		"SELECT DAYOFYEAR('20071211') FROM mytable",
+		[]sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
+	},
+	{
 		"SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
 		[]sql.Row{{int64(1)}, {int64(2)}},
 	},

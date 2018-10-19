@@ -98,6 +98,46 @@ func TestTimestamp(t *testing.T) {
 	gt(t, Timestamp, after, now)
 }
 
+func TestExtraTimestamps(t *testing.T) {
+	tests := []struct {
+		date     string
+		expected string
+	}{
+		{
+			date:     "2018-10-18T05:22:25Z",
+			expected: "2018-10-18 05:22:25",
+		},
+		{
+			date:     "2018-10-18T05:22:25+07:00",
+			expected: "2018-10-17 22:22:25",
+		},
+		{
+			date:     "20181018052225",
+			expected: "2018-10-18 05:22:25",
+		},
+		{
+			date:     "20181018",
+			expected: "2018-10-18 00:00:00",
+		},
+		{
+			date:     "2018-10-18",
+			expected: "2018-10-18 00:00:00",
+		},
+	}
+
+	for _, c := range tests {
+		t.Run(c.date, func(t *testing.T) {
+			require := require.New(t)
+
+			p, err := Timestamp.Convert(c.date)
+			require.NoError(err)
+
+			str := string([]byte(p.(time.Time).Format(TimestampLayout)))
+			require.Equal(c.expected, str)
+		})
+	}
+}
+
 func TestDate(t *testing.T) {
 	require := require.New(t)
 	now := time.Now().UTC()
