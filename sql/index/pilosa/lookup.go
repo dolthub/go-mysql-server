@@ -84,9 +84,11 @@ func (l *indexLookup) values(p sql.Partition) (*pilosa.Row, error) {
 	if err := l.mapping.open(); err != nil {
 		return nil, err
 	}
-
 	defer l.mapping.close()
 
+	if err := l.index.Open(); err != nil {
+		return nil, err
+	}
 	var row *pilosa.Row
 	for i, expr := range l.expressions {
 		field := l.index.Field(fieldName(l.id, expr, p))
@@ -104,6 +106,9 @@ func (l *indexLookup) values(p sql.Partition) (*pilosa.Row, error) {
 		}
 
 		row = intersect(row, r)
+	}
+	if err := l.index.Close(); err != nil {
+		return nil, err
 	}
 
 	// evaluate composition of operations
@@ -131,9 +136,6 @@ func (l *indexLookup) values(p sql.Partition) (*pilosa.Row, error) {
 
 // Values implements sql.IndexLookup.Values
 func (l *indexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
-	l.index.Open()
-	defer l.index.Close()
-
 	row, err := l.values(p)
 	if err != nil {
 		return nil, err

@@ -99,6 +99,66 @@ func TestLoadAll(t *testing.T) {
 	require.NoError(err)
 }
 
+func TestLoadAllWithMultipleDrivers(t *testing.T) {
+	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
+
+	d1 := NewDriver(tmpDir)
+	idx1, err := d1.Create("db", "table", "id1", makeExpressions("table", "hash1"), nil)
+	require.NoError(err)
+	it1 := &partitionKeyValueIter{
+		partitions:  2,
+		offset:      0,
+		total:       64,
+		expressions: idx1.Expressions(),
+		location:    randLocation,
+	}
+	require.NoError(d1.Save(sql.NewEmptyContext(), idx1, it1))
+
+	d2 := NewDriver(tmpDir)
+	idx2, err := d2.Create("db", "table", "id2", makeExpressions("table", "hash1"), nil)
+	require.NoError(err)
+	it2 := &partitionKeyValueIter{
+		partitions:  2,
+		offset:      0,
+		total:       64,
+		expressions: idx2.Expressions(),
+		location:    randLocation,
+	}
+	require.NoError(d2.Save(sql.NewEmptyContext(), idx2, it2))
+
+	d := NewDriver(tmpDir)
+	indexes, err := d.LoadAll("db", "table")
+	require.NoError(err)
+
+	require.Equal(2, len(indexes))
+	i1, ok := idx1.(*pilosaIndex)
+	require.True(ok)
+	i2, ok := idx2.(*pilosaIndex)
+	require.True(ok)
+
+	require.Equal(i1.index.Name(), i2.index.Name())
+
+	// Load index from another table. Previously this panicked as the same
+	// pilosa.Holder was used for all indexes.
+
+	d3 := NewDriver(tmpDir)
+	idx3, err := d3.Create("db", "table2", "id1", makeExpressions("table2", "hash1"), nil)
+	require.NoError(err)
+	it3 := &partitionKeyValueIter{
+		partitions:  2,
+		offset:      0,
+		total:       64,
+		expressions: idx3.Expressions(),
+		location:    randLocation,
+	}
+	require.NoError(d3.Save(sql.NewEmptyContext(), idx3, it3))
+
+	indexes, err = d.LoadAll("db", "table2")
+	require.NoError(err)
+}
+
 type logLoc struct {
 	loc []byte
 	err error
@@ -214,6 +274,39 @@ func TestSaveAndGetAll(t *testing.T) {
 	require.True(errInvalidKeys.Is(err))
 }
 
+func TestSaveAndGetAllWithMultipleDrivers(t *testing.T) {
+	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
+
+	db, table, id := "db_name", "table_name", "index_id"
+	expressions := makeExpressions(table, "lang", "hash")
+
+	d1 := NewDriver(tmpDir)
+	sqlIdx, err := d1.Create(db, table, id, expressions, nil)
+	require.NoError(err)
+
+	it := &partitionKeyValueIter{
+		partitions:  2,
+		offset:      0,
+		total:       64,
+		expressions: sqlIdx.Expressions(),
+		location:    randLocation,
+	}
+
+	err = d1.Save(sql.NewEmptyContext(), sqlIdx, it)
+	require.NoError(err)
+
+	d2 := NewDriver(tmpDir)
+	indexes, err := d2.LoadAll(db, table)
+	require.NoError(err)
+	require.Equal(1, len(indexes))
+
+	_, err = sqlIdx.Get()
+	require.Error(err)
+	require.True(errInvalidKeys.Is(err))
+}
+
 func TestLoadCorruptedIndex(t *testing.T) {
 	require := require.New(t)
 	setup(t)
@@ -252,6 +345,58 @@ func TestDelete(t *testing.T) {
 
 	err = d.Delete(sqlIdx, new(partitionIter))
 	require.NoError(err)
+}
+
+func TestDeleteWithMultipleDrivers(t *testing.T) {
+	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
+
+	db, table, id := "db_name", "table_name", "index_id"
+
+	expressions := []sql.Expression{
+		expression.NewGetFieldWithTable(0, sql.Int64, table, "lang", true),
+		expression.NewGetFieldWithTable(1, sql.Int64, table, "field", true),
+	}
+
+	d := NewDriver(tmpDir)
+	sqlIdx, err := d.Create(db, table, id, expressions, nil)
+	require.NoError(err)
+
+	d = NewDriver(tmpDir)
+	err = d.Delete(sqlIdx, new(partitionIter))
+	require.NoError(err)
+}
+
+func TestDeleteAndLoadAll(t *testing.T) {
+	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
+
+	db, table, id := "db_name", "table_name", "index_id"
+	expressions := makeExpressions(table, "lang", "hash")
+
+	d := NewDriver(tmpDir)
+	sqlIdx, err := d.Create(db, table, id, expressions, nil)
+	require.NoError(err)
+
+	it := &partitionKeyValueIter{
+		partitions:  2,
+		offset:      0,
+		total:       64,
+		expressions: sqlIdx.Expressions(),
+		location:    randLocation,
+	}
+
+	err = d.Save(sql.NewEmptyContext(), sqlIdx, it)
+	require.NoError(err)
+
+	err = d.Delete(sqlIdx, new(partitionIter))
+	require.NoError(err)
+
+	indexes, err := d.LoadAll(db, table)
+	require.NoError(err)
+	require.Equal(0, len(indexes))
 }
 
 func TestDeleteInProgress(t *testing.T) {
@@ -411,6 +556,82 @@ func TestIntersection(t *testing.T) {
 	require.NoError(err)
 
 	err = d.Save(ctx, sqlIdxPath, itPath)
+	require.NoError(err)
+
+	lookupLang, err := sqlIdxLang.Get(itLang.records[0][0].values...)
+	require.NoError(err)
+	lookupPath, err := sqlIdxPath.Get(itPath.records[0][itPath.total-1].values...)
+	require.NoError(err)
+
+	m, ok := lookupLang.(sql.Mergeable)
+	require.True(ok)
+	require.True(m.IsMergeable(lookupPath))
+
+	interLookup, ok := lookupLang.(sql.SetOperations)
+	require.True(ok)
+	interIt, err := interLookup.Intersection(lookupPath).Values(testPartition(0))
+	require.NoError(err)
+	loc, err := interIt.Next()
+
+	require.True(err == io.EOF)
+	require.NoError(interIt.Close())
+
+	lookupLang, err = sqlIdxLang.Get(itLang.records[0][0].values...)
+	require.NoError(err)
+	lookupPath, err = sqlIdxPath.Get(itPath.records[0][0].values...)
+	require.NoError(err)
+
+	interLookup, ok = lookupPath.(sql.SetOperations)
+	require.True(ok)
+	interIt, err = interLookup.Intersection(lookupLang).Values(testPartition(0))
+	require.NoError(err)
+	loc, err = interIt.Next()
+	require.NoError(err)
+	require.Equal(loc, itPath.records[0][0].location)
+	_, err = interIt.Next()
+	require.True(err == io.EOF)
+
+	require.NoError(interIt.Close())
+}
+
+func TestIntersectionWithMultipleDrivers(t *testing.T) {
+	ctx := sql.NewContext(context.Background())
+	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
+
+	db, table := "db_name", "table_name"
+	idxLang, expLang := "idx_lang", makeExpressions(table, "lang")
+	idxPath, expPath := "idx_path", makeExpressions(table, "path")
+
+	d1 := NewDriver(tmpDir)
+	sqlIdxLang, err := d1.Create(db, table, idxLang, expLang, nil)
+	require.NoError(err)
+
+	d2 := NewDriver(tmpDir)
+	sqlIdxPath, err := d2.Create(db, table, idxPath, expPath, nil)
+	require.NoError(err)
+
+	itLang := &partitionKeyValueIter{
+		partitions:  2,
+		offset:      0,
+		total:       10,
+		expressions: sqlIdxLang.Expressions(),
+		location:    offsetLocation,
+	}
+
+	itPath := &partitionKeyValueIter{
+		partitions:  2,
+		offset:      0,
+		total:       10,
+		expressions: sqlIdxPath.Expressions(),
+		location:    offsetLocation,
+	}
+
+	err = d1.Save(ctx, sqlIdxLang, itLang)
+	require.NoError(err)
+
+	err = d2.Save(ctx, sqlIdxPath, itPath)
 	require.NoError(err)
 
 	lookupLang, err := sqlIdxLang.Get(itLang.records[0][0].values...)
