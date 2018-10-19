@@ -40,6 +40,7 @@ var (
 	showIndexRegex       = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
 	showCreateRegex      = regexp.MustCompile(`^show create\s+\S+\s*`)
 	showVariablesRegex   = regexp.MustCompile(`^show\s+(.*)?variables\s*`)
+	showWarningsRegex    = regexp.MustCompile(`^show\s+warnings\s*`)
 	describeRegex        = regexp.MustCompile(`^(describe|desc|explain)\s+(.*)\s+`)
 	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
 	unlockTablesRegex    = regexp.MustCompile(`^unlock\s+tables$`)
@@ -63,6 +64,7 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 	}
 
 	lowerQuery := strings.ToLower(s)
+
 	switch true {
 	case describeTablesRegex.MatchString(lowerQuery):
 		return parseDescribeTables(lowerQuery)
@@ -76,6 +78,8 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return parseShowCreate(s)
 	case showVariablesRegex.MatchString(lowerQuery):
 		return parseShowVariables(ctx, s)
+	case showWarningsRegex.MatchString(lowerQuery):
+		return parseShowWarnings(ctx, s)
 	case describeRegex.MatchString(lowerQuery):
 		return parseDescribeQuery(ctx, s)
 	case fullProcessListRegex.MatchString(lowerQuery):
