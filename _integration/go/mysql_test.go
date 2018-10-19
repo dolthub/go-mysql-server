@@ -85,6 +85,11 @@ func TestGrafana(t *testing.T) {
 				{"created_at", "TIMESTAMP"},
 			},
 		},
+		{
+			`select count(*) from mytable where created_at ` +
+				`between '2000-01-01T00:00:00Z' and '2999-01-01T00:00:00Z'`,
+			[][]string{{"4"}},
+		},
 	}
 
 	for _, c := range tests {
