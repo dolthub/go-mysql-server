@@ -43,4 +43,8 @@ var Defaults = sql.Functions{
 	"coalesce":      sql.FunctionN(NewCoalesce),
 	"json_extract":  sql.FunctionN(NewJSONExtract),
 	"connection_id": sql.Function0(NewConnectionID),
+	"ln": 			 sql.Function1(NewLn),
+	"log2": 	     sql.Function1(NewLog2),
+	"log10": 	     sql.Function1(NewLog10),
+	"log": 	     	 sql.FunctionN(NewLog),
 }
