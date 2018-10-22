@@ -529,6 +529,18 @@ var queries = []struct {
 		`SELECT -1`,
 		[]sql.Row{{int64(-1)}},
 	},
+	{
+		`
+		SHOW WARNINGS
+		`,
+		[]sql.Row{},
+	},
+	{
+		`
+		SHOW WARNINGS LIMIT 0
+		`,
+		[]sql.Row{},
+	},
 }
 
 func TestQueries(t *testing.T) {
@@ -548,6 +560,121 @@ func TestQueries(t *testing.T) {
 		}
 	})
 }
+
+func TestWarnings(t *testing.T) {
+	ctx := newCtx()
+	ctx.Session.Warn(&sql.Warning{Code: 1})
+	ctx.Session.Warn(&sql.Warning{Code: 2})
+	ctx.Session.Warn(&sql.Warning{Code: 3})
+
+	var queries = []struct {
+		query    string
+		expected []sql.Row
+	}{
+		{
+			`
+			SHOW WARNINGS
+			`,
+			[]sql.Row{
+				{"", 3, ""},
+				{"", 2, ""},
+				{"", 1, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 1
+			`,
+			[]sql.Row{
+				{"", 3, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 1,2
+			`,
+			[]sql.Row{
+				{"", 2, ""},
+				{"", 1, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 0
+			`,
+			[]sql.Row{
+				{"", 3, ""},
+				{"", 2, ""},
+				{"", 1, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 2,0
+			`,
+			[]sql.Row{
+				{"", 1, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 10
+			`,
+			[]sql.Row{
+				{"", 3, ""},
+				{"", 2, ""},
+				{"", 1, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 10,1
+			`,
+			[]sql.Row{},
+		},
+	}
+
+	e := newEngine(t)
+	ep := newEngineWithParallelism(t, 2)
+
+	t.Run("sequential", func(t *testing.T) {
+		for _, tt := range queries {
+			testQueryWithContext(ctx, t, e, tt.query, tt.expected)
+		}
+	})
+
+	t.Run("parallel", func(t *testing.T) {
+		for _, tt := range queries {
+			testQueryWithContext(ctx, t, ep, tt.query, tt.expected)
+		}
+	})
+}
+
+func TestClearWarnings(t *testing.T) {
+	require := require.New(t)
+	e := newEngine(t)
+	ctx := newCtx()
+	ctx.Session.Warn(&sql.Warning{Code: 1})
+	ctx.Session.Warn(&sql.Warning{Code: 2})
+	ctx.Session.Warn(&sql.Warning{Code: 3})
+
+	_, iter, err := e.Query(ctx, "SHOW WARNINGS")
+	require.NoError(err)
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+	require.Equal(3, len(rows))
+
+	_, iter, err = e.Query(ctx, "SHOW WARNINGS LIMIT 1")
+	require.NoError(err)
+	rows, err = sql.RowIterToRows(iter)
+	require.NoError(err)
+	require.Equal(1, len(rows))
+
+	_, _, err = e.Query(ctx, "SELECT * FROM mytable LIMIT 1")
+	require.NoError(err)
+	require.Equal(0, len(ctx.Session.Warnings()))
+}
+
 func TestDescribe(t *testing.T) {
 	e := newEngine(t)
 
@@ -923,11 +1050,13 @@ func TestInnerNestedInNaturalJoins(t *testing.T) {
 }
 
 func testQuery(t *testing.T, e *sqle.Engine, q string, expected []sql.Row) {
+	testQueryWithContext(newCtx(), t, e, q, expected)
+}
+
+func testQueryWithContext(ctx *sql.Context, t *testing.T, e *sqle.Engine, q string, expected []sql.Row) {
 	t.Run(q, func(t *testing.T) {
 		require := require.New(t)
-		session := newCtx()
-
-		_, iter, err := e.Query(session, q)
+		_, iter, err := e.Query(ctx, q)
 		require.NoError(err)
 
 		rows, err := sql.RowIterToRows(iter)

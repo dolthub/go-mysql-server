@@ -837,6 +837,9 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("mytable", ""),
 	),
+	`SHOW WARNINGS`:            plan.NewOffset(0, plan.ShowWarnings(sql.NewEmptyContext().Warnings())),
+	`SHOW WARNINGS LIMIT 10`:   plan.NewLimit(10, plan.NewOffset(0, plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
+	`SHOW WARNINGS LIMIT 5,10`: plan.NewLimit(10, plan.NewOffset(5, plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
 }
 
 func TestParse(t *testing.T) {
