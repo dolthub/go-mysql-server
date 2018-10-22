@@ -32,7 +32,7 @@ func TestLn(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewLn(expression.NewGetField(0, tt.rowType, "", false))
+		f := LogBaseMaker(math.E)(expression.NewGetField(0, tt.rowType, "", false))
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
@@ -48,7 +48,7 @@ func TestLn(t *testing.T) {
 	}
 
 	// Test Nil
-	f := NewLn(expression.NewGetField(0, sql.Float64, "", false))
+	f := LogBaseMaker(math.E)(expression.NewGetField(0, sql.Float64, "", false))
 	require := require.New(t)
 	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(nil))
 	require.NoError(err)
@@ -74,7 +74,7 @@ func TestLog2(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewLog2(expression.NewGetField(0, tt.rowType, "", false))
+		f := LogBaseMaker(float64(2))(expression.NewGetField(0, tt.rowType, "", false))
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
@@ -90,7 +90,7 @@ func TestLog2(t *testing.T) {
 	}
 
 	// Test Nil
-	f := NewLog2(expression.NewGetField(0, sql.Float64, "", false))
+	f := LogBaseMaker(float64(2))(expression.NewGetField(0, sql.Float64, "", false))
 	require := require.New(t)
 	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(nil))
 	require.NoError(err)
@@ -116,7 +116,7 @@ func TestLog10(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewLog10(expression.NewGetField(0, tt.rowType, "", false))
+		f := LogBaseMaker(float64(10))(expression.NewGetField(0, tt.rowType, "", false))
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
@@ -132,7 +132,7 @@ func TestLog10(t *testing.T) {
 	}
 
 	// Test Nil
-	f := NewLog10(expression.NewGetField(0, sql.Float64, "", false))
+	f := LogBaseMaker(float64(10))(expression.NewGetField(0, sql.Float64, "", false))
 	require := require.New(t)
 	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(nil))
 	require.NoError(err)
@@ -195,11 +195,4 @@ func TestLog(t *testing.T) {
 			}
 		})
 	}
-
-	// Test Nil
-	f := NewLog10(expression.NewGetField(0, sql.Float64, "", false))
-	require := require.New(t)
-	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(nil))
-	require.NoError(err)
-	require.Nil(result)
 }

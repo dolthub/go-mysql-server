@@ -13,41 +13,59 @@ import (
 // logarithm function
 var ErrInvalidArgumentForLogarithm = errors.NewKind("invalid argument value for logarithm: %v")
 
-// Ln is a function that returns the exponential logarithm of a value.
-type Ln struct {
+// LogBaseMaker returns LogBase creator functions with a specific base.
+func LogBaseMaker(base float64) func(e sql.Expression) sql.Expression {
+	b := base
+	return func(e sql.Expression) sql.Expression {
+		return NewLogBase(b, e)
+	}
+}
+
+// LogBase is a function that returns the logarithm of a value with a specific base.
+type LogBase struct {
 	expression.UnaryExpression
+	base float64
 }
 
-// NewLn creates a new Ln expression.
-func NewLn(e sql.Expression) sql.Expression {
-	return &Ln{expression.UnaryExpression{Child: e}}
+// NewLogBase creates a new LogBase expression.
+func NewLogBase(base float64, e sql.Expression) sql.Expression {
+	return &LogBase{UnaryExpression: expression.UnaryExpression{Child: e}, base: base}
 }
 
-func (l *Ln) String() string {
-	return fmt.Sprintf("ln(%s)", l.Child)
+func (l *LogBase) String() string {
+	switch l.base {
+	case float64(math.E):
+		return fmt.Sprintf("ln(%s)", l.Child)
+	case float64(10):
+		return fmt.Sprintf("log10(%s)", l.Child)
+	case float64(2):
+		return fmt.Sprintf("log2(%s)", l.Child)
+	default:
+		return fmt.Sprintf("log(%v, %s)", l.base, l.Child)
+	}
 }
 
 // TransformUp implements the Expression interface.
-func (l *Ln) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
+func (l *LogBase) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	child, err := l.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
-	return f(NewLn(child))
+	return f(NewLogBase(l.base, child))
 }
 
 // Type returns the resultant type of the function.
-func (l *Ln) Type() sql.Type {
+func (l *LogBase) Type() sql.Type {
 	return sql.Float64
 }
 
 // IsNullable implements the sql.Expression interface.
-func (l *Ln) IsNullable() bool {
+func (l *LogBase) IsNullable() bool {
 	return l.Child.IsNullable()
 }
 
 // Eval implements the Expression interface.
-func (l *Ln) Eval(
+func (l *LogBase) Eval(
 	ctx *sql.Context,
 	row sql.Row,
 ) (interface{}, error) {
@@ -64,115 +82,7 @@ func (l *Ln) Eval(
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(v))
 	}
-	return computeLog(val.(float64), math.E)
-}
-
-// Log2 is a function that returns the binary logarithm of a value.
-type Log2 struct {
-	expression.UnaryExpression
-}
-
-// NewLog2 creates a new Log2 expression.
-func NewLog2(e sql.Expression) sql.Expression {
-	return &Log2{expression.UnaryExpression{Child: e}}
-}
-
-func (l *Log2) String() string {
-	return fmt.Sprintf("log2(%s)", l.Child)
-}
-
-// TransformUp implements the Expression interface.
-func (l *Log2) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := l.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-	return f(NewLog2(child))
-}
-
-// Type returns the resultant type of the function.
-func (l *Log2) Type() sql.Type {
-	return sql.Float64
-}
-
-// IsNullable implements the sql.Expression interface.
-func (l *Log2) IsNullable() bool {
-	return l.Child.IsNullable()
-}
-
-// Eval implements the Expression interface.
-func (l *Log2) Eval(
-	ctx *sql.Context,
-	row sql.Row,
-) (interface{}, error) {
-	v, err := l.Child.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if v == nil {
-		return nil, nil
-	}
-
-	val, err := sql.Float64.Convert(v)
-	if err != nil {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(v))
-	}
-	return computeLog(val.(float64), float64(2))
-}
-
-// Log10 is a function that returns the decimal logarithm of a value.
-type Log10 struct {
-	expression.UnaryExpression
-}
-
-// NewLog10 creates a new Log10 expression.
-func NewLog10(e sql.Expression) sql.Expression {
-	return &Log10{expression.UnaryExpression{Child: e}}
-}
-
-func (l *Log10) String() string {
-	return fmt.Sprintf("log10(%s)", l.Child)
-}
-
-// TransformUp implements the Expression interface.
-func (l *Log10) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := l.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-	return f(NewLog10(child))
-}
-
-// Type returns the resultant type of the function.
-func (l *Log10) Type() sql.Type {
-	return sql.Float64
-}
-
-// IsNullable implements the sql.Expression interface.
-func (l *Log10) IsNullable() bool {
-	return l.Child.IsNullable()
-}
-
-// Eval implements the Expression interface.
-func (l *Log10) Eval(
-	ctx *sql.Context,
-	row sql.Row,
-) (interface{}, error) {
-	v, err := l.Child.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if v == nil {
-		return nil, nil
-	}
-
-	val, err := sql.Float64.Convert(v)
-	if err != nil {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(v))
-	}
-	return computeLog(val.(float64), float64(10))
+	return computeLog(val.(float64), l.base)
 }
 
 // Log is a function that returns the natural logarithm of a value.

@@ -3,6 +3,7 @@ package function
 import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function/aggregation"
+	"math"
 )
 
 // Defaults is the function map with all the default functions.
@@ -43,8 +44,8 @@ var Defaults = sql.Functions{
 	"coalesce":      sql.FunctionN(NewCoalesce),
 	"json_extract":  sql.FunctionN(NewJSONExtract),
 	"connection_id": sql.Function0(NewConnectionID),
-	"ln": 			 sql.Function1(NewLn),
-	"log2": 	     sql.Function1(NewLog2),
-	"log10": 	     sql.Function1(NewLog10),
+	"ln": 			 sql.Function1(LogBaseMaker(float64(math.E))),
+	"log2": 	     sql.Function1(LogBaseMaker(float64(2))),
+	"log10": 	     sql.Function1(LogBaseMaker(float64(10))),
 	"log": 	     	 sql.FunctionN(NewLog),
 }
