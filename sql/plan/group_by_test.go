@@ -96,6 +96,15 @@ func TestGroupBy_RowIter(t *testing.T) {
 	require.Equal(sql.NewRow("col1_2", int64(4444)), rows[1])
 }
 
+func TestGroupBy_EvalEmptyBuffer(t *testing.T) {
+	require := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	r, err := evalBuffer(ctx, expression.NewGetField(0, sql.Text, "col1", true), sql.Row{})
+	require.NoError(err)
+	require.Nil(r)
+}
+
 func TestGroupBy_Error(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
