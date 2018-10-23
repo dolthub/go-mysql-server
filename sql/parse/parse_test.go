@@ -729,6 +729,18 @@ var fixtures = map[string]sql.Node{
 			Value: expression.NewLiteral(int64(700), sql.Int64),
 		},
 	),
+	`SET gtid_mode=DEFAULT`: plan.NewSet(
+		plan.SetVariable{
+			Name:  "gtid_mode",
+			Value: expression.NewDefaultColumn(""),
+		},
+	),
+	`SET @@sql_select_limit=default`: plan.NewSet(
+		plan.SetVariable{
+			Name:  "@@sql_select_limit",
+			Value: expression.NewDefaultColumn(""),
+		},
+	),
 	`/*!40101 SET NAMES utf8 */`: plan.Nothing,
 	`SELECT /*!40101 SET NAMES utf8 */ * FROM foo`: plan.NewProject(
 		[]sql.Expression{

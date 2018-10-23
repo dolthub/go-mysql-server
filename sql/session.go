@@ -137,7 +137,8 @@ type (
 	}
 )
 
-func defaultSessionConfig() map[string]TypedValue {
+// DefaultSessionConfig returns default values for session variables
+func DefaultSessionConfig() map[string]TypedValue {
 	return map[string]TypedValue{
 		"auto_increment_increment": TypedValue{Int64, int64(1)},
 		"time_zone":                TypedValue{Text, time.Local.String()},
@@ -146,6 +147,8 @@ func defaultSessionConfig() map[string]TypedValue {
 		"sql_mode":                 TypedValue{Text, ""},
 		"gtid_mode":                TypedValue{Int32, int32(0)},
 		"collation_database":       TypedValue{Text, "utf8_bin"},
+		"ndbinfo_version":          TypedValue{Text, ""},
+		"sql_select_limit":         TypedValue{Int32, math.MaxInt32},
 	}
 }
 
@@ -155,13 +158,13 @@ func NewSession(address string, user string, id uint32) Session {
 		id:     id,
 		addr:   address,
 		user:   user,
-		config: defaultSessionConfig(),
+		config: DefaultSessionConfig(),
 	}
 }
 
 // NewBaseSession creates a new empty session.
 func NewBaseSession() Session {
-	return &BaseSession{config: defaultSessionConfig()}
+	return &BaseSession{config: DefaultSessionConfig()}
 }
 
 // Context of the query execution.
