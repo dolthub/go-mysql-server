@@ -2,6 +2,7 @@ package sql
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"math"
 	"sync"
@@ -236,6 +237,24 @@ func (c *Context) Span(
 // WithContext returns a new context with the given underlying context.
 func (c *Context) WithContext(ctx context.Context) *Context {
 	return &Context{ctx, c.Session, c.Pid(), c.tracer}
+}
+
+// Error adds an error as warning to the session.
+func (c *Context) Error(code int, msg string, args ...interface{}) {
+	c.Session.Warn(&Warning{
+		Level:   "Error",
+		Code:    code,
+		Message: fmt.Sprintf(msg, args...),
+	})
+}
+
+// Warn adds a warning to the session.
+func (c *Context) Warn(code int, msg string, args ...interface{}) {
+	c.Session.Warn(&Warning{
+		Level:   "Warning",
+		Code:    code,
+		Message: fmt.Sprintf(msg, args...),
+	})
 }
 
 // NewSpanIter creates a RowIter executed in the given span.
