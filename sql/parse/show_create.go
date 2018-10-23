@@ -34,7 +34,7 @@ func parseShowCreate(s string) (sql.Node, error) {
 		var name string
 
 		err := parseFuncs{
-			readIdent(&name),
+			readQuotableIdent(&name),
 			skipSpaces,
 			checkEOF,
 		}.exec(r)
@@ -49,22 +49,36 @@ func parseShowCreate(s string) (sql.Node, error) {
 	case "database", "schema":
 		var ifNotExists bool
 		var next string
-		if err := readIdent(&next)(r); err != nil {
+
+		nextByte, err := r.Peek(1)
+		if err != nil {
 			return nil, err
 		}
 
-		if next == "if" {
-			ifNotExists = true
-			err := parseFuncs{
-				skipSpaces,
-				expect("not"),
-				skipSpaces,
-				expect("exists"),
-				skipSpaces,
-				readIdent(&next),
-			}.exec(r)
-			if err != nil {
+		// If ` is the next character, it's a db name. Otherwise it may be
+		// a table name or IF NOT EXISTS.
+		if nextByte[0] == '`' {
+			if err := readQuotableIdent(&next)(r); err != nil {
 				return nil, err
+			}
+		} else {
+			if err := readIdent(&next)(r); err != nil {
+				return nil, err
+			}
+
+			if next == "if" {
+				ifNotExists = true
+				err := parseFuncs{
+					skipSpaces,
+					expect("not"),
+					skipSpaces,
+					expect("exists"),
+					skipSpaces,
+					readQuotableIdent(&next),
+				}.exec(r)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 

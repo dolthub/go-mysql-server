@@ -44,6 +44,7 @@ var (
 	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
 	unlockTablesRegex    = regexp.MustCompile(`^unlock\s+tables$`)
 	lockTablesRegex      = regexp.MustCompile(`^lock\s+tables\s`)
+	setRegex             = regexp.MustCompile(`^set\s+`)
 )
 
 // Parse parses the given SQL sentence and returns the corresponding node.
@@ -86,6 +87,8 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return plan.NewUnlockTables(), nil
 	case lockTablesRegex.MatchString(lowerQuery):
 		return parseLockTables(ctx, s)
+	case setRegex.MatchString(lowerQuery):
+		s = fixSetQuery(s)
 	}
 
 	stmt, err := sqlparser.Parse(s)
@@ -1070,7 +1073,7 @@ func parseShowTableStatus(query string) (sql.Node, error) {
 	switch strings.ToUpper(clause) {
 	case "FROM", "IN":
 		var db string
-		if err := readIdent(&db)(buf); err != nil {
+		if err := readQuotableIdent(&db)(buf); err != nil {
 			return nil, err
 		}
 
@@ -1103,4 +1106,13 @@ func parseShowTableStatus(query string) (sql.Node, error) {
 	default:
 		return nil, errUnexpectedSyntax.New("one of: FROM, IN, LIKE or WHERE", clause)
 	}
+}
+
+var fixSessionRegex = regexp.MustCompile(`(,\s*|(set|SET)\s+)(SESSION|session)\s+([a-zA-Z0-9_]+)\s*=`)
+var fixGlobalRegex = regexp.MustCompile(`(,\s*|(set|SET)\s+)(GLOBAL|global)\s+([a-zA-Z0-9_]+)\s*=`)
+
+func fixSetQuery(s string) string {
+	s = fixSessionRegex.ReplaceAllString(s, `$1@@session.$4 =`)
+	s = fixGlobalRegex.ReplaceAllString(s, `$1@@global.$4 =`)
+	return s
 }
