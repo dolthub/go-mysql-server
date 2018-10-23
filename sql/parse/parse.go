@@ -33,7 +33,7 @@ var (
 )
 
 var (
-	describeTablesRegex  = regexp.MustCompile(`^describe\s+table\s+(.*)`)
+	describeTablesRegex  = regexp.MustCompile(`^(describe|desc)\s+table\s+(.*)`)
 	createIndexRegex     = regexp.MustCompile(`^create\s+index\s+`)
 	dropIndexRegex       = regexp.MustCompile(`^drop\s+index\s+`)
 	showIndexRegex       = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
@@ -101,8 +101,8 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 
 func parseDescribeTables(s string) (sql.Node, error) {
 	t := describeTablesRegex.FindStringSubmatch(s)
-	if len(t) == 2 && t[1] != "" {
-		parts := strings.Split(t[1], ".")
+	if len(t) == 3 && t[2] != "" {
+		parts := strings.Split(t[2], ".")
 		var table, db string
 		switch len(parts) {
 		case 1:

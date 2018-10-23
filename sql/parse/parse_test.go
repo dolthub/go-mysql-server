@@ -44,6 +44,9 @@ var fixtures = map[string]sql.Node{
 	`DESCRIBE TABLE foo;`: plan.NewDescribe(
 		plan.NewUnresolvedTable("foo", ""),
 	),
+	`DESC TABLE foo;`: plan.NewDescribe(
+		plan.NewUnresolvedTable("foo", ""),
+	),
 	`SELECT foo, bar FROM foo;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("foo"),
@@ -791,6 +794,9 @@ var fixtures = map[string]sql.Node{
 	),
 	`USE foo`: plan.NewUse(sql.UnresolvedDatabase("foo")),
 	`DESCRIBE TABLE foo.bar`: plan.NewDescribe(
+		plan.NewUnresolvedTable("bar", "foo"),
+	),
+	`DESC TABLE foo.bar`: plan.NewDescribe(
 		plan.NewUnresolvedTable("bar", "foo"),
 	),
 	`SELECT * FROM foo.bar`: plan.NewProject(
