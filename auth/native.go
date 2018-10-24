@@ -131,7 +131,9 @@ func (s *Native) Mysql() mysql.AuthServer {
 
 	for k, v := range s.users {
 		auth.Entries[k] = []*mysql.AuthServerStaticEntry{
-			{MysqlNativePassword: v.Password},
+			{
+				MysqlNativePassword: v.Password,
+				Password:            v.Password},
 		}
 	}
 
