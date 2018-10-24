@@ -56,11 +56,12 @@ We support and actively test against certain third-party clients to ensure compa
 ## Custom functions
 
 - `IS_BINARY(blob)`: Returns whether a BLOB is a binary file or not.
-- `SUBSTRING(str,pos)`, `SUBSTRING(str,pos,len)`: Return a substring from the provided string.
+- `SUBSTRING(str, pos)`, `SUBSTRING(str, pos, len)`: Return a substring from the provided string.
 - Date and Timestamp functions: `YEAR(date)`, `MONTH(date)`, `DAY(date)`, `HOUR(date)`, `MINUTE(date)`, `SECOND(date)`, `DAYOFYEAR(date)`.
 - `ARRAY_LENGTH(json)`: If the json representation is an array, this function returns its size.
 - `SPLIT(str,sep)`: Receives a string and a separator and returns the parts of the string split by the separator as a JSON array of strings.
 - `CONCAT(...)`: Concatenate any group of fields into a single string.
+- `CONCAT_WS(sep, ...)`: Concatenate any group of fields into a single string. The first argument is the separator for the rest of the arguments. The separator is added between the strings to be concatenated. The separator can be a string, as can the rest of the arguments. If the separator is NULL, the result is NULL.
 - `COALESCE(...)`: The function returns the first non-null value in a list.
 - `LOWER(str)`, `UPPER(str)`: Receives a string and modify it changing all the chars to upper or lower case.
 - `CEILING(number)`, `CEIL(number)`: Return the smallest integer value that is greater than or equal to `number`.
