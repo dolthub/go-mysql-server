@@ -61,7 +61,7 @@ We support and actively test against certain third-party clients to ensure compa
 - `ARRAY_LENGTH(json)`: If the json representation is an array, this function returns its size.
 - `SPLIT(str,sep)`: Receives a string and a separator and returns the parts of the string split by the separator as a JSON array of strings.
 - `CONCAT(...)`: Concatenate any group of fields into a single string.
-- `CONCAT_WS(sep, ...)`: Concatenate any group of fields into a single string separated by the first field. Returns null if the separator is null. Following null fields are skipped.
+- `CONCAT_WS(sep, ...)`: Concatenate any group of fields into a single string. The first argument is the separator for the rest of the arguments. The separator is added between the strings to be concatenated. The separator can be a string, as can the rest of the arguments. If the separator is NULL, the result is NULL.
 - `COALESCE(...)`: The function returns the first non-null value in a list.
 - `LOWER(str)`, `UPPER(str)`: Receives a string and modify it changing all the chars to upper or lower case.
 - `CEILING(number)`, `CEIL(number)`: Return the smallest integer value that is greater than or equal to `number`.
