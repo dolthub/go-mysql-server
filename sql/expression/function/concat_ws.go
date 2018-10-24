@@ -7,7 +7,9 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
-// ConcatWithSeparator joins several strings together.
+// ConcatWithSeparator joins several strings together separated by the
+// separator (the first string). If the separator is null, the result will be
+// also null. null fields will be skipped.
 type ConcatWithSeparator struct {
 	args []sql.Expression
 }
