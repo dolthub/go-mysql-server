@@ -3,6 +3,7 @@ package auth
 import (
 	"strings"
 
+	errors "gopkg.in/src-d/go-errors.v0"
 	"gopkg.in/src-d/go-vitess.v1/mysql"
 )
 
@@ -22,15 +23,18 @@ var (
 	// DefaultPermissions are the permissions granted to a user if not defined.
 	DefaultPermissions = ReadPerm
 
-	// PermissionNames is used to translate from human and machine
+	// PermissionNames is used to translate from human to machine
 	// representations.
 	PermissionNames = map[string]Permission{
 		"read":  ReadPerm,
 		"write": WritePerm,
 	}
 
+	// ErrNotAuthorized is returned when the user is not allowed to use a
+	// permission.
+	ErrNotAuthorized = errors.NewKind("not authorized")
 	// ErrNoPermission is returned when the user lacks needed permissions.
-	ErrNoPermission = "user does not have permission: %s"
+	ErrNoPermission = errors.NewKind("user does not have permission: %s")
 )
 
 // String returns all the permissions set to on.

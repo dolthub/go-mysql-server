@@ -2,7 +2,7 @@ package auth
 
 import "gopkg.in/src-d/go-vitess.v1/mysql"
 
-// None is a Auth method that always succeeds.
+// None is an Auth method that always succeeds.
 type None struct{}
 
 // Mysql implements Auth interface.

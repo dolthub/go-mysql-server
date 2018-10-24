@@ -9,15 +9,22 @@ import (
 	"regexp"
 	"strings"
 
+	errors "gopkg.in/src-d/go-errors.v0"
 	"gopkg.in/src-d/go-vitess.v1/mysql"
 )
 
-var regNative = regexp.MustCompile(`^\*[0-9A-F]{40}$`)
+var (
+	regNative = regexp.MustCompile(`^\*[0-9A-F]{40}$`)
 
-// ErrUnknownPermission happens when a user permission is not defined.
-const ErrUnknownPermission = "error parsing user file, unknown permission %s"
+	// ErrParseUserFile is given when user file is malformed.
+	ErrParseUserFile = errors.NewKind("error parsing user file")
+	// ErrUnknownPermission happens when a user permission is not defined.
+	ErrUnknownPermission = errors.NewKind("unknown permission, %s")
+	// ErrDuplicateUser happens when a user appears more than once.
+	ErrDuplicateUser = errors.NewKind("duplicate user, %s")
+)
 
-// nativeUser holds information about credentials and permissions for user.
+// nativeUser holds information about credentials and permissions for a user.
 type nativeUser struct {
 	Name            string
 	Password        string
@@ -34,7 +41,7 @@ func (u nativeUser) Allowed(p Permission) error {
 	// permissions needed but not granted to the user
 	p2 := (^u.Permissions) & p
 
-	return fmt.Errorf(ErrNoPermission, p2)
+	return ErrNotAuthorized.Wrap(ErrNoPermission.New(p2))
 }
 
 // NativePassword generates a mysql_native_password string.
@@ -81,18 +88,18 @@ func NewNativeFile(file string) (*Native, error) {
 
 	raw, err := ioutil.ReadFile(file)
 	if err != nil {
-		return nil, err
+		return nil, ErrParseUserFile.New(err)
 	}
 
 	if err := json.Unmarshal(raw, &data); err != nil {
-		return nil, err
+		return nil, ErrParseUserFile.New(err)
 	}
 
 	users := make(map[string]nativeUser)
 	for _, u := range data {
 		_, ok := users[u.Name]
 		if ok {
-			return nil, fmt.Errorf("duplicate user: %s", u.Name)
+			return nil, ErrParseUserFile.Wrap(ErrDuplicateUser.New(u.Name))
 		}
 
 		if !regNative.MatchString(u.Password) {
@@ -106,7 +113,7 @@ func NewNativeFile(file string) (*Native, error) {
 		for _, p := range u.JSONPermissions {
 			perm, ok := PermissionNames[strings.ToLower(p)]
 			if !ok {
-				return nil, fmt.Errorf(ErrUnknownPermission, p)
+				return nil, ErrParseUserFile.Wrap(ErrUnknownPermission.New(p))
 			}
 
 			u.Permissions |= perm
@@ -135,7 +142,7 @@ func (s *Native) Mysql() mysql.AuthServer {
 func (s *Native) Allowed(name string, permission Permission) error {
 	u, ok := s.users[name]
 	if !ok {
-		return fmt.Errorf(ErrNoPermission, permission)
+		return ErrNotAuthorized.Wrap(ErrNoPermission.New(permission))
 	}
 
 	return u.Allowed(permission)
