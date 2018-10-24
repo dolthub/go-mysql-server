@@ -1,12 +1,13 @@
 package function
 
 import (
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"math"
 	"reflect"
+	"fmt"
+
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // ErrInvalidArgumentForLogarithm is returned when an invalid argument value is passed to a
@@ -15,9 +16,8 @@ var ErrInvalidArgumentForLogarithm = errors.NewKind("invalid argument value for 
 
 // LogBaseMaker returns LogBase creator functions with a specific base.
 func LogBaseMaker(base float64) func(e sql.Expression) sql.Expression {
-	b := base
 	return func(e sql.Expression) sql.Expression {
-		return NewLogBase(b, e)
+		return NewLogBase(base, e)
 	}
 }
 
@@ -61,7 +61,7 @@ func (l *LogBase) Type() sql.Type {
 
 // IsNullable implements the sql.Expression interface.
 func (l *LogBase) IsNullable() bool {
-	return l.Child.IsNullable()
+	return l.base == float64(1) || l.base <= float64(0) || l.Child.IsNullable()
 }
 
 // Eval implements the Expression interface.
@@ -97,19 +97,14 @@ func NewLog(args ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidArgumentNumber.New("1 or 2", argLen)
 	}
 
-	var right sql.Expression
-	if len(args) == 2 {
-		right = args[1]
+	if argLen == 1 {
+		return &Log{expression.BinaryExpression{Left: expression.NewLiteral(math.E, sql.Float64), Right: args[0]}}, nil
+	} else {
+		return &Log{expression.BinaryExpression{Left: args[0], Right: args[1]}}, nil
 	}
-
-	return &Log{expression.BinaryExpression{Left: args[0], Right: right}}, nil
 }
 
 func (l *Log) String() string {
-	if l.Right == nil {
-		return fmt.Sprintf("log(%s)", l.Left)
-	}
-
 	return fmt.Sprintf("log(%s, %s)", l.Left, l.Right)
 }
 
@@ -122,15 +117,11 @@ func (l *Log) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	}
 	args[0] = arg
 
-	args[1] = nil
-	if l.Right != nil {
-		arg, err := l.Right.TransformUp(f)
-		if err != nil {
-			return nil, err
-		}
-		args[1] = arg
+	arg, err = l.Right.TransformUp(f)
+	if err != nil {
+		return nil, err
 	}
-
+	args[1] = arg
 	expr, err := NewLog(args...)
 	if err != nil {
 		return nil, err
@@ -141,10 +132,6 @@ func (l *Log) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 
 // Children implements the Expression interface.
 func (l *Log) Children() []sql.Expression {
-	if l.Right == nil {
-		return []sql.Expression{l.Left}
-	}
-
 	return []sql.Expression{l.Left, l.Right}
 }
 
@@ -154,11 +141,8 @@ func (l *Log) Type() sql.Type {
 }
 
 // IsNullable implements the Expression interface.
-func (l *Log) IsNullable() bool { return l.Left.IsNullable() }
-
-// Resolved implements the Expression interface.
-func (l *Log) Resolved() bool {
-	return l.Left.Resolved() && (l.Right == nil || l.Right.Resolved())
+func (l *Log) IsNullable() bool {
+	return l.Left.IsNullable() || l.Right.IsNullable()
 }
 
 // Eval implements the Expression interface.
@@ -180,26 +164,22 @@ func (l *Log) Eval(
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(left))
 	}
 
-	if l.Right != nil {
-		right, err := l.Right.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-
-		if right == nil {
-			return nil, nil
-		}
-
-		rhs, err := sql.Float64.Convert(right)
-		if err != nil {
-			return nil, sql.ErrInvalidType.New(reflect.TypeOf(right))
-		}
-
-		// rhs becomes value, lhs becomes base
-		return computeLog(rhs.(float64), lhs.(float64))
-	} else {
-		return computeLog(lhs.(float64), math.E)
+	right, err := l.Right.Eval(ctx, row)
+	if err != nil {
+		return nil, err
 	}
+
+	if right == nil {
+		return nil, nil
+	}
+
+	rhs, err := sql.Float64.Convert(right)
+	if err != nil {
+		return nil, sql.ErrInvalidType.New(reflect.TypeOf(right))
+	}
+
+	// rhs becomes value, lhs becomes base
+	return computeLog(rhs.(float64), lhs.(float64))
 }
 
 func computeLog(v float64, base float64) (float64, error) {

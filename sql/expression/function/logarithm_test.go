@@ -2,13 +2,13 @@ package function
 
 import (
 	"testing"
-
 	"math"
+	"fmt"
+
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"github.com/stretchr/testify/require"
-	"fmt"
 )
 
 var epsilon = math.Nextafter(1, 2) - 1
@@ -48,11 +48,12 @@ func TestLn(t *testing.T) {
 	}
 
 	// Test Nil
-	f := LogBaseMaker(math.E)(expression.NewGetField(0, sql.Float64, "", false))
+	f := LogBaseMaker(math.E)(expression.NewGetField(0, sql.Float64, "", true))
 	require := require.New(t)
 	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(nil))
 	require.NoError(err)
 	require.Nil(result)
+	require.True(f.IsNullable())
 }
 
 func TestLog2(t *testing.T) {
@@ -90,11 +91,12 @@ func TestLog2(t *testing.T) {
 	}
 
 	// Test Nil
-	f := LogBaseMaker(float64(2))(expression.NewGetField(0, sql.Float64, "", false))
+	f := LogBaseMaker(float64(2))(expression.NewGetField(0, sql.Float64, "", true))
 	require := require.New(t)
 	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(nil))
 	require.NoError(err)
 	require.Nil(result)
+	require.True(f.IsNullable())
 }
 
 func TestLog10(t *testing.T) {
@@ -132,11 +134,12 @@ func TestLog10(t *testing.T) {
 	}
 
 	// Test Nil
-	f := LogBaseMaker(float64(10))(expression.NewGetField(0, sql.Float64, "", false))
+	f := LogBaseMaker(float64(10))(expression.NewGetField(0, sql.Float64, "", true))
 	require := require.New(t)
 	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(nil))
 	require.NoError(err)
 	require.Nil(result)
+	require.True(f.IsNullable())
 }
 
 func TestLogInvalidArguments(t *testing.T) {
@@ -195,4 +198,12 @@ func TestLog(t *testing.T) {
 			}
 		})
 	}
+
+	// Test Nil
+	f, _ := NewLog(expression.NewLiteral(nil, sql.Float64))
+	require := require.New(t)
+	result, err := f.Eval(sql.NewEmptyContext(), nil)
+	require.NoError(err)
+	require.Nil(result)
+	require.True(f.IsNullable())
 }

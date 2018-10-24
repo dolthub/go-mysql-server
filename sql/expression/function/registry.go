@@ -1,9 +1,10 @@
 package function
 
 import (
+	"math"
+
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function/aggregation"
-	"math"
 )
 
 // Defaults is the function map with all the default functions.
