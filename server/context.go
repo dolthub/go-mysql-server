@@ -55,16 +55,11 @@ func (s *SessionManager) nextPid() uint64 {
 	return s.pid
 }
 
-// newSession creates a Session for the given connection.
-func (s *SessionManager) newSession(conn *mysql.Conn) sql.Session {
-	return s.builder(conn, s.addr)
-}
-
 // NewSession creates a Session for the given connection and saves it to
 // session pool.
 func (s *SessionManager) NewSession(conn *mysql.Conn) {
 	s.mu.Lock()
-	s.sessions[conn.ConnectionID] = s.newSession(conn)
+	s.sessions[conn.ConnectionID] = s.builder(conn, s.addr)
 	s.mu.Unlock()
 }
 
@@ -73,7 +68,7 @@ func (s *SessionManager) NewContext(conn *mysql.Conn) *sql.Context {
 	s.mu.Lock()
 	sess, ok := s.sessions[conn.ConnectionID]
 	if !ok {
-		sess = s.newSession(conn)
+		sess = s.builder(conn, s.addr)
 		s.sessions[conn.ConnectionID] = sess
 	}
 	s.mu.Unlock()
