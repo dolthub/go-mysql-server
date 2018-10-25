@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"gopkg.in/src-d/go-mysql-server.v0"
+	"gopkg.in/src-d/go-mysql-server.v0/auth"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
@@ -1418,7 +1419,9 @@ func TestReadOnly(t *testing.T) {
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 
-	a := analyzer.NewBuilder(catalog).ReadOnly().Build()
+	au := auth.NewNativeSingle("user", "pass", auth.ReadPerm)
+
+	a := analyzer.NewBuilder(catalog).WithAuth(au).Build()
 	e := sqle.New(catalog, a, nil)
 
 	_, _, err := e.Query(newCtx(), `SELECT i FROM mytable`)
@@ -1426,15 +1429,15 @@ func TestReadOnly(t *testing.T) {
 
 	_, _, err = e.Query(newCtx(), `CREATE INDEX foo ON mytable USING pilosa (i, s)`)
 	require.Error(err)
-	require.True(analyzer.ErrQueryNotAllowed.Is(err))
+	require.True(auth.ErrNotAuthorized.Is(err))
 
 	_, _, err = e.Query(newCtx(), `DROP INDEX foo ON mytable`)
 	require.Error(err)
-	require.True(analyzer.ErrQueryNotAllowed.Is(err))
+	require.True(auth.ErrNotAuthorized.Is(err))
 
-	_, _, err = e.Query(newCtx(), `INSERT INTO foo (i, s) VALUES(42, 'yolo')`)
+	_, _, err = e.Query(newCtx(), `INSERT INTO mytable (i, s) VALUES(42, 'yolo')`)
 	require.Error(err)
-	require.True(analyzer.ErrQueryNotAllowed.Is(err))
+	require.True(auth.ErrNotAuthorized.Is(err))
 }
 
 func TestSessionVariables(t *testing.T) {
