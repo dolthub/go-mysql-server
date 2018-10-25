@@ -57,7 +57,7 @@ We support and actively test against certain third-party clients to ensure compa
 
 - `IS_BINARY(blob)`: Returns whether a BLOB is a binary file or not.
 - `SUBSTRING(str,pos)`, `SUBSTRING(str,pos,len)`: Return a substring from the provided string.
-- Date and Timestamp functions: `YEAR(date)`, `MONTH(date)`, `DAY(date)`, `HOUR(date)`, `MINUTE(date)`, `SECOND(date)`, `DAYOFYEAR(date)`.
+- Date and Timestamp functions: `YEAR(date)`, `MONTH(date)`, `DAY(date)`, `WEEKDAY(date)`, `HOUR(date)`, `MINUTE(date)`, `SECOND(date)`, `DAYOFWEEK(date)`, `DAYOFYEAR(date)`.
 - `ARRAY_LENGTH(json)`: If the json representation is an array, this function returns its size.
 - `SPLIT(str,sep)`: Receives a string and a separator and returns the parts of the string split by the separator as a JSON array of strings.
 - `CONCAT(...)`: Concatenate any group of fields into a single string.
