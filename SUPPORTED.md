@@ -87,7 +87,6 @@
 - ROUND
 - COALESCE
 - CONNECTION_ID
-- SOUNDEX
 
 ## Time functions
 - DAY
