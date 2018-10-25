@@ -287,6 +287,9 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+	} else if ok, val := sql.HasDefaultValue(ctx.Session, "sql_select_limit"); !ok {
+		limit := val.(int64)
+		node = plan.NewLimit(int64(limit), node)
 	}
 
 	if s.Limit != nil && s.Limit.Offset != nil {

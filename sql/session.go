@@ -152,6 +152,15 @@ func DefaultSessionConfig() map[string]TypedValue {
 	}
 }
 
+// HasDefaultValue checks if session variable value is the default one.
+func HasDefaultValue(s Session, key string) (bool, interface{}) {
+	typ, val := s.Get(key)
+	if cfg, ok := DefaultSessionConfig()[key]; ok {
+		return (cfg.Typ == typ && cfg.Value == val), val
+	}
+	return false, val
+}
+
 // NewSession creates a new session with data.
 func NewSession(address string, user string, id uint32) Session {
 	return &BaseSession{
