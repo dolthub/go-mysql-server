@@ -45,5 +45,4 @@ var Defaults = sql.Functions{
 	"coalesce":      sql.FunctionN(NewCoalesce),
 	"json_extract":  sql.FunctionN(NewJSONExtract),
 	"connection_id": sql.Function0(NewConnectionID),
-	"soundex":       sql.Function1(NewSoundex),
 }
