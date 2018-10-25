@@ -36,6 +36,7 @@ func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	c.RegisterFunctions(function.Defaults)
 	c.RegisterFunction("version", sql.FunctionN(function.NewVersion(versionPostfix)))
+	c.RegisterFunction("database", sql.Function0(function.NewDatabase(c)))
 
 	// use auth.None if auth is not specified
 	var au auth.Auth
