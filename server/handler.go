@@ -49,7 +49,6 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	}
 	h.mu.Unlock()
 
-	h.sm.NewSession(c)
 	logrus.Infof("NewConnection: client %v", c.ConnectionID)
 }
 
