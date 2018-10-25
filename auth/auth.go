@@ -52,6 +52,10 @@ func (p Permission) String() string {
 // Auth interface provides mysql authentication methods and permission checking
 // for users.
 type Auth interface {
+	// Mysql returns a configured authentication method used by server.Server.
 	Mysql() mysql.AuthServer
+	// Allowed checks user's permissions with needed permission. If the user
+	// does not have enough permissions it returns ErrNotAuthorized.
+	// Otherwise is an error using the authentication method.
 	Allowed(user string, permission Permission) error
 }
