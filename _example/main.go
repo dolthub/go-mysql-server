@@ -31,7 +31,7 @@ func main() {
 	config := server.Config{
 		Protocol: "tcp",
 		Address:  "localhost:3306",
-		Auth:     auth.NewNativeSingle("user", "pass"),
+		Auth:     auth.NewNativeSingle("user", "pass", auth.AllPermissions),
 	}
 
 	s, err := server.NewDefaultServer(config, engine)
