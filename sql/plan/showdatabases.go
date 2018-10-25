@@ -41,7 +41,7 @@ func (p *ShowDatabases) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	dbs := p.Catalog.AllDatabases()
 	var rows = make([]sql.Row, 0, len(dbs))
 	for _, db := range dbs {
-		if sql.InformationSchemaDBName != db.Name() {
+		if sql.InformationSchemaDatabaseName != db.Name() {
 			rows = append(rows, sql.Row{db.Name()})
 		}
 	}

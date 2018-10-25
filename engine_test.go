@@ -521,6 +521,17 @@ var queries = []struct {
 		[]sql.Row{},
 	},
 	{
+		`
+		SELECT TABLE_NAME FROM information_schema.TABLES
+		WHERE TABLE_SCHEMA='mydb' AND (TABLE_TYPE='BASE TABLE' OR TABLE_TYPE='VIEW')
+		`,
+		[]sql.Row{
+			{"mytable"},
+			{"othertable"},
+			{"tabletest"},
+		},
+	},
+	{
 		`SHOW CREATE DATABASE mydb`,
 		[]sql.Row{{
 			"mydb",
@@ -1171,7 +1182,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 	catalog.AddDatabase(db2)
-	catalog.AddDatabase(sql.NewInformationSchemaDB())
+	catalog.AddDatabase(sql.NewInformationSchemaDatabase(catalog))
 
 	var a *analyzer.Analyzer
 	if parallelism > 1 {
