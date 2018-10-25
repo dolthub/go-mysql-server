@@ -439,6 +439,12 @@ var queries = []struct {
 		},
 	},
 	{
+		`SELECT DATABASE()`,
+		[]sql.Row{
+			{"mydb"},
+		},
+	},
+	{
 		`SHOW VARIABLES`,
 		[]sql.Row{
 			{"auto_increment_increment", int64(1)},
