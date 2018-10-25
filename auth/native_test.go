@@ -5,11 +5,11 @@ import (
 	"os"
 	"testing"
 
-	errors "gopkg.in/src-d/go-errors.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/auth"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 const (

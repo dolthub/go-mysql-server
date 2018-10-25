@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	errors "gopkg.in/src-d/go-errors.v0"
+	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-vitess.v1/mysql"
 )
 
