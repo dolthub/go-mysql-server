@@ -324,6 +324,6 @@ var (
 	hour      = datePartFunc((time.Time).Hour)
 	minute    = datePartFunc((time.Time).Minute)
 	second    = datePartFunc((time.Time).Second)
-	dayOfWeek = datePartFunc(func(t time.Time) int { return int(t.Weekday()) + 1%7 })
+	dayOfWeek = datePartFunc(func(t time.Time) int { return int(t.Weekday()) + 1 })
 	dayOfYear = datePartFunc((time.Time).YearDay)
 )
