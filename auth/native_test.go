@@ -65,7 +65,7 @@ func writeConfig(config string) (string, error) {
 }
 
 func TestNativeAuthenticationSingle(t *testing.T) {
-	a := auth.NewNativeSingle("user", "password")
+	a := auth.NewNativeSingle("user", "password", auth.AllPermissions)
 
 	tests := authenticationTests{
 		{"root", "", false},
@@ -109,8 +109,8 @@ func TestNativeAuthentication(t *testing.T) {
 	testAuthentication(t, a, tests)
 }
 
-func TestNativeAuthorizationSingle(t *testing.T) {
-	a := auth.NewNativeSingle("user", "password")
+func TestNativeAuthorizationSingleAll(t *testing.T) {
+	a := auth.NewNativeSingle("user", "password", auth.AllPermissions)
 
 	tests := authorizationTests{
 		{"user", queries["select"], true},
@@ -134,6 +134,38 @@ func TestNativeAuthorizationSingle(t *testing.T) {
 		{"", queries["lock"], false},
 
 		{"user", queries["unlock"], true},
+		{"root", queries["unlock"], false},
+		{"", queries["unlock"], false},
+	}
+
+	testAuthorization(t, a, tests)
+}
+
+func TestNativeAuthorizationSingleRead(t *testing.T) {
+	a := auth.NewNativeSingle("user", "password", auth.ReadPerm)
+
+	tests := authorizationTests{
+		{"user", queries["select"], true},
+		{"root", queries["select"], false},
+		{"", queries["select"], false},
+
+		{"user", queries["create_index"], false},
+		{"root", queries["create_index"], false},
+		{"", queries["create_index"], false},
+
+		{"user", queries["drop_index"], false},
+		{"root", queries["drop_index"], false},
+		{"", queries["drop_index"], false},
+
+		{"user", queries["insert"], false},
+		{"root", queries["insert"], false},
+		{"", queries["insert"], false},
+
+		{"user", queries["lock"], false},
+		{"root", queries["lock"], false},
+		{"", queries["lock"], false},
+
+		{"user", queries["unlock"], false},
 		{"root", queries["unlock"], false},
 		{"", queries["unlock"], false},
 	}

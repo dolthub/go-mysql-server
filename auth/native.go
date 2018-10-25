@@ -70,13 +70,14 @@ type Native struct {
 	users map[string]nativeUser
 }
 
-// NewNativeSingle creates a NativeAuth with a single user.
-func NewNativeSingle(name, password string) *Native {
+// NewNativeSingle creates a NativeAuth with a single user with given
+// permissions.
+func NewNativeSingle(name, password string, perm Permission) *Native {
 	users := make(map[string]nativeUser)
 	users[name] = nativeUser{
 		Name:        name,
 		Password:    NativePassword(password),
-		Permissions: AllPermissions,
+		Permissions: perm,
 	}
 
 	return &Native{users}
