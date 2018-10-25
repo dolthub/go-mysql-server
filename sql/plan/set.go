@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
 )
 
@@ -28,6 +29,9 @@ func NewSet(vars ...SetVariable) *Set {
 // Resolved implements the sql.Node interface.
 func (s *Set) Resolved() bool {
 	for _, v := range s.Variables {
+		if _, ok := v.Value.(*expression.DefaultColumn); ok {
+			continue
+		}
 		if !v.Value.Resolved() {
 			return false
 		}
@@ -83,10 +87,11 @@ func (s *Set) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		globalPrefix  = sqlparser.GlobalStr + "."
 	)
 	for _, v := range s.Variables {
-		value, err := v.Value.Eval(ctx, nil)
-		if err != nil {
-			return nil, err
-		}
+		var (
+			value interface{}
+			typ   sql.Type
+			err   error
+		)
 
 		name := strings.TrimLeft(v.Name, "@")
 		if strings.HasPrefix(name, sessionPrefix) {
@@ -95,7 +100,21 @@ func (s *Set) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 			name = name[len(globalPrefix):]
 		}
 
-		ctx.Set(name, v.Value.Type(), value)
+		if _, ok := v.Value.(*expression.DefaultColumn); ok {
+			valtyp, ok := sql.DefaultSessionConfig()[name]
+			if !ok {
+				continue
+			}
+			value, typ = valtyp.Value, valtyp.Typ
+		} else {
+			value, err = v.Value.Eval(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
+			typ = v.Value.Type()
+		}
+
+		ctx.Set(name, typ, value)
 	}
 
 	return sql.RowsToRowIter(), nil

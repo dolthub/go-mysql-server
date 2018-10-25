@@ -455,6 +455,8 @@ var queries = []struct {
 			{"sql_mode", ""},
 			{"gtid_mode", int32(0)},
 			{"collation_database", "utf8_bin"},
+			{"ndbinfo_version", ""},
+			{"sql_select_limit", math.MaxInt32},
 		},
 	},
 	{
@@ -563,6 +565,43 @@ func TestQueries(t *testing.T) {
 	})
 }
 
+func TestSessionDefaults(t *testing.T) {
+	ctx := newCtx()
+	ctx.Session.Set("auto_increment_increment", sql.Int64, 0)
+	ctx.Session.Set("max_allowed_packet", sql.Int64, 0)
+	ctx.Session.Set("sql_select_limit", sql.Int64, 0)
+	ctx.Session.Set("ndbinfo_version", sql.Text, "non default value")
+
+	q := `SET @@auto_increment_increment=DEFAULT,
+			  @@max_allowed_packet=DEFAULT,
+			  @@sql_select_limit=DEFAULT,
+			  @@ndbinfo_version=DEFAULT`
+
+	e := newEngine(t)
+
+	defaults := sql.DefaultSessionConfig()
+	t.Run(q, func(t *testing.T) {
+		require := require.New(t)
+		_, _, err := e.Query(ctx, q)
+		require.NoError(err)
+
+		typ, val := ctx.Get("auto_increment_increment")
+		require.Equal(defaults["auto_increment_increment"].Typ, typ)
+		require.Equal(defaults["auto_increment_increment"].Value, val)
+
+		typ, val = ctx.Get("max_allowed_packet")
+		require.Equal(defaults["max_allowed_packet"].Typ, typ)
+		require.Equal(defaults["max_allowed_packet"].Value, val)
+
+		typ, val = ctx.Get("sql_select_limit")
+		require.Equal(defaults["sql_select_limit"].Typ, typ)
+		require.Equal(defaults["sql_select_limit"].Value, val)
+
+		typ, val = ctx.Get("ndbinfo_version")
+		require.Equal(defaults["ndbinfo_version"].Typ, typ)
+		require.Equal(defaults["ndbinfo_version"].Value, val)
+	})
+}
 func TestWarnings(t *testing.T) {
 	ctx := newCtx()
 	ctx.Session.Warn(&sql.Warning{Code: 1})
