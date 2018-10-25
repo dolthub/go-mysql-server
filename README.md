@@ -67,6 +67,7 @@ We support and actively test against certain third-party clients to ensure compa
 - `FLOOR(number)`: Return the largest integer value that is less than or equal to `number`.
 - `ROUND(number, decimals)`: Round the `number` to `decimals` decimal places.
 - `CONNECTION_ID()`: Return the current connection ID.
+- `SOUNDEX(str)`: Returns the soundex of a string.
 
 ## Example
 
