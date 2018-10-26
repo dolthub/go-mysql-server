@@ -30,7 +30,7 @@ func (*ShowDatabases) Children() []sql.Node {
 // Schema implements the Node interface.
 func (*ShowDatabases) Schema() sql.Schema {
 	return sql.Schema{{
-		Name:     "database",
+		Name:     "Database",
 		Type:     sql.Text,
 		Nullable: false,
 	}}
@@ -39,9 +39,11 @@ func (*ShowDatabases) Schema() sql.Schema {
 // RowIter implements the Node interface.
 func (p *ShowDatabases) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	dbs := p.Catalog.AllDatabases()
-	var rows = make([]sql.Row, len(dbs))
-	for i, db := range dbs {
-		rows[i] = sql.Row{db.Name()}
+	var rows = make([]sql.Row, 0, len(dbs))
+	for _, db := range dbs {
+		if sql.InformationSchemaDatabaseName != db.Name() {
+			rows = append(rows, sql.Row{db.Name()})
+		}
 	}
 
 	sort.Slice(rows, func(i, j int) bool {

@@ -42,6 +42,7 @@ var OnceAfterDefault = []Rule{
 var OnceAfterAll = []Rule{
 	{"track_process", trackProcess},
 	{"parallelize", parallelize},
+	{"clear_warnings", clearWarnings},
 }
 
 var (

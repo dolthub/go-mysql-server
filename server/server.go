@@ -5,6 +5,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-mysql-server.v0"
+	"gopkg.in/src-d/go-mysql-server.v0/auth"
 
 	"gopkg.in/src-d/go-vitess.v1/mysql"
 )
@@ -21,7 +22,7 @@ type Config struct {
 	// Address of the server.
 	Address string
 	// Auth of the server.
-	Auth mysql.AuthServer
+	Auth auth.Auth
 	// Tracer to use in the server. By default, a noop tracer will be used if
 	// no tracer is provided.
 	Tracer opentracing.Tracer
@@ -54,7 +55,8 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 	}
 
 	handler := NewHandler(e, NewSessionManager(sb, tracer, cfg.Address))
-	l, err := mysql.NewListener(cfg.Protocol, cfg.Address, cfg.Auth, handler, cfg.ConnReadTimeout, cfg.ConnWriteTimeout)
+	a := cfg.Auth.Mysql()
+	l, err := mysql.NewListener(cfg.Protocol, cfg.Address, a, handler, cfg.ConnReadTimeout, cfg.ConnWriteTimeout)
 	if err != nil {
 		return nil, err
 	}

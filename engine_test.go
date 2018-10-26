@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"gopkg.in/src-d/go-mysql-server.v0"
+	"gopkg.in/src-d/go-mysql-server.v0/auth"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
@@ -353,7 +354,7 @@ var queries = []struct {
 	},
 	{
 		`SHOW DATABASES`,
-		[]sql.Row{{"mydb"}, {"foo"}, {"information_schema"}},
+		[]sql.Row{{"mydb"}, {"foo"}},
 	},
 	{
 		`SELECT s FROM mytable WHERE s LIKE '%d row'`,
@@ -439,6 +440,12 @@ var queries = []struct {
 		},
 	},
 	{
+		`SELECT DATABASE()`,
+		[]sql.Row{
+			{"mydb"},
+		},
+	},
+	{
 		`SHOW VARIABLES`,
 		[]sql.Row{
 			{"auto_increment_increment", int64(1)},
@@ -447,7 +454,9 @@ var queries = []struct {
 			{"max_allowed_packet", math.MaxInt32},
 			{"sql_mode", ""},
 			{"gtid_mode", int32(0)},
+			{"collation_database", "utf8_bin"},
 			{"ndbinfo_version", ""},
+			{"sql_select_limit", math.MaxInt32},
 		},
 	},
 	{
@@ -479,44 +488,48 @@ var queries = []struct {
 	},
 	{
 		`
+		SELECT
+			LOGFILE_GROUP_NAME, FILE_NAME, TOTAL_EXTENTS, INITIAL_SIZE, ENGINE, EXTRA
+		FROM INFORMATION_SCHEMA.FILES
+		WHERE FILE_TYPE = 'UNDO LOG'
+			AND FILE_NAME IS NOT NULL
+			AND LOGFILE_GROUP_NAME IS NOT NULL
+		GROUP BY LOGFILE_GROUP_NAME, FILE_NAME, ENGINE, TOTAL_EXTENTS, INITIAL_SIZE
+		ORDER BY LOGFILE_GROUP_NAME
+		`,
+		[]sql.Row{},
+	},
+	{
+		`
 		SELECT DISTINCT
-			tablespace_name, file_name, logfile_group_name, extent_size, initial_size, engine
-		FROM
-			information_schema.files
-		WHERE
-			file_type = 'DATAFILE'
-		ORDER BY tablespace_name, logfile_group_name
+			TABLESPACE_NAME, FILE_NAME, LOGFILE_GROUP_NAME, EXTENT_SIZE, INITIAL_SIZE, ENGINE
+		FROM INFORMATION_SCHEMA.FILES
+		WHERE FILE_TYPE = 'DATAFILE'
+		ORDER BY TABLESPACE_NAME, LOGFILE_GROUP_NAME
 		`,
 		[]sql.Row{},
 	},
 	{
 		`
 		SELECT
-			logfile_group_name, file_name, total_extents, initial_size, engine, extra
-		FROM
-			information_schema.files
-		WHERE
-			file_type = 'UNDO LOG' AND
-			file_name IS NOT NULL AND
-			logfile_group_name IS NOT NULL
-		GROUP BY
-			logfile_group_name, file_name, engine, total_extents, initial_size
-		ORDER BY
-			logfile_group_name
+			COLUMN_NAME,
+			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
+		FROM information_schema.COLUMN_STATISTICS
+		WHERE SCHEMA_NAME = 'mydb'
+		AND TABLE_NAME = 'mytable'
 		`,
 		[]sql.Row{},
 	},
 	{
 		`
-		SELECT
-			column_name
-		FROM
-			information_schema.column_statistics
-		WHERE
-			schema_name = 'foo' AND
-			table_name = 'bar';
+		SELECT TABLE_NAME FROM information_schema.TABLES
+		WHERE TABLE_SCHEMA='mydb' AND (TABLE_TYPE='BASE TABLE' OR TABLE_TYPE='VIEW')
 		`,
-		[]sql.Row{},
+		[]sql.Row{
+			{"mytable"},
+			{"othertable"},
+			{"tabletest"},
+		},
 	},
 	{
 		`SHOW CREATE DATABASE mydb`,
@@ -528,6 +541,20 @@ var queries = []struct {
 	{
 		`SELECT -1`,
 		[]sql.Row{{int64(-1)}},
+	},
+	{
+		`
+		SHOW WARNINGS
+		`,
+		[]sql.Row{},
+	},
+	{
+		`SHOW WARNINGS LIMIT 0`,
+		[]sql.Row{},
+	},
+	{
+		`SET SESSION NET_READ_TIMEOUT= 700, SESSION NET_WRITE_TIMEOUT= 700`,
+		[]sql.Row{},
 	},
 }
 
@@ -548,6 +575,158 @@ func TestQueries(t *testing.T) {
 		}
 	})
 }
+
+func TestSessionDefaults(t *testing.T) {
+	ctx := newCtx()
+	ctx.Session.Set("auto_increment_increment", sql.Int64, 0)
+	ctx.Session.Set("max_allowed_packet", sql.Int64, 0)
+	ctx.Session.Set("sql_select_limit", sql.Int64, 0)
+	ctx.Session.Set("ndbinfo_version", sql.Text, "non default value")
+
+	q := `SET @@auto_increment_increment=DEFAULT,
+			  @@max_allowed_packet=DEFAULT,
+			  @@sql_select_limit=DEFAULT,
+			  @@ndbinfo_version=DEFAULT`
+
+	e := newEngine(t)
+
+	defaults := sql.DefaultSessionConfig()
+	t.Run(q, func(t *testing.T) {
+		require := require.New(t)
+		_, _, err := e.Query(ctx, q)
+		require.NoError(err)
+
+		typ, val := ctx.Get("auto_increment_increment")
+		require.Equal(defaults["auto_increment_increment"].Typ, typ)
+		require.Equal(defaults["auto_increment_increment"].Value, val)
+
+		typ, val = ctx.Get("max_allowed_packet")
+		require.Equal(defaults["max_allowed_packet"].Typ, typ)
+		require.Equal(defaults["max_allowed_packet"].Value, val)
+
+		typ, val = ctx.Get("sql_select_limit")
+		require.Equal(defaults["sql_select_limit"].Typ, typ)
+		require.Equal(defaults["sql_select_limit"].Value, val)
+
+		typ, val = ctx.Get("ndbinfo_version")
+		require.Equal(defaults["ndbinfo_version"].Typ, typ)
+		require.Equal(defaults["ndbinfo_version"].Value, val)
+	})
+}
+func TestWarnings(t *testing.T) {
+	ctx := newCtx()
+	ctx.Session.Warn(&sql.Warning{Code: 1})
+	ctx.Session.Warn(&sql.Warning{Code: 2})
+	ctx.Session.Warn(&sql.Warning{Code: 3})
+
+	var queries = []struct {
+		query    string
+		expected []sql.Row
+	}{
+		{
+			`
+			SHOW WARNINGS
+			`,
+			[]sql.Row{
+				{"", 3, ""},
+				{"", 2, ""},
+				{"", 1, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 1
+			`,
+			[]sql.Row{
+				{"", 3, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 1,2
+			`,
+			[]sql.Row{
+				{"", 2, ""},
+				{"", 1, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 0
+			`,
+			[]sql.Row{
+				{"", 3, ""},
+				{"", 2, ""},
+				{"", 1, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 2,0
+			`,
+			[]sql.Row{
+				{"", 1, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 10
+			`,
+			[]sql.Row{
+				{"", 3, ""},
+				{"", 2, ""},
+				{"", 1, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 10,1
+			`,
+			[]sql.Row{},
+		},
+	}
+
+	e := newEngine(t)
+	ep := newEngineWithParallelism(t, 2)
+
+	t.Run("sequential", func(t *testing.T) {
+		for _, tt := range queries {
+			testQueryWithContext(ctx, t, e, tt.query, tt.expected)
+		}
+	})
+
+	t.Run("parallel", func(t *testing.T) {
+		for _, tt := range queries {
+			testQueryWithContext(ctx, t, ep, tt.query, tt.expected)
+		}
+	})
+}
+
+func TestClearWarnings(t *testing.T) {
+	require := require.New(t)
+	e := newEngine(t)
+	ctx := newCtx()
+	ctx.Session.Warn(&sql.Warning{Code: 1})
+	ctx.Session.Warn(&sql.Warning{Code: 2})
+	ctx.Session.Warn(&sql.Warning{Code: 3})
+
+	_, iter, err := e.Query(ctx, "SHOW WARNINGS")
+	require.NoError(err)
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+	require.Equal(3, len(rows))
+
+	_, iter, err = e.Query(ctx, "SHOW WARNINGS LIMIT 1")
+	require.NoError(err)
+	rows, err = sql.RowIterToRows(iter)
+	require.NoError(err)
+	require.Equal(1, len(rows))
+
+	_, _, err = e.Query(ctx, "SELECT * FROM mytable LIMIT 1")
+	require.NoError(err)
+	require.Equal(0, len(ctx.Session.Warnings()))
+}
+
 func TestDescribe(t *testing.T) {
 	e := newEngine(t)
 
@@ -923,11 +1102,13 @@ func TestInnerNestedInNaturalJoins(t *testing.T) {
 }
 
 func testQuery(t *testing.T, e *sqle.Engine, q string, expected []sql.Row) {
+	testQueryWithContext(newCtx(), t, e, q, expected)
+}
+
+func testQueryWithContext(ctx *sql.Context, t *testing.T, e *sqle.Engine, q string, expected []sql.Row) {
 	t.Run(q, func(t *testing.T) {
 		require := require.New(t)
-		session := newCtx()
-
-		_, iter, err := e.Query(session, q)
+		_, iter, err := e.Query(ctx, q)
 		require.NoError(err)
 
 		rows, err := sql.RowIterToRows(iter)
@@ -1001,7 +1182,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 	catalog.AddDatabase(db2)
-	catalog.AddDatabase(sqle.NewInformationSchemaDB())
+	catalog.AddDatabase(sql.NewInformationSchemaDatabase(catalog))
 
 	var a *analyzer.Analyzer
 	if parallelism > 1 {
@@ -1294,7 +1475,9 @@ func TestReadOnly(t *testing.T) {
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 
-	a := analyzer.NewBuilder(catalog).ReadOnly().Build()
+	au := auth.NewNativeSingle("user", "pass", auth.ReadPerm)
+
+	a := analyzer.NewBuilder(catalog).WithAuth(au).Build()
 	e := sqle.New(catalog, a, nil)
 
 	_, _, err := e.Query(newCtx(), `SELECT i FROM mytable`)
@@ -1302,15 +1485,15 @@ func TestReadOnly(t *testing.T) {
 
 	_, _, err = e.Query(newCtx(), `CREATE INDEX foo ON mytable USING pilosa (i, s)`)
 	require.Error(err)
-	require.True(analyzer.ErrQueryNotAllowed.Is(err))
+	require.True(auth.ErrNotAuthorized.Is(err))
 
 	_, _, err = e.Query(newCtx(), `DROP INDEX foo ON mytable`)
 	require.Error(err)
-	require.True(analyzer.ErrQueryNotAllowed.Is(err))
+	require.True(auth.ErrNotAuthorized.Is(err))
 
-	_, _, err = e.Query(newCtx(), `INSERT INTO foo (i, s) VALUES(42, 'yolo')`)
+	_, _, err = e.Query(newCtx(), `INSERT INTO mytable (i, s) VALUES(42, 'yolo')`)
 	require.Error(err)
-	require.True(analyzer.ErrQueryNotAllowed.Is(err))
+	require.True(auth.ErrNotAuthorized.Is(err))
 }
 
 func TestSessionVariables(t *testing.T) {

@@ -46,7 +46,8 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 
 	indexCols := func(table string, schema sql.Schema) {
 		for _, col := range schema {
-			colIndex[col.Name] = append(colIndex[col.Name], table)
+			name := strings.ToLower(col.Name)
+			colIndex[name] = append(colIndex[name], strings.ToLower(table))
 		}
 	}
 
@@ -64,14 +65,14 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 		case *plan.TableAlias:
 			switch t := n.Child.(type) {
 			case *plan.ResolvedTable, *plan.UnresolvedTable:
-				name := t.(sql.Nameable).Name()
-				tableAliases[n.Name()] = name
+				name := strings.ToLower(t.(sql.Nameable).Name())
+				tableAliases[strings.ToLower(n.Name())] = name
 			default:
-				tables[n.Name()] = n.Child
+				tables[strings.ToLower(n.Name())] = n.Child
 				indexCols(n.Name(), n.Schema())
 			}
 		case *plan.ResolvedTable, *plan.SubqueryAlias:
-			name := n.(sql.Nameable).Name()
+			name := strings.ToLower(n.(sql.Nameable).Name())
 			tables[name] = n
 			indexCols(name, n.Schema())
 		}
@@ -87,8 +88,10 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 
 				col = expression.NewUnresolvedQualifiedColumn(col.Table(), col.Name())
 
-				if col.Table() == "" {
-					tables := dedupStrings(colIndex[col.Name()])
+				name := strings.ToLower(col.Name())
+				table := strings.ToLower(col.Table())
+				if table == "" {
+					tables := dedupStrings(colIndex[name])
 					switch len(tables) {
 					case 0:
 						// If there are no tables that have any column with the column
@@ -104,7 +107,7 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 						return nil, ErrAmbiguousColumnName.New(col.Name(), strings.Join(tables, ", "))
 					}
 				} else {
-					if real, ok := tableAliases[col.Table()]; ok {
+					if real, ok := tableAliases[table]; ok {
 						col = expression.NewUnresolvedQualifiedColumn(
 							real,
 							col.Name(),
@@ -120,11 +123,11 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				return col, nil
 			case *expression.Star:
 				if col.Table != "" {
-					if real, ok := tableAliases[col.Table]; ok {
+					if real, ok := tableAliases[strings.ToLower(col.Table)]; ok {
 						col = expression.NewQualifiedStar(real)
 					}
 
-					if _, ok := tables[col.Table]; !ok {
+					if _, ok := tables[strings.ToLower(col.Table)]; !ok {
 						return nil, sql.ErrTableNotFound.New(col.Table)
 					}
 
@@ -174,6 +177,8 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 					continue
 				}
 
+				col = strings.ToLower(col)
+				table = strings.ToLower(table)
 				if table != "" {
 					projected[col] = append(projected[col], table)
 				} else {
@@ -211,7 +216,8 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			}
 
 			for _, col := range child.Schema() {
-				colMap[col.Name] = append(colMap[col.Name], col)
+				name := strings.ToLower(col.Name)
+				colMap[name] = append(colMap[name], col)
 			}
 		}
 
@@ -222,7 +228,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 		if project, ok := n.(*plan.Project); ok {
 			for _, e := range project.Projections {
 				if alias, ok := e.(*expression.Alias); ok {
-					aliasMap[alias.Name()] = exists
+					aliasMap[strings.ToLower(alias.Name())] = exists
 				}
 			}
 		}
@@ -256,12 +262,14 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				sessionPrefix = sqlparser.SessionStr + "."
 				globalPrefix  = sqlparser.GlobalStr + "."
 			)
-			columns, ok := colMap[uc.Name()]
+			name := strings.ToLower(uc.Name())
+			table := strings.ToLower(uc.Table())
+			columns, ok := colMap[name]
 			if !ok {
 				switch uc := uc.(type) {
 				case *expression.UnresolvedColumn:
 					if isGlobalOrSessionColumn(uc) {
-						if uc.Table() != "" && strings.ToLower(uc.Table()) != sessionTable {
+						if table != "" && table != sessionTable {
 							return nil, errGlobalVariablesNotSupported.New(uc)
 						}
 
@@ -279,11 +287,11 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 					return &deferredColumn{uc}, nil
 
 				default:
-					if uc.Table() != "" {
+					if table != "" {
 						return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
 					}
 
-					if _, ok := aliasMap[uc.Name()]; ok {
+					if _, ok := aliasMap[name]; ok {
 						// no nested aliases
 						return nil, ErrMisusedAlias.New(uc.Name())
 					}
@@ -295,7 +303,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			var col *sql.Column
 			var found bool
 			for _, c := range columns {
-				if c.Source == uc.Table() {
+				if strings.ToLower(c.Source) == table {
 					col = c
 					found = true
 					break
@@ -303,7 +311,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			}
 
 			if !found {
-				if uc.Table() != "" {
+				if table != "" {
 					return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
 				}
 
@@ -367,7 +375,7 @@ func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 		var groupingColumns = make(map[string]struct{})
 		for _, g := range g.Grouping {
 			for _, n := range findAllColumns(g) {
-				groupingColumns[n] = struct{}{}
+				groupingColumns[strings.ToLower(n)] = struct{}{}
 			}
 		}
 
@@ -376,13 +384,13 @@ func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 			// This alias is going to be pushed down, so don't bother gathering
 			// its requirements.
 			if alias, ok := agg.(*expression.Alias); ok {
-				if _, ok := groupingColumns[alias.Name()]; ok {
+				if _, ok := groupingColumns[strings.ToLower(alias.Name())]; ok {
 					continue
 				}
 			}
 
 			for _, n := range findAllColumns(agg) {
-				aggregateColumns[n] = struct{}{}
+				aggregateColumns[strings.ToLower(n)] = struct{}{}
 			}
 		}
 
@@ -402,14 +410,15 @@ func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 				continue
 			}
 
+			name := strings.ToLower(alias.Name())
 			// Only if the alias is required in the grouping set needsReorder
 			// to true. If it's not required, there's no need for a reorder if
 			// no other alias is required.
-			_, ok = groupingColumns[alias.Name()]
+			_, ok = groupingColumns[name]
 			if ok {
-				aliases[alias.Name()] = len(newAggregate)
+				aliases[name] = len(newAggregate)
 				needsReorder = true
-				delete(groupingColumns, alias.Name())
+				delete(groupingColumns, name)
 
 				projection = append(projection, a)
 				newAggregate = append(newAggregate, expression.NewUnresolvedColumn(alias.Name()))

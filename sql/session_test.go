@@ -22,6 +22,19 @@ func TestSessionConfig(t *testing.T) {
 	typ, v = sess.Get("foo")
 	require.Equal(Int64, typ)
 	require.Equal(1, v)
+
+	require.Equal(0, len(sess.Warnings()))
+
+	sess.Warn(&Warning{Code: 1})
+	sess.Warn(&Warning{Code: 2})
+	sess.Warn(&Warning{Code: 3})
+
+	require.Equal(3, len(sess.Warnings()))
+
+	require.Equal(3, sess.Warnings()[0].Code)
+	require.Equal(2, sess.Warnings()[1].Code)
+	require.Equal(1, sess.Warnings()[2].Code)
+
 }
 
 type testNode struct{}

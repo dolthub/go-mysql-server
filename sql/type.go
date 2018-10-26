@@ -71,8 +71,10 @@ func (s Schema) Contains(column string, source string) bool {
 // IndexOf returns the index of the given column in the schema or -1 if it's
 // not present.
 func (s Schema) IndexOf(column, source string) int {
+	column = strings.ToLower(column)
+	source = strings.ToLower(source)
 	for i, col := range s {
-		if col.Name == column && col.Source == source {
+		if strings.ToLower(col.Name) == column && strings.ToLower(col.Source) == source {
 			return i
 		}
 	}

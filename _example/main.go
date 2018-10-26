@@ -4,10 +4,10 @@ import (
 	"time"
 
 	"gopkg.in/src-d/go-mysql-server.v0"
+	"gopkg.in/src-d/go-mysql-server.v0/auth"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/server"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-vitess.v1/mysql"
 )
 
 // Example of how to implement a MySQL server based on a Engine:
@@ -24,21 +24,17 @@ import (
 // +----------+-------------------+-------------------------------+---------------------+
 // ```
 func main() {
-	driver := sqle.NewDefault()
-	driver.AddDatabase(createTestDatabase())
-
-	auth := mysql.NewAuthServerStatic()
-	auth.Entries["user"] = []*mysql.AuthServerStaticEntry{{
-		Password: "pass",
-	}}
+	engine := sqle.NewDefault()
+	engine.AddDatabase(createTestDatabase())
+	engine.AddDatabase(sql.NewInformationSchemaDatabase(engine.Catalog))
 
 	config := server.Config{
 		Protocol: "tcp",
 		Address:  "localhost:3306",
-		Auth:     auth,
+		Auth:     auth.NewNativeSingle("user", "pass", auth.AllPermissions),
 	}
 
-	s, err := server.NewDefaultServer(config, driver)
+	s, err := server.NewDefaultServer(config, engine)
 	if err != nil {
 		panic(err)
 	}

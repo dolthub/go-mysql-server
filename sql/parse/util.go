@@ -223,3 +223,38 @@ func parseExpr(str string) (sql.Expression, error) {
 
 	return exprToExpression(selectExpr.Expr)
 }
+
+func readQuotableIdent(ident *string) parseFunc {
+	return func(r *bufio.Reader) error {
+		nextChar, err := r.Peek(1)
+		if err != nil {
+			return err
+		}
+
+		var steps parseFuncs
+		if nextChar[0] == '`' {
+			steps = parseFuncs{
+				expectQuote,
+				readIdent(ident),
+				expectQuote,
+			}
+		} else {
+			steps = parseFuncs{readIdent(ident)}
+		}
+
+		return steps.exec(r)
+	}
+}
+
+func expectQuote(r *bufio.Reader) error {
+	ru, _, err := r.ReadRune()
+	if err != nil {
+		return err
+	}
+
+	if ru != '`' {
+		return errUnexpectedSyntax.New("`", string(ru))
+	}
+
+	return nil
+}

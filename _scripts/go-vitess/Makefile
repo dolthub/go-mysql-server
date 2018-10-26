@@ -19,7 +19,8 @@ filter-branch:	clone
 	cd ${VITESS_SRC} && \
 	git filter-branch --subdirectory-filter go && \
 	rm -fr README.md cacheservice cmd exit ioutil2 memcache race ratelimiter stats/influxdbbackend stats/opentsdb stats/prometheusbackend testfiles vtbench zk vt/mysqlctl/cephbackupstorage && \
-	cp -f "${CWD}/doc.go" "${CWD}/README.md" "${CWD}/LICENSE" ${VITESS_SRC}
+	cp -f "${CWD}/doc.go" "${CWD}/README.md" "${CWD}/LICENSE" ${VITESS_SRC} && \
+	cp -f "${CWD}/vt/log/log.go" "${VITESS_SRC}/vt/log/log.go"
 
 rename-packages:
 	cd ${VITESS_SRC} && \
