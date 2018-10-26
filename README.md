@@ -3,7 +3,7 @@
 <a href="https://travis-ci.org/src-d/go-mysql-server"><img alt="Build Status" src="https://travis-ci.org/src-d/go-mysql-server.svg?branch=master" /></a>
 <a href="https://codecov.io/gh/src-d/go-mysql-server"><img alt="codecov" src="https://codecov.io/gh/src-d/go-mysql-server/branch/master/graph/badge.svg" /></a>
 <a href="https://godoc.org/github.com/src-d/go-mysql-server"><img alt="GoDoc" src="https://godoc.org/github.com/src-d/go-mysql-server?status.svg" /></a>
-[![Issues](http://img.shields.io/github/issues/src-d/go-mysql-server.svg)](https://github.com/src-d/go-mysql-server/Algorithms/issues)
+[![Issues](http://img.shields.io/github/issues/src-d/go-mysql-server.svg)](https://github.com/src-d/go-mysql-server/issues)
 
 **go-mysql-server** is a SQL engine which parses standard SQL (based on MySQL syntax), resolves and optimizes queries.
 It provides simple interfaces to allow custom tabular data source implementations.
