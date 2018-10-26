@@ -576,6 +576,42 @@ func TestQueries(t *testing.T) {
 	})
 }
 
+func TestSessionSelectLimit(t *testing.T) {
+	ctx := newCtx()
+	ctx.Session.Set("sql_select_limit", sql.Int64, int64(1))
+
+	q := []struct {
+		query    string
+		expected []sql.Row
+	}{
+		{
+			"SELECT * FROM mytable ORDER BY i",
+			[]sql.Row{{int64(1), "first row"}},
+		},
+		{
+			"SELECT * FROM mytable ORDER BY i LIMIT 2",
+			[]sql.Row{
+				{int64(1), "first row"},
+				{int64(2), "second row"},
+			},
+		},
+		{
+			"SELECT i FROM (SELECT i FROM mytable LIMIT 2) t ORDER BY i",
+			[]sql.Row{{int64(1)}},
+		},
+		{
+			"SELECT i FROM (SELECT i FROM mytable) t ORDER BY i LIMIT 2",
+			[]sql.Row{{int64(1)}},
+		},
+	}
+	e := newEngine(t)
+	t.Run("sql_select_limit", func(t *testing.T) {
+		for _, tt := range q {
+			testQueryWithContext(ctx, t, e, tt.query, tt.expected)
+		}
+	})
+}
+
 func TestSessionDefaults(t *testing.T) {
 	ctx := newCtx()
 	ctx.Session.Set("auto_increment_increment", sql.Int64, 0)
@@ -613,6 +649,7 @@ func TestSessionDefaults(t *testing.T) {
 		require.Equal(defaults["ndbinfo_version"].Value, val)
 	})
 }
+
 func TestWarnings(t *testing.T) {
 	ctx := newCtx()
 	ctx.Session.Warn(&sql.Warning{Code: 1})

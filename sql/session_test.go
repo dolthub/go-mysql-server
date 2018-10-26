@@ -12,7 +12,6 @@ func TestSessionConfig(t *testing.T) {
 	require := require.New(t)
 
 	sess := NewSession("foo", "bar", 1)
-
 	typ, v := sess.Get("foo")
 	require.Equal(Null, typ)
 	require.Equal(nil, v)
@@ -34,7 +33,20 @@ func TestSessionConfig(t *testing.T) {
 	require.Equal(3, sess.Warnings()[0].Code)
 	require.Equal(2, sess.Warnings()[1].Code)
 	require.Equal(1, sess.Warnings()[2].Code)
+}
 
+func TestHasDefaultValue(t *testing.T) {
+	require := require.New(t)
+	sess := NewSession("foo", "bar", 1)
+
+	for key := range DefaultSessionConfig() {
+		require.True(HasDefaultValue(sess, key))
+	}
+
+	sess.Set("auto_increment_increment", Int64, 123)
+	require.False(HasDefaultValue(sess, "auto_increment_increment"))
+
+	require.False(HasDefaultValue(sess, "non_existing_key"))
 }
 
 type testNode struct{}
