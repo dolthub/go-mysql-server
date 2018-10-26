@@ -26,7 +26,7 @@ import (
 func main() {
 	engine := sqle.NewDefault()
 	engine.AddDatabase(createTestDatabase())
-	engine.AddDatabase(sql.NewInformationSchemaDB())
+	engine.AddDatabase(sql.NewInformationSchemaDatabase(engine.Catalog))
 
 	config := server.Config{
 		Protocol: "tcp",
