@@ -3,6 +3,7 @@ package sqle // import "gopkg.in/src-d/go-mysql-server.v0"
 import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/src-d/go-mysql-server.v0/auth"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
@@ -14,12 +15,15 @@ import (
 type Config struct {
 	// VersionPostfix to display with the `VERSION()` UDF.
 	VersionPostfix string
+	// Auth used for authentication and authorization.
+	Auth auth.Auth
 }
 
 // Engine is a SQL engine.
 type Engine struct {
 	Catalog  *sql.Catalog
 	Analyzer *analyzer.Analyzer
+	Auth     auth.Auth
 }
 
 // New creates a new Engine with custom configuration. To create an Engine with
@@ -32,8 +36,17 @@ func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	c.RegisterFunctions(function.Defaults)
 	c.RegisterFunction("version", sql.FunctionN(function.NewVersion(versionPostfix)))
+	c.RegisterFunction("database", sql.Function0(function.NewDatabase(c)))
 
-	return &Engine{c, a}
+	// use auth.None if auth is not specified
+	var au auth.Auth
+	if cfg == nil || cfg.Auth == nil {
+		au = new(auth.None)
+	} else {
+		au = cfg.Auth
+	}
+
+	return &Engine{c, a, au}
 }
 
 // NewDefault creates a new default Engine.

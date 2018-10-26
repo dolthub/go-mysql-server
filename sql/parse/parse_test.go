@@ -44,6 +44,9 @@ var fixtures = map[string]sql.Node{
 	`DESCRIBE TABLE foo;`: plan.NewDescribe(
 		plan.NewUnresolvedTable("foo", ""),
 	),
+	`DESC TABLE foo;`: plan.NewDescribe(
+		plan.NewUnresolvedTable("foo", ""),
+	),
 	`SELECT foo, bar FROM foo;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("foo"),
@@ -719,6 +722,28 @@ var fixtures = map[string]sql.Node{
 			Value: expression.NewLiteral(false, sql.Boolean),
 		},
 	),
+	`SET SESSION NET_READ_TIMEOUT= 700, SESSION NET_WRITE_TIMEOUT= 700`: plan.NewSet(
+		plan.SetVariable{
+			Name:  "@@session.net_read_timeout",
+			Value: expression.NewLiteral(int64(700), sql.Int64),
+		},
+		plan.SetVariable{
+			Name:  "@@session.net_write_timeout",
+			Value: expression.NewLiteral(int64(700), sql.Int64),
+		},
+	),
+	`SET gtid_mode=DEFAULT`: plan.NewSet(
+		plan.SetVariable{
+			Name:  "gtid_mode",
+			Value: expression.NewDefaultColumn(""),
+		},
+	),
+	`SET @@sql_select_limit=default`: plan.NewSet(
+		plan.SetVariable{
+			Name:  "@@sql_select_limit",
+			Value: expression.NewDefaultColumn(""),
+		},
+	),
 	`/*!40101 SET NAMES utf8 */`: plan.Nothing,
 	`SELECT /*!40101 SET NAMES utf8 */ * FROM foo`: plan.NewProject(
 		[]sql.Expression{
@@ -783,6 +808,9 @@ var fixtures = map[string]sql.Node{
 	`DESCRIBE TABLE foo.bar`: plan.NewDescribe(
 		plan.NewUnresolvedTable("bar", "foo"),
 	),
+	`DESC TABLE foo.bar`: plan.NewDescribe(
+		plan.NewUnresolvedTable("bar", "foo"),
+	),
 	`SELECT * FROM foo.bar`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewStar(),
@@ -820,6 +848,10 @@ var fixtures = map[string]sql.Node{
 		{Table: plan.NewUnresolvedTable("foo", ""), Write: true},
 		{Table: plan.NewUnresolvedTable("bar", "")},
 	}),
+	"LOCK TABLES `foo` WRITE, `bar` READ": plan.NewLockTables([]*plan.TableLock{
+		{Table: plan.NewUnresolvedTable("foo", ""), Write: true},
+		{Table: plan.NewUnresolvedTable("bar", "")},
+	}),
 	`LOCK TABLES foo READ, bar WRITE, baz READ`: plan.NewLockTables([]*plan.TableLock{
 		{Table: plan.NewUnresolvedTable("foo", "")},
 		{Table: plan.NewUnresolvedTable("bar", ""), Write: true},
@@ -837,6 +869,13 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("mytable", ""),
 	),
+	`SHOW WARNINGS`:                            plan.NewOffset(0, plan.ShowWarnings(sql.NewEmptyContext().Warnings())),
+	`SHOW WARNINGS LIMIT 10`:                   plan.NewLimit(10, plan.NewOffset(0, plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
+	`SHOW WARNINGS LIMIT 5,10`:                 plan.NewLimit(10, plan.NewOffset(5, plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
+	"SHOW CREATE DATABASE `foo`":               plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
+	"SHOW CREATE SCHEMA `foo`":                 plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
+	"SHOW CREATE DATABASE IF NOT EXISTS `foo`": plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
+	"SHOW CREATE SCHEMA IF NOT EXISTS `foo`":   plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
 }
 
 func TestParse(t *testing.T) {
@@ -916,6 +955,22 @@ func TestRemoveComments(t *testing.T) {
 				tt.output,
 				removeComments(tt.input),
 			)
+		})
+	}
+}
+
+func TestFixSetQuery(t *testing.T) {
+	testCases := []struct {
+		in, out string
+	}{
+		{"set session foo = 1, session bar = 2", "set @@session.foo = 1, @@session.bar = 2"},
+		{"set global foo = 1, session bar = 2", "set @@global.foo = 1, @@session.bar = 2"},
+		{"set SESSION foo = 1, GLOBAL bar = 2", "set @@session.foo = 1, @@global.bar = 2"},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.in, func(t *testing.T) {
+			require.Equal(t, tt.out, fixSetQuery(tt.in))
 		})
 	}
 }

@@ -93,8 +93,9 @@ type Databases []Database
 
 // Database returns the Database with the given name if it exists.
 func (d Databases) Database(name string) (Database, error) {
+	name = strings.ToLower(name)
 	for _, db := range d {
-		if db.Name() == name {
+		if strings.ToLower(db.Name()) == name {
 			return db, nil
 		}
 	}

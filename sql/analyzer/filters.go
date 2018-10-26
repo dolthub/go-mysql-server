@@ -18,18 +18,22 @@ func (f filters) merge(f2 filters) {
 func exprToTableFilters(expr sql.Expression) filters {
 	filtersByTable := make(filters)
 	for _, expr := range splitExpression(expr) {
-		var tables []string
+		var seenTables = make(map[string]struct{})
+		var lastTable string
 		_, _ = expr.TransformUp(func(e sql.Expression) (sql.Expression, error) {
 			f, ok := e.(*expression.GetField)
 			if ok {
-				tables = append(tables, f.Table())
+				if _, ok := seenTables[f.Table()]; !ok {
+					seenTables[f.Table()] = struct{}{}
+					lastTable = f.Table()
+				}
 			}
 
 			return e, nil
 		})
 
-		if len(tables) == 1 {
-			filtersByTable[tables[0]] = append(filtersByTable[tables[0]], expr)
+		if len(seenTables) == 1 {
+			filtersByTable[lastTable] = append(filtersByTable[lastTable], expr)
 		}
 	}
 

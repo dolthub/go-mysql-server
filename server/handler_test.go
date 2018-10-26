@@ -174,7 +174,7 @@ func TestHandlerKill(t *testing.T) {
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
 
-	require.Len(handler.sm.sessions, 2)
+	require.Len(handler.sm.sessions, 0)
 	require.Len(handler.c, 2)
 
 	err := handler.ComQuery(conn2, "KILL QUERY 1", func(res *sqltypes.Result) error {
@@ -183,7 +183,7 @@ func TestHandlerKill(t *testing.T) {
 
 	require.NoError(err)
 
-	require.Len(handler.sm.sessions, 2)
+	require.Len(handler.sm.sessions, 1)
 	require.Len(handler.c, 2)
 	require.Equal(conn1, handler.c[1])
 	require.Equal(conn2, handler.c[2])
@@ -193,7 +193,7 @@ func TestHandlerKill(t *testing.T) {
 	})
 	require.NoError(err)
 
-	require.Len(handler.sm.sessions, 1)
+	require.Len(handler.sm.sessions, 0)
 	require.Len(handler.c, 1)
 	require.Equal(conn1, handler.c[1])
 }

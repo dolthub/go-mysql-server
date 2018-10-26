@@ -394,7 +394,10 @@ func evalBuffer(
 	case *expression.Alias:
 		return evalBuffer(ctx, n.Child, buffer)
 	case *expression.GetField:
-		return buffer[0], nil
+		if len(buffer) > 0 {
+			return buffer[0], nil
+		}
+		return nil, nil
 	default:
 		return nil, ErrGroupBy.New(n.String())
 	}

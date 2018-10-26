@@ -37,7 +37,7 @@ Pull Requests (PRs) are the main and exclusive way to contribute code to source{
 In order for a PR to be accepted it needs to pass a list of requirements:
 
 - The contribution must be correctly explained with natural language and providing a minimum working example that reproduces it.
-- All PRs must be written idiomaticly:
+- All PRs must be written idiomatically:
     - for Go: formatted according to [gofmt](https://golang.org/cmd/gofmt/), and without any warnings from [go lint](https://github.com/golang/lint) nor [go vet](https://golang.org/cmd/vet/)
     - for other languages, similar constraints apply.
 - They should in general include tests, and those shall pass.

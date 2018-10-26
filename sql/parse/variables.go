@@ -17,10 +17,16 @@ func parseShowVariables(ctx *sql.Context, s string) (sql.Node, error) {
 		skipSpaces,
 		func(in *bufio.Reader) error {
 			var s string
-			readIdent(&s)(in)
+			if err := readIdent(&s)(in); err != nil {
+				return err
+			}
+
 			switch s {
 			case "global", "session":
-				skipSpaces(in)
+				if err := skipSpaces(in); err != nil {
+					return err
+				}
+
 				return expect("variables")(in)
 			case "variables":
 				return nil
@@ -30,8 +36,13 @@ func parseShowVariables(ctx *sql.Context, s string) (sql.Node, error) {
 		skipSpaces,
 		func(in *bufio.Reader) error {
 			if expect("like")(in) == nil {
-				skipSpaces(in)
-				readValue(&pattern)(in)
+				if err := skipSpaces(in); err != nil {
+					return err
+				}
+
+				if err := readValue(&pattern)(in); err != nil {
+					return err
+				}
 			}
 			return nil
 		},
