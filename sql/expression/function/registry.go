@@ -46,8 +46,9 @@ var Defaults = sql.Functions{
 	"coalesce":      sql.FunctionN(NewCoalesce),
 	"json_extract":  sql.FunctionN(NewJSONExtract),
 	"connection_id": sql.Function0(NewConnectionID),
-	"ln": 			 sql.Function1(LogBaseMaker(float64(math.E))),
-	"log2": 	     sql.Function1(LogBaseMaker(float64(2))),
-	"log10": 	     sql.Function1(LogBaseMaker(float64(10))),
-	"log": 	     	 sql.FunctionN(NewLog),
+	"soundex":       sql.Function1(NewSoundex),
+	"ln":            sql.Function1(LogBaseMaker(float64(math.E))),
+	"log2":          sql.Function1(LogBaseMaker(float64(2))),
+	"log10":         sql.Function1(LogBaseMaker(float64(10))),
+	"log":           sql.FunctionN(NewLog),
 }
