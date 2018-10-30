@@ -532,6 +532,29 @@ var queries = []struct {
 		},
 	},
 	{
+		`
+		SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='mytable'
+		`,
+		[]sql.Row{
+			{"s", "TEXT"},
+			{"i", "INT64"},
+		},
+	},
+	{
+		`
+		SELECT COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY COLUMN_NAME
+		`,
+		[]sql.Row{
+			{"s"},
+			{"i"},
+			{"s2"},
+			{"i2"},
+		},
+	},
+	{
 		`SHOW CREATE DATABASE mydb`,
 		[]sql.Row{{
 			"mydb",

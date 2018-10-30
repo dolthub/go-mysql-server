@@ -15,6 +15,8 @@ const (
 	ColumnStatisticsTableName = "column_statistics"
 	// TablesTableName is the name of tables table.
 	TablesTableName = "tables"
+	// ColumnsTableName is the name of columns table.
+	ColumnsTableName = "columns"
 )
 
 type (
@@ -118,9 +120,33 @@ var (
 		&Column{Name: "table_comment", Type: Text, Default: "", Nullable: false, Source: TablesTableName},
 	}
 
-	tablesRowIter = func(c *Catalog) RowIter {
+	columnsSchema = Schema{
+		&Column{Name: "table_catalog", Type: Text, Default: "", Nullable: false, Source: ColumnsTableName},
+		&Column{Name: "table_schema", Type: Text, Default: "", Nullable: false, Source: ColumnsTableName},
+		&Column{Name: "table_name", Type: Text, Default: "", Nullable: false, Source: ColumnsTableName},
+		&Column{Name: "column_name", Type: Text, Default: "", Nullable: false, Source: ColumnsTableName},
+		&Column{Name: "ordinal_position", Type: Uint64, Default: 0, Nullable: false, Source: ColumnsTableName},
+		&Column{Name: "column_default", Type: Text, Default: nil, Nullable: true, Source: ColumnsTableName},
+		&Column{Name: "is_nullable", Type: Text, Default: "", Nullable: false, Source: ColumnsTableName},
+		&Column{Name: "data_type", Type: Text, Default: "", Nullable: false, Source: ColumnsTableName},
+		&Column{Name: "character_maximum_length", Type: Uint64, Default: nil, Nullable: true, Source: ColumnsTableName},
+		&Column{Name: "character_octet_length", Type: Uint64, Default: nil, Nullable: true, Source: ColumnsTableName},
+		&Column{Name: "numeric_precision", Type: Uint64, Default: nil, Nullable: true, Source: ColumnsTableName},
+		&Column{Name: "numeric_scale", Type: Uint64, Default: nil, Nullable: true, Source: ColumnsTableName},
+		&Column{Name: "datetime_precision", Type: Uint64, Default: nil, Nullable: true, Source: ColumnsTableName},
+		&Column{Name: "character_set_name", Type: Text, Default: nil, Nullable: true, Source: ColumnsTableName},
+		&Column{Name: "collation_name", Type: Text, Default: nil, Nullable: true, Source: ColumnsTableName},
+		&Column{Name: "column_type", Type: Text, Default: "", Nullable: false, Source: ColumnsTableName},
+		&Column{Name: "column_key", Type: Text, Default: "", Nullable: false, Source: ColumnsTableName},
+		&Column{Name: "extra", Type: Text, Default: "", Nullable: false, Source: ColumnsTableName},
+		&Column{Name: "privileges", Type: Text, Default: "", Nullable: false, Source: ColumnsTableName},
+		&Column{Name: "column_comment", Type: Text, Default: "", Nullable: false, Source: ColumnsTableName},
+		&Column{Name: "generation_expression", Type: Text, Default: "", Nullable: false, Source: ColumnsTableName},
+	}
+
+	tablesRowIter = func(cat *Catalog) RowIter {
 		var rows []Row
-		for _, db := range c.AllDatabases() {
+		for _, db := range cat.AllDatabases() {
 			tableType := "BASE TABLE"
 			engine := "INNODB"
 			rowFormat := "Dynamic"
@@ -158,28 +184,82 @@ var (
 
 		return RowsToRowIter(rows...)
 	}
+
+	columnsRowIter = func(cat *Catalog) RowIter {
+		var rows []Row
+		for _, db := range cat.AllDatabases() {
+			for _, t := range db.Tables() {
+				for i, c := range t.Schema() {
+					var (
+						nullable string
+						charName interface{}
+						collName interface{}
+					)
+					if c.Nullable {
+						nullable = "YES"
+					} else {
+						nullable = "NO"
+					}
+					if IsText(c.Type) {
+						charName = "utf-8"
+						collName = "utf8_bin"
+					}
+					rows = append(rows, Row{
+						"def",           // table_catalog
+						db.Name(),       // table_schema
+						t.Name(),        // table_name
+						c.Name,          // column_name
+						uint64(i),       // ordinal_position
+						c.Default,       // column_default
+						nullable,        // is_nullable
+						c.Type.String(), // data_type
+						nil,             // character_maximum_length
+						nil,             // character_octet_length
+						nil,             // numeric_precision
+						nil,             // numeric_scale
+						nil,             // datetime_precision
+						charName,        // character_set_name
+						collName,        // collation_name
+						c.Type.String(), // column_type
+						"",              // column_key
+						"",              // extra
+						"select",        // privileges
+						"",              // column_comment
+						"",              // generation_expression
+					})
+				}
+			}
+		}
+		return RowsToRowIter(rows...)
+	}
 )
 
 // NewInformationSchemaDatabase creates a new INFORMATION_SCHEMA Database.
-func NewInformationSchemaDatabase(c *Catalog) Database {
+func NewInformationSchemaDatabase(cat *Catalog) Database {
 	return &informationSchemaDatabase{
 		name: InformationSchemaDatabaseName,
 		tables: map[string]Table{
 			FilesTableName: &informationSchemaTable{
 				name:    FilesTableName,
 				schema:  filesSchema,
-				catalog: c,
+				catalog: cat,
 			},
 			ColumnStatisticsTableName: &informationSchemaTable{
 				name:    ColumnStatisticsTableName,
 				schema:  columnStatisticsSchema,
-				catalog: c,
+				catalog: cat,
 			},
 			TablesTableName: &informationSchemaTable{
 				name:    TablesTableName,
 				schema:  tablesSchema,
-				catalog: c,
+				catalog: cat,
 				rowIter: tablesRowIter,
+			},
+			ColumnsTableName: &informationSchemaTable{
+				name:    ColumnsTableName,
+				schema:  columnsSchema,
+				catalog: cat,
+				rowIter: columnsRowIter,
 			},
 		},
 	}
