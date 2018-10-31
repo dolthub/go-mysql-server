@@ -92,6 +92,8 @@
 
 ## Time functions
 - DAY
+- WEEKDAY
+- DAYOFWEEK
 - DAYOFYEAR
 - HOUR
 - MINUTE

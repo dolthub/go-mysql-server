@@ -124,6 +124,37 @@ func (d *Day) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	return f(NewDay(child))
 }
 
+// Weekday is a function that returns the weekday of a date where 0 = Monday,
+// ..., 6 = Sunday.
+type Weekday struct {
+	expression.UnaryExpression
+}
+
+// NewWeekday creates a new Weekday UDF.
+func NewWeekday(date sql.Expression) sql.Expression {
+	return &Weekday{expression.UnaryExpression{Child: date}}
+}
+
+func (d *Weekday) String() string { return fmt.Sprintf("WEEKDAY(%s)", d.Child) }
+
+// Type implements the Expression interface.
+func (d *Weekday) Type() sql.Type { return sql.Int32 }
+
+// Eval implements the Expression interface.
+func (d *Weekday) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return getDatePart(ctx, d.UnaryExpression, row, weekday)
+}
+
+// TransformUp implements the Expression interface.
+func (d *Weekday) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
+	child, err := d.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewWeekday(child))
+}
+
 // Hour is a function that returns the hour of a date.
 type Hour struct {
 	expression.UnaryExpression
@@ -214,6 +245,37 @@ func (s *Second) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	return f(NewSecond(child))
 }
 
+// DayOfWeek is a function that returns the day of the week from a date where
+// 1 = Sunday, ..., 7 = Saturday.
+type DayOfWeek struct {
+	expression.UnaryExpression
+}
+
+// NewDayOfWeek creates a new DayOfWeek UDF.
+func NewDayOfWeek(date sql.Expression) sql.Expression {
+	return &DayOfWeek{expression.UnaryExpression{Child: date}}
+}
+
+func (d *DayOfWeek) String() string { return fmt.Sprintf("DAYOFWEEK(%s)", d.Child) }
+
+// Type implements the Expression interface.
+func (d *DayOfWeek) Type() sql.Type { return sql.Int32 }
+
+// Eval implements the Expression interface.
+func (d *DayOfWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return getDatePart(ctx, d.UnaryExpression, row, dayOfWeek)
+}
+
+// TransformUp implements the Expression interface.
+func (d *DayOfWeek) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
+	child, err := d.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewDayOfWeek(child))
+}
+
 // DayOfYear is a function that returns the day of the year from a date.
 type DayOfYear struct {
 	expression.UnaryExpression
@@ -258,8 +320,10 @@ var (
 	year      = datePartFunc((time.Time).Year)
 	month     = datePartFunc(func(t time.Time) int { return int(t.Month()) })
 	day       = datePartFunc((time.Time).Day)
+	weekday   = datePartFunc(func(t time.Time) int { return (int(t.Weekday()) + 6) % 7 })
 	hour      = datePartFunc((time.Time).Hour)
 	minute    = datePartFunc((time.Time).Minute)
 	second    = datePartFunc((time.Time).Second)
+	dayOfWeek = datePartFunc(func(t time.Time) int { return int(t.Weekday()) + 1 })
 	dayOfYear = datePartFunc((time.Time).YearDay)
 )
