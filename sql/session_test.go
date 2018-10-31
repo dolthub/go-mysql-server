@@ -22,13 +22,13 @@ func TestSessionConfig(t *testing.T) {
 	require.Equal(Int64, typ)
 	require.Equal(1, v)
 
-	require.Equal(0, len(sess.Warnings()))
+	require.Equal(uint16(0), sess.WarningCount())
 
 	sess.Warn(&Warning{Code: 1})
 	sess.Warn(&Warning{Code: 2})
 	sess.Warn(&Warning{Code: 3})
 
-	require.Equal(3, len(sess.Warnings()))
+	require.Equal(uint16(3), sess.WarningCount())
 
 	require.Equal(3, sess.Warnings()[0].Code)
 	require.Equal(2, sess.Warnings()[1].Code)

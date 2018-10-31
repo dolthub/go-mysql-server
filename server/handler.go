@@ -146,7 +146,7 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 		return 0
 	}
 
-	return uint16(len(sess.Warnings()))
+	return sess.WarningCount()
 }
 
 func (h *Handler) handleKill(conn *mysql.Conn, query string) (bool, error) {
