@@ -73,7 +73,7 @@ func (h *Handler) ComQuery(
 	query string,
 	callback func(*sqltypes.Result) error,
 ) error {
-	ctx := h.sm.NewContext(c)
+	ctx := h.sm.NewContextWithQuery(c, query)
 
 	handled, err := h.handleKill(c, query)
 	if err != nil {

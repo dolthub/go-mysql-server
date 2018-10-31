@@ -66,6 +66,14 @@ func (s *SessionManager) NewSession(conn *mysql.Conn) {
 
 // NewContext creates a new context for the session at the given conn.
 func (s *SessionManager) NewContext(conn *mysql.Conn) *sql.Context {
+	return s.NewContextWithQuery(conn, "")
+}
+
+// NewContextWithQuery creates a new context for the session at the given conn.
+func (s *SessionManager) NewContextWithQuery(
+	conn *mysql.Conn,
+	query string,
+) *sql.Context {
 	s.mu.Lock()
 	sess, ok := s.sessions[conn.ConnectionID]
 	if !ok {
@@ -79,6 +87,7 @@ func (s *SessionManager) NewContext(conn *mysql.Conn) *sql.Context {
 		sql.WithSession(sess),
 		sql.WithTracer(s.tracer),
 		sql.WithPid(s.nextPid()),
+		sql.WithQuery(query),
 	)
 
 	return context

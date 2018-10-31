@@ -21,7 +21,7 @@ func CheckAuthorization(au auth.Auth) RuleFunc {
 			perm = auth.ReadPerm
 		}
 
-		err := au.Allowed(ctx.Client().User, perm)
+		err := au.Allowed(ctx, perm)
 		if err != nil {
 			return nil, err
 		}
