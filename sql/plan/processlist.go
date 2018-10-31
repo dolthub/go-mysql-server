@@ -94,7 +94,7 @@ func (p *ShowProcessList) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 			time:    int64(proc.Seconds()),
 			state:   strings.Join(status, ", "),
 			command: proc.Type.String(),
-			host:    ctx.Session.Address(),
+			host:    ctx.Session.Client().Address,
 			info:    proc.Query,
 			db:      p.Database,
 		}.toRow()

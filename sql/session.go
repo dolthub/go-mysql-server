@@ -19,12 +19,20 @@ const (
 	QueryKey key = iota
 )
 
+// Client holds session user information.
+type Client struct {
+	// User of the session.
+	User string
+	// Address of the client.
+	Address string
+}
+
 // Session holds the session data.
 type Session interface {
 	// Address of the server.
 	Address() string
 	// User of the session.
-	User() string
+	Client() Client
 	// Set session configuration.
 	Set(key string, typ Type, value interface{})
 	// Get session configuration.
@@ -47,17 +55,17 @@ type Session interface {
 type BaseSession struct {
 	id       uint32
 	addr     string
-	user     string
+	client   Client
 	mu       sync.RWMutex
 	config   map[string]TypedValue
 	warnings []*Warning
 }
 
-// User returns the current user of the session.
-func (s *BaseSession) User() string { return s.user }
-
 // Address returns the server address.
 func (s *BaseSession) Address() string { return s.addr }
+
+// User returns session's client information.
+func (s *BaseSession) Client() Client { return s.client }
 
 // Set implements the Session interface.
 func (s *BaseSession) Set(key string, typ Type, value interface{}) {
@@ -171,11 +179,14 @@ func HasDefaultValue(s Session, key string) (bool, interface{}) {
 }
 
 // NewSession creates a new session with data.
-func NewSession(address string, user string, id uint32) Session {
+func NewSession(server, client, user string, id uint32) Session {
 	return &BaseSession{
-		id:     id,
-		addr:   address,
-		user:   user,
+		id:   id,
+		addr: server,
+		client: Client{
+			Address: client,
+			User:    user,
+		},
 		config: DefaultSessionConfig(),
 	}
 }

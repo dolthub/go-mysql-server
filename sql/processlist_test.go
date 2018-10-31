@@ -12,7 +12,7 @@ func TestProcessList(t *testing.T) {
 	require := require.New(t)
 
 	p := NewProcessList()
-	sess := NewSession("0.0.0.0:1234", "foo", 1)
+	sess := NewSession("0.0.0.0:3306", "127.0.0.1:34567", "foo", 1)
 	ctx := NewContext(context.Background(), WithPid(1), WithSession(sess))
 	ctx, err := p.AddProcess(ctx, QueryProcess, "SELECT foo")
 	require.NoError(err)

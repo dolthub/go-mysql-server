@@ -36,9 +36,16 @@ func setupMemDB(require *require.Assertions) *sqle.Engine {
 }
 
 func TestHandlerOutput(t *testing.T) {
+	// This session builder is used as dummy mysql Conn is not complete and
+	// causes panic when accessing remote address.
+	testSessionBuilder := func(c *mysql.Conn, addr string) sql.Session {
+		client := "127.0.0.1:34567"
+		return sql.NewSession(addr, client, c.User, c.ConnectionID)
+	}
+
 	e := setupMemDB(require.New(t))
 	dummyConn := &mysql.Conn{ConnectionID: 1}
-	handler := NewHandler(e, NewSessionManager(DefaultSessionBuilder, opentracing.NoopTracer{}, "foo"))
+	handler := NewHandler(e, NewSessionManager(testSessionBuilder, opentracing.NoopTracer{}, "foo"))
 	handler.NewConnection(dummyConn)
 
 	type exptectedValues struct {
