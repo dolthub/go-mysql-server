@@ -39,6 +39,8 @@ type Session interface {
 	Warnings() []*Warning
 	// ClearWarnings cleans up session warnings
 	ClearWarnings()
+	// WarningCount returns a number of session warnings
+	WarningCount() uint16
 }
 
 // BaseSession is the basic session type.
@@ -120,6 +122,13 @@ func (s *BaseSession) ClearWarnings() {
 	if s.warnings != nil {
 		s.warnings = s.warnings[:0]
 	}
+}
+
+// WarningCount returns a number of session warnings
+func (s *BaseSession) WarningCount() uint16 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return uint16(len(s.warnings))
 }
 
 type (

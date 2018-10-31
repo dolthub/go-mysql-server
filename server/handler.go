@@ -135,6 +135,20 @@ func (h *Handler) ComQuery(
 	return callback(r)
 }
 
+// WarningCount is called at the end of each query to obtain
+// the value to be returned to the client in the EOF packet.
+// Note that this will be called either in the context of the
+// ComQuery callback if the result does not contain any fields,
+// or after the last ComQuery call completes.
+func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
+	sess, ok := h.sm.sessions[c.ConnectionID]
+	if !ok {
+		return 0
+	}
+
+	return sess.WarningCount()
+}
+
 func (h *Handler) handleKill(conn *mysql.Conn, query string) (bool, error) {
 	q := strings.ToLower(query)
 	s := regKillCmd.FindStringSubmatch(q)
