@@ -30,7 +30,7 @@ func main() {
 
 	config := server.Config{
 		Protocol: "tcp",
-		Address:  "localhost:3307",
+		Address:  "localhost:3306",
 		Auth:     auth.NewNativeSingle("user", "pass", auth.AllPermissions),
 	}
 
