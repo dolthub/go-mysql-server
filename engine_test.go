@@ -160,7 +160,27 @@ var queries = []struct {
 		},
 	},
 	{
+		`SELECT COUNT(*) as cnt, fi FROM (
+			SELECT tbl.s AS fi
+			FROM mytable tbl
+		) t
+		GROUP BY 2`,
+		[]sql.Row{
+			{int32(1), "first row"},
+			{int32(1), "second row"},
+			{int32(1), "third row"},
+		},
+	},
+	{
 		`SELECT COUNT(*) as cnt, s as fi FROM mytable GROUP BY fi`,
+		[]sql.Row{
+			{int32(1), "first row"},
+			{int32(1), "second row"},
+			{int32(1), "third row"},
+		},
+	},
+	{
+		`SELECT COUNT(*) as cnt, s as fi FROM mytable GROUP BY 2`,
 		[]sql.Row{
 			{int32(1), "first row"},
 			{int32(1), "second row"},
@@ -297,11 +317,43 @@ var queries = []struct {
 		},
 	},
 	{
+		`SELECT COUNT(*) c, i as foo FROM mytable GROUP BY 2 ORDER BY 2 DESC`,
+		[]sql.Row{
+			{int32(1), int64(3)},
+			{int32(1), int64(2)},
+			{int32(1), int64(1)},
+		},
+	},
+	{
 		`SELECT COUNT(*) c, i as foo FROM mytable GROUP BY i ORDER BY foo, i DESC`,
 		[]sql.Row{
 			{int32(1), int64(3)},
 			{int32(1), int64(2)},
 			{int32(1), int64(1)},
+		},
+	},
+	{
+		`SELECT COUNT(*) c, i as foo FROM mytable GROUP BY 2 ORDER BY foo, i DESC`,
+		[]sql.Row{
+			{int32(1), int64(3)},
+			{int32(1), int64(2)},
+			{int32(1), int64(1)},
+		},
+	},
+	{
+		`SELECT COUNT(*) c, i as i FROM mytable GROUP BY 2`,
+		[]sql.Row{
+			{int32(1), int64(3)},
+			{int32(1), int64(2)},
+			{int32(1), int64(1)},
+		},
+	},
+	{
+		`SELECT i as i FROM mytable GROUP BY 1`,
+		[]sql.Row{
+			{int64(3)},
+			{int64(2)},
+			{int64(1)},
 		},
 	},
 	{
@@ -368,6 +420,12 @@ var queries = []struct {
 		[]sql.Row{
 			{"second row"},
 			{"third row"},
+		},
+	},
+	{
+		`SELECT SUBSTRING(s, -3, 3) as s FROM mytable WHERE s LIKE '%d row' GROUP BY 1`,
+		[]sql.Row{
+			{"row"},
 		},
 	},
 	{
@@ -552,6 +610,32 @@ var queries = []struct {
 		SELECT COLUMN_NAME FROM information_schema.COLUMNS
 		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
 		GROUP BY COLUMN_NAME
+		`,
+		[]sql.Row{
+			{"s"},
+			{"i"},
+			{"s2"},
+			{"i2"},
+		},
+	},
+	{
+		`
+		SELECT COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY 1
+		`,
+		[]sql.Row{
+			{"s"},
+			{"i"},
+			{"s2"},
+			{"i2"},
+		},
+	},
+	{
+		`
+		SELECT COLUMN_NAME as COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY 1
 		`,
 		[]sql.Row{
 			{"s"},
@@ -1489,6 +1573,17 @@ func TestOrderByGroupBy(t *testing.T) {
 		{"red", int32(2)},
 		{"orange", int32(3)},
 	}
+
+	require.Equal(expected, rows)
+
+	_, iter, err = e.Query(
+		newCtx(),
+		"SELECT team, COUNT(*) FROM members GROUP BY 1 ORDER BY 2",
+	)
+	require.NoError(err)
+
+	rows, err = sql.RowIterToRows(iter)
+	require.NoError(err)
 
 	require.Equal(expected, rows)
 }

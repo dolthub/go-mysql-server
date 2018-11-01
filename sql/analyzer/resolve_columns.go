@@ -303,7 +303,8 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			var col *sql.Column
 			var found bool
 			for _, c := range columns {
-				if strings.ToLower(c.Source) == table {
+				_, ok := n.(*plan.GroupBy)
+				if ok || (strings.ToLower(c.Source) == table) {
 					col = c
 					found = true
 					break
