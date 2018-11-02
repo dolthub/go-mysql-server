@@ -64,21 +64,20 @@ func writeConfig(config string) (string, error) {
 	return tmp.Name(), nil
 }
 
+var nativeSingleTests = []authenticationTest{
+	{"root", "", false},
+	{"root", "password", false},
+	{"root", "mysql_password", false},
+	{"user", "password", true},
+	{"user", "other_password", false},
+	{"user", "", false},
+	{"", "", false},
+	{"", "password", false},
+}
+
 func TestNativeAuthenticationSingle(t *testing.T) {
 	a := auth.NewNativeSingle("user", "password", auth.AllPermissions)
-
-	tests := authenticationTests{
-		{"root", "", false},
-		{"root", "password", false},
-		{"root", "mysql_password", false},
-		{"user", "password", true},
-		{"user", "other_password", false},
-		{"user", "", false},
-		{"", "", false},
-		{"", "password", false},
-	}
-
-	testAuthentication(t, a, tests)
+	testAuthentication(t, a, nativeSingleTests, nil)
 }
 
 func TestNativeAuthentication(t *testing.T) {
@@ -91,7 +90,7 @@ func TestNativeAuthentication(t *testing.T) {
 	a, err := auth.NewNativeFile(conf)
 	req.NoError(err)
 
-	tests := authenticationTests{
+	tests := []authenticationTest{
 		{"root", "", false},
 		{"root", "password", false},
 		{"root", "mysql_password", true},
@@ -106,13 +105,13 @@ func TestNativeAuthentication(t *testing.T) {
 		{"nonexistent", "password", false},
 	}
 
-	testAuthentication(t, a, tests)
+	testAuthentication(t, a, tests, nil)
 }
 
 func TestNativeAuthorizationSingleAll(t *testing.T) {
 	a := auth.NewNativeSingle("user", "password", auth.AllPermissions)
 
-	tests := authorizationTests{
+	tests := []authorizationTest{
 		{"user", queries["select"], true},
 		{"root", queries["select"], false},
 		{"", queries["select"], false},
@@ -138,13 +137,13 @@ func TestNativeAuthorizationSingleAll(t *testing.T) {
 		{"", queries["unlock"], false},
 	}
 
-	testAuthorization(t, a, tests)
+	testAuthorization(t, a, tests, nil)
 }
 
 func TestNativeAuthorizationSingleRead(t *testing.T) {
 	a := auth.NewNativeSingle("user", "password", auth.ReadPerm)
 
-	tests := authorizationTests{
+	tests := []authorizationTest{
 		{"user", queries["select"], true},
 		{"root", queries["select"], false},
 		{"", queries["select"], false},
@@ -170,7 +169,7 @@ func TestNativeAuthorizationSingleRead(t *testing.T) {
 		{"", queries["unlock"], false},
 	}
 
-	testAuthorization(t, a, tests)
+	testAuthorization(t, a, tests, nil)
 }
 
 func TestNativeAuthorization(t *testing.T) {
@@ -183,7 +182,7 @@ func TestNativeAuthorization(t *testing.T) {
 	a, err := auth.NewNativeFile(conf)
 	require.NoError(err)
 
-	tests := authorizationTests{
+	tests := []authorizationTest{
 		{"", queries["select"], false},
 		{"user", queries["select"], true},
 		{"no_password", queries["select"], true},
@@ -221,7 +220,7 @@ func TestNativeAuthorization(t *testing.T) {
 		{"root", queries["unlock"], true},
 	}
 
-	testAuthorization(t, a, tests)
+	testAuthorization(t, a, tests, nil)
 }
 
 func TestNativeErrors(t *testing.T) {
