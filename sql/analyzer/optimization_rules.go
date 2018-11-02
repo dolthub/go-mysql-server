@@ -245,6 +245,25 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.
 	})
 }
 
+func removeUnnecessaryConverts(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	span, _ := ctx.Span("remove_unnecessary_converts")
+	defer span.Finish()
+
+	if !n.Resolved() {
+		return n, nil
+	}
+
+	a.Log("removing unnecessary converts, node of type: %T", n)
+
+	return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
+		if c, ok := e.(*expression.Convert); ok && c.Child.Type() == c.Type() {
+			return c.Child, nil
+		}
+
+		return e, nil
+	})
+}
+
 // containsSources checks that all `needle` sources are contained inside `haystack`.
 func containsSources(haystack, needle []string) bool {
 	for _, s := range needle {
