@@ -1550,9 +1550,9 @@ func TestReadOnly(t *testing.T) {
 	catalog.AddDatabase(db)
 
 	au := auth.NewNativeSingle("user", "pass", auth.ReadPerm)
-
-	a := analyzer.NewBuilder(catalog).WithAuth(au).Build()
-	e := sqle.New(catalog, a, nil)
+	cfg := &sqle.Config{Auth: au}
+	a := analyzer.NewBuilder(catalog).Build()
+	e := sqle.New(catalog, a, cfg)
 
 	_, _, err := e.Query(newCtx(), `SELECT i FROM mytable`)
 	require.NoError(err)

@@ -6,7 +6,6 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-mysql-server.v0/auth"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -45,11 +44,6 @@ func (ab *Builder) WithDebug() *Builder {
 func (ab *Builder) WithParallelism(parallelism int) *Builder {
 	ab.parallelism = parallelism
 	return ab
-}
-
-// WithAuth adds add authorization rule.
-func (ab *Builder) WithAuth(a auth.Auth) *Builder {
-	return ab.AddPostValidationRule(CheckAuthorizationRule, CheckAuthorization(a))
 }
 
 // AddPreAnalyzeRule adds a new rule to the analyze before the standard analyzer rules.

@@ -46,7 +46,7 @@ func authEngine(au auth.Auth) (string, *sqle.Engine, error) {
 
 	catalog.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
 
-	a := analyzer.NewBuilder(catalog).WithAuth(au).Build()
+	a := analyzer.NewBuilder(catalog).Build()
 	config := &sqle.Config{Auth: au}
 
 	return tmpDir, sqle.New(catalog, a, config), nil
