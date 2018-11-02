@@ -6,23 +6,25 @@ import (
 	"strings"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
-type padType int
+var ErrDivisionByZero = errors.NewKind("division by zero")
 
+type padType rune
 const (
-	leftPadType  = iota
-	rightPadType
+	lPadType padType = 'l'
+	rPadType padType = 'r'
 )
 
-// MakePadder returns a Pad creator functions with a specific padType.
-func MakePadder(pType padType) func(e ...sql.Expression) (sql.Expression, error) {
+// NewPadFunc returns a Pad creator function with a specific padType.
+func NewPadFunc(pType padType) func(e ...sql.Expression) (sql.Expression, error) {
 	return func(e ...sql.Expression) (sql.Expression, error) {
 		return NewPad(pType, e...)
 	}
 }
 
-// NewLogBase creates a new LogBase expression.
+// NewPad creates a new Pad expression.
 func NewPad(pType padType, args ...sql.Expression) (sql.Expression, error) {
 	argLen := len(args)
 	if argLen != 3 {
@@ -35,34 +37,34 @@ func NewPad(pType padType, args ...sql.Expression) (sql.Expression, error) {
 // Pad is a function that pads a string with another string.
 type Pad struct {
 	str     sql.Expression
-	len     sql.Expression
+	length  sql.Expression
 	padStr  sql.Expression
 	padType padType
 }
 
 // Children implements the Expression interface.
 func (p *Pad) Children() []sql.Expression {
-	return []sql.Expression{p.str, p.len, p.padStr}
+	return []sql.Expression{p.str, p.length, p.padStr}
 }
 
 // Resolved implements the Expression interface.
 func (p *Pad) Resolved() bool {
-	return p.str.Resolved() && p.len.Resolved() && (p.padStr.Resolved())
+	return p.str.Resolved() && p.length.Resolved() && (p.padStr.Resolved())
 }
 
 // IsNullable implements the Expression interface.
 func (p *Pad) IsNullable() bool {
-	return p.str.IsNullable() || p.len.IsNullable() || p.padStr.IsNullable()
+	return p.str.IsNullable() || p.length.IsNullable() || p.padStr.IsNullable()
 }
 
 // Type implements the Expression interface.
 func (p *Pad) Type() sql.Type { return sql.Text }
 
 func (p *Pad) String() string {
-	if p.padType == leftPadType {
-		return fmt.Sprintf("lpad(%s, %s, %s)", p.str, p.len, p.padStr)
+	if p.padType == lPadType {
+		return fmt.Sprintf("lpad(%s, %s, %s)", p.str, p.length, p.padStr)
 	}
-	return fmt.Sprintf("rpad(%s, %s, %s)", p.str, p.len, p.padStr)
+	return fmt.Sprintf("rpad(%s, %s, %s)", p.str, p.length, p.padStr)
 }
 
 // TransformUp implements the Expression interface.
@@ -72,7 +74,7 @@ func (p *Pad) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 		return nil, err
 	}
 
-	len, err := p.len.TransformUp(f)
+	len, err := p.length.TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +106,7 @@ func (p *Pad) Eval(
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}
 
-	length, err := p.len.Eval(ctx, row)
+	length, err := p.length.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -147,18 +149,23 @@ func padString(str string, length int64, padStr string, padType padType) (string
 	}
 
 	padLen := int(length - int64(len(str)))
-	quo, rem := divmod(int64(padLen), int64(len(padStr)))
+	quo, rem, err := divmod(int64(padLen), int64(len(padStr)))
+	if err != nil {
+		return "", err
+	}
 
-	if padType == leftPadType {
+	if padType == lPadType {
 		result := strings.Repeat(padStr, int(quo)) + padStr[:rem] + str
 		return result[:length], nil
-	} else {
-		result := str + strings.Repeat(padStr, int(quo)) + padStr[:rem]
-		return result[(int64(len(result)) - length):], nil
 	}
+	result := str + strings.Repeat(padStr, int(quo)) + padStr[:rem]
+	return result[(int64(len(result)) - length):], nil
 }
 
-func divmod(a, b int64) (quotient, remainder int64) {
+func divmod(a, b int64) (quotient, remainder int64, err error) {
+	if b == 0 {
+		return 0, 0, ErrDivisionByZero.New()
+	}
 	quotient = a / b
 	remainder = a % b
 	return
