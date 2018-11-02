@@ -71,6 +71,15 @@ func (a *Audit) Allowed(ctx *sql.Context, permission Permission) error {
 	return err
 }
 
+// Query implements AuditQuery interface.
+func (a *Audit) Query(ctx *sql.Context, d time.Duration, err error) {
+	if q, ok := a.auth.(*Audit); ok {
+		q.Query(ctx, d, err)
+	}
+
+	a.method.Query(ctx, d, err)
+}
+
 // NewAuditLog creates a new AuditMethod that logs to a logrus.Logger.
 func NewAuditLog(l *logrus.Logger) AuditMethod {
 	la := l.WithField("system", "audit")
