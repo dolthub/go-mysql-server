@@ -114,6 +114,14 @@ var queries = []struct {
 		[]sql.Row{{int64(3)}},
 	},
 	{
+		"SELECT substring(mytable.s, 1, 5) as s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1",
+		[]sql.Row{
+			{"third"},
+			{"secon"},
+			{"first"},
+		},
+	},
+	{
 		"SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2",
 		[]sql.Row{
 			{int64(1), int64(1), "third"},

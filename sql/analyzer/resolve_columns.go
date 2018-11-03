@@ -104,6 +104,9 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 							col.Name(),
 						)
 					default:
+						if _, ok := n.(*plan.GroupBy); ok {
+							return expression.NewUnresolvedColumn(col.Name()), nil
+						}
 						return nil, ErrAmbiguousColumnName.New(col.Name(), strings.Join(tables, ", "))
 					}
 				} else {
