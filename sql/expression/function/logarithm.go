@@ -14,8 +14,8 @@ import (
 // logarithm function
 var ErrInvalidArgumentForLogarithm = errors.NewKind("invalid argument value for logarithm: %v")
 
-// LogBaseMaker returns LogBase creator functions with a specific base.
-func LogBaseMaker(base float64) func(e sql.Expression) sql.Expression {
+// NewLogBaseFunc returns LogBase creator function with a specific base.
+func NewLogBaseFunc(base float64) func(e sql.Expression) sql.Expression {
 	return func(e sql.Expression) sql.Expression {
 		return NewLogBase(base, e)
 	}
@@ -90,7 +90,7 @@ type Log struct {
 	expression.BinaryExpression
 }
 
-// NewLn creates a new Log expression.
+// NewLog creates a new Log expression.
 func NewLog(args ...sql.Expression) (sql.Expression, error) {
 	argLen := len(args)
 	if argLen == 0 || argLen > 2 {

@@ -49,8 +49,10 @@ var Defaults = sql.Functions{
 	"json_extract":  sql.FunctionN(NewJSONExtract),
 	"connection_id": sql.Function0(NewConnectionID),
 	"soundex":       sql.Function1(NewSoundex),
-	"ln":            sql.Function1(LogBaseMaker(float64(math.E))),
-	"log2":          sql.Function1(LogBaseMaker(float64(2))),
-	"log10":         sql.Function1(LogBaseMaker(float64(10))),
+	"ln":            sql.Function1(NewLogBaseFunc(float64(math.E))),
+	"log2":          sql.Function1(NewLogBaseFunc(float64(2))),
+	"log10":         sql.Function1(NewLogBaseFunc(float64(10))),
 	"log":           sql.FunctionN(NewLog),
+	"rpad":          sql.FunctionN(NewPadFunc(rPadType)),
+	"lpad":          sql.FunctionN(NewPadFunc(lPadType)),
 }
