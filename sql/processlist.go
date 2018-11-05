@@ -108,7 +108,7 @@ func (pl *ProcessList) AddProcess(
 		Type:       typ,
 		Query:      query,
 		Progress:   make(map[string]Progress),
-		User:       ctx.Session.User(),
+		User:       ctx.Session.Client().User,
 		StartedAt:  time.Now(),
 		Kill:       cancel,
 	}
@@ -136,7 +136,7 @@ func (pl *ProcessList) UpdateProgress(pid uint64, name string, delta int64) {
 	p.Progress[name] = progress
 }
 
-// AddProgressItem adds a new item to track progress from to the proces with
+// AddProgressItem adds a new item to track progress from to the process with
 // the given pid. If the pid does not exist, it will do nothing.
 func (pl *ProcessList) AddProgressItem(pid uint64, name string, total int64) {
 	pl.mu.Lock()

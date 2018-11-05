@@ -18,7 +18,8 @@ type DoneFunc func()
 
 // DefaultSessionBuilder is a SessionBuilder that returns a base session.
 func DefaultSessionBuilder(c *mysql.Conn, addr string) sql.Session {
-	return sql.NewSession(addr, c.User, c.ConnectionID)
+	client := c.RemoteAddr().String()
+	return sql.NewSession(addr, client, c.User, c.ConnectionID)
 }
 
 // SessionManager is in charge of creating new sessions for the given

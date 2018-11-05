@@ -11,7 +11,7 @@ import (
 func TestSessionConfig(t *testing.T) {
 	require := require.New(t)
 
-	sess := NewSession("foo", "bar", 1)
+	sess := NewSession("foo", "baz", "bar", 1)
 	typ, v := sess.Get("foo")
 	require.Equal(Null, typ)
 	require.Equal(nil, v)
@@ -37,7 +37,7 @@ func TestSessionConfig(t *testing.T) {
 
 func TestHasDefaultValue(t *testing.T) {
 	require := require.New(t)
-	sess := NewSession("foo", "bar", 1)
+	sess := NewSession("foo", "baz", "bar", 1)
 
 	for key := range DefaultSessionConfig() {
 		require.True(HasDefaultValue(sess, key))

@@ -1688,7 +1688,7 @@ func insertRows(t *testing.T, table sql.Inserter, rows ...sql.Row) {
 var pid uint64
 
 func newCtx() *sql.Context {
-	session := sql.NewSession("address", "user", 1)
+	session := sql.NewSession("address", "client", "user", 1)
 	return sql.NewContext(
 		context.Background(),
 		sql.WithPid(atomic.AddUint64(&pid, 1)),

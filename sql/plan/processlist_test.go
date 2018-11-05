@@ -11,9 +11,11 @@ import (
 func TestShowProcessList(t *testing.T) {
 	require := require.New(t)
 
+	addr := "127.0.0.1:34567"
+
 	n := NewShowProcessList()
 	p := sql.NewProcessList()
-	sess := sql.NewSession("0.0.0.0:1234", "foo", 1)
+	sess := sql.NewSession("0.0.0.0:3306", addr, "foo", 1)
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
 
 	ctx, err := p.AddProcess(ctx, sql.QueryProcess, "SELECT foo")
@@ -42,8 +44,8 @@ func TestShowProcessList(t *testing.T) {
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{int64(1), "foo", "0.0.0.0:1234", "foo", "query", int64(0), "a(4/5), b(2/6)", "SELECT foo"},
-		{int64(2), "foo", "0.0.0.0:1234", "foo", "create_index", int64(0), "foo(1/2)", "SELECT bar"},
+		{int64(1), "foo", addr, "foo", "query", int64(0), "a(4/5), b(2/6)", "SELECT foo"},
+		{int64(2), "foo", addr, "foo", "create_index", int64(0), "foo(1/2)", "SELECT bar"},
 	}
 
 	require.ElementsMatch(expected, rows)
