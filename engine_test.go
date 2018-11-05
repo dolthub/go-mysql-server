@@ -357,6 +357,13 @@ var queries = []struct {
 		[]sql.Row{{"mydb"}, {"foo"}},
 	},
 	{
+		`SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA`,
+		[]sql.Row{
+			{"mydb", "utf8mb4", "utf8_bin"},
+			{"foo", "utf8mb4", "utf8_bin"},
+		},
+	},
+	{
 		`SELECT s FROM mytable WHERE s LIKE '%d row'`,
 		[]sql.Row{
 			{"second row"},
