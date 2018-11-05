@@ -53,9 +53,20 @@ func (s *ShowTableStatus) Schema() sql.Schema { return showTableStatusSchema }
 func (s *ShowTableStatus) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	var rows []sql.Row
 	var tables []string
-	for _, db := range s.Catalog.AllDatabases() {
-		if len(s.Databases) > 0 && !stringContains(s.Databases, db.Name()) {
-			continue
+	if len(s.Databases) > 0 {
+		for _, db := range s.Catalog.AllDatabases() {
+			if !stringContains(s.Databases, db.Name()) {
+				continue
+			}
+
+			for t := range db.Tables() {
+				tables = append(tables, t)
+			}
+		}
+	} else {
+		db, err := s.Catalog.Database(s.Catalog.CurrentDatabase())
+		if err != nil {
+			return nil, err
 		}
 
 		for t := range db.Tables() {

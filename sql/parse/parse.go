@@ -1070,6 +1070,10 @@ func parseShowTableStatus(query string) (sql.Node, error) {
 		return nil, err
 	}
 
+	if _, err = buf.Peek(1); err == io.EOF {
+		return plan.NewShowTableStatus(), nil
+	}
+
 	var clause string
 	if err := readIdent(&clause)(buf); err != nil {
 		return nil, err

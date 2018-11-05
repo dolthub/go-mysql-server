@@ -797,6 +797,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`SHOW TABLE STATUS FROM foo`: plan.NewShowTableStatus("foo"),
 	`SHOW TABLE STATUS IN foo`:   plan.NewShowTableStatus("foo"),
+	`SHOW TABLE STATUS`:          plan.NewShowTableStatus(),
 	`SHOW TABLE STATUS WHERE Name = 'foo'`: plan.NewFilter(
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("Name"),
