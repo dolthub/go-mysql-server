@@ -396,3 +396,50 @@ func TestEvalFilter(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoveUnnecessaryConverts(t *testing.T) {
+	testCases := []struct {
+		name      string
+		childExpr sql.Expression
+		castType  string
+		expected  sql.Expression
+	}{
+		{
+			"unnecessary cast",
+			expression.NewLiteral([]byte{}, sql.Blob),
+			"binary",
+			expression.NewLiteral([]byte{}, sql.Blob),
+		},
+		{
+			"necessary cast",
+			expression.NewLiteral("foo", sql.Text),
+			"signed",
+			expression.NewConvert(
+				expression.NewLiteral("foo", sql.Text),
+				"signed",
+			),
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+
+			node := plan.NewProject([]sql.Expression{
+				expression.NewConvert(tt.childExpr, tt.castType),
+			},
+				plan.NewResolvedTable(mem.NewTable("foo", nil)),
+			)
+
+			result, err := removeUnnecessaryConverts(
+				sql.NewEmptyContext(),
+				NewDefault(nil),
+				node,
+			)
+			require.NoError(err)
+
+			resultExpr := result.(*plan.Project).Projections[0]
+			require.Equal(tt.expected, resultExpr)
+		})
+	}
+}
