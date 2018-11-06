@@ -66,7 +66,7 @@ type Power struct {
 	expression.BinaryExpression
 }
 
-// NewPad creates a new Power expression.
+// NewPower creates a new Power expression.
 func NewPower(e1, e2 sql.Expression) sql.Expression {
 	return &Power{
 		expression.BinaryExpression{
