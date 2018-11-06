@@ -56,6 +56,6 @@ var Defaults = sql.Functions{
 	"rpad":          sql.FunctionN(NewPadFunc(rPadType)),
 	"lpad":          sql.FunctionN(NewPadFunc(lPadType)),
 	"sqrt":          sql.Function1(NewSqrt),
-	"pow":           sql.Function2(NewPowerFunc(funcNamePow)),
-	"power":         sql.Function2(NewPowerFunc(funcNamePower)),
+	"pow":           sql.Function2(NewPower),
+	"power":         sql.Function2(NewPower),
 }

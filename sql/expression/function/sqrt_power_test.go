@@ -73,7 +73,7 @@ func TestPower(t *testing.T) {
 		{"Base and exp are valid strings", sql.Float64, sql.NewRow("2", "2"), float64(4), false},
 	}
 	for _, tt := range testCases {
-		f := NewPowerFunc(funcNamePow)(
+		f := NewPower(
 			expression.NewGetField(0, tt.rowType, "", false),
 			expression.NewGetField(1, tt.rowType, "", false),
 		)
@@ -93,7 +93,7 @@ func TestPower(t *testing.T) {
 	}
 
 	// Test inf numbers
-	f := NewPowerFunc(funcNamePow)(
+	f := NewPower(
 		expression.NewGetField(0, sql.Float64, "", false),
 		expression.NewGetField(1, sql.Float64, "", false),
 	)

@@ -58,40 +58,21 @@ func (s *Sqrt) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return computeSqrt(child.(float64))
+	return math.Sqrt(child.(float64)), nil
 }
-
-func computeSqrt(x float64) (float64, error) {
-	return math.Sqrt(x), nil
-}
-
-type powerFuncName int
-const (
-	funcNamePow   powerFuncName = iota
-	funcNamePower
-)
 
 // Power is a function that returns value of X raised to the power of Y.
 type Power struct {
 	expression.BinaryExpression
-	powerFuncName
-}
-
-// NewPowerFunc returns a NewPower creator function with a specific powerFuncName.
-func NewPowerFunc(fName powerFuncName) func(e1, e2 sql.Expression) sql.Expression {
-	return func(e1, e2 sql.Expression) sql.Expression {
-		return NewPower(fName, e1, e2)
-	}
 }
 
 // NewPad creates a new Power expression.
-func NewPower(fName powerFuncName, e1, e2 sql.Expression) sql.Expression {
+func NewPower(e1, e2 sql.Expression) sql.Expression {
 	return &Power{
 		expression.BinaryExpression{
 			Left:  e1,
 			Right: e2,
 		},
-		fName,
 	}
 }
 
@@ -102,10 +83,6 @@ func (p *Power) Type() sql.Type { return sql.Float64 }
 func (p *Power) IsNullable() bool { return p.Left.IsNullable() || p.Right.IsNullable() }
 
 func (p *Power) String() string {
-	if p.powerFuncName == funcNamePow {
-		return fmt.Sprintf("pow(%s, %s)", p.Left, p.Right)
-	}
-
 	return fmt.Sprintf("power(%s, %s)", p.Left, p.Right)
 }
 
@@ -121,7 +98,7 @@ func (p *Power) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
 		return nil, err
 	}
 
-	return fn(NewPower(p.powerFuncName, left, right))
+	return fn(NewPower(left, right))
 }
 
 // Eval implements the Expression interface.
@@ -154,9 +131,5 @@ func (p *Power) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return computePower(left.(float64), right.(float64))
-}
-
-func computePower(a, b float64) (float64, error) {
-	return math.Pow(a, b), nil
+	return math.Pow(left.(float64), right.(float64)), nil
 }
