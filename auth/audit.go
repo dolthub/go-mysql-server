@@ -89,7 +89,7 @@ func NewAuditLog(l *logrus.Logger) AuditMethod {
 	}
 }
 
-var auditLogMessage = "audit trail"
+const auditLogMessage = "audit trail"
 
 // AuditLog logs audit trails to a logrus.Logger.
 type AuditLog struct {
