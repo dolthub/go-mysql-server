@@ -20,7 +20,7 @@ func TestSqrt(t *testing.T) {
 		err      bool
 	}{
 		{"null input", sql.NewRow(nil), nil, false},
-		{"invalid string", sql.NewRow("foo"), nil, false},
+		{"invalid string", sql.NewRow("foo"), nil, true},
 		{"valid string", sql.NewRow("9"), float64(3), false},
 		{"number is zero", sql.NewRow(0), float64(0), false},
 		{"positive number", sql.NewRow(8), float64(2.8284271247461903), false},

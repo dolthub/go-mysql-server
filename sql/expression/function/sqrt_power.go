@@ -55,7 +55,7 @@ func (s *Sqrt) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	child, err = sql.Float64.Convert(child)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	return math.Sqrt(child.(float64)), nil
