@@ -1,10 +1,10 @@
 package function
 
 import (
-	"math"
+"math"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function/aggregation"
+"gopkg.in/src-d/go-mysql-server.v0/sql"
+"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function/aggregation"
 )
 
 // Defaults is the function map with all the default functions.
@@ -55,4 +55,7 @@ var Defaults = sql.Functions{
 	"log":           sql.FunctionN(NewLog),
 	"rpad":          sql.FunctionN(NewPadFunc(rPadType)),
 	"lpad":          sql.FunctionN(NewPadFunc(lPadType)),
+	"sqrt":          sql.Function1(NewSqrt),
+	"pow":           sql.Function2(NewPowerFunc(funcNamePow)),
+	"power":         sql.Function2(NewPowerFunc(funcNamePower)),
 }
