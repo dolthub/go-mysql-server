@@ -193,6 +193,17 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("t1", ""),
 	),
+	`SELECT foo, bar FROM t1 GROUP BY 1, 2;`: plan.NewGroupBy(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("foo"),
+			expression.NewUnresolvedColumn("bar"),
+		},
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("foo"),
+			expression.NewUnresolvedColumn("bar"),
+		},
+		plan.NewUnresolvedTable("t1", ""),
+	),
 	`SELECT COUNT(*) FROM t1;`: plan.NewGroupBy(
 		[]sql.Expression{
 			expression.NewUnresolvedFunction("count", true,

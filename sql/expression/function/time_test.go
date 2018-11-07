@@ -243,7 +243,7 @@ func TestTime_DayOfWeek(t *testing.T) {
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), int32(3), false},
-		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Weekday()+1) % 7, false},
+		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Weekday() + 1), false},
 		{"date as unix timestamp", sql.NewRow(int64(tsDate)), int32(1), false},
 	}
 

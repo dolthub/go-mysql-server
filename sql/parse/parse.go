@@ -615,6 +615,20 @@ func selectToProjectOrGroupBy(se sqlparser.SelectExprs, g sqlparser.GroupBy, chi
 			return nil, err
 		}
 
+		agglen := int64(len(selectExprs))
+		for i, ge := range groupingExprs {
+			// if GROUP BY index
+			if l, ok := ge.(*expression.Literal); ok && sql.IsNumber(l.Type()) {
+				if idx, ok := l.Value().(int64); ok && idx > 0 && idx <= agglen {
+					aggexpr := selectExprs[idx-1]
+					if alias, ok := aggexpr.(*expression.Alias); ok {
+						aggexpr = expression.NewUnresolvedColumn(alias.Name())
+					}
+					groupingExprs[i] = aggexpr
+				}
+			}
+		}
+
 		return plan.NewGroupBy(selectExprs, groupingExprs, child), nil
 	}
 

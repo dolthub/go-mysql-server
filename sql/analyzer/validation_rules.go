@@ -77,7 +77,7 @@ func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 }
 
 func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("validate_order_by")
+	span, ctx := ctx.Span("validate_group_by")
 	defer span.Finish()
 
 	switch n := n.(type) {

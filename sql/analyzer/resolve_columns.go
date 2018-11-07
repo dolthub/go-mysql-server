@@ -104,6 +104,9 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 							col.Name(),
 						)
 					default:
+						if _, ok := n.(*plan.GroupBy); ok {
+							return expression.NewUnresolvedColumn(col.Name()), nil
+						}
 						return nil, ErrAmbiguousColumnName.New(col.Name(), strings.Join(tables, ", "))
 					}
 				} else {
@@ -303,7 +306,8 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			var col *sql.Column
 			var found bool
 			for _, c := range columns {
-				if strings.ToLower(c.Source) == table {
+				_, ok := n.(*plan.GroupBy)
+				if ok || (strings.ToLower(c.Source) == table) {
 					col = c
 					found = true
 					break
