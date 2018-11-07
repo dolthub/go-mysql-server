@@ -40,6 +40,16 @@
 - SHOW TABLES
 - SORT
 - STAR (*)
+- SHOW PROCESSLIST
+- SHOW TABLE STATUS
+- SHOW VARIABLES
+- SHOW CREATE DATABASE
+- SHOW CREATE TABLE
+- SHOW FIELDS FROM
+- LOCK/UNLOCK
+- USE
+- SHOW DATABASES
+- SHOW WARNINGS
 
 ## Index expressions
 - CREATE INDEX (an index can be created using either column names or a single arbitrary expression).
@@ -89,6 +99,16 @@
 - COALESCE
 - CONNECTION_ID
 - SOUNDEX
+- JSON_EXTRACT
+- DATABASE
+- SQRT
+- POW
+- POWER
+- RPAD
+- LPAD
+- LN
+- LOG2
+- LOG10
 
 ## Time functions
 - DAY
