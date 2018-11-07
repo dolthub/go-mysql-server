@@ -46,7 +46,7 @@ func authEngine(au auth.Auth) (string, *sqle.Engine, error) {
 
 	catalog.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
 
-	a := analyzer.NewBuilder(catalog).WithAuth(au).Build()
+	a := analyzer.NewBuilder(catalog).Build()
 	config := &sqle.Config{Auth: au}
 
 	return tmpDir, sqle.New(catalog, a, config), nil
@@ -80,7 +80,7 @@ func connString(user, password string) string {
 	return fmt.Sprintf("%s:%s@tcp(127.0.0.1:%d)/test", user, password, port)
 }
 
-type authenticationTests []struct {
+type authenticationTest struct {
 	user     string
 	password string
 	success  bool
@@ -89,7 +89,8 @@ type authenticationTests []struct {
 func testAuthentication(
 	t *testing.T,
 	a auth.Auth,
-	tests authenticationTests,
+	tests []authenticationTest,
+	extra func(t *testing.T, c authenticationTest),
 ) {
 	t.Helper()
 	req := require.New(t)
@@ -115,6 +116,10 @@ func testAuthentication(
 
 			err = db.Close()
 			req.NoError(err)
+
+			if extra != nil {
+				extra(t, c)
+			}
 		})
 	}
 
@@ -131,7 +136,7 @@ var queries = map[string]string{
 	"unlock":       "unlock tables",
 }
 
-type authorizationTests []struct {
+type authorizationTest struct {
 	user    string
 	query   string
 	success bool
@@ -140,7 +145,8 @@ type authorizationTests []struct {
 func testAuthorization(
 	t *testing.T,
 	a auth.Auth,
-	tests authorizationTests,
+	tests []authorizationTest,
+	extra func(t *testing.T, c authorizationTest),
 ) {
 	t.Helper()
 	req := require.New(t)
@@ -166,7 +172,51 @@ func testAuthorization(
 			}
 
 			req.Error(err)
-			req.True(auth.ErrNotAuthorized.Is(err))
+			if extra != nil {
+				extra(t, c)
+			} else {
+				req.True(auth.ErrNotAuthorized.Is(err))
+			}
 		})
 	}
+}
+
+func testAudit(
+	t *testing.T,
+	a auth.Auth,
+	tests []authorizationTest,
+	extra func(t *testing.T, c authorizationTest),
+) {
+	t.Helper()
+	req := require.New(t)
+
+	tmpDir, s, err := authServer(a)
+	req.NoError(err)
+	defer os.RemoveAll(tmpDir)
+
+	for _, c := range tests {
+		t.Run(fmt.Sprintf("%s", c.user), func(t *testing.T) {
+			req := require.New(t)
+
+			db, err := dsql.Open("mysql", connString(c.user, ""))
+			req.NoError(err)
+			_, err = db.Query(c.query)
+
+			if c.success {
+				req.NoError(err)
+			} else {
+				req.Error(err)
+			}
+
+			err = db.Close()
+			req.NoError(err)
+
+			if extra != nil {
+				extra(t, c)
+			}
+		})
+	}
+
+	err = s.Close()
+	req.NoError(err)
 }

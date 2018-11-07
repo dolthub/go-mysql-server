@@ -6,9 +6,11 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0"
+	"gopkg.in/src-d/go-mysql-server.v0/auth"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 
 	"github.com/sirupsen/logrus"
@@ -72,8 +74,8 @@ func (h *Handler) ComQuery(
 	c *mysql.Conn,
 	query string,
 	callback func(*sqltypes.Result) error,
-) error {
-	ctx := h.sm.NewContext(c)
+) (err error) {
+	ctx := h.sm.NewContextWithQuery(c, query)
 
 	handled, err := h.handleKill(c, query)
 	if err != nil {
@@ -84,7 +86,14 @@ func (h *Handler) ComQuery(
 		return nil
 	}
 
+	start := time.Now()
 	schema, rows, err := h.e.Query(ctx, query)
+	defer func() {
+		if q, ok := h.e.Auth.(*auth.Audit); ok {
+			q.Query(ctx, time.Since(start), err)
+		}
+	}()
+
 	if err != nil {
 		return err
 	}

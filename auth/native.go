@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strings"
 
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+
 	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-vitess.v1/mysql"
 )
@@ -142,7 +144,8 @@ func (s *Native) Mysql() mysql.AuthServer {
 }
 
 // Allowed implements Auth interface.
-func (s *Native) Allowed(name string, permission Permission) error {
+func (s *Native) Allowed(ctx *sql.Context, permission Permission) error {
+	name := ctx.Client().User
 	u, ok := s.users[name]
 	if !ok {
 		return ErrNotAuthorized.Wrap(ErrNoPermission.New(permission))

@@ -72,9 +72,19 @@ func (e *Engine) Query(
 		return nil, nil, err
 	}
 
+	var perm = auth.ReadPerm
 	var typ = sql.QueryProcess
-	if _, ok := parsed.(*plan.CreateIndex); ok {
+	switch parsed.(type) {
+	case *plan.CreateIndex:
 		typ = sql.CreateIndexProcess
+		perm = auth.ReadPerm | auth.WritePerm
+	case *plan.InsertInto, *plan.DropIndex, *plan.UnlockTables, *plan.LockTables:
+		perm = auth.ReadPerm | auth.WritePerm
+	}
+
+	err = e.Auth.Allowed(ctx, perm)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	ctx, err = e.Catalog.AddProcess(ctx, typ, query)

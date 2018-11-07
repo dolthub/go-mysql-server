@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-vitess.v1/mysql"
 )
 
@@ -57,5 +58,5 @@ type Auth interface {
 	// Allowed checks user's permissions with needed permission. If the user
 	// does not have enough permissions it returns ErrNotAuthorized.
 	// Otherwise is an error using the authentication method.
-	Allowed(user string, permission Permission) error
+	Allowed(ctx *sql.Context, permission Permission) error
 }

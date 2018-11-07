@@ -9,7 +9,7 @@ import (
 func TestNoneAuthentication(t *testing.T) {
 	a := new(auth.None)
 
-	tests := authenticationTests{
+	tests := []authenticationTest{
 		{"root", "", true},
 		{"root", "password", true},
 		{"root", "mysql_password", true},
@@ -20,13 +20,13 @@ func TestNoneAuthentication(t *testing.T) {
 		{"", "password", true},
 	}
 
-	testAuthentication(t, a, tests)
+	testAuthentication(t, a, tests, nil)
 }
 
 func TestNoneAuthorization(t *testing.T) {
 	a := new(auth.None)
 
-	tests := authorizationTests{
+	tests := []authorizationTest{
 		{"user", queries["select"], true},
 		{"root", queries["select"], true},
 		{"", queries["select"], true},
@@ -42,5 +42,5 @@ func TestNoneAuthorization(t *testing.T) {
 		{"root", queries["unlock"], true},
 	}
 
-	testAuthorization(t, a, tests)
+	testAuthorization(t, a, tests, nil)
 }
