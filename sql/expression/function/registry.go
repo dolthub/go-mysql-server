@@ -58,4 +58,7 @@ var Defaults = sql.Functions{
 	"sqrt":          sql.Function1(NewSqrt),
 	"pow":           sql.Function2(NewPower),
 	"power":         sql.Function2(NewPower),
+	"ltrim":         sql.Function1(NewTrimFunc(lTrimType)),
+	"rtrim":         sql.Function1(NewTrimFunc(rTrimType)),
+	"trim":          sql.Function1(NewTrimFunc(bTrimType)),
 }
