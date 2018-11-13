@@ -66,6 +66,10 @@ var queries = []struct {
 		[]sql.Row{{"irs"}, {"eco"}, {"hir"}},
 	},
 	{
+		`SELECT substring("foo", 2, 2)`,
+		[]sql.Row{{"oo"}},
+	},
+	{
 		"SELECT YEAR('2007-12-11') FROM mytable",
 		[]sql.Row{{int32(2007)}, {int32(2007)}, {int32(2007)}},
 	},
@@ -138,6 +142,12 @@ var queries = []struct {
 		},
 	},
 	{
+		`SELECT substring("first", 1), substring("second", 2), substring("third", 3)`,
+		[]sql.Row{
+			{"first", "econd", "ird"},
+		},
+	},
+	{
 		"SELECT substring(s2, -1), substring(s2, -2), substring(s2, -3) FROM othertable ORDER BY i2",
 		[]sql.Row{
 			{"d", "rd", "ird"},
@@ -145,7 +155,12 @@ var queries = []struct {
 			{"t", "st", "rst"},
 		},
 	},
-
+	{
+		`SELECT substring("first", -1), substring("second", -2), substring("third", -3)`,
+		[]sql.Row{
+			{"t", "nd", "ird"},
+		},
+	},
 	{
 		"SELECT s FROM mytable INNER JOIN othertable " +
 			"ON substring(s2, 1, 2) != '' AND i = i2",

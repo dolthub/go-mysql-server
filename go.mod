@@ -10,5 +10,5 @@ require (
 	golang.org/x/net v0.0.0-20181029044818-c44066c5c816 // indirect
 	google.golang.org/grpc v1.16.0 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0
-	gopkg.in/src-d/go-vitess.v1 v1.3.0
+	gopkg.in/src-d/go-vitess.v1 v1.4.0
 )
