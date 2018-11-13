@@ -14,7 +14,7 @@ type Reverse struct {
 	expression.UnaryExpression
 }
 
-// NewLower creates a new Lower expression.
+// NewReverse creates a new Reverse expression.
 func NewReverse(e sql.Expression) sql.Expression {
 	return &Reverse{expression.UnaryExpression{Child: e}}
 }
@@ -25,12 +25,8 @@ func (r *Reverse) Eval(
 	row sql.Row,
 ) (interface{}, error) {
 	v, err := r.Child.Eval(ctx, row)
-	if err != nil {
+	if v == nil || err != nil {
 		return nil, err
-	}
-
-	if v == nil {
-		return nil, nil
 	}
 
 	v, err = sql.Text.Convert(v)
@@ -43,9 +39,7 @@ func (r *Reverse) Eval(
 
 func reverseString(s string) string {
 	r := []rune(s)
-	l := len(r)
-	l2 := l/2
-	for i, j := 0, l-1; i < l2; i, j = i+1, j-1 {
+	for i, j := 0, len(r) - 1; i < j; i, j = i+1, j-1 {
 		r[i], r[j] = r[j], r[i]
 	}
 	return string(r)
@@ -110,12 +104,8 @@ func (r *Repeat) Eval(
 	row sql.Row,
 ) (interface{}, error) {
 	str, err := r.Left.Eval(ctx, row)
-	if err != nil {
+	if str == nil || err != nil {
 		return nil, err
-	}
-
-	if str == nil {
-		return nil, nil
 	}
 
 	str, err = sql.Text.Convert(str)
@@ -124,12 +114,8 @@ func (r *Repeat) Eval(
 	}
 
 	count, err := r.Right.Eval(ctx, row)
-	if err != nil {
+	if count == nil || err != nil {
 		return nil, err
-	}
-
-	if count == nil {
-		return nil, nil
 	}
 
 	count, err = sql.Int32.Convert(count)
@@ -204,12 +190,8 @@ func (r *Replace) Eval(
 	row sql.Row,
 ) (interface{}, error) {
 	str, err := r.str.Eval(ctx, row)
-	if err != nil {
+	if str == nil || err != nil {
 		return nil, err
-	}
-
-	if str == nil {
-		return nil, nil
 	}
 
 	str, err = sql.Text.Convert(str)
@@ -218,12 +200,8 @@ func (r *Replace) Eval(
 	}
 
 	fromStr, err := r.fromStr.Eval(ctx, row)
-	if err != nil {
+	if fromStr == nil || err != nil {
 		return nil, err
-	}
-
-	if fromStr == nil {
-		return nil, nil
 	}
 
 	fromStr, err = sql.Text.Convert(fromStr)
@@ -232,12 +210,8 @@ func (r *Replace) Eval(
 	}
 
 	toStr, err := r.toStr.Eval(ctx, row)
-	if err != nil {
+	if toStr == nil || err != nil {
 		return nil, err
-	}
-
-	if toStr == nil {
-		return nil, nil
 	}
 
 	toStr, err = sql.Text.Convert(toStr)
