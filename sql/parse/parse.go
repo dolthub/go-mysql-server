@@ -318,10 +318,7 @@ func convertCreateTable(c *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	return plan.NewCreateTable(
-		sql.UnresolvedDatabase(""),
-		c.NewName.Name.String(),
-		schema,
-	), nil
+		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema), nil
 }
 
 func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
@@ -656,7 +653,15 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 	case *sqlparser.Default:
 		return expression.NewDefaultColumn(v.ColName), nil
 	case *sqlparser.SubstrExpr:
-		name, err := exprToExpression(v.Name)
+		var (
+			name sql.Expression
+			err  error
+		)
+		if v.Name != nil {
+			name, err = exprToExpression(v.Name)
+		} else {
+			name, err = exprToExpression(v.StrVal)
+		}
 		if err != nil {
 			return nil, err
 		}
