@@ -61,4 +61,7 @@ var Defaults = sql.Functions{
 	"ltrim":         sql.Function1(NewTrimFunc(lTrimType)),
 	"rtrim":         sql.Function1(NewTrimFunc(rTrimType)),
 	"trim":          sql.Function1(NewTrimFunc(bTrimType)),
+	"reverse":       sql.Function1(NewReverse),
+	"repeat":        sql.Function2(NewRepeat),
+	"replace":       sql.Function3(NewReplace),
 }
