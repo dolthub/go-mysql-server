@@ -498,15 +498,6 @@ func (b *bitBatch) Add(row, col uint64) {
 	b.cols = append(b.cols, col)
 }
 
-func (b *bitBatch) NextRecord() (uint64, uint64, error) {
-	if b.pos >= uint64(len(b.rows)) {
-		return 0, 0, io.EOF
-	}
-
-	b.pos++
-	return b.rows[b.pos-1], b.cols[b.pos-1], nil
-}
-
 func indexName(db, table string) string {
 	h := sha1.New()
 	io.WriteString(h, db)

@@ -1041,6 +1041,88 @@ func TestNegateIndex(t *testing.T) {
 	require.Equal(expected, values)
 }
 
+func TestEqualAndLessIndex(t *testing.T) {
+	require := require.New(t)
+	setup(t)
+	defer cleanup(t)
+
+	ctx := sql.NewContext(context.Background())
+	db, table := "db_name", "table_name"
+	d := NewDriver(tmpDir)
+
+	idxEqA, err := d.Create(db, table, "idx_eq_a", makeExpressions(table, "a"), nil)
+	require.NoError(err)
+	pilosaIdxEqA, ok := idxEqA.(*pilosaIndex)
+	require.True(ok)
+	itA := &fixturePartitionKeyValueIter{
+		fixtures: []partitionKeyValueFixture{
+			{
+				testPartition(0),
+				[]kvfixture{
+					{"1", []interface{}{int64(2)}},
+					{"2", []interface{}{int64(7)}},
+					{"3", []interface{}{int64(1)}},
+					{"4", []interface{}{int64(1)}},
+					{"5", []interface{}{int64(1)}},
+					{"6", []interface{}{int64(10)}},
+					{"7", []interface{}{int64(5)}},
+					{"8", []interface{}{int64(6)}},
+					{"9", []interface{}{int64(4)}},
+					{"10", []interface{}{int64(1)}},
+				},
+			},
+		},
+	}
+	err = d.Save(ctx, pilosaIdxEqA, itA)
+	require.NoError(err)
+	eqALookup, err := pilosaIdxEqA.Get(int64(1))
+	require.NoError(err)
+
+	values, err := lookupValues(eqALookup)
+	require.NoError(err)
+	expected := []string{"3", "4", "5", "10"}
+	require.Equal(expected, values)
+
+	idxLessB, err := d.Create(db, table, "idx_less_b", makeExpressions(table, "b"), nil)
+	require.NoError(err)
+	pilosaIdxLessB, ok := idxLessB.(*pilosaIndex)
+	require.True(ok)
+	itB := &fixturePartitionKeyValueIter{
+		fixtures: []partitionKeyValueFixture{
+			{
+				testPartition(0),
+				[]kvfixture{
+					{"1", []interface{}{int64(1)}},
+					{"2", []interface{}{int64(2)}},
+					{"3", []interface{}{int64(3)}},
+					{"4", []interface{}{int64(4)}},
+					{"5", []interface{}{int64(5)}},
+					{"6", []interface{}{int64(6)}},
+					{"7", []interface{}{int64(7)}},
+					{"8", []interface{}{int64(8)}},
+					{"9", []interface{}{int64(9)}},
+					{"10", []interface{}{int64(10)}},
+				},
+			},
+		},
+	}
+	err = d.Save(ctx, pilosaIdxLessB, itB)
+	require.NoError(err)
+	lessB, err := pilosaIdxLessB.AscendLessThan(int64(5))
+	require.NoError(err)
+	lessBLookup := lessB.(*ascendLookup)
+
+	values, err = lookupValues(lessBLookup)
+	require.NoError(err)
+	expected = []string{"1", "2", "3", "4"}
+	require.Equal(expected, values)
+
+	interLookup := eqALookup.(sql.SetOperations).Intersection(lessBLookup)
+	values, err = lookupValues(interLookup)
+	require.NoError(err)
+	expected = []string{"3", "4"}
+	require.Equal(expected, values)
+}
 func TestPilosaHolder(t *testing.T) {
 	require := require.New(t)
 	setup(t)
