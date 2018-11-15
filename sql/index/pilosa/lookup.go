@@ -80,15 +80,7 @@ func (l *indexLookup) indexName() string {
 	return l.index.Name()
 }
 
-func (l *indexLookup) values(p sql.Partition) (*pilosa.Row, error) {
-	if err := l.mapping.open(); err != nil {
-		return nil, err
-	}
-	defer l.mapping.close()
-
-	if err := l.index.Open(); err != nil {
-		return nil, err
-	}
+func (l *indexLookup) intersectExpressions(p sql.Partition) (*pilosa.Row, error) {
 	var row *pilosa.Row
 	for i, expr := range l.expressions {
 		field := l.index.Field(fieldName(l.id, expr, p))
@@ -107,7 +99,25 @@ func (l *indexLookup) values(p sql.Partition) (*pilosa.Row, error) {
 
 		row = intersect(row, r)
 	}
-	if err := l.index.Close(); err != nil {
+	return row, nil
+}
+
+func (l *indexLookup) values(p sql.Partition) (*pilosa.Row, error) {
+	if err := l.mapping.open(); err != nil {
+		return nil, err
+	}
+	defer l.mapping.close()
+
+	if err := l.index.Open(); err != nil {
+		return nil, err
+	}
+	row, err := l.intersectExpressions(p)
+	if e := l.index.Close(); e != nil {
+		if err == nil {
+			err = e
+		}
+	}
+	if err != nil {
 		return nil, err
 	}
 
@@ -213,14 +223,10 @@ func (l *filteredLookup) indexName() string {
 	return l.index.Name()
 }
 
-func (l *filteredLookup) values(p sql.Partition) (*pilosa.Row, error) {
-	if err := l.mapping.open(); err != nil {
-		return nil, err
-	}
-	defer l.mapping.close()
-
-	// evaluate Intersection of bitmaps
+// evaluate Intersection of bitmaps
+func (l *filteredLookup) intersectExpressions(p sql.Partition) (*pilosa.Row, error) {
 	var row *pilosa.Row
+
 	for i, expr := range l.expressions {
 		field := l.index.Field(fieldName(l.id, expr, p))
 		rows, err := l.mapping.filter(field.Name(), func(b []byte) (bool, error) {
@@ -240,6 +246,28 @@ func (l *filteredLookup) values(p sql.Partition) (*pilosa.Row, error) {
 		}
 
 		row = intersect(row, r)
+	}
+
+	return row, nil
+}
+
+func (l *filteredLookup) values(p sql.Partition) (*pilosa.Row, error) {
+	if err := l.mapping.open(); err != nil {
+		return nil, err
+	}
+	defer l.mapping.close()
+
+	if err := l.index.Open(); err != nil {
+		return nil, err
+	}
+	row, err := l.intersectExpressions(p)
+	if e := l.index.Close(); e != nil {
+		if err == nil {
+			err = e
+		}
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	// evaluate composition of operations
@@ -269,9 +297,6 @@ func (l *filteredLookup) values(p sql.Partition) (*pilosa.Row, error) {
 }
 
 func (l *filteredLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
-	l.index.Open()
-	defer l.index.Close()
-
 	row, err := l.values(p)
 	if err != nil {
 		return nil, err
@@ -359,12 +384,7 @@ type negateLookup struct {
 
 func (l *negateLookup) indexName() string { return l.index.Name() }
 
-func (l *negateLookup) values(p sql.Partition) (*pilosa.Row, error) {
-	if err := l.mapping.open(); err != nil {
-		return nil, err
-	}
-	defer l.mapping.close()
-
+func (l *negateLookup) intersectExpressions(p sql.Partition) (*pilosa.Row, error) {
 	var row *pilosa.Row
 	for i, expr := range l.expressions {
 		field := l.index.Field(fieldName(l.id, expr, p))
@@ -401,6 +421,27 @@ func (l *negateLookup) values(p sql.Partition) (*pilosa.Row, error) {
 
 		row = intersect(row, r)
 	}
+	return row, nil
+}
+
+func (l *negateLookup) values(p sql.Partition) (*pilosa.Row, error) {
+	if err := l.mapping.open(); err != nil {
+		return nil, err
+	}
+	defer l.mapping.close()
+
+	if err := l.index.Open(); err != nil {
+		return nil, err
+	}
+	row, err := l.intersectExpressions(p)
+	if e := l.index.Close(); e != nil {
+		if err == nil {
+			err = e
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
 
 	// evaluate composition of operations
 	for _, op := range l.operations {
@@ -431,9 +472,6 @@ func (l *negateLookup) values(p sql.Partition) (*pilosa.Row, error) {
 
 // Values implements sql.IndexLookup.Values
 func (l *negateLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
-	l.index.Open()
-	defer l.index.Close()
-
 	row, err := l.values(p)
 	if err != nil {
 		return nil, err
