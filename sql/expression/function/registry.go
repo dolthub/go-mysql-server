@@ -26,6 +26,8 @@ var Defaults = sql.Functions{
 	}),
 	"is_binary":     sql.Function1(NewIsBinary),
 	"substring":     sql.FunctionN(NewSubstring),
+	"mid":           sql.FunctionN(NewSubstring),
+	"substr":        sql.FunctionN(NewSubstring),
 	"year":          sql.Function1(NewYear),
 	"month":         sql.Function1(NewMonth),
 	"day":           sql.Function1(NewDay),
