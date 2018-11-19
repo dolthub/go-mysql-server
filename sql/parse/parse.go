@@ -25,6 +25,9 @@ var (
 	// ErrUnsupportedFeature is thrown when a feature is not already supported
 	ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
 
+	// ErrUnsupportedSubqueryExpression is thrown because subqueries are not supported, yet.
+	ErrUnsupportedSubqueryExpression = errors.NewKind("unsupported subquery expression")
+
 	// ErrInvalidSQLValType is returned when a SQLVal type is not valid.
 	ErrInvalidSQLValType = errors.NewKind("invalid SQLVal of type: %d")
 
@@ -783,6 +786,8 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		return binaryExprToExpression(v)
 	case *sqlparser.UnaryExpr:
 		return unaryExprToExpression(v)
+	case *sqlparser.Subquery:
+		return nil, ErrUnsupportedSubqueryExpression.New()
 	}
 }
 
