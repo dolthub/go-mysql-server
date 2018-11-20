@@ -909,6 +909,10 @@ var fixturesErrors = map[string]*errors.Kind{
 	`LOCK TABLES foo AS READ`:                              errUnexpectedSyntax,
 	`LOCK TABLES foo LOW_PRIORITY READ`:                    errUnexpectedSyntax,
 	`SELECT * FROM mytable WHERE i IN (SELECT i FROM foo)`: ErrUnsupportedSubqueryExpression,
+	`SELECT * FROM files
+		JOIN commit_files
+		JOIN refs
+	`: ErrUnsupportedSyntax,
 }
 
 func TestParseErrors(t *testing.T) {
