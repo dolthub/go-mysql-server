@@ -493,11 +493,14 @@ func tableExprToTable(
 			return plan.NewNaturalJoin(left, right), nil
 		}
 
+		if t.Condition.On == nil {
+			return nil, ErrUnsupportedSyntax.New("missed ON clause for JOIN statement")
+		}
+
 		cond, err := exprToExpression(t.Condition.On)
 		if err != nil {
 			return nil, err
 		}
-
 		return plan.NewInnerJoin(left, right, cond), nil
 	}
 }
