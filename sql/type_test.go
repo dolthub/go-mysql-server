@@ -9,6 +9,14 @@ import (
 	"gopkg.in/src-d/go-vitess.v1/vt/proto/query"
 )
 
+func TestIsNull(t *testing.T) {
+	require.True(t, IsNull(nil))
+
+	n := numberT{sqltypes.Uint64}
+	require.Equal(t, sqltypes.NULL, n.SQL(Null))
+	require.Equal(t, sqltypes.NewUint64(0), n.SQL(uint64(0)))
+}
+
 func TestText(t *testing.T) {
 	convert(t, Text, "", "")
 	convert(t, Text, 1, "1")
