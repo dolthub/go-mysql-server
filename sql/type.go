@@ -37,6 +37,10 @@ var (
 
 	// ErrNotArray is returned when the value is not an array.
 	ErrNotArray = errors.NewKind("value of type %T is not an array")
+
+	// ErrConvertToSQL is returned when Convert failed.
+	// It makes an error less verbose comparingto what spf13/cast returns.
+	ErrConvertToSQL = errors.NewKind("incompatible conversion to SQL type: %s")
 )
 
 // Schema is the definition of a table.
@@ -300,7 +304,6 @@ func (t numberT) Convert(v interface{}) (interface{}, error) {
 	default:
 		return nil, ErrInvalidType.New(t.t)
 	}
-
 }
 
 // Compare implements Type interface.
@@ -505,7 +508,11 @@ func (t textT) SQL(v interface{}) sqltypes.Value {
 
 // Convert implements Type interface.
 func (t textT) Convert(v interface{}) (interface{}, error) {
-	return cast.ToStringE(v)
+	val, err := cast.ToStringE(v)
+	if err != nil {
+		return nil, ErrConvertToSQL.New(t)
+	}
+	return val, nil
 }
 
 // Compare implements Type interface.
@@ -534,7 +541,11 @@ func (t booleanT) SQL(v interface{}) sqltypes.Value {
 
 // Convert implements Type interface.
 func (t booleanT) Convert(v interface{}) (interface{}, error) {
-	return cast.ToBoolE(v)
+	val, err := cast.ToBoolE(v)
+	if err != nil {
+		return nil, ErrConvertToSQL.New(t)
+	}
+	return val, nil
 }
 
 // Compare implements Type interface.
