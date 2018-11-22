@@ -50,14 +50,21 @@ go get gopkg.in/src-d/go-mysql-server.v0
 
 We are continuously adding more functionality to go-mysql-server. We support a subset of what is supported in MySQL, to see what is currently included check the [SUPPORTED](./SUPPORTED.md) file.
 
-# Third-party clients
+## Third-party clients
 
 We support and actively test against certain third-party clients to ensure compatibility between them and go-mysql-server. You can check out the list of supported third party clients in the [SUPPORTED_CLIENTS](./SUPPORTED_CLIENTS.md) file along with some examples on how to connect to go-mysql-server using them.
 
 ## Custom functions
 
+- `COUNT(expr)`: Returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.
+- `MIN(expr)`: Returns the minimum value of expr.
+- `MAX(expr)`: Returns the maximum value of expr.
+- `AVG(expr)`: Returns the average value of expr.
+- `SUM(expr)`: Returns the sum of expr.
 - `IS_BINARY(blob)`: Returns whether a BLOB is a binary file or not.
-- `SUBSTRING(str, pos)`, `SUBSTRING(str, pos, len)`: Return a substring from the provided string.
+- `SUBSTRING(str, pos)`, `SUBSTRING(str, pos, len)` : Return a substring from the provided string.
+- `SUBSTR(str, pos)`, `SUBSTR(str, pos, len)` : Return a substring from the provided string.
+- `MID(str, pos)`, `MID(str, pos, len)` : Return a substring from the provided string.
 - Date and Timestamp functions: `YEAR(date)`, `MONTH(date)`, `DAY(date)`, `WEEKDAY(date)`, `HOUR(date)`, `MINUTE(date)`, `SECOND(date)`, `DAYOFWEEK(date)`, `DAYOFYEAR(date)`.
 - `ARRAY_LENGTH(json)`: If the json representation is an array, this function returns its size.
 - `SPLIT(str,sep)`: Receives a string and a separator and returns the parts of the string split by the separator as a JSON array of strings.
@@ -70,6 +77,23 @@ We support and actively test against certain third-party clients to ensure compa
 - `ROUND(number, decimals)`: Round the `number` to `decimals` decimal places.
 - `CONNECTION_ID()`: Return the current connection ID.
 - `SOUNDEX(str)`: Returns the soundex of a string.
+- `JSON_EXTRACT(json_doc, path, ...)`:  Extracts data from a json document using json paths.
+- `LN(X)`: Return the natural logarithm of X.
+- `LOG2(X)`: Returns the base-2 logarithm of X.
+- `LOG10(X)`: Returns the base-10 logarithm of X.
+- `LOG(X), LOG(B, X)`: If called with one parameter, this function returns the natural logarithm of X. If called with two parameters, this function returns the logarithm of X to the base B. If X is less than or equal to 0, or if B is less than or equal to 1, then NULL is returned.
+- `RPAD(str, len, padstr)`: Returns the string str, right-padded with the string padstr to a length of len characters.
+- `LPAD(str, len, padstr)`: Return the string argument, left-padded with the specified string.
+- `SQRT(X)`: Returns the square root of a nonnegative number X.
+- `POW(X, Y)`, `POWER(X, Y)`: Returns the value of X raised to the power of Y.
+- `TRIM(str)`: Returns the string str with all spaces removed.
+- `LTRIM(str)`: Returns the string str with leading space characters removed.
+- `RTRIM(str)`: Returns the string str with trailing space characters removed.
+- `REVERSE(str)`: Returns the string str with the order of the characters reversed.
+- `REPEAT(str, count)`: Returns a string consisting of the string str repeated count times.
+- `REPLACE(str,from_str,to_str)`: Returns the string str with all occurrences of the string from_str replaced by the string to_str.
+- `IFNULL(expr1, expr2)`: If expr1 is not NULL, IFNULL() returns expr1; otherwise it returns expr2.
+- `NULLIF(expr1, expr2)`: Returns NULL if expr1 = expr2 is true, otherwise returns expr1.
 
 ## Example
 
