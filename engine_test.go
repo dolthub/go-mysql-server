@@ -700,6 +700,72 @@ var queries = []struct {
 			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
+	{
+		`SELECT NULL`,
+		[]sql.Row{
+			{nil},
+		},
+	},
+	{
+		`SELECT nullif('abc', NULL)`,
+		[]sql.Row{
+			{"abc"},
+		},
+	},
+	{
+		`SELECT nullif(NULL, NULL)`,
+		[]sql.Row{
+			{sql.Null},
+		},
+	},
+	{
+		`SELECT nullif(NULL, 123)`,
+		[]sql.Row{
+			{nil},
+		},
+	},
+	{
+		`SELECT nullif(123, 123)`,
+		[]sql.Row{
+			{sql.Null},
+		},
+	},
+	{
+		`SELECT nullif(123, 321)`,
+		[]sql.Row{
+			{int64(123)},
+		},
+	},
+	{
+		`SELECT ifnull(123, NULL)`,
+		[]sql.Row{
+			{int64(123)},
+		},
+	},
+	{
+		`SELECT ifnull(NULL, NULL)`,
+		[]sql.Row{
+			{nil},
+		},
+	},
+	{
+		`SELECT ifnull(NULL, 123)`,
+		[]sql.Row{
+			{int64(123)},
+		},
+	},
+	{
+		`SELECT ifnull(123, 123)`,
+		[]sql.Row{
+			{int64(123)},
+		},
+	},
+	{
+		`SELECT ifnull(123, 321)`,
+		[]sql.Row{
+			{int64(123)},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {
