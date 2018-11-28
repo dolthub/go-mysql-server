@@ -57,7 +57,7 @@ func (s *Soundex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		last = code
 	}
 	if b.Len() == 0 {
-		return "", nil
+		return "0000", nil
 	}
 	for i := len([]rune(b.String())); i < 4; i++ {
 		b.WriteRune('0')
@@ -98,5 +98,5 @@ func (s *Soundex) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 
 // Type implements the Expression interface.
 func (s *Soundex) Type() sql.Type {
-	return s.Child.Type()
+	return sql.Text
 }
