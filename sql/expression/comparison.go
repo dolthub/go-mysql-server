@@ -2,6 +2,7 @@ package expression
 
 import (
 	"fmt"
+	"sync"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/internal/regex"
@@ -178,12 +179,25 @@ func (e *Equals) String() string {
 // Regexp is a comparison that checks an expression matches a regexp.
 type Regexp struct {
 	comparison
-	r regex.Matcher
+	pool   *sync.Pool
+	cached bool
 }
 
 // NewRegexp creates a new Regexp expression.
 func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
-	return &Regexp{newComparison(left, right), nil}
+	var cached = true
+	Inspect(right, func(e sql.Expression) bool {
+		if _, ok := e.(*GetField); ok {
+			cached = false
+		}
+		return true
+	})
+
+	return &Regexp{
+		comparison: newComparison(left, right),
+		pool:       nil,
+		cached:     cached,
+	}
 }
 
 // Eval implements the Expression interface.
@@ -205,33 +219,57 @@ func (re *Regexp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	left, right, err := re.evalLeftAndRight(ctx, row)
-	if err != nil {
+	left, err := re.Left().Eval(ctx, row)
+	if err != nil || left == nil {
 		return nil, err
 	}
-
-	if left == nil || right == nil {
-		return nil, nil
-	}
-
 	left, err = sql.Text.Convert(left)
 	if err != nil {
 		return nil, err
 	}
 
-	right, err = sql.Text.Convert(right)
-	if err != nil {
+	var (
+		matcher regex.Matcher
+		right   interface{}
+	)
+	// eval right and convert to text
+	if !re.cached || re.pool == nil {
+		right, err = re.Right().Eval(ctx, row)
+		if err != nil || right == nil {
+			return nil, err
+		}
+		right, err = sql.Text.Convert(right)
+		if err != nil {
+			return nil, err
+		}
+	}
+	// for non-cached regex every time create a new matcher
+	if !re.cached {
+		matcher, err = regex.New(regex.Default(), right.(string))
+	} else {
+		if re.pool == nil {
+			re.pool = &sync.Pool{
+				New: func() interface{} {
+					r, e := regex.New(regex.Default(), right.(string))
+					if e != nil {
+						err = e
+						return nil
+					}
+					return r
+				},
+			}
+		}
+		matcher = re.pool.Get().(regex.Matcher)
+	}
+	if matcher == nil {
 		return nil, err
 	}
 
-	if re.r == nil {
-		re.r, err = regex.New(regex.Default(), right.(string))
-		if err != nil {
-			return false, err
-		}
+	ok := matcher.Match(left.(string))
+	if re.pool != nil && re.cached {
+		re.pool.Put(matcher)
 	}
-
-	return re.r.Match(left.(string)), nil
+	return ok, nil
 }
 
 // TransformUp implements the Expression interface.
