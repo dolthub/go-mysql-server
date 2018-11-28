@@ -17,6 +17,7 @@ These are the clients we actively test against to check are compatible with go-m
 - Go
   - [go-mysql-driver/mysql](#go-mysql-driver-mysql)
 - Grafana
+- Tableau Desktop
 
 ## Example client usage
 
