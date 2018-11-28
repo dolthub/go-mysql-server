@@ -98,5 +98,5 @@ func (s *Soundex) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 
 // Type implements the Expression interface.
 func (s *Soundex) Type() sql.Type {
-	return s.Child.Type()
+	return sql.Text
 }
