@@ -16,8 +16,8 @@ func TestSoundex(t *testing.T) {
 		expected interface{}
 	}{
 		{"text nil", sql.Text, sql.NewRow(nil), nil},
-		{"text empty", sql.Text, sql.NewRow(""), ""},
-		{"text ignored character", sql.Text, sql.NewRow("-"), ""},
+		{"text empty", sql.Text, sql.NewRow(""), "0000"},
+		{"text ignored character", sql.Text, sql.NewRow("-"), "0000"},
 		{"text runes", sql.Text, sql.NewRow("日本語"), "日000"},
 		{"text Hello ok", sql.Text, sql.NewRow("Hello"), "H400"},
 		{"text Quadratically ok", sql.Text, sql.NewRow("Quadratically"), "Q36324"},
@@ -31,8 +31,9 @@ func TestSoundex(t *testing.T) {
 		{"text Chesley ok", sql.Text, sql.NewRow("Chesley"), "C400"},
 		{"text Tachenion ok", sql.Text, sql.NewRow("Tachenion"), "T250"},
 		{"text Wilcox ok", sql.Text, sql.NewRow("Wilcox"), "W420"},
-		{"binary ok", sql.Blob, sql.NewRow([]byte("Harvey")), "H610"},
-		{"other type", sql.Int32, sql.NewRow(int32(1)), ""},
+		{"binary ok", sql.Text, sql.NewRow([]byte("Harvey")), "H610"},
+		{"string one", sql.Text, sql.NewRow("1"), "0000"},
+		{"other type", sql.Text, sql.NewRow(int32(1)), "0000"},
 	}
 
 	for _, tt := range testCases {
