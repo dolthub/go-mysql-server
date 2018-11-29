@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"io"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -62,6 +63,12 @@ type tableIter struct {
 }
 
 func (i *tableIter) Next() (sql.Row, error) {
+	select {
+	case <-i.ctx.Done():
+		return nil, context.Canceled
+	default:
+	}
+
 	if i.partition == nil {
 		partition, err := i.partitions.Next()
 		if err != nil {

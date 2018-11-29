@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"testing"
@@ -54,6 +55,39 @@ func TestExchange(t *testing.T) {
 			require.ElementsMatch(expected, rows)
 		})
 	}
+}
+
+func TestExchangeCancelled(t *testing.T) {
+	children := NewProject(
+		[]sql.Expression{
+			expression.NewGetField(0, sql.Text, "partition", false),
+			expression.NewArithmetic(
+				expression.NewGetField(1, sql.Int64, "val", false),
+				expression.NewLiteral(int64(1), sql.Int64),
+				"+",
+			),
+		},
+		NewFilter(
+			expression.NewLessThan(
+				expression.NewGetField(1, sql.Int64, "val", false),
+				expression.NewLiteral(int64(4), sql.Int64),
+			),
+			&partitionable{nil, 3, 6},
+		),
+	)
+
+	exchange := NewExchange(3, children)
+	require := require.New(t)
+
+	c, cancel := context.WithCancel(context.Background())
+	ctx := sql.NewContext(c)
+	cancel()
+
+	iter, err := exchange.RowIter(ctx)
+	require.NoError(err)
+
+	_, err = iter.Next()
+	require.Equal(context.Canceled, err)
 }
 
 type partitionable struct {

@@ -85,3 +85,39 @@ func sortByPid(slice []Process) {
 		return slice[i].Pid < slice[j].Pid
 	})
 }
+
+func TestKillConnection(t *testing.T) {
+	pl := NewProcessList()
+
+	s1 := NewSession("", "", "", 1)
+	s2 := NewSession("", "", "", 2)
+
+	var killed = make(map[uint64]bool)
+	for i := uint64(1); i <= 3; i++ {
+		// Odds get s1, evens get s2
+		s := s1
+		if i%2 == 0 {
+			s = s2
+		}
+
+		_, err := pl.AddProcess(
+			NewContext(context.Background(), WithPid(i), WithSession(s)),
+			QueryProcess,
+			"foo",
+		)
+		require.NoError(t, err)
+
+		i := i
+		pl.procs[i].Kill = func() {
+			killed[i] = true
+		}
+	}
+
+	pl.KillConnection(1)
+	require.Len(t, pl.procs, 1)
+
+	// Odds should have been killed
+	require.True(t, killed[1])
+	require.False(t, killed[2])
+	require.True(t, killed[3])
+}

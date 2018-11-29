@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"testing"
@@ -29,6 +30,22 @@ func TestResolvedTable(t *testing.T) {
 		expected := tableTest.rows[i]
 		require.ElementsMatch(expected, row)
 	}
+}
+
+func TestResolvedTableCancelled(t *testing.T) {
+	var require = require.New(t)
+
+	table := NewResolvedTable(newTableTest("test"))
+	require.NotNil(table)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	iter, err := table.RowIter(sql.NewContext(ctx))
+	require.NoError(err)
+
+	_, err = iter.Next()
+	require.Equal(context.Canceled, err)
 }
 
 func newTableTest(source string) sql.Table {

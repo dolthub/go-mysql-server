@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"sync"
@@ -103,7 +104,7 @@ func newExchangeRowIter(
 		ctx:         ctx,
 		parallelism: parallelism,
 		rows:        make(chan sql.Row, parallelism),
-		err:         make(chan error),
+		err:         make(chan error, 1),
 		started:     false,
 		tree:        tree,
 		partitions:  iter,
@@ -149,6 +150,7 @@ func (it *exchangeRowIter) start() {
 	for {
 		select {
 		case <-it.ctx.Done():
+			it.err <- context.Canceled
 			it.closeTokens()
 			return
 		case <-it.quit:
@@ -186,6 +188,7 @@ func (it *exchangeRowIter) iterPartitions(ch chan<- sql.Partition) {
 	for {
 		select {
 		case <-it.ctx.Done():
+			it.err <- context.Canceled
 			return
 		case <-it.quit:
 			return
@@ -232,6 +235,7 @@ func (it *exchangeRowIter) iterPartition(p sql.Partition) {
 	for {
 		select {
 		case <-it.ctx.Done():
+			it.err <- context.Canceled
 			return
 		case <-it.quit:
 			return
@@ -259,14 +263,14 @@ func (it *exchangeRowIter) Next() (sql.Row, error) {
 	}
 
 	select {
+	case err := <-it.err:
+		_ = it.Close()
+		return nil, err
 	case row, ok := <-it.rows:
 		if !ok {
 			return nil, io.EOF
 		}
 		return row, nil
-	case err := <-it.err:
-		_ = it.Close()
-		return nil, err
 	}
 }
 

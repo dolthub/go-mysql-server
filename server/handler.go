@@ -177,7 +177,7 @@ func (h *Handler) handleKill(conn *mysql.Conn, query string) (bool, error) {
 
 	if s[1] == "query" {
 		logrus.Infof("kill query: id %v", id)
-		h.e.Catalog.Kill(id)
+		h.e.Catalog.KillConnection(uint32(id))
 	} else {
 		logrus.Infof("kill connection: id %v, pid: %v", conn.ConnectionID, id)
 		h.mu.Lock()
@@ -189,7 +189,7 @@ func (h *Handler) handleKill(conn *mysql.Conn, query string) (bool, error) {
 			return false, errConnectionNotFound.New(conn.ConnectionID)
 		}
 
-		h.e.Catalog.KillConnection(id)
+		h.e.Catalog.KillConnection(uint32(id))
 		h.sm.CloseConn(c)
 		c.Close()
 	}
