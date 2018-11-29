@@ -195,6 +195,8 @@ func TestHandlerKill(t *testing.T) {
 	require.Equal(conn1, handler.c[1])
 	require.Equal(conn2, handler.c[2])
 
+	assertNoConnProcesses(t, e, conn2.ConnectionID)
+
 	err = handler.ComQuery(conn2, "KILL 1", func(res *sqltypes.Result) error {
 		return nil
 	})
@@ -203,4 +205,15 @@ func TestHandlerKill(t *testing.T) {
 	require.Len(handler.sm.sessions, 0)
 	require.Len(handler.c, 1)
 	require.Equal(conn1, handler.c[1])
+	assertNoConnProcesses(t, e, conn2.ConnectionID)
+}
+
+func assertNoConnProcesses(t *testing.T, e *sqle.Engine, conn uint32) {
+	t.Helper()
+
+	for _, p := range e.Catalog.Processes() {
+		if p.Connection == conn {
+			t.Errorf("expecting no processes with connection id %d", conn)
+		}
+	}
 }

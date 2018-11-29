@@ -160,22 +160,14 @@ func (pl *ProcessList) Kill(pid uint64) {
 	pl.Done(pid)
 }
 
-// KillConnection kills all processes that have the same connection as the one
-// of the process with the given process id. If the process does not exist, it
-// will do nothing.
-func (pl *ProcessList) KillConnection(pid uint64) {
+// KillConnection kills all processes from the given connection.
+func (pl *ProcessList) KillConnection(conn uint32) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	proc, ok := pl.procs[pid]
-	if !ok {
-		return
-	}
-
-	conn := proc.Connection
 	for pid, proc := range pl.procs {
 		if proc.Connection == conn {
-			proc.Kill()
+			proc.Done()
 			delete(pl.procs, pid)
 		}
 	}
