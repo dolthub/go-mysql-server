@@ -68,4 +68,5 @@ var Defaults = sql.Functions{
 	"replace":       sql.Function3(NewReplace),
 	"ifnull":        sql.Function2(NewIfNull),
 	"nullif":        sql.Function2(NewNullIf),
+	"now":           sql.Function0(NewNow),
 }

@@ -120,3 +120,4 @@
 - MONTH
 - SECOND
 - YEAR
+- NOW
