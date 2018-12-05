@@ -353,3 +353,81 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 	require.NoError(err)
 	require.Equal(expected, result)
 }
+
+func TestReorderProjectionUnresolvedChild(t *testing.T) {
+	require := require.New(t)
+	node := plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedQualifiedColumn("rc", "commit_hash"),
+			expression.NewUnresolvedColumn("commit_author_when"),
+		},
+		plan.NewFilter(
+			expression.JoinAnd(
+				expression.NewEquals(
+					expression.NewUnresolvedQualifiedColumn("rc", "repository_id"),
+					expression.NewLiteral("foo", sql.Text),
+				),
+				expression.NewEquals(
+					expression.NewUnresolvedQualifiedColumn("rc", "ref_name"),
+					expression.NewLiteral("HEAD", sql.Text),
+				),
+				expression.NewEquals(
+					expression.NewUnresolvedQualifiedColumn("rc", "history_index"),
+					expression.NewLiteral(int64(0), sql.Int64),
+				),
+			),
+			plan.NewNaturalJoin(
+				plan.NewInnerJoin(
+					plan.NewUnresolvedTable("refs", ""),
+					plan.NewTableAlias("rc",
+						plan.NewUnresolvedTable("ref_commits", ""),
+					),
+					expression.NewAnd(
+						expression.NewEquals(
+							expression.NewUnresolvedQualifiedColumn("refs", "ref_name"),
+							expression.NewUnresolvedQualifiedColumn("rc", "ref_name"),
+						),
+						expression.NewEquals(
+							expression.NewUnresolvedQualifiedColumn("refs", "repository_id"),
+							expression.NewUnresolvedQualifiedColumn("rc", "repository_id"),
+						),
+					),
+				),
+				plan.NewTableAlias("c",
+					plan.NewUnresolvedTable("commits", ""),
+				),
+			),
+		),
+	)
+
+	commits := mem.NewTable("commits", sql.Schema{
+		{Name: "repository_id", Source: "commits", Type: sql.Text},
+		{Name: "commit_hash", Source: "commits", Type: sql.Text},
+		{Name: "commit_author_when", Source: "commits", Type: sql.Text},
+	})
+
+	refs := mem.NewTable("refs", sql.Schema{
+		{Name: "repository_id", Source: "refs", Type: sql.Text},
+		{Name: "ref_name", Source: "refs", Type: sql.Text},
+	})
+
+	refCommits := mem.NewTable("ref_commits", sql.Schema{
+		{Name: "repository_id", Source: "ref_commits", Type: sql.Text},
+		{Name: "ref_name", Source: "ref_commits", Type: sql.Text},
+		{Name: "commit_hash", Source: "ref_commits", Type: sql.Text},
+		{Name: "history_index", Source: "ref_commits", Type: sql.Int64},
+	})
+
+	db := mem.NewDatabase("")
+	db.AddTable("refs", refs)
+	db.AddTable("ref_commits", refCommits)
+	db.AddTable("commits", commits)
+
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
+	a := withoutProcessTracking(NewDefault(catalog))
+
+	result, err := a.Analyze(sql.NewEmptyContext(), node)
+	require.NoError(err)
+	require.True(result.Resolved())
+}

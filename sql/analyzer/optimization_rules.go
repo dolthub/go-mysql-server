@@ -67,7 +67,16 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 	// Then we transform the projection
 	return n.TransformUp(func(node sql.Node) (sql.Node, error) {
 		project, ok := node.(*plan.Project)
-		if !ok {
+		// When we transform the projection, the children will always be
+		// unresolved in the case we want to fix, as the reorder happens just
+		// so some columns can be resolved.
+		// For that, we need to account for NaturalJoin, whose schema can't be
+		// obtained until it's resolved and ignore the projection for the
+		// moment until the resolve_natural_joins has finished resolving the
+		// node and we can tackle it in the next iteration.
+		// Without this check, it would cause a panic, because NaturalJoin's
+		// schema method is just a placeholder that should not be called.
+		if !ok || hasNaturalJoin(project.Child) {
 			return node, nil
 		}
 
@@ -419,4 +428,18 @@ func isTrue(e sql.Expression) bool {
 	return ok &&
 		lit.Type() == sql.Boolean &&
 		lit.Value().(bool)
+}
+
+// hasNaturalJoin checks whether there is a natural join at some point in the
+// given node and its children.
+func hasNaturalJoin(node sql.Node) bool {
+	var found bool
+	plan.Inspect(node, func(node sql.Node) bool {
+		if _, ok := node.(*plan.NaturalJoin); ok {
+			found = true
+			return false
+		}
+		return true
+	})
+	return found
 }
