@@ -327,3 +327,41 @@ var (
 	dayOfWeek = datePartFunc(func(t time.Time) int { return int(t.Weekday()) + 1 })
 	dayOfYear = datePartFunc((time.Time).YearDay)
 )
+
+type clock func() time.Time
+
+var defaultClock = time.Now
+
+// Now is a function that returns the current time.
+type Now struct {
+	clock
+}
+
+// NewNow returns a new Now node.
+func NewNow() sql.Expression {
+	return &Now{defaultClock}
+}
+
+// Type implements the sql.Expression interface.
+func (*Now) Type() sql.Type { return sql.Timestamp }
+
+func (*Now) String() string { return "NOW()" }
+
+// IsNullable implements the sql.Expression interface.
+func (*Now) IsNullable() bool { return false }
+
+// Resolved implements the sql.Expression interface.
+func (*Now) Resolved() bool { return true }
+
+// Children implements the sql.Expression interface.
+func (*Now) Children() []sql.Expression { return nil }
+
+// Eval implements the sql.Expression interface.
+func (n *Now) Eval(*sql.Context, sql.Row) (interface{}, error) {
+	return n.clock(), nil
+}
+
+// TransformUp implements the sql.Expression interface.
+func (n *Now) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
+	return f(n)
+}
