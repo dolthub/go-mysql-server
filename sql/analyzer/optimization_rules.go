@@ -116,6 +116,10 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 				return node, nil
 			}
 
+			if len(requiredColumns) == 0 {
+				return node, nil
+			}
+
 			didNeedReorder = true
 
 			// Only add the required columns for that node in the projection.
