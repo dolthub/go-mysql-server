@@ -981,14 +981,14 @@ func TestDescribe(t *testing.T) {
 
 	query := `DESCRIBE FORMAT=TREE SELECT * FROM mytable`
 	expectedSeq := []sql.Row{
-		sql.NewRow("Table(mytable): Projected "),
+		sql.NewRow("Table(mytable)"),
 		sql.NewRow(" ├─ Column(i, INT64, nullable=false)"),
 		sql.NewRow(" └─ Column(s, TEXT, nullable=false)"),
 	}
 
 	expectedParallel := []sql.Row{
 		{"Exchange(parallelism=2)"},
-		{" └─ Table(mytable): Projected "},
+		{" └─ Table(mytable)"},
 		{"     ├─ Column(i, INT64, nullable=false)"},
 		{"     └─ Column(s, TEXT, nullable=false)"},
 	}
