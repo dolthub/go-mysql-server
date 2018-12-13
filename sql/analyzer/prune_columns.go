@@ -29,12 +29,7 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 	findUsedColumns(columns, n)
 
-	n, err := addSubqueryBarriers(n)
-	if err != nil {
-		return nil, err
-	}
-
-	n, err = pruneUnusedColumns(n, columns)
+	n, err := pruneUnusedColumns(n, columns)
 	if err != nil {
 		return nil, err
 	}
@@ -81,12 +76,7 @@ func pruneSubqueryColumns(
 
 	findUsedColumns(columns, n.Child)
 
-	node, err := addSubqueryBarriers(n.Child)
-	if err != nil {
-		return nil, err
-	}
-
-	node, err = pruneUnusedColumns(node, columns)
+	node, err := pruneUnusedColumns(n.Child, columns)
 	if err != nil {
 		return nil, err
 	}
@@ -126,17 +116,6 @@ func findUsedColumns(columns usedColumns, n sql.Node) {
 	})
 }
 
-func addSubqueryBarriers(n sql.Node) (sql.Node, error) {
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
-		sq, ok := n.(*plan.SubqueryAlias)
-		if !ok {
-			return n, nil
-		}
-
-		return &subqueryBarrier{sq}, nil
-	})
-}
-
 func pruneSubqueries(
 	ctx *sql.Context,
 	a *Analyzer,
@@ -144,12 +123,12 @@ func pruneSubqueries(
 	parentColumns usedColumns,
 ) (sql.Node, error) {
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
-		barrier, ok := n.(*subqueryBarrier)
+		subq, ok := n.(*plan.SubqueryAlias)
 		if !ok {
 			return n, nil
 		}
 
-		return pruneSubqueryColumns(ctx, a, barrier.SubqueryAlias, parentColumns)
+		return pruneSubqueryColumns(ctx, a, subq, parentColumns)
 	})
 }
 
@@ -173,39 +152,53 @@ type tableColumnPair struct {
 
 func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
-		exp, ok := n.(sql.Expressioner)
-		if !ok {
-			return n, nil
-		}
-
-		var schema sql.Schema
-		for _, c := range n.Children() {
-			schema = append(schema, c.Schema()...)
-		}
-
-		if len(schema) == 0 {
-			return n, nil
-		}
-
-		indexes := make(map[tableColumnPair]int)
-		for i, col := range schema {
-			indexes[tableColumnPair{col.Source, col.Name}] = i
-		}
-
-		return exp.TransformExpressions(func(e sql.Expression) (sql.Expression, error) {
-			gf, ok := e.(*expression.GetField)
-			if !ok {
-				return e, nil
+		switch n := n.(type) {
+		case *plan.SubqueryAlias:
+			child, err := fixRemainingFieldsIndexes(n.Child)
+			if err != nil {
+				return nil, err
 			}
 
-			idx, ok := indexes[tableColumnPair{gf.Table(), gf.Name()}]
+			return plan.NewSubqueryAlias(n.Name(), child), nil
+		default:
+			exp, ok := n.(sql.Expressioner)
 			if !ok {
-				return nil, fmt.Errorf("unable to find column %q of table %q", gf.Name(), gf.Table())
+				return n, nil
 			}
 
-			ngf := *gf
-			return ngf.WithIndex(idx), nil
-		})
+			var schema sql.Schema
+			for _, c := range n.Children() {
+				schema = append(schema, c.Schema()...)
+			}
+
+			if len(schema) == 0 {
+				return n, nil
+			}
+
+			indexes := make(map[tableColumnPair]int)
+			for i, col := range schema {
+				indexes[tableColumnPair{col.Source, col.Name}] = i
+			}
+
+			return exp.TransformExpressions(func(e sql.Expression) (sql.Expression, error) {
+				gf, ok := e.(*expression.GetField)
+				if !ok {
+					return e, nil
+				}
+
+				idx, ok := indexes[tableColumnPair{gf.Table(), gf.Name()}]
+				if !ok {
+					return nil, fmt.Errorf("unable to find column %q of table %q", gf.Name(), gf.Table())
+				}
+
+				if idx == gf.Index() {
+					return gf, nil
+				}
+
+				ngf := *gf
+				return ngf.WithIndex(idx), nil
+			})
+		}
 	})
 }
 
@@ -289,12 +282,4 @@ func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
 	}
 
 	return true
-}
-
-type subqueryBarrier struct {
-	*plan.SubqueryAlias
-}
-
-func (b *subqueryBarrier) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(b)
 }

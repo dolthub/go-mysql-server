@@ -263,7 +263,7 @@ func TestPruneColumns(t *testing.T) {
 							),
 							expression.NewEquals(
 								gf(0, "t1", "foo"),
-								gf(3, "t2", "foo"),
+								gf(1, "t2", "foo"),
 							),
 						),
 					),
