@@ -206,6 +206,70 @@ func TestPruneColumns(t *testing.T) {
 				),
 			),
 		},
+
+		{
+			"used inside subquery and not outside",
+			plan.NewProject(
+				[]sql.Expression{
+					gf(0, "sq", "foo"),
+				},
+				plan.NewSubqueryAlias("sq",
+					plan.NewProject(
+						[]sql.Expression{gf(0, "t1", "foo")},
+						plan.NewInnerJoin(
+							plan.NewProject(
+								[]sql.Expression{
+									gf(0, "t1", "foo"),
+									gf(1, "t1", "bar"),
+									gf(2, "t1", "bax"),
+								},
+								t1,
+							),
+							plan.NewProject(
+								[]sql.Expression{
+									gf(0, "t2", "foo"),
+									gf(1, "t2", "baz"),
+									gf(2, "t2", "bux"),
+								},
+								t2,
+							),
+							expression.NewEquals(
+								gf(0, "t1", "foo"),
+								gf(3, "t2", "foo"),
+							),
+						),
+					),
+				),
+			),
+			plan.NewProject(
+				[]sql.Expression{
+					gf(0, "sq", "foo"),
+				},
+				plan.NewSubqueryAlias("sq",
+					plan.NewProject(
+						[]sql.Expression{gf(0, "t1", "foo")},
+						plan.NewInnerJoin(
+							plan.NewProject(
+								[]sql.Expression{
+									gf(0, "t1", "foo"),
+								},
+								t1,
+							),
+							plan.NewProject(
+								[]sql.Expression{
+									gf(0, "t2", "foo"),
+								},
+								t2,
+							),
+							expression.NewEquals(
+								gf(0, "t1", "foo"),
+								gf(3, "t2", "foo"),
+							),
+						),
+					),
+				),
+			),
+		},
 	}
 
 	for _, tt := range testCases {

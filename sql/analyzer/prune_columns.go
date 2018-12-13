@@ -79,7 +79,7 @@ func pruneSubqueryColumns(
 		columns[table][col] = struct{}{}
 	}
 
-	findUsedColumns(columns, n)
+	findUsedColumns(columns, n.Child)
 
 	node, err := addSubqueryBarriers(n.Child)
 	if err != nil {
