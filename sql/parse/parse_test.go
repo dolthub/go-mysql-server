@@ -888,6 +888,63 @@ var fixtures = map[string]sql.Node{
 	"SHOW CREATE SCHEMA `foo`":                 plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
 	"SHOW CREATE DATABASE IF NOT EXISTS `foo`": plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
 	"SHOW CREATE SCHEMA IF NOT EXISTS `foo`":   plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
+	"SELECT CASE foo WHEN 1 THEN 'foo' WHEN 2 THEN 'bar' ELSE 'baz' END": plan.NewProject(
+		[]sql.Expression{expression.NewCase(
+			expression.NewUnresolvedColumn("foo"),
+			[]expression.CaseBranch{
+				{
+					Cond:  expression.NewLiteral(int64(1), sql.Int64),
+					Value: expression.NewLiteral("foo", sql.Text),
+				},
+				{
+					Cond:  expression.NewLiteral(int64(2), sql.Int64),
+					Value: expression.NewLiteral("bar", sql.Text),
+				},
+			},
+			expression.NewLiteral("baz", sql.Text),
+		)},
+		plan.NewUnresolvedTable("dual", ""),
+	),
+	"SELECT CASE foo WHEN 1 THEN 'foo' WHEN 2 THEN 'bar' END": plan.NewProject(
+		[]sql.Expression{expression.NewCase(
+			expression.NewUnresolvedColumn("foo"),
+			[]expression.CaseBranch{
+				{
+					Cond:  expression.NewLiteral(int64(1), sql.Int64),
+					Value: expression.NewLiteral("foo", sql.Text),
+				},
+				{
+					Cond:  expression.NewLiteral(int64(2), sql.Int64),
+					Value: expression.NewLiteral("bar", sql.Text),
+				},
+			},
+			nil,
+		)},
+		plan.NewUnresolvedTable("dual", ""),
+	),
+	"SELECT CASE WHEN foo = 1 THEN 'foo' WHEN foo = 2 THEN 'bar' ELSE 'baz' END": plan.NewProject(
+		[]sql.Expression{expression.NewCase(
+			nil,
+			[]expression.CaseBranch{
+				{
+					Cond: expression.NewEquals(
+						expression.NewUnresolvedColumn("foo"),
+						expression.NewLiteral(int64(1), sql.Int64),
+					),
+					Value: expression.NewLiteral("foo", sql.Text),
+				},
+				{
+					Cond: expression.NewEquals(
+						expression.NewUnresolvedColumn("foo"),
+						expression.NewLiteral(int64(2), sql.Int64),
+					),
+					Value: expression.NewLiteral("bar", sql.Text),
+				},
+			},
+			expression.NewLiteral("baz", sql.Text),
+		)},
+		plan.NewUnresolvedTable("dual", ""),
+	),
 }
 
 func TestParse(t *testing.T) {
