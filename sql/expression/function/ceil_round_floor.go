@@ -172,7 +172,7 @@ func (r *Round) Children() []sql.Expression {
 		return []sql.Expression{r.Left}
 	}
 
-	return r.Children()
+	return r.BinaryExpression.Children()
 }
 
 // Eval implements the Expression interface.
