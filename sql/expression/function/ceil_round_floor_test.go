@@ -36,6 +36,9 @@ func TestCeil(t *testing.T) {
 
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
+			exprs := f.Children()
+			require.True(len(exprs) > 0 && len(exprs) < 3)
+			require.NotNil(exprs[0])
 
 			result, err := f.Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err != nil {
@@ -88,6 +91,9 @@ func TestFloor(t *testing.T) {
 
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
+			exprs := f.Children()
+			require.True(len(exprs) > 0 && len(exprs) < 3)
+			require.NotNil(exprs[0])
 
 			result, err := f.Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err != nil {
@@ -206,8 +212,11 @@ func TestRound(t *testing.T) {
 
 	f, err := NewRound(args...)
 	req := require.New(t)
-
 	req.Nil(err)
+
+	exprs := f.Children()
+	req.True(len(exprs) > 0 && len(exprs) < 3)
+	req.NotNil(exprs[0])
 
 	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow([]byte{1, 2, 3}, 2))
 
