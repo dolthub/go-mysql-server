@@ -766,6 +766,18 @@ var queries = []struct {
 			{int64(123)},
 		},
 	},
+	{
+		`SELECT round(15728640/1024/1024)`,
+		[]sql.Row{
+			{int64(15)},
+		},
+	},
+	{
+		`SELECT round(15, 1)`,
+		[]sql.Row{
+			{int64(15)},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {
