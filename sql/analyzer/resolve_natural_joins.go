@@ -19,7 +19,7 @@ type transformedSource struct {
 }
 
 func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("resolve_natural_joins")
+	span, _ := ctx.Span("resolve_natural_joins")
 	defer span.Finish()
 
 	if n.Resolved() {

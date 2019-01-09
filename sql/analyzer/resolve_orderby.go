@@ -10,7 +10,7 @@ import (
 )
 
 func resolveOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("resolve_orderby")
+	span, _ := ctx.Span("resolve_orderby")
 	defer span.Finish()
 
 	a.Log("resolving order bys, node of type: %T", n)

@@ -95,7 +95,7 @@ func TestLoadAll(t *testing.T) {
 	}
 	require.NoError(d.Save(sql.NewEmptyContext(), idx3, it3))
 
-	indexes, err = d.LoadAll("db", "table2")
+	_, err = d.LoadAll("db", "table2")
 	require.NoError(err)
 }
 
@@ -155,13 +155,8 @@ func TestLoadAllWithMultipleDrivers(t *testing.T) {
 	}
 	require.NoError(d3.Save(sql.NewEmptyContext(), idx3, it3))
 
-	indexes, err = d.LoadAll("db", "table2")
+	_, err = d.LoadAll("db", "table2")
 	require.NoError(err)
-}
-
-type logLoc struct {
-	loc []byte
-	err error
 }
 
 func TestSaveAndLoad(t *testing.T) {
@@ -571,7 +566,7 @@ func TestIntersection(t *testing.T) {
 	require.True(ok)
 	interIt, err := interLookup.Intersection(lookupPath).Values(testPartition(0))
 	require.NoError(err)
-	loc, err := interIt.Next()
+	_, err = interIt.Next()
 
 	require.True(err == io.EOF)
 	require.NoError(interIt.Close())
@@ -585,7 +580,7 @@ func TestIntersection(t *testing.T) {
 	require.True(ok)
 	interIt, err = interLookup.Intersection(lookupLang).Values(testPartition(0))
 	require.NoError(err)
-	loc, err = interIt.Next()
+	loc, err := interIt.Next()
 	require.NoError(err)
 	require.Equal(loc, itPath.records[0][0].location)
 	_, err = interIt.Next()
@@ -647,7 +642,7 @@ func TestIntersectionWithMultipleDrivers(t *testing.T) {
 	require.True(ok)
 	interIt, err := interLookup.Intersection(lookupPath).Values(testPartition(0))
 	require.NoError(err)
-	loc, err := interIt.Next()
+	_, err = interIt.Next()
 
 	require.True(err == io.EOF)
 	require.NoError(interIt.Close())
@@ -661,7 +656,7 @@ func TestIntersectionWithMultipleDrivers(t *testing.T) {
 	require.True(ok)
 	interIt, err = interLookup.Intersection(lookupLang).Values(testPartition(0))
 	require.NoError(err)
-	loc, err = interIt.Next()
+	loc, err := interIt.Next()
 	require.NoError(err)
 	require.Equal(loc, itPath.records[0][0].location)
 	_, err = interIt.Next()
@@ -741,6 +736,7 @@ func TestUnion(t *testing.T) {
 	require.True(m.IsMergeable(lookupPath))
 
 	unionLookup, ok := lookupLang.(sql.SetOperations)
+	require.True(ok)
 
 	lookupNonExisting, err := sqlIdxPath.Get(itPath.total)
 	require.NoError(err)
@@ -752,10 +748,12 @@ func TestUnion(t *testing.T) {
 	require.NoError(err)
 	// 0
 	loc, err = unionIt.Next()
+	require.NoError(err)
 	require.Equal(itLang.records[0][0].location, loc)
 
 	// total-1
 	loc, err = unionIt.Next()
+	require.NoError(err)
 	require.Equal(itPath.records[0][itPath.total-1].location, loc)
 
 	_, err = unionIt.Next()
@@ -1212,7 +1210,7 @@ func TestPilosaHolder(t *testing.T) {
 
 	f1 = idx2.Field("f1")
 
-	r2, err = f1.Row(2)
+	_, err = f1.Row(2)
 	require.NoError(err)
 
 	f2 = idx2.Field("f2")
@@ -1265,6 +1263,11 @@ func offsetLocation(partition sql.Partition, offset int) string {
 	return string(partition.Key()) + "-" + fmt.Sprint(offset)
 }
 
+type testRecord struct {
+	values   []interface{}
+	location []byte
+}
+
 // test implementation of sql.IndexKeyValueIter interface
 type testIndexKeyValueIter struct {
 	offset      int
@@ -1273,10 +1276,7 @@ type testIndexKeyValueIter struct {
 	location    func(sql.Partition, int) string
 	partition   sql.Partition
 
-	records *[]struct {
-		values   []interface{}
-		location []byte
-	}
+	records *[]testRecord
 }
 
 func (it *testIndexKeyValueIter) Next() ([]interface{}, []byte, error) {
@@ -1291,10 +1291,7 @@ func (it *testIndexKeyValueIter) Next() ([]interface{}, []byte, error) {
 		values[i] = e + "-" + loc + "-" + string(it.partition.Key())
 	}
 
-	*it.records = append(*it.records, struct {
-		values   []interface{}
-		location []byte
-	}{
+	*it.records = append(*it.records, testRecord{
 		values,
 		[]byte(loc),
 	})
@@ -1430,10 +1427,7 @@ type partitionKeyValueIter struct {
 	location    func(sql.Partition, int) string
 
 	pos     int
-	records [][]struct {
-		values   []interface{}
-		location []byte
-	}
+	records [][]testRecord
 }
 
 func (i *partitionKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, error) {
@@ -1442,10 +1436,7 @@ func (i *partitionKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, er
 	}
 
 	i.pos++
-	i.records = append(i.records, []struct {
-		values   []interface{}
-		location []byte
-	}{})
+	i.records = append(i.records, []testRecord{})
 	return testPartition(i.pos - 1), &testIndexKeyValueIter{
 		offset:      i.offset,
 		total:       i.total,

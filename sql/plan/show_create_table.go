@@ -55,16 +55,9 @@ func (n *ShowCreateTable) String() string {
 	return fmt.Sprintf("SHOW CREATE TABLE %s", n.Table)
 }
 
-type createTableStmt struct {
-	colName string
-	colType sql.Type
-}
-
 type showCreateTablesIter struct {
 	db    sql.Database
 	table string
-
-	createStmt   *createTableStmt
 	didIteration bool
 }
 
@@ -91,7 +84,7 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 
 func produceCreateStatement(table sql.Table) string {
 	schema := table.Schema()
-	colCreateStatements := make([]string, len(schema), len(schema))
+	colCreateStatements := make([]string, len(schema))
 
 	// Statement creation parts for each column
 	for indx, col := range schema {
@@ -115,7 +108,7 @@ func produceCreateStatement(table sql.Table) string {
 		colCreateStatements[indx] = createStmtPart
 	}
 
-	prettyColCreateStmts := fmt.Sprintf("%s", strings.Join(colCreateStatements, ",\n"))
+	prettyColCreateStmts := strings.Join(colCreateStatements, ",\n")
 	composedCreateTableStatement :=
 		fmt.Sprintf("CREATE TABLE `%s` (%s) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", table.Name(), prettyColCreateStmts)
 

@@ -196,7 +196,7 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewTableAlias("a", plan.NewResolvedTable(table)),
 	)
 
-	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
+	_, err = f.Apply(sql.NewEmptyContext(), nil, node)
 	require.Error(err)
 	require.True(sql.ErrTableNotFound.Is(err))
 

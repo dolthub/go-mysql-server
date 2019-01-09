@@ -707,11 +707,6 @@ func containsColumns(e sql.Expression) bool {
 	return result
 }
 
-func isColumn(e sql.Expression) bool {
-	_, ok := e.(*expression.GetField)
-	return ok
-}
-
 func isEvaluable(e sql.Expression) bool {
 	return !containsColumns(e)
 }

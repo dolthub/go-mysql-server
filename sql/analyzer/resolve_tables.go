@@ -17,7 +17,7 @@ var dualTable = func() sql.Table {
 }()
 
 func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("resolve_tables")
+	span, _ := ctx.Span("resolve_tables")
 	defer span.Finish()
 
 	a.Log("resolve table, node of type: %T", n)

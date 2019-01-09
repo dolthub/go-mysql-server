@@ -203,8 +203,7 @@ func TestTable(t *testing.T) {
 				rows, err := sql.RowIterToRows(iter)
 				require.NoError(err)
 
-				key := string(p.Key())
-				expected := table.partitions[key]
+				expected := table.partitions[string(p.Key())]
 				require.Len(rows, len(expected))
 
 				for i, row := range rows {

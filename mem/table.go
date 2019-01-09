@@ -89,8 +89,7 @@ func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 
 // PartitionRows implements the sql.PartitionRows interface.
 func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	key := string(partition.Key())
-	rows, ok := t.partitions[key]
+	rows, ok := t.partitions[string(partition.Key())]
 	if !ok {
 		return nil, fmt.Errorf(
 			"partition not found: %q", partition.Key(),

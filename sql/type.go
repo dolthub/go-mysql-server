@@ -579,11 +579,11 @@ func (t booleanT) Compare(a interface{}, b interface{}) (int, error) {
 		return 0, nil
 	}
 
-	if a.(bool) == false {
+	if a == false {
 		return -1, nil
 	}
 
-	return +1, nil
+	return 1, nil
 }
 
 type blobT struct{}

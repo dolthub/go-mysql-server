@@ -596,7 +596,7 @@ func compare(a, b interface{}) (int, error) {
 			return 0, nil
 		}
 
-		if a == false {
+		if !a {
 			return -1, nil
 		}
 

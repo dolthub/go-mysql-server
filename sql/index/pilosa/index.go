@@ -104,11 +104,6 @@ func (idx *pilosaIndex) Has(p sql.Partition, key ...interface{}) (bool, error) {
 	}
 	defer idx.mapping.close()
 
-	n := len(key)
-	if n > len(idx.expressions) {
-		n = len(idx.expressions)
-	}
-
 	for i, expr := range idx.expressions {
 		name := fieldName(idx.ID(), expr, p)
 

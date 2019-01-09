@@ -7,7 +7,7 @@ import (
 )
 
 func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("resolve_star")
+	span, _ := ctx.Span("resolve_star")
 	defer span.Finish()
 
 	a.Log("resolving star, node of type: %T", n)

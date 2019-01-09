@@ -6,7 +6,7 @@ import (
 )
 
 func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("resolve_functions")
+	span, _ := ctx.Span("resolve_functions")
 	defer span.Finish()
 
 	a.Log("resolve functions, node of type %T", n)

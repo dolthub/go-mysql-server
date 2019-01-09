@@ -6,7 +6,7 @@ import (
 )
 
 func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("resolve_database")
+	span, _ := ctx.Span("resolve_database")
 	defer span.Finish()
 
 	a.Log("resolve database, node of type: %T", n)

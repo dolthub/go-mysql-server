@@ -45,10 +45,8 @@ const (
 )
 
 var (
-	errCorruptedIndex    = errors.NewKind("the index db: %s, table: %s, id: %s is corrupted")
-	errLoadingIndex      = errors.NewKind("cannot load pilosa index: %s")
-	errInvalidIndexType  = errors.NewKind("expecting a pilosa index, instead got %T")
-	errDeletePilosaField = errors.NewKind("error deleting pilosa field %s: %s")
+	errCorruptedIndex   = errors.NewKind("the index db: %s, table: %s, id: %s is corrupted")
+	errInvalidIndexType = errors.NewKind("expecting a pilosa index, instead got %T")
 )
 
 type (

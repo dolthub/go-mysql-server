@@ -72,18 +72,17 @@ type limitIter struct {
 }
 
 func (li *limitIter) Next() (sql.Row, error) {
-	for {
-		if li.currentPos >= li.l.size {
-			return nil, io.EOF
-		}
-		childRow, err := li.childIter.Next()
-		li.currentPos++
-		if err != nil {
-			return nil, err
-		}
-
-		return childRow, nil
+	if li.currentPos >= li.l.size {
+		return nil, io.EOF
 	}
+
+	childRow, err := li.childIter.Next()
+	li.currentPos++
+	if err != nil {
+		return nil, err
+	}
+
+	return childRow, nil
 }
 
 func (li *limitIter) Close() error {

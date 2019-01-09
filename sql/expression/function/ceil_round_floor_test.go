@@ -219,6 +219,6 @@ func TestRound(t *testing.T) {
 	req.NotNil(exprs[0])
 
 	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow([]byte{1, 2, 3}, 2))
-
+	req.NoError(err)
 	req.Equal(int32(0), result)
 }
