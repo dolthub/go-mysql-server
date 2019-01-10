@@ -81,7 +81,7 @@ func getIndexableTable(t sql.Table) (sql.IndexableTable, error) {
 	case sql.TableWrapper:
 		return getIndexableTable(t.Underlying())
 	default:
-		return nil, ErrInsertIntoNotSupported.New()
+		return nil, ErrNotIndexable.New()
 	}
 }
 
@@ -116,6 +116,13 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	for _, e := range exprs {
 		if e.Type() == sql.Blob || e.Type() == sql.JSON {
 			return nil, ErrExprTypeNotIndexable.New(e, e.Type())
+		}
+	}
+
+	if ch, ok := table.Table.(sql.Checksumable); ok {
+		c.Config[sql.ChecksumKey], err = ch.Checksum()
+		if err != nil {
+			return nil, err
 		}
 	}
 

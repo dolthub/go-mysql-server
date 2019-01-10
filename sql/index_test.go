@@ -299,6 +299,40 @@ func TestLoadIndexes(t *testing.T) {
 	}
 }
 
+func TestLoadOutdatedIndexes(t *testing.T) {
+	require := require.New(t)
+
+	d := &loadDriver{id: "d1", indexes: []Index{
+		&checksumIndex{&dummyIdx{id: "idx1", database: "db1", table: "t1"}, "2"},
+		&checksumIndex{&dummyIdx{id: "idx2", database: "db1", table: "t2"}, "2"},
+	}}
+
+	registry := NewIndexRegistry()
+	registry.RegisterIndexDriver(d)
+
+	dbs := Databases{
+		dummyDB{
+			name: "db1",
+			tables: map[string]Table{
+				"t1": &checksumTable{&dummyTable{name: "t1"}, "2"},
+				"t2": &checksumTable{&dummyTable{name: "t2"}, "1"},
+			},
+		},
+	}
+
+	require.NoError(registry.LoadIndexes(dbs))
+
+	var result []Index
+	for _, idx := range registry.indexes {
+		result = append(result, idx)
+	}
+
+	require.ElementsMatch(d.indexes, result)
+
+	require.Equal(registry.statuses[indexKey{"db1", "idx1"}], IndexReady)
+	require.Equal(registry.statuses[indexKey{"db1", "idx2"}], IndexOutdated)
+}
+
 type dummyDB struct {
 	name   string
 	tables map[string]Table
@@ -376,4 +410,22 @@ func (dummyExpr) Resolved() bool   { return false }
 func (dummyExpr) Type() Type       { panic("not implemented") }
 func (e dummyExpr) WithIndex(idx int) Expression {
 	return &dummyExpr{idx, e.colName}
+}
+
+type checksumTable struct {
+	Table
+	checksum string
+}
+
+func (t *checksumTable) Checksum() (string, error) {
+	return t.checksum, nil
+}
+
+type checksumIndex struct {
+	Index
+	checksum string
+}
+
+func (idx *checksumIndex) Checksum() (string, error) {
+	return idx.checksum, nil
 }
