@@ -67,9 +67,18 @@ type pilosaIndex struct {
 	table       string
 	id          string
 	expressions []string
+	checksum    string
 }
 
 func newPilosaIndex(idx *pilosa.Index, mapping *mapping, cfg *index.Config) *pilosaIndex {
+	var checksum string
+	for _, c := range cfg.Drivers {
+		if ch, ok := c[sql.ChecksumKey]; ok {
+			checksum = ch
+		}
+		break
+	}
+
 	return &pilosaIndex{
 		index:       newConcurrentPilosaIndex(idx),
 		db:          cfg.DB,
@@ -77,7 +86,12 @@ func newPilosaIndex(idx *pilosa.Index, mapping *mapping, cfg *index.Config) *pil
 		id:          cfg.ID,
 		expressions: cfg.Expressions,
 		mapping:     mapping,
+		checksum:    checksum,
 	}
+}
+
+func (idx *pilosaIndex) Checksum() (string, error) {
+	return idx.checksum, nil
 }
 
 // Get returns an IndexLookup for the given key in the index.

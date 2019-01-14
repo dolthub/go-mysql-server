@@ -171,6 +171,44 @@ func TestCreateIndexSync(t *testing.T) {
 	require.True(found)
 }
 
+func TestCreateIndexChecksum(t *testing.T) {
+	require := require.New(t)
+
+	table := &checksumTable{
+		mem.NewTable("foo", sql.Schema{
+			{Name: "a", Source: "foo"},
+			{Name: "b", Source: "foo"},
+			{Name: "c", Source: "foo"},
+		}),
+		"1",
+	}
+
+	driver := new(mockDriver)
+	catalog := sql.NewCatalog()
+	catalog.RegisterIndexDriver(driver)
+	db := mem.NewDatabase("foo")
+	db.AddTable("foo", table)
+	catalog.AddDatabase(db)
+
+	exprs := []sql.Expression{
+		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
+	}
+
+	ci := NewCreateIndex(
+		"idx", NewResolvedTable(table), exprs, "mock",
+		map[string]string{"async": "false"},
+	)
+	ci.Catalog = catalog
+	ci.CurrentDatabase = "foo"
+
+	_, err := ci.RowIter(sql.NewEmptyContext())
+	require.NoError(err)
+
+	require.Equal([]string{"idx"}, driver.saved)
+	require.Equal("1", driver.config["idx"][sql.ChecksumKey])
+}
+
 func TestCreateIndexWithIter(t *testing.T) {
 	require := require.New(t)
 	foo := mem.NewPartitionedTable("foo", sql.Schema{
@@ -283,6 +321,7 @@ func (i *mockIndex) Has(sql.Partition, ...interface{}) (bool, error) {
 func (*mockIndex) Driver() string { return "mock" }
 
 type mockDriver struct {
+	config  map[string]map[string]string
 	deleted []string
 	saved   []string
 }
@@ -290,7 +329,12 @@ type mockDriver struct {
 var _ sql.IndexDriver = (*mockDriver)(nil)
 
 func (*mockDriver) ID() string { return "mock" }
-func (*mockDriver) Create(db, table, id string, exprs []sql.Expression, config map[string]string) (sql.Index, error) {
+func (d *mockDriver) Create(db, table, id string, exprs []sql.Expression, config map[string]string) (sql.Index, error) {
+	if d.config == nil {
+		d.config = make(map[string]map[string]string)
+	}
+	d.config[id] = config
+
 	return &mockIndex{db, table, id, exprs}, nil
 }
 func (*mockDriver) LoadAll(db, table string) ([]sql.Index, error) {
@@ -305,3 +349,14 @@ func (d *mockDriver) Delete(index sql.Index, _ sql.PartitionIter) error {
 	d.deleted = append(d.deleted, index.ID())
 	return nil
 }
+
+type checksumTable struct {
+	sql.Table
+	checksum string
+}
+
+func (t *checksumTable) Checksum() (string, error) {
+	return t.checksum, nil
+}
+
+func (t *checksumTable) Underlying() sql.Table { return t.Table }

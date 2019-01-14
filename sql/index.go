@@ -5,11 +5,22 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
 // IndexBatchSize is the number of rows to save at a time when creating indexes.
 const IndexBatchSize = uint64(10000)
+
+// ChecksumKey is the key in an index config to store the checksum.
+const ChecksumKey = "checksum"
+
+// Checksumable provides the checksum of some data.
+type Checksumable interface {
+	// Checksum returns a checksum and an error if there was any problem
+	// computing or obtaining the checksum.
+	Checksum() (string, error)
+}
 
 // PartitionIndexKeyValueIter is an iterator of partitions that will return
 // the partition and the IndexKeyValueIter of that partition.
@@ -211,17 +222,43 @@ func (r *IndexRegistry) LoadIndexes(dbs Databases) error {
 
 	for _, driver := range r.drivers {
 		for _, db := range dbs {
-			for t := range db.Tables() {
-				indexes, err := driver.LoadAll(db.Name(), t)
+			for _, t := range db.Tables() {
+				indexes, err := driver.LoadAll(db.Name(), t.Name())
 				if err != nil {
 					return err
+				}
+
+				var checksum string
+				if c, ok := t.(Checksumable); ok {
+					checksum, err = c.Checksum()
+					if err != nil {
+						return err
+					}
 				}
 
 				for _, idx := range indexes {
 					k := indexKey{db.Name(), idx.ID()}
 					r.indexes[k] = idx
 					r.indexOrder = append(r.indexOrder, k)
-					r.statuses[k] = IndexReady
+
+					var idxChecksum string
+					if c, ok := idx.(Checksumable); ok {
+						idxChecksum, err = c.Checksum()
+						if err != nil {
+							return err
+						}
+					}
+
+					if checksum == "" || checksum == idxChecksum {
+						r.statuses[k] = IndexReady
+					} else {
+						logrus.Warnf(
+							"index %q is outdated and will not be used, you can remove it using `DROP INDEX %s`",
+							idx.ID(),
+							idx.ID(),
+						)
+						r.statuses[k] = IndexOutdated
+					}
 				}
 			}
 		}
@@ -242,6 +279,18 @@ func (r *IndexRegistry) CanUseIndex(idx Index) bool {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
 	return r.canUseIndex(idx)
+}
+
+// CanRemoveIndex returns whether the given index is ready to be removed.
+func (r *IndexRegistry) CanRemoveIndex(idx Index) bool {
+	if idx == nil {
+		return false
+	}
+
+	r.mut.RLock()
+	defer r.mut.RUnlock()
+	status := r.statuses[indexKey{idx.Database(), idx.ID()}]
+	return status == IndexReady || status == IndexOutdated
 }
 
 func (r *IndexRegistry) canUseIndex(idx Index) bool {
@@ -400,8 +449,8 @@ var (
 	ErrIndexNotFound = errors.NewKind("index %q	was not found")
 
 	// ErrIndexDeleteInvalidStatus is returned when the index trying to delete
-	// does not have a ready state.
-	ErrIndexDeleteInvalidStatus = errors.NewKind("can't delete index %q because it's not ready for usage")
+	// does not have a ready or outdated state.
+	ErrIndexDeleteInvalidStatus = errors.NewKind("can't delete index %q because it's not ready for removal")
 )
 
 func (r *IndexRegistry) validateIndexToAdd(idx Index) error {
@@ -507,7 +556,7 @@ func (r *IndexRegistry) DeleteIndex(db, id string, force bool) (<-chan struct{},
 	var key indexKey
 	for k, idx := range r.indexes {
 		if strings.ToLower(id) == idx.ID() {
-			if !force && !r.CanUseIndex(idx) {
+			if !force && !r.CanRemoveIndex(idx) {
 				r.mut.RUnlock()
 				return nil, ErrIndexDeleteInvalidStatus.New(id)
 			}
@@ -563,13 +612,16 @@ func (r *IndexRegistry) DeleteIndex(db, id string, force bool) (<-chan struct{},
 }
 
 // IndexStatus represents the current status in which the index is.
-type IndexStatus bool
+type IndexStatus byte
 
 const (
 	// IndexNotReady means the index is not ready to be used.
-	IndexNotReady IndexStatus = false
+	IndexNotReady IndexStatus = iota
 	// IndexReady means the index can be used.
-	IndexReady IndexStatus = true
+	IndexReady
+	// IndexOutdated means the index is loaded but will not be used because the
+	// contents in it are outdated.
+	IndexOutdated
 )
 
 // IsUsable returns whether the index can be used or not based on the status.
