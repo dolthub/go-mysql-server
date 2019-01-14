@@ -791,6 +791,8 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		return unaryExprToExpression(v)
 	case *sqlparser.Subquery:
 		return nil, ErrUnsupportedSubqueryExpression.New()
+	case *sqlparser.CaseExpr:
+		return caseExprToExpression(v)
 	}
 }
 
@@ -981,6 +983,46 @@ func binaryExprToExpression(be *sqlparser.BinaryExpr) (sql.Expression, error) {
 	default:
 		return nil, ErrUnsupportedFeature.New(be.Operator)
 	}
+}
+
+func caseExprToExpression(e *sqlparser.CaseExpr) (sql.Expression, error) {
+	var expr sql.Expression
+	var err error
+
+	if e.Expr != nil {
+		expr, err = exprToExpression(e.Expr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var branches []expression.CaseBranch
+	for _, w := range e.Whens {
+		cond, err := exprToExpression(w.Cond)
+		if err != nil {
+			return nil, err
+		}
+
+		val, err := exprToExpression(w.Val)
+		if err != nil {
+			return nil, err
+		}
+
+		branches = append(branches, expression.CaseBranch{
+			Cond:  cond,
+			Value: val,
+		})
+	}
+
+	var elseExpr sql.Expression
+	if e.Else != nil {
+		elseExpr, err = exprToExpression(e.Else)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return expression.NewCase(expr, branches, elseExpr), nil
 }
 
 func removeComments(s string) string {

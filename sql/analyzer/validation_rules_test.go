@@ -349,6 +349,88 @@ func TestValidateIndexCreation(t *testing.T) {
 	}
 }
 
+func TestValidateCaseResultTypes(t *testing.T) {
+	rule := getValidationRule(validateCaseResultTypesRule)
+
+	testCases := []struct {
+		name string
+		expr *expression.Case
+		ok   bool
+	}{
+		{
+			"one of the branches does not match",
+			expression.NewCase(
+				expression.NewGetField(0, sql.Int64, "foo", false),
+				[]expression.CaseBranch{
+					{
+						Cond:  expression.NewLiteral(int64(1), sql.Int64),
+						Value: expression.NewLiteral("foo", sql.Text),
+					},
+					{
+						Cond:  expression.NewLiteral(int64(2), sql.Int64),
+						Value: expression.NewLiteral(int64(1), sql.Int64),
+					},
+				},
+				expression.NewLiteral("foo", sql.Text),
+			),
+			false,
+		},
+		{
+			"else does not match",
+			expression.NewCase(
+				expression.NewGetField(0, sql.Int64, "foo", false),
+				[]expression.CaseBranch{
+					{
+						Cond:  expression.NewLiteral(int64(1), sql.Int64),
+						Value: expression.NewLiteral("foo", sql.Text),
+					},
+					{
+						Cond:  expression.NewLiteral(int64(2), sql.Int64),
+						Value: expression.NewLiteral("bar", sql.Text),
+					},
+				},
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+			false,
+		},
+		{
+			"all ok",
+			expression.NewCase(
+				expression.NewGetField(0, sql.Int64, "foo", false),
+				[]expression.CaseBranch{
+					{
+						Cond:  expression.NewLiteral(int64(1), sql.Int64),
+						Value: expression.NewLiteral("foo", sql.Text),
+					},
+					{
+						Cond:  expression.NewLiteral(int64(2), sql.Int64),
+						Value: expression.NewLiteral("bar", sql.Text),
+					},
+				},
+				expression.NewLiteral("baz", sql.Text),
+			),
+			true,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			_, err := rule.Apply(sql.NewEmptyContext(), nil, plan.NewProject(
+				[]sql.Expression{tt.expr},
+				plan.NewResolvedTable(dualTable),
+			))
+
+			if tt.ok {
+				require.NoError(err)
+			} else {
+				require.Error(err)
+				require.True(ErrCaseResultType.Is(err))
+			}
+		})
+	}
+}
+
 type dummyNode struct{ resolved bool }
 
 func (n dummyNode) String() string                                    { return "dummynode" }

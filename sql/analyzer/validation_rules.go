@@ -10,12 +10,13 @@ import (
 )
 
 const (
-	validateResolvedRule      = "validate_resolved"
-	validateOrderByRule       = "validate_order_by"
-	validateGroupByRule       = "validate_group_by"
-	validateSchemaSourceRule  = "validate_schema_source"
-	validateProjectTuplesRule = "validate_project_tuples"
-	validateIndexCreationRule = "validate_index_creation"
+	validateResolvedRule        = "validate_resolved"
+	validateOrderByRule         = "validate_order_by"
+	validateGroupByRule         = "validate_group_by"
+	validateSchemaSourceRule    = "validate_schema_source"
+	validateProjectTuplesRule   = "validate_project_tuples"
+	validateIndexCreationRule   = "validate_index_creation"
+	validateCaseResultTypesRule = "validate_case_result_types"
 )
 
 var (
@@ -36,6 +37,12 @@ var (
 	// ErrUnknownIndexColumns is returned when there are columns in the expr
 	// to index that are unknown in the table.
 	ErrUnknownIndexColumns = errors.NewKind("unknown columns to index for table %q: %s")
+	// ErrCaseResultType is returned when one or more of the types of the values in
+	// a case expression don't match.
+	ErrCaseResultType = errors.NewKind(
+		"expecting all case branches to return values of type %s, " +
+			"but found value %q of type %s on %s",
+	)
 )
 
 // DefaultValidationRules to apply while analyzing nodes.
@@ -46,6 +53,7 @@ var DefaultValidationRules = []Rule{
 	{validateSchemaSourceRule, validateSchemaSource},
 	{validateProjectTuplesRule, validateProjectTuples},
 	{validateIndexCreationRule, validateIndexCreation},
+	{validateCaseResultTypesRule, validateCaseResultTypes},
 }
 
 func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -196,6 +204,42 @@ func validateProjectTuples(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node,
 			}
 		}
 	}
+	return n, nil
+}
+
+func validateCaseResultTypes(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	span, ctx := ctx.Span("validate_case_result_types")
+	defer span.Finish()
+
+	var err error
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.Case:
+			typ := e.Type()
+			for _, b := range e.Branches {
+				if b.Value.Type() != typ {
+					err = ErrCaseResultType.New(typ, b.Value, b.Value.Type(), e)
+					return false
+				}
+			}
+
+			if e.Else != nil {
+				if e.Else.Type() != typ {
+					err = ErrCaseResultType.New(typ, e.Else, e.Else.Type(), e)
+					return false
+				}
+			}
+
+			return false
+		default:
+			return true
+		}
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
 	return n, nil
 }
 

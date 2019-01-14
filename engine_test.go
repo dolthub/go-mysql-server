@@ -776,6 +776,30 @@ var queries = []struct {
 			{int64(15)},
 		},
 	},
+	{
+		`SELECT CASE i WHEN 1 THEN 'one' WHEN 2 THEN 'two' ELSE 'other' END FROM mytable`,
+		[]sql.Row{
+			{"one"},
+			{"two"},
+			{"other"},
+		},
+	},
+	{
+		`SELECT CASE WHEN i > 2 THEN 'more than two' WHEN i < 2 THEN 'less than two' ELSE 'two' END FROM mytable`,
+		[]sql.Row{
+			{"less than two"},
+			{"two"},
+			{"more than two"},
+		},
+	},
+	{
+		`SELECT CASE i WHEN 1 THEN 'one' WHEN 2 THEN 'two' END FROM mytable`,
+		[]sql.Row{
+			{"one"},
+			{"two"},
+			{nil},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {
