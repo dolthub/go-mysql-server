@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"io"
 	"reflect"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -60,15 +61,12 @@ func (j *InnerJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, NewFilterIter(
-		ctx,
-		j.Cond,
-		&crossJoinIterator{
-			l:  l,
-			rp: j.Right,
-			s:  ctx,
-		},
-	)), nil
+	return sql.NewSpanIter(span, &innerJoinIter{
+		l:    l,
+		rp:   j.Right,
+		ctx:  ctx,
+		cond: j.Cond,
+	}), nil
 }
 
 // TransformUp implements the Transformable interface.
@@ -126,4 +124,73 @@ func (j *InnerJoin) TransformExpressions(f sql.TransformExprFunc) (sql.Node, err
 	}
 
 	return NewInnerJoin(j.Left, j.Right, cond), nil
+}
+
+type innerJoinIter struct {
+	l    sql.RowIter
+	rp   rowIterProvider
+	r    sql.RowIter
+	ctx  *sql.Context
+	cond sql.Expression
+
+	leftRow sql.Row
+}
+
+func (i *innerJoinIter) Next() (sql.Row, error) {
+	for {
+		if i.leftRow == nil {
+			r, err := i.l.Next()
+			if err != nil {
+				return nil, err
+			}
+
+			i.leftRow = r
+		}
+
+		if i.r == nil {
+			iter, err := i.rp.RowIter(i.ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			i.r = iter
+		}
+
+		rightRow, err := i.r.Next()
+		if err == io.EOF {
+			i.r = nil
+			i.leftRow = nil
+			continue
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		row := append(i.leftRow[:], rightRow...)
+
+		v, err := i.cond.Eval(i.ctx, row)
+		if err != nil {
+			return nil, err
+		}
+
+		if v == true {
+			return row, nil
+		}
+	}
+}
+
+func (i *innerJoinIter) Close() error {
+	if err := i.l.Close(); err != nil {
+		if i.r != nil {
+			_ = i.r.Close()
+		}
+		return err
+	}
+
+	if i.r != nil {
+		return i.r.Close()
+	}
+
+	return nil
 }
