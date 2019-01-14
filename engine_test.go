@@ -23,8 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const driverName = "engine_tests"
-
 var queries = []struct {
 	query    string
 	expected []sql.Row

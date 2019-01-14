@@ -195,7 +195,7 @@ func testAudit(
 	defer os.RemoveAll(tmpDir)
 
 	for _, c := range tests {
-		t.Run(fmt.Sprintf("%s", c.user), func(t *testing.T) {
+		t.Run(c.user, func(t *testing.T) {
 			req := require.New(t)
 
 			db, err := dsql.Open("mysql", connString(c.user, ""))

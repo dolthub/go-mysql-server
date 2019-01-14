@@ -347,7 +347,6 @@ func getColumnsAndPrepareExpressions(
 }
 
 type evalPartitionKeyValueIter struct {
-	table   sql.IndexableTable
 	iter    sql.PartitionIndexKeyValueIter
 	columns []string
 	exprs   []sql.Expression

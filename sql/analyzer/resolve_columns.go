@@ -36,7 +36,7 @@ type column interface {
 }
 
 func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("qualify_columns")
+	span, _ := ctx.Span("qualify_columns")
 	defer span.Finish()
 
 	a.Log("qualify columns")
@@ -173,9 +173,6 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				case column:
 					table = p.Table()
 					col = p.Name()
-				case *expression.GetField:
-					table = p.Table()
-					col = p.Name()
 				default:
 					continue
 				}
@@ -277,11 +274,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 						}
 
 						name := strings.TrimLeft(uc.Name(), "@")
-						if strings.HasPrefix(name, sessionPrefix) {
-							name = name[len(sessionPrefix):]
-						} else if strings.HasPrefix(name, globalPrefix) {
-							name = name[len(globalPrefix):]
-						}
+						name = strings.TrimPrefix(strings.TrimPrefix(name, globalPrefix), sessionPrefix)
 						typ, value := ctx.Get(name)
 						return expression.NewGetSessionField(name, typ, value), nil
 					}

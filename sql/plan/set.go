@@ -93,12 +93,10 @@ func (s *Set) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 			err   error
 		)
 
-		name := strings.TrimLeft(v.Name, "@")
-		if strings.HasPrefix(name, sessionPrefix) {
-			name = name[len(sessionPrefix):]
-		} else if strings.HasPrefix(name, globalPrefix) {
-			name = name[len(globalPrefix):]
-		}
+		name := strings.TrimPrefix(
+			strings.TrimPrefix(strings.TrimLeft(v.Name, "@"), sessionPrefix), 
+			globalPrefix,
+		)
 
 		if _, ok := v.Value.(*expression.DefaultColumn); ok {
 			valtyp, ok := sql.DefaultSessionConfig()[name]

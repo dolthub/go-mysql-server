@@ -423,19 +423,6 @@ Indexes:
 	return results
 }
 
-type withIndexer interface {
-	WithIndex(int) Expression
-}
-
-func removeIndexes(e Expression) (Expression, error) {
-	i, ok := e.(withIndexer)
-	if !ok {
-		return e, nil
-	}
-
-	return i.WithIndex(-1), nil
-}
-
 var (
 	// ErrIndexIDAlreadyRegistered is the error returned when there is already
 	// an index with the same ID.

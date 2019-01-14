@@ -7,7 +7,7 @@ import (
 )
 
 func reorderAggregations(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("reorder_aggregations")
+	span, _ := ctx.Span("reorder_aggregations")
 	defer span.Finish()
 
 	if !n.Resolved() {

@@ -54,7 +54,7 @@ func (s *ShowColumns) Schema() sql.Schema {
 
 // RowIter creates a new ShowColumns node.
 func (s *ShowColumns) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.ShowColumns")
+	span, _ := ctx.Span("plan.ShowColumns")
 
 	schema := s.Child.Schema()
 	var rows = make([]sql.Row, len(schema))

@@ -49,7 +49,7 @@ var DefaultValidationRules = []Rule{
 }
 
 func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("validate_is_resolved")
+	span, _ := ctx.Span("validate_is_resolved")
 	defer span.Finish()
 
 	if !n.Resolved() {
@@ -60,7 +60,7 @@ func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, er
 }
 
 func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("validate_order_by")
+	span, _ := ctx.Span("validate_order_by")
 	defer span.Finish()
 
 	switch n := n.(type) {
@@ -77,7 +77,7 @@ func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 }
 
 func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("validate_group_by")
+	span, _ := ctx.Span("validate_group_by")
 	defer span.Finish()
 
 	switch n := n.(type) {
@@ -122,7 +122,7 @@ func isValidAgg(validAggs []string, expr sql.Expression) bool {
 }
 
 func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("validate_schema_source")
+	span, _ := ctx.Span("validate_schema_source")
 	defer span.Finish()
 
 	switch n := n.(type) {
@@ -138,7 +138,7 @@ func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, 
 }
 
 func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("validate_index_creation")
+	span, _ := ctx.Span("validate_index_creation")
 	defer span.Finish()
 
 	ci, ok := n.(*plan.CreateIndex)
@@ -179,7 +179,7 @@ func validateSchema(t *plan.ResolvedTable) error {
 }
 
 func validateProjectTuples(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("validate_project_tuples")
+	span, _ := ctx.Span("validate_project_tuples")
 	defer span.Finish()
 
 	switch n := n.(type) {

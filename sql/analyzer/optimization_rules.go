@@ -8,7 +8,7 @@ import (
 )
 
 func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("erase_projection")
+	span, _ := ctx.Span("erase_projection")
 	defer span.Finish()
 
 	if !node.Resolved() {
@@ -29,7 +29,7 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, er
 }
 
 func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("optimize_distinct")
+	span, _ := ctx.Span("optimize_distinct")
 	defer span.Finish()
 
 	a.Log("optimize distinct, node of type: %T", node)

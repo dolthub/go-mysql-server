@@ -7,7 +7,7 @@ import (
 
 // assignCatalog sets the catalog in the required nodes.
 func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("assign_catalog")
+	span, _ := ctx.Span("assign_catalog")
 	defer span.Finish()
 
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
