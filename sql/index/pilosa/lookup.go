@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
@@ -63,6 +64,7 @@ type (
 		keys        []interface{}
 		expressions []string
 		operations  []*lookupOperation
+		indexes     []string
 	}
 
 	lookupOperation struct {
@@ -165,7 +167,7 @@ func (l *indexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 }
 
 func (l *indexLookup) Indexes() []string {
-	return []string{l.id}
+	return uniqueIndexes(append(l.indexes[:], l.id))
 }
 
 // IsMergeable implements sql.Mergeable interface.
@@ -181,6 +183,7 @@ func (l *indexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 func (l *indexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
+		lookup.indexes = append(lookup.indexes, li.Indexes()...)
 		lookup.operations = append(lookup.operations, &lookupOperation{li, intersect})
 	}
 
@@ -191,6 +194,7 @@ func (l *indexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
 func (l *indexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
+		lookup.indexes = append(lookup.indexes, li.Indexes()...)
 		lookup.operations = append(lookup.operations, &lookupOperation{li, union})
 	}
 
@@ -201,6 +205,7 @@ func (l *indexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 func (l *indexLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
+		lookup.indexes = append(lookup.indexes, li.Indexes()...)
 		lookup.operations = append(lookup.operations, &lookupOperation{li, difference})
 	}
 
@@ -214,6 +219,7 @@ type filteredLookup struct {
 	keys        []interface{}
 	expressions []string
 	operations  []*lookupOperation
+	indexes     []string
 
 	reverse bool
 	filter  func(int, []byte) (bool, error)
@@ -320,7 +326,7 @@ func (l *filteredLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 }
 
 func (l *filteredLookup) Indexes() []string {
-	return []string{l.id}
+	return uniqueIndexes(append(l.indexes[:], l.id))
 }
 
 // IsMergeable implements sql.Mergeable interface.
@@ -335,6 +341,7 @@ func (l *filteredLookup) IsMergeable(lookup sql.IndexLookup) bool {
 func (l *filteredLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
+		lookup.indexes = append(lookup.indexes, li.Indexes()...)
 		lookup.operations = append(lookup.operations, &lookupOperation{li, intersect})
 	}
 
@@ -345,6 +352,7 @@ func (l *filteredLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLooku
 func (l *filteredLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
+		lookup.indexes = append(lookup.indexes, li.Indexes()...)
 		lookup.operations = append(lookup.operations, &lookupOperation{li, union})
 	}
 
@@ -355,6 +363,7 @@ func (l *filteredLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 func (l *filteredLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
+		lookup.indexes = append(lookup.indexes, li.Indexes()...)
 		lookup.operations = append(lookup.operations, &lookupOperation{li, difference})
 	}
 
@@ -379,6 +388,7 @@ type negateLookup struct {
 	mapping     *mapping
 	keys        []interface{}
 	expressions []string
+	indexes     []string
 	operations  []*lookupOperation
 }
 
@@ -491,7 +501,7 @@ func (l *negateLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 }
 
 func (l *negateLookup) Indexes() []string {
-	return []string{l.id}
+	return uniqueIndexes(append(l.indexes[:], l.id))
 }
 
 // IsMergeable implements sql.Mergeable interface.
@@ -507,6 +517,7 @@ func (l *negateLookup) IsMergeable(lookup sql.IndexLookup) bool {
 func (l *negateLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
+		lookup.indexes = append(lookup.indexes, li.Indexes()...)
 		lookup.operations = append(lookup.operations, &lookupOperation{li, intersect})
 	}
 
@@ -517,6 +528,7 @@ func (l *negateLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup 
 func (l *negateLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
+		lookup.indexes = append(lookup.indexes, li.Indexes()...)
 		lookup.operations = append(lookup.operations, &lookupOperation{li, union})
 	}
 
@@ -527,6 +539,7 @@ func (l *negateLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 func (l *negateLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
+		lookup.indexes = append(lookup.indexes, li.Indexes()...)
 		lookup.operations = append(lookup.operations, &lookupOperation{li, difference})
 	}
 
@@ -596,7 +609,7 @@ func compare(a, b interface{}) (int, error) {
 			return 0, nil
 		}
 
-		if !a {
+		if a == false {
 			return -1, nil
 		}
 
@@ -733,4 +746,18 @@ func compare(a, b interface{}) (int, error) {
 	default:
 		return 0, errUnknownType.New(a)
 	}
+}
+
+func uniqueIndexes(indexes []string) []string {
+	var m = make(map[string]struct{})
+	for _, idx := range indexes {
+		m[idx] = struct{}{}
+	}
+	var result = make([]string, 0, len(m))
+	for idx := range m {
+		result = append(result, idx)
+	}
+
+	sort.Strings(result)
+	return result
 }

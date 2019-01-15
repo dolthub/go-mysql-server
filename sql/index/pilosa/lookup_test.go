@@ -216,3 +216,35 @@ func TestIndexes(t *testing.T) {
 		})
 	}
 }
+
+func TestLookupIndexes(t *testing.T) {
+	require := require.New(t)
+
+	lookups := []sql.IndexLookup{
+		&indexLookup{id: "1"},
+		&negateLookup{id: "2"},
+		&ascendLookup{filteredLookup: &filteredLookup{id: "3"}},
+		&descendLookup{filteredLookup: &filteredLookup{id: "4"}},
+		&filteredLookup{id: "5"},
+	}
+
+	expected := []string{"1", "2", "3", "4", "5"}
+
+	// All possible permutations of operations between all the different kinds
+	// of lookups are tested.
+	for i := 0; i < len(lookups); i++ {
+		var op sql.SetOperations
+		var others []sql.IndexLookup
+		for j := 0; j < len(lookups); j++ {
+			if i == j {
+				op = lookups[i].(sql.SetOperations)
+			} else {
+				others = append(others, lookups[j])
+			}
+		}
+
+		require.Equal(expected, op.Union(others...).Indexes())
+		require.Equal(expected, op.Difference(others...).Indexes())
+		require.Equal(expected, op.Intersection(others...).Indexes())
+	}
+}
