@@ -12,9 +12,9 @@ func TestShowWarnings(t *testing.T) {
 	require := require.New(t)
 
 	ctx := sql.NewEmptyContext()
-	ctx.Session.Warn(&sql.Warning{"l1", "w1", 1})
-	ctx.Session.Warn(&sql.Warning{"l2", "w2", 2})
-	ctx.Session.Warn(&sql.Warning{"l4", "w3", 3})
+	ctx.Session.Warn(&sql.Warning{Level: "l1", Message: "w1", Code: 1})
+	ctx.Session.Warn(&sql.Warning{Level: "l2", Message: "w2", Code: 2})
+	ctx.Session.Warn(&sql.Warning{Level: "l4", Message: "w3", Code: 3})
 
 	sw := ShowWarnings(ctx.Session.Warnings())
 	require.True(sw.Resolved())

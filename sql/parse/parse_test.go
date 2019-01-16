@@ -992,6 +992,21 @@ var fixtures = map[string]sql.Node{
 		)},
 		plan.NewUnresolvedTable("dual", ""),
 	),
+	"SHOW COLLATION": plan.NewShowCollation(),
+	"SHOW COLLATION LIKE 'foo'": plan.NewFilter(
+		expression.NewLike(
+			expression.NewUnresolvedColumn("collation"),
+			expression.NewLiteral("foo", sql.Text),
+		),
+		plan.NewShowCollation(),
+	),
+	"SHOW COLLATION WHERE Charset = 'foo'": plan.NewFilter(
+		expression.NewEquals(
+			expression.NewUnresolvedColumn("charset"),
+			expression.NewLiteral("foo", sql.Text),
+		),
+		plan.NewShowCollation(),
+	),
 }
 
 func TestParse(t *testing.T) {
