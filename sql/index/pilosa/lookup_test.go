@@ -204,15 +204,72 @@ func TestMergeable(t *testing.T) {
 
 func TestIndexes(t *testing.T) {
 	testCases := []sql.IndexLookup{
-		&indexLookup{id: "foo"},
-		&negateLookup{id: "foo"},
-		&ascendLookup{filteredLookup: &filteredLookup{id: "foo"}},
-		&descendLookup{filteredLookup: &filteredLookup{id: "foo"}},
+		&indexLookup{id: "foo", indexes: map[string]struct{}{"foo": struct{}{}}},
+		&negateLookup{id: "foo", indexes: map[string]struct{}{"foo": struct{}{}}},
+		&ascendLookup{
+			filteredLookup: &filteredLookup{
+				id:      "foo",
+				indexes: map[string]struct{}{"foo": struct{}{}},
+			},
+		},
+		&descendLookup{
+			filteredLookup: &filteredLookup{
+				id:      "foo",
+				indexes: map[string]struct{}{"foo": struct{}{}},
+			},
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(fmt.Sprintf("%T", tt), func(t *testing.T) {
 			require.Equal(t, []string{"foo"}, tt.Indexes())
 		})
+	}
+}
+
+func TestLookupIndexes(t *testing.T) {
+	require := require.New(t)
+
+	lookups := []sql.IndexLookup{
+		&indexLookup{
+			id:      "1",
+			indexes: map[string]struct{}{"1": struct{}{}},
+		},
+		&negateLookup{
+			id:      "2",
+			indexes: map[string]struct{}{"2": struct{}{}},
+		},
+		&ascendLookup{filteredLookup: &filteredLookup{
+			id:      "3",
+			indexes: map[string]struct{}{"3": struct{}{}},
+		}},
+		&descendLookup{filteredLookup: &filteredLookup{
+			id:      "4",
+			indexes: map[string]struct{}{"4": struct{}{}},
+		}},
+		&filteredLookup{
+			id:      "5",
+			indexes: map[string]struct{}{"5": struct{}{}},
+		},
+	}
+
+	expected := []string{"1", "2", "3", "4", "5"}
+
+	// All possible permutations of operations between all the different kinds
+	// of lookups are tested.
+	for i := 0; i < len(lookups); i++ {
+		var op sql.SetOperations
+		var others []sql.IndexLookup
+		for j := 0; j < len(lookups); j++ {
+			if i == j {
+				op = lookups[i].(sql.SetOperations)
+			} else {
+				others = append(others, lookups[j])
+			}
+		}
+
+		require.Equal(expected, op.Union(others...).Indexes())
+		require.Equal(expected, op.Difference(others...).Indexes())
+		require.Equal(expected, op.Intersection(others...).Indexes())
 	}
 }

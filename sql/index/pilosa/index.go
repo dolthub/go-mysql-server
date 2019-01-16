@@ -108,6 +108,9 @@ func (idx *pilosaIndex) Get(keys ...interface{}) (sql.IndexLookup, error) {
 		mapping:     idx.mapping,
 		keys:        keys,
 		expressions: idx.expressions,
+		indexes: map[string]struct{}{
+			idx.ID(): struct{}{},
+		},
 	}, nil
 }
 
@@ -165,6 +168,9 @@ func (idx *pilosaIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLook
 		mapping:     idx.mapping,
 		keys:        keys,
 		expressions: idx.expressions,
+		indexes: map[string]struct{}{
+			idx.ID(): struct{}{},
+		},
 	}, keys, nil), nil
 }
 
@@ -179,6 +185,9 @@ func (idx *pilosaIndex) AscendLessThan(keys ...interface{}) (sql.IndexLookup, er
 		mapping:     idx.mapping,
 		keys:        keys,
 		expressions: idx.expressions,
+		indexes: map[string]struct{}{
+			idx.ID(): struct{}{},
+		},
 	}, nil, keys), nil
 }
 
@@ -196,6 +205,9 @@ func (idx *pilosaIndex) AscendRange(greaterOrEqual, lessThan []interface{}) (sql
 		index:       idx.index,
 		mapping:     idx.mapping,
 		expressions: idx.expressions,
+		indexes: map[string]struct{}{
+			idx.ID(): struct{}{},
+		},
 	}, greaterOrEqual, lessThan), nil
 }
 
@@ -211,6 +223,9 @@ func (idx *pilosaIndex) DescendGreater(keys ...interface{}) (sql.IndexLookup, er
 		keys:        keys,
 		expressions: idx.expressions,
 		reverse:     true,
+		indexes: map[string]struct{}{
+			idx.ID(): struct{}{},
+		},
 	}, keys, nil), nil
 }
 
@@ -226,6 +241,9 @@ func (idx *pilosaIndex) DescendLessOrEqual(keys ...interface{}) (sql.IndexLookup
 		keys:        keys,
 		expressions: idx.expressions,
 		reverse:     true,
+		indexes: map[string]struct{}{
+			idx.ID(): struct{}{},
+		},
 	}, nil, keys), nil
 }
 
@@ -244,6 +262,9 @@ func (idx *pilosaIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sq
 		mapping:     idx.mapping,
 		expressions: idx.expressions,
 		reverse:     true,
+		indexes: map[string]struct{}{
+			idx.ID(): struct{}{},
+		},
 	}, greaterThan, lessOrEqual), nil
 }
 
@@ -258,6 +279,9 @@ func (idx *pilosaIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
 		mapping:     idx.mapping,
 		keys:        keys,
 		expressions: idx.expressions,
+		indexes: map[string]struct{}{
+			idx.ID(): struct{}{},
+		},
 	}, nil
 }
 
