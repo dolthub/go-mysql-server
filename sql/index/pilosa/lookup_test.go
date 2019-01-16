@@ -204,10 +204,20 @@ func TestMergeable(t *testing.T) {
 
 func TestIndexes(t *testing.T) {
 	testCases := []sql.IndexLookup{
-		&indexLookup{id: "foo"},
-		&negateLookup{id: "foo"},
-		&ascendLookup{filteredLookup: &filteredLookup{id: "foo"}},
-		&descendLookup{filteredLookup: &filteredLookup{id: "foo"}},
+		&indexLookup{id: "foo", indexes: map[string]struct{}{"foo": struct{}{}}},
+		&negateLookup{id: "foo", indexes: map[string]struct{}{"foo": struct{}{}}},
+		&ascendLookup{
+			filteredLookup: &filteredLookup{
+				id:      "foo",
+				indexes: map[string]struct{}{"foo": struct{}{}},
+			},
+		},
+		&descendLookup{
+			filteredLookup: &filteredLookup{
+				id:      "foo",
+				indexes: map[string]struct{}{"foo": struct{}{}},
+			},
+		},
 	}
 
 	for _, tt := range testCases {
@@ -221,11 +231,26 @@ func TestLookupIndexes(t *testing.T) {
 	require := require.New(t)
 
 	lookups := []sql.IndexLookup{
-		&indexLookup{id: "1"},
-		&negateLookup{id: "2"},
-		&ascendLookup{filteredLookup: &filteredLookup{id: "3"}},
-		&descendLookup{filteredLookup: &filteredLookup{id: "4"}},
-		&filteredLookup{id: "5"},
+		&indexLookup{
+			id:      "1",
+			indexes: map[string]struct{}{"1": struct{}{}},
+		},
+		&negateLookup{
+			id:      "2",
+			indexes: map[string]struct{}{"2": struct{}{}},
+		},
+		&ascendLookup{filteredLookup: &filteredLookup{
+			id:      "3",
+			indexes: map[string]struct{}{"3": struct{}{}},
+		}},
+		&descendLookup{filteredLookup: &filteredLookup{
+			id:      "4",
+			indexes: map[string]struct{}{"4": struct{}{}},
+		}},
+		&filteredLookup{
+			id:      "5",
+			indexes: map[string]struct{}{"5": struct{}{}},
+		},
 	}
 
 	expected := []string{"1", "2", "3", "4", "5"}
