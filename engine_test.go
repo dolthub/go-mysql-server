@@ -800,6 +800,49 @@ var queries = []struct {
 			{nil},
 		},
 	},
+	{
+		"SHOW TABLES",
+		[]sql.Row{
+			{"mytable"},
+			{"othertable"},
+			{"tabletest"},
+		},
+	},
+	{
+		"SHOW FULL TABLES",
+		[]sql.Row{
+			{"mytable", "BASE TABLE"},
+			{"othertable", "BASE TABLE"},
+			{"tabletest", "BASE TABLE"},
+		},
+	},
+	{
+		"SHOW FULL TABLES",
+		[]sql.Row{
+			{"mytable", "BASE TABLE"},
+			{"othertable", "BASE TABLE"},
+			{"tabletest", "BASE TABLE"},
+		},
+	},
+	{
+		"SHOW TABLES FROM foo",
+		[]sql.Row{
+			{"other_table"},
+		},
+	},
+	{
+		"SHOW TABLES LIKE '%table'",
+		[]sql.Row{
+			{"mytable"},
+			{"othertable"},
+		},
+	},
+	{
+		"SHOW TABLES WHERE `Table` = 'mytable'",
+		[]sql.Row{
+			{"mytable"},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {

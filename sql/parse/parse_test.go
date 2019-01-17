@@ -246,7 +246,54 @@ var fixtures = map[string]sql.Node{
 		}}),
 		[]string{"col1", "col2"},
 	),
-	`SHOW TABLES`: plan.NewShowTables(sql.UnresolvedDatabase("")),
+	`SHOW TABLES`:               plan.NewShowTables(sql.UnresolvedDatabase(""), false),
+	`SHOW FULL TABLES`:          plan.NewShowTables(sql.UnresolvedDatabase(""), true),
+	`SHOW TABLES FROM foo`:      plan.NewShowTables(sql.UnresolvedDatabase("foo"), false),
+	`SHOW TABLES IN foo`:        plan.NewShowTables(sql.UnresolvedDatabase("foo"), false),
+	`SHOW FULL TABLES FROM foo`: plan.NewShowTables(sql.UnresolvedDatabase("foo"), true),
+	`SHOW FULL TABLES IN foo`:   plan.NewShowTables(sql.UnresolvedDatabase("foo"), true),
+	`SHOW TABLES LIKE 'foo'`: plan.NewFilter(
+		expression.NewLike(
+			expression.NewUnresolvedColumn("Table"),
+			expression.NewLiteral("foo", sql.Text),
+		),
+		plan.NewShowTables(sql.UnresolvedDatabase(""), false),
+	),
+	"SHOW TABLES WHERE `Table` = 'foo'": plan.NewFilter(
+		expression.NewEquals(
+			expression.NewUnresolvedColumn("Table"),
+			expression.NewLiteral("foo", sql.Text),
+		),
+		plan.NewShowTables(sql.UnresolvedDatabase(""), false),
+	),
+	`SHOW FULL TABLES LIKE 'foo'`: plan.NewFilter(
+		expression.NewLike(
+			expression.NewUnresolvedColumn("Table"),
+			expression.NewLiteral("foo", sql.Text),
+		),
+		plan.NewShowTables(sql.UnresolvedDatabase(""), true),
+	),
+	"SHOW FULL TABLES WHERE `Table` = 'foo'": plan.NewFilter(
+		expression.NewEquals(
+			expression.NewUnresolvedColumn("Table"),
+			expression.NewLiteral("foo", sql.Text),
+		),
+		plan.NewShowTables(sql.UnresolvedDatabase(""), true),
+	),
+	`SHOW FULL TABLES FROM bar LIKE 'foo'`: plan.NewFilter(
+		expression.NewLike(
+			expression.NewUnresolvedColumn("Table"),
+			expression.NewLiteral("foo", sql.Text),
+		),
+		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true),
+	),
+	"SHOW FULL TABLES FROM bar WHERE `Table` = 'foo'": plan.NewFilter(
+		expression.NewEquals(
+			expression.NewUnresolvedColumn("Table"),
+			expression.NewLiteral("foo", sql.Text),
+		),
+		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true),
+	),
 	`SELECT DISTINCT foo, bar FROM foo;`: plan.NewDistinct(
 		plan.NewProject(
 			[]sql.Expression{
