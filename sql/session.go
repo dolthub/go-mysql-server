@@ -166,6 +166,7 @@ func DefaultSessionConfig() map[string]TypedValue {
 		"collation_database":       TypedValue{Text, "utf8_bin"},
 		"ndbinfo_version":          TypedValue{Text, ""},
 		"sql_select_limit":         TypedValue{Int32, math.MaxInt32},
+		"transaction_isolation":    TypedValue{Text, "READ UNCOMMITTED"},
 	}
 }
 
