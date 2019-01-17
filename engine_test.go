@@ -542,6 +542,7 @@ var queries = []struct {
 			{"collation_database", "utf8_bin"},
 			{"ndbinfo_version", ""},
 			{"sql_select_limit", math.MaxInt32},
+			{"transaction_isolation", "READ UNCOMMITTED"},
 		},
 	},
 	{
