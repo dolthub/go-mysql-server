@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"io"
 	"sort"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -10,12 +9,23 @@ import (
 // ShowTables is a node that shows the database tables.
 type ShowTables struct {
 	Database sql.Database
+	Full     bool
+}
+
+var showTablesSchema = sql.Schema{
+	{Name: "Table", Type: sql.Text},
+}
+
+var showTablesFullSchema = sql.Schema{
+	{Name: "Table", Type: sql.Text},
+	{Name: "Table_type", Type: sql.Text},
 }
 
 // NewShowTables creates a new show tables node given a database.
-func NewShowTables(database sql.Database) *ShowTables {
+func NewShowTables(database sql.Database, full bool) *ShowTables {
 	return &ShowTables{
 		Database: database,
+		Full:     full,
 	}
 }
 
@@ -31,12 +41,12 @@ func (*ShowTables) Children() []sql.Node {
 }
 
 // Schema implements the Node interface.
-func (*ShowTables) Schema() sql.Schema {
-	return sql.Schema{{
-		Name:     "table",
-		Type:     sql.Text,
-		Nullable: false,
-	}}
+func (p *ShowTables) Schema() sql.Schema {
+	if p.Full {
+		return showTablesFullSchema
+	}
+
+	return showTablesSchema
 }
 
 // RowIter implements the Node interface.
@@ -48,12 +58,21 @@ func (p *ShowTables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 
 	sort.Strings(tableNames)
 
-	return &showTablesIter{tableNames: tableNames}, nil
+	var rows = make([]sql.Row, len(tableNames))
+	for i, n := range tableNames {
+		row := sql.Row{n}
+		if p.Full {
+			row = append(row, "BASE TABLE")
+		}
+		rows[i] = row
+	}
+
+	return sql.RowsToRowIter(rows...), nil
 }
 
 // TransformUp implements the Transformable interface.
 func (p *ShowTables) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(NewShowTables(p.Database))
+	return f(NewShowTables(p.Database, p.Full))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
@@ -63,24 +82,4 @@ func (p *ShowTables) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, 
 
 func (p ShowTables) String() string {
 	return "ShowTables"
-}
-
-type showTablesIter struct {
-	tableNames []string
-	idx        int
-}
-
-func (i *showTablesIter) Next() (sql.Row, error) {
-	if i.idx >= len(i.tableNames) {
-		return nil, io.EOF
-	}
-	row := sql.NewRow(i.tableNames[i.idx])
-	i.idx++
-
-	return row, nil
-}
-
-func (i *showTablesIter) Close() error {
-	i.tableNames = nil
-	return nil
 }

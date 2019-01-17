@@ -9,6 +9,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
+// ErrTableNotFound is returned when the table could not be found.
 var ErrTableNotFound = errors.NewKind("Table `%s` not found")
 
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
@@ -56,8 +57,8 @@ func (n *ShowCreateTable) String() string {
 }
 
 type showCreateTablesIter struct {
-	db    sql.Database
-	table string
+	db           sql.Database
+	table        string
 	didIteration bool
 }
 

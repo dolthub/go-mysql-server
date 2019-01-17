@@ -210,7 +210,35 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 func convertShow(s *sqlparser.Show, query string) (sql.Node, error) {
 	switch s.Type {
 	case sqlparser.KeywordString(sqlparser.TABLES):
-		return plan.NewShowTables(sql.UnresolvedDatabase("")), nil
+		var dbName string
+		var filter sql.Expression
+		var full bool
+		if s.ShowTablesOpt != nil {
+			dbName = s.ShowTablesOpt.DbName
+			full = s.ShowTablesOpt.Full != ""
+
+			if s.ShowTablesOpt.Filter != nil {
+				if s.ShowTablesOpt.Filter.Filter != nil {
+					var err error
+					filter, err = exprToExpression(s.ShowTablesOpt.Filter.Filter)
+					if err != nil {
+						return nil, err
+					}
+				} else if s.ShowTablesOpt.Filter.Like != "" {
+					filter = expression.NewLike(
+						expression.NewUnresolvedColumn("Table"),
+						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.Text),
+					)
+				}
+			}
+		}
+
+		var node sql.Node = plan.NewShowTables(sql.UnresolvedDatabase(dbName), full)
+		if filter != nil {
+			node = plan.NewFilter(filter, node)
+		}
+
+		return node, nil
 	case sqlparser.KeywordString(sqlparser.DATABASES):
 		return plan.NewShowDatabases(), nil
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
