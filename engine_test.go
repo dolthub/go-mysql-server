@@ -844,6 +844,26 @@ var queries = []struct {
 			{"mytable"},
 		},
 	},
+	{
+		`SHOW COLLATION`,
+		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
+	},
+	{
+		`SHOW COLLATION LIKE 'foo'`,
+		[]sql.Row{},
+	},
+	{
+		`SHOW COLLATION LIKE 'utf8%'`,
+		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
+	},
+	{
+		`SHOW COLLATION WHERE charset = 'foo'`,
+		[]sql.Row{},
+	},
+	{
+		"SHOW COLLATION WHERE `Default` = 'Yes'",
+		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
+	},
 }
 
 func TestQueries(t *testing.T) {
