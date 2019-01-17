@@ -9,7 +9,7 @@ import (
 
 // ShowCreateDatabase returns the SQL for creating a database.
 type ShowCreateDatabase struct {
-	Database    sql.Database
+	db          sql.Database
 	IfNotExists bool
 }
 
@@ -25,9 +25,23 @@ func NewShowCreateDatabase(db sql.Database, ifNotExists bool) *ShowCreateDatabas
 	return &ShowCreateDatabase{db, ifNotExists}
 }
 
+var _ sql.Databaser = (*ShowCreateDatabase)(nil)
+
+// Database implements the sql.Databaser interface.
+func (s *ShowCreateDatabase) Database() sql.Database {
+	return s.db
+}
+
+// WithDatabase implements the sql.Databaser interface.
+func (s *ShowCreateDatabase) WithDatabase(db sql.Database) (sql.Node, error) {
+	nc := *s
+	nc.db = db
+	return &nc, nil
+}
+
 // RowIter implements the sql.Node interface.
 func (s *ShowCreateDatabase) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	var name = s.Database.Name()
+	var name = s.db.Name()
 
 	var buf bytes.Buffer
 
@@ -56,7 +70,7 @@ func (s *ShowCreateDatabase) Schema() sql.Schema {
 }
 
 func (s *ShowCreateDatabase) String() string {
-	return fmt.Sprintf("SHOW CREATE DATABASE %s", s.Database.Name())
+	return fmt.Sprintf("SHOW CREATE DATABASE %s", s.db.Name())
 }
 
 // Children implements the sql.Node interface.
@@ -64,7 +78,7 @@ func (s *ShowCreateDatabase) Children() []sql.Node { return nil }
 
 // Resolved implements the sql.Node interface.
 func (s *ShowCreateDatabase) Resolved() bool {
-	_, ok := s.Database.(sql.UnresolvedDatabase)
+	_, ok := s.db.(sql.UnresolvedDatabase)
 	return !ok
 }
 

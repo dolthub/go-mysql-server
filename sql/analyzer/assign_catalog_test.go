@@ -45,7 +45,7 @@ func TestAssignCatalog(t *testing.T) {
 
 	si, ok := node.(*plan.ShowIndexes)
 	require.True(ok)
-	require.Equal(db, si.Database)
+	require.Equal(db, si.Database())
 	require.Equal(c.IndexRegistry, si.Registry)
 
 	node, err = f.Apply(sql.NewEmptyContext(), a, plan.NewShowProcessList())

@@ -117,6 +117,15 @@ type Expressioner interface {
 	TransformExpressions(TransformExprFunc) (Node, error)
 }
 
+// Databaser is a node that contains a reference to a database.
+type Databaser interface {
+	// Database the current database.
+	Database() Database
+	// WithDatabase returns a new node instance with the database replaced with
+	// the one given as parameter.
+	WithDatabase(Database) (Node, error)
+}
+
 // Partition represents a partition from a SQL table.
 type Partition interface {
 	Key() []byte
