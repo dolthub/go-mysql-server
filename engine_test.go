@@ -864,6 +864,10 @@ var queries = []struct {
 		"SHOW COLLATION WHERE `Default` = 'Yes'",
 		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
 	},
+	{
+		"ROLLBACK",
+		[]sql.Row{},
+	},
 }
 
 func TestQueries(t *testing.T) {

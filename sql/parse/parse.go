@@ -145,6 +145,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertSet(ctx, n)
 	case *sqlparser.Use:
 		return convertUse(n)
+	case *sqlparser.Rollback:
+		return plan.NewRollback(), nil
 	}
 }
 
