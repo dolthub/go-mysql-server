@@ -9,7 +9,7 @@ var ErrFunctionNotFound = errors.NewKind("function not found: %s")
 
 // ErrInvalidArgumentNumber is returned when the number of arguments to call a
 // function is different from the function arity.
-var ErrInvalidArgumentNumber = errors.NewKind("expecting %v arguments for calling this function, %d received")
+var ErrInvalidArgumentNumber = errors.NewKind("%s: expecting %v arguments for calling this function, %d received")
 
 // Function is a function defined by the user that can be applied in a SQL
 // query.

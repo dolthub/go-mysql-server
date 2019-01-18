@@ -20,7 +20,7 @@ var ErrConcatArrayWithOthers = errors.NewKind("can't concat a string array with 
 // NewConcat creates a new Concat UDF.
 func NewConcat(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) == 0 {
-		return nil, sql.ErrInvalidArgumentNumber.New("1 or more", 0)
+		return nil, sql.ErrInvalidArgumentNumber.New("CONCAT", "1 or more", 0)
 	}
 
 	for _, arg := range args {

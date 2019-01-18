@@ -1,13 +1,13 @@
 package function
 
 import (
+	"fmt"
 	"math"
 	"reflect"
-	"fmt"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 )
 
 // ErrInvalidArgumentForLogarithm is returned when an invalid argument value is passed to a
@@ -94,7 +94,7 @@ type Log struct {
 func NewLog(args ...sql.Expression) (sql.Expression, error) {
 	argLen := len(args)
 	if argLen == 0 || argLen > 2 {
-		return nil, sql.ErrInvalidArgumentNumber.New("1 or 2", argLen)
+		return nil, sql.ErrInvalidArgumentNumber.New("LOG", "1 or 2", argLen)
 	}
 
 	if argLen == 1 {

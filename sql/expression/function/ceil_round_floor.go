@@ -155,7 +155,7 @@ type Round struct {
 func NewRound(args ...sql.Expression) (sql.Expression, error) {
 	argLen := len(args)
 	if argLen == 0 || argLen > 2 {
-		return nil, sql.ErrInvalidArgumentNumber.New("1 or 2", argLen)
+		return nil, sql.ErrInvalidArgumentNumber.New("ROUND", "1 or 2", argLen)
 	}
 
 	var right sql.Expression

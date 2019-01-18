@@ -32,7 +32,7 @@ func NewSubstring(args ...sql.Expression) (sql.Expression, error) {
 		start = args[1]
 		ln = args[2]
 	default:
-		return nil, sql.ErrInvalidArgumentNumber.New("2 or 3", len(args))
+		return nil, sql.ErrInvalidArgumentNumber.New("SUBSTRING", "2 or 3", len(args))
 	}
 	return &Substring{str, start, ln}, nil
 }

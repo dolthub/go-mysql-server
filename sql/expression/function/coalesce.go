@@ -15,7 +15,7 @@ type Coalesce struct {
 // NewCoalesce creates a new Coalesce sql.Expression.
 func NewCoalesce(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) == 0 {
-		return nil, sql.ErrInvalidArgumentNumber.New("1 or more", 0)
+		return nil, sql.ErrInvalidArgumentNumber.New("COALESCE", "1 or more", 0)
 	}
 
 	return &Coalesce{args}, nil
