@@ -167,7 +167,9 @@ func (i *innerJoinIter) Next() (sql.Row, error) {
 			return nil, err
 		}
 
-		row := append(i.leftRow[:], rightRow...)
+		var row = make(sql.Row, len(i.leftRow)+len(rightRow))
+		copy(row, i.leftRow)
+		copy(row[len(i.leftRow):], rightRow)
 
 		v, err := i.cond.Eval(i.ctx, row)
 		if err != nil {
