@@ -8,8 +8,8 @@ import (
 
 // ShowTables is a node that shows the database tables.
 type ShowTables struct {
-	Database sql.Database
-	Full     bool
+	db   sql.Database
+	Full bool
 }
 
 var showTablesSchema = sql.Schema{
@@ -24,14 +24,28 @@ var showTablesFullSchema = sql.Schema{
 // NewShowTables creates a new show tables node given a database.
 func NewShowTables(database sql.Database, full bool) *ShowTables {
 	return &ShowTables{
-		Database: database,
-		Full:     full,
+		db:   database,
+		Full: full,
 	}
+}
+
+var _ sql.Databaser = (*ShowTables)(nil)
+
+// Database implements the sql.Databaser interface.
+func (p *ShowTables) Database() sql.Database {
+	return p.db
+}
+
+// WithDatabase implements the sql.Databaser interface.
+func (p *ShowTables) WithDatabase(db sql.Database) (sql.Node, error) {
+	nc := *p
+	nc.db = db
+	return &nc, nil
 }
 
 // Resolved implements the Resolvable interface.
 func (p *ShowTables) Resolved() bool {
-	_, ok := p.Database.(sql.UnresolvedDatabase)
+	_, ok := p.db.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -52,7 +66,7 @@ func (p *ShowTables) Schema() sql.Schema {
 // RowIter implements the Node interface.
 func (p *ShowTables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	tableNames := []string{}
-	for key := range p.Database.Tables() {
+	for key := range p.db.Tables() {
 		tableNames = append(tableNames, key)
 	}
 
@@ -72,7 +86,7 @@ func (p *ShowTables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 
 // TransformUp implements the Transformable interface.
 func (p *ShowTables) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(NewShowTables(p.Database, p.Full))
+	return f(NewShowTables(p.db, p.Full))
 }
 
 // TransformExpressionsUp implements the Transformable interface.

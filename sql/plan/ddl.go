@@ -10,9 +10,9 @@ var ErrCreateTable = errors.NewKind("tables cannot be created on database %s")
 
 // CreateTable is a node describing the creation of some table.
 type CreateTable struct {
-	Database sql.Database
-	name     string
-	schema   sql.Schema
+	db     sql.Database
+	name   string
+	schema sql.Schema
 }
 
 // NewCreateTable creates a new CreateTable node
@@ -22,23 +22,37 @@ func NewCreateTable(db sql.Database, name string, schema sql.Schema) *CreateTabl
 	}
 
 	return &CreateTable{
-		Database: db,
-		name:     name,
-		schema:   schema,
+		db:     db,
+		name:   name,
+		schema: schema,
 	}
+}
+
+var _ sql.Databaser = (*CreateTable)(nil)
+
+// Database implements the sql.Databaser interface.
+func (c *CreateTable) Database() sql.Database {
+	return c.db
+}
+
+// WithDatabase implements the sql.Databaser interface.
+func (c *CreateTable) WithDatabase(db sql.Database) (sql.Node, error) {
+	nc := *c
+	nc.db = db
+	return &nc, nil
 }
 
 // Resolved implements the Resolvable interface.
 func (c *CreateTable) Resolved() bool {
-	_, ok := c.Database.(sql.UnresolvedDatabase)
+	_, ok := c.db.(sql.UnresolvedDatabase)
 	return !ok
 }
 
 // RowIter implements the Node interface.
 func (c *CreateTable) RowIter(s *sql.Context) (sql.RowIter, error) {
-	d, ok := c.Database.(sql.Alterable)
+	d, ok := c.db.(sql.Alterable)
 	if !ok {
-		return nil, ErrCreateTable.New(c.Database.Name())
+		return nil, ErrCreateTable.New(c.db.Name())
 	}
 
 	return sql.RowsToRowIter(), d.Create(c.name, c.schema)
@@ -52,7 +66,7 @@ func (c *CreateTable) Children() []sql.Node { return nil }
 
 // TransformUp implements the Transformable interface.
 func (c *CreateTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(NewCreateTable(c.Database, c.name, c.schema))
+	return f(NewCreateTable(c.db, c.name, c.schema))
 }
 
 // TransformExpressionsUp implements the Transformable interface.

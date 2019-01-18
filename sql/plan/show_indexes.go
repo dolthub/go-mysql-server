@@ -9,7 +9,7 @@ import (
 
 // ShowIndexes is a node that shows the indexes on a table.
 type ShowIndexes struct {
-	Database sql.Database
+	db       sql.Database
 	Table    string
 	Registry *sql.IndexRegistry
 }
@@ -19,15 +19,29 @@ func NewShowIndexes(db sql.Database, table string, registry *sql.IndexRegistry) 
 	return &ShowIndexes{db, table, registry}
 }
 
+var _ sql.Databaser = (*ShowIndexes)(nil)
+
+// Database implements the sql.Databaser interface.
+func (n *ShowIndexes) Database() sql.Database {
+	return n.db
+}
+
+// WithDatabase implements the sql.Databaser interface.
+func (n *ShowIndexes) WithDatabase(db sql.Database) (sql.Node, error) {
+	nc := *n
+	nc.db = db
+	return &nc, nil
+}
+
 // Resolved implements the Resolvable interface.
 func (n *ShowIndexes) Resolved() bool {
-	_, ok := n.Database.(sql.UnresolvedDatabase)
+	_, ok := n.db.(sql.UnresolvedDatabase)
 	return !ok
 }
 
 // TransformUp implements the Transformable interface.
 func (n *ShowIndexes) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(NewShowIndexes(n.Database, n.Table, n.Registry))
+	return f(NewShowIndexes(n.db, n.Table, n.Registry))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
@@ -67,7 +81,7 @@ func (n *ShowIndexes) Children() []sql.Node { return nil }
 // RowIter implements the Node interface.
 func (n *ShowIndexes) RowIter(*sql.Context) (sql.RowIter, error) {
 	return &showIndexesIter{
-		db:       n.Database,
+		db:       n.db,
 		table:    n.Table,
 		registry: n.Registry,
 	}, nil
