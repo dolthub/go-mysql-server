@@ -2,7 +2,7 @@ package plan
 
 import "gopkg.in/src-d/go-mysql-server.v0/sql"
 
-// Rollback undoes the changes perfromed in a transaction.
+// Rollback undoes the changes performed in a transaction.
 type Rollback struct{}
 
 // NewRollback creates a new Rollback node.
