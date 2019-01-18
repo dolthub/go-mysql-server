@@ -1007,6 +1007,7 @@ var fixtures = map[string]sql.Node{
 		),
 		plan.NewShowCollation(),
 	),
+	`ROLLBACK`: plan.NewRollback(),
 }
 
 func TestParse(t *testing.T) {
