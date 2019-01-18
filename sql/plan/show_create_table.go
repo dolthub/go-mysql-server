@@ -89,7 +89,7 @@ func produceCreateStatement(table sql.Table) string {
 
 	// Statement creation parts for each column
 	for indx, col := range schema {
-		createStmtPart := fmt.Sprintf("`%s` %s", col.Name, col.Type.Type())
+		createStmtPart := fmt.Sprintf("  `%s` %s", col.Name, col.Type.Type())
 
 		if !col.Nullable {
 			createStmtPart = fmt.Sprintf("%s NOT NULL", createStmtPart)
@@ -111,7 +111,7 @@ func produceCreateStatement(table sql.Table) string {
 
 	prettyColCreateStmts := strings.Join(colCreateStatements, ",\n")
 	composedCreateTableStatement :=
-		fmt.Sprintf("CREATE TABLE `%s` (%s) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", table.Name(), prettyColCreateStmts)
+		fmt.Sprintf("CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", table.Name(), prettyColCreateStmts)
 
 	return composedCreateTableStatement
 }
