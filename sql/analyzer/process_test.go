@@ -70,6 +70,37 @@ func TestTrackProcess(t *testing.T) {
 	}
 }
 
+func TestTrackProcessSubquery(t *testing.T) {
+	require := require.New(t)
+	rule := getRuleFrom(OnceAfterAll, "track_process")
+	catalog := sql.NewCatalog()
+	a := NewDefault(catalog)
+
+	node := plan.NewProject(
+		nil,
+		plan.NewSubqueryAlias("f",
+			plan.NewQueryProcess(
+				plan.NewResolvedTable(mem.NewTable("foo", nil)),
+				nil,
+			),
+		),
+	)
+
+	result, err := rule.Apply(sql.NewEmptyContext(), a, node)
+	require.NoError(err)
+
+	expectedChild := plan.NewProject(
+		nil,
+		plan.NewSubqueryAlias("f",
+			plan.NewResolvedTable(mem.NewTable("foo", nil)),
+		),
+	)
+
+	proc, ok := result.(*plan.QueryProcess)
+	require.True(ok)
+	require.Equal(expectedChild, proc.Child)
+}
+
 func withoutProcessTracking(a *Analyzer) *Analyzer {
 	afterAll := a.Batches[len(a.Batches)-1]
 	afterAll.Rules = afterAll.Rules[1:]

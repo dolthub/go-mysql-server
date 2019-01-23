@@ -71,5 +71,19 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return n, nil
 	}
 
-	return plan.NewQueryProcess(n, func() { processList.Done(ctx.Pid()) }), nil
+	// Remove QueryProcess nodes from the subqueries. Otherwise, the process
+	// will be marked as done as soon as a subquery finishes.
+	node, err := n.TransformUp(func(n sql.Node) (sql.Node, error) {
+		if sq, ok := n.(*plan.SubqueryAlias); ok {
+			if qp, ok := sq.Child.(*plan.QueryProcess); ok {
+				return plan.NewSubqueryAlias(sq.Name(), qp.Child), nil
+			}
+		}
+		return n, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewQueryProcess(node, func() { processList.Done(ctx.Pid()) }), nil
 }
