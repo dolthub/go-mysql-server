@@ -2,11 +2,17 @@ package plan
 
 import (
 	"io"
+	"os"
 	"reflect"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
+
+const experimentalInMemoryJoinKey = "EXPERIMENTAL_IN_MEMORY_JOIN"
+const inMemoryJoinSessionVar = "inmemory_joins"
+
+var useInMemoryJoins = os.Getenv(experimentalInMemoryJoinKey) != ""
 
 // InnerJoin is an inner join between two tables.
 type InnerJoin struct {
@@ -61,12 +67,36 @@ func (j *InnerJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, &innerJoinIter{
-		l:    l,
-		rp:   j.Right,
-		ctx:  ctx,
-		cond: j.Cond,
-	}), nil
+	var inMemorySession bool
+	_, val := ctx.Get(inMemoryJoinSessionVar)
+	if val != nil {
+		inMemorySession = true
+	}
+
+	var iter sql.RowIter
+	if useInMemoryJoins || inMemorySession {
+		r, err := j.Right.RowIter(ctx)
+		if err != nil {
+			span.Finish()
+			return nil, err
+		}
+
+		iter = &innerJoinMemoryIter{
+			l:    l,
+			r:    r,
+			ctx:  ctx,
+			cond: j.Cond,
+		}
+	} else {
+		iter = &innerJoinIter{
+			l:    l,
+			rp:   j.Right,
+			ctx:  ctx,
+			cond: j.Cond,
+		}
+	}
+
+	return sql.NewSpanIter(span, iter), nil
 }
 
 // TransformUp implements the Transformable interface.
@@ -183,6 +213,81 @@ func (i *innerJoinIter) Next() (sql.Row, error) {
 }
 
 func (i *innerJoinIter) Close() error {
+	if err := i.l.Close(); err != nil {
+		if i.r != nil {
+			_ = i.r.Close()
+		}
+		return err
+	}
+
+	if i.r != nil {
+		return i.r.Close()
+	}
+
+	return nil
+}
+
+type innerJoinMemoryIter struct {
+	l       sql.RowIter
+	r       sql.RowIter
+	ctx     *sql.Context
+	cond    sql.Expression
+	pos     int
+	leftRow sql.Row
+	right   []sql.Row
+}
+
+func (i *innerJoinMemoryIter) Next() (sql.Row, error) {
+	for {
+		if i.leftRow == nil {
+			r, err := i.l.Next()
+			if err != nil {
+				return nil, err
+			}
+
+			i.leftRow = r
+		}
+
+		if i.r != nil {
+			for {
+				row, err := i.r.Next()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					return nil, err
+				}
+
+				i.right = append(i.right, row)
+			}
+			i.r = nil
+		}
+
+		if i.pos >= len(i.right) {
+			i.pos = 0
+			i.leftRow = nil
+			continue
+		}
+
+		rightRow := i.right[i.pos]
+		var row = make(sql.Row, len(i.leftRow)+len(rightRow))
+		copy(row, i.leftRow)
+		copy(row[len(i.leftRow):], rightRow)
+
+		i.pos++
+
+		v, err := i.cond.Eval(i.ctx, row)
+		if err != nil {
+			return nil, err
+		}
+
+		if v == true {
+			return row, nil
+		}
+	}
+}
+
+func (i *innerJoinMemoryIter) Close() error {
 	if err := i.l.Close(); err != nil {
 		if i.r != nil {
 			_ = i.r.Close()
