@@ -83,7 +83,7 @@ func (h *Handler) ComQuery(
 	}
 
 	if handled {
-		return nil
+		return callback(&sqltypes.Result{})
 	}
 
 	start := time.Now()
