@@ -5,13 +5,14 @@ import (
 	"reflect"
 	"strings"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
 var ErrDivisionByZero = errors.NewKind("division by zero")
 
 type padType rune
+
 const (
 	lPadType padType = 'l'
 	rPadType padType = 'r'
@@ -28,7 +29,7 @@ func NewPadFunc(pType padType) func(e ...sql.Expression) (sql.Expression, error)
 func NewPad(pType padType, args ...sql.Expression) (sql.Expression, error) {
 	argLen := len(args)
 	if argLen != 3 {
-		return nil, sql.ErrInvalidArgumentNumber.New("3", argLen)
+		return nil, sql.ErrInvalidArgumentNumber.New(string(pType)+"pad", "3", argLen)
 	}
 
 	return &Pad{args[0], args[1], args[2], pType}, nil

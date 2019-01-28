@@ -18,7 +18,7 @@ type ConcatWithSeparator struct {
 // NewConcatWithSeparator creates a new NewConcatWithSeparator UDF.
 func NewConcatWithSeparator(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) == 0 {
-		return nil, sql.ErrInvalidArgumentNumber.New("1 or more", 0)
+		return nil, sql.ErrInvalidArgumentNumber.New("CONCAT_WS", "1 or more", 0)
 	}
 
 	for _, arg := range args {

@@ -18,7 +18,7 @@ type JSONExtract struct {
 // NewJSONExtract creates a new JSONExtract UDF.
 func NewJSONExtract(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 {
-		return nil, sql.ErrInvalidArgumentNumber.New(2, len(args))
+		return nil, sql.ErrInvalidArgumentNumber.New("JSON_EXTRACT", 2, len(args))
 	}
 
 	return &JSONExtract{args[0], args[1:]}, nil
