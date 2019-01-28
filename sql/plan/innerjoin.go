@@ -10,6 +10,7 @@ import (
 )
 
 const experimentalInMemoryJoinKey = "EXPERIMENTAL_IN_MEMORY_JOIN"
+const inMemoryJoinSessionVar = "inmemory_joins"
 
 var useInMemoryJoins = os.Getenv(experimentalInMemoryJoinKey) != ""
 
@@ -66,8 +67,14 @@ func (j *InnerJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
+	var inMemorySession bool
+	_, val := ctx.Get(inMemoryJoinSessionVar)
+	if val != nil {
+		inMemorySession = true
+	}
+
 	var iter sql.RowIter
-	if useInMemoryJoins {
+	if useInMemoryJoins || inMemorySession {
 		r, err := j.Right.RowIter(ctx)
 		if err != nil {
 			span.Finish()

@@ -39,11 +39,6 @@ func TestInnerJoin(t *testing.T) {
 }
 
 func TestInMemoryInnerJoin(t *testing.T) {
-	useInMemoryJoins = true
-	defer func() {
-		useInMemoryJoins = false
-	}()
-
 	require := require.New(t)
 	finalSchema := append(lSchema, rSchema...)
 
@@ -62,7 +57,14 @@ func TestInMemoryInnerJoin(t *testing.T) {
 
 	require.Equal(finalSchema, j.Schema())
 
-	rows := collectRows(t, j)
+	ctx := sql.NewEmptyContext()
+	ctx.Set(inMemoryJoinSessionVar, sql.Text, "true")
+
+	iter, err := j.RowIter(ctx)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
 	require.Len(rows, 2)
 
 	require.Equal([]sql.Row{
