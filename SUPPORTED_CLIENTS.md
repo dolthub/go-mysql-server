@@ -5,6 +5,7 @@ These are the clients we actively test against to check are compatible with go-m
 - Python
   - [pymysql](#pymysql)
   - [mysql-connector](#python-mysql-connector)
+  - [sqlalchemy](#python-sqlalchemy)
 - Ruby
   - [ruby-mysql](#ruby-mysql)
 - [PHP](#php)
@@ -63,6 +64,19 @@ try:
     # use rows
 finally:
     connection.close()
+```
+
+### Python sqlalchemy
+
+```python
+import pandas as pd
+import sqlalchemy
+
+engine = sqlalchemy.create_engine('mysql+pymysql://user:pass@127.0.0.1:3306/dbname')
+with engine.connect() as conn:
+     repo_df = pd.read_sql_table("mytable", con=conn)
+     for table_name in repo_df.to_dict():
+        print(table_name)
 ```
 
 ### ruby-mysql

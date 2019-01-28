@@ -37,9 +37,9 @@ func TestShowCreateTable(t *testing.T) {
 
 	expected := sql.NewRow(
 		table.Name(),
-		"CREATE TABLE `test-table` (`baz` TEXT NOT NULL,\n"+
-			"`zab` INT32 DEFAULT 0,\n"+
-			"`bza` INT64 DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		"CREATE TABLE `test-table` (\n  `baz` TEXT NOT NULL,\n"+
+			"  `zab` INT32 DEFAULT 0,\n"+
+			"  `bza` INT64 DEFAULT 0\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 	)
 
 	require.Equal(expected, row)
