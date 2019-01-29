@@ -1582,6 +1582,18 @@ func TestStarPanic197(t *testing.T) {
 	require.Len(rows, 3)
 }
 
+func TestInvalidRegexp(t *testing.T) {
+	require := require.New(t)
+	e := newEngine(t)
+
+	ctx := newCtx()
+	_, iter, err := e.Query(ctx, `SELECT * FROM mytable WHERE s REGEXP("*main.go")`)
+	require.NoError(err)
+
+	_, err = sql.RowIterToRows(iter)
+	require.Error(err)
+}
+
 func TestIndexes(t *testing.T) {
 	e := newEngine(t)
 

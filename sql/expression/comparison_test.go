@@ -210,6 +210,19 @@ func testRegexpCases(t *testing.T) {
 	}
 }
 
+func TestInvalidRegexp(t *testing.T) {
+	t.Helper()
+	require := require.New(t)
+
+	col1 := NewGetField(0, sql.Text, "col1", true)
+	invalid := NewLiteral("*col1", sql.Text)
+	r := NewRegexp(col1, invalid)
+	row := sql.NewRow("col1")
+
+	_, err := r.Eval(sql.NewEmptyContext(), row)
+	require.Error(err)
+}
+
 func TestIn(t *testing.T) {
 	testCases := []struct {
 		name   string

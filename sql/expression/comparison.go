@@ -259,7 +259,9 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 				},
 			}
 		}
-		matcher = re.pool.Get().(regex.Matcher)
+		if obj := re.pool.Get(); obj != nil {
+			matcher = obj.(regex.Matcher)
+		}
 	}
 	if matcher == nil {
 		return nil, err
