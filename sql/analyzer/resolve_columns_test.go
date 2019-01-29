@@ -54,7 +54,7 @@ func TestQualifyColumnsProject(t *testing.T) {
 
 func TestMisusedAlias(t *testing.T) {
 	require := require.New(t)
-	f := getRule("resolve_columns")
+	f := getRule("check_aliases")
 
 	table := mem.NewTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32},
@@ -71,12 +71,7 @@ func TestMisusedAlias(t *testing.T) {
 		plan.NewResolvedTable(table),
 	)
 
-	// the first iteration wrap the unresolved column "alias_i" as a maybeAlias
-	n, err := f.Apply(sql.NewEmptyContext(), nil, node)
-	require.NoError(err)
-
-	// if maybeAlias is not resolved it fails
-	_, err = f.Apply(sql.NewEmptyContext(), nil, n)
+	_, err := f.Apply(sql.NewEmptyContext(), nil, node)
 	require.EqualError(err, ErrMisusedAlias.New("alias_i").Error())
 }
 

@@ -12,6 +12,79 @@ import (
 	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
 )
 
+func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	span, _ := ctx.Span("check_aliases")
+	defer span.Finish()
+
+	a.Log("check aliases")
+
+	var err error
+	plan.Inspect(n, func(node sql.Node) bool {
+		p, ok := node.(*plan.Project)
+		if !ok {
+			return true
+		}
+
+		aliases := lookForAliasDeclarations(p)
+		for alias := range aliases {
+			if isAliasUsed(p, alias) {
+				err = ErrMisusedAlias.New(alias)
+			}
+		}
+
+		return true
+	})
+
+	return n, err
+}
+
+func lookForAliasDeclarations(node sql.Expressioner) map[string]struct{} {
+	var (
+		aliases = map[string]struct{}{}
+		in      = struct{}{}
+	)
+
+	for _, e := range node.Expressions() {
+		expression.Inspect(e, func(expr sql.Expression) bool {
+			if alias, ok := expr.(*expression.Alias); ok {
+				aliases[alias.Name()] = in
+			}
+
+			return true
+		})
+	}
+
+	return aliases
+}
+
+func isAliasUsed(node sql.Expressioner, alias string) bool {
+	var found bool
+	for _, e := range node.Expressions() {
+		expression.Inspect(e, func(expr sql.Expression) bool {
+			if a, ok := expr.(*expression.Alias); ok {
+				if a.Name() == alias {
+					return false
+				}
+
+				return true
+			}
+
+			if n, ok := expr.(sql.Nameable); ok && n.Name() == alias {
+				found = true
+				return false
+			}
+
+			return true
+		})
+
+		if found {
+			break
+		}
+	}
+
+	return found
+}
+
 // deferredColumn is a wrapper on UnresolvedColumn used only to defer the
 // resolution of the column because it may require some work done by
 // other analyzer phases.
@@ -221,18 +294,6 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			}
 		}
 
-		var (
-			aliasMap = make(map[string]struct{})
-			exists   = struct{}{}
-		)
-		if project, ok := n.(*plan.Project); ok {
-			for _, e := range project.Projections {
-				if alias, ok := e.(*expression.Alias); ok {
-					aliasMap[strings.ToLower(alias.Name())] = exists
-				}
-			}
-		}
-
 		expressioner, ok := n.(sql.Expressioner)
 		if !ok {
 			return n, nil
@@ -285,11 +346,6 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				default:
 					if table != "" {
 						return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
-					}
-
-					if _, ok := aliasMap[name]; ok {
-						// no nested aliases
-						return nil, ErrMisusedAlias.New(uc.Name())
 					}
 
 					return nil, ErrColumnNotFound.New(uc.Name())
