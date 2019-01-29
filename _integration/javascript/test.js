@@ -5,9 +5,9 @@ test.cb('can connect to go-mysql-server', t => {
     const connection = mysql.createConnection({
         host: '127.0.0.1',
         port: 3306,
-        user: 'user',
-        password: 'pass',
-        database: 'db'
+        user: 'root',
+        password: '',
+        database: 'gitbase'
     });
 
     connection.connect();

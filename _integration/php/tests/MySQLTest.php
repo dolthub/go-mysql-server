@@ -7,7 +7,7 @@ final class MySQLTest extends TestCase
 {
     public function testConnection(): void {
         try {
-            $conn = new PDO("mysql:host=127.0.0.1:3306;dbname=db", "user", "pass");
+            $conn = new PDO("mysql:host=127.0.0.1:3306;dbname=gitbase", "root", "");
             $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             $stmt = $conn->query('SELECT name, email FROM mytable ORDER BY name, email');
