@@ -59,12 +59,13 @@ type BaseSession struct {
 	mu       sync.RWMutex
 	config   map[string]TypedValue
 	warnings []*Warning
+	warncnt  uint16
 }
 
 // Address returns the server address.
 func (s *BaseSession) Address() string { return s.addr }
 
-// User returns session's client information.
+// Client returns session's client information.
 func (s *BaseSession) Client() Client { return s.client }
 
 // Set implements the Session interface.
@@ -127,8 +128,15 @@ func (s *BaseSession) Warnings() []*Warning {
 func (s *BaseSession) ClearWarnings() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.warnings != nil {
-		s.warnings = s.warnings[:0]
+
+	cnt := uint16(len(s.warnings))
+	if s.warncnt == cnt {
+		if s.warnings != nil {
+			s.warnings = s.warnings[:0]
+		}
+		s.warncnt = 0
+	} else {
+		s.warncnt = cnt
 	}
 }
 
