@@ -1055,13 +1055,27 @@ func TestClearWarnings(t *testing.T) {
 	require := require.New(t)
 	e := newEngine(t)
 	ctx := newCtx()
-	ctx.Session.Warn(&sql.Warning{Code: 1})
-	ctx.Session.Warn(&sql.Warning{Code: 2})
-	ctx.Session.Warn(&sql.Warning{Code: 3})
 
-	_, iter, err := e.Query(ctx, "SHOW WARNINGS")
+	_, iter, err := e.Query(ctx, "-- some empty query as a comment")
+	require.NoError(err)
+	err = iter.Close()
+	require.NoError(err)
+
+	_, iter, err = e.Query(ctx, "-- some empty query as a comment")
+	require.NoError(err)
+	err = iter.Close()
+	require.NoError(err)
+
+	_, iter, err = e.Query(ctx, "-- some empty query as a comment")
+	require.NoError(err)
+	err = iter.Close()
+	require.NoError(err)
+
+	_, iter, err = e.Query(ctx, "SHOW WARNINGS")
 	require.NoError(err)
 	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+	err = iter.Close()
 	require.NoError(err)
 	require.Equal(3, len(rows))
 
@@ -1069,10 +1083,17 @@ func TestClearWarnings(t *testing.T) {
 	require.NoError(err)
 	rows, err = sql.RowIterToRows(iter)
 	require.NoError(err)
+	err = iter.Close()
+	require.NoError(err)
 	require.Equal(1, len(rows))
 
 	_, _, err = e.Query(ctx, "SELECT * FROM mytable LIMIT 1")
 	require.NoError(err)
+	_, err = sql.RowIterToRows(iter)
+	require.NoError(err)
+	err = iter.Close()
+	require.NoError(err)
+
 	require.Equal(0, len(ctx.Session.Warnings()))
 }
 
