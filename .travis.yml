@@ -6,6 +6,7 @@ addons:
   apt:
     packages:
       - libonig-dev
+      - libmysqlclient-dev
 
 matrix:
   fast_finish: true
@@ -100,3 +101,12 @@ jobs:
         - go get ./...
       script:
         - make TEST=dotnet integration
+
+    - language: c
+      compiler: clang
+      before_install:
+        - eval "$(gimme 1.11)"
+      install:
+        - go get ./...
+      script:
+        - make TEST=c integration

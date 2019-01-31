@@ -6,7 +6,7 @@ import sqlalchemy
 class TestMySQL(unittest.TestCase):
 
     def test_connect(self):
-        engine = sqlalchemy.create_engine('mysql+pymysql://root:@127.0.0.1:3306/gitbase')
+        engine = sqlalchemy.create_engine('mysql+pymysql://root:@127.0.0.1:3306/mydb')
         with engine.connect() as conn:
             expected = {
                 "name":  {0: 'John Doe', 1: 'John Doe', 2: 'Jane Doe', 3: 'Evil Bob'},

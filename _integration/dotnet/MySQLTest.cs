@@ -10,7 +10,7 @@ namespace dotnet
         [TestMethod]
         public async Task TestCanConnect()
         {
-            var connectionString = "server=127.0.0.1;user id=root;password=;port=3306;database=gitbase;";
+            var connectionString = "server=127.0.0.1;user id=root;password=;port=3306;database=mydb;";
             var expected = new string[][]{
                 new string[]{"Evil Bob", "evilbob@gmail.com"},
                 new string[]{"Jane Doe", "jane@doe.com"},

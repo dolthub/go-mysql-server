@@ -44,7 +44,7 @@ func main() {
 
 func createTestDatabase() *mem.Database {
 	const (
-		dbName    = "gitbase"
+		dbName    = "mydb"
 		tableName = "mytable"
 	)
 
