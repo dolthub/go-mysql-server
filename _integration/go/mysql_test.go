@@ -8,7 +8,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-const connectionString = "user:pass@tcp(127.0.0.1:3306)/test"
+const connectionString = "root:@tcp(127.0.0.1:3306)/mydb"
 
 func TestMySQL(t *testing.T) {
 	db, err := sql.Open("mysql", connectionString)

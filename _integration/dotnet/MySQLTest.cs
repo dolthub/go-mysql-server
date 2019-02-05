@@ -10,14 +10,14 @@ namespace dotnet
         [TestMethod]
         public async Task TestCanConnect()
         {
-            var connectionString = "server=127.0.0.1;user id=user;password=pass;port=3306;database=db;";
+            var connectionString = "server=127.0.0.1;user id=root;password=;port=3306;database=mydb;";
             var expected = new string[][]{
                 new string[]{"Evil Bob", "evilbob@gmail.com"},
                 new string[]{"Jane Doe", "jane@doe.com"},
                 new string[]{"John Doe", "john@doe.com"},
                 new string[]{"John Doe", "johnalt@doe.com"},
             };
-            
+
             using (var conn = new MySqlConnection(connectionString))
             {
                 await conn.OpenAsync();

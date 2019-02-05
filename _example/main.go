@@ -31,7 +31,7 @@ func main() {
 	config := server.Config{
 		Protocol: "tcp",
 		Address:  "localhost:3306",
-		Auth:     auth.NewNativeSingle("user", "pass", auth.AllPermissions),
+		Auth:     auth.NewNativeSingle("root", "", auth.AllPermissions),
 	}
 
 	s, err := server.NewDefaultServer(config, engine)
@@ -44,7 +44,7 @@ func main() {
 
 func createTestDatabase() *mem.Database {
 	const (
-		dbName    = "test"
+		dbName    = "mydb"
 		tableName = "mytable"
 	)
 

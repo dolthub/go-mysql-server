@@ -5,9 +5,9 @@ class TestMySQL(unittest.TestCase):
 
     def test_connect(self):
         connection = pymysql.connect(host='127.0.0.1',
-                                     user='user',
-                                     password='pass',
-                                     db='db',
+                                     user='root',
+                                     password='',
+                                     db='',
                                      cursorclass=pymysql.cursors.DictCursor)
 
         try:

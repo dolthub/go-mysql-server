@@ -14,7 +14,7 @@ class MySQLTest {
 
     @Test
     void test() {
-        String dbUrl = "jdbc:mariadb://127.0.0.1:3306/db?user=user&password=pass";
+        String dbUrl = "jdbc:mariadb://127.0.0.1:3306/mydb?user=root&password=";
         String query = "SELECT name, email FROM mytable ORDER BY name, email";
         List<Result> expected = new ArrayList<>();
         expected.add(new Result("Evil Bob", "evilbob@gmail.com"));
