@@ -209,6 +209,48 @@ func TestCreateIndexChecksum(t *testing.T) {
 	require.Equal("1", driver.config["idx"][sql.ChecksumKey])
 }
 
+func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
+	require := require.New(t)
+
+	table :=
+		&underlyingTable{
+			&underlyingTable{
+				&underlyingTable{
+					&checksumTable{
+						mem.NewTable("foo", sql.Schema{
+							{Name: "a", Source: "foo"},
+							{Name: "b", Source: "foo"},
+							{Name: "c", Source: "foo"},
+						}),
+						"1",
+					},
+				},
+			},
+		}
+
+	driver := new(mockDriver)
+	catalog := sql.NewCatalog()
+	catalog.RegisterIndexDriver(driver)
+
+	exprs := []sql.Expression{
+		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
+	}
+
+	ci := NewCreateIndex(
+		"idx", NewResolvedTable(table), exprs, "mock",
+		map[string]string{"async": "false"},
+	)
+	ci.Catalog = catalog
+	ci.CurrentDatabase = "foo"
+
+	_, err := ci.RowIter(sql.NewEmptyContext())
+	require.NoError(err)
+
+	require.Equal([]string{"idx"}, driver.saved)
+	require.Equal("1", driver.config["idx"][sql.ChecksumKey])
+}
+
 func TestCreateIndexWithIter(t *testing.T) {
 	require := require.New(t)
 	foo := mem.NewPartitionedTable("foo", sql.Schema{
@@ -360,3 +402,9 @@ func (t *checksumTable) Checksum() (string, error) {
 }
 
 func (t *checksumTable) Underlying() sql.Table { return t.Table }
+
+type underlyingTable struct {
+	sql.Table
+}
+
+func (t *underlyingTable) Underlying() sql.Table { return t.Table }

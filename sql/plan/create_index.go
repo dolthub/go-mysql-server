@@ -85,6 +85,17 @@ func getIndexableTable(t sql.Table) (sql.IndexableTable, error) {
 	}
 }
 
+func getChecksumable(t sql.Table) sql.Checksumable {
+	switch t := t.(type) {
+	case sql.Checksumable:
+		return t
+	case sql.TableWrapper:
+		return getChecksumable(t.Underlying())
+	default:
+		return nil
+	}
+}
+
 // RowIter implements the Node interface.
 func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	table, ok := c.Table.(*ResolvedTable)
@@ -119,7 +130,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		}
 	}
 
-	if ch, ok := table.Table.(sql.Checksumable); ok {
+	if ch := getChecksumable(table.Table); ch != nil {
 		c.Config[sql.ChecksumKey], err = ch.Checksum()
 		if err != nil {
 			return nil, err
