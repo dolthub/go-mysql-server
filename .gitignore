@@ -30,5 +30,3 @@ Makefile.main
 .ci/
 _example/main
 _example/*.exe
-
-go.sum

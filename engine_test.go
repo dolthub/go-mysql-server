@@ -1224,8 +1224,9 @@ func TestDDL(t *testing.T) {
 
 	e := newEngine(t)
 	testQuery(t, e,
-		"CREATE TABLE t1(a INTEGER, b TEXT, c DATE,"+
-			"d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL)",
+		"CREATE TABLE t1(a INTEGER, b TEXT, c DATE, "+
+			"d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, "+
+			"b1 BOOL, b2 BOOLEAN NOT NULL)",
 		[]sql.Row(nil),
 	)
 
@@ -1242,6 +1243,8 @@ func TestDDL(t *testing.T) {
 		{Name: "d", Type: sql.Timestamp, Nullable: true, Source: "t1"},
 		{Name: "e", Type: sql.Text, Nullable: true, Source: "t1"},
 		{Name: "f", Type: sql.Blob, Source: "t1"},
+		{Name: "b1", Type: sql.Uint8, Nullable: true, Source: "t1"},
+		{Name: "b2", Type: sql.Uint8, Source: "t1"},
 	}
 
 	require.Equal(s, testTable.Schema())
