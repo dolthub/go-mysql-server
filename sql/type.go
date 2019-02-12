@@ -157,6 +157,14 @@ var (
 
 	// Numeric types
 
+	// Int8 is an integer of 8 bits
+	Int8 = numberT{t: sqltypes.Int8}
+	// Uint8 is an unsigned integer of 8 bits
+	Uint8 = numberT{t: sqltypes.Uint8}
+	// Int16 is an integer of 16 bits
+	Int16 = numberT{t: sqltypes.Int16}
+	// Uint16 is an unsigned integer of 16 bits
+	Uint16 = numberT{t: sqltypes.Uint16}
 	// Int32 is an integer of 32 bits.
 	Int32 = numberT{t: sqltypes.Int32}
 	// Int64 is an integer of 64 bytes.
@@ -199,6 +207,14 @@ func MysqlTypeToType(sql query.Type) (Type, error) {
 	switch sql {
 	case sqltypes.Null:
 		return Null, nil
+	case sqltypes.Int8:
+		return Int8, nil
+	case sqltypes.Uint8:
+		return Uint8, nil
+	case sqltypes.Int16:
+		return Int16, nil
+	case sqltypes.Uint16:
+		return Uint16, nil
 	case sqltypes.Int32:
 		return Int32, nil
 	case sqltypes.Int64:
