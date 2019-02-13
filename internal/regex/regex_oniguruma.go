@@ -1,8 +1,8 @@
-// +build oniguruma
-
 package regex
 
-import "github.com/moovweb/rubex"
+import (
+	"github.com/moovweb/rubex"
+)
 
 // Oniguruma holds a rubex regular expression Matcher.
 type Oniguruma struct {
@@ -14,18 +14,23 @@ func (r *Oniguruma) Match(s string) bool {
 	return r.reg.MatchString(s)
 }
 
+// Dispose implements Disposer interface.
+// The function releases resources for oniguruma's precompiled regex
+func (r *Oniguruma) Dispose() {
+	r.reg.Free()
+}
+
 // NewOniguruma creates a new Matcher using oniguruma engine.
-func NewOniguruma(re string) (Matcher, error) {
+func NewOniguruma(re string) (Matcher, Disposer, error) {
 	reg, err := rubex.Compile(re)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	r := Oniguruma{
 		reg: reg,
 	}
-
-	return &r, nil
+	return &r, &r, nil
 }
 
 func init() {

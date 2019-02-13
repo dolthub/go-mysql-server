@@ -1,6 +1,9 @@
 language: go
-
 go_import_path: gopkg.in/src-d/go-mysql-server.v0
+
+env:
+  global:
+    - LD_LIBRARY_PATH="/usr/local/lib":${LD_LIBRARY_PATH}
 
 addons:
   apt:
@@ -41,54 +44,45 @@ jobs:
     - language: python
       python: '3.6'
       before_install:
-        - eval "$(gimme 1.11)"
+        - eval "$(gimme 1.11.2)"
       install:
-        - go get ./...
+        - GO111MODULE=on go get ./...
       script:
         - make TEST=python-pymysql integration
-
-    - language: python
-      python: '3.6'
-      before_install:
-        - eval "$(gimme 1.11)"
-      install:
-        - go get ./...
-      script:
-        - make TEST=python-mysql integration
 
     - language: php
       php: '7.1'
       before_install:
-        - eval "$(gimme 1.11)"
+        - eval "$(gimme 1.11.2)"
       install:
-        - go get ./...
+        - GO111MODULE=on go get ./...
       script:
         - make TEST=php integration
 
     - language: ruby
       ruby: '2.3'
       before_install:
-        - eval "$(gimme 1.11)"
+        - eval "$(gimme 1.11.2)"
       install:
-        - go get ./...
+        - GO111MODULE=on go get ./...
       script:
         - make TEST=ruby integration
 
     - language: java
-      jdk: oraclejdk9
+      jdk: openjdk10
       before_install:
-        - eval "$(gimme 1.11)"
+        - eval "$(gimme 1.11.2)"
       install:
-        - go get ./...
+        - GO111MODULE=on go get ./...
       script:
         - make TEST=jdbc-mariadb integration
 
     - language: node_js
       node_js: '7'
       before_install:
-        - eval "$(gimme 1.11)"
+        - eval "$(gimme 1.11.2)"
       install:
-        - go get ./...
+        - GO111MODULE=on go get ./...
       script:
         - make TEST=javascript integration
 
@@ -96,17 +90,17 @@ jobs:
       mono: none
       dotnet: '2.1'
       before_install:
-        - eval "$(gimme 1.11)"
+        - eval "$(gimme 1.11.2)"
       install:
-        - go get ./...
+        - GO111MODULE=on go get ./...
       script:
         - make TEST=dotnet integration
 
     - language: c
       compiler: clang
       before_install:
-        - eval "$(gimme 1.11)"
+        - eval "$(gimme 1.11.2)"
       install:
-        - go get ./...
+        - GO111MODULE=on go get ./...
       script:
         - make TEST=c integration

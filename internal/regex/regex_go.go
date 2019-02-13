@@ -1,6 +1,10 @@
+// +build mysql_go_regex
+
 package regex
 
-import "regexp"
+import (
+	"regexp"
+)
 
 // Go holds go regex engine Matcher.
 type Go struct {
@@ -12,18 +16,20 @@ func (r *Go) Match(s string) bool {
 	return r.reg.MatchString(s)
 }
 
+// Dispose implements Disposer interface.
+func (*Go) Dispose() {}
+
 // NewGo creates a new Matcher using go regex engine.
-func NewGo(re string) (Matcher, error) {
+func NewGo(re string) (Matcher, Disposer, error) {
 	reg, err := regexp.Compile(re)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	r := Go{
 		reg: reg,
 	}
-
-	return &r, nil
+	return &r, &r, nil
 }
 
 func init() {
