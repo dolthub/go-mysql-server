@@ -53,8 +53,9 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	var (
-		matcher regex.Matcher
-		right   string
+		matcher  regex.Matcher
+		disposer regex.Disposer
+		right    string
 	)
 	// eval right and convert to text
 	if !l.cached || l.pool == nil {
@@ -70,12 +71,12 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	// for non-cached regex every time create a new matcher
 	if !l.cached {
-		matcher, err = regex.New(regex.Default(), right)
+		matcher, disposer, err = regex.New(regex.Default(), right)
 	} else {
 		if l.pool == nil {
 			l.pool = &sync.Pool{
 				New: func() interface{} {
-					r, e := regex.New(regex.Default(), right)
+					r, _, e := regex.New(regex.Default(), right)
 					if e != nil {
 						err = e
 						return nil
@@ -91,9 +92,13 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	ok := matcher.Match(left.(string))
-	if l.pool != nil && l.cached {
+	if !l.cached {
+		disposer.Dispose()
+	} else if l.pool != nil {
 		l.pool.Put(matcher)
+
 	}
+
 	return ok, nil
 }
 

@@ -10,12 +10,13 @@ require (
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/go-ole/go-ole v1.2.2 // indirect
 	github.com/go-sql-driver/mysql v1.4.1
-	github.com/gogo/protobuf v1.2.0 // indirect
+	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/google/go-cmp v0.2.0 // indirect
 	github.com/gorilla/handlers v1.4.0 // indirect
 	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/hashicorp/memberlist v0.1.3 // indirect
 	github.com/mitchellh/hashstructure v1.0.0
+	github.com/moovweb/rubex v0.0.2-0.20130508223049-b3d9ff6ad7d9
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852
 	github.com/opentracing/opentracing-go v1.0.2
 	github.com/pelletier/go-toml v1.2.0 // indirect
@@ -30,7 +31,7 @@ require (
 	github.com/stretchr/testify v1.2.2
 	github.com/uber/jaeger-client-go v2.15.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.0.0+incompatible // indirect
-	golang.org/x/net v0.0.0-20190206173232-65e2d4e15006 // indirect
+	golang.org/x/net v0.0.0-20190213061140-3a22650c66bd // indirect
 	google.golang.org/grpc v1.18.0 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 	gopkg.in/src-d/go-vitess.v1 v1.5.0

@@ -229,8 +229,9 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 	}
 
 	var (
-		matcher regex.Matcher
-		right   interface{}
+		matcher  regex.Matcher
+		disposer regex.Disposer
+		right    interface{}
 	)
 	// eval right and convert to text
 	if !re.cached || re.pool == nil {
@@ -245,12 +246,12 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 	}
 	// for non-cached regex every time create a new matcher
 	if !re.cached {
-		matcher, err = regex.New(regex.Default(), right.(string))
+		matcher, disposer, err = regex.New(regex.Default(), right.(string))
 	} else {
 		if re.pool == nil {
 			re.pool = &sync.Pool{
 				New: func() interface{} {
-					r, e := regex.New(regex.Default(), right.(string))
+					r, _, e := regex.New(regex.Default(), right.(string))
 					if e != nil {
 						err = e
 						return nil
@@ -268,7 +269,10 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 	}
 
 	ok := matcher.Match(left.(string))
-	if re.pool != nil && re.cached {
+
+	if !re.cached {
+		disposer.Dispose()
+	} else if re.pool != nil {
 		re.pool.Put(matcher)
 	}
 	return ok, nil

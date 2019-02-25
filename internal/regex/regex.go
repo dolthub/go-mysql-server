@@ -1,6 +1,8 @@
 package regex
 
-import errors "gopkg.in/src-d/go-errors.v1"
+import (
+	errors "gopkg.in/src-d/go-errors.v1"
+)
 
 var (
 	// ErrRegexAlreadyRegistered is returned when there is a previously
@@ -21,8 +23,14 @@ type Matcher interface {
 	Match(text string) bool
 }
 
+// Disposer interface is used to release resources.
+// The interface should be implemented by all go binding for native C libraries
+type Disposer interface {
+	Dispose()
+}
+
 // Constructor creates a new Matcher.
-type Constructor func(re string) (Matcher, error)
+type Constructor func(re string) (Matcher, Disposer, error)
 
 // Register add a new regex engine to the registry.
 func Register(name string, c Constructor) error {
@@ -56,10 +64,10 @@ func Engines() []string {
 }
 
 // New creates a new Matcher with the specified regex engine.
-func New(name, re string) (Matcher, error) {
+func New(name, re string) (Matcher, Disposer, error) {
 	n, ok := registry[name]
 	if !ok {
-		return nil, ErrRegexNotFound.New(name)
+		return nil, nil, ErrRegexNotFound.New(name)
 	}
 
 	return n(re)
@@ -70,13 +78,11 @@ func Default() string {
 	if defaultEngine != "" {
 		return defaultEngine
 	}
-
-	_, ok := registry["oniguruma"]
-	if ok {
-		return "oniguruma"
+	if _, ok := registry["go"]; ok {
+		return "go"
 	}
 
-	return "go"
+	return "oniguruma"
 }
 
 // SetDefault sets the regex engine returned by Default.

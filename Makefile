@@ -1,7 +1,7 @@
 # Package configuration
 PROJECT = go-mysql-server
 COMMANDS =
-GO_TAGS = oniguruma
+UNAME_S := $(shell uname -s)
 
 # Including ci Makefile
 CI_REPOSITORY ?= https://github.com/src-d/ci.git
@@ -14,5 +14,14 @@ $(MAKEFILE):
 
 integration:
 	./_integration/run ${TEST}
+
+oniguruma:
+ifeq ($(UNAME_S),Linux)
+	$(shell apt-get install libonig-dev)
+endif
+
+ifeq ($(UNAME_S),Darwin)
+	$(shell brew install oniguruma)
+endif
 
 .PHONY: integration
