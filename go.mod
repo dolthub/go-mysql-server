@@ -8,7 +8,6 @@ require (
 	github.com/boltdb/bolt v1.3.1
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
-	github.com/flier/gohs v1.0.0
 	github.com/go-ole/go-ole v1.2.2 // indirect
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gogo/protobuf v1.2.1 // indirect
@@ -16,7 +15,6 @@ require (
 	github.com/gorilla/handlers v1.4.0 // indirect
 	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/hashicorp/memberlist v0.1.3 // indirect
-	github.com/linyows/go-onigmo v0.1.0
 	github.com/mitchellh/hashstructure v1.0.0
 	github.com/moovweb/rubex v0.0.2-0.20130508223049-b3d9ff6ad7d9
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852
