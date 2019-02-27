@@ -119,15 +119,10 @@ func main() {
     driver := sqle.NewDefault()
     driver.AddDatabase(createTestDatabase())
 
-    auth := mysql.NewAuthServerStatic()
-    auth.Entries["user"] = []*mysql.AuthServerStaticEntry{{
-        Password: "pass",
-    }}
-
     config := server.Config{
         Protocol: "tcp",
         Address:  "localhost:3306",
-        Auth:     auth,
+        Auth:     auth.NewNativeSingle("user", "pass", auth.AllPermissions),
     }
 
     s, err := server.NewDefaultServer(config, driver)
