@@ -90,6 +90,15 @@ func TestExchangeCancelled(t *testing.T) {
 	require.Equal(context.Canceled, err)
 }
 
+func TestExchangePanicRecover(t *testing.T) {
+	ctx := sql.NewContext(context.Background())
+	it := &partitionPanic{}
+	ex := newExchangeRowIter(ctx, 1, it, nil)
+	ex.start()
+
+	require.True(t, it.closed)
+}
+
 type partitionable struct {
 	sql.Node
 	partitions       int
@@ -163,5 +172,20 @@ func (r *partitionRows) Next() (sql.Row, error) {
 
 func (r *partitionRows) Close() error {
 	r.num = -1
+	return nil
+}
+
+type partitionPanic struct {
+	sql.Partition
+	closed bool
+}
+
+func (*partitionPanic) Next() (sql.Partition, error) {
+	panic("partitionPanic.Next")
+	return nil, nil
+}
+
+func (p *partitionPanic) Close() error {
+	p.closed = true
 	return nil
 }

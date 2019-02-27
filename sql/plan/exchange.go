@@ -178,6 +178,10 @@ func (it *exchangeRowIter) start() {
 
 func (it *exchangeRowIter) iterPartitions(ch chan<- sql.Partition) {
 	defer func() {
+		if x := recover(); x != nil {
+			it.err <- fmt.Errorf("mysql_server caught panic:\n%v", x)
+		}
+
 		close(ch)
 
 		if err := it.partitions.Close(); err != nil {
