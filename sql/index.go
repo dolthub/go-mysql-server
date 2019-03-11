@@ -229,7 +229,7 @@ func (r *IndexRegistry) LoadIndexes(dbs Databases) error {
 				}
 
 				var checksum string
-				if c, ok := t.(Checksumable); ok {
+				if c, ok := t.(Checksumable); ok && len(indexes) != 0 {
 					checksum, err = c.Checksum()
 					if err != nil {
 						return err
