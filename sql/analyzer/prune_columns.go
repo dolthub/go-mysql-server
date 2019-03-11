@@ -16,6 +16,15 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return n, nil
 	}
 
+	if describe, ok := n.(*plan.DescribeQuery); ok {
+		n, err := pruneColumns(ctx, a, describe.Child)
+		if err != nil {
+			return nil, err
+		}
+
+		return plan.NewDescribeQuery(describe.Format, n), nil
+	}
+
 	columns := make(usedColumns)
 
 	// All the columns required for the output of the query must be mark as
