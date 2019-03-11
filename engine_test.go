@@ -868,6 +868,14 @@ var queries = []struct {
 		"ROLLBACK",
 		[]sql.Row{},
 	},
+	{
+		"SELECT substring(s, 1, 1) FROM mytable ORDER BY substring(s, 1, 1)",
+		[]sql.Row{{"f"}, {"s"}, {"t"}},
+	},
+	{
+		"SELECT substring(s, 1, 1), count(*) FROM mytable GROUP BY substring(s, 1, 1)",
+		[]sql.Row{{"f", int32(1)}, {"s", int32(1)}, {"t", int32(1)}},
+	},
 }
 
 func TestQueries(t *testing.T) {
