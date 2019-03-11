@@ -3,8 +3,8 @@ package pilosa
 import (
 	"io"
 
-	"github.com/boltdb/bolt"
 	"github.com/sirupsen/logrus"
+	bolt "go.etcd.io/bbolt"
 )
 
 type locationValueIter struct {

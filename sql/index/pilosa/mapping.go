@@ -9,7 +9,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/boltdb/bolt"
+	bolt "go.etcd.io/bbolt"
 )
 
 // mapping
