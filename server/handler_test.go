@@ -1,12 +1,13 @@
 package server
 
 import (
+	"fmt"
 	"net"
 	"reflect"
 	"testing"
 	"unsafe"
 
-	"gopkg.in/src-d/go-mysql-server.v0"
+	sqle "gopkg.in/src-d/go-mysql-server.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-vitess.v1/mysql"
@@ -167,7 +168,7 @@ func TestHandlerKill(t *testing.T) {
 		e,
 		NewSessionManager(
 			func(conn *mysql.Conn, addr string) sql.Session {
-				return sql.NewBaseSession()
+				return sql.NewSession(addr, "", "", conn.ConnectionID)
 			},
 			opentracing.NoopTracer{},
 			"foo",
@@ -197,15 +198,20 @@ func TestHandlerKill(t *testing.T) {
 
 	assertNoConnProcesses(t, e, conn2.ConnectionID)
 
-	err = handler.ComQuery(conn2, "KILL 1", func(res *sqltypes.Result) error {
+	ctx1 := handler.sm.NewContextWithQuery(conn1, "SELECT 1")
+	ctx1, err = handler.e.Catalog.AddProcess(ctx1, sql.QueryProcess, "SELECT 1")
+	require.NoError(err)
+
+	err = handler.ComQuery(conn2, "KILL "+fmt.Sprint(ctx1.Pid()), func(res *sqltypes.Result) error {
 		return nil
 	})
 	require.NoError(err)
 
-	require.Len(handler.sm.sessions, 0)
+	require.Len(handler.sm.sessions, 1)
 	require.Len(handler.c, 1)
-	require.Equal(conn1, handler.c[1])
-	assertNoConnProcesses(t, e, conn2.ConnectionID)
+	_, ok := handler.c[1]
+	require.False(ok)
+	assertNoConnProcesses(t, e, conn1.ConnectionID)
 }
 
 func assertNoConnProcesses(t *testing.T, e *sqle.Engine, conn uint32) {
