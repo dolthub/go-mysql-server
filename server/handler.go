@@ -221,9 +221,17 @@ func rowToSQL(s sql.Schema, row sql.Row) []sqltypes.Value {
 func schemaToFields(s sql.Schema) []*query.Field {
 	fields := make([]*query.Field, len(s))
 	for i, c := range s {
+		var charset uint32
+		if c.Type.Type() == mysql.TypeBlob {
+			charset = mysql.CharacterSetBinary
+		} else {
+			charset = mysql.CharacterSetUtf8
+		}
+
 		fields[i] = &query.Field{
-			Name: c.Name,
-			Type: c.Type.Type(),
+			Name:    c.Name,
+			Type:    c.Type.Type(),
+			Charset: charset,
 		}
 	}
 
