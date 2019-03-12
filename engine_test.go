@@ -18,6 +18,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/index/pilosa"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/parse"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 	"gopkg.in/src-d/go-mysql-server.v0/test"
 
 	"github.com/stretchr/testify/require"
@@ -1112,14 +1113,14 @@ func TestDescribe(t *testing.T) {
 
 	query := `DESCRIBE FORMAT=TREE SELECT * FROM mytable`
 	expectedSeq := []sql.Row{
-		sql.NewRow("Table(mytable)"),
+		sql.NewRow("Table(mytable): Projected "),
 		sql.NewRow(" ├─ Column(i, INT64, nullable=false)"),
 		sql.NewRow(" └─ Column(s, TEXT, nullable=false)"),
 	}
 
 	expectedParallel := []sql.Row{
 		{"Exchange(parallelism=2)"},
-		{" └─ Table(mytable)"},
+		{" └─ Table(mytable): Projected "},
 		{"     ├─ Column(i, INT64, nullable=false)"},
 		{"     └─ Column(s, TEXT, nullable=false)"},
 	}
@@ -2005,6 +2006,28 @@ func TestLocks(t *testing.T) {
 	require.Equal(0, t2.readLocks)
 	require.Equal(1, t2.writeLocks)
 	require.Equal(1, t2.unlocks)
+}
+
+func TestDescribeNoPruneColumns(t *testing.T) {
+	require := require.New(t)
+	ctx := newCtx()
+	e := newEngine(t)
+	query := `DESCRIBE FORMAT=TREE SELECT SUBSTRING(s, 1, 1) as foo, s, i FROM mytable WHERE foo = 'f'`
+	parsed, err := parse.Parse(ctx, query)
+	require.NoError(err)
+	result, err := e.Analyzer.Analyze(ctx, parsed)
+	require.NoError(err)
+
+	qp, ok := result.(*plan.QueryProcess)
+	require.True(ok)
+
+	d, ok := qp.Child.(*plan.DescribeQuery)
+	require.True(ok)
+
+	p, ok := d.Child.(*plan.Project)
+	require.True(ok)
+
+	require.Len(p.Schema(), 3)
 }
 
 func insertRows(t *testing.T, table sql.Inserter, rows ...sql.Row) {
