@@ -353,15 +353,13 @@ func updateBuffer(
 		return n.Update(ctx, buffers[idx], row)
 	case *expression.Alias:
 		return updateBuffer(ctx, buffers, idx, n.Child, row)
-	case *expression.GetField:
+	default:
 		val, err := expr.Eval(ctx, row)
 		if err != nil {
 			return err
 		}
 		buffers[idx] = sql.NewRow(val)
 		return nil
-	default:
-		return ErrGroupBy.New(n.String())
 	}
 }
 
@@ -393,12 +391,10 @@ func evalBuffer(
 		return n.Eval(ctx, buffer)
 	case *expression.Alias:
 		return evalBuffer(ctx, n.Child, buffer)
-	case *expression.GetField:
+	default:
 		if len(buffer) > 0 {
 			return buffer[0], nil
 		}
 		return nil, nil
-	default:
-		return nil, ErrGroupBy.New(n.String())
 	}
 }

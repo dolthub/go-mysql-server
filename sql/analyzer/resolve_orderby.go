@@ -35,15 +35,14 @@ func resolveOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 		var colsFromChild []string
 		var missingCols []string
 		for _, f := range sort.SortFields {
-			n, ok := f.Column.(sql.Nameable)
-			if !ok {
-				continue
-			}
+			ns := findExprNameables(f.Column)
 
-			if stringContains(childNewCols, n.Name()) {
-				colsFromChild = append(colsFromChild, n.Name())
-			} else if !stringContains(schemaCols, n.Name()) {
-				missingCols = append(missingCols, n.Name())
+			for _, n := range ns {
+				if stringContains(childNewCols, n.Name()) {
+					colsFromChild = append(colsFromChild, n.Name())
+				} else if !stringContains(schemaCols, n.Name()) {
+					missingCols = append(missingCols, n.Name())
+				}
 			}
 		}
 
@@ -220,4 +219,17 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 
 		return plan.NewSort(fields, sort.Child), nil
 	})
+}
+
+func findExprNameables(e sql.Expression) []sql.Nameable {
+	var result []sql.Nameable
+	expression.Inspect(e, func(e sql.Expression) bool {
+		n, ok := e.(sql.Nameable)
+		if ok {
+			result = append(result, n)
+			return false
+		}
+		return true
+	})
+	return result
 }

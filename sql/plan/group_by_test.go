@@ -10,7 +10,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function/aggregation"
 )
 
-func TestGroupBy_Schema(t *testing.T) {
+func TestGroupBySchema(t *testing.T) {
 	require := require.New(t)
 
 	child := mem.NewTable("test", nil)
@@ -25,7 +25,7 @@ func TestGroupBy_Schema(t *testing.T) {
 	}, gb.Schema())
 }
 
-func TestGroupBy_Resolved(t *testing.T) {
+func TestGroupByResolved(t *testing.T) {
 	require := require.New(t)
 
 	child := mem.NewTable("test", nil)
@@ -42,7 +42,7 @@ func TestGroupBy_Resolved(t *testing.T) {
 	require.False(gb.Resolved())
 }
 
-func TestGroupBy_RowIter(t *testing.T) {
+func TestGroupByRowIter(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
@@ -96,7 +96,7 @@ func TestGroupBy_RowIter(t *testing.T) {
 	require.Equal(sql.NewRow("col1_2", int64(4444)), rows[1])
 }
 
-func TestGroupBy_EvalEmptyBuffer(t *testing.T) {
+func TestGroupByEvalEmptyBuffer(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
@@ -105,7 +105,7 @@ func TestGroupBy_EvalEmptyBuffer(t *testing.T) {
 	require.Nil(r)
 }
 
-func TestGroupBy_Error(t *testing.T) {
+func TestGroupByAggregationGrouping(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
@@ -140,8 +140,15 @@ func TestGroupBy_Error(t *testing.T) {
 		NewResolvedTable(child),
 	)
 
-	_, err := sql.NodeToRows(ctx, p)
-	require.Error(err)
+	rows, err := sql.NodeToRows(ctx, p)
+	require.NoError(err)
+
+	expected := []sql.Row{
+		{int32(3), false},
+		{int32(2), false},
+	}
+
+	require.Equal(expected, rows)
 }
 
 func BenchmarkGroupBy(b *testing.B) {
