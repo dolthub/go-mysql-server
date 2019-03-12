@@ -160,17 +160,26 @@ func (pl *ProcessList) Kill(pid uint64) {
 	pl.Done(pid)
 }
 
-// KillConnection kills all processes from the given connection.
-func (pl *ProcessList) KillConnection(conn uint32) {
+// KillConnection terminates the connection associated with the given processlist_id,
+// after terminating any statement the connection is executing.
+func (pl *ProcessList) KillConnection(pid uint64) (uint32, bool) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	for pid, proc := range pl.procs {
-		if proc.Connection == conn {
+	p, ok := pl.procs[pid]
+	if !ok {
+		return 0, false
+	}
+
+	connID := p.Connection
+	for id, proc := range pl.procs {
+		if proc.Connection == connID {
 			proc.Done()
-			delete(pl.procs, pid)
+			delete(pl.procs, id)
 		}
 	}
+
+	return connID, ok
 }
 
 // Done removes the finished process with the given pid from the process list.
