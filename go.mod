@@ -18,6 +18,7 @@ require (
 	github.com/mitchellh/hashstructure v1.0.0
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852
 	github.com/opentracing/opentracing-go v1.0.2
+	github.com/pbnjay/memory v0.0.0-20190104145345-974d429e7ae4
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/pilosa/pilosa v1.2.0
 	github.com/pkg/errors v0.8.1 // indirect

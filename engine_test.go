@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/src-d/go-mysql-server.v0"
+	sqle "gopkg.in/src-d/go-mysql-server.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/auth"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -1723,6 +1723,25 @@ func TestIndexes(t *testing.T) {
 		{
 			"SELECT * FROM mytable WHERE i = 1 AND i = 2",
 			([]sql.Row)(nil),
+		},
+		{
+			"SELECT i as mytable_i FROM mytable WHERE mytable_i = 2",
+			[]sql.Row{
+				{int64(2)},
+			},
+		},
+		{
+			"SELECT i as mytable_i FROM mytable WHERE mytable_i > 1",
+			[]sql.Row{
+				{int64(3)},
+				{int64(2)},
+			},
+		},
+		{
+			"SELECT i as mytable_i, s as mytable_s FROM mytable WHERE mytable_i = 2 AND mytable_s = 'second row'",
+			[]sql.Row{
+				{int64(2), "second row"},
+			},
 		},
 	}
 
