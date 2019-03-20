@@ -11,6 +11,24 @@ import (
 )
 
 func TestInnerJoin(t *testing.T) {
+	testInnerJoin(t, sql.NewEmptyContext())
+}
+
+func TestInMemoryInnerJoin(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	ctx.Set(inMemoryJoinSessionVar, sql.Text, "true")
+	testInnerJoin(t, ctx)
+}
+
+func TestMultiPassInnerJoin(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	ctx.Set(memoryThresholdSessionVar, sql.Int64, int64(1))
+	testInnerJoin(t, ctx)
+}
+
+func testInnerJoin(t *testing.T, ctx *sql.Context) {
+	t.Helper()
+
 	require := require.New(t)
 	finalSchema := append(lSchema, rSchema...)
 
@@ -37,42 +55,6 @@ func TestInnerJoin(t *testing.T) {
 		{"col1_2", "col2_2", int32(3333), int64(4444), "col1_2", "col2_2", int32(3333), int64(4444)},
 	}, rows)
 }
-
-func TestInMemoryInnerJoin(t *testing.T) {
-	require := require.New(t)
-	finalSchema := append(lSchema, rSchema...)
-
-	ltable := mem.NewTable("left", lSchema)
-	rtable := mem.NewTable("right", rSchema)
-	insertData(t, ltable)
-	insertData(t, rtable)
-
-	j := NewInnerJoin(
-		NewResolvedTable(ltable),
-		NewResolvedTable(rtable),
-		expression.NewEquals(
-			expression.NewGetField(0, sql.Text, "lcol1", false),
-			expression.NewGetField(4, sql.Text, "rcol1", false),
-		))
-
-	require.Equal(finalSchema, j.Schema())
-
-	ctx := sql.NewEmptyContext()
-	ctx.Set(inMemoryJoinSessionVar, sql.Text, "true")
-
-	iter, err := j.RowIter(ctx)
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-	require.Len(rows, 2)
-
-	require.Equal([]sql.Row{
-		{"col1_1", "col2_1", int32(1111), int64(2222), "col1_1", "col2_1", int32(1111), int64(2222)},
-		{"col1_2", "col2_2", int32(3333), int64(4444), "col1_2", "col2_2", int32(3333), int64(4444)},
-	}, rows)
-}
-
 func TestInnerJoinEmpty(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
@@ -168,6 +150,24 @@ func BenchmarkInnerJoin(b *testing.B) {
 		}
 
 		useInMemoryJoins = false
+	})
+
+	b.Run("withing memory threshold", func(b *testing.B) {
+		prev := maxMemoryJoin
+		maxMemoryJoin = 0
+		require := require.New(b)
+
+		for i := 0; i < b.N; i++ {
+			iter, err := n1.RowIter(ctx)
+			require.NoError(err)
+
+			rows, err := sql.RowIterToRows(iter)
+			require.NoError(err)
+
+			require.Equal(expected, rows)
+		}
+
+		maxMemoryJoin = prev
 	})
 
 	b.Run("cross join with filter", func(b *testing.B) {
