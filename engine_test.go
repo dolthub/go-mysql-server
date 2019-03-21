@@ -1638,22 +1638,32 @@ func TestIndexes(t *testing.T) {
 
 	_, _, err = e.Query(
 		newCtx(),
-		"CREATE INDEX myidx ON mytable USING pilosa (i) WITH (async = false)",
+		"CREATE INDEX idx_i ON mytable USING pilosa (i) WITH (async = false)",
 	)
 	require.NoError(t, err)
 
 	_, _, err = e.Query(
 		newCtx(),
-		"CREATE INDEX myidx_multi ON mytable USING pilosa (i, s) WITH (async = false)",
+		"CREATE INDEX idx_s ON mytable USING pilosa (s) WITH (async = false)",
+	)
+	require.NoError(t, err)
+
+	_, _, err = e.Query(
+		newCtx(),
+		"CREATE INDEX idx_is ON mytable USING pilosa (i, s) WITH (async = false)",
 	)
 	require.NoError(t, err)
 
 	defer func() {
-		done, err := e.Catalog.DeleteIndex("mydb", "myidx", true)
+		done, err := e.Catalog.DeleteIndex("mydb", "idx_i", true)
 		require.NoError(t, err)
 		<-done
 
-		done, err = e.Catalog.DeleteIndex("foo", "myidx_multi", true)
+		done, err = e.Catalog.DeleteIndex("mydb", "idx_s", true)
+		require.NoError(t, err)
+		<-done
+
+		done, err = e.Catalog.DeleteIndex("foo", "idx_is", true)
 		require.NoError(t, err)
 		<-done
 	}()
@@ -1741,6 +1751,25 @@ func TestIndexes(t *testing.T) {
 			"SELECT i as mytable_i, s as mytable_s FROM mytable WHERE mytable_i = 2 AND mytable_s = 'second row'",
 			[]sql.Row{
 				{int64(2), "second row"},
+			},
+		},
+		{
+			"SELECT s, SUBSTRING(s, 1, 1) AS sub_s FROM mytable WHERE sub_s = 's'",
+			[]sql.Row{
+				{"second row", "s"},
+			},
+		},
+		{
+			"SELECT count(i) AS mytable_i, SUBSTR(s, -3) AS mytable_s FROM mytable WHERE i > 0 AND mytable_s='row' GROUP BY mytable_s",
+			[]sql.Row{
+				{int32(3), "row"},
+			},
+		},
+		{
+			"SELECT mytable_i FROM (SELECT i AS mytable_i FROM mytable) as t WHERE mytable_i > 1",
+			[]sql.Row{
+				{int64(2)},
+				{int64(3)},
 			},
 		},
 	}

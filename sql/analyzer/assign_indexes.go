@@ -35,21 +35,39 @@ func assignIndexes(a *Analyzer, node sql.Node) (map[string]*indexLookup, error) 
 		}
 	}()
 
-	var err error
+	aliases := make(map[string]sql.Expression)
+	var (
+		err error
+		fn  func(node sql.Node) bool
+	)
+	fn = func(n sql.Node) bool {
+		if n == nil {
+			return true
+		}
+
+		if prj, ok := n.(*plan.Project); ok {
+			for _, ex := range prj.Expressions() {
+				if alias, ok := ex.(*expression.Alias); ok {
+					if _, ok := aliases[alias.Name()]; !ok {
+						aliases[alias.Name()] = alias.Child
+					}
+				}
+			}
+		} else {
+			for _, ch := range n.Children() {
+				plan.Inspect(ch, fn)
+			}
+		}
+
+		return true
+	}
+
 	plan.Inspect(node, func(node sql.Node) bool {
 		filter, ok := node.(*plan.Filter)
 		if !ok {
 			return true
 		}
-
-		aliases := make(map[string]sql.Expression)
-		if prj, ok := filter.Child.(*plan.Project); ok {
-			for _, ex := range prj.Expressions() {
-				if alias, ok := ex.(*expression.Alias); ok {
-					aliases[alias.Name()] = alias.Child
-				}
-			}
-		}
+		fn(filter.Child)
 
 		var result map[string]*indexLookup
 		result, err = getIndexes(filter.Expression, aliases, a)
@@ -276,8 +294,13 @@ func unifyExpressions(aliases map[string]sql.Expression, expr ...sql.Expression)
 
 	for i, e := range expr {
 		uex := e
-		if aliases != nil {
-			if alias, ok := aliases[e.String()]; ok {
+		name := e.String()
+		if n, ok := e.(sql.Nameable); ok {
+			name = n.Name()
+		}
+
+		if aliases != nil && len(aliases) > 0 {
+			if alias, ok := aliases[name]; ok {
 				uex = alias
 			}
 		}
