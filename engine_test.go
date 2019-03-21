@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/src-d/go-mysql-server.v0"
+	sqle "gopkg.in/src-d/go-mysql-server.v0"
 	"gopkg.in/src-d/go-mysql-server.v0/auth"
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -50,15 +50,15 @@ var queries = []struct {
 	},
 	{
 		"SELECT COUNT(*) FROM mytable;",
-		[]sql.Row{{int32(3)}},
+		[]sql.Row{{int64(3)}},
 	},
 	{
 		"SELECT COUNT(*) FROM mytable LIMIT 1;",
-		[]sql.Row{{int32(3)}},
+		[]sql.Row{{int64(3)}},
 	},
 	{
 		"SELECT COUNT(*) AS c FROM mytable;",
-		[]sql.Row{{int32(3)}},
+		[]sql.Row{{int64(3)}},
 	},
 	{
 		"SELECT substring(s, 2, 3) FROM mytable",
@@ -176,9 +176,9 @@ var queries = []struct {
 		) t
 		GROUP BY fi`,
 		[]sql.Row{
-			{int32(1), "first row"},
-			{int32(1), "second row"},
-			{int32(1), "third row"},
+			{int64(1), "first row"},
+			{int64(1), "second row"},
+			{int64(1), "third row"},
 		},
 	},
 	{
@@ -188,25 +188,25 @@ var queries = []struct {
 		) t
 		GROUP BY 2`,
 		[]sql.Row{
-			{int32(1), "first row"},
-			{int32(1), "second row"},
-			{int32(1), "third row"},
+			{int64(1), "first row"},
+			{int64(1), "second row"},
+			{int64(1), "third row"},
 		},
 	},
 	{
 		`SELECT COUNT(*) as cnt, s as fi FROM mytable GROUP BY fi`,
 		[]sql.Row{
-			{int32(1), "first row"},
-			{int32(1), "second row"},
-			{int32(1), "third row"},
+			{int64(1), "first row"},
+			{int64(1), "second row"},
+			{int64(1), "third row"},
 		},
 	},
 	{
 		`SELECT COUNT(*) as cnt, s as fi FROM mytable GROUP BY 2`,
 		[]sql.Row{
-			{int32(1), "first row"},
-			{int32(1), "second row"},
-			{int32(1), "third row"},
+			{int64(1), "first row"},
+			{int64(1), "second row"},
+			{int64(1), "third row"},
 		},
 	},
 	{
@@ -333,41 +333,41 @@ var queries = []struct {
 	{
 		`SELECT COUNT(*) c, i as foo FROM mytable GROUP BY i ORDER BY i DESC`,
 		[]sql.Row{
-			{int32(1), int64(3)},
-			{int32(1), int64(2)},
-			{int32(1), int64(1)},
+			{int64(1), int64(3)},
+			{int64(1), int64(2)},
+			{int64(1), int64(1)},
 		},
 	},
 	{
 		`SELECT COUNT(*) c, i as foo FROM mytable GROUP BY 2 ORDER BY 2 DESC`,
 		[]sql.Row{
-			{int32(1), int64(3)},
-			{int32(1), int64(2)},
-			{int32(1), int64(1)},
+			{int64(1), int64(3)},
+			{int64(1), int64(2)},
+			{int64(1), int64(1)},
 		},
 	},
 	{
 		`SELECT COUNT(*) c, i as foo FROM mytable GROUP BY i ORDER BY foo, i DESC`,
 		[]sql.Row{
-			{int32(1), int64(3)},
-			{int32(1), int64(2)},
-			{int32(1), int64(1)},
+			{int64(1), int64(3)},
+			{int64(1), int64(2)},
+			{int64(1), int64(1)},
 		},
 	},
 	{
 		`SELECT COUNT(*) c, i as foo FROM mytable GROUP BY 2 ORDER BY foo, i DESC`,
 		[]sql.Row{
-			{int32(1), int64(3)},
-			{int32(1), int64(2)},
-			{int32(1), int64(1)},
+			{int64(1), int64(3)},
+			{int64(1), int64(2)},
+			{int64(1), int64(1)},
 		},
 	},
 	{
 		`SELECT COUNT(*) c, i as i FROM mytable GROUP BY 2`,
 		[]sql.Row{
-			{int32(1), int64(3)},
-			{int32(1), int64(2)},
-			{int32(1), int64(1)},
+			{int64(1), int64(3)},
+			{int64(1), int64(2)},
+			{int64(1), int64(1)},
 		},
 	},
 	{
@@ -875,7 +875,7 @@ var queries = []struct {
 	},
 	{
 		"SELECT substring(s, 1, 1), count(*) FROM mytable GROUP BY substring(s, 1, 1)",
-		[]sql.Row{{"f", int32(1)}, {"s", int32(1)}, {"t", int32(1)}},
+		[]sql.Row{{"f", int64(1)}, {"s", int64(1)}, {"t", int64(1)}},
 	},
 }
 
@@ -1805,9 +1805,9 @@ func TestOrderByGroupBy(t *testing.T) {
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{"purple", int32(1)},
-		{"red", int32(2)},
-		{"orange", int32(3)},
+		{"purple", int64(1)},
+		{"red", int64(2)},
+		{"orange", int64(3)},
 	}
 
 	require.Equal(expected, rows)

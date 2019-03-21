@@ -98,7 +98,7 @@ func TestReorderAggregationsMultiple(t *testing.T) {
 		[]sql.Expression{
 			expression.NewArithmetic(
 				expression.NewGetField(0, sql.Float64, "SUM(foo.a)", false),
-				expression.NewGetField(1, sql.Int32, "COUNT(foo.a)", false),
+				expression.NewGetField(1, sql.Int64, "COUNT(foo.a)", false),
 				"/",
 			),
 			expression.NewGetFieldWithTable(2, sql.Int64, "foo", "b", false),
