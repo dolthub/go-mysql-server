@@ -5,6 +5,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	bolt "go.etcd.io/bbolt"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
 type locationValueIter struct {
@@ -31,6 +32,7 @@ type indexValueIter struct {
 	total     uint64
 	bits      []uint64
 	mapping   *mapping
+	partition sql.Partition
 	indexName string
 
 	// share transaction and bucket on all getLocation calls
@@ -45,7 +47,7 @@ func (it *indexValueIter) Next() ([]byte, error) {
 			return nil, err
 		}
 
-		bucket, err := it.mapping.getBucket(it.indexName, false)
+		bucket, err := it.mapping.getBucket(it.indexName, it.partition, false)
 		if err != nil {
 			_ = it.Close()
 			return nil, err

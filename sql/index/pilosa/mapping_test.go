@@ -48,12 +48,12 @@ func TestLocation(t *testing.T) {
 	}
 
 	for colID, loc := range cases {
-		err := m.putLocation("index name", colID, []byte(loc))
+		err := m.putLocation("index name", mockPartition("1"), colID, []byte(loc))
 		require.NoError(err)
 	}
 
 	for colID, loc := range cases {
-		b, err := m.getLocation("index name", colID)
+		b, err := m.getLocation("index name", mockPartition("1"), colID)
 		require.NoError(err)
 		require.Equal(loc, string(b))
 	}
@@ -80,4 +80,10 @@ func TestGet(t *testing.T) {
 		require.NoError(err)
 		require.Equal(expected[i], val)
 	}
+}
+
+type mockPartition string
+
+func (m mockPartition) Key() []byte {
+	return []byte(m)
 }

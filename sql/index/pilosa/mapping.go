@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	bolt "go.etcd.io/bbolt"
+	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
 // mapping
@@ -19,8 +20,9 @@ import (
 type mapping struct {
 	path string
 
-	mut sync.RWMutex
-	db  *bolt.DB
+	mut   sync.RWMutex
+	txmut sync.RWMutex
+	db    *bolt.DB
 
 	// in create mode there's only one transaction closed explicitly by
 	// commit function
@@ -149,9 +151,15 @@ func (m *mapping) transaction(writable bool, f func(*bolt.Tx) error) error {
 		}
 	}
 
+	m.txmut.Lock()
 	err = f(tx)
+	m.txmut.Unlock()
 
-	if m.create {
+	m.clientMut.Lock()
+	create := m.create
+	m.clientMut.Unlock()
+
+	if create {
 		return err
 	}
 
@@ -217,9 +225,14 @@ func (m *mapping) getMaxRowID(fieldName string) (uint64, error) {
 	return id, err
 }
 
-func (m *mapping) putLocation(indexName string, colID uint64, location []byte) error {
+func (m *mapping) putLocation(
+	indexName string,
+	partition sql.Partition,
+	colID uint64,
+	location []byte,
+) error {
 	return m.transaction(true, func(tx *bolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists([]byte(indexName))
+		b, err := tx.CreateBucketIfNotExists(indexPartitionKey(indexName, partition))
 		if err != nil {
 			return err
 		}
@@ -231,14 +244,24 @@ func (m *mapping) putLocation(indexName string, colID uint64, location []byte) e
 	})
 }
 
-func (m *mapping) sortedLocations(indexName string, cols []uint64, reverse bool) ([][]byte, error) {
+func indexPartitionKey(indexName string, partition sql.Partition) []byte {
+	return []byte(indexName + string(partition.Key()))
+}
+
+func (m *mapping) sortedLocations(
+	indexName string,
+	partition sql.Partition,
+	cols []uint64,
+	reverse bool,
+) ([][]byte, error) {
 	var result [][]byte
 	m.mut.RLock()
 	defer m.mut.RUnlock()
 	err := m.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(indexName))
+		bucket := indexPartitionKey(indexName, partition)
+		b := tx.Bucket(bucket)
 		if b == nil {
-			return fmt.Errorf("bucket %s not found", indexName)
+			return fmt.Errorf("bucket %s not found", bucket)
 		}
 
 		for _, col := range cols {
@@ -274,13 +297,18 @@ func (b byBytes) Len() int           { return len(b) }
 func (b byBytes) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
 func (b byBytes) Less(i, j int) bool { return bytes.Compare(b[i], b[j]) < 0 }
 
-func (m *mapping) getLocation(indexName string, colID uint64) ([]byte, error) {
+func (m *mapping) getLocation(
+	indexName string,
+	partition sql.Partition,
+	colID uint64,
+) ([]byte, error) {
 	var location []byte
 
 	err := m.transaction(true, func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(indexName))
+		bucket := indexPartitionKey(indexName, partition)
+		b := tx.Bucket(bucket)
 		if b == nil {
-			return fmt.Errorf("bucket %s not found", indexName)
+			return fmt.Errorf("bucket %s not found", bucket)
 		}
 
 		key := make([]byte, 8)
@@ -304,6 +332,7 @@ func (m *mapping) getLocationFromBucket(
 
 func (m *mapping) getBucket(
 	indexName string,
+	partition sql.Partition,
 	writable bool,
 ) (*bolt.Bucket, error) {
 	var bucket *bolt.Bucket
@@ -313,10 +342,11 @@ func (m *mapping) getBucket(
 		return nil, err
 	}
 
-	bucket = tx.Bucket([]byte(indexName))
+	bu := indexPartitionKey(indexName, partition)
+	bucket = tx.Bucket(bu)
 	if bucket == nil {
 		_ = tx.Rollback()
-		return nil, fmt.Errorf("bucket %s not found", indexName)
+		return nil, fmt.Errorf("bucket %s not found", bu)
 	}
 
 	return bucket, err
