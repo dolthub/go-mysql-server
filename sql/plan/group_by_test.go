@@ -21,7 +21,7 @@ func TestGroupBySchema(t *testing.T) {
 	gb := NewGroupBy(agg, nil, NewResolvedTable(child))
 	require.Equal(sql.Schema{
 		{Name: "c1", Type: sql.Text},
-		{Name: "c2", Type: sql.Int32},
+		{Name: "c2", Type: sql.Int64},
 	}, gb.Schema())
 }
 
@@ -144,8 +144,8 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{int32(3), false},
-		{int32(2), false},
+		{int64(3), false},
+		{int64(2), false},
 	}
 
 	require.Equal(expected, rows)
