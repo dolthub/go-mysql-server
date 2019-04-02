@@ -682,7 +682,7 @@ func TestGetIndexes(t *testing.T) {
 		t.Run(tt.expr.String(), func(t *testing.T) {
 			require := require.New(t)
 
-			result, err := getIndexes(tt.expr, a)
+			result, err := getIndexes(tt.expr, nil, a)
 			if tt.ok {
 				require.NoError(err)
 				require.Equal(tt.expected, result)
@@ -779,7 +779,7 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 			lit(6),
 		),
 	}
-	result, err := getMultiColumnIndexes(exprs, a, used)
+	result, err := getMultiColumnIndexes(exprs, a, used, nil)
 	require.NoError(err)
 
 	expected := map[string]*indexLookup{
