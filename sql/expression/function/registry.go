@@ -74,4 +74,5 @@ var Defaults = []sql.Function{
 	sql.Function2{Name: "ifnull", Fn: NewIfNull},
 	sql.Function2{Name: "nullif", Fn: NewNullIf},
 	sql.Function0{Name: "now", Fn: NewNow},
+	sql.Function1(Name: "sleep", Fn: NewSleep},
 }
