@@ -20,9 +20,8 @@ import (
 type mapping struct {
 	path string
 
-	mut   sync.RWMutex
-	txmut sync.RWMutex
-	db    *bolt.DB
+	mut sync.RWMutex
+	db  *bolt.DB
 
 	// in create mode there's only one transaction closed explicitly by
 	// commit function
@@ -129,19 +128,18 @@ func (m *mapping) rollback() error {
 }
 
 func (m *mapping) transaction(writable bool, f func(*bolt.Tx) error) error {
+	m.clientMut.Lock()
+	defer m.clientMut.Unlock()
+
 	var tx *bolt.Tx
 	var err error
 	if m.create {
-		m.clientMut.Lock()
 		if m.tx == nil {
 			m.tx, err = m.db.Begin(true)
 			if err != nil {
-				m.clientMut.Unlock()
 				return err
 			}
 		}
-
-		m.clientMut.Unlock()
 
 		tx = m.tx
 	} else {
@@ -151,15 +149,8 @@ func (m *mapping) transaction(writable bool, f func(*bolt.Tx) error) error {
 		}
 	}
 
-	m.txmut.Lock()
 	err = f(tx)
-	m.txmut.Unlock()
-
-	m.clientMut.Lock()
-	create := m.create
-	m.clientMut.Unlock()
-
-	if create {
+	if m.create {
 		return err
 	}
 
