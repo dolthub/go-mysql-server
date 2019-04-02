@@ -1762,7 +1762,7 @@ func TestIndexes(t *testing.T) {
 		{
 			"SELECT count(i) AS mytable_i, SUBSTR(s, -3) AS mytable_s FROM mytable WHERE i > 0 AND mytable_s='row' GROUP BY mytable_s",
 			[]sql.Row{
-				{int32(3), "row"},
+				{int64(3), "row"},
 			},
 		},
 		{
