@@ -251,6 +251,7 @@ func (d *Driver) savePartition(
 		}
 
 		idx.mapping.close()
+		kviter.Close()
 	}()
 
 	for colID = offset; err == nil; colID++ {
@@ -344,6 +345,7 @@ func (d *Driver) Save(
 		return err
 	}
 
+	defer iter.Close()
 	pilosaIndex := idx.index
 	var rows uint64
 	for {

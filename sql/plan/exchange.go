@@ -183,10 +183,6 @@ func (it *exchangeRowIter) iterPartitions(ch chan<- sql.Partition) {
 		}
 
 		close(ch)
-
-		if err := it.partitions.Close(); err != nil {
-			it.err <- err
-		}
 	}()
 
 	for {
@@ -278,13 +274,25 @@ func (it *exchangeRowIter) Next() (sql.Row, error) {
 	}
 }
 
-func (it *exchangeRowIter) Close() error {
-	if it.quit == nil {
-		return nil
+func (it *exchangeRowIter) Close() (err error) {
+	if it.quit != nil {
+		close(it.quit)
+		it.quit = nil
 	}
 
-	close(it.quit)
-	return nil
+	// TODO(kuba): in my opinion we should close err channel here,
+	// but becasue we use it in another go routine, I'll leave this block commented.
+	//
+	// if it.err != nil {
+	// 	close(it.err)
+	// 	it.err = nil
+	// }
+
+	if it.partitions != nil {
+		err = it.partitions.Close()
+	}
+
+	return err
 }
 
 type exchangePartition struct {
