@@ -32,14 +32,12 @@ func (s *Sleep) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	child, err = sql.Int32.Convert(child)
+	child, err = sql.Float64.Convert(child)
 	if err != nil {
 		return nil, err
 	}
 
-	if child.(int32) > 0 {
-		time.Sleep(time.Duration(child.(int32)) * time.Second)
-	}
+	time.Sleep(time.Duration(child.(float64) * 1000)  * time.Millisecond)
 	return 0, nil
 }
 

@@ -22,10 +22,10 @@ func TestSleep(t *testing.T) {
 	}{
 		{"null input", sql.NewRow(nil), nil, 0, false},
 		{"string input", sql.NewRow("foo"), nil, 0, true},
-		{"float input", sql.NewRow(3.14), int(0), 3.0, false},
+		{"int input", sql.NewRow(3), int(0), 3.0, false},
 		{"number is zero", sql.NewRow(0), int(0), 0, false},
 		{"negative number", sql.NewRow(-4), int(0), 0, false},
-		{"positive number", sql.NewRow(4), int(0), 4.0, false},
+		{"positive number", sql.NewRow(4.48), int(0), 4.48, false},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
