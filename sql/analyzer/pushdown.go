@@ -329,7 +329,10 @@ func (i *releaseIter) Next() (sql.Row, error) {
 	return row, nil
 }
 
-func (i *releaseIter) Close() error {
+func (i *releaseIter) Close() (err error) {
 	i.once.Do(i.release)
-	return nil
+	if i.child != nil {
+		err = i.child.Close()
+	}
+	return err
 }

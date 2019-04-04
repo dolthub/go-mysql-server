@@ -355,19 +355,22 @@ func (i *innerJoinIter) Next() (sql.Row, error) {
 	}
 }
 
-func (i *innerJoinIter) Close() error {
-	if err := i.l.Close(); err != nil {
-		if i.r != nil {
-			_ = i.r.Close()
+func (i *innerJoinIter) Close() (err error) {
+	i.right = nil
+
+	if i.l != nil {
+		if err = i.l.Close(); err != nil {
+			if i.r != nil {
+				_ = i.r.Close()
+			}
+			return err
 		}
-		return err
+
 	}
 
 	if i.r != nil {
-		return i.r.Close()
+		err = i.r.Close()
 	}
 
-	i.right = nil
-
-	return nil
+	return err
 }

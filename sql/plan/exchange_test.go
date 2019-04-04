@@ -95,6 +95,7 @@ func TestExchangePanicRecover(t *testing.T) {
 	it := &partitionPanic{}
 	ex := newExchangeRowIter(ctx, 1, it, nil)
 	ex.start()
+	it.Close()
 
 	require.True(t, it.closed)
 }

@@ -155,17 +155,18 @@ func (i *crossJoinIterator) Next() (sql.Row, error) {
 	}
 }
 
-func (i *crossJoinIterator) Close() error {
-	if err := i.l.Close(); err != nil {
-		if i.r != nil {
-			_ = i.r.Close()
-		}
-		return err
+func (i *crossJoinIterator) Close() (err error) {
+	if i.l != nil {
+		err = i.l.Close()
 	}
 
 	if i.r != nil {
-		return i.r.Close()
+		if err == nil {
+			err = i.r.Close()
+		} else {
+			i.r.Close()
+		}
 	}
 
-	return nil
+	return err
 }

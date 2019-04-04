@@ -183,9 +183,12 @@ func (i *trackedIndexKeyValueIter) done() {
 	}
 }
 
-func (i *trackedIndexKeyValueIter) Close() error {
+func (i *trackedIndexKeyValueIter) Close() (err error) {
 	i.done()
-	return nil
+	if i.iter != nil {
+		err = i.iter.Close()
+	}
+	return err
 }
 
 func (i *trackedIndexKeyValueIter) Next() ([]interface{}, []byte, error) {
