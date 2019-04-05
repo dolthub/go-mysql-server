@@ -1,5 +1,3 @@
-// +build mysql_go_regex
-
 package regex
 
 import (

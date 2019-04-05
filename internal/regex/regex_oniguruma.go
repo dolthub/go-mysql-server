@@ -1,3 +1,5 @@
+// +build oniguruma
+
 package regex
 
 import (

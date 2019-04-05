@@ -41,16 +41,6 @@ To install it, run:
 go get gopkg.in/src-d/go-mysql-server.v0
 ```
 
-## Regular expression engine
-
-The **go-mysql-server** uses [oniguruma](github.com/kkos/oniguruma) as a default regular expression engine, so it's required to install the oniguruma first.
-For Linux (if you have the `apt-get` tool) or OSX (if you have `homebrew` tool) the easiest way is by command:
-```sh
-make oniguruma # on linux you may need `sudo`
-```
-
-If you want to use regex engine from go's standard library, you have to compile **go-mysql-server** with `--tags mysql_go_regex` argument.
-
 ## Documentation
 
 * [go-mysql-server godoc](https://godoc.org/github.com/src-d/go-mysql-server)

@@ -10,12 +10,12 @@ func dummy(s string) (Matcher, Disposer, error) { return nil, nil, nil }
 
 func getDefault() string {
 	for _, n := range Engines() {
-		if n == "go" {
+		if n == "oniguruma" {
 			return n
 		}
 	}
 
-	return "oniguruma"
+	return "go"
 }
 
 func TestRegistration(t *testing.T) {
@@ -32,9 +32,6 @@ func TestRegistration(t *testing.T) {
 	require.Equal(true, ErrRegexNameEmpty.Is(err))
 	engines = Engines()
 	require.Len(engines, number)
-
-	err = Register("oniguruma", dummy)
-	require.Equal(true, ErrRegexAlreadyRegistered.Is(err))
 
 	err = Register("nil", dummy)
 	require.NoError(err)
