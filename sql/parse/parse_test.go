@@ -1007,7 +1007,9 @@ var fixtures = map[string]sql.Node{
 		),
 		plan.NewShowCollation(),
 	),
-	`ROLLBACK`: plan.NewRollback(),
+	`ROLLBACK`:                           plan.NewRollback(),
+	"SHOW CREATE TABLE `mytable`":        plan.NewShowCreateTable("", nil, "mytable"),
+	"SHOW CREATE TABLE `mydb`.`mytable`": plan.NewShowCreateTable("mydb", nil, "mytable"),
 }
 
 func TestParse(t *testing.T) {
