@@ -2,10 +2,9 @@ package parse
 
 import (
 	"bufio"
+	"io"
 	"strings"
-)
 
-import (
 	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
@@ -31,10 +30,24 @@ func parseShowCreate(s string) (sql.Node, error) {
 
 	switch strings.ToLower(thingToShow) {
 	case "table":
-		var name string
+		var db, table string
 
-		err := parseFuncs{
-			readQuotableIdent(&name),
+		if err := readQuotableIdent(&table)(r); err != nil {
+			return nil, err
+		}
+
+		ru, _, err := r.ReadRune()
+		if err != nil && err != io.EOF {
+			return nil, err
+		} else if err == nil && ru == '.' {
+			db = table
+
+			if err := readQuotableIdent(&table)(r); err != nil {
+				return nil, err
+			}
+		}
+
+		err = parseFuncs{
 			skipSpaces,
 			checkEOF,
 		}.exec(r)
@@ -43,9 +56,9 @@ func parseShowCreate(s string) (sql.Node, error) {
 		}
 
 		return plan.NewShowCreateTable(
-			sql.UnresolvedDatabase("").Name(),
+			db,
 			nil,
-			name), nil
+			table), nil
 	case "database", "schema":
 		var ifNotExists bool
 		var next string

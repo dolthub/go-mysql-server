@@ -32,9 +32,27 @@ func TestParseShowCreateTableQuery(t *testing.T) {
 		},
 		{
 			"SHOW CREATE TABLE mytable",
-			plan.NewShowCreateTable(sql.UnresolvedDatabase("").Name(),
-				nil,
-				"mytable"),
+			plan.NewShowCreateTable("", nil, "mytable"),
+			nil,
+		},
+		{
+			"SHOW CREATE TABLE `mytable`",
+			plan.NewShowCreateTable("", nil, "mytable"),
+			nil,
+		},
+		{
+			"SHOW CREATE TABLE mydb.`mytable`",
+			plan.NewShowCreateTable("mydb", nil, "mytable"),
+			nil,
+		},
+		{
+			"SHOW CREATE TABLE `mydb`.mytable",
+			plan.NewShowCreateTable("mydb", nil, "mytable"),
+			nil,
+		},
+		{
+			"SHOW CREATE TABLE `mydb`.`mytable`",
+			plan.NewShowCreateTable("mydb", nil, "mytable"),
 			nil,
 		},
 	}
