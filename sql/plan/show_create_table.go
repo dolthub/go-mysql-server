@@ -78,7 +78,7 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 	composedCreateTableStatement := produceCreateStatement(table)
 
 	return sql.NewRow(
-		i.table,                      // "Table" string
+		i.table, // "Table" string
 		composedCreateTableStatement, // "Create Table" string
 	), nil
 }
@@ -89,7 +89,8 @@ func produceCreateStatement(table sql.Table) string {
 
 	// Statement creation parts for each column
 	for indx, col := range schema {
-		createStmtPart := fmt.Sprintf("  `%s` %s", col.Name, col.Type.Type())
+		createStmtPart := fmt.Sprintf("  `%s` %s", col.Name,
+			strings.ToLower(col.Type.Type().String()))
 
 		if !col.Nullable {
 			createStmtPart = fmt.Sprintf("%s NOT NULL", createStmtPart)
