@@ -110,6 +110,8 @@
 - LOG2
 - LOG10
 - SLEEP
+- TO_BASE64
+- FROM_BASE64
 
 ## Time functions
 - DAY

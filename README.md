@@ -105,6 +105,8 @@ We support and actively test against certain third-party clients to ensure compa
 |`SUBSTR(str, pos, [len])`|Return a substring from the provided string starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
 |`SUBSTRING(str, pos, [len])`|Return a substring from the provided string starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
 |`SUM(expr)`|Returns the sum of expr in all rows.|
+|`TO_BASE64(str)`|Encodes the string str in base64 format.|
+|`FROM_BASE64(str)`|Decodes the base64-encoded string str.|
 |`TRIM(str)`|Returns the string str with all spaces removed.|
 |`UPPER(str)`|Returns the string str with all characters in upper case.|
 |`WEEKDAY(date)`|Returns the weekday of the given date.|
