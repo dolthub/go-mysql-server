@@ -54,46 +54,61 @@ We are continuously adding more functionality to go-mysql-server. We support a s
 
 We support and actively test against certain third-party clients to ensure compatibility between them and go-mysql-server. You can check out the list of supported third party clients in the [SUPPORTED_CLIENTS](./SUPPORTED_CLIENTS.md) file along with some examples on how to connect to go-mysql-server using them.
 
-## Custom functions
+## Available functions
 
-- `COUNT(expr)`: Returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.
-- `MIN(expr)`: Returns the minimum value of expr.
-- `MAX(expr)`: Returns the maximum value of expr.
-- `AVG(expr)`: Returns the average value of expr.
-- `SUM(expr)`: Returns the sum of expr.
-- `IS_BINARY(blob)`: Returns whether a BLOB is a binary file or not.
-- `SUBSTRING(str, pos)`, `SUBSTRING(str, pos, len)` : Return a substring from the provided string.
-- `SUBSTR(str, pos)`, `SUBSTR(str, pos, len)` : Return a substring from the provided string.
-- `MID(str, pos)`, `MID(str, pos, len)` : Return a substring from the provided string.
-- Date and Timestamp functions: `YEAR(date)`, `MONTH(date)`, `DAY(date)`, `WEEKDAY(date)`, `HOUR(date)`, `MINUTE(date)`, `SECOND(date)`, `DAYOFWEEK(date)`, `DAYOFYEAR(date)`, `NOW()`.
-- `ARRAY_LENGTH(json)`: If the json representation is an array, this function returns its size.
-- `SPLIT(str,sep)`: Receives a string and a separator and returns the parts of the string split by the separator as a JSON array of strings.
-- `CONCAT(...)`: Concatenate any group of fields into a single string.
-- `CONCAT_WS(sep, ...)`: Concatenate any group of fields into a single string. The first argument is the separator for the rest of the arguments. The separator is added between the strings to be concatenated. The separator can be a string, as can the rest of the arguments. If the separator is NULL, the result is NULL.
-- `COALESCE(...)`: The function returns the first non-null value in a list.
-- `LOWER(str)`, `UPPER(str)`: Receives a string and modify it changing all the chars to upper or lower case.
-- `CEILING(number)`, `CEIL(number)`: Return the smallest integer value that is greater than or equal to `number`.
-- `FLOOR(number)`: Return the largest integer value that is less than or equal to `number`.
-- `ROUND(number, decimals)`: Round the `number` to `decimals` decimal places.
-- `CONNECTION_ID()`: Return the current connection ID.
-- `SOUNDEX(str)`: Returns the soundex of a string.
-- `JSON_EXTRACT(json_doc, path, ...)`:  Extracts data from a json document using json paths.
-- `LN(X)`: Return the natural logarithm of X.
-- `LOG2(X)`: Returns the base-2 logarithm of X.
-- `LOG10(X)`: Returns the base-10 logarithm of X.
-- `LOG(X), LOG(B, X)`: If called with one parameter, this function returns the natural logarithm of X. If called with two parameters, this function returns the logarithm of X to the base B. If X is less than or equal to 0, or if B is less than or equal to 1, then NULL is returned.
-- `RPAD(str, len, padstr)`: Returns the string str, right-padded with the string padstr to a length of len characters.
-- `LPAD(str, len, padstr)`: Return the string argument, left-padded with the specified string.
-- `SQRT(X)`: Returns the square root of a nonnegative number X.
-- `POW(X, Y)`, `POWER(X, Y)`: Returns the value of X raised to the power of Y.
-- `TRIM(str)`: Returns the string str with all spaces removed.
-- `LTRIM(str)`: Returns the string str with leading space characters removed.
-- `RTRIM(str)`: Returns the string str with trailing space characters removed.
-- `REVERSE(str)`: Returns the string str with the order of the characters reversed.
-- `REPEAT(str, count)`: Returns a string consisting of the string str repeated count times.
-- `REPLACE(str,from_str,to_str)`: Returns the string str with all occurrences of the string from_str replaced by the string to_str.
-- `IFNULL(expr1, expr2)`: If expr1 is not NULL, IFNULL() returns expr1; otherwise it returns expr2.
-- `NULLIF(expr1, expr2)`: Returns NULL if expr1 = expr2 is true, otherwise returns expr1.
+<!-- BEGIN FUNCTIONS -->
+|     Name     |                                               Description                                                                      |
+|:-------------|:-------------------------------------------------------------------------------------------------------------------------------|
+|`COUNT(expr)`| Returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.|
+|`MIN(expr)`|Returns the minimum value of expr in all rows.|
+|`MAX(expr)`|Returns the maximum value of expr in all rows.|
+|`AVG(expr)`|Returns the average value of expr in all rows.|
+|`SUM(expr)`|Returns the sum of expr in all rows.|
+|`IS_BINARY(blob)`|Returns whether a BLOB is a binary file or not.|
+|`SUBSTRING(str, pos, [len])`|Return a substring from the provided string starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
+|`SUBSTR(str, pos, [len])`|Return a substring from the provided string starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
+|`MID(str, pos, [len])`|Return a substring from the provided string starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
+|`YEAR(date)`|Returns the year of the given date.|
+|`MONTH(date)`|Returns the month of the given date.|
+|`DAY(date)`|Returns the day of the given date.|
+|`WEEKDAY(date)`|Returns the weekday of the given date.|
+|`HOUR(date)`|Returns the hours of the given date.|
+|`MINUTE(date)`|Returns the minutes of the given date.|
+|`SECOND(date)`|Returns the seconds of the given date.|
+|DAYOFWEEK(date)`|Returns the day of the week of the given date.|
+|`DAYOFYEAR(date)`|Returns the day of the year of the given date.|
+|`NOW()`|Returns the current timestamp.|
+|`ARRAY_LENGTH(json)`|If the json representation is an array, this function returns its size.|
+|`SPLIT(str,sep)`|Receives a string and a separator and returns the parts of the string split by the separator as a JSON array of strings.|
+|`CONCAT(...)`|Concatenate any group of fields into a single string.|
+|`CONCAT_WS(sep, ...)`|Concatenate any group of fields into a single string. The first argument is the separator for the rest of the arguments. The separator is added between the strings to be concatenated. The separator can be a string, as can the rest of the arguments. If the separator is NULL, the result is NULL.|
+|`COALESCE(...)`|The function returns the first non-null value in a list.|
+|`LOWER(str)`|Returns the string str with all characters in lower case.|
+|`UPPER(str)`|Returns the string str with all characters in upper case.|
+|`CEILING(number)`|Return the smallest integer value that is greater than or equal to `number`.|
+|`CEIL(number)`|Return the smallest integer value that is greater than or equal to `number`.|
+|`FLOOR(number)`|Return the largest integer value that is less than or equal to `number`.|
+|`ROUND(number, decimals)`|Round the `number` to `decimals` decimal places.|
+|`CONNECTION_ID()`|Return the current connection ID.|
+|`SOUNDEX(str)`|Returns the soundex of a string.|
+|`JSON_EXTRACT(json_doc, path, ...)`|Extracts data from a json document using json paths.|
+|`LN(X)`|Return the natural logarithm of X.|
+|`LOG2(X)`|Returns the base-2 logarithm of X.|
+|`LOG10(X)`|Returns the base-10 logarithm of X.|
+|`LOG(X), LOG(B, X)`|If called with one parameter, this function returns the natural logarithm of X. If called with two parameters, this function returns the logarithm of X to the base B. If X is less than or equal to 0, or if B is less than or equal to 1, then NULL is returned.|
+|`RPAD(str, len, padstr)`|Returns the string str, right-padded with the string padstr to a length of len characters.|
+|`LPAD(str, len, padstr)`|Return the string argument, left-padded with the specified string.|
+|`SQRT(X)`|Returns the square root of a nonnegative number X.|
+|`POW(X, Y)`|Returns the value of X raised to the power of Y.|
+|`TRIM(str)`|Returns the string str with all spaces removed.|
+|`LTRIM(str)`|Returns the string str with leading space characters removed.|
+|`RTRIM(str)`|Returns the string str with trailing space characters removed.|
+|`REVERSE(str)`|Returns the string str with the order of the characters reversed.|
+|`REPEAT(str, count)`|Returns a string consisting of the string str repeated count times.|
+|`REPLACE(str,from_str,to_str)`|Returns the string str with all occurrences of the string from_str replaced by the string to_str.|
+|`IFNULL(expr1, expr2)`|If expr1 is not NULL, IFNULL() returns expr1; otherwise it returns expr2.|
+|`NULLIF(expr1, expr2)`|Returns NULL if expr1 = expr2 is true, otherwise returns expr1.|
+<!-- END FUNCTIONS -->
 
 ## Configuration
 
@@ -105,25 +120,17 @@ Session variables are set using the following SQL queries:
 SET <variable name> = <value>
 ```
 
-### Memory joins
-
-
-- `INMEMORY_JOINS`: if this environment variable is set it will perform all joins in memory. Default is off.
-- `inmemory_joins`: if this session variable is set it will perform all joins in memory. Default is off. This has precedence over `INMEMORY_JOINS`.
-
-### Maximum inner join memory
-
-- `MAX_MEMORY_INNER_JOIN`: this environment variable controls in megabytes the maximum number of memory that can be consumed by go-mysql-server before switching to multipass mode in inner joins. Default is the 20% of all available physical memory.
-- `max_memory_joins`: this session variable controls in megabytes the maximum number of memory that can be consumed by go-mysql-server before switching to multipass mode in inner joins. Default is the 20% of all available physical memory. This has precedence over `MAX_MEMORY_INNER_JOIN`.
-
-### Debug
-
-- `DEBUG_ANALYZER`: if this environment variable is set, the analyzer will print debug messages. Default is off.
-
-### Index creation threads
-
-- `PILOSA_INDEX_THREADS`: this environment variable sets the number of threads used in index creation. Default is the number of cores available in the machine.
-- `pilosa_index_threads`: this session variable sets the number of threads used in index creation. Default is the number of cores available in the machine. This has precedence over `PILOSA_INDEX_THREADS`.
+<!-- BEGIN CONFIG -->
+| Name | Type | Description |
+|:-----|:-----|:------------|
+|`INMEMORY_JOINS`|environment|If set it will perform all joins in memory. Default is off.|
+|`inmemory_joins`|session|If set it will perform all joins in memory. Default is off. This has precedence over `INMEMORY_JOINS`.|
+|`MAX_MEMORY_INNER_JOIN`|environment|The maximum number of memory, in megabytes, that can be consumed by go-mysql-server before switching to multipass mode in inner joins. Default is the 20% of all available physical memory.|
+|`max_memory_joins`|session|The maximum number of memory, in megabytes, that can be consumed by go-mysql-server before switching to multipass mode in inner joins. Default is the 20% of all available physical memory. This has precedence over `MAX_MEMORY_INNER_JOIN`.|
+|`DEBUG_ANALYZER`|environment|If set, the analyzer will print debug messages. Default is off.|
+|`PILOSA_INDEX_THREADS`|environment|Number of threads used in index creation. Default is the number of cores available in the machine.|
+|`pilosa_index_threads`|environment|Number of threads used in index creation. Default is the number of cores available in the machine. This has precedence over `PILOSA_INDEX_THREADS`.|
+<!-- END CONFIG -->
 
 ## Example
 
