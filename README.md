@@ -108,8 +108,8 @@ SET <variable name> = <value>
 ### Memory joins
 
 
-- `EXPERIMENTAL_IN_MEMORY_JOIN`: if this environment variable is set it will perform all joins in memory. Default is off.
-- `inmemory_joins`: if this session variable is set it will perform all joins in memory. Default is off. This has precedence over `EXPERIMENTAL_IN_MEMORY_JOIN`.
+- `INMEMORY_JOINS`: if this environment variable is set it will perform all joins in memory. Default is off.
+- `inmemory_joins`: if this session variable is set it will perform all joins in memory. Default is off. This has precedence over `INMEMORY_JOINS`.
 
 ### Maximum inner join memory
 

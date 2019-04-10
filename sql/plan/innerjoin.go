@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	experimentalInMemoryJoinKey = "EXPERIMENTAL_IN_MEMORY_JOIN"
-	maxMemoryJoinKey            = "MAX_MEMORY_INNER_JOIN"
-	inMemoryJoinSessionVar      = "inmemory_joins"
-	memoryThresholdSessionVar   = "max_memory_joins"
+	inMemoryJoinKey           = "INMEMORY_JOINS"
+	maxMemoryJoinKey          = "MAX_MEMORY_INNER_JOIN"
+	inMemoryJoinSessionVar    = "inmemory_joins"
+	memoryThresholdSessionVar = "max_memory_joins"
 )
 
 var (
@@ -32,7 +32,7 @@ var (
 )
 
 func shouldUseMemoryJoinsByEnv() bool {
-	v := strings.TrimSpace(strings.ToLower(os.Getenv(experimentalInMemoryJoinKey)))
+	v := strings.TrimSpace(strings.ToLower(os.Getenv(inMemoryJoinKey)))
 	return v == "on" || v == "1"
 }
 
