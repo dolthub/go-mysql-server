@@ -107,22 +107,23 @@ SET <variable name> = <value>
 
 ### Memory joins
 
-- `EXPERIMENTAL_IN_MEMORY_JOIN`: if this environment variable is set it will perform all joins in memory.
-- `inmemory_joins`: if this session variable is set it will perform all joins in memory.
+
+- `EXPERIMENTAL_IN_MEMORY_JOIN`: if this environment variable is set it will perform all joins in memory. Default is off.
+- `inmemory_joins`: if this session variable is set it will perform all joins in memory. Default is off. This has precedence over `EXPERIMENTAL_IN_MEMORY_JOIN`.
 
 ### Maximum inner join memory
 
-- `MAX_MEMORY_INNER_JOIN`: this environment variable controls in bytes the maximum number of memory that can be consumed by go-mysql-server before switching to multipass mode in inner joins.
-- `max_memory_joins`: this session variable controls in bytes the maximum number of memory that can be consumed by go-mysql-server before switching to multipass mode in inner joins.
+- `MAX_MEMORY_INNER_JOIN`: this environment variable controls in megabytes the maximum number of memory that can be consumed by go-mysql-server before switching to multipass mode in inner joins. Default is the 20% of all available physical memory.
+- `max_memory_joins`: this session variable controls in megabytes the maximum number of memory that can be consumed by go-mysql-server before switching to multipass mode in inner joins. Default is the 20% of all available physical memory. This has precedence over `MAX_MEMORY_INNER_JOIN`.
 
 ### Debug
 
-- `DEBUG_ANALYZER`: if this environment variable is set, the analyzer will print debug messages.
+- `DEBUG_ANALYZER`: if this environment variable is set, the analyzer will print debug messages. Default is off.
 
 ### Index creation threads
 
-- `PILOSA_INDEX_THREADS`: this environment variable sets the number of threads used in index creation.
-- `pilosa_index_threads`: this session variable sets the number of threads used in index creation.
+- `PILOSA_INDEX_THREADS`: this environment variable sets the number of threads used in index creation. Default is the number of cores available in the machine.
+- `pilosa_index_threads`: this session variable sets the number of threads used in index creation. Default is the number of cores available in the machine. This has precedence over `PILOSA_INDEX_THREADS`.
 
 ## Example
 

@@ -48,7 +48,7 @@ func loadMemoryThreshold() uint64 {
 		return defaultMemoryThreshold
 	}
 
-	return n
+	return n * 1024 // to bytes
 }
 
 // InnerJoin is an inner join between two tables.
@@ -252,7 +252,7 @@ func (i *innerJoinIter) fitsInMemory() bool {
 	var maxMemory uint64
 	_, v := i.ctx.Session.Get(memoryThresholdSessionVar)
 	if n, ok := v.(int64); ok {
-		maxMemory = uint64(n)
+		maxMemory = uint64(n) * 1024 // to bytes
 	} else {
 		maxMemory = maxMemoryJoin
 	}
