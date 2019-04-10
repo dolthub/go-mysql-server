@@ -8,7 +8,11 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -47,6 +51,11 @@ const (
 var (
 	errCorruptedIndex   = errors.NewKind("the index db: %s, table: %s, id: %s is corrupted")
 	errInvalidIndexType = errors.NewKind("expecting a pilosa index, instead got %T")
+)
+
+const (
+	pilosaIndexThreadsKey = "PILOSA_INDEX_THREADS"
+	pilosaIndexThreadsVar = "pilosa_index_threads"
 )
 
 type (
@@ -217,13 +226,13 @@ func (d *Driver) savePartition(
 	kviter sql.IndexKeyValueIter,
 	idx *pilosaIndex,
 	pilosaIndex *concurrentPilosaIndex,
-	offset uint64,
 	b *batch,
 ) (uint64, error) {
 	var (
 		colID uint64
 		err   error
 	)
+
 	for i, e := range idx.Expressions() {
 		name := fieldName(idx.ID(), e, p)
 		pilosaIndex.DeleteField(name)
@@ -254,7 +263,7 @@ func (d *Driver) savePartition(
 		kviter.Close()
 	}()
 
-	for colID = offset; err == nil; colID++ {
+	for colID = 0; err == nil; colID++ {
 		// commit each batch of objects (pilosa and boltdb)
 		if colID%sql.IndexBatchSize == 0 && colID != 0 {
 			if err = d.saveBatch(ctx, idx.mapping, colID, b); err != nil {
@@ -265,28 +274,30 @@ func (d *Driver) savePartition(
 		select {
 		case <-ctx.Context.Done():
 			return 0, ctx.Context.Err()
-
 		default:
-			var (
-				values   []interface{}
-				location []byte
-			)
-			if values, location, err = kviter.Next(); err != nil {
-				break
+		}
+
+		values, location, err := kviter.Next()
+		if err != nil {
+			break
+		}
+
+		for i, field := range b.fields {
+			if values[i] == nil {
+				continue
 			}
 
-			for i, field := range b.fields {
-				if values[i] == nil {
-					continue
-				}
-
-				rowID, err := idx.mapping.getRowID(field.Name(), values[i])
-				if err != nil {
-					return 0, err
-				}
-				b.bitBatches[i].Add(rowID, colID)
+			rowID, err := idx.mapping.getRowID(field.Name(), values[i])
+			if err != nil {
+				return 0, err
 			}
-			err = idx.mapping.putLocation(pilosaIndex.Name(), colID, location)
+
+			b.bitBatches[i].Add(rowID, colID)
+		}
+
+		err = idx.mapping.putLocation(pilosaIndex.Name(), p, colID, location)
+		if err != nil {
+			return 0, err
 		}
 	}
 
@@ -307,7 +318,7 @@ func (d *Driver) savePartition(
 		}
 	}
 
-	return colID - offset, err
+	return colID, err
 }
 
 // Save the given index (mapping and bitmap)
@@ -331,44 +342,86 @@ func (d *Driver) Save(
 	idx.wg.Add(1)
 	defer idx.wg.Done()
 
-	var b = batch{
-		fields:     make([]*pilosa.Field, len(idx.Expressions())),
-		bitBatches: make([]*bitBatch, len(idx.Expressions())),
-	}
-
 	ctx.Context, idx.cancel = context.WithCancel(ctx.Context)
 	processingFile := d.processingFilePath(i.Database(), i.Table(), i.ID())
-	if err := index.WriteProcessingFile(
+	err = index.WriteProcessingFile(
 		processingFile,
 		[]byte{processingFileOnSave},
-	); err != nil {
+	)
+	if err != nil {
 		return err
 	}
 
 	defer iter.Close()
 	pilosaIndex := idx.index
-	var rows uint64
+
+	var (
+		rows, timePilosa, timeMapping uint64
+
+		wg     sync.WaitGroup
+		tokens = make(chan struct{}, indexThreads(ctx))
+
+		errors []error
+		errmut sync.Mutex
+	)
+
 	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		p, kviter, err := iter.Next()
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
+
+			idx.cancel()
+			wg.Wait()
 			return err
 		}
 
-		numRows, err := d.savePartition(ctx, p, kviter, idx, pilosaIndex, rows, &b)
-		if err != nil {
-			return err
-		}
+		wg.Add(1)
 
-		rows += numRows
+		go func() {
+			defer func() {
+				wg.Done()
+				<-tokens
+			}()
+
+			tokens <- struct{}{}
+
+			var b = &batch{
+				fields:     make([]*pilosa.Field, len(idx.Expressions())),
+				bitBatches: make([]*bitBatch, len(idx.Expressions())),
+			}
+
+			numRows, err := d.savePartition(ctx, p, kviter, idx, pilosaIndex, b)
+			if err != nil {
+				errmut.Lock()
+				errors = append(errors, err)
+				idx.cancel()
+				errmut.Unlock()
+				return
+			}
+
+			atomic.AddUint64(&timeMapping, uint64(b.timeMapping))
+			atomic.AddUint64(&timePilosa, uint64(b.timePilosa))
+			atomic.AddUint64(&rows, numRows)
+		}()
+	}
+
+	wg.Wait()
+	if len(errors) > 0 {
+		return errors[0]
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"duration": time.Since(start),
-		"pilosa":   b.timePilosa,
-		"mapping":  b.timeMapping,
+		"pilosa":   timePilosa,
+		"mapping":  timeMapping,
 		"rows":     rows,
 		"id":       i.ID(),
 	}).Debugf("finished pilosa indexing")
@@ -421,18 +474,18 @@ func (d *Driver) Delete(i sql.Index, partitions sql.PartitionIter) error {
 	return partitions.Close()
 }
 
-func (d *Driver) saveBatch(ctx *sql.Context, m *mapping, colID uint64, b *batch) error {
-	err := d.savePilosa(ctx, colID, b)
+func (d *Driver) saveBatch(ctx *sql.Context, m *mapping, cols uint64, b *batch) error {
+	err := d.savePilosa(ctx, cols, b)
 	if err != nil {
 		return err
 	}
 
-	return d.saveMapping(ctx, m, colID, true, b)
+	return d.saveMapping(ctx, m, cols, true, b)
 }
 
-func (d *Driver) savePilosa(ctx *sql.Context, colID uint64, b *batch) error {
+func (d *Driver) savePilosa(ctx *sql.Context, cols uint64, b *batch) error {
 	span, _ := ctx.Span("pilosa.Save.bitBatch",
-		opentracing.Tag{Key: "cols", Value: colID},
+		opentracing.Tag{Key: "cols", Value: cols},
 		opentracing.Tag{Key: "fields", Value: len(b.fields)},
 	)
 	defer span.Finish()
@@ -457,12 +510,12 @@ func (d *Driver) savePilosa(ctx *sql.Context, colID uint64, b *batch) error {
 func (d *Driver) saveMapping(
 	ctx *sql.Context,
 	m *mapping,
-	colID uint64,
+	cols uint64,
 	cont bool,
 	b *batch,
 ) error {
 	span, _ := ctx.Span("pilosa.Save.mapping",
-		opentracing.Tag{Key: "cols", Value: colID},
+		opentracing.Tag{Key: "cols", Value: cols},
 		opentracing.Tag{Key: "continues", Value: cont},
 	)
 	defer span.Finish()
@@ -540,4 +593,22 @@ func (d *Driver) newPilosaIndex(db, table string) (*pilosa.Index, error) {
 		return nil, err
 	}
 	return idx, nil
+}
+
+func indexThreads(ctx *sql.Context) int {
+	typ, val := ctx.Session.Get(pilosaIndexThreadsVar)
+	if val != nil && typ == sql.Int64 {
+		return int(val.(int64))
+	}
+
+	var value int
+	if v, ok := os.LookupEnv(pilosaIndexThreadsKey); ok {
+		value, _ = strconv.Atoi(v)
+	}
+
+	if value <= 0 {
+		value = runtime.NumCPU()
+	}
+
+	return value
 }

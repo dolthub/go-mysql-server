@@ -1,6 +1,8 @@
 package test
 
 import (
+	"sync"
+
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 )
@@ -8,6 +10,7 @@ import (
 // MemTracer implements a simple tracer in memory for testing.
 type MemTracer struct {
 	Spans []string
+	sync.Mutex
 }
 
 type memSpan struct {
@@ -16,7 +19,9 @@ type memSpan struct {
 
 // StartSpan implements opentracing.Tracer interface.
 func (t *MemTracer) StartSpan(operationName string, opts ...opentracing.StartSpanOption) opentracing.Span {
+	t.Lock()
 	t.Spans = append(t.Spans, operationName)
+	t.Unlock()
 	return &memSpan{operationName}
 }
 

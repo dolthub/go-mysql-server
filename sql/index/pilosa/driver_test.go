@@ -189,6 +189,7 @@ func TestSaveAndLoad(t *testing.T) {
 	require.Equal(1, len(indexes))
 
 	var locations = make([][]string, len(it.records))
+
 	for partition, records := range it.records {
 		for _, r := range records {
 			lookup, err := sqlIdx.Get(r.values...)
@@ -555,6 +556,7 @@ func TestIntersection(t *testing.T) {
 
 	lookupLang, err := sqlIdxLang.Get(itLang.records[0][0].values...)
 	require.NoError(err)
+
 	lookupPath, err := sqlIdxPath.Get(itPath.records[0][itPath.total-1].values...)
 	require.NoError(err)
 
@@ -1291,10 +1293,10 @@ func (it *testIndexKeyValueIter) Next() ([]interface{}, []byte, error) {
 		values[i] = e + "-" + loc + "-" + string(it.partition.Key())
 	}
 
-	*it.records = append(*it.records, testRecord{
+	(*it.records)[it.offset] = testRecord{
 		values,
 		[]byte(loc),
-	})
+	}
 	it.offset++
 
 	return values, []byte(loc), nil
@@ -1430,13 +1432,23 @@ type partitionKeyValueIter struct {
 	records [][]testRecord
 }
 
+func (i *partitionKeyValueIter) init() {
+	i.records = make([][]testRecord, i.partitions)
+	for j := 0; j < i.partitions; j++ {
+		i.records[j] = make([]testRecord, i.total)
+	}
+}
+
 func (i *partitionKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, error) {
 	if i.pos >= i.partitions {
 		return nil, nil, io.EOF
 	}
 
+	if i.pos == 0 {
+		i.init()
+	}
+
 	i.pos++
-	i.records = append(i.records, []testRecord{})
 	return testPartition(i.pos - 1), &testIndexKeyValueIter{
 		offset:      i.offset,
 		total:       i.total,

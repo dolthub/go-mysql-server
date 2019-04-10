@@ -154,7 +154,11 @@ func (l *indexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	}
 
 	if row == nil {
-		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
+		return &indexValueIter{
+			mapping:   l.mapping,
+			indexName: l.index.Name(),
+			partition: p,
+		}, nil
 	}
 
 	bits := row.Columns()
@@ -163,6 +167,7 @@ func (l *indexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 		bits:      bits,
 		mapping:   l.mapping,
 		indexName: l.index.Name(),
+		partition: p,
 	}, nil
 }
 
@@ -315,15 +320,20 @@ func (l *filteredLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	}
 
 	if row == nil {
-		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
+		return &indexValueIter{
+			mapping:   l.mapping,
+			indexName: l.index.Name(),
+			partition: p,
+		}, nil
 	}
 
 	bits := row.Columns()
 	if err := l.mapping.open(); err != nil {
 		return nil, err
 	}
+
 	defer l.mapping.close()
-	locations, err := l.mapping.sortedLocations(l.index.Name(), bits, l.reverse)
+	locations, err := l.mapping.sortedLocations(l.index.Name(), p, bits, l.reverse)
 	if err != nil {
 		return nil, err
 	}
@@ -500,7 +510,11 @@ func (l *negateLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	}
 
 	if row == nil {
-		return &indexValueIter{mapping: l.mapping, indexName: l.index.Name()}, nil
+		return &indexValueIter{
+			mapping:   l.mapping,
+			indexName: l.index.Name(),
+			partition: p,
+		}, nil
 	}
 
 	bits := row.Columns()
@@ -509,6 +523,7 @@ func (l *negateLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 		bits:      bits,
 		mapping:   l.mapping,
 		indexName: l.index.Name(),
+		partition: p,
 	}, nil
 }
 
