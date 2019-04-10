@@ -95,6 +95,35 @@ We support and actively test against certain third-party clients to ensure compa
 - `IFNULL(expr1, expr2)`: If expr1 is not NULL, IFNULL() returns expr1; otherwise it returns expr2.
 - `NULLIF(expr1, expr2)`: Returns NULL if expr1 = expr2 is true, otherwise returns expr1.
 
+## Configuration
+
+The behaviour of certain parts of go-mysql-server can be configured using either environment variables or session variables.
+
+Session variables are set using the following SQL queries:
+
+```sql
+SET <variable name> = <value>
+```
+
+### Memory joins
+
+- `EXPERIMENTAL_IN_MEMORY_JOIN`: if this environment variable is set it will perform all joins in memory.
+- `inmemory_joins`: if this session variable is set it will perform all joins in memory.
+
+### Maximum inner join memory
+
+- `MAX_MEMORY_INNER_JOIN`: this environment variable controls in bytes the maximum number of memory that can be consumed by go-mysql-server before switching to multipass mode in inner joins.
+- `max_memory_joins`: this session variable controls in bytes the maximum number of memory that can be consumed by go-mysql-server before switching to multipass mode in inner joins.
+
+### Debug
+
+- `DEBUG_ANALYZER`: if this environment variable is set, the analyzer will print debug messages.
+
+### Index creation threads
+
+- `PILOSA_INDEX_THREADS`: this environment variable sets the number of threads used in index creation.
+- `pilosa_index_threads`: this session variable sets the number of threads used in index creation.
+
 ## Example
 
 `go-mysql-server` contains a SQL engine and server implementation. So, if you want to start a server, first instantiate the engine and pass your `sql.Database` implementation.
