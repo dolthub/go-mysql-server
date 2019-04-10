@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -50,6 +51,11 @@ const (
 var (
 	errCorruptedIndex   = errors.NewKind("the index db: %s, table: %s, id: %s is corrupted")
 	errInvalidIndexType = errors.NewKind("expecting a pilosa index, instead got %T")
+)
+
+const (
+	pilosaIndexThreadsKey = "PILOSA_INDEX_THREADS"
+	pilosaIndexThreadsVar = "pilosa_index_threads"
 )
 
 type (
@@ -353,7 +359,7 @@ func (d *Driver) Save(
 		rows, timePilosa, timeMapping uint64
 
 		wg     sync.WaitGroup
-		tokens = make(chan struct{}, runtime.NumCPU())
+		tokens = make(chan struct{}, indexThreads(ctx))
 
 		errors []error
 		errmut sync.Mutex
@@ -587,4 +593,22 @@ func (d *Driver) newPilosaIndex(db, table string) (*pilosa.Index, error) {
 		return nil, err
 	}
 	return idx, nil
+}
+
+func indexThreads(ctx *sql.Context) int {
+	typ, val := ctx.Session.Get(pilosaIndexThreadsVar)
+	if val != nil && typ == sql.Int64 {
+		return int(val.(int64))
+	}
+
+	var value int
+	if v, ok := os.LookupEnv(pilosaIndexThreadsKey); ok {
+		value, _ = strconv.Atoi(v)
+	}
+
+	if value <= 0 {
+		value = runtime.NumCPU()
+	}
+
+	return value
 }
