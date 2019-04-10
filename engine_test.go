@@ -909,6 +909,22 @@ var queries = []struct {
 		"SELECT FROM_BASE64('YmFy')",
 		[]sql.Row{{string("bar")}},
 	},
+	{
+		"SELECT DATE_ADD('2018-05-02', INTERVAL 1 DAY)",
+		[]sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		"SELECT DATE_SUB('2018-05-02', INTERVAL 1 DAY)",
+		[]sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		"SELECT '2018-05-02' + INTERVAL 1 DAY",
+		[]sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		"SELECT '2018-05-02' - INTERVAL 1 DAY",
+		[]sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
+	},
 }
 
 func TestQueries(t *testing.T) {

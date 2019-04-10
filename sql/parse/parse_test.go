@@ -1010,6 +1010,57 @@ var fixtures = map[string]sql.Node{
 	`ROLLBACK`:                           plan.NewRollback(),
 	"SHOW CREATE TABLE `mytable`":        plan.NewShowCreateTable("", nil, "mytable"),
 	"SHOW CREATE TABLE `mydb`.`mytable`": plan.NewShowCreateTable("mydb", nil, "mytable"),
+	`SELECT '2018-05-01' + INTERVAL 1 DAY`: plan.NewProject(
+		[]sql.Expression{expression.NewArithmetic(
+			expression.NewLiteral("2018-05-01", sql.Text),
+			expression.NewInterval(
+				expression.NewLiteral(int64(1), sql.Int64),
+				"DAY",
+			),
+			"+",
+		)},
+		plan.NewUnresolvedTable("dual", ""),
+	),
+	`SELECT '2018-05-01' - INTERVAL 1 DAY`: plan.NewProject(
+		[]sql.Expression{expression.NewArithmetic(
+			expression.NewLiteral("2018-05-01", sql.Text),
+			expression.NewInterval(
+				expression.NewLiteral(int64(1), sql.Int64),
+				"DAY",
+			),
+			"-",
+		)},
+		plan.NewUnresolvedTable("dual", ""),
+	),
+	`SELECT INTERVAL 1 DAY + '2018-05-01'`: plan.NewProject(
+		[]sql.Expression{expression.NewArithmetic(
+			expression.NewInterval(
+				expression.NewLiteral(int64(1), sql.Int64),
+				"DAY",
+			),
+			expression.NewLiteral("2018-05-01", sql.Text),
+			"+",
+		)},
+		plan.NewUnresolvedTable("dual", ""),
+	),
+	`SELECT '2018-05-01' + INTERVAL 1 DAY + INTERVAL 1 DAY`: plan.NewProject(
+		[]sql.Expression{expression.NewArithmetic(
+			expression.NewArithmetic(
+				expression.NewLiteral("2018-05-01", sql.Text),
+				expression.NewInterval(
+					expression.NewLiteral(int64(1), sql.Int64),
+					"DAY",
+				),
+				"+",
+			),
+			expression.NewInterval(
+				expression.NewLiteral(int64(1), sql.Int64),
+				"DAY",
+			),
+			"+",
+		)},
+		plan.NewUnresolvedTable("dual", ""),
+	),
 }
 
 func TestParse(t *testing.T) {
@@ -1035,6 +1086,12 @@ var fixturesErrors = map[string]*errors.Kind{
 		JOIN commit_files
 		JOIN refs
 	`: ErrUnsupportedSyntax,
+	`SELECT INTERVAL 1 DAY - '2018-05-01'`:                    ErrUnsupportedSyntax,
+	`SELECT INTERVAL 1 DAY * '2018-05-01'`:                    ErrUnsupportedSyntax,
+	`SELECT '2018-05-01' * INTERVAL 1 DAY`:                    ErrUnsupportedSyntax,
+	`SELECT '2018-05-01' / INTERVAL 1 DAY`:                    ErrUnsupportedSyntax,
+	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                  ErrUnsupportedSyntax,
+	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`: ErrUnsupportedSyntax,
 }
 
 func TestParseErrors(t *testing.T) {

@@ -3,6 +3,7 @@ package expression
 import (
 	"fmt"
 	"reflect"
+	"time"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
@@ -21,7 +22,7 @@ var (
 // Arithmetic expressions (+, -, *, /, ...)
 type Arithmetic struct {
 	BinaryExpression
-	op string
+	Op string
 }
 
 // NewArithmetic creates a new Arithmetic sql.Expression.
@@ -85,13 +86,19 @@ func NewMod(left, right sql.Expression) *Arithmetic {
 }
 
 func (a *Arithmetic) String() string {
-	return fmt.Sprintf("%s %s %s", a.Left, a.op, a.Right)
+	return fmt.Sprintf("%s %s %s", a.Left, a.Op, a.Right)
 }
 
 // Type returns the greatest type for given operation.
 func (a *Arithmetic) Type() sql.Type {
-	switch a.op {
+	switch a.Op {
 	case sqlparser.PlusStr, sqlparser.MinusStr, sqlparser.MultStr, sqlparser.DivStr:
+		_, lok := a.Left.(*Interval)
+		_, rok := a.Right.(*Interval)
+		if lok || rok {
+			return sql.Timestamp
+		}
+
 		if sql.IsInteger(a.Left.Type()) && sql.IsInteger(a.Right.Type()) {
 			if sql.IsUnsigned(a.Left.Type()) && sql.IsUnsigned(a.Right.Type()) {
 				return sql.Uint64
@@ -126,7 +133,7 @@ func (a *Arithmetic) TransformUp(f sql.TransformExprFunc) (sql.Expression, error
 		return nil, err
 	}
 
-	return f(NewArithmetic(l, r, a.op))
+	return f(NewArithmetic(l, r, a.Op))
 }
 
 // Eval implements the Expression interface.
@@ -141,7 +148,7 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	switch a.op {
+	switch a.Op {
 	case sqlparser.PlusStr:
 		return plus(lval, rval)
 	case sqlparser.MinusStr:
@@ -166,37 +173,63 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return mod(lval, rval)
 	}
 
-	return nil, errUnableToEval.New(lval, a.op, rval)
+	return nil, errUnableToEval.New(lval, a.Op, rval)
 }
 
 func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
-	lval, err := a.Left.Eval(ctx, row)
-	if err != nil {
-		return nil, nil, err
+	var lval, rval interface{}
+	var err error
+
+	if i, ok := a.Left.(*Interval); ok {
+		lval, err = i.EvalDelta(ctx, row)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		lval, err = a.Left.Eval(ctx, row)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
-	rval, err := a.Right.Eval(ctx, row)
-	if err != nil {
-		return nil, nil, err
+	if i, ok := a.Right.(*Interval); ok {
+		rval, err = i.EvalDelta(ctx, row)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		rval, err = a.Right.Eval(ctx, row)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	return lval, rval, nil
 }
 
-func (a *Arithmetic) convertLeftRight(lval interface{}, rval interface{}) (interface{}, interface{}, error) {
+func (a *Arithmetic) convertLeftRight(left interface{}, right interface{}) (interface{}, interface{}, error) {
+	var err error
 	typ := a.Type()
 
-	lval64, err := typ.Convert(lval)
-	if err != nil {
-		return nil, nil, err
+	if i, ok := left.(*TimeDelta); ok {
+		left = i
+	} else {
+		left, err = typ.Convert(left)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
-	rval64, err := typ.Convert(rval)
-	if err != nil {
-		return nil, nil, err
+	if i, ok := right.(*TimeDelta); ok {
+		right = i
+	} else {
+		right, err = typ.Convert(right)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
-	return lval64, rval64, nil
+	return left, right, nil
 }
 
 func plus(lval, rval interface{}) (interface{}, error) {
@@ -217,6 +250,16 @@ func plus(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case float64:
 			return l + r, nil
+		}
+	case time.Time:
+		switch r := rval.(type) {
+		case *TimeDelta:
+			return r.Add(l), nil
+		}
+	case *TimeDelta:
+		switch r := rval.(type) {
+		case time.Time:
+			return l.Add(r), nil
 		}
 	}
 
@@ -241,6 +284,11 @@ func minus(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case float64:
 			return l - r, nil
+		}
+	case time.Time:
+		switch r := rval.(type) {
+		case *TimeDelta:
+			return r.Sub(l), nil
 		}
 	}
 
