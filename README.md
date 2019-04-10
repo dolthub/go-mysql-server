@@ -98,6 +98,7 @@ We support and actively test against certain third-party clients to ensure compa
 |`RPAD(str, len, padstr)`|Returns the string str, right-padded with the string padstr to a length of len characters.|
 |`RTRIM(str)`|Returns the string str with trailing space characters removed.|
 |`SECOND(date)`|Returns the seconds of the given date.|
+|`SLEEP(seconds)`|Wait for the specified number of seconds (can be fractional).|
 |`SOUNDEX(str)`|Returns the soundex of a string.|
 |`SPLIT(str,sep)`|Receives a string and a separator and returns the parts of the string split by the separator as a JSON array of strings.|
 |`SQRT(X)`|Returns the square root of a nonnegative number X.|

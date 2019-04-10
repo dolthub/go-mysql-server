@@ -109,6 +109,7 @@
 - LN
 - LOG2
 - LOG10
+- SLEEP
 
 ## Time functions
 - DAY
