@@ -109,6 +109,26 @@ var queries = []struct {
 		[]sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
 	},
 	{
+		"SELECT YEARWEEK('0000-01-01')",
+		[]sql.Row{{int32(1)}},
+	},
+	{
+		"SELECT YEARWEEK('9999-12-31')",
+		[]sql.Row{{int32(999952)}},
+	},
+	{
+		"SELECT YEARWEEK('2008-02-20', 1)",
+		[]sql.Row{{int32(200808)}},
+	},
+	{
+		"SELECT YEARWEEK('1987-01-01')",
+		[]sql.Row{{int32(198652)}},
+	},
+	{
+		"SELECT YEARWEEK('1987-01-01', 20), YEARWEEK('1987-01-01', 1), YEARWEEK('1987-01-01', 2), YEARWEEK('1987-01-01', 3), YEARWEEK('1987-01-01', 4), YEARWEEK('1987-01-01', 5), YEARWEEK('1987-01-01', 6), YEARWEEK('1987-01-01', 7)",
+		[]sql.Row{{int32(198653), int32(198701), int32(198652), int32(198701), int32(198653), int32(198652), int32(198653), int32(198652)}},
+	},
+	{
 		"SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
 		[]sql.Row{{int64(1)}, {int64(2)}},
 	},
