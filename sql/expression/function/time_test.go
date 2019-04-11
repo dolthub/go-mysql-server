@@ -292,6 +292,56 @@ func TestTime_DayOfYear(t *testing.T) {
 	}
 }
 
+func TestYearWeek(t *testing.T) {
+	f, err := NewYearWeek(expression.NewGetField(0, sql.Text, "foo", false))
+	require.NoError(t, err)
+	ctx := sql.NewEmptyContext()
+
+	testCases := []struct {
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
+	}{
+		{"null date", sql.NewRow(nil), nil, true},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, true},
+		{"date as string", sql.NewRow(stringDate), int32(200653), false},
+		{"date as unix timestamp", sql.NewRow(int64(tsDate)), int32(200947), false},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			val, err := f.Eval(ctx, tt.row)
+			if tt.err {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+				require.Equal(tt.expected, val)
+			}
+		})
+	}
+}
+
+func TestCalcDaynr(t *testing.T) {
+	require.EqualValues(t, calcDaynr(0, 0, 0), 0)
+	require.EqualValues(t, calcDaynr(9999, 12, 31), 3652424)
+	require.EqualValues(t, calcDaynr(1970, 1, 1), 719528)
+	require.EqualValues(t, calcDaynr(2006, 12, 16), 733026)
+	require.EqualValues(t, calcDaynr(10, 1, 2), 3654)
+	require.EqualValues(t, calcDaynr(2008, 2, 20), 733457)
+}
+
+func TestCalcWeek(t *testing.T) {
+	_, w := calcWeek(2008, 2, 20, weekMode(0))
+
+	_, w = calcWeek(2008, 2, 20, weekMode(1))
+	require.EqualValues(t, w, 8)
+
+	_, w = calcWeek(2008, 12, 31, weekMode(1))
+	require.EqualValues(t, w, 53)
+}
+
 func TestNow(t *testing.T) {
 	require := require.New(t)
 	date := time.Date(2018, time.December, 2, 16, 25, 0, 0, time.Local)

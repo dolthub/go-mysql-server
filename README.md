@@ -108,6 +108,7 @@ We support and actively test against certain third-party clients to ensure compa
 |`UPPER(str)`|Returns the string str with all characters in upper case.|
 |`WEEKDAY(date)`|Returns the weekday of the given date.|
 |`YEAR(date)`|Returns the year of the given date.|
+|`YEARWEEK(date, mode)`|Returns year and week for a date. The year in the result may be different from the year in the date argument for the first and the last week of the year.|
 <!-- END FUNCTIONS -->
 
 ## Configuration
