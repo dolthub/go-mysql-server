@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	experimentalInMemoryJoinKey = "EXPERIMENTAL_IN_MEMORY_JOIN"
-	maxMemoryJoinKey            = "MAX_MEMORY_INNER_JOIN"
-	inMemoryJoinSessionVar      = "inmemory_joins"
-	memoryThresholdSessionVar   = "max_memory_joins"
+	inMemoryJoinKey           = "INMEMORY_JOINS"
+	maxMemoryJoinKey          = "MAX_MEMORY_INNER_JOIN"
+	inMemoryJoinSessionVar    = "inmemory_joins"
+	memoryThresholdSessionVar = "max_memory_joins"
 )
 
 var (
@@ -32,7 +32,7 @@ var (
 )
 
 func shouldUseMemoryJoinsByEnv() bool {
-	v := strings.TrimSpace(strings.ToLower(os.Getenv(experimentalInMemoryJoinKey)))
+	v := strings.TrimSpace(strings.ToLower(os.Getenv(inMemoryJoinKey)))
 	return v == "on" || v == "1"
 }
 
@@ -48,7 +48,7 @@ func loadMemoryThreshold() uint64 {
 		return defaultMemoryThreshold
 	}
 
-	return n
+	return n * 1024 // to bytes
 }
 
 // InnerJoin is an inner join between two tables.
@@ -252,7 +252,7 @@ func (i *innerJoinIter) fitsInMemory() bool {
 	var maxMemory uint64
 	_, v := i.ctx.Session.Get(memoryThresholdSessionVar)
 	if n, ok := v.(int64); ok {
-		maxMemory = uint64(n)
+		maxMemory = uint64(n) * 1024 // to bytes
 	} else {
 		maxMemory = maxMemoryJoin
 	}

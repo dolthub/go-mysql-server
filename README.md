@@ -95,6 +95,36 @@ We support and actively test against certain third-party clients to ensure compa
 - `IFNULL(expr1, expr2)`: If expr1 is not NULL, IFNULL() returns expr1; otherwise it returns expr2.
 - `NULLIF(expr1, expr2)`: Returns NULL if expr1 = expr2 is true, otherwise returns expr1.
 
+## Configuration
+
+The behaviour of certain parts of go-mysql-server can be configured using either environment variables or session variables.
+
+Session variables are set using the following SQL queries:
+
+```sql
+SET <variable name> = <value>
+```
+
+### Memory joins
+
+
+- `INMEMORY_JOINS`: if this environment variable is set it will perform all joins in memory. Default is off.
+- `inmemory_joins`: if this session variable is set it will perform all joins in memory. Default is off. This has precedence over `INMEMORY_JOINS`.
+
+### Maximum inner join memory
+
+- `MAX_MEMORY_INNER_JOIN`: this environment variable controls in megabytes the maximum number of memory that can be consumed by go-mysql-server before switching to multipass mode in inner joins. Default is the 20% of all available physical memory.
+- `max_memory_joins`: this session variable controls in megabytes the maximum number of memory that can be consumed by go-mysql-server before switching to multipass mode in inner joins. Default is the 20% of all available physical memory. This has precedence over `MAX_MEMORY_INNER_JOIN`.
+
+### Debug
+
+- `DEBUG_ANALYZER`: if this environment variable is set, the analyzer will print debug messages. Default is off.
+
+### Index creation threads
+
+- `PILOSA_INDEX_THREADS`: this environment variable sets the number of threads used in index creation. Default is the number of cores available in the machine.
+- `pilosa_index_threads`: this session variable sets the number of threads used in index creation. Default is the number of cores available in the machine. This has precedence over `PILOSA_INDEX_THREADS`.
+
 ## Example
 
 `go-mysql-server` contains a SQL engine and server implementation. So, if you want to start a server, first instantiate the engine and pass your `sql.Database` implementation.
