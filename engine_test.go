@@ -901,6 +901,14 @@ var queries = []struct {
 		"SELECT SLEEP(0.5)",
 		[]sql.Row{{int(0)}},
 	},
+	{
+		"SELECT TO_BASE64('foo')",
+		[]sql.Row{{string("Zm9v")}},
+	},
+	{
+		"SELECT FROM_BASE64('YmFy')",
+		[]sql.Row{{string("bar")}},
+	},
 }
 
 func TestQueries(t *testing.T) {
