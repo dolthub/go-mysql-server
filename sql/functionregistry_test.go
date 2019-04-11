@@ -14,9 +14,10 @@ func TestFunctionRegistry(t *testing.T) {
 	c := sql.NewCatalog()
 	name := "func"
 	var expected sql.Expression = expression.NewStar()
-	c.RegisterFunction(name, sql.Function1(func(arg sql.Expression) sql.Expression {
-		return expected
-	}))
+	c.MustRegister(sql.Function1{
+		Name: name,
+		Fn:   func(arg sql.Expression) sql.Expression { return expected },
+	})
 
 	f, err := c.Function(name)
 	require.NoError(err)
