@@ -68,7 +68,8 @@ We support and actively test against certain third-party clients to ensure compa
 |`CONCAT_WS(sep, ...)`|Concatenate any group of fields into a single string. The first argument is the separator for the rest of the arguments. The separator is added between the strings to be concatenated. The separator can be a string, as can the rest of the arguments. If the separator is NULL, the result is NULL.|
 |`CONNECTION_ID()`|Return the current connection ID.|
 |`COUNT(expr)`| Returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.|
-|`DAY(date)`|Returns the day of the given date.|
+|`DAY(date)`|Synonym for DAYOFMONTH().|
+|`DAYOFMONTH(date)`|Return the day of the month (0-31).|
 |`DAYOFWEEK(date)`|Returns the day of the week of the given date.|
 |`DAYOFYEAR(date)`|Returns the day of the year of the given date.|
 |`FLOOR(number)`|Return the largest integer value that is less than or equal to `number`.|
