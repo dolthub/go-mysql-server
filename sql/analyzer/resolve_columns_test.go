@@ -75,6 +75,26 @@ func TestMisusedAlias(t *testing.T) {
 	require.EqualError(err, ErrMisusedAlias.New("alias_i").Error())
 }
 
+func TestDistinctNoTuples(t *testing.T) {
+	require := require.New(t)
+	f := getRule("check_distinct_no_tuples")
+
+	table := mem.NewTable("mytable", sql.Schema{
+		{Name: "i", Type: sql.Int32},
+	})
+
+	node := plan.NewProject([]sql.Expression{
+		expression.NewTuple(
+			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(2, sql.Int64),
+		),
+	}, plan.NewResolvedTable(table))
+	d := plan.NewDistinct(node)
+
+	_, err := f.Apply(sql.NewEmptyContext(), nil, d)
+	require.EqualError(err, ErrDistinctTuple.New().Error())
+}
+
 func TestQualifyColumns(t *testing.T) {
 	require := require.New(t)
 	f := getRule("qualify_columns")

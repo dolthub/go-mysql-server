@@ -38,6 +38,31 @@ func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	return n, err
 }
 
+func checkDistinctNoTuples(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
+	span, _ := ctx.Span("no_distinct_tuples")
+	defer span.Finish()
+
+	a.Log("check no tuples as distinct projection, node of type: %T", node)
+	var err error
+	if node, ok := node.(*plan.Distinct); ok {
+		_, err = node.TransformUp(func(node sql.Node) (sql.Node, error) {
+			project, ok := node.(*plan.Project)
+			if ok {
+				for _, col := range project.Projections {
+					_, ok := col.(expression.Tuple)
+					if ok {
+						return node, ErrDistinctTuple.New()
+					}
+				}
+			}
+
+			return node, nil
+		})
+	}
+
+	return node, err
+}
+
 func lookForAliasDeclarations(node sql.Expressioner) map[string]struct{} {
 	var (
 		aliases = map[string]struct{}{}
