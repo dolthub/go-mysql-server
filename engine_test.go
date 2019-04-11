@@ -877,6 +877,10 @@ var queries = []struct {
 		"SELECT substring(s, 1, 1), count(*) FROM mytable GROUP BY substring(s, 1, 1)",
 		[]sql.Row{{"f", int64(1)}, {"s", int64(1)}, {"t", int64(1)}},
 	},
+	{
+		"SELECT SLEEP(0.5)",
+		[]sql.Row{{int(0)}},
+	},
 }
 
 func TestQueries(t *testing.T) {
