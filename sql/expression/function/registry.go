@@ -41,6 +41,7 @@ var Defaults = []sql.Function{
 	sql.Function1{Name: "minute", Fn: NewMinute},
 	sql.Function1{Name: "second", Fn: NewSecond},
 	sql.Function1{Name: "dayofweek", Fn: NewDayOfWeek},
+	sql.Function1{Name: "dayofmonth", Fn: NewDay},
 	sql.Function1{Name: "dayofyear", Fn: NewDayOfYear},
 	sql.FunctionN{Name: "yearweek", Fn: NewYearWeek},
 	sql.Function1{Name: "array_length", Fn: NewArrayLength},
