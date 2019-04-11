@@ -33,7 +33,6 @@ func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, e
 	defer span.Finish()
 
 	a.Log("optimize distinct, node of type: %T", node)
-
 	if node, ok := node.(*plan.Distinct); ok {
 		var isSorted bool
 		_, _ = node.TransformUp(func(node sql.Node) (sql.Node, error) {

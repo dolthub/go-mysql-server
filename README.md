@@ -76,6 +76,7 @@ We support and actively test against certain third-party clients to ensure compa
 |`DAYOFWEEK(date)`|Returns the day of the week of the given date.|
 |`DAYOFYEAR(date)`|Returns the day of the year of the given date.|
 |`FLOOR(number)`|Return the largest integer value that is less than or equal to `number`.|
+|`FROM_BASE64(str)`|Decodes the base64-encoded string str.|
 |`HOUR(date)`|Returns the hours of the given date.|
 |`IFNULL(expr1, expr2)`|If expr1 is not NULL, IFNULL() returns expr1; otherwise it returns expr2.|
 |`IS_BINARY(blob)`|Returns whether a BLOB is a binary file or not.|
@@ -110,7 +111,6 @@ We support and actively test against certain third-party clients to ensure compa
 |`SUBSTRING(str, pos, [len])`|Return a substring from the provided string starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
 |`SUM(expr)`|Returns the sum of expr in all rows.|
 |`TO_BASE64(str)`|Encodes the string str in base64 format.|
-|`FROM_BASE64(str)`|Decodes the base64-encoded string str.|
 |`TRIM(str)`|Returns the string str with all spaces removed.|
 |`UPPER(str)`|Returns the string str with all characters in upper case.|
 |`WEEKDAY(date)`|Returns the weekday of the given date.|

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
@@ -38,29 +38,39 @@ func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	return n, err
 }
 
-func checkDistinctNoTuples(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
-	span, _ := ctx.Span("no_distinct_tuples")
+func checkNoTuplesProjected(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
+	span, _ := ctx.Span("no_tuples_projected")
 	defer span.Finish()
 
-	a.Log("check no tuples as distinct projection, node of type: %T", node)
-	var err error
-	if node, ok := node.(*plan.Distinct); ok {
-		_, err = node.TransformUp(func(node sql.Node) (sql.Node, error) {
-			project, ok := node.(*plan.Project)
-			if ok {
-				for _, col := range project.Projections {
-					_, ok := col.(expression.Tuple)
-					if ok {
-						return node, ErrDistinctTuple.New()
-					}
+	a.Log("check no tuples as in projection, node of type: %T", node)
+	return node.TransformUp(func(node sql.Node) (sql.Node, error) {
+		project, ok := node.(*plan.Project)
+		if ok {
+			for _, col := range project.Projections {
+				_, ok := col.(expression.Tuple)
+				if ok {
+					return node, ErrTupleProjected.New()
 				}
 			}
+		}
+		groupby, ok := node.(*plan.GroupBy)
+		if ok {
+			for _, c := range groupby.Grouping {
+				_, ok := c.(expression.Tuple)
+				if ok {
+					return node, ErrTupleProjected.New()
+				}
+			}
+			for _, c := range groupby.Aggregate {
+				_, ok := c.(expression.Tuple)
+				if ok {
+					return node, ErrTupleProjected.New()
+				}
+			}
+		}
 
-			return node, nil
-		})
-	}
-
-	return node, err
+		return node, nil
+	})
 }
 
 func lookForAliasDeclarations(node sql.Expressioner) map[string]struct{} {
