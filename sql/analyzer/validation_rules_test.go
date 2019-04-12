@@ -6,6 +6,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/mem"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function/aggregation"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 
@@ -426,6 +427,129 @@ func TestValidateCaseResultTypes(t *testing.T) {
 			} else {
 				require.Error(err)
 				require.True(ErrCaseResultType.Is(err))
+			}
+		})
+	}
+}
+
+func mustFunc(e sql.Expression, err error) sql.Expression {
+	if err != nil {
+		panic(err)
+	}
+	return e
+}
+
+func TestValidateIntervalUsage(t *testing.T) {
+	testCases := []struct {
+		name string
+		node sql.Node
+		ok   bool
+	}{
+		{
+			"date add",
+			plan.NewProject(
+				[]sql.Expression{
+					mustFunc(function.NewDateAdd(
+						expression.NewLiteral("2018-05-01", sql.Text),
+						expression.NewInterval(
+							expression.NewLiteral(int64(1), sql.Int64),
+							"DAY",
+						),
+					)),
+				},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+			true,
+		},
+		{
+			"date sub",
+			plan.NewProject(
+				[]sql.Expression{
+					mustFunc(function.NewDateSub(
+						expression.NewLiteral("2018-05-01", sql.Text),
+						expression.NewInterval(
+							expression.NewLiteral(int64(1), sql.Int64),
+							"DAY",
+						),
+					)),
+				},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+			true,
+		},
+		{
+			"+ op",
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewPlus(
+						expression.NewLiteral("2018-05-01", sql.Text),
+						expression.NewInterval(
+							expression.NewLiteral(int64(1), sql.Int64),
+							"DAY",
+						),
+					),
+				},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+			true,
+		},
+		{
+			"- op",
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewMinus(
+						expression.NewLiteral("2018-05-01", sql.Text),
+						expression.NewInterval(
+							expression.NewLiteral(int64(1), sql.Int64),
+							"DAY",
+						),
+					),
+				},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+			true,
+		},
+		{
+			"invalid",
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewInterval(
+						expression.NewLiteral(int64(1), sql.Int64),
+						"DAY",
+					),
+				},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+			false,
+		},
+		{
+			"alias",
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewAlias(
+						expression.NewInterval(
+							expression.NewLiteral(int64(1), sql.Int64),
+							"DAY",
+						),
+						"foo",
+					),
+				},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+			false,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+
+			_, err := validateIntervalUsage(sql.NewEmptyContext(), nil, tt.node)
+			if tt.ok {
+				require.NoError(err)
+			} else {
+				require.Error(err)
+				require.True(ErrIntervalInvalidUse.Is(err))
 			}
 		})
 	}

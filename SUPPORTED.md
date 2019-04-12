@@ -50,6 +50,7 @@
 - USE
 - SHOW DATABASES
 - SHOW WARNINGS
+- INTERVALS
 
 ## Index expressions
 - CREATE INDEX (an index can be created using either column names or a single arbitrary expression).
@@ -67,8 +68,8 @@
 - OR
 
 ## Arithmetic expressions
-- \+
-- \-
+- \+ (including between dates and intervals)
+- \- (including between dates and intervals)
 - \*
 - \\
 - <<
@@ -125,3 +126,5 @@
 - YEAR
 - YEARWEEK
 - NOW
+- DATE_ADD
+- DATE_SUB

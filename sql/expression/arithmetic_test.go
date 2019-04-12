@@ -2,6 +2,7 @@ package expression
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -38,6 +39,29 @@ func TestPlus(t *testing.T) {
 	require.Equal(float64(5), result)
 }
 
+func TestPlusInterval(t *testing.T) {
+	require := require.New(t)
+
+	expected := time.Date(2018, time.May, 2, 0, 0, 0, 0, time.UTC)
+	op := NewPlus(
+		NewLiteral("2018-05-01", sql.Text),
+		NewInterval(NewLiteral(int64(1), sql.Int64), "DAY"),
+	)
+
+	result, err := op.Eval(sql.NewEmptyContext(), nil)
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	op = NewPlus(
+		NewInterval(NewLiteral(int64(1), sql.Int64), "DAY"),
+		NewLiteral("2018-05-01", sql.Text),
+	)
+
+	result, err = op.Eval(sql.NewEmptyContext(), nil)
+	require.NoError(err)
+	require.Equal(expected, result)
+}
+
 func TestMinus(t *testing.T) {
 	var testCases = []struct {
 		name        string
@@ -67,6 +91,20 @@ func TestMinus(t *testing.T) {
 		Eval(sql.NewEmptyContext(), sql.NewRow())
 	require.NoError(err)
 	require.Equal(float64(0), result)
+}
+
+func TestMinusInterval(t *testing.T) {
+	require := require.New(t)
+
+	expected := time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)
+	op := NewMinus(
+		NewLiteral("2018-05-02", sql.Text),
+		NewInterval(NewLiteral(int64(1), sql.Int64), "DAY"),
+	)
+
+	result, err := op.Eval(sql.NewEmptyContext(), nil)
+	require.NoError(err)
+	require.Equal(expected, result)
 }
 
 func TestMult(t *testing.T) {

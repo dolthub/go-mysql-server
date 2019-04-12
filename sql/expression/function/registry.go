@@ -79,4 +79,6 @@ var Defaults = []sql.Function{
 	sql.Function1{Name: "sleep", Fn: NewSleep},
 	sql.Function1{Name: "to_base64", Fn: NewToBase64},
 	sql.Function1{Name: "from_base64", Fn: NewFromBase64},
+	sql.FunctionN{Name: "date_add", Fn: NewDateAdd},
+	sql.FunctionN{Name: "date_sub", Fn: NewDateSub},
 }

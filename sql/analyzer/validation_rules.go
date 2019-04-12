@@ -6,6 +6,7 @@ import (
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
@@ -17,6 +18,7 @@ const (
 	validateProjectTuplesRule   = "validate_project_tuples"
 	validateIndexCreationRule   = "validate_index_creation"
 	validateCaseResultTypesRule = "validate_case_result_types"
+	validateIntervalUsageRule   = "validate_interval_usage"
 )
 
 var (
@@ -43,6 +45,12 @@ var (
 		"expecting all case branches to return values of type %s, " +
 			"but found value %q of type %s on %s",
 	)
+	// ErrIntervalInvalidUse is returned when an interval expression is not
+	// correctly used.
+	ErrIntervalInvalidUse = errors.NewKind(
+		"invalid use of an interval, which can only be used with DATE_ADD, " +
+			"DATE_SUB and +/- operators to subtract from or add to a date",
+	)
 )
 
 // DefaultValidationRules to apply while analyzing nodes.
@@ -54,6 +62,7 @@ var DefaultValidationRules = []Rule{
 	{validateProjectTuplesRule, validateProjectTuples},
 	{validateIndexCreationRule, validateIndexCreation},
 	{validateCaseResultTypesRule, validateCaseResultTypes},
+	{validateIntervalUsageRule, validateIntervalUsage},
 }
 
 func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -238,6 +247,35 @@ func validateCaseResultTypes(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Nod
 
 	if err != nil {
 		return nil, err
+	}
+
+	return n, nil
+}
+
+func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	var invalid bool
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
+		// If it's already invalid just skip everything else.
+		if invalid {
+			return false
+		}
+
+		switch e := e.(type) {
+		case *function.DateAdd, *function.DateSub:
+			return false
+		case *expression.Arithmetic:
+			if e.Op == "+" || e.Op == "-" {
+				return false
+			}
+		case *expression.Interval:
+			invalid = true
+		}
+
+		return true
+	})
+
+	if invalid {
+		return nil, ErrIntervalInvalidUse.New()
 	}
 
 	return n, nil

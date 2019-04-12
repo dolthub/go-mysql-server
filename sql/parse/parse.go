@@ -826,6 +826,8 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		return nil, ErrUnsupportedSubqueryExpression.New()
 	case *sqlparser.CaseExpr:
 		return caseExprToExpression(v)
+	case *sqlparser.IntervalExpr:
+		return intervalExprToExpression(v)
 	}
 }
 
@@ -1011,6 +1013,16 @@ func binaryExprToExpression(be *sqlparser.BinaryExpr) (sql.Expression, error) {
 			return nil, err
 		}
 
+		_, lok := l.(*expression.Interval)
+		_, rok := r.(*expression.Interval)
+		if lok && be.Operator == "-" {
+			return nil, ErrUnsupportedSyntax.New("subtracting from an interval")
+		} else if (lok || rok) && be.Operator != "+" && be.Operator != "-" {
+			return nil, ErrUnsupportedSyntax.New("only + and - can be used to add of subtract intervals from dates")
+		} else if lok && rok {
+			return nil, ErrUnsupportedSyntax.New("intervals cannot be added or subtracted from other intervals")
+		}
+
 		return expression.NewArithmetic(l, r, be.Operator), nil
 
 	default:
@@ -1056,6 +1068,15 @@ func caseExprToExpression(e *sqlparser.CaseExpr) (sql.Expression, error) {
 	}
 
 	return expression.NewCase(expr, branches, elseExpr), nil
+}
+
+func intervalExprToExpression(e *sqlparser.IntervalExpr) (sql.Expression, error) {
+	expr, err := exprToExpression(e.Expr)
+	if err != nil {
+		return nil, err
+	}
+
+	return expression.NewInterval(expr, e.Unit), nil
 }
 
 func removeComments(s string) string {
