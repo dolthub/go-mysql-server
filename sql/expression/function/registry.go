@@ -33,6 +33,7 @@ var Defaults = []sql.Function{
 	sql.FunctionN{Name: "substring", Fn: NewSubstring},
 	sql.FunctionN{Name: "mid", Fn: NewSubstring},
 	sql.FunctionN{Name: "substr", Fn: NewSubstring},
+	sql.Function1{Name: "date", Fn: NewDate},
 	sql.Function1{Name: "year", Fn: NewYear},
 	sql.Function1{Name: "month", Fn: NewMonth},
 	sql.Function1{Name: "day", Fn: NewDay},

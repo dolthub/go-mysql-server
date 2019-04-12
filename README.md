@@ -71,6 +71,7 @@ We support and actively test against certain third-party clients to ensure compa
 |`DATE_ADD(date, interval)`|Adds the interval to the given date.|
 |`DATE_SUB(date, interval)`|Subtracts the interval from the given date.|
 |`DAY(date)`|Synonym for DAYOFMONTH().|
+|`DATE(date)`|Returns the date part of the given date.|
 |`DAYOFMONTH(date)`|Return the day of the month (0-31).|
 |`DAYOFWEEK(date)`|Returns the day of the week of the given date.|
 |`DAYOFYEAR(date)`|Returns the day of the year of the given date.|
