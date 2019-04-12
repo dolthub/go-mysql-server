@@ -70,7 +70,8 @@ We support and actively test against certain third-party clients to ensure compa
 |`COUNT(expr)`| Returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.|
 |`DATE_ADD(date, interval)`|Adds the interval to the given date.|
 |`DATE_SUB(date, interval)`|Subtracts the interval from the given date.|
-|`DAY(date)`|Returns the day of the given date.|
+|`DAY(date)`|Synonym for DAYOFMONTH().|
+|`DAYOFMONTH(date)`|Return the day of the month (0-31).|
 |`DAYOFWEEK(date)`|Returns the day of the week of the given date.|
 |`DAYOFYEAR(date)`|Returns the day of the year of the given date.|
 |`FLOOR(number)`|Return the largest integer value that is less than or equal to `number`.|
