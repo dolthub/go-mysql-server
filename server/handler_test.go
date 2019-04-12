@@ -12,6 +12,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-vitess.v1/mysql"
 	"gopkg.in/src-d/go-vitess.v1/sqltypes"
+	"gopkg.in/src-d/go-vitess.v1/vt/proto/query"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/require"
@@ -222,4 +223,23 @@ func assertNoConnProcesses(t *testing.T, e *sqle.Engine, conn uint32) {
 			t.Errorf("expecting no processes with connection id %d", conn)
 		}
 	}
+}
+
+func TestSchemaToFields(t *testing.T) {
+	require := require.New(t)
+
+	schema := sql.Schema{
+		{Name: "foo", Type: sql.Blob},
+		{Name: "bar", Type: sql.Text},
+		{Name: "baz", Type: sql.Int64},
+	}
+
+	expected := []*query.Field{
+		{Name: "foo", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary},
+		{Name: "bar", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8},
+		{Name: "baz", Type: query.Type_INT64, Charset: mysql.CharacterSetUtf8},
+	}
+
+	fields := schemaToFields(schema)
+	require.Equal(expected, fields)
 }
