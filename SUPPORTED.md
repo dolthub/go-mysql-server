@@ -114,6 +114,7 @@
 - FROM_BASE64
 
 ## Time functions
+- DATE
 - DAY
 - WEEKDAY
 - DAYOFWEEK

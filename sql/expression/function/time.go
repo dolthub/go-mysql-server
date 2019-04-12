@@ -573,3 +573,39 @@ func (n *Now) Eval(*sql.Context, sql.Row) (interface{}, error) {
 func (n *Now) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	return f(n)
 }
+
+// Date a function takes the DATE part out from a datetime expression.
+type Date struct {
+	expression.UnaryExpression
+}
+
+// NewDate returns a new Date node.
+func NewDate(date sql.Expression) sql.Expression {
+	return &Date{expression.UnaryExpression{Child: date}}
+}
+
+func (d *Date) String() string { return fmt.Sprintf("DATE(%s)", d.Child) }
+
+// Type implements the Expression interface.
+func (d *Date) Type() sql.Type { return sql.Text }
+
+// Eval implements the Expression interface.
+func (d *Date) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return getDatePart(ctx, d.UnaryExpression, row, func(v interface{}) interface{} {
+		if v == nil {
+			return nil
+		}
+
+		return v.(time.Time).Format("2006-01-02")
+	})
+}
+
+// TransformUp implements the sql.Expression interface.
+func (d *Date) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
+	child, err := d.Child.TransformUp(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(NewDate(child))
+}

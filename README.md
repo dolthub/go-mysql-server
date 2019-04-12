@@ -69,6 +69,7 @@ We support and actively test against certain third-party clients to ensure compa
 |`CONNECTION_ID()`|Return the current connection ID.|
 |`COUNT(expr)`| Returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.|
 |`DAY(date)`|Synonym for DAYOFMONTH().|
+|`DATE(date)`|Returns the date part of the given date.|
 |`DAYOFMONTH(date)`|Return the day of the month (0-31).|
 |`DAYOFWEEK(date)`|Returns the day of the week of the given date.|
 |`DAYOFYEAR(date)`|Returns the day of the year of the given date.|
