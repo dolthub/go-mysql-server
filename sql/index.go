@@ -253,11 +253,12 @@ func (r *IndexRegistry) LoadIndexes(dbs Databases) error {
 						r.statuses[k] = IndexReady
 					} else {
 						logrus.Warnf(
-							"index %q is outdated and will not be used, you can remove it using `DROP INDEX %s`",
+							"index %q is outdated and will not be used, you can remove it using `DROP INDEX %s ON %s`",
 							idx.ID(),
 							idx.ID(),
+							idx.Table(),
 						)
-						r.statuses[k] = IndexOutdated
+						r.MarkOutdated(idx)
 					}
 				}
 			}
@@ -265,6 +266,12 @@ func (r *IndexRegistry) LoadIndexes(dbs Databases) error {
 	}
 
 	return nil
+}
+
+// MarkOutdated sets the index status as outdated. This method is not thread
+// safe and should not be used directly except for testing.
+func (r *IndexRegistry) MarkOutdated(idx Index) {
+	r.statuses[indexKey{idx.Database(), idx.ID()}] = IndexOutdated
 }
 
 func (r *IndexRegistry) retainIndex(db, id string) {
@@ -336,7 +343,7 @@ func (r *IndexRegistry) IndexesByTable(db, table string) []Index {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
 
-	indexes := []Index{}
+	var indexes []Index
 	for _, key := range r.indexOrder {
 		idx := r.indexes[key]
 		if idx.Database() == db && idx.Table() == table {
