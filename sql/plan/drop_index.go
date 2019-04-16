@@ -62,7 +62,7 @@ func (d *DropIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}
 	d.Catalog.ReleaseIndex(index)
 
-	if !d.Catalog.CanUseIndex(index) {
+	if !d.Catalog.CanRemoveIndex(index) {
 		return nil, ErrIndexNotAvailable.New(d.Name)
 	}
 
