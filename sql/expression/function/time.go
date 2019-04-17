@@ -375,8 +375,6 @@ func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, errors.New("YEARWEEK: invalid day")
 	}
 
-	fmt.Println(yyyy, mm, dd)
-
 	mode := int64(0)
 	val, err := d.mode.Eval(ctx, row)
 	if err != nil {
