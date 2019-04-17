@@ -59,7 +59,7 @@ var (
 // pilosaIndex is an pilosa implementation of sql.Index interface
 type pilosaIndex struct {
 	index   *concurrentPilosaIndex
-	mapping *mapping
+	mapping map[string]*mapping
 	cancel  context.CancelFunc
 	wg      sync.WaitGroup
 
@@ -70,7 +70,7 @@ type pilosaIndex struct {
 	checksum    string
 }
 
-func newPilosaIndex(idx *pilosa.Index, mapping *mapping, cfg *index.Config) *pilosaIndex {
+func newPilosaIndex(idx *pilosa.Index, cfg *index.Config) *pilosaIndex {
 	var checksum string
 	for _, c := range cfg.Drivers {
 		if ch, ok := c[sql.ChecksumKey]; ok {
@@ -85,7 +85,7 @@ func newPilosaIndex(idx *pilosa.Index, mapping *mapping, cfg *index.Config) *pil
 		table:       cfg.Table,
 		id:          cfg.ID,
 		expressions: cfg.Expressions,
-		mapping:     mapping,
+		mapping:     make(map[string]*mapping),
 		checksum:    checksum,
 	}
 }
@@ -116,15 +116,21 @@ func (idx *pilosaIndex) Get(keys ...interface{}) (sql.IndexLookup, error) {
 
 // Has checks if the given key is present in the index mapping
 func (idx *pilosaIndex) Has(p sql.Partition, key ...interface{}) (bool, error) {
-	if err := idx.mapping.open(); err != nil {
+	mk := mappingKey(p)
+	m, ok := idx.mapping[mk]
+	if !ok {
+		return false, errMappingNotFound.New(mk)
+	}
+
+	if err := m.open(); err != nil {
 		return false, err
 	}
-	defer idx.mapping.close()
+	defer m.close()
 
 	for i, expr := range idx.expressions {
 		name := fieldName(idx.ID(), expr, p)
 
-		val, err := idx.mapping.get(name, key[i])
+		val, err := m.get(name, key[i])
 		if err != nil || val == nil {
 			return false, err
 		}
