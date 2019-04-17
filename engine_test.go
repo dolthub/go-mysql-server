@@ -925,6 +925,10 @@ var queries = []struct {
 		"SELECT '2018-05-02' - INTERVAL 1 DAY",
 		[]sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
 	},
+	{
+		`SELECT i AS i FROM mytable ORDER BY i`,
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
 }
 
 func TestQueries(t *testing.T) {
