@@ -31,7 +31,7 @@ require (
 	github.com/src-d/go-oniguruma v1.0.0
 	github.com/stretchr/testify v1.2.2
 	github.com/uber/jaeger-client-go v2.15.0+incompatible // indirect
-	github.com/uber/jaeger-lib v2.0.0+incompatible // indirect
+	github.com/uber/jaeger-lib v1.5.0 // indirect
 	go.etcd.io/bbolt v1.3.2
 	golang.org/x/net v0.0.0-20190227022144-312bce6e941f // indirect
 	google.golang.org/grpc v1.19.0 // indirect
