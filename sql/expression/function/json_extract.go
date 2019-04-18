@@ -69,10 +69,12 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		result[i], err = jsonpath.JsonPathLookup(doc, path.(string))
+		c, err := jsonpath.Compile(path.(string))
 		if err != nil {
 			return nil, err
 		}
+
+		result[i], _ = c.Lookup(doc) // err ignored
 	}
 
 	if len(result) == 1 {

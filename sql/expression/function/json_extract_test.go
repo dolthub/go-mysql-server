@@ -1,6 +1,7 @@
 package function
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -46,22 +47,30 @@ func TestJSONExtract(t *testing.T) {
 		f        sql.Expression
 		row      sql.Row
 		expected interface{}
+		err      error
 	}{
-		{f2, sql.Row{json, "$.b.c"}, "foo"},
-		{f3, sql.Row{json, "$.b.c", "$.b.d"}, []interface{}{"foo", true}},
+		{f2, sql.Row{json, "FOO"}, nil, errors.New("should start with '$'")},
+		{f2, sql.Row{nil, "$.b.c"}, nil, nil},
+		{f2, sql.Row{json, "$.foo"}, nil, nil},
+		{f2, sql.Row{json, "$.b.c"}, "foo", nil},
+		{f3, sql.Row{json, "$.b.c", "$.b.d"}, []interface{}{"foo", true}, nil},
 		{f4, sql.Row{json, "$.b.c", "$.b.d", "$.e[0][*]"}, []interface{}{
 			"foo",
 			true,
 			[]interface{}{1., 2.},
-		}},
+		}, nil},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.f.String(), func(t *testing.T) {
 			require := require.New(t)
-
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
-			require.NoError(err)
+			if tt.err == nil {
+				require.NoError(err)
+			} else {
+				require.Equal(err.Error(), tt.err.Error())
+			}
+
 			require.Equal(tt.expected, result)
 		})
 	}
