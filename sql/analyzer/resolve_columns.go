@@ -150,7 +150,12 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			indexCols(name, n.Schema())
 		}
 
-		result, err := n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
+		exp, ok := n.(sql.Expressioner)
+		if !ok {
+			return n, nil
+		}
+
+		result, err := exp.TransformExpressions(func(e sql.Expression) (sql.Expression, error) {
 			a.Log("transforming expression of type: %T", e)
 			switch col := e.(type) {
 			case *expression.UnresolvedColumn:
@@ -160,16 +165,22 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				}
 
 				col = expression.NewUnresolvedQualifiedColumn(col.Table(), col.Name())
-
 				name := strings.ToLower(col.Name())
 				table := strings.ToLower(col.Table())
 				if table == "" {
+					// If a column has no table, it might be an alias
+					// defined in a child projection, so check that instead
+					// of incorrectly qualify it.
+					if isDefinedInChildProject(n, col) {
+						return col, nil
+					}
+
 					tables := dedupStrings(colIndex[name])
 					switch len(tables) {
 					case 0:
 						// If there are no tables that have any column with the column
 						// name let's just return it as it is. This may be an alias, so
-						// we'll wait for the reorder of the
+						// we'll wait for the reorder of the projection.
 						return col, nil
 					case 1:
 						col = expression.NewUnresolvedQualifiedColumn(
@@ -269,7 +280,53 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 	})
 }
 
+func isDefinedInChildProject(n sql.Node, col *expression.UnresolvedColumn) bool {
+	var x sql.Node
+	for _, child := range n.Children() {
+		plan.Inspect(child, func(n sql.Node) bool {
+			switch n := n.(type) {
+			case *plan.SubqueryAlias:
+				return false
+			case *plan.Project, *plan.GroupBy:
+				if x == nil {
+					x = n
+				}
+				return false
+			default:
+				return true
+			}
+		})
+
+		if x != nil {
+			break
+		}
+	}
+
+	if x == nil {
+		return false
+	}
+
+	var found bool
+	plan.InspectExpressions(x, func(e sql.Expression) bool {
+		alias, ok := e.(*expression.Alias)
+		if ok && strings.ToLower(alias.Name()) == strings.ToLower(col.Name()) {
+			found = true
+			return false
+		}
+
+		return true
+	})
+
+	return found
+}
+
 var errGlobalVariablesNotSupported = errors.NewKind("can't resolve global variable, %s was requested")
+
+const (
+	sessionTable  = "@@" + sqlparser.SessionStr
+	sessionPrefix = sqlparser.SessionStr + "."
+	globalPrefix  = sqlparser.GlobalStr + "."
+)
 
 func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("resolve_columns")
@@ -282,6 +339,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			return n, nil
 		}
 
+		var childSchema sql.Schema
 		colMap := make(map[string][]*sql.Column)
 		for _, child := range n.Children() {
 			if !child.Resolved() {
@@ -291,6 +349,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			for _, col := range child.Schema() {
 				name := strings.ToLower(col.Name)
 				colMap[name] = append(colMap[name], col)
+				childSchema = append(childSchema, col)
 			}
 		}
 
@@ -318,13 +377,16 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 				return e, nil
 			}
 
-			const (
-				sessionTable  = "@@" + sqlparser.SessionStr
-				sessionPrefix = sqlparser.SessionStr + "."
-				globalPrefix  = sqlparser.GlobalStr + "."
-			)
 			name := strings.ToLower(uc.Name())
 			table := strings.ToLower(uc.Table())
+
+			// First of all, try to find the field in the child schema, which
+			// will resolve aliases.
+			if idx := childSchema.IndexOf(name, table); idx >= 0 {
+				col := childSchema[idx]
+				return expression.NewGetFieldWithTable(idx, col.Type, col.Source, col.Name, col.Nullable), nil
+			}
+
 			columns, ok := colMap[name]
 			if !ok {
 				switch uc := uc.(type) {
