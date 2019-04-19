@@ -207,9 +207,8 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 							return nil, sql.ErrTableNotFound.New(col.Table())
 						}
 
-						similar := text_distance.FindSimilarNameFromMap(tables, col.Table())
-						errText := fmt.Sprintf("%s, maybe you mean table %s?", col.Table(), similar)
-						return nil, sql.ErrTableNotFound.New(errText)
+						similar := text_distance.FindSimilarNamesFromMap(tables, col.Table())
+						return nil, sql.ErrTableNotFound.New(col.Table() + similar)
 					}
 				}
 
@@ -421,9 +420,8 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 						return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
 					}
 
-					similar := text_distance.FindSimilarNameFromMap(colMap, uc.Name())
-					errText := fmt.Sprintf("%s, maybe you mean column %s?", uc.Name(), similar)
-					return nil, ErrColumnNotFound.New(errText)
+					similar := text_distance.FindSimilarNamesFromMap(colMap, uc.Name())
+					return nil, ErrColumnNotFound.New(uc.Name() + similar)
 				}
 			}
 

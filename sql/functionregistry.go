@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"fmt"
 	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/internal/text_distance"
 )
@@ -212,8 +211,6 @@ func (r FunctionRegistry) Function(name string) (Function, error) {
 	if fn, ok := r[name]; ok {
 		return fn, nil
 	}
-	similar := text_distance.FindSimilarNameFromMap(r, name)
-	errText := fmt.Sprintf("%s, maybe you mean function %s?", name, similar)
-
-	return nil, ErrFunctionNotFound.New(errText)
+	similar := text_distance.FindSimilarNamesFromMap(r, name)
+	return nil, ErrFunctionNotFound.New(name + similar)
 }

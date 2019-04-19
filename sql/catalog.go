@@ -108,9 +108,8 @@ func (d Databases) Database(name string) (Database, error) {
 		}
 		dbNames = append(dbNames, db.Name())
 	}
-	similar := text_distance.FindSimilarName(dbNames, name)
-	errText := fmt.Sprintf("%s, maybe you mean database %s?", name, similar)
-	return nil, ErrDatabaseNotFound.New(errText)
+	similar := text_distance.FindSimilarNames(dbNames, name)
+	return nil, ErrDatabaseNotFound.New(name + similar)
 }
 
 // Add adds a new database.
@@ -143,9 +142,8 @@ func (d Databases) Table(dbName string, tableName string) (Table, error) {
 			}
 		}
 
-		similar := text_distance.FindSimilarNameFromMap(tables, tableName)
-		errText := fmt.Sprintf("%s, maybe you mean table %s?", tableName, similar)
-		return nil, ErrTableNotFound.New(errText)
+		similar := text_distance.FindSimilarNamesFromMap(tables, tableName)
+		return nil, ErrTableNotFound.New(tableName + similar)
 	}
 
 	return table, nil

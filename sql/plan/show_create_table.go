@@ -73,9 +73,8 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 	table, found := tables[i.table]
 
 	if !found {
-		similar := text_distance.FindSimilarNameFromMap(tables, i.table)
-		errText := fmt.Sprintf("%s, maybe you mean table %s?", i.table, similar)
-		return nil, sql.ErrTableNotFound.New(errText)
+		similar := text_distance.FindSimilarNamesFromMap(tables, i.table)
+		return nil, sql.ErrTableNotFound.New(i.table + similar)
 	}
 
 	composedCreateTableStatement := produceCreateStatement(table)

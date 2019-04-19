@@ -1,7 +1,9 @@
 package text_distance
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 )
 
 func min(a, b int) int {
@@ -46,30 +48,44 @@ func distanceForStrings(source, target string) int {
 	return matrix[(height-1)%2][width-1]
 }
 
-// FindSimilarName returns the best match by Levenshtein distance
-// for the src string among the specified names.
-func FindSimilarName(names []string, src string) string {
+// MaxDistanceIgnored is the maximum Levenshtein distance from which
+// we won't consider a string similar at all and thus will be ignored.
+var DistanceSkipped = 3
+
+// FindSimilarNames returns a string with suggestions for name(s) in `names`
+// similar to the string `src` until a max distance of `DistanceSkipped`.
+func FindSimilarNames(names []string, src string) string {
+	if len(src) == 0 {
+		return ""
+	}
+
 	minDistance := -1
-	var bestMatch string
+	matchMap := make(map[int][]string)
+
 	for _, name := range names {
 		dist := distanceForStrings(name, src)
-		if dist == 0 {
-			// Perfect match, shouldn't happen if this is used for errors
-			return name
+		if dist >= DistanceSkipped {
+			continue
 		}
 
 		if minDistance == -1 || dist < minDistance {
 			minDistance = dist
-			bestMatch = name
 		}
+
+		matchMap[dist] = append(matchMap[dist], name)
 	}
 
-	return bestMatch
+	if len(matchMap) == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf(", maybe you mean %s?",
+		strings.Join(matchMap[minDistance], " or "))
 }
 
-// FindSimilarNameFromMap does the same as FindSimilarName but taking a map instead
+// FindSimilarNamesFromMap does the same as FindSimilarNames but taking a map instead
 // of a string array as first argument.
-func FindSimilarNameFromMap(names interface{}, src string) string {
+func FindSimilarNamesFromMap(names interface{}, src string) string {
 	rnames := reflect.ValueOf(names)
 	if rnames.Kind() != reflect.Map {
 		panic("Implementation error: non map used as first argument " +
@@ -87,5 +103,5 @@ func FindSimilarNameFromMap(names interface{}, src string) string {
 		namesList = append(namesList, kv.String())
 	}
 
-	return FindSimilarName(namesList, src)
+	return FindSimilarNames(namesList, src)
 }

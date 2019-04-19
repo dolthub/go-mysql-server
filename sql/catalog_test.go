@@ -50,7 +50,7 @@ func TestCatalogDatabase(t *testing.T) {
 	c.AddDatabase(mydb)
 
 	db, err = c.Database("flo")
-	require.EqualError(err, "database not found: flo, maybe you mean database foo?")
+	require.EqualError(err, "database not found: flo, maybe you mean foo?")
 	require.Nil(db)
 
 	db, err = c.Database("foo")
@@ -78,7 +78,7 @@ func TestCatalogTable(t *testing.T) {
 	db.AddTable("bar", mytable)
 
 	table, err = c.Table("foo", "baz")
-	require.EqualError(err, "table not found: baz, maybe you mean table bar?")
+	require.EqualError(err, "table not found: baz, maybe you mean bar?")
 	require.Nil(table)
 
 	table, err = c.Table("foo", "bar")

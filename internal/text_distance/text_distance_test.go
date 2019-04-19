@@ -6,41 +6,47 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFindSimilarName(t *testing.T) {
+func TestFindSimilarNames(t *testing.T) {
 	require := require.New(t)
 
 	var names []string
-	res := FindSimilarName(names, "")
+	res := FindSimilarNames(names, "")
 	require.Empty(res)
 
-	names = []string{"foo", "bar"}
-	res = FindSimilarName(names, "baz")
-	require.Equal("bar", res)
+	names = []string{"foo", "bar", "aka", "ake"}
+	res = FindSimilarNames(names, "baz")
+	require.Equal(", maybe you mean bar?", res)
 
-	res = FindSimilarName(names, "")
-	require.Equal(names[0], res)
+	res = FindSimilarNames(names, "")
+	require.Empty(res)
 
-	res = FindSimilarName(names, "foo")
-	require.Equal("foo", res)
+	res = FindSimilarNames(names, "foo")
+	require.Equal(", maybe you mean foo?", res)
+
+	res = FindSimilarNames(names, "willBeTooDifferent")
+	require.Empty(res)
+
+	res = FindSimilarNames(names, "aki")
+	require.Equal(", maybe you mean aka or ake?", res)
 }
 
-func TestFindSimilarNameFromMap(t *testing.T) {
+func TestFindSimilarNamesFromMap(t *testing.T) {
 	require := require.New(t)
 
 	var names map[string]int
-	res := FindSimilarNameFromMap(names, "")
+	res := FindSimilarNamesFromMap(names, "")
 	require.Empty(res)
 
 	names = map[string]int {
 		"foo": 1,
 		"bar": 2,
 	}
-	res = FindSimilarNameFromMap(names, "baz")
-	require.Equal("bar", res)
+	res = FindSimilarNamesFromMap(names, "baz")
+	require.Equal(", maybe you mean bar?", res)
 
-	res = FindSimilarNameFromMap(names, "")
-	require.NotEmpty(res)
+	res = FindSimilarNamesFromMap(names, "")
+	require.Empty(res)
 
-	res = FindSimilarNameFromMap(names, "foo")
-	require.Equal("foo", res)
+	res = FindSimilarNamesFromMap(names, "foo")
+	require.Equal(", maybe you mean foo?", res)
 }
