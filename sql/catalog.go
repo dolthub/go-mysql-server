@@ -5,6 +5,8 @@ import (
 	"strings"
 	"sync"
 
+	"gopkg.in/src-d/go-mysql-server.v0/internal/text_distance"
+
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -93,14 +95,22 @@ type Databases []Database
 
 // Database returns the Database with the given name if it exists.
 func (d Databases) Database(name string) (Database, error) {
+
+	if len(d) == 0 {
+		return nil, ErrDatabaseNotFound.New(name)
+	}
+
 	name = strings.ToLower(name)
+	var dbNames []string
 	for _, db := range d {
 		if strings.ToLower(db.Name()) == name {
 			return db, nil
 		}
+		dbNames = append(dbNames, db.Name())
 	}
-
-	return nil, ErrDatabaseNotFound.New(name)
+	similar := text_distance.FindSimilarName(dbNames, name)
+	errText := fmt.Sprintf("%s, maybe you mean database %s?", name, similar)
+	return nil, ErrDatabaseNotFound.New(errText)
 }
 
 // Add adds a new database.
@@ -118,6 +128,10 @@ func (d Databases) Table(dbName string, tableName string) (Table, error) {
 	tableName = strings.ToLower(tableName)
 
 	tables := db.Tables()
+	if len(tables) == 0 {
+		return nil, ErrTableNotFound.New(tableName)
+	}
+
 	// Try to get the table by key, but if the name is not the same,
 	// then use the slow path and iterate over all tables comparing
 	// the name.
@@ -129,7 +143,9 @@ func (d Databases) Table(dbName string, tableName string) (Table, error) {
 			}
 		}
 
-		return nil, ErrTableNotFound.New(tableName)
+		similar := text_distance.FindSimilarNameFromMap(tables, tableName)
+		errText := fmt.Sprintf("%s, maybe you mean table %s?", tableName, similar)
+		return nil, ErrTableNotFound.New(errText)
 	}
 
 	return table, nil

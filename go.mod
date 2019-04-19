@@ -30,6 +30,7 @@ require (
 	github.com/spf13/cast v1.3.0
 	github.com/src-d/go-oniguruma v1.0.0
 	github.com/stretchr/testify v1.2.2
+	github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e
 	github.com/uber/jaeger-client-go v2.15.0+incompatible // indirect
 	github.com/uber/jaeger-lib v1.5.0 // indirect
 	go.etcd.io/bbolt v1.3.2

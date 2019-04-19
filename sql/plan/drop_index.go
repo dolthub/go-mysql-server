@@ -1,7 +1,9 @@
 package plan
 
 import (
+	"fmt"
 	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-mysql-server.v0/internal/text_distance"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -51,9 +53,16 @@ func (d *DropIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, ErrTableNotNameable.New()
 	}
 
-	table, ok := db.Tables()[n.Name()]
+	tables := db.Tables()
+	table, ok := tables[n.Name()]
 	if !ok {
-		return nil, sql.ErrTableNotFound.New(n.Name())
+		if len(tables) == 0 {
+			return nil, sql.ErrTableNotFound.New(n.Name())
+		}
+
+		similar := text_distance.FindSimilarNameFromMap(tables, n.Name())
+		errText := fmt.Sprintf("`%s`, maybe you mean table `%s`?", n.Name(), similar)
+		return nil, sql.ErrTableNotFound.New(errText)
 	}
 
 	index := d.Catalog.Index(db.Name(), d.Name)

@@ -5,11 +5,12 @@ import (
 	"sort"
 	"strings"
 
-	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
+	"gopkg.in/src-d/go-mysql-server.v0/internal/text_distance"
 )
 
 func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -202,7 +203,13 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 					}
 
 					if _, ok := tables[col.Table()]; !ok {
-						return nil, sql.ErrTableNotFound.New(col.Table())
+						if len(tables) == 0 {
+							return nil, sql.ErrTableNotFound.New(col.Table())
+						}
+
+						similar := text_distance.FindSimilarNameFromMap(tables, col.Table())
+						errText := fmt.Sprintf("%s, maybe you mean table %s?", col.Table(), similar)
+						return nil, sql.ErrTableNotFound.New(errText)
 					}
 				}
 
@@ -406,11 +413,17 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 					return &deferredColumn{uc}, nil
 
 				default:
+					if len(colMap) == 0 {
+						return nil, ErrColumnNotFound.New(uc.Name())
+					}
+
 					if table != "" {
 						return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
 					}
 
-					return nil, ErrColumnNotFound.New(uc.Name())
+					similar := text_distance.FindSimilarNameFromMap(colMap, uc.Name())
+					errText := fmt.Sprintf("%s, maybe you mean column %s?", uc.Name(), similar)
+					return nil, ErrColumnNotFound.New(errText)
 				}
 			}
 
