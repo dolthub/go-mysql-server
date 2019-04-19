@@ -1,19 +1,58 @@
 package text_distance
 
 import (
-	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"reflect"
 )
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// DistanceForStrings returns the edit distance between source and target.
+// It has a runtime proportional to len(source) * len(target) and memory use
+// proportional to len(target).
+// Taken (simplified, for strings and with default options) from:
+// https://github.com/texttheater/golang-levenshtein
+func distanceForStrings(source, target string) int {
+	height := len(source) + 1
+	width := len(target) + 1
+	matrix := make([][]int, 2)
+
+	for i := 0; i < 2; i++ {
+		matrix[i] = make([]int, width)
+		matrix[i][0] = i
+	}
+	for j := 1; j < width; j++ {
+		matrix[0][j] = j
+	}
+
+	for i := 1; i < height; i++ {
+		cur := matrix[i%2]
+		prev := matrix[(i-1)%2]
+		cur[0] = i
+		for j := 1; j < width; j++ {
+			delCost := prev[j] + 1
+			matchSubCost := prev[j-1]
+			if source[i-1] != target[j-1] {
+				matchSubCost += 2
+			}
+			insCost := cur[j-1] + 1
+			cur[j] = min(delCost, min(matchSubCost, insCost))
+		}
+	}
+	return matrix[(height-1)%2][width-1]
+}
 
 // FindSimilarName returns the best match by Levenshtein distance
 // for the src string among the specified names.
 func FindSimilarName(names []string, src string) string {
 	minDistance := -1
 	var bestMatch string
-	s := []rune(src)
 	for _, name := range names {
-		r := []rune(name)
-		dist := levenshtein.DistanceForStrings(r, s, levenshtein.DefaultOptions)
+		dist := distanceForStrings(name, src)
 		if dist == 0 {
 			// Perfect match, shouldn't happen if this is used for errors
 			return name
@@ -40,7 +79,7 @@ func FindSimilarNameFromMap(names interface{}, src string) string {
 	t := rnames.Type()
 	if t.Key().Kind() != reflect.String {
 		panic("Implementation error: non string key for map used as " +
-			  "first argument to FindSimilarNameForMap")
+			"first argument to FindSimilarNameForMap")
 	}
 
 	var namesList []string
