@@ -291,10 +291,6 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		return nil, err
 	}
 
-	if s.Having != nil {
-		return nil, ErrUnsupportedFeature.New("HAVING")
-	}
-
 	if s.Where != nil {
 		node, err = whereToFilter(s.Where, node)
 		if err != nil {
@@ -305,6 +301,13 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 	node, err = selectToProjectOrGroupBy(s.SelectExprs, s.GroupBy, node)
 	if err != nil {
 		return nil, err
+	}
+
+	if s.Having != nil {
+		node, err = havingToHaving(s.Having, node)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if s.Distinct != "" {
@@ -592,6 +595,15 @@ func limitToLimit(
 		return nil, err
 	}
 	return plan.NewLimit(n.(int64), child), nil
+}
+
+func havingToHaving(having *sqlparser.Where, node sql.Node) (sql.Node, error) {
+	cond, err := exprToExpression(having.Expr)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewHaving(cond, node), nil
 }
 
 func offsetToOffset(
