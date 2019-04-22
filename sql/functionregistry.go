@@ -2,7 +2,7 @@ package sql
 
 import (
 	"gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-mysql-server.v0/internal/text_distance"
+	"gopkg.in/src-d/go-mysql-server.v0/internal/similartext"
 )
 
 // ErrFunctionAlreadyRegistered is thrown when a function is already registered
@@ -211,6 +211,6 @@ func (r FunctionRegistry) Function(name string) (Function, error) {
 	if fn, ok := r[name]; ok {
 		return fn, nil
 	}
-	similar := text_distance.FindSimilarNamesFromMap(r, name)
+	similar := similartext.FindFromMap(r, name)
 	return nil, ErrFunctionNotFound.New(name + similar)
 }

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"gopkg.in/src-d/go-mysql-server.v0/internal/text_distance"
+	"gopkg.in/src-d/go-mysql-server.v0/internal/similartext"
 
 	"gopkg.in/src-d/go-errors.v1"
 )
@@ -108,7 +108,7 @@ func (d Databases) Database(name string) (Database, error) {
 		}
 		dbNames = append(dbNames, db.Name())
 	}
-	similar := text_distance.FindSimilarNames(dbNames, name)
+	similar := similartext.Find(dbNames, name)
 	return nil, ErrDatabaseNotFound.New(name + similar)
 }
 
@@ -142,7 +142,7 @@ func (d Databases) Table(dbName string, tableName string) (Table, error) {
 			}
 		}
 
-		similar := text_distance.FindSimilarNamesFromMap(tables, tableName)
+		similar := similartext.FindFromMap(tables, tableName)
 		return nil, ErrTableNotFound.New(tableName + similar)
 	}
 

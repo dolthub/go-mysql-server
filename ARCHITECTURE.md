@@ -95,9 +95,9 @@ There are two authentication methods:
 - **None:** no authentication needed.
 - **Native:** authentication performed with user and password. Read, write or all permissions can be specified for those users. It can also be configured using a JSON file.
 
-## `internal/text_distance`
+## `internal/similartext`
 
-Contains a function to return the most similar name from an
+Contains a function to `Find` the most similar name from an
 array to a given one using the Levenshtein distance algorithm. Used for suggestions on errors.
 
 ## `internal/regex`

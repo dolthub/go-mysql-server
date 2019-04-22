@@ -1,4 +1,4 @@
-package text_distance
+package similartext
 
 import (
 	"fmt"
@@ -52,9 +52,9 @@ func distanceForStrings(source, target string) int {
 // we won't consider a string similar at all and thus will be ignored.
 var DistanceSkipped = 3
 
-// FindSimilarNames returns a string with suggestions for name(s) in `names`
+// Find returns a string with suggestions for name(s) in `names`
 // similar to the string `src` until a max distance of `DistanceSkipped`.
-func FindSimilarNames(names []string, src string) string {
+func Find(names []string, src string) string {
 	if len(src) == 0 {
 		return ""
 	}
@@ -83,19 +83,19 @@ func FindSimilarNames(names []string, src string) string {
 		strings.Join(matchMap[minDistance], " or "))
 }
 
-// FindSimilarNamesFromMap does the same as FindSimilarNames but taking a map instead
+// FindFromMap does the same as Find but taking a map instead
 // of a string array as first argument.
-func FindSimilarNamesFromMap(names interface{}, src string) string {
+func FindFromMap(names interface{}, src string) string {
 	rnames := reflect.ValueOf(names)
 	if rnames.Kind() != reflect.Map {
 		panic("Implementation error: non map used as first argument " +
-			"to FindSimilarNameFromMap")
+			"to FindFromMap")
 	}
 
 	t := rnames.Type()
 	if t.Key().Kind() != reflect.String {
 		panic("Implementation error: non string key for map used as " +
-			"first argument to FindSimilarNameForMap")
+			"first argument to FindFromMap")
 	}
 
 	var namesList []string
@@ -103,5 +103,5 @@ func FindSimilarNamesFromMap(names interface{}, src string) string {
 		namesList = append(namesList, kv.String())
 	}
 
-	return FindSimilarNames(namesList, src)
+	return Find(namesList, src)
 }

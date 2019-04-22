@@ -2,7 +2,7 @@ package plan
 
 import (
 	"gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-mysql-server.v0/internal/text_distance"
+	"gopkg.in/src-d/go-mysql-server.v0/internal/similartext"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
@@ -59,7 +59,7 @@ func (d *DropIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 			return nil, sql.ErrTableNotFound.New(n.Name())
 		}
 
-		similar := text_distance.FindSimilarNamesFromMap(tables, n.Name())
+		similar := similartext.FindFromMap(tables, n.Name())
 		return nil, sql.ErrTableNotFound.New(n.Name() + similar)
 	}
 

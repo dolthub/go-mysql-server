@@ -10,7 +10,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
-	"gopkg.in/src-d/go-mysql-server.v0/internal/text_distance"
+	"gopkg.in/src-d/go-mysql-server.v0/internal/similartext"
 )
 
 func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -207,7 +207,7 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 							return nil, sql.ErrTableNotFound.New(col.Table())
 						}
 
-						similar := text_distance.FindSimilarNamesFromMap(tables, col.Table())
+						similar := similartext.FindFromMap(tables, col.Table())
 						return nil, sql.ErrTableNotFound.New(col.Table() + similar)
 					}
 				}
@@ -420,7 +420,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 						return nil, ErrColumnTableNotFound.New(uc.Table(), uc.Name())
 					}
 
-					similar := text_distance.FindSimilarNamesFromMap(colMap, uc.Name())
+					similar := similartext.FindFromMap(colMap, uc.Name())
 					return nil, ErrColumnNotFound.New(uc.Name() + similar)
 				}
 			}

@@ -1,7 +1,7 @@
 package sql
 
 import (
-	"gopkg.in/src-d/go-mysql-server.v0/internal/text_distance"
+	"gopkg.in/src-d/go-mysql-server.v0/internal/similartext"
 	"io"
 	"strings"
 	"sync"
@@ -571,7 +571,7 @@ func (r *IndexRegistry) DeleteIndex(db, id string, force bool) (<-chan struct{},
 	r.mut.RUnlock()
 
 	if key.id == "" {
-		similar := text_distance.FindSimilarNames(indexNames, id)
+		similar := similartext.Find(indexNames, id)
 		return nil, ErrIndexNotFound.New(id + similar)
 	}
 

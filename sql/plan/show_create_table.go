@@ -2,7 +2,7 @@ package plan
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-mysql-server.v0/internal/text_distance"
+	"gopkg.in/src-d/go-mysql-server.v0/internal/similartext"
 	"io"
 	"strings"
 
@@ -73,7 +73,7 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 	table, found := tables[i.table]
 
 	if !found {
-		similar := text_distance.FindSimilarNamesFromMap(tables, i.table)
+		similar := similartext.FindFromMap(tables, i.table)
 		return nil, sql.ErrTableNotFound.New(i.table + similar)
 	}
 
