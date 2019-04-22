@@ -252,6 +252,22 @@ func TestValidateProjectTuples(t *testing.T) {
 			false,
 		},
 		{
+			"alias with a tuple",
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewAlias(
+						expression.NewTuple(
+							expression.NewLiteral(1, sql.Int64),
+							expression.NewLiteral(2, sql.Int64),
+						),
+						"foo",
+					),
+				},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+			false,
+		},
+		{
 			"groupby with no tuple",
 			plan.NewGroupBy([]sql.Expression{
 				expression.NewLiteral(1, sql.Int64),
