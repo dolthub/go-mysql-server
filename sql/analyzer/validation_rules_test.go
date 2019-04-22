@@ -235,9 +235,20 @@ func TestValidateProjectTuples(t *testing.T) {
 			plan.NewProject([]sql.Expression{
 				expression.NewTuple(
 					expression.NewLiteral(1, sql.Int64),
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(2, sql.Int64),
 				),
 			}, nil),
+			false,
+		},
+		{
+			"distinct with a 2 elem tuple inside the project",
+			plan.NewDistinct(
+				plan.NewProject([]sql.Expression{
+					expression.NewTuple(
+						expression.NewLiteral(1, sql.Int64),
+						expression.NewLiteral(2, sql.Int64),
+					),
+				}, nil)),
 			false,
 		},
 		{

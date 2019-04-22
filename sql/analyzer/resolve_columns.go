@@ -38,41 +38,6 @@ func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	return n, err
 }
 
-func checkNoTuplesProjected(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
-	span, _ := ctx.Span("no_tuples_projected")
-	defer span.Finish()
-
-	a.Log("check no tuples as in projection, node of type: %T", node)
-	return node.TransformUp(func(node sql.Node) (sql.Node, error) {
-		project, ok := node.(*plan.Project)
-		if ok {
-			for _, col := range project.Projections {
-				_, ok := col.(expression.Tuple)
-				if ok {
-					return node, ErrTupleProjected.New()
-				}
-			}
-		}
-		groupby, ok := node.(*plan.GroupBy)
-		if ok {
-			for _, c := range groupby.Grouping {
-				_, ok := c.(expression.Tuple)
-				if ok {
-					return node, ErrTupleProjected.New()
-				}
-			}
-			for _, c := range groupby.Aggregate {
-				_, ok := c.(expression.Tuple)
-				if ok {
-					return node, ErrTupleProjected.New()
-				}
-			}
-		}
-
-		return node, nil
-	})
-}
-
 func lookForAliasDeclarations(node sql.Expressioner) map[string]struct{} {
 	var (
 		aliases = map[string]struct{}{}

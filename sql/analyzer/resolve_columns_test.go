@@ -75,64 +75,6 @@ func TestMisusedAlias(t *testing.T) {
 	require.EqualError(err, ErrMisusedAlias.New("alias_i").Error())
 }
 
-func TestNoTuplesProjected(t *testing.T) {
-	require := require.New(t)
-	f := getRule("no_tuples_projected")
-
-	table := mem.NewTable("mytable", sql.Schema{
-		{Name: "i", Type: sql.Int32},
-	})
-
-	node := plan.NewProject([]sql.Expression{
-		expression.NewTuple(
-			expression.NewLiteral(1, sql.Int64),
-			expression.NewLiteral(2, sql.Int64),
-		),
-	}, plan.NewResolvedTable(table))
-
-	_, err := f.Apply(sql.NewEmptyContext(), nil, node)
-	require.EqualError(err, ErrTupleProjected.New().Error())
-}
-
-func TestNoTuplesGroupBy(t *testing.T) {
-	require := require.New(t)
-	f := getRule("no_tuples_projected")
-
-	table := mem.NewTable("mytable", sql.Schema{
-		{Name: "i", Type: sql.Int32},
-	})
-
-	node := plan.NewGroupBy([]sql.Expression{
-		expression.NewUnresolvedColumn("a"),
-		expression.NewUnresolvedColumn("b"),
-	},
-		[]sql.Expression{
-			expression.NewTuple(
-				expression.NewLiteral(1, sql.Int64),
-				expression.NewLiteral(2, sql.Int64),
-			),
-		},
-		plan.NewResolvedTable(table))
-
-	_, err := f.Apply(sql.NewEmptyContext(), nil, node)
-	require.EqualError(err, ErrTupleProjected.New().Error())
-
-	node = plan.NewGroupBy([]sql.Expression{
-		expression.NewTuple(
-			expression.NewLiteral(1, sql.Int64),
-			expression.NewLiteral(2, sql.Int64),
-		),
-	},
-		[]sql.Expression{
-			expression.NewUnresolvedColumn("a"),
-			expression.NewUnresolvedColumn("b"),
-		},
-		plan.NewResolvedTable(table))
-
-	_, err = f.Apply(sql.NewEmptyContext(), nil, node)
-	require.EqualError(err, ErrTupleProjected.New().Error())
-}
-
 func TestQualifyColumns(t *testing.T) {
 	require := require.New(t)
 	f := getRule("qualify_columns")

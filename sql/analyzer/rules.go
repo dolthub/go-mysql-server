@@ -28,7 +28,6 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_subqueries", resolveSubqueries},
 	{"resolve_tables", resolveTables},
 	{"check_aliases", checkAliases},
-	{"no_tuples_projected", checkNoTuplesProjected},
 }
 
 // OnceAfterDefault contains the rules to be applied just once after the
@@ -67,5 +66,4 @@ var (
 	// ErrMisusedAlias is returned when a alias is defined and used in the same projection.
 	ErrMisusedAlias = errors.NewKind("column %q does not exist in scope, but there is an alias defined in" +
 		" this projection with that name. Aliases cannot be used in the same projection they're defined in")
-	ErrTupleProjected = errors.NewKind("unexpected tuple found, maybe remove the ()?")
 )
