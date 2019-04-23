@@ -3,7 +3,7 @@ package analyzer
 import (
 	"strings"
 
-	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
@@ -195,25 +195,34 @@ func validateSchema(t *plan.ResolvedTable) error {
 	return nil
 }
 
-func validateProjectTuples(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, _ := ctx.Span("validate_project_tuples")
-	defer span.Finish()
+func findProjectTuples(n sql.Node) (sql.Node, error) {
+	if n == nil {
+		return n, nil
+	}
 
 	switch n := n.(type) {
-	case *plan.Project:
-		for i, e := range n.Projections {
+	case *plan.Project, *plan.GroupBy:
+		for i, e := range n.(sql.Expressioner).Expressions() {
 			if sql.IsTuple(e.Type()) {
 				return nil, ErrProjectTuple.New(i+1, sql.NumColumns(e.Type()))
 			}
 		}
-	case *plan.GroupBy:
-		for i, e := range n.Aggregate {
-			if sql.IsTuple(e.Type()) {
-				return nil, ErrProjectTuple.New(i+1, sql.NumColumns(e.Type()))
+	default:
+		for _, ch := range n.Children() {
+			_, err := findProjectTuples(ch)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
+
 	return n, nil
+}
+
+func validateProjectTuples(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	span, _ := ctx.Span("validate_project_tuples")
+	defer span.Finish()
+	return findProjectTuples(n)
 }
 
 func validateCaseResultTypes(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
