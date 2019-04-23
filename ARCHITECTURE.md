@@ -95,6 +95,11 @@ There are two authentication methods:
 - **None:** no authentication needed.
 - **Native:** authentication performed with user and password. Read, write or all permissions can be specified for those users. It can also be configured using a JSON file.
 
+## `internal/similartext`
+
+Contains a function to `Find` the most similar name from an
+array to a given one using the Levenshtein distance algorithm. Used for suggestions on errors.
+
 ## `internal/regex`
 
 go-mysql-server has multiple regular expression engines, such as oniguruma and the standard Go regexp engine. In this package, a common interface for regular expression engines is defined.

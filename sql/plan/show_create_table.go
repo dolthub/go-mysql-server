@@ -2,15 +2,12 @@ package plan
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-mysql-server.v0/internal/similartext"
 	"io"
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
-
-// ErrTableNotFound is returned when the table could not be found.
-var ErrTableNotFound = errors.NewKind("Table `%s` not found")
 
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
@@ -40,9 +37,8 @@ func (n *ShowCreateTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error)
 // RowIter implements the Node interface
 func (n *ShowCreateTable) RowIter(*sql.Context) (sql.RowIter, error) {
 	db, err := n.Catalog.Database(n.CurrentDatabase)
-
 	if err != nil {
-		return nil, sql.ErrDatabaseNotFound.New(n.CurrentDatabase)
+		return nil, err
 	}
 
 	return &showCreateTablesIter{
@@ -69,10 +65,16 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 
 	i.didIteration = true
 
-	table, found := i.db.Tables()[i.table]
+	tables := i.db.Tables()
+	if len(tables) == 0 {
+		return nil, sql.ErrTableNotFound.New(i.table)
+	}
+
+	table, found := tables[i.table]
 
 	if !found {
-		return nil, ErrTableNotFound.New(i.table)
+		similar := similartext.FindFromMap(tables, i.table)
+		return nil, sql.ErrTableNotFound.New(i.table + similar)
 	}
 
 	composedCreateTableStatement := produceCreateStatement(table)

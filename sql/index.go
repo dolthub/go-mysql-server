@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"gopkg.in/src-d/go-mysql-server.v0/internal/similartext"
 	"io"
 	"strings"
 	"sync"
@@ -548,6 +549,13 @@ func (r *IndexRegistry) AddIndex(
 func (r *IndexRegistry) DeleteIndex(db, id string, force bool) (<-chan struct{}, error) {
 	r.mut.RLock()
 	var key indexKey
+
+	if len(r.indexes) == 0 {
+		return nil, ErrIndexNotFound.New(id)
+	}
+
+	var indexNames []string
+
 	for k, idx := range r.indexes {
 		if strings.ToLower(id) == idx.ID() {
 			if !force && !r.CanRemoveIndex(idx) {
@@ -558,11 +566,13 @@ func (r *IndexRegistry) DeleteIndex(db, id string, force bool) (<-chan struct{},
 			key = k
 			break
 		}
+		indexNames = append(indexNames, idx.ID())
 	}
 	r.mut.RUnlock()
 
 	if key.id == "" {
-		return nil, ErrIndexNotFound.New(id)
+		similar := similartext.Find(indexNames, id)
+		return nil, ErrIndexNotFound.New(id + similar)
 	}
 
 	var done = make(chan struct{}, 1)
