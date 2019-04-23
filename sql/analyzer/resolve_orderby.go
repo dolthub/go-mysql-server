@@ -162,6 +162,8 @@ func pushSortDown(sort *plan.Sort) (sql.Node, error) {
 			child.Grouping,
 			plan.NewSort(sort.SortFields, child.Child),
 		), nil
+	case *plan.ResolvedTable:
+		return child, nil
 	default:
 		// Can't do anything here, there should be either a project or a groupby
 		// below an order by.
@@ -183,7 +185,14 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 			return n, nil
 		}
 
-		var fields = make([]plan.SortField, len(sort.SortFields))
+		schema := sort.Child.Schema()
+		var (
+			fields     = make([]plan.SortField, len(sort.SortFields))
+			schemaCols = make([]string, len(schema))
+		)
+		for i, col := range sort.Child.Schema() {
+			schemaCols[i] = col.Name
+		}
 		for i, f := range sort.SortFields {
 			if lit, ok := f.Column.(*expression.Literal); ok && sql.IsNumber(f.Column.Type()) {
 				// it is safe to eval literals with no context and/or row
@@ -199,21 +208,32 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 
 				// column access is 1-indexed
 				idx := int(v.(int64)) - 1
-
-				schema := sort.Child.Schema()
 				if idx >= len(schema) || idx < 0 {
 					return nil, ErrOrderByColumnIndex.New(idx + 1)
 				}
 
 				fields[i] = plan.SortField{
-					Column:       expression.NewUnresolvedColumn(schema[idx].Name),
+					Column:       expression.NewUnresolvedColumn(schemaCols[idx]),
 					Order:        f.Order,
 					NullOrdering: f.NullOrdering,
 				}
 
-				a.Log("replaced order by column %d with %s", idx+1, schema[idx].Name)
+				a.Log("replaced order by column %d with %s", idx+1, schemaCols[idx])
 			} else {
-				fields[i] = f
+				if agg, ok := f.Column.(sql.Aggregation); ok {
+					name := agg.String()
+					if nameable, ok := f.Column.(sql.Nameable); ok {
+						name = nameable.Name()
+					}
+
+					fields[i] = plan.SortField{
+						Column:       expression.NewUnresolvedColumn(name),
+						Order:        f.Order,
+						NullOrdering: f.NullOrdering,
+					}
+				} else {
+					fields[i] = f
+				}
 			}
 		}
 

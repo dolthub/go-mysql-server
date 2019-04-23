@@ -202,6 +202,32 @@ var queries = []struct {
 		},
 	},
 	{
+		`SELECT fi, COUNT(*) FROM (
+			SELECT tbl.s AS fi
+			FROM mytable tbl
+		) t
+		GROUP BY fi
+		ORDER BY COUNT(*) ASC`,
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(1)},
+			{"third row", int64(1)},
+		},
+	},
+	{
+		`SELECT COUNT(*), fi  FROM (
+			SELECT tbl.s AS fi
+			FROM mytable tbl
+		) t
+		GROUP BY fi
+		ORDER BY COUNT(*) ASC`,
+		[]sql.Row{
+			{int64(1), "first row"},
+			{int64(1), "second row"},
+			{int64(1), "third row"},
+		},
+	},
+	{
 		`SELECT COUNT(*) as cnt, fi FROM (
 			SELECT tbl.s AS fi
 			FROM mytable tbl
@@ -367,7 +393,7 @@ var queries = []struct {
 		},
 	},
 	{
-		`SELECT COUNT(*) c, i as foo FROM mytable GROUP BY i ORDER BY foo, i DESC`,
+		`SELECT COUNT(*) c, i as foo FROM mytable GROUP BY i ORDER BY foo DESC`,
 		[]sql.Row{
 			{int64(1), int64(3)},
 			{int64(1), int64(2)},
@@ -375,7 +401,7 @@ var queries = []struct {
 		},
 	},
 	{
-		`SELECT COUNT(*) c, i as foo FROM mytable GROUP BY 2 ORDER BY foo, i DESC`,
+		`SELECT COUNT(*) c, i as foo FROM mytable GROUP BY 2 ORDER BY foo DESC`,
 		[]sql.Row{
 			{int64(1), int64(3)},
 			{int64(1), int64(2)},
@@ -440,6 +466,22 @@ var queries = []struct {
 			{float64(2), int64(1)},
 			{float64(3), int64(2)},
 			{float64(4), int64(3)},
+		},
+	},
+	{
+		"SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
+		[]sql.Row{
+			{float64(1), int64(1)},
+			{float64(2), int64(2)},
+			{float64(3), int64(3)},
+		},
+	},
+	{
+		"SELECT i, SUM(i) FROM mytable GROUP BY i ORDER BY SUM(i) DESC",
+		[]sql.Row{
+			{int64(3), float64(3)},
+			{int64(2), float64(2)},
+			{int64(1), float64(1)},
 		},
 	},
 	{
@@ -978,19 +1020,33 @@ var queries = []struct {
 		`,
 		[]sql.Row{{"s"}, {"s2"}},
 	},
+	{
+		"SELECT s,  i FROM mytable GROUP BY i ORDER BY SUBSTRING(s, 1, 1) DESC",
+		[]sql.Row{
+			{string("third row"), int64(3)},
+			{string("second row"), int64(2)},
+			{string("first row"), int64(1)},
+		},
+	},
+	{
+		"SELECT s, i FROM mytable GROUP BY i HAVING count(*) > 0 ORDER BY SUBSTRING(s, 1, 1) DESC",
+		[]sql.Row{
+			{string("third row"), int64(3)},
+			{string("second row"), int64(2)},
+			{string("first row"), int64(1)},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {
 	e := newEngine(t)
-
-	ep := newEngineWithParallelism(t, 2)
-
 	t.Run("sequential", func(t *testing.T) {
 		for _, tt := range queries {
 			testQuery(t, e, tt.query, tt.expected)
 		}
 	})
 
+	ep := newEngineWithParallelism(t, 2)
 	t.Run("parallel", func(t *testing.T) {
 		for _, tt := range queries {
 			testQuery(t, ep, tt.query, tt.expected)
@@ -1589,6 +1645,8 @@ func testQuery(t *testing.T, e *sqle.Engine, q string, expected []sql.Row) {
 }
 
 func testQueryWithContext(ctx *sql.Context, t *testing.T, e *sqle.Engine, q string, expected []sql.Row) {
+	orderBy := strings.Contains(strings.ToUpper(q), " ORDER BY ")
+
 	t.Run(q, func(t *testing.T) {
 		require := require.New(t)
 		_, iter, err := e.Query(ctx, q)
@@ -1597,7 +1655,11 @@ func testQueryWithContext(ctx *sql.Context, t *testing.T, e *sqle.Engine, q stri
 		rows, err := sql.RowIterToRows(iter)
 		require.NoError(err)
 
-		require.ElementsMatch(expected, rows)
+		if orderBy {
+			require.Equal(expected, rows)
+		} else {
+			require.ElementsMatch(expected, rows)
+		}
 	})
 }
 
