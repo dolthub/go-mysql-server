@@ -39,8 +39,10 @@ const (
 	// ProcessingFileName is the extension of the lock/processing index file.
 	ProcessingFileName = ".processing"
 
-	// MappingFileName is the extension of the mapping file.
-	MappingFileName = "mapping.db"
+	// MappingFileNamePrefix is the prefix in mapping file <prefix>-<mappingKey><extension>
+	MappingFileNamePrefix = "map"
+	// MappingFileNameExtension is the extension in mapping file <prefix>-<mappingKey><extension>
+	MappingFileNameExtension = ".db"
 )
 
 const (
@@ -124,7 +126,6 @@ func (d *Driver) Create(
 		return nil, err
 	}
 
-	mapping := newMapping(d.mappingFilePath(db, table, id))
 	processingFile := d.processingFilePath(db, table, id)
 	if err := index.WriteProcessingFile(
 		processingFile,
@@ -133,7 +134,7 @@ func (d *Driver) Create(
 		return nil, err
 	}
 
-	return newPilosaIndex(idx, mapping, cfg), nil
+	return newPilosaIndex(idx, cfg), nil
 }
 
 // LoadAll loads all indexes for given db and table
@@ -187,7 +188,6 @@ func (d *Driver) loadIndex(db, table, id string) (*pilosaIndex, error) {
 		return nil, errCorruptedIndex.New(dir)
 	}
 
-	mapping := d.mappingFilePath(db, table, id)
 	processing := d.processingFilePath(db, table, id)
 	ok, err := index.ExistsProcessingFile(processing)
 	if err != nil {
@@ -213,11 +213,23 @@ func (d *Driver) loadIndex(db, table, id string) (*pilosaIndex, error) {
 	if err != nil {
 		return nil, err
 	}
-	if cfg.Driver(DriverID) == nil {
+	cfgDriver := cfg.Driver(DriverID)
+	if cfgDriver == nil {
 		return nil, errCorruptedIndex.New(dir)
 	}
 
-	return newPilosaIndex(idx, newMapping(mapping), cfg), nil
+	pilosaIndex := newPilosaIndex(idx, cfg)
+	for k, v := range cfgDriver {
+		if strings.HasPrefix(v, MappingFileNamePrefix) && strings.HasSuffix(v, MappingFileNameExtension) {
+			path := d.mappingFilePath(db, table, id, k)
+			if _, err := os.Stat(path); err != nil {
+				continue
+			}
+			pilosaIndex.mapping[k] = newMapping(path)
+		}
+	}
+
+	return pilosaIndex, nil
 }
 
 func (d *Driver) savePartition(
@@ -245,28 +257,33 @@ func (d *Driver) savePartition(
 	}
 
 	rollback := true
-	if err := idx.mapping.openCreate(true); err != nil {
+	mk := mappingKey(p)
+	mapping, ok := idx.mapping[mk]
+	if !ok {
+		return 0, errMappingNotFound.New(mk)
+	}
+	if err := mapping.openCreate(true); err != nil {
 		return 0, err
 	}
 
 	defer func() {
 		if rollback {
-			idx.mapping.rollback()
+			mapping.rollback()
 		} else {
-			e := d.saveMapping(ctx, idx.mapping, colID, false, b)
+			e := d.saveMapping(ctx, mapping, colID, false, b)
 			if e != nil && err == nil {
 				err = e
 			}
 		}
 
-		idx.mapping.close()
+		mapping.close()
 		kviter.Close()
 	}()
 
 	for colID = 0; err == nil; colID++ {
 		// commit each batch of objects (pilosa and boltdb)
 		if colID%sql.IndexBatchSize == 0 && colID != 0 {
-			if err = d.saveBatch(ctx, idx.mapping, colID, b); err != nil {
+			if err = d.saveBatch(ctx, mapping, colID, b); err != nil {
 				return 0, err
 			}
 		}
@@ -287,7 +304,7 @@ func (d *Driver) savePartition(
 				continue
 			}
 
-			rowID, err := idx.mapping.getRowID(field.Name(), values[i])
+			rowID, err := mapping.getRowID(field.Name(), values[i])
 			if err != nil {
 				return 0, err
 			}
@@ -295,7 +312,7 @@ func (d *Driver) savePartition(
 			b.bitBatches[i].Add(rowID, colID)
 		}
 
-		err = idx.mapping.putLocation(pilosaIndex.Name(), p, colID, location)
+		err = mapping.putLocation(pilosaIndex.Name(), colID, location)
 		if err != nil {
 			return 0, err
 		}
@@ -352,6 +369,13 @@ func (d *Driver) Save(
 		return err
 	}
 
+	cfgPath := d.configFilePath(i.Database(), i.Table(), i.ID())
+	cfg, err := index.ReadConfigFile(cfgPath)
+	if err != nil {
+		return err
+	}
+	driverCfg := cfg.Driver(DriverID)
+
 	defer iter.Close()
 	pilosaIndex := idx.index
 
@@ -382,6 +406,10 @@ func (d *Driver) Save(
 			wg.Wait()
 			return err
 		}
+		mk := mappingKey(p)
+		driverCfg[mk] = mappingFileName(mk)
+		mapping := newMapping(d.mappingFilePath(idx.Database(), idx.Table(), idx.ID(), mk))
+		idx.mapping[mk] = mapping
 
 		wg.Add(1)
 
@@ -416,6 +444,9 @@ func (d *Driver) Save(
 	wg.Wait()
 	if len(errors) > 0 {
 		return errors[0]
+	}
+	if err = index.WriteConfigFile(cfgPath, cfg); err != nil {
+		return err
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -469,6 +500,8 @@ func (d *Driver) Delete(i sql.Index, partitions sql.PartitionIter) error {
 				return err
 			}
 		}
+		mk := mappingKey(p)
+		delete(idx.mapping, mk)
 	}
 
 	return partitions.Close()
@@ -581,8 +614,13 @@ func (d *Driver) processingFilePath(db, table, id string) string {
 	return filepath.Join(d.root, db, table, id, ProcessingFileName)
 }
 
-func (d *Driver) mappingFilePath(db, table, id string) string {
-	return filepath.Join(d.root, db, table, id, MappingFileName)
+func mappingFileName(key string) string {
+	h := sha1.New()
+	io.WriteString(h, key)
+	return fmt.Sprintf("%s-%x%s", MappingFileNamePrefix, h.Sum(nil), MappingFileNameExtension)
+}
+func (d *Driver) mappingFilePath(db, table, id string, key string) string {
+	return filepath.Join(d.root, db, table, id, mappingFileName(key))
 }
 
 func (d *Driver) newPilosaIndex(db, table string) (*pilosa.Index, error) {

@@ -218,12 +218,11 @@ func (m *mapping) getMaxRowID(fieldName string) (uint64, error) {
 
 func (m *mapping) putLocation(
 	indexName string,
-	partition sql.Partition,
 	colID uint64,
 	location []byte,
 ) error {
 	return m.transaction(true, func(tx *bolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists(indexPartitionKey(indexName, partition))
+		b, err := tx.CreateBucketIfNotExists([]byte(indexName))
 		if err != nil {
 			return err
 		}
@@ -235,13 +234,8 @@ func (m *mapping) putLocation(
 	})
 }
 
-func indexPartitionKey(indexName string, partition sql.Partition) []byte {
-	return []byte(indexName + string(partition.Key()))
-}
-
 func (m *mapping) sortedLocations(
 	indexName string,
-	partition sql.Partition,
 	cols []uint64,
 	reverse bool,
 ) ([][]byte, error) {
@@ -249,7 +243,7 @@ func (m *mapping) sortedLocations(
 	m.mut.RLock()
 	defer m.mut.RUnlock()
 	err := m.db.View(func(tx *bolt.Tx) error {
-		bucket := indexPartitionKey(indexName, partition)
+		bucket := []byte(indexName)
 		b := tx.Bucket(bucket)
 		if b == nil {
 			return fmt.Errorf("bucket %s not found", bucket)
@@ -290,13 +284,12 @@ func (b byBytes) Less(i, j int) bool { return bytes.Compare(b[i], b[j]) < 0 }
 
 func (m *mapping) getLocation(
 	indexName string,
-	partition sql.Partition,
 	colID uint64,
 ) ([]byte, error) {
 	var location []byte
 
 	err := m.transaction(true, func(tx *bolt.Tx) error {
-		bucket := indexPartitionKey(indexName, partition)
+		bucket := []byte(indexName)
 		b := tx.Bucket(bucket)
 		if b == nil {
 			return fmt.Errorf("bucket %s not found", bucket)
@@ -323,7 +316,6 @@ func (m *mapping) getLocationFromBucket(
 
 func (m *mapping) getBucket(
 	indexName string,
-	partition sql.Partition,
 	writable bool,
 ) (*bolt.Bucket, error) {
 	var bucket *bolt.Bucket
@@ -333,7 +325,7 @@ func (m *mapping) getBucket(
 		return nil, err
 	}
 
-	bu := indexPartitionKey(indexName, partition)
+	bu := []byte(indexName)
 	bucket = tx.Bucket(bu)
 	if bucket == nil {
 		_ = tx.Rollback()
@@ -392,4 +384,8 @@ func (m *mapping) filter(name string, fn func([]byte) (bool, error)) ([]uint64, 
 	})
 
 	return result, err
+}
+
+func mappingKey(p sql.Partition) string {
+	return fmt.Sprintf("%x", p.Key())
 }
