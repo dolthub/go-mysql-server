@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-mysql-server.v0/internal/similartext"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
-	"gopkg.in/src-d/go-mysql-server.v0/internal/similartext"
 )
 
 func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -313,15 +313,13 @@ func isDefinedInChildProject(n sql.Node, col *expression.UnresolvedColumn) bool 
 	}
 
 	var found bool
-	plan.InspectExpressions(x, func(e sql.Expression) bool {
-		alias, ok := e.(*expression.Alias)
+	for _, expr := range x.(sql.Expressioner).Expressions() {
+		alias, ok := expr.(*expression.Alias)
 		if ok && strings.ToLower(alias.Name()) == strings.ToLower(col.Name()) {
 			found = true
-			return false
+			break
 		}
-
-		return true
-	})
+	}
 
 	return found
 }
