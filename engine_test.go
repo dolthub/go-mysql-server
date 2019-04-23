@@ -929,6 +929,26 @@ var queries = []struct {
 		`SELECT i AS i FROM mytable ORDER BY i`,
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
+	{
+		`
+		SELECT
+			i,
+			foo
+		FROM (
+			SELECT
+				i,
+				COUNT(DISTINCT s) AS foo
+			FROM mytable
+			GROUP BY i
+		) AS q
+		ORDER BY foo DESC
+		`,
+		[]sql.Row{
+			{int64(1), int64(1)},
+			{int64(2), int64(1)},
+			{int64(3), int64(1)},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {
