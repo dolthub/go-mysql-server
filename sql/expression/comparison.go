@@ -71,32 +71,32 @@ func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{
 func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, interface{}, error) {
 	if sql.IsNumber(c.Left().Type()) || sql.IsNumber(c.Right().Type()) {
 		if sql.IsDecimal(c.Left().Type()) || sql.IsDecimal(c.Right().Type()) {
-			left, right, err := convertLeftAndRight(left, right, ConvertToDecimal)
+			l, r, err := convertLeftAndRight(left, right, ConvertToDecimal)
 			if err != nil {
 				return nil, nil, err
 			}
 
 			c.compareType = sql.Float64
-			return left, right, nil
+			return l, r, nil
 		}
 
 		if sql.IsSigned(c.Left().Type()) || sql.IsSigned(c.Right().Type()) {
-			left, right, err := convertLeftAndRight(left, right, ConvertToSigned)
+			l, r, err := convertLeftAndRight(left, right, ConvertToSigned)
 			if err != nil {
 				return nil, nil, err
 			}
 
 			c.compareType = sql.Int64
-			return left, right, nil
+			return l, r, nil
 		}
 
-		left, right, err := convertLeftAndRight(left, right, ConvertToUnsigned)
+		l, r, err := convertLeftAndRight(left, right, ConvertToUnsigned)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		c.compareType = sql.Uint64
-		return left, right, nil
+		return l, r, nil
 	}
 
 	left, right, err := convertLeftAndRight(left, right, ConvertToChar)

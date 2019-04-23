@@ -39,13 +39,13 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	// First step is to find all col exprs and group them by the table they mention.
 	// Even if they appear multiple times, only the first one will be used.
 	plan.InspectExpressions(n, func(e sql.Expression) bool {
-		if e, ok := e.(*expression.GetField); ok {
-			tf := tableField{e.Table(), e.Name()}
+		if gf, ok := e.(*expression.GetField); ok {
+			tf := tableField{gf.Table(), gf.Name()}
 			if _, ok := tableFields[tf]; !ok {
-				a.Log("found used column %s.%s", e.Table(), e.Name())
+				a.Log("found used column %s.%s", gf.Table(), gf.Name())
 				tableFields[tf] = struct{}{}
-				fieldsByTable[e.Table()] = append(fieldsByTable[e.Table()], e.Name())
-				exprsByTable[e.Table()] = append(exprsByTable[e.Table()], e)
+				fieldsByTable[gf.Table()] = append(fieldsByTable[gf.Table()], gf.Name())
+				exprsByTable[gf.Table()] = append(exprsByTable[gf.Table()], gf)
 			}
 		}
 		return true
@@ -59,14 +59,14 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 	// then find all filters, also by table. Note that filters that mention
 	// more than one table will not be passed to neither.
-	filters := make(filters)
+	filt := make(filters)
 	plan.Inspect(n, func(node sql.Node) bool {
 		a.Log("inspecting node of type: %T", node)
 		switch node := node.(type) {
 		case *plan.Filter:
 			fs := exprToTableFilters(node.Expression)
 			a.Log("found filters for %d tables %s", len(fs), node.Expression)
-			filters.merge(fs)
+			filt.merge(fs)
 		}
 		return true
 	})
@@ -118,7 +118,7 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 			var table = node.Table
 
 			if ft, ok := table.(sql.FilteredTable); ok {
-				tableFilters := filters[node.Name()]
+				tableFilters := filt[node.Name()]
 				handled := ft.HandledFilters(tableFilters)
 				handledFilters = append(handledFilters, handled...)
 				schema := node.Schema()

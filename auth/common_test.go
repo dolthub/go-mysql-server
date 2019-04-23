@@ -101,21 +101,21 @@ func testAuthentication(
 
 	for _, c := range tests {
 		t.Run(fmt.Sprintf("%s-%s", c.user, c.password), func(t *testing.T) {
-			req := require.New(t)
+			r := require.New(t)
 
-			db, err := dsql.Open("mysql", connString(c.user, c.password))
-			req.NoError(err)
-			_, err = db.Query("SELECT 1")
+			db, e := dsql.Open("mysql", connString(c.user, c.password))
+			r.NoError(e)
+			_, e = db.Query("SELECT 1")
 
 			if c.success {
-				req.NoError(err)
+				r.NoError(e)
 			} else {
-				req.Error(err)
-				req.Contains(err.Error(), "Access denied")
+				r.Error(e)
+				r.Contains(e.Error(), "Access denied")
 			}
 
-			err = db.Close()
-			req.NoError(err)
+			e = db.Close()
+			r.NoError(e)
 
 			if extra != nil {
 				extra(t, c)
@@ -196,20 +196,21 @@ func testAudit(
 
 	for _, c := range tests {
 		t.Run(c.user, func(t *testing.T) {
-			req := require.New(t)
+			r := require.New(t)
 
-			db, err := dsql.Open("mysql", connString(c.user, ""))
-			req.NoError(err)
+			var db *dsql.DB
+			db, err = dsql.Open("mysql", connString(c.user, ""))
+			r.NoError(err)
 			_, err = db.Query(c.query)
 
 			if c.success {
-				req.NoError(err)
+				r.NoError(err)
 			} else {
-				req.Error(err)
+				r.Error(err)
 			}
 
 			err = db.Close()
-			req.NoError(err)
+			r.NoError(err)
 
 			if extra != nil {
 				extra(t, c)

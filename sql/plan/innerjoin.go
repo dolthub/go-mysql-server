@@ -270,8 +270,8 @@ func (i *innerJoinIter) fitsInMemory() bool {
 func (i *innerJoinIter) loadRight() (row sql.Row, skip bool, err error) {
 	if i.mode == memoryMode {
 		if len(i.right) == 0 {
-			if err := i.loadRightInMemory(); err != nil {
-				return nil, false, err
+			if e := i.loadRightInMemory(); e != nil {
+				return nil, false, e
 			}
 		}
 
@@ -287,9 +287,9 @@ func (i *innerJoinIter) loadRight() (row sql.Row, skip bool, err error) {
 	}
 
 	if i.r == nil {
-		iter, err := i.rp.RowIter(i.ctx)
-		if err != nil {
-			return nil, false, err
+		iter, e := i.rp.RowIter(i.ctx)
+		if e != nil {
+			return nil, false, e
 		}
 
 		i.r = iter

@@ -130,11 +130,11 @@ func (*UnresolvedFunction) Eval(ctx *sql.Context, r sql.Row) (interface{}, error
 func (uf *UnresolvedFunction) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	var rc []sql.Expression
 	for _, c := range uf.Arguments {
-		c, err := c.TransformUp(f)
+		ct, err := c.TransformUp(f)
 		if err != nil {
 			return nil, err
 		}
-		rc = append(rc, c)
+		rc = append(rc, ct)
 	}
 
 	return f(NewUnresolvedFunction(uf.name, uf.IsAggregate, rc...))

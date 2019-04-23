@@ -350,8 +350,8 @@ func (l *filteredLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	}
 
 	bits := row.Columns()
-	if err := m.open(); err != nil {
-		return nil, err
+	if e := m.open(); e != nil {
+		return nil, e
 	}
 
 	defer m.close()

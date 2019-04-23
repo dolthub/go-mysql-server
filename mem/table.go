@@ -312,7 +312,7 @@ func (t *Table) HandledFilters(filters []sql.Expression) []sql.Expression {
 	var handled []sql.Expression
 	for _, f := range filters {
 		var hasOtherFields bool
-		f.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+		_, _ = f.TransformUp(func(e sql.Expression) (sql.Expression, error) {
 			if e, ok := e.(*expression.GetField); ok {
 				if e.Table() != t.name || !t.schema.Contains(e.Name(), t.name) {
 					hasOtherFields = true

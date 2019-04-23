@@ -183,7 +183,6 @@ type partitionPanic struct {
 
 func (*partitionPanic) Next() (sql.Partition, error) {
 	panic("partitionPanic.Next")
-	return nil, nil
 }
 
 func (p *partitionPanic) Close() error {

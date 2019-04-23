@@ -59,13 +59,13 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	)
 	// eval right and convert to text
 	if !l.cached || l.pool == nil {
-		v, err := l.Right.Eval(ctx, row)
-		if err != nil || v == nil {
-			return nil, err
+		v, e := l.Right.Eval(ctx, row)
+		if e != nil || v == nil {
+			return nil, e
 		}
-		v, err = sql.Text.Convert(v)
-		if err != nil {
-			return nil, err
+		v, e = sql.Text.Convert(v)
+		if e != nil {
+			return nil, e
 		}
 		right = patternToRegex(v.(string))
 	}

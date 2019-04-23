@@ -189,9 +189,9 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	dVal := float64(0)
 
 	if r.Right != nil {
-		dTemp, err := r.Right.Eval(ctx, row)
-		if err != nil {
-			return nil, err
+		dTemp, e := r.Right.Eval(ctx, row)
+		if e != nil {
+			return nil, e
 		}
 
 		if dTemp != nil {
@@ -207,8 +207,8 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			case int:
 				dVal = float64(dNum)
 			default:
-				dTemp, err = sql.Float64.Convert(dTemp)
-				if err == nil {
+				dTemp, e = sql.Float64.Convert(dTemp)
+				if e == nil {
 					dVal = dTemp.(float64)
 				}
 			}
@@ -280,9 +280,9 @@ func (r *Round) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 
 	args[1] = nil
 	if r.Right != nil {
-		arg, err := r.Right.TransformUp(f)
-		if err != nil {
-			return nil, err
+		arg, e := r.Right.TransformUp(f)
+		if e != nil {
+			return nil, e
 		}
 		args[1] = arg
 	}

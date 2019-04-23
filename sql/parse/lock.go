@@ -39,8 +39,8 @@ func readTableLocks(tables *[]*plan.TableLock) parseFunc {
 
 			*tables = append(*tables, t)
 
-			if err := skipSpaces(rd); err != nil {
-				return err
+			if e := skipSpaces(rd); e != nil {
+				return e
 			}
 
 			b, err := rd.Peek(1)
