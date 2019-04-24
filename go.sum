@@ -160,8 +160,8 @@ gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/src-d/go-errors.v1 v1.0.0 h1:cooGdZnCjYbeS1zb1s6pVAAimTdKceRrpn7aKOnNIfc=
 gopkg.in/src-d/go-errors.v1 v1.0.0/go.mod h1:q1cBlomlw2FnDBDNGlnh6X0jPihy+QxZfMMNxPCbdYg=
-gopkg.in/src-d/go-vitess.v1 v1.5.0 h1:oOjzjcSli51TD44fXlJx4S/TZmE8kiNgZUgCuw5B4DU=
-gopkg.in/src-d/go-vitess.v1 v1.5.0/go.mod h1:+g/wDtovsUgE2ioi32fo5Vavrtvfd/N1AvnknTmTvZE=
+gopkg.in/src-d/go-vitess.v1 v1.6.0 h1:jIe2MXLIewejW6sebf7IPnSzwt4fPQIj53nPuzg/xD8=
+gopkg.in/src-d/go-vitess.v1 v1.6.0/go.mod h1:+g/wDtovsUgE2ioi32fo5Vavrtvfd/N1AvnknTmTvZE=
 gopkg.in/yaml.v2 v2.2.2 h1:ZCJp+EgiOT7lHqUV2J862kp8Qj64Jo6az82+3Td9dZw=
 gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 honnef.co/go/tools v0.0.0-20190102054323-c2f93a96b099/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
