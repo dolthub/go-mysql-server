@@ -17,12 +17,12 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	}
 
 	if describe, ok := n.(*plan.DescribeQuery); ok {
-		n, err := pruneColumns(ctx, a, describe.Child)
+		pruned, err := pruneColumns(ctx, a, describe.Child)
 		if err != nil {
 			return nil, err
 		}
 
-		return plan.NewDescribeQuery(describe.Format, n), nil
+		return plan.NewDescribeQuery(describe.Format, pruned), nil
 	}
 
 	columns := make(usedColumns)

@@ -184,7 +184,7 @@ func (d *Driver) loadIndex(db, table, id string) (*pilosaIndex, error) {
 
 	dir := filepath.Join(d.root, db, table, id)
 	config := d.configFilePath(db, table, id)
-	if _, err := os.Stat(config); err != nil {
+	if _, err = os.Stat(config); err != nil {
 		return nil, errCorruptedIndex.New(dir)
 	}
 
@@ -202,7 +202,7 @@ func (d *Driver) loadIndex(db, table, id string) (*pilosaIndex, error) {
 			"dir":   dir,
 		})
 		log.Warn("could not read index file, index is corrupt and will be deleted")
-		if err := os.RemoveAll(dir); err != nil {
+		if err = os.RemoveAll(dir); err != nil {
 			log.Warn("unable to remove corrupted index: " + dir)
 		}
 
@@ -304,7 +304,8 @@ func (d *Driver) savePartition(
 				continue
 			}
 
-			rowID, err := mapping.getRowID(field.Name(), values[i])
+			var rowID uint64
+			rowID, err = mapping.getRowID(field.Name(), values[i])
 			if err != nil {
 				return 0, err
 			}

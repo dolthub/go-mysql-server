@@ -330,8 +330,8 @@ func getColumnsAndPrepareExpressions(
 			}
 
 			var idx int
-			if i, ok := seen[gf.Name()]; ok {
-				idx = i
+			if j, ok := seen[gf.Name()]; ok {
+				idx = j
 			} else {
 				idx = len(columns)
 				columns = append(columns, gf.Name())

@@ -59,7 +59,8 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	)
 	// eval right and convert to text
 	if !l.cached || l.pool == nil {
-		v, err := l.Right.Eval(ctx, row)
+		var v interface{}
+		v, err = l.Right.Eval(ctx, row)
 		if err != nil || v == nil {
 			return nil, err
 		}

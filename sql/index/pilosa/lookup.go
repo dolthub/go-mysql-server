@@ -350,7 +350,7 @@ func (l *filteredLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	}
 
 	bits := row.Columns()
-	if err := m.open(); err != nil {
+	if err = m.open(); err != nil {
 		return nil, err
 	}
 
@@ -455,7 +455,8 @@ func (l *negateLookup) intersectExpressions(p sql.Partition, m *mapping) (*pilos
 		var r *pilosa.Row
 		// rowIDs start with 1
 		for ri := uint64(1); ri <= maxRowID; ri++ {
-			rr, err := field.Row(ri)
+			var rr *pilosa.Row
+			rr, err = field.Row(ri)
 			if err != nil {
 				return nil, err
 			}

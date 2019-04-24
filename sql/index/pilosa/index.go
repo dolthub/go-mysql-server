@@ -303,7 +303,8 @@ func newAscendLookup(f *filteredLookup, gte []interface{}, lt []interface{}) *as
 					return false, err
 				}
 
-				cmp, err := compare(v, l.gte[i])
+				var cmp int
+				cmp, err = compare(v, l.gte[i])
 				if err != nil {
 					return false, err
 				}
@@ -349,7 +350,8 @@ func newDescendLookup(f *filteredLookup, gt []interface{}, lte []interface{}) *d
 					return false, err
 				}
 
-				cmp, err := compare(v, l.gt[i])
+				var cmp int
+				cmp, err = compare(v, l.gt[i])
 				if err != nil {
 					return false, err
 				}

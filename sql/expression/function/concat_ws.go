@@ -65,11 +65,11 @@ func (f *ConcatWithSeparator) String() string {
 func (f *ConcatWithSeparator) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
 	var args = make([]sql.Expression, len(f.args))
 	for i, arg := range f.args {
-		arg, err := arg.TransformUp(fn)
+		a, err := arg.TransformUp(fn)
 		if err != nil {
 			return nil, err
 		}
-		args[i] = arg
+		args[i] = a
 	}
 
 	expr, err := NewConcatWithSeparator(args...)

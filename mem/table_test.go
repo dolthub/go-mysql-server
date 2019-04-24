@@ -151,24 +151,24 @@ var tests = []struct {
 		},
 		indexColumns: []string{"col1", "col3"},
 		expectedKeyValues: []*indexKeyValue{
-			&indexKeyValue{sql.NewRow("a", int64(100)), &indexValue{Key: "0", Pos: 0}},
-			&indexKeyValue{sql.NewRow("c", int64(100)), &indexValue{Key: "0", Pos: 1}},
-			&indexKeyValue{sql.NewRow("e", int64(200)), &indexValue{Key: "0", Pos: 2}},
-			&indexKeyValue{sql.NewRow("b", int64(100)), &indexValue{Key: "1", Pos: 0}},
-			&indexKeyValue{sql.NewRow("d", int64(200)), &indexValue{Key: "1", Pos: 1}},
-			&indexKeyValue{sql.NewRow("f", int64(200)), &indexValue{Key: "1", Pos: 2}},
+			{sql.NewRow("a", int64(100)), &indexValue{Key: "0", Pos: 0}},
+			{sql.NewRow("c", int64(100)), &indexValue{Key: "0", Pos: 1}},
+			{sql.NewRow("e", int64(200)), &indexValue{Key: "0", Pos: 2}},
+			{sql.NewRow("b", int64(100)), &indexValue{Key: "1", Pos: 0}},
+			{sql.NewRow("d", int64(200)), &indexValue{Key: "1", Pos: 1}},
+			{sql.NewRow("f", int64(200)), &indexValue{Key: "1", Pos: 2}},
 		},
 		lookup: &dummyLookup{
 			values: map[string][]*indexValue{
-				"0": []*indexValue{
-					&indexValue{Key: "0", Pos: 0},
-					&indexValue{Key: "0", Pos: 1},
-					&indexValue{Key: "0", Pos: 2},
+				"0": {
+					{Key: "0", Pos: 0},
+					{Key: "0", Pos: 1},
+					{Key: "0", Pos: 2},
 				},
-				"1": []*indexValue{
-					&indexValue{Key: "1", Pos: 0},
-					&indexValue{Key: "1", Pos: 1},
-					&indexValue{Key: "1", Pos: 2},
+				"1": {
+					{Key: "1", Pos: 0},
+					{Key: "1", Pos: 1},
+					{Key: "1", Pos: 2},
 				},
 			},
 		},
@@ -194,13 +194,16 @@ func TestTable(t *testing.T) {
 			require.NoError(err)
 
 			for i := 0; i < test.numPartitions; i++ {
-				p, err := pIter.Next()
+				var p sql.Partition
+				p, err = pIter.Next()
 				require.NoError(err)
 
-				iter, err := table.PartitionRows(sql.NewEmptyContext(), p)
+				var iter sql.RowIter
+				iter, err = table.PartitionRows(sql.NewEmptyContext(), p)
 				require.NoError(err)
 
-				rows, err := sql.RowIterToRows(iter)
+				var rows []sql.Row
+				rows, err = sql.RowIterToRows(iter)
 				require.NoError(err)
 
 				expected := table.partitions[string(p.Key())]

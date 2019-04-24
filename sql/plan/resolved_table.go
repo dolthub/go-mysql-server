@@ -73,8 +73,8 @@ func (i *tableIter) Next() (sql.Row, error) {
 		partition, err := i.partitions.Next()
 		if err != nil {
 			if err == io.EOF {
-				if err := i.partitions.Close(); err != nil {
-					return nil, err
+				if e := i.partitions.Close(); e != nil {
+					return nil, e
 				}
 			}
 
@@ -95,7 +95,7 @@ func (i *tableIter) Next() (sql.Row, error) {
 
 	row, err := i.rows.Next()
 	if err != nil && err == io.EOF {
-		if err := i.rows.Close(); err != nil {
+		if err = i.rows.Close(); err != nil {
 			return nil, err
 		}
 

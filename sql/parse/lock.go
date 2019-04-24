@@ -39,11 +39,12 @@ func readTableLocks(tables *[]*plan.TableLock) parseFunc {
 
 			*tables = append(*tables, t)
 
-			if err := skipSpaces(rd); err != nil {
+			if err = skipSpaces(rd); err != nil {
 				return err
 			}
 
-			b, err := rd.Peek(1)
+			var b []byte
+			b, err = rd.Peek(1)
 			if err == io.EOF {
 				return nil
 			} else if err != nil {

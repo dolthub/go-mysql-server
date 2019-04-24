@@ -38,31 +38,31 @@ func TestLimitImplementsNode(t *testing.T) {
 }
 
 func TestLimit0(t *testing.T) {
-	_, testingTableSize := getTestingTable(t)
+	_, size := getTestingTable(t)
 	testingLimit := 0
 	iterator, _ := getLimitedIterator(t, int64(testingLimit))
-	testLimitOverflow(t, iterator, testingLimit, testingTableSize)
+	testLimitOverflow(t, iterator, testingLimit, size)
 }
 
 func TestLimitLessThanTotal(t *testing.T) {
-	_, testingTableSize := getTestingTable(t)
-	testingLimit := testingTableSize - 1
+	_, size := getTestingTable(t)
+	testingLimit := size - 1
 	iterator, _ := getLimitedIterator(t, int64(testingLimit))
-	testLimitOverflow(t, iterator, testingLimit, testingTableSize)
+	testLimitOverflow(t, iterator, testingLimit, size)
 }
 
 func TestLimitEqualThanTotal(t *testing.T) {
-	_, testingTableSize := getTestingTable(t)
-	testingLimit := testingTableSize
+	_, size := getTestingTable(t)
+	testingLimit := size
 	iterator, _ := getLimitedIterator(t, int64(testingLimit))
-	testLimitOverflow(t, iterator, testingLimit, testingTableSize)
+	testLimitOverflow(t, iterator, testingLimit, size)
 }
 
 func TestLimitGreaterThanTotal(t *testing.T) {
-	_, testingTableSize := getTestingTable(t)
-	testingLimit := testingTableSize + 1
+	_, size := getTestingTable(t)
+	testingLimit := size + 1
 	iterator, _ := getLimitedIterator(t, int64(testingLimit))
-	testLimitOverflow(t, iterator, testingLimit, testingTableSize)
+	testLimitOverflow(t, iterator, testingLimit, size)
 }
 
 func testLimitOverflow(t *testing.T, iter sql.RowIter, limit int, dataSize int) {

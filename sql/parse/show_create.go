@@ -42,7 +42,7 @@ func parseShowCreate(s string) (sql.Node, error) {
 		} else if err == nil && ru == '.' {
 			db = table
 
-			if err := readQuotableIdent(&table)(r); err != nil {
+			if err = readQuotableIdent(&table)(r); err != nil {
 				return nil, err
 			}
 		}
@@ -71,17 +71,17 @@ func parseShowCreate(s string) (sql.Node, error) {
 		// If ` is the next character, it's a db name. Otherwise it may be
 		// a table name or IF NOT EXISTS.
 		if nextByte[0] == '`' {
-			if err := readQuotableIdent(&next)(r); err != nil {
+			if err = readQuotableIdent(&next)(r); err != nil {
 				return nil, err
 			}
 		} else {
-			if err := readIdent(&next)(r); err != nil {
+			if err = readIdent(&next)(r); err != nil {
 				return nil, err
 			}
 
 			if next == "if" {
 				ifNotExists = true
-				err := parseFuncs{
+				err = parseFuncs{
 					skipSpaces,
 					expect("not"),
 					skipSpaces,

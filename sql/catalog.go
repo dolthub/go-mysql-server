@@ -178,8 +178,8 @@ func (c *Catalog) UnlockTables(ctx *Context, id uint32) error {
 			table, err := c.dbs.Table(db, t)
 			if err == nil {
 				if lockable, ok := table.(Lockable); ok {
-					if err := lockable.Unlock(ctx, id); err != nil {
-						errors = append(errors, err.Error())
+					if e := lockable.Unlock(ctx, id); e != nil {
+						errors = append(errors, e.Error())
 					}
 				}
 			} else {

@@ -192,14 +192,17 @@ func TestSaveAndLoad(t *testing.T) {
 
 	for partition, records := range it.records {
 		for _, r := range records {
-			lookup, err := sqlIdx.Get(r.values...)
+			var lookup sql.IndexLookup
+			lookup, err = sqlIdx.Get(r.values...)
 			require.NoError(err)
 
-			lit, err := lookup.Values(testPartition(partition))
+			var lit sql.IndexValueIter
+			lit, err = lookup.Values(testPartition(partition))
 			require.NoError(err)
 
 			for {
-				loc, err := lit.Next()
+				var loc []byte
+				loc, err = lit.Next()
 				if err == io.EOF {
 					break
 				}
@@ -869,7 +872,8 @@ func TestUnionDiffAsc(t *testing.T) {
 	for partition, records := range it.records {
 		ls[partition] = make([]*indexLookup, it.total)
 		for i, r := range records {
-			l, err := pilosaIdx.Get(r.values...)
+			var l sql.IndexLookup
+			l, err = pilosaIdx.Get(r.values...)
 			require.NoError(err)
 			ls[partition][i], _ = l.(*indexLookup)
 		}
@@ -882,7 +886,8 @@ func TestUnionDiffAsc(t *testing.T) {
 	require.NoError(err)
 
 	for i := 1; i < it.total-1; i += 2 {
-		loc, err := diffIt.Next()
+		var loc []byte
+		loc, err = diffIt.Next()
 		require.NoError(err)
 
 		require.Equal(it.records[0][i].location, loc)
@@ -936,7 +941,8 @@ func TestInterRanges(t *testing.T) {
 	require.NoError(err)
 
 	for i := ranges[0]; i < ranges[1]; i++ {
-		loc, err := interIt.Next()
+		var loc []byte
+		loc, err = interIt.Next()
 		require.NoError(err)
 		require.Equal(it.records[0][i].location, loc)
 	}

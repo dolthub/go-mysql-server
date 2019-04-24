@@ -1055,12 +1055,14 @@ func caseExprToExpression(e *sqlparser.CaseExpr) (sql.Expression, error) {
 
 	var branches []expression.CaseBranch
 	for _, w := range e.Whens {
-		cond, err := exprToExpression(w.Cond)
+		var cond sql.Expression
+		cond, err = exprToExpression(w.Cond)
 		if err != nil {
 			return nil, err
 		}
 
-		val, err := exprToExpression(w.Val)
+		var val sql.Expression
+		val, err = exprToExpression(w.Val)
 		if err != nil {
 			return nil, err
 		}
