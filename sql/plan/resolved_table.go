@@ -95,8 +95,8 @@ func (i *tableIter) Next() (sql.Row, error) {
 
 	row, err := i.rows.Next()
 	if err != nil && err == io.EOF {
-		if e := i.rows.Close(); e != nil {
-			return nil, e
+		if err = i.rows.Close(); err != nil {
+			return nil, err
 		}
 
 		i.partition = nil

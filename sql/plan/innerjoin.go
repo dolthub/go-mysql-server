@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pbnjay/memory"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -270,8 +270,8 @@ func (i *innerJoinIter) fitsInMemory() bool {
 func (i *innerJoinIter) loadRight() (row sql.Row, skip bool, err error) {
 	if i.mode == memoryMode {
 		if len(i.right) == 0 {
-			if e := i.loadRightInMemory(); e != nil {
-				return nil, false, e
+			if err = i.loadRightInMemory(); err != nil {
+				return nil, false, err
 			}
 		}
 
@@ -287,9 +287,10 @@ func (i *innerJoinIter) loadRight() (row sql.Row, skip bool, err error) {
 	}
 
 	if i.r == nil {
-		iter, e := i.rp.RowIter(i.ctx)
-		if e != nil {
-			return nil, false, e
+		var iter sql.RowIter
+		iter, err = i.rp.RowIter(i.ctx)
+		if err != nil {
+			return nil, false, err
 		}
 
 		i.r = iter

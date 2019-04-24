@@ -194,14 +194,17 @@ func TestTable(t *testing.T) {
 			require.NoError(err)
 
 			for i := 0; i < test.numPartitions; i++ {
-				p, e := pIter.Next()
-				require.NoError(e)
+				var p sql.Partition
+				p, err = pIter.Next()
+				require.NoError(err)
 
-				iter, e := table.PartitionRows(sql.NewEmptyContext(), p)
-				require.NoError(e)
+				var iter sql.RowIter
+				iter, err = table.PartitionRows(sql.NewEmptyContext(), p)
+				require.NoError(err)
 
-				rows, e := sql.RowIterToRows(iter)
-				require.NoError(e)
+				var rows []sql.Row
+				rows, err = sql.RowIterToRows(iter)
+				require.NoError(err)
 
 				expected := table.partitions[string(p.Key())]
 				require.Len(rows, len(expected))

@@ -345,10 +345,10 @@ func TestCalcWeek(t *testing.T) {
 func TestNow(t *testing.T) {
 	require := require.New(t)
 	date := time.Date(2018, time.December, 2, 16, 25, 0, 0, time.Local)
-	cl := clock(func() time.Time {
+	clk := clock(func() time.Time {
 		return date
 	})
-	f := &Now{cl}
+	f := &Now{clk}
 
 	result, err := f.Eval(nil, nil)
 	require.NoError(err)

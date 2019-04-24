@@ -53,8 +53,8 @@ func Inspect(node sql.Node, f func(sql.Node) bool) {
 func WalkExpressions(v expression.Visitor, node sql.Node) {
 	Inspect(node, func(node sql.Node) bool {
 		if n, ok := node.(sql.Expressioner); ok {
-			for _, e := range n.Expressions() {
-				expression.Walk(v, e)
+			for _, err := range n.Expressions() {
+				expression.Walk(v, err)
 			}
 		}
 		return true

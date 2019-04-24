@@ -103,19 +103,20 @@ func testAuthentication(
 		t.Run(fmt.Sprintf("%s-%s", c.user, c.password), func(t *testing.T) {
 			r := require.New(t)
 
-			db, e := dsql.Open("mysql", connString(c.user, c.password))
-			r.NoError(e)
-			_, e = db.Query("SELECT 1")
+			var db *dsql.DB
+			db, err = dsql.Open("mysql", connString(c.user, c.password))
+			r.NoError(err)
+			_, err = db.Query("SELECT 1")
 
 			if c.success {
-				r.NoError(e)
+				r.NoError(err)
 			} else {
-				r.Error(e)
-				r.Contains(e.Error(), "Access denied")
+				r.Error(err)
+				r.Contains(err.Error(), "Access denied")
 			}
 
-			e = db.Close()
-			r.NoError(e)
+			err = db.Close()
+			r.NoError(err)
 
 			if extra != nil {
 				extra(t, c)
