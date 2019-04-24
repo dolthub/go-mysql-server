@@ -20,9 +20,8 @@ services:
   - docker
 
 install:
-  - go get -u github.com/golang/dep/cmd/dep
-  - touch Gopkg.toml
-  - dep ensure -v -add "github.com/pilosa/pilosa@f62dbc00b96f596a1f2ef8b4e87ba8ec847eda37" "github.com/moovweb/rubex@b3d9ff6ad7d9b14f94a91c8271cd9ad9e77132e5"
+  - GO111MODULE=on go get ./...
+  - GO111MODULE=on go mod vendor
   - make dependencies
 
 before_script:
@@ -33,18 +32,18 @@ script:
 
 jobs:
   include:
-    - go: 1.10.x
     - go: 1.11.x
+    - go: 1.12.x
 
     # Integration test builds for 3rd party clients
-    - go: 1.11.x
+    - go: 1.12.x
       script:
         - make TEST=go integration
 
     - language: python
       python: '3.6'
       before_install:
-        - eval "$(gimme 1.11.2)"
+        - eval "$(gimme 1.12.4)"
       install:
         - GO111MODULE=on go get ./...
       script:
@@ -53,7 +52,7 @@ jobs:
     - language: php
       php: '7.1'
       before_install:
-        - eval "$(gimme 1.11.2)"
+        - eval "$(gimme 1.12.4)"
       install:
         - GO111MODULE=on go get ./...
       script:
@@ -62,7 +61,7 @@ jobs:
     - language: ruby
       ruby: '2.3'
       before_install:
-        - eval "$(gimme 1.11.2)"
+        - eval "$(gimme 1.12.4)"
       install:
         - GO111MODULE=on go get ./...
       script:
@@ -71,7 +70,7 @@ jobs:
     - language: java
       jdk: openjdk10
       before_install:
-        - eval "$(gimme 1.11.2)"
+        - eval "$(gimme 1.12.4)"
       install:
         - GO111MODULE=on go get ./...
       script:
@@ -80,7 +79,7 @@ jobs:
     - language: node_js
       node_js: '7'
       before_install:
-        - eval "$(gimme 1.11.2)"
+        - eval "$(gimme 1.12.4)"
       install:
         - GO111MODULE=on go get ./...
       script:
@@ -90,7 +89,7 @@ jobs:
       mono: none
       dotnet: '2.1'
       before_install:
-        - eval "$(gimme 1.11.2)"
+        - eval "$(gimme 1.12.4)"
       install:
         - GO111MODULE=on go get ./...
       script:
@@ -99,7 +98,7 @@ jobs:
     - language: c
       compiler: clang
       before_install:
-        - eval "$(gimme 1.11.2)"
+        - eval "$(gimme 1.12.4)"
       install:
         - GO111MODULE=on go get ./...
       script:
