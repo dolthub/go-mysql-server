@@ -17,6 +17,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	pilosa "github.com/pilosa/pilosa"
+	"github.com/pilosa/pilosa/syswrap"
 	"github.com/sirupsen/logrus"
 	errors "gopkg.in/src-d/go-errors.v1"
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
@@ -650,4 +651,8 @@ func indexThreads(ctx *sql.Context) int {
 	}
 
 	return value
+}
+
+func init() {
+	syswrap.SetMaxMapCount(0)
 }
