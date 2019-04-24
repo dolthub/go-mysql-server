@@ -314,9 +314,19 @@ func isDefinedInChildProject(n sql.Node, col *expression.UnresolvedColumn) bool 
 
 	var found bool
 	for _, expr := range x.(sql.Expressioner).Expressions() {
-		alias, ok := expr.(*expression.Alias)
-		if ok && strings.ToLower(alias.Name()) == strings.ToLower(col.Name()) {
-			found = true
+		switch expr := expr.(type) {
+		case *expression.Alias:
+			if strings.ToLower(expr.Name()) == strings.ToLower(col.Name()) {
+				found = true
+			}
+		case column:
+			if strings.ToLower(expr.Name()) == strings.ToLower(col.Name()) &&
+				strings.ToLower(expr.Table()) == strings.ToLower(col.Table()) {
+				found = true
+			}
+		}
+
+		if found {
 			break
 		}
 	}

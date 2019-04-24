@@ -1061,6 +1061,30 @@ var fixtures = map[string]sql.Node{
 		)},
 		plan.NewUnresolvedTable("dual", ""),
 	),
+	`SELECT COUNT(*) FROM foo GROUP BY a HAVING COUNT(*) > 5`: plan.NewHaving(
+		expression.NewGreaterThan(
+			expression.NewUnresolvedFunction("count", true, expression.NewStar()),
+			expression.NewLiteral(int64(5), sql.Int64),
+		),
+		plan.NewGroupBy(
+			[]sql.Expression{expression.NewUnresolvedFunction("count", true, expression.NewStar())},
+			[]sql.Expression{expression.NewUnresolvedColumn("a")},
+			plan.NewUnresolvedTable("foo", ""),
+		),
+	),
+	`SELECT DISTINCT COUNT(*) FROM foo GROUP BY a HAVING COUNT(*) > 5`: plan.NewDistinct(
+		plan.NewHaving(
+			expression.NewGreaterThan(
+				expression.NewUnresolvedFunction("count", true, expression.NewStar()),
+				expression.NewLiteral(int64(5), sql.Int64),
+			),
+			plan.NewGroupBy(
+				[]sql.Expression{expression.NewUnresolvedFunction("count", true, expression.NewStar())},
+				[]sql.Expression{expression.NewUnresolvedColumn("a")},
+				plan.NewUnresolvedTable("foo", ""),
+			),
+		),
+	),
 }
 
 func TestParse(t *testing.T) {

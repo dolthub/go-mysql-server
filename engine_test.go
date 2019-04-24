@@ -512,6 +512,7 @@ var queries = []struct {
 			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -519,6 +520,7 @@ var queries = []struct {
 		[]sql.Row{
 			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -640,6 +642,7 @@ var queries = []struct {
 			{"mytable"},
 			{"othertable"},
 			{"tabletest"},
+			{"bigtable"},
 		},
 	},
 	{
@@ -663,6 +666,8 @@ var queries = []struct {
 			{"i"},
 			{"s2"},
 			{"i2"},
+			{"t"},
+			{"n"},
 		},
 	},
 	{
@@ -676,6 +681,8 @@ var queries = []struct {
 			{"i"},
 			{"s2"},
 			{"i2"},
+			{"t"},
+			{"n"},
 		},
 	},
 	{
@@ -689,6 +696,8 @@ var queries = []struct {
 			{"i"},
 			{"s2"},
 			{"i2"},
+			{"t"},
+			{"n"},
 		},
 	},
 	{
@@ -722,6 +731,7 @@ var queries = []struct {
 			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -832,6 +842,7 @@ var queries = []struct {
 			{"mytable"},
 			{"othertable"},
 			{"tabletest"},
+			{"bigtable"},
 		},
 	},
 	{
@@ -840,14 +851,7 @@ var queries = []struct {
 			{"mytable", "BASE TABLE"},
 			{"othertable", "BASE TABLE"},
 			{"tabletest", "BASE TABLE"},
-		},
-	},
-	{
-		"SHOW FULL TABLES",
-		[]sql.Row{
-			{"mytable", "BASE TABLE"},
-			{"othertable", "BASE TABLE"},
-			{"tabletest", "BASE TABLE"},
+			{"bigtable", "BASE TABLE"},
 		},
 	},
 	{
@@ -861,6 +865,7 @@ var queries = []struct {
 		[]sql.Row{
 			{"mytable"},
 			{"othertable"},
+			{"bigtable"},
 		},
 	},
 	{
@@ -952,6 +957,26 @@ var queries = []struct {
 			{int64(2), int64(1)},
 			{int64(3), int64(1)},
 		},
+	},
+	{
+		"SELECT n, COUNT(n) FROM bigtable GROUP BY n HAVING COUNT(n) > 2",
+		[]sql.Row{{int64(1), int64(3)}, {int64(2), int64(3)}},
+	},
+	{
+		"SELECT n, MAX(n) FROM bigtable GROUP BY n HAVING COUNT(n) > 2",
+		[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}},
+	},
+	{
+		"SELECT substring(mytable.s, 1, 5) as s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1 HAVING s = \"secon\"",
+		[]sql.Row{{"secon"}},
+	},
+	{
+		`
+		SELECT COLUMN_NAME as COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY 1 HAVING SUBSTRING(COLUMN_NAME, 1, 1) = "s"
+		`,
+		[]sql.Row{{"s"}, {"s2"}},
 	},
 }
 
@@ -1629,10 +1654,34 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow("c", int32(0)),
 	)
 
+	bigtable := mem.NewPartitionedTable("bigtable", sql.Schema{
+		{Name: "t", Type: sql.Text, Source: "bigtable"},
+		{Name: "n", Type: sql.Int64, Source: "bigtable"},
+	}, testNumPartitions)
+
+	insertRows(
+		t, bigtable,
+		sql.NewRow("a", int64(1)),
+		sql.NewRow("s", int64(2)),
+		sql.NewRow("f", int64(3)),
+		sql.NewRow("g", int64(1)),
+		sql.NewRow("h", int64(2)),
+		sql.NewRow("j", int64(3)),
+		sql.NewRow("k", int64(1)),
+		sql.NewRow("l", int64(2)),
+		sql.NewRow("ñ", int64(4)),
+		sql.NewRow("z", int64(5)),
+		sql.NewRow("x", int64(6)),
+		sql.NewRow("c", int64(7)),
+		sql.NewRow("v", int64(8)),
+		sql.NewRow("b", int64(9)),
+	)
+
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 	db.AddTable("othertable", table2)
 	db.AddTable("tabletest", table3)
+	db.AddTable("bigtable", bigtable)
 
 	db2 := mem.NewDatabase("foo")
 	db2.AddTable("other_table", table4)
