@@ -244,7 +244,7 @@ func convertShow(s *sqlparser.Show, query string) (sql.Node, error) {
 		}
 
 		return node, nil
-	case sqlparser.KeywordString(sqlparser.DATABASES):
+	case sqlparser.KeywordString(sqlparser.DATABASES), sqlparser.KeywordString(sqlparser.SCHEMAS):
 		return plan.NewShowDatabases(), nil
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
 		// TODO(erizocosmico): vitess parser does not support EXTENDED.
