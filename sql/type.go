@@ -151,6 +151,17 @@ type Type interface {
 	fmt.Stringer
 }
 
+var maxTime = time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)
+
+// ValidateTime receives a time and returns either that time or nil if it's
+// not a valid time.
+func ValidateTime(t time.Time) interface{} {
+	if t.After(maxTime) {
+		return nil
+	}
+	return t
+}
+
 var (
 	// Null represents the null type.
 	Null nullT

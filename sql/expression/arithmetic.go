@@ -89,6 +89,15 @@ func (a *Arithmetic) String() string {
 	return fmt.Sprintf("%s %s %s", a.Left, a.Op, a.Right)
 }
 
+// IsNullable implements the sql.Expression interface.
+func (a *Arithmetic) IsNullable() bool {
+	if a.Type() == sql.Timestamp {
+		return true
+	}
+
+	return a.BinaryExpression.IsNullable()
+}
+
 // Type returns the greatest type for given operation.
 func (a *Arithmetic) Type() sql.Type {
 	switch a.Op {
@@ -254,12 +263,12 @@ func plus(lval, rval interface{}) (interface{}, error) {
 	case time.Time:
 		switch r := rval.(type) {
 		case *TimeDelta:
-			return r.Add(l), nil
+			return sql.ValidateTime(r.Add(l)), nil
 		}
 	case *TimeDelta:
 		switch r := rval.(type) {
 		case time.Time:
-			return l.Add(r), nil
+			return sql.ValidateTime(l.Add(r)), nil
 		}
 	}
 
@@ -288,7 +297,7 @@ func minus(lval, rval interface{}) (interface{}, error) {
 	case time.Time:
 		switch r := rval.(type) {
 		case *TimeDelta:
-			return r.Sub(l), nil
+			return sql.ValidateTime(r.Sub(l)), nil
 		}
 	}
 

@@ -40,7 +40,7 @@ func (d *DateAdd) Resolved() bool {
 
 // IsNullable implements the sql.Expression interface.
 func (d *DateAdd) IsNullable() bool {
-	return d.Date.IsNullable() || d.Interval.IsNullable()
+	return true
 }
 
 // Type implements the sql.Expression interface.
@@ -85,7 +85,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return delta.Add(date.(time.Time)), nil
+	return sql.ValidateTime(delta.Add(date.(time.Time))), nil
 }
 
 func (d *DateAdd) String() string {
@@ -124,7 +124,7 @@ func (d *DateSub) Resolved() bool {
 
 // IsNullable implements the sql.Expression interface.
 func (d *DateSub) IsNullable() bool {
-	return d.Date.IsNullable() || d.Interval.IsNullable()
+	return true
 }
 
 // Type implements the sql.Expression interface.
@@ -169,7 +169,7 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return delta.Sub(date.(time.Time)), nil
+	return sql.ValidateTime(delta.Sub(date.(time.Time))), nil
 }
 
 func (d *DateSub) String() string {
