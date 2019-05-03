@@ -1068,6 +1068,14 @@ var queries = []struct {
 		`SELECT JSON_EXTRACT('[1, 2, 3]', '$.[0]')`,
 		[]sql.Row{{float64(1)}},
 	},
+	{
+		`SELECT GREATEST(1, 2, 3, 4)`,
+		[]sql.Row{{int64(4)}},
+	},
+	{
+		`SELECT LEAST(1, 2, 3, 4)`,
+		[]sql.Row{{int64(1)}},
+	},
 }
 
 func TestQueries(t *testing.T) {
