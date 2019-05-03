@@ -68,8 +68,10 @@ func (c *Convert) Type() sql.Type {
 		return sql.Blob
 	case ConvertToChar, ConvertToNChar:
 		return sql.Text
-	case ConvertToDate, ConvertToDatetime:
+	case ConvertToDate:
 		return sql.Date
+	case ConvertToDatetime:
+		return sql.Timestamp
 	case ConvertToDecimal:
 		return sql.Float64
 	case ConvertToJSON:
