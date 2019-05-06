@@ -15,7 +15,7 @@ import (
 // convertible strings or integers mixed with floats. When ints or floats
 // are mixed with non numerically convertible strings, those are ignored.
 type Greatest struct {
-	args []sql.Expression
+	Args []sql.Expression
 }
 
 // ErrUnsupportedType is returned when an argument to Greatest or Latest is not numeric or string
@@ -41,7 +41,7 @@ func (f *Greatest) Type() sql.Type { return sql.Float64 }
 
 // IsNullable implements the Expression interface.
 func (f *Greatest) IsNullable() bool {
-	for _, arg := range f.args {
+	for _, arg := range f.Args {
 		if arg.IsNullable() {
 			return true
 		}
@@ -50,8 +50,8 @@ func (f *Greatest) IsNullable() bool {
 }
 
 func (f *Greatest) String() string {
-	var args = make([]string, len(f.args))
-	for i, arg := range f.args {
+	var args = make([]string, len(f.Args))
+	for i, arg := range f.Args {
 		args[i] = arg.String()
 	}
 	return fmt.Sprintf("greatest(%s)", strings.Join(args, ", "))
@@ -59,8 +59,8 @@ func (f *Greatest) String() string {
 
 // TransformUp implements the Expression interface.
 func (f *Greatest) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	var args = make([]sql.Expression, len(f.args))
-	for i, arg := range f.args {
+	var args = make([]sql.Expression, len(f.Args))
+	for i, arg := range f.Args {
 		a, err := arg.TransformUp(fn)
 		if err != nil {
 			return nil, err
@@ -78,7 +78,7 @@ func (f *Greatest) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error)
 
 // Resolved implements the Expression interface.
 func (f *Greatest) Resolved() bool {
-	for _, arg := range f.args {
+	for _, arg := range f.Args {
 		if !arg.Resolved() {
 			return false
 		}
@@ -87,7 +87,7 @@ func (f *Greatest) Resolved() bool {
 }
 
 // Children implements the Expression interface.
-func (f *Greatest) Children() []sql.Expression { return f.args }
+func (f *Greatest) Children() []sql.Expression { return f.Args }
 
 // Eval implements the Expression interface.
 func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -96,7 +96,7 @@ func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	allString := true
 	allInt := true
 
-	for i, arg := range f.args {
+	for i, arg := range f.Args {
 		val, err := arg.Eval(ctx, row)
 		if err != nil {
 			return nil, err
@@ -169,7 +169,7 @@ func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // convertible strings or integers mixed with floats. When ints or floats
 // are mixed with non numerically convertible strings, those are ignored.
 type Least struct {
-	args []sql.Expression
+	Args []sql.Expression
 }
 
 // NewLeast creates a new Least UDF
@@ -196,7 +196,7 @@ func (f *Least) Type() sql.Type { return sql.Float64 }
 
 // IsNullable implements the Expression interface.
 func (f *Least) IsNullable() bool {
-	for _, arg := range f.args {
+	for _, arg := range f.Args {
 		if arg.IsNullable() {
 			return true
 		}
@@ -205,8 +205,8 @@ func (f *Least) IsNullable() bool {
 }
 
 func (f *Least) String() string {
-	var args = make([]string, len(f.args))
-	for i, arg := range f.args {
+	var args = make([]string, len(f.Args))
+	for i, arg := range f.Args {
 		args[i] = arg.String()
 	}
 	return fmt.Sprintf("least(%s)", strings.Join(args, ", "))
@@ -214,8 +214,8 @@ func (f *Least) String() string {
 
 // TransformUp implements the Expression interface.
 func (f *Least) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	var args = make([]sql.Expression, len(f.args))
-	for i, arg := range f.args {
+	var args = make([]sql.Expression, len(f.Args))
+	for i, arg := range f.Args {
 		a, err := arg.TransformUp(fn)
 		if err != nil {
 			return nil, err
@@ -233,7 +233,7 @@ func (f *Least) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
 
 // Resolved implements the Expression interface.
 func (f *Least) Resolved() bool {
-	for _, arg := range f.args {
+	for _, arg := range f.Args {
 		if !arg.Resolved() {
 			return false
 		}
@@ -242,7 +242,7 @@ func (f *Least) Resolved() bool {
 }
 
 // Children implements the Expression interface.
-func (f *Least) Children() []sql.Expression { return f.args }
+func (f *Least) Children() []sql.Expression { return f.Args }
 
 // Eval implements the Expression interface.
 func (f *Least) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -251,7 +251,7 @@ func (f *Least) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	allString := true
 	allInt := true
 
-	for i, arg := range f.args {
+	for i, arg := range f.Args {
 		val, err := arg.Eval(ctx, row)
 		if err != nil {
 			return nil, err
