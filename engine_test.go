@@ -1052,6 +1052,10 @@ var queries = []struct {
 		"SELECT DATE_ADD('9999-12-31 23:59:59', INTERVAL 1 DAY)",
 		[]sql.Row{{nil}},
 	},
+	{
+		`SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t WHERE t.date_col > '0000-01-01 00:00:00'`,
+		[]sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
+	},
 }
 
 func TestQueries(t *testing.T) {

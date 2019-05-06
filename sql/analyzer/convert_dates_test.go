@@ -146,6 +146,87 @@ func TestConvertDates(t *testing.T) {
 	}
 }
 
+func TestConvertDatesProject(t *testing.T) {
+	table := plan.NewResolvedTable(mem.NewTable("t", nil))
+	input := plan.NewFilter(
+		expression.NewEquals(
+			expression.NewGetField(0, sql.Int64, "foo", false),
+			expression.NewLiteral("2019-06-06 00:00:00", sql.Text),
+		),
+		plan.NewProject([]sql.Expression{
+			expression.NewGetField(0, sql.Timestamp, "foo", false),
+		}, table),
+	)
+	expected := plan.NewFilter(
+		expression.NewEquals(
+			expression.NewGetField(0, sql.Int64, "__foo", false),
+			expression.NewLiteral("2019-06-06 00:00:00", sql.Text),
+		),
+		plan.NewProject([]sql.Expression{
+			expression.NewAlias(
+				expression.NewConvert(
+					expression.NewGetField(0, sql.Timestamp, "foo", false),
+					expression.ConvertToDatetime,
+				),
+				"__foo",
+			),
+		}, table),
+	)
+
+	result, err := convertDates(sql.NewEmptyContext(), nil, input)
+	require.NoError(t, err)
+	require.Equal(t, expected, result)
+}
+
+func TestConvertDatesGroupBy(t *testing.T) {
+	table := plan.NewResolvedTable(mem.NewTable("t", nil))
+	input := plan.NewFilter(
+		expression.NewEquals(
+			expression.NewGetField(0, sql.Int64, "foo", false),
+			expression.NewLiteral("2019-06-06 00:00:00", sql.Text),
+		),
+		plan.NewGroupBy(
+			[]sql.Expression{
+				expression.NewGetField(0, sql.Timestamp, "foo", false),
+			},
+			[]sql.Expression{
+				expression.NewGetField(0, sql.Timestamp, "foo", false),
+			}, table,
+		),
+	)
+	expected := plan.NewFilter(
+		expression.NewEquals(
+			expression.NewGetField(0, sql.Int64, "__foo", false),
+			expression.NewLiteral("2019-06-06 00:00:00", sql.Text),
+		),
+		plan.NewGroupBy(
+			[]sql.Expression{
+				expression.NewAlias(
+					expression.NewConvert(
+						expression.NewGetField(0, sql.Timestamp, "foo", false),
+						expression.ConvertToDatetime,
+					),
+					"__foo",
+				),
+			},
+			[]sql.Expression{
+				expression.NewAlias(
+					expression.NewConvert(
+						expression.NewGetField(0, sql.Timestamp, "foo", false),
+						expression.ConvertToDatetime,
+					),
+					"__foo",
+				),
+			},
+			table,
+		),
+	)
+
+	result, err := convertDates(sql.NewEmptyContext(), nil, input)
+	require.NoError(t, err)
+	require.Equal(t, expected, result)
+}
+
 func newDateAdd(l, r sql.Expression) sql.Expression {
 	e, _ := function.NewDateAdd(l, r)
 	return e
