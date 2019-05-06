@@ -9,13 +9,128 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
+// compEval is used to implement Greatest/Least Eval() using a comparison function
+func compEval(
+	returnType sql.Type,
+	args []sql.Expression,
+	ctx *sql.Context,
+	row sql.Row,
+	cmp compareFn) (interface{}, error) {
+
+	if returnType == sql.Null {
+		return nil, nil
+	}
+
+	var selectedNum float64
+	var selectedString string
+
+	for i, arg := range args {
+		val, err := arg.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+
+		switch t := val.(type) {
+		case int, int32, int64:
+			switch x := t.(type) {
+			case int:
+				t = int64(x)
+			case int32:
+				t = int64(x)
+			}
+			ival := t.(int64)
+			if i == 0 || cmp(ival, int64(selectedNum)) {
+				selectedNum = float64(ival)
+			}
+		case float32, float64:
+			if x, ok := t.(float32); ok {
+				t = float64(x)
+			}
+
+			fval := t.(float64)
+			if i == 0 || cmp(fval, float64(selectedNum)) {
+				selectedNum = fval
+			}
+
+		case string:
+			if returnType == sql.Text && (i == 0 || cmp(t, selectedString)) {
+				selectedString = t
+			}
+
+			fval, err := strconv.ParseFloat(t, 64)
+			if err != nil {
+				// MySQL just ignores non numerically convertible string arguments
+				// when mixed with numeric ones
+				continue
+			}
+
+			if i == 0 || cmp(fval, selectedNum) {
+				selectedNum = fval
+			}
+		default:
+			return nil, ErrUnsupportedType.New(t)
+		}
+
+	}
+
+	switch returnType {
+	case sql.Int64:
+		return int64(selectedNum), nil
+	case sql.Text:
+		return selectedString, nil
+	}
+
+	// float64
+	return float64(selectedNum), nil
+}
+
+// compRetType is used to determine the type from args based on the rules described for
+// Greatest/Least
+func compRetType(args ...sql.Expression) (sql.Type, error) {
+	if len(args) == 0 {
+		return nil, sql.ErrInvalidArgumentNumber.New("LEAST", "1 or more", 0)
+	}
+
+	allString := true
+	allInt := true
+
+	for _, arg := range args {
+		argType := arg.Type()
+		if sql.IsTuple(argType) {
+			return nil, sql.ErrInvalidType.New("tuple")
+		} else if sql.IsNumber(argType) {
+			allString = false
+			if sql.IsDecimal(argType) {
+				allString = false
+				allInt = false
+			}
+		} else if sql.IsText(argType) {
+			allInt = false
+		} else if argType == sql.Null {
+			// When a Null is present the return will always de Null
+			return sql.Null, nil
+		} else {
+			return nil, ErrUnsupportedType.New(argType)
+		}
+	}
+
+	if allString {
+		return sql.Text, nil
+	} else if allInt {
+		return sql.Int64, nil
+	}
+
+	return sql.Float64, nil
+}
+
 // Greatest returns the argument with the greatest numerical or string value. It allows for
 // numeric (ints anf floats) and string arguments and will return the used type
 // when all arguments are of the same type or floats if there are numerically
 // convertible strings or integers mixed with floats. When ints or floats
 // are mixed with non numerically convertible strings, those are ignored.
 type Greatest struct {
-	Args []sql.Expression
+	Args       []sql.Expression
+	returnType sql.Type
 }
 
 // ErrUnsupportedType is returned when an argument to Greatest or Latest is not numeric or string
@@ -23,21 +138,16 @@ var ErrUnsupportedType = errors.NewKind("unsupported type for greatest/latest ar
 
 // NewGreatest creates a new Greatest UDF
 func NewGreatest(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) == 0 {
-		return nil, sql.ErrInvalidArgumentNumber.New("GREATEST", "1 or more", 0)
+	retType, err := compRetType(args...)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, arg := range args {
-		if sql.IsTuple(arg.Type()) {
-			return nil, sql.ErrInvalidType.New("tuple")
-		}
-	}
-
-	return &Greatest{args}, nil
+	return &Greatest{args, retType}, nil
 }
 
 // Type implements the Expression interface.
-func (f *Greatest) Type() sql.Type { return sql.Float64 }
+func (f *Greatest) Type() sql.Type { return f.returnType }
 
 // IsNullable implements the Expression interface.
 func (f *Greatest) IsNullable() bool {
@@ -89,78 +199,35 @@ func (f *Greatest) Resolved() bool {
 // Children implements the Expression interface.
 func (f *Greatest) Children() []sql.Expression { return f.Args }
 
+type compareFn func(interface{}, interface{}) bool
+
+func greaterThan(a, b interface{}) bool {
+	switch i := a.(type) {
+	case int64:
+		return i > b.(int64)
+	case float64:
+		return i > b.(float64)
+	case string:
+		return i > b.(string)
+	}
+	panic("Implementation error on greaterThan")
+}
+
+func lessThan(a, b interface{}) bool {
+	switch i := a.(type) {
+	case int64:
+		return i < b.(int64)
+	case float64:
+		return i < b.(float64)
+	case string:
+		return i < b.(string)
+	}
+	panic("Implementation error on lessThan")
+}
+
 // Eval implements the Expression interface.
 func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	greatestNum := 0.0
-	greatestString := ""
-	allString := true
-	allInt := true
-
-	for i, arg := range f.Args {
-		val, err := arg.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-
-		if val == nil {
-			return nil, nil
-		}
-
-		switch t := val.(type) {
-		case int, int32, int64:
-			switch x:= t.(type) {
-			case int:
-				t = int64(x)
-			case int32:
-				t = int64(x)
-			}
-			allString = false
-			ival := t.(int64)
-			if i == 0 || ival > int64(greatestNum) {
-				greatestNum = float64(ival)
-			}
-		case float32, float64:
-			if x, ok := t.(float32); ok {
-				t = float64(x)
-			}
-
-			allString = false
-			allInt = false
-			fval := t.(float64)
-			if i == 0 || fval > greatestNum {
-				greatestNum = fval
-			}
-
-		case string:
-			if allString && (i == 0 || t > greatestString) {
-				greatestString = t
-			}
-
-			fval, err := strconv.ParseFloat(t, 64)
-			if err != nil {
-				// MySQL just ignores non numerically convertible string arguments
-				// when mixed with numeric ones
-				continue
-			}
-
-			allInt = false
-			if i == 0 || fval > greatestNum {
-				greatestNum = fval
-			}
-		default:
-			return nil, ErrUnsupportedType.New(t)
-		}
-
-	}
-
-	if allInt {
-		return int64(greatestNum), nil
-	} else if allString {
-		return greatestString, nil
-	}
-
-	// float64
-	return greatestNum, nil
+	return compEval(f.returnType, f.Args, ctx, row, greaterThan)
 }
 
 // Least returns the argument with the least numerical or string value. It allows for
@@ -169,30 +236,22 @@ func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // convertible strings or integers mixed with floats. When ints or floats
 // are mixed with non numerically convertible strings, those are ignored.
 type Least struct {
-	Args []sql.Expression
+	Args       []sql.Expression
+	returnType sql.Type
 }
 
 // NewLeast creates a new Least UDF
 func NewLeast(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) == 0 {
-		return nil, sql.ErrInvalidArgumentNumber.New("LEAST", "1 or more", 0)
+	retType, err := compRetType(args...)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, arg := range args {
-		if len(args) > 1 && sql.IsArray(arg.Type()) {
-			return nil, ErrConcatArrayWithOthers.New()
-		}
-
-		if sql.IsTuple(arg.Type()) {
-			return nil, sql.ErrInvalidType.New("tuple")
-		}
-	}
-
-	return &Least{args}, nil
+	return &Least{args, retType}, nil
 }
 
 // Type implements the Expression interface.
-func (f *Least) Type() sql.Type { return sql.Float64 }
+func (f *Least) Type() sql.Type { return f.returnType }
 
 // IsNullable implements the Expression interface.
 func (f *Least) IsNullable() bool {
@@ -246,74 +305,5 @@ func (f *Least) Children() []sql.Expression { return f.Args }
 
 // Eval implements the Expression interface.
 func (f *Least) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	leastNum := 0.0
-	leastString := ""
-	allString := true
-	allInt := true
-
-	for i, arg := range f.Args {
-		val, err := arg.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-
-		if val == nil {
-			return nil, nil
-		}
-
-		switch t := val.(type) {
-		case int, int32, int64:
-			switch x:= t.(type) {
-			case int:
-				t = int64(x)
-			case int32:
-				t = int64(x)
-			}
-			allString = false
-			ival := t.(int64)
-			if i == 0 || ival < int64(leastNum) {
-				leastNum = float64(ival)
-			}
-		case float32, float64:
-			if x, ok := t.(float32); ok {
-				t = float64(x)
-			}
-
-			allString = false
-			allInt = false
-			fval := t.(float64)
-			if i == 0 || fval < leastNum {
-				leastNum = fval
-			}
-
-		case string:
-			if allString && (i == 0 || t < leastString) {
-				leastString = t
-			}
-
-			fval, err := strconv.ParseFloat(t, 64)
-			if err != nil {
-				// MySQL just ignores non numerically convertible string arguments
-				// when mixed with numeric ones
-				continue
-			}
-
-			allInt = false
-			if i == 0 || fval < leastNum {
-				leastNum = fval
-			}
-		default:
-			return nil, ErrUnsupportedType.New(t)
-		}
-
-	}
-
-	if allInt {
-		return int64(leastNum), nil
-	} else if allString {
-		return leastString, nil
-	}
-
-	// float
-	return leastNum, nil
+	return compEval(f.returnType, f.Args, ctx, row, lessThan)
 }

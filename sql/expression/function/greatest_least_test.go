@@ -8,6 +8,18 @@ import (
 )
 
 func TestGreatest(t *testing.T) {
+
+	// XXX
+	//table := mem.NewTable("foo", sql.Schema{
+	//	{Name: "str_no_num", Type: sql.Text, Source: "foo"},
+	//	{Name: "str_num1", Type: sql.Text, Source: "foo"},
+	//	{Name: "str_num9", Type: sql.Text, Source: "foo"},
+	//	{Name: "int1", Type: sql.Int64, Source: "foo"},
+	//	{Name: "int5", Type: sql.Int64, Source: "foo"},
+	//	{Name: "float2", Type: sql.Float64, Source: "foo"},
+	//	{Name: "float9", Type: sql.Float64, Source: "foo"},
+	//})
+
 	testCases := []struct {
 		name string
 		args []sql.Expression
@@ -34,21 +46,21 @@ func TestGreatest(t *testing.T) {
 		{
             "string mixed",
             []sql.Expression{
-				expression.NewLiteral(string("10"), sql.Int64),
+				expression.NewLiteral(string("9"), sql.Text),
 				expression.NewLiteral(int64(5), sql.Int64),
 				expression.NewLiteral(int64(1), sql.Int64),
 			},
-			float64(10),
+			float64(9),
 		},
 		{
             "unconvertible string mixed ignored",
             []sql.Expression{
-				expression.NewLiteral(string("10"), sql.Int64),
+				expression.NewLiteral(string("10.5"), sql.Text),
 				expression.NewLiteral(string("foobar"), sql.Int64),
 				expression.NewLiteral(int64(5), sql.Int64),
 				expression.NewLiteral(int64(1), sql.Int64),
 			},
-			float64(10),
+			float64(10.5),
 		},
 		{
             "float mixed",
@@ -61,6 +73,16 @@ func TestGreatest(t *testing.T) {
 		},
 		{
 			"all strings",
+			[]sql.Expression{
+				expression.NewLiteral("aaa", sql.Text),
+				expression.NewLiteral("bbb", sql.Text),
+				expression.NewLiteral("9999", sql.Text),
+				expression.NewLiteral("", sql.Text),
+			},
+			"bbb",
+		},
+		{
+			"all strings and empty",
 			[]sql.Expression{
 				expression.NewLiteral("aaa", sql.Text),
 				expression.NewLiteral("bbb", sql.Text),
@@ -112,7 +134,7 @@ func TestLeast(t *testing.T) {
 		{
 			"string mixed",
 			[]sql.Expression{
-				expression.NewLiteral(string("10"), sql.Int64),
+				expression.NewLiteral(string("10"), sql.Text),
 				expression.NewLiteral(int64(5), sql.Int64),
 				expression.NewLiteral(int64(1), sql.Int64),
 			},
@@ -121,7 +143,7 @@ func TestLeast(t *testing.T) {
 		{
 			"unconvertible string mixed ignored",
 			[]sql.Expression{
-				expression.NewLiteral(string("10"), sql.Int64),
+				expression.NewLiteral(string("10.5"), sql.Text),
 				expression.NewLiteral(string("foobar"), sql.Int64),
 				expression.NewLiteral(int64(5), sql.Int64),
 				expression.NewLiteral(int64(1), sql.Int64),
