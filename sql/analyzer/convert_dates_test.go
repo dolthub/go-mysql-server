@@ -210,12 +210,9 @@ func TestConvertDatesGroupBy(t *testing.T) {
 				),
 			},
 			[]sql.Expression{
-				expression.NewAlias(
-					expression.NewConvert(
-						expression.NewGetField(0, sql.Timestamp, "foo", false),
-						expression.ConvertToDatetime,
-					),
-					"__foo",
+				expression.NewConvert(
+					expression.NewGetField(0, sql.Timestamp, "foo", false),
+					expression.ConvertToDatetime,
 				),
 			},
 			table,
