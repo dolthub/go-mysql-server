@@ -1036,6 +1036,22 @@ var queries = []struct {
 			{string("first row"), int64(1)},
 		},
 	},
+	{
+		"SELECT CONVERT('9999-12-31 23:59:59', DATETIME)",
+		[]sql.Row{{time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)}},
+	},
+	{
+		"SELECT CONVERT('10000-12-31 23:59:59', DATETIME)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT '9999-12-31 23:59:59' + INTERVAL 1 DAY",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT DATE_ADD('9999-12-31 23:59:59', INTERVAL 1 DAY)",
+		[]sql.Row{{nil}},
+	},
 }
 
 func TestQueries(t *testing.T) {

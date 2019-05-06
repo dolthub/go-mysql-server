@@ -20,6 +20,7 @@ var DefaultRules = []Rule{
 	{"reorder_projection", reorderProjection},
 	{"move_join_conds_to_filter", moveJoinConditionsToFilter},
 	{"eval_filter", evalFilter},
+	{"convert_dates", convertDates},
 	{"optimize_distinct", optimizeDistinct},
 }
 

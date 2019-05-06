@@ -51,6 +51,16 @@ func NewConvert(expr sql.Expression, castToType string) *Convert {
 	}
 }
 
+// IsNullable implements the Expression interface.
+func (c *Convert) IsNullable() bool {
+	switch c.castToType {
+	case ConvertToDate, ConvertToDatetime:
+		return true
+	default:
+		return c.Child.IsNullable()
+	}
+}
+
 // Type implements the Expression interface.
 func (c *Convert) Type() sql.Type {
 	switch c.castToType {
@@ -58,8 +68,10 @@ func (c *Convert) Type() sql.Type {
 		return sql.Blob
 	case ConvertToChar, ConvertToNChar:
 		return sql.Text
-	case ConvertToDate, ConvertToDatetime:
+	case ConvertToDate:
 		return sql.Date
+	case ConvertToDatetime:
+		return sql.Timestamp
 	case ConvertToDecimal:
 		return sql.Float64
 	case ConvertToJSON:
@@ -143,7 +155,7 @@ func convertValue(val interface{}, castTo string) (interface{}, error) {
 			}
 		}
 
-		return d, nil
+		return sql.ValidateTime(d.(time.Time)), nil
 	case ConvertToDecimal:
 		d, err := cast.ToFloat64E(val)
 		if err != nil {
