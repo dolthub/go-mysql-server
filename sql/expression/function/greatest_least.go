@@ -28,10 +28,6 @@ func NewGreatest(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	for _, arg := range args {
-		if !arg.Resolved() {
-			continue
-		}
-
 		if sql.IsTuple(arg.Type()) {
 			return nil, sql.ErrInvalidType.New("tuple")
 		}
@@ -183,12 +179,6 @@ func NewLeast(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	for _, arg := range args {
-		// Don't perform this check until it's resolved. Otherwise we
-		// can't get the type for sure.
-		if !arg.Resolved() {
-			continue
-		}
-
 		if len(args) > 1 && sql.IsArray(arg.Type()) {
 			return nil, ErrConcatArrayWithOthers.New()
 		}

@@ -33,7 +33,6 @@ func TestGreatest(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.IsType(int64(1), v)
 		require.Equal(int64(5), v)
 	})
 
@@ -48,7 +47,6 @@ func TestGreatest(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.IsType(float64(1), v)
 		require.Equal(float64(10), v)
 	})
 
@@ -64,7 +62,6 @@ func TestGreatest(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.IsType(float64(1), v)
 		require.Equal(float64(10), v)
 	})
 
@@ -79,7 +76,6 @@ func TestGreatest(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.IsType(float64(1), v)
 		require.Equal(float64(10.0), v)
 	})
 
@@ -95,7 +91,6 @@ func TestGreatest(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.IsType("", v)
 		require.Equal("bbb", v)
 	})
 }
@@ -126,7 +121,6 @@ func TestLeast(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.IsType(int64(1), v)
 		require.Equal(int64(-1), v)
 	})
 
@@ -141,7 +135,6 @@ func TestLeast(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.IsType(float64(1), v)
 		require.Equal(float64(1), v)
 	})
 
@@ -157,7 +150,6 @@ func TestLeast(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.IsType(float64(1), v)
 		require.Equal(float64(1), v)
 	})
 
@@ -172,7 +164,6 @@ func TestLeast(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.IsType(float64(1), v)
 		require.Equal(float64(1.0), v)
 	})
 
@@ -187,7 +178,6 @@ func TestLeast(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.IsType("", v)
 		require.Equal("9999", v)
 	})
 
@@ -203,7 +193,6 @@ func TestLeast(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.IsType("", v)
 		require.Equal("", v)
 	})
 }
