@@ -8,191 +8,166 @@ import (
 )
 
 func TestGreatest(t *testing.T) {
-	t.Run("null", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewGreatest(
-			expression.NewLiteral(nil, sql.Null),
-			expression.NewLiteral(5, sql.Int64),
-			expression.NewLiteral(1, sql.Int64),
-		)
-		require.NoError(err)
+	testCases := []struct {
+		name string
+		args []sql.Expression
+		expected interface{}
+	}{
+		{
+			"null",
+			[]sql.Expression{
+				expression.NewLiteral(nil, sql.Null),
+				expression.NewLiteral(5, sql.Int64),
+				expression.NewLiteral(1, sql.Int64),
+			},
+			nil,
+		},
+		{
+			"negative and all ints",
+			[]sql.Expression{
+				expression.NewLiteral(int64(-1), sql.Int64),
+				expression.NewLiteral(int64(5), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+			},
+			int64(5),
+		},
+		{
+            "string mixed",
+            []sql.Expression{
+				expression.NewLiteral(string("10"), sql.Int64),
+				expression.NewLiteral(int64(5), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+			},
+			float64(10),
+		},
+		{
+            "unconvertible string mixed ignored",
+            []sql.Expression{
+				expression.NewLiteral(string("10"), sql.Int64),
+				expression.NewLiteral(string("foobar"), sql.Int64),
+				expression.NewLiteral(int64(5), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+			},
+			float64(10),
+		},
+		{
+            "float mixed",
+            []sql.Expression{
+				expression.NewLiteral(float64(10.0), sql.Float64),
+				expression.NewLiteral(int(5), sql.Int64),
+				expression.NewLiteral(int(1), sql.Int64),
+			},
+			float64(10.0),
+		},
+		{
+			"all strings",
+			[]sql.Expression{
+				expression.NewLiteral("aaa", sql.Text),
+				expression.NewLiteral("bbb", sql.Text),
+				expression.NewLiteral("9999", sql.Text),
+				expression.NewLiteral("", sql.Text),
+			},
+			"bbb",
+		},
+	}
 
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(nil, v)
-	})
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
 
-	t.Run("negative and all ints", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewGreatest(
-			expression.NewLiteral(int64(-1), sql.Int64),
-			expression.NewLiteral(int64(5), sql.Int64),
-			expression.NewLiteral(int64(1), sql.Int64),
-		)
-		require.NoError(err)
+			f, err := NewGreatest(tt.args...)
+			require.NoError(err)
 
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(int64(5), v)
-	})
-
-	t.Run("string mixed", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewGreatest(
-			expression.NewLiteral(string("10"), sql.Int64),
-			expression.NewLiteral(int64(5), sql.Int64),
-			expression.NewLiteral(int64(1), sql.Int64),
-		)
-		require.NoError(err)
-
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(float64(10), v)
-	})
-
-	t.Run("unconvertible string mixed ignored", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewGreatest(
-			expression.NewLiteral(string("10"), sql.Int64),
-			expression.NewLiteral(string("foobar"), sql.Int64),
-			expression.NewLiteral(int64(5), sql.Int64),
-			expression.NewLiteral(int64(1), sql.Int64),
-		)
-		require.NoError(err)
-
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(float64(10), v)
-	})
-
-	t.Run("float mixed", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewGreatest(
-			expression.NewLiteral(float64(10.0), sql.Float64),
-			expression.NewLiteral(int(5), sql.Int64),
-			expression.NewLiteral(int(1), sql.Int64),
-		)
-		require.NoError(err)
-
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(float64(10.0), v)
-	})
-
-	t.Run("all strings", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewGreatest(
-			expression.NewLiteral("aaa", sql.Text),
-			expression.NewLiteral("bbb", sql.Text),
-			expression.NewLiteral("9999", sql.Text),
-			expression.NewLiteral("", sql.Text),
-		)
-		require.NoError(err)
-
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal("bbb", v)
-	})
+			output, err := f.Eval(sql.NewEmptyContext(), nil)
+			require.NoError(err)
+			require.Equal(tt.expected, output)
+		})
+	}
 }
 
 func TestLeast(t *testing.T) {
-	t.Run("null", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewLeast(
-			expression.NewLiteral(nil, sql.Null),
-			expression.NewLiteral(5, sql.Int64),
-			expression.NewLiteral(1, sql.Int64),
-		)
-		require.NoError(err)
+	testCases := []struct {
+		name string
+		args []sql.Expression
+		expected interface{}
+	}{
+		{
+			"null",
+			[]sql.Expression{
+				expression.NewLiteral(nil, sql.Null),
+				expression.NewLiteral(5, sql.Int64),
+				expression.NewLiteral(1, sql.Int64),
+			},
+			nil,
+		},
+		{
+			"negative and all ints",
+			[]sql.Expression{
+				expression.NewLiteral(int64(-1), sql.Int64),
+				expression.NewLiteral(int64(5), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+			},
+			int64(-1),
+		},
+		{
+			"string mixed",
+			[]sql.Expression{
+				expression.NewLiteral(string("10"), sql.Int64),
+				expression.NewLiteral(int64(5), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+			},
+			float64(1),
+		},
+		{
+			"unconvertible string mixed ignored",
+			[]sql.Expression{
+				expression.NewLiteral(string("10"), sql.Int64),
+				expression.NewLiteral(string("foobar"), sql.Int64),
+				expression.NewLiteral(int64(5), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+			},
+			float64(1),
+		},
+		{
+			"float mixed",
+			[]sql.Expression{
+				expression.NewLiteral(float64(10.0), sql.Float64),
+				expression.NewLiteral(int(5), sql.Int64),
+				expression.NewLiteral(int(1), sql.Int64),
+			},
+			float64(1.0),
+		},
+		{
+			"all strings",
+			[]sql.Expression{
+				expression.NewLiteral("aaa", sql.Text),
+				expression.NewLiteral("bbb", sql.Text),
+				expression.NewLiteral("9999", sql.Text),
+			},
+			"9999",
+		},
+		{
+			"all strings and empty",
+			[]sql.Expression{
+				expression.NewLiteral("aaa", sql.Text),
+				expression.NewLiteral("bbb", sql.Text),
+				expression.NewLiteral("9999", sql.Text),
+				expression.NewLiteral("", sql.Text),
+			},
+			"",
+		},
+	}
 
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(nil, v)
-	})
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
 
-	t.Run("negative and all ints", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewLeast(
-			expression.NewLiteral(int64(-1), sql.Int64),
-			expression.NewLiteral(int64(5), sql.Int64),
-			expression.NewLiteral(int64(1), sql.Int64),
-		)
-		require.NoError(err)
+			f, err := NewLeast(tt.args...)
+			require.NoError(err)
 
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(int64(-1), v)
-	})
-
-	t.Run("string mixed", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewLeast(
-			expression.NewLiteral(string("10"), sql.Int64),
-			expression.NewLiteral(int64(5), sql.Int64),
-			expression.NewLiteral(int64(1), sql.Int64),
-		)
-		require.NoError(err)
-
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(float64(1), v)
-	})
-
-	t.Run("unconvertible string mixed ignored", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewLeast(
-			expression.NewLiteral(string("10"), sql.Int64),
-			expression.NewLiteral(string("foobar"), sql.Int64),
-			expression.NewLiteral(int64(5), sql.Int64),
-			expression.NewLiteral(int64(1), sql.Int64),
-		)
-		require.NoError(err)
-
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(float64(1), v)
-	})
-
-	t.Run("float mixed", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewLeast(
-			expression.NewLiteral(float64(10.0), sql.Float64),
-			expression.NewLiteral(int(5), sql.Int64),
-			expression.NewLiteral(int(1), sql.Int64),
-		)
-		require.NoError(err)
-
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(float64(1.0), v)
-	})
-
-	t.Run("all strings", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewLeast(
-			expression.NewLiteral("aaa", sql.Text),
-			expression.NewLiteral("bbb", sql.Text),
-			expression.NewLiteral("9999", sql.Text),
-		)
-		require.NoError(err)
-
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal("9999", v)
-	})
-
-	t.Run("all strings and empty", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewLeast(
-			expression.NewLiteral("aaa", sql.Text),
-			expression.NewLiteral("bbb", sql.Text),
-			expression.NewLiteral("9999", sql.Text),
-			expression.NewLiteral("", sql.Text),
-		)
-		require.NoError(err)
-
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal("", v)
-	})
+			output, err := f.Eval(sql.NewEmptyContext(), nil)
+			require.NoError(err)
+			require.Equal(tt.expected, output)
+		})
+	}
 }
