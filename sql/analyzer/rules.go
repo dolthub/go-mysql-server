@@ -20,7 +20,6 @@ var DefaultRules = []Rule{
 	{"reorder_projection", reorderProjection},
 	{"move_join_conds_to_filter", moveJoinConditionsToFilter},
 	{"eval_filter", evalFilter},
-	{"convert_dates", convertDates},
 	{"optimize_distinct", optimizeDistinct},
 }
 
@@ -36,6 +35,7 @@ var OnceBeforeDefault = []Rule{
 // DefaultRules.
 var OnceAfterDefault = []Rule{
 	{"remove_unnecessary_converts", removeUnnecessaryConverts},
+	{"convert_dates", convertDates},
 	{"assign_catalog", assignCatalog},
 	{"prune_columns", pruneColumns},
 	{"pushdown", pushdown},
