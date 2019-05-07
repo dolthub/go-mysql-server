@@ -8,21 +8,9 @@ import (
 )
 
 func TestGreatest(t *testing.T) {
-
-	// XXX
-	//table := mem.NewTable("foo", sql.Schema{
-	//	{Name: "str_no_num", Type: sql.Text, Source: "foo"},
-	//	{Name: "str_num1", Type: sql.Text, Source: "foo"},
-	//	{Name: "str_num9", Type: sql.Text, Source: "foo"},
-	//	{Name: "int1", Type: sql.Int64, Source: "foo"},
-	//	{Name: "int5", Type: sql.Int64, Source: "foo"},
-	//	{Name: "float2", Type: sql.Float64, Source: "foo"},
-	//	{Name: "float9", Type: sql.Float64, Source: "foo"},
-	//})
-
 	testCases := []struct {
-		name string
-		args []sql.Expression
+		name     string
+		args     []sql.Expression
 		expected interface{}
 	}{
 		{
@@ -44,8 +32,8 @@ func TestGreatest(t *testing.T) {
 			int64(5),
 		},
 		{
-            "string mixed",
-            []sql.Expression{
+			"string mixed",
+			[]sql.Expression{
 				expression.NewLiteral(string("9"), sql.Text),
 				expression.NewLiteral(int64(5), sql.Int64),
 				expression.NewLiteral(int64(1), sql.Int64),
@@ -53,8 +41,8 @@ func TestGreatest(t *testing.T) {
 			float64(9),
 		},
 		{
-            "unconvertible string mixed ignored",
-            []sql.Expression{
+			"unconvertible string mixed ignored",
+			[]sql.Expression{
 				expression.NewLiteral(string("10.5"), sql.Text),
 				expression.NewLiteral(string("foobar"), sql.Int64),
 				expression.NewLiteral(int64(5), sql.Int64),
@@ -63,8 +51,8 @@ func TestGreatest(t *testing.T) {
 			float64(10.5),
 		},
 		{
-            "float mixed",
-            []sql.Expression{
+			"float mixed",
+			[]sql.Expression{
 				expression.NewLiteral(float64(10.0), sql.Float64),
 				expression.NewLiteral(int(5), sql.Int64),
 				expression.NewLiteral(int(1), sql.Int64),
@@ -109,8 +97,8 @@ func TestGreatest(t *testing.T) {
 
 func TestLeast(t *testing.T) {
 	testCases := []struct {
-		name string
-		args []sql.Expression
+		name     string
+		args     []sql.Expression
 		expected interface{}
 	}{
 		{

@@ -15,7 +15,8 @@ func compEval(
 	args []sql.Expression,
 	ctx *sql.Context,
 	row sql.Row,
-	cmp compareFn) (interface{}, error) {
+	cmp compareFn,
+) (interface{}, error) {
 
 	if returnType == sql.Null {
 		return nil, nil
@@ -80,7 +81,7 @@ func compEval(
 		return selectedString, nil
 	}
 
-	// float64
+	// sql.Float64
 	return float64(selectedNum), nil
 }
 
