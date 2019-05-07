@@ -70,7 +70,7 @@ func (i *describeIter) Next() (sql.Row, error) {
 
 	f := i.schema[i.i]
 	i.i++
-	return sql.NewRow(f.Name, f.Type.Type().String()), nil
+	return sql.NewRow(f.Name, sql.MySQLTypeName(f.Type)), nil
 }
 
 func (i *describeIter) Close() error {

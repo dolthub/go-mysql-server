@@ -875,3 +875,43 @@ func NumColumns(t Type) int {
 	}
 	return len(v)
 }
+
+// MySQLTypeName returns the MySQL display name for the given type.
+func MySQLTypeName(t Type) string {
+	switch t.Type() {
+	case sqltypes.Int8:
+		return "TINYINT"
+	case sqltypes.Uint8:
+		return "TINYINT UNSIGNED"
+	case sqltypes.Int16:
+		return "SMALLINT"
+	case sqltypes.Uint16:
+		return "SMALLINT UNSIGNED"
+	case sqltypes.Int32:
+		return "INTEGER"
+	case sqltypes.Int64:
+		return "BIGINT"
+	case sqltypes.Uint32:
+		return "INTEGER UNSIGNED"
+	case sqltypes.Uint64:
+		return "BIGINT UNSIGNED"
+	case sqltypes.Float32:
+		return "FLOAT"
+	case sqltypes.Float64:
+		return "DOUBLE"
+	case sqltypes.Timestamp:
+		return "DATETIME"
+	case sqltypes.Date:
+		return "DATE"
+	case sqltypes.Text, sqltypes.VarChar:
+		return "TEXT"
+	case sqltypes.Bit:
+		return "BIT"
+	case sqltypes.TypeJSON:
+		return "JSON"
+	case sqltypes.Blob:
+		return "BLOB"
+	default:
+		return "UNKNOWN"
+	}
+}
