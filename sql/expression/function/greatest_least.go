@@ -9,6 +9,9 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
 
+var ErrUintOverflow = errors.NewKind(
+	"Unsigned integer too big to fit on signed integer")
+
 // compEval is used to implement Greatest/Least Eval() using a comparison function
 func compEval(
 	returnType sql.Type,
@@ -32,11 +35,34 @@ func compEval(
 		}
 
 		switch t := val.(type) {
-		case int, int32, int64:
+		case int, int8, int16, int32, int64, uint,
+			uint8, uint16, uint32, uint64:
 			switch x := t.(type) {
 			case int:
 				t = int64(x)
+			case int8:
+				t = int64(x)
+			case int16:
+				t = int64(x)
 			case int32:
+				t = int64(x)
+			case uint:
+				i := int64(x)
+				if i < 0 {
+					return nil, ErrUintOverflow.New()
+				}
+				t = i
+			case uint64:
+				i := int64(x)
+				if i < 0 {
+					return nil, ErrUintOverflow.New()
+				}
+				t = i
+			case uint8:
+				t = int64(x)
+			case uint16:
+				t = int64(x)
+			case uint32:
 				t = int64(x)
 			}
 			ival := t.(int64)

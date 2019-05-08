@@ -5,6 +5,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"testing"
+	"unsafe"
 )
 
 func TestGreatest(t *testing.T) {
@@ -93,6 +94,35 @@ func TestGreatest(t *testing.T) {
 			require.Equal(tt.expected, output)
 		})
 	}
+}
+
+func TestGreatestUnsignedOverflow(t *testing.T) {
+	require := require.New(t)
+
+	var x int
+	var gr sql.Expression
+	var err error
+
+	switch unsafe.Sizeof(x) {
+	case 4:
+		gr, err = NewGreatest(
+			expression.NewLiteral(int32(1), sql.Int32),
+			expression.NewLiteral(uint32(4294967295), sql.Uint32),
+		)
+		require.NoError(err)
+	case 8:
+		gr, err = NewGreatest(
+			expression.NewLiteral(int64(1), sql.Int64),
+			expression.NewLiteral(uint64(18446744073709551615), sql.Uint64),
+		)
+		require.NoError(err)
+	default:
+		// non 32/64 bits??
+		return
+	}
+
+	_, err = gr.Eval(sql.NewEmptyContext(), nil)
+	require.EqualError(err, "Unsigned integer too big to fit on signed integer")
 }
 
 func TestLeast(t *testing.T) {
