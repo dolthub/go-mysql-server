@@ -35,9 +35,9 @@ var OnceBeforeDefault = []Rule{
 // DefaultRules.
 var OnceAfterDefault = []Rule{
 	{"remove_unnecessary_converts", removeUnnecessaryConverts},
-	{"convert_dates", convertDates},
 	{"assign_catalog", assignCatalog},
 	{"prune_columns", pruneColumns},
+	{"convert_dates", convertDates},
 	{"pushdown", pushdown},
 	{"erase_projection", eraseProjection},
 }
