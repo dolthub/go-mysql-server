@@ -2,9 +2,10 @@ package plan
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-mysql-server.v0/internal/similartext"
 	"io"
 	"strings"
+
+	"gopkg.in/src-d/go-mysql-server.v0/internal/similartext"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
@@ -80,43 +81,42 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 	composedCreateTableStatement := produceCreateStatement(table)
 
 	return sql.NewRow(
-		i.table, // "Table" string
+		i.table,                      // "Table" string
 		composedCreateTableStatement, // "Create Table" string
 	), nil
 }
 
 func produceCreateStatement(table sql.Table) string {
 	schema := table.Schema()
-	colCreateStatements := make([]string, len(schema))
+	colStmts := make([]string, len(schema))
 
 	// Statement creation parts for each column
-	for indx, col := range schema {
-		createStmtPart := fmt.Sprintf("  `%s` %s", col.Name,
-			strings.ToLower(col.Type.Type().String()))
+	for i, col := range schema {
+		stmt := fmt.Sprintf("  `%s` %s", col.Name, sql.MySQLTypeName(col.Type))
 
 		if !col.Nullable {
-			createStmtPart = fmt.Sprintf("%s NOT NULL", createStmtPart)
+			stmt = fmt.Sprintf("%s NOT NULL", stmt)
 		}
 
 		switch def := col.Default.(type) {
 		case string:
 			if def != "" {
-				createStmtPart = fmt.Sprintf("%s DEFAULT %s", createStmtPart, def)
+				stmt = fmt.Sprintf("%s DEFAULT %q", stmt, def)
 			}
 		default:
 			if def != nil {
-				createStmtPart = fmt.Sprintf("%s DEFAULT %v", createStmtPart, col.Default)
+				stmt = fmt.Sprintf("%s DEFAULT %v", stmt, col.Default)
 			}
 		}
 
-		colCreateStatements[indx] = createStmtPart
+		colStmts[i] = stmt
 	}
 
-	prettyColCreateStmts := strings.Join(colCreateStatements, ",\n")
-	composedCreateTableStatement :=
-		fmt.Sprintf("CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", table.Name(), prettyColCreateStmts)
-
-	return composedCreateTableStatement
+	return fmt.Sprintf(
+		"CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		table.Name(),
+		strings.Join(colStmts, ",\n"),
+	)
 }
 
 func (i *showCreateTablesIter) Close() error {

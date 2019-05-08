@@ -694,7 +694,7 @@ var queries = []struct {
 		`,
 		[]sql.Row{
 			{"s", "TEXT"},
-			{"i", "INT64"},
+			{"i", "BIGINT"},
 		},
 	},
 	{

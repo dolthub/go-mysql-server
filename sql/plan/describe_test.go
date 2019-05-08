@@ -30,7 +30,7 @@ func TestDescribe(t *testing.T) {
 
 	n, err = iter.Next()
 	require.NoError(err)
-	require.Equal(sql.NewRow("c2", "INT32"), n)
+	require.Equal(sql.NewRow("c2", "INTEGER"), n)
 
 	n, err = iter.Next()
 	require.Equal(io.EOF, err)

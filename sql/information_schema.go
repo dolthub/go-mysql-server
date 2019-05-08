@@ -214,27 +214,27 @@ func columnsRowIter(cat *Catalog) RowIter {
 					collName = "utf8_bin"
 				}
 				rows = append(rows, Row{
-					"def",           // table_catalog
-					db.Name(),       // table_schema
-					t.Name(),        // table_name
-					c.Name,          // column_name
-					uint64(i),       // ordinal_position
-					c.Default,       // column_default
-					nullable,        // is_nullable
-					c.Type.String(), // data_type
-					nil,             // character_maximum_length
-					nil,             // character_octet_length
-					nil,             // numeric_precision
-					nil,             // numeric_scale
-					nil,             // datetime_precision
-					charName,        // character_set_name
-					collName,        // collation_name
-					c.Type.String(), // column_type
-					"",              // column_key
-					"",              // extra
-					"select",        // privileges
-					"",              // column_comment
-					"",              // generation_expression
+					"def",                 // table_catalog
+					db.Name(),             // table_schema
+					t.Name(),              // table_name
+					c.Name,                // column_name
+					uint64(i),             // ordinal_position
+					c.Default,             // column_default
+					nullable,              // is_nullable
+					MySQLTypeName(c.Type), // data_type
+					nil,                   // character_maximum_length
+					nil,                   // character_octet_length
+					nil,                   // numeric_precision
+					nil,                   // numeric_scale
+					nil,                   // datetime_precision
+					charName,              // character_set_name
+					collName,              // collation_name
+					MySQLTypeName(c.Type), // column_type
+					"",                    // column_key
+					"",                    // extra
+					"select",              // privileges
+					"",                    // column_comment
+					"",                    // generation_expression
 				})
 			}
 		}
