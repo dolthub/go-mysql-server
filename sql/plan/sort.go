@@ -68,18 +68,16 @@ func NewSort(sortFields []SortField, child sql.Node) *Sort {
 	}
 }
 
+var _ sql.Expressioner = (*Sort)(nil)
+
 // Resolved implements the Resolvable interface.
 func (s *Sort) Resolved() bool {
-	return s.UnaryNode.Child.Resolved() && s.expressionsResolved()
-}
-
-func (s *Sort) expressionsResolved() bool {
 	for _, f := range s.SortFields {
 		if !f.Column.Resolved() {
 			return false
 		}
 	}
-	return true
+	return s.Child.Resolved()
 }
 
 // RowIter implements the Node interface.
