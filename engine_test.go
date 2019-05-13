@@ -1060,6 +1060,10 @@ var queries = []struct {
 		`SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t GROUP BY t.date_col`,
 		[]sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	},
+	{
+		`SELECT i AS foo FROM mytable ORDER BY mytable.i`,
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
 }
 
 func TestQueries(t *testing.T) {

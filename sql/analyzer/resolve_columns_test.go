@@ -79,10 +79,10 @@ func TestQualifyColumns(t *testing.T) {
 	require := require.New(t)
 	f := getRule("qualify_columns")
 
-	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
-	table2 := mem.NewTable("mytable2", sql.Schema{{Name: "i", Type: sql.Int32}})
-	sessionTable := mem.NewTable("@@session", sql.Schema{{Name: "autocommit", Type: sql.Int64}})
-	globalTable := mem.NewTable("@@global", sql.Schema{{Name: "max_allowed_packet", Type: sql.Int64}})
+	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32, Source: "mytable"}})
+	table2 := mem.NewTable("mytable2", sql.Schema{{Name: "i", Type: sql.Int32, Source: "mytable2"}})
+	sessionTable := mem.NewTable("@@session", sql.Schema{{Name: "autocommit", Type: sql.Int64, Source: "@@session"}})
+	globalTable := mem.NewTable("@@global", sql.Schema{{Name: "max_allowed_packet", Type: sql.Int64, Source: "@@global"}})
 
 	node := plan.NewProject(
 		[]sql.Expression{
