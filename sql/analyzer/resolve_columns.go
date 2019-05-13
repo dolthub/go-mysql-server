@@ -239,27 +239,31 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 }
 
 func getNodeAvailableTables(n sql.Node) map[string]string {
-	var tables = make(map[string]string)
-	for _, c := range n.Children() {
-		plan.Inspect(c, func(n sql.Node) bool {
-			switch n := n.(type) {
-			case *plan.SubqueryAlias, *plan.ResolvedTable:
-				name := strings.ToLower(n.(sql.Nameable).Name())
-				tables[name] = name
-				return false
-			case *plan.TableAlias:
-				switch t := n.Child.(type) {
-				case *plan.ResolvedTable, *plan.UnresolvedTable:
-					name := strings.ToLower(t.(sql.Nameable).Name())
-					alias := strings.ToLower(n.Name())
-					tables[alias] = name
-				}
-			}
-
-			return true
-		})
-	}
+	tables := make(map[string]string)
+	getNodesAvailableTables(tables, n.Children()...)
 	return tables
+}
+
+func getNodesAvailableTables(tables map[string]string, nodes ...sql.Node) {
+	for _, n := range nodes {
+		switch n := n.(type) {
+		case *plan.SubqueryAlias, *plan.ResolvedTable:
+			name := strings.ToLower(n.(sql.Nameable).Name())
+			tables[name] = name
+		case *plan.TableAlias:
+			switch t := n.Child.(type) {
+			case *plan.ResolvedTable, *plan.UnresolvedTable:
+				name := strings.ToLower(t.(sql.Nameable).Name())
+				alias := strings.ToLower(n.Name())
+				tables[alias] = name
+				// Also add the name of the table because you can refer to a
+				// table with either the alias or the name.
+				tables[name] = name
+			}
+		default:
+			getNodesAvailableTables(tables, n.Children()...)
+		}
+	}
 }
 
 var errGlobalVariablesNotSupported = errors.NewKind("can't resolve global variable, %s was requested")
