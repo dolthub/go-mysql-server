@@ -47,13 +47,8 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	js, err = sql.JSON.Convert(js)
+	doc, err := unmarshalVal(js)
 	if err != nil {
-		return nil, err
-	}
-
-	var doc interface{}
-	if err := json.Unmarshal(js.([]byte), &doc); err != nil {
 		return nil, err
 	}
 
@@ -82,6 +77,20 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	return result, nil
+}
+
+func unmarshalVal(v interface{}) (interface{}, error) {
+	v, err := sql.JSON.Convert(v)
+	if err != nil {
+		return nil, err
+	}
+
+	var doc interface{}
+	if err := json.Unmarshal(v.([]byte), &doc); err != nil {
+		return nil, err
+	}
+
+	return doc, nil
 }
 
 // IsNullable implements the sql.Expression interface.

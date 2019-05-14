@@ -1064,6 +1064,10 @@ var queries = []struct {
 		`SELECT i AS foo FROM mytable ORDER BY mytable.i`,
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
+	{
+		`SELECT JSON_EXTRACT('[1, 2, 3]', '$.[0]')`,
+		[]sql.Row{{float64(1)}},
+	},
 }
 
 func TestQueries(t *testing.T) {

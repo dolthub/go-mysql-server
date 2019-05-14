@@ -200,6 +200,7 @@ func TestBlob(t *testing.T) {
 func TestJSON(t *testing.T) {
 	convert(t, JSON, "", []byte(`""`))
 	convert(t, JSON, []int{1, 2}, []byte("[1,2]"))
+	convert(t, JSON, `{"a": true, "b": 3}`, []byte(`{"a":true,"b":3}`))
 
 	lt(t, JSON, []byte("A"), []byte("B"))
 	eq(t, JSON, []byte("A"), []byte("A"))
