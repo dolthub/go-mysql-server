@@ -671,7 +671,16 @@ func (t jsonT) SQL(v interface{}) sqltypes.Value {
 
 // Convert implements Type interface.
 func (t jsonT) Convert(v interface{}) (interface{}, error) {
-	return json.Marshal(v)
+	switch v := v.(type) {
+	case string:
+		var doc interface{}
+		if err := json.Unmarshal([]byte(v), &doc); err != nil {
+			return json.Marshal(v)
+		}
+		return json.Marshal(doc)
+	default:
+		return json.Marshal(v)
+	}
 }
 
 // Compare implements Type interface.
