@@ -1085,6 +1085,50 @@ var fixtures = map[string]sql.Node{
 			),
 		),
 	),
+	`SELECT * FROM foo LEFT JOIN bar ON 1=1`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewLeftJoin(
+			plan.NewUnresolvedTable("foo", ""),
+			plan.NewUnresolvedTable("bar", ""),
+			expression.NewEquals(
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+		),
+	),
+	`SELECT * FROM foo LEFT OUTER JOIN bar ON 1=1`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewLeftJoin(
+			plan.NewUnresolvedTable("foo", ""),
+			plan.NewUnresolvedTable("bar", ""),
+			expression.NewEquals(
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+		),
+	),
+	`SELECT * FROM foo RIGHT JOIN bar ON 1=1`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewRightJoin(
+			plan.NewUnresolvedTable("foo", ""),
+			plan.NewUnresolvedTable("bar", ""),
+			expression.NewEquals(
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+		),
+	),
+	`SELECT * FROM foo RIGHT OUTER JOIN bar ON 1=1`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewRightJoin(
+			plan.NewUnresolvedTable("foo", ""),
+			plan.NewUnresolvedTable("bar", ""),
+			expression.NewEquals(
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+		),
+	),
 }
 
 func TestParse(t *testing.T) {

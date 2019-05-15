@@ -187,13 +187,28 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 				return nil, err
 			}
 
-			if ij, ok := n.(*plan.InnerJoin); ok {
-				cond, err := fixFieldIndexes(ij.Schema(), ij.Cond)
+			switch j := n.(type) {
+			case *plan.InnerJoin:
+				cond, err := fixFieldIndexes(j.Schema(), j.Cond)
 				if err != nil {
 					return nil, err
 				}
 
-				n = plan.NewInnerJoin(ij.Left, ij.Right, cond)
+				n = plan.NewInnerJoin(j.Left, j.Right, cond)
+			case *plan.RightJoin:
+				cond, err := fixFieldIndexes(j.Schema(), j.Cond)
+				if err != nil {
+					return nil, err
+				}
+
+				n = plan.NewRightJoin(j.Left, j.Right, cond)
+			case *plan.LeftJoin:
+				cond, err := fixFieldIndexes(j.Schema(), j.Cond)
+				if err != nil {
+					return nil, err
+				}
+
+				n = plan.NewLeftJoin(j.Left, j.Right, cond)
 			}
 
 			return n, nil
