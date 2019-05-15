@@ -150,12 +150,11 @@ func (h *Handler) ComQuery(
 // ComQuery callback if the result does not contain any fields,
 // or after the last ComQuery call completes.
 func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
-	sess, ok := h.sm.sessions[c.ConnectionID]
-	if !ok {
-		return 0
+	if sess := h.sm.session(c); sess != nil {
+		return sess.WarningCount()
 	}
 
-	return sess.WarningCount()
+	return 0
 }
 
 func (h *Handler) handleKill(conn *mysql.Conn, query string) (bool, error) {
