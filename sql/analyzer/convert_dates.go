@@ -9,11 +9,6 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
-type tableCol struct {
-	table string
-	col   string
-}
-
 // convertDates wraps all expressions of date and datetime type with converts
 // to ensure the date range is validated.
 func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {

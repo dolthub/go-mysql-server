@@ -154,11 +154,6 @@ func pruneUnusedColumns(n sql.Node, columns usedColumns) (sql.Node, error) {
 	})
 }
 
-type tableColumnPair struct {
-	table  string
-	column string
-}
-
 func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
 	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
@@ -184,9 +179,9 @@ func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
 				return n, nil
 			}
 
-			indexes := make(map[tableColumnPair]int)
+			indexes := make(map[tableCol]int)
 			for i, col := range schema {
-				indexes[tableColumnPair{col.Source, col.Name}] = i
+				indexes[tableCol{col.Source, col.Name}] = i
 			}
 
 			return exp.TransformExpressions(func(e sql.Expression) (sql.Expression, error) {
@@ -195,7 +190,7 @@ func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
 					return e, nil
 				}
 
-				idx, ok := indexes[tableColumnPair{gf.Table(), gf.Name()}]
+				idx, ok := indexes[tableCol{gf.Table(), gf.Name()}]
 				if !ok {
 					return nil, ErrColumnTableNotFound.New(gf.Table(), gf.Name())
 				}
