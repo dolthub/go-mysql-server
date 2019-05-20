@@ -1069,12 +1069,53 @@ var queries = []struct {
 		[]sql.Row{{float64(1)}},
 	},
 	{
+
 		`SELECT ARRAY_LENGTH(JSON_EXTRACT('[1, 2, 3]', '$'))`,
 		[]sql.Row{{int32(3)}},
 	},
 	{
 		`SELECT ARRAY_LENGTH(JSON_EXTRACT('[{"i":0}, {"i":1, "y":"yyy"}, {"i":2, "x":"xxx"}]', '$.i'))`,
 		[]sql.Row{{int32(3)}},
+  },
+  {
+		`SELECT GREATEST(1, 2, 3, 4)`,
+		[]sql.Row{{int64(4)}},
+	},
+	{
+		`SELECT GREATEST(1, 2, "3", 4)`,
+		[]sql.Row{{float64(4)}},
+	},
+	{
+		`SELECT GREATEST(1, 2, "9", "foo999")`,
+		[]sql.Row{{float64(9)}},
+	},
+	{
+		`SELECT GREATEST("aaa", "bbb", "ccc")`,
+		[]sql.Row{{"ccc"}},
+	},
+	{
+		`SELECT GREATEST(i, s) FROM mytable`,
+		[]sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+	},
+	{
+		`SELECT LEAST(1, 2, 3, 4)`,
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		`SELECT LEAST(1, 2, "3", 4)`,
+		[]sql.Row{{float64(1)}},
+	},
+	{
+		`SELECT LEAST(1, 2, "9", "foo999")`,
+		[]sql.Row{{float64(1)}},
+	},
+	{
+		`SELECT LEAST("aaa", "bbb", "ccc")`,
+		[]sql.Row{{"aaa"}},
+	},
+	{
+		`SELECT LEAST(i, s) FROM mytable`,
+		[]sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
 	},
 }
 

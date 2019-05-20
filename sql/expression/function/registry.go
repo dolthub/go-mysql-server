@@ -82,4 +82,6 @@ var Defaults = []sql.Function{
 	sql.Function1{Name: "from_base64", Fn: NewFromBase64},
 	sql.FunctionN{Name: "date_add", Fn: NewDateAdd},
 	sql.FunctionN{Name: "date_sub", Fn: NewDateSub},
+	sql.FunctionN{Name: "greatest", Fn: NewGreatest},
+	sql.FunctionN{Name: "least", Fn: NewLeast},
 }
