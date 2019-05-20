@@ -64,6 +64,12 @@ func (s *SessionManager) NewSession(conn *mysql.Conn) {
 	s.mu.Unlock()
 }
 
+func (s *SessionManager) session(conn *mysql.Conn) sql.Session {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sessions[conn.ConnectionID]
+}
+
 // NewContext creates a new context for the session at the given conn.
 func (s *SessionManager) NewContext(conn *mysql.Conn) *sql.Context {
 	return s.NewContextWithQuery(conn, "")
