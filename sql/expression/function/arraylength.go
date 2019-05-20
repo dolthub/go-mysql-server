@@ -38,7 +38,7 @@ func (f *ArrayLength) TransformUp(fn sql.TransformExprFunc) (sql.Expression, err
 
 // Eval implements the Expression interface.
 func (f *ArrayLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if !sql.IsArray(f.Child.Type()) {
+	if t := f.Child.Type(); !sql.IsArray(t) && t != sql.JSON {
 		return nil, sql.ErrInvalidType.New(f.Child.Type().Type().String())
 	}
 
