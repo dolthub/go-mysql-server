@@ -77,10 +77,12 @@ We support and actively test against certain third-party clients to ensure compa
 |`DAYOFYEAR(date)`|Returns the day of the year of the given date.|
 |`FLOOR(number)`|Return the largest integer value that is less than or equal to `number`.|
 |`FROM_BASE64(str)`|Decodes the base64-encoded string str.|
+|`GREATEST(...)`|Returns the greatest numeric or string value.|
 |`HOUR(date)`|Returns the hours of the given date.|
 |`IFNULL(expr1, expr2)`|If expr1 is not NULL, IFNULL() returns expr1; otherwise it returns expr2.|
 |`IS_BINARY(blob)`|Returns whether a BLOB is a binary file or not.|
 |`JSON_EXTRACT(json_doc, path, ...)`|Extracts data from a json document using json paths.|
+|`LEAST(...)`|Returns the smaller numeric or string value.|
 |`LN(X)`|Return the natural logarithm of X.|
 |`LOG(X), LOG(B, X)`|If called with one parameter, this function returns the natural logarithm of X. If called with two parameters, this function returns the logarithm of X to the base B. If X is less than or equal to 0, or if B is less than or equal to 1, then NULL is returned.|
 |`LOG10(X)`|Returns the base-10 logarithm of X.|

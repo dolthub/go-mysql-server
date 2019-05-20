@@ -1068,6 +1068,46 @@ var queries = []struct {
 		`SELECT JSON_EXTRACT('[1, 2, 3]', '$.[0]')`,
 		[]sql.Row{{float64(1)}},
 	},
+	{
+		`SELECT GREATEST(1, 2, 3, 4)`,
+		[]sql.Row{{int64(4)}},
+	},
+	{
+		`SELECT GREATEST(1, 2, "3", 4)`,
+		[]sql.Row{{float64(4)}},
+	},
+	{
+		`SELECT GREATEST(1, 2, "9", "foo999")`,
+		[]sql.Row{{float64(9)}},
+	},
+	{
+		`SELECT GREATEST("aaa", "bbb", "ccc")`,
+		[]sql.Row{{"ccc"}},
+	},
+	{
+		`SELECT GREATEST(i, s) FROM mytable`,
+		[]sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+	},
+	{
+		`SELECT LEAST(1, 2, 3, 4)`,
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		`SELECT LEAST(1, 2, "3", 4)`,
+		[]sql.Row{{float64(1)}},
+	},
+	{
+		`SELECT LEAST(1, 2, "9", "foo999")`,
+		[]sql.Row{{float64(1)}},
+	},
+	{
+		`SELECT LEAST("aaa", "bbb", "ccc")`,
+		[]sql.Row{{"aaa"}},
+	},
+	{
+		`SELECT LEAST(i, s) FROM mytable`,
+		[]sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+	},
 }
 
 func TestQueries(t *testing.T) {
