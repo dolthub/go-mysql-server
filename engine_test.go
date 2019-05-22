@@ -2459,6 +2459,66 @@ func TestDescribeNoPruneColumns(t *testing.T) {
 	require.Len(p.Schema(), 3)
 }
 
+var generatorQueries = []struct {
+	query    string
+	expected []sql.Row
+}{
+	{
+		`SELECT a, EXPLODE(b), c FROM t`,
+		[]sql.Row{
+			{int64(1), "a", "first"},
+			{int64(1), "b", "first"},
+			{int64(2), "c", "second"},
+			{int64(2), "d", "second"},
+			{int64(3), "e", "third"},
+			{int64(3), "f", "third"},
+		},
+	},
+	{
+		`SELECT a, EXPLODE(b) AS x, c FROM t`,
+		[]sql.Row{
+			{int64(1), "a", "first"},
+			{int64(1), "b", "first"},
+			{int64(2), "c", "second"},
+			{int64(2), "d", "second"},
+			{int64(3), "e", "third"},
+			{int64(3), "f", "third"},
+		},
+	},
+	{
+		`SELECT a, EXPLODE(b) AS x, c FROM t WHERE x = 'e'`,
+		[]sql.Row{
+			{int64(3), "e", "third"},
+		},
+	},
+}
+
+func TestGenerators(t *testing.T) {
+	table := mem.NewPartitionedTable("t", sql.Schema{
+		{Name: "a", Type: sql.Int64, Source: "t"},
+		{Name: "b", Type: sql.Array(sql.Text), Source: "t"},
+		{Name: "c", Type: sql.Text, Source: "t"},
+	}, testNumPartitions)
+
+	insertRows(
+		t, table,
+		sql.NewRow(int64(1), []interface{}{"a", "b"}, "first"),
+		sql.NewRow(int64(2), []interface{}{"c", "d"}, "second"),
+		sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"),
+	)
+
+	db := mem.NewDatabase("db")
+	db.AddTable("t", table)
+
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
+	e := sqle.New(catalog, analyzer.NewDefault(catalog), new(sqle.Config))
+
+	for _, q := range generatorQueries {
+		testQuery(t, e, q.query, q.expected)
+	}
+}
+
 func insertRows(t *testing.T, table sql.Inserter, rows ...sql.Row) {
 	t.Helper()
 

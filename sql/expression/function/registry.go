@@ -88,4 +88,5 @@ var Defaults = []sql.Function{
 	sql.Function1{Name: "length", Fn: NewLength},
 	sql.Function1{Name: "char_length", Fn: NewCharLength},
 	sql.Function1{Name: "character_length", Fn: NewCharLength},
+	sql.Function1{Name: "explode", Fn: NewExplode},
 }
