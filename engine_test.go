@@ -1194,6 +1194,10 @@ var queries = []struct {
 			{nil, int64(3), "first"},
 		},
 	},
+	{
+		`SELECT CHAR_LENGTH('áé'), LENGTH('àè')`,
+		[]sql.Row{{int32(2), int32(4)}},
+	},
 }
 
 func TestQueries(t *testing.T) {
