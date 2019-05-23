@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -155,31 +156,18 @@ func (pl *ProcessList) AddProgressItem(pid uint64, name string, total int64) {
 	}
 }
 
-// Kill terminates a process if it exists.
-func (pl *ProcessList) Kill(pid uint64) {
-	pl.Done(pid)
-}
-
-// KillConnection terminates the connection associated with the given processlist_id,
-// after terminating any statement the connection is executing.
-func (pl *ProcessList) KillConnection(pid uint64) (uint32, bool) {
+// Kill terminates all queries for a given connection
+func (pl *ProcessList) Kill(connID uint32) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	p, ok := pl.procs[pid]
-	if !ok {
-		return 0, false
-	}
-
-	connID := p.Connection
-	for id, proc := range pl.procs {
+	for pid, proc := range pl.procs {
 		if proc.Connection == connID {
+			logrus.Infof("kill query: pid %d", pid)
 			proc.Done()
-			delete(pl.procs, id)
+			delete(pl.procs, pid)
 		}
 	}
-
-	return connID, ok
 }
 
 // Done removes the finished process with the given pid from the process list.

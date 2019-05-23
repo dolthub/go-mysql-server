@@ -113,7 +113,7 @@ func TestKillConnection(t *testing.T) {
 		}
 	}
 
-	pl.KillConnection(1)
+	pl.Kill(1)
 	require.Len(t, pl.procs, 1)
 
 	// Odds should have been killed
