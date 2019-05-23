@@ -45,7 +45,7 @@ func TestShowProcessList(t *testing.T) {
 
 	expected := []sql.Row{
 		{int64(1), "foo", addr, "foo", "query", int64(0), "a(4/5), b(2/6)", "SELECT foo"},
-		{int64(2), "foo", addr, "foo", "create_index", int64(0), "foo(1/2)", "SELECT bar"},
+		{int64(1), "foo", addr, "foo", "create_index", int64(0), "foo(1/2)", "SELECT bar"},
 	}
 
 	require.ElementsMatch(expected, rows)

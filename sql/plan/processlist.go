@@ -89,7 +89,7 @@ func (p *ShowProcessList) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		sort.Strings(status)
 
 		rows[i] = process{
-			id:      int64(proc.Pid),
+			id:      int64(proc.Connection),
 			user:    proc.User,
 			time:    int64(proc.Seconds()),
 			state:   strings.Join(status, ", "),
