@@ -69,6 +69,28 @@ var queries = []struct {
 		[]sql.Row{{"oo"}},
 	},
 	{
+		`SELECT SUBSTRING_INDEX('a.b.c.d.e.f', '.', 2)`,
+		[]sql.Row{
+			{"a.b"},
+		},
+	},
+	{
+		`SELECT SUBSTRING_INDEX('a.b.c.d.e.f', '.', -2)`,
+		[]sql.Row{
+			{"e.f"},
+		},
+	},
+	{
+		`SELECT SUBSTRING_INDEX(SUBSTRING_INDEX('source{d}', '{d}', 1), 'r', -1)`,
+		[]sql.Row{
+			{"ce"},
+		},
+	},
+	{
+		`SELECT SUBSTRING_INDEX(mytable.s, "d", 1) as s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY 1 HAVING s = 'secon'`,
+		[]sql.Row{{"secon"}},
+	},
+	{
 		"SELECT YEAR('2007-12-11') FROM mytable",
 		[]sql.Row{{int32(2007)}, {int32(2007)}, {int32(2007)}},
 	},
@@ -1076,8 +1098,8 @@ var queries = []struct {
 	{
 		`SELECT ARRAY_LENGTH(JSON_EXTRACT('[{"i":0}, {"i":1, "y":"yyy"}, {"i":2, "x":"xxx"}]', '$.i'))`,
 		[]sql.Row{{int32(3)}},
-  },
-  {
+	},
+	{
 		`SELECT GREATEST(1, 2, 3, 4)`,
 		[]sql.Row{{int64(4)}},
 	},

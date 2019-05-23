@@ -31,6 +31,7 @@ var Defaults = []sql.Function{
 	},
 	sql.Function1{Name: "is_binary", Fn: NewIsBinary},
 	sql.FunctionN{Name: "substring", Fn: NewSubstring},
+	sql.Function3{Name: "substring_index", Fn: NewSubstringIndex},
 	sql.FunctionN{Name: "mid", Fn: NewSubstring},
 	sql.FunctionN{Name: "substr", Fn: NewSubstring},
 	sql.Function1{Name: "date", Fn: NewDate},
