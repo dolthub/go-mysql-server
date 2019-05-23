@@ -168,3 +168,18 @@ func (s *Substring) TransformUp(f sql.TransformExprFunc) (sql.Expression, error)
 	}
 	return f(sub)
 }
+
+// SubstringIndex returns the substring from string str before count occurrences of the delimiter delim.
+// If count is positive, everything to the left of the final delimiter (counting from the left) is returned.
+// If count is negative, everything to the right of the final delimiter (counting from the right) is returned.
+// SUBSTRING_INDEX() performs a case-sensitive match when searching for delim.
+type SubstringIndex struct {
+	str   sql.Expression
+	delim sql.Expression
+	count sql.Expression
+}
+
+// NewSubstringIndex creates a new SubstringIndex UDF.
+func NewSubstringIndex(str, delim, count sql.Expression) sql.Expression {
+	return &SubstringIndex{str, delim, count}
+}
