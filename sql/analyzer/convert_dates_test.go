@@ -159,7 +159,7 @@ func TestConvertDatesProject(t *testing.T) {
 	)
 	expected := plan.NewFilter(
 		expression.NewEquals(
-			expression.NewGetField(0, sql.Int64, "__foo", false),
+			expression.NewGetField(0, sql.Int64, "foo", false),
 			expression.NewLiteral("2019-06-06 00:00:00", sql.Text),
 		),
 		plan.NewProject([]sql.Expression{
@@ -168,7 +168,7 @@ func TestConvertDatesProject(t *testing.T) {
 					expression.NewGetField(0, sql.Timestamp, "foo", false),
 					expression.ConvertToDatetime,
 				),
-				"__foo",
+				"foo",
 			),
 		}, table),
 	)
@@ -196,7 +196,7 @@ func TestConvertDatesGroupBy(t *testing.T) {
 	)
 	expected := plan.NewFilter(
 		expression.NewEquals(
-			expression.NewGetField(0, sql.Int64, "__foo", false),
+			expression.NewGetField(0, sql.Int64, "foo", false),
 			expression.NewLiteral("2019-06-06 00:00:00", sql.Text),
 		),
 		plan.NewGroupBy(
@@ -206,7 +206,7 @@ func TestConvertDatesGroupBy(t *testing.T) {
 						expression.NewGetField(0, sql.Timestamp, "foo", false),
 						expression.ConvertToDatetime,
 					),
-					"__foo",
+					"foo",
 				),
 			},
 			[]sql.Expression{
