@@ -504,15 +504,10 @@ func tableExprToTable(
 			return nil, ErrUnsupportedSyntax.New(te)
 		}
 	case *sqlparser.JoinTableExpr:
-		// TODO: add support for the rest of joins
-		if t.Join != sqlparser.JoinStr && t.Join != sqlparser.NaturalJoinStr {
-			return nil, ErrUnsupportedFeature.New(t.Join)
-		}
-
 		// TODO: add support for using, once we have proper table
 		// qualification of fields
 		if len(t.Condition.Using) > 0 {
-			return nil, ErrUnsupportedFeature.New("using clause on join")
+			return nil, ErrUnsupportedFeature.New("USING clause on join")
 		}
 
 		left, err := tableExprToTable(ctx, t.LeftExpr)
@@ -537,7 +532,17 @@ func tableExprToTable(
 		if err != nil {
 			return nil, err
 		}
-		return plan.NewInnerJoin(left, right, cond), nil
+
+		switch t.Join {
+		case sqlparser.JoinStr:
+			return plan.NewInnerJoin(left, right, cond), nil
+		case sqlparser.LeftJoinStr:
+			return plan.NewLeftJoin(left, right, cond), nil
+		case sqlparser.RightJoinStr:
+			return plan.NewRightJoin(left, right, cond), nil
+		default:
+			return nil, ErrUnsupportedFeature.New(t.Join)
+		}
 	}
 }
 

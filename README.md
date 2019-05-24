@@ -135,8 +135,8 @@ SET <variable name> = <value>
 |:-----|:-----|:------------|
 |`INMEMORY_JOINS`|environment|If set it will perform all joins in memory. Default is off.|
 |`inmemory_joins`|session|If set it will perform all joins in memory. Default is off. This has precedence over `INMEMORY_JOINS`.|
-|`MAX_MEMORY_INNER_JOIN`|environment|The maximum number of memory, in megabytes, that can be consumed by go-mysql-server before switching to multipass mode in inner joins. Default is the 20% of all available physical memory.|
-|`max_memory_joins`|session|The maximum number of memory, in megabytes, that can be consumed by go-mysql-server before switching to multipass mode in inner joins. Default is the 20% of all available physical memory. This has precedence over `MAX_MEMORY_INNER_JOIN`.|
+|`MAX_MEMORY_JOIN`|environment|The maximum number of memory, in megabytes, that can be consumed by go-mysql-server before switching to multipass mode in joins. Default is the 20% of all available physical memory.|
+|`max_memory_joins`|session|The maximum number of memory, in megabytes, that can be consumed by go-mysql-server before switching to multipass mode in joins. Default is the 20% of all available physical memory. This has precedence over `MAX_MEMORY_JOIN`.|
 |`DEBUG_ANALYZER`|environment|If set, the analyzer will print debug messages. Default is off.|
 |`PILOSA_INDEX_THREADS`|environment|Number of threads used in index creation. Default is the number of cores available in the machine.|
 |`pilosa_index_threads`|environment|Number of threads used in index creation. Default is the number of cores available in the machine. This has precedence over `PILOSA_INDEX_THREADS`.|

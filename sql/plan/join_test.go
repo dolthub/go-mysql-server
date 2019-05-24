@@ -10,6 +10,46 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 )
 
+func TestJoinSchema(t *testing.T) {
+	t1 := NewResolvedTable(mem.NewTable("foo", sql.Schema{
+		{Name: "a", Source: "foo", Type: sql.Int64},
+	}))
+
+	t2 := NewResolvedTable(mem.NewTable("bar", sql.Schema{
+		{Name: "b", Source: "bar", Type: sql.Int64},
+	}))
+
+	t.Run("inner", func(t *testing.T) {
+		j := NewInnerJoin(t1, t2, nil)
+		result := j.Schema()
+
+		require.Equal(t, sql.Schema{
+			{Name: "a", Source: "foo", Type: sql.Int64},
+			{Name: "b", Source: "bar", Type: sql.Int64},
+		}, result)
+	})
+
+	t.Run("left", func(t *testing.T) {
+		j := NewLeftJoin(t1, t2, nil)
+		result := j.Schema()
+
+		require.Equal(t, sql.Schema{
+			{Name: "a", Source: "foo", Type: sql.Int64},
+			{Name: "b", Source: "bar", Type: sql.Int64, Nullable: true},
+		}, result)
+	})
+
+	t.Run("right", func(t *testing.T) {
+		j := NewRightJoin(t1, t2, nil)
+		result := j.Schema()
+
+		require.Equal(t, sql.Schema{
+			{Name: "a", Source: "foo", Type: sql.Int64, Nullable: true},
+			{Name: "b", Source: "bar", Type: sql.Int64},
+		}, result)
+	})
+}
+
 func TestInnerJoin(t *testing.T) {
 	testInnerJoin(t, sql.NewEmptyContext())
 }
@@ -30,8 +70,6 @@ func testInnerJoin(t *testing.T, ctx *sql.Context) {
 	t.Helper()
 
 	require := require.New(t)
-	finalSchema := append(lSchema, rSchema...)
-
 	ltable := mem.NewTable("left", lSchema)
 	rtable := mem.NewTable("right", rSchema)
 	insertData(t, ltable)
@@ -44,8 +82,6 @@ func testInnerJoin(t *testing.T, ctx *sql.Context) {
 			expression.NewGetField(0, sql.Text, "lcol1", false),
 			expression.NewGetField(4, sql.Text, "rcol1", false),
 		))
-
-	require.Equal(finalSchema, j.Schema())
 
 	rows := collectRows(t, j)
 	require.Len(rows, 2)
@@ -183,4 +219,54 @@ func BenchmarkInnerJoin(b *testing.B) {
 			require.Equal(expected, rows)
 		}
 	})
+}
+
+func TestLeftJoin(t *testing.T) {
+	require := require.New(t)
+
+	ltable := mem.NewTable("left", lSchema)
+	rtable := mem.NewTable("right", rSchema)
+	insertData(t, ltable)
+	insertData(t, rtable)
+
+	j := NewLeftJoin(
+		NewResolvedTable(ltable),
+		NewResolvedTable(rtable),
+		expression.NewEquals(
+			expression.NewGetField(0, sql.Text, "lcol1", false),
+			expression.NewGetField(4, sql.Text, "rcol1", false),
+		))
+
+	rows := collectRows(t, j)
+	require.ElementsMatch([]sql.Row{
+		{"col1_1", "col2_1", int32(1111), int64(2222), "col1_1", "col2_1", int32(1111), int64(2222)},
+		{"col1_1", "col2_1", int32(1111), int64(2222), nil, nil, nil, nil},
+		{"col1_2", "col2_2", int32(3333), int64(4444), "col1_2", "col2_2", int32(3333), int64(4444)},
+		{"col1_2", "col2_2", int32(3333), int64(4444), nil, nil, nil, nil},
+	}, rows)
+}
+
+func TestRightJoin(t *testing.T) {
+	require := require.New(t)
+
+	ltable := mem.NewTable("left", lSchema)
+	rtable := mem.NewTable("right", rSchema)
+	insertData(t, ltable)
+	insertData(t, rtable)
+
+	j := NewRightJoin(
+		NewResolvedTable(ltable),
+		NewResolvedTable(rtable),
+		expression.NewEquals(
+			expression.NewGetField(0, sql.Text, "lcol1", false),
+			expression.NewGetField(4, sql.Text, "rcol1", false),
+		))
+
+	rows := collectRows(t, j)
+	require.ElementsMatch([]sql.Row{
+		{"col1_1", "col2_1", int32(1111), int64(2222), "col1_1", "col2_1", int32(1111), int64(2222)},
+		{nil, nil, nil, nil, "col1_1", "col2_1", int32(1111), int64(2222)},
+		{"col1_2", "col2_2", int32(3333), int64(4444), "col1_2", "col2_2", int32(3333), int64(4444)},
+		{nil, nil, nil, nil, "col1_2", "col2_2", int32(3333), int64(4444)},
+	}, rows)
 }

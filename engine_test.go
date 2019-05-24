@@ -1091,7 +1091,6 @@ var queries = []struct {
 		[]sql.Row{{float64(1)}},
 	},
 	{
-
 		`SELECT ARRAY_LENGTH(JSON_EXTRACT('[1, 2, 3]', '$'))`,
 		[]sql.Row{{int32(3)}},
 	},
@@ -1138,6 +1137,62 @@ var queries = []struct {
 	{
 		`SELECT LEAST(i, s) FROM mytable`,
 		[]sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+	},
+	{
+		"SELECT i, i2, s2 FROM mytable LEFT JOIN othertable ON i = i2",
+		[]sql.Row{
+			{int64(1), int64(1), "third"},
+			{int64(1), nil, nil},
+			{int64(1), nil, nil},
+			{int64(2), int64(2), "second"},
+			{int64(2), nil, nil},
+			{int64(2), nil, nil},
+			{int64(3), int64(3), "first"},
+			{int64(3), nil, nil},
+			{int64(3), nil, nil},
+		},
+	},
+	{
+		"SELECT i, i2, s2 FROM mytable RIGHT JOIN othertable ON i = i2",
+		[]sql.Row{
+			{int64(1), int64(1), "third"},
+			{nil, int64(1), "third"},
+			{nil, int64(1), "third"},
+			{int64(2), int64(2), "second"},
+			{nil, int64(2), "second"},
+			{nil, int64(2), "second"},
+			{int64(3), int64(3), "first"},
+			{nil, int64(3), "first"},
+			{nil, int64(3), "first"},
+		},
+	},
+	{
+		"SELECT i, i2, s2 FROM mytable LEFT OUTER JOIN othertable ON i = i2",
+		[]sql.Row{
+			{int64(1), int64(1), "third"},
+			{int64(1), nil, nil},
+			{int64(1), nil, nil},
+			{int64(2), int64(2), "second"},
+			{int64(2), nil, nil},
+			{int64(2), nil, nil},
+			{int64(3), int64(3), "first"},
+			{int64(3), nil, nil},
+			{int64(3), nil, nil},
+		},
+	},
+	{
+		"SELECT i, i2, s2 FROM mytable RIGHT OUTER JOIN othertable ON i = i2",
+		[]sql.Row{
+			{int64(1), int64(1), "third"},
+			{nil, int64(1), "third"},
+			{nil, int64(1), "third"},
+			{int64(2), int64(2), "second"},
+			{nil, int64(2), "second"},
+			{nil, int64(2), "second"},
+			{int64(3), int64(3), "first"},
+			{nil, int64(3), "first"},
+			{nil, int64(3), "first"},
+		},
 	},
 }
 
