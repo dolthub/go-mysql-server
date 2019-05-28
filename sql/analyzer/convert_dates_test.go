@@ -8,6 +8,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function/aggregation"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
@@ -62,6 +63,30 @@ func TestConvertDates(t *testing.T) {
 					),
 				),
 				expression.ConvertToDatetime,
+			),
+		},
+		{
+			"min aggregation",
+			aggregation.NewMin(
+				expression.NewGetField(0, sql.Timestamp, "foo", false),
+			),
+			aggregation.NewMin(
+				expression.NewConvert(
+					expression.NewGetField(0, sql.Timestamp, "foo", false),
+					expression.ConvertToDatetime,
+				),
+			),
+		},
+		{
+			"max aggregation",
+			aggregation.NewMax(
+				expression.NewGetField(0, sql.Timestamp, "foo", false),
+			),
+			aggregation.NewMax(
+				expression.NewConvert(
+					expression.NewGetField(0, sql.Timestamp, "foo", false),
+					expression.ConvertToDatetime,
+				),
 			),
 		},
 		{

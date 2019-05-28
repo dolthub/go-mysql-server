@@ -4,6 +4,7 @@ import (
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
+	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function/aggregation"
 	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
 )
 
@@ -101,7 +102,21 @@ func addDateConvert(
 	// No need to wrap expressions that already validate times, such as
 	// convert, date_add, etc and those expressions whose Type method
 	// cannot be called because they are placeholders.
-	switch e.(type) {
+	switch e := e.(type) {
+	case *aggregation.Max:
+		child, err := addDateConvert(e.Child, node, replacements, nodeReplacements, expressions, false)
+		if err != nil {
+			return nil, err
+		}
+
+		return aggregation.NewMax(child), nil
+	case *aggregation.Min:
+		child, err := addDateConvert(e.Child, node, replacements, nodeReplacements, expressions, false)
+		if err != nil {
+			return nil, err
+		}
+
+		return aggregation.NewMin(child), nil
 	case *expression.Convert,
 		*expression.Arithmetic,
 		*function.DateAdd,
