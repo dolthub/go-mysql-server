@@ -102,10 +102,12 @@ func (a *Arithmetic) IsNullable() bool {
 func (a *Arithmetic) Type() sql.Type {
 	switch a.Op {
 	case sqlparser.PlusStr, sqlparser.MinusStr, sqlparser.MultStr, sqlparser.DivStr:
-		_, lok := a.Left.(*Interval)
-		_, rok := a.Right.(*Interval)
-		if lok || rok {
+		if isInterval(a.Left) || isInterval(a.Right) {
 			return sql.Timestamp
+		}
+
+		if sql.IsTime(a.Left.Type()) && sql.IsTime(a.Right.Type()) {
+			return sql.Int64
 		}
 
 		if sql.IsInteger(a.Left.Type()) && sql.IsInteger(a.Right.Type()) {
@@ -128,6 +130,11 @@ func (a *Arithmetic) Type() sql.Type {
 	}
 
 	return sql.Float64
+}
+
+func isInterval(expr sql.Expression) bool {
+	_, ok := expr.(*Interval)
+	return ok
 }
 
 // TransformUp implements the Expression interface.
@@ -264,6 +271,8 @@ func plus(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case *TimeDelta:
 			return sql.ValidateTime(r.Add(l)), nil
+		case time.Time:
+			return l.Unix() + r.Unix(), nil
 		}
 	case *TimeDelta:
 		switch r := rval.(type) {
@@ -298,6 +307,8 @@ func minus(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case *TimeDelta:
 			return sql.ValidateTime(r.Sub(l)), nil
+		case time.Time:
+			return l.Unix() - r.Unix(), nil
 		}
 	}
 

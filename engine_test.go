@@ -1218,6 +1218,14 @@ var queries = []struct {
 			{int64(1)},
 		},
 	},
+	{
+		`SELECT NOW() - NOW()`,
+		[]sql.Row{{int64(0)}},
+	},
+	{
+		`SELECT NOW() - (NOW() - INTERVAL 1 SECOND)`,
+		[]sql.Row{{int64(1)}},
+	},
 }
 
 func TestQueries(t *testing.T) {

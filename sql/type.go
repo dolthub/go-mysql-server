@@ -325,6 +325,10 @@ func (t numberT) SQL(v interface{}) sqltypes.Value {
 
 // Convert implements Type interface.
 func (t numberT) Convert(v interface{}) (interface{}, error) {
+	if ti, ok := v.(time.Time); ok {
+		v = ti.Unix()
+	}
+
 	switch t.t {
 	case sqltypes.Int32:
 		return cast.ToInt32E(v)
@@ -874,9 +878,14 @@ func IsUnsigned(t Type) bool {
 	return t == Uint32 || t == Uint64
 }
 
-// IsInteger check if t is a (U)Int32/64 type
+// IsInteger checks if t is a (U)Int32/64 type.
 func IsInteger(t Type) bool {
 	return IsSigned(t) || IsUnsigned(t)
+}
+
+// IsTime checks if t is a timestamp or date.
+func IsTime(t Type) bool {
+	return t == Timestamp || t == Date
 }
 
 // IsDecimal checks if t is decimal type.
