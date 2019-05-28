@@ -29,7 +29,7 @@ func resolveOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 		childNewCols := columnsDefinedInNode(sort.Child)
 		var schemaCols []string
 		for _, col := range sort.Child.Schema() {
-			schemaCols = append(schemaCols, col.Name)
+			schemaCols = append(schemaCols, strings.ToLower(col.Name))
 		}
 
 		var colsFromChild []string
@@ -38,9 +38,10 @@ func resolveOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 			ns := findExprNameables(f.Column)
 
 			for _, n := range ns {
-				if stringContains(childNewCols, n.Name()) {
+				name := strings.ToLower(n.Name())
+				if stringContains(childNewCols, name) {
 					colsFromChild = append(colsFromChild, n.Name())
-				} else if !stringContains(schemaCols, n.Name()) {
+				} else if !stringContains(schemaCols, name) {
 					missingCols = append(missingCols, n.Name())
 				}
 			}
@@ -140,7 +141,7 @@ func columnsDefinedInNode(n sql.Node) []string {
 	for _, e := range exprs {
 		alias, ok := e.(*expression.Alias)
 		if ok {
-			cols = append(cols, alias.Name())
+			cols = append(cols, strings.ToLower(alias.Name()))
 		}
 	}
 
