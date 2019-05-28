@@ -1198,6 +1198,10 @@ var queries = []struct {
 		`SELECT CHAR_LENGTH('áé'), LENGTH('àè')`,
 		[]sql.Row{{int32(2), int32(4)}},
 	},
+	{
+		"SELECT i, COUNT(i) AS `COUNT(i)` FROM (SELECT i FROM mytable) t GROUP BY i ORDER BY i, `COUNT(i)` DESC",
+		[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(1)}, {int64(3), int64(1)}},
+	},
 }
 
 func TestQueries(t *testing.T) {
