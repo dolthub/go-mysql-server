@@ -2,6 +2,7 @@ package expression
 
 import (
 	"fmt"
+	"reflect"
 
 	"gopkg.in/src-d/go-mysql-server.v0/sql"
 )
@@ -32,7 +33,19 @@ func (e *Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return !v.(bool), nil
+	b, ok := v.(bool)
+	if !ok {
+		v, _ = e.Type().Convert(v)
+		if v == nil {
+			return nil, nil
+		}
+
+		if b, ok = v.(bool); !ok {
+			return nil, sql.ErrInvalidType.New(reflect.TypeOf(v).String())
+		}
+	}
+
+	return !b, nil
 }
 
 func (e *Not) String() string {

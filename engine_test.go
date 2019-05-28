@@ -1202,6 +1202,22 @@ var queries = []struct {
 		"SELECT i, COUNT(i) AS `COUNT(i)` FROM (SELECT i FROM mytable) t GROUP BY i ORDER BY i, `COUNT(i)` DESC",
 		[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(1)}, {int64(3), int64(1)}},
 	},
+	{
+		"SELECT i FROM mytable WHERE NOT s ORDER BY 1 DESC",
+		[]sql.Row{
+			{int64(3)},
+			{int64(2)},
+			{int64(1)},
+		},
+	},
+	{
+		"SELECT i FROM mytable WHERE NOT(NOT i) ORDER BY 1 DESC",
+		[]sql.Row{
+			{int64(3)},
+			{int64(2)},
+			{int64(1)},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {
