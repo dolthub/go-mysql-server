@@ -1226,6 +1226,10 @@ var queries = []struct {
 		`SELECT NOW() - (NOW() - INTERVAL 1 SECOND)`,
 		[]sql.Row{{int64(1)}},
 	},
+	{
+		`SELECT SUBSTR(SUBSTRING('0123456789ABCDEF', 1, 10), -4)`,
+		[]sql.Row{{"6789"}},
+	},
 }
 
 func TestQueries(t *testing.T) {
