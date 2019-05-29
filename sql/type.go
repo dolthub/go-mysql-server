@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -593,11 +594,38 @@ func (t booleanT) SQL(v interface{}) sqltypes.Value {
 
 // Convert implements Type interface.
 func (t booleanT) Convert(v interface{}) (interface{}, error) {
-	val, err := cast.ToBoolE(v)
-	if err != nil {
-		return nil, ErrConvertToSQL.New(t)
+	switch b := v.(type) {
+	case bool:
+		return b, nil
+	case int, int64, int32, int16, int8, uint, uint64, uint32, uint16, uint8:
+		if b != 0 {
+			return true, nil
+		}
+		return false, nil
+	case time.Duration:
+		if int64(b) != 0 {
+			return true, nil
+		}
+		return false, nil
+	case time.Time:
+		if b.UnixNano() != 0 {
+			return true, nil
+		}
+		return false, nil
+	case float32, float64:
+		if int(math.Round(v.(float64))) != 0 {
+			return true, nil
+		}
+		return false, nil
+	case string:
+		return false, fmt.Errorf("unable to cast string to bool")
+
+	case nil:
+		return nil, fmt.Errorf("unable to cast nil to bool")
+
+	default:
+		return nil, fmt.Errorf("unable to cast %#v of type %T to bool", v, v)
 	}
-	return val, nil
 }
 
 // Compare implements Type interface.
