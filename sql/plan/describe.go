@@ -4,7 +4,7 @@ import (
 	"io"
 	"strings"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // Describe is a node that describes its children.

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"unicode"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
 )
 
 // Soundex is a function that returns the soundex of a string. Two strings that

@@ -33,12 +33,12 @@ Having data in another format that you want as tabular data to query using SQL, 
 
 ## Installation
 
-The import path for the package is `gopkg.in/src-d/go-mysql-server.v0`.
+The import path for the package is `github.com/src-d/go-mysql-server`.
 
 To install it, run:
 
 ```
-go get gopkg.in/src-d/go-mysql-server.v0
+go get github.com/src-d/go-mysql-server
 ```
 
 ## Documentation

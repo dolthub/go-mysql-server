@@ -3,7 +3,7 @@ package analyzer
 import (
 	"reflect"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // RuleFunc is the function to be applied in a rule.

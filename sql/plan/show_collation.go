@@ -1,6 +1,6 @@
 package plan
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import "github.com/src-d/go-mysql-server/sql"
 
 // ShowCollation shows all available collations.
 type ShowCollation struct{}

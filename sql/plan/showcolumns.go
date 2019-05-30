@@ -3,7 +3,7 @@ package plan
 import (
 	"fmt"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // ShowColumns shows the columns details of a table.

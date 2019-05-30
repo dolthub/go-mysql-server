@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/plan"
 )
 
 func parseLockTables(ctx *sql.Context, query string) (sql.Node, error) {

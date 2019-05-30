@@ -9,9 +9,9 @@ import (
 	"time"
 
 	errors "gopkg.in/src-d/go-errors.v1"
-	sqle "gopkg.in/src-d/go-mysql-server.v0"
-	"gopkg.in/src-d/go-mysql-server.v0/auth"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	sqle "github.com/src-d/go-mysql-server"
+	"github.com/src-d/go-mysql-server/auth"
+	"github.com/src-d/go-mysql-server/sql"
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-vitess.v1/mysql"

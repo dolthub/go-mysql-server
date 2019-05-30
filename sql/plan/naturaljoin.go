@@ -1,6 +1,6 @@
 package plan
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import "github.com/src-d/go-mysql-server/sql"
 
 // NaturalJoin is a join that automatically joins by all the columns with the
 // same name.

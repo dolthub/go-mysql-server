@@ -1,10 +1,10 @@
-package aggregation // import "gopkg.in/src-d/go-mysql-server.v0/sql/expression/function/aggregation"
+package aggregation // import "github.com/src-d/go-mysql-server/sql/expression/function/aggregation"
 
 import (
 	"fmt"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
 )
 
 // Avg node to calculate the average from numeric column

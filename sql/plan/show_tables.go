@@ -3,7 +3,7 @@ package plan
 import (
 	"sort"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // ShowTables is a node that shows the database tables.

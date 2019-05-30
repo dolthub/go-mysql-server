@@ -7,9 +7,9 @@ import (
 	"strings"
 	"unicode"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
+	"github.com/src-d/go-mysql-server/sql/plan"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 func parseShowIndex(s string) (sql.Node, error) {

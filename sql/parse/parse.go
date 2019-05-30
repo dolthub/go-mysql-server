@@ -1,4 +1,4 @@
-package parse // import "gopkg.in/src-d/go-mysql-server.v0/sql/parse"
+package parse // import "github.com/src-d/go-mysql-server/sql/parse"
 
 import (
 	"bufio"
@@ -11,10 +11,10 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/src-d/go-mysql-server/sql/expression/function"
+	"github.com/src-d/go-mysql-server/sql/plan"
 	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
 )
 

@@ -1,7 +1,7 @@
-package mem // import "gopkg.in/src-d/go-mysql-server.v0/mem"
+package mem // import "github.com/src-d/go-mysql-server/mem"
 
 import (
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // Database is an in-memory database.

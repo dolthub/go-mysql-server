@@ -3,7 +3,7 @@ package plan
 import (
 	"io"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // QueryProcess represents a running query process node. It will use a callback

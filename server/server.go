@@ -1,11 +1,11 @@
-package server // import "gopkg.in/src-d/go-mysql-server.v0/server"
+package server // import "github.com/src-d/go-mysql-server/server"
 
 import (
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	"gopkg.in/src-d/go-mysql-server.v0"
-	"gopkg.in/src-d/go-mysql-server.v0/auth"
+	"github.com/src-d/go-mysql-server"
+	"github.com/src-d/go-mysql-server/auth"
 
 	"gopkg.in/src-d/go-vitess.v1/mysql"
 )

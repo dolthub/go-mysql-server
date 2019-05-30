@@ -1,14 +1,14 @@
-package sqle // import "gopkg.in/src-d/go-mysql-server.v0"
+package sqle // import "github.com/src-d/go-mysql-server"
 
 import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/src-d/go-mysql-server.v0/auth"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/parse"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
+	"github.com/src-d/go-mysql-server/auth"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/analyzer"
+	"github.com/src-d/go-mysql-server/sql/expression/function"
+	"github.com/src-d/go-mysql-server/sql/parse"
+	"github.com/src-d/go-mysql-server/sql/plan"
 )
 
 // Config for the Engine.

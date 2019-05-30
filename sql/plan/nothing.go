@@ -1,6 +1,6 @@
 package plan
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import "github.com/src-d/go-mysql-server/sql"
 
 // Nothing is a node that will return no rows.
 var Nothing nothing

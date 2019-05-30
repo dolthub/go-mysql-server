@@ -3,8 +3,8 @@ package aggregation
 import (
 	"fmt"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
 )
 
 // Sum agregation returns the sum of all values in the selected column.

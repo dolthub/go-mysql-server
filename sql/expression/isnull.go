@@ -1,6 +1,6 @@
 package expression
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import "github.com/src-d/go-mysql-server/sql"
 
 // IsNull is an expression that checks if an expression is null.
 type IsNull struct {

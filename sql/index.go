@@ -1,7 +1,7 @@
 package sql
 
 import (
-	"gopkg.in/src-d/go-mysql-server.v0/internal/similartext"
+	"github.com/src-d/go-mysql-server/internal/similartext"
 	"io"
 	"strings"
 	"sync"

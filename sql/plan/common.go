@@ -1,6 +1,6 @@
-package plan // import "gopkg.in/src-d/go-mysql-server.v0/sql/plan"
+package plan // import "github.com/src-d/go-mysql-server/sql/plan"
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import "github.com/src-d/go-mysql-server/sql"
 
 // IsUnary returns whether the node is unary or not.
 func IsUnary(node sql.Node) bool {
