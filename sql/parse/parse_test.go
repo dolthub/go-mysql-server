@@ -1015,6 +1015,7 @@ var fixtures = map[string]sql.Node{
 	"SHOW CREATE TABLE `my``table`":          plan.NewShowCreateTable("", nil, "my`table"),
 	"SHOW CREATE TABLE `my``db`.`my``table`": plan.NewShowCreateTable("my`db", nil, "my`table"),
 	"SHOW CREATE TABLE ````":                 plan.NewShowCreateTable("", nil, "`"),
+	"SHOW CREATE TABLE `.`":                  plan.NewShowCreateTable("", nil, "."),
 	`SELECT '2018-05-01' + INTERVAL 1 DAY`: plan.NewProject(
 		[]sql.Expression{expression.NewArithmetic(
 			expression.NewLiteral("2018-05-01", sql.Text),

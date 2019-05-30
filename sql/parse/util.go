@@ -202,7 +202,7 @@ func readIdent(ident *string) parseFunc {
 func readQuotedIdent(ident *string) parseFunc {
 	return func(r *bufio.Reader) error {
 		var buf bytes.Buffer
-		if err := readLetter(r, &buf); err != nil {
+		if err := readValidQuotedIdentRune(r, &buf); err != nil {
 			return err
 		}
 
