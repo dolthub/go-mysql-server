@@ -144,6 +144,36 @@ func readValidIdentRune(r *bufio.Reader, buf *bytes.Buffer) error {
 	return nil
 }
 
+func readValidQuotedIdentRune(r *bufio.Reader, buf *bytes.Buffer) error {
+	bs, err := r.Peek(2)
+	if err != nil {
+		return err
+	}
+
+	if bs[0] == '`' && bs[1] == '`' {
+		if _, _, err := r.ReadRune(); err != nil {
+			return err
+		}
+		if _, _, err := r.ReadRune(); err != nil {
+			return err
+		}
+		buf.WriteRune('`')
+		return nil
+	}
+
+	if bs[0] == '`' && bs[1] != '`' {
+		return io.EOF
+	}
+
+	if _, _, err := r.ReadRune(); err != nil {
+		return err
+	}
+
+	buf.WriteByte(bs[0])
+
+	return nil
+}
+
 func unreadString(r *bufio.Reader, str string) {
 	nr := *r
 	r.Reset(io.MultiReader(strings.NewReader(str), &nr))
@@ -158,6 +188,26 @@ func readIdent(ident *string) parseFunc {
 
 		for {
 			if err := readValidIdentRune(r, &buf); err == io.EOF {
+				break
+			} else if err != nil {
+				return err
+			}
+		}
+
+		*ident = strings.ToLower(buf.String())
+		return nil
+	}
+}
+
+func readQuotedIdent(ident *string) parseFunc {
+	return func(r *bufio.Reader) error {
+		var buf bytes.Buffer
+		if err := readLetter(r, &buf); err != nil {
+			return err
+		}
+
+		for {
+			if err := readValidQuotedIdentRune(r, &buf); err == io.EOF {
 				break
 			} else if err != nil {
 				return err
@@ -235,7 +285,7 @@ func readQuotableIdent(ident *string) parseFunc {
 		if nextChar[0] == '`' {
 			steps = parseFuncs{
 				expectQuote,
-				readIdent(ident),
+				readQuotedIdent(ident),
 				expectQuote,
 			}
 		} else {
