@@ -1,7 +1,7 @@
 package expression
 
 import (
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // IsUnary returns whether the expression is unary or not.

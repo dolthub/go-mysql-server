@@ -1,9 +1,10 @@
 language: go
-go_import_path: gopkg.in/src-d/go-mysql-server.v0
+go_import_path: github.com/src-d/go-mysql-server
 
 env:
   global:
     - LD_LIBRARY_PATH="/usr/local/lib":${LD_LIBRARY_PATH}
+    - GO111MODULE=on
 
 addons:
   apt:
@@ -20,8 +21,7 @@ services:
   - docker
 
 install:
-  - GO111MODULE=on go get ./...
-  - GO111MODULE=on go mod vendor
+  - go get ./...
   - make dependencies
 
 before_script:
@@ -45,7 +45,7 @@ jobs:
       before_install:
         - eval "$(gimme 1.12.4)"
       install:
-        - GO111MODULE=on go get ./...
+        - go get ./...
       script:
         - make TEST=python-pymysql integration
 
@@ -54,7 +54,7 @@ jobs:
       before_install:
         - eval "$(gimme 1.12.4)"
       install:
-        - GO111MODULE=on go get ./...
+        - go get ./...
       script:
         - make TEST=php integration
 
@@ -63,7 +63,7 @@ jobs:
       before_install:
         - eval "$(gimme 1.12.4)"
       install:
-        - GO111MODULE=on go get ./...
+        - go get ./...
       script:
         - make TEST=ruby integration
 
@@ -72,7 +72,7 @@ jobs:
       before_install:
         - eval "$(gimme 1.12.4)"
       install:
-        - GO111MODULE=on go get ./...
+        - go get ./...
       script:
         - make TEST=jdbc-mariadb integration
 
@@ -81,7 +81,7 @@ jobs:
       before_install:
         - eval "$(gimme 1.12.4)"
       install:
-        - GO111MODULE=on go get ./...
+        - go get ./...
       script:
         - make TEST=javascript integration
 
@@ -91,7 +91,7 @@ jobs:
       before_install:
         - eval "$(gimme 1.12.4)"
       install:
-        - GO111MODULE=on go get ./...
+        - go get ./...
       script:
         - make TEST=dotnet integration
 
@@ -100,6 +100,6 @@ jobs:
       before_install:
         - eval "$(gimme 1.12.4)"
       install:
-        - GO111MODULE=on go get ./...
+        - go get ./...
       script:
         - make TEST=c integration

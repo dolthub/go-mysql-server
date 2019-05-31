@@ -2,7 +2,7 @@ package plan
 
 import (
 	"gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // ErrCreateTable is thrown when the database doesn't support table creation

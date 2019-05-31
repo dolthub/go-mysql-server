@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"gopkg.in/src-d/go-mysql-server.v0/mem"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 var testingTable *mem.Table

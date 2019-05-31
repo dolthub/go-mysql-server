@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	bolt "go.etcd.io/bbolt"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // mapping

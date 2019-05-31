@@ -1,7 +1,7 @@
 package function
 
 import (
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // Database stands for DATABASE() function

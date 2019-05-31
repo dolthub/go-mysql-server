@@ -1,4 +1,4 @@
-package analyzer // import "gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
+package analyzer // import "github.com/src-d/go-mysql-server/sql/analyzer"
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"

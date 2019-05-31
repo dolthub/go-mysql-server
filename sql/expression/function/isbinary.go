@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
 )
 
 // IsBinary is a function that returns whether a blob is binary or not.

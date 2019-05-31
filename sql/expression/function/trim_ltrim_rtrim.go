@@ -6,8 +6,8 @@ import (
 	"strings"
 	"unicode"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 type trimType rune

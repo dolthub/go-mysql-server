@@ -1,6 +1,6 @@
 package function
 
-import "gopkg.in/src-d/go-mysql-server.v0/sql"
+import "github.com/src-d/go-mysql-server/sql"
 
 // ConnectionID returns the current connection id.
 type ConnectionID struct{}

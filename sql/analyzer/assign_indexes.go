@@ -4,9 +4,9 @@ import (
 	"reflect"
 
 	errors "gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/src-d/go-mysql-server/sql/plan"
 )
 
 var errInvalidInRightEvaluation = errors.NewKind("expecting evaluation of IN expression right hand side to be a tuple, but it is %T")

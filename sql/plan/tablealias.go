@@ -4,7 +4,7 @@ import (
 	"reflect"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // TableAlias is a node that acts as a table with a given name.

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
 )
 
 // Sleep is a function that just waits for the specified number of seconds

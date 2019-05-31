@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // Sqrt is a function that returns the square value of the number provided.

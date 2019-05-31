@@ -2,7 +2,7 @@ package plan
 
 import (
 	opentracing "github.com/opentracing/opentracing-go"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // Offset is a node that skips the first N rows.

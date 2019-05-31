@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
 )
 
 func getDate(ctx *sql.Context,

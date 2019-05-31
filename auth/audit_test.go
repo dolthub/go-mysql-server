@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/src-d/go-mysql-server.v0/auth"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/auth"
+	"github.com/src-d/go-mysql-server/sql"
 
 	"github.com/sanity-io/litter"
 	"github.com/sirupsen/logrus"

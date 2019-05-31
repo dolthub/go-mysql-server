@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cast"
 	errors "gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // ErrConvertExpression is returned when a conversion is not possible.

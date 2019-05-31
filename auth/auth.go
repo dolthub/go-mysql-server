@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 	"gopkg.in/src-d/go-vitess.v1/mysql"
 )
 

@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // CrossJoin is a cross join between two tables.

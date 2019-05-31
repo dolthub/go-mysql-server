@@ -9,13 +9,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	sqle "gopkg.in/src-d/go-mysql-server.v0"
-	"gopkg.in/src-d/go-mysql-server.v0/auth"
-	"gopkg.in/src-d/go-mysql-server.v0/mem"
-	"gopkg.in/src-d/go-mysql-server.v0/server"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/analyzer"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/index/pilosa"
+	sqle "github.com/src-d/go-mysql-server"
+	"github.com/src-d/go-mysql-server/auth"
+	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/server"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/analyzer"
+	"github.com/src-d/go-mysql-server/sql/index/pilosa"
 )
 
 const port = 3336

@@ -3,8 +3,8 @@ package function
 import (
 	"fmt"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
 )
 
 // IfNull function returns the specified value IF the expression is NULL, otherwise return the expression.

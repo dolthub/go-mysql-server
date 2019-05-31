@@ -1,4 +1,4 @@
-package sql // import "gopkg.in/src-d/go-mysql-server.v0/sql"
+package sql // import "github.com/src-d/go-mysql-server/sql"
 
 import (
 	"fmt"

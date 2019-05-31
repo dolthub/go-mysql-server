@@ -3,7 +3,7 @@ package function
 import (
 	"fmt"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 const mysqlVersion = "8.0.11"

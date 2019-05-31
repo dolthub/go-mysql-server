@@ -3,7 +3,7 @@ package expression
 import (
 	"fmt"
 
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // Between checks a value is between two given values.

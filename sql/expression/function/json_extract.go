@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/oliveagle/jsonpath"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
+	"github.com/src-d/go-mysql-server/sql"
 )
 
 // JSONExtract extracts data from a json document using json paths.

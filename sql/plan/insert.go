@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
 )
 
 // ErrInsertIntoNotSupported is thrown when a table doesn't support inserts

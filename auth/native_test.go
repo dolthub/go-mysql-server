@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"gopkg.in/src-d/go-mysql-server.v0/auth"
+	"github.com/src-d/go-mysql-server/auth"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"

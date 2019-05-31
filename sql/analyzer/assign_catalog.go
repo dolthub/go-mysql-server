@@ -1,8 +1,8 @@
 package analyzer
 
 import (
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/plan"
 )
 
 // assignCatalog sets the catalog in the required nodes.

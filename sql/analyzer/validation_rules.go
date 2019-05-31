@@ -4,10 +4,10 @@ import (
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-mysql-server.v0/sql"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/expression/function"
-	"gopkg.in/src-d/go-mysql-server.v0/sql/plan"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/src-d/go-mysql-server/sql/expression/function"
+	"github.com/src-d/go-mysql-server/sql/plan"
 )
 
 const (
