@@ -13,8 +13,8 @@ func TestIsNull(t *testing.T) {
 	require.True(t, IsNull(nil))
 
 	n := numberT{sqltypes.Uint64}
-	require.Equal(t, sqltypes.NULL, n.SQL(Null))
-	require.Equal(t, sqltypes.NewUint64(0), n.SQL(uint64(0)))
+	require.Equal(t, sqltypes.NULL, mustSQL(n.SQL(Null)))
+	require.Equal(t, sqltypes.NewUint64(0), mustSQL(n.SQL(uint64(0))))
 }
 
 func TestText(t *testing.T) {
@@ -70,7 +70,8 @@ func TestFloat64(t *testing.T) {
 	var f = numberT{
 		t: query.Type_FLOAT64,
 	}
-	val := f.SQL(23.222)
+	val, err := f.SQL(23.222)
+	require.NoError(err)
 	require.True(val.IsFloat())
 	require.Equal(sqltypes.NewFloat64(23.222), val)
 }
@@ -97,7 +98,8 @@ func TestTimestamp(t *testing.T) {
 		v.(time.Time).Format(TimestampLayout),
 	)
 
-	sql := Timestamp.SQL(now)
+	sql, err := Timestamp.SQL(now)
+	require.NoError(err)
 	require.Equal([]byte(now.Format(TimestampLayout)), sql.Raw())
 
 	after := now.Add(time.Second)
@@ -167,7 +169,8 @@ func TestDate(t *testing.T) {
 		v.(time.Time).Format(DateLayout),
 	)
 
-	sql := Date.SQL(now)
+	sql, err := Date.SQL(now)
+	require.NoError(err)
 	require.Equal([]byte(now.Format(DateLayout)), sql.Raw())
 
 	after := now.Add(time.Second)
@@ -186,7 +189,6 @@ func TestBlob(t *testing.T) {
 
 	convert(t, Blob, "", []byte{})
 	convert(t, Blob, nil, []byte(nil))
-	MustConvert(Blob, nil)
 
 	_, err := Blob.Convert(1)
 	require.NotNil(err)
@@ -221,9 +223,8 @@ func TestTuple(t *testing.T) {
 
 	convert(t, typ, []interface{}{1, 2, 3}, []interface{}{int32(1), "2", int64(3)})
 
-	require.Panics(func() {
-		typ.SQL(nil)
-	})
+	_, err = typ.SQL(nil)
+	require.Error(err)
 
 	require.Equal(sqltypes.Expression, typ.Type())
 
@@ -245,6 +246,12 @@ func TestArray(t *testing.T) {
 	require.True(ErrNotArray.Is(err))
 
 	convert(t, typ, []interface{}{1, 2, 3}, []interface{}{int64(1), int64(2), int64(3)})
+	convert(
+		t,
+		typ,
+		NewArrayGenerator([]interface{}{1, 2, 3}),
+		[]interface{}{int64(1), int64(2), int64(3)},
+	)
 
 	require.Equal(sqltypes.TypeJSON, typ.Type())
 
@@ -257,6 +264,21 @@ func TestArray(t *testing.T) {
 	gt(t, typ, []interface{}{1, 3, 3}, []interface{}{1, 2, 3})
 	gt(t, typ, []interface{}{1, 2, 4}, []interface{}{1, 2, 3})
 	gt(t, typ, []interface{}{1, 2, 4}, []interface{}{5, 6})
+
+	expected := []byte("[1,2,3]")
+
+	v, err := Array(Int64).SQL([]interface{}{1, 2, 3})
+	require.NoError(err)
+	require.Equal(expected, v.Raw())
+
+	v, err = Array(Int64).SQL(NewArrayGenerator([]interface{}{1, 2, 3}))
+	require.NoError(err)
+	require.Equal(expected, v.Raw())
+}
+
+func TestUnderlyingType(t *testing.T) {
+	require.Equal(t, Text, UnderlyingType(Array(Text)))
+	require.Equal(t, Text, UnderlyingType(Text))
 }
 
 func eq(t *testing.T, typ Type, a, b interface{}) {
@@ -291,4 +313,11 @@ func convertErr(t *testing.T, typ Type, val interface{}) {
 	t.Helper()
 	_, err := typ.Convert(val)
 	require.Error(t, err)
+}
+
+func mustSQL(v sqltypes.Value, err error) sqltypes.Value {
+	if err != nil {
+		panic(err)
+	}
+	return v
 }

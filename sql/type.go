@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"reflect"
 	"strconv"
@@ -148,7 +149,7 @@ type Type interface {
 	// The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
 	Compare(interface{}, interface{}) (int, error)
 	// SQL returns the sqltypes.Value for the given value.
-	SQL(interface{}) sqltypes.Value
+	SQL(interface{}) (sqltypes.Value, error)
 	fmt.Stringer
 }
 
@@ -266,8 +267,8 @@ func (t nullT) Type() query.Type {
 }
 
 // SQL implements Type interface.
-func (t nullT) SQL(interface{}) sqltypes.Value {
-	return sqltypes.NULL
+func (t nullT) SQL(interface{}) (sqltypes.Value, error) {
+	return sqltypes.NULL, nil
 }
 
 // Convert implements Type interface.
@@ -300,26 +301,26 @@ func (t numberT) Type() query.Type {
 }
 
 // SQL implements Type interface.
-func (t numberT) SQL(v interface{}) sqltypes.Value {
+func (t numberT) SQL(v interface{}) (sqltypes.Value, error) {
 	if _, ok := v.(nullT); ok {
-		return sqltypes.NULL
+		return sqltypes.NULL, nil
 	}
 
 	switch t.t {
 	case sqltypes.Int32:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10))
+		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
 	case sqltypes.Int64:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10))
+		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
 	case sqltypes.Uint32:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10))
+		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
 	case sqltypes.Uint64:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10))
+		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
 	case sqltypes.Float32:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendFloat(nil, cast.ToFloat64(v), 'f', -1, 64))
+		return sqltypes.MakeTrusted(t.t, strconv.AppendFloat(nil, cast.ToFloat64(v), 'f', -1, 64)), nil
 	case sqltypes.Float64:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendFloat(nil, cast.ToFloat64(v), 'f', -1, 64))
+		return sqltypes.MakeTrusted(t.t, strconv.AppendFloat(nil, cast.ToFloat64(v), 'f', -1, 64)), nil
 	default:
-		return sqltypes.MakeTrusted(t.t, []byte{})
+		return sqltypes.MakeTrusted(t.t, []byte{}), nil
 	}
 }
 
@@ -426,16 +427,20 @@ var TimestampLayouts = []string{
 }
 
 // SQL implements Type interface.
-func (t timestampT) SQL(v interface{}) sqltypes.Value {
+func (t timestampT) SQL(v interface{}) (sqltypes.Value, error) {
 	if _, ok := v.(nullT); ok {
-		return sqltypes.NULL
+		return sqltypes.NULL, nil
 	}
 
-	time := MustConvert(t, v).(time.Time)
+	v, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+
 	return sqltypes.MakeTrusted(
 		sqltypes.Timestamp,
-		[]byte(time.Format(TimestampLayout)),
-	)
+		[]byte(v.(time.Time).Format(TimestampLayout)),
+	), nil
 }
 
 // Convert implements Type interface.
@@ -498,16 +503,20 @@ func (t dateT) Type() query.Type {
 	return sqltypes.Date
 }
 
-func (t dateT) SQL(v interface{}) sqltypes.Value {
+func (t dateT) SQL(v interface{}) (sqltypes.Value, error) {
 	if _, ok := v.(nullT); ok {
-		return sqltypes.NULL
+		return sqltypes.NULL, nil
 	}
 
-	time := MustConvert(t, v).(time.Time)
+	v, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+
 	return sqltypes.MakeTrusted(
 		sqltypes.Timestamp,
-		[]byte(time.Format(DateLayout)),
-	)
+		[]byte(v.(time.Time).Format(DateLayout)),
+	), nil
 }
 
 func (t dateT) Convert(v interface{}) (interface{}, error) {
@@ -551,12 +560,17 @@ func (t textT) Type() query.Type {
 }
 
 // SQL implements Type interface.
-func (t textT) SQL(v interface{}) sqltypes.Value {
+func (t textT) SQL(v interface{}) (sqltypes.Value, error) {
 	if _, ok := v.(nullT); ok {
-		return sqltypes.NULL
+		return sqltypes.NULL, nil
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.Text, []byte(MustConvert(t, v).(string)))
+	v, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+
+	return sqltypes.MakeTrusted(sqltypes.Text, []byte(v.(string))), nil
 }
 
 // Convert implements Type interface.
@@ -583,9 +597,9 @@ func (t booleanT) Type() query.Type {
 }
 
 // SQL implements Type interface.
-func (t booleanT) SQL(v interface{}) sqltypes.Value {
+func (t booleanT) SQL(v interface{}) (sqltypes.Value, error) {
 	if _, ok := v.(nullT); ok {
-		return sqltypes.NULL
+		return sqltypes.NULL, nil
 	}
 
 	b := []byte{'0'}
@@ -593,7 +607,7 @@ func (t booleanT) SQL(v interface{}) sqltypes.Value {
 		b[0] = '1'
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.Bit, b)
+	return sqltypes.MakeTrusted(sqltypes.Bit, b), nil
 }
 
 // Convert implements Type interface.
@@ -655,12 +669,17 @@ func (t blobT) Type() query.Type {
 }
 
 // SQL implements Type interface.
-func (t blobT) SQL(v interface{}) sqltypes.Value {
+func (t blobT) SQL(v interface{}) (sqltypes.Value, error) {
 	if _, ok := v.(nullT); ok {
-		return sqltypes.NULL
+		return sqltypes.NULL, nil
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.Blob, MustConvert(t, v).([]byte))
+	v, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+
+	return sqltypes.MakeTrusted(sqltypes.Blob, v.([]byte)), nil
 }
 
 // Convert implements Type interface.
@@ -694,11 +713,17 @@ func (t jsonT) Type() query.Type {
 }
 
 // SQL implements Type interface.
-func (t jsonT) SQL(v interface{}) sqltypes.Value {
+func (t jsonT) SQL(v interface{}) (sqltypes.Value, error) {
 	if _, ok := v.(nullT); ok {
-		return sqltypes.NULL
+		return sqltypes.NULL, nil
 	}
-	return sqltypes.MakeTrusted(sqltypes.TypeJSON, MustConvert(t, v).([]byte))
+
+	v, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+
+	return sqltypes.MakeTrusted(sqltypes.TypeJSON, v.([]byte)), nil
 }
 
 // Convert implements Type interface.
@@ -734,12 +759,12 @@ func (t tupleT) Type() query.Type {
 	return sqltypes.Expression
 }
 
-func (t tupleT) SQL(v interface{}) sqltypes.Value {
+func (t tupleT) SQL(v interface{}) (sqltypes.Value, error) {
 	if _, ok := v.(nullT); ok {
-		return sqltypes.NULL
+		return sqltypes.NULL, nil
 	}
 
-	panic("unable to convert tuple type to SQL")
+	return sqltypes.Value{}, fmt.Errorf("unable to convert tuple type to SQL")
 }
 
 func (t tupleT) Convert(v interface{}) (interface{}, error) {
@@ -799,24 +824,58 @@ func (t arrayT) Type() query.Type {
 	return sqltypes.TypeJSON
 }
 
-func (t arrayT) SQL(v interface{}) sqltypes.Value {
+func (t arrayT) SQL(v interface{}) (sqltypes.Value, error) {
+	if _, ok := v.(nullT); ok {
+		return sqltypes.NULL, nil
+	}
+
+	v, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+
 	return JSON.SQL(v)
 }
 
 func (t arrayT) Convert(v interface{}) (interface{}, error) {
-	if vals, ok := v.([]interface{}); ok {
-		var result = make([]interface{}, len(vals))
-		for i, v := range vals {
+	switch v := v.(type) {
+	case []interface{}:
+		var result = make([]interface{}, len(v))
+		for i, v := range v {
 			var err error
 			result[i], err = t.underlying.Convert(v)
 			if err != nil {
 				return nil, err
 			}
 		}
-
 		return result, nil
+	case Generator:
+		var values []interface{}
+		for {
+			val, err := v.Next()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				return nil, err
+			}
+
+			val, err = t.underlying.Convert(val)
+			if err != nil {
+				return nil, err
+			}
+
+			values = append(values, val)
+		}
+
+		if err := v.Close(); err != nil {
+			return nil, err
+		}
+
+		return values, nil
+	default:
+		return nil, ErrNotArray.New(v)
 	}
-	return nil, ErrNotArray.New(v)
 }
 
 func (t arrayT) Compare(a, b interface{}) (int, error) {
@@ -851,16 +910,6 @@ func (t arrayT) Compare(a, b interface{}) (int, error) {
 	}
 
 	return 0, nil
-}
-
-// MustConvert calls the Convert function from a given Type, it err panics.
-func MustConvert(t Type, v interface{}) interface{} {
-	c, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-
-	return c
 }
 
 // IsNumber checks if t is a number type
@@ -960,4 +1009,15 @@ func MySQLTypeName(t Type) string {
 	default:
 		return "UNKNOWN"
 	}
+}
+
+// UnderlyingType returns the underlying type of an array if the type is an
+// array, or the type itself in any other case.
+func UnderlyingType(t Type) Type {
+	a, ok := t.(arrayT)
+	if !ok {
+		return t
+	}
+
+	return a.underlying
 }

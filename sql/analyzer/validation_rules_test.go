@@ -582,6 +582,98 @@ func TestValidateIntervalUsage(t *testing.T) {
 	}
 }
 
+func TestValidateExplodeUsage(t *testing.T) {
+	testCases := []struct {
+		name string
+		node sql.Node
+		ok   bool
+	}{
+		{
+			"valid",
+			plan.NewGenerate(
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewAlias(
+							function.NewGenerate(
+								expression.NewGetField(0, sql.Array(sql.Int64), "f", false),
+							),
+							"foo",
+						),
+					},
+					plan.NewUnresolvedTable("dual", ""),
+				),
+				expression.NewGetField(0, sql.Array(sql.Int64), "foo", false),
+			),
+			true,
+		},
+		{
+			"where",
+			plan.NewFilter(
+				function.NewArrayLength(
+					function.NewExplode(
+						expression.NewGetField(0, sql.Array(sql.Int64), "foo", false),
+					),
+				),
+				plan.NewGenerate(
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewAlias(
+								function.NewGenerate(
+									expression.NewGetField(0, sql.Array(sql.Int64), "f", false),
+								),
+								"foo",
+							),
+						},
+						plan.NewUnresolvedTable("dual", ""),
+					),
+					expression.NewGetField(0, sql.Array(sql.Int64), "foo", false),
+				),
+			),
+			false,
+		},
+		{
+			"group by",
+			plan.NewGenerate(
+				plan.NewGroupBy(
+					[]sql.Expression{
+						expression.NewAlias(
+							function.NewExplode(
+								expression.NewGetField(0, sql.Array(sql.Int64), "f", false),
+							),
+							"foo",
+						),
+					},
+					[]sql.Expression{
+						expression.NewAlias(
+							function.NewExplode(
+								expression.NewGetField(0, sql.Array(sql.Int64), "f", false),
+							),
+							"foo",
+						),
+					},
+					plan.NewUnresolvedTable("dual", ""),
+				),
+				expression.NewGetField(0, sql.Array(sql.Int64), "foo", false),
+			),
+			false,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+
+			_, err := validateExplodeUsage(sql.NewEmptyContext(), nil, tt.node)
+			if tt.ok {
+				require.NoError(err)
+			} else {
+				require.Error(err)
+				require.True(ErrExplodeInvalidUse.Is(err))
+			}
+		})
+	}
+}
+
 type dummyNode struct{ resolved bool }
 
 func (n dummyNode) String() string                                    { return "dummynode" }
