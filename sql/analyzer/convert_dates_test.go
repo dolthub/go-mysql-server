@@ -3,13 +3,13 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/src-d/go-mysql-server/mem"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function"
 	"github.com/src-d/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/src-d/go-mysql-server/sql/plan"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConvertDates(t *testing.T) {
@@ -242,6 +242,39 @@ func TestConvertDatesGroupBy(t *testing.T) {
 			},
 			table,
 		),
+	)
+
+	result, err := convertDates(sql.NewEmptyContext(), nil, input)
+	require.NoError(t, err)
+	require.Equal(t, expected, result)
+}
+
+func TestConvertDatesFieldReference(t *testing.T) {
+	table := plan.NewResolvedTable(mem.NewTable("t", nil))
+	input := plan.NewFilter(
+		expression.NewEquals(
+			expression.NewGetField(0, sql.Int64, "DAYOFWEEK(foo)", false),
+			expression.NewLiteral("2019-06-06 00:00:00", sql.Text),
+		),
+		plan.NewProject([]sql.Expression{
+			function.NewDayOfWeek(
+				expression.NewGetField(0, sql.Timestamp, "foo", false),
+			),
+		}, table),
+	)
+	expected := plan.NewFilter(
+		expression.NewEquals(
+			expression.NewGetField(0, sql.Int64, "DAYOFWEEK(convert(foo, datetime))", false),
+			expression.NewLiteral("2019-06-06 00:00:00", sql.Text),
+		),
+		plan.NewProject([]sql.Expression{
+			function.NewDayOfWeek(
+				expression.NewConvert(
+					expression.NewGetField(0, sql.Timestamp, "foo", false),
+					expression.ConvertToDatetime,
+				),
+			),
+		}, table),
 	)
 
 	result, err := convertDates(sql.NewEmptyContext(), nil, input)

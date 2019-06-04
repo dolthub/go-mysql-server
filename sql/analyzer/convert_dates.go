@@ -54,7 +54,12 @@ func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 				if err != nil {
 					return nil, err
 				}
+
 				aggregate[i] = agg
+
+				if _, ok := agg.(*expression.Alias); !ok && agg.String() != a.String() {
+					nodeReplacements[tableCol{"", a.String()}] = agg.String()
+				}
 			}
 
 			var grouping = make([]sql.Expression, len(exp.Grouping))
@@ -69,9 +74,27 @@ func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 			}
 
 			result = plan.NewGroupBy(aggregate, grouping, exp.Child)
+		case *plan.Project:
+			var projections = make([]sql.Expression, len(exp.Projections))
+			for i, e := range exp.Projections {
+				expr, err := e.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+					return addDateConvert(e, exp, replacements, nodeReplacements, expressions, true)
+				})
+				if err != nil {
+					return nil, err
+				}
+
+				projections[i] = expr
+
+				if _, ok := expr.(*expression.Alias); !ok && expr.String() != e.String() {
+					nodeReplacements[tableCol{"", e.String()}] = expr.String()
+				}
+			}
+
+			result = plan.NewProject(projections, exp.Child)
 		default:
 			result, err = exp.TransformExpressions(func(e sql.Expression) (sql.Expression, error) {
-				return addDateConvert(e, n, replacements, nodeReplacements, expressions, true)
+				return addDateConvert(e, n, replacements, nodeReplacements, expressions, false)
 			})
 		}
 
