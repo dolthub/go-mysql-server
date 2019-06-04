@@ -2,10 +2,12 @@ module github.com/src-d/go-mysql-server
 
 require (
 	github.com/StackExchange/wmi v0.0.0-20181212234831-e0a55b97c705 // indirect
+	github.com/VividCortex/gohistogram v1.0.0 // indirect
+	github.com/go-kit/kit v0.8.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gogo/protobuf v1.2.1 // indirect
-	github.com/golang/protobuf v1.3.0 // indirect
+	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/gorilla/handlers v1.4.0 // indirect
 	github.com/mitchellh/hashstructure v1.0.0
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852
@@ -20,6 +22,7 @@ require (
 	github.com/stretchr/testify v1.2.2
 	go.etcd.io/bbolt v1.3.2
 	golang.org/x/net v0.0.0-20190227022144-312bce6e941f // indirect
+	google.golang.org/genproto v0.0.0-20180831171423-11092d34479b // indirect
 	google.golang.org/grpc v1.19.0 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 	gopkg.in/src-d/go-vitess.v1 v1.8.0

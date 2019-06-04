@@ -1,8 +1,17 @@
 package analyzer
 
 import (
+	"strconv"
+
+	"github.com/go-kit/kit/metrics/discard"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/plan"
+)
+
+var (
+	// ParallelQueryCounter describes a metric that accumulates
+	// number of parallel queries monotonically.
+	ParallelQueryCounter = discard.NewCounter()
 )
 
 func shouldParallelize(node sql.Node) bool {
@@ -29,6 +38,7 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error)
 		if !isParallelizable(node) {
 			return node, nil
 		}
+		ParallelQueryCounter.With("parallelism", strconv.Itoa(a.Parallelism)).Add(1)
 
 		return plan.NewExchange(a.Parallelism, node), nil
 	})

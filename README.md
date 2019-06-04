@@ -305,6 +305,131 @@ CREATE INDEX foo ON table USING driverid (col1, col2) WITH (async = true)
 
 `pilosalib` driver was renamed to `pilosa` and now `pilosa` does not require an external pilosa server.
 
+### Metrics
+
+`go-mysql-server` utilizes `github.com/go-kit/kit/metrics` module to expose metrics (counters, gauges, histograms) for certain packages (so far for `engine`, `analyzer`, `regex`, `pilosa`). If you already have metrics server (prometheus, statsd/statsite, influxdb, etc.) and you want to gather metrics also from `go-mysql-server` components, you will need to initialize some global variables by particular implementations to satisfy following interfaces:
+```go
+// Counter describes a metric that accumulates values monotonically.
+type Counter interface {
+	With(labelValues ...string) Counter
+	Add(delta float64)
+}
+
+// Gauge describes a metric that takes specific values over time.
+type Gauge interface {
+	With(labelValues ...string) Gauge
+	Set(value float64)
+	Add(delta float64)
+}
+
+// Histogram describes a metric that takes repeated observations of the same
+// kind of thing, and produces a statistical summary of those observations,
+// typically expressed as quantiles or buckets.
+type Histogram interface {
+	With(labelValues ...string) Histogram
+	Observe(value float64)
+}
+```
+
+You can use one of `go-kit` implementations or try your own.
+For instance, we want to expose metrics for _prometheus_ server. So, before we start _mysql engine_, we have to set up the following variables:
+```go
+
+import(
+    "github.com/go-kit/kit/metrics/prometheus"
+    promopts "github.com/prometheus/client_golang/prometheus"
+    "github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+//....
+
+// engine metrics
+sqle.QueryCounter = prometheus.NewCounterFrom(promopts.CounterOpts{
+		Namespace: "go_mysql_server",
+		Subsystem: "engine",
+		Name:      "query_counter",
+	}, []string{
+		"query",
+	})
+sqle.QueryErrorCounter = prometheus.NewCounterFrom(promopts.CounterOpts{
+    Namespace: "go_mysql_server",
+    Subsystem: "engine",
+    Name:      "query_error_counter",
+}, []string{
+    "query",
+    "error",
+})
+sqle.QueryHistogram = prometheus.NewHistogramFrom(promopts.HistogramOpts{
+    Namespace: "go_mysql_server",
+    Subsystem: "engine",
+    Name:      "query_histogram",
+}, []string{
+    "query",
+    "duration",
+})
+
+// analyzer metrics
+analyzer.ParallelQueryCounter = prometheus.NewCounterFrom(promopts.CounterOpts{
+    Namespace: "go_mysql_server",
+    Subsystem: "analyzer",
+    Name:      "parallel_query_counter",
+}, []string{
+    "parallelism",
+})
+
+// regex metrics
+regex.CompileHistogram = prometheus.NewHistogramFrom(promopts.HistogramOpts{
+    Namespace: "go_mysql_server",
+    Subsystem: "regex",
+    Name:      "compile_histogram",
+}, []string{
+    "regex",
+    "duration",
+})
+regex.MatchHistogram = prometheus.NewHistogramFrom(promopts.HistogramOpts{
+    Namespace: "go_mysql_server",
+    Subsystem: "regex",
+    Name:      "match_histogram",
+}, []string{
+    "string",
+    "duration",
+})
+
+// pilosa index driver metrics
+pilosa.RowsGauge = prometheus.NewGaugeFrom(promopts.GaugeOpts{
+    Namespace: "go_mysql_server",
+    Subsystem: "index",
+    Name:      "indexed_rows_gauge",
+}, []string{
+    "driver",
+})
+pilosa.TotalHistogram = prometheus.NewHistogramFrom(promopts.HistogramOpts{
+    Namespace: "go_mysql_server",
+    Subsystem: "index",
+    Name:      "index_created_total_histogram",
+}, []string{
+    "driver",
+    "duration",
+})
+pilosa.MappingHistogram = prometheus.NewHistogramFrom(promopts.HistogramOpts{
+    Namespace: "go_mysql_server",
+    Subsystem: "index",
+    Name:      "index_created_mapping_histogram",
+}, []string{
+    "driver",
+    "duration",
+})
+pilosa.BitmapHistogram = prometheus.NewHistogramFrom(promopts.HistogramOpts{
+    Namespace: "go_mysql_server",
+    Subsystem: "index",
+    Name:      "index_created_bitmap_histogram",
+}, []string{
+    "driver",
+    "duration",
+})
+```
+One _important note_ - internally we set some _labels_ for metrics, that's why have to pass those keys like "duration", "query", "driver", ... when we register metrics in `prometheus`. Other systems may have different requirements.
+
 ## Powered by go-mysql-server
 
 * [gitbase](https://github.com/src-d/gitbase)

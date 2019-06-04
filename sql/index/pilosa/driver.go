@@ -15,13 +15,14 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/go-kit/kit/metrics/discard"
 	opentracing "github.com/opentracing/opentracing-go"
 	pilosa "github.com/pilosa/pilosa"
 	"github.com/pilosa/pilosa/syswrap"
 	"github.com/sirupsen/logrus"
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/index"
+	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 const (
@@ -81,6 +82,17 @@ type (
 	Driver struct {
 		root string
 	}
+)
+
+var (
+	// RowsGauge describes a metric that takes number of indexes rows over time.
+	RowsGauge = discard.NewGauge()
+	// TotalHistogram  describes a metric that takes repeated observations of the total time to index values.
+	TotalHistogram = discard.NewHistogram()
+	// MappingHistogram  describes a metric that takes repeated observations of the total time to map values.
+	MappingHistogram = discard.NewHistogram()
+	// BitmapHistogram  describes a metric that takes repeated observations of the total time to store values in bitmaps
+	BitmapHistogram = discard.NewHistogram()
 )
 
 // NewDriver returns a new instance of pilosa.Driver
@@ -451,13 +463,7 @@ func (d *Driver) Save(
 		return err
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"duration": time.Since(start),
-		"pilosa":   timePilosa,
-		"mapping":  timeMapping,
-		"rows":     rows,
-		"id":       i.ID(),
-	}).Debugf("finished pilosa indexing")
+	observeIndex(time.Since(start), timePilosa, timeMapping, rows)
 
 	return index.RemoveProcessingFile(processingFile)
 }
@@ -651,6 +657,21 @@ func indexThreads(ctx *sql.Context) int {
 	}
 
 	return value
+}
+
+func observeIndex(timeTotal time.Duration, timePilosa, timeMapping, rows uint64) {
+	logrus.WithFields(logrus.Fields{
+		"duration": timeTotal,
+		"pilosa":   timePilosa,
+		"mapping":  timeMapping,
+		"rows":     rows,
+		"id":       DriverID,
+	}).Debugf("finished pilosa indexing")
+
+	TotalHistogram.With("driver", DriverID, "duration", "seconds").Observe(timeTotal.Seconds())
+	BitmapHistogram.With("driver", DriverID, "duration", "seconds").Observe(float64(timePilosa))
+	MappingHistogram.With("driver", DriverID, "duration", "seconds").Observe(float64(timeMapping))
+	RowsGauge.With("driver", DriverID).Set(float64(rows))
 }
 
 func init() {

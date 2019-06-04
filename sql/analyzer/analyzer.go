@@ -5,8 +5,8 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"

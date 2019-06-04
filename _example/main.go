@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	"github.com/src-d/go-mysql-server"
+	sqle "github.com/src-d/go-mysql-server"
 	"github.com/src-d/go-mysql-server/auth"
 	"github.com/src-d/go-mysql-server/mem"
 	"github.com/src-d/go-mysql-server/server"

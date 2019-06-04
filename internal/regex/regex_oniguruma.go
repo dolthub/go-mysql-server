@@ -3,6 +3,8 @@
 package regex
 
 import (
+	"time"
+
 	rubex "github.com/src-d/go-oniguruma"
 )
 
@@ -13,6 +15,9 @@ type Oniguruma struct {
 
 // Match implements Matcher interface.
 func (r *Oniguruma) Match(s string) bool {
+	t := time.Now()
+	defer MatchHistogram.With("string", s, "duration", "seconds").Observe(time.Since(t).Seconds())
+
 	return r.reg.MatchString(s)
 }
 
@@ -24,10 +29,12 @@ func (r *Oniguruma) Dispose() {
 
 // NewOniguruma creates a new Matcher using oniguruma engine.
 func NewOniguruma(re string) (Matcher, Disposer, error) {
+	t := time.Now()
 	reg, err := rubex.Compile(re)
 	if err != nil {
 		return nil, nil, err
 	}
+	CompileHistogram.With("regex", re, "duration", "seconds").Observe(time.Since(t).Seconds())
 
 	r := Oniguruma{
 		reg: reg,
