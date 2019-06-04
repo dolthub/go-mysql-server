@@ -1230,6 +1230,10 @@ var queries = []struct {
 		`SELECT SUBSTR(SUBSTRING('0123456789ABCDEF', 1, 10), -4)`,
 		[]sql.Row{{"6789"}},
 	},
+	{
+		`SELECT CASE i WHEN 1 THEN i ELSE NULL END FROM mytable`,
+		[]sql.Row{{int64(1)}, {nil}, {nil}},
+	},
 }
 
 func TestQueries(t *testing.T) {
