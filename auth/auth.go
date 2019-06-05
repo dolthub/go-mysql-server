@@ -5,7 +5,7 @@ import (
 
 	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
-	"gopkg.in/src-d/go-vitess.v1/mysql"
+	"vitess.io/vitess/go/mysql"
 )
 
 // Permission holds permissions required by a query or grated to a user.

@@ -5,6 +5,7 @@ require (
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gogo/protobuf v1.2.1 // indirect
+	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.3.0 // indirect
 	github.com/gorilla/handlers v1.4.0 // indirect
 	github.com/mitchellh/hashstructure v1.0.0
@@ -22,6 +23,6 @@ require (
 	golang.org/x/net v0.0.0-20190227022144-312bce6e941f // indirect
 	google.golang.org/grpc v1.19.0 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0
-	gopkg.in/src-d/go-vitess.v1 v1.8.0
 	gopkg.in/yaml.v2 v2.2.2
+	vitess.io/vitess v3.0.0-rc.3.0.20190602171040-12bfde34629c+incompatible
 )

@@ -15,7 +15,7 @@ import (
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function"
 	"github.com/src-d/go-mysql-server/sql/plan"
-	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
+	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 var (

@@ -7,7 +7,7 @@ import (
 	"github.com/src-d/go-mysql-server"
 	"github.com/src-d/go-mysql-server/auth"
 
-	"gopkg.in/src-d/go-vitess.v1/mysql"
+	"vitess.io/vitess/go/mysql"
 )
 
 // Server is a MySQL server for SQLe engines.

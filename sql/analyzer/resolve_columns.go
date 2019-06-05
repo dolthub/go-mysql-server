@@ -10,7 +10,7 @@ import (
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
-	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
+	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {

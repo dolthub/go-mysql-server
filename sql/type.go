@@ -13,8 +13,8 @@ import (
 
 	"github.com/spf13/cast"
 	"gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-vitess.v1/sqltypes"
-	"gopkg.in/src-d/go-vitess.v1/vt/proto/query"
+	"vitess.io/vitess/go/sqltypes"
+	"vitess.io/vitess/go/vt/proto/query"
 )
 
 var (
