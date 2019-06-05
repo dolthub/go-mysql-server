@@ -3,11 +3,11 @@ package analyzer
 import (
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function"
 	"github.com/src-d/go-mysql-server/sql/plan"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 const (
@@ -242,14 +242,14 @@ func validateCaseResultTypes(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Nod
 		case *expression.Case:
 			typ := e.Type()
 			for _, b := range e.Branches {
-				if b.Value.Type() != typ {
+				if b.Value.Type() != typ && b.Value.Type() != sql.Null {
 					err = ErrCaseResultType.New(typ, b.Value, b.Value.Type(), e)
 					return false
 				}
 			}
 
 			if e.Else != nil {
-				if e.Else.Type() != typ {
+				if e.Else.Type() != typ && e.Else.Type() != sql.Null {
 					err = ErrCaseResultType.New(typ, e.Else, e.Else.Type(), e)
 					return false
 				}

@@ -3,8 +3,8 @@ package expression
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/src-d/go-mysql-server/sql"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCase(t *testing.T) {
@@ -126,4 +126,21 @@ func TestCase(t *testing.T) {
 			require.Equal(tt.expected, result)
 		})
 	}
+}
+
+func TestCaseNullBranch(t *testing.T) {
+	require := require.New(t)
+	f := NewCase(
+		NewGetField(0, sql.Int64, "x", false),
+		[]CaseBranch{
+			{
+				Cond:  NewLiteral(int64(1), sql.Int64),
+				Value: NewLiteral(nil, sql.Null),
+			},
+		},
+		nil,
+	)
+	result, err := f.Eval(sql.NewEmptyContext(), sql.Row{int64(1)})
+	require.NoError(err)
+	require.Nil(result)
 }
