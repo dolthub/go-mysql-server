@@ -4,9 +4,9 @@ import (
 	"io"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/src-d/go-mysql-server/mem"
 	"github.com/src-d/go-mysql-server/sql"
+	"github.com/stretchr/testify/require"
 )
 
 var lSchema = sql.Schema{
@@ -62,12 +62,12 @@ func TestCrossJoin(t *testing.T) {
 
 	require.Equal("col1_1", row[0])
 	require.Equal("col2_1", row[1])
-	require.Equal(int32(1111), row[2])
-	require.Equal(int64(2222), row[3])
+	require.Equal(int32(1), row[2])
+	require.Equal(int64(2), row[3])
 	require.Equal("col1_1", row[4])
 	require.Equal("col2_1", row[5])
-	require.Equal(int32(1111), row[6])
-	require.Equal(int64(2222), row[7])
+	require.Equal(int32(1), row[6])
+	require.Equal(int64(2), row[7])
 
 	row, err = iter.Next()
 	require.NoError(err)
@@ -75,12 +75,12 @@ func TestCrossJoin(t *testing.T) {
 
 	require.Equal("col1_1", row[0])
 	require.Equal("col2_1", row[1])
-	require.Equal(int32(1111), row[2])
-	require.Equal(int64(2222), row[3])
+	require.Equal(int32(1), row[2])
+	require.Equal(int64(2), row[3])
 	require.Equal("col1_2", row[4])
 	require.Equal("col2_2", row[5])
-	require.Equal(int32(3333), row[6])
-	require.Equal(int64(4444), row[7])
+	require.Equal(int32(3), row[6])
+	require.Equal(int64(4), row[7])
 
 	for i := 0; i < 2; i++ {
 		row, err = iter.Next()
@@ -139,8 +139,8 @@ func insertData(t *testing.T, table *mem.Table) {
 	require := require.New(t)
 
 	rows := []sql.Row{
-		sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)),
-		sql.NewRow("col1_2", "col2_2", int32(3333), int64(4444)),
+		sql.NewRow("col1_1", "col2_1", int32(1), int64(2)),
+		sql.NewRow("col1_2", "col2_2", int32(3), int64(4)),
 	}
 
 	for _, r := range rows {
