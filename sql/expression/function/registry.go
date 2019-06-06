@@ -60,6 +60,7 @@ var Defaults = []sql.Function{
 	sql.Function0{Name: "connection_id", Fn: NewConnectionID},
 	sql.Function1{Name: "soundex", Fn: NewSoundex},
 	sql.FunctionN{Name: "json_extract", Fn: NewJSONExtract},
+	sql.Function1{Name: "json_unquote", Fn: NewJSONUnquote},
 	sql.Function1{Name: "ln", Fn: NewLogBaseFunc(float64(math.E))},
 	sql.Function1{Name: "log2", Fn: NewLogBaseFunc(float64(2))},
 	sql.Function1{Name: "log10", Fn: NewLogBaseFunc(float64(10))},

@@ -83,6 +83,7 @@ We support and actively test against certain third-party clients to ensure compa
 |`IFNULL(expr1, expr2)`|If expr1 is not NULL, IFNULL() returns expr1; otherwise it returns expr2.|
 |`IS_BINARY(blob)`|Returns whether a BLOB is a binary file or not.|
 |`JSON_EXTRACT(json_doc, path, ...)`|Extracts data from a json document using json paths.|
+|`JSON_UNQUOTE(json)`|Unquotes JSON value and returns the result as a utf8mb4 string.|
 |`LEAST(...)`|Returns the smaller numeric or string value.|
 |`LENGTH(str)`|Return the length of the string in bytes.|
 |`LN(X)`|Return the natural logarithm of X.|

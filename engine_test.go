@@ -660,6 +660,22 @@ var queries = []struct {
 		[]sql.Row{{"foo"}},
 	},
 	{
+		`SELECT JSON_UNQUOTE('"foo"')`,
+		[]sql.Row{{"foo"}},
+	},
+	{
+		`SELECT JSON_UNQUOTE('[1, 2, 3]')`,
+		[]sql.Row{{"[1, 2, 3]"}},
+	},
+	{
+		`SELECT JSON_UNQUOTE('"\\t\\u0032"')`,
+		[]sql.Row{{"\t2"}},
+	},
+	{
+		`SELECT JSON_UNQUOTE('"\t\\u0032"')`,
+		[]sql.Row{{"\t2"}},
+	},
+	{
 		`SELECT CONNECTION_ID()`,
 		[]sql.Row{{uint32(1)}},
 	},
