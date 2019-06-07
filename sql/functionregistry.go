@@ -1,8 +1,8 @@
 package sql
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/internal/similartext"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // ErrFunctionAlreadyRegistered is thrown when a function is already registered
@@ -13,7 +13,7 @@ var ErrFunctionNotFound = errors.NewKind("A function: '%s' not found.")
 
 // ErrInvalidArgumentNumber is returned when the number of arguments to call a
 // function is different from the function arity.
-var ErrInvalidArgumentNumber = errors.NewKind("A function: '%s' expected %d arguments, %d received.")
+var ErrInvalidArgumentNumber = errors.NewKind("A function: '%s' expected %v arguments, %v received.")
 
 // Function is a function defined by the user that can be applied in a SQL query.
 type Function interface {
