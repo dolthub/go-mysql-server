@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/src-d/go-mysql-server/sql"
-	"gopkg.in/src-d/go-vitess.v1/mysql"
+	"vitess.io/vitess/go/mysql"
 
 	"github.com/sirupsen/logrus"
 )
