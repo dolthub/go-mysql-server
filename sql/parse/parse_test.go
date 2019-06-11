@@ -1144,6 +1144,20 @@ var fixtures = map[string]sql.Node{
 			),
 		),
 	),
+	`SELECT FIRST(i) FROM foo`: plan.NewGroupBy(
+		[]sql.Expression{
+			expression.NewUnresolvedFunction("first", true, expression.NewUnresolvedColumn("i")),
+		},
+		[]sql.Expression{},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT LAST(i) FROM foo`: plan.NewGroupBy(
+		[]sql.Expression{
+			expression.NewUnresolvedFunction("last", true, expression.NewUnresolvedColumn("i")),
+		},
+		[]sql.Expression{},
+		plan.NewUnresolvedTable("foo", ""),
+	),
 }
 
 func TestParse(t *testing.T) {

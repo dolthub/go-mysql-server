@@ -3,8 +3,8 @@ package aggregation
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/src-d/go-mysql-server/sql"
+	"github.com/stretchr/testify/require"
 )
 
 func eval(t *testing.T, e sql.Expression, row sql.Row) interface{} {
@@ -12,6 +12,20 @@ func eval(t *testing.T, e sql.Expression, row sql.Row) interface{} {
 
 	t.Helper()
 	v, err := e.Eval(ctx, row)
+	require.NoError(t, err)
+	return v
+}
+
+func aggregate(t *testing.T, agg sql.Aggregation, rows ...sql.Row) interface{} {
+	t.Helper()
+
+	ctx := sql.NewEmptyContext()
+	buf := agg.NewBuffer()
+	for _, row := range rows {
+		require.NoError(t, agg.Update(ctx, buf, row))
+	}
+
+	v, err := agg.Eval(ctx, buf)
 	require.NoError(t, err)
 	return v
 }

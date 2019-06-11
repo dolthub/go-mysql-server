@@ -29,6 +29,14 @@ var Defaults = []sql.Function{
 		Name: "sum",
 		Fn:   func(e sql.Expression) sql.Expression { return aggregation.NewSum(e) },
 	},
+	sql.Function1{
+		Name: "first",
+		Fn:   func(e sql.Expression) sql.Expression { return aggregation.NewFirst(e) },
+	},
+	sql.Function1{
+		Name: "last",
+		Fn:   func(e sql.Expression) sql.Expression { return aggregation.NewLast(e) },
+	},
 	sql.Function1{Name: "is_binary", Fn: NewIsBinary},
 	sql.FunctionN{Name: "substring", Fn: NewSubstring},
 	sql.Function3{Name: "substring_index", Fn: NewSubstringIndex},
