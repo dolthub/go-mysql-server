@@ -11,7 +11,7 @@ import (
 
 	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
-	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
+	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 var (

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	errors "gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
+	"vitess.io/vitess/go/vt/sqlparser"
 
 	"github.com/src-d/go-mysql-server/sql"
 )

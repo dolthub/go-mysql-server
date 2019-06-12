@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/src-d/go-mysql-server/mem"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/stretchr/testify/require"
 )
 
 func TestJoinSchema(t *testing.T) {
@@ -87,8 +87,8 @@ func testInnerJoin(t *testing.T, ctx *sql.Context) {
 	require.Len(rows, 2)
 
 	require.Equal([]sql.Row{
-		{"col1_1", "col2_1", int32(1111), int64(2222), "col1_1", "col2_1", int32(1111), int64(2222)},
-		{"col1_2", "col2_2", int32(3333), int64(4444), "col1_2", "col2_2", int32(3333), int64(4444)},
+		{"col1_1", "col2_1", int32(1), int64(2), "col1_1", "col2_1", int32(1), int64(2)},
+		{"col1_2", "col2_2", int32(3), int64(4), "col1_2", "col2_2", int32(3), int64(4)},
 	}, rows)
 }
 func TestInnerJoinEmpty(t *testing.T) {
@@ -233,16 +233,17 @@ func TestLeftJoin(t *testing.T) {
 		NewResolvedTable(ltable),
 		NewResolvedTable(rtable),
 		expression.NewEquals(
-			expression.NewGetField(0, sql.Text, "lcol1", false),
-			expression.NewGetField(4, sql.Text, "rcol1", false),
+			expression.NewPlus(
+				expression.NewGetField(2, sql.Text, "lcol3", false),
+				expression.NewLiteral(int32(2), sql.Int32),
+			),
+			expression.NewGetField(6, sql.Text, "rcol3", false),
 		))
 
 	rows := collectRows(t, j)
 	require.ElementsMatch([]sql.Row{
-		{"col1_1", "col2_1", int32(1111), int64(2222), "col1_1", "col2_1", int32(1111), int64(2222)},
-		{"col1_1", "col2_1", int32(1111), int64(2222), nil, nil, nil, nil},
-		{"col1_2", "col2_2", int32(3333), int64(4444), "col1_2", "col2_2", int32(3333), int64(4444)},
-		{"col1_2", "col2_2", int32(3333), int64(4444), nil, nil, nil, nil},
+		{"col1_1", "col2_1", int32(1), int64(2), "col1_2", "col2_2", int32(3), int64(4)},
+		{"col1_2", "col2_2", int32(3), int64(4), nil, nil, nil, nil},
 	}, rows)
 }
 
@@ -258,15 +259,16 @@ func TestRightJoin(t *testing.T) {
 		NewResolvedTable(ltable),
 		NewResolvedTable(rtable),
 		expression.NewEquals(
-			expression.NewGetField(0, sql.Text, "lcol1", false),
-			expression.NewGetField(4, sql.Text, "rcol1", false),
+			expression.NewPlus(
+				expression.NewGetField(2, sql.Text, "lcol3", false),
+				expression.NewLiteral(int32(2), sql.Int32),
+			),
+			expression.NewGetField(6, sql.Text, "rcol3", false),
 		))
 
 	rows := collectRows(t, j)
 	require.ElementsMatch([]sql.Row{
-		{"col1_1", "col2_1", int32(1111), int64(2222), "col1_1", "col2_1", int32(1111), int64(2222)},
-		{nil, nil, nil, nil, "col1_1", "col2_1", int32(1111), int64(2222)},
-		{"col1_2", "col2_2", int32(3333), int64(4444), "col1_2", "col2_2", int32(3333), int64(4444)},
-		{nil, nil, nil, nil, "col1_2", "col2_2", int32(3333), int64(4444)},
+		{nil, nil, nil, nil, "col1_1", "col2_1", int32(1), int64(2)},
+		{"col1_1", "col2_1", int32(1), int64(2), "col1_2", "col2_2", int32(3), int64(4)},
 	}, rows)
 }

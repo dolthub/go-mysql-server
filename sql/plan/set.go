@@ -6,7 +6,7 @@ import (
 
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
-	"gopkg.in/src-d/go-vitess.v1/vt/sqlparser"
+	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 // Set configuration variables. Right now, only session variables are supported.
@@ -94,7 +94,7 @@ func (s *Set) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		)
 
 		name := strings.TrimPrefix(
-			strings.TrimPrefix(strings.TrimLeft(v.Name, "@"), sessionPrefix), 
+			strings.TrimPrefix(strings.TrimLeft(v.Name, "@"), sessionPrefix),
 			globalPrefix,
 		)
 
