@@ -1,10 +1,11 @@
 package sql
 
 import (
-	"github.com/src-d/go-mysql-server/internal/similartext"
 	"io"
 	"strings"
 	"sync"
+
+	"github.com/src-d/go-mysql-server/internal/similartext"
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
