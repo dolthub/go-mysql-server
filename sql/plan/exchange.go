@@ -6,8 +6,8 @@ import (
 	"io"
 	"sync"
 
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
+	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 // ErrNoPartitionable is returned when no Partitionable node is found
@@ -279,14 +279,6 @@ func (it *exchangeRowIter) Close() (err error) {
 		close(it.quit)
 		it.quit = nil
 	}
-
-	// TODO(kuba): in my opinion we should close err channel here,
-	// but becasue we use it in another go routine, I'll leave this block commented.
-	//
-	// if it.err != nil {
-	// 	close(it.err)
-	// 	it.err = nil
-	// }
 
 	if it.partitions != nil {
 		err = it.partitions.Close()

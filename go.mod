@@ -23,7 +23,6 @@ require (
 	github.com/stretchr/testify v1.2.2
 	go.etcd.io/bbolt v1.3.2
 	golang.org/x/net v0.0.0-20190227022144-312bce6e941f // indirect
-	google.golang.org/genproto v0.0.0-20180831171423-11092d34479b // indirect
 	google.golang.org/grpc v1.19.0 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 	gopkg.in/yaml.v2 v2.2.2
