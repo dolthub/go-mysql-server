@@ -10,11 +10,11 @@ import (
 	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function"
 	"github.com/src-d/go-mysql-server/sql/plan"
+	"gopkg.in/src-d/go-errors.v1"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
@@ -763,6 +763,10 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		exprs, err := selectExprsToExpressions(v.Exprs)
 		if err != nil {
 			return nil, err
+		}
+
+		if v.Distinct {
+			return nil, ErrUnsupportedSyntax.New("DISTINCT on aggregations")
 		}
 
 		return expression.NewUnresolvedFunction(v.Name.Lowered(),
