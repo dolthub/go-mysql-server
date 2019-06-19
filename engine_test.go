@@ -1026,7 +1026,7 @@ var queries = []struct {
 		FROM (
 			SELECT
 				i,
-				COUNT(DISTINCT s) AS foo
+				COUNT(s) AS foo
 			FROM mytable
 			GROUP BY i
 		) AS q

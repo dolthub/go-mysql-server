@@ -3,12 +3,12 @@ package parse
 import (
 	"testing"
 
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
+	errors "gopkg.in/src-d/go-errors.v1"
 
-	"github.com/stretchr/testify/require"
 	"github.com/src-d/go-mysql-server/sql"
+	"github.com/stretchr/testify/require"
 )
 
 var fixtures = map[string]sql.Node{
@@ -1166,6 +1166,7 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT '2018-05-01' / INTERVAL 1 DAY`:                    ErrUnsupportedSyntax,
 	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                  ErrUnsupportedSyntax,
 	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`: ErrUnsupportedSyntax,
+	`SELECT COUNT(DISTINCT foo) FROM b`:                       ErrUnsupportedSyntax,
 }
 
 func TestParseErrors(t *testing.T) {
