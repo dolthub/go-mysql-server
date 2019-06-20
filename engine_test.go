@@ -2482,6 +2482,16 @@ var generatorQueries = []struct {
 		},
 	},
 	{
+		`SELECT EXPLODE(SPLIT(c, "")) FROM t LIMIT 5`,
+		[]sql.Row{
+			{"f"},
+			{"i"},
+			{"r"},
+			{"s"},
+			{"t"},
+		},
+	},
+	{
 		`SELECT a, EXPLODE(b) AS x, c FROM t WHERE x = 'e'`,
 		[]sql.Row{
 			{int64(3), "e", "third"},

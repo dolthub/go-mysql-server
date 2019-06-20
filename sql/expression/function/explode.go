@@ -86,7 +86,7 @@ func (e *Generate) String() string {
 
 // TransformUp implements the sql.Expression interface.
 func (e *Generate) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	c, err := f(e.Child)
+	c, err := e.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
