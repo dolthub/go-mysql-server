@@ -1226,6 +1226,10 @@ var queries = []struct {
 		`SELECT CASE i WHEN 1 THEN i ELSE NULL END FROM mytable`,
 		[]sql.Row{{int64(1)}, {nil}, {nil}},
 	},
+	{
+		`SELECT (NULL+1)`,
+		[]sql.Row{{nil}},
+	},
 }
 
 func TestQueries(t *testing.T) {
