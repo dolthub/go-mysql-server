@@ -159,6 +159,10 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	if lval == nil || rval == nil {
+		return nil, nil
+	}
+
 	lval, rval, err = a.convertLeftRight(lval, rval)
 	if err != nil {
 		return nil, err
