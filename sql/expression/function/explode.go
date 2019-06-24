@@ -42,7 +42,7 @@ func (e *Explode) String() string {
 
 // TransformUp implements the sql.Expression interface.
 func (e *Explode) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	c, err := f(e.Child)
+	c, err := e.Child.TransformUp(f)
 	if err != nil {
 		return nil, err
 	}
