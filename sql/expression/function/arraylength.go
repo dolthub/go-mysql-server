@@ -2,7 +2,6 @@ package function // import "github.com/src-d/go-mysql-server/sql/expression/func
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
@@ -39,7 +38,7 @@ func (f *ArrayLength) TransformUp(fn sql.TransformExprFunc) (sql.Expression, err
 // Eval implements the Expression interface.
 func (f *ArrayLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if t := f.Child.Type(); !sql.IsArray(t) && t != sql.JSON {
-		return nil, sql.ErrInvalidType.New(f.Child.Type().Type().String())
+		return nil, nil
 	}
 
 	child, err := f.Child.Eval(ctx, row)
@@ -53,7 +52,7 @@ func (f *ArrayLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	array, ok := child.([]interface{})
 	if !ok {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(child))
+		return nil, nil
 	}
 
 	return int32(len(array)), nil

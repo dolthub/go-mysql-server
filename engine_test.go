@@ -1230,6 +1230,14 @@ var queries = []struct {
 		`SELECT (NULL+1)`,
 		[]sql.Row{{nil}},
 	},
+	{
+		`SELECT ARRAY_LENGTH(null)`,
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT ARRAY_LENGTH("foo")`,
+		[]sql.Row{{nil}},
+	},
 }
 
 func TestQueries(t *testing.T) {
