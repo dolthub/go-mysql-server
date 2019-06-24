@@ -3,10 +3,10 @@ package function
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/stretchr/testify/require"
+	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 func TestArrayLength(t *testing.T) {
@@ -19,7 +19,7 @@ func TestArrayLength(t *testing.T) {
 		err      *errors.Kind
 	}{
 		{"array is nil", sql.NewRow(nil), nil, nil},
-		{"array is not of right type", sql.NewRow(5), nil, sql.ErrInvalidType},
+		{"array is not of right type", sql.NewRow(5), nil, nil},
 		{"array is ok", sql.NewRow([]interface{}{1, 2, 3}), int32(3), nil},
 	}
 
@@ -40,7 +40,7 @@ func TestArrayLength(t *testing.T) {
 
 	f = NewArrayLength(expression.NewGetField(0, sql.Tuple(sql.Int64, sql.Int64), "", false))
 	require := require.New(t)
-	_, err := f.Eval(sql.NewEmptyContext(), []interface{}{int64(1), int64(2)})
-	require.Error(err)
-	require.True(sql.ErrInvalidType.Is(err))
+	v, err := f.Eval(sql.NewEmptyContext(), []interface{}{int64(1), int64(2)})
+	require.NoError(err)
+	require.Nil(v)
 }
