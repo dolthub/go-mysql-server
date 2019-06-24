@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strconv"
 	"time"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -232,14 +233,37 @@ func EvaluateCondition(ctx *Context, cond Expression, row Row) (bool, error) {
 	switch b := v.(type) {
 	case bool:
 		return b, nil
-	case int, int64, int32, int16, int8, uint, uint64, uint32, uint16, uint8:
-		return b != 0, nil
+	case int:
+		return b != int(0), nil
+	case int64:
+		return b != int64(0), nil
+	case int32:
+		return b != int32(0), nil
+	case int16:
+		return b != int16(0), nil
+	case int8:
+		return b != int8(0), nil
+	case uint:
+		return b != uint(0), nil
+	case uint64:
+		return b != uint64(0), nil
+	case uint32:
+		return b != uint32(0), nil
+	case uint16:
+		return b != uint16(0), nil
+	case uint8:
+		return b != uint8(0), nil
 	case time.Duration:
 		return int64(b) != 0, nil
 	case time.Time:
 		return b.UnixNano() != 0, nil
-	case float32, float64:
+	case float64:
 		return int(math.Round(v.(float64))) != 0, nil
+	case float32:
+		return int(math.Round(float64(v.(float32)))) != 0, nil
+	case string:
+		parsed, err := strconv.ParseFloat(v.(string), 64)
+		return err == nil && int(parsed) != 0, nil
 	default:
 		return false, nil
 	}
