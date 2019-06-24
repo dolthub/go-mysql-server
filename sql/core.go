@@ -3,6 +3,8 @@ package sql // import "github.com/src-d/go-mysql-server/sql"
 import (
 	"fmt"
 	"io"
+	"math"
+	"time"
 
 	"gopkg.in/src-d/go-errors.v1"
 )
@@ -217,4 +219,28 @@ type Lockable interface {
 	// The id will always be provided, since in some cases context is not
 	// available.
 	Unlock(ctx *Context, id uint32) error
+}
+
+// EvaluateCondition evaluates a condition, which is an expression whose value
+// will be coerced to boolean.
+func EvaluateCondition(ctx *Context, cond Expression, row Row) (bool, error) {
+	v, err := cond.Eval(ctx, row)
+	if err != nil {
+		return false, err
+	}
+
+	switch b := v.(type) {
+	case bool:
+		return b, nil
+	case int, int64, int32, int16, int8, uint, uint64, uint32, uint16, uint8:
+		return b != 0, nil
+	case time.Duration:
+		return int64(b) != 0, nil
+	case time.Time:
+		return b.UnixNano() != 0, nil
+	case float32, float64:
+		return int(math.Round(v.(float64))) != 0, nil
+	default:
+		return false, nil
+	}
 }

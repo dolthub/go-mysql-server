@@ -1230,6 +1230,10 @@ var queries = []struct {
 		`SELECT (NULL+1)`,
 		[]sql.Row{{nil}},
 	},
+	{
+		`SELECT * FROM mytable WHERE NULL AND i = 3`,
+		[]sql.Row{},
+	},
 }
 
 func TestQueries(t *testing.T) {

@@ -616,25 +616,13 @@ func (t booleanT) Convert(v interface{}) (interface{}, error) {
 	case bool:
 		return b, nil
 	case int, int64, int32, int16, int8, uint, uint64, uint32, uint16, uint8:
-		if b != 0 {
-			return true, nil
-		}
-		return false, nil
+		return b != 0, nil
 	case time.Duration:
-		if int64(b) != 0 {
-			return true, nil
-		}
-		return false, nil
+		return int64(b) != 0, nil
 	case time.Time:
-		if b.UnixNano() != 0 {
-			return true, nil
-		}
-		return false, nil
+		return b.UnixNano() != 0, nil
 	case float32, float64:
-		if int(math.Round(v.(float64))) != 0 {
-			return true, nil
-		}
-		return false, nil
+		return int(math.Round(v.(float64))) != 0, nil
 	case string:
 		return false, fmt.Errorf("unable to cast string to bool")
 
