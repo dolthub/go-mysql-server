@@ -1237,6 +1237,10 @@ var queries = []struct {
 	{
 		`SELECT ARRAY_LENGTH("foo")`,
 		[]sql.Row{{nil}},
+  },
+  {
+		`SELECT * FROM mytable WHERE NULL AND i = 3`,
+		[]sql.Row{},
 	},
 }
 
