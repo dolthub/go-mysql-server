@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	errors "gopkg.in/src-d/go-errors.v1"
 	sqle "github.com/src-d/go-mysql-server"
 	"github.com/src-d/go-mysql-server/auth"
 	"github.com/src-d/go-mysql-server/sql"
+	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/sirupsen/logrus"
 	"vitess.io/vitess/go/mysql"
@@ -61,6 +61,9 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 	h.mu.Lock()
 	delete(h.c, c.ConnectionID)
 	h.mu.Unlock()
+
+	// If connection was closed, kill only its associated queries.
+	h.e.Catalog.ProcessList.KillOnlyQueries(c.ConnectionID)
 
 	if err := h.e.Catalog.UnlockTables(nil, c.ConnectionID); err != nil {
 		logrus.Errorf("unable to unlock tables on session close: %s", err)
