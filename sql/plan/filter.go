@@ -107,12 +107,12 @@ func (i *FilterIter) Next() (sql.Row, error) {
 			return nil, err
 		}
 
-		result, err := i.cond.Eval(i.ctx, row)
+		ok, err := sql.EvaluateCondition(i.ctx, i.cond, row)
 		if err != nil {
 			return nil, err
 		}
 
-		if result == true {
+		if ok {
 			return row, nil
 		}
 	}
