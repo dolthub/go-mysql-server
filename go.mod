@@ -12,7 +12,7 @@ require (
 	github.com/gorilla/handlers v1.4.0 // indirect
 	github.com/mitchellh/hashstructure v1.0.0
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852
-	github.com/opentracing/opentracing-go v1.0.2
+	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pbnjay/memory v0.0.0-20190104145345-974d429e7ae4
 	github.com/pilosa/pilosa v1.3.0
 	github.com/sanity-io/litter v1.1.0
@@ -28,3 +28,9 @@ require (
 	gopkg.in/yaml.v2 v2.2.2
 	vitess.io/vitess v3.0.0-rc.3.0.20190602171040-12bfde34629c+incompatible
 )
+
+replace vitess.io/vitess => github.com/liquidata-inc/vitess
+
+// For local development, clone vitess into $GOPATH/src like so: git clone git@github.com:liquidata-inc/vitess.git vitess.io/vitess
+// Then use this local override:
+//replace vitess.io/vitess => ../../../vitess.io/vitess
