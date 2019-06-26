@@ -32,7 +32,7 @@ var (
 	ErrInvalidSQLValType = errors.NewKind("invalid SQLVal of type: %d")
 
 	// ErrInvalidSortOrder is returned when a sort order is not valid.
-	ErrInvalidSortOrder = errors.NewKind("invalod sort order: %s")
+	ErrInvalidSortOrder = errors.NewKind("invalid sort order: %s")
 )
 
 var (
@@ -589,6 +589,11 @@ func limitToLimit(
 	if err != nil {
 		return nil, err
 	}
+
+	if rowCount < 0 {
+		return nil, ErrUnsupportedSyntax.New("LIMIT must be >= 0")
+	}
+
 	// If an offset is specified, we want to examine `offset + rowCount` total rows. When iterating over result rows,
 	// since `offset` rows are skipped, we must increase our total examined rows by the same amount to return `rowCount`
 	// total rows.
@@ -621,6 +626,10 @@ func offsetToOffset(
 	o, err := getInt64Value(ctx, offset, "OFFSET with non-integer literal")
 	if err != nil {
 		return nil, err
+	}
+
+	if o < 0 {
+		return nil, ErrUnsupportedSyntax.New("OFFSET must be >= 0")
 	}
 
 	return plan.NewOffset(o, child), nil
