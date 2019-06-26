@@ -318,6 +318,15 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo", ""),
 		)),
 	),
+	`SELECT foo, bar FROM foo LIMIT 5,2;`: plan.NewOffset(5,
+		plan.NewLimit(2, plan.NewProject(
+			[]sql.Expression{
+				expression.NewUnresolvedColumn("foo"),
+				expression.NewUnresolvedColumn("bar"),
+			},
+			plan.NewUnresolvedTable("foo", ""),
+		)),
+	),
 	`SELECT * FROM foo WHERE (a = 1)`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewStar(),

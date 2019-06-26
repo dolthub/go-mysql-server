@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function"
@@ -322,7 +322,7 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 	}
 
 	if s.Limit != nil {
-		node, err = limitToLimit(ctx, s.Limit.Rowcount, node)
+		node, err = limitToLimit(ctx, s.Limit, node)
 		if err != nil {
 			return nil, err
 		}
@@ -582,24 +582,26 @@ func orderByToSort(ob sqlparser.OrderBy, child sql.Node) (*plan.Sort, error) {
 
 func limitToLimit(
 	ctx *sql.Context,
-	limit sqlparser.Expr,
+	limit *sqlparser.Limit,
 	child sql.Node,
 ) (*plan.Limit, error) {
-	e, err := exprToExpression(limit)
+	rowCount, err := getInt64Value(ctx, limit.Rowcount, "LIMIT with non-integer literal")
 	if err != nil {
 		return nil, err
 	}
+	// If an offset is specified, we want to examine `offset + rowCount` total rows. When iterating over result rows,
+	// since `offset` rows are skipped, we must increase our total examined rows by the same amount to return `rowCount`
+	// total rows.
+	if limit.Offset != nil {
+		o, err := getInt64Value(ctx, limit.Offset, "OFFSET with non-integer literal")
+		if err != nil {
+			return nil, err
+		}
 
-	nl, ok := e.(*expression.Literal)
-	if !ok || nl.Type() != sql.Int64 {
-		return nil, ErrUnsupportedFeature.New("LIMIT with non-integer literal")
+		rowCount += o
 	}
 
-	n, err := nl.Eval(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	return plan.NewLimit(n.(int64), child), nil
+	return plan.NewLimit(rowCount, child), nil
 }
 
 func havingToHaving(having *sqlparser.Where, node sql.Node) (sql.Node, error) {
@@ -616,21 +618,44 @@ func offsetToOffset(
 	offset sqlparser.Expr,
 	child sql.Node,
 ) (*plan.Offset, error) {
-	e, err := exprToExpression(offset)
+	o, err := getInt64Value(ctx, offset, "OFFSET with non-integer literal")
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewOffset(o, child), nil
+}
+
+// getInt64Literal returns an int64 *expression.Literal for the value given, or an unsupported error with the string
+// given if the expression doesn't represent an integer literal.
+func getInt64Literal(expr sqlparser.Expr, errStr string) (*expression.Literal, error) {
+	e, err := exprToExpression(expr)
 	if err != nil {
 		return nil, err
 	}
 
 	nl, ok := e.(*expression.Literal)
 	if !ok || nl.Type() != sql.Int64 {
-		return nil, ErrUnsupportedFeature.New("OFFSET with non-integer literal")
+		return nil, ErrUnsupportedFeature.New(errStr)
+	} else {
+		return nl, nil
+	}
+}
+
+// getInt64Value returns the int64 literal value in the expression given, or an error with the errStr given if it
+// cannot.
+func getInt64Value(ctx *sql.Context, expr sqlparser.Expr, errStr string) (int64, error) {
+	ie, err := getInt64Literal(expr, errStr)
+	if err != nil {
+		return 0, err
 	}
 
-	n, err := nl.Eval(ctx, nil)
+	i, err := ie.Eval(ctx, nil)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	return plan.NewOffset(n.(int64), child), nil
+
+	return i.(int64), nil
 }
 
 func isAggregate(e sql.Expression) bool {
