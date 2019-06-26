@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -39,7 +39,7 @@ func (r *Reverse) Eval(
 
 func reverseString(s string) string {
 	r := []rune(s)
-	for i, j := 0, len(r) - 1; i < j; i, j = i+1, j-1 {
+	for i, j := 0, len(r)-1; i < j; i, j = i+1, j-1 {
 		r[i], r[j] = r[j], r[i]
 	}
 	return string(r)
@@ -49,13 +49,12 @@ func (r *Reverse) String() string {
 	return fmt.Sprintf("reverse(%s)", r.Child)
 }
 
-// TransformUp implements the Expression interface.
-func (r *Reverse) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := r.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (r *Reverse) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 1)
 	}
-	return f(NewReverse(child))
+	return NewReverse(children[0]), nil
 }
 
 // Type implements the Expression interface.
@@ -84,18 +83,12 @@ func (r *Repeat) Type() sql.Type {
 	return sql.Text
 }
 
-// TransformUp implements the Expression interface.
-func (r *Repeat) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	left, err := r.Left.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (r *Repeat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 2)
 	}
-
-	right, err := r.Right.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-	return f(NewRepeat(left, right))
+	return NewRepeat(children[0], children[1]), nil
 }
 
 // Eval implements the Expression interface.
@@ -165,23 +158,12 @@ func (r *Replace) Type() sql.Type {
 	return sql.Text
 }
 
-// TransformUp implements the Expression interface.
-func (r *Replace) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	str, err := r.str.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (r *Replace) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 3 {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 3)
 	}
-
-	fromStr, err := r.fromStr.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	toStr, err := r.toStr.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-	return f(NewReplace(str, fromStr, toStr))
+	return NewReplace(children[0], children[1], children[2]), nil
 }
 
 // Eval implements the Expression interface.

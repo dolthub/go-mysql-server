@@ -35,32 +35,11 @@ func (j NaturalJoin) String() string {
 	return pr.String()
 }
 
-// TransformUp implements the Node interface.
-func (j *NaturalJoin) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	left, err := j.Left.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (j *NaturalJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 2)
 	}
 
-	right, err := j.Right.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewNaturalJoin(left, right))
-}
-
-// TransformExpressionsUp implements the Node interface.
-func (j *NaturalJoin) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	left, err := j.Left.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	right, err := j.Right.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewNaturalJoin(left, right), nil
+	return NewNaturalJoin(children[0], children[1]), nil
 }

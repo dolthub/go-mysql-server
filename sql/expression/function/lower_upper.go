@@ -2,9 +2,10 @@ package function
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
-	"strings"
 )
 
 // Lower is a function that returns the lowercase of the text provided.
@@ -43,13 +44,12 @@ func (l *Lower) String() string {
 	return fmt.Sprintf("LOWER(%s)", l.Child)
 }
 
-// TransformUp implements the Expression interface.
-func (l *Lower) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := l.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (l *Lower) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
-	return f(NewLower(child))
+	return NewLower(children[0]), nil
 }
 
 // Type implements the Expression interface.
@@ -93,13 +93,12 @@ func (u *Upper) String() string {
 	return fmt.Sprintf("UPPER(%s)", u.Child)
 }
 
-// TransformUp implements the Expression interface.
-func (u *Upper) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := u.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (u *Upper) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
-	return f(NewUpper(child))
+	return NewUpper(children[0]), nil
 }
 
 // Type implements the Expression interface.

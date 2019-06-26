@@ -46,18 +46,9 @@ func (d *DateAdd) IsNullable() bool {
 // Type implements the sql.Expression interface.
 func (d *DateAdd) Type() sql.Type { return sql.Date }
 
-// TransformUp implements the sql.Expression interface.
-func (d *DateAdd) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	date, err := d.Date.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-	interval, err := d.Interval.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return &DateAdd{date, interval.(*expression.Interval)}, nil
+// WithChildren implements the Expression interface.
+func (d *DateAdd) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewDateAdd(children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -130,18 +121,9 @@ func (d *DateSub) IsNullable() bool {
 // Type implements the sql.Expression interface.
 func (d *DateSub) Type() sql.Type { return sql.Date }
 
-// TransformUp implements the sql.Expression interface.
-func (d *DateSub) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	date, err := d.Date.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-	interval, err := d.Interval.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return &DateSub{date, interval.(*expression.Interval)}, nil
+// WithChildren implements the Expression interface.
+func (d *DateSub) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewDateSub(children...)
 }
 
 // Eval implements the sql.Expression interface.

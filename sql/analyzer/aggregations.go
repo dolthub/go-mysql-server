@@ -16,7 +16,7 @@ func reorderAggregations(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 
 	a.Log("reorder aggregations, node of type: %T", n)
 
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.GroupBy:
 			if !hasHiddenAggregations(n.Aggregate...) {
@@ -38,7 +38,7 @@ func fixAggregations(projection, grouping []sql.Expression, child sql.Node) (sql
 
 	for i, p := range projection {
 		var transformed bool
-		e, err := p.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+		e, err := expression.TransformUp(p, func(e sql.Expression) (sql.Expression, error) {
 			agg, ok := e.(sql.Aggregation)
 			if !ok {
 				return e, nil

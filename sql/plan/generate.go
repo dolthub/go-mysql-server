@@ -46,48 +46,30 @@ func (g *Generate) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}), nil
 }
 
-func (g *Generate) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
-	col, err := g.Column.TransformUp(f)
-	if err != nil {
-		return nil, err
+// Expressions implements the Expressioner interface.
+func (g *Generate) Expressions() []sql.Expression { return []sql.Expression{g.Column} }
+
+// WithChildren implements the Node interface.
+func (g *Generate) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(g, len(children), 1)
 	}
 
-	field, ok := col.(*expression.GetField)
-	if !ok {
-		return nil, fmt.Errorf("column of Generate node transformed into %T, must be GetField", col)
-	}
-
-	return NewGenerate(g.Child, field), nil
+	return NewGenerate(children[0], g.Column), nil
 }
 
-// TransformUp implements the sql.Node interface.
-func (g *Generate) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := g.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithExpressions implements the Expressioner interface.
+func (g *Generate) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(g, len(exprs), 1)
 	}
 
-	return f(NewGenerate(child, g.Column))
-}
-
-// TransformExpressionsUp implements the sql.Node interface.
-func (g *Generate) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	child, err := g.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	col, err := g.Column.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	field, ok := col.(*expression.GetField)
+	gf, ok := exprs[0].(*expression.GetField)
 	if !ok {
-		return nil, fmt.Errorf("column of Generate node transformed into %T, must be GetField", col)
+		return nil, fmt.Errorf("Generate expects child to be expression.GetField, but is %T", exprs[0])
 	}
 
-	return NewGenerate(child, field), nil
+	return NewGenerate(g.Child, gf), nil
 }
 
 func (g *Generate) String() string {

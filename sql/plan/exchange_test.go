@@ -6,9 +6,9 @@ import (
 	"io"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExchange(t *testing.T) {
@@ -106,11 +106,12 @@ type partitionable struct {
 	rowsPerPartition int
 }
 
-func (p *partitionable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(p)
-}
+// WithChildren implements the Node interface.
+func (p *partitionable) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
+	}
 
-func (p *partitionable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return p, nil
 }
 

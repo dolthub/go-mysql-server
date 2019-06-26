@@ -45,13 +45,12 @@ func (c *Count) String() string {
 	return fmt.Sprintf("COUNT(%s)", c.Child)
 }
 
-// TransformUp implements the Expression interface.
-func (c *Count) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := c.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (c *Count) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return f(NewCount(child))
+	return NewCount(children[0]), nil
 }
 
 // Update implements the Aggregation interface.

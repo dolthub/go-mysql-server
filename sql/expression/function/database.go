@@ -29,9 +29,12 @@ func (*Database) String() string {
 	return "DATABASE()"
 }
 
-// TransformUp implements the sql.Expression interface.
-func (db *Database) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	return fn(db)
+// WithChildren implements the Expression interface.
+func (d *Database) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 0)
+	}
+	return NewDatabase(d.catalog)(), nil
 }
 
 // Resolved implements the sql.Expression interface.

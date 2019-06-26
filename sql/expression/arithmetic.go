@@ -137,19 +137,12 @@ func isInterval(expr sql.Expression) bool {
 	return ok
 }
 
-// TransformUp implements the Expression interface.
-func (a *Arithmetic) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	l, err := a.Left.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (a *Arithmetic) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 2)
 	}
-
-	r, err := a.Right.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewArithmetic(l, r, a.Op))
+	return NewArithmetic(children[0], children[1], a.Op), nil
 }
 
 // Eval implements the Expression interface.
@@ -549,12 +542,10 @@ func (e *UnaryMinus) String() string {
 	return fmt.Sprintf("-%s", e.Child)
 }
 
-// TransformUp implements the sql.Expression interface.
-func (e *UnaryMinus) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	c, err := e.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (e *UnaryMinus) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
-
-	return f(NewUnaryMinus(c))
+	return NewUnaryMinus(children[0]), nil
 }

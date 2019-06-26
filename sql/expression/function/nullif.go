@@ -57,17 +57,10 @@ func (f *NullIf) String() string {
 	return fmt.Sprintf("nullif(%s, %s)", f.Left, f.Right)
 }
 
-// TransformUp implements the Expression interface.
-func (f *NullIf) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	left, err := f.Left.TransformUp(fn)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (f *NullIf) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}
-
-	right, err := f.Right.TransformUp(fn)
-	if err != nil {
-		return nil, err
-	}
-
-	return fn(NewNullIf(left, right))
+	return NewNullIf(children[0], children[1]), nil
 }

@@ -19,7 +19,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	processList := a.Catalog.ProcessList
 
 	var seen = make(map[string]struct{})
-	n, err := n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	n, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			switch n.Table.(type) {
@@ -73,7 +73,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 	// Remove QueryProcess nodes from the subqueries. Otherwise, the process
 	// will be marked as done as soon as a subquery finishes.
-	node, err := n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	node, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		if sq, ok := n.(*plan.SubqueryAlias); ok {
 			if qp, ok := sq.Child.(*plan.QueryProcess); ok {
 				return plan.NewSubqueryAlias(sq.Name(), qp.Child), nil

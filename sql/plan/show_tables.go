@@ -84,13 +84,12 @@ func (p *ShowTables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.RowsToRowIter(rows...), nil
 }
 
-// TransformUp implements the Transformable interface.
-func (p *ShowTables) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(NewShowTables(p.db, p.Full))
-}
+// WithChildren implements the Node interface.
+func (p *ShowTables) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
+	}
 
-// TransformExpressionsUp implements the Transformable interface.
-func (p *ShowTables) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return p, nil
 }
 

@@ -76,25 +76,6 @@ func (p *Values) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.RowsToRowIter(rows...), nil
 }
 
-// TransformUp implements the Transformable interface.
-func (p *Values) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(p)
-}
-
-// TransformExpressionsUp implements the Transformable interface.
-func (p *Values) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	ets := make([][]sql.Expression, len(p.ExpressionTuples))
-	var err error
-	for i, et := range p.ExpressionTuples {
-		ets[i], err = transformExpressionsUp(f, et)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return NewValues(ets), nil
-}
-
 func (p *Values) String() string {
 	return fmt.Sprintf("Values(%d tuples)", len(p.ExpressionTuples))
 }
@@ -108,15 +89,33 @@ func (p *Values) Expressions() []sql.Expression {
 	return exprs
 }
 
-// TransformExpressions implements the Expressioner interface.
-func (p *Values) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
-	tuples := [][]sql.Expression{}
-	for _, tuple := range p.ExpressionTuples {
-		transformed, err := transformExpressionsUp(f, tuple)
-		if err != nil {
-			return nil, err
+// WithChildren implements the Node interface.
+func (p *Values) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
+	}
+
+	return p, nil
+}
+
+// WithExpressions implements the Expressioner interface.
+func (p *Values) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	var expected int
+	for _, t := range p.ExpressionTuples {
+		expected += len(t)
+	}
+
+	if len(exprs) != expected {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(exprs), expected)
+	}
+
+	var offset int
+	var tuples = make([][]sql.Expression, len(p.ExpressionTuples))
+	for i, t := range p.ExpressionTuples {
+		for range t {
+			tuples[i] = append(tuples[i], exprs[offset])
+			offset++
 		}
-		tuples = append(tuples, transformed)
 	}
 
 	return NewValues(tuples), nil

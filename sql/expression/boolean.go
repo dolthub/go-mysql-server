@@ -52,11 +52,10 @@ func (e *Not) String() string {
 	return fmt.Sprintf("NOT(%s)", e.Child)
 }
 
-// TransformUp implements the Expression interface.
-func (e *Not) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := e.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (e *Not) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
-	return f(NewNot(child))
+	return NewNot(children[0]), nil
 }

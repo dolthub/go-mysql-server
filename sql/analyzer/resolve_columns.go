@@ -5,11 +5,11 @@ import (
 	"sort"
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/internal/similartext"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
+	"gopkg.in/src-d/go-errors.v1"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
@@ -98,8 +98,15 @@ func (deferredColumn) IsNullable() bool {
 	return true
 }
 
-func (e deferredColumn) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	return fn(e)
+// Children implements the Expression interface.
+func (deferredColumn) Children() []sql.Expression { return nil }
+
+// WithChildren implements the Expression interface.
+func (e deferredColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 0)
+	}
+	return e, nil
 }
 
 type tableCol struct {
@@ -120,16 +127,15 @@ type column interface {
 }
 
 func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
-		exp, ok := n.(sql.Expressioner)
-		if !ok || n.Resolved() {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
 			return n, nil
 		}
 
 		columns := getNodeAvailableColumns(n)
 		tables := getNodeAvailableTables(n)
 
-		return exp.TransformExpressions(func(e sql.Expression) (sql.Expression, error) {
+		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 			return qualifyExpression(e, columns, tables)
 		})
 	})
@@ -198,7 +204,7 @@ func qualifyExpression(
 	default:
 		// If any other kind of expression has a star, just replace it
 		// with an unqualified star because it cannot be expanded.
-		return e.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+		return expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
 			if _, ok := e.(*expression.Star); ok {
 				return expression.NewStar(), nil
 			}
@@ -289,14 +295,13 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 	defer span.Finish()
 
 	a.Log("resolve columns, node of type: %T", n)
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
 		if n.Resolved() {
 			return n, nil
 		}
 
-		expressioner, ok := n.(sql.Expressioner)
-		if !ok {
+		if _, ok := n.(sql.Expressioner); !ok {
 			return n, nil
 		}
 
@@ -308,7 +313,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 		}
 
 		columns := findChildIndexedColumns(n)
-		return expressioner.TransformExpressions(func(e sql.Expression) (sql.Expression, error) {
+		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 			a.Log("transforming expression of type: %T", e)
 
 			uc, ok := e.(column)
@@ -394,7 +399,7 @@ func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 		return n, nil
 	}
 
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		g, ok := n.(*plan.GroupBy)
 		if n.Resolved() || !ok || len(g.Grouping) == 0 {
 			return n, nil
@@ -510,7 +515,7 @@ func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 		if len(renames) > 0 {
 			for i, expr := range newAggregate {
 				var err error
-				newAggregate[i], err = expr.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+				newAggregate[i], err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
 					col, ok := e.(*expression.UnresolvedColumn)
 					if ok {
 						// We need to make sure we don't rename the reference to the

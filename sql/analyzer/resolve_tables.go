@@ -21,7 +21,7 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 	defer span.Finish()
 
 	a.Log("resolve table, node of type: %T", n)
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
 		if n.Resolved() {
 			return n, nil

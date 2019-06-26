@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
+	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 // ErrGroupBy is returned when the aggregation is not supported.
@@ -93,33 +93,34 @@ func (p *GroupBy) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.NewSpanIter(span, iter), nil
 }
 
-// TransformUp implements the Transformable interface.
-func (p *GroupBy) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := p.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (p *GroupBy) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return f(NewGroupBy(p.Aggregate, p.Grouping, child))
+
+	return NewGroupBy(p.Aggregate, p.Grouping, children[0]), nil
 }
 
-// TransformExpressionsUp implements the Transformable interface.
-func (p *GroupBy) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	aggregate, err := transformExpressionsUp(f, p.Aggregate)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (p *GroupBy) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	expected := len(p.Aggregate) + len(p.Grouping)
+	if len(exprs) != expected {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(exprs), expected)
 	}
 
-	grouping, err := transformExpressionsUp(f, p.Grouping)
-	if err != nil {
-		return nil, err
+	var agg = make([]sql.Expression, len(p.Aggregate))
+	for i := 0; i < len(p.Aggregate); i++ {
+		agg[i] = exprs[i]
 	}
 
-	child, err := p.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
+	var grouping = make([]sql.Expression, len(p.Grouping))
+	offset := len(p.Aggregate)
+	for i := 0; i < len(p.Grouping); i++ {
+		grouping[i] = exprs[i+offset]
 	}
 
-	return NewGroupBy(aggregate, grouping, child), nil
+	return NewGroupBy(agg, grouping, p.Child), nil
 }
 
 func (p *GroupBy) String() string {
@@ -150,21 +151,6 @@ func (p *GroupBy) Expressions() []sql.Expression {
 	exprs = append(exprs, p.Aggregate...)
 	exprs = append(exprs, p.Grouping...)
 	return exprs
-}
-
-// TransformExpressions implements the Expressioner interface.
-func (p *GroupBy) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
-	agg, err := transformExpressionsUp(f, p.Aggregate)
-	if err != nil {
-		return nil, err
-	}
-
-	group, err := transformExpressionsUp(f, p.Grouping)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewGroupBy(agg, group, p.Child), nil
 }
 
 type groupByIter struct {

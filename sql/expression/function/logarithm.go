@@ -5,9 +5,9 @@ import (
 	"math"
 	"reflect"
 
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // ErrInvalidArgumentForLogarithm is returned when an invalid argument value is passed to a
@@ -45,13 +45,12 @@ func (l *LogBase) String() string {
 	}
 }
 
-// TransformUp implements the Expression interface.
-func (l *LogBase) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := l.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (l *LogBase) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
-	return f(NewLogBase(l.base, child))
+	return NewLogBase(l.base, children[0]), nil
 }
 
 // Type returns the resultant type of the function.
@@ -108,26 +107,9 @@ func (l *Log) String() string {
 	return fmt.Sprintf("log(%s, %s)", l.Left, l.Right)
 }
 
-// TransformUp implements the Expression interface.
-func (l *Log) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	var args = make([]sql.Expression, 2)
-	arg, err := l.Left.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-	args[0] = arg
-
-	arg, err = l.Right.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-	args[1] = arg
-	expr, err := NewLog(args...)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(expr)
+// WithChildren implements the Expression interface.
+func (l *Log) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewLog(children...)
 }
 
 // Children implements the Expression interface.

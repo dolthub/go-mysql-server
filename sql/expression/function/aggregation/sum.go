@@ -27,13 +27,12 @@ func (m *Sum) String() string {
 	return fmt.Sprintf("SUM(%s)", m.Child)
 }
 
-// TransformUp implements the Transformable interface.
-func (m *Sum) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := m.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (m *Sum) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-	return f(NewSum(child))
+	return NewSum(children[0]), nil
 }
 
 // NewBuffer creates a new buffer to compute the result.

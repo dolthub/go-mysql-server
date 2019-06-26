@@ -3,9 +3,9 @@ package plan
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGenerateRowIter(t *testing.T) {
@@ -80,9 +80,6 @@ func (n *fakeNode) Resolved() bool                            { return true }
 func (n *fakeNode) Schema() sql.Schema                        { return n.schema }
 func (n *fakeNode) RowIter(*sql.Context) (sql.RowIter, error) { return n.iter, nil }
 func (n *fakeNode) String() string                            { return "fakeNode" }
-func (n *fakeNode) TransformUp(sql.TransformNodeFunc) (sql.Node, error) {
-	panic("placeholder")
-}
-func (n *fakeNode) TransformExpressionsUp(sql.TransformExprFunc) (sql.Node, error) {
+func (*fakeNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	panic("placeholder")
 }

@@ -27,13 +27,12 @@ func (f *First) String() string {
 	return fmt.Sprintf("FIRST(%s)", f.Child)
 }
 
-// TransformUp implements the Transformable interface.
-func (f *First) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := f.Child.TransformUp(fn)
-	if err != nil {
-		return nil, err
+// WithChildren implements the sql.Expression interface.
+func (f *First) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return fn(NewFirst(child))
+	return NewFirst(children[0]), nil
 }
 
 // NewBuffer creates a new buffer to compute the result.

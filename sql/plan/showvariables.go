@@ -28,13 +28,12 @@ func (sv *ShowVariables) Resolved() bool {
 	return true
 }
 
-// TransformUp implements the sq.Transformable interface.
-func (sv *ShowVariables) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(NewShowVariables(sv.config, sv.pattern))
-}
+// WithChildren implements the Node interface.
+func (sv *ShowVariables) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(sv, len(children), 0)
+	}
 
-// TransformExpressionsUp implements the sql.Transformable interface.
-func (sv *ShowVariables) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return sv, nil
 }
 

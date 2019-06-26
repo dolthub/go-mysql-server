@@ -24,39 +24,22 @@ func (h *Having) Resolved() bool { return h.Cond.Resolved() && h.Child.Resolved(
 // Expressions implements the sql.Expressioner interface.
 func (h *Having) Expressions() []sql.Expression { return []sql.Expression{h.Cond} }
 
-// TransformExpressions implements the sql.Expressioner interface.
-func (h *Having) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
-	e, err := h.Cond.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (h *Having) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(h, len(children), 1)
 	}
 
-	return &Having{h.UnaryNode, e}, nil
+	return NewHaving(h.Cond, children[0]), nil
 }
 
-// TransformExpressionsUp implements the sql.Node interface.
-func (h *Having) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	child, err := h.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
+// WithExpressions implements the Expressioner interface.
+func (h *Having) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(h, len(exprs), 1)
 	}
 
-	e, err := h.Cond.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Having{UnaryNode{child}, e}, nil
-}
-
-// TransformUp implements the sql.Node interface.
-func (h *Having) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := h.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(&Having{UnaryNode{child}, h.Cond})
+	return NewHaving(exprs[0], h.Child), nil
 }
 
 // RowIter implements the sql.Node interface.

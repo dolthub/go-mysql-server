@@ -3,6 +3,7 @@ package analyzer
 import (
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/src-d/go-mysql-server/sql/plan"
 )
 
 func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -10,13 +11,13 @@ func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, erro
 	defer span.Finish()
 
 	a.Log("resolve functions, node of type %T", n)
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
 		if n.Resolved() {
 			return n, nil
 		}
 
-		return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
+		return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
 			a.Log("transforming expression of type: %T", e)
 			if e.Resolved() {
 				return e, nil

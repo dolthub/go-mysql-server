@@ -76,17 +76,10 @@ func (f *Split) String() string {
 	return fmt.Sprintf("split(%s, %s)", f.Left, f.Right)
 }
 
-// TransformUp implements the Expression interface.
-func (f *Split) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	left, err := f.Left.TransformUp(fn)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (f *Split) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}
-
-	right, err := f.Right.TransformUp(fn)
-	if err != nil {
-		return nil, err
-	}
-
-	return fn(NewSplit(left, right))
+	return NewSplit(children[0], children[1]), nil
 }

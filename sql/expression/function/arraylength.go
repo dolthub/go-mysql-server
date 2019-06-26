@@ -26,13 +26,12 @@ func (f *ArrayLength) String() string {
 	return fmt.Sprintf("array_length(%s)", f.Child)
 }
 
-// TransformUp implements the Expression interface.
-func (f *ArrayLength) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := f.Child.TransformUp(fn)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (f *ArrayLength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return fn(NewArrayLength(child))
+	return NewArrayLength(children[0]), nil
 }
 
 // Eval implements the Expression interface.

@@ -45,14 +45,20 @@ func (n *SubqueryAlias) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.NewSpanIter(span, iter), nil
 }
 
-// TransformUp implements the Node interface.
-func (n *SubqueryAlias) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(n)
+// WithChildren implements the Node interface.
+func (n *SubqueryAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
+	}
+
+	nn := *n
+	nn.Child = children[0]
+	return n, nil
 }
 
-// TransformExpressionsUp implements the Node interface.
-func (n *SubqueryAlias) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	return n, nil
+// Opaque implements the OpaqueNode interface.
+func (n *SubqueryAlias) Opaque() bool {
+	return true
 }
 
 func (n SubqueryAlias) String() string {

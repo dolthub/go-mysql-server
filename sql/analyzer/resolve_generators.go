@@ -1,11 +1,11 @@
 package analyzer
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function"
 	"github.com/src-d/go-mysql-server/sql/plan"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 var (
@@ -14,7 +14,7 @@ var (
 )
 
 func resolveGenerators(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		p, ok := n.(*plan.Project)
 		if !ok {
 			return n, nil

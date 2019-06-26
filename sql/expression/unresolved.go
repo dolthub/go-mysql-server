@@ -64,10 +64,12 @@ func (*UnresolvedColumn) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) 
 	panic("unresolved column is a placeholder node, but Eval was called")
 }
 
-// TransformUp implements the Expression interface.
-func (uc *UnresolvedColumn) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	n := *uc
-	return f(&n)
+// WithChildren implements the Expression interface.
+func (uc *UnresolvedColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(uc, len(children), 0)
+	}
+	return uc, nil
 }
 
 // UnresolvedFunction represents a function that is not yet resolved.
@@ -126,16 +128,10 @@ func (*UnresolvedFunction) Eval(ctx *sql.Context, r sql.Row) (interface{}, error
 	panic("unresolved function is a placeholder node, but Eval was called")
 }
 
-// TransformUp implements the Expression interface.
-func (uf *UnresolvedFunction) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	var rc []sql.Expression
-	for _, c := range uf.Arguments {
-		ct, err := c.TransformUp(f)
-		if err != nil {
-			return nil, err
-		}
-		rc = append(rc, ct)
+// WithChildren implements the Expression interface.
+func (uf *UnresolvedFunction) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != len(uf.Arguments) {
+		return nil, sql.ErrInvalidChildrenNumber.New(uf, len(children), len(uf.Arguments))
 	}
-
-	return f(NewUnresolvedFunction(uf.name, uf.IsAggregate, rc...))
+	return NewUnresolvedFunction(uf.name, uf.IsAggregate, children...), nil
 }

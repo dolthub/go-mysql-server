@@ -53,10 +53,12 @@ func (p *Literal) String() string {
 	}
 }
 
-// TransformUp implements the Expression interface.
-func (p *Literal) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	n := *p
-	return f(&n)
+// WithChildren implements the Expression interface.
+func (p *Literal) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
+	}
+	return p, nil
 }
 
 // Children implements the Expression interface.

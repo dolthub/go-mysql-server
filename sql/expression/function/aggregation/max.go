@@ -38,13 +38,12 @@ func (m *Max) IsNullable() bool {
 	return false
 }
 
-// TransformUp implements the Transformable interface.
-func (m *Max) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := m.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (m *Max) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-	return f(NewMax(child))
+	return NewMax(children[0]), nil
 }
 
 // NewBuffer creates a new buffer to compute the result.

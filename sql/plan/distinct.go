@@ -37,22 +37,13 @@ func (d *Distinct) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.NewSpanIter(span, newDistinctIter(it)), nil
 }
 
-// TransformUp implements the Transformable interface.
-func (d *Distinct) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := d.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (d *Distinct) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-	return f(NewDistinct(child))
-}
 
-// TransformExpressionsUp implements the Transformable interface.
-func (d *Distinct) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	child, err := d.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-	return NewDistinct(child), nil
+	return NewDistinct(children[0]), nil
 }
 
 func (d Distinct) String() string {
@@ -135,22 +126,13 @@ func (d *OrderedDistinct) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.NewSpanIter(span, newOrderedDistinctIter(it, d.Child.Schema())), nil
 }
 
-// TransformUp implements the Transformable interface.
-func (d *OrderedDistinct) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := d.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (d *OrderedDistinct) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-	return f(NewOrderedDistinct(child))
-}
 
-// TransformExpressionsUp implements the Transformable interface.
-func (d *OrderedDistinct) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	child, err := d.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-	return NewOrderedDistinct(child), nil
+	return NewOrderedDistinct(children[0]), nil
 }
 
 func (d OrderedDistinct) String() string {

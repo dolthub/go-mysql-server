@@ -142,32 +142,9 @@ func (s *Substring) Resolved() bool {
 // Type implements the Expression interface.
 func (*Substring) Type() sql.Type { return sql.Text }
 
-// TransformUp implements the Expression interface.
-func (s *Substring) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	str, err := s.str.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	start, err := s.start.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	// It is safe to omit the errors of NewSubstring here because to be able to call
-	// this method, you need a valid instance of Substring, so the arity must be correct
-	// and that's the only error NewSubstring can return.
-	var sub sql.Expression
-	if s.len != nil {
-		len, err := s.len.TransformUp(f)
-		if err != nil {
-			return nil, err
-		}
-		sub, _ = NewSubstring(str, start, len)
-	} else {
-		sub, _ = NewSubstring(str, start)
-	}
-	return f(sub)
+/// WithChildren implements the Expression interface.
+func (*Substring) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewSubstring(children...)
 }
 
 // SubstringIndex returns the substring from string str before count occurrences of the delimiter delim.
@@ -273,22 +250,10 @@ func (s *SubstringIndex) Resolved() bool {
 // Type implements the Expression interface.
 func (*SubstringIndex) Type() sql.Type { return sql.Text }
 
-// TransformUp implements the Expression interface.
-func (s *SubstringIndex) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	str, err := s.str.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (s *SubstringIndex) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 3 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 3)
 	}
-
-	delim, err := s.delim.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	count, err := s.count.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewSubstringIndex(str, delim, count))
+	return NewSubstringIndex(children[0], children[1], children[2]), nil
 }

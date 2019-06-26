@@ -42,12 +42,11 @@ func (ShowCollation) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 // Schema implements the sql.Node interface.
 func (ShowCollation) Schema() sql.Schema { return collationSchema }
 
-// TransformUp implements the sql.Node interface.
-func (ShowCollation) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(ShowCollation{})
-}
+// WithChildren implements the Node interface.
+func (s ShowCollation) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
+	}
 
-// TransformExpressionsUp implements the sql.Node interface.
-func (ShowCollation) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	return ShowCollation{}, nil
+	return s, nil
 }

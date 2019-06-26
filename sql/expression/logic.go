@@ -68,19 +68,12 @@ func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return true, nil
 }
 
-// TransformUp implements the Expression interface.
-func (a *And) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	left, err := a.Left.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (a *And) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 2)
 	}
-
-	right, err := a.Right.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewAnd(left, right))
+	return NewAnd(children[0], children[1]), nil
 }
 
 // Or checks whether one of the two given expressions is true.
@@ -125,17 +118,10 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return rval == true, nil
 }
 
-// TransformUp implements the Expression interface.
-func (o *Or) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	left, err := o.Left.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (o *Or) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(o, len(children), 2)
 	}
-
-	right, err := o.Right.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewOr(left, right))
+	return NewOr(children[0], children[1]), nil
 }

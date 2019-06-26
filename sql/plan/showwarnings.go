@@ -12,13 +12,12 @@ func (ShowWarnings) Resolved() bool {
 	return true
 }
 
-// TransformUp implements the sq.Transformable interface.
-func (sw ShowWarnings) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(sw)
-}
+// WithChildren implements the Node interface.
+func (sw ShowWarnings) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(sw, len(children), 0)
+	}
 
-// TransformExpressionsUp implements the sql.Transformable interface.
-func (sw ShowWarnings) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return sw, nil
 }
 

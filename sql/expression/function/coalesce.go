@@ -59,29 +59,9 @@ func (c *Coalesce) String() string {
 	return fmt.Sprintf("coalesce(%s)", strings.Join(args, ", "))
 }
 
-// TransformUp implements the sql.Expression interface.
-func (c *Coalesce) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	var (
-		args = make([]sql.Expression, len(c.args))
-		err  error
-	)
-
-	for i, arg := range c.args {
-		if arg != nil {
-			arg, err = arg.TransformUp(fn)
-			if err != nil {
-				return nil, err
-			}
-		}
-		args[i] = arg
-	}
-
-	expr, err := NewCoalesce(args...)
-	if err != nil {
-		return nil, err
-	}
-
-	return fn(expr)
+// WithChildren implements the Expression interface.
+func (*Coalesce) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewCoalesce(children...)
 }
 
 // Resolved implements the sql.Expression interface.

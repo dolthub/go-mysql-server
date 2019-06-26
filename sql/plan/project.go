@@ -69,30 +69,6 @@ func (p *Project) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.NewSpanIter(span, &iter{p, i, ctx}), nil
 }
 
-// TransformUp implements the Transformable interface.
-func (p *Project) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := p.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-	return f(NewProject(p.Projections, child))
-}
-
-// TransformExpressionsUp implements the Transformable interface.
-func (p *Project) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	exprs, err := transformExpressionsUp(f, p.Projections)
-	if err != nil {
-		return nil, err
-	}
-
-	child, err := p.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewProject(exprs, child), nil
-}
-
 func (p *Project) String() string {
 	pr := sql.NewTreePrinter()
 	var exprs = make([]string, len(p.Projections))
@@ -109,14 +85,22 @@ func (p *Project) Expressions() []sql.Expression {
 	return p.Projections
 }
 
-// TransformExpressions implements the Expressioner interface.
-func (p *Project) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
-	projects, err := transformExpressionsUp(f, p.Projections)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (p *Project) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
 
-	return NewProject(projects, p.Child), nil
+	return NewProject(p.Projections, children[0]), nil
+}
+
+// WithExpressions implements the Expressioner interface.
+func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(p.Projections) {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(exprs), len(p.Projections))
+	}
+
+	return NewProject(exprs, p.Child), nil
 }
 
 type iter struct {

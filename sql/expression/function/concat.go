@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
+	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 // Concat joins several strings together.
@@ -63,23 +63,9 @@ func (f *Concat) String() string {
 	return fmt.Sprintf("concat(%s)", strings.Join(args, ", "))
 }
 
-// TransformUp implements the Expression interface.
-func (f *Concat) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	var args = make([]sql.Expression, len(f.args))
-	for i, arg := range f.args {
-		a, err := arg.TransformUp(fn)
-		if err != nil {
-			return nil, err
-		}
-		args[i] = a
-	}
-
-	expr, err := NewConcat(args...)
-	if err != nil {
-		return nil, err
-	}
-
-	return fn(expr)
+// WithChildren implements the Expression interface.
+func (*Concat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewConcat(children...)
 }
 
 // Resolved implements the Expression interface.

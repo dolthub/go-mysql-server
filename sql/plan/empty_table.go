@@ -16,12 +16,11 @@ func (emptyTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
 }
 
-// TransformUp implements the Transformable interface.
-func (e *emptyTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(e)
-}
+// WithChildren implements the Node interface.
+func (e *emptyTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 0)
+	}
 
-// TransformExpressionsUp implements the Transformable interface.
-func (e *emptyTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return e, nil
 }

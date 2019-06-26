@@ -4,9 +4,9 @@ import (
 	"io"
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // ErrInsertIntoNotSupported is thrown when a table doesn't support inserts
@@ -123,34 +123,13 @@ func (p *InsertInto) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.RowsToRowIter(sql.NewRow(int64(n))), nil
 }
 
-// TransformUp implements the Transformable interface.
-func (p *InsertInto) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	left, err := p.Left.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (p *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 2)
 	}
 
-	right, err := p.Right.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewInsertInto(left, right, p.Columns))
-}
-
-// TransformExpressionsUp implements the Transformable interface.
-func (p *InsertInto) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	left, err := p.Left.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	right, err := p.Right.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewInsertInto(left, right, p.Columns), nil
+	return NewInsertInto(children[0], children[1], p.Columns), nil
 }
 
 func (p InsertInto) String() string {

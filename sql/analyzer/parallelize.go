@@ -34,7 +34,7 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error)
 		return node, nil
 	}
 
-	node, err := node.TransformUp(func(node sql.Node) (sql.Node, error) {
+	node, err := plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
 		if !isParallelizable(node) {
 			return node, nil
 		}
@@ -47,7 +47,7 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error)
 		return nil, err
 	}
 
-	return node.TransformUp(removeRedundantExchanges)
+	return plan.TransformUp(node, removeRedundantExchanges)
 }
 
 // removeRedundantExchanges removes all the exchanges except for the topmost
@@ -58,13 +58,17 @@ func removeRedundantExchanges(node sql.Node) (sql.Node, error) {
 		return node, nil
 	}
 
-	e := &protectedExchange{exchange}
-	return e.TransformUp(func(node sql.Node) (sql.Node, error) {
+	child, err := plan.TransformUp(exchange.Child, func(node sql.Node) (sql.Node, error) {
 		if exchange, ok := node.(*plan.Exchange); ok {
 			return exchange.Child, nil
 		}
 		return node, nil
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return exchange.WithChildren(child)
 }
 
 func isParallelizable(node sql.Node) bool {
@@ -102,22 +106,4 @@ func isParallelizable(node sql.Node) bool {
 	})
 
 	return ok && tableSeen && lastWasTable
-}
-
-// protectedExchange is a placeholder node that protects a certain exchange
-// node from being removed during transformations.
-type protectedExchange struct {
-	*plan.Exchange
-}
-
-// TransformUp transforms the child with the given transform function but it
-// will not call the transform function with the new instance. Instead of
-// another protectedExchange, it will return an Exchange.
-func (e *protectedExchange) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := e.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return plan.NewExchange(e.Parallelism, child), nil
 }

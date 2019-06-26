@@ -21,28 +21,13 @@ func NewQueryProcess(node sql.Node, notify NotifyFunc) *QueryProcess {
 	return &QueryProcess{UnaryNode{Child: node}, notify}
 }
 
-// TransformUp implements the sql.Node interface.
-func (p *QueryProcess) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	n, err := p.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (p *QueryProcess) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
 
-	np := *p
-	np.Child = n
-	return &np, nil
-}
-
-// TransformExpressionsUp implements the sql.Node interface.
-func (p *QueryProcess) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	n, err := p.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	np := *p
-	np.Child = n
-	return &np, nil
+	return NewQueryProcess(children[0], p.Notify), nil
 }
 
 // RowIter implements the sql.Node interface.

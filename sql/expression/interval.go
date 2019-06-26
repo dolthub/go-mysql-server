@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
+	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 // Interval defines a time duration.
@@ -148,14 +148,12 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 	return &td, nil
 }
 
-// TransformUp implements the sql.Expression interface.
-func (i *Interval) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := i.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (i *Interval) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-
-	return NewInterval(child, i.Unit), nil
+	return NewInterval(children[0], i.Unit), nil
 }
 
 func (i *Interval) String() string {

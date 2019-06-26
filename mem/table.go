@@ -7,9 +7,9 @@ import (
 	"io"
 	"strconv"
 
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
+	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 // Table represents an in-memory database table.
@@ -312,14 +312,14 @@ func (t *Table) HandledFilters(filters []sql.Expression) []sql.Expression {
 	var handled []sql.Expression
 	for _, f := range filters {
 		var hasOtherFields bool
-		_, _ = f.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+		expression.Inspect(f, func(e sql.Expression) bool {
 			if e, ok := e.(*expression.GetField); ok {
 				if e.Table() != t.name || !t.schema.Contains(e.Name(), t.name) {
 					hasOtherFields = true
+					return false
 				}
 			}
-
-			return e, nil
+			return true
 		})
 
 		if !hasOtherFields {

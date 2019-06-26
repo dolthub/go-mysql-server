@@ -1,10 +1,10 @@
 package analyzer
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
@@ -17,7 +17,7 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, er
 
 	a.Log("erase projection, node of type: %T", node)
 
-	return node.TransformUp(func(node sql.Node) (sql.Node, error) {
+	return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
 		project, ok := node.(*plan.Project)
 		if ok && project.Schema().Equals(project.Child.Schema()) {
 			a.Log("project erased")
@@ -35,12 +35,13 @@ func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, e
 	a.Log("optimize distinct, node of type: %T", node)
 	if n, ok := node.(*plan.Distinct); ok {
 		var isSorted bool
-		_, _ = node.TransformUp(func(node sql.Node) (sql.Node, error) {
+		plan.Inspect(n, func(node sql.Node) bool {
 			a.Log("checking for optimization in node of type: %T", node)
 			if _, ok := node.(*plan.Sort); ok {
 				isSorted = true
+				return false
 			}
-			return node, nil
+			return true
 		})
 
 		if isSorted {
@@ -65,7 +66,7 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 	a.Log("reorder projection, node of type: %T", n)
 
 	// Then we transform the projection
-	return n.TransformUp(func(node sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
 		project, ok := node.(*plan.Project)
 		// When we transform the projection, the children will always be
 		// unresolved in the case we want to fix, as the reorder happens just
@@ -92,7 +93,7 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 
 		// And add projection nodes where needed in the child tree.
 		var didNeedReorder bool
-		child, err := project.Child.TransformUp(func(node sql.Node) (sql.Node, error) {
+		child, err := plan.TransformUp(project.Child, func(node sql.Node) (sql.Node, error) {
 			var requiredColumns []string
 			switch node := node.(type) {
 			case *plan.Sort, *plan.Filter:
@@ -200,7 +201,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.
 
 	a.Log("moving join conditions to filter, node of type: %T", n)
 
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		join, ok := n.(*plan.InnerJoin)
 		if !ok {
 			return n, nil
@@ -268,7 +269,7 @@ func removeUnnecessaryConverts(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.N
 
 	a.Log("removing unnecessary converts, node of type: %T", n)
 
-	return n.TransformExpressionsUp(func(e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
 		if c, ok := e.(*expression.Convert); ok && c.Child.Type() == c.Type() {
 			return c.Child, nil
 		}
@@ -336,13 +337,13 @@ func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) 
 
 	a.Log("evaluating filters, node of type: %T", node)
 
-	return node.TransformUp(func(node sql.Node) (sql.Node, error) {
+	return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
 		filter, ok := node.(*plan.Filter)
 		if !ok {
 			return node, nil
 		}
 
-		e, err := filter.Expression.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+		e, err := expression.TransformUp(filter.Expression, func(e sql.Expression) (sql.Expression, error) {
 			switch e := e.(type) {
 			case *expression.Or:
 				if isTrue(e.Left) {

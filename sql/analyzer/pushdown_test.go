@@ -3,11 +3,11 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/src-d/go-mysql-server/mem"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPushdownProjectionAndFilters(t *testing.T) {
@@ -212,7 +212,7 @@ func TestPushdownIndexable(t *testing.T) {
 	require.NoError(err)
 
 	// we need to remove the release function to compare, otherwise it will fail
-	result, err = result.TransformUp(func(node sql.Node) (sql.Node, error) {
+	result, err = plan.TransformUp(result, func(node sql.Node) (sql.Node, error) {
 		switch node := node.(type) {
 		case *releaser:
 			return &releaser{Child: node.Child}, nil

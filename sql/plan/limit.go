@@ -7,8 +7,6 @@ import (
 	"github.com/src-d/go-mysql-server/sql"
 )
 
-var _ sql.Node = &Limit{}
-
 // Limit is a node that only allows up to N rows to be retrieved.
 type Limit struct {
 	UnaryNode
@@ -40,22 +38,12 @@ func (l *Limit) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.NewSpanIter(span, &limitIter{l, 0, li}), nil
 }
 
-// TransformUp implements the Transformable interface.
-func (l *Limit) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := l.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (l *Limit) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
-	return f(NewLimit(l.Limit, child))
-}
-
-// TransformExpressionsUp implements the Transformable interface.
-func (l *Limit) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	child, err := l.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-	return NewLimit(l.Limit, child), nil
+	return NewLimit(l.Limit, children[0]), nil
 }
 
 func (l Limit) String() string {

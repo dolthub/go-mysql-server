@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/spf13/cast"
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
+	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 // ErrConvertExpression is returned when a conversion is not possible.
@@ -90,14 +90,12 @@ func (c *Convert) String() string {
 	return fmt.Sprintf("convert(%v, %v)", c.Child, c.castToType)
 }
 
-// TransformUp implements the Expression interface.
-func (c *Convert) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := c.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (c *Convert) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-
-	return f(NewConvert(child, c.castToType))
+	return NewConvert(children[0], c.castToType), nil
 }
 
 // Eval implements the Expression interface.

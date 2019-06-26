@@ -53,16 +53,15 @@ func (p *ShowDatabases) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.RowsToRowIter(rows...), nil
 }
 
-// TransformUp implements the Transformable interface.
-func (p *ShowDatabases) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	np := *p
-	return f(&np)
-}
+// WithChildren implements the Node interface.
+func (p *ShowDatabases) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
+	}
 
-// TransformExpressionsUp implements the Transformable interface.
-func (p *ShowDatabases) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return p, nil
 }
+
 func (p ShowDatabases) String() string {
 	return "ShowDatabases"
 }

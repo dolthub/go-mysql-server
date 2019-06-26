@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 var ErrUintOverflow = errors.NewKind(
@@ -194,23 +194,9 @@ func (f *Greatest) String() string {
 	return fmt.Sprintf("greatest(%s)", strings.Join(args, ", "))
 }
 
-// TransformUp implements the Expression interface.
-func (f *Greatest) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	var args = make([]sql.Expression, len(f.Args))
-	for i, arg := range f.Args {
-		a, err := arg.TransformUp(fn)
-		if err != nil {
-			return nil, err
-		}
-		args[i] = a
-	}
-
-	expr, err := NewGreatest(args...)
-	if err != nil {
-		return nil, err
-	}
-
-	return fn(expr)
+// WithChildren implements the Expression interface.
+func (f *Greatest) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewGreatest(children...)
 }
 
 // Resolved implements the Expression interface.
@@ -298,23 +284,9 @@ func (f *Least) String() string {
 	return fmt.Sprintf("least(%s)", strings.Join(args, ", "))
 }
 
-// TransformUp implements the Expression interface.
-func (f *Least) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	var args = make([]sql.Expression, len(f.Args))
-	for i, arg := range f.Args {
-		a, err := arg.TransformUp(fn)
-		if err != nil {
-			return nil, err
-		}
-		args[i] = a
-	}
-
-	expr, err := NewLeast(args...)
-	if err != nil {
-		return nil, err
-	}
-
-	return fn(expr)
+// WithChildren implements the Expression interface.
+func (f *Least) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewLeast(children...)
 }
 
 // Resolved implements the Expression interface.

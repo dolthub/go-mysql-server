@@ -50,13 +50,12 @@ func (u *Use) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
 }
 
-// TransformUp implements the sql.Node interface.
-func (u *Use) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(u)
-}
+// WithChildren implements the Node interface.
+func (u *Use) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
+	}
 
-// TransformExpressionsUp implements the sql.Node interface.
-func (u *Use) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return u, nil
 }
 

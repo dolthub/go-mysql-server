@@ -31,13 +31,12 @@ func (e *Alias) String() string {
 	return fmt.Sprintf("%s as %s", e.Child, e.name)
 }
 
-// TransformUp implements the Expression interface.
-func (e *Alias) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := e.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (e *Alias) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
-	return f(NewAlias(child, e.name))
+	return NewAlias(children[0], e.name), nil
 }
 
 // Name implements the Nameable interface.

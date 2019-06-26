@@ -86,13 +86,12 @@ func (s *ShowTableStatus) String() string {
 	return fmt.Sprintf("ShowTableStatus(%s)", strings.Join(s.Databases, ", "))
 }
 
-// TransformUp implements the sql.Node interface.
-func (s *ShowTableStatus) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(s)
-}
+// WithChildren implements the Node interface.
+func (s *ShowTableStatus) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
+	}
 
-// TransformExpressionsUp implements the sql.Node interface.
-func (s *ShowTableStatus) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return s, nil
 }
 
