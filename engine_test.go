@@ -81,16 +81,8 @@ var queries = []struct {
 		[]sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}, {float64(2.5)}},
 	},
 	{
-		"SELECT i FROM mytable WHERE i > 2;",
-		[]sql.Row{{int64(3)}},
-	},
-	{
-		"SELECT i FROM mytable WHERE i < 2;",
-		[]sql.Row{{int64(1)}},
-	},
-	{
-		"SELECT i FROM mytable WHERE i <> 2;",
-		[]sql.Row{{int64(1)}, {int64(3)}},
+		"SELECT f32 FROM floattable ORDER BY f64;",
+		[]sql.Row{{float32(-1.5)}, {float32(-1.0)}, {float32(1.0)}, {float32(1.5)}, {float32(2.0)}, {float32(2.5)}},
 	},
 	{
 		"SELECT i FROM mytable ORDER BY i DESC;",
