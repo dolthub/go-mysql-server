@@ -12,7 +12,7 @@ require (
 	github.com/gorilla/handlers v1.4.0 // indirect
 	github.com/mitchellh/hashstructure v1.0.0
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852
-	github.com/opentracing/opentracing-go v1.1.0
+	github.com/opentracing/opentracing-go v1.0.2
 	github.com/pbnjay/memory v0.0.0-20190104145345-974d429e7ae4
 	github.com/pilosa/pilosa v1.3.0
 	github.com/sanity-io/litter v1.1.0
