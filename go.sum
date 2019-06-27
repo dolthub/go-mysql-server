@@ -100,6 +100,8 @@ github.com/klauspost/crc32 v1.2.0/go.mod h1:+ZoRqAPRLkC4NPOvfYeR5KNOrY6TD+/sAC3H
 github.com/klauspost/pgzip v1.2.0/go.mod h1:Ch1tH69qFZu15pkjo5kYi6mth2Zzwzt50oCQKQE9RUs=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1 h1:mweAR1A6xJ3oS2pRaGiHgQ4OO8tzTaLawm8vnODuwDk=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
+github.com/liquidata-inc/vitess v0.0.0-20190625235908-66745781a796 h1:oDEoe6JmyZKBl+sYaqB0kwoTTKYzApnoZ2pCjvjt7us=
+github.com/liquidata-inc/vitess v0.0.0-20190625235908-66745781a796/go.mod h1:Au9ry8xH1Bp0PbsWvLzQPPDo7H9YGDOWoms2W7yqNs0=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/mattn/go-runewidth v0.0.1/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
@@ -258,3 +260,4 @@ modernc.org/mathutil v1.0.0 h1:93vKjrJopTPrtTNpZ8XIovER7iCIH1QU7wNbOQXC60I=
 modernc.org/mathutil v1.0.0/go.mod h1:wU0vUrJsVWBZ4P6e7xtFJEhFSNsfRLJ8H458uRjg03k=
 modernc.org/strutil v1.0.0 h1:XVFtQwFVwc02Wk+0L/Z/zDDXO81r5Lhe6iMKmGX3KhE=
 modernc.org/strutil v1.0.0/go.mod h1:lstksw84oURvj9y3tn8lGvRxyRC1S2+g5uuIzNfIOBs=
+vitess.io/vitess v3.0.0-rc.3.0.20190602171040-12bfde34629c+incompatible/go.mod h1:h4qvkyNYTOC0xI+vcidSWoka0gQAZc9ZPHbkHo48gP0=

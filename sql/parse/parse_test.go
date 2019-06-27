@@ -5,7 +5,7 @@ import (
 
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
-	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
@@ -310,7 +310,16 @@ var fixtures = map[string]sql.Node{
 		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT foo, bar FROM foo LIMIT 2 OFFSET 5;`: plan.NewOffset(5,
-		plan.NewLimit(2, plan.NewProject(
+		plan.NewLimit(7, plan.NewProject(
+			[]sql.Expression{
+				expression.NewUnresolvedColumn("foo"),
+				expression.NewUnresolvedColumn("bar"),
+			},
+			plan.NewUnresolvedTable("foo", ""),
+		)),
+	),
+	`SELECT foo, bar FROM foo LIMIT 5,2;`: plan.NewOffset(5,
+		plan.NewLimit(7, plan.NewProject(
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("foo"),
 				expression.NewUnresolvedColumn("bar"),
@@ -1143,7 +1152,7 @@ func TestParse(t *testing.T) {
 			require := require.New(t)
 			ctx := sql.NewEmptyContext()
 			p, err := Parse(ctx, query)
-			require.Nil(err, "error for query '%s'", query)
+			require.NoError(err)
 			require.Exactly(expectedPlan, p,
 				"plans do not match for query '%s'", query)
 		})
@@ -1156,6 +1165,8 @@ var fixturesErrors = map[string]*errors.Kind{
 	`LOCK TABLES foo AS READ`:                              errUnexpectedSyntax,
 	`LOCK TABLES foo LOW_PRIORITY READ`:                    errUnexpectedSyntax,
 	`SELECT * FROM mytable WHERE i IN (SELECT i FROM foo)`: ErrUnsupportedSubqueryExpression,
+	`SELECT * FROM mytable LIMIT -100`:                     ErrUnsupportedSyntax,
+	`SELECT * FROM mytable LIMIT 100 OFFSET -1`:            ErrUnsupportedSyntax,
 	`SELECT * FROM files
 		JOIN commit_files
 		JOIN refs
