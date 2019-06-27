@@ -50,6 +50,74 @@ func TestNumberComparison(t *testing.T) {
 	gt(t, Uint32, int64(5), uint32(1))
 	gt(t, Uint32, uint32(5), int64(1))
 	lt(t, Uint32, uint64(1), int32(5))
+
+	eq(t, Uint8, uint8(255), uint8(255))
+	eq(t, Uint8, uint8(255), int32(255))
+	eq(t, Uint8, uint8(255), int64(255))
+	eq(t, Uint8, uint8(255), int64(255))
+	gt(t, Uint8, uint8(255), int32(1))
+	gt(t, Uint8, uint8(255), int64(1))
+	lt(t, Uint8, uint8(255), int16(256))
+
+	// Exhaustive numeric type equality test
+	type typeAndValue struct {
+		t numberT
+		v interface{}
+	}
+
+	allTypes := []typeAndValue{
+		{Int8, int8(42)},
+		{Uint8, uint8(42)},
+		{Int16, int16(42)},
+		{Uint16, uint16(42)},
+		{Int32, int32(42)},
+		{Uint32, uint32(42)},
+		{Int64, int64(42)},
+		{Uint64, uint64(42)},
+		{Float32, float32(42)},
+		{Float64, float64(42)},
+	}
+	for _, a := range allTypes {
+		for _, b := range allTypes {
+			eq(t, a.t, a.v, b.v)
+		}
+	}
+
+	// Float comparisons against other floats
+	greaterFloat := 7.5
+	lesserFloat := 7.4
+	gt(t, Float64, float64(greaterFloat), float64(lesserFloat))
+	lt(t, Float64, float64(lesserFloat), float64(greaterFloat))
+	eq(t, Float64, float64(greaterFloat), float64(greaterFloat))
+	gt(t, Float64, float64(greaterFloat), float32(lesserFloat))
+	lt(t, Float64, float64(lesserFloat), float32(greaterFloat))
+	eq(t, Float64, float64(greaterFloat), float32(greaterFloat))
+	gt(t, Float32, float32(greaterFloat), float32(lesserFloat))
+	lt(t, Float32, float32(lesserFloat), float32(greaterFloat))
+	eq(t, Float32, float32(greaterFloat), float32(greaterFloat))
+	gt(t, Float32, float32(greaterFloat), float64(lesserFloat))
+	lt(t, Float32, float32(lesserFloat), float64(greaterFloat))
+	eq(t, Float32, float32(greaterFloat), float64(greaterFloat))
+
+	// Float comparisons against other types, testing comparison and truncation (when an int type is the left side of a
+	// comparison with a float type)
+	lessInt := 7
+	floatComps := []typeAndValue{
+		{Int8, int8(lessInt)},
+		{Uint8, uint8(lessInt)},
+		{Int16, int16(lessInt)},
+		{Uint16, uint16(lessInt)},
+		{Int32, int32(lessInt)},
+		{Uint32, uint32(lessInt)},
+		{Int64, int64(lessInt)},
+		{Uint64, uint64(lessInt)},
+	}
+	for _, a := range floatComps {
+		gt(t, Float64, float64(greaterFloat), a.v)
+		eq(t, a.t, float64(greaterFloat), a.v)
+		gt(t, Float32, float32(greaterFloat), a.v)
+		eq(t, a.t, float32(greaterFloat), a.v)
+	}
 }
 
 func TestInt64(t *testing.T) {
