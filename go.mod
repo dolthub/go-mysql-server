@@ -28,9 +28,3 @@ require (
 	gopkg.in/yaml.v2 v2.2.2
 	vitess.io/vitess v3.0.0-rc.3.0.20190602171040-12bfde34629c+incompatible
 )
-
-replace vitess.io/vitess => github.com/liquidata-inc/vitess
-
-// For local development, clone vitess into $GOPATH/src like so: git clone git@github.com:liquidata-inc/vitess.git vitess.io/vitess
-// Then use this local override:
-//replace vitess.io/vitess => ../../../vitess.io/vitess
