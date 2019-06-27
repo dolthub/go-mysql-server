@@ -183,15 +183,15 @@ var (
 	Uint16 = numberT{t: sqltypes.Uint16}
 	// Int32 is an integer of 32 bits.
 	Int32 = numberT{t: sqltypes.Int32}
+	// Uint32 is an unsigned integer of 32 bits.
+	Uint32 = numberT{t: sqltypes.Uint32}
 	// Int64 is an integer of 64 bytes.
 	Int64 = numberT{t: sqltypes.Int64}
-	// Uint32 is an unsigned integer of 32 bytes.
-	Uint32 = numberT{t: sqltypes.Uint32}
-	// Uint64 is an unsigned integer of 64 bytes.
+	// Uint64 is an unsigned integer of 64 bits.
 	Uint64 = numberT{t: sqltypes.Uint64}
-	// Float32 is a floating point number of 32 bytes.
+	// Float32 is a floating point number of 32 bits.
 	Float32 = numberT{t: sqltypes.Float32}
-	// Float64 is a floating point number of 64 bytes.
+	// Float64 is a floating point number of 64 bits.
 	Float64 = numberT{t: sqltypes.Float64}
 
 	// Timestamp is an UNIX timestamp.
@@ -363,15 +363,42 @@ func (t numberT) Convert(v interface{}) (interface{}, error) {
 // Compare implements Type interface.
 func (t numberT) Compare(a interface{}, b interface{}) (int, error) {
 	if IsUnsigned(t) {
-		return compareUnsigned(a, b)
+		// only int types are unsigned
+		return compareUnsignedInts(a, b)
 	}
 
-	return compareSigned(a, b)
+	switch t.t {
+	case sqltypes.Float64, sqltypes.Float32:
+		return compareFloats(a, b)
+	default:
+		return compareSignedInts(a, b)
+	}
 }
 
 func (t numberT) String() string { return t.t.String() }
 
-func compareSigned(a interface{}, b interface{}) (int, error) {
+func compareFloats(a interface{}, b interface{}) (int, error) {
+	ca, err := cast.ToFloat64E(a)
+	if err != nil {
+		return 0, err
+	}
+	cb, err := cast.ToFloat64E(b)
+	if err != nil {
+		return 0, err
+	}
+
+	if ca == cb {
+		return 0, nil
+	}
+
+	if ca < cb {
+		return -1, nil
+	}
+
+	return +1, nil
+}
+
+func compareSignedInts(a interface{}, b interface{}) (int, error) {
 	ca, err := cast.ToInt64E(a)
 	if err != nil {
 		return 0, err
@@ -392,7 +419,7 @@ func compareSigned(a interface{}, b interface{}) (int, error) {
 	return +1, nil
 }
 
-func compareUnsigned(a interface{}, b interface{}) (int, error) {
+func compareUnsignedInts(a interface{}, b interface{}) (int, error) {
 	ca, err := cast.ToUint64E(a)
 	if err != nil {
 		return 0, err
@@ -965,7 +992,7 @@ func IsSigned(t Type) bool {
 
 // IsUnsigned checks if t is an unsigned type.
 func IsUnsigned(t Type) bool {
-	return t == Uint32 || t == Uint64
+	return t == Uint64 || t == Uint32
 }
 
 // IsInteger checks if t is a (U)Int32/64 type.
