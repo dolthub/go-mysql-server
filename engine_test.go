@@ -54,12 +54,7 @@ var queries = []struct {
 	},
 	{
 		"SELECT f32 FROM floattable WHERE f64 < 2.0;",
-		[]sql.Row{
-			{float32(-1.0)},
-			{float32(-1.5)},
-			{float32(1.0)},
-			{float32(1.5)},
-		},
+		[]sql.Row{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}},
 	},
 	{
 		"SELECT f32 FROM floattable WHERE f64 > 2.0;",
@@ -67,13 +62,7 @@ var queries = []struct {
 	},
 	{
 		"SELECT f32 FROM floattable WHERE f64 <> 2.0;",
-		[]sql.Row{
-			{float32(-1.0)},
-			{float32(-1.5)},
-			{float32(1.0)},
-			{float32(1.5)},
-			{float32(2.5)},
-		},
+		[]sql.Row{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}, {float32(2.5)}},
 	},
 	{
 		"SELECT f64 FROM floattable WHERE f32 = 2.0;",
@@ -81,12 +70,7 @@ var queries = []struct {
 	},
 	{
 		"SELECT f64 FROM floattable WHERE f32 < 2.0;",
-		[]sql.Row{
-			{float64(-1.0)},
-			{float64(-1.5)},
-			{float64(1.0)},
-			{float64(1.5)},
-		},
+		[]sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}},
 	},
 	{
 		"SELECT f64 FROM floattable WHERE f32 > 2.0;",
@@ -94,13 +78,7 @@ var queries = []struct {
 	},
 	{
 		"SELECT f64 FROM floattable WHERE f32 <> 2.0;",
-		[]sql.Row{
-			{float64(-1.0)},
-			{float64(-1.5)},
-			{float64(1.0)},
-			{float64(1.5)},
-			{float64(2.5)},
-		},
+		[]sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}, {float64(2.5)}},
 	},
 	{
 		"SELECT i FROM mytable WHERE i > 2;",
