@@ -33,7 +33,7 @@ var (
 	// ErrValueNotNil is thrown when a value that was expected to be nil, is not
 	ErrValueNotNil = errors.NewKind("value not nil: %#v")
 
-	// ErrNotTuple is retuned when the value is not a tuple.
+	// ErrNotTuple is returned when the value is not a tuple.
 	ErrNotTuple = errors.NewKind("value of type %T is not a tuple")
 
 	// ErrInvalidColumnNumber is returned when a tuple has an invalid number of
@@ -200,8 +200,6 @@ var (
 	Date dateT
 	// Text is a string type.
 	Text textT
-	// VarChar is a string type with a length.
-	VarChar varcharT
 	// Boolean is a boolean type.
 	Boolean booleanT
 	// JSON is a type that holds any valid JSON object.
@@ -218,6 +216,11 @@ func Tuple(types ...Type) Type {
 // Array returns a new Array type of the given underlying type.
 func Array(underlying Type) Type {
 	return arrayT{underlying}
+}
+
+// VarChar returns a new VarChar type of the given length.
+func VarChar(length int) Type {
+	return varCharT{length: length}
 }
 
 // MysqlTypeToType gets the column type using the mysql type
@@ -249,9 +252,11 @@ func MysqlTypeToType(sql query.Type) (Type, error) {
 		return Timestamp, nil
 	case sqltypes.Date:
 		return Date, nil
-	case sqltypes.VarChar:
-		return VarChar, nil
 	case sqltypes.Text:
+		return Text, nil
+	case sqltypes.VarChar:
+		// Since we can't get the size of the sqltypes.VarChar to instantiate a
+		// specific VarChar(length) type we return a Text here
 		return Text, nil
 	case sqltypes.Bit:
 		return Boolean, nil
@@ -557,28 +562,35 @@ func (t dateT) Compare(a, b interface{}) (int, error) {
 	return 0, nil
 }
 
-type varcharT struct{
+type varCharT struct {
 	length int
 }
 
-func (t varcharT) String() string { return fmt.Sprintf("VARCHAR(%d)", t.length) }
+func (t varCharT) Capacity() int { return t.length }
+
+func (t varCharT) String() string { return fmt.Sprintf("VARCHAR(%d)", t.length) }
 
 // Type implements Type interface
-func (t varcharT) Type() query.Type {
+func (t varCharT) Type() query.Type {
 	return sqltypes.VarChar
 }
 
 // SQL implements Type interface
-func (t varcharT) SQL(v interface{}) sqltypes.Value {
-	if _, ok := v.(nullT); ok {
-		return sqltypes.NULL
+func (t varCharT) SQL(v interface{}) (sqltypes.Value, error) {
+	if v == nil {
+		return sqltypes.MakeTrusted(sqltypes.VarChar, nil), nil
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.VarChar, []byte(MustConvert(t, v).(string)))
+	v, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+
+	return sqltypes.MakeTrusted(sqltypes.VarChar, []byte(v.(string))), nil
 }
 
 // Convert implements Type interface
-func (t varcharT) Convert(v interface{}) (interface{}, error) {
+func (t varCharT) Convert(v interface{}) (interface{}, error) {
 	val, err := cast.ToStringE(v)
 	if err != nil {
 		return nil, ErrConvertToSQL.New(t)
@@ -591,9 +603,10 @@ func (t varcharT) Convert(v interface{}) (interface{}, error) {
 }
 
 // Compare implements Type interface.
-func (t varcharT) Compare(a interface{}, b interface{}) (int, error) {
+func (t varCharT) Compare(a interface{}, b interface{}) (int, error) {
 	return strings.Compare(a.(string), b.(string)), nil
 }
+
 type textT struct{}
 
 func (t textT) String() string { return "TEXT" }
@@ -972,11 +985,12 @@ func IsDecimal(t Type) bool {
 
 // IsText checks if t is a text type.
 func IsText(t Type) bool {
-	return t == Text || t == Blob || t == JSON || t == VarChar
+	return t == Text || t == Blob || t == JSON || IsVarChar(t)
 }
 
 func IsVarChar(t Type) bool {
-	return t == VarChar
+	_, ok := t.(varCharT)
+	return ok
 }
 
 // IsTuple checks if t is a tuple type.
