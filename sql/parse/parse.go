@@ -321,21 +321,22 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		}
 	}
 
+	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
+	if s.Limit != nil && s.Limit.Offset != nil {
+		node, err = offsetToOffset(ctx, s.Limit.Offset, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if s.Limit != nil {
-		node, err = limitToLimit(ctx, s.Limit, node)
+		node, err = limitToLimit(ctx, s.Limit.Rowcount, node)
 		if err != nil {
 			return nil, err
 		}
 	} else if ok, val := sql.HasDefaultValue(ctx.Session, "sql_select_limit"); !ok {
 		limit := val.(int64)
 		node = plan.NewLimit(int64(limit), node)
-	}
-
-	if s.Limit != nil && s.Limit.Offset != nil {
-		node, err = offsetToOffset(ctx, s.Limit.Offset, node)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return node, nil
@@ -582,28 +583,16 @@ func orderByToSort(ob sqlparser.OrderBy, child sql.Node) (*plan.Sort, error) {
 
 func limitToLimit(
 	ctx *sql.Context,
-	limit *sqlparser.Limit,
+	limit sqlparser.Expr,
 	child sql.Node,
 ) (*plan.Limit, error) {
-	rowCount, err := getInt64Value(ctx, limit.Rowcount, "LIMIT with non-integer literal")
+	rowCount, err := getInt64Value(ctx, limit, "LIMIT with non-integer literal")
 	if err != nil {
 		return nil, err
 	}
 
 	if rowCount < 0 {
 		return nil, ErrUnsupportedSyntax.New("LIMIT must be >= 0")
-	}
-
-	// If an offset is specified, we want to examine `offset + rowCount` total rows. When iterating over result rows,
-	// since `offset` rows are skipped, we must increase our total examined rows by the same amount to return `rowCount`
-	// total rows.
-	if limit.Offset != nil {
-		o, err := getInt64Value(ctx, limit.Offset, "OFFSET with non-integer literal")
-		if err != nil {
-			return nil, err
-		}
-
-		rowCount += o
 	}
 
 	return plan.NewLimit(rowCount, child), nil
