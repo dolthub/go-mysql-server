@@ -641,6 +641,7 @@ var queries = []struct {
 			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -649,6 +650,7 @@ var queries = []struct {
 			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -787,6 +789,7 @@ var queries = []struct {
 			{"othertable"},
 			{"tabletest"},
 			{"bigtable"},
+			{"floattable"},
 		},
 	},
 	{
@@ -812,6 +815,8 @@ var queries = []struct {
 			{"i2"},
 			{"t"},
 			{"n"},
+			{"f32"},
+			{"f64"},
 		},
 	},
 	{
@@ -827,6 +832,8 @@ var queries = []struct {
 			{"i2"},
 			{"t"},
 			{"n"},
+			{"f32"},
+			{"f64"},
 		},
 	},
 	{
@@ -842,6 +849,8 @@ var queries = []struct {
 			{"i2"},
 			{"t"},
 			{"n"},
+			{"f32"},
+			{"f64"},
 		},
 	},
 	{
@@ -876,6 +885,7 @@ var queries = []struct {
 			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -987,6 +997,7 @@ var queries = []struct {
 			{"othertable"},
 			{"tabletest"},
 			{"bigtable"},
+			{"floattable"},
 		},
 	},
 	{
@@ -996,6 +1007,7 @@ var queries = []struct {
 			{"othertable", "BASE TABLE"},
 			{"tabletest", "BASE TABLE"},
 			{"bigtable", "BASE TABLE"},
+			{"floattable", "BASE TABLE"},
 		},
 	},
 	{
@@ -1010,6 +1022,7 @@ var queries = []struct {
 			{"mytable"},
 			{"othertable"},
 			{"bigtable"},
+			{"floattable"},
 		},
 	},
 	{
@@ -1880,9 +1893,9 @@ func TestInnerNestedInNaturalJoins(t *testing.T) {
 
 	insertRows(
 		t, table3,
-		sql.NewRow(int32(1), float64(2.3), "table3"),
-		sql.NewRow(int32(2), float64(2.3), "table3"),
-		sql.NewRow(int32(30), float64(2.3), "table3"),
+		sql.NewRow(int32(1), float64(2.2), "table3"),
+		sql.NewRow(int32(2), float64(2.2), "table3"),
+		sql.NewRow(int32(30), float64(2.2), "table3"),
 	)
 
 	db := mem.NewDatabase("mydb")
@@ -2017,12 +2030,12 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 
 	insertRows(
 		t, floatTable,
-		sql.NewRow(1, 1.0, 1.0),
-		sql.NewRow(2, 1.5, 1.5),
-		sql.NewRow(3, 2.0, 2.0),
-		sql.NewRow(4, 2.5, 2.5),
-		sql.NewRow(-1, -1.0, -1.0),
-		sql.NewRow(-2, -1.5, -1.5),
+		sql.NewRow(1, float32(1.0), float64(1.0)),
+		sql.NewRow(2, float32(1.5), float64(1.5)),
+		sql.NewRow(3, float32(2.0), float64(2.0)),
+		sql.NewRow(4, float32(2.5), float64(2.5)),
+		sql.NewRow(-1, float32(-1.0), float64(-1.0)),
+		sql.NewRow(-2, float32(-1.5), float64(-1.5)),
 	)
 
 	db := mem.NewDatabase("mydb")
@@ -2180,10 +2193,6 @@ func TestIndexes(t *testing.T) {
 				{int64(3), "third row"},
 			},
 		},
-
-		// TODO: ZACHMU tests here
-
-
 		{
 			"SELECT * FROM mytable WHERE i = 2 AND s = 'second row'",
 			[]sql.Row{
