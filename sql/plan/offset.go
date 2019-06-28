@@ -8,14 +8,14 @@ import (
 // Offset is a node that skips the first N rows.
 type Offset struct {
 	UnaryNode
-	n int64
+	Offset int64
 }
 
 // NewOffset creates a new Offset node.
 func NewOffset(n int64, child sql.Node) *Offset {
 	return &Offset{
 		UnaryNode: UnaryNode{Child: child},
-		n:         n,
+		Offset:    n,
 	}
 }
 
@@ -26,14 +26,14 @@ func (o *Offset) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (o *Offset) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Offset", opentracing.Tag{Key: "offset", Value: o.n})
+	span, ctx := ctx.Span("plan.Offset", opentracing.Tag{Key: "offset", Value: o.Offset})
 
 	it, err := o.Child.RowIter(ctx)
 	if err != nil {
 		span.Finish()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, &offsetIter{o.n, it}), nil
+	return sql.NewSpanIter(span, &offsetIter{o.Offset, it}), nil
 }
 
 // TransformUp implements the Transformable interface.
@@ -42,7 +42,7 @@ func (o *Offset) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return f(NewOffset(o.n, child))
+	return f(NewOffset(o.Offset, child))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
@@ -51,12 +51,12 @@ func (o *Offset) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, erro
 	if err != nil {
 		return nil, err
 	}
-	return NewOffset(o.n, child), nil
+	return NewOffset(o.Offset, child), nil
 }
 
 func (o Offset) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Offset(%d)", o.n)
+	_ = pr.WriteNode("Offset(%d)", o.Offset)
 	_ = pr.WriteChildren(o.Child.String())
 	return pr.String()
 }
