@@ -37,6 +37,54 @@ var queries = []struct {
 		[]sql.Row{{int64(2)}},
 	},
 	{
+		"SELECT i FROM mytable WHERE i > 2;",
+		[]sql.Row{{int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i < 2;",
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i <> 2;",
+		[]sql.Row{{int64(1)}, {int64(3)}},
+	},
+	{
+		"SELECT f32 FROM floattable WHERE f64 = 2.0;",
+		[]sql.Row{{float32(2.0)}},
+	},
+	{
+		"SELECT f32 FROM floattable WHERE f64 < 2.0;",
+		[]sql.Row{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}},
+	},
+	{
+		"SELECT f32 FROM floattable WHERE f64 > 2.0;",
+		[]sql.Row{{float32(2.5)}},
+	},
+	{
+		"SELECT f32 FROM floattable WHERE f64 <> 2.0;",
+		[]sql.Row{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}, {float32(2.5)}},
+	},
+	{
+		"SELECT f64 FROM floattable WHERE f32 = 2.0;",
+		[]sql.Row{{float64(2.0)}},
+	},
+	{
+		"SELECT f64 FROM floattable WHERE f32 < 2.0;",
+		[]sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}},
+	},
+	{
+		"SELECT f64 FROM floattable WHERE f32 > 2.0;",
+		[]sql.Row{{float64(2.5)}},
+	},
+	{
+		"SELECT f64 FROM floattable WHERE f32 <> 2.0;",
+		[]sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}, {float64(2.5)}},
+	},
+	{
+		"SELECT f32 FROM floattable ORDER BY f64;",
+		[]sql.Row{{float32(-1.5)}, {float32(-1.0)}, {float32(1.0)}, {float32(1.5)}, {float32(2.0)}, {float32(2.5)}},
+	},
+	{
 		"SELECT i FROM mytable ORDER BY i DESC;",
 		[]sql.Row{{int64(3)}, {int64(2)}, {int64(1)}},
 	},
@@ -593,6 +641,7 @@ var queries = []struct {
 			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -601,6 +650,7 @@ var queries = []struct {
 			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -739,6 +789,7 @@ var queries = []struct {
 			{"othertable"},
 			{"tabletest"},
 			{"bigtable"},
+			{"floattable"},
 		},
 	},
 	{
@@ -764,6 +815,8 @@ var queries = []struct {
 			{"i2"},
 			{"t"},
 			{"n"},
+			{"f32"},
+			{"f64"},
 		},
 	},
 	{
@@ -779,6 +832,8 @@ var queries = []struct {
 			{"i2"},
 			{"t"},
 			{"n"},
+			{"f32"},
+			{"f64"},
 		},
 	},
 	{
@@ -794,6 +849,8 @@ var queries = []struct {
 			{"i2"},
 			{"t"},
 			{"n"},
+			{"f32"},
+			{"f64"},
 		},
 	},
 	{
@@ -828,6 +885,7 @@ var queries = []struct {
 			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -939,6 +997,7 @@ var queries = []struct {
 			{"othertable"},
 			{"tabletest"},
 			{"bigtable"},
+			{"floattable"},
 		},
 	},
 	{
@@ -948,6 +1007,7 @@ var queries = []struct {
 			{"othertable", "BASE TABLE"},
 			{"tabletest", "BASE TABLE"},
 			{"bigtable", "BASE TABLE"},
+			{"floattable", "BASE TABLE"},
 		},
 	},
 	{
@@ -962,6 +1022,7 @@ var queries = []struct {
 			{"mytable"},
 			{"othertable"},
 			{"bigtable"},
+			{"floattable"},
 		},
 	},
 	{
@@ -1832,9 +1893,9 @@ func TestInnerNestedInNaturalJoins(t *testing.T) {
 
 	insertRows(
 		t, table3,
-		sql.NewRow(int32(1), float64(2.3), "table3"),
-		sql.NewRow(int32(2), float64(2.3), "table3"),
-		sql.NewRow(int32(30), float64(2.3), "table3"),
+		sql.NewRow(int32(1), float64(2.2), "table3"),
+		sql.NewRow(int32(2), float64(2.2), "table3"),
+		sql.NewRow(int32(30), float64(2.2), "table3"),
 	)
 
 	db := mem.NewDatabase("mydb")
@@ -1961,11 +2022,28 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow("b", int64(9)),
 	)
 
+	floatTable := mem.NewPartitionedTable("floattable", sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "floattable"},
+		{Name: "f32", Type: sql.Float32, Source: "floattable"},
+		{Name: "f64", Type: sql.Float64, Source: "floattable"},
+	}, testNumPartitions)
+
+	insertRows(
+		t, floatTable,
+		sql.NewRow(1, float32(1.0), float64(1.0)),
+		sql.NewRow(2, float32(1.5), float64(1.5)),
+		sql.NewRow(3, float32(2.0), float64(2.0)),
+		sql.NewRow(4, float32(2.5), float64(2.5)),
+		sql.NewRow(-1, float32(-1.0), float64(-1.0)),
+		sql.NewRow(-2, float32(-1.5), float64(-1.5)),
+	)
+
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 	db.AddTable("othertable", table2)
 	db.AddTable("tabletest", table3)
 	db.AddTable("bigtable", bigtable)
+	db.AddTable("floattable", floatTable)
 
 	db2 := mem.NewDatabase("foo")
 	db2.AddTable("other_table", table4)
