@@ -2063,8 +2063,8 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 	return sqle.New(catalog, a, new(sqle.Config))
 }
 
-const expectedTree = `Offset(2)
- └─ Limit(7)
+const expectedTree = `Limit(5)
+ └─ Offset(2)
      └─ Project(t.foo, bar.baz)
          └─ Filter(foo > qux)
              └─ InnerJoin(foo = baz)
