@@ -61,6 +61,13 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
+	`SELECT foo IS TRUE, bar IS NOT FALSE FROM foo;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewIsTrue(expression.NewUnresolvedColumn("foo")),
+			expression.NewNot(expression.NewIsFalse(expression.NewUnresolvedColumn("bar"))),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
 	`SELECT foo AS bar FROM foo;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias(

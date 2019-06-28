@@ -942,6 +942,14 @@ func isExprToExpression(c *sqlparser.IsExpr) (sql.Expression, error) {
 		return expression.NewIsNull(e), nil
 	case sqlparser.IsNotNullStr:
 		return expression.NewNot(expression.NewIsNull(e)), nil
+	case sqlparser.IsTrueStr:
+		return expression.NewIsTrue(e), nil
+	case sqlparser.IsFalseStr:
+		return expression.NewIsFalse(e), nil
+	case sqlparser.IsNotTrueStr:
+		return expression.NewNot(expression.NewIsTrue(e)), nil
+	case sqlparser.IsNotFalseStr:
+		return expression.NewNot(expression.NewIsFalse(e)), nil
 	default:
 		return nil, ErrUnsupportedSyntax.New(c)
 	}
