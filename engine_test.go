@@ -126,7 +126,7 @@ var queries = []struct {
 	},
 	{
 		"SELECT i FROM niltable WHERE NOT b",
-		[]sql.Row{{int64(2)}, {nil}, {nil}},
+		[]sql.Row{{nil}},
 	},
 	{
 		"SELECT i FROM niltable WHERE b IS TRUE",
