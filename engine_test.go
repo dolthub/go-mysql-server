@@ -33,6 +33,18 @@ var queries = []struct {
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
+		"SELECT i + 1 FROM mytable;",
+		[]sql.Row{{int64(2)}, {int64(3)}, {int64(4)}},
+	},
+	{
+		"SELECT -i FROM mytable;",
+		[]sql.Row{{int64(-1)}, {int64(-2)}, {int64(-3)}},
+	},
+	{
+		"SELECT i FROM mytable where -i = -2;",
+		[]sql.Row{{int64(2)}},
+	},
+	{
 		"SELECT i FROM mytable WHERE i = 2;",
 		[]sql.Row{{int64(2)}},
 	},
@@ -66,6 +78,14 @@ var queries = []struct {
 	},
 	{
 		"SELECT f64 FROM floattable WHERE f32 = 2.0;",
+		[]sql.Row{{float64(2.0)}},
+	},
+	{
+		"SELECT f64 FROM floattable WHERE f32 = -1.5;",
+		[]sql.Row{{float64(-1.5)}},
+	},
+	{
+		"SELECT f64 FROM floattable WHERE -f32 = -2.0;",
 		[]sql.Row{{float64(2.0)}},
 	},
 	{
