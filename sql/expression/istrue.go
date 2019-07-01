@@ -68,6 +68,10 @@ func (e *IsTrue) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	if err != nil {
 		return nil, err
 	}
-	return f(NewIsNull(child))
+	if e.invert {
+		return f(NewIsFalse(child))
+	} else {
+		return f(NewIsTrue(child))
+	}
 }
 

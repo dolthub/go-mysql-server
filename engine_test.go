@@ -28,89 +28,121 @@ var queries = []struct {
 	query    string
 	expected []sql.Row
 }{
+	// {
+	// 	"SELECT i FROM mytable;",
+	// 	[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	// },
+	// {
+	// 	"SELECT i FROM mytable WHERE i = 2;",
+	// 	[]sql.Row{{int64(2)}},
+	// },
+	// {
+	// 	"SELECT i FROM mytable WHERE i > 2;",
+	// 	[]sql.Row{{int64(3)}},
+	// },
+	// {
+	// 	"SELECT i FROM mytable WHERE i < 2;",
+	// 	[]sql.Row{{int64(1)}},
+	// },
+	// {
+	// 	"SELECT i FROM mytable WHERE i <> 2;",
+	// 	[]sql.Row{{int64(1)}, {int64(3)}},
+	// },
+	// {
+	// 	"SELECT f32 FROM floattable WHERE f64 = 2.0;",
+	// 	[]sql.Row{{float32(2.0)}},
+	// },
+	// {
+	// 	"SELECT f32 FROM floattable WHERE f64 < 2.0;",
+	// 	[]sql.Row{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}},
+	// },
+	// {
+	// 	"SELECT f32 FROM floattable WHERE f64 > 2.0;",
+	// 	[]sql.Row{{float32(2.5)}},
+	// },
+	// {
+	// 	"SELECT f32 FROM floattable WHERE f64 <> 2.0;",
+	// 	[]sql.Row{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}, {float32(2.5)}},
+	// },
+	// {
+	// 	"SELECT f64 FROM floattable WHERE f32 = 2.0;",
+	// 	[]sql.Row{{float64(2.0)}},
+	// },
+	// {
+	// 	"SELECT f64 FROM floattable WHERE f32 < 2.0;",
+	// 	[]sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}},
+	// },
+	// {
+	// 	"SELECT f64 FROM floattable WHERE f32 > 2.0;",
+	// 	[]sql.Row{{float64(2.5)}},
+	// },
+	// {
+	// 	"SELECT f64 FROM floattable WHERE f32 <> 2.0;",
+	// 	[]sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}, {float64(2.5)}},
+	// },
+	// {
+	// 	"SELECT f32 FROM floattable ORDER BY f64;",
+	// 	[]sql.Row{{float32(-1.5)}, {float32(-1.0)}, {float32(1.0)}, {float32(1.5)}, {float32(2.0)}, {float32(2.5)}},
+	// },
+	// {
+	// 	"SELECT i FROM mytable ORDER BY i DESC;",
+	// 	[]sql.Row{{int64(3)}, {int64(2)}, {int64(1)}},
+	// },
+	// {
+	// 	"SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC;",
+	// 	[]sql.Row{{int64(1)}},
+	// },
+	// {
+	// 	"SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT 1;",
+	// 	[]sql.Row{{int64(1)}},
+	// },
+	// {
+	// 	"SELECT i FROM mytable ORDER BY i LIMIT 1 OFFSET 1;",
+	// 	[]sql.Row{{int64(2)}},
+	// },
+	// {
+	// 	"SELECT i FROM mytable ORDER BY i LIMIT 1,1;",
+	// 	[]sql.Row{{int64(2)}},
+	// },
+	// {
+	// 	"SELECT i FROM mytable ORDER BY i LIMIT 3,1;",
+	// 	nil,
+	// },
+	// {
+	// 	"SELECT i FROM mytable ORDER BY i LIMIT 2,100;",
+	// 	[]sql.Row{{int64(3)}},
+	// },
+	// {
+	// 	"SELECT i FROM niltable WHERE b IS NULL",
+	// 	[]sql.Row{{int64(2)}, {nil}},
+	// },
+	// {
+	// 	"SELECT i FROM niltable WHERE b IS NOT NULL",
+	// 	[]sql.Row{{int64(1)}, {nil}, {int64(4)}},
+	// },
+	// {
+	// 	"SELECT i FROM niltable WHERE b",
+	// 	[]sql.Row{{int64(1)}, {int64(4)}},
+	// },
 	{
-		"SELECT i FROM mytable;",
-		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		"SELECT i FROM niltable WHERE NOT b",
+		[]sql.Row{{int64(2)}, {nil}, {nil}},
 	},
 	{
-		"SELECT i FROM mytable WHERE i = 2;",
-		[]sql.Row{{int64(2)}},
+		"SELECT i FROM niltable WHERE b IS TRUE",
+		[]sql.Row{{int64(1)}, {int64(4)}},
 	},
 	{
-		"SELECT i FROM mytable WHERE i > 2;",
-		[]sql.Row{{int64(3)}},
+		"SELECT i FROM niltable WHERE b IS NOT TRUE",
+		[]sql.Row{{int64(2)}, {nil}, {nil}},
 	},
 	{
-		"SELECT i FROM mytable WHERE i < 2;",
-		[]sql.Row{{int64(1)}},
+		"SELECT i FROM niltable WHERE b IS FALSE",
+		[]sql.Row{{int64(2)}, {nil}, {nil}},
 	},
 	{
-		"SELECT i FROM mytable WHERE i <> 2;",
-		[]sql.Row{{int64(1)}, {int64(3)}},
-	},
-	{
-		"SELECT f32 FROM floattable WHERE f64 = 2.0;",
-		[]sql.Row{{float32(2.0)}},
-	},
-	{
-		"SELECT f32 FROM floattable WHERE f64 < 2.0;",
-		[]sql.Row{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}},
-	},
-	{
-		"SELECT f32 FROM floattable WHERE f64 > 2.0;",
-		[]sql.Row{{float32(2.5)}},
-	},
-	{
-		"SELECT f32 FROM floattable WHERE f64 <> 2.0;",
-		[]sql.Row{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}, {float32(2.5)}},
-	},
-	{
-		"SELECT f64 FROM floattable WHERE f32 = 2.0;",
-		[]sql.Row{{float64(2.0)}},
-	},
-	{
-		"SELECT f64 FROM floattable WHERE f32 < 2.0;",
-		[]sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}},
-	},
-	{
-		"SELECT f64 FROM floattable WHERE f32 > 2.0;",
-		[]sql.Row{{float64(2.5)}},
-	},
-	{
-		"SELECT f64 FROM floattable WHERE f32 <> 2.0;",
-		[]sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}, {float64(2.5)}},
-	},
-	{
-		"SELECT f32 FROM floattable ORDER BY f64;",
-		[]sql.Row{{float32(-1.5)}, {float32(-1.0)}, {float32(1.0)}, {float32(1.5)}, {float32(2.0)}, {float32(2.5)}},
-	},
-	{
-		"SELECT i FROM mytable ORDER BY i DESC;",
-		[]sql.Row{{int64(3)}, {int64(2)}, {int64(1)}},
-	},
-	{
-		"SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC;",
-		[]sql.Row{{int64(1)}},
-	},
-	{
-		"SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT 1;",
-		[]sql.Row{{int64(1)}},
-	},
-	{
-		"SELECT i FROM mytable ORDER BY i LIMIT 1 OFFSET 1;",
-		[]sql.Row{{int64(2)}},
-	},
-	{
-		"SELECT i FROM mytable ORDER BY i LIMIT 1,1;",
-		[]sql.Row{{int64(2)}},
-	},
-	{
-		"SELECT i FROM mytable ORDER BY i LIMIT 3,1;",
-		nil,
-	},
-	{
-		"SELECT i FROM mytable ORDER BY i LIMIT 2,100;",
-		[]sql.Row{{int64(3)}},
+		"SELECT i FROM niltable WHERE b IS NOT FALSE",
+		[]sql.Row{{int64(1)}, {int64(4)}},
 	},
 	{
 		"SELECT COUNT(*) FROM mytable;",
@@ -2059,10 +2091,10 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 
 	insertRows(
 		t, nilTable,
-		sql.NewRow(1, true, float64(1.0)),
-		sql.NewRow(2, nil, float64(2.0)),
+		sql.NewRow(int64(1), true, float64(1.0)),
+		sql.NewRow(int64(2), nil, float64(2.0)),
 		sql.NewRow(nil, false, float64(3.0)),
-		sql.NewRow(4, true, nil),
+		sql.NewRow(int64(4), true, nil),
 		sql.NewRow(nil, nil, nil),
 	)
 
