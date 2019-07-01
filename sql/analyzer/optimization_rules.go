@@ -390,6 +390,16 @@ func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) 
 					return e, nil
 				}
 
+				// UnaryMinus expressions come back from the parser when a negative float is evaluated. Treat them just like
+				// normal literal expressions.
+				if um, ok := e.(*expression.UnaryMinus); ok {
+					negated, err := e.Eval(ctx, nil)
+					if err != nil {
+						return nil, err
+					}
+					return expression.NewLiteral(negated, um.Type()), nil
+				}
+
 				val, err := e.Eval(ctx, nil)
 				if err != nil {
 					return e, nil
