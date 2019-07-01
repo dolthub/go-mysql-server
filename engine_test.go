@@ -642,6 +642,7 @@ var queries = []struct {
 			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -651,6 +652,7 @@ var queries = []struct {
 			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -792,6 +794,7 @@ var queries = []struct {
 			{"tabletest"},
 			{"bigtable"},
 			{"floattable"},
+			{"niltable"},
 		},
 	},
 	{
@@ -819,6 +822,8 @@ var queries = []struct {
 			{"n"},
 			{"f32"},
 			{"f64"},
+			{"b"},
+			{"f"},
 		},
 	},
 	{
@@ -836,6 +841,8 @@ var queries = []struct {
 			{"n"},
 			{"f32"},
 			{"f64"},
+			{"b"},
+			{"f"},
 		},
 	},
 	{
@@ -853,6 +860,8 @@ var queries = []struct {
 			{"n"},
 			{"f32"},
 			{"f64"},
+			{"b"},
+			{"f"},
 		},
 	},
 	{
@@ -888,6 +897,7 @@ var queries = []struct {
 			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -1000,6 +1010,7 @@ var queries = []struct {
 			{"tabletest"},
 			{"bigtable"},
 			{"floattable"},
+			{"niltable"},
 		},
 	},
 	{
@@ -1010,6 +1021,7 @@ var queries = []struct {
 			{"tabletest", "BASE TABLE"},
 			{"bigtable", "BASE TABLE"},
 			{"floattable", "BASE TABLE"},
+			{"niltable", "BASE TABLE"},
 		},
 	},
 	{
@@ -1025,6 +1037,7 @@ var queries = []struct {
 			{"othertable"},
 			{"bigtable"},
 			{"floattable"},
+			{"niltable"},
 		},
 	},
 	{
@@ -2079,12 +2092,28 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow(-2, float32(-1.5), float64(-1.5)),
 	)
 
+	nilTable := mem.NewPartitionedTable("niltable", sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "niltable", Nullable: true},
+		{Name: "b", Type: sql.Boolean, Source: "niltable", Nullable: true},
+		{Name: "f", Type: sql.Float64, Source: "niltable", Nullable: true},
+	}, testNumPartitions)
+
+	insertRows(
+		t, nilTable,
+		sql.NewRow(1, true, float64(1.0)),
+		sql.NewRow(2, nil, float64(2.0)),
+		sql.NewRow(nil, false, float64(3.0)),
+		sql.NewRow(4, true, nil),
+		sql.NewRow(nil, nil, nil),
+	)
+
 	db := mem.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 	db.AddTable("othertable", table2)
 	db.AddTable("tabletest", table3)
 	db.AddTable("bigtable", bigtable)
 	db.AddTable("floattable", floatTable)
+	db.AddTable("niltable", nilTable)
 
 	db2 := mem.NewDatabase("foo")
 	db2.AddTable("other_table", table4)
