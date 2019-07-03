@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function"
@@ -32,7 +32,7 @@ var (
 	ErrInvalidSQLValType = errors.NewKind("invalid SQLVal of type: %d")
 
 	// ErrInvalidSortOrder is returned when a sort order is not valid.
-	ErrInvalidSortOrder = errors.NewKind("invalod sort order: %s")
+	ErrInvalidSortOrder = errors.NewKind("invalid sort order: %s")
 )
 
 var (
@@ -321,6 +321,14 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		}
 	}
 
+	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
+	if s.Limit != nil && s.Limit.Offset != nil {
+		node, err = offsetToOffset(ctx, s.Limit.Offset, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if s.Limit != nil {
 		node, err = limitToLimit(ctx, s.Limit.Rowcount, node)
 		if err != nil {
@@ -329,13 +337,6 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 	} else if ok, val := sql.HasDefaultValue(ctx.Session, "sql_select_limit"); !ok {
 		limit := val.(int64)
 		node = plan.NewLimit(int64(limit), node)
-	}
-
-	if s.Limit != nil && s.Limit.Offset != nil {
-		node, err = offsetToOffset(ctx, s.Limit.Offset, node)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return node, nil
@@ -585,21 +586,16 @@ func limitToLimit(
 	limit sqlparser.Expr,
 	child sql.Node,
 ) (*plan.Limit, error) {
-	e, err := exprToExpression(limit)
+	rowCount, err := getInt64Value(ctx, limit, "LIMIT with non-integer literal")
 	if err != nil {
 		return nil, err
 	}
 
-	nl, ok := e.(*expression.Literal)
-	if !ok || nl.Type() != sql.Int64 {
-		return nil, ErrUnsupportedFeature.New("LIMIT with non-integer literal")
+	if rowCount < 0 {
+		return nil, ErrUnsupportedSyntax.New("LIMIT must be >= 0")
 	}
 
-	n, err := nl.Eval(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	return plan.NewLimit(n.(int64), child), nil
+	return plan.NewLimit(rowCount, child), nil
 }
 
 func havingToHaving(having *sqlparser.Where, node sql.Node) (sql.Node, error) {
@@ -616,21 +612,48 @@ func offsetToOffset(
 	offset sqlparser.Expr,
 	child sql.Node,
 ) (*plan.Offset, error) {
-	e, err := exprToExpression(offset)
+	o, err := getInt64Value(ctx, offset, "OFFSET with non-integer literal")
+	if err != nil {
+		return nil, err
+	}
+
+	if o < 0 {
+		return nil, ErrUnsupportedSyntax.New("OFFSET must be >= 0")
+	}
+
+	return plan.NewOffset(o, child), nil
+}
+
+// getInt64Literal returns an int64 *expression.Literal for the value given, or an unsupported error with the string
+// given if the expression doesn't represent an integer literal.
+func getInt64Literal(expr sqlparser.Expr, errStr string) (*expression.Literal, error) {
+	e, err := exprToExpression(expr)
 	if err != nil {
 		return nil, err
 	}
 
 	nl, ok := e.(*expression.Literal)
 	if !ok || nl.Type() != sql.Int64 {
-		return nil, ErrUnsupportedFeature.New("OFFSET with non-integer literal")
+		return nil, ErrUnsupportedFeature.New(errStr)
+	} else {
+		return nl, nil
+	}
+}
+
+// getInt64Value returns the int64 literal value in the expression given, or an error with the errStr given if it
+// cannot.
+func getInt64Value(ctx *sql.Context, expr sqlparser.Expr, errStr string) (int64, error) {
+	ie, err := getInt64Literal(expr, errStr)
+	if err != nil {
+		return 0, err
 	}
 
-	n, err := nl.Eval(ctx, nil)
+	i, err := ie.Eval(ctx, nil)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	return plan.NewOffset(n.(int64), child), nil
+
+	return i.(int64), nil
 }
 
 func isAggregate(e sql.Expression) bool {

@@ -49,6 +49,22 @@ var queries = []struct {
 		[]sql.Row{{int64(1)}},
 	},
 	{
+		"SELECT i FROM mytable ORDER BY i LIMIT 1 OFFSET 1;",
+		[]sql.Row{{int64(2)}},
+	},
+	{
+		"SELECT i FROM mytable ORDER BY i LIMIT 1,1;",
+		[]sql.Row{{int64(2)}},
+	},
+	{
+		"SELECT i FROM mytable ORDER BY i LIMIT 3,1;",
+		nil,
+	},
+	{
+		"SELECT i FROM mytable ORDER BY i LIMIT 2,100;",
+		[]sql.Row{{int64(3)}},
+	},
+	{
 		"SELECT COUNT(*) FROM mytable;",
 		[]sql.Row{{int64(3)}},
 	},
@@ -1969,8 +1985,8 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 	return sqle.New(catalog, a, new(sqle.Config))
 }
 
-const expectedTree = `Offset(2)
- └─ Limit(5)
+const expectedTree = `Limit(5)
+ └─ Offset(2)
      └─ Project(t.foo, bar.baz)
          └─ Filter(foo > qux)
              └─ InnerJoin(foo = baz)
