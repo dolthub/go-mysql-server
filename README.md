@@ -76,7 +76,8 @@ We support and actively test against certain third-party clients to ensure compa
 |`DAYOFMONTH(date)`|Return the day of the month (0-31).|
 |`DAYOFWEEK(date)`|Returns the day of the week of the given date.|
 |`DAYOFYEAR(date)`|Returns the day of the year of the given date.|
-|`FLOOR(number)`|Return the largest integer value that is less than or equal to `number`.|
+|`FIRST(expr)`|Returns the first value in a sequence of elements of an aggregation.|
+|`FLOOR(number)`|Returns the largest integer value that is less than or equal to `number`.|
 |`FROM_BASE64(str)`|Decodes the base64-encoded string str.|
 |`GREATEST(...)`|Returns the greatest numeric or string value.|
 |`HOUR(date)`|Returns the hours of the given date.|
@@ -84,6 +85,7 @@ We support and actively test against certain third-party clients to ensure compa
 |`IS_BINARY(blob)`|Returns whether a BLOB is a binary file or not.|
 |`JSON_EXTRACT(json_doc, path, ...)`|Extracts data from a json document using json paths. Extracting a string will result in that string being quoted. To avoid this, use `JSON_UNQUOTE(JSON_EXTRACT(json_doc, path, ...))`.|
 |`JSON_UNQUOTE(json)`|Unquotes JSON value and returns the result as a utf8mb4 string.|
+|`LAST(expr)`|Returns the last value in a sequence of elements of an aggregation.|
 |`LEAST(...)`|Returns the smaller numeric or string value.|
 |`LENGTH(str)`|Return the length of the string in bytes.|
 |`LN(X)`|Return the natural logarithm of X.|

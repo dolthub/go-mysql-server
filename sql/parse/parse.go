@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function"
@@ -793,7 +793,7 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		}
 
 		return expression.NewUnresolvedFunction(v.Name.Lowered(),
-			v.IsAggregate(), exprs...), nil
+			isAggregateFunc(v), exprs...), nil
 	case *sqlparser.ParenExpr:
 		return exprToExpression(v.Expr)
 	case *sqlparser.AndExpr:
@@ -873,6 +873,15 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 	case *sqlparser.IntervalExpr:
 		return intervalExprToExpression(v)
 	}
+}
+
+func isAggregateFunc(v *sqlparser.FuncExpr) bool {
+	switch v.Name.Lowered() {
+	case "first", "last":
+		return true
+	}
+
+	return v.IsAggregate()
 }
 
 func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {

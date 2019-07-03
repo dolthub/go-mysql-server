@@ -436,6 +436,20 @@ func aggregationEquals(a, b sql.Expression) bool {
 		}
 
 		return aggregationChildEquals(a.Child, b.Child)
+	case *aggregation.First:
+		b, ok := b.(*aggregation.First)
+		if !ok {
+			return false
+		}
+
+		return aggregationChildEquals(a.Child, b.Child)
+	case *aggregation.Last:
+		b, ok := b.(*aggregation.Last)
+		if !ok {
+			return false
+		}
+
+		return aggregationChildEquals(a.Child, b.Child)
 	default:
 		return false
 	}

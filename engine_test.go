@@ -1281,6 +1281,14 @@ var queries = []struct {
 			{"third row", int64(1), float64(3)},
 		},
 	},
+	{
+		`SELECT FIRST(i) FROM (SELECT i FROM mytable ORDER BY i) t`,
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		`SELECT LAST(i) FROM (SELECT i FROM mytable ORDER BY i) t`,
+		[]sql.Row{{int64(3)}},
+	},
 }
 
 func TestQueries(t *testing.T) {
