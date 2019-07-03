@@ -54,7 +54,7 @@ func (e *IsTrue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return boolVal, nil
 }
 
-func (e IsTrue) String() string {
+func (e *IsTrue) String() string {
 	isStr := IsTrueStr
 	if e.invert {
 		isStr = IsFalseStr
