@@ -1253,10 +1253,33 @@ var queries = []struct {
 	{
 		`SELECT ARRAY_LENGTH("foo")`,
 		[]sql.Row{{nil}},
-  },
-  {
+	},
+	{
 		`SELECT * FROM mytable WHERE NULL AND i = 3`,
 		[]sql.Row{},
+	},
+	{
+		`SELECT 1 FROM mytable GROUP BY i HAVING i > 1`,
+		[]sql.Row{{int64(1)}, {int64(1)}},
+	},
+	{
+		`SELECT avg(i) FROM mytable GROUP BY i HAVING avg(i) > 1`,
+		[]sql.Row{{float64(2)}, {float64(3)}},
+	},
+	{
+		`SELECT s AS s, COUNT(*) AS count,  AVG(i) AS ` + "`AVG(i)`" + `
+		FROM  (
+			SELECT * FROM mytable
+		) AS expr_qry
+		GROUP BY s
+		HAVING ((AVG(i) > 0))
+		ORDER BY count DESC
+		LIMIT 10000`,
+		[]sql.Row{
+			{"first row", int64(1), float64(1)},
+			{"second row", int64(1), float64(2)},
+			{"third row", int64(1), float64(3)},
+		},
 	},
 }
 

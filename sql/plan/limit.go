@@ -12,14 +12,14 @@ var _ sql.Node = &Limit{}
 // Limit is a node that only allows up to N rows to be retrieved.
 type Limit struct {
 	UnaryNode
-	size int64
+	Limit int64
 }
 
 // NewLimit creates a new Limit node with the given size.
 func NewLimit(size int64, child sql.Node) *Limit {
 	return &Limit{
 		UnaryNode: UnaryNode{Child: child},
-		size:      size,
+		Limit:     size,
 	}
 }
 
@@ -30,7 +30,7 @@ func (l *Limit) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (l *Limit) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Limit", opentracing.Tag{Key: "limit", Value: l.size})
+	span, ctx := ctx.Span("plan.Limit", opentracing.Tag{Key: "limit", Value: l.Limit})
 
 	li, err := l.Child.RowIter(ctx)
 	if err != nil {
@@ -46,7 +46,7 @@ func (l *Limit) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return f(NewLimit(l.size, child))
+	return f(NewLimit(l.Limit, child))
 }
 
 // TransformExpressionsUp implements the Transformable interface.
@@ -55,12 +55,12 @@ func (l *Limit) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error
 	if err != nil {
 		return nil, err
 	}
-	return NewLimit(l.size, child), nil
+	return NewLimit(l.Limit, child), nil
 }
 
 func (l Limit) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Limit(%d)", l.size)
+	_ = pr.WriteNode("Limit(%d)", l.Limit)
 	_ = pr.WriteChildren(l.Child.String())
 	return pr.String()
 }
@@ -72,7 +72,7 @@ type limitIter struct {
 }
 
 func (li *limitIter) Next() (sql.Row, error) {
-	if li.currentPos >= li.l.size {
+	if li.currentPos >= li.l.Limit {
 		return nil, io.EOF
 	}
 
