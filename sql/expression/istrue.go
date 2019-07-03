@@ -2,7 +2,7 @@ package expression
 
 import "github.com/src-d/go-mysql-server/sql"
 
-// IsNull is an expression that checks if an expression is null.
+// IsNull is an expression that checks if an expression is true.
 type IsTrue struct {
 	UnaryExpression
 	invert bool
