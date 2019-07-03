@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	errors "gopkg.in/src-d/go-errors.v1"
 	sqle "github.com/src-d/go-mysql-server"
 	"github.com/src-d/go-mysql-server/auth"
 	"github.com/src-d/go-mysql-server/sql"
+	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/sirupsen/logrus"
 	"vitess.io/vitess/go/mysql"

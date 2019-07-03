@@ -634,6 +634,8 @@ var queries = []struct {
 			{"ndbinfo_version", ""},
 			{"sql_select_limit", math.MaxInt32},
 			{"transaction_isolation", "READ UNCOMMITTED"},
+			{"version", ""},
+			{"version_comment", ""},
 		},
 	},
 	{
@@ -1237,8 +1239,8 @@ var queries = []struct {
 	{
 		`SELECT ARRAY_LENGTH("foo")`,
 		[]sql.Row{{nil}},
-  },
-  {
+	},
+	{
 		`SELECT * FROM mytable WHERE NULL AND i = 3`,
 		[]sql.Row{},
 	},
