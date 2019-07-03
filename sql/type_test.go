@@ -24,6 +24,10 @@ func TestText(t *testing.T) {
 	lt(t, Text, "a", "b")
 	eq(t, Text, "a", "a")
 	gt(t, Text, "b", "a")
+
+	var3, err := VarChar(3).Convert("abc")
+	require.NoError(t, err)
+	convert(t, Text, var3, "abc")
 }
 
 func TestInt32(t *testing.T) {
@@ -235,6 +239,38 @@ func TestTuple(t *testing.T) {
 	gt(t, typ, []interface{}{2, 2, 3}, []interface{}{1, 2, 3})
 	gt(t, typ, []interface{}{1, 3, 3}, []interface{}{1, 2, 3})
 	gt(t, typ, []interface{}{1, 2, 4}, []interface{}{1, 2, 3})
+}
+
+func TestVarChar(t *testing.T) {
+	typ := VarChar(3)
+	require.True(t, IsVarChar(typ))
+	require.True(t, IsText(typ))
+	convert(t, typ, "foo", "foo")
+	fooByte := []byte{'f', 'o', 'o'}
+	convert(t, typ, fooByte, "foo")
+
+	typ = VarChar(1)
+	convertErr(t, typ, "foo")
+	convertErr(t, typ, fooByte)
+	convertErr(t, typ, 123)
+
+	typ = VarChar(10)
+	convert(t, typ, 123, "123")
+	convertErr(t, typ, 1234567890123)
+
+	convert(t, typ, "", "")
+	convert(t, typ, 1, "1")
+
+	lt(t, typ, "a", "b")
+	eq(t, typ, "a", "a")
+	gt(t, typ, "b", "a")
+
+	text, err := Text.Convert("abc")
+	require.NoError(t, err)
+
+	convert(t, typ, text, "abc")
+	typ1 := VarChar(1)
+	convertErr(t, typ1, text)
 }
 
 func TestArray(t *testing.T) {
