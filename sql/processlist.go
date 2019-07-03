@@ -156,13 +156,28 @@ func (pl *ProcessList) AddProgressItem(pid uint64, name string, total int64) {
 	}
 }
 
-// Kill terminates all queries for a given connection
+// Kill terminates all queries for a given connection id.
 func (pl *ProcessList) Kill(connID uint32) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
 	for pid, proc := range pl.procs {
 		if proc.Connection == connID {
+			logrus.Infof("kill query: pid %d", pid)
+			proc.Done()
+			delete(pl.procs, pid)
+		}
+	}
+}
+
+// KillOnlyQueries kills all queries, but not index creation queries, for a
+// given connection id.
+func (pl *ProcessList) KillOnlyQueries(connID uint32) {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+
+	for pid, proc := range pl.procs {
+		if proc.Connection == connID && proc.Type == QueryProcess {
 			logrus.Infof("kill query: pid %d", pid)
 			proc.Done()
 			delete(pl.procs, pid)
