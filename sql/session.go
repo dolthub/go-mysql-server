@@ -175,6 +175,8 @@ func DefaultSessionConfig() map[string]TypedValue {
 		"ndbinfo_version":          TypedValue{Text, ""},
 		"sql_select_limit":         TypedValue{Int32, math.MaxInt32},
 		"transaction_isolation":    TypedValue{Text, "READ UNCOMMITTED"},
+		"version":                  TypedValue{Text, ""},
+		"version_comment":          TypedValue{Text, ""},
 	}
 }
 

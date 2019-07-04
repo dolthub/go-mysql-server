@@ -74,7 +74,7 @@ func TestGrafana(t *testing.T) {
 		},
 		{
 			`select @@version_comment limit 1`,
-			[][]string{{"NULL"}},
+			[][]string{{""}},
 		},
 		{
 			`describe table mytable`,

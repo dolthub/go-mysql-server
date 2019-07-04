@@ -13,7 +13,7 @@ func TestIsNull(t *testing.T) {
 	require.True(t, IsNull(nil))
 
 	n := numberT{sqltypes.Uint64}
-	require.Equal(t, sqltypes.MakeTrusted(sqltypes.Uint64, nil), mustSQL(n.SQL(nil)))
+	require.Equal(t, sqltypes.NULL, mustSQL(n.SQL(nil)))
 	require.Equal(t, sqltypes.NewUint64(0), mustSQL(n.SQL(uint64(0))))
 }
 

@@ -650,6 +650,8 @@ var queries = []struct {
 			{"ndbinfo_version", ""},
 			{"sql_select_limit", math.MaxInt32},
 			{"transaction_isolation", "READ UNCOMMITTED"},
+			{"version", ""},
+			{"version_comment", ""},
 		},
 	},
 	{
