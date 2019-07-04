@@ -66,14 +66,12 @@ func (y *Year) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return getDatePart(ctx, y.UnaryExpression, row, year)
 }
 
-// TransformUp implements the Expression interface.
-func (y *Year) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := y.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (y *Year) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(y, len(children), 1)
 	}
-
-	return f(NewYear(child))
+	return NewYear(children[0]), nil
 }
 
 // Month is a function that returns the month of a date.
@@ -96,14 +94,12 @@ func (m *Month) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return getDatePart(ctx, m.UnaryExpression, row, month)
 }
 
-// TransformUp implements the Expression interface.
-func (m *Month) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := m.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (m *Month) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-
-	return f(NewMonth(child))
+	return NewMonth(children[0]), nil
 }
 
 // Day is a function that returns the day of a date.
@@ -126,14 +122,12 @@ func (d *Day) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return getDatePart(ctx, d.UnaryExpression, row, day)
 }
 
-// TransformUp implements the Expression interface.
-func (d *Day) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := d.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (d *Day) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-
-	return f(NewDay(child))
+	return NewDay(children[0]), nil
 }
 
 // Weekday is a function that returns the weekday of a date where 0 = Monday,
@@ -157,14 +151,12 @@ func (d *Weekday) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return getDatePart(ctx, d.UnaryExpression, row, weekday)
 }
 
-// TransformUp implements the Expression interface.
-func (d *Weekday) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := d.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (d *Weekday) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-
-	return f(NewWeekday(child))
+	return NewWeekday(children[0]), nil
 }
 
 // Hour is a function that returns the hour of a date.
@@ -187,14 +179,12 @@ func (h *Hour) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return getDatePart(ctx, h.UnaryExpression, row, hour)
 }
 
-// TransformUp implements the Expression interface.
-func (h *Hour) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := h.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (h *Hour) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(h, len(children), 1)
 	}
-
-	return f(NewHour(child))
+	return NewHour(children[0]), nil
 }
 
 // Minute is a function that returns the minute of a date.
@@ -217,14 +207,12 @@ func (m *Minute) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return getDatePart(ctx, m.UnaryExpression, row, minute)
 }
 
-// TransformUp implements the Expression interface.
-func (m *Minute) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := m.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (m *Minute) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-
-	return f(NewMinute(child))
+	return NewMinute(children[0]), nil
 }
 
 // Second is a function that returns the second of a date.
@@ -247,14 +235,12 @@ func (s *Second) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return getDatePart(ctx, s.UnaryExpression, row, second)
 }
 
-// TransformUp implements the Expression interface.
-func (s *Second) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := s.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (s *Second) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-
-	return f(NewSecond(child))
+	return NewSecond(children[0]), nil
 }
 
 // DayOfWeek is a function that returns the day of the week from a date where
@@ -278,14 +264,12 @@ func (d *DayOfWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return getDatePart(ctx, d.UnaryExpression, row, dayOfWeek)
 }
 
-// TransformUp implements the Expression interface.
-func (d *DayOfWeek) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := d.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (d *DayOfWeek) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-
-	return f(NewDayOfWeek(child))
+	return NewDayOfWeek(children[0]), nil
 }
 
 // DayOfYear is a function that returns the day of the year from a date.
@@ -308,14 +292,12 @@ func (d *DayOfYear) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return getDatePart(ctx, d.UnaryExpression, row, dayOfYear)
 }
 
-// TransformUp implements the Expression interface.
-func (d *DayOfYear) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := d.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (d *DayOfYear) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-
-	return f(NewDayOfYear(child))
+	return NewDayOfYear(children[0]), nil
 }
 
 func datePartFunc(fn func(time.Time) int) func(interface{}) interface{} {
@@ -403,23 +385,9 @@ func (d *YearWeek) IsNullable() bool {
 	return d.date.IsNullable()
 }
 
-// TransformUp implements the Expression interface.
-func (d *YearWeek) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	date, err := d.date.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	mode, err := d.mode.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	yw, err := NewYearWeek(date, mode)
-	if err != nil {
-		return nil, err
-	}
-	return f(yw)
+// WithChildren implements the Expression interface.
+func (*YearWeek) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewYearWeek(children...)
 }
 
 // Following solution of YearWeek was taken from tidb: https://github.com/pingcap/tidb/blob/master/types/mytime.go
@@ -567,9 +535,12 @@ func (n *Now) Eval(*sql.Context, sql.Row) (interface{}, error) {
 	return n.clock(), nil
 }
 
-// TransformUp implements the sql.Expression interface.
-func (n *Now) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	return f(n)
+// WithChildren implements the Expression interface.
+func (n *Now) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
+	}
+	return n, nil
 }
 
 // Date a function takes the DATE part out from a datetime expression.
@@ -598,12 +569,10 @@ func (d *Date) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	})
 }
 
-// TransformUp implements the sql.Expression interface.
-func (d *Date) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := d.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (d *Date) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-
-	return f(NewDate(child))
+	return NewDate(children[0]), nil
 }

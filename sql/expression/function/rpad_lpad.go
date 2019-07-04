@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 var ErrDivisionByZero = errors.NewKind("division by zero")
@@ -68,24 +68,9 @@ func (p *Pad) String() string {
 	return fmt.Sprintf("rpad(%s, %s, %s)", p.str, p.length, p.padStr)
 }
 
-// TransformUp implements the Expression interface.
-func (p *Pad) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	str, err := p.str.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	len, err := p.length.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	padStr, err := p.padStr.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-	padded, _ := NewPad(p.padType, str, len, padStr)
-	return f(padded)
+// WithChildren implements the Expression interface.
+func (p *Pad) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewPad(p.padType, children...)
 }
 
 // Eval implements the Expression interface.

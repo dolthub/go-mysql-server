@@ -37,7 +37,7 @@ func (s *Sleep) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	time.Sleep(time.Duration(child.(float64) * 1000)  * time.Millisecond)
+	time.Sleep(time.Duration(child.(float64)*1000) * time.Millisecond)
 	return 0, nil
 }
 
@@ -51,13 +51,12 @@ func (s *Sleep) IsNullable() bool {
 	return false
 }
 
-// TransformUp implements the Expression interface.
-func (s *Sleep) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := s.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (s *Sleep) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-	return f(NewSleep(child))
+	return NewSleep(children[0]), nil
 }
 
 // Type implements the Expression interface.

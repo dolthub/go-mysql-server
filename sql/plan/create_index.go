@@ -8,9 +8,9 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/sirupsen/logrus"
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
+	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 var (
@@ -260,56 +260,26 @@ func (c *CreateIndex) Expressions() []sql.Expression {
 	return c.Exprs
 }
 
-// TransformExpressions implements the Expressioner interface.
-func (c *CreateIndex) TransformExpressions(fn sql.TransformExprFunc) (sql.Node, error) {
-	var exprs = make([]sql.Expression, len(c.Exprs))
-	var err error
-	for i, e := range c.Exprs {
-		exprs[i], err = e.TransformUp(fn)
-		if err != nil {
-			return nil, err
-		}
+// WithExpressions implements the Expressioner interface.
+func (c *CreateIndex) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(c.Exprs) {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), len(c.Exprs))
 	}
 
 	nc := *c
 	nc.Exprs = exprs
-
 	return &nc, nil
 }
 
-// TransformExpressionsUp implements the Node interface.
-func (c *CreateIndex) TransformExpressionsUp(fn sql.TransformExprFunc) (sql.Node, error) {
-	table, err := c.Table.TransformExpressionsUp(fn)
-	if err != nil {
-		return nil, err
-	}
-
-	var exprs = make([]sql.Expression, len(c.Exprs))
-	for i, e := range c.Exprs {
-		exprs[i], err = e.TransformUp(fn)
-		if err != nil {
-			return nil, err
-		}
+// WithChildren implements the Node interface.
+func (c *CreateIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
 
 	nc := *c
-	nc.Table = table
-	nc.Exprs = exprs
-
+	nc.Table = children[0]
 	return &nc, nil
-}
-
-// TransformUp implements the Node interface.
-func (c *CreateIndex) TransformUp(fn sql.TransformNodeFunc) (sql.Node, error) {
-	table, err := c.Table.TransformUp(fn)
-	if err != nil {
-		return nil, err
-	}
-
-	nc := *c
-	nc.Table = table
-
-	return fn(&nc)
 }
 
 // getColumnsAndPrepareExpressions extracts the unique columns required by all
@@ -323,7 +293,7 @@ func getColumnsAndPrepareExpressions(
 	var expressions = make([]sql.Expression, len(exprs))
 
 	for i, e := range exprs {
-		ex, err := e.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+		ex, err := expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
 			gf, ok := e.(*expression.GetField)
 			if !ok {
 				return e, nil

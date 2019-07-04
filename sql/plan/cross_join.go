@@ -66,34 +66,13 @@ func (p *CrossJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}), nil
 }
 
-// TransformUp implements the Transformable interface.
-func (p *CrossJoin) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	left, err := p.Left.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (p *CrossJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 2)
 	}
 
-	right, err := p.Right.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewCrossJoin(left, right))
-}
-
-// TransformExpressionsUp implements the Transformable interface.
-func (p *CrossJoin) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	left, err := p.Left.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	right, err := p.Right.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewCrossJoin(left, right), nil
+	return NewCrossJoin(children[0], children[1]), nil
 }
 
 func (p *CrossJoin) String() string {

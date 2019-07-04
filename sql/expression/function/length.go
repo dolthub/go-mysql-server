@@ -35,16 +35,13 @@ func NewCharLength(e sql.Expression) sql.Expression {
 	return &Length{expression.UnaryExpression{Child: e}, NumChars}
 }
 
-// TransformUp implements the sql.Expression interface.
-func (l *Length) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := l.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (l *Length) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
 
-	nl := *l
-	nl.Child = child
-	return &nl, nil
+	return &Length{expression.UnaryExpression{Child: children[0]}, l.CountType}, nil
 }
 
 // Type implements the sql.Expression interface.

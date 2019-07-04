@@ -55,8 +55,10 @@ func (*Star) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
 	panic("star is just a placeholder node, but Eval was called")
 }
 
-// TransformUp implements the Expression interface.
-func (s *Star) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	n := *s
-	return f(&n)
+// WithChildren implements the Expression interface.
+func (s *Star) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
+	}
+	return s, nil
 }

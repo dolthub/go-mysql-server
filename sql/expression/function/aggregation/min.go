@@ -38,13 +38,12 @@ func (m *Min) IsNullable() bool {
 	return true
 }
 
-// TransformUp implements the Transformable interface.
-func (m *Min) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := m.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (m *Min) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-	return f(NewMin(child))
+	return NewMin(children[0]), nil
 }
 
 // NewBuffer creates a new buffer to compute the result.

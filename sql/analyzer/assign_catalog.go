@@ -10,7 +10,7 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 	span, _ := ctx.Span("assign_catalog")
 	defer span.Finish()
 
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		if !n.Resolved() {
 			return n, nil
 		}

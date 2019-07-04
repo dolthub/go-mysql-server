@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // ErrUnableSort is thrown when something happens on sorting
@@ -91,34 +91,6 @@ func (s *Sort) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.NewSpanIter(span, newSortIter(s, i)), nil
 }
 
-// TransformUp implements the Transformable interface.
-func (s *Sort) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := s.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-	return f(NewSort(s.SortFields, child))
-}
-
-// TransformExpressionsUp implements the Transformable interface.
-func (s *Sort) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	var sfs = make([]SortField, len(s.SortFields))
-	for i, sf := range s.SortFields {
-		col, err := sf.Column.TransformUp(f)
-		if err != nil {
-			return nil, err
-		}
-		sfs[i] = SortField{col, sf.Order, sf.NullOrdering}
-	}
-
-	child, err := s.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewSort(sfs, child), nil
-}
-
 func (s *Sort) String() string {
 	pr := sql.NewTreePrinter()
 	var fields = make([]string, len(s.SortFields))
@@ -139,22 +111,31 @@ func (s *Sort) Expressions() []sql.Expression {
 	return exprs
 }
 
-// TransformExpressions implements the Expressioner interface.
-func (s *Sort) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
-	var sortFields = make([]SortField, len(s.SortFields))
-	for i, field := range s.SortFields {
-		transformed, err := field.Column.TransformUp(f)
-		if err != nil {
-			return nil, err
-		}
-		sortFields[i] = SortField{
-			Column:       transformed,
-			Order:        field.Order,
-			NullOrdering: field.NullOrdering,
+// WithChildren implements the Node interface.
+func (s *Sort) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
+	}
+
+	return NewSort(s.SortFields, children[0]), nil
+}
+
+// WithExpressions implements the Expressioner interface.
+func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(s.SortFields) {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.SortFields))
+	}
+
+	var fields = make([]SortField, len(s.SortFields))
+	for i, expr := range exprs {
+		fields[i] = SortField{
+			Column:       expr,
+			NullOrdering: s.SortFields[i].NullOrdering,
+			Order:        s.SortFields[i].Order,
 		}
 	}
 
-	return NewSort(sortFields, s.Child), nil
+	return NewSort(fields, s.Child), nil
 }
 
 type sortIter struct {

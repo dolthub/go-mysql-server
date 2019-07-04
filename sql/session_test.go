@@ -51,27 +51,22 @@ func TestHasDefaultValue(t *testing.T) {
 
 type testNode struct{}
 
-func (t *testNode) Resolved() bool {
+func (*testNode) Resolved() bool {
+	panic("not implemented")
+}
+func (*testNode) WithChildren(...Node) (Node, error) {
 	panic("not implemented")
 }
 
-func (t *testNode) TransformUp(func(Node) Node) Node {
+func (*testNode) Schema() Schema {
 	panic("not implemented")
 }
 
-func (t *testNode) TransformExpressionsUp(func(Expression) Expression) Node {
+func (*testNode) Children() []Node {
 	panic("not implemented")
 }
 
-func (t *testNode) Schema() Schema {
-	panic("not implemented")
-}
-
-func (t *testNode) Children() []Node {
-	panic("not implemented")
-}
-
-func (t *testNode) RowIter(ctx *Context) (RowIter, error) {
+func (*testNode) RowIter(ctx *Context) (RowIter, error) {
 	return newTestNodeIterator(ctx), nil
 }
 

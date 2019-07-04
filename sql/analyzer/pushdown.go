@@ -66,7 +66,7 @@ func fixFieldIndexesOnExpressions(schema sql.Schema, expressions ...sql.Expressi
 // for GetField expressions according to the schema of the row in the table
 // and not the one where the filter came from.
 func fixFieldIndexes(schema sql.Schema, exp sql.Expression) (sql.Expression, error) {
-	return exp.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+	return expression.TransformUp(exp, func(e sql.Expression) (sql.Expression, error) {
 		switch e := e.(type) {
 		case *expression.GetField:
 			// we need to rewrite the indexes for the table row
@@ -134,7 +134,7 @@ func transformPushdown(
 	var handledFilters []sql.Expression
 	var queryIndexes []sql.Index
 
-	node, err := n.TransformUp(func(node sql.Node) (sql.Node, error) {
+	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", node)
 		switch node := node.(type) {
 		case *plan.Filter:
@@ -173,8 +173,7 @@ func transformPushdown(
 }
 
 func transformExpressioners(node sql.Node) (sql.Node, error) {
-	expressioner, ok := node.(sql.Expressioner)
-	if !ok {
+	if _, ok := node.(sql.Expressioner); !ok {
 		return node, nil
 	}
 
@@ -187,7 +186,7 @@ func transformExpressioners(node sql.Node) (sql.Node, error) {
 		return node, nil
 	}
 
-	n, err := expressioner.TransformExpressions(func(e sql.Expression) (sql.Expression, error) {
+	n, err := plan.TransformExpressions(node, func(e sql.Expression) (sql.Expression, error) {
 		for _, schema := range schemas {
 			fixed, err := fixFieldIndexes(schema, e)
 			if err == nil {
@@ -338,20 +337,11 @@ func (r *releaser) Schema() sql.Schema {
 	return r.Child.Schema()
 }
 
-func (r *releaser) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := r.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+func (r *releaser) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 1)
 	}
-	return f(&releaser{child, r.Release})
-}
-
-func (r *releaser) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	child, err := r.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-	return &releaser{child, r.Release}, nil
+	return &releaser{children[0], r.Release}, nil
 }
 
 func (r *releaser) String() string {

@@ -25,6 +25,10 @@ var (
 
 	//ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
 	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
+
+	// ErrInvalidChildrenNumber is returned when the WithChildren method of a
+	// node or expression is called with an invalid number of arguments.
+	ErrInvalidChildrenNumber = errors.NewKind("%T: invalid children number, got %d, expected %d")
 )
 
 // Nameable is something that has a name.
@@ -45,17 +49,6 @@ type Resolvable interface {
 	Resolved() bool
 }
 
-// Transformable is a node which can be transformed.
-type Transformable interface {
-	// TransformUp transforms all nodes and returns the result of this transformation.
-	// Transformation is not propagated to subqueries.
-	TransformUp(TransformNodeFunc) (Node, error)
-	// TransformExpressionsUp transforms all expressions inside the node and all its
-	// children and returns a node with the result of the transformations.
-	// Transformation is not propagated to subqueries.
-	TransformExpressionsUp(TransformExprFunc) (Node, error)
-}
-
 // TransformNodeFunc is a function that given a node will return that node
 // as is or transformed along with an error, if any.
 type TransformNodeFunc func(Node) (Node, error)
@@ -74,11 +67,13 @@ type Expression interface {
 	IsNullable() bool
 	// Eval evaluates the given row and returns a result.
 	Eval(*Context, Row) (interface{}, error)
-	// TransformUp transforms the expression and all its children with the
-	// given transform function.
-	TransformUp(TransformExprFunc) (Expression, error)
 	// Children returns the children expressions of this expression.
 	Children() []Expression
+	// WithChildren returns a copy of the expression with children replaced.
+	// It will return an error if the number of children is different than
+	// the current number of children. They must be given in the same order
+	// as they are returned by Children.
+	WithChildren(...Expression) (Expression, error)
 }
 
 // Aggregation implements an aggregation expression, where an
@@ -100,7 +95,6 @@ type Aggregation interface {
 // Node is a node in the execution plan tree.
 type Node interface {
 	Resolvable
-	Transformable
 	fmt.Stringer
 	// Schema of the node.
 	Schema() Schema
@@ -108,16 +102,30 @@ type Node interface {
 	Children() []Node
 	// RowIter produces a row iterator from this node.
 	RowIter(*Context) (RowIter, error)
+	// WithChildren returns a copy of the node with children replaced.
+	// It will return an error if the number of children is different than
+	// the current number of children. They must be given in the same order
+	// as they are returned by Children.
+	WithChildren(...Node) (Node, error)
+}
+
+// OpaqueNode is a node that doesn't allow transformations to its children and
+// acts a a black box.
+type OpaqueNode interface {
+	Node
+	// Opaque reports whether the node is opaque or not.
+	Opaque() bool
 }
 
 // Expressioner is a node that contains expressions.
 type Expressioner interface {
 	// Expressions returns the list of expressions contained by the node.
 	Expressions() []Expression
-	// TransformExpressions applies for each expression in this node
-	// the expression's TransformUp method with the given function, and
-	// return a new node with the transformed expressions.
-	TransformExpressions(TransformExprFunc) (Node, error)
+	// WithExpressions returns a copy of the node with expressions replaced.
+	// It will return an error if the number of expressions is different than
+	// the current number of expressions. They must be given in the same order
+	// as they are returned by Expressions.
+	WithExpressions(...Expression) (Node, error)
 }
 
 // Databaser is a node that contains a reference to a database.

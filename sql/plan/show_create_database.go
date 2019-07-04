@@ -82,12 +82,11 @@ func (s *ShowCreateDatabase) Resolved() bool {
 	return !ok
 }
 
-// TransformExpressionsUp implements the sql.Node interface.
-func (s *ShowCreateDatabase) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	return s, nil
-}
+// WithChildren implements the Node interface.
+func (s *ShowCreateDatabase) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
+	}
 
-// TransformUp implements the sql.Node interface.
-func (s *ShowCreateDatabase) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(s)
+	return s, nil
 }

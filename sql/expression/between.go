@@ -98,22 +98,10 @@ func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return cmpLower >= 0 && cmpUpper <= 0, nil
 }
 
-// TransformUp implements the Expression interface.
-func (b *Between) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	val, err := b.Val.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (b *Between) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 3 {
+		return nil, sql.ErrInvalidChildrenNumber.New(b, len(children), 3)
 	}
-
-	lower, err := b.Lower.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	upper, err := b.Upper.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewBetween(val, lower, upper))
+	return NewBetween(children[0], children[1], children[2]), nil
 }

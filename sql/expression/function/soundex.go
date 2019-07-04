@@ -87,13 +87,12 @@ func (s *Soundex) String() string {
 	return fmt.Sprintf("SOUNDEX(%s)", s.Child)
 }
 
-// TransformUp implements the Expression interface.
-func (s *Soundex) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := s.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (s *Soundex) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-	return f(NewSoundex(child))
+	return NewSoundex(children[0]), nil
 }
 
 // Type implements the Expression interface.

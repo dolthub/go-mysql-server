@@ -61,24 +61,13 @@ func (e *Exchange) String() string {
 	return p.String()
 }
 
-// TransformUp implements the sql.Node interface.
-func (e *Exchange) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := e.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (e *Exchange) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
 
-	return f(NewExchange(e.Parallelism, child))
-}
-
-// TransformExpressionsUp implements the sql.Node interface.
-func (e *Exchange) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	child, err := e.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewExchange(e.Parallelism, child), nil
+	return NewExchange(e.Parallelism, children[0]), nil
 }
 
 type exchangeRowIter struct {
@@ -208,7 +197,7 @@ func (it *exchangeRowIter) iterPartitions(ch chan<- sql.Partition) {
 }
 
 func (it *exchangeRowIter) iterPartition(p sql.Partition) {
-	node, err := it.tree.TransformUp(func(n sql.Node) (sql.Node, error) {
+	node, err := TransformUp(it.tree, func(n sql.Node) (sql.Node, error) {
 		if t, ok := n.(sql.Table); ok {
 			return &exchangePartition{p, t}, nil
 		}
@@ -310,10 +299,11 @@ func (p *exchangePartition) Schema() sql.Schema {
 	return p.table.Schema()
 }
 
-func (p *exchangePartition) TransformExpressionsUp(sql.TransformExprFunc) (sql.Node, error) {
-	return p, nil
-}
+// WithChildren implements the Node interface.
+func (p *exchangePartition) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
+	}
 
-func (p *exchangePartition) TransformUp(sql.TransformNodeFunc) (sql.Node, error) {
 	return p, nil
 }

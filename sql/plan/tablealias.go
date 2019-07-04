@@ -23,22 +23,13 @@ func (t *TableAlias) Name() string {
 	return t.name
 }
 
-// TransformUp implements the Transformable interface.
-func (t *TableAlias) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := t.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (t *TableAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-	return f(NewTableAlias(t.name, child))
-}
 
-// TransformExpressionsUp implements the Transformable interface.
-func (t *TableAlias) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	child, err := t.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-	return NewTableAlias(t.name, child), nil
+	return NewTableAlias(t.name, children[0]), nil
 }
 
 // RowIter implements the Node interface.

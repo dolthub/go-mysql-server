@@ -53,8 +53,10 @@ func (*DefaultColumn) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
 	panic("default column is a placeholder node, but Eval was called")
 }
 
-// TransformUp implements the sql.Expression interface.
-func (c *DefaultColumn) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	n := *c
-	return f(&n)
+// WithChildren implements the Expression interface.
+func (c *DefaultColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 0)
+	}
+	return c, nil
 }

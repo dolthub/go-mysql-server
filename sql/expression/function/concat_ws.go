@@ -61,23 +61,9 @@ func (f *ConcatWithSeparator) String() string {
 	return fmt.Sprintf("concat_ws(%s)", strings.Join(args, ", "))
 }
 
-// TransformUp implements the Expression interface.
-func (f *ConcatWithSeparator) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	var args = make([]sql.Expression, len(f.args))
-	for i, arg := range f.args {
-		a, err := arg.TransformUp(fn)
-		if err != nil {
-			return nil, err
-		}
-		args[i] = a
-	}
-
-	expr, err := NewConcatWithSeparator(args...)
-	if err != nil {
-		return nil, err
-	}
-
-	return fn(expr)
+// WithChildren implements the Expression interface.
+func (*ConcatWithSeparator) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewConcatWithSeparator(children...)
 }
 
 // Resolved implements the Expression interface.

@@ -36,28 +36,22 @@ func (p *Filter) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.NewSpanIter(span, NewFilterIter(ctx, p.Expression, i)), nil
 }
 
-// TransformUp implements the Transformable interface.
-func (p *Filter) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := p.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (p *Filter) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return f(NewFilter(p.Expression, child))
+
+	return NewFilter(p.Expression, children[0]), nil
 }
 
-// TransformExpressionsUp implements the Transformable interface.
-func (p *Filter) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	expr, err := p.Expression.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithExpressions implements the Expressioner interface.
+func (p *Filter) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(exprs), 1)
 	}
 
-	child, err := p.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewFilter(expr, child), nil
+	return NewFilter(exprs[0], p.Child), nil
 }
 
 func (p *Filter) String() string {
@@ -70,16 +64,6 @@ func (p *Filter) String() string {
 // Expressions implements the Expressioner interface.
 func (p *Filter) Expressions() []sql.Expression {
 	return []sql.Expression{p.Expression}
-}
-
-// TransformExpressions implements the Expressioner interface.
-func (p *Filter) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
-	e, err := p.Expression.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewFilter(e, p.Child), nil
 }
 
 // FilterIter is an iterator that filters another iterator and skips rows that

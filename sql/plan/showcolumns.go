@@ -104,24 +104,13 @@ func (s *ShowColumns) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.NewSpanIter(span, sql.RowsToRowIter(rows...)), nil
 }
 
-// TransformUp creates a new ShowColumns node.
-func (s *ShowColumns) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := s.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (s *ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
 
-	return f(NewShowColumns(s.Full, child))
-}
-
-// TransformExpressionsUp creates a new ShowColumns node.
-func (s *ShowColumns) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	child, err := s.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewShowColumns(s.Full, child), nil
+	return NewShowColumns(s.Full, children[0]), nil
 }
 
 func (s *ShowColumns) String() string {

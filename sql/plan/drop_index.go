@@ -1,9 +1,9 @@
 package plan
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/internal/similartext"
 	"github.com/src-d/go-mysql-server/sql"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 var (
@@ -104,26 +104,13 @@ func (d *DropIndex) String() string {
 	return pr.String()
 }
 
-// TransformExpressionsUp implements the Node interface.
-func (d *DropIndex) TransformExpressionsUp(fn sql.TransformExprFunc) (sql.Node, error) {
-	t, err := d.Table.TransformExpressionsUp(fn)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (d *DropIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
 
-	nc := *d
-	nc.Table = t
-	return &nc, nil
-}
-
-// TransformUp implements the Node interface.
-func (d *DropIndex) TransformUp(fn sql.TransformNodeFunc) (sql.Node, error) {
-	t, err := d.Table.TransformUp(fn)
-	if err != nil {
-		return nil, err
-	}
-
-	nc := *d
-	nc.Table = t
-	return fn(&nc)
+	nd := *d
+	nd.Table = children[0]
+	return &nd, nil
 }

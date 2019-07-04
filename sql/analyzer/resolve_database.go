@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/plan"
 )
 
 func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -10,7 +11,7 @@ func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 
 	a.Log("resolve database, node of type: %T", n)
 
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		d, ok := n.(sql.Databaser)
 		if !ok {
 			return n, nil

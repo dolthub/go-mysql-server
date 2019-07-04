@@ -36,22 +36,12 @@ func (o *Offset) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.NewSpanIter(span, &offsetIter{o.Offset, it}), nil
 }
 
-// TransformUp implements the Transformable interface.
-func (o *Offset) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := o.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (o *Offset) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(o, len(children), 1)
 	}
-	return f(NewOffset(o.Offset, child))
-}
-
-// TransformExpressionsUp implements the Transformable interface.
-func (o *Offset) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	child, err := o.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-	return NewOffset(o.Offset, child), nil
+	return NewOffset(o.Offset, children[0]), nil
 }
 
 func (o Offset) String() string {

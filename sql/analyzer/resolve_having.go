@@ -12,7 +12,7 @@ import (
 )
 
 func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
-	return node.TransformUp(func(node sql.Node) (sql.Node, error) {
+	return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
 		having, ok := node.(*plan.Having)
 		if !ok {
 			return node, nil
@@ -163,44 +163,19 @@ func addColumnsToGroupBy(node sql.Node, columns []sql.Expression) (sql.Node, err
 		}
 
 		return plan.NewProject(append(node.Projections, newProjections...), child), nil
-	case *plan.Filter:
-		child, err := addColumnsToGroupBy(node.Child, columns)
+	case *plan.Filter,
+		*plan.Sort,
+		*plan.Limit,
+		*plan.Offset,
+		*plan.Distinct,
+		*plan.Having:
+		child, err := addColumnsToGroupBy(node.Children()[0], columns)
 		if err != nil {
 			return nil, err
 		}
-		return plan.NewFilter(node.Expression, child), nil
-	case *plan.Sort:
-		child, err := addColumnsToGroupBy(node.Child, columns)
-		if err != nil {
-			return nil, err
-		}
-		return plan.NewSort(node.SortFields, child), nil
-	case *plan.Limit:
-		child, err := addColumnsToGroupBy(node.Child, columns)
-		if err != nil {
-			return nil, err
-		}
-		return plan.NewLimit(node.Limit, child), nil
-	case *plan.Offset:
-		child, err := addColumnsToGroupBy(node.Child, columns)
-		if err != nil {
-			return nil, err
-		}
-		return plan.NewOffset(node.Offset, child), nil
-	case *plan.Distinct:
-		child, err := addColumnsToGroupBy(node.Child, columns)
-		if err != nil {
-			return nil, err
-		}
-		return plan.NewDistinct(child), nil
+		return node.WithChildren(child)
 	case *plan.GroupBy:
 		return plan.NewGroupBy(append(node.Aggregate, columns...), node.Grouping, node.Child), nil
-	case *plan.Having:
-		child, err := addColumnsToGroupBy(node.Child, columns)
-		if err != nil {
-			return nil, err
-		}
-		return plan.NewHaving(node.Cond, child), nil
 	default:
 		return nil, errHavingNeedsGroupBy.New()
 	}
@@ -318,7 +293,7 @@ func replaceAggregations(having *plan.Having) (*plan.Having, bool, error) {
 	// indexes after they have been pushed up. This is because some of these
 	// may have already been projected in some projection and we cannot ensure
 	// from here what the final index will be.
-	cond, err := having.Cond.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+	cond, err := expression.TransformUp(having.Cond, func(e sql.Expression) (sql.Expression, error) {
 		agg, ok := e.(sql.Aggregation)
 		if !ok {
 			return e, nil
@@ -372,7 +347,7 @@ func replaceAggregations(having *plan.Having) (*plan.Having, bool, error) {
 
 	// Now, the tokens are replaced with the actual columns, now that we know
 	// what the indexes are.
-	cond, err = having.Cond.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+	cond, err = expression.TransformUp(having.Cond, func(e sql.Expression) (sql.Expression, error) {
 		f, ok := e.(*expression.GetField)
 		if !ok {
 			return e, nil
@@ -474,7 +449,7 @@ func aggregationChildEquals(a, b sql.Expression) bool {
 		return true
 	})
 
-	a, err := a.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+	a, err := expression.TransformUp(a, func(e sql.Expression) (sql.Expression, error) {
 		var table, name string
 		switch e := e.(type) {
 		case *expression.UnresolvedColumn:

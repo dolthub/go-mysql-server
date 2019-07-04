@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/internal/regex"
 	"github.com/src-d/go-mysql-server/sql"
+	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 // Comparer implements a comparison expression.
@@ -157,19 +157,12 @@ func (e *Equals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return result == 0, nil
 }
 
-// TransformUp implements the Expression interface.
-func (e *Equals) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	left, err := e.Left().TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (e *Equals) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 2)
 	}
-
-	right, err := e.Right().TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewEquals(left, right))
+	return NewEquals(children[0], children[1]), nil
 }
 
 func (e *Equals) String() string {
@@ -278,19 +271,12 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 	return ok, nil
 }
 
-// TransformUp implements the Expression interface.
-func (re *Regexp) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	left, err := re.Left().TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (re *Regexp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(re, len(children), 2)
 	}
-
-	right, err := re.Right().TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewRegexp(left, right))
+	return NewRegexp(children[0], children[1]), nil
 }
 
 func (re *Regexp) String() string {
@@ -321,19 +307,12 @@ func (gt *GreaterThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	return result == 1, nil
 }
 
-// TransformUp implements the Expression interface.
-func (gt *GreaterThan) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	left, err := gt.Left().TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (gt *GreaterThan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(gt, len(children), 2)
 	}
-
-	right, err := gt.Right().TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewGreaterThan(left, right))
+	return NewGreaterThan(children[0], children[1]), nil
 }
 
 func (gt *GreaterThan) String() string {
@@ -364,19 +343,12 @@ func (lt *LessThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return result == -1, nil
 }
 
-// TransformUp implements the Expression interface.
-func (lt *LessThan) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	left, err := lt.Left().TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (lt *LessThan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(lt, len(children), 2)
 	}
-
-	right, err := lt.Right().TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewLessThan(left, right))
+	return NewLessThan(children[0], children[1]), nil
 }
 
 func (lt *LessThan) String() string {
@@ -408,19 +380,12 @@ func (gte *GreaterThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{},
 	return result > -1, nil
 }
 
-// TransformUp implements the Expression interface.
-func (gte *GreaterThanOrEqual) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	left, err := gte.Left().TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (gte *GreaterThanOrEqual) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(gte, len(children), 2)
 	}
-
-	right, err := gte.Right().TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewGreaterThanOrEqual(left, right))
+	return NewGreaterThanOrEqual(children[0], children[1]), nil
 }
 
 func (gte *GreaterThanOrEqual) String() string {
@@ -452,19 +417,12 @@ func (lte *LessThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 	return result < 1, nil
 }
 
-// TransformUp implements the Expression interface.
-func (lte *LessThanOrEqual) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	left, err := lte.Left().TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (lte *LessThanOrEqual) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(lte, len(children), 2)
 	}
-
-	right, err := lte.Right().TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewLessThanOrEqual(left, right))
+	return NewLessThanOrEqual(children[0], children[1]), nil
 }
 
 func (lte *LessThanOrEqual) String() string {
@@ -544,19 +502,12 @@ func (in *In) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-// TransformUp implements the Expression interface.
-func (in *In) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	left, err := in.Left().TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (in *In) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(in, len(children), 2)
 	}
-
-	right, err := in.Right().TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewIn(left, right))
+	return NewIn(children[0], children[1]), nil
 }
 
 func (in *In) String() string {
@@ -632,19 +583,12 @@ func (in *NotIn) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-// TransformUp implements the Expression interface.
-func (in *NotIn) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	left, err := in.Left().TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (in *NotIn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(in, len(children), 2)
 	}
-
-	right, err := in.Right().TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewNotIn(left, right))
+	return NewNotIn(children[0], children[1]), nil
 }
 
 func (in *NotIn) String() string {

@@ -40,14 +40,12 @@ func (e *Explode) String() string {
 	return fmt.Sprintf("EXPLODE(%s)", e.Child)
 }
 
-// TransformUp implements the sql.Expression interface.
-func (e *Explode) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	c, err := e.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (e *Explode) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
-
-	return f(NewExplode(c))
+	return NewExplode(children[0]), nil
 }
 
 // Generate is a function that generates a row for each value of its child.
@@ -84,12 +82,10 @@ func (e *Generate) String() string {
 	return fmt.Sprintf("EXPLODE(%s)", e.Child)
 }
 
-// TransformUp implements the sql.Expression interface.
-func (e *Generate) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	c, err := e.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (e *Generate) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
-
-	return f(NewGenerate(c))
+	return NewGenerate(children[0]), nil
 }

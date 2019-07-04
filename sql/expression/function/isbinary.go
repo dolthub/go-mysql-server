@@ -45,13 +45,12 @@ func (ib *IsBinary) String() string {
 	return fmt.Sprintf("IS_BINARY(%s)", ib.Child)
 }
 
-// TransformUp implements the Expression interface.
-func (ib *IsBinary) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := ib.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (ib *IsBinary) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(ib, len(children), 1)
 	}
-	return f(NewIsBinary(child))
+	return NewIsBinary(children[0]), nil
 }
 
 // Type implements the Expression interface.

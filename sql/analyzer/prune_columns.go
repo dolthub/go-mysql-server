@@ -131,7 +131,7 @@ func pruneSubqueries(
 	n sql.Node,
 	parentColumns usedColumns,
 ) (sql.Node, error) {
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		subq, ok := n.(*plan.SubqueryAlias)
 		if !ok {
 			return n, nil
@@ -142,7 +142,7 @@ func pruneSubqueries(
 }
 
 func pruneUnusedColumns(n sql.Node, columns usedColumns) (sql.Node, error) {
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.Project:
 			return pruneProject(n, columns), nil
@@ -155,7 +155,7 @@ func pruneUnusedColumns(n sql.Node, columns usedColumns) (sql.Node, error) {
 }
 
 func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
 			child, err := fixRemainingFieldsIndexes(n.Child)
@@ -165,8 +165,7 @@ func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
 
 			return plan.NewSubqueryAlias(n.Name(), child), nil
 		default:
-			exp, ok := n.(sql.Expressioner)
-			if !ok {
+			if _, ok := n.(sql.Expressioner); !ok {
 				return n, nil
 			}
 
@@ -184,7 +183,7 @@ func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
 				indexes[tableCol{col.Source, col.Name}] = i
 			}
 
-			return exp.TransformExpressions(func(e sql.Expression) (sql.Expression, error) {
+			return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 				gf, ok := e.(*expression.GetField)
 				if !ok {
 					return e, nil

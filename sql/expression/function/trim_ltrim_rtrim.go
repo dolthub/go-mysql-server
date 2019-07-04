@@ -6,11 +6,12 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
 )
 
 type trimType rune
+
 const (
 	lTrimType trimType = 'l'
 	rTrimType trimType = 'r'
@@ -54,14 +55,12 @@ func (t *Trim) IsNullable() bool {
 	return t.Child.IsNullable()
 }
 
-// TransformUp implements the Expression interface.
-func (t *Trim) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	str, err := t.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (t *Trim) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-
-	return f(NewTrim(t.trimType, str))
+	return NewTrim(t.trimType, children[0]), nil
 }
 
 // Eval implements the Expression interface.

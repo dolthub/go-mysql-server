@@ -33,13 +33,12 @@ func (*JSONUnquote) Type() sql.Type {
 	return sql.Text
 }
 
-// TransformUp implements the Expression interface.
-func (js *JSONUnquote) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	json, err := js.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (js *JSONUnquote) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(js, len(children), 1)
 	}
-	return f(NewJSONUnquote(json))
+	return NewJSONUnquote(children[0]), nil
 }
 
 // Eval implements the Expression interface.

@@ -57,20 +57,3 @@ func expressionsResolved(exprs ...sql.Expression) bool {
 
 	return true
 }
-
-func transformExpressionsUp(
-	f sql.TransformExprFunc,
-	exprs []sql.Expression,
-) ([]sql.Expression, error) {
-
-	var es []sql.Expression
-	for _, e := range exprs {
-		te, err := e.TransformUp(f)
-		if err != nil {
-			return nil, err
-		}
-		es = append(es, te)
-	}
-
-	return es, nil
-}

@@ -3,8 +3,8 @@ package plan
 import (
 	"fmt"
 
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
+	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 // TableLock is a read or write lock on a table.
@@ -24,8 +24,6 @@ type LockTables struct {
 func NewLockTables(locks []*TableLock) *LockTables {
 	return &LockTables{Locks: locks}
 }
-
-var _ sql.Node = (*LockTables)(nil)
 
 // Children implements the sql.Node interface.
 func (t *LockTables) Children() []sql.Node {
@@ -89,25 +87,21 @@ func (t *LockTables) String() string {
 	return p.String()
 }
 
-// TransformUp implements the sql.Node interface.
-func (t *LockTables) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	var children = make([]*TableLock, len(t.Locks))
-	for i, l := range t.Locks {
-		node, err := l.Table.TransformUp(f)
-		if err != nil {
-			return nil, err
-		}
-		children[i] = &TableLock{node, l.Write}
+// WithChildren implements the Node interface.
+func (t *LockTables) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != len(t.Locks) {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), len(t.Locks))
 	}
 
-	nt := *t
-	nt.Locks = children
-	return f(&nt)
-}
+	var locks = make([]*TableLock, len(t.Locks))
+	for i, n := range children {
+		locks[i] = &TableLock{
+			Table: n,
+			Write: t.Locks[i].Write,
+		}
+	}
 
-// TransformExpressionsUp implements the sql.Node interface.
-func (t *LockTables) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	return t, nil
+	return &LockTables{t.Catalog, locks}, nil
 }
 
 // ErrTableNotLockable is returned whenever a lockable table can't be found.
@@ -143,8 +137,6 @@ func NewUnlockTables() *UnlockTables {
 	return new(UnlockTables)
 }
 
-var _ sql.Node = (*UnlockTables)(nil)
-
 // Children implements the sql.Node interface.
 func (t *UnlockTables) Children() []sql.Node { return nil }
 
@@ -172,12 +164,11 @@ func (t *UnlockTables) String() string {
 	return p.String()
 }
 
-// TransformUp implements the sql.Node interface.
-func (t *UnlockTables) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(t)
-}
+// WithChildren implements the Node interface.
+func (t *UnlockTables) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 0)
+	}
 
-// TransformExpressionsUp implements the sql.Node interface.
-func (t *UnlockTables) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return t, nil
 }

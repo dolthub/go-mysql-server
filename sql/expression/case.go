@@ -130,44 +130,41 @@ func (c *Case) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return nil, nil
 }
 
-// TransformUp implements the sql.Expression interface.
-func (c *Case) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	var expr sql.Expression
-	var err error
-
+// WithChildren implements the Expression interface.
+func (c *Case) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	var expected = len(c.Branches) * 2
 	if c.Expr != nil {
-		expr, err = c.Expr.TransformUp(f)
-		if err != nil {
-			return nil, err
-		}
+		expected++
+	}
+
+	if c.Else != nil {
+		expected++
+	}
+
+	if len(children) != expected {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), expected)
+	}
+
+	var expr, elseExpr sql.Expression
+	if c.Expr != nil {
+		expr = children[0]
+		children = children[1:]
+	}
+
+	if c.Else != nil {
+		elseExpr = children[len(children)-1]
+		children = children[:len(children)-1]
 	}
 
 	var branches []CaseBranch
-	for _, b := range c.Branches {
-		var nb CaseBranch
-
-		nb.Cond, err = b.Cond.TransformUp(f)
-		if err != nil {
-			return nil, err
-		}
-
-		nb.Value, err = b.Value.TransformUp(f)
-		if err != nil {
-			return nil, err
-		}
-
-		branches = append(branches, nb)
+	for i := 0; i < len(children); i += 2 {
+		branches = append(branches, CaseBranch{
+			Cond:  children[i],
+			Value: children[i+1],
+		})
 	}
 
-	var elseExpr sql.Expression
-	if c.Else != nil {
-		elseExpr, err = c.Else.TransformUp(f)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return f(NewCase(expr, branches, elseExpr))
+	return NewCase(expr, branches, elseExpr), nil
 }
 
 func (c *Case) String() string {

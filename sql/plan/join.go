@@ -83,39 +83,22 @@ func (j *InnerJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return joinRowIter(ctx, innerJoin, j.Left, j.Right, j.Cond)
 }
 
-// TransformUp implements the Transformable interface.
-func (j *InnerJoin) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	left, err := j.Left.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (j *InnerJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 2)
 	}
 
-	right, err := j.Right.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewInnerJoin(left, right, j.Cond))
+	return NewInnerJoin(children[0], children[1], j.Cond), nil
 }
 
-// TransformExpressionsUp implements the Transformable interface.
-func (j *InnerJoin) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	left, err := j.Left.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
+// WithExpressions implements the Expressioner interface.
+func (j *InnerJoin) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(j, len(exprs), 1)
 	}
 
-	right, err := j.Right.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	cond, err := j.Cond.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewInnerJoin(left, right, cond), nil
+	return NewInnerJoin(j.Left, j.Right, exprs[0]), nil
 }
 
 func (j *InnerJoin) String() string {
@@ -128,16 +111,6 @@ func (j *InnerJoin) String() string {
 // Expressions implements the Expressioner interface.
 func (j *InnerJoin) Expressions() []sql.Expression {
 	return []sql.Expression{j.Cond}
-}
-
-// TransformExpressions implements the Expressioner interface.
-func (j *InnerJoin) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
-	cond, err := j.Cond.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewInnerJoin(j.Left, j.Right, cond), nil
 }
 
 // LeftJoin is a left join between two tables.
@@ -172,39 +145,22 @@ func (j *LeftJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return joinRowIter(ctx, leftJoin, j.Left, j.Right, j.Cond)
 }
 
-// TransformUp implements the Transformable interface.
-func (j *LeftJoin) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	left, err := j.Left.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (j *LeftJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 1)
 	}
 
-	right, err := j.Right.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewLeftJoin(left, right, j.Cond))
+	return NewLeftJoin(children[0], children[1], j.Cond), nil
 }
 
-// TransformExpressionsUp implements the Transformable interface.
-func (j *LeftJoin) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	left, err := j.Left.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
+// WithExpressions implements the Expressioner interface.
+func (j *LeftJoin) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(j, len(exprs), 1)
 	}
 
-	right, err := j.Right.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	cond, err := j.Cond.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewLeftJoin(left, right, cond), nil
+	return NewLeftJoin(j.Left, j.Right, exprs[0]), nil
 }
 
 func (j *LeftJoin) String() string {
@@ -217,16 +173,6 @@ func (j *LeftJoin) String() string {
 // Expressions implements the Expressioner interface.
 func (j *LeftJoin) Expressions() []sql.Expression {
 	return []sql.Expression{j.Cond}
-}
-
-// TransformExpressions implements the Expressioner interface.
-func (j *LeftJoin) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
-	cond, err := j.Cond.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewLeftJoin(j.Left, j.Right, cond), nil
 }
 
 // RightJoin is a left join between two tables.
@@ -261,39 +207,22 @@ func (j *RightJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return joinRowIter(ctx, rightJoin, j.Left, j.Right, j.Cond)
 }
 
-// TransformUp implements the Transformable interface.
-func (j *RightJoin) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	left, err := j.Left.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (j *RightJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 2)
 	}
 
-	right, err := j.Right.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewRightJoin(left, right, j.Cond))
+	return NewRightJoin(children[0], children[1], j.Cond), nil
 }
 
-// TransformExpressionsUp implements the Transformable interface.
-func (j *RightJoin) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	left, err := j.Left.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
+// WithExpressions implements the Expressioner interface.
+func (j *RightJoin) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(j, len(exprs), 1)
 	}
 
-	right, err := j.Right.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	cond, err := j.Cond.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewRightJoin(left, right, cond), nil
+	return NewRightJoin(j.Left, j.Right, exprs[0]), nil
 }
 
 func (j *RightJoin) String() string {
@@ -306,16 +235,6 @@ func (j *RightJoin) String() string {
 // Expressions implements the Expressioner interface.
 func (j *RightJoin) Expressions() []sql.Expression {
 	return []sql.Expression{j.Cond}
-}
-
-// TransformExpressions implements the Expressioner interface.
-func (j *RightJoin) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
-	cond, err := j.Cond.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewRightJoin(j.Left, j.Right, cond), nil
 }
 
 type joinType byte

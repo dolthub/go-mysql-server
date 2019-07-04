@@ -30,9 +30,12 @@ func (f Version) String() string {
 	return "VERSION()"
 }
 
-// TransformUp implements the Expression interface.
-func (f Version) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	return fn(f)
+// WithChildren implements the Expression interface.
+func (f Version) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 0)
+	}
+	return f, nil
 }
 
 // Resolved implements the Expression interface.

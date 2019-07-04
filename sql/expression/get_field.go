@@ -3,8 +3,8 @@ package expression
 import (
 	"fmt"
 
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
+	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 // GetField is an expression to get the field of a table.
@@ -72,10 +72,12 @@ func (p *GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return row[p.fieldIndex], nil
 }
 
-// TransformUp implements the Expression interface.
-func (p *GetField) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	n := *p
-	return f(&n)
+// WithChildren implements the Expression interface.
+func (p *GetField) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
+	}
+	return p, nil
 }
 
 func (p *GetField) String() string {
@@ -124,7 +126,10 @@ func (f *GetSessionField) Resolved() bool { return true }
 // String implements the sql.Expression interface.
 func (f *GetSessionField) String() string { return "@@" + f.name }
 
-// TransformUp implements the sql.Expression interface.
-func (f *GetSessionField) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	return fn(f)
+// WithChildren implements the Expression interface.
+func (f *GetSessionField) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 0)
+	}
+	return f, nil
 }

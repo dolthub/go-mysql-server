@@ -32,13 +32,12 @@ func (c *Ceil) String() string {
 	return fmt.Sprintf("CEIL(%s)", c.Child)
 }
 
-// TransformUp implements the Expression interface.
-func (c *Ceil) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := c.Child.TransformUp(fn)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (c *Ceil) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return fn(NewCeil(child))
+	return NewCeil(children[0]), nil
 }
 
 // Eval implements the Expression interface.
@@ -99,13 +98,12 @@ func (f *Floor) String() string {
 	return fmt.Sprintf("FLOOR(%s)", f.Child)
 }
 
-// TransformUp implements the Expression interface.
-func (f *Floor) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := f.Child.TransformUp(fn)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (f *Floor) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return fn(NewFloor(child))
+	return NewFloor(children[0]), nil
 }
 
 // Eval implements the Expression interface.
@@ -269,30 +267,7 @@ func (r *Round) Type() sql.Type {
 	return sql.Int32
 }
 
-// TransformUp implements the Expression interface.
-func (r *Round) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	var args = make([]sql.Expression, 2)
-
-	arg, err := r.Left.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-	args[0] = arg
-
-	args[1] = nil
-	if r.Right != nil {
-		var arg sql.Expression
-		arg, err = r.Right.TransformUp(f)
-		if err != nil {
-			return nil, err
-		}
-		args[1] = arg
-	}
-
-	expr, err := NewRound(args...)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(expr)
+// WithChildren implements the Expression interface.
+func (r *Round) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewRound(children...)
 }

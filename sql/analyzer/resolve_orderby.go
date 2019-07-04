@@ -3,10 +3,10 @@ package analyzer
 import (
 	"strings"
 
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
+	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 func resolveOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -14,7 +14,7 @@ func resolveOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 	defer span.Finish()
 
 	a.Log("resolving order bys, node of type: %T", n)
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", n)
 		sort, ok := n.(*plan.Sort)
 		if !ok {
@@ -175,7 +175,7 @@ func pushSortDown(sort *plan.Sort) (sql.Node, error) {
 func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	a.Log("resolve order by literals")
 
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		sort, ok := n.(*plan.Sort)
 		if !ok {
 			return n, nil

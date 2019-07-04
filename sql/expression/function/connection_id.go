@@ -19,9 +19,12 @@ func (ConnectionID) Type() sql.Type { return sql.Uint32 }
 // Resolved implements the sql.Expression interface.
 func (ConnectionID) Resolved() bool { return true }
 
-// TransformUp implements the sql.Expression interface.
-func (ConnectionID) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	return f(ConnectionID{})
+// WithChildren implements the Expression interface.
+func (c ConnectionID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 0)
+	}
+	return c, nil
 }
 
 // IsNullable implements the sql.Expression interface.

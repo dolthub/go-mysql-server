@@ -44,13 +44,12 @@ func (t *ResolvedTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}), nil
 }
 
-// TransformUp implements the Transformable interface.
-func (t *ResolvedTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(NewResolvedTable(t.Table))
-}
+// WithChildren implements the Node interface.
+func (t *ResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 0)
+	}
 
-// TransformExpressionsUp implements the Transformable interface.
-func (t *ResolvedTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return t, nil
 }
 

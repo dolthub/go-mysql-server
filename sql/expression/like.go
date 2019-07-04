@@ -107,19 +107,12 @@ func (l *Like) String() string {
 	return fmt.Sprintf("%s LIKE %s", l.Left, l.Right)
 }
 
-// TransformUp implements the sql.Expression interface.
-func (l *Like) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	left, err := l.Left.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (l *Like) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 2)
 	}
-
-	right, err := l.Right.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(NewLike(left, right))
+	return NewLike(children[0], children[1]), nil
 }
 
 func patternToRegex(pattern string) string {

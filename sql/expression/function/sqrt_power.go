@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
 )
 
 // Sqrt is a function that returns the square value of the number provided.
@@ -32,13 +32,12 @@ func (s *Sqrt) IsNullable() bool {
 	return s.Child.IsNullable()
 }
 
-// TransformUp implements the Expression interface.
-func (s *Sqrt) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := s.Child.TransformUp(fn)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (s *Sqrt) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-	return fn(NewSqrt(child))
+	return NewSqrt(children[0]), nil
 }
 
 // Eval implements the Expression interface.
@@ -86,19 +85,12 @@ func (p *Power) String() string {
 	return fmt.Sprintf("power(%s, %s)", p.Left, p.Right)
 }
 
-// TransformUp implements the Expression interface.
-func (p *Power) TransformUp(fn sql.TransformExprFunc) (sql.Expression, error) {
-	left, err := p.Left.TransformUp(fn)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (p *Power) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 2)
 	}
-
-	right, err := p.Right.TransformUp(fn)
-	if err != nil {
-		return nil, err
-	}
-
-	return fn(NewPower(left, right))
+	return NewPower(children[0], children[0]), nil
 }
 
 // Eval implements the Expression interface.

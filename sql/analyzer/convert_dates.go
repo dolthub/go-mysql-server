@@ -19,7 +19,7 @@ func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	// replaced by.
 	var replacements = make(map[tableCol]string)
 
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		exp, ok := n.(sql.Expressioner)
 		if !ok {
 			return n, nil
@@ -48,7 +48,7 @@ func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		case *plan.GroupBy:
 			var aggregate = make([]sql.Expression, len(exp.Aggregate))
 			for i, a := range exp.Aggregate {
-				agg, err := a.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+				agg, err := expression.TransformUp(a, func(e sql.Expression) (sql.Expression, error) {
 					return addDateConvert(e, exp, replacements, nodeReplacements, expressions, true)
 				})
 				if err != nil {
@@ -64,7 +64,7 @@ func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 			var grouping = make([]sql.Expression, len(exp.Grouping))
 			for i, g := range exp.Grouping {
-				gr, err := g.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+				gr, err := expression.TransformUp(g, func(e sql.Expression) (sql.Expression, error) {
 					return addDateConvert(e, exp, replacements, nodeReplacements, expressions, false)
 				})
 				if err != nil {
@@ -77,7 +77,7 @@ func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		case *plan.Project:
 			var projections = make([]sql.Expression, len(exp.Projections))
 			for i, e := range exp.Projections {
-				expr, err := e.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+				expr, err := expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
 					return addDateConvert(e, exp, replacements, nodeReplacements, expressions, true)
 				})
 				if err != nil {
@@ -93,7 +93,7 @@ func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 			result = plan.NewProject(projections, exp.Child)
 		default:
-			result, err = exp.TransformExpressions(func(e sql.Expression) (sql.Expression, error) {
+			result, err = plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 				return addDateConvert(e, n, replacements, nodeReplacements, expressions, false)
 			})
 		}

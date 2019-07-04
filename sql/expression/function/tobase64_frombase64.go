@@ -72,20 +72,18 @@ func (t *ToBase64) IsNullable() bool {
 	return t.Child.IsNullable()
 }
 
-// TransformUp implements the Expression interface.
-func (t *ToBase64) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := t.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (t *ToBase64) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-	return f(NewToBase64(child))
+	return NewToBase64(children[0]), nil
 }
 
 // Type implements the Expression interface.
 func (t *ToBase64) Type() sql.Type {
 	return sql.Text
 }
-
 
 // FromBase64 is a function to decode a Base64-formatted string
 // using the same dialect that MySQL's FROM_BASE64 uses
@@ -133,13 +131,12 @@ func (t *FromBase64) IsNullable() bool {
 	return t.Child.IsNullable()
 }
 
-// TransformUp implements the Expression interface.
-func (t *FromBase64) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := t.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (t *FromBase64) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-	return f(NewFromBase64(child))
+	return NewFromBase64(children[0]), nil
 }
 
 // Type implements the Expression interface.

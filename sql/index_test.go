@@ -401,8 +401,8 @@ var _ Expression = (*dummyExpr)(nil)
 
 func (dummyExpr) Children() []Expression                  { return nil }
 func (dummyExpr) Eval(*Context, Row) (interface{}, error) { panic("not implemented") }
-func (e dummyExpr) TransformUp(fn TransformExprFunc) (Expression, error) {
-	return fn(e)
+func (e dummyExpr) WithChildren(children ...Expression) (Expression, error) {
+	return e, nil
 }
 func (e dummyExpr) String() string { return fmt.Sprintf("dummyExpr{%d, %s}", e.index, e.colName) }
 func (dummyExpr) IsNullable() bool { return false }

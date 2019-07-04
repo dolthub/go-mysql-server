@@ -1,8 +1,8 @@
 package plan
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // ErrCreateTable is thrown when the database doesn't support table creation
@@ -64,13 +64,11 @@ func (c *CreateTable) Schema() sql.Schema { return nil }
 // Children implements the Node interface.
 func (c *CreateTable) Children() []sql.Node { return nil }
 
-// TransformUp implements the Transformable interface.
-func (c *CreateTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(NewCreateTable(c.db, c.name, c.schema))
-}
-
-// TransformExpressionsUp implements the Transformable interface.
-func (c *CreateTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
+// WithChildren implements the Node interface.
+func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 0)
+	}
 	return c, nil
 }
 

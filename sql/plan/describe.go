@@ -33,22 +33,13 @@ func (d *Describe) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return &describeIter{schema: d.Child.Schema()}, nil
 }
 
-// TransformUp implements the Transformable interface.
-func (d *Describe) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := d.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (d *Describe) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-	return f(NewDescribe(child))
-}
 
-// TransformExpressionsUp implements the Transformable interface.
-func (d *Describe) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	child, err := d.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-	return NewDescribe(child), nil
+	return NewDescribe(children[0]), nil
 }
 
 func (d Describe) String() string {
@@ -116,22 +107,11 @@ func (d *DescribeQuery) String() string {
 	return pr.String()
 }
 
-// TransformUp implements the Node interface.
-func (d *DescribeQuery) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	child, err := d.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Node interface.
+func (d *DescribeQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
 
-	return f(NewDescribeQuery(d.Format, child))
-}
-
-// TransformExpressionsUp implements the Node interface.
-func (d *DescribeQuery) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	child, err := d.Child.TransformExpressionsUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewDescribeQuery(d.Format, child), nil
+	return NewDescribeQuery(d.Format, children[0]), nil
 }

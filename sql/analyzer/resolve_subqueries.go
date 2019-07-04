@@ -10,7 +10,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 	defer span.Finish()
 
 	a.Log("resolving subqueries")
-	return n.TransformUp(func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
 			a.Log("found subquery %q with child of type %T", n.Name(), n.Child)

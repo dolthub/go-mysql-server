@@ -53,13 +53,12 @@ func (a *Avg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	return sum / float64(rows), nil
 }
 
-// TransformUp implements AggregationExpression interface.
-func (a *Avg) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := a.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (a *Avg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
 	}
-	return f(NewAvg(child))
+	return NewAvg(children[0]), nil
 }
 
 // NewBuffer implements AggregationExpression interface. (AggregationExpression)

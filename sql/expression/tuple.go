@@ -77,18 +77,12 @@ func (t Tuple) Type() sql.Type {
 	return sql.Tuple(types...)
 }
 
-// TransformUp implements the Expression interface.
-func (t Tuple) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	var exprs = make([]sql.Expression, len(t))
-	for i, e := range t {
-		var err error
-		exprs[i], err = f(e)
-		if err != nil {
-			return nil, err
-		}
+// WithChildren implements the Expression interface.
+func (t Tuple) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != len(t) {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), len(t))
 	}
-
-	return f(Tuple(exprs))
+	return NewTuple(children...), nil
 }
 
 // Children implements the Expression interface.

@@ -168,7 +168,7 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 		}
 
 		name := strings.TrimSpace(e.Name.Lowered())
-		if expr, err = expr.TransformUp(func(e sql.Expression) (sql.Expression, error) {
+		if expr, err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
 			if _, ok := e.(*expression.DefaultColumn); ok {
 				return e, nil
 			}

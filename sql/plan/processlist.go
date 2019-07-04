@@ -58,13 +58,12 @@ func (p *ShowProcessList) Children() []sql.Node { return nil }
 // Resolved implements the Node interface.
 func (p *ShowProcessList) Resolved() bool { return true }
 
-// TransformUp implements the Node interface.
-func (p *ShowProcessList) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(p)
-}
+// WithChildren implements the Node interface.
+func (p *ShowProcessList) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
+	}
 
-// TransformExpressionsUp implements the Node interface.
-func (p *ShowProcessList) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return p, nil
 }
 

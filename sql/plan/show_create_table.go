@@ -25,14 +25,13 @@ func (n *ShowCreateTable) Schema() sql.Schema {
 	}
 }
 
-// TransformExpressionsUp implements the Transformable interface.
-func (n *ShowCreateTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	return n, nil
-}
+// WithChildren implements the Node interface.
+func (n *ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
+	}
 
-// TransformUp implements the Transformable interface.
-func (n *ShowCreateTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(NewShowCreateTable(n.CurrentDatabase, n.Catalog, n.Table))
+	return n, nil
 }
 
 // RowIter implements the Node interface

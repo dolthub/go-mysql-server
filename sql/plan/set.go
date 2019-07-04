@@ -42,14 +42,30 @@ func (s *Set) Resolved() bool {
 // Children implements the sql.Node interface.
 func (s *Set) Children() []sql.Node { return nil }
 
-// TransformUp implements the sql.Node interface.
-func (s *Set) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(s)
+// WithChildren implements the Node interface.
+func (s *Set) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
+	}
+
+	return s, nil
 }
 
-// TransformExpressions implements sql.Expressioner interface.
-func (s *Set) TransformExpressions(f sql.TransformExprFunc) (sql.Node, error) {
-	return s.TransformExpressionsUp(f)
+// WithExpressions implements the Expressioner interface.
+func (s *Set) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(s.Variables) {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.Variables))
+	}
+
+	var vars = make([]SetVariable, len(s.Variables))
+	for i, v := range s.Variables {
+		vars[i] = SetVariable{
+			Name:  v.Name,
+			Value: exprs[i],
+		}
+	}
+
+	return NewSet(vars...), nil
 }
 
 // Expressions implements the sql.Expressioner interface.
@@ -59,22 +75,6 @@ func (s *Set) Expressions() []sql.Expression {
 		exprs[i] = v.Value
 	}
 	return exprs
-}
-
-// TransformExpressionsUp implements the sql.Node interface.
-func (s *Set) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
-	var vars = make([]SetVariable, len(s.Variables))
-	for i, v := range s.Variables {
-		val, err := v.Value.TransformUp(f)
-		if err != nil {
-			return nil, err
-		}
-
-		vars[i] = v
-		vars[i].Value = val
-	}
-
-	return NewSet(vars...), nil
 }
 
 // RowIter implements the sql.Node interface.

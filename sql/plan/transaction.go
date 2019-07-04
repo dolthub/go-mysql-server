@@ -15,13 +15,12 @@ func (*Rollback) RowIter(*sql.Context) (sql.RowIter, error) {
 
 func (*Rollback) String() string { return "ROLLBACK" }
 
-// TransformUp implements the sql.Node interface.
-func (r *Rollback) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(r)
-}
+// WithChildren implements the Node interface.
+func (r *Rollback) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 0)
+	}
 
-// TransformExpressionsUp implements the sql.Node interface.
-func (r *Rollback) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return r, nil
 }
 

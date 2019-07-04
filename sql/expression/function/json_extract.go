@@ -108,22 +108,9 @@ func (j *JSONExtract) Children() []sql.Expression {
 	return append([]sql.Expression{j.JSON}, j.Paths...)
 }
 
-// TransformUp implements the sql.Expression interface.
-func (j *JSONExtract) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	json, err := j.JSON.TransformUp(f)
-	if err != nil {
-		return nil, err
-	}
-
-	paths := make([]sql.Expression, len(j.Paths))
-	for i, p := range j.Paths {
-		paths[i], err = p.TransformUp(f)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return f(&JSONExtract{json, paths})
+// WithChildren implements the Expression interface.
+func (j *JSONExtract) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewJSONExtract(children...)
 }
 
 func (j *JSONExtract) String() string {

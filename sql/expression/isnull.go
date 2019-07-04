@@ -36,11 +36,10 @@ func (e IsNull) String() string {
 	return e.Child.String() + " IS NULL"
 }
 
-// TransformUp implements the Expression interface.
-func (e *IsNull) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := e.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (e *IsNull) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
-	return f(NewIsNull(child))
+	return NewIsNull(children[0]), nil
 }

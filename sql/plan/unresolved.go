@@ -3,8 +3,8 @@ package plan
 import (
 	"fmt"
 
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
+	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 // ErrUnresolvedTable is thrown when a table cannot be resolved
@@ -42,13 +42,12 @@ func (*UnresolvedTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return nil, ErrUnresolvedTable.New()
 }
 
-// TransformUp implements the Transformable interface.
-func (t *UnresolvedTable) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(NewUnresolvedTable(t.name, t.Database))
-}
+// WithChildren implements the Node interface.
+func (t *UnresolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 0)
+	}
 
-// TransformExpressionsUp implements the Transformable interface.
-func (t *UnresolvedTable) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return t, nil
 }
 

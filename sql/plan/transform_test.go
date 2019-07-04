@@ -24,7 +24,7 @@ func TestTransformUp(t *testing.T) {
 	}
 	table := mem.NewTable("resolved", schema)
 
-	pt, err := p.TransformUp(func(n sql.Node) (sql.Node, error) {
+	pt, err := TransformUp(p, func(n sql.Node) (sql.Node, error) {
 		switch n.(type) {
 		case *UnresolvedTable:
 			return NewResolvedTable(table), nil

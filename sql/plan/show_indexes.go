@@ -39,13 +39,12 @@ func (n *ShowIndexes) Resolved() bool {
 	return !ok
 }
 
-// TransformUp implements the Transformable interface.
-func (n *ShowIndexes) TransformUp(f sql.TransformNodeFunc) (sql.Node, error) {
-	return f(NewShowIndexes(n.db, n.Table, n.Registry))
-}
+// WithChildren implements the Node interface.
+func (n *ShowIndexes) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
+	}
 
-// TransformExpressionsUp implements the Transformable interface.
-func (n *ShowIndexes) TransformExpressionsUp(f sql.TransformExprFunc) (sql.Node, error) {
 	return n, nil
 }
 
