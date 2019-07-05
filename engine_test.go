@@ -1291,6 +1291,10 @@ var queries = []struct {
 		`SELECT LAST(i) FROM (SELECT i FROM mytable ORDER BY i) t`,
 		[]sql.Row{{int64(3)}},
 	},
+	{
+		`SELECT COUNT(DISTINCT t.i) FROM tabletest t, mytable t2`,
+		[]sql.Row{{int64(3)}},
+	},
 }
 
 func TestQueries(t *testing.T) {

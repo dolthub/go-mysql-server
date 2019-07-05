@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/src-d/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/src-d/go-mysql-server/sql/plan"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -1158,6 +1159,13 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo", ""),
 	),
+	`SELECT COUNT(DISTINCT i) FROM foo`: plan.NewGroupBy(
+		[]sql.Expression{
+			aggregation.NewCountDistinct(expression.NewUnresolvedColumn("i")),
+		},
+		[]sql.Expression{},
+		plan.NewUnresolvedTable("foo", ""),
+	),
 }
 
 func TestParse(t *testing.T) {
@@ -1191,7 +1199,7 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT '2018-05-01' / INTERVAL 1 DAY`:                    ErrUnsupportedSyntax,
 	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                  ErrUnsupportedSyntax,
 	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`: ErrUnsupportedSyntax,
-	`SELECT COUNT(DISTINCT foo) FROM b`:                       ErrUnsupportedSyntax,
+	`SELECT AVG(DISTINCT foo) FROM b`:                         ErrUnsupportedSyntax,
 }
 
 func TestParseErrors(t *testing.T) {

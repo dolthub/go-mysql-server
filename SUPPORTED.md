@@ -18,7 +18,7 @@
 
 ## Grouping expressions
 - AVG
-- COUNT
+- COUNT and COUNT(DISTINCT)
 - MAX
 - MIN
 - SUM (always returns DOUBLE)

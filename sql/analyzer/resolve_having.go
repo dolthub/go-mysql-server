@@ -383,6 +383,11 @@ func aggregationEquals(a, b sql.Expression) bool {
 		// the same.
 		_, ok := b.(*aggregation.Count)
 		return ok
+	case *aggregation.CountDistinct:
+		// it doesn't matter what's inside a Count, the result will be
+		// the same.
+		_, ok := b.(*aggregation.CountDistinct)
+		return ok
 	case *aggregation.Sum:
 		b, ok := b.(*aggregation.Sum)
 		if !ok {
