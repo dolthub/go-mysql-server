@@ -68,7 +68,7 @@ jobs:
         - make TEST=ruby integration
 
     - language: java
-      jdk: openjdk10
+      jdk: openjdk8
       before_install:
         - eval "$(gimme 1.12.4)"
       install:

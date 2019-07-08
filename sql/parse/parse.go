@@ -13,6 +13,7 @@ import (
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function"
+	"github.com/src-d/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/src-d/go-mysql-server/sql/plan"
 	"gopkg.in/src-d/go-errors.v1"
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -659,9 +660,11 @@ func getInt64Value(ctx *sql.Context, expr sqlparser.Expr, errStr string) (int64,
 func isAggregate(e sql.Expression) bool {
 	var isAgg bool
 	expression.Inspect(e, func(e sql.Expression) bool {
-		fn, ok := e.(*expression.UnresolvedFunction)
-		if ok {
-			isAgg = isAgg || fn.IsAggregate
+		switch e := e.(type) {
+		case *expression.UnresolvedFunction:
+			isAgg = isAgg || e.IsAggregate
+		case *aggregation.CountDistinct:
+			isAgg = true
 		}
 
 		return true
@@ -789,7 +792,15 @@ func exprToExpression(e sqlparser.Expr) (sql.Expression, error) {
 		}
 
 		if v.Distinct {
-			return nil, ErrUnsupportedSyntax.New("DISTINCT on aggregations")
+			if v.Name.Lowered() != "count" {
+				return nil, ErrUnsupportedSyntax.New("DISTINCT on non-COUNT aggregations")
+			}
+
+			if len(exprs) != 1 {
+				return nil, ErrUnsupportedSyntax.New("more than one expression in COUNT")
+			}
+
+			return aggregation.NewCountDistinct(exprs[0]), nil
 		}
 
 		return expression.NewUnresolvedFunction(v.Name.Lowered(),
