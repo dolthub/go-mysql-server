@@ -6,14 +6,14 @@ import (
 )
 
 // ErrFunctionAlreadyRegistered is thrown when a function is already registered
-var ErrFunctionAlreadyRegistered = errors.NewKind("A function: '%s' is already registered.")
+var ErrFunctionAlreadyRegistered = errors.NewKind("function '%s' is already registered")
 
 // ErrFunctionNotFound is thrown when a function is not found
-var ErrFunctionNotFound = errors.NewKind("A function: '%s' not found.")
+var ErrFunctionNotFound = errors.NewKind("function: '%s' not found")
 
 // ErrInvalidArgumentNumber is returned when the number of arguments to call a
 // function is different from the function arity.
-var ErrInvalidArgumentNumber = errors.NewKind("A function: '%s' expected %v arguments, %v received.")
+var ErrInvalidArgumentNumber = errors.NewKind("function '%s' expected %v arguments, %v received")
 
 // Function is a function defined by the user that can be applied in a SQL query.
 type Function interface {
