@@ -109,6 +109,14 @@ var queries = []struct {
 		[]sql.Row{{int64(3)}, {int64(2)}, {int64(1)}},
 	},
 	{
+		"SELECT i FROM mytable WHERE 'hello';",
+		[]sql.Row{},
+	},
+	{
+		"SELECT i FROM mytable WHERE not 'hello';",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
 		"SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC;",
 		[]sql.Row{{int64(1)}},
 	},
@@ -157,12 +165,12 @@ var queries = []struct {
 		[]sql.Row{{int64(2)}, {nil}, {nil}},
 	},
 	{
-		"SELECT i FROM niltable WHERE b IS FALSE",
-		[]sql.Row{{int64(2)}, {nil}, {nil}},
+		"SELECT f FROM niltable WHERE b IS FALSE",
+		[]sql.Row{{3.0}},
 	},
 	{
 		"SELECT i FROM niltable WHERE b IS NOT FALSE",
-		[]sql.Row{{int64(1)}, {int64(4)}},
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(4)}, {nil}},
 	},
 	{
 		"SELECT COUNT(*) FROM mytable;",

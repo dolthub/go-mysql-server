@@ -30,6 +30,22 @@ func TestText(t *testing.T) {
 	convert(t, Text, var3, "abc")
 }
 
+func TestBoolean(t *testing.T) {
+	convert(t, Boolean, "", false)
+	convert(t, Boolean, "true", false)
+	convert(t, Boolean, 0, false)
+	convert(t, Boolean, 1, true)
+	convert(t, Boolean, -1, true)
+	convert(t, Boolean, 0.0, false)
+	convert(t, Boolean, 0.4, false)
+	convert(t, Boolean, 0.5, true)
+	convert(t, Boolean, 1.0, true)
+	convert(t, Boolean, -1.0, true)
+
+	eq(t, Boolean, true, true)
+	eq(t, Boolean, false, false)
+}
+
 func TestInt32(t *testing.T) {
 	convert(t, Int32, int32(1), int32(1))
 	convert(t, Int32, 1, int32(1))

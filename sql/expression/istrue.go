@@ -2,7 +2,7 @@ package expression
 
 import "github.com/src-d/go-mysql-server/sql"
 
-// IsNull is an expression that checks if an expression is true.
+// IsTrue is an expression that checks if an expression is true.
 type IsTrue struct {
 	UnaryExpression
 	invert bool
@@ -40,7 +40,7 @@ func (e *IsTrue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	var boolVal interface{}
 	if v == nil {
-		boolVal = false
+		return false, nil
 	} else {
 		boolVal, err = sql.Boolean.Convert(v)
 		if err != nil {
@@ -70,8 +70,7 @@ func (e *IsTrue) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
 	}
 	if e.invert {
 		return f(NewIsFalse(child))
-	} else {
-		return f(NewIsTrue(child))
 	}
+	return f(NewIsTrue(child))
 }
 

@@ -708,7 +708,7 @@ func (t booleanT) Convert(v interface{}) (interface{}, error) {
 	case float32, float64:
 		return int(math.Round(v.(float64))) != 0, nil
 	case string:
-		return false, fmt.Errorf("unable to cast string to bool")
+		return false, nil
 
 	case nil:
 		return nil, fmt.Errorf("unable to cast nil to bool")
