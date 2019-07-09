@@ -1,6 +1,9 @@
 package expression
 
-import "github.com/src-d/go-mysql-server/sql"
+import (
+	"errors"
+	"github.com/src-d/go-mysql-server/sql"
+)
 
 // IsTrue is an expression that checks if an expression is true.
 type IsTrue struct {
@@ -62,15 +65,14 @@ func (e *IsTrue) String() string {
 	return e.Child.String() + " " + isStr
 }
 
-// TransformUp implements the Expression interface.
-func (e *IsTrue) TransformUp(f sql.TransformExprFunc) (sql.Expression, error) {
-	child, err := e.Child.TransformUp(f)
-	if err != nil {
-		return nil, err
+// WithChildren implements the Expression interface.
+func (e *IsTrue) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, errors.New("incorrect number of children")
 	}
-	if e.invert {
-		return f(NewIsFalse(child))
-	}
-	return f(NewIsTrue(child))
-}
 
+	if e.invert {
+		return NewIsFalse(children[0]), nil
+	}
+	return NewIsTrue(children[0]), nil
+}
