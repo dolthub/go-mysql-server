@@ -392,13 +392,11 @@ func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) 
 
 				val, err := e.Eval(ctx, nil)
 				if err != nil {
-					return nil, err
+					return e, nil
 				}
 
 				val, err = sql.Boolean.Convert(val)
 				if err != nil {
-					// don't make it fail because of this, just return the
-					// original expression
 					return e, nil
 				}
 

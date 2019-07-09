@@ -1295,6 +1295,10 @@ var queries = []struct {
 		`SELECT COUNT(DISTINCT t.i) FROM tabletest t, mytable t2`,
 		[]sql.Row{{int64(3)}},
 	},
+	{
+		`SELECT CASE WHEN NULL THEN "yes" ELSE "no" END AS test`,
+		[]sql.Row{{"no"}},
+	},
 }
 
 func TestQueries(t *testing.T) {
