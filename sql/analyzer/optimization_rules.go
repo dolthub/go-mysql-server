@@ -381,26 +381,19 @@ func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) 
 				}
 
 				return e, nil
+			case *expression.Literal, expression.Tuple:
+				return e, nil
 			default:
 				if !isEvaluable(e) {
 					return e, nil
 				}
 
-				if _, ok := e.(*expression.Literal); ok {
-					return e, nil
-				}
-
+				// All other expressions types can be evaluated once and turned into literals for the rest of query execution
 				val, err := e.Eval(ctx, nil)
 				if err != nil {
 					return e, nil
 				}
-
-				val, err = sql.Boolean.Convert(val)
-				if err != nil {
-					return e, nil
-				}
-
-				return expression.NewLiteral(val.(bool), sql.Boolean), nil
+				return expression.NewLiteral(val, e.Type()), nil
 			}
 		})
 		if err != nil {
