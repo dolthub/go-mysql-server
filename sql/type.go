@@ -897,12 +897,17 @@ func (t arrayT) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, err := convertForJSON(t, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
 
-	return JSON.SQL(v)
+	val, err := json.Marshal(v)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+
+	return sqltypes.MakeTrusted(sqltypes.TypeJSON, val), nil
 }
 
 func (t arrayT) Convert(v interface{}) (interface{}, error) {
@@ -1015,6 +1020,7 @@ func IsText(t Type) bool {
 	return t == Text || t == Blob || t == JSON || IsVarChar(t)
 }
 
+// IsVarChar checks if t is a varchar type.
 func IsVarChar(t Type) bool {
 	_, ok := t.(varCharT)
 	return ok
@@ -1095,4 +1101,67 @@ func UnderlyingType(t Type) Type {
 	}
 
 	return a.underlying
+}
+
+func convertForJSON(t Type, v interface{}) (interface{}, error) {
+	switch t := t.(type) {
+	case jsonT:
+		val, err := t.Convert(v)
+		if err != nil {
+			return nil, err
+		}
+
+		var doc interface{}
+		err = json.Unmarshal(val.([]byte), &doc)
+		if err != nil {
+			return nil, err
+		}
+
+		return doc, nil
+	case arrayT:
+		return convertArrayForJSON(t, v)
+	default:
+		return t.Convert(v)
+	}
+}
+
+func convertArrayForJSON(t arrayT, v interface{}) (interface{}, error) {
+	switch v := v.(type) {
+	case []interface{}:
+		var result = make([]interface{}, len(v))
+		for i, v := range v {
+			var err error
+			result[i], err = convertForJSON(t.underlying, v)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return result, nil
+	case Generator:
+		var values []interface{}
+		for {
+			val, err := v.Next()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				return nil, err
+			}
+
+			val, err = convertForJSON(t.underlying, val)
+			if err != nil {
+				return nil, err
+			}
+
+			values = append(values, val)
+		}
+
+		if err := v.Close(); err != nil {
+			return nil, err
+		}
+
+		return values, nil
+	default:
+		return nil, ErrNotArray.New(v)
+	}
 }
