@@ -48,6 +48,12 @@ type RowIter interface {
 	Close() error
 }
 
+// RowIterProvider provides an interface for producing rows for a given expression.
+type IndexRowIterProvider interface {
+	// RowIter returns a row iterator for the expression given, typically an index lookup
+	RowIter(*Context, Expression) (RowIter, error)
+}
+
 // RowIterToRows converts a row iterator to a slice of rows.
 func RowIterToRows(i RowIter) ([]Row, error) {
 	var rows []Row

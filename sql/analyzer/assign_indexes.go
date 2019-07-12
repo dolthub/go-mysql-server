@@ -18,8 +18,11 @@ type indexLookup struct {
 	indexes []sql.Index
 }
 
-func assignIndexes(a *Analyzer, node sql.Node) (map[string]*indexLookup, error) {
+func assignIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]*indexLookup, error) {
 	a.Log("assigning indexes, node of type: %T", node)
+
+	indexSpan, _ := ctx.Span("assign_indexes")
+	defer indexSpan.Finish()
 
 	var indexes map[string]*indexLookup
 	// release all unused indexes
@@ -75,12 +78,7 @@ func assignIndexes(a *Analyzer, node sql.Node) (map[string]*indexLookup, error) 
 			return false
 		}
 
-		if indexes != nil {
-			indexes = indexesIntersection(a, indexes, result)
-		} else {
-			indexes = result
-		}
-
+		indexes = indexesIntersection(a, indexes, result)
 		return true
 	})
 
@@ -550,6 +548,10 @@ func indexesIntersection(
 	a *Analyzer,
 	left, right map[string]*indexLookup,
 ) map[string]*indexLookup {
+	if left == nil {
+		return right
+	}
+
 	var result = make(map[string]*indexLookup)
 
 	for table, idx := range left {

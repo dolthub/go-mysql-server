@@ -24,28 +24,20 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return n, nil
 	}
 
-	a.Log("finding used columns in node")
-
-	colSpan, _ := ctx.Span("find_pushdown_columns")
-
 	// First step is to find all col exprs and group them by the table they mention.
 	// Even if they appear multiple times, only the first one will be used.
-	fieldsByTable := findFieldsByTable(n)
-
-	colSpan.Finish()
+	a.Log("finding used columns in node")
+	fieldsByTable := findFieldsByTable(ctx, n)
 
 	a.Log("finding filters in node")
 	filters := findFilters(ctx, n)
 
-	indexSpan, _ := ctx.Span("assign_indexes")
-	indexes, err := assignIndexes(a, n)
+	indexes, err := assignIndexes(ctx, a, n)
 	if err != nil {
 		return nil, err
 	}
-	indexSpan.Finish()
 
 	a.Log("transforming nodes with pushdown of filters, projections and indexes")
-
 	return transformPushdown(a, n, filters, indexes, fieldsByTable)
 }
 
@@ -89,7 +81,10 @@ func fixFieldIndexes(schema sql.Schema, exp sql.Expression) (sql.Expression, err
 	})
 }
 
-func findFieldsByTable(n sql.Node) map[string][]string {
+func findFieldsByTable(ctx *sql.Context, n sql.Node) map[string][]string {
+	colSpan, _ := ctx.Span("find_field_by_table")
+	defer colSpan.Finish()
+
 	var fieldsByTable = make(map[string][]string)
 	plan.InspectExpressions(n, func(e sql.Expression) bool {
 		if gf, ok := e.(*expression.GetField); ok {

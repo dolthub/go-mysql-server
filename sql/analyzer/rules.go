@@ -41,6 +41,7 @@ var OnceAfterDefault = []Rule{
 	{"prune_columns", pruneColumns},
 	{"convert_dates", convertDates},
 	{"pushdown", pushdown},
+	{"optimizeJoins", optimizePrimaryKeyJoins},
 	{"erase_projection", eraseProjection},
 }
 
