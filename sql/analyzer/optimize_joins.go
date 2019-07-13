@@ -30,7 +30,7 @@ func optimizePrimaryKeyJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Nod
 	innerJoinConds := findInnerJoinConds(ctx, n)
 
 	a.Log("finding indexes for joins")
-	indexes, err := assignJoinIndexes(ctx, a, n)
+	indexes, err := findJoinIndexes(ctx, a, n)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,23 @@ func transformInnerJoins(
 	indexes []sql.Index,
 	fieldsByTable map[string][]string,
 ) (sql.Node, error) {
-	return nil, nil
+
+	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
+		a.Log("transforming node of type: %T", node)
+		switch node := node.(type) {
+		case *plan.InnerJoin:
+			// TODO: check index applicability in indexes
+			return plan.NewIndexedJoin(node.Left, node.Right, node.Cond, indexes[0]), nil
+		default:
+			return node, nil
+		}
+		return nil, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return node, nil
 }
 
 func findInnerJoinConds(ctx *sql.Context, n sql.Node) []sql.Expression {
@@ -70,7 +86,7 @@ func findInnerJoinConds(ctx *sql.Context, n sql.Node) []sql.Expression {
 // index munging
 
 // Assign indexes to the join conditions and returns the sql.Indexes assigned
-func assignJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) ([]sql.Index, error) {
+func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) ([]sql.Index, error) {
 	a.Log("assigning indexes, node of type: %T", node)
 
 	indexSpan, _ := ctx.Span("assign_join_indexes")
@@ -202,85 +218,6 @@ func getJoinIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Anal
 	}
 
 	return result, nil
-}
-
-// getComparisonIndex returns the index and index lookup for the given
-// comparison if any index can be found.
-// It works for the following comparisons: eq, lt, gt, gte and lte.
-// TODO(erizocosmico): add support for BETWEEN once the appropiate interfaces
-// can handle inclusiveness on both sides.
-func getComparisonJoinIndex(
-		a *Analyzer,
-		e expression.Comparer,
-		aliases map[string]sql.Expression,
-) (sql.Index, sql.IndexLookup, error) {
-	left, right := e.Left(), e.Right()
-	// if the form is SOMETHING OP {INDEXABLE EXPR}, swap it, so it's {INDEXABLE EXPR} OP SOMETHING
-	if !isEvaluable(right) {
-		left, right = right, left
-	}
-
-	if !isEvaluable(left) && isEvaluable(right) {
-		idx := a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, left)...)
-		if idx != nil {
-			value, err := right.Eval(sql.NewEmptyContext(), nil)
-			if err != nil {
-				a.Catalog.ReleaseIndex(idx)
-				return nil, nil, err
-			}
-
-			lookup, err := comparisonIndexLookup(e, idx, value)
-			if err != nil || lookup == nil {
-				a.Catalog.ReleaseIndex(idx)
-				return nil, nil, err
-			}
-
-			return idx, lookup, nil
-		}
-	}
-
-	return nil, nil, nil
-}
-
-func comparisonJoinIndexLookup(
-		c expression.Comparer,
-		idx sql.Index,
-		values ...interface{},
-) (sql.IndexLookup, error) {
-	switch c.(type) {
-	case *expression.Equals:
-		return idx.Get(values...)
-	case *expression.GreaterThan:
-		index, ok := idx.(sql.DescendIndex)
-		if !ok {
-			return nil, nil
-		}
-
-		return index.DescendGreater(values...)
-	case *expression.GreaterThanOrEqual:
-		index, ok := idx.(sql.AscendIndex)
-		if !ok {
-			return nil, nil
-		}
-
-		return index.AscendGreaterOrEqual(values...)
-	case *expression.LessThan:
-		index, ok := idx.(sql.AscendIndex)
-		if !ok {
-			return nil, nil
-		}
-
-		return index.AscendLessThan(values...)
-	case *expression.LessThanOrEqual:
-		index, ok := idx.(sql.DescendIndex)
-		if !ok {
-			return nil, nil
-		}
-
-		return index.DescendLessOrEqual(values...)
-	}
-
-	return nil, nil
 }
 
 func getMultiColumnJoinIndexes(

@@ -7,12 +7,55 @@ import (
 	"reflect"
 )
 
+type IndexedJoin struct {
+	BinaryNode
+	Cond sql.Expression
+	Index sql.Index
+}
+
+func (ij *IndexedJoin) String() string {
+	// TODO: better String()
+	return "IndexedJoin of tables "
+}
+
+func (ij *IndexedJoin) Schema() sql.Schema {
+	return append(ij.Left.Schema(), ij.Right.Schema()...)
+}
+
+func (ij *IndexedJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	var indexedTable sql.IndexableTable
+	Inspect(ij.Right, func(node sql.Node) bool {
+		if rt, ok := node.(*ResolvedTable); ok {
+			if it, ok := rt.Table.(sql.IndexableTable); ok {
+				indexedTable = it
+				return false
+			}
+		}
+		return true
+	})
+
+	return indexedJoinRowIter(ctx, ij.Left, indexedTable, ij.Cond, ij.Index)
+}
+
+func (ij *IndexedJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
+	// TODO: bounds checking
+	return NewIndexedJoin(children[0], children[1], ij.Cond, ij.Index), nil
+}
+
+func NewIndexedJoin(primaryTable, indexedTable sql.Node, cond sql.Expression, index sql.Index) *IndexedJoin {
+	return &IndexedJoin{
+		BinaryNode: BinaryNode{primaryTable, indexedTable},
+		Cond:       cond,
+		Index:      index,
+	}
+}
+
 func indexedJoinRowIter(
 		ctx *sql.Context,
-		typ joinType,
 		left sql.Node,
 		right sql.IndexableTable,
 		cond sql.Expression,
+		index sql.Index,
 ) (sql.RowIter, error) {
 	var leftName, rightName string
 	if leftTable, ok := left.(sql.Nameable); ok {
@@ -27,7 +70,7 @@ func indexedJoinRowIter(
 		rightName = reflect.TypeOf(right).String()
 	}
 
-	span, ctx := ctx.Span("plan."+typ.String(), opentracing.Tags{
+	span, ctx := ctx.Span("plan.indexedJoin", opentracing.Tags{
 		"left":  leftName,
 		"right": rightName,
 	})
@@ -38,28 +81,23 @@ func indexedJoinRowIter(
 		return nil, err
 	}
 	return sql.NewSpanIter(span, &indexedJoinIter{
-		typ:               typ,
-		primary:           l,
-		secondaryTbl:      right,
-		secondaryProvider: makeIndexProvider(right),
-		ctx:               ctx,
-		cond:              cond,
+		primary:      l,
+		secondaryTbl: right,
+		ctx:          ctx,
+		cond:         cond,
+		index:        index,
 	}), nil
 }
 
-func makeIndexProvider(tbl sql.IndexableTable) sql.IndexRowIterProvider {
-	return nil
-}
-
-// joinIter is a generic iterator for all join types.
+// indexedJoinIter is an iterator that iterates over every row in the primary table and performs an index lookup in
+// the secondary table for each value
 type indexedJoinIter struct {
-	typ               joinType
-	primary           sql.RowIter
-	secondaryTbl      sql.IndexableTable
-	secondaryProvider sql.IndexRowIterProvider
-	secondary         sql.RowIter
-	ctx               *sql.Context
-	cond              sql.Expression
+	primary      sql.RowIter
+	secondaryTbl sql.IndexableTable
+	secondary    sql.RowIter
+	ctx          *sql.Context
+	cond         sql.Expression
+	index        sql.Index
 
 	primaryRow sql.Row
 	foundMatch bool
@@ -80,15 +118,19 @@ func (i *indexedJoinIter) loadPrimary() error {
 	return nil
 }
 
-func (i *indexedJoinIter) loadSecondary() (row sql.Row, err error) {
+func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 	if i.secondary == nil {
-		var iter sql.RowIter
-		iter, err = i.secondaryProvider.RowIter(i.ctx, nil)
+		// TODO: get real value
+		lookup, err := i.index.Get(i.primaryRow[0])
 		if err != nil {
 			return nil, err
 		}
-
-		i.secondary = iter
+		indexLookup := i.secondaryTbl.WithIndexLookup(lookup)
+		// TODO: this only works on a single partition, we will need partition info to do this correctly
+		i.secondary, err = indexLookup.PartitionRows(sql.NewEmptyContext(), nil)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	rightRow, err := i.secondary.Next()
@@ -115,9 +157,6 @@ func (i *indexedJoinIter) Next() (sql.Row, error) {
 		secondary, err := i.loadSecondary()
 		if err != nil {
 			if err == io.EOF {
-				if !i.foundMatch && (i.typ == leftJoin || i.typ == rightJoin) {
-					return i.buildRow(primary, nil), nil
-				}
 				continue
 			}
 			return nil, err
