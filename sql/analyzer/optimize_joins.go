@@ -1,10 +1,13 @@
 package analyzer
 
 import (
+	"errors"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
 )
+
+type Aliases map[string]sql.Expression
 
 // optimizePrimaryKeyJoins takes InnerJoins where the join condition is the primary keys of two tables and replaces them with an
 // IndexedJoin on the same two tables. Only works for equality expressions.
@@ -23,41 +26,44 @@ func optimizePrimaryKeyJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Nod
 		return n, nil
 	}
 
-	a.Log("finding fields used by tables")
-	fieldsByTable := findFieldsByTable(ctx, n)
-
-	a.Log("finding InnerJoin conditions")
-	innerJoinConds := findInnerJoinConds(ctx, n)
-
 	a.Log("finding indexes for joins")
-	indexes, err := findJoinIndexes(ctx, a, n)
+	indexes, aliases, err := findJoinIndexes(ctx, a, n)
 	if err != nil {
 		return nil, err
 	}
 
 	a.Log("replacing InnerJoins with IndexJoins")
 
-	return transformInnerJoins(a, n, innerJoinConds, indexes, fieldsByTable)
+	return transformInnerJoins(a, n, indexes, aliases)
 }
 
 func transformInnerJoins(
-	a *Analyzer,
-	n sql.Node,
-	joinConds []sql.Expression,
-	indexes []sql.Index,
-	fieldsByTable map[string][]string,
+		a *Analyzer,
+		n sql.Node,
+		indexes []sql.Index,
+		aliases Aliases,
 ) (sql.Node, error) {
 
 	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", node)
 		switch node := node.(type) {
 		case *plan.InnerJoin:
-			// TODO: check index applicability in indexes
-			return plan.NewIndexedJoin(node.Left, node.Right, node.Cond, indexes[0]), nil
+			cond, ok := node.Cond.(*expression.Equals)
+			if !ok {
+				a.Log("Cannot apply index to join, join condition isn't equality")
+				return node, nil
+			}
+
+			leftNode, rightNode, rightTableIndex, err := analyzeJoinIndexes(node, cond, indexes, aliases)
+			if err != nil {
+				a.Log("Cannot apply index to join: %s", err.Error())
+				return node, nil
+			}
+
+			return plan.NewIndexedJoin(leftNode, rightNode, node.Cond, rightTableIndex), nil
 		default:
 			return node, nil
 		}
-		return nil, nil
 	})
 	if err != nil {
 		return nil, err
@@ -66,30 +72,73 @@ func transformInnerJoins(
 	return node, nil
 }
 
-func findInnerJoinConds(ctx *sql.Context, n sql.Node) []sql.Expression {
-	span, _ := ctx.Span("find_InnerJoins")
-	defer span.Finish()
+// Analyzes the join's tables and condition to select a left and right table, and an index to use for lookups in the
+// right table. Returns an error if no suitable index can be found.
+// Only works for single-column indexes
+func analyzeJoinIndexes(node *plan.InnerJoin, cond *expression.Equals, indexes []sql.Index, aliases Aliases) (sql.Node, sql.Node, sql.Index, error) {
+	for _, idx := range indexes {
+		// skip any multi-column indexes
+		if len(idx.Expressions()) > 0 {
+			continue
+		}
+		if indexMatches(idx, unifyExpression(aliases, cond.Right())) {
+			return node.Left, node.Right, idx, nil
+		}
+		if indexMatches(idx, unifyExpression(aliases, cond.Left())) {
+			return node.Right, node.Right, idx, nil
+		}
+	}
 
-	// Find all inner joins by table
-	joinConds := make([]sql.Expression, 0)
-	plan.Inspect(n, func(node sql.Node) bool {
+	return nil, nil, nil, errors.New("couldn't determine suitable indexes to use for tables")
+}
+
+// indexMatches returns whether the given index matches the given expression using the expression's string
+// representation. Compare to logic in IndexRegistry.IndexByExpression
+func indexMatches(index sql.Index, expr sql.Expression) bool {
+	if len(index.Expressions()) != 1 {
+		return false
+	}
+
+	indexExprStr := index.Expressions()[0]
+	return indexExprStr == expr.String()
+}
+
+// Returns the underlying table name for the node given
+func findTableName(node sql.Node) string {
+	var tableName string
+	plan.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
-		case *plan.InnerJoin:
-			joinConds = append(joinConds, node.Cond)
+		case *plan.ResolvedTable:
+			if it, ok := node.Table.(sql.IndexableTable); ok {
+				tableName = it.Name()
+				return false
+			}
 		}
 		return true
 	})
 
-	return joinConds
+	return tableName
+}
+
+// Returns the table and field names from the expression given
+func getTableNameFromExpression(expr sql.Expression) (tableName string, fieldName string) {
+	switch expr := expr.(type) {
+	case *expression.GetField:
+		tableName = expr.Table()
+		fieldName = expr.Name()
+	}
+
+	return tableName, fieldName
 }
 
 // index munging
 
-// Assign indexes to the join conditions and returns the sql.Indexes assigned
-func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) ([]sql.Index, error) {
-	a.Log("assigning indexes, node of type: %T", node)
+// Assign indexes to the join conditions and returns the sql.Indexes assigned, as well as returning any aliases used by
+// join conditions
+func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) ([]sql.Index,  Aliases, error) {
+	a.Log("finding indexes, node of type: %T", node)
 
-	indexSpan, _ := ctx.Span("assign_join_indexes")
+	indexSpan, _ := ctx.Span("find_join_indexes")
 	defer indexSpan.Finish()
 
 	var indexes []sql.Index
@@ -104,7 +153,7 @@ func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) ([]sql.Index,
 		}
 	}()
 
-	aliases := make(map[string]sql.Expression)
+	aliases := make(Aliases)
 	var err error
 
 	fn := func(ex sql.Expression) bool {
@@ -135,7 +184,7 @@ func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) ([]sql.Index,
 		return true
 	})
 
-	return indexes, err
+	return indexes, aliases, err
 }
 
 
@@ -218,122 +267,4 @@ func getJoinIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Anal
 	}
 
 	return result, nil
-}
-
-func getMultiColumnJoinIndexes(
-		exprs []sql.Expression,
-		a *Analyzer,
-		used map[sql.Expression]struct{},
-		aliases map[string]sql.Expression,
-) (map[string]*indexLookup, error) {
-	result := make(map[string]*indexLookup)
-	columnExprs := columnExprsByTable(exprs)
-	for table, exps := range columnExprs {
-		exprsByOp := groupExpressionsByOperator(exps)
-		for _, exps := range exprsByOp {
-			cols := make([]sql.Expression, len(exps))
-			for i, e := range exps {
-				cols[i] = e.col
-			}
-
-			exprList := a.Catalog.ExpressionsWithIndexes(a.Catalog.CurrentDatabase(), cols...)
-
-			var selected []sql.Expression
-			for _, l := range exprList {
-				if len(l) > len(selected) {
-					selected = l
-				}
-			}
-
-			if len(selected) > 0 {
-				index, lookup, err := getMultiColumnIndexForExpressions(a, selected, exps, used, aliases)
-				if err != nil || lookup == nil {
-					if index != nil {
-						a.Catalog.ReleaseIndex(index)
-					}
-
-					if err != nil {
-						return nil, err
-					}
-				}
-
-				if lookup != nil {
-					if _, ok := result[table]; ok {
-						result = indexesIntersection(a, result, map[string]*indexLookup{
-							table: &indexLookup{lookup, []sql.Index{index}},
-						})
-					} else {
-						result[table] = &indexLookup{lookup, []sql.Index{index}}
-					}
-				}
-			}
-		}
-	}
-
-	return result, nil
-}
-
-func getMultiColumnJoinIndexForExpressions(
-		a *Analyzer,
-		selected []sql.Expression,
-		exprs []columnExpr,
-		used map[sql.Expression]struct{},
-		aliases map[string]sql.Expression,
-) (index sql.Index, lookup sql.IndexLookup, err error) {
-	index = a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, selected...)...)
-	if index != nil {
-		var first sql.Expression
-		for _, e := range exprs {
-			if e.col == selected[0] {
-				first = e.expr
-				break
-			}
-		}
-
-		if first == nil {
-			return
-		}
-
-		switch e := first.(type) {
-		case *expression.Equals,
-			*expression.LessThan,
-			*expression.GreaterThan,
-			*expression.LessThanOrEqual,
-			*expression.GreaterThanOrEqual:
-			var values = make([]interface{}, len(index.Expressions()))
-			for i, e := range index.Expressions() {
-				col := findColumn(exprs, e)
-				used[col.expr] = struct{}{}
-				var val interface{}
-				val, err = col.val.Eval(sql.NewEmptyContext(), nil)
-				if err != nil {
-					return
-				}
-				values[i] = val
-			}
-
-			lookup, err = comparisonIndexLookup(e.(expression.Comparer), index, values...)
-		case *expression.Between:
-			var lowers = make([]interface{}, len(index.Expressions()))
-			var uppers = make([]interface{}, len(index.Expressions()))
-			for i, e := range index.Expressions() {
-				col := findColumn(exprs, e)
-				used[col.expr] = struct{}{}
-				between := col.expr.(*expression.Between)
-				lowers[i], err = between.Lower.Eval(sql.NewEmptyContext(), nil)
-				if err != nil {
-					return
-				}
-
-				uppers[i], err = between.Upper.Eval(sql.NewEmptyContext(), nil)
-				if err != nil {
-					return
-				}
-			}
-
-			lookup, err = betweenIndexLookup(index, uppers, lowers)
-		}
-	}
-
-	return
 }

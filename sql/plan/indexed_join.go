@@ -1,6 +1,8 @@
 package plan
 
 import (
+	"errors"
+	"fmt"
 	"github.com/opentracing/opentracing-go"
 	"github.com/src-d/go-mysql-server/sql"
 	"io"
@@ -14,8 +16,7 @@ type IndexedJoin struct {
 }
 
 func (ij *IndexedJoin) String() string {
-	// TODO: better String()
-	return "IndexedJoin of tables "
+	return fmt.Sprintf("IndexedJoin of tables %v and %v",  ij.Left, ij.Right)
 }
 
 func (ij *IndexedJoin) Schema() sql.Schema {
@@ -24,21 +25,30 @@ func (ij *IndexedJoin) Schema() sql.Schema {
 
 func (ij *IndexedJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	var indexedTable sql.IndexableTable
+	foundIndexedTable := false
 	Inspect(ij.Right, func(node sql.Node) bool {
+		// TODO: this is a bit fragile and only works for two table joins
 		if rt, ok := node.(*ResolvedTable); ok {
 			if it, ok := rt.Table.(sql.IndexableTable); ok {
 				indexedTable = it
+				foundIndexedTable = true
 				return false
 			}
 		}
 		return true
 	})
 
+	if !foundIndexedTable {
+		return nil, errors.New("expected an IndexableTable, couldn't find one")
+	}
+
 	return indexedJoinRowIter(ctx, ij.Left, indexedTable, ij.Cond, ij.Index)
 }
 
 func (ij *IndexedJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
-	// TODO: bounds checking
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(ij, len(children), 2)
+	}
 	return NewIndexedJoin(children[0], children[1], ij.Cond, ij.Index), nil
 }
 
@@ -93,13 +103,13 @@ func indexedJoinRowIter(
 // the secondary table for each value
 type indexedJoinIter struct {
 	primary      sql.RowIter
+	primaryRow   sql.Row
+	index        sql.Index
 	secondaryTbl sql.IndexableTable
 	secondary    sql.RowIter
-	ctx          *sql.Context
 	cond         sql.Expression
-	index        sql.Index
 
-	primaryRow sql.Row
+	ctx        *sql.Context
 	foundMatch bool
 	rowSize    int
 }
@@ -120,9 +130,9 @@ func (i *indexedJoinIter) loadPrimary() error {
 
 func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 	if i.secondary == nil {
-		// TODO: better checking, this only works for certain phrasings
-		c := i.cond.Children()[1]
-		key, err := c.Eval(sql.NewEmptyContext(), i.primaryRow)
+		// evaluate the primary row against the left-hand condition to get the right-hand lookup key
+		c := i.cond.Children()[0]
+		key, err := c.Eval(i.ctx, i.primaryRow)
 		if err != nil {
 			return nil, err
 		}
@@ -133,7 +143,7 @@ func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 		}
 		indexLookup := i.secondaryTbl.WithIndexLookup(lookup)
 		// TODO: this only works on a single partition, we will need partition info to do this correctly
-		i.secondary, err = indexLookup.PartitionRows(sql.NewEmptyContext(), nil)
+		i.secondary, err = indexLookup.PartitionRows(i.ctx, nil)
 		if err != nil {
 			return nil, err
 		}
