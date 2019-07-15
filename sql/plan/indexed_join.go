@@ -120,8 +120,14 @@ func (i *indexedJoinIter) loadPrimary() error {
 
 func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 	if i.secondary == nil {
-		// TODO: get real value
-		lookup, err := i.index.Get(i.primaryRow[0])
+		// TODO: better checking, this only works for certain phrasings
+		c := i.cond.Children()[1]
+		key, err := c.Eval(sql.NewEmptyContext(), i.primaryRow)
+		if err != nil {
+			return nil, err
+		}
+
+		lookup, err := i.index.Get(key)
 		if err != nil {
 			return nil, err
 		}
