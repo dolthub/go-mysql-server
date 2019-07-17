@@ -26,6 +26,20 @@ func optimizePrimaryKeyJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Nod
 		return n, nil
 	}
 
+	numTables := 0
+	plan.Inspect(n, func(node sql.Node) bool {
+		switch node.(type) {
+		case *plan.ResolvedTable:
+			numTables++
+		}
+		return true
+	})
+
+	if numTables > 2 {
+		a.Log("Skipping join optimization, more than 2 tables")
+		return n, nil
+	}
+
 	a.Log("finding indexes for joins")
 	indexes, aliases, err := findJoinIndexes(ctx, a, n)
 	if err != nil {
