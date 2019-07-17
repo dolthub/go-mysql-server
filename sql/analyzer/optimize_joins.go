@@ -33,7 +33,6 @@ func optimizePrimaryKeyJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Nod
 	}
 
 	a.Log("replacing InnerJoins with IndexJoins")
-
 	return transformInnerJoins(a, n, indexes, aliases)
 }
 
@@ -54,17 +53,18 @@ func transformInnerJoins(
 				return node, nil
 			}
 
-			leftNode, rightNode, rightTableIndex, err := analyzeJoinIndexes(node, cond, indexes, aliases)
+			leftNode, rightNode, leftTableExpr, rightTableIndex, err := analyzeJoinIndexes(node, cond, indexes, aliases)
 			if err != nil {
 				a.Log("Cannot apply index to join: %s", err.Error())
 				return node, nil
 			}
 
-			return plan.NewIndexedJoin(leftNode, rightNode, node.Cond, rightTableIndex), nil
+			return plan.NewIndexedJoin(leftNode, rightNode, node.Cond, leftTableExpr, rightTableIndex), nil
 		default:
 			return node, nil
 		}
 	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -75,21 +75,34 @@ func transformInnerJoins(
 // Analyzes the join's tables and condition to select a left and right table, and an index to use for lookups in the
 // right table. Returns an error if no suitable index can be found.
 // Only works for single-column indexes
-func analyzeJoinIndexes(node *plan.InnerJoin, cond *expression.Equals, indexes []sql.Index, aliases Aliases) (sql.Node, sql.Node, sql.Index, error) {
+func analyzeJoinIndexes(node *plan.InnerJoin, cond *expression.Equals, indexes []sql.Index, aliases Aliases) (sql.Node, sql.Node, sql.Expression, sql.Index, error) {
+	// First arrange the condition's left and right side to match the table nodes themselves
+	leftTableName := findTableName(node.Left)
+	rightTableName := findTableName(node.Right)
+	leftCondTableName, _ := getTableNameFromExpression(cond.Left())
+	rightCondTableName, _ := getTableNameFromExpression(cond.Right())
+
+	if leftTableName == rightCondTableName && rightTableName == leftCondTableName {
+		newCond, _ := cond.WithChildren(cond.Right(), cond.Left())
+		cond = newCond.(*expression.Equals)
+	} else if leftTableName != leftCondTableName || rightTableName != rightCondTableName {
+		return nil, nil, nil, nil, errors.New("couldn't match tables to expressions")
+	}
+
 	for _, idx := range indexes {
 		// skip any multi-column indexes
-		if len(idx.Expressions()) > 0 {
+		if len(idx.Expressions()) > 1 {
 			continue
 		}
 		if indexMatches(idx, unifyExpression(aliases, cond.Right())) {
-			return node.Left, node.Right, idx, nil
+			return node.Left, node.Right, cond.Left(), idx, nil
 		}
 		if indexMatches(idx, unifyExpression(aliases, cond.Left())) {
-			return node.Right, node.Right, idx, nil
+			return node.Right, node.Left, cond.Right(), idx, nil
 		}
 	}
 
-	return nil, nil, nil, errors.New("couldn't determine suitable indexes to use for tables")
+	return nil, nil, nil, nil, errors.New("couldn't determine suitable indexes to use for tables")
 }
 
 // indexMatches returns whether the given index matches the given expression using the expression's string
@@ -187,7 +200,6 @@ func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) ([]sql.Index,
 	return indexes, aliases, err
 }
 
-
 func addManyToSet(indexes []sql.Index, toAdd []sql.Index) []sql.Index {
 	for _, i := range toAdd {
 		indexes = addToSet(indexes, i)
@@ -205,8 +217,7 @@ func addToSet(indexes []sql.Index, index sql.Index) []sql.Index {
 	return append(indexes, index)
 }
 
-// Returns the left and right indexes for the two sides of the equality expression given. If either one is nil, nil is
-// returned for both results.
+// Returns the left and right indexes for the two sides of the equality expression given.
 func getJoinEqualityIndex(
 		a *Analyzer,
 		e *expression.Equals,
@@ -223,10 +234,6 @@ func getJoinEqualityIndex(
 		a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Left())...),
 		a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Right())...)
 
-	if leftIdx == nil || rightIdx == nil {
-		return nil, nil
-	}
-
 	return leftIdx, rightIdx
 }
 
@@ -236,8 +243,11 @@ func getJoinIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Anal
 	switch e := e.(type) {
 	case *expression.Equals:
 		leftIdx, rightIdx := getJoinEqualityIndex(a, e, aliases)
-		if leftIdx != nil && rightIdx != nil {
-			result = append(result, leftIdx, rightIdx)
+		if leftIdx != nil {
+			result = append(result, leftIdx)
+		}
+		if rightIdx != nil {
+			result = append(result, rightIdx)
 		}
 
 		// TODO: fill in with multi-column indexes
