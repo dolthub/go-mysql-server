@@ -136,6 +136,7 @@ func findTableName(node sql.Node) string {
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.ResolvedTable:
+			// TODO: this is over specific, we only need one side of the join to be indexable
 			if it, ok := node.Table.(sql.IndexableTable); ok {
 				tableName = it.Name()
 				return false

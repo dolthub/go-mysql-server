@@ -17,7 +17,7 @@ type IndexedJoin struct {
 
 func (ij *IndexedJoin) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("InnerJoin(%s)", ij.Cond)
+	_ = pr.WriteNode("IndexedJoin(%s)", ij.Cond)
 	_ = pr.WriteChildren(ij.Left.String(), ij.Right.String())
 	return pr.String()
 }
