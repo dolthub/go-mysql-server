@@ -401,6 +401,22 @@ func TestUnderlyingType(t *testing.T) {
 	require.Equal(t, Text, UnderlyingType(Text))
 }
 
+type testJSONStruct struct {
+	A int
+	B string
+}
+
+func TestJSONArraySQL(t *testing.T) {
+	require := require.New(t)
+	val, err := Array(JSON).SQL([]interface{}{
+		testJSONStruct{1, "foo"},
+		testJSONStruct{2, "bar"},
+	})
+	require.NoError(err)
+	expected := `[{"A":1,"B":"foo"},{"A":2,"B":"bar"}]`
+	require.Equal(expected, string(val.Raw()))
+}
+
 func eq(t *testing.T, typ Type, a, b interface{}) {
 	t.Helper()
 	cmp, err := typ.Compare(a, b)
