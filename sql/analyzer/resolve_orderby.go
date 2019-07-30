@@ -166,8 +166,18 @@ func pushSortDown(sort *plan.Sort) (sql.Node, error) {
 	case *plan.ResolvedTable:
 		return child, nil
 	default:
-		// Can't do anything here, there should be either a project or a groupby
-		// below an order by.
+		children := child.Children()
+		if len(children) == 1 {
+			newChild, err := pushSortDown(plan.NewSort(sort.SortFields, children[0]))
+			if err != nil {
+				return nil, err
+			}
+
+			return child.WithChildren(newChild)
+		}
+
+		// If the child has more than one children we don't know to which side
+		// the sort must be pushed down.
 		return nil, errSortPushdown.New(child)
 	}
 }
