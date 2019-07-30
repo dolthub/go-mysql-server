@@ -1433,6 +1433,27 @@ var queries = []struct {
 		`SELECT CASE WHEN NULL THEN "yes" ELSE "no" END AS test`,
 		[]sql.Row{{"no"}},
 	},
+	{
+		`SELECT
+			table_schema,
+			table_name,
+			CASE
+				WHEN table_type = 'BASE TABLE' THEN
+					CASE
+						WHEN table_schema = 'mysql'
+							OR table_schema = 'performance_schema' THEN 'SYSTEM TABLE'
+						ELSE 'TABLE'
+					END
+				WHEN table_type = 'TEMPORARY' THEN 'LOCAL_TEMPORARY'
+				ELSE table_type
+			END AS TABLE_TYPE
+		FROM information_schema.tables
+		WHERE table_schema = 'mydb'
+			AND table_name = 'mytable'
+		HAVING table_type IN ('TABLE', 'VIEW')
+		ORDER BY table_type, table_schema, table_name`,
+		[]sql.Row{{"mydb", "mytable", "TABLE"}},
+	},
 }
 
 func TestQueries(t *testing.T) {
