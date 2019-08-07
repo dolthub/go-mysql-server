@@ -37,29 +37,12 @@ func (s *Sleep) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	fchild := child.(float64)
-	if fchild <= 0 {
+	select {
+	case <-time.After(time.Duration(child.(float64) * 1000) * time.Millisecond):
+		return 0, nil
+	case <-ctx.Done():
 		return 0, nil
 	}
-
-	// Wake up every second to check if the context was cancelled
-	remaining := fchild * 1000.0
-	for remaining >= 0 {
-		toSleep := 1000.0
-		if remaining < 1000 {
-			toSleep = remaining
-		}
-		remaining -= 1000
-
-		select {
-		case <-ctx.Done():
-			goto End
-		case <-time.After(time.Duration(toSleep) * time.Millisecond):
-		}
-	}
-End:
-
-	return 0, nil
 }
 
 // String implements the Stringer interface.
