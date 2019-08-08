@@ -1454,6 +1454,34 @@ var queries = []struct {
 		ORDER BY table_type, table_schema, table_name`,
 		[]sql.Row{{"mydb", "mytable", "TABLE"}},
 	},
+	{
+		`SELECT REGEXP_MATCHES("bopbeepbop", "bop")`,
+		[]sql.Row{{[]interface{}{"bop", "bop"}}},
+	},
+	{
+		`SELECT EXPLODE(REGEXP_MATCHES("bopbeepbop", "bop"))`,
+		[]sql.Row{{"bop"}, {"bop"}},
+	},
+	{
+		`SELECT EXPLODE(REGEXP_MATCHES("helloworld", "bop"))`,
+		[]sql.Row{},
+	},
+	{
+		`SELECT EXPLODE(REGEXP_MATCHES("", ""))`,
+		[]sql.Row{{""}},
+	},
+	{
+		`SELECT REGEXP_MATCHES(NULL, "")`,
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT REGEXP_MATCHES("", NULL)`,
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT REGEXP_MATCHES("", "", NULL)`,
+		[]sql.Row{{nil}},
+	},
 }
 
 func TestQueries(t *testing.T) {

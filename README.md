@@ -103,6 +103,7 @@ We support and actively test against certain third-party clients to ensure compa
 |`NOW()`|Returns the current timestamp.|
 |`NULLIF(expr1, expr2)`|Returns NULL if expr1 = expr2 is true, otherwise returns expr1.|
 |`POW(X, Y)`|Returns the value of X raised to the power of Y.|
+|`REGEXP_MATCHES(text, pattern, [flags])`|Returns an array with the matches of the pattern in the given text. Flags can be given to control certain behaviours of the regular expression. Currently, only the `i` flag is supported, to make the comparison case insensitive.|
 |`REPEAT(str, count)`|Returns a string consisting of the string str repeated count times.|
 |`REPLACE(str,from_str,to_str)`|Returns the string str with all occurrences of the string from_str replaced by the string to_str.|
 |`REVERSE(str)`|Returns the string str with the order of the characters reversed.|
