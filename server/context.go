@@ -24,7 +24,7 @@ func DefaultSessionBuilder(c *mysql.Conn, addr string) sql.Session {
 
 // SessionManager is in charge of creating new sessions for the given
 // connections and keep track of which sessions are in each connection, so
-// they can be cancelled is the connection is closed.
+// they can be cancelled if the connection is closed.
 type SessionManager struct {
 	addr     string
 	tracer   opentracing.Tracer
