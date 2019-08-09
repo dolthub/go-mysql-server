@@ -11,7 +11,7 @@ import (
 	sqle "github.com/src-d/go-mysql-server"
 	"github.com/src-d/go-mysql-server/auth"
 	"github.com/src-d/go-mysql-server/sql"
-	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/sirupsen/logrus"
 	"vitess.io/vitess/go/mysql"
@@ -21,25 +21,29 @@ import (
 
 var regKillCmd = regexp.MustCompile(`^kill (?:(query|connection) )?(\d+)$`)
 
-var errConnectionNotFound = errors.NewKind("Connection not found: %c")
+var errConnectionNotFound = errors.NewKind("connection not found: %c")
+// ErrRowTimeout will be returned if the wait for the row is longer than the connection timeout
+var ErrRowTimeout = errors.NewKind("row read wait bigger than connection timeout")
 
 // TODO parametrize
 const rowsBatch = 100
 
 // Handler is a connection handler for a SQLe engine.
 type Handler struct {
-	mu sync.Mutex
-	e  *sqle.Engine
-	sm *SessionManager
-	c  map[uint32]*mysql.Conn
+	mu          sync.Mutex
+	e           *sqle.Engine
+	sm          *SessionManager
+	c           map[uint32]*mysql.Conn
+	readTimeout time.Duration
 }
 
 // NewHandler creates a new Handler given a SQLe engine.
-func NewHandler(e *sqle.Engine, sm *SessionManager) *Handler {
+func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration) *Handler {
 	return &Handler{
-		e:  e,
-		sm: sm,
-		c:  make(map[uint32]*mysql.Conn),
+		e:           e,
+		sm:          sm,
+		c:           make(map[uint32]*mysql.Conn),
+		readTimeout: rt,
 	}
 }
 
@@ -103,6 +107,42 @@ func (h *Handler) ComQuery(
 
 	var r *sqltypes.Result
 	var proccesedAtLeastOneBatch bool
+
+	rowchan := make(chan sql.Row)
+	errchan := make(chan error)
+	quit := make(chan struct{})
+
+	// This goroutine will be select{}ed giving a chance to Vitess to call the
+	// handler.CloseConnection callback and enforcing the timeout if configured
+	go func() {
+		for {
+			select {
+			case <-quit:
+				return
+			default:
+			}
+			row, err := rows.Next()
+			if err != nil {
+				errchan <- err
+				return
+			}
+			rowchan <- row
+		}
+	}()
+
+	// Default waitTime is one 1 minute if there is not timeout configured, in which case
+	// it will loop to iterate again unless the socket died by the OS timeout or other problems.
+	// If there is a timeout, it will be enforced to ensure that Vitess has a chance to
+	// call Handler.CloseConnection()
+	waitTime := 1 * time.Minute
+
+	if h.readTimeout > 0 {
+		waitTime = h.readTimeout
+	}
+	timer := time.NewTimer(waitTime)
+	defer timer.Stop()
+
+rowLoop:
 	for {
 		if r == nil {
 			r = &sqltypes.Result{Fields: schemaToFields(schema)}
@@ -115,26 +155,32 @@ func (h *Handler) ComQuery(
 
 			r = nil
 			proccesedAtLeastOneBatch = true
-
 			continue
 		}
 
-		row, err := rows.Next()
-		if err != nil {
+		select {
+		case err = <-errchan:
 			if err == io.EOF {
-				break
+				break rowLoop
+			}
+			return err
+		case row := <-rowchan:
+			outputRow, err := rowToSQL(schema, row)
+			if err != nil {
+				close(quit)
+				return err
 			}
 
-			return err
+			r.Rows = append(r.Rows, outputRow)
+			r.RowsAffected++
+		case <-timer.C:
+			if h.readTimeout != 0 {
+				// Return so Vitess can call the CloseConnection callback
+				close(quit)
+				return ErrRowTimeout.New()
+			}
 		}
-
-		outputRow, err := rowToSQL(schema, row)
-		if err != nil {
-			return err
-		}
-
-		r.Rows = append(r.Rows, outputRow)
-		r.RowsAffected++
+		timer.Reset(waitTime)
 	}
 
 	if err := rows.Close(); err != nil {
@@ -149,6 +195,7 @@ func (h *Handler) ComQuery(
 		return nil
 	}
 
+	close(quit)
 	return callback(r)
 }
 

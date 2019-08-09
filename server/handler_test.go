@@ -2,19 +2,20 @@ package server
 
 import (
 	"fmt"
+	"github.com/src-d/go-mysql-server/memory"
 	"net"
 	"reflect"
 	"testing"
+	"time"
 	"unsafe"
 
 	sqle "github.com/src-d/go-mysql-server"
-	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/proto/query"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,13 +38,14 @@ func setupMemDB(require *require.Assertions) *sqle.Engine {
 	return e
 }
 
+// This session builder is used as dummy mysql Conn is not complete and
+// causes panic when accessing remote address.
+func testSessionBuilder(c *mysql.Conn, addr string) sql.Session {
+	const client = "127.0.0.1:34567"
+	return sql.NewSession(addr, client, c.User, c.ConnectionID)
+}
+
 func TestHandlerOutput(t *testing.T) {
-	// This session builder is used as dummy mysql Conn is not complete and
-	// causes panic when accessing remote address.
-	testSessionBuilder := func(c *mysql.Conn, addr string) sql.Session {
-		client := "127.0.0.1:34567"
-		return sql.NewSession(addr, client, c.User, c.ConnectionID)
-	}
 
 	e := setupMemDB(require.New(t))
 	dummyConn := &mysql.Conn{ConnectionID: 1}
@@ -55,12 +57,13 @@ func TestHandlerOutput(t *testing.T) {
 			sql.NewMemoryManager(nil),
 			"foo",
 		),
+		0,
 	)
 	handler.NewConnection(dummyConn)
 
 	type exptectedValues struct {
 		callsToCallback  int
-		lenLastBacth     int
+		lenLastBatch     int
 		lastRowsAffected uint64
 	}
 
@@ -78,7 +81,7 @@ func TestHandlerOutput(t *testing.T) {
 			query:   "SELECT * FROM test",
 			expected: exptectedValues{
 				callsToCallback:  11,
-				lenLastBacth:     10,
+				lenLastBatch:     10,
 				lastRowsAffected: uint64(10),
 			},
 		},
@@ -89,7 +92,7 @@ func TestHandlerOutput(t *testing.T) {
 			query:   "SELECT * FROM test limit 100",
 			expected: exptectedValues{
 				callsToCallback:  1,
-				lenLastBacth:     100,
+				lenLastBatch:     100,
 				lastRowsAffected: uint64(100),
 			},
 		},
@@ -100,7 +103,7 @@ func TestHandlerOutput(t *testing.T) {
 			query:   "SELECT * FROM test limit 60",
 			expected: exptectedValues{
 				callsToCallback:  1,
-				lenLastBacth:     60,
+				lenLastBatch:     60,
 				lastRowsAffected: uint64(60),
 			},
 		},
@@ -111,7 +114,7 @@ func TestHandlerOutput(t *testing.T) {
 			query:   "SELECT * FROM test limit 200",
 			expected: exptectedValues{
 				callsToCallback:  2,
-				lenLastBacth:     100,
+				lenLastBatch:     100,
 				lastRowsAffected: uint64(100),
 			},
 		},
@@ -122,7 +125,7 @@ func TestHandlerOutput(t *testing.T) {
 			query:   "SELECT * FROM test limit 530",
 			expected: exptectedValues{
 				callsToCallback:  6,
-				lenLastBacth:     30,
+				lenLastBatch:     30,
 				lastRowsAffected: uint64(30),
 			},
 		},
@@ -131,18 +134,18 @@ func TestHandlerOutput(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var callsToCallback int
-			var lenLastBacth int
+			var lenLastBatch int
 			var lastRowsAffected uint64
 			err := handler.ComQuery(test.conn, test.query, func(res *sqltypes.Result) error {
 				callsToCallback++
-				lenLastBacth = len(res.Rows)
+				lenLastBatch = len(res.Rows)
 				lastRowsAffected = res.RowsAffected
 				return nil
 			})
 
 			require.NoError(t, err)
 			require.Equal(t, test.expected.callsToCallback, callsToCallback)
-			require.Equal(t, test.expected.lenLastBacth, lenLastBacth)
+			require.Equal(t, test.expected.lenLastBatch, lenLastBatch)
 			require.Equal(t, test.expected.lastRowsAffected, lastRowsAffected)
 
 		})
@@ -183,6 +186,7 @@ func TestHandlerKill(t *testing.T) {
 			sql.NewMemoryManager(nil),
 			"foo",
 		),
+		0,
 	)
 
 	require.Len(handler.c, 0)
@@ -251,4 +255,48 @@ func TestSchemaToFields(t *testing.T) {
 
 	fields := schemaToFields(schema)
 	require.Equal(expected, fields)
+}
+
+func TestHandlerTimeout(t *testing.T) {
+	require := require.New(t)
+
+	e := setupMemDB(require)
+	e2 := setupMemDB(require)
+
+	timeOutHandler := NewHandler(
+		e, NewSessionManager(testSessionBuilder,
+			opentracing.NoopTracer{},
+			sql.NewMemoryManager(nil),
+			"foo"),
+		1 * time.Second)
+
+	noTimeOutHandler := NewHandler(
+		e2, NewSessionManager(testSessionBuilder,
+			opentracing.NoopTracer{},
+			sql.NewMemoryManager(nil),
+			"foo"),
+		0)
+	require.Equal(1 * time.Second, timeOutHandler.readTimeout)
+	require.Equal(0 * time.Second, noTimeOutHandler.readTimeout)
+
+	connTimeout := newConn(1)
+	timeOutHandler.NewConnection(connTimeout)
+
+	connNoTimeout := newConn(2)
+	noTimeOutHandler.NewConnection(connNoTimeout)
+
+	err := timeOutHandler.ComQuery(connTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result) error {
+		return nil
+	})
+	require.EqualError(err, "row read wait bigger than connection timeout")
+
+	err = timeOutHandler.ComQuery(connTimeout, "SELECT SLEEP(0.5)", func(res *sqltypes.Result) error {
+		return nil
+	})
+	require.NoError(err)
+
+	err = noTimeOutHandler.ComQuery(connNoTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result) error {
+		return nil
+	})
+	require.NoError(err)
 }
