@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/plan"
 )
@@ -13,14 +13,14 @@ func TestAssignCatalog(t *testing.T) {
 	require := require.New(t)
 	f := getRule("assign_catalog")
 
-	db := mem.NewDatabase("foo")
+	db := memory.NewDatabase("foo")
 	c := sql.NewCatalog()
 	c.AddDatabase(db)
 
 	a := NewDefault(c)
 	a.Catalog.IndexRegistry = sql.NewIndexRegistry()
 
-	tbl := mem.NewTable("foo", nil)
+	tbl := memory.NewTable("foo", nil)
 
 	node, err := f.Apply(sql.NewEmptyContext(), a,
 		plan.NewCreateIndex("", plan.NewResolvedTable(tbl), nil, "", make(map[string]string)))

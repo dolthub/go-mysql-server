@@ -8,7 +8,7 @@ import (
 	"unsafe"
 
 	sqle "github.com/src-d/go-mysql-server"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/sqltypes"
@@ -20,10 +20,10 @@ import (
 
 func setupMemDB(require *require.Assertions) *sqle.Engine {
 	e := sqle.NewDefault()
-	db := mem.NewDatabase("test")
+	db := memory.NewDatabase("test")
 	e.AddDatabase(db)
 
-	tableTest := mem.NewTable("test", sql.Schema{{Name: "c1", Type: sql.Int32, Source: "test"}})
+	tableTest := memory.NewTable("test", sql.Schema{{Name: "c1", Type: sql.Int32, Source: "test"}})
 
 	for i := 0; i < 1010; i++ {
 		require.NoError(tableTest.Insert(
@@ -47,7 +47,15 @@ func TestHandlerOutput(t *testing.T) {
 
 	e := setupMemDB(require.New(t))
 	dummyConn := &mysql.Conn{ConnectionID: 1}
-	handler := NewHandler(e, NewSessionManager(testSessionBuilder, opentracing.NoopTracer{}, "foo"))
+	handler := NewHandler(
+		e,
+		NewSessionManager(
+			testSessionBuilder,
+			opentracing.NoopTracer{},
+			sql.NewMemoryManager(nil),
+			"foo",
+		),
+	)
 	handler.NewConnection(dummyConn)
 
 	type exptectedValues struct {
@@ -172,6 +180,7 @@ func TestHandlerKill(t *testing.T) {
 				return sql.NewSession(addr, "", "", conn.ConnectionID)
 			},
 			opentracing.NoopTracer{},
+			sql.NewMemoryManager(nil),
 			"foo",
 		),
 	)

@@ -5,14 +5,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 )
 
 func TestCreateTable(t *testing.T) {
 	require := require.New(t)
 
-	db := mem.NewDatabase("test")
+	db := memory.NewDatabase("test")
 	tables := db.Tables()
 	_, ok := tables["testTable"]
 	require.False(ok)

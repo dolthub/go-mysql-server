@@ -3,7 +3,7 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function/aggregation"
@@ -32,7 +32,7 @@ func TestResolveHaving(t *testing.T) {
 						expression.NewGetField(0, sql.Int64, "foo", false),
 					},
 					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
-					plan.NewResolvedTable(mem.NewTable("t", nil)),
+					plan.NewResolvedTable(memory.NewTable("t", nil)),
 				),
 			),
 			plan.NewHaving(
@@ -46,7 +46,7 @@ func TestResolveHaving(t *testing.T) {
 						expression.NewGetField(0, sql.Int64, "foo", false),
 					},
 					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
-					plan.NewResolvedTable(mem.NewTable("t", nil)),
+					plan.NewResolvedTable(memory.NewTable("t", nil)),
 				),
 			),
 			nil,
@@ -64,7 +64,7 @@ func TestResolveHaving(t *testing.T) {
 						expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
 					},
 					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
-					plan.NewResolvedTable(mem.NewTable("t", nil)),
+					plan.NewResolvedTable(memory.NewTable("t", nil)),
 				),
 			),
 			plan.NewProject(
@@ -84,7 +84,7 @@ func TestResolveHaving(t *testing.T) {
 							aggregation.NewCount(expression.NewStar()),
 						},
 						[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
-						plan.NewResolvedTable(mem.NewTable("t", nil)),
+						plan.NewResolvedTable(memory.NewTable("t", nil)),
 					),
 				),
 			),
@@ -102,7 +102,7 @@ func TestResolveHaving(t *testing.T) {
 						expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false),
 					},
 					[]sql.Expression{expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false)},
-					plan.NewResolvedTable(mem.NewTable("t", sql.Schema{
+					plan.NewResolvedTable(memory.NewTable("t", sql.Schema{
 						{Type: sql.Int64, Name: "i", Source: "t"},
 						{Type: sql.Int64, Name: "i", Source: "foo"},
 					})),
@@ -123,7 +123,7 @@ func TestResolveHaving(t *testing.T) {
 							expression.NewGetFieldWithTable(0, sql.Int64, "t", "i", false),
 						},
 						[]sql.Expression{expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false)},
-						plan.NewResolvedTable(mem.NewTable("t", sql.Schema{
+						plan.NewResolvedTable(memory.NewTable("t", sql.Schema{
 							{Type: sql.Int64, Name: "i", Source: "t"},
 							{Type: sql.Int64, Name: "i", Source: "foo"},
 						})),
@@ -148,7 +148,7 @@ func TestResolveHaving(t *testing.T) {
 							expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false),
 						},
 						[]sql.Expression{expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false)},
-						plan.NewResolvedTable(mem.NewTable("t", sql.Schema{
+						plan.NewResolvedTable(memory.NewTable("t", sql.Schema{
 							{Type: sql.Int64, Name: "i", Source: "t"},
 							{Type: sql.Int64, Name: "i", Source: "foo"},
 						})),
@@ -175,7 +175,7 @@ func TestResolveHaving(t *testing.T) {
 								expression.NewGetFieldWithTable(0, sql.Int64, "t", "i", false),
 							},
 							[]sql.Expression{expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false)},
-							plan.NewResolvedTable(mem.NewTable("t", sql.Schema{
+							plan.NewResolvedTable(memory.NewTable("t", sql.Schema{
 								{Type: sql.Int64, Name: "i", Source: "t"},
 								{Type: sql.Int64, Name: "i", Source: "foo"},
 							})),
@@ -203,7 +203,7 @@ func TestResolveHaving(t *testing.T) {
 							expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
 						},
 						[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
-						plan.NewResolvedTable(mem.NewTable("t", nil)),
+						plan.NewResolvedTable(memory.NewTable("t", nil)),
 					),
 				),
 			),
@@ -230,7 +230,7 @@ func TestResolveHaving(t *testing.T) {
 								aggregation.NewCount(expression.NewStar()),
 							},
 							[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
-							plan.NewResolvedTable(mem.NewTable("t", nil)),
+							plan.NewResolvedTable(memory.NewTable("t", nil)),
 						),
 					),
 				),
@@ -255,7 +255,7 @@ func TestResolveHaving(t *testing.T) {
 							expression.NewGetField(0, sql.Int64, "foo", false),
 						},
 						[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
-						plan.NewResolvedTable(mem.NewTable("t", nil)),
+						plan.NewResolvedTable(memory.NewTable("t", nil)),
 					),
 				),
 			),
@@ -275,7 +275,7 @@ func TestResolveHaving(t *testing.T) {
 							expression.NewGetField(0, sql.Int64, "foo", false),
 						},
 						[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
-						plan.NewResolvedTable(mem.NewTable("t", nil)),
+						plan.NewResolvedTable(memory.NewTable("t", nil)),
 					),
 				),
 			),
@@ -288,7 +288,7 @@ func TestResolveHaving(t *testing.T) {
 					aggregation.NewCount(expression.NewStar()),
 					expression.NewLiteral(int64(5), sql.Int64),
 				),
-				plan.NewResolvedTable(mem.NewTable("t", nil)),
+				plan.NewResolvedTable(memory.NewTable("t", nil)),
 			),
 			nil,
 			errHavingNeedsGroupBy,

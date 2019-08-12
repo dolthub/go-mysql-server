@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
@@ -19,8 +19,8 @@ func TestTrackProcess(t *testing.T) {
 	a := NewDefault(catalog)
 
 	node := plan.NewInnerJoin(
-		plan.NewResolvedTable(&table{mem.NewPartitionedTable("foo", nil, 2)}),
-		plan.NewResolvedTable(mem.NewPartitionedTable("bar", nil, 4)),
+		plan.NewResolvedTable(&table{memory.NewPartitionedTable("foo", nil, 2)}),
+		plan.NewResolvedTable(memory.NewPartitionedTable("bar", nil, 4)),
 		expression.NewLiteral(int64(1), sql.Int64),
 	)
 
@@ -80,7 +80,7 @@ func TestTrackProcessSubquery(t *testing.T) {
 		nil,
 		plan.NewSubqueryAlias("f",
 			plan.NewQueryProcess(
-				plan.NewResolvedTable(mem.NewTable("foo", nil)),
+				plan.NewResolvedTable(memory.NewTable("foo", nil)),
 				nil,
 			),
 		),
@@ -92,7 +92,7 @@ func TestTrackProcessSubquery(t *testing.T) {
 	expectedChild := plan.NewProject(
 		nil,
 		plan.NewSubqueryAlias("f",
-			plan.NewResolvedTable(mem.NewTable("foo", nil)),
+			plan.NewResolvedTable(memory.NewTable("foo", nil)),
 		),
 	)
 

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 )
 
@@ -13,7 +13,7 @@ func TestTableAlias(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	table := mem.NewTable("bar", sql.Schema{
+	table := memory.NewTable("bar", sql.Schema{
 		{Name: "a", Type: sql.Text, Nullable: true},
 		{Name: "b", Type: sql.Text, Nullable: true},
 	})

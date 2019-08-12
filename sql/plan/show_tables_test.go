@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 )
 
@@ -18,10 +18,10 @@ func TestShowTables(t *testing.T) {
 	require.False(unresolvedShowTables.Resolved())
 	require.Nil(unresolvedShowTables.Children())
 
-	db := mem.NewDatabase("test")
-	db.AddTable("test1", mem.NewTable("test1", nil))
-	db.AddTable("test2", mem.NewTable("test2", nil))
-	db.AddTable("test3", mem.NewTable("test3", nil))
+	db := memory.NewDatabase("test")
+	db.AddTable("test1", memory.NewTable("test1", nil))
+	db.AddTable("test2", memory.NewTable("test2", nil))
+	db.AddTable("test3", memory.NewTable("test3", nil))
 
 	resolvedShowTables := NewShowTables(db, false)
 	require.True(resolvedShowTables.Resolved())

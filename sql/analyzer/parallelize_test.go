@@ -3,7 +3,7 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
@@ -12,7 +12,7 @@ import (
 
 func TestParallelize(t *testing.T) {
 	require := require.New(t)
-	table := mem.NewTable("t", nil)
+	table := memory.NewTable("t", nil)
 	rule := getRuleFrom(OnceAfterAll, "parallelize")
 	node := plan.NewProject(
 		nil,
@@ -57,7 +57,7 @@ func TestParallelize(t *testing.T) {
 
 func TestParallelizeCreateIndex(t *testing.T) {
 	require := require.New(t)
-	table := mem.NewTable("t", nil)
+	table := memory.NewTable("t", nil)
 	rule := getRuleFrom(OnceAfterAll, "parallelize")
 	node := plan.NewCreateIndex(
 		"",
@@ -73,7 +73,7 @@ func TestParallelizeCreateIndex(t *testing.T) {
 }
 
 func TestIsParallelizable(t *testing.T) {
-	table := mem.NewTable("t", nil)
+	table := memory.NewTable("t", nil)
 
 	testCases := []struct {
 		name string
@@ -172,7 +172,7 @@ func TestIsParallelizable(t *testing.T) {
 func TestRemoveRedundantExchanges(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewTable("t", nil)
+	table := memory.NewTable("t", nil)
 
 	node := plan.NewProject(
 		nil,

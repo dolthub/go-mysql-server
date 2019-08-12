@@ -1,9 +1,8 @@
 package plan
 
 import (
-	"fmt"
+	"io"
 
-	"github.com/mitchellh/hashstructure"
 	"github.com/src-d/go-mysql-server/sql"
 )
 
@@ -34,7 +33,7 @@ func (d *Distinct) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, newDistinctIter(it)), nil
+	return sql.NewSpanIter(span, newDistinctIter(ctx, it)), nil
 }
 
 // WithChildren implements the Node interface.
@@ -55,18 +54,21 @@ func (d Distinct) String() string {
 
 // distinctIter keeps track of the hashes of all rows that have been emitted.
 // It does not emit any rows whose hashes have been seen already.
-// TODO: come up with a way to use less memory than keeping all hashes in mem.
+// TODO: come up with a way to use less memory than keeping all hashes in memory.
 // Even though they are just 64-bit integers, this could be a problem in large
 // result sets.
 type distinctIter struct {
 	childIter sql.RowIter
-	seen      map[uint64]struct{}
+	seen      sql.KeyValueCache
+	dispose   sql.DisposeFunc
 }
 
-func newDistinctIter(child sql.RowIter) *distinctIter {
+func newDistinctIter(ctx *sql.Context, child sql.RowIter) *distinctIter {
+	cache, dispose := ctx.Memory.NewHistoryCache()
 	return &distinctIter{
 		childIter: child,
-		seen:      make(map[uint64]struct{}),
+		seen:      cache,
+		dispose:   dispose,
 	}
 }
 
@@ -74,29 +76,38 @@ func (di *distinctIter) Next() (sql.Row, error) {
 	for {
 		row, err := di.childIter.Next()
 		if err != nil {
+			if err == io.EOF {
+				di.Dispose()
+			}
 			return nil, err
 		}
 
-		hash, err := hashstructure.Hash(row, nil)
-		if err != nil {
-			return nil, fmt.Errorf("unable to hash row: %s", err)
-		}
-
-		if _, ok := di.seen[hash]; ok {
+		hash := sql.CacheKey(row)
+		if _, err := di.seen.Get(hash); err == nil {
 			continue
 		}
 
-		di.seen[hash] = struct{}{}
+		if err := di.seen.Put(hash, struct{}{}); err != nil {
+			return nil, err
+		}
+
 		return row, nil
 	}
 }
 
 func (di *distinctIter) Close() error {
+	di.Dispose()
 	return di.childIter.Close()
 }
 
+func (di *distinctIter) Dispose() {
+	if di.dispose != nil {
+		di.dispose()
+	}
+}
+
 // OrderedDistinct is a Distinct node optimized for sorted row sets.
-// It's 2 orders of magnitude faster and uses 2 orders of magnitude less mem.
+// It's 2 orders of magnitude faster and uses 2 orders of magnitude less memory.
 type OrderedDistinct struct {
 	UnaryNode
 }

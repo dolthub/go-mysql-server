@@ -88,7 +88,7 @@ func (s *Sort) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		span.Finish()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, newSortIter(s, i)), nil
+	return sql.NewSpanIter(span, newSortIter(ctx, s, i)), nil
 }
 
 func (s *Sort) String() string {
@@ -139,18 +139,19 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 }
 
 type sortIter struct {
+	ctx        *sql.Context
 	s          *Sort
 	childIter  sql.RowIter
 	sortedRows []sql.Row
 	idx        int
 }
 
-func newSortIter(s *Sort, child sql.RowIter) *sortIter {
+func newSortIter(ctx *sql.Context, s *Sort, child sql.RowIter) *sortIter {
 	return &sortIter{
-		s:          s,
-		childIter:  child,
-		sortedRows: nil,
-		idx:        -1,
+		ctx:       ctx,
+		s:         s,
+		childIter: child,
+		idx:       -1,
 	}
 }
 
@@ -162,6 +163,7 @@ func (i *sortIter) Next() (sql.Row, error) {
 		}
 		i.idx = 0
 	}
+
 	if i.idx >= len(i.sortedRows) {
 		return nil, io.EOF
 	}
@@ -176,9 +178,11 @@ func (i *sortIter) Close() error {
 }
 
 func (i *sortIter) computeSortedRows() error {
-	var rows []sql.Row
+	cache, dispose := i.ctx.Memory.NewRowsCache()
+	defer dispose()
+
 	for {
-		childRow, err := i.childIter.Next()
+		row, err := i.childIter.Next()
 		if err == io.EOF {
 			break
 		}
@@ -186,9 +190,12 @@ func (i *sortIter) computeSortedRows() error {
 			return err
 		}
 
-		rows = append(rows, childRow)
+		if err := cache.Add(row); err != nil {
+			return err
+		}
 	}
 
+	rows := cache.Get()
 	sorter := &sorter{
 		sortFields: i.s.SortFields,
 		rows:       rows,

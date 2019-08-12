@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 )
@@ -14,7 +14,7 @@ func TestDescribe(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	table := mem.NewTable("test", sql.Schema{
+	table := memory.NewTable("test", sql.Schema{
 		{Name: "c1", Type: sql.Text},
 		{Name: "c2", Type: sql.Int32},
 	})
@@ -55,7 +55,7 @@ func TestDescribe_Empty(t *testing.T) {
 func TestDescribeQuery(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.Schema{
 		{Source: "foo", Name: "a", Type: sql.Text},
 		{Source: "foo", Name: "b", Type: sql.Text},
 	})

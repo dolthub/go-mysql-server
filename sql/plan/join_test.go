@@ -1,21 +1,22 @@
 package plan
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/stretchr/testify/require"
 )
 
 func TestJoinSchema(t *testing.T) {
-	t1 := NewResolvedTable(mem.NewTable("foo", sql.Schema{
+	t1 := NewResolvedTable(memory.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Int64},
 	}))
 
-	t2 := NewResolvedTable(mem.NewTable("bar", sql.Schema{
+	t2 := NewResolvedTable(memory.NewTable("bar", sql.Schema{
 		{Name: "b", Source: "bar", Type: sql.Int64},
 	}))
 
@@ -61,8 +62,9 @@ func TestInMemoryInnerJoin(t *testing.T) {
 }
 
 func TestMultiPassInnerJoin(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	ctx.Set(memoryThresholdSessionVar, sql.Int64, int64(1))
+	ctx := sql.NewContext(context.TODO(), sql.WithMemoryManager(
+		sql.NewMemoryManager(mockReporter{2, 1}),
+	))
 	testInnerJoin(t, ctx)
 }
 
@@ -70,8 +72,8 @@ func testInnerJoin(t *testing.T, ctx *sql.Context) {
 	t.Helper()
 
 	require := require.New(t)
-	ltable := mem.NewTable("left", lSchema)
-	rtable := mem.NewTable("right", rSchema)
+	ltable := memory.NewTable("left", lSchema)
+	rtable := memory.NewTable("right", rSchema)
 	insertData(t, ltable)
 	insertData(t, rtable)
 
@@ -95,8 +97,8 @@ func TestInnerJoinEmpty(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	ltable := mem.NewTable("left", lSchema)
-	rtable := mem.NewTable("right", rSchema)
+	ltable := memory.NewTable("left", lSchema)
+	rtable := memory.NewTable("right", rSchema)
 
 	j := NewInnerJoin(
 		NewResolvedTable(ltable),
@@ -113,12 +115,12 @@ func TestInnerJoinEmpty(t *testing.T) {
 }
 
 func BenchmarkInnerJoin(b *testing.B) {
-	t1 := mem.NewTable("foo", sql.Schema{
+	t1 := memory.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Int64},
 		{Name: "b", Source: "foo", Type: sql.Text},
 	})
 
-	t2 := mem.NewTable("bar", sql.Schema{
+	t2 := memory.NewTable("bar", sql.Schema{
 		{Name: "a", Source: "bar", Type: sql.Int64},
 		{Name: "b", Source: "bar", Type: sql.Text},
 	})
@@ -156,7 +158,9 @@ func BenchmarkInnerJoin(b *testing.B) {
 		{int64(4), "t1_4", int64(4), "t2_4"},
 	}
 
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContext(context.TODO(), sql.WithMemoryManager(
+		sql.NewMemoryManager(mockReporter{1, 5}),
+	))
 	b.Run("inner join", func(b *testing.B) {
 		require := require.New(b)
 
@@ -188,9 +192,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 		useInMemoryJoins = false
 	})
 
-	b.Run("withing memory threshold", func(b *testing.B) {
-		prev := maxMemoryJoin
-		maxMemoryJoin = 0
+	b.Run("within memory threshold", func(b *testing.B) {
 		require := require.New(b)
 
 		for i := 0; i < b.N; i++ {
@@ -202,8 +204,6 @@ func BenchmarkInnerJoin(b *testing.B) {
 
 			require.Equal(expected, rows)
 		}
-
-		maxMemoryJoin = prev
 	})
 
 	b.Run("cross join with filter", func(b *testing.B) {
@@ -224,8 +224,8 @@ func BenchmarkInnerJoin(b *testing.B) {
 func TestLeftJoin(t *testing.T) {
 	require := require.New(t)
 
-	ltable := mem.NewTable("left", lSchema)
-	rtable := mem.NewTable("right", rSchema)
+	ltable := memory.NewTable("left", lSchema)
+	rtable := memory.NewTable("right", rSchema)
 	insertData(t, ltable)
 	insertData(t, rtable)
 
@@ -240,7 +240,10 @@ func TestLeftJoin(t *testing.T) {
 			expression.NewGetField(6, sql.Text, "rcol3", false),
 		))
 
-	rows := collectRows(t, j)
+	iter, err := j.RowIter(sql.NewEmptyContext())
+	require.NoError(err)
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
 	require.ElementsMatch([]sql.Row{
 		{"col1_1", "col2_1", int32(1), int64(2), "col1_2", "col2_2", int32(3), int64(4)},
 		{"col1_2", "col2_2", int32(3), int64(4), nil, nil, nil, nil},
@@ -250,8 +253,8 @@ func TestLeftJoin(t *testing.T) {
 func TestRightJoin(t *testing.T) {
 	require := require.New(t)
 
-	ltable := mem.NewTable("left", lSchema)
-	rtable := mem.NewTable("right", rSchema)
+	ltable := memory.NewTable("left", lSchema)
+	rtable := memory.NewTable("right", rSchema)
 	insertData(t, ltable)
 	insertData(t, rtable)
 
@@ -266,9 +269,20 @@ func TestRightJoin(t *testing.T) {
 			expression.NewGetField(6, sql.Text, "rcol3", false),
 		))
 
-	rows := collectRows(t, j)
+	iter, err := j.RowIter(sql.NewEmptyContext())
+	require.NoError(err)
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
 	require.ElementsMatch([]sql.Row{
 		{nil, nil, nil, nil, "col1_1", "col2_1", int32(1), int64(2)},
 		{"col1_1", "col2_1", int32(1), int64(2), "col1_2", "col2_2", int32(3), int64(4)},
 	}, rows)
 }
+
+type mockReporter struct {
+	val uint64
+	max uint64
+}
+
+func (m mockReporter) UsedMemory() uint64 { return m.val }
+func (m mockReporter) MaxMemory() uint64  { return m.max }

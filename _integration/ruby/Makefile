@@ -1,4 +1,5 @@
 vendor/bundle:
+	gem install bundler --version=1.16.5
 	bundler install --path vendor/bundle
 
 dependencies: vendor/bundle

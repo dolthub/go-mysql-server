@@ -4,51 +4,22 @@ import (
 	"io"
 	"os"
 	"reflect"
-	"runtime"
-	"strconv"
 	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pbnjay/memory"
-	"github.com/sirupsen/logrus"
 	"github.com/src-d/go-mysql-server/sql"
 )
 
 const (
-	inMemoryJoinKey           = "INMEMORY_JOINS"
-	maxMemoryJoinKey          = "MAX_MEMORY_JOIN"
-	inMemoryJoinSessionVar    = "inmemory_joins"
-	memoryThresholdSessionVar = "max_memory_joins"
+	inMemoryJoinKey        = "INMEMORY_JOINS"
+	inMemoryJoinSessionVar = "inmemory_joins"
 )
 
-var (
-	useInMemoryJoins = shouldUseMemoryJoinsByEnv()
-	// One fifth of the total physical memory available on the OS (ignoring the
-	// memory used by other processes).
-	defaultMemoryThreshold = memory.TotalMemory() / 5
-	// Maximum amount of memory the gitbase server can have in use before
-	// considering all joins should be done using multipass mode.
-	maxMemoryJoin = loadMemoryThreshold()
-)
+var useInMemoryJoins = shouldUseMemoryJoinsByEnv()
 
 func shouldUseMemoryJoinsByEnv() bool {
 	v := strings.TrimSpace(strings.ToLower(os.Getenv(inMemoryJoinKey)))
 	return v == "on" || v == "1"
-}
-
-func loadMemoryThreshold() uint64 {
-	v, ok := os.LookupEnv(maxMemoryJoinKey)
-	if !ok {
-		return defaultMemoryThreshold
-	}
-
-	n, err := strconv.ParseUint(v, 10, 64)
-	if err != nil {
-		logrus.Warnf("invalid value %q given to %s environment variable", v, maxMemoryJoinKey)
-		return defaultMemoryThreshold
-	}
-
-	return n * 1024 // to bytes
 }
 
 // InnerJoin is an inner join between two tables.
@@ -293,6 +264,7 @@ func joinRowIter(
 		mode = memoryMode
 	}
 
+	cache, dispose := ctx.Memory.NewRowsCache()
 	if typ == rightJoin {
 		r, err := right.RowIter(ctx)
 		if err != nil {
@@ -306,6 +278,8 @@ func joinRowIter(
 			ctx:               ctx,
 			cond:              cond,
 			mode:              mode,
+			secondaryRows:     cache,
+			dispose:           dispose,
 		}), nil
 	}
 
@@ -314,6 +288,7 @@ func joinRowIter(
 		span.Finish()
 		return nil, err
 	}
+
 	return sql.NewSpanIter(span, &joinIter{
 		typ:               typ,
 		primary:           l,
@@ -321,6 +296,8 @@ func joinRowIter(
 		ctx:               ctx,
 		cond:              cond,
 		mode:              mode,
+		secondaryRows:     cache,
+		dispose:           dispose,
 	}), nil
 }
 
@@ -358,14 +335,25 @@ type joinIter struct {
 
 	// used to compute in-memory
 	mode          joinMode
-	secondaryRows []sql.Row
+	secondaryRows sql.RowsCache
 	pos           int
+	dispose       sql.DisposeFunc
+}
+
+func (i *joinIter) Dispose() {
+	if i.dispose != nil {
+		i.dispose()
+		i.dispose = nil
+	}
 }
 
 func (i *joinIter) loadPrimary() error {
 	if i.primaryRow == nil {
 		r, err := i.primary.Next()
 		if err != nil {
+			if err == io.EOF {
+				i.Dispose()
+			}
 			return err
 		}
 
@@ -382,52 +370,42 @@ func (i *joinIter) loadSecondaryInMemory() error {
 		return err
 	}
 
-	i.secondaryRows, err = sql.RowIterToRows(iter)
-	if err != nil {
-		return err
+	for {
+		row, err := iter.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if err := i.secondaryRows.Add(row); err != nil {
+			return err
+		}
 	}
 
-	if len(i.secondaryRows) == 0 {
+	if len(i.secondaryRows.Get()) == 0 {
 		return io.EOF
 	}
 
 	return nil
 }
 
-func (i *joinIter) fitsInMemory() bool {
-	var maxMemory uint64
-	_, v := i.ctx.Session.Get(memoryThresholdSessionVar)
-	if n, ok := v.(int64); ok {
-		maxMemory = uint64(n) * 1024 // to bytes
-	} else {
-		maxMemory = maxMemoryJoin
-	}
-
-	if maxMemory <= 0 {
-		return true
-	}
-
-	var ms runtime.MemStats
-	runtime.ReadMemStats(&ms)
-
-	return (ms.HeapInuse + ms.StackInuse) < maxMemory
-}
-
 func (i *joinIter) loadSecondary() (row sql.Row, err error) {
 	if i.mode == memoryMode {
-		if len(i.secondaryRows) == 0 {
+		if len(i.secondaryRows.Get()) == 0 {
 			if err = i.loadSecondaryInMemory(); err != nil {
 				return nil, err
 			}
 		}
 
-		if i.pos >= len(i.secondaryRows) {
+		if i.pos >= len(i.secondaryRows.Get()) {
 			i.primaryRow = nil
 			i.pos = 0
 			return nil, io.EOF
 		}
 
-		row := i.secondaryRows[i.pos]
+		row := i.secondaryRows.Get()[i.pos]
 		i.pos++
 		return row, nil
 	}
@@ -461,11 +439,20 @@ func (i *joinIter) loadSecondary() (row sql.Row, err error) {
 	}
 
 	if i.mode == unknownMode {
-		if !i.fitsInMemory() {
+		var switchToMultipass bool
+		if !i.ctx.Memory.HasAvailable() {
+			switchToMultipass = true
+		} else {
+			err := i.secondaryRows.Add(rightRow)
+			if err != nil && !sql.ErrNoMemoryAvailable.Is(err) {
+				return nil, err
+			}
+		}
+
+		if switchToMultipass {
+			i.Dispose()
 			i.secondaryRows = nil
 			i.mode = multipassMode
-		} else {
-			i.secondaryRows = append(i.secondaryRows, rightRow)
 		}
 	}
 
@@ -529,6 +516,7 @@ func (i *joinIter) buildRow(primary, secondary sql.Row) sql.Row {
 }
 
 func (i *joinIter) Close() (err error) {
+	i.Dispose()
 	i.secondary = nil
 
 	if i.primary != nil {

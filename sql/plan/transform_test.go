@@ -3,7 +3,7 @@ package plan
 import (
 	"testing"
 
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 
@@ -22,7 +22,7 @@ func TestTransformUp(t *testing.T) {
 		{Name: "a", Type: sql.Text},
 		{Name: "b", Type: sql.Text},
 	}
-	table := mem.NewTable("resolved", schema)
+	table := memory.NewTable("resolved", schema)
 
 	pt, err := TransformUp(p, func(n sql.Node) (sql.Node, error) {
 		switch n.(type) {

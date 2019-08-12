@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 )
@@ -19,7 +19,7 @@ func TestFilter(t *testing.T) {
 		{Name: "col3", Type: sql.Int32, Nullable: true},
 		{Name: "col4", Type: sql.Int64, Nullable: true},
 	}
-	child := mem.NewTable("test", childSchema)
+	child := memory.NewTable("test", childSchema)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)),

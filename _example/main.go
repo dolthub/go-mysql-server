@@ -5,7 +5,7 @@ import (
 
 	sqle "github.com/src-d/go-mysql-server"
 	"github.com/src-d/go-mysql-server/auth"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/server"
 	"github.com/src-d/go-mysql-server/sql"
 )
@@ -42,14 +42,14 @@ func main() {
 	s.Start()
 }
 
-func createTestDatabase() *mem.Database {
+func createTestDatabase() *memory.Database {
 	const (
 		dbName    = "mydb"
 		tableName = "mytable"
 	)
 
-	db := mem.NewDatabase(dbName)
-	table := mem.NewTable(tableName, sql.Schema{
+	db := memory.NewDatabase(dbName)
+	table := memory.NewTable(tableName, sql.Schema{
 		{Name: "name", Type: sql.Text, Nullable: false, Source: tableName},
 		{Name: "email", Type: sql.Text, Nullable: false, Source: tableName},
 		{Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: tableName},

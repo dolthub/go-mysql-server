@@ -13,7 +13,7 @@ import (
 
 	sqle "github.com/src-d/go-mysql-server"
 	"github.com/src-d/go-mysql-server/auth"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/analyzer"
 	"github.com/src-d/go-mysql-server/sql/index/pilosa"
@@ -1775,7 +1775,7 @@ const testNumPartitions = 5
 func TestAmbiguousColumnResolution(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewPartitionedTable("foo", sql.Schema{
+	table := memory.NewPartitionedTable("foo", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Text, Source: "foo"},
 	}, testNumPartitions)
@@ -1787,7 +1787,7 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 		sql.NewRow(int64(3), "baz"),
 	)
 
-	table2 := mem.NewPartitionedTable("bar", sql.Schema{
+	table2 := memory.NewPartitionedTable("bar", sql.Schema{
 		{Name: "b", Type: sql.Text, Source: "bar"},
 		{Name: "c", Type: sql.Int64, Source: "bar"},
 	}, testNumPartitions)
@@ -1798,7 +1798,7 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 		sql.NewRow("pux", int64(1)),
 	)
 
-	db := mem.NewDatabase("mydb")
+	db := memory.NewDatabase("mydb")
 	db.AddTable("foo", table)
 	db.AddTable("bar", table2)
 
@@ -1865,7 +1865,7 @@ func TestDDL(t *testing.T) {
 func TestNaturalJoin(t *testing.T) {
 	require := require.New(t)
 
-	t1 := mem.NewPartitionedTable("t1", sql.Schema{
+	t1 := memory.NewPartitionedTable("t1", sql.Schema{
 		{Name: "a", Type: sql.Text, Source: "t1"},
 		{Name: "b", Type: sql.Text, Source: "t1"},
 		{Name: "c", Type: sql.Text, Source: "t1"},
@@ -1878,7 +1878,7 @@ func TestNaturalJoin(t *testing.T) {
 		sql.NewRow("a_3", "b_3", "c_3"),
 	)
 
-	t2 := mem.NewPartitionedTable("t2", sql.Schema{
+	t2 := memory.NewPartitionedTable("t2", sql.Schema{
 		{Name: "a", Type: sql.Text, Source: "t2"},
 		{Name: "b", Type: sql.Text, Source: "t2"},
 		{Name: "d", Type: sql.Text, Source: "t2"},
@@ -1891,7 +1891,7 @@ func TestNaturalJoin(t *testing.T) {
 		sql.NewRow("a_3", "b_3", "d_3"),
 	)
 
-	db := mem.NewDatabase("mydb")
+	db := memory.NewDatabase("mydb")
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
 
@@ -1917,7 +1917,7 @@ func TestNaturalJoin(t *testing.T) {
 func TestNaturalJoinEqual(t *testing.T) {
 	require := require.New(t)
 
-	t1 := mem.NewPartitionedTable("t1", sql.Schema{
+	t1 := memory.NewPartitionedTable("t1", sql.Schema{
 		{Name: "a", Type: sql.Text, Source: "t1"},
 		{Name: "b", Type: sql.Text, Source: "t1"},
 		{Name: "c", Type: sql.Text, Source: "t1"},
@@ -1930,7 +1930,7 @@ func TestNaturalJoinEqual(t *testing.T) {
 		sql.NewRow("a_3", "b_3", "c_3"),
 	)
 
-	t2 := mem.NewPartitionedTable("t2", sql.Schema{
+	t2 := memory.NewPartitionedTable("t2", sql.Schema{
 		{Name: "a", Type: sql.Text, Source: "t2"},
 		{Name: "b", Type: sql.Text, Source: "t2"},
 		{Name: "c", Type: sql.Text, Source: "t2"},
@@ -1943,7 +1943,7 @@ func TestNaturalJoinEqual(t *testing.T) {
 		sql.NewRow("a_3", "b_3", "c_3"),
 	)
 
-	db := mem.NewDatabase("mydb")
+	db := memory.NewDatabase("mydb")
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
 
@@ -1969,7 +1969,7 @@ func TestNaturalJoinEqual(t *testing.T) {
 func TestNaturalJoinDisjoint(t *testing.T) {
 	require := require.New(t)
 
-	t1 := mem.NewPartitionedTable("t1", sql.Schema{
+	t1 := memory.NewPartitionedTable("t1", sql.Schema{
 		{Name: "a", Type: sql.Text, Source: "t1"},
 	}, testNumPartitions)
 
@@ -1980,7 +1980,7 @@ func TestNaturalJoinDisjoint(t *testing.T) {
 		sql.NewRow("a3"),
 	)
 
-	t2 := mem.NewPartitionedTable("t2", sql.Schema{
+	t2 := memory.NewPartitionedTable("t2", sql.Schema{
 		{Name: "b", Type: sql.Text, Source: "t2"},
 	}, testNumPartitions)
 	insertRows(
@@ -1990,7 +1990,7 @@ func TestNaturalJoinDisjoint(t *testing.T) {
 		sql.NewRow("b3"),
 	)
 
-	db := mem.NewDatabase("mydb")
+	db := memory.NewDatabase("mydb")
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
 
@@ -2022,7 +2022,7 @@ func TestNaturalJoinDisjoint(t *testing.T) {
 func TestInnerNestedInNaturalJoins(t *testing.T) {
 	require := require.New(t)
 
-	table1 := mem.NewPartitionedTable("table1", sql.Schema{
+	table1 := memory.NewPartitionedTable("table1", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "table1"},
 		{Name: "f", Type: sql.Float64, Source: "table1"},
 		{Name: "t", Type: sql.Text, Source: "table1"},
@@ -2035,7 +2035,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T) {
 		sql.NewRow(int32(10), float64(2.1), "table1"),
 	)
 
-	table2 := mem.NewPartitionedTable("table2", sql.Schema{
+	table2 := memory.NewPartitionedTable("table2", sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "table2"},
 		{Name: "f2", Type: sql.Float64, Source: "table2"},
 		{Name: "t2", Type: sql.Text, Source: "table2"},
@@ -2048,7 +2048,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T) {
 		sql.NewRow(int32(20), float64(2.2), "table2"),
 	)
 
-	table3 := mem.NewPartitionedTable("table3", sql.Schema{
+	table3 := memory.NewPartitionedTable("table3", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "table3"},
 		{Name: "f2", Type: sql.Float64, Source: "table3"},
 		{Name: "t3", Type: sql.Text, Source: "table3"},
@@ -2061,7 +2061,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T) {
 		sql.NewRow(int32(30), float64(2.2), "table3"),
 	)
 
-	db := mem.NewDatabase("mydb")
+	db := memory.NewDatabase("mydb")
 	db.AddTable("table1", table1)
 	db.AddTable("table2", table2)
 	db.AddTable("table3", table3)
@@ -2114,7 +2114,7 @@ func newEngine(t *testing.T) *sqle.Engine {
 }
 
 func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
-	table := mem.NewPartitionedTable("mytable", sql.Schema{
+	table := memory.NewPartitionedTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable"},
 		{Name: "s", Type: sql.Text, Source: "mytable"},
 	}, testNumPartitions)
@@ -2126,7 +2126,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow(int64(3), "third row"),
 	)
 
-	table2 := mem.NewPartitionedTable("othertable", sql.Schema{
+	table2 := memory.NewPartitionedTable("othertable", sql.Schema{
 		{Name: "s2", Type: sql.Text, Source: "othertable"},
 		{Name: "i2", Type: sql.Int64, Source: "othertable"},
 	}, testNumPartitions)
@@ -2138,7 +2138,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow("third", int64(1)),
 	)
 
-	table3 := mem.NewPartitionedTable("tabletest", sql.Schema{
+	table3 := memory.NewPartitionedTable("tabletest", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "tabletest"},
 		{Name: "s", Type: sql.Text, Source: "tabletest"},
 	}, testNumPartitions)
@@ -2150,7 +2150,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow(int64(3), "third row"),
 	)
 
-	table4 := mem.NewPartitionedTable("other_table", sql.Schema{
+	table4 := memory.NewPartitionedTable("other_table", sql.Schema{
 		{Name: "text", Type: sql.Text, Source: "tabletest"},
 		{Name: "number", Type: sql.Int32, Source: "tabletest"},
 	}, testNumPartitions)
@@ -2162,7 +2162,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow("c", int32(0)),
 	)
 
-	bigtable := mem.NewPartitionedTable("bigtable", sql.Schema{
+	bigtable := memory.NewPartitionedTable("bigtable", sql.Schema{
 		{Name: "t", Type: sql.Text, Source: "bigtable"},
 		{Name: "n", Type: sql.Int64, Source: "bigtable"},
 	}, testNumPartitions)
@@ -2185,7 +2185,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow("b", int64(9)),
 	)
 
-	floatTable := mem.NewPartitionedTable("floattable", sql.Schema{
+	floatTable := memory.NewPartitionedTable("floattable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "floattable"},
 		{Name: "f32", Type: sql.Float32, Source: "floattable"},
 		{Name: "f64", Type: sql.Float64, Source: "floattable"},
@@ -2201,7 +2201,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow(-2, float32(-1.5), float64(-1.5)),
 	)
 
-	nilTable := mem.NewPartitionedTable("niltable", sql.Schema{
+	nilTable := memory.NewPartitionedTable("niltable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "niltable", Nullable: true},
 		{Name: "b", Type: sql.Boolean, Source: "niltable", Nullable: true},
 		{Name: "f", Type: sql.Float64, Source: "niltable", Nullable: true},
@@ -2216,7 +2216,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow(nil, nil, nil),
 	)
 
-	db := mem.NewDatabase("mydb")
+	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 	db.AddTable("othertable", table2)
 	db.AddTable("tabletest", table3)
@@ -2224,7 +2224,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 	db.AddTable("floattable", floatTable)
 	db.AddTable("niltable", nilTable)
 
-	db2 := mem.NewDatabase("foo")
+	db2 := memory.NewDatabase("foo")
 	db2.AddTable("other_table", table4)
 
 	catalog := sql.NewCatalog()
@@ -2488,7 +2488,7 @@ func TestCreateIndex(t *testing.T) {
 func TestOrderByGroupBy(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewPartitionedTable("members", sql.Schema{
+	table := memory.NewPartitionedTable("members", sql.Schema{
 		{Name: "id", Type: sql.Int64, Source: "members"},
 		{Name: "team", Type: sql.Text, Source: "members"},
 	}, testNumPartitions)
@@ -2503,7 +2503,7 @@ func TestOrderByGroupBy(t *testing.T) {
 		sql.NewRow(int64(8), "purple"),
 	)
 
-	db := mem.NewDatabase("db")
+	db := memory.NewDatabase("db")
 	db.AddTable("members", table)
 
 	e := sqle.NewDefault()
@@ -2583,12 +2583,12 @@ func TestTracing(t *testing.T) {
 func TestReadOnly(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewPartitionedTable("mytable", sql.Schema{
+	table := memory.NewPartitionedTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable"},
 		{Name: "s", Type: sql.Text, Source: "mytable"},
 	}, testNumPartitions)
 
-	db := mem.NewDatabase("mydb")
+	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 
 	catalog := sql.NewCatalog()
@@ -2689,11 +2689,11 @@ func TestUse(t *testing.T) {
 func TestLocks(t *testing.T) {
 	require := require.New(t)
 
-	t1 := newLockableTable(mem.NewTable("t1", nil))
-	t2 := newLockableTable(mem.NewTable("t2", nil))
-	t3 := mem.NewTable("t3", nil)
+	t1 := newLockableTable(memory.NewTable("t1", nil))
+	t2 := newLockableTable(memory.NewTable("t2", nil))
+	t3 := memory.NewTable("t3", nil)
 	catalog := sql.NewCatalog()
-	db := mem.NewDatabase("db")
+	db := memory.NewDatabase("db")
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
 	db.AddTable("t3", t3)
@@ -2789,7 +2789,7 @@ var generatorQueries = []struct {
 }
 
 func TestGenerators(t *testing.T) {
-	table := mem.NewPartitionedTable("t", sql.Schema{
+	table := memory.NewPartitionedTable("t", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t"},
 		{Name: "b", Type: sql.Array(sql.Text), Source: "t"},
 		{Name: "c", Type: sql.Text, Source: "t"},
@@ -2802,7 +2802,7 @@ func TestGenerators(t *testing.T) {
 		sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"),
 	)
 
-	db := mem.NewDatabase("db")
+	db := memory.NewDatabase("db")
 	db.AddTable("t", table)
 
 	catalog := sql.NewCatalog()

@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/src-d/go-mysql-server"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 )
 
@@ -45,8 +45,8 @@ func checkIfError(err error) {
 }
 
 func createTestDatabase() sql.Database {
-	db := mem.NewDatabase("test")
-	table := mem.NewTable("mytable", sql.Schema{
+	db := memory.NewDatabase("test")
+	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "name", Type: sql.Text, Source: "mytable"},
 		{Name: "email", Type: sql.Text, Source: "mytable"},
 	})

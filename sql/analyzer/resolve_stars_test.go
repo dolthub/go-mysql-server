@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
@@ -13,12 +13,12 @@ import (
 func TestResolveStar(t *testing.T) {
 	f := getRule("resolve_star")
 
-	table := mem.NewTable("mytable", sql.Schema{
+	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "a", Type: sql.Int32, Source: "mytable"},
 		{Name: "b", Type: sql.Int32, Source: "mytable"},
 	})
 
-	table2 := mem.NewTable("mytable2", sql.Schema{
+	table2 := memory.NewTable("mytable2", sql.Schema{
 		{Name: "c", Type: sql.Int32, Source: "mytable2"},
 		{Name: "d", Type: sql.Int32, Source: "mytable2"},
 	})

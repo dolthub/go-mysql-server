@@ -1,7 +1,7 @@
 package analyzer
 
 import (
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/plan"
 )
@@ -9,7 +9,7 @@ import (
 const dualTableName = "dual"
 
 var dualTable = func() sql.Table {
-	t := mem.NewTable(dualTableName, sql.Schema{
+	t := memory.NewTable(dualTableName, sql.Schema{
 		{Name: "dummy", Source: dualTableName, Type: sql.Text, Nullable: false},
 	})
 	_ = t.Insert(sql.NewEmptyContext(), sql.NewRow("x"))

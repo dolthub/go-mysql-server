@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 )
@@ -13,7 +13,7 @@ import (
 func TestQueryProcess(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.Schema{
 		{Name: "a", Type: sql.Int64},
 	})
 
@@ -52,7 +52,7 @@ func TestQueryProcess(t *testing.T) {
 func TestProcessTable(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewPartitionedTable("foo", sql.Schema{
+	table := memory.NewPartitionedTable("foo", sql.Schema{
 		{Name: "a", Type: sql.Int64},
 	}, 2)
 
@@ -97,7 +97,7 @@ func TestProcessTable(t *testing.T) {
 func TestProcessIndexableTable(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewPartitionedTable("foo", sql.Schema{
+	table := memory.NewPartitionedTable("foo", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 	}, 2)
 

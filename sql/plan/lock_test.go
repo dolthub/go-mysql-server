@@ -4,15 +4,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 )
 
 func TestLockTables(t *testing.T) {
 	require := require.New(t)
 
-	t1 := newLockableTable(mem.NewTable("foo", nil))
-	t2 := newLockableTable(mem.NewTable("bar", nil))
+	t1 := newLockableTable(memory.NewTable("foo", nil))
+	t2 := newLockableTable(memory.NewTable("bar", nil))
 	node := NewLockTables([]*TableLock{
 		{NewResolvedTable(t1), true},
 		{NewResolvedTable(t2), false},
@@ -31,10 +31,10 @@ func TestLockTables(t *testing.T) {
 func TestUnlockTables(t *testing.T) {
 	require := require.New(t)
 
-	db := mem.NewDatabase("db")
-	t1 := newLockableTable(mem.NewTable("foo", nil))
-	t2 := newLockableTable(mem.NewTable("bar", nil))
-	t3 := newLockableTable(mem.NewTable("baz", nil))
+	db := memory.NewDatabase("db")
+	t1 := newLockableTable(memory.NewTable("foo", nil))
+	t2 := newLockableTable(memory.NewTable("bar", nil))
+	t3 := newLockableTable(memory.NewTable("baz", nil))
 	db.AddTable("foo", t1)
 	db.AddTable("bar", t2)
 	db.AddTable("baz", t3)

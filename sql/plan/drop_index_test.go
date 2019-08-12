@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 )
@@ -13,7 +13,7 @@ import (
 func TestDeleteIndex(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
@@ -22,7 +22,7 @@ func TestDeleteIndex(t *testing.T) {
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
 	catalog.RegisterIndexDriver(driver)
-	db := mem.NewDatabase("foo")
+	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog.AddDatabase(db)
 
@@ -56,7 +56,7 @@ func TestDeleteIndex(t *testing.T) {
 func TestDeleteIndexNotReady(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
@@ -65,7 +65,7 @@ func TestDeleteIndexNotReady(t *testing.T) {
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
 	catalog.RegisterIndexDriver(driver)
-	db := mem.NewDatabase("foo")
+	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog.AddDatabase(db)
 
@@ -101,7 +101,7 @@ func TestDeleteIndexNotReady(t *testing.T) {
 func TestDeleteIndexOutdated(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
@@ -110,7 +110,7 @@ func TestDeleteIndexOutdated(t *testing.T) {
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
 	catalog.RegisterIndexDriver(driver)
-	db := mem.NewDatabase("foo")
+	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog.AddDatabase(db)
 

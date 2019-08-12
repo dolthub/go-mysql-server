@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/src-d/go-mysql-server"
+	sqle "github.com/src-d/go-mysql-server"
 
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 )
 
@@ -83,11 +83,11 @@ func executeQueries(b *testing.B, e *sqle.Engine) error {
 }
 
 func genDB(b *testing.B) (sql.Database, error) {
-	db := mem.NewDatabase("tpch")
+	db := memory.NewDatabase("tpch")
 
 	for _, m := range tpchTableMetadata {
 		b.Log("generating table", m.name)
-		t := mem.NewTable(m.name, m.schema)
+		t := memory.NewTable(m.name, m.schema)
 		if err := insertDataToTable(m.name, t, len(m.schema)); err != nil {
 			return nil, err
 		}
@@ -98,7 +98,7 @@ func genDB(b *testing.B) (sql.Database, error) {
 	return db, nil
 }
 
-func insertDataToTable(name string, t *mem.Table, columnCount int) error {
+func insertDataToTable(name string, t *memory.Table, columnCount int) error {
 	f, err := os.Open(name + ".tbl")
 	if err != nil {
 		return err

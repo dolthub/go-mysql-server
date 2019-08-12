@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
@@ -29,7 +29,7 @@ func TestNegateIndex(t *testing.T) {
 
 	a := NewDefault(catalog)
 
-	t1 := mem.NewTable("t1", sql.Schema{
+	t1 := memory.NewTable("t1", sql.Schema{
 		{Name: "foo", Type: sql.Int64, Source: "t1"},
 	})
 
@@ -86,11 +86,11 @@ func TestAssignIndexes(t *testing.T) {
 
 	a := NewDefault(catalog)
 
-	t1 := mem.NewTable("t1", sql.Schema{
+	t1 := memory.NewTable("t1", sql.Schema{
 		{Name: "foo", Type: sql.Int64, Source: "t1"},
 	})
 
-	t2 := mem.NewTable("t2", sql.Schema{
+	t2 := memory.NewTable("t2", sql.Schema{
 		{Name: "bar", Type: sql.Int64, Source: "t2"},
 		{Name: "baz", Type: sql.Int64, Source: "t2"},
 	})
@@ -861,7 +861,7 @@ func TestContainsSources(t *testing.T) {
 func TestNodeSources(t *testing.T) {
 	sources := nodeSources(
 		plan.NewResolvedTable(
-			mem.NewTable("foo", sql.Schema{
+			memory.NewTable("foo", sql.Schema{
 				{Source: "foo"},
 				{Source: "foo"},
 				{Source: "bar"},

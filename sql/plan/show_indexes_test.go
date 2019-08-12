@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 )
@@ -16,7 +16,7 @@ func TestShowIndexes(t *testing.T) {
 	require.False(unresolved.Resolved())
 	require.Nil(unresolved.Children())
 
-	db := mem.NewDatabase("test")
+	db := memory.NewDatabase("test")
 
 	tests := []struct {
 		name         string
@@ -25,7 +25,7 @@ func TestShowIndexes(t *testing.T) {
 	}{
 		{
 			name: "test1",
-			table: mem.NewTable(
+			table: memory.NewTable(
 				"test1",
 				sql.Schema{
 					&sql.Column{Name: "foo", Type: sql.Int32, Source: "test1", Default: int32(0), Nullable: false},
@@ -34,7 +34,7 @@ func TestShowIndexes(t *testing.T) {
 		},
 		{
 			name: "test2",
-			table: mem.NewTable(
+			table: memory.NewTable(
 				"test2",
 				sql.Schema{
 					&sql.Column{Name: "bar", Type: sql.Int64, Source: "test2", Default: int64(0), Nullable: true},
@@ -44,7 +44,7 @@ func TestShowIndexes(t *testing.T) {
 		},
 		{
 			name: "test3",
-			table: mem.NewTable(
+			table: memory.NewTable(
 				"test3",
 				sql.Schema{
 					&sql.Column{Name: "baz", Type: sql.Text, Source: "test3", Default: "", Nullable: false},
@@ -55,7 +55,7 @@ func TestShowIndexes(t *testing.T) {
 		},
 		{
 			name: "test4",
-			table: mem.NewTable(
+			table: memory.NewTable(
 				"test4",
 				sql.Schema{
 					&sql.Column{Name: "oof", Type: sql.Text, Source: "test4", Default: "", Nullable: false},

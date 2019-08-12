@@ -3,7 +3,7 @@ package plan
 import (
 	"testing"
 
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 
@@ -27,7 +27,7 @@ func TestSort(t *testing.T) {
 		{Name: "col2", Type: sql.Int32, Nullable: true},
 	}
 
-	child := mem.NewTable("test", schema)
+	child := memory.NewTable("test", schema)
 	for _, row := range data {
 		require.NoError(child.Insert(sql.NewEmptyContext(), row))
 	}
@@ -68,7 +68,7 @@ func TestSortAscending(t *testing.T) {
 		{Name: "col1", Type: sql.Text, Nullable: true},
 	}
 
-	child := mem.NewTable("test", schema)
+	child := memory.NewTable("test", schema)
 	for _, row := range data {
 		require.NoError(child.Insert(sql.NewEmptyContext(), row))
 	}
@@ -108,7 +108,7 @@ func TestSortDescending(t *testing.T) {
 		{Name: "col1", Type: sql.Text, Nullable: true},
 	}
 
-	child := mem.NewTable("test", schema)
+	child := memory.NewTable("test", schema)
 	for _, row := range data {
 		require.NoError(child.Insert(sql.NewEmptyContext(), row))
 	}

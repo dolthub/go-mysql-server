@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
@@ -15,7 +15,7 @@ func TestResolveOrderBy(t *testing.T) {
 	a := NewDefault(nil)
 	ctx := sql.NewEmptyContext()
 
-	table := mem.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Int64, Source: "foo"},
 	})
@@ -242,7 +242,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 	require := require.New(t)
 	f := getRule("resolve_orderby_literals")
 
-	table := mem.NewTable("t", sql.Schema{
+	table := memory.NewTable("t", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t"},
 		{Name: "b", Type: sql.Int64, Source: "t"},
 	})
