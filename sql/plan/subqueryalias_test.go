@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 )
@@ -22,7 +22,7 @@ func TestSubqueryAliasSchema(t *testing.T) {
 		{Name: "baz", Type: sql.Text, Nullable: false, Source: "alias"},
 	}
 
-	table := mem.NewTable("bar", tableSchema)
+	table := memory.NewTable("bar", tableSchema)
 
 	subquery := NewProject(
 		[]sql.Expression{

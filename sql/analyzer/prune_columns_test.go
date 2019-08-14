@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
@@ -14,13 +14,13 @@ func TestPruneColumns(t *testing.T) {
 	rule := getRuleFrom(OnceAfterDefault, "prune_columns")
 	a := NewDefault(nil)
 
-	t1 := plan.NewResolvedTable(mem.NewTable("t1", sql.Schema{
+	t1 := plan.NewResolvedTable(memory.NewTable("t1", sql.Schema{
 		{Name: "foo", Type: sql.Int64, Source: "t1"},
 		{Name: "bar", Type: sql.Int64, Source: "t1"},
 		{Name: "bax", Type: sql.Int64, Source: "t1"},
 	}))
 
-	t2 := plan.NewResolvedTable(mem.NewTable("t2", sql.Schema{
+	t2 := plan.NewResolvedTable(memory.NewTable("t2", sql.Schema{
 		{Name: "foo", Type: sql.Int64, Source: "t2"},
 		{Name: "baz", Type: sql.Int64, Source: "t2"},
 		{Name: "bux", Type: sql.Int64, Source: "t2"},

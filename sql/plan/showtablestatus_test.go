@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 )
 
@@ -13,14 +13,14 @@ func TestShowTableStatus(t *testing.T) {
 
 	catalog := sql.NewCatalog()
 
-	db1 := mem.NewDatabase("a")
-	db1.AddTable("t1", mem.NewTable("t1", nil))
-	db1.AddTable("t2", mem.NewTable("t2", nil))
+	db1 := memory.NewDatabase("a")
+	db1.AddTable("t1", memory.NewTable("t1", nil))
+	db1.AddTable("t2", memory.NewTable("t2", nil))
 	catalog.AddDatabase(db1)
 
-	db2 := mem.NewDatabase("b")
-	db2.AddTable("t3", mem.NewTable("t3", nil))
-	db2.AddTable("t4", mem.NewTable("t4", nil))
+	db2 := memory.NewDatabase("b")
+	db2.AddTable("t3", memory.NewTable("t3", nil))
+	db2.AddTable("t4", memory.NewTable("t4", nil))
 	catalog.AddDatabase(db2)
 
 	node := NewShowTableStatus()

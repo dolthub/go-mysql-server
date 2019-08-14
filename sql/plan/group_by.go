@@ -28,7 +28,6 @@ func NewGroupBy(
 	grouping []sql.Expression,
 	child sql.Node,
 ) *GroupBy {
-
 	return &GroupBy{
 		UnaryNode: UnaryNode{Child: child},
 		Aggregate: aggregate,
@@ -102,7 +101,7 @@ func (p *GroupBy) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewGroupBy(p.Aggregate, p.Grouping, children[0]), nil
 }
 
-// WithChildren implements the Node interface.
+// WithExpressions implements the Node interface.
 func (p *GroupBy) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	expected := len(p.Aggregate) + len(p.Grouping)
 	if len(exprs) != expected {
@@ -206,11 +205,12 @@ func (i *groupByIter) Close() error {
 type groupByGroupingIter struct {
 	aggregate   []sql.Expression
 	grouping    []sql.Expression
-	aggregation map[uint64][]sql.Row
+	aggregation sql.KeyValueCache
 	keys        []uint64
 	pos         int
 	child       sql.RowIter
 	ctx         *sql.Context
+	dispose     sql.DisposeFunc
 }
 
 func newGroupByGroupingIter(
@@ -228,7 +228,7 @@ func newGroupByGroupingIter(
 
 func (i *groupByGroupingIter) Next() (sql.Row, error) {
 	if i.aggregation == nil {
-		i.aggregation = make(map[uint64][]sql.Row)
+		i.aggregation, i.dispose = i.ctx.Memory.NewHistoryCache()
 		if err := i.compute(); err != nil {
 			return nil, err
 		}
@@ -238,9 +238,12 @@ func (i *groupByGroupingIter) Next() (sql.Row, error) {
 		return nil, io.EOF
 	}
 
-	buffers := i.aggregation[i.keys[i.pos]]
+	buffers, err := i.aggregation.Get(i.keys[i.pos])
+	if err != nil {
+		return nil, err
+	}
 	i.pos++
-	return evalBuffers(i.ctx, buffers, i.aggregate)
+	return evalBuffers(i.ctx, buffers.([]sql.Row), i.aggregate)
 }
 
 func (i *groupByGroupingIter) compute() error {
@@ -258,16 +261,25 @@ func (i *groupByGroupingIter) compute() error {
 			return err
 		}
 
-		if _, ok := i.aggregation[key]; !ok {
+		if _, err := i.aggregation.Get(key); err != nil {
 			var buf = make([]sql.Row, len(i.aggregate))
 			for j, a := range i.aggregate {
 				buf[j] = fillBuffer(a)
 			}
-			i.aggregation[key] = buf
+
+			if err := i.aggregation.Put(key, buf); err != nil {
+				return err
+			}
+
 			i.keys = append(i.keys, key)
 		}
 
-		err = updateBuffers(i.ctx, i.aggregation[key], i.aggregate, row)
+		b, err := i.aggregation.Get(key)
+		if err != nil {
+			return err
+		}
+
+		err = updateBuffers(i.ctx, b.([]sql.Row), i.aggregate, row)
 		if err != nil {
 			return err
 		}

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
@@ -13,7 +13,7 @@ import (
 func TestReorderProjection(t *testing.T) {
 	f := getRule("reorder_projection")
 
-	table := mem.NewTable("mytable", sql.Schema{{
+	table := memory.NewTable("mytable", sql.Schema{{
 		Name: "i", Source: "mytable", Type: sql.Int64,
 	}})
 
@@ -137,7 +137,7 @@ func TestEraseProjection(t *testing.T) {
 	require := require.New(t)
 	f := getRule("erase_projection")
 
-	table := mem.NewTable("mytable", sql.Schema{{
+	table := memory.NewTable("mytable", sql.Schema{{
 		Name: "i", Source: "mytable", Type: sql.Int64,
 	}})
 
@@ -188,8 +188,8 @@ func TestEraseProjection(t *testing.T) {
 func TestOptimizeDistinct(t *testing.T) {
 	require := require.New(t)
 
-	t1 := mem.NewTable("foo", nil)
-	t2 := mem.NewTable("foo", nil)
+	t1 := memory.NewTable("foo", nil)
+	t2 := memory.NewTable("foo", nil)
 
 	notSorted := plan.NewDistinct(plan.NewResolvedTable(t1))
 	sorted := plan.NewDistinct(plan.NewSort(nil, plan.NewResolvedTable(t2)))
@@ -207,17 +207,17 @@ func TestOptimizeDistinct(t *testing.T) {
 }
 
 func TestMoveJoinConditionsToFilter(t *testing.T) {
-	t1 := mem.NewTable("t1", sql.Schema{
+	t1 := memory.NewTable("t1", sql.Schema{
 		{Name: "a", Source: "t1", Type: sql.Int64},
 		{Name: "b", Source: "t1", Type: sql.Int64},
 	})
 
-	t2 := mem.NewTable("t2", sql.Schema{
+	t2 := memory.NewTable("t2", sql.Schema{
 		{Name: "c", Source: "t2", Type: sql.Int64},
 		{Name: "d", Source: "t2", Type: sql.Int64},
 	})
 
-	t3 := mem.NewTable("t3", sql.Schema{
+	t3 := memory.NewTable("t3", sql.Schema{
 		{Name: "e", Source: "t3", Type: sql.Int64},
 		{Name: "f", Source: "t3", Type: sql.Int64},
 	})
@@ -295,7 +295,7 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 }
 
 func TestEvalFilter(t *testing.T) {
-	inner := mem.NewTable("foo", nil)
+	inner := memory.NewTable("foo", nil)
 	rule := getRule("eval_filter")
 
 	testCases := []struct {
@@ -428,7 +428,7 @@ func TestRemoveUnnecessaryConverts(t *testing.T) {
 			node := plan.NewProject([]sql.Expression{
 				expression.NewConvert(tt.childExpr, tt.castType),
 			},
-				plan.NewResolvedTable(mem.NewTable("foo", nil)),
+				plan.NewResolvedTable(memory.NewTable("foo", nil)),
 			)
 
 			result, err := removeUnnecessaryConverts(

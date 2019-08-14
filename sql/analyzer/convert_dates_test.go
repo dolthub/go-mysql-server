@@ -3,7 +3,7 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function"
@@ -158,7 +158,7 @@ func TestConvertDates(t *testing.T) {
 		},
 	}
 
-	table := plan.NewResolvedTable(mem.NewTable("t", nil))
+	table := plan.NewResolvedTable(memory.NewTable("t", nil))
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -172,7 +172,7 @@ func TestConvertDates(t *testing.T) {
 }
 
 func TestConvertDatesProject(t *testing.T) {
-	table := plan.NewResolvedTable(mem.NewTable("t", nil))
+	table := plan.NewResolvedTable(memory.NewTable("t", nil))
 	input := plan.NewFilter(
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Int64, "foo", false),
@@ -204,7 +204,7 @@ func TestConvertDatesProject(t *testing.T) {
 }
 
 func TestConvertDatesGroupBy(t *testing.T) {
-	table := plan.NewResolvedTable(mem.NewTable("t", nil))
+	table := plan.NewResolvedTable(memory.NewTable("t", nil))
 	input := plan.NewFilter(
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Int64, "foo", false),
@@ -250,7 +250,7 @@ func TestConvertDatesGroupBy(t *testing.T) {
 }
 
 func TestConvertDatesFieldReference(t *testing.T) {
-	table := plan.NewResolvedTable(mem.NewTable("t", nil))
+	table := plan.NewResolvedTable(memory.NewTable("t", nil))
 	input := plan.NewFilter(
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Int64, "DAYOFWEEK(foo)", false),

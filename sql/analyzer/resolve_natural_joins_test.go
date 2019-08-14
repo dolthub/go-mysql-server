@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
@@ -13,13 +13,13 @@ import (
 func TestResolveNaturalJoins(t *testing.T) {
 	require := require.New(t)
 
-	left := mem.NewTable("t1", sql.Schema{
+	left := memory.NewTable("t1", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
 	})
 
-	right := mem.NewTable("t2", sql.Schema{
+	right := memory.NewTable("t2", sql.Schema{
 		{Name: "d", Type: sql.Int64, Source: "t2"},
 		{Name: "c", Type: sql.Int64, Source: "t2"},
 		{Name: "b", Type: sql.Int64, Source: "t2"},
@@ -66,13 +66,13 @@ func TestResolveNaturalJoinsColumns(t *testing.T) {
 	rule := getRule("resolve_natural_joins")
 	require := require.New(t)
 
-	left := mem.NewTable("t1", sql.Schema{
+	left := memory.NewTable("t1", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
 	})
 
-	right := mem.NewTable("t2", sql.Schema{
+	right := memory.NewTable("t2", sql.Schema{
 		{Name: "d", Type: sql.Int64, Source: "t2"},
 		{Name: "c", Type: sql.Int64, Source: "t2"},
 		{Name: "b", Type: sql.Int64, Source: "t2"},
@@ -128,13 +128,13 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 	rule := getRule("resolve_natural_joins")
 	require := require.New(t)
 
-	left := mem.NewTable("t1", sql.Schema{
+	left := memory.NewTable("t1", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
 	})
 
-	right := mem.NewTable("t2", sql.Schema{
+	right := memory.NewTable("t2", sql.Schema{
 		{Name: "d", Type: sql.Int64, Source: "t2"},
 		{Name: "c", Type: sql.Int64, Source: "t2"},
 		{Name: "b", Type: sql.Int64, Source: "t2"},
@@ -192,21 +192,21 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 	rule := getRule("resolve_natural_joins")
 	require := require.New(t)
 
-	left := mem.NewTable("t1", sql.Schema{
+	left := memory.NewTable("t1", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
 		{Name: "f", Type: sql.Int64, Source: "t1"},
 	})
 
-	right := mem.NewTable("t2", sql.Schema{
+	right := memory.NewTable("t2", sql.Schema{
 		{Name: "d", Type: sql.Int64, Source: "t2"},
 		{Name: "c", Type: sql.Int64, Source: "t2"},
 		{Name: "b", Type: sql.Int64, Source: "t2"},
 		{Name: "e", Type: sql.Int64, Source: "t2"},
 	})
 
-	upperRight := mem.NewTable("t3", sql.Schema{
+	upperRight := memory.NewTable("t3", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t3"},
 		{Name: "b", Type: sql.Int64, Source: "t3"},
 		{Name: "f", Type: sql.Int64, Source: "t3"},
@@ -297,13 +297,13 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 func TestResolveNaturalJoinsEqual(t *testing.T) {
 	require := require.New(t)
 
-	left := mem.NewTable("t1", sql.Schema{
+	left := memory.NewTable("t1", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
 	})
 
-	right := mem.NewTable("t2", sql.Schema{
+	right := memory.NewTable("t2", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t2"},
 		{Name: "b", Type: sql.Int64, Source: "t2"},
 		{Name: "c", Type: sql.Int64, Source: "t2"},
@@ -350,13 +350,13 @@ func TestResolveNaturalJoinsEqual(t *testing.T) {
 func TestResolveNaturalJoinsDisjoint(t *testing.T) {
 	require := require.New(t)
 
-	left := mem.NewTable("t1", sql.Schema{
+	left := memory.NewTable("t1", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
 	})
 
-	right := mem.NewTable("t2", sql.Schema{
+	right := memory.NewTable("t2", sql.Schema{
 		{Name: "d", Type: sql.Int64, Source: "t2"},
 		{Name: "e", Type: sql.Int64, Source: "t2"},
 	})

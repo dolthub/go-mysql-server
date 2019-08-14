@@ -3,7 +3,7 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function"
@@ -57,7 +57,7 @@ func TestValidateGroupBy(t *testing.T) {
 		{Name: "col2", Type: sql.Int64},
 	}
 
-	child := mem.NewTable("test", childSchema)
+	child := memory.NewTable("test", childSchema)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -102,7 +102,7 @@ func TestValidateGroupByErr(t *testing.T) {
 		{Name: "col2", Type: sql.Int64},
 	}
 
-	child := mem.NewTable("test", childSchema)
+	child := memory.NewTable("test", childSchema)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -145,7 +145,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		{
 			"table with valid schema",
 			plan.NewResolvedTable(
-				mem.NewTable(
+				memory.NewTable(
 					"mytable",
 					sql.Schema{
 						{Name: "foo", Source: "mytable"},
@@ -158,7 +158,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		{
 			"table with invalid schema",
 			plan.NewResolvedTable(
-				mem.NewTable(
+				memory.NewTable(
 					"mytable",
 					sql.Schema{
 						{Name: "foo", Source: ""},
@@ -171,7 +171,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		{
 			"table alias with table",
 			plan.NewTableAlias("foo", plan.NewResolvedTable(
-				mem.NewTable("mytable", sql.Schema{
+				memory.NewTable("mytable", sql.Schema{
 					{Name: "foo", Source: "mytable"},
 				}),
 			)),
@@ -311,7 +311,7 @@ func TestValidateProjectTuples(t *testing.T) {
 }
 
 func TestValidateIndexCreation(t *testing.T) {
-	table := mem.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 	})

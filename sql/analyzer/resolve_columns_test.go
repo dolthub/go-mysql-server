@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
@@ -14,7 +14,7 @@ import (
 func TestQualifyColumnsProject(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.Schema{
 		{Name: "a", Type: sql.Text, Source: "foo"},
 		{Name: "b", Type: sql.Text, Source: "foo"},
 	})
@@ -56,7 +56,7 @@ func TestMisusedAlias(t *testing.T) {
 	require := require.New(t)
 	f := getRule("check_aliases")
 
-	table := mem.NewTable("mytable", sql.Schema{
+	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32},
 	})
 
@@ -79,10 +79,10 @@ func TestQualifyColumns(t *testing.T) {
 	require := require.New(t)
 	f := getRule("qualify_columns")
 
-	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32, Source: "mytable"}})
-	table2 := mem.NewTable("mytable2", sql.Schema{{Name: "i", Type: sql.Int32, Source: "mytable2"}})
-	sessionTable := mem.NewTable("@@session", sql.Schema{{Name: "autocommit", Type: sql.Int64, Source: "@@session"}})
-	globalTable := mem.NewTable("@@global", sql.Schema{{Name: "max_allowed_packet", Type: sql.Int64, Source: "@@global"}})
+	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32, Source: "mytable"}})
+	table2 := memory.NewTable("mytable2", sql.Schema{{Name: "i", Type: sql.Int32, Source: "mytable2"}})
+	sessionTable := memory.NewTable("@@session", sql.Schema{{Name: "autocommit", Type: sql.Int64, Source: "@@session"}})
+	globalTable := memory.NewTable("@@global", sql.Schema{{Name: "max_allowed_packet", Type: sql.Int64, Source: "@@global"}})
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -250,7 +250,7 @@ func TestQualifyColumnsQualifiedStar(t *testing.T) {
 	require := require.New(t)
 	f := getRule("qualify_columns")
 
-	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
+	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -334,7 +334,7 @@ func TestResolveGroupingColumns(t *testing.T) {
 			expression.NewUnresolvedColumn("a"),
 			expression.NewUnresolvedColumn("b"),
 		},
-		plan.NewResolvedTable(mem.NewTable("table", nil)),
+		plan.NewResolvedTable(memory.NewTable("table", nil)),
 	)
 
 	expected := plan.NewGroupBy(
@@ -367,7 +367,7 @@ func TestResolveGroupingColumns(t *testing.T) {
 				),
 				expression.NewUnresolvedColumn("c"),
 			},
-			plan.NewResolvedTable(mem.NewTable("table", nil)),
+			plan.NewResolvedTable(memory.NewTable("table", nil)),
 		),
 	)
 

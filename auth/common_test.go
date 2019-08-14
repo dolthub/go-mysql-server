@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	sqle "github.com/src-d/go-mysql-server"
 	"github.com/src-d/go-mysql-server/auth"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/server"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/analyzer"
@@ -21,13 +21,13 @@ import (
 const port = 3336
 
 func authEngine(au auth.Auth) (string, *sqle.Engine, error) {
-	db := mem.NewDatabase("test")
+	db := memory.NewDatabase("test")
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 
 	tblName := "test"
 
-	table := mem.NewTable(tblName, sql.Schema{
+	table := memory.NewTable(tblName, sql.Schema{
 		{Name: "id", Type: sql.Text, Nullable: false, Source: tblName},
 		{Name: "name", Type: sql.Text, Nullable: false, Source: tblName},
 	})

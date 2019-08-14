@@ -1,4 +1,4 @@
-package mem // import "github.com/src-d/go-mysql-server/mem"
+package memory
 
 import (
 	"github.com/src-d/go-mysql-server/sql"

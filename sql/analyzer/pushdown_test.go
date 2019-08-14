@@ -3,7 +3,7 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
@@ -14,19 +14,19 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 	require := require.New(t)
 	f := getRule("pushdown")
 
-	table := mem.NewTable("mytable", sql.Schema{
+	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
 	})
 
-	table2 := mem.NewTable("mytable2", sql.Schema{
+	table2 := memory.NewTable("mytable2", sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
 	})
 
-	db := mem.NewDatabase("mydb")
+	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
@@ -66,14 +66,14 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
 						expression.NewLiteral(3.14, sql.Float64),
 					),
-				}).(*mem.Table).WithProjection([]string{"i", "f"}),
+				}).(*memory.Table).WithProjection([]string{"i", "f"}),
 			),
 			plan.NewResolvedTable(
 				table2.WithFilters([]sql.Expression{
 					expression.NewIsNull(
 						expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
 					),
-				}).(*mem.Table).WithProjection([]string{"i2"}),
+				}).(*memory.Table).WithProjection([]string{"i2"}),
 			),
 		),
 	)
@@ -86,19 +86,19 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 func TestPushdownIndexable(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewTable("mytable", sql.Schema{
+	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
 	})
 
-	table2 := mem.NewTable("mytable2", sql.Schema{
+	table2 := memory.NewTable("mytable2", sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
 	})
 
-	db := mem.NewDatabase("")
+	db := memory.NewDatabase("")
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
@@ -187,8 +187,8 @@ func TestPushdownIndexable(t *testing.T) {
 							expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 							expression.NewLiteral(1, sql.Int32),
 						),
-					}).(*mem.Table).
-						WithProjection([]string{"i", "f"}).(*mem.Table).
+					}).(*memory.Table).
+						WithProjection([]string{"i", "f"}).(*memory.Table).
 						WithIndexLookup(&mergeableIndexLookup{id: "3.14"}),
 				),
 				plan.NewResolvedTable(
@@ -199,8 +199,8 @@ func TestPushdownIndexable(t *testing.T) {
 								expression.NewLiteral(2, sql.Int32),
 							),
 						),
-					}).(*mem.Table).
-						WithProjection([]string{"i2"}).(*mem.Table).
+					}).(*memory.Table).
+						WithProjection([]string{"i2"}).(*memory.Table).
 						WithIndexLookup(&negateIndexLookup{value: "2"}),
 				),
 			),

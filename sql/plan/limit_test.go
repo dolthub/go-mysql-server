@@ -8,11 +8,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 )
 
-var testingTable *mem.Table
+var testingTable *memory.Table
 var testingTableSize int
 
 func TestLimitPlan(t *testing.T) {
@@ -80,7 +80,7 @@ func testLimitOverflow(t *testing.T, iter sql.RowIter, limit int, dataSize int) 
 	}
 }
 
-func getTestingTable(t *testing.T) (*mem.Table, int) {
+func getTestingTable(t *testing.T) (*memory.Table, int) {
 	t.Helper()
 	if &testingTable == nil {
 		return testingTable, testingTableSize
@@ -89,7 +89,7 @@ func getTestingTable(t *testing.T) (*mem.Table, int) {
 	childSchema := sql.Schema{
 		{Name: "col1", Type: sql.Text},
 	}
-	testingTable = mem.NewTable("test", childSchema)
+	testingTable = memory.NewTable("test", childSchema)
 
 	rows := []sql.Row{
 		sql.NewRow("11a"),

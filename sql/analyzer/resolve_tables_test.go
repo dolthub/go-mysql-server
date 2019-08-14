@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
@@ -15,8 +15,8 @@ func TestResolveTables(t *testing.T) {
 
 	f := getRule("resolve_tables")
 
-	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
-	db := mem.NewDatabase("mydb")
+	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
+	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 
 	catalog := sql.NewCatalog()
@@ -54,14 +54,14 @@ func TestResolveTablesNested(t *testing.T) {
 
 	f := getRule("resolve_tables")
 
-	table := mem.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
-	table2 := mem.NewTable("my_other_table", sql.Schema{{Name: "i", Type: sql.Int32}})
-	db := mem.NewDatabase("mydb")
+	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
+	table2 := memory.NewTable("my_other_table", sql.Schema{{Name: "i", Type: sql.Int32}})
+	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 
-	db2 := mem.NewDatabase("my_other_db")
+	db2 := memory.NewDatabase("my_other_db")
 	db2.AddTable("my_other_table", table2)
 	catalog.AddDatabase(db2)
 

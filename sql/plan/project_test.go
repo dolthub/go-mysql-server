@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 )
@@ -18,7 +18,7 @@ func TestProject(t *testing.T) {
 		{Name: "col1", Type: sql.Text, Nullable: true},
 		{Name: "col2", Type: sql.Text, Nullable: true},
 	}
-	child := mem.NewTable("test", childSchema)
+	child := memory.NewTable("test", childSchema)
 	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_1", "col2_1"))
 	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_2", "col2_2"))
 	p := NewProject(

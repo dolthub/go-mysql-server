@@ -10,20 +10,10 @@ env:
 addons:
   apt:
     packages:
-      - libonig-dev
       - libmysqlclient-dev
 
 matrix:
   fast_finish: true
-
-sudo: required
-
-services:
-  - docker
-
-install:
-  - go get ./...
-  - make dependencies
 
 before_script:
   - sudo service mysql stop
@@ -45,8 +35,6 @@ jobs:
       python: '3.6'
       before_install:
         - eval "$(gimme 1.12.4)"
-      install:
-        - go get ./...
       script:
         - make TEST=python-pymysql integration
 
@@ -54,8 +42,6 @@ jobs:
       php: '7.1'
       before_install:
         - eval "$(gimme 1.12.4)"
-      install:
-        - go get ./...
       script:
         - make TEST=php integration
 
@@ -63,8 +49,6 @@ jobs:
       ruby: '2.3'
       before_install:
         - eval "$(gimme 1.12.4)"
-      install:
-        - go get ./...
       script:
         - make TEST=ruby integration
 
@@ -72,8 +56,6 @@ jobs:
       jdk: openjdk8
       before_install:
         - eval "$(gimme 1.12.4)"
-      install:
-        - go get ./...
       script:
         - make TEST=jdbc-mariadb integration
 
@@ -81,8 +63,6 @@ jobs:
       node_js: '7'
       before_install:
         - eval "$(gimme 1.12.4)"
-      install:
-        - go get ./...
       script:
         - make TEST=javascript integration
 
@@ -91,8 +71,6 @@ jobs:
       dotnet: '2.1'
       before_install:
         - eval "$(gimme 1.12.4)"
-      install:
-        - go get ./...
       script:
         - make TEST=dotnet integration
 
@@ -100,7 +78,5 @@ jobs:
       compiler: clang
       before_install:
         - eval "$(gimme 1.12.4)"
-      install:
-        - go get ./...
       script:
         - make TEST=c integration

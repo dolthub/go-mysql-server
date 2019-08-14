@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/test"
@@ -18,7 +18,7 @@ import (
 func TestCreateIndexAsync(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
@@ -27,7 +27,7 @@ func TestCreateIndexAsync(t *testing.T) {
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
 	catalog.RegisterIndexDriver(driver)
-	db := mem.NewDatabase("foo")
+	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog.AddDatabase(db)
 
@@ -72,7 +72,7 @@ func TestCreateIndexAsync(t *testing.T) {
 func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Blob},
 		{Name: "b", Source: "foo", Type: sql.JSON},
 		{Name: "c", Source: "foo", Type: sql.Text},
@@ -81,7 +81,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
 	catalog.RegisterIndexDriver(driver)
-	db := mem.NewDatabase("foo")
+	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog.AddDatabase(db)
 
@@ -121,7 +121,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 func TestCreateIndexSync(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
@@ -130,7 +130,7 @@ func TestCreateIndexSync(t *testing.T) {
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
 	catalog.RegisterIndexDriver(driver)
-	db := mem.NewDatabase("foo")
+	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog.AddDatabase(db)
 
@@ -175,7 +175,7 @@ func TestCreateIndexChecksum(t *testing.T) {
 	require := require.New(t)
 
 	table := &checksumTable{
-		mem.NewTable("foo", sql.Schema{
+		memory.NewTable("foo", sql.Schema{
 			{Name: "a", Source: "foo"},
 			{Name: "b", Source: "foo"},
 			{Name: "c", Source: "foo"},
@@ -186,7 +186,7 @@ func TestCreateIndexChecksum(t *testing.T) {
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
 	catalog.RegisterIndexDriver(driver)
-	db := mem.NewDatabase("foo")
+	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog.AddDatabase(db)
 
@@ -217,7 +217,7 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 			&underlyingTable{
 				&underlyingTable{
 					&checksumTable{
-						mem.NewTable("foo", sql.Schema{
+						memory.NewTable("foo", sql.Schema{
 							{Name: "a", Source: "foo"},
 							{Name: "b", Source: "foo"},
 							{Name: "c", Source: "foo"},
@@ -253,7 +253,7 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 
 func TestCreateIndexWithIter(t *testing.T) {
 	require := require.New(t)
-	foo := mem.NewPartitionedTable("foo", sql.Schema{
+	foo := memory.NewPartitionedTable("foo", sql.Schema{
 		{Name: "one", Source: "foo", Type: sql.Int64},
 		{Name: "two", Source: "foo", Type: sql.Int64},
 	}, 2)
@@ -277,7 +277,7 @@ func TestCreateIndexWithIter(t *testing.T) {
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
 	catalog.RegisterIndexDriver(driver)
-	db := mem.NewDatabase("foo")
+	db := memory.NewDatabase("foo")
 	db.AddTable("foo", foo)
 	catalog.AddDatabase(db)
 

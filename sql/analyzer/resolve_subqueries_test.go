@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
@@ -13,13 +13,13 @@ import (
 func TestResolveSubqueries(t *testing.T) {
 	require := require.New(t)
 
-	table1 := mem.NewTable("foo", sql.Schema{{Name: "a", Type: sql.Int64, Source: "foo"}})
-	table2 := mem.NewTable("bar", sql.Schema{
+	table1 := memory.NewTable("foo", sql.Schema{{Name: "a", Type: sql.Int64, Source: "foo"}})
+	table2 := memory.NewTable("bar", sql.Schema{
 		{Name: "b", Type: sql.Int64, Source: "bar"},
 		{Name: "k", Type: sql.Int64, Source: "bar"},
 	})
-	table3 := mem.NewTable("baz", sql.Schema{{Name: "c", Type: sql.Int64, Source: "baz"}})
-	db := mem.NewDatabase("mydb")
+	table3 := memory.NewTable("baz", sql.Schema{{Name: "c", Type: sql.Int64, Source: "baz"}})
+	db := memory.NewDatabase("mydb")
 	db.AddTable("foo", table1)
 	db.AddTable("bar", table2)
 	db.AddTable("baz", table3)

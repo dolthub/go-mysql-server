@@ -28,6 +28,7 @@ func DefaultSessionBuilder(c *mysql.Conn, addr string) sql.Session {
 type SessionManager struct {
 	addr     string
 	tracer   opentracing.Tracer
+	memory   *sql.MemoryManager
 	mu       *sync.Mutex
 	builder  SessionBuilder
 	sessions map[uint32]sql.Session
@@ -38,11 +39,13 @@ type SessionManager struct {
 func NewSessionManager(
 	builder SessionBuilder,
 	tracer opentracing.Tracer,
+	memory *sql.MemoryManager,
 	addr string,
 ) *SessionManager {
 	return &SessionManager{
 		addr:     addr,
 		tracer:   tracer,
+		memory:   memory,
 		mu:       new(sync.Mutex),
 		builder:  builder,
 		sessions: make(map[uint32]sql.Session),
@@ -97,6 +100,7 @@ func (s *SessionManager) NewContextWithQuery(
 		sql.WithTracer(s.tracer),
 		sql.WithPid(s.nextPid()),
 		sql.WithQuery(query),
+		sql.WithMemoryManager(s.memory),
 	)
 
 	return context

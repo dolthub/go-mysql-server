@@ -7,11 +7,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 )
 
-var benchtable = func() *mem.Table {
+var benchtable = func() *memory.Table {
 	schema := sql.Schema{
 		{Name: "strfield", Type: sql.Text, Nullable: true},
 		{Name: "floatfield", Type: sql.Float64, Nullable: true},
@@ -20,7 +20,7 @@ var benchtable = func() *mem.Table {
 		{Name: "bigintfield", Type: sql.Int64, Nullable: false},
 		{Name: "blobfield", Type: sql.Blob, Nullable: false},
 	}
-	t := mem.NewTable("test", schema)
+	t := memory.NewTable("test", schema)
 
 	for i := 0; i < 100; i++ {
 		n := fmt.Sprint(i)
@@ -109,7 +109,7 @@ func collectRows(t *testing.T, node sql.Node) []sql.Row {
 
 func TestIsUnary(t *testing.T) {
 	require := require.New(t)
-	table := mem.NewTable("foo", nil)
+	table := memory.NewTable("foo", nil)
 
 	require.True(IsUnary(NewFilter(nil, NewResolvedTable(table))))
 	require.False(IsUnary(NewCrossJoin(
@@ -120,7 +120,7 @@ func TestIsUnary(t *testing.T) {
 
 func TestIsBinary(t *testing.T) {
 	require := require.New(t)
-	table := mem.NewTable("foo", nil)
+	table := memory.NewTable("foo", nil)
 
 	require.False(IsBinary(NewFilter(nil, NewResolvedTable(table))))
 	require.True(IsBinary(NewCrossJoin(

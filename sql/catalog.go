@@ -18,6 +18,7 @@ type Catalog struct {
 	FunctionRegistry
 	*IndexRegistry
 	*ProcessList
+	*MemoryManager
 
 	mu              sync.RWMutex
 	currentDatabase string
@@ -36,6 +37,7 @@ func NewCatalog() *Catalog {
 	return &Catalog{
 		FunctionRegistry: NewFunctionRegistry(),
 		IndexRegistry:    NewIndexRegistry(),
+		MemoryManager:    NewMemoryManager(ProcessMemory),
 		ProcessList:      NewProcessList(),
 		locks:            make(sessionLocks),
 	}

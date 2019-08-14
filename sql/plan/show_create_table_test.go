@@ -4,16 +4,16 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 )
 
 func TestShowCreateTable(t *testing.T) {
 	var require = require.New(t)
 
-	db := mem.NewDatabase("testdb")
+	db := memory.NewDatabase("testdb")
 
-	table := mem.NewTable(
+	table := memory.NewTable(
 		"test-table",
 		sql.Schema{
 			&sql.Column{Name: "baz", Type: sql.Text, Default: "", Nullable: false},

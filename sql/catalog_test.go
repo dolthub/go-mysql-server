@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 )
 
@@ -14,7 +14,7 @@ func TestCatalogCurrentDatabase(t *testing.T) {
 	c := sql.NewCatalog()
 	require.Equal("", c.CurrentDatabase())
 
-	c.AddDatabase(mem.NewDatabase("foo"))
+	c.AddDatabase(memory.NewDatabase("foo"))
 	require.Equal("foo", c.CurrentDatabase())
 
 	c.SetCurrentDatabase("bar")
@@ -25,9 +25,9 @@ func TestAllDatabases(t *testing.T) {
 	require := require.New(t)
 
 	var dbs = sql.Databases{
-		mem.NewDatabase("a"),
-		mem.NewDatabase("b"),
-		mem.NewDatabase("c"),
+		memory.NewDatabase("a"),
+		memory.NewDatabase("b"),
+		memory.NewDatabase("c"),
 	}
 
 	c := sql.NewCatalog()
@@ -46,7 +46,7 @@ func TestCatalogDatabase(t *testing.T) {
 	require.EqualError(err, "database not found: foo")
 	require.Nil(db)
 
-	mydb := mem.NewDatabase("foo")
+	mydb := memory.NewDatabase("foo")
 	c.AddDatabase(mydb)
 
 	db, err = c.Database("flo")
@@ -67,14 +67,14 @@ func TestCatalogTable(t *testing.T) {
 	require.EqualError(err, "database not found: foo")
 	require.Nil(table)
 
-	db := mem.NewDatabase("foo")
+	db := memory.NewDatabase("foo")
 	c.AddDatabase(db)
 
 	table, err = c.Table("foo", "bar")
 	require.EqualError(err, "table not found: bar")
 	require.Nil(table)
 
-	mytable := mem.NewTable("bar", nil)
+	mytable := memory.NewTable("bar", nil)
 	db.AddTable("bar", mytable)
 
 	table, err = c.Table("foo", "baz")
@@ -93,9 +93,9 @@ func TestCatalogTable(t *testing.T) {
 func TestCatalogUnlockTables(t *testing.T) {
 	require := require.New(t)
 
-	db := mem.NewDatabase("db")
-	t1 := newLockableTable(mem.NewTable("t1", nil))
-	t2 := newLockableTable(mem.NewTable("t2", nil))
+	db := memory.NewDatabase("db")
+	t1 := newLockableTable(memory.NewTable("t1", nil))
+	t2 := newLockableTable(memory.NewTable("t2", nil))
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
 

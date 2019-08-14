@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function/aggregation"
@@ -13,7 +13,7 @@ import (
 func TestGroupBySchema(t *testing.T) {
 	require := require.New(t)
 
-	child := mem.NewTable("test", nil)
+	child := memory.NewTable("test", nil)
 	agg := []sql.Expression{
 		expression.NewAlias(expression.NewLiteral("s", sql.Text), "c1"),
 		expression.NewAlias(aggregation.NewCount(expression.NewStar()), "c2"),
@@ -28,7 +28,7 @@ func TestGroupBySchema(t *testing.T) {
 func TestGroupByResolved(t *testing.T) {
 	require := require.New(t)
 
-	child := mem.NewTable("test", nil)
+	child := memory.NewTable("test", nil)
 	agg := []sql.Expression{
 		expression.NewAlias(aggregation.NewCount(expression.NewStar()), "c2"),
 	}
@@ -50,7 +50,7 @@ func TestGroupByRowIter(t *testing.T) {
 		{Name: "col1", Type: sql.Text},
 		{Name: "col2", Type: sql.Int64},
 	}
-	child := mem.NewTable("test", childSchema)
+	child := memory.NewTable("test", childSchema)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -114,7 +114,7 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 		{Name: "col2", Type: sql.Int64},
 	}
 
-	child := mem.NewTable("test", childSchema)
+	child := memory.NewTable("test", childSchema)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -208,7 +208,7 @@ func benchmarkTable(t testing.TB) sql.Table {
 	t.Helper()
 	require := require.New(t)
 
-	table := mem.NewTable("test", sql.Schema{
+	table := memory.NewTable("test", sql.Schema{
 		{Name: "a", Type: sql.Int64},
 		{Name: "b", Type: sql.Int64},
 	})

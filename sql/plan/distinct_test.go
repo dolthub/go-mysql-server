@@ -4,10 +4,10 @@ import (
 	"io"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDistinct(t *testing.T) {
@@ -18,7 +18,7 @@ func TestDistinct(t *testing.T) {
 		{Name: "name", Type: sql.Text, Nullable: true},
 		{Name: "email", Type: sql.Text, Nullable: true},
 	}
-	child := mem.NewTable("test", childSchema)
+	child := memory.NewTable("test", childSchema)
 
 	rows := []sql.Row{
 		sql.NewRow("john", "john@doe.com"),
@@ -65,7 +65,7 @@ func TestOrderedDistinct(t *testing.T) {
 		{Name: "name", Type: sql.Text, Nullable: true},
 		{Name: "email", Type: sql.Text, Nullable: true},
 	}
-	child := mem.NewTable("test", childSchema)
+	child := memory.NewTable("test", childSchema)
 
 	rows := []sql.Row{
 		sql.NewRow("jane", "jane@doe.com"),

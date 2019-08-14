@@ -4,7 +4,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
 )
@@ -38,8 +38,8 @@ func TestCrossJoin(t *testing.T) {
 		{Name: "rcol4", Type: sql.Int64},
 	}
 
-	ltable := mem.NewTable("left", lSchema)
-	rtable := mem.NewTable("right", rSchema)
+	ltable := memory.NewTable("left", lSchema)
+	rtable := memory.NewTable("right", rSchema)
 	insertData(t, ltable)
 	insertData(t, rtable)
 
@@ -99,8 +99,8 @@ func TestCrossJoin_Empty(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	ltable := mem.NewTable("left", lSchema)
-	rtable := mem.NewTable("right", rSchema)
+	ltable := memory.NewTable("left", lSchema)
+	rtable := memory.NewTable("right", rSchema)
 	insertData(t, ltable)
 
 	j := NewCrossJoin(
@@ -116,8 +116,8 @@ func TestCrossJoin_Empty(t *testing.T) {
 	require.Equal(io.EOF, err)
 	require.Nil(row)
 
-	ltable = mem.NewTable("left", lSchema)
-	rtable = mem.NewTable("right", rSchema)
+	ltable = memory.NewTable("left", lSchema)
+	rtable = memory.NewTable("right", rSchema)
 	insertData(t, rtable)
 
 	j = NewCrossJoin(
@@ -134,7 +134,7 @@ func TestCrossJoin_Empty(t *testing.T) {
 	require.Nil(row)
 }
 
-func insertData(t *testing.T, table *mem.Table) {
+func insertData(t *testing.T, table *memory.Table) {
 	t.Helper()
 	require := require.New(t)
 

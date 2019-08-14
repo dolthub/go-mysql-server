@@ -4,7 +4,7 @@ import (
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/src-d/go-mysql-server"
+	sqle "github.com/src-d/go-mysql-server"
 	"github.com/src-d/go-mysql-server/auth"
 
 	"vitess.io/vitess/go/mysql"
@@ -54,7 +54,10 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 		cfg.ConnWriteTimeout = 0
 	}
 
-	handler := NewHandler(e, NewSessionManager(sb, tracer, cfg.Address))
+	handler := NewHandler(
+		e,
+		NewSessionManager(sb, tracer, e.Catalog.MemoryManager, cfg.Address),
+	)
 	a := cfg.Auth.Mysql()
 	l, err := mysql.NewListener(cfg.Protocol, cfg.Address, a, handler, cfg.ConnReadTimeout, cfg.ConnWriteTimeout)
 	if err != nil {

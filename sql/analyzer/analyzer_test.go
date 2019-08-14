@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
@@ -14,16 +14,16 @@ import (
 func TestAnalyzer_Analyze(t *testing.T) {
 	require := require.New(t)
 
-	table := mem.NewTable("mytable", sql.Schema{
+	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
 	})
 
-	table2 := mem.NewTable("mytable2", sql.Schema{
+	table2 := memory.NewTable("mytable2", sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 	})
 
-	db := mem.NewDatabase("mydb")
+	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
@@ -143,7 +143,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 				expression.NewLiteral(int32(1), sql.Int32),
 			),
-		}).(*mem.Table).WithProjection([]string{"i"}),
+		}).(*memory.Table).WithProjection([]string{"i"}),
 	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
@@ -187,11 +187,11 @@ func TestAnalyzer_Analyze(t *testing.T) {
 func TestMaxIterations(t *testing.T) {
 	require := require.New(t)
 	tName := "my-table"
-	table := mem.NewTable(tName, sql.Schema{
+	table := memory.NewTable(tName, sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: tName},
 		{Name: "t", Type: sql.Text, Source: tName},
 	})
-	db := mem.NewDatabase("mydb")
+	db := memory.NewDatabase("mydb")
 	db.AddTable(tName, table)
 
 	catalog := sql.NewCatalog()
@@ -205,7 +205,7 @@ func TestMaxIterations(t *testing.T) {
 			case *plan.ResolvedTable:
 				count++
 				name := fmt.Sprintf("mytable-%v", count)
-				table := mem.NewTable(name, sql.Schema{
+				table := memory.NewTable(name, sql.Schema{
 					{Name: "i", Type: sql.Int32, Source: name},
 					{Name: "t", Type: sql.Text, Source: name},
 				})
@@ -220,7 +220,7 @@ func TestMaxIterations(t *testing.T) {
 	require.NoError(err)
 	require.Equal(
 		plan.NewResolvedTable(
-			mem.NewTable("mytable-1000", sql.Schema{
+			memory.NewTable("mytable-1000", sql.Schema{
 				{Name: "i", Type: sql.Int32, Source: "mytable-1000"},
 				{Name: "t", Type: sql.Text, Source: "mytable-1000"},
 			}),
@@ -272,25 +272,25 @@ func countRules(batches []*Batch) int {
 func TestMixInnerAndNaturalJoins(t *testing.T) {
 	var require = require.New(t)
 
-	table := mem.NewTable("mytable", sql.Schema{
+	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
 	})
 
-	table2 := mem.NewTable("mytable2", sql.Schema{
+	table2 := memory.NewTable("mytable2", sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
 	})
 
-	table3 := mem.NewTable("mytable3", sql.Schema{
+	table3 := memory.NewTable("mytable3", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable3"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable3"},
 		{Name: "t3", Type: sql.Text, Source: "mytable3"},
 	})
 
-	db := mem.NewDatabase("mydb")
+	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 	db.AddTable("mytable3", table3)
@@ -400,25 +400,25 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 		),
 	)
 
-	commits := mem.NewTable("commits", sql.Schema{
+	commits := memory.NewTable("commits", sql.Schema{
 		{Name: "repository_id", Source: "commits", Type: sql.Text},
 		{Name: "commit_hash", Source: "commits", Type: sql.Text},
 		{Name: "commit_author_when", Source: "commits", Type: sql.Text},
 	})
 
-	refs := mem.NewTable("refs", sql.Schema{
+	refs := memory.NewTable("refs", sql.Schema{
 		{Name: "repository_id", Source: "refs", Type: sql.Text},
 		{Name: "ref_name", Source: "refs", Type: sql.Text},
 	})
 
-	refCommits := mem.NewTable("ref_commits", sql.Schema{
+	refCommits := memory.NewTable("ref_commits", sql.Schema{
 		{Name: "repository_id", Source: "ref_commits", Type: sql.Text},
 		{Name: "ref_name", Source: "ref_commits", Type: sql.Text},
 		{Name: "commit_hash", Source: "ref_commits", Type: sql.Text},
 		{Name: "history_index", Source: "ref_commits", Type: sql.Int64},
 	})
 
-	db := mem.NewDatabase("")
+	db := memory.NewDatabase("")
 	db.AddTable("refs", refs)
 	db.AddTable("ref_commits", refCommits)
 	db.AddTable("commits", commits)

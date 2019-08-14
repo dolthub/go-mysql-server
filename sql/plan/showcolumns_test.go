@@ -4,14 +4,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/src-d/go-mysql-server/mem"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 )
 
 func TestShowColumns(t *testing.T) {
 	require := require.New(t)
 
-	table := NewResolvedTable(mem.NewTable("foo", sql.Schema{
+	table := NewResolvedTable(memory.NewTable("foo", sql.Schema{
 		{Name: "a", Type: sql.Text},
 		{Name: "b", Type: sql.Int64, Nullable: true},
 		{Name: "c", Type: sql.Int64, Default: int64(1)},
@@ -34,7 +34,7 @@ func TestShowColumns(t *testing.T) {
 func TestShowColumnsFull(t *testing.T) {
 	require := require.New(t)
 
-	table := NewResolvedTable(mem.NewTable("foo", sql.Schema{
+	table := NewResolvedTable(memory.NewTable("foo", sql.Schema{
 		{Name: "a", Type: sql.Text},
 		{Name: "b", Type: sql.Int64, Nullable: true},
 		{Name: "c", Type: sql.Int64, Default: int64(1)},
