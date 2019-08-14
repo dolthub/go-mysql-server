@@ -3,8 +3,8 @@ package server // import "github.com/src-d/go-mysql-server/server"
 import (
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/src-d/go-mysql-server"
+	"github.com/opentracing/opentracing-go"
+	sqle "github.com/src-d/go-mysql-server"
 	"github.com/src-d/go-mysql-server/auth"
 
 	"vitess.io/vitess/go/mysql"
@@ -13,6 +13,7 @@ import (
 // Server is a MySQL server for SQLe engines.
 type Server struct {
 	Listener *mysql.Listener
+	h        *Handler
 }
 
 // Config for the mysql server.
@@ -59,14 +60,18 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 			sb, tracer,
 			e.Catalog.MemoryManager,
 			cfg.Address),
-			cfg.ConnReadTimeout)
+		cfg.ConnReadTimeout)
 	a := cfg.Auth.Mysql()
-	l, err := mysql.NewListener(cfg.Protocol, cfg.Address, a, handler, cfg.ConnReadTimeout, cfg.ConnWriteTimeout)
+	l, err := NewListener(cfg.Protocol, cfg.Address, handler)
+	if err != nil {
+		return nil, err
+	}
+	vtListnr, err := mysql.NewFromListener(l, a, handler, cfg.ConnReadTimeout, cfg.ConnWriteTimeout)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Server{Listener: l}, nil
+	return &Server{Listener: vtListnr, h: handler}, nil
 }
 
 // Start starts accepting connections on the server.

@@ -1,7 +1,9 @@
 package server
 
 import (
+	"context"
 	"io"
+	"net"
 	"regexp"
 	"strconv"
 	"strings"
@@ -10,6 +12,7 @@ import (
 
 	sqle "github.com/src-d/go-mysql-server"
 	"github.com/src-d/go-mysql-server/auth"
+	"github.com/src-d/go-mysql-server/internal/sockstate"
 	"github.com/src-d/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -22,37 +25,64 @@ import (
 var regKillCmd = regexp.MustCompile(`^kill (?:(query|connection) )?(\d+)$`)
 
 var errConnectionNotFound = errors.NewKind("connection not found: %c")
+
 // ErrRowTimeout will be returned if the wait for the row is longer than the connection timeout
 var ErrRowTimeout = errors.NewKind("row read wait bigger than connection timeout")
 
+// ErrConnectionWasClosed will be returned if we try to use a previously closed connection
+var ErrConnectionWasClosed = errors.NewKind("connection was closed")
+
 // TODO parametrize
 const rowsBatch = 100
+const tcpCheckerSleepTime = 1
+
+type conntainer struct {
+	MysqlConn *mysql.Conn
+	NetConn   net.Conn
+}
 
 // Handler is a connection handler for a SQLe engine.
 type Handler struct {
-	mu          sync.Mutex
-	e           *sqle.Engine
-	sm          *SessionManager
-	c           map[uint32]*mysql.Conn
+	mu sync.Mutex
+	e  *sqle.Engine
+	sm *SessionManager
+	c  map[uint32]conntainer
 	readTimeout time.Duration
+	lc          []*net.Conn
 }
 
 // NewHandler creates a new Handler given a SQLe engine.
 func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration) *Handler {
 	return &Handler{
-		e:           e,
-		sm:          sm,
-		c:           make(map[uint32]*mysql.Conn),
+		e:  e,
+		sm: sm,
+		c: make(map[uint32]conntainer),
 		readTimeout: rt,
 	}
+}
+
+// AddNetConnection is used to add the net.Conn to the Handler when available (usually on the
+// Listener.Accept() method)
+func (h *Handler) AddNetConnection(c *net.Conn) {
+	h.lc = append(h.lc, c)
 }
 
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
 	h.mu.Lock()
 	if _, ok := h.c[c.ConnectionID]; !ok {
-		h.c[c.ConnectionID] = c
+		// Retrieve the latest net.Conn stored by Listener.Accept(), if called, and remove it
+		var netConn net.Conn
+		if len(h.lc) > 0 {
+			netConn = *h.lc[len(h.lc)-1]
+			h.lc = h.lc[:len(h.lc)-1]
+		} else {
+			logrus.Debug("Could not find TCP socket connection after Accept(), " +
+				"connection checker won't run")
+		}
+		h.c[c.ConnectionID] = conntainer{c, netConn}
 	}
+
 	h.mu.Unlock()
 
 	logrus.Infof("NewConnection: client %v", c.ConnectionID)
@@ -83,6 +113,9 @@ func (h *Handler) ComQuery(
 	callback func(*sqltypes.Result) error,
 ) (err error) {
 	ctx := h.sm.NewContextWithQuery(c, query)
+	newCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	ctx = ctx.WithContext(newCtx)
 
 	handled, err := h.handleKill(c, query)
 	if err != nil {
@@ -100,35 +133,24 @@ func (h *Handler) ComQuery(
 			q.Query(ctx, time.Since(start), err)
 		}
 	}()
-
 	if err != nil {
 		return err
+	}
+
+	nc, ok := h.c[c.ConnectionID]
+	if !ok {
+		return ErrConnectionWasClosed.New()
 	}
 
 	var r *sqltypes.Result
 	var proccesedAtLeastOneBatch bool
 
-	rowchan := make(chan sql.Row)
-	errchan := make(chan error)
+	// Reads rows from the row reading goroutine
+	rowChan := make(chan sql.Row)
+	// To send errors from the two goroutines to the main one
+	errChan := make(chan error)
+	// To close the goroutines
 	quit := make(chan struct{})
-
-	// This goroutine will be select{}ed giving a chance to Vitess to call the
-	// handler.CloseConnection callback and enforcing the timeout if configured
-	go func() {
-		for {
-			select {
-			case <-quit:
-				return
-			default:
-			}
-			row, err := rows.Next()
-			if err != nil {
-				errchan <- err
-				return
-			}
-			rowchan <- row
-		}
-	}()
 
 	// Default waitTime is one 1 minute if there is not timeout configured, in which case
 	// it will loop to iterate again unless the socket died by the OS timeout or other problems.
@@ -141,6 +163,72 @@ func (h *Handler) ComQuery(
 	}
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
+
+	// This goroutine will be select{}ed giving a chance to Vitess to call the
+	// handler.CloseConnection callback and enforcing the timeout if configured
+	go func() {
+		for {
+			select {
+			case <-quit:
+				return
+			default:
+				row, err := rows.Next()
+				if err != nil {
+					errChan <- err
+					return
+				}
+				rowChan <- row
+			}
+		}
+	}()
+
+	// This second goroutine will check the socket
+	// and try to determine if the socket is in CLOSE_WAIT state
+	// (because the remote client closed the connection).
+	go func() {
+		tcpConn, ok := nc.NetConn.(*net.TCPConn)
+		if !ok {
+			logrus.Debug("Connection checker exiting, connection isn't TCP")
+			return
+		}
+
+		inode, err := sockstate.GetConnInode(tcpConn)
+		if err != nil || inode == 0 {
+			errChan <- err
+		}
+
+		t, ok := nc.NetConn.LocalAddr().(*net.TCPAddr)
+		if !ok {
+			logrus.Warn("Connection checker exiting, could not get local port")
+			return
+		}
+
+		for {
+			select {
+			case <-quit:
+				// timeout or other errors detected by the calling routine
+				return
+			default:
+			}
+
+			st, err := sockstate.GetInodeSockState(t.Port, inode)
+			switch st {
+			case sockstate.Finished:
+				// Not Linux OSs will also exit here
+				return
+			case sockstate.Broken:
+				errChan <- ErrConnectionWasClosed.New()
+				return
+			case sockstate.Error:
+				errChan <- err
+				return
+			default: // Established
+				// (juanjux) this check is not free, each iteration takes about 9 milliseconds to run on my machine
+				// thus the small wait between checks
+				time.Sleep(tcpCheckerSleepTime * time.Second)
+			}
+		}
+	}()
 
 rowLoop:
 	for {
@@ -159,12 +247,13 @@ rowLoop:
 		}
 
 		select {
-		case err = <-errchan:
+		case err = <-errChan:
 			if err == io.EOF {
 				break rowLoop
 			}
+			close(quit)
 			return err
-		case row := <-rowchan:
+		case row := <-rowChan:
 			outputRow, err := rowToSQL(schema, row)
 			if err != nil {
 				close(quit)
@@ -175,7 +264,7 @@ rowLoop:
 			r.RowsAffected++
 		case <-timer.C:
 			if h.readTimeout != 0 {
-				// Return so Vitess can call the CloseConnection callback
+				// Cancel and return so Vitess can call the CloseConnection callback
 				close(quit)
 				return ErrRowTimeout.New()
 			}
@@ -187,6 +276,8 @@ rowLoop:
 		return err
 	}
 
+	close(quit)
+
 	// Even if r.RowsAffected = 0, the callback must be
 	// called to update the state in the go-vitess' listener
 	// and avoid returning errors when the query doesn't
@@ -195,7 +286,6 @@ rowLoop:
 		return nil
 	}
 
-	close(quit)
 	return callback(r)
 }
 
@@ -251,8 +341,8 @@ func (h *Handler) handleKill(conn *mysql.Conn, query string) (bool, error) {
 			return false, errConnectionNotFound.New(connID)
 		}
 
-		h.sm.CloseConn(c)
-		c.Close()
+		h.sm.CloseConn(c.MysqlConn)
+		c.MysqlConn.Close()
 	}
 
 	return true, nil
