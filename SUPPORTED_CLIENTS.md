@@ -1,6 +1,6 @@
 # Supported clients
 
-These are the clients we actively test against to check are compatible with go-mysql-server. Other clients may also work, but we don't check on every build if we remain compatible with them.
+These are the clients we actively test against to check that they are compatible with go-mysql-server. Other clients may also work, but we don't check on every build if we remain compatible with them.
 
 - Python
   - [pymysql](#pymysql)
@@ -16,7 +16,7 @@ These are the clients we actively test against to check are compatible with go-m
 - Java/JVM
   - [mariadb-java-client](#mariadb-java-client)
 - Go
-  - [go-mysql-driver/mysql](#go-mysql-driver-mysql)
+  - [go-mysql-driver/mysql](#go-sql-drivermysql)
 - C
   - [mysql-connector-c](#mysql-connector-c)
 - Grafana
@@ -218,7 +218,7 @@ func main() {
 }
 ```
 
-### #mysql-connector-c
+### mysql-connector-c
 
 ```c
 #include <my_global.h>

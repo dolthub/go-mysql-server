@@ -59,71 +59,71 @@ We support and actively test against certain third-party clients to ensure compa
 <!-- BEGIN FUNCTIONS -->
 |     Name     |                                               Description                                                                      |
 |:-------------|:-------------------------------------------------------------------------------------------------------------------------------|
-|`ARRAY_LENGTH(json)`|If the json representation is an array, this function returns its size.|
-|`AVG(expr)`|Returns the average value of expr in all rows.|
-|`CEIL(number)`|Return the smallest integer value that is greater than or equal to `number`.|
-|`CEILING(number)`|Return the smallest integer value that is greater than or equal to `number`.|
-|`CHAR_LENGTH(str)`|Return the length of the string in characters.|
-|`COALESCE(...)`|The function returns the first non-null value in a list.|
-|`CONCAT(...)`|Concatenate any group of fields into a single string.|
-|`CONCAT_WS(sep, ...)`|Concatenate any group of fields into a single string. The first argument is the separator for the rest of the arguments. The separator is added between the strings to be concatenated. The separator can be a string, as can the rest of the arguments. If the separator is NULL, the result is NULL.|
-|`CONNECTION_ID()`|Return the current connection ID.|
-|`COUNT(expr)`| Returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.|
-|`DATE_ADD(date, interval)`|Adds the interval to the given date.|
-|`DATE_SUB(date, interval)`|Subtracts the interval from the given date.|
-|`DAY(date)`|Synonym for DAYOFMONTH().|
-|`DATE(date)`|Returns the date part of the given date.|
-|`DAYOFMONTH(date)`|Return the day of the month (0-31).|
-|`DAYOFWEEK(date)`|Returns the day of the week of the given date.|
-|`DAYOFYEAR(date)`|Returns the day of the year of the given date.|
-|`FIRST(expr)`|Returns the first value in a sequence of elements of an aggregation.|
-|`FLOOR(number)`|Returns the largest integer value that is less than or equal to `number`.|
-|`FROM_BASE64(str)`|Decodes the base64-encoded string str.|
-|`GREATEST(...)`|Returns the greatest numeric or string value.|
-|`HOUR(date)`|Returns the hours of the given date.|
-|`IFNULL(expr1, expr2)`|If expr1 is not NULL, IFNULL() returns expr1; otherwise it returns expr2.|
-|`IS_BINARY(blob)`|Returns whether a BLOB is a binary file or not.|
-|`JSON_EXTRACT(json_doc, path, ...)`|Extracts data from a json document using json paths. Extracting a string will result in that string being quoted. To avoid this, use `JSON_UNQUOTE(JSON_EXTRACT(json_doc, path, ...))`.|
-|`JSON_UNQUOTE(json)`|Unquotes JSON value and returns the result as a utf8mb4 string.|
-|`LAST(expr)`|Returns the last value in a sequence of elements of an aggregation.|
-|`LEAST(...)`|Returns the smaller numeric or string value.|
-|`LENGTH(str)`|Return the length of the string in bytes.|
-|`LN(X)`|Return the natural logarithm of X.|
-|`LOG(X), LOG(B, X)`|If called with one parameter, this function returns the natural logarithm of X. If called with two parameters, this function returns the logarithm of X to the base B. If X is less than or equal to 0, or if B is less than or equal to 1, then NULL is returned.|
-|`LOG10(X)`|Returns the base-10 logarithm of X.|
-|`LOG2(X)`|Returns the base-2 logarithm of X.|
-|`LOWER(str)`|Returns the string str with all characters in lower case.|
-|`LPAD(str, len, padstr)`|Return the string argument, left-padded with the specified string.|
-|`LTRIM(str)`|Returns the string str with leading space characters removed.|
-|`MAX(expr)`|Returns the maximum value of expr in all rows.|
-|`MID(str, pos, [len])`|Return a substring from the provided string starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
-|`MIN(expr)`|Returns the minimum value of expr in all rows.|
-|`MINUTE(date)`|Returns the minutes of the given date.|
-|`MONTH(date)`|Returns the month of the given date.|
-|`NOW()`|Returns the current timestamp.|
-|`NULLIF(expr1, expr2)`|Returns NULL if expr1 = expr2 is true, otherwise returns expr1.|
-|`POW(X, Y)`|Returns the value of X raised to the power of Y.|
-|`REGEXP_MATCHES(text, pattern, [flags])`|Returns an array with the matches of the pattern in the given text. Flags can be given to control certain behaviours of the regular expression. Currently, only the `i` flag is supported, to make the comparison case insensitive.|
-|`REPEAT(str, count)`|Returns a string consisting of the string str repeated count times.|
-|`REPLACE(str,from_str,to_str)`|Returns the string str with all occurrences of the string from_str replaced by the string to_str.|
-|`REVERSE(str)`|Returns the string str with the order of the characters reversed.|
-|`ROUND(number, decimals)`|Round the `number` to `decimals` decimal places.|
-|`RPAD(str, len, padstr)`|Returns the string str, right-padded with the string padstr to a length of len characters.|
-|`RTRIM(str)`|Returns the string str with trailing space characters removed.|
-|`SECOND(date)`|Returns the seconds of the given date.|
-|`SLEEP(seconds)`|Wait for the specified number of seconds (can be fractional).|
-|`SOUNDEX(str)`|Returns the soundex of a string.|
-|`SPLIT(str,sep)`|Receives a string and a separator and returns the parts of the string split by the separator as a JSON array of strings.|
-|`SQRT(X)`|Returns the square root of a nonnegative number X.|
-|`SUBSTR(str, pos, [len])`|Return a substring from the provided string starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
-|`SUBSTRING(str, pos, [len])`|Return a substring from the provided string starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
-|`SUM(expr)`|Returns the sum of expr in all rows.|
-|`TO_BASE64(str)`|Encodes the string str in base64 format.|
-|`TRIM(str)`|Returns the string str with all spaces removed.|
-|`UPPER(str)`|Returns the string str with all characters in upper case.|
-|`WEEKDAY(date)`|Returns the weekday of the given date.|
-|`YEAR(date)`|Returns the year of the given date.|
-|`YEARWEEK(date, mode)`|Returns year and week for a date. The year in the result may be different from the year in the date argument for the first and the last week of the year.|
+|`ARRAY_LENGTH(json)`|if the json representation is an array, this function returns its size.|
+|`AVG(expr)`| returns the average value of expr in all rows.|
+|`CEIL(number)`| returns the smallest integer value that is greater than or equal to `number`.|
+|`CEILING(number)`| returns the smallest integer value that is greater than or equal to `number`.|
+|`CHAR_LENGTH(str)`| returns the length of the string in characters.|
+|`COALESCE(...)`| returns the first non-null value in a list.|
+|`CONCAT(...)`| concatenates any group of fields into a single string.|
+|`CONCAT_WS(sep, ...)`| concatenates any group of fields into a single string. The first argument is the separator for the rest of the arguments. The separator is added between the strings to be concatenated. The separator can be a string, as can the rest of the arguments. If the separator is NULL, the result is NULL.|
+|`CONNECTION_ID()`| returns the current connection ID.|
+|`COUNT(expr)`|  returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.|
+|`DATE_ADD(date, interval)`| adds the interval to the given `date`.|
+|`DATE_SUB(date, interval)`| subtracts the interval from the given `date`.|
+|`DAY(date)`| is a synonym for DAYOFMONTH().|
+|`DATE(date)`| returns the date part of the given `date`.|
+|`DAYOFMONTH(date)`| returns the day of the month (0-31).|
+|`DAYOFWEEK(date)`| returns the day of the week of the given `date`.|
+|`DAYOFYEAR(date)`| returns the day of the year of the given `date`.|
+|`FIRST(expr)`| returns the first value in a sequence of elements of an aggregation.|
+|`FLOOR(number)`| returns the largest integer value that is less than or equal to `number`.|
+|`FROM_BASE64(str)`| decodes the base64-encoded string `str`.|
+|`GREATEST(...)`| returns the greatest numeric or string value.|
+|`HOUR(date)`| returns the hours of the given `date`.|
+|`IFNULL(expr1, expr2)`| if `expr1` is not NULL, it returns `expr1`; otherwise it returns `expr2`.|
+|`IS_BINARY(blob)`| returns whether a `blob` is a binary file or not.|
+|`JSON_EXTRACT(json_doc, path, ...)`| extracts data from a json document using json paths. Extracting a string will result in that string being quoted. To avoid this, use `JSON_UNQUOTE(JSON_EXTRACT(json_doc, path, ...))`.|
+|`JSON_UNQUOTE(json)`| unquotes JSON value and returns the result as a utf8mb4 string.|
+|`LAST(expr)`| returns the last value in a sequence of elements of an aggregation.|
+|`LEAST(...)`| returns the smaller numeric or string value.|
+|`LENGTH(str)`| returns the length of the string in bytes.|
+|`LN(X)`| returns the natural logarithm of `X`.|
+|`LOG(X), LOG(B, X)`| if called with one parameter, this function returns the natural logarithm of `X`. If called with two parameters, this function returns the logarithm of `X` to the base `B`. If `X` is less than or equal to 0, or if `B` is less than or equal to 1, then NULL is returned.|
+|`LOG10(X)`| returns the base-10 logarithm of `X`.|
+|`LOG2(X)`| returns the base-2 logarithm of `X`.|
+|`LOWER(str)`| returns the string `str` with all characters in lower case.|
+|`LPAD(str, len, padstr)`| returns the string `str`, left-padded with the string `padstr` to a length of `len` characters.|
+|`LTRIM(str)`| returns the string `str` with leading space characters removed.|
+|`MAX(expr)`| returns the maximum value of `expr` in all rows.|
+|`MID(str, pos, [len])`| returns a substring from the provided string starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
+|`MIN(expr)`| returns the minimum value of `expr` in all rows.|
+|`MINUTE(date)`| returns the minutes of the given `date`.|
+|`MONTH(date)`| returns the month of the given `date`.|
+|`NOW()`| returns the current timestamp.|
+|`NULLIF(expr1, expr2)`| returns NULL if `expr1 = expr2` is true, otherwise returns `expr1`.|
+|`POW(X, Y)`| returns the value of `X` raised to the power of `Y`.|
+|`REGEXP_MATCHES(text, pattern, [flags])`| returns an array with the matches of the `pattern` in the given `text`. Flags can be given to control certain behaviours of the regular expression. Currently, only the `i` flag is supported, to make the comparison case insensitive.|
+|`REPEAT(str, count)`| returns a string consisting of the string `str` repeated `count` times.|
+|`REPLACE(str,from_str,to_str)`| returns the string `str` with all occurrences of the string `from_str` replaced by the string `to_str`.|
+|`REVERSE(str)`| returns the string `str` with the order of the characters reversed.|
+|`ROUND(number, decimals)`| rounds the `number` to `decimals` decimal places.|
+|`RPAD(str, len, padstr)`| returns the string `str`, right-padded with the string `padstr` to a length of `len` characters.|
+|`RTRIM(str)`| returns the string `str` with trailing space characters removed.|
+|`SECOND(date)`| returns the seconds of the given `date`.|
+|`SLEEP(seconds)`| waits for the specified number of seconds (can be fractional).|
+|`SOUNDEX(str)`| returns the soundex of a string.|
+|`SPLIT(str,sep)`| returns the parts of the string `str` split by the separator `sep` as a JSON array of strings.|
+|`SQRT(X)`| returns the square root of a nonnegative number `X`.|
+|`SUBSTR(str, pos, [len])`| returns a substring from the string `str` starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
+|`SUBSTRING(str, pos, [len])`| returns a substring from the string `str` starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
+|`SUM(expr)`| returns the sum of `expr` in all rows.|
+|`TO_BASE64(str)`| encodes the string `str` in base64 format.|
+|`TRIM(str)`| returns the string `str` with all spaces removed.|
+|`UPPER(str)`| returns the string `str` with all characters in upper case.|
+|`WEEKDAY(date)`| returns the weekday of the given `date`.|
+|`YEAR(date)`| returns the year of the given `date`.|
+|`YEARWEEK(date, mode)`| returns year and week for a date. The year in the result may be different from the year in the date argument for the first and the last week of the year.|
 <!-- END FUNCTIONS -->
 
 ## Configuration
