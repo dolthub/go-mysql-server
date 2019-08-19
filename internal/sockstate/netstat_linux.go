@@ -1,3 +1,5 @@
+// +build linux
+
 package sockstate
 
 // Taken (simplified and with utility functions added) from https://github.com/cakturk/go-netstat
@@ -129,7 +131,7 @@ func parseAddr(s string) (*sockAddr, error) {
 	case ipv4StrLen:
 		ip, err = parseIPv4(fields[0])
 	default:
-		log.Fatal("Bad formatted string")
+		log.Fatal("Badly formatted connection address:", s)
 	}
 	if err != nil {
 		return nil, err

@@ -1,3 +1,5 @@
+// +build windows
+
 package sockstate
 
 import "github.com/sirupsen/logrus"

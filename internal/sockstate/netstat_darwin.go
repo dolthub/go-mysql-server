@@ -1,3 +1,5 @@
+// +build darwin
+
 package sockstate
 
 import "github.com/sirupsen/logrus"

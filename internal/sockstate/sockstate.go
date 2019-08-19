@@ -69,9 +69,8 @@ func GetInodeSockState(port int, inode uint64) (SockState, error) {
 	case 1:
 		if socks[0].State == CloseWait {
 			return Broken, nil
-		} else {
-			return Other, nil
 		}
+		return Other, nil
 	default: // more than one sock for inode, impossible?
 		return Error, ErrMultipleSocketsForInode.New()
 	}
