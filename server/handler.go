@@ -152,7 +152,7 @@ func (h *Handler) ComQuery(
 	// To close the goroutines
 	quit := make(chan struct{})
 
-	// Default waitTime is one 1 minute if there is not timeout configured, in which case
+	// Default waitTime is one minute if there is not timeout configured, in which case
 	// it will loop to iterate again unless the socket died by the OS timeout or other problems.
 	// If there is a timeout, it will be enforced to ensure that Vitess has a chance to
 	// call Handler.CloseConnection()
