@@ -2,11 +2,12 @@ package sockstate
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"net"
 	"os"
 	"strconv"
 	"strings"
+
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 type SockState uint8
@@ -34,7 +35,7 @@ func GetConnInode(c *net.TCPConn) (n uint64, err error) {
 	}
 
 	if strings.HasPrefix(socketLnk, sockPrefix) {
-		_, err = fmt.Sscanf(socketLnk, sockPrefix + "%d]", &n)
+		_, err = fmt.Sscanf(socketLnk, sockPrefix+"%d]", &n)
 		if err != nil {
 			return
 		}

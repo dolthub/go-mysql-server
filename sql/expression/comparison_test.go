@@ -3,9 +3,9 @@ package expression
 import (
 	"testing"
 
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/internal/regex"
 	"github.com/src-d/go-mysql-server/sql"
+	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/stretchr/testify/require"
 )

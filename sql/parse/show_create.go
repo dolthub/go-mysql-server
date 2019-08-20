@@ -5,9 +5,9 @@ import (
 	"io"
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/plan"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 var errUnsupportedShowCreateQuery = errors.NewKind("Unsupported query: SHOW CREATE %s")

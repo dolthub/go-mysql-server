@@ -2,11 +2,12 @@ package server
 
 import (
 	"fmt"
+	"net"
+	"testing"
+
 	"github.com/opentracing/opentracing-go"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
-	"net"
-	"testing"
 	"vitess.io/vitess/go/sqltypes"
 )
 
@@ -49,5 +50,3 @@ func TestBrokenConnection(t *testing.T) {
 	})
 	require.EqualError(err, "connection was closed")
 }
-
-

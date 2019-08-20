@@ -37,7 +37,7 @@ func TestFindFromMap(t *testing.T) {
 	res := FindFromMap(names, "")
 	require.Empty(res)
 
-	names = map[string]int {
+	names = map[string]int{
 		"foo": 1,
 		"bar": 2,
 	}

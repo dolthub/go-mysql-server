@@ -2,9 +2,10 @@ package server
 
 import (
 	"context"
+	"sync"
+
 	"github.com/opentracing/opentracing-go"
 	"github.com/src-d/go-mysql-server/sql"
-	"sync"
 	"vitess.io/vitess/go/mysql"
 )
 

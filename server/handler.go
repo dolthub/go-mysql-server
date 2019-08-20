@@ -43,10 +43,10 @@ type conntainer struct {
 
 // Handler is a connection handler for a SQLe engine.
 type Handler struct {
-	mu sync.Mutex
-	e  *sqle.Engine
-	sm *SessionManager
-	c  map[uint32]conntainer
+	mu          sync.Mutex
+	e           *sqle.Engine
+	sm          *SessionManager
+	c           map[uint32]conntainer
 	readTimeout time.Duration
 	lc          []*net.Conn
 }
@@ -54,9 +54,9 @@ type Handler struct {
 // NewHandler creates a new Handler given a SQLe engine.
 func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration) *Handler {
 	return &Handler{
-		e:  e,
-		sm: sm,
-		c: make(map[uint32]conntainer),
+		e:           e,
+		sm:          sm,
+		c:           make(map[uint32]conntainer),
 		readTimeout: rt,
 	}
 }

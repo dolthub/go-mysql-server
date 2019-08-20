@@ -2,11 +2,12 @@ package server
 
 import (
 	"fmt"
-	sqle "github.com/src-d/go-mysql-server"
-	"github.com/src-d/go-mysql-server/sql"
 	"net"
 	"testing"
 	"time"
+
+	sqle "github.com/src-d/go-mysql-server"
+	"github.com/src-d/go-mysql-server/sql"
 
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/sqltypes"
@@ -284,7 +285,7 @@ func TestOkClosedConnection(t *testing.T) {
 	c2 := newConn(2)
 	h.NewConnection(c2)
 
-	q := fmt.Sprintf("SELECT SLEEP(%d)", tcpCheckerSleepTime * 4)
+	q := fmt.Sprintf("SELECT SLEEP(%d)", tcpCheckerSleepTime*4)
 	err = h.ComQuery(c2, q, func(res *sqltypes.Result) error {
 		return nil
 	})
