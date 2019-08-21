@@ -3,6 +3,8 @@ package sockstate
 import (
 	"fmt"
 	"net"
+
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // OS independent part of the netstat_[OS].go modules
@@ -15,6 +17,9 @@ type skState uint8
 func (s skState) String() string {
 	return skStates[s]
 }
+
+// ErrSocketCheckNotImplemented will be returned for OS where the socket checks is not implemented yet
+var ErrSocketCheckNotImplemented = errors.NewKind("socket checking not implemented for this OS")
 
 // Socket states
 const (

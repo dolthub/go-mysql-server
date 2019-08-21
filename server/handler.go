@@ -194,7 +194,12 @@ func (h *Handler) ComQuery(
 
 		inode, err := sockstate.GetConnInode(tcpConn)
 		if err != nil || inode == 0 {
-			errChan <- err
+			if sockstate.ErrSocketCheckNotImplemented.Is(err) {
+				logrus.Warn("Connection checker exiting, not supported in this OS")
+			} else {
+				errChan <- err
+			}
+			return
 		}
 
 		t, ok := nc.NetConn.LocalAddr().(*net.TCPAddr)
