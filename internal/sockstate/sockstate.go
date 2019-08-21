@@ -1,13 +1,8 @@
 package sockstate
 
 import (
-	"fmt"
-	"net"
-	"os"
-	"strconv"
-	"strings"
-
 	"gopkg.in/src-d/go-errors.v1"
+	"strconv"
 )
 
 type SockState uint8
@@ -20,30 +15,6 @@ const (
 )
 
 var ErrNoSocketLink = errors.NewKind("couldn't resolve file descriptor link to socket")
-
-// GetConnInode returns the Linux inode number of a TCP connection
-func GetConnInode(c *net.TCPConn) (n uint64, err error) {
-	f, err := c.File()
-	if err != nil {
-		return
-	}
-
-	socketStr := fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), f.Fd())
-	socketLnk, err := os.Readlink(socketStr)
-	if err != nil {
-		return
-	}
-
-	if strings.HasPrefix(socketLnk, sockPrefix) {
-		_, err = fmt.Sscanf(socketLnk, sockPrefix+"%d]", &n)
-		if err != nil {
-			return
-		}
-	} else {
-		err = ErrNoSocketLink.New()
-	}
-	return
-}
 
 // ErrMultipleSocketsForInode is returned when more than one socket is found for an inode
 var ErrMultipleSocketsForInode = errors.NewKind("more than one socket found for inode")

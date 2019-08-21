@@ -208,3 +208,27 @@ func tcpSocks(accept AcceptFn) ([]sockTabEntry, error) {
 	extractProcInfo(tabs)
 	return tabs, nil
 }
+
+// GetConnInode returns the Linux inode number of a TCP connection
+func GetConnInode(c *net.TCPConn) (n uint64, err error) {
+	f, err := c.File()
+	if err != nil {
+		return
+	}
+
+	socketStr := fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), f.Fd())
+	socketLnk, err := os.Readlink(socketStr)
+	if err != nil {
+		return
+	}
+
+	if strings.HasPrefix(socketLnk, sockPrefix) {
+		_, err = fmt.Sscanf(socketLnk, sockPrefix+"%d]", &n)
+		if err != nil {
+			return
+		}
+	} else {
+		err = ErrNoSocketLink.New()
+	}
+	return
+}
