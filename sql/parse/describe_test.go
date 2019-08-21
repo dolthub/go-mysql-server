@@ -3,11 +3,11 @@ package parse
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
+	"github.com/stretchr/testify/require"
+	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 func TestParseDescribeQuery(t *testing.T) {

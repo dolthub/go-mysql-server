@@ -3,10 +3,10 @@ package parse
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/plan"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 func TestParseShowCreateTableQuery(t *testing.T) {

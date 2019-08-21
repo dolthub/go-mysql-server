@@ -1,14 +1,14 @@
 package function
 
 import (
-	"testing"
-	"math"
 	"fmt"
+	"math"
+	"testing"
 
-	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql"
-	"gopkg.in/src-d/go-errors.v1"
+	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 var epsilon = math.Nextafter(1, 2) - 1
@@ -42,7 +42,7 @@ func TestLn(t *testing.T) {
 				require.True(tt.err.Is(err))
 			} else {
 				require.NoError(err)
-				require.InEpsilonf(tt.expected, result, epsilon, fmt.Sprintf("Actual is: %v", result), )
+				require.InEpsilonf(tt.expected, result, epsilon, fmt.Sprintf("Actual is: %v", result))
 			}
 		})
 	}
@@ -85,7 +85,7 @@ func TestLog2(t *testing.T) {
 				require.True(tt.err.Is(err))
 			} else {
 				require.NoError(err)
-				require.InEpsilonf(tt.expected, result, epsilon, fmt.Sprintf("Actual is: %v", result), )
+				require.InEpsilonf(tt.expected, result, epsilon, fmt.Sprintf("Actual is: %v", result))
 			}
 		})
 	}
@@ -128,7 +128,7 @@ func TestLog10(t *testing.T) {
 				require.True(tt.err.Is(err))
 			} else {
 				require.NoError(err)
-				require.InEpsilonf(tt.expected, result, epsilon, fmt.Sprintf("Actual is: %v", result), )
+				require.InEpsilonf(tt.expected, result, epsilon, fmt.Sprintf("Actual is: %v", result))
 			}
 		})
 	}
@@ -194,7 +194,7 @@ func TestLog(t *testing.T) {
 				require.True(tt.err.Is(err))
 			} else {
 				require.NoError(err)
-				require.InEpsilonf(tt.expected, result, epsilon, fmt.Sprintf("Actual is: %v", result), )
+				require.InEpsilonf(tt.expected, result, epsilon, fmt.Sprintf("Actual is: %v", result))
 			}
 		})
 	}

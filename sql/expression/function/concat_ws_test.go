@@ -3,9 +3,9 @@ package function
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConcatWithSeparator(t *testing.T) {
@@ -72,7 +72,7 @@ func TestConcatWithSeparator(t *testing.T) {
 	t.Run("concat_ws array", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewConcatWithSeparator(
-			expression.NewLiteral([]interface{}{",",5, "bar", true}, sql.Array(sql.Text)),
+			expression.NewLiteral([]interface{}{",", 5, "bar", true}, sql.Array(sql.Text)),
 		)
 		require.NoError(err)
 

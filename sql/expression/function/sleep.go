@@ -3,9 +3,10 @@ package function
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
-	"time"
 )
 
 // Sleep is a function that just waits for the specified number of seconds
@@ -37,7 +38,7 @@ func (s *Sleep) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	t := time.NewTimer(time.Duration(child.(float64) * 1000) * time.Millisecond)
+	t := time.NewTimer(time.Duration(child.(float64)*1000) * time.Millisecond)
 	defer t.Stop()
 
 	select {

@@ -4,9 +4,9 @@ import (
 	"io"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateTable(t *testing.T) {

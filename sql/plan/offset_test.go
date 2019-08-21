@@ -3,8 +3,8 @@ package plan
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/src-d/go-mysql-server/sql"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOffsetPlan(t *testing.T) {
