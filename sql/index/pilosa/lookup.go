@@ -1,3 +1,8 @@
+// This module does not run on Windows due to the Pilosa dependency, as it
+// makes use of syscall.Mmap, which does not exist on the platform.
+
+// +build !windows
+
 package pilosa
 
 import (
