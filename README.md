@@ -306,7 +306,7 @@ CREATE INDEX foo ON table USING driverid (col1, col2) WITH (async = true)
 
 ### Old `pilosalib` driver
 
-`pilosalib` driver was renamed to `pilosa` and now `pilosa` does not require an external pilosa server.
+`pilosalib` driver was renamed to `pilosa` and now `pilosa` does not require an external pilosa server. `pilosa` is not supported on Windows.
 
 ### Metrics
 
