@@ -436,6 +436,7 @@ One _important note_ - internally we set some _labels_ for metrics, that's why h
 ## Powered by go-mysql-server
 
 * [gitbase](https://github.com/src-d/gitbase)
+* [dolt](https://github.com/liquidata-inc/dolt)
 
 ## License
 
