@@ -1,3 +1,5 @@
+// +build !windows
+
 package auth_test
 
 import (
