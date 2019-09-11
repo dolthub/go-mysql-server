@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function"
@@ -903,7 +903,12 @@ func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {
 		//TODO: Use smallest integer representation and widen later.
 		val, err := strconv.ParseInt(string(v.Val), 10, 64)
 		if err != nil {
-			return nil, err
+			// Might be a uint64 value that is greater than int64 max
+			val, checkErr := strconv.ParseUint(string(v.Val), 10, 64)
+			if checkErr != nil {
+				return nil, err
+			}
+			return expression.NewLiteral(val, sql.Uint64), nil
 		}
 		return expression.NewLiteral(val, sql.Int64), nil
 	case sqlparser.FloatVal:

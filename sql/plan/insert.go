@@ -11,6 +11,9 @@ import (
 
 // ErrInsertIntoNotSupported is thrown when a table doesn't support inserts
 var ErrInsertIntoNotSupported = errors.NewKind("table doesn't support INSERT INTO")
+var ErrInsertIntoMismatchValueCount =
+	errors.NewKind("number of values does not match number of columns provided")
+var ErrInsertIntoUnsupportedValues = errors.NewKind("%T is unsupported for inserts")
 
 // InsertInto is a node describing the insertion into some table.
 type InsertInto struct {
@@ -67,6 +70,20 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 
 	dstSchema := p.Left.Schema()
 	projExprs := make([]sql.Expression, len(dstSchema))
+
+	// If no columns are given, we assume the full schema in order
+	if len(p.Columns) == 0 {
+		p.Columns = make([]string, len(dstSchema))
+		for i, f := range dstSchema {
+			p.Columns[i] = f.Name
+		}
+	}
+
+	err = p.validateValueCount(ctx)
+	if err != nil {
+		return 0, err
+	}
+
 	for i, f := range dstSchema {
 		found := false
 		for j, col := range p.Columns {
@@ -78,8 +95,7 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 		}
 
 		if !found {
-			def, _ := f.Type.Convert(nil)
-			projExprs[i] = expression.NewLiteral(def, f.Type)
+			projExprs[i] = expression.NewLiteral(nil, f.Type)
 		}
 	}
 
@@ -137,4 +153,18 @@ func (p InsertInto) String() string {
 	_ = pr.WriteNode("Insert(%s)", strings.Join(p.Columns, ", "))
 	_ = pr.WriteChildren(p.Left.String(), p.Right.String())
 	return pr.String()
+}
+
+func (p *InsertInto) validateValueCount(ctx *sql.Context) error {
+	switch node := p.Right.(type) {
+	case *Values:
+		for _, exprTuple := range node.ExpressionTuples {
+			if len(exprTuple) != len(p.Columns) {
+				return ErrInsertIntoMismatchValueCount.New()
+			}
+		}
+	default:
+		return ErrInsertIntoUnsupportedValues.New(node)
+	}
+	return nil
 }
