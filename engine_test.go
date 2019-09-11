@@ -700,6 +700,7 @@ var queries = []struct {
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"typestable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -710,6 +711,7 @@ var queries = []struct {
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"typestable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -852,6 +854,7 @@ var queries = []struct {
 			{"bigtable"},
 			{"floattable"},
 			{"niltable"},
+			{"typestable"},
 		},
 	},
 	{
@@ -881,6 +884,21 @@ var queries = []struct {
 			{"f64"},
 			{"b"},
 			{"f"},
+			{"id"},
+			{"i8"},
+			{"i16"},
+			{"i32"},
+			{"i64"},
+			{"u8"},
+			{"u16"},
+			{"u32"},
+			{"u64"},
+			{"ti"},
+			{"da"},
+			{"te"},
+			{"bo"},
+			{"js"},
+			{"bl"},
 		},
 	},
 	{
@@ -900,6 +918,21 @@ var queries = []struct {
 			{"f64"},
 			{"b"},
 			{"f"},
+			{"id"},
+			{"i8"},
+			{"i16"},
+			{"i32"},
+			{"i64"},
+			{"u8"},
+			{"u16"},
+			{"u32"},
+			{"u64"},
+			{"ti"},
+			{"da"},
+			{"te"},
+			{"bo"},
+			{"js"},
+			{"bl"},
 		},
 	},
 	{
@@ -919,6 +952,21 @@ var queries = []struct {
 			{"f64"},
 			{"b"},
 			{"f"},
+			{"id"},
+			{"i8"},
+			{"i16"},
+			{"i32"},
+			{"i64"},
+			{"u8"},
+			{"u16"},
+			{"u32"},
+			{"u64"},
+			{"ti"},
+			{"da"},
+			{"te"},
+			{"bo"},
+			{"js"},
+			{"bl"},
 		},
 	},
 	{
@@ -955,6 +1003,7 @@ var queries = []struct {
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"typestable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -1068,6 +1117,7 @@ var queries = []struct {
 			{"bigtable"},
 			{"floattable"},
 			{"niltable"},
+			{"typestable"},
 		},
 	},
 	{
@@ -1079,6 +1129,7 @@ var queries = []struct {
 			{"bigtable", "BASE TABLE"},
 			{"floattable", "BASE TABLE"},
 			{"niltable", "BASE TABLE"},
+			{"typestable", "BASE TABLE"},
 		},
 	},
 	{
@@ -1095,6 +1146,7 @@ var queries = []struct {
 			{"bigtable"},
 			{"floattable"},
 			{"niltable"},
+			{"typestable"},
 		},
 	},
 	{
@@ -1755,16 +1807,113 @@ func TestOrderByColumns(t *testing.T) {
 }
 
 func TestInsertInto(t *testing.T) {
-	e := newEngine(t)
-	testQuery(t, e,
-		"INSERT INTO mytable (s, i) VALUES ('x', 999);",
-		[]sql.Row{{int64(1)}},
-	)
+	timeParse := func(layout string, value string) time.Time {
+		t, _ := time.Parse(layout, value)
+		return t
+	}
 
-	testQuery(t, e,
-		"SELECT i FROM mytable WHERE s = 'x';",
-		[]sql.Row{{int64(999)}},
-	)
+	var insertions = []struct {
+		insertQuery    string
+		expectedInsert []sql.Row
+		selectQuery    string
+		expectedSelect []sql.Row
+	}{
+		{
+			"INSERT INTO mytable (s, i) VALUES ('x', 999);",
+			[]sql.Row{{int64(1)}},
+			"SELECT i FROM mytable WHERE s = 'x';",
+			[]sql.Row{{int64(999)}},
+		},
+		{
+			"INSERT INTO mytable VALUES (999, 'x');",
+			[]sql.Row{{int64(1)}},
+			"SELECT i FROM mytable WHERE s = 'x';",
+			[]sql.Row{{int64(999)}},
+		},
+		{
+			`INSERT INTO typestable VALUES (
+			999, 127, 32767, 2147483647, 9223372036854775807,
+			255, 65535, 4294967295, 18446744073709551615,
+			3.40282346638528859811704183484516925440e+38, 1.797693134862315708145274237317043567981e+308,
+			'2132-04-05 12:51:36', '2231-11-07',
+			'random text', true, '{"key":"value"}', 'blobdata'
+			);`,
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM typestable WHERE id = 999;",
+			[]sql.Row{{
+				int64(999), int64(math.MaxInt8), int64(math.MaxInt16), int64(math.MaxInt32), int64(math.MaxInt64),
+				int64(math.MaxUint8), int64(math.MaxUint16), int64(math.MaxUint32), uint64(math.MaxUint64),
+				float64(math.MaxFloat32), float64(math.MaxFloat64),
+				timeParse(sql.TimestampLayout, "2132-04-05 12:51:36"), timeParse(sql.DateLayout, "2231-11-07"),
+				"random text", true, `{"key":"value"}`, "blobdata",
+			}},
+		},
+		{
+			`INSERT INTO typestable VALUES (
+			999, -128, -32768, -2147483648, -9223372036854775808,
+			0, 0, 0, 0,
+			1.401298464324817070923729583289916131280e-45, 4.940656458412465441765687928682213723651e-324,
+			'0010-04-05 12:51:36', '0101-11-07',
+			'', false, '', ''
+			);`,
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM typestable WHERE id = 999;",
+			[]sql.Row{{
+				int64(999), int64(-math.MaxInt8-1), int64(-math.MaxInt16-1), int64(-math.MaxInt32-1), int64(-math.MaxInt64-1),
+				int64(0), int64(0), int64(0), int64(0),
+				float64(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
+				timeParse(sql.TimestampLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
+				"", false, ``, "",
+			}},
+		},
+		{
+			`INSERT INTO typestable VALUES (999, null, null, null, null, null, null, null, null,
+			null, null, null, null, null, null, null, null);`,
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM typestable WHERE id = 999;",
+			[]sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
+		},
+	}
+
+	for _, insertion := range insertions {
+		e := newEngine(t)
+		ctx := newCtx()
+		testQueryWithContext(ctx, t, e, insertion.insertQuery, insertion.expectedInsert)
+		testQueryWithContext(ctx, t, e, insertion.selectQuery, insertion.expectedSelect)
+	}
+}
+
+func TestInsertIntoErrors(t *testing.T) {
+	var expectedFailures = []struct {
+		name  string
+		query string
+	}{
+		{
+			"too few values",
+			"INSERT INTO mytable (s, i) VALUES ('x');",
+		},
+		{
+			"too many values one column",
+			"INSERT INTO mytable (s) VALUES ('x', 999);",
+		},
+		{
+			"too many values two columns",
+			"INSERT INTO mytable (i, s) VALUES (999, 'x', 'y');",
+		},
+		{
+			"too few values no columns specified",
+			"INSERT INTO mytable VALUES (999);",
+		},
+		{
+			"too many values no columns specified",
+			"INSERT INTO mytable VALUES (999, 'x', 'y');",
+		},
+	}
+
+	for _, expectedFailure := range expectedFailures {
+		_, _, err := newEngine(t).Query(newCtx(), expectedFailure.query)
+		require.Error(t, err)
+	}
 }
 
 const testNumPartitions = 5
@@ -2213,6 +2362,26 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow(nil, nil, nil),
 	)
 
+	typestable := memory.NewPartitionedTable("typestable", sql.Schema{
+		{Name: "id", Type: sql.Int64, Source: "typestable"},
+		{Name: "i8", Type: sql.Int8, Source: "typestable", Nullable: true},
+		{Name: "i16", Type: sql.Int16, Source: "typestable", Nullable: true},
+		{Name: "i32", Type: sql.Int32, Source: "typestable", Nullable: true},
+		{Name: "i64", Type: sql.Int64, Source: "typestable", Nullable: true},
+		{Name: "u8", Type: sql.Uint8, Source: "typestable", Nullable: true},
+		{Name: "u16", Type: sql.Uint16, Source: "typestable", Nullable: true},
+		{Name: "u32", Type: sql.Uint32, Source: "typestable", Nullable: true},
+		{Name: "u64", Type: sql.Uint64, Source: "typestable", Nullable: true},
+		{Name: "f32", Type: sql.Float32, Source: "typestable", Nullable: true},
+		{Name: "f64", Type: sql.Float64, Source: "typestable", Nullable: true},
+		{Name: "ti", Type: sql.Timestamp, Source: "typestable", Nullable: true},
+		{Name: "da", Type: sql.Date, Source: "typestable", Nullable: true},
+		{Name: "te", Type: sql.Text, Source: "typestable", Nullable: true},
+		{Name: "bo", Type: sql.Boolean, Source: "typestable", Nullable: true},
+		{Name: "js", Type: sql.JSON, Source: "typestable", Nullable: true},
+		{Name: "bl", Type: sql.Blob, Source: "typestable", Nullable: true},
+	}, testNumPartitions)
+
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 	db.AddTable("othertable", table2)
@@ -2220,6 +2389,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 	db.AddTable("bigtable", bigtable)
 	db.AddTable("floattable", floatTable)
 	db.AddTable("niltable", nilTable)
+	db.AddTable("typestable", typestable)
 
 	db2 := memory.NewDatabase("foo")
 	db2.AddTable("other_table", table4)
