@@ -14,6 +14,8 @@ var ErrInsertIntoNotSupported = errors.NewKind("table doesn't support INSERT INT
 var ErrInsertIntoMismatchValueCount =
 	errors.NewKind("number of values does not match number of columns provided")
 var ErrInsertIntoUnsupportedValues = errors.NewKind("%T is unsupported for inserts")
+var ErrInsertIntoDuplicateColumn = errors.NewKind("duplicate column name %v")
+var ErrInsertIntoNonexistentColumn = errors.NewKind("invalid column name %v")
 
 // InsertInto is a node describing the insertion into some table.
 type InsertInto struct {
@@ -76,6 +78,11 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 		p.Columns = make([]string, len(dstSchema))
 		for i, f := range dstSchema {
 			p.Columns[i] = f.Name
+		}
+	} else {
+		err = p.validateColumns(ctx, dstSchema)
+		if err != nil {
+			return 0, err
 		}
 	}
 
@@ -165,6 +172,25 @@ func (p *InsertInto) validateValueCount(ctx *sql.Context) error {
 		}
 	default:
 		return ErrInsertIntoUnsupportedValues.New(node)
+	}
+	return nil
+}
+
+func (p *InsertInto) validateColumns(ctx *sql.Context, dstSchema sql.Schema) error {
+	dstColNames := make(map[string]struct{})
+	for _, dstCol := range dstSchema {
+		dstColNames[dstCol.Name] = struct{}{}
+	}
+	columnNames := make(map[string]struct{})
+	for _, columnName := range p.Columns {
+		if _, exists := dstColNames[columnName]; !exists {
+			return ErrInsertIntoNonexistentColumn.New(columnName)
+		}
+		if _, exists := columnNames[columnName]; !exists {
+			columnNames[columnName] = struct{}{}
+		} else {
+			return ErrInsertIntoDuplicateColumn.New(columnName)
+		}
 	}
 	return nil
 }

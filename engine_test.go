@@ -1908,11 +1908,21 @@ func TestInsertIntoErrors(t *testing.T) {
 			"too many values no columns specified",
 			"INSERT INTO mytable VALUES (999, 'x', 'y');",
 		},
+		{
+			"non-existent column",
+			"INSERT INTO mytable (i, s, z) VALUES (999, 'x', 999);",
+		},
+		{
+			"duplicate column",
+			"INSERT INTO mytable (i, s, s) VALUES (999, 'x', 'x');",
+		},
 	}
 
 	for _, expectedFailure := range expectedFailures {
-		_, _, err := newEngine(t).Query(newCtx(), expectedFailure.query)
-		require.Error(t, err)
+		t.Run(expectedFailure.name, func(t *testing.T) {
+			_, _, err := newEngine(t).Query(newCtx(), expectedFailure.query)
+			require.Error(t, err)
+		})
 	}
 }
 
