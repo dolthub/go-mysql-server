@@ -68,11 +68,11 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		right = patternToRegex(v.(string))
+		right = patternToGoRegex(v.(string))
 	}
 	// for non-cached regex every time create a new matcher
 	if !l.cached {
-		matcher, disposer, err = regex.New(regex.Default(), right)
+		matcher, disposer, err = regex.New("go", right)
 	} else {
 		if l.pool == nil {
 			l.pool = &sync.Pool{
@@ -115,8 +115,9 @@ func (l *Like) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	return NewLike(children[0], children[1]), nil
 }
 
-func patternToRegex(pattern string) string {
+func patternToGoRegex(pattern string) string {
 	var buf bytes.Buffer
+	buf.WriteString("(?s)")
 	buf.WriteRune('^')
 	var escaped bool
 	for _, r := range strings.Replace(regexp.QuoteMeta(pattern), `\\`, `\`, -1) {

@@ -12,23 +12,23 @@ func TestPatternToRegex(t *testing.T) {
 	testCases := []struct {
 		in, out string
 	}{
-		{`__`, `^..$`},
-		{`_%_`, `^..*.$`},
-		{`%_`, `^.*.$`},
-		{`_%`, `^..*$`},
-		{`a_b`, `^a.b$`},
-		{`a%b`, `^a.*b$`},
-		{`a.%b`, `^a\..*b$`},
-		{`a\%b`, `^a%b$`},
-		{`a\_b`, `^a_b$`},
-		{`a\\b`, `^a\\b$`},
-		{`a\\\_b`, `^a\\_b$`},
-		{`(ab)`, `^\(ab\)$`},
+		{`__`, `(?s)^..$`},
+		{`_%_`, `(?s)^..*.$`},
+		{`%_`, `(?s)^.*.$`},
+		{`_%`, `(?s)^..*$`},
+		{`a_b`, `(?s)^a.b$`},
+		{`a%b`, `(?s)^a.*b$`},
+		{`a.%b`, `(?s)^a\..*b$`},
+		{`a\%b`, `(?s)^a%b$`},
+		{`a\_b`, `(?s)^a_b$`},
+		{`a\\b`, `(?s)^a\\b$`},
+		{`a\\\_b`, `(?s)^a\\_b$`},
+		{`(ab)`, `(?s)^\(ab\)$`},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.in, func(t *testing.T) {
-			require.Equal(t, tt.out, patternToRegex(tt.in))
+			require.Equal(t, tt.out, patternToGoRegex(tt.in))
 		})
 	}
 }
