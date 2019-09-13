@@ -2536,6 +2536,12 @@ func TestOrderByGroupBy(t *testing.T) {
 	require.NoError(err)
 
 	require.Equal(expected, rows)
+
+	_, _, err = e.Query(
+		newCtx(),
+		"SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY columndoesnotexist",
+	)
+	require.Error(err)
 }
 
 func TestTracing(t *testing.T) {

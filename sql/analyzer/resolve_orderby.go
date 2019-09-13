@@ -164,7 +164,7 @@ func pushSortDown(sort *plan.Sort) (sql.Node, error) {
 			plan.NewSort(sort.SortFields, child.Child),
 		), nil
 	case *plan.ResolvedTable:
-		return child, nil
+		return sort, nil
 	default:
 		children := child.Children()
 		if len(children) == 1 {
