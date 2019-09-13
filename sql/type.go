@@ -343,10 +343,18 @@ func (t numberT) Convert(v interface{}) (interface{}, error) {
 	}
 
 	switch t.t {
+	case sqltypes.Int8:
+		return cast.ToInt8E(v)
+	case sqltypes.Int16:
+		return cast.ToInt16E(v)
 	case sqltypes.Int32:
 		return cast.ToInt32E(v)
 	case sqltypes.Int64:
 		return cast.ToInt64E(v)
+	case sqltypes.Uint8:
+		return cast.ToUint8E(v)
+	case sqltypes.Uint16:
+		return cast.ToUint16E(v)
 	case sqltypes.Uint32:
 		return cast.ToUint32E(v)
 	case sqltypes.Uint64:
