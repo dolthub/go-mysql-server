@@ -700,6 +700,7 @@ var queries = []struct {
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"typestable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
@@ -711,6 +712,7 @@ var queries = []struct {
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"typestable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
@@ -854,6 +856,7 @@ var queries = []struct {
 			{"bigtable"},
 			{"floattable"},
 			{"niltable"},
+			{"newlinetable"},
 			{"typestable"},
 		},
 	},
@@ -1003,6 +1006,7 @@ var queries = []struct {
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"typestable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
@@ -1117,6 +1121,7 @@ var queries = []struct {
 			{"bigtable"},
 			{"floattable"},
 			{"niltable"},
+			{"newlinetable"},
 			{"typestable"},
 		},
 	},
@@ -1129,6 +1134,7 @@ var queries = []struct {
 			{"bigtable", "BASE TABLE"},
 			{"floattable", "BASE TABLE"},
 			{"niltable", "BASE TABLE"},
+			{"newlinetable", "BASE TABLE"},
 			{"typestable", "BASE TABLE"},
 		},
 	},
@@ -1146,6 +1152,7 @@ var queries = []struct {
 			{"bigtable"},
 			{"floattable"},
 			{"niltable"},
+			{"newlinetable"},
 			{"typestable"},
 		},
 	},
@@ -1530,6 +1537,16 @@ var queries = []struct {
 	{
 		`SELECT REGEXP_MATCHES("", "", NULL)`,
 		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT * FROM newlinetable WHERE s LIKE '%text%'",
+		[]sql.Row{
+			{int64(1), "\nthere is some text in here"},
+			{int64(2), "there is some\ntext in here"},
+			{int64(3), "there is some text\nin here"},
+			{int64(4), "there is some text in here\n"},
+			{int64(5), "there is some text in here"},
+		},
 	},
 }
 
@@ -2372,6 +2389,20 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow(nil, nil, nil),
 	)
 
+	newlineTable := memory.NewPartitionedTable("newlinetable", sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "newlinetable"},
+		{Name: "s", Type: sql.Text, Source: "newlinetable"},
+	}, testNumPartitions)
+
+	insertRows(
+		t, newlineTable,
+		sql.NewRow(int64(1), "\nthere is some text in here"),
+		sql.NewRow(int64(2), "there is some\ntext in here"),
+		sql.NewRow(int64(3), "there is some text\nin here"),
+		sql.NewRow(int64(4), "there is some text in here\n"),
+		sql.NewRow(int64(5), "there is some text in here"),
+	)
+
 	typestable := memory.NewPartitionedTable("typestable", sql.Schema{
 		{Name: "id", Type: sql.Int64, Source: "typestable"},
 		{Name: "i8", Type: sql.Int8, Source: "typestable", Nullable: true},
@@ -2399,6 +2430,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 	db.AddTable("bigtable", bigtable)
 	db.AddTable("floattable", floatTable)
 	db.AddTable("niltable", nilTable)
+	db.AddTable("newlinetable", newlineTable)
 	db.AddTable("typestable", typestable)
 
 	db2 := memory.NewDatabase("foo")
