@@ -10,6 +10,6 @@
     "mysql": "github:mysqljs/mysql"
   },
   "devDependencies": {
-    "ava": "1.0.0-beta.8"
+    "ava": "2.3.0"
   }
 }
