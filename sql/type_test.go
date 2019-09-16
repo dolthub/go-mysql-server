@@ -342,20 +342,22 @@ func TestTuple(t *testing.T) {
 	gt(t, typ, []interface{}{1, 2, 4}, []interface{}{1, 2, 3})
 }
 
-func TestVarChar(t *testing.T) {
-	typ := VarChar(3)
-	require.True(t, IsVarChar(typ))
+// Generic test for Char and VarChar types.
+// genType should be sql.Char or sql.VarChar
+func testCharTypes(genType func(int) Type, checkType func(Type) bool, t *testing.T) {
+	typ := genType(3)
+	require.True(t, checkType(typ))
 	require.True(t, IsText(typ))
 	convert(t, typ, "foo", "foo")
 	fooByte := []byte{'f', 'o', 'o'}
 	convert(t, typ, fooByte, "foo")
 
-	typ = VarChar(1)
+	typ = genType(1)
 	convertErr(t, typ, "foo")
 	convertErr(t, typ, fooByte)
 	convertErr(t, typ, 123)
 
-	typ = VarChar(10)
+	typ = genType(10)
 	convert(t, typ, 123, "123")
 	convertErr(t, typ, 1234567890123)
 
@@ -370,8 +372,16 @@ func TestVarChar(t *testing.T) {
 	require.NoError(t, err)
 
 	convert(t, typ, text, "abc")
-	typ1 := VarChar(1)
+	typ1 := genType(1)
 	convertErr(t, typ1, text)
+}
+
+func TestChar(t *testing.T) {
+	testCharTypes(Char, IsChar, t)
+}
+
+func TestVarChar(t *testing.T) {
+	testCharTypes(VarChar, IsVarChar, t)
 }
 
 func TestArray(t *testing.T) {

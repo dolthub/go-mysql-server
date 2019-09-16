@@ -27,7 +27,10 @@ var (
 	// ErrConvertingToTime is thrown when a value cannot be converted to a Time
 	ErrConvertingToTime = errors.NewKind("value %q can't be converted to time.Time")
 
-	// ErrVarCharTruncation is thrown when a value is textually longer than the destination capacity
+	// ErrCharTruncation is thrown when a Char value is textually longer than the destination capacity
+	ErrCharTruncation = errors.NewKind("string value of %q is longer than destination capacity %d")
+
+	// ErrVarCharTruncation is thrown when a VarChar value is textually longer than the destination capacity
 	ErrVarCharTruncation = errors.NewKind("string value of %q is longer than destination capacity %d")
 
 	// ErrValueNotNil is thrown when a value that was expected to be nil, is not
@@ -220,6 +223,11 @@ func Array(underlying Type) Type {
 	return arrayT{underlying}
 }
 
+// Char returns a new Char type of the given length.
+func Char(length int) Type {
+	return charT{length: length}
+}
+
 // VarChar returns a new VarChar type of the given length.
 func VarChar(length int) Type {
 	return varCharT{length: length}
@@ -255,6 +263,10 @@ func MysqlTypeToType(sql query.Type) (Type, error) {
 	case sqltypes.Date:
 		return Date, nil
 	case sqltypes.Text:
+		return Text, nil
+	case sqltypes.Char:
+		// Since we can't get the size of the sqltypes.Char to instantiate a
+		// specific Char(length) type we return a Text here
 		return Text, nil
 	case sqltypes.VarChar:
 		// Since we can't get the size of the sqltypes.VarChar to instantiate a
@@ -659,6 +671,50 @@ func (t datetimeT) Compare(a, b interface{}) (int, error) {
 	}
 	return 0, nil
 }
+
+type charT struct {
+	length int
+}
+
+func (t charT) Capacity() int { return t.length }
+
+func (t charT) String() string { return fmt.Sprintf("CHAR(%d)", t.length) }
+
+func (t charT) Type() query.Type {
+	return sqltypes.Char
+}
+
+func (t charT) SQL(v interface{}) (sqltypes.Value, error) {
+	if v == nil {
+		return sqltypes.MakeTrusted(sqltypes.Char, nil), nil
+	}
+
+	v, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+
+	return sqltypes.MakeTrusted(sqltypes.Char, []byte(v.(string))), nil
+}
+
+// Converts any value that can be casted to a string
+func (t charT) Convert(v interface{}) (interface{}, error) {
+	val, err := cast.ToStringE(v)
+	if err != nil {
+		return nil, ErrConvertToSQL.New(t)
+	}
+
+	if len(val) > t.length {
+		return nil, ErrCharTruncation.New(val, t.length)
+	}
+	return val, nil
+}
+
+// Compares two strings lexicographically
+func (t charT) Compare(a interface{}, b interface{}) (int, error) {
+	return strings.Compare(a.(string), b.(string)), nil
+}
+
 
 type varCharT struct {
 	length int
@@ -1088,7 +1144,13 @@ func IsDecimal(t Type) bool {
 
 // IsText checks if t is a text type.
 func IsText(t Type) bool {
-	return t == Text || t == Blob || t == JSON || IsVarChar(t)
+	return t == Text || t == Blob || t == JSON || IsVarChar(t) || IsChar(t)
+}
+
+// IsChar checks if t is a Char type.
+func IsChar(t Type) bool {
+	_, ok := t.(charT)
+	return ok
 }
 
 // IsVarChar checks if t is a varchar type.
@@ -1150,6 +1212,8 @@ func MySQLTypeName(t Type) string {
 		return "DATETIME"
 	case sqltypes.Date:
 		return "DATE"
+	case sqltypes.Char:
+		return "CHAR"
 	case sqltypes.VarChar:
 		return "VARCHAR"
 	case sqltypes.Text:

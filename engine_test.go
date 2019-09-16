@@ -1994,7 +1994,7 @@ func TestDDL(t *testing.T) {
 	testQuery(t, e,
 		"CREATE TABLE t1(a INTEGER, b TEXT, c DATE, "+
 			"d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, "+
-			"b1 BOOL, b2 BOOLEAN NOT NULL, g DATETIME",
+			"b1 BOOL, b2 BOOLEAN NOT NULL, g DATETIME, h CHAR(40))",
 		[]sql.Row(nil),
 	)
 
@@ -2014,6 +2014,7 @@ func TestDDL(t *testing.T) {
 		{Name: "b1", Type: sql.Uint8, Nullable: true, Source: "t1"},
 		{Name: "b2", Type: sql.Uint8, Source: "t1"},
 		{Name: "g", Type: sql.Datetime, Nullable: true, Source: "t1"},
+		{Name: "h", Type: sql.Text, Nullable: true, Source: "t1"},
 	}
 
 	require.Equal(s, testTable.Schema())
