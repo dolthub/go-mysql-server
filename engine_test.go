@@ -2761,6 +2761,142 @@ func TestDescribeNoPruneColumns(t *testing.T) {
 	require.Len(p.Schema(), 3)
 }
 
+func TestDeleteFrom(t *testing.T) {
+	var deletions = []struct {
+		deleteQuery    string
+		expectedDelete []sql.Row
+		selectQuery    string
+		expectedSelect []sql.Row
+	}{
+		{
+			"DELETE FROM mytable;",
+			[]sql.Row{{int64(3)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{},
+		},
+		{
+			"DELETE FROM mytable WHERE i = 2;",
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "first row"}, {int64(3), "third row"}},
+		},
+		{
+			"DELETE FROM mytable WHERE i < 3;",
+			[]sql.Row{{int64(2)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(3), "third row"}},
+		},
+		{
+			"DELETE FROM mytable WHERE i > 1;",
+			[]sql.Row{{int64(2)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "first row"}},
+		},
+		{
+			"DELETE FROM mytable WHERE i <= 2;",
+			[]sql.Row{{int64(2)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(3), "third row"}},
+		},
+		{
+			"DELETE FROM mytable WHERE i >= 2;",
+			[]sql.Row{{int64(2)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "first row"}},
+		},
+		{
+			"DELETE FROM mytable WHERE s = 'first row';",
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(2), "second row"}, {int64(3), "third row"}},
+		},
+		{
+			"DELETE FROM mytable WHERE s <> 'dne';",
+			[]sql.Row{{int64(3)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{},
+		},
+		{
+			"DELETE FROM mytable WHERE s LIKE '%row';",
+			[]sql.Row{{int64(3)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{},
+		},
+		{
+			"DELETE FROM mytable WHERE s = 'dne';",
+			[]sql.Row{{int64(0)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
+		},
+		{
+			"DELETE FROM mytable WHERE i = 'invalid';",
+			[]sql.Row{{int64(0)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
+		},
+		{
+			"DELETE FROM mytable ORDER BY i ASC LIMIT 2;",
+			[]sql.Row{{int64(2)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(3), "third row"}},
+		},
+		{
+			"DELETE FROM mytable ORDER BY i DESC LIMIT 1;",
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "first row"}, {int64(2), "second row"}},
+		},
+		{
+			"DELETE FROM mytable ORDER BY i DESC LIMIT 1 OFFSET 1;",
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "first row"}, {int64(3), "third row"}},
+		},
+	}
+
+	for _, deletion := range deletions {
+		e := newEngine(t)
+		ctx := newCtx()
+		testQueryWithContext(ctx, t, e, deletion.deleteQuery, deletion.expectedDelete)
+		testQueryWithContext(ctx, t, e, deletion.selectQuery, deletion.expectedSelect)
+	}
+}
+
+func TestDeleteFromErrors(t *testing.T) {
+	var expectedFailures = []struct {
+		name  string
+		query string
+	}{
+		{
+			"invalid table",
+			"DELETE FROM invalidtable WHERE x < 1;",
+		},
+		{
+			"invalid column",
+			"DELETE FROM mytable WHERE z = 'dne';",
+		},
+		{
+			"negative limit",
+			"DELETE FROM mytable LIMIT -1;",
+		},
+		{
+			"negative offset",
+			"DELETE FROM mytable LIMIT 1 OFFSET -1;",
+		},
+		{
+			"missing keyword from",
+			"DELETE mytable WHERE id = 1;",
+		},
+	}
+
+	for _, expectedFailure := range expectedFailures {
+		t.Run(expectedFailure.name, func(t *testing.T) {
+			_, _, err := newEngine(t).Query(newCtx(), expectedFailure.query)
+			require.Error(t, err)
+		})
+	}
+}
+
 var generatorQueries = []struct {
 	query    string
 	expected []sql.Row
