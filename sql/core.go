@@ -202,6 +202,12 @@ type Inserter interface {
 	Insert(*Context, Row) error
 }
 
+// Deleter allow rows to be deleted from them.
+type Deleter interface {
+	// Delete the given row.
+	Delete(*Context, Row) error
+}
+
 // Database represents the database.
 type Database interface {
 	Nameable
