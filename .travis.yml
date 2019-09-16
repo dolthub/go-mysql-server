@@ -60,7 +60,7 @@ jobs:
         - make TEST=jdbc-mariadb integration
 
     - language: node_js
-      node_js: '7'
+      node_js: '12'
       before_install:
         - eval "$(gimme 1.12.4)"
       script:
