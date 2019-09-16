@@ -239,6 +239,7 @@ rowLoop:
 
 		if r.RowsAffected == rowsBatch {
 			if err := callback(r); err != nil {
+				close(quit)
 				return err
 			}
 
@@ -272,12 +273,11 @@ rowLoop:
 		}
 		timer.Reset(waitTime)
 	}
+	close(quit)
 
 	if err := rows.Close(); err != nil {
 		return err
 	}
-
-	close(quit)
 
 	// Even if r.RowsAffected = 0, the callback must be
 	// called to update the state in the go-vitess' listener

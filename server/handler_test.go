@@ -165,7 +165,6 @@ func TestHandlerKill(t *testing.T) {
 	require.Len(handler.c, 2)
 	require.Equal(conntainer1, handler.c[1])
 	require.Equal(conntainer2, handler.c[2])
-
 	assertNoConnProcesses(t, e, conn2.ConnectionID)
 
 	ctx1 := handler.sm.NewContextWithQuery(conn1, "SELECT 1")

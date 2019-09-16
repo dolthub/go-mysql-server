@@ -36,7 +36,7 @@ func GetInodeSockState(port int, inode uint64) (SockState, error) {
 
 	switch len(socks) {
 	case 0:
-		fallthrough
+		return Broken, nil
 	case 1:
 		switch socks[0].State {
 		case CloseWait:
