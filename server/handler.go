@@ -211,16 +211,12 @@ func (h *Handler) ComQuery(
 		for {
 			select {
 			case <-quit:
-				// timeout or other errors detected by the calling routine
 				return
 			default:
 			}
 
 			st, err := sockstate.GetInodeSockState(t.Port, inode)
 			switch st {
-			case sockstate.Finished:
-				// Not Linux OSs will also exit here
-				return
 			case sockstate.Broken:
 				errChan <- ErrConnectionWasClosed.New()
 				return

@@ -12,8 +12,8 @@ import (
 // elements that satisfy the accept function
 func tcpSocks(accept AcceptFn) ([]sockTabEntry, error) {
 	// (juanjux) TODO: not implemented
-	logrus.Info("Connection checking not implemented for Darwin")
-	return []sockTabEntry{}, nil
+	logrus.Info("Connection checking not implemented for Windows")
+	return nil, ErrSocketCheckNotImplemented.New()
 }
 
 func GetConnInode(c *net.TCPConn) (n uint64, err error) {

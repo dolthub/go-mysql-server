@@ -8,8 +8,7 @@ import (
 type SockState uint8
 
 const (
-	Finished = iota
-	Broken
+	Broken = iota
 	Other
 	Error
 )
@@ -37,12 +36,24 @@ func GetInodeSockState(port int, inode uint64) (SockState, error) {
 
 	switch len(socks) {
 	case 0:
-		return Finished, nil
+		fallthrough
 	case 1:
-		if socks[0].State == CloseWait {
+		switch socks[0].State {
+		case CloseWait:
+			fallthrough
+		case TimeWait:
+			fallthrough
+		case FinWait1:
+			fallthrough
+		case FinWait2:
+			fallthrough
+		case Close:
+			fallthrough
+		case Closing:
 			return Broken, nil
+		default:
+			return Other, nil
 		}
-		return Other, nil
 	default: // more than one sock for inode, impossible?
 		return Error, ErrMultipleSocketsForInode.New()
 	}
