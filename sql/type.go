@@ -198,6 +198,8 @@ var (
 	Timestamp timestampT
 	// Date is a date with day, month and year.
 	Date dateT
+	// Datetime is a date and a time
+	Datetime datetimeT
 	// Text is a string type.
 	Text textT
 	// Boolean is a boolean type.
@@ -258,6 +260,8 @@ func MysqlTypeToType(sql query.Type) (Type, error) {
 		// Since we can't get the size of the sqltypes.VarChar to instantiate a
 		// specific VarChar(length) type we return a Text here
 		return Text, nil
+	case sqltypes.Datetime:
+		return Datetime, nil
 	case sqltypes.Bit:
 		return Boolean, nil
 	case sqltypes.TypeJSON:
@@ -589,6 +593,65 @@ func (t dateT) Convert(v interface{}) (interface{}, error) {
 func (t dateT) Compare(a, b interface{}) (int, error) {
 	av := truncateDate(a.(time.Time))
 	bv := truncateDate(b.(time.Time))
+	if av.Before(bv) {
+		return -1, nil
+	} else if av.After(bv) {
+		return 1, nil
+	}
+	return 0, nil
+}
+
+type datetimeT struct{}
+
+// DatetimeLayout is the layout of the MySQL date format in the representation
+// Go understands.
+const DatetimeLayout = "2006-01-02 15:04:05"
+
+func (t datetimeT) String() string { return "DATETIME" }
+
+func (t datetimeT) Type() query.Type {
+	return sqltypes.Datetime
+}
+
+func (t datetimeT) SQL(v interface{}) (sqltypes.Value, error) {
+	if v == nil {
+		return sqltypes.NULL, nil
+	}
+
+	v, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+
+	return sqltypes.MakeTrusted(
+		sqltypes.Datetime,
+		[]byte(v.(time.Time).Format(DatetimeLayout)),
+	), nil
+}
+
+func (t datetimeT) Convert(v interface{}) (interface{}, error) {
+	switch value := v.(type) {
+	case time.Time:
+		return value.UTC(), nil
+	case string:
+		t, err := time.Parse(DatetimeLayout, value)
+		if err != nil {
+			return nil, ErrConvertingToTime.Wrap(err, v)
+		}
+		return t.UTC(), nil
+	default:
+		ts, err := Int64.Convert(v)
+		if err != nil {
+			return nil, ErrInvalidType.New(reflect.TypeOf(v))
+		}
+
+		return time.Unix(ts.(int64), 0).UTC(), nil
+	}
+}
+
+func (t datetimeT) Compare(a, b interface{}) (int, error) {
+	av := a.(time.Time)
+	bv := b.(time.Time)
 	if av.Before(bv) {
 		return -1, nil
 	} else if av.After(bv) {
@@ -1013,9 +1076,9 @@ func IsInteger(t Type) bool {
 	return IsSigned(t) || IsUnsigned(t)
 }
 
-// IsTime checks if t is a timestamp or date.
+// IsTime checks if t is a timestamp, date or datetime
 func IsTime(t Type) bool {
-	return t == Timestamp || t == Date
+	return t == Timestamp || t == Date || t == Datetime
 }
 
 // IsDecimal checks if t is decimal type.
@@ -1082,6 +1145,8 @@ func MySQLTypeName(t Type) string {
 	case sqltypes.Float64:
 		return "DOUBLE"
 	case sqltypes.Timestamp:
+		return "TIMESTAMP"
+	case sqltypes.Datetime:
 		return "DATETIME"
 	case sqltypes.Date:
 		return "DATE"

@@ -236,40 +236,57 @@ func TestExtraTimestamps(t *testing.T) {
 	}
 }
 
-func TestDate(t *testing.T) {
+// Generic tests for Date and Datetime.
+// typ should be Date or Datetime
+func commonTestsDatesTypes(typ Type, layout string, t *testing.T) {
 	require := require.New(t)
 	now := time.Now().UTC()
-	v, err := Date.Convert(now)
+	v, err := typ.Convert(now)
 	require.NoError(err)
-	require.Equal(now.Format(DateLayout), v.(time.Time).Format(DateLayout))
+	require.Equal(now.Format(layout), v.(time.Time).Format(layout))
 
-	v, err = Date.Convert(now.Format(DateLayout))
-	require.NoError(err)
-	require.Equal(
-		now.Format(DateLayout),
-		v.(time.Time).Format(DateLayout),
-	)
-
-	v, err = Date.Convert(now.Unix())
+	v, err = typ.Convert(now.Format(layout))
 	require.NoError(err)
 	require.Equal(
-		now.Format(DateLayout),
-		v.(time.Time).Format(DateLayout),
+		now.Format(layout),
+		v.(time.Time).Format(layout),
 	)
 
-	sql, err := Date.SQL(now)
+	v, err = typ.Convert(now.Unix())
 	require.NoError(err)
-	require.Equal([]byte(now.Format(DateLayout)), sql.Raw())
+	require.Equal(
+		now.Format(layout),
+		v.(time.Time).Format(layout),
+	)
 
+	sql, err := typ.SQL(now)
+	require.NoError(err)
+	require.Equal([]byte(now.Format(layout)), sql.Raw())
+
+	after := now.Add(26 * time.Hour)
+	lt(t, typ, now, after)
+	eq(t, typ, now, now)
+	gt(t, typ, after, now)
+}
+
+func TestDate(t *testing.T) {
+	commonTestsDatesTypes(Date, DateLayout, t)
+
+	now := time.Now().UTC()
 	after := now.Add(time.Second)
 	eq(t, Date, now, after)
 	eq(t, Date, now, now)
 	eq(t, Date, after, now)
+}
 
-	after = now.Add(26 * time.Hour)
-	lt(t, Date, now, after)
-	eq(t, Date, now, now)
-	gt(t, Date, after, now)
+func TestDatetime(t *testing.T) {
+	commonTestsDatesTypes(Datetime, DatetimeLayout, t)
+
+	now := time.Now().UTC()
+	after := now.Add(time.Millisecond)
+	lt(t, Datetime, now, after)
+	eq(t, Datetime, now, now)
+	gt(t, Datetime, after, now)
 }
 
 func TestBlob(t *testing.T) {

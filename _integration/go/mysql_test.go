@@ -82,7 +82,7 @@ func TestGrafana(t *testing.T) {
 				{"name", "TEXT"},
 				{"email", "TEXT"},
 				{"phone_numbers", "JSON"},
-				{"created_at", "DATETIME"},
+				{"created_at", "TIMESTAMP"},
 			},
 		},
 		{
