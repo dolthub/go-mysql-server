@@ -64,7 +64,7 @@ func getDeletableTable(t sql.Table) (sql.Deleter, error) {
 	}
 }
 
-// Execute inserts the rows in the database.
+// Execute deletes the rows in the database.
 func (p *DeleteFrom) Execute(ctx *sql.Context) (int, error) {
 	deletable, err := getDeletable(p.Node)
 	if err != nil {

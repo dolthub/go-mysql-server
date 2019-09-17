@@ -205,7 +205,7 @@ type Inserter interface {
 	Insert(*Context, Row) error
 }
 
-// Deleter allow rows to be deleted from them.
+// Deleter allow rows to be deleted from tables.
 type Deleter interface {
 	// Delete the given row. Returns ErrDeleteRowNotFound if the row was not found.
 	Delete(*Context, Row) error
