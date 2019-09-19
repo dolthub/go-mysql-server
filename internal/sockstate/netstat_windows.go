@@ -12,7 +12,7 @@ import (
 // elements that satisfy the accept function
 func tcpSocks(accept AcceptFn) ([]sockTabEntry, error) {
 	// (juanjux) TODO: not implemented
-	logrus.Info("Connection checking not implemented for Windows")
+	logrus.Warn("Connection checking not implemented for Windows")
 	return nil, ErrSocketCheckNotImplemented.New()
 }
 
