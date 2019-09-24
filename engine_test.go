@@ -1824,11 +1824,6 @@ func TestOrderByColumns(t *testing.T) {
 }
 
 func TestInsertInto(t *testing.T) {
-	timeParse := func(layout string, value string) time.Time {
-		t, _ := time.Parse(layout, value)
-		return t
-	}
-
 	var insertions = []struct {
 		insertQuery    string
 		expectedInsert []sql.Row
@@ -1842,7 +1837,19 @@ func TestInsertInto(t *testing.T) {
 			[]sql.Row{{int64(999)}},
 		},
 		{
+			"INSERT INTO mytable SET s = 'x', i = 999;",
+			[]sql.Row{{int64(1)}},
+			"SELECT i FROM mytable WHERE s = 'x';",
+			[]sql.Row{{int64(999)}},
+		},
+		{
 			"INSERT INTO mytable VALUES (999, 'x');",
+			[]sql.Row{{int64(1)}},
+			"SELECT i FROM mytable WHERE s = 'x';",
+			[]sql.Row{{int64(999)}},
+		},
+		{
+			"INSERT INTO mytable SET i = 999, s = 'x';",
 			[]sql.Row{{int64(1)}},
 			"SELECT i FROM mytable WHERE s = 'x';",
 			[]sql.Row{{int64(999)}},
@@ -1855,6 +1862,24 @@ func TestInsertInto(t *testing.T) {
 			'2132-04-05 12:51:36', '2231-11-07',
 			'random text', true, '{"key":"value"}', 'blobdata'
 			);`,
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM typestable WHERE id = 999;",
+			[]sql.Row{{
+				int64(999), int64(math.MaxInt8), int64(math.MaxInt16), int64(math.MaxInt32), int64(math.MaxInt64),
+				int64(math.MaxUint8), int64(math.MaxUint16), int64(math.MaxUint32), uint64(math.MaxUint64),
+				float64(math.MaxFloat32), float64(math.MaxFloat64),
+				timeParse(sql.TimestampLayout, "2132-04-05 12:51:36"), timeParse(sql.DateLayout, "2231-11-07"),
+				"random text", true, `{"key":"value"}`, "blobdata",
+			}},
+		},
+		{
+			`INSERT INTO typestable SET
+			id = 999, i8 = 127, i16 = 32767, i32 = 2147483647, i64 = 9223372036854775807,
+			u8 = 255, u16 = 65535, u32 = 4294967295, u64 = 18446744073709551615,
+			f32 = 3.40282346638528859811704183484516925440e+38, f64 = 1.797693134862315708145274237317043567981e+308,
+			ti = '2132-04-05 12:51:36', da = '2231-11-07',
+			te = 'random text', bo = true, js = '{"key":"value"}', bl = 'blobdata'
+			;`,
 			[]sql.Row{{int64(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
@@ -1884,8 +1909,33 @@ func TestInsertInto(t *testing.T) {
 			}},
 		},
 		{
+			`INSERT INTO typestable SET
+			id = 999, i8 = -128, i16 = -32768, i32 = -2147483648, i64 = -9223372036854775808,
+			u8 = 0, u16 = 0, u32 = 0, u64 = 0,
+			f32 = 1.401298464324817070923729583289916131280e-45, f64 = 4.940656458412465441765687928682213723651e-324,
+			ti = '0010-04-05 12:51:36', da = '0101-11-07',
+			te = '', bo = false, js = '', bl = ''
+			;`,
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM typestable WHERE id = 999;",
+			[]sql.Row{{
+				int64(999), int64(-math.MaxInt8-1), int64(-math.MaxInt16-1), int64(-math.MaxInt32-1), int64(-math.MaxInt64-1),
+				int64(0), int64(0), int64(0), int64(0),
+				float64(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
+				timeParse(sql.TimestampLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
+				"", false, ``, "",
+			}},
+		},
+		{
 			`INSERT INTO typestable VALUES (999, null, null, null, null, null, null, null, null,
 			null, null, null, null, null, null, null, null);`,
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM typestable WHERE id = 999;",
+			[]sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
+		},
+		{
+			`INSERT INTO typestable SET id=999, i8=null, i16=null, i32=null, i64=null, u8=null, u16=null, u32=null, u64=null,
+			f32=null, f64=null, ti=null, da=null, te=null, bo=null, js=null, bl=null;`,
 			[]sql.Row{{int64(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
@@ -1926,12 +1976,228 @@ func TestInsertIntoErrors(t *testing.T) {
 			"INSERT INTO mytable VALUES (999, 'x', 'y');",
 		},
 		{
-			"non-existent column",
+			"non-existent column values",
 			"INSERT INTO mytable (i, s, z) VALUES (999, 'x', 999);",
+		},
+		{
+			"non-existent column set",
+			"INSERT INTO mytable SET i = 999, s = 'x', z = 999;",
 		},
 		{
 			"duplicate column",
 			"INSERT INTO mytable (i, s, s) VALUES (999, 'x', 'x');",
+		},
+		{
+			"duplicate column set",
+			"INSERT INTO mytable SET i = 999, s = 'y', s = 'y';",
+		},
+		{
+			"null given to non-nullable",
+			"INSERT INTO mytable (i, s) VALUES (null, 'y');",
+		},
+	}
+
+	for _, expectedFailure := range expectedFailures {
+		t.Run(expectedFailure.name, func(t *testing.T) {
+			_, _, err := newEngine(t).Query(newCtx(), expectedFailure.query)
+			require.Error(t, err)
+		})
+	}
+}
+
+func TestReplaceInto(t *testing.T) {
+	var insertions = []struct {
+		replaceQuery    string
+		expectedReplace []sql.Row
+		selectQuery     string
+		expectedSelect  []sql.Row
+	}{
+		{
+			"REPLACE INTO mytable VALUES (1, 'first row');",
+			[]sql.Row{{int64(2)}},
+			"SELECT s FROM mytable WHERE i = 1;",
+			[]sql.Row{{"first row"}},
+		},
+		{
+			"REPLACE INTO mytable SET i = 1, s = 'first row';",
+			[]sql.Row{{int64(2)}},
+			"SELECT s FROM mytable WHERE i = 1;",
+			[]sql.Row{{"first row"}},
+		},
+		{
+			"REPLACE INTO mytable VALUES (1, 'new row same i');",
+			[]sql.Row{{int64(1)}},
+			"SELECT s FROM mytable WHERE i = 1;",
+			[]sql.Row{{"first row"}, {"new row same i"}},
+		},
+		{
+			"REPLACE INTO mytable (s, i) VALUES ('x', 999);",
+			[]sql.Row{{int64(1)}},
+			"SELECT i FROM mytable WHERE s = 'x';",
+			[]sql.Row{{int64(999)}},
+		},
+		{
+			"REPLACE INTO mytable SET s = 'x', i = 999;",
+			[]sql.Row{{int64(1)}},
+			"SELECT i FROM mytable WHERE s = 'x';",
+			[]sql.Row{{int64(999)}},
+		},
+		{
+			"REPLACE INTO mytable VALUES (999, 'x');",
+			[]sql.Row{{int64(1)}},
+			"SELECT i FROM mytable WHERE s = 'x';",
+			[]sql.Row{{int64(999)}},
+		},
+		{
+			"REPLACE INTO mytable SET i = 999, s = 'x';",
+			[]sql.Row{{int64(1)}},
+			"SELECT i FROM mytable WHERE s = 'x';",
+			[]sql.Row{{int64(999)}},
+		},
+		{
+			`REPLACE INTO typestable VALUES (
+			999, 127, 32767, 2147483647, 9223372036854775807,
+			255, 65535, 4294967295, 18446744073709551615,
+			3.40282346638528859811704183484516925440e+38, 1.797693134862315708145274237317043567981e+308,
+			'2132-04-05 12:51:36', '2231-11-07',
+			'random text', true, '{"key":"value"}', 'blobdata'
+			);`,
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM typestable WHERE id = 999;",
+			[]sql.Row{{
+				int64(999), int64(math.MaxInt8), int64(math.MaxInt16), int64(math.MaxInt32), int64(math.MaxInt64),
+				int64(math.MaxUint8), int64(math.MaxUint16), int64(math.MaxUint32), uint64(math.MaxUint64),
+				float64(math.MaxFloat32), float64(math.MaxFloat64),
+				timeParse(sql.TimestampLayout, "2132-04-05 12:51:36"), timeParse(sql.DateLayout, "2231-11-07"),
+				"random text", true, `{"key":"value"}`, "blobdata",
+			}},
+		},
+		{
+			`REPLACE INTO typestable SET
+			id = 999, i8 = 127, i16 = 32767, i32 = 2147483647, i64 = 9223372036854775807,
+			u8 = 255, u16 = 65535, u32 = 4294967295, u64 = 18446744073709551615,
+			f32 = 3.40282346638528859811704183484516925440e+38, f64 = 1.797693134862315708145274237317043567981e+308,
+			ti = '2132-04-05 12:51:36', da = '2231-11-07',
+			te = 'random text', bo = true, js = '{"key":"value"}', bl = 'blobdata'
+			;`,
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM typestable WHERE id = 999;",
+			[]sql.Row{{
+				int64(999), int64(math.MaxInt8), int64(math.MaxInt16), int64(math.MaxInt32), int64(math.MaxInt64),
+				int64(math.MaxUint8), int64(math.MaxUint16), int64(math.MaxUint32), uint64(math.MaxUint64),
+				float64(math.MaxFloat32), float64(math.MaxFloat64),
+				timeParse(sql.TimestampLayout, "2132-04-05 12:51:36"), timeParse(sql.DateLayout, "2231-11-07"),
+				"random text", true, `{"key":"value"}`, "blobdata",
+			}},
+		},
+		{
+			`REPLACE INTO typestable VALUES (
+			999, -128, -32768, -2147483648, -9223372036854775808,
+			0, 0, 0, 0,
+			1.401298464324817070923729583289916131280e-45, 4.940656458412465441765687928682213723651e-324,
+			'0010-04-05 12:51:36', '0101-11-07',
+			'', false, '', ''
+			);`,
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM typestable WHERE id = 999;",
+			[]sql.Row{{
+				int64(999), int64(-math.MaxInt8-1), int64(-math.MaxInt16-1), int64(-math.MaxInt32-1), int64(-math.MaxInt64-1),
+				int64(0), int64(0), int64(0), int64(0),
+				float64(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
+				timeParse(sql.TimestampLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
+				"", false, ``, "",
+			}},
+		},
+		{
+			`REPLACE INTO typestable SET
+			id = 999, i8 = -128, i16 = -32768, i32 = -2147483648, i64 = -9223372036854775808,
+			u8 = 0, u16 = 0, u32 = 0, u64 = 0,
+			f32 = 1.401298464324817070923729583289916131280e-45, f64 = 4.940656458412465441765687928682213723651e-324,
+			ti = '0010-04-05 12:51:36', da = '0101-11-07',
+			te = '', bo = false, js = '', bl = ''
+			;`,
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM typestable WHERE id = 999;",
+			[]sql.Row{{
+				int64(999), int64(-math.MaxInt8-1), int64(-math.MaxInt16-1), int64(-math.MaxInt32-1), int64(-math.MaxInt64-1),
+				int64(0), int64(0), int64(0), int64(0),
+				float64(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
+				timeParse(sql.TimestampLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
+				"", false, ``, "",
+			}},
+		},
+		{
+			`REPLACE INTO typestable VALUES (999, null, null, null, null, null, null, null, null,
+			null, null, null, null, null, null, null, null);`,
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM typestable WHERE id = 999;",
+			[]sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
+		},
+		{
+			`REPLACE INTO typestable SET id=999, i8=null, i16=null, i32=null, i64=null, u8=null, u16=null, u32=null, u64=null,
+			f32=null, f64=null, ti=null, da=null, te=null, bo=null, js=null, bl=null;`,
+			[]sql.Row{{int64(1)}},
+			"SELECT * FROM typestable WHERE id = 999;",
+			[]sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
+		},
+	}
+
+	for _, insertion := range insertions {
+		e := newEngine(t)
+		ctx := newCtx()
+		testQueryWithContext(ctx, t, e, insertion.replaceQuery, insertion.expectedReplace)
+		testQueryWithContext(ctx, t, e, insertion.selectQuery, insertion.expectedSelect)
+	}
+}
+
+func TestReplaceIntoErrors(t *testing.T) {
+	var expectedFailures = []struct {
+		name  string
+		query string
+	}{
+		{
+			"too few values",
+			"REPLACE INTO mytable (s, i) VALUES ('x');",
+		},
+		{
+			"too many values one column",
+			"REPLACE INTO mytable (s) VALUES ('x', 999);",
+		},
+		{
+			"too many values two columns",
+			"REPLACE INTO mytable (i, s) VALUES (999, 'x', 'y');",
+		},
+		{
+			"too few values no columns specified",
+			"REPLACE INTO mytable VALUES (999);",
+		},
+		{
+			"too many values no columns specified",
+			"REPLACE INTO mytable VALUES (999, 'x', 'y');",
+		},
+		{
+			"non-existent column values",
+			"REPLACE INTO mytable (i, s, z) VALUES (999, 'x', 999);",
+		},
+		{
+			"non-existent column set",
+			"REPLACE INTO mytable SET i = 999, s = 'x', z = 999;",
+		},
+		{
+			"duplicate column values",
+			"REPLACE INTO mytable (i, s, s) VALUES (999, 'x', 'x');",
+		},
+		{
+			"duplicate column set",
+			"REPLACE INTO mytable SET i = 999, s = 'y', s = 'y';",
+		},
+		{
+			"null given to non-nullable values",
+			"INSERT INTO mytable (i, s) VALUES (null, 'y');",
+		},
+		{
+			"null given to non-nullable set",
+			"INSERT INTO mytable SET i = null, s = 'y';",
 		},
 	}
 
@@ -2995,6 +3261,14 @@ type lockableTable struct {
 
 func newLockableTable(t sql.Table) *lockableTable {
 	return &lockableTable{Table: t}
+}
+
+func timeParse(layout string, value string) time.Time {
+	t, err := time.Parse(layout, value)
+	if err != nil {
+		panic(err)
+	}
+	return t
 }
 
 var _ sql.Lockable = (*lockableTable)(nil)

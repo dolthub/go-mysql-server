@@ -263,8 +263,8 @@ func (t *Table) Delete(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 
+	matches := false
 	for partitionIndex, partition := range t.partitions {
-		matches := false
 		for partitionRowIndex, partitionRow := range partition {
 			matches = true
 			for rIndex, val := range row {
@@ -281,6 +281,10 @@ func (t *Table) Delete(ctx *sql.Context, row sql.Row) error {
 		if matches {
 			break
 		}
+	}
+
+	if !matches {
+		return sql.ErrDeleteRowNotFound
 	}
 
 	return nil
