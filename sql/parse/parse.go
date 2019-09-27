@@ -950,22 +950,51 @@ func isAggregateFunc(v *sqlparser.FuncExpr) bool {
 	return v.IsAggregate()
 }
 
+// Convert an integer, represented by the specified string in the specified
+// base, to its smallest representation possible, out of:
+// int8, uint8, int16, uint16, int32, uint32, int64 and uint64
+func convertInt(value string, base int) (sql.Expression, error) {
+	i8, err := strconv.ParseInt(value, base, 8)
+	if err != nil {
+		ui8, err := strconv.ParseUint(value, base, 8)
+		if err != nil {
+			i16, err := strconv.ParseInt(value, base, 16)
+			if err != nil {
+				ui16, err := strconv.ParseUint(value, base, 16)
+				if err != nil {
+					i32, err := strconv.ParseInt(value, base, 32)
+					if err != nil {
+						ui32, err := strconv.ParseUint(value, base, 32)
+						if err != nil {
+							i64, err := strconv.ParseInt(value, base, 64)
+							if err != nil {
+								ui64, err := strconv.ParseUint(value, base, 64)
+								if err != nil {
+									return nil, err
+								}
+								return expression.NewLiteral(uint64(ui64), sql.Uint64), nil
+							}
+							return expression.NewLiteral(int64(i64), sql.Int64), nil
+						}
+						return expression.NewLiteral(uint32(ui32), sql.Uint32), nil
+					}
+					return expression.NewLiteral(int32(i32), sql.Int32), nil
+				}
+				return expression.NewLiteral(uint16(ui16), sql.Uint16), nil
+			}
+			return expression.NewLiteral(int16(i16), sql.Int16), nil
+		}
+		return expression.NewLiteral(uint8(ui8), sql.Uint16), nil
+	}
+	return expression.NewLiteral(int8(i8), sql.Int8), nil
+}
+
 func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {
 	switch v.Type {
 	case sqlparser.StrVal:
 		return expression.NewLiteral(string(v.Val), sql.Text), nil
 	case sqlparser.IntVal:
-		//TODO: Use smallest integer representation and widen later.
-		val, err := strconv.ParseInt(string(v.Val), 10, 64)
-		if err != nil {
-			// Might be a uint64 value that is greater than int64 max
-			val, checkErr := strconv.ParseUint(string(v.Val), 10, 64)
-			if checkErr != nil {
-				return nil, err
-			}
-			return expression.NewLiteral(val, sql.Uint64), nil
-		}
-		return expression.NewLiteral(val, sql.Int64), nil
+		return convertInt(string(v.Val), 10)
 	case sqlparser.FloatVal:
 		val, err := strconv.ParseFloat(string(v.Val), 64)
 		if err != nil {
@@ -980,11 +1009,7 @@ func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {
 			v = strings.Trim(v[1:], "'")
 		}
 
-		val, err := strconv.ParseInt(v, 16, 64)
-		if err != nil {
-			return nil, err
-		}
-		return expression.NewLiteral(val, sql.Int64), nil
+		return convertInt(v, 16)
 	case sqlparser.HexVal:
 		val, err := v.HexDecode()
 		if err != nil {
