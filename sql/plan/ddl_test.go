@@ -72,6 +72,13 @@ func TestDropTable(t *testing.T) {
 	d = NewDropTable(db, true, "testTable1")
 	_, err = d.RowIter(sql.NewEmptyContext())
 	require.NoError(err)
+
+	d = NewDropTable(db, true, "testTable1", "testTable2", "testTable3")
+	_, err = d.RowIter(sql.NewEmptyContext())
+	require.NoError(err)
+
+	_, ok = db.Tables()["testTable3"]
+	require.False(ok)
 }
 
 func createTable(t *testing.T, db sql.Database, name string, schema sql.Schema) {

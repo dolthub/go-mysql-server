@@ -123,7 +123,14 @@ func (d *DropTable) RowIter(s *sql.Context) (sql.RowIter, error) {
 
 	var err error
 	for _, tableName := range d.names {
-		err = droppable.DropTable(tableName, d.ifExists)
+		_, ok := d.db.Tables()[tableName]
+		if !ok {
+			if d.ifExists {
+				continue
+			}
+			return nil, sql.ErrTableNotFound.New(tableName)
+		}
+		err = droppable.DropTable(tableName)
 		if err != nil {
 			break
 		}

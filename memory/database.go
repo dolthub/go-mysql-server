@@ -44,9 +44,9 @@ func (d *Database) Create(name string, schema sql.Schema) error {
 	return nil
 }
 
-func (d *Database) DropTable(name string, ifExists bool) error {
+func (d *Database) DropTable(name string) error {
 	_, ok := d.tables[name]
-	if !ok && !ifExists {
+	if !ok {
 		return sql.ErrTableNotFound.New(name)
 	}
 

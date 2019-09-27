@@ -237,7 +237,7 @@ type Alterable interface {
 
 // Droppable should be implemented by databases that can drop tables.
 type Droppable interface {
-	DropTable(name string, ifExists bool) error
+	DropTable(name string) error
 }
 
 // Lockable should be implemented by tables that can be locked and unlocked.
