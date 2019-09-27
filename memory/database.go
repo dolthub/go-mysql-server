@@ -44,7 +44,18 @@ func (d *Database) Create(name string, schema sql.Schema) error {
 	return nil
 }
 
-func (d *Database) DropTable(name string) error {
+// Create creates a table with the given name and schema
+func (d *Database) CreateTable(ctx *sql.Context, name string, schema sql.Schema) error {
+	_, ok := d.tables[name]
+	if ok {
+		return sql.ErrTableAlreadyExists.New(name)
+	}
+
+	d.tables[name] = NewTable(name, schema)
+	return nil
+}
+
+func (d *Database) DropTable(ctx *sql.Context, name string) error {
 	_, ok := d.tables[name]
 	if !ok {
 		return sql.ErrTableNotFound.New(name)

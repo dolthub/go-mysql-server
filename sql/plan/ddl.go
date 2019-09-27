@@ -59,6 +59,12 @@ func (c *CreateTable) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (c *CreateTable) RowIter(s *sql.Context) (sql.RowIter, error) {
+	creatable, ok := c.db.(sql.TableCreator)
+	if ok {
+		return sql.RowsToRowIter(), creatable.CreateTable(s, c.name, c.schema)
+	}
+
+	// TODO: phase out this interface
 	d, ok := c.db.(sql.Alterable)
 	if !ok {
 		return nil, ErrCreateTable.New(c.db.Name())
@@ -116,7 +122,7 @@ func (d *DropTable) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (d *DropTable) RowIter(s *sql.Context) (sql.RowIter, error) {
-	droppable, ok := d.db.(sql.Droppable)
+	droppable, ok := d.db.(sql.TableDropper)
 	if !ok {
 		return nil, ErrDropTableNotSupported.New(d.db.Name())
 	}
@@ -130,7 +136,7 @@ func (d *DropTable) RowIter(s *sql.Context) (sql.RowIter, error) {
 			}
 			return nil, sql.ErrTableNotFound.New(tableName)
 		}
-		err = droppable.DropTable(tableName)
+		err = droppable.DropTable(s, tableName)
 		if err != nil {
 			break
 		}
