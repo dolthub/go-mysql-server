@@ -235,6 +235,11 @@ type Alterable interface {
 	Create(name string, schema Schema) error
 }
 
+// Droppable should be implemented by databases that can drop tables.
+type Droppable interface {
+	DropTable(name string, ifExists bool) error
+}
+
 // Lockable should be implemented by tables that can be locked and unlocked.
 type Lockable interface {
 	Nameable

@@ -43,3 +43,14 @@ func (d *Database) Create(name string, schema sql.Schema) error {
 	d.tables[name] = NewTable(name, schema)
 	return nil
 }
+
+func (d *Database) DropTable(name string, ifExists bool) error {
+	_, ok := d.tables[name]
+	if !ok && !ifExists {
+		return sql.ErrTableNotFound.New(name)
+	}
+
+	delete(d.tables, name)
+	return nil
+}
+

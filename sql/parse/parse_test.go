@@ -51,6 +51,15 @@ var fixtures = map[string]sql.Node{
 			Nullable: true,
 		}},
 	),
+	`DROP TABLE foo;`: plan.NewDropTable(
+		sql.UnresolvedDatabase(""), false, "foo",
+	),
+	`DROP TABLE IF EXISTS foo;`: plan.NewDropTable(
+		sql.UnresolvedDatabase(""), true, "foo",
+	),
+	`DROP TABLE IF EXISTS foo, bar, baz;`: plan.NewDropTable(
+		sql.UnresolvedDatabase(""), true, "foo", "bar", "baz",
+	),
 	`DESCRIBE TABLE foo;`: plan.NewDescribe(
 		plan.NewUnresolvedTable("foo", ""),
 	),
