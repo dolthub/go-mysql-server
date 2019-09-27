@@ -351,9 +351,19 @@ func convertDDL(c *sqlparser.DDL) (sql.Node, error) {
 	switch c.Action {
 	case sqlparser.CreateStr:
 		return convertCreateTable(c)
+	case sqlparser.DropStr:
+		return convertDropTable(c)
 	default:
 		return nil, ErrUnsupportedSyntax.New(c)
 	}
+}
+
+func convertDropTable(c *sqlparser.DDL) (sql.Node, error) {
+	tableNames := make([]string, len(c.FromTables))
+	for i, t := range c.FromTables {
+		tableNames[i] = t.Name.String()
+	}
+	return plan.NewDropTable(sql.UnresolvedDatabase(""), c.IfExists, tableNames...), nil
 }
 
 func convertCreateTable(c *sqlparser.DDL) (sql.Node, error) {
