@@ -165,7 +165,6 @@ func TestHandlerKill(t *testing.T) {
 	require.Len(handler.c, 2)
 	require.Equal(conntainer1, handler.c[1])
 	require.Equal(conntainer2, handler.c[2])
-
 	assertNoConnProcesses(t, e, conn2.ConnectionID)
 
 	ctx1 := handler.sm.NewContextWithQuery(conn1, "SELECT 1")
@@ -256,6 +255,7 @@ func TestHandlerTimeout(t *testing.T) {
 	})
 	require.NoError(err)
 }
+
 func TestOkClosedConnection(t *testing.T) {
 	require := require.New(t)
 	e := setupMemDB(require)
@@ -282,11 +282,11 @@ func TestOkClosedConnection(t *testing.T) {
 		0,
 	)
 	h.AddNetConnection(&conn)
-	c2 := newConn(2)
-	h.NewConnection(c2)
+	c := newConn(1)
+	h.NewConnection(c)
 
 	q := fmt.Sprintf("SELECT SLEEP(%d)", tcpCheckerSleepTime*4)
-	err = h.ComQuery(c2, q, func(res *sqltypes.Result) error {
+	err = h.ComQuery(c, q, func(res *sqltypes.Result) error {
 		return nil
 	})
 	require.NoError(err)

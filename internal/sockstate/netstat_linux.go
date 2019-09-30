@@ -20,8 +20,10 @@ import (
 )
 
 const (
-	pathTCPTab = "/proc/net/tcp"
+	pathTCP4Tab = "/proc/net/tcp"
+	pathTCP6Tab = "/proc/net/tcp6"
 	ipv4StrLen = 8
+	ipv6StrLen = 32
 )
 
 type procFd struct {
@@ -120,6 +122,23 @@ func parseIPv4(s string) (net.IP, error) {
 	return ip, nil
 }
 
+func parseIPv6(s string) (net.IP, error) {
+	ip := make(net.IP, net.IPv6len)
+	const grpLen = 4
+	i, j := 0, 4
+	for len(s) != 0 {
+		grp := s[0:8]
+		u, err := strconv.ParseUint(grp, 16, 32)
+		binary.LittleEndian.PutUint32(ip[i:j], uint32(u))
+		if err != nil {
+			return nil, err
+		}
+		i, j = i+grpLen, j+grpLen
+		s = s[8:]
+	}
+	return ip, nil
+}
+
 func parseAddr(s string) (*sockAddr, error) {
 	fields := strings.Split(s, ":")
 	if len(fields) < 2 {
@@ -130,6 +149,8 @@ func parseAddr(s string) (*sockAddr, error) {
 	switch len(fields[0]) {
 	case ipv4StrLen:
 		ip, err = parseIPv4(fields[0])
+	case ipv6StrLen:
+		ip, err = parseIPv6(fields[0])
 	default:
 		log.Fatal("Badly formatted connection address:", s)
 	}
@@ -192,21 +213,26 @@ func parseSocktab(r io.Reader, accept AcceptFn) ([]sockTabEntry, error) {
 // tcpSocks returns a slice of active TCP sockets containing only those
 // elements that satisfy the accept function
 func tcpSocks(accept AcceptFn) ([]sockTabEntry, error) {
-	f, err := os.Open(pathTCPTab)
-	defer func() {
-		_ = f.Close()
-	}()
-	if err != nil {
-		return nil, err
-	}
+	paths := [2]string{pathTCP4Tab, pathTCP6Tab}
+	var allTabs []sockTabEntry
+	for _, p := range paths {
+		f, err := os.Open(p)
+		defer func() {
+			_ = f.Close()
+		}()
+		if err != nil {
+			return nil, err
+		}
 
-	tabs, err := parseSocktab(f, accept)
-	if err != nil {
-		return nil, err
-	}
+		t, err := parseSocktab(f, accept)
+		if err != nil {
+			return nil, err
+		}
+		allTabs = append(allTabs, t...)
 
-	extractProcInfo(tabs)
-	return tabs, nil
+	}
+	extractProcInfo(allTabs)
+	return allTabs, nil
 }
 
 // GetConnInode returns the Linux inode number of a TCP connection
