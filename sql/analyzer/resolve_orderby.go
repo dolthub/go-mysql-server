@@ -9,6 +9,8 @@ import (
 	errors "gopkg.in/src-d/go-errors.v1"
 )
 
+var errResolveOrderByUnknownColumn = errors.NewKind("unknown column %s in order by clause")
+
 func resolveOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, _ := ctx.Span("resolve_orderby")
 	defer span.Finish()
@@ -57,7 +59,15 @@ func resolveOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 		// below its child.
 		if len(colsFromChild) == 0 && len(missingCols) > 0 {
 			a.Log("pushing down sort, missing columns: %s", strings.Join(missingCols, ", "))
-			return pushSortDown(sort)
+			newNode, err := pushSortDown(sort)
+			if err != nil {
+				return newNode, err
+			}
+			_, ok := newNode.(*plan.ResolvedTable)
+			if ok {
+				return newNode, errResolveOrderByUnknownColumn.New(strings.Join(missingCols, ", "))
+			}
+			return newNode, nil
 		}
 
 		a.Log("fixing sort dependencies, missing columns: %s", strings.Join(missingCols, ", "))
