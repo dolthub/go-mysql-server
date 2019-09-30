@@ -75,12 +75,14 @@ type exchangeRowIter struct {
 	parallelism int
 	partitions  sql.PartitionIter
 	tree        sql.Node
-	mut         sync.Mutex
-	tokens      chan struct{}
+	mut         sync.RWMutex
+	tokensChan  chan struct{}
 	started     bool
 	rows        chan sql.Row
 	err         chan error
-	quit        chan struct{}
+
+	quitMut  sync.RWMutex
+	quitChan chan struct{}
 }
 
 func newExchangeRowIter(
@@ -97,7 +99,7 @@ func newExchangeRowIter(
 		started:     false,
 		tree:        tree,
 		partitions:  iter,
-		quit:        make(chan struct{}),
+		quitChan:    make(chan struct{}),
 	}
 }
 
@@ -105,8 +107,8 @@ func (it *exchangeRowIter) releaseToken() {
 	it.mut.Lock()
 	defer it.mut.Unlock()
 
-	if it.tokens != nil {
-		it.tokens <- struct{}{}
+	if it.tokensChan != nil {
+		it.tokensChan <- struct{}{}
 	}
 }
 
@@ -114,17 +116,23 @@ func (it *exchangeRowIter) closeTokens() {
 	it.mut.Lock()
 	defer it.mut.Unlock()
 
-	close(it.tokens)
-	it.tokens = nil
+	close(it.tokensChan)
+	it.tokensChan = nil
+}
+
+func (it *exchangeRowIter) tokens() chan struct{} {
+	it.mut.RLock()
+	defer it.mut.RUnlock()
+	return it.tokensChan
 }
 
 func (it *exchangeRowIter) fillTokens() {
 	it.mut.Lock()
 	defer it.mut.Unlock()
 
-	it.tokens = make(chan struct{}, it.parallelism)
+	it.tokensChan = make(chan struct{}, it.parallelism)
 	for i := 0; i < it.parallelism; i++ {
-		it.tokens <- struct{}{}
+		it.tokensChan <- struct{}{}
 	}
 }
 
@@ -142,7 +150,7 @@ func (it *exchangeRowIter) start() {
 			it.err <- context.Canceled
 			it.closeTokens()
 			return
-		case <-it.quit:
+		case <-it.quit():
 			it.closeTokens()
 			return
 		case p, ok := <-partitions:
@@ -179,9 +187,9 @@ func (it *exchangeRowIter) iterPartitions(ch chan<- sql.Partition) {
 		case <-it.ctx.Done():
 			it.err <- context.Canceled
 			return
-		case <-it.quit:
+		case <-it.quit():
 			return
-		case <-it.tokens:
+		case <-it.tokens():
 		}
 
 		p, err := it.partitions.Next()
@@ -226,7 +234,7 @@ func (it *exchangeRowIter) iterPartition(p sql.Partition) {
 		case <-it.ctx.Done():
 			it.err <- context.Canceled
 			return
-		case <-it.quit:
+		case <-it.quit():
 			return
 		default:
 		}
@@ -263,17 +271,25 @@ func (it *exchangeRowIter) Next() (sql.Row, error) {
 	}
 }
 
-func (it *exchangeRowIter) Close() (err error) {
-	if it.quit != nil {
-		close(it.quit)
-		it.quit = nil
+func (it *exchangeRowIter) quit() chan struct{} {
+	it.quitMut.RLock()
+	defer it.quitMut.RUnlock()
+	return it.quitChan
+}
+
+func (it *exchangeRowIter) Close() error {
+	it.quitMut.Lock()
+	if it.quitChan != nil {
+		close(it.quitChan)
+		it.quitChan = nil
 	}
+	it.quitMut.Unlock()
 
 	if it.partitions != nil {
-		err = it.partitions.Close()
+		return it.partitions.Close()
 	}
 
-	return err
+	return nil
 }
 
 type exchangePartition struct {
