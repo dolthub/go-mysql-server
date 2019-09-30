@@ -402,6 +402,10 @@ func (t numberT) Compare(a interface{}, b interface{}) (int, error) {
 func (t numberT) String() string { return t.t.String() }
 
 func compareFloats(a interface{}, b interface{}) (int, error) {
+	if hasNulls, res := compareNulls(a, b); hasNulls {
+		return res, nil
+	}
+
 	ca, err := cast.ToFloat64E(a)
 	if err != nil {
 		return 0, err
@@ -423,6 +427,10 @@ func compareFloats(a interface{}, b interface{}) (int, error) {
 }
 
 func compareSignedInts(a interface{}, b interface{}) (int, error) {
+	if hasNulls, res := compareNulls(a, b); hasNulls {
+		return res, nil
+	}
+
 	ca, err := cast.ToInt64E(a)
 	if err != nil {
 		return 0, err
@@ -444,6 +452,10 @@ func compareSignedInts(a interface{}, b interface{}) (int, error) {
 }
 
 func compareUnsignedInts(a interface{}, b interface{}) (int, error) {
+	if hasNulls, res := compareNulls(a, b); hasNulls {
+		return res, nil
+	}
+
 	ca, err := cast.ToUint64E(a)
 	if err != nil {
 		return 0, err
@@ -540,6 +552,10 @@ func (t timestampT) Convert(v interface{}) (interface{}, error) {
 
 // Compare implements Type interface.
 func (t timestampT) Compare(a interface{}, b interface{}) (int, error) {
+	if hasNulls, res := compareNulls(a, b); hasNulls {
+		return res, nil
+	}
+
 	av := a.(time.Time)
 	bv := b.(time.Time)
 	if av.Before(bv) {
@@ -603,6 +619,10 @@ func (t dateT) Convert(v interface{}) (interface{}, error) {
 }
 
 func (t dateT) Compare(a, b interface{}) (int, error) {
+	if hasNulls, res := compareNulls(a, b); hasNulls {
+		return res, nil
+	}
+
 	av := truncateDate(a.(time.Time))
 	bv := truncateDate(b.(time.Time))
 	if av.Before(bv) {
@@ -758,6 +778,9 @@ func (t varCharT) Convert(v interface{}) (interface{}, error) {
 
 // Compare implements Type interface.
 func (t varCharT) Compare(a interface{}, b interface{}) (int, error) {
+	if hasNulls, res := compareNulls(a, b); hasNulls {
+		return res, nil
+	}
 	return strings.Compare(a.(string), b.(string)), nil
 }
 
@@ -795,6 +818,9 @@ func (t textT) Convert(v interface{}) (interface{}, error) {
 
 // Compare implements Type interface.
 func (t textT) Compare(a interface{}, b interface{}) (int, error) {
+	if hasNulls, res := compareNulls(a, b); hasNulls {
+		return res, nil
+	}
 	return strings.Compare(a.(string), b.(string)), nil
 }
 
@@ -847,6 +873,10 @@ func (t booleanT) Convert(v interface{}) (interface{}, error) {
 
 // Compare implements Type interface.
 func (t booleanT) Compare(a interface{}, b interface{}) (int, error) {
+	if hasNulls, res := compareNulls(a, b); hasNulls {
+		return res, nil
+	}
+
 	if a == b {
 		return 0, nil
 	}
@@ -899,6 +929,9 @@ func (t blobT) Convert(v interface{}) (interface{}, error) {
 
 // Compare implements Type interface.
 func (t blobT) Compare(a interface{}, b interface{}) (int, error) {
+	if hasNulls, res := compareNulls(a, b); hasNulls {
+		return res, nil
+	}
 	return bytes.Compare(a.([]byte), b.([]byte)), nil
 }
 
@@ -941,6 +974,9 @@ func (t jsonT) Convert(v interface{}) (interface{}, error) {
 
 // Compare implements Type interface.
 func (t jsonT) Compare(a interface{}, b interface{}) (int, error) {
+	if hasNulls, res := compareNulls(a, b); hasNulls {
+		return res, nil
+	}
 	return bytes.Compare(a.([]byte), b.([]byte)), nil
 }
 
@@ -1301,4 +1337,20 @@ func convertArrayForJSON(t arrayT, v interface{}) (interface{}, error) {
 	default:
 		return nil, ErrNotArray.New(v)
 	}
+}
+
+// compareNulls compares two values, and returns true if either is null.
+// The returned integer represents the ordering, with a rule that states nulls
+// as being ordered before non-nulls.
+func compareNulls(a interface{}, b interface{}) (bool, int) {
+	aIsNull := a == nil
+	bIsNull := b == nil
+	if aIsNull && bIsNull {
+		return true, 0
+	} else if aIsNull && !bIsNull {
+		return true, -1
+	} else if !aIsNull && bIsNull {
+		return true, 1
+	}
+	return false, 0
 }
