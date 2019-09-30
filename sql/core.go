@@ -29,6 +29,9 @@ var (
 	// ErrInvalidChildrenNumber is returned when the WithChildren method of a
 	// node or expression is called with an invalid number of arguments.
 	ErrInvalidChildrenNumber = errors.NewKind("%T: invalid children number, got %d, expected %d")
+
+	// ErrDeleteRowNotFound
+	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete").New()
 )
 
 // Nameable is something that has a name.
@@ -200,6 +203,18 @@ type IndexableTable interface {
 type Inserter interface {
 	// Insert the given row.
 	Insert(*Context, Row) error
+}
+
+// Deleter allow rows to be deleted from them.
+type Deleter interface {
+	// Delete the given row. Returns ErrDeleteRowNotFound if the row was not found.
+	Delete(*Context, Row) error
+}
+
+// Replacer allows rows to be replaced through a Delete (if applicable) then Insert.
+type Replacer interface {
+	Deleter
+	Inserter
 }
 
 // Database represents the database.

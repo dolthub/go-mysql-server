@@ -20,7 +20,7 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 	// don't do pushdown on certain queries
 	switch n.(type) {
-	case *plan.InsertInto, *plan.CreateIndex:
+	case *plan.InsertInto, *plan.DeleteFrom, *plan.CreateIndex:
 		return n, nil
 	}
 

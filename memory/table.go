@@ -257,6 +257,39 @@ func (t *Table) Insert(ctx *sql.Context, row sql.Row) error {
 	return nil
 }
 
+// Delete the given row from the table.
+func (t *Table) Delete(ctx *sql.Context, row sql.Row) error {
+	if err := checkRow(t.schema, row); err != nil {
+		return err
+	}
+
+	matches := false
+	for partitionIndex, partition := range t.partitions {
+		for partitionRowIndex, partitionRow := range partition {
+			matches = true
+			for rIndex, val := range row {
+				if val != partitionRow[rIndex] {
+					matches = false
+					break
+				}
+			}
+			if matches {
+				t.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
+				break
+			}
+		}
+		if matches {
+			break
+		}
+	}
+
+	if !matches {
+		return sql.ErrDeleteRowNotFound
+	}
+
+	return nil
+}
+
 func checkRow(schema sql.Schema, row sql.Row) error {
 	if len(row) != len(schema) {
 		return sql.ErrUnexpectedRowLength.New(len(schema), len(row))

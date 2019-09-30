@@ -252,6 +252,16 @@ var fixtures = map[string]sql.Node{
 			expression.NewLiteral("a", sql.Text),
 			expression.NewLiteral(int64(1), sql.Int64),
 		}}),
+		false,
+		[]string{"col1", "col2"},
+	),
+	`REPLACE INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
+		plan.NewUnresolvedTable("t1", ""),
+		plan.NewValues([][]sql.Expression{{
+			expression.NewLiteral("a", sql.Text),
+			expression.NewLiteral(int64(1), sql.Int64),
+		}}),
+		true,
 		[]string{"col1", "col2"},
 	),
 	`SHOW TABLES`:               plan.NewShowTables(sql.UnresolvedDatabase(""), false),
