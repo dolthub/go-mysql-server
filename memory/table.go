@@ -290,6 +290,37 @@ func (t *Table) Delete(ctx *sql.Context, row sql.Row) error {
 	return nil
 }
 
+func (t *Table) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) error {
+	if err := checkRow(t.schema, oldRow); err != nil {
+		return err
+	}
+	if err := checkRow(t.schema, newRow); err != nil {
+		return err
+	}
+
+	matches := false
+	for partitionIndex, partition := range t.partitions {
+		for partitionRowIndex, partitionRow := range partition {
+			matches = true
+			for rIndex, val := range oldRow {
+				if val != partitionRow[rIndex] {
+					matches = false
+					break
+				}
+			}
+			if matches {
+				t.partitions[partitionIndex][partitionRowIndex] = newRow
+				break
+			}
+		}
+		if matches {
+			break
+		}
+	}
+
+	return nil
+}
+
 func checkRow(schema sql.Schema, row sql.Row) error {
 	if len(row) != len(schema) {
 		return sql.ErrUnexpectedRowLength.New(len(schema), len(row))
