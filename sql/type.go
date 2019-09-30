@@ -27,7 +27,10 @@ var (
 	// ErrConvertingToTime is thrown when a value cannot be converted to a Time
 	ErrConvertingToTime = errors.NewKind("value %q can't be converted to time.Time")
 
-	// ErrVarCharTruncation is thrown when a value is textually longer than the destination capacity
+	// ErrCharTruncation is thrown when a Char value is textually longer than the destination capacity
+	ErrCharTruncation = errors.NewKind("string value of %q is longer than destination capacity %d")
+
+	// ErrVarCharTruncation is thrown when a VarChar value is textually longer than the destination capacity
 	ErrVarCharTruncation = errors.NewKind("string value of %q is longer than destination capacity %d")
 
 	// ErrValueNotNil is thrown when a value that was expected to be nil, is not
@@ -198,6 +201,8 @@ var (
 	Timestamp timestampT
 	// Date is a date with day, month and year.
 	Date dateT
+	// Datetime is a date and a time
+	Datetime datetimeT
 	// Text is a string type.
 	Text textT
 	// Boolean is a boolean type.
@@ -216,6 +221,11 @@ func Tuple(types ...Type) Type {
 // Array returns a new Array type of the given underlying type.
 func Array(underlying Type) Type {
 	return arrayT{underlying}
+}
+
+// Char returns a new Char type of the given length.
+func Char(length int) Type {
+	return charT{length: length}
 }
 
 // VarChar returns a new VarChar type of the given length.
@@ -254,10 +264,16 @@ func MysqlTypeToType(sql query.Type) (Type, error) {
 		return Date, nil
 	case sqltypes.Text:
 		return Text, nil
+	case sqltypes.Char:
+		// Since we can't get the size of the sqltypes.Char to instantiate a
+		// specific Char(length) type we return a Text here
+		return Text, nil
 	case sqltypes.VarChar:
 		// Since we can't get the size of the sqltypes.VarChar to instantiate a
 		// specific VarChar(length) type we return a Text here
 		return Text, nil
+	case sqltypes.Datetime:
+		return Datetime, nil
 	case sqltypes.Bit:
 		return Boolean, nil
 	case sqltypes.TypeJSON:
@@ -596,6 +612,109 @@ func (t dateT) Compare(a, b interface{}) (int, error) {
 	}
 	return 0, nil
 }
+
+type datetimeT struct{}
+
+// DatetimeLayout is the layout of the MySQL date format in the representation
+// Go understands.
+const DatetimeLayout = "2006-01-02 15:04:05"
+
+func (t datetimeT) String() string { return "DATETIME" }
+
+func (t datetimeT) Type() query.Type {
+	return sqltypes.Datetime
+}
+
+func (t datetimeT) SQL(v interface{}) (sqltypes.Value, error) {
+	if v == nil {
+		return sqltypes.NULL, nil
+	}
+
+	v, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+
+	return sqltypes.MakeTrusted(
+		sqltypes.Datetime,
+		[]byte(v.(time.Time).Format(DatetimeLayout)),
+	), nil
+}
+
+func (t datetimeT) Convert(v interface{}) (interface{}, error) {
+	switch value := v.(type) {
+	case time.Time:
+		return value.UTC(), nil
+	case string:
+		t, err := time.Parse(DatetimeLayout, value)
+		if err != nil {
+			return nil, ErrConvertingToTime.Wrap(err, v)
+		}
+		return t.UTC(), nil
+	default:
+		ts, err := Int64.Convert(v)
+		if err != nil {
+			return nil, ErrInvalidType.New(reflect.TypeOf(v))
+		}
+
+		return time.Unix(ts.(int64), 0).UTC(), nil
+	}
+}
+
+func (t datetimeT) Compare(a, b interface{}) (int, error) {
+	av := a.(time.Time)
+	bv := b.(time.Time)
+	if av.Before(bv) {
+		return -1, nil
+	} else if av.After(bv) {
+		return 1, nil
+	}
+	return 0, nil
+}
+
+type charT struct {
+	length int
+}
+
+func (t charT) Capacity() int { return t.length }
+
+func (t charT) String() string { return fmt.Sprintf("CHAR(%d)", t.length) }
+
+func (t charT) Type() query.Type {
+	return sqltypes.Char
+}
+
+func (t charT) SQL(v interface{}) (sqltypes.Value, error) {
+	if v == nil {
+		return sqltypes.MakeTrusted(sqltypes.Char, nil), nil
+	}
+
+	v, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+
+	return sqltypes.MakeTrusted(sqltypes.Char, []byte(v.(string))), nil
+}
+
+// Converts any value that can be casted to a string
+func (t charT) Convert(v interface{}) (interface{}, error) {
+	val, err := cast.ToStringE(v)
+	if err != nil {
+		return nil, ErrConvertToSQL.New(t)
+	}
+
+	if len(val) > t.length {
+		return nil, ErrCharTruncation.New(val, t.length)
+	}
+	return val, nil
+}
+
+// Compares two strings lexicographically
+func (t charT) Compare(a interface{}, b interface{}) (int, error) {
+	return strings.Compare(a.(string), b.(string)), nil
+}
+
 
 type varCharT struct {
 	length int
@@ -1013,9 +1132,9 @@ func IsInteger(t Type) bool {
 	return IsSigned(t) || IsUnsigned(t)
 }
 
-// IsTime checks if t is a timestamp or date.
+// IsTime checks if t is a timestamp, date or datetime
 func IsTime(t Type) bool {
-	return t == Timestamp || t == Date
+	return t == Timestamp || t == Date || t == Datetime
 }
 
 // IsDecimal checks if t is decimal type.
@@ -1025,7 +1144,13 @@ func IsDecimal(t Type) bool {
 
 // IsText checks if t is a text type.
 func IsText(t Type) bool {
-	return t == Text || t == Blob || t == JSON || IsVarChar(t)
+	return t == Text || t == Blob || t == JSON || IsVarChar(t) || IsChar(t)
+}
+
+// IsChar checks if t is a Char type.
+func IsChar(t Type) bool {
+	_, ok := t.(charT)
+	return ok
 }
 
 // IsVarChar checks if t is a varchar type.
@@ -1082,9 +1207,13 @@ func MySQLTypeName(t Type) string {
 	case sqltypes.Float64:
 		return "DOUBLE"
 	case sqltypes.Timestamp:
+		return "TIMESTAMP"
+	case sqltypes.Datetime:
 		return "DATETIME"
 	case sqltypes.Date:
 		return "DATE"
+	case sqltypes.Char:
+		return "CHAR"
 	case sqltypes.VarChar:
 		return "VARCHAR"
 	case sqltypes.Text:
