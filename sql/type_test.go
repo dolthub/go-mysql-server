@@ -444,6 +444,46 @@ func TestJSONArraySQL(t *testing.T) {
 	require.Equal(expected, string(val.Raw()))
 }
 
+func TestComparesWithNulls(t *testing.T) {
+	timeParse := func(layout string, value string) time.Time {
+		t, err := time.Parse(layout, value)
+		if err != nil {
+			panic(err)
+		}
+		return t
+	}
+
+	var typeVals = []struct {
+		typ Type
+		val interface{}
+	}{
+		{Int8, int8(0)},
+		{Uint8, uint8(0)},
+		{Int16, int16(0)},
+		{Uint16, uint16(0)},
+		{Int32, int32(0)},
+		{Uint32, uint32(0)},
+		{Int64, int64(0)},
+		{Uint64, uint64(0)},
+		{Float32, float32(0)},
+		{Float64, float64(0)},
+		{Timestamp, timeParse(TimestampLayout, "2132-04-05 12:51:36")},
+		{Date, timeParse(DateLayout, "2231-11-07")},
+		{Text, ""},
+		{Boolean, false},
+		{JSON, `{}`},
+		{Blob, ""},
+	}
+
+	for _, typeVal := range typeVals {
+		t.Run(typeVal.typ.String(), func(t *testing.T) {
+			lt(t, typeVal.typ, nil, typeVal.val)
+			gt(t, typeVal.typ, typeVal.val, nil)
+			eq(t, typeVal.typ, nil, nil)
+		})
+	}
+}
+
 func eq(t *testing.T, typ Type, a, b interface{}) {
 	t.Helper()
 	cmp, err := typ.Compare(a, b)
