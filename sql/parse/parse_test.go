@@ -51,6 +51,51 @@ var fixtures = map[string]sql.Node{
 			Nullable: true,
 		}},
 	),
+	`CREATE TABLE t1(a INTEGER NOT NULL PRIMARY KEY, b TEXT)`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:     "a",
+			Type:     sql.Int32,
+			Nullable: false,
+			PrimaryKey: true,
+		}, {
+			Name:     "b",
+			Type:     sql.Text,
+			Nullable: true,
+			PrimaryKey: false,
+		}},
+	),
+	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:     "a",
+			Type:     sql.Int32,
+			Nullable: true,
+			PrimaryKey: true,
+		}, {
+			Name:     "b",
+			Type:     sql.Text,
+			Nullable: true,
+			PrimaryKey: false,
+		}},
+	),
+	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a, b))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:     "a",
+			Type:     sql.Int32,
+			Nullable: true,
+			PrimaryKey: true,
+		}, {
+			Name:     "b",
+			Type:     sql.Text,
+			Nullable: true,
+			PrimaryKey: true,
+		}},
+	),
 	`DROP TABLE foo;`: plan.NewDropTable(
 		sql.UnresolvedDatabase(""), false, "foo",
 	),
