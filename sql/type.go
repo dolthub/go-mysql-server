@@ -124,6 +124,8 @@ type Column struct {
 	Nullable bool
 	// Source is the name of the table this column came from.
 	Source string
+	// PrimaryKey is true if the column is part of the primary key for its table.
+	PrimaryKey bool
 }
 
 // Check ensures the value is correct for this column.
