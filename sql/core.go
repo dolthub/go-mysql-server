@@ -217,6 +217,12 @@ type Replacer interface {
 	Inserter
 }
 
+// Updater allows rows to be updated.
+type Updater interface {
+	// Update the given row. Provides both the old and new rows.
+	Update(ctx *Context, old Row, new Row) error
+}
+
 // Database represents the database.
 type Database interface {
 	Nameable
