@@ -91,7 +91,7 @@ func produceCreateStatement(table sql.Table) string {
 
 	// Statement creation parts for each column
 	for i, col := range schema {
-		stmt := fmt.Sprintf("  `%s` %s", col.Name, sql.MySQLTypeName(col.Type))
+		stmt := fmt.Sprintf("  `%s` %s", col.Name, strings.ToLower(sql.MySQLTypeName(col.Type)))
 
 		if !col.Nullable {
 			stmt = fmt.Sprintf("%s NOT NULL", stmt)
