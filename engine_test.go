@@ -18,6 +18,7 @@ import (
 	"github.com/src-d/go-mysql-server/sql/plan"
 	"github.com/src-d/go-mysql-server/test"
 
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -2245,6 +2246,142 @@ func TestReplaceIntoErrors(t *testing.T) {
 	}
 }
 
+func TestUpdate(t *testing.T) {
+	var updates = []struct {
+		updateQuery    string
+		expectedUpdate []sql.Row
+		selectQuery     string
+		expectedSelect  []sql.Row
+	}{
+		{
+			"UPDATE mytable SET s = 'updated';",
+			[]sql.Row{{int64(3), int64(3)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
+		},
+		{
+			"UPDATE mytable SET s = 'updated' WHERE i > 9999;",
+			[]sql.Row{{int64(0), int64(0)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
+		},
+		{
+			"UPDATE mytable SET s = 'updated' WHERE i = 1;",
+			[]sql.Row{{int64(1), int64(1)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "updated"}, {int64(2), "second row"}, {int64(3), "third row"}},
+		},
+		{
+			"UPDATE mytable SET s = 'updated' WHERE i <> 9999;",
+			[]sql.Row{{int64(3), int64(3)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "updated"},{int64(2), "updated"},{int64(3), "updated"}},
+		},
+		{
+			"UPDATE floattable SET f32 = f32 + f32, f64 = f32 * f64 WHERE i = 2;",
+			[]sql.Row{{int64(1), int64(1)}},
+			"SELECT * FROM floattable WHERE i = 2;",
+			[]sql.Row{{int64(2), float32(3.0), float64(4.5)}},
+		},
+		{
+			"UPDATE floattable SET f32 = 5, f32 = 4 WHERE i = 1;",
+			[]sql.Row{{int64(1), int64(1)}},
+			"SELECT f32 FROM floattable WHERE i = 1;",
+			[]sql.Row{{float32(4.0)}},
+		},
+		{
+			"UPDATE mytable SET s = 'first row' WHERE i = 1;",
+			[]sql.Row{{int64(1), int64(0)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
+		},
+		{
+			"UPDATE niltable SET b = NULL WHERE f IS NULL;",
+			[]sql.Row{{int64(2), int64(1)}},
+			"SELECT * FROM niltable WHERE f IS NULL;",
+			[]sql.Row{{int64(4), nil, nil}, {nil, nil, nil}},
+		},
+		{
+			"UPDATE mytable SET s = 'updated' ORDER BY i ASC LIMIT 2;",
+			[]sql.Row{{int64(2), int64(2)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "third row"}},
+		},
+		{
+			"UPDATE mytable SET s = 'updated' ORDER BY i DESC LIMIT 2;",
+			[]sql.Row{{int64(2), int64(2)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "first row"}, {int64(2), "updated"}, {int64(3), "updated"}},
+		},
+		{
+			"UPDATE mytable SET s = 'updated' ORDER BY i LIMIT 1 OFFSET 1;",
+			[]sql.Row{{int64(1), int64(1)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "first row"}, {int64(2), "updated"}, {int64(3), "third row"}},
+		},
+		{
+			"UPDATE mytable SET s = 'updated';",
+			[]sql.Row{{int64(3), int64(3)}},
+			"SELECT * FROM mytable;",
+			[]sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
+		},
+	}
+
+	for _, update := range updates {
+		e := newEngine(t)
+		ctx := newCtx()
+		testQueryWithContext(ctx, t, e, update.updateQuery, update.expectedUpdate)
+		testQueryWithContext(ctx, t, e, update.selectQuery, update.expectedSelect)
+	}
+}
+
+func TestUpdateErrors(t *testing.T) {
+	var expectedFailures = []struct {
+		name  string
+		query string
+	}{
+		{
+			"invalid table",
+			"UPDATE doesnotexist SET i = 0;",
+		},
+		{
+			"invalid column set",
+			"UPDATE mytable SET z = 0;",
+		},
+		{
+			"invalid column set value",
+			"UPDATE mytable SET i = z;",
+		},
+		{
+			"invalid column where",
+			"UPDATE mytable SET s = 'hi' WHERE z = 1;",
+		},
+		{
+			"invalid column order by",
+			"UPDATE mytable SET s = 'hi' ORDER BY z;",
+		},
+		{
+			"negative limit",
+			"UPDATE mytable SET s = 'hi' LIMIT -1;",
+		},
+		{
+			"negative offset",
+			"UPDATE mytable SET s = 'hi' LIMIT 1 OFFSET -1;",
+		},
+		{
+			"set null on non-nullable",
+			"UPDATE mytable SET s = NULL;",
+		},
+	}
+
+	for _, expectedFailure := range expectedFailures {
+		t.Run(expectedFailure.name, func(t *testing.T) {
+			_, _, err := newEngine(t).Query(newCtx(), expectedFailure.query)
+			require.Error(t, err)
+		})
+	}
+}
+
 const testNumPartitions = 5
 
 func TestAmbiguousColumnResolution(t *testing.T) {
@@ -2670,12 +2807,12 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 
 	insertRows(
 		t, floatTable,
-		sql.NewRow(1, float32(1.0), float64(1.0)),
-		sql.NewRow(2, float32(1.5), float64(1.5)),
-		sql.NewRow(3, float32(2.0), float64(2.0)),
-		sql.NewRow(4, float32(2.5), float64(2.5)),
-		sql.NewRow(-1, float32(-1.0), float64(-1.0)),
-		sql.NewRow(-2, float32(-1.5), float64(-1.5)),
+		sql.NewRow(int64(1), float32(1.0), float64(1.0)),
+		sql.NewRow(int64(2), float32(1.5), float64(1.5)),
+		sql.NewRow(int64(3), float32(2.0), float64(2.0)),
+		sql.NewRow(int64(4), float32(2.5), float64(2.5)),
+		sql.NewRow(int64(-1), float32(-1.0), float64(-1.0)),
+		sql.NewRow(int64(-2), float32(-1.5), float64(-1.5)),
 	)
 
 	nilTable := memory.NewPartitionedTable("niltable", sql.Schema{

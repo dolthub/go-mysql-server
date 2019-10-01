@@ -153,6 +153,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return plan.NewRollback(), nil
 	case *sqlparser.Delete:
 		return convertDelete(ctx, n)
+	case *sqlparser.Update:
+		return convertUpdate(ctx, n)
 	}
 }
 
@@ -427,6 +429,49 @@ func convertDelete(ctx *sql.Context, d *sqlparser.Delete) (sql.Node, error) {
 	}
 
 	return plan.NewDeleteFrom(node), nil
+}
+
+func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
+	node, err := tableExprsToTable(ctx, d.TableExprs)
+	if err != nil {
+		return nil, err
+	}
+
+	updateExprs, err := updateExprsToExpressions(d.Exprs)
+	if err != nil {
+		return nil, err
+	}
+
+	if d.Where != nil {
+		node, err = whereToFilter(d.Where, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(d.OrderBy) != 0 {
+		node, err = orderByToSort(d.OrderBy, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
+	if d.Limit != nil && d.Limit.Offset != nil {
+		node, err = offsetToOffset(ctx, d.Limit.Offset, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if d.Limit != nil {
+		node, err = limitToLimit(ctx, d.Limit.Rowcount, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return plan.NewUpdate(node, updateExprs), nil
 }
 
 func columnDefinitionToSchema(colDef []*sqlparser.ColumnDefinition) (sql.Schema, error) {
@@ -1239,6 +1284,22 @@ func intervalExprToExpression(ctx *sql.Context, e *sqlparser.IntervalExpr) (sql.
 	}
 
 	return expression.NewInterval(expr, e.Unit), nil
+}
+
+func updateExprsToExpressions(e sqlparser.UpdateExprs) ([]sql.Expression, error) {
+	res := make([]sql.Expression, len(e))
+	for i, updateExpr := range e {
+		colName, err := exprToExpression(updateExpr.Name)
+		if err != nil {
+			return nil, err
+		}
+		innerExpr, err := exprToExpression(updateExpr.Expr)
+		if err != nil {
+			return nil, err
+		}
+		res[i] = expression.NewSetField(colName, innerExpr)
+	}
+	return res, nil
 }
 
 func removeComments(s string) string {
