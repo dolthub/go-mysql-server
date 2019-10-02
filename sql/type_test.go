@@ -192,6 +192,8 @@ func TestNumberComparison(t *testing.T) {
 		{Uint8, uint8(42)},
 		{Int16, int16(42)},
 		{Uint16, uint16(42)},
+		{Int24, int32(42)},
+		{Uint24, uint32(42)},
 		{Int32, int32(42)},
 		{Uint32, uint32(42)},
 		{Int64, int64(42)},
