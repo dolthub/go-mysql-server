@@ -186,6 +186,10 @@ var (
 	Int16 = numberT{t: sqltypes.Int16}
 	// Uint16 is an unsigned integer of 16 bits
 	Uint16 = numberT{t: sqltypes.Uint16}
+	// Int24 is an integer of 24 bits.
+	Int24 = numberT{t: sqltypes.Int24}
+	// Uint24 is an unsigned integer of 24 bits.
+	Uint24 = numberT{t: sqltypes.Uint24}
 	// Int32 is an integer of 32 bits.
 	Int32 = numberT{t: sqltypes.Int32}
 	// Uint32 is an unsigned integer of 32 bits.
@@ -248,12 +252,16 @@ func MysqlTypeToType(sql query.Type) (Type, error) {
 		return Int16, nil
 	case sqltypes.Uint16:
 		return Uint16, nil
+	case sqltypes.Int24:
+		return Int24, nil
+	case sqltypes.Uint24:
+		return Uint24, nil
 	case sqltypes.Int32:
 		return Int32, nil
-	case sqltypes.Int64:
-		return Int64, nil
 	case sqltypes.Uint32:
 		return Uint32, nil
+	case sqltypes.Int64:
+		return Int64, nil
 	case sqltypes.Uint64:
 		return Uint64, nil
 	case sqltypes.Float32:
