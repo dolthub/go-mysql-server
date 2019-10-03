@@ -52,6 +52,16 @@ var (
 	setRegex             = regexp.MustCompile(`^set\s+`)
 )
 
+// These constants aren't exported from vitess for some reason. This could be removed if we changed this.
+const (
+	colKeyNone sqlparser.ColumnKeyOption = iota
+	colKeyPrimary
+	colKeySpatialKey
+	colKeyUnique
+	colKeyUniqueKey
+	colKey
+)
+
 // Parse parses the given SQL sentence and returns the corresponding node.
 func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 	span, ctx := ctx.Span("parse", opentracing.Tag{Key: "query", Value: query})
@@ -141,7 +151,12 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.Insert:
 		return convertInsert(ctx, n)
 	case *sqlparser.DDL:
-		return convertDDL(n)
+		// unlike other statements, DDL statements have loose parsing by default
+		ddl, err := sqlparser.ParseStrictDDL(query)
+		if err != nil {
+			return nil, err
+		}
+		return convertDDL(ddl.(*sqlparser.DDL))
 	case *sqlparser.Set:
 		return convertSet(ctx, n)
 	case *sqlparser.Use:
@@ -351,13 +366,23 @@ func convertDDL(c *sqlparser.DDL) (sql.Node, error) {
 	switch c.Action {
 	case sqlparser.CreateStr:
 		return convertCreateTable(c)
+	case sqlparser.DropStr:
+		return convertDropTable(c)
 	default:
 		return nil, ErrUnsupportedSyntax.New(c)
 	}
 }
 
+func convertDropTable(c *sqlparser.DDL) (sql.Node, error) {
+	tableNames := make([]string, len(c.FromTables))
+	for i, t := range c.FromTables {
+		tableNames[i] = t.Name.String()
+	}
+	return plan.NewDropTable(sql.UnresolvedDatabase(""), c.IfExists, tableNames...), nil
+}
+
 func convertCreateTable(c *sqlparser.DDL) (sql.Node, error) {
-	schema, err := columnDefinitionToSchema(c.TableSpec.Columns)
+	schema, err := columnDefinitionToSchema(c.TableSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -471,25 +496,54 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 	return plan.NewUpdate(node, updateExprs), nil
 }
 
-func columnDefinitionToSchema(colDef []*sqlparser.ColumnDefinition) (sql.Schema, error) {
+func columnDefinitionToSchema(tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
 	var schema sql.Schema
-	for _, cd := range colDef {
-		typ := cd.Type
-		internalTyp, err := sql.MysqlTypeToType(typ.SQLType())
+	for _, cd := range tableSpec.Columns {
+		column, err := getColumn(cd, tableSpec.Indexes)
 		if err != nil {
 			return nil, err
 		}
 
-		schema = append(schema, &sql.Column{
-			Nullable: !bool(typ.NotNull),
-			Type:     internalTyp,
-			Name:     cd.Name.String(),
-			// TODO
-			Default: nil,
-		})
+		schema = append(schema, column)
 	}
 
 	return schema, nil
+}
+
+// getColumn returns the sql.Column for the column definition given, as part of a create table statement.
+func getColumn(cd *sqlparser.ColumnDefinition, indexes []*sqlparser.IndexDefinition) (*sql.Column, error) {
+	typ := cd.Type
+	internalTyp, err := sql.MysqlTypeToType(typ.SQLType())
+	if err != nil {
+		return nil, err
+	}
+
+	// Primary key info can either be specified in the column's type info (for in-line declarations), or in a slice of
+	// indexes attached to the table def. We have to check both places to find if a column is part of the primary key
+	isPkey := cd.Type.KeyOpt == colKeyPrimary
+
+	if !isPkey {
+	OuterLoop:
+		for _, index := range indexes {
+			if index.Info.Primary {
+				for _, indexCol := range index.Columns {
+					if indexCol.Column.Equal(cd.Name) {
+						isPkey = true
+						break OuterLoop
+					}
+				}
+			}
+		}
+	}
+
+	return &sql.Column{
+		Nullable:   !bool(typ.NotNull),
+		Type:       internalTyp,
+		Name:       cd.Name.String(),
+		PrimaryKey: isPkey,
+		// TODO
+		Default: nil,
+	}, nil
 }
 
 func columnsToStrings(cols sqlparser.Columns) []string {
