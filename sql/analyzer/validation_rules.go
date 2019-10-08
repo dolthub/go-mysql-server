@@ -20,6 +20,7 @@ const (
 	validateCaseResultTypesRule = "validate_case_result_types"
 	validateIntervalUsageRule   = "validate_interval_usage"
 	validateExplodeUsageRule    = "validate_explode_usage"
+	validateSubqueryColumnsRule = "validate_subquery_columns"
 )
 
 var (
@@ -57,6 +58,12 @@ var (
 	ErrExplodeInvalidUse = errors.NewKind(
 		"using EXPLODE is not supported outside a Project node",
 	)
+
+	// ErrSubqueryColumns is returned when an expression subquery returns
+	// more than a single column.
+	ErrSubqueryColumns = errors.NewKind(
+		"subquery expressions can only return a single column",
+	)
 )
 
 // DefaultValidationRules to apply while analyzing nodes.
@@ -70,6 +77,7 @@ var DefaultValidationRules = []Rule{
 	{validateCaseResultTypesRule, validateCaseResultTypes},
 	{validateIntervalUsageRule, validateIntervalUsage},
 	{validateExplodeUsageRule, validateExplodeUsage},
+	{validateSubqueryColumnsRule, validateSubqueryColumns},
 }
 
 func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -317,6 +325,25 @@ func validateExplodeUsage(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, 
 
 	if invalid {
 		return nil, ErrExplodeInvalidUse.New()
+	}
+
+	return n, nil
+}
+
+func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	valid := true
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
+		s, ok := e.(*expression.Subquery)
+		if ok && len(s.Query.Schema()) != 1 {
+			valid = false
+			return false
+		}
+
+		return true
+	})
+
+	if !valid {
+		return nil, ErrSubqueryColumns.New()
 	}
 
 	return n, nil

@@ -759,8 +759,20 @@ func containsColumns(e sql.Expression) bool {
 	return result
 }
 
+func containsSubquery(e sql.Expression) bool {
+	var result bool
+	expression.Inspect(e, func(e sql.Expression) bool {
+		if _, ok := e.(*expression.Subquery); ok {
+			result = true
+			return false
+		}
+		return true
+	})
+	return result
+}
+
 func isEvaluable(e sql.Expression) bool {
-	return !containsColumns(e)
+	return !containsColumns(e) && !containsSubquery(e)
 }
 
 func canMergeIndexes(a, b sql.IndexLookup) bool {

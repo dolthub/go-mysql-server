@@ -1,4 +1,4 @@
-package analyzer // import "github.com/src-d/go-mysql-server/sql/analyzer"
+package analyzer
 
 import (
 	"os"

@@ -1,4 +1,4 @@
-package function // import "github.com/src-d/go-mysql-server/sql/expression/function"
+package function
 
 import (
 	"fmt"

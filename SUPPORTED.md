@@ -80,9 +80,6 @@
 - div
 - %
 
-## Subqueries
-- supported only as tables, not as expressions.
-
 ## Functions
 - ARRAY_LENGTH
 - CEIL
@@ -133,3 +130,6 @@
 - WEEKDAY
 - YEAR
 - YEARWEEK
+
+## Subqueries
+Supported both as a table and as expressions but they can't access the parent query scope.
