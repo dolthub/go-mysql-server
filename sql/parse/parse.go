@@ -755,12 +755,14 @@ func selectToProjectOrGroupBy(
 		for i, ge := range groupingExprs {
 			// if GROUP BY index
 			if l, ok := ge.(*expression.Literal); ok && sql.IsNumber(l.Type()) {
-				if idx, ok := l.Value().(int64); ok && idx > 0 && idx <= agglen {
-					aggexpr := selectExprs[idx-1]
-					if alias, ok := aggexpr.(*expression.Alias); ok {
-						aggexpr = expression.NewUnresolvedColumn(alias.Name())
+				if i64, err := sql.Int64.Convert(l.Value()); err == nil {
+					if idx, ok := i64.(int64); ok && idx > 0 && idx <= agglen {
+						aggexpr := selectExprs[idx-1]
+						if alias, ok := aggexpr.(*expression.Alias); ok {
+							aggexpr = expression.NewUnresolvedColumn(alias.Name())
+						}
+						groupingExprs[i] = aggexpr
 					}
-					groupingExprs[i] = aggexpr
 				}
 			}
 		}
