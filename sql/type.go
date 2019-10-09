@@ -1155,12 +1155,12 @@ func IsNumber(t Type) bool {
 
 // IsSigned checks if t is a signed type.
 func IsSigned(t Type) bool {
-	return t == Int32 || t == Int64
+	return t == Int8 || t == Int16 || t == Int32 || t == Int64
 }
 
 // IsUnsigned checks if t is an unsigned type.
 func IsUnsigned(t Type) bool {
-	return t == Uint64 || t == Uint32
+	return t == Uint8 || t == Uint16 || t == Uint32 || t == Uint64
 }
 
 // IsInteger checks if t is a (U)Int32/64 type.
