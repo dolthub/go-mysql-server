@@ -335,10 +335,18 @@ func (t numberT) SQL(v interface{}) (sqltypes.Value, error) {
 	}
 
 	switch t.t {
+	case sqltypes.Int8:
+		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
+	case sqltypes.Int16:
+		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
 	case sqltypes.Int32:
 		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
 	case sqltypes.Int64:
 		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
+	case sqltypes.Uint8:
+		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
+	case sqltypes.Uint16:
+		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
 	case sqltypes.Uint32:
 		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
 	case sqltypes.Uint64:
