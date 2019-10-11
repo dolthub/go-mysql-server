@@ -145,6 +145,20 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 			return i, err
 		}
 
+		// Convert integer values in row to specified type in schema
+		for colIdx, oldValue := range row {
+			dstColType := projExprs[colIdx].Type()
+
+			if sql.IsInteger(dstColType) && oldValue != nil {
+				newValue, err := dstColType.Convert(oldValue)
+				if err != nil {
+					return i, err
+				}
+
+				row[colIdx] = newValue
+			}
+		}
+
 		if replaceable != nil {
 			if err = replaceable.Delete(ctx, row); err != nil {
 				if err != sql.ErrDeleteRowNotFound {
