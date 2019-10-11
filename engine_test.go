@@ -1923,7 +1923,7 @@ func TestInsertInto(t *testing.T) {
 			[]sql.Row{{int64(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
-				int64(999), int8(-math.MaxInt8-1), int16(-math.MaxInt16-1), int32(-math.MaxInt32-1), int64(-math.MaxInt64-1),
+				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 				uint8(0), uint16(0), uint32(0), uint64(0),
 				float64(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 				timeParse(sql.TimestampLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
@@ -1941,7 +1941,7 @@ func TestInsertInto(t *testing.T) {
 			[]sql.Row{{int64(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
-				int64(999), int8(-math.MaxInt8-1), int16(-math.MaxInt16-1), int32(-math.MaxInt32-1), int64(-math.MaxInt64-1),
+				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 				uint8(0), uint16(0), uint32(0), uint64(0),
 				float64(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 				timeParse(sql.TimestampLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
@@ -2123,7 +2123,7 @@ func TestReplaceInto(t *testing.T) {
 			[]sql.Row{{int64(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
-				int64(999), int8(-math.MaxInt8-1), int16(-math.MaxInt16-1), int32(-math.MaxInt32-1), int64(-math.MaxInt64-1),
+				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 				uint8(0), uint16(0), uint32(0), uint64(0),
 				float64(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 				timeParse(sql.TimestampLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
@@ -2141,7 +2141,7 @@ func TestReplaceInto(t *testing.T) {
 			[]sql.Row{{int64(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
-				int64(999), int8(-math.MaxInt8-1), int16(-math.MaxInt16-1), int32(-math.MaxInt32-1), int64(-math.MaxInt64-1),
+				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 				uint8(0), uint16(0), uint32(0), uint64(0),
 				float64(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 				timeParse(sql.TimestampLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),

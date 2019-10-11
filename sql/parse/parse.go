@@ -687,7 +687,7 @@ func getInt64Literal(ctx *sql.Context, expr sqlparser.Expr, errStr string) (*exp
 		if err != nil {
 			return nil, ErrUnsupportedFeature.New(errStr)
 		}
-		return expression.NewLiteral(i64, sql.Int64) , nil
+		return expression.NewLiteral(i64, sql.Int64), nil
 	}
 
 	return nl, nil
@@ -984,7 +984,7 @@ func convertInt(value string, base int) (sql.Expression, error) {
 		return expression.NewLiteral(int64(i64), sql.Int64), nil
 	}
 
-	ui64, err := strconv.ParseUint(value, base, 64);
+	ui64, err := strconv.ParseUint(value, base, 64)
 	if err != nil {
 		return nil, err
 	}

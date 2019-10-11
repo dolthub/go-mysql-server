@@ -743,7 +743,6 @@ func (t charT) Compare(a interface{}, b interface{}) (int, error) {
 	return strings.Compare(a.(string), b.(string)), nil
 }
 
-
 type varCharT struct {
 	length int
 }
