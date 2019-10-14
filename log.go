@@ -1,4 +1,4 @@
-package sqle // import "github.com/src-d/go-mysql-server"
+package sqle
 
 import (
 	"github.com/golang/glog"

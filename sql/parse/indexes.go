@@ -39,7 +39,7 @@ func parseShowIndex(s string) (sql.Node, error) {
 	), nil
 }
 
-func parseCreateIndex(s string) (sql.Node, error) {
+func parseCreateIndex(ctx *sql.Context, s string) (sql.Node, error) {
 	r := bufio.NewReader(strings.NewReader(s))
 
 	var name, table, driver string
@@ -78,7 +78,7 @@ func parseCreateIndex(s string) (sql.Node, error) {
 	var indexExprs = make([]sql.Expression, len(exprs))
 	for i, e := range exprs {
 		var err error
-		indexExprs[i], err = parseExpr(e)
+		indexExprs[i], err = parseExpr(ctx, e)
 		if err != nil {
 			return nil, err
 		}

@@ -159,7 +159,7 @@ func TestParseCreateIndex(t *testing.T) {
 		t.Run(tt.query, func(t *testing.T) {
 			require := require.New(t)
 
-			result, err := parseCreateIndex(strings.ToLower(tt.query))
+			result, err := parseCreateIndex(sql.NewEmptyContext(), strings.ToLower(tt.query))
 			if tt.err != nil {
 				require.Error(err)
 				require.True(tt.err.Is(err))

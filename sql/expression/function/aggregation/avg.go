@@ -1,4 +1,4 @@
-package aggregation // import "github.com/src-d/go-mysql-server/sql/expression/function/aggregation"
+package aggregation
 
 import (
 	"fmt"

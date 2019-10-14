@@ -1,4 +1,4 @@
-package server // import "github.com/src-d/go-mysql-server/server"
+package server
 
 import (
 	"time"

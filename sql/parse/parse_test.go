@@ -1208,12 +1208,11 @@ func TestParse(t *testing.T) {
 }
 
 var fixturesErrors = map[string]*errors.Kind{
-	`SHOW METHEMONEY`:                                      ErrUnsupportedFeature,
-	`LOCK TABLES foo AS READ`:                              errUnexpectedSyntax,
-	`LOCK TABLES foo LOW_PRIORITY READ`:                    errUnexpectedSyntax,
-	`SELECT * FROM mytable WHERE i IN (SELECT i FROM foo)`: ErrUnsupportedSubqueryExpression,
-	`SELECT * FROM mytable LIMIT -100`:                     ErrUnsupportedSyntax,
-	`SELECT * FROM mytable LIMIT 100 OFFSET -1`:            ErrUnsupportedSyntax,
+	`SHOW METHEMONEY`:                           ErrUnsupportedFeature,
+	`LOCK TABLES foo AS READ`:                   errUnexpectedSyntax,
+	`LOCK TABLES foo LOW_PRIORITY READ`:         errUnexpectedSyntax,
+	`SELECT * FROM mytable LIMIT -100`:          ErrUnsupportedSyntax,
+	`SELECT * FROM mytable LIMIT 100 OFFSET -1`: ErrUnsupportedSyntax,
 	`SELECT * FROM files
 		JOIN commit_files
 		JOIN refs
