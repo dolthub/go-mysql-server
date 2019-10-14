@@ -1,6 +1,7 @@
 package parse
 
 import (
+	"math"
 	"testing"
 
 	"github.com/src-d/go-mysql-server/sql/expression"
@@ -1190,6 +1191,23 @@ var fixtures = map[string]sql.Node{
 		},
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT -128, 127, 255, -32768, 32767, 65535, -2147483648, 2147483647, 4294967295, -9223372036854775808, 9223372036854775807, 18446744073709551615`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewLiteral(int8(math.MinInt8), sql.Int8),
+			expression.NewLiteral(int8(math.MaxInt8), sql.Int8),
+			expression.NewLiteral(uint8(math.MaxUint8), sql.Uint8),
+			expression.NewLiteral(int16(math.MinInt16), sql.Int16),
+			expression.NewLiteral(int16(math.MaxInt16), sql.Int16),
+			expression.NewLiteral(uint16(math.MaxUint16), sql.Uint16),
+			expression.NewLiteral(int32(math.MinInt32), sql.Int32),
+			expression.NewLiteral(int32(math.MaxInt32), sql.Int32),
+			expression.NewLiteral(uint32(math.MaxUint32), sql.Uint32),
+			expression.NewLiteral(int64(math.MinInt64), sql.Int64),
+			expression.NewLiteral(int64(math.MaxInt64), sql.Int64),
+			expression.NewLiteral(uint64(math.MaxUint64), sql.Uint64),
+		},
+		plan.NewUnresolvedTable("dual", ""),
 	),
 }
 
