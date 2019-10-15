@@ -110,6 +110,8 @@ func (*Driver) ID() string {
 	return DriverID
 }
 
+var errWriteConfigFile = errors.NewKind("unable to write indexes configuration file")
+
 // Create a new index.
 func (d *Driver) Create(
 	db, table, id string,
@@ -133,7 +135,7 @@ func (d *Driver) Create(
 	cfg := index.NewConfig(db, table, id, exprs, d.ID(), config)
 	err = index.WriteConfigFile(d.configFilePath(db, table, id), cfg)
 	if err != nil {
-		return nil, err
+		return nil, errWriteConfigFile.Wrap(err)
 	}
 
 	idx, err := d.newPilosaIndex(db, table)
@@ -146,11 +148,13 @@ func (d *Driver) Create(
 		processingFile,
 		[]byte{processingFileOnCreate},
 	); err != nil {
-		return nil, err
+		return nil, errWriteConfigFile.Wrap(err)
 	}
 
 	return newPilosaIndex(idx, cfg), nil
 }
+
+var errReadIndexes = errors.NewKind("error loading all indexes for table %s of database %s: %s")
 
 // LoadAll loads all indexes for given db and table
 func (d *Driver) LoadAll(db, table string) ([]sql.Index, error) {
@@ -165,7 +169,7 @@ func (d *Driver) LoadAll(db, table string) ([]sql.Index, error) {
 		if os.IsNotExist(err) {
 			return indexes, nil
 		}
-		return nil, err
+		return nil, errReadIndexes.New(table, db, err)
 	}
 	for _, info := range dirs {
 		if info.IsDir() && !strings.HasPrefix(info.Name(), ".") {
@@ -187,6 +191,11 @@ func (d *Driver) LoadAll(db, table string) ([]sql.Index, error) {
 	return indexes, nil
 }
 
+var (
+	errLoadingIndexConfig = errors.NewKind("unable to load index configuration")
+	errReadIndexConfig    = errors.NewKind("unable to read index configuration")
+)
+
 func (d *Driver) loadIndex(db, table, id string) (*pilosaIndex, error) {
 	idx, err := d.newPilosaIndex(db, table)
 	if err != nil {
@@ -206,7 +215,7 @@ func (d *Driver) loadIndex(db, table, id string) (*pilosaIndex, error) {
 	processing := d.processingFilePath(db, table, id)
 	ok, err := index.ExistsProcessingFile(processing)
 	if err != nil {
-		return nil, err
+		return nil, errLoadingIndexConfig.Wrap(err)
 	}
 	if ok {
 		log := logrus.WithFields(logrus.Fields{
@@ -226,7 +235,7 @@ func (d *Driver) loadIndex(db, table, id string) (*pilosaIndex, error) {
 
 	cfg, err := index.ReadConfigFile(config)
 	if err != nil {
-		return nil, err
+		return nil, errReadIndexConfig.Wrap(err)
 	}
 	cfgDriver := cfg.Driver(DriverID)
 	if cfgDriver == nil {
@@ -382,13 +391,13 @@ func (d *Driver) Save(
 		[]byte{processingFileOnSave},
 	)
 	if err != nil {
-		return err
+		return errWriteConfigFile.Wrap(err)
 	}
 
 	cfgPath := d.configFilePath(i.Database(), i.Table(), i.ID())
 	cfg, err := index.ReadConfigFile(cfgPath)
 	if err != nil {
-		return err
+		return errReadIndexConfig.Wrap(err)
 	}
 	driverCfg := cfg.Driver(DriverID)
 
@@ -462,7 +471,7 @@ func (d *Driver) Save(
 		return errors[0]
 	}
 	if err = index.WriteConfigFile(cfgPath, cfg); err != nil {
-		return err
+		return errWriteConfigFile.Wrap(err)
 	}
 
 	observeIndex(time.Since(start), timePilosa, timeMapping, rows)
