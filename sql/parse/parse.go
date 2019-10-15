@@ -680,8 +680,14 @@ func getInt64Literal(ctx *sql.Context, expr sqlparser.Expr, errStr string) (*exp
 	}
 
 	nl, ok := e.(*expression.Literal)
-	if !ok || nl.Type() != sql.Int64 {
+	if !ok || !sql.IsInteger(nl.Type()) {
 		return nil, ErrUnsupportedFeature.New(errStr)
+	} else {
+		i64, err := sql.Int64.Convert(nl.Value())
+		if err != nil {
+			return nil, ErrUnsupportedFeature.New(errStr)
+		}
+		return expression.NewLiteral(i64, sql.Int64) , nil
 	}
 
 	return nl, nil
