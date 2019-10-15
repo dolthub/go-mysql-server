@@ -203,6 +203,18 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				dVal = float64(dNum)
 			case int32:
 				dVal = float64(dNum)
+			case int16:
+				dVal = float64(dNum)
+			case int8:
+				dVal = float64(dNum)
+			case uint64:
+				dVal = float64(dNum)
+			case uint32:
+				dVal = float64(dNum)
+			case uint16:
+				dVal = float64(dNum)
+			case uint8:
+				dVal = float64(dNum)
 			case int:
 				dVal = float64(dNum)
 			default:
@@ -233,6 +245,18 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return int64(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
 	case int32:
 		return int32(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	case int16:
+		return int16(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	case int8:
+		return int8(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	case uint64:
+		return uint64(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	case uint32:
+		return uint32(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	case uint16:
+		return uint16(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	case uint8:
+		return uint8(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
 	case int:
 		return int(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
 	default:

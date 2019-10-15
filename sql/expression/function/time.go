@@ -363,8 +363,10 @@ func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if val != nil {
-		if mode, ok = val.(int64); ok {
-			mode %= 8 // mode in [0, 7]
+		if i64, err := sql.Int64.Convert(val); err == nil {
+			if mode, ok = i64.(int64); ok {
+				mode %= 8 // mode in [0, 7]
+			}
 		}
 	}
 	yyyy, week := calcWeek(yyyy, mm, dd, weekMode(mode)|weekBehaviourYear)

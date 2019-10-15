@@ -621,12 +621,28 @@ func decodeGob(k []byte, value interface{}) (interface{}, error) {
 		var v string
 		err := decoder.Decode(&v)
 		return v, err
+	case int8:
+		var v int8
+		err := decoder.Decode(&v)
+		return v, err
+	case int16:
+		var v int16
+		err := decoder.Decode(&v)
+		return v, err
 	case int32:
 		var v int32
 		err := decoder.Decode(&v)
 		return v, err
 	case int64:
 		var v int64
+		err := decoder.Decode(&v)
+		return v, err
+	case uint8:
+		var v uint8
+		err := decoder.Decode(&v)
+		return v, err
+	case uint16:
+		var v uint16
 		err := decoder.Decode(&v)
 		return v, err
 	case uint32:
@@ -688,6 +704,36 @@ func compare(a, b interface{}) (int, error) {
 		}
 
 		return strings.Compare(a, v), nil
+	case int8:
+		v, ok := b.(int8)
+		if !ok {
+			return 0, errTypeMismatch.New(a, b)
+		}
+
+		if a == v {
+			return 0, nil
+		}
+
+		if a < v {
+			return -1, nil
+		}
+
+		return 1, nil
+	case int16:
+		v, ok := b.(int16)
+		if !ok {
+			return 0, errTypeMismatch.New(a, b)
+		}
+
+		if a == v {
+			return 0, nil
+		}
+
+		if a < v {
+			return -1, nil
+		}
+
+		return 1, nil
 	case int32:
 		v, ok := b.(int32)
 		if !ok {
@@ -705,6 +751,36 @@ func compare(a, b interface{}) (int, error) {
 		return 1, nil
 	case int64:
 		v, ok := b.(int64)
+		if !ok {
+			return 0, errTypeMismatch.New(a, b)
+		}
+
+		if a == v {
+			return 0, nil
+		}
+
+		if a < v {
+			return -1, nil
+		}
+
+		return 1, nil
+	case uint8:
+		v, ok := b.(uint8)
+		if !ok {
+			return 0, errTypeMismatch.New(a, b)
+		}
+
+		if a == v {
+			return 0, nil
+		}
+
+		if a < v {
+			return -1, nil
+		}
+
+		return 1, nil
+	case uint16:
+		v, ok := b.(uint16)
 		if !ok {
 			return 0, errTypeMismatch.New(a, b)
 		}

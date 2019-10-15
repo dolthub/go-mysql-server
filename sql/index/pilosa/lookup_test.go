@@ -98,8 +98,12 @@ func TestCompare(t *testing.T) {
 func TestDecodeGob(t *testing.T) {
 	testCases := []interface{}{
 		"foo",
+		int8(1),
+		int16(1),
 		int32(1),
 		int64(1),
+		uint8(1),
+		uint16(1),
 		uint32(1),
 		uint64(1),
 		float64(1),

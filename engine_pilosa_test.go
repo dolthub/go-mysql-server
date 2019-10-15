@@ -207,4 +207,3 @@ func TestCreateIndex(t *testing.T) {
 		require.NoError(os.RemoveAll(tmpDir))
 	}()
 }
-

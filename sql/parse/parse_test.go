@@ -1,6 +1,7 @@
 package parse
 
 import (
+	"math"
 	"testing"
 
 	"github.com/src-d/go-mysql-server/sql/expression"
@@ -181,7 +182,7 @@ var fixtures = map[string]sql.Node{
 				plan.NewFilter(
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("qux"),
-						expression.NewLiteral(int64(1), sql.Int64),
+						expression.NewLiteral(int8(1), sql.Int8),
 					),
 					plan.NewUnresolvedTable("foo", ""),
 				),
@@ -258,7 +259,7 @@ var fixtures = map[string]sql.Node{
 		plan.NewUnresolvedTable("t1", ""),
 		plan.NewValues([][]sql.Expression{{
 			expression.NewLiteral("a", sql.Text),
-			expression.NewLiteral(int64(1), sql.Int64),
+			expression.NewLiteral(int8(1), sql.Int8),
 		}}),
 		false,
 		[]string{"col1", "col2"},
@@ -267,7 +268,7 @@ var fixtures = map[string]sql.Node{
 		plan.NewUnresolvedTable("t1", ""),
 		plan.NewValues([][]sql.Expression{{
 			expression.NewLiteral("a", sql.Text),
-			expression.NewLiteral(int64(1), sql.Int64),
+			expression.NewLiteral(int8(1), sql.Int8),
 		}}),
 		true,
 		[]string{"col1", "col2"},
@@ -360,7 +361,7 @@ var fixtures = map[string]sql.Node{
 		plan.NewFilter(
 			expression.NewEquals(
 				expression.NewUnresolvedColumn("a"),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int8(1), sql.Int8),
 			),
 			plan.NewUnresolvedTable("foo", ""),
 		),
@@ -432,9 +433,9 @@ var fixtures = map[string]sql.Node{
 		plan.NewFilter(
 			expression.NewNot(
 				expression.NewBetween(
-					expression.NewLiteral(int64(1), sql.Int64),
-					expression.NewLiteral(int64(2), sql.Int64),
-					expression.NewLiteral(int64(5), sql.Int64),
+					expression.NewLiteral(int8(1), sql.Int8),
+					expression.NewLiteral(int8(2), sql.Int8),
+					expression.NewLiteral(int8(5), sql.Int8),
 				),
 			),
 			plan.NewUnresolvedTable("foo", ""),
@@ -444,16 +445,16 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{expression.NewStar()},
 		plan.NewFilter(
 			expression.NewBetween(
-				expression.NewLiteral(int64(1), sql.Int64),
-				expression.NewLiteral(int64(2), sql.Int64),
-				expression.NewLiteral(int64(5), sql.Int64),
+				expression.NewLiteral(int8(1), sql.Int8),
+				expression.NewLiteral(int8(2), sql.Int8),
+				expression.NewLiteral(int8(5), sql.Int8),
 			),
 			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
 	`SELECT 0x01AF`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewLiteral(int64(431), sql.Int64),
+			expression.NewLiteral(int16(431), sql.Int16),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
@@ -470,12 +471,12 @@ var fixtures = map[string]sql.Node{
 				"somefunc",
 				false,
 				expression.NewTuple(
-					expression.NewLiteral(int64(1), sql.Int64),
-					expression.NewLiteral(int64(2), sql.Int64),
+					expression.NewLiteral(int8(1), sql.Int8),
+					expression.NewLiteral(int8(2), sql.Int8),
 				),
 				expression.NewTuple(
-					expression.NewLiteral(int64(3), sql.Int64),
-					expression.NewLiteral(int64(4), sql.Int64),
+					expression.NewLiteral(int8(3), sql.Int8),
+					expression.NewLiteral(int8(4), sql.Int8),
 				),
 			),
 			plan.NewUnresolvedTable("b", ""),
@@ -486,7 +487,7 @@ var fixtures = map[string]sql.Node{
 		plan.NewFilter(
 			expression.NewEquals(
 				expression.NewLiteral(":foo_id", sql.Text),
-				expression.NewLiteral(int64(2), sql.Int64),
+				expression.NewLiteral(int8(2), sql.Int8),
 			),
 			plan.NewUnresolvedTable("foo", ""),
 		),
@@ -510,13 +511,13 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT CAST(-3 AS UNSIGNED) FROM foo`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewConvert(expression.NewLiteral(int64(-3), sql.Int64), expression.ConvertToUnsigned),
+			expression.NewConvert(expression.NewLiteral(int8(-3), sql.Int8), expression.ConvertToUnsigned),
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT 2 = 2 FROM foo`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewEquals(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(2), sql.Int64)),
+			expression.NewEquals(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(2), sql.Int8)),
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
@@ -560,10 +561,10 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{expression.NewStar()},
 		plan.NewFilter(
 			expression.NewIn(
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int8(1), sql.Int8),
 				expression.NewTuple(
 					expression.NewLiteral("1", sql.Text),
-					expression.NewLiteral(int64(2), sql.Int64),
+					expression.NewLiteral(int8(2), sql.Int8),
 				),
 			),
 			plan.NewUnresolvedTable("foo", ""),
@@ -573,10 +574,10 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{expression.NewStar()},
 		plan.NewFilter(
 			expression.NewNotIn(
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int8(1), sql.Int8),
 				expression.NewTuple(
 					expression.NewLiteral("1", sql.Text),
-					expression.NewLiteral(int64(2), sql.Int64),
+					expression.NewLiteral(int8(2), sql.Int8),
 				),
 			),
 			plan.NewUnresolvedTable("foo", ""),
@@ -585,12 +586,12 @@ var fixtures = map[string]sql.Node{
 	`SELECT a, b FROM t ORDER BY 2, 1`: plan.NewSort(
 		[]plan.SortField{
 			{
-				Column:       expression.NewLiteral(int64(2), sql.Int64),
+				Column:       expression.NewLiteral(int8(2), sql.Int8),
 				Order:        plan.Ascending,
 				NullOrdering: plan.NullsFirst,
 			},
 			{
-				Column:       expression.NewLiteral(int64(1), sql.Int64),
+				Column:       expression.NewLiteral(int8(1), sql.Int8),
 				Order:        plan.Ascending,
 				NullOrdering: plan.NullsFirst,
 			},
@@ -605,22 +606,22 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT 1 + 1;`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewPlus(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
+			expression.NewPlus(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8)),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT 1 * (2 + 1);`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewMult(expression.NewLiteral(int64(1), sql.Int64),
-				expression.NewPlus(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64))),
+			expression.NewMult(expression.NewLiteral(int8(1), sql.Int8),
+				expression.NewPlus(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT (0 - 1) * (1 | 1);`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewMult(
-				expression.NewMinus(expression.NewLiteral(int64(0), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
-				expression.NewBitOr(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
+				expression.NewMinus(expression.NewLiteral(int8(0), sql.Int8), expression.NewLiteral(int8(1), sql.Int8)),
+				expression.NewBitOr(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8)),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -628,8 +629,8 @@ var fixtures = map[string]sql.Node{
 	`SELECT (1 << 3) % (2 div 1);`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewMod(
-				expression.NewShiftLeft(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(3), sql.Int64)),
-				expression.NewIntDiv(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64))),
+				expression.NewShiftLeft(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(3), sql.Int8)),
+				expression.NewIntDiv(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
@@ -645,7 +646,7 @@ var fixtures = map[string]sql.Node{
 	`SELECT '1.0' + 2;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewPlus(
-				expression.NewLiteral("1.0", sql.Text), expression.NewLiteral(int64(2), sql.Int64),
+				expression.NewLiteral("1.0", sql.Text), expression.NewLiteral(int8(2), sql.Int8),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -714,7 +715,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewUnresolvedFunction(
 					"max", true, expression.NewUnresolvedColumn("i"),
 				),
-				expression.NewLiteral(int64(2), sql.Int64),
+				expression.NewLiteral(int8(2), sql.Int8),
 				"/",
 			),
 		},
@@ -742,7 +743,7 @@ var fixtures = map[string]sql.Node{
 	`SET autocommit=1, foo="bar"`: plan.NewSet(
 		plan.SetVariable{
 			Name:  "autocommit",
-			Value: expression.NewLiteral(int64(1), sql.Int64),
+			Value: expression.NewLiteral(int8(1), sql.Int8),
 		},
 		plan.SetVariable{
 			Name:  "foo",
@@ -752,7 +753,7 @@ var fixtures = map[string]sql.Node{
 	`SET @@session.autocommit=1, foo="bar"`: plan.NewSet(
 		plan.SetVariable{
 			Name:  "@@session.autocommit",
-			Value: expression.NewLiteral(int64(1), sql.Int64),
+			Value: expression.NewLiteral(int8(1), sql.Int8),
 		},
 		plan.SetVariable{
 			Name:  "foo",
@@ -818,11 +819,11 @@ var fixtures = map[string]sql.Node{
 	`SET SESSION NET_READ_TIMEOUT= 700, SESSION NET_WRITE_TIMEOUT= 700`: plan.NewSet(
 		plan.SetVariable{
 			Name:  "@@session.net_read_timeout",
-			Value: expression.NewLiteral(int64(700), sql.Int64),
+			Value: expression.NewLiteral(int16(700), sql.Int16),
 		},
 		plan.SetVariable{
 			Name:  "@@session.net_write_timeout",
-			Value: expression.NewLiteral(int64(700), sql.Int64),
+			Value: expression.NewLiteral(int16(700), sql.Int16),
 		},
 	),
 	`SET gtid_mode=DEFAULT`: plan.NewSet(
@@ -975,11 +976,11 @@ var fixtures = map[string]sql.Node{
 			expression.NewUnresolvedColumn("foo"),
 			[]expression.CaseBranch{
 				{
-					Cond:  expression.NewLiteral(int64(1), sql.Int64),
+					Cond:  expression.NewLiteral(int8(1), sql.Int8),
 					Value: expression.NewLiteral("foo", sql.Text),
 				},
 				{
-					Cond:  expression.NewLiteral(int64(2), sql.Int64),
+					Cond:  expression.NewLiteral(int8(2), sql.Int8),
 					Value: expression.NewLiteral("bar", sql.Text),
 				},
 			},
@@ -992,11 +993,11 @@ var fixtures = map[string]sql.Node{
 			expression.NewUnresolvedColumn("foo"),
 			[]expression.CaseBranch{
 				{
-					Cond:  expression.NewLiteral(int64(1), sql.Int64),
+					Cond:  expression.NewLiteral(int8(1), sql.Int8),
 					Value: expression.NewLiteral("foo", sql.Text),
 				},
 				{
-					Cond:  expression.NewLiteral(int64(2), sql.Int64),
+					Cond:  expression.NewLiteral(int8(2), sql.Int8),
 					Value: expression.NewLiteral("bar", sql.Text),
 				},
 			},
@@ -1011,14 +1012,14 @@ var fixtures = map[string]sql.Node{
 				{
 					Cond: expression.NewEquals(
 						expression.NewUnresolvedColumn("foo"),
-						expression.NewLiteral(int64(1), sql.Int64),
+						expression.NewLiteral(int8(1), sql.Int8),
 					),
 					Value: expression.NewLiteral("foo", sql.Text),
 				},
 				{
 					Cond: expression.NewEquals(
 						expression.NewUnresolvedColumn("foo"),
-						expression.NewLiteral(int64(2), sql.Int64),
+						expression.NewLiteral(int8(2), sql.Int8),
 					),
 					Value: expression.NewLiteral("bar", sql.Text),
 				},
@@ -1055,7 +1056,7 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{expression.NewArithmetic(
 			expression.NewLiteral("2018-05-01", sql.Text),
 			expression.NewInterval(
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int8(1), sql.Int8),
 				"DAY",
 			),
 			"+",
@@ -1066,7 +1067,7 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{expression.NewArithmetic(
 			expression.NewLiteral("2018-05-01", sql.Text),
 			expression.NewInterval(
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int8(1), sql.Int8),
 				"DAY",
 			),
 			"-",
@@ -1076,7 +1077,7 @@ var fixtures = map[string]sql.Node{
 	`SELECT INTERVAL 1 DAY + '2018-05-01'`: plan.NewProject(
 		[]sql.Expression{expression.NewArithmetic(
 			expression.NewInterval(
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int8(1), sql.Int8),
 				"DAY",
 			),
 			expression.NewLiteral("2018-05-01", sql.Text),
@@ -1089,13 +1090,13 @@ var fixtures = map[string]sql.Node{
 			expression.NewArithmetic(
 				expression.NewLiteral("2018-05-01", sql.Text),
 				expression.NewInterval(
-					expression.NewLiteral(int64(1), sql.Int64),
+					expression.NewLiteral(int8(1), sql.Int8),
 					"DAY",
 				),
 				"+",
 			),
 			expression.NewInterval(
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int8(1), sql.Int8),
 				"DAY",
 			),
 			"+",
@@ -1105,7 +1106,7 @@ var fixtures = map[string]sql.Node{
 	`SELECT COUNT(*) FROM foo GROUP BY a HAVING COUNT(*) > 5`: plan.NewHaving(
 		expression.NewGreaterThan(
 			expression.NewUnresolvedFunction("count", true, expression.NewStar()),
-			expression.NewLiteral(int64(5), sql.Int64),
+			expression.NewLiteral(int8(5), sql.Int8),
 		),
 		plan.NewGroupBy(
 			[]sql.Expression{expression.NewUnresolvedFunction("count", true, expression.NewStar())},
@@ -1117,7 +1118,7 @@ var fixtures = map[string]sql.Node{
 		plan.NewHaving(
 			expression.NewGreaterThan(
 				expression.NewUnresolvedFunction("count", true, expression.NewStar()),
-				expression.NewLiteral(int64(5), sql.Int64),
+				expression.NewLiteral(int8(5), sql.Int8),
 			),
 			plan.NewGroupBy(
 				[]sql.Expression{expression.NewUnresolvedFunction("count", true, expression.NewStar())},
@@ -1132,8 +1133,8 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo", ""),
 			plan.NewUnresolvedTable("bar", ""),
 			expression.NewEquals(
-				expression.NewLiteral(int64(1), sql.Int64),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int8(1), sql.Int8),
+				expression.NewLiteral(int8(1), sql.Int8),
 			),
 		),
 	),
@@ -1143,8 +1144,8 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo", ""),
 			plan.NewUnresolvedTable("bar", ""),
 			expression.NewEquals(
-				expression.NewLiteral(int64(1), sql.Int64),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int8(1), sql.Int8),
+				expression.NewLiteral(int8(1), sql.Int8),
 			),
 		),
 	),
@@ -1154,8 +1155,8 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo", ""),
 			plan.NewUnresolvedTable("bar", ""),
 			expression.NewEquals(
-				expression.NewLiteral(int64(1), sql.Int64),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int8(1), sql.Int8),
+				expression.NewLiteral(int8(1), sql.Int8),
 			),
 		),
 	),
@@ -1165,8 +1166,8 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo", ""),
 			plan.NewUnresolvedTable("bar", ""),
 			expression.NewEquals(
-				expression.NewLiteral(int64(1), sql.Int64),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int8(1), sql.Int8),
+				expression.NewLiteral(int8(1), sql.Int8),
 			),
 		),
 	),
@@ -1190,6 +1191,23 @@ var fixtures = map[string]sql.Node{
 		},
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT -128, 127, 255, -32768, 32767, 65535, -2147483648, 2147483647, 4294967295, -9223372036854775808, 9223372036854775807, 18446744073709551615`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewLiteral(int8(math.MinInt8), sql.Int8),
+			expression.NewLiteral(int8(math.MaxInt8), sql.Int8),
+			expression.NewLiteral(uint8(math.MaxUint8), sql.Uint8),
+			expression.NewLiteral(int16(math.MinInt16), sql.Int16),
+			expression.NewLiteral(int16(math.MaxInt16), sql.Int16),
+			expression.NewLiteral(uint16(math.MaxUint16), sql.Uint16),
+			expression.NewLiteral(int32(math.MinInt32), sql.Int32),
+			expression.NewLiteral(int32(math.MaxInt32), sql.Int32),
+			expression.NewLiteral(uint32(math.MaxUint32), sql.Uint32),
+			expression.NewLiteral(int64(math.MinInt64), sql.Int64),
+			expression.NewLiteral(int64(math.MaxInt64), sql.Int64),
+			expression.NewLiteral(uint64(math.MaxUint64), sql.Uint64),
+		},
+		plan.NewUnresolvedTable("dual", ""),
 	),
 }
 
