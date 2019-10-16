@@ -1,10 +1,13 @@
-package expression
+package expression_test
 
 import (
 	"testing"
 
 	"github.com/src-d/go-mysql-server/internal/regex"
+	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/src-d/go-mysql-server/sql/plan"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/stretchr/testify/require"
@@ -95,11 +98,11 @@ var likeComparisonCases = map[sql.Type]map[int][][]interface{}{
 func TestEquals(t *testing.T) {
 	require := require.New(t)
 	for resultType, cmpCase := range comparisonCases {
-		get0 := NewGetField(0, resultType, "col1", true)
+		get0 := expression.NewGetField(0, resultType, "col1", true)
 		require.NotNil(get0)
-		get1 := NewGetField(1, resultType, "col2", true)
+		get1 := expression.NewGetField(1, resultType, "col2", true)
 		require.NotNil(get1)
-		eq := NewEquals(get0, get1)
+		eq := expression.NewEquals(get0, get1)
 		require.NotNil(eq)
 		require.Equal(sql.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
@@ -122,11 +125,11 @@ func TestEquals(t *testing.T) {
 func TestLessThan(t *testing.T) {
 	require := require.New(t)
 	for resultType, cmpCase := range comparisonCases {
-		get0 := NewGetField(0, resultType, "col1", true)
+		get0 := expression.NewGetField(0, resultType, "col1", true)
 		require.NotNil(get0)
-		get1 := NewGetField(1, resultType, "col2", true)
+		get1 := expression.NewGetField(1, resultType, "col2", true)
 		require.NotNil(get1)
-		eq := NewLessThan(get0, get1)
+		eq := expression.NewLessThan(get0, get1)
 		require.NotNil(eq)
 		require.Equal(sql.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
@@ -149,11 +152,11 @@ func TestLessThan(t *testing.T) {
 func TestGreaterThan(t *testing.T) {
 	require := require.New(t)
 	for resultType, cmpCase := range comparisonCases {
-		get0 := NewGetField(0, resultType, "col1", true)
+		get0 := expression.NewGetField(0, resultType, "col1", true)
 		require.NotNil(get0)
-		get1 := NewGetField(1, resultType, "col2", true)
+		get1 := expression.NewGetField(1, resultType, "col2", true)
 		require.NotNil(get1)
-		eq := NewGreaterThan(get0, get1)
+		eq := expression.NewGreaterThan(get0, get1)
 		require.NotNil(eq)
 		require.Equal(sql.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
@@ -185,13 +188,13 @@ func testRegexpCases(t *testing.T) {
 	require := require.New(t)
 
 	for resultType, cmpCase := range likeComparisonCases {
-		get0 := NewGetField(0, resultType, "col1", true)
+		get0 := expression.NewGetField(0, resultType, "col1", true)
 		require.NotNil(get0)
-		get1 := NewGetField(1, resultType, "col2", true)
+		get1 := expression.NewGetField(1, resultType, "col2", true)
 		require.NotNil(get1)
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
-				eq := NewRegexp(get0, get1)
+				eq := expression.NewRegexp(get0, get1)
 				require.NotNil(eq)
 				require.Equal(sql.Boolean, eq.Type())
 
@@ -214,9 +217,9 @@ func TestInvalidRegexp(t *testing.T) {
 	t.Helper()
 	require := require.New(t)
 
-	col1 := NewGetField(0, sql.Text, "col1", true)
-	invalid := NewLiteral("*col1", sql.Text)
-	r := NewRegexp(col1, invalid)
+	col1 := expression.NewGetField(0, sql.Text, "col1", true)
+	invalid := expression.NewLiteral("*col1", sql.Text)
+	r := expression.NewRegexp(col1, invalid)
 	row := sql.NewRow("col1")
 
 	_, err := r.Eval(sql.NewEmptyContext(), row)
@@ -234,10 +237,10 @@ func TestIn(t *testing.T) {
 	}{
 		{
 			"left is nil",
-			NewLiteral(nil, sql.Null),
-			NewTuple(
-				NewLiteral(int64(1), sql.Int64),
-				NewLiteral(int64(2), sql.Int64),
+			expression.NewLiteral(nil, sql.Null),
+			expression.NewTuple(
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(2), sql.Int64),
 			),
 			nil,
 			nil,
@@ -245,32 +248,32 @@ func TestIn(t *testing.T) {
 		},
 		{
 			"left and right don't have the same cols",
-			NewLiteral(1, sql.Int64),
-			NewTuple(
-				NewTuple(
-					NewLiteral(int64(1), sql.Int64),
-					NewLiteral(int64(1), sql.Int64),
+			expression.NewLiteral(1, sql.Int64),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(1), sql.Int64),
+					expression.NewLiteral(int64(1), sql.Int64),
 				),
-				NewLiteral(int64(2), sql.Int64),
+				expression.NewLiteral(int64(2), sql.Int64),
 			),
 			nil,
 			nil,
-			ErrInvalidOperandColumns,
+			expression.ErrInvalidOperandColumns,
 		},
 		{
 			"right is an unsupported operand",
-			NewLiteral(1, sql.Int64),
-			NewLiteral(int64(2), sql.Int64),
+			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(int64(2), sql.Int64),
 			nil,
 			nil,
-			ErrUnsupportedInOperand,
+			expression.ErrUnsupportedInOperand,
 		},
 		{
 			"left is in right",
-			NewGetField(0, sql.Int64, "foo", false),
-			NewTuple(
-				NewGetField(0, sql.Int64, "foo", false),
-				NewLiteral(int64(2), sql.Int64),
+			expression.NewGetField(0, sql.Int64, "foo", false),
+			expression.NewTuple(
+				expression.NewGetField(0, sql.Int64, "foo", false),
+				expression.NewLiteral(int64(2), sql.Int64),
 			),
 			sql.NewRow(int64(1)),
 			true,
@@ -278,10 +281,10 @@ func TestIn(t *testing.T) {
 		},
 		{
 			"left is not in right",
-			NewGetField(0, sql.Int64, "foo", false),
-			NewTuple(
-				NewGetField(1, sql.Int64, "bar", false),
-				NewLiteral(int64(2), sql.Int64),
+			expression.NewGetField(0, sql.Int64, "foo", false),
+			expression.NewTuple(
+				expression.NewGetField(1, sql.Int64, "bar", false),
+				expression.NewLiteral(int64(2), sql.Int64),
 			),
 			sql.NewRow(int64(1), int64(3)),
 			false,
@@ -293,7 +296,96 @@ func TestIn(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 
-			result, err := NewIn(tt.left, tt.right).Eval(sql.NewEmptyContext(), tt.row)
+			result, err := expression.NewIn(tt.left, tt.right).
+				Eval(sql.NewEmptyContext(), tt.row)
+			if tt.err != nil {
+				require.Error(err)
+				require.True(tt.err.Is(err))
+			} else {
+				require.NoError(err)
+				require.Equal(tt.result, result)
+			}
+		})
+	}
+}
+
+func TestInSubquery(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	table := memory.NewTable("foo", sql.Schema{
+		{Name: "t", Source: "foo", Type: sql.Text},
+	})
+
+	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
+	require.NoError(t, table.Insert(ctx, sql.Row{"two"}))
+	require.NoError(t, table.Insert(ctx, sql.Row{"three"}))
+
+	project := func(expr sql.Expression) sql.Node {
+		return plan.NewProject([]sql.Expression{
+			expr,
+		}, plan.NewResolvedTable(table))
+	}
+
+	testCases := []struct {
+		name   string
+		left   sql.Expression
+		right  sql.Node
+		row    sql.Row
+		result interface{}
+		err    *errors.Kind
+	}{
+		{
+			"left is nil",
+			expression.NewLiteral(nil, sql.Null),
+			project(
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+			nil,
+			nil,
+			nil,
+		},
+		{
+			"left and right don't have the same cols",
+			expression.NewTuple(
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+			project(
+				expression.NewLiteral(int64(2), sql.Int64),
+			),
+			nil,
+			nil,
+			expression.ErrInvalidOperandColumns,
+		},
+		{
+			"left is in right",
+			expression.NewGetField(0, sql.Text, "foo", false),
+			project(
+				expression.NewGetField(0, sql.Text, "foo", false),
+			),
+			sql.NewRow("two"),
+			true,
+			nil,
+		},
+		{
+			"left is not in right",
+			expression.NewGetField(0, sql.Text, "foo", false),
+			project(
+				expression.NewGetField(0, sql.Text, "foo", false),
+			),
+			sql.NewRow("four"),
+			false,
+			nil,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+
+			result, err := expression.NewIn(
+				tt.left,
+				expression.NewSubquery(tt.right),
+			).Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err != nil {
 				require.Error(err)
 				require.True(tt.err.Is(err))
@@ -316,10 +408,10 @@ func TestNotIn(t *testing.T) {
 	}{
 		{
 			"left is nil",
-			NewLiteral(nil, sql.Null),
-			NewTuple(
-				NewLiteral(int64(1), sql.Int64),
-				NewLiteral(int64(2), sql.Int64),
+			expression.NewLiteral(nil, sql.Null),
+			expression.NewTuple(
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(2), sql.Int64),
 			),
 			nil,
 			nil,
@@ -327,32 +419,32 @@ func TestNotIn(t *testing.T) {
 		},
 		{
 			"left and right don't have the same cols",
-			NewLiteral(1, sql.Int64),
-			NewTuple(
-				NewTuple(
-					NewLiteral(int64(1), sql.Int64),
-					NewLiteral(int64(1), sql.Int64),
+			expression.NewLiteral(1, sql.Int64),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(1), sql.Int64),
+					expression.NewLiteral(int64(1), sql.Int64),
 				),
-				NewLiteral(int64(2), sql.Int64),
+				expression.NewLiteral(int64(2), sql.Int64),
 			),
 			nil,
 			nil,
-			ErrInvalidOperandColumns,
+			expression.ErrInvalidOperandColumns,
 		},
 		{
 			"right is an unsupported operand",
-			NewLiteral(1, sql.Int64),
-			NewLiteral(int64(2), sql.Int64),
+			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(int64(2), sql.Int64),
 			nil,
 			nil,
-			ErrUnsupportedInOperand,
+			expression.ErrUnsupportedInOperand,
 		},
 		{
 			"left is in right",
-			NewGetField(0, sql.Int64, "foo", false),
-			NewTuple(
-				NewGetField(0, sql.Int64, "foo", false),
-				NewLiteral(int64(2), sql.Int64),
+			expression.NewGetField(0, sql.Int64, "foo", false),
+			expression.NewTuple(
+				expression.NewGetField(0, sql.Int64, "foo", false),
+				expression.NewLiteral(int64(2), sql.Int64),
 			),
 			sql.NewRow(int64(1)),
 			false,
@@ -360,10 +452,10 @@ func TestNotIn(t *testing.T) {
 		},
 		{
 			"left is not in right",
-			NewGetField(0, sql.Int64, "foo", false),
-			NewTuple(
-				NewGetField(1, sql.Int64, "bar", false),
-				NewLiteral(int64(2), sql.Int64),
+			expression.NewGetField(0, sql.Int64, "foo", false),
+			expression.NewTuple(
+				expression.NewGetField(1, sql.Int64, "bar", false),
+				expression.NewLiteral(int64(2), sql.Int64),
 			),
 			sql.NewRow(int64(1), int64(3)),
 			true,
@@ -375,7 +467,8 @@ func TestNotIn(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 
-			result, err := NewNotIn(tt.left, tt.right).Eval(sql.NewEmptyContext(), tt.row)
+			result, err := expression.NewNotIn(tt.left, tt.right).
+				Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err != nil {
 				require.Error(err)
 				require.True(tt.err.Is(err))
@@ -385,4 +478,99 @@ func TestNotIn(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNotInSubquery(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	table := memory.NewTable("foo", sql.Schema{
+		{Name: "t", Source: "foo", Type: sql.Text},
+	})
+
+	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
+	require.NoError(t, table.Insert(ctx, sql.Row{"two"}))
+	require.NoError(t, table.Insert(ctx, sql.Row{"three"}))
+
+	project := func(expr sql.Expression) sql.Node {
+		return plan.NewProject([]sql.Expression{
+			expr,
+		}, plan.NewResolvedTable(table))
+	}
+
+	testCases := []struct {
+		name   string
+		left   sql.Expression
+		right  sql.Node
+		row    sql.Row
+		result interface{}
+		err    *errors.Kind
+	}{
+		{
+			"left is nil",
+			expression.NewLiteral(nil, sql.Null),
+			project(
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+			nil,
+			nil,
+			nil,
+		},
+		{
+			"left and right don't have the same cols",
+			expression.NewTuple(
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+			project(
+				expression.NewLiteral(int64(2), sql.Int64),
+			),
+			nil,
+			nil,
+			expression.ErrInvalidOperandColumns,
+		},
+		{
+			"left is in right",
+			expression.NewGetField(0, sql.Text, "foo", false),
+			project(
+				expression.NewGetField(0, sql.Text, "foo", false),
+			),
+			sql.NewRow("two"),
+			false,
+			nil,
+		},
+		{
+			"left is not in right",
+			expression.NewGetField(0, sql.Text, "foo", false),
+			project(
+				expression.NewGetField(0, sql.Text, "foo", false),
+			),
+			sql.NewRow("four"),
+			true,
+			nil,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+
+			result, err := expression.NewNotIn(
+				tt.left,
+				expression.NewSubquery(tt.right),
+			).Eval(sql.NewEmptyContext(), tt.row)
+			if tt.err != nil {
+				require.Error(err)
+				require.True(tt.err.Is(err))
+			} else {
+				require.NoError(err)
+				require.Equal(tt.result, result)
+			}
+		})
+	}
+}
+
+func eval(t *testing.T, e sql.Expression, row sql.Row) interface{} {
+	t.Helper()
+	v, err := e.Eval(sql.NewEmptyContext(), row)
+	require.NoError(t, err)
+	return v
 }

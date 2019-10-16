@@ -674,6 +674,37 @@ func TestValidateExplodeUsage(t *testing.T) {
 	}
 }
 
+func TestValidateSubqueryColumns(t *testing.T) {
+	require := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	node := plan.NewProject([]sql.Expression{
+		expression.NewSubquery(plan.NewProject(
+			[]sql.Expression{
+				lit(1),
+				lit(2),
+			},
+			dummyNode{true},
+		)),
+	}, dummyNode{true})
+
+	_, err := validateSubqueryColumns(ctx, nil, node)
+	require.Error(err)
+	require.True(ErrSubqueryColumns.Is(err))
+
+	node = plan.NewProject([]sql.Expression{
+		expression.NewSubquery(plan.NewProject(
+			[]sql.Expression{
+				lit(1),
+			},
+			dummyNode{true},
+		)),
+	}, dummyNode{true})
+
+	_, err = validateSubqueryColumns(ctx, nil, node)
+	require.NoError(err)
+}
+
 type dummyNode struct{ resolved bool }
 
 func (n dummyNode) String() string                           { return "dummynode" }

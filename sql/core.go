@@ -1,4 +1,4 @@
-package sql // import "github.com/src-d/go-mysql-server/sql"
+package sql
 
 import (
 	"fmt"

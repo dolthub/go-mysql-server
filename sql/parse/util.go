@@ -251,7 +251,7 @@ func readRemaining(val *string) parseFunc {
 	}
 }
 
-func parseExpr(str string) (sql.Expression, error) {
+func parseExpr(ctx *sql.Context, str string) (sql.Expression, error) {
 	stmt, err := sqlparser.Parse("SELECT " + str)
 	if err != nil {
 		return nil, err
@@ -271,7 +271,7 @@ func parseExpr(str string) (sql.Expression, error) {
 		return nil, errInvalidIndexExpression.New(str)
 	}
 
-	return exprToExpression(selectExpr.Expr)
+	return exprToExpression(ctx, selectExpr.Expr)
 }
 
 func readQuotableIdent(ident *string) parseFunc {

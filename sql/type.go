@@ -345,10 +345,18 @@ func (t numberT) SQL(v interface{}) (sqltypes.Value, error) {
 	}
 
 	switch t.t {
+	case sqltypes.Int8:
+		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
+	case sqltypes.Int16:
+		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
 	case sqltypes.Int32:
 		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
 	case sqltypes.Int64:
 		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
+	case sqltypes.Uint8:
+		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
+	case sqltypes.Uint16:
+		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
 	case sqltypes.Uint32:
 		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
 	case sqltypes.Uint64:
@@ -744,7 +752,6 @@ func (t charT) Convert(v interface{}) (interface{}, error) {
 func (t charT) Compare(a interface{}, b interface{}) (int, error) {
 	return strings.Compare(a.(string), b.(string)), nil
 }
-
 
 type varCharT struct {
 	length int
@@ -1165,12 +1172,12 @@ func IsNumber(t Type) bool {
 
 // IsSigned checks if t is a signed type.
 func IsSigned(t Type) bool {
-	return t == Int32 || t == Int64
+	return t == Int8 || t == Int16 || t == Int32 || t == Int64
 }
 
 // IsUnsigned checks if t is an unsigned type.
 func IsUnsigned(t Type) bool {
-	return t == Uint64 || t == Uint32
+	return t == Uint8 || t == Uint16 || t == Uint32 || t == Uint64
 }
 
 // IsInteger checks if t is a (U)Int32/64 type.

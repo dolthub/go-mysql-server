@@ -22,8 +22,8 @@ import (
 const (
 	pathTCP4Tab = "/proc/net/tcp"
 	pathTCP6Tab = "/proc/net/tcp6"
-	ipv4StrLen = 8
-	ipv6StrLen = 32
+	ipv4StrLen  = 8
+	ipv6StrLen  = 32
 )
 
 type procFd struct {

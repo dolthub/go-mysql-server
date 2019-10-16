@@ -46,16 +46,118 @@ func TestBoolean(t *testing.T) {
 	eq(t, Boolean, false, false)
 }
 
-func TestInt32(t *testing.T) {
-	convert(t, Int32, int32(1), int32(1))
-	convert(t, Int32, 1, int32(1))
-	convert(t, Int32, int64(1), int32(1))
-	convert(t, Int32, "5", int32(5))
-	convertErr(t, Int32, "")
+// Test conversion of all types of numbers to the specified signed integer type
+// in typ, where minusOne, zero and one are the expected values with the
+// same type as typ
+func testSignedInt(t *testing.T, typ Type, minusOne, zero, one interface{}) {
+	t.Helper()
 
-	lt(t, Int32, int32(1), int32(2))
-	eq(t, Int32, int32(1), int32(1))
-	gt(t, Int32, int32(3), int32(2))
+	convert(t, typ, -1, minusOne)
+	convert(t, typ, int8(-1), minusOne)
+	convert(t, typ, int16(-1), minusOne)
+	convert(t, typ, int32(-1), minusOne)
+	convert(t, typ, int64(-1), minusOne)
+	convert(t, typ, 0, zero)
+	convert(t, typ, int8(0), zero)
+	convert(t, typ, int16(0), zero)
+	convert(t, typ, int32(0), zero)
+	convert(t, typ, int64(0), zero)
+	convert(t, typ, uint8(0), zero)
+	convert(t, typ, uint16(0), zero)
+	convert(t, typ, uint32(0), zero)
+	convert(t, typ, uint64(0), zero)
+	convert(t, typ, 1, one)
+	convert(t, typ, int8(1), one)
+	convert(t, typ, int16(1), one)
+	convert(t, typ, int32(1), one)
+	convert(t, typ, int64(1), one)
+	convert(t, typ, uint8(1), one)
+	convert(t, typ, uint16(1), one)
+	convert(t, typ, uint32(1), one)
+	convert(t, typ, uint64(1), one)
+	convert(t, typ, "-1", minusOne)
+	convert(t, typ, "0", zero)
+	convert(t, typ, "1", one)
+	convertErr(t, typ, "")
+
+	lt(t, Int8, minusOne, one)
+	eq(t, Int8, zero, zero)
+	eq(t, Int8, minusOne, minusOne)
+	eq(t, Int8, one, one)
+	gt(t, Int8, one, minusOne)
+}
+
+// Test conversion of all types of numbers to the specified unsigned integer
+// type in typ, where zero and one are the expected values with the same type
+// as typ. The expected errors when converting from negative numbers are also
+// tested
+func testUnsignedInt(t *testing.T, typ Type, zero, one interface{}) {
+	t.Helper()
+
+	convertErr(t, typ, -1)
+	convertErr(t, typ, int8(-1))
+	convertErr(t, typ, int16(-1))
+	convertErr(t, typ, int32(-1))
+	convertErr(t, typ, int64(-1))
+	convert(t, typ, 0, zero)
+	convert(t, typ, int8(0), zero)
+	convert(t, typ, int16(0), zero)
+	convert(t, typ, int32(0), zero)
+	convert(t, typ, int64(0), zero)
+	convert(t, typ, uint8(0), zero)
+	convert(t, typ, uint16(0), zero)
+	convert(t, typ, uint32(0), zero)
+	convert(t, typ, uint64(0), zero)
+	convert(t, typ, 1, one)
+	convert(t, typ, int8(1), one)
+	convert(t, typ, int16(1), one)
+	convert(t, typ, int32(1), one)
+	convert(t, typ, int64(1), one)
+	convert(t, typ, uint8(1), one)
+	convert(t, typ, uint16(1), one)
+	convert(t, typ, uint32(1), one)
+	convert(t, typ, uint64(1), one)
+	convertErr(t, typ, "-1")
+	convert(t, typ, "0", zero)
+	convert(t, typ, "1", one)
+	convertErr(t, typ, "")
+
+	lt(t, Int8, zero, one)
+	eq(t, Int8, zero, zero)
+	eq(t, Int8, one, one)
+	gt(t, Int8, one, zero)
+}
+
+func TestInt8(t *testing.T) {
+	testSignedInt(t, Int8, int8(-1), int8(0), int8(1))
+}
+
+func TestInt16(t *testing.T) {
+	testSignedInt(t, Int16, int16(-1), int16(0), int16(1))
+}
+
+func TestInt32(t *testing.T) {
+	testSignedInt(t, Int32, int32(-1), int32(0), int32(1))
+}
+
+func TestInt64(t *testing.T) {
+	testSignedInt(t, Int64, int64(-1), int64(0), int64(1))
+}
+
+func TestUint8(t *testing.T) {
+	testUnsignedInt(t, Uint8, uint8(0), uint8(1))
+}
+
+func TestUint16(t *testing.T) {
+	testUnsignedInt(t, Uint16, uint16(0), uint16(1))
+}
+
+func TestUint32(t *testing.T) {
+	testUnsignedInt(t, Uint32, uint32(0), uint32(1))
+}
+
+func TestUint64(t *testing.T) {
+	testUnsignedInt(t, Uint64, uint64(0), uint64(1))
 }
 
 func TestNumberComparison(t *testing.T) {
@@ -140,18 +242,6 @@ func TestNumberComparison(t *testing.T) {
 		gt(t, Float32, float32(greaterFloat), a.v)
 		eq(t, a.t, float32(greaterFloat), a.v)
 	}
-}
-
-func TestInt64(t *testing.T) {
-	convert(t, Int64, int32(1), int64(1))
-	convert(t, Int64, 1, int64(1))
-	convert(t, Int64, int64(1), int64(1))
-	convertErr(t, Int64, "")
-	convert(t, Int64, "5", int64(5))
-
-	lt(t, Int64, int64(1), int64(2))
-	eq(t, Int64, int64(1), int64(1))
-	gt(t, Int64, int64(3), int64(2))
 }
 
 func TestFloat64(t *testing.T) {

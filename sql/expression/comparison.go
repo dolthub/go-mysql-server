@@ -466,7 +466,6 @@ func (in *In) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// TODO: support subqueries
 	switch right := in.Right().(type) {
 	case Tuple:
 		for _, el := range right {
@@ -487,6 +486,34 @@ func (in *In) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 
 			cmp, err := typ.Compare(left, right)
+			if err != nil {
+				return nil, err
+			}
+
+			if cmp == 0 {
+				return true, nil
+			}
+		}
+
+		return false, nil
+	case *Subquery:
+		if leftElems > 1 {
+			return nil, ErrInvalidOperandColumns.New(leftElems, 1)
+		}
+
+		typ := right.Type()
+		values, err := right.EvalMultiple(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, val := range values {
+			val, err = typ.Convert(val)
+			if err != nil {
+				return nil, err
+			}
+
+			cmp, err := typ.Compare(left, val)
 			if err != nil {
 				return nil, err
 			}
@@ -547,7 +574,6 @@ func (in *NotIn) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// TODO: support subqueries
 	switch right := in.Right().(type) {
 	case Tuple:
 		for _, el := range right {
@@ -568,6 +594,34 @@ func (in *NotIn) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 
 			cmp, err := typ.Compare(left, right)
+			if err != nil {
+				return nil, err
+			}
+
+			if cmp == 0 {
+				return false, nil
+			}
+		}
+
+		return true, nil
+	case *Subquery:
+		if leftElems > 1 {
+			return nil, ErrInvalidOperandColumns.New(leftElems, 1)
+		}
+
+		typ := right.Type()
+		values, err := right.EvalMultiple(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, val := range values {
+			val, err = typ.Convert(val)
+			if err != nil {
+				return nil, err
+			}
+
+			cmp, err := typ.Compare(left, val)
 			if err != nil {
 				return nil, err
 			}

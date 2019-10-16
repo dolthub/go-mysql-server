@@ -1,4 +1,4 @@
-package plan // import "github.com/src-d/go-mysql-server/sql/plan"
+package plan
 
 import "github.com/src-d/go-mysql-server/sql"
 

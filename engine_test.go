@@ -583,7 +583,7 @@ var queries = []struct {
 	{
 		`SELECT COALESCE(NULL, NULL, NULL, COALESCE(NULL, 1234567890))`,
 		[]sql.Row{
-			{int64(1234567890)},
+			{int32(1234567890)},
 		},
 	},
 	{
@@ -982,7 +982,7 @@ var queries = []struct {
 	},
 	{
 		`SELECT -1`,
-		[]sql.Row{{int64(-1)}},
+		[]sql.Row{{int8(-1)}},
 	},
 	{
 		`
@@ -1044,13 +1044,13 @@ var queries = []struct {
 	{
 		`SELECT nullif(123, 321)`,
 		[]sql.Row{
-			{int64(123)},
+			{int8(123)},
 		},
 	},
 	{
 		`SELECT ifnull(123, NULL)`,
 		[]sql.Row{
-			{int64(123)},
+			{int8(123)},
 		},
 	},
 	{
@@ -1062,19 +1062,19 @@ var queries = []struct {
 	{
 		`SELECT ifnull(NULL, 123)`,
 		[]sql.Row{
-			{int64(123)},
+			{int8(123)},
 		},
 	},
 	{
 		`SELECT ifnull(123, 123)`,
 		[]sql.Row{
-			{int64(123)},
+			{int8(123)},
 		},
 	},
 	{
 		`SELECT ifnull(123, 321)`,
 		[]sql.Row{
-			{int64(123)},
+			{int8(123)},
 		},
 	},
 	{
@@ -1086,7 +1086,7 @@ var queries = []struct {
 	{
 		`SELECT round(15, 1)`,
 		[]sql.Row{
-			{int64(15)},
+			{int8(15)},
 		},
 	},
 	{
@@ -1453,7 +1453,7 @@ var queries = []struct {
 	},
 	{
 		`SELECT 1 FROM mytable GROUP BY i HAVING i > 1`,
-		[]sql.Row{{int64(1)}, {int64(1)}},
+		[]sql.Row{{int8(1)}, {int8(1)}},
 	},
 	{
 		`SELECT avg(i) FROM mytable GROUP BY i HAVING avg(i) > 1`,
@@ -1547,6 +1547,42 @@ var queries = []struct {
 			{int64(3), "there is some text\nin here"},
 			{int64(4), "there is some text in here\n"},
 			{int64(5), "there is some text in here"},
+		},
+	},
+	{
+		`SELECT i FROM mytable WHERE i = (SELECT 1)`,
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		`SELECT i FROM mytable WHERE i IN (SELECT i FROM mytable)`,
+		[]sql.Row{
+			{int64(1)},
+			{int64(2)},
+			{int64(3)},
+		},
+	},
+	{
+		`SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 2)`,
+		[]sql.Row{
+			{int64(3)},
+		},
+	},
+	{
+		`SELECT (SELECT i FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		`SELECT DISTINCT n FROM bigtable ORDER BY t`,
+		[]sql.Row{
+			{int64(1)},
+			{int64(9)},
+			{int64(7)},
+			{int64(3)},
+			{int64(2)},
+			{int64(8)},
+			{int64(6)},
+			{int64(5)},
+			{int64(4)},
 		},
 	},
 }
@@ -1866,8 +1902,8 @@ func TestInsertInto(t *testing.T) {
 			[]sql.Row{{int64(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
-				int64(999), int64(math.MaxInt8), int64(math.MaxInt16), int64(math.MaxInt32), int64(math.MaxInt64),
-				int64(math.MaxUint8), int64(math.MaxUint16), int64(math.MaxUint32), uint64(math.MaxUint64),
+				int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
+				uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 				float64(math.MaxFloat32), float64(math.MaxFloat64),
 				timeParse(sql.TimestampLayout, "2132-04-05 12:51:36"), timeParse(sql.DateLayout, "2231-11-07"),
 				"random text", true, `{"key":"value"}`, "blobdata",
@@ -1884,8 +1920,8 @@ func TestInsertInto(t *testing.T) {
 			[]sql.Row{{int64(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
-				int64(999), int64(math.MaxInt8), int64(math.MaxInt16), int64(math.MaxInt32), int64(math.MaxInt64),
-				int64(math.MaxUint8), int64(math.MaxUint16), int64(math.MaxUint32), uint64(math.MaxUint64),
+				int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
+				uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 				float64(math.MaxFloat32), float64(math.MaxFloat64),
 				timeParse(sql.TimestampLayout, "2132-04-05 12:51:36"), timeParse(sql.DateLayout, "2231-11-07"),
 				"random text", true, `{"key":"value"}`, "blobdata",
@@ -1902,8 +1938,8 @@ func TestInsertInto(t *testing.T) {
 			[]sql.Row{{int64(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
-				int64(999), int64(-math.MaxInt8-1), int64(-math.MaxInt16-1), int64(-math.MaxInt32-1), int64(-math.MaxInt64-1),
-				int64(0), int64(0), int64(0), int64(0),
+				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
+				uint8(0), uint16(0), uint32(0), uint64(0),
 				float64(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 				timeParse(sql.TimestampLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
 				"", false, ``, "",
@@ -1920,8 +1956,8 @@ func TestInsertInto(t *testing.T) {
 			[]sql.Row{{int64(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
-				int64(999), int64(-math.MaxInt8-1), int64(-math.MaxInt16-1), int64(-math.MaxInt32-1), int64(-math.MaxInt64-1),
-				int64(0), int64(0), int64(0), int64(0),
+				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
+				uint8(0), uint16(0), uint32(0), uint64(0),
 				float64(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 				timeParse(sql.TimestampLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
 				"", false, ``, "",
@@ -2066,8 +2102,8 @@ func TestReplaceInto(t *testing.T) {
 			[]sql.Row{{int64(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
-				int64(999), int64(math.MaxInt8), int64(math.MaxInt16), int64(math.MaxInt32), int64(math.MaxInt64),
-				int64(math.MaxUint8), int64(math.MaxUint16), int64(math.MaxUint32), uint64(math.MaxUint64),
+				int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
+				uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 				float64(math.MaxFloat32), float64(math.MaxFloat64),
 				timeParse(sql.TimestampLayout, "2132-04-05 12:51:36"), timeParse(sql.DateLayout, "2231-11-07"),
 				"random text", true, `{"key":"value"}`, "blobdata",
@@ -2084,8 +2120,8 @@ func TestReplaceInto(t *testing.T) {
 			[]sql.Row{{int64(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
-				int64(999), int64(math.MaxInt8), int64(math.MaxInt16), int64(math.MaxInt32), int64(math.MaxInt64),
-				int64(math.MaxUint8), int64(math.MaxUint16), int64(math.MaxUint32), uint64(math.MaxUint64),
+				int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
+				uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 				float64(math.MaxFloat32), float64(math.MaxFloat64),
 				timeParse(sql.TimestampLayout, "2132-04-05 12:51:36"), timeParse(sql.DateLayout, "2231-11-07"),
 				"random text", true, `{"key":"value"}`, "blobdata",
@@ -2102,8 +2138,8 @@ func TestReplaceInto(t *testing.T) {
 			[]sql.Row{{int64(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
-				int64(999), int64(-math.MaxInt8-1), int64(-math.MaxInt16-1), int64(-math.MaxInt32-1), int64(-math.MaxInt64-1),
-				int64(0), int64(0), int64(0), int64(0),
+				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
+				uint8(0), uint16(0), uint32(0), uint64(0),
 				float64(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 				timeParse(sql.TimestampLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
 				"", false, ``, "",
@@ -2120,8 +2156,8 @@ func TestReplaceInto(t *testing.T) {
 			[]sql.Row{{int64(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
-				int64(999), int64(-math.MaxInt8-1), int64(-math.MaxInt16-1), int64(-math.MaxInt32-1), int64(-math.MaxInt64-1),
-				int64(0), int64(0), int64(0), int64(0),
+				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
+				uint8(0), uint16(0), uint32(0), uint64(0),
 				float64(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 				timeParse(sql.TimestampLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
 				"", false, ``, "",
@@ -3062,7 +3098,7 @@ func TestSessionVariables(t *testing.T) {
 	rows, err := sql.RowIterToRows(iter)
 	require.NoError(err)
 
-	require.Equal([]sql.Row{{int64(1), ",STRICT_TRANS_TABLES"}}, rows)
+	require.Equal([]sql.Row{{int8(1), ",STRICT_TRANS_TABLES"}}, rows)
 }
 
 func TestSessionVariablesONOFF(t *testing.T) {

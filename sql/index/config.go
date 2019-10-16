@@ -24,7 +24,6 @@ func NewConfig(
 	driverID string,
 	driverConfig map[string]string,
 ) *Config {
-
 	cfg := &Config{
 		DB:          db,
 		Table:       table,
