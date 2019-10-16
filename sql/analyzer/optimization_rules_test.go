@@ -186,24 +186,54 @@ func TestEraseProjection(t *testing.T) {
 }
 
 func TestOptimizeDistinct(t *testing.T) {
-	require := require.New(t)
+	t1 := memory.NewTable("foo", sql.Schema{
+		{Name: "a", Source: "foo"},
+		{Name: "b", Source: "foo"},
+	})
 
-	t1 := memory.NewTable("foo", nil)
-	t2 := memory.NewTable("foo", nil)
-
-	notSorted := plan.NewDistinct(plan.NewResolvedTable(t1))
-	sorted := plan.NewDistinct(plan.NewSort(nil, plan.NewResolvedTable(t2)))
+	testCases := []struct {
+		name      string
+		child     sql.Node
+		optimized bool
+	}{
+		{
+			"without sort",
+			plan.NewResolvedTable(t1),
+			false,
+		},
+		{
+			"sort but column not projected",
+			plan.NewSort(
+				[]plan.SortField{
+					{Column: gf(0, "foo", "c")},
+				},
+				plan.NewResolvedTable(t1),
+			),
+			false,
+		},
+		{
+			"sort and column projected",
+			plan.NewSort(
+				[]plan.SortField{
+					{Column: gf(0, "foo", "a")},
+				},
+				plan.NewResolvedTable(t1),
+			),
+			true,
+		},
+	}
 
 	rule := getRule("optimize_distinct")
 
-	analyzedNotSorted, err := rule.Apply(sql.NewEmptyContext(), nil, notSorted)
-	require.NoError(err)
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			node, err := rule.Apply(sql.NewEmptyContext(), nil, plan.NewDistinct(tt.child))
+			require.NoError(t, err)
 
-	analyzedSorted, err := rule.Apply(sql.NewEmptyContext(), nil, sorted)
-	require.NoError(err)
-
-	require.Equal(notSorted, analyzedNotSorted)
-	require.Equal(plan.NewOrderedDistinct(sorted.Child), analyzedSorted)
+			_, ok := node.(*plan.OrderedDistinct)
+			require.Equal(t, tt.optimized, ok)
+		})
+	}
 }
 
 func TestMoveJoinConditionsToFilter(t *testing.T) {

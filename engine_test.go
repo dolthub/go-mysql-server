@@ -1570,6 +1570,20 @@ var queries = []struct {
 		`SELECT (SELECT i FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
 		[]sql.Row{{int64(1)}},
 	},
+	{
+		`SELECT DISTINCT n FROM bigtable ORDER BY t`,
+		[]sql.Row{
+			{int64(1)},
+			{int64(9)},
+			{int64(7)},
+			{int64(3)},
+			{int64(2)},
+			{int64(8)},
+			{int64(6)},
+			{int64(5)},
+			{int64(4)},
+		},
+	},
 }
 
 func TestQueries(t *testing.T) {
