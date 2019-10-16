@@ -47,6 +47,7 @@ var (
 	unlockTablesRegex    = regexp.MustCompile(`^unlock\s+tables$`)
 	lockTablesRegex      = regexp.MustCompile(`^lock\s+tables\s`)
 	setRegex             = regexp.MustCompile(`^set\s+`)
+	createViewRegex      = regexp.MustCompile(`^create\s+view\s+`)
 )
 
 // These constants aren't exported from vitess for some reason. This could be removed if we changed this.
@@ -103,6 +104,9 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return parseLockTables(ctx, s)
 	case setRegex.MatchString(lowerQuery):
 		s = fixSetQuery(s)
+	case createViewRegex.MatchString(lowerQuery):
+		// CREATE VIEW parses as a CREATE DDL statement with an empty table spec
+		return nil, ErrUnsupportedFeature.New("CREATE VIEW")
 	}
 
 	stmt, err := sqlparser.Parse(s)

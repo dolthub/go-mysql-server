@@ -1296,6 +1296,7 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                  ErrUnsupportedSyntax,
 	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`: ErrUnsupportedSyntax,
 	`SELECT AVG(DISTINCT foo) FROM b`:                         ErrUnsupportedSyntax,
+	`CREATE VIEW view1 AS SELECT x FROM t1 WHERE x>0`:         ErrUnsupportedFeature,
 }
 
 func TestParseErrors(t *testing.T) {
