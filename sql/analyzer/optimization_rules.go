@@ -34,17 +34,19 @@ func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, e
 
 	a.Log("optimize distinct, node of type: %T", node)
 	if n, ok := node.(*plan.Distinct); ok {
-		var isSorted bool
+		var sortField *expression.GetField
 		plan.Inspect(n, func(node sql.Node) bool {
 			a.Log("checking for optimization in node of type: %T", node)
-			if _, ok := node.(*plan.Sort); ok {
-				isSorted = true
+			if sort, ok := node.(*plan.Sort); ok && sortField == nil {
+				if col, ok := sort.SortFields[0].Column.(*expression.GetField); ok {
+					sortField = col
+				}
 				return false
 			}
 			return true
 		})
 
-		if isSorted {
+		if sortField != nil && n.Schema().Contains(sortField.Name(), sortField.Table()) {
 			a.Log("distinct optimized for ordered output")
 			return plan.NewOrderedDistinct(n.Child), nil
 		}
