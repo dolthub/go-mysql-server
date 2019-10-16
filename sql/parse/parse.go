@@ -437,20 +437,20 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 		return nil, err
 	}
 
-	updateExprs, err := updateExprsToExpressions(d.Exprs)
+	updateExprs, err := updateExprsToExpressions(ctx, d.Exprs)
 	if err != nil {
 		return nil, err
 	}
 
 	if d.Where != nil {
-		node, err = whereToFilter(d.Where, node)
+		node, err = whereToFilter(ctx, d.Where, node)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if len(d.OrderBy) != 0 {
-		node, err = orderByToSort(d.OrderBy, node)
+		node, err = orderByToSort(ctx, d.OrderBy, node)
 		if err != nil {
 			return nil, err
 		}
@@ -1286,14 +1286,14 @@ func intervalExprToExpression(ctx *sql.Context, e *sqlparser.IntervalExpr) (sql.
 	return expression.NewInterval(expr, e.Unit), nil
 }
 
-func updateExprsToExpressions(e sqlparser.UpdateExprs) ([]sql.Expression, error) {
+func updateExprsToExpressions(ctx *sql.Context, e sqlparser.UpdateExprs) ([]sql.Expression, error) {
 	res := make([]sql.Expression, len(e))
 	for i, updateExpr := range e {
-		colName, err := exprToExpression(updateExpr.Name)
+		colName, err := exprToExpression(ctx, updateExpr.Name)
 		if err != nil {
 			return nil, err
 		}
-		innerExpr, err := exprToExpression(updateExpr.Expr)
+		innerExpr, err := exprToExpression(ctx, updateExpr.Expr)
 		if err != nil {
 			return nil, err
 		}
