@@ -230,9 +230,20 @@ type Database interface {
 	Tables() map[string]Table
 }
 
+// DEPRECATED. Use TableCreator and TableDropper.
 // Alterable should be implemented by databases that can handle DDL statements
 type Alterable interface {
 	Create(name string, schema Schema) error
+}
+
+// TableCreator should be implemented by databases that can create new tables.
+type TableCreator interface {
+	CreateTable(ctx *Context, name string, schema Schema) error
+}
+
+// TableDropper should be implemented by databases that can drop tables.
+type TableDropper interface {
+	DropTable(ctx *Context, name string) error
 }
 
 // Lockable should be implemented by tables that can be locked and unlocked.

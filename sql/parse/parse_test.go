@@ -51,6 +51,60 @@ var fixtures = map[string]sql.Node{
 			Nullable: true,
 		}},
 	),
+	`CREATE TABLE t1(a INTEGER NOT NULL PRIMARY KEY, b TEXT)`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:     "a",
+			Type:     sql.Int32,
+			Nullable: false,
+			PrimaryKey: true,
+		}, {
+			Name:     "b",
+			Type:     sql.Text,
+			Nullable: true,
+			PrimaryKey: false,
+		}},
+	),
+	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:     "a",
+			Type:     sql.Int32,
+			Nullable: true,
+			PrimaryKey: true,
+		}, {
+			Name:     "b",
+			Type:     sql.Text,
+			Nullable: true,
+			PrimaryKey: false,
+		}},
+	),
+	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a, b))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:     "a",
+			Type:     sql.Int32,
+			Nullable: true,
+			PrimaryKey: true,
+		}, {
+			Name:     "b",
+			Type:     sql.Text,
+			Nullable: true,
+			PrimaryKey: true,
+		}},
+	),
+	`DROP TABLE foo;`: plan.NewDropTable(
+		sql.UnresolvedDatabase(""), false, "foo",
+	),
+	`DROP TABLE IF EXISTS foo;`: plan.NewDropTable(
+		sql.UnresolvedDatabase(""), true, "foo",
+	),
+	`DROP TABLE IF EXISTS foo, bar, baz;`: plan.NewDropTable(
+		sql.UnresolvedDatabase(""), true, "foo", "bar", "baz",
+	),
 	`DESCRIBE TABLE foo;`: plan.NewDescribe(
 		plan.NewUnresolvedTable("foo", ""),
 	),
@@ -1242,6 +1296,7 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                  ErrUnsupportedSyntax,
 	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`: ErrUnsupportedSyntax,
 	`SELECT AVG(DISTINCT foo) FROM b`:                         ErrUnsupportedSyntax,
+	`CREATE VIEW view1 AS SELECT x FROM t1 WHERE x>0`:         ErrUnsupportedFeature,
 }
 
 func TestParseErrors(t *testing.T) {
