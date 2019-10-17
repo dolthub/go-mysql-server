@@ -389,7 +389,7 @@ func convertDropTable(c *sqlparser.DDL) (sql.Node, error) {
 }
 
 func convertCreateTable(c *sqlparser.DDL) (sql.Node, error) {
-	schema, err := columnDefinitionToSchema(c.TableSpec)
+	schema, err := tableSpecToSchema(c.TableSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +504,7 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 	return plan.NewUpdate(node, updateExprs), nil
 }
 
-func columnDefinitionToSchema(tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
+func tableSpecToSchema(tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
 	var schema sql.Schema
 	for _, cd := range tableSpec.Columns {
 		column, err := getColumn(cd, tableSpec.Indexes)
