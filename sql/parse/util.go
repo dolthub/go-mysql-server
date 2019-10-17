@@ -308,3 +308,113 @@ func expectQuote(r *bufio.Reader) error {
 
 	return nil
 }
+
+func maybe(matched *bool, str string) parseFunc {
+	return func (rd *bufio.Reader) error {
+		*matched = false
+		strLength := len(str)
+
+		data, err := rd.Peek(strLength)
+		if err != nil {
+			// If there are not enough runes, what we expected was not there, which
+			// is not an error per se.
+			if len(data) < strLength {
+				return nil
+			}
+
+			return err
+		}
+
+		if strings.ToLower(string(data)) == str {
+			_, err := rd.Discard(strLength)
+			if err != nil {
+				return err
+			}
+
+			*matched = true
+			return nil
+		}
+
+		return nil
+	}
+}
+
+func multiMaybe(matched *bool, strings ...string) parseFunc {
+	return func (rd *bufio.Reader) error {
+		*matched = false
+		first := true
+		for _, str := range strings {
+			if err := maybe(matched, str)(rd); err != nil {
+				return err
+			}
+
+			if !*matched {
+				if first {
+					return nil
+				}
+
+				// TODO: add actual string parsed
+				return errUnexpectedSyntax.New(str, "smth else")
+			}
+
+			first = false
+
+			if err := skipSpaces(rd); err != nil {
+				return err
+			}
+		}
+		*matched = true
+		return nil
+	}
+}
+
+// Read a list of strings separated by the specified separator, with a rune
+// indicating the opening of the list and another one specifying its closing.
+// For example, readList('(', ',', ')', list) parses "(uno,  dos,tres)" and
+// populates list with the array of strings ["uno", "dos", "tres"]
+// If the opening is not found, do not advance the reader
+func maybeList(opening, separator, closing rune, list []string) parseFunc {
+	return func(rd *bufio.Reader) error {
+		r, _, err := rd.ReadRune()
+		if err != nil {
+			return err
+		}
+
+		if r != opening {
+			rd.UnreadRune()
+			return nil
+		}
+
+		for {
+			var newItem string
+			err := parseFuncs{
+				skipSpaces,
+				readIdent(&newItem),
+				skipSpaces,
+			}.exec(rd)
+
+			if err != nil {
+				return err
+			}
+
+			r, _, err := rd.ReadRune()
+			if err != nil {
+				return err
+			}
+
+			switch r {
+			case closing:
+				list = append(list, newItem)
+				return nil
+			case separator:
+				list = append(list, newItem)
+				continue
+			default:
+				return errUnexpectedSyntax.New(
+					fmt.Sprintf("%v or %v", separator, closing),
+					string(r),
+				)
+			}
+		}
+	}
+}
