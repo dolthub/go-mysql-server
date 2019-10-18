@@ -35,7 +35,7 @@ func parseCreateView(ctx *sql.Context, s string) (sql.Node, error) {
 		skipSpaces,
 		readIdent(&viewName),
 		skipSpaces,
-		maybeList('(', ',', ')', columns),
+		maybeList('(', ',', ')', &columns),
 		skipSpaces,
 		expect("as"),
 		skipSpaces,

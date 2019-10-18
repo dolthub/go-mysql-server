@@ -373,7 +373,7 @@ func multiMaybe(matched *bool, strings ...string) parseFunc {
 // For example, readList('(', ',', ')', list) parses "(uno,  dos,tres)" and
 // populates list with the array of strings ["uno", "dos", "tres"]
 // If the opening is not found, do not advance the reader
-func maybeList(opening, separator, closing rune, list []string) parseFunc {
+func maybeList(opening, separator, closing rune, list *[]string) parseFunc {
 	return func(rd *bufio.Reader) error {
 		r, _, err := rd.ReadRune()
 		if err != nil {
@@ -404,10 +404,10 @@ func maybeList(opening, separator, closing rune, list []string) parseFunc {
 
 			switch r {
 			case closing:
-				list = append(list, newItem)
+				*list = append(*list, newItem)
 				return nil
 			case separator:
-				list = append(list, newItem)
+				*list = append(*list, newItem)
 				continue
 			default:
 				return errUnexpectedSyntax.New(
