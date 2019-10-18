@@ -19,6 +19,7 @@ func TestShowCreateTable(t *testing.T) {
 			&sql.Column{Name: "baz", Type: sql.Text, Default: "", Nullable: false},
 			&sql.Column{Name: "zab", Type: sql.Int32, Default: int32(0), Nullable: true},
 			&sql.Column{Name: "bza", Type: sql.Uint64, Default: uint64(0), Nullable: true},
+			&sql.Column{Name: "foo", Type: sql.VarChar(123), Default: "", Nullable: true},
 		})
 
 	db.AddTable(table.Name(), table)
@@ -39,7 +40,9 @@ func TestShowCreateTable(t *testing.T) {
 		table.Name(),
 		"CREATE TABLE `test-table` (\n  `baz` text NOT NULL,\n"+
 			"  `zab` integer DEFAULT 0,\n"+
-			"  `bza` bigint unsigned DEFAULT 0\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+			"  `bza` bigint unsigned DEFAULT 0,\n"+
+			"  `foo` varchar(123)\n"+
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 	)
 
 	require.Equal(expected, row)

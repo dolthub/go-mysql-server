@@ -1258,7 +1258,7 @@ func MySQLTypeName(t Type) string {
 	case sqltypes.Char:
 		return "CHAR"
 	case sqltypes.VarChar:
-		return "VARCHAR"
+		return fmt.Sprintf("VARCHAR(%v)", t.(varCharT).Capacity())
 	case sqltypes.Text:
 		return "TEXT"
 	case sqltypes.Bit:
