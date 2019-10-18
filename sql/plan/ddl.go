@@ -7,7 +7,7 @@ import (
 )
 
 // ErrCreateTable is thrown when the database doesn't support table creation
-var ErrCreateTable = errors.NewKind("tables cannot be created on database %s")
+var ErrCreateTableNotSupported = errors.NewKind("tables cannot be created on database %s")
 var ErrDropTableNotSupported = errors.NewKind("tables cannot be dropped on database %s")
 
 // CreateTable is a node describing the creation of some table.
@@ -15,13 +15,6 @@ type CreateTable struct {
 	db     sql.Database
 	name   string
 	schema sql.Schema
-}
-
-// DropTable is a node describing dropping a table
-type DropTable struct {
-	db       sql.Database
-	names    []string
-	ifExists bool
 }
 
 // NewCreateTable creates a new CreateTable node
@@ -64,13 +57,7 @@ func (c *CreateTable) RowIter(s *sql.Context) (sql.RowIter, error) {
 		return sql.RowsToRowIter(), creatable.CreateTable(s, c.name, c.schema)
 	}
 
-	// TODO: phase out this interface
-	d, ok := c.db.(sql.Alterable)
-	if !ok {
-		return nil, ErrCreateTable.New(c.db.Name())
-	}
-
-	return sql.RowsToRowIter(), d.Create(c.name, c.schema)
+	return nil, ErrCreateTableNotSupported.New(c.db.Name())
 }
 
 // Schema implements the Node interface.
@@ -89,6 +76,13 @@ func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func (c *CreateTable) String() string {
 	return "CreateTable"
+}
+
+// DropTable is a node describing dropping one or more tables
+type DropTable struct {
+	db       sql.Database
+	names    []string
+	ifExists bool
 }
 
 // NewDropTable creates a new DropTable node
