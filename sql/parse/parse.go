@@ -36,7 +36,7 @@ var (
 var (
 	describeTablesRegex  = regexp.MustCompile(`^(describe|desc)\s+table\s+(.*)`)
 	createIndexRegex     = regexp.MustCompile(`^create\s+index\s+`)
-	createViewRegex     = regexp.MustCompile(`^create\s+(or\s+replace\s+)?view\s+`)
+	createViewRegex      = regexp.MustCompile(`^create\s+(or\s+replace\s+)?view\s+`)
 	dropIndexRegex       = regexp.MustCompile(`^drop\s+index\s+`)
 	showIndexRegex       = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
 	showCreateRegex      = regexp.MustCompile(`^show create\s+\S+\s*`)

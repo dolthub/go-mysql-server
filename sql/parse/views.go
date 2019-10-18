@@ -20,11 +20,10 @@ var ErrMalformedCreateView = errors.NewKind("view definition %#v is not a SELECT
 func parseCreateView(ctx *sql.Context, s string) (sql.Node, error) {
 	r := bufio.NewReader(strings.NewReader(s))
 
-
 	var (
 		viewName, subquery string
-		columns []string
-		isReplace bool
+		columns            []string
+		isReplace          bool
 	)
 
 	err := parseFuncs{

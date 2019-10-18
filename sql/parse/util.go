@@ -310,7 +310,7 @@ func expectQuote(r *bufio.Reader) error {
 }
 
 func maybe(matched *bool, str string) parseFunc {
-	return func (rd *bufio.Reader) error {
+	return func(rd *bufio.Reader) error {
 		*matched = false
 		strLength := len(str)
 
@@ -340,7 +340,7 @@ func maybe(matched *bool, str string) parseFunc {
 }
 
 func multiMaybe(matched *bool, strings ...string) parseFunc {
-	return func (rd *bufio.Reader) error {
+	return func(rd *bufio.Reader) error {
 		*matched = false
 		first := true
 		for _, str := range strings {
