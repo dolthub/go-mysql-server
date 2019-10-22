@@ -92,15 +92,13 @@ func (s *SessionManager) NewContextWithQuery(
 	s.mu.Unlock()
 
 	context := sql.NewContext(
-		opentracing.ContextWithSpan(
-			context.Background(),
-			s.tracer.StartSpan("query"),
-		),
+		context.Background(),
 		sql.WithSession(sess),
 		sql.WithTracer(s.tracer),
 		sql.WithPid(s.nextPid()),
 		sql.WithQuery(query),
 		sql.WithMemoryManager(s.memory),
+		sql.WithRootSpan(s.tracer.StartSpan("query")),
 	)
 
 	return context
