@@ -9,7 +9,7 @@ import (
 
 type CreateView struct {
 	UnaryNode
-	Database sql.Database
+	database sql.Database
 	Name     string
 	Columns  []string
 	Catalog *sql.Catalog
@@ -37,16 +37,15 @@ func (create *CreateView) Children() []sql.Node {
 
 // Resolved implements the Node interface.
 func (create *CreateView) Resolved() bool {
-	// TOOD: Check whether the database has been resolved
-	// _, ok := create.Database.(sql.UnresolvedDatabase)
-	return create.Child.Resolved()
+	_, ok := create.database.(sql.UnresolvedDatabase)
+	return !ok && create.Child.Resolved()
 }
 
 // RowIter implements the Node interface.
 func (create *CreateView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	// TODO: add it to the register
+	view := sql.View{create.Name, create.Child}
 
-	return sql.RowsToRowIter(), nil
+	return sql.RowsToRowIter(), create.Catalog.ViewRegistry.Register(create.database.Name(), view)
 }
 
 // Schema implements the Node interface.
@@ -57,7 +56,7 @@ func (create *CreateView) String() string {
 	_ = pr.WriteNode("CreateView(%s)", create.Name)
 	_ = pr.WriteChildren(
 		fmt.Sprintf("Columns (%s)", strings.Join(create.Columns, ", ")),
-		fmt.Sprintf("As (%s)", create.Child.String()),
+		create.Child.String(),
 	)
 	return pr.String()
 }
