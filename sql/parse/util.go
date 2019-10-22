@@ -127,6 +127,27 @@ func readLetter(r *bufio.Reader, buf *bytes.Buffer) error {
 	return nil
 }
 
+func readLetterOrPoint(r *bufio.Reader, buf *bytes.Buffer) error {
+	ru, _, err := r.ReadRune()
+	if err != nil {
+		if err == io.EOF {
+			return nil
+		}
+
+		return err
+	}
+
+	if !unicode.IsLetter(ru) && ru != '.' {
+		if err := r.UnreadRune(); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	buf.WriteRune(ru)
+	return nil
+}
+
 func readValidIdentRune(r *bufio.Reader, buf *bytes.Buffer) error {
 	ru, _, err := r.ReadRune()
 	if err != nil {
@@ -134,6 +155,23 @@ func readValidIdentRune(r *bufio.Reader, buf *bytes.Buffer) error {
 	}
 
 	if !unicode.IsLetter(ru) && !unicode.IsDigit(ru) && ru != '_' {
+		if err := r.UnreadRune(); err != nil {
+			return err
+		}
+		return io.EOF
+	}
+
+	buf.WriteRune(ru)
+	return nil
+}
+
+func readValidScopedIdentRune(r *bufio.Reader, separator rune, buf *bytes.Buffer) error {
+	ru, _, err := r.ReadRune()
+	if err != nil {
+		return err
+	}
+
+	if !unicode.IsLetter(ru) && !unicode.IsDigit(ru) && ru != '_' && ru != separator {
 		if err := r.UnreadRune(); err != nil {
 			return err
 		}
@@ -195,6 +233,29 @@ func readIdent(ident *string) parseFunc {
 		}
 
 		*ident = strings.ToLower(buf.String())
+		return nil
+	}
+}
+
+func readScopedIdent(separator rune, idents *[]string) parseFunc {
+	return func(r *bufio.Reader) error {
+		var buf bytes.Buffer
+		if err := readLetter(r, &buf); err != nil {
+			return err
+		}
+
+		for {
+			if err := readValidScopedIdentRune(r, separator, &buf); err == io.EOF {
+				break
+			} else if err != nil {
+				return err
+			}
+		}
+
+		*idents = append(
+			*idents,
+			strings.Split(strings.ToLower(buf.String()), string(separator))...,
+		)
 		return nil
 	}
 }

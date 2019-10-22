@@ -12,7 +12,7 @@ type CreateView struct {
 	database sql.Database
 	Name     string
 	Columns  []string
-	Catalog *sql.Catalog
+	Catalog  *sql.Catalog
 }
 
 func NewCreateView(
@@ -70,4 +70,14 @@ func (create *CreateView) WithChildren(children ...sql.Node) (sql.Node, error) {
 	newCreate := create
 	newCreate.Child = children[0]
 	return newCreate, nil
+}
+
+func (create *CreateView) Database() sql.Database {
+	return create.database
+}
+
+func (create *CreateView) WithDatabase(database sql.Database) (sql.Node, error) {
+	newCreate := *create
+	newCreate.database = database
+	return &newCreate, nil
 }

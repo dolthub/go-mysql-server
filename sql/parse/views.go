@@ -11,18 +11,21 @@ import (
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
+var ErrMalformedViewName = errors.NewKind("the view name '%s' is not correct")
 var ErrMalformedCreateView = errors.NewKind("view definition %#v is not a SELECT query")
 
 // Parses
-// CREATE [OR REPLACE] VIEW view_name [(col1, col2, ...)] AS select_statement
+// CREATE [OR REPLACE] VIEW [db_name.]view_name [(col1, col2, ...)] AS select_statement
 // and returns a NewCreateView node in case of success
 func parseCreateView(ctx *sql.Context, s string) (sql.Node, error) {
 	r := bufio.NewReader(strings.NewReader(s))
 
 	var (
-		viewName, subquery string
-		columns            []string
-		isReplace          bool
+		databaseName, viewName string
+		scopedName             []string
+		subquery               string
+		columns                []string
+		isReplace              bool
 	)
 
 	err := parseFuncs{
@@ -32,7 +35,7 @@ func parseCreateView(ctx *sql.Context, s string) (sql.Node, error) {
 		skipSpaces,
 		expect("view"),
 		skipSpaces,
-		readIdent(&viewName),
+		readScopedIdent('.', &scopedName),
 		skipSpaces,
 		maybeList('(', ',', ')', &columns),
 		skipSpaces,
@@ -44,6 +47,18 @@ func parseCreateView(ctx *sql.Context, s string) (sql.Node, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	if len(scopedName) < 1 || len(scopedName) > 2 {
+		return nil, ErrMalformedViewName.New(strings.Join(scopedName, "."))
+	}
+
+	if len(scopedName) == 1 {
+		viewName = scopedName[0]
+	}
+	if len(scopedName) == 2 {
+		databaseName = scopedName[0]
+		viewName = scopedName[1]
 	}
 
 	subqueryStatement, err := sqlparser.Parse(subquery)
@@ -64,6 +79,6 @@ func parseCreateView(ctx *sql.Context, s string) (sql.Node, error) {
 	subqueryAlias := plan.NewSubqueryAlias(viewName, subqueryNode)
 
 	return plan.NewCreateView(
-		sql.UnresolvedDatabase(""), viewName, columns, subqueryAlias,
+		sql.UnresolvedDatabase(databaseName), viewName, columns, subqueryAlias,
 	), nil
 }
