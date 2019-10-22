@@ -18,7 +18,6 @@ import (
 	"github.com/src-d/go-mysql-server/sql/plan"
 	"github.com/src-d/go-mysql-server/test"
 
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -867,8 +866,8 @@ var queries = []struct {
 		WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='mytable'
 		`,
 		[]sql.Row{
-			{"s", "TEXT"},
-			{"i", "BIGINT"},
+			{"s", "text"},
+			{"i", "bigint"},
 		},
 	},
 	{
@@ -2250,8 +2249,8 @@ func TestUpdate(t *testing.T) {
 	var updates = []struct {
 		updateQuery    string
 		expectedUpdate []sql.Row
-		selectQuery     string
-		expectedSelect  []sql.Row
+		selectQuery    string
+		expectedSelect []sql.Row
 	}{
 		{
 			"UPDATE mytable SET s = 'updated';",
@@ -2275,7 +2274,7 @@ func TestUpdate(t *testing.T) {
 			"UPDATE mytable SET s = 'updated' WHERE i <> 9999;",
 			[]sql.Row{{int64(3), int64(3)}},
 			"SELECT * FROM mytable;",
-			[]sql.Row{{int64(1), "updated"},{int64(2), "updated"},{int64(3), "updated"}},
+			[]sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
 		},
 		{
 			"UPDATE floattable SET f32 = f32 + f32, f64 = f32 * f64 WHERE i = 2;",
@@ -2477,7 +2476,7 @@ func TestCreateTable(t *testing.T) {
 
 	testQuery(t, e,
 		"CREATE TABLE t2 (a INTEGER NOT NULL PRIMARY KEY, "+
-				"b VARCHAR(10) NOT NULL)",
+			"b VARCHAR(10) NOT NULL)",
 		[]sql.Row(nil),
 	)
 
@@ -2496,8 +2495,8 @@ func TestCreateTable(t *testing.T) {
 
 	testQuery(t, e,
 		"CREATE TABLE t3(a INTEGER NOT NULL,"+
-				"b TEXT NOT NULL,"+
-				"c bool, primary key (a,b))",
+			"b TEXT NOT NULL,"+
+			"c bool, primary key (a,b))",
 		[]sql.Row(nil),
 	)
 
