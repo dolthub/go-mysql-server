@@ -127,6 +127,8 @@ func readLetter(r *bufio.Reader, buf *bytes.Buffer) error {
 	return nil
 }
 
+// Parses a single rune from the reader and consumes it, copying it to the
+// buffer, if it is either a letter or a point
 func readLetterOrPoint(r *bufio.Reader, buf *bytes.Buffer) error {
 	ru, _, err := r.ReadRune()
 	if err != nil {
@@ -165,6 +167,8 @@ func readValidIdentRune(r *bufio.Reader, buf *bytes.Buffer) error {
 	return nil
 }
 
+// Parses a single rune from the reader and consumes it, copying it to the
+// buffer, if is a letter, a digit, an underscore or the specified separator.
 func readValidScopedIdentRune(r *bufio.Reader, separator rune, buf *bytes.Buffer) error {
 	ru, _, err := r.ReadRune()
 	if err != nil {
@@ -237,6 +241,14 @@ func readIdent(ident *string) parseFunc {
 	}
 }
 
+
+// Reads a scoped identifier, populating the specified slice with the different
+// parts of the identifier if it is correctly formed.
+// A scoped identifier is a sequence of identifiers separated by the specified
+// rune in separator. An identifier is a string of runes whose first character
+// is a letter and the following ones are either letters, digits or underscores.
+// An example of a correctly formed scoped identifier is "dbName.tableName",
+// that would populate the slice with the values ["dbName", "tableName"]
 func readScopedIdent(separator rune, idents *[]string) parseFunc {
 	return func(r *bufio.Reader) error {
 		var buf bytes.Buffer
@@ -370,6 +382,8 @@ func expectQuote(r *bufio.Reader) error {
 	return nil
 }
 
+// Tries to read the specified string, consuming the reader if the string is
+// found. The `matched` boolean is set to true if the string is found
 func maybe(matched *bool, str string) parseFunc {
 	return func(rd *bufio.Reader) error {
 		*matched = false
@@ -400,6 +414,9 @@ func maybe(matched *bool, str string) parseFunc {
 	}
 }
 
+// Tries to read the specified strings, one after the other, separeted by an
+// arbitrary number of spaces. It consumes the reader if and only all the
+// strings are found.
 func multiMaybe(matched *bool, strings ...string) parseFunc {
 	return func(rd *bufio.Reader) error {
 		*matched = false
@@ -429,11 +446,11 @@ func multiMaybe(matched *bool, strings ...string) parseFunc {
 	}
 }
 
-// Read a list of strings separated by the specified separator, with a rune
+// Reads a list of strings separated by the specified separator, with a rune
 // indicating the opening of the list and another one specifying its closing.
 // For example, readList('(', ',', ')', list) parses "(uno,  dos,tres)" and
 // populates list with the array of strings ["uno", "dos", "tres"]
-// If the opening is not found, do not advance the reader
+// If the opening is not found, this does not consumes any rune from the reader.
 func maybeList(opening, separator, closing rune, list *[]string) parseFunc {
 	return func(rd *bufio.Reader) error {
 		r, _, err := rd.ReadRune()
