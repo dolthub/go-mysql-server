@@ -2443,7 +2443,7 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 	require.Equal(expected, rs)
 }
 
-func TestDDL(t *testing.T) {
+func TestCreateTable(t *testing.T) {
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -2474,6 +2474,83 @@ func TestDDL(t *testing.T) {
 	}
 
 	require.Equal(s, testTable.Schema())
+
+	testQuery(t, e,
+		"CREATE TABLE t2 (a INTEGER NOT NULL PRIMARY KEY, "+
+				"b VARCHAR(10) NOT NULL)",
+		[]sql.Row(nil),
+	)
+
+	db, err = e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	testTable, ok = db.Tables()["t2"]
+	require.True(ok)
+
+	s = sql.Schema{
+		{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t2"},
+		{Name: "b", Type: sql.Text, Nullable: false, Source: "t2"},
+	}
+
+	require.Equal(s, testTable.Schema())
+
+	testQuery(t, e,
+		"CREATE TABLE t3(a INTEGER NOT NULL,"+
+				"b TEXT NOT NULL,"+
+				"c bool, primary key (a,b))",
+		[]sql.Row(nil),
+	)
+
+	db, err = e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	testTable, ok = db.Tables()["t3"]
+	require.True(ok)
+
+	s = sql.Schema{
+		{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t3"},
+		{Name: "b", Type: sql.Text, Nullable: false, PrimaryKey: true, Source: "t3"},
+		{Name: "c", Type: sql.Uint8, Nullable: true, Source: "t3"},
+	}
+
+	require.Equal(s, testTable.Schema())
+}
+
+func TestDropTable(t *testing.T) {
+	require := require.New(t)
+
+	e := newEngine(t)
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	_, ok := db.Tables()["mytable"]
+	require.True(ok)
+
+	testQuery(t, e,
+		"DROP TABLE IF EXISTS mytable, not_exist",
+		[]sql.Row(nil),
+	)
+
+	_, ok = db.Tables()["mytable"]
+	require.False(ok)
+
+	_, ok = db.Tables()["othertable"]
+	require.True(ok)
+	_, ok = db.Tables()["tabletest"]
+	require.True(ok)
+
+	testQuery(t, e,
+		"DROP TABLE IF EXISTS othertable, tabletest",
+		[]sql.Row(nil),
+	)
+
+	_, ok = db.Tables()["othertable"]
+	require.False(ok)
+	_, ok = db.Tables()["tabletest"]
+	require.False(ok)
+
+	_, _, err = e.Query(newCtx(), "DROP TABLE not_exist")
+	require.Error(err)
 }
 
 func TestNaturalJoin(t *testing.T) {
