@@ -1,2 +1,3 @@
 pandas
 sqlalchemy
+mysqlclient

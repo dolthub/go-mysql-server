@@ -38,6 +38,20 @@ jobs:
       script:
         - make TEST=python-pymysql integration
 
+    - language: python
+      python: '3.6'
+      before_install:
+        - eval "$(gimme 1.12.4)"
+      script:
+        - make TEST=python-mysql integration
+
+    - language: python
+      python: '3.6'
+      before_install:
+        - eval "$(gimme 1.12.4)"
+      script:
+        - make TEST=python-sqlalchemy integration
+
     - language: php
       php: '7.1'
       before_install:
