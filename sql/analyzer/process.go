@@ -85,5 +85,10 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return nil, err
 	}
 
-	return plan.NewQueryProcess(node, func() { processList.Done(ctx.Pid()) }), nil
+	return plan.NewQueryProcess(node, func() {
+		processList.Done(ctx.Pid())
+		if span := ctx.RootSpan(); span != nil {
+			span.Finish()
+		}
+	}), nil
 }

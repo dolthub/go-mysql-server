@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
+
 	sqle "github.com/src-d/go-mysql-server"
 	"github.com/src-d/go-mysql-server/auth"
 	"github.com/src-d/go-mysql-server/memory"
@@ -3418,6 +3420,32 @@ func TestDeleteFromErrors(t *testing.T) {
 			require.Error(t, err)
 		})
 	}
+}
+
+type mockSpan struct {
+	opentracing.Span
+	finished bool
+}
+
+func (m *mockSpan) Finish() {
+	m.finished = true
+}
+
+func TestRootSpanFinish(t *testing.T) {
+	e := newEngine(t)
+	fakeSpan := &mockSpan{Span: opentracing.NoopTracer{}.StartSpan("")}
+	ctx := sql.NewContext(
+		context.Background(),
+		sql.WithRootSpan(fakeSpan),
+	)
+
+	_, iter, err := e.Query(ctx, "SELECT 1")
+	require.NoError(t, err)
+
+	_, err = sql.RowIterToRows(iter)
+	require.NoError(t, err)
+
+	require.True(t, fakeSpan.finished)
 }
 
 var generatorQueries = []struct {

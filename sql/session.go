@@ -211,10 +211,11 @@ func NewBaseSession() Session {
 type Context struct {
 	context.Context
 	Session
-	Memory *MemoryManager
-	pid    uint64
-	query  string
-	tracer opentracing.Tracer
+	Memory   *MemoryManager
+	pid      uint64
+	query    string
+	tracer   opentracing.Tracer
+	rootSpan opentracing.Span
 }
 
 // ContextOption is a function to configure the context.
@@ -255,6 +256,13 @@ func WithMemoryManager(m *MemoryManager) ContextOption {
 	}
 }
 
+// WithRootSpan sets the root span of the context.
+func WithRootSpan(s opentracing.Span) ContextOption {
+	return func(ctx *Context) {
+		ctx.rootSpan = s
+	}
+}
+
 // NewContext creates a new query context. Options can be passed to configure
 // the context. If some aspect of the context is not configure, the default
 // value will be used.
@@ -264,7 +272,7 @@ func NewContext(
 	ctx context.Context,
 	opts ...ContextOption,
 ) *Context {
-	c := &Context{ctx, NewBaseSession(), nil, 0, "", opentracing.NoopTracer{}}
+	c := &Context{ctx, NewBaseSession(), nil, 0, "", opentracing.NoopTracer{}, nil}
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -298,12 +306,17 @@ func (c *Context) Span(
 	span := c.tracer.StartSpan(opName, opts...)
 	ctx := opentracing.ContextWithSpan(c.Context, span)
 
-	return span, &Context{ctx, c.Session, c.Memory, c.Pid(), c.Query(), c.tracer}
+	return span, &Context{ctx, c.Session, c.Memory, c.Pid(), c.Query(), c.tracer, c.rootSpan}
 }
 
 // WithContext returns a new context with the given underlying context.
 func (c *Context) WithContext(ctx context.Context) *Context {
-	return &Context{ctx, c.Session, c.Memory, c.Pid(), c.Query(), c.tracer}
+	return &Context{ctx, c.Session, c.Memory, c.Pid(), c.Query(), c.tracer, c.rootSpan}
+}
+
+// RootSpan returns the root span, if any.
+func (c *Context) RootSpan() opentracing.Span {
+	return c.rootSpan
 }
 
 // Error adds an error as warning to the session.
