@@ -13,6 +13,7 @@ type CreateView struct {
 	Name     string
 	Columns  []string
 	Catalog  *sql.Catalog
+	IsReplace bool
 }
 
 func NewCreateView(
@@ -20,6 +21,7 @@ func NewCreateView(
 	name string,
 	columns []string,
 	definition *SubqueryAlias,
+	isReplace bool,
 ) *CreateView {
 	return &CreateView{
 		UnaryNode{Child: definition},
@@ -27,6 +29,7 @@ func NewCreateView(
 		name,
 		columns,
 		nil,
+		isReplace,
 	}
 }
 
@@ -44,6 +47,10 @@ func (create *CreateView) Resolved() bool {
 // RowIter implements the Node interface.
 func (create *CreateView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	view := sql.View{create.Name, create.Child}
+
+	if create.IsReplace {
+		_ = create.Catalog.ViewRegistry.Delete(create.database.Name(), view.Name)
+	}
 
 	return sql.RowsToRowIter(), create.Catalog.ViewRegistry.Register(create.database.Name(), view)
 }

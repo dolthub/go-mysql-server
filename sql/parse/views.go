@@ -53,6 +53,11 @@ func parseCreateView(ctx *sql.Context, s string) (sql.Node, error) {
 		return nil, ErrMalformedViewName.New(strings.Join(scopedName, "."))
 	}
 
+	// TODO(agarciamontoro): Add support for explicit column names
+	if len(columns) != 0 {
+		return nil, ErrUnsupportedSyntax.New("the view creation must not specify explicit column names")
+	}
+
 	if len(scopedName) == 1 {
 		viewName = scopedName[0]
 	}
@@ -79,6 +84,6 @@ func parseCreateView(ctx *sql.Context, s string) (sql.Node, error) {
 	subqueryAlias := plan.NewSubqueryAlias(viewName, subqueryNode)
 
 	return plan.NewCreateView(
-		sql.UnresolvedDatabase(databaseName), viewName, columns, subqueryAlias,
+		sql.UnresolvedDatabase(databaseName), viewName, columns, subqueryAlias, isReplace,
 	), nil
 }
