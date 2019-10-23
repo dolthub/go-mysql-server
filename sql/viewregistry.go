@@ -1,13 +1,16 @@
 package sql
 
 import (
+	"strings"
 	"sync"
 
 	"gopkg.in/src-d/go-errors.v1"
 )
 
-var ErrExistingView = errors.NewKind("the view %s.%s already exists in the registry")
-var ErrNonExistingView = errors.NewKind("the view %s.%s does not exist in the registry")
+var (
+	ErrExistingView = errors.NewKind("the view %s.%s already exists in the registry")
+	ErrNonExistingView = errors.NewKind("the view %s.%s does not exist in the registry")
+)
 
 type View struct {
 	Name       string
@@ -16,6 +19,11 @@ type View struct {
 
 type viewKey struct {
 	dbName, viewName string
+}
+
+// Creates a viewKey ensuring both names are lowercase
+func newViewKey(databaseName, viewName string) viewKey {
+	return viewKey{strings.ToLower(databaseName), strings.ToLower(viewName)}
 }
 
 type ViewRegistry struct {
@@ -33,7 +41,7 @@ func (registry *ViewRegistry) Register(database string, view View) error {
 	registry.mutex.Lock()
 	defer registry.mutex.Unlock()
 
-	key := viewKey{database, view.Name}
+	key := newViewKey(database, view.Name)
 
 	if _, ok := registry.views[key]; ok {
 		return ErrExistingView.New(database, view.Name)
@@ -43,8 +51,10 @@ func (registry *ViewRegistry) Register(database string, view View) error {
 	return nil
 }
 
+// Deletes the view specified by the pair {databaseName, viewName}, returning
+// an error if it does not exist
 func (registry *ViewRegistry) Delete(databaseName, viewName string) error {
-	key := viewKey{databaseName, viewName}
+	key := newViewKey(databaseName, viewName)
 
 	if _, ok := registry.views[key]; !ok {
 		return ErrNonExistingView.New(databaseName, viewName)
@@ -58,7 +68,7 @@ func (registry *ViewRegistry) View(databaseName, viewName string) (*View, error)
 	registry.mutex.RLock()
 	defer registry.mutex.RUnlock()
 
-	key := viewKey{databaseName, viewName}
+	key := newViewKey(databaseName, viewName)
 
 	if view, ok := registry.views[key]; ok {
 		return &view, nil
