@@ -37,7 +37,7 @@ func (p *QueryProcess) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return &trackedRowIter{iter, p.Notify}, nil
+	return &trackedRowIter{iter: iter, onDone: p.Notify}, nil
 }
 
 func (p *QueryProcess) String() string { return p.Child.String() }
@@ -48,12 +48,14 @@ func (p *QueryProcess) String() string { return p.Child.String() }
 // partition is processed.
 type ProcessIndexableTable struct {
 	sql.IndexableTable
-	Notify NotifyFunc
+	OnPartitionDone  NamedNotifyFunc
+	OnPartitionStart NamedNotifyFunc
+	OnRowNext        NamedNotifyFunc
 }
 
 // NewProcessIndexableTable returns a new ProcessIndexableTable.
-func NewProcessIndexableTable(t sql.IndexableTable, notify NotifyFunc) *ProcessIndexableTable {
-	return &ProcessIndexableTable{t, notify}
+func NewProcessIndexableTable(t sql.IndexableTable, onPartitionDone, onPartitionStart, OnRowNext NamedNotifyFunc) *ProcessIndexableTable {
+	return &ProcessIndexableTable{t, onPartitionDone, onPartitionStart, OnRowNext}
 }
 
 // Underlying implements sql.TableWrapper interface.
@@ -71,7 +73,7 @@ func (t *ProcessIndexableTable) IndexKeyValues(
 		return nil, err
 	}
 
-	return &trackedPartitionIndexKeyValueIter{iter, t.Notify}, nil
+	return &trackedPartitionIndexKeyValueIter{iter, t.OnPartitionDone, t.OnPartitionStart, t.OnRowNext}, nil
 }
 
 // PartitionRows implements the sql.Table interface.
@@ -81,22 +83,46 @@ func (t *ProcessIndexableTable) PartitionRows(ctx *sql.Context, p sql.Partition)
 		return nil, err
 	}
 
-	return &trackedRowIter{iter, t.Notify}, nil
+	partitionName := string(p.Key())
+	if t.OnPartitionStart != nil {
+		t.OnPartitionStart(partitionName)
+	}
+
+	var onDone NotifyFunc
+	if t.OnPartitionDone != nil {
+		onDone = func() {
+			t.OnPartitionDone(partitionName)
+		}
+	}
+
+	var onNext NotifyFunc
+	if t.OnRowNext != nil {
+		onNext = func() {
+			t.OnRowNext(partitionName)
+		}
+	}
+
+	return &trackedRowIter{iter: iter, onNext: onNext, onDone: onDone}, nil
 }
 
 var _ sql.IndexableTable = (*ProcessIndexableTable)(nil)
+
+// NamedNotifyFunc is a function to notify about some event with a string argument.
+type NamedNotifyFunc func(name string)
 
 // ProcessTable is a wrapper for sql.Tables inside a query process. It
 // notifies the process manager about the status of a query when a partition
 // is processed.
 type ProcessTable struct {
 	sql.Table
-	Notify NotifyFunc
+	OnPartitionDone  NamedNotifyFunc
+	OnPartitionStart NamedNotifyFunc
+	OnRowNext        NamedNotifyFunc
 }
 
 // NewProcessTable returns a new ProcessTable.
-func NewProcessTable(t sql.Table, notify NotifyFunc) *ProcessTable {
-	return &ProcessTable{t, notify}
+func NewProcessTable(t sql.Table, onPartitionDone, onPartitionStart, OnRowNext NamedNotifyFunc) *ProcessTable {
+	return &ProcessTable{t, onPartitionDone, onPartitionStart, OnRowNext}
 }
 
 // Underlying implements sql.TableWrapper interface.
@@ -111,18 +137,38 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 		return nil, err
 	}
 
-	return &trackedRowIter{iter, t.Notify}, nil
+	partitionName := string(p.Key())
+	if t.OnPartitionStart != nil {
+		t.OnPartitionStart(partitionName)
+	}
+
+	var onDone NotifyFunc
+	if t.OnPartitionDone != nil {
+		onDone = func() {
+			t.OnPartitionDone(partitionName)
+		}
+	}
+
+	var onNext NotifyFunc
+	if t.OnRowNext != nil {
+		onNext = func() {
+			t.OnRowNext(partitionName)
+		}
+	}
+
+	return &trackedRowIter{iter: iter, onNext: onNext, onDone: onDone}, nil
 }
 
 type trackedRowIter struct {
 	iter   sql.RowIter
-	notify NotifyFunc
+	onDone NotifyFunc
+	onNext NotifyFunc
 }
 
 func (i *trackedRowIter) done() {
-	if i.notify != nil {
-		i.notify()
-		i.notify = nil
+	if i.onDone != nil {
+		i.onDone()
+		i.onDone = nil
 	}
 }
 
@@ -134,6 +180,11 @@ func (i *trackedRowIter) Next() (sql.Row, error) {
 		}
 		return nil, err
 	}
+
+	if i.onNext != nil {
+		i.onNext()
+	}
+
 	return row, nil
 }
 
@@ -144,7 +195,9 @@ func (i *trackedRowIter) Close() error {
 
 type trackedPartitionIndexKeyValueIter struct {
 	sql.PartitionIndexKeyValueIter
-	notify NotifyFunc
+	OnPartitionDone  NamedNotifyFunc
+	OnPartitionStart NamedNotifyFunc
+	OnRowNext        NamedNotifyFunc
 }
 
 func (i *trackedPartitionIndexKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, error) {
@@ -153,18 +206,38 @@ func (i *trackedPartitionIndexKeyValueIter) Next() (sql.Partition, sql.IndexKeyV
 		return nil, nil, err
 	}
 
-	return p, &trackedIndexKeyValueIter{iter, i.notify}, nil
+	partitionName := string(p.Key())
+	if i.OnPartitionStart != nil {
+		i.OnPartitionStart(partitionName)
+	}
+
+	var onDone NotifyFunc
+	if i.OnPartitionDone != nil {
+		onDone = func() {
+			i.OnPartitionDone(partitionName)
+		}
+	}
+
+	var onNext NotifyFunc
+	if i.OnRowNext != nil {
+		onNext = func() {
+			i.OnRowNext(partitionName)
+		}
+	}
+
+	return p, &trackedIndexKeyValueIter{iter, onDone, onNext}, nil
 }
 
 type trackedIndexKeyValueIter struct {
 	iter   sql.IndexKeyValueIter
-	notify NotifyFunc
+	onDone NotifyFunc
+	onNext NotifyFunc
 }
 
 func (i *trackedIndexKeyValueIter) done() {
-	if i.notify != nil {
-		i.notify()
-		i.notify = nil
+	if i.onDone != nil {
+		i.onDone()
+		i.onDone = nil
 	}
 }
 
@@ -183,6 +256,10 @@ func (i *trackedIndexKeyValueIter) Next() ([]interface{}, []byte, error) {
 			i.done()
 		}
 		return nil, nil, err
+	}
+
+	if i.onNext != nil {
+		i.onNext()
 	}
 
 	return v, k, nil

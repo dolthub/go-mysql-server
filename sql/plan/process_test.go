@@ -61,7 +61,9 @@ func TestProcessTable(t *testing.T) {
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(3)))
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(4)))
 
-	var notifications int
+	var partitionDoneNotifications int
+	var partitionStartNotifications int
+	var rowNextNotifications int
 
 	node := NewProject(
 		[]sql.Expression{
@@ -70,8 +72,14 @@ func TestProcessTable(t *testing.T) {
 		NewResolvedTable(
 			NewProcessTable(
 				table,
-				func() {
-					notifications++
+				func(partitionName string) {
+					partitionDoneNotifications++
+				},
+				func(partitionName string) {
+					partitionStartNotifications++
+				},
+				func(partitionName string) {
+					rowNextNotifications++
 				},
 			),
 		),
@@ -91,7 +99,9 @@ func TestProcessTable(t *testing.T) {
 	}
 
 	require.ElementsMatch(expected, rows)
-	require.Equal(2, notifications)
+	require.Equal(2, partitionDoneNotifications)
+	require.Equal(2, partitionStartNotifications)
+	require.Equal(4, rowNextNotifications)
 }
 
 func TestProcessIndexableTable(t *testing.T) {
@@ -106,12 +116,20 @@ func TestProcessIndexableTable(t *testing.T) {
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(3)))
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(4)))
 
-	var notifications int
+	var partitionDoneNotifications int
+	var partitionStartNotifications int
+	var rowNextNotifications int
 
 	pt := NewProcessIndexableTable(
 		table,
-		func() {
-			notifications++
+		func(partitionName string) {
+			partitionDoneNotifications++
+		},
+		func(partitionName string) {
+			partitionStartNotifications++
+		},
+		func(partitionName string) {
+			rowNextNotifications++
 		},
 	)
 
@@ -144,5 +162,7 @@ func TestProcessIndexableTable(t *testing.T) {
 	}
 
 	require.ElementsMatch(expectedValues, values)
-	require.Equal(2, notifications)
+	require.Equal(2, partitionDoneNotifications)
+	require.Equal(2, partitionStartNotifications)
+	require.Equal(4, rowNextNotifications)
 }

@@ -44,16 +44,25 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 			seen[name] = struct{}{}
 
-			notify := func() {
+			onPartitionDone := func(partitionName string) {
 				processList.UpdateProgress(ctx.Pid(), name, 1)
+				processList.RemoveProgressItem(ctx.Pid(), partitionName)
+			}
+
+			onPartitionStart := func(partitionName string) {
+				processList.AddProgressItem(ctx.Pid(), partitionName, -1)
+			}
+
+			onRowNext := func(partitionName string) {
+				processList.UpdateProgress(ctx.Pid(), partitionName, 1)
 			}
 
 			var t sql.Table
 			switch table := n.Table.(type) {
 			case sql.IndexableTable:
-				t = plan.NewProcessIndexableTable(table, notify)
+				t = plan.NewProcessIndexableTable(table, onPartitionDone, onPartitionStart, onRowNext)
 			default:
-				t = plan.NewProcessTable(table, notify)
+				t = plan.NewProcessTable(table, onPartitionDone, onPartitionStart, onRowNext)
 			}
 
 			return plan.NewResolvedTable(t), nil
