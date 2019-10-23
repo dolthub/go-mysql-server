@@ -1,8 +1,8 @@
 package parse
 
 import (
-	"math"
 	"testing"
+	"math"
 
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function/aggregation"
@@ -1263,6 +1263,42 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
+	`CREATE VIEW myview AS SELECT 1`: plan.NewCreateView(
+		sql.UnresolvedDatabase(""),
+		"myview",
+		nil,
+		plan.NewSubqueryAlias("myview",
+			plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int8(1), sql.Int8)},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+		),
+		false,
+	),
+	`CREATE VIEW mydb.myview AS SELECT 1`: plan.NewCreateView(
+		sql.UnresolvedDatabase("mydb"),
+		"myview",
+		nil,
+		plan.NewSubqueryAlias("myview",
+			plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int8(1), sql.Int8)},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+		),
+		false,
+	),
+	`CREATE OR REPLACE VIEW mydb.myview AS SELECT 1`: plan.NewCreateView(
+		sql.UnresolvedDatabase("mydb"),
+		"myview",
+		nil,
+		plan.NewSubqueryAlias(	"myview",
+			plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int8(1), sql.Int8)},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+		),
+		true,
+	),
 }
 
 func TestParse(t *testing.T) {
@@ -1296,6 +1332,7 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                  ErrUnsupportedSyntax,
 	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`: ErrUnsupportedSyntax,
 	`SELECT AVG(DISTINCT foo) FROM b`:                         ErrUnsupportedSyntax,
+	`CREATE VIEW myview (col1) AS SELECT 1`:                         ErrUnsupportedSyntax,
 }
 
 func TestParseErrors(t *testing.T) {
