@@ -24,10 +24,13 @@ script:
 jobs:
   include:
     - go: 1.11.x
+      name: 'Unit tests Go 1.11'
     - go: 1.12.x
+      name: 'Unit tests Go 1.12'
 
     # Integration test builds for 3rd party clients
     - go: 1.12.x
+      name: 'Integration test go'
       script:
         - make TEST=go integration
 
@@ -35,6 +38,7 @@ jobs:
       python: '3.6'
       before_install:
         - eval "$(gimme 1.12.4)"
+      name: 'Integration test python-pymysql'
       script:
         - make TEST=python-pymysql integration
 
@@ -42,6 +46,7 @@ jobs:
       python: '3.6'
       before_install:
         - eval "$(gimme 1.12.4)"
+      name: 'Integration test python-mysql'
       script:
         - make TEST=python-mysql integration
 
@@ -49,6 +54,7 @@ jobs:
       python: '3.6'
       before_install:
         - eval "$(gimme 1.12.4)"
+      name: 'Integration test python-sqlalchemy'
       script:
         - make TEST=python-sqlalchemy integration
 
@@ -56,6 +62,7 @@ jobs:
       php: '7.1'
       before_install:
         - eval "$(gimme 1.12.4)"
+      name: 'Integration test php'
       script:
         - make TEST=php integration
 
@@ -63,6 +70,7 @@ jobs:
       ruby: '2.3'
       before_install:
         - eval "$(gimme 1.12.4)"
+      name: 'Integration test ruby'
       script:
         - make TEST=ruby integration
 
@@ -70,6 +78,7 @@ jobs:
       jdk: openjdk8
       before_install:
         - eval "$(gimme 1.12.4)"
+      name: 'Integration test jdbc-mariadb'
       script:
         - make TEST=jdbc-mariadb integration
 
@@ -77,6 +86,7 @@ jobs:
       node_js: '12'
       before_install:
         - eval "$(gimme 1.12.4)"
+      name: 'Integration test javascript'
       script:
         - make TEST=javascript integration
 
@@ -85,6 +95,7 @@ jobs:
       dotnet: '2.1'
       before_install:
         - eval "$(gimme 1.12.4)"
+      name: 'Integration test dotnet'
       script:
         - make TEST=dotnet integration
 
@@ -92,5 +103,6 @@ jobs:
       compiler: clang
       before_install:
         - eval "$(gimme 1.12.4)"
+      name: 'Integration test c'
       script:
         - make TEST=c integration
