@@ -9,10 +9,10 @@ import (
 
 type CreateView struct {
 	UnaryNode
-	database sql.Database
-	Name     string
-	Columns  []string
-	Catalog  *sql.Catalog
+	database  sql.Database
+	Name      string
+	Columns   []string
+	Catalog   *sql.Catalog
 	IsReplace bool
 }
 
@@ -33,7 +33,13 @@ func NewCreateView(
 	}
 }
 
-// Children implements the Node interface.
+// View returns the view that will be created by this node
+func (create *CreateView) View() sql.View {
+	return sql.NewView(create.Name, create.Child)
+}
+
+// Children implements the Node interface. It returns the Child of the
+// CreateView node; i.e., the definition of the view that will be created.
 func (create *CreateView) Children() []sql.Node {
 	return []sql.Node{create.Child}
 }
@@ -46,10 +52,10 @@ func (create *CreateView) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (create *CreateView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	view := sql.View{create.Name, create.Child}
+	view := sql.NewView(create.Name, create.Child)
 
 	if create.IsReplace {
-		_ = create.Catalog.ViewRegistry.Delete(create.database.Name(), view.Name)
+		_ = create.Catalog.ViewRegistry.Delete(create.database.Name(), view.Name())
 	}
 
 	return sql.RowsToRowIter(), create.Catalog.ViewRegistry.Register(create.database.Name(), view)

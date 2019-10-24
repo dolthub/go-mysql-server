@@ -110,7 +110,7 @@ func TestResolveViews(t *testing.T) {
 		plan.NewResolvedTable(table),
 	)
 	subqueryAlias := plan.NewSubqueryAlias("myview", subquery)
-	view := sql.View{"myview", subqueryAlias}
+	view := sql.NewView("myview", subqueryAlias)
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
