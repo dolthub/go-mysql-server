@@ -156,6 +156,20 @@ func (pl *ProcessList) AddProgressItem(pid uint64, name string, total int64) {
 	}
 }
 
+// RemoveProgressItem removes an existing item tracking progress from the
+// process with the given pid, if it exists.
+func (pl *ProcessList) RemoveProgressItem(pid uint64, name string) {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+
+	p, ok := pl.procs[pid]
+	if !ok {
+		return
+	}
+
+	delete(p.Progress, name)
+}
+
 // Kill terminates all queries for a given connection id.
 func (pl *ProcessList) Kill(connID uint32) {
 	pl.mu.Lock()
