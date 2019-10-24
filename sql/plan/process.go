@@ -83,7 +83,7 @@ func (t *ProcessIndexableTable) PartitionRows(ctx *sql.Context, p sql.Partition)
 		return nil, err
 	}
 
-	partitionName := string(p.Key())
+	partitionName := partitionName(p)
 	if t.OnPartitionStart != nil {
 		t.OnPartitionStart(partitionName)
 	}
@@ -137,7 +137,7 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 		return nil, err
 	}
 
-	partitionName := string(p.Key())
+	partitionName := partitionName(p)
 	if t.OnPartitionStart != nil {
 		t.OnPartitionStart(partitionName)
 	}
@@ -206,7 +206,7 @@ func (i *trackedPartitionIndexKeyValueIter) Next() (sql.Partition, sql.IndexKeyV
 		return nil, nil, err
 	}
 
-	partitionName := string(p.Key())
+	partitionName := partitionName(p)
 	if i.OnPartitionStart != nil {
 		i.OnPartitionStart(partitionName)
 	}
@@ -263,4 +263,11 @@ func (i *trackedIndexKeyValueIter) Next() ([]interface{}, []byte, error) {
 	}
 
 	return v, k, nil
+}
+
+func partitionName(p sql.Partition) string {
+	if n, ok := p.(sql.Nameable); ok {
+		return n.Name()
+	}
+	return string(p.Key())
 }
