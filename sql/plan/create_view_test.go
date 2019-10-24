@@ -1,0 +1,95 @@
+package plan
+
+import (
+	"testing"
+
+	"github.com/src-d/go-mysql-server/memory"
+	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
+
+	"github.com/stretchr/testify/require"
+)
+
+func mockCreateView(isReplace bool) *CreateView {
+	table := memory.NewTable("mytable", sql.Schema{
+		{Name: "i", Source: "mytable", Type: sql.Int32},
+		{Name: "s", Source: "mytable", Type: sql.Text},
+	})
+
+	db := memory.NewDatabase("db")
+	db.AddTable("db", table)
+
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
+
+	subqueryAlias := NewSubqueryAlias("myview",
+		NewProject(
+			[]sql.Expression{
+				expression.NewGetFieldWithTable(1, sql.Int32, table.Name(), "i", true),
+			},
+			NewUnresolvedTable("dual", ""),
+		),
+	)
+
+	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, isReplace)
+	createView.Catalog = catalog
+
+	return createView
+}
+
+// Tests that CreateView works as expected and that the view is registered in
+// the catalog when RowIter is called
+func TestCreateView(t *testing.T) {
+	require := require.New(t)
+
+	createView := mockCreateView(false)
+
+	ctx := sql.NewEmptyContext()
+	_, err := createView.RowIter(ctx)
+	require.NoError(err)
+
+	expectedView := sql.NewView(createView.Name, createView.Child)
+	actualView, err := createView.Catalog.ViewRegistry.View(createView.database.Name(), createView.Name)
+	require.NoError(err)
+	require.Equal(expectedView, *actualView)
+}
+
+// Tests that CreateView RowIter returns an error when the view exists
+func TestCreateExistingView(t *testing.T) {
+	require := require.New(t)
+
+	createView := mockCreateView(false)
+
+	// Register a view with the same name
+	view := createView.View()
+	createView.Catalog.ViewRegistry.Register(createView.database.Name(), view)
+
+	ctx := sql.NewEmptyContext()
+	_, err := createView.RowIter(ctx)
+	require.Error(err)
+	require.True(sql.ErrExistingView.Is(err))
+}
+
+// Tests that CreateView RowIter succeeds when the view exists and the
+// IsReplace flag is set to true
+func TestReplaceExistingView(t *testing.T) {
+	require := require.New(t)
+
+	createView := mockCreateView(true)
+
+	// Register a view with the same name but no child
+	view := sql.NewView(createView.Name, nil)
+	createView.Catalog.ViewRegistry.Register(createView.database.Name(), view)
+
+	// Set the IsReplace flag to true
+	createView.IsReplace = true
+
+	ctx := sql.NewEmptyContext()
+	_, err := createView.RowIter(ctx)
+	require.NoError(err)
+
+	expectedView := createView.View()
+	actualView, err := createView.Catalog.ViewRegistry.View(createView.database.Name(), createView.Name)
+	require.NoError(err)
+	require.Equal(expectedView, *actualView)
+}

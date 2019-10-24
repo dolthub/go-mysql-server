@@ -1,8 +1,8 @@
 package parse
 
 import (
-	"testing"
 	"math"
+	"testing"
 
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/expression/function/aggregation"
@@ -55,14 +55,14 @@ var fixtures = map[string]sql.Node{
 		sql.UnresolvedDatabase(""),
 		"t1",
 		sql.Schema{{
-			Name:     "a",
-			Type:     sql.Int32,
-			Nullable: false,
+			Name:       "a",
+			Type:       sql.Int32,
+			Nullable:   false,
 			PrimaryKey: true,
 		}, {
-			Name:     "b",
-			Type:     sql.Text,
-			Nullable: true,
+			Name:       "b",
+			Type:       sql.Text,
+			Nullable:   true,
 			PrimaryKey: false,
 		}},
 	),
@@ -70,14 +70,14 @@ var fixtures = map[string]sql.Node{
 		sql.UnresolvedDatabase(""),
 		"t1",
 		sql.Schema{{
-			Name:     "a",
-			Type:     sql.Int32,
-			Nullable: true,
+			Name:       "a",
+			Type:       sql.Int32,
+			Nullable:   true,
 			PrimaryKey: true,
 		}, {
-			Name:     "b",
-			Type:     sql.Text,
-			Nullable: true,
+			Name:       "b",
+			Type:       sql.Text,
+			Nullable:   true,
 			PrimaryKey: false,
 		}},
 	),
@@ -85,14 +85,14 @@ var fixtures = map[string]sql.Node{
 		sql.UnresolvedDatabase(""),
 		"t1",
 		sql.Schema{{
-			Name:     "a",
-			Type:     sql.Int32,
-			Nullable: true,
+			Name:       "a",
+			Type:       sql.Int32,
+			Nullable:   true,
 			PrimaryKey: true,
 		}, {
-			Name:     "b",
-			Type:     sql.Text,
-			Nullable: true,
+			Name:       "b",
+			Type:       sql.Text,
+			Nullable:   true,
 			PrimaryKey: true,
 		}},
 	),
@@ -1263,42 +1263,6 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
-	`CREATE VIEW myview AS SELECT 1`: plan.NewCreateView(
-		sql.UnresolvedDatabase(""),
-		"myview",
-		nil,
-		plan.NewSubqueryAlias("myview",
-			plan.NewProject(
-				[]sql.Expression{expression.NewLiteral(int8(1), sql.Int8)},
-				plan.NewUnresolvedTable("dual", ""),
-			),
-		),
-		false,
-	),
-	`CREATE VIEW mydb.myview AS SELECT 1`: plan.NewCreateView(
-		sql.UnresolvedDatabase("mydb"),
-		"myview",
-		nil,
-		plan.NewSubqueryAlias("myview",
-			plan.NewProject(
-				[]sql.Expression{expression.NewLiteral(int8(1), sql.Int8)},
-				plan.NewUnresolvedTable("dual", ""),
-			),
-		),
-		false,
-	),
-	`CREATE OR REPLACE VIEW mydb.myview AS SELECT 1`: plan.NewCreateView(
-		sql.UnresolvedDatabase("mydb"),
-		"myview",
-		nil,
-		plan.NewSubqueryAlias(	"myview",
-			plan.NewProject(
-				[]sql.Expression{expression.NewLiteral(int8(1), sql.Int8)},
-				plan.NewUnresolvedTable("dual", ""),
-			),
-		),
-		true,
-	),
 }
 
 func TestParse(t *testing.T) {
@@ -1332,7 +1296,7 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                  ErrUnsupportedSyntax,
 	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`: ErrUnsupportedSyntax,
 	`SELECT AVG(DISTINCT foo) FROM b`:                         ErrUnsupportedSyntax,
-	`CREATE VIEW myview (col1) AS SELECT 1`:                         ErrUnsupportedSyntax,
+	`CREATE VIEW myview (col1) AS SELECT 1`:                   ErrUnsupportedSyntax,
 }
 
 func TestParseErrors(t *testing.T) {

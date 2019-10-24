@@ -80,6 +80,27 @@ func skipSpaces(r *bufio.Reader) error {
 	}
 }
 
+// Reads every contiguous space from the reader, populating numSpacesRead with
+// the number of spaces read.
+func readSpaces(r *bufio.Reader, numSpacesRead *int) error {
+	*numSpacesRead = 0
+	for {
+		ru, _, err := r.ReadRune()
+		if err == io.EOF {
+			return nil
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if !unicode.IsSpace(ru) {
+			return r.UnreadRune()
+		}
+		*numSpacesRead++
+	}
+}
+
 func checkEOF(rd *bufio.Reader) error {
 	r, _, err := rd.ReadRune()
 	if err == io.EOF {
@@ -241,7 +262,6 @@ func readIdent(ident *string) parseFunc {
 	}
 }
 
-
 // Reads a scoped identifier, populating the specified slice with the different
 // parts of the identifier if it is correctly formed.
 // A scoped identifier is a sequence of identifiers separated by the specified
@@ -264,10 +284,12 @@ func readScopedIdent(separator rune, idents *[]string) parseFunc {
 			}
 		}
 
-		*idents = append(
-			*idents,
-			strings.Split(strings.ToLower(buf.String()), string(separator))...,
-		)
+		if readString := buf.String(); len(readString) > 0 {
+			*idents = append(
+				*idents,
+				strings.Split(strings.ToLower(readString), string(separator))...,
+			)
+		}
 		return nil
 	}
 }
@@ -414,31 +436,31 @@ func maybe(matched *bool, str string) parseFunc {
 	}
 }
 
-// Tries to read the specified strings, one after the other, separeted by an
-// arbitrary number of spaces. It consumes the reader if and only all the
+// Tries to read the specified strings, one after the other, separated by an
+// arbitrary number of spaces. It consumes the reader if and only if all the
 // strings are found.
 func multiMaybe(matched *bool, strings ...string) parseFunc {
 	return func(rd *bufio.Reader) error {
 		*matched = false
-		first := true
+		var read string
 		for _, str := range strings {
 			if err := maybe(matched, str)(rd); err != nil {
 				return err
 			}
 
 			if !*matched {
-				if first {
-					return nil
-				}
-
-				// TODO: add actual string parsed
-				return errUnexpectedSyntax.New(str, "smth else")
+				unreadString(rd, read)
+				return nil
 			}
 
-			first = false
-
-			if err := skipSpaces(rd); err != nil {
+			var numSpaces int
+			if err := readSpaces(rd, &numSpaces); err != nil {
 				return err
+			}
+
+			read = read + str
+			for i := 0; i < numSpaces; i++ {
+				read = read + " "
 			}
 		}
 		*matched = true
@@ -450,7 +472,9 @@ func multiMaybe(matched *bool, strings ...string) parseFunc {
 // indicating the opening of the list and another one specifying its closing.
 // For example, readList('(', ',', ')', list) parses "(uno,  dos,tres)" and
 // populates list with the array of strings ["uno", "dos", "tres"]
-// If the opening is not found, this does not consumes any rune from the reader.
+// If the opening is not found, this does not consumes any rune from the
+// reader. If there is a parsing error after some elements were found, the list
+// is partially populated with the correct fields
 func maybeList(opening, separator, closing rune, list *[]string) parseFunc {
 	return func(rd *bufio.Reader) error {
 		r, _, err := rd.ReadRune()

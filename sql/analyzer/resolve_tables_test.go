@@ -92,6 +92,9 @@ func TestResolveTablesNested(t *testing.T) {
 	require.Equal(expected, analyzed)
 }
 
+// Tests the resolution of views (ensuring it is case-insensitive), that should
+// result in the replacement of the UnresolvedTable with the SubqueryAlias that
+// represents the view
 func TestResolveViews(t *testing.T) {
 	require := require.New(t)
 
@@ -112,22 +115,26 @@ func TestResolveViews(t *testing.T) {
 	subqueryAlias := plan.NewSubqueryAlias("myview", subquery)
 	view := sql.NewView("myview", subqueryAlias)
 
+	// Register the view in the catalog
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 	catalog.ViewRegistry.Register(db.Name(), view)
 
 	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
 
+	// Check whether the view is resolved and replaced with the subquery
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("myview", "")
 	analyzed, err := f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.NoError(err)
 	require.Equal(subqueryAlias, analyzed)
 
+	// Ensures that the resolution is case-insensitive
 	notAnalyzed = plan.NewUnresolvedTable("MyVieW", "")
 	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.NoError(err)
 	require.Equal(subqueryAlias, analyzed)
 
+	// Ensures that the resolution is idempotent
 	analyzed, err = f.Apply(sql.NewEmptyContext(), a, subqueryAlias)
 	require.NoError(err)
 	require.Equal(subqueryAlias, analyzed)
