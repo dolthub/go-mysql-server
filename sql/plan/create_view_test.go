@@ -60,7 +60,6 @@ func TestCreateExistingView(t *testing.T) {
 
 	createView := mockCreateView(false)
 
-	// Register a view with the same name
 	view := createView.View()
 	err := createView.Catalog.ViewRegistry.Register(createView.database.Name(), view)
 	require.NoError(err)
@@ -78,12 +77,10 @@ func TestReplaceExistingView(t *testing.T) {
 
 	createView := mockCreateView(true)
 
-	// Register a view with the same name but no child
 	view := sql.NewView(createView.Name, nil)
 	err := createView.Catalog.ViewRegistry.Register(createView.database.Name(), view)
 	require.NoError(err)
 
-	// Set the IsReplace flag to true
 	createView.IsReplace = true
 
 	ctx := sql.NewEmptyContext()

@@ -115,7 +115,6 @@ func TestResolveViews(t *testing.T) {
 	subqueryAlias := plan.NewSubqueryAlias("myview", subquery)
 	view := sql.NewView("myview", subqueryAlias)
 
-	// Register the view in the catalog
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 	err := catalog.ViewRegistry.Register(db.Name(), view)
@@ -123,19 +122,16 @@ func TestResolveViews(t *testing.T) {
 
 	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
 
-	// Check whether the view is resolved and replaced with the subquery
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("myview", "")
 	analyzed, err := f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.NoError(err)
 	require.Equal(subqueryAlias, analyzed)
 
-	// Ensures that the resolution is case-insensitive
 	notAnalyzed = plan.NewUnresolvedTable("MyVieW", "")
 	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.NoError(err)
 	require.Equal(subqueryAlias, analyzed)
 
-	// Ensures that the resolution is idempotent
 	analyzed, err = f.Apply(sql.NewEmptyContext(), a, subqueryAlias)
 	require.NoError(err)
 	require.Equal(subqueryAlias, analyzed)

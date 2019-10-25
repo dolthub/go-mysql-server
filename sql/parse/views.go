@@ -14,7 +14,7 @@ import (
 var ErrMalformedViewName = errors.NewKind("the view name '%s' is not correct")
 var ErrMalformedCreateView = errors.NewKind("view definition %#v is not a SELECT query")
 
-// Parses
+// parseCreateView parses
 // CREATE [OR REPLACE] VIEW [db_name.]view_name AS select_statement
 // and returns a NewCreateView node in case of success
 func parseCreateView(ctx *sql.Context, s string) (sql.Node, error) {

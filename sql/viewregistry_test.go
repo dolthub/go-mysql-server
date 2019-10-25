@@ -45,7 +45,6 @@ func TestRegisterExistingVIew(t *testing.T) {
 	require.NoError(err)
 	require.Equal(1, len(registry.AllViews()))
 
-	// Try to register the same view once again
 	err = registry.Register(dbName, mockView)
 	require.Error(err)
 	require.True(ErrExistingView.Is(err))
