@@ -92,9 +92,6 @@ func TestResolveTablesNested(t *testing.T) {
 	require.Equal(expected, analyzed)
 }
 
-// Tests the resolution of views (ensuring it is case-insensitive), that should
-// result in the replacement of the UnresolvedTable with the SubqueryAlias that
-// represents the view
 func TestResolveViews(t *testing.T) {
 	require := require.New(t)
 
