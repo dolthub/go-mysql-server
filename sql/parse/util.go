@@ -64,20 +64,8 @@ func expect(expected string) parseFunc {
 }
 
 func skipSpaces(r *bufio.Reader) error {
-	for {
-		ru, _, err := r.ReadRune()
-		if err == io.EOF {
-			return nil
-		}
-
-		if err != nil {
-			return err
-		}
-
-		if !unicode.IsSpace(ru) {
-			return r.UnreadRune()
-		}
-	}
+	var unusedCount int
+	return readSpaces(r, &unusedCount)
 }
 
 // readSpaces reads every contiguous space from the reader, populating
