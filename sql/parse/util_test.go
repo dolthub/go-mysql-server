@@ -150,9 +150,9 @@ func TestReadValidScopedIdentRune(t *testing.T) {
 	}
 }
 
-// Tests that readScopedIdent reads a list of identifiers separated by a user-
+// Tests that readIdentList reads a list of identifiers separated by a user-
 // specified rune, populating the passed slice with the identifiers found.
-func TestReadScopedIdent(t *testing.T) {
+func TestReadIdentList(t *testing.T) {
 	require := require.New(t)
 
 	testFixtures := []struct {
@@ -203,7 +203,7 @@ func TestReadScopedIdent(t *testing.T) {
 		reader := bufio.NewReader(strings.NewReader(fixture.string))
 		var actualIdents []string
 
-		err := readScopedIdent(fixture.separator, &actualIdents)(reader)
+		err := readIdentList(fixture.separator, &actualIdents)(reader)
 		require.NoError(err)
 
 		remaining, _ := reader.ReadString('\n')

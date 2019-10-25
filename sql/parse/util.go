@@ -262,14 +262,14 @@ func readIdent(ident *string) parseFunc {
 	}
 }
 
-// Reads a scoped identifier, populating the specified slice with the different
-// parts of the identifier if it is correctly formed.
+// readIdentList reads a scoped identifier, populating the specified slice
+// with the different parts of the identifier if it is correctly formed.
 // A scoped identifier is a sequence of identifiers separated by the specified
 // rune in separator. An identifier is a string of runes whose first character
 // is a letter and the following ones are either letters, digits or underscores.
 // An example of a correctly formed scoped identifier is "dbName.tableName",
 // that would populate the slice with the values ["dbName", "tableName"]
-func readScopedIdent(separator rune, idents *[]string) parseFunc {
+func readIdentList(separator rune, idents *[]string) parseFunc {
 	return func(r *bufio.Reader) error {
 		var buf bytes.Buffer
 		if err := readLetter(r, &buf); err != nil {
