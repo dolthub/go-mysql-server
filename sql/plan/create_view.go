@@ -62,12 +62,16 @@ func (create *CreateView) Resolved() bool {
 // empty.
 func (create *CreateView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	view := sql.NewView(create.Name, create.Child)
+	registry := create.Catalog.ViewRegistry
 
 	if create.IsReplace {
-		_ = create.Catalog.ViewRegistry.Delete(create.database.Name(), view.Name())
+		err := registry.Delete(create.database.Name(), view.Name())
+		if err != nil && !sql.ErrNonExistingView.Is(err) {
+			return sql.RowsToRowIter(), err
+		}
 	}
 
-	return sql.RowsToRowIter(), create.Catalog.ViewRegistry.Register(create.database.Name(), view)
+	return sql.RowsToRowIter(), registry.Register(create.database.Name(), view)
 }
 
 // Schema implements the Node interface. It always returns nil.
