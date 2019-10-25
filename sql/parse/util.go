@@ -483,8 +483,7 @@ func maybeList(opening, separator, closing rune, list *[]string) parseFunc {
 		}
 
 		if r != opening {
-			rd.UnreadRune()
-			return nil
+			return rd.UnreadRune()
 		}
 
 		for {
