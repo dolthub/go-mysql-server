@@ -24,13 +24,13 @@ func NewView(name string, definition Node) View {
 }
 
 // Name returns the name of the view.
-func (view *View) Name() string {
-	return view.name
+func (v *View) Name() string {
+	return v.name
 }
 
 // Definition returns the definition of the view.
-func (view *View) Definition() Node {
-	return view.definition
+func (v *View) Definition() Node {
+	return v.definition
 }
 
 // Views are scoped by the databases in which they were defined, so a key in
@@ -60,45 +60,45 @@ func NewViewRegistry() *ViewRegistry {
 
 // Register adds the view specified by the pair {database, view.Name()},
 // returning an error if there is already an element with that key.
-func (registry *ViewRegistry) Register(database string, view View) error {
-	registry.mutex.Lock()
-	defer registry.mutex.Unlock()
+func (r *ViewRegistry) Register(database string, view View) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 
 	key := newViewKey(database, view.Name())
 
-	if _, ok := registry.views[key]; ok {
+	if _, ok := r.views[key]; ok {
 		return ErrExistingView.New(database, view.Name())
 	}
 
-	registry.views[key] = view
+	r.views[key] = view
 	return nil
 }
 
 // Delete deletes the view specified by the pair {databaseName, viewName},
 // returning an error if it does not exist.
-func (registry *ViewRegistry) Delete(databaseName, viewName string) error {
-	registry.mutex.Lock()
-	defer registry.mutex.Unlock()
+func (r *ViewRegistry) Delete(databaseName, viewName string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 
 	key := newViewKey(databaseName, viewName)
 
-	if _, ok := registry.views[key]; !ok {
+	if _, ok := r.views[key]; !ok {
 		return ErrNonExistingView.New(databaseName, viewName)
 	}
 
-	delete(registry.views, key)
+	delete(r.views, key)
 	return nil
 }
 
 // View returns a pointer to the view specified by the pair {databaseName,
 // viewName}, returning an error if it does not exist.
-func (registry *ViewRegistry) View(databaseName, viewName string) (*View, error) {
-	registry.mutex.RLock()
-	defer registry.mutex.RUnlock()
+func (r *ViewRegistry) View(databaseName, viewName string) (*View, error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
 
 	key := newViewKey(databaseName, viewName)
 
-	if view, ok := registry.views[key]; ok {
+	if view, ok := r.views[key]; ok {
 		return &view, nil
 	}
 
@@ -106,20 +106,20 @@ func (registry *ViewRegistry) View(databaseName, viewName string) (*View, error)
 }
 
 // AllViews returns the map of all views in the registry.
-func (registry *ViewRegistry) AllViews() map[viewKey]View {
-	registry.mutex.RLock()
-	defer registry.mutex.RUnlock()
+func (r *ViewRegistry) AllViews() map[viewKey]View {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
 
-	return registry.views
+	return r.views
 }
 
 // ViewsInDatabase returns an array of all the views registered under the
 // specified database.
-func (registry *ViewRegistry) ViewsInDatabase(databaseName string) (views []View) {
-	registry.mutex.RLock()
-	defer registry.mutex.RUnlock()
+func (r *ViewRegistry) ViewsInDatabase(databaseName string) (views []View) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
 
-	for key, value := range registry.views {
+	for key, value := range r.views {
 		if key.dbName == databaseName {
 			views = append(views, value)
 		}
