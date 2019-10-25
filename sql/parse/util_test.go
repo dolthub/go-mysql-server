@@ -133,9 +133,14 @@ func TestReadValidScopedIdentRune(t *testing.T) {
 		reader := bufio.NewReader(strings.NewReader(fixture.string))
 		var buffer bytes.Buffer
 
+		var rune rune
 		var err error
 		for i := 0; i < len(fixture.string); i++ {
-			err = readValidScopedIdentRune(reader, fixture.separator, &buffer)
+			if rune, err = readValidScopedIdentRune(reader, fixture.separator); err != nil {
+				break
+			}
+
+			buffer.WriteRune(rune)
 		}
 		if fixture.expectedError {
 			require.Error(err)
@@ -146,7 +151,7 @@ func TestReadValidScopedIdentRune(t *testing.T) {
 		remaining, _ := reader.ReadString('\n')
 		require.Equal(remaining, fixture.expectedRemaining)
 
-		require.Equal(buffer.String(), fixture.expectedBuffer)
+		require.Equal(fixture.expectedBuffer, buffer.String())
 	}
 }
 

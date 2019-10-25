@@ -179,21 +179,22 @@ func readValidIdentRune(r *bufio.Reader, buf *bytes.Buffer) error {
 // readValidScopedIdentRune parses a single rune from the reader and consumes
 // it, copying it to the buffer, if is a letter, a digit, an underscore or the
 // specified separator.
-func readValidScopedIdentRune(r *bufio.Reader, separator rune, buf *bytes.Buffer) error {
+// If the returned error is not nil, the  returned rune equals the null
+// character.
+func readValidScopedIdentRune(r *bufio.Reader, separator rune) (rune, error) {
 	ru, _, err := r.ReadRune()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	if !unicode.IsLetter(ru) && !unicode.IsDigit(ru) && ru != '_' && ru != separator {
 		if err := r.UnreadRune(); err != nil {
-			return err
+			return 0, err
 		}
-		return io.EOF
+		return 0, io.EOF
 	}
 
-	buf.WriteRune(ru)
-	return nil
+	return ru, nil
 }
 
 func readValidQuotedIdentRune(r *bufio.Reader, buf *bytes.Buffer) error {
@@ -266,18 +267,24 @@ func readIdentList(separator rune, idents *[]string) parseFunc {
 		}
 
 		for {
-			if err := readValidScopedIdentRune(r, separator, &buf); err == io.EOF {
-				break
-			} else if err != nil {
+			currentRune, err := readValidScopedIdentRune(r, separator)
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
 				return err
+			}
+
+			if currentRune == separator {
+				*idents = append(*idents, buf.String())
+				buf.Reset()
+			} else {
+				buf.WriteRune(currentRune)
 			}
 		}
 
 		if readString := buf.String(); len(readString) > 0 {
-			*idents = append(
-				*idents,
-				strings.Split(strings.ToLower(readString), string(separator))...,
-			)
+			*idents = append(*idents, readString)
 		}
 		return nil
 	}
