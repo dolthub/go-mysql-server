@@ -118,7 +118,8 @@ func TestResolveViews(t *testing.T) {
 	// Register the view in the catalog
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
-	catalog.ViewRegistry.Register(db.Name(), view)
+	err := catalog.ViewRegistry.Register(db.Name(), view)
+	require.NoError(err)
 
 	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
 

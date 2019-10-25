@@ -61,7 +61,8 @@ func TestReadLetterOrPoint(t *testing.T) {
 		var buffer bytes.Buffer
 
 		for i := 0; i < len(fixture.string); i++ {
-			readLetterOrPoint(reader, &buffer)
+			err := readLetterOrPoint(reader, &buffer)
+			require.NoError(err)
 		}
 
 		remaining, _ := reader.ReadString('\n')
@@ -82,42 +83,49 @@ func TestReadValidScopedIdentRune(t *testing.T) {
 		separator         rune
 		expectedBuffer    string
 		expectedRemaining string
+		expectedError     bool
 	}{
 		{
 			"ident_1.ident_2",
 			'.',
 			"ident_1.ident_2",
 			"",
+			false,
 		},
 		{
 			"$ident_1.ident_2",
 			'.',
 			"",
 			"$ident_1.ident_2",
+			true,
 		},
 		{
 			"",
 			'.',
 			"",
 			"",
+			false,
 		},
 		{
 			"ident_1 ident_2",
 			'.',
 			"ident_1",
 			" ident_2",
+			true,
 		},
 		{
 			"ident_1 ident_2",
 			' ',
 			"ident_1 ident_2",
 			"",
+			false,
 		},
 		{
 			"ident_1.ident_2 ident_3",
 			'.',
 			"ident_1.ident_2",
 			" ident_3",
+			true,
 		},
 	}
 
@@ -125,8 +133,14 @@ func TestReadValidScopedIdentRune(t *testing.T) {
 		reader := bufio.NewReader(strings.NewReader(fixture.string))
 		var buffer bytes.Buffer
 
+		var err error
 		for i := 0; i < len(fixture.string); i++ {
-			readValidScopedIdentRune(reader, fixture.separator, &buffer)
+			err = readValidScopedIdentRune(reader, fixture.separator, &buffer)
+		}
+		if fixture.expectedError {
+			require.Error(err)
+		} else {
+			require.NoError(err)
 		}
 
 		remaining, _ := reader.ReadString('\n')

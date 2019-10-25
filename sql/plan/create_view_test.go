@@ -62,10 +62,11 @@ func TestCreateExistingView(t *testing.T) {
 
 	// Register a view with the same name
 	view := createView.View()
-	createView.Catalog.ViewRegistry.Register(createView.database.Name(), view)
+	err := createView.Catalog.ViewRegistry.Register(createView.database.Name(), view)
+	require.NoError(err)
 
 	ctx := sql.NewEmptyContext()
-	_, err := createView.RowIter(ctx)
+	_, err = createView.RowIter(ctx)
 	require.Error(err)
 	require.True(sql.ErrExistingView.Is(err))
 }
@@ -79,13 +80,14 @@ func TestReplaceExistingView(t *testing.T) {
 
 	// Register a view with the same name but no child
 	view := sql.NewView(createView.Name, nil)
-	createView.Catalog.ViewRegistry.Register(createView.database.Name(), view)
+	err := createView.Catalog.ViewRegistry.Register(createView.database.Name(), view)
+	require.NoError(err)
 
 	// Set the IsReplace flag to true
 	createView.IsReplace = true
 
 	ctx := sql.NewEmptyContext()
-	_, err := createView.RowIter(ctx)
+	_, err = createView.RowIter(ctx)
 	require.NoError(err)
 
 	expectedView := createView.View()
