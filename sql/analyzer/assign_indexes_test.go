@@ -16,7 +16,7 @@ func TestNegateIndex(t *testing.T) {
 	require := require.New(t)
 
 	catalog := sql.NewCatalog()
-	idx1 := &mergableDummyIndex{
+	idx1 := &mergeableDummyIndex{
 		"t1",
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
@@ -61,7 +61,7 @@ func TestAssignIndexes(t *testing.T) {
 	require := require.New(t)
 
 	catalog := sql.NewCatalog()
-	idx1 := &mergableDummyIndex{
+	idx1 := &mergeableDummyIndex{
 		"t2",
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int64, "t2", "bar", false),
@@ -72,7 +72,7 @@ func TestAssignIndexes(t *testing.T) {
 	close(done)
 	<-ready
 
-	idx2 := &mergableDummyIndex{
+	idx2 := &mergeableDummyIndex{
 		"t1",
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
@@ -84,7 +84,7 @@ func TestAssignIndexes(t *testing.T) {
 	close(done)
 	<-ready
 
-	idx3 := &unmergableDummyIndex{
+	idx3 := &unmergeableDummyIndex{
 		"t1",
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
@@ -190,7 +190,7 @@ func TestAssignIndexes(t *testing.T) {
 }
 
 func TestGetIndexes(t *testing.T) {
-	indexes := []*mergableDummyIndex{
+	indexes := []*mergeableDummyIndex{
 		{
 			"t1",
 			[]sql.Expression{
@@ -749,7 +749,7 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 	require := require.New(t)
 
 	catalog := sql.NewCatalog()
-	indexes := []*mergableDummyIndex{
+	indexes := []*mergeableDummyIndex{
 		{
 			"t1",
 			[]sql.Expression{
@@ -954,19 +954,19 @@ func (dummyIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
 	return nil, nil
 }
 
-type mergableDummyIndex struct {
+type mergeableDummyIndex struct {
 	table string
 	expr  []sql.Expression
 }
 
-type unmergableDummyIndex struct {
+type unmergeableDummyIndex struct {
 	table string
 	expr  []sql.Expression
 }
 
-func (u *unmergableDummyIndex) Database() string { return "" }
-func (u *unmergableDummyIndex) Driver() string { return "" }
-func (u *unmergableDummyIndex) Expressions() []string {
+func (u *unmergeableDummyIndex) Database() string { return "" }
+func (u *unmergeableDummyIndex) Driver() string   { return "" }
+func (u *unmergeableDummyIndex) Expressions() []string {
 	var exprs []string
 	for _, e := range u.expr {
 		exprs = append(exprs, e.String())
@@ -974,7 +974,7 @@ func (u *unmergableDummyIndex) Expressions() []string {
 	return exprs
 }
 
-func (u *unmergableDummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
+func (u *unmergeableDummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 	if len(key) != 1 {
 		var parts = make([]string, len(key))
 		for i, p := range key {
@@ -999,11 +999,11 @@ func (u unmergeableIndexLookup) Indexes() []string {
 	return []string{u.id}
 }
 
-func (u *unmergableDummyIndex) Has(partition sql.Partition, key ...interface{}) (bool, error) {
+func (u *unmergeableDummyIndex) Has(partition sql.Partition, key ...interface{}) (bool, error) {
 	panic("unimplemented")
 }
 
-func (u *unmergableDummyIndex) ID() string {
+func (u *unmergeableDummyIndex) ID() string {
 	if len(u.expr) == 1 {
 		return u.expr[0].String()
 	}
@@ -1015,19 +1015,19 @@ func (u *unmergableDummyIndex) ID() string {
 	return "(" + strings.Join(parts, ", ") + ")"
 }
 
-func (u *unmergableDummyIndex) Table() string {
+func (u *unmergeableDummyIndex) Table() string {
 	return u.table
 }
 
-var _ sql.Index = (*mergableDummyIndex)(nil)
-var _ sql.Index = (*unmergableDummyIndex)(nil)
-var _ sql.AscendIndex = (*mergableDummyIndex)(nil)
-var _ sql.DescendIndex = (*mergableDummyIndex)(nil)
-var _ sql.NegateIndex = (*mergableDummyIndex)(nil)
+var _ sql.Index = (*mergeableDummyIndex)(nil)
+var _ sql.Index = (*unmergeableDummyIndex)(nil)
+var _ sql.AscendIndex = (*mergeableDummyIndex)(nil)
+var _ sql.DescendIndex = (*mergeableDummyIndex)(nil)
+var _ sql.NegateIndex = (*mergeableDummyIndex)(nil)
 
-func (mergableDummyIndex) Database() string { return "" }
-func (mergableDummyIndex) Driver() string   { return "" }
-func (i mergableDummyIndex) Expressions() []string {
+func (mergeableDummyIndex) Database() string { return "" }
+func (mergeableDummyIndex) Driver() string   { return "" }
+func (i mergeableDummyIndex) Expressions() []string {
 	var exprs []string
 	for _, e := range i.expr {
 		exprs = append(exprs, e.String())
@@ -1035,31 +1035,31 @@ func (i mergableDummyIndex) Expressions() []string {
 	return exprs
 }
 
-func (i mergableDummyIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
+func (i mergeableDummyIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
 	return &ascendIndexLookup{gte: keys}, nil
 }
 
-func (i mergableDummyIndex) AscendLessThan(keys ...interface{}) (sql.IndexLookup, error) {
+func (i mergeableDummyIndex) AscendLessThan(keys ...interface{}) (sql.IndexLookup, error) {
 	return &ascendIndexLookup{lt: keys}, nil
 }
 
-func (i mergableDummyIndex) AscendRange(greaterOrEqual, lessThan []interface{}) (sql.IndexLookup, error) {
+func (i mergeableDummyIndex) AscendRange(greaterOrEqual, lessThan []interface{}) (sql.IndexLookup, error) {
 	return &ascendIndexLookup{gte: greaterOrEqual, lt: lessThan}, nil
 }
 
-func (i mergableDummyIndex) DescendGreater(keys ...interface{}) (sql.IndexLookup, error) {
+func (i mergeableDummyIndex) DescendGreater(keys ...interface{}) (sql.IndexLookup, error) {
 	return &descendIndexLookup{gt: keys}, nil
 }
 
-func (i mergableDummyIndex) DescendLessOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
+func (i mergeableDummyIndex) DescendLessOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
 	return &descendIndexLookup{lte: keys}, nil
 }
 
-func (i mergableDummyIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sql.IndexLookup, error) {
+func (i mergeableDummyIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sql.IndexLookup, error) {
 	return &descendIndexLookup{gt: greaterThan, lte: lessOrEqual}, nil
 }
 
-func (i mergableDummyIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
+func (i mergeableDummyIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
 	lookup, err := i.Get(keys...)
 	if err != nil {
 		return nil, err
@@ -1069,7 +1069,7 @@ func (i mergableDummyIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
 	return &negateIndexLookup{value: mergeable.id}, nil
 }
 
-func (i mergableDummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
+func (i mergeableDummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 	if len(key) != 1 {
 		var parts = make([]string, len(key))
 		for i, p := range key {
@@ -1082,11 +1082,11 @@ func (i mergableDummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 	return &mergeableIndexLookup{id: fmt.Sprint(key[0])}, nil
 }
 
-func (i mergableDummyIndex) Has(sql.Partition, ...interface{}) (bool, error) {
+func (i mergeableDummyIndex) Has(sql.Partition, ...interface{}) (bool, error) {
 	panic("not implemented")
 }
 
-func (i mergableDummyIndex) ID() string {
+func (i mergeableDummyIndex) ID() string {
 	if len(i.expr) == 1 {
 		return i.expr[0].String()
 	}
@@ -1098,7 +1098,7 @@ func (i mergableDummyIndex) ID() string {
 	return "(" + strings.Join(parts, ", ") + ")"
 }
 
-func (i mergableDummyIndex) Table() string { return i.table }
+func (i mergeableDummyIndex) Table() string { return i.table }
 
 type mergedIndexLookup struct {
 	children []sql.IndexLookup
@@ -1239,7 +1239,7 @@ func (descendIndexLookup) Intersection(...sql.IndexLookup) sql.IndexLookup {
 func TestIndexesIntersection(t *testing.T) {
 	require := require.New(t)
 
-	idx1, idx2 := &mergableDummyIndex{table: "bar"}, &mergableDummyIndex{table: "foo"}
+	idx1, idx2 := &mergeableDummyIndex{table: "bar"}, &mergeableDummyIndex{table: "foo"}
 
 	left := map[string]*indexLookup{
 		"a": &indexLookup{&mergeableIndexLookup{id: "a"}, nil},
