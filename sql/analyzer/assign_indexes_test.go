@@ -189,24 +189,30 @@ func TestAssignIndexes(t *testing.T) {
 }
 
 func TestGetIndexes(t *testing.T) {
-	indexes := []*testutil.MergeableDummyIndex{
-		{
+	indexes := []sql.Index {
+		&testutil.MergeableDummyIndex{
 			"t1",
 			[]sql.Expression{
 				col(0, "t1", "bar"),
 			},
 		},
-		{
+		&testutil.MergeableDummyIndex{
 			"t2",
 			[]sql.Expression{
 				col(0, "t2", "foo"),
 				col(0, "t2", "bar"),
 			},
 		},
-		{
+		&testutil.MergeableDummyIndex{
 			"t2",
 			[]sql.Expression{
 				col(0, "t2", "bar"),
+			},
+		},
+		&testutil.UnmergeableDummyIndex{
+			"t3",
+			[]sql.Expression{
+				col(0, "t3", "foo"),
 			},
 		},
 	}
@@ -253,6 +259,57 @@ func TestGetIndexes(t *testing.T) {
 					&testutil.MergeableIndexLookup{Id: "1", Unions: []string{"2"}},
 					[]sql.Index{
 						indexes[0],
+						indexes[0],
+					},
+				},
+			},
+			true,
+		},
+		{
+			or(
+				eq(
+					col(0, "t3", "foo"),
+					lit(1),
+				),
+				eq(
+					col(0, "t3", "foo"),
+					lit(2),
+				),
+			),
+			nil,
+			true,
+		},
+		{
+			or(
+				eq(
+					col(0, "t3", "foo"),
+					lit(1),
+				),
+				eq(
+					col(0, "t3", "foo"),
+					lit(2),
+				),
+			),
+			nil,
+			true,
+		},
+		{
+			in(
+				col(0, "t3", "foo"),
+				tuple(lit(1), lit(2)),
+			),
+			nil,
+			true,
+		},
+		{
+			in(
+				col(0, "t1", "bar"),
+				tuple(lit(1), lit(2)),
+			),
+			map[string]*indexLookup{
+				"t1": &indexLookup{
+					&testutil.MergeableIndexLookup{Id: "1", Unions: []string{"2"}},
+					[]sql.Index{
 						indexes[0],
 					},
 				},
@@ -354,14 +411,9 @@ func TestGetIndexes(t *testing.T) {
 			true,
 		},
 		{
-			expression.NewIn(
+			in(
 				col(0, "t1", "bar"),
-				expression.NewTuple(
-					lit(1),
-					lit(2),
-					lit(3),
-					lit(4),
-				),
+				tuple(lit(1), lit(2), lit(3), lit(4)),
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
