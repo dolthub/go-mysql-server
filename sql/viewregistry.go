@@ -90,6 +90,29 @@ func (r *ViewRegistry) Delete(databaseName, viewName string) error {
 	return nil
 }
 
+// DeleteList tries to delete a list of view keys.
+// If the list contains views that do exist and views that do not, the existing
+// views are deleted if and only if the errIfNotExists flag is set to false; if
+// it is set to true, no views are deleted and an error is returned.
+func (r *ViewRegistry) DeleteList(keys []ViewKey, errIfNotExists bool) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if errIfNotExists {
+		for _, key := range keys {
+			if !r.exists(key.dbName, key.viewName) {
+				return ErrNonExistingView.New(key.dbName, key.viewName)
+			}
+		}
+	}
+
+	for _, key := range keys {
+		delete(r.views, key)
+	}
+
+	return nil
+}
+
 // View returns a pointer to the view specified by the pair {databaseName,
 // viewName}, returning an error if it does not exist.
 func (r *ViewRegistry) View(databaseName, viewName string) (*View, error) {
@@ -126,4 +149,19 @@ func (r *ViewRegistry) ViewsInDatabase(databaseName string) (views []View) {
 	}
 
 	return views
+}
+
+func (r *ViewRegistry) exists(databaseName, viewName string) bool {
+	key := NewViewKey(databaseName, viewName)
+	_, ok := r.views[key]
+
+	return ok
+}
+
+// Exists returns whether the specified key is already registered
+func (r *ViewRegistry) Exists(databaseName, viewName string) bool {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	return r.exists(databaseName, viewName)
 }
