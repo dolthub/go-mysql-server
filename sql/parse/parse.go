@@ -37,6 +37,7 @@ var (
 	describeTablesRegex  = regexp.MustCompile(`^(describe|desc)\s+table\s+(.*)`)
 	createIndexRegex     = regexp.MustCompile(`^create\s+index\s+`)
 	createViewRegex      = regexp.MustCompile(`^create\s+(or\s+replace\s+)?view\s+`)
+	dropViewRegex        = regexp.MustCompile(`^drop\s+(if\s+exists\s+)?view\s+`)
 	dropIndexRegex       = regexp.MustCompile(`^drop\s+index\s+`)
 	showIndexRegex       = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
 	showCreateRegex      = regexp.MustCompile(`^show create\s+\S+\s*`)
@@ -84,6 +85,8 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return parseCreateIndex(ctx, s)
 	case createViewRegex.MatchString(lowerQuery):
 		return parseCreateView(ctx, s)
+	case dropViewRegex.MatchString(lowerQuery):
+		return parseDropView(ctx, s)
 	case dropIndexRegex.MatchString(lowerQuery):
 		return parseDropIndex(s)
 	case showIndexRegex.MatchString(lowerQuery):

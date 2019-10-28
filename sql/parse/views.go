@@ -13,6 +13,7 @@ import (
 
 var ErrMalformedViewName = errors.NewKind("the view name '%s' is not correct")
 var ErrMalformedCreateView = errors.NewKind("view definition %#v is not a SELECT query")
+var ErrViewsToDropNotFound = errors.NewKind("the list of views to drop must contain at least one view")
 
 // parseCreateView parses
 // CREATE [OR REPLACE] VIEW [db_name.]view_name AS select_statement
@@ -86,4 +87,49 @@ func parseCreateView(ctx *sql.Context, s string) (sql.Node, error) {
 	return plan.NewCreateView(
 		sql.UnresolvedDatabase(databaseName), viewName, columns, subqueryAlias, isReplace,
 	), nil
+}
+
+// parseDropView parses
+// DROP VIEW [IF EXISTS] [db_name1.]view_name1 [, [db_name2.]view_name2, ...]
+// [RESTRICT] [CASCADE]
+// and returns a DropView node in case of success. As per MySQL specification,
+// RESTRICT and CASCADE, if given, are parsed and ignored.
+func parseDropView(ctx *sql.Context, s string) (sql.Node, error) {
+	r := bufio.NewReader(strings.NewReader(s))
+
+	var (
+		views      []QualifiedName
+		ifExists   bool
+		unusedBool bool
+	)
+
+	err := parseFuncs{
+		expect("drop"),
+		skipSpaces,
+		expect("view"),
+		skipSpaces,
+		multiMaybe(&ifExists, "if", "exists"),
+		skipSpaces,
+		readQualifiedIdentifierList(&views),
+		skipSpaces,
+		maybe(&unusedBool, "restrict"),
+		skipSpaces,
+		maybe(&unusedBool, "cascade"),
+		checkEOF,
+	}.exec(r)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(views) < 1 {
+		return nil, ErrViewsToDropNotFound.New()
+	}
+
+	plans := make([]sql.Node, len(views))
+	for i, view := range views {
+		plans[i] = plan.NewSingleDropView(sql.UnresolvedDatabase(view.db), view.name)
+	}
+
+	return plan.NewDropView(plans, ifExists), nil
 }

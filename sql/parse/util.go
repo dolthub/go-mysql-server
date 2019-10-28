@@ -516,3 +516,56 @@ func maybeList(opening, separator, closing rune, list *[]string) parseFunc {
 		}
 	}
 }
+
+type QualifiedName struct {
+	db   string
+	name string
+}
+
+func readQualifiedIdentifierList(list *[]QualifiedName) parseFunc {
+	return func(rd *bufio.Reader) error {
+		for {
+			var newItem []string
+			err := parseFuncs{
+				skipSpaces,
+				readIdentList('.', &newItem),
+				skipSpaces,
+			}.exec(rd)
+
+			if err != nil {
+				return err
+			}
+
+			if len(newItem) < 1 || len(newItem) > 2 {
+				return errUnexpectedSyntax.New("[db_name.]viewName", strings.Join(newItem, "."))
+			}
+
+			var db, name string
+
+			if len(newItem) == 1 {
+				db = ""
+				name = newItem[0]
+			} else {
+				db = newItem[0]
+				name = newItem[1]
+			}
+
+			*list = append(*list, QualifiedName{db, name})
+
+			r, _, err := rd.ReadRune()
+			if err != nil {
+				if err == io.EOF {
+					return nil
+				}
+				return err
+			}
+
+			switch r {
+			case ',':
+				continue
+			default:
+				return rd.UnreadRune()
+			}
+		}
+	}
+}

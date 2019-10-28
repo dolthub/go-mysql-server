@@ -75,3 +75,77 @@ func TestParseCreateView(t *testing.T) {
 		})
 	}
 }
+
+func TestParseDropView(t *testing.T) {
+	var fixtures = map[string]sql.Node{
+		`DROP VIEW view1`: plan.NewDropView(
+			[]sql.Node{plan.NewSingleDropView(sql.UnresolvedDatabase(""), "view1")},
+			false,
+		),
+		`DROP VIEW view1, view2`: plan.NewDropView(
+			[]sql.Node{
+				plan.NewSingleDropView(sql.UnresolvedDatabase(""), "view1"),
+				plan.NewSingleDropView(sql.UnresolvedDatabase(""), "view2"),
+			},
+			false,
+		),
+		`DROP VIEW db1.view1`: plan.NewDropView(
+			[]sql.Node{
+				plan.NewSingleDropView(sql.UnresolvedDatabase("db1"), "view1"),
+			},
+			false,
+		),
+		`DROP VIEW db1.view1, view2`: plan.NewDropView(
+			[]sql.Node{
+				plan.NewSingleDropView(sql.UnresolvedDatabase("db1"), "view1"),
+				plan.NewSingleDropView(sql.UnresolvedDatabase(""), "view2"),
+			},
+			false,
+		),
+		`DROP VIEW view1, db2.view2`: plan.NewDropView(
+			[]sql.Node{
+				plan.NewSingleDropView(sql.UnresolvedDatabase(""), "view1"),
+				plan.NewSingleDropView(sql.UnresolvedDatabase("db2"), "view2"),
+			},
+			false,
+		),
+		`DROP VIEW db1.view1, db2.view2`: plan.NewDropView(
+			[]sql.Node{
+				plan.NewSingleDropView(sql.UnresolvedDatabase("db1"), "view1"),
+				plan.NewSingleDropView(sql.UnresolvedDatabase("db2"), "view2"),
+			},
+			false,
+		),
+		`DROP VIEW IF EXISTS myview`: plan.NewDropView(
+			[]sql.Node{plan.NewSingleDropView(sql.UnresolvedDatabase(""), "myview")},
+			true,
+		),
+		`DROP VIEW IF EXISTS db1.view1, db2.view2`: plan.NewDropView(
+			[]sql.Node{
+				plan.NewSingleDropView(sql.UnresolvedDatabase("db1"), "view1"),
+				plan.NewSingleDropView(sql.UnresolvedDatabase("db2"), "view2"),
+			},
+			true,
+		),
+		`DROP VIEW IF EXISTS db1.view1, db2.view2 RESTRICT CASCADE`: plan.NewDropView(
+			[]sql.Node{
+				plan.NewSingleDropView(sql.UnresolvedDatabase("db1"), "view1"),
+				plan.NewSingleDropView(sql.UnresolvedDatabase("db2"), "view2"),
+			},
+			true,
+		),
+	}
+
+	for query, expectedPlan := range fixtures {
+		t.Run(query, func(t *testing.T) {
+			require := require.New(t)
+
+			ctx := sql.NewEmptyContext()
+			lowerquery := strings.ToLower(query)
+			result, err := parseDropView(ctx, lowerquery)
+
+			require.NoError(err)
+			require.Equal(expectedPlan, result)
+		})
+	}
+}
