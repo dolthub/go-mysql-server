@@ -120,6 +120,12 @@ type OpaqueNode interface {
 	Opaque() bool
 }
 
+// AsyncNode is a node that can be executed asynchronously.
+type AsyncNode interface {
+	// IsAsync reports whether the node is async or not.
+	IsAsync() bool
+}
+
 // Expressioner is a node that contains expressions.
 type Expressioner interface {
 	// Expressions returns the list of expressions contained by the node.

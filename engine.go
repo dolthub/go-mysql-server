@@ -153,6 +153,18 @@ func (e *Engine) Query(
 	return analyzed.Schema(), iter, nil
 }
 
+// Async returns true if the query is async. If there are any errors with the
+// query it returns false
+func (e *Engine) Async(ctx *sql.Context, query string) bool {
+	parsed, err := parse.Parse(ctx, query)
+	if err != nil {
+		return false
+	}
+
+	asyncNode, ok := parsed.(sql.AsyncNode)
+	return ok && asyncNode.IsAsync()
+}
+
 // AddDatabase adds the given database to the catalog.
 func (e *Engine) AddDatabase(db sql.Database) {
 	e.Catalog.AddDatabase(db)
