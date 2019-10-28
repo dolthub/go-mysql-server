@@ -60,6 +60,10 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 			nc := *node
 			nc.Catalog = a.Catalog
 			return &nc, nil
+		case *plan.CreateView:
+			nc := *node
+			nc.Catalog = a.Catalog
+			return &nc, nil
 		default:
 			return n, nil
 		}

@@ -36,6 +36,7 @@ var (
 var (
 	describeTablesRegex  = regexp.MustCompile(`^(describe|desc)\s+table\s+(.*)`)
 	createIndexRegex     = regexp.MustCompile(`^create\s+index\s+`)
+	createViewRegex      = regexp.MustCompile(`^create\s+(or\s+replace\s+)?view\s+`)
 	dropIndexRegex       = regexp.MustCompile(`^drop\s+index\s+`)
 	showIndexRegex       = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
 	showCreateRegex      = regexp.MustCompile(`^show create\s+\S+\s*`)
@@ -47,7 +48,6 @@ var (
 	unlockTablesRegex    = regexp.MustCompile(`^unlock\s+tables$`)
 	lockTablesRegex      = regexp.MustCompile(`^lock\s+tables\s`)
 	setRegex             = regexp.MustCompile(`^set\s+`)
-	createViewRegex      = regexp.MustCompile(`^create\s+view\s+`)
 )
 
 // These constants aren't exported from vitess for some reason. This could be removed if we changed this.
@@ -82,6 +82,8 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return parseDescribeTables(lowerQuery)
 	case createIndexRegex.MatchString(lowerQuery):
 		return parseCreateIndex(ctx, s)
+	case createViewRegex.MatchString(lowerQuery):
+		return parseCreateView(ctx, s)
 	case dropIndexRegex.MatchString(lowerQuery):
 		return parseDropIndex(s)
 	case showIndexRegex.MatchString(lowerQuery):
@@ -104,9 +106,6 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return parseLockTables(ctx, s)
 	case setRegex.MatchString(lowerQuery):
 		s = fixSetQuery(s)
-	case createViewRegex.MatchString(lowerQuery):
-		// CREATE VIEW parses as a CREATE DDL statement with an empty table spec
-		return nil, ErrUnsupportedFeature.New("CREATE VIEW")
 	}
 
 	stmt, err := sqlparser.Parse(s)

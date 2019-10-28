@@ -64,6 +64,14 @@ func expect(expected string) parseFunc {
 }
 
 func skipSpaces(r *bufio.Reader) error {
+	var unusedCount int
+	return readSpaces(r, &unusedCount)
+}
+
+// readSpaces reads every contiguous space from the reader, populating
+// numSpacesRead with the number of spaces read.
+func readSpaces(r *bufio.Reader, numSpacesRead *int) error {
+	*numSpacesRead = 0
 	for {
 		ru, _, err := r.ReadRune()
 		if err == io.EOF {
@@ -77,6 +85,7 @@ func skipSpaces(r *bufio.Reader) error {
 		if !unicode.IsSpace(ru) {
 			return r.UnreadRune()
 		}
+		*numSpacesRead++
 	}
 }
 
@@ -127,6 +136,29 @@ func readLetter(r *bufio.Reader, buf *bytes.Buffer) error {
 	return nil
 }
 
+// readLetterOrPoint parses a single rune from the reader and consumes it,
+// copying it to the buffer, if it is either a letter or a point
+func readLetterOrPoint(r *bufio.Reader, buf *bytes.Buffer) error {
+	ru, _, err := r.ReadRune()
+	if err != nil {
+		if err == io.EOF {
+			return nil
+		}
+
+		return err
+	}
+
+	if !unicode.IsLetter(ru) && ru != '.' {
+		if err := r.UnreadRune(); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	buf.WriteRune(ru)
+	return nil
+}
+
 func readValidIdentRune(r *bufio.Reader, buf *bytes.Buffer) error {
 	ru, _, err := r.ReadRune()
 	if err != nil {
@@ -142,6 +174,27 @@ func readValidIdentRune(r *bufio.Reader, buf *bytes.Buffer) error {
 
 	buf.WriteRune(ru)
 	return nil
+}
+
+// readValidScopedIdentRune parses a single rune from the reader and consumes
+// it, copying it to the buffer, if is a letter, a digit, an underscore or the
+// specified separator.
+// If the returned error is not nil, the  returned rune equals the null
+// character.
+func readValidScopedIdentRune(r *bufio.Reader, separator rune) (rune, error) {
+	ru, _, err := r.ReadRune()
+	if err != nil {
+		return 0, err
+	}
+
+	if !unicode.IsLetter(ru) && !unicode.IsDigit(ru) && ru != '_' && ru != separator {
+		if err := r.UnreadRune(); err != nil {
+			return 0, err
+		}
+		return 0, io.EOF
+	}
+
+	return ru, nil
 }
 
 func readValidQuotedIdentRune(r *bufio.Reader, buf *bytes.Buffer) error {
@@ -195,6 +248,44 @@ func readIdent(ident *string) parseFunc {
 		}
 
 		*ident = strings.ToLower(buf.String())
+		return nil
+	}
+}
+
+// readIdentList reads a scoped identifier, populating the specified slice
+// with the different parts of the identifier if it is correctly formed.
+// A scoped identifier is a sequence of identifiers separated by the specified
+// rune in separator. An identifier is a string of runes whose first character
+// is a letter and the following ones are either letters, digits or underscores.
+// An example of a correctly formed scoped identifier is "dbName.tableName",
+// that would populate the slice with the values ["dbName", "tableName"]
+func readIdentList(separator rune, idents *[]string) parseFunc {
+	return func(r *bufio.Reader) error {
+		var buf bytes.Buffer
+		if err := readLetter(r, &buf); err != nil {
+			return err
+		}
+
+		for {
+			currentRune, err := readValidScopedIdentRune(r, separator)
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				return err
+			}
+
+			if currentRune == separator {
+				*idents = append(*idents, buf.String())
+				buf.Reset()
+			} else {
+				buf.WriteRune(currentRune)
+			}
+		}
+
+		if readString := buf.String(); len(readString) > 0 {
+			*idents = append(*idents, readString)
+		}
 		return nil
 	}
 }
@@ -307,4 +398,121 @@ func expectQuote(r *bufio.Reader) error {
 	}
 
 	return nil
+}
+
+// maybe tries to read the specified string, consuming the reader if the string
+// is found. The `matched` boolean is set to true if the string is found
+func maybe(matched *bool, str string) parseFunc {
+	return func(rd *bufio.Reader) error {
+		*matched = false
+		strLength := len(str)
+
+		data, err := rd.Peek(strLength)
+		if err != nil {
+			// If there are not enough runes, what we expected was not there, which
+			// is not an error per se.
+			if len(data) < strLength {
+				return nil
+			}
+
+			return err
+		}
+
+		if strings.ToLower(string(data)) == str {
+			_, err := rd.Discard(strLength)
+			if err != nil {
+				return err
+			}
+
+			*matched = true
+			return nil
+		}
+
+		return nil
+	}
+}
+
+// multiMaybe tries to read the specified strings, one after the other,
+// separated by an arbitrary number of spaces. It consumes the reader if and
+// only if all the strings are found.
+func multiMaybe(matched *bool, strings ...string) parseFunc {
+	return func(rd *bufio.Reader) error {
+		*matched = false
+		var read string
+		for _, str := range strings {
+			if err := maybe(matched, str)(rd); err != nil {
+				return err
+			}
+
+			if !*matched {
+				unreadString(rd, read)
+				return nil
+			}
+
+			var numSpaces int
+			if err := readSpaces(rd, &numSpaces); err != nil {
+				return err
+			}
+
+			read = read + str
+			for i := 0; i < numSpaces; i++ {
+				read = read + " "
+			}
+		}
+		*matched = true
+		return nil
+	}
+}
+
+// maybeList reads a list of strings separated by the specified separator, with
+// a rune indicating the opening of the list and another one specifying its
+// closing.
+// For example, readList('(', ',', ')', list) parses "(uno,  dos,tres)" and
+// populates list with the array of strings ["uno", "dos", "tres"]
+// If the opening is not found, this does not consumes any rune from the
+// reader. If there is a parsing error after some elements were found, the list
+// is partially populated with the correct fields
+func maybeList(opening, separator, closing rune, list *[]string) parseFunc {
+	return func(rd *bufio.Reader) error {
+		r, _, err := rd.ReadRune()
+		if err != nil {
+			return err
+		}
+
+		if r != opening {
+			return rd.UnreadRune()
+		}
+
+		for {
+			var newItem string
+			err := parseFuncs{
+				skipSpaces,
+				readIdent(&newItem),
+				skipSpaces,
+			}.exec(rd)
+
+			if err != nil {
+				return err
+			}
+
+			r, _, err := rd.ReadRune()
+			if err != nil {
+				return err
+			}
+
+			switch r {
+			case closing:
+				*list = append(*list, newItem)
+				return nil
+			case separator:
+				*list = append(*list, newItem)
+				continue
+			default:
+				return errUnexpectedSyntax.New(
+					fmt.Sprintf("%v or %v", separator, closing),
+					string(r),
+				)
+			}
+		}
+	}
 }
