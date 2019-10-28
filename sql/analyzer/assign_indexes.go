@@ -101,12 +101,19 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 			return nil, err
 		}
 
-		for table, idx := range leftIndexes {
-			if idx2, ok := rightIndexes[table]; ok && canMergeIndexes(idx.lookup, idx2.lookup) {
-				idx.lookup = idx.lookup.(sql.SetOperations).Union(idx2.lookup)
-				idx.indexes = append(idx.indexes, idx2.indexes...)
+		for table, leftIdx := range leftIndexes {
+			if rightIdx, ok := rightIndexes[table]; ok {
+				if canMergeIndexes(leftIdx.lookup, rightIdx.lookup) {
+					leftIdx.lookup = leftIdx.lookup.(sql.SetOperations).Union(rightIdx.lookup)
+					leftIdx.indexes = append(leftIdx.indexes, rightIdx.indexes...)
+				} else {
+					// Since we can return one index per table, if we can't merge the second index from this table, return no
+					// indexes. Returning a single one will lead to incorrect results from e.g. pushdown operations when only one
+					// side of the OR expression is used to index the table.
+					return nil, nil
+				}
 			}
-			result[table] = idx
+			result[table] = leftIdx
 		}
 
 		// Put in the result map the indexes for tables we don't have indexes yet.
@@ -161,7 +168,6 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 					lookup, errLookup = nidx.Not(values[0])
 				} else {
 					lookup, errLookup = idx.Get(values[0])
-
 				}
 
 				if errLookup != nil {
@@ -175,16 +181,15 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 						lookup2, errLookup = nidx.Not(v)
 					} else {
 						lookup2, errLookup = idx.Get(v)
-
 					}
 
 					if errLookup != nil {
 						return nil, err
 					}
 
-					// if one of the indexes cannot be merged, return already
+					// if one of the indexes cannot be merged, return a nil result for this table
 					if !canMergeIndexes(lookup, lookup2) {
-						return result, nil
+						return nil, nil
 					}
 
 					if negate {
