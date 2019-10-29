@@ -3149,6 +3149,7 @@ func TestReadOnly(t *testing.T) {
 		`DROP INDEX foo ON mytable`,
 		`INSERT INTO mytable (i, s) VALUES(42, 'yolo')`,
 		`CREATE VIEW myview AS SELECT i FROM mytable`,
+		`DROP VIEW myview`,
 	}
 
 	for _, query := range writingQueries {
