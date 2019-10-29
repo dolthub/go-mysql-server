@@ -98,7 +98,7 @@ func parseDropView(ctx *sql.Context, s string) (sql.Node, error) {
 	r := bufio.NewReader(strings.NewReader(s))
 
 	var (
-		views      []QualifiedName
+		views      []qualifiedName
 		ifExists   bool
 		unusedBool bool
 	)

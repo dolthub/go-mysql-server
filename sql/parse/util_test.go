@@ -474,19 +474,19 @@ func TestReadQualifiedIdentifierList(t *testing.T) {
 
 	testFixtures := []struct {
 		string            string
-		expectedList      []QualifiedName
+		expectedList      []qualifiedName
 		expectedError     bool
 		expectedRemaining string
 	}{
 		{
 			"my_db.myview, db_2.mytable ,   aTable",
-			[]QualifiedName{{"my_db", "myview"}, {"db_2", "mytable"}, {"", "aTable"}},
+			[]qualifiedName{{"my_db", "myview"}, {"db_2", "mytable"}, {"", "aTable"}},
 			false,
 			"",
 		},
 		{
 			"single_identifier -remaining",
-			[]QualifiedName{{"", "single_identifier"}},
+			[]qualifiedName{{"", "single_identifier"}},
 			false,
 			"-remaining",
 		},
@@ -498,7 +498,7 @@ func TestReadQualifiedIdentifierList(t *testing.T) {
 		},
 		{
 			"partial_list,",
-			[]QualifiedName{{"", "partial_list"}},
+			[]qualifiedName{{"", "partial_list"}},
 			true,
 			"",
 		},
@@ -506,7 +506,7 @@ func TestReadQualifiedIdentifierList(t *testing.T) {
 
 	for _, fixture := range testFixtures {
 		reader := bufio.NewReader(strings.NewReader(fixture.string))
-		var actualList []QualifiedName
+		var actualList []qualifiedName
 
 		err := readQualifiedIdentifierList(&actualList)(reader)
 
