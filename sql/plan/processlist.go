@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 
@@ -77,21 +76,36 @@ func (p *ShowProcessList) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 
 	for i, proc := range processes {
 		var status []string
-		for name, progress := range proc.Progress {
-			status = append(status, fmt.Sprintf("%s(%s)", name, progress))
+		var names []string
+		for name := range proc.Progress {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+
+		for _, name := range names {
+			progress := proc.Progress[name]
+
+			printer := sql.NewTreePrinter()
+			_ = printer.WriteNode("\n" + progress.String())
+			children := []string{}
+			for _, partitionProgress := range progress.PartitionsProgress {
+				children = append(children, partitionProgress.String())
+			}
+			sort.Strings(children)
+			_ = printer.WriteChildren(children...)
+
+			status = append(status, printer.String())
 		}
 
 		if len(status) == 0 {
 			status = []string{"running"}
 		}
 
-		sort.Strings(status)
-
 		rows[i] = process{
 			id:      int64(proc.Connection),
 			user:    proc.User,
 			time:    int64(proc.Seconds()),
-			state:   strings.Join(status, ", "),
+			state:   strings.Join(status, ""),
 			command: proc.Type.String(),
 			host:    ctx.Session.Client().Address,
 			info:    proc.Query,

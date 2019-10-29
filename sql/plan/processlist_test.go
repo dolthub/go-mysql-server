@@ -21,19 +21,21 @@ func TestShowProcessList(t *testing.T) {
 	ctx, err := p.AddProcess(ctx, sql.QueryProcess, "SELECT foo")
 	require.NoError(err)
 
-	p.AddProgressItem(ctx.Pid(), "a", 5)
-	p.AddProgressItem(ctx.Pid(), "b", 6)
+	p.AddTableProgress(ctx.Pid(), "a", 5)
+	p.AddTableProgress(ctx.Pid(), "b", 6)
 
 	ctx = sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess))
 	ctx, err = p.AddProcess(ctx, sql.CreateIndexProcess, "SELECT bar")
 	require.NoError(err)
 
-	p.AddProgressItem(ctx.Pid(), "foo", 2)
+	p.AddTableProgress(ctx.Pid(), "foo", 2)
 
-	p.UpdateProgress(1, "a", 3)
-	p.UpdateProgress(1, "a", 1)
-	p.UpdateProgress(1, "b", 2)
-	p.UpdateProgress(2, "foo", 1)
+	p.UpdateTableProgress(1, "a", 3)
+	p.UpdateTableProgress(1, "a", 1)
+	p.UpdatePartitionProgress(1, "a", "a-1", 7)
+	p.UpdatePartitionProgress(1, "a", "a-2", 9)
+	p.UpdateTableProgress(1, "b", 2)
+	p.UpdateTableProgress(2, "foo", 1)
 
 	n.ProcessList = p
 	n.Database = "foo"
@@ -44,8 +46,15 @@ func TestShowProcessList(t *testing.T) {
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{int64(1), "foo", addr, "foo", "query", int64(0), "a(4/5), b(2/6)", "SELECT foo"},
-		{int64(1), "foo", addr, "foo", "create_index", int64(0), "foo(1/2)", "SELECT bar"},
+		{int64(1), "foo", addr, "foo", "query", int64(0),
+			`
+a (4/5 partitions)
+ ├─ a-1 (7/? rows)
+ └─ a-2 (9/? rows)
+
+b (2/6 partitions)
+`, "SELECT foo"},
+		{int64(1), "foo", addr, "foo", "create_index", int64(0), "\nfoo (1/2 partitions)\n", "SELECT bar"},
 	}
 
 	require.ElementsMatch(expected, rows)

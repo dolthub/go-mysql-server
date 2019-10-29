@@ -12,17 +12,46 @@ import (
 
 // Progress between done items and total items.
 type Progress struct {
+	Name  string
 	Done  int64
 	Total int64
 }
 
-func (p Progress) String() string {
+func (p Progress) totalString() string {
 	var total = "?"
 	if p.Total > 0 {
 		total = fmt.Sprint(p.Total)
 	}
+	return total
+}
 
-	return fmt.Sprintf("%d/%s", p.Done, total)
+// TableProgress keeps track of a table progress, and for each of its partitions
+type TableProgress struct {
+	Progress
+	PartitionsProgress map[string]PartitionProgress
+}
+
+func NewTableProgress(name string, total int64) TableProgress {
+	return TableProgress{
+		Progress: Progress{
+			Name:  name,
+			Total: total,
+		},
+		PartitionsProgress: make(map[string]PartitionProgress),
+	}
+}
+
+func (p TableProgress) String() string {
+	return fmt.Sprintf("%s (%d/%s partitions)", p.Name, p.Done, p.totalString())
+}
+
+// PartitionProgress keeps track of a partition progress
+type PartitionProgress struct {
+	Progress
+}
+
+func (p PartitionProgress) String() string {
+	return fmt.Sprintf("%s (%d/%s rows)", p.Name, p.Done, p.totalString())
 }
 
 // ProcessType is the type of process.
@@ -53,7 +82,7 @@ type Process struct {
 	User       string
 	Type       ProcessType
 	Query      string
-	Progress   map[string]Progress
+	Progress   map[string]TableProgress
 	StartedAt  time.Time
 	Kill       context.CancelFunc
 }
@@ -108,7 +137,7 @@ func (pl *ProcessList) AddProcess(
 		Connection: ctx.ID(),
 		Type:       typ,
 		Query:      query,
-		Progress:   make(map[string]Progress),
+		Progress:   make(map[string]TableProgress),
 		User:       ctx.Session.Client().User,
 		StartedAt:  time.Now(),
 		Kill:       cancel,
@@ -117,9 +146,9 @@ func (pl *ProcessList) AddProcess(
 	return ctx, nil
 }
 
-// UpdateProgress updates the progress of the item with the given name for the
+// UpdateTableProgress updates the progress of the table with the given name for the
 // process with the given pid.
-func (pl *ProcessList) UpdateProgress(pid uint64, name string, delta int64) {
+func (pl *ProcessList) UpdateTableProgress(pid uint64, name string, delta int64) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
@@ -130,16 +159,41 @@ func (pl *ProcessList) UpdateProgress(pid uint64, name string, delta int64) {
 
 	progress, ok := p.Progress[name]
 	if !ok {
-		progress = Progress{Total: -1}
+		progress = NewTableProgress(name, -1)
 	}
 
 	progress.Done += delta
 	p.Progress[name] = progress
 }
 
-// AddProgressItem adds a new item to track progress from to the process with
+// UpdatePartitionProgress updates the progress of the table partition with the
+// given name for the process with the given pid.
+func (pl *ProcessList) UpdatePartitionProgress(pid uint64, tableName, partitionName string, delta int64) {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+
+	p, ok := pl.procs[pid]
+	if !ok {
+		return
+	}
+
+	tablePg, ok := p.Progress[tableName]
+	if !ok {
+		return
+	}
+
+	partitionPg, ok := tablePg.PartitionsProgress[partitionName]
+	if !ok {
+		partitionPg = PartitionProgress{Progress: Progress{Name: partitionName, Total: -1}}
+	}
+
+	partitionPg.Done += delta
+	tablePg.PartitionsProgress[partitionName] = partitionPg
+}
+
+// AddTableProgress adds a new item to track progress from to the process with
 // the given pid. If the pid does not exist, it will do nothing.
-func (pl *ProcessList) AddProgressItem(pid uint64, name string, total int64) {
+func (pl *ProcessList) AddTableProgress(pid uint64, name string, total int64) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
@@ -152,13 +206,38 @@ func (pl *ProcessList) AddProgressItem(pid uint64, name string, total int64) {
 		pg.Total = total
 		p.Progress[name] = pg
 	} else {
-		p.Progress[name] = Progress{Total: total}
+		p.Progress[name] = NewTableProgress(name, total)
 	}
 }
 
-// RemoveProgressItem removes an existing item tracking progress from the
+// AddPartitionProgress adds a new item to track progress from to the process with
+// the given pid. If the pid or the table does not exist, it will do nothing.
+func (pl *ProcessList) AddPartitionProgress(pid uint64, tableName, partitionName string, total int64) {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+
+	p, ok := pl.procs[pid]
+	if !ok {
+		return
+	}
+
+	tablePg, ok := p.Progress[tableName]
+	if !ok {
+		return
+	}
+
+	if pg, ok := tablePg.PartitionsProgress[partitionName]; ok {
+		pg.Total = total
+		tablePg.PartitionsProgress[partitionName] = pg
+	} else {
+		tablePg.PartitionsProgress[partitionName] =
+			PartitionProgress{Progress: Progress{Name: partitionName, Total: total}}
+	}
+}
+
+// RemoveTableProgress removes an existing item tracking progress from the
 // process with the given pid, if it exists.
-func (pl *ProcessList) RemoveProgressItem(pid uint64, name string) {
+func (pl *ProcessList) RemoveTableProgress(pid uint64, name string) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
@@ -168,6 +247,25 @@ func (pl *ProcessList) RemoveProgressItem(pid uint64, name string) {
 	}
 
 	delete(p.Progress, name)
+}
+
+// RemovePartitionProgress removes an existing item tracking progress from the
+// process with the given pid, if it exists.
+func (pl *ProcessList) RemovePartitionProgress(pid uint64, tableName, partitionName string) {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+
+	p, ok := pl.procs[pid]
+	if !ok {
+		return
+	}
+
+	tablePg, ok := p.Progress[tableName]
+	if !ok {
+		return
+	}
+
+	delete(tablePg.PartitionsProgress, partitionName)
 }
 
 // Kill terminates all queries for a given connection id.
@@ -220,7 +318,7 @@ func (pl *ProcessList) Processes() []Process {
 
 	for _, proc := range pl.procs {
 		p := *proc
-		var progress = make(map[string]Progress, len(p.Progress))
+		var progress = make(map[string]TableProgress, len(p.Progress))
 		for n, p := range p.Progress {
 			progress[n] = p
 		}
