@@ -2,8 +2,8 @@ package sqle_test
 
 import (
 	"context"
+	"fmt"
 	"github.com/src-d/go-mysql-server/sql/expression"
-	testutil "github.com/src-d/go-mysql-server/sql/test_util"
 	"io"
 	"math"
 	"strings"
@@ -19,7 +19,6 @@ import (
 	"github.com/src-d/go-mysql-server/sql/parse"
 	"github.com/src-d/go-mysql-server/sql/plan"
 	"github.com/src-d/go-mysql-server/test"
-
 
 	"github.com/stretchr/testify/require"
 )
@@ -1598,42 +1597,28 @@ var queries = []struct {
 }
 
 func TestQueries(t *testing.T) {
-	// e := newEngine(t)
-	// t.Run("sequential", func(t *testing.T) {
-	// 	for _, tt := range queries {
-	// 		testQuery(t, e, tt.query, tt.expected)
-	// 	}
-	// })
-	//
-	// ep := newEngineWithParallelism(t, 2)
-	// t.Run("parallel", func(t *testing.T) {
-	// 	for _, tt := range queries {
-	// 		testQuery(t, ep, tt.query, tt.expected)
-	// 	}
-	// })
-
-	indexDriver := testutil.NewIndexDriver("mydb", map[string][]sql.Index{
+	testIndexDriver := memory.NewIndexDriver("mydb", map[string][]sql.Index{
 		"mytable": {
-			&testutil.UnmergeableDummyIndex{
-				DB: "mydb",
-				DriverName: testutil.IndexDriverId,
-				TableName: "mytable",
+			&memory.UnmergeableDummyIndex{
+				DB:         "mydb",
+				DriverName: memory.IndexDriverId,
+				TableName:  "mytable",
 				Exprs: []sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
 				},
 			},
-			&testutil.UnmergeableDummyIndex{
-				DB: "mydb",
-				DriverName: testutil.IndexDriverId,
-				TableName: "mytable",
+			&memory.UnmergeableDummyIndex{
+				DB:         "mydb",
+				DriverName: memory.IndexDriverId,
+				TableName:  "mytable",
 				Exprs: []sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Text, "mytable", "s", false),
 				},
 			},
-			&testutil.UnmergeableDummyIndex{
-				DB: "mydb",
-				DriverName: testutil.IndexDriverId,
-				TableName: "mytable",
+			&memory.UnmergeableDummyIndex{
+				DB:         "mydb",
+				DriverName: memory.IndexDriverId,
+				TableName:  "mytable",
 				Exprs: []sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
 					expression.NewGetFieldWithTable(0, sql.Text, "mytable", "s", false),
@@ -1642,12 +1627,31 @@ func TestQueries(t *testing.T) {
 		},
 	})
 
-	engIndexes := newEngineWithIndexes(t, indexDriver)
-	t.Run("indexed", func(t *testing.T) {
-		for _, tt := range queries {
-			testQuery(t, engIndexes, tt.query, tt.expected)
+	// Test all queries with these combinations, for a total of 8 runs:
+	// 1) Partitioned tables / non partitioned tables
+	// 2) Indexes enabled / disabled
+	// 3) Parallelism on / off
+	numPartitionsVals := []int{1, testNumPartitions}
+	useIndexesVals := []bool{false, true}
+	parallelVals := []int{1, 2}
+	for _, numPartitions := range numPartitionsVals {
+		for _, useIndexes := range useIndexesVals {
+			for _, parallelism := range parallelVals {
+				var indexDriver sql.IndexDriver
+				if useIndexes {
+					indexDriver = testIndexDriver
+				}
+				engine := newEngineWithParallelism(t, parallelism, indexDriver)
+
+				testName := fmt.Sprintf("partitions=%d, indexes=%v, parallelism=%v", numPartitions, useIndexes, parallelism)
+				t.Run(testName, func(t *testing.T) {
+					for _, tt := range queries {
+						testQuery(t, engine, tt.query, tt.expected)
+					}
+				})
+			}
 		}
-	})
+	}
 }
 
 func TestSessionSelectLimit(t *testing.T) {
@@ -1798,7 +1802,7 @@ func TestWarnings(t *testing.T) {
 	}
 
 	e := newEngine(t)
-	ep := newEngineWithParallelism(t, 2)
+	ep := newEngineWithParallelism(t, 2, nil)
 
 	t.Run("sequential", func(t *testing.T) {
 		for _, tt := range queries {
@@ -1862,7 +1866,7 @@ func TestClearWarnings(t *testing.T) {
 func TestDescribe(t *testing.T) {
 	e := newEngine(t)
 
-	ep := newEngineWithParallelism(t, 2)
+	ep := newEngineWithParallelism(t, 2, nil)
 
 	query := `DESCRIBE FORMAT=TREE SELECT * FROM mytable`
 	expectedSeq := []sql.Row{
@@ -2990,35 +2994,10 @@ func allTestTables(t *testing.T) map[string]*memory.Table {
 }
 
 func newEngine(t *testing.T) *sqle.Engine {
-	return newEngineWithParallelism(t, 1)
+	return newEngineWithParallelism(t, 1, nil)
 }
 
-func newEngineWithIndexes(t *testing.T, driver sql.IndexDriver) *sqle.Engine {
-	tables := allTestTables(t)
-
-	db := memory.NewDatabase("mydb")
-	for name, table := range tables {
-		if name != "other_table" {
-			db.AddTable(name, table)
-		}
-	}
-
-	db2 := memory.NewDatabase("foo")
-	db2.AddTable("other_table", tables["other_table"])
-
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-	catalog.AddDatabase(db2)
-	catalog.AddDatabase(sql.NewInformationSchemaDatabase(catalog))
-	catalog.RegisterIndexDriver(driver)
-
-	a := analyzer.NewDefault(catalog)
-	engine := sqle.New(catalog, a, new(sqle.Config))
-	require.NoError(t, engine.Init())
-	return engine
-}
-
-func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
+func newEngineWithParallelism(t *testing.T, parallelism int, driver sql.IndexDriver) *sqle.Engine {
 	tables := allTestTables(t)
 
 	db := memory.NewDatabase("mydb")
@@ -3043,7 +3022,14 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		a = analyzer.NewDefault(catalog)
 	}
 
-	return sqle.New(catalog, a, new(sqle.Config))
+	if driver != nil {
+		catalog.RegisterIndexDriver(driver)
+	}
+
+	engine := sqle.New(catalog, a, new(sqle.Config))
+	require.NoError(t, engine.Init())
+
+	return engine
 }
 
 const expectedTree = `Limit(5)

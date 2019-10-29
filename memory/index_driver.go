@@ -1,10 +1,10 @@
-package testutil
+package memory
 
 import (
 	"github.com/src-d/go-mysql-server/sql"
 )
 
-const IndexDriverId = "TestIndexDriver"
+const IndexDriverId = "MemoryIndexDriver"
 
 type TestIndexDriver struct {
 	db string

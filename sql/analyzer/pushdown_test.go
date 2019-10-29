@@ -1,7 +1,6 @@
 package analyzer
 
 import (
-	"github.com/src-d/go-mysql-server/sql/test_util"
 	"testing"
 
 	"github.com/src-d/go-mysql-server/memory"
@@ -106,9 +105,9 @@ func TestPushdownIndexable(t *testing.T) {
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 
-	idx1 := &testutil.MergeableDummyIndex{
-		"mytable",
-		[]sql.Expression{
+	idx1 := &memory.MergeableDummyIndex{
+		TableName: "mytable",
+		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 		},
 	}
@@ -117,9 +116,9 @@ func TestPushdownIndexable(t *testing.T) {
 	close(done)
 	<-ready
 
-	idx2 := &testutil.MergeableDummyIndex{
-		"mytable",
-		[]sql.Expression{
+	idx2 := &memory.MergeableDummyIndex{
+		TableName: "mytable",
+		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
 		},
 	}
@@ -128,9 +127,9 @@ func TestPushdownIndexable(t *testing.T) {
 	close(done)
 	<-ready
 
-	idx3 := &testutil.MergeableDummyIndex{
-		"mytable2",
-		[]sql.Expression{
+	idx3 := &memory.MergeableDummyIndex{
+		TableName: "mytable2",
+		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
 		},
 	}
@@ -190,7 +189,7 @@ func TestPushdownIndexable(t *testing.T) {
 						),
 					}).(*memory.Table).
 						WithProjection([]string{"i", "f"}).(*memory.Table).
-						WithIndexLookup(&testutil.MergeableIndexLookup{Id: "3.14"}),
+						WithIndexLookup(&memory.MergeableIndexLookup{Id: "3.14"}),
 				),
 				plan.NewResolvedTable(
 					table2.WithFilters([]sql.Expression{
@@ -202,7 +201,7 @@ func TestPushdownIndexable(t *testing.T) {
 						),
 					}).(*memory.Table).
 						WithProjection([]string{"i2"}).(*memory.Table).
-						WithIndexLookup(&testutil.NegateIndexLookup{Value: "2"}),
+						WithIndexLookup(&memory.NegateIndexLookup{Value: "2"}),
 				),
 			),
 		),
