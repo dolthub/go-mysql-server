@@ -102,17 +102,21 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 		}
 
 		for table, leftIdx := range leftIndexes {
-			if rightIdx, ok := rightIndexes[table]; ok {
-				if canMergeIndexes(leftIdx.lookup, rightIdx.lookup) {
-					leftIdx.lookup = leftIdx.lookup.(sql.SetOperations).Union(rightIdx.lookup)
-					leftIdx.indexes = append(leftIdx.indexes, rightIdx.indexes...)
-				} else {
-					// Since we can return one index per table, if we can't merge the second index from this table, return no
-					// indexes. Returning a single one will lead to incorrect results from e.g. pushdown operations when only one
-					// side of the OR expression is used to index the table.
-					return nil, nil
-				}
+			if rightIdx, ok := rightIndexes[table]; ok && canMergeIndexes(leftIdx.lookup, rightIdx.lookup) {
+				leftIdx.lookup = leftIdx.lookup.(sql.SetOperations).Union(rightIdx.lookup)
+				leftIdx.indexes = append(leftIdx.indexes, rightIdx.indexes...)
 			}
+			// if rightIdx, ok := rightIndexes[table]; ok {
+			// 	if canMergeIndexes(leftIdx.lookup, rightIdx.lookup) {
+			// 		leftIdx.lookup = leftIdx.lookup.(sql.SetOperations).Union(rightIdx.lookup)
+			// 		leftIdx.indexes = append(leftIdx.indexes, rightIdx.indexes...)
+			// 	} else {
+			// 		// Since we can return one index per table, if we can't merge the second index from this table, return no
+			// 		// indexes. Returning a single one will lead to incorrect results from e.g. pushdown operations when only one
+			// 		// side of the OR expression is used to index the table.
+			// 		return nil, nil
+			// 	}
+			// }
 			result[table] = leftIdx
 		}
 

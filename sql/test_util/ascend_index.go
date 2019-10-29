@@ -11,7 +11,7 @@ type AscendIndexLookup struct {
 }
 
 func (AscendIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
-	panic("ascendIndexLookup.Values is a placeholder")
+	return nil, nil
 }
 
 func (l *AscendIndexLookup) Indexes() []string {

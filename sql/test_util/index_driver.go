@@ -4,19 +4,25 @@ import (
 	"github.com/src-d/go-mysql-server/sql"
 )
 
+const IndexDriverId = "TestIndexDriver"
+
 type TestIndexDriver struct {
+	db string
 	indexes map[string][]sql.Index
 }
 
-func NewIndexDriver(indexes map[string][]sql.Index) *TestIndexDriver {
-	return &TestIndexDriver{indexes: indexes}
+func NewIndexDriver(db string, indexes map[string][]sql.Index) *TestIndexDriver {
+	return &TestIndexDriver{db: db, indexes: indexes}
 }
 
 func (d *TestIndexDriver) ID() string {
-	panic("TestIndexDriver")
+	return IndexDriverId
 }
 
 func (d *TestIndexDriver) LoadAll(db, table string) ([]sql.Index, error) {
+	if d.db != db {
+		return nil, nil
+	}
 	return d.indexes[table], nil
 }
 

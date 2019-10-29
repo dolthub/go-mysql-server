@@ -7,12 +7,15 @@ import (
 )
 
 type UnmergeableDummyIndex struct {
-	TableName string
-	Exprs     []sql.Expression
+	DB         string // required for engine tests with driver
+	DriverName string // required for engine tests with driver
+	TableName  string
+	Exprs      []sql.Expression
 }
 
-func (u *UnmergeableDummyIndex) Database() string { return "" }
-func (u *UnmergeableDummyIndex) Driver() string   { return "" }
+func (u *UnmergeableDummyIndex) Database() string { return u.DB }
+func (u *UnmergeableDummyIndex) Driver() string   { return u.DriverName }
+
 func (u *UnmergeableDummyIndex) Expressions() []string {
 	var exprs []string
 	for _, e := range u.Exprs {
@@ -39,7 +42,7 @@ type UnmergeableIndexLookup struct {
 }
 
 func (u UnmergeableIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
-	panic("unimplemented")
+	return nil, nil
 }
 
 func (u UnmergeableIndexLookup) Indexes() []string {

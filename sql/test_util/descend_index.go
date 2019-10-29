@@ -11,7 +11,7 @@ type DescendIndexLookup struct {
 }
 
 func (DescendIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
-	panic("descendIndexLookup.Values is a placeholder")
+	return nil, nil
 }
 
 func (l *DescendIndexLookup) Indexes() []string {

@@ -2,6 +2,8 @@ package sqle_test
 
 import (
 	"context"
+	"github.com/src-d/go-mysql-server/sql/expression"
+	testutil "github.com/src-d/go-mysql-server/sql/test_util"
 	"io"
 	"math"
 	"strings"
@@ -56,6 +58,14 @@ var queries = []struct {
 	},
 	{
 		"SELECT i FROM mytable WHERE i <> 2;",
+		[]sql.Row{{int64(1)}, {int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i in (1, 3)",
+		[]sql.Row{{int64(1)}, {int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i = 1 or i = 3",
 		[]sql.Row{{int64(1)}, {int64(3)}},
 	},
 	{
@@ -1588,17 +1598,54 @@ var queries = []struct {
 }
 
 func TestQueries(t *testing.T) {
-	e := newEngine(t)
-	t.Run("sequential", func(t *testing.T) {
-		for _, tt := range queries {
-			testQuery(t, e, tt.query, tt.expected)
-		}
+	// e := newEngine(t)
+	// t.Run("sequential", func(t *testing.T) {
+	// 	for _, tt := range queries {
+	// 		testQuery(t, e, tt.query, tt.expected)
+	// 	}
+	// })
+	//
+	// ep := newEngineWithParallelism(t, 2)
+	// t.Run("parallel", func(t *testing.T) {
+	// 	for _, tt := range queries {
+	// 		testQuery(t, ep, tt.query, tt.expected)
+	// 	}
+	// })
+
+	indexDriver := testutil.NewIndexDriver("mydb", map[string][]sql.Index{
+		"mytable": {
+			&testutil.UnmergeableDummyIndex{
+				DB: "mydb",
+				DriverName: testutil.IndexDriverId,
+				TableName: "mytable",
+				Exprs: []sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+				},
+			},
+			&testutil.UnmergeableDummyIndex{
+				DB: "mydb",
+				DriverName: testutil.IndexDriverId,
+				TableName: "mytable",
+				Exprs: []sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Text, "mytable", "s", false),
+				},
+			},
+			&testutil.UnmergeableDummyIndex{
+				DB: "mydb",
+				DriverName: testutil.IndexDriverId,
+				TableName: "mytable",
+				Exprs: []sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+					expression.NewGetFieldWithTable(0, sql.Text, "mytable", "s", false),
+				},
+			},
+		},
 	})
 
-	ep := newEngineWithParallelism(t, 2)
-	t.Run("parallel", func(t *testing.T) {
+	engIndexes := newEngineWithIndexes(t, indexDriver)
+	t.Run("indexed", func(t *testing.T) {
 		for _, tt := range queries {
-			testQuery(t, ep, tt.query, tt.expected)
+			testQuery(t, engIndexes, tt.query, tt.expected)
 		}
 	})
 }
@@ -2800,10 +2847,6 @@ func testQueryWithContext(ctx *sql.Context, t *testing.T, e *sqle.Engine, q stri
 	})
 }
 
-func newEngine(t *testing.T) *sqle.Engine {
-	return newEngineWithParallelism(t, 1)
-}
-
 func allTestTables(t *testing.T) map[string]*memory.Table {
 	tables := make(map[string]*memory.Table)
 
@@ -2944,6 +2987,35 @@ func allTestTables(t *testing.T) map[string]*memory.Table {
 	}, testNumPartitions)
 
 	return tables
+}
+
+func newEngine(t *testing.T) *sqle.Engine {
+	return newEngineWithParallelism(t, 1)
+}
+
+func newEngineWithIndexes(t *testing.T, driver sql.IndexDriver) *sqle.Engine {
+	tables := allTestTables(t)
+
+	db := memory.NewDatabase("mydb")
+	for name, table := range tables {
+		if name != "other_table" {
+			db.AddTable(name, table)
+		}
+	}
+
+	db2 := memory.NewDatabase("foo")
+	db2.AddTable("other_table", tables["other_table"])
+
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
+	catalog.AddDatabase(db2)
+	catalog.AddDatabase(sql.NewInformationSchemaDatabase(catalog))
+	catalog.RegisterIndexDriver(driver)
+
+	a := analyzer.NewDefault(catalog)
+	engine := sqle.New(catalog, a, new(sqle.Config))
+	require.NoError(t, engine.Init())
+	return engine
 }
 
 func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {

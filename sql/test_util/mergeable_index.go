@@ -31,7 +31,7 @@ func (i *MergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 }
 
 func (i *MergeableIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
-	panic("not implemented")
+	return nil, nil
 }
 
 func (i *MergeableIndexLookup) Indexes() []string {
@@ -75,7 +75,7 @@ type MergedIndexLookup struct {
 }
 
 func (MergedIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
-	panic("mergedIndexLookup.Values is a placeholder")
+	return nil, nil
 }
 
 func (i *MergedIndexLookup) Indexes() []string {
@@ -103,12 +103,15 @@ func (MergedIndexLookup) Intersection(...sql.IndexLookup) sql.IndexLookup {
 }
 
 type MergeableDummyIndex struct {
-	TableName string
-	Exprs     []sql.Expression
+	DB         string // required for engine tests
+	DriverName string // required for engine tests
+	TableName  string
+	Exprs      []sql.Expression
 }
 
-func (MergeableDummyIndex) Database() string { return "" }
-func (MergeableDummyIndex) Driver() string   { return "" }
+func (i MergeableDummyIndex) Database() string { return i.DB }
+func (i MergeableDummyIndex) Driver() string   { return i.DriverName }
+
 func (i MergeableDummyIndex) Expressions() []string {
 	var exprs []string
 	for _, e := range i.Exprs {

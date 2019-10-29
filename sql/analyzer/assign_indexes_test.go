@@ -61,8 +61,8 @@ func TestAssignIndexes(t *testing.T) {
 
 	catalog := sql.NewCatalog()
 	idx1 := &testutil.MergeableDummyIndex{
-		"t2",
-		[]sql.Expression{
+		TableName: "t2",
+		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int64, "t2", "bar", false),
 		},
 	}
@@ -72,8 +72,8 @@ func TestAssignIndexes(t *testing.T) {
 	<-ready
 
 	idx2 := &testutil.MergeableDummyIndex{
-		"t1",
-		[]sql.Expression{
+		TableName: "t1",
+		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
 		},
 	}
@@ -84,8 +84,8 @@ func TestAssignIndexes(t *testing.T) {
 	<-ready
 
 	idx3 := &testutil.UnmergeableDummyIndex{
-		"t1",
-		[]sql.Expression{
+		TableName: "t1",
+		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
 		},
 	}
@@ -191,27 +191,27 @@ func TestAssignIndexes(t *testing.T) {
 func TestGetIndexes(t *testing.T) {
 	indexes := []sql.Index {
 		&testutil.MergeableDummyIndex{
-			"t1",
-			[]sql.Expression{
+			TableName: "t1",
+			Exprs: []sql.Expression{
 				col(0, "t1", "bar"),
 			},
 		},
 		&testutil.MergeableDummyIndex{
-			"t2",
-			[]sql.Expression{
+			TableName: "t2",
+			Exprs: []sql.Expression{
 				col(0, "t2", "foo"),
 				col(0, "t2", "bar"),
 			},
 		},
 		&testutil.MergeableDummyIndex{
-			"t2",
-			[]sql.Expression{
+			TableName: "t2",
+			Exprs: []sql.Expression{
 				col(0, "t2", "bar"),
 			},
 		},
 		&testutil.UnmergeableDummyIndex{
-			"t3",
-			[]sql.Expression{
+			TableName: "t3",
+			Exprs: []sql.Expression{
 				col(0, "t3", "foo"),
 			},
 		},
@@ -263,20 +263,6 @@ func TestGetIndexes(t *testing.T) {
 					},
 				},
 			},
-			true,
-		},
-		{
-			or(
-				eq(
-					col(0, "t3", "foo"),
-					lit(1),
-				),
-				eq(
-					col(0, "t3", "foo"),
-					lit(2),
-				),
-			),
-			nil,
 			true,
 		},
 		{

@@ -15,7 +15,7 @@ func (l *NegateIndexLookup) GetUnions() []string        { return l.unions }
 func (l *NegateIndexLookup) GetIntersections() []string { return l.intersections }
 
 func (*NegateIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
-	panic("negateIndexLookup.Values is a placeholder")
+	return nil, nil
 }
 
 func (l *NegateIndexLookup) Indexes() []string {
