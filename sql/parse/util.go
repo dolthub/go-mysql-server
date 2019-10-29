@@ -517,11 +517,17 @@ func maybeList(opening, separator, closing rune, list *[]string) parseFunc {
 	}
 }
 
+// A QualifiedName represents an identifier of type "db_name.table_name"
 type QualifiedName struct {
-	db   string
-	name string
+	qualifier string
+	name      string
 }
 
+// readQualifiedIdentifierList reads a comma-separated list of QualifiedNames.
+// Any number of spaces between the qualified names are accepted. The qualifier
+// may be empty, in which case the period is optional.
+// An example of a correctly formed list is:
+// "my_db.myview, db_2.mytable ,   aTable"
 func readQualifiedIdentifierList(list *[]QualifiedName) parseFunc {
 	return func(rd *bufio.Reader) error {
 		for {
@@ -537,20 +543,23 @@ func readQualifiedIdentifierList(list *[]QualifiedName) parseFunc {
 			}
 
 			if len(newItem) < 1 || len(newItem) > 2 {
-				return errUnexpectedSyntax.New("[db_name.]viewName", strings.Join(newItem, "."))
+				return errUnexpectedSyntax.New(
+					"[qualifier.]name",
+					strings.Join(newItem, "."),
+				)
 			}
 
-			var db, name string
+			var qualifier, name string
 
 			if len(newItem) == 1 {
-				db = ""
+				qualifier = ""
 				name = newItem[0]
 			} else {
-				db = newItem[0]
+				qualifier = newItem[0]
 				name = newItem[1]
 			}
 
-			*list = append(*list, QualifiedName{db, name})
+			*list = append(*list, QualifiedName{qualifier, name})
 
 			r, _, err := rd.ReadRune()
 			if err != nil {

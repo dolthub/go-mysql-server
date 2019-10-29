@@ -128,7 +128,7 @@ func parseDropView(ctx *sql.Context, s string) (sql.Node, error) {
 
 	plans := make([]sql.Node, len(views))
 	for i, view := range views {
-		plans[i] = plan.NewSingleDropView(sql.UnresolvedDatabase(view.db), view.name)
+		plans[i] = plan.NewSingleDropView(sql.UnresolvedDatabase(view.qualifier), view.name)
 	}
 
 	return plan.NewDropView(plans, ifExists), nil
