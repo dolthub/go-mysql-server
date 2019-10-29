@@ -40,21 +40,21 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 				}
 				total = count
 			}
-			processList.AddProgressItem(ctx.Pid(), name, total)
+			processList.AddTableProgress(ctx.Pid(), name, total)
 
 			seen[name] = struct{}{}
 
 			onPartitionDone := func(partitionName string) {
-				processList.UpdateProgress(ctx.Pid(), name, 1)
-				processList.RemoveProgressItem(ctx.Pid(), partitionName)
+				processList.UpdateTableProgress(ctx.Pid(), name, 1)
+				processList.RemovePartitionProgress(ctx.Pid(), name, partitionName)
 			}
 
 			onPartitionStart := func(partitionName string) {
-				processList.AddProgressItem(ctx.Pid(), partitionName, -1)
+				processList.AddPartitionProgress(ctx.Pid(), name, partitionName, -1)
 			}
 
 			onRowNext := func(partitionName string) {
-				processList.UpdateProgress(ctx.Pid(), partitionName, 1)
+				processList.UpdatePartitionProgress(ctx.Pid(), name, partitionName, 1)
 			}
 
 			var t sql.Table

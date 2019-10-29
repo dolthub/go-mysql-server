@@ -20,16 +20,16 @@ func TestProcessList(t *testing.T) {
 	require.Equal(uint64(1), ctx.Pid())
 	require.Len(p.procs, 1)
 
-	p.AddProgressItem(ctx.Pid(), "a", 5)
-	p.AddProgressItem(ctx.Pid(), "b", 6)
+	p.AddTableProgress(ctx.Pid(), "a", 5)
+	p.AddTableProgress(ctx.Pid(), "b", 6)
 
 	expectedProcess := &Process{
 		Pid:        1,
 		Connection: 1,
 		Type:       QueryProcess,
-		Progress: map[string]Progress{
-			"a": Progress{0, 5},
-			"b": Progress{0, 6},
+		Progress: map[string]TableProgress{
+			"a": {Progress{Name: "a", Done: 0, Total: 5}, map[string]PartitionProgress{}},
+			"b": {Progress{Name: "b", Done: 0, Total: 6}, map[string]PartitionProgress{}},
 		},
 		User:      "foo",
 		Query:     "SELECT foo",
@@ -39,19 +39,36 @@ func TestProcessList(t *testing.T) {
 	p.procs[ctx.Pid()].Kill = nil
 	require.Equal(expectedProcess, p.procs[ctx.Pid()])
 
+	p.AddPartitionProgress(ctx.Pid(), "b", "b-1", -1)
+	p.AddPartitionProgress(ctx.Pid(), "b", "b-2", -1)
+	p.AddPartitionProgress(ctx.Pid(), "b", "b-3", -1)
+
+	p.UpdatePartitionProgress(ctx.Pid(), "b", "b-2", 1)
+
+	p.RemovePartitionProgress(ctx.Pid(), "b", "b-3")
+
+	expectedProgress := map[string]TableProgress{
+		"a": {Progress{Name: "a", Total: 5}, map[string]PartitionProgress{}},
+		"b": {Progress{Name: "b", Total: 6}, map[string]PartitionProgress{
+			"b-1": {Progress{Name: "b-1", Done: 0, Total: -1}},
+			"b-2": {Progress{Name: "b-2", Done: 1, Total: -1}},
+		}},
+	}
+	require.Equal(expectedProgress, p.procs[ctx.Pid()].Progress)
+
 	ctx = NewContext(context.Background(), WithPid(2), WithSession(sess))
 	ctx, err = p.AddProcess(ctx, CreateIndexProcess, "SELECT bar")
 	require.NoError(err)
 
-	p.AddProgressItem(ctx.Pid(), "foo", 2)
+	p.AddTableProgress(ctx.Pid(), "foo", 2)
 
 	require.Equal(uint64(2), ctx.Pid())
 	require.Len(p.procs, 2)
 
-	p.UpdateProgress(1, "a", 3)
-	p.UpdateProgress(1, "a", 1)
-	p.UpdateProgress(1, "b", 2)
-	p.UpdateProgress(2, "foo", 1)
+	p.UpdateTableProgress(1, "a", 3)
+	p.UpdateTableProgress(1, "a", 1)
+	p.UpdateTableProgress(1, "b", 2)
+	p.UpdateTableProgress(2, "foo", 1)
 
 	require.Equal(int64(4), p.procs[1].Progress["a"].Done)
 	require.Equal(int64(2), p.procs[1].Progress["b"].Done)
