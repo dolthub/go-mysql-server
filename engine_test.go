@@ -2804,62 +2804,64 @@ func newEngine(t *testing.T) *sqle.Engine {
 	return newEngineWithParallelism(t, 1)
 }
 
-func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
-	table := memory.NewPartitionedTable("mytable", sql.Schema{
+func allTestTables(t *testing.T) map[string]*memory.Table {
+	tables := make(map[string]*memory.Table)
+
+	tables["mytable"] = memory.NewPartitionedTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable"},
 		{Name: "s", Type: sql.Text, Source: "mytable"},
 	}, testNumPartitions)
 
 	insertRows(
-		t, table,
+		t, tables["mytable"],
 		sql.NewRow(int64(1), "first row"),
 		sql.NewRow(int64(2), "second row"),
 		sql.NewRow(int64(3), "third row"),
 	)
 
-	table2 := memory.NewPartitionedTable("othertable", sql.Schema{
+	tables["othertable"] = memory.NewPartitionedTable("othertable", sql.Schema{
 		{Name: "s2", Type: sql.Text, Source: "othertable"},
 		{Name: "i2", Type: sql.Int64, Source: "othertable"},
 	}, testNumPartitions)
 
 	insertRows(
-		t, table2,
+		t, tables["othertable"],
 		sql.NewRow("first", int64(3)),
 		sql.NewRow("second", int64(2)),
 		sql.NewRow("third", int64(1)),
 	)
 
-	table3 := memory.NewPartitionedTable("tabletest", sql.Schema{
+	tables["tabletest"] = memory.NewPartitionedTable("tabletest", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "tabletest"},
 		{Name: "s", Type: sql.Text, Source: "tabletest"},
 	}, testNumPartitions)
 
 	insertRows(
-		t, table3,
+		t, tables["tabletest"],
 		sql.NewRow(int64(1), "first row"),
 		sql.NewRow(int64(2), "second row"),
 		sql.NewRow(int64(3), "third row"),
 	)
 
-	table4 := memory.NewPartitionedTable("other_table", sql.Schema{
+	tables["other_table"] = memory.NewPartitionedTable("other_table", sql.Schema{
 		{Name: "text", Type: sql.Text, Source: "tabletest"},
 		{Name: "number", Type: sql.Int32, Source: "tabletest"},
 	}, testNumPartitions)
 
 	insertRows(
-		t, table4,
+		t, tables["other_table"],
 		sql.NewRow("a", int32(4)),
 		sql.NewRow("b", int32(2)),
 		sql.NewRow("c", int32(0)),
 	)
 
-	bigtable := memory.NewPartitionedTable("bigtable", sql.Schema{
+	tables["bigtable"] = memory.NewPartitionedTable("bigtable", sql.Schema{
 		{Name: "t", Type: sql.Text, Source: "bigtable"},
 		{Name: "n", Type: sql.Int64, Source: "bigtable"},
 	}, testNumPartitions)
 
 	insertRows(
-		t, bigtable,
+		t, tables["bigtable"],
 		sql.NewRow("a", int64(1)),
 		sql.NewRow("s", int64(2)),
 		sql.NewRow("f", int64(3)),
@@ -2876,14 +2878,14 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow("b", int64(9)),
 	)
 
-	floatTable := memory.NewPartitionedTable("floattable", sql.Schema{
+	tables["floattable"] = memory.NewPartitionedTable("floattable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "floattable"},
 		{Name: "f32", Type: sql.Float32, Source: "floattable"},
 		{Name: "f64", Type: sql.Float64, Source: "floattable"},
 	}, testNumPartitions)
 
 	insertRows(
-		t, floatTable,
+		t, tables["floattable"],
 		sql.NewRow(int64(1), float32(1.0), float64(1.0)),
 		sql.NewRow(int64(2), float32(1.5), float64(1.5)),
 		sql.NewRow(int64(3), float32(2.0), float64(2.0)),
@@ -2892,14 +2894,14 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow(int64(-2), float32(-1.5), float64(-1.5)),
 	)
 
-	nilTable := memory.NewPartitionedTable("niltable", sql.Schema{
+	tables["niltable"] = memory.NewPartitionedTable("niltable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "niltable", Nullable: true},
 		{Name: "b", Type: sql.Boolean, Source: "niltable", Nullable: true},
 		{Name: "f", Type: sql.Float64, Source: "niltable", Nullable: true},
 	}, testNumPartitions)
 
 	insertRows(
-		t, nilTable,
+		t, tables["niltable"],
 		sql.NewRow(int64(1), true, float64(1.0)),
 		sql.NewRow(int64(2), nil, float64(2.0)),
 		sql.NewRow(nil, false, float64(3.0)),
@@ -2907,13 +2909,13 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow(nil, nil, nil),
 	)
 
-	newlineTable := memory.NewPartitionedTable("newlinetable", sql.Schema{
+	tables["newlinetable"] = memory.NewPartitionedTable("newlinetable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "newlinetable"},
 		{Name: "s", Type: sql.Text, Source: "newlinetable"},
 	}, testNumPartitions)
 
 	insertRows(
-		t, newlineTable,
+		t, tables["newlinetable"],
 		sql.NewRow(int64(1), "\nthere is some text in here"),
 		sql.NewRow(int64(2), "there is some\ntext in here"),
 		sql.NewRow(int64(3), "there is some text\nin here"),
@@ -2921,7 +2923,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow(int64(5), "there is some text in here"),
 	)
 
-	typestable := memory.NewPartitionedTable("typestable", sql.Schema{
+	tables["typestable"] = memory.NewPartitionedTable("typestable", sql.Schema{
 		{Name: "id", Type: sql.Int64, Source: "typestable"},
 		{Name: "i8", Type: sql.Int8, Source: "typestable", Nullable: true},
 		{Name: "i16", Type: sql.Int16, Source: "typestable", Nullable: true},
@@ -2941,18 +2943,21 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		{Name: "bl", Type: sql.Blob, Source: "typestable", Nullable: true},
 	}, testNumPartitions)
 
+	return tables
+}
+
+func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
+	tables := allTestTables(t)
+
 	db := memory.NewDatabase("mydb")
-	db.AddTable("mytable", table)
-	db.AddTable("othertable", table2)
-	db.AddTable("tabletest", table3)
-	db.AddTable("bigtable", bigtable)
-	db.AddTable("floattable", floatTable)
-	db.AddTable("niltable", nilTable)
-	db.AddTable("newlinetable", newlineTable)
-	db.AddTable("typestable", typestable)
+	for name, table := range tables {
+		if name != "other_table" {
+			db.AddTable(name, table)
+		}
+	}
 
 	db2 := memory.NewDatabase("foo")
-	db2.AddTable("other_table", table4)
+	db2.AddTable("other_table", tables["other_table"])
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)

@@ -5,7 +5,11 @@ import (
 )
 
 type TestIndexDriver struct {
+	indexes map[string][]sql.Index
+}
 
+func NewIndexDriver(indexes map[string][]sql.Index) *TestIndexDriver {
+	return &TestIndexDriver{indexes: indexes}
 }
 
 func (d *TestIndexDriver) ID() string {
@@ -13,7 +17,7 @@ func (d *TestIndexDriver) ID() string {
 }
 
 func (d *TestIndexDriver) LoadAll(db, table string) ([]sql.Index, error) {
-	panic("implement me")
+	return d.indexes[table], nil
 }
 
 func (d *TestIndexDriver) Save(*sql.Context, sql.Index, sql.PartitionIndexKeyValueIter) error {
