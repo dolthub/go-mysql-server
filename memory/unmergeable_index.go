@@ -3,12 +3,17 @@ package memory
 import (
 	"fmt"
 	"github.com/src-d/go-mysql-server/sql"
+	"io"
 	"strings"
 )
 
+// A very dumb index that iterates over the rows of a table, evaluates its matching expressions against each row, and
+// stores those values to be later retrieved. Only here to test the functionality of indexed queries. This kind of index
+// cannot be merged with any other index.
 type UnmergeableDummyIndex struct {
 	DB         string // required for engine tests with driver
 	DriverName string // required for engine tests with driver
+	Tbl        *Table // required for engine tests with driver
 	TableName  string
 	Exprs      []sql.Expression
 }
@@ -25,28 +30,96 @@ func (u *UnmergeableDummyIndex) Expressions() []string {
 }
 
 func (u *UnmergeableDummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
-	if len(key) != 1 {
-		var parts = make([]string, len(key))
-		for i, p := range key {
-			parts[i] = fmt.Sprint(p)
-		}
-
-		return &UnmergeableIndexLookup{id: strings.Join(parts, ", ")}, nil
-	}
-
-	return &UnmergeableIndexLookup{id: fmt.Sprint(key[0])}, nil
+	return &UnmergeableIndexLookup{key: key}, nil
 }
 
 type UnmergeableIndexLookup struct {
-	id string
+	key []interface{}
+	idx UnmergeableDummyIndex
 }
 
-func (u UnmergeableIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
-	return nil, nil
+type unmergeableIndexValueIter struct {
+	tbl *Table
+	partition sql.Partition
+	lookup *UnmergeableIndexLookup
+	values [][]byte
+	i int
 }
 
-func (u UnmergeableIndexLookup) Indexes() []string {
-	return []string{u.id}
+func (u *unmergeableIndexValueIter) Next() ([]byte, error) {
+	err := u.initValues()
+	if err != nil {
+		return nil, err
+	}
+
+	if u.i < len(u.values) {
+		valBytes := u.values[u.i]
+		u.i++
+		return valBytes, nil
+	}
+
+	return nil, io.EOF
+}
+
+func (u *unmergeableIndexValueIter) initValues() error {
+	if u.values == nil {
+		rows, ok := u.tbl.partitions[string(u.partition.Key())]
+		if !ok {
+			return fmt.Errorf(
+				"partition not found: %q", u.partition.Key(),
+			)
+		}
+
+		for i, row := range rows {
+			match := true
+			for exprI, expr := range u.lookup.idx.Exprs {
+				colVal, err := expr.Eval(sql.NewEmptyContext(), row)
+				if colVal != u.lookup.key[exprI] {
+					match = false
+					break
+				}
+
+				if err != nil {
+					return err
+				}
+			}
+
+			if match {
+				idxVal := &indexValue{
+					Key: "",
+					Pos: i,
+				}
+				encoded, err := encodeIndexValue(idxVal)
+				if err != nil {
+					return err
+				}
+
+				u.values = append(u.values, encoded)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (u *unmergeableIndexValueIter) Close() error {
+	return nil
+}
+
+func (u *UnmergeableIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
+	return &unmergeableIndexValueIter{
+		tbl:       u.idx.Tbl,
+		partition: p,
+		lookup:    u,
+	}, nil
+}
+
+func (u *UnmergeableIndexLookup) Indexes() []string {
+	var idxes = make([]string, len(u.key))
+	for i, e := range u.idx.Exprs {
+		idxes[i] = fmt.Sprint(e)
+	}
+	return idxes
 }
 
 func (u *UnmergeableDummyIndex) Has(partition sql.Partition, key ...interface{}) (bool, error) {
