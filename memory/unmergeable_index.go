@@ -3,6 +3,7 @@ package memory
 import (
 	"fmt"
 	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
 	"io"
 	"strings"
 )
@@ -30,12 +31,15 @@ func (u *UnmergeableDummyIndex) Expressions() []string {
 }
 
 func (u *UnmergeableDummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
-	return &UnmergeableIndexLookup{key: key}, nil
+	return &UnmergeableIndexLookup{
+		key: key,
+		idx: u,
+	}, nil
 }
 
 type UnmergeableIndexLookup struct {
 	key []interface{}
-	idx UnmergeableDummyIndex
+	idx *UnmergeableDummyIndex
 }
 
 type unmergeableIndexValueIter struct {
@@ -73,20 +77,23 @@ func (u *unmergeableIndexValueIter) initValues() error {
 		for i, row := range rows {
 			match := true
 			for exprI, expr := range u.lookup.idx.Exprs {
-				colVal, err := expr.Eval(sql.NewEmptyContext(), row)
-				if colVal != u.lookup.key[exprI] {
-					match = false
-					break
-				}
+				// colVal, err := expr.Eval(sql.NewEmptyContext(), row)
+				lit, typ := getType(u.lookup.key[exprI])
+				eq := expression.NewEquals(expr, expression.NewLiteral(lit, typ))
 
+				ok, err := sql.EvaluateCondition(sql.NewEmptyContext(), eq, row)
 				if err != nil {
 					return err
+				}
+
+				if !ok {
+					match = false
+					break
 				}
 			}
 
 			if match {
 				idxVal := &indexValue{
-					Key: "",
 					Pos: i,
 				}
 				encoded, err := encodeIndexValue(idxVal)
@@ -100,6 +107,38 @@ func (u *unmergeableIndexValueIter) initValues() error {
 	}
 
 	return nil
+}
+
+func getType(val interface{}) (interface{}, sql.Type) {
+	switch val := val.(type) {
+	case int8:
+		return int64(val), sql.Int64
+	case uint8:
+		return int64(val), sql.Int64
+	case int16:
+		return int64(val), sql.Int64
+	case uint16:
+		return int64(val), sql.Int64
+	case int32:
+		return int64(val), sql.Int64
+	case uint32:
+		return int64(val), sql.Int64
+	case int64:
+		return int64(val), sql.Int64
+	case uint64:
+		return int64(val), sql.Int64
+	case float32:
+		return float64(val), sql.Float64
+	case float64:
+		return float64(val), sql.Float64
+	case string:
+		return val, sql.Text
+	default:panic(fmt.Sprintf("Unsupported type for %v of type %T", val, val))
+	}
+}
+
+func valuesMatch(val1 interface{}, val2 interface{}) bool {
+	return false
 }
 
 func (u *unmergeableIndexValueIter) Close() error {

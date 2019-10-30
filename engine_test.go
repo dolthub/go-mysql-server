@@ -1597,51 +1597,59 @@ var queries = []struct {
 }
 
 func TestQueries(t *testing.T) {
-	testIndexDriver := memory.NewIndexDriver("mydb", map[string][]sql.Index{
-		"mytable": {
-			&memory.UnmergeableDummyIndex{
-				DB:         "mydb",
-				DriverName: memory.IndexDriverId,
-				TableName:  "mytable",
-				Exprs: []sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-				},
-			},
-			&memory.UnmergeableDummyIndex{
-				DB:         "mydb",
-				DriverName: memory.IndexDriverId,
-				TableName:  "mytable",
-				Exprs: []sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Text, "mytable", "s", false),
-				},
-			},
-			&memory.UnmergeableDummyIndex{
-				DB:         "mydb",
-				DriverName: memory.IndexDriverId,
-				TableName:  "mytable",
-				Exprs: []sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-					expression.NewGetFieldWithTable(0, sql.Text, "mytable", "s", false),
-				},
-			},
-		},
-	})
 
 	// Test all queries with these combinations, for a total of 8 runs:
 	// 1) Partitioned tables / non partitioned tables
 	// 2) Indexes enabled / disabled
 	// 3) Parallelism on / off
-	numPartitionsVals := []int{1, testNumPartitions}
-	useIndexesVals := []bool{false, true}
-	parallelVals := []int{1, 2}
+	numPartitionsVals := []int{1}
+	useIndexesVals := []bool{true}
+	parallelVals := []int{1}
+	// numPartitionsVals := []int{1, testNumPartitions}
+	// useIndexesVals := []bool{false, true}
+	// parallelVals := []int{1, 2}
 	for _, numPartitions := range numPartitionsVals {
 		for _, useIndexes := range useIndexesVals {
 			for _, parallelism := range parallelVals {
+				tables := allTestTables(t)
+				testIndexDriver := memory.NewIndexDriver("mydb", map[string][]sql.Index{
+					"mytable": {
+						&memory.UnmergeableDummyIndex{
+							DB:         "mydb",
+							DriverName: memory.IndexDriverId,
+							TableName:  "mytable",
+							Tbl:        tables["mytable"],
+							Exprs: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+							},
+						},
+						&memory.UnmergeableDummyIndex{
+							DB:         "mydb",
+							DriverName: memory.IndexDriverId,
+							TableName:  "mytable",
+							Tbl:        tables["mytable"],
+							Exprs: []sql.Expression{
+								expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false),
+							},
+						},
+						&memory.UnmergeableDummyIndex{
+							DB:         "mydb",
+							DriverName: memory.IndexDriverId,
+							TableName:  "mytable",
+							Tbl:        tables["mytable"],
+							Exprs: []sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+								expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false),
+							},
+						},
+					},
+				})
+
 				var indexDriver sql.IndexDriver
 				if useIndexes {
 					indexDriver = testIndexDriver
 				}
-				engine := newEngineWithParallelism(t, parallelism, indexDriver)
+				engine := newEngineWithParallelism(t, parallelism, tables, indexDriver)
 
 				testName := fmt.Sprintf("partitions=%d, indexes=%v, parallelism=%v", numPartitions, useIndexes, parallelism)
 				t.Run(testName, func(t *testing.T) {
@@ -1802,7 +1810,7 @@ func TestWarnings(t *testing.T) {
 	}
 
 	e := newEngine(t)
-	ep := newEngineWithParallelism(t, 2, nil)
+	ep := newEngineWithParallelism(t, 2, allTestTables(t), nil)
 
 	t.Run("sequential", func(t *testing.T) {
 		for _, tt := range queries {
@@ -1866,7 +1874,7 @@ func TestClearWarnings(t *testing.T) {
 func TestDescribe(t *testing.T) {
 	e := newEngine(t)
 
-	ep := newEngineWithParallelism(t, 2, nil)
+	ep := newEngineWithParallelism(t, 2, allTestTables(t), nil)
 
 	query := `DESCRIBE FORMAT=TREE SELECT * FROM mytable`
 	expectedSeq := []sql.Row{
@@ -2994,12 +3002,10 @@ func allTestTables(t *testing.T) map[string]*memory.Table {
 }
 
 func newEngine(t *testing.T) *sqle.Engine {
-	return newEngineWithParallelism(t, 1, nil)
+	return newEngineWithParallelism(t, 1, allTestTables(t), nil)
 }
 
-func newEngineWithParallelism(t *testing.T, parallelism int, driver sql.IndexDriver) *sqle.Engine {
-	tables := allTestTables(t)
-
+func newEngineWithParallelism(t *testing.T, parallelism int, tables map[string]*memory.Table, driver sql.IndexDriver) *sqle.Engine {
 	db := memory.NewDatabase("mydb")
 	for name, table := range tables {
 		if name != "other_table" {
