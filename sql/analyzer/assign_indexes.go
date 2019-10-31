@@ -102,6 +102,11 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 		}
 
 		for table, leftIdx := range leftIndexes {
+			result[table] = leftIdx
+		}
+
+		// Merge any indexes for the same table on the left and right sides.
+		for table, leftIdx := range leftIndexes {
 			if rightIdx, ok := rightIndexes[table]; ok {
 				if canMergeIndexes(leftIdx.lookup, rightIdx.lookup) {
 					leftIdx.lookup = leftIdx.lookup.(sql.SetOperations).Union(rightIdx.lookup)
