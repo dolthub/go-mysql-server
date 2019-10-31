@@ -1602,12 +1602,12 @@ func TestQueries(t *testing.T) {
 	// 1) Partitioned tables / non partitioned tables
 	// 2) Indexes enabled / disabled
 	// 3) Parallelism on / off
-	numPartitionsVals := []int{1}
-	useIndexesVals := []bool{true}
-	parallelVals := []int{1}
-	// numPartitionsVals := []int{1, testNumPartitions}
-	// useIndexesVals := []bool{false, true}
-	// parallelVals := []int{1, 2}
+	// numPartitionsVals := []int{1}
+	// useIndexesVals := []bool{true}
+	// parallelVals := []int{1}
+	numPartitionsVals := []int{1, testNumPartitions}
+	useIndexesVals := []bool{false, true}
+	parallelVals := []int{1, 2}
 	for _, numPartitions := range numPartitionsVals {
 		for _, useIndexes := range useIndexesVals {
 			for _, parallelism := range parallelVals {
@@ -1651,7 +1651,7 @@ func TestQueries(t *testing.T) {
 				}
 				engine := newEngineWithParallelism(t, parallelism, tables, indexDriver)
 
-				testName := fmt.Sprintf("partitions=%d, indexes=%v, parallelism=%v", numPartitions, useIndexes, parallelism)
+				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, useIndexes, parallelism)
 				t.Run(testName, func(t *testing.T) {
 					for _, tt := range queries {
 						testQuery(t, engine, tt.query, tt.expected)
