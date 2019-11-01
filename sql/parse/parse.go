@@ -545,7 +545,7 @@ func getColumn(cd *sqlparser.ColumnDefinition, indexes []*sqlparser.IndexDefinit
 	}
 
 	return &sql.Column{
-		Nullable:   !bool(typ.NotNull),
+		Nullable:   !isPkey && !bool(typ.NotNull),
 		Type:       internalTyp,
 		Name:       cd.Name.String(),
 		PrimaryKey: isPkey,

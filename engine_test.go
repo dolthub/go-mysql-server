@@ -2515,6 +2515,27 @@ func TestCreateTable(t *testing.T) {
 	}
 
 	require.Equal(s, testTable.Schema())
+
+	testQuery(t, e,
+		"CREATE TABLE t4(a INTEGER,"+
+			"b TEXT NOT NULL,"+
+			"c bool, primary key (a))",
+		[]sql.Row(nil),
+	)
+
+	db, err = e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	testTable, ok = db.Tables()["t4"]
+	require.True(ok)
+
+	s = sql.Schema{
+		{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t4"},
+		{Name: "b", Type: sql.Text, Nullable: false, PrimaryKey: false, Source: "t4"},
+		{Name: "c", Type: sql.Uint8, Nullable: true, Source: "t4"},
+	}
+
+	require.Equal(s, testTable.Schema())
 }
 
 func TestDropTable(t *testing.T) {
