@@ -42,7 +42,10 @@ type UnmergeableIndexLookup struct {
 	idx *UnmergeableDummyIndex
 }
 
-type unmergeableIndexValueIter struct {
+// dummyIndexValueIter does a very simple and verifiable iteration over the table values for a given index. It does this
+// by iterating over all the table rows for a partition and evaluating each of them for inclusion in the index. This is
+// not an efficient way to store an index, and is only suitable for testing the correctness of index code in the engine.
+type dummyIndexValueIter struct {
 	tbl *Table
 	partition sql.Partition
 	// Returns a set of expresssions that must match a given row to be included in the value iterator for a lookup
@@ -51,7 +54,7 @@ type unmergeableIndexValueIter struct {
 	i int
 }
 
-func (u *unmergeableIndexValueIter) Next() ([]byte, error) {
+func (u *dummyIndexValueIter) Next() ([]byte, error) {
 	err := u.initValues()
 	if err != nil {
 		return nil, err
@@ -66,7 +69,7 @@ func (u *unmergeableIndexValueIter) Next() ([]byte, error) {
 	return nil, io.EOF
 }
 
-func (u *unmergeableIndexValueIter) initValues() error {
+func (u *dummyIndexValueIter) initValues() error {
 	if u.values == nil {
 		rows, ok := u.tbl.partitions[string(u.partition.Key())]
 		if !ok {
@@ -134,12 +137,12 @@ func getType(val interface{}) (interface{}, sql.Type) {
 	}
 }
 
-func (u *unmergeableIndexValueIter) Close() error {
+func (u *dummyIndexValueIter) Close() error {
 	return nil
 }
 
 func (u *UnmergeableIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
-	return &unmergeableIndexValueIter{
+	return &dummyIndexValueIter{
 		tbl:       u.idx.Tbl,
 		partition: p,
 		matchExpressions: func() []sql.Expression {
