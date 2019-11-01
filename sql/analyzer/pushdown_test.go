@@ -189,7 +189,7 @@ func TestPushdownIndexable(t *testing.T) {
 						),
 					}).(*memory.Table).
 						WithProjection([]string{"i", "f"}).(*memory.Table).
-						WithIndexLookup(&memory.MergeableIndexLookup{Id: "3.14"}),
+						WithIndexLookup(&memory.MergeableIndexLookup{Key: []interface{}{3.14}}),
 				),
 				plan.NewResolvedTable(
 					table2.WithFilters([]sql.Expression{
@@ -201,7 +201,8 @@ func TestPushdownIndexable(t *testing.T) {
 						),
 					}).(*memory.Table).
 						WithProjection([]string{"i2"}).(*memory.Table).
-						WithIndexLookup(&memory.NegateIndexLookup{Value: "2"}),
+						// TODO: fix
+						WithIndexLookup(&memory.NegateIndexLookup{}),
 				),
 			),
 		),

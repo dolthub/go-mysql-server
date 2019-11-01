@@ -12,8 +12,14 @@ type MergeableLookup interface {
 	GetIntersections() []string
 }
 
+// ExpressionsIndex is an index made out of one or more expressions (usually field expressions)
+type ExpressionsIndex interface {
+	ColumnExpressions() []sql.Expression
+}
+
 type MergeableIndexLookup struct {
-	Id            string
+	Key           []interface{}
+	Index         ExpressionsIndex
 	Unions        []string
 	Intersections []string
 }
@@ -21,7 +27,7 @@ type MergeableIndexLookup struct {
 var _ sql.Mergeable = (*MergeableIndexLookup)(nil)
 var _ sql.SetOperations = (*MergeableIndexLookup)(nil)
 
-func (i *MergeableIndexLookup) ID() string              { return i.Id }
+func (i *MergeableIndexLookup) ID() string              { return strings.Join(i.Indexes(), ",") }
 func (i *MergeableIndexLookup) GetUnions() []string        { return i.Unions }
 func (i *MergeableIndexLookup) GetIntersections() []string { return i.Intersections }
 
@@ -35,7 +41,11 @@ func (i *MergeableIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error)
 }
 
 func (i *MergeableIndexLookup) Indexes() []string {
-	return []string{i.ID()}
+	var idxes = make([]string, len(i.Key))
+	for i, e := range i.Key {
+		idxes[i] = fmt.Sprint(e)
+	}
+	return idxes
 }
 
 func (i *MergeableIndexLookup) Difference(indexes ...sql.IndexLookup) sql.IndexLookup {
@@ -49,24 +59,30 @@ func (i *MergeableIndexLookup) Intersection(indexes ...sql.IndexLookup) sql.Inde
 		intersections = append(intersections, idx.(MergeableLookup).GetIntersections()...)
 		unions = append(unions, idx.(MergeableLookup).GetUnions()...)
 	}
+
+	// TODO: fix logic
 	return &MergeableIndexLookup{
-		i.Id,
-		append(i.Unions, unions...),
-		append(i.Intersections, intersections...),
+		Key:    i.Key,
+		Index:  i.Index,
+		Unions:  append(i.Unions, unions...),
+		Intersections: append(i.Intersections, intersections...),
 	}
 }
 
 func (i *MergeableIndexLookup) Union(indexes ...sql.IndexLookup) sql.IndexLookup {
 	var intersections, unions []string
 	for _, idx := range indexes {
-		unions = append(unions, idx.(*MergeableIndexLookup).Id)
+		unions = append(unions, idx.(*MergeableIndexLookup).ID())
 		unions = append(unions, idx.(*MergeableIndexLookup).Unions...)
 		intersections = append(intersections, idx.(*MergeableIndexLookup).Intersections...)
 	}
+
+	// TODO: fix logic
 	return &MergeableIndexLookup{
-		i.Id,
-		append(i.Unions, unions...),
-		append(i.Intersections, intersections...),
+		Key:    i.Key,
+		Index:  i.Index,
+		Unions:  append(i.Unions, unions...),
+		Intersections: append(i.Intersections, intersections...),
 	}
 }
 
@@ -113,6 +129,7 @@ type MergeableDummyIndex struct {
 
 func (i MergeableDummyIndex) Database() string { return i.DB }
 func (i MergeableDummyIndex) Driver() string   { return i.DriverName }
+func (i MergeableDummyIndex) ColumnExpressions() []sql.Expression   { return i.Exprs }
 
 func (i MergeableDummyIndex) Expressions() []string {
 	var exprs []string
@@ -153,20 +170,11 @@ func (i MergeableDummyIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
 	}
 
 	mergeable, _ := lookup.(*MergeableIndexLookup)
-	return &NegateIndexLookup{Value: mergeable.Id}, nil
+	return &NegateIndexLookup{Lookup: mergeable}, nil
 }
 
 func (i MergeableDummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
-	if len(key) != 1 {
-		var parts = make([]string, len(key))
-		for i, p := range key {
-			parts[i] = fmt.Sprint(p)
-		}
-
-		return &MergeableIndexLookup{Id: strings.Join(parts, ", ")}, nil
-	}
-
-	return &MergeableIndexLookup{Id: fmt.Sprint(key[0])}, nil
+	return &MergeableIndexLookup{Key: key, Index: i}, nil
 }
 
 func (i MergeableDummyIndex) Has(sql.Partition, ...interface{}) (bool, error) {

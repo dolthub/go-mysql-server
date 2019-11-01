@@ -5,12 +5,12 @@ import (
 )
 
 type NegateIndexLookup struct {
-	Value         string
+	Lookup         *MergeableIndexLookup
 	intersections []string
 	unions        []string
 }
 
-func (l *NegateIndexLookup) ID() string              { return "not " + l.Value }
+func (l *NegateIndexLookup) ID() string              { return "not " + l.Lookup.ID() }
 func (l *NegateIndexLookup) GetUnions() []string        { return l.unions }
 func (l *NegateIndexLookup) GetIntersections() []string { return l.intersections }
 
@@ -42,8 +42,8 @@ func (l *NegateIndexLookup) Intersection(indexes ...sql.IndexLookup) sql.IndexLo
 		unions = append(unions, idx.(MergeableLookup).GetUnions()...)
 	}
 	return &MergeableIndexLookup{
-		l.ID(),
-		append(l.unions, unions...),
-		append(l.intersections, intersections...),
+		Index:    l.Lookup.Index,
+		Unions:  append(l.unions, unions...),
+		Intersections: append(l.intersections, intersections...),
 	}
 }
