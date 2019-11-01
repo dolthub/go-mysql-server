@@ -139,41 +139,69 @@ func (i *MergeableIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
 	panic("not implemented")
 }
 
-func (i *MergeableIndexLookup) Intersection(indexes ...sql.IndexLookup) sql.IndexLookup {
+func (i *MergeableIndexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
+	return intersection(i, lookups...)
+}
+
+func intersection(left MergeableLookup, lookups ...sql.IndexLookup) sql.IndexLookup {
 	var intersections []MergeableLookup
-	intersections = append(intersections, i)
-	for _, idx := range indexes {
-		intersections = append(intersections, idx.(MergeableLookup))
+	intersections = append(intersections, left)
+	for _, lookup := range lookups {
+		intersections = append(intersections, lookup.(MergeableLookup))
 	}
 
 	return &MergedIndexLookup{
-		Intersection: intersections,
+		Intersections: intersections,
 	}
 }
 
-func (i *MergeableIndexLookup) Union(indexes ...sql.IndexLookup) sql.IndexLookup {
+func (i *MergeableIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
+	return union(i, lookups...)
+}
+
+func union(left MergeableLookup, lookups ...sql.IndexLookup) sql.IndexLookup {
 	var unions []MergeableLookup
-	unions = append(unions, i)
-	for _, idx := range indexes {
-		unions = append(unions, idx.(MergeableLookup))
+	unions = append(unions, left)
+	for _, lookup := range lookups {
+		unions = append(unions, lookup.(MergeableLookup))
 	}
 
 	return &MergedIndexLookup{
-		Union:        unions,
+		Unions: unions,
 	}
 }
 
 type MergedIndexLookup struct {
-	Union        []MergeableLookup
-	Intersection []MergeableLookup
+	Unions        []MergeableLookup
+	Intersections []MergeableLookup
 }
 
+var _ sql.Mergeable = (*MergedIndexLookup)(nil)
+var _ sql.SetOperations = (*MergedIndexLookup)(nil)
+
 func (m *MergedIndexLookup) GetUnions() []MergeableLookup {
-	panic("implement me")
+	return m.Unions
 }
 
 func (m *MergedIndexLookup) GetIntersections() []MergeableLookup {
-	panic("implement me")
+	return m.Intersections
+}
+
+func (m *MergedIndexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
+	return intersection(m, lookups...)
+}
+
+func (m *MergedIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
+	return union(m, lookups...)
+}
+
+func (m *MergedIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
+	panic("not implemented")
+}
+
+func (m *MergedIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
+	_, ok := lookup.(MergeableLookup)
+	return ok
 }
 
 func (m *MergedIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {

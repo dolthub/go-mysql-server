@@ -42,7 +42,7 @@ func (l *AscendIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 	}
 
 	return &MergedIndexLookup{
-		Union:        unions,
+		Unions: unions,
 	}
 }
 

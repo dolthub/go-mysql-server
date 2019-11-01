@@ -32,7 +32,7 @@ func (l *NegateIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 	}
 
 	return &MergedIndexLookup{
-		Union: unions,
+		Unions: unions,
 	}
 }
 
@@ -48,6 +48,6 @@ func (l *NegateIndexLookup) Intersection(indexes ...sql.IndexLookup) sql.IndexLo
 	}
 
 	return &MergedIndexLookup{
-		Intersection: intersections,
+		Intersections: intersections,
 	}
 }
