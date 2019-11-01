@@ -187,6 +187,16 @@ func TestAssignIndexes(t *testing.T) {
 	require.False(ok)
 }
 
+func mergeableIndexLookup(table string, column string, colIdx int, key ...interface{}) *memory.MergeableIndexLookup {
+	return &memory.MergeableIndexLookup{
+		Key: key,
+		Index: memory.MergeableDummyIndex{
+			TableName: table,
+			Exprs:     []sql.Expression{col(colIdx, table, column)},
+		},
+	}
+}
+
 func TestGetIndexes(t *testing.T) {
 	indexes := []sql.Index {
 		&memory.MergeableDummyIndex{
@@ -236,13 +246,7 @@ func TestGetIndexes(t *testing.T) {
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
-					&memory.MergeableIndexLookup{
-						Key:           []interface{}{int64(1)},
-						Index:         memory.MergeableDummyIndex{
-							TableName:  "t1",
-							Exprs:      []sql.Expression{col(0, "t1", "bar")},
-						},
-					},
+					mergeableIndexLookup("t1", "bar", 0, int64(1)),
 					[]sql.Index{indexes[0]},
 				},
 			},
@@ -261,7 +265,12 @@ func TestGetIndexes(t *testing.T) {
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
-					&memory.MergeableIndexLookup{Key: []interface{}{1}, Unions: []string{"2"}},
+					&memory.MergedIndexLookup{
+						Union: []memory.MergeableLookup{
+							mergeableIndexLookup("t1", "bar", 0, int64(1)),
+							mergeableIndexLookup("t1", "bar", 0, int64(2)),
+						},
+					},
 					[]sql.Index{
 						indexes[0],
 						indexes[0],
@@ -299,7 +308,12 @@ func TestGetIndexes(t *testing.T) {
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
-					&memory.MergeableIndexLookup{Key: []interface{}{1}, Unions: []string{"2"}},
+					&memory.MergedIndexLookup{
+						Union: []memory.MergeableLookup{
+							mergeableIndexLookup("t1", "bar", 0, int64(2)),
+							mergeableIndexLookup("t1", "bar", 0, int64(1)),
+						},
+					},
 					[]sql.Index{
 						indexes[0],
 					},
@@ -320,7 +334,12 @@ func TestGetIndexes(t *testing.T) {
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
-					&memory.MergeableIndexLookup{Key: []interface{}{1}, Intersections: []string{"2"}},
+					&memory.MergedIndexLookup{
+						Intersection: []memory.MergeableLookup{
+							&memory.MergeableIndexLookup{Key: []interface{}{1}},
+							&memory.MergeableIndexLookup{Key: []interface{}{2}},
+						},
+					},
 					[]sql.Index{
 						indexes[0],
 						indexes[0],
@@ -354,7 +373,22 @@ func TestGetIndexes(t *testing.T) {
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
-					&memory.MergeableIndexLookup{Key: []interface{}{1}, Unions: []string{"2", "4"}, Intersections: []string{"3"}},
+					&memory.MergedIndexLookup{
+						Intersection: []memory.MergeableLookup {
+							&memory.MergedIndexLookup{
+								Union: []memory.MergeableLookup{
+									&memory.MergeableIndexLookup{Key: []interface{}{1}},
+									&memory.MergeableIndexLookup{Key: []interface{}{2}},
+								},
+							},
+							&memory.MergedIndexLookup{
+								Union: []memory.MergeableLookup{
+									&memory.MergeableIndexLookup{Key: []interface{}{3}},
+									&memory.MergeableIndexLookup{Key: []interface{}{4}},
+								},
+							},
+						},
+					},
 					[]sql.Index{
 						indexes[0],
 						indexes[0],
@@ -390,7 +424,22 @@ func TestGetIndexes(t *testing.T) {
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
-					&memory.MergeableIndexLookup{Key: []interface{}{1}, Unions: []string{"2", "3", "4"}},
+					&memory.MergedIndexLookup{
+						Union: []memory.MergeableLookup {
+							&memory.MergedIndexLookup{
+								Union: []memory.MergeableLookup{
+									&memory.MergeableIndexLookup{Key: []interface{}{1}},
+									&memory.MergeableIndexLookup{Key: []interface{}{2}},
+								},
+							},
+							&memory.MergedIndexLookup{
+								Union: []memory.MergeableLookup{
+									&memory.MergeableIndexLookup{Key: []interface{}{3}},
+									&memory.MergeableIndexLookup{Key: []interface{}{4}},
+								},
+							},
+						},
+					},
 					[]sql.Index{
 						indexes[0],
 						indexes[0],
@@ -408,7 +457,14 @@ func TestGetIndexes(t *testing.T) {
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
-					&memory.MergeableIndexLookup{Key: []interface{}{1}, Unions: []string{"2", "3", "4"}},
+					&memory.MergedIndexLookup{
+						Union: []memory.MergeableLookup{
+							&memory.MergeableIndexLookup{Key: []interface{}{1}},
+							&memory.MergeableIndexLookup{Key: []interface{}{2}},
+							&memory.MergeableIndexLookup{Key: []interface{}{3}},
+							&memory.MergeableIndexLookup{Key: []interface{}{4}},
+						},
+					},
 					[]sql.Index{indexes[0]},
 				},
 			},
@@ -484,7 +540,26 @@ func TestGetIndexes(t *testing.T) {
 					[]sql.Index{indexes[0]},
 				},
 				"t2": &indexLookup{
-					&memory.MergeableIndexLookup{Key: []interface{}{5}, Unions: []string{"1, 2"}},
+					&memory.MergedIndexLookup{
+						Union: []memory.MergeableLookup{
+							&memory.MergeableIndexLookup{Key: []interface{}{5}},
+							&memory.MergedIndexLookup{
+								Intersection: []memory.MergeableLookup{
+									&memory.MergeableIndexLookup{Key: []interface{}{1}},
+									&memory.MergedIndexLookup{
+										Intersection: []memory.MergeableLookup{
+											&memory.MergeableIndexLookup{Key: []interface{}{4}},
+											&memory.MergedIndexLookup{
+												Intersection: []memory.MergeableLookup{
+													&memory.MergeableIndexLookup{Key: []interface{}{2}},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 					[]sql.Index{
 						indexes[2],
 						indexes[1],
@@ -553,8 +628,8 @@ func TestGetIndexes(t *testing.T) {
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
-					&memory.MergedIndexLookup{
-						[]sql.IndexLookup{
+					&memory.MergedIndexLookup {
+						Intersection: []memory.MergeableLookup{
 							&memory.AscendIndexLookup{
 								Gte: []interface{}{int64(1)},
 								Lt:  []interface{}{int64(5)},
@@ -666,13 +741,15 @@ func TestGetIndexes(t *testing.T) {
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
-					&memory.MergedIndexLookup{
-						Children: []sql.IndexLookup{
-							&memory.NegateIndexLookup{
-								// TODO: fix
-							},
-							&memory.NegateIndexLookup{
-								// TODO: fix
+					&memory.NegateIndexLookup {
+						Lookup: &memory.MergedIndexLookup{
+							Intersection: []memory.MergeableLookup {
+								&memory.MergeableIndexLookup{
+									Key:   []interface{}{int64(10)},
+								},
+								&memory.MergeableIndexLookup{
+									Key:   []interface{}{int64(11)},
+								},
 							},
 						},
 					},
@@ -699,9 +776,17 @@ func TestGetIndexes(t *testing.T) {
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
-					&memory.MergeableIndexLookup{
-						Key:            []interface{}{10},
-						Intersections: []string{"not 11"},
+					&memory.NegateIndexLookup {
+						Lookup: &memory.MergedIndexLookup{
+							Union: []memory.MergeableLookup {
+								&memory.MergeableIndexLookup{
+									Key:   []interface{}{int64(10)},
+								},
+								&memory.MergeableIndexLookup{
+									Key:   []interface{}{int64(11)},
+								},
+							},
+						},
 					},
 					[]sql.Index{
 						indexes[0],
@@ -730,7 +815,9 @@ func TestGetIndexes(t *testing.T) {
 			map[string]*indexLookup{
 				"t2": &indexLookup{
 					&memory.NegateIndexLookup{
-						// TODO: fix
+						Lookup: &memory.MergeableIndexLookup{
+							Key: []interface{}{110},
+						},
 					},
 					[]sql.Index{
 						indexes[2],
@@ -751,9 +838,23 @@ func TestGetIndexes(t *testing.T) {
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
-					&memory.MergeableIndexLookup{
-						Key:            []interface{}{1},
-						Intersections: []string{"not 2", "not 3", "not 4"},
+					&memory.NegateIndexLookup{
+						Lookup: &memory.MergedIndexLookup{
+							Union: []memory.MergeableLookup {
+								&memory.MergeableIndexLookup{
+									Key:   []interface{}{1},
+								},
+								&memory.MergeableIndexLookup{
+									Key:   []interface{}{2},
+								},
+								&memory.MergeableIndexLookup{
+									Key:   []interface{}{3},
+								},
+								&memory.MergeableIndexLookup{
+									Key:   []interface{}{4},
+								},
+							},
+						},
 					},
 					[]sql.Index{indexes[0]},
 				},
@@ -887,16 +988,17 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 			[]sql.Index{indexes[1]},
 		},
 		"t4": &indexLookup{
-			&memory.MergedIndexLookup{[]sql.IndexLookup{
-				&memory.AscendIndexLookup{
-					Gte: []interface{}{int64(1), int64(2)},
-					Lt:  []interface{}{int64(6), int64(5)},
-				},
-				&memory.DescendIndexLookup{
-					Gt:  []interface{}{int64(1), int64(2)},
-					Lte: []interface{}{int64(6), int64(5)},
-				},
-			}},
+			&memory.MergedIndexLookup{
+				Intersection: []memory.MergeableLookup{
+					&memory.AscendIndexLookup{
+						Gte: []interface{}{int64(1), int64(2)},
+						Lt:  []interface{}{int64(6), int64(5)},
+					},
+					&memory.DescendIndexLookup{
+						Gt:  []interface{}{int64(1), int64(2)},
+						Lte: []interface{}{int64(6), int64(5)},
+					},
+				}},
 			[]sql.Index{indexes[4]},
 		},
 	}
@@ -1024,9 +1126,15 @@ func TestIndexesIntersection(t *testing.T) {
 		map[string]*indexLookup{
 			"a": &indexLookup{&memory.MergeableIndexLookup{Key: []interface{}{"a"}}, nil},
 			"b": &indexLookup{
-				&memory.MergeableIndexLookup{
-					Key: []interface{}{"b"},
-					Intersections: []string{"b2"},
+				&memory.MergedIndexLookup {
+					Intersection: []memory.MergeableLookup {
+						&memory.MergeableIndexLookup{
+							Key:   []interface{}{"b"},
+						},
+						&memory.MergeableIndexLookup{
+							Key:   []interface{}{"b2"},
+						},
+					},
 				},
 				[]sql.Index{idx1, idx2},
 			},

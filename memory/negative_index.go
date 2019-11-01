@@ -5,14 +5,12 @@ import (
 )
 
 type NegateIndexLookup struct {
-	Lookup         *MergeableIndexLookup
-	intersections []string
-	unions        []string
+	Lookup         MergeableLookup
 }
 
 func (l *NegateIndexLookup) ID() string              { return "not " + l.Lookup.ID() }
-func (l *NegateIndexLookup) GetUnions() []string        { return l.unions }
-func (l *NegateIndexLookup) GetIntersections() []string { return l.intersections }
+func (l *NegateIndexLookup) GetUnions() []MergeableLookup        { return l.Lookup.GetUnions() }
+func (l *NegateIndexLookup) GetIntersections() []MergeableLookup { return l.Lookup.GetIntersections() }
 
 func (*NegateIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
 	return nil, nil
@@ -27,7 +25,15 @@ func (*NegateIndexLookup) IsMergeable(sql.IndexLookup) bool {
 }
 
 func (l *NegateIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return &MergedIndexLookup{append([]sql.IndexLookup{l}, lookups...)}
+	var unions []MergeableLookup
+	unions = append(unions, l)
+	for _, idx := range lookups {
+		unions = append(unions, idx.(MergeableLookup))
+	}
+
+	return &MergedIndexLookup{
+		Union: unions,
+	}
 }
 
 func (*NegateIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
@@ -35,15 +41,13 @@ func (*NegateIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
 }
 
 func (l *NegateIndexLookup) Intersection(indexes ...sql.IndexLookup) sql.IndexLookup {
-	var intersections, unions []string
+	var intersections []MergeableLookup
+	intersections = append(intersections, l)
 	for _, idx := range indexes {
-		intersections = append(intersections, idx.(MergeableLookup).ID())
-		intersections = append(intersections, idx.(MergeableLookup).GetIntersections()...)
-		unions = append(unions, idx.(MergeableLookup).GetUnions()...)
+		intersections = append(intersections, idx.(MergeableLookup))
 	}
-	return &MergeableIndexLookup{
-		Index:    l.Lookup.Index,
-		Unions:  append(l.unions, unions...),
-		Intersections: append(l.intersections, intersections...),
+
+	return &MergedIndexLookup{
+		Intersection: intersections,
 	}
 }

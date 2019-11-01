@@ -10,6 +10,18 @@ type AscendIndexLookup struct {
 	Lt  []interface{}
 }
 
+func (l *AscendIndexLookup) ID() string {
+	return l.id
+}
+
+func (l *AscendIndexLookup) GetUnions() []MergeableLookup {
+	return nil
+}
+
+func (l *AscendIndexLookup) GetIntersections() []MergeableLookup {
+	return nil
+}
+
 func (AscendIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
 	return nil, nil
 }
@@ -23,7 +35,15 @@ func (l *AscendIndexLookup) IsMergeable(sql.IndexLookup) bool {
 }
 
 func (l *AscendIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return &MergedIndexLookup{append([]sql.IndexLookup{l}, lookups...)}
+	var unions []MergeableLookup
+	unions = append(unions, l)
+	for _, idx := range lookups {
+		unions = append(unions, idx.(MergeableLookup))
+	}
+
+	return &MergedIndexLookup{
+		Union:        unions,
+	}
 }
 
 func (AscendIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {

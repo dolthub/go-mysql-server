@@ -3,121 +3,9 @@ package memory
 import (
 	"fmt"
 	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
 	"strings"
 )
-
-type MergeableLookup interface {
-	ID() string
-	GetUnions() []string
-	GetIntersections() []string
-}
-
-// ExpressionsIndex is an index made out of one or more expressions (usually field expressions)
-type ExpressionsIndex interface {
-	ColumnExpressions() []sql.Expression
-}
-
-type MergeableIndexLookup struct {
-	Key           []interface{}
-	Index         ExpressionsIndex
-	Unions        []string
-	Intersections []string
-}
-
-var _ sql.Mergeable = (*MergeableIndexLookup)(nil)
-var _ sql.SetOperations = (*MergeableIndexLookup)(nil)
-
-func (i *MergeableIndexLookup) ID() string              { return strings.Join(i.Indexes(), ",") }
-func (i *MergeableIndexLookup) GetUnions() []string        { return i.Unions }
-func (i *MergeableIndexLookup) GetIntersections() []string { return i.Intersections }
-
-func (i *MergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
-	_, ok := lookup.(MergeableLookup)
-	return ok
-}
-
-func (i *MergeableIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
-	return nil, nil
-}
-
-func (i *MergeableIndexLookup) Indexes() []string {
-	var idxes = make([]string, len(i.Key))
-	for i, e := range i.Key {
-		idxes[i] = fmt.Sprint(e)
-	}
-	return idxes
-}
-
-func (i *MergeableIndexLookup) Difference(indexes ...sql.IndexLookup) sql.IndexLookup {
-	panic("not implemented")
-}
-
-func (i *MergeableIndexLookup) Intersection(indexes ...sql.IndexLookup) sql.IndexLookup {
-	var intersections, unions []string
-	for _, idx := range indexes {
-		intersections = append(intersections, idx.(MergeableLookup).ID())
-		intersections = append(intersections, idx.(MergeableLookup).GetIntersections()...)
-		unions = append(unions, idx.(MergeableLookup).GetUnions()...)
-	}
-
-	// TODO: fix logic
-	return &MergeableIndexLookup{
-		Key:    i.Key,
-		Index:  i.Index,
-		Unions:  append(i.Unions, unions...),
-		Intersections: append(i.Intersections, intersections...),
-	}
-}
-
-func (i *MergeableIndexLookup) Union(indexes ...sql.IndexLookup) sql.IndexLookup {
-	var intersections, unions []string
-	for _, idx := range indexes {
-		unions = append(unions, idx.(*MergeableIndexLookup).ID())
-		unions = append(unions, idx.(*MergeableIndexLookup).Unions...)
-		intersections = append(intersections, idx.(*MergeableIndexLookup).Intersections...)
-	}
-
-	// TODO: fix logic
-	return &MergeableIndexLookup{
-		Key:    i.Key,
-		Index:  i.Index,
-		Unions:  append(i.Unions, unions...),
-		Intersections: append(i.Intersections, intersections...),
-	}
-}
-
-type MergedIndexLookup struct {
-	Children []sql.IndexLookup
-}
-
-func (i *MergedIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
-	return nil, nil
-//	return &dummyIndexValueIter{}, nil
-}
-
-func (i *MergedIndexLookup) Indexes() []string {
-	var indexes []string
-	for _, c := range i.Children {
-		indexes = append(indexes, c.Indexes()...)
-	}
-	return indexes
-}
-
-func (i *MergedIndexLookup) IsMergeable(sql.IndexLookup) bool {
-	return true
-}
-
-func (i *MergedIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return &MergedIndexLookup{append(i.Children, lookups...)}
-}
-
-func (MergedIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
-	panic("mergedIndexLookup.Difference is not implemented")
-}
-
-func (MergedIndexLookup) Intersection(...sql.IndexLookup) sql.IndexLookup {
-	panic("mergedIndexLookup.Intersection is not implemented")
-}
 
 type MergeableDummyIndex struct {
 	DB         string // required for engine tests with driver
@@ -129,6 +17,7 @@ type MergeableDummyIndex struct {
 
 func (i MergeableDummyIndex) Database() string { return i.DB }
 func (i MergeableDummyIndex) Driver() string   { return i.DriverName }
+func (i MergeableDummyIndex) MemTable() *Table   { return i.Tbl }
 func (i MergeableDummyIndex) ColumnExpressions() []sql.Expression   { return i.Exprs }
 
 func (i MergeableDummyIndex) Expressions() []string {
@@ -194,3 +83,107 @@ func (i MergeableDummyIndex) ID() string {
 }
 
 func (i MergeableDummyIndex) Table() string { return i.TableName }
+
+type MergeableLookup interface {
+	ID() string
+	GetUnions() []MergeableLookup
+	GetIntersections() []MergeableLookup
+}
+
+// ExpressionsIndex is an index made out of one or more expressions (usually field expressions)
+type ExpressionsIndex interface {
+	MemTable() 					*Table
+	ColumnExpressions() []sql.Expression
+}
+
+type MergeableIndexLookup struct {
+	Key           []interface{}
+	Index         ExpressionsIndex
+}
+
+var _ sql.Mergeable = (*MergeableIndexLookup)(nil)
+var _ sql.SetOperations = (*MergeableIndexLookup)(nil)
+
+func (i *MergeableIndexLookup) ID() string 													{ return strings.Join(i.Indexes(), ",") }
+func (i *MergeableIndexLookup) GetUnions() []MergeableLookup        { return nil }
+func (i *MergeableIndexLookup) GetIntersections() []MergeableLookup { return nil }
+
+func (i *MergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
+	_, ok := lookup.(MergeableLookup)
+	return ok
+}
+
+func (i *MergeableIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
+	return &dummyIndexValueIter{
+		tbl:       i.Index.MemTable(),
+		partition: p,
+		matchExpressions: func() []sql.Expression {
+			var exprs []sql.Expression
+			for exprI, expr := range i.Index.ColumnExpressions() {
+				lit, typ := getType(i.Key[exprI])
+				exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(lit, typ)))
+			}
+			return exprs
+		}}, nil
+}
+
+func (i *MergeableIndexLookup) Indexes() []string {
+	var idxes = make([]string, len(i.Key))
+	for i, e := range i.Key {
+		idxes[i] = fmt.Sprint(e)
+	}
+	return idxes
+}
+
+func (i *MergeableIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
+	panic("not implemented")
+}
+
+func (i *MergeableIndexLookup) Intersection(indexes ...sql.IndexLookup) sql.IndexLookup {
+	var intersections []MergeableLookup
+	intersections = append(intersections, i)
+	for _, idx := range indexes {
+		intersections = append(intersections, idx.(MergeableLookup))
+	}
+
+	return &MergedIndexLookup{
+		Intersection: intersections,
+	}
+}
+
+func (i *MergeableIndexLookup) Union(indexes ...sql.IndexLookup) sql.IndexLookup {
+	var unions []MergeableLookup
+	unions = append(unions, i)
+	for _, idx := range indexes {
+		unions = append(unions, idx.(MergeableLookup))
+	}
+
+	return &MergedIndexLookup{
+		Union:        unions,
+	}
+}
+
+type MergedIndexLookup struct {
+	Union        []MergeableLookup
+	Intersection []MergeableLookup
+}
+
+func (m *MergedIndexLookup) GetUnions() []MergeableLookup {
+	panic("implement me")
+}
+
+func (m *MergedIndexLookup) GetIntersections() []MergeableLookup {
+	panic("implement me")
+}
+
+func (m *MergedIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
+	panic("implement me")
+}
+
+func (m *MergedIndexLookup) Indexes() []string {
+	panic("implement me")
+}
+
+func (m *MergedIndexLookup) ID() string {
+	panic("implement me")
+}
