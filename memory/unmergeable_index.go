@@ -45,7 +45,8 @@ type UnmergeableIndexLookup struct {
 type unmergeableIndexValueIter struct {
 	tbl *Table
 	partition sql.Partition
-	lookup *UnmergeableIndexLookup
+	// Returns a set of expresssions that must match a given row to be included in the value iterator for a lookup
+	matchExpressions func() []sql.Expression
 	values [][]byte
 	i int
 }
@@ -76,12 +77,8 @@ func (u *unmergeableIndexValueIter) initValues() error {
 
 		for i, row := range rows {
 			match := true
-			for exprI, expr := range u.lookup.idx.Exprs {
-				// colVal, err := expr.Eval(sql.NewEmptyContext(), row)
-				lit, typ := getType(u.lookup.key[exprI])
-				eq := expression.NewEquals(expr, expression.NewLiteral(lit, typ))
-
-				ok, err := sql.EvaluateCondition(sql.NewEmptyContext(), eq, row)
+			for _, matchExpr := range u.matchExpressions() {
+				ok, err := sql.EvaluateCondition(sql.NewEmptyContext(), matchExpr, row)
 				if err != nil {
 					return err
 				}
@@ -137,10 +134,6 @@ func getType(val interface{}) (interface{}, sql.Type) {
 	}
 }
 
-func valuesMatch(val1 interface{}, val2 interface{}) bool {
-	return false
-}
-
 func (u *unmergeableIndexValueIter) Close() error {
 	return nil
 }
@@ -149,8 +142,14 @@ func (u *UnmergeableIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, er
 	return &unmergeableIndexValueIter{
 		tbl:       u.idx.Tbl,
 		partition: p,
-		lookup:    u,
-	}, nil
+		matchExpressions: func() []sql.Expression {
+			var exprs []sql.Expression
+			for exprI, expr := range u.idx.Exprs {
+				lit, typ := getType(u.key[exprI])
+				exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(lit, typ)))
+			}
+			return exprs
+	}}, nil
 }
 
 func (u *UnmergeableIndexLookup) Indexes() []string {

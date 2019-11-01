@@ -74,8 +74,9 @@ type MergedIndexLookup struct {
 	Children []sql.IndexLookup
 }
 
-func (MergedIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
+func (i *MergedIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
 	return nil, nil
+//	return &dummyIndexValueIter{}, nil
 }
 
 func (i *MergedIndexLookup) Indexes() []string {
@@ -103,8 +104,9 @@ func (MergedIndexLookup) Intersection(...sql.IndexLookup) sql.IndexLookup {
 }
 
 type MergeableDummyIndex struct {
-	DB         string // required for engine tests
-	DriverName string // required for engine tests
+	DB         string // required for engine tests with driver
+	DriverName string // required for engine tests with driver
+	Tbl        *Table // required for engine tests with driver
 	TableName  string
 	Exprs      []sql.Expression
 }
