@@ -27,15 +27,7 @@ func (l *DescendIndexLookup) IsMergeable(sql.IndexLookup) bool {
 }
 
 func (l *DescendIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	var unions []MergeableLookup
-	unions = append(unions, l)
-	for _, idx := range lookups {
-		unions = append(unions, idx.(MergeableLookup))
-	}
-
-	return &MergedIndexLookup{
-		Unions: unions,
-	}
+	return union(l, lookups...)
 }
 
 func (DescendIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {

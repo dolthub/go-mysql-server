@@ -9,8 +9,6 @@ type NegateIndexLookup struct {
 }
 
 func (l *NegateIndexLookup) ID() string              { return "not " + l.Lookup.ID() }
-func (l *NegateIndexLookup) GetUnions() []MergeableLookup        { return l.Lookup.GetUnions() }
-func (l *NegateIndexLookup) GetIntersections() []MergeableLookup { return l.Lookup.GetIntersections() }
 
 func (*NegateIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
 	return nil, nil
@@ -25,15 +23,7 @@ func (*NegateIndexLookup) IsMergeable(sql.IndexLookup) bool {
 }
 
 func (l *NegateIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	var unions []MergeableLookup
-	unions = append(unions, l)
-	for _, idx := range lookups {
-		unions = append(unions, idx.(MergeableLookup))
-	}
-
-	return &MergedIndexLookup{
-		Unions: unions,
-	}
+	return union(l, lookups...)
 }
 
 func (*NegateIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
@@ -41,13 +31,5 @@ func (*NegateIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
 }
 
 func (l *NegateIndexLookup) Intersection(indexes ...sql.IndexLookup) sql.IndexLookup {
-	var intersections []MergeableLookup
-	intersections = append(intersections, l)
-	for _, idx := range indexes {
-		intersections = append(intersections, idx.(MergeableLookup))
-	}
-
-	return &MergedIndexLookup{
-		Intersections: intersections,
-	}
+	return intersection(l, indexes...)
 }
