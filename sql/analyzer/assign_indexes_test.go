@@ -537,25 +537,20 @@ func TestGetIndexes(t *testing.T) {
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
-					&memory.MergeableIndexLookup{Key: []interface{}{3}},
+					mergeableIndexLookup("t1", "bar", 0, int64(3)),
 					[]sql.Index{indexes[0]},
 				},
 				"t2": &indexLookup{
 					&memory.MergedIndexLookup{
 						Unions: []sql.IndexLookup{
-							&memory.MergeableIndexLookup{Key: []interface{}{5}},
-							&memory.MergedIndexLookup{
-								Intersections: []sql.IndexLookup{
-									&memory.MergeableIndexLookup{Key: []interface{}{1}},
-									&memory.MergedIndexLookup{
-										Intersections: []sql.IndexLookup{
-											&memory.MergeableIndexLookup{Key: []interface{}{4}},
-											&memory.MergedIndexLookup{
-												Intersections: []sql.IndexLookup{
-													&memory.MergeableIndexLookup{Key: []interface{}{2}},
-												},
-											},
-										},
+							mergeableIndexLookup("t2", "bar", 0, int64(5)),
+							&memory.MergeableIndexLookup{
+								Key: []interface{}{int64(1), int64(2)},
+								Index: memory.MergeableDummyIndex{
+									TableName: "t2",
+									Exprs: []sql.Expression{
+										col(0, "t2", "foo"),
+										col(0, "t2", "bar"),
 									},
 								},
 							},
