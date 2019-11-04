@@ -10,17 +10,9 @@ type AscendIndexLookup struct {
 	Lt  []interface{}
 }
 
-func (l *AscendIndexLookup) ID() string {
-	return l.id
-}
-
-func (l *AscendIndexLookup) GetUnions() []MergeableLookup {
-	return nil
-}
-
-func (l *AscendIndexLookup) GetIntersections() []MergeableLookup {
-	return nil
-}
+func (l *AscendIndexLookup) ID() string { return l.id }
+func (l *AscendIndexLookup) GetUnions() []MergeableLookup { return nil }
+func (l *AscendIndexLookup) GetIntersections() []MergeableLookup { return nil }
 
 func (AscendIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
 	return nil, nil

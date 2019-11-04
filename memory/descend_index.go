@@ -10,17 +10,9 @@ type DescendIndexLookup struct {
 	Lte []interface{}
 }
 
-func (l DescendIndexLookup) ID() string {
-	return l.id
-}
-
-func (l DescendIndexLookup) GetUnions() []MergeableLookup {
-	return nil
-}
-
-func (l DescendIndexLookup) GetIntersections() []MergeableLookup {
-	return nil
-}
+func (l DescendIndexLookup) ID() string { return l.id }
+func (l DescendIndexLookup) GetUnions() []MergeableLookup { return nil }
+func (l DescendIndexLookup) GetIntersections() []MergeableLookup { return nil }
 
 func (DescendIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
 	return nil, nil
@@ -44,7 +36,6 @@ func (l *DescendIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 	return &MergedIndexLookup{
 		Unions: unions,
 	}
-
 }
 
 func (DescendIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {

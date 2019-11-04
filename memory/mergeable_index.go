@@ -107,6 +107,8 @@ var _ sql.SetOperations = (*MergeableIndexLookup)(nil)
 func (i *MergeableIndexLookup) ID() string 													{ return strings.Join(i.Indexes(), ",") }
 func (i *MergeableIndexLookup) GetUnions() []MergeableLookup        { return nil }
 func (i *MergeableIndexLookup) GetIntersections() []MergeableLookup { return nil }
+func (i *MergeableIndexLookup) ClearUnions() { }
+func (i *MergeableIndexLookup) ClearIntersections() { }
 
 func (i *MergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	_, ok := lookup.(MergeableLookup)
@@ -148,6 +150,7 @@ func intersection(left MergeableLookup, lookups ...sql.IndexLookup) sql.IndexLoo
 	intersections = append(intersections, left)
 	for _, lookup := range lookups {
 		intersections = append(intersections, lookup.(MergeableLookup))
+		intersections = append(intersections, lookup.(MergeableLookup).GetIntersections()...)
 	}
 
 	return &MergedIndexLookup{
@@ -164,6 +167,7 @@ func union(left MergeableLookup, lookups ...sql.IndexLookup) sql.IndexLookup {
 	unions = append(unions, left)
 	for _, lookup := range lookups {
 		unions = append(unions, lookup.(MergeableLookup))
+		unions = append(unions, lookup.(MergeableLookup).GetUnions()...)
 	}
 
 	return &MergedIndexLookup{
@@ -185,6 +189,14 @@ func (m *MergedIndexLookup) GetUnions() []MergeableLookup {
 
 func (m *MergedIndexLookup) GetIntersections() []MergeableLookup {
 	return m.Intersections
+}
+
+func (m *MergedIndexLookup) ClearUnions() {
+	m.Unions = nil
+}
+
+func (m *MergedIndexLookup) ClearIntersections() {
+	m.Intersections = nil
 }
 
 func (m *MergedIndexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
