@@ -145,9 +145,25 @@ func (i *MergeableIndexLookup) Intersection(lookups ...sql.IndexLookup) sql.Inde
 	return intersection(i, lookups...)
 }
 
+// Intersects the lookups given together, collapsing redundant layers of intersections for lookups that have previously
+// been merged. E.g. merging a MergeableIndexLookup with a MergedIndexLookup that has 2 intersections will return a
+// MergedIndexLookup with 3 lookups intersected: the left param and the two intersected lookups from the
+// MergedIndexLookup.
 func intersection(left sql.IndexLookup, lookups ...sql.IndexLookup) sql.IndexLookup {
+	var merged []sql.IndexLookup
+	var allLookups []sql.IndexLookup
+	allLookups = append(allLookups, left)
+	allLookups = append(allLookups, lookups...)
+	for _, lookup := range allLookups {
+		if mil, ok := lookup.(*MergedIndexLookup); ok && len(mil.Intersections) > 0 {
+			merged = append(merged, mil.Intersections...)
+		} else {
+			merged = append(merged, lookup)
+		}
+	}
+
 	return &MergedIndexLookup{
-		Intersections: merge(left, lookups),
+		Intersections: merged,
 	}
 }
 
@@ -155,29 +171,29 @@ func (i *MergeableIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup
 	return union(i, lookups...)
 }
 
+// Unions the lookups given together, collapsing redundant layers of unions for lookups that have previously been
+// merged. E.g. merging a MergeableIndexLookup with a MergedIndexLookup that has 2 unions will return a
+// MergedIndexLookup with 3 lookups unioned: the left param and the two unioned lookups from the MergedIndexLookup.
 func union(left sql.IndexLookup, lookups ...sql.IndexLookup) sql.IndexLookup {
-	return &MergedIndexLookup{
-		Unions: merge(left, lookups),
-	}
-}
-
-func merge(left sql.IndexLookup, lookups []sql.IndexLookup) []sql.IndexLookup {
 	var merged []sql.IndexLookup
 	var allLookups []sql.IndexLookup
 	allLookups = append(allLookups, left)
 	allLookups = append(allLookups, lookups...)
 	for _, lookup := range allLookups {
-		if mil, ok := lookup.(*MergedIndexLookup); ok {
-			merged = append(merged, mil.Intersections...)
+		if mil, ok := lookup.(*MergedIndexLookup); ok && len(mil.Unions) > 0 {
 			merged = append(merged, mil.Unions...)
 		} else {
 			merged = append(merged, lookup)
 		}
 	}
 
-	return merged
+	return &MergedIndexLookup{
+		Unions: merged,
+	}
 }
 
+// An index lookup that has been merged with another.
+// Exactly one of the Unions or Intersections fields should be set.
 type MergedIndexLookup struct {
 	Unions        []sql.IndexLookup
 	Intersections []sql.IndexLookup
@@ -185,14 +201,6 @@ type MergedIndexLookup struct {
 
 var _ sql.Mergeable = (*MergedIndexLookup)(nil)
 var _ sql.SetOperations = (*MergedIndexLookup)(nil)
-
-func (m *MergedIndexLookup) ClearUnions() {
-	m.Unions = nil
-}
-
-func (m *MergedIndexLookup) ClearIntersections() {
-	m.Intersections = nil
-}
 
 func (m *MergedIndexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
 	return intersection(m, lookups...)
