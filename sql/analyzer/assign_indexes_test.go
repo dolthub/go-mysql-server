@@ -425,19 +425,11 @@ func TestGetIndexes(t *testing.T) {
 			map[string]*indexLookup{
 				"t1": &indexLookup{
 					&memory.MergedIndexLookup{
-						Unions: []sql.IndexLookup {
-							&memory.MergedIndexLookup{
-								Unions: []sql.IndexLookup{
-									mergeableIndexLookup("t1", "bar", 0, int64(1)),
-									mergeableIndexLookup("t1", "bar", 0, int64(2)),
-								},
-							},
-							&memory.MergedIndexLookup{
-								Unions: []sql.IndexLookup{
-									mergeableIndexLookup("t1", "bar", 0, int64(3)),
-									mergeableIndexLookup("t1", "bar", 0, int64(4)),
-								},
-							},
+						Unions: []sql.IndexLookup{
+							mergeableIndexLookup("t1", "bar", 0, int64(1)),
+							mergeableIndexLookup("t1", "bar", 0, int64(2)),
+							mergeableIndexLookup("t1", "bar", 0, int64(3)),
+							mergeableIndexLookup("t1", "bar", 0, int64(4)),
 						},
 					},
 					[]sql.Index{
