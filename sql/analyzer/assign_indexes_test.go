@@ -491,7 +491,16 @@ func TestGetIndexes(t *testing.T) {
 					[]sql.Index{indexes[0]},
 				},
 				"t2": &indexLookup{
-					mergeableIndexLookup("t2", "foo", 0, int64(1), int64(2)),
+					&memory.MergeableIndexLookup{
+						Key: []interface{}{int64(1), int64(2)},
+						Index: memory.MergeableDummyIndex{
+							TableName: "t2",
+							Exprs:     []sql.Expression{
+								col(0, "t2", "foo"),
+								col(0, "t2", "bar"),
+							},
+						},
+					},
 					[]sql.Index{indexes[1]},
 				},
 			},
