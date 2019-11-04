@@ -625,7 +625,7 @@ func TestGetIndexes(t *testing.T) {
 			map[string]*indexLookup{
 				"t1": &indexLookup{
 					&memory.MergedIndexLookup {
-						Intersections: []sql.IndexLookup{
+						Unions: []sql.IndexLookup{
 							&memory.AscendIndexLookup{
 								Gte: []interface{}{int64(1)},
 								Lt:  []interface{}{int64(5)},
