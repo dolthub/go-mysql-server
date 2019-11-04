@@ -337,6 +337,9 @@ func betweenIndexLookup(index sql.Index, upper, lower []interface{}) (sql.IndexL
 
 		m, ok := ascendLookup.(sql.Mergeable)
 		if ok && m.IsMergeable(descendLookup) {
+			// TODO: two bugs here
+			// 1) Mergeable and SetOperations are separate interfaces, so a bad integrator could generate a type assertion error here
+			// 2) This should be Intersection, not Union. Not fixing yet because the test index doesn't implement Intersection.
 			return ascendLookup.(sql.SetOperations).Union(descendLookup), nil
 		}
 	}
@@ -503,7 +506,6 @@ func getNegatedIndexes(a *Analyzer, not *expression.Not, aliases map[string]sql.
 		return getIndexes(or, aliases, a)
 	default:
 		return nil, nil
-
 	}
 }
 
