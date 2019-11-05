@@ -12,7 +12,7 @@ type NegateIndexLookup struct {
 func (l *NegateIndexLookup) ID() string              { return "not " + l.Lookup.ID() }
 
 func (*NegateIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
-	return nil, nil
+	panic("unimplemented")
 }
 
 func (l *NegateIndexLookup) Indexes() []string {

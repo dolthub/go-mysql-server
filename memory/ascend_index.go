@@ -17,7 +17,7 @@ var _ memoryIndexLookup = (*AscendIndexLookup)(nil)
 func (l *AscendIndexLookup) ID() string { return l.id }
 
 func (AscendIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
-	return nil, nil
+	panic("unimplemented")
 }
 
 func (l *AscendIndexLookup) Indexes() []string {
@@ -36,12 +36,17 @@ func (l *AscendIndexLookup) EvalExpression() sql.Expression {
 	if len(l.Index.ColumnExpressions()) > 1 {
 		panic("Ascend index unsupported for multi-column indexes")
 	}
+
 	gt, typ := getType(l.Gte[0])
-	lt, typ := getType(l.Lt[0])
-	return and(
-		expression.NewGreaterThanOrEqual(l.Index.ColumnExpressions()[0], expression.NewLiteral(gt, typ)),
-		expression.NewLessThan(l.Index.ColumnExpressions()[0], expression.NewLiteral(lt, typ)),
+	gte := expression.NewGreaterThanOrEqual(l.Index.ColumnExpressions()[0], expression.NewLiteral(gt, typ))
+	if l.Lt != nil {
+		lt, _ := getType(l.Lt[0])
+		return and(
+			gte,
+			expression.NewLessThan(l.Index.ColumnExpressions()[0], expression.NewLiteral(lt, typ)),
 		)
+	}
+	return gte
 }
 
 func (AscendIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {

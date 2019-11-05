@@ -29,27 +29,27 @@ func (i MergeableDummyIndex) Expressions() []string {
 }
 
 func (i MergeableDummyIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
-	return &AscendIndexLookup{Gte: keys}, nil
+	return &AscendIndexLookup{Gte: keys, Index: i}, nil
 }
 
 func (i MergeableDummyIndex) AscendLessThan(keys ...interface{}) (sql.IndexLookup, error) {
-	return &AscendIndexLookup{Lt: keys}, nil
+	return &AscendIndexLookup{Lt: keys, Index: i}, nil
 }
 
 func (i MergeableDummyIndex) AscendRange(greaterOrEqual, lessThan []interface{}) (sql.IndexLookup, error) {
-	return &AscendIndexLookup{Gte: greaterOrEqual, Lt: lessThan}, nil
+	return &AscendIndexLookup{Gte: greaterOrEqual, Lt: lessThan, Index: i}, nil
 }
 
 func (i MergeableDummyIndex) DescendGreater(keys ...interface{}) (sql.IndexLookup, error) {
-	return &DescendIndexLookup{Gt: keys}, nil
+	return &DescendIndexLookup{Gt: keys, Index: i}, nil
 }
 
 func (i MergeableDummyIndex) DescendLessOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
-	return &DescendIndexLookup{Lte: keys}, nil
+	return &DescendIndexLookup{Lte: keys, Index: i}, nil
 }
 
 func (i MergeableDummyIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sql.IndexLookup, error) {
-	return &DescendIndexLookup{Gt: greaterThan, Lte: lessOrEqual}, nil
+	return &DescendIndexLookup{Gt: greaterThan, Lte: lessOrEqual, Index: i}, nil
 }
 
 func (i MergeableDummyIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
