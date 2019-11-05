@@ -230,8 +230,8 @@ func mergeableIndexLookup(table string, column string, colIdx int, key ...interf
 	}
 }
 
-func mergeableIndex(table string, column string, colIdx int) memory.MergeableDummyIndex {
-	return memory.MergeableDummyIndex{
+func mergeableIndex(table string, column string, colIdx int) *memory.MergeableDummyIndex {
+	return &memory.MergeableDummyIndex{
 		TableName: table,
 		Exprs:     []sql.Expression{col(colIdx, table, column)},
 	}
@@ -504,7 +504,7 @@ func TestGetIndexes(t *testing.T) {
 				"t2": &indexLookup{
 					&memory.MergeableIndexLookup{
 						Key: []interface{}{int64(1), int64(2)},
-						Index: memory.MergeableDummyIndex{
+						Index: &memory.MergeableDummyIndex{
 							TableName: "t2",
 							Exprs:     []sql.Expression{
 								col(0, "t2", "foo"),
@@ -556,7 +556,7 @@ func TestGetIndexes(t *testing.T) {
 						mergeableIndexLookup("t2", "bar", 0, int64(5)),
 						&memory.MergeableIndexLookup{
 							Key: []interface{}{int64(1), int64(2)},
-							Index: memory.MergeableDummyIndex{
+							Index: &memory.MergeableDummyIndex{
 								TableName: "t2",
 								Exprs: []sql.Expression{
 									col(0, "t2", "foo"),
@@ -942,7 +942,6 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 			},
 		},
 		{
-
 			TableName: "t3",
 			Exprs: []sql.Expression{col(0, "t3", "foo")},
 		},
@@ -1006,25 +1005,35 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 
 	expected := map[string]*indexLookup{
 		"t1": &indexLookup{
-			&memory.MergeableIndexLookup{Key: []interface{}{5, 6}},
+			&memory.MergeableIndexLookup{
+				Key: []interface{}{int64(5), int64(6)},
+				Index: indexes[0],
+			},
 			[]sql.Index{indexes[0]},
 		},
 		"t2": &indexLookup{
-			&memory.MergeableIndexLookup{Key: []interface{}{1, 2, 3}},
+			&memory.MergeableIndexLookup{
+				Key: []interface{}{int64(1), int64(2), int64(3)},
+				Index: indexes[1],
+			},
 			[]sql.Index{indexes[1]},
 		},
 		"t4": &indexLookup{
 			&memory.MergedIndexLookup{
-				Intersections: []sql.IndexLookup{
+				Unions: []sql.IndexLookup{
 					&memory.AscendIndexLookup{
 						Gte: []interface{}{int64(1), int64(2)},
 						Lt:  []interface{}{int64(6), int64(5)},
+						Index: indexes[4],
 					},
 					&memory.DescendIndexLookup{
 						Gt:  []interface{}{int64(1), int64(2)},
 						Lte: []interface{}{int64(6), int64(5)},
+						Index: indexes[4],
 					},
-				}},
+				},
+				Index: indexes[4],
+			},
 			[]sql.Index{indexes[4]},
 		},
 	}

@@ -15,12 +15,12 @@ type MergeableDummyIndex struct {
 	Exprs      []sql.Expression
 }
 
-func (i MergeableDummyIndex) Database() string { return i.DB }
-func (i MergeableDummyIndex) Driver() string   { return i.DriverName }
-func (i MergeableDummyIndex) MemTable() *Table   { return i.Tbl }
-func (i MergeableDummyIndex) ColumnExpressions() []sql.Expression   { return i.Exprs }
+func (i *MergeableDummyIndex) Database() string { return i.DB }
+func (i *MergeableDummyIndex) Driver() string   { return i.DriverName }
+func (i *MergeableDummyIndex) MemTable() *Table   { return i.Tbl }
+func (i *MergeableDummyIndex) ColumnExpressions() []sql.Expression   { return i.Exprs }
 
-func (i MergeableDummyIndex) Expressions() []string {
+func (i *MergeableDummyIndex) Expressions() []string {
 	var exprs []string
 	for _, e := range i.Exprs {
 		exprs = append(exprs, e.String())
@@ -28,31 +28,31 @@ func (i MergeableDummyIndex) Expressions() []string {
 	return exprs
 }
 
-func (i MergeableDummyIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
+func (i *MergeableDummyIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
 	return &AscendIndexLookup{Gte: keys, Index: i}, nil
 }
 
-func (i MergeableDummyIndex) AscendLessThan(keys ...interface{}) (sql.IndexLookup, error) {
+func (i *MergeableDummyIndex) AscendLessThan(keys ...interface{}) (sql.IndexLookup, error) {
 	return &AscendIndexLookup{Lt: keys, Index: i}, nil
 }
 
-func (i MergeableDummyIndex) AscendRange(greaterOrEqual, lessThan []interface{}) (sql.IndexLookup, error) {
+func (i *MergeableDummyIndex) AscendRange(greaterOrEqual, lessThan []interface{}) (sql.IndexLookup, error) {
 	return &AscendIndexLookup{Gte: greaterOrEqual, Lt: lessThan, Index: i}, nil
 }
 
-func (i MergeableDummyIndex) DescendGreater(keys ...interface{}) (sql.IndexLookup, error) {
+func (i *MergeableDummyIndex) DescendGreater(keys ...interface{}) (sql.IndexLookup, error) {
 	return &DescendIndexLookup{Gt: keys, Index: i}, nil
 }
 
-func (i MergeableDummyIndex) DescendLessOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
+func (i *MergeableDummyIndex) DescendLessOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
 	return &DescendIndexLookup{Lte: keys, Index: i}, nil
 }
 
-func (i MergeableDummyIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sql.IndexLookup, error) {
+func (i *MergeableDummyIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sql.IndexLookup, error) {
 	return &DescendIndexLookup{Gt: greaterThan, Lte: lessOrEqual, Index: i}, nil
 }
 
-func (i MergeableDummyIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
+func (i *MergeableDummyIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
 	lookup, err := i.Get(keys...)
 	if err != nil {
 		return nil, err
@@ -62,15 +62,15 @@ func (i MergeableDummyIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
 	return &NegateIndexLookup{Lookup: mergeable, Index: mergeable.Index}, nil
 }
 
-func (i MergeableDummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
+func (i *MergeableDummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 	return &MergeableIndexLookup{Key: key, Index: i}, nil
 }
 
-func (i MergeableDummyIndex) Has(sql.Partition, ...interface{}) (bool, error) {
+func (i *MergeableDummyIndex) Has(sql.Partition, ...interface{}) (bool, error) {
 	panic("not implemented")
 }
 
-func (i MergeableDummyIndex) ID() string {
+func (i *MergeableDummyIndex) ID() string {
 	if len(i.Exprs) == 1 {
 		return i.Exprs[0].String()
 	}
@@ -82,7 +82,7 @@ func (i MergeableDummyIndex) ID() string {
 	return "(" + strings.Join(parts, ", ") + ")"
 }
 
-func (i MergeableDummyIndex) Table() string { return i.TableName }
+func (i *MergeableDummyIndex) Table() string { return i.TableName }
 
 type MergeableLookup interface {
 	ID() string
