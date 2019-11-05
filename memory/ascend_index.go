@@ -16,8 +16,13 @@ var _ memoryIndexLookup = (*AscendIndexLookup)(nil)
 
 func (l *AscendIndexLookup) ID() string { return l.id }
 
-func (AscendIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
-	panic("unimplemented")
+func (l *AscendIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
+	return &dummyIndexValueIter{
+		tbl:       l.Index.MemTable(),
+		partition: p,
+		matchExpressions: func() []sql.Expression {
+			return []sql.Expression { l.EvalExpression() }
+		}}, nil
 }
 
 func (l *AscendIndexLookup) Indexes() []string {
@@ -37,16 +42,16 @@ func (l *AscendIndexLookup) EvalExpression() sql.Expression {
 		panic("Ascend index unsupported for multi-column indexes")
 	}
 
-	gt, typ := getType(l.Gte[0])
-	gte := expression.NewGreaterThanOrEqual(l.Index.ColumnExpressions()[0], expression.NewLiteral(gt, typ))
-	if l.Lt != nil {
-		lt, _ := getType(l.Lt[0])
+	lt, typ := getType(l.Lt[0])
+	ltexpr := expression.NewLessThan(l.Index.ColumnExpressions()[0], expression.NewLiteral(lt, typ))
+	if len(l.Gte) > 0 {
+		gte, _ := getType(l.Gte[0])
 		return and(
-			gte,
-			expression.NewLessThan(l.Index.ColumnExpressions()[0], expression.NewLiteral(lt, typ)),
+			ltexpr,
+			expression.NewGreaterThanOrEqual(l.Index.ColumnExpressions()[0], expression.NewLiteral(gte, typ)),
 		)
 	}
-	return gte
+	return ltexpr
 }
 
 func (AscendIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {

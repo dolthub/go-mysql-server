@@ -9,10 +9,21 @@ type NegateIndexLookup struct {
 	Index ExpressionsIndex
 }
 
-func (l *NegateIndexLookup) ID() string              { return "not " + l.Lookup.ID() }
+var _ memoryIndexLookup = (*NegateIndexLookup)(nil)
 
-func (*NegateIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
-	panic("unimplemented")
+func (l *NegateIndexLookup) ID() string { return "not " + l.Lookup.ID() }
+
+func (l *NegateIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
+	return &dummyIndexValueIter{
+		tbl:       l.Index.MemTable(),
+		partition: p,
+		matchExpressions: func() []sql.Expression {
+			return []sql.Expression { l.Lookup.(memoryIndexLookup).EvalExpression() }
+		}}, nil
+}
+
+func (l *NegateIndexLookup) EvalExpression() sql.Expression {
+	return l.Lookup.(memoryIndexLookup).EvalExpression()
 }
 
 func (l *NegateIndexLookup) Indexes() []string {
