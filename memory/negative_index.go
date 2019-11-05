@@ -2,6 +2,7 @@ package memory
 
 import (
 	"github.com/src-d/go-mysql-server/sql"
+	"github.com/src-d/go-mysql-server/sql/expression"
 )
 
 type NegateIndexLookup struct {
@@ -18,12 +19,12 @@ func (l *NegateIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) 
 		tbl:       l.Index.MemTable(),
 		partition: p,
 		matchExpressions: func() []sql.Expression {
-			return []sql.Expression { l.Lookup.(memoryIndexLookup).EvalExpression() }
+			return []sql.Expression { l.EvalExpression() }
 		}}, nil
 }
 
 func (l *NegateIndexLookup) EvalExpression() sql.Expression {
-	return l.Lookup.(memoryIndexLookup).EvalExpression()
+	return expression.NewNot(l.Lookup.(memoryIndexLookup).EvalExpression())
 }
 
 func (l *NegateIndexLookup) Indexes() []string {

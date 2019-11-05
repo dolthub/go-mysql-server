@@ -32,11 +32,11 @@ func (l *DescendIndexLookup) EvalExpression() sql.Expression {
 
 	gt, typ := getType(l.Gt[0])
 	gtexpr := expression.NewGreaterThan(l.Index.ColumnExpressions()[0], expression.NewLiteral(gt, typ))
-	if len(l.Gt) > 0 {
-		lt, _ := getType(l.Gt[0])
+	if len(l.Lte) > 0 {
+		lte, _ := getType(l.Lte[0])
 		return and(
 			gtexpr,
-			expression.NewLessThanOrEqual(l.Index.ColumnExpressions()[0], expression.NewLiteral(lt, typ)),
+			expression.NewLessThanOrEqual(l.Index.ColumnExpressions()[0], expression.NewLiteral(lte, typ)),
 		)
 	}
 	return gtexpr
