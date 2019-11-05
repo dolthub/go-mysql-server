@@ -168,7 +168,7 @@ func intersection(idx ExpressionsIndex, left sql.IndexLookup, lookups ...sql.Ind
 
 	return &MergedIndexLookup{
 		Intersections: merged,
-		idx: idx,
+		Index:         idx,
 	}
 }
 
@@ -194,7 +194,7 @@ func union(idx ExpressionsIndex, left sql.IndexLookup, lookups ...sql.IndexLooku
 
 	return &MergedIndexLookup{
 		Unions: merged,
-		idx: idx,
+		Index:  idx,
 	}
 }
 
@@ -203,7 +203,7 @@ func union(idx ExpressionsIndex, left sql.IndexLookup, lookups ...sql.IndexLooku
 type MergedIndexLookup struct {
 	Unions        []sql.IndexLookup
 	Intersections []sql.IndexLookup
-	idx           ExpressionsIndex
+	Index         ExpressionsIndex
 }
 
 var _ sql.Mergeable = (*MergedIndexLookup)(nil)
@@ -228,11 +228,11 @@ func (m *MergedIndexLookup) EvalExpression() sql.Expression {
 }
 
 func (m *MergedIndexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return intersection(m.idx, m, lookups...)
+	return intersection(m.Index, m, lookups...)
 }
 
 func (m *MergedIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return union(m.idx, m, lookups...)
+	return union(m.Index, m, lookups...)
 }
 
 func (m *MergedIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
@@ -246,7 +246,7 @@ func (m *MergedIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 
 func (m *MergedIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	return &dummyIndexValueIter{
-		tbl:       m.idx.MemTable(),
+		tbl:       m.Index.MemTable(),
 		partition: p,
 		matchExpressions: func() []sql.Expression {
 			return []sql.Expression { m.EvalExpression() }
