@@ -1597,60 +1597,42 @@ var queries = []struct {
 }
 
 func TestQueries(t *testing.T) {
-	// Test all queries with these combinations, for a total of 8 runs:
+	type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
+	type indexDriverTestCase struct {
+		name string
+		initializer indexDriverInitalizer
+	}
+	
+	// Test all queries with these combinations, for a total of 16 runs:
 	// 1) Partitioned tables / non partitioned tables
-	// 2) Indexes enabled / disabled
+	// 2) Mergeable / unmergeable / no indexes
 	// 3) Parallelism on / off
 	// numPartitionsVals := []int{1}
 	// useIndexesVals := []bool{true}
 	// parallelVals := []int{1}
 	numPartitionsVals := []int{1, testNumPartitions}
-	useIndexesVals := []bool{false, true}
+	indexDrivers := []*indexDriverTestCase{
+		nil,
+		{"unmergableIndexes", unmergableIndexDriver},
+		{"mergableIndexes", mergableIndexDriver},
+	}
 	parallelVals := []int{1, 2}
 	for _, numPartitions := range numPartitionsVals {
-		for _, useIndexes := range useIndexesVals {
+		for _, indexDriverInit := range indexDrivers {
 			for _, parallelism := range parallelVals {
 				tables := allTestTables(t, numPartitions)
-				testIndexDriver := memory.NewIndexDriver("mydb", map[string][]sql.Index{
-					"mytable": {
-						newUnmergableIndex(tables, "mytable",
-							expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
-						newUnmergableIndex(tables, "mytable",
-							expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
-						newUnmergableIndex(tables, "mytable",
-							expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-							expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
-					},
-					"othertable": {
-						newUnmergableIndex(tables, "othertable",
-							expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
-						newUnmergableIndex(tables, "othertable",
-							expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
-						newUnmergableIndex(tables, "othertable",
-							expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
-							expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
-					},
-					"bigtable": {
-						newUnmergableIndex(tables, "bigtable",
-							expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
-					},
-					"floattable": {
-						newUnmergableIndex(tables, "floattable",
-							expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
-					},
-					"niltable": {
-						newUnmergableIndex(tables, "niltable",
-							expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
-					},
-				})
 
 				var indexDriver sql.IndexDriver
-				if useIndexes {
-					indexDriver = testIndexDriver
+				if indexDriverInit != nil {
+					indexDriver = indexDriverInit.initializer(tables)
 				}
 				engine := newEngineWithParallelism(t, parallelism, tables, indexDriver)
 
-				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, useIndexes, parallelism)
+				indexDriverName := "none"
+				if indexDriverInit != nil {
+					indexDriverName = indexDriverInit.name
+				}
+				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexDriverName, parallelism)
 				t.Run(testName, func(t *testing.T) {
 					for _, tt := range queries {
 						testQuery(t, engine, tt.query, tt.expected)
@@ -1661,8 +1643,89 @@ func TestQueries(t *testing.T) {
 	}
 }
 
+func unmergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
+	return memory.NewIndexDriver("mydb", map[string][]sql.Index{
+		"mytable": {
+			newUnmergableIndex(tables, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
+			newUnmergableIndex(tables, "mytable",
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+			newUnmergableIndex(tables, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+		},
+		"othertable": {
+			newUnmergableIndex(tables, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
+			newUnmergableIndex(tables, "othertable",
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+			newUnmergableIndex(tables, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+		},
+		"bigtable": {
+			newUnmergableIndex(tables, "bigtable",
+				expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
+		},
+		"floattable": {
+			newUnmergableIndex(tables, "floattable",
+				expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
+		},
+		"niltable": {
+			newUnmergableIndex(tables, "niltable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
+		},
+	})
+}
+
+func mergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
+	return memory.NewIndexDriver("mydb", map[string][]sql.Index{
+		"mytable": {
+			newMergableIndex(tables, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
+			newMergableIndex(tables, "mytable",
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+			newMergableIndex(tables, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+		},
+		"othertable": {
+			newMergableIndex(tables, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
+			newMergableIndex(tables, "othertable",
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+			newMergableIndex(tables, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+		},
+		"bigtable": {
+			newMergableIndex(tables, "bigtable",
+				expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
+		},
+		"floattable": {
+			newMergableIndex(tables, "floattable",
+				expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
+		},
+		"niltable": {
+			newMergableIndex(tables, "niltable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
+		},
+	})
+}
+
+
 func newUnmergableIndex(tables map[string]*memory.Table, tableName string, exprs ...sql.Expression) *memory.UnmergeableDummyIndex {
 	return &memory.UnmergeableDummyIndex{
+		DB:         "mydb",
+		DriverName: memory.IndexDriverId,
+		TableName:  tableName,
+		Tbl:        tables[tableName],
+		Exprs:      exprs,
+	}
+}
+
+func newMergableIndex(tables map[string]*memory.Table, tableName string, exprs ...sql.Expression) *memory.MergeableDummyIndex {
+	return &memory.MergeableDummyIndex {
 		DB:         "mydb",
 		DriverName: memory.IndexDriverId,
 		TableName:  tableName,

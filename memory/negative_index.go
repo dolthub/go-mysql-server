@@ -5,7 +5,8 @@ import (
 )
 
 type NegateIndexLookup struct {
-	Lookup         MergeableLookup
+	Lookup MergeableLookup
+	Index ExpressionsIndex
 }
 
 func (l *NegateIndexLookup) ID() string              { return "not " + l.Lookup.ID() }
@@ -23,7 +24,7 @@ func (*NegateIndexLookup) IsMergeable(sql.IndexLookup) bool {
 }
 
 func (l *NegateIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return union(l, lookups...)
+	return union(l.Index, l, lookups...)
 }
 
 func (*NegateIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
@@ -31,5 +32,5 @@ func (*NegateIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
 }
 
 func (l *NegateIndexLookup) Intersection(indexes ...sql.IndexLookup) sql.IndexLookup {
-	return intersection(l, indexes...)
+	return intersection(l.Index, l, indexes...)
 }

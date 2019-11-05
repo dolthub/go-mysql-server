@@ -5,14 +5,13 @@ import (
 )
 
 type DescendIndexLookup struct {
-	id  string
-	Gt  []interface{}
-	Lte []interface{}
+	id    string
+	Gt    []interface{}
+	Lte   []interface{}
+	Index ExpressionsIndex
 }
 
 func (l DescendIndexLookup) ID() string { return l.id }
-func (l DescendIndexLookup) GetUnions() []MergeableLookup { return nil }
-func (l DescendIndexLookup) GetIntersections() []MergeableLookup { return nil }
 
 func (DescendIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
 	return nil, nil
@@ -27,7 +26,7 @@ func (l *DescendIndexLookup) IsMergeable(sql.IndexLookup) bool {
 }
 
 func (l *DescendIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return union(l, lookups...)
+	return union(l.Index, l, lookups...)
 }
 
 func (DescendIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {

@@ -59,7 +59,7 @@ func (i MergeableDummyIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
 	}
 
 	mergeable, _ := lookup.(*MergeableIndexLookup)
-	return &NegateIndexLookup{Lookup: mergeable}, nil
+	return &NegateIndexLookup{Lookup: mergeable, Index: mergeable.Index}, nil
 }
 
 func (i MergeableDummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
@@ -86,8 +86,6 @@ func (i MergeableDummyIndex) Table() string { return i.TableName }
 
 type MergeableLookup interface {
 	ID() string
-	// GetUnions() []MergeableLookup
-	// GetIntersections() []MergeableLookup
 }
 
 // ExpressionsIndex is an index made out of one or more expressions (usually field expressions)
@@ -103,12 +101,9 @@ type MergeableIndexLookup struct {
 
 var _ sql.Mergeable = (*MergeableIndexLookup)(nil)
 var _ sql.SetOperations = (*MergeableIndexLookup)(nil)
+var _ memoryIndexLookup = (*MergeableIndexLookup)(nil)
 
 func (i *MergeableIndexLookup) ID() string 													{ return strings.Join(i.Indexes(), ",") }
-// func (i *MergeableIndexLookup) GetUnions() []MergeableLookup        { return nil }
-// func (i *MergeableIndexLookup) GetIntersections() []MergeableLookup { return nil }
-func (i *MergeableIndexLookup) ClearUnions() { }
-func (i *MergeableIndexLookup) ClearIntersections() { }
 
 func (i *MergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	_, ok := lookup.(MergeableLookup)
@@ -129,6 +124,15 @@ func (i *MergeableIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, erro
 		}}, nil
 }
 
+func (i *MergeableIndexLookup) EvalExpression() sql.Expression {
+	var exprs []sql.Expression
+	for exprI, expr := range i.Index.ColumnExpressions() {
+		lit, typ := getType(i.Key[exprI])
+		exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(lit, typ)))
+	}
+	return and(exprs...)
+}
+
 func (i *MergeableIndexLookup) Indexes() []string {
 	var idxes = make([]string, len(i.Key))
 	for i, e := range i.Key {
@@ -142,14 +146,14 @@ func (i *MergeableIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
 }
 
 func (i *MergeableIndexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return intersection(i, lookups...)
+	return intersection(i.Index, i, lookups...)
 }
 
 // Intersects the lookups given together, collapsing redundant layers of intersections for lookups that have previously
 // been merged. E.g. merging a MergeableIndexLookup with a MergedIndexLookup that has 2 intersections will return a
 // MergedIndexLookup with 3 lookups intersected: the left param and the two intersected lookups from the
 // MergedIndexLookup.
-func intersection(left sql.IndexLookup, lookups ...sql.IndexLookup) sql.IndexLookup {
+func intersection(idx ExpressionsIndex, left sql.IndexLookup, lookups ...sql.IndexLookup) sql.IndexLookup {
 	var merged []sql.IndexLookup
 	var allLookups []sql.IndexLookup
 	allLookups = append(allLookups, left)
@@ -164,17 +168,18 @@ func intersection(left sql.IndexLookup, lookups ...sql.IndexLookup) sql.IndexLoo
 
 	return &MergedIndexLookup{
 		Intersections: merged,
+		idx: idx,
 	}
 }
 
 func (i *MergeableIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return union(i, lookups...)
+	return union(i.Index, i, lookups...)
 }
 
 // Unions the lookups given together, collapsing redundant layers of unions for lookups that have previously been
 // merged. E.g. merging a MergeableIndexLookup with a MergedIndexLookup that has 2 unions will return a
 // MergedIndexLookup with 3 lookups unioned: the left param and the two unioned lookups from the MergedIndexLookup.
-func union(left sql.IndexLookup, lookups ...sql.IndexLookup) sql.IndexLookup {
+func union(idx ExpressionsIndex, left sql.IndexLookup, lookups ...sql.IndexLookup) sql.IndexLookup {
 	var merged []sql.IndexLookup
 	var allLookups []sql.IndexLookup
 	allLookups = append(allLookups, left)
@@ -189,6 +194,7 @@ func union(left sql.IndexLookup, lookups ...sql.IndexLookup) sql.IndexLookup {
 
 	return &MergedIndexLookup{
 		Unions: merged,
+		idx: idx,
 	}
 }
 
@@ -197,17 +203,36 @@ func union(left sql.IndexLookup, lookups ...sql.IndexLookup) sql.IndexLookup {
 type MergedIndexLookup struct {
 	Unions        []sql.IndexLookup
 	Intersections []sql.IndexLookup
+	idx           ExpressionsIndex
 }
 
 var _ sql.Mergeable = (*MergedIndexLookup)(nil)
 var _ sql.SetOperations = (*MergedIndexLookup)(nil)
+var _ memoryIndexLookup = (*MergedIndexLookup)(nil)
+
+func (m *MergedIndexLookup) EvalExpression() sql.Expression {
+	var exprs []sql.Expression
+	if m.Intersections != nil {
+		for _, lookup := range m.Intersections {
+			exprs = append(exprs, lookup.(memoryIndexLookup).EvalExpression())
+		}
+		return and(exprs...)
+	}
+	if m.Unions != nil {
+		for _, lookup := range m.Unions {
+			exprs = append(exprs, lookup.(memoryIndexLookup).EvalExpression())
+		}
+		return or(exprs...)
+	}
+	panic("either Unions or Intersections must be non-nil")
+}
 
 func (m *MergedIndexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return intersection(m, lookups...)
+	return intersection(m.idx, m, lookups...)
 }
 
 func (m *MergedIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return union(m, lookups...)
+	return union(m.idx, m, lookups...)
 }
 
 func (m *MergedIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
@@ -219,8 +244,27 @@ func (m *MergedIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	return ok
 }
 
-func (m *MergedIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
-	panic("implement me")
+func (m *MergedIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
+	return &dummyIndexValueIter{
+		tbl:       m.idx.MemTable(),
+		partition: p,
+		matchExpressions: func() []sql.Expression {
+			return []sql.Expression { m.EvalExpression() }
+		}}, nil
+}
+
+func or(expressions ...sql.Expression) sql.Expression {
+	if len(expressions) == 1 {
+		return expressions[0]
+	}
+	return expression.NewOr(expressions[0], or(expressions[1:]...))
+}
+
+func and(expressions ...sql.Expression) sql.Expression {
+	if len(expressions) == 1 {
+		return expressions[0]
+	}
+	return expression.NewAnd(expressions[0], and(expressions[1:]...))
 }
 
 func (m *MergedIndexLookup) Indexes() []string {
