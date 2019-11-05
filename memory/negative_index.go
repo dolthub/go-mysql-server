@@ -30,8 +30,9 @@ func (l *NegateIndexLookup) Indexes() []string {
 	return []string{l.ID()}
 }
 
-func (*NegateIndexLookup) IsMergeable(sql.IndexLookup) bool {
-	return true
+func (*NegateIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
+	_, ok := lookup.(MergeableLookup)
+	return ok
 }
 
 func (l *NegateIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {

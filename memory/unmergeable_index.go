@@ -37,20 +37,12 @@ func (u *UnmergeableDummyIndex) Get(key ...interface{}) (sql.IndexLookup, error)
 	}, nil
 }
 
+// UnmergeableIndexLookup is the only IndexLookup in this package that doesn't implement Mergeable, and therefore
+// can't be merged with other lookups.
 type UnmergeableIndexLookup struct {
 	key []interface{}
 	idx *UnmergeableDummyIndex
 }
-
-func (u *UnmergeableIndexLookup) EvalExpression() sql.Expression {
-	return nil
-}
-
-type memoryIndexLookup interface {
-	EvalExpression() sql.Expression
-}
-
-var _ memoryIndexLookup = (*UnmergeableIndexLookup)(nil)
 
 // dummyIndexValueIter does a very simple and verifiable iteration over the table values for a given index. It does this
 // by iterating over all the table rows for a partition and evaluating each of them for inclusion in the index. This is

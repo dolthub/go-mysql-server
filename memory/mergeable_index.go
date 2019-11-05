@@ -84,26 +84,34 @@ func (i *MergeableDummyIndex) ID() string {
 
 func (i *MergeableDummyIndex) Table() string { return i.TableName }
 
+// All lookups in this package, except for UnmergeableLookup, are MergeableLookups. The IDs are mostly for testing /
+// verification purposes.
 type MergeableLookup interface {
 	ID() string
 }
 
-// ExpressionsIndex is an index made out of one or more expressions (usually field expressions)
+// ExpressionsIndex is an index made out of one or more expressions (usually field expressions), linked to a Table.
 type ExpressionsIndex interface {
 	MemTable() 					*Table
 	ColumnExpressions() []sql.Expression
 }
 
+// MergeableIndexLookup is a lookup linked to an ExpressionsIndex. It can be merged with any other MergeableIndexLookup.  All lookups in this package are Merge
 type MergeableIndexLookup struct {
-	Key           []interface{}
-	Index         ExpressionsIndex
+	Key   []interface{}
+	Index ExpressionsIndex
+}
+
+// memoryIndexLookup is a lookup that defines an expression to evaluate which rows are part of the index values
+type memoryIndexLookup interface {
+	EvalExpression() sql.Expression
 }
 
 var _ sql.Mergeable = (*MergeableIndexLookup)(nil)
 var _ sql.SetOperations = (*MergeableIndexLookup)(nil)
 var _ memoryIndexLookup = (*MergeableIndexLookup)(nil)
 
-func (i *MergeableIndexLookup) ID() string 													{ return strings.Join(i.Indexes(), ",") }
+func (i *MergeableIndexLookup) ID() string { return strings.Join(i.Indexes(), ",") }
 
 func (i *MergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	_, ok := lookup.(MergeableLookup)
@@ -198,8 +206,9 @@ func union(idx ExpressionsIndex, left sql.IndexLookup, lookups ...sql.IndexLooku
 	}
 }
 
-// An index lookup that has been merged with another.
-// Exactly one of the Unions or Intersections fields should be set.
+// MergedIndexLookup is an index lookup that has been merged with another.
+// Exactly one of the Unions or Intersections fields should be set, and correspond to a logical AND or OR operation,
+// respectively.
 type MergedIndexLookup struct {
 	Unions        []sql.IndexLookup
 	Intersections []sql.IndexLookup
@@ -252,6 +261,14 @@ func (m *MergedIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) 
 	}, nil
 }
 
+func (m *MergedIndexLookup) Indexes() []string {
+	panic("implement me")
+}
+
+func (m *MergedIndexLookup) ID() string {
+	panic("implement me")
+}
+
 func or(expressions ...sql.Expression) sql.Expression {
 	if len(expressions) == 1 {
 		return expressions[0]
@@ -264,12 +281,4 @@ func and(expressions ...sql.Expression) sql.Expression {
 		return expressions[0]
 	}
 	return expression.NewAnd(expressions[0], and(expressions[1:]...))
-}
-
-func (m *MergedIndexLookup) Indexes() []string {
-	panic("implement me")
-}
-
-func (m *MergedIndexLookup) ID() string {
-	panic("implement me")
 }

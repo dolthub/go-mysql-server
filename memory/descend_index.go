@@ -45,8 +45,9 @@ func (l *DescendIndexLookup) Indexes() []string {
 	return []string{l.id}
 }
 
-func (l *DescendIndexLookup) IsMergeable(sql.IndexLookup) bool {
-	return true
+func (l *DescendIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
+	_, ok := lookup.(MergeableLookup)
+	return ok
 }
 
 func (l *DescendIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {

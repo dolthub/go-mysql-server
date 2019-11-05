@@ -28,8 +28,9 @@ func (l *AscendIndexLookup) Indexes() []string {
 	return []string{l.id}
 }
 
-func (l *AscendIndexLookup) IsMergeable(sql.IndexLookup) bool {
-	return true
+func (l *AscendIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
+	_, ok := lookup.(MergeableLookup)
+	return ok
 }
 
 func (l *AscendIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
