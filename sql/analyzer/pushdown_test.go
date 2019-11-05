@@ -190,7 +190,7 @@ func TestPushdownIndexable(t *testing.T) {
 					}).(*memory.Table).
 						WithProjection([]string{"i", "f"}).(*memory.Table).
 							WithIndexLookup(
-								// TODO: this is arguably a bug. These two indexes should not be mergeable, and fetching the values of
+								// TODO: These two indexes should not be mergeable, and fetching the values of
 								//  them will not yield correct results with the current implementation of these indexes.
 								&memory.MergedIndexLookup{
 									Intersections: []sql.IndexLookup{
