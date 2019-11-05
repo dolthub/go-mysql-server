@@ -58,7 +58,7 @@ func (*DescendIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
 	panic("descendIndexLookup.Difference is not implemented")
 }
 
-func (*DescendIndexLookup) Intersection(...sql.IndexLookup) sql.IndexLookup {
-	panic("descendIndexLookup.Intersection is not implemented")
+func (l *DescendIndexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
+	return intersection(l.Index, l, lookups...)
 }
 

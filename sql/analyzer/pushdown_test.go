@@ -189,7 +189,23 @@ func TestPushdownIndexable(t *testing.T) {
 						),
 					}).(*memory.Table).
 						WithProjection([]string{"i", "f"}).(*memory.Table).
-						WithIndexLookup(&memory.MergeableIndexLookup{Key: []interface{}{3.14}}),
+							WithIndexLookup(
+								// TODO: this is arguably a bug. These two indexes should not be mergeable, and fetching the values of
+								//  them will not yield correct results with the current implementation of these indexes.
+								&memory.MergedIndexLookup{
+									Intersections: []sql.IndexLookup{
+										&memory.MergeableIndexLookup{
+											Key:   []interface{}{float64(3.14)},
+											Index: idx2,
+										},
+										&memory.DescendIndexLookup{
+											Gt:    []interface{}{1},
+											Index: idx1,
+										},
+									},
+									Index: idx2,
+								},
+							),
 				),
 				plan.NewResolvedTable(
 					table2.WithFilters([]sql.Expression{
@@ -201,8 +217,13 @@ func TestPushdownIndexable(t *testing.T) {
 						),
 					}).(*memory.Table).
 						WithProjection([]string{"i2"}).(*memory.Table).
-						// TODO: fix
-						WithIndexLookup(&memory.NegateIndexLookup{}),
+							WithIndexLookup(&memory.NegateIndexLookup{
+								Lookup: &memory.MergeableIndexLookup{
+									Key:   []interface{}{2},
+									Index: idx3,
+								},
+								Index: idx3,
+							}),
 				),
 			),
 		),

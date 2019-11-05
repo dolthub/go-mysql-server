@@ -322,6 +322,11 @@ func unifyExpressions(aliases map[string]sql.Expression, expr ...sql.Expression)
 }
 
 func betweenIndexLookup(index sql.Index, upper, lower []interface{}) (sql.IndexLookup, error) {
+	// TODO: two bugs here
+	//  1) Mergeable and SetOperations are separate interfaces, so a naive integrator could generate a type assertion
+	//  error in this method
+	//  2) Since AscendRange and DescendRange both accept an upper and lower bound, there is no good reason to require
+	//  both implementations from an index. One will do fine, no need to require both and merge them.
 	ai, isAscend := index.(sql.AscendIndex)
 	di, isDescend := index.(sql.DescendIndex)
 	if isAscend && isDescend {
@@ -337,9 +342,6 @@ func betweenIndexLookup(index sql.Index, upper, lower []interface{}) (sql.IndexL
 
 		m, ok := ascendLookup.(sql.Mergeable)
 		if ok && m.IsMergeable(descendLookup) {
-			// TODO: two bugs here
-			// 1) Mergeable and SetOperations are separate interfaces, so a bad integrator could generate a type assertion error here
-			// 2) This should be Intersection, not Union. Not fixing yet because the test index doesn't implement Intersection.
 			return ascendLookup.(sql.SetOperations).Union(descendLookup), nil
 		}
 	}

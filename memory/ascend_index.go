@@ -54,10 +54,10 @@ func (l *AscendIndexLookup) EvalExpression() sql.Expression {
 	return ltexpr
 }
 
-func (AscendIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
+func (*AscendIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
 	panic("ascendIndexLookup.Difference is not implemented")
 }
 
-func (AscendIndexLookup) Intersection(...sql.IndexLookup) sql.IndexLookup {
-	panic("ascendIndexLookup.Intersection is not implemented")
+func (l *AscendIndexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
+	return intersection(l.Index, l, lookups...)
 }

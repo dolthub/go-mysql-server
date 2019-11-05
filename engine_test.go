@@ -1603,20 +1603,23 @@ func TestQueries(t *testing.T) {
 		initializer indexDriverInitalizer
 	}
 	
-	// Test all queries with these combinations, for a total of 16 runs:
+	// Test all queries with these combinations, for a total of 12 runs:
 	// 1) Partitioned tables / non partitioned tables
 	// 2) Mergeable / unmergeable / no indexes
 	// 3) Parallelism on / off
-	// numPartitionsVals := []int{1}
-	// useIndexesVals := []bool{true}
-	// parallelVals := []int{1}
-	numPartitionsVals := []int{1, testNumPartitions}
+	numPartitionsVals := []int{
+		1,
+		testNumPartitions,
+	}
 	indexDrivers := []*indexDriverTestCase{
 		nil,
 		{"unmergableIndexes", unmergableIndexDriver},
 		{"mergableIndexes", mergableIndexDriver},
 	}
-	parallelVals := []int{1, 2}
+	parallelVals := []int{
+		1,
+		2,
+	}
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexDriverInit := range indexDrivers {
 			for _, parallelism := range parallelVals {
