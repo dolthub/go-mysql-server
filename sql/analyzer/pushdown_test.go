@@ -105,7 +105,7 @@ func TestPushdownIndexable(t *testing.T) {
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 
-	idx1 := &memory.MergeableDummyIndex{
+	idx1 := &memory.MergeableIndex{
 		TableName: "mytable",
 		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
@@ -116,7 +116,7 @@ func TestPushdownIndexable(t *testing.T) {
 	close(done)
 	<-ready
 
-	idx2 := &memory.MergeableDummyIndex{
+	idx2 := &memory.MergeableIndex{
 		TableName: "mytable",
 		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
@@ -127,7 +127,7 @@ func TestPushdownIndexable(t *testing.T) {
 	close(done)
 	<-ready
 
-	idx3 := &memory.MergeableDummyIndex{
+	idx3 := &memory.MergeableIndex{
 		TableName: "mytable2",
 		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),

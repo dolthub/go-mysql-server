@@ -17,7 +17,7 @@ var _ memoryIndexLookup = (*DescendIndexLookup)(nil)
 func (l *DescendIndexLookup) ID() string { return l.id }
 
 func (l *DescendIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
-	return &dummyIndexValueIter{
+	return &indexValIter{
 		tbl:             l.Index.MemTable(),
 		partition:       p,
 		matchExpression: l.EvalExpression(),

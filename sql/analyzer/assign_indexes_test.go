@@ -14,7 +14,7 @@ func TestNegateIndex(t *testing.T) {
 	require := require.New(t)
 
 	catalog := sql.NewCatalog()
-	idx1 := &memory.MergeableDummyIndex{
+	idx1 := &memory.MergeableIndex{
 		TableName: "t1",
 		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
@@ -59,7 +59,7 @@ func TestAssignIndexes(t *testing.T) {
 	require := require.New(t)
 
 	catalog := sql.NewCatalog()
-	idx1 := &memory.MergeableDummyIndex{
+	idx1 := &memory.MergeableIndex{
 		TableName: "t2",
 		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int64, "t2", "bar", false),
@@ -70,7 +70,7 @@ func TestAssignIndexes(t *testing.T) {
 	close(done)
 	<-ready
 
-	idx2 := &memory.MergeableDummyIndex{
+	idx2 := &memory.MergeableIndex{
 		TableName: "t1",
 		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
@@ -82,7 +82,7 @@ func TestAssignIndexes(t *testing.T) {
 	close(done)
 	<-ready
 
-	idx3 := &memory.UnmergeableDummyIndex{
+	idx3 := &memory.UnmergeableIndex{
 		TableName: "t1",
 		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
@@ -230,8 +230,8 @@ func mergeableIndexLookup(table string, column string, colIdx int, key ...interf
 	}
 }
 
-func mergeableIndex(table string, column string, colIdx int) *memory.MergeableDummyIndex {
-	return &memory.MergeableDummyIndex{
+func mergeableIndex(table string, column string, colIdx int) *memory.MergeableIndex {
+	return &memory.MergeableIndex{
 		TableName: table,
 		Exprs:     []sql.Expression{col(colIdx, table, column)},
 	}
@@ -239,26 +239,26 @@ func mergeableIndex(table string, column string, colIdx int) *memory.MergeableDu
 
 func TestGetIndexes(t *testing.T) {
 	indexes := []sql.Index {
-		&memory.MergeableDummyIndex{
+		&memory.MergeableIndex{
 			TableName: "t1",
 			Exprs: []sql.Expression{
 				col(0, "t1", "bar"),
 			},
 		},
-		&memory.MergeableDummyIndex{
+		&memory.MergeableIndex{
 			TableName: "t2",
 			Exprs: []sql.Expression{
 				col(0, "t2", "foo"),
 				col(0, "t2", "bar"),
 			},
 		},
-		&memory.MergeableDummyIndex{
+		&memory.MergeableIndex{
 			TableName: "t2",
 			Exprs: []sql.Expression{
 				col(0, "t2", "bar"),
 			},
 		},
-		&memory.UnmergeableDummyIndex{
+		&memory.UnmergeableIndex{
 			TableName: "t3",
 			Exprs: []sql.Expression{
 				col(0, "t3", "foo"),
@@ -504,7 +504,7 @@ func TestGetIndexes(t *testing.T) {
 				"t2": &indexLookup{
 					&memory.MergeableIndexLookup{
 						Key: []interface{}{int64(1), int64(2)},
-						Index: &memory.MergeableDummyIndex{
+						Index: &memory.MergeableIndex{
 							TableName: "t2",
 							Exprs:     []sql.Expression{
 								col(0, "t2", "foo"),
@@ -556,7 +556,7 @@ func TestGetIndexes(t *testing.T) {
 						mergeableIndexLookup("t2", "bar", 0, int64(5)),
 						&memory.MergeableIndexLookup{
 							Key: []interface{}{int64(1), int64(2)},
-							Index: &memory.MergeableDummyIndex{
+							Index: &memory.MergeableIndex{
 								TableName: "t2",
 								Exprs: []sql.Expression{
 									col(0, "t2", "foo"),
@@ -918,7 +918,7 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 	require := require.New(t)
 
 	catalog := sql.NewCatalog()
-	indexes := []*memory.MergeableDummyIndex{
+	indexes := []*memory.MergeableIndex{
 		{
 			TableName: "t1",
 			Exprs: []sql.Expression{
@@ -1134,16 +1134,10 @@ func (DummyIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
 	return nil, nil
 }
 
-var _ sql.Index = (*memory.MergeableDummyIndex)(nil)
-var _ sql.Index = (*memory.UnmergeableDummyIndex)(nil)
-var _ sql.AscendIndex = (*memory.MergeableDummyIndex)(nil)
-var _ sql.DescendIndex = (*memory.MergeableDummyIndex)(nil)
-var _ sql.NegateIndex = (*memory.MergeableDummyIndex)(nil)
-
 func TestIndexesIntersection(t *testing.T) {
 	require := require.New(t)
 
-	idx1, idx2 := &memory.MergeableDummyIndex{TableName: "bar"}, &memory.MergeableDummyIndex{TableName: "foo"}
+	idx1, idx2 := &memory.MergeableIndex{TableName: "bar"}, &memory.MergeableIndex{TableName: "foo"}
 
 	left := map[string]*indexLookup{
 		"a": &indexLookup{&memory.MergeableIndexLookup{Key: []interface{}{"a"}}, nil},

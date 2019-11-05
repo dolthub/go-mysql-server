@@ -15,7 +15,7 @@ var _ memoryIndexLookup = (*NegateIndexLookup)(nil)
 func (l *NegateIndexLookup) ID() string { return "not " + l.Lookup.ID() }
 
 func (l *NegateIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
-	return &dummyIndexValueIter{
+	return &indexValIter{
 		tbl:             l.Index.MemTable(),
 		partition:       p,
 		matchExpression: l.EvalExpression(),

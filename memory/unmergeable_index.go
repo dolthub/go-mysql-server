@@ -11,7 +11,7 @@ import (
 // A very dumb index that iterates over the rows of a table, evaluates its matching expressions against each row, and
 // stores those values to be later retrieved. Only here to test the functionality of indexed queries. This kind of index
 // cannot be merged with any other index.
-type UnmergeableDummyIndex struct {
+type UnmergeableIndex struct {
 	DB         string // required for engine tests with driver
 	DriverName string // required for engine tests with driver
 	Tbl        *Table // required for engine tests with driver
@@ -19,10 +19,12 @@ type UnmergeableDummyIndex struct {
 	Exprs      []sql.Expression
 }
 
-func (u *UnmergeableDummyIndex) Database() string { return u.DB }
-func (u *UnmergeableDummyIndex) Driver() string   { return u.DriverName }
+var _ sql.Index = (*UnmergeableIndex)(nil)
 
-func (u *UnmergeableDummyIndex) Expressions() []string {
+func (u *UnmergeableIndex) Database() string { return u.DB }
+func (u *UnmergeableIndex) Driver() string   { return u.DriverName }
+
+func (u *UnmergeableIndex) Expressions() []string {
 	var exprs []string
 	for _, e := range u.Exprs {
 		exprs = append(exprs, e.String())
@@ -30,7 +32,7 @@ func (u *UnmergeableDummyIndex) Expressions() []string {
 	return exprs
 }
 
-func (u *UnmergeableDummyIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
+func (u *UnmergeableIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 	return &UnmergeableIndexLookup{
 		key: key,
 		idx: u,
@@ -41,13 +43,13 @@ func (u *UnmergeableDummyIndex) Get(key ...interface{}) (sql.IndexLookup, error)
 // can't be merged with other lookups.
 type UnmergeableIndexLookup struct {
 	key []interface{}
-	idx *UnmergeableDummyIndex
+	idx *UnmergeableIndex
 }
 
 // dummyIndexValueIter does a very simple and verifiable iteration over the table values for a given index. It does this
 // by iterating over all the table rows for a partition and evaluating each of them for inclusion in the index. This is
 // not an efficient way to store an index, and is only suitable for testing the correctness of index code in the engine.
-type dummyIndexValueIter struct {
+type indexValIter struct {
 	tbl *Table
 	partition sql.Partition
 	matchExpression sql.Expression
@@ -55,7 +57,7 @@ type dummyIndexValueIter struct {
 	i int
 }
 
-func (u *dummyIndexValueIter) Next() ([]byte, error) {
+func (u *indexValIter) Next() ([]byte, error) {
 	err := u.initValues()
 	if err != nil {
 		return nil, err
@@ -70,7 +72,7 @@ func (u *dummyIndexValueIter) Next() ([]byte, error) {
 	return nil, io.EOF
 }
 
-func (u *dummyIndexValueIter) initValues() error {
+func (u *indexValIter) initValues() error {
 	if u.values == nil {
 		rows, ok := u.tbl.partitions[string(u.partition.Key())]
 		if !ok {
@@ -130,7 +132,7 @@ func getType(val interface{}) (interface{}, sql.Type) {
 	}
 }
 
-func (u *dummyIndexValueIter) Close() error {
+func (u *indexValIter) Close() error {
 	return nil
 }
 
@@ -141,7 +143,7 @@ func (u *UnmergeableIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, er
 		exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(lit, typ)))
 	}
 
-	return &dummyIndexValueIter{
+	return &indexValIter{
 		tbl:             u.idx.Tbl,
 		partition:       p,
 		matchExpression: and(exprs...),
@@ -156,11 +158,11 @@ func (u *UnmergeableIndexLookup) Indexes() []string {
 	return idxes
 }
 
-func (u *UnmergeableDummyIndex) Has(partition sql.Partition, key ...interface{}) (bool, error) {
+func (u *UnmergeableIndex) Has(partition sql.Partition, key ...interface{}) (bool, error) {
 	panic("unimplemented")
 }
 
-func (u *UnmergeableDummyIndex) ID() string {
+func (u *UnmergeableIndex) ID() string {
 	if len(u.Exprs) == 1 {
 		return u.Exprs[0].String()
 	}
@@ -172,6 +174,6 @@ func (u *UnmergeableDummyIndex) ID() string {
 	return "(" + strings.Join(parts, ", ") + ")"
 }
 
-func (u *UnmergeableDummyIndex) Table() string {
+func (u *UnmergeableIndex) Table() string {
 	return u.TableName
 }

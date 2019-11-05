@@ -1717,8 +1717,8 @@ func mergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
 }
 
 
-func newUnmergableIndex(tables map[string]*memory.Table, tableName string, exprs ...sql.Expression) *memory.UnmergeableDummyIndex {
-	return &memory.UnmergeableDummyIndex{
+func newUnmergableIndex(tables map[string]*memory.Table, tableName string, exprs ...sql.Expression) *memory.UnmergeableIndex {
+	return &memory.UnmergeableIndex{
 		DB:         "mydb",
 		DriverName: memory.IndexDriverId,
 		TableName:  tableName,
@@ -1727,8 +1727,8 @@ func newUnmergableIndex(tables map[string]*memory.Table, tableName string, exprs
 	}
 }
 
-func newMergableIndex(tables map[string]*memory.Table, tableName string, exprs ...sql.Expression) *memory.MergeableDummyIndex {
-	return &memory.MergeableDummyIndex {
+func newMergableIndex(tables map[string]*memory.Table, tableName string, exprs ...sql.Expression) *memory.MergeableIndex {
+	return &memory.MergeableIndex{
 		DB:         "mydb",
 		DriverName: memory.IndexDriverId,
 		TableName:  tableName,
