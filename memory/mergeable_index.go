@@ -111,17 +111,17 @@ func (i *MergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 }
 
 func (i *MergeableIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
+	var exprs []sql.Expression
+	for exprI, expr := range i.Index.ColumnExpressions() {
+		lit, typ := getType(i.Key[exprI])
+		exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(lit, typ)))
+	}
+
 	return &dummyIndexValueIter{
-		tbl:       i.Index.MemTable(),
-		partition: p,
-		matchExpressions: func() []sql.Expression {
-			var exprs []sql.Expression
-			for exprI, expr := range i.Index.ColumnExpressions() {
-				lit, typ := getType(i.Key[exprI])
-				exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(lit, typ)))
-			}
-			return exprs
-		}}, nil
+		tbl:             i.Index.MemTable(),
+		partition:       p,
+		matchExpression: and(exprs...),
+	}, nil
 }
 
 func (i *MergeableIndexLookup) EvalExpression() sql.Expression {
@@ -246,11 +246,10 @@ func (m *MergedIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 
 func (m *MergedIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	return &dummyIndexValueIter{
-		tbl:       m.Index.MemTable(),
-		partition: p,
-		matchExpressions: func() []sql.Expression {
-			return []sql.Expression { m.EvalExpression() }
-		}}, nil
+		tbl:             m.Index.MemTable(),
+		partition:       p,
+		matchExpression: m.EvalExpression(),
+	}, nil
 }
 
 func or(expressions ...sql.Expression) sql.Expression {

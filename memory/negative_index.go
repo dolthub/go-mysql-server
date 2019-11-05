@@ -16,11 +16,10 @@ func (l *NegateIndexLookup) ID() string { return "not " + l.Lookup.ID() }
 
 func (l *NegateIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	return &dummyIndexValueIter{
-		tbl:       l.Index.MemTable(),
-		partition: p,
-		matchExpressions: func() []sql.Expression {
-			return []sql.Expression { l.EvalExpression() }
-		}}, nil
+		tbl:             l.Index.MemTable(),
+		partition:       p,
+		matchExpression: l.EvalExpression(),
+	}, nil
 }
 
 func (l *NegateIndexLookup) EvalExpression() sql.Expression {

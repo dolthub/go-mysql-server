@@ -18,11 +18,10 @@ func (l *DescendIndexLookup) ID() string { return l.id }
 
 func (l *DescendIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	return &dummyIndexValueIter{
-		tbl:       l.Index.MemTable(),
-		partition: p,
-		matchExpressions: func() []sql.Expression {
-			return []sql.Expression { l.EvalExpression() }
-		}}, nil
+		tbl:             l.Index.MemTable(),
+		partition:       p,
+		matchExpression: l.EvalExpression(),
+	}, nil
 }
 
 func (l *DescendIndexLookup) EvalExpression() sql.Expression {
