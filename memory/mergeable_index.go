@@ -267,11 +267,11 @@ func (m *MergedIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) 
 }
 
 func (m *MergedIndexLookup) Indexes() []string {
-	panic("implement me")
+	panic("not implemented")
 }
 
 func (m *MergedIndexLookup) ID() string {
-	panic("implement me")
+	panic("not implemented")
 }
 
 func or(expressions ...sql.Expression) sql.Expression {

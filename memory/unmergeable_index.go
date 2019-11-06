@@ -159,7 +159,7 @@ func (u *UnmergeableIndexLookup) Indexes() []string {
 }
 
 func (u *UnmergeableIndex) Has(partition sql.Partition, key ...interface{}) (bool, error) {
-	panic("unimplemented")
+	panic("not implemented")
 }
 
 func (u *UnmergeableIndex) ID() string {
