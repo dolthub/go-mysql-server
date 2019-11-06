@@ -29,6 +29,14 @@ func or(left, right sql.Expression) sql.Expression {
 	return expression.NewOr(left, right)
 }
 
+func in(col sql.Expression, tuple sql.Expression) sql.Expression {
+	return expression.NewIn(col, tuple)
+}
+
+func tuple(vals ...sql.Expression) sql.Expression {
+	return expression.NewTuple(vals...)
+}
+
 func and(left, right sql.Expression) sql.Expression {
 	return expression.NewAnd(left, right)
 }

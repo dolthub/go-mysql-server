@@ -101,12 +101,24 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 			return nil, err
 		}
 
-		for table, idx := range leftIndexes {
-			if idx2, ok := rightIndexes[table]; ok && canMergeIndexes(idx.lookup, idx2.lookup) {
-				idx.lookup = idx.lookup.(sql.SetOperations).Union(idx2.lookup)
-				idx.indexes = append(idx.indexes, idx2.indexes...)
+		for table, leftIdx := range leftIndexes {
+			result[table] = leftIdx
+		}
+
+		// Merge any indexes for the same table on the left and right sides.
+		for table, leftIdx := range leftIndexes {
+			if rightIdx, ok := rightIndexes[table]; ok {
+				if canMergeIndexes(leftIdx.lookup, rightIdx.lookup) {
+					leftIdx.lookup = leftIdx.lookup.(sql.SetOperations).Union(rightIdx.lookup)
+					leftIdx.indexes = append(leftIdx.indexes, rightIdx.indexes...)
+					result[table] = leftIdx
+				} else {
+					// Since we can return one index per table, if we can't merge the second index from this table, return no
+					// indexes. Returning a single one will lead to incorrect results from e.g. pushdown operations when only one
+					// side of the OR expression is used to index the table.
+					return nil, nil
+				}
 			}
-			result[table] = idx
 		}
 
 		// Put in the result map the indexes for tables we don't have indexes yet.
@@ -161,7 +173,6 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 					lookup, errLookup = nidx.Not(values[0])
 				} else {
 					lookup, errLookup = idx.Get(values[0])
-
 				}
 
 				if errLookup != nil {
@@ -175,16 +186,15 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 						lookup2, errLookup = nidx.Not(v)
 					} else {
 						lookup2, errLookup = idx.Get(v)
-
 					}
 
 					if errLookup != nil {
 						return nil, err
 					}
 
-					// if one of the indexes cannot be merged, return already
+					// if one of the indexes cannot be merged, return a nil result for this table
 					if !canMergeIndexes(lookup, lookup2) {
-						return result, nil
+						return nil, nil
 					}
 
 					if negate {
@@ -312,6 +322,11 @@ func unifyExpressions(aliases map[string]sql.Expression, expr ...sql.Expression)
 }
 
 func betweenIndexLookup(index sql.Index, upper, lower []interface{}) (sql.IndexLookup, error) {
+	// TODO: two bugs here
+	//  1) Mergeable and SetOperations are separate interfaces, so a naive integrator could generate a type assertion
+	//  error in this method
+	//  2) Since AscendRange and DescendRange both accept an upper and lower bound, there is no good reason to require
+	//  both implementations from an index. One will do fine, no need to require both and merge them.
 	ai, isAscend := index.(sql.AscendIndex)
 	di, isDescend := index.(sql.DescendIndex)
 	if isAscend && isDescend {
@@ -493,7 +508,6 @@ func getNegatedIndexes(a *Analyzer, not *expression.Not, aliases map[string]sql.
 		return getIndexes(or, aliases, a)
 	default:
 		return nil, nil
-
 	}
 }
 

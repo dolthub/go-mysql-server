@@ -2,6 +2,8 @@ package sqle_test
 
 import (
 	"context"
+	"fmt"
+	"github.com/src-d/go-mysql-server/sql/expression"
 	"io"
 	"math"
 	"strings"
@@ -57,6 +59,14 @@ var queries = []struct {
 	},
 	{
 		"SELECT i FROM mytable WHERE i <> 2;",
+		[]sql.Row{{int64(1)}, {int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i in (1, 3)",
+		[]sql.Row{{int64(1)}, {int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i = 1 or i = 3",
 		[]sql.Row{{int64(1)}, {int64(3)}},
 	},
 	{
@@ -1589,19 +1599,144 @@ var queries = []struct {
 }
 
 func TestQueries(t *testing.T) {
-	e := newEngine(t)
-	t.Run("sequential", func(t *testing.T) {
-		for _, tt := range queries {
-			testQuery(t, e, tt.query, tt.expected)
-		}
-	})
+	type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
+	type indexDriverTestCase struct {
+		name string
+		initializer indexDriverInitalizer
+	}
+	
+	// Test all queries with these combinations, for a total of 12 runs:
+	// 1) Partitioned tables / non partitioned tables
+	// 2) Mergeable / unmergeable / no indexes
+	// 3) Parallelism on / off
+	numPartitionsVals := []int{
+		1,
+		testNumPartitions,
+	}
+	indexDrivers := []*indexDriverTestCase{
+		nil,
+		{"unmergableIndexes", unmergableIndexDriver},
+		{"mergableIndexes", mergableIndexDriver},
+	}
+	parallelVals := []int{
+		1,
+		2,
+	}
+	for _, numPartitions := range numPartitionsVals {
+		for _, indexDriverInit := range indexDrivers {
+			for _, parallelism := range parallelVals {
+				tables := allTestTables(t, numPartitions)
 
-	ep := newEngineWithParallelism(t, 2)
-	t.Run("parallel", func(t *testing.T) {
-		for _, tt := range queries {
-			testQuery(t, ep, tt.query, tt.expected)
+				var indexDriver sql.IndexDriver
+				if indexDriverInit != nil {
+					indexDriver = indexDriverInit.initializer(tables)
+				}
+				engine := newEngineWithParallelism(t, parallelism, tables, indexDriver)
+
+				indexDriverName := "none"
+				if indexDriverInit != nil {
+					indexDriverName = indexDriverInit.name
+				}
+				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexDriverName, parallelism)
+				t.Run(testName, func(t *testing.T) {
+					for _, tt := range queries {
+						testQuery(t, engine, tt.query, tt.expected)
+					}
+				})
+			}
 		}
+	}
+}
+
+func unmergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
+	return memory.NewIndexDriver("mydb", map[string][]sql.Index{
+		"mytable": {
+			newUnmergableIndex(tables, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
+			newUnmergableIndex(tables, "mytable",
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+			newUnmergableIndex(tables, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+		},
+		"othertable": {
+			newUnmergableIndex(tables, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
+			newUnmergableIndex(tables, "othertable",
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+			newUnmergableIndex(tables, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+		},
+		"bigtable": {
+			newUnmergableIndex(tables, "bigtable",
+				expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
+		},
+		"floattable": {
+			newUnmergableIndex(tables, "floattable",
+				expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
+		},
+		"niltable": {
+			newUnmergableIndex(tables, "niltable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
+		},
 	})
+}
+
+func mergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
+	return memory.NewIndexDriver("mydb", map[string][]sql.Index{
+		"mytable": {
+			newMergableIndex(tables, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
+			newMergableIndex(tables, "mytable",
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+			newMergableIndex(tables, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+		},
+		"othertable": {
+			newMergableIndex(tables, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
+			newMergableIndex(tables, "othertable",
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+			newMergableIndex(tables, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+		},
+		"bigtable": {
+			newMergableIndex(tables, "bigtable",
+				expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
+		},
+		"floattable": {
+			newMergableIndex(tables, "floattable",
+				expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
+		},
+		"niltable": {
+			newMergableIndex(tables, "niltable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
+		},
+	})
+}
+
+
+func newUnmergableIndex(tables map[string]*memory.Table, tableName string, exprs ...sql.Expression) *memory.UnmergeableIndex {
+	return &memory.UnmergeableIndex{
+		DB:         "mydb",
+		DriverName: memory.IndexDriverId,
+		TableName:  tableName,
+		Tbl:        tables[tableName],
+		Exprs:      exprs,
+	}
+}
+
+func newMergableIndex(tables map[string]*memory.Table, tableName string, exprs ...sql.Expression) *memory.MergeableIndex {
+	return &memory.MergeableIndex{
+		DB:         "mydb",
+		DriverName: memory.IndexDriverId,
+		TableName:  tableName,
+		Tbl:        tables[tableName],
+		Exprs:      exprs,
+	}
 }
 
 func TestSessionSelectLimit(t *testing.T) {
@@ -1752,7 +1887,7 @@ func TestWarnings(t *testing.T) {
 	}
 
 	e := newEngine(t)
-	ep := newEngineWithParallelism(t, 2)
+	ep := newEngineWithParallelism(t, 2, allTestTables(t, testNumPartitions), nil)
 
 	t.Run("sequential", func(t *testing.T) {
 		for _, tt := range queries {
@@ -1816,7 +1951,7 @@ func TestClearWarnings(t *testing.T) {
 func TestDescribe(t *testing.T) {
 	e := newEngine(t)
 
-	ep := newEngineWithParallelism(t, 2)
+	ep := newEngineWithParallelism(t, 2, allTestTables(t, testNumPartitions), nil)
 
 	query := `DESCRIBE FORMAT=TREE SELECT * FROM mytable`
 	expectedSeq := []sql.Row{
@@ -2822,66 +2957,64 @@ func testQueryWithContext(ctx *sql.Context, t *testing.T, e *sqle.Engine, q stri
 	})
 }
 
-func newEngine(t *testing.T) *sqle.Engine {
-	return newEngineWithParallelism(t, 1)
-}
+func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
+	tables := make(map[string]*memory.Table)
 
-func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
-	table := memory.NewPartitionedTable("mytable", sql.Schema{
+	tables["mytable"] = memory.NewPartitionedTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable"},
 		{Name: "s", Type: sql.Text, Source: "mytable"},
-	}, testNumPartitions)
+	}, numPartitions)
 
 	insertRows(
-		t, table,
+		t, tables["mytable"],
 		sql.NewRow(int64(1), "first row"),
 		sql.NewRow(int64(2), "second row"),
 		sql.NewRow(int64(3), "third row"),
 	)
 
-	table2 := memory.NewPartitionedTable("othertable", sql.Schema{
+	tables["othertable"] = memory.NewPartitionedTable("othertable", sql.Schema{
 		{Name: "s2", Type: sql.Text, Source: "othertable"},
 		{Name: "i2", Type: sql.Int64, Source: "othertable"},
-	}, testNumPartitions)
+	}, numPartitions)
 
 	insertRows(
-		t, table2,
+		t, tables["othertable"],
 		sql.NewRow("first", int64(3)),
 		sql.NewRow("second", int64(2)),
 		sql.NewRow("third", int64(1)),
 	)
 
-	table3 := memory.NewPartitionedTable("tabletest", sql.Schema{
+	tables["tabletest"] = memory.NewPartitionedTable("tabletest", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "tabletest"},
 		{Name: "s", Type: sql.Text, Source: "tabletest"},
-	}, testNumPartitions)
+	}, numPartitions)
 
 	insertRows(
-		t, table3,
+		t, tables["tabletest"],
 		sql.NewRow(int64(1), "first row"),
 		sql.NewRow(int64(2), "second row"),
 		sql.NewRow(int64(3), "third row"),
 	)
 
-	table4 := memory.NewPartitionedTable("other_table", sql.Schema{
+	tables["other_table"] = memory.NewPartitionedTable("other_table", sql.Schema{
 		{Name: "text", Type: sql.Text, Source: "tabletest"},
 		{Name: "number", Type: sql.Int32, Source: "tabletest"},
-	}, testNumPartitions)
+	}, numPartitions)
 
 	insertRows(
-		t, table4,
+		t, tables["other_table"],
 		sql.NewRow("a", int32(4)),
 		sql.NewRow("b", int32(2)),
 		sql.NewRow("c", int32(0)),
 	)
 
-	bigtable := memory.NewPartitionedTable("bigtable", sql.Schema{
+	tables["bigtable"] = memory.NewPartitionedTable("bigtable", sql.Schema{
 		{Name: "t", Type: sql.Text, Source: "bigtable"},
 		{Name: "n", Type: sql.Int64, Source: "bigtable"},
-	}, testNumPartitions)
+	}, numPartitions)
 
 	insertRows(
-		t, bigtable,
+		t, tables["bigtable"],
 		sql.NewRow("a", int64(1)),
 		sql.NewRow("s", int64(2)),
 		sql.NewRow("f", int64(3)),
@@ -2898,14 +3031,14 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow("b", int64(9)),
 	)
 
-	floatTable := memory.NewPartitionedTable("floattable", sql.Schema{
+	tables["floattable"] = memory.NewPartitionedTable("floattable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "floattable"},
 		{Name: "f32", Type: sql.Float32, Source: "floattable"},
 		{Name: "f64", Type: sql.Float64, Source: "floattable"},
-	}, testNumPartitions)
+	}, numPartitions)
 
 	insertRows(
-		t, floatTable,
+		t, tables["floattable"],
 		sql.NewRow(int64(1), float32(1.0), float64(1.0)),
 		sql.NewRow(int64(2), float32(1.5), float64(1.5)),
 		sql.NewRow(int64(3), float32(2.0), float64(2.0)),
@@ -2914,14 +3047,14 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow(int64(-2), float32(-1.5), float64(-1.5)),
 	)
 
-	nilTable := memory.NewPartitionedTable("niltable", sql.Schema{
+	tables["niltable"] = memory.NewPartitionedTable("niltable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "niltable", Nullable: true},
 		{Name: "b", Type: sql.Boolean, Source: "niltable", Nullable: true},
 		{Name: "f", Type: sql.Float64, Source: "niltable", Nullable: true},
-	}, testNumPartitions)
+	}, numPartitions)
 
 	insertRows(
-		t, nilTable,
+		t, tables["niltable"],
 		sql.NewRow(int64(1), true, float64(1.0)),
 		sql.NewRow(int64(2), nil, float64(2.0)),
 		sql.NewRow(nil, false, float64(3.0)),
@@ -2929,13 +3062,13 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow(nil, nil, nil),
 	)
 
-	newlineTable := memory.NewPartitionedTable("newlinetable", sql.Schema{
+	tables["newlinetable"] = memory.NewPartitionedTable("newlinetable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "newlinetable"},
 		{Name: "s", Type: sql.Text, Source: "newlinetable"},
-	}, testNumPartitions)
+	}, numPartitions)
 
 	insertRows(
-		t, newlineTable,
+		t, tables["newlinetable"],
 		sql.NewRow(int64(1), "\nthere is some text in here"),
 		sql.NewRow(int64(2), "there is some\ntext in here"),
 		sql.NewRow(int64(3), "there is some text\nin here"),
@@ -2943,7 +3076,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		sql.NewRow(int64(5), "there is some text in here"),
 	)
 
-	typestable := memory.NewPartitionedTable("typestable", sql.Schema{
+	tables["typestable"] = memory.NewPartitionedTable("typestable", sql.Schema{
 		{Name: "id", Type: sql.Int64, Source: "typestable"},
 		{Name: "i8", Type: sql.Int8, Source: "typestable", Nullable: true},
 		{Name: "i16", Type: sql.Int16, Source: "typestable", Nullable: true},
@@ -2961,20 +3094,25 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		{Name: "bo", Type: sql.Boolean, Source: "typestable", Nullable: true},
 		{Name: "js", Type: sql.JSON, Source: "typestable", Nullable: true},
 		{Name: "bl", Type: sql.Blob, Source: "typestable", Nullable: true},
-	}, testNumPartitions)
+	}, numPartitions)
 
+	return tables
+}
+
+func newEngine(t *testing.T) *sqle.Engine {
+	return newEngineWithParallelism(t, 1, allTestTables(t, testNumPartitions), nil)
+}
+
+func newEngineWithParallelism(t *testing.T, parallelism int, tables map[string]*memory.Table, driver sql.IndexDriver) *sqle.Engine {
 	db := memory.NewDatabase("mydb")
-	db.AddTable("mytable", table)
-	db.AddTable("othertable", table2)
-	db.AddTable("tabletest", table3)
-	db.AddTable("bigtable", bigtable)
-	db.AddTable("floattable", floatTable)
-	db.AddTable("niltable", nilTable)
-	db.AddTable("newlinetable", newlineTable)
-	db.AddTable("typestable", typestable)
+	for name, table := range tables {
+		if name != "other_table" {
+			db.AddTable(name, table)
+		}
+	}
 
 	db2 := memory.NewDatabase("foo")
-	db2.AddTable("other_table", table4)
+	db2.AddTable("other_table", tables["other_table"])
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
@@ -2988,7 +3126,14 @@ func newEngineWithParallelism(t *testing.T, parallelism int) *sqle.Engine {
 		a = analyzer.NewDefault(catalog)
 	}
 
-	return sqle.New(catalog, a, new(sqle.Config))
+	if driver != nil {
+		catalog.RegisterIndexDriver(driver)
+	}
+
+	engine := sqle.New(catalog, a, new(sqle.Config))
+	require.NoError(t, engine.Init())
+
+	return engine
 }
 
 const expectedTree = `Limit(5)

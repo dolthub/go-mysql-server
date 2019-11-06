@@ -105,9 +105,9 @@ func TestPushdownIndexable(t *testing.T) {
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 
-	idx1 := &dummyIndex{
-		"mytable",
-		[]sql.Expression{
+	idx1 := &memory.MergeableIndex{
+		TableName: "mytable",
+		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 		},
 	}
@@ -116,9 +116,9 @@ func TestPushdownIndexable(t *testing.T) {
 	close(done)
 	<-ready
 
-	idx2 := &dummyIndex{
-		"mytable",
-		[]sql.Expression{
+	idx2 := &memory.MergeableIndex{
+		TableName: "mytable",
+		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
 		},
 	}
@@ -127,9 +127,9 @@ func TestPushdownIndexable(t *testing.T) {
 	close(done)
 	<-ready
 
-	idx3 := &dummyIndex{
-		"mytable2",
-		[]sql.Expression{
+	idx3 := &memory.MergeableIndex{
+		TableName: "mytable2",
+		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
 		},
 	}
@@ -189,7 +189,23 @@ func TestPushdownIndexable(t *testing.T) {
 						),
 					}).(*memory.Table).
 						WithProjection([]string{"i", "f"}).(*memory.Table).
-						WithIndexLookup(&mergeableIndexLookup{id: "3.14"}),
+							WithIndexLookup(
+								// TODO: These two indexes should not be mergeable, and fetching the values of
+								//  them will not yield correct results with the current implementation of these indexes.
+								&memory.MergedIndexLookup{
+									Intersections: []sql.IndexLookup{
+										&memory.MergeableIndexLookup{
+											Key:   []interface{}{float64(3.14)},
+											Index: idx2,
+										},
+										&memory.DescendIndexLookup{
+											Gt:    []interface{}{1},
+											Index: idx1,
+										},
+									},
+									Index: idx2,
+								},
+							),
 				),
 				plan.NewResolvedTable(
 					table2.WithFilters([]sql.Expression{
@@ -201,7 +217,13 @@ func TestPushdownIndexable(t *testing.T) {
 						),
 					}).(*memory.Table).
 						WithProjection([]string{"i2"}).(*memory.Table).
-						WithIndexLookup(&negateIndexLookup{value: "2"}),
+							WithIndexLookup(&memory.NegateIndexLookup{
+								Lookup: &memory.MergeableIndexLookup{
+									Key:   []interface{}{2},
+									Index: idx3,
+								},
+								Index: idx3,
+							}),
 				),
 			),
 		),
