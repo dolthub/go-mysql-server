@@ -166,7 +166,7 @@ func TestAssignIndexes(t *testing.T) {
 	result, err = assignIndexes(a, node)
 	require.NoError(err)
 
-	lookupIdxs, ok = result["t1"]
+	_, ok = result["t1"]
 	require.False(ok)
 
 	node = plan.NewProject(
@@ -183,7 +183,7 @@ func TestAssignIndexes(t *testing.T) {
 	result, err = assignIndexes(a, node)
 	require.NoError(err)
 
-	lookupIdxs, ok = result["t1"]
+	_, ok = result["t1"]
 	require.False(ok)
 }
 
