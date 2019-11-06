@@ -17,6 +17,7 @@ var ErrInsertIntoDuplicateColumn = errors.NewKind("duplicate column name %v")
 var ErrInsertIntoNonexistentColumn = errors.NewKind("invalid column name %v")
 var ErrInsertIntoNonNullableDefaultNullColumn = errors.NewKind("column name '%v' is non-nullable but attempted to set default value of null")
 var ErrInsertIntoNonNullableProvidedNull = errors.NewKind("column name '%v' is non-nullable but attempted to set a value of null")
+var ErrIncompatibleSchemas = errors.NewKind("inserting %v into %v: schemas don't match")
 
 // InsertInto is a node describing the insertion into some table.
 type InsertInto struct {
@@ -223,6 +224,10 @@ func (p *InsertInto) validateValueCount(ctx *sql.Context) error {
 				return ErrInsertIntoMismatchValueCount.New()
 			}
 		}
+	case *ResolvedTable:
+		return p.assertSchemasMatch(node.Schema())
+	case *Project:
+		return p.assertSchemasMatch(node.Schema())
 	default:
 		return ErrInsertIntoUnsupportedValues.New(node)
 	}
@@ -253,6 +258,13 @@ func (p *InsertInto) validateNullability(ctx *sql.Context, dstSchema sql.Schema,
 		if !col.Nullable && row[i] == nil {
 			return ErrInsertIntoNonNullableProvidedNull.New(col.Name)
 		}
+	}
+	return nil
+}
+
+func (p *InsertInto) assertSchemasMatch(schema sql.Schema) error {
+	if !p.Schema().Equals(schema) {
+		return ErrIncompatibleSchemas.New(p.Schema(), schema)
 	}
 	return nil
 }
