@@ -34,6 +34,20 @@ var queries = []struct {
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
+		"SELECT s,i FROM mytable;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT s,i FROM (select i,s from mytable) mt;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
 		"SELECT i + 1 FROM mytable;",
 		[]sql.Row{{int64(2)}, {int64(3)}, {int64(4)}},
 	},
