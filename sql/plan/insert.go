@@ -92,7 +92,7 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 			p.Columns[i] = f.Name
 		}
 	} else {
-		err = p.validateColumns(ctx, dstSchema)
+		err = p.validateColumns(dstSchema)
 		if err != nil {
 			return 0, err
 		}
@@ -139,7 +139,7 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 			return i, err
 		}
 
-		err = p.validateNullability(ctx, dstSchema, row)
+		err = p.validateNullability(dstSchema, row)
 		if err != nil {
 			_ = iter.Close()
 			return i, err
@@ -227,13 +227,15 @@ func (p *InsertInto) validateValueCount(ctx *sql.Context) error {
 		return p.assertSchemasMatch(node.Schema())
 	case *Project:
 		return p.assertSchemasMatch(node.Schema())
+	case *InnerJoin:
+		return p.assertSchemasMatch(node.Schema())
 	default:
 		return ErrInsertIntoUnsupportedValues.New(node)
 	}
 	return nil
 }
 
-func (p *InsertInto) validateColumns(ctx *sql.Context, dstSchema sql.Schema) error {
+func (p *InsertInto) validateColumns(dstSchema sql.Schema) error {
 	dstColNames := make(map[string]struct{})
 	for _, dstCol := range dstSchema {
 		dstColNames[dstCol.Name] = struct{}{}
@@ -252,7 +254,7 @@ func (p *InsertInto) validateColumns(ctx *sql.Context, dstSchema sql.Schema) err
 	return nil
 }
 
-func (p *InsertInto) validateNullability(ctx *sql.Context, dstSchema sql.Schema, row sql.Row) error {
+func (p *InsertInto) validateNullability(dstSchema sql.Schema, row sql.Row) error {
 	for i, col := range dstSchema {
 		if !col.Nullable && row[i] == nil {
 			return ErrInsertIntoNonNullableProvidedNull.New(col.Name)
@@ -262,7 +264,7 @@ func (p *InsertInto) validateNullability(ctx *sql.Context, dstSchema sql.Schema,
 }
 
 func (p *InsertInto) assertSchemasMatch(schema sql.Schema) error {
-	if len(p.Schema()) != len(p.Schema()) {
+	if len(p.Columns) != len(schema) {
 		return ErrInsertIntoMismatchValueCount.New()
 	}
 	return nil

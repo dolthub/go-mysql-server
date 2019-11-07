@@ -2193,6 +2193,19 @@ func TestInsertInto(t *testing.T) {
 			},
 		},
 		{
+			"INSERT INTO mytable (s,i) SELECT concat(m.s, o.s2), m.i from othertable o join mytable m on m.i=o.i2",
+			[]sql.Row{{int64(3)}},
+			"SELECT * FROM mytable order by i,s",
+			[]sql.Row{
+				{int64(1), "first row"},
+				{int64(1), "first rowthird"},
+				{int64(2), "second row"},
+				{int64(2), "second rowsecond"},
+				{int64(3), "third row"},
+				{int64(3), "third rowfirst"},
+			},
+		},
+		{
 			"INSERT INTO mytable (i,s) SELECT (i + 10.0) / 10.0 + 10, concat(s, ' new') from mytable",
 			[]sql.Row{{int64(3)}},
 			"SELECT * FROM mytable order by i, s",
@@ -2271,6 +2284,10 @@ func TestInsertIntoErrors(t *testing.T) {
 		{
 			"column count mismatch in select",
 			"INSERT INTO mytable select s from othertable",
+		},
+		{
+			"column count mismatch in join select",
+			"INSERT INTO mytable (s,i) SELECT * from othertable o join mytable m on m.i=o.i2",
 		},
 	}
 
