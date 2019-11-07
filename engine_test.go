@@ -2180,6 +2180,19 @@ func TestInsertInto(t *testing.T) {
 			},
 		},
 		{
+			"INSERT INTO mytable (s,i) SELECT * from othertable",
+			[]sql.Row{{int64(3)}},
+			"SELECT * FROM mytable order by i,s",
+			[]sql.Row{
+				{int64(1), "first row"},
+				{int64(1), "third"},
+				{int64(2), "second"},
+				{int64(2), "second row"},
+				{int64(3), "first"},
+				{int64(3), "third row"},
+			},
+		},
+		{
 			"INSERT INTO mytable (i,s) SELECT (i + 10.0) / 10.0 + 10, concat(s, ' new') from mytable",
 			[]sql.Row{{int64(3)}},
 			"SELECT * FROM mytable order by i, s",
@@ -2246,6 +2259,18 @@ func TestInsertIntoErrors(t *testing.T) {
 		{
 			"null given to non-nullable",
 			"INSERT INTO mytable (i, s) VALUES (null, 'y');",
+		},
+		{
+			"incompatible types",
+			"INSERT INTO mytable (i, s) select * from othertable",
+		},
+		{
+			"column count mismatch in select",
+			"INSERT INTO mytable (i) select * from othertable",
+		},
+		{
+			"column count mismatch in select",
+			"INSERT INTO mytable select s from othertable",
 		},
 	}
 
