@@ -28,7 +28,7 @@ type Table struct {
 }
 
 var _ sql.Table = (*Table)(nil)
-var _ sql.Inserter = (*Table)(nil)
+var _ sql.InsertableTable = (*Table)(nil)
 var _ sql.FilteredTable = (*Table)(nil)
 var _ sql.ProjectedTable = (*Table)(nil)
 var _ sql.IndexableTable = (*Table)(nil)

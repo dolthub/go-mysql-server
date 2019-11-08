@@ -45,9 +45,9 @@ func (p *InsertInto) Schema() sql.Schema {
 	}}
 }
 
-func getInsertable(node sql.Node) (sql.Inserter, error) {
+func getInsertable(node sql.Node) (sql.InsertableTable, error) {
 	switch node := node.(type) {
-	case sql.Inserter:
+	case sql.InsertableTable:
 		return node, nil
 	case *ResolvedTable:
 		return getInsertableTable(node.Table)
@@ -56,9 +56,9 @@ func getInsertable(node sql.Node) (sql.Inserter, error) {
 	}
 }
 
-func getInsertableTable(t sql.Table) (sql.Inserter, error) {
+func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
 	switch t := t.(type) {
-	case sql.Inserter:
+	case sql.InsertableTable:
 		return t, nil
 	case sql.TableWrapper:
 		return getInsertableTable(t.Underlying())
@@ -74,10 +74,10 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 		return 0, err
 	}
 
-	var replaceable sql.Replacer
+	var replaceable sql.ReplaceableTable
 	if p.IsReplace {
 		var ok bool
-		replaceable, ok = insertable.(sql.Replacer)
+		replaceable, ok = insertable.(sql.ReplaceableTable)
 		if !ok {
 			return 0, ErrReplaceIntoNotSupported.New()
 		}

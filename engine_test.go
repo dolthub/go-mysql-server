@@ -3812,7 +3812,7 @@ func TestGenerators(t *testing.T) {
 	}
 }
 
-func insertRows(t *testing.T, table sql.Inserter, rows ...sql.Row) {
+func insertRows(t *testing.T, table sql.InsertableTable, rows ...sql.Row) {
 	t.Helper()
 
 	for _, r := range rows {

@@ -60,9 +60,9 @@ func (p *Update) Children() []sql.Node {
 	return []sql.Node{p.Node}
 }
 
-func getUpdatable(node sql.Node) (sql.Updater, error) {
+func getUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 	switch node := node.(type) {
-	case sql.Updater:
+	case sql.UpdatableTable:
 		return node, nil
 	case *ResolvedTable:
 		return getUpdatableTable(node.Table)
@@ -76,9 +76,9 @@ func getUpdatable(node sql.Node) (sql.Updater, error) {
 	return nil, ErrUpdateNotSupported.New()
 }
 
-func getUpdatableTable(t sql.Table) (sql.Updater, error) {
+func getUpdatableTable(t sql.Table) (sql.UpdatableTable, error) {
 	switch t := t.(type) {
-	case sql.Updater:
+	case sql.UpdatableTable:
 		return t, nil
 	case sql.TableWrapper:
 		return getUpdatableTable(t.Underlying())

@@ -37,9 +37,9 @@ func (p *DeleteFrom) Children() []sql.Node {
 	return []sql.Node{p.Node}
 }
 
-func getDeletable(node sql.Node) (sql.Deleter, error) {
+func getDeletable(node sql.Node) (sql.DeletableTable, error) {
 	switch node := node.(type) {
-	case sql.Deleter:
+	case sql.DeletableTable:
 		return node, nil
 	case *ResolvedTable:
 		return getDeletableTable(node.Table)
@@ -53,9 +53,9 @@ func getDeletable(node sql.Node) (sql.Deleter, error) {
 	return nil, ErrDeleteFromNotSupported.New()
 }
 
-func getDeletableTable(t sql.Table) (sql.Deleter, error) {
+func getDeletableTable(t sql.Table) (sql.DeletableTable, error) {
 	switch t := t.(type) {
-	case sql.Deleter:
+	case sql.DeletableTable:
 		return t, nil
 	case sql.TableWrapper:
 		return getDeletableTable(t.Underlying())
