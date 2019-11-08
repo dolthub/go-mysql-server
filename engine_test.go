@@ -1625,16 +1625,16 @@ func TestQueries(t *testing.T) {
 	// 3) Parallelism on / off
 	numPartitionsVals := []int{
 		1,
-		// testNumPartitions,
+		testNumPartitions,
 	}
 	indexDrivers := []*indexDriverTestCase{
 		nil,
-		// {"unmergableIndexes", unmergableIndexDriver},
-		// {"mergableIndexes", mergableIndexDriver},
+		{"unmergableIndexes", unmergableIndexDriver},
+		{"mergableIndexes", mergableIndexDriver},
 	}
 	parallelVals := []int{
 		1,
-		// 2,
+		2,
 	}
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexDriverInit := range indexDrivers {
