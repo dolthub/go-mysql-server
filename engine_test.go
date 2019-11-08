@@ -2024,6 +2024,12 @@ func TestInsertInto(t *testing.T) {
 			[]sql.Row{{int64(999)}},
 		},
 		{
+			"INSERT INTO niltable (f) VALUES (10.0), (12.0);",
+			[]sql.Row{{int64(2)}},
+			"SELECT f FROM niltable WHERE f in (10.0, 12.0) order by f;",
+			[]sql.Row{{10.0}, {12.0}},
+		},
+		{
 			"INSERT INTO mytable SET s = 'x', i = 999;",
 			[]sql.Row{{int64(1)}},
 			"SELECT i FROM mytable WHERE s = 'x';",
@@ -2054,9 +2060,9 @@ func TestInsertInto(t *testing.T) {
 			[]sql.Row{{
 				int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 				uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
-				float64(math.MaxFloat32), float64(math.MaxFloat64),
+				float32(math.MaxFloat32), float64(math.MaxFloat64),
 				timeParse(sql.TimestampLayout, "2132-04-05 12:51:36"), timeParse(sql.DateLayout, "2231-11-07"),
-				"random text", true, `{"key":"value"}`, "blobdata",
+				"random text", true, ([]byte)(`{"key":"value"}`), ([]byte)("blobdata"),
 			}},
 		},
 		{
@@ -2072,9 +2078,9 @@ func TestInsertInto(t *testing.T) {
 			[]sql.Row{{
 				int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 				uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
-				float64(math.MaxFloat32), float64(math.MaxFloat64),
+				float32(math.MaxFloat32), float64(math.MaxFloat64),
 				timeParse(sql.TimestampLayout, "2132-04-05 12:51:36"), timeParse(sql.DateLayout, "2231-11-07"),
-				"random text", true, `{"key":"value"}`, "blobdata",
+				"random text", true, ([]byte)(`{"key":"value"}`), ([]byte)("blobdata"),
 			}},
 		},
 		{
@@ -2090,9 +2096,9 @@ func TestInsertInto(t *testing.T) {
 			[]sql.Row{{
 				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 				uint8(0), uint16(0), uint32(0), uint64(0),
-				float64(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
+				float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 				timeParse(sql.TimestampLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
-				"", false, ``, "",
+				"", false, ([]byte)(`""`), ([]byte)(""),
 			}},
 		},
 		{
@@ -2108,9 +2114,9 @@ func TestInsertInto(t *testing.T) {
 			[]sql.Row{{
 				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 				uint8(0), uint16(0), uint32(0), uint64(0),
-				float64(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
+				float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 				timeParse(sql.TimestampLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
-				"", false, ``, "",
+				"", false, ([]byte)(`""`), ([]byte)(""),
 			}},
 		},
 		{
@@ -3070,7 +3076,8 @@ func testQueryWithContext(ctx *sql.Context, t *testing.T, e *sqle.Engine, q stri
 		rows, err := sql.RowIterToRows(iter)
 		require.NoError(err)
 
-		if orderBy {
+		// .Equal gives better error messages than .ElementsMatch, so use it when possible
+		if orderBy || len(rows) == 1 {
 			require.Equal(expected, rows)
 		} else {
 			require.ElementsMatch(expected, rows)
