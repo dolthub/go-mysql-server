@@ -34,6 +34,20 @@ var queries = []struct {
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
+		"SELECT s,i FROM mytable;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT s,i FROM (select i,s from mytable) mt;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
 		"SELECT i + 1 FROM mytable;",
 		[]sql.Row{{int64(2)}, {int64(3)}, {int64(4)}},
 	},
@@ -2113,6 +2127,97 @@ func TestInsertInto(t *testing.T) {
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
 		},
+		{
+			"INSERT INTO mytable SELECT * from mytable",
+			[]sql.Row{{int64(3)}},
+			"SELECT * FROM mytable order by i",
+			[]sql.Row{
+				{int64(1), "first row"},
+				{int64(1), "first row"},
+				{int64(2), "second row"},
+				{int64(2), "second row"},
+				{int64(3), "third row"},
+				{int64(3), "third row"},
+			},
+		},
+		{
+			"INSERT INTO mytable(i,s) SELECT * from mytable",
+			[]sql.Row{{int64(3)}},
+			"SELECT * FROM mytable order by i",
+			[]sql.Row{
+				{int64(1), "first row"},
+				{int64(1), "first row"},
+				{int64(2), "second row"},
+				{int64(2), "second row"},
+				{int64(3), "third row"},
+				{int64(3), "third row"},
+			},
+		},
+		{
+			"INSERT INTO mytable (i,s) SELECT i+10, 'new' from mytable",
+			[]sql.Row{{int64(3)}},
+			"SELECT * FROM mytable order by i",
+			[]sql.Row{
+				{int64(1), "first row"},
+				{int64(2), "second row"},
+				{int64(3), "third row"},
+				{int64(11), "new"},
+				{int64(12), "new"},
+				{int64(13), "new"},
+			},
+		},
+		{
+			"INSERT INTO mytable SELECT i2, s2 from othertable",
+			[]sql.Row{{int64(3)}},
+			"SELECT * FROM mytable order by i,s",
+			[]sql.Row{
+				{int64(1), "first row"},
+				{int64(1), "third"},
+				{int64(2), "second"},
+				{int64(2), "second row"},
+				{int64(3), "first"},
+				{int64(3), "third row"},
+			},
+		},
+		{
+			"INSERT INTO mytable (s,i) SELECT * from othertable",
+			[]sql.Row{{int64(3)}},
+			"SELECT * FROM mytable order by i,s",
+			[]sql.Row{
+				{int64(1), "first row"},
+				{int64(1), "third"},
+				{int64(2), "second"},
+				{int64(2), "second row"},
+				{int64(3), "first"},
+				{int64(3), "third row"},
+			},
+		},
+		{
+			"INSERT INTO mytable (s,i) SELECT concat(m.s, o.s2), m.i from othertable o join mytable m on m.i=o.i2",
+			[]sql.Row{{int64(3)}},
+			"SELECT * FROM mytable order by i,s",
+			[]sql.Row{
+				{int64(1), "first row"},
+				{int64(1), "first rowthird"},
+				{int64(2), "second row"},
+				{int64(2), "second rowsecond"},
+				{int64(3), "third row"},
+				{int64(3), "third rowfirst"},
+			},
+		},
+		{
+			"INSERT INTO mytable (i,s) SELECT (i + 10.0) / 10.0 + 10, concat(s, ' new') from mytable",
+			[]sql.Row{{int64(3)}},
+			"SELECT * FROM mytable order by i, s",
+			[]sql.Row{
+				{int64(1), "first row"},
+				{int64(2), "second row"},
+				{int64(3), "third row"},
+				{int64(11), "first row new"},
+				{int64(11), "second row new"},
+				{int64(11), "third row new"},
+			},
+		},
 	}
 
 	for _, insertion := range insertions {
@@ -2167,6 +2272,22 @@ func TestInsertIntoErrors(t *testing.T) {
 		{
 			"null given to non-nullable",
 			"INSERT INTO mytable (i, s) VALUES (null, 'y');",
+		},
+		{
+			"incompatible types",
+			"INSERT INTO mytable (i, s) select * from othertable",
+		},
+		{
+			"column count mismatch in select",
+			"INSERT INTO mytable (i) select * from othertable",
+		},
+		{
+			"column count mismatch in select",
+			"INSERT INTO mytable select s from othertable",
+		},
+		{
+			"column count mismatch in join select",
+			"INSERT INTO mytable (s,i) SELECT * from othertable o join mytable m on m.i=o.i2",
 		},
 	}
 
