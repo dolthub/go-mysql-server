@@ -241,11 +241,7 @@ func (p *InsertInto) validateValueCount(ctx *sql.Context) error {
 				return ErrInsertIntoMismatchValueCount.New()
 			}
 		}
-	case *ResolvedTable:
-		return p.assertColumnCountsMatch(node.Schema())
-	case *Project:
-		return p.assertColumnCountsMatch(node.Schema())
-	case *InnerJoin:
+	case *ResolvedTable, *Project, *InnerJoin:
 		return p.assertColumnCountsMatch(node.Schema())
 	default:
 		return ErrInsertIntoUnsupportedValues.New(node)

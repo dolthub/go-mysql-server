@@ -2024,6 +2024,12 @@ func TestInsertInto(t *testing.T) {
 			[]sql.Row{{int64(999)}},
 		},
 		{
+			"INSERT INTO niltable (f) VALUES (10.0), (12.0);",
+			[]sql.Row{{int64(2)}},
+			"SELECT f FROM niltable WHERE f in (10.0, 12.0) order by f;",
+			[]sql.Row{{10.0}, {12.0}},
+		},
+		{
 			"INSERT INTO mytable SET s = 'x', i = 999;",
 			[]sql.Row{{int64(1)}},
 			"SELECT i FROM mytable WHERE s = 'x';",
