@@ -226,7 +226,7 @@ type RowInserter interface {
 type DeletableTable interface {
 	// Deleter returns a RowDeleter for this table. The RowDeleter will get one call to Delete for each row to be deleted,
 	// and will end with a call to Close() to finalize the delete operation.
-	Deleter(*Context, Row) RowDeleter
+	Deleter(*Context) RowDeleter
 }
 
 // RowDeleter is a delete cursor that can delete one or more rows from a table.
@@ -260,7 +260,7 @@ type RowReplacer interface {
 type ReplaceableTable interface {
 	// Replacer returns a RowReplacer for this table. The RowReplacer will have Insert and optionally Delete called once
 	// for each row, followed by a call to Close() when all rows have been processed.
-	Replacer() RowReplacer
+	Replacer(ctx *Context) RowReplacer
 }
 
 // UpdateableTable is a table that can process updates of existing rows via update statements.

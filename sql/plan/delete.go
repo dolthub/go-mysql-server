@@ -76,6 +76,8 @@ func (p *DeleteFrom) Execute(ctx *sql.Context) (int, error) {
 		return 0, err
 	}
 
+	deleter := deletable.Deleter(ctx)
+
 	i := 0
 	for {
 		row, err := iter.Next()
@@ -88,12 +90,16 @@ func (p *DeleteFrom) Execute(ctx *sql.Context) (int, error) {
 			return i, err
 		}
 
-		if err := deletable.Delete(ctx, row); err != nil {
+		if err := deleter.Delete(ctx, row); err != nil {
 			_ = iter.Close()
 			return i, err
 		}
 
 		i++
+	}
+
+	if err := deleter.Close(ctx); err != nil {
+		return 0, err
 	}
 
 	return i, nil

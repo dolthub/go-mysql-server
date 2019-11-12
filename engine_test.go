@@ -3815,9 +3815,12 @@ func TestGenerators(t *testing.T) {
 func insertRows(t *testing.T, table sql.InsertableTable, rows ...sql.Row) {
 	t.Helper()
 
+	ctx := newCtx()
+	inserter := table.Inserter(ctx)
 	for _, r := range rows {
-		require.NoError(t, table.Insert(newCtx(), r))
+		require.NoError(t, inserter.Insert(ctx, r))
 	}
+	require.NoError(t, inserter.Close(ctx))
 }
 
 var pid uint64

@@ -132,6 +132,14 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 		return 0, err
 	}
 
+	var inserter sql.RowInserter
+	var replacer sql.RowReplacer
+	if replaceable != nil {
+		replacer = replaceable.Replacer(ctx)
+	} else {
+		inserter = insertable.Inserter(ctx)
+	}
+
 	i := 0
 	for {
 		row, err := iter.Next()
@@ -163,8 +171,8 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 			}
 		}
 
-		if replaceable != nil {
-			if err = replaceable.Delete(ctx, row); err != nil {
+		if replacer != nil {
+			if err = replacer.Delete(ctx, row); err != nil {
 				if err != sql.ErrDeleteRowNotFound {
 					_ = iter.Close()
 					return i, err
@@ -173,17 +181,27 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 				i++
 			}
 
-			if err = replaceable.Insert(ctx, row); err != nil {
+			if err = replacer.Insert(ctx, row); err != nil {
 				_ = iter.Close()
 				return i, err
 			}
 		} else {
-			if err := insertable.Insert(ctx, row); err != nil {
+			if err := inserter.Insert(ctx, row); err != nil {
 				_ = iter.Close()
 				return i, err
 			}
 		}
 		i++
+	}
+
+	if replacer != nil {
+		if err := replacer.Close(ctx); err != nil {
+			return 0, err
+		}
+	} else {
+		if err := inserter.Close(ctx); err != nil {
+			return 0, err
+		}
 	}
 
 	return i, nil

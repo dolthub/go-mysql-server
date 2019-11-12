@@ -29,6 +29,9 @@ type Table struct {
 
 var _ sql.Table = (*Table)(nil)
 var _ sql.InsertableTable = (*Table)(nil)
+var _ sql.UpdatableTable = (*Table)(nil)
+var _ sql.DeletableTable = (*Table)(nil)
+var _ sql.ReplaceableTable = (*Table)(nil)
 var _ sql.FilteredTable = (*Table)(nil)
 var _ sql.ProjectedTable = (*Table)(nil)
 var _ sql.IndexableTable = (*Table)(nil)
@@ -241,30 +244,70 @@ func encodeIndexValue(value *indexValue) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// Insert a new row into the table.
+type tableEditor struct {
+	table *Table
+}
+
+var _ sql.RowReplacer = (*tableEditor)(nil)
+var _ sql.RowUpdater = (*tableEditor)(nil)
+var _ sql.RowInserter = (*tableEditor)(nil)
+var _ sql.RowDeleter = (*tableEditor)(nil)
+
+func (t tableEditor) Close(*sql.Context) error {
+	// TODO: it would be nice to apply all pending updates here at once, rather than directly in the Insert / Update
+	//  / Delete methods.
+	return nil
+}
+
+func (t *Table) Inserter(*sql.Context) sql.RowInserter {
+	return &tableEditor{t}
+}
+
+func (t *Table) Updater(*sql.Context) sql.RowUpdater {
+	return &tableEditor{t}
+}
+
+func (t *Table) Replacer(*sql.Context) sql.RowReplacer {
+	return &tableEditor{t}
+}
+
+func (t *Table) Deleter(*sql.Context) sql.RowDeleter {
+	return &tableEditor{t}
+}
+
+// Convenience method to avoid having to create an inserter in test setup
 func (t *Table) Insert(ctx *sql.Context, row sql.Row) error {
-	if err := checkRow(t.schema, row); err != nil {
+	inserter := t.Inserter(ctx)
+	if err := inserter.Insert(ctx, row); err != nil {
+		return err
+	}
+	return inserter.Close(ctx)
+}
+
+// Insert a new row into the table.
+func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
+	if err := checkRow(t.table.schema, row); err != nil {
 		return err
 	}
 
-	key := string(t.keys[t.insert])
-	t.insert++
-	if t.insert == len(t.keys) {
-		t.insert = 0
+	key := string(t.table.keys[t.table.insert])
+	t.table.insert++
+	if t.table.insert == len(t.table.keys) {
+		t.table.insert = 0
 	}
 
-	t.partitions[key] = append(t.partitions[key], row)
+	t.table.partitions[key] = append(t.table.partitions[key], row)
 	return nil
 }
 
 // Delete the given row from the table.
-func (t *Table) Delete(ctx *sql.Context, row sql.Row) error {
-	if err := checkRow(t.schema, row); err != nil {
+func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
+	if err := checkRow(t.table.schema, row); err != nil {
 		return err
 	}
 
 	matches := false
-	for partitionIndex, partition := range t.partitions {
+	for partitionIndex, partition := range t.table.partitions {
 		for partitionRowIndex, partitionRow := range partition {
 			matches = true
 			for rIndex, val := range row {
@@ -274,7 +317,7 @@ func (t *Table) Delete(ctx *sql.Context, row sql.Row) error {
 				}
 			}
 			if matches {
-				t.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
+				t.table.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
 				break
 			}
 		}
@@ -290,16 +333,16 @@ func (t *Table) Delete(ctx *sql.Context, row sql.Row) error {
 	return nil
 }
 
-func (t *Table) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) error {
-	if err := checkRow(t.schema, oldRow); err != nil {
+func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) error {
+	if err := checkRow(t.table.schema, oldRow); err != nil {
 		return err
 	}
-	if err := checkRow(t.schema, newRow); err != nil {
+	if err := checkRow(t.table.schema, newRow); err != nil {
 		return err
 	}
 
 	matches := false
-	for partitionIndex, partition := range t.partitions {
+	for partitionIndex, partition := range t.table.partitions {
 		for partitionRowIndex, partitionRow := range partition {
 			matches = true
 			for rIndex, val := range oldRow {
@@ -309,7 +352,7 @@ func (t *Table) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) error {
 				}
 			}
 			if matches {
-				t.partitions[partitionIndex][partitionRowIndex] = newRow
+				t.table.partitions[partitionIndex][partitionRowIndex] = newRow
 				break
 			}
 		}
