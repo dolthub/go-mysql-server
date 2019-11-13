@@ -60,9 +60,9 @@ func (p *Update) Children() []sql.Node {
 	return []sql.Node{p.Node}
 }
 
-func getUpdatable(node sql.Node) (sql.Updater, error) {
+func getUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 	switch node := node.(type) {
-	case sql.Updater:
+	case sql.UpdatableTable:
 		return node, nil
 	case *ResolvedTable:
 		return getUpdatableTable(node.Table)
@@ -76,9 +76,9 @@ func getUpdatable(node sql.Node) (sql.Updater, error) {
 	return nil, ErrUpdateNotSupported.New()
 }
 
-func getUpdatableTable(t sql.Table) (sql.Updater, error) {
+func getUpdatableTable(t sql.Table) (sql.UpdatableTable, error) {
 	switch t := t.(type) {
-	case sql.Updater:
+	case sql.UpdatableTable:
 		return t, nil
 	case sql.TableWrapper:
 		return getUpdatableTable(t.Underlying())
@@ -100,6 +100,8 @@ func (p *Update) Execute(ctx *sql.Context) (int, int, error) {
 		return 0, 0, err
 	}
 
+	updater := updatable.Updater(ctx)
+
 	rowsMatched := 0
 	rowsUpdated := 0
 	for {
@@ -120,7 +122,7 @@ func (p *Update) Execute(ctx *sql.Context) (int, int, error) {
 		}
 		if equals, err := oldRow.Equals(newRow, schema); err == nil {
 			if !equals {
-				err = updatable.Update(ctx, oldRow, newRow)
+				err = updater.Update(ctx, oldRow, newRow)
 				if err != nil {
 					_ = iter.Close()
 					return rowsMatched, rowsUpdated, err
@@ -131,6 +133,10 @@ func (p *Update) Execute(ctx *sql.Context) (int, int, error) {
 			_ = iter.Close()
 			return rowsMatched, rowsUpdated, err
 		}
+	}
+
+	if err := updater.Close(ctx); err != nil {
+		return 0, 0, err
 	}
 
 	return rowsMatched, rowsUpdated, nil

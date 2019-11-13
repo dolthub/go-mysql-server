@@ -205,28 +205,79 @@ type IndexableTable interface {
 	IndexKeyValues(*Context, []string) (PartitionIndexKeyValueIter, error)
 }
 
-// Inserter allow rows to be inserted in them.
-type Inserter interface {
-	// Insert the given row.
-	Insert(*Context, Row) error
+// InsertableTable is a table that can process insertion of new rows.
+type InsertableTable interface {
+	// Inserter returns an Inserter for this table. The Inserter will get one call to Insert() for each row to be
+	// inserted, and will end with a call to Close() to finalize the insert operation.
+	Inserter(*Context) RowInserter
 }
 
-// Deleter allow rows to be deleted from tables.
-type Deleter interface {
-	// Delete the given row. Returns ErrDeleteRowNotFound if the row was not found.
+// RowInserter is an insert cursor that can insert one or more values to a table.
+type RowInserter interface {
+	// Insert inserts the row given, returning an error if it cannot. Insert will be called once for each row to process
+	// for the insert operation, which may involve many rows. After all rows in an operation have been processed, Close
+	// is called.
+	Insert(*Context, Row) error
+	// Close finalizes the insert operation, persisting its result.
+	Closer
+}
+
+// DeleteableTable is a table that can process the deletion of rows
+type DeletableTable interface {
+	// Deleter returns a RowDeleter for this table. The RowDeleter will get one call to Delete for each row to be deleted,
+	// and will end with a call to Close() to finalize the delete operation.
+	Deleter(*Context) RowDeleter
+}
+
+// RowDeleter is a delete cursor that can delete one or more rows from a table.
+type RowDeleter interface {
+	// Delete deletes the given row. Returns ErrDeleteRowNotFound if the row was not found. Delete will be called once for
+	// each row to process for the delete operation, which may involve many rows. After all rows have been processed,
+	// Close is called.
 	Delete(*Context, Row) error
+	// Close finalizes the delete operation, persisting the result.
+	Closer
+}
+
+type Closer interface {
+	Close(*Context) error
+}
+
+// RowReplacer is a combination of RowDeleter and RowInserter. We can't embed those interfaces because go doesn't allow
+// for overlapping interfaces (they both declare Close)
+type RowReplacer interface {
+	// Insert inserts the row given, returning an error if it cannot. Insert will be called once for each row to process
+	// for the replace operation, which may involve many rows. After all rows in an operation have been processed, Close
+	// is called.
+	Insert(*Context, Row) error
+	// Delete deletes the given row. Returns ErrDeleteRowNotFound if the row was not found. Delete will be called once for
+	// each row to process for the delete operation, which may involve many rows. After all rows have been processed,
+	// Close is called.
+	Delete(*Context, Row) error
+	// Close finalizes the replace operation, persisting the result.
+	Closer
 }
 
 // Replacer allows rows to be replaced through a Delete (if applicable) then Insert.
-type Replacer interface {
-	Deleter
-	Inserter
+type ReplaceableTable interface {
+	// Replacer returns a RowReplacer for this table. The RowReplacer will have Insert and optionally Delete called once
+	// for each row, followed by a call to Close() when all rows have been processed.
+	Replacer(ctx *Context) RowReplacer
 }
 
-// Updater allows rows to be updated.
-type Updater interface {
+// UpdateableTable is a table that can process updates of existing rows via update statements.
+type UpdatableTable interface {
+	// Updater returns a RowUpdater for this table. The RowUpdater will have Update called once for each row to be
+	// updated, followed by a call to Close() when all rows have been processed.
+	Updater(ctx *Context) RowUpdater
+}
+
+// RowUpdater is an update cursor that can update one or more rows in a table.
+type RowUpdater interface {
 	// Update the given row. Provides both the old and new rows.
 	Update(ctx *Context, old Row, new Row) error
+	// Close finalizes the update operation, persisting the result.
+	Closer
 }
 
 // Database represents the database.
