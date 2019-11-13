@@ -219,7 +219,7 @@ type RowInserter interface {
 	// is called.
 	Insert(*Context, Row) error
 	// Close finalizes the insert operation, persisting its result.
-	Close(*Context) error
+	Closer
 }
 
 // DeleteableTable is a table that can process the deletion of rows
@@ -236,13 +236,15 @@ type RowDeleter interface {
 	// Close is called.
 	Delete(*Context, Row) error
 	// Close finalizes the delete operation, persisting the result.
-	Close(*Context) error
+	Closer
 }
 
 type Closer interface {
 	Close(*Context) error
 }
 
+// RowReplacer is a combination of RowDeleter and RowInserter. We can't embed those interfaces because go doesn't allow
+// for overlapping interfaces (they both declare Close)
 type RowReplacer interface {
 	// Insert inserts the row given, returning an error if it cannot. Insert will be called once for each row to process
 	// for the replace operation, which may involve many rows. After all rows in an operation have been processed, Close
@@ -253,7 +255,7 @@ type RowReplacer interface {
 	// Close is called.
 	Delete(*Context, Row) error
 	// Close finalizes the replace operation, persisting the result.
-	Close(*Context) error
+	Closer
 }
 
 // Replacer allows rows to be replaced through a Delete (if applicable) then Insert.
@@ -270,11 +272,12 @@ type UpdatableTable interface {
 	Updater(ctx *Context) RowUpdater
 }
 
+// RowUpdater is an update cursor that can update one or more rows in a table.
 type RowUpdater interface {
 	// Update the given row. Provides both the old and new rows.
 	Update(ctx *Context, old Row, new Row) error
-	// Close finalizes the delete operation, persisting the result.
-	Close(*Context) error
+	// Close finalizes the update operation, persisting the result.
+	Closer
 }
 
 // Database represents the database.
