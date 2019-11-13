@@ -542,7 +542,7 @@ func (t timestampT) Type() query.Type {
 
 // TimestampLayout is the formatting string with the layout of the timestamp
 // using the format of Go "time" package.
-const TimestampLayout = "2006-01-02 15:04:05"
+const TimestampLayout = "2006-01-02 15:04:05.999999"
 
 // TimestampLayouts hold extra timestamps allowed for parsing. It does
 // not have all the layouts supported by mysql. Missing are two digit year
@@ -550,6 +550,7 @@ const TimestampLayout = "2006-01-02 15:04:05"
 //
 // https://github.com/MariaDB/server/blob/mysql-5.5.36/sql-common/my_time.c#L124
 var TimestampLayouts = []string{
+	"2006-01-02 15:04:05.999999",
 	"2006-01-02",
 	time.RFC3339,
 	"20060102150405",
@@ -579,22 +580,12 @@ func (t timestampT) Convert(v interface{}) (interface{}, error) {
 	case time.Time:
 		return value.UTC(), nil
 	case string:
-		t, err := time.Parse(TimestampLayout, value)
-		if err != nil {
-			failed := true
-			for _, fmt := range TimestampLayouts {
-				if t2, err2 := time.Parse(fmt, value); err2 == nil {
-					t = t2
-					failed = false
-					break
-				}
-			}
-
-			if failed {
-				return nil, ErrConvertingToTime.Wrap(err, v)
+		for _, fmt := range TimestampLayouts {
+			if t, err := time.Parse(fmt, value); err == nil {
+				return t.UTC(), nil
 			}
 		}
-		return t.UTC(), nil
+		return nil, ErrConvertingToTime.New(v)
 	default:
 		ts, err := Int64.Convert(v)
 		if err != nil {
@@ -700,7 +691,20 @@ func (t datetimeT) Zero() interface{} {
 
 // DatetimeLayout is the layout of the MySQL date format in the representation
 // Go understands.
-const DatetimeLayout = "2006-01-02 15:04:05"
+const DatetimeLayout = "2006-01-02 15:04:05.999999"
+
+// DatetimeLayouts hold extra configurations allowed for parsing. It does
+// not have all the layouts supported by mysql. Missing are two digit year
+// versions of common cases and dates that use non common separators.
+//
+// https://github.com/MariaDB/server/blob/mysql-5.5.36/sql-common/my_time.c#L124
+var DatetimeLayouts = []string{
+	"2006-01-02 15:04:05.999999",
+	"2006-01-02",
+	time.RFC3339,
+	"20060102150405",
+	"20060102",
+}
 
 func (t datetimeT) String() string { return "DATETIME" }
 
@@ -729,11 +733,12 @@ func (t datetimeT) Convert(v interface{}) (interface{}, error) {
 	case time.Time:
 		return value.UTC(), nil
 	case string:
-		t, err := time.Parse(DatetimeLayout, value)
-		if err != nil {
-			return nil, ErrConvertingToTime.Wrap(err, v)
+		for _, fmt := range DatetimeLayouts {
+			if t, err := time.Parse(fmt, value); err == nil {
+				return t.UTC(), nil
+			}
 		}
-		return t.UTC(), nil
+		return nil, ErrConvertingToTime.New(v)
 	default:
 		ts, err := Int64.Convert(v)
 		if err != nil {
