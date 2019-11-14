@@ -138,9 +138,14 @@ func transformPushdown(
 		a.Log("transforming node of type: %T", node)
 		switch node := node.(type) {
 		case *plan.Filter:
-			return pushdownFilter(a, node, handledFilters)
+			n, err := pushdownFilter(a, node, handledFilters)
+			if err != nil {
+				return nil, err
+			}
+			// After pushing down the filter, we need to fix field indexes as well
+			return transformExpressioners(n)
 		case *plan.ResolvedTable:
-			return pushdownTable(
+			table, err := pushdownTable(
 				a,
 				node,
 				filters,
@@ -149,6 +154,10 @@ func transformPushdown(
 				fieldsByTable,
 				indexes,
 			)
+			if err != nil {
+				return nil, err
+			}
+			return transformExpressioners(table)
 		default:
 			return transformExpressioners(node)
 		}
