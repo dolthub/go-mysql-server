@@ -7,7 +7,6 @@ import (
 	"io"
 	"math"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -19,22 +18,13 @@ import (
 
 var (
 	// ErrTypeNotSupported is thrown when a specific type is not supported
-	ErrTypeNotSupported = errors.NewKind("Type not supported: %s")
-
-	// ErrUnexpectedType is thrown when a received type is not the expected
-	ErrUnexpectedType = errors.NewKind("value at %d has unexpected type: %s")
-
-	// ErrConvertingToTime is thrown when a value cannot be converted to a Time
-	ErrConvertingToTime = errors.NewKind("value %q can't be converted to time.Time")
+	ErrTypeNotSupported = errors.NewKind("BaseType not supported: %s")
 
 	// ErrCharTruncation is thrown when a Char value is textually longer than the destination capacity
 	ErrCharTruncation = errors.NewKind("string value of %q is longer than destination capacity %d")
 
 	// ErrVarCharTruncation is thrown when a VarChar value is textually longer than the destination capacity
 	ErrVarCharTruncation = errors.NewKind("string value of %q is longer than destination capacity %d")
-
-	// ErrValueNotNil is thrown when a value that was expected to be nil, is not
-	ErrValueNotNil = errors.NewKind("value not nil: %#v")
 
 	// ErrNotTuple is returned when the value is not a tuple.
 	ErrNotTuple = errors.NewKind("value of type %T is not a tuple")
@@ -43,127 +33,33 @@ var (
 	// arguments.
 	ErrInvalidColumnNumber = errors.NewKind("tuple should contain %d column(s), but has %d")
 
+	ErrInvalidBaseType = errors.NewKind("%v is not a valid %v base type")
+
 	// ErrNotArray is returned when the value is not an array.
 	ErrNotArray = errors.NewKind("value of type %T is not an array")
 
 	// ErrConvertToSQL is returned when Convert failed.
-	// It makes an error less verbose comparingto what spf13/cast returns.
+	// It makes an error less verbose comparing to what spf13/cast returns.
 	ErrConvertToSQL = errors.NewKind("incompatible conversion to SQL type: %s")
 )
 
-// Schema is the definition of a table.
-type Schema []*Column
-
-// CheckRow checks the row conforms to the schema.
-func (s Schema) CheckRow(row Row) error {
-	expected := len(s)
-	got := len(row)
-	if expected != got {
-		return ErrUnexpectedRowLength.New(expected, got)
-	}
-
-	for idx, f := range s {
-		v := row[idx]
-		if f.Check(v) {
-			continue
-		}
-
-		typ := reflect.TypeOf(v).String()
-		return ErrUnexpectedType.New(idx, typ)
-	}
-
-	return nil
-}
-
-// Contains returns whether the schema contains a column with the given name.
-func (s Schema) Contains(column string, source string) bool {
-	return s.IndexOf(column, source) >= 0
-}
-
-// IndexOf returns the index of the given column in the schema or -1 if it's
-// not present.
-func (s Schema) IndexOf(column, source string) int {
-	column = strings.ToLower(column)
-	source = strings.ToLower(source)
-	for i, col := range s {
-		if strings.ToLower(col.Name) == column && strings.ToLower(col.Source) == source {
-			return i
-		}
-	}
-	return -1
-}
-
-// Equals checks whether the given schema is equal to this one.
-func (s Schema) Equals(s2 Schema) bool {
-	if len(s) != len(s2) {
-		return false
-	}
-
-	for i := range s {
-		if !s[i].Equals(s2[i]) {
-			return false
-		}
-	}
-
-	return true
-}
-
-// Column is the definition of a table column.
-// As SQL:2016 puts it:
-//   A column is a named component of a table. It has a data type, a default,
-//   and a nullability characteristic.
-type Column struct {
-	// Name is the name of the column.
-	Name string
-	// Type is the data type of the column.
-	Type Type
-	// Default contains the default value of the column or nil if it is NULL.
-	Default interface{}
-	// Nullable is true if the column can contain NULL values, or false
-	// otherwise.
-	Nullable bool
-	// Source is the name of the table this column came from.
-	Source string
-	// PrimaryKey is true if the column is part of the primary key for its table.
-	PrimaryKey bool
-}
-
-// Check ensures the value is correct for this column.
-func (c *Column) Check(v interface{}) bool {
-	if v == nil {
-		return c.Nullable
-	}
-
-	_, err := c.Type.Convert(v)
-	return err == nil
-}
-
-// Equals checks whether two columns are equal.
-func (c *Column) Equals(c2 *Column) bool {
-	return c.Name == c2.Name &&
-		c.Source == c2.Source &&
-		c.Nullable == c2.Nullable &&
-		reflect.DeepEqual(c.Default, c2.Default) &&
-		reflect.DeepEqual(c.Type, c2.Type)
-}
-
-// Type represent a SQL type.
+// Type represents a SQL type.
 type Type interface {
-	// Type returns the query.Type for the given Type.
-	Type() query.Type
-	// Zero returns the golang zero value for this type
-	Zero() interface{}
-	// Covert a value of a compatible type to a most accurate type.
-	Convert(interface{}) (interface{}, error)
+	// BaseType returns the BaseType for the given Type.
+	BaseType() BaseType
 	// Compare returns an integer comparing two values.
 	// The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
 	Compare(interface{}, interface{}) (int, error)
+	// Convert a value of a compatible type to a most accurate type.
+	Convert(interface{}) (interface{}, error)
 	// SQL returns the sqltypes.Value for the given value.
 	SQL(interface{}) (sqltypes.Value, error)
+	// Zero returns the golang zero value for this type
+	Zero() interface{}
 	fmt.Stringer
 }
 
-var maxTime = time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)
+var maxTime = time.Date(9999, time.December, 31, 23, 59, 59, 999999999, time.UTC)
 
 // ValidateTime receives a time and returns either that time or nil if it's
 // not a valid time.
@@ -175,42 +71,6 @@ func ValidateTime(t time.Time) interface{} {
 }
 
 var (
-	// Null represents the null type.
-	Null nullT
-
-	// Numeric types
-
-	// Int8 is an integer of 8 bits
-	Int8 = numberT{t: sqltypes.Int8}
-	// Uint8 is an unsigned integer of 8 bits
-	Uint8 = numberT{t: sqltypes.Uint8}
-	// Int16 is an integer of 16 bits
-	Int16 = numberT{t: sqltypes.Int16}
-	// Uint16 is an unsigned integer of 16 bits
-	Uint16 = numberT{t: sqltypes.Uint16}
-	// Int24 is an integer of 24 bits.
-	Int24 = numberT{t: sqltypes.Int24}
-	// Uint24 is an unsigned integer of 24 bits.
-	Uint24 = numberT{t: sqltypes.Uint24}
-	// Int32 is an integer of 32 bits.
-	Int32 = numberT{t: sqltypes.Int32}
-	// Uint32 is an unsigned integer of 32 bits.
-	Uint32 = numberT{t: sqltypes.Uint32}
-	// Int64 is an integer of 64 bytes.
-	Int64 = numberT{t: sqltypes.Int64}
-	// Uint64 is an unsigned integer of 64 bits.
-	Uint64 = numberT{t: sqltypes.Uint64}
-	// Float32 is a floating point number of 32 bits.
-	Float32 = numberT{t: sqltypes.Float32}
-	// Float64 is a floating point number of 64 bits.
-	Float64 = numberT{t: sqltypes.Float64}
-
-	// Timestamp is an UNIX timestamp.
-	Timestamp timestampT
-	// Date is a date with day, month and year.
-	Date dateT
-	// Datetime is a date and a time
-	Datetime datetimeT
 	// Text is a string type.
 	Text textT
 	// Boolean is a boolean type.
@@ -297,160 +157,10 @@ func MysqlTypeToType(sql query.Type) (Type, error) {
 	}
 }
 
-type nullT struct{}
-
-func (t nullT) Zero() interface{} {
-	return nil
-}
-
-func (t nullT) String() string { return "NULL" }
-
-// Type implements Type interface.
-func (t nullT) Type() query.Type {
-	return sqltypes.Null
-}
-
-// SQL implements Type interface.
-func (t nullT) SQL(interface{}) (sqltypes.Value, error) {
-	return sqltypes.NULL, nil
-}
-
-// Convert implements Type interface.
-func (t nullT) Convert(v interface{}) (interface{}, error) {
-	if v != nil {
-		return nil, ErrValueNotNil.New(v)
-	}
-
-	return nil, nil
-}
-
-// Compare implements Type interface. Note that while this returns 0 (equals)
-// for ordering purposes, in SQL NULL != NULL.
-func (t nullT) Compare(a interface{}, b interface{}) (int, error) {
-	return 0, nil
-}
-
-// IsNull returns true if expression is nil or is Null Type, otherwise false.
+// IsNull returns true if expression is nil or is Null BaseType, otherwise false.
 func IsNull(ex Expression) bool {
 	return ex == nil || ex.Type() == Null
 }
-
-type numberT struct {
-	t query.Type
-}
-
-func (t numberT) Zero() interface{} {
-	switch t.t {
-	case sqltypes.Int8:
-		return int8(0)
-	case sqltypes.Int16:
-		return int16(0)
-	case sqltypes.Int32:
-		return int32(0)
-	case sqltypes.Int64:
-		return int64(0)
-	case sqltypes.Uint8:
-		return uint8(0)
-	case sqltypes.Uint16:
-		return uint16(0)
-	case sqltypes.Uint32:
-		return uint32(0)
-	case sqltypes.Uint64:
-		return uint64(0)
-	case sqltypes.Float32:
-		return float32(0)
-	case sqltypes.Float64:
-		return float64(0)
-	default:
-		return 0
-	}
-}
-
-// Type implements Type interface.
-func (t numberT) Type() query.Type {
-	return t.t
-}
-
-// SQL implements Type interface.
-func (t numberT) SQL(v interface{}) (sqltypes.Value, error) {
-	if v == nil {
-		return sqltypes.NULL, nil
-	}
-
-	switch t.t {
-	case sqltypes.Int8:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
-	case sqltypes.Int16:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
-	case sqltypes.Int32:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
-	case sqltypes.Int64:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
-	case sqltypes.Uint8:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
-	case sqltypes.Uint16:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
-	case sqltypes.Uint32:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
-	case sqltypes.Uint64:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
-	case sqltypes.Float32:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendFloat(nil, cast.ToFloat64(v), 'f', -1, 64)), nil
-	case sqltypes.Float64:
-		return sqltypes.MakeTrusted(t.t, strconv.AppendFloat(nil, cast.ToFloat64(v), 'f', -1, 64)), nil
-	default:
-		return sqltypes.MakeTrusted(t.t, []byte{}), nil
-	}
-}
-
-// Convert implements Type interface.
-func (t numberT) Convert(v interface{}) (interface{}, error) {
-	if ti, ok := v.(time.Time); ok {
-		v = ti.Unix()
-	}
-
-	switch t.t {
-	case sqltypes.Int8:
-		return cast.ToInt8E(v)
-	case sqltypes.Int16:
-		return cast.ToInt16E(v)
-	case sqltypes.Int32:
-		return cast.ToInt32E(v)
-	case sqltypes.Int64:
-		return cast.ToInt64E(v)
-	case sqltypes.Uint8:
-		return cast.ToUint8E(v)
-	case sqltypes.Uint16:
-		return cast.ToUint16E(v)
-	case sqltypes.Uint32:
-		return cast.ToUint32E(v)
-	case sqltypes.Uint64:
-		return cast.ToUint64E(v)
-	case sqltypes.Float32:
-		return cast.ToFloat32E(v)
-	case sqltypes.Float64:
-		return cast.ToFloat64E(v)
-	default:
-		return nil, ErrInvalidType.New(t.t)
-	}
-}
-
-// Compare implements Type interface.
-func (t numberT) Compare(a interface{}, b interface{}) (int, error) {
-	if IsUnsigned(t) {
-		// only int types are unsigned
-		return compareUnsignedInts(a, b)
-	}
-
-	switch t.t {
-	case sqltypes.Float64, sqltypes.Float32:
-		return compareFloats(a, b)
-	default:
-		return compareSignedInts(a, b)
-	}
-}
-
-func (t numberT) String() string { return t.t.String() }
 
 func compareFloats(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := compareNulls(a, b); hasNulls {
@@ -527,239 +237,6 @@ func compareUnsignedInts(a interface{}, b interface{}) (int, error) {
 	return +1, nil
 }
 
-type timestampT struct{}
-
-func (t timestampT) Zero() interface{} {
-	return time.Time{}
-}
-
-func (t timestampT) String() string { return "TIMESTAMP" }
-
-// Type implements Type interface.
-func (t timestampT) Type() query.Type {
-	return sqltypes.Timestamp
-}
-
-// TimestampLayout is the formatting string with the layout of the timestamp
-// using the format of Go "time" package.
-const TimestampLayout = "2006-01-02 15:04:05.999999"
-
-// TimestampLayouts hold extra timestamps allowed for parsing. It does
-// not have all the layouts supported by mysql. Missing are two digit year
-// versions of common cases and dates that use non common separators.
-//
-// https://github.com/MariaDB/server/blob/mysql-5.5.36/sql-common/my_time.c#L124
-var TimestampLayouts = []string{
-	"2006-01-02 15:04:05.999999",
-	"2006-01-02",
-	time.RFC3339,
-	"20060102150405",
-	"20060102",
-}
-
-// SQL implements Type interface.
-func (t timestampT) SQL(v interface{}) (sqltypes.Value, error) {
-	if v == nil {
-		return sqltypes.NULL, nil
-	}
-
-	v, err := t.Convert(v)
-	if err != nil {
-		return sqltypes.Value{}, err
-	}
-
-	return sqltypes.MakeTrusted(
-		sqltypes.Timestamp,
-		[]byte(v.(time.Time).Format(TimestampLayout)),
-	), nil
-}
-
-// Convert implements Type interface.
-func (t timestampT) Convert(v interface{}) (interface{}, error) {
-	switch value := v.(type) {
-	case time.Time:
-		return value.UTC(), nil
-	case string:
-		for _, fmt := range TimestampLayouts {
-			if t, err := time.Parse(fmt, value); err == nil {
-				return t.UTC(), nil
-			}
-		}
-		return nil, ErrConvertingToTime.New(v)
-	default:
-		ts, err := Int64.Convert(v)
-		if err != nil {
-			return nil, ErrInvalidType.New(reflect.TypeOf(v))
-		}
-
-		return time.Unix(ts.(int64), 0).UTC(), nil
-	}
-}
-
-// Compare implements Type interface.
-func (t timestampT) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := compareNulls(a, b); hasNulls {
-		return res, nil
-	}
-
-	av := a.(time.Time)
-	bv := b.(time.Time)
-	if av.Before(bv) {
-		return -1, nil
-	} else if av.After(bv) {
-		return 1, nil
-	}
-	return 0, nil
-}
-
-type dateT struct{}
-
-func (t dateT) Zero() interface{} {
-	return time.Time{}
-}
-
-// DateLayout is the layout of the MySQL date format in the representation
-// Go understands.
-const DateLayout = "2006-01-02"
-
-func truncateDate(t time.Time) time.Time {
-	return t.Truncate(24 * time.Hour)
-}
-
-func (t dateT) String() string { return "DATE" }
-
-func (t dateT) Type() query.Type {
-	return sqltypes.Date
-}
-
-func (t dateT) SQL(v interface{}) (sqltypes.Value, error) {
-	if v == nil {
-		return sqltypes.NULL, nil
-	}
-
-	v, err := t.Convert(v)
-	if err != nil {
-		return sqltypes.Value{}, err
-	}
-
-	return sqltypes.MakeTrusted(
-		sqltypes.Timestamp,
-		[]byte(v.(time.Time).Format(DateLayout)),
-	), nil
-}
-
-func (t dateT) Convert(v interface{}) (interface{}, error) {
-	switch value := v.(type) {
-	case time.Time:
-		return truncateDate(value).UTC(), nil
-	case string:
-		t, err := time.Parse(DateLayout, value)
-		if err != nil {
-			return nil, ErrConvertingToTime.Wrap(err, v)
-		}
-		return truncateDate(t).UTC(), nil
-	default:
-		ts, err := Int64.Convert(v)
-		if err != nil {
-			return nil, ErrInvalidType.New(reflect.TypeOf(v))
-		}
-
-		return truncateDate(time.Unix(ts.(int64), 0)).UTC(), nil
-	}
-}
-
-func (t dateT) Compare(a, b interface{}) (int, error) {
-	if hasNulls, res := compareNulls(a, b); hasNulls {
-		return res, nil
-	}
-
-	av := truncateDate(a.(time.Time))
-	bv := truncateDate(b.(time.Time))
-	if av.Before(bv) {
-		return -1, nil
-	} else if av.After(bv) {
-		return 1, nil
-	}
-	return 0, nil
-}
-
-type datetimeT struct{}
-
-func (t datetimeT) Zero() interface{} {
-	return time.Time{}
-}
-
-// DatetimeLayout is the layout of the MySQL date format in the representation
-// Go understands.
-const DatetimeLayout = "2006-01-02 15:04:05.999999"
-
-// DatetimeLayouts hold extra configurations allowed for parsing. It does
-// not have all the layouts supported by mysql. Missing are two digit year
-// versions of common cases and dates that use non common separators.
-//
-// https://github.com/MariaDB/server/blob/mysql-5.5.36/sql-common/my_time.c#L124
-var DatetimeLayouts = []string{
-	"2006-01-02 15:04:05.999999",
-	"2006-01-02",
-	time.RFC3339,
-	"20060102150405",
-	"20060102",
-}
-
-func (t datetimeT) String() string { return "DATETIME" }
-
-func (t datetimeT) Type() query.Type {
-	return sqltypes.Datetime
-}
-
-func (t datetimeT) SQL(v interface{}) (sqltypes.Value, error) {
-	if v == nil {
-		return sqltypes.NULL, nil
-	}
-
-	v, err := t.Convert(v)
-	if err != nil {
-		return sqltypes.Value{}, err
-	}
-
-	return sqltypes.MakeTrusted(
-		sqltypes.Datetime,
-		[]byte(v.(time.Time).Format(DatetimeLayout)),
-	), nil
-}
-
-func (t datetimeT) Convert(v interface{}) (interface{}, error) {
-	switch value := v.(type) {
-	case time.Time:
-		return value.UTC(), nil
-	case string:
-		for _, fmt := range DatetimeLayouts {
-			if t, err := time.Parse(fmt, value); err == nil {
-				return t.UTC(), nil
-			}
-		}
-		return nil, ErrConvertingToTime.New(v)
-	default:
-		ts, err := Int64.Convert(v)
-		if err != nil {
-			return nil, ErrInvalidType.New(reflect.TypeOf(v))
-		}
-
-		return time.Unix(ts.(int64), 0).UTC(), nil
-	}
-}
-
-func (t datetimeT) Compare(a, b interface{}) (int, error) {
-	av := a.(time.Time)
-	bv := b.(time.Time)
-	if av.Before(bv) {
-		return -1, nil
-	} else if av.After(bv) {
-		return 1, nil
-	}
-	return 0, nil
-}
-
 type charT struct {
 	length int
 }
@@ -772,8 +249,8 @@ func (t charT) Capacity() int { return t.length }
 
 func (t charT) String() string { return fmt.Sprintf("CHAR(%d)", t.length) }
 
-func (t charT) Type() query.Type {
-	return sqltypes.Char
+func (t charT) BaseType() BaseType {
+	return BaseType_CHAR
 }
 
 func (t charT) SQL(v interface{}) (sqltypes.Value, error) {
@@ -819,9 +296,9 @@ func (t varCharT) Capacity() int { return t.length }
 
 func (t varCharT) String() string { return fmt.Sprintf("VARCHAR(%d)", t.length) }
 
-// Type implements Type interface
-func (t varCharT) Type() query.Type {
-	return sqltypes.VarChar
+// BaseType implements Type interface
+func (t varCharT) BaseType() BaseType {
+	return BaseType_VARCHAR
 }
 
 // SQL implements Type interface
@@ -867,9 +344,9 @@ func (t textT) Zero() interface{} {
 
 func (t textT) String() string { return "TEXT" }
 
-// Type implements Type interface.
-func (t textT) Type() query.Type {
-	return sqltypes.Text
+// BaseType implements Type interface.
+func (t textT) BaseType() BaseType {
+	return BaseType_TEXT
 }
 
 // SQL implements Type interface.
@@ -911,9 +388,9 @@ func (t booleanT) Zero() interface{} {
 
 func (t booleanT) String() string { return "BOOLEAN" }
 
-// Type implements Type interface.
-func (t booleanT) Type() query.Type {
-	return sqltypes.Bit
+// BaseType implements Type interface.
+func (t booleanT) BaseType() BaseType {
+	return BaseType_BOOLEAN
 }
 
 // SQL implements Type interface.
@@ -979,9 +456,9 @@ func (t blobT) Zero() interface{} {
 
 func (t blobT) String() string { return "BLOB" }
 
-// Type implements Type interface.
-func (t blobT) Type() query.Type {
-	return sqltypes.Blob
+// BaseType implements Type interface.
+func (t blobT) BaseType() BaseType {
+	return BaseType_BLOB
 }
 
 // SQL implements Type interface.
@@ -1030,9 +507,9 @@ func (t jsonT) Zero() interface{} {
 
 func (t jsonT) String() string { return "JSON" }
 
-// Type implements Type interface.
-func (t jsonT) Type() query.Type {
-	return sqltypes.TypeJSON
+// BaseType implements Type interface.
+func (t jsonT) BaseType() BaseType {
+	return BaseType_JSON
 }
 
 // SQL implements Type interface.
@@ -1089,8 +566,8 @@ func (t tupleT) String() string {
 	return fmt.Sprintf("TUPLE(%s)", strings.Join(elems, ", "))
 }
 
-func (t tupleT) Type() query.Type {
-	return sqltypes.Expression
+func (t tupleT) BaseType() BaseType {
+	return BaseType_Internal_EXPRESSION
 }
 
 func (t tupleT) SQL(v interface{}) (sqltypes.Value, error) {
@@ -1154,8 +631,8 @@ func (t arrayT) Zero() interface{} {
 
 func (t arrayT) String() string { return fmt.Sprintf("ARRAY(%s)", t.underlying) }
 
-func (t arrayT) Type() query.Type {
-	return sqltypes.TypeJSON
+func (t arrayT) BaseType() BaseType {
+	return BaseType_JSON
 }
 
 func (t arrayT) SQL(v interface{}) (sqltypes.Value, error) {
@@ -1324,7 +801,7 @@ func NumColumns(t Type) int {
 
 // MySQLTypeName returns the MySQL display name for the given type.
 func MySQLTypeName(t Type) string {
-	switch t.Type() {
+	switch t.BaseType() {
 	case sqltypes.Int8:
 		return "TINYINT"
 	case sqltypes.Uint8:
