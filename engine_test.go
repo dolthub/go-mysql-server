@@ -1644,16 +1644,16 @@ func TestQueries(t *testing.T) {
 	// 3) Parallelism on / off
 	numPartitionsVals := []int{
 		1,
-		// testNumPartitions,
+		testNumPartitions,
 	}
 	indexDrivers := []*indexDriverTestCase{
 		nil,
-		// {"unmergableIndexes", unmergableIndexDriver},
-		// {"mergableIndexes", mergableIndexDriver},
+		{"unmergableIndexes", unmergableIndexDriver},
+		{"mergableIndexes", mergableIndexDriver},
 	}
 	parallelVals := []int{
 		1,
-		// 2,
+		2,
 	}
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexDriverInit := range indexDrivers {
@@ -1741,6 +1741,16 @@ func unmergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
 			newUnmergableIndex(tables, "niltable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
 		},
+		"one_pk": {
+				newUnmergableIndex(tables, "one_pk",
+					expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
+		},
+		"two_pk": {
+			newUnmergableIndex(tables, "two_pk",
+				expression.NewGetFieldWithTable(0, sql.Int8, "two_pk", "pk1", false),
+				expression.NewGetFieldWithTable(1, sql.Int8, "two_pk", "pk2", false),
+			),
+		},
 	})
 }
 
@@ -1775,6 +1785,16 @@ func mergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
 		"niltable": {
 			newMergableIndex(tables, "niltable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
+		},
+		"one_pk": {
+			newMergableIndex(tables, "one_pk",
+				expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
+		},
+		"two_pk": {
+			newMergableIndex(tables, "two_pk",
+				expression.NewGetFieldWithTable(0, sql.Int8, "two_pk", "pk1", false),
+				expression.NewGetFieldWithTable(1, sql.Int8, "two_pk", "pk2", false),
+			),
 		},
 	})
 }
