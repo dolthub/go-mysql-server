@@ -30,7 +30,7 @@ type queryTest struct {
 	expected []sql.Row
 }
 
-var queries = []queryTest {
+var queries = []queryTest{
 	{
 		"SELECT i FROM mytable;",
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
@@ -48,20 +48,6 @@ var queries = []queryTest {
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)}},
-	},
-	{
-		"select pk,pk1,pk2 from one_pk,two_pk where pk=0 and pk1=0 or pk2=1 order by 1,2,3",
-		[]sql.Row{
-			{0,0,0},
-			{0,0,1},
-			{0,1,1},
-			{1,0,1},
-			{1,1,1},
-			{2,0,1},
-			{2,1,1},
-			{3,0,1},
-			{3,1,1},
-		},
 	},
 	{
 		"SELECT i + 1 FROM mytable;",
@@ -367,7 +353,7 @@ var queries = []queryTest {
 	},
 	{
 		"SELECT s FROM mytable INNER JOIN othertable " +
-			"ON substring(s2, 1, 2) != '' AND i = i2",
+				"ON substring(s2, 1, 2) != '' AND i = i2",
 		[]sql.Row{
 			{"first row"},
 			{"second row"},
@@ -1352,6 +1338,119 @@ var queries = []queryTest {
 			{int64(6)},
 			{int64(5)},
 			{int64(4)},
+		},
+	},
+	{
+		"select pk,pk1,pk2 from one_pk, two_pk order by 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{0, 1, 0},
+			{0, 1, 1},
+			{1, 0, 0},
+			{1, 0, 1},
+			{1, 1, 0},
+			{1, 1, 1},
+			{2, 0, 0},
+			{2, 0, 1},
+			{2, 1, 0},
+			{2, 1, 1},
+			{3, 0, 0},
+			{3, 0, 1},
+			{3, 1, 0},
+			{3, 1, 1},
+		},
+	},
+	{
+		"select t1.c1,t2.c2 from one_pk t1, two_pk t2 where pk1=1 and pk2=1 order by 1,2",
+		[]sql.Row{
+			{0, 30},
+			{10, 30},
+			{20, 30},
+			{30, 30},
+		},
+	},
+	{
+		"select t1.c1,t2.c2 from one_pk t1, two_pk t2 where pk1=1 or pk2=1 order by 1,2",
+		[]sql.Row{
+			{0, 10},
+			{0, 20},
+			{0, 30},
+			{10, 10},
+			{10, 20},
+			{10, 30},
+			{20, 10},
+			{20, 20},
+			{20, 30},
+			{30, 10},
+			{30, 20},
+			{30, 30},
+		},
+	},
+	{
+		"select pk,pk2 from one_pk t1, two_pk t2 where pk=1 and pk2=1 order by 1,2",
+		[]sql.Row{
+			{1, 1},
+			{1, 1},
+		},
+	},
+	{
+		"select pk,pk1,pk2 from one_pk,two_pk where pk=0 and pk1=0 or pk2=1 order by 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{0, 1, 1},
+			{1, 0, 1},
+			{1, 1, 1},
+			{2, 0, 1},
+			{2, 1, 1},
+			{3, 0, 1},
+			{3, 1, 1},
+		},
+	},
+	{
+		"select pk,pk1,pk2 from one_pk,two_pk where one_pk.c1=two_pk.c1 order by 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{1, 0, 1},
+			{2, 1, 0},
+			{3, 1, 1},
+		},
+	},
+	{
+		"select one_pk.c5,pk1,pk2 from one_pk,two_pk where pk=pk1 order by 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{10, 1, 0},
+			{10, 1, 1},
+		},
+	},
+	{
+		"select pk,pk1,pk2 from one_pk join two_pk on one_pk.c1=two_pk.c1 where pk=1 order by 1,2,3",
+		[]sql.Row{
+			{1, 0, 1},
+		},
+	},
+	{
+		"select pk,pk1,pk2,one_pk.c1 as foo, two_pk.c1 as bar from one_pk join two_pk on one_pk.c1=two_pk.c1 order by 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0, 0},
+			{1, 0, 1, 10, 10},
+			{2, 1, 0, 20, 20},
+			{3, 1, 1, 30, 30},
+		},
+	},
+	{
+		"select pk,pk1,pk2,one_pk.c1 as foo,two_pk.c1 as bar from one_pk join two_pk on one_pk.c1=two_pk.c1 where one_pk.c1=10",
+		[]sql.Row{
+			{1, 0, 1, 10, 10},
+		},
+	},
+	{
+		"select pk,pk1,pk2 from one_pk join two_pk on pk1-pk>0 and pk2<1",
+		[]sql.Row{
+			{0, 1, 0},
 		},
 	},
 }

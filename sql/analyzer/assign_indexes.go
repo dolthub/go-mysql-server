@@ -91,6 +91,13 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 	var result = make(map[string]*indexLookup)
 	switch e := e.(type) {
 	case *expression.Or:
+		// If more than one table is involved in a disjunction, we can't use indexed lookups. This is because we will
+		// inappropriately restrict the iterated values of the indexed table to matching index values, when during a cross
+		// join we must consider every row from each table.
+		if len(findTables(e)) > 1 {
+			return nil, nil
+		}
+
 		leftIndexes, err := getIndexes(e.Left, aliases, a)
 		if err != nil {
 			return nil, err
@@ -297,6 +304,27 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 	}
 
 	return result, nil
+}
+
+// Returns the tables used in the expression given
+func findTables(e sql.Expression) []string {
+	tables := make(map[string]bool)
+	expression.Inspect(e, func(e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.GetField:
+			tables[e.Table()] = true
+			return false
+		default:
+			return true
+		}
+	})
+
+	var names []string
+	for table := range tables {
+		names = append(names, table)
+	}
+
+	return names
 }
 
 func unifyExpressions(aliases map[string]sql.Expression, expr ...sql.Expression) []sql.Expression {
