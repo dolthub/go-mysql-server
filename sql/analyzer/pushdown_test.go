@@ -36,7 +36,7 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 
 	node := plan.NewProject(
 		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+			expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
 		},
 		plan.NewFilter(
 			expression.NewAnd(
@@ -57,7 +57,7 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+			expression.NewGetFieldWithTable(1, sql.Text, "mytable2", "t2", false),
 		},
 		plan.NewCrossJoin(
 			plan.NewResolvedTable(
@@ -66,19 +66,69 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
 						expression.NewLiteral(3.14, sql.Float64),
 					),
-				}).(*memory.Table).WithProjection([]string{"i", "f"}),
+				}).(*memory.Table).WithProjection([]string{"f"}),
 			),
 			plan.NewResolvedTable(
 				table2.WithFilters([]sql.Expression{
 					expression.NewIsNull(
 						expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
 					),
-				}).(*memory.Table).WithProjection([]string{"i2"}),
+				}).(*memory.Table).WithProjection([]string{"t2", "i2"}),
 			),
 		),
 	)
 
 	result, err := f.Apply(sql.NewEmptyContext(), a, node)
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	node = plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
+		},
+		plan.NewFilter(
+			expression.NewOr(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+					expression.NewLiteral(3.14, sql.Float64),
+				),
+				expression.NewIsNull(
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+				),
+			),
+			plan.NewCrossJoin(
+				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table2),
+			),
+		),
+	)
+
+	expected = plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(1, sql.Text, "mytable2", "t2", false),
+		},
+		plan.NewFilter(
+			expression.NewOr(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Float64, "mytable", "f", false),
+					expression.NewLiteral(3.14, sql.Float64),
+				),
+				expression.NewIsNull(
+					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "i2", false),
+				),
+			),
+			plan.NewCrossJoin(
+				plan.NewResolvedTable(
+					table.WithProjection([]string{"f"}),
+				),
+				plan.NewResolvedTable(
+					table2.WithProjection([]string{"t2", "i2"}),
+				),
+			),
+		),
+	)
+
+	result, err = f.Apply(sql.NewEmptyContext(), a, node)
 	require.NoError(err)
 	require.Equal(expected, result)
 }
