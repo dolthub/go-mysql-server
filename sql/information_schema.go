@@ -171,7 +171,7 @@ func tablesRowIter(cat *Catalog) RowIter {
 			rowFormat = "Fixed"
 		}
 
-		err := DBTableIter(ctx, db, func(t Table) (stop bool, err error) {
+		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			rows = append(rows, Row{
 				"def",      //table_catalog
 				db.Name(),  // table_schema
@@ -196,7 +196,7 @@ func tablesRowIter(cat *Catalog) RowIter {
 				"",         //table_comment
 			})
 
-			return false, nil
+			return true, nil
 		})
 
 		// TODO: fix panics
@@ -213,7 +213,7 @@ func columnsRowIter(cat *Catalog) RowIter {
 
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
-		err := DBTableIter(ctx, db, func(t Table) (stop bool, err error) {
+		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			for i, c := range t.Schema() {
 				var (
 					nullable string
@@ -253,7 +253,7 @@ func columnsRowIter(cat *Catalog) RowIter {
 					"",                                     // generation_expression
 				})
 			}
-		return false, nil
+		return true, nil
 		})
 
 		// TODO: fix panics
