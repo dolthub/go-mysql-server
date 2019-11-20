@@ -1520,6 +1520,7 @@ var infoSchemaQueries = []queryTest {
 			{"newlinetable"},
 			{"typestable"},
 		},
+
 	},
 	{
 		"SHOW FULL TABLES",
