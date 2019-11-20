@@ -31,3 +31,5 @@ Makefile.main
 _example/main
 _example/*.exe
 test-server
+
+.idea/*

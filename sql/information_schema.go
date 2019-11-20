@@ -2,6 +2,7 @@ package sql
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -21,6 +22,8 @@ const (
 	// SchemataTableName is the name of the schemata table.
 	SchemataTableName = "schemata"
 )
+
+var _ Database = (*informationSchemaDatabase)(nil)
 
 type informationSchemaDatabase struct {
 	name   string
@@ -155,6 +158,8 @@ var schemataSchema = Schema{
 }
 
 func tablesRowIter(cat *Catalog) RowIter {
+	ctx := context.TODO()
+
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
 		tableType := "BASE TABLE"
@@ -165,7 +170,8 @@ func tablesRowIter(cat *Catalog) RowIter {
 			engine = "MEMORY"
 			rowFormat = "Fixed"
 		}
-		for _, t := range db.Tables() {
+
+		err := DBTableIter(ctx, db, func(t Table) (stop bool, err error) {
 			rows = append(rows, Row{
 				"def",      //table_catalog
 				db.Name(),  // table_schema
@@ -189,6 +195,13 @@ func tablesRowIter(cat *Catalog) RowIter {
 				nil,        //create_options
 				"",         //table_comment
 			})
+
+			return false, nil
+		})
+
+		// TODO: fix panics
+		if err != nil {
+			panic(err)
 		}
 	}
 
@@ -196,9 +209,11 @@ func tablesRowIter(cat *Catalog) RowIter {
 }
 
 func columnsRowIter(cat *Catalog) RowIter {
+	ctx := context.TODO()
+
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
-		for _, t := range db.Tables() {
+		err := DBTableIter(ctx, db, func(t Table) (stop bool, err error) {
 			for i, c := range t.Schema() {
 				var (
 					nullable string
@@ -238,6 +253,12 @@ func columnsRowIter(cat *Catalog) RowIter {
 					"",                                     // generation_expression
 				})
 			}
+		return false, nil
+		})
+
+		// TODO: fix panics
+		if err != nil {
+			panic(err)
 		}
 	}
 	return RowsToRowIter(rows...)
@@ -306,6 +327,20 @@ func (db *informationSchemaDatabase) Name() string { return db.name }
 
 // Tables implements the sql.Database interface.
 func (db *informationSchemaDatabase) Tables() map[string]Table { return db.tables }
+
+func (db *informationSchemaDatabase) GetTableInsensitive(ctx context.Context, tblName string) (Table, bool, error) {
+	tbl, ok := GetTableInsensitive(tblName, db.tables)
+	return tbl, ok, nil
+}
+
+func (db *informationSchemaDatabase) GetTableNames(ctx context.Context) ([]string, error) {
+	tblNames := make([]string, 0, len(db.tables))
+	for k := range db.tables {
+		tblNames = append(tblNames, k)
+	}
+
+	return tblNames, nil
+}
 
 // Name implements the sql.Table interface.
 func (t *informationSchemaTable) Name() string {

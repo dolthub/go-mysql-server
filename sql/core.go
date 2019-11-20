@@ -1,10 +1,12 @@
 package sql
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -283,8 +285,57 @@ type RowUpdater interface {
 // Database represents the database.
 type Database interface {
 	Nameable
-	// Tables returns the information of all tables.
-	Tables() map[string]Table
+
+	// GetTableInsensitive retrieves a table by it's name where capitalization does not matter
+	GetTableInsensitive(ctx context.Context, tblName string) (Table, bool, error)
+
+	// GetTableNames returns the table names of every table in the database
+	GetTableNames(ctx context.Context) ([]string, error)
+}
+
+// GetTableIncensitive implements a case insensitive map lookup for tables keyed off of the table name
+func GetTableInsensitive(tblName string, tables map[string]Table) (Table, bool) {
+	lwrMap := make(map[string]Table, len(tables))
+
+	for k, tbl := range tables {
+		lwrMap[strings.ToLower(k)] = tbl
+	}
+
+	tbl, ok := lwrMap[strings.ToLower(tblName)]
+
+	return tbl, ok
+}
+
+// DBTableIter iterates over all tables returned by db.GetTableNames() calling cb for each one until all tables have
+// been processed, or an error is returned from the callback, or the stop flag is returned from the callback.
+func DBTableIter(ctx context.Context, db Database, cb func(Table) (stop bool, err error)) error {
+	names, err := db.GetTableNames(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	for _, name := range names {
+		tbl, ok, err := db.GetTableInsensitive(ctx, name)
+
+		if err != nil {
+			return err
+		} else if !ok {
+			return ErrTableNotFound.New(name)
+		}
+
+		stop, err := cb(tbl)
+
+		if err != nil {
+			return err
+		}
+
+		if stop {
+			break
+		}
+	}
+
+	return nil
 }
 
 // TableCreator should be implemented by databases that can create new tables.

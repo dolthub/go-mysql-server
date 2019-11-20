@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -89,7 +90,7 @@ func (c *Catalog) Database(db string) (Database, error) {
 func (c *Catalog) Table(db, table string) (Table, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.dbs.Table(db, table)
+	return c.dbs.Table(context.TODO(), db, table, c.IndexRegistry)
 }
 
 // Databases is a collection of Database.
@@ -120,7 +121,7 @@ func (d *Databases) Add(db Database) {
 }
 
 // Table returns the Table with the given name if it exists.
-func (d Databases) Table(dbName string, tableName string) (Table, error) {
+func (d Databases) Table(ctx context.Context, dbName string, tableName string, idxReg *IndexRegistry) (Table, error) {
 	db, err := d.Database(dbName)
 	if err != nil {
 		return nil, err
@@ -128,27 +129,22 @@ func (d Databases) Table(dbName string, tableName string) (Table, error) {
 
 	tableName = strings.ToLower(tableName)
 
-	tables := db.Tables()
-	if len(tables) == 0 {
-		return nil, ErrTableNotFound.New(tableName)
-	}
+	tbl, ok, err := db.GetTableInsensitive(ctx, tableName)
 
-	// Try to get the table by key, but if the name is not the same,
-	// then use the slow path and iterate over all tables comparing
-	// the name.
-	table, ok := tables[tableName]
-	if !ok {
-		for name, table := range tables {
-			if strings.ToLower(name) == tableName {
-				return table, nil
-			}
+	if err != nil {
+		return nil, err
+	} else if !ok {
+		tableNames, err := db.GetTableNames(ctx)
+
+		if err != nil {
+			return nil, err
 		}
 
-		similar := similartext.FindFromMap(tables, tableName)
+		similar := similartext.Find(tableNames, tableName)
 		return nil, ErrTableNotFound.New(tableName + similar)
 	}
 
-	return table, nil
+	return tbl, nil
 }
 
 // LockTable adds a lock for the given table and session client. It is assumed
@@ -177,7 +173,7 @@ func (c *Catalog) UnlockTables(ctx *Context, id uint32) error {
 	var errors []string
 	for db, tables := range c.locks[id] {
 		for t := range tables {
-			table, err := c.dbs.Table(db, t)
+			table, err := c.dbs.Table(ctx, db, t, c.IndexRegistry)
 			if err == nil {
 				if lockable, ok := table.(Lockable); ok {
 					if e := lockable.Unlock(ctx, id); e != nil {

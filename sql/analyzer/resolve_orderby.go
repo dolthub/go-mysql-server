@@ -254,7 +254,7 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 
 func findExprNameables(e sql.Expression) []sql.Nameable {
 	var result []sql.Nameable
-	expression.Inspect(e, func(e sql.Expression) bool {
+	sql.Inspect(e, func(e sql.Expression) bool {
 		n, ok := e.(sql.Nameable)
 		if ok {
 			result = append(result, n)

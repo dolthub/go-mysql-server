@@ -2707,6 +2707,7 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 }
 
 func TestCreateTable(t *testing.T) {
+	ctx := context.Background()
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -2720,7 +2721,8 @@ func TestCreateTable(t *testing.T) {
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	testTable, ok := db.Tables()["t1"]
+	testTable, ok, err := db.GetTableInsensitive(ctx, "t1")
+	require.NoError(err)
 	require.True(ok)
 
 	s := sql.Schema{
@@ -2747,7 +2749,8 @@ func TestCreateTable(t *testing.T) {
 	db, err = e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	testTable, ok = db.Tables()["t2"]
+	testTable, ok, err = db.GetTableInsensitive(ctx, "t2")
+	require.NoError(err)
 	require.True(ok)
 
 	s = sql.Schema{
@@ -2767,7 +2770,8 @@ func TestCreateTable(t *testing.T) {
 	db, err = e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	testTable, ok = db.Tables()["t3"]
+	testTable, ok, err = db.GetTableInsensitive(ctx, "t3")
+	require.NoError(err)
 	require.True(ok)
 
 	s = sql.Schema{
@@ -2788,7 +2792,8 @@ func TestCreateTable(t *testing.T) {
 	db, err = e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	testTable, ok = db.Tables()["t4"]
+	testTable, ok, err = db.GetTableInsensitive(ctx, "t4")
+	require.NoError(err)
 	require.True(ok)
 
 	s = sql.Schema{
@@ -2801,13 +2806,14 @@ func TestCreateTable(t *testing.T) {
 }
 
 func TestDropTable(t *testing.T) {
+	ctx := context.Background()
 	require := require.New(t)
 
 	e := newEngine(t)
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	_, ok := db.Tables()["mytable"]
+	_, ok, err := db.GetTableInsensitive(ctx, "mytable")
 	require.True(ok)
 
 	testQuery(t, e,
@@ -2815,12 +2821,16 @@ func TestDropTable(t *testing.T) {
 		[]sql.Row(nil),
 	)
 
-	_, ok = db.Tables()["mytable"]
+	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
 	require.False(ok)
 
-	_, ok = db.Tables()["othertable"]
+	_, ok, err = db.GetTableInsensitive(ctx, "othertable")
+	require.NoError(err)
 	require.True(ok)
-	_, ok = db.Tables()["tabletest"]
+
+	_, ok, err = db.GetTableInsensitive(ctx, "tabletest")
+	require.NoError(err)
 	require.True(ok)
 
 	testQuery(t, e,
@@ -2828,9 +2838,12 @@ func TestDropTable(t *testing.T) {
 		[]sql.Row(nil),
 	)
 
-	_, ok = db.Tables()["othertable"]
+	_, ok, err = db.GetTableInsensitive(ctx, "othertable")
+	require.NoError(err)
 	require.False(ok)
-	_, ok = db.Tables()["tabletest"]
+
+	_, ok, err = db.GetTableInsensitive(ctx, "tabletest")
+	require.NoError(err)
 	require.False(ok)
 
 	_, _, err = e.Query(newCtx(), "DROP TABLE not_exist")

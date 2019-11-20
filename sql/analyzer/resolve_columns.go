@@ -46,7 +46,7 @@ func lookForAliasDeclarations(node sql.Expressioner) map[string]struct{} {
 	)
 
 	for _, e := range node.Expressions() {
-		expression.Inspect(e, func(expr sql.Expression) bool {
+		sql.Inspect(e, func(expr sql.Expression) bool {
 			if alias, ok := expr.(*expression.Alias); ok {
 				aliases[alias.Name()] = in
 			}
@@ -61,7 +61,7 @@ func lookForAliasDeclarations(node sql.Expressioner) map[string]struct{} {
 func isAliasUsed(node sql.Expressioner, alias string) bool {
 	var found bool
 	for _, e := range node.Expressions() {
-		expression.Inspect(e, func(expr sql.Expression) bool {
+		sql.Inspect(e, func(expr sql.Expression) bool {
 			if a, ok := expr.(*expression.Alias); ok {
 				if a.Name() == alias {
 					return false
@@ -542,7 +542,7 @@ func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 
 func findAllColumns(e sql.Expression) []string {
 	var cols []string
-	expression.Inspect(e, func(e sql.Expression) bool {
+	sql.Inspect(e, func(e sql.Expression) bool {
 		col, ok := e.(*expression.UnresolvedColumn)
 		if ok {
 			cols = append(cols, col.Name())

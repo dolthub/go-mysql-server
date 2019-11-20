@@ -764,7 +764,7 @@ func extractColumnExpr(e sql.Expression) (string, *columnExpr) {
 
 func containsColumns(e sql.Expression) bool {
 	var result bool
-	expression.Inspect(e, func(e sql.Expression) bool {
+	sql.Inspect(e, func(e sql.Expression) bool {
 		if _, ok := e.(*expression.GetField); ok {
 			result = true
 		}
@@ -775,7 +775,7 @@ func containsColumns(e sql.Expression) bool {
 
 func containsSubquery(e sql.Expression) bool {
 	var result bool
-	expression.Inspect(e, func(e sql.Expression) bool {
+	sql.Inspect(e, func(e sql.Expression) bool {
 		if _, ok := e.(*expression.Subquery); ok {
 			result = true
 			return false

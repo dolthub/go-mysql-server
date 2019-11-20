@@ -240,7 +240,7 @@ func addUsedProjectColumns(
 
 func addUsedColumns(columns usedColumns, exprs []sql.Expression) {
 	for _, e := range exprs {
-		expression.Inspect(e, func(e sql.Expression) bool {
+		sql.Inspect(e, func(e sql.Expression) bool {
 			if gf, ok := e.(*expression.GetField); ok {
 				if _, ok := columns[gf.Table()]; !ok {
 					columns[gf.Table()] = make(map[string]struct{})

@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"fmt"
 	"github.com/src-d/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
@@ -123,11 +124,17 @@ func (d *DropTable) RowIter(s *sql.Context) (sql.RowIter, error) {
 
 	var err error
 	for _, tableName := range d.names {
-		_, ok := d.db.Tables()[tableName]
+		_, ok, err := d.db.GetTableInsensitive(context.TODO(), tableName)
+
+		if err != nil {
+			return nil, err
+		}
+
 		if !ok {
 			if d.ifExists {
 				continue
 			}
+
 			return nil, sql.ErrTableNotFound.New(tableName)
 		}
 		err = droppable.DropTable(s, tableName)

@@ -108,7 +108,7 @@ func containsHiddenAggregation(e sql.Expression) bool {
 
 func containsAggregation(e sql.Expression) bool {
 	var hasAgg bool
-	expression.Inspect(e, func(e sql.Expression) bool {
+	sql.Inspect(e, func(e sql.Expression) bool {
 		if _, ok := e.(sql.Aggregation); ok {
 			hasAgg = true
 			return false

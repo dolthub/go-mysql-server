@@ -194,7 +194,7 @@ var validRegexpFlags = map[rune]bool{
 
 func canBeCached(e sql.Expression) bool {
 	var hasCols bool
-	expression.Inspect(e, func(e sql.Expression) bool {
+	sql.Inspect(e, func(e sql.Expression) bool {
 		if _, ok := e.(*expression.GetField); ok {
 			hasCols = true
 		}
