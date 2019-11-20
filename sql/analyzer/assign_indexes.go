@@ -309,7 +309,7 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 // Returns the tables used in the expression given
 func findTables(e sql.Expression) []string {
 	tables := make(map[string]bool)
-	expression.Inspect(e, func(e sql.Expression) bool {
+	sql.Inspect(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.GetField:
 			tables[e.Table()] = true
