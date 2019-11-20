@@ -25,10 +25,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var queries = []struct {
-	query    string
+type queryTest struct {
+	query string
 	expected []sql.Row
-}{
+}
+
+var queries = []queryTest{
 	{
 		"SELECT i FROM mytable;",
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
@@ -351,7 +353,7 @@ var queries = []struct {
 	},
 	{
 		"SELECT s FROM mytable INNER JOIN othertable " +
-			"ON substring(s2, 1, 2) != '' AND i = i2",
+				"ON substring(s2, 1, 2) != '' AND i = i2",
 		[]sql.Row{
 			{"first row"},
 			{"second row"},
@@ -718,45 +720,6 @@ var queries = []struct {
 		},
 	},
 	{
-		`SHOW TABLE STATUS FROM mydb`,
-		[]sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"typestable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-		},
-	},
-	{
-		`SHOW TABLE STATUS LIKE '%table'`,
-		[]sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"typestable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-		},
-	},
-	{
-		`SHOW TABLE STATUS WHERE Name = 'mytable'`,
-		[]sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-		},
-	},
-	{
-		`SELECT i FROM mytable NATURAL JOIN tabletest`,
-		[]sql.Row{
-			{int64(1)},
-			{int64(2)},
-			{int64(3)},
-		},
-	},
-	{
 		`SELECT * FROM foo.other_table`,
 		[]sql.Row{
 			{"a", int32(4)},
@@ -837,168 +800,6 @@ var queries = []struct {
 		[]sql.Row{{uint32(1)}},
 	},
 	{
-		`
-		SELECT
-			LOGFILE_GROUP_NAME, FILE_NAME, TOTAL_EXTENTS, INITIAL_SIZE, ENGINE, EXTRA
-		FROM INFORMATION_SCHEMA.FILES
-		WHERE FILE_TYPE = 'UNDO LOG'
-			AND FILE_NAME IS NOT NULL
-			AND LOGFILE_GROUP_NAME IS NOT NULL
-		GROUP BY LOGFILE_GROUP_NAME, FILE_NAME, ENGINE, TOTAL_EXTENTS, INITIAL_SIZE
-		ORDER BY LOGFILE_GROUP_NAME
-		`,
-		[]sql.Row{},
-	},
-	{
-		`
-		SELECT DISTINCT
-			TABLESPACE_NAME, FILE_NAME, LOGFILE_GROUP_NAME, EXTENT_SIZE, INITIAL_SIZE, ENGINE
-		FROM INFORMATION_SCHEMA.FILES
-		WHERE FILE_TYPE = 'DATAFILE'
-		ORDER BY TABLESPACE_NAME, LOGFILE_GROUP_NAME
-		`,
-		[]sql.Row{},
-	},
-	{
-		`
-		SELECT
-			COLUMN_NAME,
-			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
-		FROM information_schema.COLUMN_STATISTICS
-		WHERE SCHEMA_NAME = 'mydb'
-		AND TABLE_NAME = 'mytable'
-		`,
-		[]sql.Row{},
-	},
-	{
-		`
-		SELECT TABLE_NAME FROM information_schema.TABLES
-		WHERE TABLE_SCHEMA='mydb' AND (TABLE_TYPE='BASE TABLE' OR TABLE_TYPE='VIEW')
-		`,
-		[]sql.Row{
-			{"mytable"},
-			{"othertable"},
-			{"tabletest"},
-			{"bigtable"},
-			{"floattable"},
-			{"niltable"},
-			{"newlinetable"},
-			{"typestable"},
-		},
-	},
-	{
-		`
-		SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS
-		WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='mytable'
-		`,
-		[]sql.Row{
-			{"s", "text"},
-			{"i", "bigint"},
-		},
-	},
-	{
-		`
-		SELECT COLUMN_NAME FROM information_schema.COLUMNS
-		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
-		GROUP BY COLUMN_NAME
-		`,
-		[]sql.Row{
-			{"s"},
-			{"i"},
-			{"s2"},
-			{"i2"},
-			{"t"},
-			{"n"},
-			{"f32"},
-			{"f64"},
-			{"b"},
-			{"f"},
-			{"id"},
-			{"i8"},
-			{"i16"},
-			{"i32"},
-			{"i64"},
-			{"u8"},
-			{"u16"},
-			{"u32"},
-			{"u64"},
-			{"ti"},
-			{"da"},
-			{"te"},
-			{"bo"},
-			{"js"},
-			{"bl"},
-		},
-	},
-	{
-		`
-		SELECT COLUMN_NAME FROM information_schema.COLUMNS
-		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
-		GROUP BY 1
-		`,
-		[]sql.Row{
-			{"s"},
-			{"i"},
-			{"s2"},
-			{"i2"},
-			{"t"},
-			{"n"},
-			{"f32"},
-			{"f64"},
-			{"b"},
-			{"f"},
-			{"id"},
-			{"i8"},
-			{"i16"},
-			{"i32"},
-			{"i64"},
-			{"u8"},
-			{"u16"},
-			{"u32"},
-			{"u64"},
-			{"ti"},
-			{"da"},
-			{"te"},
-			{"bo"},
-			{"js"},
-			{"bl"},
-		},
-	},
-	{
-		`
-		SELECT COLUMN_NAME as COLUMN_NAME FROM information_schema.COLUMNS
-		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
-		GROUP BY 1
-		`,
-		[]sql.Row{
-			{"s"},
-			{"i"},
-			{"s2"},
-			{"i2"},
-			{"t"},
-			{"n"},
-			{"f32"},
-			{"f64"},
-			{"b"},
-			{"f"},
-			{"id"},
-			{"i8"},
-			{"i16"},
-			{"i32"},
-			{"i64"},
-			{"u8"},
-			{"u16"},
-			{"u32"},
-			{"u64"},
-			{"ti"},
-			{"da"},
-			{"te"},
-			{"bo"},
-			{"js"},
-			{"bl"},
-		},
-	},
-	{
 		`SHOW CREATE DATABASE mydb`,
 		[]sql.Row{{
 			"mydb",
@@ -1022,19 +823,6 @@ var queries = []struct {
 	{
 		`SET SESSION NET_READ_TIMEOUT= 700, SESSION NET_WRITE_TIMEOUT= 700`,
 		[]sql.Row{},
-	},
-	{
-		`SHOW TABLE STATUS`,
-		[]sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"typestable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-		},
 	},
 	{
 		`SELECT NULL`,
@@ -1139,56 +927,6 @@ var queries = []struct {
 		},
 	},
 	{
-		"SHOW TABLES",
-		[]sql.Row{
-			{"mytable"},
-			{"othertable"},
-			{"tabletest"},
-			{"bigtable"},
-			{"floattable"},
-			{"niltable"},
-			{"newlinetable"},
-			{"typestable"},
-		},
-	},
-	{
-		"SHOW FULL TABLES",
-		[]sql.Row{
-			{"mytable", "BASE TABLE"},
-			{"othertable", "BASE TABLE"},
-			{"tabletest", "BASE TABLE"},
-			{"bigtable", "BASE TABLE"},
-			{"floattable", "BASE TABLE"},
-			{"niltable", "BASE TABLE"},
-			{"newlinetable", "BASE TABLE"},
-			{"typestable", "BASE TABLE"},
-		},
-	},
-	{
-		"SHOW TABLES FROM foo",
-		[]sql.Row{
-			{"other_table"},
-		},
-	},
-	{
-		"SHOW TABLES LIKE '%table'",
-		[]sql.Row{
-			{"mytable"},
-			{"othertable"},
-			{"bigtable"},
-			{"floattable"},
-			{"niltable"},
-			{"newlinetable"},
-			{"typestable"},
-		},
-	},
-	{
-		"SHOW TABLES WHERE `Table` = 'mytable'",
-		[]sql.Row{
-			{"mytable"},
-		},
-	},
-	{
 		`SHOW COLLATION`,
 		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
 	},
@@ -1283,14 +1021,6 @@ var queries = []struct {
 	{
 		"SELECT substring(mytable.s, 1, 5) as s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1 HAVING s = \"secon\"",
 		[]sql.Row{{"secon"}},
-	},
-	{
-		`
-		SELECT COLUMN_NAME as COLUMN_NAME FROM information_schema.COLUMNS
-		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
-		GROUP BY 1 HAVING SUBSTRING(COLUMN_NAME, 1, 1) = "s"
-		`,
-		[]sql.Row{{"s"}, {"s2"}},
 	},
 	{
 		"SELECT s,  i FROM mytable GROUP BY i ORDER BY SUBSTRING(s, 1, 1) DESC",
@@ -1610,6 +1340,394 @@ var queries = []struct {
 			{int64(4)},
 		},
 	},
+	{
+		"select pk,pk1,pk2 from one_pk, two_pk order by 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{0, 1, 0},
+			{0, 1, 1},
+			{1, 0, 0},
+			{1, 0, 1},
+			{1, 1, 0},
+			{1, 1, 1},
+			{2, 0, 0},
+			{2, 0, 1},
+			{2, 1, 0},
+			{2, 1, 1},
+			{3, 0, 0},
+			{3, 0, 1},
+			{3, 1, 0},
+			{3, 1, 1},
+		},
+	},
+	{
+		"select t1.c1,t2.c2 from one_pk t1, two_pk t2 where pk1=1 and pk2=1 order by 1,2",
+		[]sql.Row{
+			{0, 30},
+			{10, 30},
+			{20, 30},
+			{30, 30},
+		},
+	},
+	{
+		"select t1.c1,t2.c2 from one_pk t1, two_pk t2 where pk1=1 or pk2=1 order by 1,2",
+		[]sql.Row{
+			{0, 10},
+			{0, 20},
+			{0, 30},
+			{10, 10},
+			{10, 20},
+			{10, 30},
+			{20, 10},
+			{20, 20},
+			{20, 30},
+			{30, 10},
+			{30, 20},
+			{30, 30},
+		},
+	},
+	{
+		"select pk,pk2 from one_pk t1, two_pk t2 where pk=1 and pk2=1 order by 1,2",
+		[]sql.Row{
+			{1, 1},
+			{1, 1},
+		},
+	},
+	{
+		"select pk,pk1,pk2 from one_pk,two_pk where pk=0 and pk1=0 or pk2=1 order by 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{0, 1, 1},
+			{1, 0, 1},
+			{1, 1, 1},
+			{2, 0, 1},
+			{2, 1, 1},
+			{3, 0, 1},
+			{3, 1, 1},
+		},
+	},
+	{
+		"select pk,pk1,pk2 from one_pk,two_pk where one_pk.c1=two_pk.c1 order by 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{1, 0, 1},
+			{2, 1, 0},
+			{3, 1, 1},
+		},
+	},
+	{
+		"select one_pk.c5,pk1,pk2 from one_pk,two_pk where pk=pk1 order by 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{10, 1, 0},
+			{10, 1, 1},
+		},
+	},
+	{
+		"select pk,pk1,pk2 from one_pk join two_pk on one_pk.c1=two_pk.c1 where pk=1 order by 1,2,3",
+		[]sql.Row{
+			{1, 0, 1},
+		},
+	},
+	{
+		"select pk,pk1,pk2,one_pk.c1 as foo, two_pk.c1 as bar from one_pk join two_pk on one_pk.c1=two_pk.c1 order by 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0, 0},
+			{1, 0, 1, 10, 10},
+			{2, 1, 0, 20, 20},
+			{3, 1, 1, 30, 30},
+		},
+	},
+	{
+		"select pk,pk1,pk2,one_pk.c1 as foo,two_pk.c1 as bar from one_pk join two_pk on one_pk.c1=two_pk.c1 where one_pk.c1=10",
+		[]sql.Row{
+			{1, 0, 1, 10, 10},
+		},
+	},
+	{
+		"select pk,pk1,pk2 from one_pk join two_pk on pk1-pk>0 and pk2<1",
+		[]sql.Row{
+			{0, 1, 0},
+		},
+	},
+}
+
+var infoSchemaQueries = []queryTest {
+	{
+		`SHOW TABLE STATUS FROM mydb`,
+		[]sql.Row{
+			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"typestable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+		},
+	},
+	{
+		`SHOW TABLE STATUS LIKE '%table'`,
+		[]sql.Row{
+			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"typestable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+		},
+	},
+	{
+		`SHOW TABLE STATUS WHERE Name = 'mytable'`,
+		[]sql.Row{
+			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+		},
+	},
+	{
+		`SELECT i FROM mytable NATURAL JOIN tabletest`,
+		[]sql.Row{
+			{int64(1)},
+			{int64(2)},
+			{int64(3)},
+		},
+	},
+	{
+		`SHOW TABLE STATUS`,
+		[]sql.Row{
+			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"typestable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+		},
+	},
+	{
+		"SHOW TABLES",
+		[]sql.Row{
+			{"mytable"},
+			{"othertable"},
+			{"tabletest"},
+			{"bigtable"},
+			{"floattable"},
+			{"niltable"},
+			{"newlinetable"},
+			{"typestable"},
+		},
+	},
+	{
+		"SHOW FULL TABLES",
+		[]sql.Row{
+			{"mytable", "BASE TABLE"},
+			{"othertable", "BASE TABLE"},
+			{"tabletest", "BASE TABLE"},
+			{"bigtable", "BASE TABLE"},
+			{"floattable", "BASE TABLE"},
+			{"niltable", "BASE TABLE"},
+			{"newlinetable", "BASE TABLE"},
+			{"typestable", "BASE TABLE"},
+		},
+	},
+	{
+		"SHOW TABLES FROM foo",
+		[]sql.Row{
+			{"other_table"},
+		},
+	},
+	{
+		"SHOW TABLES LIKE '%table'",
+		[]sql.Row{
+			{"mytable"},
+			{"othertable"},
+			{"bigtable"},
+			{"floattable"},
+			{"niltable"},
+			{"newlinetable"},
+			{"typestable"},
+		},
+	},
+	{
+		"SHOW TABLES WHERE `Table` = 'mytable'",
+		[]sql.Row{
+			{"mytable"},
+		},
+	},
+	{
+		`
+		SELECT
+			LOGFILE_GROUP_NAME, FILE_NAME, TOTAL_EXTENTS, INITIAL_SIZE, ENGINE, EXTRA
+		FROM INFORMATION_SCHEMA.FILES
+		WHERE FILE_TYPE = 'UNDO LOG'
+			AND FILE_NAME IS NOT NULL
+			AND LOGFILE_GROUP_NAME IS NOT NULL
+		GROUP BY LOGFILE_GROUP_NAME, FILE_NAME, ENGINE, TOTAL_EXTENTS, INITIAL_SIZE
+		ORDER BY LOGFILE_GROUP_NAME
+		`,
+		[]sql.Row{},
+	},
+	{
+		`
+		SELECT DISTINCT
+			TABLESPACE_NAME, FILE_NAME, LOGFILE_GROUP_NAME, EXTENT_SIZE, INITIAL_SIZE, ENGINE
+		FROM INFORMATION_SCHEMA.FILES
+		WHERE FILE_TYPE = 'DATAFILE'
+		ORDER BY TABLESPACE_NAME, LOGFILE_GROUP_NAME
+		`,
+		[]sql.Row{},
+	},
+	{
+		`
+		SELECT
+			COLUMN_NAME,
+			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
+		FROM information_schema.COLUMN_STATISTICS
+		WHERE SCHEMA_NAME = 'mydb'
+		AND TABLE_NAME = 'mytable'
+		`,
+		[]sql.Row{},
+	},
+	{
+		`
+		SELECT TABLE_NAME FROM information_schema.TABLES
+		WHERE TABLE_SCHEMA='mydb' AND (TABLE_TYPE='BASE TABLE' OR TABLE_TYPE='VIEW')
+		`,
+		[]sql.Row{
+			{"mytable"},
+			{"othertable"},
+			{"tabletest"},
+			{"bigtable"},
+			{"floattable"},
+			{"niltable"},
+			{"newlinetable"},
+			{"typestable"},
+		},
+	},
+	{
+		`
+		SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='mytable'
+		`,
+		[]sql.Row{
+			{"s", "text"},
+			{"i", "bigint"},
+		},
+	},
+	{
+		`
+		SELECT COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY COLUMN_NAME
+		`,
+		[]sql.Row{
+			{"s"},
+			{"i"},
+			{"s2"},
+			{"i2"},
+			{"t"},
+			{"n"},
+			{"f32"},
+			{"f64"},
+			{"b"},
+			{"f"},
+			{"id"},
+			{"i8"},
+			{"i16"},
+			{"i32"},
+			{"i64"},
+			{"u8"},
+			{"u16"},
+			{"u32"},
+			{"u64"},
+			{"ti"},
+			{"da"},
+			{"te"},
+			{"bo"},
+			{"js"},
+			{"bl"},
+		},
+	},
+	{
+		`
+		SELECT COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY 1
+		`,
+		[]sql.Row{
+			{"s"},
+			{"i"},
+			{"s2"},
+			{"i2"},
+			{"t"},
+			{"n"},
+			{"f32"},
+			{"f64"},
+			{"b"},
+			{"f"},
+			{"id"},
+			{"i8"},
+			{"i16"},
+			{"i32"},
+			{"i64"},
+			{"u8"},
+			{"u16"},
+			{"u32"},
+			{"u64"},
+			{"ti"},
+			{"da"},
+			{"te"},
+			{"bo"},
+			{"js"},
+			{"bl"},
+		},
+	},
+	{
+		`
+		SELECT COLUMN_NAME as COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY 1
+		`,
+		[]sql.Row{
+			{"s"},
+			{"i"},
+			{"s2"},
+			{"i2"},
+			{"t"},
+			{"n"},
+			{"f32"},
+			{"f64"},
+			{"b"},
+			{"f"},
+			{"id"},
+			{"i8"},
+			{"i16"},
+			{"i32"},
+			{"i64"},
+			{"u8"},
+			{"u16"},
+			{"u32"},
+			{"u64"},
+			{"ti"},
+			{"da"},
+			{"te"},
+			{"bo"},
+			{"js"},
+			{"bl"},
+		},
+	},
+	{
+		`
+		SELECT COLUMN_NAME as COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY 1 HAVING SUBSTRING(COLUMN_NAME, 1, 1) = "s"
+		`,
+		[]sql.Row{{"s"}, {"s2"}},
+	},
 }
 
 func TestQueries(t *testing.T) {
@@ -1662,6 +1780,34 @@ func TestQueries(t *testing.T) {
 	}
 }
 
+var infoSchemaTables = []string {
+	"mytable",
+	"othertable",
+	"tabletest",
+	"bigtable",
+	"floattable",
+	"niltable",
+	"newlinetable",
+	"typestable",
+	"other_table",
+}
+
+// Test the info schema queries separately to avoid having to alter test query results when more test tables are added.
+// To get this effect, we only install a fixed subset of the tables defined by allTestTables().
+func TestInfoSchema(t *testing.T) {
+	tables := allTestTables(t, 1)
+	reducedTables := make(map[string]*memory.Table)
+
+	for _, table := range infoSchemaTables {
+		reducedTables[table] = tables[table]
+	}
+
+	engine := newEngineWithParallelism(t, 1, reducedTables, nil)
+	for _, tt := range infoSchemaQueries {
+		testQuery(t, engine, tt.query, tt.expected)
+	}
+}
+
 func unmergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.Index{
 		"mytable": {
@@ -1693,6 +1839,16 @@ func unmergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
 		"niltable": {
 			newUnmergableIndex(tables, "niltable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
+		},
+		"one_pk": {
+				newUnmergableIndex(tables, "one_pk",
+					expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
+		},
+		"two_pk": {
+			newUnmergableIndex(tables, "two_pk",
+				expression.NewGetFieldWithTable(0, sql.Int8, "two_pk", "pk1", false),
+				expression.NewGetFieldWithTable(1, sql.Int8, "two_pk", "pk2", false),
+			),
 		},
 	})
 }
@@ -1728,6 +1884,16 @@ func mergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
 		"niltable": {
 			newMergableIndex(tables, "niltable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
+		},
+		"one_pk": {
+			newMergableIndex(tables, "one_pk",
+				expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
+		},
+		"two_pk": {
+			newMergableIndex(tables, "two_pk",
+				expression.NewGetFieldWithTable(0, sql.Int8, "two_pk", "pk1", false),
+				expression.NewGetFieldWithTable(1, sql.Int8, "two_pk", "pk2", false),
+			),
 		},
 	})
 }
@@ -3098,6 +3264,41 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 		sql.NewRow(int64(1), "first row"),
 		sql.NewRow(int64(2), "second row"),
 		sql.NewRow(int64(3), "third row"),
+	)
+
+	tables["one_pk"] = memory.NewPartitionedTable("one_pk", sql.Schema{
+		{Name: "pk", Type: sql.Int8, Source: "one_pk", PrimaryKey: true},
+		{Name: "c1", Type: sql.Int8, Source: "one_pk"},
+		{Name: "c2", Type: sql.Int8, Source: "one_pk"},
+		{Name: "c3", Type: sql.Int8, Source: "one_pk"},
+		{Name: "c4", Type: sql.Int8, Source: "one_pk"},
+		{Name: "c5", Type: sql.Int8, Source: "one_pk"},
+	}, numPartitions)
+
+	insertRows(t,
+		tables["one_pk"],
+		sql.NewRow(0, 0, 0, 0, 0, 0),
+		sql.NewRow(1, 10, 10, 10, 10, 10),
+		sql.NewRow(2, 20, 20, 20, 20, 20),
+		sql.NewRow(3, 30, 30, 30, 30, 30),
+	)
+
+	tables["two_pk"] = memory.NewPartitionedTable("two_pk", sql.Schema{
+		{Name: "pk1", Type: sql.Int8, Source: "two_pk", PrimaryKey: true},
+		{Name: "pk2", Type: sql.Int8, Source: "two_pk", PrimaryKey: true},
+		{Name: "c1", Type: sql.Int8, Source: "two_pk"},
+		{Name: "c2", Type: sql.Int8, Source: "two_pk"},
+		{Name: "c3", Type: sql.Int8, Source: "two_pk"},
+		{Name: "c4", Type: sql.Int8, Source: "two_pk"},
+		{Name: "c5", Type: sql.Int8, Source: "two_pk"},
+	}, numPartitions)
+
+	insertRows(t,
+		tables["two_pk"],
+		sql.NewRow(0, 0, 0, 0, 0, 0 ,0),
+		sql.NewRow(0, 1, 10, 10, 10, 10, 10),
+		sql.NewRow(1, 0, 20, 20, 20, 20, 20),
+		sql.NewRow(1, 1, 30, 30, 30, 30, 30),
 	)
 
 	tables["othertable"] = memory.NewPartitionedTable("othertable", sql.Schema{

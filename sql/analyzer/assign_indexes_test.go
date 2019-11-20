@@ -108,7 +108,7 @@ func TestAssignIndexes(t *testing.T) {
 	node := plan.NewProject(
 		[]sql.Expression{},
 		plan.NewFilter(
-			expression.NewOr(
+			expression.NewAnd(
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int64, "t2", "bar", false),
 					expression.NewLiteral(int64(1), sql.Int64),
@@ -474,6 +474,43 @@ func TestGetIndexes(t *testing.T) {
 			true,
 		},
 		{
+			or(
+				eq(
+					col(0, "t1", "bar"),
+					lit(3),
+				),
+				eq(
+					col(0, "t2", "bar"),
+					lit(4),
+				),
+			),
+			nil,
+			true,
+		},
+		{
+			and(
+				eq(
+					col(0, "t1", "bar"),
+					lit(3),
+				),
+				eq(
+					col(0, "t2", "bar"),
+					lit(4),
+				),
+			),
+			map[string]*indexLookup{
+				"t1": &indexLookup{
+					mergeableIndexLookup("t1", "bar", 0, int64(3)),
+					[]sql.Index{indexes[0]},
+				},
+				"t2": &indexLookup{
+					mergeableIndexLookup("t2", "bar", 0, int64(4)),
+					[]sql.Index{indexes[2]},
+				},
+			},
+			true,
+		},
+		{
 			and(
 				eq(
 					col(0, "t2", "foo"),
@@ -546,30 +583,7 @@ func TestGetIndexes(t *testing.T) {
 					),
 				),
 			),
-			map[string]*indexLookup{
-				"t1": &indexLookup{
-					mergeableIndexLookup("t1", "bar", 0, int64(3)),
-					[]sql.Index{indexes[0]},
-				},
-				"t2": &indexLookup{
-					unionLookup("t2", "bar", 0,
-						mergeableIndexLookup("t2", "bar", 0, int64(5)),
-						&memory.MergeableIndexLookup{
-							Key: []interface{}{int64(1), int64(2)},
-							Index: &memory.MergeableIndex{
-								TableName: "t2",
-								Exprs: []sql.Expression{
-									col(0, "t2", "foo"),
-									col(0, "t2", "bar"),
-								},
-							},
-						}),
-					[]sql.Index{
-						indexes[2],
-						indexes[1],
-					},
-				},
-			},
+			nil,
 			true,
 		},
 		{
