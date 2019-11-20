@@ -99,18 +99,9 @@ func FindFromMap(names interface{}, src string) string {
 	}
 
 	var namesList []string
-
-
-
-
-
-
-
-
 	for _, kv := range rnames.MapKeys() {
 		namesList = append(namesList, kv.String())
 	}
-
 
 	return Find(namesList, src)
 }
