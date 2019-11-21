@@ -465,3 +465,60 @@ func TestReadSpaces(t *testing.T) {
 		require.Equal(fixture.expectedRemaining, actualRemaining)
 	}
 }
+
+// Tests that readQualifiedIdentifierList correctly parses well-formed lists,
+// populating the list of identifiers, and that it errors with partial lists
+// and when it does not found any identifiers
+func TestReadQualifiedIdentifierList(t *testing.T) {
+	require := require.New(t)
+
+	testFixtures := []struct {
+		string            string
+		expectedList      []qualifiedName
+		expectedError     bool
+		expectedRemaining string
+	}{
+		{
+			"my_db.myview, db_2.mytable ,   aTable",
+			[]qualifiedName{{"my_db", "myview"}, {"db_2", "mytable"}, {"", "aTable"}},
+			false,
+			"",
+		},
+		{
+			"single_identifier -remaining",
+			[]qualifiedName{{"", "single_identifier"}},
+			false,
+			"-remaining",
+		},
+		{
+			"",
+			nil,
+			true,
+			"",
+		},
+		{
+			"partial_list,",
+			[]qualifiedName{{"", "partial_list"}},
+			true,
+			"",
+		},
+	}
+
+	for _, fixture := range testFixtures {
+		reader := bufio.NewReader(strings.NewReader(fixture.string))
+		var actualList []qualifiedName
+
+		err := readQualifiedIdentifierList(&actualList)(reader)
+
+		if fixture.expectedError {
+			require.Error(err)
+		} else {
+			require.NoError(err)
+		}
+
+		require.Equal(fixture.expectedList, actualList)
+
+		actualRemaining, _ := reader.ReadString('\n')
+		require.Equal(fixture.expectedRemaining, actualRemaining)
+	}
+}

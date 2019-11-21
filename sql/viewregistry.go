@@ -35,26 +35,26 @@ func (v *View) Definition() Node {
 
 // Views are scoped by the databases in which they were defined, so a key in
 // the view registry is a pair of names: database and view.
-type viewKey struct {
+type ViewKey struct {
 	dbName, viewName string
 }
 
-// newViewKey creates a viewKey ensuring both names are lowercase.
-func newViewKey(databaseName, viewName string) viewKey {
-	return viewKey{strings.ToLower(databaseName), strings.ToLower(viewName)}
+// NewViewKey creates a ViewKey ensuring both names are lowercase.
+func NewViewKey(databaseName, viewName string) ViewKey {
+	return ViewKey{strings.ToLower(databaseName), strings.ToLower(viewName)}
 }
 
-// ViewRegistry is a map of viewKey to View whose access is protected by a
+// ViewRegistry is a map of ViewKey to View whose access is protected by a
 // RWMutex.
 type ViewRegistry struct {
 	mutex sync.RWMutex
-	views map[viewKey]View
+	views map[ViewKey]View
 }
 
 // NewViewRegistry creates an empty ViewRegistry.
 func NewViewRegistry() *ViewRegistry {
 	return &ViewRegistry{
-		views: make(map[viewKey]View),
+		views: make(map[ViewKey]View),
 	}
 }
 
@@ -64,7 +64,7 @@ func (r *ViewRegistry) Register(database string, view View) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	key := newViewKey(database, view.Name())
+	key := NewViewKey(database, view.Name())
 
 	if _, ok := r.views[key]; ok {
 		return ErrExistingView.New(database, view.Name())
@@ -80,7 +80,7 @@ func (r *ViewRegistry) Delete(databaseName, viewName string) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	key := newViewKey(databaseName, viewName)
+	key := NewViewKey(databaseName, viewName)
 
 	if _, ok := r.views[key]; !ok {
 		return ErrNonExistingView.New(databaseName, viewName)
@@ -90,13 +90,36 @@ func (r *ViewRegistry) Delete(databaseName, viewName string) error {
 	return nil
 }
 
+// DeleteList tries to delete a list of view keys.
+// If the list contains views that do exist and views that do not, the existing
+// views are deleted if and only if the errIfNotExists flag is set to false; if
+// it is set to true, no views are deleted and an error is returned.
+func (r *ViewRegistry) DeleteList(keys []ViewKey, errIfNotExists bool) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if errIfNotExists {
+		for _, key := range keys {
+			if !r.exists(key.dbName, key.viewName) {
+				return ErrNonExistingView.New(key.dbName, key.viewName)
+			}
+		}
+	}
+
+	for _, key := range keys {
+		delete(r.views, key)
+	}
+
+	return nil
+}
+
 // View returns a pointer to the view specified by the pair {databaseName,
 // viewName}, returning an error if it does not exist.
 func (r *ViewRegistry) View(databaseName, viewName string) (*View, error) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
-	key := newViewKey(databaseName, viewName)
+	key := NewViewKey(databaseName, viewName)
 
 	if view, ok := r.views[key]; ok {
 		return &view, nil
@@ -106,7 +129,7 @@ func (r *ViewRegistry) View(databaseName, viewName string) (*View, error) {
 }
 
 // AllViews returns the map of all views in the registry.
-func (r *ViewRegistry) AllViews() map[viewKey]View {
+func (r *ViewRegistry) AllViews() map[ViewKey]View {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
@@ -126,4 +149,19 @@ func (r *ViewRegistry) ViewsInDatabase(databaseName string) (views []View) {
 	}
 
 	return views
+}
+
+func (r *ViewRegistry) exists(databaseName, viewName string) bool {
+	key := NewViewKey(databaseName, viewName)
+	_, ok := r.views[key]
+
+	return ok
+}
+
+// Exists returns whether the specified key is already registered
+func (r *ViewRegistry) Exists(databaseName, viewName string) bool {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	return r.exists(databaseName, viewName)
 }

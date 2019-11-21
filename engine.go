@@ -120,7 +120,7 @@ func (e *Engine) Query(
 	case *plan.CreateIndex:
 		typ = sql.CreateIndexProcess
 		perm = auth.ReadPerm | auth.WritePerm
-	case *plan.InsertInto, *plan.DeleteFrom, *plan.Update, *plan.DropIndex, *plan.UnlockTables, *plan.LockTables, *plan.CreateView:
+	case *plan.InsertInto, *plan.DeleteFrom, *plan.Update, *plan.DropIndex, *plan.UnlockTables, *plan.LockTables, *plan.CreateView, *plan.DropView:
 		perm = auth.ReadPerm | auth.WritePerm
 	}
 

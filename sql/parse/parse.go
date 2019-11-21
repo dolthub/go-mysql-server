@@ -414,6 +414,14 @@ func convertCreateView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		sql.UnresolvedDatabase(""), c.View.Name.String(), []string{}, queryAlias, c.OrReplace), nil
 }
 
+func convertDropView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
+	plans := make([]sql.Node, len(c.FromViews))
+	for i, v := range c.FromViews {
+		plans[i] = plan.NewSingleDropView(sql.UnresolvedDatabase(""), v.Name.String())
+	}
+	return plan.NewDropView(plans, c.IfExists), nil
+}
+
 func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 	if len(i.OnDup) > 0 {
 		return nil, ErrUnsupportedFeature.New("ON DUPLICATE KEY")
