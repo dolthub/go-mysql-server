@@ -100,7 +100,7 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 			switch node := node.(type) {
 			case *plan.Sort, *plan.Filter:
 				for _, expr := range node.(sql.Expressioner).Expressions() {
-					expression.Inspect(expr, func(e sql.Expression) bool {
+					sql.Inspect(expr, func(e sql.Expression) bool {
 						if e != nil && e.Resolved() {
 							return true
 						}
@@ -317,7 +317,7 @@ func expressionSources(expr sql.Expression) []string {
 	var sources = make(map[string]struct{})
 	var result []string
 
-	expression.Inspect(expr, func(expr sql.Expression) bool {
+	sql.Inspect(expr, func(expr sql.Expression) bool {
 		f, ok := expr.(*expression.GetField)
 		if ok {
 			if _, ok := sources[f.Table()]; !ok {

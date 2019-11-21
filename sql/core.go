@@ -1,10 +1,12 @@
 package sql
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -283,8 +285,88 @@ type RowUpdater interface {
 // Database represents the database.
 type Database interface {
 	Nameable
-	// Tables returns the information of all tables.
-	Tables() map[string]Table
+
+	// GetTableInsensitive retrieves a table by it's name where capitalization does not matter.  Implementations should
+	// look for exact matches first.  If no exact matches are found then any table matching the name case insensitively
+	// should be returned.  If there is more than one table that matches a case insensitive comparison the resolution
+	// strategy is not defined.
+	GetTableInsensitive(ctx context.Context, tblName string) (Table, bool, error)
+
+	// GetTableNames returns the table names of every table in the database
+	GetTableNames(ctx context.Context) ([]string, error)
+}
+
+// GetTableInsensitive implements a case insensitive map lookup for tables keyed off of the table name.
+// Looks for exact matches first.  If no exact matches are found then any table matching the name case insensitively
+// should be returned.  If there is more than one table that matches a case insensitive comparison the resolution
+// strategy is not defined.
+func GetTableInsensitive(tblName string, tables map[string]Table) (Table, bool) {
+	if tbl, ok := tables[tblName]; ok {
+		return tbl, true
+	}
+
+	lwrName := strings.ToLower(tblName)
+
+	for k, tbl := range tables {
+		if lwrName == strings.ToLower(k) {
+			return tbl, true
+		}
+	}
+
+	return nil, false
+}
+
+// GetTableNameInsensitive implements a case insensitive search of a slice of table names. It looks for exact matches
+// first.  If no exact matches are found then any table matching the name case insensitively should be returned.  If
+// there is more than one table that matches a case insensitive comparison the resolution strategy is not defined.
+func GetTableNameInsensitive(tblName string, tableNames []string) (string, bool) {
+	for _, name := range tableNames {
+		if tblName == name {
+			return name, true
+		}
+	}
+
+	lwrName := strings.ToLower(tblName)
+
+	for _, name := range tableNames {
+		if lwrName == strings.ToLower(name) {
+			return name, true
+		}
+	}
+
+	return "", false
+}
+
+// DBTableIter iterates over all tables returned by db.GetTableNames() calling cb for each one until all tables have
+// been processed, or an error is returned from the callback, or the cont flag is false when returned from the callback.
+func DBTableIter(ctx context.Context, db Database, cb func(Table) (cont bool, err error)) error {
+	names, err := db.GetTableNames(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	for _, name := range names {
+		tbl, ok, err := db.GetTableInsensitive(ctx, name)
+
+		if err != nil {
+			return err
+		} else if !ok {
+			return ErrTableNotFound.New(name)
+		}
+
+		cont, err := cb(tbl)
+
+		if err != nil {
+			return err
+		}
+
+		if !cont {
+			break
+		}
+	}
+
+	return nil
 }
 
 // TableCreator should be implemented by databases that can create new tables.

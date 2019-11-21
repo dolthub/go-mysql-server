@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -115,7 +116,13 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 		visible  string
 	)
 	columnName, expression := "NULL", show.expression
-	if ok, null := isColumn(show.expression, i.db.Tables()[i.table]); ok {
+	tbl, _, err := i.db.GetTableInsensitive(context.TODO(), i.table)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if ok, null := isColumn(show.expression, tbl); ok {
 		columnName, expression = expression, columnName
 		if null {
 			nullable = "YES"

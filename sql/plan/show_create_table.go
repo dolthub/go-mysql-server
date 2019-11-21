@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -63,17 +64,22 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 		return nil, io.EOF
 	}
 
+	ctx := context.TODO()
 	i.didIteration = true
 
-	tables := i.db.Tables()
-	if len(tables) == 0 {
-		return nil, sql.ErrTableNotFound.New(i.table)
-	}
+	table, found, err := i.db.GetTableInsensitive(ctx, i.table)
 
-	table, found := tables[i.table]
+	if err != nil {
+		return nil, err
+	} else if !found {
 
-	if !found {
-		similar := similartext.FindFromMap(tables, i.table)
+		tableNames, err := i.db.GetTableNames(ctx)
+
+		if err != nil {
+			return nil, err
+		}
+
+		similar := similartext.Find(tableNames, i.table)
 		return nil, sql.ErrTableNotFound.New(i.table + similar)
 	}
 

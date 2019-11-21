@@ -419,7 +419,7 @@ func (t *Table) HandledFilters(filters []sql.Expression) []sql.Expression {
 	var handled []sql.Expression
 	for _, f := range filters {
 		var hasOtherFields bool
-		expression.Inspect(f, func(e sql.Expression) bool {
+		sql.Inspect(f, func(e sql.Expression) bool {
 			if e, ok := e.(*expression.GetField); ok {
 				if e.Table() != t.name || !t.schema.Contains(e.Name(), t.name) {
 					hasOtherFields = true

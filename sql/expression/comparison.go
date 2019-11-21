@@ -179,7 +179,7 @@ type Regexp struct {
 // NewRegexp creates a new Regexp expression.
 func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
 	var cached = true
-	Inspect(right, func(e sql.Expression) bool {
+	sql.Inspect(right, func(e sql.Expression) bool {
 		if _, ok := e.(*GetField); ok {
 			cached = false
 		}

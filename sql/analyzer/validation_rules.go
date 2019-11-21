@@ -183,7 +183,7 @@ func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node,
 
 	var unknownColumns []string
 	for _, expr := range ci.Exprs {
-		expression.Inspect(expr, func(e sql.Expression) bool {
+		sql.Inspect(expr, func(e sql.Expression) bool {
 			gf, ok := e.(*expression.GetField)
 			if ok {
 				if gf.Table() != table || !schema.Contains(gf.Name(), gf.Table()) {

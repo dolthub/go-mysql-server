@@ -1,6 +1,4 @@
-package expression
-
-import "github.com/src-d/go-mysql-server/sql"
+package sql
 
 // Visitor visits exprs in the plan.
 type Visitor interface {
@@ -8,7 +6,7 @@ type Visitor interface {
 	// If the result Visitor is not nul, Walk visits each of the children
 	// of the expr with that visitor, followed by a call of Visit(nil)
 	// to the returned visitor.
-	Visit(expr sql.Expression) Visitor
+	Visit(expr Expression) Visitor
 }
 
 // Walk traverses the plan tree in depth-first order. It starts by calling
@@ -16,7 +14,7 @@ type Visitor interface {
 // v.Visit(expr) is not nil, Walk is invoked recursively with the returned
 // visitor for each children of the expr, followed by a call of v.Visit(nil)
 // to the returned visitor.
-func Walk(v Visitor, expr sql.Expression) {
+func Walk(v Visitor, expr Expression) {
 	if v = v.Visit(expr); v == nil {
 		return
 	}
@@ -28,9 +26,9 @@ func Walk(v Visitor, expr sql.Expression) {
 	v.Visit(nil)
 }
 
-type inspector func(sql.Expression) bool
+type inspector func(Expression) bool
 
-func (f inspector) Visit(expr sql.Expression) Visitor {
+func (f inspector) Visit(expr Expression) Visitor {
 	if f(expr) {
 		return f
 	}
@@ -41,6 +39,6 @@ func (f inspector) Visit(expr sql.Expression) Visitor {
 // f(expr); expr must not be nil. If f returns true, Inspect invokes f
 // recursively for each of the children of expr, followed by a call of
 // f(nil).
-func Inspect(expr sql.Expression, f func(sql.Expression) bool) {
+func Inspect(expr Expression, f func(Expression) bool) {
 	Walk(inspector(f), expr)
 }

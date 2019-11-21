@@ -2,7 +2,6 @@ package plan
 
 import (
 	"github.com/src-d/go-mysql-server/sql"
-	"github.com/src-d/go-mysql-server/sql/expression"
 )
 
 // Visitor visits nodes in the plan.
@@ -48,20 +47,20 @@ func Inspect(node sql.Node, f func(sql.Node) bool) {
 	Walk(inspector(f), node)
 }
 
-// WalkExpressions traverses the plan and calls expression.Walk on any
+// WalkExpressions traverses the plan and calls sql.Walk on any
 // expression it finds.
-func WalkExpressions(v expression.Visitor, node sql.Node) {
+func WalkExpressions(v sql.Visitor, node sql.Node) {
 	Inspect(node, func(node sql.Node) bool {
 		if n, ok := node.(sql.Expressioner); ok {
 			for _, err := range n.Expressions() {
-				expression.Walk(v, err)
+				sql.Walk(v, err)
 			}
 		}
 		return true
 	})
 }
 
-// InspectExpressions traverses the plan and calls expression.Inspect on any
+// InspectExpressions traverses the plan and calls sql.Inspect on any
 // expression it finds.
 func InspectExpressions(node sql.Node, f func(sql.Expression) bool) {
 	WalkExpressions(exprInspector(f), node)
@@ -69,7 +68,7 @@ func InspectExpressions(node sql.Node, f func(sql.Expression) bool) {
 
 type exprInspector func(sql.Expression) bool
 
-func (f exprInspector) Visit(e sql.Expression) expression.Visitor {
+func (f exprInspector) Visit(e sql.Expression) sql.Visitor {
 	if f(e) {
 		return f
 	}

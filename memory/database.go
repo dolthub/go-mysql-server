@@ -1,8 +1,11 @@
 package memory
 
 import (
+	"context"
 	"github.com/src-d/go-mysql-server/sql"
 )
+
+var _ sql.Database = (*Database)(nil)
 
 // Database is an in-memory database.
 type Database struct {
@@ -26,6 +29,20 @@ func (d *Database) Name() string {
 // Tables returns all tables in the database.
 func (d *Database) Tables() map[string]sql.Table {
 	return d.tables
+}
+
+func (d *Database) GetTableInsensitive(ctx context.Context, tblName string) (sql.Table, bool, error) {
+	tbl, ok := sql.GetTableInsensitive(tblName, d.tables)
+	return tbl, ok, nil
+}
+
+func (d *Database) GetTableNames(ctx context.Context) ([]string, error) {
+	tblNames := make([]string, 0, len(d.tables))
+	for k := range d.tables {
+		tblNames = append(tblNames, k)
+	}
+
+	return tblNames, nil
 }
 
 // AddTable adds a new table to the database.

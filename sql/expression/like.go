@@ -21,7 +21,7 @@ type Like struct {
 // NewLike creates a new LIKE expression.
 func NewLike(left, right sql.Expression) sql.Expression {
 	var cached = true
-	Inspect(right, func(e sql.Expression) bool {
+	sql.Inspect(right, func(e sql.Expression) bool {
 		if _, ok := e.(*GetField); ok {
 			cached = false
 		}
