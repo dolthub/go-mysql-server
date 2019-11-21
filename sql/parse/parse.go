@@ -36,7 +36,6 @@ var (
 var (
 	describeTablesRegex  = regexp.MustCompile(`^(describe|desc)\s+table\s+(.*)`)
 	createIndexRegex     = regexp.MustCompile(`^create\s+index\s+`)
-	createViewRegex      = regexp.MustCompile(`^create\s+(or\s+replace\s+)?view\s+`)
 	dropIndexRegex       = regexp.MustCompile(`^drop\s+index\s+`)
 	showIndexRegex       = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
 	showCreateRegex      = regexp.MustCompile(`^show create\s+\S+\s*`)
@@ -82,8 +81,6 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return parseDescribeTables(lowerQuery)
 	case createIndexRegex.MatchString(lowerQuery):
 		return parseCreateIndex(ctx, s)
-	case createViewRegex.MatchString(lowerQuery):
-		return parseCreateView(ctx, s)
 	case dropIndexRegex.MatchString(lowerQuery):
 		return parseDropIndex(s)
 	case showIndexRegex.MatchString(lowerQuery):
@@ -162,7 +159,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		if err != nil {
 			return nil, err
 		}
-		return convertDDL(ddl.(*sqlparser.DDL))
+		return convertDDL(ctx, ddl.(*sqlparser.DDL))
 	case *sqlparser.Set:
 		return convertSet(ctx, n)
 	case *sqlparser.Use:
@@ -368,9 +365,12 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 	return node, nil
 }
 
-func convertDDL(c *sqlparser.DDL) (sql.Node, error) {
+func convertDDL(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	switch c.Action {
 	case sqlparser.CreateStr:
+		if !c.View.IsEmpty() {
+			return convertCreateView(ctx, c)
+		}
 		return convertCreateTable(c)
 	case sqlparser.DropStr:
 		return convertDropTable(c)
@@ -395,6 +395,23 @@ func convertCreateTable(c *sqlparser.DDL) (sql.Node, error) {
 
 	return plan.NewCreateTable(
 		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema), nil
+}
+
+func convertCreateView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
+	selectStatement, ok := c.ViewExpr.(*sqlparser.Select)
+	if !ok {
+		return nil, ErrUnsupportedSyntax.New(c.ViewExpr)
+	}
+
+        queryNode, err := convertSelect(ctx, selectStatement)
+        if err != nil {
+                return nil, err
+        }
+
+	queryAlias := plan.NewSubqueryAlias(c.View.Name.String(), queryNode)
+
+	return plan.NewCreateView(
+		sql.UnresolvedDatabase(""), c.View.Name.String(), []string{}, queryAlias, c.OrReplace), nil
 }
 
 func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {

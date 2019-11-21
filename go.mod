@@ -8,7 +8,6 @@ require (
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
-	github.com/golang/protobuf v1.3.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/mitchellh/hashstructure v1.0.0
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852
@@ -21,8 +20,12 @@ require (
 	github.com/src-d/go-oniguruma v1.0.0
 	github.com/stretchr/testify v1.3.0
 	go.etcd.io/bbolt v1.3.2
-	google.golang.org/grpc v1.19.0 // indirect
+	google.golang.org/grpc v1.25.1 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 	gopkg.in/yaml.v2 v2.2.2
 	vitess.io/vitess v3.0.0-rc.3.0.20190602171040-12bfde34629c+incompatible
 )
+
+replace vitess.io/vitess => ../vitess
+
+go 1.13
