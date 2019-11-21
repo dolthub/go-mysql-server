@@ -151,6 +151,8 @@ func (c *Column) Equals(c2 *Column) bool {
 type Type interface {
 	// Type returns the query.Type for the given Type.
 	Type() query.Type
+	// Zero returns the golang zero value for this type
+	Zero() interface{}
 	// Covert a value of a compatible type to a most accurate type.
 	Convert(interface{}) (interface{}, error)
 	// Compare returns an integer comparing two values.
@@ -297,6 +299,10 @@ func MysqlTypeToType(sql query.Type) (Type, error) {
 
 type nullT struct{}
 
+func (t nullT) Zero() interface{} {
+	return nil
+}
+
 func (t nullT) String() string { return "NULL" }
 
 // Type implements Type interface.
@@ -331,6 +337,33 @@ func IsNull(ex Expression) bool {
 
 type numberT struct {
 	t query.Type
+}
+
+func (t numberT) Zero() interface{} {
+	switch t.t {
+	case sqltypes.Int8:
+		return int8(0)
+	case sqltypes.Int16:
+		return int16(0)
+	case sqltypes.Int32:
+		return int32(0)
+	case sqltypes.Int64:
+		return int64(0)
+	case sqltypes.Uint8:
+		return uint8(0)
+	case sqltypes.Uint16:
+		return uint16(0)
+	case sqltypes.Uint32:
+		return uint32(0)
+	case sqltypes.Uint64:
+		return uint64(0)
+	case sqltypes.Float32:
+		return float32(0)
+	case sqltypes.Float64:
+		return float64(0)
+	default:
+		return 0
+	}
 }
 
 // Type implements Type interface.
@@ -496,6 +529,10 @@ func compareUnsignedInts(a interface{}, b interface{}) (int, error) {
 
 type timestampT struct{}
 
+func (t timestampT) Zero() interface{} {
+	return time.Time{}
+}
+
 func (t timestampT) String() string { return "TIMESTAMP" }
 
 // Type implements Type interface.
@@ -505,7 +542,7 @@ func (t timestampT) Type() query.Type {
 
 // TimestampLayout is the formatting string with the layout of the timestamp
 // using the format of Go "time" package.
-const TimestampLayout = "2006-01-02 15:04:05"
+const TimestampLayout = "2006-01-02 15:04:05.999999"
 
 // TimestampLayouts hold extra timestamps allowed for parsing. It does
 // not have all the layouts supported by mysql. Missing are two digit year
@@ -513,6 +550,7 @@ const TimestampLayout = "2006-01-02 15:04:05"
 //
 // https://github.com/MariaDB/server/blob/mysql-5.5.36/sql-common/my_time.c#L124
 var TimestampLayouts = []string{
+	"2006-01-02 15:04:05.999999",
 	"2006-01-02",
 	time.RFC3339,
 	"20060102150405",
@@ -542,22 +580,12 @@ func (t timestampT) Convert(v interface{}) (interface{}, error) {
 	case time.Time:
 		return value.UTC(), nil
 	case string:
-		t, err := time.Parse(TimestampLayout, value)
-		if err != nil {
-			failed := true
-			for _, fmt := range TimestampLayouts {
-				if t2, err2 := time.Parse(fmt, value); err2 == nil {
-					t = t2
-					failed = false
-					break
-				}
-			}
-
-			if failed {
-				return nil, ErrConvertingToTime.Wrap(err, v)
+		for _, fmt := range TimestampLayouts {
+			if t, err := time.Parse(fmt, value); err == nil {
+				return t.UTC(), nil
 			}
 		}
-		return t.UTC(), nil
+		return nil, ErrConvertingToTime.New(v)
 	default:
 		ts, err := Int64.Convert(v)
 		if err != nil {
@@ -585,6 +613,10 @@ func (t timestampT) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 type dateT struct{}
+
+func (t dateT) Zero() interface{} {
+	return time.Time{}
+}
 
 // DateLayout is the layout of the MySQL date format in the representation
 // Go understands.
@@ -653,9 +685,26 @@ func (t dateT) Compare(a, b interface{}) (int, error) {
 
 type datetimeT struct{}
 
+func (t datetimeT) Zero() interface{} {
+	return time.Time{}
+}
+
 // DatetimeLayout is the layout of the MySQL date format in the representation
 // Go understands.
-const DatetimeLayout = "2006-01-02 15:04:05"
+const DatetimeLayout = "2006-01-02 15:04:05.999999"
+
+// DatetimeLayouts hold extra configurations allowed for parsing. It does
+// not have all the layouts supported by mysql. Missing are two digit year
+// versions of common cases and dates that use non common separators.
+//
+// https://github.com/MariaDB/server/blob/mysql-5.5.36/sql-common/my_time.c#L124
+var DatetimeLayouts = []string{
+	"2006-01-02 15:04:05.999999",
+	"2006-01-02",
+	time.RFC3339,
+	"20060102150405",
+	"20060102",
+}
 
 func (t datetimeT) String() string { return "DATETIME" }
 
@@ -684,11 +733,12 @@ func (t datetimeT) Convert(v interface{}) (interface{}, error) {
 	case time.Time:
 		return value.UTC(), nil
 	case string:
-		t, err := time.Parse(DatetimeLayout, value)
-		if err != nil {
-			return nil, ErrConvertingToTime.Wrap(err, v)
+		for _, fmt := range DatetimeLayouts {
+			if t, err := time.Parse(fmt, value); err == nil {
+				return t.UTC(), nil
+			}
 		}
-		return t.UTC(), nil
+		return nil, ErrConvertingToTime.New(v)
 	default:
 		ts, err := Int64.Convert(v)
 		if err != nil {
@@ -712,6 +762,10 @@ func (t datetimeT) Compare(a, b interface{}) (int, error) {
 
 type charT struct {
 	length int
+}
+
+func (t charT) Zero() interface{} {
+	return ""
 }
 
 func (t charT) Capacity() int { return t.length }
@@ -755,6 +809,10 @@ func (t charT) Compare(a interface{}, b interface{}) (int, error) {
 
 type varCharT struct {
 	length int
+}
+
+func (t varCharT) Zero() interface{} {
+	return ""
 }
 
 func (t varCharT) Capacity() int { return t.length }
@@ -803,6 +861,10 @@ func (t varCharT) Compare(a interface{}, b interface{}) (int, error) {
 
 type textT struct{}
 
+func (t textT) Zero() interface{} {
+	return ""
+}
+
 func (t textT) String() string { return "TEXT" }
 
 // Type implements Type interface.
@@ -842,6 +904,10 @@ func (t textT) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 type booleanT struct{}
+
+func (t booleanT) Zero() interface{} {
+	return false
+}
 
 func (t booleanT) String() string { return "BOOLEAN" }
 
@@ -907,6 +973,10 @@ func (t booleanT) Compare(a interface{}, b interface{}) (int, error) {
 
 type blobT struct{}
 
+func (t blobT) Zero() interface{} {
+	return nil
+}
+
 func (t blobT) String() string { return "BLOB" }
 
 // Type implements Type interface.
@@ -954,6 +1024,10 @@ func (t blobT) Compare(a interface{}, b interface{}) (int, error) {
 
 type jsonT struct{}
 
+func (t jsonT) Zero() interface{} {
+	return []byte(`""`)
+}
+
 func (t jsonT) String() string { return "JSON" }
 
 // Type implements Type interface.
@@ -998,6 +1072,14 @@ func (t jsonT) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 type tupleT []Type
+
+func (t tupleT) Zero() interface{} {
+	zeroes := make([]interface{}, len(t))
+	for i, tt := range t {
+		zeroes[i] = tt.Zero()
+	}
+	return zeroes
+}
 
 func (t tupleT) String() string {
 	var elems = make([]string, len(t))
@@ -1064,6 +1146,10 @@ func (t tupleT) Compare(a, b interface{}) (int, error) {
 
 type arrayT struct {
 	underlying Type
+}
+
+func (t arrayT) Zero() interface{} {
+	return nil
 }
 
 func (t arrayT) String() string { return fmt.Sprintf("ARRAY(%s)", t.underlying) }

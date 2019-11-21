@@ -368,7 +368,7 @@ func TestDate(t *testing.T) {
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), "2007-01-02", false},
-		{"date as time", sql.NewRow(time.Now()), time.Now().Format("2006-01-02"), false},
+		{"date as time", sql.NewRow(time.Now().UTC()), time.Now().UTC().Format("2006-01-02"), false},
 		{"date as unix timestamp", sql.NewRow(int64(tsDate)), "2009-11-22", false},
 	}
 

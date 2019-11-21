@@ -442,7 +442,7 @@ func aggregationEquals(a, b sql.Expression) bool {
 func aggregationChildEquals(a, b sql.Expression) bool {
 	var fieldsByName = make(map[string]sql.Expression)
 	var fieldsByTableCol = make(map[tableCol]sql.Expression)
-	expression.Inspect(b, func(e sql.Expression) bool {
+	sql.Inspect(b, func(e sql.Expression) bool {
 		gf, ok := e.(*expression.GetField)
 		if ok {
 			fieldsByTableCol[tableCol{
@@ -490,7 +490,7 @@ var errHavingNeedsGroupBy = errors.NewKind("found HAVING clause with no GROUP BY
 
 func hasAggregations(expr sql.Expression) bool {
 	var has bool
-	expression.Inspect(expr, func(e sql.Expression) bool {
+	sql.Inspect(expr, func(e sql.Expression) bool {
 		_, ok := e.(sql.Aggregation)
 		if ok {
 			has = true

@@ -16,6 +16,14 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return n, nil
 	}
 
+	// Skip pruning columns for insert statements. For inserts involving a select (INSERT INTO table1 SELECT a,b FROM
+	// table2), all columns from the select are used for the insert, and error checking for schema compatibility
+	// happens at execution time. Otherwise the logic below will convert a Project to a ResolvedTable for the selected
+	// table, which can alter the column order of the select.
+	if _, ok := n.(*plan.InsertInto); ok {
+		return n, nil
+	}
+
 	if describe, ok := n.(*plan.DescribeQuery); ok {
 		pruned, err := pruneColumns(ctx, a, describe.Child)
 		if err != nil {
@@ -25,16 +33,7 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return plan.NewDescribeQuery(describe.Format, pruned), nil
 	}
 
-	columns := make(usedColumns)
-
-	// All the columns required for the output of the query must be mark as
-	// used, otherwise the schema would change.
-	for _, col := range n.Schema() {
-		if _, ok := columns[col.Source]; !ok {
-			columns[col.Source] = make(map[string]struct{})
-		}
-		columns[col.Source][col.Name] = struct{}{}
-	}
+	columns := findRequiredColumns(n)
 
 	findUsedColumns(columns, n)
 
@@ -49,6 +48,21 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	}
 
 	return fixRemainingFieldsIndexes(n)
+}
+
+func findRequiredColumns(n sql.Node) usedColumns {
+	columns := make(usedColumns)
+
+	// All the columns required for the output of the query must be mark as
+	// used, otherwise the schema would change.
+	for _, col := range n.Schema() {
+		if _, ok := columns[col.Source]; !ok {
+			columns[col.Source] = make(map[string]struct{})
+		}
+		columns[col.Source][col.Name] = struct{}{}
+	}
+
+	return columns
 }
 
 func pruneSubqueryColumns(
@@ -226,7 +240,7 @@ func addUsedProjectColumns(
 
 func addUsedColumns(columns usedColumns, exprs []sql.Expression) {
 	for _, e := range exprs {
-		expression.Inspect(e, func(e sql.Expression) bool {
+		sql.Inspect(e, func(e sql.Expression) bool {
 			if gf, ok := e.(*expression.GetField); ok {
 				if _, ok := columns[gf.Table()]; !ok {
 					columns[gf.Table()] = make(map[string]struct{})

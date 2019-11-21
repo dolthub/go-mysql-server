@@ -22,12 +22,12 @@ func TestWalk(t *testing.T) {
 
 	var f visitor
 	var visited []sql.Expression
-	f = func(node sql.Expression) Visitor {
+	f = func(node sql.Expression) sql.Visitor {
 		visited = append(visited, node)
 		return f
 	}
 
-	Walk(f, e)
+	sql.Walk(f, e)
 
 	require.Equal(t,
 		[]sql.Expression{e, and, col, nil, fn, lit1, nil, lit2, nil, nil, nil, nil},
@@ -35,7 +35,7 @@ func TestWalk(t *testing.T) {
 	)
 
 	visited = nil
-	f = func(node sql.Expression) Visitor {
+	f = func(node sql.Expression) sql.Visitor {
 		visited = append(visited, node)
 		if _, ok := node.(*UnresolvedFunction); ok {
 			return nil
@@ -43,7 +43,7 @@ func TestWalk(t *testing.T) {
 		return f
 	}
 
-	Walk(f, e)
+	sql.Walk(f, e)
 
 	require.Equal(t,
 		[]sql.Expression{e, and, col, nil, fn, nil, nil},
@@ -51,9 +51,9 @@ func TestWalk(t *testing.T) {
 	)
 }
 
-type visitor func(sql.Expression) Visitor
+type visitor func(sql.Expression) sql.Visitor
 
-func (f visitor) Visit(n sql.Expression) Visitor {
+func (f visitor) Visit(n sql.Expression) sql.Visitor {
 	return f(n)
 }
 
@@ -77,7 +77,7 @@ func TestInspect(t *testing.T) {
 		return true
 	}
 
-	Inspect(e, f)
+	sql.Inspect(e, f)
 
 	require.Equal(t,
 		[]sql.Expression{e, and, col, nil, fn, lit1, nil, lit2, nil, nil, nil, nil},
@@ -93,7 +93,7 @@ func TestInspect(t *testing.T) {
 		return true
 	}
 
-	Inspect(e, f)
+	sql.Inspect(e, f)
 
 	require.Equal(t,
 		[]sql.Expression{e, and, col, nil, fn, nil, nil},

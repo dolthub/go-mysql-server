@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"context"
 	"io"
 	"strings"
 	"sync"
@@ -157,6 +158,10 @@ type indexKey struct {
 	db, id string
 }
 
+type dbTableTuple struct {
+	db, tbl string
+}
+
 // IndexRegistry keeps track of all indexes in the engine.
 type IndexRegistry struct {
 	// Root path where all the data of the indexes is stored on disk.
@@ -173,6 +178,7 @@ type IndexRegistry struct {
 	rcmut            sync.RWMutex
 	refCounts        map[indexKey]int
 	deleteIndexQueue map[indexKey]chan<- struct{}
+	indexLoaders     map[dbTableTuple][]func(ctx context.Context) error
 }
 
 // NewIndexRegistry returns a new Index Registry.
@@ -183,6 +189,7 @@ func NewIndexRegistry() *IndexRegistry {
 		drivers:          make(map[string]IndexDriver),
 		refCounts:        make(map[indexKey]int),
 		deleteIndexQueue: make(map[indexKey]chan<- struct{}),
+		indexLoaders:     make(map[dbTableTuple][]func(ctx context.Context) error),
 	}
 }
 
@@ -215,56 +222,104 @@ func (r *IndexRegistry) RegisterIndexDriver(driver IndexDriver) {
 	r.drivers[driver.ID()] = driver
 }
 
-// LoadIndexes loads all indexes for all dbs, tables and drivers.
+// LoadIndexes creates load functions for all indexes for all dbs, tables and drivers.  These functions are called
+// as needed by the query
 func (r *IndexRegistry) LoadIndexes(dbs Databases) error {
 	r.driversMut.RLock()
 	defer r.driversMut.RUnlock()
 	r.mut.Lock()
 	defer r.mut.Unlock()
 
-	for _, driver := range r.drivers {
-		for _, db := range dbs {
-			for _, t := range db.Tables() {
-				indexes, err := driver.LoadAll(db.Name(), t.Name())
-				if err != nil {
-					return err
-				}
+	ctx := context.TODO()
+	for drIdx := range r.drivers {
+		driver := r.drivers[drIdx]
+		for dbIdx := range dbs {
+			db := dbs[dbIdx]
+			tNames, err := db.GetTableNames(ctx)
 
-				var checksum string
-				if c, ok := t.(Checksumable); ok && len(indexes) != 0 {
-					checksum, err = c.Checksum()
+			if err != nil {
+				return err
+			}
+
+			for tIdx := range tNames {
+				tName := tNames[tIdx]
+
+				loadF := func(ctx context.Context) error {
+					t, ok, err := db.GetTableInsensitive(ctx, tName)
+
+					if err != nil {
+						return err
+					} else if !ok {
+						panic("Failed to find table in list of table names")
+					}
+
+					indexes, err := driver.LoadAll(db.Name(), t.Name())
 					if err != nil {
 						return err
 					}
-				}
 
-				for _, idx := range indexes {
-					k := indexKey{db.Name(), idx.ID()}
-					r.indexes[k] = idx
-					r.indexOrder = append(r.indexOrder, k)
-
-					var idxChecksum string
-					if c, ok := idx.(Checksumable); ok {
-						idxChecksum, err = c.Checksum()
+					var checksum string
+					if c, ok := t.(Checksumable); ok && len(indexes) != 0 {
+						checksum, err = c.Checksum()
 						if err != nil {
 							return err
 						}
 					}
 
-					if checksum == "" || checksum == idxChecksum {
-						r.statuses[k] = IndexReady
-					} else {
-						logrus.Warnf(
-							"index %q is outdated and will not be used, you can remove it using `DROP INDEX %s ON %s`",
-							idx.ID(),
-							idx.ID(),
-							idx.Table(),
-						)
-						r.MarkOutdated(idx)
+					for _, idx := range indexes {
+						k := indexKey{db.Name(), idx.ID()}
+						r.indexes[k] = idx
+						r.indexOrder = append(r.indexOrder, k)
+
+						var idxChecksum string
+						if c, ok := idx.(Checksumable); ok {
+							idxChecksum, err = c.Checksum()
+							if err != nil {
+								return err
+							}
+						}
+
+						if checksum == "" || checksum == idxChecksum {
+							r.statuses[k] = IndexReady
+						} else {
+							logrus.Warnf(
+								"index %q is outdated and will not be used, you can remove it using `DROP INDEX %s ON %s`",
+								idx.ID(),
+								idx.ID(),
+								idx.Table(),
+							)
+							r.MarkOutdated(idx)
+						}
 					}
+
+					return nil
 				}
+
+				dbTT := dbTableTuple{db.Name(), tName}
+				r.indexLoaders[dbTT] = append(r.indexLoaders[dbTT], loadF)
 			}
 		}
+	}
+
+	return nil
+}
+
+func (r *IndexRegistry) registerIndexesForTable(ctx context.Context, dbName, tName string) error {
+	r.driversMut.RLock()
+	defer r.driversMut.RUnlock()
+
+	dbTT := dbTableTuple{dbName, tName}
+
+	if loaders, ok := r.indexLoaders[dbTT]; ok {
+		for _, loader := range loaders {
+			err := loader(ctx)
+
+			if err != nil {
+				return err
+			}
+		}
+
+		delete(r.indexLoaders, dbTT)
 	}
 
 	return nil
@@ -357,6 +412,10 @@ func (r *IndexRegistry) IndexesByTable(db, table string) []Index {
 	return indexes
 }
 
+type exprWithTable interface {
+	Table() string
+}
+
 // IndexByExpression returns an index by the given expression. It will return
 // nil it the index is not found. If more than one expression is given, all
 // of them must match for the index to be matched.
@@ -364,9 +423,27 @@ func (r *IndexRegistry) IndexByExpression(db string, expr ...Expression) Index {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
 
+	ctx := context.TODO()
 	expressions := make([]string, len(expr))
 	for i, e := range expr {
 		expressions[i] = e.String()
+
+		Inspect(e, func(e Expression) bool {
+			if e == nil {
+				return true
+			}
+
+			if val, ok := e.(exprWithTable); ok {
+				err := r.registerIndexesForTable(ctx, db, val.Table())
+
+				// TODO: fix panics
+				if err != nil {
+					panic(err)
+				}
+			}
+
+			return true
+		})
 	}
 
 	for _, k := range r.indexOrder {

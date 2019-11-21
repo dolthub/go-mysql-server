@@ -35,10 +35,16 @@ func TestTrackProcess(t *testing.T) {
 	require.Len(processes, 1)
 	require.Equal("SELECT foo", processes[0].Query)
 	require.Equal(sql.QueryProcess, processes[0].Type)
-	require.Equal(map[string]sql.Progress{
-		"foo": sql.Progress{Total: 2},
-		"bar": sql.Progress{Total: 4},
-	}, processes[0].Progress)
+	require.Equal(
+		map[string]sql.TableProgress{
+			"foo": sql.TableProgress{
+				Progress:           sql.Progress{Name: "foo", Done: 0, Total: 2},
+				PartitionsProgress: map[string]sql.PartitionProgress{}},
+			"bar": sql.TableProgress{
+				Progress:           sql.Progress{Name: "bar", Done: 0, Total: 4},
+				PartitionsProgress: map[string]sql.PartitionProgress{}},
+		},
+		processes[0].Progress)
 
 	proc, ok := result.(*plan.QueryProcess)
 	require.True(ok)

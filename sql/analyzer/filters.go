@@ -20,7 +20,7 @@ func exprToTableFilters(expr sql.Expression) filters {
 	for _, expr := range splitExpression(expr) {
 		var seenTables = make(map[string]struct{})
 		var lastTable string
-		expression.Inspect(expr, func(e sql.Expression) bool {
+		sql.Inspect(expr, func(e sql.Expression) bool {
 			f, ok := e.(*expression.GetField)
 			if ok {
 				if _, ok := seenTables[f.Table()]; !ok {

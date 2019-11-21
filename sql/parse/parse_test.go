@@ -72,7 +72,7 @@ var fixtures = map[string]sql.Node{
 		sql.Schema{{
 			Name:       "a",
 			Type:       sql.Int32,
-			Nullable:   true,
+			Nullable:   false,
 			PrimaryKey: true,
 		}, {
 			Name:       "b",
@@ -87,12 +87,12 @@ var fixtures = map[string]sql.Node{
 		sql.Schema{{
 			Name:       "a",
 			Type:       sql.Int32,
-			Nullable:   true,
+			Nullable:   false,
 			PrimaryKey: true,
 		}, {
 			Name:       "b",
 			Type:       sql.Text,
-			Nullable:   true,
+			Nullable:   false,
 			PrimaryKey: true,
 		}},
 	),

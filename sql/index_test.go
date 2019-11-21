@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -251,6 +252,7 @@ func TestExpressionsWithIndexes(t *testing.T) {
 }
 
 func TestLoadIndexes(t *testing.T) {
+	ctx := context.Background()
 	require := require.New(t)
 
 	d1 := &loadDriver{id: "d1", indexes: []Index{
@@ -285,6 +287,10 @@ func TestLoadIndexes(t *testing.T) {
 	}
 
 	require.NoError(registry.LoadIndexes(dbs))
+	require.NoError(registry.registerIndexesForTable(ctx, "db1", "t1"))
+	require.NoError(registry.registerIndexesForTable(ctx, "db1", "t2"))
+	require.NoError(registry.registerIndexesForTable(ctx, "db2", "t3"))
+	require.NoError(registry.registerIndexesForTable(ctx, "db2", "t4"))
 
 	expected := append(d1.indexes[:], d2.indexes...)
 	var result []Index
@@ -300,6 +306,7 @@ func TestLoadIndexes(t *testing.T) {
 }
 
 func TestLoadOutdatedIndexes(t *testing.T) {
+	ctx := context.Background()
 	require := require.New(t)
 
 	d := &loadDriver{id: "d1", indexes: []Index{
@@ -321,6 +328,8 @@ func TestLoadOutdatedIndexes(t *testing.T) {
 	}
 
 	require.NoError(registry.LoadIndexes(dbs))
+	require.NoError(registry.registerIndexesForTable(ctx, "db1", "t1"))
+	require.NoError(registry.registerIndexesForTable(ctx, "db1", "t2"))
 
 	var result []Index
 	for _, idx := range registry.indexes {
@@ -333,6 +342,8 @@ func TestLoadOutdatedIndexes(t *testing.T) {
 	require.Equal(registry.statuses[indexKey{"db1", "idx2"}], IndexOutdated)
 }
 
+var _ Database = dummyDB{}
+
 type dummyDB struct {
 	name   string
 	tables map[string]Table
@@ -340,6 +351,19 @@ type dummyDB struct {
 
 func (d dummyDB) Name() string             { return d.name }
 func (d dummyDB) Tables() map[string]Table { return d.tables }
+func (d dummyDB) GetTableInsensitive(ctx context.Context, tblName string) (Table, bool, error) {
+	tbl, ok := GetTableInsensitive(tblName, d.tables)
+	return tbl, ok, nil
+}
+func (d dummyDB) GetTableNames(ctx context.Context) ([]string, error) {
+	tblNames := make([]string, 0, len(d.tables))
+	for k := range d.tables {
+		tblNames = append(tblNames, k)
+	}
+
+	return tblNames, nil
+}
+
 
 type dummyTable struct {
 	Table

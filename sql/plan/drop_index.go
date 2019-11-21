@@ -52,14 +52,20 @@ func (d *DropIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, ErrTableNotNameable.New()
 	}
 
-	tables := db.Tables()
-	table, ok := tables[n.Name()]
+	table, ok, err := db.GetTableInsensitive(ctx, n.Name())
+
+	if err != nil {
+		return nil, err
+	}
+
 	if !ok {
-		if len(tables) == 0 {
-			return nil, sql.ErrTableNotFound.New(n.Name())
+		tableNames, err := db.GetTableNames(ctx)
+
+		if err != nil {
+			return nil, err
 		}
 
-		similar := similartext.FindFromMap(tables, n.Name())
+		similar := similartext.Find(tableNames, n.Name())
 		return nil, sql.ErrTableNotFound.New(n.Name() + similar)
 	}
 

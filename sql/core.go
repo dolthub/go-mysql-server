@@ -1,10 +1,12 @@
 package sql
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -120,6 +122,12 @@ type OpaqueNode interface {
 	Opaque() bool
 }
 
+// AsyncNode is a node that can be executed asynchronously.
+type AsyncNode interface {
+	// IsAsync reports whether the node is async or not.
+	IsAsync() bool
+}
+
 // Expressioner is a node that contains expressions.
 type Expressioner interface {
 	// Expressions returns the list of expressions contained by the node.
@@ -199,35 +207,166 @@ type IndexableTable interface {
 	IndexKeyValues(*Context, []string) (PartitionIndexKeyValueIter, error)
 }
 
-// Inserter allow rows to be inserted in them.
-type Inserter interface {
-	// Insert the given row.
-	Insert(*Context, Row) error
+// InsertableTable is a table that can process insertion of new rows.
+type InsertableTable interface {
+	// Inserter returns an Inserter for this table. The Inserter will get one call to Insert() for each row to be
+	// inserted, and will end with a call to Close() to finalize the insert operation.
+	Inserter(*Context) RowInserter
 }
 
-// Deleter allow rows to be deleted from tables.
-type Deleter interface {
-	// Delete the given row. Returns ErrDeleteRowNotFound if the row was not found.
+// RowInserter is an insert cursor that can insert one or more values to a table.
+type RowInserter interface {
+	// Insert inserts the row given, returning an error if it cannot. Insert will be called once for each row to process
+	// for the insert operation, which may involve many rows. After all rows in an operation have been processed, Close
+	// is called.
+	Insert(*Context, Row) error
+	// Close finalizes the insert operation, persisting its result.
+	Closer
+}
+
+// DeleteableTable is a table that can process the deletion of rows
+type DeletableTable interface {
+	// Deleter returns a RowDeleter for this table. The RowDeleter will get one call to Delete for each row to be deleted,
+	// and will end with a call to Close() to finalize the delete operation.
+	Deleter(*Context) RowDeleter
+}
+
+// RowDeleter is a delete cursor that can delete one or more rows from a table.
+type RowDeleter interface {
+	// Delete deletes the given row. Returns ErrDeleteRowNotFound if the row was not found. Delete will be called once for
+	// each row to process for the delete operation, which may involve many rows. After all rows have been processed,
+	// Close is called.
 	Delete(*Context, Row) error
+	// Close finalizes the delete operation, persisting the result.
+	Closer
+}
+
+type Closer interface {
+	Close(*Context) error
+}
+
+// RowReplacer is a combination of RowDeleter and RowInserter. We can't embed those interfaces because go doesn't allow
+// for overlapping interfaces (they both declare Close)
+type RowReplacer interface {
+	// Insert inserts the row given, returning an error if it cannot. Insert will be called once for each row to process
+	// for the replace operation, which may involve many rows. After all rows in an operation have been processed, Close
+	// is called.
+	Insert(*Context, Row) error
+	// Delete deletes the given row. Returns ErrDeleteRowNotFound if the row was not found. Delete will be called once for
+	// each row to process for the delete operation, which may involve many rows. After all rows have been processed,
+	// Close is called.
+	Delete(*Context, Row) error
+	// Close finalizes the replace operation, persisting the result.
+	Closer
 }
 
 // Replacer allows rows to be replaced through a Delete (if applicable) then Insert.
-type Replacer interface {
-	Deleter
-	Inserter
+type ReplaceableTable interface {
+	// Replacer returns a RowReplacer for this table. The RowReplacer will have Insert and optionally Delete called once
+	// for each row, followed by a call to Close() when all rows have been processed.
+	Replacer(ctx *Context) RowReplacer
 }
 
-// Updater allows rows to be updated.
-type Updater interface {
+// UpdateableTable is a table that can process updates of existing rows via update statements.
+type UpdatableTable interface {
+	// Updater returns a RowUpdater for this table. The RowUpdater will have Update called once for each row to be
+	// updated, followed by a call to Close() when all rows have been processed.
+	Updater(ctx *Context) RowUpdater
+}
+
+// RowUpdater is an update cursor that can update one or more rows in a table.
+type RowUpdater interface {
 	// Update the given row. Provides both the old and new rows.
 	Update(ctx *Context, old Row, new Row) error
+	// Close finalizes the update operation, persisting the result.
+	Closer
 }
 
 // Database represents the database.
 type Database interface {
 	Nameable
-	// Tables returns the information of all tables.
-	Tables() map[string]Table
+
+	// GetTableInsensitive retrieves a table by it's name where capitalization does not matter.  Implementations should
+	// look for exact matches first.  If no exact matches are found then any table matching the name case insensitively
+	// should be returned.  If there is more than one table that matches a case insensitive comparison the resolution
+	// strategy is not defined.
+	GetTableInsensitive(ctx context.Context, tblName string) (Table, bool, error)
+
+	// GetTableNames returns the table names of every table in the database
+	GetTableNames(ctx context.Context) ([]string, error)
+}
+
+// GetTableInsensitive implements a case insensitive map lookup for tables keyed off of the table name.
+// Looks for exact matches first.  If no exact matches are found then any table matching the name case insensitively
+// should be returned.  If there is more than one table that matches a case insensitive comparison the resolution
+// strategy is not defined.
+func GetTableInsensitive(tblName string, tables map[string]Table) (Table, bool) {
+	if tbl, ok := tables[tblName]; ok {
+		return tbl, true
+	}
+
+	lwrName := strings.ToLower(tblName)
+
+	for k, tbl := range tables {
+		if lwrName == strings.ToLower(k) {
+			return tbl, true
+		}
+	}
+
+	return nil, false
+}
+
+// GetTableNameInsensitive implements a case insensitive search of a slice of table names. It looks for exact matches
+// first.  If no exact matches are found then any table matching the name case insensitively should be returned.  If
+// there is more than one table that matches a case insensitive comparison the resolution strategy is not defined.
+func GetTableNameInsensitive(tblName string, tableNames []string) (string, bool) {
+	for _, name := range tableNames {
+		if tblName == name {
+			return name, true
+		}
+	}
+
+	lwrName := strings.ToLower(tblName)
+
+	for _, name := range tableNames {
+		if lwrName == strings.ToLower(name) {
+			return name, true
+		}
+	}
+
+	return "", false
+}
+
+// DBTableIter iterates over all tables returned by db.GetTableNames() calling cb for each one until all tables have
+// been processed, or an error is returned from the callback, or the cont flag is false when returned from the callback.
+func DBTableIter(ctx context.Context, db Database, cb func(Table) (cont bool, err error)) error {
+	names, err := db.GetTableNames(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	for _, name := range names {
+		tbl, ok, err := db.GetTableInsensitive(ctx, name)
+
+		if err != nil {
+			return err
+		} else if !ok {
+			return ErrTableNotFound.New(name)
+		}
+
+		cont, err := cb(tbl)
+
+		if err != nil {
+			return err
+		}
+
+		if !cont {
+			break
+		}
+	}
+
+	return nil
 }
 
 // TableCreator should be implemented by databases that can create new tables.

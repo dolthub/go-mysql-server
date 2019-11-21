@@ -282,6 +282,11 @@ func (c *CreateIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nc, nil
 }
 
+// IsAsync implements the AsyncNode interface.
+func (c *CreateIndex) IsAsync() bool {
+	return c.Async
+}
+
 // getColumnsAndPrepareExpressions extracts the unique columns required by all
 // those expressions and fixes the indexes of the GetFields in the expressions
 // to match a row with only the returned columns in that same order.

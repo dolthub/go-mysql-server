@@ -569,7 +569,7 @@ func getColumn(cd *sqlparser.ColumnDefinition, indexes []*sqlparser.IndexDefinit
 	}
 
 	return &sql.Column{
-		Nullable:   !bool(typ.NotNull),
+		Nullable:   !isPkey && !bool(typ.NotNull),
 		Type:       internalTyp,
 		Name:       cd.Name.String(),
 		PrimaryKey: isPkey,
@@ -839,7 +839,7 @@ func getInt64Value(ctx *sql.Context, expr sqlparser.Expr, errStr string) (int64,
 
 func isAggregate(e sql.Expression) bool {
 	var isAgg bool
-	expression.Inspect(e, func(e sql.Expression) bool {
+	sql.Inspect(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.UnresolvedFunction:
 			isAgg = isAgg || e.IsAggregate
