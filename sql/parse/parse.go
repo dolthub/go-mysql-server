@@ -373,6 +373,9 @@ func convertDDL(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 		return convertCreateTable(c)
 	case sqlparser.DropStr:
+                if len(c.FromViews) != 0 {
+			return convertDropView(ctx, c)
+		}
 		return convertDropTable(c)
 	default:
 		return nil, ErrUnsupportedSyntax.New(c)
