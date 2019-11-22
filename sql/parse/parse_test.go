@@ -658,6 +658,39 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("t", ""),
 		),
 	),
+	`SELECT -i FROM mytable`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnaryMinus(
+				expression.NewUnresolvedColumn("i"),
+			),
+		},
+		plan.NewUnresolvedTable("mytable", ""),
+	),
+	`SELECT +i FROM mytable`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("i"),
+		},
+		plan.NewUnresolvedTable("mytable", ""),
+	),
+	`SELECT - 4 - - 80`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewMinus(
+				expression.NewLiteral(int8(-4), sql.Int8),
+				expression.NewLiteral(int8(-80), sql.Int8),
+			),
+		},
+		plan.NewUnresolvedTable("dual", ""),
+	),
+	`SELECT + - - i FROM mytable`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnaryMinus(
+				expression.NewUnaryMinus(
+					expression.NewUnresolvedColumn("i"),
+				),
+			),
+		},
+		plan.NewUnresolvedTable("mytable", ""),
+	),
 	`SELECT 1 + 1;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewPlus(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8)),
@@ -1010,14 +1043,6 @@ var fixtures = map[string]sql.Node{
 	`SHOW CREATE SCHEMA foo`:                 plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
 	`SHOW CREATE DATABASE IF NOT EXISTS foo`: plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
 	`SHOW CREATE SCHEMA IF NOT EXISTS foo`:   plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
-	`SELECT -i FROM mytable`: plan.NewProject(
-		[]sql.Expression{
-			expression.NewUnaryMinus(
-				expression.NewUnresolvedColumn("i"),
-			),
-		},
-		plan.NewUnresolvedTable("mytable", ""),
-	),
 	`SHOW WARNINGS`:                            plan.NewOffset(0, plan.ShowWarnings(sql.NewEmptyContext().Warnings())),
 	`SHOW WARNINGS LIMIT 10`:                   plan.NewLimit(10, plan.NewOffset(0, plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
 	`SHOW WARNINGS LIMIT 5,10`:                 plan.NewLimit(10, plan.NewOffset(5, plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),

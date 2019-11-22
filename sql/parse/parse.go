@@ -1246,6 +1246,9 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 		}
 
 		return expression.NewUnaryMinus(expr), nil
+	case sqlparser.PlusStr:
+		// Unary plus expressions do nothing (do not turn the expression positive). Just return the underlying expression.
+		return exprToExpression(ctx, e.Expr)
 
 	default:
 		return nil, ErrUnsupportedFeature.New("unary operator: " + e.Operator)
