@@ -58,6 +58,14 @@ var queries = []queryTest{
 		[]sql.Row{{int64(-1)}, {int64(-2)}, {int64(-3)}},
 	},
 	{
+		"SELECT +i FROM mytable;",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
+		"SELECT + - i FROM mytable;",
+		[]sql.Row{{int64(-1)}, {int64(-2)}, {int64(-3)}},
+	},
+	{
 		"SELECT i FROM mytable where -i = -2;",
 		[]sql.Row{{int64(2)}},
 	},
