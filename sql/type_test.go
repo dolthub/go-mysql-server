@@ -264,25 +264,25 @@ func TestTimestamp(t *testing.T) {
 	require.NoError(err)
 	require.Equal(now, v)
 
-	v, err = Timestamp.Convert(now.Format(TimestampLayout))
+	v, err = Timestamp.Convert(now.Format(TimestampDatetimeLayout))
 	require.NoError(err)
 	require.Equal(
-		now.Format(TimestampLayout),
-		v.(time.Time).Format(TimestampLayout),
+		now.Format(TimestampDatetimeLayout),
+		v.(time.Time).Format(TimestampDatetimeLayout),
 	)
 
 	v, err = Timestamp.Convert(now.Unix())
 	require.NoError(err)
 	if now.UnixNano() == 0 { // This test doesn't catch subsecond precision
 		require.Equal(
-			now.Format(TimestampLayout),
-			v.(time.Time).Format(TimestampLayout),
+			now.Format(TimestampDatetimeLayout),
+			v.(time.Time).Format(TimestampDatetimeLayout),
 		)
 	}
 
 	sql, err := Timestamp.SQL(now)
 	require.NoError(err)
-	require.Equal([]byte(now.Format(TimestampLayout)), sql.Raw())
+	require.Equal([]byte(now.Format(TimestampDatetimeLayout)), sql.Raw())
 
 	after := now.Add(time.Second)
 	lt(t, Timestamp, now, after)
@@ -324,7 +324,7 @@ func TestExtraTimestamps(t *testing.T) {
 			p, err := Timestamp.Convert(c.date)
 			require.NoError(err)
 
-			str := string([]byte(p.(time.Time).Format(TimestampLayout)))
+			str := string([]byte(p.(time.Time).Format(TimestampDatetimeLayout)))
 			require.Equal(c.expected, str)
 		})
 	}
@@ -376,7 +376,7 @@ func TestDate(t *testing.T) {
 }
 
 func TestDatetime(t *testing.T) {
-	commonTestsDatesTypes(Datetime, DatetimeLayout, t)
+	commonTestsDatesTypes(Datetime, TimestampDatetimeLayout, t)
 
 	now := time.Now().UTC()
 	after := now.Add(time.Millisecond)
@@ -563,7 +563,7 @@ func TestComparesWithNulls(t *testing.T) {
 		{Uint64, uint64(0)},
 		{Float32, float32(0)},
 		{Float64, float64(0)},
-		{Timestamp, timeParse(TimestampLayout, "2132-04-05 12:51:36")},
+		{Timestamp, timeParse(TimestampDatetimeLayout, "2132-04-05 12:51:36")},
 		{Date, timeParse(DateLayout, "2231-11-07")},
 		{Text, ""},
 		{Boolean, false},
