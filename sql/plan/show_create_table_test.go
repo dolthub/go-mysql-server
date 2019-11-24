@@ -2,6 +2,7 @@ package plan
 
 import (
 	"testing"
+	"vitess.io/vitess/go/sqltypes"
 
 	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
@@ -19,8 +20,8 @@ func TestShowCreateTable(t *testing.T) {
 			&sql.Column{Name: "baz", Type: sql.Text, Default: "", Nullable: false},
 			&sql.Column{Name: "zab", Type: sql.Int32, Default: int32(0), Nullable: true},
 			&sql.Column{Name: "bza", Type: sql.Uint64, Default: uint64(0), Nullable: true},
-			&sql.Column{Name: "foo", Type: sql.VarChar(123), Default: "", Nullable: true},
-			&sql.Column{Name: "pok", Type: sql.Char(123), Default: "", Nullable: true},
+			&sql.Column{Name: "foo", Type: sql.MustCreateString(sqltypes.VarChar, 123, sql.CharacterSet_Unknown, sql.Collation_Unknown), Default: "", Nullable: true},
+			&sql.Column{Name: "pok", Type: sql.MustCreateString(sqltypes.Char, 123, sql.CharacterSet_Unknown, sql.Collation_Unknown), Default: "", Nullable: true},
 		})
 
 	db.AddTable(table.Name(), table)

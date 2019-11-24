@@ -54,9 +54,9 @@ func TestMax_Eval_Timestamp(t *testing.T) {
 	m := NewMax(expression.NewGetField(0, sql.Timestamp, "field", true))
 	b := m.NewBuffer()
 
-	expected, _ := time.Parse(sql.TimestampLayout, "2008-01-02 15:04:05")
-	someTime, _ := time.Parse(sql.TimestampLayout, "2007-01-02 15:04:05")
-	otherTime, _ := time.Parse(sql.TimestampLayout, "2006-01-02 15:04:05")
+	expected, _ := time.Parse(sql.TimestampDatetimeLayout, "2008-01-02 15:04:05")
+	someTime, _ := time.Parse(sql.TimestampDatetimeLayout, "2007-01-02 15:04:05")
+	otherTime, _ := time.Parse(sql.TimestampDatetimeLayout, "2006-01-02 15:04:05")
 
 	m.Update(ctx, b, sql.NewRow(someTime))
 	m.Update(ctx, b, sql.NewRow(expected))
