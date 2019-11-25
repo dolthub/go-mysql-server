@@ -418,6 +418,7 @@ func isFalse(e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
 	return ok &&
 		lit.Type() == sql.Boolean &&
+		lit.Value() != nil &&
 		!lit.Value().(bool)
 }
 
@@ -425,6 +426,7 @@ func isTrue(e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
 	return ok &&
 		lit.Type() == sql.Boolean &&
+		lit.Value() != nil &&
 		lit.Value().(bool)
 }
 

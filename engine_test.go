@@ -143,7 +143,7 @@ var queries = []queryTest{
 	},
 	{
 		"SELECT i FROM mytable WHERE 'hello';",
-		[]sql.Row{},
+		nil,
 	},
 	{
 		"SELECT i FROM mytable WHERE not 'hello';",
@@ -637,7 +637,7 @@ var queries = []queryTest{
 	},
 	{
 		"SELECT * FROM mytable WHERE 1 > 5",
-		[]sql.Row{},
+		nil,
 	},
 	{
 		"SELECT SUM(i) + 1, i FROM mytable GROUP BY i ORDER BY i",
@@ -665,7 +665,7 @@ var queries = []queryTest{
 	},
 	{
 		`/*!40101 SET NAMES utf8 */`,
-		[]sql.Row{},
+		nil,
 	},
 	{
 		`SHOW DATABASES`,
@@ -822,15 +822,15 @@ var queries = []queryTest{
 		`
 		SHOW WARNINGS
 		`,
-		[]sql.Row{},
+		nil,
 	},
 	{
 		`SHOW WARNINGS LIMIT 0`,
-		[]sql.Row{},
+		nil,
 	},
 	{
 		`SET SESSION NET_READ_TIMEOUT= 700, SESSION NET_WRITE_TIMEOUT= 700`,
-		[]sql.Row{},
+		nil,
 	},
 	{
 		`SELECT NULL`,
@@ -899,6 +899,30 @@ var queries = []queryTest{
 		},
 	},
 	{
+		"SELECT i FROM mytable where NULL > 10;",
+		nil,
+	},
+	{
+		"SELECT i FROM mytable where NULL in (10);",
+		nil,
+	},
+	{
+		"SELECT i FROM mytable where NULL in (NULL, NULL);",
+		nil,
+	},
+	{
+		"SELECT i FROM mytable where NOT NULL NOT IN (NULL);",
+		nil,
+	},
+	{
+		"SELECT i FROM mytable where NOT (NULL) <> 10;",
+		nil,
+	},
+	{
+		"SELECT i FROM mytable where NOT NULL <> NULL;",
+		nil,
+	},
+	{
 		`SELECT round(15728640/1024/1024)`,
 		[]sql.Row{
 			{int64(15)},
@@ -940,7 +964,7 @@ var queries = []queryTest{
 	},
 	{
 		`SHOW COLLATION LIKE 'foo'`,
-		[]sql.Row{},
+		nil,
 	},
 	{
 		`SHOW COLLATION LIKE 'utf8%'`,
@@ -948,7 +972,7 @@ var queries = []queryTest{
 	},
 	{
 		`SHOW COLLATION WHERE charset = 'foo'`,
-		[]sql.Row{},
+		nil,
 	},
 	{
 		"SHOW COLLATION WHERE `Default` = 'Yes'",
@@ -956,7 +980,7 @@ var queries = []queryTest{
 	},
 	{
 		"ROLLBACK",
-		[]sql.Row{},
+		nil,
 	},
 	{
 		"SELECT substring(s, 1, 1) FROM mytable ORDER BY substring(s, 1, 1)",
@@ -1212,7 +1236,7 @@ var queries = []queryTest{
 	},
 	{
 		`SELECT * FROM mytable WHERE NULL AND i = 3`,
-		[]sql.Row{},
+		nil,
 	},
 	{
 		`SELECT 1 FROM mytable GROUP BY i HAVING i > 1`,
@@ -1284,7 +1308,7 @@ var queries = []queryTest{
 	},
 	{
 		`SELECT EXPLODE(REGEXP_MATCHES("helloworld", "bop"))`,
-		[]sql.Row{},
+		nil,
 	},
 	{
 		`SELECT EXPLODE(REGEXP_MATCHES("", ""))`,
@@ -1578,7 +1602,7 @@ var infoSchemaQueries = []queryTest {
 		GROUP BY LOGFILE_GROUP_NAME, FILE_NAME, ENGINE, TOTAL_EXTENTS, INITIAL_SIZE
 		ORDER BY LOGFILE_GROUP_NAME
 		`,
-		[]sql.Row{},
+		nil,
 	},
 	{
 		`
@@ -1588,7 +1612,7 @@ var infoSchemaQueries = []queryTest {
 		WHERE FILE_TYPE = 'DATAFILE'
 		ORDER BY TABLESPACE_NAME, LOGFILE_GROUP_NAME
 		`,
-		[]sql.Row{},
+		nil,
 	},
 	{
 		`
@@ -1599,7 +1623,7 @@ var infoSchemaQueries = []queryTest {
 		WHERE SCHEMA_NAME = 'mydb'
 		AND TABLE_NAME = 'mytable'
 		`,
-		[]sql.Row{},
+		nil,
 	},
 	{
 		`
@@ -2071,7 +2095,7 @@ func TestWarnings(t *testing.T) {
 			`
 			SHOW WARNINGS LIMIT 10,1
 			`,
-			[]sql.Row{},
+			nil,
 		},
 	}
 
@@ -3265,7 +3289,7 @@ func testQueryWithContext(ctx *sql.Context, t *testing.T, e *sqle.Engine, q stri
 		require.NoError(err)
 
 		// .Equal gives better error messages than .ElementsMatch, so use it when possible
-		if orderBy || len(rows) == 1 {
+		if orderBy || len(expected) <= 1 {
 			require.Equal(expected, rows)
 		} else {
 			require.ElementsMatch(expected, rows)
@@ -3814,7 +3838,7 @@ func TestDeleteFrom(t *testing.T) {
 			"DELETE FROM mytable;",
 			[]sql.Row{{int64(3)}},
 			"SELECT * FROM mytable;",
-			[]sql.Row{},
+			nil,
 		},
 		{
 			"DELETE FROM mytable WHERE i = 2;",
@@ -3856,13 +3880,13 @@ func TestDeleteFrom(t *testing.T) {
 			"DELETE FROM mytable WHERE s <> 'dne';",
 			[]sql.Row{{int64(3)}},
 			"SELECT * FROM mytable;",
-			[]sql.Row{},
+			nil,
 		},
 		{
 			"DELETE FROM mytable WHERE s LIKE '%row';",
 			[]sql.Row{{int64(3)}},
 			"SELECT * FROM mytable;",
-			[]sql.Row{},
+			nil,
 		},
 		{
 			"DELETE FROM mytable WHERE s = 'dne';",
