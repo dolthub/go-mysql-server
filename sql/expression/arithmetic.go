@@ -507,14 +507,26 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return -n, nil
 	case float32:
 		return -n, nil
-	case int64:
+	case int:
 		return -n, nil
-	case uint64:
-		return -int64(n), nil
+	case int8:
+		return -n, nil
+	case int16:
+		return -n, nil
 	case int32:
 		return -n, nil
+	case int64:
+		return -n, nil
+	case uint:
+		return -int(n), nil
+	case uint8:
+		return -int8(n), nil
+	case uint16:
+		return -int16(n), nil
 	case uint32:
 		return -int32(n), nil
+	case uint64:
+		return -int64(n), nil
 	default:
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(n))
 	}
