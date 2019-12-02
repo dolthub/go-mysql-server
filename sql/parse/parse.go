@@ -373,7 +373,7 @@ func convertDDL(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 		return convertCreateTable(c)
 	case sqlparser.DropStr:
-                if len(c.FromViews) != 0 {
+		if len(c.FromViews) != 0 {
 			return convertDropView(ctx, c)
 		}
 		return convertDropTable(c)
@@ -406,10 +406,10 @@ func convertCreateView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		return nil, ErrUnsupportedSyntax.New(c.ViewExpr)
 	}
 
-        queryNode, err := convertSelect(ctx, selectStatement)
-        if err != nil {
-                return nil, err
-        }
+	queryNode, err := convertSelect(ctx, selectStatement)
+	if err != nil {
+		return nil, err
+	}
 
 	queryAlias := plan.NewSubqueryAlias(c.View.Name.String(), queryNode)
 
