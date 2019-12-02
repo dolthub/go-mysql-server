@@ -47,7 +47,6 @@ var (
 	unlockTablesRegex    = regexp.MustCompile(`^unlock\s+tables$`)
 	lockTablesRegex      = regexp.MustCompile(`^lock\s+tables\s`)
 	setRegex             = regexp.MustCompile(`^set\s+`)
-	createViewRegex      = regexp.MustCompile(`^create\s+view\s+`)
 )
 
 // These constants aren't exported from vitess for some reason. This could be removed if we changed this.
@@ -104,9 +103,6 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return parseLockTables(ctx, s)
 	case setRegex.MatchString(lowerQuery):
 		s = fixSetQuery(s)
-	case createViewRegex.MatchString(lowerQuery):
-		// CREATE VIEW parses as a CREATE DDL statement with an empty table spec
-		return nil, ErrUnsupportedFeature.New("CREATE VIEW")
 	}
 
 	stmt, err := sqlparser.Parse(s)
@@ -163,7 +159,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		if err != nil {
 			return nil, err
 		}
-		return convertDDL(ddl.(*sqlparser.DDL))
+		return convertDDL(ctx, ddl.(*sqlparser.DDL))
 	case *sqlparser.Set:
 		return convertSet(ctx, n)
 	case *sqlparser.Use:
@@ -369,11 +365,17 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 	return node, nil
 }
 
-func convertDDL(c *sqlparser.DDL) (sql.Node, error) {
+func convertDDL(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	switch c.Action {
 	case sqlparser.CreateStr:
+		if !c.View.IsEmpty() {
+			return convertCreateView(ctx, c)
+		}
 		return convertCreateTable(c)
 	case sqlparser.DropStr:
+		if len(c.FromViews) != 0 {
+			return convertDropView(ctx, c)
+		}
 		return convertDropTable(c)
 	default:
 		return nil, ErrUnsupportedSyntax.New(c)
@@ -396,6 +398,31 @@ func convertCreateTable(c *sqlparser.DDL) (sql.Node, error) {
 
 	return plan.NewCreateTable(
 		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema), nil
+}
+
+func convertCreateView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
+	selectStatement, ok := c.ViewExpr.(*sqlparser.Select)
+	if !ok {
+		return nil, ErrUnsupportedSyntax.New(c.ViewExpr)
+	}
+
+	queryNode, err := convertSelect(ctx, selectStatement)
+	if err != nil {
+		return nil, err
+	}
+
+	queryAlias := plan.NewSubqueryAlias(c.View.Name.String(), queryNode)
+
+	return plan.NewCreateView(
+		sql.UnresolvedDatabase(""), c.View.Name.String(), []string{}, queryAlias, c.OrReplace), nil
+}
+
+func convertDropView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
+	plans := make([]sql.Node, len(c.FromViews))
+	for i, v := range c.FromViews {
+		plans[i] = plan.NewSingleDropView(sql.UnresolvedDatabase(""), v.Name.String())
+	}
+	return plan.NewDropView(plans, c.IfExists), nil
 }
 
 func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {

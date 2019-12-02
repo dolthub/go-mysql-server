@@ -91,3 +91,45 @@ func TestResolveTablesNested(t *testing.T) {
 	)
 	require.Equal(expected, analyzed)
 }
+
+func TestResolveViews(t *testing.T) {
+	require := require.New(t)
+
+	f := getRule("resolve_tables")
+
+	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
+	db := memory.NewDatabase("mydb")
+	db.AddTable("mytable", table)
+
+	// Resolved plan that corresponds to query "SELECT i FROM mytable"
+	subquery := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(
+				1, sql.Int32, table.Name(), "i", true),
+		},
+		plan.NewResolvedTable(table),
+	)
+	subqueryAlias := plan.NewSubqueryAlias("myview", subquery)
+	view := sql.NewView("myview", subqueryAlias)
+
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
+	err := catalog.ViewRegistry.Register(db.Name(), view)
+	require.NoError(err)
+
+	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
+
+	var notAnalyzed sql.Node = plan.NewUnresolvedTable("myview", "")
+	analyzed, err := f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
+	require.NoError(err)
+	require.Equal(subqueryAlias, analyzed)
+
+	notAnalyzed = plan.NewUnresolvedTable("MyVieW", "")
+	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
+	require.NoError(err)
+	require.Equal(subqueryAlias, analyzed)
+
+	analyzed, err = f.Apply(sql.NewEmptyContext(), a, subqueryAlias)
+	require.NoError(err)
+	require.Equal(subqueryAlias, analyzed)
+}

@@ -18,6 +18,7 @@ var ErrDatabaseNotFound = errors.NewKind("database not found: %s")
 type Catalog struct {
 	FunctionRegistry
 	*IndexRegistry
+	*ViewRegistry
 	*ProcessList
 	*MemoryManager
 
@@ -38,6 +39,7 @@ func NewCatalog() *Catalog {
 	return &Catalog{
 		FunctionRegistry: NewFunctionRegistry(),
 		IndexRegistry:    NewIndexRegistry(),
+		ViewRegistry:     NewViewRegistry(),
 		MemoryManager:    NewMemoryManager(ProcessMemory),
 		ProcessList:      NewProcessList(),
 		locks:            make(sessionLocks),

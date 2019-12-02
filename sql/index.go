@@ -589,7 +589,7 @@ func exprListsEqual(a, b []string) bool {
 // marked as creating, so nobody can't register two indexes with the same
 // expression or id while the other is still being created.
 // When something is sent through the returned channel, it means the index has
-// finished it's creation and will be marked as ready.
+// finished its creation and will be marked as ready.
 // Another channel is returned to notify the user when the index is ready.
 func (r *IndexRegistry) AddIndex(
 	idx Index,

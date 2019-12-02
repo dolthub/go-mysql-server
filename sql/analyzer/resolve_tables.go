@@ -39,17 +39,26 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 		}
 
 		rt, err := a.Catalog.Table(db, name)
-		if err != nil {
-			if sql.ErrTableNotFound.Is(err) && name == dualTableName {
+		if err == nil {
+			a.Log("table resolved: %q", t.Name())
+			return plan.NewResolvedTable(rt), nil
+		}
+
+		if sql.ErrTableNotFound.Is(err) {
+			if name == dualTableName {
 				rt = dualTable
 				name = dualTableName
-			} else {
-				return nil, err
+
+				a.Log("table resolved: %q", t.Name())
+				return plan.NewResolvedTable(rt), nil
+			}
+
+			if view, err := a.Catalog.ViewRegistry.View(db, name); err == nil {
+				a.Log("table %q is a view: replacing plans", t.Name())
+				return view.Definition(), nil
 			}
 		}
 
-		a.Log("table resolved: %q", t.Name())
-
-		return plan.NewResolvedTable(rt), nil
+		return nil, err
 	})
 }
