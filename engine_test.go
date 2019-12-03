@@ -94,6 +94,26 @@ var queries = []queryTest{
 		[]sql.Row{{int64(1)}, {int64(3)}},
 	},
 	{
+		"SELECT i FROM mytable WHERE i >= 2 order by 1",
+		[]sql.Row{{int64(2)}, {int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i <= 2 order by 1",
+		[]sql.Row{{int64(1)}, {int64(2)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i > 2",
+		[]sql.Row{{int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i < 2",
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i >= 2 or i = 1 order by 1",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
 		"SELECT f32 FROM floattable WHERE f64 = 2.0;",
 		[]sql.Row{{float32(2.0)}},
 	},

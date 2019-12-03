@@ -29,16 +29,29 @@ func (l *DescendIndexLookup) EvalExpression() sql.Expression {
 		panic("Descend index unsupported for multi-column indexes")
 	}
 
-	gt, typ := getType(l.Gt[0])
-	gtexpr := expression.NewGreaterThan(l.Index.ColumnExpressions()[0], expression.NewLiteral(gt, typ))
-	if len(l.Lte) > 0 {
-		lte, _ := getType(l.Lte[0])
-		return and(
-			gtexpr,
-			expression.NewLessThanOrEqual(l.Index.ColumnExpressions()[0], expression.NewLiteral(lte, typ)),
-		)
+	var ltExpr, gtExpr sql.Expression
+	hasLt := len(l.Lte) > 0
+	hasGte := len(l.Gt) > 0
+
+	if hasLt {
+		lt, typ := getType(l.Lte[0])
+		ltExpr = expression.NewLessThanOrEqual(l.Index.ColumnExpressions()[0], expression.NewLiteral(lt, typ))
 	}
-	return gtexpr
+	if hasGte {
+		gte, typ := getType(l.Gt[0])
+		gtExpr = expression.NewGreaterThan(l.Index.ColumnExpressions()[0], expression.NewLiteral(gte, typ))
+	}
+
+	switch {
+	case hasLt && hasGte:
+		return and(ltExpr, gtExpr)
+	case hasLt:
+		return ltExpr
+	case hasGte:
+		return gtExpr
+	default:
+		panic("Either Lte or Gt must be set")
+	}
 }
 
 func (l *DescendIndexLookup) Indexes() []string {
