@@ -114,26 +114,33 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 
 		// Merge any indexes for the same table on the left and right sides.
 		for table, leftIdx := range leftIndexes {
+			foundRightIdx := false
 			if rightIdx, ok := rightIndexes[table]; ok {
 				if canMergeIndexes(leftIdx.lookup, rightIdx.lookup) {
 					leftIdx.lookup = leftIdx.lookup.(sql.SetOperations).Union(rightIdx.lookup)
 					leftIdx.indexes = append(leftIdx.indexes, rightIdx.indexes...)
 					result[table] = leftIdx
+					foundRightIdx = true
+					delete(rightIndexes, table)
 				} else {
-					// Since we can return one index per table, if we can't merge the second index from this table, return no
-					// indexes. Returning a single one will lead to incorrect results from e.g. pushdown operations when only one
-					// side of the OR expression is used to index the table.
+					// Since we can return one index per table, if we can't merge the right-hand index from this table with the
+					// left-hand index, return no indexes. Returning a single one will lead to incorrect results from e.g.
+					// pushdown operations when only one side of the OR expression is used to index the table.
 					return nil, nil
 				}
 			}
+
+			// By the same token, if we cannot match an index on the right side for each index on the left, we can't use the
+			// left index either. Doing so would produce incorrect results, since both expressions must be considered for a
+			// row's inclusion in the result set.
+			if !foundRightIdx {
+				return nil, nil
+			}
 		}
 
-		// Put in the result map the indexes for tables we don't have indexes yet.
-		// The others were already handled by the previous loop.
-		for table, lookup := range rightIndexes {
-			if _, ok := result[table]; !ok {
-				result[table] = lookup
-			}
+		// If there are any left-over indexes, we can't consider them because they don't have matching left-hand indexes.
+		if len(rightIndexes) > 0 {
+			return nil, nil
 		}
 	case *expression.In, *expression.NotIn:
 		c, ok := e.(expression.Comparer)
