@@ -42,16 +42,29 @@ func (l *AscendIndexLookup) EvalExpression() sql.Expression {
 		panic("Ascend index unsupported for multi-column indexes")
 	}
 
-	lt, typ := getType(l.Lt[0])
-	ltexpr := expression.NewLessThan(l.Index.ColumnExpressions()[0], expression.NewLiteral(lt, typ))
-	if len(l.Gte) > 0 {
-		gte, _ := getType(l.Gte[0])
-		return and(
-			ltexpr,
-			expression.NewGreaterThanOrEqual(l.Index.ColumnExpressions()[0], expression.NewLiteral(gte, typ)),
-		)
+	var ltExpr, gtExpr sql.Expression
+	hasLt := len(l.Lt) > 0
+	hasGte := len(l.Gte) > 0
+
+	if hasLt {
+		lt, typ := getType(l.Lt[0])
+		ltExpr = expression.NewLessThan(l.Index.ColumnExpressions()[0], expression.NewLiteral(lt, typ))
 	}
-	return ltexpr
+	if hasGte {
+		gte, typ := getType(l.Gte[0])
+		gtExpr = expression.NewGreaterThanOrEqual(l.Index.ColumnExpressions()[0], expression.NewLiteral(gte, typ))
+	}
+
+	switch {
+	case hasLt && hasGte:
+		return and(ltExpr, gtExpr)
+	case hasLt:
+		return ltExpr
+	case hasGte:
+		return gtExpr
+	default:
+		panic("Either Lt or Gte must be set")
+	}
 }
 
 func (*AscendIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
