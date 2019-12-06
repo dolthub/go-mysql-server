@@ -397,7 +397,7 @@ func convertCreateTable(c *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	return plan.NewCreateTable(
-		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema), nil
+		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema, c.IfNotExists), nil
 }
 
 func convertCreateView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {

@@ -1,10 +1,10 @@
 package plan
 
 import (
-	"context"
 	"fmt"
 	"github.com/src-d/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
+	"strings"
 )
 
 // ErrCreateTable is thrown when the database doesn't support table creation
@@ -16,18 +16,20 @@ type CreateTable struct {
 	db     sql.Database
 	name   string
 	schema sql.Schema
+	ifNotExists bool
 }
 
 // NewCreateTable creates a new CreateTable node
-func NewCreateTable(db sql.Database, name string, schema sql.Schema) *CreateTable {
+func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists bool) *CreateTable {
 	for _, s := range schema {
 		s.Source = name
 	}
 
 	return &CreateTable{
-		db:     db,
-		name:   name,
-		schema: schema,
+		db:          db,
+		name:        name,
+		schema:      schema,
+		ifNotExists: ifNotExists,
 	}
 }
 
@@ -55,7 +57,11 @@ func (c *CreateTable) Resolved() bool {
 func (c *CreateTable) RowIter(s *sql.Context) (sql.RowIter, error) {
 	creatable, ok := c.db.(sql.TableCreator)
 	if ok {
-		return sql.RowsToRowIter(), creatable.CreateTable(s, c.name, c.schema)
+		err := creatable.CreateTable(s, c.name, c.schema)
+		if sql.ErrTableAlreadyExists.Is(err) && c.ifNotExists {
+			err = nil
+		}
+		return sql.RowsToRowIter(), err
 	}
 
 	return nil, ErrCreateTableNotSupported.New(c.db.Name())
@@ -76,7 +82,11 @@ func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 func (c *CreateTable) String() string {
-	return "CreateTable"
+	ifNotExists := ""
+	if c.ifNotExists {
+		ifNotExists = "if not exists "
+	}
+	return fmt.Sprintf("Create table %s%s", ifNotExists, c.name)
 }
 
 // DropTable is a node describing dropping one or more tables
@@ -124,7 +134,7 @@ func (d *DropTable) RowIter(s *sql.Context) (sql.RowIter, error) {
 
 	var err error
 	for _, tableName := range d.names {
-		_, ok, err := d.db.GetTableInsensitive(context.TODO(), tableName)
+		tbl, ok, err := d.db.GetTableInsensitive(s, tableName)
 
 		if err != nil {
 			return nil, err
@@ -137,7 +147,7 @@ func (d *DropTable) RowIter(s *sql.Context) (sql.RowIter, error) {
 
 			return nil, sql.ErrTableNotFound.New(tableName)
 		}
-		err = droppable.DropTable(s, tableName)
+		err = droppable.DropTable(s, tbl.Name())
 		if err != nil {
 			break
 		}
@@ -162,8 +172,9 @@ func (d *DropTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func (d *DropTable) String() string {
 	ifExists := ""
+	names := strings.Join(d.names, ", ")
 	if d.ifExists {
 		ifExists = "if exists "
 	}
-	return fmt.Sprintf("Drop table %s%s", ifExists, d.names)
+	return fmt.Sprintf("Drop table %s%s", ifExists, names)
 }
