@@ -68,6 +68,24 @@ var fixtures = map[string]sql.Node{
 		}},
 		false,
 	),
+	`CREATE TABLE t1(a INTEGER NOT NULL PRIMARY KEY COMMENT "hello", b TEXT COMMENT "goodbye")`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:       "a",
+			Type:       sql.Int32,
+			Nullable:   false,
+			PrimaryKey: true,
+			Comment:    "hello",
+		}, {
+			Name:       "b",
+			Type:       sql.Text,
+			Nullable:   true,
+			PrimaryKey: false,
+			Comment:    "goodbye",
+		}},
+		false,
+	),
 	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
