@@ -3022,6 +3022,26 @@ func TestCreateTable(t *testing.T) {
 	}
 
 	require.Equal(s, testTable.Schema())
+
+	testQuery(t, e,
+		"CREATE TABLE IF NOT EXISTS t4(a INTEGER,"+
+				"b TEXT NOT NULL,"+
+				"c bool, primary key (a))",
+		[]sql.Row(nil),
+	)
+
+	testQuery(t, e,
+		"CREATE TABLE IF NOT EXISTS t4(a INTEGER,"+
+				"b TEXT NOT NULL,"+
+				"c bool, primary key (a))",
+		[]sql.Row(nil),
+	)
+
+	_, _, err = e.Query(newCtx(), "CREATE TABLE t4(a INTEGER,"+
+			"b TEXT NOT NULL,"+
+			"c bool, primary key (a))")
+	require.Error(err)
+	require.True(sql.ErrTableAlreadyExists.Is(err))
 }
 
 func TestDropTable(t *testing.T) {
