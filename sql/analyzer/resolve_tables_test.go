@@ -113,8 +113,6 @@ func TestResolveViews(t *testing.T) {
 		"myview",
 		plan.NewResolvedTable(table.WithProjection([]string{"i"})),
 	)
-	expected := fmt.Sprintf("%v", subqueryAnalyzed)
-
 	view := sql.NewView("myview", subqueryDefinition)
 
 	catalog := sql.NewCatalog()
@@ -127,6 +125,13 @@ func TestResolveViews(t *testing.T) {
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("myview", "")
 	analyzed, err := f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.NoError(err)
+
+	// A bit of a kludge. We assert on the serialized form of the analyzed
+	// subquery, which shows the projected table scan in this case, because
+	// the fully analyzed subquery is going to have a slightly different
+	// ResolvedTable node than the one we've constructed in
+	// subqueryAnalyzed.
+	expected := fmt.Sprintf("%v", subqueryAnalyzed)
 	require.Equal(expected, fmt.Sprintf("%v", analyzed.Children()[0]))
 
 	notAnalyzed = plan.NewUnresolvedTable("MyVieW", "")
