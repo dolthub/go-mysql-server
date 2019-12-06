@@ -371,6 +371,8 @@ func DBTableIter(ctx context.Context, db Database, cb func(Table) (cont bool, er
 
 // TableCreator should be implemented by databases that can create new tables.
 type TableCreator interface {
+	// Creates the table with the given name and schema. If a table with that name already exists, must return
+	// sql.ErrTableAlreadyExists.
 	CreateTable(ctx *Context, name string, schema Schema) error
 }
 

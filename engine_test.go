@@ -3003,7 +3003,7 @@ func TestCreateTable(t *testing.T) {
 
 	testQuery(t, e,
 		"CREATE TABLE t4(a INTEGER,"+
-			"b TEXT NOT NULL,"+
+			"b TEXT NOT NULL COMMENT 'comment',"+
 			"c bool, primary key (a))",
 		[]sql.Row(nil),
 	)
@@ -3017,11 +3017,24 @@ func TestCreateTable(t *testing.T) {
 
 	s = sql.Schema{
 		{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t4"},
-		{Name: "b", Type: sql.Text, Nullable: false, PrimaryKey: false, Source: "t4"},
+		{Name: "b", Type: sql.Text, Nullable: false, PrimaryKey: false, Source: "t4", Comment: "comment"},
 		{Name: "c", Type: sql.Uint8, Nullable: true, Source: "t4"},
 	}
 
 	require.Equal(s, testTable.Schema())
+
+	testQuery(t, e,
+		"CREATE TABLE IF NOT EXISTS t4(a INTEGER,"+
+				"b TEXT NOT NULL,"+
+				"c bool, primary key (a))",
+		[]sql.Row(nil),
+	)
+
+	_, _, err = e.Query(newCtx(), "CREATE TABLE t4(a INTEGER,"+
+			"b TEXT NOT NULL,"+
+			"c bool, primary key (a))")
+	require.Error(err)
+	require.True(sql.ErrTableAlreadyExists.Is(err))
 }
 
 func TestDropTable(t *testing.T) {

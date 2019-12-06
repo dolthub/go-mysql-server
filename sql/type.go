@@ -126,6 +126,8 @@ type Column struct {
 	Source string
 	// PrimaryKey is true if the column is part of the primary key for its table.
 	PrimaryKey bool
+	// Comment contains the string comment for this column
+	Comment string
 }
 
 // Check ensures the value is correct for this column.
