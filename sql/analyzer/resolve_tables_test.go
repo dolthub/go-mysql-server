@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/src-d/go-mysql-server/memory"
@@ -97,20 +98,24 @@ func TestResolveViews(t *testing.T) {
 
 	f := getRule("resolve_tables")
 
-	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
+	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32, Source: "mytable"}})
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 
-	// Resolved plan that corresponds to query "SELECT i FROM mytable"
-	subquery := plan.NewProject(
-		[]sql.Expression{
-			expression.NewGetFieldWithTable(
-				1, sql.Int32, table.Name(), "i", true),
-		},
-		plan.NewResolvedTable(table),
+	subqueryDefinition := plan.NewSubqueryAlias(
+		"myview",
+		plan.NewProject(
+			[]sql.Expression{expression.NewUnresolvedColumn("i")},
+			plan.NewUnresolvedTable("mytable", ""),
+		),
 	)
-	subqueryAlias := plan.NewSubqueryAlias("myview", subquery)
-	view := sql.NewView("myview", subqueryAlias)
+	subqueryAnalyzed := plan.NewSubqueryAlias(
+		"myview",
+		plan.NewResolvedTable(table.WithProjection([]string{"i"})),
+	)
+	expected := fmt.Sprintf("%v", subqueryAnalyzed)
+
+	view := sql.NewView("myview", subqueryDefinition)
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
@@ -122,14 +127,10 @@ func TestResolveViews(t *testing.T) {
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("myview", "")
 	analyzed, err := f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.NoError(err)
-	require.Equal(subqueryAlias, analyzed)
+	require.Equal(expected, fmt.Sprintf("%v", analyzed.Children()[0]))
 
 	notAnalyzed = plan.NewUnresolvedTable("MyVieW", "")
 	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.NoError(err)
-	require.Equal(subqueryAlias, analyzed)
-
-	analyzed, err = f.Apply(sql.NewEmptyContext(), a, subqueryAlias)
-	require.NoError(err)
-	require.Equal(subqueryAlias, analyzed)
+	require.Equal(expected, fmt.Sprintf("%v", analyzed.Children()[0]))
 }
