@@ -1,7 +1,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/src-d/go-mysql-server/memory"
@@ -91,51 +90,4 @@ func TestResolveTablesNested(t *testing.T) {
 		plan.NewResolvedTable(table2),
 	)
 	require.Equal(expected, analyzed)
-}
-
-func TestResolveViews(t *testing.T) {
-	require := require.New(t)
-
-	f := getRule("resolve_tables")
-
-	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32, Source: "mytable"}})
-	db := memory.NewDatabase("mydb")
-	db.AddTable("mytable", table)
-
-	subqueryDefinition := plan.NewSubqueryAlias(
-		"myview",
-		plan.NewProject(
-			[]sql.Expression{expression.NewUnresolvedColumn("i")},
-			plan.NewUnresolvedTable("mytable", ""),
-		),
-	)
-	subqueryAnalyzed := plan.NewSubqueryAlias(
-		"myview",
-		plan.NewResolvedTable(table.WithProjection([]string{"i"})),
-	)
-	view := sql.NewView("myview", subqueryDefinition)
-
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-	err := catalog.ViewRegistry.Register(db.Name(), view)
-	require.NoError(err)
-
-	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
-
-	var notAnalyzed sql.Node = plan.NewUnresolvedTable("myview", "")
-	analyzed, err := f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
-	require.NoError(err)
-
-	// A bit of a kludge. We assert on the serialized form of the analyzed
-	// subquery, which shows the projected table scan in this case, because
-	// the fully analyzed subquery is going to have a slightly different
-	// ResolvedTable node than the one we've constructed in
-	// subqueryAnalyzed.
-	expected := fmt.Sprintf("%v", subqueryAnalyzed)
-	require.Equal(expected, fmt.Sprintf("%v", analyzed.Children()[0]))
-
-	notAnalyzed = plan.NewUnresolvedTable("MyVieW", "")
-	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
-	require.NoError(err)
-	require.Equal(expected, fmt.Sprintf("%v", analyzed.Children()[0]))
 }

@@ -26,6 +26,7 @@ var DefaultRules = []Rule{
 // OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
+	{"resolve_views", resolveViews},
 	{"resolve_subqueries", resolveSubqueries},
 	{"resolve_tables", resolveTables},
 	{"check_aliases", checkAliases},
