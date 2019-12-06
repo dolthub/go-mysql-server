@@ -12,11 +12,12 @@ import (
 // explicit columns specified by the query, if any.
 type CreateView struct {
 	UnaryNode
-	database  sql.Database
-	Name      string
-	Columns   []string
-	Catalog   *sql.Catalog
-	IsReplace bool
+	database   sql.Database
+	Name       string
+	Columns    []string
+	Catalog    *sql.Catalog
+	IsReplace  bool
+	Definition *SubqueryAlias
 }
 
 // NewCreateView creates a CreateView node with the specified parameters,
@@ -35,12 +36,13 @@ func NewCreateView(
 		columns,
 		nil,
 		isReplace,
+		definition,
 	}
 }
 
 // View returns the view that will be created by this node.
 func (cv *CreateView) View() sql.View {
-	return sql.NewView(cv.Name, cv.Child)
+	return sql.NewView(cv.Name, cv.Definition)
 }
 
 // Children implements the Node interface. It returns the Child of the
@@ -61,7 +63,7 @@ func (cv *CreateView) Resolved() bool {
 // set to false and the view already exists. The RowIter returned is always
 // empty.
 func (cv *CreateView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	view := sql.NewView(cv.Name, cv.Child)
+	view := cv.View()
 	registry := cv.Catalog.ViewRegistry
 
 	if cv.IsReplace {
@@ -96,9 +98,9 @@ func (cv *CreateView) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(cv, len(children), 1)
 	}
 
-	newCreate := cv
+	newCreate := *cv
 	newCreate.Child = children[0]
-	return newCreate, nil
+	return &newCreate, nil
 }
 
 // Database implements the Databaser interface, and it returns the database in

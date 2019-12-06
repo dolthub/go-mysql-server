@@ -55,7 +55,11 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 
 			if view, err := a.Catalog.ViewRegistry.View(db, name); err == nil {
 				a.Log("table %q is a view: replacing plans", t.Name())
-				return view.Definition(), nil
+				analyzed, err := a.Analyze(ctx, view.Definition())
+				if err != nil {
+					return nil, err
+				}
+				return analyzed, nil
 			}
 		}
 
