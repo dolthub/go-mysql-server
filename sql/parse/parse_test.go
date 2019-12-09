@@ -144,6 +144,18 @@ var fixtures = map[string]sql.Node{
 	`DROP TABLE IF EXISTS foo, bar, baz;`: plan.NewDropTable(
 		sql.UnresolvedDatabase(""), true, "foo", "bar", "baz",
 	),
+	`RENAME TABLE foo TO bar`: plan.NewRenameTable(
+		sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
+	),
+	`RENAME TABLE foo TO bar, baz TO qux`: plan.NewRenameTable(
+		sql.UnresolvedDatabase(""), []string{"foo", "baz"}, []string{"bar", "qux"},
+	),
+	`ALTER TABLE foo RENAME bar`: plan.NewRenameTable(
+		sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
+	),
+	`ALTER TABLE foo RENAME TO bar`: plan.NewRenameTable(
+		sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
+	),
 	`DESCRIBE TABLE foo;`: plan.NewDescribe(
 		plan.NewUnresolvedTable("foo", ""),
 	),

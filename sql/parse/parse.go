@@ -386,12 +386,24 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	}
 }
 
-func convertRenameTable(c *sqlparser.DDL) (sql.Node, error) {
+func convertRenameTable(ddl *sqlparser.DDL) (sql.Node, error) {
+	if len(ddl.FromTables) != len(ddl.ToTables) {
+		panic("Expected from tables and to tables of equal length")
+	}
 
+	var fromTables, toTables []string
+	for _, table := range ddl.FromTables {
+		fromTables = append(fromTables, table.Name.String())
+	}
+	for _, table := range ddl.ToTables {
+		toTables = append(toTables, table.Name.String())
+	}
+
+	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables), nil
 }
 
 func convertAlterTable(c *sqlparser.DDL) (sql.Node, error) {
-
+	return nil, nil
 }
 
 func convertDropTable(c *sqlparser.DDL) (sql.Node, error) {
