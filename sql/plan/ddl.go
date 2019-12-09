@@ -10,14 +10,40 @@ import (
 // ErrCreateTable is thrown when the database doesn't support table creation
 var ErrCreateTableNotSupported = errors.NewKind("tables cannot be created on database %s")
 var ErrDropTableNotSupported = errors.NewKind("tables cannot be dropped on database %s")
+var ErrRenameTableNotSupported = errors.NewKind("tables cannot be renamed on database %s")
+
+// Ddl nodes have a reference to a database, but no children and a nil schema.
+type ddlNode struct {
+	db sql.Database
+}
+
+// Resolved implements the Resolvable interface.
+func (c *ddlNode) Resolved() bool {
+	_, ok := c.db.(sql.UnresolvedDatabase)
+	return !ok
+}
+
+// Database implements the sql.Databaser interface.
+func (c *ddlNode) Database() sql.Database {
+	return c.db
+}
+
+// Schema implements the Node interface.
+func (*ddlNode) Schema() sql.Schema { return nil }
+
+// Children implements the Node interface.
+func (c *ddlNode) Children() []sql.Node { return nil }
 
 // CreateTable is a node describing the creation of some table.
 type CreateTable struct {
-	db     sql.Database
-	name   string
-	schema sql.Schema
+	ddlNode
+	name        string
+	schema      sql.Schema
 	ifNotExists bool
 }
+
+var _ sql.Databaser = (*CreateTable)(nil)
+var _ sql.Node = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
 func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists bool) *CreateTable {
@@ -26,18 +52,11 @@ func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists
 	}
 
 	return &CreateTable{
-		db:          db,
+		ddlNode:     ddlNode{db},
 		name:        name,
 		schema:      schema,
 		ifNotExists: ifNotExists,
 	}
-}
-
-var _ sql.Databaser = (*CreateTable)(nil)
-
-// Database implements the sql.Databaser interface.
-func (c *CreateTable) Database() sql.Database {
-	return c.db
 }
 
 // WithDatabase implements the sql.Databaser interface.
@@ -47,17 +66,11 @@ func (c *CreateTable) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &nc, nil
 }
 
-// Resolved implements the Resolvable interface.
-func (c *CreateTable) Resolved() bool {
-	_, ok := c.db.(sql.UnresolvedDatabase)
-	return !ok
-}
-
 // RowIter implements the Node interface.
-func (c *CreateTable) RowIter(s *sql.Context) (sql.RowIter, error) {
+func (c *CreateTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	creatable, ok := c.db.(sql.TableCreator)
 	if ok {
-		err := creatable.CreateTable(s, c.name, c.schema)
+		err := creatable.CreateTable(ctx, c.name, c.schema)
 		if sql.ErrTableAlreadyExists.Is(err) && c.ifNotExists {
 			err = nil
 		}
@@ -67,18 +80,9 @@ func (c *CreateTable) RowIter(s *sql.Context) (sql.RowIter, error) {
 	return nil, ErrCreateTableNotSupported.New(c.db.Name())
 }
 
-// Schema implements the Node interface.
-func (c *CreateTable) Schema() sql.Schema { return nil }
-
-// Children implements the Node interface.
-func (c *CreateTable) Children() []sql.Node { return nil }
-
 // WithChildren implements the Node interface.
 func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 0)
-	}
-	return c, nil
+	return NillaryWithChildren(c, children...)
 }
 
 func (c *CreateTable) String() string {
@@ -91,25 +95,21 @@ func (c *CreateTable) String() string {
 
 // DropTable is a node describing dropping one or more tables
 type DropTable struct {
-	db       sql.Database
+	ddlNode
 	names    []string
 	ifExists bool
 }
 
+var _ sql.Node = (*DropTable)(nil)
+var _ sql.Databaser = (*DropTable)(nil)
+
 // NewDropTable creates a new DropTable node
 func NewDropTable(db sql.Database, ifExists bool, tableNames ...string) *DropTable {
 	return &DropTable{
-		db:       db,
+		ddlNode:  ddlNode{db},
 		names:    tableNames,
 		ifExists: ifExists,
 	}
-}
-
-var _ sql.Databaser = (*DropTable)(nil)
-
-// Database implements the sql.Databaser interface.
-func (d *DropTable) Database() sql.Database {
-	return d.db
 }
 
 // WithDatabase implements the sql.Databaser interface.
@@ -119,14 +119,8 @@ func (d *DropTable) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &nc, nil
 }
 
-// Resolved implements the Resolvable interface.
-func (d *DropTable) Resolved() bool {
-	_, ok := d.db.(sql.UnresolvedDatabase)
-	return !ok
-}
-
 // RowIter implements the Node interface.
-func (d *DropTable) RowIter(s *sql.Context) (sql.RowIter, error) {
+func (d *DropTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	droppable, ok := d.db.(sql.TableDropper)
 	if !ok {
 		return nil, ErrDropTableNotSupported.New(d.db.Name())
@@ -134,7 +128,7 @@ func (d *DropTable) RowIter(s *sql.Context) (sql.RowIter, error) {
 
 	var err error
 	for _, tableName := range d.names {
-		tbl, ok, err := d.db.GetTableInsensitive(s, tableName)
+		tbl, ok, err := d.db.GetTableInsensitive(ctx, tableName)
 
 		if err != nil {
 			return nil, err
@@ -147,7 +141,7 @@ func (d *DropTable) RowIter(s *sql.Context) (sql.RowIter, error) {
 
 			return nil, sql.ErrTableNotFound.New(tableName)
 		}
-		err = droppable.DropTable(s, tbl.Name())
+		err = droppable.DropTable(ctx, tbl.Name())
 		if err != nil {
 			break
 		}
@@ -156,18 +150,9 @@ func (d *DropTable) RowIter(s *sql.Context) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), err
 }
 
-// Schema implements the Node interface.
-func (d *DropTable) Schema() sql.Schema { return nil }
-
-// Children implements the Node interface.
-func (d *DropTable) Children() []sql.Node { return nil }
-
 // WithChildren implements the Node interface.
 func (d *DropTable) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 0)
-	}
-	return d, nil
+	return NillaryWithChildren(d, children...)
 }
 
 func (d *DropTable) String() string {
@@ -177,4 +162,62 @@ func (d *DropTable) String() string {
 		ifExists = "if exists "
 	}
 	return fmt.Sprintf("Drop table %s%s", ifExists, names)
+}
+
+type RenameTable struct {
+	ddlNode
+	oldNames []string
+	newNames []string
+}
+
+var _ sql.Node = (*RenameTable)(nil)
+var _ sql.Databaser = (*RenameTable)(nil)
+
+// Creates a new RenameTable node
+func NewRenameTable(db sql.Database, oldNames, newNames []string) *RenameTable {
+	return &RenameTable{
+		ddlNode:  ddlNode{db},
+		oldNames: oldNames,
+		newNames: newNames,
+	}
+}
+
+func (r *RenameTable) WithDatabase(db sql.Database) (sql.Node, error) {
+	nr := *r
+	nr.db = db
+	return &nr, nil
+}
+
+func (r *RenameTable) String() string {
+	return fmt.Sprintf("Rename table %s to %s", r.oldNames, r.newNames)
+}
+
+func (d *RenameTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	renamer, ok := d.db.(sql.TableRenamer)
+	if !ok {
+		return nil, ErrDropTableNotSupported.New(d.db.Name())
+	}
+
+	var err error
+	for i, oldName := range d.oldNames {
+		tbl, ok, err := d.db.GetTableInsensitive(ctx, oldName)
+		if err != nil {
+			return nil, err
+		}
+
+		if !ok {
+			return nil, sql.ErrTableNotFound.New(oldName)
+		}
+
+		err = renamer.RenameTable(ctx, tbl.Name(), d.newNames[i])
+		if err != nil {
+			break
+		}
+	}
+
+	return sql.RowsToRowIter(), err
+}
+
+func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+	return NillaryWithChildren(r, children...)
 }

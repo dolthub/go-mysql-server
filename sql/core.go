@@ -395,6 +395,30 @@ type ViewDropper interface {
 	DropView(ctx *Context, name string) error
 }
 
+// TableRenamer should be implemented by databases that can rename tables.
+type TableRenamer interface {
+	// Renames a table from oldName to newName as given. If a table with newName already exists, must return
+	// sql.ErrTableAlreadyExists.
+	RenameTable(ctx *Context, oldName, newName string) error
+}
+
+// ColumnOrder is used in ALTER TABLE statements to change the order of inserted / modified columns.
+type ColumnOrder struct {
+	First bool // True if this column should come first
+	AfterColumn string // Set to the name of the column after which this column should appear
+}
+
+// AlterableTable should be implemented by tables that can receive ALTER TABLE statements to modify their schemas.
+type AlterableTable interface {
+	// AddColumn adds a column to this table as given. If non-nil, order specifies where in the schema to add the column.
+	AddColumn(ctx *Context, column Column, order *ColumnOrder) error
+	// DropColumn drops the column with the name given.
+	DropColumn(ctx *Context, columnName string) error
+	// ModifyColumn modifies the column with the name given, replacing with the new column definition provided (which may
+	// include a name change). If non-nil, order specifies where in the schema to move the column.
+	ModifyColumn(ctx *Context, columnName, column Column, order *ColumnOrder) error
+}
+
 // Lockable should be implemented by tables that can be locked and unlocked.
 type Lockable interface {
 	Nameable

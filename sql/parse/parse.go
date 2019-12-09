@@ -377,9 +377,21 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 			return convertDropView(ctx, c)
 		}
 		return convertDropTable(c)
+	case sqlparser.AlterStr:
+		return convertAlterTable(c)
+	case sqlparser.RenameStr:
+		return convertRenameTable(c)
 	default:
 		return nil, ErrUnsupportedSyntax.New(c)
 	}
+}
+
+func convertRenameTable(c *sqlparser.DDL) (sql.Node, error) {
+
+}
+
+func convertAlterTable(c *sqlparser.DDL) (sql.Node, error) {
+
 }
 
 func convertDropTable(c *sqlparser.DDL) (sql.Node, error) {
