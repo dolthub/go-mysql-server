@@ -9,9 +9,13 @@ import (
 
 // ErrCreateTable is thrown when the database doesn't support table creation
 var ErrCreateTableNotSupported = errors.NewKind("tables cannot be created on database %s")
+// ErrDropTableNotSupported is thrown when the database doesn't support dropping tables
 var ErrDropTableNotSupported = errors.NewKind("tables cannot be dropped on database %s")
+// ErrRenameTableNotSupported is thrown when the database doesn't support renaming tables
 var ErrRenameTableNotSupported = errors.NewKind("tables cannot be renamed on database %s")
+// ErrAlterTableNotSupported is thrown when the database doesn't support ALTER TABLE statements
 var ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered on database %s")
+// ErrColumnNotFound is thrown when a column named cannot be found in scope
 var ErrColumnNotFound = errors.NewKind("table %s does not have column %s")
 
 // Ddl nodes have a reference to a database, but no children and a nil schema.

@@ -3175,6 +3175,14 @@ func TestRenameColumn(t *testing.T) {
 		{Name: "i2", Type: sql.Int64, Source: "mytable"},
 		{Name: "s", Type: sql.Text, Source: "mytable"},
 	}, tbl.Schema())
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE not_exist RENAME COLUMN foo TO bar")
+	require.Error(err)
+	require.True(sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE mytable RENAME COLUMN foo TO bar")
+	require.Error(err)
+	require.True(plan.ErrColumnNotFound.Is(err))
 }
 
 func TestNaturalJoin(t *testing.T) {
