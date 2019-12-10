@@ -12,6 +12,7 @@ var ErrCreateTableNotSupported = errors.NewKind("tables cannot be created on dat
 var ErrDropTableNotSupported = errors.NewKind("tables cannot be dropped on database %s")
 var ErrRenameTableNotSupported = errors.NewKind("tables cannot be renamed on database %s")
 var ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered on database %s")
+var ErrColumnNotFound = errors.NewKind("table %s does not have column %s")
 
 // Ddl nodes have a reference to a database, but no children and a nil schema.
 type ddlNode struct {
@@ -193,17 +194,17 @@ func (r *RenameTable) String() string {
 	return fmt.Sprintf("Rename table %s to %s", r.oldNames, r.newNames)
 }
 
-func (d *RenameTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	renamer, ok := d.db.(sql.TableRenamer)
+func (r *RenameTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	renamer, ok := r.db.(sql.TableRenamer)
 	if !ok {
-		return nil, ErrDropTableNotSupported.New(d.db.Name())
+		return nil, ErrDropTableNotSupported.New(r.db.Name())
 	}
 
 	var err error
-	for i, oldName := range d.oldNames {
+	for i, oldName := range r.oldNames {
 		var tbl sql.Table
 		var ok bool
-		tbl, ok, err = d.db.GetTableInsensitive(ctx, oldName)
+		tbl, ok, err = r.db.GetTableInsensitive(ctx, oldName)
 		if err != nil {
 			return nil, err
 		}
@@ -212,7 +213,7 @@ func (d *RenameTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 			return nil, sql.ErrTableNotFound.New(oldName)
 		}
 
-		err = renamer.RenameTable(ctx, tbl.Name(), d.newNames[i])
+		err = renamer.RenameTable(ctx, tbl.Name(), r.newNames[i])
 		if err != nil {
 			break
 		}
@@ -232,6 +233,8 @@ type AddColumn struct {
 	order *sql.ColumnOrder
 }
 
+var _ sql.Node = (*AddColumn)(nil)
+
 func NewAddColumn(db sql.Database, tableName string, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
 	return &AddColumn{
 		ddlNode:   ddlNode{db},
@@ -241,25 +244,14 @@ func NewAddColumn(db sql.Database, tableName string, column *sql.Column, order *
 	}
 }
 
-var _ sql.Node = (*AddColumn)(nil)
-
 func (a *AddColumn) String() string {
 	return fmt.Sprintf("add column %s", a.column.Name)
 }
 
 func (a *AddColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	tbl, ok, err := a.db.GetTableInsensitive(ctx, a.tableName)
+	alterable, err  := getAlterableTable(a.db, ctx, a.tableName)
 	if err != nil {
 		return nil, err
-	}
-
-	if !ok {
-		return nil, sql.ErrTableNotFound.New(a.tableName)
-	}
-
-	alterable, ok := tbl.(sql.AlterableTable)
-	if !ok {
-		return nil, ErrAlterTableNotSupported.New(a.tableName, a.db.Name())
 	}
 
 	return sql.RowsToRowIter(), alterable.AddColumn(ctx, a.column, a.order)
@@ -267,4 +259,142 @@ func (a *AddColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 
 func (a *AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(a, children...)
+}
+
+type DropColumn struct {
+	ddlNode
+	tableName string
+	column string
+	order *sql.ColumnOrder
+}
+
+var _ sql.Node = (*DropColumn)(nil)
+
+func NewDropColumn(db sql.Database, tableName string, column string) *DropColumn {
+	return &DropColumn{
+		ddlNode:   ddlNode{db},
+		tableName: tableName,
+		column:    column,
+	}
+}
+
+func (d *DropColumn) String() string {
+	return fmt.Sprintf("drop column %s", d.column)
+}
+
+func (d *DropColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	alterable, err  := getAlterableTable(d.db, ctx, d.tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.RowsToRowIter(), alterable.DropColumn(ctx, d.column)
+}
+
+func (d *DropColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+	return NillaryWithChildren(d, children...)
+}
+
+type RenameColumn struct {
+	ddlNode
+	tableName string
+	columnName string
+	newColumnName string
+}
+
+var _ sql.Node = (*RenameColumn)(nil)
+
+func NewRenameColumn(db sql.Database, tableName string, columnName string, newColumnName string) *RenameColumn {
+	return &RenameColumn{
+		ddlNode:       ddlNode{db},
+		tableName:     tableName,
+		columnName:    columnName,
+		newColumnName: newColumnName,
+	}
+}
+
+func (r *RenameColumn) String() string {
+	return fmt.Sprintf("rename column %s to %s", r.columnName, r.newColumnName)
+}
+
+func (r *RenameColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	alterable, err  := getAlterableTable(r.db, ctx, r.tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	tbl := alterable.(sql.Table)
+	var col *sql.Column
+	for _, column := range tbl.Schema() {
+		if column.Name == r.columnName {
+			col = column
+			break
+		}
+	}
+
+	if col == nil {
+		return nil, ErrColumnNotFound.New(tbl.Name(), r.columnName)
+	}
+
+	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, r.columnName, col, nil)
+}
+
+func (r *RenameColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+	return NillaryWithChildren(r, children...)
+}
+
+type ModifyColumn struct {
+	ddlNode
+	tableName string
+	columnName string
+	column *sql.Column
+	order *sql.ColumnOrder
+}
+
+var _ sql.Node = (*ModifyColumn)(nil)
+
+func NewModifyColumn(db sql.Database, tableName string, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
+	return &ModifyColumn{
+		ddlNode:    ddlNode{db},
+		tableName:  tableName,
+		columnName: columnName,
+		column:     column,
+		order:      order,
+	}
+}
+
+func (m *ModifyColumn) String() string {
+	return fmt.Sprintf("drop column %s", m.column)
+}
+
+func (m *ModifyColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	alterable, err  := getAlterableTable(m.db, ctx, m.tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, m.columnName, m.column, m.order)
+}
+
+func (m *ModifyColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+	return NillaryWithChildren(m, children...)
+}
+
+// Gets an AlterableTable with the name given from the database, or an error if it cannot.
+func getAlterableTable(db sql.Database, ctx *sql.Context, tableName string) (sql.AlterableTable, error) {
+	tbl, ok, err := db.GetTableInsensitive(ctx, tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	if !ok {
+		return nil, sql.ErrTableNotFound.New(tableName)
+	}
+
+	alterable, ok := tbl.(sql.AlterableTable)
+	if !ok {
+		return nil, ErrAlterTableNotSupported.New(tableName, db.Name())
+	}
+
+	return alterable, nil
 }

@@ -412,9 +412,10 @@ func convertAlterTable(ddl *sqlparser.DDL) (sql.Node, error) {
 		// TODO: order
 		return plan.NewAddColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), sch[0], nil), nil
 	case sqlparser.DropStr:
-		return dropColumn(ctx, db, root, tableName, ddl.Column.String())
+		return plan.NewDropColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String()), nil
 	case sqlparser.RenameStr:
-		return renameColumn(ctx, db, root, tableName, ddl.Column, ddl.ToColumn)
+		return plan.NewRenameColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String(), ddl.ToColumn.String()), nil
+	// TODO: modify column for things other than rename
 	default:
 		return nil, ErrUnsupportedFeature.New(ddl)
 	}
