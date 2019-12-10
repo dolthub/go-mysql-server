@@ -364,7 +364,7 @@ func NewModifyColumn(db sql.Database, tableName string, columnName string, colum
 }
 
 func (m *ModifyColumn) String() string {
-	return fmt.Sprintf("drop column %s", m.column)
+	return fmt.Sprintf("modify column %s", m.column)
 }
 
 func (m *ModifyColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
