@@ -35,6 +35,7 @@ var _ sql.ReplaceableTable = (*Table)(nil)
 var _ sql.FilteredTable = (*Table)(nil)
 var _ sql.ProjectedTable = (*Table)(nil)
 var _ sql.IndexableTable = (*Table)(nil)
+var _ sql.AlterableTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema.
 func NewTable(name string, schema sql.Schema) *Table {
@@ -362,6 +363,63 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 	}
 
 	return nil
+}
+
+func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {
+	newSch := make(sql.Schema, len(t.schema) + 1)
+	var i int
+	if order != nil && order.First {
+		newSch[i] = column
+		i++
+	}
+	for _, col := range t.schema {
+		newSch[i] = col
+		i++
+		if (order != nil && order.AfterColumn == col.Name) || (order == nil && i == len(t.schema)) {
+			newSch[i] = column
+			i++
+		}
+	}
+	t.schema = newSch
+	return nil
+}
+
+func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {
+	newSch := make(sql.Schema, len(t.schema) - 1)
+	var i int
+	for _, col := range t.schema {
+		if col.Name != columnName {
+			newSch[i] = col
+			i++
+		}
+	}
+	t.schema = newSch
+	return nil
+}
+
+func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Column, order *sql.ColumnOrder) error {
+	if order == nil {
+		colIdx := -1
+		for i, col := range t.schema {
+			if col.Name == columnName {
+				colIdx = i
+				break
+			}
+		}
+		if colIdx <= 0 {
+			order = &sql.ColumnOrder{
+				First:       true,
+			}
+ 		} else {
+			order = &sql.ColumnOrder{
+				AfterColumn: t.schema[colIdx-1].Name,
+			}
+		}
+	}
+	if err := t.DropColumn(ctx, columnName); err != nil {
+		return err
+	}
+	return t.AddColumn(ctx, column, order)
 }
 
 func checkRow(schema sql.Schema, row sql.Row) error {

@@ -411,12 +411,12 @@ type ColumnOrder struct {
 // AlterableTable should be implemented by tables that can receive ALTER TABLE statements to modify their schemas.
 type AlterableTable interface {
 	// AddColumn adds a column to this table as given. If non-nil, order specifies where in the schema to add the column.
-	AddColumn(ctx *Context, column Column, order *ColumnOrder) error
+	AddColumn(ctx *Context, column *Column, order *ColumnOrder) error
 	// DropColumn drops the column with the name given.
 	DropColumn(ctx *Context, columnName string) error
 	// ModifyColumn modifies the column with the name given, replacing with the new column definition provided (which may
 	// include a name change). If non-nil, order specifies where in the schema to move the column.
-	ModifyColumn(ctx *Context, columnName, column Column, order *ColumnOrder) error
+	ModifyColumn(ctx *Context, columnName string, column *Column, order *ColumnOrder) error
 }
 
 // Lockable should be implemented by tables that can be locked and unlocked.
