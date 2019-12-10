@@ -3155,6 +3155,27 @@ func TestRenameTable(t *testing.T) {
 	require.True(sql.ErrTableAlreadyExists.Is(err))
 }
 
+func TestRenameColumn(t *testing.T) {
+	ctx := context.Background()
+	require := require.New(t)
+
+	e := newEngine(t)
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	testQuery(t, e,
+		"ALTER TABLE mytable RENAME COLUMN i TO i2",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "i2", Type: sql.Int64, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+	}, tbl.Schema())
+}
 
 func TestNaturalJoin(t *testing.T) {
 	require := require.New(t)
@@ -3359,6 +3380,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T) {
 	db.AddTable("table1", table1)
 	db.AddTable("table2", table2)
 	db.AddTable("table3", table3)
+
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)

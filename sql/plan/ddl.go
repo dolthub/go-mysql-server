@@ -234,6 +234,7 @@ type AddColumn struct {
 }
 
 var _ sql.Node = (*AddColumn)(nil)
+var _ sql.Databaser = (*AddColumn)(nil)
 
 func NewAddColumn(db sql.Database, tableName string, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
 	return &AddColumn{
@@ -242,6 +243,12 @@ func NewAddColumn(db sql.Database, tableName string, column *sql.Column, order *
 		column:    column,
 		order:     order,
 	}
+}
+
+func (a *AddColumn) WithDatabase(db sql.Database) (sql.Node, error) {
+	na := *a
+	na.db = db
+	return &na, nil
 }
 
 func (a *AddColumn) String() string {
@@ -269,6 +276,7 @@ type DropColumn struct {
 }
 
 var _ sql.Node = (*DropColumn)(nil)
+var _ sql.Databaser = (*DropColumn)(nil)
 
 func NewDropColumn(db sql.Database, tableName string, column string) *DropColumn {
 	return &DropColumn{
@@ -276,6 +284,12 @@ func NewDropColumn(db sql.Database, tableName string, column string) *DropColumn
 		tableName: tableName,
 		column:    column,
 	}
+}
+
+func (d *DropColumn) WithDatabase(db sql.Database) (sql.Node, error) {
+	nd := *d
+	nd.db = db
+	return &nd, nil
 }
 
 func (d *DropColumn) String() string {
@@ -303,6 +317,7 @@ type RenameColumn struct {
 }
 
 var _ sql.Node = (*RenameColumn)(nil)
+var _ sql.Databaser = (*RenameColumn)(nil)
 
 func NewRenameColumn(db sql.Database, tableName string, columnName string, newColumnName string) *RenameColumn {
 	return &RenameColumn{
@@ -311,6 +326,12 @@ func NewRenameColumn(db sql.Database, tableName string, columnName string, newCo
 		columnName:    columnName,
 		newColumnName: newColumnName,
 	}
+}
+
+func (r *RenameColumn) WithDatabase(db sql.Database) (sql.Node, error) {
+	nr := *r
+	nr.db = db
+	return &nr, nil
 }
 
 func (r *RenameColumn) String() string {
@@ -327,7 +348,9 @@ func (r *RenameColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	var col *sql.Column
 	for _, column := range tbl.Schema() {
 		if column.Name == r.columnName {
-			col = column
+			nc := *column
+			nc.Name = r.newColumnName
+			col = &nc
 			break
 		}
 	}
@@ -352,6 +375,7 @@ type ModifyColumn struct {
 }
 
 var _ sql.Node = (*ModifyColumn)(nil)
+var _ sql.Databaser = (*ModifyColumn)(nil)
 
 func NewModifyColumn(db sql.Database, tableName string, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
 	return &ModifyColumn{
@@ -361,6 +385,12 @@ func NewModifyColumn(db sql.Database, tableName string, columnName string, colum
 		column:     column,
 		order:      order,
 	}
+}
+
+func (m *ModifyColumn) WithDatabase(db sql.Database) (sql.Node, error) {
+	nm := *m
+	nm.db = db
+	return &nm, nil
 }
 
 func (m *ModifyColumn) String() string {
