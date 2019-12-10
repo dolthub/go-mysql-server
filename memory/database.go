@@ -5,13 +5,16 @@ import (
 	"github.com/src-d/go-mysql-server/sql"
 )
 
-var _ sql.Database = (*Database)(nil)
-
 // Database is an in-memory database.
 type Database struct {
 	name   string
 	tables map[string]sql.Table
 }
+
+var _ sql.Database = (*Database)(nil)
+var _ sql.TableCreator = (*Database)(nil)
+var _ sql.TableDropper = (*Database)(nil)
+var _ sql.TableRenamer = (*Database)(nil)
 
 // NewDatabase creates a new database with the given name.
 func NewDatabase(name string) *Database {
@@ -72,3 +75,21 @@ func (d *Database) DropTable(ctx *sql.Context, name string) error {
 	return nil
 }
 
+func (d *Database) RenameTable(ctx *sql.Context, oldName, newName string) error {
+	tbl, ok := d.tables[oldName]
+	if !ok {
+		// Should be impossible (engine already checks this condition)
+		return sql.ErrTableNotFound.New(oldName)
+	}
+
+	_, ok = d.tables[newName]
+	if ok {
+		return sql.ErrTableAlreadyExists.New(newName)
+	}
+
+	tbl.(*Table).name = newName
+	d.tables[newName] = tbl
+	delete(d.tables, oldName)
+
+	return nil
+}

@@ -3086,6 +3086,76 @@ func TestDropTable(t *testing.T) {
 	require.Error(err)
 }
 
+func TestRenameTable(t *testing.T) {
+	ctx := context.Background()
+	require := require.New(t)
+
+	e := newEngine(t)
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	_, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+
+	testQuery(t, e,
+		"RENAME TABLE mytable TO newTableName",
+		[]sql.Row(nil),
+	)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.False(ok)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "newTableName")
+	require.NoError(err)
+	require.True(ok)
+
+	testQuery(t, e,
+		"RENAME TABLE othertable to othertable2, newTableName to mytable",
+		[]sql.Row(nil),
+	)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "othertable")
+	require.NoError(err)
+	require.False(ok)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "othertable2")
+	require.NoError(err)
+	require.True(ok)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "newTableName")
+	require.NoError(err)
+	require.False(ok)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+
+	testQuery(t, e,
+		"ALTER TABLE mytable RENAME newTableName",
+		[]sql.Row(nil),
+	)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.False(ok)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "newTableName")
+	require.NoError(err)
+	require.True(ok)
+
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE not_exist RENAME foo")
+	require.Error(err)
+	require.True(sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE typestable RENAME niltable")
+	require.Error(err)
+	require.True(sql.ErrTableAlreadyExists.Is(err))
+}
+
+
 func TestNaturalJoin(t *testing.T) {
 	require := require.New(t)
 

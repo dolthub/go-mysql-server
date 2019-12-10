@@ -200,7 +200,9 @@ func (d *RenameTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 
 	var err error
 	for i, oldName := range d.oldNames {
-		tbl, ok, err := d.db.GetTableInsensitive(ctx, oldName)
+		var tbl sql.Table
+		var ok bool
+		tbl, ok, err = d.db.GetTableInsensitive(ctx, oldName)
 		if err != nil {
 			return nil, err
 		}
