@@ -11,6 +11,7 @@ import (
 var ErrCreateTableNotSupported = errors.NewKind("tables cannot be created on database %s")
 var ErrDropTableNotSupported = errors.NewKind("tables cannot be dropped on database %s")
 var ErrRenameTableNotSupported = errors.NewKind("tables cannot be renamed on database %s")
+var ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered on database %s")
 
 // Ddl nodes have a reference to a database, but no children and a nil schema.
 type ddlNode struct {
@@ -222,4 +223,48 @@ func (d *RenameTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 
 func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(r, children...)
+}
+
+type AddColumn struct {
+	ddlNode
+	tableName string
+	column *sql.Column
+	order *sql.ColumnOrder
+}
+
+func NewAddColumn(db sql.Database, tableName string, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
+	return &AddColumn{
+		ddlNode:   ddlNode{db},
+		tableName: tableName,
+		column:    column,
+		order:     order,
+	}
+}
+
+var _ sql.Node = (*AddColumn)(nil)
+
+func (a *AddColumn) String() string {
+	return fmt.Sprintf("add column %s", a.column.Name)
+}
+
+func (a *AddColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	tbl, ok, err := a.db.GetTableInsensitive(ctx, a.tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	if !ok {
+		return nil, sql.ErrTableNotFound.New(a.tableName)
+	}
+
+	alterable, ok := tbl.(sql.AlterableTable)
+	if !ok {
+		return nil, ErrAlterTableNotSupported.New(a.tableName, a.db.Name())
+	}
+
+	return sql.RowsToRowIter(), alterable.AddColumn(ctx, a.column, a.order)
+}
+
+func (a *AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+	return NillaryWithChildren(a, children...)
 }

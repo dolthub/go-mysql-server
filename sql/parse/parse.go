@@ -402,8 +402,22 @@ func convertRenameTable(ddl *sqlparser.DDL) (sql.Node, error) {
 	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables), nil
 }
 
-func convertAlterTable(c *sqlparser.DDL) (sql.Node, error) {
-	return nil, nil
+func convertAlterTable(ddl *sqlparser.DDL) (sql.Node, error) {
+	switch ddl.ColumnAction {
+	case sqlparser.AddStr:
+		sch, err := tableSpecToSchema(ddl.TableSpec)
+		if err != nil {
+			return nil, err
+		}
+		// TODO: order
+		return plan.NewAddColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), sch[0], nil), nil
+	case sqlparser.DropStr:
+		return dropColumn(ctx, db, root, tableName, ddl.Column.String())
+	case sqlparser.RenameStr:
+		return renameColumn(ctx, db, root, tableName, ddl.Column, ddl.ToColumn)
+	default:
+		return nil, ErrUnsupportedFeature.New(ddl)
+	}
 }
 
 func convertDropTable(c *sqlparser.DDL) (sql.Node, error) {
