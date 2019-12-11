@@ -416,18 +416,28 @@ func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) 
 
 func isFalse(e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
-	return ok &&
-		lit.Type() == sql.Boolean &&
-		lit.Value() != nil &&
-		!lit.Value().(bool)
+	if ok && lit.Type() == sql.Boolean && lit.Value() != nil {
+		switch v := lit.Value().(type) {
+		case bool:
+			return !v
+		case int8:
+			return v == sql.False
+		}
+	}
+	return false
 }
 
 func isTrue(e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
-	return ok &&
-		lit.Type() == sql.Boolean &&
-		lit.Value() != nil &&
-		lit.Value().(bool)
+	if ok && lit.Type() == sql.Boolean && lit.Value() != nil {
+		switch v := lit.Value().(type) {
+		case bool:
+			return v
+		case int8:
+			return v != sql.False
+		}
+	}
+	return false
 }
 
 // hasNaturalJoin checks whether there is a natural join at some point in the

@@ -1,11 +1,10 @@
 package expression
 
 import (
-	"testing"
-	"time"
-
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
+	"testing"
+	"time"
 )
 
 func TestConvert(t *testing.T) {
@@ -94,7 +93,7 @@ func TestConvert(t *testing.T) {
 			row:         nil,
 			castTo:      ConvertToDate,
 			expression:  NewLiteral("2017-12-12 11:12:13", sql.Int32),
-			expected:    time.Date(2017, time.December, 12, 11, 12, 13, 0, time.UTC),
+			expected:    time.Date(2017, time.December, 12, 0, 0, 0, 0, time.UTC),
 			expectedErr: false,
 		},
 		{
@@ -110,7 +109,7 @@ func TestConvert(t *testing.T) {
 			row:         nil,
 			castTo:      ConvertToBinary,
 			expression:  NewLiteral(float64(-2.3), sql.Float64),
-			expected:    []byte("-2.3"),
+			expected:    "-2.3",
 			expectedErr: false,
 		},
 		{
@@ -130,7 +129,7 @@ func TestConvert(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name:        "imposible conversion string to json",
+			name:        "impossible conversion string to json",
 			row:         nil,
 			castTo:      ConvertToJSON,
 			expression:  NewLiteral("3>2", sql.Text),

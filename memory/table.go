@@ -406,7 +406,7 @@ func (t *Table) String() string {
 		schema[i] = fmt.Sprintf(
 			"Column(%s, %s, nullable=%v)",
 			col.Name,
-			col.Type.Type().String(),
+			col.Type.String(),
 			col.Nullable,
 		)
 	}

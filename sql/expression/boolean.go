@@ -2,8 +2,6 @@ package expression
 
 import (
 	"fmt"
-	"reflect"
-
 	"github.com/src-d/go-mysql-server/sql"
 )
 
@@ -28,21 +26,41 @@ func (e *Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if v == nil {
 		return nil, nil
 	}
 
+	//// if it's in an expected format then we just negate it
+	//if b, ok := v.(int8); ok {
+	//	return sql.BooleanConcrete(sql.BooleanInvert(b)), nil
+	//} else if b, ok := v.(bool); ok {
+	//	return !b, nil
+	//}
+
+	//v, _ = e.Type().Convert(v)
+	//if v == nil {
+	//	return nil, nil
+	//}
+
+	//if b, ok := v.(int8); ok {
+	//	return sql.BooleanConcrete(sql.BooleanInvert(b)), nil
+	//} else if b, ok := v.(bool); ok {
+	//	return !b, nil
+	//} else {
+	//	return nil, sql.ErrInvalidType.New(reflect.TypeOf(v).String())
+	//}
+
 	b, ok := v.(bool)
 	if !ok {
-		v, _ = e.Type().Convert(v)
+		v, err = sql.BooleanParse(v)
+		if err != nil {
+			return nil, err
+		}
 		if v == nil {
 			return nil, nil
 		}
 
-		if b, ok = v.(bool); !ok {
-			return nil, sql.ErrInvalidType.New(reflect.TypeOf(v).String())
-		}
+		b = sql.BooleanConcrete(v)
 	}
 
 	return !b, nil

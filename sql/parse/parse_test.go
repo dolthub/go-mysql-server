@@ -11,6 +11,7 @@ import (
 
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
+	"vitess.io/vitess/go/sqltypes"
 )
 
 var fixtures = map[string]sql.Node{
@@ -35,7 +36,7 @@ var fixtures = map[string]sql.Node{
 			Nullable: true,
 		}, {
 			Name:     "e",
-			Type:     sql.Text,
+			Type:     sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			Nullable: true,
 		}, {
 			Name:     "f",
@@ -47,7 +48,7 @@ var fixtures = map[string]sql.Node{
 			Nullable: true,
 		}, {
 			Name:     "h",
-			Type:     sql.Text,
+			Type:     sql.MustCreateStringWithDefaults(sqltypes.Char, 40),
 			Nullable: true,
 		}},
 		false,

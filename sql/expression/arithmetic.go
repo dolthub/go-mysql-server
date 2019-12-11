@@ -91,7 +91,7 @@ func (a *Arithmetic) String() string {
 
 // IsNullable implements the sql.Expression interface.
 func (a *Arithmetic) IsNullable() bool {
-	if a.Type() == sql.Timestamp {
+	if a.Type() == sql.Timestamp || a.Type() == sql.Datetime {
 		return true
 	}
 
@@ -103,7 +103,7 @@ func (a *Arithmetic) Type() sql.Type {
 	switch a.Op {
 	case sqlparser.PlusStr, sqlparser.MinusStr, sqlparser.MultStr, sqlparser.DivStr:
 		if isInterval(a.Left) || isInterval(a.Right) {
-			return sql.Timestamp
+			return sql.Datetime
 		}
 
 		if sql.IsTime(a.Left.Type()) && sql.IsTime(a.Right.Type()) {

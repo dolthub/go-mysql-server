@@ -547,8 +547,7 @@ func tableSpecToSchema(tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
 
 // getColumn returns the sql.Column for the column definition given, as part of a create table statement.
 func getColumn(cd *sqlparser.ColumnDefinition, indexes []*sqlparser.IndexDefinition) (*sql.Column, error) {
-	typ := cd.Type
-	internalTyp, err := sql.MysqlTypeToType(typ.SQLType())
+	internalTyp, err := sql.ColumnTypeToType(&cd.Type)
 	if err != nil {
 		return nil, err
 	}
@@ -577,7 +576,7 @@ func getColumn(cd *sqlparser.ColumnDefinition, indexes []*sqlparser.IndexDefinit
 	}
 
 	return &sql.Column{
-		Nullable:   !isPkey && !bool(typ.NotNull),
+		Nullable:   !isPkey && !bool(cd.Type.NotNull),
 		Type:       internalTyp,
 		Name:       cd.Name.String(),
 		PrimaryKey: isPkey,

@@ -61,7 +61,7 @@ func (i *describeIter) Next() (sql.Row, error) {
 
 	f := i.schema[i.i]
 	i.i++
-	return sql.NewRow(f.Name, sql.MySQLTypeName(f.Type)), nil
+	return sql.NewRow(f.Name, f.Type.String()), nil
 }
 
 func (i *describeIter) Close() error {

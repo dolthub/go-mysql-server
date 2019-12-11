@@ -3,13 +3,13 @@ package expression
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/spf13/cast"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/spf13/cast"
 	"github.com/src-d/go-mysql-server/sql"
-	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // ErrConvertExpression is returned when a conversion is not possible.
@@ -24,14 +24,20 @@ const (
 	ConvertToNChar = "nchar"
 	// ConvertToDate is a conversion to date.
 	ConvertToDate = "date"
-	// ConvertToDatetime is a conversion to datetune.
+	// ConvertToDatetime is a conversion to datetine.
 	ConvertToDatetime = "datetime"
 	// ConvertToDecimal is a conversion to decimal.
 	ConvertToDecimal = "decimal"
+	// ConvertToDouble is a conversion to double.
+	ConvertToDouble = "double"
 	// ConvertToJSON is a conversion to json.
 	ConvertToJSON = "json"
+	// ConvertToReal is a conversion to double.
+	ConvertToReal = "real"
 	// ConvertToSigned is a conversion to signed.
 	ConvertToSigned = "signed"
+	// ConvertToTime is a conversion to time.
+	ConvertToTime = "time"
 	// ConvertToUnsigned is a conversion to unsigned.
 	ConvertToUnsigned = "unsigned"
 )
@@ -71,13 +77,18 @@ func (c *Convert) Type() sql.Type {
 	case ConvertToDate:
 		return sql.Date
 	case ConvertToDatetime:
-		return sql.Timestamp
+		return sql.Datetime
 	case ConvertToDecimal:
+		//TODO: change this to DECIMAL when it's implemented
+		return sql.Float64
+	case ConvertToDouble, ConvertToReal:
 		return sql.Float64
 	case ConvertToJSON:
 		return sql.JSON
 	case ConvertToSigned:
 		return sql.Int64
+	case ConvertToTime:
+		return sql.Time
 	case ConvertToUnsigned:
 		return sql.Uint64
 	default:
@@ -120,46 +131,51 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func convertValue(val interface{}, castTo string) (interface{}, error) {
 	switch castTo {
 	case ConvertToBinary:
-		s, err := sql.Text.Convert(val)
+		b, err := sql.Blob.Convert(val)
 		if err != nil {
-			return nil, err
+			return nil, nil
 		}
-
-		b, err := sql.Blob.Convert(s)
-		if err != nil {
-			return nil, err
-		}
-
 		return b, nil
 	case ConvertToChar, ConvertToNChar:
 		s, err := sql.Text.Convert(val)
 		if err != nil {
-			return nil, err
+			return nil, nil
 		}
-
 		return s, nil
-	case ConvertToDate, ConvertToDatetime:
+	case ConvertToDate:
 		_, isTime := val.(time.Time)
 		_, isString := val.(string)
 		if !(isTime || isString) {
 			return nil, nil
 		}
-
-		d, err := sql.Timestamp.Convert(val)
+		d, err := sql.Date.Convert(val)
 		if err != nil {
-			d, err = sql.Date.Convert(val)
-			if err != nil {
-				return nil, nil
-			}
+			return nil, nil
 		}
-
-		return sql.ValidateTime(d.(time.Time)), nil
+		return d, nil
+	case ConvertToDatetime:
+		_, isTime := val.(time.Time)
+		_, isString := val.(string)
+		if !(isTime || isString) {
+			return nil, nil
+		}
+		d, err := sql.Datetime.Convert(val)
+		if err != nil {
+			return nil, nil
+		}
+		return d, nil
 	case ConvertToDecimal:
-		d, err := cast.ToFloat64E(val)
+		//TODO: change this to DECIMAL when it's implemented
+		d, err := sql.Float64.Convert(val)
 		if err != nil {
-			return float64(0), nil
+			return sql.Float64.Zero(), nil
 		}
-
+		return d, nil
+	case ConvertToDouble, ConvertToReal:
+		d, err := sql.Float64.Convert(val)
+		if err != nil {
+			return sql.Float64.Zero(), nil
+		}
 		return d, nil
 	case ConvertToJSON:
 		s, err := cast.ToStringE(val)
@@ -177,10 +193,16 @@ func convertValue(val interface{}, castTo string) (interface{}, error) {
 	case ConvertToSigned:
 		num, err := sql.Int64.Convert(val)
 		if err != nil {
-			return int64(0), nil
+			return sql.Int64.Zero(), nil
 		}
 
 		return num, nil
+	case ConvertToTime:
+		t, err := sql.Time.Convert(val)
+		if err != nil {
+			return nil, nil
+		}
+		return t, nil
 	case ConvertToUnsigned:
 		num, err := sql.Uint64.Convert(val)
 		if err != nil {

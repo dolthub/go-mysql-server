@@ -2,7 +2,6 @@ package sql
 
 import (
 	"strconv"
-	"strings"
 	"time"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -32,12 +31,24 @@ func (t yearType) Compare(a interface{}, b interface{}) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	ai := as.(int16)
+	bi := bs.(int16)
 
-	return strings.Compare(as.(string), bs.(string)), nil
+	if ai == bi {
+		return 0, nil
+	}
+	if ai < bi {
+		return -1, nil
+	}
+	return 1, nil
 }
 
 // Convert implements Type interface.
 func (t yearType) Convert(v interface{}) (interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
+
 	switch value := v.(type) {
 	case int:
 		return t.Convert(int64(value))
@@ -57,16 +68,16 @@ func (t yearType) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(int64(value))
 	case int64:
 		if value == 0 {
-			return "0000", nil
+			return int16(0), nil
 		}
 		if value >= 1 && value <= 69 {
-			return strconv.Itoa(int(value) + 2000), nil
+			return int16(value + 2000), nil
 		}
 		if value >= 70 && value <= 99 {
-			return strconv.Itoa(int(value) + 1900), nil
+			return int16(value + 1900), nil
 		}
 		if value >= 1901 && value <= 2155 {
-			return strconv.Itoa(int(value)), nil
+			return int16(value), nil
 		}
 	case uint64:
 		return t.Convert(int64(value))
@@ -81,24 +92,28 @@ func (t yearType) Convert(v interface{}) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
-			if i >= 0 && i <= 69 {
-				return strconv.Itoa(int(i) + 2000), nil
+			if i == 0 {
+				return int16(2000), nil
 			}
-			if i >= 70 && i <= 99 {
-				return strconv.Itoa(int(i) + 1900), nil
-			}
-			if i >= 1901 && i <= 2155 {
-				return value, nil
-			}
+			return t.Convert(i)
 		}
 	case time.Time:
 		year := value.Year()
 		if year == 0 || (year >= 1901 && year <= 2155) {
-			return strconv.Itoa(year), nil
+			return int16(year), nil
 		}
 	}
 
 	return nil, ErrConvertingToYear.New(v)
+}
+
+// MustConvert implements the Type interface.
+func (t yearType) MustConvert(v interface{}) interface{} {
+	value, err := t.Convert(v)
+	if err != nil {
+		panic(err)
+	}
+	return value
 }
 
 // SQL implements Type interface.
@@ -107,7 +122,7 @@ func (t yearType) SQL(v interface{}) (sqltypes.Value, error) {
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	return sqltypes.MakeTrusted(sqltypes.Year, []byte(v.(string))), nil
+	return sqltypes.MakeTrusted(sqltypes.Year, strconv.AppendInt(nil, int64(v.(int16)), 10)), nil
 }
 
 // String implements Type interface.
@@ -122,5 +137,5 @@ func (t yearType) Type() query.Type {
 
 // Zero implements Type interface.
 func (t yearType) Zero() interface{} {
-	return "0000"
+	return int16(0)
 }

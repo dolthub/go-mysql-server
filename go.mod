@@ -4,6 +4,8 @@ require (
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/go-kit/kit v0.8.0
 	github.com/go-sql-driver/mysql v1.4.1
+	github.com/gocraft/dbr v0.0.0-20190708200302-a54124dfc613
+	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/google/btree v1.0.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.3

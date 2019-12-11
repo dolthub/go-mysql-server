@@ -3,6 +3,7 @@ package sql
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/cast"
 	"gopkg.in/src-d/go-errors.v1"
@@ -24,11 +25,14 @@ const (
 var (
 	// ErrLengthTooLarge is thrown when a string's length is too large given the other parameters.
 	ErrLengthTooLarge = errors.NewKind("length is %v but max allowed is %v")
+	ErrLengthBeyondLimit = errors.NewKind("string is too large for column")
+	ErrBinaryCollation = errors.NewKind("binary types must have the binary collation")
 
-	defaultCharset = CharacterSet_utf8mb4
-
-	Text = MustCreateStringWithDefaults(sqltypes.Text, textBlobMax)
+	Text = MustCreateStringWithDefaults(sqltypes.Text, textBlobMax / Collation_Default.CharacterSet().MaxLength())
+	TinyBlob = MustCreateBlob(sqltypes.Blob, tinyTextBlobMax)
 	Blob = MustCreateBlob(sqltypes.Blob, textBlobMax)
+	MediumBlob = MustCreateBlob(sqltypes.Blob, mediumTextBlobMax)
+	LongBlob = MustCreateBlob(sqltypes.Blob, longTextBlobMax)
 )
 
 // StringType represents all string types, including VARCHAR and BLOB
@@ -43,13 +47,11 @@ type StringType interface {
 type stringType struct {
 	baseType query.Type
 	charLength int64
-	charset CharacterSet
 	collation Collation
 }
 
-// CreateString creates a StringType. If a CharacterSet or Collation was not specified, then use Unknown.
-// If the binary attribute (not collation) was used, then use CharacterSetBin as the Collation.
-func CreateString(baseType query.Type, length int64, charset CharacterSet, collation Collation) (StringType, error) {
+// CreateString creates a StringType.
+func CreateString(baseType query.Type, length int64, collation Collation) (StringType, error) {
 	// Check the base type first and fail immediately if it's unknown
 	switch baseType {
 	case sqltypes.Char, sqltypes.Binary, sqltypes.VarChar, sqltypes.VarBinary, sqltypes.Text, sqltypes.Blob:
@@ -62,47 +64,27 @@ func CreateString(baseType query.Type, length int64, charset CharacterSet, colla
 		return nil, fmt.Errorf("length of %v is less than the minimum of 0", length)
 	}
 
-	// Figure out what an Unknown CharacterSet or Collation should be or validate the given combination.
-	if charset == CharacterSet_Unknown {
-		if collation == Collation_Unknown {
-			charset = defaultCharset
-			collation = charset.DefaultCollation()
-		} else if collation == Collation_CharacterSetBin {
-			charset = defaultCharset
-			collation = charset.BinaryCollation()
-		} else {
-			charset = collation.CharacterSet()
-		}
-	} else {
-		if collation == Collation_Unknown {
-			collation = charset.DefaultCollation()
-		} else if collation == Collation_CharacterSetBin {
-			collation = charset.BinaryCollation()
-		} else {
-			if !collation.IsValid(charset) {
-				return nil, fmt.Errorf("%v is not a valid character set for %v", charset, collation)
-			}
+	switch baseType {
+	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
+		if collation != Collation_binary {
+			return nil, ErrBinaryCollation.New()
 		}
 	}
 
 	// If the CharacterSet is binary, then we convert the type to the binary equivalent
-	switch baseType {
-	case sqltypes.Char:
-		if charset == CharacterSet_binary {
+	if collation == Collation_binary {
+		switch baseType {
+		case sqltypes.Char:
 			baseType = sqltypes.Binary
-		}
-	case sqltypes.VarChar:
-		if charset == CharacterSet_binary {
+		case sqltypes.VarChar:
 			baseType = sqltypes.VarBinary
-		}
-	case sqltypes.Text:
-		if charset == CharacterSet_binary {
+		case sqltypes.Text:
 			baseType = sqltypes.Blob
 		}
 	}
 
 	// Make sure that length is valid depending on the base type, since they each handle lengths differently
-	charsetMaxLength := charset.MaxLength()
+	charsetMaxLength := collation.CharacterSet().MaxLength()
 	byteLength := length * charsetMaxLength
 	switch baseType {
 	case sqltypes.Char, sqltypes.Binary:
@@ -132,13 +114,12 @@ func CreateString(baseType query.Type, length int64, charset CharacterSet, colla
 		}
 	}
 
-	return stringType{baseType, length, charset, collation}, nil
+	return stringType{baseType, length, collation}, nil
 }
 
-// MustCreateString creates a StringType. If a CharacterSet or Collation was not specified, then use Unknown.
-// If the binary attribute (not collation) was used, then use CharacterSetBin as the Collation.
-func MustCreateString(baseType query.Type, length int64, charset CharacterSet, collation Collation) StringType {
-	st, err := CreateString(baseType, length, charset, collation)
+// MustCreateString is the same as CreateString except it panics on errors.
+func MustCreateString(baseType query.Type, length int64, collation Collation) StringType {
+	st, err := CreateString(baseType, length, collation)
 	if err != nil {
 		panic(err)
 	}
@@ -147,22 +128,22 @@ func MustCreateString(baseType query.Type, length int64, charset CharacterSet, c
 
 // CreateStringWithDefaults creates a StringType with the default character set and collation of the given size.
 func CreateStringWithDefaults(baseType query.Type, length int64) (StringType, error) {
-	return CreateString(baseType, length, defaultCharset, defaultCharset.DefaultCollation())
+	return CreateString(baseType, length, Collation_Default)
 }
 
 // MustCreateStringWithDefaults creates a StringType with the default CharacterSet and Collation.
 func MustCreateStringWithDefaults(baseType query.Type, length int64) StringType {
-	return MustCreateString(baseType, length, defaultCharset, defaultCharset.DefaultCollation())
+	return MustCreateString(baseType, length, Collation_Default)
 }
 
 // CreateBlob creates a StringType with a binary collation and character set of the given size.
 func CreateBlob(baseType query.Type, lengthHint int64) (StringType, error) {
-	return CreateString(baseType, lengthHint, CharacterSet_binary, Collation_binary)
+	return CreateString(baseType, lengthHint, Collation_binary)
 }
 
 // MustCreateBlob is the same as CreateBlob except it panics on errors.
 func MustCreateBlob(baseType query.Type, lengthHint int64) StringType {
-	return MustCreateString(baseType, lengthHint, CharacterSet_binary, Collation_binary)
+	return MustCreateString(baseType, lengthHint, Collation_binary)
 }
 
 // Compare implements Type interface.
@@ -194,11 +175,44 @@ func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t stringType) Convert(v interface{}) (interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
+
+	if ti, ok := v.(time.Time); ok {
+		v = ti.Format(TimestampDatetimeLayout)
+	}
+
 	val, err := cast.ToStringE(v)
 	if err != nil {
 		return nil, ErrConvertToSQL.New(t)
 	}
+
+	if t.CharacterSet().MaxLength() == 1 {
+		if int64(len(val)) > t.charLength {
+			return nil, ErrLengthBeyondLimit.New()
+		}
+	} else {
+		//TODO: this should count the string's length properly according to the character set
+		if int64(len(val)) > t.charLength {
+			return nil, ErrLengthBeyondLimit.New()
+		}
+	}
+
+	if t.baseType == sqltypes.Binary {
+		val += strings.Repeat(string([]byte{0}), int(t.charLength) - len(val))
+	}
+
 	return val, nil
+}
+
+// MustConvert implements the Type interface.
+func (t stringType) MustConvert(v interface{}) interface{} {
+	value, err := t.Convert(v)
+	if err != nil {
+		panic(err)
+	}
+	return value
 }
 
 // SQL implements Type interface.
@@ -251,11 +265,11 @@ func (t stringType) String() string {
 		}
 	}
 
-	if t.charset != CharacterSet_binary {
-		if t.charset != defaultCharset {
-			s += " CHARACTER SET " + t.charset.String()
+	if t.CharacterSet() != CharacterSet_binary {
+		if t.CharacterSet() != Collation_Default.CharacterSet() {
+			s += " CHARACTER SET " + t.CharacterSet().String()
 		}
-		if t.collation != defaultCharset.DefaultCollation() {
+		if t.collation != Collation_Default {
 			s += " COLLATE " + t.collation.String()
 		}
 	}
@@ -274,17 +288,19 @@ func (t stringType) Zero() interface{} {
 }
 
 func (t stringType) CharacterSet() CharacterSet {
-	return t.charset
+	return t.collation.CharacterSet()
 }
 
 func (t stringType) Collation() Collation {
 	return t.collation
 }
 
+// MaxCharacterLength is the maximum character length for this type.
 func (t stringType) MaxCharacterLength() int64 {
 	return t.charLength
 }
 
+// MaxByteLength is the maximum number of bytes that may be consumed by a string that conforms to this type.
 func (t stringType) MaxByteLength() int64 {
-	return t.charLength * int64(t.charset.MaxLength())
+	return t.charLength * t.CharacterSet().MaxLength()
 }
