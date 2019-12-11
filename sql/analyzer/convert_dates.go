@@ -161,7 +161,7 @@ func addDateConvert(
 		switch e.Type() {
 		case sql.Date:
 			result = expression.NewConvert(e, expression.ConvertToDate)
-		case sql.Timestamp:
+		case sql.Datetime, sql.Timestamp:
 			result = expression.NewConvert(e, expression.ConvertToDatetime)
 		default:
 			result = e

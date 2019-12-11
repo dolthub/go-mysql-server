@@ -25,8 +25,8 @@ func TestShowColumns(t *testing.T) {
 
 	expected := []sql.Row{
 		sql.Row{"a", "TEXT", "NO", "", "", ""},
-		sql.Row{"b", "INT64", "YES", "", "", ""},
-		sql.Row{"c", "INT64", "NO", "", "1", ""},
+		sql.Row{"b", "BIGINT", "YES", "", "", ""},
+		sql.Row{"c", "BIGINT", "NO", "", "1", ""},
 	}
 
 	require.Equal(expected, rows)
@@ -48,8 +48,8 @@ func TestShowColumnsFull(t *testing.T) {
 
 	expected := []sql.Row{
 		sql.Row{"a", "TEXT", "utf8_bin", "NO", "", "", "", "", ""},
-		sql.Row{"b", "INT64", nil, "YES", "", "", "", "", ""},
-		sql.Row{"c", "INT64", nil, "NO", "", "1", "", "", ""},
+		sql.Row{"b", "BIGINT", nil, "YES", "", "", "", "", ""},
+		sql.Row{"c", "BIGINT", nil, "NO", "", "1", "", "", ""},
 	}
 
 	require.Equal(expected, rows)

@@ -22,12 +22,9 @@ func getDate(ctx *sql.Context,
 		return nil, nil
 	}
 
-	date, err := sql.Timestamp.Convert(val)
+	date, err := sql.Datetime.ConvertWithoutRangeCheck(val)
 	if err != nil {
-		date, err = sql.Date.Convert(val)
-		if err != nil {
-			date = nil
-		}
+		date = sql.Datetime.Zero().(time.Time)
 	}
 
 	return date, nil
@@ -519,7 +516,7 @@ func NewNow() sql.Expression {
 }
 
 // Type implements the sql.Expression interface.
-func (*Now) Type() sql.Type { return sql.Timestamp }
+func (*Now) Type() sql.Type { return sql.Datetime }
 
 func (*Now) String() string { return "NOW()" }
 

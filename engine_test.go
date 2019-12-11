@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"vitess.io/vitess/go/sqltypes"
 
 	"github.com/opentracing/opentracing-go"
 
@@ -724,26 +725,26 @@ var queries = []queryTest{
 	{
 		`SHOW COLUMNS FROM mytable`,
 		[]sql.Row{
-			{"i", "INT64", "NO", "", "", ""},
+			{"i", "BIGINT", "NO", "", "", ""},
 			{"s", "TEXT", "NO", "", "", ""},
 		},
 	},
 	{
 		`SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
 		[]sql.Row{
-			{"i", "INT64", "NO", "", "", ""},
+			{"i", "BIGINT", "NO", "", "", ""},
 		},
 	},
 	{
 		`SHOW COLUMNS FROM mytable LIKE 'i'`,
 		[]sql.Row{
-			{"i", "INT64", "NO", "", "", ""},
+			{"i", "BIGINT", "NO", "", "", ""},
 		},
 	},
 	{
 		`SHOW FULL COLUMNS FROM mytable`,
 		[]sql.Row{
-			{"i", "INT64", nil, "NO", "", "", "", "", ""},
+			{"i", "BIGINT", nil, "NO", "", "", "", "", ""},
 			{"s", "TEXT", "utf8_bin", "NO", "", "", "", "", ""},
 		},
 	},
@@ -1951,7 +1952,6 @@ func mergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
 	})
 }
 
-
 func newUnmergableIndex(tables map[string]*memory.Table, tableName string, exprs ...sql.Expression) *memory.UnmergeableIndex {
 	return &memory.UnmergeableIndex{
 		DB:         "mydb",
@@ -2189,14 +2189,14 @@ func TestDescribe(t *testing.T) {
 	query := `DESCRIBE FORMAT=TREE SELECT * FROM mytable`
 	expectedSeq := []sql.Row{
 		sql.NewRow("Table(mytable): Projected "),
-		sql.NewRow(" ├─ Column(i, INT64, nullable=false)"),
+		sql.NewRow(" ├─ Column(i, BIGINT, nullable=false)"),
 		sql.NewRow(" └─ Column(s, TEXT, nullable=false)"),
 	}
 
 	expectedParallel := []sql.Row{
 		{"Exchange(parallelism=2)"},
 		{" └─ Table(mytable): Projected "},
-		{"     ├─ Column(i, INT64, nullable=false)"},
+		{"     ├─ Column(i, BIGINT, nullable=false)"},
 		{"     └─ Column(s, TEXT, nullable=false)"},
 	}
 
@@ -2271,7 +2271,7 @@ func TestInsertInto(t *testing.T) {
 			999, 127, 32767, 2147483647, 9223372036854775807,
 			255, 65535, 4294967295, 18446744073709551615,
 			3.40282346638528859811704183484516925440e+38, 1.797693134862315708145274237317043567981e+308,
-			'2132-04-05 12:51:36', '2231-11-07',
+			'2037-04-05 12:51:36', '2231-11-07',
 			'random text', true, '{"key":"value"}', 'blobdata'
 			);`,
 			[]sql.Row{{int64(1)}},
@@ -2280,8 +2280,8 @@ func TestInsertInto(t *testing.T) {
 				int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 				uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 				float32(math.MaxFloat32), float64(math.MaxFloat64),
-				timeParse(sql.TimestampDatetimeLayout, "2132-04-05 12:51:36"), timeParse(sql.DateLayout, "2231-11-07"),
-				"random text", true, ([]byte)(`{"key":"value"}`), ([]byte)("blobdata"),
+				sql.Timestamp.MustConvert("2037-04-05 12:51:36"), sql.Date.MustConvert("2231-11-07"),
+				"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
 			}},
 		},
 		{
@@ -2289,7 +2289,7 @@ func TestInsertInto(t *testing.T) {
 			id = 999, i8 = 127, i16 = 32767, i32 = 2147483647, i64 = 9223372036854775807,
 			u8 = 255, u16 = 65535, u32 = 4294967295, u64 = 18446744073709551615,
 			f32 = 3.40282346638528859811704183484516925440e+38, f64 = 1.797693134862315708145274237317043567981e+308,
-			ti = '2132-04-05 12:51:36', da = '2231-11-07',
+			ti = '2037-04-05 12:51:36', da = '2231-11-07',
 			te = 'random text', bo = true, js = '{"key":"value"}', bl = 'blobdata'
 			;`,
 			[]sql.Row{{int64(1)}},
@@ -2298,8 +2298,8 @@ func TestInsertInto(t *testing.T) {
 				int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 				uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 				float32(math.MaxFloat32), float64(math.MaxFloat64),
-				timeParse(sql.TimestampDatetimeLayout, "2132-04-05 12:51:36"), timeParse(sql.DateLayout, "2231-11-07"),
-				"random text", true, ([]byte)(`{"key":"value"}`), ([]byte)("blobdata"),
+				sql.Timestamp.MustConvert("2037-04-05 12:51:36"), sql.Date.MustConvert("2231-11-07"),
+				"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
 			}},
 		},
 		{
@@ -2307,7 +2307,7 @@ func TestInsertInto(t *testing.T) {
 			999, -128, -32768, -2147483648, -9223372036854775808,
 			0, 0, 0, 0,
 			1.401298464324817070923729583289916131280e-45, 4.940656458412465441765687928682213723651e-324,
-			'0010-04-05 12:51:36', '0101-11-07',
+			'0000-00-00 00:00:00', '0000-00-00',
 			'', false, '', ''
 			);`,
 			[]sql.Row{{int64(1)}},
@@ -2316,8 +2316,8 @@ func TestInsertInto(t *testing.T) {
 				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 				uint8(0), uint16(0), uint32(0), uint64(0),
 				float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
-				timeParse(sql.TimestampDatetimeLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
-				"", false, ([]byte)(`""`), ([]byte)(""),
+				sql.Timestamp.Zero(), sql.Date.Zero(),
+				"", sql.False, ([]byte)(`""`), "",
 			}},
 		},
 		{
@@ -2325,7 +2325,7 @@ func TestInsertInto(t *testing.T) {
 			id = 999, i8 = -128, i16 = -32768, i32 = -2147483648, i64 = -9223372036854775808,
 			u8 = 0, u16 = 0, u32 = 0, u64 = 0,
 			f32 = 1.401298464324817070923729583289916131280e-45, f64 = 4.940656458412465441765687928682213723651e-324,
-			ti = '0010-04-05 12:51:36', da = '0101-11-07',
+			ti = '0000-00-00 00:00:00', da = '0000-00-00',
 			te = '', bo = false, js = '', bl = ''
 			;`,
 			[]sql.Row{{int64(1)}},
@@ -2334,8 +2334,8 @@ func TestInsertInto(t *testing.T) {
 				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 				uint8(0), uint16(0), uint32(0), uint64(0),
 				float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
-				timeParse(sql.TimestampDatetimeLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
-				"", false, ([]byte)(`""`), ([]byte)(""),
+				sql.Timestamp.Zero(), sql.Date.Zero(),
+				"", sql.False, ([]byte)(`""`), "",
 			}},
 		},
 		{
@@ -2578,7 +2578,7 @@ func TestReplaceInto(t *testing.T) {
 			999, 127, 32767, 2147483647, 9223372036854775807,
 			255, 65535, 4294967295, 18446744073709551615,
 			3.40282346638528859811704183484516925440e+38, 1.797693134862315708145274237317043567981e+308,
-			'2132-04-05 12:51:36', '2231-11-07',
+			'2037-04-05 12:51:36', '2231-11-07',
 			'random text', true, '{"key":"value"}', 'blobdata'
 			);`,
 			[]sql.Row{{int64(1)}},
@@ -2587,8 +2587,8 @@ func TestReplaceInto(t *testing.T) {
 				int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 				uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 				float32(math.MaxFloat32), float64(math.MaxFloat64),
-				timeParse(sql.TimestampDatetimeLayout, "2132-04-05 12:51:36"), timeParse(sql.DateLayout, "2231-11-07"),
-				"random text", true, ([]byte)(`{"key":"value"}`), ([]byte)("blobdata"),
+				sql.Timestamp.MustConvert("2037-04-05 12:51:36"), sql.Date.MustConvert("2231-11-07"),
+				"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
 			}},
 		},
 		{
@@ -2596,7 +2596,7 @@ func TestReplaceInto(t *testing.T) {
 			id = 999, i8 = 127, i16 = 32767, i32 = 2147483647, i64 = 9223372036854775807,
 			u8 = 255, u16 = 65535, u32 = 4294967295, u64 = 18446744073709551615,
 			f32 = 3.40282346638528859811704183484516925440e+38, f64 = 1.797693134862315708145274237317043567981e+308,
-			ti = '2132-04-05 12:51:36', da = '2231-11-07',
+			ti = '2037-04-05 12:51:36', da = '2231-11-07',
 			te = 'random text', bo = true, js = '{"key":"value"}', bl = 'blobdata'
 			;`,
 			[]sql.Row{{int64(1)}},
@@ -2605,8 +2605,8 @@ func TestReplaceInto(t *testing.T) {
 				int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 				uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 				float32(math.MaxFloat32), float64(math.MaxFloat64),
-				timeParse(sql.TimestampDatetimeLayout, "2132-04-05 12:51:36"), timeParse(sql.DateLayout, "2231-11-07"),
-				"random text", true, ([]byte)(`{"key":"value"}`), ([]byte)("blobdata"),
+				sql.Timestamp.MustConvert("2037-04-05 12:51:36"), sql.Date.MustConvert("2231-11-07"),
+				"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
 			}},
 		},
 		{
@@ -2614,7 +2614,7 @@ func TestReplaceInto(t *testing.T) {
 			999, -128, -32768, -2147483648, -9223372036854775808,
 			0, 0, 0, 0,
 			1.401298464324817070923729583289916131280e-45, 4.940656458412465441765687928682213723651e-324,
-			'0010-04-05 12:51:36', '0101-11-07',
+			'0000-00-00 00:00:00', '0000-00-00',
 			'', false, '', ''
 			);`,
 			[]sql.Row{{int64(1)}},
@@ -2623,8 +2623,8 @@ func TestReplaceInto(t *testing.T) {
 				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 				uint8(0), uint16(0), uint32(0), uint64(0),
 				float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
-				timeParse(sql.TimestampDatetimeLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
-				"", false, ([]byte)(`""`), ([]byte)(""),
+				sql.Timestamp.Zero(), sql.Date.Zero(),
+				"", sql.False, ([]byte)(`""`), "",
 			}},
 		},
 		{
@@ -2632,7 +2632,7 @@ func TestReplaceInto(t *testing.T) {
 			id = 999, i8 = -128, i16 = -32768, i32 = -2147483648, i64 = -9223372036854775808,
 			u8 = 0, u16 = 0, u32 = 0, u64 = 0,
 			f32 = 1.401298464324817070923729583289916131280e-45, f64 = 4.940656458412465441765687928682213723651e-324,
-			ti = '0010-04-05 12:51:36', da = '0101-11-07',
+			ti = '0000-00-00 00:00:00', da = '0000-00-00',
 			te = '', bo = false, js = '', bl = ''
 			;`,
 			[]sql.Row{{int64(1)}},
@@ -2641,8 +2641,8 @@ func TestReplaceInto(t *testing.T) {
 				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 				uint8(0), uint16(0), uint32(0), uint64(0),
 				float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
-				timeParse(sql.TimestampDatetimeLayout, "0010-04-05 12:51:36"), timeParse(sql.DateLayout, "0101-11-07"),
-				"", false, ([]byte)(`""`), ([]byte)(""),
+				sql.Timestamp.Zero(), sql.Date.Zero(),
+				"", sql.False, ([]byte)(`""`), "",
 			}},
 		},
 		{
@@ -2949,12 +2949,12 @@ func TestCreateTable(t *testing.T) {
 		{Name: "b", Type: sql.Text, Nullable: true, Source: "t1"},
 		{Name: "c", Type: sql.Date, Nullable: true, Source: "t1"},
 		{Name: "d", Type: sql.Timestamp, Nullable: true, Source: "t1"},
-		{Name: "e", Type: sql.Text, Nullable: true, Source: "t1"},
+		{Name: "e", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "t1"},
 		{Name: "f", Type: sql.Blob, Source: "t1"},
-		{Name: "b1", Type: sql.Uint8, Nullable: true, Source: "t1"},
-		{Name: "b2", Type: sql.Uint8, Source: "t1"},
+		{Name: "b1", Type: sql.Boolean, Nullable: true, Source: "t1"},
+		{Name: "b2", Type: sql.Boolean, Source: "t1"},
 		{Name: "g", Type: sql.Datetime, Nullable: true, Source: "t1"},
-		{Name: "h", Type: sql.Text, Nullable: true, Source: "t1"},
+		{Name: "h", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 40), Nullable: true, Source: "t1"},
 	}
 
 	require.Equal(s, testTable.Schema())
@@ -2974,7 +2974,7 @@ func TestCreateTable(t *testing.T) {
 
 	s = sql.Schema{
 		{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t2"},
-		{Name: "b", Type: sql.Text, Nullable: false, Source: "t2"},
+		{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: false, Source: "t2"},
 	}
 
 	require.Equal(s, testTable.Schema())
@@ -2996,7 +2996,7 @@ func TestCreateTable(t *testing.T) {
 	s = sql.Schema{
 		{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t3"},
 		{Name: "b", Type: sql.Text, Nullable: false, PrimaryKey: true, Source: "t3"},
-		{Name: "c", Type: sql.Uint8, Nullable: true, Source: "t3"},
+		{Name: "c", Type: sql.Boolean, Nullable: true, Source: "t3"},
 	}
 
 	require.Equal(s, testTable.Schema())
@@ -3018,7 +3018,7 @@ func TestCreateTable(t *testing.T) {
 	s = sql.Schema{
 		{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t4"},
 		{Name: "b", Type: sql.Text, Nullable: false, PrimaryKey: false, Source: "t4", Comment: "comment"},
-		{Name: "c", Type: sql.Uint8, Nullable: true, Source: "t4"},
+		{Name: "c", Type: sql.Boolean, Nullable: true, Source: "t4"},
 	}
 
 	require.Equal(s, testTable.Schema())

@@ -1,7 +1,7 @@
 package sql
 
 import (
-	"strings"
+	"fmt"
 
 	"gopkg.in/src-d/go-errors.v1"
 )
@@ -11,8 +11,11 @@ type CharacterSet string
 // Collation represents the collation of a string.
 type Collation string
 
+// Character sets and collations were obtained from a fresh install of MySQL 8.0.17.
+// The character sets were obtained by running `SHOW CHARACTER SET;`.
+// The collations were obtained by running `SHOW COLLATION;`.
+// utf8mb3 is not listed from the above commands, and was obtained from: https://dev.mysql.com/doc/refman/8.0/en/charset-unicode-sets.html
 const (
-	CharacterSet_Unknown CharacterSet = ""
 	CharacterSet_armscii8 CharacterSet = "armscii8"
 	CharacterSet_ascii CharacterSet = "ascii"
 	CharacterSet_big5 CharacterSet = "big5"
@@ -56,8 +59,7 @@ const (
 	CharacterSet_utf8mb3 CharacterSet = "utf8mb3"
 	CharacterSet_utf8mb4 CharacterSet = "utf8mb4"
 
-	Collation_Unknown Collation = ""
-	Collation_CharacterSetBin Collation = "_charsetbin_"
+	Collation_Default = Collation_utf8mb4_0900_ai_ci
 	Collation_armscii8_general_ci Collation = "armscii8_general_ci"
 	Collation_armscii8_bin Collation = "armscii8_bin"
 	Collation_ascii_general_ci Collation = "ascii_general_ci"
@@ -1170,35 +1172,78 @@ func ParseCharacterSet(str string) (CharacterSet, error) {
 	if cs, ok := characterSets[str]; ok {
 		return cs, nil
 	}
-	return CharacterSet_Unknown, ErrCharacterSetNotSupported.New(str)
+	return Collation_Default.CharacterSet(), ErrCharacterSetNotSupported.New(str)
 }
 
-// ParseCollation takes in a string representing a Collation and
-// returns the result if a match is found, or an error if not.
-func ParseCollation(str string) (Collation, error) {
-	if c, ok := collations[str]; ok {
-		return c, nil
+// ParseCollation takes in an optional character set and collation, along with the binary attribute if present,
+// and returns a valid collation or error. A nil character set and collation will return the default collation.
+func ParseCollation(characterSetStr *string, collationStr *string, binaryAttribute bool) (Collation, error) {
+	if characterSetStr == nil || len(*characterSetStr) == 0 {
+		if collationStr == nil || len(*collationStr) == 0 {
+			if binaryAttribute {
+				return Collation_Default.CharacterSet().BinaryCollation(), nil
+			}
+			return Collation_Default, nil
+		}
+		if collation, ok := collations[*collationStr]; ok {
+			return collation, nil
+		}
+		return Collation_Default, ErrCollationNotSupported.New(*collationStr)
+	} else {
+		characterSet, err := ParseCharacterSet(*characterSetStr)
+		if err != nil {
+			return Collation_Default, err
+		}
+		if collationStr == nil || len(*collationStr) == 0 {
+			if binaryAttribute {
+				return characterSet.BinaryCollation(), nil
+			}
+			return characterSet.DefaultCollation(), nil
+		}
+		collation, exists := collations[*collationStr]
+		if !exists {
+			return Collation_Default, ErrCollationNotSupported.New(*collationStr)
+		}
+		if !collation.WorksWithCharacterSet(characterSet) {
+			return Collation_Default, fmt.Errorf("%v is not a valid character set for %v", characterSet, collation)
+		}
+		return collation, nil
 	}
-	return Collation_Unknown, ErrCollationNotSupported.New(str)
 }
 
 // DefaultCollation returns the default Collation for this CharacterSet.
 func (cs CharacterSet) DefaultCollation() Collation {
-	return characterSetDefaults[cs]
+	collation, ok := characterSetDefaults[cs]
+	if !ok {
+		panic(fmt.Sprintf("%v does not have a default collation set", cs))
+	}
+	return collation
 }
 
 func (cs CharacterSet) BinaryCollation() Collation {
-	return characterSetDefaultBinaryColl[cs]
+	collation, ok := characterSetDefaultBinaryColl[cs]
+	if !ok {
+		panic(fmt.Sprintf("%v does not have a default binary collation set", cs))
+	}
+	return collation
 }
 
 // Description returns the plain-English description for the CharacterSet.
 func (cs CharacterSet) Description() string {
-	return characterSetDescriptions[cs]
+	str, ok := characterSetDescriptions[cs]
+	if !ok {
+		panic(fmt.Sprintf("%v does not have a description set", cs))
+	}
+	return str
 }
 
 // MaxLength returns the maximum size of a single character in the CharacterSet.
 func (cs CharacterSet) MaxLength() int64 {
-	return characterSetMaxLengths[cs]
+	length, ok := characterSetMaxLengths[cs]
+	if !ok {
+		panic(fmt.Sprintf("%v does not have a maximum length set", cs))
+	}
+	return length
 }
 
 // String returns the string representation of the CharacterSet.
@@ -1208,15 +1253,16 @@ func (cs CharacterSet) String() string {
 
 // CharacterSet returns the CharacterSet belonging to this Collation.
 func (c Collation) CharacterSet() CharacterSet {
-	return collationToCharacterSet[c]
+	cs, ok := collationToCharacterSet[c]
+	if !ok {
+		panic(fmt.Sprintf("%v does not have a character set defined", c))
+	}
+	return cs
 }
 
-// IsValid returns whether the Collation is valid for the given CharacterSet.
-func (c Collation) IsValid(cs CharacterSet) bool {
-	if c == Collation_binary {
-		return cs == CharacterSet_binary
-	}
-	return strings.HasPrefix(string(c), string(cs) + "_")
+// WorksWithCharacterSet returns whether the Collation is valid for the given CharacterSet.
+func (c Collation) WorksWithCharacterSet(cs CharacterSet) bool {
+	return c.CharacterSet() == cs
 }
 
 // String returns the string representation of the Collation.

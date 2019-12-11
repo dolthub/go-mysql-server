@@ -237,7 +237,7 @@ func columnsRowIter(cat *Catalog) RowIter {
 					uint64(i),                              // ordinal_position
 					c.Default,                              // column_default
 					nullable,                               // is_nullable
-					strings.ToLower(MySQLTypeName(c.Type)), // data_type
+					strings.ToLower(c.Type.String()),       // data_type
 					nil,                                    // character_maximum_length
 					nil,                                    // character_octet_length
 					nil,                                    // numeric_precision
@@ -245,7 +245,7 @@ func columnsRowIter(cat *Catalog) RowIter {
 					nil,                                    // datetime_precision
 					charName,                               // character_set_name
 					collName,                               // collation_name
-					strings.ToLower(MySQLTypeName(c.Type)), // column_type
+					strings.ToLower(c.Type.String()),       // column_type
 					"",                                     // column_key
 					"",                                     // extra
 					"select",                               // privileges
@@ -402,7 +402,7 @@ func printTable(name string, tableSchema Schema) string {
 		schema[i] = fmt.Sprintf(
 			"Column(%s, %s, nullable=%v)",
 			col.Name,
-			col.Type.Type().String(),
+			col.Type.String(),
 			col.Nullable,
 		)
 	}

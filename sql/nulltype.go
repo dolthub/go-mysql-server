@@ -30,6 +30,15 @@ func (t nullType) Convert(v interface{}) (interface{}, error) {
 	return nil, nil
 }
 
+// MustConvert implements the Type interface.
+func (t nullType) MustConvert(v interface{}) interface{} {
+	value, err := t.Convert(v)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
 // SQL implements Type interface.
 func (t nullType) SQL(interface{}) (sqltypes.Value, error) {
 	return sqltypes.NULL, nil

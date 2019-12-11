@@ -62,7 +62,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, err = sql.Timestamp.Convert(date)
+	date, err = sql.Datetime.Convert(date)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, err = sql.Timestamp.Convert(date)
+	date, err = sql.Datetime.Convert(date)
 	if err != nil {
 		return nil, err
 	}

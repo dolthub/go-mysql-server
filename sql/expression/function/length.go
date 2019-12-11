@@ -73,14 +73,14 @@ func (l *Length) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		content = string(val.([]byte))
+		content = val.(string)
 	default:
 		val, err = sql.Text.Convert(val)
 		if err != nil {
 			return nil, err
 		}
 
-		content = string(val.(string))
+		content = val.(string)
 	}
 
 	if l.CountType == NumBytes {

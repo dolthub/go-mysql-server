@@ -30,7 +30,7 @@ func TestTableName(t *testing.T) {
 
 const expectedString = `Table(foo)
  ├─ Column(col1, TEXT, nullable=true)
- └─ Column(col2, INT64, nullable=false)
+ └─ Column(col2, BIGINT, nullable=false)
 `
 
 func TestTableString(t *testing.T) {

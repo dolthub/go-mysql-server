@@ -64,6 +64,14 @@ func (t bitType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t bitType) Convert(v interface{}) (interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
+
+	if _, ok := v.(string); ok {
+		return nil, ErrInvalidType.New(t)
+	}
+
 	value, err := cast.ToUint64E(v)
 	if err != nil {
 		return nil, err
@@ -74,16 +82,25 @@ func (t bitType) Convert(v interface{}) (interface{}, error) {
 	return value, nil
 }
 
+// MustConvert implements the Type interface.
+func (t bitType) MustConvert(v interface{}) interface{} {
+	value, err := t.Convert(v)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
 // SQL implements Type interface.
 func (t bitType) SQL(v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-	value, err := cast.ToUint64E(v)
+	value, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	return sqltypes.MakeTrusted(sqltypes.Bit, strconv.AppendUint(nil, value, 10)), nil
+	return sqltypes.MakeTrusted(sqltypes.Bit, strconv.AppendUint(nil, value.(uint64), 10)), nil
 }
 
 // String implements Type interface.

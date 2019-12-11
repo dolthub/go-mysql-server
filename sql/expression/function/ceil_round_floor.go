@@ -260,7 +260,7 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case int:
 		return int(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
 	default:
-		return nil, sql.ErrInvalidType.New(r.Left.Type().Type().String())
+		return nil, sql.ErrInvalidType.New(r.Left.Type().String())
 	}
 }
 

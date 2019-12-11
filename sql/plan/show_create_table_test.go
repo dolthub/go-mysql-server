@@ -20,8 +20,8 @@ func TestShowCreateTable(t *testing.T) {
 			&sql.Column{Name: "baz", Type: sql.Text, Default: "", Nullable: false},
 			&sql.Column{Name: "zab", Type: sql.Int32, Default: int32(0), Nullable: true},
 			&sql.Column{Name: "bza", Type: sql.Uint64, Default: uint64(0), Nullable: true},
-			&sql.Column{Name: "foo", Type: sql.MustCreateString(sqltypes.VarChar, 123, sql.CharacterSet_Unknown, sql.Collation_Unknown), Default: "", Nullable: true},
-			&sql.Column{Name: "pok", Type: sql.MustCreateString(sqltypes.Char, 123, sql.CharacterSet_Unknown, sql.Collation_Unknown), Default: "", Nullable: true},
+			&sql.Column{Name: "foo", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: "", Nullable: true},
+			&sql.Column{Name: "pok", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: "", Nullable: true},
 		})
 
 	db.AddTable(table.Name(), table)
@@ -41,7 +41,7 @@ func TestShowCreateTable(t *testing.T) {
 	expected := sql.NewRow(
 		table.Name(),
 		"CREATE TABLE `test-table` (\n  `baz` text NOT NULL,\n"+
-			"  `zab` integer DEFAULT 0,\n"+
+			"  `zab` int DEFAULT 0,\n"+
 			"  `bza` bigint unsigned DEFAULT 0,\n"+
 			"  `foo` varchar(123),\n"+
 			"  `pok` char(123)\n"+

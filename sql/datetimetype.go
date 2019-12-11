@@ -2,12 +2,11 @@ package sql
 
 import (
 	"math"
-	"reflect"
 	"time"
-	"vitess.io/vitess/go/vt/proto/query"
 
 	"gopkg.in/src-d/go-errors.v1"
 	"vitess.io/vitess/go/sqltypes"
+	"vitess.io/vitess/go/vt/proto/query"
 )
 
 const (
@@ -27,6 +26,8 @@ var (
 	// ErrConvertingToTime is thrown when a value cannot be converted to a Time
 	ErrConvertingToTime = errors.NewKind("value %q can't be converted to time.Time")
 
+	ErrConvertingToTimeOutOfRange = errors.NewKind("value %q is outside of %v range")
+
 	// maxTimestamp is the maximum representable Timestamp value, which is the maximum 32-bit integer as a Unix time.
 	maxTimestamp = time.Unix(math.MaxInt32, 999999000)
 
@@ -41,13 +42,13 @@ var (
 	TimestampDatetimeLayouts = []string{
 		"2006-01-02 15:04:05.999999",
 		"2006-01-02",
-		time.RFC3339,
+		time.RFC3339Nano,
 		"20060102150405",
 		"20060102",
 	}
 
 	// zeroTime is 0000-01-01 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00
-	zeroTime = time.Unix(-62167219200, 0)
+	zeroTime = time.Unix(-62167219200, 0).UTC()
 
 	// Date is a date with day, month and year.
 	Date = MustCreateDatetimeType(sqltypes.Date)
@@ -57,12 +58,17 @@ var (
 	Timestamp = MustCreateDatetimeType(sqltypes.Timestamp)
 )
 
+type DatetimeType interface {
+	Type
+	ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
+}
+
 type datetimeType struct{
 	baseType query.Type
 }
 
 // CreateDatetimeType creates a Type dealing with all temporal types that are not TIME nor YEAR.
-func CreateDatetimeType(baseType query.Type) (Type, error) {
+func CreateDatetimeType(baseType query.Type) (DatetimeType, error) {
 	switch baseType {
 	case sqltypes.Date, sqltypes.Datetime, sqltypes.Timestamp:
 		return datetimeType{
@@ -73,7 +79,7 @@ func CreateDatetimeType(baseType query.Type) (Type, error) {
 }
 
 // MustCreateDatetimeType is the same as CreateDatetimeType except it panics on errors.
-func MustCreateDatetimeType(baseType query.Type) Type {
+func MustCreateDatetimeType(baseType query.Type) DatetimeType {
 	dt, err := CreateDatetimeType(baseType)
 	if err != nil {
 		panic(err)
@@ -96,6 +102,8 @@ func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
 			return 0, err
 		}
 		at = ai.(time.Time)
+	} else if t.baseType == sqltypes.Date {
+		at = at.Truncate(24 * time.Hour)
 	}
 	if bt, ok = b.(time.Time); !ok {
 		bi, err := t.Convert(b)
@@ -103,6 +111,8 @@ func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
 			return 0, err
 		}
 		bt = bi.(time.Time)
+	} else if t.baseType == sqltypes.Date {
+		bt = bt.Truncate(24 * time.Hour)
 	}
 
 	if at.Before(bt) {
@@ -114,36 +124,42 @@ func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t datetimeType) Convert(v interface{}) (interface{}, error) {
+func (t datetimeType) Convert(v interface{}) (interface{}, error)  {
+	if v == nil {
+		return nil, nil
+	}
+
+	res, err := t.ConvertWithoutRangeCheck(v)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.Equal(zeroTime) {
+		return zeroTime, nil
+	}
+
+	switch t.baseType {
+	case sqltypes.Date:
+		if res.Year() < 1000 || res.Year() > 9999 {
+			return nil, ErrConvertingToTimeOutOfRange.New(res.Format(DateLayout), t.String())
+		}
+	case sqltypes.Datetime:
+		if res.Year() < 1000 || res.Year() > 9999 {
+			return nil, ErrConvertingToTimeOutOfRange.New(res.Format(TimestampDatetimeLayout), t.String())
+		}
+	case sqltypes.Timestamp:
+		if res.Before(minTimestamp) || res.After(maxTimestamp) {
+			return nil, ErrConvertingToTimeOutOfRange.New(res.Format(TimestampDatetimeLayout), t.String())
+		}
+	}
+	return res, nil
+}
+
+// ConvertWithoutRangeCheck converts the parameter to time.Time without checking the range.
+func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error) {
 	var res time.Time
 
 	switch value := v.(type) {
-	case int:
-		return t.Convert(int64(value))
-	case uint:
-		return t.Convert(int64(value))
-	case int8:
-		return t.Convert(int64(value))
-	case uint8:
-		return t.Convert(int64(value))
-	case int16:
-		return t.Convert(int64(value))
-	case uint16:
-		return t.Convert(int64(value))
-	case int32:
-		return t.Convert(int64(value))
-	case uint32:
-		return t.Convert(int64(value))
-	case int64:
-		res = time.Unix(value, 0).UTC()
-	case uint64:
-		return t.Convert(int64(value))
-	case float32:
-		return t.Convert(float64(value))
-	case float64:
-		seconds := int64(value)
-		nanoseconds := int64((value - float64(seconds)) * float64(time.Second/time.Nanosecond))
-		res = time.Unix(seconds, nanoseconds).UTC()
 	case string:
 		if value == zeroDateStr || value == zeroTimestampDatetimeStr {
 			return zeroTime, nil
@@ -157,35 +173,26 @@ func (t datetimeType) Convert(v interface{}) (interface{}, error) {
 			}
 		}
 		if !parsed {
-			return nil, ErrConvertingToTime.New(v)
+			return zeroTime, ErrConvertingToTime.New(v)
 		}
 	case time.Time:
 		res = value.UTC()
 	default:
-		ts, err := Int64.Convert(v)
-		if err != nil {
-			return nil, ErrInvalidType.New(reflect.TypeOf(v))
-		}
-
-		res = time.Unix(ts.(int64), 0).UTC()
+		return zeroTime, ErrConvertToSQL.New(t)
 	}
 
-	switch t.baseType {
-	case sqltypes.Date:
-		res = truncateDate(res)
-		if res.Year() < 1000 || res.Year() > 9999 {
-			return zeroTime, nil
-		}
-	case sqltypes.Datetime:
-		if res.Year() < 1000 || res.Year() > 9999 {
-			return zeroTime, nil
-		}
-	case sqltypes.Timestamp:
-		if res.Before(minTimestamp) || res.After(maxTimestamp) {
-			return zeroTime, nil
-		}
+	if t.baseType == sqltypes.Date {
+		res = res.Truncate(24 * time.Hour)
 	}
 	return res, nil
+}
+
+func (t datetimeType) MustConvert(v interface{}) interface{} {
+	value, err := t.Convert(v)
+	if err != nil {
+		panic(err)
+	}
+	return value
 }
 
 // SQL implements Type interface.
@@ -234,8 +241,9 @@ func (t datetimeType) SQL(v interface{}) (sqltypes.Value, error) {
 			sqltypes.Timestamp,
 			[]byte(vt.Format(TimestampDatetimeLayout)),
 		), nil
+	default:
+		panic(ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 	}
-	panic(ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 }
 
 func (t datetimeType) String() string {
@@ -246,8 +254,9 @@ func (t datetimeType) String() string {
 		return "DATETIME"
 	case sqltypes.Timestamp:
 		return "TIMESTAMP"
+	default:
+		panic(ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 	}
-	panic(ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 }
 
 // Type implements Type interface.
@@ -257,10 +266,6 @@ func (t datetimeType) Type() query.Type {
 
 func (t datetimeType) Zero() interface{} {
 	return zeroTime
-}
-
-func truncateDate(t time.Time) time.Time {
-	return t.Truncate(24 * time.Hour)
 }
 
 // ValidateTime receives a time and returns either that time or nil if it's

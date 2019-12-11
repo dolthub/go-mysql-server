@@ -37,7 +37,7 @@ func (ib *IsBinary) Eval(
 		return nil, err
 	}
 
-	blobBytes := blob.([]byte)
+	blobBytes := blob.(string)
 	return isBinary(blobBytes), nil
 }
 
@@ -62,12 +62,13 @@ const sniffLen = 8000
 
 // isBinary detects if data is a binary value based on:
 // http://git.kernel.org/cgit/git/git.git/tree/xdiff-interface.c?id=HEAD#n198
-func isBinary(data []byte) bool {
-	if len(data) > sniffLen {
-		data = data[:sniffLen]
+func isBinary(data string) bool {
+	binData := []byte(data)
+	if len(binData) > sniffLen {
+		binData = binData[:sniffLen]
 	}
 
-	if bytes.IndexByte(data, byte(0)) == -1 {
+	if bytes.IndexByte(binData, byte(0)) == -1 {
 		return false
 	}
 

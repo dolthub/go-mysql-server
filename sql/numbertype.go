@@ -2,15 +2,26 @@ package sql
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
+	"math"
 	"strconv"
 	"time"
-	"vitess.io/vitess/go/vt/proto/query"
 
 	"github.com/spf13/cast"
 	"vitess.io/vitess/go/sqltypes"
+	"vitess.io/vitess/go/vt/proto/query"
+)
+
+const (
+	// Numeric representation of False as defined by MySQL.
+	False = int8(0)
+	// Numeric representation of True as defined by MySQL.
+	True = int8(1)
 )
 
 var (
+	ErrOutOfRange = errors.NewKind("%v out of range for %v")
+
 	// Boolean is a synonym for TINYINT
 	Boolean = Int8
 	// Int8 is an integer of 8 bits
@@ -41,7 +52,6 @@ var (
 
 type NumberType interface {
 	Type
-	IsUnsigned() bool
 	IsSigned() bool
 }
 
@@ -70,41 +80,6 @@ func MustCreateNumberType(baseType query.Type) NumberType {
 	return nt
 }
 
-// Convert implements Type interface.
-func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
-	if ti, ok := v.(time.Time); ok {
-		v = float64(ti.Unix()) + (float64(ti.Nanosecond()) / float64(time.Second/time.Nanosecond))
-	}
-
-	switch t.baseType {
-	case sqltypes.Int8:
-		return cast.ToInt8E(v)
-	case sqltypes.Uint8:
-		return cast.ToUint8E(v)
-	case sqltypes.Int16:
-		return cast.ToInt16E(v)
-	case sqltypes.Uint16:
-		return cast.ToUint16E(v)
-	case sqltypes.Int24:
-		return cast.ToInt32E(v)
-	case sqltypes.Uint24:
-		return cast.ToUint32E(v)
-	case sqltypes.Int32:
-		return cast.ToInt32E(v)
-	case sqltypes.Uint32:
-		return cast.ToUint32E(v)
-	case sqltypes.Int64:
-		return cast.ToInt64E(v)
-	case sqltypes.Uint64:
-		return cast.ToUint64E(v)
-	case sqltypes.Float32:
-		return cast.ToFloat32E(v)
-	case sqltypes.Float64:
-		return cast.ToFloat64E(v)
-	}
-	return nil, ErrInvalidType.New(t.baseType.String())
-}
-
 // Compare implements Type interface.
 func (t numberTypeImpl) Compare(a interface{}, b interface{}) (int, error) {
 	switch t.baseType {
@@ -115,6 +90,135 @@ func (t numberTypeImpl) Compare(a interface{}, b interface{}) (int, error) {
 	default:
 		return compareSignedInts(a, b)
 	}
+}
+
+// Convert implements Type interface.
+func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
+
+	if ti, ok := v.(time.Time); ok {
+		v = fmt.Sprintf("%d%02d%02d%02d%02d%02d", ti.Year(), ti.Month(), ti.Day(), ti.Hour(), ti.Minute(), ti.Second())
+	}
+
+	switch t.baseType {
+	case sqltypes.Int8:
+		num, err := cast.ToInt64E(v)
+		if err != nil {
+			return nil, err
+		}
+		if num > math.MaxInt8 {
+			return nil, ErrOutOfRange.New(num, t)
+		}
+		return int8(num), nil
+	case sqltypes.Uint8:
+		num, err := cast.ToUint64E(v)
+		if err != nil {
+			return nil, err
+		}
+		if num > math.MaxUint8 {
+			return nil, ErrOutOfRange.New(num, t)
+		}
+		return uint8(num), nil
+	case sqltypes.Int16:
+		num, err := cast.ToInt64E(v)
+		if err != nil {
+			return nil, err
+		}
+		if num > math.MaxInt16 {
+			return nil, ErrOutOfRange.New(num, t)
+		}
+		return int16(num), nil
+	case sqltypes.Uint16:
+		num, err := cast.ToUint64E(v)
+		if err != nil {
+			return nil, err
+		}
+		if num > math.MaxUint16 {
+			return nil, ErrOutOfRange.New(num, t)
+		}
+		return uint16(num), nil
+	case sqltypes.Int24:
+		num, err := cast.ToInt64E(v)
+		if err != nil {
+			return nil, err
+		}
+		if num > (1<<23 - 1) {
+			return nil, ErrOutOfRange.New(num, t)
+		}
+		return int32(num), nil
+	case sqltypes.Uint24:
+		num, err := cast.ToUint64E(v)
+		if err != nil {
+			return nil, err
+		}
+		if num > (1<<24 - 1) {
+			return nil, ErrOutOfRange.New(num, t)
+		}
+		return uint32(num), nil
+	case sqltypes.Int32:
+		num, err := cast.ToInt64E(v)
+		if err != nil {
+			return nil, err
+		}
+		if num > math.MaxInt32 {
+			return nil, ErrOutOfRange.New(num, t)
+		}
+		return int32(num), nil
+	case sqltypes.Uint32:
+		num, err := cast.ToUint64E(v)
+		if err != nil {
+			return nil, err
+		}
+		if num > math.MaxUint32 {
+			return nil, ErrOutOfRange.New(num, t)
+		}
+		return uint32(num), nil
+	case sqltypes.Int64:
+		if u, ok := v.(uint64); ok {
+			if u > math.MaxInt64 {
+				return nil, ErrOutOfRange.New(u, t)
+			}
+		}
+		num, err := cast.ToInt64E(v)
+		if err != nil {
+			return nil, err
+		}
+		return num, err
+	case sqltypes.Uint64:
+		num, err := cast.ToUint64E(v)
+		if err != nil {
+			return nil, err
+		}
+		return num, nil
+	case sqltypes.Float32:
+		num, err := cast.ToFloat64E(v)
+		if err != nil {
+			return nil, err
+		}
+		if num > math.MaxFloat32 {
+			return nil, ErrOutOfRange.New(num, t)
+		}
+		return float32(num), nil
+	case sqltypes.Float64:
+		num, err := cast.ToFloat64E(v)
+		if err != nil {
+			return nil, err
+		}
+		return num, nil
+	default:
+		return nil, ErrInvalidType.New(t.baseType.String())
+	}
+}
+
+// MustConvert implements the Type interface.
+func (t numberTypeImpl) MustConvert(v interface{}) interface{} {
+	value, err := t.Convert(v)
+	if err != nil {
+		panic(err)
+	}
+	return value
 }
 
 // SQL implements Type interface.
@@ -148,9 +252,9 @@ func (t numberTypeImpl) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.MakeTrusted(sqltypes.Float32, strconv.AppendFloat(nil, cast.ToFloat64(v), 'f', -1, 64)), nil
 	case sqltypes.Float64:
 		return sqltypes.MakeTrusted(sqltypes.Float64, strconv.AppendFloat(nil, cast.ToFloat64(v), 'f', -1, 64)), nil
+	default:
+		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
 	}
-
-	return sqltypes.MakeTrusted(sqltypes.Int64, []byte{}), nil
 }
 
 // String implements Type interface.
@@ -180,8 +284,9 @@ func (t numberTypeImpl) String() string {
 		return "FLOAT"
 	case sqltypes.Float64:
 		return "DOUBLE"
+	default:
+		panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
 	}
-	panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
 }
 
 // Type implements Type interface.
@@ -216,17 +321,9 @@ func (t numberTypeImpl) Zero() interface{} {
 		return float32(0)
 	case sqltypes.Float64:
 		return float64(0)
+	default:
+		panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
 	}
-	panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
-}
-
-// IsUnsigned implements NumberType interface.
-func (t numberTypeImpl) IsUnsigned() bool {
-	switch t.baseType {
-	case sqltypes.Uint8, sqltypes.Uint16, sqltypes.Uint24, sqltypes.Uint32, sqltypes.Uint64:
-		return true
-	}
-	return false
 }
 
 // IsSigned implements NumberType interface.

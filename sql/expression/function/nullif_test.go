@@ -2,6 +2,7 @@ package function
 
 import (
 	"testing"
+	"vitess.io/vitess/go/sqltypes"
 
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
@@ -28,7 +29,7 @@ func TestNullIf(t *testing.T) {
 	)
 	require.Equal(t, sql.Text, f.Type())
 
-	var3 := sql.VarChar(3)
+	var3 := sql.MustCreateStringWithDefaults(sqltypes.VarChar, 3)
 	f = NewNullIf(
 		expression.NewGetField(0, var3, "ex1", true),
 		expression.NewGetField(1, var3, "ex2", true),

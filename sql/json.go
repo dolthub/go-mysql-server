@@ -15,6 +15,7 @@ func (t jsonType) Compare(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := compareNulls(a, b); hasNulls {
 		return res, nil
 	}
+	//TODO: this won't work if a JSON has two fields in a different order
 	return bytes.Compare(a.([]byte), b.([]byte)), nil
 }
 
@@ -27,9 +28,24 @@ func (t jsonType) Convert(v interface{}) (interface{}, error) {
 			return json.Marshal(v)
 		}
 		return json.Marshal(doc)
+	case []byte:
+		var doc interface{}
+		if err := json.Unmarshal(v, &doc); err != nil {
+			return json.Marshal(v)
+		}
+		return json.Marshal(doc)
 	default:
 		return json.Marshal(v)
 	}
+}
+
+// MustConvert implements the Type interface.
+func (t jsonType) MustConvert(v interface{}) interface{} {
+	value, err := t.Convert(v)
+	if err != nil {
+		panic(err)
+	}
+	return value
 }
 
 // SQL implements Type interface.
