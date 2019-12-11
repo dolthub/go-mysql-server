@@ -306,6 +306,19 @@ func (d *DropColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
+	tbl := alterable.(sql.Table)
+	found := false
+	for _, column := range tbl.Schema() {
+		if column.Name == d.column {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return nil, ErrColumnNotFound.New(tbl.Name(), d.column)
+	}
+
 	return sql.RowsToRowIter(), alterable.DropColumn(ctx, d.column)
 }
 

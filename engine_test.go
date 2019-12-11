@@ -3185,6 +3185,63 @@ func TestRenameColumn(t *testing.T) {
 	require.True(plan.ErrColumnNotFound.Is(err))
 }
 
+func TestAddColumn(t *testing.T) {
+	ctx := context.Background()
+	require := require.New(t)
+
+	e := newEngine(t)
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	testQuery(t, e,
+		"ALTER TABLE mytable ADD COLUMN i2 INT NOT NULL COMMENT 'hello'",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i2", Type: sql.Int32, Comment: "hello"},
+	}, tbl.Schema())
+	// TODO: column order
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE not_exist ADD COLUMN i2 INT NOT NULL COMMENT 'hello'")
+	require.Error(err)
+	require.True(sql.ErrTableNotFound.Is(err))
+}
+
+func TestDropColumn(t *testing.T) {
+	ctx := context.Background()
+	require := require.New(t)
+
+	e := newEngine(t)
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	testQuery(t, e,
+		"ALTER TABLE mytable DROP COLUMN i",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+	}, tbl.Schema())
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE not_exist DROP COLUMN s")
+	require.Error(err)
+	require.True(sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE mytable DROP COLUMN i")
+	require.Error(err)
+	require.True(plan.ErrColumnNotFound.Is(err))
+}
+
 func TestNaturalJoin(t *testing.T) {
 	require := require.New(t)
 
