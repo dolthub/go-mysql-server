@@ -4071,7 +4071,7 @@ var generatorQueries = []struct {
 func TestGenerators(t *testing.T) {
 	table := memory.NewPartitionedTable("t", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t"},
-		{Name: "b", Type: sql.Array(sql.Text), Source: "t"},
+		{Name: "b", Type: sql.CreateArray(sql.Text), Source: "t"},
 		{Name: "c", Type: sql.Text, Source: "t"},
 	}, testNumPartitions)
 

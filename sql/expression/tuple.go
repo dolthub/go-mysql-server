@@ -74,7 +74,7 @@ func (t Tuple) Type() sql.Type {
 		types[i] = e.Type()
 	}
 
-	return sql.Tuple(types...)
+	return sql.CreateTuple(types...)
 }
 
 // WithChildren implements the Expression interface.

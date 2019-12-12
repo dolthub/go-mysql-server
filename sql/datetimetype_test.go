@@ -19,6 +19,10 @@ func TestDatetimeCompare(t *testing.T) {
 		val2 interface{}
 		expectedCmp int
 	}{
+		{Date, nil, 0, -1},
+		{Datetime, 0, nil, 1},
+		{Timestamp, nil, nil, 0},
+
 		{Date, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),
 			time.Date(2012, 12, 12, 12, 24, 24, 24, time.UTC), 0},
 		{Date, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),
@@ -57,6 +61,27 @@ func TestDatetimeCreate(t *testing.T) {
 		{sqltypes.Date, datetimeType{sqltypes.Date}, false},
 		{sqltypes.Datetime, datetimeType{sqltypes.Datetime}, false},
 		{sqltypes.Timestamp, datetimeType{sqltypes.Timestamp}, false},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test.baseType), func(t *testing.T) {
+			typ, err := CreateDatetimeType(test.baseType)
+			if test.expectedErr {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, test.expectedType, typ)
+			}
+		})
+	}
+}
+
+func TestDatetimeCreateInvalidBaseTypes(t *testing.T) {
+	tests := []struct {
+		baseType query.Type
+		expectedType datetimeType
+		expectedErr bool
+	}{
 		{sqltypes.Binary, datetimeType{}, true},
 		{sqltypes.Bit, datetimeType{}, true},
 		{sqltypes.Blob, datetimeType{}, true},

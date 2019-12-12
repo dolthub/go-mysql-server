@@ -72,7 +72,7 @@ func TestConcatWithSeparator(t *testing.T) {
 	t.Run("concat_ws array", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewConcatWithSeparator(
-			expression.NewLiteral([]interface{}{",", 5, "bar", true}, sql.Array(sql.Text)),
+			expression.NewLiteral([]interface{}{",", 5, "bar", true}, sql.CreateArray(sql.Text)),
 		)
 		require.NoError(err)
 
@@ -85,14 +85,14 @@ func TestConcatWithSeparator(t *testing.T) {
 func TestNewConcatWithSeparator(t *testing.T) {
 	require := require.New(t)
 
-	_, err := NewConcatWithSeparator(expression.NewLiteral(nil, sql.Array(sql.Text)))
+	_, err := NewConcatWithSeparator(expression.NewLiteral(nil, sql.CreateArray(sql.Text)))
 	require.NoError(err)
 
-	_, err = NewConcatWithSeparator(expression.NewLiteral(nil, sql.Array(sql.Text)), expression.NewLiteral(nil, sql.Int64))
+	_, err = NewConcatWithSeparator(expression.NewLiteral(nil, sql.CreateArray(sql.Text)), expression.NewLiteral(nil, sql.Int64))
 	require.Error(err)
 	require.True(ErrConcatArrayWithOthers.Is(err))
 
-	_, err = NewConcatWithSeparator(expression.NewLiteral(nil, sql.Tuple(sql.Text, sql.Text)))
+	_, err = NewConcatWithSeparator(expression.NewLiteral(nil, sql.CreateTuple(sql.Text, sql.Text)))
 	require.Error(err)
 	require.True(sql.ErrInvalidType.Is(err))
 

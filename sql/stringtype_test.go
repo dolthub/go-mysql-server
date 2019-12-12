@@ -19,6 +19,10 @@ func TestStringCompare(t *testing.T) {
 		val2 interface{}
 		expectedCmp int
 	}{
+		{MustCreateBlob(sqltypes.Binary, 10), nil, 0, -1},
+		{MustCreateStringWithDefaults(sqltypes.Text, 10), 0, nil, 1},
+		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), nil, nil, 0},
+
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), 0, 1, -1},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), []byte{0}, true, -1},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), false, 1, 1},
@@ -86,7 +90,28 @@ func TestStringCreateBlob(t *testing.T) {
 			stringType{sqltypes.VarBinary, 10, Collation_binary}, false},
 		{sqltypes.VarChar, 10,
 			stringType{sqltypes.VarBinary, 10, Collation_binary}, false},
+	}
 
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v %v", test.baseType, test.length), func(t *testing.T) {
+			typ, err := CreateBlob(test.baseType, test.length)
+			if test.expectedErr {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, test.expectedType, typ)
+			}
+		})
+	}
+}
+
+func TestStringCreateBlobInvalidBaseTypes(t *testing.T) {
+	tests := []struct {
+		baseType query.Type
+		length int64
+		expectedType stringType
+		expectedErr bool
+	}{
 		{sqltypes.Bit, 10, stringType{}, true},
 		{sqltypes.Date, 10, stringType{}, true},
 		{sqltypes.Datetime, 10, stringType{}, true},
@@ -166,8 +191,29 @@ func TestStringCreateString(t *testing.T) {
 		{sqltypes.Binary, 10, Collation_Default, stringType{}, true},
 		{sqltypes.Blob, 10, Collation_Default, stringType{}, true},
 		{sqltypes.VarBinary, 10, Collation_Default, stringType{}, true},
+	}
 
-		// These just aren't supported base types
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v %v %v", test.baseType, test.length, test.collation), func(t *testing.T) {
+			typ, err := CreateString(test.baseType, test.length, test.collation)
+			if test.expectedErr {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, test.expectedType, typ)
+			}
+		})
+	}
+}
+
+func TestStringCreateStringInvalidBaseTypes(t *testing.T) {
+	tests := []struct {
+		baseType query.Type
+		length int64
+		collation Collation
+		expectedType stringType
+		expectedErr bool
+	}{
 		{sqltypes.Bit, 10, Collation_Default, stringType{}, true},
 		{sqltypes.Date, 10, Collation_Default, stringType{}, true},
 		{sqltypes.Datetime, 10, Collation_Default, stringType{}, true},

@@ -416,7 +416,7 @@ func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) 
 
 func isFalse(e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
-	if ok && lit.Type() == sql.Boolean && lit.Value() != nil {
+	if ok && lit != nil && lit.Type() == sql.Boolean && lit.Value() != nil {
 		switch v := lit.Value().(type) {
 		case bool:
 			return !v
@@ -429,7 +429,7 @@ func isFalse(e sql.Expression) bool {
 
 func isTrue(e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
-	if ok && lit.Type() == sql.Boolean && lit.Value() != nil {
+	if ok && lit != nil && lit.Type() == sql.Boolean && lit.Value() != nil {
 		switch v := lit.Value().(type) {
 		case bool:
 			return v

@@ -35,7 +35,10 @@ var (
 	LongBlob = MustCreateBlob(sqltypes.Blob, longTextBlobMax)
 )
 
-// StringType represents all string types, including VARCHAR and BLOB
+// StringType represents all string types, including VARCHAR and BLOB.
+// https://dev.mysql.com/doc/refman/8.0/en/char.html
+// https://dev.mysql.com/doc/refman/8.0/en/binary-varbinary.html
+// https://dev.mysql.com/doc/refman/8.0/en/blob.html
 type StringType interface {
 	Type
 	CharacterSet() CharacterSet

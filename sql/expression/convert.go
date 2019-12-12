@@ -24,7 +24,7 @@ const (
 	ConvertToNChar = "nchar"
 	// ConvertToDate is a conversion to date.
 	ConvertToDate = "date"
-	// ConvertToDatetime is a conversion to datetine.
+	// ConvertToDatetime is a conversion to datetime.
 	ConvertToDatetime = "datetime"
 	// ConvertToDecimal is a conversion to decimal.
 	ConvertToDecimal = "decimal"
@@ -128,6 +128,8 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return casted, nil
 }
 
+// convertValue only returns an error if converting to JSON, and returns the zero value for float types.
+// Nil is returned in all other cases.
 func convertValue(val interface{}, castTo string) (interface{}, error) {
 	switch castTo {
 	case ConvertToBinary:

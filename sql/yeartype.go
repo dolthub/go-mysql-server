@@ -10,10 +10,16 @@ import (
 )
 
 var (
-	Year yearType
+	Year YearType = yearType{}
 
 	ErrConvertingToYear = errors.NewKind("value %v is not a valid Year")
 )
+
+// Represents the YEAR type.
+// https://dev.mysql.com/doc/refman/8.0/en/year.html
+type YearType interface {
+	Type
+}
 
 type yearType struct{}
 

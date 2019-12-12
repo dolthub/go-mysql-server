@@ -67,7 +67,7 @@ func (f *Split) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // Type implements the Expression interface.
-func (*Split) Type() sql.Type { return sql.Array(sql.Text) }
+func (*Split) Type() sql.Type { return sql.CreateArray(sql.Text) }
 
 // IsNullable implements the Expression interface.
 func (f *Split) IsNullable() bool { return f.Left.IsNullable() || f.Right.IsNullable() }

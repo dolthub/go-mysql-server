@@ -24,6 +24,12 @@ var (
 	microsecondsPerHour int64 = 3600000000
 )
 
+// Represents the TIME type.
+// https://dev.mysql.com/doc/refman/8.0/en/time.html
+type TimeType interface {
+	Type
+}
+
 type timespanType struct{}
 type timespanImpl struct{
 	negative bool

@@ -58,6 +58,8 @@ var (
 	Timestamp = MustCreateDatetimeType(sqltypes.Timestamp)
 )
 
+// Represents DATE, DATETIME, and TIMESTAMP.
+// https://dev.mysql.com/doc/refman/8.0/en/datetime.html
 type DatetimeType interface {
 	Type
 	ConvertWithoutRangeCheck(v interface{}) (time.Time, error)

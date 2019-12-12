@@ -24,6 +24,9 @@ func TestTimeCompare(t *testing.T) {
 		val2 interface{}
 		expectedCmp int
 	}{
+		{nil, 0, -1},
+		{0, nil, 1},
+		{nil, nil, 0},
 		{-1, 1, -1},
 		{59, -59, 1},
 		{parseDuration("100ms"), 1, -1},

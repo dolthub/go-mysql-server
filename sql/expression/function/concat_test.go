@@ -40,7 +40,7 @@ func TestConcat(t *testing.T) {
 	t.Run("concat array", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewConcat(
-			expression.NewLiteral([]interface{}{5, "bar", true}, sql.Array(sql.Text)),
+			expression.NewLiteral([]interface{}{5, "bar", true}, sql.CreateArray(sql.Text)),
 		)
 		require.NoError(err)
 
@@ -53,14 +53,14 @@ func TestConcat(t *testing.T) {
 func TestNewConcat(t *testing.T) {
 	require := require.New(t)
 
-	_, err := NewConcat(expression.NewLiteral(nil, sql.Array(sql.Text)))
+	_, err := NewConcat(expression.NewLiteral(nil, sql.CreateArray(sql.Text)))
 	require.NoError(err)
 
-	_, err = NewConcat(expression.NewLiteral(nil, sql.Array(sql.Text)), expression.NewLiteral(nil, sql.Int64))
+	_, err = NewConcat(expression.NewLiteral(nil, sql.CreateArray(sql.Text)), expression.NewLiteral(nil, sql.Int64))
 	require.Error(err)
 	require.True(ErrConcatArrayWithOthers.Is(err))
 
-	_, err = NewConcat(expression.NewLiteral(nil, sql.Tuple(sql.Text, sql.Text)))
+	_, err = NewConcat(expression.NewLiteral(nil, sql.CreateTuple(sql.Text, sql.Text)))
 	require.Error(err)
 	require.True(sql.ErrInvalidType.Is(err))
 
