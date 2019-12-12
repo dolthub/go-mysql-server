@@ -595,14 +595,14 @@ func TestValidateExplodeUsage(t *testing.T) {
 					[]sql.Expression{
 						expression.NewAlias(
 							function.NewGenerate(
-								expression.NewGetField(0, sql.Array(sql.Int64), "f", false),
+								expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
 							),
 							"foo",
 						),
 					},
 					plan.NewUnresolvedTable("dual", ""),
 				),
-				expression.NewGetField(0, sql.Array(sql.Int64), "foo", false),
+				expression.NewGetField(0, sql.CreateArray(sql.Int64), "foo", false),
 			),
 			true,
 		},
@@ -611,7 +611,7 @@ func TestValidateExplodeUsage(t *testing.T) {
 			plan.NewFilter(
 				function.NewArrayLength(
 					function.NewExplode(
-						expression.NewGetField(0, sql.Array(sql.Int64), "foo", false),
+						expression.NewGetField(0, sql.CreateArray(sql.Int64), "foo", false),
 					),
 				),
 				plan.NewGenerate(
@@ -619,14 +619,14 @@ func TestValidateExplodeUsage(t *testing.T) {
 						[]sql.Expression{
 							expression.NewAlias(
 								function.NewGenerate(
-									expression.NewGetField(0, sql.Array(sql.Int64), "f", false),
+									expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
 								),
 								"foo",
 							),
 						},
 						plan.NewUnresolvedTable("dual", ""),
 					),
-					expression.NewGetField(0, sql.Array(sql.Int64), "foo", false),
+					expression.NewGetField(0, sql.CreateArray(sql.Int64), "foo", false),
 				),
 			),
 			false,
@@ -638,7 +638,7 @@ func TestValidateExplodeUsage(t *testing.T) {
 					[]sql.Expression{
 						expression.NewAlias(
 							function.NewExplode(
-								expression.NewGetField(0, sql.Array(sql.Int64), "f", false),
+								expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
 							),
 							"foo",
 						),
@@ -646,14 +646,14 @@ func TestValidateExplodeUsage(t *testing.T) {
 					[]sql.Expression{
 						expression.NewAlias(
 							function.NewExplode(
-								expression.NewGetField(0, sql.Array(sql.Int64), "f", false),
+								expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
 							),
 							"foo",
 						),
 					},
 					plan.NewUnresolvedTable("dual", ""),
 				),
-				expression.NewGetField(0, sql.Array(sql.Int64), "foo", false),
+				expression.NewGetField(0, sql.CreateArray(sql.Int64), "foo", false),
 			),
 			false,
 		},

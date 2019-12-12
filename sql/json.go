@@ -8,6 +8,12 @@ import (
 	"vitess.io/vitess/go/vt/proto/query"
 )
 
+var JSON JsonType = jsonType{}
+
+type JsonType interface {
+	Type
+}
+
 type jsonType struct{}
 
 // Compare implements Type interface.

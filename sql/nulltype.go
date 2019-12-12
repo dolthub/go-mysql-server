@@ -7,11 +7,15 @@ import (
 )
 
 var (
-	Null nullType
+	Null NullType = nullType{}
 
 	// ErrValueNotNil is thrown when a value that was expected to be nil, is not
 	ErrValueNotNil = errors.NewKind("value not nil: %#v")
 )
+
+type NullType interface {
+	Type
+}
 
 type nullType struct{}
 

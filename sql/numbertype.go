@@ -50,6 +50,9 @@ var (
 	Float64 = MustCreateNumberType(sqltypes.Float64)
 )
 
+// Represents all integer and floating point types.
+// https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
+// https://dev.mysql.com/doc/refman/8.0/en/floating-point-types.html
 type NumberType interface {
 	Type
 	IsSigned() bool

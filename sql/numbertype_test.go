@@ -20,6 +20,10 @@ func TestNumberCompare(t *testing.T) {
 		val2 interface{}
 		expectedCmp int
 	}{
+		{Int8, nil, 0, -1},
+		{Uint24, 0, nil, 1},
+		{Float64, nil, nil, 0},
+
 		{Boolean, 0, 1, -1},
 		{Int8, -1, 2, -1},
 		{Int16, -2, 3, -1},
@@ -88,6 +92,27 @@ func TestNumberCreate(t *testing.T) {
 		{sqltypes.Uint64, numberTypeImpl{sqltypes.Uint64}, false},
 		{sqltypes.Float32, numberTypeImpl{sqltypes.Float32}, false},
 		{sqltypes.Float64, numberTypeImpl{sqltypes.Float64}, false},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test.baseType), func(t *testing.T) {
+			typ, err := CreateNumberType(test.baseType)
+			if test.expectedErr {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, test.expectedType, typ)
+			}
+		})
+	}
+}
+
+func TestNumberCreateInvalidBaseTypes(t *testing.T) {
+	tests := []struct {
+		baseType query.Type
+		expectedType numberTypeImpl
+		expectedErr bool
+	}{
 		{sqltypes.Binary, numberTypeImpl{}, true},
 		{sqltypes.Bit, numberTypeImpl{}, true},
 		{sqltypes.Blob, numberTypeImpl{}, true},

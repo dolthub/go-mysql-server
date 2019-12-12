@@ -42,7 +42,7 @@ func NewRegexpMatches(args ...sql.Expression) (sql.Expression, error) {
 }
 
 // Type implements the sql.Expression interface.
-func (r *RegexpMatches) Type() sql.Type { return sql.Array(sql.Text) }
+func (r *RegexpMatches) Type() sql.Type { return sql.CreateArray(sql.Text) }
 
 // IsNullable implements the sql.Expression interface.
 func (r *RegexpMatches) IsNullable() bool { return true }

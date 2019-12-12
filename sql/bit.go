@@ -9,6 +9,8 @@ import (
 	"vitess.io/vitess/go/vt/proto/query"
 )
 
+// Represents the BIT type.
+// https://dev.mysql.com/doc/refman/8.0/en/bit-type.html
 type BitType interface {
 	Type
 	NumberOfBits() uint8

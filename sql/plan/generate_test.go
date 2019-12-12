@@ -14,7 +14,7 @@ func TestGenerateRowIter(t *testing.T) {
 	child := newFakeNode(
 		sql.Schema{
 			{Name: "a", Type: sql.Text, Source: "foo"},
-			{Name: "b", Type: sql.Array(sql.Text), Source: "foo"},
+			{Name: "b", Type: sql.CreateArray(sql.Text), Source: "foo"},
 			{Name: "c", Type: sql.Int64, Source: "foo"},
 		},
 		sql.RowsToRowIter(
@@ -25,7 +25,7 @@ func TestGenerateRowIter(t *testing.T) {
 
 	iter, err := NewGenerate(
 		child,
-		expression.NewGetFieldWithTable(1, sql.Array(sql.Text), "foo", "b", false),
+		expression.NewGetFieldWithTable(1, sql.CreateArray(sql.Text), "foo", "b", false),
 	).RowIter(sql.NewEmptyContext())
 	require.NoError(err)
 
@@ -49,12 +49,12 @@ func TestGenerateSchema(t *testing.T) {
 		newFakeNode(
 			sql.Schema{
 				{Name: "a", Type: sql.Text, Source: "foo"},
-				{Name: "b", Type: sql.Array(sql.Text), Source: "foo"},
+				{Name: "b", Type: sql.CreateArray(sql.Text), Source: "foo"},
 				{Name: "c", Type: sql.Int64, Source: "foo"},
 			},
 			nil,
 		),
-		expression.NewGetField(1, sql.Array(sql.Text), "foobar", false),
+		expression.NewGetField(1, sql.CreateArray(sql.Text), "foobar", false),
 	).Schema()
 
 	expected := sql.Schema{

@@ -14,6 +14,9 @@ func TestYearCompare(t *testing.T) {
 		val2 interface{}
 		expectedCmp int
 	}{
+		{nil, 0, -1},
+		{0, nil, 1},
+		{nil, nil, 0},
 		{1, 70, 1},
 		{80, 30, -1},
 		{0, "0", -1},

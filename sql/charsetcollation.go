@@ -1186,6 +1186,9 @@ func ParseCollation(characterSetStr *string, collationStr *string, binaryAttribu
 			return Collation_Default, nil
 		}
 		if collation, ok := collations[*collationStr]; ok {
+			if binaryAttribute {
+				return collation.CharacterSet().BinaryCollation(), nil
+			}
 			return collation, nil
 		}
 		return Collation_Default, ErrCollationNotSupported.New(*collationStr)

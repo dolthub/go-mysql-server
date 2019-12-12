@@ -13,6 +13,9 @@ func TestJsonCompare(t *testing.T) {
 		val2 interface{}
 		expectedCmp int
 	}{
+		{nil, 0, -1},
+		{0, nil, 1},
+		{nil, nil, 0},
 		{[]byte("A"), []byte("B"), -1},
 		{[]byte("A"), []byte("A"), 0},
 		{[]byte("C"), []byte("B"), 1},

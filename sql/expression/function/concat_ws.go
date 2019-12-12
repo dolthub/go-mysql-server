@@ -98,7 +98,7 @@ func (f *ConcatWithSeparator) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 		}
 
 		if sql.IsArray(arg.Type()) {
-			val, err = sql.Array(sql.Text).Convert(val)
+			val, err = sql.CreateArray(sql.Text).Convert(val)
 			if err != nil {
 				return nil, err
 			}
