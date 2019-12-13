@@ -411,7 +411,7 @@ func (m *ModifyColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 }
 
 func (m *ModifyColumn) String() string {
-	return fmt.Sprintf("modify column %s", m.column)
+	return fmt.Sprintf("modify column %s", m.column.Name)
 }
 
 func (m *ModifyColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {

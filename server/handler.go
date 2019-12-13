@@ -88,6 +88,22 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	logrus.Infof("NewConnection: client %v", c.ConnectionID)
 }
 
+func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) {
+	// TODO: set current DB
+}
+
+func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error) {
+	panic("prepared statements are not implemented")
+}
+
+func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
+	panic("prepared statements are not implemented")
+}
+
+func (h *Handler) ComResetConnection(c *mysql.Conn) {
+	// TODO: handle reset logic
+}
+
 // ConnectionClosed reports that a connection has been closed.
 func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 	h.sm.CloseConn(c)
