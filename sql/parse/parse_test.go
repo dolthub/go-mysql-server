@@ -1327,6 +1327,34 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
+	`CREATE VIEW v AS SELECT * FROM foo` : plan.NewCreateView(
+		sql.UnresolvedDatabase(""),
+		"v",
+		[]string{},
+		plan.NewSubqueryAlias(
+			"v",
+			plan.NewProject(
+				[]sql.Expression{expression.NewStar()},
+				plan.NewUnresolvedTable("foo", ""),
+			),
+		),
+		`SELECT * FROM foo`,
+		false,
+	),
+	`CREATE OR REPLACE VIEW v AS SELECT * FROM foo` : plan.NewCreateView(
+		sql.UnresolvedDatabase(""),
+		"v",
+		[]string{},
+		plan.NewSubqueryAlias(
+			"v",
+			plan.NewProject(
+				[]sql.Expression{expression.NewStar()},
+				plan.NewUnresolvedTable("foo", ""),
+			),
+		),
+		`SELECT * FROM foo`,
+		true,
+	),
 }
 
 func TestParse(t *testing.T) {
