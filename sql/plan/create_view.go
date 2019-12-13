@@ -18,6 +18,7 @@ type CreateView struct {
 	Catalog    *sql.Catalog
 	IsReplace  bool
 	Definition *SubqueryAlias
+	SelectStr  string
 }
 
 // NewCreateView creates a CreateView node with the specified parameters,
@@ -27,6 +28,7 @@ func NewCreateView(
 	name string,
 	columns []string,
 	definition *SubqueryAlias,
+	selectStr string,
 	isReplace bool,
 ) *CreateView {
 	return &CreateView{
@@ -37,6 +39,7 @@ func NewCreateView(
 		nil,
 		isReplace,
 		definition,
+		selectStr,
 	}
 }
 

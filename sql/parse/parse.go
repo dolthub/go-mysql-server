@@ -159,7 +159,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		if err != nil {
 			return nil, err
 		}
-		return convertDDL(ctx, ddl.(*sqlparser.DDL))
+		return convertDDL(ctx, query, ddl.(*sqlparser.DDL))
 	case *sqlparser.Set:
 		return convertSet(ctx, n)
 	case *sqlparser.Use:
@@ -365,11 +365,11 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 	return node, nil
 }
 
-func convertDDL(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
+func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
 	switch c.Action {
 	case sqlparser.CreateStr:
 		if !c.View.IsEmpty() {
-			return convertCreateView(ctx, c)
+			return convertCreateView(ctx, query, c)
 		}
 		return convertCreateTable(c)
 	case sqlparser.DropStr:
@@ -400,7 +400,7 @@ func convertCreateTable(c *sqlparser.DDL) (sql.Node, error) {
 		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema, c.IfNotExists), nil
 }
 
-func convertCreateView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
+func convertCreateView(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
 	selectStatement, ok := c.ViewExpr.(*sqlparser.Select)
 	if !ok {
 		return nil, ErrUnsupportedSyntax.New(c.ViewExpr)
@@ -413,8 +413,10 @@ func convertCreateView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 
 	queryAlias := plan.NewSubqueryAlias(c.View.Name.String(), queryNode)
 
+	selectStr := query[c.ViewSelectPositionStart:c.ViewSelectPositionEnd]
+
 	return plan.NewCreateView(
-		sql.UnresolvedDatabase(""), c.View.Name.String(), []string{}, queryAlias, c.OrReplace), nil
+		sql.UnresolvedDatabase(""), c.View.Name.String(), []string{}, queryAlias, selectStr, c.OrReplace), nil
 }
 
 func convertDropView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
