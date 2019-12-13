@@ -18,6 +18,7 @@ type CreateView struct {
 	Catalog    *sql.Catalog
 	IsReplace  bool
 	Definition *SubqueryAlias
+	SelectStr  string
 }
 
 // NewCreateView creates a CreateView node with the specified parameters,
@@ -27,6 +28,7 @@ func NewCreateView(
 	name string,
 	columns []string,
 	definition *SubqueryAlias,
+	selectStr string,
 	isReplace bool,
 ) *CreateView {
 	return &CreateView{
@@ -37,6 +39,7 @@ func NewCreateView(
 		nil,
 		isReplace,
 		definition,
+		selectStr,
 	}
 }
 
@@ -69,6 +72,14 @@ func (cv *CreateView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	if cv.IsReplace {
 		err := registry.Delete(cv.database.Name(), view.Name())
 		if err != nil && !sql.ErrNonExistingView.Is(err) {
+			return sql.RowsToRowIter(), err
+		}
+	}
+
+	creator, ok := cv.database.(sql.ViewCreator)
+	if ok {
+		err := creator.CreateView(ctx, cv.Name, cv.SelectStr)
+		if err != nil {
 			return sql.RowsToRowIter(), err
 		}
 	}

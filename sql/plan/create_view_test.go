@@ -31,7 +31,7 @@ func mockCreateView(isReplace bool) *CreateView {
 		),
 	)
 
-	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, isReplace)
+	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, "select i from dual", isReplace)
 	createView.Catalog = catalog
 
 	return createView

@@ -376,9 +376,23 @@ type TableCreator interface {
 	CreateTable(ctx *Context, name string, schema Schema) error
 }
 
+// ViewCreator should be implemented by databases that want to know when a view
+// has been created.
+type ViewCreator interface {
+	// Notifies the database that a view with the given name and the given
+	// select statement as been created.
+	CreateView(ctx *Context, name string, selectStatment string) error
+}
+
 // TableDropper should be implemented by databases that can drop tables.
 type TableDropper interface {
 	DropTable(ctx *Context, name string) error
+}
+
+// ViewDropper should be implemented by databases that want to know when a view
+// is dropped.
+type ViewDropper interface {
+	DropView(ctx *Context, name string) error
 }
 
 // Lockable should be implemented by tables that can be locked and unlocked.
