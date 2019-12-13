@@ -76,6 +76,14 @@ func (cv *CreateView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		}
 	}
 
+	creator, ok := cv.database.(sql.ViewCreator)
+	if ok {
+		err := creator.CreateView(ctx, cv.Name, cv.SelectStr)
+		if err != nil {
+			return sql.RowsToRowIter(), err
+		}
+	}
+
 	return sql.RowsToRowIter(), registry.Register(cv.database.Name(), view)
 }
 

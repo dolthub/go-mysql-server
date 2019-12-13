@@ -115,6 +115,14 @@ func (dvs *DropView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 			return sql.RowsToRowIter(), errDropViewChild.New()
 		}
 
+		dropper, dok := drop.database.(sql.ViewDropper)
+		if dok {
+			err := dropper.DropView(ctx, drop.viewName)
+			if err != nil {
+				return sql.RowsToRowIter(), err
+			}
+		}
+
 		viewList[i] = sql.NewViewKey(drop.database.Name(), drop.viewName)
 	}
 
