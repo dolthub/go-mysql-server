@@ -159,14 +159,28 @@ var fixtures = map[string]sql.Node{
 	`ALTER TABLE foo RENAME COLUMN bar TO baz`: plan.NewRenameColumn(
 		sql.UnresolvedDatabase(""), "foo", "bar", "baz",
 	),
-	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT 1 COMMENT 'hello'`: plan.NewAddColumn(
+	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+			Name:       "bar",
+			Type:       sql.Int32,
+			Nullable:   false,
+		}, nil,
+	),
+	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT 1 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
 		// TODO: default value
 		sql.UnresolvedDatabase(""), "foo", &sql.Column{
 			Name:       "bar",
 			Type:       sql.Int32,
 			Nullable:   false,
 			Comment:    "hello",
-		}, nil,
+		}, &sql.ColumnOrder{AfterColumn: "baz"},
+	),
+	`ALTER TABLE foo ADD COLUMN bar INT FIRST`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+			Name:       "bar",
+			Type:       sql.Int32,
+			Nullable:   true,
+		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE foo DROP COLUMN bar`: plan.NewDropColumn(
 		sql.UnresolvedDatabase(""), "foo", "bar",

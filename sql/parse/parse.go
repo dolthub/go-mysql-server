@@ -409,17 +409,34 @@ func convertAlterTable(ddl *sqlparser.DDL) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		// TODO: order
-		return plan.NewAddColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), sch[0], nil), nil
+		return plan.NewAddColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), sch[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 	case sqlparser.DropStr:
 		return plan.NewDropColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String()), nil
 	case sqlparser.RenameStr:
 		return plan.NewRenameColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String(), ddl.ToColumn.String()), nil
-	// TODO: modify column for things other than rename
+	case sqlparser.ModifyStr, sqlparser.ChangeStr:
+		sch, err := tableSpecToSchema(ddl.TableSpec)
+		if err != nil {
+			return nil, err
+		}
+		return plan.NewModifyColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String(), sch[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 	default:
 		return nil, ErrUnsupportedFeature.New(ddl)
 	}
 }
+
+func columnOrderToColumnOrder(order *sqlparser.ColumnOrder) *sql.ColumnOrder {
+	if order == nil {
+		return nil
+	}
+	if order.First {
+		return &sql.ColumnOrder{First: true}
+	} else {
+		return &sql.ColumnOrder{AfterColumn: order.AfterColumn.String()}
+	}
+}
+
+
 
 func convertDropTable(c *sqlparser.DDL) (sql.Node, error) {
 	tableNames := make([]string, len(c.FromTables))
