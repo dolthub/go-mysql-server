@@ -3206,7 +3206,37 @@ func TestAddColumn(t *testing.T) {
 		{Name: "s", Type: sql.Text, Source: "mytable"},
 		{Name: "i2", Type: sql.Int32, Comment: "hello"},
 	}, tbl.Schema())
-	// TODO: column order
+
+	testQuery(t, e,
+		"ALTER TABLE mytable ADD COLUMN s2 TEXT NOT NULL COMMENT 'hello' after i",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "s2", Type: sql.Text, Comment: "hello"},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i2", Type: sql.Int32, Comment: "hello"},
+	}, tbl.Schema())
+
+	testQuery(t, e,
+		"ALTER TABLE mytable ADD COLUMN s3 TEXT NOT NULL COMMENT 'hello' first",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "s3", Type: sql.Text, Comment: "hello"},
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "s2", Type: sql.Text, Comment: "hello"},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i2", Type: sql.Int32, Comment: "hello"},
+	}, tbl.Schema())
 
 	_, _, err = e.Query(newCtx(), "ALTER TABLE not_exist ADD COLUMN i2 INT NOT NULL COMMENT 'hello'")
 	require.Error(err)
