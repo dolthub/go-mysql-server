@@ -218,6 +218,18 @@ func (t stringType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Promote implements the Type interface.
+func (t stringType) Promote() Type {
+	switch t.baseType {
+	case sqltypes.Char, sqltypes.VarChar, sqltypes.Text:
+		return MustCreateString(sqltypes.Text, longTextBlobMax, t.collation)
+	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
+		return LongBlob
+	default:
+		panic(ErrInvalidBaseType.New(t.baseType.String(), "string"))
+	}
+}
+
 // SQL implements Type interface.
 func (t stringType) SQL(v interface{}) (sqltypes.Value, error) {
 	if v == nil {

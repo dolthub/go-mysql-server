@@ -42,7 +42,8 @@ func (b *Between) Resolved() bool {
 
 // Eval implements the Expression interface.
 func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	typ := b.Val.Type()
+	typ := b.Val.Type().Promote()
+
 	val, err := b.Val.Eval(ctx, row)
 	if err != nil {
 		return nil, err

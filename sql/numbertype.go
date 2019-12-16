@@ -56,6 +56,7 @@ var (
 type NumberType interface {
 	Type
 	IsSigned() bool
+	IsFloat() bool
 }
 
 type numberTypeImpl struct {
@@ -224,6 +225,20 @@ func (t numberTypeImpl) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Promote implements the Type interface.
+func (t numberTypeImpl) Promote() Type {
+	switch t.baseType {
+	case sqltypes.Int8, sqltypes.Int16, sqltypes.Int24, sqltypes.Int32, sqltypes.Int64:
+		return Int64
+	case sqltypes.Uint8, sqltypes.Uint16, sqltypes.Uint24, sqltypes.Uint32, sqltypes.Uint64:
+		return Uint64
+	case sqltypes.Float32, sqltypes.Float64:
+		return Float64
+	default:
+		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
+	}
+}
+
 // SQL implements Type interface.
 func (t numberTypeImpl) SQL(v interface{}) (sqltypes.Value, error) {
 	if v == nil {
@@ -327,6 +342,15 @@ func (t numberTypeImpl) Zero() interface{} {
 	default:
 		panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
 	}
+}
+
+// IsFloat implements NumberType interface.
+func (t numberTypeImpl) IsFloat() bool {
+	switch t.baseType {
+	case sqltypes.Float32, sqltypes.Float64:
+		return true
+	}
+	return false
 }
 
 // IsSigned implements NumberType interface.

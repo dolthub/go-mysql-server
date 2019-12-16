@@ -3,11 +3,10 @@ package sql
 import (
 	"encoding/json"
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"strconv"
 	"time"
-
-	"gopkg.in/src-d/go-errors.v1"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -40,6 +39,8 @@ type Type interface {
 	Convert(interface{}) (interface{}, error)
 	// MustConvert converts a value of a compatible type to a most accurate type, causing a panic on failure.
 	MustConvert(interface{}) interface{}
+	// Promote will promote the current type to the largest representing type of the same kind, such as Int8 to Int64.
+	Promote() Type
 	// SQL returns the sqltypes.Value for the given value.
 	SQL(interface{}) (sqltypes.Value, error)
 	// Type returns the query.Type for the given Type.
@@ -47,49 +48,6 @@ type Type interface {
 	// Zero returns the golang zero value for this type
 	Zero() interface{}
 	fmt.Stringer
-}
-
-func BooleanConcrete(v interface{}) bool {
-	if v == False {
-		return false
-	}
-	return true
-}
-
-func BooleanParse(v interface{}) (int8, error) {
-	switch b := v.(type) {
-	case bool:
-		if b {
-			return True, nil
-		}
-		return False, nil
-	case int, int64, int32, int16, int8, uint, uint64, uint32, uint16, uint8:
-		if b == 0 {
-			return False, nil
-		}
-		return True, nil
-	case time.Duration:
-		if b == 0 {
-			return False, nil
-		}
-		return True, nil
-	case time.Time:
-		if b.UnixNano() == 0 {
-			return False, nil
-		}
-		return True, nil
-	case float32, float64:
-		if b == 0 {
-			return False, nil
-		}
-		return True, nil
-	case string:
-		return False, nil
-	case nil:
-		return False, fmt.Errorf("unable to cast nil to bool")
-	default:
-		return False, fmt.Errorf("unable to cast %#v of type %T to bool", v, v)
-	}
 }
 
 // ColumnTypeToType gets the column type using the column definition.
@@ -257,6 +215,62 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 	return nil, fmt.Errorf("type not yet implemented: %v", ct.Type)
 }
 
+func ConvertToBool(v interface{}) (bool, error) {
+	switch b := v.(type) {
+	case bool:
+		if b {
+			return true, nil
+		}
+		return false, nil
+	case int:
+		return ConvertToBool(int64(b))
+	case int64:
+		if b == 0 {
+			return false, nil
+		}
+		return true, nil
+	case int32:
+		return ConvertToBool(int64(b))
+	case int16:
+		return ConvertToBool(int64(b))
+	case int8:
+		return ConvertToBool(int64(b))
+	case uint:
+		return ConvertToBool(int64(b))
+	case uint64:
+		return ConvertToBool(int64(b))
+	case uint32:
+		return ConvertToBool(int64(b))
+	case uint16:
+		return ConvertToBool(int64(b))
+	case uint8:
+		return ConvertToBool(int64(b))
+	case time.Duration:
+		if b == 0 {
+			return false, nil
+		}
+		return true, nil
+	case time.Time:
+		if b.UnixNano() == 0 {
+			return false, nil
+		}
+		return true, nil
+	case float32:
+		return ConvertToBool(float64(b))
+	case float64:
+		if b == 0 {
+			return false, nil
+		}
+		return true, nil
+	case string:
+		return false, nil
+	case nil:
+		return false, fmt.Errorf("unable to cast nil to bool")
+	default:
+		return false, fmt.Errorf("unable to cast %#v of type %T to bool", v, v)
+	}
+}
+
 // IsArray returns whether the given type is an array.
 func IsArray(t Type) bool {
 	_, ok := t.(arrayType)
@@ -306,7 +320,8 @@ func IsText(t Type) bool {
 
 // IsTime checks if t is a timestamp, date or datetime
 func IsTime(t Type) bool {
-	return t == Timestamp || t == Date || t == Datetime
+	_, ok := t.(datetimeType)
+	return ok
 }
 
 // IsTuple checks if t is a tuple type.

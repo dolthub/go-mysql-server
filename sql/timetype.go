@@ -179,6 +179,11 @@ func (t timespanType) ConvertToTimespanImpl(v interface{}) (timespanImpl, error)
 	return timespanImpl{}, ErrConvertingToTimeType.New(v)
 }
 
+// Promote implements the Type interface.
+func (t timespanType) Promote() Type {
+	return t
+}
+
 // SQL implements Type interface.
 func (t timespanType) SQL(v interface{}) (sqltypes.Value, error) {
 	ti, err := t.ConvertToTimespanImpl(v)

@@ -70,6 +70,10 @@ func (t tupleType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+func (t tupleType) Promote() Type {
+	return t
+}
+
 func (t tupleType) SQL(interface{}) (sqltypes.Value, error) {
 	return sqltypes.Value{}, fmt.Errorf("unable to convert tuple type to SQL")
 }

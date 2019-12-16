@@ -43,6 +43,11 @@ func (t nullType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Promote implements the Type interface.
+func (t nullType) Promote() Type {
+	return t
+}
+
 // SQL implements Type interface.
 func (t nullType) SQL(interface{}) (sqltypes.Value, error) {
 	return sqltypes.NULL, nil

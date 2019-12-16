@@ -197,6 +197,14 @@ func (t datetimeType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Promote implements the Type interface.
+func (t datetimeType) Promote() Type {
+	if t.baseType == sqltypes.Timestamp {
+		return Datetime
+	}
+	return t
+}
+
 // SQL implements Type interface.
 func (t datetimeType) SQL(v interface{}) (sqltypes.Value, error) {
 	if v == nil {

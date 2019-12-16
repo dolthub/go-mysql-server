@@ -450,7 +450,7 @@ func NewIn(left sql.Expression, right sql.Expression) *In {
 
 // Eval implements the Expression interface.
 func (in *In) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	typ := in.Left().Type()
+	typ := in.Left().Type().Promote()
 	leftElems := sql.NumColumns(typ)
 	left, err := in.Left().Eval(ctx, row)
 	if err != nil {
@@ -558,7 +558,7 @@ func NewNotIn(left sql.Expression, right sql.Expression) *NotIn {
 
 // Eval implements the Expression interface.
 func (in *NotIn) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	typ := in.Left().Type()
+	typ := in.Left().Type().Promote()
 	leftElems := sql.NumColumns(typ)
 	left, err := in.Left().Eval(ctx, row)
 	if err != nil {
