@@ -265,6 +265,14 @@ func (a *AddColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
+	tbl := alterable.(sql.Table)
+	if a.order != nil && !a.order.First {
+		idx := tbl.Schema().IndexOf(a.order.AfterColumn, tbl.Name())
+		if idx < 0 {
+			return nil, ErrColumnNotFound.New(tbl.Name(), a.order.AfterColumn)
+		}
+	}
+
 	return sql.RowsToRowIter(), alterable.AddColumn(ctx, a.column, a.order)
 }
 
@@ -362,19 +370,14 @@ func (r *RenameColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}
 
 	tbl := alterable.(sql.Table)
-	var col *sql.Column
-	for _, column := range tbl.Schema() {
-		if column.Name == r.columnName {
-			nc := *column
-			nc.Name = r.newColumnName
-			col = &nc
-			break
-		}
-	}
-
-	if col == nil {
+	idx := tbl.Schema().IndexOf(r.columnName, tbl.Name())
+	if idx < 0 {
 		return nil, ErrColumnNotFound.New(tbl.Name(), r.columnName)
 	}
+
+	nc := *tbl.Schema()[idx]
+	nc.Name = r.newColumnName
+	col := &nc
 
 	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, r.columnName, col, nil)
 }
@@ -418,6 +421,19 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	alterable, err  := getAlterableTable(m.db, ctx, m.tableName)
 	if err != nil {
 		return nil, err
+	}
+
+	tbl := alterable.(sql.Table)
+	idx := tbl.Schema().IndexOf(m.columnName, tbl.Name())
+	if idx < 0 {
+		return nil, ErrColumnNotFound.New(tbl.Name(), m.columnName)
+	}
+
+	if m.order != nil && !m.order.First {
+		idx = tbl.Schema().IndexOf(m.order.AfterColumn, tbl.Name())
+		if idx < 0 {
+			return nil, ErrColumnNotFound.New(tbl.Name(), m.order.AfterColumn)
+		}
 	}
 
 	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, m.columnName, m.column, m.order)

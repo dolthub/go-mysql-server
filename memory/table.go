@@ -366,6 +366,7 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 }
 
 func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {
+	column.Source = t.Name()
 	newSch := make(sql.Schema, len(t.schema) + 1)
 	var i int
 	if order != nil && order.First {

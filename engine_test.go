@@ -3204,7 +3204,7 @@ func TestAddColumn(t *testing.T) {
 	require.Equal(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable"},
 		{Name: "s", Type: sql.Text, Source: "mytable"},
-		{Name: "i2", Type: sql.Int32, Comment: "hello"},
+		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello"},
 	}, tbl.Schema())
 
 	testQuery(t, e,
@@ -3217,9 +3217,9 @@ func TestAddColumn(t *testing.T) {
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable"},
-		{Name: "s2", Type: sql.Text, Comment: "hello"},
+		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello"},
 		{Name: "s", Type: sql.Text, Source: "mytable"},
-		{Name: "i2", Type: sql.Int32, Comment: "hello"},
+		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello"},
 	}, tbl.Schema())
 
 	testQuery(t, e,
@@ -3231,14 +3231,78 @@ func TestAddColumn(t *testing.T) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "s3", Type: sql.Text, Comment: "hello"},
+		{Name: "s3", Type: sql.Text, Source: "mytable", Comment: "hello"},
 		{Name: "i", Type: sql.Int64, Source: "mytable"},
-		{Name: "s2", Type: sql.Text, Comment: "hello"},
+		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello"},
 		{Name: "s", Type: sql.Text, Source: "mytable"},
-		{Name: "i2", Type: sql.Int32, Comment: "hello"},
+		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello"},
 	}, tbl.Schema())
 
 	_, _, err = e.Query(newCtx(), "ALTER TABLE not_exist ADD COLUMN i2 INT NOT NULL COMMENT 'hello'")
+	require.Error(err)
+	require.True(sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE mytable ADD COLUMN b BIGINT NOT NULL COMMENT 'ok' AFTER not_exist")
+	require.Error(err)
+	require.True(plan.ErrColumnNotFound.Is(err))
+}
+
+func TestModifyColumn(t *testing.T) {
+	ctx := context.Background()
+	require := require.New(t)
+
+	e := newEngine(t)
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	testQuery(t, e,
+		"ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "i", Type: sql.Text, Source: "mytable", Comment:"modified"},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+	}, tbl.Schema())
+
+	testQuery(t, e,
+		"ALTER TABLE mytable MODIFY COLUMN i TINYINT NULL COMMENT 'yes' AFTER s",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i", Type: sql.Int8, Source: "mytable", Comment:"yes", Nullable: true},
+	}, tbl.Schema())
+
+	testQuery(t, e,
+		"ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable", Comment:"ok"},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+	}, tbl.Schema())
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST")
+	require.Error(err)
+	require.True(plan.ErrColumnNotFound.Is(err))
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE mytable MODIFY i BIGINT NOT NULL COMMENT 'ok' AFTER not_exist")
+	require.Error(err)
+	require.True(plan.ErrColumnNotFound.Is(err))
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE not_exist MODIFY COLUMN i INT NOT NULL COMMENT 'hello'")
 	require.Error(err)
 	require.True(sql.ErrTableNotFound.Is(err))
 }
