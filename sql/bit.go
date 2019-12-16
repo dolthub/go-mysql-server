@@ -9,6 +9,8 @@ import (
 	"vitess.io/vitess/go/vt/proto/query"
 )
 
+var promotedBitType = MustCreateBitType(64)
+
 // Represents the BIT type.
 // https://dev.mysql.com/doc/refman/8.0/en/bit-type.html
 type BitType interface {
@@ -91,6 +93,11 @@ func (t bitType) MustConvert(v interface{}) interface{} {
 		panic(err)
 	}
 	return value
+}
+
+// Promote implements the Type interface.
+func (t bitType) Promote() Type {
+	return promotedBitType
 }
 
 // SQL implements Type interface.

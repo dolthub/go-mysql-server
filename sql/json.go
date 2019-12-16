@@ -54,6 +54,11 @@ func (t jsonType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Promote implements the Type interface.
+func (t jsonType) Promote() Type {
+	return t
+}
+
 // SQL implements Type interface.
 func (t jsonType) SQL(v interface{}) (sqltypes.Value, error) {
 	if v == nil {

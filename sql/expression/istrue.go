@@ -45,11 +45,10 @@ func (e *IsTrue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if v == nil {
 		return false, nil
 	} else {
-		boolVal, err = sql.BooleanParse(v)
+		boolVal, err = sql.ConvertToBool(v)
 		if err != nil {
 			return nil, err
 		}
-		boolVal = sql.BooleanConcrete(boolVal)
 	}
 
 	if e.invert {

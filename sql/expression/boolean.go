@@ -32,15 +32,10 @@ func (e *Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	b, ok := v.(bool)
 	if !ok {
-		v, err = sql.BooleanParse(v)
+		b, err = sql.ConvertToBool(v)
 		if err != nil {
 			return nil, err
 		}
-		if v == nil {
-			return nil, nil
-		}
-
-		b = sql.BooleanConcrete(v)
 	}
 
 	return !b, nil

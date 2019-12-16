@@ -101,6 +101,10 @@ func (t arrayType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+func (t arrayType) Promote() Type {
+	return t
+}
+
 func (t arrayType) SQL(v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil

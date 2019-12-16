@@ -122,6 +122,11 @@ func (t yearType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Promote implements the Type interface.
+func (t yearType) Promote() Type {
+	return t
+}
+
 // SQL implements Type interface.
 func (t yearType) SQL(v interface{}) (sqltypes.Value, error) {
 	v, err := t.Convert(v)
