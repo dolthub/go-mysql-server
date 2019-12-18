@@ -92,11 +92,11 @@ func TestConvertDates(t *testing.T) {
 		{
 			"convert to other type",
 			expression.NewConvert(
-				expression.NewLiteral("", sql.Text),
+				expression.NewLiteral("", sql.LongText),
 				expression.ConvertToBinary,
 			),
 			expression.NewConvert(
-				expression.NewLiteral("", sql.Text),
+				expression.NewLiteral("", sql.LongText),
 				expression.ConvertToBinary,
 			),
 		},
@@ -176,7 +176,7 @@ func TestConvertDatesProject(t *testing.T) {
 	input := plan.NewFilter(
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Int64, "foo", false),
-			expression.NewLiteral("2019-06-06 00:00:00", sql.Text),
+			expression.NewLiteral("2019-06-06 00:00:00", sql.LongText),
 		),
 		plan.NewProject([]sql.Expression{
 			expression.NewGetField(0, sql.Timestamp, "foo", false),
@@ -185,7 +185,7 @@ func TestConvertDatesProject(t *testing.T) {
 	expected := plan.NewFilter(
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Int64, "foo", false),
-			expression.NewLiteral("2019-06-06 00:00:00", sql.Text),
+			expression.NewLiteral("2019-06-06 00:00:00", sql.LongText),
 		),
 		plan.NewProject([]sql.Expression{
 			expression.NewAlias(
@@ -208,7 +208,7 @@ func TestConvertDatesGroupBy(t *testing.T) {
 	input := plan.NewFilter(
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Int64, "foo", false),
-			expression.NewLiteral("2019-06-06 00:00:00", sql.Text),
+			expression.NewLiteral("2019-06-06 00:00:00", sql.LongText),
 		),
 		plan.NewGroupBy(
 			[]sql.Expression{
@@ -222,7 +222,7 @@ func TestConvertDatesGroupBy(t *testing.T) {
 	expected := plan.NewFilter(
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Int64, "foo", false),
-			expression.NewLiteral("2019-06-06 00:00:00", sql.Text),
+			expression.NewLiteral("2019-06-06 00:00:00", sql.LongText),
 		),
 		plan.NewGroupBy(
 			[]sql.Expression{
@@ -254,7 +254,7 @@ func TestConvertDatesFieldReference(t *testing.T) {
 	input := plan.NewFilter(
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Int64, "DAYOFWEEK(foo)", false),
-			expression.NewLiteral("2019-06-06 00:00:00", sql.Text),
+			expression.NewLiteral("2019-06-06 00:00:00", sql.LongText),
 		),
 		plan.NewProject([]sql.Expression{
 			function.NewDayOfWeek(
@@ -265,7 +265,7 @@ func TestConvertDatesFieldReference(t *testing.T) {
 	expected := plan.NewFilter(
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Int64, "DAYOFWEEK(convert(foo, datetime))", false),
-			expression.NewLiteral("2019-06-06 00:00:00", sql.Text),
+			expression.NewLiteral("2019-06-06 00:00:00", sql.LongText),
 		),
 		plan.NewProject([]sql.Expression{
 			function.NewDayOfWeek(

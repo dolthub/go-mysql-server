@@ -23,8 +23,8 @@ func TestCoalesce(t *testing.T) {
 	}{
 		{"coalesce(1, 2, 3)", []sql.Expression{expression.NewLiteral(1, sql.Int32), expression.NewLiteral(2, sql.Int32), expression.NewLiteral(3, sql.Int32)}, 1, sql.Int32, false},
 		{"coalesce(NULL, NULL, 3)", []sql.Expression{nil, nil, expression.NewLiteral(3, sql.Int32)}, 3, sql.Int32, false},
-		{"coalesce(NULL, NULL, '3')", []sql.Expression{nil, nil, expression.NewLiteral("3", sql.Text)}, "3", sql.Text, false},
-		{"coalesce(NULL, '2', 3)", []sql.Expression{nil, expression.NewLiteral("2", sql.Text), expression.NewLiteral(3, sql.Int32)}, "2", sql.Text, false},
+		{"coalesce(NULL, NULL, '3')", []sql.Expression{nil, nil, expression.NewLiteral("3", sql.LongText)}, "3", sql.LongText, false},
+		{"coalesce(NULL, '2', 3)", []sql.Expression{nil, expression.NewLiteral("2", sql.LongText), expression.NewLiteral(3, sql.Int32)}, "2", sql.LongText, false},
 		{"coalesce(NULL, NULL, NULL)", []sql.Expression{nil, nil, nil}, nil, nil, true},
 	}
 

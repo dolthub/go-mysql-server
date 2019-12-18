@@ -555,7 +555,7 @@ func NewDate(date sql.Expression) sql.Expression {
 func (d *Date) String() string { return fmt.Sprintf("DATE(%s)", d.Child) }
 
 // Type implements the Expression interface.
-func (d *Date) Type() sql.Type { return sql.Text }
+func (d *Date) Type() sql.Type { return sql.LongText }
 
 // Eval implements the Expression interface.
 func (d *Date) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

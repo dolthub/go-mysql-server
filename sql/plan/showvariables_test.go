@@ -41,7 +41,7 @@ func TestShowVariablesWithLike(t *testing.T) {
 	vars := map[string]sql.TypedValue{
 		"int1": {Typ: sql.Int32, Value: 1},
 		"int2": {Typ: sql.Int32, Value: 2},
-		"txt":  {Typ: sql.Text, Value: "abcdefghijklmnoprstuwxyz"},
+		"txt":  {Typ: sql.LongText, Value: "abcdefghijklmnoprstuwxyz"},
 	}
 
 	sv := NewShowVariables(vars, "int%")

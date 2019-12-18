@@ -37,7 +37,7 @@ type Trim struct {
 }
 
 // Type implements the Expression interface.
-func (t *Trim) Type() sql.Type { return sql.Text }
+func (t *Trim) Type() sql.Type { return sql.LongText }
 
 func (t *Trim) String() string {
 	switch t.trimType {
@@ -77,7 +77,7 @@ func (t *Trim) Eval(
 		return nil, nil
 	}
 
-	str, err = sql.Text.Convert(str)
+	str, err = sql.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}

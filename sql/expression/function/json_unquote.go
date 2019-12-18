@@ -30,7 +30,7 @@ func (js *JSONUnquote) String() string {
 
 // Type implements the Expression interface.
 func (*JSONUnquote) Type() sql.Type {
-	return sql.Text
+	return sql.LongText
 }
 
 // WithChildren implements the Expression interface.
@@ -48,7 +48,7 @@ func (js *JSONUnquote) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return json, err
 	}
 
-	ex, err := sql.Text.Convert(json)
+	ex, err := sql.LongText.Convert(json)
 	if err != nil {
 		return nil, err
 	}

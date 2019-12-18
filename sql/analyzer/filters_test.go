@@ -11,19 +11,19 @@ import (
 func TestFiltersMerge(t *testing.T) {
 	f1 := filters{
 		"1": []sql.Expression{
-			expression.NewLiteral("1", sql.Text),
+			expression.NewLiteral("1", sql.LongText),
 		},
 		"2": []sql.Expression{
-			expression.NewLiteral("2", sql.Text),
+			expression.NewLiteral("2", sql.LongText),
 		},
 	}
 
 	f2 := filters{
 		"2": []sql.Expression{
-			expression.NewLiteral("2.2", sql.Text),
+			expression.NewLiteral("2.2", sql.LongText),
 		},
 		"3": []sql.Expression{
-			expression.NewLiteral("3", sql.Text),
+			expression.NewLiteral("3", sql.LongText),
 		},
 	}
 
@@ -32,14 +32,14 @@ func TestFiltersMerge(t *testing.T) {
 	require.Equal(t,
 		filters{
 			"1": []sql.Expression{
-				expression.NewLiteral("1", sql.Text),
+				expression.NewLiteral("1", sql.LongText),
 			},
 			"2": []sql.Expression{
-				expression.NewLiteral("2", sql.Text),
-				expression.NewLiteral("2.2", sql.Text),
+				expression.NewLiteral("2", sql.LongText),
+				expression.NewLiteral("2.2", sql.LongText),
 			},
 			"3": []sql.Expression{
-				expression.NewLiteral("3", sql.Text),
+				expression.NewLiteral("3", sql.LongText),
 			},
 		},
 		f1,
@@ -59,7 +59,7 @@ func TestSplitExpression(t *testing.T) {
 			),
 			expression.NewEquals(
 				expression.NewUnresolvedColumn("foo"),
-				expression.NewLiteral("foo", sql.Text),
+				expression.NewLiteral("foo", sql.LongText),
 			),
 		),
 	)
@@ -73,7 +73,7 @@ func TestSplitExpression(t *testing.T) {
 		),
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("foo"),
-			expression.NewLiteral("foo", sql.Text),
+			expression.NewLiteral("foo", sql.LongText),
 		),
 	}
 

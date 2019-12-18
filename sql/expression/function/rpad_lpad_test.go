@@ -11,9 +11,9 @@ import (
 func TestLPad(t *testing.T) {
 	f, err := NewPad(
 		lPadType,
-		expression.NewGetField(0, sql.Text, "str", false),
+		expression.NewGetField(0, sql.LongText, "str", false),
 		expression.NewGetField(1, sql.Int64, "len", false),
-		expression.NewGetField(2, sql.Text, "padStr", false),
+		expression.NewGetField(2, sql.LongText, "padStr", false),
 	)
 	require.NoError(t, err)
 	testCases := []struct {
@@ -61,9 +61,9 @@ func TestLPad(t *testing.T) {
 func TestRPad(t *testing.T) {
 	f, err := NewPad(
 		rPadType,
-		expression.NewGetField(0, sql.Text, "str", false),
+		expression.NewGetField(0, sql.LongText, "str", false),
 		expression.NewGetField(1, sql.Int64, "len", false),
-		expression.NewGetField(2, sql.Text, "padStr", false),
+		expression.NewGetField(2, sql.LongText, "padStr", false),
 	)
 	require.NoError(t, err)
 	testCases := []struct {

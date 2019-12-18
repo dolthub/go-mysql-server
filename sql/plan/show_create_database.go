@@ -16,8 +16,8 @@ type ShowCreateDatabase struct {
 const defaultCharacterSet = "utf8mb4"
 
 var showCreateDatabaseSchema = sql.Schema{
-	{Name: "Database", Type: sql.Text},
-	{Name: "Create Database", Type: sql.Text},
+	{Name: "Database", Type: sql.LongText},
+	{Name: "Create Database", Type: sql.LongText},
 }
 
 // NewShowCreateDatabase creates a new ShowCreateDatabase node.

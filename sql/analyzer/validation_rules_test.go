@@ -392,14 +392,14 @@ func TestValidateCaseResultTypes(t *testing.T) {
 				[]expression.CaseBranch{
 					{
 						Cond:  expression.NewLiteral(int64(1), sql.Int64),
-						Value: expression.NewLiteral("foo", sql.Text),
+						Value: expression.NewLiteral("foo", sql.LongText),
 					},
 					{
 						Cond:  expression.NewLiteral(int64(2), sql.Int64),
 						Value: expression.NewLiteral(int64(1), sql.Int64),
 					},
 				},
-				expression.NewLiteral("foo", sql.Text),
+				expression.NewLiteral("foo", sql.LongText),
 			),
 			false,
 		},
@@ -410,7 +410,7 @@ func TestValidateCaseResultTypes(t *testing.T) {
 				[]expression.CaseBranch{
 					{
 						Cond:  expression.NewLiteral(int64(1), sql.Int64),
-						Value: expression.NewLiteral("foo", sql.Text),
+						Value: expression.NewLiteral("foo", sql.LongText),
 					},
 					{
 						Cond:  expression.NewLiteral(int64(2), sql.Int64),
@@ -428,14 +428,14 @@ func TestValidateCaseResultTypes(t *testing.T) {
 				[]expression.CaseBranch{
 					{
 						Cond:  expression.NewLiteral(int64(1), sql.Int64),
-						Value: expression.NewLiteral("foo", sql.Text),
+						Value: expression.NewLiteral("foo", sql.LongText),
 					},
 					{
 						Cond:  expression.NewLiteral(int64(2), sql.Int64),
-						Value: expression.NewLiteral("bar", sql.Text),
+						Value: expression.NewLiteral("bar", sql.LongText),
 					},
 				},
-				expression.NewLiteral("baz", sql.Text),
+				expression.NewLiteral("baz", sql.LongText),
 			),
 			true,
 		},
@@ -477,7 +477,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					mustFunc(function.NewDateAdd(
-						expression.NewLiteral("2018-05-01", sql.Text),
+						expression.NewLiteral("2018-05-01", sql.LongText),
 						expression.NewInterval(
 							expression.NewLiteral(int64(1), sql.Int64),
 							"DAY",
@@ -493,7 +493,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					mustFunc(function.NewDateSub(
-						expression.NewLiteral("2018-05-01", sql.Text),
+						expression.NewLiteral("2018-05-01", sql.LongText),
 						expression.NewInterval(
 							expression.NewLiteral(int64(1), sql.Int64),
 							"DAY",
@@ -509,7 +509,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewPlus(
-						expression.NewLiteral("2018-05-01", sql.Text),
+						expression.NewLiteral("2018-05-01", sql.LongText),
 						expression.NewInterval(
 							expression.NewLiteral(int64(1), sql.Int64),
 							"DAY",
@@ -525,7 +525,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewMinus(
-						expression.NewLiteral("2018-05-01", sql.Text),
+						expression.NewLiteral("2018-05-01", sql.LongText),
 						expression.NewInterval(
 							expression.NewLiteral(int64(1), sql.Int64),
 							"DAY",

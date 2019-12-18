@@ -71,9 +71,9 @@ func (c *Convert) IsNullable() bool {
 func (c *Convert) Type() sql.Type {
 	switch c.castToType {
 	case ConvertToBinary:
-		return sql.Blob
+		return sql.LongBlob
 	case ConvertToChar, ConvertToNChar:
-		return sql.Text
+		return sql.LongText
 	case ConvertToDate:
 		return sql.Date
 	case ConvertToDatetime:
@@ -133,13 +133,13 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func convertValue(val interface{}, castTo string) (interface{}, error) {
 	switch castTo {
 	case ConvertToBinary:
-		b, err := sql.Blob.Convert(val)
+		b, err := sql.LongBlob.Convert(val)
 		if err != nil {
 			return nil, nil
 		}
 		return b, nil
 	case ConvertToChar, ConvertToNChar:
-		s, err := sql.Text.Convert(val)
+		s, err := sql.LongText.Convert(val)
 		if err != nil {
 			return nil, nil
 		}

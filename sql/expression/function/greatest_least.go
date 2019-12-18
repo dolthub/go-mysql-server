@@ -80,7 +80,7 @@ func compEval(
 			}
 
 		case string:
-			if returnType == sql.Text && (i == 0 || cmp(t, selectedString)) {
+			if sql.IsTextOnly(returnType) && (i == 0 || cmp(t, selectedString)) {
 				selectedString = t
 			}
 
@@ -103,7 +103,7 @@ func compEval(
 	switch returnType {
 	case sql.Int64:
 		return int64(selectedNum), nil
-	case sql.Text:
+	case sql.LongText:
 		return selectedString, nil
 	}
 
@@ -142,7 +142,7 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 	}
 
 	if allString {
-		return sql.Text, nil
+		return sql.LongText, nil
 	} else if allInt {
 		return sql.Int64, nil
 	}

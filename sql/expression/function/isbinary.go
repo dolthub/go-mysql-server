@@ -32,7 +32,7 @@ func (ib *IsBinary) Eval(
 		return false, nil
 	}
 
-	blob, err := sql.Blob.Convert(v)
+	blob, err := sql.LongBlob.Convert(v)
 	if err != nil {
 		return nil, err
 	}

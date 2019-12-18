@@ -104,7 +104,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		return nil, nil, err
 	}
 
-	c.compareType = sql.Text
+	c.compareType = sql.LongText
 	return left, right, nil
 }
 
@@ -216,7 +216,7 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 	if err != nil || left == nil {
 		return nil, err
 	}
-	left, err = sql.Text.Convert(left)
+	left, err = sql.LongText.Convert(left)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +232,7 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 		if err != nil || right == nil {
 			return nil, err
 		}
-		right, err = sql.Text.Convert(right)
+		right, err = sql.LongText.Convert(right)
 		if err != nil {
 			return nil, err
 		}

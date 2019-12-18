@@ -67,15 +67,15 @@ func (l *Length) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	var content string
 	switch l.Child.Type() {
-	case sql.Blob:
-		val, err = sql.Blob.Convert(val)
+	case sql.TinyBlob, sql.Blob, sql.MediumBlob, sql.LongBlob:
+		val, err = sql.LongBlob.Convert(val)
 		if err != nil {
 			return nil, err
 		}
 
 		content = val.(string)
 	default:
-		val, err = sql.Text.Convert(val)
+		val, err = sql.LongText.Convert(val)
 		if err != nil {
 			return nil, err
 		}

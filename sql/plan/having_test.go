@@ -34,7 +34,7 @@ func TestHaving(t *testing.T) {
 	f := NewHaving(
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Text, "col1", true),
-			expression.NewLiteral("col1_1", sql.Text)),
+			expression.NewLiteral("col1_1", sql.LongText)),
 		NewResolvedTable(child),
 	)
 

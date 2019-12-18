@@ -11,7 +11,7 @@ import (
 
 func TestSleep(t *testing.T) {
 	f := NewSleep(
-		expression.NewGetField(0, sql.Text, "n", false),
+		expression.NewGetField(0, sql.LongText, "n", false),
 	)
 	testCases := []struct {
 		name     string

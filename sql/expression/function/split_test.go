@@ -23,8 +23,8 @@ func TestSplit(t *testing.T) {
 	}
 
 	f := NewSplit(
-		expression.NewGetField(0, sql.Text, "input", true),
-		expression.NewGetField(1, sql.Text, "delimiter", true),
+		expression.NewGetField(0, sql.LongText, "input", true),
+		expression.NewGetField(1, sql.LongText, "delimiter", true),
 	)
 
 	for _, tt := range testCases {

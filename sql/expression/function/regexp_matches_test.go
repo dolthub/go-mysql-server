@@ -94,11 +94,11 @@ func TestRegexpMatches(t *testing.T) {
 		for _, tt := range testCases {
 			var flags sql.Expression
 			if tt.flags != "" {
-				flags = expression.NewLiteral(tt.flags, sql.Text)
+				flags = expression.NewLiteral(tt.flags, sql.LongText)
 			}
 			f, err := NewRegexpMatches(
-				expression.NewLiteral(tt.text, sql.Text),
-				expression.NewLiteral(tt.pattern, sql.Text),
+				expression.NewLiteral(tt.text, sql.LongText),
+				expression.NewLiteral(tt.pattern, sql.LongText),
 				flags,
 			)
 			require.NoError(t, err)
@@ -121,11 +121,11 @@ func TestRegexpMatches(t *testing.T) {
 		for _, tt := range testCases {
 			var flags sql.Expression
 			if tt.flags != "" {
-				flags = expression.NewGetField(2, sql.Text, "x", false)
+				flags = expression.NewGetField(2, sql.LongText, "x", false)
 			}
 			f, err := NewRegexpMatches(
-				expression.NewGetField(0, sql.Text, "x", false),
-				expression.NewGetField(1, sql.Text, "x", false),
+				expression.NewGetField(0, sql.LongText, "x", false),
+				expression.NewGetField(1, sql.LongText, "x", false),
 				flags,
 			)
 			require.NoError(t, err)

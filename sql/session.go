@@ -166,17 +166,17 @@ type (
 func DefaultSessionConfig() map[string]TypedValue {
 	return map[string]TypedValue{
 		"auto_increment_increment": TypedValue{Int64, int64(1)},
-		"time_zone":                TypedValue{Text, time.Local.String()},
-		"system_time_zone":         TypedValue{Text, time.Local.String()},
+		"time_zone":                TypedValue{LongText, time.Local.String()},
+		"system_time_zone":         TypedValue{LongText, time.Local.String()},
 		"max_allowed_packet":       TypedValue{Int32, math.MaxInt32},
-		"sql_mode":                 TypedValue{Text, ""},
+		"sql_mode":                 TypedValue{LongText, ""},
 		"gtid_mode":                TypedValue{Int32, int32(0)},
-		"collation_database":       TypedValue{Text, "utf8_bin"},
-		"ndbinfo_version":          TypedValue{Text, ""},
+		"collation_database":       TypedValue{LongText, "utf8_bin"},
+		"ndbinfo_version":          TypedValue{LongText, ""},
 		"sql_select_limit":         TypedValue{Int32, math.MaxInt32},
-		"transaction_isolation":    TypedValue{Text, "READ UNCOMMITTED"},
-		"version":                  TypedValue{Text, ""},
-		"version_comment":          TypedValue{Text, ""},
+		"transaction_isolation":    TypedValue{LongText, "READ UNCOMMITTED"},
+		"version":                  TypedValue{LongText, ""},
+		"version_comment":          TypedValue{LongText, ""},
 	}
 }
 

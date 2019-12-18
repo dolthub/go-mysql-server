@@ -9,8 +9,8 @@ import (
 )
 
 func TestBase64(t *testing.T) {
-	fTo := NewToBase64(expression.NewGetField(0, sql.Text, "", false))
-	fFrom := NewFromBase64(expression.NewGetField(0, sql.Text, "", false))
+	fTo := NewToBase64(expression.NewGetField(0, sql.LongText, "", false))
+	fFrom := NewFromBase64(expression.NewGetField(0, sql.LongText, "", false))
 
 	testCases := []struct {
 		name     string

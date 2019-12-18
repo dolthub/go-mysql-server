@@ -21,8 +21,8 @@ type ShowCreateTable struct {
 // Schema implements the Node interface.
 func (n *ShowCreateTable) Schema() sql.Schema {
 	return sql.Schema{
-		&sql.Column{Name: "Table", Type: sql.Text, Nullable: false},
-		&sql.Column{Name: "Create Table", Type: sql.Text, Nullable: false},
+		&sql.Column{Name: "Table", Type: sql.LongText, Nullable: false},
+		&sql.Column{Name: "Create Table", Type: sql.LongText, Nullable: false},
 	}
 }
 

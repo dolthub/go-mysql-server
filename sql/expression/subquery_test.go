@@ -17,7 +17,7 @@ func TestSubquery(t *testing.T) {
 
 	subquery := expression.NewSubquery(plan.NewProject(
 		[]sql.Expression{
-			expression.NewLiteral("one", sql.Text),
+			expression.NewLiteral("one", sql.LongText),
 		},
 		plan.NewResolvedTable(table),
 	))
@@ -35,7 +35,7 @@ func TestSubqueryTooManyRows(t *testing.T) {
 
 	subquery := expression.NewSubquery(plan.NewProject(
 		[]sql.Expression{
-			expression.NewLiteral("one", sql.Text),
+			expression.NewLiteral("one", sql.LongText),
 		},
 		plan.NewResolvedTable(table),
 	))

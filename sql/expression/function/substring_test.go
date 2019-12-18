@@ -10,7 +10,7 @@ import (
 
 func TestSubstring(t *testing.T) {
 	f, err := NewSubstring(
-		expression.NewGetField(0, sql.Text, "str", true),
+		expression.NewGetField(0, sql.LongText, "str", true),
 		expression.NewGetField(1, sql.Int32, "start", false),
 		expression.NewGetField(2, sql.Int64, "len", false),
 	)
@@ -54,8 +54,8 @@ func TestSubstring(t *testing.T) {
 
 func TestSubstringIndex(t *testing.T) {
 	f := NewSubstringIndex(
-		expression.NewGetField(0, sql.Text, "str", true),
-		expression.NewGetField(1, sql.Text, "delim", true),
+		expression.NewGetField(0, sql.LongText, "str", true),
+		expression.NewGetField(1, sql.LongText, "delim", true),
 		expression.NewGetField(2, sql.Int64, "count", false),
 	)
 	testCases := []struct {

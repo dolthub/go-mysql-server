@@ -33,13 +33,13 @@ func (p process) toRow() sql.Row {
 
 var processListSchema = sql.Schema{
 	{Name: "Id", Type: sql.Int64},
-	{Name: "User", Type: sql.Text},
-	{Name: "Host", Type: sql.Text},
-	{Name: "db", Type: sql.Text},
-	{Name: "Command", Type: sql.Text},
+	{Name: "User", Type: sql.LongText},
+	{Name: "Host", Type: sql.LongText},
+	{Name: "db", Type: sql.LongText},
+	{Name: "Command", Type: sql.LongText},
 	{Name: "Time", Type: sql.Int64},
-	{Name: "State", Type: sql.Text},
-	{Name: "Info", Type: sql.Text},
+	{Name: "State", Type: sql.LongText},
+	{Name: "Info", Type: sql.LongText},
 }
 
 // ShowProcessList shows a list of all current running processes.

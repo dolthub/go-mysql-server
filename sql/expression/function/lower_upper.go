@@ -32,7 +32,7 @@ func (l *Lower) Eval(
 		return nil, nil
 	}
 
-	v, err = sql.Text.Convert(v)
+	v, err = sql.LongText.Convert(v)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (u *Upper) Eval(
 		return nil, nil
 	}
 
-	v, err = sql.Text.Convert(v)
+	v, err = sql.LongText.Convert(v)
 	if err != nil {
 		return nil, err
 	}

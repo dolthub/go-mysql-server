@@ -33,7 +33,7 @@ func (t *ToBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str, err = sql.Text.Convert(str)
+	str, err = sql.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}
@@ -82,7 +82,7 @@ func (t *ToBase64) WithChildren(children ...sql.Expression) (sql.Expression, err
 
 // Type implements the Expression interface.
 func (t *ToBase64) Type() sql.Type {
-	return sql.Text
+	return sql.LongText
 }
 
 // FromBase64 is a function to decode a Base64-formatted string
@@ -108,7 +108,7 @@ func (t *FromBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str, err = sql.Text.Convert(str)
+	str, err = sql.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}
@@ -141,5 +141,5 @@ func (t *FromBase64) WithChildren(children ...sql.Expression) (sql.Expression, e
 
 // Type implements the Expression interface.
 func (t *FromBase64) Type() sql.Type {
-	return sql.Text
+	return sql.LongText
 }

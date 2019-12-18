@@ -24,10 +24,10 @@ func TestNullIf(t *testing.T) {
 	}
 
 	f := NewNullIf(
-		expression.NewGetField(0, sql.Text, "ex1", true),
-		expression.NewGetField(1, sql.Text, "ex2", true),
+		expression.NewGetField(0, sql.LongText, "ex1", true),
+		expression.NewGetField(1, sql.LongText, "ex2", true),
 	)
-	require.Equal(t, sql.Text, f.Type())
+	require.Equal(t, sql.LongText, f.Type())
 
 	var3 := sql.MustCreateStringWithDefaults(sqltypes.VarChar, 3)
 	f = NewNullIf(

@@ -13,12 +13,12 @@ type ShowTables struct {
 }
 
 var showTablesSchema = sql.Schema{
-	{Name: "Table", Type: sql.Text},
+	{Name: "Table", Type: sql.LongText},
 }
 
 var showTablesFullSchema = sql.Schema{
-	{Name: "Table", Type: sql.Text},
-	{Name: "Table_type", Type: sql.Text},
+	{Name: "Table", Type: sql.LongText},
+	{Name: "Table_type", Type: sql.LongText},
 }
 
 // NewShowTables creates a new show tables node given a database.

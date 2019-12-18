@@ -42,7 +42,7 @@ func NewRegexpMatches(args ...sql.Expression) (sql.Expression, error) {
 }
 
 // Type implements the sql.Expression interface.
-func (r *RegexpMatches) Type() sql.Type { return sql.CreateArray(sql.Text) }
+func (r *RegexpMatches) Type() sql.Type { return sql.CreateArray(sql.LongText) }
 
 // IsNullable implements the sql.Expression interface.
 func (r *RegexpMatches) IsNullable() bool { return true }
@@ -122,7 +122,7 @@ func (r *RegexpMatches) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 
-	text, err = sql.Text.Convert(text)
+	text, err = sql.LongText.Convert(text)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (r *RegexpMatches) compileRegex(ctx *sql.Context, row sql.Row) (*regexp.Reg
 		return nil, nil
 	}
 
-	pattern, err = sql.Text.Convert(pattern)
+	pattern, err = sql.LongText.Convert(pattern)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func (r *RegexpMatches) compileRegex(ctx *sql.Context, row sql.Row) (*regexp.Reg
 			return nil, nil
 		}
 
-		f, err = sql.Text.Convert(f)
+		f, err = sql.LongText.Convert(f)
 		if err != nil {
 			return nil, err
 		}

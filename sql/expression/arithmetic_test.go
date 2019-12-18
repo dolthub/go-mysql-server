@@ -33,7 +33,7 @@ func TestPlus(t *testing.T) {
 	}
 
 	require := require.New(t)
-	result, err := NewPlus(NewLiteral("2", sql.Text), NewLiteral(3, sql.Float64)).
+	result, err := NewPlus(NewLiteral("2", sql.LongText), NewLiteral(3, sql.Float64)).
 		Eval(sql.NewEmptyContext(), sql.NewRow())
 	require.NoError(err)
 	require.Equal(float64(5), result)
@@ -44,7 +44,7 @@ func TestPlusInterval(t *testing.T) {
 
 	expected := time.Date(2018, time.May, 2, 0, 0, 0, 0, time.UTC)
 	op := NewPlus(
-		NewLiteral("2018-05-01", sql.Text),
+		NewLiteral("2018-05-01", sql.LongText),
 		NewInterval(NewLiteral(int64(1), sql.Int64), "DAY"),
 	)
 
@@ -54,7 +54,7 @@ func TestPlusInterval(t *testing.T) {
 
 	op = NewPlus(
 		NewInterval(NewLiteral(int64(1), sql.Int64), "DAY"),
-		NewLiteral("2018-05-01", sql.Text),
+		NewLiteral("2018-05-01", sql.LongText),
 	)
 
 	result, err = op.Eval(sql.NewEmptyContext(), nil)
@@ -87,7 +87,7 @@ func TestMinus(t *testing.T) {
 	}
 
 	require := require.New(t)
-	result, err := NewMinus(NewLiteral("10", sql.Text), NewLiteral(10, sql.Int64)).
+	result, err := NewMinus(NewLiteral("10", sql.LongText), NewLiteral(10, sql.Int64)).
 		Eval(sql.NewEmptyContext(), sql.NewRow())
 	require.NoError(err)
 	require.Equal(float64(0), result)
@@ -98,7 +98,7 @@ func TestMinusInterval(t *testing.T) {
 
 	expected := time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)
 	op := NewMinus(
-		NewLiteral("2018-05-02", sql.Text),
+		NewLiteral("2018-05-02", sql.LongText),
 		NewInterval(NewLiteral(int64(1), sql.Int64), "DAY"),
 	)
 
@@ -132,7 +132,7 @@ func TestMult(t *testing.T) {
 	}
 
 	require := require.New(t)
-	result, err := NewMult(NewLiteral("10", sql.Text), NewLiteral("10", sql.Text)).
+	result, err := NewMult(NewLiteral("10", sql.LongText), NewLiteral("10", sql.LongText)).
 		Eval(sql.NewEmptyContext(), sql.NewRow())
 	require.NoError(err)
 	require.Equal(float64(100), result)
@@ -412,9 +412,9 @@ func TestUnaryMinus(t *testing.T) {
 		{"uint64", uint64(1), sql.Uint64, int64(-1)},
 		{"float32", float32(1), sql.Float32, float32(-1)},
 		{"float64", float64(1), sql.Float64, float64(-1)},
-		{"int text", "1", sql.Text, float64(-1)},
-		{"float text", "1.2", sql.Text, float64(-1.2)},
-		{"nil", nil, sql.Text, nil},
+		{"int text", "1", sql.LongText, float64(-1)},
+		{"float text", "1.2", sql.LongText, float64(-1.2)},
+		{"nil", nil, sql.LongText, nil},
 	}
 
 	for _, tt := range testCases {

@@ -47,7 +47,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil || left == nil {
 		return nil, err
 	}
-	left, err = sql.Text.Convert(left)
+	left, err = sql.LongText.Convert(left)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil || v == nil {
 			return nil, err
 		}
-		v, err = sql.Text.Convert(v)
+		v, err = sql.LongText.Convert(v)
 		if err != nil {
 			return nil, err
 		}

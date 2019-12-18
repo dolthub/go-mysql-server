@@ -365,11 +365,11 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 			expression.JoinAnd(
 				expression.NewEquals(
 					expression.NewUnresolvedQualifiedColumn("rc", "repository_id"),
-					expression.NewLiteral("foo", sql.Text),
+					expression.NewLiteral("foo", sql.LongText),
 				),
 				expression.NewEquals(
 					expression.NewUnresolvedQualifiedColumn("rc", "ref_name"),
-					expression.NewLiteral("HEAD", sql.Text),
+					expression.NewLiteral("HEAD", sql.LongText),
 				),
 				expression.NewEquals(
 					expression.NewUnresolvedQualifiedColumn("rc", "history_index"),
