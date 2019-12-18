@@ -12,8 +12,8 @@ func TestConcat(t *testing.T) {
 	t.Run("concat multiple arguments", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewConcat(
-			expression.NewLiteral("foo", sql.Text),
-			expression.NewLiteral(5, sql.Text),
+			expression.NewLiteral("foo", sql.LongText),
+			expression.NewLiteral(5, sql.LongText),
 			expression.NewLiteral(true, sql.Boolean),
 		)
 		require.NoError(err)
@@ -26,8 +26,8 @@ func TestConcat(t *testing.T) {
 	t.Run("some argument is nil", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewConcat(
-			expression.NewLiteral("foo", sql.Text),
-			expression.NewLiteral(nil, sql.Text),
+			expression.NewLiteral("foo", sql.LongText),
+			expression.NewLiteral(nil, sql.LongText),
 			expression.NewLiteral(true, sql.Boolean),
 		)
 		require.NoError(err)
@@ -40,7 +40,7 @@ func TestConcat(t *testing.T) {
 	t.Run("concat array", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewConcat(
-			expression.NewLiteral([]interface{}{5, "bar", true}, sql.CreateArray(sql.Text)),
+			expression.NewLiteral([]interface{}{5, "bar", true}, sql.CreateArray(sql.LongText)),
 		)
 		require.NoError(err)
 
@@ -53,22 +53,22 @@ func TestConcat(t *testing.T) {
 func TestNewConcat(t *testing.T) {
 	require := require.New(t)
 
-	_, err := NewConcat(expression.NewLiteral(nil, sql.CreateArray(sql.Text)))
+	_, err := NewConcat(expression.NewLiteral(nil, sql.CreateArray(sql.LongText)))
 	require.NoError(err)
 
-	_, err = NewConcat(expression.NewLiteral(nil, sql.CreateArray(sql.Text)), expression.NewLiteral(nil, sql.Int64))
+	_, err = NewConcat(expression.NewLiteral(nil, sql.CreateArray(sql.LongText)), expression.NewLiteral(nil, sql.Int64))
 	require.Error(err)
 	require.True(ErrConcatArrayWithOthers.Is(err))
 
-	_, err = NewConcat(expression.NewLiteral(nil, sql.CreateTuple(sql.Text, sql.Text)))
+	_, err = NewConcat(expression.NewLiteral(nil, sql.CreateTuple(sql.LongText, sql.LongText)))
 	require.Error(err)
 	require.True(sql.ErrInvalidType.Is(err))
 
 	_, err = NewConcat(
-		expression.NewLiteral(nil, sql.Text),
+		expression.NewLiteral(nil, sql.LongText),
 		expression.NewLiteral(nil, sql.Boolean),
 		expression.NewLiteral(nil, sql.Int64),
-		expression.NewLiteral(nil, sql.Text),
+		expression.NewLiteral(nil, sql.LongText),
 	)
 	require.NoError(err)
 }

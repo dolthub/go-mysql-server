@@ -15,12 +15,12 @@ func TestGroupBySchema(t *testing.T) {
 
 	child := memory.NewTable("test", nil)
 	agg := []sql.Expression{
-		expression.NewAlias(expression.NewLiteral("s", sql.Text), "c1"),
+		expression.NewAlias(expression.NewLiteral("s", sql.LongText), "c1"),
 		expression.NewAlias(aggregation.NewCount(expression.NewStar()), "c2"),
 	}
 	gb := NewGroupBy(agg, nil, NewResolvedTable(child))
 	require.Equal(sql.Schema{
-		{Name: "c1", Type: sql.Text},
+		{Name: "c1", Type: sql.LongText},
 		{Name: "c2", Type: sql.Int64},
 	}, gb.Schema())
 }
@@ -47,7 +47,7 @@ func TestGroupByRowIter(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	childSchema := sql.Schema{
-		{Name: "col1", Type: sql.Text},
+		{Name: "col1", Type: sql.LongText},
 		{Name: "col2", Type: sql.Int64},
 	}
 	child := memory.NewTable("test", childSchema)
@@ -67,7 +67,7 @@ func TestGroupByRowIter(t *testing.T) {
 	p := NewSort(
 		[]SortField{
 			{
-				Column: expression.NewGetField(0, sql.Text, "col1", true),
+				Column: expression.NewGetField(0, sql.LongText, "col1", true),
 				Order:  Ascending,
 			}, {
 				Column: expression.NewGetField(1, sql.Int64, "col2", true),
@@ -76,11 +76,11 @@ func TestGroupByRowIter(t *testing.T) {
 		},
 		NewGroupBy(
 			[]sql.Expression{
-				expression.NewGetField(0, sql.Text, "col1", true),
+				expression.NewGetField(0, sql.LongText, "col1", true),
 				expression.NewGetField(1, sql.Int64, "col2", true),
 			},
 			[]sql.Expression{
-				expression.NewGetField(0, sql.Text, "col1", true),
+				expression.NewGetField(0, sql.LongText, "col1", true),
 				expression.NewGetField(1, sql.Int64, "col2", true),
 			},
 			NewResolvedTable(child),
@@ -100,7 +100,7 @@ func TestGroupByEvalEmptyBuffer(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	r, err := evalBuffer(ctx, expression.NewGetField(0, sql.Text, "col1", true), sql.Row{})
+	r, err := evalBuffer(ctx, expression.NewGetField(0, sql.LongText, "col1", true), sql.Row{})
 	require.NoError(err)
 	require.Nil(r)
 }
@@ -110,7 +110,7 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	childSchema := sql.Schema{
-		{Name: "col1", Type: sql.Text},
+		{Name: "col1", Type: sql.LongText},
 		{Name: "col2", Type: sql.Int64},
 	}
 
@@ -130,11 +130,11 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 
 	p := NewGroupBy(
 		[]sql.Expression{
-			aggregation.NewCount(expression.NewGetField(0, sql.Text, "col1", true)),
+			aggregation.NewCount(expression.NewGetField(0, sql.LongText, "col1", true)),
 			expression.NewIsNull(expression.NewGetField(1, sql.Int64, "col2", true)),
 		},
 		[]sql.Expression{
-			aggregation.NewCount(expression.NewGetField(0, sql.Text, "col1", true)),
+			aggregation.NewCount(expression.NewGetField(0, sql.LongText, "col1", true)),
 			expression.NewGetField(1, sql.Int64, "col2", true),
 		},
 		NewResolvedTable(child),

@@ -6,11 +6,11 @@ import "github.com/src-d/go-mysql-server/sql"
 type ShowCollation struct{}
 
 var collationSchema = sql.Schema{
-	{Name: "Collation", Type: sql.Text},
-	{Name: "Charset", Type: sql.Text},
+	{Name: "Collation", Type: sql.LongText},
+	{Name: "Charset", Type: sql.LongText},
 	{Name: "Id", Type: sql.Int64},
-	{Name: "Default", Type: sql.Text},
-	{Name: "Compiled", Type: sql.Text},
+	{Name: "Default", Type: sql.LongText},
+	{Name: "Compiled", Type: sql.LongText},
 	{Name: "Sortlen", Type: sql.Int64},
 }
 

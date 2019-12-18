@@ -125,7 +125,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}
 
 	for _, e := range exprs {
-		if e.Type() == sql.Blob || e.Type() == sql.JSON {
+		if sql.IsBlob(e.Type()) || e.Type() == sql.JSON {
 			return nil, ErrExprTypeNotIndexable.New(e, e.Type())
 		}
 	}

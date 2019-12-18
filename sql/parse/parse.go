@@ -196,7 +196,7 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 				return e, nil
 			}
 
-			if !e.Resolved() || e.Type() != sql.Text {
+			if !e.Resolved() || !sql.IsTextOnly(e.Type()) {
 				return e, nil
 			}
 
@@ -255,7 +255,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 				} else if s.ShowTablesOpt.Filter.Like != "" {
 					filter = expression.NewLike(
 						expression.NewUnresolvedColumn("Table"),
-						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.Text),
+						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.LongText),
 					)
 				}
 			}
@@ -278,7 +278,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		if s.ShowTablesOpt != nil && s.ShowTablesOpt.Filter != nil {
 			if s.ShowTablesOpt.Filter.Like != "" {
-				pattern := expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.Text)
+				pattern := expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.LongText)
 
 				node = plan.NewFilter(
 					expression.NewLike(
@@ -1132,7 +1132,7 @@ func convertInt(value string, base int) (sql.Expression, error) {
 func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {
 	switch v.Type {
 	case sqlparser.StrVal:
-		return expression.NewLiteral(string(v.Val), sql.Text), nil
+		return expression.NewLiteral(string(v.Val), sql.LongText), nil
 	case sqlparser.IntVal:
 		return convertInt(string(v.Val), 10)
 	case sqlparser.FloatVal:
@@ -1155,9 +1155,9 @@ func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
-		return expression.NewLiteral(val, sql.Blob), nil
+		return expression.NewLiteral(val, sql.LongBlob), nil
 	case sqlparser.ValArg:
-		return expression.NewLiteral(string(v.Val), sql.Text), nil
+		return expression.NewLiteral(string(v.Val), sql.LongText), nil
 	case sqlparser.BitVal:
 		return expression.NewLiteral(v.Val[0] == '1', sql.Boolean), nil
 	}

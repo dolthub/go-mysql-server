@@ -19,7 +19,7 @@ func NewVersion(versionPostfix string) func(...sql.Expression) (sql.Expression, 
 }
 
 // Type implements the Expression interface.
-func (f Version) Type() sql.Type { return sql.Text }
+func (f Version) Type() sql.Type { return sql.LongText }
 
 // IsNullable implements the Expression interface.
 func (f Version) IsNullable() bool {

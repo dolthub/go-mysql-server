@@ -277,6 +277,16 @@ func IsArray(t Type) bool {
 	return ok
 }
 
+// IsBlob checks if t is BINARY, VARBINARY, or BLOB
+func IsBlob(t Type) bool {
+	switch t.Type() {
+	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
+		return true
+	default:
+		return false
+	}
+}
+
 // IsChar checks if t is a Char type.
 func IsChar(t Type) bool {
 	if st, ok := t.(stringType); ok {
@@ -316,6 +326,16 @@ func IsSigned(t Type) bool {
 func IsText(t Type) bool {
 	_, ok := t.(stringType)
 	return ok || t == JSON
+}
+
+// IsTextOnly checks if t is CHAR, VARCHAR, or one of the TEXTs.
+func IsTextOnly(t Type) bool {
+	switch t.Type() {
+	case sqltypes.Char, sqltypes.VarChar, sqltypes.Text:
+		return true
+	default:
+		return false
+	}
 }
 
 // IsTime checks if t is a timestamp, date or datetime

@@ -20,10 +20,10 @@ func NewShowTableStatus(dbs ...string) *ShowTableStatus {
 }
 
 var showTableStatusSchema = sql.Schema{
-	{Name: "Name", Type: sql.Text},
-	{Name: "Engine", Type: sql.Text},
-	{Name: "Version", Type: sql.Text},
-	{Name: "Row_format", Type: sql.Text},
+	{Name: "Name", Type: sql.LongText},
+	{Name: "Engine", Type: sql.LongText},
+	{Name: "Version", Type: sql.LongText},
+	{Name: "Row_format", Type: sql.LongText},
 	{Name: "Rows", Type: sql.Int64},
 	{Name: "Avg_row_length", Type: sql.Int64},
 	{Name: "Data_length", Type: sql.Int64},
@@ -34,10 +34,10 @@ var showTableStatusSchema = sql.Schema{
 	{Name: "Create_time", Type: sql.Datetime, Nullable: true},
 	{Name: "Update_time", Type: sql.Datetime, Nullable: true},
 	{Name: "Check_time", Type: sql.Datetime, Nullable: true},
-	{Name: "Collation", Type: sql.Text},
-	{Name: "Checksum", Type: sql.Text, Nullable: true},
-	{Name: "Create_options", Type: sql.Text, Nullable: true},
-	{Name: "Comments", Type: sql.Text, Nullable: true},
+	{Name: "Collation", Type: sql.LongText},
+	{Name: "Checksum", Type: sql.LongText, Nullable: true},
+	{Name: "Create_options", Type: sql.LongText, Nullable: true},
+	{Name: "Comments", Type: sql.LongText, Nullable: true},
 }
 
 // Children implements the sql.Node interface.

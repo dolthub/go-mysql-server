@@ -88,6 +88,6 @@ func TestArraySQL(t *testing.T) {
 }
 
 func TestArrayUnderlyingType(t *testing.T) {
-	require.Equal(t, Text, UnderlyingType(CreateArray(Text)))
-	require.Equal(t, Text, UnderlyingType(Text))
+	require.Equal(t, LongText, UnderlyingType(CreateArray(LongText)))
+	require.Equal(t, LongText, UnderlyingType(LongText))
 }

@@ -33,7 +33,7 @@ func (s *Soundex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	v, err = sql.Text.Convert(v)
+	v, err = sql.LongText.Convert(v)
 	if err != nil {
 		return nil, err
 	}
@@ -97,5 +97,5 @@ func (s *Soundex) WithChildren(children ...sql.Expression) (sql.Expression, erro
 
 // Type implements the Expression interface.
 func (s *Soundex) Type() sql.Type {
-	return sql.Text
+	return sql.LongText
 }

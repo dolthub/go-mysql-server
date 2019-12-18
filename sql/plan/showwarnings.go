@@ -29,9 +29,9 @@ func (ShowWarnings) String() string {
 // Schema returns a new Schema reference for "SHOW VARIABLES" query.
 func (ShowWarnings) Schema() sql.Schema {
 	return sql.Schema{
-		&sql.Column{Name: "Level", Type: sql.Text, Nullable: false},
+		&sql.Column{Name: "Level", Type: sql.LongText, Nullable: false},
 		&sql.Column{Name: "Code", Type: sql.Int32, Nullable: true},
-		&sql.Column{Name: "Message", Type: sql.Text, Nullable: false},
+		&sql.Column{Name: "Message", Type: sql.LongText, Nullable: false},
 	}
 }
 

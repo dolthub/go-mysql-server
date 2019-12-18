@@ -164,13 +164,13 @@ func TestLog(t *testing.T) {
 		{"Input base is 1", []sql.Expression{expression.NewLiteral(float64(1), sql.Float64), expression.NewLiteral(float64(10), sql.Float64)}, nil, ErrInvalidArgumentForLogarithm},
 		{"Input base is zero", []sql.Expression{expression.NewLiteral(float64(0), sql.Float64), expression.NewLiteral(float64(10), sql.Float64)}, nil, ErrInvalidArgumentForLogarithm},
 		{"Input base is negative", []sql.Expression{expression.NewLiteral(float64(-5), sql.Float64), expression.NewLiteral(float64(10), sql.Float64)}, nil, ErrInvalidArgumentForLogarithm},
-		{"Input base is valid string", []sql.Expression{expression.NewLiteral("4", sql.Text), expression.NewLiteral(float64(10), sql.Float64)}, float64(1.6609640474436813), nil},
-		{"Input base is invalid string", []sql.Expression{expression.NewLiteral("bbb", sql.Text), expression.NewLiteral(float64(10), sql.Float64)}, nil, sql.ErrInvalidType},
+		{"Input base is valid string", []sql.Expression{expression.NewLiteral("4", sql.LongText), expression.NewLiteral(float64(10), sql.Float64)}, float64(1.6609640474436813), nil},
+		{"Input base is invalid string", []sql.Expression{expression.NewLiteral("bbb", sql.LongText), expression.NewLiteral(float64(10), sql.Float64)}, nil, sql.ErrInvalidType},
 
 		{"Input value is zero", []sql.Expression{expression.NewLiteral(float64(0), sql.Float64)}, nil, ErrInvalidArgumentForLogarithm},
 		{"Input value is negative", []sql.Expression{expression.NewLiteral(float64(-9), sql.Float64)}, nil, ErrInvalidArgumentForLogarithm},
-		{"Input value is valid string", []sql.Expression{expression.NewLiteral("7", sql.Text)}, float64(1.9459101490553132), nil},
-		{"Input value is invalid string", []sql.Expression{expression.NewLiteral("766j", sql.Text)}, nil, sql.ErrInvalidType},
+		{"Input value is valid string", []sql.Expression{expression.NewLiteral("7", sql.LongText)}, float64(1.9459101490553132), nil},
+		{"Input value is invalid string", []sql.Expression{expression.NewLiteral("766j", sql.LongText)}, nil, sql.ErrInvalidType},
 
 		{"Input base is valid float64", []sql.Expression{expression.NewLiteral(float64(5), sql.Float64), expression.NewLiteral(float64(99), sql.Float64)}, float64(2.855108491376949), nil},
 		{"Input base is valid float32", []sql.Expression{expression.NewLiteral(float32(6), sql.Float32), expression.NewLiteral(float64(80), sql.Float64)}, float64(2.4456556306420936), nil},

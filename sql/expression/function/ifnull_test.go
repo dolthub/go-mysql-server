@@ -23,10 +23,10 @@ func TestIfNull(t *testing.T) {
 	}
 
 	f := NewIfNull(
-		expression.NewGetField(0, sql.Text, "expression", true),
-		expression.NewGetField(1, sql.Text, "value", true),
+		expression.NewGetField(0, sql.LongText, "expression", true),
+		expression.NewGetField(1, sql.LongText, "value", true),
 	)
-	require.Equal(t, sql.Text, f.Type())
+	require.Equal(t, sql.LongText, f.Type())
 
 	for _, tc := range testCases {
 		v, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(tc.expression, tc.value))

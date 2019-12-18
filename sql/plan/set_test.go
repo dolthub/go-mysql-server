@@ -15,7 +15,7 @@ func TestSet(t *testing.T) {
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
 
 	s := NewSet(
-		SetVariable{"foo", expression.NewLiteral("bar", sql.Text)},
+		SetVariable{"foo", expression.NewLiteral("bar", sql.LongText)},
 		SetVariable{"@@baz", expression.NewLiteral(int64(1), sql.Int64)},
 	)
 
@@ -23,7 +23,7 @@ func TestSet(t *testing.T) {
 	require.NoError(err)
 
 	typ, v := ctx.Get("foo")
-	require.Equal(sql.Text, typ)
+	require.Equal(sql.LongText, typ)
 	require.Equal("bar", v)
 
 	typ, v = ctx.Get("baz")

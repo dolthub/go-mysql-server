@@ -49,8 +49,8 @@ func (sv *ShowVariables) String() string {
 // Schema returns a new Schema reference for "SHOW VARIABLES" query.
 func (*ShowVariables) Schema() sql.Schema {
 	return sql.Schema{
-		&sql.Column{Name: "Variable_name", Type: sql.Text, Nullable: false},
-		&sql.Column{Name: "Value", Type: sql.Text, Nullable: true},
+		&sql.Column{Name: "Variable_name", Type: sql.LongText, Nullable: false},
+		&sql.Column{Name: "Value", Type: sql.LongText, Nullable: true},
 	}
 }
 
@@ -66,8 +66,8 @@ func (sv *ShowVariables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	)
 	if sv.pattern != "" {
 		like = expression.NewLike(
-			expression.NewGetField(0, sql.Text, "", false),
-			expression.NewGetField(1, sql.Text, sv.pattern, false),
+			expression.NewGetField(0, sql.LongText, "", false),
+			expression.NewGetField(1, sql.LongText, sv.pattern, false),
 		)
 	}
 

@@ -54,7 +54,7 @@ func TestLength(t *testing.T) {
 		{
 			"char_length string",
 			"fóo",
-			sql.Text,
+			sql.LongText,
 			NewCharLength,
 			int32(3),
 		},

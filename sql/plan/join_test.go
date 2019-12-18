@@ -57,7 +57,7 @@ func TestInnerJoin(t *testing.T) {
 
 func TestInMemoryInnerJoin(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	ctx.Set(inMemoryJoinSessionVar, sql.Text, "true")
+	ctx.Set(inMemoryJoinSessionVar, sql.LongText, "true")
 	testInnerJoin(t, ctx)
 }
 

@@ -10,7 +10,7 @@ import (
 
 func TestJSONUnquote(t *testing.T) {
 	require := require.New(t)
-	js := NewJSONUnquote(expression.NewGetField(0, sql.Text, "json", false))
+	js := NewJSONUnquote(expression.NewGetField(0, sql.LongText, "json", false))
 
 	testCases := []struct {
 		row      sql.Row

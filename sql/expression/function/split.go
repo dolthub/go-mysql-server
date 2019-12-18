@@ -33,7 +33,7 @@ func (f *Split) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	left, err = sql.Text.Convert(left)
+	left, err = sql.LongText.Convert(left)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (f *Split) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	right, err = sql.Text.Convert(right)
+	right, err = sql.LongText.Convert(right)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (f *Split) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // Type implements the Expression interface.
-func (*Split) Type() sql.Type { return sql.CreateArray(sql.Text) }
+func (*Split) Type() sql.Type { return sql.CreateArray(sql.LongText) }
 
 // IsNullable implements the Expression interface.
 func (f *Split) IsNullable() bool { return f.Left.IsNullable() || f.Right.IsNullable() }

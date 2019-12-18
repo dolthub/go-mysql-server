@@ -11,23 +11,23 @@ import (
 
 func TestJSONExtract(t *testing.T) {
 	f2, err := NewJSONExtract(
-		expression.NewGetField(0, sql.Text, "arg1", false),
-		expression.NewGetField(1, sql.Text, "arg2", false),
+		expression.NewGetField(0, sql.LongText, "arg1", false),
+		expression.NewGetField(1, sql.LongText, "arg2", false),
 	)
 	require.NoError(t, err)
 
 	f3, err := NewJSONExtract(
-		expression.NewGetField(0, sql.Text, "arg1", false),
-		expression.NewGetField(1, sql.Text, "arg2", false),
-		expression.NewGetField(2, sql.Text, "arg3", false),
+		expression.NewGetField(0, sql.LongText, "arg1", false),
+		expression.NewGetField(1, sql.LongText, "arg2", false),
+		expression.NewGetField(2, sql.LongText, "arg3", false),
 	)
 	require.NoError(t, err)
 
 	f4, err := NewJSONExtract(
-		expression.NewGetField(0, sql.Text, "arg1", false),
-		expression.NewGetField(1, sql.Text, "arg2", false),
-		expression.NewGetField(2, sql.Text, "arg3", false),
-		expression.NewGetField(3, sql.Text, "arg4", false),
+		expression.NewGetField(0, sql.LongText, "arg1", false),
+		expression.NewGetField(1, sql.LongText, "arg2", false),
+		expression.NewGetField(2, sql.LongText, "arg3", false),
+		expression.NewGetField(3, sql.LongText, "arg4", false),
 	)
 	require.NoError(t, err)
 

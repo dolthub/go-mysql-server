@@ -21,10 +21,10 @@ func NewDescribe(child sql.Node) *Describe {
 func (d *Describe) Schema() sql.Schema {
 	return sql.Schema{{
 		Name: "name",
-		Type: sql.Text,
+		Type: sql.LongText,
 	}, {
 		Name: "type",
-		Type: sql.Text,
+		Type: sql.LongText,
 	}}
 }
 
@@ -76,7 +76,7 @@ type DescribeQuery struct {
 
 // DescribeSchema is the schema returned by a DescribeQuery node.
 var DescribeSchema = sql.Schema{
-	{Name: "plan", Type: sql.Text},
+	{Name: "plan", Type: sql.LongText},
 }
 
 // NewDescribeQuery creates a new DescribeQuery node.

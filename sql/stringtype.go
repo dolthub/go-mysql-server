@@ -28,7 +28,10 @@ var (
 	ErrLengthBeyondLimit = errors.NewKind("string is too large for column")
 	ErrBinaryCollation = errors.NewKind("binary types must have the binary collation")
 
-	Text = MustCreateStringWithDefaults(sqltypes.Text, textBlobMax / Collation_Default.CharacterSet().MaxLength())
+	TinyText   = MustCreateStringWithDefaults(sqltypes.Text, tinyTextBlobMax / Collation_Default.CharacterSet().MaxLength())
+	Text   = MustCreateStringWithDefaults(sqltypes.Text, textBlobMax / Collation_Default.CharacterSet().MaxLength())
+	MediumText = MustCreateStringWithDefaults(sqltypes.Text, mediumTextBlobMax / Collation_Default.CharacterSet().MaxLength())
+	LongText = MustCreateStringWithDefaults(sqltypes.Text, longTextBlobMax)
 	TinyBlob = MustCreateBlob(sqltypes.Blob, tinyTextBlobMax)
 	Blob = MustCreateBlob(sqltypes.Blob, textBlobMax)
 	MediumBlob = MustCreateBlob(sqltypes.Blob, mediumTextBlobMax)

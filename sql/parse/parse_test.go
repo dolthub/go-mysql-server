@@ -201,7 +201,7 @@ var fixtures = map[string]sql.Node{
 		plan.NewFilter(
 			expression.NewEquals(
 				expression.NewUnresolvedColumn("foo"),
-				expression.NewLiteral("bar", sql.Text),
+				expression.NewLiteral("bar", sql.LongText),
 			),
 			plan.NewUnresolvedTable("foo", ""),
 		),
@@ -213,7 +213,7 @@ var fixtures = map[string]sql.Node{
 		plan.NewFilter(
 			expression.NewNot(expression.NewEquals(
 				expression.NewUnresolvedColumn("foo"),
-				expression.NewLiteral("bar", sql.Text),
+				expression.NewLiteral("bar", sql.LongText),
 			)),
 			plan.NewUnresolvedTable("foo", ""),
 		),
@@ -329,7 +329,7 @@ var fixtures = map[string]sql.Node{
 		plan.NewFilter(
 			expression.NewRegexp(
 				expression.NewUnresolvedColumn("a"),
-				expression.NewLiteral(".*test.*", sql.Text),
+				expression.NewLiteral(".*test.*", sql.LongText),
 			),
 			plan.NewUnresolvedTable("t1", ""),
 		),
@@ -342,7 +342,7 @@ var fixtures = map[string]sql.Node{
 			expression.NewNot(
 				expression.NewRegexp(
 					expression.NewUnresolvedColumn("a"),
-					expression.NewLiteral(".*test.*", sql.Text),
+					expression.NewLiteral(".*test.*", sql.LongText),
 				),
 			),
 			plan.NewUnresolvedTable("t1", ""),
@@ -351,7 +351,7 @@ var fixtures = map[string]sql.Node{
 	`INSERT INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
 		plan.NewUnresolvedTable("t1", ""),
 		plan.NewValues([][]sql.Expression{{
-			expression.NewLiteral("a", sql.Text),
+			expression.NewLiteral("a", sql.LongText),
 			expression.NewLiteral(int8(1), sql.Int8),
 		}}),
 		false,
@@ -360,7 +360,7 @@ var fixtures = map[string]sql.Node{
 	`REPLACE INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
 		plan.NewUnresolvedTable("t1", ""),
 		plan.NewValues([][]sql.Expression{{
-			expression.NewLiteral("a", sql.Text),
+			expression.NewLiteral("a", sql.LongText),
 			expression.NewLiteral(int8(1), sql.Int8),
 		}}),
 		true,
@@ -375,42 +375,42 @@ var fixtures = map[string]sql.Node{
 	`SHOW TABLES LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Table"),
-			expression.NewLiteral("foo", sql.Text),
+			expression.NewLiteral("foo", sql.LongText),
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase(""), false),
 	),
 	"SHOW TABLES WHERE `Table` = 'foo'": plan.NewFilter(
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("Table"),
-			expression.NewLiteral("foo", sql.Text),
+			expression.NewLiteral("foo", sql.LongText),
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase(""), false),
 	),
 	`SHOW FULL TABLES LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Table"),
-			expression.NewLiteral("foo", sql.Text),
+			expression.NewLiteral("foo", sql.LongText),
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase(""), true),
 	),
 	"SHOW FULL TABLES WHERE `Table` = 'foo'": plan.NewFilter(
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("Table"),
-			expression.NewLiteral("foo", sql.Text),
+			expression.NewLiteral("foo", sql.LongText),
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase(""), true),
 	),
 	`SHOW FULL TABLES FROM bar LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Table"),
-			expression.NewLiteral("foo", sql.Text),
+			expression.NewLiteral("foo", sql.LongText),
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true),
 	),
 	"SHOW FULL TABLES FROM bar WHERE `Table` = 'foo'": plan.NewFilter(
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("Table"),
-			expression.NewLiteral("foo", sql.Text),
+			expression.NewLiteral("foo", sql.LongText),
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true),
 	),
@@ -553,7 +553,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT X'41'`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewLiteral([]byte{'A'}, sql.Blob),
+			expression.NewLiteral([]byte{'A'}, sql.LongBlob),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
@@ -579,7 +579,7 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{expression.NewStar()},
 		plan.NewFilter(
 			expression.NewEquals(
-				expression.NewLiteral(":foo_id", sql.Text),
+				expression.NewLiteral(":foo_id", sql.LongText),
 				expression.NewLiteral(int8(2), sql.Int8),
 			),
 			plan.NewUnresolvedTable("foo", ""),
@@ -656,7 +656,7 @@ var fixtures = map[string]sql.Node{
 			expression.NewIn(
 				expression.NewLiteral(int8(1), sql.Int8),
 				expression.NewTuple(
-					expression.NewLiteral("1", sql.Text),
+					expression.NewLiteral("1", sql.LongText),
 					expression.NewLiteral(int8(2), sql.Int8),
 				),
 			),
@@ -669,7 +669,7 @@ var fixtures = map[string]sql.Node{
 			expression.NewNotIn(
 				expression.NewLiteral(int8(1), sql.Int8),
 				expression.NewTuple(
-					expression.NewLiteral("1", sql.Text),
+					expression.NewLiteral("1", sql.LongText),
 					expression.NewLiteral(int8(2), sql.Int8),
 				),
 			),
@@ -772,7 +772,7 @@ var fixtures = map[string]sql.Node{
 	`SELECT '1.0' + 2;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewPlus(
-				expression.NewLiteral("1.0", sql.Text), expression.NewLiteral(int8(2), sql.Int8),
+				expression.NewLiteral("1.0", sql.LongText), expression.NewLiteral(int8(2), sql.Int8),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -780,7 +780,7 @@ var fixtures = map[string]sql.Node{
 	`SELECT '1' + '2';`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewPlus(
-				expression.NewLiteral("1", sql.Text), expression.NewLiteral("2", sql.Text),
+				expression.NewLiteral("1", sql.LongText), expression.NewLiteral("2", sql.LongText),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -873,7 +873,7 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.SetVariable{
 			Name:  "foo",
-			Value: expression.NewLiteral("bar", sql.Text),
+			Value: expression.NewLiteral("bar", sql.LongText),
 		},
 	),
 	`SET @@session.autocommit=1, foo="bar"`: plan.NewSet(
@@ -883,7 +883,7 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.SetVariable{
 			Name:  "foo",
-			Value: expression.NewLiteral("bar", sql.Text),
+			Value: expression.NewLiteral("bar", sql.LongText),
 		},
 	),
 	`SET autocommit=ON, on="1"`: plan.NewSet(
@@ -893,7 +893,7 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.SetVariable{
 			Name:  "on",
-			Value: expression.NewLiteral("1", sql.Text),
+			Value: expression.NewLiteral("1", sql.LongText),
 		},
 	),
 	`SET @@session.autocommit=OFF, off="0"`: plan.NewSet(
@@ -903,7 +903,7 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.SetVariable{
 			Name:  "off",
-			Value: expression.NewLiteral("0", sql.Text),
+			Value: expression.NewLiteral("0", sql.LongText),
 		},
 	),
 	`SET @@session.autocommit=ON`: plan.NewSet(
@@ -977,7 +977,7 @@ var fixtures = map[string]sql.Node{
 		plan.NewFilter(
 			expression.NewLike(
 				expression.NewUnresolvedColumn("i"),
-				expression.NewLiteral("foo", sql.Text),
+				expression.NewLiteral("foo", sql.LongText),
 			),
 			plan.NewUnresolvedTable("foo", ""),
 		),
@@ -987,7 +987,7 @@ var fixtures = map[string]sql.Node{
 		plan.NewFilter(
 			expression.NewNot(expression.NewLike(
 				expression.NewUnresolvedColumn("i"),
-				expression.NewLiteral("foo", sql.Text),
+				expression.NewLiteral("foo", sql.LongText),
 			)),
 			plan.NewUnresolvedTable("foo", ""),
 		),
@@ -997,21 +997,21 @@ var fixtures = map[string]sql.Node{
 	`SHOW FIELDS FROM foo WHERE Field = 'bar'`: plan.NewFilter(
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("Field"),
-			expression.NewLiteral("bar", sql.Text),
+			expression.NewLiteral("bar", sql.LongText),
 		),
 		plan.NewShowColumns(false, plan.NewUnresolvedTable("foo", "")),
 	),
 	`SHOW FIELDS FROM foo LIKE 'bar'`: plan.NewFilter(
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Field"),
-			expression.NewLiteral("bar", sql.Text),
+			expression.NewLiteral("bar", sql.LongText),
 		),
 		plan.NewShowColumns(false, plan.NewUnresolvedTable("foo", "")),
 	),
 	`SHOW TABLE STATUS LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Name"),
-			expression.NewLiteral("foo", sql.Text),
+			expression.NewLiteral("foo", sql.LongText),
 		),
 		plan.NewShowTableStatus(),
 	),
@@ -1021,7 +1021,7 @@ var fixtures = map[string]sql.Node{
 	`SHOW TABLE STATUS WHERE Name = 'foo'`: plan.NewFilter(
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("Name"),
-			expression.NewLiteral("foo", sql.Text),
+			expression.NewLiteral("foo", sql.LongText),
 		),
 		plan.NewShowTableStatus(),
 	),
@@ -1095,14 +1095,14 @@ var fixtures = map[string]sql.Node{
 			[]expression.CaseBranch{
 				{
 					Cond:  expression.NewLiteral(int8(1), sql.Int8),
-					Value: expression.NewLiteral("foo", sql.Text),
+					Value: expression.NewLiteral("foo", sql.LongText),
 				},
 				{
 					Cond:  expression.NewLiteral(int8(2), sql.Int8),
-					Value: expression.NewLiteral("bar", sql.Text),
+					Value: expression.NewLiteral("bar", sql.LongText),
 				},
 			},
-			expression.NewLiteral("baz", sql.Text),
+			expression.NewLiteral("baz", sql.LongText),
 		)},
 		plan.NewUnresolvedTable("dual", ""),
 	),
@@ -1112,11 +1112,11 @@ var fixtures = map[string]sql.Node{
 			[]expression.CaseBranch{
 				{
 					Cond:  expression.NewLiteral(int8(1), sql.Int8),
-					Value: expression.NewLiteral("foo", sql.Text),
+					Value: expression.NewLiteral("foo", sql.LongText),
 				},
 				{
 					Cond:  expression.NewLiteral(int8(2), sql.Int8),
-					Value: expression.NewLiteral("bar", sql.Text),
+					Value: expression.NewLiteral("bar", sql.LongText),
 				},
 			},
 			nil,
@@ -1132,17 +1132,17 @@ var fixtures = map[string]sql.Node{
 						expression.NewUnresolvedColumn("foo"),
 						expression.NewLiteral(int8(1), sql.Int8),
 					),
-					Value: expression.NewLiteral("foo", sql.Text),
+					Value: expression.NewLiteral("foo", sql.LongText),
 				},
 				{
 					Cond: expression.NewEquals(
 						expression.NewUnresolvedColumn("foo"),
 						expression.NewLiteral(int8(2), sql.Int8),
 					),
-					Value: expression.NewLiteral("bar", sql.Text),
+					Value: expression.NewLiteral("bar", sql.LongText),
 				},
 			},
-			expression.NewLiteral("baz", sql.Text),
+			expression.NewLiteral("baz", sql.LongText),
 		)},
 		plan.NewUnresolvedTable("dual", ""),
 	),
@@ -1150,14 +1150,14 @@ var fixtures = map[string]sql.Node{
 	"SHOW COLLATION LIKE 'foo'": plan.NewFilter(
 		expression.NewLike(
 			expression.NewUnresolvedColumn("collation"),
-			expression.NewLiteral("foo", sql.Text),
+			expression.NewLiteral("foo", sql.LongText),
 		),
 		plan.NewShowCollation(),
 	),
 	"SHOW COLLATION WHERE Charset = 'foo'": plan.NewFilter(
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("charset"),
-			expression.NewLiteral("foo", sql.Text),
+			expression.NewLiteral("foo", sql.LongText),
 		),
 		plan.NewShowCollation(),
 	),
@@ -1172,7 +1172,7 @@ var fixtures = map[string]sql.Node{
 	"SHOW CREATE TABLE `.`":                  plan.NewShowCreateTable("", nil, "."),
 	`SELECT '2018-05-01' + INTERVAL 1 DAY`: plan.NewProject(
 		[]sql.Expression{expression.NewArithmetic(
-			expression.NewLiteral("2018-05-01", sql.Text),
+			expression.NewLiteral("2018-05-01", sql.LongText),
 			expression.NewInterval(
 				expression.NewLiteral(int8(1), sql.Int8),
 				"DAY",
@@ -1183,7 +1183,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT '2018-05-01' - INTERVAL 1 DAY`: plan.NewProject(
 		[]sql.Expression{expression.NewArithmetic(
-			expression.NewLiteral("2018-05-01", sql.Text),
+			expression.NewLiteral("2018-05-01", sql.LongText),
 			expression.NewInterval(
 				expression.NewLiteral(int8(1), sql.Int8),
 				"DAY",
@@ -1198,7 +1198,7 @@ var fixtures = map[string]sql.Node{
 				expression.NewLiteral(int8(1), sql.Int8),
 				"DAY",
 			),
-			expression.NewLiteral("2018-05-01", sql.Text),
+			expression.NewLiteral("2018-05-01", sql.LongText),
 			"+",
 		)},
 		plan.NewUnresolvedTable("dual", ""),
@@ -1206,7 +1206,7 @@ var fixtures = map[string]sql.Node{
 	`SELECT '2018-05-01' + INTERVAL 1 DAY + INTERVAL 1 DAY`: plan.NewProject(
 		[]sql.Expression{expression.NewArithmetic(
 			expression.NewArithmetic(
-				expression.NewLiteral("2018-05-01", sql.Text),
+				expression.NewLiteral("2018-05-01", sql.LongText),
 				expression.NewInterval(
 					expression.NewLiteral(int8(1), sql.Int8),
 					"DAY",

@@ -16,7 +16,7 @@ const (
 
 //TODO: look over all of the "invalid type" tests later, ignoring them for now since they're unlikely to be hit
 func TestTime_Year(t *testing.T) {
-	f := NewYear(expression.NewGetField(0, sql.Text, "foo", false))
+	f := NewYear(expression.NewGetField(0, sql.LongText, "foo", false))
 	ctx := sql.NewEmptyContext()
 
 	testCases := []struct {
@@ -45,7 +45,7 @@ func TestTime_Year(t *testing.T) {
 }
 
 func TestTime_Month(t *testing.T) {
-	f := NewMonth(expression.NewGetField(0, sql.Text, "foo", false))
+	f := NewMonth(expression.NewGetField(0, sql.LongText, "foo", false))
 	ctx := sql.NewEmptyContext()
 
 	testCases := []struct {
@@ -75,7 +75,7 @@ func TestTime_Month(t *testing.T) {
 }
 
 func TestTime_Day(t *testing.T) {
-	f := NewDay(expression.NewGetField(0, sql.Text, "foo", false))
+	f := NewDay(expression.NewGetField(0, sql.LongText, "foo", false))
 	ctx := sql.NewEmptyContext()
 
 	testCases := []struct {
@@ -105,7 +105,7 @@ func TestTime_Day(t *testing.T) {
 }
 
 func TestTime_Weekday(t *testing.T) {
-	f := NewWeekday(expression.NewGetField(0, sql.Text, "foo", false))
+	f := NewWeekday(expression.NewGetField(0, sql.LongText, "foo", false))
 	ctx := sql.NewEmptyContext()
 
 	testCases := []struct {
@@ -135,7 +135,7 @@ func TestTime_Weekday(t *testing.T) {
 }
 
 func TestTime_Hour(t *testing.T) {
-	f := NewHour(expression.NewGetField(0, sql.Text, "foo", false))
+	f := NewHour(expression.NewGetField(0, sql.LongText, "foo", false))
 	ctx := sql.NewEmptyContext()
 
 	testCases := []struct {
@@ -165,7 +165,7 @@ func TestTime_Hour(t *testing.T) {
 }
 
 func TestTime_Minute(t *testing.T) {
-	f := NewMinute(expression.NewGetField(0, sql.Text, "foo", false))
+	f := NewMinute(expression.NewGetField(0, sql.LongText, "foo", false))
 	ctx := sql.NewEmptyContext()
 
 	testCases := []struct {
@@ -195,7 +195,7 @@ func TestTime_Minute(t *testing.T) {
 }
 
 func TestTime_Second(t *testing.T) {
-	f := NewSecond(expression.NewGetField(0, sql.Text, "foo", false))
+	f := NewSecond(expression.NewGetField(0, sql.LongText, "foo", false))
 	ctx := sql.NewEmptyContext()
 	testCases := []struct {
 		name     string
@@ -224,7 +224,7 @@ func TestTime_Second(t *testing.T) {
 }
 
 func TestTime_DayOfWeek(t *testing.T) {
-	f := NewDayOfWeek(expression.NewGetField(0, sql.Text, "foo", false))
+	f := NewDayOfWeek(expression.NewGetField(0, sql.LongText, "foo", false))
 	ctx := sql.NewEmptyContext()
 
 	testCases := []struct {
@@ -254,7 +254,7 @@ func TestTime_DayOfWeek(t *testing.T) {
 }
 
 func TestTime_DayOfYear(t *testing.T) {
-	f := NewDayOfYear(expression.NewGetField(0, sql.Text, "foo", false))
+	f := NewDayOfYear(expression.NewGetField(0, sql.LongText, "foo", false))
 	ctx := sql.NewEmptyContext()
 
 	testCases := []struct {
@@ -284,7 +284,7 @@ func TestTime_DayOfYear(t *testing.T) {
 }
 
 func TestYearWeek(t *testing.T) {
-	f, err := NewYearWeek(expression.NewGetField(0, sql.Text, "foo", false))
+	f, err := NewYearWeek(expression.NewGetField(0, sql.LongText, "foo", false))
 	require.NoError(t, err)
 	ctx := sql.NewEmptyContext()
 
@@ -346,7 +346,7 @@ func TestNow(t *testing.T) {
 }
 
 func TestDate(t *testing.T) {
-	f := NewDate(expression.NewGetField(0, sql.Text, "foo", false))
+	f := NewDate(expression.NewGetField(0, sql.LongText, "foo", false))
 	ctx := sql.NewEmptyContext()
 
 	testCases := []struct {

@@ -436,16 +436,16 @@ func TestRemoveUnnecessaryConverts(t *testing.T) {
 	}{
 		{
 			"unnecessary cast",
-			expression.NewLiteral([]byte{}, sql.Blob),
+			expression.NewLiteral([]byte{}, sql.LongBlob),
 			"binary",
-			expression.NewLiteral([]byte{}, sql.Blob),
+			expression.NewLiteral([]byte{}, sql.LongBlob),
 		},
 		{
 			"necessary cast",
-			expression.NewLiteral("foo", sql.Text),
+			expression.NewLiteral("foo", sql.LongText),
 			"signed",
 			expression.NewConvert(
-				expression.NewLiteral("foo", sql.Text),
+				expression.NewLiteral("foo", sql.LongText),
 				"signed",
 			),
 		},

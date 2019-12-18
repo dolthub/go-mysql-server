@@ -77,7 +77,7 @@ func TestShowIndexes(t *testing.T) {
 				)
 
 				if test.isExpression {
-					ex = expression.NewEquals(ex, expression.NewLiteral("a", sql.Text))
+					ex = expression.NewEquals(ex, expression.NewLiteral("a", sql.LongText))
 				}
 
 				expressions[i] = ex

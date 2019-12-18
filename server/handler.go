@@ -370,7 +370,7 @@ func schemaToFields(s sql.Schema) []*query.Field {
 	fields := make([]*query.Field, len(s))
 	for i, c := range s {
 		var charset uint32 = mysql.CharacterSetUtf8
-		if c.Type == sql.Blob {
+		if sql.IsBlob(c.Type) {
 			charset = mysql.CharacterSetBinary
 		}
 

@@ -16,8 +16,8 @@ func NewDatabase(c *sql.Catalog) func() sql.Expression {
 	}
 }
 
-// Type implements the sql.Expression (sql.Text)
-func (db *Database) Type() sql.Type { return sql.Text }
+// Type implements the sql.Expression (sql.LongText)
+func (db *Database) Type() sql.Type { return sql.LongText }
 
 // IsNullable implements the sql.Expression interface.
 // The function returns always true

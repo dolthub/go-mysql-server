@@ -57,21 +57,21 @@ func (n *ShowIndexes) String() string {
 // Schema implements the Node interface.
 func (n *ShowIndexes) Schema() sql.Schema {
 	return sql.Schema{
-		&sql.Column{Name: "Table", Type: sql.Text},
+		&sql.Column{Name: "Table", Type: sql.LongText},
 		&sql.Column{Name: "Non_unique", Type: sql.Int32},
-		&sql.Column{Name: "Key_name", Type: sql.Text},
+		&sql.Column{Name: "Key_name", Type: sql.LongText},
 		&sql.Column{Name: "Seq_in_index", Type: sql.Int32},
-		&sql.Column{Name: "Column_name", Type: sql.Text, Nullable: true},
-		&sql.Column{Name: "Collation", Type: sql.Text, Nullable: true},
+		&sql.Column{Name: "Column_name", Type: sql.LongText, Nullable: true},
+		&sql.Column{Name: "Collation", Type: sql.LongText, Nullable: true},
 		&sql.Column{Name: "Cardinality", Type: sql.Int64},
 		&sql.Column{Name: "Sub_part", Type: sql.Int64, Nullable: true},
-		&sql.Column{Name: "Packed", Type: sql.Text, Nullable: true},
-		&sql.Column{Name: "Null", Type: sql.Text},
-		&sql.Column{Name: "Index_type", Type: sql.Text},
-		&sql.Column{Name: "Comment", Type: sql.Text},
-		&sql.Column{Name: "Index_comment", Type: sql.Text},
-		&sql.Column{Name: "Visible", Type: sql.Text},
-		&sql.Column{Name: "Expression", Type: sql.Text, Nullable: true},
+		&sql.Column{Name: "Packed", Type: sql.LongText, Nullable: true},
+		&sql.Column{Name: "Null", Type: sql.LongText},
+		&sql.Column{Name: "Index_type", Type: sql.LongText},
+		&sql.Column{Name: "Comment", Type: sql.LongText},
+		&sql.Column{Name: "Index_comment", Type: sql.LongText},
+		&sql.Column{Name: "Visible", Type: sql.LongText},
+		&sql.Column{Name: "Expression", Type: sql.LongText, Nullable: true},
 	}
 }
 

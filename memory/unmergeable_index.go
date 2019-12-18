@@ -127,7 +127,7 @@ func getType(val interface{}) (interface{}, sql.Type) {
 	case float64:
 		return float64(val), sql.Float64
 	case string:
-		return val, sql.Text
+		return val, sql.LongText
 	default:panic(fmt.Sprintf("Unsupported type for %v of type %T", val, val))
 	}
 }

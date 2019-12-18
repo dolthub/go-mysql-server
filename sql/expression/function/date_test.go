@@ -15,11 +15,11 @@ func TestDateAdd(t *testing.T) {
 	_, err := NewDateAdd()
 	require.Error(err)
 
-	_, err = NewDateAdd(expression.NewLiteral("2018-05-02", sql.Text))
+	_, err = NewDateAdd(expression.NewLiteral("2018-05-02", sql.LongText))
 	require.Error(err)
 
 	_, err = NewDateAdd(
-		expression.NewLiteral("2018-05-02", sql.Text),
+		expression.NewLiteral("2018-05-02", sql.LongText),
 		expression.NewLiteral(int64(1), sql.Int64),
 	)
 	require.Error(err)
@@ -53,11 +53,11 @@ func TestDateSub(t *testing.T) {
 	_, err := NewDateSub()
 	require.Error(err)
 
-	_, err = NewDateSub(expression.NewLiteral("2018-05-02", sql.Text))
+	_, err = NewDateSub(expression.NewLiteral("2018-05-02", sql.LongText))
 	require.Error(err)
 
 	_, err = NewDateSub(
-		expression.NewLiteral("2018-05-02", sql.Text),
+		expression.NewLiteral("2018-05-02", sql.LongText),
 		expression.NewLiteral(int64(1), sql.Int64),
 	)
 	require.Error(err)

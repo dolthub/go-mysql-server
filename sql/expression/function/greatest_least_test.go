@@ -36,7 +36,7 @@ func TestGreatest(t *testing.T) {
 		{
 			"string mixed",
 			[]sql.Expression{
-				expression.NewLiteral(string("9"), sql.Text),
+				expression.NewLiteral(string("9"), sql.LongText),
 				expression.NewLiteral(int64(5), sql.Int64),
 				expression.NewLiteral(int64(1), sql.Int64),
 			},
@@ -45,7 +45,7 @@ func TestGreatest(t *testing.T) {
 		{
 			"unconvertible string mixed ignored",
 			[]sql.Expression{
-				expression.NewLiteral(string("10.5"), sql.Text),
+				expression.NewLiteral(string("10.5"), sql.LongText),
 				expression.NewLiteral(string("foobar"), sql.Int64),
 				expression.NewLiteral(int64(5), sql.Int64),
 				expression.NewLiteral(int64(1), sql.Int64),
@@ -64,20 +64,20 @@ func TestGreatest(t *testing.T) {
 		{
 			"all strings",
 			[]sql.Expression{
-				expression.NewLiteral("aaa", sql.Text),
-				expression.NewLiteral("bbb", sql.Text),
-				expression.NewLiteral("9999", sql.Text),
-				expression.NewLiteral("", sql.Text),
+				expression.NewLiteral("aaa", sql.LongText),
+				expression.NewLiteral("bbb", sql.LongText),
+				expression.NewLiteral("9999", sql.LongText),
+				expression.NewLiteral("", sql.LongText),
 			},
 			"bbb",
 		},
 		{
 			"all strings and empty",
 			[]sql.Expression{
-				expression.NewLiteral("aaa", sql.Text),
-				expression.NewLiteral("bbb", sql.Text),
-				expression.NewLiteral("9999", sql.Text),
-				expression.NewLiteral("", sql.Text),
+				expression.NewLiteral("aaa", sql.LongText),
+				expression.NewLiteral("bbb", sql.LongText),
+				expression.NewLiteral("9999", sql.LongText),
+				expression.NewLiteral("", sql.LongText),
 			},
 			"bbb",
 		},
@@ -153,7 +153,7 @@ func TestLeast(t *testing.T) {
 		{
 			"string mixed",
 			[]sql.Expression{
-				expression.NewLiteral(string("10"), sql.Text),
+				expression.NewLiteral(string("10"), sql.LongText),
 				expression.NewLiteral(int64(5), sql.Int64),
 				expression.NewLiteral(int64(1), sql.Int64),
 			},
@@ -162,7 +162,7 @@ func TestLeast(t *testing.T) {
 		{
 			"unconvertible string mixed ignored",
 			[]sql.Expression{
-				expression.NewLiteral(string("10.5"), sql.Text),
+				expression.NewLiteral(string("10.5"), sql.LongText),
 				expression.NewLiteral(string("foobar"), sql.Int64),
 				expression.NewLiteral(int64(5), sql.Int64),
 				expression.NewLiteral(int64(1), sql.Int64),
@@ -181,19 +181,19 @@ func TestLeast(t *testing.T) {
 		{
 			"all strings",
 			[]sql.Expression{
-				expression.NewLiteral("aaa", sql.Text),
-				expression.NewLiteral("bbb", sql.Text),
-				expression.NewLiteral("9999", sql.Text),
+				expression.NewLiteral("aaa", sql.LongText),
+				expression.NewLiteral("bbb", sql.LongText),
+				expression.NewLiteral("9999", sql.LongText),
 			},
 			"9999",
 		},
 		{
 			"all strings and empty",
 			[]sql.Expression{
-				expression.NewLiteral("aaa", sql.Text),
-				expression.NewLiteral("bbb", sql.Text),
-				expression.NewLiteral("9999", sql.Text),
-				expression.NewLiteral("", sql.Text),
+				expression.NewLiteral("aaa", sql.LongText),
+				expression.NewLiteral("bbb", sql.LongText),
+				expression.NewLiteral("9999", sql.LongText),
+				expression.NewLiteral("", sql.LongText),
 			},
 			"",
 		},

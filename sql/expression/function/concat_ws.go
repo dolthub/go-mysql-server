@@ -41,7 +41,7 @@ func NewConcatWithSeparator(args ...sql.Expression) (sql.Expression, error) {
 }
 
 // Type implements the Expression interface.
-func (f *ConcatWithSeparator) Type() sql.Type { return sql.Text }
+func (f *ConcatWithSeparator) Type() sql.Type { return sql.LongText }
 
 // IsNullable implements the Expression interface.
 func (f *ConcatWithSeparator) IsNullable() bool {
@@ -98,7 +98,7 @@ func (f *ConcatWithSeparator) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 		}
 
 		if sql.IsArray(arg.Type()) {
-			val, err = sql.CreateArray(sql.Text).Convert(val)
+			val, err = sql.CreateArray(sql.LongText).Convert(val)
 			if err != nil {
 				return nil, err
 			}
@@ -107,7 +107,7 @@ func (f *ConcatWithSeparator) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 				parts = append(parts, v.(string))
 			}
 		} else {
-			val, err = sql.Text.Convert(val)
+			val, err = sql.LongText.Convert(val)
 			if err != nil {
 				return nil, err
 			}

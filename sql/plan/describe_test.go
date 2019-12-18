@@ -68,7 +68,7 @@ func TestDescribeQuery(t *testing.T) {
 		NewFilter(
 			expression.NewEquals(
 				expression.NewGetFieldWithTable(0, sql.Text, "foo", "a", false),
-				expression.NewLiteral("foo", sql.Text),
+				expression.NewLiteral("foo", sql.LongText),
 			),
 			NewResolvedTable(table),
 		),

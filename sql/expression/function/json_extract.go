@@ -59,7 +59,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		path, err = sql.Text.Convert(path)
+		path, err = sql.LongText.Convert(path)
 		if err != nil {
 			return nil, err
 		}

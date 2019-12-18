@@ -16,24 +16,24 @@ const defaultCollation = "utf8_bin"
 
 var (
 	showColumnsSchema = sql.Schema{
-		{Name: "Field", Type: sql.Text},
-		{Name: "Type", Type: sql.Text},
-		{Name: "Null", Type: sql.Text},
-		{Name: "Key", Type: sql.Text},
-		{Name: "Default", Type: sql.Text, Nullable: true},
-		{Name: "Extra", Type: sql.Text},
+		{Name: "Field", Type: sql.LongText},
+		{Name: "Type", Type: sql.LongText},
+		{Name: "Null", Type: sql.LongText},
+		{Name: "Key", Type: sql.LongText},
+		{Name: "Default", Type: sql.LongText, Nullable: true},
+		{Name: "Extra", Type: sql.LongText},
 	}
 
 	showColumnsFullSchema = sql.Schema{
-		{Name: "Field", Type: sql.Text},
-		{Name: "Type", Type: sql.Text},
-		{Name: "Collation", Type: sql.Text, Nullable: true},
-		{Name: "Null", Type: sql.Text},
-		{Name: "Key", Type: sql.Text},
-		{Name: "Default", Type: sql.Text, Nullable: true},
-		{Name: "Extra", Type: sql.Text},
-		{Name: "Privileges", Type: sql.Text},
-		{Name: "Comment", Type: sql.Text},
+		{Name: "Field", Type: sql.LongText},
+		{Name: "Type", Type: sql.LongText},
+		{Name: "Collation", Type: sql.LongText, Nullable: true},
+		{Name: "Null", Type: sql.LongText},
+		{Name: "Key", Type: sql.LongText},
+		{Name: "Default", Type: sql.LongText, Nullable: true},
+		{Name: "Extra", Type: sql.LongText},
+		{Name: "Privileges", Type: sql.LongText},
+		{Name: "Comment", Type: sql.LongText},
 	}
 )
 
@@ -61,7 +61,7 @@ func (s *ShowColumns) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	for i, col := range schema {
 		var row sql.Row
 		var collation interface{}
-		if col.Type == sql.Text {
+		if sql.IsTextOnly(col.Type) {
 			collation = defaultCollation
 		}
 

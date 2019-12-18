@@ -31,7 +31,7 @@ func (*ShowDatabases) Children() []sql.Node {
 func (*ShowDatabases) Schema() sql.Schema {
 	return sql.Schema{{
 		Name:     "Database",
-		Type:     sql.Text,
+		Type:     sql.LongText,
 		Nullable: false,
 	}}
 }

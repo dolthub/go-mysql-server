@@ -59,7 +59,7 @@ func (p *Pad) IsNullable() bool {
 }
 
 // Type implements the Expression interface.
-func (p *Pad) Type() sql.Type { return sql.Text }
+func (p *Pad) Type() sql.Type { return sql.LongText }
 
 func (p *Pad) String() string {
 	if p.padType == lPadType {
@@ -87,7 +87,7 @@ func (p *Pad) Eval(
 		return nil, nil
 	}
 
-	str, err = sql.Text.Convert(str)
+	str, err = sql.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}
@@ -115,7 +115,7 @@ func (p *Pad) Eval(
 		return nil, nil
 	}
 
-	padStr, err = sql.Text.Convert(padStr)
+	padStr, err = sql.LongText.Convert(padStr)
 	if err != nil {
 		return nil, err
 	}

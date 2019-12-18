@@ -9,7 +9,7 @@ import (
 )
 
 func TestReverse(t *testing.T) {
-	f := NewReverse(expression.NewGetField(0, sql.Text, "", false))
+	f := NewReverse(expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -40,7 +40,7 @@ func TestReverse(t *testing.T) {
 
 func TestRepeat(t *testing.T) {
 	f := NewRepeat(
-		expression.NewGetField(0, sql.Text, "", false),
+		expression.NewGetField(0, sql.LongText, "", false),
 		expression.NewGetField(1, sql.Int32, "", false),
 	)
 
@@ -75,9 +75,9 @@ func TestRepeat(t *testing.T) {
 
 func TestReplace(t *testing.T) {
 	f := NewReplace(
-		expression.NewGetField(0, sql.Text, "", false),
-		expression.NewGetField(1, sql.Text, "", false),
-		expression.NewGetField(2, sql.Text, "", false),
+		expression.NewGetField(0, sql.LongText, "", false),
+		expression.NewGetField(1, sql.LongText, "", false),
+		expression.NewGetField(2, sql.LongText, "", false),
 	)
 
 	testCases := []struct {

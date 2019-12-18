@@ -29,7 +29,7 @@ func (r *Reverse) Eval(
 		return nil, err
 	}
 
-	v, err = sql.Text.Convert(v)
+	v, err = sql.LongText.Convert(v)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (r *Repeat) String() string {
 
 // Type implements the Expression interface.
 func (r *Repeat) Type() sql.Type {
-	return sql.Text
+	return sql.LongText
 }
 
 // WithChildren implements the Expression interface.
@@ -101,7 +101,7 @@ func (r *Repeat) Eval(
 		return nil, err
 	}
 
-	str, err = sql.Text.Convert(str)
+	str, err = sql.LongText.Convert(str)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (r *Replace) String() string {
 
 // Type implements the Expression interface.
 func (r *Replace) Type() sql.Type {
-	return sql.Text
+	return sql.LongText
 }
 
 // WithChildren implements the Expression interface.
@@ -176,7 +176,7 @@ func (r *Replace) Eval(
 		return nil, err
 	}
 
-	str, err = sql.Text.Convert(str)
+	str, err = sql.LongText.Convert(str)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func (r *Replace) Eval(
 		return nil, err
 	}
 
-	fromStr, err = sql.Text.Convert(fromStr)
+	fromStr, err = sql.LongText.Convert(fromStr)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +196,7 @@ func (r *Replace) Eval(
 		return nil, err
 	}
 
-	toStr, err = sql.Text.Convert(toStr)
+	toStr, err = sql.LongText.Convert(toStr)
 	if err != nil {
 		return nil, err
 	}

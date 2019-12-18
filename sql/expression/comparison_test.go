@@ -23,7 +23,7 @@ const (
 )
 
 var comparisonCases = map[sql.Type]map[int][][]interface{}{
-	sql.Text: {
+	sql.LongText: {
 		testEqual: {
 			{"foo", "foo"},
 			{"", ""},
@@ -64,7 +64,7 @@ var comparisonCases = map[sql.Type]map[int][][]interface{}{
 }
 
 var likeComparisonCases = map[sql.Type]map[int][][]interface{}{
-	sql.Text: {
+	sql.LongText: {
 		testRegexp: {
 			{"foobar", ".*bar"},
 			{"foobarfoo", ".*bar.*"},
@@ -217,8 +217,8 @@ func TestInvalidRegexp(t *testing.T) {
 	t.Helper()
 	require := require.New(t)
 
-	col1 := expression.NewGetField(0, sql.Text, "col1", true)
-	invalid := expression.NewLiteral("*col1", sql.Text)
+	col1 := expression.NewGetField(0, sql.LongText, "col1", true)
+	invalid := expression.NewLiteral("*col1", sql.LongText)
 	r := expression.NewRegexp(col1, invalid)
 	row := sql.NewRow("col1")
 

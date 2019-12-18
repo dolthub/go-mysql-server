@@ -140,7 +140,7 @@ func (s *Substring) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (*Substring) Type() sql.Type { return sql.Text }
+func (*Substring) Type() sql.Type { return sql.LongText }
 
 /// WithChildren implements the Expression interface.
 func (*Substring) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -173,7 +173,7 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if ex == nil || err != nil {
 		return nil, err
 	}
-	ex, err = sql.Text.Convert(ex)
+	ex, err = sql.LongText.Convert(ex)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if ex == nil || err != nil {
 		return nil, err
 	}
-	ex, err = sql.Text.Convert(ex)
+	ex, err = sql.LongText.Convert(ex)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +248,7 @@ func (s *SubstringIndex) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (*SubstringIndex) Type() sql.Type { return sql.Text }
+func (*SubstringIndex) Type() sql.Type { return sql.LongText }
 
 // WithChildren implements the Expression interface.
 func (s *SubstringIndex) WithChildren(children ...sql.Expression) (sql.Expression, error) {

@@ -15,8 +15,8 @@ func TestLower(t *testing.T) {
 		row      sql.Row
 		expected interface{}
 	}{
-		{"text nil", sql.Text, sql.NewRow(nil), nil},
-		{"text ok", sql.Text, sql.NewRow("LoWeR"), "lower"},
+		{"text nil", sql.LongText, sql.NewRow(nil), nil},
+		{"text ok", sql.LongText, sql.NewRow("LoWeR"), "lower"},
 		{"binary ok", sql.Blob, sql.NewRow([]byte("LoWeR")), "lower"},
 		{"other type", sql.Int32, sql.NewRow(int32(1)), "1"},
 	}
@@ -41,8 +41,8 @@ func TestUpper(t *testing.T) {
 		row      sql.Row
 		expected interface{}
 	}{
-		{"text nil", sql.Text, sql.NewRow(nil), nil},
-		{"text ok", sql.Text, sql.NewRow("UpPeR"), "UPPER"},
+		{"text nil", sql.LongText, sql.NewRow(nil), nil},
+		{"text ok", sql.LongText, sql.NewRow("UpPeR"), "UPPER"},
 		{"binary ok", sql.Blob, sql.NewRow([]byte("UpPeR")), "UPPER"},
 		{"other type", sql.Int32, sql.NewRow(int32(1)), "1"},
 	}
