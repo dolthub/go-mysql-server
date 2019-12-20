@@ -70,8 +70,8 @@ func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{
 
 func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, interface{}, error) {
 	if sql.IsNumber(c.Left().Type()) || sql.IsNumber(c.Right().Type()) {
-		if sql.IsDecimal(c.Left().Type()) || sql.IsDecimal(c.Right().Type()) {
-			l, r, err := convertLeftAndRight(left, right, ConvertToDecimal)
+		if sql.IsFloat(c.Left().Type()) || sql.IsFloat(c.Right().Type()) {
+			l, r, err := convertLeftAndRight(left, right, ConvertToDouble)
 			if err != nil {
 				return nil, nil, err
 			}

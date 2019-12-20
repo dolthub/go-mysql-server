@@ -61,7 +61,7 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return int32(math.Ceil(child.(float64))), nil
 	}
 
-	if !sql.IsDecimal(c.Child.Type()) {
+	if !sql.IsFloat(c.Child.Type()) {
 		return child, err
 	}
 
@@ -127,7 +127,7 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return int32(math.Floor(child.(float64))), nil
 	}
 
-	if !sql.IsDecimal(f.Child.Type()) {
+	if !sql.IsFloat(f.Child.Type()) {
 		return child, err
 	}
 

@@ -127,7 +127,7 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 			return nil, sql.ErrInvalidType.New("tuple")
 		} else if sql.IsNumber(argType) {
 			allString = false
-			if sql.IsDecimal(argType) {
+			if sql.IsFloat(argType) {
 				allString = false
 				allInt = false
 			}

@@ -50,8 +50,8 @@ func TestCeil(t *testing.T) {
 			}
 
 			switch {
-			case sql.IsDecimal(tt.rowType):
-				require.True(sql.IsDecimal(f.Type()))
+			case sql.IsFloat(tt.rowType):
+				require.True(sql.IsFloat(f.Type()))
 				require.False(f.IsNullable())
 			case sql.IsInteger(tt.rowType):
 				require.True(sql.IsInteger(f.Type()))
@@ -105,8 +105,8 @@ func TestFloor(t *testing.T) {
 			}
 
 			switch {
-			case sql.IsDecimal(tt.rowType):
-				require.True(sql.IsDecimal(f.Type()))
+			case sql.IsFloat(tt.rowType):
+				require.True(sql.IsFloat(f.Type()))
 				require.False(f.IsNullable())
 			case sql.IsInteger(tt.rowType):
 				require.True(sql.IsInteger(f.Type()))
@@ -236,8 +236,8 @@ func TestRound(t *testing.T) {
 			}
 
 			switch {
-			case sql.IsDecimal(tt.xType):
-				require.True(sql.IsDecimal(f.Type()))
+			case sql.IsFloat(tt.xType):
+				require.True(sql.IsFloat(f.Type()))
 				require.False(f.IsNullable())
 			case sql.IsInteger(tt.xType):
 				require.True(sql.IsInteger(f.Type()))
