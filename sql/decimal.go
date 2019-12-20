@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/proto/query"
@@ -12,9 +13,7 @@ import (
 
 type DecimalType interface {
 	Type
-	ConvertToBigFloat(v interface{}) (*big.Float, error)
-	FormatBigFloat(bigFloat *big.Float) string
-	FormatDecimalStringToMySQL(decStr string) string
+	ConvertToDecimal(v interface{}) (decimal.NullDecimal, error)
 	Precision() uint8
 	Scale() uint8
 }
@@ -78,131 +77,102 @@ func (t decimalType) Compare(a interface{}, b interface{}) (int, error) {
 		return res, nil
 	}
 
-	af, err := t.ConvertToBigFloat(a)
+	af, err := t.ConvertToDecimal(a)
 	if err != nil {
 		return 0, err
 	}
-	bf, err := t.ConvertToBigFloat(b)
+	bf, err := t.ConvertToDecimal(b)
 	if err != nil {
 		return 0, err
 	}
 
-	return af.Cmp(bf), nil
+	return af.Decimal.Cmp(bf.Decimal), nil
 }
 
 // Convert implements Type interface.
 func (t decimalType) Convert(v interface{}) (interface{}, error) {
-	float, err := t.ConvertToBigFloat(v)
+	dec, err := t.ConvertToDecimal(v)
 	if err != nil {
 		return nil, err
 	}
-	if float == nil {
+	if !dec.Valid {
 		return nil, nil
 	}
-	decStr := t.FormatBigFloat(float)
-	return t.FormatDecimalStringToMySQL(decStr), nil
+	return dec.Decimal.StringFixed(int32(t.scale)), nil
 }
 
 // Precision returns the precision, or total number of digits, that may be held.
-func (t decimalType) ConvertToBigFloat(v interface{}) (*big.Float, error) {
+func (t decimalType) ConvertToDecimal(v interface{}) (decimal.NullDecimal, error) {
 	if v == nil {
-		return nil, nil
+		return decimal.NullDecimal{}, nil
 	}
 
-	res := new(big.Float).Copy(decimalContainer)
+	var res decimal.Decimal
 
 	switch value := v.(type) {
 	case int:
-		return t.ConvertToBigFloat(int64(value))
+		return t.ConvertToDecimal(int64(value))
 	case uint:
-		return t.ConvertToBigFloat(uint64(value))
+		return t.ConvertToDecimal(uint64(value))
 	case int8:
-		return t.ConvertToBigFloat(int64(value))
+		return t.ConvertToDecimal(int64(value))
 	case uint8:
-		return t.ConvertToBigFloat(uint64(value))
+		return t.ConvertToDecimal(uint64(value))
 	case int16:
-		return t.ConvertToBigFloat(int64(value))
+		return t.ConvertToDecimal(int64(value))
 	case uint16:
-		return t.ConvertToBigFloat(uint64(value))
+		return t.ConvertToDecimal(uint64(value))
 	case int32:
-		return t.ConvertToBigFloat(int64(value))
+		res = decimal.NewFromInt32(value)
 	case uint32:
-		return t.ConvertToBigFloat(uint64(value))
+		return t.ConvertToDecimal(uint64(value))
 	case int64:
-		res.SetInt64(value)
+		res = decimal.NewFromInt(value)
 	case uint64:
-		res.SetUint64(value)
+		res = decimal.NewFromBigInt(new(big.Int).SetUint64(value), 0)
 	case float32:
-		return t.ConvertToBigFloat(float64(value))
+		res = decimal.NewFromFloat32(value)
 	case float64:
-		res.SetFloat64(value)
+		res = decimal.NewFromFloat(value)
 	case string:
-		_, _, err := res.Parse(value, 0)
+		var err error
+		res, err = decimal.NewFromString(value)
 		if err != nil {
-			return nil, err
-		}
-	case *big.Float:
-		res.Set(value)
-	case *big.Int:
-		res.SetInt(value)
-	case *big.Rat:
-		res.SetRat(value)
-	default:
-		return nil, ErrConvertingToDecimal.New(v)
-	}
-
-	// This does rounding on the fractional portion since we internally use a *big.Float which has issue with exact values
-	if !res.IsInt() && !res.IsInf() {
-		resStr := res.Text('f', -1)
-		dotIndex := strings.Index(resStr, ".")
-		if dotIndex != -1 {
-			fracStr := resStr[dotIndex+1:]
-			if len(fracStr) > int(t.scale) {
-				if len(fracStr) > int(t.scale) + 1 {
-					fracStr = fracStr[:int(t.scale)+1]
-				}
-				frac := new(big.Int)
-				err := frac.UnmarshalText([]byte(fracStr))
-				if err != nil {
-					return nil, ErrConvertingToDecimalFrac.Wrap(err)
-				}
-				frac.Add(frac, big.NewInt(5))
-				resAsInt, _ := res.Int(nil)
-				upperBound := new(big.Int)
-				_ = upperBound.UnmarshalText([]byte("1" + strings.Repeat("0", int(t.scale + 1))))
-				if frac.Cmp(upperBound) == -1 {
-					frac.Div(frac, big.NewInt(10))
-					// When |res| < 1 then resAsInt becomes 0, which loses the sign when res < 0
-					if res.Sign() != resAsInt.Sign() && res.Sign() == -1 {
-						_, _, err = res.Parse("-0." + frac.Text(10), 10)
-					} else {
-						_, _, err = res.Parse(resAsInt.Text(10) + "." + frac.Text(10), 10)
-					}
-					if err != nil {
-						return nil, ErrConvertingToDecimalFrac.Wrap(err)
-					}
-				} else {
-					if res.Sign() == -1 {
-						resAsInt.Sub(resAsInt, big.NewInt(1))
-					} else {
-						resAsInt.Add(resAsInt, big.NewInt(1))
-					}
-					res.SetInt(resAsInt)
-				}
+			// The decimal library cannot handle all of the different formats
+			bf, _, err := new(big.Float).SetPrec(217).Parse(value, 0)
+			if err != nil {
+				return decimal.NullDecimal{}, err
+			}
+			res, err = decimal.NewFromString(bf.Text('f', -1))
+			if err != nil {
+				return decimal.NullDecimal{}, err
 			}
 		}
+	case *big.Float:
+		return t.ConvertToDecimal(value.Text('f', -1))
+	case *big.Int:
+		return t.ConvertToDecimal(value.Text(10))
+	case *big.Rat:
+		return t.ConvertToDecimal(new(big.Float).SetRat(value))
+	case decimal.Decimal:
+		res = value
+	case decimal.NullDecimal:
+		// This is the equivalent of passing in a nil
+		if !value.Valid {
+			return decimal.NullDecimal{}, nil
+		}
+		res = value.Decimal
+	default:
+		return decimal.NullDecimal{}, ErrConvertingToDecimal.New(v)
 	}
 
-	// Check if we're above the max value for this type
-	max, _, err := new(big.Float).Copy(decimalContainer).Parse(fmt.Sprintf("1.0e%d", t.precision - t.scale), 0)
-	if err != nil {
-		return nil, ErrConvertingToDecimalInternal.New(t.precision - t.scale)
-	}
-	if new(big.Float).Abs(res).Cmp(max) != -1 {
-		return nil, ErrConvertToDecimalLimit.New()
+	res = res.Round(int32(t.scale))
+	max, _ := decimal.NewFromString("1" + strings.Repeat("0", int(t.precision - t.scale)))
+	if res.Abs().Cmp(max) != -1 {
+		return decimal.NullDecimal{}, ErrConvertToDecimalLimit.New()
 	}
 
-	return res, nil
+	return decimal.NullDecimal{Decimal: res, Valid: true}, nil
 }
 
 // MustConvert implements the Type interface.
@@ -238,26 +208,7 @@ func (t decimalType) String() string {
 
 // Zero implements Type interface. Returns a uint64 value.
 func (t decimalType) Zero() interface{} {
-	return t.FormatDecimalStringToMySQL("0")
-}
-
-// FormatBigFloat returns a concise decimal representation of the given *big.Float.
-func (t decimalType) FormatBigFloat(bigFloat *big.Float) string {
-	return bigFloat.Text('f', -1)
-}
-
-// FormatDecimalString takes a decimal representation as returned by FormatBigFloat and returns a
-// padded decimal string as returned by MySQL.
-func (t decimalType) FormatDecimalStringToMySQL(decStr string) string {
-	if decIndex := strings.Index(decStr, "."); decIndex != -1 {
-		fracLength := len(decStr[decIndex+1:])
-		if fracLength < int(t.scale) {
-			decStr += strings.Repeat("0", int(t.scale) - fracLength)
-		}
-	} else if t.scale != 0 {
-		decStr += "." + strings.Repeat("0", int(t.scale))
-	}
-	return decStr
+	return decimal.NewFromInt(0).StringFixed(int32(t.scale))
 }
 
 // Precision returns the precision, or total number of digits, that may be held.
