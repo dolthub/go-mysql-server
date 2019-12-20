@@ -204,6 +204,24 @@ var fixtures = map[string]sql.Node{
 	`ALTER TABLE foo DROP COLUMN bar`: plan.NewDropColumn(
 		sql.UnresolvedDatabase(""), "foo", "bar",
 	),
+	`ALTER TABLE foo MODIFY COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
+		sql.UnresolvedDatabase(""), "foo", "bar", &sql.Column{
+			Name:       "bar",
+			Type:       sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
+			Nullable:   true,
+			Comment:    "hello",
+			Default:    "string",
+		}, &sql.ColumnOrder{First: true},
+	),
+	`ALTER TABLE foo CHANGE COLUMN bar baz VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
+		sql.UnresolvedDatabase(""), "foo", "bar", &sql.Column{
+			Name:       "baz",
+			Type:       sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
+			Nullable:   true,
+			Comment:    "hello",
+			Default:    "string",
+		}, &sql.ColumnOrder{First: true},
+	),
 	`DESCRIBE TABLE foo;`: plan.NewDescribe(
 		plan.NewUnresolvedTable("foo", ""),
 	),
