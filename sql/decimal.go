@@ -11,17 +11,20 @@ import (
 	"vitess.io/vitess/go/vt/proto/query"
 )
 
+const maxPrecision = 65
+const maxScale = 30
+
+var (
+	ErrConvertingToDecimal = errors.NewKind("value %v is not a valid Decimal")
+	ErrConvertToDecimalLimit = errors.NewKind("value of Decimal is too large for type")
+)
+
 type DecimalType interface {
 	Type
 	ConvertToDecimal(v interface{}) (decimal.NullDecimal, error)
 	Precision() uint8
 	Scale() uint8
 }
-
-var (
-	ErrConvertingToDecimal = errors.NewKind("value %v is not a valid Decimal")
-	ErrConvertToDecimalLimit = errors.NewKind("value of Decimal is too large for type")
-)
 
 type decimalType struct{
 	precision uint8
@@ -30,13 +33,13 @@ type decimalType struct{
 
 // CreateDecimalType creates a DecimalType.
 func CreateDecimalType(precision uint8, scale uint8) (DecimalType, error) {
-	if precision > 65 {
+	if precision > maxPrecision {
 		return nil, fmt.Errorf("%v is beyond the max precision", precision)
 	}
 	if scale > precision {
 		return nil, fmt.Errorf("%v cannot be larger than the precision %v", scale, precision)
 	}
-	if scale > 30 {
+	if scale > maxScale {
 		return nil, fmt.Errorf("%v is beyond the max scale", scale)
 	}
 	if precision == 0 {
@@ -177,7 +180,7 @@ func (t decimalType) MustConvert(v interface{}) interface{} {
 
 // Promote implements the Type interface.
 func (t decimalType) Promote() Type {
-	return MustCreateDecimalType(64, t.scale)
+	return MustCreateDecimalType(maxPrecision, t.scale)
 }
 
 // SQL implements Type interface.
