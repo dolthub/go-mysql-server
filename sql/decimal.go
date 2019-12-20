@@ -50,11 +50,11 @@ func CreateDecimalType(precision uint8, scale uint8) (DecimalType, error) {
 
 // MustCreateDecimalType is the same as CreateDecimalType except it panics on errors.
 func MustCreateDecimalType(precision uint8, scale uint8) DecimalType {
-	bt, err := CreateDecimalType(precision, scale)
+	dt, err := CreateDecimalType(precision, scale)
 	if err != nil {
 		panic(err)
 	}
-	return bt
+	return dt
 }
 
 // Type implements Type interface.
@@ -202,7 +202,7 @@ func (t decimalType) Zero() interface{} {
 	return decimal.NewFromInt(0).StringFixed(int32(t.scale))
 }
 
-// Precision returns the precision, or total number of digits, that may be held.
+// Precision returns the base-10 precision of the type.
 func (t decimalType) Precision() uint8 {
 	return t.precision
 }
