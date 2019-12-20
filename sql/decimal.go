@@ -19,16 +19,7 @@ type DecimalType interface {
 }
 
 var (
-	// decimalContainer is a big.Float that can hold any digit allowed by MySQL's DECIMAL.
-	// Max DECIMAL value in MySQL is a 65 digit base 10 number.
-	// 10^65 < 2^216, but 10^65 > 2^215, thus 216 bits is the minimum precision required to represent that integer.
-	// According to the TestDecimalAccuracy test, 216 will cause off-by-1 for some fractions, so the precision set
-	// is the smallest found to allow that test to pass with zero errors.
-	decimalContainer = new(big.Float).SetPrec(217).SetMode(big.ToNearestAway)
-
 	ErrConvertingToDecimal = errors.NewKind("value %v is not a valid Decimal")
-	ErrConvertingToDecimalInternal = errors.NewKind("precision above decimal could not be computed for %v")
-	ErrConvertingToDecimalFrac = errors.NewKind("internal error handling fractional portion of Decimal")
 	ErrConvertToDecimalLimit = errors.NewKind("value of Decimal is too large for type")
 )
 
