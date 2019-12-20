@@ -371,22 +371,22 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 		if !c.View.IsEmpty() {
 			return convertCreateView(ctx, query, c)
 		}
-		return convertCreateTable(c)
+		return convertCreateTable(ctx, c)
 	case sqlparser.DropStr:
 		if len(c.FromViews) != 0 {
 			return convertDropView(ctx, c)
 		}
-		return convertDropTable(c)
+		return convertDropTable(ctx, c)
 	case sqlparser.AlterStr:
-		return convertAlterTable(c)
+		return convertAlterTable(ctx, c)
 	case sqlparser.RenameStr:
-		return convertRenameTable(c)
+		return convertRenameTable(ctx, c)
 	default:
 		return nil, ErrUnsupportedSyntax.New(c)
 	}
 }
 
-func convertRenameTable(ddl *sqlparser.DDL) (sql.Node, error) {
+func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	if len(ddl.FromTables) != len(ddl.ToTables) {
 		panic("Expected from tables and to tables of equal length")
 	}
@@ -402,10 +402,10 @@ func convertRenameTable(ddl *sqlparser.DDL) (sql.Node, error) {
 	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables), nil
 }
 
-func convertAlterTable(ddl *sqlparser.DDL) (sql.Node, error) {
+func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	switch ddl.ColumnAction {
 	case sqlparser.AddStr:
-		sch, err := tableSpecToSchema(ddl.TableSpec)
+		sch, err := tableSpecToSchema(ctx, ddl.TableSpec)
 		if err != nil {
 			return nil, err
 		}
@@ -415,7 +415,7 @@ func convertAlterTable(ddl *sqlparser.DDL) (sql.Node, error) {
 	case sqlparser.RenameStr:
 		return plan.NewRenameColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String(), ddl.ToColumn.String()), nil
 	case sqlparser.ModifyStr, sqlparser.ChangeStr:
-		sch, err := tableSpecToSchema(ddl.TableSpec)
+		sch, err := tableSpecToSchema(nil, ddl.TableSpec)
 		if err != nil {
 			return nil, err
 		}
@@ -438,7 +438,7 @@ func columnOrderToColumnOrder(order *sqlparser.ColumnOrder) *sql.ColumnOrder {
 
 
 
-func convertDropTable(c *sqlparser.DDL) (sql.Node, error) {
+func convertDropTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	tableNames := make([]string, len(c.FromTables))
 	for i, t := range c.FromTables {
 		tableNames[i] = t.Name.String()
@@ -446,8 +446,8 @@ func convertDropTable(c *sqlparser.DDL) (sql.Node, error) {
 	return plan.NewDropTable(sql.UnresolvedDatabase(""), c.IfExists, tableNames...), nil
 }
 
-func convertCreateTable(c *sqlparser.DDL) (sql.Node, error) {
-	schema, err := tableSpecToSchema(c.TableSpec)
+func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
+	schema, err := tableSpecToSchema(nil, c.TableSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -589,10 +589,10 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 	return plan.NewUpdate(node, updateExprs), nil
 }
 
-func tableSpecToSchema(tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
+func tableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
 	var schema sql.Schema
 	for _, cd := range tableSpec.Columns {
-		column, err := getColumn(cd, tableSpec.Indexes)
+		column, err := columnDefinitionToColumn(ctx, cd, tableSpec.Indexes)
 		if err != nil {
 			return nil, err
 		}
@@ -603,8 +603,8 @@ func tableSpecToSchema(tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
 	return schema, nil
 }
 
-// getColumn returns the sql.Column for the column definition given, as part of a create table statement.
-func getColumn(cd *sqlparser.ColumnDefinition, indexes []*sqlparser.IndexDefinition) (*sql.Column, error) {
+// columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table statement.
+func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, indexes []*sqlparser.IndexDefinition) (*sql.Column, error) {
 	internalTyp, err := sql.ColumnTypeToType(&cd.Type)
 	if err != nil {
 		return nil, err
@@ -633,13 +633,27 @@ func getColumn(cd *sqlparser.ColumnDefinition, indexes []*sqlparser.IndexDefinit
 		comment = string(cd.Type.Comment.Val)
 	}
 
+	var defaultVal interface{}
+	if cd.Type.Default != nil {
+		dflt, err := exprToExpression(ctx, cd.Type.Default)
+		if err != nil {
+			return nil, err
+		}
+
+		lit, ok := dflt.(*expression.Literal)
+		if !ok {
+			return nil, ErrUnsupportedFeature.New("column defaults must be literal expressions")
+		}
+		defaultVal = lit.Value()
+	}
+
 	return &sql.Column{
 		Nullable:   !isPkey && !bool(cd.Type.NotNull),
 		Type:       internalTyp,
 		Name:       cd.Name.String(),
 		PrimaryKey: isPkey,
-		Default: nil, // TODO
-		Comment: comment,
+		Default:    defaultVal,
+		Comment:    comment,
 	}, nil
 }
 

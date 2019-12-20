@@ -166,20 +166,39 @@ var fixtures = map[string]sql.Node{
 			Nullable:   false,
 		}, nil,
 	),
-	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT 1 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
-		// TODO: default value
+	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT 42 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
 		sql.UnresolvedDatabase(""), "foo", &sql.Column{
 			Name:       "bar",
 			Type:       sql.Int32,
 			Nullable:   false,
 			Comment:    "hello",
+			Default:    int8(42),
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
-	`ALTER TABLE foo ADD COLUMN bar INT FIRST`: plan.NewAddColumn(
+	`ALTER TABLE foo ADD COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello'`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+			Name:       "bar",
+			Type:       sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
+			Nullable:   true,
+			Comment:    "hello",
+			Default:    "string",
+		}, nil,
+	),
+	`ALTER TABLE foo ADD COLUMN bar FLOAT NULL DEFAULT 32.0 COMMENT 'hello'`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+			Name:       "bar",
+			Type:       sql.Float32,
+			Nullable:   true,
+			Comment:    "hello",
+			Default:    float64(32.0),
+		}, nil,
+	),
+	`ALTER TABLE foo ADD COLUMN bar INT DEFAULT 1 FIRST`: plan.NewAddColumn(
 		sql.UnresolvedDatabase(""), "foo", &sql.Column{
 			Name:       "bar",
 			Type:       sql.Int32,
 			Nullable:   true,
+			Default:    int8(1),
 		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE foo DROP COLUMN bar`: plan.NewDropColumn(
@@ -1405,7 +1424,7 @@ func TestParse(t *testing.T) {
 			ctx := sql.NewEmptyContext()
 			p, err := Parse(ctx, query)
 			require.NoError(err)
-			require.Exactly(expectedPlan, p,
+			require.Equal(expectedPlan, p,
 				"plans do not match for query '%s'", query)
 		})
 
