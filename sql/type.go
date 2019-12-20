@@ -84,7 +84,24 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		return Float32, nil
 	case "double", "real":
 		return Float64, nil
-	case "decimal", "fixed", "dec":
+	case "decimal", "fixed", "dec", "numeric":
+		precision := int64(0)
+		scale := int64(0)
+		if ct.Length != nil {
+			var err error
+			precision, err = strconv.ParseInt(string(ct.Length.Val), 10, 8)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if ct.Scale != nil {
+			var err error
+			scale, err = strconv.ParseInt(string(ct.Scale.Val), 10, 8)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return CreateDecimalType(uint8(precision), uint8(scale))
 	case "bit":
 		length := int64(1)
 		if ct.Length != nil {
@@ -297,8 +314,8 @@ func IsChar(t Type) bool {
 	return false
 }
 
-// IsDecimal checks if t is decimal type.
-func IsDecimal(t Type) bool {
+// IsFloat checks if t is decimal type.
+func IsFloat(t Type) bool {
 	return t == Float32 || t == Float64
 }
 
@@ -314,7 +331,8 @@ func IsNull(ex Expression) bool {
 
 // IsNumber checks if t is a number type
 func IsNumber(t Type) bool {
-	return IsInteger(t) || IsDecimal(t)
+	_, ok := t.(numberTypeImpl)
+	return ok
 }
 
 // IsSigned checks if t is a signed type.
