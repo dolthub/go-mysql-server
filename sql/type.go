@@ -304,22 +304,12 @@ func IsBlob(t Type) bool {
 	}
 }
 
-// IsChar checks if t is a Char type.
-func IsChar(t Type) bool {
-	if st, ok := t.(stringType); ok {
-		if st.baseType == sqltypes.Char {
-			return true
-		}
-	}
-	return false
-}
-
-// IsFloat checks if t is decimal type.
+// IsFloat checks if t is float type.
 func IsFloat(t Type) bool {
 	return t == Float32 || t == Float64
 }
 
-// IsInteger checks if t is a (U)Int32/64 type.
+// IsInteger checks if t is an integer type.
 func IsInteger(t Type) bool {
 	return IsSigned(t) || IsUnsigned(t)
 }
@@ -373,16 +363,6 @@ func IsTuple(t Type) bool {
 // IsUnsigned checks if t is an unsigned type.
 func IsUnsigned(t Type) bool {
 	return t == Uint8 || t == Uint16 || t == Uint32 || t == Uint64
-}
-
-// IsVarChar checks if t is a varchar type.
-func IsVarChar(t Type) bool {
-	if st, ok := t.(stringType); ok {
-		if st.baseType == sqltypes.VarChar {
-			return true
-		}
-	}
-	return false
 }
 
 // NumColumns returns the number of columns in a type. This is one for all

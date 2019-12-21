@@ -3,7 +3,6 @@ package sql
 import (
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
@@ -161,7 +160,8 @@ func (t decimalType) ConvertToDecimal(v interface{}) (decimal.NullDecimal, error
 	}
 
 	res = res.Round(int32(t.scale))
-	max, _ := decimal.NewFromString("1" + strings.Repeat("0", int(t.precision - t.scale)))
+	// This sets the upper bound for this type. This is computed as 10^(precision - scale).
+	max := decimal.New(1, int32(t.precision - t.scale))
 	if res.Abs().Cmp(max) != -1 {
 		return decimal.NullDecimal{}, ErrConvertToDecimalLimit.New()
 	}
@@ -205,12 +205,14 @@ func (t decimalType) Zero() interface{} {
 	return decimal.NewFromInt(0).StringFixed(int32(t.scale))
 }
 
-// Precision returns the base-10 precision of the type.
+// Precision returns the base-10 precision of the type, which is the total number of digits.
+// For example, a precision of 3 means that 999, 99.9, 9.99, and .999 are all valid maximums (depending on the scale).
 func (t decimalType) Precision() uint8 {
 	return t.precision
 }
 
 // Scale returns the scale, or number of digits after the decimal, that may be held.
+// This will always be less than or equal to the precision.
 func (t decimalType) Scale() uint8 {
 	return t.scale
 }
