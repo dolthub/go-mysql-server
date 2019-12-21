@@ -1506,6 +1506,10 @@ var queries = []queryTest{
 			{0, 1, 0},
 		},
 	},
+	{
+		"SELECT 2.0 + CAST(5 AS DECIMAL)",
+		[]sql.Row{{float64(7)}},
+	},
 }
 
 var infoSchemaQueries = []queryTest {
