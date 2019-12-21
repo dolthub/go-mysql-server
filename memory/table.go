@@ -368,21 +368,44 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {
 	column.Source = t.Name()
 	newSch := make(sql.Schema, len(t.schema) + 1)
+
+	newColIdx := 0
 	var i int
 	if order != nil && order.First {
 		newSch[i] = column
 		i++
 	}
+
 	for _, col := range t.schema {
 		newSch[i] = col
 		i++
 		if (order != nil && order.AfterColumn == col.Name) || (order == nil && i == len(t.schema)) {
 			newSch[i] = column
+			newColIdx = i
 			i++
 		}
 	}
+
 	t.schema = newSch
+	// TODO: only do if the column is declared not null?
+	t.insertValueInRows(newColIdx, column.Default)
 	return nil
+}
+
+func (t *Table) insertValueInRows(idx int, val interface{}) {
+	for k, p := range t.partitions {
+		newP := make([]sql.Row, len(p))
+		for i, row := range p {
+			var newRow sql.Row
+			newRow = append(newRow, row[:idx]...)
+			newRow = append(newRow, val)
+			if idx < len(row) {
+				newRow = append(newRow, row[idx:]...)
+			}
+			newP[i] = newRow
+		}
+		t.partitions[k] = newP
+	}
 }
 
 func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {
@@ -534,7 +557,7 @@ func (t *Table) newColumnIndexesAndSchema(colNames []string) ([]int, sql.Schema,
 
 		if len(t.columns) == 0 {
 			// if the table hasn't been projected before
-			// match against the origianl schema
+			// match against the original schema
 			columns = append(columns, i)
 		} else {
 			// get indexes for the new projections from

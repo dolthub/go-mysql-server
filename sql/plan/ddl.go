@@ -17,6 +17,10 @@ var ErrRenameTableNotSupported = errors.NewKind("tables cannot be renamed on dat
 var ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered on database %s")
 // ErrColumnNotFound is thrown when a column named cannot be found in scope
 var ErrColumnNotFound = errors.NewKind("table %s does not have column %s")
+// ErrNullDefault is thrown when a non-null column is added with a null default
+var ErrNullDefault = errors.NewKind("column declared not null must have a non-null default value")
+// ErrIncompatibleDefaultType is thrown when a provided default cannot be coerced into the type of the column
+var ErrIncompatibleDefaultType = errors.NewKind("column declared not null must have a non-null default value")
 
 // Ddl nodes have a reference to a database, but no children and a nil schema.
 type ddlNode struct {
@@ -271,6 +275,19 @@ func (a *AddColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		if idx < 0 {
 			return nil, ErrColumnNotFound.New(tbl.Name(), a.order.AfterColumn)
 		}
+	}
+
+	if !a.column.Nullable && a.column.Default == nil {
+		return nil, ErrNullDefault.New()
+	}
+
+	var defaultVal interface{}
+	if a.column.Default != nil {
+		defaultVal, err = a.column.Type.Convert(a.column.Default)
+		if err != nil {
+			return nil, ErrIncompatibleDefaultType.New()
+		}
+		a.column.Default = defaultVal
 	}
 
 	return sql.RowsToRowIter(), alterable.AddColumn(ctx, a.column, a.order)
