@@ -175,6 +175,24 @@ var fixtures = map[string]sql.Node{
 			Default:    int8(42),
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
+	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT -42.0 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+			Name:       "bar",
+			Type:       sql.Int32,
+			Nullable:   false,
+			Comment:    "hello",
+			Default:    float64(-42.0),
+		}, &sql.ColumnOrder{AfterColumn: "baz"},
+	),
+	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT (2+2)/2 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+			Name:       "bar",
+			Type:       sql.Int32,
+			Nullable:   false,
+			Comment:    "hello",
+			Default:    int64(2),
+		}, &sql.ColumnOrder{AfterColumn: "baz"},
+	),
 	`ALTER TABLE foo ADD COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello'`: plan.NewAddColumn(
 		sql.UnresolvedDatabase(""), "foo", &sql.Column{
 			Name:       "bar",
