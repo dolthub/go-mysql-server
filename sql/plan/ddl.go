@@ -20,7 +20,7 @@ var ErrColumnNotFound = errors.NewKind("table %s does not have column %s")
 // ErrNullDefault is thrown when a non-null column is added with a null default
 var ErrNullDefault = errors.NewKind("column declared not null must have a non-null default value")
 // ErrIncompatibleDefaultType is thrown when a provided default cannot be coerced into the type of the column
-var ErrIncompatibleDefaultType = errors.NewKind("column declared not null must have a non-null default value")
+var ErrIncompatibleDefaultType = errors.NewKind("incompatible type for default value")
 
 // Ddl nodes have a reference to a database, but no children and a nil schema.
 type ddlNode struct {
@@ -451,6 +451,15 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		if idx < 0 {
 			return nil, ErrColumnNotFound.New(tbl.Name(), m.order.AfterColumn)
 		}
+	}
+
+	if m.column.Default != nil {
+		var defaultVal interface{}
+		defaultVal, err = m.column.Type.Convert(m.column.Default)
+		if err != nil {
+			return nil, ErrIncompatibleDefaultType.New()
+		}
+		m.column.Default = defaultVal
 	}
 
 	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, m.columnName, m.column, m.order)

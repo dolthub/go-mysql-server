@@ -640,11 +640,13 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 			return nil, err
 		}
 
-		lit, ok := dflt.(*expression.Literal)
-		if !ok {
-			return nil, ErrUnsupportedFeature.New("column defaults must be literal expressions")
+		// TODO: this isn't quite right -- some default expressions here (like function calls) need to be stored by the
+		//  implementor and deferred until row insertion time. We can't do that, but we can at least do a better job
+		//  detecting when this happens and erroring out.
+		defaultVal, err = dflt.Eval(ctx, nil)
+		if err != nil {
+			return nil, ErrUnsupportedFeature.New("column defaults must be evaluable at schema modification time")
 		}
-		defaultVal = lit.Value()
 	}
 
 	return &sql.Column{
