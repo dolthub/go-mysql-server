@@ -144,6 +144,102 @@ var fixtures = map[string]sql.Node{
 	`DROP TABLE IF EXISTS foo, bar, baz;`: plan.NewDropTable(
 		sql.UnresolvedDatabase(""), true, "foo", "bar", "baz",
 	),
+	`RENAME TABLE foo TO bar`: plan.NewRenameTable(
+		sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
+	),
+	`RENAME TABLE foo TO bar, baz TO qux`: plan.NewRenameTable(
+		sql.UnresolvedDatabase(""), []string{"foo", "baz"}, []string{"bar", "qux"},
+	),
+	`ALTER TABLE foo RENAME bar`: plan.NewRenameTable(
+		sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
+	),
+	`ALTER TABLE foo RENAME TO bar`: plan.NewRenameTable(
+		sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
+	),
+	`ALTER TABLE foo RENAME COLUMN bar TO baz`: plan.NewRenameColumn(
+		sql.UnresolvedDatabase(""), "foo", "bar", "baz",
+	),
+	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+			Name:       "bar",
+			Type:       sql.Int32,
+			Nullable:   false,
+		}, nil,
+	),
+	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT 42 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+			Name:       "bar",
+			Type:       sql.Int32,
+			Nullable:   false,
+			Comment:    "hello",
+			Default:    int8(42),
+		}, &sql.ColumnOrder{AfterColumn: "baz"},
+	),
+	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT -42.0 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+			Name:       "bar",
+			Type:       sql.Int32,
+			Nullable:   false,
+			Comment:    "hello",
+			Default:    float64(-42.0),
+		}, &sql.ColumnOrder{AfterColumn: "baz"},
+	),
+	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT (2+2)/2 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+			Name:       "bar",
+			Type:       sql.Int32,
+			Nullable:   false,
+			Comment:    "hello",
+			Default:    int64(2),
+		}, &sql.ColumnOrder{AfterColumn: "baz"},
+	),
+	`ALTER TABLE foo ADD COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello'`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+			Name:       "bar",
+			Type:       sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
+			Nullable:   true,
+			Comment:    "hello",
+			Default:    "string",
+		}, nil,
+	),
+	`ALTER TABLE foo ADD COLUMN bar FLOAT NULL DEFAULT 32.0 COMMENT 'hello'`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+			Name:       "bar",
+			Type:       sql.Float32,
+			Nullable:   true,
+			Comment:    "hello",
+			Default:    float64(32.0),
+		}, nil,
+	),
+	`ALTER TABLE foo ADD COLUMN bar INT DEFAULT 1 FIRST`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+			Name:       "bar",
+			Type:       sql.Int32,
+			Nullable:   true,
+			Default:    int8(1),
+		}, &sql.ColumnOrder{First: true},
+	),
+	`ALTER TABLE foo DROP COLUMN bar`: plan.NewDropColumn(
+		sql.UnresolvedDatabase(""), "foo", "bar",
+	),
+	`ALTER TABLE foo MODIFY COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
+		sql.UnresolvedDatabase(""), "foo", "bar", &sql.Column{
+			Name:       "bar",
+			Type:       sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
+			Nullable:   true,
+			Comment:    "hello",
+			Default:    "string",
+		}, &sql.ColumnOrder{First: true},
+	),
+	`ALTER TABLE foo CHANGE COLUMN bar baz VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
+		sql.UnresolvedDatabase(""), "foo", "bar", &sql.Column{
+			Name:       "baz",
+			Type:       sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
+			Nullable:   true,
+			Comment:    "hello",
+			Default:    "string",
+		}, &sql.ColumnOrder{First: true},
+	),
 	`DESCRIBE TABLE foo;`: plan.NewDescribe(
 		plan.NewUnresolvedTable("foo", ""),
 	),
@@ -1364,7 +1460,7 @@ func TestParse(t *testing.T) {
 			ctx := sql.NewEmptyContext()
 			p, err := Parse(ctx, query)
 			require.NoError(err)
-			require.Exactly(expectedPlan, p,
+			require.Equal(expectedPlan, p,
 				"plans do not match for query '%s'", query)
 		})
 

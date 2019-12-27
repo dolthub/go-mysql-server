@@ -3086,6 +3086,291 @@ func TestDropTable(t *testing.T) {
 	require.Error(err)
 }
 
+func TestRenameTable(t *testing.T) {
+	ctx := context.Background()
+	require := require.New(t)
+
+	e := newEngine(t)
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	_, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+
+	testQuery(t, e,
+		"RENAME TABLE mytable TO newTableName",
+		[]sql.Row(nil),
+	)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.False(ok)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "newTableName")
+	require.NoError(err)
+	require.True(ok)
+
+	testQuery(t, e,
+		"RENAME TABLE othertable to othertable2, newTableName to mytable",
+		[]sql.Row(nil),
+	)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "othertable")
+	require.NoError(err)
+	require.False(ok)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "othertable2")
+	require.NoError(err)
+	require.True(ok)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "newTableName")
+	require.NoError(err)
+	require.False(ok)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+
+	testQuery(t, e,
+		"ALTER TABLE mytable RENAME newTableName",
+		[]sql.Row(nil),
+	)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.False(ok)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "newTableName")
+	require.NoError(err)
+	require.True(ok)
+
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE not_exist RENAME foo")
+	require.Error(err)
+	require.True(sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE typestable RENAME niltable")
+	require.Error(err)
+	require.True(sql.ErrTableAlreadyExists.Is(err))
+}
+
+func TestRenameColumn(t *testing.T) {
+	ctx := context.Background()
+	require := require.New(t)
+
+	e := newEngine(t)
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	testQuery(t, e,
+		"ALTER TABLE mytable RENAME COLUMN i TO i2",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "i2", Type: sql.Int64, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+	}, tbl.Schema())
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE not_exist RENAME COLUMN foo TO bar")
+	require.Error(err)
+	require.True(sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE mytable RENAME COLUMN foo TO bar")
+	require.Error(err)
+	require.True(plan.ErrColumnNotFound.Is(err))
+}
+
+func TestAddColumn(t *testing.T) {
+	ctx := context.Background()
+	require := require.New(t)
+
+	e := newEngine(t)
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	testQuery(t, e,
+		"ALTER TABLE mytable ADD COLUMN i2 INT COMMENT 'hello' default 42",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
+	}, tbl.Schema())
+
+	testQuery(t, e,
+		"SELECT * from mytable order by i",
+		[]sql.Row{
+			sql.NewRow(int64(1), "first row", int32(42)),
+			sql.NewRow(int64(2), "second row", int32(42)),
+			sql.NewRow(int64(3), "third row", int32(42)),
+		},
+	)
+
+	testQuery(t, e,
+		"ALTER TABLE mytable ADD COLUMN s2 TEXT COMMENT 'hello' AFTER i",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
+	}, tbl.Schema())
+
+	testQuery(t, e,
+		"SELECT * from mytable order by i",
+		[]sql.Row{
+			sql.NewRow(int64(1), nil, "first row", int32(42)),
+			sql.NewRow(int64(2), nil, "second row", int32(42)),
+			sql.NewRow(int64(3), nil, "third row", int32(42)),
+		},
+	)
+
+	testQuery(t, e,
+		"ALTER TABLE mytable ADD COLUMN s3 TEXT COMMENT 'hello' default 'yay' FIRST",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "s3", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true, Default: "yay"},
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
+	}, tbl.Schema())
+
+	testQuery(t, e,
+		"SELECT * from mytable order by i",
+		[]sql.Row{
+			sql.NewRow("yay", int64(1), nil, "first row", int32(42)),
+			sql.NewRow("yay", int64(2), nil, "second row", int32(42)),
+			sql.NewRow("yay", int64(3), nil, "third row", int32(42)),
+		},
+	)
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE not_exist ADD COLUMN i2 INT COMMENT 'hello'")
+	require.Error(err)
+	require.True(sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE mytable ADD COLUMN b BIGINT COMMENT 'ok' AFTER not_exist")
+	require.Error(err)
+	require.True(plan.ErrColumnNotFound.Is(err))
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE mytable ADD COLUMN b INT NOT NULL")
+	require.Error(err)
+	require.True(plan.ErrNullDefault.Is(err))
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE mytable ADD COLUMN b INT NOT NULL DEFAULT 'yes'")
+	require.Error(err)
+	require.True(plan.ErrIncompatibleDefaultType.Is(err))
+}
+
+func TestModifyColumn(t *testing.T) {
+	ctx := context.Background()
+	require := require.New(t)
+
+	e := newEngine(t)
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	testQuery(t, e,
+		"ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "i", Type: sql.Text, Source: "mytable", Comment:"modified"},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+	}, tbl.Schema())
+
+	testQuery(t, e,
+		"ALTER TABLE mytable MODIFY COLUMN i TINYINT NULL COMMENT 'yes' AFTER s",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i", Type: sql.Int8, Source: "mytable", Comment:"yes", Nullable: true},
+	}, tbl.Schema())
+
+	testQuery(t, e,
+		"ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable", Comment:"ok"},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+	}, tbl.Schema())
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST")
+	require.Error(err)
+	require.True(plan.ErrColumnNotFound.Is(err))
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE mytable MODIFY i BIGINT NOT NULL COMMENT 'ok' AFTER not_exist")
+	require.Error(err)
+	require.True(plan.ErrColumnNotFound.Is(err))
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE not_exist MODIFY COLUMN i INT NOT NULL COMMENT 'hello'")
+	require.Error(err)
+	require.True(sql.ErrTableNotFound.Is(err))
+}
+
+func TestDropColumn(t *testing.T) {
+	ctx := context.Background()
+	require := require.New(t)
+
+	e := newEngine(t)
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	testQuery(t, e,
+		"ALTER TABLE mytable DROP COLUMN i",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+	}, tbl.Schema())
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE not_exist DROP COLUMN s")
+	require.Error(err)
+	require.True(sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(newCtx(), "ALTER TABLE mytable DROP COLUMN i")
+	require.Error(err)
+	require.True(plan.ErrColumnNotFound.Is(err))
+}
+
 func TestNaturalJoin(t *testing.T) {
 	require := require.New(t)
 
@@ -3289,6 +3574,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T) {
 	db.AddTable("table1", table1)
 	db.AddTable("table2", table2)
 	db.AddTable("table3", table3)
+
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
