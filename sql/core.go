@@ -3,13 +3,12 @@ package sql
 import (
 	"context"
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"math"
 	"strconv"
 	"strings"
 	"time"
-
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 var (
