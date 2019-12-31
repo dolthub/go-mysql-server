@@ -19,7 +19,7 @@ func TestShowCreateTable(t *testing.T) {
 		sql.Schema{
 			&sql.Column{Name: "baz", Type: sql.Text, Default: "", Nullable: false, PrimaryKey: true},
 			&sql.Column{Name: "zab", Type: sql.Int32, Default: int32(0), Nullable: true, PrimaryKey: true},
-			&sql.Column{Name: "bza", Type: sql.Uint64, Default: uint64(0), Nullable: true},
+			&sql.Column{Name: "bza", Type: sql.Uint64, Default: uint64(0), Nullable: true, Comment: "hello"},
 			&sql.Column{Name: "foo", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: "", Nullable: true},
 			&sql.Column{Name: "pok", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: "", Nullable: true},
 		})
@@ -42,7 +42,7 @@ func TestShowCreateTable(t *testing.T) {
 		table.Name(),
 		"CREATE TABLE `test-table` (\n  `baz` TEXT NOT NULL,\n"+
 			"  `zab` INT DEFAULT 0,\n"+
-			"  `bza` BIGINT UNSIGNED DEFAULT 0,\n"+
+			"  `bza` BIGINT UNSIGNED DEFAULT 0 COMMENT 'hello',\n"+
 			"  `foo` VARCHAR(123),\n"+
 			"  `pok` CHAR(123),\n" +
 			"  PRIMARY KEY (`baz`,`zab`)\n"+
