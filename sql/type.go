@@ -3,10 +3,11 @@ package sql
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"strconv"
 	"time"
+
+	"gopkg.in/src-d/go-errors.v1"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -215,6 +216,11 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 	case "datetime":
 		return Datetime, nil
 	case "enum":
+		collation, err := ParseCollation(&ct.Charset, &ct.Collate, false)
+		if err != nil {
+			return nil, err
+		}
+		return CreateEnumType(ct.EnumValues, collation)
 	case "set":
 	case "json":
 		return JSON, nil
