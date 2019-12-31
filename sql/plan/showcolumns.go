@@ -70,6 +70,11 @@ func (s *ShowColumns) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 			null = "YES"
 		}
 
+		key := ""
+		if col.PrimaryKey {
+			key = "PRI"
+		}
+
 		var defaultVal string
 		if col.Default != nil {
 			defaultVal = fmt.Sprint(col.Default)
@@ -81,18 +86,18 @@ func (s *ShowColumns) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 				col.Type.String(),
 				collation,
 				null,
-				"", // Key
+				key, // Key
 				defaultVal,
 				"", // Extra
 				"", // Privileges
-				"", // Comment
+				col.Comment, // Comment
 			}
 		} else {
 			row = sql.Row{
 				col.Name,
 				col.Type.String(),
 				null,
-				"", // Key
+				key,
 				defaultVal,
 				"", // Extra
 			}
