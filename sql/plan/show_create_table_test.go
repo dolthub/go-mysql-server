@@ -17,8 +17,8 @@ func TestShowCreateTable(t *testing.T) {
 	table := memory.NewTable(
 		"test-table",
 		sql.Schema{
-			&sql.Column{Name: "baz", Type: sql.Text, Default: "", Nullable: false},
-			&sql.Column{Name: "zab", Type: sql.Int32, Default: int32(0), Nullable: true},
+			&sql.Column{Name: "baz", Type: sql.Text, Default: "", Nullable: false, PrimaryKey: true},
+			&sql.Column{Name: "zab", Type: sql.Int32, Default: int32(0), Nullable: true, PrimaryKey: true},
 			&sql.Column{Name: "bza", Type: sql.Uint64, Default: uint64(0), Nullable: true},
 			&sql.Column{Name: "foo", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: "", Nullable: true},
 			&sql.Column{Name: "pok", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: "", Nullable: true},
@@ -44,7 +44,8 @@ func TestShowCreateTable(t *testing.T) {
 			"  `zab` INT DEFAULT 0,\n"+
 			"  `bza` BIGINT UNSIGNED DEFAULT 0,\n"+
 			"  `foo` VARCHAR(123),\n"+
-			"  `pok` CHAR(123)\n"+
+			"  `pok` CHAR(123),\n" +
+			"  PRIMARY KEY (`baz`,`zab`)\n"+
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 	)
 

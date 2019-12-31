@@ -94,6 +94,7 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 func produceCreateStatement(table sql.Table) string {
 	schema := table.Schema()
 	colStmts := make([]string, len(schema))
+	var primaryKeyCols []string
 
 	// Statement creation parts for each column
 	for i, col := range schema {
@@ -114,7 +115,20 @@ func produceCreateStatement(table sql.Table) string {
 			}
 		}
 
+		if col.Comment != "" {
+			stmt = fmt.Sprintf("%s COMMENT '%s'", stmt, col.Comment)
+		}
+
+		if col.PrimaryKey {
+			primaryKeyCols = append(primaryKeyCols, fmt.Sprintf("`%s`", col.Name))
+		}
+
 		colStmts[i] = stmt
+	}
+
+	if len(primaryKeyCols) > 0 {
+		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(primaryKeyCols, ","))
+		colStmts = append(colStmts, primaryKey)
 	}
 
 	return fmt.Sprintf(
