@@ -240,11 +240,41 @@ var fixtures = map[string]sql.Node{
 			Default:    "string",
 		}, &sql.ColumnOrder{First: true},
 	),
-	`DESCRIBE TABLE foo;`: plan.NewDescribe(
+	`DESCRIBE foo;`: plan.NewShowColumns(false,
 		plan.NewUnresolvedTable("foo", ""),
 	),
-	`DESC TABLE foo;`: plan.NewDescribe(
+	`DESC foo;`: plan.NewShowColumns(false,
 		plan.NewUnresolvedTable("foo", ""),
+	),
+	"DESCRIBE FORMAT=tree SELECT * FROM foo": plan.NewDescribeQuery(
+		"tree", plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewUnresolvedTable("foo", ""),
+	)),
+	"DESC FORMAT=tree SELECT * FROM foo": plan.NewDescribeQuery(
+		"tree", plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewUnresolvedTable("foo", ""),
+	)),
+	"EXPLAIN FORMAT=tree SELECT * FROM foo": plan.NewDescribeQuery(
+		"tree", plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewUnresolvedTable("foo", "")),
+	),
+	"DESCRIBE SELECT * FROM foo": plan.NewDescribeQuery(
+		"tree", plan.NewProject(
+			[]sql.Expression{expression.NewStar()},
+			plan.NewUnresolvedTable("foo", ""),
+		)),
+	"DESC SELECT * FROM foo": plan.NewDescribeQuery(
+		"tree", plan.NewProject(
+			[]sql.Expression{expression.NewStar()},
+			plan.NewUnresolvedTable("foo", ""),
+		)),
+	"EXPLAIN SELECT * FROM foo": plan.NewDescribeQuery(
+		"tree", plan.NewProject(
+			[]sql.Expression{expression.NewStar()},
+			plan.NewUnresolvedTable("foo", "")),
 	),
 	`SELECT foo, bar FROM foo;`: plan.NewProject(
 		[]sql.Expression{
@@ -1122,10 +1152,10 @@ var fixtures = map[string]sql.Node{
 		plan.NewShowTableStatus(),
 	),
 	`USE foo`: plan.NewUse(sql.UnresolvedDatabase("foo")),
-	`DESCRIBE TABLE foo.bar`: plan.NewDescribe(
+	`DESCRIBE foo.bar`: plan.NewShowColumns(false,
 		plan.NewUnresolvedTable("bar", "foo"),
 	),
-	`DESC TABLE foo.bar`: plan.NewDescribe(
+	`DESC foo.bar`: plan.NewShowColumns(false,
 		plan.NewUnresolvedTable("bar", "foo"),
 	),
 	`SELECT * FROM foo.bar`: plan.NewProject(
@@ -1259,6 +1289,9 @@ var fixtures = map[string]sql.Node{
 	),
 	`ROLLBACK`:                               plan.NewRollback(),
 	"SHOW CREATE TABLE `mytable`":            plan.NewShowCreateTable("", nil, "mytable"),
+	"SHOW CREATE TABLE mytable":              plan.NewShowCreateTable("", nil, "mytable"),
+	"SHOW CREATE TABLE mydb.`mytable`":       plan.NewShowCreateTable("mydb", nil, "mytable"),
+	"SHOW CREATE TABLE `mydb`.mytable":       plan.NewShowCreateTable("mydb", nil, "mytable"),
 	"SHOW CREATE TABLE `mydb`.`mytable`":     plan.NewShowCreateTable("mydb", nil, "mytable"),
 	"SHOW CREATE TABLE `my.table`":           plan.NewShowCreateTable("", nil, "my.table"),
 	"SHOW CREATE TABLE `my.db`.`my.table`":   plan.NewShowCreateTable("my.db", nil, "my.table"),
@@ -1485,6 +1518,7 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`: ErrUnsupportedSyntax,
 	`SELECT AVG(DISTINCT foo) FROM b`:                         ErrUnsupportedSyntax,
 	`CREATE VIEW myview AS SELECT AVG(DISTINCT foo) FROM b`:   ErrUnsupportedSyntax,
+	"DESCRIBE FORMAT=pretty SELECT * FROM foo":                errInvalidDescribeFormat,
 }
 
 func TestParseErrors(t *testing.T) {

@@ -13,9 +13,9 @@ import (
 
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
-	Catalog         *sql.Catalog
-	CurrentDatabase string
-	Table           string
+	Catalog  *sql.Catalog
+	Database string
+	Table    string
 }
 
 // Schema implements the Node interface.
@@ -37,7 +37,7 @@ func (n *ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // RowIter implements the Node interface
 func (n *ShowCreateTable) RowIter(*sql.Context) (sql.RowIter, error) {
-	db, err := n.Catalog.Database(n.CurrentDatabase)
+	db, err := n.Catalog.Database(n.Database)
 	if err != nil {
 		return nil, err
 	}
@@ -131,9 +131,9 @@ func (i *showCreateTablesIter) Close() error {
 // NewShowCreateTable creates a new ShowCreateTable node.
 func NewShowCreateTable(db string, ctl *sql.Catalog, table string) sql.Node {
 	return &ShowCreateTable{
-		CurrentDatabase: db,
-		Table:           table,
-		Catalog:         ctl}
+		Database: db,
+		Table:    table,
+		Catalog:  ctl}
 }
 
 // Resolved implements the Resolvable interface.

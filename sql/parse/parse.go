@@ -31,23 +31,25 @@ var (
 
 	// ErrInvalidSortOrder is returned when a sort order is not valid.
 	ErrInvalidSortOrder = errors.NewKind("invalid sort order: %s")
+
+	// errInvalidDescribeFormat is returned when an invalid format string is used for DESCRIBE statements
+	errInvalidDescribeFormat = errors.NewKind("invalid format %q for DESCRIBE, supported formats: %s")
 )
 
 var (
-	describeTablesRegex  = regexp.MustCompile(`^(describe|desc)\s+table\s+(.*)`)
 	createIndexRegex     = regexp.MustCompile(`^create\s+index\s+`)
 	dropIndexRegex       = regexp.MustCompile(`^drop\s+index\s+`)
 	showIndexRegex       = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
-	showCreateRegex      = regexp.MustCompile(`^show create\s+\S+\s*`)
 	showVariablesRegex   = regexp.MustCompile(`^show\s+(.*)?variables\s*`)
 	showWarningsRegex    = regexp.MustCompile(`^show\s+warnings\s*`)
 	showCollationRegex   = regexp.MustCompile(`^show\s+collation\s*`)
-	describeRegex        = regexp.MustCompile(`^(describe|desc|explain)\s+(.*)\s+`)
 	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
 	unlockTablesRegex    = regexp.MustCompile(`^unlock\s+tables$`)
 	lockTablesRegex      = regexp.MustCompile(`^lock\s+tables\s`)
 	setRegex             = regexp.MustCompile(`^set\s+`)
 )
+
+var describeSupportedFormats = []string{"tree"}
 
 // These constants aren't exported from vitess for some reason. This could be removed if we changed this.
 const (
@@ -77,24 +79,18 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 	lowerQuery := strings.ToLower(s)
 
 	switch true {
-	case describeTablesRegex.MatchString(lowerQuery):
-		return parseDescribeTables(lowerQuery)
 	case createIndexRegex.MatchString(lowerQuery):
 		return parseCreateIndex(ctx, s)
 	case dropIndexRegex.MatchString(lowerQuery):
 		return parseDropIndex(s)
 	case showIndexRegex.MatchString(lowerQuery):
 		return parseShowIndex(s)
-	case showCreateRegex.MatchString(lowerQuery):
-		return parseShowCreate(s)
 	case showVariablesRegex.MatchString(lowerQuery):
 		return parseShowVariables(ctx, s)
 	case showWarningsRegex.MatchString(lowerQuery):
 		return parseShowWarnings(ctx, s)
 	case showCollationRegex.MatchString(lowerQuery):
 		return parseShowCollation(ctx, s)
-	case describeRegex.MatchString(lowerQuery):
-		return parseDescribeQuery(ctx, s)
 	case fullProcessListRegex.MatchString(lowerQuery):
 		return plan.NewShowProcessList(), nil
 	case unlockTablesRegex.MatchString(lowerQuery):
@@ -113,30 +109,6 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 	return convert(ctx, stmt, s)
 }
 
-func parseDescribeTables(s string) (sql.Node, error) {
-	t := describeTablesRegex.FindStringSubmatch(s)
-	if len(t) == 3 && t[2] != "" {
-		parts := strings.Split(t[2], ".")
-		var table, db string
-		switch len(parts) {
-		case 1:
-			table = parts[0]
-		case 2:
-			if parts[0] == "" || parts[1] == "" {
-				return nil, ErrUnsupportedSyntax.New(s)
-			}
-			db = parts[0]
-			table = parts[1]
-		default:
-			return nil, ErrUnsupportedSyntax.New(s)
-		}
-
-		return plan.NewDescribe(plan.NewUnresolvedTable(table, db)), nil
-	}
-
-	return nil, ErrUnsupportedSyntax.New(s)
-}
-
 func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node, error) {
 	switch n := stmt.(type) {
 	default:
@@ -149,6 +121,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 			return nil, ErrUnsupportedFeature.New("SHOW in subquery")
 		}
 		return convertShow(ctx, n, query)
+	case *sqlparser.Explain:
+		return convertExplain(ctx, n)
 	case *sqlparser.Select:
 		return convertSelect(ctx, n)
 	case *sqlparser.Insert:
@@ -171,6 +145,22 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.Update:
 		return convertUpdate(ctx, n)
 	}
+}
+
+func convertExplain(ctx *sql.Context, n *sqlparser.Explain) (sql.Node, error) {
+	child, err := convert(ctx, n.Statement, "")
+	if err != nil {
+		return nil, err
+	}
+
+	if n.ExplainFormat != "" && strings.ToLower(n.ExplainFormat) != sqlparser.TreeStr {
+		return nil, errInvalidDescribeFormat.New(
+			n.ExplainFormat,
+			strings.Join(describeSupportedFormats, ", "),
+		)
+	}
+
+	return plan.NewDescribeQuery(sqlparser.TreeStr, child), nil
 }
 
 func convertUse(n *sqlparser.Use) (sql.Node, error) {
@@ -237,6 +227,13 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 
 func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, error) {
 	switch s.Type {
+	case "create table":
+		return plan.NewShowCreateTable(s.Table.Qualifier.String(), nil, s.Table.Name.String()), nil
+	case "create database", "create schema":
+		return plan.NewShowCreateDatabase(
+			sql.UnresolvedDatabase(s.Database),
+			s.IfNotExists,
+		), nil
 	case sqlparser.KeywordString(sqlparser.TABLES):
 		var dbName string
 		var filter sql.Expression
@@ -272,7 +269,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
 		// TODO(erizocosmico): vitess parser does not support EXTENDED.
 		table := plan.NewUnresolvedTable(s.OnTable.Name.String(), s.OnTable.Qualifier.String())
-		full := s.ShowTablesOpt.Full != ""
+		full := s.ShowTablesOpt != nil && s.ShowTablesOpt.Full != ""
 
 		var node sql.Node = plan.NewShowColumns(full, table)
 
