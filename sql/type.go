@@ -222,6 +222,11 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		}
 		return CreateEnumType(ct.EnumValues, collation)
 	case "set":
+		collation, err := ParseCollation(&ct.Charset, &ct.Collate, false)
+		if err != nil {
+			return nil, err
+		}
+		return CreateSetType(ct.EnumValues, collation)
 	case "json":
 		return JSON, nil
 	case "geometry":
