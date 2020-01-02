@@ -418,6 +418,16 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("t2", ""),
 		),
 	),
+	`SELECT foo, bar FROM t1 JOIN t2;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("foo"),
+			expression.NewUnresolvedColumn("bar"),
+		},
+		plan.NewCrossJoin(
+			plan.NewUnresolvedTable("t1", ""),
+			plan.NewUnresolvedTable("t2", ""),
+		),
+	),
 	`SELECT foo, bar FROM t1 GROUP BY foo, bar;`: plan.NewGroupBy(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("foo"),
@@ -586,6 +596,19 @@ var fixtures = map[string]sql.Node{
 		),
 	),
 	`SELECT * FROM foo, bar, baz, qux`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewCrossJoin(
+			plan.NewCrossJoin(
+				plan.NewCrossJoin(
+					plan.NewUnresolvedTable("foo", ""),
+					plan.NewUnresolvedTable("bar", ""),
+				),
+				plan.NewUnresolvedTable("baz", ""),
+			),
+			plan.NewUnresolvedTable("qux", ""),
+		),
+	),
+	`SELECT * FROM foo join bar join baz join qux`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewCrossJoin(
 			plan.NewCrossJoin(
@@ -1506,10 +1529,6 @@ var fixturesErrors = map[string]*errors.Kind{
 	`LOCK TABLES foo LOW_PRIORITY READ`:         errUnexpectedSyntax,
 	`SELECT * FROM mytable LIMIT -100`:          ErrUnsupportedSyntax,
 	`SELECT * FROM mytable LIMIT 100 OFFSET -1`: ErrUnsupportedSyntax,
-	`SELECT * FROM files
-		JOIN commit_files
-		JOIN refs
-	`: ErrUnsupportedSyntax,
 	`SELECT INTERVAL 1 DAY - '2018-05-01'`:                    ErrUnsupportedSyntax,
 	`SELECT INTERVAL 1 DAY * '2018-05-01'`:                    ErrUnsupportedSyntax,
 	`SELECT '2018-05-01' * INTERVAL 1 DAY`:                    ErrUnsupportedSyntax,

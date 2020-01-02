@@ -779,7 +779,7 @@ func tableExprToTable(
 		}
 
 		if t.Condition.On == nil {
-			return nil, ErrUnsupportedSyntax.New("missed ON clause for JOIN statement")
+			return plan.NewCrossJoin(left, right), nil
 		}
 
 		cond, err := exprToExpression(ctx, t.Condition.On)
