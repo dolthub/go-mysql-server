@@ -332,23 +332,27 @@ func findTables(e sql.Expression) []string {
 	return names
 }
 
+func unifyExpression(aliases map[string]sql.Expression, e sql.Expression) sql.Expression {
+	uex := e
+	name := e.String()
+	if n, ok := e.(sql.Nameable); ok {
+		name = n.Name()
+	}
+
+	if aliases != nil && len(aliases) > 0 {
+		if alias, ok := aliases[name]; ok {
+			uex = alias
+		}
+	}
+
+	return uex
+}
+
 func unifyExpressions(aliases map[string]sql.Expression, expr ...sql.Expression) []sql.Expression {
 	expressions := make([]sql.Expression, len(expr))
 
 	for i, e := range expr {
-		uex := e
-		name := e.String()
-		if n, ok := e.(sql.Nameable); ok {
-			name = n.Name()
-		}
-
-		if aliases != nil && len(aliases) > 0 {
-			if alias, ok := aliases[name]; ok {
-				uex = alias
-			}
-		}
-
-		expressions[i] = uex
+		expressions[i] = unifyExpression(aliases, e)
 	}
 
 	return expressions
