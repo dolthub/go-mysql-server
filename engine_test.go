@@ -730,6 +730,54 @@ var queries = []queryTest{
 		},
 	},
 	{
+		`DESCRIBE mytable`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "", "", ""},
+			{"s", "TEXT", "NO", "", "", ""},
+		},
+	},
+	{
+		`DESC mytable`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "", "", ""},
+			{"s", "TEXT", "NO", "", "", ""},
+		},
+	},
+	{
+		`SHOW COLUMNS FROM one_pk`,
+		[]sql.Row{
+			{"pk", "TINYINT", "NO", "PRI", "", ""},
+			{"c1", "TINYINT", "NO", "", "", ""},
+			{"c2", "TINYINT", "NO", "", "", ""},
+			{"c3", "TINYINT", "NO", "", "", ""},
+			{"c4", "TINYINT", "NO", "", "", ""},
+			{"c5", "TINYINT", "NO", "", "", ""},
+		},
+	},
+	{
+		`DESCRIBE one_pk`,
+		[]sql.Row{
+			{"pk", "TINYINT", "NO", "PRI", "", ""},
+			{"c1", "TINYINT", "NO", "", "", ""},
+			{"c2", "TINYINT", "NO", "", "", ""},
+			{"c3", "TINYINT", "NO", "", "", ""},
+			{"c4", "TINYINT", "NO", "", "", ""},
+			{"c5", "TINYINT", "NO", "", "", ""},
+		},
+	},
+	{
+		`DESC one_pk`,
+		[]sql.Row{
+			{"pk", "TINYINT", "NO", "PRI", "", ""},
+			{"c1", "TINYINT", "NO", "", "", ""},
+			{"c2", "TINYINT", "NO", "", "", ""},
+			{"c3", "TINYINT", "NO", "", "", ""},
+			{"c4", "TINYINT", "NO", "", "", ""},
+			{"c5", "TINYINT", "NO", "", "", ""},
+		},
+	},
+
+	{
 		`SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
 		[]sql.Row{
 			{"i", "BIGINT", "NO", "", "", ""},
@@ -746,6 +794,17 @@ var queries = []queryTest{
 		[]sql.Row{
 			{"i", "BIGINT", nil, "NO", "", "", "", "", ""},
 			{"s", "TEXT", "utf8_bin", "NO", "", "", "", "", ""},
+		},
+	},
+	{
+		`SHOW FULL COLUMNS FROM one_pk`,
+		[]sql.Row{
+			{"pk", "TINYINT", nil, "NO", "PRI", "", "", "", ""},
+			{"c1", "TINYINT", nil, "NO", "", "", "", "", ""},
+			{"c2", "TINYINT", nil, "NO", "", "", "", "", ""},
+			{"c3", "TINYINT", nil, "NO", "", "", "", "", ""},
+			{"c4", "TINYINT", nil, "NO", "", "", "", "", ""},
+			{"c5", "TINYINT", nil, "NO", "", "", "", "", "column 5"},
 		},
 	},
 	{
@@ -1504,6 +1563,27 @@ var queries = []queryTest{
 		"select pk,pk1,pk2 from one_pk join two_pk on pk1-pk>0 and pk2<1",
 		[]sql.Row{
 			{0, 1, 0},
+		},
+	},
+	{
+		"select pk,pk1,pk2 from one_pk join two_pk order by 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{0, 1, 0},
+			{0, 1, 1},
+			{1, 0, 0},
+			{1, 0, 1},
+			{1, 1, 0},
+			{1, 1, 1},
+			{2, 0, 0},
+			{2, 0, 1},
+			{2, 1, 0},
+			{2, 1, 1},
+			{3, 0, 0},
+			{3, 0, 1},
+			{3, 1, 0},
+			{3, 1, 1},
 		},
 	},
 	{
@@ -3641,7 +3721,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 		{Name: "c2", Type: sql.Int8, Source: "one_pk"},
 		{Name: "c3", Type: sql.Int8, Source: "one_pk"},
 		{Name: "c4", Type: sql.Int8, Source: "one_pk"},
-		{Name: "c5", Type: sql.Int8, Source: "one_pk"},
+		{Name: "c5", Type: sql.Int8, Source: "one_pk", Comment: "column 5"},
 	}, numPartitions)
 
 	insertRows(t,
