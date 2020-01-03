@@ -21,8 +21,10 @@ func TestSetCompare(t *testing.T) {
 		{[]string{"one", "two"}, Collation_Default, nil, 1, -1},
 		{[]string{"one", "two"}, Collation_Default, "one", nil, 1},
 		{[]string{"one", "two"}, Collation_Default, nil, nil, 0},
+		{[]string{"one", "two"}, Collation_Default, 0, "one", -1},
 		{[]string{"one", "two"}, Collation_Default, 1, "two", -1},
 		{[]string{"one", "two"}, Collation_Default, 2, []byte("one"), 1},
+		{[]string{"one", "two"}, Collation_Default, "one", "", 1},
 		{[]string{"one", "two"}, Collation_Default, "one", 1, 0},
 		{[]string{"one", "two"}, Collation_Default, "one", "two", -1},
 		{[]string{"two", "one"}, Collation_binary, "two", "one", -1},
@@ -40,6 +42,26 @@ func TestSetCompare(t *testing.T) {
 			cmp, err := typ.Compare(test.val1, test.val2)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedCmp, cmp)
+		})
+	}
+}
+
+func TestSetCompareErrors(t *testing.T) {
+	tests := []struct {
+		vals []string
+		collation Collation
+		val1 interface{}
+		val2 interface{}
+	}{
+		{[]string{"one", "two"}, Collation_Default, "three", "two"},
+		{[]string{"one", "two"}, Collation_Default, time.Date(2019, 12, 12, 12, 12, 12, 0, time.UTC), []byte("one")},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v %v %v %v", test.vals, test.collation, test.val1, test.val2), func(t *testing.T) {
+			typ := MustCreateSetType(test.vals, test.collation)
+			_, err := typ.Compare(test.val1, test.val2)
+			require.Error(t, err)
 		})
 	}
 }
@@ -75,13 +97,15 @@ func TestSetCreate(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				require.NoError(t, err)
+				concreteType, ok := typ.(setType)
+				require.True(t, ok)
 				assert.Equal(t, test.collation, typ.Collation())
 				for val, bit := range test.expectedVals {
-					bitArray, err := typ.ConvertStringToBitArray(val)
+					bitField, err := concreteType.convertStringToBitField(val)
 					if assert.NoError(t, err) {
-						assert.Equal(t, []uint64{bit}, bitArray)
+						assert.Equal(t, bit, bitField)
 					}
-					str, err := typ.ConvertBitArrayToString([]uint64{bit})
+					str, err := concreteType.convertBitFieldToString(bit)
 					if assert.NoError(t, err) {
 						assert.Equal(t, val, str)
 					}

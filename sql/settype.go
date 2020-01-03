@@ -3,7 +3,6 @@ package sql
 import (
 	"fmt"
 	"math/bits"
-	"sort"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -25,8 +24,6 @@ type SetType interface {
 	Type
 	CharacterSet() CharacterSet
 	Collation() Collation
-	ConvertBitArrayToString(bitArray []uint64) (string, error)
-	ConvertStringToBitArray(str string) ([]uint64, error)
 	Values() []string
 }
 
@@ -145,8 +142,7 @@ func (t setType) Convert(v interface{}) (interface{}, error) {
 		if value >= t.upperBound() {
 			return nil, ErrConvertingToSet.New(v)
 		}
-		bitArray := t.decomposeToBitArray(value)
-		vals, _ := t.ConvertBitArrayToString(bitArray)
+		vals, _ := t.convertBitFieldToString(value)
 		return vals, nil
 	case float32:
 		return t.Convert(uint64(value))
@@ -154,11 +150,11 @@ func (t setType) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(uint64(value))
 	case string:
 		// For SET('a','b') and given a string 'b,a,a', we would return 'a,b', so we can't return the input.
-		bitArray, err := t.ConvertStringToBitArray(value)
+		bitField, err := t.convertStringToBitField(value)
 		if err != nil {
 			return nil, err
 		}
-		setStr, _ := t.ConvertBitArrayToString(bitArray)
+		setStr, _ := t.convertBitFieldToString(bitField)
 		return setStr, nil
 	case []byte:
 		return t.Convert(string(value))
@@ -207,11 +203,11 @@ func (t setType) ConvertToBits(v interface{}) (uint64, error) {
 	case float64:
 		return t.ConvertToBits(uint64(value))
 	case string:
-		bitArray, err := t.ConvertStringToBitArray(value)
+		bitField, err := t.convertStringToBitField(value)
 		if err != nil {
 			return uint64(0), err
 		}
-		return t.sumBitArray(bitArray), nil
+		return bitField, nil
 	case []byte:
 		return t.ConvertToBits(string(value))
 	}
@@ -266,38 +262,55 @@ func (t setType) Collation() Collation {
 	return t.collation
 }
 
-// ConvertBitArrayToString converts the given bit array into the equivalent comma-delimited string.
-// The given bit array must have a form where representing the value 12 would have values {4,8}.
-func (t setType) ConvertBitArrayToString(bitArray []uint64) (string, error) {
+// Values returns all of the set's values in ascending order according to their corresponding bit value.
+func (t setType) Values() []string {
+	bitEdge := 64 - bits.LeadingZeros64(t.allValuesBitField())
+	valArray := make([]string, bitEdge)
+	for i := 0; i < bitEdge; i++ {
+		bit := uint64(1 << uint64(i))
+		valArray[i] = t.bitToVal[bit]
+	}
+	return valArray
+}
+
+// allValuesBitField returns a bit field that references every value that the set contains.
+func (t setType) allValuesBitField() uint64 {
+	// A set with 3 values will have an upper bound of 8, or 0b1000.
+	// 8 - 1 == 7, and 7 is 0b0111, which would map to every value in the set.
+	return t.upperBound() - 1
+}
+
+// convertBitFieldToString converts the given bit field into the equivalent comma-delimited string.
+func (t setType) convertBitFieldToString(bitField uint64) (string, error) {
 	strBuilder := strings.Builder{}
-	for i, bit := range bitArray {
-		val, ok := t.bitToVal[bit]
-		if !ok {
-			return "", ErrInvalidSetValue.New(t.sumBitArray(bitArray))
+	bitEdge := 64 - bits.LeadingZeros64(bitField)
+	writeCommas := false
+	for i := 0; i < bitEdge; i++ {
+		bit := uint64(1 << uint64(i))
+		if bit & bitField != 0 {
+			val, ok := t.bitToVal[bit]
+			if !ok {
+				return "", ErrInvalidSetValue.New(bitField)
+			}
+			if writeCommas {
+				strBuilder.WriteByte(',')
+			} else {
+				writeCommas = true
+			}
+			strBuilder.WriteString(val)
 		}
-		if i != 0 {
-			strBuilder.WriteByte(',')
-		}
-		strBuilder.WriteString(val)
 	}
 	return strBuilder.String(), nil
 }
 
-// ConvertStringToBitArray converts the given string into a bit array.
-// Ignores duplicate set values and always returns the bits in ascending order.
-// The returned bit array representing the value 12 will have values {4,8}.
-func (t setType) ConvertStringToBitArray(str string) ([]uint64, error) {
+// convertStringToBitField converts the given string into a bit field.
+func (t setType) convertStringToBitField(str string) (uint64, error) {
 	if str == "" {
-		return nil, nil
+		return 0, nil
 	}
-	var bitArray []uint64
-	seen := make(map[string]struct{})
+	var bitField uint64
 	vals := strings.Split(str, ",")
 	for _, val := range vals {
-		if _, ok := seen[val]; ok {
-			continue
-		}
-		seen[val] = struct{}{}
 		var compareVal string
 		switch t.collation {
 		case Collation_binary:
@@ -306,51 +319,12 @@ func (t setType) ConvertStringToBitArray(str string) ([]uint64, error) {
 			compareVal = strings.ToLower(strings.TrimRight(val, " "))
 		}
 		if originalVal, ok := t.compareToOriginal[compareVal]; ok {
-			bitArray = append(bitArray, t.valToBit[originalVal])
+			bitField |= t.valToBit[originalVal]
 		} else {
-			return nil, ErrInvalidSetValue.New(val)
+			return 0, ErrInvalidSetValue.New(val)
 		}
 	}
-	sort.Slice(bitArray, func(i, j int) bool {
-		return bitArray[i] < bitArray[j]
-	})
-	return bitArray, nil
-}
-
-// Values returns all of the set's values in ascending order according to their corresponding bit value.
-func (t setType) Values() []string {
-	// A set with 3 values will have an upper bound of 8, or 0b1000.
-	// 8 - 1 == 7, and 7 is 0b0111, which would map to every value in the set.
-	bitArray := t.decomposeToBitArray(t.upperBound() - 1)
-	valArray := make([]string, len(bitArray))
-	for i, bit := range bitArray {
-		valArray[i] = t.bitToVal[bit]
-	}
-	return valArray
-}
-
-// decomposeToBitArray returns an array of all of the bits that were set to 1.
-// For example, 12 will return {4,8} for 0b1100.
-func (t setType) decomposeToBitArray(num uint64) []uint64 {
-	bitEdge := 64 - bits.LeadingZeros64(num)
-	var bitArray []uint64
-	for i := 0; i < bitEdge; i++ {
-		bit := uint64(1 << uint64(i))
-		if num & bit != 0 {
-			bitArray = append(bitArray, bit)
-		}
-	}
-	return bitArray
-}
-
-// sumBitArray returns an unsigned integer representing the bit array.
-// The given bit array is expected to have a form where representing the value 12 would have values {4,8}.
-func (t setType) sumBitArray(bitArray []uint64) uint64 {
-	sum := uint64(0)
-	for _, bit := range bitArray {
-		sum += bit
-	}
-	return sum
+	return bitField, nil
 }
 
 // upperBound returns the exclusive upper bound for valid numbers representing a bit collection.
