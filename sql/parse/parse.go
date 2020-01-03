@@ -153,14 +153,18 @@ func convertExplain(ctx *sql.Context, n *sqlparser.Explain) (sql.Node, error) {
 		return nil, err
 	}
 
-	if n.ExplainFormat != "" && strings.ToLower(n.ExplainFormat) != sqlparser.TreeStr {
+	explainFmt := sqlparser.TreeStr
+	switch strings.ToLower(n.ExplainFormat) {
+	case "", sqlparser.TreeStr:
+	// tree format, do nothing
+	default:
 		return nil, errInvalidDescribeFormat.New(
 			n.ExplainFormat,
 			strings.Join(describeSupportedFormats, ", "),
 		)
 	}
 
-	return plan.NewDescribeQuery(sqlparser.TreeStr, child), nil
+	return plan.NewDescribeQuery(explainFmt, child), nil
 }
 
 func convertUse(n *sqlparser.Use) (sql.Node, error) {
