@@ -73,7 +73,13 @@ func transformInnerJoins(
 				return node, nil
 			}
 
-			return plan.NewIndexedJoin(leftNode, rightNode, node.Cond, leftTableExpr, rightTableIndex), nil
+			joinSchema := append(leftNode.Schema(), rightNode.Schema()...)
+			joinCond, err := fixFieldIndexes(joinSchema, node.Cond)
+			if err != nil {
+				return nil, err
+			}
+
+			return plan.NewIndexedJoin(leftNode, rightNode, joinCond, leftTableExpr, rightTableIndex), nil
 		default:
 			return node, nil
 		}
@@ -109,10 +115,18 @@ func analyzeJoinIndexes(node *plan.InnerJoin, cond *expression.Equals, indexes [
 			continue
 		}
 		if indexMatches(idx, unifyExpression(aliases, cond.Right())) {
-			return node.Left, node.Right, cond.Left(), idx, nil
+			leftTableExpr, err := fixFieldIndexes(node.Left.Schema(), cond.Left())
+			if err != nil {
+				return nil, nil, nil, nil, err
+			}
+			return node.Left, node.Right, leftTableExpr, idx, nil
 		}
 		if indexMatches(idx, unifyExpression(aliases, cond.Left())) {
-			return node.Right, node.Left, cond.Right(), idx, nil
+			rightTableExpr, err := fixFieldIndexes(node.Right.Schema(), cond.Right())
+			if err != nil {
+				return nil, nil, nil, nil, err
+			}
+			return node.Right, node.Left, rightTableExpr, idx, nil
 		}
 	}
 

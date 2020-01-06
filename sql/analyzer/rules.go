@@ -40,8 +40,8 @@ var OnceAfterDefault = []Rule{
 	{"assign_catalog", assignCatalog},
 	{"prune_columns", pruneColumns},
 	{"convert_dates", convertDates},
-	{"pushdown", pushdown},
 	{"optimizeJoins", optimizePrimaryKeyJoins},
+	{"pushdown", pushdown},
 	{"erase_projection", eraseProjection},
 }
 

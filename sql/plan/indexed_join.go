@@ -147,12 +147,15 @@ func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		indexLookup := i.secondaryTbl.WithIndexLookup(lookup)
-		// TODO: this only works on a single partition, we will need partition info to do this correctly
-		i.secondary, err = indexLookup.PartitionRows(i.ctx, nil)
+		indexedTable := i.secondaryTbl.WithIndexLookup(lookup)
+
+		partIter, err := indexedTable.Partitions(i.ctx)
 		if err != nil {
 			return nil, err
 		}
+
+		span, ctx := i.ctx.Span("plan.IndexedJoin indexed lookup")
+		i.secondary = sql.NewSpanIter(span, sql.NewTableIter(ctx, indexedTable, partIter))
 	}
 
 	rightRow, err := i.secondary.Next()
@@ -167,7 +170,6 @@ func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 
 	return rightRow, nil
 }
-
 
 func (i *indexedJoinIter) Next() (sql.Row, error) {
 	for {

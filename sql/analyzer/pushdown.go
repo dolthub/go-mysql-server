@@ -24,6 +24,19 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return n, nil
 	}
 
+	// Pushdown interferes with evaluating per-row index lookups for indexed joins, so skip them
+	foundIndexedJoin := false
+	plan.Inspect(n, func(node sql.Node) bool {
+		if _, ok:= node.(*plan.IndexedJoin); ok {
+			foundIndexedJoin = true
+			return false
+		}
+		return true
+	})
+	if foundIndexedJoin {
+		return n, nil
+	}
+
 	// First step is to find all col exprs and group them by the table they mention.
 	// Even if they appear multiple times, only the first one will be used.
 	a.Log("finding used columns in node")
