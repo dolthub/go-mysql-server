@@ -57,6 +57,7 @@ func transformInnerJoins(
 		aliases Aliases,
 ) (sql.Node, error) {
 
+	var replacedIndexedJoin bool
 	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", node)
 		switch node := node.(type) {
@@ -79,6 +80,7 @@ func transformInnerJoins(
 				return nil, err
 			}
 
+			replacedIndexedJoin = true
 			return plan.NewIndexedJoin(leftNode, rightNode, joinCond, leftTableExpr, rightTableIndex), nil
 		default:
 			return node, nil
@@ -89,7 +91,15 @@ func transformInnerJoins(
 		return nil, err
 	}
 
-	return node, nil
+	if replacedIndexedJoin {
+		// Fix the field indexes as necessary
+		node, err = plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
+			a.Log("transforming node of type: %T", node)
+			return fixFieldIndexesForExpressions(node)
+		})
+	}
+
+	return node, err
 }
 
 // Analyzes the join's tables and condition to select a left and right table, and an index to use for lookups in the

@@ -151,7 +151,7 @@ func transformPushdown(
 				return nil, err
 			}
 			// After pushing down the filter, we need to fix field indexes as well
-			return transformExpressioners(n)
+			return fixFieldIndexesForExpressions(n)
 		case *plan.ResolvedTable:
 			table, err := pushdownTable(
 				a,
@@ -165,9 +165,9 @@ func transformPushdown(
 			if err != nil {
 				return nil, err
 			}
-			return transformExpressioners(table)
+			return fixFieldIndexesForExpressions(table)
 		default:
-			return transformExpressioners(node)
+			return fixFieldIndexesForExpressions(node)
 		}
 	})
 
@@ -189,7 +189,8 @@ func transformPushdown(
 	return node, nil
 }
 
-func transformExpressioners(node sql.Node) (sql.Node, error) {
+// Transforms the expressions in the Node given, fixing the field indexes.
+func fixFieldIndexesForExpressions(node sql.Node) (sql.Node, error) {
 	if _, ok := node.(sql.Expressioner); !ok {
 		return node, nil
 	}
