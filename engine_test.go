@@ -44,7 +44,7 @@ var queries = []queryTest{
 			{"third row", int64(3)}},
 	},
 	{
-		"SELECT s,i FROM (select i,s from mytable) mt;",
+		"SELECT s,i FROM (select i,s FROM mytable) mt;",
 		[]sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
@@ -67,7 +67,7 @@ var queries = []queryTest{
 		[]sql.Row{{int64(-1)}, {int64(-2)}, {int64(-3)}},
 	},
 	{
-		"SELECT i FROM mytable where -i = -2;",
+		"SELECT i FROM mytable WHERE -i = -2;",
 		[]sql.Row{{int64(2)}},
 	},
 	{
@@ -87,19 +87,19 @@ var queries = []queryTest{
 		[]sql.Row{{int64(1)}, {int64(3)}},
 	},
 	{
-		"SELECT i FROM mytable WHERE i in (1, 3)",
+		"SELECT i FROM mytable WHERE i IN (1, 3)",
 		[]sql.Row{{int64(1)}, {int64(3)}},
 	},
 	{
-		"SELECT i FROM mytable WHERE i = 1 or i = 3",
+		"SELECT i FROM mytable WHERE i = 1 OR i = 3",
 		[]sql.Row{{int64(1)}, {int64(3)}},
 	},
 	{
-		"SELECT i FROM mytable WHERE i >= 2 order by 1",
+		"SELECT i FROM mytable WHERE i >= 2 ORDER BY 1",
 		[]sql.Row{{int64(2)}, {int64(3)}},
 	},
 	{
-		"SELECT i FROM mytable WHERE i <= 2 order by 1",
+		"SELECT i FROM mytable WHERE i <= 2 ORDER BY 1",
 		[]sql.Row{{int64(1)}, {int64(2)}},
 	},
 	{
@@ -111,7 +111,7 @@ var queries = []queryTest{
 		[]sql.Row{{int64(1)}},
 	},
 	{
-		"SELECT i FROM mytable WHERE i >= 2 or i = 1 order by 1",
+		"SELECT i FROM mytable WHERE i >= 2 OR i = 1 ORDER BY 1",
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
@@ -167,7 +167,7 @@ var queries = []queryTest{
 		nil,
 	},
 	{
-		"SELECT i FROM mytable WHERE not 'hello';",
+		"SELECT i FROM mytable WHERE NOT 'hello';",
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
@@ -265,7 +265,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		`SELECT SUBSTRING_INDEX(mytable.s, "d", 1) as s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY 1 HAVING s = 'secon'`,
+		`SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY 1 HAVING s = 'secon'`,
 		[]sql.Row{{"secon"}},
 	},
 	{
@@ -337,7 +337,7 @@ var queries = []queryTest{
 		[]sql.Row{{int64(3)}},
 	},
 	{
-		"SELECT substring(mytable.s, 1, 5) as s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1",
+		"SELECT substring(mytable.s, 1, 5) AS s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1",
 		[]sql.Row{
 			{"third"},
 			{"secon"},
@@ -345,11 +345,35 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 order by i",
+		"SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
 		[]sql.Row{
 			{int64(1), int64(1), "third"},
 			{int64(2), int64(2), "second"},
 			{int64(3), int64(3), "first"},
+		},
+	},
+	{
+		"SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
+		[]sql.Row{
+			{"third", int64(1), int64(1)},
+			{"second", int64(2), int64(2)},
+			{ "first", int64(3), int64(3)},
+		},
+	},
+	{
+		"SELECT i, i2, s2 FROM othertable JOIN mytable  ON i = i2 ORDER BY i",
+		[]sql.Row{
+			{int64(1), int64(1), "third"},
+			{int64(2), int64(2), "second"},
+			{int64(3), int64(3), "first"},
+		},
+	},
+	{
+		"SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2 ORDER BY i",
+		[]sql.Row{
+			{"third", int64(1), int64(1)},
+			{"second", int64(2), int64(2)},
+			{ "first", int64(3), int64(3)},
 		},
 	},
 	{
@@ -382,7 +406,7 @@ var queries = []queryTest{
 	},
 	{
 		"SELECT s FROM mytable INNER JOIN othertable " +
-				"ON substring(s2, 1, 2) != '' AND i = i2 order by 1",
+				"ON substring(s2, 1, 2) != '' AND i = i2 ORDER BY 1",
 		[]sql.Row{
 			{"first row"},
 			{"second row"},
@@ -390,7 +414,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		`SELECT COUNT(*) as cnt, fi FROM (
+		`SELECT COUNT(*) AS cnt, fi FROM (
 			SELECT tbl.s AS fi
 			FROM mytable tbl
 		) t
@@ -428,7 +452,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		`SELECT COUNT(*) as cnt, fi FROM (
+		`SELECT COUNT(*) AS cnt, fi FROM (
 			SELECT tbl.s AS fi
 			FROM mytable tbl
 		) t
@@ -440,7 +464,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		`SELECT COUNT(*) as cnt, s as fi FROM mytable GROUP BY fi`,
+		`SELECT COUNT(*) AS cnt, s AS fi FROM mytable GROUP BY fi`,
 		[]sql.Row{
 			{int64(1), "first row"},
 			{int64(1), "second row"},
@@ -448,7 +472,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		`SELECT COUNT(*) as cnt, s as fi FROM mytable GROUP BY 2`,
+		`SELECT COUNT(*) AS cnt, s AS fi FROM mytable GROUP BY 2`,
 		[]sql.Row{
 			{int64(1), "first row"},
 			{int64(1), "second row"},
@@ -569,7 +593,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		`SELECT i as foo FROM mytable ORDER BY i DESC`,
+		`SELECT i AS foo FROM mytable ORDER BY i DESC`,
 		[]sql.Row{
 			{int64(3)},
 			{int64(2)},
@@ -577,7 +601,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		`SELECT COUNT(*) c, i as foo FROM mytable GROUP BY i ORDER BY i DESC`,
+		`SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY i ORDER BY i DESC`,
 		[]sql.Row{
 			{int64(1), int64(3)},
 			{int64(1), int64(2)},
@@ -585,7 +609,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		`SELECT COUNT(*) c, i as foo FROM mytable GROUP BY 2 ORDER BY 2 DESC`,
+		`SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY 2 ORDER BY 2 DESC`,
 		[]sql.Row{
 			{int64(1), int64(3)},
 			{int64(1), int64(2)},
@@ -593,7 +617,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		`SELECT COUNT(*) c, i as foo FROM mytable GROUP BY i ORDER BY foo DESC`,
+		`SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY i ORDER BY foo DESC`,
 		[]sql.Row{
 			{int64(1), int64(3)},
 			{int64(1), int64(2)},
@@ -601,7 +625,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		`SELECT COUNT(*) c, i as foo FROM mytable GROUP BY 2 ORDER BY foo DESC`,
+		`SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY 2 ORDER BY foo DESC`,
 		[]sql.Row{
 			{int64(1), int64(3)},
 			{int64(1), int64(2)},
@@ -609,7 +633,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		`SELECT COUNT(*) c, i as i FROM mytable GROUP BY 2`,
+		`SELECT COUNT(*) c, i AS i FROM mytable GROUP BY 2`,
 		[]sql.Row{
 			{int64(1), int64(3)},
 			{int64(1), int64(2)},
@@ -617,7 +641,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		`SELECT i as i FROM mytable GROUP BY 1`,
+		`SELECT i AS i FROM mytable GROUP BY 1`,
 		[]sql.Row{
 			{int64(3)},
 			{int64(2)},
@@ -711,7 +735,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		`SELECT SUBSTRING(s, -3, 3) as s FROM mytable WHERE s LIKE '%d row' GROUP BY 1`,
+		`SELECT SUBSTRING(s, -3, 3) AS s FROM mytable WHERE s LIKE '%d row' GROUP BY 1`,
 		[]sql.Row{
 			{"row"},
 		},
@@ -979,27 +1003,27 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT i FROM mytable where NULL > 10;",
+		"SELECT i FROM mytable WHERE NULL > 10;",
 		nil,
 	},
 	{
-		"SELECT i FROM mytable where NULL in (10);",
+		"SELECT i FROM mytable WHERE NULL IN (10);",
 		nil,
 	},
 	{
-		"SELECT i FROM mytable where NULL in (NULL, NULL);",
+		"SELECT i FROM mytable WHERE NULL IN (NULL, NULL);",
 		nil,
 	},
 	{
-		"SELECT i FROM mytable where NOT NULL NOT IN (NULL);",
+		"SELECT i FROM mytable WHERE NOT NULL NOT IN (NULL);",
 		nil,
 	},
 	{
-		"SELECT i FROM mytable where NOT (NULL) <> 10;",
+		"SELECT i FROM mytable WHERE NOT (NULL) <> 10;",
 		nil,
 	},
 	{
-		"SELECT i FROM mytable where NOT NULL <> NULL;",
+		"SELECT i FROM mytable WHERE NOT NULL <> NULL;",
 		nil,
 	},
 	{
@@ -1131,7 +1155,7 @@ var queries = []queryTest{
 		[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}},
 	},
 	{
-		"SELECT substring(mytable.s, 1, 5) as s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1 HAVING s = \"secon\"",
+		"SELECT substring(mytable.s, 1, 5) AS s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1 HAVING s = \"secon\"",
 		[]sql.Row{{"secon"}},
 	},
 	{
@@ -1167,7 +1191,7 @@ var queries = []queryTest{
 		[]sql.Row{{nil}},
 	},
 	{
-		`SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t WHERE t.date_col > '0000-01-01 00:00:00'`,
+		`SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) AS date_col) t WHERE t.date_col > '0000-01-01 00:00:00'`,
 		[]sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
@@ -1409,11 +1433,11 @@ var queries = []queryTest{
 	{
 		"SELECT * FROM newlinetable WHERE s LIKE '%text%'",
 		[]sql.Row{
-			{int64(1), "\nthere is some text in here"},
-			{int64(2), "there is some\ntext in here"},
+			{int64(1), "\nthere is some text IN here"},
+			{int64(2), "there is some\ntext IN here"},
 			{int64(3), "there is some text\nin here"},
-			{int64(4), "there is some text in here\n"},
-			{int64(5), "there is some text in here"},
+			{int64(4), "there is some text IN here\n"},
+			{int64(5), "there is some text IN here"},
 		},
 	},
 	{
@@ -1453,7 +1477,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"select pk,pk1,pk2 from one_pk, two_pk order by 1,2,3",
+		"SELECT pk,pk1,pk2 FROM one_pk, two_pk ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{0, 0, 1},
@@ -1474,7 +1498,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"select t1.c1,t2.c2 from one_pk t1, two_pk t2 where pk1=1 and pk2=1 order by 1,2",
+		"SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE pk1=1 AND pk2=1 ORDER BY 1,2",
 		[]sql.Row{
 			{0, 30},
 			{10, 30},
@@ -1483,7 +1507,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"select t1.c1,t2.c2 from one_pk t1, two_pk t2 where pk1=1 or pk2=1 order by 1,2",
+		"SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE pk1=1 OR pk2=1 ORDER BY 1,2",
 		[]sql.Row{
 			{0, 10},
 			{0, 20},
@@ -1500,14 +1524,14 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"select pk,pk2 from one_pk t1, two_pk t2 where pk=1 and pk2=1 order by 1,2",
+		"SELECT pk,pk2 FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2",
 		[]sql.Row{
 			{1, 1},
 			{1, 1},
 		},
 	},
 	{
-		"select pk,pk1,pk2 from one_pk,two_pk where pk=0 and pk1=0 or pk2=1 order by 1,2,3",
+		"SELECT pk,pk1,pk2 FROM one_pk,two_pk WHERE pk=0 AND pk1=0 OR pk2=1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{0, 0, 1},
@@ -1521,7 +1545,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"select pk,pk1,pk2 from one_pk,two_pk where one_pk.c1=two_pk.c1 order by 1,2,3",
+		"SELECT pk,pk1,pk2 FROM one_pk,two_pk WHERE one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{1, 0, 1},
@@ -1530,7 +1554,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"select one_pk.c5,pk1,pk2 from one_pk,two_pk where pk=pk1 order by 1,2,3",
+		"SELECT one_pk.c5,pk1,pk2 FROM one_pk,two_pk WHERE pk=pk1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{0, 0, 1},
@@ -1539,13 +1563,24 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"select pk,pk1,pk2 from one_pk join two_pk on one_pk.c1=two_pk.c1 where pk=1 order by 1,2,3",
+		"SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk on one_pk.c1=two_pk.c1 WHERE pk=1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{1, 0, 1},
 		},
 	},
 	{
-		"select pk,pk1,pk2,one_pk.c1 as foo, two_pk.c1 as bar from one_pk join two_pk on one_pk.c1=two_pk.c1 order by 1,2,3",
+		"SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk on pk=pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{1, 1, 0},
+			{1, 1, 1},
+			{2, nil, nil},
+			{3, nil, nil},
+		},
+	},
+	{
+		"SELECT pk,pk1,pk2,one_pk.c1 AS foo, two_pk.c1 AS bar FROM one_pk JOIN two_pk on one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0, 0, 0},
 			{1, 0, 1, 10, 10},
@@ -1554,19 +1589,19 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"select pk,pk1,pk2,one_pk.c1 as foo,two_pk.c1 as bar from one_pk join two_pk on one_pk.c1=two_pk.c1 where one_pk.c1=10",
+		"SELECT pk,pk1,pk2,one_pk.c1 AS foo,two_pk.c1 AS bar FROM one_pk JOIN two_pk on one_pk.c1=two_pk.c1 WHERE one_pk.c1=10",
 		[]sql.Row{
 			{1, 0, 1, 10, 10},
 		},
 	},
 	{
-		"select pk,pk1,pk2 from one_pk join two_pk on pk1-pk>0 and pk2<1",
+		"SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk on pk1-pk>0 AND pk2<1",
 		[]sql.Row{
 			{0, 1, 0},
 		},
 	},
 	{
-		"select pk,pk1,pk2 from one_pk join two_pk order by 1,2,3",
+		"SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{0, 0, 1},
@@ -1826,7 +1861,7 @@ var infoSchemaQueries = []queryTest {
 	},
 	{
 		`
-		SELECT COLUMN_NAME as COLUMN_NAME FROM information_schema.COLUMNS
+		SELECT COLUMN_NAME AS COLUMN_NAME FROM information_schema.COLUMNS
 		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
 		GROUP BY 1
 		`,
@@ -1860,7 +1895,7 @@ var infoSchemaQueries = []queryTest {
 	},
 	{
 		`
-		SELECT COLUMN_NAME as COLUMN_NAME FROM information_schema.COLUMNS
+		SELECT COLUMN_NAME AS COLUMN_NAME FROM information_schema.COLUMNS
 		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
 		GROUP BY 1 HAVING SUBSTRING(COLUMN_NAME, 1, 1) = "s"
 		`,
@@ -2234,7 +2269,7 @@ func TestClearWarnings(t *testing.T) {
 	err = iter.Close()
 	require.NoError(err)
 
-	_, iter, err = e.Query(ctx, "-- some empty query as a comment")
+	_, iter, err = e.Query(ctx, "-- some empty query AS a comment")
 	require.NoError(err)
 	err = iter.Close()
 	require.NoError(err)
@@ -2329,7 +2364,7 @@ func TestInsertInto(t *testing.T) {
 		{
 			"INSERT INTO niltable (f) VALUES (10.0), (12.0);",
 			[]sql.Row{{int64(2)}},
-			"SELECT f FROM niltable WHERE f in (10.0, 12.0) order by f;",
+			"SELECT f FROM niltable WHERE f IN (10.0, 12.0) ORDER BY f;",
 			[]sql.Row{{10.0}, {12.0}},
 		},
 		{
@@ -2437,9 +2472,9 @@ func TestInsertInto(t *testing.T) {
 			[]sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
 		},
 		{
-			"INSERT INTO mytable SELECT * from mytable",
+			"INSERT INTO mytable SELECT * FROM mytable",
 			[]sql.Row{{int64(3)}},
-			"SELECT * FROM mytable order by i",
+			"SELECT * FROM mytable ORDER BY i",
 			[]sql.Row{
 				{int64(1), "first row"},
 				{int64(1), "first row"},
@@ -2450,9 +2485,9 @@ func TestInsertInto(t *testing.T) {
 			},
 		},
 		{
-			"INSERT INTO mytable(i,s) SELECT * from mytable",
+			"INSERT INTO mytable(i,s) SELECT * FROM mytable",
 			[]sql.Row{{int64(3)}},
-			"SELECT * FROM mytable order by i",
+			"SELECT * FROM mytable ORDER BY i",
 			[]sql.Row{
 				{int64(1), "first row"},
 				{int64(1), "first row"},
@@ -2463,9 +2498,9 @@ func TestInsertInto(t *testing.T) {
 			},
 		},
 		{
-			"INSERT INTO mytable (i,s) SELECT i+10, 'new' from mytable",
+			"INSERT INTO mytable (i,s) SELECT i+10, 'new' FROM mytable",
 			[]sql.Row{{int64(3)}},
-			"SELECT * FROM mytable order by i",
+			"SELECT * FROM mytable ORDER BY i",
 			[]sql.Row{
 				{int64(1), "first row"},
 				{int64(2), "second row"},
@@ -2476,9 +2511,9 @@ func TestInsertInto(t *testing.T) {
 			},
 		},
 		{
-			"INSERT INTO mytable SELECT i2, s2 from othertable",
+			"INSERT INTO mytable SELECT i2, s2 FROM othertable",
 			[]sql.Row{{int64(3)}},
-			"SELECT * FROM mytable order by i,s",
+			"SELECT * FROM mytable ORDER BY i,s",
 			[]sql.Row{
 				{int64(1), "first row"},
 				{int64(1), "third"},
@@ -2489,9 +2524,9 @@ func TestInsertInto(t *testing.T) {
 			},
 		},
 		{
-			"INSERT INTO mytable (s,i) SELECT * from othertable",
+			"INSERT INTO mytable (s,i) SELECT * FROM othertable",
 			[]sql.Row{{int64(3)}},
-			"SELECT * FROM mytable order by i,s",
+			"SELECT * FROM mytable ORDER BY i,s",
 			[]sql.Row{
 				{int64(1), "first row"},
 				{int64(1), "third"},
@@ -2502,9 +2537,9 @@ func TestInsertInto(t *testing.T) {
 			},
 		},
 		{
-			"INSERT INTO mytable (s,i) SELECT concat(m.s, o.s2), m.i from othertable o join mytable m on m.i=o.i2",
+			"INSERT INTO mytable (s,i) SELECT concat(m.s, o.s2), m.i FROM othertable o JOIN mytable m on m.i=o.i2",
 			[]sql.Row{{int64(3)}},
-			"SELECT * FROM mytable order by i,s",
+			"SELECT * FROM mytable ORDER BY i,s",
 			[]sql.Row{
 				{int64(1), "first row"},
 				{int64(1), "first rowthird"},
@@ -2515,9 +2550,9 @@ func TestInsertInto(t *testing.T) {
 			},
 		},
 		{
-			"INSERT INTO mytable (i,s) SELECT (i + 10.0) / 10.0 + 10, concat(s, ' new') from mytable",
+			"INSERT INTO mytable (i,s) SELECT (i + 10.0) / 10.0 + 10, concat(s, ' new') FROM mytable",
 			[]sql.Row{{int64(3)}},
-			"SELECT * FROM mytable order by i, s",
+			"SELECT * FROM mytable ORDER BY i, s",
 			[]sql.Row{
 				{int64(1), "first row"},
 				{int64(2), "second row"},
@@ -2584,19 +2619,19 @@ func TestInsertIntoErrors(t *testing.T) {
 		},
 		{
 			"incompatible types",
-			"INSERT INTO mytable (i, s) select * from othertable",
+			"INSERT INTO mytable (i, s) select * FROM othertable",
 		},
 		{
-			"column count mismatch in select",
-			"INSERT INTO mytable (i) select * from othertable",
+			"column count mismatch IN select",
+			"INSERT INTO mytable (i) select * FROM othertable",
 		},
 		{
-			"column count mismatch in select",
-			"INSERT INTO mytable select s from othertable",
+			"column count mismatch IN select",
+			"INSERT INTO mytable select s FROM othertable",
 		},
 		{
-			"column count mismatch in join select",
-			"INSERT INTO mytable (s,i) SELECT * from othertable o join mytable m on m.i=o.i2",
+			"column count mismatch IN join select",
+			"INSERT INTO mytable (s,i) SELECT * FROM othertable o join mytable m on m.i=o.i2",
 		},
 	}
 
@@ -3288,7 +3323,7 @@ func TestAddColumn(t *testing.T) {
 	}, tbl.Schema())
 
 	testQuery(t, e,
-		"SELECT * from mytable order by i",
+		"SELECT * FROM mytable ORDER BY i",
 		[]sql.Row{
 			sql.NewRow(int64(1), "first row", int32(42)),
 			sql.NewRow(int64(2), "second row", int32(42)),
@@ -3312,7 +3347,7 @@ func TestAddColumn(t *testing.T) {
 	}, tbl.Schema())
 
 	testQuery(t, e,
-		"SELECT * from mytable order by i",
+		"SELECT * FROM mytable ORDER BY i",
 		[]sql.Row{
 			sql.NewRow(int64(1), nil, "first row", int32(42)),
 			sql.NewRow(int64(2), nil, "second row", int32(42)),
@@ -3337,7 +3372,7 @@ func TestAddColumn(t *testing.T) {
 	}, tbl.Schema())
 
 	testQuery(t, e,
-		"SELECT * from mytable order by i",
+		"SELECT * FROM mytable ORDER BY i",
 		[]sql.Row{
 			sql.NewRow("yay", int64(1), nil, "first row", int32(42)),
 			sql.NewRow("yay", int64(2), nil, "second row", int32(42)),
@@ -3847,11 +3882,11 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 
 	insertRows(
 		t, tables["newlinetable"],
-		sql.NewRow(int64(1), "\nthere is some text in here"),
-		sql.NewRow(int64(2), "there is some\ntext in here"),
+		sql.NewRow(int64(1), "\nthere is some text IN here"),
+		sql.NewRow(int64(2), "there is some\ntext IN here"),
 		sql.NewRow(int64(3), "there is some text\nin here"),
-		sql.NewRow(int64(4), "there is some text in here\n"),
-		sql.NewRow(int64(5), "there is some text in here"),
+		sql.NewRow(int64(4), "there is some text IN here\n"),
+		sql.NewRow(int64(5), "there is some text IN here"),
 	)
 
 	tables["typestable"] = memory.NewPartitionedTable("typestable", sql.Schema{
@@ -4151,7 +4186,7 @@ func TestNestedAliases(t *testing.T) {
 	require := require.New(t)
 
 	_, _, err := newEngine(t).Query(newCtx(), `
-	SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(sub_s, 2, 3) as sub_sub_s
+	SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(sub_s, 2, 3) AS sub_sub_s
 	FROM mytable`)
 	require.Error(err)
 	require.True(analyzer.ErrMisusedAlias.Is(err))
@@ -4214,7 +4249,7 @@ func TestDescribeNoPruneColumns(t *testing.T) {
 	require := require.New(t)
 	ctx := newCtx()
 	e := newEngine(t)
-	query := `DESCRIBE FORMAT=TREE SELECT SUBSTRING(s, 1, 1) as foo, s, i FROM mytable WHERE foo = 'f'`
+	query := `DESCRIBE FORMAT=TREE SELECT SUBSTRING(s, 1, 1) AS foo, s, i FROM mytable WHERE foo = 'f'`
 	parsed, err := parse.Parse(ctx, query)
 	require.NoError(err)
 	result, err := e.Analyzer.Analyze(ctx, parsed)
