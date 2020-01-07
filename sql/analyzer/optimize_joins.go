@@ -61,21 +61,40 @@ func transformInnerJoins(
 	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
 		a.Log("transforming node of type: %T", node)
 		switch node := node.(type) {
-		case *plan.InnerJoin:
-			cond, ok := node.Cond.(*expression.Equals)
-			if !ok {
+		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
+
+			var cond sql.Expression
+			var bnode plan.BinaryNode
+			var joinType plan.JoinType
+
+			switch node := node.(type) {
+			case *plan.InnerJoin:
+				cond = node.Cond
+				bnode = node.BinaryNode
+				joinType = plan.JoinTypeInner
+			case *plan.LeftJoin:
+				cond = node.Cond
+				bnode = node.BinaryNode
+				joinType = plan.JoinTypeLeft
+			case *plan.RightJoin:
+				cond = node.Cond
+				bnode = node.BinaryNode
+				joinType = plan.JoinTypeRight
+			}
+
+			if _, ok := cond.(*expression.Equals); !ok {
 				a.Log("Cannot apply index to join, join condition isn't equality")
 				return node, nil
 			}
 
-			leftNode, rightNode, leftTableExpr, rightTableIndex, err := analyzeJoinIndexes(node, cond, indexes, aliases)
+			leftNode, rightNode, leftTableExpr, rightTableIndex, err := analyzeJoinIndexes(bnode, cond.(*expression.Equals), indexes, aliases, joinType)
 			if err != nil {
 				a.Log("Cannot apply index to join: %s", err.Error())
 				return node, nil
 			}
 
 			joinSchema := append(leftNode.Schema(), rightNode.Schema()...)
-			joinCond, err := fixFieldIndexes(joinSchema, node.Cond)
+			joinCond, err := fixFieldIndexes(joinSchema, cond)
 			if err != nil {
 				return nil, err
 			}
@@ -106,6 +125,7 @@ func transformInnerJoins(
 		// Fix the field indexes as necessary
 		node, err = plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
 			// TODO: should we just do this for every query plan as a final part of the analysis?
+			//  This would involve enforcing that every type of Node implement Expressioner.
 			a.Log("transforming node of type: %T", node)
 			return fixFieldIndexesForExpressions(node)
 		})
@@ -117,7 +137,7 @@ func transformInnerJoins(
 // Analyzes the join's tables and condition to select a left and right table, and an index to use for lookups in the
 // right table. Returns an error if no suitable index can be found.
 // Only works for single-column indexes
-func analyzeJoinIndexes(node *plan.InnerJoin, cond *expression.Equals, indexes []sql.Index, aliases Aliases) (sql.Node, sql.Node, sql.Expression, sql.Index, error) {
+func analyzeJoinIndexes(node plan.BinaryNode, cond *expression.Equals, indexes []sql.Index, aliases Aliases, joinType plan.JoinType) (sql.Node, sql.Node, sql.Expression, sql.Index, error) {
 	// First arrange the condition's left and right side to match the table nodes themselves
 	leftTableName := findTableName(node.Left)
 	rightTableName := findTableName(node.Right)
@@ -136,14 +156,18 @@ func analyzeJoinIndexes(node *plan.InnerJoin, cond *expression.Equals, indexes [
 		if len(idx.Expressions()) > 1 {
 			continue
 		}
-		if indexMatches(idx, unifyExpression(aliases, cond.Right())) {
+
+		// Match the potential indexes to the join condition. This also involves choosing a primary and secondary table,
+		// which are always left and right respectively. We can't choose the left table as secondary for a left join, or
+		// the right as secondary for a right join.
+		if joinType != plan.JoinTypeRight && indexMatches(idx, unifyExpression(aliases, cond.Right())) {
 			leftTableExpr, err := fixFieldIndexes(node.Left.Schema(), cond.Left())
 			if err != nil {
 				return nil, nil, nil, nil, err
 			}
 			return node.Left, node.Right, leftTableExpr, idx, nil
 		}
-		if indexMatches(idx, unifyExpression(aliases, cond.Left())) {
+		if joinType != plan.JoinTypeLeft && indexMatches(idx, unifyExpression(aliases, cond.Left())) {
 			rightTableExpr, err := fixFieldIndexes(node.Right.Schema(), cond.Right())
 			if err != nil {
 				return nil, nil, nil, nil, err
@@ -230,20 +254,29 @@ func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) ([]sql.Index,
 	}
 
 	plan.Inspect(node, func(node sql.Node) bool {
-		innerJoin, ok := node.(*plan.InnerJoin)
-		if !ok {
-			return true
+		switch node := node.(type) {
+		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
+
+			var cond sql.Expression
+			switch node := node.(type) {
+			case *plan.InnerJoin:
+				cond = node.Cond
+			case *plan.LeftJoin:
+				cond = node.Cond
+			case *plan.RightJoin:
+				cond = node.Cond
+			}
+
+			fn(cond)
+
+			var idxes []sql.Index
+			idxes, err = getJoinIndexes(cond, aliases, a)
+			if err != nil {
+				return false
+			}
+
+			indexes = addManyToSet(indexes, idxes)
 		}
-
-		fn(innerJoin.Cond)
-
-		var idxes []sql.Index
-		idxes, err = getJoinIndexes(innerJoin.Cond, aliases, a)
-		if err != nil {
-			return false
-		}
-
-		indexes = addManyToSet(indexes, idxes)
 
 		return true
 	})

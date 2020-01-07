@@ -7,11 +7,21 @@ import (
 	"reflect"
 )
 
+// An IndexedJoin is an inner join that uses index lookups for the secondary table.
 type IndexedJoin struct {
+	// The primary and secondary table nodes. The normal meanings of Left and
+	// Right in BinaryNode aren't necessarily meaningful here -- the Left node is always the primary table, and the Right
+	// node is always the secondary. These may or may not correspond to the left and right tables in the written query.
 	BinaryNode
+	// The join condition.
 	Cond sql.Expression
+	// The index to use when looking up rows in the secondary table.
 	Index sql.Index
-	leftTableExpr sql.Expression
+	// The expression to evaluate to extract a key value from a row in the primary table.
+	primaryTableExpr sql.Expression
+	// The type of join. Left and right refer to the lexical position in the written query, not primary / secondary. In
+	// the case of a right join, the right table will always be the primary.
+	joinType JoinType
 }
 
 func (ij *IndexedJoin) String() string {
@@ -28,7 +38,6 @@ func (ij *IndexedJoin) Schema() sql.Schema {
 func (ij *IndexedJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	var indexedTable *IndexedTableAccess
 	Inspect(ij.Right, func(node sql.Node) bool {
-		// TODO: this is a bit fragile and only works for two table joins
 		if it, ok := node.(*IndexedTableAccess); ok {
 			indexedTable = it
 			return false
@@ -40,22 +49,22 @@ func (ij *IndexedJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, ErrNoIndexedTableAccess.New(ij.Right)
 	}
 
-	return indexedJoinRowIter(ctx, ij.Left, ij.Right, indexedTable, ij.leftTableExpr, ij.Cond, ij.Index)
+	return indexedJoinRowIter(ctx, ij.Left, ij.Right, indexedTable, ij.primaryTableExpr, ij.Cond, ij.Index)
 }
 
 func (ij *IndexedJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(ij, len(children), 2)
 	}
-	return NewIndexedJoin(children[0], children[1], ij.Cond, ij.leftTableExpr, ij.Index), nil
+	return NewIndexedJoin(children[0], children[1], ij.Cond, ij.primaryTableExpr, ij.Index), nil
 }
 
-func NewIndexedJoin(primaryTable, indexedTable sql.Node, cond sql.Expression, leftTableExpr sql.Expression, index sql.Index) *IndexedJoin {
+func NewIndexedJoin(primaryTable, indexedTable sql.Node, cond sql.Expression, primaryTableExpr sql.Expression, index sql.Index) *IndexedJoin {
 	return &IndexedJoin{
-		BinaryNode: BinaryNode{primaryTable, indexedTable},
-		Cond:       cond,
-		Index:      index,
-		leftTableExpr: leftTableExpr,
+		BinaryNode:       BinaryNode{primaryTable, indexedTable},
+		Cond:             cond,
+		Index:            index,
+		primaryTableExpr: primaryTableExpr,
 	}
 }
 

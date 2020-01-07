@@ -139,8 +139,7 @@ func (u *indexValIter) Close() error {
 func (u *UnmergeableIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	var exprs []sql.Expression
 	for exprI, expr := range u.idx.Exprs {
-		lit, typ := getType(u.key[exprI])
-		exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(lit, typ)))
+		exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(u.key[exprI], expr.Type())))
 	}
 
 	return &indexValIter{

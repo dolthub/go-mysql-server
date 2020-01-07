@@ -51,7 +51,7 @@ func (j *InnerJoin) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (j *InnerJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	return joinRowIter(ctx, innerJoin, j.Left, j.Right, j.Cond)
+	return joinRowIter(ctx, JoinTypeInner, j.Left, j.Right, j.Cond)
 }
 
 // WithChildren implements the Node interface.
@@ -113,7 +113,7 @@ func (j *LeftJoin) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (j *LeftJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	return joinRowIter(ctx, leftJoin, j.Left, j.Right, j.Cond)
+	return joinRowIter(ctx, JoinTypeLeft, j.Left, j.Right, j.Cond)
 }
 
 // WithChildren implements the Node interface.
@@ -175,7 +175,7 @@ func (j *RightJoin) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (j *RightJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	return joinRowIter(ctx, rightJoin, j.Left, j.Right, j.Cond)
+	return joinRowIter(ctx, JoinTypeRight, j.Left, j.Right, j.Cond)
 }
 
 // WithChildren implements the Node interface.
@@ -208,21 +208,21 @@ func (j *RightJoin) Expressions() []sql.Expression {
 	return []sql.Expression{j.Cond}
 }
 
-type joinType byte
+type JoinType byte
 
 const (
-	innerJoin joinType = iota
-	leftJoin
-	rightJoin
+	JoinTypeInner JoinType = iota
+	JoinTypeLeft
+	JoinTypeRight
 )
 
-func (t joinType) String() string {
+func (t JoinType) String() string {
 	switch t {
-	case innerJoin:
+	case JoinTypeInner:
 		return "InnerJoin"
-	case leftJoin:
+	case JoinTypeLeft:
 		return "LeftJoin"
-	case rightJoin:
+	case JoinTypeRight:
 		return "RightJoin"
 	default:
 		return "INVALID"
@@ -231,7 +231,7 @@ func (t joinType) String() string {
 
 func joinRowIter(
 	ctx *sql.Context,
-	typ joinType,
+	typ JoinType,
 	left, right sql.Node,
 	cond sql.Expression,
 ) (sql.RowIter, error) {
@@ -265,7 +265,7 @@ func joinRowIter(
 	}
 
 	cache, dispose := ctx.Memory.NewRowsCache()
-	if typ == rightJoin {
+	if typ == JoinTypeRight {
 		r, err := right.RowIter(ctx)
 		if err != nil {
 			span.Finish()
@@ -322,7 +322,7 @@ const (
 
 // joinIter is a generic iterator for all join types.
 type joinIter struct {
-	typ               joinType
+	typ               JoinType
 	primary           sql.RowIter
 	secondaryProvider rowIterProvider
 	secondary         sql.RowIter
@@ -469,7 +469,7 @@ func (i *joinIter) Next() (sql.Row, error) {
 		secondary, err := i.loadSecondary()
 		if err != nil {
 			if err == io.EOF {
-				if !i.foundMatch && (i.typ == leftJoin || i.typ == rightJoin) {
+				if !i.foundMatch && (i.typ == JoinTypeLeft || i.typ == JoinTypeRight) {
 					return i.buildRow(primary, nil), nil
 				}
 				continue
@@ -505,7 +505,7 @@ func (i *joinIter) buildRow(primary, secondary sql.Row) sql.Row {
 	}
 
 	switch i.typ {
-	case rightJoin:
+	case JoinTypeRight:
 		copy(row, secondary)
 		copy(row[i.rowSize-len(primary):], primary)
 	default:
