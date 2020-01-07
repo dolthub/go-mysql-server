@@ -483,7 +483,8 @@ func (i *joinIter) Next() (sql.Row, error) {
 			return nil, err
 		}
 
-		if v == false {
+		// comparisons with nil will return nil, not true or false
+		if v != true {
 			continue
 		}
 

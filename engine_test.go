@@ -1580,6 +1580,25 @@ var queries = []queryTest{
 		},
 	},
 	{
+		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable on pk=i ORDER BY 1",
+		[]sql.Row{
+			{0, nil, nil},
+			{1, int64(1), float64(1.0)},
+			{2, int64(2), float64(2.0)},
+			{3, nil, nil},
+		},
+	},
+	{
+		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable on pk=i ORDER BY 2,3",
+		[]sql.Row{
+			{nil, nil, nil},
+			{nil, nil, float64(3.0)},
+			{1, int64(1), float64(1.0)},
+			{2, int64(2), float64(2.0)},
+			{nil, int64(4), nil},
+		},
+	},
+	{
 		"SELECT pk,pk1,pk2,one_pk.c1 AS foo, two_pk.c1 AS bar FROM one_pk JOIN two_pk on one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0, 0, 0},

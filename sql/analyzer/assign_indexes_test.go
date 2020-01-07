@@ -163,7 +163,7 @@ func TestAssignIndexes(t *testing.T) {
 		),
 	)
 
-	result, err = assignIndexes(a, node)
+	result, err = assignIndexes(sql.NewEmptyContext(), a, node)
 	require.NoError(err)
 
 	_, ok = result["t1"]
@@ -180,7 +180,7 @@ func TestAssignIndexes(t *testing.T) {
 		),
 	)
 
-	result, err = assignIndexes(a, node)
+	result, err = assignIndexes(sql.NewEmptyContext(), a, node)
 	require.NoError(err)
 
 	_, ok = result["t1"]
