@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"errors"
 	"github.com/opentracing/opentracing-go"
 	"github.com/src-d/go-mysql-server/sql"
 	"io"
@@ -27,25 +26,21 @@ func (ij *IndexedJoin) Schema() sql.Schema {
 }
 
 func (ij *IndexedJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	var indexedTable sql.IndexableTable
-	foundIndexedTable := false
+	var indexedTable *IndexedTableAccess
 	Inspect(ij.Right, func(node sql.Node) bool {
 		// TODO: this is a bit fragile and only works for two table joins
-		if rt, ok := node.(*ResolvedTable); ok {
-			if it, ok := rt.Table.(sql.IndexableTable); ok {
-				indexedTable = it
-				foundIndexedTable = true
-				return false
-			}
+		if it, ok := node.(*IndexedTableAccess); ok {
+			indexedTable = it
+			return false
 		}
 		return true
 	})
 
-	if !foundIndexedTable {
-		return nil, errors.New("expected an IndexableTable, couldn't find one")
+	if indexedTable == nil {
+		return nil, ErrNoIndexedTableAccess.New(ij.Right)
 	}
 
-	return indexedJoinRowIter(ctx, ij.Left, indexedTable, ij.leftTableExpr, ij.Cond, ij.Index)
+	return indexedJoinRowIter(ctx, ij.Left, ij.Right, indexedTable, ij.leftTableExpr, ij.Cond, ij.Index)
 }
 
 func (ij *IndexedJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -67,7 +62,8 @@ func NewIndexedJoin(primaryTable, indexedTable sql.Node, cond sql.Expression, le
 func indexedJoinRowIter(
 		ctx *sql.Context,
 		left sql.Node,
-		right sql.IndexableTable,
+		right sql.Node,
+		indexAccess *IndexedTableAccess,
 		leftTableExpr sql.Expression,
 		cond sql.Expression,
 		index sql.Index,
@@ -96,25 +92,27 @@ func indexedJoinRowIter(
 		return nil, err
 	}
 	return sql.NewSpanIter(span, &indexedJoinIter{
-		primary:       l,
-		secondaryTbl:  right,
-		ctx:           ctx,
-		cond:          cond,
-		leftTableExpr: leftTableExpr,
-		index:         index,
+		primary:           l,
+		secondaryProvider: right,
+		secondaryIndexAccess: indexAccess,
+		ctx:               ctx,
+		cond:              cond,
+		leftTableExpr:     leftTableExpr,
+		index:             index,
 	}), nil
 }
 
 // indexedJoinIter is an iterator that iterates over every row in the primary table and performs an index lookup in
 // the secondary table for each value
 type indexedJoinIter struct {
-	primary       sql.RowIter
-	primaryRow    sql.Row
-	index         sql.Index
-	secondaryTbl  sql.IndexableTable
-	secondary     sql.RowIter
-	leftTableExpr sql.Expression
-	cond          sql.Expression
+	primary              sql.RowIter
+	primaryRow           sql.Row
+	index                sql.Index
+	secondaryIndexAccess *IndexedTableAccess
+	secondaryProvider    sql.Node
+	secondary            sql.RowIter
+	leftTableExpr        sql.Expression
+	cond                 sql.Expression
 
 	ctx           *sql.Context
 	foundMatch    bool
@@ -147,15 +145,19 @@ func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		indexedTable := i.secondaryTbl.WithIndexLookup(lookup)
 
-		partIter, err := indexedTable.Partitions(i.ctx)
+		err = i.secondaryIndexAccess.SetIndexLookup(i.ctx, lookup)
 		if err != nil {
 			return nil, err
 		}
 
 		span, ctx := i.ctx.Span("plan.IndexedJoin indexed lookup")
-		i.secondary = sql.NewSpanIter(span, sql.NewTableIter(ctx, indexedTable, partIter))
+		rowIter, err := i.secondaryProvider.RowIter(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		i.secondary = sql.NewSpanIter(span, rowIter)
 	}
 
 	rightRow, err := i.secondary.Next()

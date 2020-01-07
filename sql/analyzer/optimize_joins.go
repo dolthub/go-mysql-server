@@ -36,7 +36,7 @@ func optimizePrimaryKeyJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Nod
 	})
 
 	if numTables > 2 {
-		a.Log("Skipping join optimization, more than 2 tables")
+		a.Log("skipping join optimization, more than 2 tables")
 		return n, nil
 	}
 
@@ -79,8 +79,19 @@ func transformInnerJoins(
 			if err != nil {
 				return nil, err
 			}
-
 			replacedIndexedJoin = true
+
+			rightNode, err = plan.TransformUp(rightNode, func(node sql.Node) (sql.Node, error) {
+				a.Log("transforming node of type: %T", node)
+				if rt, ok := node.(*plan.ResolvedTable); ok {
+					return plan.NewIndexedTable(rt), nil
+				}
+				return node, nil
+			})
+			if err != nil {
+				return nil, err
+			}
+
 			return plan.NewIndexedJoin(leftNode, rightNode, joinCond, leftTableExpr, rightTableIndex), nil
 		default:
 			return node, nil
@@ -94,6 +105,7 @@ func transformInnerJoins(
 	if replacedIndexedJoin {
 		// Fix the field indexes as necessary
 		node, err = plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
+			// TODO: should we just do this for every query plan as a final part of the analysis?
 			a.Log("transforming node of type: %T", node)
 			return fixFieldIndexesForExpressions(node)
 		})

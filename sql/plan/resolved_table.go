@@ -45,4 +45,3 @@ func (t *ResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 	return t, nil
 }
-

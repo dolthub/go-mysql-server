@@ -345,7 +345,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2",
+		"SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 order by i",
 		[]sql.Row{
 			{int64(1), int64(1), "third"},
 			{int64(2), int64(2), "second"},
@@ -382,7 +382,7 @@ var queries = []queryTest{
 	},
 	{
 		"SELECT s FROM mytable INNER JOIN othertable " +
-				"ON substring(s2, 1, 2) != '' AND i = i2",
+				"ON substring(s2, 1, 2) != '' AND i = i2 order by 1",
 		[]sql.Row{
 			{"first row"},
 			{"second row"},
