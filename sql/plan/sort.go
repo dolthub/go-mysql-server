@@ -245,11 +245,11 @@ func (s *sorter) Less(i, j int) bool {
 			return false
 		}
 
-		if av == nil {
+		if av == nil && bv == nil {
+			return false
+		} else if av == nil && bv != nil {
 			return sf.NullOrdering == NullsFirst
-		}
-
-		if bv == nil {
+		} else if bv == nil {
 			return sf.NullOrdering != NullsFirst
 		}
 
