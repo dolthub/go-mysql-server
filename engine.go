@@ -97,8 +97,8 @@ func NewDefault() *Engine {
 
 // Query executes a query.
 func (e *Engine) Query(
-	ctx *sql.Context,
-	query string,
+		ctx *sql.Context,
+		query string,
 ) (sql.Schema, sql.RowIter, error) {
 	var (
 		parsed, analyzed sql.Node

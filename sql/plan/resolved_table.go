@@ -34,7 +34,7 @@ func (t *ResolvedTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, sql.NewTableIter(ctx, t.Table, partitions)), nil
+	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, t.Table, partitions)), nil
 }
 
 // WithChildren implements the Node interface.

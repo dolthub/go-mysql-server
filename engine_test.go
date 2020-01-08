@@ -1433,11 +1433,11 @@ var queries = []queryTest{
 	{
 		"SELECT * FROM newlinetable WHERE s LIKE '%text%'",
 		[]sql.Row{
-			{int64(1), "\nthere is some text IN here"},
-			{int64(2), "there is some\ntext IN here"},
+			{int64(1), "\nthere is some text in here"},
+			{int64(2), "there is some\ntext in here"},
 			{int64(3), "there is some text\nin here"},
-			{int64(4), "there is some text IN here\n"},
-			{int64(5), "there is some text IN here"},
+			{int64(4), "there is some text in here\n"},
+			{int64(5), "there is some text in here"},
 		},
 	},
 	{
@@ -3949,11 +3949,11 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 
 	insertRows(
 		t, tables["newlinetable"],
-		sql.NewRow(int64(1), "\nthere is some text IN here"),
-		sql.NewRow(int64(2), "there is some\ntext IN here"),
+		sql.NewRow(int64(1), "\nthere is some text in here"),
+		sql.NewRow(int64(2), "there is some\ntext in here"),
 		sql.NewRow(int64(3), "there is some text\nin here"),
-		sql.NewRow(int64(4), "there is some text IN here\n"),
-		sql.NewRow(int64(5), "there is some text IN here"),
+		sql.NewRow(int64(4), "there is some text in here\n"),
+		sql.NewRow(int64(5), "there is some text in here"),
 	)
 
 	tables["typestable"] = memory.NewPartitionedTable("typestable", sql.Schema{

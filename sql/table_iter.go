@@ -5,6 +5,7 @@ import (
 	"io"
 )
 
+// TableRowIter is an iterator over the partitions in a table.
 type TableRowIter struct {
 	ctx        *Context
 	table      Table
@@ -13,7 +14,8 @@ type TableRowIter struct {
 	rows       RowIter
 }
 
-func NewTableIter(ctx *Context, table Table, partitions PartitionIter) *TableRowIter {
+// NewTableRowIter returns a new iterator over the rows in the partitions of the table given.
+func NewTableRowIter(ctx *Context, table Table, partitions PartitionIter) *TableRowIter {
 	return &TableRowIter{ctx: ctx, table: table, partitions: partitions}
 }
 

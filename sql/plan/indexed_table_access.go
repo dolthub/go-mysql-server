@@ -38,7 +38,7 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return sql.NewTableIter(ctx, i.indexedTable, partIter), nil
+	return sql.NewTableRowIter(ctx, i.indexedTable, partIter), nil
 }
 
 func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error) {

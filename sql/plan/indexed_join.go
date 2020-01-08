@@ -7,7 +7,7 @@ import (
 	"reflect"
 )
 
-// An IndexedJoin is an inner join that uses index lookups for the secondary table.
+// An IndexedJoin is a join that uses index lookups for the secondary table.
 type IndexedJoin struct {
 	// The primary and secondary table nodes. The normal meanings of Left and
 	// Right in BinaryNode aren't necessarily meaningful here -- the Left node is always the primary table, and the Right
@@ -22,6 +22,16 @@ type IndexedJoin struct {
 	// The type of join. Left and right refer to the lexical position in the written query, not primary / secondary. In
 	// the case of a right join, the right table will always be the primary.
 	joinType JoinType
+}
+
+func NewIndexedJoin(primaryTable, indexedTable sql.Node, joinType JoinType, cond sql.Expression, primaryTableExpr sql.Expression, index sql.Index) *IndexedJoin {
+	return &IndexedJoin{
+		BinaryNode:       BinaryNode{primaryTable, indexedTable},
+		joinType:         joinType,
+		Cond:             cond,
+		Index:            index,
+		primaryTableExpr: primaryTableExpr,
+	}
 }
 
 func (ij *IndexedJoin) String() string {
@@ -57,16 +67,6 @@ func (ij *IndexedJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(ij, len(children), 2)
 	}
 	return NewIndexedJoin(children[0], children[1], ij.joinType, ij.Cond, ij.primaryTableExpr, ij.Index), nil
-}
-
-func NewIndexedJoin(primaryTable, indexedTable sql.Node, joinType JoinType, cond sql.Expression, primaryTableExpr sql.Expression, index sql.Index) *IndexedJoin {
-	return &IndexedJoin{
-		BinaryNode:       BinaryNode{primaryTable, indexedTable},
-		joinType:         joinType,
-		Cond:             cond,
-		Index:            index,
-		primaryTableExpr: primaryTableExpr,
-	}
 }
 
 func indexedJoinRowIter(ctx *sql.Context, left sql.Node, right sql.Node, indexAccess *IndexedTableAccess, primaryTableExpr sql.Expression, cond sql.Expression, index sql.Index, joinType JoinType) (sql.RowIter, error) {
@@ -140,7 +140,7 @@ func (i *indexedJoinIter) loadPrimary() error {
 
 func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 	if i.secondary == nil {
-		// evaluate the primary row against the left-hand condition to get the right-hand lookup key
+		// evaluate the primary row against the primary table expression to get the secondary table lookup key
 		key, err := i.primaryTableExpr.Eval(i.ctx, i.primaryRow)
 		if err != nil {
 			return nil, err
@@ -221,7 +221,7 @@ func conditionIsTrue(ctx *sql.Context, row sql.Row, cond sql.Expression) (bool, 
 	return v == true, nil
 }
 
-// buildRow builds the resulting row using the rows from the primary and secondary tables
+// buildRow builds the result set row using the rows from the primary and secondary tables
 func (i *indexedJoinIter) buildRow(primary, secondary sql.Row) sql.Row {
 	row := make(sql.Row, i.rowSize)
 

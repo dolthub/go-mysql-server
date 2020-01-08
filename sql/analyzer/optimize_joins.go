@@ -9,9 +9,9 @@ import (
 
 type Aliases map[string]sql.Expression
 
-// optimizePrimaryKeyJoins takes InnerJoins where the join condition is the primary keys of two tables and replaces them with an
-// IndexedJoin on the same two tables. Only works for equality expressions.
-func optimizePrimaryKeyJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+// optimizeJoins takes two-table InnerJoins where the join condition is an equality on an index of one of the tables,
+// and replaces it with an equivalent IndexedJoin of the same two tables.
+func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("optimizePrimaryKeyJoins")
 	defer span.Finish()
 
