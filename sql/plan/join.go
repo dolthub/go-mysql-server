@@ -279,6 +279,7 @@ func joinRowIter(
 			cond:              cond,
 			mode:              mode,
 			secondaryRows:     cache,
+			rowSize:           len(left.Schema()) + len(right.Schema()),
 			dispose:           dispose,
 		}), nil
 	}
@@ -297,6 +298,7 @@ func joinRowIter(
 		cond:              cond,
 		mode:              mode,
 		secondaryRows:     cache,
+		rowSize:           len(left.Schema()) + len(right.Schema()),
 		dispose:           dispose,
 	}), nil
 }
@@ -496,13 +498,7 @@ func (i *joinIter) Next() (sql.Row, error) {
 // buildRow builds the resulting row using the rows from the primary and
 // secondary branches depending on the join type.
 func (i *joinIter) buildRow(primary, secondary sql.Row) sql.Row {
-	var row sql.Row
-	if i.rowSize > 0 {
-		row = make(sql.Row, i.rowSize)
-	} else {
-		row = make(sql.Row, len(primary)+len(secondary))
-		i.rowSize = len(row)
-	}
+	row := make(sql.Row, i.rowSize)
 
 	switch i.typ {
 	case JoinTypeRight:
