@@ -24,8 +24,8 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return n, nil
 	}
 
-	// Pushdown interferes with evaluating per-row index lookups for indexed joins, as well as left and right joins,
-	// so skip them.
+	// Pushdown interferes with left and right joins (some where clauses must only be evaluated on the result of the join,
+	// not pushed down to the tables), so skip them.
 	// TODO: only some join queries are incompatible with pushdown semantics, and we could be more judicious with this
 	//  pruning. The issue is that for left and right joins, some where clauses must be evaluated on the result set after
 	//  joining, and cannot be pushed down to the individual tables. For example, filtering on whether a field in the
@@ -33,7 +33,7 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	incompatibleJoin := false
 	plan.Inspect(n, func(node sql.Node) bool {
 		switch node.(type) {
-		case *plan.IndexedJoin, *plan.LeftJoin, *plan.RightJoin:
+		case *plan.LeftJoin, *plan.RightJoin:
 			incompatibleJoin = true
 		}
 		return true
