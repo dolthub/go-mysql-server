@@ -32,1553 +32,1553 @@ type queryTest struct {
 }
 
 var queries = []queryTest{
-	// {
-	// 	"SELECT i FROM mytable;",
-	// 	[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
-	// },
-	// {
-	// 	"SELECT s,i FROM mytable;",
-	// 	[]sql.Row{
-	// 		{"first row", int64(1)},
-	// 		{"second row", int64(2)},
-	// 		{"third row", int64(3)}},
-	// },
-	// {
-	// 	"SELECT s,i FROM (select i,s FROM mytable) mt;",
-	// 	[]sql.Row{
-	// 		{"first row", int64(1)},
-	// 		{"second row", int64(2)},
-	// 		{"third row", int64(3)}},
-	// },
-	// {
-	// 	"SELECT i + 1 FROM mytable;",
-	// 	[]sql.Row{{int64(2)}, {int64(3)}, {int64(4)}},
-	// },
-	// {
-	// 	"SELECT -i FROM mytable;",
-	// 	[]sql.Row{{int64(-1)}, {int64(-2)}, {int64(-3)}},
-	// },
-	// {
-	// 	"SELECT +i FROM mytable;",
-	// 	[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
-	// },
-	// {
-	// 	"SELECT + - i FROM mytable;",
-	// 	[]sql.Row{{int64(-1)}, {int64(-2)}, {int64(-3)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE -i = -2;",
-	// 	[]sql.Row{{int64(2)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE i = 2;",
-	// 	[]sql.Row{{int64(2)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE i > 2;",
-	// 	[]sql.Row{{int64(3)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE i < 2;",
-	// 	[]sql.Row{{int64(1)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE i <> 2;",
-	// 	[]sql.Row{{int64(1)}, {int64(3)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE i IN (1, 3)",
-	// 	[]sql.Row{{int64(1)}, {int64(3)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE i = 1 OR i = 3",
-	// 	[]sql.Row{{int64(1)}, {int64(3)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE i >= 2 ORDER BY 1",
-	// 	[]sql.Row{{int64(2)}, {int64(3)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE i <= 2 ORDER BY 1",
-	// 	[]sql.Row{{int64(1)}, {int64(2)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE i > 2",
-	// 	[]sql.Row{{int64(3)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE i < 2",
-	// 	[]sql.Row{{int64(1)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE i >= 2 OR i = 1 ORDER BY 1",
-	// 	[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
-	// },
-	// {
-	// 	"SELECT f32 FROM floattable WHERE f64 = 2.0;",
-	// 	[]sql.Row{{float32(2.0)}},
-	// },
-	// {
-	// 	"SELECT f32 FROM floattable WHERE f64 < 2.0;",
-	// 	[]sql.Row{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}},
-	// },
-	// {
-	// 	"SELECT f32 FROM floattable WHERE f64 > 2.0;",
-	// 	[]sql.Row{{float32(2.5)}},
-	// },
-	// {
-	// 	"SELECT f32 FROM floattable WHERE f64 <> 2.0;",
-	// 	[]sql.Row{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}, {float32(2.5)}},
-	// },
-	// {
-	// 	"SELECT f64 FROM floattable WHERE f32 = 2.0;",
-	// 	[]sql.Row{{float64(2.0)}},
-	// },
-	// {
-	// 	"SELECT f64 FROM floattable WHERE f32 = -1.5;",
-	// 	[]sql.Row{{float64(-1.5)}},
-	// },
-	// {
-	// 	"SELECT f64 FROM floattable WHERE -f32 = -2.0;",
-	// 	[]sql.Row{{float64(2.0)}},
-	// },
-	// {
-	// 	"SELECT f64 FROM floattable WHERE f32 < 2.0;",
-	// 	[]sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}},
-	// },
-	// {
-	// 	"SELECT f64 FROM floattable WHERE f32 > 2.0;",
-	// 	[]sql.Row{{float64(2.5)}},
-	// },
-	// {
-	// 	"SELECT f64 FROM floattable WHERE f32 <> 2.0;",
-	// 	[]sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}, {float64(2.5)}},
-	// },
-	// {
-	// 	"SELECT f32 FROM floattable ORDER BY f64;",
-	// 	[]sql.Row{{float32(-1.5)}, {float32(-1.0)}, {float32(1.0)}, {float32(1.5)}, {float32(2.0)}, {float32(2.5)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable ORDER BY i DESC;",
-	// 	[]sql.Row{{int64(3)}, {int64(2)}, {int64(1)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE 'hello';",
-	// 	nil,
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE NOT 'hello';",
-	// 	[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC;",
-	// 	[]sql.Row{{int64(1)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT 1;",
-	// 	[]sql.Row{{int64(1)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable ORDER BY i LIMIT 1 OFFSET 1;",
-	// 	[]sql.Row{{int64(2)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable ORDER BY i LIMIT 1,1;",
-	// 	[]sql.Row{{int64(2)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable ORDER BY i LIMIT 3,1;",
-	// 	nil,
-	// },
-	// {
-	// 	"SELECT i FROM mytable ORDER BY i LIMIT 2,100;",
-	// 	[]sql.Row{{int64(3)}},
-	// },
-	// {
-	// 	"SELECT i FROM niltable WHERE b IS NULL",
-	// 	[]sql.Row{{int64(2)}, {nil}},
-	// },
-	// {
-	// 	"SELECT i FROM niltable WHERE b IS NOT NULL",
-	// 	[]sql.Row{{int64(1)}, {nil}, {int64(4)}},
-	// },
-	// {
-	// 	"SELECT i FROM niltable WHERE b",
-	// 	[]sql.Row{{int64(1)}, {int64(4)}},
-	// },
-	// {
-	// 	"SELECT i FROM niltable WHERE NOT b",
-	// 	[]sql.Row{{nil}},
-	// },
-	// {
-	// 	"SELECT i FROM niltable WHERE b IS TRUE",
-	// 	[]sql.Row{{int64(1)}, {int64(4)}},
-	// },
-	// {
-	// 	"SELECT i FROM niltable WHERE b IS NOT TRUE",
-	// 	[]sql.Row{{int64(2)}, {nil}, {nil}},
-	// },
-	// {
-	// 	"SELECT f FROM niltable WHERE b IS FALSE",
-	// 	[]sql.Row{{3.0}},
-	// },
-	// {
-	// 	"SELECT i FROM niltable WHERE b IS NOT FALSE",
-	// 	[]sql.Row{{int64(1)}, {int64(2)}, {int64(4)}, {nil}},
-	// },
-	// {
-	// 	"SELECT COUNT(*) FROM mytable;",
-	// 	[]sql.Row{{int64(3)}},
-	// },
-	// {
-	// 	"SELECT COUNT(*) FROM mytable LIMIT 1;",
-	// 	[]sql.Row{{int64(3)}},
-	// },
-	// {
-	// 	"SELECT COUNT(*) AS c FROM mytable;",
-	// 	[]sql.Row{{int64(3)}},
-	// },
-	// {
-	// 	"SELECT substring(s, 2, 3) FROM mytable",
-	// 	[]sql.Row{{"irs"}, {"eco"}, {"hir"}},
-	// },
-	// {
-	// 	`SELECT substring("foo", 2, 2)`,
-	// 	[]sql.Row{{"oo"}},
-	// },
-	// {
-	// 	`SELECT SUBSTRING_INDEX('a.b.c.d.e.f', '.', 2)`,
-	// 	[]sql.Row{
-	// 		{"a.b"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT SUBSTRING_INDEX('a.b.c.d.e.f', '.', -2)`,
-	// 	[]sql.Row{
-	// 		{"e.f"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT SUBSTRING_INDEX(SUBSTRING_INDEX('source{d}', '{d}', 1), 'r', -1)`,
-	// 	[]sql.Row{
-	// 		{"ce"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY 1 HAVING s = 'secon'`,
-	// 	[]sql.Row{{"secon"}},
-	// },
-	// {
-	// 	"SELECT YEAR('2007-12-11') FROM mytable",
-	// 	[]sql.Row{{int32(2007)}, {int32(2007)}, {int32(2007)}},
-	// },
-	// {
-	// 	"SELECT MONTH('2007-12-11') FROM mytable",
-	// 	[]sql.Row{{int32(12)}, {int32(12)}, {int32(12)}},
-	// },
-	// {
-	// 	"SELECT DAY('2007-12-11') FROM mytable",
-	// 	[]sql.Row{{int32(11)}, {int32(11)}, {int32(11)}},
-	// },
-	// {
-	// 	"SELECT HOUR('2007-12-11 20:21:22') FROM mytable",
-	// 	[]sql.Row{{int32(20)}, {int32(20)}, {int32(20)}},
-	// },
-	// {
-	// 	"SELECT MINUTE('2007-12-11 20:21:22') FROM mytable",
-	// 	[]sql.Row{{int32(21)}, {int32(21)}, {int32(21)}},
-	// },
-	// {
-	// 	"SELECT SECOND('2007-12-11 20:21:22') FROM mytable",
-	// 	[]sql.Row{{int32(22)}, {int32(22)}, {int32(22)}},
-	// },
-	// {
-	// 	"SELECT DAYOFYEAR('2007-12-11 20:21:22') FROM mytable",
-	// 	[]sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
-	// },
-	// {
-	// 	"SELECT SECOND('2007-12-11T20:21:22Z') FROM mytable",
-	// 	[]sql.Row{{int32(22)}, {int32(22)}, {int32(22)}},
-	// },
-	// {
-	// 	"SELECT DAYOFYEAR('2007-12-11') FROM mytable",
-	// 	[]sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
-	// },
-	// {
-	// 	"SELECT DAYOFYEAR('20071211') FROM mytable",
-	// 	[]sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
-	// },
-	// {
-	// 	"SELECT YEARWEEK('0000-01-01')",
-	// 	[]sql.Row{{int32(1)}},
-	// },
-	// {
-	// 	"SELECT YEARWEEK('9999-12-31')",
-	// 	[]sql.Row{{int32(999952)}},
-	// },
-	// {
-	// 	"SELECT YEARWEEK('2008-02-20', 1)",
-	// 	[]sql.Row{{int32(200808)}},
-	// },
-	// {
-	// 	"SELECT YEARWEEK('1987-01-01')",
-	// 	[]sql.Row{{int32(198652)}},
-	// },
-	// {
-	// 	"SELECT YEARWEEK('1987-01-01', 20), YEARWEEK('1987-01-01', 1), YEARWEEK('1987-01-01', 2), YEARWEEK('1987-01-01', 3), YEARWEEK('1987-01-01', 4), YEARWEEK('1987-01-01', 5), YEARWEEK('1987-01-01', 6), YEARWEEK('1987-01-01', 7)",
-	// 	[]sql.Row{{int32(198653), int32(198701), int32(198652), int32(198701), int32(198653), int32(198652), int32(198653), int32(198652)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
-	// 	[]sql.Row{{int64(1)}, {int64(2)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE i NOT BETWEEN 1 AND 2",
-	// 	[]sql.Row{{int64(3)}},
-	// },
-	// {
-	// 	"SELECT substring(mytable.s, 1, 5) AS s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1",
-	// 	[]sql.Row{
-	// 		{"third"},
-	// 		{"secon"},
-	// 		{"first"},
-	// 	},
-	// },
-	// {
-	// 	"SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
-	// 	[]sql.Row{
-	// 		{int64(1), int64(1), "third"},
-	// 		{int64(2), int64(2), "second"},
-	// 		{int64(3), int64(3), "first"},
-	// 	},
-	// },
-	// {
-	// 	"SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
-	// 	[]sql.Row{
-	// 		{"third", int64(1), int64(1)},
-	// 		{"second", int64(2), int64(2)},
-	// 		{ "first", int64(3), int64(3)},
-	// 	},
-	// },
-	// {
-	// 	"SELECT i, i2, s2 FROM othertable JOIN mytable  ON i = i2 ORDER BY i",
-	// 	[]sql.Row{
-	// 		{int64(1), int64(1), "third"},
-	// 		{int64(2), int64(2), "second"},
-	// 		{int64(3), int64(3), "first"},
-	// 	},
-	// },
-	// {
-	// 	"SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2 ORDER BY i",
-	// 	[]sql.Row{
-	// 		{"third", int64(1), int64(1)},
-	// 		{"second", int64(2), int64(2)},
-	// 		{ "first", int64(3), int64(3)},
-	// 	},
-	// },
-	// {
-	// 	"SELECT substring(s2, 1), substring(s2, 2), substring(s2, 3) FROM othertable ORDER BY i2",
-	// 	[]sql.Row{
-	// 		{"third", "hird", "ird"},
-	// 		{"second", "econd", "cond"},
-	// 		{"first", "irst", "rst"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT substring("first", 1), substring("second", 2), substring("third", 3)`,
-	// 	[]sql.Row{
-	// 		{"first", "econd", "ird"},
-	// 	},
-	// },
-	// {
-	// 	"SELECT substring(s2, -1), substring(s2, -2), substring(s2, -3) FROM othertable ORDER BY i2",
-	// 	[]sql.Row{
-	// 		{"d", "rd", "ird"},
-	// 		{"d", "nd", "ond"},
-	// 		{"t", "st", "rst"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT substring("first", -1), substring("second", -2), substring("third", -3)`,
-	// 	[]sql.Row{
-	// 		{"t", "nd", "ird"},
-	// 	},
-	// },
-	// {
-	// 	"SELECT s FROM mytable INNER JOIN othertable " +
-	// 			"ON substring(s2, 1, 2) != '' AND i = i2 ORDER BY 1",
-	// 	[]sql.Row{
-	// 		{"first row"},
-	// 		{"second row"},
-	// 		{"third row"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT COUNT(*) AS cnt, fi FROM (
-	// 		SELECT tbl.s AS fi
-	// 		FROM mytable tbl
-	// 	) t
-	// 	GROUP BY fi`,
-	// 	[]sql.Row{
-	// 		{int64(1), "first row"},
-	// 		{int64(1), "second row"},
-	// 		{int64(1), "third row"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT fi, COUNT(*) FROM (
-	// 		SELECT tbl.s AS fi
-	// 		FROM mytable tbl
-	// 	) t
-	// 	GROUP BY fi
-	// 	ORDER BY COUNT(*) ASC`,
-	// 	[]sql.Row{
-	// 		{"first row", int64(1)},
-	// 		{"second row", int64(1)},
-	// 		{"third row", int64(1)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT COUNT(*), fi  FROM (
-	// 		SELECT tbl.s AS fi
-	// 		FROM mytable tbl
-	// 	) t
-	// 	GROUP BY fi
-	// 	ORDER BY COUNT(*) ASC`,
-	// 	[]sql.Row{
-	// 		{int64(1), "first row"},
-	// 		{int64(1), "second row"},
-	// 		{int64(1), "third row"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT COUNT(*) AS cnt, fi FROM (
-	// 		SELECT tbl.s AS fi
-	// 		FROM mytable tbl
-	// 	) t
-	// 	GROUP BY 2`,
-	// 	[]sql.Row{
-	// 		{int64(1), "first row"},
-	// 		{int64(1), "second row"},
-	// 		{int64(1), "third row"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT COUNT(*) AS cnt, s AS fi FROM mytable GROUP BY fi`,
-	// 	[]sql.Row{
-	// 		{int64(1), "first row"},
-	// 		{int64(1), "second row"},
-	// 		{int64(1), "third row"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT COUNT(*) AS cnt, s AS fi FROM mytable GROUP BY 2`,
-	// 	[]sql.Row{
-	// 		{int64(1), "first row"},
-	// 		{int64(1), "second row"},
-	// 		{int64(1), "third row"},
-	// 	},
-	// },
-	// {
-	// 	"SELECT CAST(-3 AS UNSIGNED) FROM mytable",
-	// 	[]sql.Row{
-	// 		{uint64(18446744073709551613)},
-	// 		{uint64(18446744073709551613)},
-	// 		{uint64(18446744073709551613)},
-	// 	},
-	// },
-	// {
-	// 	"SELECT CONVERT(-3, UNSIGNED) FROM mytable",
-	// 	[]sql.Row{
-	// 		{uint64(18446744073709551613)},
-	// 		{uint64(18446744073709551613)},
-	// 		{uint64(18446744073709551613)},
-	// 	},
-	// },
-	// {
-	// 	"SELECT '3' > 2 FROM tabletest",
-	// 	[]sql.Row{
-	// 		{true},
-	// 		{true},
-	// 		{true},
-	// 	},
-	// },
-	// {
-	// 	"SELECT s > 2 FROM tabletest",
-	// 	[]sql.Row{
-	// 		{false},
-	// 		{false},
-	// 		{false},
-	// 	},
-	// },
-	// {
-	// 	"SELECT * FROM tabletest WHERE s > 0",
-	// 	nil,
-	// },
-	// {
-	// 	"SELECT * FROM tabletest WHERE s = 0",
-	// 	[]sql.Row{
-	// 		{int64(1), "first row"},
-	// 		{int64(2), "second row"},
-	// 		{int64(3), "third row"},
-	// 	},
-	// },
-	// {
-	// 	"SELECT * FROM tabletest WHERE s = 'first row'",
-	// 	[]sql.Row{
-	// 		{int64(1), "first row"},
-	// 	},
-	// },
-	// {
-	// 	"SELECT s FROM mytable WHERE i IN (1, 2, 5)",
-	// 	[]sql.Row{
-	// 		{"first row"},
-	// 		{"second row"},
-	// 	},
-	// },
-	// {
-	// 	"SELECT s FROM mytable WHERE i NOT IN (1, 2, 5)",
-	// 	[]sql.Row{
-	// 		{"third row"},
-	// 	},
-	// },
-	// {
-	// 	"SELECT 1 + 2",
-	// 	[]sql.Row{
-	// 		{int64(3)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT i AS foo FROM mytable WHERE foo NOT IN (1, 2, 5)`,
-	// 	[]sql.Row{{int64(3)}},
-	// },
-	// {
-	// 	`SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2`,
-	// 	[]sql.Row{
-	// 		{int64(1), "first row", int64(1), "first row", "third", int64(1)},
-	// 		{int64(1), "first row", int64(2), "second row", "second", int64(2)},
-	// 		{int64(1), "first row", int64(3), "third row", "first", int64(3)},
-	// 		{int64(2), "second row", int64(1), "first row", "third", int64(1)},
-	// 		{int64(2), "second row", int64(2), "second row", "second", int64(2)},
-	// 		{int64(2), "second row", int64(3), "third row", "first", int64(3)},
-	// 		{int64(3), "third row", int64(1), "first row", "third", int64(1)},
-	// 		{int64(3), "third row", int64(2), "second row", "second", int64(2)},
-	// 		{int64(3), "third row", int64(3), "third row", "first", int64(3)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT split(s," ") FROM mytable`,
-	// 	[]sql.Row{
-	// 		sql.NewRow([]interface{}{"first", "row"}),
-	// 		sql.NewRow([]interface{}{"second", "row"}),
-	// 		sql.NewRow([]interface{}{"third", "row"}),
-	// 	},
-	// },
-	// {
-	// 	`SELECT split(s,"s") FROM mytable`,
-	// 	[]sql.Row{
-	// 		sql.NewRow([]interface{}{"fir", "t row"}),
-	// 		sql.NewRow([]interface{}{"", "econd row"}),
-	// 		sql.NewRow([]interface{}{"third row"}),
-	// 	},
-	// },
-	// {
-	// 	`SELECT SUM(i) FROM mytable`,
-	// 	[]sql.Row{{float64(6)}},
-	// },
-	// {
-	// 	`SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2`,
-	// 	[]sql.Row{
-	// 		{int64(3), "third row", "first", int64(3)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT i AS foo FROM mytable ORDER BY i DESC`,
-	// 	[]sql.Row{
-	// 		{int64(3)},
-	// 		{int64(2)},
-	// 		{int64(1)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY i ORDER BY i DESC`,
-	// 	[]sql.Row{
-	// 		{int64(1), int64(3)},
-	// 		{int64(1), int64(2)},
-	// 		{int64(1), int64(1)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY 2 ORDER BY 2 DESC`,
-	// 	[]sql.Row{
-	// 		{int64(1), int64(3)},
-	// 		{int64(1), int64(2)},
-	// 		{int64(1), int64(1)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY i ORDER BY foo DESC`,
-	// 	[]sql.Row{
-	// 		{int64(1), int64(3)},
-	// 		{int64(1), int64(2)},
-	// 		{int64(1), int64(1)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY 2 ORDER BY foo DESC`,
-	// 	[]sql.Row{
-	// 		{int64(1), int64(3)},
-	// 		{int64(1), int64(2)},
-	// 		{int64(1), int64(1)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT COUNT(*) c, i AS i FROM mytable GROUP BY 2`,
-	// 	[]sql.Row{
-	// 		{int64(1), int64(3)},
-	// 		{int64(1), int64(2)},
-	// 		{int64(1), int64(1)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT i AS i FROM mytable GROUP BY 1`,
-	// 	[]sql.Row{
-	// 		{int64(3)},
-	// 		{int64(2)},
-	// 		{int64(1)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT CONCAT("a", "b", "c")`,
-	// 	[]sql.Row{
-	// 		{string("abc")},
-	// 	},
-	// },
-	// {
-	// 	`SELECT COALESCE(NULL, NULL, NULL, 'example', NULL, 1234567890)`,
-	// 	[]sql.Row{
-	// 		{string("example")},
-	// 	},
-	// },
-	// {
-	// 	`SELECT COALESCE(NULL, NULL, NULL, COALESCE(NULL, 1234567890))`,
-	// 	[]sql.Row{
-	// 		{int32(1234567890)},
-	// 	},
-	// },
-	// {
-	// 	"SELECT concat(s, i) FROM mytable",
-	// 	[]sql.Row{
-	// 		{string("first row1")},
-	// 		{string("second row2")},
-	// 		{string("third row3")},
-	// 	},
-	// },
-	// {
-	// 	"SELECT version()",
-	// 	[]sql.Row{
-	// 		{string("8.0.11")},
-	// 	},
-	// },
-	// {
-	// 	"SELECT * FROM mytable WHERE 1 > 5",
-	// 	nil,
-	// },
-	// {
-	// 	"SELECT SUM(i) + 1, i FROM mytable GROUP BY i ORDER BY i",
-	// 	[]sql.Row{
-	// 		{float64(2), int64(1)},
-	// 		{float64(3), int64(2)},
-	// 		{float64(4), int64(3)},
-	// 	},
-	// },
-	// {
-	// 	"SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-	// 	[]sql.Row{
-	// 		{float64(1), int64(1)},
-	// 		{float64(2), int64(2)},
-	// 		{float64(3), int64(3)},
-	// 	},
-	// },
-	// {
-	// 	"SELECT i, SUM(i) FROM mytable GROUP BY i ORDER BY SUM(i) DESC",
-	// 	[]sql.Row{
-	// 		{int64(3), float64(3)},
-	// 		{int64(2), float64(2)},
-	// 		{int64(1), float64(1)},
-	// 	},
-	// },
-	// {
-	// 	`/*!40101 SET NAMES utf8 */`,
-	// 	nil,
-	// },
-	// {
-	// 	`SHOW DATABASES`,
-	// 	[]sql.Row{{"mydb"}, {"foo"}},
-	// },
-	// {
-	// 	`SHOW SCHEMAS`,
-	// 	[]sql.Row{{"mydb"}, {"foo"}},
-	// },
-	// {
-	// 	`SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA`,
-	// 	[]sql.Row{
-	// 		{"mydb", "utf8mb4", "utf8_bin"},
-	// 		{"foo", "utf8mb4", "utf8_bin"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT s FROM mytable WHERE s LIKE '%d row'`,
-	// 	[]sql.Row{
-	// 		{"second row"},
-	// 		{"third row"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT SUBSTRING(s, -3, 3) AS s FROM mytable WHERE s LIKE '%d row' GROUP BY 1`,
-	// 	[]sql.Row{
-	// 		{"row"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT s FROM mytable WHERE s NOT LIKE '%d row'`,
-	// 	[]sql.Row{
-	// 		{"first row"},
-	// 	},
-	// },
-	// {
-	// 	`SHOW COLUMNS FROM mytable`,
-	// 	[]sql.Row{
-	// 		{"i", "BIGINT", "NO", "", "", ""},
-	// 		{"s", "TEXT", "NO", "", "", ""},
-	// 	},
-	// },
-	// {
-	// 	`DESCRIBE mytable`,
-	// 	[]sql.Row{
-	// 		{"i", "BIGINT", "NO", "", "", ""},
-	// 		{"s", "TEXT", "NO", "", "", ""},
-	// 	},
-	// },
-	// {
-	// 	`DESC mytable`,
-	// 	[]sql.Row{
-	// 		{"i", "BIGINT", "NO", "", "", ""},
-	// 		{"s", "TEXT", "NO", "", "", ""},
-	// 	},
-	// },
-	// {
-	// 	`SHOW COLUMNS FROM one_pk`,
-	// 	[]sql.Row{
-	// 		{"pk", "TINYINT", "NO", "PRI", "", ""},
-	// 		{"c1", "TINYINT", "NO", "", "", ""},
-	// 		{"c2", "TINYINT", "NO", "", "", ""},
-	// 		{"c3", "TINYINT", "NO", "", "", ""},
-	// 		{"c4", "TINYINT", "NO", "", "", ""},
-	// 		{"c5", "TINYINT", "NO", "", "", ""},
-	// 	},
-	// },
-	// {
-	// 	`DESCRIBE one_pk`,
-	// 	[]sql.Row{
-	// 		{"pk", "TINYINT", "NO", "PRI", "", ""},
-	// 		{"c1", "TINYINT", "NO", "", "", ""},
-	// 		{"c2", "TINYINT", "NO", "", "", ""},
-	// 		{"c3", "TINYINT", "NO", "", "", ""},
-	// 		{"c4", "TINYINT", "NO", "", "", ""},
-	// 		{"c5", "TINYINT", "NO", "", "", ""},
-	// 	},
-	// },
-	// {
-	// 	`DESC one_pk`,
-	// 	[]sql.Row{
-	// 		{"pk", "TINYINT", "NO", "PRI", "", ""},
-	// 		{"c1", "TINYINT", "NO", "", "", ""},
-	// 		{"c2", "TINYINT", "NO", "", "", ""},
-	// 		{"c3", "TINYINT", "NO", "", "", ""},
-	// 		{"c4", "TINYINT", "NO", "", "", ""},
-	// 		{"c5", "TINYINT", "NO", "", "", ""},
-	// 	},
-	// },
-	//
-	// {
-	// 	`SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
-	// 	[]sql.Row{
-	// 		{"i", "BIGINT", "NO", "", "", ""},
-	// 	},
-	// },
-	// {
-	// 	`SHOW COLUMNS FROM mytable LIKE 'i'`,
-	// 	[]sql.Row{
-	// 		{"i", "BIGINT", "NO", "", "", ""},
-	// 	},
-	// },
-	// {
-	// 	`SHOW FULL COLUMNS FROM mytable`,
-	// 	[]sql.Row{
-	// 		{"i", "BIGINT", nil, "NO", "", "", "", "", ""},
-	// 		{"s", "TEXT", "utf8_bin", "NO", "", "", "", "", ""},
-	// 	},
-	// },
-	// {
-	// 	`SHOW FULL COLUMNS FROM one_pk`,
-	// 	[]sql.Row{
-	// 		{"pk", "TINYINT", nil, "NO", "PRI", "", "", "", ""},
-	// 		{"c1", "TINYINT", nil, "NO", "", "", "", "", ""},
-	// 		{"c2", "TINYINT", nil, "NO", "", "", "", "", ""},
-	// 		{"c3", "TINYINT", nil, "NO", "", "", "", "", ""},
-	// 		{"c4", "TINYINT", nil, "NO", "", "", "", "", ""},
-	// 		{"c5", "TINYINT", nil, "NO", "", "", "", "", "column 5"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT * FROM foo.other_table`,
-	// 	[]sql.Row{
-	// 		{"a", int32(4)},
-	// 		{"b", int32(2)},
-	// 		{"c", int32(0)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT AVG(23.222000)`,
-	// 	[]sql.Row{
-	// 		{float64(23.222)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT DATABASE()`,
-	// 	[]sql.Row{
-	// 		{"mydb"},
-	// 	},
-	// },
-	// {
-	// 	`SHOW VARIABLES`,
-	// 	[]sql.Row{
-	// 		{"auto_increment_increment", int64(1)},
-	// 		{"time_zone", time.Local.String()},
-	// 		{"system_time_zone", time.Local.String()},
-	// 		{"max_allowed_packet", math.MaxInt32},
-	// 		{"sql_mode", ""},
-	// 		{"gtid_mode", int32(0)},
-	// 		{"collation_database", "utf8_bin"},
-	// 		{"ndbinfo_version", ""},
-	// 		{"sql_select_limit", math.MaxInt32},
-	// 		{"transaction_isolation", "READ UNCOMMITTED"},
-	// 		{"version", ""},
-	// 		{"version_comment", ""},
-	// 	},
-	// },
-	// {
-	// 	`SHOW VARIABLES LIKE 'gtid_mode`,
-	// 	[]sql.Row{
-	// 		{"gtid_mode", int32(0)},
-	// 	},
-	// },
-	// {
-	// 	`SHOW VARIABLES LIKE 'gtid%`,
-	// 	[]sql.Row{
-	// 		{"gtid_mode", int32(0)},
-	// 	},
-	// },
-	// {
-	// 	`SHOW GLOBAL VARIABLES LIKE '%mode`,
-	// 	[]sql.Row{
-	// 		{"sql_mode", ""},
-	// 		{"gtid_mode", int32(0)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT JSON_EXTRACT("foo", "$")`,
-	// 	[]sql.Row{{"foo"}},
-	// },
-	// {
-	// 	`SELECT JSON_UNQUOTE('"foo"')`,
-	// 	[]sql.Row{{"foo"}},
-	// },
-	// {
-	// 	`SELECT JSON_UNQUOTE('[1, 2, 3]')`,
-	// 	[]sql.Row{{"[1, 2, 3]"}},
-	// },
-	// {
-	// 	`SELECT JSON_UNQUOTE('"\\t\\u0032"')`,
-	// 	[]sql.Row{{"\t2"}},
-	// },
-	// {
-	// 	`SELECT JSON_UNQUOTE('"\t\\u0032"')`,
-	// 	[]sql.Row{{"\t2"}},
-	// },
-	// {
-	// 	`SELECT CONNECTION_ID()`,
-	// 	[]sql.Row{{uint32(1)}},
-	// },
-	// {
-	// 	`SHOW CREATE DATABASE mydb`,
-	// 	[]sql.Row{{
-	// 		"mydb",
-	// 		"CREATE DATABASE `mydb` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8_bin */",
-	// 	}},
-	// },
-	// {
-	// 	`SELECT -1`,
-	// 	[]sql.Row{{int8(-1)}},
-	// },
-	// {
-	// 	`
-	// 	SHOW WARNINGS
-	// 	`,
-	// 	nil,
-	// },
-	// {
-	// 	`SHOW WARNINGS LIMIT 0`,
-	// 	nil,
-	// },
-	// {
-	// 	`SET SESSION NET_READ_TIMEOUT= 700, SESSION NET_WRITE_TIMEOUT= 700`,
-	// 	nil,
-	// },
-	// {
-	// 	`SELECT NULL`,
-	// 	[]sql.Row{
-	// 		{nil},
-	// 	},
-	// },
-	// {
-	// 	`SELECT nullif('abc', NULL)`,
-	// 	[]sql.Row{
-	// 		{"abc"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT nullif(NULL, NULL)`,
-	// 	[]sql.Row{
-	// 		{sql.Null},
-	// 	},
-	// },
-	// {
-	// 	`SELECT nullif(NULL, 123)`,
-	// 	[]sql.Row{
-	// 		{nil},
-	// 	},
-	// },
-	// {
-	// 	`SELECT nullif(123, 123)`,
-	// 	[]sql.Row{
-	// 		{sql.Null},
-	// 	},
-	// },
-	// {
-	// 	`SELECT nullif(123, 321)`,
-	// 	[]sql.Row{
-	// 		{int8(123)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT ifnull(123, NULL)`,
-	// 	[]sql.Row{
-	// 		{int8(123)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT ifnull(NULL, NULL)`,
-	// 	[]sql.Row{
-	// 		{nil},
-	// 	},
-	// },
-	// {
-	// 	`SELECT ifnull(NULL, 123)`,
-	// 	[]sql.Row{
-	// 		{int8(123)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT ifnull(123, 123)`,
-	// 	[]sql.Row{
-	// 		{int8(123)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT ifnull(123, 321)`,
-	// 	[]sql.Row{
-	// 		{int8(123)},
-	// 	},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE NULL > 10;",
-	// 	nil,
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE NULL IN (10);",
-	// 	nil,
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE NULL IN (NULL, NULL);",
-	// 	nil,
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE NOT NULL NOT IN (NULL);",
-	// 	nil,
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE NOT (NULL) <> 10;",
-	// 	nil,
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE NOT NULL <> NULL;",
-	// 	nil,
-	// },
-	// {
-	// 	`SELECT round(15728640/1024/1024)`,
-	// 	[]sql.Row{
-	// 		{int64(15)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT round(15, 1)`,
-	// 	[]sql.Row{
-	// 		{int8(15)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT CASE i WHEN 1 THEN 'one' WHEN 2 THEN 'two' ELSE 'other' END FROM mytable`,
-	// 	[]sql.Row{
-	// 		{"one"},
-	// 		{"two"},
-	// 		{"other"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT CASE WHEN i > 2 THEN 'more than two' WHEN i < 2 THEN 'less than two' ELSE 'two' END FROM mytable`,
-	// 	[]sql.Row{
-	// 		{"less than two"},
-	// 		{"two"},
-	// 		{"more than two"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT CASE i WHEN 1 THEN 'one' WHEN 2 THEN 'two' END FROM mytable`,
-	// 	[]sql.Row{
-	// 		{"one"},
-	// 		{"two"},
-	// 		{nil},
-	// 	},
-	// },
-	// {
-	// 	`SHOW COLLATION`,
-	// 	[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
-	// },
-	// {
-	// 	`SHOW COLLATION LIKE 'foo'`,
-	// 	nil,
-	// },
-	// {
-	// 	`SHOW COLLATION LIKE 'utf8%'`,
-	// 	[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
-	// },
-	// {
-	// 	`SHOW COLLATION WHERE charset = 'foo'`,
-	// 	nil,
-	// },
-	// {
-	// 	"SHOW COLLATION WHERE `Default` = 'Yes'",
-	// 	[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
-	// },
-	// {
-	// 	"ROLLBACK",
-	// 	nil,
-	// },
-	// {
-	// 	"SELECT substring(s, 1, 1) FROM mytable ORDER BY substring(s, 1, 1)",
-	// 	[]sql.Row{{"f"}, {"s"}, {"t"}},
-	// },
-	// {
-	// 	"SELECT substring(s, 1, 1), count(*) FROM mytable GROUP BY substring(s, 1, 1)",
-	// 	[]sql.Row{{"f", int64(1)}, {"s", int64(1)}, {"t", int64(1)}},
-	// },
-	// {
-	// 	"SELECT SLEEP(0.5)",
-	// 	[]sql.Row{{int(0)}},
-	// },
-	// {
-	// 	"SELECT TO_BASE64('foo')",
-	// 	[]sql.Row{{string("Zm9v")}},
-	// },
-	// {
-	// 	"SELECT FROM_BASE64('YmFy')",
-	// 	[]sql.Row{{string("bar")}},
-	// },
-	// {
-	// 	"SELECT DATE_ADD('2018-05-02', INTERVAL 1 DAY)",
-	// 	[]sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
-	// },
-	// {
-	// 	"SELECT DATE_SUB('2018-05-02', INTERVAL 1 DAY)",
-	// 	[]sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
-	// },
-	// {
-	// 	"SELECT '2018-05-02' + INTERVAL 1 DAY",
-	// 	[]sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
-	// },
-	// {
-	// 	"SELECT '2018-05-02' - INTERVAL 1 DAY",
-	// 	[]sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
-	// },
-	// {
-	// 	`SELECT i AS i FROM mytable ORDER BY i`,
-	// 	[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
-	// },
-	// {
-	// 	`
-	// 	SELECT
-	// 		i,
-	// 		foo
-	// 	FROM (
-	// 		SELECT
-	// 			i,
-	// 			COUNT(s) AS foo
-	// 		FROM mytable
-	// 		GROUP BY i
-	// 	) AS q
-	// 	ORDER BY foo DESC
-	// 	`,
-	// 	[]sql.Row{
-	// 		{int64(1), int64(1)},
-	// 		{int64(2), int64(1)},
-	// 		{int64(3), int64(1)},
-	// 	},
-	// },
-	// {
-	// 	"SELECT n, COUNT(n) FROM bigtable GROUP BY n HAVING COUNT(n) > 2",
-	// 	[]sql.Row{{int64(1), int64(3)}, {int64(2), int64(3)}},
-	// },
-	// {
-	// 	"SELECT n, MAX(n) FROM bigtable GROUP BY n HAVING COUNT(n) > 2",
-	// 	[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}},
-	// },
-	// {
-	// 	"SELECT substring(mytable.s, 1, 5) AS s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1 HAVING s = \"secon\"",
-	// 	[]sql.Row{{"secon"}},
-	// },
-	// {
-	// 	"SELECT s,  i FROM mytable GROUP BY i ORDER BY SUBSTRING(s, 1, 1) DESC",
-	// 	[]sql.Row{
-	// 		{string("third row"), int64(3)},
-	// 		{string("second row"), int64(2)},
-	// 		{string("first row"), int64(1)},
-	// 	},
-	// },
-	// {
-	// 	"SELECT s, i FROM mytable GROUP BY i HAVING count(*) > 0 ORDER BY SUBSTRING(s, 1, 1) DESC",
-	// 	[]sql.Row{
-	// 		{string("third row"), int64(3)},
-	// 		{string("second row"), int64(2)},
-	// 		{string("first row"), int64(1)},
-	// 	},
-	// },
-	// {
-	// 	"SELECT CONVERT('9999-12-31 23:59:59', DATETIME)",
-	// 	[]sql.Row{{time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)}},
-	// },
-	// {
-	// 	"SELECT CONVERT('10000-12-31 23:59:59', DATETIME)",
-	// 	[]sql.Row{{nil}},
-	// },
-	// {
-	// 	"SELECT '9999-12-31 23:59:59' + INTERVAL 1 DAY",
-	// 	[]sql.Row{{nil}},
-	// },
-	// {
-	// 	"SELECT DATE_ADD('9999-12-31 23:59:59', INTERVAL 1 DAY)",
-	// 	[]sql.Row{{nil}},
-	// },
-	// {
-	// 	`SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) AS date_col) t WHERE t.date_col > '0000-01-01 00:00:00'`,
-	// 	[]sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
-	// },
-	// {
-	// 	`SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t GROUP BY t.date_col`,
-	// 	[]sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
-	// },
-	// {
-	// 	`SELECT i AS foo FROM mytable ORDER BY mytable.i`,
-	// 	[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
-	// },
-	// {
-	// 	`SELECT JSON_EXTRACT('[1, 2, 3]', '$.[0]')`,
-	// 	[]sql.Row{{float64(1)}},
-	// },
-	// {
-	// 	`SELECT ARRAY_LENGTH(JSON_EXTRACT('[1, 2, 3]', '$'))`,
-	// 	[]sql.Row{{int32(3)}},
-	// },
-	// {
-	// 	`SELECT ARRAY_LENGTH(JSON_EXTRACT('[{"i":0}, {"i":1, "y":"yyy"}, {"i":2, "x":"xxx"}]', '$.i'))`,
-	// 	[]sql.Row{{int32(3)}},
-	// },
-	// {
-	// 	`SELECT GREATEST(1, 2, 3, 4)`,
-	// 	[]sql.Row{{int64(4)}},
-	// },
-	// {
-	// 	`SELECT GREATEST(1, 2, "3", 4)`,
-	// 	[]sql.Row{{float64(4)}},
-	// },
-	// {
-	// 	`SELECT GREATEST(1, 2, "9", "foo999")`,
-	// 	[]sql.Row{{float64(9)}},
-	// },
-	// {
-	// 	`SELECT GREATEST("aaa", "bbb", "ccc")`,
-	// 	[]sql.Row{{"ccc"}},
-	// },
-	// {
-	// 	`SELECT GREATEST(i, s) FROM mytable`,
-	// 	[]sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
-	// },
-	// {
-	// 	`SELECT LEAST(1, 2, 3, 4)`,
-	// 	[]sql.Row{{int64(1)}},
-	// },
-	// {
-	// 	`SELECT LEAST(1, 2, "3", 4)`,
-	// 	[]sql.Row{{float64(1)}},
-	// },
-	// {
-	// 	`SELECT LEAST(1, 2, "9", "foo999")`,
-	// 	[]sql.Row{{float64(1)}},
-	// },
-	// {
-	// 	`SELECT LEAST("aaa", "bbb", "ccc")`,
-	// 	[]sql.Row{{"aaa"}},
-	// },
-	// {
-	// 	`SELECT LEAST(i, s) FROM mytable`,
-	// 	[]sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
-	// },
-	// {
-	// 	"SELECT i, i2, s2 FROM mytable LEFT JOIN othertable ON i = i2 - 1",
-	// 	[]sql.Row{
-	// 		{int64(1), int64(2), "second"},
-	// 		{int64(2), int64(3), "first"},
-	// 		{int64(3), nil, nil},
-	// 	},
-	// },
-	// {
-	// 	"SELECT i, i2, s2 FROM mytable RIGHT JOIN othertable ON i = i2 - 1",
-	// 	[]sql.Row{
-	// 		{nil, int64(1), "third"},
-	// 		{int64(1), int64(2), "second"},
-	// 		{int64(2), int64(3), "first"},
-	// 	},
-	// },
-	// {
-	// 	"SELECT i, i2, s2 FROM mytable LEFT OUTER JOIN othertable ON i = i2 - 1",
-	// 	[]sql.Row{
-	// 		{int64(1), int64(2), "second"},
-	// 		{int64(2), int64(3), "first"},
-	// 		{int64(3), nil, nil},
-	// 	},
-	// },
-	// {
-	// 	"SELECT i, i2, s2 FROM mytable RIGHT OUTER JOIN othertable ON i = i2 - 1",
-	// 	[]sql.Row{
-	// 		{nil, int64(1), "third"},
-	// 		{int64(1), int64(2), "second"},
-	// 		{int64(2), int64(3), "first"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT CHAR_LENGTH('áé'), LENGTH('àè')`,
-	// 	[]sql.Row{{int32(2), int32(4)}},
-	// },
-	// {
-	// 	"SELECT i, COUNT(i) AS `COUNT(i)` FROM (SELECT i FROM mytable) t GROUP BY i ORDER BY i, `COUNT(i)` DESC",
-	// 	[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(1)}, {int64(3), int64(1)}},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE NOT s ORDER BY 1 DESC",
-	// 	[]sql.Row{
-	// 		{int64(3)},
-	// 		{int64(2)},
-	// 		{int64(1)},
-	// 	},
-	// },
-	// {
-	// 	"SELECT i FROM mytable WHERE NOT(NOT i) ORDER BY 1 DESC",
-	// 	[]sql.Row{
-	// 		{int64(3)},
-	// 		{int64(2)},
-	// 		{int64(1)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT NOW() - NOW()`,
-	// 	[]sql.Row{{int64(0)}},
-	// },
-	// {
-	// 	`SELECT NOW() - (NOW() - INTERVAL 1 SECOND)`,
-	// 	[]sql.Row{{int64(1)}},
-	// },
-	// {
-	// 	`SELECT SUBSTR(SUBSTRING('0123456789ABCDEF', 1, 10), -4)`,
-	// 	[]sql.Row{{"6789"}},
-	// },
-	// {
-	// 	`SELECT CASE i WHEN 1 THEN i ELSE NULL END FROM mytable`,
-	// 	[]sql.Row{{int64(1)}, {nil}, {nil}},
-	// },
-	// {
-	// 	`SELECT (NULL+1)`,
-	// 	[]sql.Row{{nil}},
-	// },
-	// {
-	// 	`SELECT ARRAY_LENGTH(null)`,
-	// 	[]sql.Row{{nil}},
-	// },
-	// {
-	// 	`SELECT ARRAY_LENGTH("foo")`,
-	// 	[]sql.Row{{nil}},
-	// },
-	// {
-	// 	`SELECT * FROM mytable WHERE NULL AND i = 3`,
-	// 	nil,
-	// },
-	// {
-	// 	`SELECT 1 FROM mytable GROUP BY i HAVING i > 1`,
-	// 	[]sql.Row{{int8(1)}, {int8(1)}},
-	// },
-	// {
-	// 	`SELECT avg(i) FROM mytable GROUP BY i HAVING avg(i) > 1`,
-	// 	[]sql.Row{{float64(2)}, {float64(3)}},
-	// },
-	// {
-	// 	`SELECT s AS s, COUNT(*) AS count,  AVG(i) AS ` + "`AVG(i)`" + `
-	// 	FROM  (
-	// 		SELECT * FROM mytable
-	// 	) AS expr_qry
-	// 	GROUP BY s
-	// 	HAVING ((AVG(i) > 0))
-	// 	ORDER BY count DESC
-	// 	LIMIT 10000`,
-	// 	[]sql.Row{
-	// 		{"first row", int64(1), float64(1)},
-	// 		{"second row", int64(1), float64(2)},
-	// 		{"third row", int64(1), float64(3)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT FIRST(i) FROM (SELECT i FROM mytable ORDER BY i) t`,
-	// 	[]sql.Row{{int64(1)}},
-	// },
-	// {
-	// 	`SELECT LAST(i) FROM (SELECT i FROM mytable ORDER BY i) t`,
-	// 	[]sql.Row{{int64(3)}},
-	// },
-	// {
-	// 	`SELECT COUNT(DISTINCT t.i) FROM tabletest t, mytable t2`,
-	// 	[]sql.Row{{int64(3)}},
-	// },
-	// {
-	// 	`SELECT CASE WHEN NULL THEN "yes" ELSE "no" END AS test`,
-	// 	[]sql.Row{{"no"}},
-	// },
-	// {
-	// 	`SELECT
-	// 		table_schema,
-	// 		table_name,
-	// 		CASE
-	// 			WHEN table_type = 'BASE TABLE' THEN
-	// 				CASE
-	// 					WHEN table_schema = 'mysql'
-	// 						OR table_schema = 'performance_schema' THEN 'SYSTEM TABLE'
-	// 					ELSE 'TABLE'
-	// 				END
-	// 			WHEN table_type = 'TEMPORARY' THEN 'LOCAL_TEMPORARY'
-	// 			ELSE table_type
-	// 		END AS TABLE_TYPE
-	// 	FROM information_schema.tables
-	// 	WHERE table_schema = 'mydb'
-	// 		AND table_name = 'mytable'
-	// 	HAVING table_type IN ('TABLE', 'VIEW')
-	// 	ORDER BY table_type, table_schema, table_name`,
-	// 	[]sql.Row{{"mydb", "mytable", "TABLE"}},
-	// },
-	// {
-	// 	`SELECT REGEXP_MATCHES("bopbeepbop", "bop")`,
-	// 	[]sql.Row{{[]interface{}{"bop", "bop"}}},
-	// },
-	// {
-	// 	`SELECT EXPLODE(REGEXP_MATCHES("bopbeepbop", "bop"))`,
-	// 	[]sql.Row{{"bop"}, {"bop"}},
-	// },
-	// {
-	// 	`SELECT EXPLODE(REGEXP_MATCHES("helloworld", "bop"))`,
-	// 	nil,
-	// },
-	// {
-	// 	`SELECT EXPLODE(REGEXP_MATCHES("", ""))`,
-	// 	[]sql.Row{{""}},
-	// },
-	// {
-	// 	`SELECT REGEXP_MATCHES(NULL, "")`,
-	// 	[]sql.Row{{nil}},
-	// },
-	// {
-	// 	`SELECT REGEXP_MATCHES("", NULL)`,
-	// 	[]sql.Row{{nil}},
-	// },
-	// {
-	// 	`SELECT REGEXP_MATCHES("", "", NULL)`,
-	// 	[]sql.Row{{nil}},
-	// },
-	// {
-	// 	"SELECT * FROM newlinetable WHERE s LIKE '%text%'",
-	// 	[]sql.Row{
-	// 		{int64(1), "\nthere is some text IN here"},
-	// 		{int64(2), "there is some\ntext IN here"},
-	// 		{int64(3), "there is some text\nin here"},
-	// 		{int64(4), "there is some text IN here\n"},
-	// 		{int64(5), "there is some text IN here"},
-	// 	},
-	// },
-	// {
-	// 	`SELECT i FROM mytable WHERE i = (SELECT 1)`,
-	// 	[]sql.Row{{int64(1)}},
-	// },
-	// {
-	// 	`SELECT i FROM mytable WHERE i IN (SELECT i FROM mytable)`,
-	// 	[]sql.Row{
-	// 		{int64(1)},
-	// 		{int64(2)},
-	// 		{int64(3)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 2)`,
-	// 	[]sql.Row{
-	// 		{int64(3)},
-	// 	},
-	// },
-	// {
-	// 	`SELECT (SELECT i FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
-	// 	[]sql.Row{{int64(1)}},
-	// },
-	// {
-	// 	`SELECT DISTINCT n FROM bigtable ORDER BY t`,
-	// 	[]sql.Row{
-	// 		{int64(1)},
-	// 		{int64(9)},
-	// 		{int64(7)},
-	// 		{int64(3)},
-	// 		{int64(2)},
-	// 		{int64(8)},
-	// 		{int64(6)},
-	// 		{int64(5)},
-	// 		{int64(4)},
-	// 	},
-	// },
-	// {
-	// 	"SELECT pk,pk1,pk2 FROM one_pk, two_pk ORDER BY 1,2,3",
-	// 	[]sql.Row{
-	// 		{0, 0, 0},
-	// 		{0, 0, 1},
-	// 		{0, 1, 0},
-	// 		{0, 1, 1},
-	// 		{1, 0, 0},
-	// 		{1, 0, 1},
-	// 		{1, 1, 0},
-	// 		{1, 1, 1},
-	// 		{2, 0, 0},
-	// 		{2, 0, 1},
-	// 		{2, 1, 0},
-	// 		{2, 1, 1},
-	// 		{3, 0, 0},
-	// 		{3, 0, 1},
-	// 		{3, 1, 0},
-	// 		{3, 1, 1},
-	// 	},
-	// },
-	// {
-	// 	"SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE pk1=1 AND pk2=1 ORDER BY 1,2",
-	// 	[]sql.Row{
-	// 		{0, 30},
-	// 		{10, 30},
-	// 		{20, 30},
-	// 		{30, 30},
-	// 	},
-	// },
-	// {
-	// 	"SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE pk1=1 OR pk2=1 ORDER BY 1,2",
-	// 	[]sql.Row{
-	// 		{0, 10},
-	// 		{0, 20},
-	// 		{0, 30},
-	// 		{10, 10},
-	// 		{10, 20},
-	// 		{10, 30},
-	// 		{20, 10},
-	// 		{20, 20},
-	// 		{20, 30},
-	// 		{30, 10},
-	// 		{30, 20},
-	// 		{30, 30},
-	// 	},
-	// },
-	// {
-	// 	"SELECT pk,pk2 FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2",
-	// 	[]sql.Row{
-	// 		{1, 1},
-	// 		{1, 1},
-	// 	},
-	// },
-	// {
-	// 	"SELECT pk,pk1,pk2 FROM one_pk,two_pk WHERE pk=0 AND pk1=0 OR pk2=1 ORDER BY 1,2,3",
-	// 	[]sql.Row{
-	// 		{0, 0, 0},
-	// 		{0, 0, 1},
-	// 		{0, 1, 1},
-	// 		{1, 0, 1},
-	// 		{1, 1, 1},
-	// 		{2, 0, 1},
-	// 		{2, 1, 1},
-	// 		{3, 0, 1},
-	// 		{3, 1, 1},
-	// 	},
-	// },
-	// {
-	// 	"SELECT pk,pk1,pk2 FROM one_pk,two_pk WHERE one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
-	// 	[]sql.Row{
-	// 		{0, 0, 0},
-	// 		{1, 0, 1},
-	// 		{2, 1, 0},
-	// 		{3, 1, 1},
-	// 	},
-	// },
-	// {
-	// 	"SELECT one_pk.c5,pk1,pk2 FROM one_pk,two_pk WHERE pk=pk1 ORDER BY 1,2,3",
-	// 	[]sql.Row{
-	// 		{0, 0, 0},
-	// 		{0, 0, 1},
-	// 		{10, 1, 0},
-	// 		{10, 1, 1},
-	// 	},
-	// },
-	// {
-	// 	"SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk on one_pk.c1=two_pk.c1 WHERE pk=1 ORDER BY 1,2,3",
-	// 	[]sql.Row{
-	// 		{1, 0, 1},
-	// 	},
-	// },
-	// {
-	// 	"SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk on pk=pk1 ORDER BY 1,2,3",
-	// 	[]sql.Row{
-	// 		{0, 0, 0},
-	// 		{0, 0, 1},
-	// 		{1, 1, 0},
-	// 		{1, 1, 1},
-	// 		{2, nil, nil},
-	// 		{3, nil, nil},
-	// 	},
-	// },
+	{
+		"SELECT i FROM mytable;",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
+		"SELECT s,i FROM mytable;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT s,i FROM (select i,s FROM mytable) mt;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT i + 1 FROM mytable;",
+		[]sql.Row{{int64(2)}, {int64(3)}, {int64(4)}},
+	},
+	{
+		"SELECT -i FROM mytable;",
+		[]sql.Row{{int64(-1)}, {int64(-2)}, {int64(-3)}},
+	},
+	{
+		"SELECT +i FROM mytable;",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
+		"SELECT + - i FROM mytable;",
+		[]sql.Row{{int64(-1)}, {int64(-2)}, {int64(-3)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE -i = -2;",
+		[]sql.Row{{int64(2)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i = 2;",
+		[]sql.Row{{int64(2)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i > 2;",
+		[]sql.Row{{int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i < 2;",
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i <> 2;",
+		[]sql.Row{{int64(1)}, {int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i IN (1, 3)",
+		[]sql.Row{{int64(1)}, {int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i = 1 OR i = 3",
+		[]sql.Row{{int64(1)}, {int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i >= 2 ORDER BY 1",
+		[]sql.Row{{int64(2)}, {int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i <= 2 ORDER BY 1",
+		[]sql.Row{{int64(1)}, {int64(2)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i > 2",
+		[]sql.Row{{int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i < 2",
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i >= 2 OR i = 1 ORDER BY 1",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
+		"SELECT f32 FROM floattable WHERE f64 = 2.0;",
+		[]sql.Row{{float32(2.0)}},
+	},
+	{
+		"SELECT f32 FROM floattable WHERE f64 < 2.0;",
+		[]sql.Row{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}},
+	},
+	{
+		"SELECT f32 FROM floattable WHERE f64 > 2.0;",
+		[]sql.Row{{float32(2.5)}},
+	},
+	{
+		"SELECT f32 FROM floattable WHERE f64 <> 2.0;",
+		[]sql.Row{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}, {float32(2.5)}},
+	},
+	{
+		"SELECT f64 FROM floattable WHERE f32 = 2.0;",
+		[]sql.Row{{float64(2.0)}},
+	},
+	{
+		"SELECT f64 FROM floattable WHERE f32 = -1.5;",
+		[]sql.Row{{float64(-1.5)}},
+	},
+	{
+		"SELECT f64 FROM floattable WHERE -f32 = -2.0;",
+		[]sql.Row{{float64(2.0)}},
+	},
+	{
+		"SELECT f64 FROM floattable WHERE f32 < 2.0;",
+		[]sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}},
+	},
+	{
+		"SELECT f64 FROM floattable WHERE f32 > 2.0;",
+		[]sql.Row{{float64(2.5)}},
+	},
+	{
+		"SELECT f64 FROM floattable WHERE f32 <> 2.0;",
+		[]sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}, {float64(2.5)}},
+	},
+	{
+		"SELECT f32 FROM floattable ORDER BY f64;",
+		[]sql.Row{{float32(-1.5)}, {float32(-1.0)}, {float32(1.0)}, {float32(1.5)}, {float32(2.0)}, {float32(2.5)}},
+	},
+	{
+		"SELECT i FROM mytable ORDER BY i DESC;",
+		[]sql.Row{{int64(3)}, {int64(2)}, {int64(1)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE 'hello';",
+		nil,
+	},
+	{
+		"SELECT i FROM mytable WHERE NOT 'hello';",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC;",
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT 1;",
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT i FROM mytable ORDER BY i LIMIT 1 OFFSET 1;",
+		[]sql.Row{{int64(2)}},
+	},
+	{
+		"SELECT i FROM mytable ORDER BY i LIMIT 1,1;",
+		[]sql.Row{{int64(2)}},
+	},
+	{
+		"SELECT i FROM mytable ORDER BY i LIMIT 3,1;",
+		nil,
+	},
+	{
+		"SELECT i FROM mytable ORDER BY i LIMIT 2,100;",
+		[]sql.Row{{int64(3)}},
+	},
+	{
+		"SELECT i FROM niltable WHERE b IS NULL",
+		[]sql.Row{{int64(2)}, {nil}},
+	},
+	{
+		"SELECT i FROM niltable WHERE b IS NOT NULL",
+		[]sql.Row{{int64(1)}, {nil}, {int64(4)}},
+	},
+	{
+		"SELECT i FROM niltable WHERE b",
+		[]sql.Row{{int64(1)}, {int64(4)}},
+	},
+	{
+		"SELECT i FROM niltable WHERE NOT b",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT i FROM niltable WHERE b IS TRUE",
+		[]sql.Row{{int64(1)}, {int64(4)}},
+	},
+	{
+		"SELECT i FROM niltable WHERE b IS NOT TRUE",
+		[]sql.Row{{int64(2)}, {nil}, {nil}},
+	},
+	{
+		"SELECT f FROM niltable WHERE b IS FALSE",
+		[]sql.Row{{3.0}},
+	},
+	{
+		"SELECT i FROM niltable WHERE b IS NOT FALSE",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(4)}, {nil}},
+	},
+	{
+		"SELECT COUNT(*) FROM mytable;",
+		[]sql.Row{{int64(3)}},
+	},
+	{
+		"SELECT COUNT(*) FROM mytable LIMIT 1;",
+		[]sql.Row{{int64(3)}},
+	},
+	{
+		"SELECT COUNT(*) AS c FROM mytable;",
+		[]sql.Row{{int64(3)}},
+	},
+	{
+		"SELECT substring(s, 2, 3) FROM mytable",
+		[]sql.Row{{"irs"}, {"eco"}, {"hir"}},
+	},
+	{
+		`SELECT substring("foo", 2, 2)`,
+		[]sql.Row{{"oo"}},
+	},
+	{
+		`SELECT SUBSTRING_INDEX('a.b.c.d.e.f', '.', 2)`,
+		[]sql.Row{
+			{"a.b"},
+		},
+	},
+	{
+		`SELECT SUBSTRING_INDEX('a.b.c.d.e.f', '.', -2)`,
+		[]sql.Row{
+			{"e.f"},
+		},
+	},
+	{
+		`SELECT SUBSTRING_INDEX(SUBSTRING_INDEX('source{d}', '{d}', 1), 'r', -1)`,
+		[]sql.Row{
+			{"ce"},
+		},
+	},
+	{
+		`SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY 1 HAVING s = 'secon'`,
+		[]sql.Row{{"secon"}},
+	},
+	{
+		"SELECT YEAR('2007-12-11') FROM mytable",
+		[]sql.Row{{int32(2007)}, {int32(2007)}, {int32(2007)}},
+	},
+	{
+		"SELECT MONTH('2007-12-11') FROM mytable",
+		[]sql.Row{{int32(12)}, {int32(12)}, {int32(12)}},
+	},
+	{
+		"SELECT DAY('2007-12-11') FROM mytable",
+		[]sql.Row{{int32(11)}, {int32(11)}, {int32(11)}},
+	},
+	{
+		"SELECT HOUR('2007-12-11 20:21:22') FROM mytable",
+		[]sql.Row{{int32(20)}, {int32(20)}, {int32(20)}},
+	},
+	{
+		"SELECT MINUTE('2007-12-11 20:21:22') FROM mytable",
+		[]sql.Row{{int32(21)}, {int32(21)}, {int32(21)}},
+	},
+	{
+		"SELECT SECOND('2007-12-11 20:21:22') FROM mytable",
+		[]sql.Row{{int32(22)}, {int32(22)}, {int32(22)}},
+	},
+	{
+		"SELECT DAYOFYEAR('2007-12-11 20:21:22') FROM mytable",
+		[]sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
+	},
+	{
+		"SELECT SECOND('2007-12-11T20:21:22Z') FROM mytable",
+		[]sql.Row{{int32(22)}, {int32(22)}, {int32(22)}},
+	},
+	{
+		"SELECT DAYOFYEAR('2007-12-11') FROM mytable",
+		[]sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
+	},
+	{
+		"SELECT DAYOFYEAR('20071211') FROM mytable",
+		[]sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
+	},
+	{
+		"SELECT YEARWEEK('0000-01-01')",
+		[]sql.Row{{int32(1)}},
+	},
+	{
+		"SELECT YEARWEEK('9999-12-31')",
+		[]sql.Row{{int32(999952)}},
+	},
+	{
+		"SELECT YEARWEEK('2008-02-20', 1)",
+		[]sql.Row{{int32(200808)}},
+	},
+	{
+		"SELECT YEARWEEK('1987-01-01')",
+		[]sql.Row{{int32(198652)}},
+	},
+	{
+		"SELECT YEARWEEK('1987-01-01', 20), YEARWEEK('1987-01-01', 1), YEARWEEK('1987-01-01', 2), YEARWEEK('1987-01-01', 3), YEARWEEK('1987-01-01', 4), YEARWEEK('1987-01-01', 5), YEARWEEK('1987-01-01', 6), YEARWEEK('1987-01-01', 7)",
+		[]sql.Row{{int32(198653), int32(198701), int32(198652), int32(198701), int32(198653), int32(198652), int32(198653), int32(198652)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
+		[]sql.Row{{int64(1)}, {int64(2)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE i NOT BETWEEN 1 AND 2",
+		[]sql.Row{{int64(3)}},
+	},
+	{
+		"SELECT substring(mytable.s, 1, 5) AS s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1",
+		[]sql.Row{
+			{"third"},
+			{"secon"},
+			{"first"},
+		},
+	},
+	{
+		"SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
+		[]sql.Row{
+			{int64(1), int64(1), "third"},
+			{int64(2), int64(2), "second"},
+			{int64(3), int64(3), "first"},
+		},
+	},
+	{
+		"SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
+		[]sql.Row{
+			{"third", int64(1), int64(1)},
+			{"second", int64(2), int64(2)},
+			{ "first", int64(3), int64(3)},
+		},
+	},
+	{
+		"SELECT i, i2, s2 FROM othertable JOIN mytable  ON i = i2 ORDER BY i",
+		[]sql.Row{
+			{int64(1), int64(1), "third"},
+			{int64(2), int64(2), "second"},
+			{int64(3), int64(3), "first"},
+		},
+	},
+	{
+		"SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2 ORDER BY i",
+		[]sql.Row{
+			{"third", int64(1), int64(1)},
+			{"second", int64(2), int64(2)},
+			{ "first", int64(3), int64(3)},
+		},
+	},
+	{
+		"SELECT substring(s2, 1), substring(s2, 2), substring(s2, 3) FROM othertable ORDER BY i2",
+		[]sql.Row{
+			{"third", "hird", "ird"},
+			{"second", "econd", "cond"},
+			{"first", "irst", "rst"},
+		},
+	},
+	{
+		`SELECT substring("first", 1), substring("second", 2), substring("third", 3)`,
+		[]sql.Row{
+			{"first", "econd", "ird"},
+		},
+	},
+	{
+		"SELECT substring(s2, -1), substring(s2, -2), substring(s2, -3) FROM othertable ORDER BY i2",
+		[]sql.Row{
+			{"d", "rd", "ird"},
+			{"d", "nd", "ond"},
+			{"t", "st", "rst"},
+		},
+	},
+	{
+		`SELECT substring("first", -1), substring("second", -2), substring("third", -3)`,
+		[]sql.Row{
+			{"t", "nd", "ird"},
+		},
+	},
+	{
+		"SELECT s FROM mytable INNER JOIN othertable " +
+				"ON substring(s2, 1, 2) != '' AND i = i2 ORDER BY 1",
+		[]sql.Row{
+			{"first row"},
+			{"second row"},
+			{"third row"},
+		},
+	},
+	{
+		`SELECT COUNT(*) AS cnt, fi FROM (
+			SELECT tbl.s AS fi
+			FROM mytable tbl
+		) t
+		GROUP BY fi`,
+		[]sql.Row{
+			{int64(1), "first row"},
+			{int64(1), "second row"},
+			{int64(1), "third row"},
+		},
+	},
+	{
+		`SELECT fi, COUNT(*) FROM (
+			SELECT tbl.s AS fi
+			FROM mytable tbl
+		) t
+		GROUP BY fi
+		ORDER BY COUNT(*) ASC`,
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(1)},
+			{"third row", int64(1)},
+		},
+	},
+	{
+		`SELECT COUNT(*), fi  FROM (
+			SELECT tbl.s AS fi
+			FROM mytable tbl
+		) t
+		GROUP BY fi
+		ORDER BY COUNT(*) ASC`,
+		[]sql.Row{
+			{int64(1), "first row"},
+			{int64(1), "second row"},
+			{int64(1), "third row"},
+		},
+	},
+	{
+		`SELECT COUNT(*) AS cnt, fi FROM (
+			SELECT tbl.s AS fi
+			FROM mytable tbl
+		) t
+		GROUP BY 2`,
+		[]sql.Row{
+			{int64(1), "first row"},
+			{int64(1), "second row"},
+			{int64(1), "third row"},
+		},
+	},
+	{
+		`SELECT COUNT(*) AS cnt, s AS fi FROM mytable GROUP BY fi`,
+		[]sql.Row{
+			{int64(1), "first row"},
+			{int64(1), "second row"},
+			{int64(1), "third row"},
+		},
+	},
+	{
+		`SELECT COUNT(*) AS cnt, s AS fi FROM mytable GROUP BY 2`,
+		[]sql.Row{
+			{int64(1), "first row"},
+			{int64(1), "second row"},
+			{int64(1), "third row"},
+		},
+	},
+	{
+		"SELECT CAST(-3 AS UNSIGNED) FROM mytable",
+		[]sql.Row{
+			{uint64(18446744073709551613)},
+			{uint64(18446744073709551613)},
+			{uint64(18446744073709551613)},
+		},
+	},
+	{
+		"SELECT CONVERT(-3, UNSIGNED) FROM mytable",
+		[]sql.Row{
+			{uint64(18446744073709551613)},
+			{uint64(18446744073709551613)},
+			{uint64(18446744073709551613)},
+		},
+	},
+	{
+		"SELECT '3' > 2 FROM tabletest",
+		[]sql.Row{
+			{true},
+			{true},
+			{true},
+		},
+	},
+	{
+		"SELECT s > 2 FROM tabletest",
+		[]sql.Row{
+			{false},
+			{false},
+			{false},
+		},
+	},
+	{
+		"SELECT * FROM tabletest WHERE s > 0",
+		nil,
+	},
+	{
+		"SELECT * FROM tabletest WHERE s = 0",
+		[]sql.Row{
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"},
+		},
+	},
+	{
+		"SELECT * FROM tabletest WHERE s = 'first row'",
+		[]sql.Row{
+			{int64(1), "first row"},
+		},
+	},
+	{
+		"SELECT s FROM mytable WHERE i IN (1, 2, 5)",
+		[]sql.Row{
+			{"first row"},
+			{"second row"},
+		},
+	},
+	{
+		"SELECT s FROM mytable WHERE i NOT IN (1, 2, 5)",
+		[]sql.Row{
+			{"third row"},
+		},
+	},
+	{
+		"SELECT 1 + 2",
+		[]sql.Row{
+			{int64(3)},
+		},
+	},
+	{
+		`SELECT i AS foo FROM mytable WHERE foo NOT IN (1, 2, 5)`,
+		[]sql.Row{{int64(3)}},
+	},
+	{
+		`SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2`,
+		[]sql.Row{
+			{int64(1), "first row", int64(1), "first row", "third", int64(1)},
+			{int64(1), "first row", int64(2), "second row", "second", int64(2)},
+			{int64(1), "first row", int64(3), "third row", "first", int64(3)},
+			{int64(2), "second row", int64(1), "first row", "third", int64(1)},
+			{int64(2), "second row", int64(2), "second row", "second", int64(2)},
+			{int64(2), "second row", int64(3), "third row", "first", int64(3)},
+			{int64(3), "third row", int64(1), "first row", "third", int64(1)},
+			{int64(3), "third row", int64(2), "second row", "second", int64(2)},
+			{int64(3), "third row", int64(3), "third row", "first", int64(3)},
+		},
+	},
+	{
+		`SELECT split(s," ") FROM mytable`,
+		[]sql.Row{
+			sql.NewRow([]interface{}{"first", "row"}),
+			sql.NewRow([]interface{}{"second", "row"}),
+			sql.NewRow([]interface{}{"third", "row"}),
+		},
+	},
+	{
+		`SELECT split(s,"s") FROM mytable`,
+		[]sql.Row{
+			sql.NewRow([]interface{}{"fir", "t row"}),
+			sql.NewRow([]interface{}{"", "econd row"}),
+			sql.NewRow([]interface{}{"third row"}),
+		},
+	},
+	{
+		`SELECT SUM(i) FROM mytable`,
+		[]sql.Row{{float64(6)}},
+	},
+	{
+		`SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2`,
+		[]sql.Row{
+			{int64(3), "third row", "first", int64(3)},
+		},
+	},
+	{
+		`SELECT i AS foo FROM mytable ORDER BY i DESC`,
+		[]sql.Row{
+			{int64(3)},
+			{int64(2)},
+			{int64(1)},
+		},
+	},
+	{
+		`SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY i ORDER BY i DESC`,
+		[]sql.Row{
+			{int64(1), int64(3)},
+			{int64(1), int64(2)},
+			{int64(1), int64(1)},
+		},
+	},
+	{
+		`SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY 2 ORDER BY 2 DESC`,
+		[]sql.Row{
+			{int64(1), int64(3)},
+			{int64(1), int64(2)},
+			{int64(1), int64(1)},
+		},
+	},
+	{
+		`SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY i ORDER BY foo DESC`,
+		[]sql.Row{
+			{int64(1), int64(3)},
+			{int64(1), int64(2)},
+			{int64(1), int64(1)},
+		},
+	},
+	{
+		`SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY 2 ORDER BY foo DESC`,
+		[]sql.Row{
+			{int64(1), int64(3)},
+			{int64(1), int64(2)},
+			{int64(1), int64(1)},
+		},
+	},
+	{
+		`SELECT COUNT(*) c, i AS i FROM mytable GROUP BY 2`,
+		[]sql.Row{
+			{int64(1), int64(3)},
+			{int64(1), int64(2)},
+			{int64(1), int64(1)},
+		},
+	},
+	{
+		`SELECT i AS i FROM mytable GROUP BY 1`,
+		[]sql.Row{
+			{int64(3)},
+			{int64(2)},
+			{int64(1)},
+		},
+	},
+	{
+		`SELECT CONCAT("a", "b", "c")`,
+		[]sql.Row{
+			{string("abc")},
+		},
+	},
+	{
+		`SELECT COALESCE(NULL, NULL, NULL, 'example', NULL, 1234567890)`,
+		[]sql.Row{
+			{string("example")},
+		},
+	},
+	{
+		`SELECT COALESCE(NULL, NULL, NULL, COALESCE(NULL, 1234567890))`,
+		[]sql.Row{
+			{int32(1234567890)},
+		},
+	},
+	{
+		"SELECT concat(s, i) FROM mytable",
+		[]sql.Row{
+			{string("first row1")},
+			{string("second row2")},
+			{string("third row3")},
+		},
+	},
+	{
+		"SELECT version()",
+		[]sql.Row{
+			{string("8.0.11")},
+		},
+	},
+	{
+		"SELECT * FROM mytable WHERE 1 > 5",
+		nil,
+	},
+	{
+		"SELECT SUM(i) + 1, i FROM mytable GROUP BY i ORDER BY i",
+		[]sql.Row{
+			{float64(2), int64(1)},
+			{float64(3), int64(2)},
+			{float64(4), int64(3)},
+		},
+	},
+	{
+		"SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
+		[]sql.Row{
+			{float64(1), int64(1)},
+			{float64(2), int64(2)},
+			{float64(3), int64(3)},
+		},
+	},
+	{
+		"SELECT i, SUM(i) FROM mytable GROUP BY i ORDER BY SUM(i) DESC",
+		[]sql.Row{
+			{int64(3), float64(3)},
+			{int64(2), float64(2)},
+			{int64(1), float64(1)},
+		},
+	},
+	{
+		`/*!40101 SET NAMES utf8 */`,
+		nil,
+	},
+	{
+		`SHOW DATABASES`,
+		[]sql.Row{{"mydb"}, {"foo"}},
+	},
+	{
+		`SHOW SCHEMAS`,
+		[]sql.Row{{"mydb"}, {"foo"}},
+	},
+	{
+		`SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA`,
+		[]sql.Row{
+			{"mydb", "utf8mb4", "utf8_bin"},
+			{"foo", "utf8mb4", "utf8_bin"},
+		},
+	},
+	{
+		`SELECT s FROM mytable WHERE s LIKE '%d row'`,
+		[]sql.Row{
+			{"second row"},
+			{"third row"},
+		},
+	},
+	{
+		`SELECT SUBSTRING(s, -3, 3) AS s FROM mytable WHERE s LIKE '%d row' GROUP BY 1`,
+		[]sql.Row{
+			{"row"},
+		},
+	},
+	{
+		`SELECT s FROM mytable WHERE s NOT LIKE '%d row'`,
+		[]sql.Row{
+			{"first row"},
+		},
+	},
+	{
+		`SHOW COLUMNS FROM mytable`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "", "", ""},
+			{"s", "TEXT", "NO", "", "", ""},
+		},
+	},
+	{
+		`DESCRIBE mytable`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "", "", ""},
+			{"s", "TEXT", "NO", "", "", ""},
+		},
+	},
+	{
+		`DESC mytable`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "", "", ""},
+			{"s", "TEXT", "NO", "", "", ""},
+		},
+	},
+	{
+		`SHOW COLUMNS FROM one_pk`,
+		[]sql.Row{
+			{"pk", "TINYINT", "NO", "PRI", "", ""},
+			{"c1", "TINYINT", "NO", "", "", ""},
+			{"c2", "TINYINT", "NO", "", "", ""},
+			{"c3", "TINYINT", "NO", "", "", ""},
+			{"c4", "TINYINT", "NO", "", "", ""},
+			{"c5", "TINYINT", "NO", "", "", ""},
+		},
+	},
+	{
+		`DESCRIBE one_pk`,
+		[]sql.Row{
+			{"pk", "TINYINT", "NO", "PRI", "", ""},
+			{"c1", "TINYINT", "NO", "", "", ""},
+			{"c2", "TINYINT", "NO", "", "", ""},
+			{"c3", "TINYINT", "NO", "", "", ""},
+			{"c4", "TINYINT", "NO", "", "", ""},
+			{"c5", "TINYINT", "NO", "", "", ""},
+		},
+	},
+	{
+		`DESC one_pk`,
+		[]sql.Row{
+			{"pk", "TINYINT", "NO", "PRI", "", ""},
+			{"c1", "TINYINT", "NO", "", "", ""},
+			{"c2", "TINYINT", "NO", "", "", ""},
+			{"c3", "TINYINT", "NO", "", "", ""},
+			{"c4", "TINYINT", "NO", "", "", ""},
+			{"c5", "TINYINT", "NO", "", "", ""},
+		},
+	},
+
+	{
+		`SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "", "", ""},
+		},
+	},
+	{
+		`SHOW COLUMNS FROM mytable LIKE 'i'`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "", "", ""},
+		},
+	},
+	{
+		`SHOW FULL COLUMNS FROM mytable`,
+		[]sql.Row{
+			{"i", "BIGINT", nil, "NO", "", "", "", "", ""},
+			{"s", "TEXT", "utf8_bin", "NO", "", "", "", "", ""},
+		},
+	},
+	{
+		`SHOW FULL COLUMNS FROM one_pk`,
+		[]sql.Row{
+			{"pk", "TINYINT", nil, "NO", "PRI", "", "", "", ""},
+			{"c1", "TINYINT", nil, "NO", "", "", "", "", ""},
+			{"c2", "TINYINT", nil, "NO", "", "", "", "", ""},
+			{"c3", "TINYINT", nil, "NO", "", "", "", "", ""},
+			{"c4", "TINYINT", nil, "NO", "", "", "", "", ""},
+			{"c5", "TINYINT", nil, "NO", "", "", "", "", "column 5"},
+		},
+	},
+	{
+		`SELECT * FROM foo.other_table`,
+		[]sql.Row{
+			{"a", int32(4)},
+			{"b", int32(2)},
+			{"c", int32(0)},
+		},
+	},
+	{
+		`SELECT AVG(23.222000)`,
+		[]sql.Row{
+			{float64(23.222)},
+		},
+	},
+	{
+		`SELECT DATABASE()`,
+		[]sql.Row{
+			{"mydb"},
+		},
+	},
+	{
+		`SHOW VARIABLES`,
+		[]sql.Row{
+			{"auto_increment_increment", int64(1)},
+			{"time_zone", time.Local.String()},
+			{"system_time_zone", time.Local.String()},
+			{"max_allowed_packet", math.MaxInt32},
+			{"sql_mode", ""},
+			{"gtid_mode", int32(0)},
+			{"collation_database", "utf8_bin"},
+			{"ndbinfo_version", ""},
+			{"sql_select_limit", math.MaxInt32},
+			{"transaction_isolation", "READ UNCOMMITTED"},
+			{"version", ""},
+			{"version_comment", ""},
+		},
+	},
+	{
+		`SHOW VARIABLES LIKE 'gtid_mode`,
+		[]sql.Row{
+			{"gtid_mode", int32(0)},
+		},
+	},
+	{
+		`SHOW VARIABLES LIKE 'gtid%`,
+		[]sql.Row{
+			{"gtid_mode", int32(0)},
+		},
+	},
+	{
+		`SHOW GLOBAL VARIABLES LIKE '%mode`,
+		[]sql.Row{
+			{"sql_mode", ""},
+			{"gtid_mode", int32(0)},
+		},
+	},
+	{
+		`SELECT JSON_EXTRACT("foo", "$")`,
+		[]sql.Row{{"foo"}},
+	},
+	{
+		`SELECT JSON_UNQUOTE('"foo"')`,
+		[]sql.Row{{"foo"}},
+	},
+	{
+		`SELECT JSON_UNQUOTE('[1, 2, 3]')`,
+		[]sql.Row{{"[1, 2, 3]"}},
+	},
+	{
+		`SELECT JSON_UNQUOTE('"\\t\\u0032"')`,
+		[]sql.Row{{"\t2"}},
+	},
+	{
+		`SELECT JSON_UNQUOTE('"\t\\u0032"')`,
+		[]sql.Row{{"\t2"}},
+	},
+	{
+		`SELECT CONNECTION_ID()`,
+		[]sql.Row{{uint32(1)}},
+	},
+	{
+		`SHOW CREATE DATABASE mydb`,
+		[]sql.Row{{
+			"mydb",
+			"CREATE DATABASE `mydb` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8_bin */",
+		}},
+	},
+	{
+		`SELECT -1`,
+		[]sql.Row{{int8(-1)}},
+	},
+	{
+		`
+		SHOW WARNINGS
+		`,
+		nil,
+	},
+	{
+		`SHOW WARNINGS LIMIT 0`,
+		nil,
+	},
+	{
+		`SET SESSION NET_READ_TIMEOUT= 700, SESSION NET_WRITE_TIMEOUT= 700`,
+		nil,
+	},
+	{
+		`SELECT NULL`,
+		[]sql.Row{
+			{nil},
+		},
+	},
+	{
+		`SELECT nullif('abc', NULL)`,
+		[]sql.Row{
+			{"abc"},
+		},
+	},
+	{
+		`SELECT nullif(NULL, NULL)`,
+		[]sql.Row{
+			{sql.Null},
+		},
+	},
+	{
+		`SELECT nullif(NULL, 123)`,
+		[]sql.Row{
+			{nil},
+		},
+	},
+	{
+		`SELECT nullif(123, 123)`,
+		[]sql.Row{
+			{sql.Null},
+		},
+	},
+	{
+		`SELECT nullif(123, 321)`,
+		[]sql.Row{
+			{int8(123)},
+		},
+	},
+	{
+		`SELECT ifnull(123, NULL)`,
+		[]sql.Row{
+			{int8(123)},
+		},
+	},
+	{
+		`SELECT ifnull(NULL, NULL)`,
+		[]sql.Row{
+			{nil},
+		},
+	},
+	{
+		`SELECT ifnull(NULL, 123)`,
+		[]sql.Row{
+			{int8(123)},
+		},
+	},
+	{
+		`SELECT ifnull(123, 123)`,
+		[]sql.Row{
+			{int8(123)},
+		},
+	},
+	{
+		`SELECT ifnull(123, 321)`,
+		[]sql.Row{
+			{int8(123)},
+		},
+	},
+	{
+		"SELECT i FROM mytable WHERE NULL > 10;",
+		nil,
+	},
+	{
+		"SELECT i FROM mytable WHERE NULL IN (10);",
+		nil,
+	},
+	{
+		"SELECT i FROM mytable WHERE NULL IN (NULL, NULL);",
+		nil,
+	},
+	{
+		"SELECT i FROM mytable WHERE NOT NULL NOT IN (NULL);",
+		nil,
+	},
+	{
+		"SELECT i FROM mytable WHERE NOT (NULL) <> 10;",
+		nil,
+	},
+	{
+		"SELECT i FROM mytable WHERE NOT NULL <> NULL;",
+		nil,
+	},
+	{
+		`SELECT round(15728640/1024/1024)`,
+		[]sql.Row{
+			{int64(15)},
+		},
+	},
+	{
+		`SELECT round(15, 1)`,
+		[]sql.Row{
+			{int8(15)},
+		},
+	},
+	{
+		`SELECT CASE i WHEN 1 THEN 'one' WHEN 2 THEN 'two' ELSE 'other' END FROM mytable`,
+		[]sql.Row{
+			{"one"},
+			{"two"},
+			{"other"},
+		},
+	},
+	{
+		`SELECT CASE WHEN i > 2 THEN 'more than two' WHEN i < 2 THEN 'less than two' ELSE 'two' END FROM mytable`,
+		[]sql.Row{
+			{"less than two"},
+			{"two"},
+			{"more than two"},
+		},
+	},
+	{
+		`SELECT CASE i WHEN 1 THEN 'one' WHEN 2 THEN 'two' END FROM mytable`,
+		[]sql.Row{
+			{"one"},
+			{"two"},
+			{nil},
+		},
+	},
+	{
+		`SHOW COLLATION`,
+		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
+	},
+	{
+		`SHOW COLLATION LIKE 'foo'`,
+		nil,
+	},
+	{
+		`SHOW COLLATION LIKE 'utf8%'`,
+		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
+	},
+	{
+		`SHOW COLLATION WHERE charset = 'foo'`,
+		nil,
+	},
+	{
+		"SHOW COLLATION WHERE `Default` = 'Yes'",
+		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
+	},
+	{
+		"ROLLBACK",
+		nil,
+	},
+	{
+		"SELECT substring(s, 1, 1) FROM mytable ORDER BY substring(s, 1, 1)",
+		[]sql.Row{{"f"}, {"s"}, {"t"}},
+	},
+	{
+		"SELECT substring(s, 1, 1), count(*) FROM mytable GROUP BY substring(s, 1, 1)",
+		[]sql.Row{{"f", int64(1)}, {"s", int64(1)}, {"t", int64(1)}},
+	},
+	{
+		"SELECT SLEEP(0.5)",
+		[]sql.Row{{int(0)}},
+	},
+	{
+		"SELECT TO_BASE64('foo')",
+		[]sql.Row{{string("Zm9v")}},
+	},
+	{
+		"SELECT FROM_BASE64('YmFy')",
+		[]sql.Row{{string("bar")}},
+	},
+	{
+		"SELECT DATE_ADD('2018-05-02', INTERVAL 1 DAY)",
+		[]sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		"SELECT DATE_SUB('2018-05-02', INTERVAL 1 DAY)",
+		[]sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		"SELECT '2018-05-02' + INTERVAL 1 DAY",
+		[]sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		"SELECT '2018-05-02' - INTERVAL 1 DAY",
+		[]sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		`SELECT i AS i FROM mytable ORDER BY i`,
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
+		`
+		SELECT
+			i,
+			foo
+		FROM (
+			SELECT
+				i,
+				COUNT(s) AS foo
+			FROM mytable
+			GROUP BY i
+		) AS q
+		ORDER BY foo DESC
+		`,
+		[]sql.Row{
+			{int64(1), int64(1)},
+			{int64(2), int64(1)},
+			{int64(3), int64(1)},
+		},
+	},
+	{
+		"SELECT n, COUNT(n) FROM bigtable GROUP BY n HAVING COUNT(n) > 2",
+		[]sql.Row{{int64(1), int64(3)}, {int64(2), int64(3)}},
+	},
+	{
+		"SELECT n, MAX(n) FROM bigtable GROUP BY n HAVING COUNT(n) > 2",
+		[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}},
+	},
+	{
+		"SELECT substring(mytable.s, 1, 5) AS s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1 HAVING s = \"secon\"",
+		[]sql.Row{{"secon"}},
+	},
+	{
+		"SELECT s,  i FROM mytable GROUP BY i ORDER BY SUBSTRING(s, 1, 1) DESC",
+		[]sql.Row{
+			{string("third row"), int64(3)},
+			{string("second row"), int64(2)},
+			{string("first row"), int64(1)},
+		},
+	},
+	{
+		"SELECT s, i FROM mytable GROUP BY i HAVING count(*) > 0 ORDER BY SUBSTRING(s, 1, 1) DESC",
+		[]sql.Row{
+			{string("third row"), int64(3)},
+			{string("second row"), int64(2)},
+			{string("first row"), int64(1)},
+		},
+	},
+	{
+		"SELECT CONVERT('9999-12-31 23:59:59', DATETIME)",
+		[]sql.Row{{time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)}},
+	},
+	{
+		"SELECT CONVERT('10000-12-31 23:59:59', DATETIME)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT '9999-12-31 23:59:59' + INTERVAL 1 DAY",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT DATE_ADD('9999-12-31 23:59:59', INTERVAL 1 DAY)",
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) AS date_col) t WHERE t.date_col > '0000-01-01 00:00:00'`,
+		[]sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		`SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t GROUP BY t.date_col`,
+		[]sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		`SELECT i AS foo FROM mytable ORDER BY mytable.i`,
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
+		`SELECT JSON_EXTRACT('[1, 2, 3]', '$.[0]')`,
+		[]sql.Row{{float64(1)}},
+	},
+	{
+		`SELECT ARRAY_LENGTH(JSON_EXTRACT('[1, 2, 3]', '$'))`,
+		[]sql.Row{{int32(3)}},
+	},
+	{
+		`SELECT ARRAY_LENGTH(JSON_EXTRACT('[{"i":0}, {"i":1, "y":"yyy"}, {"i":2, "x":"xxx"}]', '$.i'))`,
+		[]sql.Row{{int32(3)}},
+	},
+	{
+		`SELECT GREATEST(1, 2, 3, 4)`,
+		[]sql.Row{{int64(4)}},
+	},
+	{
+		`SELECT GREATEST(1, 2, "3", 4)`,
+		[]sql.Row{{float64(4)}},
+	},
+	{
+		`SELECT GREATEST(1, 2, "9", "foo999")`,
+		[]sql.Row{{float64(9)}},
+	},
+	{
+		`SELECT GREATEST("aaa", "bbb", "ccc")`,
+		[]sql.Row{{"ccc"}},
+	},
+	{
+		`SELECT GREATEST(i, s) FROM mytable`,
+		[]sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+	},
+	{
+		`SELECT LEAST(1, 2, 3, 4)`,
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		`SELECT LEAST(1, 2, "3", 4)`,
+		[]sql.Row{{float64(1)}},
+	},
+	{
+		`SELECT LEAST(1, 2, "9", "foo999")`,
+		[]sql.Row{{float64(1)}},
+	},
+	{
+		`SELECT LEAST("aaa", "bbb", "ccc")`,
+		[]sql.Row{{"aaa"}},
+	},
+	{
+		`SELECT LEAST(i, s) FROM mytable`,
+		[]sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+	},
+	{
+		"SELECT i, i2, s2 FROM mytable LEFT JOIN othertable ON i = i2 - 1",
+		[]sql.Row{
+			{int64(1), int64(2), "second"},
+			{int64(2), int64(3), "first"},
+			{int64(3), nil, nil},
+		},
+	},
+	{
+		"SELECT i, i2, s2 FROM mytable RIGHT JOIN othertable ON i = i2 - 1",
+		[]sql.Row{
+			{nil, int64(1), "third"},
+			{int64(1), int64(2), "second"},
+			{int64(2), int64(3), "first"},
+		},
+	},
+	{
+		"SELECT i, i2, s2 FROM mytable LEFT OUTER JOIN othertable ON i = i2 - 1",
+		[]sql.Row{
+			{int64(1), int64(2), "second"},
+			{int64(2), int64(3), "first"},
+			{int64(3), nil, nil},
+		},
+	},
+	{
+		"SELECT i, i2, s2 FROM mytable RIGHT OUTER JOIN othertable ON i = i2 - 1",
+		[]sql.Row{
+			{nil, int64(1), "third"},
+			{int64(1), int64(2), "second"},
+			{int64(2), int64(3), "first"},
+		},
+	},
+	{
+		`SELECT CHAR_LENGTH('áé'), LENGTH('àè')`,
+		[]sql.Row{{int32(2), int32(4)}},
+	},
+	{
+		"SELECT i, COUNT(i) AS `COUNT(i)` FROM (SELECT i FROM mytable) t GROUP BY i ORDER BY i, `COUNT(i)` DESC",
+		[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(1)}, {int64(3), int64(1)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE NOT s ORDER BY 1 DESC",
+		[]sql.Row{
+			{int64(3)},
+			{int64(2)},
+			{int64(1)},
+		},
+	},
+	{
+		"SELECT i FROM mytable WHERE NOT(NOT i) ORDER BY 1 DESC",
+		[]sql.Row{
+			{int64(3)},
+			{int64(2)},
+			{int64(1)},
+		},
+	},
+	{
+		`SELECT NOW() - NOW()`,
+		[]sql.Row{{int64(0)}},
+	},
+	{
+		`SELECT NOW() - (NOW() - INTERVAL 1 SECOND)`,
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		`SELECT SUBSTR(SUBSTRING('0123456789ABCDEF', 1, 10), -4)`,
+		[]sql.Row{{"6789"}},
+	},
+	{
+		`SELECT CASE i WHEN 1 THEN i ELSE NULL END FROM mytable`,
+		[]sql.Row{{int64(1)}, {nil}, {nil}},
+	},
+	{
+		`SELECT (NULL+1)`,
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT ARRAY_LENGTH(null)`,
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT ARRAY_LENGTH("foo")`,
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT * FROM mytable WHERE NULL AND i = 3`,
+		nil,
+	},
+	{
+		`SELECT 1 FROM mytable GROUP BY i HAVING i > 1`,
+		[]sql.Row{{int8(1)}, {int8(1)}},
+	},
+	{
+		`SELECT avg(i) FROM mytable GROUP BY i HAVING avg(i) > 1`,
+		[]sql.Row{{float64(2)}, {float64(3)}},
+	},
+	{
+		`SELECT s AS s, COUNT(*) AS count,  AVG(i) AS ` + "`AVG(i)`" + `
+		FROM  (
+			SELECT * FROM mytable
+		) AS expr_qry
+		GROUP BY s
+		HAVING ((AVG(i) > 0))
+		ORDER BY count DESC
+		LIMIT 10000`,
+		[]sql.Row{
+			{"first row", int64(1), float64(1)},
+			{"second row", int64(1), float64(2)},
+			{"third row", int64(1), float64(3)},
+		},
+	},
+	{
+		`SELECT FIRST(i) FROM (SELECT i FROM mytable ORDER BY i) t`,
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		`SELECT LAST(i) FROM (SELECT i FROM mytable ORDER BY i) t`,
+		[]sql.Row{{int64(3)}},
+	},
+	{
+		`SELECT COUNT(DISTINCT t.i) FROM tabletest t, mytable t2`,
+		[]sql.Row{{int64(3)}},
+	},
+	{
+		`SELECT CASE WHEN NULL THEN "yes" ELSE "no" END AS test`,
+		[]sql.Row{{"no"}},
+	},
+	{
+		`SELECT
+			table_schema,
+			table_name,
+			CASE
+				WHEN table_type = 'BASE TABLE' THEN
+					CASE
+						WHEN table_schema = 'mysql'
+							OR table_schema = 'performance_schema' THEN 'SYSTEM TABLE'
+						ELSE 'TABLE'
+					END
+				WHEN table_type = 'TEMPORARY' THEN 'LOCAL_TEMPORARY'
+				ELSE table_type
+			END AS TABLE_TYPE
+		FROM information_schema.tables
+		WHERE table_schema = 'mydb'
+			AND table_name = 'mytable'
+		HAVING table_type IN ('TABLE', 'VIEW')
+		ORDER BY table_type, table_schema, table_name`,
+		[]sql.Row{{"mydb", "mytable", "TABLE"}},
+	},
+	{
+		`SELECT REGEXP_MATCHES("bopbeepbop", "bop")`,
+		[]sql.Row{{[]interface{}{"bop", "bop"}}},
+	},
+	{
+		`SELECT EXPLODE(REGEXP_MATCHES("bopbeepbop", "bop"))`,
+		[]sql.Row{{"bop"}, {"bop"}},
+	},
+	{
+		`SELECT EXPLODE(REGEXP_MATCHES("helloworld", "bop"))`,
+		nil,
+	},
+	{
+		`SELECT EXPLODE(REGEXP_MATCHES("", ""))`,
+		[]sql.Row{{""}},
+	},
+	{
+		`SELECT REGEXP_MATCHES(NULL, "")`,
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT REGEXP_MATCHES("", NULL)`,
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT REGEXP_MATCHES("", "", NULL)`,
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT * FROM newlinetable WHERE s LIKE '%text%'",
+		[]sql.Row{
+			{int64(1), "\nthere is some text IN here"},
+			{int64(2), "there is some\ntext IN here"},
+			{int64(3), "there is some text\nin here"},
+			{int64(4), "there is some text IN here\n"},
+			{int64(5), "there is some text IN here"},
+		},
+	},
+	{
+		`SELECT i FROM mytable WHERE i = (SELECT 1)`,
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		`SELECT i FROM mytable WHERE i IN (SELECT i FROM mytable)`,
+		[]sql.Row{
+			{int64(1)},
+			{int64(2)},
+			{int64(3)},
+		},
+	},
+	{
+		`SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 2)`,
+		[]sql.Row{
+			{int64(3)},
+		},
+	},
+	{
+		`SELECT (SELECT i FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		`SELECT DISTINCT n FROM bigtable ORDER BY t`,
+		[]sql.Row{
+			{int64(1)},
+			{int64(9)},
+			{int64(7)},
+			{int64(3)},
+			{int64(2)},
+			{int64(8)},
+			{int64(6)},
+			{int64(5)},
+			{int64(4)},
+		},
+	},
+	{
+		"SELECT pk,pk1,pk2 FROM one_pk, two_pk ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{0, 1, 0},
+			{0, 1, 1},
+			{1, 0, 0},
+			{1, 0, 1},
+			{1, 1, 0},
+			{1, 1, 1},
+			{2, 0, 0},
+			{2, 0, 1},
+			{2, 1, 0},
+			{2, 1, 1},
+			{3, 0, 0},
+			{3, 0, 1},
+			{3, 1, 0},
+			{3, 1, 1},
+		},
+	},
+	{
+		"SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE pk1=1 AND pk2=1 ORDER BY 1,2",
+		[]sql.Row{
+			{0, 30},
+			{10, 30},
+			{20, 30},
+			{30, 30},
+		},
+	},
+	{
+		"SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE pk1=1 OR pk2=1 ORDER BY 1,2",
+		[]sql.Row{
+			{0, 10},
+			{0, 20},
+			{0, 30},
+			{10, 10},
+			{10, 20},
+			{10, 30},
+			{20, 10},
+			{20, 20},
+			{20, 30},
+			{30, 10},
+			{30, 20},
+			{30, 30},
+		},
+	},
+	{
+		"SELECT pk,pk2 FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2",
+		[]sql.Row{
+			{1, 1},
+			{1, 1},
+		},
+	},
+	{
+		"SELECT pk,pk1,pk2 FROM one_pk,two_pk WHERE pk=0 AND pk1=0 OR pk2=1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{0, 1, 1},
+			{1, 0, 1},
+			{1, 1, 1},
+			{2, 0, 1},
+			{2, 1, 1},
+			{3, 0, 1},
+			{3, 1, 1},
+		},
+	},
+	{
+		"SELECT pk,pk1,pk2 FROM one_pk,two_pk WHERE one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{1, 0, 1},
+			{2, 1, 0},
+			{3, 1, 1},
+		},
+	},
+	{
+		"SELECT one_pk.c5,pk1,pk2 FROM one_pk,two_pk WHERE pk=pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{10, 1, 0},
+			{10, 1, 1},
+		},
+	},
+	{
+		"SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk on one_pk.c1=two_pk.c1 WHERE pk=1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{1, 0, 1},
+		},
+	},
+	{
+		"SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk on pk=pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{1, 1, 0},
+			{1, 1, 1},
+			{2, nil, nil},
+			{3, nil, nil},
+		},
+	},
 	{
 		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable on pk=i ORDER BY 1",
 		[]sql.Row{

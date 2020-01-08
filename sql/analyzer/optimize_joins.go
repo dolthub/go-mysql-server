@@ -111,7 +111,7 @@ func transformInnerJoins(
 				return nil, err
 			}
 
-			return plan.NewIndexedJoin(leftNode, rightNode, joinCond, leftTableExpr, rightTableIndex), nil
+			return plan.NewIndexedJoin(leftNode, rightNode, joinType, joinCond, leftTableExpr, rightTableIndex), nil
 		default:
 			return node, nil
 		}
