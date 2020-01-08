@@ -552,9 +552,6 @@ func indexesIntersection(
 	a *Analyzer,
 	left, right map[string]*indexLookup,
 ) map[string]*indexLookup {
-	if left == nil {
-		return right
-	}
 
 	var result = make(map[string]*indexLookup)
 
