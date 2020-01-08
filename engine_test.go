@@ -1599,6 +1599,25 @@ var queries = []queryTest{
 		},
 	},
 	{
+		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable on pk=i AND f IS NOT NULL ORDER BY 1", // NOT NULL clause in join condition is ignored
+		[]sql.Row{
+			{0, nil, nil},
+			{1, int64(1), float64(1.0)},
+			{2, int64(2), float64(2.0)},
+			{3, nil, nil},
+		},
+	},
+	{
+		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable on pk=i and pk > 0 ORDER BY 2,3", // > 0 clause in join condition is ignored
+		[]sql.Row{
+			{nil, nil, nil},
+			{nil, nil, float64(3.0)},
+			{1, int64(1), float64(1.0)},
+			{2, int64(2), float64(2.0)},
+			{nil, int64(4), nil},
+		},
+	},
+	{
 		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable on pk=i WHERE f IS NOT NULL ORDER BY 1",
 		[]sql.Row{
 			{1, int64(1), float64(1.0)},
