@@ -480,13 +480,12 @@ func (i *joinIter) Next() (sql.Row, error) {
 		}
 
 		row := i.buildRow(primary, secondary)
-		v, err := i.cond.Eval(i.ctx, row)
+		matches, err := conditionIsTrue(i.ctx, row, i.cond)
 		if err != nil {
 			return nil, err
 		}
 
-		// comparisons with nil will return nil, not true or false
-		if v != true {
+		if !matches {
 			continue
 		}
 

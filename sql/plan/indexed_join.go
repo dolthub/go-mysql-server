@@ -197,19 +197,28 @@ func (i *indexedJoinIter) Next() (sql.Row, error) {
 		}
 
 		row := i.buildRow(primary, secondary)
-		v, err := i.cond.Eval(i.ctx, row)
+		matches, err := conditionIsTrue(i.ctx, row, i.cond)
 		if err != nil {
 			return nil, err
 		}
 
-		// Expressions containing nil evaluate to nil, not false
-		if v != true {
+		if !matches {
 			continue
 		}
 
 		i.foundMatch = true
 		return row, nil
 	}
+}
+
+func conditionIsTrue(ctx *sql.Context, row sql.Row, cond sql.Expression) (bool, error) {
+	v, err := cond.Eval(ctx, row)
+	if err != nil {
+		return false, err
+	}
+
+	// Expressions containing nil evaluate to nil, not false
+	return v == true, nil
 }
 
 // buildRow builds the resulting row using the rows from the primary and secondary tables
