@@ -247,7 +247,7 @@ func (s *sorter) Less(i, j int) bool {
 
 		if av == nil && bv == nil {
 			return false
-		} else if av == nil && bv != nil {
+		} else if av == nil {
 			return sf.NullOrdering == NullsFirst
 		} else if bv == nil {
 			return sf.NullOrdering != NullsFirst
