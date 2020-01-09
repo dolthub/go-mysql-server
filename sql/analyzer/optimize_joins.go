@@ -223,7 +223,7 @@ func getTableNameFromExpression(expr sql.Expression) (tableName string, fieldNam
 
 // Assign indexes to the join conditions and returns the sql.Indexes assigned, as well as returning any aliases used by
 // join conditions
-func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) ([]sql.Index,  Aliases, error) {
+func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) ([]sql.Index, Aliases, error) {
 	a.Log("finding indexes, node of type: %T", node)
 
 	indexSpan, _ := ctx.Span("find_join_indexes")
@@ -315,8 +315,8 @@ func getJoinEqualityIndex(
 	}
 
 	leftIdx, rightIdx =
-		a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Left())...),
-		a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Right())...)
+			a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Left())...),
+			a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Right())...)
 
 	return leftIdx, rightIdx
 }
@@ -333,32 +333,84 @@ func getJoinIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Anal
 		if rightIdx != nil {
 			result = append(result, rightIdx)
 		}
+	case *expression.And:
+		exprs := splitConjunction(e)
+		for _, expr := range exprs {
+			if _, ok := expr.(*expression.Equals); !ok {
+				return nil, nil
+			}
+		}
 
-		// TODO: fill in with multi-column indexes
-	// case *expression.And:
-	// 	exprs := splitExpression(e)
-	// 	used := make(map[sql.Expression]struct{})
-	//
-	// 	result, err := getMultiColumnIndexes(exprs, a, used, aliases)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	//
-	// 	for _, e := range exprs {
-	// 		if _, ok := used[e]; ok {
-	// 			continue
-	// 		}
-	//
-	// 		indexes, err := getIndexes(e, aliases, a)
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	//
-	// 		result = indexesIntersection(a, result, indexes)
-	// 	}
-	//
-	// 	return result, nil
+		indexes := getMultiColumnJoinIndex(exprs, a, aliases)
+		result = append(result, indexes...)
 	}
 
 	return result, nil
+}
+
+func getMultiColumnJoinIndex(
+		exprs []sql.Expression,
+		a *Analyzer,
+		aliases map[string]sql.Expression,
+) []sql.Index {
+	var result []sql.Index
+
+	exprsByTable := joinExprsByTable(exprs)
+	for _, cols := range exprsByTable {
+		idx := a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, colExprsToGetFields(cols)...)...)
+		if idx != nil {
+			result = append(result, idx)
+		}
+	}
+
+	return result
+}
+
+func colExprsToGetFields(exprs []columnExpr) []sql.Expression {
+	result := make([]sql.Expression, len(exprs))
+	for i, expr := range exprs {
+		result[i] = expr.col
+	}
+	return result
+}
+
+func joinExprsByTable(exprs []sql.Expression) map[string][]columnExpr {
+	var result = make(map[string][]columnExpr)
+
+	for _, expr := range exprs {
+		leftTable, rightTable, leftExpr, rightExpr := extractJoinColumnExpr(expr)
+		if leftExpr == nil || rightExpr == nil {
+			continue
+		}
+
+		result[leftTable] = append(result[leftTable], *leftExpr)
+		result[rightTable] = append(result[rightTable], *rightExpr)
+	}
+
+	return result
+}
+
+// Extracts a pair of column expressions from a join condition, which must be an equality.
+func extractJoinColumnExpr(e sql.Expression) (leftTable string, rightTable string, leftCol *columnExpr, rightCol *columnExpr) {
+	switch e := e.(type) {
+	case *expression.Equals:
+		left, right := e.Left(), e.Right()
+		if isEvaluable(left) || isEvaluable(right) {
+			return "", "", nil, nil
+		}
+
+		leftCol, ok := left.(*expression.GetField)
+		if !ok {
+			return "", "", nil, nil
+		}
+
+		rightCol, ok := left.(*expression.GetField)
+		if !ok {
+			return "", "", nil, nil
+		}
+
+		return leftCol.Table(), rightCol.Table(), &columnExpr{leftCol, right, e}, &columnExpr{rightCol, left, e}
+	default:
+		return "", "", nil, nil
+	}
 }
