@@ -2,6 +2,7 @@ package function
 
 import (
 	"fmt"
+	"github.com/shopspring/decimal"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 )
@@ -30,6 +31,8 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Fucking Golang
 	switch x := val.(type) {
+	case uint,uint64,uint32,uint16,uint8:
+		return x, nil
 	case int:
 		if x < 0 {
 			return -x, nil
@@ -60,36 +63,6 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		} else {
 			return x, nil
 		}
-	case uint:
-		if x < 0 {
-			return -x, nil
-		} else {
-			return x, nil
-		}
-	case uint64:
-		if x < 0 {
-			return -x, nil
-		} else {
-			return x, nil
-		}
-	case uint32:
-		if x < 0 {
-			return -x, nil
-		} else {
-			return x, nil
-		}
-	case uint16:
-		if x < 0 {
-			return -x, nil
-		} else {
-			return x, nil
-		}
-	case uint8:
-		if x < 0 {
-			return -x, nil
-		} else {
-			return x, nil
-		}
 	case float64:
 		if x < 0 {
 			return -x, nil
@@ -102,6 +75,8 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		} else {
 			return x, nil
 		}
+	case decimal.Decimal:
+		return x.Abs(), nil
 	}
 
 	return nil, nil
@@ -127,5 +102,5 @@ func (t *AbsVal) WithChildren(children ...sql.Expression) (sql.Expression, error
 
 // Type implements the Expression interface.
 func (t *AbsVal) Type() sql.Type {
-	return nil
+	return t.Child.Type()
 }
