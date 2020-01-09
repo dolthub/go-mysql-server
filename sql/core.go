@@ -31,6 +31,10 @@ var (
 	// node or expression is called with an invalid number of arguments.
 	ErrInvalidChildrenNumber = errors.NewKind("%T: invalid children number, got %d, expected %d")
 
+	// ErrInvalidChildType is returned when the WithChildren method of a
+	// node or expression is called with an invalid child type. This error is indicative of a bug.
+	ErrInvalidChildType = errors.NewKind("%T: invalid child type, got %T, expected %T")
+
 	// ErrDeleteRowNotFound
 	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete").New()
 )

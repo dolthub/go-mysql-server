@@ -24,28 +24,41 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return n, nil
 	}
 
-	a.Log("finding used columns in node")
-
-	colSpan, _ := ctx.Span("find_pushdown_columns")
+	// Pushdown interferes with left and right joins (some where clauses must only be evaluated on the result of the join,
+	// not pushed down to the tables), so skip them.
+	// TODO: only some join queries are incompatible with pushdown semantics, and we could be more judicious with this
+	//  pruning. The issue is that for left and right joins, some where clauses must be evaluated on the result set after
+	//  joining, and cannot be pushed down to the individual tables. For example, filtering on whether a field in the
+	//  secondary table is NULL must happen after the join, not before, to give correct results.
+	incompatibleJoin := false
+	plan.Inspect(n, func(node sql.Node) bool {
+		switch node.(type) {
+		case *plan.LeftJoin, *plan.RightJoin:
+			incompatibleJoin = true
+		}
+		return true
+	})
+	if incompatibleJoin {
+		a.Log("skipping pushdown for incompatible join")
+		return n, nil
+	}
 
 	// First step is to find all col exprs and group them by the table they mention.
 	// Even if they appear multiple times, only the first one will be used.
-	fieldsByTable := findFieldsByTable(n)
-
+	a.Log("finding used columns in node")
+	colSpan, _ := ctx.Span("find_pushdown_columns")
+	fieldsByTable := findFieldsByTable(ctx, n)
 	colSpan.Finish()
 
 	a.Log("finding filters in node")
 	filters := findFilters(ctx, n)
 
-	indexSpan, _ := ctx.Span("assign_indexes")
-	indexes, err := assignIndexes(a, n)
+	indexes, err := assignIndexes(ctx, a, n)
 	if err != nil {
 		return nil, err
 	}
-	indexSpan.Finish()
 
 	a.Log("transforming nodes with pushdown of filters, projections and indexes")
-
 	return transformPushdown(a, n, filters, indexes, fieldsByTable)
 }
 
@@ -89,7 +102,10 @@ func fixFieldIndexes(schema sql.Schema, exp sql.Expression) (sql.Expression, err
 	})
 }
 
-func findFieldsByTable(n sql.Node) map[string][]string {
+func findFieldsByTable(ctx *sql.Context, n sql.Node) map[string][]string {
+	colSpan, _ := ctx.Span("find_field_by_table")
+	defer colSpan.Finish()
+
 	var fieldsByTable = make(map[string][]string)
 	plan.InspectExpressions(n, func(e sql.Expression) bool {
 		if gf, ok := e.(*expression.GetField); ok {
@@ -143,7 +159,7 @@ func transformPushdown(
 				return nil, err
 			}
 			// After pushing down the filter, we need to fix field indexes as well
-			return transformExpressioners(n)
+			return fixFieldIndexesForExpressions(n)
 		case *plan.ResolvedTable:
 			table, err := pushdownTable(
 				a,
@@ -157,9 +173,9 @@ func transformPushdown(
 			if err != nil {
 				return nil, err
 			}
-			return transformExpressioners(table)
+			return fixFieldIndexesForExpressions(table)
 		default:
-			return transformExpressioners(node)
+			return fixFieldIndexesForExpressions(node)
 		}
 	})
 
@@ -181,7 +197,8 @@ func transformPushdown(
 	return node, nil
 }
 
-func transformExpressioners(node sql.Node) (sql.Node, error) {
+// Transforms the expressions in the Node given, fixing the field indexes.
+func fixFieldIndexesForExpressions(node sql.Node) (sql.Node, error) {
 	if _, ok := node.(sql.Expressioner); !ok {
 		return node, nil
 	}

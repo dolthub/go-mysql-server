@@ -114,14 +114,14 @@ func (i *iter) Next() (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
-	return filterRow(i.ctx, i.p.Projections, childRow)
+	return projectRow(i.ctx, i.p.Projections, childRow)
 }
 
 func (i *iter) Close() error {
 	return i.childIter.Close()
 }
 
-func filterRow(
+func projectRow(
 	s *sql.Context,
 	expressions []sql.Expression,
 	row sql.Row,

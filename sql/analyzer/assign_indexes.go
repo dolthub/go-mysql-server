@@ -18,8 +18,11 @@ type indexLookup struct {
 	indexes []sql.Index
 }
 
-func assignIndexes(a *Analyzer, node sql.Node) (map[string]*indexLookup, error) {
+func assignIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]*indexLookup, error) {
 	a.Log("assigning indexes, node of type: %T", node)
+
+	indexSpan, _ := ctx.Span("assign_indexes")
+	defer indexSpan.Finish()
 
 	var indexes map[string]*indexLookup
 	// release all unused indexes
@@ -75,12 +78,7 @@ func assignIndexes(a *Analyzer, node sql.Node) (map[string]*indexLookup, error) 
 			return false
 		}
 
-		if indexes != nil {
-			indexes = indexesIntersection(a, indexes, result)
-		} else {
-			indexes = result
-		}
-
+		indexes = indexesIntersection(a, indexes, result)
 		return true
 	})
 
@@ -334,23 +332,27 @@ func findTables(e sql.Expression) []string {
 	return names
 }
 
+func unifyExpression(aliases map[string]sql.Expression, e sql.Expression) sql.Expression {
+	uex := e
+	name := e.String()
+	if n, ok := e.(sql.Nameable); ok {
+		name = n.Name()
+	}
+
+	if aliases != nil && len(aliases) > 0 {
+		if alias, ok := aliases[name]; ok {
+			uex = alias
+		}
+	}
+
+	return uex
+}
+
 func unifyExpressions(aliases map[string]sql.Expression, expr ...sql.Expression) []sql.Expression {
 	expressions := make([]sql.Expression, len(expr))
 
 	for i, e := range expr {
-		uex := e
-		name := e.String()
-		if n, ok := e.(sql.Nameable); ok {
-			name = n.Name()
-		}
-
-		if aliases != nil && len(aliases) > 0 {
-			if alias, ok := aliases[name]; ok {
-				uex = alias
-			}
-		}
-
-		expressions[i] = uex
+		expressions[i] = unifyExpression(aliases, e)
 	}
 
 	return expressions
@@ -550,6 +552,7 @@ func indexesIntersection(
 	a *Analyzer,
 	left, right map[string]*indexLookup,
 ) map[string]*indexLookup {
+
 	var result = make(map[string]*indexLookup)
 
 	for table, idx := range left {
