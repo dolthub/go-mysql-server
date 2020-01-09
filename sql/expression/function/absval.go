@@ -84,7 +84,7 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // String implements the Stringer interface.
 func (t *AbsVal) String() string {
-	return fmt.Sprintf("ABS(%s)", t.Child)
+	return fmt.Sprintf("ABS(%s)", t.Child.String())
 }
 
 // IsNullable implements the Expression interface.
