@@ -6,13 +6,12 @@ import (
 	"github.com/src-d/go-mysql-server/sql/expression"
 )
 
-// ToBase64 is a function to encode a string to the Base64 format
-// using the same dialect that MySQL's TO_BASE64 uses
+// AbsVal is a function that takes the absolute value of a number
 type AbsVal struct {
 	expression.UnaryExpression
 }
 
-// NewToBase64 creates a new ToBase64 expression.
+// NewAbsVal creates a new AbsVal expression.
 func NewAbsVal(e sql.Expression) sql.Expression {
 	return &AbsVal{expression.UnaryExpression{Child: e}}
 }
