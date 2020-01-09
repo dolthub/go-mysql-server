@@ -21,7 +21,7 @@ import (
 
 var (
 	// ErrUnsupportedSyntax is thrown when a specific syntax is not already supported
-	ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %#v")
+	ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %s")
 
 	// ErrUnsupportedFeature is thrown when a feature is not already supported
 	ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
@@ -112,7 +112,7 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node, error) {
 	switch n := stmt.(type) {
 	default:
-		return nil, ErrUnsupportedSyntax.New(n)
+		return nil, ErrUnsupportedSyntax.New(sqlparser.String(n))
 	case *sqlparser.Show:
 		// When a query is empty it means it comes from a subquery, as we don't
 		// have the query itself in a subquery. Hence, a SHOW could not be
@@ -383,7 +383,7 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	case sqlparser.RenameStr:
 		return convertRenameTable(ctx, c)
 	default:
-		return nil, ErrUnsupportedSyntax.New(c)
+		return nil, ErrUnsupportedSyntax.New(sqlparser.String(c))
 	}
 }
 
@@ -422,7 +422,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		}
 		return plan.NewModifyColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String(), sch[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 	default:
-		return nil, ErrUnsupportedFeature.New(ddl)
+		return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
 	}
 }
 
@@ -460,7 +460,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 func convertCreateView(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
 	selectStatement, ok := c.ViewExpr.(*sqlparser.Select)
 	if !ok {
-		return nil, ErrUnsupportedSyntax.New(c.ViewExpr)
+		return nil, ErrUnsupportedSyntax.New(sqlparser.String(c.ViewExpr))
 	}
 
 	queryNode, err := convertSelect(ctx, selectStatement)
@@ -490,7 +490,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 	}
 
 	if len(i.Ignore) > 0 {
-		return nil, ErrUnsupportedSyntax.New(i)
+		return nil, ErrUnsupportedSyntax.New(sqlparser.String(i))
 	}
 
 	isReplace := i.Action == sqlparser.ReplaceStr
@@ -678,7 +678,7 @@ func insertRowsToNode(ctx *sql.Context, ir sqlparser.InsertRows) (sql.Node, erro
 	case sqlparser.Values:
 		return valuesToValues(ctx, v)
 	default:
-		return nil, ErrUnsupportedSyntax.New(ir)
+		return nil, ErrUnsupportedSyntax.New(sqlparser.String(ir))
 	}
 }
 
@@ -736,7 +736,7 @@ func tableExprToTable(
 ) (sql.Node, error) {
 	switch t := (te).(type) {
 	default:
-		return nil, ErrUnsupportedSyntax.New(te)
+		return nil, ErrUnsupportedSyntax.New(sqlparser.String(te))
 	case *sqlparser.AliasedTableExpr:
 		// TODO: Add support for qualifier.
 		switch e := t.Expr.(type) {
@@ -759,7 +759,7 @@ func tableExprToTable(
 
 			return plan.NewSubqueryAlias(t.As.String(), node), nil
 		default:
-			return nil, ErrUnsupportedSyntax.New(te)
+			return nil, ErrUnsupportedSyntax.New(sqlparser.String(te))
 		}
 	case *sqlparser.JoinTableExpr:
 		// TODO: add support for using, once we have proper table
@@ -799,7 +799,7 @@ func tableExprToTable(
 		case sqlparser.RightJoinStr:
 			return plan.NewRightJoin(left, right, cond), nil
 		default:
-			return nil, ErrUnsupportedFeature.New(t.Join)
+			return nil, ErrUnsupportedFeature.New("Join type " + t.Join)
 		}
 	}
 }
@@ -1000,7 +1000,7 @@ func selectExprsToExpressions(ctx *sql.Context, se sqlparser.SelectExprs) ([]sql
 func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error) {
 	switch v := e.(type) {
 	default:
-		return nil, ErrUnsupportedSyntax.New(e)
+		return nil, ErrUnsupportedSyntax.New(sqlparser.String(e))
 	case *sqlparser.Default:
 		return expression.NewDefaultColumn(v.ColName), nil
 	case *sqlparser.SubstrExpr:
@@ -1258,7 +1258,7 @@ func isExprToExpression(ctx *sql.Context, c *sqlparser.IsExpr) (sql.Expression, 
 	case sqlparser.IsNotFalseStr:
 		return expression.NewNot(expression.NewIsFalse(e)), nil
 	default:
-		return nil, ErrUnsupportedSyntax.New(c)
+		return nil, ErrUnsupportedSyntax.New(sqlparser.String(c))
 	}
 }
 
@@ -1322,7 +1322,7 @@ func groupByToExpressions(ctx *sql.Context, g sqlparser.GroupBy) ([]sql.Expressi
 func selectExprToExpression(ctx *sql.Context, se sqlparser.SelectExpr) (sql.Expression, error) {
 	switch e := se.(type) {
 	default:
-		return nil, ErrUnsupportedSyntax.New(e)
+		return nil, ErrUnsupportedSyntax.New(sqlparser.String(e))
 	case *sqlparser.StarExpr:
 		if e.TableName.IsEmpty() {
 			return expression.NewStar(), nil
