@@ -39,6 +39,7 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return true
 	})
 	if incompatibleJoin {
+		a.Log("skipping pushdown for incompatible join")
 		return n, nil
 	}
 

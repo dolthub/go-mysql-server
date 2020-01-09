@@ -159,6 +159,7 @@ func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 		span, ctx := i.ctx.Span("plan.IndexedJoin indexed lookup")
 		rowIter, err := i.secondaryProvider.RowIter(ctx)
 		if err != nil {
+			span.Finish()
 			return nil, err
 		}
 
@@ -232,8 +233,6 @@ func (i *indexedJoinIter) buildRow(primary, secondary sql.Row) sql.Row {
 }
 
 func (i *indexedJoinIter) Close() (err error) {
-	i.secondary = nil
-
 	if i.primary != nil {
 		if err = i.primary.Close(); err != nil {
 			if i.secondary != nil {
@@ -241,10 +240,10 @@ func (i *indexedJoinIter) Close() (err error) {
 			}
 			return err
 		}
-
 	}
 
 	if i.secondary != nil {
+		i.secondary = nil
 		err = i.secondary.Close()
 	}
 

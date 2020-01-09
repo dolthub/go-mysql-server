@@ -12,10 +12,10 @@ type Aliases map[string]sql.Expression
 // optimizeJoins takes two-table InnerJoins where the join condition is an equality on an index of one of the tables,
 // and replaces it with an equivalent IndexedJoin of the same two tables.
 func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("optimizePrimaryKeyJoins")
+	span, ctx := ctx.Span("optimize_joins")
 	defer span.Finish()
 
-	a.Log("optimizePrimaryKeyJoins, node of type: %T", n)
+	a.Log("optimize_joins, node of type: %T", n)
 	if !n.Resolved() {
 		return n, nil
 	}
@@ -308,8 +308,8 @@ func getJoinEqualityIndex(
 		aliases map[string]sql.Expression,
 ) (leftIdx sql.Index, rightIdx sql.Index) {
 
-	// Only handle column expressions -- evaluable expressions will have already gotten pushed down
-	// to their origin tables
+	// Only handle column expressions for these join indexes. Evaluable expression like `col=literal` will get pushed
+	// down where possible.
 	if isEvaluable(e.Left()) || isEvaluable(e.Right()) {
 		return nil, nil
 	}

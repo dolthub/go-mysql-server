@@ -1563,13 +1563,13 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk on one_pk.c1=two_pk.c1 WHERE pk=1 ORDER BY 1,2,3",
+		"SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE pk=1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{1, 0, 1},
 		},
 	},
 	{
-		"SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk on pk=pk1 ORDER BY 1,2,3",
+		"SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{0, 0, 1},
@@ -1580,7 +1580,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable on pk=i ORDER BY 1",
+		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i ORDER BY 1",
 		[]sql.Row{
 			{0, nil, nil},
 			{1, int64(1), float64(1.0)},
@@ -1589,7 +1589,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable on pk=i ORDER BY 2,3",
+		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i ORDER BY 2,3",
 		[]sql.Row{
 			{nil, nil, nil},
 			{nil, nil, float64(3.0)},
@@ -1599,7 +1599,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable on pk=i AND f IS NOT NULL ORDER BY 1", // NOT NULL clause in join condition is ignored
+		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i AND f IS NOT NULL ORDER BY 1", // NOT NULL clause in join condition is ignored
 		[]sql.Row{
 			{0, nil, nil},
 			{1, int64(1), float64(1.0)},
@@ -1608,7 +1608,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable on pk=i and pk > 0 ORDER BY 2,3", // > 0 clause in join condition is ignored
+		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i and pk > 0 ORDER BY 2,3", // > 0 clause in join condition is ignored
 		[]sql.Row{
 			{nil, nil, nil},
 			{nil, nil, float64(3.0)},
@@ -1618,14 +1618,14 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable on pk=i WHERE f IS NOT NULL ORDER BY 1",
+		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 1",
 		[]sql.Row{
 			{1, int64(1), float64(1.0)},
 			{2, int64(2), float64(2.0)},
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable on pk=i WHERE f IS NOT NULL ORDER BY 2,3",
+		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
 		[]sql.Row{
 			{nil, nil, float64(3.0)},
 			{1, int64(1), float64(1.0)},
@@ -1633,21 +1633,21 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable on pk=i WHERE pk > 1 ORDER BY 1",
+		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1 ORDER BY 1",
 		[]sql.Row{
 			{2, int64(2), float64(2.0)},
 			{3, nil, nil},
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable on pk=i WHERE pk > 0 ORDER BY 2,3",
+		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE pk > 0 ORDER BY 2,3",
 		[]sql.Row{
 			{1, int64(1), float64(1.0)},
 			{2, int64(2), float64(2.0)},
 		},
 	},
 	{
-		"SELECT pk,pk1,pk2,one_pk.c1 AS foo, two_pk.c1 AS bar FROM one_pk JOIN two_pk on one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
+		"SELECT pk,pk1,pk2,one_pk.c1 AS foo, two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0, 0, 0},
 			{1, 0, 1, 10, 10},
@@ -1656,13 +1656,13 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT pk,pk1,pk2,one_pk.c1 AS foo,two_pk.c1 AS bar FROM one_pk JOIN two_pk on one_pk.c1=two_pk.c1 WHERE one_pk.c1=10",
+		"SELECT pk,pk1,pk2,one_pk.c1 AS foo,two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE one_pk.c1=10",
 		[]sql.Row{
 			{1, 0, 1, 10, 10},
 		},
 	},
 	{
-		"SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk on pk1-pk>0 AND pk2<1",
+		"SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk1-pk>0 AND pk2<1",
 		[]sql.Row{
 			{0, 1, 0},
 		},
@@ -2336,7 +2336,7 @@ func TestClearWarnings(t *testing.T) {
 	err = iter.Close()
 	require.NoError(err)
 
-	_, iter, err = e.Query(ctx, "-- some empty query AS a comment")
+	_, iter, err = e.Query(ctx, "-- some empty query as a comment")
 	require.NoError(err)
 	err = iter.Close()
 	require.NoError(err)
@@ -2604,7 +2604,7 @@ func TestInsertInto(t *testing.T) {
 			},
 		},
 		{
-			"INSERT INTO mytable (s,i) SELECT concat(m.s, o.s2), m.i FROM othertable o JOIN mytable m on m.i=o.i2",
+			"INSERT INTO mytable (s,i) SELECT concat(m.s, o.s2), m.i FROM othertable o JOIN mytable m ON m.i=o.i2",
 			[]sql.Row{{int64(3)}},
 			"SELECT * FROM mytable ORDER BY i,s",
 			[]sql.Row{
@@ -2689,16 +2689,16 @@ func TestInsertIntoErrors(t *testing.T) {
 			"INSERT INTO mytable (i, s) select * FROM othertable",
 		},
 		{
-			"column count mismatch IN select",
+			"column count mismatch in select",
 			"INSERT INTO mytable (i) select * FROM othertable",
 		},
 		{
-			"column count mismatch IN select",
+			"column count mismatch in select",
 			"INSERT INTO mytable select s FROM othertable",
 		},
 		{
-			"column count mismatch IN join select",
-			"INSERT INTO mytable (s,i) SELECT * FROM othertable o join mytable m on m.i=o.i2",
+			"column count mismatch in join select",
+			"INSERT INTO mytable (s,i) SELECT * FROM othertable o JOIN mytable m ON m.i=o.i2",
 		},
 	}
 
