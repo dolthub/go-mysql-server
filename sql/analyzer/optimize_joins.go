@@ -330,39 +330,39 @@ func joinExprsByTable(exprs []sql.Expression) map[string][]sql.Expression {
 	var result = make(map[string][]sql.Expression)
 
 	for _, expr := range exprs {
-		leftTable, rightTable, leftExpr, rightExpr := extractJoinColumnExpr(expr)
+		leftExpr, rightExpr := extractJoinColumnExpr(expr)
 		if leftExpr == nil || rightExpr == nil {
 			continue
 		}
 
-		result[leftTable] = append(result[leftTable], leftExpr.expr)
-		result[rightTable] = append(result[rightTable], rightExpr.expr)
+		result[leftExpr.col.Table()] = append(result[leftExpr.col.Table()], leftExpr.col)
+		result[rightExpr.col.Table()] = append(result[rightExpr.col.Table()], rightExpr.col)
 	}
 
 	return result
 }
 
 // Extracts a pair of column expressions from a join condition, which must be an equality on two columns.
-func extractJoinColumnExpr(e sql.Expression) (leftTable string, rightTable string, leftCol *columnExpr, rightCol *columnExpr) {
+func extractJoinColumnExpr(e sql.Expression) (leftCol *columnExpr, rightCol *columnExpr) {
 	switch e := e.(type) {
 	case *expression.Equals:
 		left, right := e.Left(), e.Right()
 		if isEvaluable(left) || isEvaluable(right) {
-			return "", "", nil, nil
+			return nil, nil
 		}
 
 		leftCol, ok := left.(*expression.GetField)
 		if !ok {
-			return "", "", nil, nil
+			return  nil, nil
 		}
 
 		rightCol, ok := right.(*expression.GetField)
 		if !ok {
-			return "", "", nil, nil
+			return nil, nil
 		}
 
-		return leftCol.Table(), rightCol.Table(), &columnExpr{leftCol, right, e}, &columnExpr{rightCol, left, e}
+		return &columnExpr{leftCol, right, e}, &columnExpr{rightCol, left, e}
 	default:
-		return "", "", nil, nil
+		return nil, nil
 	}
 }
