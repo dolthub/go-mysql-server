@@ -284,7 +284,7 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 			}
 		}
 	case *expression.And:
-		exprs := splitExpression(e)
+		exprs := splitConjunction(e)
 		used := make(map[sql.Expression]struct{})
 
 		result, err := getMultiColumnIndexes(exprs, a, used, aliases)

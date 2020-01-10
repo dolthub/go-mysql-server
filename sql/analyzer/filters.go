@@ -17,7 +17,7 @@ func (f filters) merge(f2 filters) {
 
 func exprToTableFilters(expr sql.Expression) filters {
 	filtersByTable := make(filters)
-	for _, expr := range splitExpression(expr) {
+	for _, expr := range splitConjunction(expr) {
 		var seenTables = make(map[string]bool)
 		var lastTable string
 		sql.Inspect(expr, func(e sql.Expression) bool {
@@ -40,15 +40,15 @@ func exprToTableFilters(expr sql.Expression) filters {
 	return filtersByTable
 }
 
-func splitExpression(expr sql.Expression) []sql.Expression {
+func splitConjunction(expr sql.Expression) []sql.Expression {
 	and, ok := expr.(*expression.And)
 	if !ok {
 		return []sql.Expression{expr}
 	}
 
 	return append(
-		splitExpression(and.Left),
-		splitExpression(and.Right)...,
+		splitConjunction(and.Left),
+		splitConjunction(and.Right)...,
 	)
 }
 

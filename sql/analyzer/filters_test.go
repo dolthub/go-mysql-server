@@ -79,7 +79,7 @@ func TestSplitExpression(t *testing.T) {
 
 	require.Equal(t,
 		expected,
-		splitExpression(e),
+		splitConjunction(e),
 	)
 }
 
