@@ -126,7 +126,6 @@ func transformJoins(a *Analyzer, n sql.Node, indexes map[string]sql.Index, alias
 
 // Analyzes the join's tables and condition to select a left and right table, and an index to use for lookups in the
 // right table. Returns an error if no suitable index can be found.
-// Only works for single-column indexes
 func analyzeJoinIndexes(
 	node plan.BinaryNode,
 	cond sql.Expression,
@@ -138,6 +137,9 @@ func analyzeJoinIndexes(
 	rightTableName := findTableName(node.Right)
 
 	exprByTable := joinExprsByTable(splitConjunction(cond))
+	if len(exprByTable) < 2 {
+		return nil, nil, nil, nil, errors.New("couldn't determine suitable indexes to use for tables")
+	}
 
 	// Choose a primary and secondary table based on available indexes. We can't choose the left table as secondary for a
 	// left join, or the right as secondary for a right join.
