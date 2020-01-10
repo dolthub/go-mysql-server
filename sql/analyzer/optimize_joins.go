@@ -101,7 +101,7 @@ func transformJoins(a *Analyzer, n sql.Node, indexes map[string]sql.Index, alias
 				return nil, err
 			}
 
-			return plan.NewIndexedJoin(primaryTable, secondaryTable, joinType, joinCond, primaryTableExpr[0], secondaryTableIndex), nil
+			return plan.NewIndexedJoin(primaryTable, secondaryTable, joinType, joinCond, primaryTableExpr, secondaryTableIndex), nil
 		default:
 			return node, nil
 		}

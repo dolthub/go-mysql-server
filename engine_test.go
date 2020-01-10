@@ -1569,6 +1569,40 @@ var queries = []queryTest{
 		},
 	},
 	{
+		"SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{1, 1, 1},
+		},
+	},
+	{
+		"SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{1, 1, 1},
+			{2, nil, nil},
+			{3, nil, nil},
+		},
+	},
+	{
+		"SELECT pk,pk1,pk2 FROM one_pk RIGHT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{nil, 0, 1},
+			{nil, 1, 0},
+			{0, 0, 0},
+			{1, 1, 1},
+		},
+	},
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk AS a JOIN two_pk AS b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0},
+			{0, 1, 1, 0},
+			{1, 0, 0, 1},
+			{1, 1, 1, 1},
+		},
+	},
+	{
 		"SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},

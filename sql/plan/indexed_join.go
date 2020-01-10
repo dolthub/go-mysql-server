@@ -18,13 +18,13 @@ type IndexedJoin struct {
 	// The index to use when looking up rows in the secondary table.
 	Index sql.Index
 	// The expression to evaluate to extract a key value from a row in the primary table.
-	primaryTableExpr sql.Expression
+	primaryTableExpr []sql.Expression
 	// The type of join. Left and right refer to the lexical position in the written query, not primary / secondary. In
 	// the case of a right join, the right table will always be the primary.
 	joinType JoinType
 }
 
-func NewIndexedJoin(primaryTable, indexedTable sql.Node, joinType JoinType, cond sql.Expression, primaryTableExpr sql.Expression, index sql.Index) *IndexedJoin {
+func NewIndexedJoin(primaryTable, indexedTable sql.Node, joinType JoinType, cond sql.Expression, primaryTableExpr []sql.Expression, index sql.Index) *IndexedJoin {
 	return &IndexedJoin{
 		BinaryNode:       BinaryNode{primaryTable, indexedTable},
 		joinType:         joinType,
@@ -69,7 +69,7 @@ func (ij *IndexedJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewIndexedJoin(children[0], children[1], ij.joinType, ij.Cond, ij.primaryTableExpr, ij.Index), nil
 }
 
-func indexedJoinRowIter(ctx *sql.Context, left sql.Node, right sql.Node, indexAccess *IndexedTableAccess, primaryTableExpr sql.Expression, cond sql.Expression, index sql.Index, joinType JoinType) (sql.RowIter, error) {
+func indexedJoinRowIter(ctx *sql.Context, left sql.Node, right sql.Node, indexAccess *IndexedTableAccess, primaryTableExpr []sql.Expression, cond sql.Expression, index sql.Index, joinType JoinType) (sql.RowIter, error) {
 	var leftName, rightName string
 	if leftTable, ok := left.(sql.Nameable); ok {
 		leftName = leftTable.Name()
@@ -115,7 +115,7 @@ type indexedJoinIter struct {
 	secondaryIndexAccess *IndexedTableAccess
 	secondaryProvider    sql.Node
 	secondary            sql.RowIter
-	primaryTableExpr     sql.Expression
+	primaryTableExpr     []sql.Expression
 	cond                 sql.Expression
 	joinType             JoinType
 
@@ -141,12 +141,16 @@ func (i *indexedJoinIter) loadPrimary() error {
 func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 	if i.secondary == nil {
 		// evaluate the primary row against the primary table expression to get the secondary table lookup key
-		key, err := i.primaryTableExpr.Eval(i.ctx, i.primaryRow)
-		if err != nil {
-			return nil, err
+		var key []interface{}
+		for _, expr := range i.primaryTableExpr {
+			col, err := expr.Eval(i.ctx, i.primaryRow)
+			if err != nil {
+				return nil, err
+			}
+			key = append(key, col)
 		}
 
-		lookup, err := i.index.Get(key)
+		lookup, err := i.index.Get(key...)
 		if err != nil {
 			return nil, err
 		}
@@ -243,8 +247,8 @@ func (i *indexedJoinIter) Close() (err error) {
 	}
 
 	if i.secondary != nil {
-		i.secondary = nil
 		err = i.secondary.Close()
+		i.secondary = nil
 	}
 
 	return err
