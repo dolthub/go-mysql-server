@@ -245,16 +245,16 @@ func (s *sorter) Less(i, j int) bool {
 			return false
 		}
 
+		if sf.Order == Descending {
+			av, bv = bv, av
+		}
+
 		if av == nil && bv == nil {
-			return false
+			continue
 		} else if av == nil {
 			return sf.NullOrdering == NullsFirst
 		} else if bv == nil {
 			return sf.NullOrdering != NullsFirst
-		}
-
-		if sf.Order == Descending {
-			av, bv = bv, av
 		}
 
 		cmp, err := typ.Compare(av, bv)
