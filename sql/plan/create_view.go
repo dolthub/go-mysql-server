@@ -74,6 +74,12 @@ func (cv *CreateView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		if err != nil && !sql.ErrNonExistingView.Is(err) {
 			return sql.RowsToRowIter(), err
 		}
+		if dropper, ok := cv.database.(sql.ViewDropper); ok {
+			err := dropper.DropView(ctx, cv.Name)
+			if err != nil && !sql.ErrNonExistingView.Is(err) {
+				return sql.RowsToRowIter(), err
+			}
+		}
 	}
 
 	creator, ok := cv.database.(sql.ViewCreator)

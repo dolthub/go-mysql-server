@@ -115,11 +115,13 @@ func (dvs *DropView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 			return sql.RowsToRowIter(), errDropViewChild.New()
 		}
 
-		dropper, dok := drop.database.(sql.ViewDropper)
-		if dok {
+		if dropper, ok := drop.database.(sql.ViewDropper); ok {
 			err := dropper.DropView(ctx, drop.viewName)
 			if err != nil {
-				return sql.RowsToRowIter(), err
+				allowedError := dvs.ifExists && sql.ErrNonExistingView.Is(err)
+				if !allowedError {
+					return sql.RowsToRowIter(), err
+				}
 			}
 		}
 
