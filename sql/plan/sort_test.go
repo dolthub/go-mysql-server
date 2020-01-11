@@ -269,11 +269,11 @@ func TestSortDescending(t *testing.T) {
 	require.Equal(schema, s.Schema())
 
 	expected := []sql.Row{
-		sql.NewRow(nil),
 		sql.NewRow("d"),
 		sql.NewRow("c"),
 		sql.NewRow("b"),
 		sql.NewRow("a"),
+		sql.NewRow(nil),
 	}
 
 	actual, err := sql.NodeToRows(ctx, s)
