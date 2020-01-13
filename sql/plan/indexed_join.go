@@ -36,7 +36,14 @@ func NewIndexedJoin(primaryTable, indexedTable sql.Node, joinType JoinType, cond
 
 func (ij *IndexedJoin) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("IndexedJoin(%s)", ij.Cond)
+	joinType := ""
+	switch ij.joinType {
+	case JoinTypeLeft:
+		joinType = "Left"
+	case JoinTypeRight:
+		joinType = "Right"
+	}
+	_ = pr.WriteNode("%sIndexedJoin(%s)", joinType, ij.Cond)
 	_ = pr.WriteChildren(ij.Left.String(), ij.Right.String())
 	return pr.String()
 }

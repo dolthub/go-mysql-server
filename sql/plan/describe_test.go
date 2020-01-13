@@ -84,8 +84,6 @@ func TestDescribeQuery(t *testing.T) {
 		{"Project(foo.a, foo.b)"},
 		{" └─ Filter(foo.a = \"foo\")"},
 		{"     └─ Table(foo)"},
-		{"         ├─ Column(a, TEXT, nullable=false)"},
-		{"         └─ Column(b, TEXT, nullable=false)"},
 	}
 
 	require.Equal(expected, rows)
