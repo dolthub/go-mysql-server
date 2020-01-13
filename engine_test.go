@@ -1593,9 +1593,27 @@ var queries = []queryTest{
 			{1, 1, 1},
 		},
 	},
+	// TODO: this doesn't use an indexed join, and it should. Also needs tests of analyzed plans.
+	{
+		"SELECT i,pk1,pk2 FROM mytable JOIN two_pk ON i-1=pk1 AND i-2=pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{int64(2), 1, 0},
+		},
+	},
 	// TODO: this is broken, we can't join a table to itself and i'm so angry
 	// {
 	// 	"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+	// 	[]sql.Row{
+	// 		{0, 0, 0, 0},
+	// 		{0, 1, 1, 0},
+	// 		{1, 0, 0, 1},
+	// 		{1, 1, 1, 1},
+	// 	},
+	// },
+	// TODO: this is broken, can't resolve the columns despite the aliases:
+	//  ambiguous column name "pk1", it's present in all these tables: two_pk, two_pk2
+	// {
+	// 	"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
 	// 	[]sql.Row{
 	// 		{0, 0, 0, 0},
 	// 		{0, 1, 1, 0},
@@ -2040,7 +2058,7 @@ func TestQueries(t *testing.T) {
 		}
 	} else {
 		numPartitionsVals = []int{ 1 }
-		indexDrivers = []*indexDriverTestCase{ nil }
+		indexDrivers = []*indexDriverTestCase{{"unmergableIndexes", unmergableIndexDriver}}
 		parallelVals = []int{ 1 }
 	}
 
@@ -3905,6 +3923,20 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 		sql.NewRow(0, 1, 10, 10, 10, 10, 10),
 		sql.NewRow(1, 0, 20, 20, 20, 20, 20),
 		sql.NewRow(1, 1, 30, 30, 30, 30, 30),
+	)
+
+	tables["two_pk2"] = memory.NewPartitionedTable("two_pk2", sql.Schema{
+		{Name: "pk1", Type: sql.Int8, Source: "two_pk2", PrimaryKey: true},
+		{Name: "pk2", Type: sql.Int8, Source: "two_pk2", PrimaryKey: true},
+		{Name: "c1", Type: sql.Int8, Source: "two_pk2"},
+	}, numPartitions)
+
+	insertRows(t,
+		tables["two_pk2"],
+		sql.NewRow(0, 0, 0),
+		sql.NewRow(0, 1, 10),
+		sql.NewRow(1, 0, 20),
+		sql.NewRow(1, 1, 30),
 	)
 
 	tables["othertable"] = memory.NewPartitionedTable("othertable", sql.Schema{
