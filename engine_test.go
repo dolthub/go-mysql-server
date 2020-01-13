@@ -1569,6 +1569,59 @@ var queries = []queryTest{
 		},
 	},
 	{
+		"SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{1, 1, 1},
+		},
+	},
+	{
+		"SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{1, 1, 1},
+			{2, nil, nil},
+			{3, nil, nil},
+		},
+	},
+	{
+		"SELECT pk,pk1,pk2 FROM one_pk RIGHT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{nil, 0, 1},
+			{nil, 1, 0},
+			{0, 0, 0},
+			{1, 1, 1},
+		},
+	},
+	// TODO: this doesn't use an indexed join, and it should. Also needs tests of analyzed plans.
+	{
+		"SELECT i,pk1,pk2 FROM mytable JOIN two_pk ON i-1=pk1 AND i-2=pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{int64(2), 1, 0},
+		},
+	},
+	// TODO: this is broken, we can't join a table to itself and i'm so angry
+	// {
+	// 	"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+	// 	[]sql.Row{
+	// 		{0, 0, 0, 0},
+	// 		{0, 1, 1, 0},
+	// 		{1, 0, 0, 1},
+	// 		{1, 1, 1, 1},
+	// 	},
+	// },
+	// TODO: this is broken, can't resolve the columns despite the aliases:
+	//  ambiguous column name "pk1", it's present in all these tables: two_pk, two_pk2
+	// {
+	// 	"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+	// 	[]sql.Row{
+	// 		{0, 0, 0, 0},
+	// 		{0, 1, 1, 0},
+	// 		{1, 0, 0, 1},
+	// 		{1, 1, 1, 1},
+	// 	},
+	// },
+	{
 		"SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
@@ -1970,30 +2023,45 @@ var infoSchemaQueries = []queryTest {
 	},
 }
 
+// Set to a query to run only tests for that query
+var debugQuery = ""
+
 func TestQueries(t *testing.T) {
+
 	type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
 	type indexDriverTestCase struct {
 		name string
 		initializer indexDriverInitalizer
 	}
-	
+
+	var numPartitionsVals []int
+	var indexDrivers []*indexDriverTestCase
+	var parallelVals []int
+
 	// Test all queries with these combinations, for a total of 12 runs:
 	// 1) Partitioned tables / non partitioned tables
 	// 2) Mergeable / unmergeable / no indexes
 	// 3) Parallelism on / off
-	numPartitionsVals := []int{
-		1,
-		testNumPartitions,
+	if debugQuery == "" {
+		numPartitionsVals = []int{
+			1,
+			testNumPartitions,
+		}
+		indexDrivers = []*indexDriverTestCase{
+			nil,
+			{"unmergableIndexes", unmergableIndexDriver},
+			{"mergableIndexes", mergableIndexDriver},
+		}
+		parallelVals = []int{
+			1,
+			2,
+		}
+	} else {
+		numPartitionsVals = []int{ 1 }
+		indexDrivers = []*indexDriverTestCase{{"unmergableIndexes", unmergableIndexDriver}}
+		parallelVals = []int{ 1 }
 	}
-	indexDrivers := []*indexDriverTestCase{
-		nil,
-		{"unmergableIndexes", unmergableIndexDriver},
-		{"mergableIndexes", mergableIndexDriver},
-	}
-	parallelVals := []int{
-		1,
-		2,
-	}
+
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexDriverInit := range indexDrivers {
 			for _, parallelism := range parallelVals {
@@ -2010,8 +2078,13 @@ func TestQueries(t *testing.T) {
 					indexDriverName = indexDriverInit.name
 				}
 				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexDriverName, parallelism)
+
 				t.Run(testName, func(t *testing.T) {
 					for _, tt := range queries {
+						if debugQuery != "" && debugQuery != tt.query {
+							t.Log("Skipping query in debug mode:", tt.query)
+							continue
+						}
 						testQuery(t, engine, tt.query, tt.expected)
 					}
 				})
@@ -3850,6 +3923,20 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 		sql.NewRow(0, 1, 10, 10, 10, 10, 10),
 		sql.NewRow(1, 0, 20, 20, 20, 20, 20),
 		sql.NewRow(1, 1, 30, 30, 30, 30, 30),
+	)
+
+	tables["two_pk2"] = memory.NewPartitionedTable("two_pk2", sql.Schema{
+		{Name: "pk1", Type: sql.Int8, Source: "two_pk2", PrimaryKey: true},
+		{Name: "pk2", Type: sql.Int8, Source: "two_pk2", PrimaryKey: true},
+		{Name: "c1", Type: sql.Int8, Source: "two_pk2"},
+	}, numPartitions)
+
+	insertRows(t,
+		tables["two_pk2"],
+		sql.NewRow(0, 0, 0),
+		sql.NewRow(0, 1, 10),
+		sql.NewRow(1, 0, 20),
+		sql.NewRow(1, 1, 30),
 	)
 
 	tables["othertable"] = memory.NewPartitionedTable("othertable", sql.Schema{

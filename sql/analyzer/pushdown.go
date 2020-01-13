@@ -318,7 +318,7 @@ func pushdownFilter(
 	}
 
 	unhandled := getUnhandledFilters(
-		splitExpression(node.Expression),
+		splitConjunction(node.Expression),
 		handledFilters,
 	)
 
