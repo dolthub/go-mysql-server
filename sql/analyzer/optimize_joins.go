@@ -50,7 +50,7 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 	return transformJoins(a, n, indexes, aliases)
 }
 
-func transformJoins(a *Analyzer, n sql.Node, indexes map[string]sql.Index, aliases Aliases, ) (sql.Node, error) {
+func transformJoins(a *Analyzer, n sql.Node, indexes map[string]sql.Index, aliases Aliases) (sql.Node, error) {
 
 	var replacedIndexedJoin bool
 	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
