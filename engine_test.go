@@ -1594,7 +1594,6 @@ var queries = []queryTest{
 			{1, 1, 1},
 		},
 	},
-	// TODO: this doesn't use an indexed join, and it should. Also needs tests of analyzed plans.
 	{
 		"SELECT i,pk1,pk2 FROM mytable JOIN two_pk ON i-1=pk1 AND i-2=pk2 ORDER BY 1,2,3",
 		[]sql.Row{
