@@ -127,10 +127,10 @@ func transformJoins(a *Analyzer, n sql.Node, indexes map[string]sql.Index, alias
 // Analyzes the join's tables and condition to select a left and right table, and an index to use for lookups in the
 // right table. Returns an error if no suitable index can be found.
 func analyzeJoinIndexes(
-	node plan.BinaryNode,
-	cond sql.Expression,
-	indexes map[string]sql.Index,
-	joinType plan.JoinType,
+		node plan.BinaryNode,
+		cond sql.Expression,
+		indexes map[string]sql.Index,
+		joinType plan.JoinType,
 ) (primary sql.Node, secondary sql.Node, primaryTableExpr []sql.Expression, secondaryTableIndex sql.Index, err error) {
 
 	leftTableName := findTableName(node.Left)
@@ -338,7 +338,7 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *columnExpr, rightCol *col
 		}
 
 		leftCol = &columnExpr{leftField, left, right, e}
-	  rightCol = &columnExpr{rightField, right,left, e}
+		rightCol = &columnExpr{rightField, right, left, e}
 		return leftCol, rightCol
 	default:
 		return nil, nil
@@ -346,7 +346,7 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *columnExpr, rightCol *col
 }
 
 func extractGetField(e sql.Expression) *expression.GetField {
-  var field *expression.GetField
+	var field *expression.GetField
 	sql.Inspect(e, func(expr sql.Expression) bool {
 		if f, ok := expr.(*expression.GetField); ok {
 			field = f
@@ -354,5 +354,5 @@ func extractGetField(e sql.Expression) *expression.GetField {
 		}
 		return true
 	})
-  return field
+	return field
 }
