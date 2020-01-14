@@ -103,7 +103,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 	}
 
 	if ti, ok := v.(time.Time); ok {
-		v = fmt.Sprintf("%d%02d%02d%02d%02d%02d", ti.Year(), ti.Month(), ti.Day(), ti.Hour(), ti.Minute(), ti.Second())
+		v = ti.UTC().Unix()
 	}
 
 	switch t.baseType {
