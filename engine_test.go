@@ -2310,9 +2310,9 @@ var planTests = []planTest{
 	{
 		query:    "SELECT i, i2, s2 FROM mytable RIGHT JOIN othertable ON i = i2 - 1",
 		expected: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
-			" └─ RightJoin(mytable.i = othertable.i2 - 1)\n" +
-			"     ├─ Table(mytable)\n" +
-			"     └─ Table(othertable)\n" +
+			" └─ RightIndexedJoin(mytable.i = othertable.i2 - 1)\n" +
+			"     ├─ Table(othertable)\n" +
+			"     └─ Table(mytable)\n" +
 			"",
 	},
 	{
@@ -2340,7 +2340,7 @@ var planTests = []planTest{
 	},
 	{
 		query:    "SELECT i,pk1,pk2 FROM mytable JOIN two_pk ON i-1=pk1 AND i-2=pk2",
-		expected: "InnerJoin(mytable.i - 1 = two_pk.pk1 AND mytable.i - 2 = two_pk.pk2)\n" +
+		expected: "IndexedJoin(mytable.i - 1 = two_pk.pk1 AND mytable.i - 2 = two_pk.pk2)\n" +
 			" ├─ Table(mytable): Projected \n" +
 			" └─ Table(two_pk): Projected \n" +
 			"",
@@ -2428,13 +2428,12 @@ var planTests = []planTest{
 			"     ├─ Table(one_pk)\n" +
 			"     └─ Table(two_pk)\n",
 	},
-	// TODO: this query should use an index
 	{
-		query:    "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1",
+		query:    "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1",
 		expected: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
-			" └─ LeftJoin(one_pk.pk = two_pk.pk1)\n" +
-			"     ├─ Table(one_pk)\n" +
-			"     └─ Table(two_pk)\n",
+			" └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
+			"     ├─ Table(two_pk): Projected \n" +
+			"     └─ Table(one_pk): Projected \n",
 	},
 	{
 		query:    "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i",
