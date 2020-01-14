@@ -19,7 +19,7 @@ const (
 	tinyTextBlobMax = charBinaryMax
 	textBlobMax = varcharVarbinaryMax
 	mediumTextBlobMax = 16777215
-	longTextBlobMax = 4294967295
+	longTextBlobMax = int64(4294967295)
 )
 
 var (
