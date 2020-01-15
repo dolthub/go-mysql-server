@@ -10,6 +10,14 @@ import (
 	"vitess.io/vitess/go/vt/proto/query"
 )
 
+const (
+	// EnumTypeMinElements returns the minimum number of enumerations for the Enum type.
+	EnumTypeMinElements = 1
+	// EnumTypeMaxElements returns the maximum number of enumerations for the Enum type.
+	EnumTypeMaxElements = 65535
+	/// An ENUM column can have a maximum of 65,535 distinct elements.
+)
+
 var ErrConvertingToEnum = errors.NewKind("value %v is not valid for this Enum")
 
 // Comments with three slashes were taken directly from the linked documentation.
@@ -23,6 +31,7 @@ type EnumType interface {
 	Collation() Collation
 	ConvertToIndex(v interface{}) (int, error)
 	IndexOf(v string) int
+	NumberOfElements() uint16
 }
 
 type enumType struct{
@@ -33,11 +42,10 @@ type enumType struct{
 
 // CreateEnumType creates a EnumType.
 func CreateEnumType(values []string, collation Collation) (EnumType, error) {
-	if len(values) == 0 {
+	if len(values) < EnumTypeMinElements {
 		return nil, fmt.Errorf("number of values may not be zero")
 	}
-	/// An ENUM column can have a maximum of 65,535 distinct elements.
-	if len(values) > 65535 {
+	if len(values) > EnumTypeMaxElements {
 		return nil, fmt.Errorf("number of values is too large")
 	}
 	valToIndex := make(map[string]int)
@@ -261,4 +269,9 @@ func (t enumType) IndexOf(v string) int {
 		}
 	}
 	return -1
+}
+
+// NumberOfElements returns the number of enumerations.
+func (t enumType) NumberOfElements() uint16 {
+	return uint16(len(t.indexToVal))
 }

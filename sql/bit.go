@@ -9,7 +9,14 @@ import (
 	"vitess.io/vitess/go/vt/proto/query"
 )
 
-var promotedBitType = MustCreateBitType(64)
+const (
+	// BitTypeMinBits returns the minimum number of bits for Bit.
+	BitTypeMinBits = 1
+	// BitTypeMaxBits returns the maximum number of bits for Bit.
+	BitTypeMaxBits = 64
+)
+
+var promotedBitType = MustCreateBitType(BitTypeMaxBits)
 
 // Represents the BIT type.
 // https://dev.mysql.com/doc/refman/8.0/en/bit-type.html
@@ -24,7 +31,7 @@ type bitType struct{
 
 // CreateBitType creates a BitType.
 func CreateBitType(numOfBits uint8) (BitType, error) {
-	if numOfBits == 0 || numOfBits > 64 {
+	if numOfBits < BitTypeMinBits || numOfBits > BitTypeMaxBits {
 		return nil, fmt.Errorf("%v is an invalid number of bits", numOfBits)
 	}
 	return bitType{

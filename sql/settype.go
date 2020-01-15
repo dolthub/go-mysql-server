@@ -10,6 +10,11 @@ import (
 	"vitess.io/vitess/go/vt/proto/query"
 )
 
+const (
+	// SetTypeMaxElements returns the maximum number of elements for the Set type.
+	SetTypeMaxElements = 64
+)
+
 var (
 	ErrConvertingToSet = errors.NewKind("value %v is not valid for this Set")
 	ErrDuplicateEntrySet = errors.NewKind("duplicate entry: %v")
@@ -24,6 +29,7 @@ type SetType interface {
 	Type
 	CharacterSet() CharacterSet
 	Collation() Collation
+	NumberOfElements() uint16
 	Values() []string
 }
 
@@ -40,7 +46,7 @@ func CreateSetType(values []string, collation Collation) (SetType, error) {
 		return nil, fmt.Errorf("number of values may not be zero")
 	}
 	/// A SET column can have a maximum of 64 distinct members.
-	if len(values) > 64 {
+	if len(values) > SetTypeMaxElements {
 		return nil, fmt.Errorf("number of values is too large")
 	}
 	compareToOriginal := make(map[string]string)
@@ -260,6 +266,11 @@ func (t setType) CharacterSet() CharacterSet {
 
 func (t setType) Collation() Collation {
 	return t.collation
+}
+
+// NumberOfElements returns the number of elements in this set.
+func (t setType) NumberOfElements() uint16 {
+	return uint16(len(t.valToBit))
 }
 
 // Values returns all of the set's values in ascending order according to their corresponding bit value.

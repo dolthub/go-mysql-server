@@ -10,8 +10,14 @@ import (
 	"vitess.io/vitess/go/vt/proto/query"
 )
 
-const maxPrecision = 65
-const maxScale = 30
+const (
+	// DecimalTypeMaxPrecision returns the maximum precision allowed for the Decimal type.
+	DecimalTypeMaxPrecision = 65
+	// DecimalTypeMaxScale returns the maximum scale allowed for the Decimal type, assuming the
+	// maximum precision is used. For a maximum scale that is relative to the precision of a given
+	// decimal type, use its MaximumScale function.
+	DecimalTypeMaxScale     = 30
+)
 
 var (
 	ErrConvertingToDecimal = errors.NewKind("value %v is not a valid Decimal")
@@ -21,6 +27,7 @@ var (
 type DecimalType interface {
 	Type
 	ConvertToDecimal(v interface{}) (decimal.NullDecimal, error)
+	MaximumScale() uint8
 	Precision() uint8
 	Scale() uint8
 }
@@ -32,13 +39,13 @@ type decimalType struct{
 
 // CreateDecimalType creates a DecimalType.
 func CreateDecimalType(precision uint8, scale uint8) (DecimalType, error) {
-	if precision > maxPrecision {
+	if precision > DecimalTypeMaxPrecision {
 		return nil, fmt.Errorf("%v is beyond the max precision", precision)
 	}
 	if scale > precision {
 		return nil, fmt.Errorf("%v cannot be larger than the precision %v", scale, precision)
 	}
-	if scale > maxScale {
+	if scale > DecimalTypeMaxScale {
 		return nil, fmt.Errorf("%v is beyond the max scale", scale)
 	}
 	if precision == 0 {
@@ -180,7 +187,7 @@ func (t decimalType) MustConvert(v interface{}) interface{} {
 
 // Promote implements the Type interface.
 func (t decimalType) Promote() Type {
-	return MustCreateDecimalType(maxPrecision, t.scale)
+	return MustCreateDecimalType(DecimalTypeMaxPrecision, t.scale)
 }
 
 // SQL implements Type interface.
@@ -203,6 +210,14 @@ func (t decimalType) String() string {
 // Zero implements Type interface. Returns a uint64 value.
 func (t decimalType) Zero() interface{} {
 	return decimal.NewFromInt(0).StringFixed(int32(t.scale))
+}
+
+// MaximumScale returns the maximum scale allowed for the current precision.
+func (t decimalType) MaximumScale() uint8 {
+	if t.precision >= DecimalTypeMaxScale {
+		return DecimalTypeMaxScale
+	}
+	return t.precision
 }
 
 // Precision returns the base-10 precision of the type, which is the total number of digits.
