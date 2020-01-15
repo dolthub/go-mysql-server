@@ -347,12 +347,25 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *columnExpr, rightCol *col
 
 func extractGetField(e sql.Expression) *expression.GetField {
 	var field *expression.GetField
+	var foundMultipleTables bool
 	sql.Inspect(e, func(expr sql.Expression) bool {
 		if f, ok := expr.(*expression.GetField); ok {
-			field = f
-			return false
+			if field == nil {
+				field = f
+			} else if field.Table() != f.Table() {
+				// If there are multiple tables involved in the expression, then we can't use it to evaluate a row from just
+				// the one table (to build a lookup key for the primary table).
+				foundMultipleTables = true
+				return false
+			}
+			return true
 		}
 		return true
 	})
+
+	if foundMultipleTables {
+		return nil
+	}
+
 	return field
 }

@@ -724,7 +724,7 @@ func groupExpressionsByOperator(exprs []columnExpr) [][]columnExpr {
 // information. Example, for the base expression col1 + 1 > col2 - 1:
 // col refers to `col1`
 // colExpr refers to `col1 + 1`
-// comparand refers to `col1 - 1`
+// comparand refers to `col2 - 1`
 // comparision refers to `col1 + 1 > col2 - 1`
 type columnExpr struct {
 	// The field (column) being evaluated, which may not be the entire term in the comparison
