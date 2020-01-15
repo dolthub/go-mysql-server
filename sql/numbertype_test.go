@@ -164,7 +164,7 @@ func TestNumberConvert(t *testing.T) {
 		{Uint16, int16(35), uint16(35), false},
 		{Uint24, 36.756, uint32(36), false},
 		{Uint32, uint8(37), uint32(37), false},
-		{Uint64, time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC), uint64(20090102030405), false},
+		{Uint64, time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC), uint64(time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC).Unix()), false},
 		{Float32, "22.25", float32(22.25), false},
 		{Float64, float32(893.875), float64(893.875), false},
 
