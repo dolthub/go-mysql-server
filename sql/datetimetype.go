@@ -28,11 +28,17 @@ var (
 
 	ErrConvertingToTimeOutOfRange = errors.NewKind("value %q is outside of %v range")
 
-	// maxTimestamp is the maximum representable Timestamp value, which is the maximum 32-bit integer as a Unix time.
-	maxTimestamp = time.Unix(math.MaxInt32, 999999000)
+	// DatetimeTypeMaxDatetime is the maximum representable Datetime/Date value.
+	DatetimeTypeMaxDatetime = time.Date(9999, 12, 31, 23, 59, 59, 999999000, time.UTC)
 
-	// minTimestamp is the minimum representable Timestamp value, which is one second past the epoch.
-	minTimestamp = time.Unix(1, 0)
+	// DatetimeTypeMinDatetime is the minimum representable Datetime/Date value.
+	DatetimeTypeMinDatetime = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// DatetimeTypeMaxTimestamp is the maximum representable Timestamp value, which is the maximum 32-bit integer as a Unix time.
+	DatetimeTypeMaxTimestamp = time.Unix(math.MaxInt32, 999999000)
+
+	// DatetimeTypeMinTimestamp is the minimum representable Timestamp value, which is one second past the epoch.
+	DatetimeTypeMinTimestamp = time.Unix(1, 0)
 
 	// TimestampDatetimeLayouts hold extra timestamps allowed for parsing. It does
 	// not have all the layouts supported by mysql. Missing are two digit year
@@ -150,7 +156,7 @@ func (t datetimeType) Convert(v interface{}) (interface{}, error)  {
 			return nil, ErrConvertingToTimeOutOfRange.New(res.Format(TimestampDatetimeLayout), t.String())
 		}
 	case sqltypes.Timestamp:
-		if res.Before(minTimestamp) || res.After(maxTimestamp) {
+		if res.Before(DatetimeTypeMinTimestamp) || res.After(DatetimeTypeMaxTimestamp) {
 			return nil, ErrConvertingToTimeOutOfRange.New(res.Format(TimestampDatetimeLayout), t.String())
 		}
 	}
