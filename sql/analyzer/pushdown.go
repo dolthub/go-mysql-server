@@ -191,7 +191,7 @@ func transformPushdown(
 	}
 
 	if len(queryIndexes) > 0 {
-		return &releaser{node, release}, nil
+		return &Releaser{node, release}, nil
 	}
 
 	return node, nil
@@ -336,20 +336,20 @@ func pushdownFilter(
 	return plan.NewFilter(expression.JoinAnd(unhandled...), node.Child), nil
 }
 
-type releaser struct {
+type Releaser struct {
 	Child   sql.Node
 	Release func()
 }
 
-func (r *releaser) Resolved() bool {
+func (r *Releaser) Resolved() bool {
 	return r.Child.Resolved()
 }
 
-func (r *releaser) Children() []sql.Node {
+func (r *Releaser) Children() []sql.Node {
 	return []sql.Node{r.Child}
 }
 
-func (r *releaser) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (r *Releaser) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	iter, err := r.Child.RowIter(ctx)
 	if err != nil {
 		r.Release()
@@ -359,23 +359,23 @@ func (r *releaser) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return &releaseIter{child: iter, release: r.Release}, nil
 }
 
-func (r *releaser) Schema() sql.Schema {
+func (r *Releaser) Schema() sql.Schema {
 	return r.Child.Schema()
 }
 
-func (r *releaser) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (r *Releaser) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 1)
 	}
-	return &releaser{children[0], r.Release}, nil
+	return &Releaser{children[0], r.Release}, nil
 }
 
-func (r *releaser) String() string {
+func (r *Releaser) String() string {
 	return r.Child.String()
 }
 
-func (r *releaser) Equal(n sql.Node) bool {
-	if r2, ok := n.(*releaser); ok {
+func (r *Releaser) Equal(n sql.Node) bool {
+	if r2, ok := n.(*Releaser); ok {
 		return reflect.DeepEqual(r.Child, r2.Child)
 	}
 	return false

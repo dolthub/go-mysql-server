@@ -221,7 +221,7 @@ func TestPushdownIndexable(t *testing.T) {
 		),
 	)
 
-	expected := &releaser{
+	expected := &Releaser{
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
@@ -286,8 +286,8 @@ func TestPushdownIndexable(t *testing.T) {
 	// we need to remove the release function to compare, otherwise it will fail
 	result, err = plan.TransformUp(result, func(node sql.Node) (sql.Node, error) {
 		switch node := node.(type) {
-		case *releaser:
-			return &releaser{Child: node.Child}, nil
+		case *Releaser:
+			return &Releaser{Child: node.Child}, nil
 		default:
 			return node, nil
 		}

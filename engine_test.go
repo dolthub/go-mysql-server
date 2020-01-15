@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"math"
 	"strings"
@@ -1593,7 +1594,6 @@ var queries = []queryTest{
 			{1, 1, 1},
 		},
 	},
-	// TODO: this doesn't use an indexed join, and it should. Also needs tests of analyzed plans.
 	{
 		"SELECT i,pk1,pk2 FROM mytable JOIN two_pk ON i-1=pk1 AND i-2=pk2 ORDER BY 1,2,3",
 		[]sql.Row{
@@ -2231,6 +2231,258 @@ func newMergableIndex(tables map[string]*memory.Table, tableName string, exprs .
 	}
 }
 
+type planTest struct {
+	query string
+	expected string
+}
+
+var planTests = []planTest{
+	{
+		query:    "SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2",
+		expected: "IndexedJoin(mytable.i = othertable.i2)\n" +
+			" ├─ Table(mytable): Projected \n" +
+			" └─ Table(othertable): Projected \n" +
+			"",
+	},
+	{
+		query:    "SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2",
+		expected: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+			" └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"     ├─ Table(mytable): Projected \n" +
+			"     └─ Table(othertable): Projected \n" +
+			"",
+	},
+	{
+		query:    "SELECT i, i2, s2 FROM othertable JOIN mytable ON i = i2",
+		expected: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			" └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"     ├─ Table(othertable): Projected \n" +
+			"     └─ Table(mytable): Projected \n" +
+			"",
+	},
+	{
+		query:    "SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2",
+		expected: "IndexedJoin(mytable.i = othertable.i2)\n" +
+			" ├─ Table(othertable): Projected \n" +
+			" └─ Table(mytable): Projected \n" +
+			"",
+	},
+	{
+		query:    "SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i2 = i",
+		expected: "IndexedJoin(othertable.i2 = mytable.i)\n" +
+			" ├─ Table(mytable): Projected \n" +
+			" └─ Table(othertable): Projected \n" +
+			"",
+	},
+	{
+		query:    "SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i2 = i",
+		expected: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ Table(mytable): Projected \n" +
+			"     └─ Table(othertable): Projected \n" +
+			"",
+	},
+	{
+		query:    "SELECT i, i2, s2 FROM othertable JOIN mytable ON i2 = i",
+		expected: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ Table(othertable): Projected \n" +
+			"     └─ Table(mytable): Projected \n" +
+			"",
+	},
+	{
+		query:    "SELECT s2, i2, i FROM othertable JOIN mytable ON i2 = i",
+		expected: "IndexedJoin(othertable.i2 = mytable.i)\n" +
+			" ├─ Table(othertable): Projected \n" +
+			" └─ Table(mytable): Projected \n" +
+			"",
+	},
+	{
+		query:    "SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2",
+		expected: "IndexedJoin(mytable.i = othertable.i2)\n" +
+			" ├─ TableAlias(mt)\n" +
+			" │   └─ Table(mytable): Projected Filtered \n" +
+			" └─ TableAlias(ot)\n" +
+			"     └─ Table(othertable): Projected \n" +
+			"",
+	},
+	{
+		query:    "SELECT i, i2, s2 FROM mytable RIGHT JOIN othertable ON i = i2 - 1",
+		expected: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			" └─ RightIndexedJoin(mytable.i = othertable.i2 - 1)\n" +
+			"     ├─ Table(othertable)\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		query:    "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2",
+		expected: "IndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
+			" ├─ Table(one_pk): Projected \n" +
+			" └─ Table(two_pk): Projected \n" +
+			"",
+	},
+	{
+		query:    "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2",
+		expected: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ LeftIndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ Table(two_pk)\n" +
+			"",
+	},
+	{
+		query:    "SELECT pk,pk1,pk2 FROM one_pk RIGHT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2",
+		expected: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ RightIndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
+			"     ├─ Table(two_pk)\n" +
+			"     └─ Table(one_pk)\n" +
+			"",
+	},
+	{
+		query:    "SELECT i,pk1,pk2 FROM mytable JOIN two_pk ON i-1=pk1 AND i-2=pk2",
+		expected: "IndexedJoin(mytable.i - 1 = two_pk.pk1 AND mytable.i - 2 = two_pk.pk2)\n" +
+			" ├─ Table(mytable): Projected \n" +
+			" └─ Table(two_pk): Projected \n" +
+			"",
+	},
+	{
+		query:    "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1",
+		expected: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ LeftJoin(one_pk.pk = two_pk.pk1)\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ Table(two_pk)\n" +
+			"",
+	},
+	{
+		query:    "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i",
+		expected: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ Table(niltable)\n" +
+			"",
+	},
+	{
+		query:    "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i",
+		expected: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"     ├─ Table(niltable)\n" +
+			"     └─ Table(one_pk)\n" +
+			"",
+	},
+	{
+		query:    "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i AND f IS NOT NULL",
+		expected: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ LeftJoin(one_pk.pk = niltable.i AND NOT(niltable.f IS NULL))\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ Table(niltable)\n" +
+			"",
+	},
+	{
+		query:    "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i and pk > 0",
+		expected: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ RightJoin(one_pk.pk = niltable.i AND one_pk.pk > 0)\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ Table(niltable)\n" +
+			"",
+	},
+	{
+		query:    "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE f IS NOT NULL",
+		expected: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ Filter(NOT(niltable.f IS NULL))\n" +
+			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"         ├─ Table(one_pk)\n" +
+			"         └─ Table(niltable)\n" +
+			"",
+	},
+	{
+		query:    "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL",
+		expected: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ Filter(NOT(niltable.f IS NULL))\n" +
+			"     └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"         ├─ Table(niltable)\n" +
+			"         └─ Table(one_pk)\n" +
+			"",
+	},
+	{
+		query:    "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1",
+		expected: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ Filter(one_pk.pk > 1)\n" +
+			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"         ├─ Table(one_pk)\n" +
+			"         └─ Table(niltable)\n" +
+			"",
+	},
+	{
+		query:    "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE pk > 0",
+		expected: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ Filter(one_pk.pk > 0)\n" +
+			"     └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"         ├─ Table(niltable)\n" +
+			"         └─ Table(one_pk)\n" +
+			"",
+	},
+	{
+		query:    "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2",
+		expected: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ LeftIndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ Table(two_pk)\n",
+	},
+	{
+		query:    "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1",
+		expected: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
+			"     ├─ Table(two_pk): Projected \n" +
+			"     └─ Table(one_pk): Projected \n",
+	},
+	{
+		query:    "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i",
+		expected: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ Table(niltable)\n",
+	},
+	{
+		query:    "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i",
+		expected: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				" └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
+				"     ├─ Table(niltable)\n" +
+				"     └─ Table(one_pk)\n",
+	},
+}
+
+// Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that
+// the right indexes are being used for joining tables.
+func TestQueryPlans(t *testing.T) {
+	tables := allTestTables(t, 2)
+
+	indexDriver := unmergableIndexDriver(tables)
+	engine := newEngineWithParallelism(t, 1, tables, indexDriver)
+
+	for _, tt := range planTests {
+		t.Run(tt.query, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
+
+			parsed, err := parse.Parse(ctx, tt.query)
+			require.NoError(t, err)
+
+			node, err := engine.Analyzer.Analyze(ctx, parsed)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, extractQueryNode(node).String())
+		})
+	}
+}
+
+func extractQueryNode(node sql.Node) sql.Node {
+	switch node := node.(type) {
+	case *plan.QueryProcess:
+		return extractQueryNode(node.Child)
+	case *analyzer.Releaser:
+		return extractQueryNode(node.Child)
+	default:
+		return node
+	}
+}
+
 func TestSessionSelectLimit(t *testing.T) {
 	ctx := newCtx()
 	ctx.Session.Set("sql_select_limit", sql.Int64, int64(1))
@@ -2448,15 +2700,11 @@ func TestDescribe(t *testing.T) {
 	query := `DESCRIBE FORMAT=TREE SELECT * FROM mytable`
 	expectedSeq := []sql.Row{
 		sql.NewRow("Table(mytable): Projected "),
-		sql.NewRow(" ├─ Column(i, BIGINT, nullable=false)"),
-		sql.NewRow(" └─ Column(s, TEXT, nullable=false)"),
 	}
 
 	expectedParallel := []sql.Row{
 		{"Exchange(parallelism=2)"},
 		{" └─ Table(mytable): Projected "},
-		{"     ├─ Column(i, BIGINT, nullable=false)"},
-		{"     └─ Column(s, TEXT, nullable=false)"},
 	}
 
 	t.Run("sequential", func(t *testing.T) {

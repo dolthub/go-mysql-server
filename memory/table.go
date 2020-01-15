@@ -483,16 +483,6 @@ func (t *Table) String() string {
 	}
 
 	_ = p.WriteNode("Table(%s)%s", t.name, kind)
-	var schema = make([]string, len(t.Schema()))
-	for i, col := range t.Schema() {
-		schema[i] = fmt.Sprintf(
-			"Column(%s, %s, nullable=%v)",
-			col.Name,
-			col.Type.String(),
-			col.Nullable,
-		)
-	}
-	_ = p.WriteChildren(schema...)
 	return p.String()
 }
 

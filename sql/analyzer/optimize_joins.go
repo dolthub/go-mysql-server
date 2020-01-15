@@ -46,7 +46,7 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 		return nil, err
 	}
 
-	a.Log("replacing LeftJoin,RightJoin,InnerJoin with IndexJoin")
+	a.Log("replacing LeftJoin,RightJoin,InnerJoin with IndexedJoins")
 	return transformJoins(a, n, indexes, aliases)
 }
 
@@ -127,32 +127,29 @@ func transformJoins(a *Analyzer, n sql.Node, indexes map[string]sql.Index, alias
 // Analyzes the join's tables and condition to select a left and right table, and an index to use for lookups in the
 // right table. Returns an error if no suitable index can be found.
 func analyzeJoinIndexes(
-	node plan.BinaryNode,
-	cond sql.Expression,
-	indexes map[string]sql.Index,
-	joinType plan.JoinType,
+		node plan.BinaryNode,
+		cond sql.Expression,
+		indexes map[string]sql.Index,
+		joinType plan.JoinType,
 ) (primary sql.Node, secondary sql.Node, primaryTableExpr []sql.Expression, secondaryTableIndex sql.Index, err error) {
 
 	leftTableName := findTableName(node.Left)
 	rightTableName := findTableName(node.Right)
 
 	exprByTable := joinExprsByTable(splitConjunction(cond))
-	if len(exprByTable) < 2 {
-		return nil, nil, nil, nil, errors.New("couldn't determine suitable indexes to use for tables")
-	}
 
 	// Choose a primary and secondary table based on available indexes. We can't choose the left table as secondary for a
 	// left join, or the right as secondary for a right join.
-	if indexes[rightTableName] != nil && joinType != plan.JoinTypeRight {
-		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Left.Schema(), exprByTable[leftTableName]...)
+	if indexes[rightTableName] != nil && exprByTable[leftTableName] != nil && joinType != plan.JoinTypeRight {
+		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Left.Schema(), extractExpressions(exprByTable[leftTableName])...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
 		return node.Left, node.Right, primaryTableExpr, indexes[rightTableName], nil
 	}
 
-	if indexes[leftTableName] != nil && joinType != plan.JoinTypeLeft {
-		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Right.Schema(), exprByTable[rightTableName]...)
+	if indexes[leftTableName] != nil && exprByTable[rightTableName] != nil && joinType != plan.JoinTypeLeft {
+		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Right.Schema(), extractExpressions(exprByTable[rightTableName])...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -162,44 +159,19 @@ func analyzeJoinIndexes(
 	return nil, nil, nil, nil, errors.New("couldn't determine suitable indexes to use for tables")
 }
 
-// indexMatches returns whether the given index matches the given expression using the expression's string
-// representation. Compare to logic in IndexRegistry.IndexByExpression
-func indexMatches(index sql.Index, expr sql.Expression) bool {
-	if len(index.Expressions()) != 1 {
-		return false
-	}
-
-	indexExprStr := index.Expressions()[0]
-	return indexExprStr == expr.String()
-}
-
 // Returns the underlying table name for the node given
 func findTableName(node sql.Node) string {
 	var tableName string
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.ResolvedTable:
-			// TODO: this is over specific, we only need one side of the join to be indexable
-			if it, ok := node.Table.(sql.IndexableTable); ok {
-				tableName = it.Name()
-				return false
-			}
+			tableName = node.Name()
+			return false
 		}
 		return true
 	})
 
 	return tableName
-}
-
-// Returns the table and field names from the expression given
-func getTableNameFromExpression(expr sql.Expression) (tableName string, fieldName string) {
-	switch expr := expr.(type) {
-	case *expression.GetField:
-		tableName = expr.Table()
-		fieldName = expr.Name()
-	}
-
-	return tableName, fieldName
 }
 
 // index munging
@@ -317,7 +289,7 @@ func getMultiColumnJoinIndex(exprs []sql.Expression, a *Analyzer, aliases map[st
 
 	exprsByTable := joinExprsByTable(exprs)
 	for table, cols := range exprsByTable {
-		idx := a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, cols...)...)
+		idx := a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, extractExpressions(cols)...)...)
 		if idx != nil {
 			result[table] = idx
 		}
@@ -326,17 +298,26 @@ func getMultiColumnJoinIndex(exprs []sql.Expression, a *Analyzer, aliases map[st
 	return result
 }
 
-func joinExprsByTable(exprs []sql.Expression) map[string][]sql.Expression {
-	var result = make(map[string][]sql.Expression)
+func extractExpressions(colExprs []*columnExpr) []sql.Expression {
+	result := make([]sql.Expression, len(colExprs))
+	for i, expr := range colExprs {
+		result[i] = expr.colExpr
+	}
+	return result
+}
+
+func joinExprsByTable(exprs []sql.Expression) map[string][]*columnExpr {
+	var result = make(map[string][]*columnExpr)
 
 	for _, expr := range exprs {
 		leftExpr, rightExpr := extractJoinColumnExpr(expr)
-		if leftExpr == nil || rightExpr == nil {
-			continue
+		if leftExpr != nil {
+			result[leftExpr.col.Table()] = append(result[leftExpr.col.Table()], leftExpr)
 		}
 
-		result[leftExpr.col.Table()] = append(result[leftExpr.col.Table()], leftExpr.col)
-		result[rightExpr.col.Table()] = append(result[rightExpr.col.Table()], rightExpr.col)
+		if rightExpr != nil {
+			result[rightExpr.col.Table()] = append(result[rightExpr.col.Table()], rightExpr)
+		}
 	}
 
 	return result
@@ -351,18 +332,40 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *columnExpr, rightCol *col
 			return nil, nil
 		}
 
-		leftCol, ok := left.(*expression.GetField)
-		if !ok {
-			return  nil, nil
-		}
-
-		rightCol, ok := right.(*expression.GetField)
-		if !ok {
+		leftField, rightField := extractGetField(left), extractGetField(right)
+		if leftField == nil || rightField == nil {
 			return nil, nil
 		}
 
-		return &columnExpr{leftCol, right, e}, &columnExpr{rightCol, left, e}
+		leftCol = &columnExpr{leftField, left, right, e}
+		rightCol = &columnExpr{rightField, right, left, e}
+		return leftCol, rightCol
 	default:
 		return nil, nil
 	}
+}
+
+func extractGetField(e sql.Expression) *expression.GetField {
+	var field *expression.GetField
+	var foundMultipleTables bool
+	sql.Inspect(e, func(expr sql.Expression) bool {
+		if f, ok := expr.(*expression.GetField); ok {
+			if field == nil {
+				field = f
+			} else if field.Table() != f.Table() {
+				// If there are multiple tables involved in the expression, then we can't use it to evaluate a row from just
+				// the one table (to build a lookup key for the primary table).
+				foundMultipleTables = true
+				return false
+			}
+			return true
+		}
+		return true
+	})
+
+	if foundMultipleTables {
+		return nil
+	}
+
+	return field
 }

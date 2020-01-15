@@ -644,7 +644,7 @@ func getMultiColumnIndexForExpressions(
 		var first sql.Expression
 		for _, e := range exprs {
 			if e.col == selected[0] {
-				first = e.expr
+				first = e.comparison
 				break
 			}
 		}
@@ -662,9 +662,9 @@ func getMultiColumnIndexForExpressions(
 			var values = make([]interface{}, len(index.Expressions()))
 			for i, e := range index.Expressions() {
 				col := findColumn(exprs, e)
-				used[col.expr] = struct{}{}
+				used[col.comparison] = struct{}{}
 				var val interface{}
-				val, err = col.val.Eval(sql.NewEmptyContext(), nil)
+				val, err = col.comparand.Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
 					return
 				}
@@ -677,8 +677,8 @@ func getMultiColumnIndexForExpressions(
 			var uppers = make([]interface{}, len(index.Expressions()))
 			for i, e := range index.Expressions() {
 				col := findColumn(exprs, e)
-				used[col.expr] = struct{}{}
-				between := col.expr.(*expression.Between)
+				used[col.comparison] = struct{}{}
+				between := col.comparison.(*expression.Between)
 				lowers[i], err = between.Lower.Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
 					return
@@ -703,8 +703,8 @@ func groupExpressionsByOperator(exprs []columnExpr) [][]columnExpr {
 	for _, e := range exprs {
 		var found bool
 		for i, group := range result {
-			t1 := reflect.TypeOf(group[0].expr)
-			t2 := reflect.TypeOf(e.expr)
+			t1 := reflect.TypeOf(group[0].comparison)
+			t2 := reflect.TypeOf(e.comparison)
 			if t1 == t2 {
 				result[i] = append(result[i], e)
 				found = true
@@ -720,10 +720,21 @@ func groupExpressionsByOperator(exprs []columnExpr) [][]columnExpr {
 	return result
 }
 
+// A column expression captures a GetField expression used in a comparison, as well as some additional contextual
+// information. Example, for the base expression col1 + 1 > col2 - 1:
+// col refers to `col1`
+// colExpr refers to `col1 + 1`
+// comparand refers to `col2 - 1`
+// comparision refers to `col1 + 1 > col2 - 1`
 type columnExpr struct {
-	col  *expression.GetField
-	val  sql.Expression
-	expr sql.Expression
+	// The field (column) being evaluated, which may not be the entire term in the comparison
+	col *expression.GetField
+	// The entire expression on this side of the comparison
+	colExpr sql.Expression
+	// The expression this field is being compared to (the other term in the comparison)
+	comparand sql.Expression
+	// The comparison expression in which this columnExpr is one term
+	comparison sql.Expression
 }
 
 func findColumn(cols []columnExpr, column string) *columnExpr {
@@ -756,9 +767,9 @@ func extractColumnExpr(e sql.Expression) (string, *columnExpr) {
 		table, colExpr := extractColumnExpr(e.Child)
 		if colExpr != nil {
 			colExpr = &columnExpr{
-				col:  colExpr.col,
-				val:  colExpr.val,
-				expr: expression.NewNot(colExpr.expr),
+				col:        colExpr.col,
+				comparand:  colExpr.comparand,
+				comparison: expression.NewNot(colExpr.comparison),
 			}
 		}
 
@@ -783,7 +794,7 @@ func extractColumnExpr(e sql.Expression) (string, *columnExpr) {
 			return "", nil
 		}
 
-		return col.Table(), &columnExpr{col, right, e}
+		return col.Table(), &columnExpr{col, left, right, e}
 	case *expression.Between:
 		if !isEvaluable(e.Upper) || !isEvaluable(e.Lower) || isEvaluable(e.Val) {
 			return "", nil
@@ -794,7 +805,7 @@ func extractColumnExpr(e sql.Expression) (string, *columnExpr) {
 			return "", nil
 		}
 
-		return col.Table(), &columnExpr{col, nil, e}
+		return col.Table(), &columnExpr{col, nil, nil, e}
 	default:
 		return "", nil
 	}
