@@ -28,17 +28,17 @@ var (
 
 	ErrConvertingToTimeOutOfRange = errors.NewKind("value %q is outside of %v range")
 
-	// DatetimeTypeMaxDatetime is the maximum representable Datetime/Date value.
-	DatetimeTypeMaxDatetime = time.Date(9999, 12, 31, 23, 59, 59, 999999000, time.UTC)
+	// datetimeTypeMaxDatetime is the maximum representable Datetime/Date value.
+	datetimeTypeMaxDatetime = time.Date(9999, 12, 31, 23, 59, 59, 999999000, time.UTC)
 
-	// DatetimeTypeMinDatetime is the minimum representable Datetime/Date value.
-	DatetimeTypeMinDatetime = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
+	// datetimeTypeMinDatetime is the minimum representable Datetime/Date value.
+	datetimeTypeMinDatetime = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	// DatetimeTypeMaxTimestamp is the maximum representable Timestamp value, which is the maximum 32-bit integer as a Unix time.
-	DatetimeTypeMaxTimestamp = time.Unix(math.MaxInt32, 999999000)
+	// datetimeTypeMaxTimestamp is the maximum representable Timestamp value, which is the maximum 32-bit integer as a Unix time.
+	datetimeTypeMaxTimestamp = time.Unix(math.MaxInt32, 999999000)
 
-	// DatetimeTypeMinTimestamp is the minimum representable Timestamp value, which is one second past the epoch.
-	DatetimeTypeMinTimestamp = time.Unix(1, 0)
+	// datetimeTypeMinTimestamp is the minimum representable Timestamp value, which is one second past the epoch.
+	datetimeTypeMinTimestamp = time.Unix(1, 0)
 
 	// TimestampDatetimeLayouts hold extra timestamps allowed for parsing. It does
 	// not have all the layouts supported by mysql. Missing are two digit year
@@ -69,6 +69,8 @@ var (
 type DatetimeType interface {
 	Type
 	ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
+	MaximumTime() time.Time
+	MinimumTime() time.Time
 }
 
 type datetimeType struct{
@@ -156,7 +158,7 @@ func (t datetimeType) Convert(v interface{}) (interface{}, error)  {
 			return nil, ErrConvertingToTimeOutOfRange.New(res.Format(TimestampDatetimeLayout), t.String())
 		}
 	case sqltypes.Timestamp:
-		if res.Before(DatetimeTypeMinTimestamp) || res.After(DatetimeTypeMaxTimestamp) {
+		if res.Before(datetimeTypeMinTimestamp) || res.After(datetimeTypeMaxTimestamp) {
 			return nil, ErrConvertingToTimeOutOfRange.New(res.Format(TimestampDatetimeLayout), t.String())
 		}
 	}
@@ -282,6 +284,22 @@ func (t datetimeType) Type() query.Type {
 
 func (t datetimeType) Zero() interface{} {
 	return zeroTime
+}
+
+// MaximumTime is the latest accepted time for this type.
+func (t datetimeType) MaximumTime() time.Time {
+	if t.baseType == sqltypes.Timestamp {
+		return datetimeTypeMaxTimestamp
+	}
+	return datetimeTypeMaxDatetime
+}
+
+// MinimumTime is the earliest accepted time for this type.
+func (t datetimeType) MinimumTime() time.Time {
+	if t.baseType == sqltypes.Timestamp {
+		return datetimeTypeMinTimestamp
+	}
+	return datetimeTypeMinDatetime
 }
 
 // ValidateTime receives a time and returns either that time or nil if it's
