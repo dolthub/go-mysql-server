@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	Time timespanType
+	Time TimeType = timespanType{}
 
 	ErrConvertingToTimeType = errors.NewKind("value %v is not a valid Time")
 
