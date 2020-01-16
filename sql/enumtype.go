@@ -32,6 +32,7 @@ type EnumType interface {
 	ConvertToIndex(v interface{}) (int, error)
 	IndexOf(v string) int
 	NumberOfElements() uint16
+	Values() []string
 }
 
 type enumType struct{
@@ -274,4 +275,11 @@ func (t enumType) IndexOf(v string) int {
 // NumberOfElements returns the number of enumerations.
 func (t enumType) NumberOfElements() uint16 {
 	return uint16(len(t.indexToVal))
+}
+
+// Values returns the elements, in order, of every enumeration.
+func (t enumType) Values() []string {
+	vals := make([]string, len(t.indexToVal))
+	copy(vals, t.indexToVal)
+	return vals
 }
