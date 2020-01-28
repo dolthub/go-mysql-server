@@ -153,6 +153,26 @@ func MustCreateBinary(baseType query.Type, lengthHint int64) StringType {
 	return MustCreateString(baseType, lengthHint, Collation_binary)
 }
 
+// CreateTinyText creates a TINYTEXT with the given collation.
+func CreateTinyText(collation Collation) StringType {
+	return MustCreateString(sqltypes.Text, tinyTextBlobMax / collation.CharacterSet().MaxLength(), collation)
+}
+
+// CreateText creates a TEXT with the given collation.
+func CreateText(collation Collation) StringType {
+	return MustCreateString(sqltypes.Text, textBlobMax / collation.CharacterSet().MaxLength(), collation)
+}
+
+// CreateMediumText creates a MEDIUMTEXT with the given collation.
+func CreateMediumText(collation Collation) StringType {
+	return MustCreateString(sqltypes.Text, mediumTextBlobMax / collation.CharacterSet().MaxLength(), collation)
+}
+
+// CreateLongText creates a LONGTEXT with the given collation.
+func CreateLongText(collation Collation) StringType {
+	return MustCreateString(sqltypes.Text, longTextBlobMax / collation.CharacterSet().MaxLength(), collation)
+}
+
 // Compare implements Type interface.
 func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := compareNulls(a, b); hasNulls {
@@ -195,14 +215,22 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 		return nil, ErrConvertToSQL.New(t)
 	}
 
-	if t.CharacterSet().MaxLength() == 1 {
-		if int64(len(val)) > t.charLength {
+	if t.baseType == sqltypes.Text {
+		// for TEXT types, we use the byte length instead of the character length
+		if int64(len(val)) > t.MaxByteLength() {
 			return nil, ErrLengthBeyondLimit.New()
 		}
 	} else {
-		//TODO: this should count the string's length properly according to the character set
-		if int64(len(val)) > t.charLength {
-			return nil, ErrLengthBeyondLimit.New()
+		if t.CharacterSet().MaxLength() == 1 {
+			// if the character set only has a max size of 1, we can just count the bytes
+			if int64(len(val)) > t.charLength {
+				return nil, ErrLengthBeyondLimit.New()
+			}
+		} else {
+			//TODO: this should count the string's length properly according to the character set
+			if int64(len(val)) > t.charLength {
+				return nil, ErrLengthBeyondLimit.New()
+			}
 		}
 	}
 

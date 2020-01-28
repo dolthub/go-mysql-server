@@ -451,7 +451,7 @@ func TestStringConvert(t *testing.T) {
 		{MustCreateBinary(sqltypes.Binary, 3), "abcd", nil, true},
 		{MustCreateBinary(sqltypes.Blob, 3), strings.Repeat("0", tinyTextBlobMax + 1), nil, true},
 		{MustCreateStringWithDefaults(sqltypes.Char, 3), "abcd", nil, true},
-		{MustCreateStringWithDefaults(sqltypes.Text, 3), strings.Repeat("0", int(tinyTextBlobMax / Collation_Default.CharacterSet().MaxLength()) + 1), nil, true},
+		{MustCreateStringWithDefaults(sqltypes.Text, 3), strings.Repeat("𒁏", int(tinyTextBlobMax / Collation_Default.CharacterSet().MaxLength()) + 1), nil, true},
 		{MustCreateBinary(sqltypes.VarBinary, 3), []byte{01, 02, 03, 04}, nil, true},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 3), []byte("abcd"), nil, true},
 	}
