@@ -162,7 +162,7 @@ func (i *tableIter) Next() (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-
+		result, _ = sql.ConvertToBool(result)
 		if result != true {
 			return i.Next()
 		}

@@ -338,6 +338,104 @@ var queries = []queryTest{
 		[]sql.Row{{int64(3)}},
 	},
 	{
+		"SELECT * from stringandtable WHERE i",
+		[]sql.Row{
+			{int64(1), "1"},
+			{int64(2), ""},
+			{int64(3), "true"},
+			{int64(4), "false"},
+		},
+	},
+	{
+		"SELECT * from stringandtable WHERE i AND i",
+		[]sql.Row{
+			{int64(1), "1"},
+			{int64(2), ""},
+			{int64(3), "true"},
+			{int64(4), "false"},
+		},
+	},
+	{
+		"SELECT * from stringandtable WHERE i OR i",
+		[]sql.Row{
+			{int64(1), "1"},
+			{int64(2), ""},
+			{int64(3), "true"},
+			{int64(4), "false"},
+		},
+	},
+	{
+		"SELECT * from stringandtable WHERE NOT i",
+		[]sql.Row{{int64(0), "0"}},
+	},
+	{
+		"SELECT * from stringandtable WHERE NOT i AND NOT i",
+		[]sql.Row{{int64(0), "0"}},
+	},
+	{
+		"SELECT * from stringandtable WHERE NOT i OR NOT i",
+		[]sql.Row{{int64(0), "0"}},
+	},
+	{
+		"SELECT * from stringandtable WHERE i OR NOT i",
+		[]sql.Row{
+			{int64(0), "0"},
+			{int64(1), "1"},
+			{int64(2), ""},
+			{int64(3), "true"},
+			{int64(4), "false"},
+		},
+	},
+	{
+		"SELECT * from stringandtable WHERE v",
+		[]sql.Row{{int64(1), "1"}},
+	},
+	{
+		"SELECT * from stringandtable WHERE v AND v",
+		[]sql.Row{{int64(1), "1"}},
+	},
+	{
+		"SELECT * from stringandtable WHERE v OR v",
+		[]sql.Row{{int64(1), "1"}},
+	},
+	{
+		"SELECT * from stringandtable WHERE NOT v",
+		[]sql.Row{
+			{int64(0), "0"},
+			{int64(2), ""},
+			{int64(3), "true"},
+			{int64(4), "false"},
+		},
+	},
+	{
+		"SELECT * from stringandtable WHERE NOT v AND NOT v",
+		[]sql.Row{
+			{int64(0), "0"},
+			{int64(2), ""},
+			{int64(3), "true"},
+			{int64(4), "false"},
+		},
+	},
+	{
+		"SELECT * from stringandtable WHERE NOT v OR NOT v",
+		[]sql.Row{
+			{int64(0), "0"},
+			{int64(2), ""},
+			{int64(3), "true"},
+			{int64(4), "false"},
+		},
+	},
+	{
+		"SELECT * from stringandtable WHERE v OR NOT v",
+		[]sql.Row{
+			{int64(0), "0"},
+			{int64(1), "1"},
+			{int64(2), ""},
+			{int64(3), "true"},
+			{int64(4), "false"},
+		},
+	},
+	{
 		"SELECT substring(mytable.s, 1, 5) AS s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1",
 		[]sql.Row{
 			{"third"},
@@ -4310,6 +4408,20 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 		{Name: "js", Type: sql.JSON, Source: "typestable", Nullable: true},
 		{Name: "bl", Type: sql.Blob, Source: "typestable", Nullable: true},
 	}, numPartitions)
+
+	tables["stringandtable"] = memory.NewPartitionedTable("stringandtable", sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "stringandtable", Nullable: false},
+		{Name: "v", Type: sql.Text, Source: "stringandtable", Nullable: false},
+	}, numPartitions)
+
+	insertRows(
+		t, tables["stringandtable"],
+		sql.NewRow(int64(0), "0"),
+		sql.NewRow(int64(1), "1"),
+		sql.NewRow(int64(2), ""),
+		sql.NewRow(int64(3), "true"),
+		sql.NewRow(int64(4), "false"),
+	)
 
 	return tables
 }

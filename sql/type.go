@@ -266,13 +266,16 @@ func ConvertToBool(v interface{}) (bool, error) {
 	case uint:
 		return ConvertToBool(int64(b))
 	case uint64:
-		return ConvertToBool(int64(b))
+		if b == 0 {
+			return false, nil
+		}
+		return true, nil
 	case uint32:
-		return ConvertToBool(int64(b))
+		return ConvertToBool(uint64(b))
 	case uint16:
-		return ConvertToBool(int64(b))
+		return ConvertToBool(uint64(b))
 	case uint8:
-		return ConvertToBool(int64(b))
+		return ConvertToBool(uint64(b))
 	case time.Duration:
 		if b == 0 {
 			return false, nil
@@ -291,7 +294,12 @@ func ConvertToBool(v interface{}) (bool, error) {
 		}
 		return true, nil
 	case string:
-		return false, nil
+		bFloat, err := strconv.ParseFloat(b, 64)
+		if err != nil {
+			// In MySQL, if the string does not represent a float then it's false
+			return false, nil
+		}
+		return bFloat != 0, nil
 	case nil:
 		return false, fmt.Errorf("unable to cast nil to bool")
 	default:
