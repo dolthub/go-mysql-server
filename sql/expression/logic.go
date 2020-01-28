@@ -47,6 +47,12 @@ func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	if lval != nil {
+		lval, err = sql.ConvertToBool(lval)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	if lval == false {
 		return false, nil
@@ -55,6 +61,12 @@ func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	rval, err := a.Right.Eval(ctx, row)
 	if err != nil {
 		return nil, err
+	}
+	if rval != nil {
+		rval, err = sql.ConvertToBool(rval)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if rval == false {
@@ -101,6 +113,12 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	if lval != nil {
+		lval, err = sql.ConvertToBool(lval)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	if lval == true {
 		return true, nil
@@ -109,6 +127,12 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	rval, err := o.Right.Eval(ctx, row)
 	if err != nil {
 		return nil, err
+	}
+	if rval != nil {
+		rval, err = sql.ConvertToBool(rval)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if lval == nil && rval == nil {
