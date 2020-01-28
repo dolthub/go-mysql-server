@@ -32,10 +32,10 @@ var (
 	Text   = MustCreateStringWithDefaults(sqltypes.Text, textBlobMax / Collation_Default.CharacterSet().MaxLength())
 	MediumText = MustCreateStringWithDefaults(sqltypes.Text, mediumTextBlobMax / Collation_Default.CharacterSet().MaxLength())
 	LongText = MustCreateStringWithDefaults(sqltypes.Text, longTextBlobMax)
-	TinyBlob = MustCreateBlob(sqltypes.Blob, tinyTextBlobMax)
-	Blob = MustCreateBlob(sqltypes.Blob, textBlobMax)
-	MediumBlob = MustCreateBlob(sqltypes.Blob, mediumTextBlobMax)
-	LongBlob = MustCreateBlob(sqltypes.Blob, longTextBlobMax)
+	TinyBlob = MustCreateBinary(sqltypes.Blob, tinyTextBlobMax)
+	Blob = MustCreateBinary(sqltypes.Blob, textBlobMax)
+	MediumBlob = MustCreateBinary(sqltypes.Blob, mediumTextBlobMax)
+	LongBlob = MustCreateBinary(sqltypes.Blob, longTextBlobMax)
 )
 
 // StringType represents all string types, including VARCHAR and BLOB.
@@ -44,6 +44,7 @@ var (
 // https://dev.mysql.com/doc/refman/8.0/en/blob.html
 type StringType interface {
 	Type
+	ChangeCollation(newCollation Collation) (StringType, error)
 	CharacterSet() CharacterSet
 	Collation() Collation
 	MaxCharacterLength() int64
@@ -142,13 +143,13 @@ func MustCreateStringWithDefaults(baseType query.Type, length int64) StringType 
 	return MustCreateString(baseType, length, Collation_Default)
 }
 
-// CreateBlob creates a StringType with a binary collation and character set of the given size.
-func CreateBlob(baseType query.Type, lengthHint int64) (StringType, error) {
+// CreateBinary creates a StringType with a binary collation and character set of the given size.
+func CreateBinary(baseType query.Type, lengthHint int64) (StringType, error) {
 	return CreateString(baseType, lengthHint, Collation_binary)
 }
 
-// MustCreateBlob is the same as CreateBlob except it panics on errors.
-func MustCreateBlob(baseType query.Type, lengthHint int64) StringType {
+// MustCreateBinary is the same as CreateBinary except it panics on errors.
+func MustCreateBinary(baseType query.Type, lengthHint int64) StringType {
 	return MustCreateString(baseType, lengthHint, Collation_binary)
 }
 
@@ -303,6 +304,38 @@ func (t stringType) Type() query.Type {
 // Zero implements Type interface.
 func (t stringType) Zero() interface{} {
 	return ""
+}
+
+// ChangeCollation returns a new StringType that is equivalent to this type with the new collation.
+// Returns an error if the new collation causes a VarChar type to go beyond the byte limit.
+// Of note, Text and Blob types may change their character limit, since it's determined by byte length.
+// For example, `TINYTEXT COLLATE utf8mb4_bin` has a limit of 63 characters, where as
+// `TINYTEXT COLLATE ascii_bin` has a limit of 255 characters.
+func (t stringType) ChangeCollation(newCollation Collation) (StringType, error) {
+	if t.collation == newCollation {
+		return t, nil
+	}
+	switch t.baseType {
+	case sqltypes.Char, sqltypes.Binary:
+		// Pass in Char since a binary collation will turn it into Binary
+		return CreateString(sqltypes.Char, t.charLength, newCollation)
+	case sqltypes.VarChar, sqltypes.VarBinary:
+		// Pass in VarChar since a binary collation will turn it into VarBinary
+		return CreateString(sqltypes.VarChar, t.charLength, newCollation)
+	case sqltypes.Text, sqltypes.Blob:
+		maxByteLength := t.MaxByteLength()
+		if maxByteLength <= tinyTextBlobMax {
+			return CreateString(sqltypes.Text, tinyTextBlobMax / newCollation.CharacterSet().MaxLength(), newCollation)
+		} else if maxByteLength <= textBlobMax {
+			return CreateString(sqltypes.Text, textBlobMax / newCollation.CharacterSet().MaxLength(), newCollation)
+		} else if maxByteLength <= mediumTextBlobMax {
+			return CreateString(sqltypes.Text, mediumTextBlobMax / newCollation.CharacterSet().MaxLength(), newCollation)
+		} else {
+			return CreateString(sqltypes.Text, longTextBlobMax, newCollation)
+		}
+	default:
+		return nil, ErrInvalidBaseType.New(t.baseType.String(), "string")
+	}
 }
 
 func (t stringType) CharacterSet() CharacterSet {

@@ -123,7 +123,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		if err != nil {
 			return nil, err
 		}
-		return CreateBlob(sqltypes.Blob, length)
+		return CreateBinary(sqltypes.Blob, length)
 	case "mediumblob":
 		return MediumBlob, nil
 	case "longblob":
