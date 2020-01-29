@@ -344,6 +344,7 @@ var queries = []queryTest{
 			{int64(2), ""},
 			{int64(3), "true"},
 			{int64(4), "false"},
+			{int64(5), nil},
 		},
 	},
 	{
@@ -353,6 +354,7 @@ var queries = []queryTest{
 			{int64(2), ""},
 			{int64(3), "true"},
 			{int64(4), "false"},
+			{int64(5), nil},
 		},
 	},
 	{
@@ -362,6 +364,7 @@ var queries = []queryTest{
 			{int64(2), ""},
 			{int64(3), "true"},
 			{int64(4), "false"},
+			{int64(5), nil},
 		},
 	},
 	{
@@ -384,19 +387,20 @@ var queries = []queryTest{
 			{int64(2), ""},
 			{int64(3), "true"},
 			{int64(4), "false"},
+			{int64(5), nil},
 		},
 	},
 	{
 		"SELECT * from stringandtable WHERE v",
-		[]sql.Row{{int64(1), "1"}},
+		[]sql.Row{{int64(1), "1"}, {nil, "2"}},
 	},
 	{
 		"SELECT * from stringandtable WHERE v AND v",
-		[]sql.Row{{int64(1), "1"}},
+		[]sql.Row{{int64(1), "1"}, {nil, "2"}},
 	},
 	{
 		"SELECT * from stringandtable WHERE v OR v",
-		[]sql.Row{{int64(1), "1"}},
+		[]sql.Row{{int64(1), "1"}, {nil, "2"}},
 	},
 	{
 		"SELECT * from stringandtable WHERE NOT v",
@@ -433,6 +437,7 @@ var queries = []queryTest{
 			{int64(2), ""},
 			{int64(3), "true"},
 			{int64(4), "false"},
+			{nil, "2"},
 		},
 	},
 	{
@@ -4410,8 +4415,8 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	}, numPartitions)
 
 	tables["stringandtable"] = memory.NewPartitionedTable("stringandtable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "stringandtable", Nullable: false},
-		{Name: "v", Type: sql.Text, Source: "stringandtable", Nullable: false},
+		{Name: "i", Type: sql.Int64, Source: "stringandtable", Nullable: true},
+		{Name: "v", Type: sql.Text, Source: "stringandtable", Nullable: true},
 	}, numPartitions)
 
 	insertRows(
@@ -4421,6 +4426,9 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 		sql.NewRow(int64(2), ""),
 		sql.NewRow(int64(3), "true"),
 		sql.NewRow(int64(4), "false"),
+		sql.NewRow(int64(5), nil),
+		sql.NewRow(nil, "2"),
+
 	)
 
 	return tables
