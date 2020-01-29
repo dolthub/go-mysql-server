@@ -50,7 +50,7 @@ func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if lval != nil {
 		lvalBool, err := sql.ConvertToBool(lval)
 		if err == nil && lvalBool == false {
-			return false, err
+			return false, nil
 		}
 	}
 
@@ -61,7 +61,7 @@ func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if rval != nil {
 		rvalBool, err := sql.ConvertToBool(rval)
 		if err == nil && rvalBool == false {
-			return false, err
+			return false, nil
 		}
 	}
 
