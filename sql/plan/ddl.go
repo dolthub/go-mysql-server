@@ -153,7 +153,7 @@ func (d *DropTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		}
 		err = droppable.DropTable(ctx, tbl.Name())
 		if err != nil {
-			break
+			return nil, err
 		}
 	}
 
