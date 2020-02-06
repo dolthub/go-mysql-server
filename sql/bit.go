@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/spf13/cast"
+	"encoding/binary"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/proto/query"
 )
@@ -79,14 +79,52 @@ func (t bitType) Convert(v interface{}) (interface{}, error) {
 		return nil, nil
 	}
 
-	if _, ok := v.(string); ok {
+	value := uint64(0)
+	switch val := v.(type) {
+	case bool:
+		if val {
+			value = 1
+		} else {
+			value = 0
+		}
+	case int:
+		value = uint64(val)
+	case uint:
+		value = uint64(val)
+	case int8:
+		value = uint64(val)
+	case uint8:
+		value = uint64(val)
+	case int16:
+		value = uint64(val)
+	case uint16:
+		value = uint64(val)
+	case int32:
+		value = uint64(val)
+	case uint32:
+		value = uint64(val)
+	case int64:
+		value = uint64(val)
+	case uint64:
+		value = val
+	case float32:
+		return t.Convert(float64(val))
+	case float64:
+		if val < 0 {
+			return nil, fmt.Errorf(`negative floats cannot become bit values`)
+		}
+		value = uint64(val)
+	case string:
+		return t.Convert([]byte(val))
+	case []byte:
+		if len(val) > 8 {
+			return nil, fmt.Errorf("%v is beyond the maximum value that can be held by %v bits", value, t.numOfBits)
+		}
+		value = binary.BigEndian.Uint64(append(make([]byte, 8-len(val)), val...))
+	default:
 		return nil, ErrInvalidType.New(t)
 	}
 
-	value, err := cast.ToUint64E(v)
-	if err != nil {
-		return nil, err
-	}
 	if value > uint64(1 << t.numOfBits - 1) {
 		return nil, fmt.Errorf("%v is beyond the maximum value that can be held by %v bits", value, t.numOfBits)
 	}
