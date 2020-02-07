@@ -84,7 +84,7 @@ func mustCastNumToInt64(x interface{}) int64 {
 		}
 	}
 
-	panic("failed to convert to int64: %v", x)
+	panic(fmt.Sprintf("failed to convert to int64: %v", x))
 }
 
 // Parse parses the given SQL sentence and returns the corresponding node.
