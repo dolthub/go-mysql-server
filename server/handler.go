@@ -214,9 +214,7 @@ func (h *Handler) ComQuery(
 
 		inode, err := sockstate.GetConnInode(tcpConn)
 		if err != nil || inode == 0 {
-			if sockstate.ErrSocketCheckNotImplemented.Is(err) {
-				logrus.Warn("Connection checker exiting, not supported in this OS")
-			} else {
+			if !sockstate.ErrSocketCheckNotImplemented.Is(err) {
 				errChan <- err
 			}
 			return
