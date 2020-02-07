@@ -61,6 +61,32 @@ const (
 	colKey
 )
 
+func mustCastNumToInt64(x interface{}) int64 {
+	switch v := x.(type) {
+	case int8:
+		return int64(v)
+	case int16:
+		return int64(v)
+	case int32:
+		return int64(v)
+	case uint8:
+		return int64(v)
+	case uint16:
+		return int64(v)
+	case uint32:
+		return int64(v)
+	case int64:
+		return int64(v)
+	case uint64:
+		i64 := int64(v)
+		if v == uint64(i64) {
+			return i64
+		}
+	}
+
+	panic("failed to convert to int64: %v", x)
+}
+
 // Parse parses the given SQL sentence and returns the corresponding node.
 func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 	span, ctx := ctx.Span("parse", opentracing.Tag{Key: "query", Value: query})
@@ -359,8 +385,8 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 			return nil, err
 		}
 	} else if ok, val := sql.HasDefaultValue(ctx.Session, "sql_select_limit"); !ok {
-		limit := val.(int64)
-		node = plan.NewLimit(int64(limit), node)
+		limit := mustCastNumToInt64(val)
+		node = plan.NewLimit(limit, node)
 	}
 
 	return node, nil
