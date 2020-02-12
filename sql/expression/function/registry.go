@@ -82,5 +82,6 @@ var Defaults = []sql.Function{
 	sql.FunctionN{Name: "rpad", Fn: NewPadFunc(rPadType)},
 	sql.FunctionN{Name: "substr", Fn: NewSubstring},
 	sql.FunctionN{Name: "substring", Fn: NewSubstring},
+	sql.FunctionN{Name: "unix_timestamp", Fn: NewUnixTimestamp},
 	sql.FunctionN{Name: "yearweek", Fn: NewYearWeek},
 }
