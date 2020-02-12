@@ -94,6 +94,8 @@ func compEval(
 			if i == 0 || cmp(fval, selectedNum) {
 				selectedNum = fval
 			}
+		case nil:
+			return nil, nil
 		default:
 			return nil, ErrUnsupportedType.New(t)
 		}
@@ -134,7 +136,7 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 		} else if sql.IsText(argType) {
 			allInt = false
 		} else if argType == sql.Null {
-			// When a Null is present the return will always de Null
+			// When a Null is present the return will always be Null
 			return sql.Null, nil
 		} else {
 			return nil, ErrUnsupportedType.New(argType)
@@ -161,7 +163,7 @@ type Greatest struct {
 }
 
 // ErrUnsupportedType is returned when an argument to Greatest or Latest is not numeric or string
-var ErrUnsupportedType = errors.NewKind("unsupported type for greatest/latest argument: %T")
+var ErrUnsupportedType = errors.NewKind("unsupported type for greatest/least argument: %T")
 
 // NewGreatest creates a new Greatest UDF
 func NewGreatest(args ...sql.Expression) (sql.Expression, error) {
