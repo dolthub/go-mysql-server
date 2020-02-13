@@ -81,6 +81,22 @@ func TestGreatest(t *testing.T) {
 			},
 			"bbb",
 		},
+		{
+			"nulls of a non-null type, char",
+			[]sql.Expression{
+				expression.NewConvert(expression.NewLiteral("aaa", sql.LongText), expression.ConvertToChar),
+				expression.NewConvert(expression.NewLiteral(nil, sql.Null), expression.ConvertToChar),
+			},
+			nil,
+		},
+		{
+			"nulls of a non-null type, signed",
+			[]sql.Expression{
+				expression.NewConvert(expression.NewLiteral(3.14159265359, sql.Float64), expression.ConvertToSigned),
+				expression.NewConvert(expression.NewLiteral(nil, sql.Null), expression.ConvertToSigned),
+			},
+			nil,
+		},
 	}
 
 	for _, tt := range testCases {
