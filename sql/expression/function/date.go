@@ -191,7 +191,7 @@ func (ut *UnixTimestamp) Resolved() bool {
 }
 
 func (ut *UnixTimestamp) IsNullable() bool {
-        return true
+	return true
 }
 
 func (ut *UnixTimestamp) Type() sql.Type {
@@ -207,25 +207,25 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		return toUnixTimestamp(ut.clock())
 	}
 
-        date, err := ut.Date.Eval(ctx, row)
+	date, err := ut.Date.Eval(ctx, row)
 
-        if err != nil {
-                return nil, err
-        }
-        if date == nil {
-                return nil, nil
-        }
+	if err != nil {
+		return nil, err
+	}
+	if date == nil {
+		return nil, nil
+	}
 
-        date, err = sql.Datetime.Convert(date)
-        if err != nil {
-                return nil, err
-        }
+	date, err = sql.Datetime.Convert(date)
+	if err != nil {
+		return nil, err
+	}
 
 	return toUnixTimestamp(date.(time.Time))
 }
 
 func toUnixTimestamp(t time.Time) (interface{}, error) {
-	return sql.Float64.Convert(float64(t.Unix()) + float64(t.Nanosecond()) / float64(1000000000))
+	return sql.Float64.Convert(float64(t.Unix()) + float64(t.Nanosecond())/float64(1000000000))
 }
 
 func (ut *UnixTimestamp) String() string {
