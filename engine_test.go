@@ -1339,6 +1339,10 @@ var queries = []queryTest{
 		[]sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
 	},
 	{
+		`SELECT GREATEST(CAST("1920-02-03 07:41:11" AS DATETIME), CAST("1980-06-22 14:32:56" AS DATETIME))`,
+		[]sql.Row{{time.Date(1980, 6, 22, 14, 32, 56, 0, time.UTC)}},
+	},
+	{
 		`SELECT LEAST(1, 2, 3, 4)`,
 		[]sql.Row{{int64(1)}},
 	},
@@ -1357,6 +1361,10 @@ var queries = []queryTest{
 	{
 		`SELECT LEAST(i, s) FROM mytable`,
 		[]sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+	},
+	{
+		`SELECT LEAST(CAST("1920-02-03 07:41:11" AS DATETIME), CAST("1980-06-22 14:32:56" AS DATETIME))`,
+		[]sql.Row{{time.Date(1920, 2, 3, 7, 41, 11, 0, time.UTC)}},
 	},
 	{
 		"SELECT i, i2, s2 FROM mytable LEFT JOIN othertable ON i = i2 - 1",

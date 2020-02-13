@@ -157,3 +157,81 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func (d *DateSub) String() string {
 	return fmt.Sprintf("DATE_SUB(%s, %s)", d.Date, d.Interval)
 }
+
+// UnixTimestamp converts the argument to the number of seconds since
+// 1970-01-01 00:00:00 UTC. With no argument, returns number of seconds since
+// unix epoch for the current time.
+type UnixTimestamp struct {
+	clock clock
+	Date  sql.Expression
+}
+
+func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) > 1 {
+		return nil, sql.ErrInvalidArgumentNumber.New("UNIX_TIMESTAMP", 1, len(args))
+	}
+	if len(args) == 0 {
+		return &UnixTimestamp{defaultClock, nil}, nil
+	}
+	return &UnixTimestamp{defaultClock, args[0]}, nil
+}
+
+func (ut *UnixTimestamp) Children() []sql.Expression {
+	if ut.Date != nil {
+		return []sql.Expression{ut.Date}
+	}
+	return nil
+}
+
+func (ut *UnixTimestamp) Resolved() bool {
+	if ut.Date != nil {
+		return ut.Date.Resolved()
+	}
+	return true
+}
+
+func (ut *UnixTimestamp) IsNullable() bool {
+        return true
+}
+
+func (ut *UnixTimestamp) Type() sql.Type {
+	return sql.Float64
+}
+
+func (ut *UnixTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewUnixTimestamp(children...)
+}
+
+func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if ut.Date == nil {
+		return toUnixTimestamp(ut.clock())
+	}
+
+        date, err := ut.Date.Eval(ctx, row)
+
+        if err != nil {
+                return nil, err
+        }
+        if date == nil {
+                return nil, nil
+        }
+
+        date, err = sql.Datetime.Convert(date)
+        if err != nil {
+                return nil, err
+        }
+
+	return toUnixTimestamp(date.(time.Time))
+}
+
+func toUnixTimestamp(t time.Time) (interface{}, error) {
+	return sql.Float64.Convert(float64(t.Unix()) + float64(t.Nanosecond()) / float64(1000000000))
+}
+
+func (ut *UnixTimestamp) String() string {
+	if ut.Date != nil {
+		return fmt.Sprintf("UNIX_TIMESTAMP(%s)", ut.Date)
+	} else {
+		return "UNIX_TIMESTAMP()"
+	}
+}
