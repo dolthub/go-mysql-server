@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/src-d/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
@@ -27,6 +28,7 @@ func compEval(
 
 	var selectedNum float64
 	var selectedString string
+	var selectedTime time.Time
 
 	for i, arg := range args {
 		val, err := arg.Eval(ctx, row)
@@ -94,6 +96,11 @@ func compEval(
 			if i == 0 || cmp(fval, selectedNum) {
 				selectedNum = fval
 			}
+		case time.Time:
+			// Since we deviate from MySQL with int -> time handling, we only set the selectedTime variable
+			if i == 0 || cmp(t, selectedTime) {
+				selectedTime = t
+			}
 		default:
 			return nil, ErrUnsupportedType.New(t)
 		}
@@ -105,6 +112,8 @@ func compEval(
 		return int64(selectedNum), nil
 	case sql.LongText:
 		return selectedString, nil
+	case sql.Datetime:
+		return selectedTime, nil
 	}
 
 	// sql.Float64
@@ -120,6 +129,7 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 
 	allString := true
 	allInt := true
+	allDatetime := true
 
 	for _, arg := range args {
 		argType := arg.Type()
@@ -127,11 +137,16 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 			return nil, sql.ErrInvalidType.New("tuple")
 		} else if sql.IsNumber(argType) {
 			allString = false
+			allDatetime = false
 			if sql.IsFloat(argType) {
 				allString = false
 				allInt = false
 			}
 		} else if sql.IsText(argType) {
+			allInt = false
+			allDatetime = false
+		} else if sql.IsTime(argType) {
+			allString = false
 			allInt = false
 		} else if argType == sql.Null {
 			// When a Null is present the return will always de Null
@@ -145,9 +160,11 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 		return sql.LongText, nil
 	} else if allInt {
 		return sql.Int64, nil
+	} else if allDatetime {
+		return sql.Datetime, nil
+	} else {
+		return sql.Float64, nil
 	}
-
-	return sql.Float64, nil
 }
 
 // Greatest returns the argument with the greatest numerical or string value. It allows for
@@ -222,6 +239,8 @@ func greaterThan(a, b interface{}) bool {
 		return i > b.(float64)
 	case string:
 		return i > b.(string)
+	case time.Time:
+		return i.After(b.(time.Time))
 	}
 	panic("Implementation error on greaterThan")
 }
@@ -234,6 +253,8 @@ func lessThan(a, b interface{}) bool {
 		return i < b.(float64)
 	case string:
 		return i < b.(string)
+	case time.Time:
+		return i.Before(b.(time.Time))
 	}
 	panic("Implementation error on lessThan")
 }
