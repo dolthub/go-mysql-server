@@ -1803,6 +1803,16 @@ var queries = []queryTest{
 		},
 	},
 	{
+		"SELECT GREATEST(CAST(i AS CHAR), CAST(b AS CHAR)) FROM niltable",
+		[]sql.Row{
+			{nil},
+			{"true"},
+			{nil},
+			{nil},
+			{"true"},
+		},
+	},
+	{
 		"SELECT pk,pk1,pk2,one_pk.c1 AS foo, two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0, 0, 0},
