@@ -112,7 +112,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		if num > math.MaxInt8 {
+		if num > math.MaxInt8 || num < math.MinInt8 {
 			return nil, ErrOutOfRange.New(num, t)
 		}
 		return int8(num), nil
@@ -130,7 +130,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		if num > math.MaxInt16 {
+		if num > math.MaxInt16 || num < math.MinInt16 {
 			return nil, ErrOutOfRange.New(num, t)
 		}
 		return int16(num), nil
@@ -148,7 +148,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		if num > (1<<23 - 1) {
+		if num > (1<<23 - 1) || num < (-1<<23) {
 			return nil, ErrOutOfRange.New(num, t)
 		}
 		return int32(num), nil
@@ -166,7 +166,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		if num > math.MaxInt32 {
+		if num > math.MaxInt32 || num < math.MinInt32 {
 			return nil, ErrOutOfRange.New(num, t)
 		}
 		return int32(num), nil
@@ -201,7 +201,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		if num > math.MaxFloat32 {
+		if num > math.MaxFloat32 || num < -math.MaxFloat32 {
 			return nil, ErrOutOfRange.New(num, t)
 		}
 		return float32(num), nil
