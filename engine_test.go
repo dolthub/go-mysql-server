@@ -338,6 +338,61 @@ var queries = []queryTest{
 		[]sql.Row{{int64(3)}},
 	},
 	{
+		"SELECT id FROM typestable WHERE ti > '2019-12-31'",
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT id FROM typestable WHERE da > '2019-12-31'",
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT id FROM typestable WHERE ti < '2019-12-31'",
+		nil,
+	},
+	{
+		"SELECT id FROM typestable WHERE da < '2019-12-31'",
+		nil,
+	},
+	{
+		"SELECT id FROM typestable WHERE ti > date_add('2019-12-30', INTERVAL 1 DAY)",
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT id FROM typestable WHERE da > date_add('2019-12-30', INTERVAL 1 DAY)",
+		nil,
+	},
+	{
+		"SELECT id FROM typestable WHERE da >= date_add('2019-12-30', INTERVAL 1 DAY)",
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT id FROM typestable WHERE ti < date_add('2019-12-30', INTERVAL 1 DAY)",
+		nil,
+	},
+	{
+		"SELECT id FROM typestable WHERE da < date_add('2019-12-30', INTERVAL 1 DAY)",
+		nil,
+	},
+	{
+		"SELECT id FROM typestable WHERE ti > date_sub('2020-01-01', INTERVAL 1 DAY)",
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT id FROM typestable WHERE da > date_sub('2020-01-01', INTERVAL 1 DAY)",
+		nil,
+	},
+	{
+		"SELECT id FROM typestable WHERE da >= date_sub('2020-01-01', INTERVAL 1 DAY)",
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT id FROM typestable WHERE ti < date_sub('2020-01-01', INTERVAL 1 DAY)",
+		nil,
+	},
+	{
+		"SELECT id FROM typestable WHERE da < date_sub('2020-01-01', INTERVAL 1 DAY)",
+		nil,
+	},	{
 		"SELECT * from stringandtable WHERE i",
 		[]sql.Row{
 			{int64(1), "1"},
@@ -4431,6 +4486,34 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 		{Name: "js", Type: sql.JSON, Source: "typestable", Nullable: true},
 		{Name: "bl", Type: sql.Blob, Source: "typestable", Nullable: true},
 	}, numPartitions)
+
+	t1, err := time.Parse(time.RFC3339, "2019-12-31T12:00:00Z")
+	require.NoError(t, err)
+	t2, err := time.Parse(time.RFC3339, "2019-12-31T00:00:00Z")
+	require.NoError(t, err)
+
+	insertRows(
+		t, tables["typestable"],
+		sql.NewRow(
+			int64(1),
+			int8(2),
+			int16(3),
+			int32(4),
+			int64(5),
+			uint8(6),
+			uint16(7),
+			uint32(8),
+			uint64(9),
+			float32(10),
+			float64(11),
+			t1,
+			t2,
+			"fourteen",
+			false,
+			nil,
+			nil,
+			),
+	)
 
 	tables["stringandtable"] = memory.NewPartitionedTable("stringandtable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "stringandtable", Nullable: true},
