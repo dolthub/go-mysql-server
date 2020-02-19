@@ -359,6 +359,10 @@ var queries = []queryTest{
 	},
 	{
 		"SELECT id FROM typestable WHERE da > date_add('2019-12-30', INTERVAL 1 DAY)",
+		nil,
+	},
+	{
+		"SELECT id FROM typestable WHERE da >= date_add('2019-12-30', INTERVAL 1 DAY)",
 		[]sql.Row{{int64(1)}},
 	},
 	{
@@ -370,6 +374,25 @@ var queries = []queryTest{
 		nil,
 	},
 	{
+		"SELECT id FROM typestable WHERE ti > date_sub('2020-01-01', INTERVAL 1 DAY)",
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT id FROM typestable WHERE da > date_sub('2020-01-01', INTERVAL 1 DAY)",
+		nil,
+	},
+	{
+		"SELECT id FROM typestable WHERE da >= date_sub('2020-01-01', INTERVAL 1 DAY)",
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT id FROM typestable WHERE ti < date_sub('2020-01-01', INTERVAL 1 DAY)",
+		nil,
+	},
+	{
+		"SELECT id FROM typestable WHERE da < date_sub('2020-01-01', INTERVAL 1 DAY)",
+		nil,
+	},	{
 		"SELECT * from stringandtable WHERE i",
 		[]sql.Row{
 			{int64(1), "1"},
@@ -2195,25 +2218,25 @@ func TestQueries(t *testing.T) {
 	// 1) Partitioned tables / non partitioned tables
 	// 2) Mergeable / unmergeable / no indexes
 	// 3) Parallelism on / off
-	// if debugQuery == "" {
-	// 	numPartitionsVals = []int{
-	// 		1,
-	// 		testNumPartitions,
-	// 	}
-	// 	indexDrivers = []*indexDriverTestCase{
-	// 		nil,
-	// 		{"unmergableIndexes", unmergableIndexDriver},
-	// 		{"mergableIndexes", mergableIndexDriver},
-	// 	}
-	// 	parallelVals = []int{
-	// 		1,
-	// 		2,
-	// 	}
-	// } else {
+	if debugQuery == "" {
+		numPartitionsVals = []int{
+			1,
+			testNumPartitions,
+		}
+		indexDrivers = []*indexDriverTestCase{
+			nil,
+			{"unmergableIndexes", unmergableIndexDriver},
+			{"mergableIndexes", mergableIndexDriver},
+		}
+		parallelVals = []int{
+			1,
+			2,
+		}
+	} else {
 		numPartitionsVals = []int{ 1 }
 		indexDrivers = []*indexDriverTestCase{{"unmergableIndexes", unmergableIndexDriver}}
 		parallelVals = []int{ 1 }
-	// }
+	}
 
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexDriverInit := range indexDrivers {

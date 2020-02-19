@@ -1417,7 +1417,7 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 		if lok && be.Operator == "-" {
 			return nil, ErrUnsupportedSyntax.New("subtracting from an interval")
 		} else if (lok || rok) && be.Operator != "+" && be.Operator != "-" {
-			return nil, ErrUnsupportedSyntax.New("only + and - can be used to add of subtract intervals from dates")
+			return nil, ErrUnsupportedSyntax.New("only + and - can be used to add or subtract intervals from dates")
 		} else if lok && rok {
 			return nil, ErrUnsupportedSyntax.New("intervals cannot be added or subtracted from other intervals")
 		}

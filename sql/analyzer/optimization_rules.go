@@ -385,6 +385,8 @@ func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) 
 				return e, nil
 			case *expression.Literal, expression.Tuple:
 				return e, nil
+			case *expression.Interval:
+				return e, nil
 			default:
 				if !isEvaluable(e) {
 					return e, nil
