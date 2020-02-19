@@ -4489,7 +4489,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 
 	t1, err := time.Parse(time.RFC3339, "2019-12-31T12:00:00Z")
 	require.NoError(t, err)
-	t2, err := time.Parse( time.RFC3339, "2019-12-31T00:00:00Z")
+	t2, err := time.Parse(time.RFC3339, "2019-12-31T00:00:00Z")
 	require.NoError(t, err)
 
 	insertRows(
