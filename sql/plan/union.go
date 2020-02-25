@@ -19,7 +19,17 @@ func NewUnion(left, right sql.Node) *Union {
 }
 
 func (u *Union) Schema() sql.Schema {
-	return u.Left.Schema()
+	ls := u.Left.Schema()
+	rs := u.Right.Schema()
+	ret := make([]*sql.Column, len(ls))
+	for i := range ls {
+		c := *ls[i]
+		if i < len(rs) {
+			c.Nullable = ls[i].Nullable || rs[i].Nullable
+		}
+		ret[i] = &c
+	}
+	return ret
 }
 
 // RowIter implements the Node interface.
