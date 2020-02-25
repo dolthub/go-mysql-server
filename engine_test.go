@@ -829,6 +829,17 @@ var queries = []queryTest{
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
+		"SELECT i FROM mytable UNION SELECT s FROM mytable;",
+		[]sql.Row{
+			{"1"},
+			{"2"},
+			{"3"},
+			{"first row"},
+			{"second row"},
+			{"third row"},
+		},
+	},
+	{
 		`/*!40101 SET NAMES utf8 */`,
 		nil,
 	},
