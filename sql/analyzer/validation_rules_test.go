@@ -213,8 +213,11 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		memory.NewTable(
 			"mytable",
 			sql.Schema{
-				{Name: "foo", Source: "mytable"},
-				{Name: "bar", Source: "mytable"},
+				{Name: "foo",  Source: "mytable", Type: sql.Text},
+				{Name: "bar",  Source: "mytable", Type: sql.Int64},
+				{Name: "rab",  Source: "mytable", Type: sql.Text},
+				{Name: "zab",  Source: "mytable", Type: sql.Int64},
+				{Name: "quuz", Source: "mytable", Type: sql.Boolean},
 			},
 		),
 	)
@@ -246,8 +249,8 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewGetField(0, sql.Text, "rab", false),
-						expression.NewGetField(1, sql.Int64, "zab", false),
+						expression.NewGetField(2, sql.Text, "rab", false),
+						expression.NewGetField(3, sql.Int64, "zab", false),
 					},
 					table,
 				),
@@ -261,14 +264,14 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 					[]sql.Expression{
 						expression.NewGetField(0, sql.Text, "bar", false),
 						expression.NewGetField(1, sql.Int64, "baz", false),
-						expression.NewGetField(2, sql.Boolean, "quuz", false),
+						expression.NewGetField(4, sql.Boolean, "quuz", false),
 					},
 					table,
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewGetField(0, sql.Text, "rab", false),
-						expression.NewGetField(1, sql.Int64, "zab", false),
+						expression.NewGetField(2, sql.Text, "rab", false),
+						expression.NewGetField(3, sql.Int64, "zab", false),
 					},
 					table,
 				),
@@ -287,9 +290,9 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewGetField(0, sql.Text, "rab", false),
-						expression.NewGetField(1, sql.Int64, "zab", false),
-						expression.NewGetField(2, sql.Boolean, "quuz", false),
+						expression.NewGetField(2, sql.Text, "rab", false),
+						expression.NewGetField(3, sql.Int64, "zab", false),
+						expression.NewGetField(4, sql.Boolean, "quuz", false),
 					},
 					table,
 				),
@@ -308,8 +311,8 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewGetField(0, sql.Text, "rab", false),
-						expression.NewGetField(1, sql.Boolean, "zab", false),
+						expression.NewGetField(2, sql.Text, "rab", false),
+						expression.NewGetField(3, sql.Boolean, "zab", false),
 					},
 					table,
 				),
@@ -330,8 +333,8 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 					),
 					plan.NewProject(
 						[]sql.Expression{
-							expression.NewGetField(0, sql.Text, "rab", false),
-							expression.NewGetField(1, sql.Boolean, "zab", false),
+							expression.NewGetField(2, sql.Text, "rab", false),
+							expression.NewGetField(3, sql.Boolean, "zab", false),
 						},
 						table,
 					),
