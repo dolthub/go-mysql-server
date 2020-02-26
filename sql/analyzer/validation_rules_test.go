@@ -208,6 +208,157 @@ func TestValidateSchemaSource(t *testing.T) {
 	}
 }
 
+func TestValidateUnionSchemasMatch(t *testing.T) {
+	table := plan.NewResolvedTable(
+		memory.NewTable(
+			"mytable",
+			sql.Schema{
+				{Name: "foo",  Source: "mytable", Type: sql.Text},
+				{Name: "bar",  Source: "mytable", Type: sql.Int64},
+				{Name: "rab",  Source: "mytable", Type: sql.Text},
+				{Name: "zab",  Source: "mytable", Type: sql.Int64},
+				{Name: "quuz", Source: "mytable", Type: sql.Boolean},
+			},
+		),
+	)
+	testCases := []struct {
+		name string
+		node sql.Node
+		ok   bool
+	}{
+		{
+			"some random node",
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetField(0, sql.Text, "bar", false),
+					expression.NewGetField(1, sql.Int64, "baz", false),
+				},
+				table,
+			),
+			true,
+		},
+		{
+			"top-level union with matching schemas",
+			plan.NewUnion(
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, sql.Text, "bar", false),
+						expression.NewGetField(1, sql.Int64, "baz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, sql.Text, "rab", false),
+						expression.NewGetField(3, sql.Int64, "zab", false),
+					},
+					table,
+				),
+			),
+			true,
+		},
+		{
+			"top-level union with longer left schema",
+			plan.NewUnion(
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, sql.Text, "bar", false),
+						expression.NewGetField(1, sql.Int64, "baz", false),
+						expression.NewGetField(4, sql.Boolean, "quuz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, sql.Text, "rab", false),
+						expression.NewGetField(3, sql.Int64, "zab", false),
+					},
+					table,
+				),
+			),
+			false,
+		},
+		{
+			"top-level union with longer right schema",
+			plan.NewUnion(
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, sql.Text, "bar", false),
+						expression.NewGetField(1, sql.Int64, "baz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, sql.Text, "rab", false),
+						expression.NewGetField(3, sql.Int64, "zab", false),
+						expression.NewGetField(4, sql.Boolean, "quuz", false),
+					},
+					table,
+				),
+			),
+			false,
+		},
+		{
+			"top-level union with mismatched type in schema",
+			plan.NewUnion(
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, sql.Text, "bar", false),
+						expression.NewGetField(1, sql.Int64, "baz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, sql.Text, "rab", false),
+						expression.NewGetField(3, sql.Boolean, "zab", false),
+					},
+					table,
+				),
+			),
+			false,
+		},
+		{
+			"subquery union",
+			plan.NewSubqueryAlias(
+				"aliased",
+				plan.NewUnion(
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewGetField(0, sql.Text, "bar", false),
+							expression.NewGetField(1, sql.Int64, "baz", false),
+						},
+						table,
+					),
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewGetField(2, sql.Text, "rab", false),
+							expression.NewGetField(3, sql.Boolean, "zab", false),
+						},
+						table,
+					),
+				),
+			),
+			false,
+		},
+	}
+
+	rule := getValidationRule(validateUnionSchemasMatchRule)
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			_, err := rule.Apply(sql.NewEmptyContext(), nil, tt.node)
+			if tt.ok {
+				require.NoError(err)
+			} else {
+				require.Error(err)
+				require.True(ErrUnionSchemasMatch.Is(err))
+			}
+		})
+	}
+}
+
 func TestValidateProjectTuples(t *testing.T) {
 	testCases := []struct {
 		name string

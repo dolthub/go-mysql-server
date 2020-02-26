@@ -136,6 +136,9 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 }
 
 func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node, error) {
+	if ss, ok := stmt.(sqlparser.SelectStatement); ok {
+		return convertSelectStatement(ctx, ss)
+	}
 	switch n := stmt.(type) {
 	default:
 		return nil, ErrUnsupportedSyntax.New(sqlparser.String(n))
@@ -149,8 +152,6 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertShow(ctx, n, query)
 	case *sqlparser.Explain:
 		return convertExplain(ctx, n)
-	case *sqlparser.Select:
-		return convertSelect(ctx, n)
 	case *sqlparser.Insert:
 		return convertInsert(ctx, n)
 	case *sqlparser.DDL:
@@ -170,6 +171,19 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertDelete(ctx, n)
 	case *sqlparser.Update:
 		return convertUpdate(ctx, n)
+	}
+}
+
+func convertSelectStatement(ctx *sql.Context, ss sqlparser.SelectStatement) (sql.Node, error) {
+	switch n := ss.(type) {
+	case *sqlparser.Select:
+		return convertSelect(ctx, n)
+	case *sqlparser.Union:
+		return convertUnion(ctx, n)
+	case *sqlparser.ParenSelect:
+		return convertSelectStatement(ctx, n.Select)
+	default:
+		return nil, ErrUnsupportedSyntax.New(sqlparser.String(n))
 	}
 }
 
@@ -333,6 +347,23 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, ErrUnsupportedFeature.New(unsupportedShow)
 	}
+}
+
+func convertUnion(ctx *sql.Context, u *sqlparser.Union) (sql.Node, error) {
+	left, err := convertSelectStatement(ctx, u.Left)
+	if err != nil {
+		return nil, err
+	}
+	right, err := convertSelectStatement(ctx, u.Right)
+	if err != nil {
+		return nil, err
+	}
+	if u.Type == sqlparser.UnionStr || u.Type == sqlparser.UnionAllStr {
+		return plan.NewUnion(left, right), nil
+	} else if u.Type == sqlparser.UnionDistinctStr {
+		return plan.NewDistinct(plan.NewUnion(left, right)), nil
+	}
+	return nil, ErrUnsupportedFeature.New(u.Type)
 }
 
 func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {

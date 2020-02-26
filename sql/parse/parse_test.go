@@ -1507,6 +1507,80 @@ var fixtures = map[string]sql.Node{
 		`SELECT * FROM foo`,
 		true,
 	),
+	`SELECT 2 UNION SELECT 3` : plan.NewUnion(
+		plan.NewProject(
+			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+			plan.NewUnresolvedTable("dual", ""),
+		),
+		plan.NewProject(
+			[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+			plan.NewUnresolvedTable("dual", ""),
+		),
+	),
+	`(SELECT 2) UNION (SELECT 3)` : plan.NewUnion(
+		plan.NewProject(
+			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+			plan.NewUnresolvedTable("dual", ""),
+		),
+		plan.NewProject(
+			[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+			plan.NewUnresolvedTable("dual", ""),
+		),
+	),
+	`SELECT 2 UNION SELECT 3 UNION SELECT 4` : plan.NewUnion(
+		plan.NewUnion(
+			plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+			plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+		),
+		plan.NewProject(
+			[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+			plan.NewUnresolvedTable("dual", ""),
+		),
+	),
+	`SELECT 2 UNION (SELECT 3 UNION SELECT 4)` : plan.NewUnion(
+		plan.NewProject(
+			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+			plan.NewUnresolvedTable("dual", ""),
+		),
+		plan.NewUnion(
+			plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+			plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+		),
+	),
+	`SELECT 2 UNION ALL SELECT 3` : plan.NewUnion(
+		plan.NewProject(
+			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+			plan.NewUnresolvedTable("dual", ""),
+		),
+		plan.NewProject(
+			[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+			plan.NewUnresolvedTable("dual", ""),
+		),
+	),
+	`SELECT 2 UNION DISTINCT SELECT 3` : plan.NewDistinct(
+		plan.NewUnion(
+			plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+			plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+		),
+	),
 }
 
 func TestParse(t *testing.T) {

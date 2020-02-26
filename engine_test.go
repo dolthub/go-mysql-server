@@ -868,6 +868,33 @@ var queries = []queryTest{
 		},
 	},
 	{
+		"SELECT i FROM mytable UNION SELECT i+10 FROM mytable;",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}, {int64(11)}, {int64(12)}, {int64(13)}},
+	},
+	{
+		"SELECT i FROM mytable UNION DISTINCT SELECT i+10 FROM mytable;",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}, {int64(11)}, {int64(12)}, {int64(13)}},
+	},
+	{
+		"SELECT i FROM mytable UNION SELECT i FROM mytable;",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}, {int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable UNION DISTINCT SELECT i FROM mytable;",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
+		"SELECT i FROM mytable UNION SELECT s FROM mytable;",
+		[]sql.Row{
+			{"1"},
+			{"2"},
+			{"3"},
+			{"first row"},
+			{"second row"},
+			{"third row"},
+		},
+	},
+	{
 		`/*!40101 SET NAMES utf8 */`,
 		nil,
 	},

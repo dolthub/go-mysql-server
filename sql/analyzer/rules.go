@@ -16,6 +16,7 @@ var DefaultRules = []Rule{
 	{"resolve_star", resolveStar},
 	{"resolve_functions", resolveFunctions},
 	{"resolve_having", resolveHaving},
+	{"merge_union_schemas", mergeUnionSchemas},
 	{"reorder_aggregations", reorderAggregations},
 	{"reorder_projection", reorderProjection},
 	{"move_join_conds_to_filter", moveJoinConditionsToFilter},

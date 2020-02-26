@@ -1,6 +1,8 @@
 package analyzer
 
 import (
+	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/src-d/go-mysql-server/sql"
@@ -11,16 +13,17 @@ import (
 )
 
 const (
-	validateResolvedRule        = "validate_resolved"
-	validateOrderByRule         = "validate_order_by"
-	validateGroupByRule         = "validate_group_by"
-	validateSchemaSourceRule    = "validate_schema_source"
-	validateProjectTuplesRule   = "validate_project_tuples"
-	validateIndexCreationRule   = "validate_index_creation"
-	validateCaseResultTypesRule = "validate_case_result_types"
-	validateIntervalUsageRule   = "validate_interval_usage"
-	validateExplodeUsageRule    = "validate_explode_usage"
-	validateSubqueryColumnsRule = "validate_subquery_columns"
+	validateResolvedRule          = "validate_resolved"
+	validateOrderByRule           = "validate_order_by"
+	validateGroupByRule           = "validate_group_by"
+	validateSchemaSourceRule      = "validate_schema_source"
+	validateProjectTuplesRule     = "validate_project_tuples"
+	validateIndexCreationRule     = "validate_index_creation"
+	validateCaseResultTypesRule   = "validate_case_result_types"
+	validateIntervalUsageRule     = "validate_interval_usage"
+	validateExplodeUsageRule      = "validate_explode_usage"
+	validateSubqueryColumnsRule   = "validate_subquery_columns"
+	validateUnionSchemasMatchRule = "validate_union_schemas_match"
 )
 
 var (
@@ -64,6 +67,12 @@ var (
 	ErrSubqueryColumns = errors.NewKind(
 		"subquery expressions can only return a single column",
 	)
+
+	// ErrUnionSchemasMatch is returned when both sides of a UNION do not
+	// have the same schema.
+	ErrUnionSchemasMatch = errors.NewKind(
+		"the schema of the left side of union does not match the right side, expected %s to match %s",
+	)
 )
 
 // DefaultValidationRules to apply while analyzing nodes.
@@ -78,6 +87,7 @@ var DefaultValidationRules = []Rule{
 	{validateIntervalUsageRule, validateIntervalUsage},
 	{validateExplodeUsageRule, validateExplodeUsage},
 	{validateSubqueryColumnsRule, validateSubqueryColumns},
+	{validateUnionSchemasMatchRule, validateUnionSchemasMatch},
 }
 
 func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -208,6 +218,40 @@ func validateSchema(t *plan.ResolvedTable) error {
 		}
 	}
 	return nil
+}
+
+func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+	span, _ := ctx.Span("validate_union_schemas_match")
+	defer span.Finish()
+
+	var firstmismatch []string
+	plan.Inspect(n, func(n sql.Node) bool {
+		if u, ok := n.(*plan.Union); ok {
+			ls := u.Left.Schema()
+			rs := u.Right.Schema()
+			if len(ls) != len(rs) {
+				firstmismatch = []string{
+					fmt.Sprintf("%d columns", len(ls)),
+					fmt.Sprintf("%d columns", len(rs)),
+				}
+				return false
+			}
+			for i := range ls {
+				if !reflect.DeepEqual(ls[i].Type, rs[i].Type) {
+					firstmismatch = []string{
+						ls[i].Type.String(),
+						rs[i].Type.String(),
+					}
+					return false
+				}
+			}
+		}
+		return true
+	})
+	if firstmismatch != nil {
+		return nil, ErrUnionSchemasMatch.New(firstmismatch[0], firstmismatch[1])
+	}
+	return n, nil
 }
 
 func findProjectTuples(n sql.Node) (sql.Node, error) {
