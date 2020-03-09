@@ -3439,6 +3439,10 @@ func TestReplaceIntoErrors(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
+	march6thTS, _ := sql.Timestamp.Convert("2020-03-06 00:00:00")
+	march6thDT, _ := sql.Date.Convert("2020-03-06")
+	december31DT, _ := sql.Date.Convert("2019-12-31")
+
 	var updates = []struct {
 		updateQuery    string
 		expectedUpdate []sql.Row
@@ -3516,6 +3520,76 @@ func TestUpdate(t *testing.T) {
 			[]sql.Row{{int64(3), int64(3)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
+		},
+		{
+			"UPDATE typestable SET ti = '2020-03-06 00:00:00';",
+			[]sql.Row{{int64(1), int64(1)}},
+			"SELECT * FROM typestable;",
+			[]sql.Row{{
+				int64(1),
+				int8(2),
+				int16(3),
+				int32(4),
+				int64(5),
+				uint8(6),
+				uint16(7),
+				uint32(8),
+				uint64(9),
+				float32(10),
+				float64(11),
+				march6thTS,
+				december31DT,
+				"fourteen",
+				false,
+				nil,
+				nil}},
+		},
+		{
+			"UPDATE typestable SET ti = '2020-03-06 00:00:00' and dt = '2020-03-06';",
+			[]sql.Row{{int64(1), int64(1)}},
+			"SELECT * FROM typestable;",
+			[]sql.Row{{
+				int64(1),
+				int8(2),
+				int16(3),
+				int32(4),
+				int64(5),
+				uint8(6),
+				uint16(7),
+				uint32(8),
+				uint64(9),
+				float32(10),
+				float64(11),
+				march6thTS,
+				march6thDT,
+				"fourteen",
+				false,
+				nil,
+				nil}},
+		},
+		{
+			"UPDATE typestable SET da = '0000-00-00' AND ti = '0000-00-00 00:00:00';",
+			[]sql.Row{{int64(1), int64(1)}},
+			"SELECT * FROM typestable;",
+			[]sql.Row{{
+				int64(1),
+				int8(2),
+				int16(3),
+				int32(4),
+				int64(5),
+				uint8(6),
+				uint16(7),
+				uint32(8),
+				uint64(9),
+				float32(10),
+				float64(11),
+				sql.Timestamp.Zero(),
+				sql.Date.Zero(),
+				"fourteen",
+				false,
+				nil,
+				nil,
+				"updated"}},
 		},
 	}
 
