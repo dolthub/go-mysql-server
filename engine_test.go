@@ -3545,7 +3545,7 @@ func TestUpdate(t *testing.T) {
 				nil}},
 		},
 		{
-			"UPDATE typestable SET ti = '2020-03-06 00:00:00' and dt = '2020-03-06';",
+			"UPDATE typestable SET ti = '2020-03-06 00:00:00', da = '2020-03-06';",
 			[]sql.Row{{int64(1), int64(1)}},
 			"SELECT * FROM typestable;",
 			[]sql.Row{{
@@ -3568,7 +3568,7 @@ func TestUpdate(t *testing.T) {
 				nil}},
 		},
 		{
-			"UPDATE typestable SET da = '0000-00-00' AND ti = '0000-00-00 00:00:00';",
+			"UPDATE typestable SET da = '0000-00-00', ti = '0000-00-00 00:00:00';",
 			[]sql.Row{{int64(1), int64(1)}},
 			"SELECT * FROM typestable;",
 			[]sql.Row{{
@@ -3588,8 +3588,7 @@ func TestUpdate(t *testing.T) {
 				"fourteen",
 				false,
 				nil,
-				nil,
-				"updated"}},
+				nil}},
 		},
 	}
 

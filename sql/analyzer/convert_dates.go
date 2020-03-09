@@ -159,7 +159,7 @@ func addDateConvert(
 			}
 		}
 
-		// TODO: we really want to be converting the literals, instead we're coverting the GetFields
+		// TODO: we really want to be converting the literals, instead we're converting the GetFields
 		switch e.Type() {
 		case sql.Date:
 			result = expression.NewConvert(e, expression.ConvertToDate)
