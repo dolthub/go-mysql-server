@@ -3439,10 +3439,6 @@ func TestReplaceIntoErrors(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	march6thTS, _ := sql.Timestamp.Convert("2020-03-06 00:00:00")
-	march6thDT, _ := sql.Date.Convert("2020-03-06")
-	december31DT, _ := sql.Date.Convert("2019-12-31")
-
 	var updates = []struct {
 		updateQuery    string
 		expectedUpdate []sql.Row
@@ -3537,8 +3533,8 @@ func TestUpdate(t *testing.T) {
 				uint64(9),
 				float32(10),
 				float64(11),
-				march6thTS,
-				december31DT,
+				sql.Timestamp.MustConvert("2020-03-06 00:00:00"),
+				sql.Date.MustConvert("2019-12-31"),
 				"fourteen",
 				false,
 				nil,
@@ -3560,8 +3556,8 @@ func TestUpdate(t *testing.T) {
 				uint64(9),
 				float32(10),
 				float64(11),
-				march6thTS,
-				march6thDT,
+				sql.Timestamp.MustConvert("2020-03-06 00:00:00"),
+				sql.Date.MustConvert("2020-03-06"),
 				"fourteen",
 				false,
 				nil,
