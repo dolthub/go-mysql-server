@@ -146,7 +146,8 @@ func addDateConvert(
 		*function.DateSub,
 		*expression.Star,
 		*expression.DefaultColumn,
-		*expression.Alias:
+		*expression.Alias,
+		*expression.SetField:
 		return e, nil
 	default:
 		// If it's a replacement, just replace it with the correct GetField
@@ -158,6 +159,7 @@ func addDateConvert(
 			}
 		}
 
+		// TODO: we really want to be converting the literals, instead we're converting the GetFields
 		switch e.Type() {
 		case sql.Date:
 			result = expression.NewConvert(e, expression.ConvertToDate)

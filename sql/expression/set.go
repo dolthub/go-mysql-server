@@ -30,7 +30,14 @@ func (s *SetField) Type() sql.Type {
 // Eval implements the Expression interface.
 // Returns a copy of the given row with an updated value.
 func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	getField, ok := s.Left.(*GetField)
+	// TODO: this janky logic comes from converting GetField exprs rather than Literal exprs
+	var getField *GetField
+	conv, ok := s.Left.(*Convert)
+	if ok {
+		getField, ok = conv.Child.(*GetField)
+	} else {
+		getField, ok = s.Left.(*GetField)
+	}
 	if !ok {
 		return nil, errCannotSetField.New(s.Left)
 	}
