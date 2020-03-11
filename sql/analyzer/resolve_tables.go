@@ -4,9 +4,12 @@ import (
 	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/plan"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 const dualTableName = "dual"
+
+var ErrAsOfNotSupported = errors.NewKind("AS OF not supported for table %s")
 
 var dualTable = func() sql.Table {
 	t := memory.NewTable(dualTableName, sql.Schema{
@@ -41,6 +44,24 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 		rt, err := a.Catalog.Table(db, name)
 		if err == nil {
 			a.Log("table resolved: %q", t.Name())
+
+			if t.AsOf != nil {
+				if historical, ok := rt.(sql.HistoricalTable); ok {
+					asOf, err := t.AsOf.Eval(ctx, nil)
+					if err != nil {
+						return nil, err
+					}
+
+					hTable, err := historical.AsOfTime(ctx, asOf)
+					if err != nil {
+						return nil, err
+					}
+
+					return plan.NewResolvedTable(hTable), nil
+				} else {
+					return nil, ErrAsOfNotSupported.New(name)
+				}
+			}
 			return plan.NewResolvedTable(rt), nil
 		}
 

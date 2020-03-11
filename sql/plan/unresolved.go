@@ -14,7 +14,7 @@ var ErrUnresolvedTable = errors.NewKind("unresolved table")
 type UnresolvedTable struct {
 	name     string
 	Database string
-	asOf     sql.Expression
+	AsOf     sql.Expression
 }
 
 // NewUnresolvedTable creates a new Unresolved table.

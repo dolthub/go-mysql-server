@@ -3,6 +3,7 @@ package sql
 import (
 	"context"
 	"fmt"
+	"github.com/src-d/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"math"
@@ -208,6 +209,13 @@ type IndexableTable interface {
 	WithIndexLookup(IndexLookup) Table
 	IndexLookup() IndexLookup
 	IndexKeyValues(*Context, []string) (PartitionIndexKeyValueIter, error)
+}
+
+// HistoricalTable is one that can return the values of rows at different times in the past. Integrators can choose
+// which types of expressions to accept.
+type HistoricalTable interface {
+	Table
+	AsOfTime(ctx *sql.Context, time interface{}) (Table, error)
 }
 
 // InsertableTable is a table that can process insertion of new rows.
