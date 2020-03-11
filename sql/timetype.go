@@ -28,6 +28,8 @@ var (
 // https://dev.mysql.com/doc/refman/8.0/en/time.html
 type TimeType interface {
 	Type
+	Marshal(v interface{}) (int64, error)
+	Unmarshal(v int64) string
 }
 
 type timespanType struct{}
@@ -206,6 +208,20 @@ func (t timespanType) Type() query.Type {
 // Zero implements Type interface.
 func (t timespanType) Zero() interface{} {
 	return "00:00:00"
+}
+
+// Marshal takes a valid Time value and returns it as an int64.
+func (t timespanType) Marshal(v interface{}) (int64, error) {
+	if ti, err := t.ConvertToTimespanImpl(v); err != nil {
+		return 0, err
+	} else {
+		return ti.AsMicroseconds(), nil
+	}
+}
+
+// Unmarshal takes a previously-marshalled value and returns it as a string.
+func (t timespanType) Unmarshal(v int64) string {
+	return microsecondsToTimespan(v).String()
 }
 
 // No built in for absolute values on int64

@@ -70,6 +70,7 @@ func TestTimeConvert(t *testing.T) {
 		expectedVal interface{}
 		expectedErr bool
 	}{
+		{nil, nil, false},
 		{int8(-1), "-00:00:01", false},
 		{uint8(59), "00:00:59", false},
 		{"-1", "-00:00:01", false},
@@ -129,6 +130,14 @@ func TestTimeConvert(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, test.expectedVal, val)
+				if test.val != nil {
+					mar, err := Time.Marshal(test.val)
+					require.NoError(t, err)
+					umar := Time.Unmarshal(mar)
+					cmp, err := Time.Compare(test.val, umar)
+					require.NoError(t, err)
+					assert.Equal(t, 0, cmp)
+				}
 			}
 		})
 	}

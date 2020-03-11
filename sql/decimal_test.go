@@ -2,6 +2,7 @@ package sql
 
 import (
 	"fmt"
+	"github.com/shopspring/decimal"
 	"math/big"
 	"strings"
 	"testing"
@@ -124,46 +125,46 @@ func TestDecimalCreate(t *testing.T) {
 		expectedType decimalType
 		expectedErr bool
 	}{
-		{0, 0, decimalType{10, 0}, false},
+		{0, 0, decimalType{decimal.New(1, 10), 10, 0}, false},
 		{0, 1, decimalType{}, true},
 		{0, 5, decimalType{}, true},
 		{0, 10, decimalType{}, true},
 		{0, 30, decimalType{}, true},
 		{0, 65, decimalType{}, true},
 		{0, 66, decimalType{}, true},
-		{1, 0, decimalType{1, 0}, false},
-		{1, 1, decimalType{1, 1}, false},
+		{1, 0, decimalType{decimal.New(1, 1), 1, 0}, false},
+		{1, 1, decimalType{decimal.New(1, 0), 1, 1}, false},
 		{1, 5, decimalType{}, true},
 		{1, 10, decimalType{}, true},
 		{1, 30, decimalType{}, true},
 		{1, 65, decimalType{}, true},
 		{1, 66, decimalType{}, true},
-		{5, 0, decimalType{5, 0}, false},
-		{5, 1, decimalType{5, 1}, false},
-		{5, 5, decimalType{5, 5}, false},
+		{5, 0, decimalType{decimal.New(1, 5), 5, 0}, false},
+		{5, 1, decimalType{decimal.New(1, 4), 5, 1}, false},
+		{5, 5, decimalType{decimal.New(1, 0), 5, 5}, false},
 		{5, 10, decimalType{}, true},
 		{5, 30, decimalType{}, true},
 		{5, 65, decimalType{}, true},
 		{5, 66, decimalType{}, true},
-		{10, 0, decimalType{10, 0}, false},
-		{10, 1, decimalType{10, 1}, false},
-		{10, 5, decimalType{10, 5}, false},
-		{10, 10, decimalType{10, 10}, false},
+		{10, 0, decimalType{decimal.New(1, 10), 10, 0}, false},
+		{10, 1, decimalType{decimal.New(1, 9), 10, 1}, false},
+		{10, 5, decimalType{decimal.New(1, 5), 10, 5}, false},
+		{10, 10, decimalType{decimal.New(1, 0), 10, 10}, false},
 		{10, 30, decimalType{}, true},
 		{10, 65, decimalType{}, true},
 		{10, 66, decimalType{}, true},
-		{30, 0, decimalType{30, 0}, false},
-		{30, 1, decimalType{30, 1}, false},
-		{30, 5, decimalType{30, 5}, false},
-		{30, 10, decimalType{30, 10}, false},
-		{30, 30, decimalType{30, 30}, false},
+		{30, 0, decimalType{decimal.New(1, 30), 30, 0}, false},
+		{30, 1, decimalType{decimal.New(1, 29), 30, 1}, false},
+		{30, 5, decimalType{decimal.New(1, 25), 30, 5}, false},
+		{30, 10, decimalType{decimal.New(1, 20), 30, 10}, false},
+		{30, 30, decimalType{decimal.New(1, 0), 30, 30}, false},
 		{30, 65, decimalType{}, true},
 		{30, 66, decimalType{}, true},
-		{65, 0, decimalType{65, 0}, false},
-		{65, 1, decimalType{65, 1}, false},
-		{65, 5, decimalType{65, 5}, false},
-		{65, 10, decimalType{65, 10}, false},
-		{65, 30, decimalType{65, 30}, false},
+		{65, 0, decimalType{decimal.New(1, 65), 65, 0}, false},
+		{65, 1, decimalType{decimal.New(1, 64), 65, 1}, false},
+		{65, 5, decimalType{decimal.New(1, 60), 65, 5}, false},
+		{65, 10, decimalType{decimal.New(1, 55), 65, 10}, false},
+		{65, 30, decimalType{decimal.New(1, 35), 65, 30}, false},
 		{65, 65, decimalType{}, true},
 		{65, 66, decimalType{}, true},
 		{66, 00, decimalType{}, true},
@@ -257,6 +258,88 @@ func TestDecimalConvert(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, test.expectedVal, val)
+			}
+		})
+	}
+}
+
+func TestDecimalMarshal(t *testing.T) {
+	tests := []struct {
+		precision uint8
+		scale uint8
+		val interface{}
+		expectedVal string
+		expectedErr bool
+	}{
+		{1, 0, byte(0), "10", false},
+		{1, 0, int8(3), "13", false},
+		{1, 0, "-3.7e0", "06", false},
+		{1, 0, uint(4), "14", false},
+		{1, 0, int16(9), "19", false},
+		{1, 0, "0.00000000000000000003e20", "13", false},
+		{1, 0, float64(-9.4), "01", false},
+		{1, 0, float32(9.5), "", true},
+		{1, 0, int32(-10), "", true},
+
+		{1, 1, 0, "1.0", false},
+		{1, 1, .01, "1.0", false},
+		{1, 1, .1, "1.1", false},
+		{1, 1, ".22", "1.2", false},
+		{1, 1, .55, "1.6", false},
+		{1, 1, "-.7863294659345624", "0.2", false},
+		{1, 1, "2634193746329327479.32030573792e-19", "1.3", false},
+		{1, 1, 1, "", true},
+		{1, 1, new(big.Rat).SetInt64(2), "", true},
+
+		{5, 0, 0, "100000", false},
+		{5, 0, 5000.2, "105000", false},
+		{5, 0, "7742", "107742", false},
+		{5, 0, new(big.Float).SetFloat64(-4723.875), "095276", false},
+		{5, 0, 99999, "199999", false},
+		{5, 0, "0xf8e1", "163713", false},
+		{5, 0, "0b1001110101100110", "140294", false},
+		{5, 0, new(big.Rat).SetFrac64(999999, 10), "", true},
+		{5, 0, 673927, "", true},
+
+		{10, 5, 0, "100000.00000", false},
+		{10, 5, "25.1", "100025.10000", false},
+		{10, 5, "99999.999994", "199999.99999", false},
+		{10, 5, "5.5729136e3", "105572.91360", false},
+		{10, 5, "600e-2", "100006.00000", false},
+		{10, 5, new(big.Rat).SetFrac64(-22, 7), "099996.85714", false},
+		{10, 5, "-99995.1", "000004.90000", false},
+		{10, 5, 100000, "", true},
+		{10, 5, "-99999.999995", "", true},
+
+		{65, 0, "99999999999999999999999999999999999999999999999999999999999999999",
+			"199999999999999999999999999999999999999999999999999999999999999999", false},
+		{65, 0, "99999999999999999999999999999999999999999999999999999999999999999.1",
+			"199999999999999999999999999999999999999999999999999999999999999999", false},
+		{65, 0, "99999999999999999999999999999999999999999999999999999999999999999.99", "", true},
+
+		{65, 12, "16976349273982359874209023948672021737840592720387475.2719128737543572927374503832837350563300243035038234972093785",
+			"116976349273982359874209023948672021737840592720387475.271912873754", false},
+		{65, 12, "99999999999999999999999999999999999999999999999999999.9999999999999", "", true},
+
+		{20, 10, []byte{32}, "", true},
+		{20, 10, time.Date(2019, 12, 12, 12, 12, 12, 0, time.UTC), "", true},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v %v %v", test.precision, test.scale, test.val), func(t *testing.T) {
+			typ := MustCreateDecimalType(test.precision, test.scale)
+			val, err := typ.Marshal(test.val)
+			if test.expectedErr {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, test.expectedVal, val)
+				umar, err := typ.Unmarshal(val)
+				require.NoError(t, err)
+				testVal := typ.MustConvert(test.val)
+				cmp, err := typ.Compare(testVal, umar)
+				require.NoError(t, err)
+				assert.Equal(t, 0, cmp)
 			}
 		})
 	}

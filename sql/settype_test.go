@@ -177,6 +177,35 @@ func TestSetConvert(t *testing.T) {
 	}
 }
 
+func TestSetMarshalMax(t *testing.T) {
+	vals := make([]string, 64)
+	for i := range vals {
+		vals[i] = strconv.Itoa(i)
+	}
+	typ, err := CreateSetType(vals, Collation_Default)
+	require.NoError(t, err)
+
+	tests := []string{
+		"",
+		"1",
+		"1,2",
+		"0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63",
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			bits, err := typ.Marshal(test)
+			require.NoError(t, err)
+			res1, err := typ.Unmarshal(bits)
+			require.NoError(t, err)
+			require.Equal(t, test, res1)
+			res2, err := typ.Convert(bits)
+			require.NoError(t, err)
+			require.Equal(t, test, res2)
+		})
+	}
+}
+
 func TestSetString(t *testing.T) {
 	tests := []struct {
 		vals []string

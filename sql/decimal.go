@@ -2,10 +2,10 @@ package sql
 
 import (
 	"fmt"
-	"math/big"
-
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
+	"math/big"
+	"strings"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/proto/query"
 )
@@ -22,17 +22,21 @@ const (
 var (
 	ErrConvertingToDecimal = errors.NewKind("value %v is not a valid Decimal")
 	ErrConvertToDecimalLimit = errors.NewKind("value of Decimal is too large for type")
+	ErrMarshalNullDecimal = errors.NewKind("Decimal cannot marshal a null value")
 )
 
 type DecimalType interface {
 	Type
 	ConvertToDecimal(v interface{}) (decimal.NullDecimal, error)
+	Marshal(v interface{}) (string, error)
 	MaximumScale() uint8
 	Precision() uint8
 	Scale() uint8
+	Unmarshal(v string) (string, error)
 }
 
 type decimalType struct{
+	exclusiveUpperBound decimal.Decimal
 	precision uint8
 	scale uint8
 }
@@ -52,6 +56,7 @@ func CreateDecimalType(precision uint8, scale uint8) (DecimalType, error) {
 		precision = 10
 	}
 	return decimalType{
+		exclusiveUpperBound: decimal.New(1, int32(precision - scale)),
 		precision: precision,
 		scale: scale,
 	}, nil
@@ -167,9 +172,7 @@ func (t decimalType) ConvertToDecimal(v interface{}) (decimal.NullDecimal, error
 	}
 
 	res = res.Round(int32(t.scale))
-	// This sets the upper bound for this type. This is computed as 10^(precision - scale).
-	max := decimal.New(1, int32(t.precision - t.scale))
-	if res.Abs().Cmp(max) != -1 {
+	if !res.Abs().LessThan(t.exclusiveUpperBound) {
 		return decimal.NullDecimal{}, ErrConvertToDecimalLimit.New()
 	}
 
@@ -212,6 +215,34 @@ func (t decimalType) Zero() interface{} {
 	return decimal.NewFromInt(0).StringFixed(int32(t.scale))
 }
 
+// Marshal takes a valid Decimal value and returns it as an string.
+func (t decimalType) Marshal(v interface{}) (string, error) {
+	// The goal here is to return a string that can be sorted regardless of value.
+	// For example, for DEC(4,2) let's say w == "-5.33", x == "-1.00", y == "2.20", z == "10.05".
+	// Attempting to sort these ascending as-is would give the order x,w,z,y (in go, - < 0).
+	// To fix this, we can shift up by the upperbound.
+	// This would then give us w == "4.67", x == "9.00", y == "102.20", z == "110.05"
+	// To make the strings of equal length, we can prepend zeros onto the originally-negative numbers.
+	// Our final values would w == "004.67", x == "009.00", y == "102.20", z == "110.05", which are sorted.
+	nullDecimal, err := t.ConvertToDecimal(v)
+	if err != nil {
+		return "", err
+	}
+	if !nullDecimal.Valid {
+		return "", ErrMarshalNullDecimal.New()
+	}
+	dec := nullDecimal.Decimal
+	decStr := t.exclusiveUpperBound.Add(dec).StringFixed(int32(t.scale))
+	if dec.Sign() < 0 && t.precision != t.scale {
+		if strings.Index(decStr, ".") != -1 {
+			decStr = strings.Repeat("0", int(t.precision) - len(decStr) + 2) + decStr
+		} else {
+			decStr = strings.Repeat("0", int(t.precision) - len(decStr) + 1) + decStr
+		}
+	}
+	return decStr, nil
+}
+
 // MaximumScale returns the maximum scale allowed for the current precision.
 func (t decimalType) MaximumScale() uint8 {
 	if t.precision >= DecimalTypeMaxScale {
@@ -231,3 +262,17 @@ func (t decimalType) Precision() uint8 {
 func (t decimalType) Scale() uint8 {
 	return t.scale
 }
+
+// Unmarshal takes a previously-marshalled value and returns it as a string.
+func (t decimalType) Unmarshal(v string) (string, error) {
+	if len(v) == 0 {
+		return "", ErrMarshalNullDecimal.New()
+	}
+	dec, err := decimal.NewFromString(v)
+	if err != nil {
+		return "", err
+	}
+	dec = dec.Round(int32(t.scale)).Sub(t.exclusiveUpperBound)
+	return dec.StringFixed(int32(t.scale)), nil
+}
+
