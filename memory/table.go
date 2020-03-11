@@ -611,6 +611,42 @@ func (t *Table) IndexLookup() sql.IndexLookup {
 	return t.lookup
 }
 
+// HistoryTable is a test-only HistoricalTable implementation. It only supports exact lookups, not AS OF queries
+// between two revisions.
+type HistoryTable struct {
+	Table
+	Revisions map[interface{}]*Table
+}
+
+var _ sql.Table = (*HistoryTable)(nil)
+var _ sql.InsertableTable = (*HistoryTable)(nil)
+var _ sql.UpdatableTable = (*HistoryTable)(nil)
+var _ sql.DeletableTable = (*HistoryTable)(nil)
+var _ sql.ReplaceableTable = (*HistoryTable)(nil)
+var _ sql.FilteredTable = (*HistoryTable)(nil)
+var _ sql.ProjectedTable = (*HistoryTable)(nil)
+var _ sql.IndexableTable = (*HistoryTable)(nil)
+var _ sql.AlterableTable = (*HistoryTable)(nil)
+var _ sql.HistoricalTable = (*HistoryTable)(nil)
+
+func NewHistoryTable(revisions map[interface{}]*Table, current *Table) *HistoryTable {
+	return &HistoryTable{
+		Table:     *current,
+		Revisions: revisions,
+	}
+}
+
+func (t *HistoryTable) AsOfTime(ctx *sql.Context, time interface{}) (sql.Table, error) {
+	rev, ok := t.Revisions[time]
+	if !ok {
+		return nil, fmt.Errorf("no revision for time %v", time)
+	}
+	return &HistoryTable{
+		Table:     *rev,
+		Revisions: t.Revisions,
+	}, nil
+}
+
 type partitionIndexKeyValueIter struct {
 	table   *Table
 	iter    sql.PartitionIter

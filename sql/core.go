@@ -3,7 +3,6 @@ package sql
 import (
 	"context"
 	"fmt"
-	"github.com/src-d/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"math"
@@ -215,7 +214,7 @@ type IndexableTable interface {
 // which types of expressions to accept.
 type HistoricalTable interface {
 	Table
-	AsOfTime(ctx *sql.Context, time interface{}) (Table, error)
+	AsOfTime(ctx *Context, time interface{}) (Table, error)
 }
 
 // InsertableTable is a table that can process insertion of new rows.

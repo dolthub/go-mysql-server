@@ -42,39 +42,39 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 		}
 
 		rt, err := a.Catalog.Table(db, name)
-		if err == nil {
-			a.Log("table resolved: %q", t.Name())
+		if err != nil {
+			if sql.ErrTableNotFound.Is(err) {
+				if name == dualTableName {
+					rt = dualTable
+					name = dualTableName
 
-			if t.AsOf != nil {
-				if historical, ok := rt.(sql.HistoricalTable); ok {
-					asOf, err := t.AsOf.Eval(ctx, nil)
-					if err != nil {
-						return nil, err
-					}
-
-					hTable, err := historical.AsOfTime(ctx, asOf)
-					if err != nil {
-						return nil, err
-					}
-
-					return plan.NewResolvedTable(hTable), nil
-				} else {
-					return nil, ErrAsOfNotSupported.New(name)
+					a.Log("table resolved: %q", t.Name())
+					return plan.NewResolvedTable(rt), nil
 				}
 			}
-			return plan.NewResolvedTable(rt), nil
+			return nil, err
 		}
 
-		if sql.ErrTableNotFound.Is(err) {
-			if name == dualTableName {
-				rt = dualTable
-				name = dualTableName
+		a.Log("table resolved: %q", t.Name())
 
-				a.Log("table resolved: %q", t.Name())
-				return plan.NewResolvedTable(rt), nil
+		if t.AsOf != nil {
+			if historical, ok := rt.(sql.HistoricalTable); ok {
+				asOf, err := t.AsOf.Eval(ctx, nil)
+				if err != nil {
+					return nil, err
+				}
+
+				hTable, err := historical.AsOfTime(ctx, asOf)
+				if err != nil {
+					return nil, err
+				}
+
+				return plan.NewResolvedTable(hTable), nil
+			} else {
+				return nil, ErrAsOfNotSupported.New(name)
 			}
 		}
 
-		return nil, err
+		return plan.NewResolvedTable(rt), nil
 	})
 }
