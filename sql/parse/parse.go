@@ -798,7 +798,17 @@ func tableExprToTable(
 		// TODO: Add support for qualifier.
 		switch e := t.Expr.(type) {
 		case sqlparser.TableName:
-			node := plan.NewUnresolvedTable(e.Name.String(), e.Qualifier.String())
+			var node *plan.UnresolvedTable
+			if t.AsOf != nil {
+				asOfExpr, err := exprToExpression(ctx, t.AsOf.Time)
+				if err != nil {
+					return nil, err
+				}
+				node = plan.NewUnresolvedTableAsOf(e.Name.String(), e.Qualifier.String(), asOfExpr)
+			} else {
+				node = plan.NewUnresolvedTable(e.Name.String(), e.Qualifier.String())
+			}
+
 			if !t.As.IsEmpty() {
 				return plan.NewTableAlias(t.As.String(), node), nil
 			}

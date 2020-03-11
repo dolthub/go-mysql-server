@@ -306,6 +306,17 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
+	`SELECT foo AS bar FROM foo AS OF '2019-01-01' AS baz;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewAlias(
+				expression.NewUnresolvedColumn("foo"),
+				"bar",
+			),
+		},
+		plan.NewTableAlias("baz",
+			plan.NewUnresolvedTableAsOf("foo", "",
+				expression.NewLiteral("2019-01-01", sql.LongText))),
+	),
 	`SELECT foo, bar FROM foo WHERE foo = bar;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("foo"),
