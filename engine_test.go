@@ -240,6 +240,30 @@ var queries = []queryTest{
 		[]sql.Row{{int64(3)}},
 	},
 	{
+		"SELECT *  FROM myhistorytable AS OF '2019-01-01' AS foo ORDER BY i",
+		[]sql.Row{
+			{int64(1), "first row, 1"},
+			{int64(2), "second row, 1"},
+			{int64(3), "third row, 1"},
+		},
+	},
+	{
+		"SELECT *  FROM myhistorytable AS OF '2019-01-02' foo ORDER BY i",
+		[]sql.Row{
+			{int64(1), "first row, 2"},
+			{int64(2), "second row, 2"},
+			{int64(3), "third row, 2"},
+		},
+	},
+	{
+		"SELECT *  FROM myhistorytable ORDER BY i",
+		[]sql.Row{
+			{int64(1), "first row, 2"},
+			{int64(2), "second row, 2"},
+			{int64(3), "third row, 2"},
+		},
+	},
+	{
 		"SELECT substring(s, 2, 3) FROM mytable",
 		[]sql.Row{{"irs"}, {"eco"}, {"hir"}},
 	},
@@ -4675,9 +4699,9 @@ func allTestTables(t *testing.T, numPartitions int) map[string]sql.Table {
 
 	insertRows(
 		t, ht2,
-		sql.NewRow(int64(1), "first row, 1"),
-		sql.NewRow(int64(2), "second row, 1"),
-		sql.NewRow(int64(3), "third row, 1"),
+		sql.NewRow(int64(1), "first row, 2"),
+		sql.NewRow(int64(2), "second row, 2"),
+		sql.NewRow(int64(3), "third row, 2"),
 	)
 
 	tables["myhistorytable"] = memory.NewHistoryTable(map[interface{}]*memory.Table{
