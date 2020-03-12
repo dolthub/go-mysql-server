@@ -62,7 +62,7 @@ func TestResolveTables(t *testing.T) {
 	notAnalyzed = plan.NewUnresolvedTableAsOf("myTable", "", expression.NewLiteral("2019-01-01", sql.LongText))
 	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.Error(err)
-	require.True(ErrAsOfNotSupported.Is(err))
+	require.True(sql.ErrAsOfNotSupported.Is(err))
 
 	notAnalyzed = plan.NewUnresolvedTableAsOf("historyTable", "", expression.NewLiteral("2019-01-01", sql.LongText))
 	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)

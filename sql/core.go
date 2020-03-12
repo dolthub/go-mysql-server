@@ -296,14 +296,25 @@ type RowUpdater interface {
 type Database interface {
 	Nameable
 
-	// GetTableInsensitive retrieves a table by it's name where capitalization does not matter.  Implementations should
-	// look for exact matches first.  If no exact matches are found then any table matching the name case insensitively
+	// GetTableInsensitive retrieves a table by its case insensitive name.  Implementations should look for exact
+	// (case-sensitive matches) first.  If no exact matches are found then any table matching the name case insensitively
 	// should be returned.  If there is more than one table that matches a case insensitive comparison the resolution
 	// strategy is not defined.
 	GetTableInsensitive(ctx context.Context, tblName string) (Table, bool, error)
 
 	// GetTableNames returns the table names of every table in the database
 	GetTableNames(ctx context.Context) ([]string, error)
+}
+
+// VersionedDatabase is a Database that can return tables as they existed at different points in time. The engine
+// supports queries on historical table data via the AS OF construct introduced in SQL 2011.
+type VersionedDatabase interface {
+	Database
+
+	// GetTableInsensitiveAsOf retrieves a table by its case-insensitive name with the same semantics as
+	// Database.GetTableInsensitive, but at a particular revision of the database. Implementors must choose which types
+	// of expressions to accept as revision names.
+	GetTableInsensitiveAsOf(ctx context.Context, tblName string, time interface{}) (Table, bool, error)
 }
 
 // GetTableInsensitive implements a case insensitive map lookup for tables keyed off of the table name.
