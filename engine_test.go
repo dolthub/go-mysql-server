@@ -2231,7 +2231,7 @@ var debugQuery = ""
 
 func TestQueries(t *testing.T) {
 
-	type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
+	type indexDriverInitalizer func(map[string]sql.Table) sql.IndexDriver
 	type indexDriverTestCase struct {
 		name string
 		initializer indexDriverInitalizer
@@ -2312,7 +2312,7 @@ var infoSchemaTables = []string {
 // To get this effect, we only install a fixed subset of the tables defined by allTestTables().
 func TestInfoSchema(t *testing.T) {
 	tables := allTestTables(t, 1)
-	reducedTables := make(map[string]*memory.Table)
+	reducedTables := make(map[string]sql.Table)
 
 	for _, table := range infoSchemaTables {
 		reducedTables[table] = tables[table]
@@ -2324,7 +2324,7 @@ func TestInfoSchema(t *testing.T) {
 	}
 }
 
-func unmergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
+func unmergableIndexDriver(tables map[string]sql.Table) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.Index{
 		"mytable": {
 			newUnmergableIndex(tables, "mytable",
@@ -2369,7 +2369,7 @@ func unmergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
 	})
 }
 
-func mergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
+func mergableIndexDriver(tables map[string]sql.Table) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.Index{
 		"mytable": {
 			newMergableIndex(tables, "mytable",
@@ -2414,23 +2414,51 @@ func mergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
 	})
 }
 
-func newUnmergableIndex(tables map[string]*memory.Table, tableName string, exprs ...sql.Expression) *memory.UnmergeableIndex {
-	return &memory.UnmergeableIndex{
-		DB:         "mydb",
-		DriverName: memory.IndexDriverId,
-		TableName:  tableName,
-		Tbl:        tables[tableName],
-		Exprs:      exprs,
+func newUnmergableIndex(tables map[string]sql.Table, tableName string, exprs ...sql.Expression) *memory.UnmergeableIndex {
+	table := tables[tableName]
+	switch table := table.(type) {
+	case *memory.Table:
+		return &memory.UnmergeableIndex{
+			DB:         "mydb",
+			DriverName: memory.IndexDriverId,
+			TableName:  tableName,
+			Tbl:        table,
+			Exprs:      exprs,
+		}
+	case *memory.HistoryTable:
+		return &memory.UnmergeableIndex{
+			DB:         "mydb",
+			DriverName: memory.IndexDriverId,
+			TableName:  tableName,
+			Tbl:        &table.Table,
+			Exprs:      exprs,
+		}
+	default:
+		panic("unknown table type")
 	}
 }
 
-func newMergableIndex(tables map[string]*memory.Table, tableName string, exprs ...sql.Expression) *memory.MergeableIndex {
-	return &memory.MergeableIndex{
-		DB:         "mydb",
-		DriverName: memory.IndexDriverId,
-		TableName:  tableName,
-		Tbl:        tables[tableName],
-		Exprs:      exprs,
+func newMergableIndex(tables map[string]sql.Table, tableName string, exprs ...sql.Expression) *memory.MergeableIndex {
+	table := tables[tableName]
+	switch table := table.(type) {
+	case *memory.Table:
+		return &memory.MergeableIndex{
+			DB:         "mydb",
+			DriverName: memory.IndexDriverId,
+			TableName:  tableName,
+			Tbl:        table,
+			Exprs:      exprs,
+		}
+	case *memory.HistoryTable:
+		return &memory.MergeableIndex{
+			DB:         "mydb",
+			DriverName: memory.IndexDriverId,
+			TableName:  tableName,
+			Tbl:        &table.Table,
+			Exprs:      exprs,
+		}
+	default:
+		panic("unknown table type")
 	}
 }
 
@@ -4395,8 +4423,8 @@ func testQueryWithContext(ctx *sql.Context, t *testing.T, e *sqle.Engine, q stri
 	})
 }
 
-func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
-	tables := make(map[string]*memory.Table)
+func allTestTables(t *testing.T, numPartitions int) map[string]sql.Table {
+	tables := make(map[string]sql.Table)
 
 	tables["mytable"] = memory.NewPartitionedTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable"},
@@ -4404,7 +4432,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	}, numPartitions)
 
 	insertRows(
-		t, tables["mytable"],
+		t, tables["mytable"].(*memory.Table),
 		sql.NewRow(int64(1), "first row"),
 		sql.NewRow(int64(2), "second row"),
 		sql.NewRow(int64(3), "third row"),
@@ -4420,7 +4448,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	}, numPartitions)
 
 	insertRows(t,
-		tables["one_pk"],
+		tables["one_pk"].(*memory.Table),
 		sql.NewRow(0, 0, 0, 0, 0, 0),
 		sql.NewRow(1, 10, 10, 10, 10, 10),
 		sql.NewRow(2, 20, 20, 20, 20, 20),
@@ -4438,7 +4466,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	}, numPartitions)
 
 	insertRows(t,
-		tables["two_pk"],
+		tables["two_pk"].(*memory.Table),
 		sql.NewRow(0, 0, 0, 0, 0, 0 ,0),
 		sql.NewRow(0, 1, 10, 10, 10, 10, 10),
 		sql.NewRow(1, 0, 20, 20, 20, 20, 20),
@@ -4452,7 +4480,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	}, numPartitions)
 
 	insertRows(t,
-		tables["two_pk2"],
+		tables["two_pk2"].(*memory.Table),
 		sql.NewRow(0, 0, 0),
 		sql.NewRow(0, 1, 10),
 		sql.NewRow(1, 0, 20),
@@ -4465,7 +4493,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	}, numPartitions)
 
 	insertRows(
-		t, tables["othertable"],
+		t, tables["othertable"].(*memory.Table),
 		sql.NewRow("first", int64(3)),
 		sql.NewRow("second", int64(2)),
 		sql.NewRow("third", int64(1)),
@@ -4477,7 +4505,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	}, numPartitions)
 
 	insertRows(
-		t, tables["tabletest"],
+		t, tables["tabletest"].(*memory.Table),
 		sql.NewRow(int64(1), "first row"),
 		sql.NewRow(int64(2), "second row"),
 		sql.NewRow(int64(3), "third row"),
@@ -4489,7 +4517,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	}, numPartitions)
 
 	insertRows(
-		t, tables["other_table"],
+		t, tables["other_table"].(*memory.Table),
 		sql.NewRow("a", int32(4)),
 		sql.NewRow("b", int32(2)),
 		sql.NewRow("c", int32(0)),
@@ -4501,7 +4529,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	}, numPartitions)
 
 	insertRows(
-		t, tables["bigtable"],
+		t, tables["bigtable"].(*memory.Table),
 		sql.NewRow("a", int64(1)),
 		sql.NewRow("s", int64(2)),
 		sql.NewRow("f", int64(3)),
@@ -4525,7 +4553,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	}, numPartitions)
 
 	insertRows(
-		t, tables["floattable"],
+		t, tables["floattable"].(*memory.Table),
 		sql.NewRow(int64(1), float32(1.0), float64(1.0)),
 		sql.NewRow(int64(2), float32(1.5), float64(1.5)),
 		sql.NewRow(int64(3), float32(2.0), float64(2.0)),
@@ -4541,7 +4569,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	}, numPartitions)
 
 	insertRows(
-		t, tables["niltable"],
+		t, tables["niltable"].(*memory.Table),
 		sql.NewRow(int64(1), true, float64(1.0)),
 		sql.NewRow(int64(2), nil, float64(2.0)),
 		sql.NewRow(nil, false, float64(3.0)),
@@ -4555,7 +4583,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	}, numPartitions)
 
 	insertRows(
-		t, tables["newlinetable"],
+		t, tables["newlinetable"].(*memory.Table),
 		sql.NewRow(int64(1), "\nthere is some text in here"),
 		sql.NewRow(int64(2), "there is some\ntext in here"),
 		sql.NewRow(int64(3), "there is some text\nin here"),
@@ -4589,7 +4617,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	require.NoError(t, err)
 
 	insertRows(
-		t, tables["typestable"],
+		t, tables["typestable"].(*memory.Table),
 		sql.NewRow(
 			int64(1),
 			int8(2),
@@ -4617,7 +4645,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	}, numPartitions)
 
 	insertRows(
-		t, tables["stringandtable"],
+		t, tables["stringandtable"].(*memory.Table),
 		sql.NewRow(int64(0), "0"),
 		sql.NewRow(int64(1), "1"),
 		sql.NewRow(int64(2), ""),
@@ -4628,6 +4656,35 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 
 	)
 
+	ht1 := memory.NewPartitionedTable("myhistorytable", sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "myhistorytable"},
+		{Name: "s", Type: sql.Text, Source: "myhistorytable"},
+	}, numPartitions)
+
+	insertRows(
+		t, ht1,
+		sql.NewRow(int64(1), "first row, 1"),
+		sql.NewRow(int64(2), "second row, 1"),
+		sql.NewRow(int64(3), "third row, 1"),
+	)
+
+	ht2 := memory.NewPartitionedTable("myhistorytable", sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "myhistorytable"},
+		{Name: "s", Type: sql.Text, Source: "myhistorytable"},
+	}, numPartitions)
+
+	insertRows(
+		t, ht2,
+		sql.NewRow(int64(1), "first row, 1"),
+		sql.NewRow(int64(2), "second row, 1"),
+		sql.NewRow(int64(3), "third row, 1"),
+	)
+
+	tables["myhistorytable"] = memory.NewHistoryTable(map[interface{}]*memory.Table{
+		"2019-01-01": ht1,
+		"2019-01-02" :ht2,
+	}, ht2)
+
 	return tables
 }
 
@@ -4635,7 +4692,7 @@ func newEngine(t *testing.T) *sqle.Engine {
 	return newEngineWithParallelism(t, 1, allTestTables(t, testNumPartitions), nil)
 }
 
-func newEngineWithParallelism(t *testing.T, parallelism int, tables map[string]*memory.Table, driver sql.IndexDriver) *sqle.Engine {
+func newEngineWithParallelism(t *testing.T, parallelism int, tables map[string]sql.Table, driver sql.IndexDriver) *sqle.Engine {
 	db := memory.NewDatabase("mydb")
 	for name, table := range tables {
 		if name != "other_table" {
