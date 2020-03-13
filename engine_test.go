@@ -4706,7 +4706,12 @@ func newEngineWithParallelism(t *testing.T, parallelism int, tables map[string]s
 		}
 	}
 
-	db := memory.NewHistoryDatabase(revisions, revisions["2019-01-02"])
+	var db sql.Database
+	if len(revisions) > 0 {
+		db = memory.NewHistoryDatabase(revisions, revisions["2019-01-02"])
+	} else {
+		db = newDatabaseWithoutHistoryTables(tables)
+	}
 
 	db2 := memory.NewDatabase("foo")
 	db2.AddTable("other_table", tables["other_table"])

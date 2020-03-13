@@ -19,13 +19,12 @@ func TestResolveTables(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 
-	historyTable := memory.NewHistoryTable (map[interface{}]*memory.Table{
-		"2019-01-01": table,
-	}, table)
-	db.AddTable("historyTable", historyTable)
+	versionedDb := memory.NewHistoryDatabase(map[interface{}]*memory.Database{
+		"2019-01-01": db,
+	}, db)
 
 	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
+	catalog.AddDatabase(versionedDb)
 
 	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
 
@@ -60,16 +59,10 @@ func TestResolveTables(t *testing.T) {
 
 	notAnalyzed = plan.NewUnresolvedTableAsOf("myTable", "", expression.NewLiteral("2019-01-01", sql.LongText))
 	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
-	require.Error(err)
-	require.True(sql.ErrAsOfNotSupported.Is(err))
-
-	notAnalyzed = plan.NewUnresolvedTableAsOf("historyTable", "", expression.NewLiteral("2019-01-01", sql.LongText))
-	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.NoError(err)
-	asOfTable, err := historyTable.AsOfTime(sql.NewEmptyContext(), "2019-01-01")
-	require.Equal(plan.NewResolvedTable(asOfTable), analyzed)
+	require.Equal(plan.NewResolvedTable(table), analyzed)
 
-	notAnalyzed = plan.NewUnresolvedTableAsOf("historyTable", "", expression.NewLiteral("2019-01-02", sql.LongText))
+	notAnalyzed = plan.NewUnresolvedTableAsOf("myTable", "", expression.NewLiteral("2019-01-02", sql.LongText))
 	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.Error(err)
 }
