@@ -2449,14 +2449,6 @@ func newUnmergableIndex(tables map[string]sql.Table, tableName string, exprs ...
 			Tbl:        table,
 			Exprs:      exprs,
 		}
-	case *memory.HistoryTable:
-		return &memory.UnmergeableIndex{
-			DB:         "mydb",
-			DriverName: memory.IndexDriverId,
-			TableName:  tableName,
-			Tbl:        &table.Table,
-			Exprs:      exprs,
-		}
 	default:
 		panic("unknown table type")
 	}
@@ -2471,14 +2463,6 @@ func newMergableIndex(tables map[string]sql.Table, tableName string, exprs ...sq
 			DriverName: memory.IndexDriverId,
 			TableName:  tableName,
 			Tbl:        table,
-			Exprs:      exprs,
-		}
-	case *memory.HistoryTable:
-		return &memory.MergeableIndex{
-			DB:         "mydb",
-			DriverName: memory.IndexDriverId,
-			TableName:  tableName,
-			Tbl:        &table.Table,
 			Exprs:      exprs,
 		}
 	default:
@@ -3757,7 +3741,7 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 }
 
 func TestCreateTable(t *testing.T) {
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -3869,7 +3853,7 @@ func TestCreateTable(t *testing.T) {
 }
 
 func TestDropTable(t *testing.T) {
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -3914,7 +3898,7 @@ func TestDropTable(t *testing.T) {
 }
 
 func TestRenameTable(t *testing.T) {
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -3983,7 +3967,7 @@ func TestRenameTable(t *testing.T) {
 }
 
 func TestRenameColumn(t *testing.T) {
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -4013,7 +3997,7 @@ func TestRenameColumn(t *testing.T) {
 }
 
 func TestAddColumn(t *testing.T) {
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -4110,7 +4094,7 @@ func TestAddColumn(t *testing.T) {
 }
 
 func TestModifyColumn(t *testing.T) {
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -4170,7 +4154,7 @@ func TestModifyColumn(t *testing.T) {
 }
 
 func TestDropColumn(t *testing.T) {
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -4680,34 +4664,29 @@ func allTestTables(t *testing.T, numPartitions int) map[string]sql.Table {
 
 	)
 
-	ht1 := memory.NewPartitionedTable("myhistorytable", sql.Schema{
+	tables["myhistorytable-2019-01-01"] = memory.NewPartitionedTable("myhistorytable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "myhistorytable"},
 		{Name: "s", Type: sql.Text, Source: "myhistorytable"},
 	}, numPartitions)
 
 	insertRows(
-		t, ht1,
+		t, tables["myhistorytable-2019-01-01"].(*memory.Table),
 		sql.NewRow(int64(1), "first row, 1"),
 		sql.NewRow(int64(2), "second row, 1"),
 		sql.NewRow(int64(3), "third row, 1"),
 	)
 
-	ht2 := memory.NewPartitionedTable("myhistorytable", sql.Schema{
+	tables["myhistorytable-2019-01-02"] = memory.NewPartitionedTable("myhistorytable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "myhistorytable"},
 		{Name: "s", Type: sql.Text, Source: "myhistorytable"},
 	}, numPartitions)
 
 	insertRows(
-		t, ht2,
+		t, tables["myhistorytable-2019-01-02"].(*memory.Table),
 		sql.NewRow(int64(1), "first row, 2"),
 		sql.NewRow(int64(2), "second row, 2"),
 		sql.NewRow(int64(3), "third row, 2"),
 	)
-
-	tables["myhistorytable"] = memory.NewHistoryTable(map[interface{}]*memory.Table{
-		"2019-01-01": ht1,
-		"2019-01-02" :ht2,
-	}, ht2)
 
 	return tables
 }
@@ -4717,12 +4696,17 @@ func newEngine(t *testing.T) *sqle.Engine {
 }
 
 func newEngineWithParallelism(t *testing.T, parallelism int, tables map[string]sql.Table, driver sql.IndexDriver) *sqle.Engine {
-	db := memory.NewDatabase("mydb")
+	revisions := make(map[interface{}]*memory.Database)
 	for name, table := range tables {
-		if name != "other_table" {
-			db.AddTable(name, table)
+		if strings.HasPrefix(name, "myhistorytable") {
+			revisionStr := name[len("myhistorytable-"):]
+			db := newDatabaseWithoutHistoryTables(tables)
+			db.AddTable("myhistorytable", table)
+			revisions[revisionStr] = db
 		}
 	}
+
+	db := memory.NewHistoryDatabase(revisions, revisions["2019-01-02"])
 
 	db2 := memory.NewDatabase("foo")
 	db2.AddTable("other_table", tables["other_table"])
@@ -4747,6 +4731,16 @@ func newEngineWithParallelism(t *testing.T, parallelism int, tables map[string]s
 	require.NoError(t, engine.Init())
 
 	return engine
+}
+
+func newDatabaseWithoutHistoryTables(tables map[string]sql.Table) *memory.Database {
+	db := memory.NewDatabase("mydb")
+	for name, table := range tables {
+		if name != "other_table" && !strings.HasPrefix(name, "myhistorytable") {
+			db.AddTable(name, table)
+		}
+	}
+	return db
 }
 
 const expectedTree = `Limit(5)

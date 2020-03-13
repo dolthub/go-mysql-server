@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"context"
 	"io"
 	"strings"
 	"sync"
@@ -178,7 +177,7 @@ type IndexRegistry struct {
 	rcmut            sync.RWMutex
 	refCounts        map[indexKey]int
 	deleteIndexQueue map[indexKey]chan<- struct{}
-	indexLoaders     map[dbTableTuple][]func(ctx context.Context) error
+	indexLoaders     map[dbTableTuple][]func(ctx *Context) error
 }
 
 // NewIndexRegistry returns a new Index Registry.
@@ -189,7 +188,7 @@ func NewIndexRegistry() *IndexRegistry {
 		drivers:          make(map[string]IndexDriver),
 		refCounts:        make(map[indexKey]int),
 		deleteIndexQueue: make(map[indexKey]chan<- struct{}),
-		indexLoaders:     make(map[dbTableTuple][]func(ctx context.Context) error),
+		indexLoaders:     make(map[dbTableTuple][]func(ctx *Context) error),
 	}
 }
 
@@ -230,7 +229,7 @@ func (r *IndexRegistry) LoadIndexes(dbs Databases) error {
 	r.mut.Lock()
 	defer r.mut.Unlock()
 
-	ctx := context.TODO()
+	ctx := NewEmptyContext()
 	for drIdx := range r.drivers {
 		driver := r.drivers[drIdx]
 		for dbIdx := range dbs {
@@ -244,7 +243,7 @@ func (r *IndexRegistry) LoadIndexes(dbs Databases) error {
 			for tIdx := range tNames {
 				tName := tNames[tIdx]
 
-				loadF := func(ctx context.Context) error {
+				loadF := func(ctx *Context) error {
 					t, ok, err := db.GetTableInsensitive(ctx, tName)
 
 					if err != nil {
@@ -304,7 +303,7 @@ func (r *IndexRegistry) LoadIndexes(dbs Databases) error {
 	return nil
 }
 
-func (r *IndexRegistry) registerIndexesForTable(ctx context.Context, dbName, tName string) error {
+func (r *IndexRegistry) registerIndexesForTable(ctx *Context, dbName, tName string) error {
 	r.driversMut.RLock()
 	defer r.driversMut.RUnlock()
 
@@ -423,7 +422,7 @@ func (r *IndexRegistry) IndexByExpression(db string, expr ...Expression) Index {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
 
-	ctx := context.TODO()
+	ctx := NewEmptyContext()
 	expressions := make([]string, len(expr))
 	for i, e := range expr {
 		expressions[i] = e.String()

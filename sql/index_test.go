@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -252,7 +251,7 @@ func TestExpressionsWithIndexes(t *testing.T) {
 }
 
 func TestLoadIndexes(t *testing.T) {
-	ctx := context.Background()
+	ctx := NewEmptyContext()
 	require := require.New(t)
 
 	d1 := &loadDriver{id: "d1", indexes: []Index{
@@ -306,7 +305,7 @@ func TestLoadIndexes(t *testing.T) {
 }
 
 func TestLoadOutdatedIndexes(t *testing.T) {
-	ctx := context.Background()
+	ctx := NewEmptyContext()
 	require := require.New(t)
 
 	d := &loadDriver{id: "d1", indexes: []Index{
@@ -351,11 +350,11 @@ type dummyDB struct {
 
 func (d dummyDB) Name() string             { return d.name }
 func (d dummyDB) Tables() map[string]Table { return d.tables }
-func (d dummyDB) GetTableInsensitive(ctx context.Context, tblName string) (Table, bool, error) {
+func (d dummyDB) GetTableInsensitive(ctx *Context, tblName string) (Table, bool, error) {
 	tbl, ok := GetTableInsensitive(tblName, d.tables)
 	return tbl, ok, nil
 }
-func (d dummyDB) GetTableNames(ctx context.Context) ([]string, error) {
+func (d dummyDB) GetTableNames(ctx *Context) ([]string, error) {
 	tblNames := make([]string, 0, len(d.tables))
 	for k := range d.tables {
 		tblNames = append(tblNames, k)

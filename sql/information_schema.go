@@ -2,7 +2,6 @@ package sql
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -158,7 +157,7 @@ var schemataSchema = Schema{
 }
 
 func tablesRowIter(cat *Catalog) RowIter {
-	ctx := context.TODO()
+	ctx := NewEmptyContext()
 
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
@@ -209,7 +208,7 @@ func tablesRowIter(cat *Catalog) RowIter {
 }
 
 func columnsRowIter(cat *Catalog) RowIter {
-	ctx := context.TODO()
+	ctx := NewEmptyContext()
 
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
@@ -328,12 +327,12 @@ func (db *informationSchemaDatabase) Name() string { return db.name }
 // Tables implements the sql.Database interface.
 func (db *informationSchemaDatabase) Tables() map[string]Table { return db.tables }
 
-func (db *informationSchemaDatabase) GetTableInsensitive(ctx context.Context, tblName string) (Table, bool, error) {
+func (db *informationSchemaDatabase) GetTableInsensitive(ctx *Context, tblName string) (Table, bool, error) {
 	tbl, ok := GetTableInsensitive(tblName, db.tables)
 	return tbl, ok, nil
 }
 
-func (db *informationSchemaDatabase) GetTableNames(ctx context.Context) ([]string, error) {
+func (db *informationSchemaDatabase) GetTableNames(ctx *Context) ([]string, error) {
 	tblNames := make([]string, 0, len(db.tables))
 	for k := range db.tables {
 		tblNames = append(tblNames, k)

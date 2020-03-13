@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -92,10 +91,10 @@ func (c *Catalog) Database(db string) (Database, error) {
 }
 
 // Table returns the table in the given database with the given name.
-func (c *Catalog) Table(db, table string) (Table, error) {
+func (c *Catalog) Table(ctx *Context, db, table string) (Table, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.dbs.Table(context.TODO(), db, table, c.IndexRegistry)
+	return c.dbs.Table(ctx, db, table, c.IndexRegistry)
 }
 
 // TableAsOf returns the table in the given database with the given name, as it existed at the time given. The database
@@ -134,7 +133,7 @@ func (d *Databases) Add(db Database) {
 }
 
 // Table returns the Table with the given name if it exists.
-func (d Databases) Table(ctx context.Context, dbName string, tableName string, idxReg *IndexRegistry) (Table, error) {
+func (d Databases) Table(ctx *Context, dbName string, tableName string, idxReg *IndexRegistry) (Table, error) {
 	db, err := d.Database(dbName)
 	if err != nil {
 		return nil, err
@@ -151,7 +150,7 @@ func (d Databases) Table(ctx context.Context, dbName string, tableName string, i
 	return tbl, nil
 }
 
-func suggestSimilarTables(db Database, ctx context.Context, tableName string) error {
+func suggestSimilarTables(db Database, ctx *Context, tableName string) error {
 	tableNames, err := db.GetTableNames(ctx)
 	if err != nil {
 		return err

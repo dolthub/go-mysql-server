@@ -13,7 +13,6 @@ import (
 
 func TestResolveTables(t *testing.T) {
 	require := require.New(t)
-
 	f := getRule("resolve_tables")
 
 	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})

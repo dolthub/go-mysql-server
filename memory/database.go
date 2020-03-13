@@ -1,7 +1,7 @@
 package memory
 
 import (
-	"context"
+	"fmt"
 	"github.com/src-d/go-mysql-server/sql"
 )
 
@@ -34,18 +34,43 @@ func (d *Database) Tables() map[string]sql.Table {
 	return d.tables
 }
 
-func (d *Database) GetTableInsensitive(ctx context.Context, tblName string) (sql.Table, bool, error) {
+func (d *Database) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
 	tbl, ok := sql.GetTableInsensitive(tblName, d.tables)
 	return tbl, ok, nil
 }
 
-func (d *Database) GetTableNames(ctx context.Context) ([]string, error) {
+func (d *Database) GetTableNames(ctx *sql.Context) ([]string, error) {
 	tblNames := make([]string, 0, len(d.tables))
 	for k := range d.tables {
 		tblNames = append(tblNames, k)
 	}
 
 	return tblNames, nil
+}
+
+// HistoryDatabase is a test-only VersionedDatabase implementation. It only supports exact lookups, not AS OF queries
+// between two revisions.
+type HistoryDatabase struct {
+	Database
+	Revisions map[interface{}]*Database
+}
+
+var _ sql.VersionedDatabase = (*HistoryDatabase)(nil)
+
+func (db *HistoryDatabase) GetTableInsensitiveAsOf(ctx *sql.Context, tblName string, time interface{}) (sql.Table, bool, error) {
+	database := db.Revisions[time]
+	if database == nil {
+		return nil, false, fmt.Errorf("No database revision for time %v", time)
+	}
+
+	return database.GetTableInsensitive(ctx, tblName)
+}
+
+func NewHistoryDatabase(revisions map[interface{}]*Database, current *Database) *HistoryDatabase {
+	return &HistoryDatabase{
+		Database:  *current,
+		Revisions: revisions,
+	}
 }
 
 // AddTable adds a new table to the database.

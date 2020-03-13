@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -36,7 +35,7 @@ func (n *ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 // RowIter implements the Node interface
-func (n *ShowCreateTable) RowIter(*sql.Context) (sql.RowIter, error) {
+func (n *ShowCreateTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	db, err := n.Catalog.Database(n.Database)
 	if err != nil {
 		return nil, err
@@ -45,6 +44,7 @@ func (n *ShowCreateTable) RowIter(*sql.Context) (sql.RowIter, error) {
 	return &showCreateTablesIter{
 		db:    db,
 		table: n.Table,
+		ctx: ctx,
 	}, nil
 }
 
@@ -57,6 +57,7 @@ type showCreateTablesIter struct {
 	db           sql.Database
 	table        string
 	didIteration bool
+	ctx          *sql.Context
 }
 
 func (i *showCreateTablesIter) Next() (sql.Row, error) {
@@ -64,16 +65,15 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 		return nil, io.EOF
 	}
 
-	ctx := context.TODO()
 	i.didIteration = true
 
-	table, found, err := i.db.GetTableInsensitive(ctx, i.table)
+	table, found, err := i.db.GetTableInsensitive(i.ctx, i.table)
 
 	if err != nil {
 		return nil, err
 	} else if !found {
 
-		tableNames, err := i.db.GetTableNames(ctx)
+		tableNames, err := i.db.GetTableNames(i.ctx)
 
 		if err != nil {
 			return nil, err
