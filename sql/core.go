@@ -307,6 +307,9 @@ type VersionedDatabase interface {
 	// Database.GetTableInsensitive, but at a particular revision of the database. Implementors must choose which types
 	// of expressions to accept as revision names.
 	GetTableInsensitiveAsOf(ctx *Context, tblName string, time interface{}) (Table, bool, error)
+
+	// GetTableNamesAsOf returns the table names of every table in the database as of the revision given
+	GetTableNamesAsOf(ctx *Context, time interface{}) ([]string, error)
 }
 
 // GetTableInsensitive implements a case insensitive map lookup for tables keyed off of the table name.

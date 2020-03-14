@@ -176,10 +176,20 @@ func (d Databases) TableAsOf(ctx *Context, dbName string, tableName string, time
 	if err != nil {
 		return nil, err
 	} else if !ok {
-		return nil, suggestSimilarTables(db, ctx, tableName)
+		return nil, suggestSimilarTablesAsOf(versionedDb, ctx, tableName, time)
 	}
 
 	return tbl, nil
+}
+
+func suggestSimilarTablesAsOf(db VersionedDatabase, ctx *Context, tableName string, time interface{}) error {
+	tableNames, err := db.GetTableNamesAsOf(ctx, time)
+	if err != nil {
+		return err
+	}
+
+	similar := similartext.Find(tableNames, tableName)
+	return ErrTableNotFound.New(tableName + similar)
 }
 
 // LockTable adds a lock for the given table and session client. It is assumed

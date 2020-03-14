@@ -66,6 +66,15 @@ func (db *HistoryDatabase) GetTableInsensitiveAsOf(ctx *sql.Context, tblName str
 	return database.GetTableInsensitive(ctx, tblName)
 }
 
+func (db *HistoryDatabase) GetTableNamesAsOf(ctx *sql.Context, time interface{}) ([]string, error) {
+	database := db.Revisions[time]
+	if database == nil {
+		return nil, fmt.Errorf("No database revision for time %v", time)
+	}
+
+	return database.GetTableNames(ctx)
+}
+
 func NewHistoryDatabase(revisions map[interface{}]*Database, current *Database) *HistoryDatabase {
 	return &HistoryDatabase{
 		Database:  *current,
