@@ -160,7 +160,9 @@ func suggestSimilarTables(db Database, ctx *Context, tableName string) error {
 	return ErrTableNotFound.New(tableName + similar)
 }
 
-func (d Databases) TableAsOf(ctx *Context, dbName string, tableName string, time interface{}) (Table, error) {
+// TableAsOf returns the table with the name given at the time given, if it existed. The database named must implement
+// sql.VersionedDatabase or an error is returned.
+func (d Databases) TableAsOf(ctx *Context, dbName string, tableName string, asOf interface{}) (Table, error) {
 	db, err := d.Database(dbName)
 	if err != nil {
 		return nil, err
@@ -171,12 +173,12 @@ func (d Databases) TableAsOf(ctx *Context, dbName string, tableName string, time
 		return nil, ErrAsOfNotSupported.New(tableName)
 	}
 
-	tbl, ok, err := versionedDb.GetTableInsensitiveAsOf(ctx, tableName, time)
+	tbl, ok, err := versionedDb.GetTableInsensitiveAsOf(ctx, tableName, asOf)
 
 	if err != nil {
 		return nil, err
 	} else if !ok {
-		return nil, suggestSimilarTablesAsOf(versionedDb, ctx, tableName, time)
+		return nil, suggestSimilarTablesAsOf(versionedDb, ctx, tableName, asOf)
 	}
 
 	return tbl, nil

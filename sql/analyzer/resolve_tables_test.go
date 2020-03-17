@@ -1,4 +1,3 @@
-
 package analyzer
 
 import (

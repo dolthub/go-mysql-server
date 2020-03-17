@@ -306,10 +306,11 @@ type VersionedDatabase interface {
 	// GetTableInsensitiveAsOf retrieves a table by its case-insensitive name with the same semantics as
 	// Database.GetTableInsensitive, but at a particular revision of the database. Implementors must choose which types
 	// of expressions to accept as revision names.
-	GetTableInsensitiveAsOf(ctx *Context, tblName string, time interface{}) (Table, bool, error)
+	GetTableInsensitiveAsOf(ctx *Context, tblName string, asOf interface{}) (Table, bool, error)
 
-	// GetTableNamesAsOf returns the table names of every table in the database as of the revision given
-	GetTableNamesAsOf(ctx *Context, time interface{}) ([]string, error)
+	// GetTableNamesAsOf returns the table names of every table in the database as of the revision given. Implementors
+	// must choose which types of expressions to accept as revision names.
+	GetTableNamesAsOf(ctx *Context, asOf interface{}) ([]string, error)
 }
 
 // GetTableInsensitive implements a case insensitive map lookup for tables keyed off of the table name.
