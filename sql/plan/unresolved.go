@@ -14,11 +14,17 @@ var ErrUnresolvedTable = errors.NewKind("unresolved table")
 type UnresolvedTable struct {
 	name     string
 	Database string
+	AsOf     sql.Expression
 }
 
 // NewUnresolvedTable creates a new Unresolved table.
 func NewUnresolvedTable(name, db string) *UnresolvedTable {
-	return &UnresolvedTable{name, db}
+	return &UnresolvedTable{name, db, nil}
+}
+
+// NewUnresolvedTableAsOf creates a new Unresolved table with an AS OF expression.
+func NewUnresolvedTableAsOf(name, db string, asOf sql.Expression) *UnresolvedTable {
+	return &UnresolvedTable{name, db, asOf}
 }
 
 // Name implements the Nameable interface.

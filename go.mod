@@ -21,12 +21,12 @@ require (
 	go.etcd.io/bbolt v1.3.3
 	golang.org/x/net v0.0.0-20191119073136-fc4aabc6c914 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
-	google.golang.org/grpc v1.25.1 // indirect
+	google.golang.org/grpc v1.27.0 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 	gopkg.in/yaml.v2 v2.2.4
 	vitess.io/vitess v3.0.0-rc.3.0.20190602171040-12bfde34629c+incompatible
 )
 
-replace vitess.io/vitess => github.com/liquidata-inc/vitess v0.0.0-20200102230944-f3410911d61f
+replace vitess.io/vitess => github.com/liquidata-inc/vitess v0.0.0-20200313225518-1b933e06b424
 
 go 1.13

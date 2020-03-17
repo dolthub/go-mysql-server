@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"context"
 	"fmt"
 	"gopkg.in/src-d/go-errors.v1"
 	"io"
@@ -289,14 +288,29 @@ type RowUpdater interface {
 type Database interface {
 	Nameable
 
-	// GetTableInsensitive retrieves a table by it's name where capitalization does not matter.  Implementations should
-	// look for exact matches first.  If no exact matches are found then any table matching the name case insensitively
+	// GetTableInsensitive retrieves a table by its case insensitive name.  Implementations should look for exact
+	// (case-sensitive matches) first.  If no exact matches are found then any table matching the name case insensitively
 	// should be returned.  If there is more than one table that matches a case insensitive comparison the resolution
 	// strategy is not defined.
-	GetTableInsensitive(ctx context.Context, tblName string) (Table, bool, error)
+	GetTableInsensitive(ctx *Context, tblName string) (Table, bool, error)
 
 	// GetTableNames returns the table names of every table in the database
-	GetTableNames(ctx context.Context) ([]string, error)
+	GetTableNames(ctx *Context) ([]string, error)
+}
+
+// VersionedDatabase is a Database that can return tables as they existed at different points in time. The engine
+// supports queries on historical table data via the AS OF construct introduced in SQL 2011.
+type VersionedDatabase interface {
+	Database
+
+	// GetTableInsensitiveAsOf retrieves a table by its case-insensitive name with the same semantics as
+	// Database.GetTableInsensitive, but at a particular revision of the database. Implementors must choose which types
+	// of expressions to accept as revision names.
+	GetTableInsensitiveAsOf(ctx *Context, tblName string, asOf interface{}) (Table, bool, error)
+
+	// GetTableNamesAsOf returns the table names of every table in the database as of the revision given. Implementors
+	// must choose which types of expressions to accept as revision names.
+	GetTableNamesAsOf(ctx *Context, asOf interface{}) ([]string, error)
 }
 
 // GetTableInsensitive implements a case insensitive map lookup for tables keyed off of the table name.
@@ -342,7 +356,7 @@ func GetTableNameInsensitive(tblName string, tableNames []string) (string, bool)
 
 // DBTableIter iterates over all tables returned by db.GetTableNames() calling cb for each one until all tables have
 // been processed, or an error is returned from the callback, or the cont flag is false when returned from the callback.
-func DBTableIter(ctx context.Context, db Database, cb func(Table) (cont bool, err error)) error {
+func DBTableIter(ctx *Context, db Database, cb func(Table) (cont bool, err error)) error {
 	names, err := db.GetTableNames(ctx)
 
 	if err != nil {

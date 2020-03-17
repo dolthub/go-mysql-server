@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -13,6 +12,9 @@ import (
 
 // ErrDatabaseNotFound is thrown when a database is not found
 var ErrDatabaseNotFound = errors.NewKind("database not found: %s")
+
+// ErrAsOfNotSupported is thrown when an AS OF query is run on a database that can't support it
+var ErrAsOfNotSupported = errors.NewKind("AS OF not supported for database %s")
 
 // Catalog holds databases, tables and functions.
 type Catalog struct {
@@ -89,10 +91,18 @@ func (c *Catalog) Database(db string) (Database, error) {
 }
 
 // Table returns the table in the given database with the given name.
-func (c *Catalog) Table(db, table string) (Table, error) {
+func (c *Catalog) Table(ctx *Context, db, table string) (Table, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.dbs.Table(context.TODO(), db, table, c.IndexRegistry)
+	return c.dbs.Table(ctx, db, table, c.IndexRegistry)
+}
+
+// TableAsOf returns the table in the given database with the given name, as it existed at the time given. The database
+// named must support timed queries.
+func (c *Catalog) TableAsOf(ctx *Context, db, table string, time interface{}) (Table, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.dbs.TableAsOf(ctx, db, table, time)
 }
 
 // Databases is a collection of Database.
@@ -123,30 +133,65 @@ func (d *Databases) Add(db Database) {
 }
 
 // Table returns the Table with the given name if it exists.
-func (d Databases) Table(ctx context.Context, dbName string, tableName string, idxReg *IndexRegistry) (Table, error) {
+func (d Databases) Table(ctx *Context, dbName string, tableName string, idxReg *IndexRegistry) (Table, error) {
 	db, err := d.Database(dbName)
 	if err != nil {
 		return nil, err
 	}
-
-	tableName = strings.ToLower(tableName)
 
 	tbl, ok, err := db.GetTableInsensitive(ctx, tableName)
 
 	if err != nil {
 		return nil, err
 	} else if !ok {
-		tableNames, err := db.GetTableNames(ctx)
-
-		if err != nil {
-			return nil, err
-		}
-
-		similar := similartext.Find(tableNames, tableName)
-		return nil, ErrTableNotFound.New(tableName + similar)
+		return nil, suggestSimilarTables(db, ctx, tableName)
 	}
 
 	return tbl, nil
+}
+
+func suggestSimilarTables(db Database, ctx *Context, tableName string) error {
+	tableNames, err := db.GetTableNames(ctx)
+	if err != nil {
+		return err
+	}
+
+	similar := similartext.Find(tableNames, tableName)
+	return ErrTableNotFound.New(tableName + similar)
+}
+
+// TableAsOf returns the table with the name given at the time given, if it existed. The database named must implement
+// sql.VersionedDatabase or an error is returned.
+func (d Databases) TableAsOf(ctx *Context, dbName string, tableName string, asOf interface{}) (Table, error) {
+	db, err := d.Database(dbName)
+	if err != nil {
+		return nil, err
+	}
+
+	versionedDb, ok := db.(VersionedDatabase)
+	if !ok {
+		return nil, ErrAsOfNotSupported.New(tableName)
+	}
+
+	tbl, ok, err := versionedDb.GetTableInsensitiveAsOf(ctx, tableName, asOf)
+
+	if err != nil {
+		return nil, err
+	} else if !ok {
+		return nil, suggestSimilarTablesAsOf(versionedDb, ctx, tableName, asOf)
+	}
+
+	return tbl, nil
+}
+
+func suggestSimilarTablesAsOf(db VersionedDatabase, ctx *Context, tableName string, time interface{}) error {
+	tableNames, err := db.GetTableNamesAsOf(ctx, time)
+	if err != nil {
+		return err
+	}
+
+	similar := similartext.Find(tableNames, tableName)
+	return ErrTableNotFound.New(tableName + similar)
 }
 
 // LockTable adds a lock for the given table and session client. It is assumed

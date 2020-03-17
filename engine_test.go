@@ -240,6 +240,30 @@ var queries = []queryTest{
 		[]sql.Row{{int64(3)}},
 	},
 	{
+		"SELECT *  FROM myhistorytable AS OF '2019-01-01' AS foo ORDER BY i",
+		[]sql.Row{
+			{int64(1), "first row, 1"},
+			{int64(2), "second row, 1"},
+			{int64(3), "third row, 1"},
+		},
+	},
+	{
+		"SELECT *  FROM myhistorytable AS OF '2019-01-02' foo ORDER BY i",
+		[]sql.Row{
+			{int64(1), "first row, 2"},
+			{int64(2), "second row, 2"},
+			{int64(3), "third row, 2"},
+		},
+	},
+	{
+		"SELECT *  FROM myhistorytable ORDER BY i",
+		[]sql.Row{
+			{int64(1), "first row, 2"},
+			{int64(2), "second row, 2"},
+			{int64(3), "third row, 2"},
+		},
+	},
+	{
 		"SELECT substring(s, 2, 3) FROM mytable",
 		[]sql.Row{{"irs"}, {"eco"}, {"hir"}},
 	},
@@ -3705,7 +3729,7 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 }
 
 func TestCreateTable(t *testing.T) {
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -3817,7 +3841,7 @@ func TestCreateTable(t *testing.T) {
 }
 
 func TestDropTable(t *testing.T) {
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -3862,7 +3886,7 @@ func TestDropTable(t *testing.T) {
 }
 
 func TestRenameTable(t *testing.T) {
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -3931,7 +3955,7 @@ func TestRenameTable(t *testing.T) {
 }
 
 func TestRenameColumn(t *testing.T) {
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -3961,7 +3985,7 @@ func TestRenameColumn(t *testing.T) {
 }
 
 func TestAddColumn(t *testing.T) {
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -4058,7 +4082,7 @@ func TestAddColumn(t *testing.T) {
 }
 
 func TestModifyColumn(t *testing.T) {
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -4118,7 +4142,7 @@ func TestModifyColumn(t *testing.T) {
 }
 
 func TestDropColumn(t *testing.T) {
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	e := newEngine(t)
@@ -4628,6 +4652,30 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 
 	)
 
+	tables["myhistorytable-2019-01-01"] = memory.NewPartitionedTable("myhistorytable", sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "myhistorytable"},
+		{Name: "s", Type: sql.Text, Source: "myhistorytable"},
+	}, numPartitions)
+
+	insertRows(
+		t, tables["myhistorytable-2019-01-01"],
+		sql.NewRow(int64(1), "first row, 1"),
+		sql.NewRow(int64(2), "second row, 1"),
+		sql.NewRow(int64(3), "third row, 1"),
+	)
+
+	tables["myhistorytable-2019-01-02"] = memory.NewPartitionedTable("myhistorytable", sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "myhistorytable"},
+		{Name: "s", Type: sql.Text, Source: "myhistorytable"},
+	}, numPartitions)
+
+	insertRows(
+		t, tables["myhistorytable-2019-01-02"],
+		sql.NewRow(int64(1), "first row, 2"),
+		sql.NewRow(int64(2), "second row, 2"),
+		sql.NewRow(int64(3), "third row, 2"),
+	)
+
 	return tables
 }
 
@@ -4636,11 +4684,21 @@ func newEngine(t *testing.T) *sqle.Engine {
 }
 
 func newEngineWithParallelism(t *testing.T, parallelism int, tables map[string]*memory.Table, driver sql.IndexDriver) *sqle.Engine {
-	db := memory.NewDatabase("mydb")
+	revisions := make(map[interface{}]*memory.Database)
 	for name, table := range tables {
-		if name != "other_table" {
-			db.AddTable(name, table)
+		if strings.HasPrefix(name, "myhistorytable") {
+			revisionStr := name[len("myhistorytable-"):]
+			db := newDatabaseWithoutHistoryTables(tables)
+			db.AddTable("myhistorytable", table)
+			revisions[revisionStr] = db
 		}
+	}
+
+	var db sql.Database
+	if len(revisions) > 0 {
+		db = memory.NewHistoryDatabase(revisions, revisions["2019-01-02"])
+	} else {
+		db = newDatabaseWithoutHistoryTables(tables)
 	}
 
 	db2 := memory.NewDatabase("foo")
@@ -4666,6 +4724,16 @@ func newEngineWithParallelism(t *testing.T, parallelism int, tables map[string]*
 	require.NoError(t, engine.Init())
 
 	return engine
+}
+
+func newDatabaseWithoutHistoryTables(tables map[string]*memory.Table) *memory.Database {
+	db := memory.NewDatabase("mydb")
+	for name, table := range tables {
+		if name != "other_table" && !strings.HasPrefix(name, "myhistorytable") {
+			db.AddTable(name, table)
+		}
+	}
+	return db
 }
 
 const expectedTree = `Limit(5)

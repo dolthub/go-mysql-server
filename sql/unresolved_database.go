@@ -1,7 +1,5 @@
 package sql
 
-import "context"
-
 var _ Database = UnresolvedDatabase("")
 
 // UnresolvedDatabase is a database which has not been resolved yet.
@@ -17,10 +15,10 @@ func (UnresolvedDatabase) Tables() map[string]Table {
 	return make(map[string]Table)
 }
 
-func (UnresolvedDatabase) GetTableInsensitive(ctx context.Context, tblName string) (Table, bool, error) {
+func (UnresolvedDatabase) GetTableInsensitive(ctx *Context, tblName string) (Table, bool, error) {
 	return nil, false, nil
 }
 
-func (UnresolvedDatabase) GetTableNames(ctx context.Context) ([]string, error) {
+func (UnresolvedDatabase) GetTableNames(ctx *Context) ([]string, error) {
 	return []string{}, nil
 }

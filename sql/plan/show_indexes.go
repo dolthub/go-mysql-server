@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"context"
 	"fmt"
 	"io"
 
@@ -79,11 +78,12 @@ func (n *ShowIndexes) Schema() sql.Schema {
 func (n *ShowIndexes) Children() []sql.Node { return nil }
 
 // RowIter implements the Node interface.
-func (n *ShowIndexes) RowIter(*sql.Context) (sql.RowIter, error) {
+func (n *ShowIndexes) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return &showIndexesIter{
 		db:       n.db,
 		table:    n.Table,
 		registry: n.Registry,
+		ctx:      ctx,
 	}, nil
 }
 
@@ -93,6 +93,7 @@ type showIndexesIter struct {
 	registry *sql.IndexRegistry
 
 	idxs *indexesToShow
+	ctx  *sql.Context
 }
 
 func (i *showIndexesIter) Next() (sql.Row, error) {
@@ -116,7 +117,7 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 		visible  string
 	)
 	columnName, expression := "NULL", show.expression
-	tbl, _, err := i.db.GetTableInsensitive(context.TODO(), i.table)
+	tbl, _, err := i.db.GetTableInsensitive(i.ctx, i.table)
 
 	if err != nil {
 		return nil, err
