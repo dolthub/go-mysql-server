@@ -48,6 +48,7 @@ var (
 	TimestampDatetimeLayouts = []string{
 		"2006-01-02 15:04:05.999999",
 		"2006-01-02",
+		time.RFC3339,
 		time.RFC3339Nano,
 		"20060102150405",
 		"20060102",

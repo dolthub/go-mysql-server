@@ -53,7 +53,7 @@ func (n *SubqueryAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 	nn := *n
 	nn.Child = children[0]
-	return n, nil
+	return &nn, nil
 }
 
 // Opaque implements the OpaqueNode interface.

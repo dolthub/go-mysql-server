@@ -57,6 +57,14 @@ func (t *UnresolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return t, nil
 }
 
+// WithAsOf returns a copy of this unresolved table with its AsOf field set to the given value. Analagous to
+// WithChildren. This type is the only Node that can take an AS OF expression, so this isn't an interface.
+func (t *UnresolvedTable) WithAsOf(asOf sql.Expression) (sql.Node, error) {
+	t2 := *t
+	t2.AsOf = asOf
+	return &t2, nil
+}
+
 func (t UnresolvedTable) String() string {
 	return fmt.Sprintf("UnresolvedTable(%s)", t.name)
 }
