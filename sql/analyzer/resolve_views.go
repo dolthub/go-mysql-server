@@ -36,6 +36,10 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 			if t.AsOf != nil {
 				a.Log("applying AS OF clause to view definition")
 
+				// TODO: this direct editing of children is necessary because the view definition is declared as an opaque node,
+				//  meaning that plan.TransformUp won't touch its children. It's only supposed to be touched by the
+				//  resolve_subqueries function, which invokes the entire analyzer on the node. This is the only place we have
+				//  to make this exception so far, but there may be others.
 				children := view.Definition().Children()
 				if len(children) == 1 {
 					child, err := plan.TransformUp(children[0], func(n2 sql.Node) (sql.Node, error) {
