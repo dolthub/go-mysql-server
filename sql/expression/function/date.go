@@ -158,6 +158,54 @@ func (d *DateSub) String() string {
 	return fmt.Sprintf("DATE_SUB(%s, %s)", d.Date, d.Interval)
 }
 
+type TimestampConversion struct {
+	clock clock
+	Date sql.Expression
+}
+
+func (t *TimestampConversion) Resolved() bool {
+	return t.Date.Resolved()
+}
+
+func (t *TimestampConversion) String() string {
+	return "TIMESTAMP"
+}
+
+func (t *TimestampConversion) Type() sql.Type {
+	return sql.Timestamp
+}
+
+func (t *TimestampConversion) IsNullable() bool {
+	return false
+}
+
+func (t *TimestampConversion) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
+	e, err := t.Date.Eval(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	return sql.Timestamp.Convert(e)
+}
+
+func (t *TimestampConversion) Children() []sql.Expression {
+	return []sql.Expression{t.Date}
+}
+
+func (t *TimestampConversion) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewTimestamp(children...)
+}
+
+func NewTimestamp(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) > 1 {
+		return nil, sql.ErrInvalidArgumentNumber.New("UNIX_TIMESTAMP", 1, len(args))
+	}
+	if len(args) == 0 {
+		// TODO
+		return NewNow(), nil
+	}
+	return &TimestampConversion{defaultClock, args[0]}, nil
+}
+
 // UnixTimestamp converts the argument to the number of seconds since
 // 1970-01-01 00:00:00 UTC. With no argument, returns number of seconds since
 // unix epoch for the current time.
