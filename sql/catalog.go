@@ -16,10 +16,9 @@ var ErrDatabaseNotFound = errors.NewKind("database not found: %s")
 // ErrAsOfNotSupported is thrown when an AS OF query is run on a database that can't support it
 var ErrAsOfNotSupported = errors.NewKind("AS OF not supported for database %s")
 
-// ErrIncompatibleAsOf is thrown when an AS OF query is used in an incompatible manner, such as when using an AS OF
+// ErrIncompatibleAsOf is thrown when an AS OF clause is used in an incompatible manner, such as when using an AS OF
 // expression with a view when the view definition has its own AS OF expressions.
 var ErrIncompatibleAsOf = errors.NewKind("incompatible use of AS OF: %s")
-
 
 // Catalog holds databases, tables and functions.
 type Catalog struct {
