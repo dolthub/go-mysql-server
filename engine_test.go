@@ -1389,6 +1389,14 @@ var queries = []queryTest{
 		[]sql.Row{{time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)}},
 	},
 	{
+		"SELECT DATETIME('9999-12-31 23:59:59')",
+		[]sql.Row{{time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)}},
+	},
+	{
+		"SELECT TIMESTAMP('2020-12-31 23:59:59')",
+		[]sql.Row{{time.Date(2020, time.December, 31, 23, 59, 59, 0, time.UTC)}},
+	},
+	{
 		"SELECT CONVERT('10000-12-31 23:59:59', DATETIME)",
 		[]sql.Row{{nil}},
 	},
@@ -1530,6 +1538,14 @@ var queries = []queryTest{
 	},
 	{
 		`SELECT NOW() - NOW()`,
+		[]sql.Row{{int64(0)}},
+	},
+	{
+		`SELECT DATETIME() - NOW()`,
+		[]sql.Row{{int64(0)}},
+	},
+	{
+		`SELECT TIMESTAMP() - NOW()`,
 		[]sql.Row{{int64(0)}},
 	},
 	{
