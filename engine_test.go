@@ -3887,8 +3887,6 @@ func TestCreateTable(t *testing.T) {
 	require.True(sql.ErrTableAlreadyExists.Is(err))
 }
 
-
-
 func TestDropTable(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	require := require.New(t)
