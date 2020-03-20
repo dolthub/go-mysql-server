@@ -2710,6 +2710,53 @@ func extractQueryNode(node sql.Node) sql.Node {
 	}
 }
 
+func TestSelectFromView(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	require := require.New(t)
+
+	e := newEngine(t)
+	_, iter, err := e.Query(ctx, "CREATE VIEW myview AS SELECT * FROM myhistorytable")
+	require.NoError(err)
+	iter.Close()
+
+	testQuery(t, e,
+		"SELECT * FROM myview ORDER BY i",
+		[]sql.Row{
+			sql.NewRow(int64(1), "first row, 2"),
+			sql.NewRow(int64(2), "second row, 2"),
+			sql.NewRow(int64(3), "third row, 2"),
+		},
+	)
+
+	testQuery(t, e,
+		"SELECT * FROM myview AS OF '2019-01-01' ORDER BY i",
+		[]sql.Row{
+			sql.NewRow(int64(1), "first row, 1"),
+			sql.NewRow(int64(2), "second row, 1"),
+			sql.NewRow(int64(3), "third row, 1"),
+		},
+	)
+
+	// nested views
+	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
+	require.NoError(err)
+	iter.Close()
+
+	testQuery(t, e,
+		"SELECT * FROM myview2",
+		[]sql.Row{
+			sql.NewRow(int64(1), "first row, 2"),
+		},
+	)
+
+	testQuery(t, e,
+		"SELECT * FROM myview2 AS OF '2019-01-01'",
+		[]sql.Row{
+			sql.NewRow(int64(1), "first row, 1"),
+		},
+	)
+}
+
 func TestSessionSelectLimit(t *testing.T) {
 	ctx := newCtx()
 	ctx.Session.Set("sql_select_limit", sql.Int64, int64(1))

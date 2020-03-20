@@ -32,8 +32,32 @@ func TestResolveViews(t *testing.T) {
 
 	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
 
+	// AS OF expressions on a view should be pushed down to unresolved tables
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("myview", "")
 	analyzed, err := f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
 	require.NoError(err)
 	require.Equal(viewDefinition, analyzed)
+
+	viewDefinitionWithAsOf := plan.NewSubqueryAlias(
+		"myview",
+		plan.NewProject(
+			[]sql.Expression{expression.NewUnresolvedColumn("i")},
+			plan.NewUnresolvedTableAsOf("mytable", "", expression.NewLiteral("2019-01-01", sql.LongText)),
+		),
+	)
+	var notAnalyzedAsOf sql.Node = plan.NewUnresolvedTableAsOf("myview", "", expression.NewLiteral("2019-01-01", sql.LongText))
+
+	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzedAsOf)
+	require.NoError(err)
+	require.Equal(viewDefinitionWithAsOf, analyzed)
+
+	// Views that are defined with AS OF clauses cannot have an AS OF pushed down to them
+	viewWithAsOf := sql.NewView("viewWithAsOf", viewDefinitionWithAsOf)
+	err = catalog.ViewRegistry.Register(db.Name(), viewWithAsOf)
+	require.NoError(err)
+
+	notAnalyzedAsOf = plan.NewUnresolvedTableAsOf("viewWithAsOf", "", expression.NewLiteral("2019-01-01", sql.LongText))
+	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzedAsOf)
+	require.Error(err)
+	require.True(sql.ErrIncompatibleAsOf.Is(err), "wrong error type")
 }
