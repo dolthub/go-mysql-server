@@ -158,6 +158,123 @@ func (d *DateSub) String() string {
 	return fmt.Sprintf("DATE_SUB(%s, %s)", d.Date, d.Interval)
 }
 
+// TimestampConversion is a shorthand function for CONVERT(expr, TIMESTAMP)
+type TimestampConversion struct {
+	clock clock
+	Date sql.Expression
+}
+
+func (t *TimestampConversion) Resolved() bool {
+	return t.Date == nil || t.Date.Resolved()
+}
+
+func (t *TimestampConversion) String() string {
+	if t.Date != nil {
+		return fmt.Sprintf("TIMESTAMP(%s)", t.Date)
+	} else {
+		return "TIMESTAMP()"
+	}}
+
+func (t *TimestampConversion) Type() sql.Type {
+	return sql.Timestamp
+}
+
+func (t *TimestampConversion) IsNullable() bool {
+	return false
+}
+
+func (t *TimestampConversion) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
+	if t.Date == nil {
+		return sql.Timestamp.Convert(t.clock())
+	}
+
+	e, err := t.Date.Eval(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	return sql.Timestamp.Convert(e)
+}
+
+func (t *TimestampConversion) Children() []sql.Expression {
+	if t.Date == nil {
+		return nil
+	}
+	return []sql.Expression{t.Date}
+}
+
+func (t *TimestampConversion) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewTimestamp(children...)
+}
+
+func NewTimestamp(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) > 1 {
+		return nil, sql.ErrInvalidArgumentNumber.New("TIMESTAMP", 1, len(args))
+	}
+	if len(args) == 0 {
+		return &TimestampConversion{clock: defaultClock}, nil
+	}
+	return &TimestampConversion{defaultClock, args[0]}, nil
+}
+
+// DatetimeConversion is a shorthand function for CONVERT(expr, DATETIME)
+type DatetimeConversion struct {
+	clock clock
+	Date sql.Expression
+}
+
+func (t *DatetimeConversion) Resolved() bool {
+	return t.Date == nil || t.Date.Resolved()
+}
+
+func (t *DatetimeConversion) String() string {
+	if t.Date != nil {
+		return fmt.Sprintf("DATETIME(%s)", t.Date)
+	} else {
+		return "DATETIME()"
+	}
+}
+
+func (t *DatetimeConversion) Type() sql.Type {
+	return sql.Datetime
+}
+
+func (t *DatetimeConversion) IsNullable() bool {
+	return false
+}
+
+func (t *DatetimeConversion) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
+	if t.Date == nil {
+		return sql.Datetime.Convert(t.clock())
+	}
+
+	e, err := t.Date.Eval(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	return sql.Datetime.Convert(e)
+}
+
+func (t *DatetimeConversion) Children() []sql.Expression {
+	if t.Date == nil {
+		return nil
+	}
+	return []sql.Expression{t.Date}
+}
+
+func (t *DatetimeConversion) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewDatetime(children...)
+}
+
+func NewDatetime(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) > 1 {
+		return nil, sql.ErrInvalidArgumentNumber.New("DATETIME", 1, len(args))
+	}
+	if len(args) == 0 {
+		return &DatetimeConversion{clock: defaultClock}, nil
+	}
+	return &DatetimeConversion{defaultClock, args[0]}, nil
+}
+
 // UnixTimestamp converts the argument to the number of seconds since
 // 1970-01-01 00:00:00 UTC. With no argument, returns number of seconds since
 // unix epoch for the current time.
