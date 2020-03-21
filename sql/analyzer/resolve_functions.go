@@ -18,30 +18,34 @@ func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, erro
 		}
 
 		return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
-			a.Log("transforming expression of type: %T", e)
-			if e.Resolved() {
-				return e, nil
-			}
-
-			uf, ok := e.(*expression.UnresolvedFunction)
-			if !ok {
-				return e, nil
-			}
-
-			n := uf.Name()
-			f, err := a.Catalog.Function(n)
-			if err != nil {
-				return nil, err
-			}
-
-			rf, err := f.Call(uf.Arguments...)
-			if err != nil {
-				return nil, err
-			}
-
-			a.Log("resolved function %q", n)
-
-			return rf, nil
+			return resolveFunctionExpr(a, e)
 		})
 	})
+}
+
+func resolveFunctionExpr(a *Analyzer, e sql.Expression) (sql.Expression, error) {
+	a.Log("transforming expression of type: %T", e)
+	if e.Resolved() {
+		return e, nil
+	}
+
+	uf, ok := e.(*expression.UnresolvedFunction)
+	if !ok {
+		return e, nil
+	}
+
+	n := uf.Name()
+	f, err := a.Catalog.Function(n)
+	if err != nil {
+		return nil, err
+	}
+
+	rf, err := f.Call(uf.Arguments...)
+	if err != nil {
+		return nil, err
+	}
+
+	a.Log("resolved function %q", n)
+
+	return rf, nil
 }

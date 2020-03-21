@@ -39,7 +39,15 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 		}
 
 		if t.AsOf != nil {
-			asOf, err := t.AsOf.Eval(ctx, nil)
+			// This is necessary to use functions in AS OF expressions. Because function resolution happens after table
+			// resolution, we resolve any functions in the AsOf here in order to evaluate them immediately. A better solution
+			// might be to defer evaluating the expression until later in the analysis, but that requires bigger changes.
+			asOfExpr, err := resolveFunctionExpr(a, t.AsOf)
+			if err != nil {
+				return nil, err
+			}
+
+			asOf, err := asOfExpr.Eval(ctx, nil)
 			if err != nil {
 				return nil, err
 			}
