@@ -33,8 +33,8 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 			a.Log("view resolved: %q", name)
 
 			// If this view is being asked for with an AS OF clause, then attempt to apply it to every table in the view.
-			if t.AsOf != nil {
-				a.Log("applying AS OF clause to view definition")
+			if t.AsOf != nil || t.Database != "" {
+				a.Log("applying AS OF clause and database qualifier to view definition")
 
 				// TODO: this direct editing of children is necessary because the view definition is declared as an opaque node,
 				//  meaning that plan.TransformUp won't touch its children. It's only supposed to be touched by the
@@ -48,14 +48,24 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 							return n2, nil
 						}
 
-						a.Log("applying AS OF clause to table " + t2.Name())
-						if t2.AsOf != nil {
-							return nil, sql.ErrIncompatibleAsOf.New(
-								fmt.Sprintf("cannot combine AS OF clauses %s and %s",
-									t.AsOf.String(), t2.AsOf.String()))
+						if t.AsOf != nil {
+							a.Log("applying AS OF clause to view " + t2.Name())
+							if t2.AsOf != nil {
+								return nil, sql.ErrIncompatibleAsOf.New(
+									fmt.Sprintf("cannot combine AS OF clauses %s and %s",
+										t.AsOf.String(), t2.AsOf.String()))
+							}
+							t2, _ = t2.WithAsOf(t.AsOf)
 						}
 
-						return t2.WithAsOf(t.AsOf)
+						if t.Database != "" {
+							a.Log("applying database clause to view " + t2.Name())
+							if t2.Database == "" {
+								t2, _ = t2.WithDatabase(db)
+							}
+						}
+
+						return t2, nil
 					})
 
 					if err != nil {

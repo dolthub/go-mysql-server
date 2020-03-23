@@ -59,9 +59,17 @@ func (t *UnresolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // WithAsOf returns a copy of this unresolved table with its AsOf field set to the given value. Analagous to
 // WithChildren. This type is the only Node that can take an AS OF expression, so this isn't an interface.
-func (t *UnresolvedTable) WithAsOf(asOf sql.Expression) (sql.Node, error) {
+func (t *UnresolvedTable) WithAsOf(asOf sql.Expression) (*UnresolvedTable, error) {
 	t2 := *t
 	t2.AsOf = asOf
+	return &t2, nil
+}
+
+// WithDatabase returns a copy of this unresolved table with its Database field set to the given value. Analagous to
+// WithChildren.
+func (t *UnresolvedTable) WithDatabase(database string) (*UnresolvedTable, error) {
+	t2 := *t
+	t2.Database = database
 	return &t2, nil
 }
 
