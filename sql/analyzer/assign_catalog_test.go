@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"context"
 	"testing"
 
 	"github.com/src-d/go-mysql-server/memory"
@@ -18,11 +19,13 @@ func TestAssignCatalog(t *testing.T) {
 	c.AddDatabase(db)
 
 	a := NewDefault(c)
-	a.Catalog.IndexRegistry = sql.NewIndexRegistry()
+	idxReg := sql.NewIndexRegistry()
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry()))
 
 	tbl := memory.NewTable("foo", nil)
 
-	node, err := f.Apply(sql.NewEmptyContext(), a,
+
+	node, err := f.Apply(ctx, a,
 		plan.NewCreateIndex("", plan.NewResolvedTable(tbl), nil, "", make(map[string]string)))
 	require.NoError(err)
 
@@ -31,7 +34,7 @@ func TestAssignCatalog(t *testing.T) {
 	require.Equal(c, ci.Catalog)
 	require.Equal("foo", ci.CurrentDatabase)
 
-	node, err = f.Apply(sql.NewEmptyContext(), a,
+	node, err = f.Apply(ctx, a,
 		plan.NewDropIndex("foo", plan.NewResolvedTable(tbl)))
 	require.NoError(err)
 
@@ -40,15 +43,15 @@ func TestAssignCatalog(t *testing.T) {
 	require.Equal(c, di.Catalog)
 	require.Equal("foo", di.CurrentDatabase)
 
-	node, err = f.Apply(sql.NewEmptyContext(), a, plan.NewShowIndexes(db, "table-test", nil))
+	node, err = f.Apply(ctx, a, plan.NewShowIndexes(db, "table-test", nil))
 	require.NoError(err)
 
 	si, ok := node.(*plan.ShowIndexes)
 	require.True(ok)
 	require.Equal(db, si.Database())
-	require.Equal(c.IndexRegistry, si.Registry)
+	require.Equal(idxReg, si.Registry)
 
-	node, err = f.Apply(sql.NewEmptyContext(), a, plan.NewShowProcessList())
+	node, err = f.Apply(ctx, a, plan.NewShowProcessList())
 	require.NoError(err)
 
 	pl, ok := node.(*plan.ShowProcessList)
@@ -56,19 +59,19 @@ func TestAssignCatalog(t *testing.T) {
 	require.Equal(db.Name(), pl.Database)
 	require.Equal(c.ProcessList, pl.ProcessList)
 
-	node, err = f.Apply(sql.NewEmptyContext(), a, plan.NewShowDatabases())
+	node, err = f.Apply(ctx, a, plan.NewShowDatabases())
 	require.NoError(err)
 	sd, ok := node.(*plan.ShowDatabases)
 	require.True(ok)
 	require.Equal(c, sd.Catalog)
 
-	node, err = f.Apply(sql.NewEmptyContext(), a, plan.NewLockTables(nil))
+	node, err = f.Apply(ctx, a, plan.NewLockTables(nil))
 	require.NoError(err)
 	lt, ok := node.(*plan.LockTables)
 	require.True(ok)
 	require.Equal(c, lt.Catalog)
 
-	node, err = f.Apply(sql.NewEmptyContext(), a, plan.NewUnlockTables())
+	node, err = f.Apply(ctx, a, plan.NewUnlockTables())
 	require.NoError(err)
 	ut, ok := node.(*plan.UnlockTables)
 	require.True(ok)
@@ -76,13 +79,13 @@ func TestAssignCatalog(t *testing.T) {
 
 	mockSubquery := plan.NewSubqueryAlias("mock", plan.NewResolvedTable(tbl))
 	mockView := plan.NewCreateView(db, "", nil, mockSubquery, "select * from foo", false)
-	node, err = f.Apply(sql.NewEmptyContext(), a, mockView)
+	node, err = f.Apply(ctx, a, mockView)
 	require.NoError(err)
 	cv, ok := node.(*plan.CreateView)
 	require.True(ok)
 	require.Equal(c, cv.Catalog)
 
-	node, err = f.Apply(sql.NewEmptyContext(), a, plan.NewDropView(nil, false))
+	node, err = f.Apply(ctx, a, plan.NewDropView(nil, false))
 	require.NoError(err)
 	dv, ok := node.(*plan.DropView)
 	require.True(ok)

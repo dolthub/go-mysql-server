@@ -172,5 +172,5 @@ func (e *Engine) AddDatabase(db sql.Database) {
 
 // Init performs all the initialization requirements for the engine to work.
 func (e *Engine) Init() error {
-	return e.Catalog.LoadIndexes(e.Catalog.AllDatabases())
+	return nil // e.Catalog.LoadIndexes(e.Catalog.AllDatabases())
 }

@@ -82,9 +82,9 @@ func brokenTestServer(t *testing.T, ready chan struct{}, port string) {
 
 // This session builder is used as dummy mysql Conn is not complete and
 // causes panic when accessing remote address.
-func testSessionBuilder(c *mysql.Conn, addr string) sql.Session {
+func testSessionBuilder(c *mysql.Conn, addr string) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry) {
 	const client = "127.0.0.1:34567"
-	return sql.NewSession(addr, client, c.User, c.ConnectionID)
+	return sql.NewSession(addr, client, c.User, c.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry()
 }
 
 type mockConn struct {

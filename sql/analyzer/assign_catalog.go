@@ -28,7 +28,7 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 			return &nc, nil
 		case *plan.ShowIndexes:
 			nc := *node
-			nc.Registry = a.Catalog.IndexRegistry
+			nc.Registry = ctx.IndexRegistry
 			return &nc, nil
 		case *plan.ShowDatabases:
 			nc := *node

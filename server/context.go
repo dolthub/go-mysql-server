@@ -10,16 +10,16 @@ import (
 )
 
 // SessionBuilder creates sessions given a MySQL connection and a server address.
-type SessionBuilder func(conn *mysql.Conn, addr string) sql.Session
+type SessionBuilder func(conn *mysql.Conn, addr string) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry)
 
 // DoneFunc is a function that must be executed when the session is used and
 // it can be disposed.
 type DoneFunc func()
 
 // DefaultSessionBuilder is a SessionBuilder that returns a base session.
-func DefaultSessionBuilder(c *mysql.Conn, addr string) sql.Session {
+func DefaultSessionBuilder(c *mysql.Conn, addr string) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry) {
 	client := c.RemoteAddr().String()
-	return sql.NewSession(addr, client, c.User, c.ConnectionID)
+	return sql.NewSession(addr, client, c.User, c.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry()
 }
 
 // SessionManager is in charge of creating new sessions for the given
@@ -32,6 +32,8 @@ type SessionManager struct {
 	mu       *sync.Mutex
 	builder  SessionBuilder
 	sessions map[uint32]sql.Session
+	idxRegs  map[uint32]*sql.IndexRegistry
+	viewRegs map[uint32]*sql.ViewRegistry
 	pid      uint64
 }
 
@@ -49,6 +51,8 @@ func NewSessionManager(
 		mu:       new(sync.Mutex),
 		builder:  builder,
 		sessions: make(map[uint32]sql.Session),
+		idxRegs: make(map[uint32]*sql.IndexRegistry),
+		viewRegs: make(map[uint32]*sql.ViewRegistry),
 	}
 }
 
@@ -63,7 +67,7 @@ func (s *SessionManager) nextPid() uint64 {
 // session pool.
 func (s *SessionManager) NewSession(conn *mysql.Conn) {
 	s.mu.Lock()
-	s.sessions[conn.ConnectionID] = s.builder(conn, s.addr)
+	s.sessions[conn.ConnectionID], s.idxRegs[conn.ConnectionID], s.viewRegs[conn.ConnectionID] = s.builder(conn, s.addr)
 	s.mu.Unlock()
 }
 
@@ -85,9 +89,14 @@ func (s *SessionManager) NewContextWithQuery(
 ) *sql.Context {
 	s.mu.Lock()
 	sess, ok := s.sessions[conn.ConnectionID]
+	ir := s.idxRegs[conn.ConnectionID]
+	vr := s.viewRegs[conn.ConnectionID]
 	if !ok {
-		sess = s.builder(conn, s.addr)
+		sess, ir, vr = s.builder(conn, s.addr)
+
 		s.sessions[conn.ConnectionID] = sess
+		s.idxRegs[conn.ConnectionID] = ir
+		s.viewRegs[conn.ConnectionID] = vr
 	}
 	s.mu.Unlock()
 
@@ -99,6 +108,8 @@ func (s *SessionManager) NewContextWithQuery(
 		sql.WithQuery(query),
 		sql.WithMemoryManager(s.memory),
 		sql.WithRootSpan(s.tracer.StartSpan("query")),
+		sql.WithIndexRegistry(ir),
+		sql.WithViewRegistry(vr),
 	)
 
 	return context
@@ -110,4 +121,6 @@ func (s *SessionManager) CloseConn(conn *mysql.Conn) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.sessions, conn.ConnectionID)
+	delete(s.idxRegs, conn.ConnectionID)
+	delete(s.viewRegs, conn.ConnectionID)
 }

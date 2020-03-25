@@ -17,42 +17,44 @@ import (
 )
 
 func TestIndexes(t *testing.T) {
-	e := newEngine(t)
+	e, idxReg := newEngine(t)
+	viewReg := sql.NewViewRegistry()
 
 	tmpDir, err := ioutil.TempDir(os.TempDir(), "pilosa-test")
 	require.NoError(t, err)
 
 	require.NoError(t, os.MkdirAll(tmpDir, 0644))
-	e.Catalog.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
+
+	idxReg.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
 
 	_, _, err = e.Query(
-		newCtx(),
+		newCtx(idxReg),
 		"CREATE INDEX idx_i ON mytable USING pilosa (i) WITH (async = false)",
 	)
 	require.NoError(t, err)
 
 	_, _, err = e.Query(
-		newCtx(),
+		newCtx(idxReg),
 		"CREATE INDEX idx_s ON mytable USING pilosa (s) WITH (async = false)",
 	)
 	require.NoError(t, err)
 
 	_, _, err = e.Query(
-		newCtx(),
+		newCtx(idxReg),
 		"CREATE INDEX idx_is ON mytable USING pilosa (i, s) WITH (async = false)",
 	)
 	require.NoError(t, err)
 
 	defer func() {
-		done, err := e.Catalog.DeleteIndex("mydb", "idx_i", true)
+		done, err := idxReg.DeleteIndex("mydb", "idx_i", true)
 		require.NoError(t, err)
 		<-done
 
-		done, err = e.Catalog.DeleteIndex("mydb", "idx_s", true)
+		done, err = idxReg.DeleteIndex("mydb", "idx_s", true)
 		require.NoError(t, err)
 		<-done
 
-		done, err = e.Catalog.DeleteIndex("foo", "idx_is", true)
+		done, err = idxReg.DeleteIndex("foo", "idx_is", true)
 		require.NoError(t, err)
 		<-done
 	}()
@@ -168,7 +170,7 @@ func TestIndexes(t *testing.T) {
 			require := require.New(t)
 
 			tracer := new(test.MemTracer)
-			ctx := sql.NewContext(context.TODO(), sql.WithTracer(tracer))
+			ctx := sql.NewContext(context.TODO(), sql.WithTracer(tracer), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg))
 
 			_, it, err := e.Query(ctx, tt.query)
 			require.NoError(err)
@@ -184,15 +186,15 @@ func TestIndexes(t *testing.T) {
 
 func TestCreateIndex(t *testing.T) {
 	require := require.New(t)
-	e := newEngine(t)
+	e, idxReg := newEngine(t)
 
 	tmpDir, err := ioutil.TempDir(os.TempDir(), "pilosa-test")
 	require.NoError(err)
 
 	require.NoError(os.MkdirAll(tmpDir, 0644))
-	e.Catalog.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
+	idxReg.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
 
-	_, iter, err := e.Query(newCtx(), "CREATE INDEX myidx ON mytable USING pilosa (i)")
+	_, iter, err := e.Query(newCtx(idxReg), "CREATE INDEX myidx ON mytable USING pilosa (i)")
 	require.NoError(err)
 	rows, err := sql.RowIterToRows(iter)
 	require.NoError(err)
@@ -200,7 +202,7 @@ func TestCreateIndex(t *testing.T) {
 
 	defer func() {
 		time.Sleep(1 * time.Second)
-		done, err := e.Catalog.DeleteIndex("foo", "myidx", true)
+		done, err := idxReg.DeleteIndex("foo", "myidx", true)
 		require.NoError(err)
 		<-done
 

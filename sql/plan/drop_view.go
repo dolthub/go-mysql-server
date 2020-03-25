@@ -128,7 +128,7 @@ func (dvs *DropView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		viewList[i] = sql.NewViewKey(drop.database.Name(), drop.viewName)
 	}
 
-	return sql.RowsToRowIter(), dvs.Catalog.ViewRegistry.DeleteList(viewList, !dvs.ifExists)
+	return sql.RowsToRowIter(), ctx.ViewRegistry.DeleteList(viewList, !dvs.ifExists)
 }
 
 // Schema implements the Node interface. It always returns nil.

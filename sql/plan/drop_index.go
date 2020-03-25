@@ -69,22 +69,22 @@ func (d *DropIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, sql.ErrTableNotFound.New(n.Name() + similar)
 	}
 
-	index := d.Catalog.Index(db.Name(), d.Name)
+	index := ctx.Index(db.Name(), d.Name)
 	if index == nil {
 		return nil, ErrIndexNotFound.New(d.Name, n.Name(), db.Name())
 	}
-	d.Catalog.ReleaseIndex(index)
+	ctx.ReleaseIndex(index)
 
-	if !d.Catalog.CanRemoveIndex(index) {
+	if !ctx.CanRemoveIndex(index) {
 		return nil, ErrIndexNotAvailable.New(d.Name)
 	}
 
-	done, err := d.Catalog.DeleteIndex(db.Name(), d.Name, true)
+	done, err := ctx.DeleteIndex(db.Name(), d.Name, true)
 	if err != nil {
 		return nil, err
 	}
 
-	driver := d.Catalog.IndexDriver(index.Driver())
+	driver := ctx.IndexDriver(index.Driver())
 	if driver == nil {
 		return nil, ErrInvalidIndexDriver.New(index.Driver())
 	}

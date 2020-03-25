@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"context"
 	"testing"
 
 	"github.com/src-d/go-mysql-server/memory"
@@ -84,7 +85,8 @@ func TestResolveSubqueries(t *testing.T) {
 		),
 	)
 
-	result, err := resolveSubqueries(sql.NewEmptyContext(), a, node)
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	result, err := resolveSubqueries(ctx, a, node)
 	require.NoError(err)
 	require.Equal(expected, result)
 }

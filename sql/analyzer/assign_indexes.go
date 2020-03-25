@@ -33,7 +33,7 @@ func assignIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]*in
 
 		for _, i := range indexes {
 			for _, index := range i.indexes {
-				a.Catalog.ReleaseIndex(index)
+				ctx.ReleaseIndex(index)
 			}
 		}
 	}()
@@ -73,19 +73,19 @@ func assignIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]*in
 		fn(filter.Child)
 
 		var result map[string]*indexLookup
-		result, err = getIndexes(filter.Expression, aliases, a)
+		result, err = getIndexes(ctx, filter.Expression, aliases, a)
 		if err != nil {
 			return false
 		}
 
-		indexes = indexesIntersection(a, indexes, result)
+		indexes = indexesIntersection(ctx, a, indexes, result)
 		return true
 	})
 
 	return indexes, err
 }
 
-func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer) (map[string]*indexLookup, error) {
+func getIndexes(ctx *sql.Context, e sql.Expression, aliases map[string]sql.Expression, a *Analyzer) (map[string]*indexLookup, error) {
 	var result = make(map[string]*indexLookup)
 	switch e := e.(type) {
 	case *expression.Or:
@@ -96,12 +96,12 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 			return nil, nil
 		}
 
-		leftIndexes, err := getIndexes(e.Left, aliases, a)
+		leftIndexes, err := getIndexes(ctx, e.Left, aliases, a)
 		if err != nil {
 			return nil, err
 		}
 
-		rightIndexes, err := getIndexes(e.Right, aliases, a)
+		rightIndexes, err := getIndexes(ctx, e.Right, aliases, a)
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +152,7 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 		// the right branch is evaluable and the indexlookup supports set
 		// operations.
 		if !isEvaluable(c.Left()) && isEvaluable(c.Right()) {
-			idx := a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, c.Left())...)
+			idx := ctx.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, c.Left())...)
 			if idx != nil {
 				var nidx sql.NegateIndex
 				if negate {
@@ -165,7 +165,7 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 				// release the index if it was not used
 				defer func() {
 					if _, ok := result[idx.Table()]; !ok {
-						a.Catalog.ReleaseIndex(idx)
+						ctx.ReleaseIndex(idx)
 					}
 				}()
 
@@ -227,7 +227,7 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 		*expression.GreaterThan,
 		*expression.LessThanOrEqual,
 		*expression.GreaterThanOrEqual:
-		idx, lookup, err := getComparisonIndex(a, e.(expression.Comparer), aliases)
+		idx, lookup, err := getComparisonIndex(ctx, a, e.(expression.Comparer), aliases)
 		if err != nil || lookup == nil {
 			return result, err
 		}
@@ -237,7 +237,7 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 			lookup:  lookup,
 		}
 	case *expression.Not:
-		r, err := getNegatedIndexes(a, e, aliases)
+		r, err := getNegatedIndexes(ctx, a, e, aliases)
 		if err != nil {
 			return nil, err
 		}
@@ -247,12 +247,12 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 		}
 	case *expression.Between:
 		if !isEvaluable(e.Val) && isEvaluable(e.Upper) && isEvaluable(e.Lower) {
-			idx := a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Val)...)
+			idx := ctx.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Val)...)
 			if idx != nil {
 				// release the index if it was not used
 				defer func() {
 					if _, ok := result[idx.Table()]; !ok {
-						a.Catalog.ReleaseIndex(idx)
+						ctx.ReleaseIndex(idx)
 					}
 				}()
 
@@ -287,7 +287,7 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 		exprs := splitConjunction(e)
 		used := make(map[sql.Expression]struct{})
 
-		result, err := getMultiColumnIndexes(exprs, a, used, aliases)
+		result, err := getMultiColumnIndexes(ctx, exprs, a, used, aliases)
 		if err != nil {
 			return nil, err
 		}
@@ -297,12 +297,12 @@ func getIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer
 				continue
 			}
 
-			indexes, err := getIndexes(e, aliases, a)
+			indexes, err := getIndexes(ctx, e, aliases, a)
 			if err != nil {
 				return nil, err
 			}
 
-			result = indexesIntersection(a, result, indexes)
+			result = indexesIntersection(ctx, a, result, indexes)
 		}
 
 		return result, nil
@@ -392,6 +392,7 @@ func betweenIndexLookup(index sql.Index, upper, lower []interface{}) (sql.IndexL
 // TODO(erizocosmico): add support for BETWEEN once the appropiate interfaces
 // can handle inclusiveness on both sides.
 func getComparisonIndex(
+	ctx *sql.Context,
 	a *Analyzer,
 	e expression.Comparer,
 	aliases map[string]sql.Expression,
@@ -403,17 +404,17 @@ func getComparisonIndex(
 	}
 
 	if !isEvaluable(left) && isEvaluable(right) {
-		idx := a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, left)...)
+		idx := ctx.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, left)...)
 		if idx != nil {
 			value, err := right.Eval(sql.NewEmptyContext(), nil)
 			if err != nil {
-				a.Catalog.ReleaseIndex(idx)
+				ctx.ReleaseIndex(idx)
 				return nil, nil, err
 			}
 
 			lookup, err := comparisonIndexLookup(e, idx, value)
 			if err != nil || lookup == nil {
-				a.Catalog.ReleaseIndex(idx)
+				ctx.ReleaseIndex(idx)
 				return nil, nil, err
 			}
 
@@ -465,10 +466,10 @@ func comparisonIndexLookup(
 	return nil, nil
 }
 
-func getNegatedIndexes(a *Analyzer, not *expression.Not, aliases map[string]sql.Expression) (map[string]*indexLookup, error) {
+func getNegatedIndexes(ctx *sql.Context, a *Analyzer, not *expression.Not, aliases map[string]sql.Expression) (map[string]*indexLookup, error) {
 	switch e := not.Child.(type) {
 	case *expression.Not:
-		return getIndexes(e.Child, aliases, a)
+		return getIndexes(ctx, e.Child, aliases, a)
 	case *expression.Equals:
 		left, right := e.Left(), e.Right()
 		// if the form is SOMETHING OP {INDEXABLE EXPR}, swap it, so it's {INDEXABLE EXPR} OP SOMETHING
@@ -480,7 +481,7 @@ func getNegatedIndexes(a *Analyzer, not *expression.Not, aliases map[string]sql.
 			return nil, nil
 		}
 
-		idx := a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, left)...)
+		idx := ctx.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, left)...)
 		if idx == nil {
 			return nil, nil
 		}
@@ -492,13 +493,13 @@ func getNegatedIndexes(a *Analyzer, not *expression.Not, aliases map[string]sql.
 
 		value, err := right.Eval(sql.NewEmptyContext(), nil)
 		if err != nil {
-			a.Catalog.ReleaseIndex(idx)
+			ctx.ReleaseIndex(idx)
 			return nil, err
 		}
 
 		lookup, err := index.Not(value)
 		if err != nil || lookup == nil {
-			a.Catalog.ReleaseIndex(idx)
+			ctx.ReleaseIndex(idx)
 			return nil, err
 		}
 
@@ -512,43 +513,44 @@ func getNegatedIndexes(a *Analyzer, not *expression.Not, aliases map[string]sql.
 		return result, nil
 	case *expression.GreaterThan:
 		lte := expression.NewLessThanOrEqual(e.Left(), e.Right())
-		return getIndexes(lte, aliases, a)
+		return getIndexes(ctx, lte, aliases, a)
 	case *expression.GreaterThanOrEqual:
 		lt := expression.NewLessThan(e.Left(), e.Right())
-		return getIndexes(lt, aliases, a)
+		return getIndexes(ctx, lt, aliases, a)
 	case *expression.LessThan:
 		gte := expression.NewGreaterThanOrEqual(e.Left(), e.Right())
-		return getIndexes(gte, aliases, a)
+		return getIndexes(ctx, gte, aliases, a)
 	case *expression.LessThanOrEqual:
 		gt := expression.NewGreaterThan(e.Left(), e.Right())
-		return getIndexes(gt, aliases, a)
+		return getIndexes(ctx, gt, aliases, a)
 	case *expression.Between:
 		or := expression.NewOr(
 			expression.NewLessThan(e.Val, e.Lower),
 			expression.NewGreaterThan(e.Val, e.Upper),
 		)
 
-		return getIndexes(or, aliases, a)
+		return getIndexes(ctx, or, aliases, a)
 	case *expression.Or:
 		and := expression.NewAnd(
 			expression.NewNot(e.Left),
 			expression.NewNot(e.Right),
 		)
 
-		return getIndexes(and, aliases, a)
+		return getIndexes(ctx, and, aliases, a)
 	case *expression.And:
 		or := expression.NewOr(
 			expression.NewNot(e.Left),
 			expression.NewNot(e.Right),
 		)
 
-		return getIndexes(or, aliases, a)
+		return getIndexes(ctx, or, aliases, a)
 	default:
 		return nil, nil
 	}
 }
 
 func indexesIntersection(
+	ctx *sql.Context,
 	a *Analyzer,
 	left, right map[string]*indexLookup,
 ) map[string]*indexLookup {
@@ -561,7 +563,7 @@ func indexesIntersection(
 			idx.indexes = append(idx.indexes, idx2.indexes...)
 		} else if ok {
 			for _, idx := range idx2.indexes {
-				a.Catalog.ReleaseIndex(idx)
+				ctx.ReleaseIndex(idx)
 			}
 		}
 
@@ -580,6 +582,7 @@ func indexesIntersection(
 }
 
 func getMultiColumnIndexes(
+	ctx *sql.Context,
 	exprs []sql.Expression,
 	a *Analyzer,
 	used map[sql.Expression]struct{},
@@ -595,7 +598,7 @@ func getMultiColumnIndexes(
 				cols[i] = e.col
 			}
 
-			exprList := a.Catalog.ExpressionsWithIndexes(a.Catalog.CurrentDatabase(), cols...)
+			exprList := ctx.ExpressionsWithIndexes(a.Catalog.CurrentDatabase(), cols...)
 
 			var selected []sql.Expression
 			for _, l := range exprList {
@@ -605,10 +608,10 @@ func getMultiColumnIndexes(
 			}
 
 			if len(selected) > 0 {
-				index, lookup, err := getMultiColumnIndexForExpressions(a, selected, exps, used, aliases)
+				index, lookup, err := getMultiColumnIndexForExpressions(ctx, a, selected, exps, used, aliases)
 				if err != nil || lookup == nil {
 					if index != nil {
-						a.Catalog.ReleaseIndex(index)
+						ctx.ReleaseIndex(index)
 					}
 
 					if err != nil {
@@ -618,7 +621,7 @@ func getMultiColumnIndexes(
 
 				if lookup != nil {
 					if _, ok := result[table]; ok {
-						result = indexesIntersection(a, result, map[string]*indexLookup{
+						result = indexesIntersection(ctx, a, result, map[string]*indexLookup{
 							table: &indexLookup{lookup, []sql.Index{index}},
 						})
 					} else {
@@ -633,13 +636,14 @@ func getMultiColumnIndexes(
 }
 
 func getMultiColumnIndexForExpressions(
+	ctx *sql.Context,
 	a *Analyzer,
 	selected []sql.Expression,
 	exprs []columnExpr,
 	used map[sql.Expression]struct{},
 	aliases map[string]sql.Expression,
 ) (index sql.Index, lookup sql.IndexLookup, err error) {
-	index = a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, selected...)...)
+	index = ctx.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, selected...)...)
 	if index != nil {
 		var first sql.Expression
 		for _, e := range exprs {

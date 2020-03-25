@@ -192,7 +192,7 @@ func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]s
 		}
 
 		for _, idx := range indexes {
-			a.Catalog.ReleaseIndex(idx)
+			ctx.ReleaseIndex(idx)
 		}
 	}()
 
@@ -225,7 +225,7 @@ func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]s
 			fn(cond)
 
 			var err error
-			indexes, err = getJoinIndexes(cond, aliases, a)
+			indexes, err = getJoinIndexes(ctx, cond, aliases, a)
 			if err != nil {
 				return false
 			}
@@ -239,6 +239,7 @@ func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]s
 
 // Returns the left and right indexes for the two sides of the equality expression given.
 func getJoinEqualityIndex(
+		ctx *sql.Context,
 		a *Analyzer,
 		e *expression.Equals,
 		aliases map[string]sql.Expression,
@@ -251,18 +252,18 @@ func getJoinEqualityIndex(
 	}
 
 	leftIdx, rightIdx =
-			a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Left())...),
-			a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Right())...)
+			ctx.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Left())...),
+			ctx.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Right())...)
 
 	return leftIdx, rightIdx
 }
 
-func getJoinIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Analyzer) (map[string]sql.Index, error) {
+func getJoinIndexes(ctx *sql.Context, e sql.Expression, aliases map[string]sql.Expression, a *Analyzer) (map[string]sql.Index, error) {
 
 	switch e := e.(type) {
 	case *expression.Equals:
 		result := make(map[string]sql.Index)
-		leftIdx, rightIdx := getJoinEqualityIndex(a, e, aliases)
+		leftIdx, rightIdx := getJoinEqualityIndex(ctx, a, e, aliases)
 		if leftIdx != nil {
 			result[leftIdx.Table()] = leftIdx
 		}
@@ -278,18 +279,18 @@ func getJoinIndexes(e sql.Expression, aliases map[string]sql.Expression, a *Anal
 			}
 		}
 
-		return getMultiColumnJoinIndex(exprs, a, aliases), nil
+		return getMultiColumnJoinIndex(ctx, exprs, a, aliases), nil
 	}
 
 	return nil, nil
 }
 
-func getMultiColumnJoinIndex(exprs []sql.Expression, a *Analyzer, aliases map[string]sql.Expression, ) map[string]sql.Index {
+func getMultiColumnJoinIndex(ctx *sql.Context, exprs []sql.Expression, a *Analyzer, aliases map[string]sql.Expression, ) map[string]sql.Index {
 	result := make(map[string]sql.Index)
 
 	exprsByTable := joinExprsByTable(exprs)
 	for table, cols := range exprsByTable {
-		idx := a.Catalog.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, extractExpressions(cols)...)...)
+		idx := ctx.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, extractExpressions(cols)...)...)
 		if idx != nil {
 			result[table] = idx
 		}

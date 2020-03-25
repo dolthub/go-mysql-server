@@ -110,9 +110,9 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 
 	var driver sql.IndexDriver
 	if c.Driver == "" {
-		driver = c.Catalog.DefaultIndexDriver()
+		driver = ctx.DefaultIndexDriver()
 	} else {
-		driver = c.Catalog.IndexDriver(c.Driver)
+		driver = ctx.IndexDriver(c.Driver)
 	}
 
 	if driver == nil {
@@ -160,7 +160,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		iter:    iter,
 	}
 
-	created, ready, err := c.Catalog.AddIndex(index)
+	created, ready, err := ctx.AddIndex(index)
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +222,7 @@ func (c *CreateIndex) createIndex(
 		ctx.Error(0, "unable to save the index: %s", err)
 		logrus.WithField("err", err).Error("unable to save the index")
 
-		deleted, err := c.Catalog.DeleteIndex(index.Database(), index.ID(), true)
+		deleted, err := ctx.DeleteIndex(index.Database(), index.ID(), true)
 		if err != nil {
 			ctx.Error(0, "unable to delete index: %s", err)
 			logrus.WithField("err", err).Error("unable to delete the index")

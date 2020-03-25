@@ -131,8 +131,8 @@ func TestHandlerKill(t *testing.T) {
 	handler := NewHandler(
 		e,
 		NewSessionManager(
-			func(conn *mysql.Conn, addr string) sql.Session {
-				return sql.NewSession(addr, "", "", conn.ConnectionID)
+			func(conn *mysql.Conn, addr string) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry) {
+				return sql.NewSession(addr, "", "", conn.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry()
 			},
 			opentracing.NoopTracer{},
 			sql.NewMemoryManager(nil),

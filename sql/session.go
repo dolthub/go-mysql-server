@@ -211,6 +211,8 @@ func NewBaseSession() Session {
 type Context struct {
 	context.Context
 	Session
+	*IndexRegistry
+	*ViewRegistry
 	Memory   *MemoryManager
 	pid      uint64
 	query    string
@@ -225,6 +227,18 @@ type ContextOption func(*Context)
 func WithSession(s Session) ContextOption {
 	return func(ctx *Context) {
 		ctx.Session = s
+	}
+}
+
+func WithIndexRegistry(ir *IndexRegistry) ContextOption {
+	return func(ctx *Context) {
+		ctx.IndexRegistry = ir
+	}
+}
+
+func WithViewRegistry(vr *ViewRegistry) ContextOption {
+	return func(ctx *Context) {
+		ctx.ViewRegistry = vr
 	}
 }
 
@@ -272,7 +286,7 @@ func NewContext(
 	ctx context.Context,
 	opts ...ContextOption,
 ) *Context {
-	c := &Context{ctx, NewBaseSession(), nil, 0, "", opentracing.NoopTracer{}, nil}
+	c := &Context{ctx, NewBaseSession(), nil, nil, nil, 0, "", opentracing.NoopTracer{}, nil}
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -306,12 +320,12 @@ func (c *Context) Span(
 	span := c.tracer.StartSpan(opName, opts...)
 	ctx := opentracing.ContextWithSpan(c.Context, span)
 
-	return span, &Context{ctx, c.Session, c.Memory, c.Pid(), c.Query(), c.tracer, c.rootSpan}
+	return span, &Context{ctx, c.Session, c.IndexRegistry, c.ViewRegistry, c.Memory, c.Pid(), c.Query(), c.tracer, c.rootSpan}
 }
 
 // WithContext returns a new context with the given underlying context.
 func (c *Context) WithContext(ctx context.Context) *Context {
-	return &Context{ctx, c.Session, c.Memory, c.Pid(), c.Query(), c.tracer, c.rootSpan}
+	return &Context{ctx, c.Session, c.IndexRegistry, c.ViewRegistry, c.Memory, c.Pid(), c.Query(), c.tracer, c.rootSpan}
 }
 
 // RootSpan returns the root span, if any.
