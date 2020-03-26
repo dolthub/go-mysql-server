@@ -152,7 +152,7 @@ func getIndexes(ctx *sql.Context, e sql.Expression, aliases map[string]sql.Expre
 		// the right branch is evaluable and the indexlookup supports set
 		// operations.
 		if !isEvaluable(c.Left()) && isEvaluable(c.Right()) {
-			idx := ctx.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, c.Left())...)
+			idx := ctx.IndexByExpression(ctx, a.Catalog.CurrentDatabase(), unifyExpressions(aliases, c.Left())...)
 			if idx != nil {
 				var nidx sql.NegateIndex
 				if negate {
@@ -247,7 +247,7 @@ func getIndexes(ctx *sql.Context, e sql.Expression, aliases map[string]sql.Expre
 		}
 	case *expression.Between:
 		if !isEvaluable(e.Val) && isEvaluable(e.Upper) && isEvaluable(e.Lower) {
-			idx := ctx.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Val)...)
+			idx := ctx.IndexByExpression(ctx, a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Val)...)
 			if idx != nil {
 				// release the index if it was not used
 				defer func() {
@@ -404,7 +404,7 @@ func getComparisonIndex(
 	}
 
 	if !isEvaluable(left) && isEvaluable(right) {
-		idx := ctx.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, left)...)
+		idx := ctx.IndexByExpression(ctx, a.Catalog.CurrentDatabase(), unifyExpressions(aliases, left)...)
 		if idx != nil {
 			value, err := right.Eval(sql.NewEmptyContext(), nil)
 			if err != nil {
@@ -481,7 +481,7 @@ func getNegatedIndexes(ctx *sql.Context, a *Analyzer, not *expression.Not, alias
 			return nil, nil
 		}
 
-		idx := ctx.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, left)...)
+		idx := ctx.IndexByExpression(ctx, a.Catalog.CurrentDatabase(), unifyExpressions(aliases, left)...)
 		if idx == nil {
 			return nil, nil
 		}
@@ -643,7 +643,7 @@ func getMultiColumnIndexForExpressions(
 	used map[sql.Expression]struct{},
 	aliases map[string]sql.Expression,
 ) (index sql.Index, lookup sql.IndexLookup, err error) {
-	index = ctx.IndexByExpression(a.Catalog.CurrentDatabase(), unifyExpressions(aliases, selected...)...)
+	index = ctx.IndexByExpression(ctx, a.Catalog.CurrentDatabase(), unifyExpressions(aliases, selected...)...)
 	if index != nil {
 		var first sql.Expression
 		for _, e := range exprs {

@@ -389,7 +389,7 @@ func (d *mockDriver) Create(db, table, id string, exprs []sql.Expression, config
 
 	return &mockIndex{db, table, id, exprs}, nil
 }
-func (*mockDriver) LoadAll(db, table string) ([]sql.Index, error) {
+func (*mockDriver) LoadAll(ctx *sql.Context, db, table string) ([]sql.Index, error) {
 	panic("not implemented")
 }
 

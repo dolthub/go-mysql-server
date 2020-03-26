@@ -10,16 +10,16 @@ import (
 )
 
 // SessionBuilder creates sessions given a MySQL connection and a server address.
-type SessionBuilder func(conn *mysql.Conn, addr string) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry)
+type SessionBuilder func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry, error)
 
 // DoneFunc is a function that must be executed when the session is used and
 // it can be disposed.
 type DoneFunc func()
 
 // DefaultSessionBuilder is a SessionBuilder that returns a base session.
-func DefaultSessionBuilder(c *mysql.Conn, addr string) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry) {
+func DefaultSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry, error) {
 	client := c.RemoteAddr().String()
-	return sql.NewSession(addr, client, c.User, c.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry()
+	return sql.NewSession(addr, client, c.User, c.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry(), nil
 }
 
 // SessionManager is in charge of creating new sessions for the given
@@ -65,10 +65,14 @@ func (s *SessionManager) nextPid() uint64 {
 
 // NewSession creates a Session for the given connection and saves it to
 // session pool.
-func (s *SessionManager) NewSession(conn *mysql.Conn) {
+func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error {
+	var err error
+
 	s.mu.Lock()
-	s.sessions[conn.ConnectionID], s.idxRegs[conn.ConnectionID], s.viewRegs[conn.ConnectionID] = s.builder(conn, s.addr)
+	s.sessions[conn.ConnectionID], s.idxRegs[conn.ConnectionID], s.viewRegs[conn.ConnectionID], err = s.builder(ctx, conn, s.addr)
 	s.mu.Unlock()
+
+	return err
 }
 
 func (s *SessionManager) session(conn *mysql.Conn) sql.Session {
@@ -78,21 +82,24 @@ func (s *SessionManager) session(conn *mysql.Conn) sql.Session {
 }
 
 // NewContext creates a new context for the session at the given conn.
-func (s *SessionManager) NewContext(conn *mysql.Conn) *sql.Context {
+func (s *SessionManager) NewContext(conn *mysql.Conn) (*sql.Context, error) {
 	return s.NewContextWithQuery(conn, "")
 }
 
 // NewContextWithQuery creates a new context for the session at the given conn.
-func (s *SessionManager) NewContextWithQuery(
-	conn *mysql.Conn,
-	query string,
-) *sql.Context {
+func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string, ) (*sql.Context, error) {
+	ctx := context.Background()
 	s.mu.Lock()
 	sess, ok := s.sessions[conn.ConnectionID]
 	ir := s.idxRegs[conn.ConnectionID]
 	vr := s.viewRegs[conn.ConnectionID]
 	if !ok {
-		sess, ir, vr = s.builder(conn, s.addr)
+		var err error
+		sess, ir, vr, err = s.builder(ctx, conn, s.addr)
+
+		if err != nil {
+			return  nil, err
+		}
 
 		s.sessions[conn.ConnectionID] = sess
 		s.idxRegs[conn.ConnectionID] = ir
@@ -101,7 +108,7 @@ func (s *SessionManager) NewContextWithQuery(
 	s.mu.Unlock()
 
 	context := sql.NewContext(
-		context.Background(),
+		ctx,
 		sql.WithSession(sess),
 		sql.WithTracer(s.tracer),
 		sql.WithPid(s.nextPid()),
@@ -112,7 +119,7 @@ func (s *SessionManager) NewContextWithQuery(
 		sql.WithViewRegistry(vr),
 	)
 
-	return context
+	return context, nil
 }
 
 // CloseConn closes the connection in the session manager and all its

@@ -146,7 +146,7 @@ type IndexDriver interface {
 	// be an expression or a column.
 	Create(db, table, id string, expressions []Expression, config map[string]string) (Index, error)
 	// LoadAll loads all indexes for given db and table.
-	LoadAll(db, table string) ([]Index, error)
+	LoadAll(ctx *Context, db, table string) ([]Index, error)
 	// Save the given index for all partitions.
 	Save(*Context, Index, PartitionIndexKeyValueIter) error
 	// Delete the given index for all partitions in the iterator.
@@ -223,13 +223,12 @@ func (r *IndexRegistry) RegisterIndexDriver(driver IndexDriver) {
 
 // LoadIndexes creates load functions for all indexes for all dbs, tables and drivers.  These functions are called
 // as needed by the query
-func (r *IndexRegistry) LoadIndexes(dbs Databases) error {
+func (r *IndexRegistry) LoadIndexes(ctx *Context, dbs Databases) error {
 	r.driversMut.RLock()
 	defer r.driversMut.RUnlock()
 	r.mut.Lock()
 	defer r.mut.Unlock()
 
-	ctx := NewEmptyContext()
 	for drIdx := range r.drivers {
 		driver := r.drivers[drIdx]
 		for dbIdx := range dbs {
@@ -252,7 +251,7 @@ func (r *IndexRegistry) LoadIndexes(dbs Databases) error {
 						panic("Failed to find table in list of table names")
 					}
 
-					indexes, err := driver.LoadAll(db.Name(), t.Name())
+					indexes, err := driver.LoadAll(ctx, db.Name(), t.Name())
 					if err != nil {
 						return err
 					}
@@ -418,11 +417,10 @@ type exprWithTable interface {
 // IndexByExpression returns an index by the given expression. It will return
 // nil it the index is not found. If more than one expression is given, all
 // of them must match for the index to be matched.
-func (r *IndexRegistry) IndexByExpression(db string, expr ...Expression) Index {
+func (r *IndexRegistry) IndexByExpression(ctx *Context, db string, expr ...Expression) Index {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
 
-	ctx := NewEmptyContext()
 	expressions := make([]string, len(expr))
 	for i, e := range expr {
 		expressions[i] = e.String()

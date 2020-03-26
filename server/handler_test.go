@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"testing"
@@ -131,8 +132,8 @@ func TestHandlerKill(t *testing.T) {
 	handler := NewHandler(
 		e,
 		NewSessionManager(
-			func(conn *mysql.Conn, addr string) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry) {
-				return sql.NewSession(addr, "", "", conn.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry()
+			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry, error) {
+				return sql.NewSession(addr, "", "", conn.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry(), nil
 			},
 			opentracing.NoopTracer{},
 			sql.NewMemoryManager(nil),
@@ -167,7 +168,8 @@ func TestHandlerKill(t *testing.T) {
 	require.Equal(conntainer2, handler.c[2])
 	assertNoConnProcesses(t, e, conn2.ConnectionID)
 
-	ctx1 := handler.sm.NewContextWithQuery(conn1, "SELECT 1")
+	ctx1, err := handler.sm.NewContextWithQuery(conn1, "SELECT 1")
+	require.NoError(err)
 	ctx1, err = handler.e.Catalog.AddProcess(ctx1, sql.QueryProcess, "SELECT 1")
 	require.NoError(err)
 

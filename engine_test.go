@@ -4802,7 +4802,7 @@ func newEngineWithParallelism(t *testing.T, parallelism int, tables map[string]*
 	}
 
 	engine := sqle.New(catalog, a, new(sqle.Config))
-	require.NoError(t, idxReg.LoadIndexes(engine.Catalog.AllDatabases()))
+	require.NoError(t, idxReg.LoadIndexes(sql.NewEmptyContext(), engine.Catalog.AllDatabases()))
 
 	return engine, idxReg
 }

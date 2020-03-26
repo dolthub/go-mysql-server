@@ -89,16 +89,17 @@ func TestIndexByExpression(t *testing.T) {
 	}
 	r.statuses[indexKey{"foo", ""}] = IndexReady
 
-	idx := r.IndexByExpression("bar", dummyExpr{1, "2"})
+	ctx := NewEmptyContext()
+	idx := r.IndexByExpression(ctx, "bar", dummyExpr{1, "2"})
 	require.Nil(idx)
 
-	idx = r.IndexByExpression("foo", dummyExpr{1, "2"})
+	idx = r.IndexByExpression(ctx, "foo", dummyExpr{1, "2"})
 	require.NotNil(idx)
 
-	idx = r.IndexByExpression("foo", dummyExpr{2, "3"})
+	idx = r.IndexByExpression(ctx, "foo", dummyExpr{2, "3"})
 	require.Nil(idx)
 
-	idx = r.IndexByExpression("foo", dummyExpr{3, "4"})
+	idx = r.IndexByExpression(ctx, "foo", dummyExpr{3, "4"})
 	require.Nil(idx)
 }
 
@@ -285,7 +286,7 @@ func TestLoadIndexes(t *testing.T) {
 		},
 	}
 
-	require.NoError(registry.LoadIndexes(dbs))
+	require.NoError(registry.LoadIndexes(ctx, dbs))
 	require.NoError(registry.registerIndexesForTable(ctx, "db1", "t1"))
 	require.NoError(registry.registerIndexesForTable(ctx, "db1", "t2"))
 	require.NoError(registry.registerIndexesForTable(ctx, "db2", "t3"))
@@ -326,7 +327,7 @@ func TestLoadOutdatedIndexes(t *testing.T) {
 		},
 	}
 
-	require.NoError(registry.LoadIndexes(dbs))
+	require.NoError(registry.LoadIndexes(ctx, dbs))
 	require.NoError(registry.registerIndexesForTable(ctx, "db1", "t1"))
 	require.NoError(registry.registerIndexesForTable(ctx, "db1", "t2"))
 
@@ -380,7 +381,7 @@ func (d loadDriver) ID() string { return d.id }
 func (loadDriver) Create(db, table, id string, expressions []Expression, config map[string]string) (Index, error) {
 	panic("create is a placeholder")
 }
-func (d loadDriver) LoadAll(db, table string) ([]Index, error) {
+func (d loadDriver) LoadAll(ctx *Context, db, table string) ([]Index, error) {
 	var result []Index
 	for _, i := range d.indexes {
 		if i.Table() == table && i.Database() == db {
