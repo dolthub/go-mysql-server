@@ -42,8 +42,6 @@ type (
 func NewCatalog() *Catalog {
 	return &Catalog{
 		FunctionRegistry: NewFunctionRegistry(),
-		//IndexRegistry:    NewIndexRegistry(),
-		//ViewRegistry:     NewViewRegistry(),
 		MemoryManager:    NewMemoryManager(ProcessMemory),
 		ProcessList:      NewProcessList(),
 		locks:            make(sessionLocks),
