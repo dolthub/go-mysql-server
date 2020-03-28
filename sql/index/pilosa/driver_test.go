@@ -72,7 +72,7 @@ func TestLoadAll(t *testing.T) {
 	}
 	require.NoError(d.Save(sql.NewEmptyContext(), idx2, it2))
 
-	indexes, err := d.LoadAll("db", "table")
+	indexes, err := d.LoadAll(sql.NewContext(context.Background()), "db", "table")
 	require.NoError(err)
 
 	require.Equal(2, len(indexes))
@@ -97,7 +97,7 @@ func TestLoadAll(t *testing.T) {
 	}
 	require.NoError(d.Save(sql.NewEmptyContext(), idx3, it3))
 
-	_, err = d.LoadAll("db", "table2")
+	_, err = d.LoadAll(sql.NewContext(context.Background()), "db", "table2")
 	require.NoError(err)
 }
 
@@ -131,7 +131,7 @@ func TestLoadAllWithMultipleDrivers(t *testing.T) {
 	require.NoError(d2.Save(sql.NewEmptyContext(), idx2, it2))
 
 	d := NewDriver(tmpDir)
-	indexes, err := d.LoadAll("db", "table")
+	indexes, err := d.LoadAll(sql.NewContext(context.Background()), "db", "table")
 	require.NoError(err)
 
 	require.Equal(2, len(indexes))
@@ -157,7 +157,7 @@ func TestLoadAllWithMultipleDrivers(t *testing.T) {
 	}
 	require.NoError(d3.Save(sql.NewEmptyContext(), idx3, it3))
 
-	_, err = d.LoadAll("db", "table2")
+	_, err = d.LoadAll(sql.NewContext(context.Background()), "db", "table2")
 	require.NoError(err)
 }
 
@@ -186,7 +186,7 @@ func TestSaveAndLoad(t *testing.T) {
 	err = d.Save(ctx, sqlIdx, it)
 	require.NoError(err)
 
-	indexes, err := d.LoadAll(db, table)
+	indexes, err := d.LoadAll(sql.NewContext(context.Background()), db, table)
 	require.NoError(err)
 	require.Equal(1, len(indexes))
 
@@ -266,7 +266,7 @@ func TestSaveAndGetAll(t *testing.T) {
 	err = d.Save(sql.NewEmptyContext(), sqlIdx, it)
 	require.NoError(err)
 
-	indexes, err := d.LoadAll(db, table)
+	indexes, err := d.LoadAll(sql.NewContext(context.Background()), db, table)
 	require.NoError(err)
 	require.Equal(1, len(indexes))
 
@@ -299,7 +299,7 @@ func TestSaveAndGetAllWithMultipleDrivers(t *testing.T) {
 	require.NoError(err)
 
 	d2 := NewDriver(tmpDir)
-	indexes, err := d2.LoadAll(db, table)
+	indexes, err := d2.LoadAll(sql.NewContext(context.Background()), db, table)
 	require.NoError(err)
 	require.Equal(1, len(indexes))
 
@@ -395,7 +395,7 @@ func TestDeleteAndLoadAll(t *testing.T) {
 	err = d.Delete(sqlIdx, new(partitionIter))
 	require.NoError(err)
 
-	indexes, err := d.LoadAll(db, table)
+	indexes, err := d.LoadAll(sql.NewContext(context.Background()), db, table)
 	require.NoError(err)
 	require.Equal(0, len(indexes))
 }
@@ -441,7 +441,7 @@ func TestLoadAllDirectoryDoesNotExist(t *testing.T) {
 	defer cleanup(t)
 
 	driver := NewDriver(tmpDir)
-	indexes, err := driver.LoadAll("foo", "bar")
+	indexes, err := driver.LoadAll(sql.NewContext(context.Background()), "foo", "bar")
 	require.NoError(err)
 	require.Len(indexes, 0)
 }

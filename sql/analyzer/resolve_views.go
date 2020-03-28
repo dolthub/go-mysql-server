@@ -28,7 +28,7 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 			db = a.Catalog.CurrentDatabase()
 		}
 
-		view, err := ctx.ViewRegistry.View(db, name)
+		view, err := ctx.View(db, name)
 		if err == nil {
 			a.Log("view resolved: %q", name)
 

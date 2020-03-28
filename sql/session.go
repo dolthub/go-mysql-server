@@ -207,6 +207,9 @@ func NewBaseSession() Session {
 	return &BaseSession{config: DefaultSessionConfig()}
 }
 
+var defIdxReg = NewIndexRegistry()
+var defViewReg = NewViewRegistry()
+
 // Context of the query execution.
 type Context struct {
 	context.Context
@@ -289,6 +292,14 @@ func NewContext(
 	c := &Context{ctx, NewBaseSession(), nil, nil, nil, 0, "", opentracing.NoopTracer{}, nil}
 	for _, opt := range opts {
 		opt(c)
+	}
+
+	if c.IndexRegistry == nil {
+		c.IndexRegistry = defIdxReg
+	}
+
+	if c.ViewRegistry == nil {
+		c.ViewRegistry = defViewReg
 	}
 
 	if c.Memory == nil {
