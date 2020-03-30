@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -21,7 +22,8 @@ func TestDeleteIndex(t *testing.T) {
 
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
-	catalog.RegisterIndexDriver(driver)
+	idxReg := sql.NewIndexRegistry()
+	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog.AddDatabase(db)
@@ -31,26 +33,27 @@ func TestDeleteIndex(t *testing.T) {
 		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
 	}
 
-	done, ready, err := catalog.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: expressions})
+	done, ready, err := idxReg.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: expressions})
 	require.NoError(err)
 	close(done)
 	<-ready
 
-	idx := catalog.Index("foo", "idx")
+	idx := idxReg.Index("foo", "idx")
 	require.NotNil(idx)
-	catalog.ReleaseIndex(idx)
+	idxReg.ReleaseIndex(idx)
 
 	di := NewDropIndex("idx", NewResolvedTable(table))
 	di.Catalog = catalog
 	di.CurrentDatabase = "foo"
 
-	_, err = di.RowIter(sql.NewEmptyContext())
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	_, err = di.RowIter(ctx)
 	require.NoError(err)
 
 	time.Sleep(50 * time.Millisecond)
 
 	require.Equal([]string{"idx"}, driver.deleted)
-	require.Nil(catalog.Index("foo", "idx"))
+	require.Nil(idxReg.Index("foo", "idx"))
 }
 
 func TestDeleteIndexNotReady(t *testing.T) {
@@ -64,7 +67,8 @@ func TestDeleteIndexNotReady(t *testing.T) {
 
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
-	catalog.RegisterIndexDriver(driver)
+	idxReg := sql.NewIndexRegistry()
+	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog.AddDatabase(db)
@@ -74,25 +78,26 @@ func TestDeleteIndexNotReady(t *testing.T) {
 		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
 	}
 
-	done, ready, err := catalog.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: expressions})
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	done, ready, err := idxReg.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: expressions})
 	require.NoError(err)
 
-	idx := catalog.Index("foo", "idx")
+	idx := idxReg.Index("foo", "idx")
 	require.NotNil(idx)
-	catalog.ReleaseIndex(idx)
+	idxReg.ReleaseIndex(idx)
 
 	di := NewDropIndex("idx", NewResolvedTable(table))
 	di.Catalog = catalog
 	di.CurrentDatabase = "foo"
 
-	_, err = di.RowIter(sql.NewEmptyContext())
+	_, err = di.RowIter(ctx)
 	require.Error(err)
 	require.True(ErrIndexNotAvailable.Is(err))
 
 	time.Sleep(50 * time.Millisecond)
 
 	require.Equal(([]string)(nil), driver.deleted)
-	require.NotNil(catalog.Index("foo", "idx"))
+	require.NotNil(idxReg.Index("foo", "idx"))
 
 	close(done)
 	<-ready
@@ -109,7 +114,8 @@ func TestDeleteIndexOutdated(t *testing.T) {
 
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
-	catalog.RegisterIndexDriver(driver)
+	idxReg := sql.NewIndexRegistry()
+	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog.AddDatabase(db)
@@ -119,25 +125,26 @@ func TestDeleteIndexOutdated(t *testing.T) {
 		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
 	}
 
-	done, ready, err := catalog.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: expressions})
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	done, ready, err := idxReg.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: expressions})
 	require.NoError(err)
 	close(done)
 	<-ready
 
-	idx := catalog.Index("foo", "idx")
+	idx := idxReg.Index("foo", "idx")
 	require.NotNil(idx)
-	catalog.ReleaseIndex(idx)
-	catalog.MarkOutdated(idx)
+	idxReg.ReleaseIndex(idx)
+	idxReg.MarkOutdated(idx)
 
 	di := NewDropIndex("idx", NewResolvedTable(table))
 	di.Catalog = catalog
 	di.CurrentDatabase = "foo"
 
-	_, err = di.RowIter(sql.NewEmptyContext())
+	_, err = di.RowIter(ctx)
 	require.NoError(err)
 
 	time.Sleep(50 * time.Millisecond)
 
 	require.Equal([]string{"idx"}, driver.deleted)
-	require.Nil(catalog.Index("foo", "idx"))
+	require.Nil(idxReg.Index("foo", "idx"))
 }

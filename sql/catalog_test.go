@@ -106,7 +106,8 @@ func TestCatalogUnlockTables(t *testing.T) {
 	c.LockTable(1, "t1")
 	c.LockTable(1, "t2")
 
-	require.NoError(c.UnlockTables(nil, 1))
+	ctx := sql.NewEmptyContext()
+	require.NoError(c.UnlockTables(ctx, 1))
 
 	require.Equal(1, t1.unlocks)
 	require.Equal(1, t2.unlocks)

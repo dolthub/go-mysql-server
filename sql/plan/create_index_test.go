@@ -24,9 +24,10 @@ func TestCreateIndexAsync(t *testing.T) {
 		{Name: "c", Source: "foo"},
 	})
 
+	idxReg := sql.NewIndexRegistry()
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
-	catalog.RegisterIndexDriver(driver)
+	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog.AddDatabase(db)
@@ -43,7 +44,7 @@ func TestCreateIndexAsync(t *testing.T) {
 	ci.CurrentDatabase = "foo"
 
 	tracer := new(test.MemTracer)
-	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer))
+	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry()))
 	_, err := ci.RowIter(ctx)
 	require.NoError(err)
 
@@ -51,7 +52,7 @@ func TestCreateIndexAsync(t *testing.T) {
 
 	require.Len(driver.deleted, 0)
 	require.Equal([]string{"idx"}, driver.saved)
-	idx := catalog.IndexRegistry.Index("foo", "idx")
+	idx := idxReg.Index("foo", "idx")
 	require.NotNil(idx)
 	require.Equal(&mockIndex{"foo", "foo", "idx", []sql.Expression{
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
@@ -80,7 +81,8 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
-	catalog.RegisterIndexDriver(driver)
+	idxReg := sql.NewIndexRegistry()
+	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog.AddDatabase(db)
@@ -97,7 +99,8 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	_, err := ci.RowIter(sql.NewEmptyContext())
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry()))
+	_, err := ci.RowIter(ctx)
 	require.Error(err)
 	require.True(ErrExprTypeNotIndexable.Is(err))
 
@@ -113,7 +116,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	_, err = ci.RowIter(sql.NewEmptyContext())
+	_, err = ci.RowIter(ctx)
 	require.Error(err)
 	require.True(ErrExprTypeNotIndexable.Is(err))
 }
@@ -129,7 +132,8 @@ func TestCreateIndexSync(t *testing.T) {
 
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
-	catalog.RegisterIndexDriver(driver)
+	idxReg := sql.NewIndexRegistry()
+	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog.AddDatabase(db)
@@ -147,13 +151,13 @@ func TestCreateIndexSync(t *testing.T) {
 	ci.CurrentDatabase = "foo"
 
 	tracer := new(test.MemTracer)
-	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer))
+	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer), sql.WithIndexRegistry(idxReg))
 	_, err := ci.RowIter(ctx)
 	require.NoError(err)
 
 	require.Len(driver.deleted, 0)
 	require.Equal([]string{"idx"}, driver.saved)
-	idx := catalog.IndexRegistry.Index("foo", "idx")
+	idx := idxReg.Index("foo", "idx")
 	require.NotNil(idx)
 	require.Equal(&mockIndex{"foo", "foo", "idx", []sql.Expression{
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
@@ -185,7 +189,8 @@ func TestCreateIndexChecksum(t *testing.T) {
 
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
-	catalog.RegisterIndexDriver(driver)
+	idxReg := sql.NewIndexRegistry()
+	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog.AddDatabase(db)
@@ -202,7 +207,8 @@ func TestCreateIndexChecksum(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	_, err := ci.RowIter(sql.NewEmptyContext())
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	_, err := ci.RowIter(ctx)
 	require.NoError(err)
 
 	require.Equal([]string{"idx"}, driver.saved)
@@ -230,7 +236,8 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
-	catalog.RegisterIndexDriver(driver)
+	idxReg := sql.NewIndexRegistry()
+	idxReg.RegisterIndexDriver(driver)
 
 	exprs := []sql.Expression{
 		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
@@ -244,7 +251,8 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	_, err := ci.RowIter(sql.NewEmptyContext())
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	_, err := ci.RowIter(ctx)
 	require.NoError(err)
 
 	require.Equal([]string{"idx"}, driver.saved)
@@ -276,7 +284,8 @@ func TestCreateIndexWithIter(t *testing.T) {
 
 	driver := new(mockDriver)
 	catalog := sql.NewCatalog()
-	catalog.RegisterIndexDriver(driver)
+	idxReg := sql.NewIndexRegistry()
+	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", foo)
 	catalog.AddDatabase(db)
@@ -288,11 +297,12 @@ func TestCreateIndexWithIter(t *testing.T) {
 	columns, exprs, err := getColumnsAndPrepareExpressions(ci.Exprs)
 	require.NoError(err)
 
-	iter, err := foo.IndexKeyValues(sql.NewEmptyContext(), columns)
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	iter, err := foo.IndexKeyValues(ctx, columns)
 	require.NoError(err)
 
 	iter = &evalPartitionKeyValueIter{
-		ctx:     sql.NewEmptyContext(),
+		ctx:     ctx,
 		columns: columns,
 		exprs:   exprs,
 		iter:    iter,
@@ -379,7 +389,7 @@ func (d *mockDriver) Create(db, table, id string, exprs []sql.Expression, config
 
 	return &mockIndex{db, table, id, exprs}, nil
 }
-func (*mockDriver) LoadAll(db, table string) ([]sql.Index, error) {
+func (*mockDriver) LoadAll(ctx *sql.Context, db, table string) ([]sql.Index, error) {
 	panic("not implemented")
 }
 

@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"context"
 	"testing"
 
 	"github.com/src-d/go-mysql-server/memory"
@@ -14,13 +15,14 @@ func TestNegateIndex(t *testing.T) {
 	require := require.New(t)
 
 	catalog := sql.NewCatalog()
+	idxReg := sql.NewIndexRegistry()
 	idx1 := &memory.MergeableIndex{
 		TableName: "t1",
 		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
 		},
 	}
-	done, ready, err := catalog.AddIndex(idx1)
+	done, ready, err := idxReg.AddIndex(idx1)
 	require.NoError(err)
 	close(done)
 	<-ready
@@ -44,7 +46,8 @@ func TestNegateIndex(t *testing.T) {
 		),
 	)
 
-	result, err := assignIndexes(sql.NewEmptyContext(), a, node)
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	result, err := assignIndexes(ctx, a, node)
 	require.NoError(err)
 
 	lookupIdxs, ok := result["t1"]
@@ -59,13 +62,14 @@ func TestAssignIndexes(t *testing.T) {
 	require := require.New(t)
 
 	catalog := sql.NewCatalog()
+	idxReg := sql.NewIndexRegistry()
 	idx1 := &memory.MergeableIndex{
 		TableName: "t2",
 		Exprs: []sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int64, "t2", "bar", false),
 		},
 	}
-	done, ready, err := catalog.AddIndex(idx1)
+	done, ready, err := idxReg.AddIndex(idx1)
 	require.NoError(err)
 	close(done)
 	<-ready
@@ -76,7 +80,7 @@ func TestAssignIndexes(t *testing.T) {
 			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
 		},
 	}
-	done, ready, err = catalog.AddIndex(idx2)
+	done, ready, err = idxReg.AddIndex(idx2)
 
 	require.NoError(err)
 	close(done)
@@ -89,7 +93,7 @@ func TestAssignIndexes(t *testing.T) {
 		},
 	}
 
-	done, ready, err = catalog.AddIndex(idx3)
+	done, ready, err = idxReg.AddIndex(idx3)
 	require.NoError(err)
 	close(done)
 	<-ready
@@ -129,7 +133,8 @@ func TestAssignIndexes(t *testing.T) {
 		),
 	)
 
-	result, err := assignIndexes(sql.NewEmptyContext(), a, node)
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	result, err := assignIndexes(ctx, a, node)
 	require.NoError(err)
 
 	lookupIdxs, ok := result["t1"]
@@ -163,7 +168,7 @@ func TestAssignIndexes(t *testing.T) {
 		),
 	)
 
-	result, err = assignIndexes(sql.NewEmptyContext(), a, node)
+	result, err = assignIndexes(ctx, a, node)
 	require.NoError(err)
 
 	_, ok = result["t1"]
@@ -180,7 +185,7 @@ func TestAssignIndexes(t *testing.T) {
 		),
 	)
 
-	result, err = assignIndexes(sql.NewEmptyContext(), a, node)
+	result, err = assignIndexes(ctx, a, node)
 	require.NoError(err)
 
 	_, ok = result["t1"]
@@ -902,8 +907,9 @@ func TestGetIndexes(t *testing.T) {
 	}
 
 	catalog := sql.NewCatalog()
+	idxReg := sql.NewIndexRegistry()
 	for _, idx := range indexes {
-		done, ready, err := catalog.AddIndex(idx)
+		done, ready, err := idxReg.AddIndex(idx)
 		require.NoError(t, err)
 		close(done)
 		<-ready
@@ -916,7 +922,8 @@ func TestGetIndexes(t *testing.T) {
 		t.Run(tt.expr.String(), func(t *testing.T) {
 			require := require.New(t)
 
-			result, err := getIndexes(tt.expr, nil, a)
+			ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+			result, err := getIndexes(ctx, tt.expr, nil, a)
 			if tt.ok {
 				require.NoError(err)
 				require.Equal(tt.expected, result)
@@ -932,6 +939,7 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 	require := require.New(t)
 
 	catalog := sql.NewCatalog()
+	idxReg := sql.NewIndexRegistry()
 	indexes := []*memory.MergeableIndex{
 		{
 			TableName: "t1",
@@ -969,7 +977,7 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 	}
 
 	for _, idx := range indexes {
-		done, ready, err := catalog.AddIndex(idx)
+		done, ready, err := idxReg.AddIndex(idx)
 		require.NoError(err)
 		close(done)
 		<-ready
@@ -1014,7 +1022,9 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 			lit(6),
 		),
 	}
-	result, err := getMultiColumnIndexes(exprs, a, used, nil)
+
+	ctx :=  sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	result, err := getMultiColumnIndexes(ctx, exprs, a, used, nil)
 	require.NoError(err)
 
 	expected := map[string]*indexLookup{
@@ -1165,6 +1175,7 @@ func TestIndexesIntersection(t *testing.T) {
 		"d": &indexLookup{&memory.MergeableIndexLookup{Key: []interface{}{"d"}}, nil},
 	}
 
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()))
 	require.Equal(
 		map[string]*indexLookup{
 			"a": &indexLookup{&memory.MergeableIndexLookup{Key: []interface{}{"a"}}, nil},
@@ -1184,7 +1195,7 @@ func TestIndexesIntersection(t *testing.T) {
 			"c": &indexLookup{new(DummyIndexLookup), nil},
 			"d": &indexLookup{&memory.MergeableIndexLookup{Key: []interface{}{"d"}}, nil},
 		},
-		indexesIntersection(NewDefault(sql.NewCatalog()), left, right),
+		indexesIntersection(ctx, NewDefault(sql.NewCatalog()), left, right),
 	)
 }
 

@@ -1,6 +1,7 @@
 package sqle_test
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -11,7 +12,7 @@ import (
 
 func Example() {
 	e := sqle.NewDefault()
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
 
 	// Create a test memory database and register it to the default engine.
 	e.AddDatabase(createTestDatabase())

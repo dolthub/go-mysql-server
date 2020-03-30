@@ -22,10 +22,11 @@ import (
 
 const port = 3336
 
-func authEngine(au auth.Auth) (string, *sqle.Engine, error) {
+func authEngine(au auth.Auth) (string, *sqle.Engine, *sql.IndexRegistry, error) {
 	db := memory.NewDatabase("test")
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
+	idxReg := sql.NewIndexRegistry()
 
 	tblName := "test"
 
@@ -38,27 +39,27 @@ func authEngine(au auth.Auth) (string, *sqle.Engine, error) {
 
 	tmpDir, err := ioutil.TempDir(os.TempDir(), "pilosa-test")
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 
 	err = os.MkdirAll(tmpDir, 0644)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 
-	catalog.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
+	idxReg.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
 
 	a := analyzer.NewBuilder(catalog).Build()
 	config := &sqle.Config{Auth: au}
 
-	return tmpDir, sqle.New(catalog, a, config), nil
+	return tmpDir, sqle.New(catalog, a, config), idxReg, nil
 }
 
-func authServer(a auth.Auth) (string, *server.Server, error) {
-	tmpDir, engine, err := authEngine(a)
+func authServer(a auth.Auth) (string, *server.Server, *sql.IndexRegistry, error) {
+	tmpDir, engine, idxReg, err := authEngine(a)
 	if err != nil {
 		os.RemoveAll(tmpDir)
-		return "", nil, err
+		return "", nil, nil, err
 	}
 
 	config := server.Config{
@@ -70,12 +71,12 @@ func authServer(a auth.Auth) (string, *server.Server, error) {
 	s, err := server.NewDefaultServer(config, engine)
 	if err != nil {
 		os.RemoveAll(tmpDir)
-		return "", nil, err
+		return "", nil, nil, err
 	}
 
 	go s.Start()
 
-	return tmpDir, s, nil
+	return tmpDir, s, idxReg, nil
 }
 
 func connString(user, password string) string {
@@ -97,7 +98,7 @@ func testAuthentication(
 	t.Helper()
 	req := require.New(t)
 
-	tmpDir, s, err := authServer(a)
+	tmpDir, s, _, err := authServer(a)
 	req.NoError(err)
 	defer os.RemoveAll(tmpDir)
 
@@ -154,7 +155,7 @@ func testAuthorization(
 	t.Helper()
 	req := require.New(t)
 
-	tmpDir, e, err := authEngine(a)
+	tmpDir, e, idxReg, err := authEngine(a)
 	req.NoError(err)
 	defer os.RemoveAll(tmpDir)
 
@@ -165,7 +166,9 @@ func testAuthorization(
 			session := sql.NewSession("localhost", "client", c.user, uint32(i))
 			ctx := sql.NewContext(context.TODO(),
 				sql.WithSession(session),
-				sql.WithPid(uint64(i)))
+				sql.WithPid(uint64(i)),
+				sql.WithIndexRegistry(idxReg),
+				sql.WithViewRegistry(sql.NewViewRegistry()))
 
 			_, _, err := e.Query(ctx, c.query)
 
@@ -193,7 +196,7 @@ func testAudit(
 	t.Helper()
 	req := require.New(t)
 
-	tmpDir, s, err := authServer(a)
+	tmpDir, s, _, err := authServer(a)
 	req.NoError(err)
 	defer os.RemoveAll(tmpDir)
 

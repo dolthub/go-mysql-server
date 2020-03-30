@@ -128,7 +128,11 @@ func (h *Handler) ComQuery(
 	query string,
 	callback func(*sqltypes.Result) error,
 ) (err error) {
-	ctx := h.sm.NewContextWithQuery(c, query)
+	ctx, err := h.sm.NewContextWithQuery(c, query)
+
+	if err != nil {
+		return err
+	}
 
 	if !h.e.Async(ctx, query) {
 		newCtx, cancel := context.WithCancel(ctx)

@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"testing"
 
 	"github.com/src-d/go-mysql-server/memory"
@@ -37,7 +38,7 @@ func mockData(require *require.Assertions) (sql.Database, *sql.Catalog, *sql.Con
 	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, "select i from dual", false)
 	createView.Catalog = catalog
 
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
 
 	_, err := createView.RowIter(ctx)
 	require.NoError(err)
@@ -60,7 +61,7 @@ func TestDropExistingView(t *testing.T) {
 		_, err := dropView.RowIter(ctx)
 		require.NoError(err)
 
-		require.False(catalog.ViewRegistry.Exists(db.Name(), view.Name()))
+		require.False(ctx.Exists(db.Name(), view.Name()))
 	}
 
 	test(false)
@@ -81,7 +82,7 @@ func TestDropNonExistingView(t *testing.T) {
 
 		_, err := dropView.RowIter(ctx)
 
-		require.True(catalog.ViewRegistry.Exists(db.Name(), view.Name()))
+		require.True(ctx.Exists(db.Name(), view.Name()))
 
 		return err
 	}

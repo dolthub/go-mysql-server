@@ -67,7 +67,7 @@ func (cv *CreateView) Resolved() bool {
 // empty.
 func (cv *CreateView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	view := cv.View()
-	registry := cv.Catalog.ViewRegistry
+	registry := ctx.ViewRegistry
 
 	if cv.IsReplace {
 		err := registry.Delete(cv.database.Name(), view.Name())

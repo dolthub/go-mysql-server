@@ -170,7 +170,3 @@ func (e *Engine) AddDatabase(db sql.Database) {
 	e.Catalog.AddDatabase(db)
 }
 
-// Init performs all the initialization requirements for the engine to work.
-func (e *Engine) Init() error {
-	return e.Catalog.LoadIndexes(e.Catalog.AllDatabases())
-}

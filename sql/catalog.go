@@ -23,8 +23,6 @@ var ErrIncompatibleAsOf = errors.NewKind("incompatible use of AS OF: %s")
 // Catalog holds databases, tables and functions.
 type Catalog struct {
 	FunctionRegistry
-	*IndexRegistry
-	*ViewRegistry
 	*ProcessList
 	*MemoryManager
 
@@ -44,8 +42,6 @@ type (
 func NewCatalog() *Catalog {
 	return &Catalog{
 		FunctionRegistry: NewFunctionRegistry(),
-		IndexRegistry:    NewIndexRegistry(),
-		ViewRegistry:     NewViewRegistry(),
 		MemoryManager:    NewMemoryManager(ProcessMemory),
 		ProcessList:      NewProcessList(),
 		locks:            make(sessionLocks),
@@ -98,7 +94,7 @@ func (c *Catalog) Database(db string) (Database, error) {
 func (c *Catalog) Table(ctx *Context, db, table string) (Table, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.dbs.Table(ctx, db, table, c.IndexRegistry)
+	return c.dbs.Table(ctx, db, table)
 }
 
 // TableAsOf returns the table in the given database with the given name, as it existed at the time given. The database
@@ -137,7 +133,7 @@ func (d *Databases) Add(db Database) {
 }
 
 // Table returns the Table with the given name if it exists.
-func (d Databases) Table(ctx *Context, dbName string, tableName string, idxReg *IndexRegistry) (Table, error) {
+func (d Databases) Table(ctx *Context, dbName string, tableName string) (Table, error) {
 	db, err := d.Database(dbName)
 	if err != nil {
 		return nil, err
@@ -224,7 +220,7 @@ func (c *Catalog) UnlockTables(ctx *Context, id uint32) error {
 	var errors []string
 	for db, tables := range c.locks[id] {
 		for t := range tables {
-			table, err := c.dbs.Table(ctx, db, t, c.IndexRegistry)
+			table, err := c.dbs.Table(ctx, db, t)
 			if err == nil {
 				if lockable, ok := table.(Lockable); ok {
 					if e := lockable.Unlock(ctx, id); e != nil {

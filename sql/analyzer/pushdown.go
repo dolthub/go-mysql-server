@@ -59,7 +59,7 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	}
 
 	a.Log("transforming nodes with pushdown of filters, projections and indexes")
-	return transformPushdown(a, n, filters, indexes, fieldsByTable)
+	return transformPushdown(ctx, a, n, filters, indexes, fieldsByTable)
 }
 
 // fixFieldIndexesOnExpressions executes fixFieldIndexes on a list of exprs.
@@ -138,6 +138,7 @@ func findFilters(ctx *sql.Context, n sql.Node) filters {
 }
 
 func transformPushdown(
+	ctx *sql.Context,
 	a *Analyzer,
 	n sql.Node,
 	filters filters,
@@ -181,7 +182,7 @@ func transformPushdown(
 
 	release := func() {
 		for _, idx := range queryIndexes {
-			a.Catalog.ReleaseIndex(idx)
+			ctx.ReleaseIndex(idx)
 		}
 	}
 

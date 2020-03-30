@@ -157,7 +157,7 @@ func (d *Driver) Create(
 var errReadIndexes = errors.NewKind("error loading all indexes for table %s of database %s: %s")
 
 // LoadAll loads all indexes for given db and table
-func (d *Driver) LoadAll(db, table string) ([]sql.Index, error) {
+func (d *Driver) LoadAll(ctx *sql.Context, db, table string) ([]sql.Index, error) {
 	var (
 		indexes []sql.Index
 		errors  []string

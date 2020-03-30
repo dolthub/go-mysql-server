@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"testing"
 
 	"github.com/src-d/go-mysql-server/memory"
@@ -43,13 +44,14 @@ func TestCreateView(t *testing.T) {
 	require := require.New(t)
 
 	createView := mockCreateView(false)
+	viewReg := sql.NewViewRegistry()
 
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContext(context.Background(), sql.WithViewRegistry(viewReg))
 	_, err := createView.RowIter(ctx)
 	require.NoError(err)
 
 	expectedView := sql.NewView(createView.Name, createView.Child)
-	actualView, err := createView.Catalog.ViewRegistry.View(createView.database.Name(), createView.Name)
+	actualView, err := viewReg.View(createView.database.Name(), createView.Name)
 	require.NoError(err)
 	require.Equal(expectedView, *actualView)
 }
@@ -61,10 +63,11 @@ func TestCreateExistingView(t *testing.T) {
 	createView := mockCreateView(false)
 
 	view := createView.View()
-	err := createView.Catalog.ViewRegistry.Register(createView.database.Name(), view)
+	viewReg := sql.NewViewRegistry()
+	err := viewReg.Register(createView.database.Name(), view)
 	require.NoError(err)
 
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContext(context.Background(), sql.WithViewRegistry(viewReg))
 	_, err = createView.RowIter(ctx)
 	require.Error(err)
 	require.True(sql.ErrExistingView.Is(err))
@@ -78,17 +81,18 @@ func TestReplaceExistingView(t *testing.T) {
 	createView := mockCreateView(true)
 
 	view := sql.NewView(createView.Name, nil)
-	err := createView.Catalog.ViewRegistry.Register(createView.database.Name(), view)
+	viewReg := sql.NewViewRegistry()
+	err := viewReg.Register(createView.database.Name(), view)
 	require.NoError(err)
 
 	createView.IsReplace = true
 
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContext(context.Background(), sql.WithViewRegistry(viewReg))
 	_, err = createView.RowIter(ctx)
 	require.NoError(err)
 
 	expectedView := createView.View()
-	actualView, err := createView.Catalog.ViewRegistry.View(createView.database.Name(), createView.Name)
+	actualView, err := viewReg.View(createView.database.Name(), createView.Name)
 	require.NoError(err)
 	require.Equal(expectedView, *actualView)
 }

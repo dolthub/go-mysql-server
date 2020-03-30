@@ -23,7 +23,7 @@ func (d *TestIndexDriver) ID() string {
 	return IndexDriverId
 }
 
-func (d *TestIndexDriver) LoadAll(db, table string) ([]sql.Index, error) {
+func (d *TestIndexDriver) LoadAll(ctx *sql.Context, db, table string) ([]sql.Index, error) {
 	if d.db != db {
 		return nil, nil
 	}

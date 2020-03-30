@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"context"
 	"testing"
 
 	"github.com/src-d/go-mysql-server/memory"
@@ -78,7 +79,8 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 		),
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), a, node)
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	result, err := f.Apply(ctx, a, node)
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -128,7 +130,7 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 		),
 	)
 
-	result, err = f.Apply(sql.NewEmptyContext(), a, node)
+	result, err = f.Apply(ctx, a, node)
 	require.NoError(err)
 	require.Equal(expected, result)
 }
@@ -154,6 +156,7 @@ func TestPushdownIndexable(t *testing.T) {
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
+	idxReg := sql.NewIndexRegistry()
 
 	idx1 := &memory.MergeableIndex{
 		TableName: "mytable",
@@ -161,7 +164,7 @@ func TestPushdownIndexable(t *testing.T) {
 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 		},
 	}
-	done, ready, err := catalog.AddIndex(idx1)
+	done, ready, err := idxReg.AddIndex(idx1)
 	require.NoError(err)
 	close(done)
 	<-ready
@@ -172,7 +175,7 @@ func TestPushdownIndexable(t *testing.T) {
 			expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
 		},
 	}
-	done, ready, err = catalog.AddIndex(idx2)
+	done, ready, err = idxReg.AddIndex(idx2)
 	require.NoError(err)
 	close(done)
 	<-ready
@@ -183,7 +186,7 @@ func TestPushdownIndexable(t *testing.T) {
 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
 		},
 	}
-	done, ready, err = catalog.AddIndex(idx3)
+	done, ready, err = idxReg.AddIndex(idx3)
 
 	require.NoError(err)
 	close(done)
@@ -280,7 +283,8 @@ func TestPushdownIndexable(t *testing.T) {
 		nil,
 	}
 
-	result, err := a.Analyze(sql.NewEmptyContext(), node)
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry()))
+	result, err := a.Analyze(ctx, node)
 	require.NoError(err)
 
 	// we need to remove the release function to compare, otherwise it will fail
