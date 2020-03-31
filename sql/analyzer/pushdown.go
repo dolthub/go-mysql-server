@@ -152,7 +152,6 @@ func transformPushdown(
 	var queryIndexes []sql.Index
 
 	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
-		a.Log("transforming node of type: %T", node)
 		switch node := node.(type) {
 		case *plan.Filter:
 			n, err := pushdownFilter(a, node, handledFilters)

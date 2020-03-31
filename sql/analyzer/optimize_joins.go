@@ -40,13 +40,11 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 		return n, nil
 	}
 
-	a.Log("finding indexes for joins")
 	indexes, aliases, err := findJoinIndexes(ctx, a, n)
 	if err != nil {
 		return nil, err
 	}
 
-	a.Log("replacing LeftJoin,RightJoin,InnerJoin with IndexedJoins")
 	return transformJoins(a, n, indexes, aliases)
 }
 
@@ -178,8 +176,6 @@ func findTableName(node sql.Node) string {
 // Assign indexes to the join conditions and returns the sql.Indexes assigned, as well as returning any aliases used by
 // join conditions
 func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]sql.Index, Aliases, error) {
-	a.Log("finding indexes, node of type: %T", node)
-
 	indexSpan, _ := ctx.Span("find_join_indexes")
 	defer indexSpan.Finish()
 

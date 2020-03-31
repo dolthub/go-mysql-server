@@ -66,7 +66,7 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 			return handleTableLookupFailure(err, name, db, a, t)
 		}
 
-		a.Log("table resolved: %q", t.Name())
+		a.Log("table resolved: %s", t.Name())
 		return plan.NewResolvedTable(rt), nil
 	})
 }
@@ -82,7 +82,7 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 		}
 	} else if sql.ErrTableNotFound.Is(err) {
 		if tableName == dualTableName {
-			a.Log("table resolved: %q", t.Name())
+			a.Log("table resolved: %s", t.Name())
 			return plan.NewResolvedTable(dualTable), nil
 		}
 	}
