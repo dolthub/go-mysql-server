@@ -1,12 +1,12 @@
 package analyzer
 
 import (
-	"os"
-
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"github.com/src-d/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
+	"os"
+	"strings"
 )
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"
@@ -79,47 +79,47 @@ func (ab *Builder) Build() *Analyzer {
 	_, debug := os.LookupEnv(debugAnalyzerKey)
 	var batches = []*Batch{
 		&Batch{
-			Desc:       "pre-analyzer rules",
+			Desc:       "pre-analyzer",
 			Iterations: maxAnalysisIterations,
 			Rules:      ab.preAnalyzeRules,
 		},
 		&Batch{
-			Desc:       "once execution rule before default",
+			Desc:       "once-before",
 			Iterations: 1,
 			Rules:      OnceBeforeDefault,
 		},
 		&Batch{
-			Desc:       "analyzer rules",
+			Desc:       "default-rules",
 			Iterations: maxAnalysisIterations,
 			Rules:      DefaultRules,
 		},
 		&Batch{
-			Desc:       "once execution rules after default",
+			Desc:       "once-after",
 			Iterations: 1,
 			Rules:      OnceAfterDefault,
 		},
 		&Batch{
-			Desc:       "post-analyzer rules",
+			Desc:       "post-analyzer",
 			Iterations: maxAnalysisIterations,
 			Rules:      ab.postAnalyzeRules,
 		},
 		&Batch{
-			Desc:       "pre-validation rules",
+			Desc:       "pre-validation",
 			Iterations: 1,
 			Rules:      ab.preValidationRules,
 		},
 		&Batch{
-			Desc:       "validation rules",
+			Desc:       "validation",
 			Iterations: 1,
 			Rules:      DefaultValidationRules,
 		},
 		&Batch{
-			Desc:       "post-validation rules",
+			Desc:       "post-validation",
 			Iterations: 1,
 			Rules:      ab.postValidationRules,
 		},
 		&Batch{
-			Desc:       "after-all rules",
+			Desc:       "after-all",
 			Iterations: 1,
 			Rules:      OnceAfterAll,
 		},
@@ -127,6 +127,7 @@ func (ab *Builder) Build() *Analyzer {
 
 	return &Analyzer{
 		Debug:       debug || ab.debug,
+		DebugCtx:    make([]string, 0),
 		Batches:     batches,
 		Catalog:     ab.catalog,
 		Parallelism: ab.parallelism,
@@ -137,6 +138,7 @@ func (ab *Builder) Build() *Analyzer {
 // to them.
 type Analyzer struct {
 	Debug       bool
+	DebugCtx    []string
 	Parallelism int
 	// Batches of Rules to apply.
 	Batches []*Batch
@@ -153,10 +155,28 @@ func NewDefault(c *sql.Catalog) *Analyzer {
 // Log prints an INFO message to stdout with the given message and args
 // if the analyzer is in debug mode.
 func (a *Analyzer) Log(msg string, args ...interface{}) {
-	if a != nil && a.Debug {
-		logrus.Infof(msg, args...)
+	if a != nil {
+		if len(a.DebugCtx) > 0 {
+			ctx := strings.Join(a.DebugCtx, "/")
+			logrus.Infof("%s: "+msg, append([]interface{}{ctx}, args...)...)
+		} else {
+			logrus.Infof(msg, args...)
+		}
 	}
 }
+
+func (a *Analyzer) PushDebugContext(msg string) {
+	if a != nil {
+		a.DebugCtx = append(a.DebugCtx, msg)
+	}
+}
+
+func (a *Analyzer) PopDebugContext() {
+	if a != nil && len(a.DebugCtx) > 0 {
+		a.DebugCtx = a.DebugCtx[:len(a.DebugCtx)-1]
+	}
+}
+
 
 // Analyze the node and all its children.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node) (sql.Node, error) {
@@ -168,7 +188,9 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node) (sql.Node, error) {
 	var err error
 	a.Log("starting analysis of node of type: %T", n)
 	for _, batch := range a.Batches {
+		a.PushDebugContext(batch.Desc)
 		prev, err = batch.Eval(ctx, a, prev)
+		a.PopDebugContext()
 		if ErrMaxAnalysisIters.Is(err) {
 			a.Log(err.Error())
 			continue

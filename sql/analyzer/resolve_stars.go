@@ -12,7 +12,6 @@ func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 	a.Log("resolving star, node of type: %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		a.Log("transforming node of type: %T", n)
 		if n.Resolved() {
 			return n, nil
 		}
@@ -23,7 +22,7 @@ func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 				return n, nil
 			}
 
-			expressions, err := expandStars(n.Projections, n.Child.Schema())
+			expressions, err := expandStars(a, n.Projections, n.Child.Schema())
 			if err != nil {
 				return nil, err
 			}
@@ -34,7 +33,7 @@ func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 				return n, nil
 			}
 
-			aggregate, err := expandStars(n.Aggregate, n.Child.Schema())
+			aggregate, err := expandStars(a, n.Aggregate, n.Child.Schema())
 			if err != nil {
 				return nil, err
 			}
@@ -46,7 +45,7 @@ func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	})
 }
 
-func expandStars(exprs []sql.Expression, schema sql.Schema) ([]sql.Expression, error) {
+func expandStars(a *Analyzer, exprs []sql.Expression, schema sql.Schema) ([]sql.Expression, error) {
 	var expressions []sql.Expression
 	for _, e := range exprs {
 		if s, ok := e.(*expression.Star); ok {
@@ -69,5 +68,6 @@ func expandStars(exprs []sql.Expression, schema sql.Schema) ([]sql.Expression, e
 		}
 	}
 
+	a.Log("resolved * to expressions %s", expressions)
 	return expressions, nil
 }

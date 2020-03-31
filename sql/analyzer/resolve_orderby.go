@@ -15,7 +15,6 @@ func resolveOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 
 	a.Log("resolving order bys, node of type: %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		a.Log("transforming node of type: %T", n)
 		sort, ok := n.(*plan.Sort)
 		if !ok {
 			return n, nil

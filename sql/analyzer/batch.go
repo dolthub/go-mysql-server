@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"reflect"
+	"strconv"
 
 	"github.com/src-d/go-mysql-server/sql"
 )
@@ -35,7 +36,9 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 	}
 
 	prev := n
+	a.PushDebugContext("1")
 	cur, err := b.evalOnce(ctx, a, n)
+	a.PopDebugContext()
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +49,9 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 
 	for i := 1; !nodesEqual(prev, cur); {
 		prev = cur
+		a.PushDebugContext(strconv.Itoa(i))
 		cur, err = b.evalOnce(ctx, a, cur)
+		a.PopDebugContext()
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +69,9 @@ func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 	result := n
 	for _, rule := range b.Rules {
 		var err error
+		a.PushDebugContext(rule.Name)
 		result, err = rule.Apply(ctx, a, result)
+		a.PopDebugContext()
 		if err != nil {
 			return nil, err
 		}

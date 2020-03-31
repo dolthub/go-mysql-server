@@ -296,7 +296,6 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 
 	a.Log("resolve columns, node of type: %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		a.Log("transforming node of type: %T", n)
 		if n.Resolved() {
 			return n, nil
 		}
@@ -314,18 +313,16 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 
 		columns := findChildIndexedColumns(n)
 		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
-			a.Log("transforming expression of type: %T", e)
-
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
 				return e, nil
 			}
 
 			if isGlobalOrSessionColumn(uc) {
-				return resolveGlobalOrSessionColumn(ctx, uc)
+				return resolveGlobalOrSessionColumn(ctx, a, uc)
 			}
 
-			return resolveColumnExpression(ctx, uc, columns)
+			return resolveColumnExpression(ctx, a, uc, columns)
 		})
 	})
 }
@@ -347,7 +344,7 @@ func findChildIndexedColumns(n sql.Node) map[tableCol]indexedCol {
 	return columns
 }
 
-func resolveGlobalOrSessionColumn(ctx *sql.Context, col column) (sql.Expression, error) {
+func resolveGlobalOrSessionColumn(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {
 	if col.Table() != "" && strings.ToLower(col.Table()) != sessionTable {
 		return nil, errGlobalVariablesNotSupported.New(col)
 	}
@@ -355,14 +352,12 @@ func resolveGlobalOrSessionColumn(ctx *sql.Context, col column) (sql.Expression,
 	name := strings.TrimLeft(col.Name(), "@")
 	name = strings.TrimPrefix(strings.TrimPrefix(name, globalPrefix), sessionPrefix)
 	typ, value := ctx.Get(name)
+
+	a.Log("resolved column %s to session field %s (type %s)", col, value, typ)
 	return expression.NewGetSessionField(name, typ, value), nil
 }
 
-func resolveColumnExpression(
-	ctx *sql.Context,
-	e column,
-	columns map[tableCol]indexedCol,
-) (sql.Expression, error) {
+func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns map[tableCol]indexedCol, ) (sql.Expression, error) {
 	name := strings.ToLower(e.Name())
 	table := strings.ToLower(e.Table())
 	col, ok := columns[tableCol{table, name}]
@@ -371,6 +366,7 @@ func resolveColumnExpression(
 		case *expression.UnresolvedColumn:
 			// Defer the resolution of the column to give the analyzer more
 			// time to resolve other parts so this can be resolved.
+			a.Log("deferring resolution of column %s", e)
 			return &deferredColumn{uc}, nil
 		default:
 			if table != "" {
@@ -381,6 +377,8 @@ func resolveColumnExpression(
 		}
 	}
 
+	a.Log("column %s resolved to GetFieldWithTable: idx %d, typ %s, table %s, name %s, nullable %t",
+		e.Name(), col.index, col.Type, col.Source, col.Name, col.Nullable)
 	return expression.NewGetFieldWithTable(
 		col.index,
 		col.Type,
