@@ -16,7 +16,6 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, er
 	}
 
 	a.Log("erase projection, node of type: %T", node)
-
 	return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
 		project, ok := node.(*plan.Project)
 		if ok && project.Schema().Equals(project.Child.Schema()) {

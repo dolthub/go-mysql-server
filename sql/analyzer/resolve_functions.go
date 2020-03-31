@@ -12,7 +12,6 @@ func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, erro
 
 	a.Log("resolve functions, node of type %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		a.Log("transforming node of type: %T", n)
 		if n.Resolved() {
 			return n, nil
 		}
@@ -23,7 +22,6 @@ func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, erro
 
 func resolveFunctionsInExpr(a *Analyzer) sql.TransformExprFunc {
 	return func(e sql.Expression) (sql.Expression, error) {
-		a.Log("transforming expression of type: %T", e)
 		if e.Resolved() {
 			return e, nil
 		}
@@ -45,7 +43,6 @@ func resolveFunctionsInExpr(a *Analyzer) sql.TransformExprFunc {
 		}
 
 		a.Log("resolved function %q", n)
-
 		return rf, nil
 	}
 }

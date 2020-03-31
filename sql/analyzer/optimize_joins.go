@@ -54,7 +54,6 @@ func transformJoins(a *Analyzer, n sql.Node, indexes map[string]sql.Index, alias
 
 	var replacedIndexedJoin bool
 	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
-		a.Log("transforming node of type: %T", node)
 		switch node := node.(type) {
 		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
 
@@ -91,8 +90,8 @@ func transformJoins(a *Analyzer, n sql.Node, indexes map[string]sql.Index, alias
 			replacedIndexedJoin = true
 
 			secondaryTable, err = plan.TransformUp(secondaryTable, func(node sql.Node) (sql.Node, error) {
-				a.Log("transforming node of type: %T", node)
 				if rt, ok := node.(*plan.ResolvedTable); ok {
+					a.Log("replacing resolve table %s with IndexedTable", rt.Name())
 					return plan.NewIndexedTable(rt), nil
 				}
 				return node, nil

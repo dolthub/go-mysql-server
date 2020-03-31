@@ -36,7 +36,7 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 	}
 
 	prev := n
-	a.PushDebugContext("1")
+	a.PushDebugContext("0")
 	cur, err := b.evalOnce(ctx, a, n)
 	a.PopDebugContext()
 	if err != nil {
