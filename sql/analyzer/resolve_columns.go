@@ -335,6 +335,32 @@ func findChildIndexedColumns(n sql.Node) map[tableCol]indexedCol {
 	var idx int
 	var columns = make(map[tableCol]indexedCol)
 
+	aliases := getTableAliases(n)
+
+	for _, child := range n.Children() {
+		childSch := child.Schema()
+		for _, col := range childSch {
+			// columns of tables with an alias can be referred to either by their aliased or unaliased name, so add an entry
+			// for the underlying name in the case of aliased tables
+			if aliasedTable, ok := aliases[strings.ToLower(col.Source)]; ok {
+				columns[tableCol{
+					table: strings.ToLower(aliasedTable.Name()),
+					col:   strings.ToLower(col.Name),
+				}] = indexedCol{col, idx}
+			}
+			columns[tableCol{
+				table: strings.ToLower(col.Source),
+				col:   strings.ToLower(col.Name),
+			}] = indexedCol{col, idx}
+			idx++
+		}
+	}
+
+	return columns
+}
+
+// getTableAliases returns a map of all aliased resolved tables in the node, keyed by their alias name
+func getTableAliases(n sql.Node) map[string]*plan.ResolvedTable {
 	aliases := make(map[string]*plan.ResolvedTable)
 	var aliasFn func(node sql.Node) bool
 	aliasFn = func(node sql.Node) bool {
@@ -355,23 +381,7 @@ func findChildIndexedColumns(n sql.Node) map[tableCol]indexedCol {
 	}
 
 	plan.Inspect(n, aliasFn)
-
-	for _, child := range n.Children() {
-		childSch := child.Schema()
-		for _, col := range childSch {
-			source := col.Source
-			// if aliasedTable, ok := aliases[strings.ToLower(col.Source)]; ok {
-			// 	source = aliasedTable.Name()
-			// }
-			columns[tableCol{
-				table: strings.ToLower(source),
-				col:   strings.ToLower(col.Name),
-			}] = indexedCol{col, idx}
-			idx++
-		}
-	}
-
-	return columns
+	return aliases
 }
 
 func resolveGlobalOrSessionColumn(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {
