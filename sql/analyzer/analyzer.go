@@ -128,7 +128,7 @@ func (ab *Builder) Build() *Analyzer {
 
 	return &Analyzer{
 		Debug:       debug || ab.debug,
-		DebugCtx:    make([]string, 0),
+		debugCtx:    make([]string, 0),
 		Batches:     batches,
 		Catalog:     ab.catalog,
 		Parallelism: ab.parallelism,
@@ -138,9 +138,11 @@ func (ab *Builder) Build() *Analyzer {
 // Analyzer analyzes nodes of the execution plan and applies rules and validations
 // to them.
 type Analyzer struct {
+	// Whether to log various debugging messages
 	Debug       bool
+	// Whether to output the query plan at each step of the analyzer
 	Verbose     bool
-	DebugCtx    []string
+	debugCtx    []string
 	Parallelism int
 	// Batches of Rules to apply.
 	Batches []*Batch
@@ -158,8 +160,8 @@ func NewDefault(c *sql.Catalog) *Analyzer {
 // if the analyzer is in debug mode.
 func (a *Analyzer) Log(msg string, args ...interface{}) {
 	if a != nil && a.Debug {
-		if len(a.DebugCtx) > 0 {
-			ctx := strings.Join(a.DebugCtx, "/")
+		if len(a.debugCtx) > 0 {
+			ctx := strings.Join(a.debugCtx, "/")
 			logrus.Infof("%s: "+msg, append([]interface{}{ctx}, args...)...)
 		} else {
 			logrus.Infof(msg, args...)
@@ -167,10 +169,11 @@ func (a *Analyzer) Log(msg string, args ...interface{}) {
 	}
 }
 
+// LogNode prints the node given if Verbose logging is enabled.
 func (a *Analyzer) LogNode(n sql.Node) {
 	if a != nil && n != nil && a.Verbose {
-		if len(a.DebugCtx) > 0 {
-			ctx := strings.Join(a.DebugCtx, "/")
+		if len(a.debugCtx) > 0 {
+			ctx := strings.Join(a.debugCtx, "/")
 			fmt.Printf("%s: %s", ctx, n.String())
 		} else {
 			fmt.Printf("%s", n.String())
@@ -178,15 +181,17 @@ func (a *Analyzer) LogNode(n sql.Node) {
 	}
 }
 
+// PushDebugContext pushes the given context string onto the context stack, to use when logging debug messages.
 func (a *Analyzer) PushDebugContext(msg string) {
 	if a != nil {
-		a.DebugCtx = append(a.DebugCtx, msg)
+		a.debugCtx = append(a.debugCtx, msg)
 	}
 }
 
+// PopDebugContext pops a context message off the context stack.
 func (a *Analyzer) PopDebugContext() {
-	if a != nil && len(a.DebugCtx) > 0 {
-		a.DebugCtx = a.DebugCtx[:len(a.DebugCtx)-1]
+	if a != nil && len(a.debugCtx) > 0 {
+		a.debugCtx = a.debugCtx[:len(a.debugCtx)-1]
 	}
 }
 

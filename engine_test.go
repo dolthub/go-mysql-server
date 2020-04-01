@@ -1936,27 +1936,24 @@ var queries = []queryTest{
 			{int64(2), 1, 0},
 		},
 	},
-	// TODO: this is broken, we can't join a table to itself and i'm so angry
-	// {
-	// 	"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
-	// 	[]sql.Row{
-	// 		{0, 0, 0, 0},
-	// 		{0, 1, 1, 0},
-	// 		{1, 0, 0, 1},
-	// 		{1, 1, 1, 1},
-	// 	},
-	// },
-	// TODO: this is broken, can't resolve the columns despite the aliases:
-	//  ambiguous column name "pk1", it's present in all these tables: two_pk, two_pk2
-	// {
-	// 	"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
-	// 	[]sql.Row{
-	// 		{0, 0, 0, 0},
-	// 		{0, 1, 1, 0},
-	// 		{1, 0, 0, 1},
-	// 		{1, 1, 1, 1},
-	// 	},
-	// },
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0},
+			{0, 1, 1, 0},
+			{1, 0, 0, 1},
+			{1, 1, 1, 1},
+		},
+	},
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0},
+			{0, 1, 1, 0},
+			{1, 0, 0, 1},
+			{1, 1, 1, 1},
+		},
+	},
 	{
 		"SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
 		[]sql.Row{
@@ -2673,6 +2670,13 @@ var planTests = []planTest{
 			" ├─ Table(one_pk): Projected \n" +
 			" └─ Table(two_pk): Projected \n" +
 			"",
+	},
+	{
+		query:    "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2",
+		expected: "IndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
+				" ├─ Table(one_pk): Projected \n" +
+				" └─ Table(two_pk): Projected \n" +
+				"",
 	},
 	{
 		query:    "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2",
