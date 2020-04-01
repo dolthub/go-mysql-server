@@ -153,6 +153,10 @@ func qualifyExpression(
 			return col, nil
 		}
 
+		if col.Table() != "" {
+			return col, nil
+		}
+
 		name, table := strings.ToLower(col.Name()), strings.ToLower(col.Table())
 		availableTables := dedupStrings(columns[name])
 		if table != "" {
@@ -331,10 +335,36 @@ func findChildIndexedColumns(n sql.Node) map[tableCol]indexedCol {
 	var idx int
 	var columns = make(map[tableCol]indexedCol)
 
+	aliases := make(map[string]*plan.ResolvedTable)
+	var aliasFn func(node sql.Node) bool
+	aliasFn = func(node sql.Node) bool {
+		if node == nil {
+			return false
+		}
+
+		if at, ok := node.(*plan.TableAlias); ok {
+			aliases[at.Name()] = at.Child.(*plan.ResolvedTable)
+			return false
+		}
+
+		for _, child := range node.Children() {
+			plan.Inspect(child, aliasFn)
+		}
+
+		return true
+	}
+
+	plan.Inspect(n, aliasFn)
+
 	for _, child := range n.Children() {
-		for _, col := range child.Schema() {
+		childSch := child.Schema()
+		for _, col := range childSch {
+			source := col.Source
+			// if aliasedTable, ok := aliases[strings.ToLower(col.Source)]; ok {
+			// 	source = aliasedTable.Name()
+			// }
 			columns[tableCol{
-				table: strings.ToLower(col.Source),
+				table: strings.ToLower(source),
 				col:   strings.ToLower(col.Name),
 			}] = indexedCol{col, idx}
 			idx++
@@ -392,7 +422,6 @@ func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns ma
 // defined in it can be resolved in the grouping of the groupby. To do so,
 // all aliases are pushed down to a projection node under the group by.
 func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	a.Log("resoving group columns")
 	if n.Resolved() {
 		return n, nil
 	}

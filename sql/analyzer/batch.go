@@ -71,6 +71,7 @@ func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 		var err error
 		a.PushDebugContext(rule.Name)
 		result, err = rule.Apply(ctx, a, result)
+		a.LogNode(result)
 		a.PopDebugContext()
 		if err != nil {
 			return nil, err

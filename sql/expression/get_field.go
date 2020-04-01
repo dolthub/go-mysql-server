@@ -21,7 +21,7 @@ func NewGetField(index int, fieldType sql.Type, fieldName string, nullable bool)
 	return NewGetFieldWithTable(index, fieldType, "", fieldName, nullable)
 }
 
-// NewGetFieldWithTable creates a GetField expression with table name.
+// NewGetFieldWithTable creates a GetField expression with table name. The table name may be an alias.
 func NewGetFieldWithTable(index int, fieldType sql.Type, table, fieldName string, nullable bool) *GetField {
 	return &GetField{
 		table:      table,

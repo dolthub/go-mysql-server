@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"fmt"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"github.com/src-d/go-mysql-server/sql"
@@ -138,6 +139,7 @@ func (ab *Builder) Build() *Analyzer {
 // to them.
 type Analyzer struct {
 	Debug       bool
+	Verbose     bool
 	DebugCtx    []string
 	Parallelism int
 	// Batches of Rules to apply.
@@ -155,12 +157,23 @@ func NewDefault(c *sql.Catalog) *Analyzer {
 // Log prints an INFO message to stdout with the given message and args
 // if the analyzer is in debug mode.
 func (a *Analyzer) Log(msg string, args ...interface{}) {
-	if a != nil {
+	if a != nil && a.Debug {
 		if len(a.DebugCtx) > 0 {
 			ctx := strings.Join(a.DebugCtx, "/")
 			logrus.Infof("%s: "+msg, append([]interface{}{ctx}, args...)...)
 		} else {
 			logrus.Infof(msg, args...)
+		}
+	}
+}
+
+func (a *Analyzer) LogNode(n sql.Node) {
+	if a != nil && n != nil && a.Verbose {
+		if len(a.DebugCtx) > 0 {
+			ctx := strings.Join(a.DebugCtx, "/")
+			fmt.Printf("%s: %s", ctx, n.String())
+		} else {
+			fmt.Printf("%s", n.String())
 		}
 	}
 }
