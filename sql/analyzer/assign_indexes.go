@@ -78,12 +78,12 @@ func getIndexes(
 			return nil, nil
 		}
 
-		leftIndexes, err := getIndexes(ctx, a, e.Left, exprAliases, nil)
+		leftIndexes, err := getIndexes(ctx, a, e.Left, exprAliases, tableAliases)
 		if err != nil {
 			return nil, err
 		}
 
-		rightIndexes, err := getIndexes(ctx, a, e.Right, exprAliases, nil)
+		rightIndexes, err := getIndexes(ctx, a, e.Right, exprAliases, tableAliases)
 		if err != nil {
 			return nil, err
 		}
@@ -279,7 +279,7 @@ func getIndexes(
 				continue
 			}
 
-			indexes, err := getIndexes(ctx, a, e, exprAliases, nil)
+			indexes, err := getIndexes(ctx, a, e, exprAliases, tableAliases)
 			if err != nil {
 				return nil, err
 			}
@@ -417,10 +417,17 @@ func comparisonIndexLookup(
 	return nil, nil
 }
 
-func getNegatedIndexes(ctx *sql.Context, a *Analyzer, not *expression.Not, exprAliases ExprAliases, tableAliases TableAliases) (map[string]*indexLookup, error) {
+func getNegatedIndexes(
+	ctx *sql.Context,
+	a *Analyzer,
+	not *expression.Not,
+	exprAliases ExprAliases,
+	tableAliases TableAliases,
+) (map[string]*indexLookup, error) {
+
 	switch e := not.Child.(type) {
 	case *expression.Not:
-		return getIndexes(ctx, a, e.Child, exprAliases, nil)
+		return getIndexes(ctx, a, e.Child, exprAliases, tableAliases)
 	case *expression.Equals:
 		left, right := e.Left(), e.Right()
 		// if the form is SOMETHING OP {INDEXABLE EXPR}, swap it, so it's {INDEXABLE EXPR} OP SOMETHING
@@ -464,37 +471,37 @@ func getNegatedIndexes(ctx *sql.Context, a *Analyzer, not *expression.Not, exprA
 		return result, nil
 	case *expression.GreaterThan:
 		lte := expression.NewLessThanOrEqual(e.Left(), e.Right())
-		return getIndexes(ctx, a, lte, exprAliases, nil)
+		return getIndexes(ctx, a, lte, exprAliases, tableAliases)
 	case *expression.GreaterThanOrEqual:
 		lt := expression.NewLessThan(e.Left(), e.Right())
-		return getIndexes(ctx, a, lt, exprAliases, nil)
+		return getIndexes(ctx, a, lt, exprAliases, tableAliases)
 	case *expression.LessThan:
 		gte := expression.NewGreaterThanOrEqual(e.Left(), e.Right())
-		return getIndexes(ctx, a, gte, exprAliases, nil)
+		return getIndexes(ctx, a, gte, exprAliases, tableAliases)
 	case *expression.LessThanOrEqual:
 		gt := expression.NewGreaterThan(e.Left(), e.Right())
-		return getIndexes(ctx, a, gt, exprAliases, nil)
+		return getIndexes(ctx, a, gt, exprAliases, tableAliases)
 	case *expression.Between:
 		or := expression.NewOr(
 			expression.NewLessThan(e.Val, e.Lower),
 			expression.NewGreaterThan(e.Val, e.Upper),
 		)
 
-		return getIndexes(ctx, a, or, exprAliases, nil)
+		return getIndexes(ctx, a, or, exprAliases, tableAliases)
 	case *expression.Or:
 		and := expression.NewAnd(
 			expression.NewNot(e.Left),
 			expression.NewNot(e.Right),
 		)
 
-		return getIndexes(ctx, a, and, exprAliases, nil)
+		return getIndexes(ctx, a, and, exprAliases, tableAliases)
 	case *expression.And:
 		or := expression.NewOr(
 			expression.NewNot(e.Left),
 			expression.NewNot(e.Right),
 		)
 
-		return getIndexes(ctx, a, or, exprAliases, nil)
+		return getIndexes(ctx, a, or, exprAliases, tableAliases)
 	default:
 		return nil, nil
 	}
