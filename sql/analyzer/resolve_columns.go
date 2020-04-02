@@ -359,30 +359,7 @@ func findChildIndexedColumns(n sql.Node) map[tableCol]indexedCol {
 	return columns
 }
 
-// getTableAliases returns a map of all aliased resolved tables in the node, keyed by their alias name
-func getTableAliases(n sql.Node) map[string]*plan.ResolvedTable {
-	aliases := make(map[string]*plan.ResolvedTable)
-	var aliasFn func(node sql.Node) bool
-	aliasFn = func(node sql.Node) bool {
-		if node == nil {
-			return false
-		}
 
-		if at, ok := node.(*plan.TableAlias); ok {
-			aliases[at.Name()] = at.Child.(*plan.ResolvedTable)
-			return false
-		}
-
-		for _, child := range node.Children() {
-			plan.Inspect(child, aliasFn)
-		}
-
-		return true
-	}
-
-	plan.Inspect(n, aliasFn)
-	return aliases
-}
 
 func resolveGlobalOrSessionColumn(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {
 	if col.Table() != "" && strings.ToLower(col.Table()) != sessionTable {
