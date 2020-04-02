@@ -12,13 +12,13 @@ func TestCatalogCurrentDatabase(t *testing.T) {
 	require := require.New(t)
 
 	c := sql.NewCatalog()
-	require.Equal("", c.CurrentDatabase())
+	require.Equal("", c.DefaultDatabase())
 
 	c.AddDatabase(memory.NewDatabase("foo"))
-	require.Equal("foo", c.CurrentDatabase())
+	require.Equal("foo", c.DefaultDatabase())
 
-	c.SetCurrentDatabase("bar")
-	require.Equal("bar", c.CurrentDatabase())
+	c.SetDefaultDatabase("bar")
+	require.Equal("bar", c.DefaultDatabase())
 }
 
 func TestAllDatabases(t *testing.T) {

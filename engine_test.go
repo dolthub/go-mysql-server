@@ -5078,7 +5078,7 @@ func TestUse(t *testing.T) {
 	require.NoError(err)
 	require.Len(rows, 0)
 
-	require.Equal("foo", e.Catalog.CurrentDatabase())
+	require.Equal("foo", e.Catalog.DefaultDatabase())
 }
 
 func TestLocks(t *testing.T) {

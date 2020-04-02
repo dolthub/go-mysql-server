@@ -19,6 +19,10 @@ const (
 	QueryKey key = iota
 )
 
+const (
+	CurrentDBSessionVar = "current_database"
+)
+
 // Client holds session user information.
 type Client struct {
 	// User of the session.
@@ -37,6 +41,10 @@ type Session interface {
 	Set(key string, typ Type, value interface{})
 	// Get session configuration.
 	Get(key string) (Type, interface{})
+	// GetCurrentDatabase gets the current database for this session
+	GetCurrentDatabase() string
+	// SetDefaultDatabase sets the current database for this session
+	SetCurrentDatabase(dbName string)
 	// GetAll returns a copy of session configuration
 	GetAll() map[string]TypedValue
 	// ID returns the unique ID of the connection.
@@ -53,13 +61,14 @@ type Session interface {
 
 // BaseSession is the basic session type.
 type BaseSession struct {
-	id       uint32
-	addr     string
-	client   Client
-	mu       sync.RWMutex
-	config   map[string]TypedValue
-	warnings []*Warning
-	warncnt  uint16
+	id        uint32
+	addr      string
+	currentDB string
+	client    Client
+	mu        sync.RWMutex
+	config    map[string]TypedValue
+	warnings  []*Warning
+	warncnt   uint16
 }
 
 // Address returns the server address.
@@ -97,6 +106,16 @@ func (s *BaseSession) GetAll() map[string]TypedValue {
 		m[k] = v
 	}
 	return m
+}
+
+// GetCurrentDatabase gets the current database for this session
+func (s *BaseSession) GetCurrentDatabase() string {
+	return s.currentDB
+}
+
+// SetCurrentDatabase sets the current database for this session
+func (s *BaseSession) SetCurrentDatabase(dbName string) {
+	s.currentDB = dbName
 }
 
 // ID implements the Session interface.

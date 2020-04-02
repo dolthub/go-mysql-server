@@ -9,11 +9,11 @@ import (
 func TestCatalogLockTable(t *testing.T) {
 	require := require.New(t)
 	c := NewCatalog()
-	c.SetCurrentDatabase("db1")
+	c.SetDefaultDatabase("db1")
 	c.LockTable(1, "foo")
 	c.LockTable(2, "bar")
 	c.LockTable(1, "baz")
-	c.SetCurrentDatabase("db2")
+	c.SetDefaultDatabase("db2")
 	c.LockTable(1, "qux")
 
 	expected := sessionLocks{

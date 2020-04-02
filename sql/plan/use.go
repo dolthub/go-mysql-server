@@ -46,7 +46,7 @@ func (Use) Schema() sql.Schema { return nil }
 
 // RowIter implements the sql.Node interface.
 func (u *Use) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	u.Catalog.SetCurrentDatabase(u.db.Name())
+	ctx.Session.SetCurrentDatabase(u.db.Name())
 	return sql.RowsToRowIter(), nil
 }
 
