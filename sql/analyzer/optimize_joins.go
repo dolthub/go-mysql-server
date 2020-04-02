@@ -159,6 +159,9 @@ func findTableName(node sql.Node) string {
 	var tableName string
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
+		case *plan.TableAlias:
+			tableName = node.Name()
+			return false
 		case *plan.ResolvedTable:
 			tableName = node.Name()
 			return false

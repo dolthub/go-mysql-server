@@ -89,17 +89,25 @@ func normalizeExpressions(exprAliases ExprAliases, tableAliases TableAliases, ex
 // with their underlying names. This is necessary to match such expressions against those declared by implementors of
 // various interfaces that declare expressions to handle, such as Index.Expressions(), FilteredTable, etc.
 func normalizeExpression(exprAliases ExprAliases, tableAliases TableAliases, e sql.Expression) sql.Expression {
-	normalized := e
-	name := e.String()
+ 	name := e.String()
 	if n, ok := e.(sql.Nameable); ok {
 		name = n.Name()
 	}
 
+	// If the query has any aliases that match the expression given, return them
 	if exprAliases != nil && len(exprAliases) > 0 {
 		if alias, ok := exprAliases[name]; ok {
-			normalized = alias
+			return alias
 		}
 	}
 
-	return normalized
+	// If the query has a table alias, use them to replace any table aliases in column expressions
+	if field, ok := e.(*expression.GetField); ok {
+		table := field.Table()
+		if rt, ok := tableAliases[table]; ok {
+			return field.WithTable(rt.Name())
+		}
+	}
+
+	return e
 }

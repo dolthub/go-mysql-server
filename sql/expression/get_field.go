@@ -43,6 +43,13 @@ func (*GetField) Children() []sql.Expression {
 // Table returns the name of the field table.
 func (p *GetField) Table() string { return p.table }
 
+// WithTable returns a copy of this expression with the table given
+func (p *GetField) WithTable(table string) *GetField {
+	p2 := *p
+	p2.table = table
+	return &p2
+}
+
 // Resolved implements the Expression interface.
 func (p *GetField) Resolved() bool {
 	return true
