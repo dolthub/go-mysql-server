@@ -359,8 +359,6 @@ func findChildIndexedColumns(n sql.Node) map[tableCol]indexedCol {
 	return columns
 }
 
-
-
 func resolveGlobalOrSessionColumn(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {
 	if col.Table() != "" && strings.ToLower(col.Table()) != sessionTable {
 		return nil, errGlobalVariablesNotSupported.New(col)

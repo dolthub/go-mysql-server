@@ -923,7 +923,7 @@ func TestGetIndexes(t *testing.T) {
 			require := require.New(t)
 
 			ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
-			result, err := getIndexes(ctx, tt.expr, nil, a)
+			result, err := getIndexes(ctx, a, tt.expr, nil, nil)
 			if tt.ok {
 				require.NoError(err)
 				require.Equal(tt.expected, result)
@@ -1024,7 +1024,7 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 	}
 
 	ctx :=  sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
-	result, err := getMultiColumnIndexes(ctx, exprs, a, used, nil)
+	result, err := getMultiColumnIndexes(ctx, exprs, a, used, nil, nil)
 	require.NoError(err)
 
 	expected := map[string]*indexLookup{

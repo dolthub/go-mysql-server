@@ -7,8 +7,6 @@ import (
 	"github.com/src-d/go-mysql-server/sql/plan"
 )
 
-type Aliases map[string]sql.Expression
-
 // optimizeJoins takes two-table InnerJoins where the join condition is an equality on an index of one of the tables,
 // and replaces it with an equivalent IndexedJoin of the same two tables.
 func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -48,7 +46,7 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 	return transformJoins(a, n, indexes, aliases)
 }
 
-func transformJoins(a *Analyzer, n sql.Node, indexes map[string]sql.Index, aliases Aliases) (sql.Node, error) {
+func transformJoins(a *Analyzer, n sql.Node, indexes map[string]sql.Index, exprAliases ExprAliases) (sql.Node, error) {
 
 	var replacedIndexedJoin bool
 	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
@@ -175,7 +173,7 @@ func findTableName(node sql.Node) string {
 
 // Assign indexes to the join conditions and returns the sql.Indexes assigned, as well as returning any aliases used by
 // join conditions
-func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]sql.Index, Aliases, error) {
+func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]sql.Index, ExprAliases, error) {
 	indexSpan, _ := ctx.Span("find_join_indexes")
 	defer indexSpan.Finish()
 
@@ -191,17 +189,10 @@ func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]s
 		}
 	}()
 
-	aliases := make(Aliases)
-	var err error
+	exprAliases := getExpressionAliases(node)
+	tableAliases := getTableAliases(node)
 
-	fn := func(ex sql.Expression) bool {
-		if alias, ok := ex.(*expression.Alias); ok {
-			if _, ok := aliases[alias.Name()]; !ok {
-				aliases[alias.Name()] = alias.Child
-			}
-		}
-		return true
-	}
+	var err error
 
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
@@ -217,10 +208,8 @@ func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]s
 				cond = node.Cond
 			}
 
-			fn(cond)
-
 			var err error
-			indexes, err = getJoinIndexes(ctx, cond, aliases, a)
+			indexes, err = getJoinIndexes(ctx, a, cond, exprAliases, tableAliases)
 			if err != nil {
 				return false
 			}
@@ -229,7 +218,7 @@ func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]s
 		return true
 	})
 
-	return indexes, aliases, err
+	return indexes, exprAliases, err
 }
 
 // Returns the left and right indexes for the two sides of the equality expression given.
@@ -237,7 +226,8 @@ func getJoinEqualityIndex(
 		ctx *sql.Context,
 		a *Analyzer,
 		e *expression.Equals,
-		aliases map[string]sql.Expression,
+		exprAliases ExprAliases,
+		tableAliases map[string]*plan.ResolvedTable,
 ) (leftIdx sql.Index, rightIdx sql.Index) {
 
 	// Only handle column expressions for these join indexes. Evaluable expression like `col=literal` will get pushed
@@ -247,18 +237,22 @@ func getJoinEqualityIndex(
 	}
 
 	leftIdx, rightIdx =
-			ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), unifyExpressions(aliases, e.Left())...),
-			ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), unifyExpressions(aliases, e.Right())...)
-
+			ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Left())...),
+			ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Right())...)
 	return leftIdx, rightIdx
 }
 
-func getJoinIndexes(ctx *sql.Context, e sql.Expression, aliases map[string]sql.Expression, a *Analyzer) (map[string]sql.Index, error) {
+func getJoinIndexes(ctx *sql.Context,
+a *Analyzer,
+e sql.Expression,
+exprAliases ExprAliases,
+tableAliases map[string]*plan.ResolvedTable,
+) (map[string]sql.Index, error) {
 
 	switch e := e.(type) {
 	case *expression.Equals:
 		result := make(map[string]sql.Index)
-		leftIdx, rightIdx := getJoinEqualityIndex(ctx, a, e, aliases)
+		leftIdx, rightIdx := getJoinEqualityIndex(ctx, a, e, exprAliases, tableAliases)
 		if leftIdx != nil {
 			result[leftIdx.Table()] = leftIdx
 		}
@@ -274,18 +268,24 @@ func getJoinIndexes(ctx *sql.Context, e sql.Expression, aliases map[string]sql.E
 			}
 		}
 
-		return getMultiColumnJoinIndex(ctx, exprs, a, aliases), nil
+		return getMultiColumnJoinIndex(ctx, exprs, a, exprAliases, tableAliases), nil
 	}
 
 	return nil, nil
 }
 
-func getMultiColumnJoinIndex(ctx *sql.Context, exprs []sql.Expression, a *Analyzer, aliases map[string]sql.Expression, ) map[string]sql.Index {
+func getMultiColumnJoinIndex(
+	ctx *sql.Context,
+	exprs []sql.Expression,
+	a *Analyzer,
+	exprAliases ExprAliases,
+	tableAliases TableAliases,
+) map[string]sql.Index {
 	result := make(map[string]sql.Index)
 
 	exprsByTable := joinExprsByTable(exprs)
 	for table, cols := range exprsByTable {
-		idx := ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), unifyExpressions(aliases, extractExpressions(cols)...)...)
+		idx := ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, extractExpressions(cols)...)...)
 		if idx != nil {
 			result[table] = idx
 		}
