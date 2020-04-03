@@ -1,25 +1,13 @@
 package sql_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/src-d/go-mysql-server/memory"
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
 )
-
-func TestCatalogCurrentDatabase(t *testing.T) {
-	require := require.New(t)
-
-	c := sql.NewCatalog()
-	require.Equal("", c.CurrentDatabase())
-
-	c.AddDatabase(memory.NewDatabase("foo"))
-	require.Equal("foo", c.CurrentDatabase())
-
-	c.SetCurrentDatabase("bar")
-	require.Equal("bar", c.CurrentDatabase())
-}
 
 func TestAllDatabases(t *testing.T) {
 	require := require.New(t)
@@ -103,11 +91,12 @@ func TestCatalogUnlockTables(t *testing.T) {
 	c := sql.NewCatalog()
 	c.AddDatabase(db)
 
-	c.LockTable(1, "t1")
-	c.LockTable(1, "t2")
+	ctx := sql.NewContext(context.Background())
+	ctx.SetCurrentDatabase(db.Name())
+	c.LockTable(ctx, "t1")
+	c.LockTable(ctx, "t2")
 
-	ctx := sql.NewEmptyContext()
-	require.NoError(c.UnlockTables(ctx, 1))
+	require.NoError(c.UnlockTables(ctx, ctx.ID()))
 
 	require.Equal(1, t1.unlocks)
 	require.Equal(1, t2.unlocks)

@@ -252,8 +252,8 @@ func getJoinEqualityIndex(
 	}
 
 	leftIdx, rightIdx =
-			ctx.IndexByExpression(ctx, a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Left())...),
-			ctx.IndexByExpression(ctx, a.Catalog.CurrentDatabase(), unifyExpressions(aliases, e.Right())...)
+			ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), unifyExpressions(aliases, e.Left())...),
+			ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), unifyExpressions(aliases, e.Right())...)
 
 	return leftIdx, rightIdx
 }
@@ -290,7 +290,7 @@ func getMultiColumnJoinIndex(ctx *sql.Context, exprs []sql.Expression, a *Analyz
 
 	exprsByTable := joinExprsByTable(exprs)
 	for table, cols := range exprsByTable {
-		idx := ctx.IndexByExpression(ctx, a.Catalog.CurrentDatabase(), unifyExpressions(aliases, extractExpressions(cols)...)...)
+		idx := ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), unifyExpressions(aliases, extractExpressions(cols)...)...)
 		if idx != nil {
 			result[table] = idx
 		}

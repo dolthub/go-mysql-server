@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -17,6 +18,10 @@ type key uint
 const (
 	// QueryKey to access query in the context.
 	QueryKey key = iota
+)
+
+const (
+	CurrentDBSessionVar = "current_database"
 )
 
 // Client holds session user information.
@@ -37,6 +42,10 @@ type Session interface {
 	Set(key string, typ Type, value interface{})
 	// Get session configuration.
 	Get(key string) (Type, interface{})
+	// GetCurrentDatabase gets the current database for this session
+	GetCurrentDatabase() string
+	// SetDefaultDatabase sets the current database for this session
+	SetCurrentDatabase(dbName string)
 	// GetAll returns a copy of session configuration
 	GetAll() map[string]TypedValue
 	// ID returns the unique ID of the connection.
@@ -53,13 +62,14 @@ type Session interface {
 
 // BaseSession is the basic session type.
 type BaseSession struct {
-	id       uint32
-	addr     string
-	client   Client
-	mu       sync.RWMutex
-	config   map[string]TypedValue
-	warnings []*Warning
-	warncnt  uint16
+	id        uint32
+	addr      string
+	currentDB string
+	client    Client
+	mu        sync.RWMutex
+	config    map[string]TypedValue
+	warnings  []*Warning
+	warncnt   uint16
 }
 
 // Address returns the server address.
@@ -97,6 +107,16 @@ func (s *BaseSession) GetAll() map[string]TypedValue {
 		m[k] = v
 	}
 	return m
+}
+
+// GetCurrentDatabase gets the current database for this session
+func (s *BaseSession) GetCurrentDatabase() string {
+	return s.currentDB
+}
+
+// SetCurrentDatabase sets the current database for this session
+func (s *BaseSession) SetCurrentDatabase(dbName string) {
+	s.currentDB = dbName
 }
 
 // ID implements the Session interface.
@@ -202,9 +222,11 @@ func NewSession(server, client, user string, id uint32) Session {
 	}
 }
 
+var autoSessionIDs uint32
+
 // NewBaseSession creates a new empty session.
 func NewBaseSession() Session {
-	return &BaseSession{config: DefaultSessionConfig()}
+	return &BaseSession{id: atomic.AddUint32(&autoSessionIDs, 1), config: DefaultSessionConfig()}
 }
 
 var defIdxReg = NewIndexRegistry()
@@ -332,6 +354,11 @@ func (c *Context) Span(
 	ctx := opentracing.ContextWithSpan(c.Context, span)
 
 	return span, &Context{ctx, c.Session, c.IndexRegistry, c.ViewRegistry, c.Memory, c.Pid(), c.Query(), c.tracer, c.rootSpan}
+}
+
+func (c *Context) WithCurrentDB(db string) *Context {
+	c.SetCurrentDatabase(db)
+	return c
 }
 
 // WithContext returns a new context with the given underlying context.

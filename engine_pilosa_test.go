@@ -170,7 +170,7 @@ func TestIndexes(t *testing.T) {
 			require := require.New(t)
 
 			tracer := new(test.MemTracer)
-			ctx := sql.NewContext(context.TODO(), sql.WithTracer(tracer), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg))
+			ctx := sql.NewContext(context.TODO(), sql.WithTracer(tracer), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
 
 			_, it, err := e.Query(ctx, tt.query)
 			require.NoError(err)

@@ -2702,7 +2702,7 @@ func TestQueryPlans(t *testing.T) {
 
 	for _, tt := range planTests {
 		t.Run(tt.query, func(t *testing.T) {
-			ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry()))
+			ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
 
 			parsed, err := parse.Parse(ctx, tt.query)
 			require.NoError(t, err)
@@ -4894,7 +4894,7 @@ func TestOrderByGroupBy(t *testing.T) {
 	e.AddDatabase(db)
 
 	_, iter, err := e.Query(
-		newCtx(idxReg),
+		newCtx(idxReg).WithCurrentDB("db"),
 		"SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY 2",
 	)
 	require.NoError(err)
@@ -4911,7 +4911,7 @@ func TestOrderByGroupBy(t *testing.T) {
 	require.Equal(expected, rows)
 
 	_, iter, err = e.Query(
-		newCtx(idxReg),
+		newCtx(idxReg).WithCurrentDB("db"),
 		"SELECT team, COUNT(*) FROM members GROUP BY 1 ORDER BY 2",
 	)
 	require.NoError(err)
@@ -4934,7 +4934,7 @@ func TestTracing(t *testing.T) {
 
 	tracer := new(test.MemTracer)
 
-	ctx := sql.NewContext(context.TODO(), sql.WithTracer(tracer), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := sql.NewContext(context.TODO(), sql.WithTracer(tracer), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
 
 	_, iter, err := e.Query(ctx, `SELECT DISTINCT i
 		FROM mytable
@@ -5014,7 +5014,7 @@ func TestSessionVariables(t *testing.T) {
 	viewReg := sql.NewViewRegistry()
 
 	session := sql.NewBaseSession()
-	ctx := sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(1), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg))
+	ctx := sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(1), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
 
 	_, _, err := e.Query(ctx, `set autocommit=1, sql_mode = concat(@@sql_mode,',STRICT_TRANS_TABLES')`)
 	require.NoError(err)
@@ -5037,12 +5037,12 @@ func TestSessionVariablesONOFF(t *testing.T) {
 	e, idxReg := newEngine(t)
 
 	session := sql.NewBaseSession()
-	ctx := sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(1), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg))
+	ctx := sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(1), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
 
 	_, _, err := e.Query(ctx, `set autocommit=ON, sql_mode = OFF, autoformat="true"`)
 	require.NoError(err)
 
-	ctx = sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(2), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg))
+	ctx = sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(2), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
 
 	_, iter, err := e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode, @@autoformat`)
 	require.NoError(err)
@@ -5068,17 +5068,22 @@ func TestUse(t *testing.T) {
 	require := require.New(t)
 	e, idxReg := newEngine(t)
 
-	_, _, err := e.Query(newCtx(idxReg), "USE bar")
+	ctx := newCtx(idxReg)
+	require.Equal("mydb", ctx.GetCurrentDatabase())
+
+	_, _, err := e.Query(ctx, "USE bar")
 	require.Error(err)
 
-	_, iter, err := e.Query(newCtx(idxReg), "USE foo")
+	require.Equal("mydb", ctx.GetCurrentDatabase())
+
+	_, iter, err := e.Query(ctx, "USE foo")
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
 	require.NoError(err)
 	require.Len(rows, 0)
 
-	require.Equal("foo", e.Catalog.CurrentDatabase())
+	require.Equal("foo", ctx.GetCurrentDatabase())
 }
 
 func TestLocks(t *testing.T) {
@@ -5098,13 +5103,13 @@ func TestLocks(t *testing.T) {
 	engine := sqle.New(catalog, analyzer, new(sqle.Config))
 	idxReg := sql.NewIndexRegistry()
 
-	_, iter, err := engine.Query(newCtx(idxReg), "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
+	_, iter, err := engine.Query(newCtx(idxReg).WithCurrentDB("db"), "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
 	require.NoError(err)
 
 	_, err = sql.RowIterToRows(iter)
 	require.NoError(err)
 
-	_, iter, err = engine.Query(newCtx(idxReg), "UNLOCK TABLES")
+	_, iter, err = engine.Query(newCtx(idxReg).WithCurrentDB("db"), "UNLOCK TABLES")
 	require.NoError(err)
 
 	_, err = sql.RowIterToRows(iter)
@@ -5294,7 +5299,7 @@ func TestRootSpanFinish(t *testing.T) {
 		sql.WithRootSpan(fakeSpan),
 		sql.WithIndexRegistry(idxReg),
 		sql.WithViewRegistry(sql.NewViewRegistry()),
-	)
+	).WithCurrentDB("mydb")
 
 	_, iter, err := e.Query(ctx, "SELECT 1")
 	require.NoError(t, err)
@@ -5363,7 +5368,7 @@ func TestGenerators(t *testing.T) {
 		sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"),
 	)
 
-	db := memory.NewDatabase("db")
+	db := memory.NewDatabase("mydb")
 	db.AddTable("t", table)
 
 	catalog := sql.NewCatalog()
@@ -5390,13 +5395,14 @@ var pid uint64
 
 func newCtx(idxReg *sql.IndexRegistry) *sql.Context {
 	session := sql.NewSession("address", "client", "user", 1)
+
 	return sql.NewContext(
 		context.Background(),
 		sql.WithPid(atomic.AddUint64(&pid, 1)),
 		sql.WithSession(session),
 		sql.WithIndexRegistry(idxReg),
 		sql.WithViewRegistry(sql.NewViewRegistry()),
-	)
+	).WithCurrentDB("mydb")
 }
 
 type lockableTable struct {

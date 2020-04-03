@@ -52,7 +52,6 @@ func (t *LockTables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.LockTables")
 	defer span.Finish()
 
-	id := ctx.ID()
 	for _, l := range t.Locks {
 		lockable, err := getLockable(l.Table)
 		if err != nil {
@@ -64,7 +63,7 @@ func (t *LockTables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		if err := lockable.Lock(ctx, l.Write); err != nil {
 			ctx.Error(0, "unable to lock table: %s", err)
 		} else {
-			t.Catalog.LockTable(id, lockable.Name())
+			t.Catalog.LockTable(ctx, lockable.Name())
 		}
 	}
 

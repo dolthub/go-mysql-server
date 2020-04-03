@@ -27,7 +27,6 @@ type Catalog struct {
 	*MemoryManager
 
 	mu              sync.RWMutex
-	currentDatabase string
 	dbs             Databases
 	locks           sessionLocks
 }
@@ -48,20 +47,6 @@ func NewCatalog() *Catalog {
 	}
 }
 
-// CurrentDatabase returns the current database.
-func (c *Catalog) CurrentDatabase() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.currentDatabase
-}
-
-// SetCurrentDatabase changes the current database.
-func (c *Catalog) SetCurrentDatabase(db string) {
-	c.mu.Lock()
-	c.currentDatabase = db
-	c.mu.Unlock()
-}
-
 // AllDatabases returns all databases in the catalog.
 func (c *Catalog) AllDatabases() Databases {
 	c.mu.RLock()
@@ -75,10 +60,6 @@ func (c *Catalog) AllDatabases() Databases {
 // AddDatabase adds a new database to the catalog.
 func (c *Catalog) AddDatabase(db Database) {
 	c.mu.Lock()
-	if c.currentDatabase == "" {
-		c.currentDatabase = db.Name()
-	}
-
 	c.dbs.Add(db)
 	c.mu.Unlock()
 }
@@ -110,7 +91,6 @@ type Databases []Database
 
 // Database returns the Database with the given name if it exists.
 func (d Databases) Database(name string) (Database, error) {
-
 	if len(d) == 0 {
 		return nil, ErrDatabaseNotFound.New(name)
 	}
@@ -196,10 +176,13 @@ func suggestSimilarTablesAsOf(db VersionedDatabase, ctx *Context, tableName stri
 
 // LockTable adds a lock for the given table and session client. It is assumed
 // the database is the current database in use.
-func (c *Catalog) LockTable(id uint32, table string) {
-	db := c.CurrentDatabase()
+func (c *Catalog) LockTable(ctx *Context, table string) {
+	id := ctx.ID()
+	db := ctx.GetCurrentDatabase()
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	if _, ok := c.locks[id]; !ok {
 		c.locks[id] = make(dbLocks)
 	}

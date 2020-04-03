@@ -20,7 +20,7 @@ func TestAssignCatalog(t *testing.T) {
 
 	a := NewDefault(c)
 	idxReg := sql.NewIndexRegistry()
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("foo")
 
 	tbl := memory.NewTable("foo", nil)
 

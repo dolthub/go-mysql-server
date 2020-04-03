@@ -89,7 +89,7 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) {
-	// TODO: set current DB
+	h.sm.SetDB(c, schemaName)
 }
 
 func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error) {

@@ -36,7 +36,7 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 		name := t.Name()
 		db := t.Database
 		if db == "" {
-			db = a.Catalog.CurrentDatabase()
+			db = ctx.GetCurrentDatabase()
 		}
 
 		if t.AsOf != nil {

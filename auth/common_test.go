@@ -168,7 +168,7 @@ func testAuthorization(
 				sql.WithSession(session),
 				sql.WithPid(uint64(i)),
 				sql.WithIndexRegistry(idxReg),
-				sql.WithViewRegistry(sql.NewViewRegistry()))
+				sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("test")
 
 			_, _, err := e.Query(ctx, c.query)
 
