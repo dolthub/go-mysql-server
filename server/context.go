@@ -93,7 +93,7 @@ func (s *SessionManager) session(conn *mysql.Conn) sql.Session {
 }
 
 // NewContext creates a new context for the session at the given conn.
-func (s *SessionManager) NewContext(conn *mysql.Conn, initialDB string) (*sql.Context, error) {
+func (s *SessionManager) NewContext(conn *mysql.Conn) (*sql.Context, error) {
 	return s.NewContextWithQuery(conn, "")
 }
 

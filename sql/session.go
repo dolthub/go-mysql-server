@@ -60,23 +60,6 @@ type Session interface {
 	WarningCount() uint16
 }
 
-/*var defaultDB =""
-var defaultDBRWLock = &sync.RWMutex{}
-
-func SetDefaultDB(newDefault string) {
-	defaultDBRWLock.Lock()
-	defer defaultDBRWLock.Unlock()
-
-	defaultDB = newDefault
-}
-
-func GetDefaultDB() string {
-	defaultDBRWLock.RLock()
-	defer defaultDBRWLock.RUnlock()
-
-	return defaultDB
-}*/
-
 // BaseSession is the basic session type.
 type BaseSession struct {
 	id        uint32
