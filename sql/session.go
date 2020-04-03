@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -58,6 +59,23 @@ type Session interface {
 	// WarningCount returns a number of session warnings
 	WarningCount() uint16
 }
+
+/*var defaultDB =""
+var defaultDBRWLock = &sync.RWMutex{}
+
+func SetDefaultDB(newDefault string) {
+	defaultDBRWLock.Lock()
+	defer defaultDBRWLock.Unlock()
+
+	defaultDB = newDefault
+}
+
+func GetDefaultDB() string {
+	defaultDBRWLock.RLock()
+	defer defaultDBRWLock.RUnlock()
+
+	return defaultDB
+}*/
 
 // BaseSession is the basic session type.
 type BaseSession struct {
@@ -221,9 +239,11 @@ func NewSession(server, client, user string, id uint32) Session {
 	}
 }
 
+var autoSessionIDs uint32
+
 // NewBaseSession creates a new empty session.
 func NewBaseSession() Session {
-	return &BaseSession{config: DefaultSessionConfig()}
+	return &BaseSession{id: atomic.AddUint32(&autoSessionIDs, 1), config: DefaultSessionConfig()}
 }
 
 var defIdxReg = NewIndexRegistry()
@@ -351,6 +371,11 @@ func (c *Context) Span(
 	ctx := opentracing.ContextWithSpan(c.Context, span)
 
 	return span, &Context{ctx, c.Session, c.IndexRegistry, c.ViewRegistry, c.Memory, c.Pid(), c.Query(), c.tracer, c.rootSpan}
+}
+
+func (c *Context) WithCurrentDB(db string) *Context {
+	c.SetCurrentDatabase(db)
+	return c
 }
 
 // WithContext returns a new context with the given underlying context.

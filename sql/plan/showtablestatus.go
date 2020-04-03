@@ -67,7 +67,7 @@ func (s *ShowTableStatus) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 			}
 		}
 	} else {
-		db, err := s.Catalog.Database(s.Catalog.DefaultDatabase())
+		db, err := s.Catalog.Database(ctx.GetCurrentDatabase())
 		if err != nil {
 			return nil, err
 		}

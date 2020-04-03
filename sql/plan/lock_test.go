@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"testing"
 
 	"github.com/src-d/go-mysql-server/memory"
@@ -41,13 +42,15 @@ func TestUnlockTables(t *testing.T) {
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
-	catalog.LockTable(0, "foo")
-	catalog.LockTable(0, "bar")
+
+	ctx := sql.NewContext(context.Background()).WithCurrentDB("db").WithCurrentDB("db")
+	catalog.LockTable(ctx, "foo")
+	catalog.LockTable(ctx, "bar")
 
 	node := NewUnlockTables()
 	node.Catalog = catalog
 
-	_, err := node.RowIter(sql.NewEmptyContext())
+	_, err := node.RowIter(ctx)
 	require.NoError(err)
 
 	require.Equal(1, t1.unlocks)

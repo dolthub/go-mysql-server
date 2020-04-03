@@ -109,6 +109,7 @@ func TestHandlerOutput(t *testing.T) {
 			var callsToCallback int
 			var lenLastBatch int
 			var lastRowsAffected uint64
+			handler.ComInitDB(test.conn, "test")
 			err := handler.ComQuery(test.conn, test.query, func(res *sqltypes.Result) error {
 				callsToCallback++
 				lenLastBatch = len(res.Rows)
@@ -156,6 +157,7 @@ func TestHandlerKill(t *testing.T) {
 	require.Len(handler.sm.sessions, 0)
 	require.Len(handler.c, 2)
 
+	handler.ComInitDB(conn2, "test")
 	err := handler.ComQuery(conn2, "KILL QUERY 1", func(res *sqltypes.Result) error {
 		return nil
 	})
@@ -168,6 +170,8 @@ func TestHandlerKill(t *testing.T) {
 	require.Equal(conntainer2, handler.c[2])
 	assertNoConnProcesses(t, e, conn2.ConnectionID)
 
+	err = handler.sm.SetDB(conn1, "test")
+	require.NoError(err)
 	ctx1, err := handler.sm.NewContextWithQuery(conn1, "SELECT 1")
 	require.NoError(err)
 	ctx1, err = handler.e.Catalog.AddProcess(ctx1, sql.QueryProcess, "SELECT 1")
@@ -242,6 +246,7 @@ func TestHandlerTimeout(t *testing.T) {
 	connNoTimeout := newConn(2)
 	noTimeOutHandler.NewConnection(connNoTimeout)
 
+	timeOutHandler.ComInitDB(connTimeout, "test")
 	err := timeOutHandler.ComQuery(connTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result) error {
 		return nil
 	})
@@ -252,6 +257,7 @@ func TestHandlerTimeout(t *testing.T) {
 	})
 	require.NoError(err)
 
+	noTimeOutHandler.ComInitDB(connNoTimeout, "test")
 	err = noTimeOutHandler.ComQuery(connNoTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result) error {
 		return nil
 	})
@@ -288,6 +294,7 @@ func TestOkClosedConnection(t *testing.T) {
 	h.NewConnection(c)
 
 	q := fmt.Sprintf("SELECT SLEEP(%d)", tcpCheckerSleepTime*4)
+	h.ComInitDB(c, "test")
 	err = h.ComQuery(c, q, func(res *sqltypes.Result) error {
 		return nil
 	})

@@ -26,43 +26,44 @@ func TestResolveTables(t *testing.T) {
 	catalog.AddDatabase(versionedDb)
 
 	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
+	ctx := sql.NewEmptyContext().WithCurrentDB("mydb")
 
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable", "")
-	analyzed, err := f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
+	analyzed, err := f.Apply(ctx, a, notAnalyzed)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("MyTable", "")
-	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
+	analyzed, err = f.Apply(ctx, a, notAnalyzed)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("nonexistant", "")
-	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
+	analyzed, err = f.Apply(ctx, a, notAnalyzed)
 	require.Error(err)
 	require.Nil(analyzed)
 
-	analyzed, err = f.Apply(sql.NewEmptyContext(), a, plan.NewResolvedTable(table))
+	analyzed, err = f.Apply(ctx, a, plan.NewResolvedTable(table))
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("dual", "")
-	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
+	analyzed, err = f.Apply(ctx, a, notAnalyzed)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(dualTable), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("dual", "")
-	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
+	analyzed, err = f.Apply(ctx, a, notAnalyzed)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(dualTable), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTableAsOf("myTable", "", expression.NewLiteral("2019-01-01", sql.LongText))
-	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
+	analyzed, err = f.Apply(ctx, a, notAnalyzed)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTableAsOf("myTable", "", expression.NewLiteral("2019-01-02", sql.LongText))
-	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
+	analyzed, err = f.Apply(ctx, a, notAnalyzed)
 	require.Error(err)
 }
 
@@ -83,12 +84,13 @@ func TestResolveTablesNested(t *testing.T) {
 	catalog.AddDatabase(db2)
 
 	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
+	ctx := sql.NewEmptyContext().WithCurrentDB("mydb")
 
 	notAnalyzed := plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},
 		plan.NewUnresolvedTable("mytable", ""),
 	)
-	analyzed, err := f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
+	analyzed, err := f.Apply(ctx, a, notAnalyzed)
 	require.NoError(err)
 	expected := plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},
@@ -100,7 +102,7 @@ func TestResolveTablesNested(t *testing.T) {
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},
 		plan.NewUnresolvedTable("my_other_table", "my_other_db"),
 	)
-	analyzed, err = f.Apply(sql.NewEmptyContext(), a, notAnalyzed)
+	analyzed, err = f.Apply(ctx, a, notAnalyzed)
 	require.NoError(err)
 	expected = plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},

@@ -12,10 +12,10 @@ import (
 
 func Example() {
 	e := sqle.NewDefault()
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
-
 	// Create a test memory database and register it to the default engine.
 	e.AddDatabase(createTestDatabase())
+
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("test")
 
 	_, r, err := e.Query(ctx, `SELECT name, count(*) FROM mytable
 	WHERE name = 'John Doe'

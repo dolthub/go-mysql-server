@@ -85,7 +85,7 @@ func TestResolveSubqueries(t *testing.T) {
 		),
 	)
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
 	result, err := resolveSubqueries(ctx, a, node)
 	require.NoError(err)
 	require.Equal(expected, result)

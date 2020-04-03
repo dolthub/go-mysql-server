@@ -17,7 +17,7 @@ func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 			return n, nil
 		}
 
-		var dbName = a.Catalog.DefaultDatabase()
+		var dbName = ctx.GetCurrentDatabase()
 		if db := d.Database(); db != nil {
 			if _, ok := db.(sql.UnresolvedDatabase); !ok {
 				return n, nil

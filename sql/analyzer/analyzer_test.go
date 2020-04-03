@@ -33,7 +33,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	a := withoutProcessTracking(NewDefault(catalog))
 
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable", "")
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
 	analyzed, err := a.Analyze(ctx, notAnalyzed)
 	require.NoError(err)
 	require.Equal(
@@ -217,7 +217,7 @@ func TestMaxIterations(t *testing.T) {
 			return n, nil
 		}).Build())
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
 	notAnalyzed := plan.NewUnresolvedTable(tName, "")
 	analyzed, err := a.Analyze(ctx, notAnalyzed)
 	require.NoError(err)
@@ -352,7 +352,7 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 		),
 	)
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
 	result, err := a.Analyze(ctx, node)
 	require.NoError(err)
 	require.Equal(expected, result)

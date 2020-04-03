@@ -75,6 +75,17 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 	return err
 }
 
+func (s *SessionManager) SetDB(conn *mysql.Conn, db string) error {
+	sess, _, _, err := s.getOrCreateSession(context.Background(), conn)
+
+	if err != nil {
+		return err
+	}
+
+	sess.SetCurrentDatabase(db)
+	return nil
+}
+
 func (s *SessionManager) session(conn *mysql.Conn) sql.Session {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -82,13 +93,11 @@ func (s *SessionManager) session(conn *mysql.Conn) sql.Session {
 }
 
 // NewContext creates a new context for the session at the given conn.
-func (s *SessionManager) NewContext(conn *mysql.Conn) (*sql.Context, error) {
+func (s *SessionManager) NewContext(conn *mysql.Conn, initialDB string) (*sql.Context, error) {
 	return s.NewContextWithQuery(conn, "")
 }
 
-// NewContextWithQuery creates a new context for the session at the given conn.
-func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string, ) (*sql.Context, error) {
-	ctx := context.Background()
+func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Conn) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry, error){
 	s.mu.Lock()
 	sess, ok := s.sessions[conn.ConnectionID]
 	ir := s.idxRegs[conn.ConnectionID]
@@ -98,7 +107,7 @@ func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string, ) (
 		sess, ir, vr, err = s.builder(ctx, conn, s.addr)
 
 		if err != nil {
-			return  nil, err
+			return nil, nil, nil, err
 		}
 
 		s.sessions[conn.ConnectionID] = sess
@@ -106,6 +115,18 @@ func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string, ) (
 		s.viewRegs[conn.ConnectionID] = vr
 	}
 	s.mu.Unlock()
+
+	return sess, ir, vr, nil
+}
+
+// NewContextWithQuery creates a new context for the session at the given conn.
+func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string, ) (*sql.Context, error) {
+	ctx := context.Background()
+	sess, ir, vr, err := s.getOrCreateSession(ctx, conn)
+
+	if err != nil {
+		return nil, err
+	}
 
 	context := sql.NewContext(
 		ctx,
