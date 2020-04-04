@@ -33,7 +33,7 @@ type informationSchemaTable struct {
 	name    string
 	schema  Schema
 	catalog *Catalog
-	rowIter func(*Catalog) RowIter
+	rowIter func(*Context, *Catalog) RowIter
 }
 
 type informationSchemaPartition struct {
@@ -156,9 +156,7 @@ var schemataSchema = Schema{
 	{Name: "sql_path", Type: LongText, Default: nil, Nullable: true, Source: SchemataTableName},
 }
 
-func tablesRowIter(cat *Catalog) RowIter {
-	ctx := NewEmptyContext()
-
+func tablesRowIter(ctx *Context, cat *Catalog) RowIter {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
 		tableType := "BASE TABLE"
@@ -207,9 +205,7 @@ func tablesRowIter(cat *Catalog) RowIter {
 	return RowsToRowIter(rows...)
 }
 
-func columnsRowIter(cat *Catalog) RowIter {
-	ctx := NewEmptyContext()
-
+func columnsRowIter(ctx *Context, cat *Catalog) RowIter {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
@@ -263,7 +259,7 @@ func columnsRowIter(cat *Catalog) RowIter {
 	return RowsToRowIter(rows...)
 }
 
-func schemataRowIter(c *Catalog) RowIter {
+func schemataRowIter(ctx *Context, c *Catalog) RowIter {
 	dbs := c.AllDatabases()
 
 	var rows []Row
@@ -367,7 +363,7 @@ func (t *informationSchemaTable) PartitionRows(ctx *Context, partition Partition
 		return RowsToRowIter(), nil
 	}
 
-	return t.rowIter(t.catalog), nil
+	return t.rowIter(ctx, t.catalog), nil
 }
 
 // PartitionCount implements the sql.PartitionCounter interface.

@@ -1231,6 +1231,9 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		return caseExprToExpression(ctx, v)
 	case *sqlparser.IntervalExpr:
 		return intervalExprToExpression(ctx, v)
+	case *sqlparser.CollateExpr:
+		// TODO: handle collation
+		return exprToExpression(ctx, v.Expr)
 	}
 }
 
