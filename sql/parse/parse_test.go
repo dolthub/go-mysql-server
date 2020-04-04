@@ -1036,6 +1036,16 @@ var fixtures = map[string]sql.Node{
 			Value: expression.NewLiteral("bar", sql.LongText),
 		},
 	),
+	`SET autocommit=1, foo=bar`: plan.NewSet(
+		plan.SetVariable{
+			Name:  "autocommit",
+			Value: expression.NewLiteral(int8(1), sql.Int8),
+		},
+		plan.SetVariable{
+			Name:  "foo",
+			Value: expression.NewLiteral("bar", sql.LongText),
+		},
+	),
 	`SET @@session.autocommit=1, foo="bar"`: plan.NewSet(
 		plan.SetVariable{
 			Name:  "@@session.autocommit",

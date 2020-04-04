@@ -225,7 +225,7 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 		}
 
 		name := strings.TrimSpace(e.Name.Lowered())
-		if expr, err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
+		expr, err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
 			if _, ok := e.(*expression.DefaultColumn); ok {
 				return e, nil
 			}
@@ -256,8 +256,16 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 			}
 
 			return e, nil
-		}); err != nil {
+		})
+
+		if err != nil {
 			return nil, err
+		}
+
+		// special case: for system variables, MySQL allows naked strings (without quotes), which get interpreted as
+		// unresolved columns.
+		if uc, ok := expr.(*expression.UnresolvedColumn); ok && uc.Table() == "" {
+			expr = expression.NewLiteral(uc.Name(), sql.LongText)
 		}
 
 		variables[i] = plan.SetVariable{
