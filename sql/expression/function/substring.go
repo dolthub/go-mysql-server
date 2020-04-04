@@ -257,3 +257,92 @@ func (s *SubstringIndex) WithChildren(children ...sql.Expression) (sql.Expressio
 	}
 	return NewSubstringIndex(children[0], children[1], children[2]), nil
 }
+
+// Left is a function that returns the first N characters of a string expression.
+type Left struct {
+	str   sql.Expression
+	len   sql.Expression
+}
+
+// NewSubstring creates a new substring UDF.
+func NewLeft(str, len sql.Expression) sql.Expression {
+	return Left{str, len}
+}
+
+// Children implements the Expression interface.
+func (l Left) Children() []sql.Expression {
+	return []sql.Expression{l.str, l.len}
+}
+
+// Eval implements the Expression interface.
+func (l Left) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	str, err := l.str.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	var text []rune
+	switch str := str.(type) {
+	case string:
+		text = []rune(str)
+	case []byte:
+		text = []rune(string(str))
+	case nil:
+		return nil, nil
+	default:
+		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
+	}
+
+	var length int64
+	runeCount := int64(len(text))
+	len, err := l.len.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if len == nil {
+		return nil, nil
+	}
+
+	len, err = sql.Int64.Convert(len)
+	if err != nil {
+		return nil, err
+	}
+
+	length = len.(int64)
+
+	if length > runeCount {
+		length = runeCount
+	}
+	if length <= 0 {
+		return "", nil
+	}
+
+	return string(text[:length]), nil
+}
+
+// IsNullable implements the Expression interface.
+func (l Left) IsNullable() bool {
+	return l.str.IsNullable() || l.len.IsNullable()
+}
+
+func (l Left) String() string {
+	return fmt.Sprintf("LEFT(%s, %s)", l.str, l.len)
+}
+
+// Resolved implements the Expression interface.
+func (l Left) Resolved() bool {
+	return l.str.Resolved() && (l.len == nil || l.len.Resolved())
+}
+
+// Type implements the Expression interface.
+func (Left) Type() sql.Type { return sql.LongText }
+
+/// WithChildren implements the Expression interface.
+func (l Left) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 2)
+	}
+	return NewLeft(children[0], children[1]), nil
+}
+
