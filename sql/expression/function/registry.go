@@ -57,6 +57,7 @@ var Defaults = []sql.Function{
 	sql.Function1{Name: "weekday", Fn: NewWeekday},
 	sql.Function1{Name: "year", Fn: NewYear},
 
+	sql.Function3{Name: "if", Fn: NewIf},
 	sql.Function2{Name: "ifnull", Fn: NewIfNull},
 	sql.Function2{Name: "nullif", Fn: NewNullIf},
 	sql.Function2{Name: "pow", Fn: NewPower},
