@@ -55,7 +55,7 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 
 			rt, err := a.Catalog.TableAsOf(ctx, db, name, asOf)
 			if err != nil {
-				return handleTableLookupFailure(err, name, a, t)
+				return handleTableLookupFailure(err, name, db, a, t)
 			}
 
 			return plan.NewResolvedTable(rt), nil
@@ -63,7 +63,7 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 
 		rt, err := a.Catalog.Table(ctx, db, name)
 		if err != nil {
-			return handleTableLookupFailure(err, name, a, t)
+			return handleTableLookupFailure(err, name, db, a, t)
 		}
 
 		a.Log("table resolved: %q", t.Name())
@@ -71,12 +71,21 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 	})
 }
 
-func handleTableLookupFailure(err error, tableName string, a *Analyzer, t *plan.UnresolvedTable) (sql.Node, error) {
-	if sql.ErrTableNotFound.Is(err) {
+func handleTableLookupFailure(err error, tableName string, dbName string, a *Analyzer, t *plan.UnresolvedTable) (sql.Node, error) {
+	if sql.ErrDatabaseNotFound.Is(err) {
+		if tableName == dualTableName {
+			a.Log("table resolved: %q", t.Name())
+			return plan.NewResolvedTable(dualTable), nil
+		}
+		if dbName == "" {
+			return nil, sql.ErrNoDatabaseSelected.New()
+		}
+	} else if sql.ErrTableNotFound.Is(err) {
 		if tableName == dualTableName {
 			a.Log("table resolved: %q", t.Name())
 			return plan.NewResolvedTable(dualTable), nil
 		}
 	}
+
 	return nil, err
 }
