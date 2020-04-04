@@ -74,6 +74,7 @@ var Defaults = []sql.Function{
 	sql.FunctionN{Name: "date_sub", Fn: NewDateSub},
 	sql.FunctionN{Name: "greatest", Fn: NewGreatest},
 	sql.FunctionN{Name: "json_extract", Fn: NewJSONExtract},
+	sql.Function2{Name: "instr", Fn: NewInstr},
 	sql.FunctionN{Name: "least", Fn: NewLeast},
 	sql.Function2{Name: "left", Fn: NewLeft},
 	sql.FunctionN{Name: "log", Fn: NewLog},
