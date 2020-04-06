@@ -22,6 +22,10 @@ const (
 	SchemataTableName = "schemata"
 	// CollationsTableName is the name of the collations table.
 	CollationsTableName = "collations"
+	// StatisticsTableName is the name of the statistics table.
+	StatisticsTableName = "statistics"
+	// TableConstraintsTableName is the name of the table_constraints table.
+	TableConstraintsTableName  = "table_constraints"
 )
 
 const (
@@ -170,8 +174,39 @@ var collationsSchema = Schema{
 	{Name: "id", Type: LongText, Default: nil, Nullable: false, Source: CollationsTableName},
 	{Name: "is_default", Type: LongText, Default: nil, Nullable: false, Source: CollationsTableName},
 	{Name: "is_compiled", Type: LongText, Default: nil, Nullable: true, Source: CollationsTableName},
-	{Name: "sortlen", Type: LongText, Default: nil, Nullable: true, Source: CollationsTableName},
-	{Name: "pad_attribute", Type: LongText, Default: nil, Nullable: true, Source: CollationsTableName},
+	{Name: "sortlen", Type: LongText, Default: nil, Nullable: false, Source: CollationsTableName},
+	{Name: "pad_attribute", Type: LongText, Default: nil, Nullable: false, Source: CollationsTableName},
+}
+
+var statisticsSchema = Schema{
+	{Name: "table_catalog", Type: LongText, Default: nil, Nullable: true, Source: StatisticsTableName},
+	{Name: "table_schema", Type: LongText, Default: nil, Nullable: true, Source: StatisticsTableName},
+	{Name: "table_name", Type: LongText, Default: nil, Nullable: true, Source: StatisticsTableName},
+	{Name: "non_unique", Type: Int64, Default: nil, Nullable: false, Source: StatisticsTableName},
+	{Name: "index_schema", Type: LongText, Default: nil, Nullable: true, Source: StatisticsTableName},
+	{Name: "index_name", Type: LongText, Default: nil, Nullable: true, Source: StatisticsTableName},
+	{Name: "seq_in_index", Type: Int64, Default: nil, Nullable: false, Source: StatisticsTableName},
+	{Name: "column_name", Type: LongText, Default: nil, Nullable: true, Source: StatisticsTableName},
+	{Name: "collation", Type: LongText, Default: nil, Nullable: true, Source: StatisticsTableName},
+	{Name: "cardinality", Type: Int64, Default: nil, Nullable: true, Source: StatisticsTableName},
+	{Name: "sub_part", Type: Int64, Default: nil, Nullable: true, Source: StatisticsTableName},
+	{Name: "packed", Type: Int64, Default: nil, Nullable: true, Source: StatisticsTableName},
+	{Name: "nullable", Type: LongText, Default: nil, Nullable: false, Source: StatisticsTableName},
+	{Name: "index_type", Type: LongText, Default: nil, Nullable: false, Source: StatisticsTableName},
+	{Name: "comment", Type: LongText, Default: nil, Nullable: false, Source: StatisticsTableName},
+	{Name: "index_comment", Type: LongText, Default: nil, Nullable: false, Source: StatisticsTableName},
+	{Name: "is_visible", Type: LongText, Default: nil, Nullable: false, Source: StatisticsTableName},
+	{Name: "expression", Type: LongText, Default: nil, Nullable: true, Source: StatisticsTableName},
+}
+
+var tableConstraintsSchema = Schema{
+	{Name: "constraint_catalog", Type: LongText, Default: nil, Nullable: true, Source: TableConstraintsTableName},
+	{Name: "constraint_schema", Type: LongText, Default: nil, Nullable: true, Source: TableConstraintsTableName},
+	{Name: "constraint_name", Type: LongText, Default: nil, Nullable: true, Source: TableConstraintsTableName},
+	{Name: "table_schema", Type: LongText, Default: nil, Nullable: true, Source: TableConstraintsTableName},
+	{Name: "table_name", Type: LongText, Default: nil, Nullable: true, Source: TableConstraintsTableName},
+	{Name: "constraint_type", Type: LongText, Default: nil, Nullable: false, Source: TableConstraintsTableName},
+	{Name: "enforced", Type: LongText, Default: nil, Nullable: false, Source: TableConstraintsTableName},
 }
 
 func tablesRowIter(ctx *Context, cat *Catalog) RowIter {
@@ -310,6 +345,10 @@ func collationsRowIter(ctx *Context, c *Catalog) RowIter {
 	})
 }
 
+func emptyRowIter(ctx *Context, c *Catalog) RowIter {
+	return RowsToRowIter()
+}
+
 // NewInformationSchemaDatabase creates a new INFORMATION_SCHEMA Database.
 func NewInformationSchemaDatabase(cat *Catalog) Database {
 	return &informationSchemaDatabase{
@@ -348,6 +387,18 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				schema:  collationsSchema,
 				catalog: cat,
 				rowIter: collationsRowIter,
+			},
+			StatisticsTableName: &informationSchemaTable{
+				name:    StatisticsTableName,
+				schema:  statisticsSchema,
+				catalog: cat,
+				rowIter: emptyRowIter,
+			},
+			TableConstraintsTableName: &informationSchemaTable{
+				name:    TableConstraintsTableName,
+				schema:  tableConstraintsSchema,
+				catalog: cat,
+				rowIter: emptyRowIter,
 			},
 		},
 	}
