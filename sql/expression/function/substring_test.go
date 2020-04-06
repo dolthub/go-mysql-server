@@ -93,3 +93,47 @@ func TestSubstringIndex(t *testing.T) {
 		})
 	}
 }
+
+func TestInstr(t *testing.T) {
+	f := NewInstr(
+		expression.NewGetField(0, sql.LongText, "str", true),
+		expression.NewGetField(1, sql.LongText, "substr", false),
+	)
+
+	testCases := []struct {
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
+	}{
+		{"both null", sql.NewRow(nil, nil), nil, false},
+		{"null string", sql.NewRow(nil, "hello"), nil, false},
+		{"null substr", sql.NewRow("foo", nil), nil, false},
+		{"total match", sql.NewRow("foo", "foo"), 1, false},
+		{"midword match", sql.NewRow("foobar", "bar"), 4, false},
+		{"non match", sql.NewRow("foo", "bar"), 0, false},
+		{"substr bigger than string", sql.NewRow("foo", "foobar"), 0, false},
+		{"multiple matches", sql.NewRow("bobobo", "bo"), 1, false},
+		{"bad string", sql.NewRow(1, "hello"), 0, true},
+		{"bad substr", sql.NewRow("foo", 1), 0, true},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			ctx := sql.NewEmptyContext()
+
+			v, err := f.Eval(ctx, tt.row)
+			if tt.err {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+				var expected interface{}
+				if i, ok := tt.expected.(int); ok {
+					expected = int64(i)
+				}
+				require.Equal(expected, v)
+			}
+		})
+	}
+}
