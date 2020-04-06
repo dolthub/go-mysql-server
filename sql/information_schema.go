@@ -30,6 +30,8 @@ const (
 	ReferentialConstraintsTableName = "referential_constraints"
 	// KeyColumnUsageTableName is the name of the key_column_usage table.
 	KeyColumnUsageTableName = "key_column_usage"
+	// TriggersTableName is the name of the trigers table.
+	TriggersTableName = "triggers"
 )
 
 const (
@@ -242,6 +244,31 @@ var keyColumnUsageSchema = Schema{
 	{Name: "referenced_column_name", Type: LongText, Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
 }
 
+var triggersSchema = Schema{
+	{Name: "trigger_catalog", Type: LongText, Default: nil, Nullable: true, Source: TriggersTableName},
+	{Name: "trigger_schema", Type: LongText, Default: nil, Nullable: true, Source: TriggersTableName},
+	{Name: "trigger_name", Type: LongText, Default: nil, Nullable: false, Source: TriggersTableName},
+	{Name: "event_manipulation", Type: LongText, Default: nil, Nullable: false, Source: TriggersTableName},
+	{Name: "event_object_catalog", Type: LongText, Default: nil, Nullable: true, Source: TriggersTableName},
+	{Name: "event_object_schema", Type: LongText, Default: nil, Nullable: true, Source: TriggersTableName},
+	{Name: "event_object_table", Type: LongText, Default: nil, Nullable: true, Source: TriggersTableName},
+	{Name: "action_order", Type: Int64, Default: nil, Nullable: false, Source: TriggersTableName},
+	{Name: "action_condition", Type: Int64, Default: nil, Nullable: true, Source: TriggersTableName},
+	{Name: "action_statement", Type: LongText, Default: nil, Nullable: false, Source: TriggersTableName},
+	{Name: "action_orientation", Type: LongText, Default: nil, Nullable: false, Source: TriggersTableName},
+	{Name: "action_timing", Type: LongText, Default: nil, Nullable: false, Source: TriggersTableName},
+	{Name: "action_reference_old_table", Type: Int64, Default: nil, Nullable: true, Source: TriggersTableName},
+	{Name: "action_reference_new_table", Type: Int64, Default: nil, Nullable: true, Source: TriggersTableName},
+	{Name: "action_reference_old_row", Type: LongText, Default: nil, Nullable: false, Source: TriggersTableName},
+	{Name: "action_reference_new_row", Type: LongText, Default: nil, Nullable: false, Source: TriggersTableName},
+	{Name: "created", Type: Timestamp, Default: nil, Nullable: false, Source: TriggersTableName},
+	{Name: "sql_mode", Type: LongText, Default: nil, Nullable: false, Source: TriggersTableName},
+	{Name: "definer", Type: LongText, Default: nil, Nullable: false, Source: TriggersTableName},
+	{Name: "character_set_client", Type: LongText, Default: nil, Nullable: false, Source: TriggersTableName},
+	{Name: "collation_connection", Type: LongText, Default: nil, Nullable: false, Source: TriggersTableName},
+	{Name: "database_collation", Type: LongText, Default: nil, Nullable: false, Source: TriggersTableName},
+}
+
 func tablesRowIter(ctx *Context, cat *Catalog) RowIter {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
@@ -442,6 +469,12 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 			KeyColumnUsageTableName: &informationSchemaTable{
 				name:    KeyColumnUsageTableName,
 				schema:  keyColumnUsageSchema,
+				catalog: cat,
+				rowIter: emptyRowIter,
+			},
+			TriggersTableName: &informationSchemaTable{
+				name:    TriggersTableName,
+				schema:  triggersSchema,
 				catalog: cat,
 				rowIter: emptyRowIter,
 			},
