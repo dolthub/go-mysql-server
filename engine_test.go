@@ -1214,6 +1214,36 @@ var queries = []queryTest{
 		},
 	},
 	{
+		`SELECT if(123 = 123, "a", "b")`,
+		[]sql.Row{
+			{"a"},
+		},
+	},
+	{
+		`SELECT if(123 = 123, NULL, "b")`,
+		[]sql.Row{
+			{nil},
+		},
+	},
+	{
+		`SELECT if(123 > 123, "a", "b")`,
+		[]sql.Row{
+			{"b"},
+		},
+	},
+	{
+		`SELECT if(NULL, "a", "b")`,
+		[]sql.Row{
+			{"b"},
+		},
+	},
+	{
+		`SELECT if("a", "a", "b")`,
+		[]sql.Row{
+			{"b"},
+		},
+	},
+	{
 		"SELECT i FROM mytable WHERE NULL > 10;",
 		nil,
 	},
