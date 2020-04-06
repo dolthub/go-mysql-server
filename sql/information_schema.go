@@ -34,6 +34,8 @@ const (
 	TriggersTableName = "triggers"
 	// EventsTableName is the name of the events table.
 	EventsTableName = "events"
+	// RoutinesTableName is the name of the routines table.
+	RoutinesTableName = "routines"
 )
 
 const (
@@ -298,6 +300,40 @@ var eventsSchema = Schema{
 	{Name: "database_collation", Type: LongText, Default: nil, Nullable: false, Source: EventsTableName},
 }
 
+var routinesSchema = Schema{
+	{Name: "specific_name", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "routine_catalog", Type: LongText, Default: nil, Nullable: true, Source: RoutinesTableName},
+	{Name: "routine_schema", Type: LongText, Default: nil, Nullable: true, Source: RoutinesTableName},
+	{Name: "routine_name", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "routine_type", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "data_type", Type: LongText, Default: nil, Nullable: true, Source: RoutinesTableName},
+	{Name: "character_maximum_length", Type: Int64, Default: nil, Nullable: true, Source: RoutinesTableName},
+	{Name: "character_octet_length", Type: Int64, Default: nil, Nullable: true, Source: RoutinesTableName},
+	{Name: "numeric_precision", Type: Int64, Default: nil, Nullable: true, Source: RoutinesTableName},
+	{Name: "numeric_scale", Type: Int64, Default: nil, Nullable: true, Source: RoutinesTableName},
+	{Name: "datetime_precision", Type: Int64, Default: nil, Nullable: true, Source: RoutinesTableName},
+	{Name: "character_set_name", Type: LongText, Default: nil, Nullable: true, Source: RoutinesTableName},
+	{Name: "collation_name", Type: LongText, Default: nil, Nullable: true, Source: RoutinesTableName},
+	{Name: "dtd_identifier", Type: LongText, Default: nil, Nullable: true, Source: RoutinesTableName},
+	{Name: "routine_body", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "routine_definition", Type: LongText, Default: nil, Nullable: true, Source: RoutinesTableName},
+	{Name: "external_name", Type: Int64, Default: nil, Nullable: true, Source: RoutinesTableName},
+	{Name: "external_language", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "parameter_style", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "is_deterministic", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "sql_data_access", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "sql_path", Type: Int64, Default: nil, Nullable: true, Source: RoutinesTableName},
+	{Name: "security_type", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "created", Type: Timestamp, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "last_altered", Type: Timestamp, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "sql_mode", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "routine_comment", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "definer", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "character_set_client", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "collation_connection", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "database_collation", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
+}
+
 func tablesRowIter(ctx *Context, cat *Catalog) RowIter {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
@@ -510,6 +546,12 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 			EventsTableName: &informationSchemaTable{
 				name:    EventsTableName,
 				schema:  eventsSchema,
+				catalog: cat,
+				rowIter: emptyRowIter,
+			},
+			RoutinesTableName: &informationSchemaTable{
+				name:    RoutinesTableName,
+				schema:  routinesSchema,
 				catalog: cat,
 				rowIter: emptyRowIter,
 			},
