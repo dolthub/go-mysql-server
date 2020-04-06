@@ -30,8 +30,10 @@ const (
 	ReferentialConstraintsTableName = "referential_constraints"
 	// KeyColumnUsageTableName is the name of the key_column_usage table.
 	KeyColumnUsageTableName = "key_column_usage"
-	// TriggersTableName is the name of the trigers table.
+	// TriggersTableName is the name of the triggers table.
 	TriggersTableName = "triggers"
+	// EventsTableName is the name of the events table.
+	EventsTableName = "events"
 )
 
 const (
@@ -269,6 +271,33 @@ var triggersSchema = Schema{
 	{Name: "database_collation", Type: LongText, Default: nil, Nullable: false, Source: TriggersTableName},
 }
 
+var eventsSchema = Schema{
+	{Name: "event_catalog", Type: LongText, Default: nil, Nullable: true, Source: EventsTableName},
+	{Name: "event_schema", Type: LongText, Default: nil, Nullable: true, Source: EventsTableName},
+	{Name: "event_name", Type: LongText, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "definer", Type: LongText, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "time_zone", Type: LongText, Default: nil, Nullable: true, Source: EventsTableName},
+	{Name: "event_body", Type: LongText, Default: nil, Nullable: true, Source: EventsTableName},
+	{Name: "event_definition", Type: LongText, Default: nil, Nullable: true, Source: EventsTableName},
+	{Name: "event_type", Type: LongText, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "execute_at", Type: Datetime, Default: nil, Nullable: true, Source: EventsTableName},
+	{Name: "interval_value", Type: LongText, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "interval_field", Type: LongText, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "sql_mode", Type: LongText, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "starts", Type: Datetime, Default: nil, Nullable: true, Source: EventsTableName},
+	{Name: "ends", Type: Datetime, Default: nil, Nullable: true, Source: EventsTableName},
+	{Name: "status", Type: LongText, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "on_completion", Type: LongText, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "created", Type: Timestamp, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "last_altered", Type: Timestamp, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "last_executed", Type: Datetime, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "event_comment", Type: LongText, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "originator", Type: Int64, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "character_set_client", Type: LongText, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "collation_connection", Type: LongText, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "database_collation", Type: LongText, Default: nil, Nullable: false, Source: EventsTableName},
+}
+
 func tablesRowIter(ctx *Context, cat *Catalog) RowIter {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
@@ -475,6 +504,12 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 			TriggersTableName: &informationSchemaTable{
 				name:    TriggersTableName,
 				schema:  triggersSchema,
+				catalog: cat,
+				rowIter: emptyRowIter,
+			},
+			EventsTableName: &informationSchemaTable{
+				name:    EventsTableName,
+				schema:  eventsSchema,
 				catalog: cat,
 				rowIter: emptyRowIter,
 			},
