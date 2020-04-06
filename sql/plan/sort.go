@@ -200,6 +200,7 @@ func (i *sortIter) computeSortedRows() error {
 		sortFields: i.s.SortFields,
 		rows:       rows,
 		lastError:  nil,
+		ctx: i.ctx,
 	}
 	sort.Stable(sorter)
 	if sorter.lastError != nil {

@@ -457,10 +457,6 @@ func schemataRowIter(ctx *Context, c *Catalog) RowIter {
 
 	var rows []Row
 	for _, db := range dbs {
-		if db.Name() == InformationSchemaDatabaseName {
-			continue
-		}
-
 		rows = append(rows, Row{
 			"def",
 			db.Name(),
