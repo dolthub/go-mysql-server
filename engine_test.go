@@ -1336,6 +1336,42 @@ var queries = []queryTest{
 		[]sql.Row{{"f", int64(1)}, {"s", int64(1)}, {"t", int64(1)}},
 	},
 	{
+		"SELECT left(s, 1) as l FROM mytable ORDER BY l",
+		[]sql.Row{{"f"}, {"s"}, {"t"}},
+	},
+	{
+		"SELECT left(s, 2) as l FROM mytable ORDER BY l",
+		[]sql.Row{{"fi"}, {"se"}, {"th"}},
+	},
+	{
+		"SELECT left(s, 0) as l FROM mytable ORDER BY l",
+		[]sql.Row{{""}, {""}, {""}},
+	},
+	{
+		"SELECT left(s, NULL) as l FROM mytable ORDER BY l",
+		[]sql.Row{{nil}, {nil}, {nil}},
+	},
+	{
+		"SELECT left(s, 100) as l FROM mytable ORDER BY l",
+		[]sql.Row{{"first row"}, {"second row"}, {"third row"}},
+	},
+	{
+		"SELECT instr(s, 'row') as l FROM mytable ORDER BY i",
+		[]sql.Row{{int64(7)}, {int64(8)}, {int64(7)}},
+	},
+	{
+		"SELECT instr(s, 'first') as l FROM mytable ORDER BY i",
+		[]sql.Row{{int64(1)}, {int64(0)}, {int64(0)}},
+	},
+	{
+		"SELECT instr(s, 'o') as l FROM mytable ORDER BY i",
+		[]sql.Row{{int64(8)}, {int64(4)}, {int64(8)}},
+	},
+	{
+		"SELECT instr(s, NULL) as l FROM mytable ORDER BY l",
+		[]sql.Row{{nil}, {nil}, {nil}},
+	},
+	{
 		"SELECT SLEEP(0.5)",
 		[]sql.Row{{int(0)}},
 	},
