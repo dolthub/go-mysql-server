@@ -12,8 +12,6 @@ type ShowColumns struct {
 	Full bool
 }
 
-const defaultCollation = "utf8_bin"
-
 var (
 	showColumnsSchema = sql.Schema{
 		{Name: "Field", Type: sql.LongText},
@@ -62,7 +60,7 @@ func (s *ShowColumns) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		var row sql.Row
 		var collation interface{}
 		if sql.IsTextOnly(col.Type) {
-			collation = defaultCollation
+			collation = sql.DefaultCollation
 		}
 
 		var null = "NO"

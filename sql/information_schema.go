@@ -20,7 +20,15 @@ const (
 	ColumnsTableName = "columns"
 	// SchemataTableName is the name of the schemata table.
 	SchemataTableName = "schemata"
+	// CollationsTableName is the name of the collations table.
+	CollationsTableName = "collations"
 )
+
+const (
+	DefaultCollation = "utf8_bin"
+  DefaultCharacterSet = "utf8mb4"
+)
+
 
 var _ Database = (*informationSchemaDatabase)(nil)
 
@@ -156,6 +164,16 @@ var schemataSchema = Schema{
 	{Name: "sql_path", Type: LongText, Default: nil, Nullable: true, Source: SchemataTableName},
 }
 
+var collationsSchema = Schema{
+	{Name: "collation_name", Type: LongText, Default: nil, Nullable: false, Source: CollationsTableName},
+	{Name: "character_set_name", Type: LongText, Default: nil, Nullable: false, Source: CollationsTableName},
+	{Name: "id", Type: LongText, Default: nil, Nullable: false, Source: CollationsTableName},
+	{Name: "is_default", Type: LongText, Default: nil, Nullable: false, Source: CollationsTableName},
+	{Name: "is_compiled", Type: LongText, Default: nil, Nullable: true, Source: CollationsTableName},
+	{Name: "sortlen", Type: LongText, Default: nil, Nullable: true, Source: CollationsTableName},
+	{Name: "pad_attribute", Type: LongText, Default: nil, Nullable: true, Source: CollationsTableName},
+}
+
 func tablesRowIter(ctx *Context, cat *Catalog) RowIter {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
@@ -280,6 +298,18 @@ func schemataRowIter(ctx *Context, c *Catalog) RowIter {
 	return RowsToRowIter(rows...)
 }
 
+func collationsRowIter(ctx *Context, c *Catalog) RowIter {
+	return RowsToRowIter(Row{
+		DefaultCollation,
+		DefaultCharacterSet,
+		int64(1),
+		"Yes",
+		"Yes",
+		int64(1),
+		"PAD SPACE",
+	})
+}
+
 // NewInformationSchemaDatabase creates a new INFORMATION_SCHEMA Database.
 func NewInformationSchemaDatabase(cat *Catalog) Database {
 	return &informationSchemaDatabase{
@@ -312,6 +342,12 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				schema:  schemataSchema,
 				catalog: cat,
 				rowIter: schemataRowIter,
+			},
+			CollationsTableName: &informationSchemaTable{
+				name:    CollationsTableName,
+				schema:  collationsSchema,
+				catalog: cat,
+				rowIter: collationsRowIter,
 			},
 		},
 	}

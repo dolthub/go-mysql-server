@@ -12,6 +12,7 @@ var collationSchema = sql.Schema{
 	{Name: "Default", Type: sql.LongText},
 	{Name: "Compiled", Type: sql.LongText},
 	{Name: "Sortlen", Type: sql.Int64},
+	{Name: "Pad_attribute", Type: sql.LongText},
 }
 
 // NewShowCollation creates a new ShowCollation node.
@@ -30,8 +31,8 @@ func (ShowCollation) Resolved() bool { return true }
 // RowIter implements the sql.Node interface.
 func (ShowCollation) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.RowsToRowIter(sql.Row{
-		defaultCollation,
-		defaultCharacterSet,
+		sql.DefaultCollation,
+		sql.DefaultCharacterSet,
 		int64(1),
 		"Yes",
 		"Yes",
