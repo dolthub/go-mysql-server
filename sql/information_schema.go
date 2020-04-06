@@ -28,6 +28,8 @@ const (
 	TableConstraintsTableName  = "table_constraints"
 	// ReferentialConstraintsTableName is the name of the table_constraints table.
 	ReferentialConstraintsTableName = "referential_constraints"
+	// KeyColumnUsageTableName is the name of the key_column_usage table.
+	KeyColumnUsageTableName = "key_column_usage"
 )
 
 const (
@@ -225,6 +227,21 @@ var referentialConstraintsSchema = Schema{
 	{Name: "referenced_table_name", Type: LongText, Default: nil, Nullable: false, Source: ReferentialConstraintsTableName},
 }
 
+var keyColumnUsageSchema = Schema{
+	{Name: "constraint_catalog", Type: LongText, Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
+	{Name: "constraint_schema", Type: LongText, Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
+	{Name: "constraint_name", Type: LongText, Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
+	{Name: "table_catalog", Type: LongText, Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
+	{Name: "table_schema", Type: LongText, Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
+	{Name: "table_name", Type: LongText, Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
+	{Name: "column_name", Type: LongText, Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
+	{Name: "ordinal_position", Type: LongText, Default: nil, Nullable: false, Source: KeyColumnUsageTableName},
+	{Name: "position_in_unique_constraint", Type: LongText, Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
+	{Name: "referenced_table_schema", Type: LongText, Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
+	{Name: "referenced_table_name", Type: LongText, Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
+	{Name: "referenced_column_name", Type: LongText, Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
+}
+
 func tablesRowIter(ctx *Context, cat *Catalog) RowIter {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
@@ -419,6 +436,12 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 			ReferentialConstraintsTableName: &informationSchemaTable{
 				name:    ReferentialConstraintsTableName,
 				schema:  referentialConstraintsSchema,
+				catalog: cat,
+				rowIter: emptyRowIter,
+			},
+			KeyColumnUsageTableName: &informationSchemaTable{
+				name:    KeyColumnUsageTableName,
+				schema:  keyColumnUsageSchema,
 				catalog: cat,
 				rowIter: emptyRowIter,
 			},
