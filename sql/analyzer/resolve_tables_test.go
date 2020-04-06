@@ -67,6 +67,36 @@ func TestResolveTables(t *testing.T) {
 	require.Error(err)
 }
 
+func TestResolveTablesNoCurrentDB(t *testing.T) {
+	require := require.New(t)
+	f := getRule("resolve_tables")
+
+	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
+	db := memory.NewDatabase("mydb")
+	db.AddTable("mytable", table)
+
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
+
+	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
+	ctx := sql.NewEmptyContext()
+
+	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable", "")
+	_, err := f.Apply(ctx, a, notAnalyzed)
+	require.Error(err)
+	require.True(sql.ErrNoDatabaseSelected.Is(err), "wrong error kind")
+
+	notAnalyzed = plan.NewUnresolvedTable("mytable", "doesNotExist")
+	_, err = f.Apply(ctx, a, notAnalyzed)
+	require.Error(err)
+	require.True(sql.ErrDatabaseNotFound.Is(err), "wrong error kind")
+
+	notAnalyzed = plan.NewUnresolvedTable("dual", "")
+	analyzed, err := f.Apply(ctx, a, notAnalyzed)
+	require.NoError(err)
+	require.Equal(plan.NewResolvedTable(dualTable), analyzed)
+}
+
 func TestResolveTablesNested(t *testing.T) {
 	require := require.New(t)
 

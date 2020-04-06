@@ -13,6 +13,9 @@ import (
 // ErrDatabaseNotFound is thrown when a database is not found
 var ErrDatabaseNotFound = errors.NewKind("database not found: %s")
 
+// ErrNoDatabaseSelected is thrown when a database is not selected and the query requires one
+var ErrNoDatabaseSelected = errors.NewKind("no database selected")
+
 // ErrAsOfNotSupported is thrown when an AS OF query is run on a database that can't support it
 var ErrAsOfNotSupported = errors.NewKind("AS OF not supported for database %s")
 
