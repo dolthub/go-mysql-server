@@ -26,6 +26,8 @@ const (
 	StatisticsTableName = "statistics"
 	// TableConstraintsTableName is the name of the table_constraints table.
 	TableConstraintsTableName  = "table_constraints"
+	// ReferentialConstraintsTableName is the name of the table_constraints table.
+	ReferentialConstraintsTableName = "referential_constraints"
 )
 
 const (
@@ -207,6 +209,20 @@ var tableConstraintsSchema = Schema{
 	{Name: "table_name", Type: LongText, Default: nil, Nullable: true, Source: TableConstraintsTableName},
 	{Name: "constraint_type", Type: LongText, Default: nil, Nullable: false, Source: TableConstraintsTableName},
 	{Name: "enforced", Type: LongText, Default: nil, Nullable: false, Source: TableConstraintsTableName},
+}
+
+var referentialConstraintsSchema = Schema{
+	{Name: "constraint_catalog", Type: LongText, Default: nil, Nullable: false, Source: ReferentialConstraintsTableName},
+	{Name: "constraint_schema", Type: LongText, Default: nil, Nullable: false, Source: ReferentialConstraintsTableName},
+	{Name: "constraint_name", Type: LongText, Default: nil, Nullable: true, Source: ReferentialConstraintsTableName},
+	{Name: "unique_constraint_catalog", Type: LongText, Default: nil, Nullable: false, Source: ReferentialConstraintsTableName},
+	{Name: "unique_constraint_schema", Type: LongText, Default: nil, Nullable: false, Source: ReferentialConstraintsTableName},
+	{Name: "unique_constraint_name", Type: LongText, Default: nil, Nullable: true, Source: ReferentialConstraintsTableName},
+	{Name: "match_option", Type: LongText, Default: nil, Nullable: false, Source: ReferentialConstraintsTableName},
+	{Name: "update_rule", Type: LongText, Default: nil, Nullable: false, Source: ReferentialConstraintsTableName},
+	{Name: "delete_rule", Type: LongText, Default: nil, Nullable: false, Source: ReferentialConstraintsTableName},
+	{Name: "table_name", Type: LongText, Default: nil, Nullable: false, Source: ReferentialConstraintsTableName},
+	{Name: "referenced_table_name", Type: LongText, Default: nil, Nullable: false, Source: ReferentialConstraintsTableName},
 }
 
 func tablesRowIter(ctx *Context, cat *Catalog) RowIter {
@@ -397,6 +413,12 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 			TableConstraintsTableName: &informationSchemaTable{
 				name:    TableConstraintsTableName,
 				schema:  tableConstraintsSchema,
+				catalog: cat,
+				rowIter: emptyRowIter,
+			},
+			ReferentialConstraintsTableName: &informationSchemaTable{
+				name:    ReferentialConstraintsTableName,
+				schema:  referentialConstraintsSchema,
 				catalog: cat,
 				rowIter: emptyRowIter,
 			},
