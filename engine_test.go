@@ -1063,6 +1063,12 @@ var queries = []queryTest{
 		},
 	},
 	{
+		`SELECT USER()`,
+		[]sql.Row{
+			{"user"},
+		},
+	},
+	{
 		`SHOW VARIABLES`,
 		[]sql.Row{
 			{"auto_increment_increment", int64(1)},

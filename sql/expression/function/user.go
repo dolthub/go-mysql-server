@@ -7,7 +7,7 @@ type User struct{}
 
 // NewUser returns a new User() function node
 func NewUser() sql.Expression {
-	return ConnectionID{}
+	return User{}
 }
 
 // Children implements the sql.Expression interface.
