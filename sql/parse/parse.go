@@ -42,7 +42,6 @@ var (
 	showIndexRegex       = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
 	showVariablesRegex   = regexp.MustCompile(`^show\s+(.*)?variables\s*`)
 	showWarningsRegex    = regexp.MustCompile(`^show\s+warnings\s*`)
-	showCollationRegex   = regexp.MustCompile(`^show\s+collation\s*`)
 	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
 	unlockTablesRegex    = regexp.MustCompile(`^unlock\s+tables$`)
 	lockTablesRegex      = regexp.MustCompile(`^lock\s+tables\s`)
@@ -115,8 +114,6 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return parseShowVariables(ctx, s)
 	case showWarningsRegex.MatchString(lowerQuery):
 		return parseShowWarnings(ctx, s)
-	case showCollationRegex.MatchString(lowerQuery):
-		return parseShowCollation(ctx, s)
 	case fullProcessListRegex.MatchString(lowerQuery):
 		return plan.NewShowProcessList(), nil
 	case unlockTablesRegex.MatchString(lowerQuery):
@@ -351,6 +348,25 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		return node, nil
 	case sqlparser.KeywordString(sqlparser.TABLE):
 		return parseShowTableStatus(ctx, query)
+	case sqlparser.KeywordString(sqlparser.COLLATION):
+		// show collation statements are functionally identical to selecting from the collations table in
+		// information_schema, with slightly different syntax and with some columns aliased.
+		// TODO: install information_schema automatically for all catalogs
+		infoSchemaSelect, err := Parse(ctx, "select collation_name as `collation`, character_set_name as charset, id," +
+				"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations")
+		if err != nil {
+			return nil, err
+		}
+
+		if s.ShowCollationFilterOpt != nil {
+			filterExpr, err := exprToExpression(ctx, *s.ShowCollationFilterOpt)
+			if err != nil {
+				return nil, err
+			}
+			return plan.NewFilter(filterExpr, infoSchemaSelect), nil
+		}
+
+		return infoSchemaSelect, nil
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, ErrUnsupportedFeature.New(unsupportedShow)
@@ -1710,63 +1726,6 @@ func parseShowTableStatus(ctx *sql.Context, query string) (sql.Node, error) {
 		), nil
 	default:
 		return nil, errUnexpectedSyntax.New("one of: FROM, IN, LIKE or WHERE", clause)
-	}
-}
-
-func parseShowCollation(ctx *sql.Context, query string) (sql.Node, error) {
-	buf := bufio.NewReader(strings.NewReader(query))
-	err := parseFuncs{
-		expect("show"),
-		skipSpaces,
-		expect("collation"),
-		skipSpaces,
-	}.exec(buf)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err = buf.Peek(1); err == io.EOF {
-		return plan.NewShowCollation(), nil
-	}
-
-	var clause string
-	if err := readIdent(&clause)(buf); err != nil {
-		return nil, err
-	}
-
-	if err := skipSpaces(buf); err != nil {
-		return nil, err
-	}
-
-	switch strings.ToUpper(clause) {
-	case "WHERE", "LIKE":
-		bs, err := ioutil.ReadAll(buf)
-		if err != nil {
-			return nil, err
-		}
-
-		expr, err := parseExpr(ctx, string(bs))
-		if err != nil {
-			return nil, err
-		}
-
-		var filter sql.Expression
-		if strings.ToUpper(clause) == "LIKE" {
-			filter = expression.NewLike(
-				expression.NewUnresolvedColumn("collation"),
-				expr,
-			)
-		} else {
-			filter = expr
-		}
-
-		return plan.NewFilter(
-			filter,
-			plan.NewShowCollation(),
-		), nil
-	default:
-		return nil, errUnexpectedSyntax.New("one of: LIKE or WHERE", clause)
 	}
 }
 

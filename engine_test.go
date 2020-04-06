@@ -1311,7 +1311,7 @@ var queries = []queryTest{
 	},
 	{
 		`SHOW COLLATION`,
-		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
+		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1), "PAD SPACE"}},
 	},
 	{
 		`SHOW COLLATION LIKE 'foo'`,
@@ -1319,7 +1319,7 @@ var queries = []queryTest{
 	},
 	{
 		`SHOW COLLATION LIKE 'utf8%'`,
-		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
+		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1), "PAD SPACE"}},
 	},
 	{
 		`SHOW COLLATION WHERE charset = 'foo'`,
@@ -1327,7 +1327,7 @@ var queries = []queryTest{
 	},
 	{
 		"SHOW COLLATION WHERE `Default` = 'Yes'",
-		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
+		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1), "PAD SPACE"}},
 	},
 	{
 		"ROLLBACK",

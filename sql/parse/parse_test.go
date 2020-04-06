@@ -14,6 +14,18 @@ import (
 	"vitess.io/vitess/go/sqltypes"
 )
 
+var showCollationProjection = plan.NewProject([]sql.Expression{
+	expression.NewAlias(expression.NewUnresolvedColumn("collation_name"), "collation"),
+	expression.NewAlias(expression.NewUnresolvedColumn("character_set_name"), "charset"),
+	expression.NewUnresolvedColumn("id"),
+	expression.NewAlias(expression.NewUnresolvedColumn("is_default"), "default"),
+	expression.NewAlias(expression.NewUnresolvedColumn("is_compiled"), "compiled"),
+	expression.NewUnresolvedColumn("sortlen"),
+	expression.NewUnresolvedColumn("pad_attribute"),
+},
+	plan.NewUnresolvedTable("collations", "information_schema"),
+)
+
 var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER, b TEXT, c DATE, d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, g DATETIME, h CHAR(40))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -1316,20 +1328,20 @@ var fixtures = map[string]sql.Node{
 		)},
 		plan.NewUnresolvedTable("dual", ""),
 	),
-	"SHOW COLLATION": plan.NewShowCollation(),
+	"SHOW COLLATION": showCollationProjection,
 	"SHOW COLLATION LIKE 'foo'": plan.NewFilter(
 		expression.NewLike(
 			expression.NewUnresolvedColumn("collation"),
 			expression.NewLiteral("foo", sql.LongText),
 		),
-		plan.NewShowCollation(),
+		showCollationProjection,
 	),
 	"SHOW COLLATION WHERE Charset = 'foo'": plan.NewFilter(
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("charset"),
 			expression.NewLiteral("foo", sql.LongText),
 		),
-		plan.NewShowCollation(),
+		showCollationProjection,
 	),
 	`ROLLBACK`:                               plan.NewRollback(),
 	"SHOW CREATE TABLE `mytable`":            plan.NewShowCreateTable("", nil, "mytable"),
