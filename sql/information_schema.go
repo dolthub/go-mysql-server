@@ -36,6 +36,8 @@ const (
 	EventsTableName = "events"
 	// RoutinesTableName is the name of the routines table.
 	RoutinesTableName = "routines"
+	// ViewsTableName is the name of the views table.
+	ViewsTableName = "views"
 )
 
 const (
@@ -334,6 +336,19 @@ var routinesSchema = Schema{
 	{Name: "database_collation", Type: LongText, Default: nil, Nullable: false, Source: RoutinesTableName},
 }
 
+var viewsSchema = Schema{
+	{Name: "table_catalog", Type: LongText, Default: nil, Nullable: true, Source: ViewsTableName},
+	{Name: "table_schema", Type: LongText, Default: nil, Nullable: true, Source: ViewsTableName},
+	{Name: "table_name", Type: LongText, Default: nil, Nullable: true, Source: ViewsTableName},
+	{Name: "view_definition", Type: LongText, Default: nil, Nullable: true, Source: ViewsTableName},
+	{Name: "check_option", Type: LongText, Default: nil, Nullable: true, Source: ViewsTableName},
+	{Name: "is_updatable", Type: LongText, Default: nil, Nullable: true, Source: ViewsTableName},
+	{Name: "definer", Type: LongText, Default: nil, Nullable: true, Source: ViewsTableName},
+	{Name: "security_type", Type: LongText, Default: nil, Nullable: true, Source: ViewsTableName},
+	{Name: "character_set_client", Type: LongText, Default: nil, Nullable: false, Source: ViewsTableName},
+	{Name: "collation_connection", Type: LongText, Default: nil, Nullable: false, Source: ViewsTableName},
+}
+
 func tablesRowIter(ctx *Context, cat *Catalog) RowIter {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
@@ -554,6 +569,12 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				schema:  routinesSchema,
 				catalog: cat,
 				rowIter: emptyRowIter,
+			},
+			ViewsTableName: &informationSchemaTable{
+				name:    ViewsTableName,
+				schema:  viewsSchema,
+				catalog: cat,
+				rowIter: emptyRowIter, // TODO: fill in from view registry
 			},
 		},
 	}
