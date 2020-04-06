@@ -933,6 +933,7 @@ var queries = []queryTest{
 	{
 		`SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA`,
 		[]sql.Row{
+			{"information_schema", "utf8mb4", "utf8_bin"},
 			{"mydb", "utf8mb4", "utf8_bin"},
 			{"foo", "utf8mb4", "utf8_bin"},
 		},
@@ -1065,8 +1066,8 @@ var queries = []queryTest{
 		`SHOW VARIABLES`,
 		[]sql.Row{
 			{"auto_increment_increment", int64(1)},
-			{"time_zone", time.Local.String()},
-			{"system_time_zone", time.Local.String()},
+			{"time_zone", "SYSTEM"},
+			{"system_time_zone", time.Now().UTC().Location().String()},
 			{"max_allowed_packet", math.MaxInt32},
 			{"sql_mode", ""},
 			{"gtid_mode", int32(0)},
