@@ -9,7 +9,7 @@ import (
 var (
 	dbName   = "db"
 	viewName = "myview"
-	mockView = NewView(viewName, nil)
+	mockView = NewView(viewName, nil, "")
 )
 
 func newMockRegistry(require *require.Assertions) *ViewRegistry {
@@ -116,7 +116,7 @@ func TestViewsInDatabase(t *testing.T) {
 
 	for _, db := range databases {
 		for i := 0; i < db.numViews; i++ {
-			view := NewView(viewName+string(i), nil)
+			view := NewView(viewName+string(i), nil, "")
 			err := registry.Register(db.name, view)
 			require.NoError(err)
 		}
@@ -143,7 +143,7 @@ var viewKeys = []ViewKey{
 
 func registerKeys(registry *ViewRegistry, require *require.Assertions) {
 	for _, key := range viewKeys {
-		err := registry.Register(key.dbName, NewView(key.viewName, nil))
+		err := registry.Register(key.dbName, NewView(key.viewName, nil, ""))
 		require.NoError(err)
 	}
 	require.Equal(len(viewKeys), len(registry.AllViews()))

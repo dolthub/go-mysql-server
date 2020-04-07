@@ -23,7 +23,7 @@ func TestResolveViews(t *testing.T) {
 			plan.NewUnresolvedTable("mytable", ""),
 		),
 	)
-	view := sql.NewView("myview", viewDefinition)
+	view := sql.NewView("myview", viewDefinition, "select i from mytable")
 
 	db := memory.NewDatabase("mydb")
 	catalog := sql.NewCatalog()
@@ -55,7 +55,7 @@ func TestResolveViews(t *testing.T) {
 	require.Equal(viewDefinitionWithAsOf, analyzed)
 
 	// Views that are defined with AS OF clauses cannot have an AS OF pushed down to them
-	viewWithAsOf := sql.NewView("viewWithAsOf", viewDefinitionWithAsOf)
+	viewWithAsOf := sql.NewView("viewWithAsOf", viewDefinitionWithAsOf, "select i from mytable as of '2019-01-01'")
 	err = viewReg.Register(db.Name(), viewWithAsOf)
 	require.NoError(err)
 

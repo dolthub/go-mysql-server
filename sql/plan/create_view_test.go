@@ -50,7 +50,7 @@ func TestCreateView(t *testing.T) {
 	_, err := createView.RowIter(ctx)
 	require.NoError(err)
 
-	expectedView := sql.NewView(createView.Name, createView.Child)
+	expectedView := sql.NewView(createView.Name, createView.Child, createView.SelectStr)
 	actualView, err := viewReg.View(createView.database.Name(), createView.Name)
 	require.NoError(err)
 	require.Equal(expectedView, *actualView)
@@ -80,7 +80,7 @@ func TestReplaceExistingView(t *testing.T) {
 
 	createView := mockCreateView(true)
 
-	view := sql.NewView(createView.Name, nil)
+	view := sql.NewView(createView.Name, nil, "")
 	viewReg := sql.NewViewRegistry()
 	err := viewReg.Register(createView.database.Name(), view)
 	require.NoError(err)
