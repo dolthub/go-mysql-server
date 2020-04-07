@@ -2802,7 +2802,7 @@ func extractQueryNode(node sql.Node) sql.Node {
 	}
 }
 
-func TestSelectFromView(t *testing.T) {
+func TestViews(t *testing.T) {
 	require := require.New(t)
 
 	e, idxReg := newEngine(t)
@@ -2845,6 +2845,15 @@ func TestSelectFromView(t *testing.T) {
 		"SELECT * FROM myview2 AS OF '2019-01-01'",
 		[]sql.Row{
 			sql.NewRow(int64(1), "first row, 1"),
+		},
+	)
+
+	// info schema support
+	testQueryWithContext(ctx, t, e,
+		"select * from information_schema.views where table_schema = 'mydb'",
+		[]sql.Row{
+			sql.NewRow("def", "mydb", "myview", "SELECT * FROM myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
 		},
 	)
 }
