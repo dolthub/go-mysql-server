@@ -569,10 +569,32 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				name:    ViewsTableName,
 				schema:  viewsSchema,
 				catalog: cat,
-				rowIter: emptyRowIter, // TODO: fill in from view registry
+				rowIter: viewRowIter,
 			},
 		},
 	}
+}
+
+func viewRowIter(context *Context, catalog *Catalog) RowIter {
+	var rows []Row
+	for _, db := range catalog.dbs {
+		database := db.Name()
+		for _, view := range context.ViewRegistry.ViewsInDatabase(database) {
+			rows = append(rows, Row{
+				"def",
+				database,
+				view.Name(),
+				view.TextDefinition(),
+				"NONE",
+				"YES",
+				"",
+				"DEFINER",
+				DefaultCharacterSet,
+				DefaultCollation,
+			})
+		}
+	}
+	return RowsToRowIter(rows...)
 }
 
 // Name implements the sql.Database interface.

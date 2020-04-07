@@ -45,7 +45,7 @@ func NewCreateView(
 
 // View returns the view that will be created by this node.
 func (cv *CreateView) View() sql.View {
-	return sql.NewView(cv.Name, cv.Definition)
+	return sql.NewView(cv.Name, cv.Definition, cv.SelectStr)
 }
 
 // Children implements the Node interface. It returns the Child of the
