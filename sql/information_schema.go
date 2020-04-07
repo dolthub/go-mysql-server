@@ -41,10 +41,9 @@ const (
 )
 
 const (
-	DefaultCollation = "utf8_bin"
-  DefaultCharacterSet = "utf8mb4"
+	DefaultCollation    = "utf8_bin"
+	DefaultCharacterSet = "utf8mb4"
 )
-
 
 var _ Database = (*informationSchemaDatabase)(nil)
 
