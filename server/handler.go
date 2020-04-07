@@ -88,8 +88,8 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	logrus.Infof("NewConnection: client %v", c.ConnectionID)
 }
 
-func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) {
-	h.sm.SetDB(c, schemaName)
+func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
+	return h.sm.SetDB(c, schemaName)
 }
 
 func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error) {
