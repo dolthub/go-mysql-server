@@ -27,6 +27,7 @@ func TestHandlerOutput(t *testing.T) {
 		NewSessionManager(
 			testSessionBuilder,
 			opentracing.NoopTracer{},
+			func(db string) bool {return db == "test"},
 			sql.NewMemoryManager(nil),
 			"foo",
 		),
@@ -137,6 +138,7 @@ func TestHandlerKill(t *testing.T) {
 				return sql.NewSession(addr, "", "", conn.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry(), nil
 			},
 			opentracing.NoopTracer{},
+			func(db string) bool {return db == "test"},
 			sql.NewMemoryManager(nil),
 			"foo",
 		),
@@ -227,6 +229,7 @@ func TestHandlerTimeout(t *testing.T) {
 	timeOutHandler := NewHandler(
 		e, NewSessionManager(testSessionBuilder,
 			opentracing.NoopTracer{},
+			func(db string) bool {return db == "test"},
 			sql.NewMemoryManager(nil),
 			"foo"),
 		1*time.Second)
@@ -234,6 +237,7 @@ func TestHandlerTimeout(t *testing.T) {
 	noTimeOutHandler := NewHandler(
 		e2, NewSessionManager(testSessionBuilder,
 			opentracing.NoopTracer{},
+			func(db string) bool {return db == "test"},
 			sql.NewMemoryManager(nil),
 			"foo"),
 		0)
@@ -284,6 +288,7 @@ func TestOkClosedConnection(t *testing.T) {
 		NewSessionManager(
 			testSessionBuilder,
 			opentracing.NoopTracer{},
+			func(db string) bool {return db == "test"},
 			sql.NewMemoryManager(nil),
 			"foo",
 		),

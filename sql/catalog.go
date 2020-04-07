@@ -67,6 +67,14 @@ func (c *Catalog) AddDatabase(db Database) {
 	c.mu.Unlock()
 }
 
+func (c *Catalog) HasDB(db string) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	_, err := c.dbs.Database(db)
+
+	return err == nil
+}
+
 // Database returns the database with the given name.
 func (c *Catalog) Database(db string) (Database, error) {
 	c.mu.RLock()

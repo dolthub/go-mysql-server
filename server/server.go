@@ -57,7 +57,9 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 
 	handler := NewHandler(e,
 		NewSessionManager(
-			sb, tracer,
+			sb,
+			tracer,
+			e.Catalog.HasDB,
 			e.Catalog.MemoryManager,
 			cfg.Address),
 		cfg.ConnReadTimeout)
