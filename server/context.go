@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
@@ -87,7 +86,7 @@ func (s *SessionManager) SetDB(conn *mysql.Conn, db string) error {
 	}
 
 	if db != "" && !s.hasDBFunc(db) {
-		return fmt.Errorf("database '%s' not found", db)
+		return sql.ErrDatabaseNotFound.New(db)
 	}
 
 	sess.SetCurrentDatabase(db)

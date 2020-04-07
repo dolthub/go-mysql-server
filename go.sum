@@ -169,6 +169,8 @@ github.com/liquidata-inc/vitess v0.0.0-20200313225518-1b933e06b424 h1:EEeIf1m1za
 github.com/liquidata-inc/vitess v0.0.0-20200313225518-1b933e06b424/go.mod h1:vn/QvIl/1+N6+qjheejcLt8jmX2kQSQwFinzZuoY1VY=
 github.com/liquidata-inc/vitess v0.0.0-20200318153456-e0b079da3f54 h1:LR/OEhgIYVQuo5a/lxr8Ps76AZ1FNWUgNANfKCA0XSQ=
 github.com/liquidata-inc/vitess v0.0.0-20200318153456-e0b079da3f54/go.mod h1:vn/QvIl/1+N6+qjheejcLt8jmX2kQSQwFinzZuoY1VY=
+github.com/liquidata-inc/vitess v0.0.0-20200407071440-54a487aaf7d9 h1:eaE6IFxMviaDSNFaKlTbNPA/+0Vhj/XgV6lG2SaoAWM=
+github.com/liquidata-inc/vitess v0.0.0-20200407071440-54a487aaf7d9/go.mod h1:vn/QvIl/1+N6+qjheejcLt8jmX2kQSQwFinzZuoY1VY=
 github.com/liquidata-inc/vitess v2.1.1+incompatible/go.mod h1:0AL0EGO0uXORYWrhsSjeaMtrYQ6V6CPfAlw6VoAqt6g=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/mattn/go-runewidth v0.0.1/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
