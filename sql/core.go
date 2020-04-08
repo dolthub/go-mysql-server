@@ -183,7 +183,7 @@ type PartitionCounter interface {
 	PartitionCount(*Context) (int64, error)
 }
 
-//FilteredTable is a table that can produce a specific RowIter
+// FilteredTable is a table that can produce a specific RowIter
 // that's more optimized given the filters.
 type FilteredTable interface {
 	Table
