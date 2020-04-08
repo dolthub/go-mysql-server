@@ -294,14 +294,14 @@ func validateCaseResultTypes(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Nod
 		case *expression.Case:
 			typ := e.Type()
 			for _, b := range e.Branches {
-				if b.Value.Type() != typ && b.Value.Type() != sql.Null {
+				if !sql.AreComparable(b.Value.Type(), typ) && b.Value.Type() != sql.Null {
 					err = ErrCaseResultType.New(typ, b.Value, b.Value.Type(), e)
 					return false
 				}
 			}
 
 			if e.Else != nil {
-				if e.Else.Type() != typ && e.Else.Type() != sql.Null {
+				if !sql.AreComparable(e.Else.Type(), typ) && e.Else.Type() != sql.Null {
 					err = ErrCaseResultType.New(typ, e.Else, e.Else.Type(), e)
 					return false
 				}

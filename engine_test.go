@@ -1988,6 +1988,10 @@ var queries = []queryTest{
 		"SELECT 2.0 + CAST(5 AS DECIMAL)",
 		[]sql.Row{{float64(7)}},
 	},
+	{
+		"SELECT (CASE WHEN i THEN i ELSE 0 END) as cases_i from mytable",
+		[]sql.Row{{int64(1)},{int64(2)},{int64(3)}},
+	},
 }
 
 var infoSchemaQueries = []queryTest {
@@ -5414,14 +5418,6 @@ type lockableTable struct {
 
 func newLockableTable(t sql.Table) *lockableTable {
 	return &lockableTable{Table: t}
-}
-
-func timeParse(layout string, value string) time.Time {
-	t, err := time.Parse(layout, value)
-	if err != nil {
-		panic(err)
-	}
-	return t
 }
 
 var _ sql.Lockable = (*lockableTable)(nil)

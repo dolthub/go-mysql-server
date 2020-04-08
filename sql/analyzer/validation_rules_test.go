@@ -555,6 +555,20 @@ func TestValidateCaseResultTypes(t *testing.T) {
 			false,
 		},
 		{
+			"else is not exact but matches",
+			expression.NewCase(
+				expression.NewGetField(0, sql.Int64, "foo", false),
+				[]expression.CaseBranch{
+					{
+						Cond:  expression.NewLiteral(int64(1), sql.Int64),
+						Value: expression.NewLiteral(int64(2), sql.Int64),
+					},
+				},
+				expression.NewLiteral(int64(3), sql.Int8),
+			),
+			true,
+		},
+		{
 			"else does not match",
 			expression.NewCase(
 				expression.NewGetField(0, sql.Int64, "foo", false),
