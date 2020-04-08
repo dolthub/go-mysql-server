@@ -362,31 +362,57 @@ func tablesRowIter(ctx *Context, cat *Catalog) RowIter {
 
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			rows = append(rows, Row{
-				"def",      //table_catalog
-				db.Name(),  // table_schema
-				t.Name(),   // table_name
-				tableType,  // table_type
-				engine,     // engine
-				10,         //version (protocol, always 10)
-				rowFormat,  //row_format
-				nil,        //table_rows
-				nil,        //avg_row_length
-				nil,        //data_length
-				nil,        //max_data_length
-				nil,        //max_data_length
-				nil,        //data_free
-				nil,        //auto_increment
-				nil,        //create_time
-				nil,        //update_time
-				nil,        //check_time
-				"utf8_bin", //table_collation
-				nil,        //checksum
-				nil,        //create_options
-				"",         //table_comment
+				"def",            // table_catalog
+				db.Name(),        // table_schema
+				t.Name(),         // table_name
+				tableType,        // table_type
+				engine,           // engine
+				10,               // version (protocol, always 10)
+				rowFormat,        // row_format
+				nil,              // table_rows
+				nil,              // avg_row_length
+				nil,              // data_length
+				nil,              // max_data_length
+				nil,              // max_data_length
+				nil,              // data_free
+				nil,              // auto_increment
+				nil,              // create_time
+				nil,              // update_time
+				nil,              // check_time
+				DefaultCollation, // table_collation
+				nil,              // checksum
+				nil,              // create_options
+				"",               // table_comment
 			})
 
 			return true, nil
 		})
+
+		for _, view := range ctx.ViewsInDatabase(db.Name()) {
+			rows = append(rows, Row{
+				"def",            // table_catalog
+				db.Name(),        // table_schema
+				view.Name(),      // table_name
+				"VIEW",           // table_type
+				engine,           // engine
+				10,               // version (protocol, always 10)
+				rowFormat,        // row_format
+				nil,              // table_rows
+				nil,              // avg_row_length
+				nil,              // data_length
+				nil,              // max_data_length
+				nil,              // max_data_length
+				nil,              // data_free
+				nil,              // auto_increment
+				nil,              // create_time
+				nil,              // update_time
+				nil,              // check_time
+				DefaultCollation, // table_collation
+				nil,              // checksum
+				nil,              // create_options
+				"",               // table_comment
+			})
+		}
 
 		// TODO: fix panics
 		if err != nil {
