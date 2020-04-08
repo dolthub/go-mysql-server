@@ -73,14 +73,26 @@ func (p *ShowTables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 
 	sort.Strings(tableNames)
 
-	var rows = make([]sql.Row, len(tableNames))
-	for i, n := range tableNames {
-		row := sql.Row{n}
+	var rows []sql.Row
+	for _, tableName := range tableNames {
+		row := sql.Row{tableName}
 		if p.Full {
 			row = append(row, "BASE TABLE")
 		}
-		rows[i] = row
+		rows = append(rows, row)
 	}
+
+	for _, view := range ctx.ViewsInDatabase(p.db.Name()) {
+		row := sql.Row{view.Name()}
+		if p.Full {
+			row = append(row, "VIEW")
+		}
+		rows = append(rows, row)
+	}
+
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i][0].(string) < rows[j][0].(string)
+	})
 
 	return sql.RowsToRowIter(rows...), nil
 }
