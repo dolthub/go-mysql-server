@@ -2209,15 +2209,17 @@ var infoSchemaQueries = []queryTest {
 		`
 		SELECT TABLE_NAME FROM information_schema.TABLES
 		WHERE TABLE_SCHEMA='mydb' AND (TABLE_TYPE='BASE TABLE' OR TABLE_TYPE='VIEW')
+		ORDER BY 1
 		`,
 		[]sql.Row{
-			{"mytable"},
-			{"othertable"},
-			{"tabletest"},
 			{"bigtable"},
 			{"floattable"},
-			{"niltable"},
+			{"mytable"},
+			{"myview"},
 			{"newlinetable"},
+			{"niltable"},
+			{"othertable"},
+			{"tabletest"},
 			{"typestable"},
 		},
 	},
@@ -2436,7 +2438,11 @@ func TestInfoSchema(t *testing.T) {
 
 	engine, idxReg := newEngineWithParallelism(t, 1, reducedTables, nil)
 	for _, tt := range infoSchemaQueries {
-		testQuery(t, engine, idxReg, tt.query, tt.expected)
+		ctx := newCtx(idxReg)
+		err := ctx.ViewRegistry.Register("mydb",
+			sql.NewView("myview", plan.NewUnresolvedTable("mytable", "db"), "select * from mytable"))
+		require.NoError(t, err)
+		testQueryWithContext(ctx, t, engine, tt.query, tt.expected)
 	}
 }
 
@@ -2854,6 +2860,14 @@ func TestViews(t *testing.T) {
 		[]sql.Row{
 			sql.NewRow("def", "mydb", "myview", "SELECT * FROM myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
 			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+		},
+	)
+
+	testQueryWithContext(ctx, t, e,
+		"select table_name from information_schema.tables where table_schema = 'mydb' and table_type = 'VIEW' order by 1",
+		[]sql.Row{
+			sql.NewRow("myview"),
+			sql.NewRow("myview2"),
 		},
 	)
 }
