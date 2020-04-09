@@ -9,11 +9,12 @@ type SubqueryAlias struct {
 	UnaryNode
 	name   string
 	schema sql.Schema
+	textDefinition string
 }
 
 // NewSubqueryAlias creates a new SubqueryAlias node.
-func NewSubqueryAlias(name string, node sql.Node) *SubqueryAlias {
-	return &SubqueryAlias{UnaryNode{Child: node}, name, nil}
+func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias {
+	return &SubqueryAlias{UnaryNode{Child: node}, name, nil, textDefinition}
 }
 
 // Name implements the Table interface.

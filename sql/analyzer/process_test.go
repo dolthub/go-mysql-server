@@ -84,7 +84,7 @@ func TestTrackProcessSubquery(t *testing.T) {
 
 	node := plan.NewProject(
 		nil,
-		plan.NewSubqueryAlias("f",
+		plan.NewSubqueryAlias("f", "",
 			plan.NewQueryProcess(
 				plan.NewResolvedTable(memory.NewTable("foo", nil)),
 				nil,
@@ -97,7 +97,7 @@ func TestTrackProcessSubquery(t *testing.T) {
 
 	expectedChild := plan.NewProject(
 		nil,
-		plan.NewSubqueryAlias("f",
+		plan.NewSubqueryAlias("f", "",
 			plan.NewResolvedTable(memory.NewTable("foo", nil)),
 		),
 	)

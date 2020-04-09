@@ -20,7 +20,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 				return nil, err
 			}
 
-			return plan.NewSubqueryAlias(n.Name(), child), nil
+			return n.WithChildren(child)
 		default:
 			return n, nil
 		}

@@ -17,7 +17,7 @@ func TestResolveViews(t *testing.T) {
 	f := getRule("resolve_views")
 
 	viewDefinition := plan.NewSubqueryAlias(
-		"myview",
+		"myview", "select i from mytable",
 		plan.NewProject(
 			[]sql.Expression{expression.NewUnresolvedColumn("i")},
 			plan.NewUnresolvedTable("mytable", ""),
@@ -42,7 +42,7 @@ func TestResolveViews(t *testing.T) {
 	require.Equal(viewDefinition, analyzed)
 
 	viewDefinitionWithAsOf := plan.NewSubqueryAlias(
-		"myview",
+		"myview", "select i from mytable",
 		plan.NewProject(
 			[]sql.Expression{expression.NewUnresolvedColumn("i")},
 			plan.NewUnresolvedTableAsOf("mytable", "", expression.NewLiteral("2019-01-01", sql.LongText)),

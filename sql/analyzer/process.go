@@ -85,7 +85,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	node, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		if sq, ok := n.(*plan.SubqueryAlias); ok {
 			if qp, ok := sq.Child.(*plan.QueryProcess); ok {
-				return plan.NewSubqueryAlias(sq.Name(), qp.Child), nil
+				return sq.WithChildren(qp.Child)
 			}
 		}
 		return n, nil

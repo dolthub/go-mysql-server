@@ -77,7 +77,7 @@ func TestAssignCatalog(t *testing.T) {
 	require.True(ok)
 	require.Equal(c, ut.Catalog)
 
-	mockSubquery := plan.NewSubqueryAlias("mock", plan.NewResolvedTable(tbl))
+	mockSubquery := plan.NewSubqueryAlias("mock", "", plan.NewResolvedTable(tbl))
 	mockView := plan.NewCreateView(db, "", nil, mockSubquery, "select * from foo", false)
 	node, err = f.Apply(ctx, a, mockView)
 	require.NoError(err)

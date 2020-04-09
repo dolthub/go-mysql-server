@@ -26,7 +26,7 @@ func mockData(require *require.Assertions) (sql.Database, *sql.Catalog, *sql.Con
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 
-	subqueryAlias := NewSubqueryAlias("myview",
+	subqueryAlias := NewSubqueryAlias("myview", "select i",
 		NewProject(
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(1, sql.Int32, table.Name(), "i", true),

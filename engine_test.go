@@ -924,11 +924,11 @@ var queries = []queryTest{
 	},
 	{
 		`SHOW DATABASES`,
-		[]sql.Row{{"mydb"}, {"foo"}},
+		[]sql.Row{{"mydb"}, {"foo"}, {"information_schema"}},
 	},
 	{
 		`SHOW SCHEMAS`,
-		[]sql.Row{{"mydb"}, {"foo"}},
+		[]sql.Row{{"mydb"}, {"foo"}, {"information_schema"}},
 	},
 	{
 		`SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA`,

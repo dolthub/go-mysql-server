@@ -322,7 +322,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		{
 			"subquery union",
 			plan.NewSubqueryAlias(
-				"aliased",
+				"aliased","select bar, baz from mytable union select rab, zab from mytable",
 				plan.NewUnion(
 					plan.NewProject(
 						[]sql.Expression{

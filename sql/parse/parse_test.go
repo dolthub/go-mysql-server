@@ -1,6 +1,7 @@
 package parse
 
 import (
+	"github.com/stretchr/testify/assert"
 	"math"
 	"testing"
 
@@ -686,7 +687,7 @@ var fixtures = map[string]sql.Node{
 	`SELECT * FROM (SELECT * FROM foo) AS bar`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewSubqueryAlias(
-			"bar",
+			"bar", "select * from foo",
 			plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewUnresolvedTable("foo", ""),
@@ -1344,17 +1345,17 @@ var fixtures = map[string]sql.Node{
 		showCollationProjection,
 	),
 	`ROLLBACK`:                               plan.NewRollback(),
-	"SHOW CREATE TABLE `mytable`":            plan.NewShowCreateTable("", nil, "mytable"),
-	"SHOW CREATE TABLE mytable":              plan.NewShowCreateTable("", nil, "mytable"),
-	"SHOW CREATE TABLE mydb.`mytable`":       plan.NewShowCreateTable("mydb", nil, "mytable"),
-	"SHOW CREATE TABLE `mydb`.mytable":       plan.NewShowCreateTable("mydb", nil, "mytable"),
-	"SHOW CREATE TABLE `mydb`.`mytable`":     plan.NewShowCreateTable("mydb", nil, "mytable"),
-	"SHOW CREATE TABLE `my.table`":           plan.NewShowCreateTable("", nil, "my.table"),
-	"SHOW CREATE TABLE `my.db`.`my.table`":   plan.NewShowCreateTable("my.db", nil, "my.table"),
-	"SHOW CREATE TABLE `my``table`":          plan.NewShowCreateTable("", nil, "my`table"),
-	"SHOW CREATE TABLE `my``db`.`my``table`": plan.NewShowCreateTable("my`db", nil, "my`table"),
-	"SHOW CREATE TABLE ````":                 plan.NewShowCreateTable("", nil, "`"),
-	"SHOW CREATE TABLE `.`":                  plan.NewShowCreateTable("", nil, "."),
+	"SHOW CREATE TABLE `mytable`":            plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("mytable", "")),
+	"SHOW CREATE TABLE mytable":              plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("mytable", "")),
+	"SHOW CREATE TABLE mydb.`mytable`":       plan.NewShowCreateTable("mydb", nil, plan.NewUnresolvedTable("mytable", "mydb")),
+	"SHOW CREATE TABLE `mydb`.mytable":       plan.NewShowCreateTable("mydb", nil, plan.NewUnresolvedTable("mytable", "mydb")),
+	"SHOW CREATE TABLE `mydb`.`mytable`":     plan.NewShowCreateTable("mydb", nil, plan.NewUnresolvedTable("mytable", "mydb")),
+	"SHOW CREATE TABLE `my.table`":           plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("my.table", "")),
+	"SHOW CREATE TABLE `my.db`.`my.table`":   plan.NewShowCreateTable("my.db", nil, plan.NewUnresolvedTable("my.table", "my.db")),
+	"SHOW CREATE TABLE `my``table`":          plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("my`table", "")),
+	"SHOW CREATE TABLE `my``db`.`my``table`": plan.NewShowCreateTable("my`db", nil, plan.NewUnresolvedTable("my`table", "my`db")),
+	"SHOW CREATE TABLE ````":                 plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("`", "")),
+	"SHOW CREATE TABLE `.`":                  plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable(".", "")),
 	`SELECT '2018-05-01' + INTERVAL 1 DAY`: plan.NewProject(
 		[]sql.Expression{expression.NewArithmetic(
 			expression.NewLiteral("2018-05-01", sql.LongText),
@@ -1517,7 +1518,7 @@ var fixtures = map[string]sql.Node{
 		"v",
 		[]string{},
 		plan.NewSubqueryAlias(
-			"v",
+			"v", "select * from foo",
 			plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewUnresolvedTable("foo", ""),
@@ -1531,7 +1532,7 @@ var fixtures = map[string]sql.Node{
 		"v",
 		[]string{},
 		plan.NewSubqueryAlias(
-			"v",
+			"v", "select * from foo",
 			plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewUnresolvedTable("foo", ""),
@@ -1623,10 +1624,19 @@ func TestParse(t *testing.T) {
 			ctx := sql.NewEmptyContext()
 			p, err := Parse(ctx, query)
 			require.NoError(err)
+			if len(expectedPlan.Children()) > 0 {
+				ex := expectedPlan.Children()[0]
+				ac := p.Children()[0]
+				assert.Equal(t, ex, ac)
+				if len(expectedPlan.Children()[0].Children()) > 0 {
+					ex := expectedPlan.Children()[0].Children()[0]
+					ac := p.Children()[0].Children()[0]
+					require.Equal(ex, ac)
+				}
+			}
 			require.Equal(expectedPlan, p,
 				"plans do not match for query '%s'", query)
 		})
-
 	}
 }
 

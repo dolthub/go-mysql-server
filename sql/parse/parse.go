@@ -276,8 +276,12 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 
 func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, error) {
 	switch s.Type {
-	case "create table":
-		return plan.NewShowCreateTable(s.Table.Qualifier.String(), nil, s.Table.Name.String()), nil
+	case "create table", "create view":
+		return plan.NewShowCreateTable(
+			s.Table.Qualifier.String(),
+			nil,
+			plan.NewUnresolvedTable(s.Table.Name.String(), s.Table.Qualifier.String()),
+		), nil
 	case "create database", "create schema":
 		return plan.NewShowCreateDatabase(
 			sql.UnresolvedDatabase(s.Database),
@@ -549,7 +553,7 @@ func convertCreateView(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.No
 		return nil, err
 	}
 
-	queryAlias := plan.NewSubqueryAlias(c.View.Name.String(), queryNode)
+	queryAlias := plan.NewSubqueryAlias(c.View.Name.String(), sqlparser.String(c.ViewExpr), queryNode)
 
 	selectStr := query[c.ViewSelectPositionStart:c.ViewSelectPositionEnd]
 
@@ -839,7 +843,7 @@ func tableExprToTable(
 
 			return node, nil
 		case *sqlparser.Subquery:
-			node, err := convert(ctx, e.Select, "")
+			node, err := convert(ctx, e.Select, sqlparser.String(e.Select))
 			if err != nil {
 				return nil, err
 			}
@@ -848,7 +852,7 @@ func tableExprToTable(
 				return nil, ErrUnsupportedFeature.New("subquery without alias")
 			}
 
-			return plan.NewSubqueryAlias(t.As.String(), node), nil
+			return plan.NewSubqueryAlias(t.As.String(), sqlparser.String(e.Select), node), nil
 		default:
 			return nil, ErrUnsupportedSyntax.New(sqlparser.String(te))
 		}
