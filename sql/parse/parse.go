@@ -281,6 +281,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			s.Table.Qualifier.String(),
 			nil,
 			plan.NewUnresolvedTable(s.Table.Name.String(), s.Table.Qualifier.String()),
+			s.Type == "create view",
 		), nil
 	case "create database", "create schema":
 		return plan.NewShowCreateDatabase(

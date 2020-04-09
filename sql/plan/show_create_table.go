@@ -2,17 +2,36 @@ package plan
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"strings"
 
 	"github.com/src-d/go-mysql-server/sql"
 )
 
+var ErrNotView = errors.NewKind("'%' is not VIEW")
+
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
 	*UnaryNode
 	Catalog  *sql.Catalog
 	Database string
+	IsView bool
+}
+
+// NewShowCreateTable creates a new ShowCreateTable node.
+func NewShowCreateTable(db string, ctl *sql.Catalog, table sql.Node, isView bool) sql.Node {
+	return &ShowCreateTable{
+		UnaryNode: &UnaryNode{table},
+		Database: db,
+		Catalog:  ctl,
+		IsView: isView,
+	}
+}
+
+// Resolved implements the Resolvable interface.
+func (n *ShowCreateTable) Resolved() bool {
+	return true
 }
 
 func (n *ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -51,23 +70,33 @@ func (n *ShowCreateTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}
 
 	return &showCreateTablesIter{
-		db:    db,
-		ctx:   ctx,
-		table: n.Child,
+		db:     db,
+		ctx:    ctx,
+		table:  n.Child,
+		isView: n.IsView,
 	}, nil
 }
 
-
-
 // String implements the Stringer interface.
 func (n *ShowCreateTable) String() string {
-	return fmt.Sprintf("SHOW CREATE TABLE %s", n.UnaryNode)
+	t := "TABLE"
+	if n.IsView {
+		t = "VIEW"
+	}
+
+	name := ""
+	if nameable, ok := n.Child.(sql.Nameable); ok {
+		name = nameable.Name()
+	}
+
+	return fmt.Sprintf("SHOW CREATE %s %s", t, name)
 }
 
 type showCreateTablesIter struct {
 	db           sql.Database
 	table        sql.Node
 	didIteration bool
+	isView       bool
 	ctx          *sql.Context
 }
 
@@ -83,6 +112,11 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 
 	switch table := i.table.(type) {
 	case *ResolvedTable:
+		// MySQL behavior is to allow show create table for views, but not show create view for tables.
+		if i.isView {
+			return nil, ErrNotView.New(table.Name())
+		}
+
 		tableName = table.Name()
 		composedCreateTableStatement = produceCreateTableStatement(table)
 	case *SubqueryAlias:
@@ -151,7 +185,6 @@ func produceCreateTableStatement(table sql.Table) string {
 }
 
 func produceCreateViewStatement(view *SubqueryAlias) string {
-
 	return fmt.Sprintf(
 		"CREATE VIEW `%s` AS %s",
 		view.Name(),
@@ -161,17 +194,4 @@ func produceCreateViewStatement(view *SubqueryAlias) string {
 
 func (i *showCreateTablesIter) Close() error {
 	return nil
-}
-
-// NewShowCreateTable creates a new ShowCreateTable node.
-func NewShowCreateTable(db string, ctl *sql.Catalog, table sql.Node) sql.Node {
-	return &ShowCreateTable{
-		UnaryNode: &UnaryNode{table},
-		Database: db,
-		Catalog:  ctl}
-}
-
-// Resolved implements the Resolvable interface.
-func (n *ShowCreateTable) Resolved() bool {
-	return true
 }
