@@ -1159,6 +1159,13 @@ var queries = []queryTest{
 		}},
 	},
 	{
+		`SHOW CREATE VIEW myview`,
+		[]sql.Row{{
+			"myview",
+			"CREATE VIEW `myview` AS SELECT * FROM mytable",
+		}},
+	},
+	{
 		`SELECT -1`,
 		[]sql.Row{{int8(-1)}},
 	},
