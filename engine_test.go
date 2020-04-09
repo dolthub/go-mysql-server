@@ -1136,6 +1136,29 @@ var queries = []queryTest{
 		}},
 	},
 	{
+		`SHOW CREATE TABLE two_pk`,
+		[]sql.Row{{
+			"two_pk",
+			"CREATE TABLE `two_pk` (\n" +
+					"  `pk1` TINYINT NOT NULL,\n" +
+					"  `pk2` TINYINT NOT NULL,\n" +
+					"  `c1` TINYINT NOT NULL,\n" +
+					"  `c2` TINYINT NOT NULL,\n" +
+					"  `c3` TINYINT NOT NULL,\n" +
+					"  `c4` TINYINT NOT NULL,\n" +
+					"  `c5` TINYINT NOT NULL,\n" +
+					"  PRIMARY KEY (`pk1`,`pk2`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		}},
+	},
+	{
+			`SHOW CREATE TABLE myview`,
+		[]sql.Row{{
+			"myview",
+			"CREATE VIEW `myview` AS SELECT * FROM mytable",
+		}},
+	},
+	{
 		`SELECT -1`,
 		[]sql.Row{{int8(-1)}},
 	},
@@ -2347,7 +2370,7 @@ var infoSchemaQueries = []queryTest {
 }
 
 // Set to a query to run only tests for that query
-var debugQuery = ""
+var debugQuery = "SHOW CREATE TABLE myview"
 
 func TestQueries(t *testing.T) {
 	type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
@@ -2440,9 +2463,6 @@ func TestInfoSchema(t *testing.T) {
 	engine, idxReg := newEngineWithParallelism(t, 1, reducedTables, nil)
 	for _, tt := range infoSchemaQueries {
 		ctx := newCtx(idxReg)
-		err := ctx.ViewRegistry.Register("mydb",
-			sql.NewView("myview", plan.NewUnresolvedTable("mytable", "db"), "select * from mytable"))
-		require.NoError(t, err)
 		testQueryWithContext(ctx, t, engine, tt.query, tt.expected)
 	}
 }
@@ -2814,12 +2834,12 @@ func TestViews(t *testing.T) {
 
 	e, idxReg := newEngine(t)
 	ctx := newCtx(idxReg)
-	_, iter, err := e.Query(ctx, "CREATE VIEW myview AS SELECT * FROM myhistorytable")
+	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
 	require.NoError(err)
 	iter.Close()
 
 	testQueryWithContext(ctx, t, e,
-		"SELECT * FROM myview ORDER BY i",
+		"SELECT * FROM myview1 ORDER BY i",
 		[]sql.Row{
 			sql.NewRow(int64(1), "first row, 2"),
 			sql.NewRow(int64(2), "second row, 2"),
@@ -2828,7 +2848,7 @@ func TestViews(t *testing.T) {
 	)
 
 	testQueryWithContext(ctx, t, e,
-		"SELECT * FROM myview AS OF '2019-01-01' ORDER BY i",
+		"SELECT * FROM myview1 AS OF '2019-01-01' ORDER BY i",
 		[]sql.Row{
 			sql.NewRow(int64(1), "first row, 1"),
 			sql.NewRow(int64(2), "second row, 1"),
@@ -2837,7 +2857,7 @@ func TestViews(t *testing.T) {
 	)
 
 	// nested views
-	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
+	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
 	require.NoError(err)
 	iter.Close()
 
@@ -2859,8 +2879,9 @@ func TestViews(t *testing.T) {
 	testQueryWithContext(ctx, t, e,
 		"select * from information_schema.views where table_schema = 'mydb'",
 		[]sql.Row{
-			sql.NewRow("def", "mydb", "myview", "SELECT * FROM myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
-			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
 		},
 	)
 
@@ -2868,6 +2889,7 @@ func TestViews(t *testing.T) {
 		"select table_name from information_schema.tables where table_schema = 'mydb' and table_type = 'VIEW' order by 1",
 		[]sql.Row{
 			sql.NewRow("myview"),
+			sql.NewRow("myview1"),
 			sql.NewRow("myview2"),
 		},
 	)
@@ -5497,13 +5519,20 @@ var pid uint64
 func newCtx(idxReg *sql.IndexRegistry) *sql.Context {
 	session := sql.NewSession("address", "client", "user", 1)
 
-	return sql.NewContext(
+	ctx := sql.NewContext(
 		context.Background(),
 		sql.WithPid(atomic.AddUint64(&pid, 1)),
 		sql.WithSession(session),
 		sql.WithIndexRegistry(idxReg),
 		sql.WithViewRegistry(sql.NewViewRegistry()),
 	).WithCurrentDB("mydb")
+
+	// TODO: clear up this redundancy
+	_ = ctx.ViewRegistry.Register("mydb",
+		sql.NewView("myview", plan.NewSubqueryAlias("myview", "SELECT * FROM mytable",
+			plan.NewUnresolvedTable("mytable", "mydb")), "SELECT * FROM mytable"))
+
+	return ctx
 }
 
 type lockableTable struct {

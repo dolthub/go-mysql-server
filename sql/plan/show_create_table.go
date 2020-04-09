@@ -175,6 +175,3 @@ func NewShowCreateTable(db string, ctl *sql.Catalog, table sql.Node) sql.Node {
 func (n *ShowCreateTable) Resolved() bool {
 	return true
 }
-
-// Children implements the Node interface.
-func (n *ShowCreateTable) Children() []sql.Node { return nil }
