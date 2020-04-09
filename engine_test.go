@@ -5534,10 +5534,12 @@ func newCtx(idxReg *sql.IndexRegistry) *sql.Context {
 		sql.WithViewRegistry(sql.NewViewRegistry()),
 	).WithCurrentDB("mydb")
 
-	// TODO: clear up this redundancy
 	_ = ctx.ViewRegistry.Register("mydb",
-		sql.NewView("myview", plan.NewSubqueryAlias("myview", "SELECT * FROM mytable",
-			plan.NewUnresolvedTable("mytable", "mydb")), "SELECT * FROM mytable"))
+		plan.NewSubqueryAlias(
+			"myview",
+			"SELECT * FROM mytable",
+			plan.NewUnresolvedTable("mytable", "mydb"),
+		).AsView())
 
 	return ctx
 }

@@ -1529,13 +1529,12 @@ var fixtures = map[string]sql.Node{
 		"v",
 		[]string{},
 		plan.NewSubqueryAlias(
-			"v", "select * from foo",
+			"v", "SELECT * FROM foo",
 			plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewUnresolvedTable("foo", ""),
 			),
 		),
-		`SELECT * FROM foo`,
 		false,
 	),
 	`CREATE OR REPLACE VIEW v AS SELECT * FROM foo` : plan.NewCreateView(
@@ -1543,13 +1542,12 @@ var fixtures = map[string]sql.Node{
 		"v",
 		[]string{},
 		plan.NewSubqueryAlias(
-			"v", "select * from foo",
+			"v", "SELECT * FROM foo",
 			plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewUnresolvedTable("foo", ""),
 			),
 		),
-		`SELECT * FROM foo`,
 		true,
 	),
 	`SELECT 2 UNION SELECT 3` : plan.NewUnion(

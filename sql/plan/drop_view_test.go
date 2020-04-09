@@ -35,7 +35,7 @@ func mockData(require *require.Assertions) (sql.Database, *sql.Catalog, *sql.Con
 		),
 	)
 
-	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, "select i from dual", false)
+	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, false)
 	createView.Catalog = catalog
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))

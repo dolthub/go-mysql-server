@@ -188,7 +188,7 @@ func produceCreateViewStatement(view *SubqueryAlias) string {
 	return fmt.Sprintf(
 		"CREATE VIEW `%s` AS %s",
 		view.Name(),
-		view.textDefinition,
+		view.TextDefinition,
 	)
 }
 

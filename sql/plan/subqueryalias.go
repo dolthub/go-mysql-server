@@ -7,14 +7,19 @@ import (
 // SubqueryAlias is a node that gives a subquery a name.
 type SubqueryAlias struct {
 	UnaryNode
-	name   string
-	schema sql.Schema
-	textDefinition string
+	name           string
+	schema         sql.Schema
+	TextDefinition string
 }
 
 // NewSubqueryAlias creates a new SubqueryAlias node.
 func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias {
 	return &SubqueryAlias{UnaryNode{Child: node}, name, nil, textDefinition}
+}
+
+// Returns the view wrapper for this subquery
+func (n *SubqueryAlias) AsView() sql.View {
+	return sql.NewView(n.Name(), n, n.TextDefinition)
 }
 
 // Name implements the Table interface.

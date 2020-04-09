@@ -554,12 +554,11 @@ func convertCreateView(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.No
 		return nil, err
 	}
 
-	queryAlias := plan.NewSubqueryAlias(c.View.Name.String(), sqlparser.String(c.ViewExpr), queryNode)
-
 	selectStr := query[c.ViewSelectPositionStart:c.ViewSelectPositionEnd]
+	queryAlias := plan.NewSubqueryAlias(c.View.Name.String(), selectStr, queryNode)
 
 	return plan.NewCreateView(
-		sql.UnresolvedDatabase(""), c.View.Name.String(), []string{}, queryAlias, selectStr, c.OrReplace), nil
+		sql.UnresolvedDatabase(""), c.View.Name.String(), []string{}, queryAlias, c.OrReplace), nil
 }
 
 func convertDropView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {

@@ -32,7 +32,7 @@ func mockCreateView(isReplace bool) *CreateView {
 		),
 	)
 
-	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, "select i from dual", isReplace)
+	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, isReplace)
 	createView.Catalog = catalog
 
 	return createView
@@ -50,7 +50,7 @@ func TestCreateView(t *testing.T) {
 	_, err := createView.RowIter(ctx)
 	require.NoError(err)
 
-	expectedView := sql.NewView(createView.Name, createView.Child, createView.SelectStr)
+	expectedView := sql.NewView(createView.Name, createView.Child, createView.Definition.TextDefinition)
 	actualView, err := viewReg.View(createView.database.Name(), createView.Name)
 	require.NoError(err)
 	require.Equal(expectedView, *actualView)
