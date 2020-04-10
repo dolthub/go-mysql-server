@@ -34,7 +34,7 @@ func (v *View) Definition() Node {
 	return v.definition
 }
 
-// Definition returns the text definition of the view as originally defined.
+// TextDefinition returns the text definition of the view as originally defined.
 func (v *View) TextDefinition() string {
 	return v.textDefinition
 }

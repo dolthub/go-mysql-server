@@ -38,9 +38,16 @@ func (n *ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(1, len(children))
 	}
+	child := children[0]
+
+	switch child.(type) {
+	case *SubqueryAlias, *ResolvedTable, *UnresolvedTable:
+	default:
+		return nil, sql.ErrInvalidChildType.New(n, child, (*SubqueryAlias)(nil))
+	}
 
 	nc := *n
-	nc.Child = children[0]
+	nc.Child = child
 	return &nc, nil
 }
 

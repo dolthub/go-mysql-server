@@ -130,7 +130,7 @@ func (h *Handler) ComQuery(
 ) (err error) {
 	ctx, err := h.sm.NewContextWithQuery(c, query)
 
-	logrus.Debugf("received query %s", query)
+	logrus.Tracef("received query %s", query)
 
 	if err != nil {
 		return err
@@ -160,7 +160,7 @@ func (h *Handler) ComQuery(
 		}
 	}()
 	if err != nil {
-		logrus.Debugf("Error running query %s: %s", query, err)
+		logrus.Tracef("Error running query %s: %s", query, err)
 		return err
 	}
 
@@ -287,7 +287,7 @@ rowLoop:
 				return err
 			}
 
-			logrus.Debugf("returning result row %s", outputRow)
+			logrus.Tracef("returning result row %s", outputRow)
 			r.Rows = append(r.Rows, outputRow)
 			r.RowsAffected++
 		case <-timer.C:
