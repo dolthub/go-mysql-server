@@ -11,6 +11,7 @@ import (
 var Defaults = []sql.Function{
 	sql.Function0{Name: "connection_id", Fn: NewConnectionID},
 	sql.Function0{Name: "user", Fn: NewUser},
+	sql.Function0{Name: "current_user", Fn: NewUser},
 	sql.Function0{Name: "now", Fn: NewNow},
 
 	sql.Function1{Name: "abs", Fn: NewAbsVal},
