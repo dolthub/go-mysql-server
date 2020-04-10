@@ -210,7 +210,7 @@ func TestQualifyColumns(t *testing.T) {
 	require.True(ErrAmbiguousColumnName.Is(err))
 
 	subquery := plan.NewSubqueryAlias(
-		"b",
+		"b", "",
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),

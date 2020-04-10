@@ -257,3 +257,185 @@ func (s *SubstringIndex) WithChildren(children ...sql.Expression) (sql.Expressio
 	}
 	return NewSubstringIndex(children[0], children[1], children[2]), nil
 }
+
+// Left is a function that returns the first N characters of a string expression.
+type Left struct {
+	str   sql.Expression
+	len   sql.Expression
+}
+
+// NewLeft creates a new LEFT function.
+func NewLeft(str, len sql.Expression) sql.Expression {
+	return Left{str, len}
+}
+
+// Children implements the Expression interface.
+func (l Left) Children() []sql.Expression {
+	return []sql.Expression{l.str, l.len}
+}
+
+// Eval implements the Expression interface.
+func (l Left) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	str, err := l.str.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	var text []rune
+	switch str := str.(type) {
+	case string:
+		text = []rune(str)
+	case []byte:
+		text = []rune(string(str))
+	case nil:
+		return nil, nil
+	default:
+		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
+	}
+
+	var length int64
+	runeCount := int64(len(text))
+	len, err := l.len.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if len == nil {
+		return nil, nil
+	}
+
+	len, err = sql.Int64.Convert(len)
+	if err != nil {
+		return nil, err
+	}
+
+	length = len.(int64)
+
+	if length > runeCount {
+		length = runeCount
+	}
+	if length <= 0 {
+		return "", nil
+	}
+
+	return string(text[:length]), nil
+}
+
+// IsNullable implements the Expression interface.
+func (l Left) IsNullable() bool {
+	return l.str.IsNullable() || l.len.IsNullable()
+}
+
+func (l Left) String() string {
+	return fmt.Sprintf("LEFT(%s, %s)", l.str, l.len)
+}
+
+// Resolved implements the Expression interface.
+func (l Left) Resolved() bool {
+	return l.str.Resolved() && l.len.Resolved()
+}
+
+// Type implements the Expression interface.
+func (Left) Type() sql.Type { return sql.LongText }
+
+/// WithChildren implements the Expression interface.
+func (l Left) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 2)
+	}
+	return NewLeft(children[0], children[1]), nil
+}
+
+type Instr struct {
+	str sql.Expression
+	substr sql.Expression
+}
+
+// NewInstr creates a new instr UDF.
+func NewInstr(str, substr sql.Expression) sql.Expression {
+	return Instr{str, substr}
+}
+
+// Children implements the Expression interface.
+func (i Instr) Children() []sql.Expression {
+	return []sql.Expression{i.str, i.substr}
+}
+
+// Eval implements the Expression interface.
+func (i Instr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	str, err := i.str.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	var text []rune
+	switch str := str.(type) {
+	case string:
+		text = []rune(str)
+	case []byte:
+		text = []rune(string(str))
+	case nil:
+		return nil, nil
+	default:
+		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
+	}
+
+	substr, err := i.substr.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	var subtext []rune
+	switch substr := substr.(type) {
+	case string:
+		subtext = []rune(substr)
+	case []byte:
+		subtext = []rune(string(subtext))
+	case nil:
+		return nil, nil
+	default:
+		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
+	}
+
+	return findSubsequence(text, subtext) + 1, nil
+}
+
+func findSubsequence(text []rune, subtext []rune) int64 {
+	for i := 0; i <= len(text) - len(subtext); i++ {
+		var j int
+		for j = 0; j < len(subtext); j++ {
+			if text[i+j] != subtext[j] {
+				break
+			}
+		}
+		if j == len(subtext) {
+			return int64(i)
+		}
+	}
+	return -1
+}
+
+// IsNullable implements the Expression interface.
+func (i Instr) IsNullable() bool {
+	return i.str.IsNullable() || i.substr.IsNullable()
+}
+
+func (i Instr) String() string {
+	return fmt.Sprintf("INSTR(%s, %s)", i.str, i.substr)
+}
+
+// Resolved implements the Expression interface.
+func (i Instr) Resolved() bool {
+	return i.str.Resolved() && i.substr.Resolved()
+}
+
+// Type implements the Expression interface.
+func (Instr) Type() sql.Type { return sql.Int64 }
+
+/// WithChildren implements the Expression interface.
+func (i Instr) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 2)
+	}
+	return NewInstr(children[0], children[1]), nil
+}

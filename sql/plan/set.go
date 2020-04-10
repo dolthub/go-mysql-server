@@ -98,13 +98,15 @@ func (s *Set) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 			globalPrefix,
 		)
 
-		if _, ok := v.Value.(*expression.DefaultColumn); ok {
+		switch v.Value.(type) {
+		case *expression.DefaultColumn:
 			valtyp, ok := sql.DefaultSessionConfig()[name]
 			if !ok {
 				continue
 			}
 			value, typ = valtyp.Value, valtyp.Typ
-		} else {
+		default:
+			// TODO: value checking for system variables. Each one has specific lists of acceptable values.
 			value, err = v.Value.Eval(ctx, nil)
 			if err != nil {
 				return nil, err

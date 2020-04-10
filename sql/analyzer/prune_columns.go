@@ -113,7 +113,7 @@ func pruneSubqueryColumns(
 	// because the main query will take care of fixing the indexes of all the
 	// nodes in the tree.
 
-	return plan.NewSubqueryAlias(n.Name(), node), nil
+	return n.WithChildren(node)
 }
 
 func findUsedColumns(columns usedColumns, n sql.Node) {
@@ -177,7 +177,7 @@ func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
 				return nil, err
 			}
 
-			return plan.NewSubqueryAlias(n.Name(), child), nil
+			return n.WithChildren(child)
 		default:
 			if _, ok := n.(sql.Expressioner); !ok {
 				return n, nil

@@ -2,36 +2,71 @@ package plan
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"strings"
-
-	"github.com/src-d/go-mysql-server/internal/similartext"
 
 	"github.com/src-d/go-mysql-server/sql"
 )
 
+var ErrNotView = errors.NewKind("'%' is not VIEW")
+
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
+	*UnaryNode
 	Catalog  *sql.Catalog
 	Database string
-	Table    string
+	IsView bool
+}
+
+// NewShowCreateTable creates a new ShowCreateTable node.
+func NewShowCreateTable(db string, ctl *sql.Catalog, table sql.Node, isView bool) sql.Node {
+	return &ShowCreateTable{
+		UnaryNode: &UnaryNode{table},
+		Database: db,
+		Catalog:  ctl,
+		IsView: isView,
+	}
+}
+
+// Resolved implements the Resolvable interface.
+func (n *ShowCreateTable) Resolved() bool {
+	return true
+}
+
+func (n *ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(1, len(children))
+	}
+	child := children[0]
+
+	switch child.(type) {
+	case *SubqueryAlias, *ResolvedTable, *UnresolvedTable:
+	default:
+		return nil, sql.ErrInvalidChildType.New(n, child, (*SubqueryAlias)(nil))
+	}
+
+	nc := *n
+	nc.Child = child
+	return &nc, nil
 }
 
 // Schema implements the Node interface.
 func (n *ShowCreateTable) Schema() sql.Schema {
-	return sql.Schema{
-		&sql.Column{Name: "Table", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Create Table", Type: sql.LongText, Nullable: false},
+	switch n.Child.(type) {
+	case *SubqueryAlias:
+		return sql.Schema{
+			&sql.Column{Name: "View", Type: sql.LongText, Nullable: false},
+			&sql.Column{Name: "Create View", Type: sql.LongText, Nullable: false},
+		}
+	case *ResolvedTable, *UnresolvedTable:
+		return sql.Schema{
+			&sql.Column{Name: "Table", Type: sql.LongText, Nullable: false},
+			&sql.Column{Name: "Create Table", Type: sql.LongText, Nullable: false},
+		}
+	default:
+		panic(fmt.Sprintf("unexpected type %T", n.Child))
 	}
-}
-
-// WithChildren implements the Node interface.
-func (n *ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
-	}
-
-	return n, nil
 }
 
 // RowIter implements the Node interface
@@ -42,21 +77,33 @@ func (n *ShowCreateTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}
 
 	return &showCreateTablesIter{
-		db:    db,
-		table: n.Table,
-		ctx: ctx,
+		db:     db,
+		ctx:    ctx,
+		table:  n.Child,
+		isView: n.IsView,
 	}, nil
 }
 
 // String implements the Stringer interface.
 func (n *ShowCreateTable) String() string {
-	return fmt.Sprintf("SHOW CREATE TABLE %s", n.Table)
+	t := "TABLE"
+	if n.IsView {
+		t = "VIEW"
+	}
+
+	name := ""
+	if nameable, ok := n.Child.(sql.Nameable); ok {
+		name = nameable.Name()
+	}
+
+	return fmt.Sprintf("SHOW CREATE %s %s", t, name)
 }
 
 type showCreateTablesIter struct {
 	db           sql.Database
-	table        string
+	table        sql.Node
 	didIteration bool
+	isView       bool
 	ctx          *sql.Context
 }
 
@@ -67,31 +114,37 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 
 	i.didIteration = true
 
-	table, found, err := i.db.GetTableInsensitive(i.ctx, i.table)
+	var composedCreateTableStatement string
+	var tableName string
 
-	if err != nil {
-		return nil, err
-	} else if !found {
-
-		tableNames, err := i.db.GetTableNames(i.ctx)
-
-		if err != nil {
-			return nil, err
+	switch table := i.table.(type) {
+	case *ResolvedTable:
+		// MySQL behavior is to allow show create table for views, but not show create view for tables.
+		if i.isView {
+			return nil, ErrNotView.New(table.Name())
 		}
 
-		similar := similartext.Find(tableNames, i.table)
-		return nil, sql.ErrTableNotFound.New(i.table + similar)
+		tableName = table.Name()
+		composedCreateTableStatement = produceCreateTableStatement(table)
+	case *SubqueryAlias:
+		tableName = table.Name()
+		composedCreateTableStatement = produceCreateViewStatement(table)
+	default:
+		panic(fmt.Sprintf("unexpected type %T", i.table))
 	}
 
-	composedCreateTableStatement := produceCreateStatement(table)
-
 	return sql.NewRow(
-		i.table,                      // "Table" string
+		tableName,                    // "Table" string
 		composedCreateTableStatement, // "Create Table" string
 	), nil
 }
 
-func produceCreateStatement(table sql.Table) string {
+type NameAndSchema interface {
+	sql.Nameable
+	Schema() sql.Schema
+}
+
+func produceCreateTableStatement(table sql.Table) string {
 	schema := table.Schema()
 	colStmts := make([]string, len(schema))
 	var primaryKeyCols []string
@@ -138,22 +191,14 @@ func produceCreateStatement(table sql.Table) string {
 	)
 }
 
+func produceCreateViewStatement(view *SubqueryAlias) string {
+	return fmt.Sprintf(
+		"CREATE VIEW `%s` AS %s",
+		view.Name(),
+		view.TextDefinition,
+	)
+}
+
 func (i *showCreateTablesIter) Close() error {
 	return nil
 }
-
-// NewShowCreateTable creates a new ShowCreateTable node.
-func NewShowCreateTable(db string, ctl *sql.Catalog, table string) sql.Node {
-	return &ShowCreateTable{
-		Database: db,
-		Table:    table,
-		Catalog:  ctl}
-}
-
-// Resolved implements the Resolvable interface.
-func (n *ShowCreateTable) Resolved() bool {
-	return true
-}
-
-// Children implements the Node interface.
-func (n *ShowCreateTable) Children() []sql.Node { return nil }

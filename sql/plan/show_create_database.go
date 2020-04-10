@@ -13,8 +13,6 @@ type ShowCreateDatabase struct {
 	IfNotExists bool
 }
 
-const defaultCharacterSet = "utf8mb4"
-
 var showCreateDatabaseSchema = sql.Schema{
 	{Name: "Database", Type: sql.LongText},
 	{Name: "Create Database", Type: sql.LongText},
@@ -55,8 +53,8 @@ func (s *ShowCreateDatabase) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	buf.WriteRune('`')
 	buf.WriteString(fmt.Sprintf(
 		" /*!40100 DEFAULT CHARACTER SET %s COLLATE %s */",
-		defaultCharacterSet,
-		defaultCollation,
+		sql.DefaultCharacterSet,
+		sql.DefaultCollation,
 	))
 
 	return sql.RowsToRowIter(

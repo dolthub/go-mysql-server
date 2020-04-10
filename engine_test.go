@@ -924,15 +924,16 @@ var queries = []queryTest{
 	},
 	{
 		`SHOW DATABASES`,
-		[]sql.Row{{"mydb"}, {"foo"}},
+		[]sql.Row{{"mydb"}, {"foo"}, {"information_schema"}},
 	},
 	{
 		`SHOW SCHEMAS`,
-		[]sql.Row{{"mydb"}, {"foo"}},
+		[]sql.Row{{"mydb"}, {"foo"}, {"information_schema"}},
 	},
 	{
 		`SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA`,
 		[]sql.Row{
+			{"information_schema", "utf8mb4", "utf8_bin"},
 			{"mydb", "utf8mb4", "utf8_bin"},
 			{"foo", "utf8mb4", "utf8_bin"},
 		},
@@ -1062,11 +1063,17 @@ var queries = []queryTest{
 		},
 	},
 	{
+		`SELECT USER()`,
+		[]sql.Row{
+			{"user"},
+		},
+	},
+	{
 		`SHOW VARIABLES`,
 		[]sql.Row{
 			{"auto_increment_increment", int64(1)},
-			{"time_zone", time.Local.String()},
-			{"system_time_zone", time.Local.String()},
+			{"time_zone", "SYSTEM"},
+			{"system_time_zone", time.Now().UTC().Location().String()},
 			{"max_allowed_packet", math.MaxInt32},
 			{"sql_mode", ""},
 			{"gtid_mode", int32(0)},
@@ -1126,6 +1133,36 @@ var queries = []queryTest{
 		[]sql.Row{{
 			"mydb",
 			"CREATE DATABASE `mydb` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8_bin */",
+		}},
+	},
+	{
+		`SHOW CREATE TABLE two_pk`,
+		[]sql.Row{{
+			"two_pk",
+			"CREATE TABLE `two_pk` (\n" +
+					"  `pk1` TINYINT NOT NULL,\n" +
+					"  `pk2` TINYINT NOT NULL,\n" +
+					"  `c1` TINYINT NOT NULL,\n" +
+					"  `c2` TINYINT NOT NULL,\n" +
+					"  `c3` TINYINT NOT NULL,\n" +
+					"  `c4` TINYINT NOT NULL,\n" +
+					"  `c5` TINYINT NOT NULL,\n" +
+					"  PRIMARY KEY (`pk1`,`pk2`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		}},
+	},
+	{
+			`SHOW CREATE TABLE myview`,
+		[]sql.Row{{
+			"myview",
+			"CREATE VIEW `myview` AS SELECT * FROM mytable",
+		}},
+	},
+	{
+		`SHOW CREATE VIEW myview`,
+		[]sql.Row{{
+			"myview",
+			"CREATE VIEW `myview` AS SELECT * FROM mytable",
 		}},
 	},
 	{
@@ -1213,6 +1250,36 @@ var queries = []queryTest{
 		},
 	},
 	{
+		`SELECT if(123 = 123, "a", "b")`,
+		[]sql.Row{
+			{"a"},
+		},
+	},
+	{
+		`SELECT if(123 = 123, NULL, "b")`,
+		[]sql.Row{
+			{nil},
+		},
+	},
+	{
+		`SELECT if(123 > 123, "a", "b")`,
+		[]sql.Row{
+			{"b"},
+		},
+	},
+	{
+		`SELECT if(NULL, "a", "b")`,
+		[]sql.Row{
+			{"b"},
+		},
+	},
+	{
+		`SELECT if("a", "a", "b")`,
+		[]sql.Row{
+			{"b"},
+		},
+	},
+	{
 		"SELECT i FROM mytable WHERE NULL > 10;",
 		nil,
 	},
@@ -1274,7 +1341,7 @@ var queries = []queryTest{
 	},
 	{
 		`SHOW COLLATION`,
-		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
+		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1), "PAD SPACE"}},
 	},
 	{
 		`SHOW COLLATION LIKE 'foo'`,
@@ -1282,7 +1349,7 @@ var queries = []queryTest{
 	},
 	{
 		`SHOW COLLATION LIKE 'utf8%'`,
-		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
+		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1), "PAD SPACE"}},
 	},
 	{
 		`SHOW COLLATION WHERE charset = 'foo'`,
@@ -1290,7 +1357,7 @@ var queries = []queryTest{
 	},
 	{
 		"SHOW COLLATION WHERE `Default` = 'Yes'",
-		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1)}},
+		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1), "PAD SPACE"}},
 	},
 	{
 		"ROLLBACK",
@@ -1303,6 +1370,42 @@ var queries = []queryTest{
 	{
 		"SELECT substring(s, 1, 1), count(*) FROM mytable GROUP BY substring(s, 1, 1)",
 		[]sql.Row{{"f", int64(1)}, {"s", int64(1)}, {"t", int64(1)}},
+	},
+	{
+		"SELECT left(s, 1) as l FROM mytable ORDER BY l",
+		[]sql.Row{{"f"}, {"s"}, {"t"}},
+	},
+	{
+		"SELECT left(s, 2) as l FROM mytable ORDER BY l",
+		[]sql.Row{{"fi"}, {"se"}, {"th"}},
+	},
+	{
+		"SELECT left(s, 0) as l FROM mytable ORDER BY l",
+		[]sql.Row{{""}, {""}, {""}},
+	},
+	{
+		"SELECT left(s, NULL) as l FROM mytable ORDER BY l",
+		[]sql.Row{{nil}, {nil}, {nil}},
+	},
+	{
+		"SELECT left(s, 100) as l FROM mytable ORDER BY l",
+		[]sql.Row{{"first row"}, {"second row"}, {"third row"}},
+	},
+	{
+		"SELECT instr(s, 'row') as l FROM mytable ORDER BY i",
+		[]sql.Row{{int64(7)}, {int64(8)}, {int64(7)}},
+	},
+	{
+		"SELECT instr(s, 'first') as l FROM mytable ORDER BY i",
+		[]sql.Row{{int64(1)}, {int64(0)}, {int64(0)}},
+	},
+	{
+		"SELECT instr(s, 'o') as l FROM mytable ORDER BY i",
+		[]sql.Row{{int64(8)}, {int64(4)}, {int64(8)}},
+	},
+	{
+		"SELECT instr(s, NULL) as l FROM mytable ORDER BY l",
+		[]sql.Row{{nil}, {nil}, {nil}},
 	},
 	{
 		"SELECT SLEEP(0.5)",
@@ -2050,27 +2153,28 @@ var infoSchemaQueries = []queryTest {
 	{
 		"SHOW TABLES",
 		[]sql.Row{
-			{"mytable"},
-			{"othertable"},
-			{"tabletest"},
 			{"bigtable"},
 			{"floattable"},
-			{"niltable"},
+			{"mytable"},
+			{"myview"},
 			{"newlinetable"},
+			{"niltable"},
+			{"othertable"},
+			{"tabletest"},
 			{"typestable"},
 		},
-
 	},
 	{
 		"SHOW FULL TABLES",
 		[]sql.Row{
-			{"mytable", "BASE TABLE"},
-			{"othertable", "BASE TABLE"},
-			{"tabletest", "BASE TABLE"},
 			{"bigtable", "BASE TABLE"},
 			{"floattable", "BASE TABLE"},
-			{"niltable", "BASE TABLE"},
+			{"mytable", "BASE TABLE"},
+			{"myview", "VIEW"},
 			{"newlinetable", "BASE TABLE"},
+			{"niltable", "BASE TABLE"},
+			{"othertable", "BASE TABLE"},
+			{"tabletest", "BASE TABLE"},
 			{"typestable", "BASE TABLE"},
 		},
 	},
@@ -2136,15 +2240,17 @@ var infoSchemaQueries = []queryTest {
 		`
 		SELECT TABLE_NAME FROM information_schema.TABLES
 		WHERE TABLE_SCHEMA='mydb' AND (TABLE_TYPE='BASE TABLE' OR TABLE_TYPE='VIEW')
+		ORDER BY 1
 		`,
 		[]sql.Row{
-			{"mytable"},
-			{"othertable"},
-			{"tabletest"},
 			{"bigtable"},
 			{"floattable"},
-			{"niltable"},
+			{"mytable"},
+			{"myview"},
 			{"newlinetable"},
+			{"niltable"},
+			{"othertable"},
+			{"tabletest"},
 			{"typestable"},
 		},
 	},
@@ -2363,7 +2469,8 @@ func TestInfoSchema(t *testing.T) {
 
 	engine, idxReg := newEngineWithParallelism(t, 1, reducedTables, nil)
 	for _, tt := range infoSchemaQueries {
-		testQuery(t, engine, idxReg, tt.query, tt.expected)
+		ctx := newCtx(idxReg)
+		testQueryWithContext(ctx, t, engine, tt.query, tt.expected)
 	}
 }
 
@@ -2729,17 +2836,17 @@ func extractQueryNode(node sql.Node) sql.Node {
 	}
 }
 
-func TestSelectFromView(t *testing.T) {
+func TestViews(t *testing.T) {
 	require := require.New(t)
 
 	e, idxReg := newEngine(t)
 	ctx := newCtx(idxReg)
-	_, iter, err := e.Query(ctx, "CREATE VIEW myview AS SELECT * FROM myhistorytable")
+	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
 	require.NoError(err)
 	iter.Close()
 
 	testQueryWithContext(ctx, t, e,
-		"SELECT * FROM myview ORDER BY i",
+		"SELECT * FROM myview1 ORDER BY i",
 		[]sql.Row{
 			sql.NewRow(int64(1), "first row, 2"),
 			sql.NewRow(int64(2), "second row, 2"),
@@ -2748,7 +2855,7 @@ func TestSelectFromView(t *testing.T) {
 	)
 
 	testQueryWithContext(ctx, t, e,
-		"SELECT * FROM myview AS OF '2019-01-01' ORDER BY i",
+		"SELECT * FROM myview1 AS OF '2019-01-01' ORDER BY i",
 		[]sql.Row{
 			sql.NewRow(int64(1), "first row, 1"),
 			sql.NewRow(int64(2), "second row, 1"),
@@ -2757,7 +2864,7 @@ func TestSelectFromView(t *testing.T) {
 	)
 
 	// nested views
-	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
+	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
 	require.NoError(err)
 	iter.Close()
 
@@ -2772,6 +2879,25 @@ func TestSelectFromView(t *testing.T) {
 		"SELECT * FROM myview2 AS OF '2019-01-01'",
 		[]sql.Row{
 			sql.NewRow(int64(1), "first row, 1"),
+		},
+	)
+
+	// info schema support
+	testQueryWithContext(ctx, t, e,
+		"select * from information_schema.views where table_schema = 'mydb'",
+		[]sql.Row{
+			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+		},
+	)
+
+	testQueryWithContext(ctx, t, e,
+		"select table_name from information_schema.tables where table_schema = 'mydb' and table_type = 'VIEW' order by 1",
+		[]sql.Row{
+			sql.NewRow("myview"),
+			sql.NewRow("myview1"),
+			sql.NewRow("myview2"),
 		},
 	)
 }
@@ -5400,13 +5526,22 @@ var pid uint64
 func newCtx(idxReg *sql.IndexRegistry) *sql.Context {
 	session := sql.NewSession("address", "client", "user", 1)
 
-	return sql.NewContext(
+	ctx := sql.NewContext(
 		context.Background(),
 		sql.WithPid(atomic.AddUint64(&pid, 1)),
 		sql.WithSession(session),
 		sql.WithIndexRegistry(idxReg),
 		sql.WithViewRegistry(sql.NewViewRegistry()),
 	).WithCurrentDB("mydb")
+
+	_ = ctx.ViewRegistry.Register("mydb",
+		plan.NewSubqueryAlias(
+			"myview",
+			"SELECT * FROM mytable",
+			plan.NewUnresolvedTable("mytable", "mydb"),
+		).AsView())
+
+	return ctx
 }
 
 type lockableTable struct {

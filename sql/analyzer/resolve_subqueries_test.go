@@ -38,18 +38,18 @@ func TestResolveSubqueries(t *testing.T) {
 		plan.NewCrossJoin(
 			plan.NewCrossJoin(
 				plan.NewSubqueryAlias(
-					"t1",
+					"t1", "",
 					plan.NewProject(
 						[]sql.Expression{expression.NewUnresolvedColumn("a")},
 						plan.NewUnresolvedTable("foo", ""),
 					),
 				),
 				plan.NewSubqueryAlias(
-					"t2",
+					"t2", "",
 					plan.NewProject(
 						[]sql.Expression{expression.NewUnresolvedColumn("b")},
 						plan.NewSubqueryAlias(
-							"t2alias",
+							"t2alias", "",
 							plan.NewProject(
 								[]sql.Expression{expression.NewUnresolvedColumn("b")},
 								plan.NewUnresolvedTable("bar", ""),
@@ -63,7 +63,7 @@ func TestResolveSubqueries(t *testing.T) {
 	)
 
 	subquery := plan.NewSubqueryAlias(
-		"t2alias",
+		"t2alias", "",
 		plan.NewResolvedTable(table2.WithProjection([]string{"b"})),
 	)
 	_ = subquery.Schema()
@@ -73,11 +73,11 @@ func TestResolveSubqueries(t *testing.T) {
 		plan.NewCrossJoin(
 			plan.NewCrossJoin(
 				plan.NewSubqueryAlias(
-					"t1",
+					"t1", "",
 					plan.NewResolvedTable(table1.WithProjection([]string{"a"})),
 				),
 				plan.NewSubqueryAlias(
-					"t2",
+					"t2", "",
 					subquery,
 				),
 			),

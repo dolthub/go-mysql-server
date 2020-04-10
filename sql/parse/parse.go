@@ -42,7 +42,6 @@ var (
 	showIndexRegex       = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
 	showVariablesRegex   = regexp.MustCompile(`^show\s+(.*)?variables\s*`)
 	showWarningsRegex    = regexp.MustCompile(`^show\s+warnings\s*`)
-	showCollationRegex   = regexp.MustCompile(`^show\s+collation\s*`)
 	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
 	unlockTablesRegex    = regexp.MustCompile(`^unlock\s+tables$`)
 	lockTablesRegex      = regexp.MustCompile(`^lock\s+tables\s`)
@@ -115,8 +114,6 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return parseShowVariables(ctx, s)
 	case showWarningsRegex.MatchString(lowerQuery):
 		return parseShowWarnings(ctx, s)
-	case showCollationRegex.MatchString(lowerQuery):
-		return parseShowCollation(ctx, s)
 	case fullProcessListRegex.MatchString(lowerQuery):
 		return plan.NewShowProcessList(), nil
 	case unlockTablesRegex.MatchString(lowerQuery):
@@ -225,7 +222,7 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 		}
 
 		name := strings.TrimSpace(e.Name.Lowered())
-		if expr, err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
+		expr, err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
 			if _, ok := e.(*expression.DefaultColumn); ok {
 				return e, nil
 			}
@@ -256,8 +253,16 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 			}
 
 			return e, nil
-		}); err != nil {
+		})
+
+		if err != nil {
 			return nil, err
+		}
+
+		// special case: for system variables, MySQL allows naked strings (without quotes), which get interpreted as
+		// unresolved columns.
+		if uc, ok := expr.(*expression.UnresolvedColumn); ok && uc.Table() == "" {
+			expr = expression.NewLiteral(uc.Name(), sql.LongText)
 		}
 
 		variables[i] = plan.SetVariable{
@@ -271,8 +276,13 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 
 func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, error) {
 	switch s.Type {
-	case "create table":
-		return plan.NewShowCreateTable(s.Table.Qualifier.String(), nil, s.Table.Name.String()), nil
+	case "create table", "create view":
+		return plan.NewShowCreateTable(
+			s.Table.Qualifier.String(),
+			nil,
+			plan.NewUnresolvedTable(s.Table.Name.String(), s.Table.Qualifier.String()),
+			s.Type == "create view",
+		), nil
 	case "create database", "create schema":
 		return plan.NewShowCreateDatabase(
 			sql.UnresolvedDatabase(s.Database),
@@ -343,6 +353,25 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		return node, nil
 	case sqlparser.KeywordString(sqlparser.TABLE):
 		return parseShowTableStatus(ctx, query)
+	case sqlparser.KeywordString(sqlparser.COLLATION):
+		// show collation statements are functionally identical to selecting from the collations table in
+		// information_schema, with slightly different syntax and with some columns aliased.
+		// TODO: install information_schema automatically for all catalogs
+		infoSchemaSelect, err := Parse(ctx, "select collation_name as `collation`, character_set_name as charset, id," +
+				"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations")
+		if err != nil {
+			return nil, err
+		}
+
+		if s.ShowCollationFilterOpt != nil {
+			filterExpr, err := exprToExpression(ctx, *s.ShowCollationFilterOpt)
+			if err != nil {
+				return nil, err
+			}
+			return plan.NewFilter(filterExpr, infoSchemaSelect), nil
+		}
+
+		return infoSchemaSelect, nil
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, ErrUnsupportedFeature.New(unsupportedShow)
@@ -525,12 +554,11 @@ func convertCreateView(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.No
 		return nil, err
 	}
 
-	queryAlias := plan.NewSubqueryAlias(c.View.Name.String(), queryNode)
-
 	selectStr := query[c.ViewSelectPositionStart:c.ViewSelectPositionEnd]
+	queryAlias := plan.NewSubqueryAlias(c.View.Name.String(), selectStr, queryNode)
 
 	return plan.NewCreateView(
-		sql.UnresolvedDatabase(""), c.View.Name.String(), []string{}, queryAlias, selectStr, c.OrReplace), nil
+		sql.UnresolvedDatabase(""), c.View.Name.String(), []string{}, queryAlias, c.OrReplace), nil
 }
 
 func convertDropView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
@@ -815,7 +843,7 @@ func tableExprToTable(
 
 			return node, nil
 		case *sqlparser.Subquery:
-			node, err := convert(ctx, e.Select, "")
+			node, err := convert(ctx, e.Select, sqlparser.String(e.Select))
 			if err != nil {
 				return nil, err
 			}
@@ -824,7 +852,7 @@ func tableExprToTable(
 				return nil, ErrUnsupportedFeature.New("subquery without alias")
 			}
 
-			return plan.NewSubqueryAlias(t.As.String(), node), nil
+			return plan.NewSubqueryAlias(t.As.String(), sqlparser.String(e.Select), node), nil
 		default:
 			return nil, ErrUnsupportedSyntax.New(sqlparser.String(te))
 		}
@@ -1223,6 +1251,9 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		return caseExprToExpression(ctx, v)
 	case *sqlparser.IntervalExpr:
 		return intervalExprToExpression(ctx, v)
+	case *sqlparser.CollateExpr:
+		// TODO: handle collation
+		return exprToExpression(ctx, v.Expr)
 	}
 }
 
@@ -1699,63 +1730,6 @@ func parseShowTableStatus(ctx *sql.Context, query string) (sql.Node, error) {
 		), nil
 	default:
 		return nil, errUnexpectedSyntax.New("one of: FROM, IN, LIKE or WHERE", clause)
-	}
-}
-
-func parseShowCollation(ctx *sql.Context, query string) (sql.Node, error) {
-	buf := bufio.NewReader(strings.NewReader(query))
-	err := parseFuncs{
-		expect("show"),
-		skipSpaces,
-		expect("collation"),
-		skipSpaces,
-	}.exec(buf)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err = buf.Peek(1); err == io.EOF {
-		return plan.NewShowCollation(), nil
-	}
-
-	var clause string
-	if err := readIdent(&clause)(buf); err != nil {
-		return nil, err
-	}
-
-	if err := skipSpaces(buf); err != nil {
-		return nil, err
-	}
-
-	switch strings.ToUpper(clause) {
-	case "WHERE", "LIKE":
-		bs, err := ioutil.ReadAll(buf)
-		if err != nil {
-			return nil, err
-		}
-
-		expr, err := parseExpr(ctx, string(bs))
-		if err != nil {
-			return nil, err
-		}
-
-		var filter sql.Expression
-		if strings.ToUpper(clause) == "LIKE" {
-			filter = expression.NewLike(
-				expression.NewUnresolvedColumn("collation"),
-				expr,
-			)
-		} else {
-			filter = expr
-		}
-
-		return plan.NewFilter(
-			filter,
-			plan.NewShowCollation(),
-		), nil
-	default:
-		return nil, errUnexpectedSyntax.New("one of: LIKE or WHERE", clause)
 	}
 }
 

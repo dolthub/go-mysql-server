@@ -98,7 +98,7 @@ func TestPruneColumns(t *testing.T) {
 					},
 					plan.NewFilter(
 						eq(gf(0, "t", "foo"), gf(4, "t", "baz")),
-						plan.NewSubqueryAlias("t",
+						plan.NewSubqueryAlias("t", "",
 							plan.NewProject(
 								[]sql.Expression{
 									gf(0, "t1", "foo"),
@@ -126,7 +126,7 @@ func TestPruneColumns(t *testing.T) {
 					},
 					plan.NewFilter(
 						eq(gf(0, "t", "foo"), gf(2, "t", "baz")),
-						plan.NewSubqueryAlias("t",
+						plan.NewSubqueryAlias("t", "",
 							plan.NewProject(
 								[]sql.Expression{
 									gf(0, "t1", "foo"),
@@ -213,7 +213,7 @@ func TestPruneColumns(t *testing.T) {
 				[]sql.Expression{
 					gf(0, "sq", "foo"),
 				},
-				plan.NewSubqueryAlias("sq",
+				plan.NewSubqueryAlias("sq", "",
 					plan.NewProject(
 						[]sql.Expression{gf(0, "t1", "foo")},
 						plan.NewInnerJoin(
@@ -245,7 +245,7 @@ func TestPruneColumns(t *testing.T) {
 				[]sql.Expression{
 					gf(0, "sq", "foo"),
 				},
-				plan.NewSubqueryAlias("sq",
+				plan.NewSubqueryAlias("sq", "",
 					plan.NewProject(
 						[]sql.Expression{gf(0, "t1", "foo")},
 						plan.NewInnerJoin(

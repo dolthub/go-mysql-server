@@ -1,6 +1,7 @@
 package parse
 
 import (
+	"github.com/stretchr/testify/assert"
 	"math"
 	"testing"
 
@@ -12,6 +13,18 @@ import (
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
 	"vitess.io/vitess/go/sqltypes"
+)
+
+var showCollationProjection = plan.NewProject([]sql.Expression{
+	expression.NewAlias(expression.NewUnresolvedColumn("collation_name"), "collation"),
+	expression.NewAlias(expression.NewUnresolvedColumn("character_set_name"), "charset"),
+	expression.NewUnresolvedColumn("id"),
+	expression.NewAlias(expression.NewUnresolvedColumn("is_default"), "default"),
+	expression.NewAlias(expression.NewUnresolvedColumn("is_compiled"), "compiled"),
+	expression.NewUnresolvedColumn("sortlen"),
+	expression.NewUnresolvedColumn("pad_attribute"),
+},
+	plan.NewUnresolvedTable("collations", "information_schema"),
 )
 
 var fixtures = map[string]sql.Node{
@@ -674,7 +687,7 @@ var fixtures = map[string]sql.Node{
 	`SELECT * FROM (SELECT * FROM foo) AS bar`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewSubqueryAlias(
-			"bar",
+			"bar", "select * from foo",
 			plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewUnresolvedTable("foo", ""),
@@ -1036,6 +1049,16 @@ var fixtures = map[string]sql.Node{
 			Value: expression.NewLiteral("bar", sql.LongText),
 		},
 	),
+	`SET autocommit=1, foo=bar`: plan.NewSet(
+		plan.SetVariable{
+			Name:  "autocommit",
+			Value: expression.NewLiteral(int8(1), sql.Int8),
+		},
+		plan.SetVariable{
+			Name:  "foo",
+			Value: expression.NewLiteral("bar", sql.LongText),
+		},
+	),
 	`SET @@session.autocommit=1, foo="bar"`: plan.NewSet(
 		plan.SetVariable{
 			Name:  "@@session.autocommit",
@@ -1306,33 +1329,44 @@ var fixtures = map[string]sql.Node{
 		)},
 		plan.NewUnresolvedTable("dual", ""),
 	),
-	"SHOW COLLATION": plan.NewShowCollation(),
+	"SHOW COLLATION": showCollationProjection,
 	"SHOW COLLATION LIKE 'foo'": plan.NewFilter(
 		expression.NewLike(
 			expression.NewUnresolvedColumn("collation"),
 			expression.NewLiteral("foo", sql.LongText),
 		),
-		plan.NewShowCollation(),
+		showCollationProjection,
 	),
 	"SHOW COLLATION WHERE Charset = 'foo'": plan.NewFilter(
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("charset"),
 			expression.NewLiteral("foo", sql.LongText),
 		),
-		plan.NewShowCollation(),
+		showCollationProjection,
 	),
 	`ROLLBACK`:                               plan.NewRollback(),
-	"SHOW CREATE TABLE `mytable`":            plan.NewShowCreateTable("", nil, "mytable"),
-	"SHOW CREATE TABLE mytable":              plan.NewShowCreateTable("", nil, "mytable"),
-	"SHOW CREATE TABLE mydb.`mytable`":       plan.NewShowCreateTable("mydb", nil, "mytable"),
-	"SHOW CREATE TABLE `mydb`.mytable":       plan.NewShowCreateTable("mydb", nil, "mytable"),
-	"SHOW CREATE TABLE `mydb`.`mytable`":     plan.NewShowCreateTable("mydb", nil, "mytable"),
-	"SHOW CREATE TABLE `my.table`":           plan.NewShowCreateTable("", nil, "my.table"),
-	"SHOW CREATE TABLE `my.db`.`my.table`":   plan.NewShowCreateTable("my.db", nil, "my.table"),
-	"SHOW CREATE TABLE `my``table`":          plan.NewShowCreateTable("", nil, "my`table"),
-	"SHOW CREATE TABLE `my``db`.`my``table`": plan.NewShowCreateTable("my`db", nil, "my`table"),
-	"SHOW CREATE TABLE ````":                 plan.NewShowCreateTable("", nil, "`"),
-	"SHOW CREATE TABLE `.`":                  plan.NewShowCreateTable("", nil, "."),
+	"SHOW CREATE TABLE `mytable`":            plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("mytable", ""), false),
+	"SHOW CREATE TABLE mytable":              plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("mytable", ""), false),
+	"SHOW CREATE TABLE mydb.`mytable`":       plan.NewShowCreateTable("mydb", nil, plan.NewUnresolvedTable("mytable", "mydb"), false),
+	"SHOW CREATE TABLE `mydb`.mytable":       plan.NewShowCreateTable("mydb", nil, plan.NewUnresolvedTable("mytable", "mydb"), false),
+	"SHOW CREATE TABLE `mydb`.`mytable`":     plan.NewShowCreateTable("mydb", nil, plan.NewUnresolvedTable("mytable", "mydb"), false),
+	"SHOW CREATE TABLE `my.table`":           plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("my.table", ""), false),
+	"SHOW CREATE TABLE `my.db`.`my.table`":   plan.NewShowCreateTable("my.db", nil, plan.NewUnresolvedTable("my.table", "my.db"), false),
+	"SHOW CREATE TABLE `my``table`":          plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("my`table", ""), false),
+	"SHOW CREATE TABLE `my``db`.`my``table`": plan.NewShowCreateTable("my`db", nil, plan.NewUnresolvedTable("my`table", "my`db"), false),
+	"SHOW CREATE TABLE ````":                 plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("`", ""), false),
+	"SHOW CREATE TABLE `.`":                  plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable(".", ""), false),
+	"SHOW CREATE VIEW `mytable`":            plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("mytable", ""), true),
+	"SHOW CREATE VIEW mytable":              plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("mytable", ""), true),
+	"SHOW CREATE VIEW mydb.`mytable`":       plan.NewShowCreateTable("mydb", nil, plan.NewUnresolvedTable("mytable", "mydb"), true),
+	"SHOW CREATE VIEW `mydb`.mytable":       plan.NewShowCreateTable("mydb", nil, plan.NewUnresolvedTable("mytable", "mydb"), true),
+	"SHOW CREATE VIEW `mydb`.`mytable`":     plan.NewShowCreateTable("mydb", nil, plan.NewUnresolvedTable("mytable", "mydb"), true),
+	"SHOW CREATE VIEW `my.table`":           plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("my.table", ""), true),
+	"SHOW CREATE VIEW `my.db`.`my.table`":   plan.NewShowCreateTable("my.db", nil, plan.NewUnresolvedTable("my.table", "my.db"), true),
+	"SHOW CREATE VIEW `my``table`":          plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("my`table", ""), true),
+	"SHOW CREATE VIEW `my``db`.`my``table`": plan.NewShowCreateTable("my`db", nil, plan.NewUnresolvedTable("my`table", "my`db"), true),
+	"SHOW CREATE VIEW ````":                 plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("`", ""), true),
+	"SHOW CREATE VIEW `.`":                  plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable(".", ""), true),
 	`SELECT '2018-05-01' + INTERVAL 1 DAY`: plan.NewProject(
 		[]sql.Expression{expression.NewArithmetic(
 			expression.NewLiteral("2018-05-01", sql.LongText),
@@ -1495,13 +1529,12 @@ var fixtures = map[string]sql.Node{
 		"v",
 		[]string{},
 		plan.NewSubqueryAlias(
-			"v",
+			"v", "SELECT * FROM foo",
 			plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewUnresolvedTable("foo", ""),
 			),
 		),
-		`SELECT * FROM foo`,
 		false,
 	),
 	`CREATE OR REPLACE VIEW v AS SELECT * FROM foo` : plan.NewCreateView(
@@ -1509,13 +1542,12 @@ var fixtures = map[string]sql.Node{
 		"v",
 		[]string{},
 		plan.NewSubqueryAlias(
-			"v",
+			"v", "SELECT * FROM foo",
 			plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewUnresolvedTable("foo", ""),
 			),
 		),
-		`SELECT * FROM foo`,
 		true,
 	),
 	`SELECT 2 UNION SELECT 3` : plan.NewUnion(
@@ -1601,10 +1633,19 @@ func TestParse(t *testing.T) {
 			ctx := sql.NewEmptyContext()
 			p, err := Parse(ctx, query)
 			require.NoError(err)
+			if len(expectedPlan.Children()) > 0 {
+				ex := expectedPlan.Children()[0]
+				ac := p.Children()[0]
+				assert.Equal(t, ex, ac)
+				if len(expectedPlan.Children()[0].Children()) > 0 {
+					ex := expectedPlan.Children()[0].Children()[0]
+					ac := p.Children()[0].Children()[0]
+					require.Equal(ex, ac)
+				}
+			}
 			require.Equal(expectedPlan, p,
 				"plans do not match for query '%s'", query)
 		})
-
 	}
 }
 

@@ -186,8 +186,8 @@ type (
 func DefaultSessionConfig() map[string]TypedValue {
 	return map[string]TypedValue{
 		"auto_increment_increment": TypedValue{Int64, int64(1)},
-		"time_zone":                TypedValue{LongText, time.Local.String()},
-		"system_time_zone":         TypedValue{LongText, time.Local.String()},
+		"time_zone":                TypedValue{LongText, "SYSTEM"},
+		"system_time_zone":         TypedValue{LongText, time.Now().UTC().Location().String()},
 		"max_allowed_packet":       TypedValue{Int32, math.MaxInt32},
 		"sql_mode":                 TypedValue{LongText, ""},
 		"gtid_mode":                TypedValue{Int32, int32(0)},

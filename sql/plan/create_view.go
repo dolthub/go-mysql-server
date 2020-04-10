@@ -18,7 +18,6 @@ type CreateView struct {
 	Catalog    *sql.Catalog
 	IsReplace  bool
 	Definition *SubqueryAlias
-	SelectStr  string
 }
 
 // NewCreateView creates a CreateView node with the specified parameters,
@@ -28,7 +27,6 @@ func NewCreateView(
 	name string,
 	columns []string,
 	definition *SubqueryAlias,
-	selectStr string,
 	isReplace bool,
 ) *CreateView {
 	return &CreateView{
@@ -39,13 +37,12 @@ func NewCreateView(
 		nil,
 		isReplace,
 		definition,
-		selectStr,
 	}
 }
 
 // View returns the view that will be created by this node.
 func (cv *CreateView) View() sql.View {
-	return sql.NewView(cv.Name, cv.Definition)
+	return cv.Definition.AsView()
 }
 
 // Children implements the Node interface. It returns the Child of the
@@ -84,7 +81,7 @@ func (cv *CreateView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 
 	creator, ok := cv.database.(sql.ViewCreator)
 	if ok {
-		err := creator.CreateView(ctx, cv.Name, cv.SelectStr)
+		err := creator.CreateView(ctx, cv.Name, cv.Definition.TextDefinition)
 		if err != nil {
 			return sql.RowsToRowIter(), err
 		}

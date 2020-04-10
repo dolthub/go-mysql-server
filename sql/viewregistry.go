@@ -14,13 +14,14 @@ var (
 
 // View is defined by a Node and has a name.
 type View struct {
-	name       string
-	definition Node
+	name           string
+	definition     Node
+	textDefinition string
 }
 
 // NewView creates a View with the specified name and definition.
-func NewView(name string, definition Node) View {
-	return View{name, definition}
+func NewView(name string, definition Node, textDefinition string) View {
+	return View{name, definition, textDefinition}
 }
 
 // Name returns the name of the view.
@@ -31,6 +32,11 @@ func (v *View) Name() string {
 // Definition returns the definition of the view.
 func (v *View) Definition() Node {
 	return v.definition
+}
+
+// TextDefinition returns the text definition of the view as originally defined.
+func (v *View) TextDefinition() string {
+	return v.textDefinition
 }
 
 // Views are scoped by the databases in which they were defined, so a key in

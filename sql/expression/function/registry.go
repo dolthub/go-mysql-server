@@ -10,6 +10,8 @@ import (
 // Defaults is the function map with all the default functions.
 var Defaults = []sql.Function{
 	sql.Function0{Name: "connection_id", Fn: NewConnectionID},
+	sql.Function0{Name: "user", Fn: NewUser},
+	sql.Function0{Name: "current_user", Fn: NewUser},
 	sql.Function0{Name: "now", Fn: NewNow},
 
 	sql.Function1{Name: "abs", Fn: NewAbsVal},
@@ -56,6 +58,7 @@ var Defaults = []sql.Function{
 	sql.Function1{Name: "weekday", Fn: NewWeekday},
 	sql.Function1{Name: "year", Fn: NewYear},
 
+	sql.Function3{Name: "if", Fn: NewIf},
 	sql.Function2{Name: "ifnull", Fn: NewIfNull},
 	sql.Function2{Name: "nullif", Fn: NewNullIf},
 	sql.Function2{Name: "pow", Fn: NewPower},
@@ -73,7 +76,9 @@ var Defaults = []sql.Function{
 	sql.FunctionN{Name: "date_sub", Fn: NewDateSub},
 	sql.FunctionN{Name: "greatest", Fn: NewGreatest},
 	sql.FunctionN{Name: "json_extract", Fn: NewJSONExtract},
+	sql.Function2{Name: "instr", Fn: NewInstr},
 	sql.FunctionN{Name: "least", Fn: NewLeast},
+	sql.Function2{Name: "left", Fn: NewLeft},
 	sql.FunctionN{Name: "log", Fn: NewLog},
 	sql.FunctionN{Name: "lpad", Fn: NewPadFunc(lPadType)},
 	sql.FunctionN{Name: "mid", Fn: NewSubstring},
