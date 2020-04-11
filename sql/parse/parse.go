@@ -1436,8 +1436,7 @@ func selectExprToExpression(ctx *sql.Context, se sqlparser.SelectExpr) (sql.Expr
 			return expr, nil
 		}
 
-		// TODO: Handle case-sensitiveness when needed.
-		return expression.NewAlias(expr, e.As.Lowered()), nil
+		return expression.NewAlias(expr, e.As.String()), nil
 	}
 }
 

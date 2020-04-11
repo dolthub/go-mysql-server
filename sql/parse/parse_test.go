@@ -319,6 +319,15 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
+	`SELECT foo AS bAz FROM foo;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewAlias(
+				expression.NewUnresolvedColumn("foo"),
+				"bAz",
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
 	`SELECT foo AS bar FROM foo AS OF '2019-01-01' AS baz;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias(
