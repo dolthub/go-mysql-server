@@ -5214,6 +5214,23 @@ func TestColumnAliases(t *testing.T) {
 			},
 		},
 		{
+			query:            `SELECT i AS cOl, s as COL FROM mytable`,
+			expectedColNames: []string{"cOl", "COL"},
+			expectedRows: []sql.Row{
+				{int64(1), "first row"},
+				{int64(2), "second row"},
+				{int64(3), "third row"},
+			},
+		},
+		{
+			// TODO: this is actually inconsistent with MySQL, which doesn't allow column aliases in the where clause
+			query:            `SELECT i AS cOl, s as COL FROM mytable where cOl = 1`,
+			expectedColNames: []string{"cOl", "COL"},
+			expectedRows: []sql.Row{
+				{int64(1), "first row"},
+			},
+		},
+		{
 			query:            `SELECT s as COL1, SUM(i) COL2 FROM mytable group by s order by cOL2`,
 			expectedColNames: []string{"COL1", "COL2"},
 			// TODO: SUM should be integer typed for integers
