@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"fmt"
 	"github.com/src-d/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
 	"io"
@@ -27,20 +28,7 @@ func (p *Update) Expressions() []sql.Expression {
 
 // Schema implements the Node interface.
 func (p *Update) Schema() sql.Schema {
-	return sql.Schema{
-		{
-			Name:     "matched",
-			Type:     sql.Int64,
-			Default:  int64(0),
-			Nullable: false,
-		},
-		{
-			Name:     "updated",
-			Type:     sql.Int64,
-			Default:  int64(0),
-			Nullable: false,
-		},
-	}
+	return sql.OkResultSchema
 }
 
 // Resolved implements the Resolvable interface.
@@ -149,7 +137,12 @@ func (p *Update) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(int64(matched), int64(updated))), nil
+	info := fmt.Sprintf("Rows matched: %d  Changed: %d  Warnings: %d", matched, updated, 0)
+	return sql.RowsToRowIter(sql.NewRow(sql.OkResult{
+		RowsAffected: uint64(updated),
+		InsertID:     0,
+		Info:         info,
+	})), nil
 }
 
 // WithChildren implements the Node interface.
