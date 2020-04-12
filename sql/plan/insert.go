@@ -37,12 +37,7 @@ func NewInsertInto(dst, src sql.Node, isReplace bool, cols []string) *InsertInto
 
 // Schema implements the Node interface.
 func (p *InsertInto) Schema() sql.Schema {
-	return sql.Schema{{
-		Name:     "updated",
-		Type:     sql.Int64,
-		Default:  int64(0),
-		Nullable: false,
-	}}
+	return sql.OkResultSchema
 }
 
 func getInsertable(node sql.Node) (sql.InsertableTable, error) {
@@ -223,12 +218,14 @@ func (p *InsertInto) rowSource(projExprs []sql.Expression) (sql.Node, error) {
 
 // RowIter implements the Node interface.
 func (p *InsertInto) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	n, err := p.Execute(ctx)
+	updated, err := p.Execute(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(int64(n))), nil
+	return sql.RowsToRowIter(sql.NewRow(sql.OkResult{
+		RowsAffected: uint64(updated),
+	})), nil
 }
 
 // WithChildren implements the Node interface.
