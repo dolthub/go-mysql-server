@@ -22,3 +22,8 @@ var OkResultSchema = Schema{
 		Type: OkResultColumnType,
 	},
 }
+
+// NewOKResult returns a new OkResult with the given number of rows affected.
+func NewOkResult(rowsAffected int) OkResult {
+	return OkResult{RowsAffected: uint64(rowsAffected)}
+}

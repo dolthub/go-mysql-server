@@ -287,7 +287,7 @@ rowLoop:
 				}
 				r = resultFromOkResult(row[0].(sql.OkResult))
 
-				logrus.Tracef("returning OK result %s", r)
+				logrus.Tracef("returning OK result %v", r)
 				break rowLoop
 			}
 
