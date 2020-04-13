@@ -27,6 +27,8 @@ type Config struct {
 	// Tracer to use in the server. By default, a noop tracer will be used if
 	// no tracer is provided.
 	Tracer opentracing.Tracer
+	// Version string to advertise in running server
+	Version string
 
 	ConnReadTimeout  time.Duration
 	ConnWriteTimeout time.Duration
@@ -68,9 +70,23 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	vtListnr, err := mysql.NewFromListener(l, a, handler, cfg.ConnReadTimeout, cfg.ConnWriteTimeout)
+
+	listenerCfg := mysql.ListenerConfig{
+		Listener:           l,
+		AuthServer:         a,
+		Handler:            handler,
+		ConnReadTimeout:    cfg.ConnReadTimeout,
+		ConnWriteTimeout:   cfg.ConnWriteTimeout,
+		MaxConns:           1,  // TODO: make this configurable
+		ConnReadBufferSize: mysql.DefaultConnBufferSize,
+	}
+	vtListnr, err := mysql.NewListenerWithConfig(listenerCfg)
 	if err != nil {
 		return nil, err
+	}
+
+	if cfg.Version != "" {
+		vtListnr.ServerVersion = cfg.Version
 	}
 
 	return &Server{Listener: vtListnr, h: handler}, nil
