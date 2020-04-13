@@ -27,6 +27,6 @@ require (
 	vitess.io/vitess v3.0.0-rc.3.0.20190602171040-12bfde34629c+incompatible
 )
 
-replace vitess.io/vitess => github.com/liquidata-inc/vitess v0.0.0-20200409031153-c8abced3b7b4
+replace vitess.io/vitess => github.com/liquidata-inc/vitess v0.0.0-20200413233505-a88cc54bd1ee
 
 go 1.13
