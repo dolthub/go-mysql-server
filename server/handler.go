@@ -327,10 +327,14 @@ rowLoop:
 }
 
 func resultFromOkResult(result sql.OkResult) *sqltypes.Result {
+	infoStr := ""
+	if result.Info != nil {
+		infoStr = result.Info.String()
+	}
 	return &sqltypes.Result{
 		RowsAffected: result.RowsAffected,
 		InsertID:     result.InsertID,
-		Info:         result.Info,
+		Info:         infoStr,
 	}
 }
 

@@ -130,6 +130,16 @@ func (p *Update) Execute(ctx *sql.Context) (int, int, error) {
 	return rowsMatched, rowsUpdated, nil
 }
 
+// UpdateInfo is the Info for OKResults returned by Update nodes.
+type UpdateInfo struct {
+	Matched, Updated, Warnings int
+}
+
+// String implements fmt.Stringer
+func (ui UpdateInfo) String() string {
+	return fmt.Sprintf("Rows matched: %d  Changed: %d  Warnings: %d", ui.Matched, ui.Updated, ui.Warnings)
+}
+
 // RowIter implements the Node interface.
 func (p *Update) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	matched, updated, err := p.Execute(ctx)
@@ -137,7 +147,7 @@ func (p *Update) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	info := fmt.Sprintf("Rows matched: %d  Changed: %d  Warnings: %d", matched, updated, 0)
+	info := UpdateInfo{matched, updated, 0}
 	return sql.RowsToRowIter(sql.NewRow(sql.OkResult{
 		RowsAffected: uint64(updated),
 		InsertID:     0,

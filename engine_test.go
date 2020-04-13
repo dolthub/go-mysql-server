@@ -3824,10 +3824,12 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
+
+
 func newUpdateResult(matched, updated int) sql.OkResult {
 	return sql.OkResult{
 		RowsAffected: uint64(updated),
-		Info:         fmt.Sprintf("Rows matched: %d  Changed: %d  Warnings: %d", matched, updated, 0),
+		Info:         plan.UpdateInfo{matched, updated, 0},
 	}
 }
 
