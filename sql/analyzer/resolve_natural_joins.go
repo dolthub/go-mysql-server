@@ -13,15 +13,10 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 	defer span.Finish()
 
 	var replacements = make(map[tableCol]tableCol)
-	var tableAliases = make(map[string]string)
+	var tableAliases = getTableAliases(n)
 
 	return plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
 		switch n := node.(type) {
-		case *plan.TableAlias:
-			alias := n.Name()
-			table := n.Child.(*plan.ResolvedTable).Name()
-			tableAliases[strings.ToLower(alias)] = table
-			return n, nil
 		case *plan.NaturalJoin:
 			return resolveNaturalJoin(n, replacements)
 		case sql.Expressioner:
@@ -117,14 +112,14 @@ func findCol(s sql.Schema, name string) (int, *sql.Column) {
 func replaceExpressions(
 	n sql.Node,
 	replacements map[tableCol]tableCol,
-	tableAliases map[string]string,
+	tableAliases TableAliases,
 ) (sql.Node, error) {
 	return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 		switch e := e.(type) {
 		case *expression.GetField, *expression.UnresolvedColumn:
 			var tableName = e.(sql.Tableable).Table()
 			if t, ok := tableAliases[strings.ToLower(tableName)]; ok {
-				tableName = t
+				tableName = t.Name()
 			}
 
 			name := e.(sql.Nameable).Name()

@@ -2866,6 +2866,15 @@ func TestViews(t *testing.T) {
 	)
 
 	testQueryWithContext(ctx, t, e,
+		"SELECT t.* FROM myview1 AS t ORDER BY i",
+		[]sql.Row{
+			sql.NewRow(int64(1), "first row, 2"),
+			sql.NewRow(int64(2), "second row, 2"),
+			sql.NewRow(int64(3), "third row, 2"),
+		},
+	)
+
+	testQueryWithContext(ctx, t, e,
 		"SELECT * FROM myview1 AS OF '2019-01-01' ORDER BY i",
 		[]sql.Row{
 			sql.NewRow(int64(1), "first row, 1"),
