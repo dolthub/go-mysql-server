@@ -131,6 +131,15 @@ func TestEnumConvert(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, test.expectedVal, val)
+				if test.val != nil {
+					mar, err := typ.Marshal(test.val)
+					require.NoError(t, err)
+					umar, err := typ.Unmarshal(mar)
+					require.NoError(t, err)
+					cmp, err := typ.Compare(test.val, umar)
+					require.NoError(t, err)
+					assert.Equal(t, 0, cmp)
+				}
 			}
 		})
 	}

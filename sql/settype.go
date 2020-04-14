@@ -2,6 +2,7 @@ package sql
 
 import (
 	"fmt"
+	"math"
 	"math/bits"
 	"strings"
 
@@ -16,9 +17,10 @@ const (
 )
 
 var (
-	ErrConvertingToSet = errors.NewKind("value %v is not valid for this Set")
+	ErrConvertingToSet = errors.NewKind("value %v is not valid for this set")
 	ErrDuplicateEntrySet = errors.NewKind("duplicate entry: %v")
 	ErrInvalidSetValue = errors.NewKind("value %v was not found in the set")
+	ErrTooLargeForSet = errors.NewKind(`value "%v" is too large for this set`)
 )
 
 // Comments with three slashes were taken directly from the linked documentation.
@@ -29,7 +31,10 @@ type SetType interface {
 	Type
 	CharacterSet() CharacterSet
 	Collation() Collation
+	//TODO: move this out of go-mysql-server and into the Dolt layer
+	Marshal(v interface{}) (uint64, error)
 	NumberOfElements() uint16
+	Unmarshal(bits uint64) (string, error)
 	Values() []string
 }
 
@@ -101,11 +106,11 @@ func (t setType) Compare(a interface{}, b interface{}) (int, error) {
 		return res, nil
 	}
 
-	ai, err := t.ConvertToBits(a)
+	ai, err := t.Marshal(a)
 	if err != nil {
 		return 0, err
 	}
-	bi, err := t.ConvertToBits(b)
+	bi, err := t.Marshal(b)
 	if err != nil {
 		return 0, err
 	}
@@ -145,11 +150,10 @@ func (t setType) Convert(v interface{}) (interface{}, error) {
 	case int64:
 		return t.Convert(uint64(value))
 	case uint64:
-		if value >= t.upperBound() {
-			return nil, ErrConvertingToSet.New(v)
+		if value <= t.allValuesBitField() {
+			return t.convertBitFieldToString(value)
 		}
-		vals, _ := t.convertBitFieldToString(value)
-		return vals, nil
+		return nil, ErrConvertingToSet.New(v)
 	case float32:
 		return t.Convert(uint64(value))
 	case float64:
@@ -178,49 +182,6 @@ func (t setType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
-// ConvertToBits is similar to Convert, except that it converts to the number representing the bits rather than the string.
-// Returns an error on nil.
-func (t setType) ConvertToBits(v interface{}) (uint64, error) {
-	switch value := v.(type) {
-	case int:
-		return t.ConvertToBits(uint64(value))
-	case uint:
-		return t.ConvertToBits(uint64(value))
-	case int8:
-		return t.ConvertToBits(uint64(value))
-	case uint8:
-		return t.ConvertToBits(uint64(value))
-	case int16:
-		return t.ConvertToBits(uint64(value))
-	case uint16:
-		return t.ConvertToBits(uint64(value))
-	case int32:
-		return t.ConvertToBits(uint64(value))
-	case uint32:
-		return t.ConvertToBits(uint64(value))
-	case int64:
-		return t.ConvertToBits(uint64(value))
-	case uint64:
-		if value < t.upperBound() {
-			return value, nil
-		}
-	case float32:
-		return t.ConvertToBits(uint64(value))
-	case float64:
-		return t.ConvertToBits(uint64(value))
-	case string:
-		bitField, err := t.convertStringToBitField(value)
-		if err != nil {
-			return uint64(0), err
-		}
-		return bitField, nil
-	case []byte:
-		return t.ConvertToBits(string(value))
-	}
-
-	return uint64(0), ErrConvertingToSet.New(v)
-}
-
 // Promote implements the Type interface.
 func (t setType) Promote() Type {
 	return t
@@ -240,7 +201,7 @@ func (t setType) SQL(v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t setType) String() string {
-	s := fmt.Sprintf("SET('%v')", strings.Join(t.Values(), ","))
+	s := fmt.Sprintf("SET('%v')", strings.Join(t.Values(), `','`))
 	if t.CharacterSet() != Collation_Default.CharacterSet() {
 		s += " CHARACTER SET " + t.CharacterSet().String()
 	}
@@ -268,9 +229,52 @@ func (t setType) Collation() Collation {
 	return t.collation
 }
 
+// Marshal takes a valid Set value and returns it as an uint64.
+func (t setType) Marshal(v interface{}) (uint64, error) {
+	switch value := v.(type) {
+	case int:
+		return t.Marshal(uint64(value))
+	case uint:
+		return t.Marshal(uint64(value))
+	case int8:
+		return t.Marshal(uint64(value))
+	case uint8:
+		return t.Marshal(uint64(value))
+	case int16:
+		return t.Marshal(uint64(value))
+	case uint16:
+		return t.Marshal(uint64(value))
+	case int32:
+		return t.Marshal(uint64(value))
+	case uint32:
+		return t.Marshal(uint64(value))
+	case int64:
+		return t.Marshal(uint64(value))
+	case uint64:
+		if value <= t.allValuesBitField() {
+			return value, nil
+		}
+	case float32:
+		return t.Marshal(uint64(value))
+	case float64:
+		return t.Marshal(uint64(value))
+	case string:
+		return t.convertStringToBitField(value)
+	case []byte:
+		return t.Marshal(string(value))
+	}
+
+	return uint64(0), ErrConvertingToSet.New(v)
+}
+
 // NumberOfElements returns the number of elements in this set.
 func (t setType) NumberOfElements() uint16 {
 	return uint16(len(t.valToBit))
+}
+
+// Unmarshal takes a previously-marshalled value and returns it as a string.
+func (t setType) Unmarshal(v uint64) (string, error) {
+	return t.convertBitFieldToString(v)
 }
 
 // Values returns all of the set's values in ascending order according to their corresponding bit value.
@@ -286,9 +290,13 @@ func (t setType) Values() []string {
 
 // allValuesBitField returns a bit field that references every value that the set contains.
 func (t setType) allValuesBitField() uint64 {
+	valCount := uint64(len(t.valToBit))
+	if valCount == 64 {
+		return math.MaxUint64
+	}
 	// A set with 3 values will have an upper bound of 8, or 0b1000.
 	// 8 - 1 == 7, and 7 is 0b0111, which would map to every value in the set.
-	return t.upperBound() - 1
+	return uint64(1 << valCount) - 1
 }
 
 // convertBitFieldToString converts the given bit field into the equivalent comma-delimited string.
@@ -296,6 +304,9 @@ func (t setType) convertBitFieldToString(bitField uint64) (string, error) {
 	strBuilder := strings.Builder{}
 	bitEdge := 64 - bits.LeadingZeros64(bitField)
 	writeCommas := false
+	if bitEdge > len(t.bitToVal) {
+		return "", ErrTooLargeForSet.New(bitField)
+	}
 	for i := 0; i < bitEdge; i++ {
 		bit := uint64(1 << uint64(i))
 		if bit & bitField != 0 {
@@ -336,9 +347,4 @@ func (t setType) convertStringToBitField(str string) (uint64, error) {
 		}
 	}
 	return bitField, nil
-}
-
-// upperBound returns the exclusive upper bound for valid numbers representing a bit collection.
-func (t setType) upperBound() uint64 {
-	return uint64(1 << uint64(len(t.valToBit)))
 }

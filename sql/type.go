@@ -127,7 +127,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		return Int64, nil
 	case "float":
 		return Float32, nil
-	case "double", "real":
+	case "double", "real", "double precision":
 		return Float64, nil
 	case "decimal", "fixed", "dec", "numeric":
 		precision := int64(0)
@@ -191,7 +191,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 			return nil, err
 		}
 		return CreateString(sqltypes.Text, length, collation)
-	case "mediumtext", "long":
+	case "mediumtext", "long", "long varchar":
 		collation, err := ParseCollation(&ct.Charset, &ct.Collate, false)
 		if err != nil {
 			return nil, err
@@ -217,7 +217,17 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 			}
 		}
 		return CreateString(sqltypes.Char, length, collation)
-	case "varchar":
+	case "nchar", "national char", "national character":
+		length := int64(1)
+		if ct.Length != nil {
+			var err error
+			length, err = strconv.ParseInt(string(ct.Length.Val), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return CreateString(sqltypes.Char, length, Collation_utf8mb3_general_ci)
+	case "varchar", "character varying":
 		collation, err := ParseCollation(&ct.Charset, &ct.Collate, false)
 		if err != nil {
 			return nil, err
@@ -230,6 +240,15 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 			return nil, err
 		}
 		return CreateString(sqltypes.VarChar, length, collation)
+	case "nvarchar", "national varchar", "national character varying":
+		if ct.Length == nil {
+			return nil, fmt.Errorf("VARCHAR requires a length")
+		}
+		length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return CreateString(sqltypes.VarChar, length, Collation_utf8mb3_general_ci)
 	case "binary":
 		length := int64(1)
 		if ct.Length != nil {
@@ -367,6 +386,12 @@ func IsBlob(t Type) bool {
 	}
 }
 
+// IsDecimal checks if t is a DECIMAL type.
+func IsDecimal(t Type) bool {
+	_, ok := t.(decimalType)
+	return ok
+}
+
 // IsFloat checks if t is float type.
 func IsFloat(t Type) bool {
 	return t == Float32 || t == Float64
@@ -385,6 +410,9 @@ func IsNull(ex Expression) bool {
 // IsNumber checks if t is a number type
 func IsNumber(t Type) bool {
 	_, ok := t.(numberTypeImpl)
+	if !ok {
+		_, ok = t.(decimalType)
+	}
 	return ok
 }
 
