@@ -351,7 +351,7 @@ func isSessionAutocommit(ctx *sql.Context) bool {
 		case sql.Int64:
 			autoCommit = autoCommitSessionVar.(int64) == int64(1)
 		case sql.Boolean:
-			autoCommit = autoCommitSessionVar.(bool)
+			autoCommit, _ = sql.ConvertToBool(autoCommitSessionVar)
 		default:
 		}
 	}
