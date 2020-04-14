@@ -72,8 +72,8 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 	var err error
 
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.sessions[conn.ConnectionID], s.idxRegs[conn.ConnectionID], s.viewRegs[conn.ConnectionID], err = s.builder(ctx, conn, s.addr)
-	s.mu.Unlock()
 
 	return err
 }

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"vitess.io/vitess/go/vt/sqlparser"
 
 	sqle "github.com/src-d/go-mysql-server"
 	"github.com/src-d/go-mysql-server/auth"
@@ -153,6 +154,7 @@ func (h *Handler) ComQuery(
 	}
 
 	start := time.Now()
+	parsedQuery, parseErr := sqlparser.Parse(query)
 	schema, rows, err := h.e.Query(ctx, query)
 	defer func() {
 		if q, ok := h.e.Auth.(*auth.Audit); ok {
@@ -315,6 +317,25 @@ rowLoop:
 		return err
 	}
 
+	typ, autoCommitSessionVar := ctx.Get(sql.AutoCommitSessionVar)
+	autoCommit := false
+	if autoCommitSessionVar != nil {
+		switch typ {
+		case sql.Int64:
+			autoCommit = autoCommitSessionVar.(int64) == int64(1)
+		case sql.Boolean:
+			autoCommit = autoCommitSessionVar.(bool)
+		default:
+		}
+	}
+
+	_, statementIsCommit := parsedQuery.(*sqlparser.Commit)
+	if statementIsCommit || (autoCommit && statementNeedsCommit(parsedQuery, parseErr)) {
+		if err := ctx.Session.CommitTransaction(ctx); err != nil {
+			return err
+		}
+	}
+
 	// Even if r.RowsAffected = 0, the callback must be
 	// called to update the state in the go-vitess' listener
 	// and avoid returning errors when the query doesn't
@@ -324,6 +345,17 @@ rowLoop:
 	}
 
 	return callback(r)
+}
+
+func statementNeedsCommit(parsedQuery sqlparser.Statement, parseErr error) bool {
+	if parseErr == nil {
+		switch parsedQuery.(type) {
+		case *sqlparser.DDL, *sqlparser.Commit, *sqlparser.Update, *sqlparser.Insert, *sqlparser.Delete:
+			return true
+		}
+	}
+
+	return false
 }
 
 func resultFromOkResult(result sql.OkResult) *sqltypes.Result {
