@@ -22,6 +22,7 @@ const (
 
 const (
 	CurrentDBSessionVar = "current_database"
+	AutoCommitSessionVar = "autocommit"
 )
 
 // Client holds session user information.
@@ -46,6 +47,8 @@ type Session interface {
 	GetCurrentDatabase() string
 	// SetDefaultDatabase sets the current database for this session
 	SetCurrentDatabase(dbName string)
+	// CommitTransaction commits the current transaction for this session for the current database
+	CommitTransaction(*Context) error
 	// GetAll returns a copy of session configuration
 	GetAll() map[string]TypedValue
 	// ID returns the unique ID of the connection.
@@ -70,6 +73,12 @@ type BaseSession struct {
 	config    map[string]TypedValue
 	warnings  []*Warning
 	warncnt   uint16
+}
+
+// CommitTransaction commits the current transaction for the current database.
+func (s *BaseSession) CommitTransaction(*Context) error {
+	// no-op on BaseSession
+	return nil
 }
 
 // Address returns the server address.
