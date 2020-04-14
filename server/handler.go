@@ -154,7 +154,13 @@ func (h *Handler) ComQuery(
 	}
 
 	start := time.Now()
+
+	// Parse the query independently of the engine for further analysis. The parser has its own parsing logic for
+	// statements not handled by vitess's parser, so even if there's a parse error here we still pass it to the engine
+	// for execution.
+	// TODO: unify parser logic so we don't have to parse twice
 	parsedQuery, parseErr := sqlparser.Parse(query)
+
 	schema, rows, err := h.e.Query(ctx, query)
 	defer func() {
 		if q, ok := h.e.Auth.(*auth.Audit); ok {
@@ -317,17 +323,7 @@ rowLoop:
 		return err
 	}
 
-	typ, autoCommitSessionVar := ctx.Get(sql.AutoCommitSessionVar)
-	autoCommit := false
-	if autoCommitSessionVar != nil {
-		switch typ {
-		case sql.Int64:
-			autoCommit = autoCommitSessionVar.(int64) == int64(1)
-		case sql.Boolean:
-			autoCommit = autoCommitSessionVar.(bool)
-		default:
-		}
-	}
+	autoCommit := isSessionAutocommit(ctx)
 
 	_, statementIsCommit := parsedQuery.(*sqlparser.Commit)
 	if statementIsCommit || (autoCommit && statementNeedsCommit(parsedQuery, parseErr)) {
@@ -345,6 +341,21 @@ rowLoop:
 	}
 
 	return callback(r)
+}
+
+func isSessionAutocommit(ctx *sql.Context) bool {
+	typ, autoCommitSessionVar := ctx.Get(sql.AutoCommitSessionVar)
+	autoCommit := false
+	if autoCommitSessionVar != nil {
+		switch typ {
+		case sql.Int64:
+			autoCommit = autoCommitSessionVar.(int64) == int64(1)
+		case sql.Boolean:
+			autoCommit = autoCommitSessionVar.(bool)
+		default:
+		}
+	}
+	return autoCommit
 }
 
 func statementNeedsCommit(parsedQuery sqlparser.Statement, parseErr error) bool {
