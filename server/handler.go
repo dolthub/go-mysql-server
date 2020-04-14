@@ -281,6 +281,16 @@ rowLoop:
 			close(quit)
 			return err
 		case row := <-rowChan:
+			if isOkResult(row) {
+				if len(r.Rows) > 0 {
+					panic("Got OkResult mixed with RowResult")
+				}
+				r = resultFromOkResult(row[0].(sql.OkResult))
+
+				logrus.Tracef("returning OK result %v", r)
+				break rowLoop
+			}
+
 			outputRow, err := rowToSQL(schema, row)
 			if err != nil {
 				close(quit)
@@ -314,6 +324,26 @@ rowLoop:
 	}
 
 	return callback(r)
+}
+
+func resultFromOkResult(result sql.OkResult) *sqltypes.Result {
+	infoStr := ""
+	if result.Info != nil {
+		infoStr = result.Info.String()
+	}
+	return &sqltypes.Result{
+		RowsAffected: result.RowsAffected,
+		InsertID:     result.InsertID,
+		Info:         infoStr,
+	}
+}
+
+func isOkResult(row sql.Row) bool {
+	if len(row) == 1 {
+		_, ok := row[0].(sql.OkResult)
+		return ok
+	}
+	return false
 }
 
 // WarningCount is called at the end of each query to obtain

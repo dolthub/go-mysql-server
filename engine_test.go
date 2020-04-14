@@ -3174,31 +3174,31 @@ func TestInsertInto(t *testing.T) {
 	}{
 		{
 			"INSERT INTO mytable (s, i) VALUES ('x', 999);",
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT i FROM mytable WHERE s = 'x';",
 			[]sql.Row{{int64(999)}},
 		},
 		{
 			"INSERT INTO niltable (f) VALUES (10.0), (12.0);",
-			[]sql.Row{{int64(2)}},
+			[]sql.Row{{sql.NewOkResult(2)}},
 			"SELECT f FROM niltable WHERE f IN (10.0, 12.0) ORDER BY f;",
 			[]sql.Row{{10.0}, {12.0}},
 		},
 		{
 			"INSERT INTO mytable SET s = 'x', i = 999;",
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT i FROM mytable WHERE s = 'x';",
 			[]sql.Row{{int64(999)}},
 		},
 		{
 			"INSERT INTO mytable VALUES (999, 'x');",
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT i FROM mytable WHERE s = 'x';",
 			[]sql.Row{{int64(999)}},
 		},
 		{
 			"INSERT INTO mytable SET i = 999, s = 'x';",
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT i FROM mytable WHERE s = 'x';",
 			[]sql.Row{{int64(999)}},
 		},
@@ -3210,7 +3210,7 @@ func TestInsertInto(t *testing.T) {
 			'2037-04-05 12:51:36', '2231-11-07',
 			'random text', true, '{"key":"value"}', 'blobdata'
 			);`,
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
 				int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
@@ -3228,7 +3228,7 @@ func TestInsertInto(t *testing.T) {
 			ti = '2037-04-05 12:51:36', da = '2231-11-07',
 			te = 'random text', bo = true, js = '{"key":"value"}', bl = 'blobdata'
 			;`,
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
 				int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
@@ -3246,7 +3246,7 @@ func TestInsertInto(t *testing.T) {
 			'0000-00-00 00:00:00', '0000-00-00',
 			'', false, '', ''
 			);`,
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
 				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
@@ -3264,7 +3264,7 @@ func TestInsertInto(t *testing.T) {
 			ti = '0000-00-00 00:00:00', da = '0000-00-00',
 			te = '', bo = false, js = '', bl = ''
 			;`,
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
 				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
@@ -3277,20 +3277,20 @@ func TestInsertInto(t *testing.T) {
 		{
 			`INSERT INTO typestable VALUES (999, null, null, null, null, null, null, null, null,
 			null, null, null, null, null, null, null, null);`,
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
 		},
 		{
 			`INSERT INTO typestable SET id=999, i8=null, i16=null, i32=null, i64=null, u8=null, u16=null, u32=null, u64=null,
 			f32=null, f64=null, ti=null, da=null, te=null, bo=null, js=null, bl=null;`,
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
 		},
 		{
 			"INSERT INTO mytable SELECT * FROM mytable",
-			[]sql.Row{{int64(3)}},
+			[]sql.Row{{sql.NewOkResult(3)}},
 			"SELECT * FROM mytable ORDER BY i",
 			[]sql.Row{
 				{int64(1), "first row"},
@@ -3303,7 +3303,7 @@ func TestInsertInto(t *testing.T) {
 		},
 		{
 			"INSERT INTO mytable(i,s) SELECT * FROM mytable",
-			[]sql.Row{{int64(3)}},
+			[]sql.Row{{sql.NewOkResult(3)}},
 			"SELECT * FROM mytable ORDER BY i",
 			[]sql.Row{
 				{int64(1), "first row"},
@@ -3316,7 +3316,7 @@ func TestInsertInto(t *testing.T) {
 		},
 		{
 			"INSERT INTO mytable (i,s) SELECT i+10, 'new' FROM mytable",
-			[]sql.Row{{int64(3)}},
+			[]sql.Row{{sql.NewOkResult(3)}},
 			"SELECT * FROM mytable ORDER BY i",
 			[]sql.Row{
 				{int64(1), "first row"},
@@ -3329,7 +3329,7 @@ func TestInsertInto(t *testing.T) {
 		},
 		{
 			"INSERT INTO mytable SELECT i2, s2 FROM othertable",
-			[]sql.Row{{int64(3)}},
+			[]sql.Row{{sql.NewOkResult(3)}},
 			"SELECT * FROM mytable ORDER BY i,s",
 			[]sql.Row{
 				{int64(1), "first row"},
@@ -3342,7 +3342,7 @@ func TestInsertInto(t *testing.T) {
 		},
 		{
 			"INSERT INTO mytable (s,i) SELECT * FROM othertable",
-			[]sql.Row{{int64(3)}},
+			[]sql.Row{{sql.NewOkResult(3)}},
 			"SELECT * FROM mytable ORDER BY i,s",
 			[]sql.Row{
 				{int64(1), "first row"},
@@ -3355,7 +3355,7 @@ func TestInsertInto(t *testing.T) {
 		},
 		{
 			"INSERT INTO mytable (s,i) SELECT concat(m.s, o.s2), m.i FROM othertable o JOIN mytable m ON m.i=o.i2",
-			[]sql.Row{{int64(3)}},
+			[]sql.Row{{sql.NewOkResult(3)}},
 			"SELECT * FROM mytable ORDER BY i,s",
 			[]sql.Row{
 				{int64(1), "first row"},
@@ -3368,7 +3368,7 @@ func TestInsertInto(t *testing.T) {
 		},
 		{
 			"INSERT INTO mytable (i,s) SELECT (i + 10.0) / 10.0 + 10, concat(s, ' new') FROM mytable",
-			[]sql.Row{{int64(3)}},
+			[]sql.Row{{sql.NewOkResult(3)}},
 			"SELECT * FROM mytable ORDER BY i, s",
 			[]sql.Row{
 				{int64(1), "first row"},
@@ -3470,43 +3470,43 @@ func TestReplaceInto(t *testing.T) {
 	}{
 		{
 			"REPLACE INTO mytable VALUES (1, 'first row');",
-			[]sql.Row{{int64(2)}},
+			[]sql.Row{{sql.NewOkResult(2)}},
 			"SELECT s FROM mytable WHERE i = 1;",
 			[]sql.Row{{"first row"}},
 		},
 		{
 			"REPLACE INTO mytable SET i = 1, s = 'first row';",
-			[]sql.Row{{int64(2)}},
+			[]sql.Row{{sql.NewOkResult(2)}},
 			"SELECT s FROM mytable WHERE i = 1;",
 			[]sql.Row{{"first row"}},
 		},
 		{
 			"REPLACE INTO mytable VALUES (1, 'new row same i');",
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT s FROM mytable WHERE i = 1;",
 			[]sql.Row{{"first row"}, {"new row same i"}},
 		},
 		{
 			"REPLACE INTO mytable (s, i) VALUES ('x', 999);",
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT i FROM mytable WHERE s = 'x';",
 			[]sql.Row{{int64(999)}},
 		},
 		{
 			"REPLACE INTO mytable SET s = 'x', i = 999;",
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT i FROM mytable WHERE s = 'x';",
 			[]sql.Row{{int64(999)}},
 		},
 		{
 			"REPLACE INTO mytable VALUES (999, 'x');",
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT i FROM mytable WHERE s = 'x';",
 			[]sql.Row{{int64(999)}},
 		},
 		{
 			"REPLACE INTO mytable SET i = 999, s = 'x';",
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT i FROM mytable WHERE s = 'x';",
 			[]sql.Row{{int64(999)}},
 		},
@@ -3518,7 +3518,7 @@ func TestReplaceInto(t *testing.T) {
 			'2037-04-05 12:51:36', '2231-11-07',
 			'random text', true, '{"key":"value"}', 'blobdata'
 			);`,
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
 				int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
@@ -3536,7 +3536,7 @@ func TestReplaceInto(t *testing.T) {
 			ti = '2037-04-05 12:51:36', da = '2231-11-07',
 			te = 'random text', bo = true, js = '{"key":"value"}', bl = 'blobdata'
 			;`,
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
 				int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
@@ -3554,7 +3554,7 @@ func TestReplaceInto(t *testing.T) {
 			'0000-00-00 00:00:00', '0000-00-00',
 			'', false, '', ''
 			);`,
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
 				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
@@ -3572,7 +3572,7 @@ func TestReplaceInto(t *testing.T) {
 			ti = '0000-00-00 00:00:00', da = '0000-00-00',
 			te = '', bo = false, js = '', bl = ''
 			;`,
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{
 				int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
@@ -3585,14 +3585,14 @@ func TestReplaceInto(t *testing.T) {
 		{
 			`REPLACE INTO typestable VALUES (999, null, null, null, null, null, null, null, null,
 			null, null, null, null, null, null, null, null);`,
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
 		},
 		{
 			`REPLACE INTO typestable SET id=999, i8=null, i16=null, i32=null, i64=null, u8=null, u16=null, u32=null, u64=null,
 			f32=null, f64=null, ti=null, da=null, te=null, bo=null, js=null, bl=null;`,
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM typestable WHERE id = 999;",
 			[]sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
 		},
@@ -3675,79 +3675,79 @@ func TestUpdate(t *testing.T) {
 	}{
 		{
 			"UPDATE mytable SET s = 'updated';",
-			[]sql.Row{{int64(3), int64(3)}},
+			[]sql.Row{{newUpdateResult(3,3)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
 		},
 		{
 			"UPDATE mytable SET s = 'updated' WHERE i > 9999;",
-			[]sql.Row{{int64(0), int64(0)}},
+			[]sql.Row{{newUpdateResult(0,0)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 		},
 		{
 			"UPDATE mytable SET s = 'updated' WHERE i = 1;",
-			[]sql.Row{{int64(1), int64(1)}},
+			[]sql.Row{{newUpdateResult(1,1)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "updated"}, {int64(2), "second row"}, {int64(3), "third row"}},
 		},
 		{
 			"UPDATE mytable SET s = 'updated' WHERE i <> 9999;",
-			[]sql.Row{{int64(3), int64(3)}},
+			[]sql.Row{{newUpdateResult(3,3)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
 		},
 		{
 			"UPDATE floattable SET f32 = f32 + f32, f64 = f32 * f64 WHERE i = 2;",
-			[]sql.Row{{int64(1), int64(1)}},
+			[]sql.Row{{newUpdateResult(1,1)}},
 			"SELECT * FROM floattable WHERE i = 2;",
 			[]sql.Row{{int64(2), float32(3.0), float64(4.5)}},
 		},
 		{
 			"UPDATE floattable SET f32 = 5, f32 = 4 WHERE i = 1;",
-			[]sql.Row{{int64(1), int64(1)}},
+			[]sql.Row{{newUpdateResult(1,1)}},
 			"SELECT f32 FROM floattable WHERE i = 1;",
 			[]sql.Row{{float32(4.0)}},
 		},
 		{
 			"UPDATE mytable SET s = 'first row' WHERE i = 1;",
-			[]sql.Row{{int64(1), int64(0)}},
+			[]sql.Row{{newUpdateResult(1,0)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 		},
 		{
 			"UPDATE niltable SET b = NULL WHERE f IS NULL;",
-			[]sql.Row{{int64(2), int64(1)}},
+			[]sql.Row{{newUpdateResult(2,1)}},
 			"SELECT * FROM niltable WHERE f IS NULL;",
 			[]sql.Row{{int64(4), nil, nil}, {nil, nil, nil}},
 		},
 		{
 			"UPDATE mytable SET s = 'updated' ORDER BY i ASC LIMIT 2;",
-			[]sql.Row{{int64(2), int64(2)}},
+			[]sql.Row{{newUpdateResult(2,2)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "third row"}},
 		},
 		{
 			"UPDATE mytable SET s = 'updated' ORDER BY i DESC LIMIT 2;",
-			[]sql.Row{{int64(2), int64(2)}},
+			[]sql.Row{{newUpdateResult(2,2)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "first row"}, {int64(2), "updated"}, {int64(3), "updated"}},
 		},
 		{
 			"UPDATE mytable SET s = 'updated' ORDER BY i LIMIT 1 OFFSET 1;",
-			[]sql.Row{{int64(1), int64(1)}},
+			[]sql.Row{{newUpdateResult(1,1)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "first row"}, {int64(2), "updated"}, {int64(3), "third row"}},
 		},
 		{
 			"UPDATE mytable SET s = 'updated';",
-			[]sql.Row{{int64(3), int64(3)}},
+			[]sql.Row{{newUpdateResult(3,3)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
 		},
 		{
 			"UPDATE typestable SET ti = '2020-03-06 00:00:00';",
-			[]sql.Row{{int64(1), int64(1)}},
+			[]sql.Row{{newUpdateResult(1,1)}},
 			"SELECT * FROM typestable;",
 			[]sql.Row{{
 				int64(1),
@@ -3770,7 +3770,7 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			"UPDATE typestable SET ti = '2020-03-06 00:00:00', da = '2020-03-06';",
-			[]sql.Row{{int64(1), int64(1)}},
+			[]sql.Row{{newUpdateResult(1,1)}},
 			"SELECT * FROM typestable;",
 			[]sql.Row{{
 				int64(1),
@@ -3793,7 +3793,7 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			"UPDATE typestable SET da = '0000-00-00', ti = '0000-00-00 00:00:00';",
-			[]sql.Row{{int64(1), int64(1)}},
+			[]sql.Row{{newUpdateResult(1,1)}},
 			"SELECT * FROM typestable;",
 			[]sql.Row{{
 				int64(1),
@@ -3821,6 +3821,15 @@ func TestUpdate(t *testing.T) {
 		ctx := newCtx(idxReg)
 		testQueryWithContext(ctx, t, e, update.updateQuery, update.expectedUpdate)
 		testQueryWithContext(ctx, t, e, update.selectQuery, update.expectedSelect)
+	}
+}
+
+
+
+func newUpdateResult(matched, updated int) sql.OkResult {
+	return sql.OkResult{
+		RowsAffected: uint64(updated),
+		Info:         plan.UpdateInfo{matched, updated, 0},
 	}
 }
 
@@ -5370,85 +5379,85 @@ func TestDeleteFrom(t *testing.T) {
 	}{
 		{
 			"DELETE FROM mytable;",
-			[]sql.Row{{int64(3)}},
+			[]sql.Row{{sql.NewOkResult(3)}},
 			"SELECT * FROM mytable;",
 			nil,
 		},
 		{
 			"DELETE FROM mytable WHERE i = 2;",
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "first row"}, {int64(3), "third row"}},
 		},
 		{
 			"DELETE FROM mytable WHERE i < 3;",
-			[]sql.Row{{int64(2)}},
+			[]sql.Row{{sql.NewOkResult(2)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(3), "third row"}},
 		},
 		{
 			"DELETE FROM mytable WHERE i > 1;",
-			[]sql.Row{{int64(2)}},
+			[]sql.Row{{sql.NewOkResult(2)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "first row"}},
 		},
 		{
 			"DELETE FROM mytable WHERE i <= 2;",
-			[]sql.Row{{int64(2)}},
+			[]sql.Row{{sql.NewOkResult(2)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(3), "third row"}},
 		},
 		{
 			"DELETE FROM mytable WHERE i >= 2;",
-			[]sql.Row{{int64(2)}},
+			[]sql.Row{{sql.NewOkResult(2)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "first row"}},
 		},
 		{
 			"DELETE FROM mytable WHERE s = 'first row';",
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(2), "second row"}, {int64(3), "third row"}},
 		},
 		{
 			"DELETE FROM mytable WHERE s <> 'dne';",
-			[]sql.Row{{int64(3)}},
+			[]sql.Row{{sql.NewOkResult(3)}},
 			"SELECT * FROM mytable;",
 			nil,
 		},
 		{
 			"DELETE FROM mytable WHERE s LIKE '%row';",
-			[]sql.Row{{int64(3)}},
+			[]sql.Row{{sql.NewOkResult(3)}},
 			"SELECT * FROM mytable;",
 			nil,
 		},
 		{
 			"DELETE FROM mytable WHERE s = 'dne';",
-			[]sql.Row{{int64(0)}},
+			[]sql.Row{{sql.NewOkResult(0)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 		},
 		{
 			"DELETE FROM mytable WHERE i = 'invalid';",
-			[]sql.Row{{int64(0)}},
+			[]sql.Row{{sql.NewOkResult(0)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 		},
 		{
 			"DELETE FROM mytable ORDER BY i ASC LIMIT 2;",
-			[]sql.Row{{int64(2)}},
+			[]sql.Row{{sql.NewOkResult(2)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(3), "third row"}},
 		},
 		{
 			"DELETE FROM mytable ORDER BY i DESC LIMIT 1;",
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "first row"}, {int64(2), "second row"}},
 		},
 		{
 			"DELETE FROM mytable ORDER BY i DESC LIMIT 1 OFFSET 1;",
-			[]sql.Row{{int64(1)}},
+			[]sql.Row{{sql.NewOkResult(1)}},
 			"SELECT * FROM mytable;",
 			[]sql.Row{{int64(1), "first row"}, {int64(3), "third row"}},
 		},
