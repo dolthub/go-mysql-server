@@ -317,7 +317,7 @@ rowLoop:
 		return err
 	}
 
-	typ, autoCommitSessionVar := ctx.Get("autocommit")
+	typ, autoCommitSessionVar := ctx.Get(sql.AutoCommitSessionVar)
 	autoCommit := false
 	if autoCommitSessionVar != nil {
 		switch typ {
