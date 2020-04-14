@@ -38,6 +38,7 @@ func TestTimeCompare(t *testing.T) {
 		{"11:12", 111200, 0},
 		{"11:12", "11:12:00", 0},
 		{"11:12:00", parseDuration("11h12m"), 0},
+		{"11:12:00.1234567", "11:12:00.1234569", 0},
 		{"-850:00:00", "-838:59:59", 0},
 		{"850:00:00", "838:59:59", 0},
 		{"-838:59:59.1", "-838:59:59", 0},
@@ -70,6 +71,7 @@ func TestTimeConvert(t *testing.T) {
 		expectedVal interface{}
 		expectedErr bool
 	}{
+		{nil, nil, false},
 		{int8(-1), "-00:00:01", false},
 		{uint8(59), "00:00:59", false},
 		{"-1", "-00:00:01", false},
@@ -80,6 +82,12 @@ func TestTimeConvert(t *testing.T) {
 		{int32(15958), "01:59:58", false},
 		{uint32(3332211), "333:22:11", false},
 		{"1002", "00:10:02", false},
+		{"902", "00:09:02", false},
+		{902, "00:09:02", false},
+		{float64(902), "00:09:02", false},
+		{"00:05:55.2", "00:05:55.200000", false},
+		{"555.2", "00:05:55.200000", false},
+		{555.2, "00:05:55.200000", false},
 		{"5958", "00:59:58", false},
 		{"15958", "01:59:58", false},
 		{"3332211", "333:22:11", false},
@@ -87,6 +95,13 @@ func TestTimeConvert(t *testing.T) {
 		{float64(401122.134612), "40:11:22.134612", false},
 		{"40.134608", "00:00:40.134608", false},
 		{"401122.134612", "40:11:22.134612", false},
+		{"401122.134612585", "40:11:22.134613", false},
+		{"595959.99999951", "60:00:00", false},
+		{"585859.999999514", "58:59:00", false},
+		{"40:11:22.134612585", "40:11:22.134613", false},
+		{"59:59:59.9999995", "60:00:00", false},
+		{"58:59:59.99999951", "59:00:00", false},
+		{"58:58:59.999999514", "58:59:00", false},
 		{"11:12", "11:12:00", false},
 		{"-850:00:00", "-838:59:59", false},
 		{"850:00:00", "838:59:59", false},
@@ -129,6 +144,14 @@ func TestTimeConvert(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, test.expectedVal, val)
+				if test.val != nil {
+					mar, err := Time.Marshal(test.val)
+					require.NoError(t, err)
+					umar := Time.Unmarshal(mar)
+					cmp, err := Time.Compare(test.val, umar)
+					require.NoError(t, err)
+					assert.Equal(t, 0, cmp)
+				}
 			}
 		})
 	}

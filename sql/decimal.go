@@ -2,10 +2,9 @@ package sql
 
 import (
 	"fmt"
-	"math/big"
-
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
+	"math/big"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/proto/query"
 )
@@ -22,17 +21,20 @@ const (
 var (
 	ErrConvertingToDecimal = errors.NewKind("value %v is not a valid Decimal")
 	ErrConvertToDecimalLimit = errors.NewKind("value of Decimal is too large for type")
+	ErrMarshalNullDecimal = errors.NewKind("Decimal cannot marshal a null value")
 )
 
 type DecimalType interface {
 	Type
 	ConvertToDecimal(v interface{}) (decimal.NullDecimal, error)
+	ExclusiveUpperBound() decimal.Decimal
 	MaximumScale() uint8
 	Precision() uint8
 	Scale() uint8
 }
 
 type decimalType struct{
+	exclusiveUpperBound decimal.Decimal
 	precision uint8
 	scale uint8
 }
@@ -52,6 +54,7 @@ func CreateDecimalType(precision uint8, scale uint8) (DecimalType, error) {
 		precision = 10
 	}
 	return decimalType{
+		exclusiveUpperBound: decimal.New(1, int32(precision - scale)),
 		precision: precision,
 		scale: scale,
 	}, nil
@@ -167,9 +170,7 @@ func (t decimalType) ConvertToDecimal(v interface{}) (decimal.NullDecimal, error
 	}
 
 	res = res.Round(int32(t.scale))
-	// This sets the upper bound for this type. This is computed as 10^(precision - scale).
-	max := decimal.New(1, int32(t.precision - t.scale))
-	if res.Abs().Cmp(max) != -1 {
+	if !res.Abs().LessThan(t.exclusiveUpperBound) {
 		return decimal.NullDecimal{}, ErrConvertToDecimalLimit.New()
 	}
 
@@ -212,6 +213,12 @@ func (t decimalType) Zero() interface{} {
 	return decimal.NewFromInt(0).StringFixed(int32(t.scale))
 }
 
+// ExclusiveUpperBound returns the exclusive upper bound for this Decimal.
+// For example, DECIMAL(5,2) would return 1000, as 999.99 is the max represented.
+func (t decimalType) ExclusiveUpperBound() decimal.Decimal {
+	return t.exclusiveUpperBound
+}
+
 // MaximumScale returns the maximum scale allowed for the current precision.
 func (t decimalType) MaximumScale() uint8 {
 	if t.precision >= DecimalTypeMaxScale {
@@ -231,3 +238,4 @@ func (t decimalType) Precision() uint8 {
 func (t decimalType) Scale() uint8 {
 	return t.scale
 }
+

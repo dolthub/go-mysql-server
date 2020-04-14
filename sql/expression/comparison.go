@@ -69,8 +69,25 @@ func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{
 }
 
 func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, interface{}, error) {
-	if sql.IsNumber(c.Left().Type()) || sql.IsNumber(c.Right().Type()) {
-		if sql.IsFloat(c.Left().Type()) || sql.IsFloat(c.Right().Type()) {
+	leftType := c.Left().Type()
+	rightType := c.Right().Type()
+	if sql.IsNumber(leftType) || sql.IsNumber(rightType) {
+		if sql.IsDecimal(leftType) || sql.IsDecimal(rightType) {
+			//TODO: We need to set to the actual DECIMAL type
+			l, r, err := convertLeftAndRight(left, right, ConvertToDecimal)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			if sql.IsDecimal(leftType) {
+				c.compareType = leftType
+			} else {
+				c.compareType = rightType
+			}
+			return l, r, nil
+		}
+
+		if sql.IsFloat(leftType) || sql.IsFloat(rightType) {
 			l, r, err := convertLeftAndRight(left, right, ConvertToDouble)
 			if err != nil {
 				return nil, nil, err
@@ -80,7 +97,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 			return l, r, nil
 		}
 
-		if sql.IsSigned(c.Left().Type()) || sql.IsSigned(c.Right().Type()) {
+		if sql.IsSigned(leftType) || sql.IsSigned(rightType) {
 			l, r, err := convertLeftAndRight(left, right, ConvertToSigned)
 			if err != nil {
 				return nil, nil, err
