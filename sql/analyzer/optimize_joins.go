@@ -144,15 +144,13 @@ func analyzeJoinIndexes(
 	leftTableName := findTableName(node.Left)
 	rightTableName := findTableName(node.Right)
 
-	equalities := splitConjunction(cond)
-	exprByTable := joinExprsByTable(equalities)
+	exprByTable := joinExprsByTable(splitConjunction(cond))
 
 	// Choose a primary and secondary table based on available indexes. We can't choose the left table as secondary for a
 	// left join, or the right as secondary for a right join.
 	rightIdx := indexes[rightTableName]
 	if rightIdx != nil && exprByTable[leftTableName] != nil && joinType != plan.JoinTypeRight {
-//		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(equalities, rightIdx, extractExpressions(exprByTable[leftTableName]))...)
-		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(equalities, rightIdx, exprByTable[leftTableName], exprAliases, tableAliases)...)
+		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(rightIdx, exprByTable[leftTableName], exprAliases, tableAliases)...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -161,7 +159,7 @@ func analyzeJoinIndexes(
 
 	leftIdx := indexes[leftTableName]
 	if leftIdx != nil && exprByTable[rightTableName] != nil && joinType != plan.JoinTypeLeft {
-		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Right.Schema(), extractExpressions(exprByTable[rightTableName])...)
+		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Right.Schema(), createPrimaryTableExpr(leftIdx, exprByTable[rightTableName], exprAliases, tableAliases)...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -174,25 +172,19 @@ func analyzeJoinIndexes(
 // createPrimaryTableExpr returns a slice of expressions to be used when evaluating a row in the primary table to
 // assemble a lookup key in the secondary table. Column expressions must match the declared column order of the index.
 func createPrimaryTableExpr(
-		equalities []sql.Expression,
 		idx sql.Index,
-		primaryTableCols []*columnExpr,
+		primaryTableEqualityExprs []*columnExpr,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
 ) []sql.Expression {
 
-	// primaryTableName := primaryTableCols[0].col.Table()
-	// primaryTableExprs := extractExpressions(primaryTableCols)
-
 	keyExprs := make([]sql.Expression, len(idx.Expressions()))
-	var i int
 
 IndexExpressions:
-	for _, idxExpr := range idx.Expressions() {
-		for j, expr := range primaryTableCols {
-			if idxExpr == normalizeExpression(exprAliases, tableAliases, expr.comparand).String() {
-				keyExprs[i] = primaryTableCols[j].colExpr
-				i++
+	for i, idxExpr := range idx.Expressions() {
+		for j := range primaryTableEqualityExprs {
+			if idxExpr == normalizeExpression(exprAliases, tableAliases, primaryTableEqualityExprs[j].comparand).String() {
+				keyExprs[i] = primaryTableEqualityExprs[j].colExpr
 				continue IndexExpressions
 			}
 		}
@@ -200,38 +192,6 @@ IndexExpressions:
 		// If we finished the loop, we didn't match this index expression
 		return nil
 	}
-
-
-// IndexExpressions:
-// 	for _, idxExpr := range idx.Expressions() {
-//
-// 		// TODO: already have comparands, don't need to loop equalities to find the right one
-// 		for _, equalityExpr := range equalities {
-// 			leftExpr, rightExpr := extractJoinColumnExpr(equalityExpr)
-// 			if leftExpr == nil || rightExpr == nil {
-// 				continue
-// 			}
-//
-// 			primaryTableExpr := leftExpr
-// 			if primaryTableExpr.col.Table() != primaryTableName {
-// 				primaryTableExpr = rightExpr
-// 			}
-// 			if primaryTableExpr.col.Table() != primaryTableName {
-// 				continue
-// 			}
-//
-// 			for j, expr := range primaryTableExprs {
-// 				if idxExpr == normalizeExpression(exprAliases, tableAliases, expr).String() {
-// 					keyExprs[i] = primaryTableExprs[j]
-// 					i++
-// 					continue IndexExpressions
-// 				}
-// 			}
-// 		}
-//
-// 		// If we finished the equality loop, we didn't match an index expression
-// 		return nil
-// 	}
 
 	return keyExprs
 }

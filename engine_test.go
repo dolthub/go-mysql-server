@@ -2381,7 +2381,7 @@ var infoSchemaQueries = []queryTest {
 }
 
 // Set to a query to run only tests for that query
-var debugQuery = ""//"SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3"
+var debugQuery = ""//"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3"
 
 func TestQueries(t *testing.T) {
 	type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
