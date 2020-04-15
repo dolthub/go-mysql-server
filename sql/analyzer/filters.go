@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"github.com/src-d/go-mysql-server/sql/plan"
 	"reflect"
 
 	"github.com/src-d/go-mysql-server/sql"
@@ -15,6 +16,22 @@ func (f filters) merge(f2 filters) {
 	}
 }
 
+// getFiltersByTable returns a map of table name to filter expressions on that table for the node provided
+func getFiltersByTable(_ *sql.Context, n sql.Node) filters {
+	filters := make(filters)
+	plan.Inspect(n, func(node sql.Node) bool {
+		switch node := node.(type) {
+		case *plan.Filter:
+			fs := exprToTableFilters(node.Expression)
+			filters.merge(fs)
+		}
+		return true
+	})
+
+	return filters
+}
+
+// exprToTableFilters returns a map of table name to filter expressions on that table
 func exprToTableFilters(expr sql.Expression) filters {
 	filtersByTable := make(filters)
 	for _, expr := range splitConjunction(expr) {
@@ -40,6 +57,7 @@ func exprToTableFilters(expr sql.Expression) filters {
 	return filtersByTable
 }
 
+// splitConjunction breaks AND expressions into their left and right parts, recursively
 func splitConjunction(expr sql.Expression) []sql.Expression {
 	and, ok := expr.(*expression.And)
 	if !ok {
@@ -52,22 +70,23 @@ func splitConjunction(expr sql.Expression) []sql.Expression {
 	)
 }
 
-func getUnhandledFilters(all, handled []sql.Expression) []sql.Expression {
-	var unhandledFilters []sql.Expression
+// subtractExprSet returns all expressions in the first parameter that aren't present in the second.
+func subtractExprSet(all, toSubtract []sql.Expression) []sql.Expression {
+	var remainder []sql.Expression
 
-	for _, f := range all {
-		var isHandled bool
-		for _, hf := range handled {
-			if reflect.DeepEqual(f, hf) {
-				isHandled = true
+	for _, e := range all {
+		var found bool
+		for _, s := range toSubtract {
+			if reflect.DeepEqual(e, s) {
+				found = true
 				break
 			}
 		}
 
-		if !isHandled {
-			unhandledFilters = append(unhandledFilters, f)
+		if !found {
+			remainder = append(remainder, e)
 		}
 	}
 
-	return unhandledFilters
+	return remainder
 }

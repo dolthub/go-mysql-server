@@ -83,7 +83,7 @@ func TestSplitExpression(t *testing.T) {
 	)
 }
 
-func TestGetUnhandledFilters(t *testing.T) {
+func TestSubtractExprSet(t *testing.T) {
 	filters := []sql.Expression{
 		expression.NewIsNull(nil),
 		expression.NewNot(nil),
@@ -96,7 +96,7 @@ func TestGetUnhandledFilters(t *testing.T) {
 		filters[3],
 	}
 
-	unhandled := getUnhandledFilters(filters, handled)
+	unhandled := subtractExprSet(filters, handled)
 
 	require.Equal(t,
 		[]sql.Expression{filters[0], filters[2]},

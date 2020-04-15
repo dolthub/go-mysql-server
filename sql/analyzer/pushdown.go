@@ -10,7 +10,6 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("pushdown")
 	defer span.Finish()
 
-	a.Log("pushdown, node of type: %T", n)
 	if !n.Resolved() {
 		return n, nil
 	}
@@ -43,22 +42,26 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	// First step is to find all col exprs and group them by the table they mention.
 	// Even if they appear multiple times, only the first one will be used.
 	a.Log("finding used columns in node")
-	fieldsByTable := findFieldsByTable(ctx, n)
+	fieldsByTable := getFieldsByTable(ctx, n)
 
 	a.Log("finding filters in node")
-	filters := findFilters(ctx, n)
+	filters := getFiltersByTable(ctx, n)
 
 	indexes, err := assignIndexes(ctx, a, n)
 	if err != nil {
 		return nil, err
 	}
 
+	exprAliases := getExpressionAliases(n)
+	tableAliases := getTableAliases(n)
+
 	a.Log("transforming nodes with pushdown of filters, projections and indexes")
-	return transformPushdown(ctx, a, n, filters, indexes, fieldsByTable)
+	return transformPushdown(ctx, a, n, filters, indexes, fieldsByTable, exprAliases, tableAliases)
 }
 
-func findFieldsByTable(ctx *sql.Context, n sql.Node) map[string][]string {
-	colSpan, _ := ctx.Span("find_field_by_table")
+// getFieldsByTable returns a map of table name to set of field names in the node provided
+func getFieldsByTable(ctx *sql.Context, n sql.Node) map[string][]string {
+	colSpan, _ := ctx.Span("getFieldsByTable")
 	defer colSpan.Finish()
 
 	var fieldsByTable = make(map[string][]string)
@@ -73,50 +76,29 @@ func findFieldsByTable(ctx *sql.Context, n sql.Node) map[string][]string {
 	return fieldsByTable
 }
 
-func findFilters(ctx *sql.Context, n sql.Node) filters {
-	span, _ := ctx.Span("find_pushdown_filters")
-	defer span.Finish()
-
-	// Find all filters, also by table. Note that filters that mention
-	// more than one table will not be passed to neither.
-	filters := make(filters)
-	plan.Inspect(n, func(node sql.Node) bool {
-		switch node := node.(type) {
-		case *plan.Filter:
-			fs := exprToTableFilters(node.Expression)
-			filters.merge(fs)
-		}
-		return true
-	})
-
-	return filters
-}
-
 func transformPushdown(
-	ctx *sql.Context,
-	a *Analyzer,
-	n sql.Node,
-	filters filters,
-	indexes map[string]*indexLookup,
-	fieldsByTable map[string][]string,
+		ctx *sql.Context,
+		a *Analyzer,
+		n sql.Node,
+		filters filters,
+		indexes map[string]*indexLookup,
+		fieldsByTable map[string][]string,
+		aliases ExprAliases,
+		tableAliases TableAliases,
 ) (sql.Node, error) {
-	// Now all nodes can be transformed. Since traversal of the tree is done
-	// from inner to outer the filters have to be processed first so they get
-	// to the tables.
 	var handledFilters []sql.Expression
 	var queryIndexes []sql.Index
 
 	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
 		switch node := node.(type) {
 		case *plan.Filter:
-			n, err := pushdownFilter(a, node, handledFilters)
+			n, err := removePushedDownPredicates(a, node, handledFilters)
 			if err != nil {
 				return nil, err
 			}
-			// After pushing down the filter, we need to fix field indexes as well
 			return fixFieldIndexesForExpressions(n)
 		case *plan.ResolvedTable:
-			table, err := pushdownTable(
+			table, err := pushdownToTable(
 				a,
 				node,
 				filters,
@@ -152,14 +134,17 @@ func transformPushdown(
 	return node, nil
 }
 
-func pushdownTable(
-	a *Analyzer,
-	node *plan.ResolvedTable,
-	filters filters,
-	handledFilters *[]sql.Expression,
-	queryIndexes *[]sql.Index,
-	fieldsByTable map[string][]string,
-	indexes map[string]*indexLookup,
+// pushdownToTable attempts to push filters, projections, and indexes to tables that can accept them
+// TODO: this should also push predicates down to individual tables via wrapping them with a Filter node, not just via
+//  the sql.FilteredTable interface.
+func pushdownToTable(
+		a *Analyzer,
+		node *plan.ResolvedTable,
+		filters filters,
+		handledFilters *[]sql.Expression,
+		queryIndexes *[]sql.Index,
+		fieldsByTable map[string][]string,
+		indexes map[string]*indexLookup,
 ) (sql.Node, error) {
 	var table = node.Table
 
@@ -199,17 +184,20 @@ func pushdownTable(
 	return plan.NewResolvedTable(table), nil
 }
 
-func pushdownFilter(
-	a *Analyzer,
-	node *plan.Filter,
-	handledFilters []sql.Expression,
+// removePushedDownPredicates removes all handled filter predicates from the filter given and returns. If all
+// predicates have been handled, it replaces the filter with its child.
+func removePushedDownPredicates(
+		a *Analyzer,
+		node *plan.Filter,
+		handledFilters []sql.Expression,
 ) (sql.Node, error) {
+
 	if len(handledFilters) == 0 {
 		a.Log("no handled filters, leaving filter untouched")
 		return node, nil
 	}
 
-	unhandled := getUnhandledFilters(
+	unhandled := subtractExprSet(
 		splitConjunction(node.Expression),
 		handledFilters,
 	)
