@@ -9,7 +9,7 @@ import (
 )
 
 func TestFiltersMerge(t *testing.T) {
-	f1 := filters{
+	f1 := filtersByTable{
 		"1": []sql.Expression{
 			expression.NewLiteral("1", sql.LongText),
 		},
@@ -18,7 +18,7 @@ func TestFiltersMerge(t *testing.T) {
 		},
 	}
 
-	f2 := filters{
+	f2 := filtersByTable{
 		"2": []sql.Expression{
 			expression.NewLiteral("2.2", sql.LongText),
 		},
@@ -30,7 +30,7 @@ func TestFiltersMerge(t *testing.T) {
 	f1.merge(f2)
 
 	require.Equal(t,
-		filters{
+		filtersByTable{
 			"1": []sql.Expression{
 				expression.NewLiteral("1", sql.LongText),
 			},
@@ -134,7 +134,7 @@ func TestExprToTableFilters(t *testing.T) {
 		),
 	)
 
-	expected := filters{
+	expected := filtersByTable{
 		"mytable": []sql.Expression{
 			expression.NewEquals(
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),

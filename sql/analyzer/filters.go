@@ -8,17 +8,17 @@ import (
 	"github.com/src-d/go-mysql-server/sql/expression"
 )
 
-type filters map[string][]sql.Expression
+type filtersByTable map[string][]sql.Expression
 
-func (f filters) merge(f2 filters) {
+func (f filtersByTable) merge(f2 filtersByTable) {
 	for k, exprs := range f2 {
 		f[k] = append(f[k], exprs...)
 	}
 }
 
 // getFiltersByTable returns a map of table name to filter expressions on that table for the node provided
-func getFiltersByTable(_ *sql.Context, n sql.Node) filters {
-	filters := make(filters)
+func getFiltersByTable(_ *sql.Context, n sql.Node) filtersByTable {
+	filters := make(filtersByTable)
 	plan.Inspect(n, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Filter:
@@ -32,8 +32,8 @@ func getFiltersByTable(_ *sql.Context, n sql.Node) filters {
 }
 
 // exprToTableFilters returns a map of table name to filter expressions on that table
-func exprToTableFilters(expr sql.Expression) filters {
-	filtersByTable := make(filters)
+func exprToTableFilters(expr sql.Expression) filtersByTable {
+	filtersByTable := make(filtersByTable)
 	for _, expr := range splitConjunction(expr) {
 		var seenTables = make(map[string]bool)
 		var lastTable string

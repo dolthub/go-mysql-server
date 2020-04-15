@@ -47,7 +47,7 @@ func TestNegateIndex(t *testing.T) {
 	)
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
-	result, err := assignIndexes(ctx, a, node)
+	result, err := getIndexesByTable(ctx, a, node)
 	require.NoError(err)
 
 	lookupIdxs, ok := result["t1"]
@@ -134,7 +134,7 @@ func TestAssignIndexes(t *testing.T) {
 	)
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
-	result, err := assignIndexes(ctx, a, node)
+	result, err := getIndexesByTable(ctx, a, node)
 	require.NoError(err)
 
 	lookupIdxs, ok := result["t1"]
@@ -168,7 +168,7 @@ func TestAssignIndexes(t *testing.T) {
 		),
 	)
 
-	result, err = assignIndexes(ctx, a, node)
+	result, err = getIndexesByTable(ctx, a, node)
 	require.NoError(err)
 
 	_, ok = result["t1"]
@@ -185,7 +185,7 @@ func TestAssignIndexes(t *testing.T) {
 		),
 	)
 
-	result, err = assignIndexes(ctx, a, node)
+	result, err = getIndexesByTable(ctx, a, node)
 	require.NoError(err)
 
 	_, ok = result["t1"]

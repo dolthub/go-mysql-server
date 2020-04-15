@@ -47,7 +47,7 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	a.Log("finding filters in node")
 	filters := getFiltersByTable(ctx, n)
 
-	indexes, err := assignIndexes(ctx, a, n)
+	indexes, err := getIndexesByTable(ctx, a, n)
 	if err != nil {
 		return nil, err
 	}
@@ -80,14 +80,14 @@ func transformPushdown(
 		ctx *sql.Context,
 		a *Analyzer,
 		n sql.Node,
-		filters filters,
+		filters filtersByTable,
 		indexes map[string]*indexLookup,
 		fieldsByTable map[string][]string,
 		aliases ExprAliases,
 		tableAliases TableAliases,
 ) (sql.Node, error) {
 	var handledFilters []sql.Expression
-	var queryIndexes []sql.Index
+	var usedIndexes []sql.Index
 
 	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
 		switch node := node.(type) {
@@ -102,8 +102,8 @@ func transformPushdown(
 				a,
 				node,
 				filters,
-				&handledFilters,
-				&queryIndexes,
+				handledFilters,
+				usedIndexes,
 				fieldsByTable,
 				indexes,
 			)
@@ -117,7 +117,7 @@ func transformPushdown(
 	})
 
 	release := func() {
-		for _, idx := range queryIndexes {
+		for _, idx := range usedIndexes {
 			ctx.ReleaseIndex(idx)
 		}
 	}
@@ -127,7 +127,7 @@ func transformPushdown(
 		return nil, err
 	}
 
-	if len(queryIndexes) > 0 {
+	if len(usedIndexes) > 0 {
 		return &Releaser{node, release}, nil
 	}
 
@@ -139,20 +139,20 @@ func transformPushdown(
 //  the sql.FilteredTable interface.
 func pushdownToTable(
 		a *Analyzer,
-		node *plan.ResolvedTable,
-		filters filters,
-		handledFilters *[]sql.Expression,
-		queryIndexes *[]sql.Index,
+		rt *plan.ResolvedTable,
+		filters filtersByTable,
+		handledFilters []sql.Expression,
+		usedIndexes []sql.Index,
 		fieldsByTable map[string][]string,
 		indexes map[string]*indexLookup,
 ) (sql.Node, error) {
-	var table = node.Table
+	var table = rt.Table
 
 	if ft, ok := table.(sql.FilteredTable); ok {
-		tableFilters := filters[node.Name()]
+		tableFilters := filters[rt.Name()]
 		handled := ft.HandledFilters(tableFilters)
-		*handledFilters = append(*handledFilters, handled...)
-		schema := node.Schema()
+		handledFilters = append(handledFilters, handled...)
+		schema := rt.Schema()
 		handled, err := fixFieldIndexesOnExpressions(schema, handled...)
 		if err != nil {
 			return nil, err
@@ -161,23 +161,23 @@ func pushdownToTable(
 		table = ft.WithFilters(handled)
 		a.Log(
 			"table %q transformed with pushdown of filters, %d filters handled of %d",
-			node.Name(),
+			rt.Name(),
 			len(handled),
 			len(tableFilters),
 		)
 	}
 
 	if pt, ok := table.(sql.ProjectedTable); ok {
-		table = pt.WithProjection(fieldsByTable[node.Name()])
-		a.Log("table %q transformed with pushdown of projection", node.Name())
+		table = pt.WithProjection(fieldsByTable[rt.Name()])
+		a.Log("table %q transformed with pushdown of projection", rt.Name())
 	}
 
 	if it, ok := table.(sql.IndexableTable); ok {
-		indexLookup, ok := indexes[node.Name()]
+		indexLookup, ok := indexes[rt.Name()]
 		if ok {
-			*queryIndexes = append(*queryIndexes, indexLookup.indexes...)
+			usedIndexes = append(usedIndexes, indexLookup.indexes...)
 			table = it.WithIndexLookup(indexLookup.lookup)
-			a.Log("table %q transformed with pushdown of index", node.Name())
+			a.Log("table %q transformed with pushdown of index", rt.Name())
 		}
 	}
 

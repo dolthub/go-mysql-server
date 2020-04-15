@@ -18,7 +18,10 @@ type indexLookup struct {
 	indexes []sql.Index
 }
 
-func assignIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]*indexLookup, error) {
+type indexLookupsByTable map[string]*indexLookup
+
+// getIndexesByTable returns applicable index lookups for each table named in the query node given
+func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node) (indexLookupsByTable, error) {
 	a.Log("assigning indexes, node of type: %T", node)
 
 	indexSpan, _ := ctx.Span("assign_indexes")
