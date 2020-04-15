@@ -38,15 +38,24 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 		return n, nil
 	}
 
-	indexes, aliases, err := findJoinIndexes(ctx, a, n)
+	exprAliases := getExpressionAliases(n)
+	tableAliases := getTableAliases(n)
+
+	indexes, err := findJoinIndexes(ctx, n, exprAliases, tableAliases, a)
 	if err != nil {
 		return nil, err
 	}
 
-	return transformJoins(a, n, indexes, aliases)
+	return transformJoins(a, n, indexes, exprAliases, tableAliases)
 }
 
-func transformJoins(a *Analyzer, n sql.Node, indexes map[string]sql.Index, exprAliases ExprAliases) (sql.Node, error) {
+func transformJoins(
+		a *Analyzer,
+		n sql.Node,
+		indexes map[string]sql.Index,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
+) (sql.Node, error) {
 
 	var replacedIndexedJoin bool
 	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
@@ -72,7 +81,9 @@ func transformJoins(a *Analyzer, n sql.Node, indexes map[string]sql.Index, exprA
 				joinType = plan.JoinTypeRight
 			}
 
-			primaryTable, secondaryTable, primaryTableExpr, secondaryTableIndex, err := analyzeJoinIndexes(bnode, cond, indexes, joinType)
+			primaryTable, secondaryTable, primaryTableExpr, secondaryTableIndex, err :=
+				analyzeJoinIndexes(bnode, cond, indexes, exprAliases, tableAliases, joinType)
+
 			if err != nil {
 				a.Log("Cannot apply index to join: %s", err.Error())
 				return node, nil
@@ -125,6 +136,8 @@ func analyzeJoinIndexes(
 		node plan.BinaryNode,
 		cond sql.Expression,
 		indexes map[string]sql.Index,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
 		joinType plan.JoinType,
 ) (primary sql.Node, secondary sql.Node, primaryTableExpr []sql.Expression, secondaryTableIndex sql.Index, err error) {
 
@@ -139,7 +152,7 @@ func analyzeJoinIndexes(
 	rightIdx := indexes[rightTableName]
 	if rightIdx != nil && exprByTable[leftTableName] != nil && joinType != plan.JoinTypeRight {
 //		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(equalities, rightIdx, extractExpressions(exprByTable[leftTableName]))...)
-		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(equalities, rightIdx, exprByTable[leftTableName])...)
+		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(equalities, rightIdx, exprByTable[leftTableName], exprAliases, tableAliases)...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -160,37 +173,65 @@ func analyzeJoinIndexes(
 
 // createPrimaryTableExpr returns a slice of expressions to be used when evaluating a row in the primary table to
 // assemble a lookup key in the secondary table. Column expressions must match the declared column order of the index.
-func createPrimaryTableExpr(equalities []sql.Expression, idx sql.Index, primaryTableCols []*columnExpr) []sql.Expression {
-	primaryTableName := primaryTableCols[0].col.Table()
-	primaryTableExprs := extractExpressions(primaryTableCols)
+func createPrimaryTableExpr(
+		equalities []sql.Expression,
+		idx sql.Index,
+		primaryTableCols []*columnExpr,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
+) []sql.Expression {
+
+	// primaryTableName := primaryTableCols[0].col.Table()
+	// primaryTableExprs := extractExpressions(primaryTableCols)
 
 	keyExprs := make([]sql.Expression, len(idx.Expressions()))
-	for i, idxExpr := range idx.Expressions() {
-		for _, equalityExpr := range equalities {
-			leftExpr, rightExpr := extractJoinColumnExpr(equalityExpr)
-			if leftExpr == nil || rightExpr == nil {
-				continue
-			}
+	var i int
 
-			primaryTableExpr := leftExpr
-			if primaryTableExpr.col.Table() != primaryTableName {
-				primaryTableExpr = rightExpr
+IndexExpressions:
+	for _, idxExpr := range idx.Expressions() {
+		for j, expr := range primaryTableCols {
+			if idxExpr == normalizeExpression(exprAliases, tableAliases, expr.comparand).String() {
+				keyExprs[i] = primaryTableCols[j].colExpr
+				i++
+				continue IndexExpressions
 			}
-			if primaryTableExpr.col.Table() != primaryTableName {
-				panic("could not identify primary table")
-			}
-
-			for j, expr := range primaryTableExprs {
-				if idxExpr == expr.String() {
-					keyExprs[i] = primaryTableExprs[j]
-					break
-				}
-			}
-
-			// No match found for this index expression
-			return nil
 		}
+
+		// If we finished the loop, we didn't match this index expression
+		return nil
 	}
+
+
+// IndexExpressions:
+// 	for _, idxExpr := range idx.Expressions() {
+//
+// 		// TODO: already have comparands, don't need to loop equalities to find the right one
+// 		for _, equalityExpr := range equalities {
+// 			leftExpr, rightExpr := extractJoinColumnExpr(equalityExpr)
+// 			if leftExpr == nil || rightExpr == nil {
+// 				continue
+// 			}
+//
+// 			primaryTableExpr := leftExpr
+// 			if primaryTableExpr.col.Table() != primaryTableName {
+// 				primaryTableExpr = rightExpr
+// 			}
+// 			if primaryTableExpr.col.Table() != primaryTableName {
+// 				continue
+// 			}
+//
+// 			for j, expr := range primaryTableExprs {
+// 				if idxExpr == normalizeExpression(exprAliases, tableAliases, expr).String() {
+// 					keyExprs[i] = primaryTableExprs[j]
+// 					i++
+// 					continue IndexExpressions
+// 				}
+// 			}
+// 		}
+//
+// 		// If we finished the equality loop, we didn't match an index expression
+// 		return nil
+// 	}
 
 	return keyExprs
 }
@@ -217,7 +258,7 @@ func findTableName(node sql.Node) string {
 
 // Assign indexes to the join conditions and returns the sql.Indexes assigned, as well as returning any aliases used by
 // join conditions
-func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]sql.Index, ExprAliases, error) {
+func findJoinIndexes(ctx *sql.Context, node sql.Node, exprAliases ExprAliases, tableAliases TableAliases, a *Analyzer) (map[string]sql.Index, error) {
 	indexSpan, _ := ctx.Span("find_join_indexes")
 	defer indexSpan.Finish()
 
@@ -233,11 +274,7 @@ func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]s
 		}
 	}()
 
-	exprAliases := getExpressionAliases(node)
-	tableAliases := getTableAliases(node)
-
 	var err error
-
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
@@ -252,7 +289,6 @@ func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]s
 				cond = node.Cond
 			}
 
-			var err error
 			indexes, err = getJoinIndexes(ctx, a, cond, exprAliases, tableAliases)
 			if err != nil {
 				return false
@@ -262,7 +298,7 @@ func findJoinIndexes(ctx *sql.Context, a *Analyzer, node sql.Node) (map[string]s
 		return true
 	})
 
-	return indexes, exprAliases, err
+	return indexes, err
 }
 
 // Returns the left and right indexes for the two sides of the equality expression given.
