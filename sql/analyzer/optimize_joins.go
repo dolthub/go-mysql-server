@@ -325,6 +325,7 @@ func getMultiColumnJoinIndex(
 
 	exprsByTable := joinExprsByTable(exprs)
 	for table, cols := range exprsByTable {
+		// TODO: this doens't work for all expressions because the order is significant
 		idx := ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, extractExpressions(cols)...)...)
 		if idx != nil {
 			result[table] = idx
