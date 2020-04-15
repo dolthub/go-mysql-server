@@ -17,6 +17,12 @@ const maxAnalysisIterations = 1000
 // ErrMaxAnalysisIters is thrown when the analysis iterations are exceeded
 var ErrMaxAnalysisIters = errors.NewKind("exceeded max analysis iterations (%d)")
 
+// ErrInAnalysis is thrown for generic analyzer errors
+var ErrInAnalysis = errors.NewKind("error in analysis: %s")
+
+// ErrInvalidNodeType is thrown when the analyzer can't handle a particular kind of node type
+var ErrInvalidNodeType = errors.NewKind("%s: invalid node of type: %T")
+
 // Builder provides an easy way to generate Analyzer with custom rules and options.
 type Builder struct {
 	preAnalyzeRules     []Rule
