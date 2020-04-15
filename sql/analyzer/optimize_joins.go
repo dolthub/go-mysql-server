@@ -131,27 +131,68 @@ func analyzeJoinIndexes(
 	leftTableName := findTableName(node.Left)
 	rightTableName := findTableName(node.Right)
 
-	exprByTable := joinExprsByTable(splitConjunction(cond))
+	equalities := splitConjunction(cond)
+	exprByTable := joinExprsByTable(equalities)
 
 	// Choose a primary and secondary table based on available indexes. We can't choose the left table as secondary for a
 	// left join, or the right as secondary for a right join.
-	if indexes[rightTableName] != nil && exprByTable[leftTableName] != nil && joinType != plan.JoinTypeRight {
-		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Left.Schema(), extractExpressions(exprByTable[leftTableName])...)
+	rightIdx := indexes[rightTableName]
+	if rightIdx != nil && exprByTable[leftTableName] != nil && joinType != plan.JoinTypeRight {
+//		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(equalities, rightIdx, extractExpressions(exprByTable[leftTableName]))...)
+		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(equalities, rightIdx, exprByTable[leftTableName])...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
-		return node.Left, node.Right, primaryTableExpr, indexes[rightTableName], nil
+		return node.Left, node.Right, primaryTableExpr, rightIdx, nil
 	}
 
-	if indexes[leftTableName] != nil && exprByTable[rightTableName] != nil && joinType != plan.JoinTypeLeft {
+	leftIdx := indexes[leftTableName]
+	if leftIdx != nil && exprByTable[rightTableName] != nil && joinType != plan.JoinTypeLeft {
 		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Right.Schema(), extractExpressions(exprByTable[rightTableName])...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
-		return node.Right, node.Left, primaryTableExpr, indexes[leftTableName], nil
+		return node.Right, node.Left, primaryTableExpr, leftIdx, nil
 	}
 
 	return nil, nil, nil, nil, errors.New("couldn't determine suitable indexes to use for tables")
+}
+
+// createPrimaryTableExpr returns a slice of expressions to be used when evaluating a row in the primary table to
+// assemble a lookup key in the secondary table. Column expressions must match the declared column order of the index.
+func createPrimaryTableExpr(equalities []sql.Expression, idx sql.Index, primaryTableCols []*columnExpr) []sql.Expression {
+	primaryTableName := primaryTableCols[0].col.Table()
+	primaryTableExprs := extractExpressions(primaryTableCols)
+
+	keyExprs := make([]sql.Expression, len(idx.Expressions()))
+	for i, idxExpr := range idx.Expressions() {
+		for _, equalityExpr := range equalities {
+			leftExpr, rightExpr := extractJoinColumnExpr(equalityExpr)
+			if leftExpr == nil || rightExpr == nil {
+				continue
+			}
+
+			primaryTableExpr := leftExpr
+			if primaryTableExpr.col.Table() != primaryTableName {
+				primaryTableExpr = rightExpr
+			}
+			if primaryTableExpr.col.Table() != primaryTableName {
+				panic("could not identify primary table")
+			}
+
+			for j, expr := range primaryTableExprs {
+				if idxExpr == expr.String() {
+					keyExprs[i] = primaryTableExprs[j]
+					break
+				}
+			}
+
+			// No match found for this index expression
+			return nil
+		}
+	}
+
+	return keyExprs
 }
 
 // Returns the underlying table name for the node given
@@ -246,10 +287,10 @@ func getJoinEqualityIndex(
 }
 
 func getJoinIndexes(ctx *sql.Context,
-a *Analyzer,
-e sql.Expression,
-exprAliases ExprAliases,
-tableAliases map[string]*plan.ResolvedTable,
+		a *Analyzer,
+		e sql.Expression,
+		exprAliases ExprAliases,
+		tableAliases map[string]*plan.ResolvedTable,
 ) (map[string]sql.Index, error) {
 
 	switch e := e.(type) {
@@ -297,6 +338,7 @@ func getMultiColumnJoinIndex(
 	return result
 }
 
+// extractExpressions returns the Expressions in the slice of columnExprs given.
 func extractExpressions(colExprs []*columnExpr) []sql.Expression {
 	result := make([]sql.Expression, len(colExprs))
 	for i, expr := range colExprs {
@@ -305,6 +347,7 @@ func extractExpressions(colExprs []*columnExpr) []sql.Expression {
 	return result
 }
 
+// joinExprsByTable returns a map of the expressions given keyed by their table name.
 func joinExprsByTable(exprs []sql.Expression) map[string][]*columnExpr {
 	var result = make(map[string][]*columnExpr)
 
