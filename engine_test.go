@@ -2656,7 +2656,7 @@ var planTests = []planTest{
 	},
 	{
 		query:    "SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2",
-		expected: "IndexedJoin(mytable.i = othertable.i2)\n" +
+		expected: "IndexedJoin(mt.i = ot.i2)\n" +
 			" ├─ TableAlias(mt)\n" +
 			" │   └─ Table(mytable): Projected Filtered \n" +
 			" └─ TableAlias(ot)\n" +
@@ -2679,10 +2679,12 @@ var planTests = []planTest{
 			"",
 	},
 	{
-		query:    "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2",
-		expected: "IndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
-				" ├─ Table(one_pk): Projected \n" +
-				" └─ Table(two_pk): Projected \n" +
+		query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2",
+		expected: "IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
+				" ├─ TableAlias(opk)\n" +
+				" │   └─ Table(one_pk): Projected \n" +
+				" └─ TableAlias(tpk)\n" +
+				"     └─ Table(two_pk): Projected \n" +
 				"",
 	},
 	{
