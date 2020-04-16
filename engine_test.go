@@ -1844,6 +1844,15 @@ var queries = []queryTest{
 		},
 	},
 	{
+		"SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE t2.pk1=1 AND t2.pk2=1 ORDER BY 1,2",
+		[]sql.Row{
+			{0, 30},
+			{10, 30},
+			{20, 30},
+			{30, 30},
+		},
+	},
+	{
 		"SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE pk1=1 OR pk2=1 ORDER BY 1,2",
 		[]sql.Row{
 			{0, 10},
@@ -1900,6 +1909,51 @@ var queries = []queryTest{
 		},
 	},
 	{
+		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk, two_pk tpk WHERE pk=pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{10, 1, 0},
+			{10, 1, 1},
+		},
+	},
+	{
+		"SELECT one_pk.c5,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{10, 1, 0},
+			{10, 1, 1},
+		},
+	},
+	{
+		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{10, 1, 0},
+			{10, 1, 1},
+		},
+	},
+	{
+		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{10, 1, 0},
+			{10, 1, 1},
+		},
+	},
+	{
+		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{10, 1, 0},
+			{10, 1, 1},
+		},
+	},
+	{
 		"SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE pk=1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{1, 0, 1},
@@ -1914,6 +1968,20 @@ var queries = []queryTest{
 	},
 	{
 		"SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{1, 1, 1},
+		},
+	},
+	{
+		"SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{1, 1, 1},
+		},
+	},
+	{
+		"SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=two_pk.pk1 AND pk=tpk.pk2 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{1, 1, 1},
@@ -1959,6 +2027,21 @@ var queries = []queryTest{
 			{0, 1, 1, 0},
 			{1, 0, 0, 1},
 			{1, 1, 1, 1},
+		},
+	},
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0},
+			{0, 1, 0, 1},
+			{1, 0, 1, 0},
+			{1, 1, 1, 1},
+		},
+	},
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1+1=b.pk1 AND a.pk2+1=b.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 1, 1},
 		},
 	},
 	{
