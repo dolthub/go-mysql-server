@@ -23,7 +23,7 @@ func (t *TableAlias) Name() string {
 	return t.name
 }
 
-// Schema implements the Node interface. TableSchema alters the schema of its child element to rename the source of
+// Schema implements the Node interface. TableAlias alters the schema of its child element to rename the source of
 // columns to the alias.
 func (t *TableAlias) Schema() sql.Schema {
 	childSchema := t.Child.Schema()
