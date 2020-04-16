@@ -267,7 +267,7 @@ func getJoinEqualityIndex(
 		a *Analyzer,
 		e *expression.Equals,
 		exprAliases ExprAliases,
-		tableAliases map[string]*plan.ResolvedTable,
+		tableAliases TableAliases,
 ) (leftIdx sql.Index, rightIdx sql.Index) {
 
 	// Only handle column expressions for these join indexes. Evaluable expression like `col=literal` will get pushed
@@ -286,7 +286,7 @@ func getJoinIndexes(ctx *sql.Context,
 		a *Analyzer,
 		e sql.Expression,
 		exprAliases ExprAliases,
-		tableAliases map[string]*plan.ResolvedTable,
+		tableAliases TableAliases,
 ) (map[string]sql.Index, error) {
 
 	switch e := e.(type) {

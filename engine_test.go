@@ -3321,70 +3321,135 @@ func TestViews(t *testing.T) {
 	require.NoError(err)
 	iter.Close()
 
-	testQueryWithContext(ctx, t, e,
-		"SELECT * FROM myview1 ORDER BY i",
-		[]sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
-			sql.NewRow(int64(2), "second row, 2"),
-			sql.NewRow(int64(3), "third row, 2"),
-		},
-	)
-
-	testQueryWithContext(ctx, t, e,
-		"SELECT t.* FROM myview1 AS t ORDER BY i",
-		[]sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
-			sql.NewRow(int64(2), "second row, 2"),
-			sql.NewRow(int64(3), "third row, 2"),
-		},
-	)
-
-	testQueryWithContext(ctx, t, e,
-		"SELECT * FROM myview1 AS OF '2019-01-01' ORDER BY i",
-		[]sql.Row{
-			sql.NewRow(int64(1), "first row, 1"),
-			sql.NewRow(int64(2), "second row, 1"),
-			sql.NewRow(int64(3), "third row, 1"),
-		},
-	)
-
 	// nested views
 	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
 	require.NoError(err)
 	iter.Close()
 
-	testQueryWithContext(ctx, t, e,
-		"SELECT * FROM myview2",
-		[]sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
+	testCases := []queryTest{
+		{
+			"SELECT * FROM myview1 ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 2"),
+				sql.NewRow(int64(2), "second row, 2"),
+				sql.NewRow(int64(3), "third row, 2"),
+			},
 		},
-	)
+		{
+			"SELECT myview1.* FROM myview1 ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 2"),
+				sql.NewRow(int64(2), "second row, 2"),
+				sql.NewRow(int64(3), "third row, 2"),
+			},
+		},
+		{
+			"SELECT i FROM myview1 ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1)),
+				sql.NewRow(int64(2)),
+				sql.NewRow(int64(3)),
+			},
+		},
+		{
+			"SELECT t.* FROM myview1 AS t ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 2"),
+				sql.NewRow(int64(2), "second row, 2"),
+				sql.NewRow(int64(3), "third row, 2"),
+			},
+		},
+		{
+			"SELECT t.i FROM myview1 AS t ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1)),
+				sql.NewRow(int64(2)),
+				sql.NewRow(int64(3)),
+			},
+		},
+		// TODO: this isn't valid in MySQL. Keep it?
+		{
+			"SELECT t.i, myview1.s FROM myview1 AS t ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 2"),
+				sql.NewRow(int64(2), "second row, 2"),
+				sql.NewRow(int64(3), "third row, 2"),
+			},
+		},
+		{
+			"SELECT * FROM myview1 AS OF '2019-01-01' ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 1"),
+				sql.NewRow(int64(2), "second row, 1"),
+				sql.NewRow(int64(3), "third row, 1"),
+			},
+		},
+		{
+			"SELECT * FROM myview2",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 2"),
+			},
+		},
+		{
+			"SELECT i FROM myview2",
+			[]sql.Row{
+				sql.NewRow(int64(1)),
+			},
+		},
+		{
+			"SELECT myview2.i FROM myview2",
+			[]sql.Row{
+				sql.NewRow(int64(1)),
+			},
+		},
+		{
+			"SELECT myview2.* FROM myview2",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 2"),
+			},
+		},
+		{
+			"SELECT t.* FROM myview2 as t",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 2"),
+			},
+		},
+		{
+			"SELECT t.i FROM myview2 as t",
+			[]sql.Row{
+				sql.NewRow(int64(1)),
+			},
+		},
+		{
+			"SELECT * FROM myview2 AS OF '2019-01-01'",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 1"),
+			},
+		},
+		// info schema support
+		{
+			"select * from information_schema.views where table_schema = 'mydb'",
+			[]sql.Row{
+				sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+				sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+				sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+			},
+		},
+		{
+			"select table_name from information_schema.tables where table_schema = 'mydb' and table_type = 'VIEW' order by 1",
+			[]sql.Row{
+				sql.NewRow("myview"),
+				sql.NewRow("myview1"),
+				sql.NewRow("myview2"),
+			},
+		},
+	}
 
-	testQueryWithContext(ctx, t, e,
-		"SELECT * FROM myview2 AS OF '2019-01-01'",
-		[]sql.Row{
-			sql.NewRow(int64(1), "first row, 1"),
-		},
-	)
-
-	// info schema support
-	testQueryWithContext(ctx, t, e,
-		"select * from information_schema.views where table_schema = 'mydb'",
-		[]sql.Row{
-			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
-			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
-			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
-		},
-	)
-
-	testQueryWithContext(ctx, t, e,
-		"select table_name from information_schema.tables where table_schema = 'mydb' and table_type = 'VIEW' order by 1",
-		[]sql.Row{
-			sql.NewRow("myview"),
-			sql.NewRow("myview1"),
-			sql.NewRow("myview2"),
-		},
-	)
+	for _, testCase := range testCases {
+		t.Run(testCase.query, func(t *testing.T) {
+			testQueryWithContext(ctx, t, e, testCase.query, testCase.expected)
+		})
+	}
 }
 
 func TestSessionSelectLimit(t *testing.T) {

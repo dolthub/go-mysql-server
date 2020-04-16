@@ -228,7 +228,7 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 					NullOrdering: f.NullOrdering,
 				}
 
-				a.Log("replaced order by column %d with %s", idx+1, schemaCols[idx])
+				a.Log("replaced order by column %d with %v", idx+1, schemaCols[idx])
 			} else {
 				if agg, ok := f.Column.(sql.Aggregation); ok {
 					name := agg.String()

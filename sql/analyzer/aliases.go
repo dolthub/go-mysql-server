@@ -8,7 +8,7 @@ import (
 )
 
 type ExprAliases map[string]sql.Expression
-type TableAliases map[string]*plan.ResolvedTable
+type TableAliases map[string]sql.Nameable
 
 // getTableAliases returns a map of all aliased resolved tables in the node, keyed by their alias name
 func getTableAliases(n sql.Node) TableAliases {
@@ -25,6 +25,8 @@ func getTableAliases(n sql.Node) TableAliases {
 				aliases[at.Name()] = t
 			case *plan.UnresolvedTable:
 				panic("Table not resolved")
+			case *plan.SubqueryAlias:
+				aliases[at.Name()] = t
 			default:
 				panic(fmt.Sprintf("Unexpected child type of TableAlias: %T", at.Child))
 			}

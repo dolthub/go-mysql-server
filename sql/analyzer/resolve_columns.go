@@ -272,7 +272,7 @@ func getNodesAvailableTables(tables map[string]string, nodes ...sql.Node) {
 			tables[name] = name
 		case *plan.TableAlias:
 			switch t := n.Child.(type) {
-			case *plan.ResolvedTable, *plan.UnresolvedTable:
+			case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias:
 				name := strings.ToLower(t.(sql.Nameable).Name())
 				alias := strings.ToLower(n.Name())
 				tables[alias] = name
