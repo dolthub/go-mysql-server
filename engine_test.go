@@ -2964,6 +2964,7 @@ var planTests = []planTest{
 				"",
 	},
 	{
+		// TODO: this should use an index on b
 		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1+1=b.pk1 AND a.pk2+1=b.pk2 ORDER BY 1,2,3",
 		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
 				" └─ InnerJoin(a.pk1 + 1 = b.pk1 AND a.pk2 + 1 = b.pk2)\n" +
@@ -2996,6 +2997,7 @@ var planTests = []planTest{
 				"",
 	},
 	{
+		// TODO: this should use an index. CrossJoin needs to be converted to InnerJoin, where clause to join cond
 		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
 		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
 				" └─ Filter(a.pk1 = b.pk1 AND a.pk2 = b.pk2)\n" +
@@ -3007,6 +3009,7 @@ var planTests = []planTest{
 				"",
 	},
 	{
+		// TODO: this should use an index. CrossJoin needs to be converted to InnerJoin, where clause to join cond
 		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk2 b WHERE a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
 		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
 				" └─ Filter(a.pk1 = b.pk2 AND a.pk2 = b.pk1)\n" +
@@ -3072,6 +3075,7 @@ var planTests = []planTest{
 				"",
 	},
 	{
+		// TODO: this should use an index. CrossJoin needs to be converted to InnerJoin, where clause to join cond
 		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk,two_pk WHERE pk=pk1 ORDER BY 1,2,3",
 		expected: "Sort(one_pk.c5 ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
 				" └─ Project(one_pk.c5, two_pk.pk1, two_pk.pk2)\n" +
@@ -3079,15 +3083,6 @@ var planTests = []planTest{
 				"         └─ CrossJoin\n" +
 				"             ├─ Table(one_pk): Projected \n" +
 				"             └─ Table(two_pk): Projected \n" +
-				"",
-	},
-	{
-		query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i AND f IS NOT NULL ORDER BY 1",
-		expected: "Sort(one_pk.pk ASC)\n" +
-				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
-				"     └─ LeftJoin(one_pk.pk = niltable.i AND NOT(niltable.f IS NULL))\n" +
-				"         ├─ Table(one_pk)\n" +
-				"         └─ Table(niltable)\n" +
 				"",
 	},
 	{
@@ -3149,21 +3144,13 @@ var planTests = []planTest{
 				"",
 	},
 	{
+		// TODO: this should use an index. Extra join condition should get moved out of the join clause into a filter
 		query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i and pk > 0 ORDER BY 2,3",
 		expected: "Sort(niltable.i ASC, niltable.f ASC)\n" +
 				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
 				"     └─ RightJoin(one_pk.pk = niltable.i AND one_pk.pk > 0)\n" +
 				"         ├─ Table(one_pk)\n" +
 				"         └─ Table(niltable)\n" +
-				"",
-	},
-	{
-		query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE pk=1 ORDER BY 1,2,3",
-		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-				" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
-				"     └─ InnerJoin(one_pk.c1 = two_pk.c1)\n" +
-				"         ├─ Table(one_pk): Projected Filtered Indexed\n" +
-				"         └─ Table(two_pk): Projected \n" +
 				"",
 	},
 	{
@@ -3247,14 +3234,6 @@ var planTests = []planTest{
 				"",
 	},
 	{
-		query: "SELECT pk,pk1,pk2 FROM one_pk, two_pk ORDER BY 1,2,3",
-		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-				" └─ CrossJoin\n" +
-				"     ├─ Table(one_pk): Projected \n" +
-				"     └─ Table(two_pk): Projected \n" +
-				"",
-	},
-	{
 		query: "SELECT pk,pk1,pk2 FROM one_pk,two_pk WHERE one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
 		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
 				" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
@@ -3262,15 +3241,6 @@ var planTests = []planTest{
 				"         └─ CrossJoin\n" +
 				"             ├─ Table(one_pk): Projected \n" +
 				"             └─ Table(two_pk): Projected \n" +
-				"",
-	},
-	{
-		query: "SELECT pk,pk1,pk2 FROM one_pk,two_pk WHERE pk=0 AND pk1=0 OR pk2=1 ORDER BY 1,2,3",
-		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-				" └─ Filter(one_pk.pk = 0 AND two_pk.pk1 = 0 OR two_pk.pk2 = 1)\n" +
-				"     └─ CrossJoin\n" +
-				"         ├─ Table(one_pk): Projected \n" +
-				"         └─ Table(two_pk): Projected \n" +
 				"",
 	},
 	{
