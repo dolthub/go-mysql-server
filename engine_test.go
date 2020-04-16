@@ -2030,7 +2030,43 @@ var queries = []queryTest{
 		},
 	},
 	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON b.pk2=a.pk1 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0},
+			{0, 1, 1, 0},
+			{1, 0, 0, 1},
+			{1, 1, 1, 1},
+		},
+	},
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk2 b WHERE a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0},
+			{0, 1, 1, 0},
+			{1, 0, 0, 1},
+			{1, 1, 1, 1},
+		},
+	},
+	{
 		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0},
+			{0, 1, 0, 1},
+			{1, 0, 1, 0},
+			{1, 1, 1, 1},
+		},
+	},
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0},
+			{0, 1, 0, 1},
+			{1, 0, 1, 0},
+			{1, 1, 1, 1},
+		},
+	},
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON b.pk1=a.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0, 0},
 			{0, 1, 0, 1},
@@ -2897,6 +2933,7 @@ var planTests = []planTest{
 				"     ├─ Table(niltable)\n" +
 				"     └─ Table(one_pk)\n",
 	},
+
 }
 
 // If set, skips all other query plan test queries except this one
