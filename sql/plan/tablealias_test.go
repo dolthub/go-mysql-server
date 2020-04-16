@@ -29,7 +29,10 @@ func TestTableAlias(t *testing.T) {
 		require.NoError(table.Insert(sql.NewEmptyContext(), r))
 	}
 
-	require.Equal(table.Schema(), alias.Schema())
+	require.Equal(sql.Schema{
+		{Name: "a", Source: "foo", Type: sql.Text, Nullable: true},
+		{Name: "b", Source: "foo", Type: sql.Text, Nullable: true},
+	}, alias.Schema())
 	iter, err := alias.RowIter(ctx)
 	require.NoError(err)
 
