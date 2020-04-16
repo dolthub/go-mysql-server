@@ -2814,6 +2814,9 @@ var planTests = []planTest{
 	},
 }
 
+// If set, skips all other query plan test queries except this one
+var debugQueryPlan = ""
+
 // Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that
 // the right indexes are being used for joining tables.
 func TestQueryPlans(t *testing.T) {
@@ -2824,6 +2827,10 @@ func TestQueryPlans(t *testing.T) {
 
 	for _, tt := range planTests {
 		t.Run(tt.query, func(t *testing.T) {
+			if debugQueryPlan != "" &&  tt.query != debugQueryPlan {
+				t.Skip()
+			}
+
 			ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
 
 			parsed, err := parse.Parse(ctx, tt.query)

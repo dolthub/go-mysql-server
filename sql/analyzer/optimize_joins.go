@@ -141,14 +141,14 @@ func analyzeJoinIndexes(
 		joinType plan.JoinType,
 ) (primary sql.Node, secondary sql.Node, primaryTableExpr []sql.Expression, secondaryTableIndex sql.Index, err error) {
 
-	leftTableName := findTableName(node.Left)
+	leftTableName :=  findTableName(node.Left)
 	rightTableName := findTableName(node.Right)
 
 	exprByTable := joinExprsByTable(splitConjunction(cond))
 
 	// Choose a primary and secondary table based on available indexes. We can't choose the left table as secondary for a
 	// left join, or the right as secondary for a right join.
-	rightIdx := indexes[rightTableName]
+	rightIdx := indexes[normalizeTableName(tableAliases, rightTableName)]
 	if rightIdx != nil && exprByTable[leftTableName] != nil && joinType != plan.JoinTypeRight {
 		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(rightIdx, exprByTable[leftTableName], exprAliases, tableAliases)...)
 		if err != nil {
@@ -157,7 +157,7 @@ func analyzeJoinIndexes(
 		return node.Left, node.Right, primaryTableExpr, rightIdx, nil
 	}
 
-	leftIdx := indexes[leftTableName]
+	leftIdx := indexes[normalizeTableName(tableAliases, leftTableName)]
 	if leftIdx != nil && exprByTable[rightTableName] != nil && joinType != plan.JoinTypeLeft {
 		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Right.Schema(), createPrimaryTableExpr(leftIdx, exprByTable[rightTableName], exprAliases, tableAliases)...)
 		if err != nil {

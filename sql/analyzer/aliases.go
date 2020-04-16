@@ -72,6 +72,15 @@ func getExpressionAliases(node sql.Node) ExprAliases {
 	return aliases
 }
 
+// normalizeTableName returns the underlying table for the aliased table name given, if it's an alias.
+func normalizeTableName(tableAliases TableAliases, tableName string) string {
+	if rt, ok := tableAliases[tableName]; ok {
+		return rt.Name()
+	}
+
+	return tableName
+}
+
 // normalizeExpressions returns the expressions given after normalizing them to replace table and expression aliases
 // with their underlying names. This is necessary to match such expressions against those declared by implementors of
 // various interfaces that declare expressions to handle, such as Index.Expressions(), FilteredTable, etc.
