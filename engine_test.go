@@ -2933,7 +2933,373 @@ var planTests = []planTest{
 				"     ├─ Table(niltable)\n" +
 				"     └─ Table(one_pk)\n",
 	},
-
+	{
+		query:    "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+			" └─ IndexedJoin(a.pk1 = b.pk1 AND a.pk2 = b.pk2)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(two_pk): Projected \n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table(two_pk): Projected \n" +
+			"",
+	},
+	{
+		query:    "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+			" └─ IndexedJoin(a.pk1 = b.pk2 AND a.pk2 = b.pk1)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(two_pk): Projected \n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table(two_pk): Projected \n" +
+			"",
+	},
+	{
+		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON b.pk1=a.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+				" └─ IndexedJoin(b.pk1 = a.pk1 AND a.pk2 = b.pk2)\n" +
+				"     ├─ TableAlias(a)\n" +
+				"     │   └─ Table(two_pk): Projected \n" +
+				"     └─ TableAlias(b)\n" +
+				"         └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1+1=b.pk1 AND a.pk2+1=b.pk2 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+				" └─ InnerJoin(a.pk1 + 1 = b.pk1 AND a.pk2 + 1 = b.pk2)\n" +
+				"     ├─ TableAlias(a)\n" +
+				"     │   └─ Table(two_pk): Projected \n" +
+				"     └─ TableAlias(b)\n" +
+				"         └─ Table(two_pk2): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+				" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
+				"     └─ IndexedJoin(a.pk1 = b.pk2 AND a.pk2 = b.pk1)\n" +
+				"         ├─ TableAlias(b)\n" +
+				"         │   └─ Table(two_pk2): Projected \n" +
+				"         └─ TableAlias(a)\n" +
+				"             └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON b.pk2=a.pk1 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+				" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
+				"     └─ IndexedJoin(b.pk2 = a.pk1 AND a.pk2 = b.pk1)\n" +
+				"         ├─ TableAlias(b)\n" +
+				"         │   └─ Table(two_pk2): Projected \n" +
+				"         └─ TableAlias(a)\n" +
+				"             └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+				" └─ Filter(a.pk1 = b.pk1 AND a.pk2 = b.pk2)\n" +
+				"     └─ CrossJoin\n" +
+				"         ├─ TableAlias(a)\n" +
+				"         │   └─ Table(two_pk): Projected \n" +
+				"         └─ TableAlias(b)\n" +
+				"             └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk2 b WHERE a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+				" └─ Filter(a.pk1 = b.pk2 AND a.pk2 = b.pk1)\n" +
+				"     └─ CrossJoin\n" +
+				"         ├─ TableAlias(a)\n" +
+				"         │   └─ Table(two_pk): Projected \n" +
+				"         └─ TableAlias(b)\n" +
+				"             └─ Table(two_pk2): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.c5 ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Project(one_pk.c5, two_pk.pk1, two_pk.pk2)\n" +
+				"     └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
+				"         ├─ Table(two_pk): Projected \n" +
+				"         └─ Table(one_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 ORDER BY 1,2,3",
+		expected: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
+				" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
+				"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
+				"         ├─ TableAlias(tpk)\n" +
+				"         │   └─ Table(two_pk): Projected \n" +
+				"         └─ TableAlias(opk)\n" +
+				"             └─ Table(one_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3",
+		expected: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
+				" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
+				"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
+				"         ├─ TableAlias(tpk)\n" +
+				"         │   └─ Table(two_pk): Projected \n" +
+				"         └─ TableAlias(opk)\n" +
+				"             └─ Table(one_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1,2,3",
+		expected: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
+				" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
+				"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
+				"         ├─ TableAlias(tpk)\n" +
+				"         │   └─ Table(two_pk): Projected \n" +
+				"         └─ TableAlias(opk)\n" +
+				"             └─ Table(one_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk, two_pk tpk WHERE pk=pk1 ORDER BY 1,2,3",
+		expected: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
+				" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
+				"     └─ Filter(opk.pk = tpk.pk1)\n" +
+				"         └─ CrossJoin\n" +
+				"             ├─ TableAlias(opk)\n" +
+				"             │   └─ Table(one_pk): Projected \n" +
+				"             └─ TableAlias(tpk)\n" +
+				"                 └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk,two_pk WHERE pk=pk1 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.c5 ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Project(one_pk.c5, two_pk.pk1, two_pk.pk2)\n" +
+				"     └─ Filter(one_pk.pk = two_pk.pk1)\n" +
+				"         └─ CrossJoin\n" +
+				"             ├─ Table(one_pk): Projected \n" +
+				"             └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i AND f IS NOT NULL ORDER BY 1",
+		expected: "Sort(one_pk.pk ASC)\n" +
+				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				"     └─ LeftJoin(one_pk.pk = niltable.i AND NOT(niltable.f IS NULL))\n" +
+				"         ├─ Table(one_pk)\n" +
+				"         └─ Table(niltable)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i ORDER BY 1",
+		expected: "Sort(one_pk.pk ASC)\n" +
+				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+				"         ├─ Table(one_pk)\n" +
+				"         └─ Table(niltable)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 1",
+		expected: "Sort(one_pk.pk ASC)\n" +
+				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				"     └─ Filter(NOT(niltable.f IS NULL))\n" +
+				"         └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+				"             ├─ Table(one_pk)\n" +
+				"             └─ Table(niltable)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1 ORDER BY 1",
+		expected: "Sort(one_pk.pk ASC)\n" +
+				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				"     └─ Filter(one_pk.pk > 1)\n" +
+				"         └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+				"             ├─ Table(one_pk)\n" +
+				"             └─ Table(niltable)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i ORDER BY 2,3",
+		expected: "Sort(niltable.i ASC, niltable.f ASC)\n" +
+				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				"     └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
+				"         ├─ Table(niltable)\n" +
+				"         └─ Table(one_pk)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
+		expected: "Sort(niltable.i ASC, niltable.f ASC)\n" +
+				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				"     └─ Filter(NOT(niltable.f IS NULL))\n" +
+				"         └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
+				"             ├─ Table(niltable)\n" +
+				"             └─ Table(one_pk)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE pk > 0 ORDER BY 2,3",
+		expected: "Sort(niltable.i ASC, niltable.f ASC)\n" +
+				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				"     └─ Filter(one_pk.pk > 0)\n" +
+				"         └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
+				"             ├─ Table(niltable)\n" +
+				"             └─ Table(one_pk)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i and pk > 0 ORDER BY 2,3",
+		expected: "Sort(niltable.i ASC, niltable.f ASC)\n" +
+				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				"     └─ RightJoin(one_pk.pk = niltable.i AND one_pk.pk > 0)\n" +
+				"         ├─ Table(one_pk)\n" +
+				"         └─ Table(niltable)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE pk=1 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+				"     └─ InnerJoin(one_pk.c1 = two_pk.c1)\n" +
+				"         ├─ Table(one_pk): Projected Filtered Indexed\n" +
+				"         └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ IndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
+				"     ├─ Table(one_pk): Projected \n" +
+				"     └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk1-pk>0 AND pk2<1",
+		expected: "InnerJoin(two_pk.pk1 - one_pk.pk > 0)\n" +
+				" ├─ Table(one_pk): Projected \n" +
+				" └─ Table(two_pk): Projected Filtered \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ CrossJoin\n" +
+				"     ├─ Table(one_pk): Projected \n" +
+				"     └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+				"     └─ LeftIndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
+				"         ├─ Table(one_pk)\n" +
+				"         └─ Table(two_pk)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+				"     └─ LeftJoin(one_pk.pk = two_pk.pk1)\n" +
+				"         ├─ Table(one_pk)\n" +
+				"         └─ Table(two_pk)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk RIGHT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+				"     └─ RightIndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
+				"         ├─ Table(two_pk)\n" +
+				"         └─ Table(one_pk)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
+		expected: "Sort(opk.pk ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
+				" └─ IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
+				"     ├─ TableAlias(opk)\n" +
+				"     │   └─ Table(one_pk): Projected \n" +
+				"     └─ TableAlias(tpk)\n" +
+				"         └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
+		expected: "Sort(opk.pk ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
+				" └─ IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
+				"     ├─ TableAlias(opk)\n" +
+				"     │   └─ Table(one_pk): Projected \n" +
+				"     └─ TableAlias(tpk)\n" +
+				"         └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=two_pk.pk1 AND pk=tpk.pk2 ORDER BY 1,2,3",
+		expected: "Sort(opk.pk ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
+				" └─ IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
+				"     ├─ TableAlias(opk)\n" +
+				"     │   └─ Table(one_pk): Projected \n" +
+				"     └─ TableAlias(tpk)\n" +
+				"         └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk, two_pk ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ CrossJoin\n" +
+				"     ├─ Table(one_pk): Projected \n" +
+				"     └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk,two_pk WHERE one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+				"     └─ Filter(one_pk.c1 = two_pk.c1)\n" +
+				"         └─ CrossJoin\n" +
+				"             ├─ Table(one_pk): Projected \n" +
+				"             └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk,two_pk WHERE pk=0 AND pk1=0 OR pk2=1 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Filter(one_pk.pk = 0 AND two_pk.pk1 = 0 OR two_pk.pk2 = 1)\n" +
+				"     └─ CrossJoin\n" +
+				"         ├─ Table(one_pk): Projected \n" +
+				"         └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2,one_pk.c1 AS foo, two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2, one_pk.c1 as foo, two_pk.c1 as bar)\n" +
+				"     └─ InnerJoin(one_pk.c1 = two_pk.c1)\n" +
+				"         ├─ Table(one_pk): Projected \n" +
+				"         └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2,one_pk.c1 AS foo,two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE one_pk.c1=10",
+		expected: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2, one_pk.c1 as foo, two_pk.c1 as bar)\n" +
+				" └─ InnerJoin(one_pk.c1 = two_pk.c1)\n" +
+				"     ├─ Table(one_pk): Projected Filtered \n" +
+				"     └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk2 FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2",
+		expected: "Sort(t1.pk ASC, t2.pk2 ASC)\n" +
+				" └─ CrossJoin\n" +
+				"     ├─ TableAlias(t1)\n" +
+				"     │   └─ Table(one_pk): Projected Filtered Indexed\n" +
+				"     └─ TableAlias(t2)\n" +
+				"         └─ Table(two_pk): Projected Filtered \n" +
+				"",
+	},
 }
 
 // If set, skips all other query plan test queries except this one
