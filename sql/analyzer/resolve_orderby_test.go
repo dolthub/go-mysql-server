@@ -261,8 +261,8 @@ func TestResolveOrderByLiterals(t *testing.T) {
 	require.Equal(
 		plan.NewSort(
 			[]plan.SortField{
-				{Column: expression.NewUnresolvedColumn("b")},
-				{Column: expression.NewUnresolvedColumn("a")},
+				{Column: expression.NewUnresolvedQualifiedColumn("t", "b")},
+				{Column: expression.NewUnresolvedQualifiedColumn("t", "a")},
 			},
 			plan.NewResolvedTable(table),
 		),
