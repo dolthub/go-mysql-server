@@ -612,6 +612,30 @@ var queries = []queryTest{
 		},
 	},
 	{
+		`SELECT i FROM mytable NATURAL JOIN tabletest`,
+		[]sql.Row{
+			{int64(1)},
+			{int64(2)},
+			{int64(3)},
+		},
+	},
+	{
+		`SELECT i FROM mytable AS t NATURAL JOIN tabletest AS test`,
+		[]sql.Row{
+			{int64(1)},
+			{int64(2)},
+			{int64(3)},
+		},
+	},
+	{
+		`SELECT t.i, test.s FROM mytable AS t NATURAL JOIN tabletest AS test`,
+		[]sql.Row{
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"},
+		},
+	},
+	{
 		`SELECT COUNT(*) AS cnt, fi FROM (
 			SELECT tbl.s AS fi
 			FROM mytable tbl
@@ -2265,14 +2289,6 @@ var infoSchemaQueries = []queryTest {
 		`SHOW TABLE STATUS WHERE Name = 'mytable'`,
 		[]sql.Row{
 			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-		},
-	},
-	{
-		`SELECT i FROM mytable NATURAL JOIN tabletest`,
-		[]sql.Row{
-			{int64(1)},
-			{int64(2)},
-			{int64(3)},
 		},
 	},
 	{
