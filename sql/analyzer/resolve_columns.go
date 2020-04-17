@@ -153,7 +153,11 @@ func qualifyExpression(
 			return col, nil
 		}
 
+		// If this column is already qualified, make sure the table name is known
 		if col.Table() != "" {
+			if _, ok := tables[col.Table()]; !ok {
+				return nil, sql.ErrTableNotFound.New(col.Table())
+			}
 			return col, nil
 		}
 

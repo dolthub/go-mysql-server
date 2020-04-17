@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/src-d/go-mysql-server/memory"
@@ -76,7 +77,7 @@ func TestMisusedAlias(t *testing.T) {
 }
 
 func TestQualifyColumns(t *testing.T) {
-	require := require.New(t)
+	assert := assert.New(t)
 	f := getRule("qualify_columns")
 
 	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32, Source: "mytable"}})
@@ -91,8 +92,8 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewResolvedTable(globalTable),
 	)
 	col, ok := node.Projections[0].(*expression.UnresolvedColumn)
-	require.True(ok)
-	require.Truef(isGlobalOrSessionColumn(col), "@@max_allowed_packet is not global or session column")
+	assert.True(ok)
+	assert.Truef(isGlobalOrSessionColumn(col), "@@max_allowed_packet is not global or session column")
 
 	expected := plan.NewProject(
 		[]sql.Expression{
@@ -102,8 +103,8 @@ func TestQualifyColumns(t *testing.T) {
 	)
 
 	result, err := f.Apply(sql.NewEmptyContext(), nil, node)
-	require.NoError(err)
-	require.Equal(expected, result)
+	assert.NoError(err)
+	assert.Equal(expected, result)
 
 	node = plan.NewProject(
 		[]sql.Expression{
@@ -112,8 +113,8 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewResolvedTable(sessionTable),
 	)
 	col, ok = node.Projections[0].(*expression.UnresolvedColumn)
-	require.True(ok)
-	require.Truef(isGlobalOrSessionColumn(col), "@@autocommit is not global or session column")
+	assert.True(ok)
+	assert.Truef(isGlobalOrSessionColumn(col), "@@autocommit is not global or session column")
 
 	expected = plan.NewProject(
 		[]sql.Expression{
@@ -123,8 +124,8 @@ func TestQualifyColumns(t *testing.T) {
 	)
 
 	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
-	require.NoError(err)
-	require.Equal(expected, result)
+	assert.NoError(err)
+	assert.Equal(expected, result)
 
 	node = plan.NewProject(
 		[]sql.Expression{
@@ -141,8 +142,8 @@ func TestQualifyColumns(t *testing.T) {
 	)
 
 	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
-	require.NoError(err)
-	require.Equal(expected, result)
+	assert.NoError(err)
+	assert.Equal(expected, result)
 
 	node = plan.NewProject(
 		[]sql.Expression{
@@ -152,8 +153,8 @@ func TestQualifyColumns(t *testing.T) {
 	)
 
 	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
-	require.NoError(err)
-	require.Equal(expected, result)
+	assert.NoError(err)
+	assert.Equal(expected, result)
 
 	node = plan.NewProject(
 		[]sql.Expression{
@@ -164,14 +165,14 @@ func TestQualifyColumns(t *testing.T) {
 
 	expected = plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+			expression.NewUnresolvedQualifiedColumn("a", "i"),
 		},
 		plan.NewTableAlias("a", plan.NewResolvedTable(table)),
 	)
 
 	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
-	require.NoError(err)
-	require.Equal(expected, result)
+	assert.NoError(err)
+	assert.Equal(expected, result)
 
 	node = plan.NewProject(
 		[]sql.Expression{
@@ -181,8 +182,8 @@ func TestQualifyColumns(t *testing.T) {
 	)
 
 	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
-	require.NoError(err)
-	require.Equal(node, result)
+	assert.NoError(err)
+	assert.Equal(node, result)
 
 	node = plan.NewProject(
 		[]sql.Expression{
@@ -191,9 +192,9 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewTableAlias("a", plan.NewResolvedTable(table)),
 	)
 
-	_, err = f.Apply(sql.NewEmptyContext(), nil, node)
-	require.Error(err)
-	require.True(sql.ErrTableNotFound.Is(err))
+	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
+	assert.Error(err)
+	assert.True(sql.ErrTableNotFound.Is(err))
 
 	node = plan.NewProject(
 		[]sql.Expression{
@@ -206,8 +207,8 @@ func TestQualifyColumns(t *testing.T) {
 	)
 
 	_, err = f.Apply(sql.NewEmptyContext(), nil, node)
-	require.Error(err)
-	require.True(ErrAmbiguousColumnName.Is(err))
+	assert.Error(err)
+	assert.True(ErrAmbiguousColumnName.Is(err))
 
 	subquery := plan.NewSubqueryAlias(
 		"b", "",
@@ -233,7 +234,7 @@ func TestQualifyColumns(t *testing.T) {
 
 	expected = plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+			expression.NewUnresolvedQualifiedColumn("a", "i"),
 		},
 		plan.NewCrossJoin(
 			plan.NewTableAlias("a", plan.NewResolvedTable(table)),
@@ -242,8 +243,8 @@ func TestQualifyColumns(t *testing.T) {
 	)
 
 	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
-	require.NoError(err)
-	require.Equal(expected, result)
+	assert.NoError(err)
+	assert.Equal(expected, result)
 }
 
 func TestQualifyColumnsQualifiedStar(t *testing.T) {

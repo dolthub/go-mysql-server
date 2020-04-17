@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"math"
 	"strings"
@@ -39,6 +40,20 @@ var queries = []queryTest{
 	},
 	{
 		"SELECT s,i FROM mytable;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT mytable.s,i FROM mytable;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT t.s,i FROM mytable AS t;",
 		[]sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
@@ -4374,12 +4389,35 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
-
-
 func newUpdateResult(matched, updated int) sql.OkResult {
 	return sql.OkResult{
 		RowsAffected: uint64(updated),
 		Info:         plan.UpdateInfo{matched, updated, 0},
+	}
+}
+
+type queryError struct {
+	query       string
+	expectedErr *errors.Kind
+}
+
+var errorQueries = []queryError {
+	{
+		query:       "select foo.i from mytable as a",
+		expectedErr: sql.ErrTableNotFound,
+	},
+}
+
+func TestQueryErrors(t *testing.T) {
+	engine, idxReg := newEngine(t)
+
+	for _, tt := range errorQueries {
+		t.Run(tt.query, func(t *testing.T) {
+			ctx := newCtx(idxReg)
+			_, _, err := engine.Query(ctx, tt.query)
+			require.Error(t, err)
+			require.True(t, tt.expectedErr.Is(err), "expected error of kind %s, but got %s", tt.expectedErr.Message, err.Error())
+		})
 	}
 }
 
