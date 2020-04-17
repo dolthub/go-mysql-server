@@ -283,8 +283,10 @@ func TestResolveColumnsSession(t *testing.T) {
 	require := require.New(t)
 
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
-	ctx.Set("foo_bar", sql.Int64, int64(42))
-	ctx.Set("autocommit", sql.Boolean, true)
+	err := ctx.Set(ctx, "foo_bar", sql.Int64, int64(42))
+	require.NoError(err)
+	err = ctx.Set(ctx, "autocommit", sql.Boolean, true)
+	require.NoError(err)
 
 	node := plan.NewProject(
 		[]sql.Expression{

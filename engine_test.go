@@ -2931,7 +2931,8 @@ func TestSessionSelectLimit(t *testing.T) {
 	e, idxReg := newEngine(t)
 
 	ctx := newCtx(idxReg)
-	ctx.Session.Set("sql_select_limit", sql.Int64, int64(1))
+	err := ctx.Session.Set(ctx.Context, "sql_select_limit", sql.Int64, int64(1))
+	require.NoError(t, err)
 
 	t.Run("sql_select_limit", func(t *testing.T) {
 		for _, tt := range q {
@@ -2950,10 +2951,14 @@ func TestSessionDefaults(t *testing.T) {
 	e, idxReg := newEngine(t)
 
 	ctx := newCtx(idxReg)
-	ctx.Session.Set("auto_increment_increment", sql.Int64, 0)
-	ctx.Session.Set("max_allowed_packet", sql.Int64, 0)
-	ctx.Session.Set("sql_select_limit", sql.Int64, 0)
-	ctx.Session.Set("ndbinfo_version", sql.Text, "non default value")
+	err := ctx.Session.Set(ctx.Context, "auto_increment_increment", sql.Int64, 0)
+	require.NoError(t, err)
+	err = ctx.Session.Set(ctx.Context, "max_allowed_packet", sql.Int64, 0)
+	require.NoError(t, err)
+	err = ctx.Session.Set(ctx.Context, "sql_select_limit", sql.Int64, 0)
+	require.NoError(t, err)
+	err = ctx.Session.Set(ctx.Context, "ndbinfo_version", sql.Text, "non default value")
+	require.NoError(t, err)
 
 	defaults := sql.DefaultSessionConfig()
 	t.Run(q, func(t *testing.T) {

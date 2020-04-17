@@ -114,7 +114,11 @@ func (s *Set) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 			typ = v.Value.Type()
 		}
 
-		ctx.Set(name, typ, value)
+		err = ctx.Set(ctx, name, typ, value)
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return sql.RowsToRowIter(), nil
