@@ -16,7 +16,8 @@ func TestSessionConfig(t *testing.T) {
 	require.Equal(Null, typ)
 	require.Equal(nil, v)
 
-	sess.Set("foo", Int64, 1)
+	err := sess.Set(context.Background(), "foo", Int64, 1)
+	require.NoError(err)
 
 	typ, v = sess.Get("foo")
 	require.Equal(Int64, typ)
@@ -43,7 +44,8 @@ func TestHasDefaultValue(t *testing.T) {
 		require.True(HasDefaultValue(sess, key))
 	}
 
-	sess.Set("auto_increment_increment", Int64, 123)
+	err := sess.Set(context.Background(), "auto_increment_increment", Int64, 123)
+	require.NoError(err)
 	require.False(HasDefaultValue(sess, "auto_increment_increment"))
 
 	require.False(HasDefaultValue(sess, "non_existing_key"))

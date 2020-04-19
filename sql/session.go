@@ -40,7 +40,7 @@ type Session interface {
 	// User of the session.
 	Client() Client
 	// Set session configuration.
-	Set(key string, typ Type, value interface{})
+	Set(ctx context.Context, key string, typ Type, value interface{}) error
 	// Get session configuration.
 	Get(key string) (Type, interface{})
 	// GetCurrentDatabase gets the current database for this session
@@ -88,10 +88,11 @@ func (s *BaseSession) Address() string { return s.addr }
 func (s *BaseSession) Client() Client { return s.client }
 
 // Set implements the Session interface.
-func (s *BaseSession) Set(key string, typ Type, value interface{}) {
+func (s *BaseSession) Set(ctx context.Context, key string, typ Type, value interface{}) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.config[key] = TypedValue{typ, value}
+	return nil
 }
 
 // Get implements the Session interface.
