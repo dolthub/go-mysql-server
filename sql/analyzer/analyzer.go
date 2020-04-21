@@ -133,11 +133,11 @@ func (ab *Builder) Build() *Analyzer {
 	}
 
 	return &Analyzer{
-		Debug:       debug || ab.debug,
-		debugCtx:    make([]string, 0),
-		Batches:     batches,
-		Catalog:     ab.catalog,
-		Parallelism: ab.parallelism,
+		Debug:        debug || ab.debug,
+		contextStack: make([]string, 0),
+		Batches:      batches,
+		Catalog:      ab.catalog,
+		Parallelism:  ab.parallelism,
 	}
 }
 
@@ -148,8 +148,9 @@ type Analyzer struct {
 	Debug       bool
 	// Whether to output the query plan at each step of the analyzer
 	Verbose     bool
-	debugCtx    []string
-	Parallelism int
+	// A stack of debugger context. See PushDebugContext, PopDebugContext
+	contextStack []string
+	Parallelism  int
 	// Batches of Rules to apply.
 	Batches []*Batch
 	// Catalog of databases and registered functions.
@@ -166,8 +167,8 @@ func NewDefault(c *sql.Catalog) *Analyzer {
 // if the analyzer is in debug mode.
 func (a *Analyzer) Log(msg string, args ...interface{}) {
 	if a != nil && a.Debug {
-		if len(a.debugCtx) > 0 {
-			ctx := strings.Join(a.debugCtx, "/")
+		if len(a.contextStack) > 0 {
+			ctx := strings.Join(a.contextStack, "/")
 			logrus.Infof("%s: "+msg, append([]interface{}{ctx}, args...)...)
 		} else {
 			logrus.Infof(msg, args...)
@@ -178,8 +179,8 @@ func (a *Analyzer) Log(msg string, args ...interface{}) {
 // LogNode prints the node given if Verbose logging is enabled.
 func (a *Analyzer) LogNode(n sql.Node) {
 	if a != nil && n != nil && a.Verbose {
-		if len(a.debugCtx) > 0 {
-			ctx := strings.Join(a.debugCtx, "/")
+		if len(a.contextStack) > 0 {
+			ctx := strings.Join(a.contextStack, "/")
 			fmt.Printf("%s: %s", ctx, n.String())
 		} else {
 			fmt.Printf("%s", n.String())
@@ -190,14 +191,14 @@ func (a *Analyzer) LogNode(n sql.Node) {
 // PushDebugContext pushes the given context string onto the context stack, to use when logging debug messages.
 func (a *Analyzer) PushDebugContext(msg string) {
 	if a != nil {
-		a.debugCtx = append(a.debugCtx, msg)
+		a.contextStack = append(a.contextStack, msg)
 	}
 }
 
 // PopDebugContext pops a context message off the context stack.
 func (a *Analyzer) PopDebugContext() {
-	if a != nil && len(a.debugCtx) > 0 {
-		a.debugCtx = a.debugCtx[:len(a.debugCtx)-1]
+	if a != nil && len(a.contextStack) > 0 {
+		a.contextStack = a.contextStack[:len(a.contextStack)-1]
 	}
 }
 

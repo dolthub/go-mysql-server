@@ -19,9 +19,9 @@ func fixFieldIndexesOnExpressions(schema sql.Schema, expressions ...sql.Expressi
 	return result, nil
 }
 
-// fixFieldIndexes transforms the given expression setting correct indexes
-// for GetField expressions according to the schema of the row in the table
-// and not the one where the filter came from.
+// fixFieldIndexes transforms the given expression by correcting the indexes of columns in GetField expressions,
+// according to the schema given. Used when combining multiple tables together into a single join result, or when
+// otherwise changing / combining schemas in the node tree.
 func fixFieldIndexes(schema sql.Schema, exp sql.Expression) (sql.Expression, error) {
 	return expression.TransformUp(exp, func(e sql.Expression) (sql.Expression, error) {
 		switch e := e.(type) {
