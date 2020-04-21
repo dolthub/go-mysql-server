@@ -21,7 +21,7 @@ func NewGetField(index int, fieldType sql.Type, fieldName string, nullable bool)
 	return NewGetFieldWithTable(index, fieldType, "", fieldName, nullable)
 }
 
-// NewGetFieldWithTable creates a GetField expression with table name.
+// NewGetFieldWithTable creates a GetField expression with table name. The table name may be an alias.
 func NewGetFieldWithTable(index int, fieldType sql.Type, table, fieldName string, nullable bool) *GetField {
 	return &GetField{
 		table:      table,
@@ -42,6 +42,13 @@ func (*GetField) Children() []sql.Expression {
 
 // Table returns the name of the field table.
 func (p *GetField) Table() string { return p.table }
+
+// WithTable returns a copy of this expression with the table given
+func (p *GetField) WithTable(table string) *GetField {
+	p2 := *p
+	p2.table = table
+	return &p2
+}
 
 // Resolved implements the Expression interface.
 func (p *GetField) Resolved() bool {

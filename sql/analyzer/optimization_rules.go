@@ -4,7 +4,6 @@ import (
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/src-d/go-mysql-server/sql/plan"
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
@@ -16,7 +15,6 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, er
 	}
 
 	a.Log("erase projection, node of type: %T", node)
-
 	return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
 		project, ok := node.(*plan.Project)
 		if ok && project.Schema().Equals(project.Child.Schema()) {
@@ -54,8 +52,6 @@ func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, e
 
 	return node, nil
 }
-
-var errInvalidNodeType = errors.NewKind("reorder projection: invalid node of type: %T")
 
 func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, ctx := ctx.Span("reorder_projection")
@@ -149,7 +145,7 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 			case *plan.Sort:
 				return plan.NewSort(node.SortFields, child), nil
 			default:
-				return nil, errInvalidNodeType.New(node)
+				return nil, ErrInvalidNodeType.New("reorderProjection", node)
 			}
 		})
 

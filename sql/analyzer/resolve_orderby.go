@@ -15,7 +15,6 @@ func resolveOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 
 	a.Log("resolving order bys, node of type: %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		a.Log("transforming node of type: %T", n)
 		sort, ok := n.(*plan.Sort)
 		if !ok {
 			return n, nil
@@ -199,10 +198,10 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 		schema := sort.Child.Schema()
 		var (
 			fields     = make([]plan.SortField, len(sort.SortFields))
-			schemaCols = make([]string, len(schema))
+			schemaCols = make([]*sql.Column, len(schema))
 		)
 		for i, col := range sort.Child.Schema() {
-			schemaCols[i] = col.Name
+			schemaCols[i] = col
 		}
 		for i, f := range sort.SortFields {
 			if lit, ok := f.Column.(*expression.Literal); ok && sql.IsNumber(f.Column.Type()) {
@@ -224,12 +223,12 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 				}
 
 				fields[i] = plan.SortField{
-					Column:       expression.NewUnresolvedColumn(schemaCols[idx]),
+					Column:       expression.NewUnresolvedQualifiedColumn(schemaCols[idx].Source, schemaCols[idx].Name),
 					Order:        f.Order,
 					NullOrdering: f.NullOrdering,
 				}
 
-				a.Log("replaced order by column %d with %s", idx+1, schemaCols[idx])
+				a.Log("replaced order by column %d with %v", idx+1, schemaCols[idx])
 			} else {
 				if agg, ok := f.Column.(sql.Aggregation); ok {
 					name := agg.String()

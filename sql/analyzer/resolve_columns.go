@@ -153,6 +153,14 @@ func qualifyExpression(
 			return col, nil
 		}
 
+		// If this column is already qualified, make sure the table name is known
+		if col.Table() != "" {
+			if _, ok := tables[col.Table()]; !ok {
+				return nil, sql.ErrTableNotFound.New(col.Table())
+			}
+			return col, nil
+		}
+
 		name, table := strings.ToLower(col.Name()), strings.ToLower(col.Table())
 		availableTables := dedupStrings(columns[name])
 		if table != "" {
@@ -268,7 +276,7 @@ func getNodesAvailableTables(tables map[string]string, nodes ...sql.Node) {
 			tables[name] = name
 		case *plan.TableAlias:
 			switch t := n.Child.(type) {
-			case *plan.ResolvedTable, *plan.UnresolvedTable:
+			case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias:
 				name := strings.ToLower(t.(sql.Nameable).Name())
 				alias := strings.ToLower(n.Name())
 				tables[alias] = name
@@ -296,7 +304,6 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 
 	a.Log("resolve columns, node of type: %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		a.Log("transforming node of type: %T", n)
 		if n.Resolved() {
 			return n, nil
 		}
@@ -314,18 +321,16 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 
 		columns := findChildIndexedColumns(n)
 		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
-			a.Log("transforming expression of type: %T", e)
-
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
 				return e, nil
 			}
 
 			if isGlobalOrSessionColumn(uc) {
-				return resolveGlobalOrSessionColumn(ctx, uc)
+				return resolveGlobalOrSessionColumn(ctx, a, uc)
 			}
 
-			return resolveColumnExpression(ctx, uc, columns)
+			return resolveColumnExpression(ctx, a, uc, columns)
 		})
 	})
 }
@@ -334,8 +339,18 @@ func findChildIndexedColumns(n sql.Node) map[tableCol]indexedCol {
 	var idx int
 	var columns = make(map[tableCol]indexedCol)
 
+	aliases := getTableAliases(n)
+
 	for _, child := range n.Children() {
-		for _, col := range child.Schema() {
+		childSch := child.Schema()
+		for _, col := range childSch {
+			// Columns of tables with an alias can be named by their aliased or unaliased name. Add an entry for both.
+			if aliasedTable, ok := aliases[strings.ToLower(col.Source)]; ok {
+				columns[tableCol{
+					table: strings.ToLower(aliasedTable.Name()),
+					col:   strings.ToLower(col.Name),
+				}] = indexedCol{col, idx}
+			}
 			columns[tableCol{
 				table: strings.ToLower(col.Source),
 				col:   strings.ToLower(col.Name),
@@ -347,7 +362,7 @@ func findChildIndexedColumns(n sql.Node) map[tableCol]indexedCol {
 	return columns
 }
 
-func resolveGlobalOrSessionColumn(ctx *sql.Context, col column) (sql.Expression, error) {
+func resolveGlobalOrSessionColumn(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {
 	if col.Table() != "" && strings.ToLower(col.Table()) != sessionTable {
 		return nil, errGlobalVariablesNotSupported.New(col)
 	}
@@ -355,14 +370,12 @@ func resolveGlobalOrSessionColumn(ctx *sql.Context, col column) (sql.Expression,
 	name := strings.TrimLeft(col.Name(), "@")
 	name = strings.TrimPrefix(strings.TrimPrefix(name, globalPrefix), sessionPrefix)
 	typ, value := ctx.Get(name)
+
+	a.Log("resolved column %s to session field %s (type %s)", col, value, typ)
 	return expression.NewGetSessionField(name, typ, value), nil
 }
 
-func resolveColumnExpression(
-	ctx *sql.Context,
-	e column,
-	columns map[tableCol]indexedCol,
-) (sql.Expression, error) {
+func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns map[tableCol]indexedCol, ) (sql.Expression, error) {
 	name := strings.ToLower(e.Name())
 	table := strings.ToLower(e.Table())
 	col, ok := columns[tableCol{table, name}]
@@ -371,6 +384,7 @@ func resolveColumnExpression(
 		case *expression.UnresolvedColumn:
 			// Defer the resolution of the column to give the analyzer more
 			// time to resolve other parts so this can be resolved.
+			a.Log("deferring resolution of column %s", e)
 			return &deferredColumn{uc}, nil
 		default:
 			if table != "" {
@@ -381,6 +395,8 @@ func resolveColumnExpression(
 		}
 	}
 
+	a.Log("column %s resolved to GetFieldWithTable: idx %d, typ %s, table %s, name %s, nullable %t",
+		e.Name(), col.index, col.Type, col.Source, col.Name, col.Nullable)
 	return expression.NewGetFieldWithTable(
 		col.index,
 		col.Type,
@@ -394,7 +410,6 @@ func resolveColumnExpression(
 // defined in it can be resolved in the grouping of the groupby. To do so,
 // all aliases are pushed down to a projection node under the group by.
 func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	a.Log("resoving group columns")
 	if n.Resolved() {
 		return n, nil
 	}

@@ -12,7 +12,6 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 	a.Log("resolve views, node of type: %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		a.Log("transforming node of type: %T", n)
 		if n.Resolved() {
 			return n, nil
 		}

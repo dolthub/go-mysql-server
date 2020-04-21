@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/src-d/go-mysql-server/sql/expression"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"math"
 	"strings"
@@ -39,6 +40,20 @@ var queries = []queryTest{
 	},
 	{
 		"SELECT s,i FROM mytable;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT mytable.s,i FROM mytable;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT t.s,i FROM mytable AS t;",
 		[]sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
@@ -596,6 +611,31 @@ var queries = []queryTest{
 			{"third row"},
 		},
 	},
+	{
+		`SELECT i FROM mytable NATURAL JOIN tabletest`,
+		[]sql.Row{
+			{int64(1)},
+			{int64(2)},
+			{int64(3)},
+		},
+	},
+	{
+		`SELECT i FROM mytable AS t NATURAL JOIN tabletest AS test`,
+		[]sql.Row{
+			{int64(1)},
+			{int64(2)},
+			{int64(3)},
+		},
+	},
+	// TODO: this should work: either table alias should be usable in the select clause
+	// {
+	// 	`SELECT t.i, test.s FROM mytable AS t NATURAL JOIN tabletest AS test`,
+	// 	[]sql.Row{
+	// 		{int64(1), "first row"},
+	// 		{int64(2), "second row"},
+	// 		{int64(3), "third row"},
+	// 	},
+	// },
 	{
 		`SELECT COUNT(*) AS cnt, fi FROM (
 			SELECT tbl.s AS fi
@@ -1844,6 +1884,15 @@ var queries = []queryTest{
 		},
 	},
 	{
+		"SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE t2.pk1=1 AND t2.pk2=1 ORDER BY 1,2",
+		[]sql.Row{
+			{0, 30},
+			{10, 30},
+			{20, 30},
+			{30, 30},
+		},
+	},
+	{
 		"SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE pk1=1 OR pk2=1 ORDER BY 1,2",
 		[]sql.Row{
 			{0, 10},
@@ -1900,6 +1949,51 @@ var queries = []queryTest{
 		},
 	},
 	{
+		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk, two_pk tpk WHERE pk=pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{10, 1, 0},
+			{10, 1, 1},
+		},
+	},
+	{
+		"SELECT one_pk.c5,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{10, 1, 0},
+			{10, 1, 1},
+		},
+	},
+	{
+		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{10, 1, 0},
+			{10, 1, 1},
+		},
+	},
+	{
+		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{10, 1, 0},
+			{10, 1, 1},
+		},
+	},
+	{
+		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{0, 0, 1},
+			{10, 1, 0},
+			{10, 1, 1},
+		},
+	},
+	{
 		"SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE pk=1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{1, 0, 1},
@@ -1907,6 +2001,27 @@ var queries = []queryTest{
 	},
 	{
 		"SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{1, 1, 1},
+		},
+	},
+	{
+		"SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{1, 1, 1},
+		},
+	},
+	{
+		"SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0},
+			{1, 1, 1},
+		},
+	},
+	{
+		"SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=two_pk.pk1 AND pk=tpk.pk2 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{1, 1, 1},
@@ -1936,27 +2051,75 @@ var queries = []queryTest{
 			{int64(2), 1, 0},
 		},
 	},
-	// TODO: this is broken, we can't join a table to itself and i'm so angry
-	// {
-	// 	"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
-	// 	[]sql.Row{
-	// 		{0, 0, 0, 0},
-	// 		{0, 1, 1, 0},
-	// 		{1, 0, 0, 1},
-	// 		{1, 1, 1, 1},
-	// 	},
-	// },
-	// TODO: this is broken, can't resolve the columns despite the aliases:
-	//  ambiguous column name "pk1", it's present in all these tables: two_pk, two_pk2
-	// {
-	// 	"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
-	// 	[]sql.Row{
-	// 		{0, 0, 0, 0},
-	// 		{0, 1, 1, 0},
-	// 		{1, 0, 0, 1},
-	// 		{1, 1, 1, 1},
-	// 	},
-	// },
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0},
+			{0, 1, 1, 0},
+			{1, 0, 0, 1},
+			{1, 1, 1, 1},
+		},
+	},
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0},
+			{0, 1, 1, 0},
+			{1, 0, 0, 1},
+			{1, 1, 1, 1},
+		},
+	},
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON b.pk2=a.pk1 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0},
+			{0, 1, 1, 0},
+			{1, 0, 0, 1},
+			{1, 1, 1, 1},
+		},
+	},
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk2 b WHERE a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0},
+			{0, 1, 1, 0},
+			{1, 0, 0, 1},
+			{1, 1, 1, 1},
+		},
+	},
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0},
+			{0, 1, 0, 1},
+			{1, 0, 1, 0},
+			{1, 1, 1, 1},
+		},
+	},
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0},
+			{0, 1, 0, 1},
+			{1, 0, 1, 0},
+			{1, 1, 1, 1},
+		},
+	},
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON b.pk1=a.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 0, 0},
+			{0, 1, 0, 1},
+			{1, 0, 1, 0},
+			{1, 1, 1, 1},
+		},
+	},
+	{
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1+1=b.pk1 AND a.pk2+1=b.pk2 ORDER BY 1,2,3",
+		[]sql.Row{
+			{0, 0, 1, 1},
+		},
+	},
 	{
 		"SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
 		[]sql.Row{
@@ -2127,14 +2290,6 @@ var infoSchemaQueries = []queryTest {
 		`SHOW TABLE STATUS WHERE Name = 'mytable'`,
 		[]sql.Row{
 			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-		},
-	},
-	{
-		`SELECT i FROM mytable NATURAL JOIN tabletest`,
-		[]sql.Row{
-			{int64(1)},
-			{int64(2)},
-			{int64(3)},
 		},
 	},
 	{
@@ -2652,7 +2807,7 @@ var planTests = []planTest{
 	},
 	{
 		query:    "SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2",
-		expected: "IndexedJoin(mytable.i = othertable.i2)\n" +
+		expected: "IndexedJoin(mt.i = ot.i2)\n" +
 			" ├─ TableAlias(mt)\n" +
 			" │   └─ Table(mytable): Projected Filtered \n" +
 			" └─ TableAlias(ot)\n" +
@@ -2673,6 +2828,15 @@ var planTests = []planTest{
 			" ├─ Table(one_pk): Projected \n" +
 			" └─ Table(two_pk): Projected \n" +
 			"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2",
+		expected: "IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
+				" ├─ TableAlias(opk)\n" +
+				" │   └─ Table(one_pk): Projected \n" +
+				" └─ TableAlias(tpk)\n" +
+				"     └─ Table(two_pk): Projected \n" +
+				"",
 	},
 	{
 		query:    "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2",
@@ -2801,7 +2965,347 @@ var planTests = []planTest{
 				"     ├─ Table(niltable)\n" +
 				"     └─ Table(one_pk)\n",
 	},
+	{
+		query:    "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+			" └─ IndexedJoin(a.pk1 = b.pk1 AND a.pk2 = b.pk2)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(two_pk): Projected \n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table(two_pk): Projected \n" +
+			"",
+	},
+	{
+		query:    "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+			" └─ IndexedJoin(a.pk1 = b.pk2 AND a.pk2 = b.pk1)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(two_pk): Projected \n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table(two_pk): Projected \n" +
+			"",
+	},
+	{
+		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON b.pk1=a.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+				" └─ IndexedJoin(b.pk1 = a.pk1 AND a.pk2 = b.pk2)\n" +
+				"     ├─ TableAlias(a)\n" +
+				"     │   └─ Table(two_pk): Projected \n" +
+				"     └─ TableAlias(b)\n" +
+				"         └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		// TODO: this should use an index on b
+		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1+1=b.pk1 AND a.pk2+1=b.pk2 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+				" └─ InnerJoin(a.pk1 + 1 = b.pk1 AND a.pk2 + 1 = b.pk2)\n" +
+				"     ├─ TableAlias(a)\n" +
+				"     │   └─ Table(two_pk): Projected \n" +
+				"     └─ TableAlias(b)\n" +
+				"         └─ Table(two_pk2): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+				" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
+				"     └─ IndexedJoin(a.pk1 = b.pk2 AND a.pk2 = b.pk1)\n" +
+				"         ├─ TableAlias(b)\n" +
+				"         │   └─ Table(two_pk2): Projected \n" +
+				"         └─ TableAlias(a)\n" +
+				"             └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON b.pk2=a.pk1 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+				" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
+				"     └─ IndexedJoin(b.pk2 = a.pk1 AND a.pk2 = b.pk1)\n" +
+				"         ├─ TableAlias(b)\n" +
+				"         │   └─ Table(two_pk2): Projected \n" +
+				"         └─ TableAlias(a)\n" +
+				"             └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		// TODO: this should use an index. CrossJoin needs to be converted to InnerJoin, where clause to join cond
+		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+				" └─ Filter(a.pk1 = b.pk1 AND a.pk2 = b.pk2)\n" +
+				"     └─ CrossJoin\n" +
+				"         ├─ TableAlias(a)\n" +
+				"         │   └─ Table(two_pk): Projected \n" +
+				"         └─ TableAlias(b)\n" +
+				"             └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		// TODO: this should use an index. CrossJoin needs to be converted to InnerJoin, where clause to join cond
+		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk2 b WHERE a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
+				" └─ Filter(a.pk1 = b.pk2 AND a.pk2 = b.pk1)\n" +
+				"     └─ CrossJoin\n" +
+				"         ├─ TableAlias(a)\n" +
+				"         │   └─ Table(two_pk): Projected \n" +
+				"         └─ TableAlias(b)\n" +
+				"             └─ Table(two_pk2): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.c5 ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Project(one_pk.c5, two_pk.pk1, two_pk.pk2)\n" +
+				"     └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
+				"         ├─ Table(two_pk): Projected \n" +
+				"         └─ Table(one_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 ORDER BY 1,2,3",
+		expected: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
+				" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
+				"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
+				"         ├─ TableAlias(tpk)\n" +
+				"         │   └─ Table(two_pk): Projected \n" +
+				"         └─ TableAlias(opk)\n" +
+				"             └─ Table(one_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3",
+		expected: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
+				" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
+				"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
+				"         ├─ TableAlias(tpk)\n" +
+				"         │   └─ Table(two_pk): Projected \n" +
+				"         └─ TableAlias(opk)\n" +
+				"             └─ Table(one_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1,2,3",
+		expected: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
+				" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
+				"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
+				"         ├─ TableAlias(tpk)\n" +
+				"         │   └─ Table(two_pk): Projected \n" +
+				"         └─ TableAlias(opk)\n" +
+				"             └─ Table(one_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk, two_pk tpk WHERE pk=pk1 ORDER BY 1,2,3",
+		expected: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
+				" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
+				"     └─ Filter(opk.pk = tpk.pk1)\n" +
+				"         └─ CrossJoin\n" +
+				"             ├─ TableAlias(opk)\n" +
+				"             │   └─ Table(one_pk): Projected \n" +
+				"             └─ TableAlias(tpk)\n" +
+				"                 └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		// TODO: this should use an index. CrossJoin needs to be converted to InnerJoin, where clause to join cond
+		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk,two_pk WHERE pk=pk1 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.c5 ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Project(one_pk.c5, two_pk.pk1, two_pk.pk2)\n" +
+				"     └─ Filter(one_pk.pk = two_pk.pk1)\n" +
+				"         └─ CrossJoin\n" +
+				"             ├─ Table(one_pk): Projected \n" +
+				"             └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i ORDER BY 1",
+		expected: "Sort(one_pk.pk ASC)\n" +
+				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+				"         ├─ Table(one_pk)\n" +
+				"         └─ Table(niltable)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 1",
+		expected: "Sort(one_pk.pk ASC)\n" +
+				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				"     └─ Filter(NOT(niltable.f IS NULL))\n" +
+				"         └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+				"             ├─ Table(one_pk)\n" +
+				"             └─ Table(niltable)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1 ORDER BY 1",
+		expected: "Sort(one_pk.pk ASC)\n" +
+				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				"     └─ Filter(one_pk.pk > 1)\n" +
+				"         └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+				"             ├─ Table(one_pk)\n" +
+				"             └─ Table(niltable)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i ORDER BY 2,3",
+		expected: "Sort(niltable.i ASC, niltable.f ASC)\n" +
+				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				"     └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
+				"         ├─ Table(niltable)\n" +
+				"         └─ Table(one_pk)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
+		expected: "Sort(niltable.i ASC, niltable.f ASC)\n" +
+				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				"     └─ Filter(NOT(niltable.f IS NULL))\n" +
+				"         └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
+				"             ├─ Table(niltable)\n" +
+				"             └─ Table(one_pk)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE pk > 0 ORDER BY 2,3",
+		expected: "Sort(niltable.i ASC, niltable.f ASC)\n" +
+				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				"     └─ Filter(one_pk.pk > 0)\n" +
+				"         └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
+				"             ├─ Table(niltable)\n" +
+				"             └─ Table(one_pk)\n" +
+				"",
+	},
+	{
+		// TODO: this should use an index. Extra join condition should get moved out of the join clause into a filter
+		query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i and pk > 0 ORDER BY 2,3",
+		expected: "Sort(niltable.i ASC, niltable.f ASC)\n" +
+				" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				"     └─ RightJoin(one_pk.pk = niltable.i AND one_pk.pk > 0)\n" +
+				"         ├─ Table(one_pk)\n" +
+				"         └─ Table(niltable)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ IndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
+				"     ├─ Table(one_pk): Projected \n" +
+				"     └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk1-pk>0 AND pk2<1",
+		expected: "InnerJoin(two_pk.pk1 - one_pk.pk > 0)\n" +
+				" ├─ Table(one_pk): Projected \n" +
+				" └─ Table(two_pk): Projected Filtered \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ CrossJoin\n" +
+				"     ├─ Table(one_pk): Projected \n" +
+				"     └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+				"     └─ LeftIndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
+				"         ├─ Table(one_pk)\n" +
+				"         └─ Table(two_pk)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+				"     └─ LeftJoin(one_pk.pk = two_pk.pk1)\n" +
+				"         ├─ Table(one_pk)\n" +
+				"         └─ Table(two_pk)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk RIGHT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+				"     └─ RightIndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
+				"         ├─ Table(two_pk)\n" +
+				"         └─ Table(one_pk)\n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
+		expected: "Sort(opk.pk ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
+				" └─ IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
+				"     ├─ TableAlias(opk)\n" +
+				"     │   └─ Table(one_pk): Projected \n" +
+				"     └─ TableAlias(tpk)\n" +
+				"         └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
+		expected: "Sort(opk.pk ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
+				" └─ IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
+				"     ├─ TableAlias(opk)\n" +
+				"     │   └─ Table(one_pk): Projected \n" +
+				"     └─ TableAlias(tpk)\n" +
+				"         └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=two_pk.pk1 AND pk=tpk.pk2 ORDER BY 1,2,3",
+		expected: "Sort(opk.pk ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
+				" └─ IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
+				"     ├─ TableAlias(opk)\n" +
+				"     │   └─ Table(one_pk): Projected \n" +
+				"     └─ TableAlias(tpk)\n" +
+				"         └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2 FROM one_pk,two_pk WHERE one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+				"     └─ Filter(one_pk.c1 = two_pk.c1)\n" +
+				"         └─ CrossJoin\n" +
+				"             ├─ Table(one_pk): Projected \n" +
+				"             └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2,one_pk.c1 AS foo, two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
+		expected: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+				" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2, one_pk.c1 as foo, two_pk.c1 as bar)\n" +
+				"     └─ InnerJoin(one_pk.c1 = two_pk.c1)\n" +
+				"         ├─ Table(one_pk): Projected \n" +
+				"         └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk1,pk2,one_pk.c1 AS foo,two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE one_pk.c1=10",
+		expected: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2, one_pk.c1 as foo, two_pk.c1 as bar)\n" +
+				" └─ InnerJoin(one_pk.c1 = two_pk.c1)\n" +
+				"     ├─ Table(one_pk): Projected Filtered \n" +
+				"     └─ Table(two_pk): Projected \n" +
+				"",
+	},
+	{
+		query: "SELECT pk,pk2 FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2",
+		expected: "Sort(t1.pk ASC, t2.pk2 ASC)\n" +
+				" └─ CrossJoin\n" +
+				"     ├─ TableAlias(t1)\n" +
+				"     │   └─ Table(one_pk): Projected Filtered Indexed\n" +
+				"     └─ TableAlias(t2)\n" +
+				"         └─ Table(two_pk): Projected Filtered \n" +
+				"",
+	},
 }
+
+// If set, skips all other query plan test queries except this one
+var debugQueryPlan = ""
 
 // Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that
 // the right indexes are being used for joining tables.
@@ -2813,6 +3317,10 @@ func TestQueryPlans(t *testing.T) {
 
 	for _, tt := range planTests {
 		t.Run(tt.query, func(t *testing.T) {
+			if debugQueryPlan != "" &&  tt.query != debugQueryPlan {
+				t.Skip()
+			}
+
 			ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
 
 			parsed, err := parse.Parse(ctx, tt.query)
@@ -2845,61 +3353,135 @@ func TestViews(t *testing.T) {
 	require.NoError(err)
 	iter.Close()
 
-	testQueryWithContext(ctx, t, e,
-		"SELECT * FROM myview1 ORDER BY i",
-		[]sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
-			sql.NewRow(int64(2), "second row, 2"),
-			sql.NewRow(int64(3), "third row, 2"),
-		},
-	)
-
-	testQueryWithContext(ctx, t, e,
-		"SELECT * FROM myview1 AS OF '2019-01-01' ORDER BY i",
-		[]sql.Row{
-			sql.NewRow(int64(1), "first row, 1"),
-			sql.NewRow(int64(2), "second row, 1"),
-			sql.NewRow(int64(3), "third row, 1"),
-		},
-	)
-
 	// nested views
 	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
 	require.NoError(err)
 	iter.Close()
 
-	testQueryWithContext(ctx, t, e,
-		"SELECT * FROM myview2",
-		[]sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
+	testCases := []queryTest{
+		{
+			"SELECT * FROM myview1 ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 2"),
+				sql.NewRow(int64(2), "second row, 2"),
+				sql.NewRow(int64(3), "third row, 2"),
+			},
 		},
-	)
+		{
+			"SELECT myview1.* FROM myview1 ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 2"),
+				sql.NewRow(int64(2), "second row, 2"),
+				sql.NewRow(int64(3), "third row, 2"),
+			},
+		},
+		{
+			"SELECT i FROM myview1 ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1)),
+				sql.NewRow(int64(2)),
+				sql.NewRow(int64(3)),
+			},
+		},
+		{
+			"SELECT t.* FROM myview1 AS t ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 2"),
+				sql.NewRow(int64(2), "second row, 2"),
+				sql.NewRow(int64(3), "third row, 2"),
+			},
+		},
+		{
+			"SELECT t.i FROM myview1 AS t ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1)),
+				sql.NewRow(int64(2)),
+				sql.NewRow(int64(3)),
+			},
+		},
+		// TODO: this isn't valid in MySQL. Keep it?
+		{
+			"SELECT t.i, myview1.s FROM myview1 AS t ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 2"),
+				sql.NewRow(int64(2), "second row, 2"),
+				sql.NewRow(int64(3), "third row, 2"),
+			},
+		},
+		{
+			"SELECT * FROM myview1 AS OF '2019-01-01' ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 1"),
+				sql.NewRow(int64(2), "second row, 1"),
+				sql.NewRow(int64(3), "third row, 1"),
+			},
+		},
+		{
+			"SELECT * FROM myview2",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 2"),
+			},
+		},
+		{
+			"SELECT i FROM myview2",
+			[]sql.Row{
+				sql.NewRow(int64(1)),
+			},
+		},
+		{
+			"SELECT myview2.i FROM myview2",
+			[]sql.Row{
+				sql.NewRow(int64(1)),
+			},
+		},
+		{
+			"SELECT myview2.* FROM myview2",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 2"),
+			},
+		},
+		{
+			"SELECT t.* FROM myview2 as t",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 2"),
+			},
+		},
+		{
+			"SELECT t.i FROM myview2 as t",
+			[]sql.Row{
+				sql.NewRow(int64(1)),
+			},
+		},
+		{
+			"SELECT * FROM myview2 AS OF '2019-01-01'",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row, 1"),
+			},
+		},
+		// info schema support
+		{
+			"select * from information_schema.views where table_schema = 'mydb'",
+			[]sql.Row{
+				sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+				sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+				sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+			},
+		},
+		{
+			"select table_name from information_schema.tables where table_schema = 'mydb' and table_type = 'VIEW' order by 1",
+			[]sql.Row{
+				sql.NewRow("myview"),
+				sql.NewRow("myview1"),
+				sql.NewRow("myview2"),
+			},
+		},
+	}
 
-	testQueryWithContext(ctx, t, e,
-		"SELECT * FROM myview2 AS OF '2019-01-01'",
-		[]sql.Row{
-			sql.NewRow(int64(1), "first row, 1"),
-		},
-	)
-
-	// info schema support
-	testQueryWithContext(ctx, t, e,
-		"select * from information_schema.views where table_schema = 'mydb'",
-		[]sql.Row{
-			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
-			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
-			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
-		},
-	)
-
-	testQueryWithContext(ctx, t, e,
-		"select table_name from information_schema.tables where table_schema = 'mydb' and table_type = 'VIEW' order by 1",
-		[]sql.Row{
-			sql.NewRow("myview"),
-			sql.NewRow("myview1"),
-			sql.NewRow("myview2"),
-		},
-	)
+	for _, testCase := range testCases {
+		t.Run(testCase.query, func(t *testing.T) {
+			testQueryWithContext(ctx, t, e, testCase.query, testCase.expected)
+		})
+	}
 }
 
 func TestSessionSelectLimit(t *testing.T) {
@@ -3829,12 +4411,35 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
-
-
 func newUpdateResult(matched, updated int) sql.OkResult {
 	return sql.OkResult{
 		RowsAffected: uint64(updated),
 		Info:         plan.UpdateInfo{matched, updated, 0},
+	}
+}
+
+type queryError struct {
+	query       string
+	expectedErr *errors.Kind
+}
+
+var errorQueries = []queryError {
+	{
+		query:       "select foo.i from mytable as a",
+		expectedErr: sql.ErrTableNotFound,
+	},
+}
+
+func TestQueryErrors(t *testing.T) {
+	engine, idxReg := newEngine(t)
+
+	for _, tt := range errorQueries {
+		t.Run(tt.query, func(t *testing.T) {
+			ctx := newCtx(idxReg)
+			_, _, err := engine.Query(ctx, tt.query)
+			require.Error(t, err)
+			require.True(t, tt.expectedErr.Is(err), "expected error of kind %s, but got %s", tt.expectedErr.Message, err.Error())
+		})
 	}
 }
 

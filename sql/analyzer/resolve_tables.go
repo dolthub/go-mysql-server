@@ -23,7 +23,6 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 
 	a.Log("resolve table, node of type: %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		a.Log("transforming node of type: %T", n)
 		if n.Resolved() {
 			return n, nil
 		}
@@ -58,6 +57,7 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 				return handleTableLookupFailure(err, name, db, a, t)
 			}
 
+			a.Log("table resolved: %q as of %s", rt.Name(), asOf)
 			return plan.NewResolvedTable(rt), nil
 		}
 
@@ -66,7 +66,7 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 			return handleTableLookupFailure(err, name, db, a, t)
 		}
 
-		a.Log("table resolved: %q", t.Name())
+		a.Log("table resolved: %s", t.Name())
 		return plan.NewResolvedTable(rt), nil
 	})
 }
@@ -82,7 +82,7 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 		}
 	} else if sql.ErrTableNotFound.Is(err) {
 		if tableName == dualTableName {
-			a.Log("table resolved: %q", t.Name())
+			a.Log("table resolved: %s", t.Name())
 			return plan.NewResolvedTable(dualTable), nil
 		}
 	}

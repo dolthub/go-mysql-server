@@ -157,16 +157,16 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("t1", "b"),
-			expression.NewUnresolvedQualifiedColumn("t1", "c"),
+			expression.NewUnresolvedQualifiedColumn("t2", "b"),
+			expression.NewUnresolvedQualifiedColumn("t2-alias", "c"),
 		},
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
 				expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
 				expression.NewGetFieldWithTable(0, sql.Int64, "t1", "a", false),
-				expression.NewGetFieldWithTable(3, sql.Int64, "t2", "d", false),
-				expression.NewGetFieldWithTable(6, sql.Int64, "t2", "e", false),
+				expression.NewGetFieldWithTable(3, sql.Int64, "t2-alias", "d", false),
+				expression.NewGetFieldWithTable(6, sql.Int64, "t2-alias", "e", false),
 			},
 			plan.NewInnerJoin(
 				plan.NewResolvedTable(left),
@@ -174,11 +174,11 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 				expression.JoinAnd(
 					expression.NewEquals(
 						expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
-						expression.NewGetFieldWithTable(5, sql.Int64, "t2", "b", false),
+						expression.NewGetFieldWithTable(5, sql.Int64, "t2-alias", "b", false),
 					),
 					expression.NewEquals(
 						expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
-						expression.NewGetFieldWithTable(4, sql.Int64, "t2", "c", false),
+						expression.NewGetFieldWithTable(4, sql.Int64, "t2-alias", "c", false),
 					),
 				),
 			),
@@ -233,9 +233,9 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("t1", "b"),
-			expression.NewUnresolvedQualifiedColumn("t1", "c"),
-			expression.NewUnresolvedQualifiedColumn("t1", "f"),
+			expression.NewUnresolvedQualifiedColumn("t2", "b"),
+			expression.NewUnresolvedQualifiedColumn("t2-alias", "c"),
+			expression.NewUnresolvedQualifiedColumn("t3-alias", "f"),
 		},
 		plan.NewProject(
 			[]sql.Expression{
@@ -243,9 +243,9 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 				expression.NewGetFieldWithTable(2, sql.Int64, "t1", "a", false),
 				expression.NewGetFieldWithTable(3, sql.Int64, "t1", "f", false),
 				expression.NewGetFieldWithTable(1, sql.Int64, "t1", "c", false),
-				expression.NewGetFieldWithTable(4, sql.Int64, "t2", "d", false),
-				expression.NewGetFieldWithTable(5, sql.Int64, "t2", "e", false),
-				expression.NewGetFieldWithTable(9, sql.Int64, "t3", "g", false),
+				expression.NewGetFieldWithTable(4, sql.Int64, "t2-alias", "d", false),
+				expression.NewGetFieldWithTable(5, sql.Int64, "t2-alias", "e", false),
+				expression.NewGetFieldWithTable(9, sql.Int64, "t3-alias", "g", false),
 			},
 			plan.NewInnerJoin(
 				plan.NewProject(
@@ -254,8 +254,8 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 						expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
 						expression.NewGetFieldWithTable(0, sql.Int64, "t1", "a", false),
 						expression.NewGetFieldWithTable(3, sql.Int64, "t1", "f", false),
-						expression.NewGetFieldWithTable(4, sql.Int64, "t2", "d", false),
-						expression.NewGetFieldWithTable(7, sql.Int64, "t2", "e", false),
+						expression.NewGetFieldWithTable(4, sql.Int64, "t2-alias", "d", false),
+						expression.NewGetFieldWithTable(7, sql.Int64, "t2-alias", "e", false),
 					},
 					plan.NewInnerJoin(
 						plan.NewResolvedTable(left),
@@ -263,11 +263,11 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 						expression.JoinAnd(
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
-								expression.NewGetFieldWithTable(6, sql.Int64, "t2", "b", false),
+								expression.NewGetFieldWithTable(6, sql.Int64, "t2-alias", "b", false),
 							),
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
-								expression.NewGetFieldWithTable(5, sql.Int64, "t2", "c", false),
+								expression.NewGetFieldWithTable(5, sql.Int64, "t2-alias", "c", false),
 							),
 						),
 					),
@@ -276,15 +276,15 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 				expression.JoinAnd(
 					expression.NewEquals(
 						expression.NewGetFieldWithTable(0, sql.Int64, "t1", "b", false),
-						expression.NewGetFieldWithTable(7, sql.Int64, "t3", "b", false),
+						expression.NewGetFieldWithTable(7, sql.Int64, "t3-alias", "b", false),
 					),
 					expression.NewEquals(
 						expression.NewGetFieldWithTable(2, sql.Int64, "t1", "a", false),
-						expression.NewGetFieldWithTable(6, sql.Int64, "t3", "a", false),
+						expression.NewGetFieldWithTable(6, sql.Int64, "t3-alias", "a", false),
 					),
 					expression.NewEquals(
 						expression.NewGetFieldWithTable(3, sql.Int64, "t1", "f", false),
-						expression.NewGetFieldWithTable(8, sql.Int64, "t3", "f", false),
+						expression.NewGetFieldWithTable(8, sql.Int64, "t3-alias", "f", false),
 					),
 				),
 			),
