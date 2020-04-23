@@ -53,7 +53,7 @@ type Convert struct {
 func NewConvert(expr sql.Expression, castToType string) *Convert {
 	return &Convert{
 		UnaryExpression: UnaryExpression{Child: expr},
-		castToType:      castToType,
+		castToType:      strings.ToLower(castToType),
 	}
 }
 
