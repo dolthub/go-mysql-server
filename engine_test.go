@@ -5743,7 +5743,8 @@ func TestReadOnly(t *testing.T) {
 	require.NoError(err)
 
 	writingQueries := []string{
-		`CREATE INDEX foo ON mytable USING pilosa (i, s)`,
+		`CREATE INDEX foo USING BTREE ON mytable (i, s)`,
+		`CREATE INDEX foo USING pilosa ON mytable (i, s)`,
 		`DROP INDEX foo ON mytable`,
 		`INSERT INTO mytable (i, s) VALUES(42, 'yolo')`,
 		`CREATE VIEW myview AS SELECT i FROM mytable`,

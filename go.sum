@@ -176,6 +176,8 @@ github.com/liquidata-inc/vitess v0.0.0-20200407071440-54a487aaf7d9/go.mod h1:vn/
 github.com/liquidata-inc/vitess v2.1.1+incompatible/go.mod h1:0AL0EGO0uXORYWrhsSjeaMtrYQ6V6CPfAlw6VoAqt6g=
 github.com/liquidata-inc/vitess v0.0.0-20200410001601-55d11bea14ca h1:m09m0bRpTa3PCxMNcnRf5AiVK7ME0PVIci1vwuciZ5w=
 github.com/liquidata-inc/vitess v0.0.0-20200410001601-55d11bea14ca/go.mod h1:vn/QvIl/1+N6+qjheejcLt8jmX2kQSQwFinzZuoY1VY=
+github.com/liquidata-inc/vitess v0.0.0-20200321080313-06723e7e0be5 h1:NGgJcmPsd0QPPP7pnVqodR194u5q4hFmSLdIgA7Wzyk=
+github.com/liquidata-inc/vitess v0.0.0-20200321080313-06723e7e0be5/go.mod h1:vn/QvIl/1+N6+qjheejcLt8jmX2kQSQwFinzZuoY1VY=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/mattn/go-runewidth v0.0.1/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
