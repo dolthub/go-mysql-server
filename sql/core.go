@@ -200,6 +200,30 @@ type ProjectedTable interface {
 	Projection() []string
 }
 
+// IndexUsing is the desired storage type.
+type IndexUsing byte
+const (
+	IndexUsing_Default IndexUsing = iota
+	IndexUsing_BTree
+	IndexUsing_Hash
+)
+
+// IndexConstraint represents any constraints that should be applied to the index.
+type IndexConstraint byte
+const (
+	IndexConstraint_None IndexConstraint = iota
+	IndexConstraint_Unique
+	IndexConstraint_Fulltext
+	IndexConstraint_Spatial
+)
+
+// IndexColumn is the column by which to add to an index.
+type IndexColumn struct {
+	Name string
+	// Length represents the index prefix length. If zero, then no length was specified.
+	Length int64
+}
+
 // IndexableTable represents a table that supports being indexed and
 // receiving indexes to be able to speed up its execution.
 type IndexableTable interface {
@@ -207,6 +231,19 @@ type IndexableTable interface {
 	WithIndexLookup(IndexLookup) Table
 	IndexLookup() IndexLookup
 	IndexKeyValues(*Context, []string) (PartitionIndexKeyValueIter, error)
+}
+
+// IndexAlterableTable represents a table that supports index modification operations.
+type IndexAlterableTable interface {
+	Table
+	// CreateIndex creates an index for this table, using the provided parameters.
+	// Returns an error if the index name already exists, or an index with the same columns already exists.
+	CreateIndex(ctx *Context, indexName string, using IndexUsing, constraint IndexConstraint, columns []IndexColumn, comment string) error
+	// DropIndex removes an index from this table, if it exists.
+	// Returns an error if the removal failed or the index does not exist.
+	DropIndex(ctx *Context, indexName string) error
+	// RenameIndex renames an existing index to another name that is not already taken by another index on this table.
+	RenameIndex(ctx *Context, fromIndexName string, toIndexName string) error
 }
 
 // InsertableTable is a table that can process insertion of new rows.

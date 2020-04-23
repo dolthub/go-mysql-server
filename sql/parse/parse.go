@@ -34,12 +34,11 @@ var (
 
 	// errInvalidDescribeFormat is returned when an invalid format string is used for DESCRIBE statements
 	errInvalidDescribeFormat = errors.NewKind("invalid format %q for DESCRIBE, supported formats: %s")
+
+	ErrInvalidIndexPrefix = errors.NewKind("invalid index prefix: %v")
 )
 
 var (
-	createIndexRegex     = regexp.MustCompile(`^create\s+index\s+`)
-	dropIndexRegex       = regexp.MustCompile(`^drop\s+index\s+`)
-	showIndexRegex       = regexp.MustCompile(`^show\s+(index|indexes|keys)\s+(from|in)\s+\S+\s*`)
 	showVariablesRegex   = regexp.MustCompile(`^show\s+(.*)?variables\s*`)
 	showWarningsRegex    = regexp.MustCompile(`^show\s+warnings\s*`)
 	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
@@ -104,12 +103,6 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 	lowerQuery := strings.ToLower(s)
 
 	switch true {
-	case createIndexRegex.MatchString(lowerQuery):
-		return parseCreateIndex(ctx, s)
-	case dropIndexRegex.MatchString(lowerQuery):
-		return parseDropIndex(s)
-	case showIndexRegex.MatchString(lowerQuery):
-		return parseShowIndex(s)
 	case showVariablesRegex.MatchString(lowerQuery):
 		return parseShowVariables(ctx, s)
 	case showWarningsRegex.MatchString(lowerQuery):
@@ -289,6 +282,12 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		return plan.NewShowCreateDatabase(
 			sql.UnresolvedDatabase(s.Database),
 			s.IfNotExists,
+		), nil
+	case "index":
+		return plan.NewShowIndexes(
+			sql.UnresolvedDatabase(s.Database),
+			s.Table.Name.String(),
+			nil,
 		), nil
 	case sqlparser.KeywordString(sqlparser.TABLES):
 		var dbName string
@@ -492,6 +491,9 @@ func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) 
 }
 
 func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+	if ddl.IndexSpec != nil {
+		return convertAlterIndex(ctx, ddl)
+	}
 	switch ddl.ColumnAction {
 	case sqlparser.AddStr:
 		sch, err := tableSpecToSchema(ctx, ddl.TableSpec)
@@ -514,6 +516,90 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	}
 }
 
+func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+	table := plan.NewUnresolvedTable(ddl.Table.Name.String(), ddl.Table.Qualifier.String())
+	switch ddl.IndexSpec.Action {
+	case sqlparser.CreateStr:
+		var using sql.IndexUsing
+		switch ddl.IndexSpec.Using.Lowered() {
+		case "", "btree":
+			using = sql.IndexUsing_BTree
+		case "hash":
+			using = sql.IndexUsing_Hash
+		default:
+			return convertExternalCreateIndex(ctx, ddl)
+		}
+
+		var constraint sql.IndexConstraint
+		switch ddl.IndexSpec.Type {
+		case sqlparser.UniqueStr:
+			constraint = sql.IndexConstraint_Unique
+		case sqlparser.FulltextStr:
+			constraint = sql.IndexConstraint_Fulltext
+		case sqlparser.SpatialStr:
+			constraint = sql.IndexConstraint_Spatial
+		default:
+			constraint = sql.IndexConstraint_None
+		}
+
+		columns := make([]sql.IndexColumn, len(ddl.IndexSpec.Columns))
+		for i, col := range ddl.IndexSpec.Columns {
+			if col.Length != nil {
+				if col.Length.Type == sqlparser.IntVal {
+					length, err := strconv.ParseInt(string(col.Length.Val), 10, 64)
+					if err != nil {
+						return nil, err
+					}
+					if length < 1 {
+						return nil, ErrInvalidIndexPrefix.New(length)
+					}
+				}
+			}
+			columns[i] = sql.IndexColumn{
+				Name: col.Column.String(),
+				Length: 0,
+			}
+		}
+
+		var comment string
+		for _, option := range ddl.IndexSpec.Options {
+			if option.Name == sqlparser.KeywordString(sqlparser.COMMENT_KEYWORD) {
+				comment = string(option.Value.Val)
+			}
+		}
+
+		return plan.NewAlterCreateIndex(table, ddl.IndexSpec.ToName.String(), using, constraint, columns, comment), nil
+	case sqlparser.DropStr:
+		return plan.NewAlterDropIndex(table, ddl.IndexSpec.ToName.String()), nil
+	case sqlparser.RenameStr:
+		return plan.NewAlterRenameIndex(table, ddl.IndexSpec.FromName.String(), ddl.IndexSpec.ToName.String()), nil
+	default:
+		return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
+	}
+}
+
+func convertExternalCreateIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+	config := make(map[string]string)
+	for _, option := range ddl.IndexSpec.Options {
+		if option.Using != "" {
+			config[option.Name] = option.Using
+		} else {
+			config[option.Name] = string(option.Value.Val)
+		}
+	}
+	cols := make([]sql.Expression, len(ddl.IndexSpec.Columns))
+	for i, col := range ddl.IndexSpec.Columns {
+		cols[i] =  expression.NewUnresolvedColumn(col.Column.String())
+	}
+	return plan.NewCreateIndex(
+		ddl.IndexSpec.ToName.String(),
+		plan.NewUnresolvedTable(ddl.Table.Name.String(), ddl.Table.Qualifier.String()),
+		cols,
+		ddl.IndexSpec.Using.Lowered(),
+		config,
+	), nil
+}
+
 func columnOrderToColumnOrder(order *sqlparser.ColumnOrder) *sql.ColumnOrder {
 	if order == nil {
 		return nil
@@ -524,8 +610,6 @@ func columnOrderToColumnOrder(order *sqlparser.ColumnOrder) *sql.ColumnOrder {
 		return &sql.ColumnOrder{AfterColumn: order.AfterColumn.String()}
 	}
 }
-
-
 
 func convertDropTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	tableNames := make([]string, len(c.FromTables))

@@ -2,8 +2,11 @@ package parse
 
 import (
 	"bufio"
+	"bytes"
+	"io"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/src-d/go-mysql-server/sql"
 	"github.com/src-d/go-mysql-server/sql/plan"
@@ -74,4 +77,56 @@ func parseShowWarnings(ctx *sql.Context, s string) (sql.Node, error) {
 	}
 
 	return node, nil
+}
+
+func readValue(val *string) parseFunc {
+	return func(rd *bufio.Reader) error {
+		var buf bytes.Buffer
+		var singleQuote, doubleQuote, ignoreNext bool
+		var first = true
+		for {
+			r, _, err := rd.ReadRune()
+			if err == io.EOF {
+				break
+			}
+
+			if err != nil {
+				return err
+			}
+
+			if singleQuote || doubleQuote {
+				switch true {
+				case ignoreNext:
+					ignoreNext = false
+				case r == '\\':
+					ignoreNext = true
+					continue
+				case r == '\'' && singleQuote:
+					singleQuote = false
+					continue
+				case r == '"' && doubleQuote:
+					doubleQuote = false
+					continue
+				}
+			} else if first && (r == '\'' || r == '"') {
+				if r == '\'' {
+					singleQuote = true
+				} else {
+					doubleQuote = true
+				}
+				first = false
+				continue
+			} else if !unicode.IsLetter(r) && !unicode.IsNumber(r) && r != '_' {
+				if err := rd.UnreadRune(); err != nil {
+					return err
+				}
+				break
+			}
+
+			buf.WriteRune(r)
+		}
+
+		*val = strings.ToLower(buf.String())
+		return nil
+	}
 }
