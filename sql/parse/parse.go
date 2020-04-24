@@ -1697,15 +1697,15 @@ func parseShowTableStatus(ctx *sql.Context, query string) (sql.Node, error) {
 		return nil, err
 	}
 
-	switch strings.ToUpper(clause) {
-	case "FROM", "IN":
+	switch strings.ToLower(clause) {
+	case "from", "in":
 		var db string
 		if err := readQuotableIdent(&db)(buf); err != nil {
 			return nil, err
 		}
 
 		return plan.NewShowTableStatus(db), nil
-	case "WHERE", "LIKE":
+	case "where", "like":
 		bs, err := ioutil.ReadAll(buf)
 		if err != nil {
 			return nil, err
@@ -1717,7 +1717,7 @@ func parseShowTableStatus(ctx *sql.Context, query string) (sql.Node, error) {
 		}
 
 		var filter sql.Expression
-		if strings.ToUpper(clause) == "LIKE" {
+		if strings.ToLower(clause) == "like" {
 			filter = expression.NewLike(
 				expression.NewUnresolvedColumn("Name"),
 				expr,

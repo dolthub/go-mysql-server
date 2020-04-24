@@ -3,6 +3,7 @@ package expression
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -100,7 +101,7 @@ func (a *Arithmetic) IsNullable() bool {
 
 // Type returns the greatest type for given operation.
 func (a *Arithmetic) Type() sql.Type {
-	switch a.Op {
+	switch strings.ToLower(a.Op) {
 	case sqlparser.PlusStr, sqlparser.MinusStr, sqlparser.MultStr, sqlparser.DivStr:
 		if isInterval(a.Left) || isInterval(a.Right) {
 			return sql.Datetime
@@ -161,7 +162,7 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	switch a.Op {
+	switch strings.ToLower(a.Op) {
 	case sqlparser.PlusStr:
 		return plus(lval, rval)
 	case sqlparser.MinusStr:

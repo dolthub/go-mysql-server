@@ -393,7 +393,7 @@ var queries = []queryTest{
 		nil,
 	},
 	{
-		"SELECT id FROM typestable WHERE ti > date_add('2019-12-30', INTERVAL 1 DAY)",
+		"SELECT id FROM typestable WHERE ti > date_add('2019-12-30', INTERVAL 1 day)",
 		[]sql.Row{{int64(1)}},
 	},
 	{
@@ -1460,7 +1460,7 @@ var queries = []queryTest{
 		[]sql.Row{{string("bar")}},
 	},
 	{
-		"SELECT DATE_ADD('2018-05-02', INTERVAL 1 DAY)",
+		"SELECT DATE_ADD('2018-05-02', INTERVAL 1 day)",
 		[]sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
