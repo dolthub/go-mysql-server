@@ -29,9 +29,12 @@ type Config struct {
 	Tracer opentracing.Tracer
 	// Version string to advertise in running server
 	Version string
-
+	// ConnReadTimeout is the server's read timeout
 	ConnReadTimeout  time.Duration
+	// ConnWriteTimeout is the server's write timeout
 	ConnWriteTimeout time.Duration
+	// MaxConnections is the maximum number of simultaneous connections that the server will allow.
+	MaxConnections uint64
 }
 
 // NewDefaultServer creates a Server with the default session builder.
@@ -57,6 +60,10 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 		cfg.ConnWriteTimeout = 0
 	}
 
+	if cfg.MaxConnections == 0 {
+		cfg.MaxConnections = 1
+	}
+
 	handler := NewHandler(e,
 		NewSessionManager(
 			sb,
@@ -77,7 +84,7 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 		Handler:            handler,
 		ConnReadTimeout:    cfg.ConnReadTimeout,
 		ConnWriteTimeout:   cfg.ConnWriteTimeout,
-		MaxConns:           1,  // TODO: make this configurable
+		MaxConns:           cfg.MaxConnections,
 		ConnReadBufferSize: mysql.DefaultConnBufferSize,
 	}
 	vtListnr, err := mysql.NewListenerWithConfig(listenerCfg)
