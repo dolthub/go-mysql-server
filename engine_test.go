@@ -71,6 +71,14 @@ var queries = []queryTest{
 		[]sql.Row{{int64(2)}, {int64(3)}, {int64(4)}},
 	},
 	{
+		"SELECT i div 2 FROM mytable order by 1;",
+		[]sql.Row{{int64(0)}, {int64(1)}, {int64(1)}},
+	},
+	{
+		"SELECT i DIV 2 FROM mytable order by 1;",
+		[]sql.Row{{int64(0)}, {int64(1)}, {int64(1)}},
+	},
+	{
 		"SELECT -i FROM mytable;",
 		[]sql.Row{{int64(-1)}, {int64(-2)}, {int64(-3)}},
 	},
