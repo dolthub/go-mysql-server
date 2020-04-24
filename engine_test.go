@@ -5885,6 +5885,15 @@ func TestColumnAliases(t *testing.T) {
 				{"third row", float64(3)},
 			},
 		},
+		{
+			query:            `SELECT s as Date, SUM(i) TimeStamp FROM mytable group by 1 order by 2`,
+			expectedColNames: []string{"Date", "TimeStamp"},
+			expectedRows: []sql.Row{
+				{"first row", float64(1)},
+				{"second row", float64(2)},
+				{"third row", float64(3)},
+			},
+		},
 	}
 
 	for _, tt := range tests {
