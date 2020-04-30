@@ -9,7 +9,7 @@ import (
 	errors "gopkg.in/src-d/go-errors.v1"
 	"vitess.io/vitess/go/vt/sqlparser"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 var (

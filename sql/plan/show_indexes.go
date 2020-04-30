@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // ShowIndexes is a node that shows the indexes on a table.

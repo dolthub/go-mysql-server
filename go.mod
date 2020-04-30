@@ -1,4 +1,4 @@
-module github.com/src-d/go-mysql-server
+module github.com/liquidata-inc/go-mysql-server
 
 require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect

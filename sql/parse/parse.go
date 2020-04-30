@@ -10,11 +10,11 @@ import (
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/src-d/go-mysql-server/sql"
-	"github.com/src-d/go-mysql-server/sql/expression"
-	"github.com/src-d/go-mysql-server/sql/expression/function"
-	"github.com/src-d/go-mysql-server/sql/expression/function/aggregation"
-	"github.com/src-d/go-mysql-server/sql/plan"
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"gopkg.in/src-d/go-errors.v1"
 	"vitess.io/vitess/go/vt/sqlparser"
 )

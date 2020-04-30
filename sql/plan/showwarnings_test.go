@@ -4,7 +4,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
 )
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // CreateView is a node representing the creation (or replacement) of a view,

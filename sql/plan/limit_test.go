@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/src-d/go-mysql-server/memory"
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/memory"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 var testingTable *memory.Table

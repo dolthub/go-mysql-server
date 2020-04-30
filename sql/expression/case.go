@@ -3,7 +3,7 @@ package expression
 import (
 	"bytes"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // CaseBranch is a single branch of a case expression.

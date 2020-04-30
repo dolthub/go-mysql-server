@@ -1,7 +1,7 @@
 package expression
 
 import (
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // TransformUp applies a transformation function to the given expression from the

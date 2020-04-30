@@ -1,7 +1,7 @@
 package plan
 
 import (
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // Filter skips rows that don't match a certain expression.

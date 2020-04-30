@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // UnresolvedColumn is an expression of a column that is not yet resolved.

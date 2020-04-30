@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // ShowTableStatus returns the status of the tables in the databases.

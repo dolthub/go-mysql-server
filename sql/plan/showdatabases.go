@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // ShowDatabases is a node that shows the databases.

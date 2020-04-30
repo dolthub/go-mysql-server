@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 var ErrNotView = errors.NewKind("'%' is not VIEW")

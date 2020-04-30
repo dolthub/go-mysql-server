@@ -3,7 +3,7 @@ package plan
 import (
 	"io"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // Distinct is a node that ensures all rows that come from it are unique.

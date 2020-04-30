@@ -3,7 +3,7 @@ package sqle_test
 import (
 	"context"
 	"fmt"
-	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/src-d/go-errors.v1"
 	"io"
@@ -16,14 +16,14 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 
-	sqle "github.com/src-d/go-mysql-server"
-	"github.com/src-d/go-mysql-server/auth"
-	"github.com/src-d/go-mysql-server/memory"
-	"github.com/src-d/go-mysql-server/sql"
-	"github.com/src-d/go-mysql-server/sql/analyzer"
-	"github.com/src-d/go-mysql-server/sql/parse"
-	"github.com/src-d/go-mysql-server/sql/plan"
-	"github.com/src-d/go-mysql-server/test"
+	sqle "github.com/liquidata-inc/go-mysql-server"
+	"github.com/liquidata-inc/go-mysql-server/auth"
+	"github.com/liquidata-inc/go-mysql-server/memory"
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
+	"github.com/liquidata-inc/go-mysql-server/sql/parse"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
+	"github.com/liquidata-inc/go-mysql-server/test"
 
 	"github.com/stretchr/testify/require"
 )
@@ -5598,7 +5598,7 @@ func TestPrintTree(t *testing.T) {
 	require.Equal(expectedTree, node.String())
 }
 
-// see: https://github.com/src-d/go-mysql-server/issues/197
+// see: https://github.com/liquidata-inc/go-mysql-server/issues/197
 func TestStarPanic197(t *testing.T) {
 	require := require.New(t)
 	e, idxReg := newEngine(t)

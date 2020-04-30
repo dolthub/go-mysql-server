@@ -2,7 +2,7 @@ package expression
 
 import (
 	"errors"
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // IsTrue is an expression that checks if an expression is true.

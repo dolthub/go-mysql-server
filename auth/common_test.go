@@ -10,13 +10,13 @@ import (
 	"os"
 	"testing"
 
-	sqle "github.com/src-d/go-mysql-server"
-	"github.com/src-d/go-mysql-server/auth"
-	"github.com/src-d/go-mysql-server/memory"
-	"github.com/src-d/go-mysql-server/server"
-	"github.com/src-d/go-mysql-server/sql"
-	"github.com/src-d/go-mysql-server/sql/analyzer"
-	"github.com/src-d/go-mysql-server/sql/index/pilosa"
+	sqle "github.com/liquidata-inc/go-mysql-server"
+	"github.com/liquidata-inc/go-mysql-server/auth"
+	"github.com/liquidata-inc/go-mysql-server/memory"
+	"github.com/liquidata-inc/go-mysql-server/server"
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
+	"github.com/liquidata-inc/go-mysql-server/sql/index/pilosa"
 	"github.com/stretchr/testify/require"
 )
 

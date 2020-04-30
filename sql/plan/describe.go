@@ -4,7 +4,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // Describe is a node that describes its children.

@@ -1,7 +1,7 @@
 package expression
 
 import (
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // DefaultColumn is an default expression of a column that is not yet resolved.

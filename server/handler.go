@@ -11,10 +11,10 @@ import (
 	"time"
 	"vitess.io/vitess/go/vt/sqlparser"
 
-	sqle "github.com/src-d/go-mysql-server"
-	"github.com/src-d/go-mysql-server/auth"
-	"github.com/src-d/go-mysql-server/internal/sockstate"
-	"github.com/src-d/go-mysql-server/sql"
+	sqle "github.com/liquidata-inc/go-mysql-server"
+	"github.com/liquidata-inc/go-mysql-server/auth"
+	"github.com/liquidata-inc/go-mysql-server/internal/sockstate"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/sirupsen/logrus"

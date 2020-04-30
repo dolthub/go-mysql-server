@@ -11,7 +11,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 	bolt "go.etcd.io/bbolt"
 )
 

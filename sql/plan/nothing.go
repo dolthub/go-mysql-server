@@ -1,6 +1,6 @@
 package plan
 
-import "github.com/src-d/go-mysql-server/sql"
+import "github.com/liquidata-inc/go-mysql-server/sql"
 
 // Nothing is a node that will return no rows.
 var Nothing nothing

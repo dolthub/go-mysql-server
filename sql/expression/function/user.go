@@ -1,6 +1,6 @@
 package function
 
-import "github.com/src-d/go-mysql-server/sql"
+import "github.com/liquidata-inc/go-mysql-server/sql"
 
 // User returns the current user
 type User struct{}

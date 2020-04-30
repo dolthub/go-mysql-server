@@ -2,7 +2,7 @@ package memory
 
 import (
 	"fmt"
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // Database is an in-memory database.

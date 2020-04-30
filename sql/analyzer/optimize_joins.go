@@ -2,9 +2,9 @@ package analyzer
 
 import (
 	"errors"
-	"github.com/src-d/go-mysql-server/sql"
-	"github.com/src-d/go-mysql-server/sql/expression"
-	"github.com/src-d/go-mysql-server/sql/plan"
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
 // optimizeJoins takes two-table InnerJoins where the join condition is an equality on an index of one of the tables,

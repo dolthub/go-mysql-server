@@ -5,7 +5,7 @@ package auth_test
 import (
 	"testing"
 
-	"github.com/src-d/go-mysql-server/auth"
+	"github.com/liquidata-inc/go-mysql-server/auth"
 )
 
 func TestNoneAuthentication(t *testing.T) {

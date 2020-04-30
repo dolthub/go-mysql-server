@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/pilosa/pilosa"
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
 	errors "gopkg.in/src-d/go-errors.v1"
 )

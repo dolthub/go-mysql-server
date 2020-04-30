@@ -1,4 +1,4 @@
-module github.com/src-d/go-mysql-server/integration/go
+module github.com/liquidata-inc/go-mysql-server/integration/go
 
 go 1.14
 
