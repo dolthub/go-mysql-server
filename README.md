@@ -1,9 +1,10 @@
 # go-mysql-server
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-<a href="https://travis-ci.com/liquidata-inc/go-mysql-server"><img alt="Build Status" src="https://travis-ci.com/liquidata-inc/go-mysql-server.svg?branch=master" /></a>
-<a href="https://codecov.io/gh/liquidata-inc/go-mysql-server"><img alt="codecov" src="https://codecov.io/gh/liquidata-inc/go-mysql-server/branch/master/graph/badge.svg" /></a>
-<a href="https://godoc.org/github.com/liquidata-inc/go-mysql-server"><img alt="GoDoc" src="https://godoc.org/github.com/liquidata-inc/go-mysql-server?status.svg" /></a>
-[![Issues](http://img.shields.io/github/issues/liquidata-inc/go-mysql-server.svg)](https://github.com/liquidata-inc/go-mysql-server/issues)
+
+go-mysql-server relies on a fork of vitess, which implements the SQL parsing and SQL server for the engine. To use this fork of vitess, you must include the same replace directive in your project's `go.mod` file as this package does:
+
+`replace vitess.io/vitess => github.com/liquidata-inc/vitess v0.0.0-20200430040751-192bb76ecd8b`
+
+This project is originally forked from https://github.com/src-d/go-mysql-server.
 
 **go-mysql-server** is a SQL engine which parses standard SQL (based on MySQL syntax), resolves and optimizes queries.
 It provides simple interfaces to allow custom tabular data source implementations.
