@@ -967,27 +967,32 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
-	`CREATE INDEX idx ON foo USING bar (fn(bar, baz))`: plan.NewCreateIndex(
-		"idx",
-		plan.NewUnresolvedTable("foo", ""),
-		[]sql.Expression{expression.NewUnresolvedFunction(
-			"fn", false,
-			expression.NewUnresolvedColumn("bar"),
-			expression.NewUnresolvedColumn("baz"),
-		)},
-		"bar",
+	`CREATE INDEX foo USING qux ON bar (baz)`: plan.NewCreateIndex(
+		"foo",
+		plan.NewUnresolvedTable("bar", ""),
+		[]sql.Expression{expression.NewUnresolvedColumn("baz")},
+		"qux",
 		make(map[string]string),
 	),
-	`      CREATE INDEX idx ON foo USING bar (fn(bar, baz))`: plan.NewCreateIndex(
-		"idx",
+	`CREATE INDEX idx USING BTREE ON foo (bar)`: plan.NewAlterCreateIndex(
 		plan.NewUnresolvedTable("foo", ""),
-		[]sql.Expression{expression.NewUnresolvedFunction(
-			"fn", false,
-			expression.NewUnresolvedColumn("bar"),
-			expression.NewUnresolvedColumn("baz"),
-		)},
-		"bar",
-		make(map[string]string),
+		"idx",
+		sql.IndexUsing_BTree,
+		sql.IndexConstraint_None,
+		[]sql.IndexColumn{
+			{"bar", 0},
+		},
+		"",
+	),
+	`      CREATE INDEX idx USING BTREE ON foo(bar)`: plan.NewAlterCreateIndex(
+		plan.NewUnresolvedTable("foo", ""),
+		"idx",
+		sql.IndexUsing_BTree,
+		sql.IndexConstraint_None,
+		[]sql.IndexColumn{
+			{"bar", 0},
+		},
+		"",
 	),
 	`SELECT * FROM foo NATURAL JOIN bar`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
@@ -1006,9 +1011,9 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("baz", ""),
 		),
 	),
-	`DROP INDEX foo ON bar`: plan.NewDropIndex(
-		"foo",
+	`DROP INDEX foo ON bar`: plan.NewAlterDropIndex(
 		plan.NewUnresolvedTable("bar", ""),
+		"foo",
 	),
 	`DESCRIBE FORMAT=TREE SELECT * FROM foo`: plan.NewDescribeQuery(
 		"tree",
@@ -1036,13 +1041,6 @@ var fixtures = map[string]sql.Node{
 	`SHOW INDEXES IN foo`:   plan.NewShowIndexes(sql.UnresolvedDatabase(""), "foo", nil),
 	`SHOW INDEX IN foo`:     plan.NewShowIndexes(sql.UnresolvedDatabase(""), "foo", nil),
 	`SHOW KEYS IN foo`:      plan.NewShowIndexes(sql.UnresolvedDatabase(""), "foo", nil),
-	`create index foo on bar using qux (baz)`: plan.NewCreateIndex(
-		"foo",
-		plan.NewUnresolvedTable("bar", ""),
-		[]sql.Expression{expression.NewUnresolvedColumn("baz")},
-		"qux",
-		make(map[string]string),
-	),
 	`SHOW FULL PROCESSLIST`: plan.NewShowProcessList(),
 	`SHOW PROCESSLIST`:      plan.NewShowProcessList(),
 	`SELECT @@allowed_max_packet`: plan.NewProject([]sql.Expression{

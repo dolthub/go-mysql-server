@@ -17,7 +17,7 @@ var (
 func shouldParallelize(node sql.Node) bool {
 	// Do not try to parallelize index operations or schema operations
 	switch node.(type) {
-	case *plan.CreateIndex, *plan.DropIndex, *plan.Describe, *plan.ShowCreateTable:
+	case *plan.AlterIndex, *plan.CreateIndex, *plan.Describe, *plan.DropIndex, *plan.ShowCreateTable:
 		return false
 	default:
 		return true

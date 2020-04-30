@@ -29,19 +29,19 @@ func TestIndexes(t *testing.T) {
 
 	_, _, err = e.Query(
 		newCtx(idxReg),
-		"CREATE INDEX idx_i ON mytable USING pilosa (i) WITH (async = false)",
+		"CREATE INDEX idx_i USING pilosa ON mytable (i) WITH (async = false)",
 	)
 	require.NoError(t, err)
 
 	_, _, err = e.Query(
 		newCtx(idxReg),
-		"CREATE INDEX idx_s ON mytable USING pilosa (s) WITH (async = false)",
+		"CREATE INDEX idx_s USING pilosa ON mytable (s) WITH (async = false)",
 	)
 	require.NoError(t, err)
 
 	_, _, err = e.Query(
 		newCtx(idxReg),
-		"CREATE INDEX idx_is ON mytable USING pilosa (i, s) WITH (async = false)",
+		"CREATE INDEX idx_is USING pilosa ON mytable (i, s) WITH (async = false)",
 	)
 	require.NoError(t, err)
 
@@ -194,7 +194,7 @@ func TestCreateIndex(t *testing.T) {
 	require.NoError(os.MkdirAll(tmpDir, 0644))
 	idxReg.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
 
-	_, iter, err := e.Query(newCtx(idxReg), "CREATE INDEX myidx ON mytable USING pilosa (i)")
+	_, iter, err := e.Query(newCtx(idxReg), "CREATE INDEX myidx USING pilosa ON mytable (i)")
 	require.NoError(err)
 	rows, err := sql.RowIterToRows(iter)
 	require.NoError(err)
