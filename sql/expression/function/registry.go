@@ -82,6 +82,7 @@ var Defaults = []sql.Function{
 	sql.FunctionN{Name: "log", Fn: NewLog},
 	sql.FunctionN{Name: "lpad", Fn: NewPadFunc(lPadType)},
 	sql.FunctionN{Name: "mid", Fn: NewSubstring},
+	sql.FunctionN{Name: "rand", Fn: NewRand},
 	sql.FunctionN{Name: "regexp_matches", Fn: NewRegexpMatches},
 	sql.FunctionN{Name: "round", Fn: NewRound},
 	sql.FunctionN{Name: "rpad", Fn: NewPadFunc(rPadType)},

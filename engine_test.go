@@ -912,6 +912,24 @@ var queries = []queryTest{
 		},
 	},
 	{
+		`SELECT RAND(100)`,
+		[]sql.Row{
+			{float64(0.8165026937796166)},
+		},
+	},
+	{
+		`SELECT RAND(100) = RAND(100)`,
+		[]sql.Row{
+			{true},
+		},
+	},
+	{
+		`SELECT RAND() = RAND()`,
+		[]sql.Row{
+			{false},
+		},
+	},
+	{
 		"SELECT * FROM mytable WHERE 1 > 5",
 		nil,
 	},
