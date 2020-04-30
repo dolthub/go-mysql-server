@@ -22,8 +22,8 @@ import (
 	pilosa "github.com/pilosa/pilosa"
 	"github.com/pilosa/pilosa/syswrap"
 	"github.com/sirupsen/logrus"
-	"github.com/src-d/go-mysql-server/sql"
-	"github.com/src-d/go-mysql-server/sql/index"
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/index"
 	errors "gopkg.in/src-d/go-errors.v1"
 )
 

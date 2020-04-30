@@ -1,8 +1,8 @@
 package plan
 
 import (
-	"github.com/src-d/go-mysql-server/internal/similartext"
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/internal/similartext"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
 )
 

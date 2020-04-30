@@ -6,12 +6,12 @@ import (
 	"github.com/go-kit/kit/metrics/discard"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
-	"github.com/src-d/go-mysql-server/auth"
-	"github.com/src-d/go-mysql-server/sql"
-	"github.com/src-d/go-mysql-server/sql/analyzer"
-	"github.com/src-d/go-mysql-server/sql/expression/function"
-	"github.com/src-d/go-mysql-server/sql/parse"
-	"github.com/src-d/go-mysql-server/sql/plan"
+	"github.com/liquidata-inc/go-mysql-server/auth"
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function"
+	"github.com/liquidata-inc/go-mysql-server/sql/parse"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
 // Config for the Engine.

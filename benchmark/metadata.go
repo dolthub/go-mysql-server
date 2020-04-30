@@ -1,6 +1,6 @@
 package benchmark
 
-import "github.com/src-d/go-mysql-server/sql"
+import "github.com/liquidata-inc/go-mysql-server/sql"
 
 type tableMetadata struct {
 	schema sql.Schema

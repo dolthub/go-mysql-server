@@ -4,8 +4,8 @@ import (
 	"testing"
 	"vitess.io/vitess/go/sqltypes"
 
-	"github.com/src-d/go-mysql-server/memory"
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/memory"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
 )
 

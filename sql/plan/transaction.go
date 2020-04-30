@@ -1,6 +1,6 @@
 package plan
 
-import "github.com/src-d/go-mysql-server/sql"
+import "github.com/liquidata-inc/go-mysql-server/sql"
 
 // Commit commits the changes performed in a transaction. This is provided just for compatibility with SQL clients and
 // is a no-op.

@@ -3,8 +3,8 @@ package function
 import (
 	"fmt"
 	"github.com/shopspring/decimal"
-	"github.com/src-d/go-mysql-server/sql"
-	"github.com/src-d/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 // AbsVal is a function that takes the absolute value of a number

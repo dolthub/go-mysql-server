@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	sqle "github.com/src-d/go-mysql-server"
+	sqle "github.com/liquidata-inc/go-mysql-server"
 
-	"github.com/src-d/go-mysql-server/memory"
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/memory"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 var scriptsPath = "../_scripts/tpc-h/"

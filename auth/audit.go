@@ -4,7 +4,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 	"vitess.io/vitess/go/mysql"
 
 	"github.com/sirupsen/logrus"

@@ -3,8 +3,8 @@ package function
 import (
 	"math"
 
-	"github.com/src-d/go-mysql-server/sql"
-	"github.com/src-d/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
 )
 
 // Defaults is the function map with all the default functions.

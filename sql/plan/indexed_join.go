@@ -2,7 +2,7 @@ package plan
 
 import (
 	"github.com/opentracing/opentracing-go"
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 	"io"
 	"reflect"
 )

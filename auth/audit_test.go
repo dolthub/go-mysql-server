@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/src-d/go-mysql-server/auth"
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/auth"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 
 	"github.com/sanity-io/litter"
 	"github.com/sirupsen/logrus"

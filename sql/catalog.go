@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/src-d/go-mysql-server/internal/similartext"
+	"github.com/liquidata-inc/go-mysql-server/internal/similartext"
 
 	"gopkg.in/src-d/go-errors.v1"
 )

@@ -3,7 +3,7 @@ package plan
 import (
 	"io"
 
-	"github.com/src-d/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // Union is a node that returns everything in Left and then everything in Right
