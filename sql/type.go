@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -97,7 +98,7 @@ func AreComparable(types ...Type) bool {
 
 // ColumnTypeToType gets the column type using the column definition.
 func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
-	switch ct.Type {
+	switch strings.ToLower(ct.Type) {
 	case "boolean", "bool":
 		return Int8, nil
 	case "tinyint":

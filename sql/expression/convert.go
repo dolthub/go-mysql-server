@@ -53,7 +53,7 @@ type Convert struct {
 func NewConvert(expr sql.Expression, castToType string) *Convert {
 	return &Convert{
 		UnaryExpression: UnaryExpression{Child: expr},
-		castToType:      castToType,
+		castToType:      strings.ToLower(castToType),
 	}
 }
 
@@ -131,7 +131,7 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // convertValue only returns an error if converting to JSON, and returns the zero value for float types.
 // Nil is returned in all other cases.
 func convertValue(val interface{}, castTo string) (interface{}, error) {
-	switch castTo {
+	switch strings.ToLower(castTo) {
 	case ConvertToBinary:
 		b, err := sql.LongBlob.Convert(val)
 		if err != nil {

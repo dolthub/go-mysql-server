@@ -71,6 +71,14 @@ var queries = []queryTest{
 		[]sql.Row{{int64(2)}, {int64(3)}, {int64(4)}},
 	},
 	{
+		"SELECT i div 2 FROM mytable order by 1;",
+		[]sql.Row{{int64(0)}, {int64(1)}, {int64(1)}},
+	},
+	{
+		"SELECT i DIV 2 FROM mytable order by 1;",
+		[]sql.Row{{int64(0)}, {int64(1)}, {int64(1)}},
+	},
+	{
 		"SELECT -i FROM mytable;",
 		[]sql.Row{{int64(-1)}, {int64(-2)}, {int64(-3)}},
 	},
@@ -393,7 +401,7 @@ var queries = []queryTest{
 		nil,
 	},
 	{
-		"SELECT id FROM typestable WHERE ti > date_add('2019-12-30', INTERVAL 1 DAY)",
+		"SELECT id FROM typestable WHERE ti > date_add('2019-12-30', INTERVAL 1 day)",
 		[]sql.Row{{int64(1)}},
 	},
 	{
@@ -1460,7 +1468,7 @@ var queries = []queryTest{
 		[]sql.Row{{string("bar")}},
 	},
 	{
-		"SELECT DATE_ADD('2018-05-02', INTERVAL 1 DAY)",
+		"SELECT DATE_ADD('2018-05-02', INTERVAL 1 day)",
 		[]sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
@@ -5872,6 +5880,15 @@ func TestColumnAliases(t *testing.T) {
 		{
 			query:            `SELECT s as coL1, SUM(i) coL2 FROM mytable group by 1 order by 2`,
 			expectedColNames: []string{"coL1", "coL2"},
+			expectedRows: []sql.Row{
+				{"first row", float64(1)},
+				{"second row", float64(2)},
+				{"third row", float64(3)},
+			},
+		},
+		{
+			query:            `SELECT s as Date, SUM(i) TimeStamp FROM mytable group by 1 order by 2`,
+			expectedColNames: []string{"Date", "TimeStamp"},
 			expectedRows: []sql.Row{
 				{"first row", float64(1)},
 				{"second row", float64(2)},

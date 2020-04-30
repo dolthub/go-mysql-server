@@ -1346,7 +1346,7 @@ var fixtures = map[string]sql.Node{
 	),
 	"SHOW COLLATION WHERE Charset = 'foo'": plan.NewFilter(
 		expression.NewEquals(
-			expression.NewUnresolvedColumn("charset"),
+			expression.NewUnresolvedColumn("Charset"),
 			expression.NewLiteral("foo", sql.LongText),
 		),
 		showCollationProjection,

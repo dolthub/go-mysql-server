@@ -270,13 +270,14 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 }
 
 func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, error) {
-	switch s.Type {
+	showType := strings.ToLower(s.Type)
+	switch showType {
 	case "create table", "create view":
 		return plan.NewShowCreateTable(
 			s.Table.Qualifier.String(),
 			nil,
 			plan.NewUnresolvedTable(s.Table.Name.String(), s.Table.Qualifier.String()),
-			s.Type == "create view",
+			showType == "create view",
 		), nil
 	case "create database", "create schema":
 		return plan.NewShowCreateDatabase(
@@ -454,7 +455,7 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 }
 
 func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
-	switch c.Action {
+	switch strings.ToLower(c.Action) {
 	case sqlparser.CreateStr:
 		if !c.View.IsEmpty() {
 			return convertCreateView(ctx, query, c)
@@ -494,7 +495,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	if ddl.IndexSpec != nil {
 		return convertAlterIndex(ctx, ddl)
 	}
-	switch ddl.ColumnAction {
+	switch strings.ToLower(ddl.ColumnAction) {
 	case sqlparser.AddStr:
 		sch, err := tableSpecToSchema(ctx, ddl.TableSpec)
 		if err != nil {
@@ -518,7 +519,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 
 func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	table := plan.NewUnresolvedTable(ddl.Table.Name.String(), ddl.Table.Qualifier.String())
-	switch ddl.IndexSpec.Action {
+	switch strings.ToLower(ddl.IndexSpec.Action) {
 	case sqlparser.CreateStr:
 		var using sql.IndexUsing
 		switch ddl.IndexSpec.Using.Lowered() {
@@ -972,7 +973,7 @@ func tableExprToTable(
 			return nil, err
 		}
 
-		switch t.Join {
+		switch strings.ToLower(t.Join) {
 		case sqlparser.JoinStr:
 			return plan.NewInnerJoin(left, right, cond), nil
 		case sqlparser.LeftJoinStr:
@@ -1003,7 +1004,7 @@ func orderByToSort(ctx *sql.Context, ob sqlparser.OrderBy, child sql.Node) (*pla
 		}
 
 		var so plan.SortOrder
-		switch o.Direction {
+		switch strings.ToLower(o.Direction) {
 		default:
 			return nil, ErrInvalidSortOrder.New(o.Direction)
 		case sqlparser.AscScr:
@@ -1304,7 +1305,7 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return nil, err
 		}
 
-		switch v.Operator {
+		switch strings.ToLower(v.Operator) {
 		case sqlparser.BetweenStr:
 			return expression.NewBetween(val, lower, upper), nil
 		case sqlparser.NotBetweenStr:
@@ -1428,7 +1429,7 @@ func isExprToExpression(ctx *sql.Context, c *sqlparser.IsExpr) (sql.Expression, 
 		return nil, err
 	}
 
-	switch c.Operator {
+	switch strings.ToLower(c.Operator) {
 	case sqlparser.IsNullStr:
 		return expression.NewIsNull(e), nil
 	case sqlparser.IsNotNullStr:
@@ -1457,7 +1458,7 @@ func comparisonExprToExpression(ctx *sql.Context, c *sqlparser.ComparisonExpr) (
 		return nil, err
 	}
 
-	switch c.Operator {
+	switch strings.ToLower(c.Operator) {
 	default:
 		return nil, ErrUnsupportedFeature.New(c.Operator)
 	case sqlparser.RegexpStr:
@@ -1527,7 +1528,7 @@ func selectExprToExpression(ctx *sql.Context, se sqlparser.SelectExpr) (sql.Expr
 }
 
 func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expression, error) {
-	switch e.Operator {
+	switch strings.ToLower(e.Operator) {
 	case sqlparser.MinusStr:
 		expr, err := exprToExpression(ctx, e.Expr)
 		if err != nil {
@@ -1545,7 +1546,7 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 }
 
 func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Expression, error) {
-	switch be.Operator {
+	switch strings.ToLower(be.Operator) {
 	case
 		sqlparser.PlusStr,
 		sqlparser.MinusStr,
@@ -1780,15 +1781,15 @@ func parseShowTableStatus(ctx *sql.Context, query string) (sql.Node, error) {
 		return nil, err
 	}
 
-	switch strings.ToUpper(clause) {
-	case "FROM", "IN":
+	switch strings.ToLower(clause) {
+	case "from", "in":
 		var db string
 		if err := readQuotableIdent(&db)(buf); err != nil {
 			return nil, err
 		}
 
 		return plan.NewShowTableStatus(db), nil
-	case "WHERE", "LIKE":
+	case "where", "like":
 		bs, err := ioutil.ReadAll(buf)
 		if err != nil {
 			return nil, err
@@ -1800,7 +1801,7 @@ func parseShowTableStatus(ctx *sql.Context, query string) (sql.Node, error) {
 		}
 
 		var filter sql.Expression
-		if strings.ToUpper(clause) == "LIKE" {
+		if strings.ToLower(clause) == "like" {
 			filter = expression.NewLike(
 				expression.NewUnresolvedColumn("Name"),
 				expr,
