@@ -519,7 +519,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 
 func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	table := plan.NewUnresolvedTable(ddl.Table.Name.String(), ddl.Table.Qualifier.String())
-	switch ddl.IndexSpec.Action {
+	switch strings.ToLower(ddl.IndexSpec.Action) {
 	case sqlparser.CreateStr:
 		var using sql.IndexUsing
 		switch ddl.IndexSpec.Using.Lowered() {
