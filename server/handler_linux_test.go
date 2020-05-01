@@ -29,6 +29,7 @@ func TestBrokenConnection(t *testing.T) {
 		NewSessionManager(
 			testSessionBuilder,
 			opentracing.NoopTracer{},
+			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			"foo",
 		),
