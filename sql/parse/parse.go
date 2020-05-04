@@ -497,7 +497,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	}
 	switch strings.ToLower(ddl.ColumnAction) {
 	case sqlparser.AddStr:
-		sch, err := tableSpecToSchema(ctx, ddl.TableSpec)
+		sch, err := TableSpecToSchema(ctx, ddl.TableSpec)
 		if err != nil {
 			return nil, err
 		}
@@ -507,7 +507,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	case sqlparser.RenameStr:
 		return plan.NewRenameColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String(), ddl.ToColumn.String()), nil
 	case sqlparser.ModifyStr, sqlparser.ChangeStr:
-		sch, err := tableSpecToSchema(nil, ddl.TableSpec)
+		sch, err := TableSpecToSchema(nil, ddl.TableSpec)
 		if err != nil {
 			return nil, err
 		}
@@ -621,7 +621,7 @@ func convertDropTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 }
 
 func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
-	schema, err := tableSpecToSchema(nil, c.TableSpec)
+	schema, err := TableSpecToSchema(nil, c.TableSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -762,7 +762,7 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 	return plan.NewUpdate(node, updateExprs), nil
 }
 
-func tableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
+func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
 	var schema sql.Schema
 	for _, cd := range tableSpec.Columns {
 		column, err := columnDefinitionToColumn(ctx, cd, tableSpec.Indexes)
