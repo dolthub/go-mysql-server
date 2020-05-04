@@ -129,10 +129,15 @@ func (t yearType) Promote() Type {
 
 // SQL implements Type interface.
 func (t yearType) SQL(v interface{}) (sqltypes.Value, error) {
+	if v == nil {
+		return sqltypes.NULL, nil
+	}
+
 	v, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
+
 	return sqltypes.MakeTrusted(sqltypes.Year, strconv.AppendInt(nil, int64(v.(int16)), 10)), nil
 }
 

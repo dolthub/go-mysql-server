@@ -452,6 +452,11 @@ func rowToSQL(s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 	o := make([]sqltypes.Value, len(row))
 	var err error
 	for i, v := range row {
+		if v == nil {
+			o[i] = sqltypes.NULL
+			continue
+		}
+
 		o[i], err = s[i].Type.SQL(v)
 		if err != nil {
 			return nil, err
