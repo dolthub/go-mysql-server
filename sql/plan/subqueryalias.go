@@ -27,14 +27,12 @@ func (n *SubqueryAlias) Name() string { return n.name }
 
 // Schema implements the Node interface.
 func (n *SubqueryAlias) Schema() sql.Schema {
-	if n.schema == nil {
-		schema := n.Child.Schema()
-		n.schema = make(sql.Schema, len(schema))
-		for i, col := range schema {
-			c := *col
-			c.Source = n.name
-			n.schema[i] = &c
-		}
+	schema := n.Child.Schema()
+	n.schema = make(sql.Schema, len(schema))
+	for i, col := range schema {
+		c := *col
+		c.Source = n.name
+		n.schema[i] = &c
 	}
 	return n.schema
 }
