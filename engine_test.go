@@ -67,6 +67,64 @@ var queries = []queryTest{
 			{"third row", int64(3)}},
 	},
 	{
+		"SELECT s,i FROM MyTable ORDER BY 2",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT mt.s,mt.i FROM MyTable MT ORDER BY 2;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT MyTABLE.s,myTable.i FROM MyTable MT ORDER BY 2;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT mt.* FROM MyTable MT ORDER BY 2;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT myTable.* FROM MYTABLE mt ORDER BY myTable.i;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT MyTABLE.S,myTable.I FROM MyTable MT ORDER BY mytable.i;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT timestamp FROM reservedWordsTable;",
+		[]sql.Row{{"1"}},
+	},
+	{
+		"SELECT RW.TIMESTAMP FROM reservedWordsTable rw;",
+		[]sql.Row{{"1"}},
+	},
+	{
+		"SELECT `AND`, RW.`Or`, `SEleCT` FROM reservedWordsTable rw;",
+		[]sql.Row{{"1.1", "aaa", "create"}},
+	},
+	{
+		"SELECT reservedWordsTable.AND, reservedWordsTABLE.Or, Rw.SEleCT FROM reservedWordsTable rw;",
+		[]sql.Row{{"1.1", "aaa", "create"}},
+	},
+	{
 		"SELECT i + 1 FROM mytable;",
 		[]sql.Row{{int64(2)}, {int64(3)}, {int64(4)}},
 	},
@@ -2575,25 +2633,25 @@ func TestQueries(t *testing.T) {
 	// 1) Partitioned tables / non partitioned tables
 	// 2) Mergeable / unmergeable / no indexes
 	// 3) Parallelism on / off
-	if debugQuery == "" {
-		numPartitionsVals = []int{
-			1,
-			testNumPartitions,
-		}
-		indexDrivers = []*indexDriverTestCase{
-			nil,
-			{"unmergableIndexes", unmergableIndexDriver},
-			{"mergableIndexes", mergableIndexDriver},
-		}
-		parallelVals = []int{
-			1,
-			2,
-		}
-	} else {
+	// if debugQuery == "" {
+	// 	numPartitionsVals = []int{
+	// 		1,
+	// 		testNumPartitions,
+	// 	}
+	// 	indexDrivers = []*indexDriverTestCase{
+	// 		nil,
+	// 		{"unmergableIndexes", unmergableIndexDriver},
+	// 		{"mergableIndexes", mergableIndexDriver},
+	// 	}
+	// 	parallelVals = []int{
+	// 		1,
+	// 		2,
+	// 	}
+	// } else {
 		numPartitionsVals = []int{ 1 }
 		indexDrivers = []*indexDriverTestCase{{"unmergableIndexes", unmergableIndexDriver}}
 		parallelVals = []int{ 1 }
-	}
+	// }
 
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexDriverInit := range indexDrivers {
@@ -5504,7 +5562,18 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 		sql.NewRow(int64(4), "false"),
 		sql.NewRow(int64(5), nil),
 		sql.NewRow(nil, "2"),
+	)
 
+	tables["reservedWordsTable"] = memory.NewPartitionedTable("reservedWordsTable", sql.Schema{
+		{Name: "Timestamp", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
+		{Name: "and", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
+		{Name: "or", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
+		{Name: "select", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
+	}, numPartitions)
+
+	insertRows(
+		t, tables["reservedWordsTable"],
+		sql.NewRow("1", "1.1", "aaa", "create"),
 	)
 
 	tables["myhistorytable-2019-01-01"] = memory.NewPartitionedTable("myhistorytable", sql.Schema{
