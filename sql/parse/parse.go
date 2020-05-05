@@ -762,6 +762,7 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 	return plan.NewUpdate(node, updateExprs), nil
 }
 
+// TableSpecToSchema creates a sql.Schema from a parsed TableSpec
 func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
 	var schema sql.Schema
 	for _, cd := range tableSpec.Columns {
