@@ -74,6 +74,13 @@ var queries = []queryTest{
 			{"third row", int64(3)}},
 	},
 	{
+		"SELECT S,I FROM MyTable ORDER BY 2",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
 		"SELECT mt.s,mt.i FROM MyTable MT ORDER BY 2;",
 		[]sql.Row{
 			{"first row", int64(1)},
@@ -81,28 +88,35 @@ var queries = []queryTest{
 			{"third row", int64(3)}},
 	},
 	{
-		"SELECT MyTABLE.s,myTable.i FROM MyTable MT ORDER BY 2;",
+		"SELECT mT.S,Mt.I FROM MyTable MT ORDER BY 2;",
 		[]sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)}},
 	},
 	{
-		"SELECT mt.* FROM MyTable MT ORDER BY 2;",
+		"SELECT mt.* FROM MyTable MT ORDER BY mT.I;",
+		[]sql.Row{
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"}},
+	},
+	{
+		"SELECT MyTABLE.s,myTable.i FROM MyTable ORDER BY 2;",
 		[]sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)}},
 	},
 	{
-		"SELECT myTable.* FROM MYTABLE mt ORDER BY myTable.i;",
+		"SELECT myTable.* FROM MYTABLE ORDER BY myTable.i;",
 		[]sql.Row{
-			{"first row", int64(1)},
-			{"second row", int64(2)},
-			{"third row", int64(3)}},
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"}},
 	},
 	{
-		"SELECT MyTABLE.S,myTable.I FROM MyTable MT ORDER BY mytable.i;",
+		"SELECT MyTABLE.S,myTable.I FROM MyTable ORDER BY mytable.i;",
 		[]sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
