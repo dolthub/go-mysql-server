@@ -2047,7 +2047,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk, two_pk tpk WHERE pk=pk1 ORDER BY 1,2,3",
+		"SELECT opk.c5,pk1,pk2 FROM one_pk opk, two_pk tpk WHERE pk=pk1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{0, 0, 1},
@@ -2065,7 +2065,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1,2,3",
+		"SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{0, 0, 1},
@@ -2074,7 +2074,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3",
+		"SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{0, 0, 1},
@@ -2083,7 +2083,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 ORDER BY 1,2,3",
+		"SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{0, 0, 1},
@@ -2112,14 +2112,14 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
+		"SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{1, 1, 1},
 		},
 	},
 	{
-		"SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=two_pk.pk1 AND pk=tpk.pk2 ORDER BY 1,2,3",
+		"SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=tpk.pk1 AND pk=tpk.pk2 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{1, 1, 1},
@@ -4534,6 +4534,15 @@ var errorQueries = []queryError {
 		query:       "select myTable.* from mytable as mt", // alias overwrites the original table name
 		expectedErr: sql.ErrTableNotFound,
 	},
+	{
+		query:       "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 ORDER BY 1,2,3", // alias overwrites the original table name
+		expectedErr: sql.ErrTableNotFound,
+	},
+	{
+		query:       "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3", // alias overwrites the original table name
+		expectedErr: sql.ErrTableNotFound,
+	},
+
 }
 
 func TestQueryErrors(t *testing.T) {
