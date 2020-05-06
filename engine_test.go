@@ -2630,7 +2630,7 @@ var infoSchemaQueries = []queryTest {
 }
 
 // Set to a query to run only tests for that query
-var debugQuery = ""
+var debugQuery = ""//"SELECT mt.* FROM MyTable MT ORDER BY mT.I;"
 
 func TestQueries(t *testing.T) {
 	type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
@@ -4526,6 +4526,14 @@ var errorQueries = []queryError {
 		query:       "select foo.i from mytable as a",
 		expectedErr: sql.ErrTableNotFound,
 	},
+	{
+		query:       "select myTable.i from mytable as mt", // alias overwrites the original table name
+		expectedErr: sql.ErrTableNotFound,
+	},
+	{
+		query:       "select myTable.* from mytable as mt", // alias overwrites the original table name
+		expectedErr: sql.ErrTableNotFound,
+	},
 }
 
 func TestQueryErrors(t *testing.T) {
@@ -5653,6 +5661,9 @@ func newEngineWithParallelism(t *testing.T, parallelism int, tables map[string]*
 	} else {
 		a = analyzer.NewDefault(catalog)
 	}
+
+	// a.Debug = true
+	// a.Verbose = true
 
 	idxReg := sql.NewIndexRegistry()
 	if driver != nil {

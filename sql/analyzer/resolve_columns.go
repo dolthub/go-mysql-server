@@ -200,10 +200,6 @@ func qualifyExpression(
 		}
 	case *expression.Star:
 		if col.Table != "" {
-			if real, ok := tables[strings.ToLower(col.Table)]; ok {
-				col = expression.NewQualifiedStar(real)
-			}
-
 			if _, ok := tables[strings.ToLower(col.Table)]; !ok {
 				return nil, sql.ErrTableNotFound.New(col.Table)
 			}
@@ -264,11 +260,11 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 
 func getNodeAvailableTables(n sql.Node) map[string]string {
 	tables := make(map[string]string)
-	getNodesAvailableTables(tables, n.Children()...)
+	getNodesAvailableTables(tables, n.Children())
 	return tables
 }
 
-func getNodesAvailableTables(tables map[string]string, nodes ...sql.Node) {
+func getNodesAvailableTables(tables map[string]string, nodes []sql.Node) {
 	for _, n := range nodes {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias, *plan.ResolvedTable:
@@ -280,12 +276,11 @@ func getNodesAvailableTables(tables map[string]string, nodes ...sql.Node) {
 				name := strings.ToLower(t.(sql.Nameable).Name())
 				alias := strings.ToLower(n.Name())
 				tables[alias] = name
-				// Also add the name of the table because you can refer to a
-				// table with either the alias or the name.
-				tables[name] = name
+				// If a table has been aliased, you must refer to the table with the alias, not the original name. So delete it.
+				delete(tables, name)
 			}
 		default:
-			getNodesAvailableTables(tables, n.Children()...)
+			getNodesAvailableTables(tables, n.Children())
 		}
 	}
 }

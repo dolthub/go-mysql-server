@@ -4,6 +4,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
+	"strings"
 )
 
 func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -53,7 +54,8 @@ func expandStars(a *Analyzer, exprs []sql.Expression, schema sql.Schema, tableAl
 		if s, ok := e.(*expression.Star); ok {
 			var exprs []sql.Expression
 			for i, col := range schema {
-				if s.Table == "" || s.Table == col.Source || (tableAliases[col.Source] != nil && tableAliases[col.Source].Name() == s.Table) {
+				lowerSource := strings.ToLower(col.Source)
+				if s.Table == "" || s.Table == lowerSource || (tableAliases[lowerSource] != nil && tableAliases[lowerSource].Name() == s.Table) {
 					exprs = append(exprs, expression.NewGetFieldWithTable(
 						i, col.Type, col.Source, col.Name, col.Nullable,
 					))
