@@ -135,7 +135,7 @@ var queries = []queryTest{
 		[]sql.Row{{"1.1", "aaa", "create"}},
 	},
 	{
-		"SELECT reservedWordsTable.AND, reservedWordsTABLE.Or, Rw.SEleCT FROM reservedWordsTable rw;",
+		"SELECT reservedWordsTable.AND, reservedWordsTABLE.Or, reservedwordstable.SEleCT FROM reservedWordsTable;",
 		[]sql.Row{{"1.1", "aaa", "create"}},
 	},
 	{
@@ -2630,7 +2630,7 @@ var infoSchemaQueries = []queryTest {
 }
 
 // Set to a query to run only tests for that query
-var debugQuery = ""//"SELECT mt.* FROM MyTable MT ORDER BY mT.I;"
+var debugQuery = ""//"SELECT myTable.* FROM MYTABLE ORDER BY myTable.i;"
 
 func TestQueries(t *testing.T) {
 	type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver

@@ -55,7 +55,9 @@ func expandStars(a *Analyzer, exprs []sql.Expression, schema sql.Schema, tableAl
 			var exprs []sql.Expression
 			for i, col := range schema {
 				lowerSource := strings.ToLower(col.Source)
-				if s.Table == "" || s.Table == lowerSource || (tableAliases[lowerSource] != nil && tableAliases[lowerSource].Name() == s.Table) {
+				lowerTable := strings.ToLower(s.Table)
+				if s.Table == "" || lowerTable == lowerSource ||
+					(tableAliases[lowerSource] != nil && strings.ToLower(tableAliases[lowerSource].Name()) == lowerTable) {
 					exprs = append(exprs, expression.NewGetFieldWithTable(
 						i, col.Type, col.Source, col.Name, col.Nullable,
 					))
