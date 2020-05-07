@@ -53,7 +53,10 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	}
 
 	exprAliases := getExpressionAliases(n)
-	tableAliases := getTableAliases(n)
+	tableAliases, err := getTableAliases(n)
+	if err != nil {
+		return nil, err
+	}
 
 	a.Log("transforming nodes with pushdown of filters, projections and indexes")
 	return transformPushdown(ctx, a, n, filters, indexes, fieldsByTable, exprAliases, tableAliases)

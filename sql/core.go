@@ -36,6 +36,9 @@ var (
 
 	// ErrDeleteRowNotFound
 	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete").New()
+
+  // ErrDuplicateAlias should be returned when a query contains a duplicate alias / table name.
+  ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 )
 
 // Nameable is something that has a name.

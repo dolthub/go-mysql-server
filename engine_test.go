@@ -4479,7 +4479,14 @@ var errorQueries = []queryError {
 		query:       "SELECT t.i, myview1.s FROM myview AS t ORDER BY i", // alias overwrites the original view name
 		expectedErr: sql.ErrTableNotFound,
 	},
-
+	{
+		query:       "SELECT * FROM mytable AS t, othertable as t", // duplicate alias
+		expectedErr: sql.ErrDuplicateAliasOrTable,
+	},
+	{
+		query:       "SELECT * FROM mytable AS OTHERTABLE, othertable", // alias / table conflict
+		expectedErr: sql.ErrDuplicateAliasOrTable,
+	},
 }
 
 func TestQueryErrors(t *testing.T) {

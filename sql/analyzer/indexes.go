@@ -41,10 +41,13 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node) (indexLooku
 		}
 	}()
 
-	exprAliases := getExpressionAliases(node)
-	tableAliases := getTableAliases(node)
-
 	var err error
+	exprAliases := getExpressionAliases(node)
+	tableAliases, err := getTableAliases(node)
+	if err != nil {
+		return nil, err
+	}
+
 	plan.Inspect(node, func(node sql.Node) bool {
 		filter, ok := node.(*plan.Filter)
 		if !ok {

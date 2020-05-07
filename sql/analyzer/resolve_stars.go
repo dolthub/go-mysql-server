@@ -11,7 +11,10 @@ func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, _ := ctx.Span("resolve_star")
 	defer span.Finish()
 
-	tableAliases := getTableAliases(n)
+	tableAliases, err := getTableAliases(n)
+	if err != nil {
+		return nil, err
+	}
 
 	a.Log("resolving star, node of type: %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {

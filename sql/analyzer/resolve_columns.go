@@ -17,9 +17,19 @@ func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, _ := ctx.Span("check_aliases")
 	defer span.Finish()
 
-	a.Log("check aliases")
-
 	var err error
+	tableAliases, err := getTableAliases(n)
+	if err != nil {
+		return nil, err
+	}
+
+	tableNames := getTableNames(n)
+	for _, tableName := range tableNames {
+		if _, ok := tableAliases[strings.ToLower(tableName)]; ok {
+			return nil, sql.ErrDuplicateAliasOrTable.New(tableName)
+		}
+	}
+
 	plan.Inspect(n, func(node sql.Node) bool {
 		p, ok := node.(*plan.Project)
 		if !ok {
@@ -258,6 +268,9 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 	}
 }
 
+// getNodeAvailableTables returns the set of table names and table aliases in the node given, keyed by their
+// lower-cased names. Table aliases overwrite table names: the original name is not considered accessible once aliased.
+// The value of the map is the same as the key, just used for existence checks.
 func getNodeAvailableTables(n sql.Node) map[string]string {
 	tables := make(map[string]string)
 	getNodesAvailableTables(tables, n.Children())
@@ -283,6 +296,23 @@ func getNodesAvailableTables(tables map[string]string, nodes []sql.Node) {
 			getNodesAvailableTables(tables, n.Children())
 		}
 	}
+}
+
+// GetTableNames returns the names of all tables in the node given. Aliases aren't considered.
+func getTableNames(n sql.Node) []string {
+	names := make([]string, 0)
+	plan.Inspect(n, func(node sql.Node) bool {
+		switch x := node.(type) {
+		case *plan.UnresolvedTable:
+			names = append(names, x.Name())
+		case *plan.ResolvedTable:
+			names = append(names, x.Name())
+		}
+
+		return true
+	})
+
+	return names
 }
 
 var errGlobalVariablesNotSupported = errors.NewKind("can't resolve global variable, %s was requested")
@@ -334,7 +364,11 @@ func findChildIndexedColumns(n sql.Node) map[tableCol]indexedCol {
 	var idx int
 	var columns = make(map[tableCol]indexedCol)
 
-	aliases := getTableAliases(n)
+	// Err should be impossible here: aliases should already have been verified
+	aliases, err := getTableAliases(n)
+	if err != nil {
+		panic(err)
+	}
 
 	for _, child := range n.Children() {
 		childSch := child.Schema()

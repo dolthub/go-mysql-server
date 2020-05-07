@@ -13,7 +13,10 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 	defer span.Finish()
 
 	var replacements = make(map[tableCol]tableCol)
-	var tableAliases = getTableAliases(n)
+	tableAliases, err := getTableAliases(n)
+	if err != nil {
+		return nil, err
+	}
 
 	return plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
 		switch n := node.(type) {

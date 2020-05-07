@@ -5,15 +5,28 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
+	"strings"
 )
 
 type ExprAliases map[string]sql.Expression
 type TableAliases map[string]sql.Nameable
 
-// getTableAliases returns a map of all aliased resolved tables in the node, keyed by their alias name
-func getTableAliases(n sql.Node) TableAliases {
+func (ta TableAliases) add(alias *plan.TableAlias, target sql.Nameable) error {
+	lowerName := strings.ToLower(alias.Name())
+	if _, ok := ta[lowerName]; ok {
+		return sql.ErrDuplicateAliasOrTable.New(target.Name())
+	}
+
+	ta[lowerName] = target
+	return nil
+}
+
+// getTableAliases returns a map of all aliases of resolved tables / subqueries in the node, keyed by their alias name
+func getTableAliases(n sql.Node) (TableAliases, error) {
 	aliases := make(TableAliases)
 	var aliasFn func(node sql.Node) bool
+	var analysisErr error
+
 	aliasFn = func(node sql.Node) bool {
 		if node == nil {
 			return false
@@ -21,27 +34,24 @@ func getTableAliases(n sql.Node) TableAliases {
 
 		if at, ok := node.(*plan.TableAlias); ok {
 			switch t := at.Child.(type) {
-			case *plan.ResolvedTable:
-				aliases[at.Name()] = t
+			case *plan.ResolvedTable, *plan.SubqueryAlias:
+				analysisErr = aliases.add(at, t.(sql.Nameable))
+				if analysisErr != nil {
+					return false
+				}
 			case *plan.UnresolvedTable:
 				panic("Table not resolved")
-			case *plan.SubqueryAlias:
-				aliases[at.Name()] = t
 			default:
 				panic(fmt.Sprintf("Unexpected child type of TableAlias: %T", at.Child))
 			}
 			return false
 		}
 
-		for _, child := range node.Children() {
-			plan.Inspect(child, aliasFn)
-		}
-
 		return true
 	}
 
 	plan.Inspect(n, aliasFn)
-	return aliases
+	return aliases, analysisErr
 }
 
 // getExpressionAliases returns a map of all expressions aliased in the SELECT clause, keyed by their alias name

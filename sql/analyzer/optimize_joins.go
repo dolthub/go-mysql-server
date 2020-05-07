@@ -39,7 +39,10 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 	}
 
 	exprAliases := getExpressionAliases(n)
-	tableAliases := getTableAliases(n)
+	tableAliases, err := getTableAliases(n)
+	if err != nil {
+		return nil, err
+	}
 
 	indexes, err := findJoinIndexes(ctx, n, exprAliases, tableAliases, a)
 	if err != nil {
