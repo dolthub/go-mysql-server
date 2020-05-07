@@ -39,6 +39,10 @@ var queries = []queryTest{
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
+		"SELECT i FROM mytable AS mt;",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
 		"SELECT s,i FROM mytable;",
 		[]sql.Row{
 			{"first row", int64(1)},

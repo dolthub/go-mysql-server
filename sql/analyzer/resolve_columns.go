@@ -143,7 +143,7 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 		}
 
 		columns := getNodeAvailableColumns(n)
-		tables := getNodeAvailableTables(n)
+		tables := getTableNamesInNode(n)
 
 		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 			return qualifyExpression(e, columns, tables)
@@ -254,6 +254,10 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 
 	for _, node := range nodes {
 		switch n := node.(type) {
+		case *plan.TableAlias:
+			for _, col := range n.Schema() {
+				indexCol(col.Source, col.Name)
+			}
 		case *plan.ResolvedTable, *plan.SubqueryAlias:
 			for _, col := range n.Schema() {
 				indexCol(col.Source, col.Name)
@@ -271,18 +275,15 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 // getNodeAvailableTables returns the set of table names and table aliases in the node given, keyed by their
 // lower-cased names. Table aliases overwrite table names: the original name is not considered accessible once aliased.
 // The value of the map is the same as the key, just used for existence checks.
-func getNodeAvailableTables(n sql.Node) map[string]string {
+func getTableNamesInNode(node sql.Node) map[string]string {
 	tables := make(map[string]string)
-	getNodesAvailableTables(tables, n.Children())
-	return tables
-}
 
-func getNodesAvailableTables(tables map[string]string, nodes []sql.Node) {
-	for _, n := range nodes {
+	plan.Inspect(node, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias, *plan.ResolvedTable:
 			name := strings.ToLower(n.(sql.Nameable).Name())
 			tables[name] = name
+			return false
 		case *plan.TableAlias:
 			switch t := n.Child.(type) {
 			case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias:
@@ -292,10 +293,13 @@ func getNodesAvailableTables(tables map[string]string, nodes []sql.Node) {
 				// If a table has been aliased, you must refer to the table with the alias, not the original name. So delete it.
 				delete(tables, name)
 			}
-		default:
-			getNodesAvailableTables(tables, n.Children())
+			return false
 		}
-	}
+
+		return true
+	})
+
+	return tables
 }
 
 // GetTableNames returns the names of all tables in the node given. Aliases aren't considered.
