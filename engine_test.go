@@ -630,6 +630,15 @@ var queries = []queryTest{
 			{int64(3), int64(3), "first"},
 		},
 	},
+	// TODO: this should work, but generates a table name conflict right now
+	// {
+	// 	"SELECT i, i2, s2 FROM mytable as OTHERTABLE INNER JOIN othertable as MYTABLE ON i = i2 ORDER BY i",
+	// 	[]sql.Row{
+	// 		{int64(1), int64(1), "third"},
+	// 		{int64(2), int64(2), "second"},
+	// 		{int64(3), int64(3), "first"},
+	// 	},
+	// },
 	{
 		"SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
 		[]sql.Row{
@@ -4458,6 +4467,22 @@ var errorQueries = []queryError {
 	{
 		query:       "select foo.i from mytable as a",
 		expectedErr: sql.ErrTableNotFound,
+	},
+	{
+		query:       "select foo.i from mytable",
+		expectedErr: sql.ErrTableNotFound,
+	},
+	{
+		query:       "select foo.* from mytable",
+		expectedErr: sql.ErrTableNotFound,
+	},
+	{
+		query:       "select foo.* from mytable as a",
+		expectedErr: sql.ErrTableNotFound,
+	},
+	{
+		query:       "select x from mytable",
+		expectedErr: analyzer.ErrColumnNotFound,
 	},
 	{
 		query:       "select myTable.i from mytable as mt", // alias overwrites the original table name
