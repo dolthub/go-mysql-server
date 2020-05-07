@@ -1,4 +1,4 @@
- package function
+package function
 
 import (
 	"encoding/json"
