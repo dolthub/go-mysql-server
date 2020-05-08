@@ -2627,7 +2627,7 @@ var infoSchemaQueries = []queryTest {
 }
 
 // Set to a query to run only tests for that query
-var debugQuery = ""//"SELECT myTable.* FROM MYTABLE ORDER BY myTable.i;"
+var debugQuery = ""
 
 func TestQueries(t *testing.T) {
 	type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
@@ -2674,6 +2674,11 @@ func TestQueries(t *testing.T) {
 					indexDriver = indexDriverInit.initializer(tables)
 				}
 				engine, idxReg := newEngineWithParallelism(t, parallelism, tables, indexDriver)
+
+				if len(debugQuery) > 0 {
+					engine.Analyzer.Verbose = true
+					engine.Analyzer.Debug = true
+				}
 
 				indexDriverName := "none"
 				if indexDriverInit != nil {
@@ -5643,9 +5648,6 @@ func newEngineWithParallelism(t *testing.T, parallelism int, tables map[string]*
 	} else {
 		a = analyzer.NewDefault(catalog)
 	}
-
-	// a.Debug = true
-	// a.Verbose = true
 
 	idxReg := sql.NewIndexRegistry()
 	if driver != nil {

@@ -41,7 +41,6 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node) (indexLooku
 		}
 	}()
 
-	var err error
 	exprAliases := getExpressionAliases(node)
 	tableAliases, err := getTableAliases(node)
 	if err != nil {
