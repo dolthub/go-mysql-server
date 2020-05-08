@@ -4,13 +4,17 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
+	"strings"
 )
 
 func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, _ := ctx.Span("resolve_star")
 	defer span.Finish()
 
-	tableAliases := getTableAliases(n)
+	tableAliases, err := getTableAliases(n)
+	if err != nil {
+		return nil, err
+	}
 
 	a.Log("resolving star, node of type: %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
@@ -53,7 +57,10 @@ func expandStars(a *Analyzer, exprs []sql.Expression, schema sql.Schema, tableAl
 		if s, ok := e.(*expression.Star); ok {
 			var exprs []sql.Expression
 			for i, col := range schema {
-				if s.Table == "" || s.Table == col.Source || (tableAliases[col.Source] != nil && tableAliases[col.Source].Name() == s.Table) {
+				lowerSource := strings.ToLower(col.Source)
+				lowerTable := strings.ToLower(s.Table)
+				if s.Table == "" || lowerTable == lowerSource ||
+					(tableAliases[lowerSource] != nil && strings.ToLower(tableAliases[lowerSource].Name()) == lowerTable) {
 					exprs = append(exprs, expression.NewGetFieldWithTable(
 						i, col.Type, col.Source, col.Name, col.Nullable,
 					))

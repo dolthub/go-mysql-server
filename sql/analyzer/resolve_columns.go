@@ -17,9 +17,18 @@ func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	span, _ := ctx.Span("check_aliases")
 	defer span.Finish()
 
-	a.Log("check aliases")
+	tableAliases, err := getTableAliases(n)
+	if err != nil {
+		return nil, err
+	}
 
-	var err error
+	tableNames := getTableNames(n)
+	for _, tableName := range tableNames {
+		if _, ok := tableAliases[strings.ToLower(tableName)]; ok {
+			return nil, sql.ErrDuplicateAliasOrTable.New(tableName)
+		}
+	}
+
 	plan.Inspect(n, func(node sql.Node) bool {
 		p, ok := node.(*plan.Project)
 		if !ok {
@@ -133,7 +142,7 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error)
 		}
 
 		columns := getNodeAvailableColumns(n)
-		tables := getNodeAvailableTables(n)
+		tables := getTableNamesInNode(n)
 
 		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 			return qualifyExpression(e, columns, tables)
@@ -155,7 +164,7 @@ func qualifyExpression(
 
 		// If this column is already qualified, make sure the table name is known
 		if col.Table() != "" {
-			if _, ok := tables[col.Table()]; !ok {
+			if _, ok := tables[strings.ToLower(col.Table())]; !ok {
 				return nil, sql.ErrTableNotFound.New(col.Table())
 			}
 			return col, nil
@@ -200,10 +209,6 @@ func qualifyExpression(
 		}
 	case *expression.Star:
 		if col.Table != "" {
-			if real, ok := tables[strings.ToLower(col.Table)]; ok {
-				col = expression.NewQualifiedStar(real)
-			}
-
 			if _, ok := tables[strings.ToLower(col.Table)]; !ok {
 				return nil, sql.ErrTableNotFound.New(col.Table)
 			}
@@ -248,6 +253,10 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 
 	for _, node := range nodes {
 		switch n := node.(type) {
+		case *plan.TableAlias:
+			for _, col := range n.Schema() {
+				indexCol(col.Source, col.Name)
+			}
 		case *plan.ResolvedTable, *plan.SubqueryAlias:
 			for _, col := range n.Schema() {
 				indexCol(col.Source, col.Name)
@@ -262,32 +271,51 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 	}
 }
 
-func getNodeAvailableTables(n sql.Node) map[string]string {
+// getNodeAvailableTables returns the set of table names and table aliases in the node given, keyed by their
+// lower-cased names. Table aliases overwrite table names: the original name is not considered accessible once aliased.
+// The value of the map is the same as the key, just used for existence checks.
+func getTableNamesInNode(node sql.Node) map[string]string {
 	tables := make(map[string]string)
-	getNodesAvailableTables(tables, n.Children()...)
-	return tables
-}
 
-func getNodesAvailableTables(tables map[string]string, nodes ...sql.Node) {
-	for _, n := range nodes {
+	plan.Inspect(node, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias, *plan.ResolvedTable:
 			name := strings.ToLower(n.(sql.Nameable).Name())
 			tables[name] = name
+			return false
 		case *plan.TableAlias:
 			switch t := n.Child.(type) {
 			case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias:
 				name := strings.ToLower(t.(sql.Nameable).Name())
 				alias := strings.ToLower(n.Name())
 				tables[alias] = name
-				// Also add the name of the table because you can refer to a
-				// table with either the alias or the name.
-				tables[name] = name
+				// If a table has been aliased, you must refer to the table with the alias, not the original name. So delete it.
+				delete(tables, name)
 			}
-		default:
-			getNodesAvailableTables(tables, n.Children()...)
+			return false
 		}
-	}
+
+		return true
+	})
+
+	return tables
+}
+
+// GetTableNames returns the names of all tables in the node given. Aliases aren't considered.
+func getTableNames(n sql.Node) []string {
+	names := make([]string, 0)
+	plan.Inspect(n, func(node sql.Node) bool {
+		switch x := node.(type) {
+		case *plan.UnresolvedTable:
+			names = append(names, x.Name())
+		case *plan.ResolvedTable:
+			names = append(names, x.Name())
+		}
+
+		return true
+	})
+
+	return names
 }
 
 var errGlobalVariablesNotSupported = errors.NewKind("can't resolve global variable, %s was requested")
@@ -339,7 +367,11 @@ func findChildIndexedColumns(n sql.Node) map[tableCol]indexedCol {
 	var idx int
 	var columns = make(map[tableCol]indexedCol)
 
-	aliases := getTableAliases(n)
+	// Err should be impossible here: aliases should already have been verified
+	aliases, err := getTableAliases(n)
+	if err != nil {
+		panic(err)
+	}
 
 	for _, child := range n.Children() {
 		childSch := child.Schema()

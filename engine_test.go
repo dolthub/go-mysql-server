@@ -39,6 +39,10 @@ var queries = []queryTest{
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
+		"SELECT i FROM mytable AS mt;",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
 		"SELECT s,i FROM mytable;",
 		[]sql.Row{
 			{"first row", int64(1)},
@@ -65,6 +69,78 @@ var queries = []queryTest{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)}},
+	},
+	{
+		"SELECT s,i FROM MyTable ORDER BY 2",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT S,I FROM MyTable ORDER BY 2",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT mt.s,mt.i FROM MyTable MT ORDER BY 2;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT mT.S,Mt.I FROM MyTable MT ORDER BY 2;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT mt.* FROM MyTable MT ORDER BY mT.I;",
+		[]sql.Row{
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"}},
+	},
+	{
+		"SELECT MyTABLE.s,myTable.i FROM MyTable ORDER BY 2;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT myTable.* FROM MYTABLE ORDER BY myTable.i;",
+		[]sql.Row{
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"}},
+	},
+	{
+		"SELECT MyTABLE.S,myTable.I FROM MyTable ORDER BY mytable.i;",
+		[]sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		"SELECT timestamp FROM reservedWordsTable;",
+		[]sql.Row{{"1"}},
+	},
+	{
+		"SELECT RW.TIMESTAMP FROM reservedWordsTable rw;",
+		[]sql.Row{{"1"}},
+	},
+	{
+		"SELECT `AND`, RW.`Or`, `SEleCT` FROM reservedWordsTable rw;",
+		[]sql.Row{{"1.1", "aaa", "create"}},
+	},
+	{
+		"SELECT reservedWordsTable.AND, reservedWordsTABLE.Or, reservedwordstable.SEleCT FROM reservedWordsTable;",
+		[]sql.Row{{"1.1", "aaa", "create"}},
 	},
 	{
 		"SELECT i + 1 FROM mytable;",
@@ -558,6 +634,15 @@ var queries = []queryTest{
 			{int64(3), int64(3), "first"},
 		},
 	},
+	// TODO: this should work, but generates a table name conflict right now
+	// {
+	// 	"SELECT i, i2, s2 FROM mytable as OTHERTABLE INNER JOIN othertable as MYTABLE ON i = i2 ORDER BY i",
+	// 	[]sql.Row{
+	// 		{int64(1), int64(1), "third"},
+	// 		{int64(2), int64(2), "second"},
+	// 		{int64(3), int64(3), "first"},
+	// 	},
+	// },
 	{
 		"SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
 		[]sql.Row{
@@ -1975,7 +2060,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk, two_pk tpk WHERE pk=pk1 ORDER BY 1,2,3",
+		"SELECT opk.c5,pk1,pk2 FROM one_pk opk, two_pk tpk WHERE pk=pk1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{0, 0, 1},
@@ -1993,7 +2078,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1,2,3",
+		"SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{0, 0, 1},
@@ -2002,16 +2087,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3",
-		[]sql.Row{
-			{0, 0, 0},
-			{0, 0, 1},
-			{10, 1, 0},
-			{10, 1, 1},
-		},
-	},
-	{
-		"SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 ORDER BY 1,2,3",
+		"SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{0, 0, 1},
@@ -2040,14 +2116,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
-		[]sql.Row{
-			{0, 0, 0},
-			{1, 1, 1},
-		},
-	},
-	{
-		"SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=two_pk.pk1 AND pk=tpk.pk2 ORDER BY 1,2,3",
+		"SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=tpk.pk1 AND pk=tpk.pk2 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0},
 			{1, 1, 1},
@@ -2606,6 +2675,11 @@ func TestQueries(t *testing.T) {
 				}
 				engine, idxReg := newEngineWithParallelism(t, parallelism, tables, indexDriver)
 
+				if len(debugQuery) > 0 {
+					engine.Analyzer.Verbose = true
+					engine.Analyzer.Debug = true
+				}
+
 				indexDriverName := "none"
 				if indexDriverInit != nil {
 					indexDriverName = indexDriverInit.name
@@ -2964,32 +3038,11 @@ var planTests = []planTest{
 			"",
 	},
 	{
-		query:    "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2",
-		expected: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
-			" └─ LeftIndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
-			"     ├─ Table(one_pk)\n" +
-			"     └─ Table(two_pk)\n",
-	},
-	{
 		query:    "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1",
 		expected: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
 			" └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
 			"     ├─ Table(two_pk): Projected \n" +
 			"     └─ Table(one_pk): Projected \n",
-	},
-	{
-		query:    "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i",
-		expected: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
-			" └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
-			"     ├─ Table(one_pk)\n" +
-			"     └─ Table(niltable)\n",
-	},
-	{
-		query:    "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i",
-		expected: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
-				" └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
-				"     ├─ Table(niltable)\n" +
-				"     └─ Table(one_pk)\n",
 	},
 	{
 		query:    "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
@@ -3088,7 +3141,7 @@ var planTests = []planTest{
 				"",
 	},
 	{
-		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 ORDER BY 1,2,3",
+		query: "SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3",
 		expected: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
 				" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
 				"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
@@ -3099,7 +3152,7 @@ var planTests = []planTest{
 				"",
 	},
 	{
-		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3",
+		query: "SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1,2,3",
 		expected: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
 				" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
 				"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
@@ -3110,18 +3163,7 @@ var planTests = []planTest{
 				"",
 	},
 	{
-		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1,2,3",
-		expected: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-				" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
-				"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
-				"         ├─ TableAlias(tpk)\n" +
-				"         │   └─ Table(two_pk): Projected \n" +
-				"         └─ TableAlias(opk)\n" +
-				"             └─ Table(one_pk): Projected \n" +
-				"",
-	},
-	{
-		query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk, two_pk tpk WHERE pk=pk1 ORDER BY 1,2,3",
+		query: "SELECT opk.c5,pk1,pk2 FROM one_pk opk, two_pk tpk WHERE pk=pk1 ORDER BY 1,2,3",
 		expected: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
 				" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
 				"     └─ Filter(opk.pk = tpk.pk1)\n" +
@@ -3262,16 +3304,6 @@ var planTests = []planTest{
 				"",
 	},
 	{
-		query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
-		expected: "Sort(opk.pk ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-				" └─ IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
-				"     ├─ TableAlias(opk)\n" +
-				"     │   └─ Table(one_pk): Projected \n" +
-				"     └─ TableAlias(tpk)\n" +
-				"         └─ Table(two_pk): Projected \n" +
-				"",
-	},
-	{
 		query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
 		expected: "Sort(opk.pk ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
 				" └─ IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
@@ -3282,7 +3314,7 @@ var planTests = []planTest{
 				"",
 	},
 	{
-		query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=two_pk.pk1 AND pk=tpk.pk2 ORDER BY 1,2,3",
+		query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=tpk.pk1 AND pk=tpk.pk2 ORDER BY 1,2,3",
 		expected: "Sort(opk.pk ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
 				" └─ IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
 				"     ├─ TableAlias(opk)\n" +
@@ -3423,15 +3455,6 @@ func TestViews(t *testing.T) {
 				sql.NewRow(int64(1)),
 				sql.NewRow(int64(2)),
 				sql.NewRow(int64(3)),
-			},
-		},
-		// TODO: this isn't valid in MySQL. Keep it?
-		{
-			"SELECT t.i, myview1.s FROM myview1 AS t ORDER BY i",
-			[]sql.Row{
-				sql.NewRow(int64(1), "first row, 2"),
-				sql.NewRow(int64(2), "second row, 2"),
-				sql.NewRow(int64(3), "third row, 2"),
 			},
 		},
 		{
@@ -4453,6 +4476,50 @@ var errorQueries = []queryError {
 	{
 		query:       "select foo.i from mytable as a",
 		expectedErr: sql.ErrTableNotFound,
+	},
+	{
+		query:       "select foo.i from mytable",
+		expectedErr: sql.ErrTableNotFound,
+	},
+	{
+		query:       "select foo.* from mytable",
+		expectedErr: sql.ErrTableNotFound,
+	},
+	{
+		query:       "select foo.* from mytable as a",
+		expectedErr: sql.ErrTableNotFound,
+	},
+	{
+		query:       "select x from mytable",
+		expectedErr: analyzer.ErrColumnNotFound,
+	},
+	{
+		query:       "select myTable.i from mytable as mt", // alias overwrites the original table name
+		expectedErr: sql.ErrTableNotFound,
+	},
+	{
+		query:       "select myTable.* from mytable as mt", // alias overwrites the original table name
+		expectedErr: sql.ErrTableNotFound,
+	},
+	{
+		query:       "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 ORDER BY 1,2,3", // alias overwrites the original table name
+		expectedErr: sql.ErrTableNotFound,
+	},
+	{
+		query:       "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3", // alias overwrites the original table name
+		expectedErr: sql.ErrTableNotFound,
+	},
+	{
+		query:       "SELECT t.i, myview1.s FROM myview AS t ORDER BY i", // alias overwrites the original view name
+		expectedErr: sql.ErrTableNotFound,
+	},
+	{
+		query:       "SELECT * FROM mytable AS t, othertable as t", // duplicate alias
+		expectedErr: sql.ErrDuplicateAliasOrTable,
+	},
+	{
+		query:       "SELECT * FROM mytable AS OTHERTABLE, othertable", // alias / table conflict
+		expectedErr: sql.ErrDuplicateAliasOrTable,
 	},
 }
 
@@ -5504,7 +5571,18 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 		sql.NewRow(int64(4), "false"),
 		sql.NewRow(int64(5), nil),
 		sql.NewRow(nil, "2"),
+	)
 
+	tables["reservedWordsTable"] = memory.NewPartitionedTable("reservedWordsTable", sql.Schema{
+		{Name: "Timestamp", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
+		{Name: "and", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
+		{Name: "or", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
+		{Name: "select", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
+	}, numPartitions)
+
+	insertRows(
+		t, tables["reservedWordsTable"],
+		sql.NewRow("1", "1.1", "aaa", "create"),
 	)
 
 	tables["myhistorytable-2019-01-01"] = memory.NewPartitionedTable("myhistorytable", sql.Schema{
