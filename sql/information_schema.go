@@ -38,6 +38,8 @@ const (
 	RoutinesTableName = "routines"
 	// ViewsTableName is the name of the views table.
 	ViewsTableName = "views"
+	// UserPrivilegesTableName is the name of the user_privileges table
+	UserPrivilegesTableName = "user_privileges"
 )
 
 const (
@@ -348,6 +350,13 @@ var viewsSchema = Schema{
 	{Name: "collation_connection", Type: LongText, Default: nil, Nullable: false, Source: ViewsTableName},
 }
 
+var userPrivilegesSchema = Schema{
+	{Name: "grantee", Type: LongText, Default: nil, Nullable: false, Source: UserPrivilegesTableName},
+	{Name: "table_catalog", Type: LongText, Default: nil, Nullable: false, Source: UserPrivilegesTableName},
+	{Name: "privilege_type", Type: LongText, Default: nil, Nullable: false, Source: UserPrivilegesTableName},
+	{Name: "is_grantable", Type: LongText, Default: nil, Nullable: false, Source: UserPrivilegesTableName},
+}
+
 func tablesRowIter(ctx *Context, cat *Catalog) RowIter {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
@@ -596,6 +605,12 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				schema:  viewsSchema,
 				catalog: cat,
 				rowIter: viewRowIter,
+			},
+			UserPrivilegesTableName: &informationSchemaTable{
+				name:    UserPrivilegesTableName,
+				schema:  userPrivilegesSchema,
+				catalog: cat,
+				rowIter: emptyRowIter,
 			},
 		},
 	}
