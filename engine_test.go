@@ -2346,6 +2346,42 @@ var queries = []queryTest{
 		},
 	},
 	{
+		"SELECT a.pk,b.pk FROM one_pk a JOIN one_pk b ON a.pk = b.pk",
+		[]sql.Row{
+			{0, 0},
+			{1, 1},
+			{2, 2},
+			{3, 3},
+		},
+	},
+	{
+		"SELECT a.pk,b.pk FROM one_pk a, one_pk b WHERE a.pk = b.pk",
+		[]sql.Row{
+			{0, 0},
+			{1, 1},
+			{2, 2},
+			{3, 3},
+		},
+	},
+	{
+		"SELECT one_pk.pk,b.pk FROM one_pk JOIN one_pk b ON one_pk.pk = b.pk",
+		[]sql.Row{
+			{0, 0},
+			{1, 1},
+			{2, 2},
+			{3, 3},
+		},
+	},
+	{
+		"SELECT one_pk.pk,b.pk FROM one_pk, one_pk b WHERE one_pk.pk = b.pk",
+		[]sql.Row{
+			{0, 0},
+			{1, 1},
+			{2, 2},
+			{3, 3},
+		},
+	},
+	{
 		"SELECT 2.0 + CAST(5 AS DECIMAL)",
 		[]sql.Row{{float64(7)}},
 	},
