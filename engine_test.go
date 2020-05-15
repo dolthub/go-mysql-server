@@ -2346,7 +2346,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT a.pk,b.pk FROM one_pk a JOIN one_pk b ON a.pk = b.pk",
+		"SELECT a.pk,b.pk FROM one_pk a JOIN one_pk b ON a.pk = b.pk order by a.pk",
 		[]sql.Row{
 			{0, 0},
 			{1, 1},
@@ -2355,7 +2355,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT a.pk,b.pk FROM one_pk a, one_pk b WHERE a.pk = b.pk",
+		"SELECT a.pk,b.pk FROM one_pk a, one_pk b WHERE a.pk = b.pk order by a.pk",
 		[]sql.Row{
 			{0, 0},
 			{1, 1},
@@ -2364,7 +2364,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT one_pk.pk,b.pk FROM one_pk JOIN one_pk b ON one_pk.pk = b.pk",
+		"SELECT one_pk.pk,b.pk FROM one_pk JOIN one_pk b ON one_pk.pk = b.pk order by one_pk.pk",
 		[]sql.Row{
 			{0, 0},
 			{1, 1},
@@ -2373,7 +2373,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT one_pk.pk,b.pk FROM one_pk, one_pk b WHERE one_pk.pk = b.pk",
+		"SELECT one_pk.pk,b.pk FROM one_pk, one_pk b WHERE one_pk.pk = b.pk order by one_pk.pk",
 		[]sql.Row{
 			{0, 0},
 			{1, 1},
@@ -2663,7 +2663,7 @@ var infoSchemaQueries = []queryTest {
 }
 
 // Set to a query to run only tests for that query
-var debugQuery = ""
+var debugQuery = ""//"SELECT one_pk.pk,b.pk FROM one_pk JOIN one_pk b ON one_pk.pk = b.pk order by one_pk.pk"
 
 func TestQueries(t *testing.T) {
 	type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver

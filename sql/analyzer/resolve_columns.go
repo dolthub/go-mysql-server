@@ -289,8 +289,6 @@ func getTableNamesInNode(node sql.Node) map[string]string {
 				name := strings.ToLower(t.(sql.Nameable).Name())
 				alias := strings.ToLower(n.Name())
 				tables[alias] = name
-				// If a table has been aliased, you must refer to the table with the alias, not the original name. So delete it.
-				delete(tables, name)
 			}
 			return false
 		}
