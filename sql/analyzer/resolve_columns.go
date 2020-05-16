@@ -365,22 +365,9 @@ func findChildIndexedColumns(n sql.Node) map[tableCol]indexedCol {
 	var idx int
 	var columns = make(map[tableCol]indexedCol)
 
-	// Err should be impossible here: aliases should already have been verified
-	aliases, err := getTableAliases(n)
-	if err != nil {
-		panic(err)
-	}
-
 	for _, child := range n.Children() {
 		childSch := child.Schema()
 		for _, col := range childSch {
-			// Columns of tables with an alias can be named by their aliased or unaliased name. Add an entry for both.
-			if aliasedTable, ok := aliases[strings.ToLower(col.Source)]; ok {
-				columns[tableCol{
-					table: strings.ToLower(aliasedTable.Name()),
-					col:   strings.ToLower(col.Name),
-				}] = indexedCol{col, idx}
-			}
 			columns[tableCol{
 				table: strings.ToLower(col.Source),
 				col:   strings.ToLower(col.Name),
