@@ -223,11 +223,43 @@ func pushdownToTable(
 		}
 	}
 
+	var pushedDownFilterExpression sql.Expression
+	if len(filters[tableNode.Name()]) > 0 {
+		tableFilters := filters[tableNode.Name()]
+		leftToHandle := subtractExprSet(tableFilters, *handledFilters)
+		*handledFilters = append(*handledFilters, leftToHandle...)
+		schema := tableNode.Schema()
+		handled, err := fixFieldIndexesOnExpressions(schema, leftToHandle...)
+		if err != nil {
+			return nil, err
+		}
+
+		pushedDownFilterExpression = expression.JoinAnd(handled...)
+
+		a.Log(
+			"pushed down filters to table %q, %d filters handled of %d",
+			tableNode.Name(),
+			len(handled),
+			len(tableFilters),
+		)
+	}
+
 	switch tableNode.(type) {
 	case *plan.ResolvedTable:
+		if pushedDownFilterExpression != nil {
+			return plan.NewFilter(pushedDownFilterExpression, plan.NewResolvedTable(table)), nil
+		}
 		return plan.NewResolvedTable(table), nil
 	case *plan.TableAlias:
-		return withTable(tableNode, table)
+		node, err := withTable(tableNode, table)
+		if err != nil {
+			return nil, err
+		}
+
+		if pushedDownFilterExpression != nil {
+			return plan.NewFilter(pushedDownFilterExpression, node), nil
+		}
+		return node, nil
 	default:
 		return nil, ErrInvalidNodeType.New("pushdown", tableNode)
 	}
