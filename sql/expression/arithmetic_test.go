@@ -175,7 +175,7 @@ func TestDiv(t *testing.T) {
 		{"1 / 1", 1, 1, 1, ""},
 		{"-1 / 1", -1, 1, -1, ""},
 		{"0 / 1234567890", 0, 12345677890, 0, ""},
-		{"1/0", 1, 0, 0, "error: divide by zero"},
+		{"1/0", 1, 0, 0, "divide by zero"},
 	}
 	for _, tt := range intTestCases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -200,7 +200,7 @@ func TestDiv(t *testing.T) {
 	}{
 		{"1 / 1", 1, 1, 1, ""},
 		{"0 / 1234567890", 0, 12345677890, 0, ""},
-		{"1/0", 1, 0, 0, "error: divide by zero"},
+		{"1/0", 1, 0, 0, "divide by zero"},
 	}
 	for _, tt := range uintTestCases {
 		t.Run(tt.name, func(t *testing.T) {

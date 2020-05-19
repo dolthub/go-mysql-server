@@ -343,7 +343,7 @@ func div(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case uint64:
 			if r == 0 {
-				return nil, fmt.Errorf("error: divide by zero")
+				return nil, fmt.Errorf("divide by zero")
 			}
 			return l / r, nil
 		}
@@ -352,7 +352,7 @@ func div(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case int64:
 			if r == 0 {
-				return nil, fmt.Errorf("error: divide by zero")
+				return nil, fmt.Errorf("divide by zero")
 			}
 			return l / r, nil
 		}
