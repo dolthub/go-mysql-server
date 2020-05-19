@@ -67,6 +67,10 @@ type Index interface {
 	// one expression, it means the index has multiple columns indexed. If it's
 	// just one, it means it may be an expression or a column.
 	Expressions() []string
+}
+
+type DriverIndex interface {
+	Index
 	// Driver ID of the index.
 	Driver() string
 }
@@ -108,6 +112,7 @@ type NegateIndex interface {
 // implemented to grant more capabilities to the index lookup.
 type IndexLookup interface {
 	// Values returns the values in the subset of the index.
+	// TODO: remove
 	Values(Partition) (IndexValueIter, error)
 
 	// Indexes returns the IDs of all indexes involved in this lookup.
@@ -144,13 +149,13 @@ type IndexDriver interface {
 	// Create a new index. If exprs is more than one expression, it means the
 	// index has multiple columns indexed. If it's just one, it means it may
 	// be an expression or a column.
-	Create(db, table, id string, expressions []Expression, config map[string]string) (Index, error)
+	Create(db, table, id string, expressions []Expression, config map[string]string) (DriverIndex, error)
 	// LoadAll loads all indexes for given db and table.
-	LoadAll(ctx *Context, db, table string) ([]Index, error)
+	LoadAll(ctx *Context, db, table string) ([]DriverIndex, error)
 	// Save the given index for all partitions.
-	Save(*Context, Index, PartitionIndexKeyValueIter) error
+	Save(*Context, DriverIndex, PartitionIndexKeyValueIter) error
 	// Delete the given index for all partitions in the iterator.
-	Delete(Index, PartitionIter) error
+	Delete(DriverIndex, PartitionIter) error
 }
 
 type indexKey struct {
@@ -415,7 +420,7 @@ type exprWithTable interface {
 }
 
 // IndexByExpression returns an index by the given expression. It will return
-// nil it the index is not found. If more than one expression is given, all
+// nil if the index is not found. If more than one expression is given, all
 // of them must match for the index to be matched.
 func (r *IndexRegistry) IndexByExpression(ctx *Context, db string, expr ...Expression) Index {
 	r.mut.RLock()

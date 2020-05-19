@@ -236,6 +236,15 @@ type IndexableTable interface {
 	IndexKeyValues(*Context, []string) (PartitionIndexKeyValueIter, error)
 }
 
+// IndexedTable represents a table that has one or more native indexes on its columns, and can use those indexes to
+// speed up execution of queries that reference those columns. Unlike IndexableTable, which IndexedTable doesn't need a
+// separate index driver to function.
+type IndexedTable interface {
+	Table
+	WithIndexLookup(IndexLookup) Table
+
+}
+
 // IndexAlterableTable represents a table that supports index modification operations.
 type IndexAlterableTable interface {
 	Table

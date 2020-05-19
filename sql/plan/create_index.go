@@ -190,7 +190,7 @@ func (c *CreateIndex) createIndex(
 	ctx *sql.Context,
 	log *logrus.Entry,
 	driver sql.IndexDriver,
-	index sql.Index,
+	index sql.DriverIndex,
 	iter sql.PartitionIndexKeyValueIter,
 	done chan<- struct{},
 	ready <-chan struct{},
