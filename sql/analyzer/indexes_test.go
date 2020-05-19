@@ -243,7 +243,7 @@ func mergeableIndex(table string, column string, colIdx int) *memory.MergeableIn
 }
 
 func TestGetIndexes(t *testing.T) {
-	indexes := []sql.Index {
+	indexes := []sql.DriverIndex {
 		&memory.MergeableIndex{
 			TableName: "t1",
 			Exprs: []sql.Expression{

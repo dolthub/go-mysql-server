@@ -19,7 +19,7 @@ func TestIndexesByTable(t *testing.T) {
 		{"oof", "rab_idx_1"},
 	}
 
-	r.indexes = map[indexKey]Index{
+	r.indexes = map[indexKey]DriverIndex{
 		indexKey{"foo", "bar_idx_1"}: &dummyIdx{
 			database: "foo",
 			table:    "bar",
@@ -76,7 +76,7 @@ func TestIndexByExpression(t *testing.T) {
 		{"foo", ""},
 		{"foo", "bar"},
 	}
-	r.indexes = map[indexKey]Index{
+	r.indexes = map[indexKey]DriverIndex{
 		indexKey{"foo", ""}: &dummyIdx{
 			database: "foo",
 			expr:     []Expression{dummyExpr{1, "2"}},
@@ -255,12 +255,12 @@ func TestLoadIndexes(t *testing.T) {
 	ctx := NewEmptyContext()
 	require := require.New(t)
 
-	d1 := &loadDriver{id: "d1", indexes: []Index{
+	d1 := &loadDriver{id: "d1", indexes: []DriverIndex{
 		&dummyIdx{id: "idx1", database: "db1", table: "t1"},
 		&dummyIdx{id: "idx2", database: "db2", table: "t3"},
 	}}
 
-	d2 := &loadDriver{id: "d2", indexes: []Index{
+	d2 := &loadDriver{id: "d2", indexes: []DriverIndex{
 		&dummyIdx{id: "idx3", database: "db1", table: "t2"},
 		&dummyIdx{id: "idx4", database: "db2", table: "t4"},
 	}}
@@ -309,7 +309,7 @@ func TestLoadOutdatedIndexes(t *testing.T) {
 	ctx := NewEmptyContext()
 	require := require.New(t)
 
-	d := &loadDriver{id: "d1", indexes: []Index{
+	d := &loadDriver{id: "d1", indexes: []DriverIndex{
 		&checksumIndex{&dummyIdx{id: "idx1", database: "db1", table: "t1"}, "2"},
 		&checksumIndex{&dummyIdx{id: "idx2", database: "db1", table: "t2"}, "2"},
 	}}
@@ -373,16 +373,16 @@ type dummyTable struct {
 func (t dummyTable) Name() string { return t.name }
 
 type loadDriver struct {
-	indexes []Index
+	indexes []DriverIndex
 	id      string
 }
 
 func (d loadDriver) ID() string { return d.id }
-func (loadDriver) Create(db, table, id string, expressions []Expression, config map[string]string) (Index, error) {
+func (loadDriver) Create(db, table, id string, expressions []Expression, config map[string]string) (DriverIndex, error) {
 	panic("create is a placeholder")
 }
-func (d loadDriver) LoadAll(ctx *Context, db, table string) ([]Index, error) {
-	var result []Index
+func (d loadDriver) LoadAll(ctx *Context, db, table string) ([]DriverIndex, error) {
+	var result []DriverIndex
 	for _, i := range d.indexes {
 		if i.Table() == table && i.Database() == db {
 			result = append(result, i)
@@ -390,8 +390,8 @@ func (d loadDriver) LoadAll(ctx *Context, db, table string) ([]Index, error) {
 	}
 	return result, nil
 }
-func (loadDriver) Save(ctx *Context, index Index, iter PartitionIndexKeyValueIter) error { return nil }
-func (loadDriver) Delete(Index, PartitionIter) error                                     { return nil }
+func (loadDriver) Save(ctx *Context, index DriverIndex, iter PartitionIndexKeyValueIter) error { return nil }
+func (loadDriver) Delete(DriverIndex, PartitionIter) error                                     { return nil }
 
 type dummyIdx struct {
 	id       string
@@ -446,7 +446,7 @@ func (t *checksumTable) Checksum() (string, error) {
 }
 
 type checksumIndex struct {
-	Index
+	DriverIndex
 	checksum string
 }
 

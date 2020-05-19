@@ -2766,7 +2766,7 @@ func TestInfoSchema(t *testing.T) {
 }
 
 func unmergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
-	return memory.NewIndexDriver("mydb", map[string][]sql.Index{
+	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {
 			newUnmergableIndex(tables, "mytable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
@@ -2811,7 +2811,7 @@ func unmergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
 }
 
 func mergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
-	return memory.NewIndexDriver("mydb", map[string][]sql.Index{
+	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {
 			newMergableIndex(tables, "mytable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
