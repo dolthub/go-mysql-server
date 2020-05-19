@@ -54,23 +54,13 @@ type NegateIndex interface {
 	Not(keys ...interface{}) (IndexLookup, error)
 }
 
-// IndexLookup is the implementation-specific definition of an index lookup. Implementors are responsible for all
-// semantics of correctly returning rows that match an index lookup. More specific interfaces can be
-// // implemented to grant more capabilities to the index lookup.
+// IndexLookup is the implementation-specific definition of an index lookup, created by calls to Index.Get(). The
+// IndexLookup must contain all necessary information to retrieve exactly the rows in the table specified by key(s)
+// specified in Index.Get(). Implementors are responsible for all semantics of correctly returning rows that match an
+// index lookup. By default, only a single index can be used for a given table access. Implementors can implement the
+// Mergeable interface to optionally allow IndexLookups to be merged with others.
 type IndexLookup interface {
 	fmt.Stringer
-}
-
-// DriverIndexLookup is a subset of an index. More specific interfaces can be
-// implemented to grant more capabilities to the index lookup.
-type DriverIndexLookup interface {
-	IndexLookup
-
-	// Values returns the values in the subset of the index.
-	Values(Partition) (IndexValueIter, error)
-
-	// Indexes returns the IDs of all indexes involved in this lookup.
-	Indexes() []string
 }
 
 // SetOperations is a specialization of IndexLookup that enables set operations

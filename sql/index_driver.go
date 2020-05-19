@@ -41,6 +41,18 @@ type DriverIndex interface {
 	Driver() string
 }
 
+// DriverIndexLookup is a subset of an index. More specific interfaces can be
+// implemented to grant more capabilities to the index lookup.
+type DriverIndexLookup interface {
+	IndexLookup
+
+	// Values returns the values in the subset of the index. These are used to populate the index via the driver.
+	Values(Partition) (IndexValueIter, error)
+
+	// Indexes returns the IDs of all indexes involved in this lookup.
+	Indexes() []string
+}
+
 // Checksumable provides the checksum of some data.
 type Checksumable interface {
 	// Checksum returns a checksum and an error if there was any problem
