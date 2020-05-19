@@ -193,7 +193,7 @@ func TestAssignIndexes(t *testing.T) {
 }
 
 func intersectionLookupWithKeys(table string, column string, colIdx int, keys ...interface{}) *memory.MergedIndexLookup {
-	var lookups []sql.IndexLookup
+	var lookups []sql.DriverIndexLookup
 	for _, key := range keys {
 		lookups = append(lookups, mergeableIndexLookup(table, column, colIdx, key))
 	}
@@ -204,7 +204,7 @@ func intersectionLookupWithKeys(table string, column string, colIdx int, keys ..
 }
 
 func unionLookupWithKeys(table string, column string, colIdx int, keys ...interface{}) *memory.MergedIndexLookup {
-	var lookups []sql.IndexLookup
+	var lookups []sql.DriverIndexLookup
 	for _, key := range keys {
 		lookups = append(lookups, mergeableIndexLookup(table, column, colIdx, key))
 	}
@@ -214,14 +214,14 @@ func unionLookupWithKeys(table string, column string, colIdx int, keys ...interf
 	}
 }
 
-func unionLookup(table string, column string, colIdx int, lookups ...sql.IndexLookup) *memory.MergedIndexLookup {
+func unionLookup(table string, column string, colIdx int, lookups ...sql.DriverIndexLookup) *memory.MergedIndexLookup {
 	return &memory.MergedIndexLookup{
 		Unions: lookups,
 		Index: mergeableIndex(table, column, colIdx),
 	}
 }
 
-func intersectionLookup(table string, column string, colIdx int, lookups ...sql.IndexLookup) *memory.MergedIndexLookup {
+func intersectionLookup(table string, column string, colIdx int, lookups ...sql.DriverIndexLookup) *memory.MergedIndexLookup {
 	return &memory.MergedIndexLookup{
 		Intersections: lookups,
 		Index: mergeableIndex(table, column, colIdx),
@@ -311,7 +311,7 @@ func TestGetIndexes(t *testing.T) {
 			map[string]*indexLookup{
 				"t1": &indexLookup{
 					&memory.MergedIndexLookup{
-						Unions: []sql.IndexLookup{
+						Unions: []sql.DriverIndexLookup{
 							mergeableIndexLookup("t1", "bar", 0, int64(1)),
 							mergeableIndexLookup("t1", "bar", 0, int64(2)),
 						},
@@ -1044,7 +1044,7 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 		},
 		"t4": &indexLookup{
 			&memory.MergedIndexLookup{
-				Unions: []sql.IndexLookup{
+				Unions: []sql.DriverIndexLookup{
 					&memory.AscendIndexLookup{
 						Gte: []interface{}{int64(1), int64(2)},
 						Lt:  []interface{}{int64(6), int64(5)},
@@ -1181,7 +1181,7 @@ func TestIndexesIntersection(t *testing.T) {
 			"a": &indexLookup{&memory.MergeableIndexLookup{Key: []interface{}{"a"}}, nil},
 			"b": &indexLookup{
 				&memory.MergedIndexLookup {
-					Intersections: []sql.IndexLookup {
+					Intersections: []sql.DriverIndexLookup{
 						&memory.MergeableIndexLookup{
 							Key:   []interface{}{"b"},
 						},

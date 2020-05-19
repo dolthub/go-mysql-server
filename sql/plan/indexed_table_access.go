@@ -19,7 +19,7 @@ type IndexedTableAccess struct {
 }
 
 func (i *IndexedTableAccess) SetIndexLookup(ctx *sql.Context, lookup sql.IndexLookup) error {
-	resolvedTable, ok := i.ResolvedTable.Table.(sql.IndexableTable)
+	resolvedTable, ok := i.ResolvedTable.Table.(sql.IndexedTable)
 	if !ok {
 		return ErrNoIndexableTable.New(i.ResolvedTable)
 	}

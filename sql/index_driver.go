@@ -17,6 +17,30 @@ const IndexBatchSize = uint64(10000)
 // ChecksumKey is the key in an index config to store the checksum.
 const ChecksumKey = "checksum"
 
+// IndexDriver manages the coordination between the indexes and their
+// representation on disk.
+type IndexDriver interface {
+	// ID returns the unique name of the driver.
+	ID() string
+	// Create a new index. If exprs is more than one expression, it means the
+	// index has multiple columns indexed. If it's just one, it means it may
+	// be an expression or a column.
+	Create(db, table, id string, expressions []Expression, config map[string]string) (DriverIndex, error)
+	// LoadAll loads all indexes for given db and table.
+	LoadAll(ctx *Context, db, table string) ([]DriverIndex, error)
+	// Save the given index for all partitions.
+	Save(*Context, DriverIndex, PartitionIndexKeyValueIter) error
+	// Delete the given index for all partitions in the iterator.
+	Delete(DriverIndex, PartitionIter) error
+}
+
+// An indexed managed by a driver, as opposed to natively by a DB table.
+type DriverIndex interface {
+	Index
+	// Driver ID of the index.
+	Driver() string
+}
+
 // Checksumable provides the checksum of some data.
 type Checksumable interface {
 	// Checksum returns a checksum and an error if there was any problem
@@ -48,29 +72,6 @@ type IndexValueIter interface {
 	// Next returns the next value (repo's location) - see IndexKeyValueIter.
 	Next() ([]byte, error)
 	io.Closer
-}
-
-type DriverIndex interface {
-	Index
-	// Driver ID of the index.
-	Driver() string
-}
-
-// IndexDriver manages the coordination between the indexes and their
-// representation on disk.
-type IndexDriver interface {
-	// ID returns the unique name of the driver.
-	ID() string
-	// Create a new index. If exprs is more than one expression, it means the
-	// index has multiple columns indexed. If it's just one, it means it may
-	// be an expression or a column.
-	Create(db, table, id string, expressions []Expression, config map[string]string) (DriverIndex, error)
-	// LoadAll loads all indexes for given db and table.
-	LoadAll(ctx *Context, db, table string) ([]DriverIndex, error)
-	// Save the given index for all partitions.
-	Save(*Context, DriverIndex, PartitionIndexKeyValueIter) error
-	// Delete the given index for all partitions in the iterator.
-	Delete(DriverIndex, PartitionIter) error
 }
 
 type indexKey struct {

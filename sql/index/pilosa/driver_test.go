@@ -194,7 +194,7 @@ func TestSaveAndLoad(t *testing.T) {
 
 	for partition, records := range it.records {
 		for _, r := range records {
-			var lookup sql.IndexLookup
+			var lookup sql.DriverIndexLookup
 			lookup, err = sqlIdx.Get(r.values...)
 			require.NoError(err)
 
@@ -450,14 +450,14 @@ func TestAscendDescendIndex(t *testing.T) {
 	idx, cleanup := setupAscendDescend(t)
 	defer cleanup()
 
-	must := func(lookup sql.IndexLookup, err error) sql.IndexLookup {
+	must := func(lookup sql.DriverIndexLookup, err error) sql.DriverIndexLookup {
 		require.NoError(t, err)
 		return lookup
 	}
 
 	testCases := []struct {
 		name     string
-		lookup   sql.IndexLookup
+		lookup   sql.DriverIndexLookup
 		expected []string
 	}{
 		{
@@ -874,7 +874,7 @@ func TestUnionDiffAsc(t *testing.T) {
 	for partition, records := range it.records {
 		ls[partition] = make([]*indexLookup, it.total)
 		for i, r := range records {
-			var l sql.IndexLookup
+			var l sql.DriverIndexLookup
 			l, err = pilosaIdx.Get(r.values...)
 			require.NoError(err)
 			ls[partition][i], _ = l.(*indexLookup)
@@ -1356,7 +1356,7 @@ func setupAscendDescend(t *testing.T) (*pilosaIndex, func()) {
 	}
 }
 
-func lookupValues(lookup sql.IndexLookup) ([]string, error) {
+func lookupValues(lookup sql.DriverIndexLookup) ([]string, error) {
 	iter, err := lookup.Values(testPartition(0))
 	if err != nil {
 		return nil, err

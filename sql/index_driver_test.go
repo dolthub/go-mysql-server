@@ -409,9 +409,9 @@ func (i dummyIdx) Expressions() []string {
 	}
 	return exprs
 }
-func (i dummyIdx) ID() string                                  { return i.id }
-func (i dummyIdx) Get(...interface{}) (IndexLookup, error)     { panic("not implemented") }
-func (i dummyIdx) Has(Partition, ...interface{}) (bool, error) { panic("not implemented") }
+func (i dummyIdx) ID() string                                    { return i.id }
+func (i dummyIdx) Get(...interface{}) (DriverIndexLookup, error) { panic("not implemented") }
+func (i dummyIdx) Has(Partition, ...interface{}) (bool, error)   { panic("not implemented") }
 func (i dummyIdx) Database() string                            { return i.database }
 func (i dummyIdx) Table() string                               { return i.table }
 func (i dummyIdx) Driver() string                              { return "dummy" }

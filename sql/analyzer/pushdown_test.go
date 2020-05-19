@@ -246,7 +246,7 @@ func TestPushdownIndexable(t *testing.T) {
 								// TODO: These two indexes should not be mergeable, and fetching the values of
 								//  them will not yield correct results with the current implementation of these indexes.
 								&memory.MergedIndexLookup{
-									Intersections: []sql.IndexLookup{
+									Intersections: []sql.DriverIndexLookup{
 										&memory.MergeableIndexLookup{
 											Key:   []interface{}{float64(3.14)},
 											Index: idx2,

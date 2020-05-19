@@ -1,5 +1,7 @@
 package sql
 
+import "fmt"
+
 // Index is the basic representation of an index. It can be extended with
 // more functionality by implementing more specific interfaces.
 type Index interface {
@@ -52,11 +54,19 @@ type NegateIndex interface {
 	Not(keys ...interface{}) (IndexLookup, error)
 }
 
-// IndexLookup is a subset of an index. More specific interfaces can be
-// implemented to grant more capabilities to the index lookup.
+// IndexLookup is the implementation-specific definition of an index lookup. Implementors are responsible for all
+// semantics of correctly returning rows that match an index lookup. More specific interfaces can be
+// // implemented to grant more capabilities to the index lookup.
 type IndexLookup interface {
+	fmt.Stringer
+}
+
+// DriverIndexLookup is a subset of an index. More specific interfaces can be
+// implemented to grant more capabilities to the index lookup.
+type DriverIndexLookup interface {
+	IndexLookup
+
 	// Values returns the values in the subset of the index.
-	// TODO: remove
 	Values(Partition) (IndexValueIter, error)
 
 	// Indexes returns the IDs of all indexes involved in this lookup.
@@ -66,6 +76,7 @@ type IndexLookup interface {
 // SetOperations is a specialization of IndexLookup that enables set operations
 // between several IndexLookups.
 type SetOperations interface {
+	IndexLookup
 	// Intersection returns a new index subset with the intersection of the
 	// current IndexLookup and the ones given.
 	Intersection(...IndexLookup) IndexLookup
@@ -79,7 +90,9 @@ type SetOperations interface {
 
 // Mergeable is a specialization of IndexLookup to check if an IndexLookup can
 // be merged with another one.
+// TODO: merge with SetOperations
 type Mergeable interface {
+	IndexLookup
 	// IsMergeable checks whether the current IndexLookup can be merged with
 	// the given one.
 	IsMergeable(IndexLookup) bool

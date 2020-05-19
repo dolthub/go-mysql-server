@@ -364,7 +364,7 @@ func (i *mockIndex) Expressions() []string {
 
 	return exprs
 }
-func (i *mockIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
+func (i *mockIndex) Get(key ...interface{}) (sql.DriverIndexLookup, error) {
 	panic("unimplemented")
 }
 func (i *mockIndex) Has(sql.Partition, ...interface{}) (bool, error) {

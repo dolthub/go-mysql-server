@@ -12,9 +12,12 @@ type DescendIndexLookup struct {
 	Index ExpressionsIndex
 }
 
+
 var _ memoryIndexLookup = (*DescendIndexLookup)(nil)
+var _ sql.IndexLookup = (*DescendIndexLookup)(nil)
 
 func (l *DescendIndexLookup) ID() string { return l.id }
+func (l *DescendIndexLookup) String() string { return l.id }
 
 func (l *DescendIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	return &indexValIter{

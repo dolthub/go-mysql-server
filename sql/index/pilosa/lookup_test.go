@@ -139,8 +139,8 @@ func TestMergeable(t *testing.T) {
 	require.NoError(err)
 
 	testCases := []struct {
-		i1       sql.IndexLookup
-		i2       sql.IndexLookup
+		i1       sql.DriverIndexLookup
+		i2       sql.DriverIndexLookup
 		expected bool
 	}{
 		{
@@ -209,7 +209,7 @@ func TestMergeable(t *testing.T) {
 }
 
 func TestIndexes(t *testing.T) {
-	testCases := []sql.IndexLookup{
+	testCases := []sql.DriverIndexLookup{
 		&indexLookup{id: "foo", indexes: map[string]struct{}{"foo": struct{}{}}},
 		&negateLookup{id: "foo", indexes: map[string]struct{}{"foo": struct{}{}}},
 		&ascendLookup{
@@ -236,7 +236,7 @@ func TestIndexes(t *testing.T) {
 func TestLookupIndexes(t *testing.T) {
 	require := require.New(t)
 
-	lookups := []sql.IndexLookup{
+	lookups := []sql.DriverIndexLookup{
 		&indexLookup{
 			id:      "1",
 			indexes: map[string]struct{}{"1": struct{}{}},
@@ -265,7 +265,7 @@ func TestLookupIndexes(t *testing.T) {
 	// of lookups are tested.
 	for i := 0; i < len(lookups); i++ {
 		var op sql.SetOperations
-		var others []sql.IndexLookup
+		var others []sql.DriverIndexLookup
 		for j := 0; j < len(lookups); j++ {
 			if i == j {
 				op = lookups[i].(sql.SetOperations)

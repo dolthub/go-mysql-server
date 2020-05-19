@@ -227,14 +227,6 @@ type IndexColumn struct {
 	Length int64
 }
 
-// IndexableTable represents a table that supports being indexed and
-// receiving indexes to be able to speed up its execution.
-type IndexableTable interface {
-	Table
-	WithIndexLookup(IndexLookup) Table
-	IndexLookup() IndexLookup
-	IndexKeyValues(*Context, []string) (PartitionIndexKeyValueIter, error)
-}
 
 // IndexedTable represents a table that has one or more native indexes on its columns, and can use those indexes to
 // speed up execution of queries that reference those columns. Unlike IndexableTable, which IndexedTable doesn't need a
@@ -242,7 +234,14 @@ type IndexableTable interface {
 type IndexedTable interface {
 	Table
 	WithIndexLookup(IndexLookup) Table
+}
 
+// IndexableTable represents a table that supports being indexed and
+// receiving indexes to be able to speed up its execution.
+type IndexableTable interface {
+	IndexedTable
+	IndexLookup() DriverIndexLookup
+	IndexKeyValues(*Context, []string) (PartitionIndexKeyValueIter, error)
 }
 
 // IndexAlterableTable represents a table that supports index modification operations.

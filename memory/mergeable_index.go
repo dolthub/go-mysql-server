@@ -117,6 +117,7 @@ var _ sql.SetOperations = (*MergeableIndexLookup)(nil)
 var _ memoryIndexLookup = (*MergeableIndexLookup)(nil)
 
 func (i *MergeableIndexLookup) ID() string { return strings.Join(i.Indexes(), ",") }
+func (i *MergeableIndexLookup) String() string { return strings.Join(i.Indexes(), ",") }
 
 func (i *MergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	_, ok := lookup.(MergeableLookup)
@@ -269,8 +270,12 @@ func (m *MergedIndexLookup) Indexes() []string {
 	panic("not implemented")
 }
 
+func (m *MergedIndexLookup) String() string {
+	return "mergedIndexLookup"
+}
+
 func (m *MergedIndexLookup) ID() string {
-	panic("not implemented")
+	return "mergedIndexLookup"
 }
 
 func or(expressions ...sql.Expression) sql.Expression {

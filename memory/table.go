@@ -34,7 +34,7 @@ var _ sql.DeletableTable = (*Table)(nil)
 var _ sql.ReplaceableTable = (*Table)(nil)
 var _ sql.FilteredTable = (*Table)(nil)
 var _ sql.ProjectedTable = (*Table)(nil)
-var _ sql.IndexableTable = (*Table)(nil)
+var _ sql.IndexedTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema.
@@ -103,7 +103,7 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	var values sql.IndexValueIter
 	if t.lookup != nil {
 		var err error
-		values, err = t.lookup.Values(partition)
+		values, err = t.lookup.(sql.DriverIndexLookup).Values(partition)
 		if err != nil {
 			return nil, err
 		}

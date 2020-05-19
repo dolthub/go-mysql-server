@@ -99,7 +99,7 @@ func (idx *pilosaIndex) Checksum() (string, error) {
 // Get returns an IndexLookup for the given key in the index.
 // If key parameter is not present then the returned iterator
 // will go through all the locations on the index.
-func (idx *pilosaIndex) Get(keys ...interface{}) (sql.IndexLookup, error) {
+func (idx *pilosaIndex) Get(keys ...interface{}) (sql.DriverIndexLookup, error) {
 	if len(keys) != len(idx.expressions) {
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
@@ -165,7 +165,7 @@ func (idx *pilosaIndex) Expressions() []string {
 
 func (*pilosaIndex) Driver() string { return DriverID }
 
-func (idx *pilosaIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
+func (idx *pilosaIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.DriverIndexLookup, error) {
 	if len(keys) != len(idx.expressions) {
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
@@ -182,7 +182,7 @@ func (idx *pilosaIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLook
 	}, keys, nil), nil
 }
 
-func (idx *pilosaIndex) AscendLessThan(keys ...interface{}) (sql.IndexLookup, error) {
+func (idx *pilosaIndex) AscendLessThan(keys ...interface{}) (sql.DriverIndexLookup, error) {
 	if len(keys) != len(idx.expressions) {
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
@@ -199,7 +199,7 @@ func (idx *pilosaIndex) AscendLessThan(keys ...interface{}) (sql.IndexLookup, er
 	}, nil, keys), nil
 }
 
-func (idx *pilosaIndex) AscendRange(greaterOrEqual, lessThan []interface{}) (sql.IndexLookup, error) {
+func (idx *pilosaIndex) AscendRange(greaterOrEqual, lessThan []interface{}) (sql.DriverIndexLookup, error) {
 	if len(greaterOrEqual) != len(idx.expressions) {
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(greaterOrEqual))
 	}
@@ -219,7 +219,7 @@ func (idx *pilosaIndex) AscendRange(greaterOrEqual, lessThan []interface{}) (sql
 	}, greaterOrEqual, lessThan), nil
 }
 
-func (idx *pilosaIndex) DescendGreater(keys ...interface{}) (sql.IndexLookup, error) {
+func (idx *pilosaIndex) DescendGreater(keys ...interface{}) (sql.DriverIndexLookup, error) {
 	if len(keys) != len(idx.expressions) {
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
@@ -237,7 +237,7 @@ func (idx *pilosaIndex) DescendGreater(keys ...interface{}) (sql.IndexLookup, er
 	}, keys, nil), nil
 }
 
-func (idx *pilosaIndex) DescendLessOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
+func (idx *pilosaIndex) DescendLessOrEqual(keys ...interface{}) (sql.DriverIndexLookup, error) {
 	if len(keys) != len(idx.expressions) {
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
@@ -255,7 +255,7 @@ func (idx *pilosaIndex) DescendLessOrEqual(keys ...interface{}) (sql.IndexLookup
 	}, nil, keys), nil
 }
 
-func (idx *pilosaIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sql.IndexLookup, error) {
+func (idx *pilosaIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sql.DriverIndexLookup, error) {
 	if len(lessOrEqual) != len(idx.expressions) {
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(lessOrEqual))
 	}
@@ -276,7 +276,7 @@ func (idx *pilosaIndex) DescendRange(lessOrEqual, greaterThan []interface{}) (sq
 	}, greaterThan, lessOrEqual), nil
 }
 
-func (idx *pilosaIndex) Not(keys ...interface{}) (sql.IndexLookup, error) {
+func (idx *pilosaIndex) Not(keys ...interface{}) (sql.DriverIndexLookup, error) {
 	if len(keys) != len(idx.expressions) {
 		return nil, errInvalidKeys.New(len(idx.expressions), idx.ID(), len(keys))
 	}
