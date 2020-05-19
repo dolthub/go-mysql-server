@@ -360,6 +360,9 @@ func div(lval, rval interface{}) (interface{}, error) {
 	case float64:
 		switch r := rval.(type) {
 		case float64:
+			if r == 0 {
+				return sql.Null, nil
+			}
 			return l / r, nil
 		}
 	}
@@ -450,12 +453,18 @@ func intDiv(lval, rval interface{}) (interface{}, error) {
 	case uint64:
 		switch r := rval.(type) {
 		case uint64:
+			if r == 0 {
+				return sql.Null, nil
+			}
 			return uint64(l / r), nil
 		}
 
 	case int64:
 		switch r := rval.(type) {
 		case int64:
+			if r == 0 {
+				return sql.Null, nil
+			}
 			return int64(l / r), nil
 		}
 	}

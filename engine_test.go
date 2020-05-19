@@ -2357,7 +2357,13 @@ var queries = []queryTest{
 		[]sql.Row{{sql.Null}},
 	},
 	{ "SELECT 1.0/0.0 FROM dual",
-		[]sql.Row{{float64(math.Inf(1))}},
+		[]sql.Row{{sql.Null}},
+	},
+	{ "SELECT 1 div 0 FROM dual",
+		[]sql.Row{{sql.Null}},
+	},
+	{ "SELECT 1.0 div 0.0 FROM dual",
+		[]sql.Row{{sql.Null}},
 	},
 }
 
