@@ -2356,6 +2356,9 @@ var queries = []queryTest{
 	{ "SELECT 1/0 FROM dual",
 		[]sql.Row{{sql.Null}},
 	},
+	{ "SELECT 1.0/0.0 FROM dual",
+		[]sql.Row{{float64(math.Inf(1))}},
+	},
 }
 
 var infoSchemaQueries = []queryTest {
