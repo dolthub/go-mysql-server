@@ -264,11 +264,11 @@ func TestLookupIndexes(t *testing.T) {
 	// All possible permutations of operations between all the different kinds
 	// of lookups are tested.
 	for i := 0; i < len(lookups); i++ {
-		var op sql.SetOperations
+		var op sql.MergeableIndexLookup
 		var others []sql.DriverIndexLookup
 		for j := 0; j < len(lookups); j++ {
 			if i == j {
-				op = lookups[i].(sql.SetOperations)
+				op = lookups[i].(sql.MergeableIndexLookup)
 			} else {
 				others = append(others, lookups[j])
 			}

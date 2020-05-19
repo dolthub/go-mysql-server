@@ -63,27 +63,20 @@ type IndexLookup interface {
 	fmt.Stringer
 }
 
-// SetOperations is a specialization of IndexLookup that enables set operations
-// between several IndexLookups.
-type SetOperations interface {
+// MergeableIndexLookup is a specialization of IndexLookup that allows IndexLookups to be merged together. This allows
+// multiple indexes to be used for a single table access, if the implementor can support it via merging the lookups of
+// the two indexes.
+type MergeableIndexLookup interface {
 	IndexLookup
-	// Intersection returns a new index subset with the intersection of the
-	// current IndexLookup and the ones given.
-	Intersection(...IndexLookup) IndexLookup
-	// Union returns a new index subset with the union of the current
-	// IndexLookup and the ones given.
-	Union(...IndexLookup) IndexLookup
-	// Difference returns a new index subset with the difference between the
-	// current IndexLookup and the ones given.
-	Difference(...IndexLookup) IndexLookup
-}
-
-// Mergeable is a specialization of IndexLookup to check if an IndexLookup can
-// be merged with another one.
-// TODO: merge with SetOperations
-type Mergeable interface {
-	IndexLookup
-	// IsMergeable checks whether the current IndexLookup can be merged with
-	// the given one.
+	// IsMergeable checks whether the current IndexLookup can be merged with the given one. If true, then all other
+	// methods in the interface are expected to return a new IndexLookup that represents the given set operation of the
+	// two operands.
 	IsMergeable(IndexLookup) bool
+	// Intersection returns a new IndexLookup with the intersection of the current IndexLookup and the ones given.
+	Intersection(...IndexLookup) IndexLookup
+	// Union returns a new IndexLookup with the union of the current IndexLookup and the ones given.
+	Union(...IndexLookup) IndexLookup
+	// Difference returns a new IndexLookup with the difference between the current IndexLookup and the ones given.
+	// Currently unused.
+	Difference(...IndexLookup) IndexLookup
 }

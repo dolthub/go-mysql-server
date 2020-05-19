@@ -112,8 +112,7 @@ type memoryIndexLookup interface {
 	EvalExpression() sql.Expression
 }
 
-var _ sql.Mergeable = (*MergeableIndexLookup)(nil)
-var _ sql.SetOperations = (*MergeableIndexLookup)(nil)
+var _ sql.MergeableIndexLookup = (*MergeableIndexLookup)(nil)
 var _ memoryIndexLookup = (*MergeableIndexLookup)(nil)
 
 func (i *MergeableIndexLookup) ID() string { return strings.Join(i.Indexes(), ",") }
@@ -220,8 +219,7 @@ type MergedIndexLookup struct {
 	Index         ExpressionsIndex
 }
 
-var _ sql.Mergeable = (*MergedIndexLookup)(nil)
-var _ sql.SetOperations = (*MergedIndexLookup)(nil)
+var _ sql.MergeableIndexLookup = (*MergedIndexLookup)(nil)
 var _ memoryIndexLookup = (*MergedIndexLookup)(nil)
 
 func (m *MergedIndexLookup) EvalExpression() sql.Expression {

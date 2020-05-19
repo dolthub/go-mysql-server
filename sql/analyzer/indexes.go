@@ -102,7 +102,7 @@ func getIndexes(
 			foundRightIdx := false
 			if rightIdx, ok := rightIndexes[table]; ok {
 				if canMergeIndexes(leftIdx.lookup, rightIdx.lookup) {
-					leftIdx.lookup = leftIdx.lookup.(sql.SetOperations).Union(rightIdx.lookup)
+					leftIdx.lookup = leftIdx.lookup.(sql.MergeableIndexLookup).Union(rightIdx.lookup)
 					leftIdx.indexes = append(leftIdx.indexes, rightIdx.indexes...)
 					result[table] = leftIdx
 					foundRightIdx = true
@@ -197,9 +197,9 @@ func getIndexes(
 					}
 
 					if negate {
-						lookup = lookup.(sql.SetOperations).Intersection(lookup2)
+						lookup = lookup.(sql.MergeableIndexLookup).Intersection(lookup2)
 					} else {
-						lookup = lookup.(sql.SetOperations).Union(lookup2)
+						lookup = lookup.(sql.MergeableIndexLookup).Union(lookup2)
 					}
 				}
 
@@ -338,9 +338,9 @@ func betweenIndexLookup(index sql.Index, upper, lower []interface{}) (sql.IndexL
 			return nil, err
 		}
 
-		m, ok := ascendLookup.(sql.Mergeable)
+		m, ok := ascendLookup.(sql.MergeableIndexLookup)
 		if ok && m.IsMergeable(descendLookup) {
-			return ascendLookup.(sql.SetOperations).Union(descendLookup), nil
+			return ascendLookup.(sql.MergeableIndexLookup).Union(descendLookup), nil
 		}
 	}
 
@@ -522,7 +522,7 @@ func indexesIntersection(
 
 	for table, idx := range left {
 		if idx2, ok := right[table]; ok && canMergeIndexes(idx.lookup, idx2.lookup) {
-			idx.lookup = idx.lookup.(sql.SetOperations).Intersection(idx2.lookup)
+			idx.lookup = idx.lookup.(sql.MergeableIndexLookup).Intersection(idx2.lookup)
 			idx.indexes = append(idx.indexes, idx2.indexes...)
 		} else if ok {
 			for _, idx := range idx2.indexes {
@@ -810,15 +810,10 @@ func isEvaluable(e sql.Expression) bool {
 }
 
 func canMergeIndexes(a, b sql.IndexLookup) bool {
-	m, ok := a.(sql.Mergeable)
+	m, ok := a.(sql.MergeableIndexLookup)
 	if !ok {
 		return false
 	}
 
-	if !m.IsMergeable(b) {
-		return false
-	}
-
-	_, ok = a.(sql.SetOperations)
-	return ok
+	return m.IsMergeable(b)
 }

@@ -569,7 +569,7 @@ func TestIntersection(t *testing.T) {
 	require.True(ok)
 	require.True(m.IsMergeable(lookupPath))
 
-	interLookup, ok := lookupLang.(sql.SetOperations)
+	interLookup, ok := lookupLang.(sql.MergeableIndexLookup)
 	require.True(ok)
 	interIt, err := interLookup.Intersection(lookupPath).Values(testPartition(0))
 	require.NoError(err)
@@ -583,7 +583,7 @@ func TestIntersection(t *testing.T) {
 	lookupPath, err = sqlIdxPath.Get(itPath.records[0][0].values...)
 	require.NoError(err)
 
-	interLookup, ok = lookupPath.(sql.SetOperations)
+	interLookup, ok = lookupPath.(sql.MergeableIndexLookup)
 	require.True(ok)
 	interIt, err = interLookup.Intersection(lookupLang).Values(testPartition(0))
 	require.NoError(err)
@@ -645,7 +645,7 @@ func TestIntersectionWithMultipleDrivers(t *testing.T) {
 	require.True(ok)
 	require.True(m.IsMergeable(lookupPath))
 
-	interLookup, ok := lookupLang.(sql.SetOperations)
+	interLookup, ok := lookupLang.(sql.MergeableIndexLookup)
 	require.True(ok)
 	interIt, err := interLookup.Intersection(lookupPath).Values(testPartition(0))
 	require.NoError(err)
@@ -659,7 +659,7 @@ func TestIntersectionWithMultipleDrivers(t *testing.T) {
 	lookupPath, err = sqlIdxPath.Get(itPath.records[0][0].values...)
 	require.NoError(err)
 
-	interLookup, ok = lookupPath.(sql.SetOperations)
+	interLookup, ok = lookupPath.(sql.MergeableIndexLookup)
 	require.True(ok)
 	interIt, err = interLookup.Intersection(lookupLang).Values(testPartition(0))
 	require.NoError(err)
@@ -742,13 +742,13 @@ func TestUnion(t *testing.T) {
 	require.True(ok)
 	require.True(m.IsMergeable(lookupPath))
 
-	unionLookup, ok := lookupLang.(sql.SetOperations)
+	unionLookup, ok := lookupLang.(sql.MergeableIndexLookup)
 	require.True(ok)
 
 	lookupNonExisting, err := sqlIdxPath.Get(itPath.total)
 	require.NoError(err)
 
-	unionLookup, ok = unionLookup.Union(lookupNonExisting).(sql.SetOperations)
+	unionLookup, ok = unionLookup.Union(lookupNonExisting).(sql.MergeableIndexLookup)
 	require.True(ok)
 
 	unionIt, err := unionLookup.Union(lookupPath).Values(testPartition(0))
@@ -819,9 +819,9 @@ func TestDifference(t *testing.T) {
 	require.True(ok)
 	require.True(m.IsMergeable(lookupPath))
 
-	unionOp, ok := lookupLang.(sql.SetOperations)
+	unionOp, ok := lookupLang.(sql.MergeableIndexLookup)
 	require.True(ok)
-	unionLookup, ok := unionOp.Union(lookupPath).(sql.SetOperations)
+	unionLookup, ok := unionOp.Union(lookupPath).(sql.MergeableIndexLookup)
 	require.True(ok)
 
 	diffLookup := unionLookup.Difference(lookupLang)
@@ -1125,7 +1125,7 @@ func TestEqualAndLessIndex(t *testing.T) {
 	expected = []string{"1", "2", "3", "4"}
 	require.Equal(expected, values)
 
-	interLookup := eqALookup.(sql.SetOperations).Intersection(lessBLookup)
+	interLookup := eqALookup.(sql.MergeableIndexLookup).Intersection(lessBLookup)
 	values, err = lookupValues(interLookup)
 	require.NoError(err)
 	expected = []string{"3", "4"}
