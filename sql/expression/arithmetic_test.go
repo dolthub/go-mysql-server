@@ -1,7 +1,6 @@
 package expression
 
 import (
-	"math"
 	"testing"
 	"time"
 
@@ -146,13 +145,15 @@ func TestDiv(t *testing.T) {
 		name        string
 		left, right float64
 		expected    float64
+		null        bool
 	}{
-		{"1 / 1", 1, 1, 1},
-		{"-1 / 1", -1, 1, -1},
-		{"0 / 1234567890", 0, 12345677890, 0},
-		{"3.14159 / 3.0", 3.14159, 3.0, float64(3.14159) / float64(3.0)},
-		{"1/0", 1, 0, math.Inf(1)},
-		{"-1/0", -1, 0, math.Inf(-1)},
+		{"1 / 1", 1, 1, 1, false},
+		{"-1 / 1", -1, 1, -1, false},
+		{"0 / 1234567890", 0, 12345677890, 0, false},
+		{"3.14159 / 3.0", 3.14159, 3.0, float64(3.14159) / float64(3.0), false},
+		{"1/0", 1, 0, 0, true},
+		{"-1/0", -1, 0, 0, true},
+		{"0/0", 0, 0, 0, true},
 	}
 
 	for _, tt := range floatTestCases {
@@ -162,7 +163,11 @@ func TestDiv(t *testing.T) {
 				NewLiteral(tt.right, sql.Float64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
+			if tt.null {
+				assert.Equal(t, sql.Null, result)
+			} else {
+				assert.Equal(t, tt.expected, result)
+			}
 		})
 	}
 
@@ -176,6 +181,7 @@ func TestDiv(t *testing.T) {
 		{"-1 / 1", -1, 1, -1, false},
 		{"0 / 1234567890", 0, 12345677890, 0, false},
 		{"1/0", 1, 0, 0, true},
+		{"0/0", 1, 0, 0, true},
 	}
 	for _, tt := range intTestCases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -187,7 +193,7 @@ func TestDiv(t *testing.T) {
 			if tt.null {
 				assert.Equal(t, sql.Null, result)
 			} else {
-				require.Equal(t, tt.expected, result)
+				assert.Equal(t, tt.expected, result)
 			}
 		})
 	}
@@ -201,6 +207,7 @@ func TestDiv(t *testing.T) {
 		{"1 / 1", 1, 1, 1, false},
 		{"0 / 1234567890", 0, 12345677890, 0, false},
 		{"1/0", 1, 0, 0, true},
+		{"0/0", 1, 0, 0, true},
 	}
 	for _, tt := range uintTestCases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -212,7 +219,7 @@ func TestDiv(t *testing.T) {
 			if tt.null {
 				assert.Equal(t, sql.Null, result)
 			} else {
-				require.Equal(t, tt.expected, result)
+				assert.Equal(t, tt.expected, result)
 			}
 		})
 	}
@@ -352,11 +359,14 @@ func TestIntDiv(t *testing.T) {
 		name        string
 		left, right int64
 		expected    int64
+		null        bool
 	}{
-		{"1 div 1", 1, 1, 1},
-		{"8 div 3", 8, 3, 2},
-		{"1 div 3", 1, 3, 0},
-		{"0 div -1024", 0, -1024, 0},
+		{"1 div 1", 1, 1, 1, false},
+		{"8 div 3", 8, 3, 2, false},
+		{"1 div 3", 1, 3, 0, false},
+		{"0 div -1024", 0, -1024, 0, false},
+		{"1 div 0", 1, 0, 0, true},
+		{"0 div 0", 1, 0, 0, true},
 	}
 
 	for _, tt := range testCases {
@@ -367,7 +377,11 @@ func TestIntDiv(t *testing.T) {
 				NewLiteral(tt.right, sql.Int64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
-			require.Equal(tt.expected, result)
+			if tt.null {
+				assert.Equal(t, sql.Null, result)
+			} else {
+				assert.Equal(t, tt.expected, result)
+			}
 		})
 	}
 }
