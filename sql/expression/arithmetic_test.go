@@ -1,7 +1,6 @@
 package expression
 
 import (
-	"math"
 	"testing"
 	"time"
 
@@ -152,8 +151,9 @@ func TestDiv(t *testing.T) {
 		{"-1 / 1", -1, 1, -1, false},
 		{"0 / 1234567890", 0, 12345677890, 0, false},
 		{"3.14159 / 3.0", 3.14159, 3.0, float64(3.14159) / float64(3.0), false},
-		{"1/0", 1, 0, math.Inf(1), true},
-		{"-1/0", -1, 0, math.Inf(-1), true},
+		{"1/0", 1, 0, 0, true},
+		{"-1/0", -1, 0, 0, true},
+		{"0/0", 0, 0, 0, true},
 	}
 
 	for _, tt := range floatTestCases {
@@ -181,6 +181,7 @@ func TestDiv(t *testing.T) {
 		{"-1 / 1", -1, 1, -1, false},
 		{"0 / 1234567890", 0, 12345677890, 0, false},
 		{"1/0", 1, 0, 0, true},
+		{"0/0", 1, 0, 0, true},
 	}
 	for _, tt := range intTestCases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -206,6 +207,7 @@ func TestDiv(t *testing.T) {
 		{"1 / 1", 1, 1, 1, false},
 		{"0 / 1234567890", 0, 12345677890, 0, false},
 		{"1/0", 1, 0, 0, true},
+		{"0/0", 1, 0, 0, true},
 	}
 	for _, tt := range uintTestCases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -364,6 +366,7 @@ func TestIntDiv(t *testing.T) {
 		{"1 div 3", 1, 3, 0, false},
 		{"0 div -1024", 0, -1024, 0, false},
 		{"1 div 0", 1, 0, 0, true},
+		{"0 div 0", 1, 0, 0, true},
 	}
 
 	for _, tt := range testCases {
