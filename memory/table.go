@@ -37,6 +37,11 @@ var _ sql.ProjectedTable = (*Table)(nil)
 var _ sql.IndexedTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
 
+func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
+	// TODO: sort this out
+	panic("implement me")
+}
+
 // NewTable creates a new Table with the given name and schema.
 func NewTable(name string, schema sql.Schema) *Table {
 	return NewPartitionedTable(name, schema, 0)

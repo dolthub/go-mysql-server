@@ -47,20 +47,20 @@ func (p *QueryProcess) String() string { return p.Child.String() }
 // It notifies the process manager about the status of a query when a
 // partition is processed.
 type ProcessIndexableTable struct {
-	sql.IndexableTable
+	sql.DriverIndexableTable
 	OnPartitionDone  NamedNotifyFunc
 	OnPartitionStart NamedNotifyFunc
 	OnRowNext        NamedNotifyFunc
 }
 
 // NewProcessIndexableTable returns a new ProcessIndexableTable.
-func NewProcessIndexableTable(t sql.IndexableTable, onPartitionDone, onPartitionStart, OnRowNext NamedNotifyFunc) *ProcessIndexableTable {
+func NewProcessIndexableTable(t sql.DriverIndexableTable, onPartitionDone, onPartitionStart, OnRowNext NamedNotifyFunc) *ProcessIndexableTable {
 	return &ProcessIndexableTable{t, onPartitionDone, onPartitionStart, OnRowNext}
 }
 
 // Underlying implements sql.TableWrapper interface.
 func (t *ProcessIndexableTable) Underlying() sql.Table {
-	return t.IndexableTable
+	return t.DriverIndexableTable
 }
 
 // IndexKeyValues implements the sql.IndexableTable interface.
@@ -68,7 +68,7 @@ func (t *ProcessIndexableTable) IndexKeyValues(
 	ctx *sql.Context,
 	columns []string,
 ) (sql.PartitionIndexKeyValueIter, error) {
-	iter, err := t.IndexableTable.IndexKeyValues(ctx, columns)
+	iter, err := t.DriverIndexableTable.IndexKeyValues(ctx, columns)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (t *ProcessIndexableTable) IndexKeyValues(
 
 // PartitionRows implements the sql.Table interface.
 func (t *ProcessIndexableTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.RowIter, error) {
-	iter, err := t.IndexableTable.PartitionRows(ctx, p)
+	iter, err := t.DriverIndexableTable.PartitionRows(ctx, p)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (t *ProcessIndexableTable) PartitionRows(ctx *sql.Context, p sql.Partition)
 	return &trackedRowIter{iter: iter, onNext: onNext, onDone: onDone}, nil
 }
 
-var _ sql.IndexableTable = (*ProcessIndexableTable)(nil)
+var _ sql.DriverIndexableTable = (*ProcessIndexableTable)(nil)
 
 // NamedNotifyFunc is a function to notify about some event with a string argument.
 type NamedNotifyFunc func(name string)

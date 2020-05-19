@@ -74,9 +74,9 @@ func (c *CreateIndex) Resolved() bool {
 	return true
 }
 
-func getIndexableTable(t sql.Table) (sql.IndexableTable, error) {
+func getIndexableTable(t sql.Table) (sql.DriverIndexableTable, error) {
 	switch t := t.(type) {
-	case sql.IndexableTable:
+	case sql.DriverIndexableTable:
 		return t, nil
 	case sql.TableWrapper:
 		return getIndexableTable(t.Underlying())

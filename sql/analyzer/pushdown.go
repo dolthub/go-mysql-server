@@ -214,7 +214,7 @@ func pushdownToTable(
 		a.Log("table %q transformed with pushdown of projection", tableNode.Name())
 	}
 
-	if it, ok := table.(sql.IndexableTable); ok {
+	if it, ok := table.(sql.IndexedTable); ok {
 		indexLookup, ok := indexes[tableNode.Name()]
 		if ok {
 			*usedIndexes = append(*usedIndexes, indexLookup.indexes...)

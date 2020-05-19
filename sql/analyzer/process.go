@@ -59,7 +59,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 			var t sql.Table
 			switch table := n.Table.(type) {
-			case sql.IndexableTable:
+			case sql.DriverIndexableTable:
 				t = plan.NewProcessIndexableTable(table, onPartitionDone, onPartitionStart, onRowNext)
 			default:
 				t = plan.NewProcessTable(table, onPartitionDone, onPartitionStart, onRowNext)
