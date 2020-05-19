@@ -1,11 +1,14 @@
 package expression
 
 import (
+	"math"
 	"testing"
 	"time"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 func TestPlus(t *testing.T) {
@@ -139,7 +142,7 @@ func TestMult(t *testing.T) {
 }
 
 func TestDiv(t *testing.T) {
-	var testCases = []struct {
+	var floatTestCases = []struct {
 		name        string
 		left, right float64
 		expected    float64
@@ -148,17 +151,69 @@ func TestDiv(t *testing.T) {
 		{"-1 / 1", -1, 1, -1},
 		{"0 / 1234567890", 0, 12345677890, 0},
 		{"3.14159 / 3.0", 3.14159, 3.0, float64(3.14159) / float64(3.0)},
+		{"1/0", 1, 0, math.Inf(1)},
+		{"-1/0", -1, 0, math.Inf(-1)},
 	}
 
-	for _, tt := range testCases {
+	for _, tt := range floatTestCases {
 		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
 			result, err := NewDiv(
 				NewLiteral(tt.left, sql.Float64),
 				NewLiteral(tt.right, sql.Float64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
-			require.NoError(err)
-			require.Equal(tt.expected, result)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+
+	var intTestCases = []struct {
+		name        string
+		left, right int64
+		expected    int64
+		null        bool
+	}{
+		{"1 / 1", 1, 1, 1, false},
+		{"-1 / 1", -1, 1, -1, false},
+		{"0 / 1234567890", 0, 12345677890, 0, false},
+		{"1/0", 1, 0, 0, true},
+	}
+	for _, tt := range intTestCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := NewDiv(
+				NewLiteral(tt.left, sql.Int64),
+				NewLiteral(tt.right, sql.Int64),
+			).Eval(sql.NewEmptyContext(), sql.NewRow())
+			require.NoError(t, err)
+			if tt.null {
+				assert.Equal(t, sql.Null, result)
+			} else {
+				require.Equal(t, tt.expected, result)
+			}
+		})
+	}
+
+	var uintTestCases = []struct {
+		name        string
+		left, right uint64
+		expected    uint64
+		null        bool
+	}{
+		{"1 / 1", 1, 1, 1, false},
+		{"0 / 1234567890", 0, 12345677890, 0, false},
+		{"1/0", 1, 0, 0, true},
+	}
+	for _, tt := range uintTestCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := NewDiv(
+				NewLiteral(tt.left, sql.Uint64),
+				NewLiteral(tt.right, sql.Uint64),
+			).Eval(sql.NewEmptyContext(), sql.NewRow())
+			require.NoError(t, err)
+			if tt.null {
+				assert.Equal(t, sql.Null, result)
+			} else {
+				require.Equal(t, tt.expected, result)
+			}
 		})
 	}
 }
