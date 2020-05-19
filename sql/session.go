@@ -239,9 +239,6 @@ func NewBaseSession() Session {
 	return &BaseSession{id: atomic.AddUint32(&autoSessionIDs, 1), config: DefaultSessionConfig()}
 }
 
-var defIdxReg = NewIndexRegistry()
-var defViewReg = NewViewRegistry()
-
 // Context of the query execution.
 type Context struct {
 	context.Context
@@ -327,11 +324,11 @@ func NewContext(
 	}
 
 	if c.IndexRegistry == nil {
-		c.IndexRegistry = defIdxReg
+		c.IndexRegistry = NewIndexRegistry()
 	}
 
 	if c.ViewRegistry == nil {
-		c.ViewRegistry = defViewReg
+		c.ViewRegistry = NewViewRegistry()
 	}
 
 	if c.Memory == nil {
