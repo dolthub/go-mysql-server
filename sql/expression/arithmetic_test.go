@@ -170,12 +170,12 @@ func TestDiv(t *testing.T) {
 		name        string
 		left, right int64
 		expected    int64
-		err         string
+		null        bool
 	}{
-		{"1 / 1", 1, 1, 1, ""},
-		{"-1 / 1", -1, 1, -1, ""},
-		{"0 / 1234567890", 0, 12345677890, 0, ""},
-		{"1/0", 1, 0, 0, "divide by zero"},
+		{"1 / 1", 1, 1, 1, false},
+		{"-1 / 1", -1, 1, -1, false},
+		{"0 / 1234567890", 0, 12345677890, 0, false},
+		{"1/0", 1, 0, 0, true},
 	}
 	for _, tt := range intTestCases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -183,10 +183,10 @@ func TestDiv(t *testing.T) {
 				NewLiteral(tt.left, sql.Int64),
 				NewLiteral(tt.right, sql.Int64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
-			if tt.err != "" {
-				assert.Error(t, err, tt.err)
+			require.NoError(t, err)
+			if tt.null {
+				assert.Equal(t, sql.Null, result)
 			} else {
-				require.NoError(t, err)
 				require.Equal(t, tt.expected, result)
 			}
 		})
@@ -196,11 +196,11 @@ func TestDiv(t *testing.T) {
 		name        string
 		left, right uint64
 		expected    uint64
-		err         string
+		null        bool
 	}{
-		{"1 / 1", 1, 1, 1, ""},
-		{"0 / 1234567890", 0, 12345677890, 0, ""},
-		{"1/0", 1, 0, 0, "divide by zero"},
+		{"1 / 1", 1, 1, 1, false},
+		{"0 / 1234567890", 0, 12345677890, 0, false},
+		{"1/0", 1, 0, 0, true},
 	}
 	for _, tt := range uintTestCases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -208,10 +208,10 @@ func TestDiv(t *testing.T) {
 				NewLiteral(tt.left, sql.Uint64),
 				NewLiteral(tt.right, sql.Uint64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
-			if tt.err != "" {
-				assert.Error(t, err, tt.err)
+			require.NoError(t, err)
+			if tt.null {
+				assert.Equal(t, sql.Null, result)
 			} else {
-				require.NoError(t, err)
 				require.Equal(t, tt.expected, result)
 			}
 		})

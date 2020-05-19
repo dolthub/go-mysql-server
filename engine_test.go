@@ -2353,6 +2353,9 @@ var queries = []queryTest{
 		"SELECT (CASE WHEN i THEN i ELSE 0 END) as cases_i from mytable",
 		[]sql.Row{{int64(1)},{int64(2)},{int64(3)}},
 	},
+	{ "SELECT 1/0 FROM dual",
+		[]sql.Row{{sql.Null}},
+	},
 }
 
 var infoSchemaQueries = []queryTest {
