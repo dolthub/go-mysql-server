@@ -35,31 +35,33 @@ func getIndexesForNode(ctx *sql.Context, a *Analyzer, n sql.Node) (*indexAnalyze
 	indexes := make(map[string][]sql.Index)
 
 	// Find all of the native indexed tables in the node (those that don't require a driver)
-	plan.Inspect(n, func(node sql.Node) bool {
-		switch x := node.(type) {
-		case *plan.ResolvedTable:
-			it, ok := x.Table.(sql.IndexedTable)
-			if !ok {
-				return false
+	if n != nil {
+		plan.Inspect(n, func(node sql.Node) bool {
+			switch x := node.(type) {
+			case *plan.ResolvedTable:
+				it, ok := x.Table.(sql.IndexedTable)
+				if !ok {
+					return false
+				}
+
+				idxes, err := it.GetIndexes(ctx)
+				if err != nil {
+					analysisErr = err
+					return false
+				}
+				indexes[it.Name()] = append(indexes[it.Name()], idxes...)
 			}
 
-			idxes, err := it.GetIndexes(ctx)
-			if err != nil {
-				analysisErr = err
-				return false
-			}
-			indexes[it.Name()] = append(indexes[it.Name()], idxes...)
-		}
-
-		return true
-	})
+			return true
+		})
+	}
 
 	if analysisErr != nil {
 		return nil, analysisErr
 	}
 
 	var idxRegistry *sql.IndexRegistry
-	if ctx.HasDrivers() {
+	if ctx.HasIndexes() {
 		idxRegistry = ctx.IndexRegistry
 	}
 

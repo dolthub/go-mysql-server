@@ -261,7 +261,7 @@ func getIndexes(
 		exprs := splitConjunction(e)
 		used := make(map[sql.Expression]struct{})
 
-		result, err := getMultiColumnIndexes(ctx, exprs, a, ia, used, exprAliases, tableAliases)
+		result, err := getMultiColumnIndexes(ctx, exprs, a, ia, exprAliases, tableAliases)
 		if err != nil {
 			return nil, err
 		}
@@ -536,7 +536,6 @@ func getMultiColumnIndexes(
 	exprs []sql.Expression,
 	a *Analyzer,
 	ia *indexAnalyzer,
-	used map[sql.Expression]struct{},
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) (map[string]*indexLookup, error) {
@@ -561,7 +560,7 @@ func getMultiColumnIndexes(
 			}
 
 			if len(selected) > 0 {
-				index, lookup, err := getMultiColumnIndexForExpressions(ctx, a, ia, selected, exps, used, exprAliases, tableAliases)
+				index, lookup, err := getMultiColumnIndexForExpressions(ctx, a, ia, selected, exps, exprAliases, tableAliases)
 				if err != nil || lookup == nil {
 					if err != nil {
 						return nil, err
@@ -590,7 +589,6 @@ func getMultiColumnIndexForExpressions(
 	ia *indexAnalyzer,
 	selected []sql.Expression,
 	exprs []columnExpr,
-	used map[sql.Expression]struct{},
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) (index sql.Index, lookup sql.IndexLookup, err error) {
@@ -618,7 +616,6 @@ func getMultiColumnIndexForExpressions(
 			var values = make([]interface{}, len(index.Expressions()))
 			for i, e := range index.Expressions() {
 				col := findColumn(exprs, e)
-				used[col.comparison] = struct{}{}
 				var val interface{}
 				val, err = col.comparand.Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
@@ -633,7 +630,6 @@ func getMultiColumnIndexForExpressions(
 			var uppers = make([]interface{}, len(index.Expressions()))
 			for i, e := range index.Expressions() {
 				col := findColumn(exprs, e)
-				used[col.comparison] = struct{}{}
 				between := col.comparison.(*expression.Between)
 				lowers[i], err = between.Lower.Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
