@@ -199,7 +199,7 @@ func pushdownToTable(
 		a.Log("table %q transformed with pushdown of projection", tableNode.Name())
 	}
 
-	if it, ok := table.(sql.IndexedTable); ok {
+	if it, ok := table.(sql.IndexAddressableTable); ok {
 		indexLookup, ok := indexes[tableNode.Name()]
 		if ok {
 			table = it.WithIndexLookup(indexLookup.lookup)
