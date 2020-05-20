@@ -370,12 +370,12 @@ func TestGetIndexes(t *testing.T) {
 				),
 				eq(
 					col(0, "t1", "bar"),
-					lit(2),
+					lit(10),
 				),
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
-					intersectionLookupWithKeys("t1", "bar", 0, int64(1), int64(2)),
+					intersectionLookupWithKeys("t1", "bar", 0, int64(1), int64(10)),
 					[]sql.Index{
 						indexes[0],
 						indexes[0],
@@ -1029,7 +1029,7 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 	ia, err := getIndexesForNode(ctx, a, nil)
 	require.NoError(err)
 
-	result, err := getMultiColumnIndexes(ctx, exprs, a, ia,nil, nil)
+	result, err := getMultiColumnIndexes(ctx, exprs, a, ia, nil, nil)
 	require.NoError(err)
 
 	expected := map[string]*indexLookup{

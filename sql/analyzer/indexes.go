@@ -260,13 +260,17 @@ func getIndexes(
 	case *expression.And:
 		exprs := splitConjunction(e)
 
-		result, err := getMultiColumnIndexes(ctx, exprs, a, ia, exprAliases, tableAliases)
+		// First treat the AND expression as a match on >= 2 columns (for keys that span multiple columns)
+		multiColumnIndexes, err := getMultiColumnIndexes(ctx, exprs, a, ia, exprAliases, tableAliases)
 		if err != nil {
 			return nil, err
 		}
 
+		result := multiColumnIndexes
+		// Next try to match the remaining expressions individually
 		for _, e := range exprs {
-			if indexHasExpression(result, normalizeExpression(exprAliases, tableAliases, e)) {
+			// But don't handle any expressions already captured by used multi-column indexes
+			if indexHasExpression(multiColumnIndexes, normalizeExpression(exprAliases, tableAliases, e)) {
 				continue
 			}
 
@@ -275,6 +279,10 @@ func getIndexes(
 				return nil, err
 			}
 
+			// Merge this index in with the multi-column indexes if possible
+			// TODO: this doesn't properly handle unmerge-able indexes and might lead to incorrect results in some cases.
+			//  Probably not because it's an AND (we should be able to handle any part of an AND expression independently and
+			//  leave the rest to the filters), but the behavior is poorly defined.
 			result = indexesIntersection(ctx, a, result, indexes)
 		}
 
@@ -555,7 +563,7 @@ func getMultiColumnIndexes(
 	ctx *sql.Context,
 	exprs []sql.Expression,
 	a *Analyzer,
-	ia *indexAnalyzer,
+  ia *indexAnalyzer,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) (map[string]*indexLookup, error) {
@@ -609,7 +617,7 @@ func getMultiColumnIndexForExpressions(
 	ia *indexAnalyzer,
 	selected []sql.Expression,
 	exprs []columnExpr,
-	exprAliases ExprAliases,
+  exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) (index sql.Index, lookup sql.IndexLookup, err error) {
 
