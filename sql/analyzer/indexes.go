@@ -259,7 +259,6 @@ func getIndexes(
 		}
 	case *expression.And:
 		exprs := splitConjunction(e)
-		used := make(map[sql.Expression]struct{})
 
 		result, err := getMultiColumnIndexes(ctx, exprs, a, ia, exprAliases, tableAliases)
 		if err != nil {
@@ -267,7 +266,7 @@ func getIndexes(
 		}
 
 		for _, e := range exprs {
-			if _, ok := used[e]; ok {
+			if indexHasExpression(result, normalizeExpression(exprAliases, tableAliases, e)) {
 				continue
 			}
 
@@ -283,6 +282,27 @@ func getIndexes(
 	}
 
 	return result, nil
+}
+
+// Returns whether the given index contains the given expression as one of its terms. The expression should be
+// normalized (table names unaliased) to ensure matching the index's declaration.
+func indexHasExpression(indexLookups map[string]*indexLookup, expr sql.Expression) bool {
+	getField := extractGetField(expr)
+	if getField == nil {
+		return false
+	}
+
+	for _, indexLookup := range indexLookups {
+		for _, idx := range indexLookup.indexes {
+			for _, exprStr := range idx.Expressions() {
+				if exprStr == getField.String() {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
 }
 
 // Returns the tables used in the expression given
