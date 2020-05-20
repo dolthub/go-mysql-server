@@ -144,7 +144,7 @@ func (r *IndexRegistry) IndexDriver(id string) IndexDriver {
 // HasIndexes returns whether the index registry has any registered indexes. Not thread safe, so the answer is
 // approximate in the face of drivers and indexes being added and removed.
 func (r *IndexRegistry) HasIndexes() bool {
-	return len(r.indexes) > 0
+	return len(r.indexes) > 0 || len(r.drivers) > 0
 }
 
 // DefaultIndexDriver returns the default index driver, which is the only
