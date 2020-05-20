@@ -37,12 +37,7 @@ type IndexDriver interface {
 // DriverIndexableTable represents a table that supports being indexed and receiving indexes to be able to speed up its
 // execution.
 type DriverIndexableTable interface {
-	Table
-	// WithIndexLookup returns a version of the table that will return only the rows specified in the given IndexLookup,
-	// which was in turn created by a call to Index.Get() for a set of keys for this table.
-	WithIndexLookup(DriverIndexLookup) Table
-	// IndexLookup returns the index lookup that this table had applied to it, if any
-	IndexLookup() DriverIndexLookup
+	IndexAddressableTable
 	// IndexKeyValues returns an iterator over partitions and ultimately the rows of the table to compute the value of an
 	// index for every row in this table. Used when creating an index for access through an IndexDriver.
 	IndexKeyValues(*Context, []string) (PartitionIndexKeyValueIter, error)

@@ -54,6 +54,10 @@ func getIndexesForNode(ctx *sql.Context, a *Analyzer, n sql.Node) (*indexAnalyze
 		return true
 	})
 
+	if analysisErr != nil {
+		return nil, analysisErr
+	}
+
 	var idxRegistry *sql.IndexRegistry
 	if ctx.HasDrivers() {
 		idxRegistry = ctx.IndexRegistry
@@ -143,7 +147,9 @@ func (r *indexAnalyzer) releaseUsedIndexes() {
 	}
 
 	for _, i := range r.registryIdxes {
-		r.indexRegistry.ReleaseIndex(i)
+		if i != nil {
+			r.indexRegistry.ReleaseIndex(i)
+		}
 	}
 }
 

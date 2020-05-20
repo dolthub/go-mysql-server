@@ -34,13 +34,8 @@ var _ sql.DeletableTable = (*Table)(nil)
 var _ sql.ReplaceableTable = (*Table)(nil)
 var _ sql.FilteredTable = (*Table)(nil)
 var _ sql.ProjectedTable = (*Table)(nil)
-var _ sql.IndexedTable = (*Table)(nil)
+var _ sql.DriverIndexableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
-
-func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
-	// TODO: sort this out
-	panic("implement me")
-}
 
 // NewTable creates a new Table with the given name and schema.
 func NewTable(name string, schema sql.Schema) *Table {
@@ -609,11 +604,6 @@ func (t *Table) Projection() []string {
 // Filters implements the sql.FilteredTable interface.
 func (t *Table) Filters() []sql.Expression {
 	return t.filters
-}
-
-// IndexLookup implements the sql.IndexableTable interface.
-func (t *Table) IndexLookup() sql.IndexLookup {
-	return t.lookup
 }
 
 type partitionIndexKeyValueIter struct {
