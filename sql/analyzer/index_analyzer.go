@@ -25,11 +25,12 @@ type indexAnalyzer struct {
 	//  database in the plan, so we can't do this.
 	indexesByTable map[string][]sql.Index
 	indexRegistry *sql.IndexRegistry
+	registryIdxes []sql.Index
 }
 
-// getIndexesForNode returns a slice of all indexes available in the node given. These might come from either the
+// getIndexesForNode returns an analyzer for indexes available in the node given. These might come from either the
 // tables themselves natively, or else from an index driver that has indexes for the tables included in the nodes.
-func getIndexesForNode(ctx *sql.Context, a Analyzer, n sql.Node) (*indexAnalyzer, error) {
+func getIndexesForNode(ctx *sql.Context, a *Analyzer, n sql.Node) (*indexAnalyzer, error) {
 	var analysisErr error
 	indexes := make(map[string][]sql.Index)
 
@@ -64,9 +65,8 @@ func getIndexesForNode(ctx *sql.Context, a Analyzer, n sql.Node) (*indexAnalyzer
 	}, nil
 }
 
-// IndexByExpression returns an index by the given expression. It will return
-// nil if an index is not found. If more than one expression is given, all
-// of them must match for the index to be matched.
+// IndexByExpression returns an index by the given expression. It will return nil if no index is not found. If more
+// than one expression is given, all of them must match for the index to be matched.
 func (r *indexAnalyzer) IndexByExpression(ctx *sql.Context, db string, expr ...sql.Expression) sql.Index {
 	exprStrs := make([]string, len(expr))
 	for i, e := range expr {
@@ -82,7 +82,9 @@ func (r *indexAnalyzer) IndexByExpression(ctx *sql.Context, db string, expr ...s
 	}
 
 	if r.indexRegistry != nil {
-		return r.IndexByExpression(ctx, db, expr...)
+		idx := r.indexRegistry.IndexByExpression(ctx, db, expr...)
+		r.registryIdxes = append(r.registryIdxes, idx)
+		return idx
 	}
 
 	return nil
@@ -127,10 +129,22 @@ func (r *indexAnalyzer) ExpressionsWithIndexes(db string, exprs ...sql.Expressio
 
 	// Expand the search to the index registry if present
 	if r.indexRegistry != nil {
-		results = append(results, r.indexRegistry.ExpressionsWithIndexes(db, exprs...)...)
+		indexes := r.indexRegistry.ExpressionsWithIndexes(db, exprs...)
+		results = append(results, indexes...)
 	}
 
 	return results
+}
+
+// releaseUsedIndexes should be called in the top level function of index analysis to return any held res
+func (r *indexAnalyzer) releaseUsedIndexes() {
+	if r.indexRegistry == nil {
+		return
+	}
+
+	for _, i := range r.registryIdxes {
+		r.indexRegistry.ReleaseIndex(i)
+	}
 }
 
 // exprListsMatch returns whether any subset of a is the entirety of b.

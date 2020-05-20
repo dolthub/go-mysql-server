@@ -923,7 +923,7 @@ func TestGetIndexes(t *testing.T) {
 			require := require.New(t)
 
 			ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
-			result, err := getIndexes(ctx, a, tt.expr, nil, nil)
+			result, err := getIndexes(ctx, a, nil, tt.expr, nil, nil)
 			if tt.ok {
 				require.NoError(err)
 				require.Equal(tt.expected, result)
