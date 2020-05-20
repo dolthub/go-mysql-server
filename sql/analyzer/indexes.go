@@ -149,13 +149,6 @@ func getIndexes(
 					}
 				}
 
-				// release the index if it was not used
-				defer func() {
-					if _, ok := result[idx.Table()]; !ok {
-						ctx.ReleaseIndex(idx)
-					}
-				}()
-
 				value, err := c.Right().Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
 					return nil, err
@@ -236,12 +229,6 @@ func getIndexes(
 		if !isEvaluable(e.Val) && isEvaluable(e.Upper) && isEvaluable(e.Lower) {
 			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Val)...)
 			if idx != nil {
-				// release the index if it was not used
-				defer func() {
-					if _, ok := result[idx.Table()]; !ok {
-						ctx.ReleaseIndex(idx)
-					}
-				}()
 
 				upper, err := e.Upper.Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
@@ -371,13 +358,11 @@ func getComparisonIndex(
 		if idx != nil {
 			value, err := right.Eval(sql.NewEmptyContext(), nil)
 			if err != nil {
-				ctx.ReleaseIndex(idx)
 				return nil, nil, err
 			}
 
 			lookup, err := comparisonIndexLookup(e, idx, value)
 			if err != nil || lookup == nil {
-				ctx.ReleaseIndex(idx)
 				return nil, nil, err
 			}
 
@@ -464,13 +449,11 @@ func getNegatedIndexes(
 
 		value, err := right.Eval(sql.NewEmptyContext(), nil)
 		if err != nil {
-			ctx.ReleaseIndex(idx)
 			return nil, err
 		}
 
 		lookup, err := index.Not(value)
 		if err != nil || lookup == nil {
-			ctx.ReleaseIndex(idx)
 			return nil, err
 		}
 
@@ -532,10 +515,6 @@ func indexesIntersection(
 		if idx2, ok := right[table]; ok && canMergeIndexes(idx.lookup, idx2.lookup) {
 			idx.lookup = idx.lookup.(sql.MergeableIndexLookup).Intersection(idx2.lookup)
 			idx.indexes = append(idx.indexes, idx2.indexes...)
-		} else if ok {
-			for _, idx := range idx2.indexes {
-				ctx.ReleaseIndex(idx)
-			}
 		}
 
 		result[table] = idx
@@ -584,10 +563,6 @@ func getMultiColumnIndexes(
 			if len(selected) > 0 {
 				index, lookup, err := getMultiColumnIndexForExpressions(ctx, a, ia, selected, exps, used, exprAliases, tableAliases)
 				if err != nil || lookup == nil {
-					if index != nil {
-						ctx.ReleaseIndex(index)
-					}
-
 					if err != nil {
 						return nil, err
 					}
