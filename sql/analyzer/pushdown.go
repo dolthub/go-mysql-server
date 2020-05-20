@@ -92,7 +92,6 @@ func transformPushdown(
 		tableAliases TableAliases,
 ) (sql.Node, error) {
 	var handledFilters []sql.Expression
-	var usedIndexes []sql.Index
 	usedFieldsByTable := make(fieldsByTable)
 
 	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
@@ -109,7 +108,6 @@ func transformPushdown(
 				node,
 				filters,
 				&handledFilters,
-				&usedIndexes,
 				fieldNamesByTable,
 				usedFieldsByTable,
 				indexes,
@@ -126,7 +124,6 @@ func transformPushdown(
 				node,
 				filters,
 				&handledFilters,
-				&usedIndexes,
 				fieldNamesByTable,
 				usedFieldsByTable,
 				indexes,
@@ -142,19 +139,8 @@ func transformPushdown(
 		}
 	})
 
-	release := func() {
-		for _, idx := range usedIndexes {
-			ctx.ReleaseIndex(idx)
-		}
-	}
-
 	if err != nil {
-		release()
 		return nil, err
-	}
-
-	if len(usedIndexes) > 0 {
-		return &Releaser{node, release}, nil
 	}
 
 	return node, nil
@@ -173,7 +159,6 @@ func pushdownToTable(
 		tableNode NameableNode,
 		filters filtersByTable,
 		handledFilters *[]sql.Expression,
-		usedIndexes *[]sql.Index,
 		fieldsByTable fieldsByTable,
 		usedProjections fieldsByTable,
 		indexes map[string]*indexLookup,
@@ -217,7 +202,6 @@ func pushdownToTable(
 	if it, ok := table.(sql.IndexedTable); ok {
 		indexLookup, ok := indexes[tableNode.Name()]
 		if ok {
-			*usedIndexes = append(*usedIndexes, indexLookup.indexes...)
 			table = it.WithIndexLookup(indexLookup.lookup)
 			a.Log("table %q transformed with pushdown of index", tableNode.Name())
 		}
