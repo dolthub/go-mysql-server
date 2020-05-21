@@ -29,19 +29,19 @@ func TestIndexes(t *testing.T) {
 
 	_, _, err = e.Query(
 		newCtx(idxReg),
-		"CREATE INDEX idx_i USING pilosa ON mytable (i) WITH (async = false)",
+		"CREATE INDEX idx_i USING pilosa ON mytable (i)",
 	)
 	require.NoError(t, err)
 
 	_, _, err = e.Query(
 		newCtx(idxReg),
-		"CREATE INDEX idx_s USING pilosa ON mytable (s) WITH (async = false)",
+		"CREATE INDEX idx_s USING pilosa ON mytable (s)",
 	)
 	require.NoError(t, err)
 
 	_, _, err = e.Query(
 		newCtx(idxReg),
-		"CREATE INDEX idx_is USING pilosa ON mytable (i, s) WITH (async = false)",
+		"CREATE INDEX idx_is USING pilosa ON mytable (i, s)",
 	)
 	require.NoError(t, err)
 

@@ -622,12 +622,23 @@ func (t *Table) CreateIndex(ctx *sql.Context, indexName string, using sql.IndexU
 
 // DropIndex implements sql.IndexAlterableTable
 func (t *Table) DropIndex(ctx *sql.Context, indexName string) error {
-	panic("not implemented")
+	for name := range t.indexes {
+		if name == indexName {
+			delete(t.indexes, name)
+		}
+	}
+	return nil
 }
 
 // RenameIndex implements sql.IndexAlterableTable
 func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName string) error {
-	panic("not implemented")
+	for name, index := range t.indexes {
+		if name == fromIndexName {
+			delete(t.indexes, name)
+			t.indexes[toIndexName] = index
+		}
+	}
+	return nil
 }
 
 // WithIndexLookup implements the sql.IndexAddressableTable interface.
