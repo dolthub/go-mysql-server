@@ -201,7 +201,7 @@ func TestMergeable(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		m1, ok := tc.i1.(sql.Mergeable)
+		m1, ok := tc.i1.(sql.MergeableIndexLookup)
 		require.True(ok)
 
 		require.Equal(tc.expected, m1.IsMergeable(tc.i2))
@@ -265,7 +265,7 @@ func TestLookupIndexes(t *testing.T) {
 	// of lookups are tested.
 	for i := 0; i < len(lookups); i++ {
 		var op sql.MergeableIndexLookup
-		var others []sql.DriverIndexLookup
+		var others []sql.IndexLookup
 		for j := 0; j < len(lookups); j++ {
 			if i == j {
 				op = lookups[i].(sql.MergeableIndexLookup)
@@ -274,8 +274,8 @@ func TestLookupIndexes(t *testing.T) {
 			}
 		}
 
-		require.Equal(expected, op.Union(others...).Indexes())
-		require.Equal(expected, op.Difference(others...).Indexes())
-		require.Equal(expected, op.Intersection(others...).Indexes())
+		require.Equal(expected, op.Union(others...).(sql.DriverIndexLookup).Indexes())
+		require.Equal(expected, op.Difference(others...).(sql.DriverIndexLookup).Indexes())
+		require.Equal(expected, op.Intersection(others...).(sql.DriverIndexLookup).Indexes())
 	}
 }
