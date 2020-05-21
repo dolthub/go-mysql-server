@@ -2676,21 +2676,21 @@ func TestHistoryQueries(t *testing.T) {
 	testQueries(t, historyQueries)
 }
 
+type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
+type indexInitializer func(*testing.T, *sqle.Engine) error
+type indexBehaviorTestParams struct {
+	name              string
+	driverInitializer indexDriverInitalizer
+	indexInitializer indexInitializer
+}
+
 // testQueries tests the given queries on an engine under a variety of circumstances:
 // 1) Partitioned tables / non partitioned tables
-// 2) Mergeable / unmergeable / no indexes
+// 2) Mergeable / unmergeable / native / no indexes
 // 3) Parallelism on / off
 func testQueries(t *testing.T, testQueries []queryTest) {
-	type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
-	type indexInitializer func(*testing.T, *sqle.Engine) error
-	type indexDriverTestCase struct {
-		name              string
-		driverInitializer indexDriverInitalizer
-		indexInitializer indexInitializer
-	}
-
 	var numPartitionsVals []int
-	var indexBehaviors []*indexDriverTestCase
+	var indexBehaviors []*indexBehaviorTestParams
 	var parallelVals []int
 
 	if debugQuery == "" {
@@ -2698,7 +2698,7 @@ func testQueries(t *testing.T, testQueries []queryTest) {
 			1,
 			testNumPartitions,
 		}
-		indexBehaviors = []*indexDriverTestCase{
+		indexBehaviors = []*indexBehaviorTestParams{
 			nil,
 			{"unmergableIndexes", unmergableIndexDriver, nil},
 			{"mergableIndexes", mergableIndexDriver, nil},
@@ -2711,7 +2711,7 @@ func testQueries(t *testing.T, testQueries []queryTest) {
 		}
 	} else {
 		numPartitionsVals = []int{1}
-		indexBehaviors = []*indexDriverTestCase{{"unmergableIndexes", unmergableIndexDriver, nil}}
+		indexBehaviors = []*indexBehaviorTestParams{{"unmergableIndexes", unmergableIndexDriver, nil}}
 		parallelVals = []int{1}
 	}
 
@@ -3449,25 +3449,43 @@ var debugQueryPlan = ""
 // Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that
 // the right indexes are being used for joining tables.
 func TestQueryPlans(t *testing.T) {
-	tables := allTestTables(t, 2)
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"unmergableIndexes", unmergableIndexDriver, nil},
+		{"nativeIndexes", nil, nativeIndexes},
+		{"nativeAndMergable", mergableIndexDriver, nativeIndexes},
+	}
 
-	indexDriver := unmergableIndexDriver(tables)
-	engine, idxReg := newEngineWithParallelism(t, 1, tables, indexDriver)
+	for _, indexInit := range indexBehaviors {
+		t.Run(indexInit.name, func(t *testing.T) {
+			tables := allTestTables(t, 2)
 
-	for _, tt := range planTests {
-		t.Run(tt.query, func(t *testing.T) {
-			if debugQueryPlan != "" &&  tt.query != debugQueryPlan {
-				t.Skip()
+			var indexDriver sql.IndexDriver
+			if indexInit.driverInitializer != nil {
+				indexDriver = indexInit.driverInitializer(tables)
 			}
 
-			ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+			engine, idxReg := newEngineWithParallelism(t, 1, tables, indexDriver)
 
-			parsed, err := parse.Parse(ctx, tt.query)
-			require.NoError(t, err)
+			if indexInit.indexInitializer != nil {
+				indexInit.indexInitializer(t, engine)
+			}
 
-			node, err := engine.Analyzer.Analyze(ctx, parsed)
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected, extractQueryNode(node).String())
+			for _, tt := range planTests {
+				t.Run(tt.query, func(t *testing.T) {
+					if debugQueryPlan != "" &&  tt.query != debugQueryPlan {
+						t.Skip()
+					}
+
+					ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+
+					parsed, err := parse.Parse(ctx, tt.query)
+					require.NoError(t, err)
+
+					node, err := engine.Analyzer.Analyze(ctx, parsed)
+					require.NoError(t, err)
+					assert.Equal(t, tt.expected, extractQueryNode(node).String())
+				})
+			}
 		})
 	}
 }
