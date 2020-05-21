@@ -335,10 +335,7 @@ func findTables(e sql.Expression) []string {
 }
 
 func betweenIndexLookup(index sql.Index, upper, lower []interface{}) (sql.IndexLookup, error) {
-	// TODO: two bugs here
-	//  1) Mergeable and SetOperations are separate interfaces, so a naive integrator could generate a type assertion
-	//  error in this method
-	//  2) Since AscendRange and DescendRange both accept an upper and lower bound, there is no good reason to require
+	// TODO: Since AscendRange and DescendRange both accept an upper and lower bound, there is no good reason to require
 	//  both implementations from an index. One will do fine, no need to require both and merge them.
 	ai, isAscend := index.(sql.AscendIndex)
 	di, isDescend := index.(sql.DescendIndex)
@@ -366,7 +363,7 @@ func betweenIndexLookup(index sql.Index, upper, lower []interface{}) (sql.IndexL
 // comparison if any index can be found.
 // It works for the following comparisons: eq, lt, gt, gte and lte.
 // TODO(erizocosmico): add support for BETWEEN once the appropiate interfaces
-// can handle inclusiveness on both sides.
+//  can handle inclusiveness on both sides.
 func getComparisonIndex(
 		ctx *sql.Context,
 		a *Analyzer,

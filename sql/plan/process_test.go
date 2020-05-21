@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"io"
 	"testing"
 
 	"github.com/liquidata-inc/go-mysql-server/memory"
@@ -104,7 +105,7 @@ func TestProcessTable(t *testing.T) {
 }
 
 func TestProcessIndexableTable(t *testing.T) {
-	// require := require.New(t)
+	require := require.New(t)
 
 	table := memory.NewPartitionedTable("foo", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
@@ -115,54 +116,53 @@ func TestProcessIndexableTable(t *testing.T) {
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(3)))
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(4)))
 
-	// var partitionDoneNotifications int
-	// var partitionStartNotifications int
-	// var rowNextNotifications int
+	var partitionDoneNotifications int
+	var partitionStartNotifications int
+	var rowNextNotifications int
 
-	// TODO: fix me. Need a new version of these memory tables for ProcessIndexableTable
-	// pt := NewProcessIndexableTable(
-	// 	table,
-	// 	func(partitionName string) {
-	// 		partitionDoneNotifications++
-	// 	},
-	// 	func(partitionName string) {
-	// 		partitionStartNotifications++
-	// 	},
-	// 	func(partitionName string) {
-	// 		rowNextNotifications++
-	// 	},
-	// )
-	//
-	// iter, err := pt.IndexKeyValues(sql.NewEmptyContext(), []string{"a"})
-	// require.NoError(err)
-	//
-	// var values [][]interface{}
-	// for {
-	// 	_, kviter, err := iter.Next()
-	// 	if err == io.EOF {
-	// 		break
-	// 	}
-	// 	require.NoError(err)
-	//
-	// 	for {
-	// 		v, _, err := kviter.Next()
-	// 		if err == io.EOF {
-	// 			break
-	// 		}
-	// 		values = append(values, v)
-	// 		require.NoError(err)
-	// 	}
-	// }
-	//
-	// expectedValues := [][]interface{}{
-	// 	{int64(1)},
-	// 	{int64(2)},
-	// 	{int64(3)},
-	// 	{int64(4)},
-	// }
-	//
-	// require.ElementsMatch(expectedValues, values)
-	// require.Equal(2, partitionDoneNotifications)
-	// require.Equal(2, partitionStartNotifications)
-	// require.Equal(4, rowNextNotifications)
+	pt := NewProcessIndexableTable(
+		table,
+		func(partitionName string) {
+			partitionDoneNotifications++
+		},
+		func(partitionName string) {
+			partitionStartNotifications++
+		},
+		func(partitionName string) {
+			rowNextNotifications++
+		},
+	)
+
+	iter, err := pt.IndexKeyValues(sql.NewEmptyContext(), []string{"a"})
+	require.NoError(err)
+
+	var values [][]interface{}
+	for {
+		_, kviter, err := iter.Next()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(err)
+
+		for {
+			v, _, err := kviter.Next()
+			if err == io.EOF {
+				break
+			}
+			values = append(values, v)
+			require.NoError(err)
+		}
+	}
+
+	expectedValues := [][]interface{}{
+		{int64(1)},
+		{int64(2)},
+		{int64(3)},
+		{int64(4)},
+	}
+
+	require.ElementsMatch(expectedValues, values)
+	require.Equal(2, partitionDoneNotifications)
+	require.Equal(2, partitionStartNotifications)
+	require.Equal(4, rowNextNotifications)
 }
