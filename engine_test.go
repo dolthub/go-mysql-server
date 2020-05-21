@@ -2682,13 +2682,15 @@ func TestHistoryQueries(t *testing.T) {
 // 3) Parallelism on / off
 func testQueries(t *testing.T, testQueries []queryTest) {
 	type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
+	type indexInitializer func(*testing.T, *sqle.Engine) error
 	type indexDriverTestCase struct {
-		name        string
-		initializer indexDriverInitalizer
+		name              string
+		driverInitializer indexDriverInitalizer
+		indexInitializer indexInitializer
 	}
 
 	var numPartitionsVals []int
-	var indexDrivers []*indexDriverTestCase
+	var indexBehaviors []*indexDriverTestCase
 	var parallelVals []int
 
 	if debugQuery == "" {
@@ -2696,10 +2698,12 @@ func testQueries(t *testing.T, testQueries []queryTest) {
 			1,
 			testNumPartitions,
 		}
-		indexDrivers = []*indexDriverTestCase{
+		indexBehaviors = []*indexDriverTestCase{
 			nil,
-			{"unmergableIndexes", unmergableIndexDriver},
-			{"mergableIndexes", mergableIndexDriver},
+			{"unmergableIndexes", unmergableIndexDriver, nil},
+			{"mergableIndexes", mergableIndexDriver, nil},
+			{"nativeIndexes", nil, nativeIndexes},
+			{"nativeAndMergable", mergableIndexDriver, nativeIndexes},
 		}
 		parallelVals = []int{
 			1,
@@ -2707,20 +2711,24 @@ func testQueries(t *testing.T, testQueries []queryTest) {
 		}
 	} else {
 		numPartitionsVals = []int{1}
-		indexDrivers = []*indexDriverTestCase{{"unmergableIndexes", unmergableIndexDriver}}
+		indexBehaviors = []*indexDriverTestCase{{"unmergableIndexes", unmergableIndexDriver, nil}}
 		parallelVals = []int{1}
 	}
 
 	for _, numPartitions := range numPartitionsVals {
-		for _, indexDriverInit := range indexDrivers {
+		for _, indexInit := range indexBehaviors {
 			for _, parallelism := range parallelVals {
 				tables := allTestTables(t, numPartitions)
 
 				var indexDriver sql.IndexDriver
-				if indexDriverInit != nil {
-					indexDriver = indexDriverInit.initializer(tables)
+				if indexInit != nil && indexInit.driverInitializer != nil {
+					indexDriver = indexInit.driverInitializer(tables)
 				}
 				engine, idxReg := newEngineWithParallelism(t, parallelism, tables, indexDriver)
+
+				if indexInit != nil && indexInit.indexInitializer != nil {
+					indexInit.indexInitializer(t, engine)
+				}
 
 				if len(debugQuery) > 0 {
 					engine.Analyzer.Verbose = true
@@ -2728,8 +2736,8 @@ func testQueries(t *testing.T, testQueries []queryTest) {
 				}
 
 				indexDriverName := "none"
-				if indexDriverInit != nil {
-					indexDriverName = indexDriverInit.name
+				if indexInit != nil {
+					indexDriverName = indexInit.name
 				}
 				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexDriverName, parallelism)
 
@@ -2864,6 +2872,32 @@ func mergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
 			),
 		},
 	})
+}
+
+func nativeIndexes(t *testing.T, e *sqle.Engine) error {
+	createIndexes := []string{
+		"create index mytable_i on mytable (i)",
+		"create index mytable_s on mytable (s)",
+		"create index mytable_i_s on mytable (i,s)",
+		"create index othertable_s2 on othertable (s2)",
+		"create index othertable_i2 on othertable (i2)",
+		"create index othertable_s2_i2 on othertable (s2,i2)",
+		"create index bigtable_t on bigtable (t)",
+		"create index floattable_t on floattable (f64)",
+		"create index niltable_i on niltable (i)",
+		"create index one_pk_pk on one_pk (pk)",
+		"create index two_pk_pk1_pk2 on two_pk (pk1,pk2)",
+	}
+
+	for _, q := range createIndexes {
+		_, iter, err := e.Query(newCtx(sql.NewIndexRegistry()), q)
+		require.NoError(t, err)
+
+		_, err = sql.RowIterToRows(iter)
+		require.NoError(t, err)
+	}
+
+	return nil
 }
 
 func newUnmergableIndex(tables map[string]*memory.Table, tableName string, exprs ...sql.Expression) *memory.UnmergeableIndex {
