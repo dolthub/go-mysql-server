@@ -81,7 +81,7 @@ func (r *indexAnalyzer) IndexByExpression(ctx *sql.Context, db string, expr ...s
 
 	for _, idxes := range r.indexesByTable {
 		for _, idx := range idxes {
-			if exprListsEqual(idx.Expressions(), exprStrs) {
+			if isSublist(idx.Expressions(), exprStrs) {
 				return idx
 			}
 		}
@@ -155,8 +155,8 @@ func (r *indexAnalyzer) releaseUsedIndexes() {
 	}
 }
 
-// exprListsMatch returns whether any subset of a is the entirety of b.
-func exprListsMatch(a, b []string) bool {
+// isSublist returns whether a is a sublist of b (order-independent)
+func isSublist(a, b []string) bool {
 	var visited = make([]bool, len(b))
 
 	for _, va := range a {
@@ -180,13 +180,4 @@ func exprListsMatch(a, b []string) bool {
 	}
 
 	return true
-}
-
-// exprListsEqual returns whether a and b have the same items.
-func exprListsEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	return exprListsMatch(a, b)
 }

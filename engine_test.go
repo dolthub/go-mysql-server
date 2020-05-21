@@ -3471,11 +3471,12 @@ func TestQueryPlans(t *testing.T) {
 			}
 
 			for _, tt := range planTests {
-				t.Run(tt.query, func(t *testing.T) {
-					if debugQueryPlan != "" &&  tt.query != debugQueryPlan {
-						t.Skip()
-					}
+				if debugQueryPlan != "" &&  tt.query != debugQueryPlan {
+					t.Log("Ignoring test", tt.query)
+					continue
+				}
 
+				t.Run(tt.query, func(t *testing.T) {
 					ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
 
 					parsed, err := parse.Parse(ctx, tt.query)
