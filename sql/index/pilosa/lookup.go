@@ -59,7 +59,7 @@ var (
 type (
 
 	// indexLookup implement following interfaces:
-	// sql.IndexLookup, sql.Mergeable, sql.SetOperations
+	// sql.IndexLookup, sql.MergeableIndexLookup
 	indexLookup struct {
 		id          string
 		index       *concurrentPilosaIndex
@@ -80,6 +80,12 @@ type (
 		values(sql.Partition) (*pilosa.Row, error)
 	}
 )
+
+var _ sql.MergeableIndexLookup = (*indexLookup)(nil)
+
+func (l *indexLookup) String() string {
+	return l.indexName()
+}
 
 func (l *indexLookup) indexName() string {
 	return l.index.Name()
@@ -189,8 +195,8 @@ func (l *indexLookup) Indexes() []string {
 	return sortedIndexes(l.indexes)
 }
 
-// IsMergeable implements sql.Mergeable interface.
-func (l *indexLookup) IsMergeable(lookup sql.DriverIndexLookup) bool {
+// IsMergeable implements sql.MergeableIndexLookup interface.
+func (l *indexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	if il, ok := lookup.(pilosaLookup); ok {
 		return il.indexName() == l.indexName()
 	}
@@ -198,40 +204,40 @@ func (l *indexLookup) IsMergeable(lookup sql.DriverIndexLookup) bool {
 	return false
 }
 
-// Intersection implements sql.SetOperations interface
-func (l *indexLookup) Intersection(lookups ...sql.DriverIndexLookup) sql.DriverIndexLookup {
+// Intersection implements sql.MergeableIndexLookup interface
+func (l *indexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
-		for _, idx := range li.Indexes() {
+		for _, idx := range li.(sql.DriverIndexLookup).Indexes() {
 			lookup.indexes[idx] = struct{}{}
 		}
-		lookup.operations = append(lookup.operations, &lookupOperation{li, intersect})
+		lookup.operations = append(lookup.operations, &lookupOperation{li.(sql.DriverIndexLookup), intersect})
 	}
 
 	return &lookup
 }
 
-// Union implements sql.SetOperations interface
-func (l *indexLookup) Union(lookups ...sql.DriverIndexLookup) sql.DriverIndexLookup {
+// Union implements sql.MergeableIndexLookup interface
+func (l *indexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
-		for _, idx := range li.Indexes() {
+		for _, idx := range li.(sql.DriverIndexLookup).Indexes() {
 			lookup.indexes[idx] = struct{}{}
 		}
-		lookup.operations = append(lookup.operations, &lookupOperation{li, union})
+		lookup.operations = append(lookup.operations, &lookupOperation{li.(sql.DriverIndexLookup), union})
 	}
 
 	return &lookup
 }
 
-// Difference implements sql.SetOperations interface
-func (l *indexLookup) Difference(lookups ...sql.DriverIndexLookup) sql.DriverIndexLookup {
+// Difference implements sql.MergeableIndexLookup interface
+func (l *indexLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
-		for _, idx := range li.Indexes() {
+		for _, idx := range li.(sql.DriverIndexLookup).Indexes() {
 			lookup.indexes[idx] = struct{}{}
 		}
-		lookup.operations = append(lookup.operations, &lookupOperation{li, difference})
+		lookup.operations = append(lookup.operations, &lookupOperation{li.(sql.DriverIndexLookup), difference})
 	}
 
 	return &lookup
@@ -248,6 +254,12 @@ type filteredLookup struct {
 
 	reverse bool
 	filter  func(int, []byte) (bool, error)
+}
+
+var _ sql.MergeableIndexLookup = (*filteredLookup)(nil)
+
+func (l *filteredLookup) String() string {
+	return l.indexName()
 }
 
 func (l *filteredLookup) indexName() string {
@@ -369,48 +381,48 @@ func (l *filteredLookup) Indexes() []string {
 	return sortedIndexes(l.indexes)
 }
 
-// IsMergeable implements sql.Mergeable interface.
-func (l *filteredLookup) IsMergeable(lookup sql.DriverIndexLookup) bool {
+// IsMergeable implements sql.MergeableIndexLookup interface.
+func (l *filteredLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	if il, ok := lookup.(pilosaLookup); ok {
 		return il.indexName() == l.indexName()
 	}
 	return false
 }
 
-// Intersection implements sql.SetOperations interface
-func (l *filteredLookup) Intersection(lookups ...sql.DriverIndexLookup) sql.DriverIndexLookup {
+// Intersection implements sql.MergeableIndexLookup interface
+func (l *filteredLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
-		for _, idx := range li.Indexes() {
+		for _, idx := range li.(sql.DriverIndexLookup).Indexes() {
 			lookup.indexes[idx] = struct{}{}
 		}
-		lookup.operations = append(lookup.operations, &lookupOperation{li, intersect})
+		lookup.operations = append(lookup.operations, &lookupOperation{li.(sql.DriverIndexLookup), intersect})
 	}
 
 	return &lookup
 }
 
-// Union implements sql.SetOperations interface
-func (l *filteredLookup) Union(lookups ...sql.DriverIndexLookup) sql.DriverIndexLookup {
+// Union implements sql.MergeableIndexLookup interface
+func (l *filteredLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
-		for _, idx := range li.Indexes() {
+		for _, idx := range li.(sql.DriverIndexLookup).Indexes() {
 			lookup.indexes[idx] = struct{}{}
 		}
-		lookup.operations = append(lookup.operations, &lookupOperation{li, union})
+		lookup.operations = append(lookup.operations, &lookupOperation{li.(sql.DriverIndexLookup), union})
 	}
 
 	return &lookup
 }
 
-// Difference implements sql.SetOperations interface
-func (l *filteredLookup) Difference(lookups ...sql.DriverIndexLookup) sql.DriverIndexLookup {
+// Difference implements sql.MergeableIndexLookup interface
+func (l *filteredLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
-		for _, idx := range li.Indexes() {
+		for _, idx := range li.(sql.DriverIndexLookup).Indexes() {
 			lookup.indexes[idx] = struct{}{}
 		}
-		lookup.operations = append(lookup.operations, &lookupOperation{li, difference})
+		lookup.operations = append(lookup.operations, &lookupOperation{li.(sql.DriverIndexLookup), difference})
 	}
 
 	return &lookup
@@ -428,6 +440,9 @@ type descendLookup struct {
 	lte []interface{}
 }
 
+var _ sql.MergeableIndexLookup = (*ascendLookup)(nil)
+var _ sql.MergeableIndexLookup = (*descendLookup)(nil)
+
 type negateLookup struct {
 	id          string
 	index       *concurrentPilosaIndex
@@ -436,6 +451,12 @@ type negateLookup struct {
 	expressions []string
 	indexes     map[string]struct{}
 	operations  []*lookupOperation
+}
+
+var _ sql.MergeableIndexLookup = (*negateLookup)(nil)
+
+func (l *negateLookup) String() string {
+	return l.indexName()
 }
 
 func (l *negateLookup) indexName() string { return l.index.Name() }
@@ -565,8 +586,8 @@ func (l *negateLookup) Indexes() []string {
 	return sortedIndexes(l.indexes)
 }
 
-// IsMergeable implements sql.Mergeable interface.
-func (l *negateLookup) IsMergeable(lookup sql.DriverIndexLookup) bool {
+// IsMergeable implements sql.MergeableIndexLookup interface.
+func (l *negateLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	if il, ok := lookup.(pilosaLookup); ok {
 		return il.indexName() == l.indexName()
 	}
@@ -574,40 +595,40 @@ func (l *negateLookup) IsMergeable(lookup sql.DriverIndexLookup) bool {
 	return false
 }
 
-// Intersection implements sql.SetOperations interface
-func (l *negateLookup) Intersection(lookups ...sql.DriverIndexLookup) sql.DriverIndexLookup {
+// Intersection implements sql.MergeableIndexLookup interface
+func (l *negateLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
-		for _, idx := range li.Indexes() {
+		for _, idx := range li.(sql.DriverIndexLookup).Indexes() {
 			lookup.indexes[idx] = struct{}{}
 		}
-		lookup.operations = append(lookup.operations, &lookupOperation{li, intersect})
+		lookup.operations = append(lookup.operations, &lookupOperation{li.(sql.DriverIndexLookup), intersect})
 	}
 
 	return &lookup
 }
 
-// Union implements sql.SetOperations interface
-func (l *negateLookup) Union(lookups ...sql.DriverIndexLookup) sql.DriverIndexLookup {
+// Union implements sql.MergeableIndexLookup interface
+func (l *negateLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
-		for _, idx := range li.Indexes() {
+		for _, idx := range li.(sql.DriverIndexLookup).Indexes() {
 			lookup.indexes[idx] = struct{}{}
 		}
-		lookup.operations = append(lookup.operations, &lookupOperation{li, union})
+		lookup.operations = append(lookup.operations, &lookupOperation{li.(sql.DriverIndexLookup), union})
 	}
 
 	return &lookup
 }
 
-// Difference implements sql.SetOperations interface
-func (l *negateLookup) Difference(lookups ...sql.DriverIndexLookup) sql.DriverIndexLookup {
+// Difference implements sql.MergeableIndexLookup interface
+func (l *negateLookup) Difference(lookups ...sql.IndexLookup) sql.IndexLookup {
 	lookup := *l
 	for _, li := range lookups {
-		for _, idx := range li.Indexes() {
+		for _, idx := range li.(sql.DriverIndexLookup).Indexes() {
 			lookup.indexes[idx] = struct{}{}
 		}
-		lookup.operations = append(lookup.operations, &lookupOperation{li, difference})
+		lookup.operations = append(lookup.operations, &lookupOperation{li.(sql.DriverIndexLookup), difference})
 	}
 
 	return &lookup

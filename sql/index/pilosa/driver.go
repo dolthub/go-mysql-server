@@ -117,7 +117,7 @@ func (d *Driver) Create(
 	db, table, id string,
 	expressions []sql.Expression,
 	config map[string]string,
-) (sql.Index, error) {
+) (sql.DriverIndex, error) {
 	_, err := mkdir(d.root, db, table, id)
 	if err != nil {
 		return nil, err
