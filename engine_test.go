@@ -339,30 +339,6 @@ var queries = []queryTest{
 		[]sql.Row{{int64(3)}},
 	},
 	{
-		"SELECT *  FROM myhistorytable AS OF '2019-01-01' AS foo ORDER BY i",
-		[]sql.Row{
-			{int64(1), "first row, 1"},
-			{int64(2), "second row, 1"},
-			{int64(3), "third row, 1"},
-		},
-	},
-	{
-		"SELECT *  FROM myhistorytable AS OF '2019-01-02' foo ORDER BY i",
-		[]sql.Row{
-			{int64(1), "first row, 2"},
-			{int64(2), "second row, 2"},
-			{int64(3), "third row, 2"},
-		},
-	},
-	{
-		"SELECT *  FROM myhistorytable ORDER BY i",
-		[]sql.Row{
-			{int64(1), "first row, 2"},
-			{int64(2), "second row, 2"},
-			{int64(3), "third row, 2"},
-		},
-	},
-	{
 		"SELECT substring(s, 2, 3) FROM mytable",
 		[]sql.Row{{"irs"}, {"eco"}, {"hir"}},
 	},
@@ -2391,6 +2367,33 @@ var queries = []queryTest{
 	},
 }
 
+var historyQueries = []queryTest {
+	{
+		"SELECT *  FROM myhistorytable AS OF '2019-01-01' AS foo ORDER BY i",
+		[]sql.Row{
+			{int64(1), "first row, 1"},
+			{int64(2), "second row, 1"},
+			{int64(3), "third row, 1"},
+		},
+	},
+	{
+		"SELECT *  FROM myhistorytable AS OF '2019-01-02' foo ORDER BY i",
+		[]sql.Row{
+			{int64(1), "first row, 2"},
+			{int64(2), "second row, 2"},
+			{int64(3), "third row, 2"},
+		},
+	},
+	{
+		"SELECT *  FROM myhistorytable ORDER BY i",
+		[]sql.Row{
+			{int64(1), "first row, 2"},
+			{int64(2), "second row, 2"},
+			{int64(3), "third row, 2"},
+		},
+	},
+}
+
 var infoSchemaQueries = []queryTest {
 	{
 		`SHOW TABLE STATUS FROM mydb`,
@@ -2666,9 +2669,21 @@ var infoSchemaQueries = []queryTest {
 var debugQuery = ""
 
 func TestQueries(t *testing.T) {
+	testQueries(t, queries)
+}
+
+func TestHistoryQueries(t *testing.T) {
+	testQueries(t, historyQueries)
+}
+
+// testQueries tests the given queries on an engine under a variety of circumstances:
+// 1) Partitioned tables / non partitioned tables
+// 2) Mergeable / unmergeable / no indexes
+// 3) Parallelism on / off
+func testQueries(t *testing.T, testQueries []queryTest) {
 	type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
 	type indexDriverTestCase struct {
-		name string
+		name        string
 		initializer indexDriverInitalizer
 	}
 
@@ -2676,10 +2691,6 @@ func TestQueries(t *testing.T) {
 	var indexDrivers []*indexDriverTestCase
 	var parallelVals []int
 
-	// Test all queries with these combinations, for a total of 12 runs:
-	// 1) Partitioned tables / non partitioned tables
-	// 2) Mergeable / unmergeable / no indexes
-	// 3) Parallelism on / off
 	if debugQuery == "" {
 		numPartitionsVals = []int{
 			1,
@@ -2695,9 +2706,9 @@ func TestQueries(t *testing.T) {
 			2,
 		}
 	} else {
-		numPartitionsVals = []int{ 1 }
+		numPartitionsVals = []int{1}
 		indexDrivers = []*indexDriverTestCase{{"unmergableIndexes", unmergableIndexDriver}}
-		parallelVals = []int{ 1 }
+		parallelVals = []int{1}
 	}
 
 	for _, numPartitions := range numPartitionsVals {
@@ -2723,7 +2734,7 @@ func TestQueries(t *testing.T) {
 				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexDriverName, parallelism)
 
 				t.Run(testName, func(t *testing.T) {
-					for _, tt := range queries {
+					for _, tt := range testQueries {
 						if debugQuery != "" && debugQuery != tt.query {
 							t.Log("Skipping query in debug mode:", tt.query)
 							continue

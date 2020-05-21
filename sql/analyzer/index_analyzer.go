@@ -71,8 +71,8 @@ func getIndexesForNode(ctx *sql.Context, a *Analyzer, n sql.Node) (*indexAnalyze
 	}, nil
 }
 
-// IndexByExpression returns an index by the given expression. It will return nil if no index is not found. If more
-// than one expression is given, all of them must match for the index to be matched.
+// IndexByExpression returns an index by the given expression. It will return nil if no index is found. If more than
+// one expression is given, all of them must match for the index to be matched.
 func (r *indexAnalyzer) IndexByExpression(ctx *sql.Context, db string, expr ...sql.Expression) sql.Index {
 	exprStrs := make([]string, len(expr))
 	for i, e := range expr {
