@@ -58,7 +58,7 @@ var (
 	errInvalidKeys = errors.NewKind("expecting %d keys for index %q, got %d")
 )
 
-// pilosaIndex is an pilosa implementation of sql.Index interface
+// pilosaIndex is a pilosa implementation of sql.Index interface
 type pilosaIndex struct {
 	index   *concurrentPilosaIndex
 	mapping map[string]*mapping
