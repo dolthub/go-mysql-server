@@ -16,9 +16,4 @@ jobs:
       uses: actions/checkout@v2
     - name: Test
       uses: actions/cache@v1
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
       run: go test ./...
