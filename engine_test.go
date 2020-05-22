@@ -2132,33 +2132,6 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
-		[]sql.Row{
-			{0, 0, 0, 0},
-			{0, 1, 1, 0},
-			{1, 0, 0, 1},
-			{1, 1, 1, 1},
-		},
-	},
-	{
-		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON b.pk2=a.pk1 AND a.pk2=b.pk1 ORDER BY 1,2,3",
-		[]sql.Row{
-			{0, 0, 0, 0},
-			{0, 1, 1, 0},
-			{1, 0, 0, 1},
-			{1, 1, 1, 1},
-		},
-	},
-	{
-		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk2 b WHERE a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
-		[]sql.Row{
-			{0, 0, 0, 0},
-			{0, 1, 1, 0},
-			{1, 0, 0, 1},
-			{1, 1, 1, 1},
-		},
-	},
-	{
 		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 0, 0},
@@ -2186,7 +2159,7 @@ var queries = []queryTest{
 		},
 	},
 	{
-		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1+1=b.pk1 AND a.pk2+1=b.pk2 ORDER BY 1,2,3",
+		"SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1+1=b.pk1 AND a.pk2+1=b.pk2 ORDER BY 1,2,3",
 		[]sql.Row{
 			{0, 0, 1, 1},
 		},
@@ -3180,37 +3153,14 @@ var planTests = []planTest{
 				"",
 	},
 	{
-		// TODO: this should use an index on b
-		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1+1=b.pk1 AND a.pk2+1=b.pk2 ORDER BY 1,2,3",
+		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1+1=b.pk1 AND a.pk2+1=b.pk2 ORDER BY 1,2,3",
 		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-				" └─ InnerJoin(a.pk1 + 1 = b.pk1 AND a.pk2 + 1 = b.pk2)\n" +
-				"     ├─ TableAlias(a)\n" +
-				"     │   └─ Table(two_pk): Projected \n" +
-				"     └─ TableAlias(b)\n" +
-				"         └─ Table(two_pk2): Projected \n" +
-				"",
-	},
-	{
-		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
-		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-				" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
-				"     └─ IndexedJoin(a.pk1 = b.pk2 AND a.pk2 = b.pk1)\n" +
-				"         ├─ TableAlias(b)\n" +
-				"         │   └─ Table(two_pk2): Projected \n" +
-				"         └─ TableAlias(a)\n" +
-				"             └─ Table(two_pk): Projected \n" +
-				"",
-	},
-	{
-		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk2 b ON b.pk2=a.pk1 AND a.pk2=b.pk1 ORDER BY 1,2,3",
-		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-				" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
-				"     └─ IndexedJoin(b.pk2 = a.pk1 AND a.pk2 = b.pk1)\n" +
-				"         ├─ TableAlias(b)\n" +
-				"         │   └─ Table(two_pk2): Projected \n" +
-				"         └─ TableAlias(a)\n" +
-				"             └─ Table(two_pk): Projected \n" +
-				"",
+			" └─ IndexedJoin(a.pk1 + 1 = b.pk1 AND a.pk2 + 1 = b.pk2)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(two_pk): Projected \n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table(two_pk): Projected \n" +
+			"",
 	},
 	{
 		// TODO: this should use an index. CrossJoin needs to be converted to InnerJoin, where clause to join cond
@@ -3226,14 +3176,14 @@ var planTests = []planTest{
 	},
 	{
 		// TODO: this should use an index. CrossJoin needs to be converted to InnerJoin, where clause to join cond
-		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk2 b WHERE a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+		query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
 		expected: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
 				" └─ Filter(a.pk1 = b.pk2 AND a.pk2 = b.pk1)\n" +
 				"     └─ CrossJoin\n" +
 				"         ├─ TableAlias(a)\n" +
 				"         │   └─ Table(two_pk): Projected \n" +
 				"         └─ TableAlias(b)\n" +
-				"             └─ Table(two_pk2): Projected \n" +
+				"             └─ Table(two_pk): Projected \n" +
 				"",
 	},
 	{
@@ -5469,7 +5419,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	tables := make(map[string]*memory.Table)
 
 	tables["mytable"] = memory.NewPartitionedTable("mytable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s", Type: sql.Text, Source: "mytable"},
 	}, numPartitions)
 
@@ -5513,20 +5463,6 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 		sql.NewRow(0, 1, 10, 10, 10, 10, 10),
 		sql.NewRow(1, 0, 20, 20, 20, 20, 20),
 		sql.NewRow(1, 1, 30, 30, 30, 30, 30),
-	)
-
-	tables["two_pk2"] = memory.NewPartitionedTable("two_pk2", sql.Schema{
-		{Name: "pk1", Type: sql.Int8, Source: "two_pk2", PrimaryKey: true},
-		{Name: "pk2", Type: sql.Int8, Source: "two_pk2", PrimaryKey: true},
-		{Name: "c1", Type: sql.Int8, Source: "two_pk2"},
-	}, numPartitions)
-
-	insertRows(t,
-		tables["two_pk2"],
-		sql.NewRow(0, 0, 0),
-		sql.NewRow(0, 1, 10),
-		sql.NewRow(1, 0, 20),
-		sql.NewRow(1, 1, 30),
 	)
 
 	tables["othertable"] = memory.NewPartitionedTable("othertable", sql.Schema{
