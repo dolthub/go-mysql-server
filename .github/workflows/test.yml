@@ -15,5 +15,4 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Test
-      uses: actions/cache@v1
       run: go test ./...
