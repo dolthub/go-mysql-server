@@ -49,7 +49,13 @@ type dummyLookup struct {
 	values map[string][]*indexValue
 }
 
+var _ sql.DriverIndexLookup = (*dummyLookup)(nil)
+
 func (dummyLookup) Indexes() []string { return nil }
+
+func (i dummyLookup) String() string {
+	panic("index")
+}
 
 func (i *dummyLookup) Values(partition sql.Partition) (sql.IndexValueIter, error) {
 	key := string(partition.Key())

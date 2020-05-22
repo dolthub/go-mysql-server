@@ -25,6 +25,7 @@ type Table struct {
 	projection []string
 	columns    []int
 	lookup     sql.IndexLookup
+	indexes    map[string]sql.Index
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -34,8 +35,10 @@ var _ sql.DeletableTable = (*Table)(nil)
 var _ sql.ReplaceableTable = (*Table)(nil)
 var _ sql.FilteredTable = (*Table)(nil)
 var _ sql.ProjectedTable = (*Table)(nil)
-var _ sql.IndexableTable = (*Table)(nil)
+var _ sql.DriverIndexableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
+var _ sql.IndexAlterableTable = (*Table)(nil)
+var _ sql.IndexedTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema.
 func NewTable(name string, schema sql.Schema) *Table {
@@ -103,7 +106,7 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	var values sql.IndexValueIter
 	if t.lookup != nil {
 		var err error
-		values, err = t.lookup.Values(partition)
+		values, err = t.lookup.(sql.DriverIndexLookup).Values(partition)
 		if err != nil {
 			return nil, err
 		}
@@ -561,7 +564,84 @@ func (t *Table) newColumnIndexesAndSchema(colNames []string) ([]int, sql.Schema,
 	return columns, schema, nil
 }
 
-// WithIndexLookup implements the sql.IndexableTable interface.
+// GetIndexes implements sql.IndexedTable
+func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
+	indexes := make([]sql.Index, len(t.indexes))
+	var i int
+	for _, index := range t.indexes {
+		indexes[i] = index
+		i++
+	}
+	return indexes, nil
+}
+
+func (t *Table) createIndex(name string, columns []sql.IndexColumn) (sql.Index, error) {
+	if t.indexes[name] != nil {
+		// TODO: extract a standard error type for this
+		return nil, fmt.Errorf("Error: index already exists")
+	}
+
+	exprs := make([]sql.Expression, len(columns))
+	for i, column := range columns {
+		idx, field := getField(column.Name, t.schema)
+		exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
+	}
+
+	return &UnmergeableIndex{
+		DB:         "",
+		DriverName: "native",
+		Tbl:        t,
+		TableName:  t.name,
+		Exprs:      exprs,
+	}, nil
+}
+
+func getField(col string, schema sql.Schema) (int, *sql.Column) {
+	for i, column := range schema {
+		if column.Name == col {
+			return i, column
+		}
+	}
+	return -1, nil
+}
+
+// CreateIndex implements sql.IndexAlterableTable
+func (t *Table) CreateIndex(ctx *sql.Context, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) error {
+	if t.indexes == nil {
+		t.indexes = make(map[string]sql.Index)
+	}
+
+	index, err := t.createIndex(indexName, columns)
+	if err != nil {
+		return err
+	}
+
+	t.indexes[indexName] = index
+	return nil
+}
+
+// DropIndex implements sql.IndexAlterableTable
+func (t *Table) DropIndex(ctx *sql.Context, indexName string) error {
+	for name := range t.indexes {
+		if name == indexName {
+			delete(t.indexes, name)
+		}
+	}
+	return nil
+}
+
+// RenameIndex implements sql.IndexAlterableTable
+func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName string) error {
+	for name, index := range t.indexes {
+		if name == fromIndexName {
+			delete(t.indexes, name)
+			t.indexes[toIndexName] = index
+		}
+	}
+	return nil
+}
+
+// WithIndexLookup implements the sql.IndexAddressableTable interface.
 func (t *Table) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
 	if lookup == nil {
 		return t
@@ -604,11 +684,6 @@ func (t *Table) Projection() []string {
 // Filters implements the sql.FilteredTable interface.
 func (t *Table) Filters() []sql.Expression {
 	return t.filters
-}
-
-// IndexLookup implements the sql.IndexableTable interface.
-func (t *Table) IndexLookup() sql.IndexLookup {
-	return t.lookup
 }
 
 type partitionIndexKeyValueIter struct {

@@ -227,13 +227,22 @@ type IndexColumn struct {
 	Length int64
 }
 
-// IndexableTable represents a table that supports being indexed and
-// receiving indexes to be able to speed up its execution.
-type IndexableTable interface {
+// IndexedTable represents a table that has one or more native indexes on its columns, and can use those indexes to
+// speed up execution of queries that reference those columns. Unlike DriverIndexableTable, IndexedTable doesn't need a
+// separate index driver to function.
+type IndexedTable interface {
+	IndexAddressableTable
+	// GetIndexes returns all indexes on this table.
+	GetIndexes(ctx *Context) ([]Index, error)
+}
+
+// IndexAddressableTable is a table that can restrict its row iteration to only the rows that match a given index
+// lookup.
+type IndexAddressableTable interface {
 	Table
+	// WithIndexLookup returns a version of the table that will return only the rows specified by the given IndexLookup,
+	// which was in turn created by a call to Index.Get() for a set of keys for this table.
 	WithIndexLookup(IndexLookup) Table
-	IndexLookup() IndexLookup
-	IndexKeyValues(*Context, []string) (PartitionIndexKeyValueIter, error)
 }
 
 // IndexAlterableTable represents a table that supports index modification operations.

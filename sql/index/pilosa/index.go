@@ -58,7 +58,7 @@ var (
 	errInvalidKeys = errors.NewKind("expecting %d keys for index %q, got %d")
 )
 
-// pilosaIndex is an pilosa implementation of sql.Index interface
+// pilosaIndex is a pilosa implementation of sql.Index interface
 type pilosaIndex struct {
 	index   *concurrentPilosaIndex
 	mapping map[string]*mapping
@@ -71,6 +71,11 @@ type pilosaIndex struct {
 	expressions []string
 	checksum    string
 }
+
+var _ sql.Index = (*pilosaIndex)(nil)
+var _ sql.AscendIndex = (*pilosaIndex)(nil)
+var _ sql.DescendIndex = (*pilosaIndex)(nil)
+var _ sql.NegateIndex = (*pilosaIndex)(nil)
 
 func newPilosaIndex(idx *pilosa.Index, cfg *index.Config) *pilosaIndex {
 	var checksum string

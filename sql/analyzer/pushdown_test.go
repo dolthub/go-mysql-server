@@ -224,79 +224,64 @@ func TestPushdownIndexable(t *testing.T) {
 		),
 	)
 
-	expected := &Releaser{
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-			},
-			plan.NewCrossJoin(
-				plan.NewResolvedTable(
-					table.WithFilters([]sql.Expression{
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-							expression.NewLiteral(3.14, sql.Float64),
-						),
-						expression.NewGreaterThan(
-							expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-							expression.NewLiteral(1, sql.Int32),
-						),
-					}).(*memory.Table).
-						WithProjection([]string{"i", "f"}).(*memory.Table).
-							WithIndexLookup(
-								// TODO: These two indexes should not be mergeable, and fetching the values of
-								//  them will not yield correct results with the current implementation of these indexes.
-								&memory.MergedIndexLookup{
-									Intersections: []sql.IndexLookup{
-										&memory.MergeableIndexLookup{
-											Key:   []interface{}{float64(3.14)},
-											Index: idx2,
-										},
-										&memory.DescendIndexLookup{
-											Gt:    []interface{}{1},
-											Index: idx1,
-										},
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+		},
+		plan.NewCrossJoin(
+			plan.NewResolvedTable(
+				table.WithFilters([]sql.Expression{
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+						expression.NewLiteral(3.14, sql.Float64),
+					),
+					expression.NewGreaterThan(
+						expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+						expression.NewLiteral(1, sql.Int32),
+					),
+				}).(*memory.Table).
+					WithProjection([]string{"i", "f"}).(*memory.Table).
+						WithIndexLookup(
+							// TODO: These two indexes should not be mergeable, and fetching the values of
+							//  them will not yield correct results with the current implementation of these indexes.
+							&memory.MergedIndexLookup{
+								Intersections: []sql.IndexLookup{
+									&memory.MergeableIndexLookup{
+										Key:   []interface{}{float64(3.14)},
+										Index: idx2,
 									},
-									Index: idx2,
+									&memory.DescendIndexLookup{
+										Gt:    []interface{}{1},
+										Index: idx1,
+									},
 								},
-							),
-				),
-				plan.NewResolvedTable(
-					table2.WithFilters([]sql.Expression{
-						expression.NewNot(
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
-								expression.NewLiteral(2, sql.Int32),
-							),
+								Index: idx2,
+							},
 						),
-					}).(*memory.Table).
-						WithProjection([]string{"i2"}).(*memory.Table).
-							WithIndexLookup(&memory.NegateIndexLookup{
-								Lookup: &memory.MergeableIndexLookup{
-									Key:   []interface{}{2},
-									Index: idx3,
-								},
+			),
+			plan.NewResolvedTable(
+				table2.WithFilters([]sql.Expression{
+					expression.NewNot(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+							expression.NewLiteral(2, sql.Int32),
+						),
+					),
+				}).(*memory.Table).
+					WithProjection([]string{"i2"}).(*memory.Table).
+						WithIndexLookup(&memory.NegateIndexLookup{
+							Lookup: &memory.MergeableIndexLookup{
+								Key:   []interface{}{2},
 								Index: idx3,
-							}),
-				),
+							},
+							Index: idx3,
+						}),
 			),
 		),
-		nil,
-	}
+	)
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry()))
 	result, err := a.Analyze(ctx, node)
 	require.NoError(err)
-
-	// we need to remove the release function to compare, otherwise it will fail
-	result, err = plan.TransformUp(result, func(node sql.Node) (sql.Node, error) {
-		switch node := node.(type) {
-		case *Releaser:
-			return &Releaser{Child: node.Child}, nil
-		default:
-			return node, nil
-		}
-	})
-	require.NoError(err)
-
 	require.Equal(expected, result)
 }

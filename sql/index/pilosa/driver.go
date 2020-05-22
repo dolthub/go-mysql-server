@@ -86,6 +86,8 @@ type (
 	}
 )
 
+var _ sql.IndexDriver = (*Driver)(nil)
+
 var (
 	// RowsGauge describes a metric that takes number of indexes rows over time.
 	RowsGauge = discard.NewGauge()
@@ -117,7 +119,7 @@ func (d *Driver) Create(
 	db, table, id string,
 	expressions []sql.Expression,
 	config map[string]string,
-) (sql.Index, error) {
+) (sql.DriverIndex, error) {
 	_, err := mkdir(d.root, db, table, id)
 	if err != nil {
 		return nil, err
@@ -157,9 +159,9 @@ func (d *Driver) Create(
 var errReadIndexes = errors.NewKind("error loading all indexes for table %s of database %s: %s")
 
 // LoadAll loads all indexes for given db and table
-func (d *Driver) LoadAll(ctx *sql.Context, db, table string) ([]sql.Index, error) {
+func (d *Driver) LoadAll(ctx *sql.Context, db, table string) ([]sql.DriverIndex, error) {
 	var (
-		indexes []sql.Index
+		indexes []sql.DriverIndex
 		errors  []string
 		root    = filepath.Join(d.root, db, table)
 	)
@@ -366,7 +368,7 @@ func (d *Driver) savePartition(
 // Save the given index (mapping and bitmap)
 func (d *Driver) Save(
 	ctx *sql.Context,
-	i sql.Index,
+	i sql.DriverIndex,
 	iter sql.PartitionIndexKeyValueIter,
 ) (err error) {
 	start := time.Now()
@@ -480,7 +482,7 @@ func (d *Driver) Save(
 }
 
 // Delete the given index for all partitions in the iterator.
-func (d *Driver) Delete(i sql.Index, partitions sql.PartitionIter) error {
+func (d *Driver) Delete(i sql.DriverIndex, partitions sql.PartitionIter) error {
 	idx, ok := i.(*pilosaIndex)
 	if !ok {
 		return errInvalidIndexType.New(i)

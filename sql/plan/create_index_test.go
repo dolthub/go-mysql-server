@@ -351,7 +351,7 @@ type mockIndex struct {
 	exprs []sql.Expression
 }
 
-var _ sql.Index = (*mockIndex)(nil)
+var _ sql.DriverIndex = (*mockIndex)(nil)
 
 func (i *mockIndex) ID() string       { return i.id }
 func (i *mockIndex) Table() string    { return i.table }
@@ -381,7 +381,7 @@ type mockDriver struct {
 var _ sql.IndexDriver = (*mockDriver)(nil)
 
 func (*mockDriver) ID() string { return "mock" }
-func (d *mockDriver) Create(db, table, id string, exprs []sql.Expression, config map[string]string) (sql.Index, error) {
+func (d *mockDriver) Create(db, table, id string, exprs []sql.Expression, config map[string]string) (sql.DriverIndex, error) {
 	if d.config == nil {
 		d.config = make(map[string]map[string]string)
 	}
@@ -389,15 +389,15 @@ func (d *mockDriver) Create(db, table, id string, exprs []sql.Expression, config
 
 	return &mockIndex{db, table, id, exprs}, nil
 }
-func (*mockDriver) LoadAll(ctx *sql.Context, db, table string) ([]sql.Index, error) {
+func (*mockDriver) LoadAll(ctx *sql.Context, db, table string) ([]sql.DriverIndex, error) {
 	panic("not implemented")
 }
 
-func (d *mockDriver) Save(ctx *sql.Context, index sql.Index, iter sql.PartitionIndexKeyValueIter) error {
+func (d *mockDriver) Save(ctx *sql.Context, index sql.DriverIndex, iter sql.PartitionIndexKeyValueIter) error {
 	d.saved = append(d.saved, index.ID())
 	return nil
 }
-func (d *mockDriver) Delete(index sql.Index, _ sql.PartitionIter) error {
+func (d *mockDriver) Delete(index sql.DriverIndex, _ sql.PartitionIter) error {
 	d.deleted = append(d.deleted, index.ID())
 	return nil
 }

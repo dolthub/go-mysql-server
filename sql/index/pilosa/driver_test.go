@@ -194,8 +194,8 @@ func TestSaveAndLoad(t *testing.T) {
 
 	for partition, records := range it.records {
 		for _, r := range records {
-			var lookup sql.IndexLookup
-			lookup, err = sqlIdx.Get(r.values...)
+			var lookup sql.DriverIndexLookup
+			lookup, err = mustDriverIndexLookup(sqlIdx.Get(r.values...))
 			require.NoError(err)
 
 			var lit sql.IndexValueIter
@@ -225,7 +225,7 @@ func TestSaveAndLoad(t *testing.T) {
 	require.ElementsMatch(expectedLocations, locations)
 
 	// test that not found values do not cause error
-	lookup, err := sqlIdx.Get("do not exist", "none")
+	lookup, err := mustDriverIndexLookup(sqlIdx.Get("do not exist", "none"))
 	require.NoError(err)
 	lit, err := lookup.Values(testPartition(0))
 	require.NoError(err)
@@ -241,6 +241,10 @@ func TestSaveAndLoad(t *testing.T) {
 	}
 
 	require.True(found)
+}
+
+func mustDriverIndexLookup(lookup sql.IndexLookup, err error) (sql.DriverIndexLookup, error) {
+	return lookup.(sql.DriverIndexLookup), err
 }
 
 func TestSaveAndGetAll(t *testing.T) {
@@ -450,14 +454,15 @@ func TestAscendDescendIndex(t *testing.T) {
 	idx, cleanup := setupAscendDescend(t)
 	defer cleanup()
 
-	must := func(lookup sql.IndexLookup, err error) sql.IndexLookup {
+	must := func(lookup sql.IndexLookup, err error) sql.DriverIndexLookup {
+		dlookup, err := mustDriverIndexLookup(lookup, err)
 		require.NoError(t, err)
-		return lookup
+		return dlookup
 	}
 
 	testCases := []struct {
 		name     string
-		lookup   sql.IndexLookup
+		lookup   sql.DriverIndexLookup
 		expected []string
 	}{
 		{
@@ -565,13 +570,13 @@ func TestIntersection(t *testing.T) {
 	lookupPath, err := sqlIdxPath.Get(itPath.records[0][itPath.total-1].values...)
 	require.NoError(err)
 
-	m, ok := lookupLang.(sql.Mergeable)
+	m, ok := lookupLang.(sql.MergeableIndexLookup)
 	require.True(ok)
 	require.True(m.IsMergeable(lookupPath))
 
-	interLookup, ok := lookupLang.(sql.SetOperations)
+	interLookup, ok := lookupLang.(sql.MergeableIndexLookup)
 	require.True(ok)
-	interIt, err := interLookup.Intersection(lookupPath).Values(testPartition(0))
+	interIt, err := interLookup.Intersection(lookupPath).(sql.DriverIndexLookup).Values(testPartition(0))
 	require.NoError(err)
 	_, err = interIt.Next()
 
@@ -583,9 +588,9 @@ func TestIntersection(t *testing.T) {
 	lookupPath, err = sqlIdxPath.Get(itPath.records[0][0].values...)
 	require.NoError(err)
 
-	interLookup, ok = lookupPath.(sql.SetOperations)
+	interLookup, ok = lookupPath.(sql.MergeableIndexLookup)
 	require.True(ok)
-	interIt, err = interLookup.Intersection(lookupLang).Values(testPartition(0))
+	interIt, err = interLookup.Intersection(lookupLang).(sql.DriverIndexLookup).Values(testPartition(0))
 	require.NoError(err)
 	loc, err := interIt.Next()
 	require.NoError(err)
@@ -641,13 +646,13 @@ func TestIntersectionWithMultipleDrivers(t *testing.T) {
 	lookupPath, err := sqlIdxPath.Get(itPath.records[0][itPath.total-1].values...)
 	require.NoError(err)
 
-	m, ok := lookupLang.(sql.Mergeable)
+	m, ok := lookupLang.(sql.MergeableIndexLookup)
 	require.True(ok)
 	require.True(m.IsMergeable(lookupPath))
 
-	interLookup, ok := lookupLang.(sql.SetOperations)
+	interLookup, ok := lookupLang.(sql.MergeableIndexLookup)
 	require.True(ok)
-	interIt, err := interLookup.Intersection(lookupPath).Values(testPartition(0))
+	interIt, err := interLookup.Intersection(lookupPath).(sql.DriverIndexLookup).Values(testPartition(0))
 	require.NoError(err)
 	_, err = interIt.Next()
 
@@ -659,9 +664,9 @@ func TestIntersectionWithMultipleDrivers(t *testing.T) {
 	lookupPath, err = sqlIdxPath.Get(itPath.records[0][0].values...)
 	require.NoError(err)
 
-	interLookup, ok = lookupPath.(sql.SetOperations)
+	interLookup, ok = lookupPath.(sql.MergeableIndexLookup)
 	require.True(ok)
-	interIt, err = interLookup.Intersection(lookupLang).Values(testPartition(0))
+	interIt, err = interLookup.Intersection(lookupLang).(sql.DriverIndexLookup).Values(testPartition(0))
 	require.NoError(err)
 	loc, err := interIt.Next()
 	require.NoError(err)
@@ -714,7 +719,7 @@ func TestUnion(t *testing.T) {
 
 	lookupLang, err := sqlIdxLang.Get(itLang.records[0][0].values...)
 	require.NoError(err)
-	litLang, err := lookupLang.Values(testPartition(0))
+	litLang, err := lookupLang.(sql.DriverIndexLookup).Values(testPartition(0))
 	require.NoError(err)
 
 	loc, err := litLang.Next()
@@ -727,7 +732,7 @@ func TestUnion(t *testing.T) {
 
 	lookupPath, err := sqlIdxPath.Get(itPath.records[0][itPath.total-1].values...)
 	require.NoError(err)
-	litPath, err := lookupPath.Values(testPartition(0))
+	litPath, err := lookupPath.(sql.DriverIndexLookup).Values(testPartition(0))
 	require.NoError(err)
 
 	loc, err = litPath.Next()
@@ -738,20 +743,20 @@ func TestUnion(t *testing.T) {
 	err = litLang.Close()
 	require.NoError(err)
 
-	m, ok := lookupLang.(sql.Mergeable)
+	m, ok := lookupLang.(sql.MergeableIndexLookup)
 	require.True(ok)
 	require.True(m.IsMergeable(lookupPath))
 
-	unionLookup, ok := lookupLang.(sql.SetOperations)
+	unionLookup, ok := lookupLang.(sql.MergeableIndexLookup)
 	require.True(ok)
 
 	lookupNonExisting, err := sqlIdxPath.Get(itPath.total)
 	require.NoError(err)
 
-	unionLookup, ok = unionLookup.Union(lookupNonExisting).(sql.SetOperations)
+	unionLookup, ok = unionLookup.Union(lookupNonExisting).(sql.MergeableIndexLookup)
 	require.True(ok)
 
-	unionIt, err := unionLookup.Union(lookupPath).Values(testPartition(0))
+	unionIt, err := unionLookup.Union(lookupPath).(sql.DriverIndexLookup).Values(testPartition(0))
 	require.NoError(err)
 	// 0
 	loc, err = unionIt.Next()
@@ -815,17 +820,17 @@ func TestDifference(t *testing.T) {
 	lookupPath, err := sqlIdxPath.Get(itPath.records[0][itPath.total-1].values...)
 	require.NoError(err)
 
-	m, ok := lookupLang.(sql.Mergeable)
+	m, ok := lookupLang.(sql.MergeableIndexLookup)
 	require.True(ok)
 	require.True(m.IsMergeable(lookupPath))
 
-	unionOp, ok := lookupLang.(sql.SetOperations)
+	unionOp, ok := lookupLang.(sql.MergeableIndexLookup)
 	require.True(ok)
-	unionLookup, ok := unionOp.Union(lookupPath).(sql.SetOperations)
+	unionLookup, ok := unionOp.Union(lookupPath).(sql.MergeableIndexLookup)
 	require.True(ok)
 
 	diffLookup := unionLookup.Difference(lookupLang)
-	diffIt, err := diffLookup.Values(testPartition(0))
+	diffIt, err := diffLookup.(sql.DriverIndexLookup).Values(testPartition(0))
 	require.NoError(err)
 
 	// total-1
@@ -874,8 +879,8 @@ func TestUnionDiffAsc(t *testing.T) {
 	for partition, records := range it.records {
 		ls[partition] = make([]*indexLookup, it.total)
 		for i, r := range records {
-			var l sql.IndexLookup
-			l, err = pilosaIdx.Get(r.values...)
+			var l sql.DriverIndexLookup
+			l, err = mustDriverIndexLookup(pilosaIdx.Get(r.values...))
 			require.NoError(err)
 			ls[partition][i], _ = l.(*indexLookup)
 		}
@@ -884,7 +889,7 @@ func TestUnionDiffAsc(t *testing.T) {
 	unionLookup := ls[0][0].Union(ls[0][2], ls[0][4], ls[0][6], ls[0][8])
 
 	diffLookup := ascLookup.Difference(unionLookup)
-	diffIt, err := diffLookup.Values(testPartition(0))
+	diffIt, err := diffLookup.(sql.DriverIndexLookup).Values(testPartition(0))
 	require.NoError(err)
 
 	for i := 1; i < it.total-1; i += 2 {
@@ -939,7 +944,7 @@ func TestInterRanges(t *testing.T) {
 
 	interLookup := lessLookup.Intersection(greaterLookup)
 	require.NotNil(interLookup)
-	interIt, err := interLookup.Values(testPartition(0))
+	interIt, err := interLookup.(sql.DriverIndexLookup).Values(testPartition(0))
 	require.NoError(err)
 
 	for i := ranges[0]; i < ranges[1]; i++ {
@@ -1023,7 +1028,7 @@ func TestNegateIndex(t *testing.T) {
 	lookup, err := idx.(sql.NegateIndex).Not(int64(1))
 	require.NoError(err)
 
-	values, err := lookupValues(lookup)
+	values, err := lookupValues(lookup.(sql.DriverIndexLookup))
 	require.NoError(err)
 
 	expected := []string{"1", "2", "5"}
@@ -1033,7 +1038,7 @@ func TestNegateIndex(t *testing.T) {
 	lookup, err = idx.(sql.NegateIndex).Not(int64(12739487))
 	require.NoError(err)
 
-	values, err = lookupValues(lookup)
+	values, err = lookupValues(lookup.(sql.DriverIndexLookup))
 	require.NoError(err)
 
 	expected = []string{"1", "2", "3", "4", "5"}
@@ -1042,7 +1047,7 @@ func TestNegateIndex(t *testing.T) {
 	lookup, err = multiIdx.(sql.NegateIndex).Not(int64(1), int64(6))
 	require.NoError(err)
 
-	values, err = lookupValues(lookup)
+	values, err = lookupValues(lookup.(sql.DriverIndexLookup))
 	require.NoError(err)
 
 	expected = []string{"2", "7", "8", "9", "10"}
@@ -1086,7 +1091,7 @@ func TestEqualAndLessIndex(t *testing.T) {
 	eqALookup, err := pilosaIdxEqA.Get(int64(1))
 	require.NoError(err)
 
-	values, err := lookupValues(eqALookup)
+	values, err := lookupValues(eqALookup.(sql.DriverIndexLookup))
 	require.NoError(err)
 	expected := []string{"3", "4", "5", "10"}
 	require.Equal(expected, values)
@@ -1125,8 +1130,8 @@ func TestEqualAndLessIndex(t *testing.T) {
 	expected = []string{"1", "2", "3", "4"}
 	require.Equal(expected, values)
 
-	interLookup := eqALookup.(sql.SetOperations).Intersection(lessBLookup)
-	values, err = lookupValues(interLookup)
+	interLookup := eqALookup.(sql.MergeableIndexLookup).Intersection(lessBLookup)
+	values, err = lookupValues(interLookup.(sql.DriverIndexLookup))
 	require.NoError(err)
 	expected = []string{"3", "4"}
 	require.Equal(expected, values)
@@ -1356,7 +1361,7 @@ func setupAscendDescend(t *testing.T) (*pilosaIndex, func()) {
 	}
 }
 
-func lookupValues(lookup sql.IndexLookup) ([]string, error) {
+func lookupValues(lookup sql.DriverIndexLookup) ([]string, error) {
 	iter, err := lookup.Values(testPartition(0))
 	if err != nil {
 		return nil, err

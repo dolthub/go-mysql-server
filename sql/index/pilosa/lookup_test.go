@@ -139,8 +139,8 @@ func TestMergeable(t *testing.T) {
 	require.NoError(err)
 
 	testCases := []struct {
-		i1       sql.IndexLookup
-		i2       sql.IndexLookup
+		i1       sql.DriverIndexLookup
+		i2       sql.DriverIndexLookup
 		expected bool
 	}{
 		{
@@ -201,7 +201,7 @@ func TestMergeable(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		m1, ok := tc.i1.(sql.Mergeable)
+		m1, ok := tc.i1.(sql.MergeableIndexLookup)
 		require.True(ok)
 
 		require.Equal(tc.expected, m1.IsMergeable(tc.i2))
@@ -209,7 +209,7 @@ func TestMergeable(t *testing.T) {
 }
 
 func TestIndexes(t *testing.T) {
-	testCases := []sql.IndexLookup{
+	testCases := []sql.DriverIndexLookup{
 		&indexLookup{id: "foo", indexes: map[string]struct{}{"foo": struct{}{}}},
 		&negateLookup{id: "foo", indexes: map[string]struct{}{"foo": struct{}{}}},
 		&ascendLookup{
@@ -236,7 +236,7 @@ func TestIndexes(t *testing.T) {
 func TestLookupIndexes(t *testing.T) {
 	require := require.New(t)
 
-	lookups := []sql.IndexLookup{
+	lookups := []sql.DriverIndexLookup{
 		&indexLookup{
 			id:      "1",
 			indexes: map[string]struct{}{"1": struct{}{}},
@@ -264,18 +264,18 @@ func TestLookupIndexes(t *testing.T) {
 	// All possible permutations of operations between all the different kinds
 	// of lookups are tested.
 	for i := 0; i < len(lookups); i++ {
-		var op sql.SetOperations
+		var op sql.MergeableIndexLookup
 		var others []sql.IndexLookup
 		for j := 0; j < len(lookups); j++ {
 			if i == j {
-				op = lookups[i].(sql.SetOperations)
+				op = lookups[i].(sql.MergeableIndexLookup)
 			} else {
 				others = append(others, lookups[j])
 			}
 		}
 
-		require.Equal(expected, op.Union(others...).Indexes())
-		require.Equal(expected, op.Difference(others...).Indexes())
-		require.Equal(expected, op.Intersection(others...).Indexes())
+		require.Equal(expected, op.Union(others...).(sql.DriverIndexLookup).Indexes())
+		require.Equal(expected, op.Difference(others...).(sql.DriverIndexLookup).Indexes())
+		require.Equal(expected, op.Intersection(others...).(sql.DriverIndexLookup).Indexes())
 	}
 }

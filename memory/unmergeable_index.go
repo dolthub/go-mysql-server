@@ -46,6 +46,8 @@ type UnmergeableIndexLookup struct {
 	idx *UnmergeableIndex
 }
 
+var _ sql.IndexLookup = (*UnmergeableIndexLookup)(nil)
+
 // dummyIndexValueIter does a very simple and verifiable iteration over the table values for a given index. It does this
 // by iterating over all the table rows for a partition and evaluating each of them for inclusion in the index. This is
 // not an efficient way to store an index, and is only suitable for testing the correctness of index code in the engine.
@@ -171,6 +173,10 @@ func (u *UnmergeableIndex) ID() string {
 	}
 
 	return "(" + strings.Join(parts, ", ") + ")"
+}
+
+func (u *UnmergeableIndexLookup) String() string {
+	return u.idx.ID()
 }
 
 func (u *UnmergeableIndex) Table() string {

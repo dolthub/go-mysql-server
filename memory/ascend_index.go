@@ -15,6 +15,7 @@ type AscendIndexLookup struct {
 var _ memoryIndexLookup = (*AscendIndexLookup)(nil)
 
 func (l *AscendIndexLookup) ID() string { return l.id }
+func (l *AscendIndexLookup) String() string { return l.id }
 
 func (l *AscendIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	return &indexValIter{

@@ -27,34 +27,29 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node) (indexLooku
 	indexSpan, _ := ctx.Span("assign_indexes")
 	defer indexSpan.Finish()
 
-	var indexes map[string]*indexLookup
-	// release all unused indexes
-	defer func() {
-		if indexes == nil {
-			return
-		}
-
-		for _, i := range indexes {
-			for _, index := range i.indexes {
-				ctx.ReleaseIndex(index)
-			}
-		}
-	}()
-
 	exprAliases := getExpressionAliases(node)
 	tableAliases, err := getTableAliases(node)
 	if err != nil {
 		return nil, err
 	}
 
+	var indexes map[string]*indexLookup
+	var errInAnalysis error
 	plan.Inspect(node, func(node sql.Node) bool {
 		filter, ok := node.(*plan.Filter)
 		if !ok {
 			return true
 		}
 
+		indexAnalyzer, err := getIndexesForNode(ctx, a, node)
+		if err != nil {
+			errInAnalysis = err
+			return false
+		}
+		defer indexAnalyzer.releaseUsedIndexes()
+
 		var result map[string]*indexLookup
-		result, err = getIndexes(ctx, a, filter.Expression, exprAliases, tableAliases)
+		result, err = getIndexes(ctx, a, indexAnalyzer, filter.Expression, exprAliases, tableAliases)
 		if err != nil {
 			return false
 		}
@@ -63,15 +58,20 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node) (indexLooku
 		return true
 	})
 
-	return indexes, err
+	if errInAnalysis != nil {
+		return nil, errInAnalysis
+	}
+
+	return indexes, nil
 }
 
 func getIndexes(
-	ctx *sql.Context,
-	a *Analyzer,
-	e sql.Expression,
-	exprAliases ExprAliases,
-	tableAliases TableAliases,
+		ctx *sql.Context,
+		a *Analyzer,
+		ia *indexAnalyzer,
+		e sql.Expression,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
 ) (map[string]*indexLookup, error) {
 	var result = make(map[string]*indexLookup)
 	switch e := e.(type) {
@@ -83,12 +83,12 @@ func getIndexes(
 			return nil, nil
 		}
 
-		leftIndexes, err := getIndexes(ctx, a, e.Left, exprAliases, tableAliases)
+		leftIndexes, err := getIndexes(ctx, a, ia, e.Left, exprAliases, tableAliases)
 		if err != nil {
 			return nil, err
 		}
 
-		rightIndexes, err := getIndexes(ctx, a, e.Right, exprAliases, tableAliases)
+		rightIndexes, err := getIndexes(ctx, a, ia, e.Right, exprAliases, tableAliases)
 		if err != nil {
 			return nil, err
 		}
@@ -102,7 +102,7 @@ func getIndexes(
 			foundRightIdx := false
 			if rightIdx, ok := rightIndexes[table]; ok {
 				if canMergeIndexes(leftIdx.lookup, rightIdx.lookup) {
-					leftIdx.lookup = leftIdx.lookup.(sql.SetOperations).Union(rightIdx.lookup)
+					leftIdx.lookup = leftIdx.lookup.(sql.MergeableIndexLookup).Union(rightIdx.lookup)
 					leftIdx.indexes = append(leftIdx.indexes, rightIdx.indexes...)
 					result[table] = leftIdx
 					foundRightIdx = true
@@ -139,7 +139,7 @@ func getIndexes(
 		// the right branch is evaluable and the indexlookup supports set
 		// operations.
 		if !isEvaluable(c.Left()) && isEvaluable(c.Right()) {
-			idx := ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, c.Left())...)
+			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, c.Left())...)
 			if idx != nil {
 				var nidx sql.NegateIndex
 				if negate {
@@ -148,13 +148,6 @@ func getIndexes(
 						return nil, nil
 					}
 				}
-
-				// release the index if it was not used
-				defer func() {
-					if _, ok := result[idx.Table()]; !ok {
-						ctx.ReleaseIndex(idx)
-					}
-				}()
 
 				value, err := c.Right().Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
@@ -197,9 +190,9 @@ func getIndexes(
 					}
 
 					if negate {
-						lookup = lookup.(sql.SetOperations).Intersection(lookup2)
+						lookup = lookup.(sql.MergeableIndexLookup).Intersection(lookup2)
 					} else {
-						lookup = lookup.(sql.SetOperations).Union(lookup2)
+						lookup = lookup.(sql.MergeableIndexLookup).Union(lookup2)
 					}
 				}
 
@@ -214,7 +207,7 @@ func getIndexes(
 		*expression.GreaterThan,
 		*expression.LessThanOrEqual,
 		*expression.GreaterThanOrEqual:
-		idx, lookup, err := getComparisonIndex(ctx, a, e.(expression.Comparer), exprAliases, tableAliases)
+		idx, lookup, err := getComparisonIndex(ctx, a, ia, e.(expression.Comparer), exprAliases, tableAliases)
 		if err != nil || lookup == nil {
 			return result, err
 		}
@@ -224,7 +217,7 @@ func getIndexes(
 			lookup:  lookup,
 		}
 	case *expression.Not:
-		r, err := getNegatedIndexes(ctx, a, e, exprAliases, tableAliases)
+		r, err := getNegatedIndexes(ctx, a, ia, e, exprAliases, tableAliases)
 		if err != nil {
 			return nil, err
 		}
@@ -234,14 +227,8 @@ func getIndexes(
 		}
 	case *expression.Between:
 		if !isEvaluable(e.Val) && isEvaluable(e.Upper) && isEvaluable(e.Lower) {
-			idx := ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Val)...)
+			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Val)...)
 			if idx != nil {
-				// release the index if it was not used
-				defer func() {
-					if _, ok := result[idx.Table()]; !ok {
-						ctx.ReleaseIndex(idx)
-					}
-				}()
 
 				upper, err := e.Upper.Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
@@ -272,23 +259,30 @@ func getIndexes(
 		}
 	case *expression.And:
 		exprs := splitConjunction(e)
-		used := make(map[sql.Expression]struct{})
 
-		result, err := getMultiColumnIndexes(ctx, exprs, a, used, exprAliases, tableAliases)
+		// First treat the AND expression as a match on >= 2 columns (for keys that span multiple columns)
+		multiColumnIndexes, err := getMultiColumnIndexes(ctx, exprs, a, ia, exprAliases, tableAliases)
 		if err != nil {
 			return nil, err
 		}
 
+		result := multiColumnIndexes
+		// Next try to match the remaining expressions individually
 		for _, e := range exprs {
-			if _, ok := used[e]; ok {
+			// But don't handle any expressions already captured by used multi-column indexes
+			if indexHasExpression(multiColumnIndexes, normalizeExpression(exprAliases, tableAliases, e)) {
 				continue
 			}
 
-			indexes, err := getIndexes(ctx, a, e, exprAliases, tableAliases)
+			indexes, err := getIndexes(ctx, a, ia, e, exprAliases, tableAliases)
 			if err != nil {
 				return nil, err
 			}
 
+			// Merge this index in with the multi-column indexes if possible
+			// TODO: this doesn't properly handle unmerge-able indexes and might lead to incorrect results in some cases.
+			//  Probably not because it's an AND (we should be able to handle any part of an AND expression independently and
+			//  leave the rest to the filters), but the behavior is poorly defined.
 			result = indexesIntersection(ctx, a, result, indexes)
 		}
 
@@ -296,6 +290,27 @@ func getIndexes(
 	}
 
 	return result, nil
+}
+
+// Returns whether the given index contains the given expression as one of its terms. The expression should be
+// normalized (table names unaliased) to ensure matching the index's declaration.
+func indexHasExpression(indexLookups map[string]*indexLookup, expr sql.Expression) bool {
+	getField := extractGetField(expr)
+	if getField == nil {
+		return false
+	}
+
+	for _, indexLookup := range indexLookups {
+		for _, idx := range indexLookup.indexes {
+			for _, exprStr := range idx.Expressions() {
+				if exprStr == getField.String() {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
 }
 
 // Returns the tables used in the expression given
@@ -320,10 +335,7 @@ func findTables(e sql.Expression) []string {
 }
 
 func betweenIndexLookup(index sql.Index, upper, lower []interface{}) (sql.IndexLookup, error) {
-	// TODO: two bugs here
-	//  1) Mergeable and SetOperations are separate interfaces, so a naive integrator could generate a type assertion
-	//  error in this method
-	//  2) Since AscendRange and DescendRange both accept an upper and lower bound, there is no good reason to require
+	// TODO: Since AscendRange and DescendRange both accept an upper and lower bound, there is no good reason to require
 	//  both implementations from an index. One will do fine, no need to require both and merge them.
 	ai, isAscend := index.(sql.AscendIndex)
 	di, isDescend := index.(sql.DescendIndex)
@@ -338,9 +350,9 @@ func betweenIndexLookup(index sql.Index, upper, lower []interface{}) (sql.IndexL
 			return nil, err
 		}
 
-		m, ok := ascendLookup.(sql.Mergeable)
+		m, ok := ascendLookup.(sql.MergeableIndexLookup)
 		if ok && m.IsMergeable(descendLookup) {
-			return ascendLookup.(sql.SetOperations).Union(descendLookup), nil
+			return ascendLookup.(sql.MergeableIndexLookup).Union(descendLookup), nil
 		}
 	}
 
@@ -351,8 +363,15 @@ func betweenIndexLookup(index sql.Index, upper, lower []interface{}) (sql.IndexL
 // comparison if any index can be found.
 // It works for the following comparisons: eq, lt, gt, gte and lte.
 // TODO(erizocosmico): add support for BETWEEN once the appropiate interfaces
-// can handle inclusiveness on both sides.
-func getComparisonIndex(ctx *sql.Context, a *Analyzer, e expression.Comparer, exprAliases ExprAliases, tableAliases TableAliases, ) (sql.Index, sql.IndexLookup, error) {
+//  can handle inclusiveness on both sides.
+func getComparisonIndex(
+		ctx *sql.Context,
+		a *Analyzer,
+		ia *indexAnalyzer,
+		e expression.Comparer,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
+) (sql.Index, sql.IndexLookup, error) {
 	left, right := e.Left(), e.Right()
 	// if the form is SOMETHING OP {INDEXABLE EXPR}, swap it, so it's {INDEXABLE EXPR} OP SOMETHING
 	if !isEvaluable(right) {
@@ -360,17 +379,15 @@ func getComparisonIndex(ctx *sql.Context, a *Analyzer, e expression.Comparer, ex
 	}
 
 	if !isEvaluable(left) && isEvaluable(right) {
-		idx := ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, left)...)
+		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, left)...)
 		if idx != nil {
 			value, err := right.Eval(sql.NewEmptyContext(), nil)
 			if err != nil {
-				ctx.ReleaseIndex(idx)
 				return nil, nil, err
 			}
 
 			lookup, err := comparisonIndexLookup(e, idx, value)
 			if err != nil || lookup == nil {
-				ctx.ReleaseIndex(idx)
 				return nil, nil, err
 			}
 
@@ -425,6 +442,7 @@ func comparisonIndexLookup(
 func getNegatedIndexes(
 	ctx *sql.Context,
 	a *Analyzer,
+	ia *indexAnalyzer,
 	not *expression.Not,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
@@ -432,7 +450,7 @@ func getNegatedIndexes(
 
 	switch e := not.Child.(type) {
 	case *expression.Not:
-		return getIndexes(ctx, a, e.Child, exprAliases, tableAliases)
+		return getIndexes(ctx, a, ia, e.Child, exprAliases, tableAliases)
 	case *expression.Equals:
 		left, right := e.Left(), e.Right()
 		// if the form is SOMETHING OP {INDEXABLE EXPR}, swap it, so it's {INDEXABLE EXPR} OP SOMETHING
@@ -444,7 +462,7 @@ func getNegatedIndexes(
 			return nil, nil
 		}
 
-		idx := ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, left)...)
+		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, left)...)
 		if idx == nil {
 			return nil, nil
 		}
@@ -456,13 +474,11 @@ func getNegatedIndexes(
 
 		value, err := right.Eval(sql.NewEmptyContext(), nil)
 		if err != nil {
-			ctx.ReleaseIndex(idx)
 			return nil, err
 		}
 
 		lookup, err := index.Not(value)
 		if err != nil || lookup == nil {
-			ctx.ReleaseIndex(idx)
 			return nil, err
 		}
 
@@ -476,37 +492,37 @@ func getNegatedIndexes(
 		return result, nil
 	case *expression.GreaterThan:
 		lte := expression.NewLessThanOrEqual(e.Left(), e.Right())
-		return getIndexes(ctx, a, lte, exprAliases, tableAliases)
+		return getIndexes(ctx, a, ia, lte, exprAliases, tableAliases)
 	case *expression.GreaterThanOrEqual:
 		lt := expression.NewLessThan(e.Left(), e.Right())
-		return getIndexes(ctx, a, lt, exprAliases, tableAliases)
+		return getIndexes(ctx, a, ia, lt, exprAliases, tableAliases)
 	case *expression.LessThan:
 		gte := expression.NewGreaterThanOrEqual(e.Left(), e.Right())
-		return getIndexes(ctx, a, gte, exprAliases, tableAliases)
+		return getIndexes(ctx, a, ia, gte, exprAliases, tableAliases)
 	case *expression.LessThanOrEqual:
 		gt := expression.NewGreaterThan(e.Left(), e.Right())
-		return getIndexes(ctx, a, gt, exprAliases, tableAliases)
+		return getIndexes(ctx, a, ia, gt, exprAliases, tableAliases)
 	case *expression.Between:
 		or := expression.NewOr(
 			expression.NewLessThan(e.Val, e.Lower),
 			expression.NewGreaterThan(e.Val, e.Upper),
 		)
 
-		return getIndexes(ctx, a, or, exprAliases, tableAliases)
+		return getIndexes(ctx, a, ia, or, exprAliases, tableAliases)
 	case *expression.Or:
 		and := expression.NewAnd(
 			expression.NewNot(e.Left),
 			expression.NewNot(e.Right),
 		)
 
-		return getIndexes(ctx, a, and, exprAliases, tableAliases)
+		return getIndexes(ctx, a, ia, and, exprAliases, tableAliases)
 	case *expression.And:
 		or := expression.NewOr(
 			expression.NewNot(e.Left),
 			expression.NewNot(e.Right),
 		)
 
-		return getIndexes(ctx, a, or, exprAliases, tableAliases)
+		return getIndexes(ctx, a, ia, or, exprAliases, tableAliases)
 	default:
 		return nil, nil
 	}
@@ -522,12 +538,8 @@ func indexesIntersection(
 
 	for table, idx := range left {
 		if idx2, ok := right[table]; ok && canMergeIndexes(idx.lookup, idx2.lookup) {
-			idx.lookup = idx.lookup.(sql.SetOperations).Intersection(idx2.lookup)
+			idx.lookup = idx.lookup.(sql.MergeableIndexLookup).Intersection(idx2.lookup)
 			idx.indexes = append(idx.indexes, idx2.indexes...)
-		} else if ok {
-			for _, idx := range idx2.indexes {
-				ctx.ReleaseIndex(idx)
-			}
 		}
 
 		result[table] = idx
@@ -548,7 +560,7 @@ func getMultiColumnIndexes(
 	ctx *sql.Context,
 	exprs []sql.Expression,
 	a *Analyzer,
-	used map[sql.Expression]struct{},
+  ia *indexAnalyzer,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) (map[string]*indexLookup, error) {
@@ -563,7 +575,7 @@ func getMultiColumnIndexes(
 				cols[i] = e.col
 			}
 
-			exprList := ctx.ExpressionsWithIndexes(ctx.GetCurrentDatabase(), cols...)
+			exprList := ia.ExpressionsWithIndexes(ctx.GetCurrentDatabase(), cols...)
 
 			var selected []sql.Expression
 			for _, l := range exprList {
@@ -573,12 +585,8 @@ func getMultiColumnIndexes(
 			}
 
 			if len(selected) > 0 {
-				index, lookup, err := getMultiColumnIndexForExpressions(ctx, a, selected, exps, used, exprAliases, tableAliases)
+				index, lookup, err := getMultiColumnIndexForExpressions(ctx, a, ia, selected, exps, exprAliases, tableAliases)
 				if err != nil || lookup == nil {
-					if index != nil {
-						ctx.ReleaseIndex(index)
-					}
-
 					if err != nil {
 						return nil, err
 					}
@@ -603,14 +611,14 @@ func getMultiColumnIndexes(
 func getMultiColumnIndexForExpressions(
 	ctx *sql.Context,
 	a *Analyzer,
+	ia *indexAnalyzer,
 	selected []sql.Expression,
 	exprs []columnExpr,
-	used map[sql.Expression]struct{},
-	exprAliases ExprAliases,
+  exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) (index sql.Index, lookup sql.IndexLookup, err error) {
 
-	index = ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, selected...)...)
+	index = ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, selected...)...)
 	if index != nil {
 		var first sql.Expression
 		for _, e := range exprs {
@@ -633,7 +641,6 @@ func getMultiColumnIndexForExpressions(
 			var values = make([]interface{}, len(index.Expressions()))
 			for i, e := range index.Expressions() {
 				col := findColumn(exprs, e)
-				used[col.comparison] = struct{}{}
 				var val interface{}
 				val, err = col.comparand.Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
@@ -648,7 +655,6 @@ func getMultiColumnIndexForExpressions(
 			var uppers = make([]interface{}, len(index.Expressions()))
 			for i, e := range index.Expressions() {
 				col := findColumn(exprs, e)
-				used[col.comparison] = struct{}{}
 				between := col.comparison.(*expression.Between)
 				lowers[i], err = between.Lower.Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
@@ -810,15 +816,10 @@ func isEvaluable(e sql.Expression) bool {
 }
 
 func canMergeIndexes(a, b sql.IndexLookup) bool {
-	m, ok := a.(sql.Mergeable)
+	m, ok := a.(sql.MergeableIndexLookup)
 	if !ok {
 		return false
 	}
 
-	if !m.IsMergeable(b) {
-		return false
-	}
-
-	_, ok = a.(sql.SetOperations)
-	return ok
+	return m.IsMergeable(b)
 }

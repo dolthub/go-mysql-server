@@ -339,30 +339,6 @@ var queries = []queryTest{
 		[]sql.Row{{int64(3)}},
 	},
 	{
-		"SELECT *  FROM myhistorytable AS OF '2019-01-01' AS foo ORDER BY i",
-		[]sql.Row{
-			{int64(1), "first row, 1"},
-			{int64(2), "second row, 1"},
-			{int64(3), "third row, 1"},
-		},
-	},
-	{
-		"SELECT *  FROM myhistorytable AS OF '2019-01-02' foo ORDER BY i",
-		[]sql.Row{
-			{int64(1), "first row, 2"},
-			{int64(2), "second row, 2"},
-			{int64(3), "third row, 2"},
-		},
-	},
-	{
-		"SELECT *  FROM myhistorytable ORDER BY i",
-		[]sql.Row{
-			{int64(1), "first row, 2"},
-			{int64(2), "second row, 2"},
-			{int64(3), "third row, 2"},
-		},
-	},
-	{
 		"SELECT substring(s, 2, 3) FROM mytable",
 		[]sql.Row{{"irs"}, {"eco"}, {"hir"}},
 	},
@@ -2415,6 +2391,33 @@ var queries = []queryTest{
 	},
 }
 
+var historyQueries = []queryTest {
+	{
+		"SELECT *  FROM myhistorytable AS OF '2019-01-01' AS foo ORDER BY i",
+		[]sql.Row{
+			{int64(1), "first row, 1"},
+			{int64(2), "second row, 1"},
+			{int64(3), "third row, 1"},
+		},
+	},
+	{
+		"SELECT *  FROM myhistorytable AS OF '2019-01-02' foo ORDER BY i",
+		[]sql.Row{
+			{int64(1), "first row, 2"},
+			{int64(2), "second row, 2"},
+			{int64(3), "third row, 2"},
+		},
+	},
+	{
+		"SELECT *  FROM myhistorytable ORDER BY i",
+		[]sql.Row{
+			{int64(1), "first row, 2"},
+			{int64(2), "second row, 2"},
+			{int64(3), "third row, 2"},
+		},
+	},
+}
+
 var infoSchemaQueries = []queryTest {
 	{
 		`SHOW TABLE STATUS FROM mydb`,
@@ -2690,50 +2693,66 @@ var infoSchemaQueries = []queryTest {
 var debugQuery = ""
 
 func TestQueries(t *testing.T) {
-	type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
-	type indexDriverTestCase struct {
-		name string
-		initializer indexDriverInitalizer
-	}
+	testQueries(t, queries)
+}
 
+func TestHistoryQueries(t *testing.T) {
+	testQueries(t, historyQueries)
+}
+
+type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
+type indexInitializer func(*testing.T, *sqle.Engine) error
+type indexBehaviorTestParams struct {
+	name              string
+	driverInitializer indexDriverInitalizer
+	indexInitializer indexInitializer
+}
+
+// testQueries tests the given queries on an engine under a variety of circumstances:
+// 1) Partitioned tables / non partitioned tables
+// 2) Mergeable / unmergeable / native / no indexes
+// 3) Parallelism on / off
+func testQueries(t *testing.T, testQueries []queryTest) {
 	var numPartitionsVals []int
-	var indexDrivers []*indexDriverTestCase
+	var indexBehaviors []*indexBehaviorTestParams
 	var parallelVals []int
 
-	// Test all queries with these combinations, for a total of 12 runs:
-	// 1) Partitioned tables / non partitioned tables
-	// 2) Mergeable / unmergeable / no indexes
-	// 3) Parallelism on / off
 	if debugQuery == "" {
 		numPartitionsVals = []int{
 			1,
 			testNumPartitions,
 		}
-		indexDrivers = []*indexDriverTestCase{
+		indexBehaviors = []*indexBehaviorTestParams{
 			nil,
-			{"unmergableIndexes", unmergableIndexDriver},
-			{"mergableIndexes", mergableIndexDriver},
+			{"unmergableIndexes", unmergableIndexDriver, nil},
+			{"mergableIndexes", mergableIndexDriver, nil},
+			{"nativeIndexes", nil, nativeIndexes},
+			{"nativeAndMergable", mergableIndexDriver, nativeIndexes},
 		}
 		parallelVals = []int{
 			1,
 			2,
 		}
 	} else {
-		numPartitionsVals = []int{ 1 }
-		indexDrivers = []*indexDriverTestCase{{"unmergableIndexes", unmergableIndexDriver}}
-		parallelVals = []int{ 1 }
+		numPartitionsVals = []int{1}
+		indexBehaviors = []*indexBehaviorTestParams{{"unmergableIndexes", unmergableIndexDriver, nil}}
+		parallelVals = []int{1}
 	}
 
 	for _, numPartitions := range numPartitionsVals {
-		for _, indexDriverInit := range indexDrivers {
+		for _, indexInit := range indexBehaviors {
 			for _, parallelism := range parallelVals {
 				tables := allTestTables(t, numPartitions)
 
 				var indexDriver sql.IndexDriver
-				if indexDriverInit != nil {
-					indexDriver = indexDriverInit.initializer(tables)
+				if indexInit != nil && indexInit.driverInitializer != nil {
+					indexDriver = indexInit.driverInitializer(tables)
 				}
 				engine, idxReg := newEngineWithParallelism(t, parallelism, tables, indexDriver)
+
+				if indexInit != nil && indexInit.indexInitializer != nil {
+					indexInit.indexInitializer(t, engine)
+				}
 
 				if len(debugQuery) > 0 {
 					engine.Analyzer.Verbose = true
@@ -2741,13 +2760,13 @@ func TestQueries(t *testing.T) {
 				}
 
 				indexDriverName := "none"
-				if indexDriverInit != nil {
-					indexDriverName = indexDriverInit.name
+				if indexInit != nil {
+					indexDriverName = indexInit.name
 				}
 				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexDriverName, parallelism)
 
 				t.Run(testName, func(t *testing.T) {
-					for _, tt := range queries {
+					for _, tt := range testQueries {
 						if debugQuery != "" && debugQuery != tt.query {
 							t.Log("Skipping query in debug mode:", tt.query)
 							continue
@@ -2790,7 +2809,7 @@ func TestInfoSchema(t *testing.T) {
 }
 
 func unmergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
-	return memory.NewIndexDriver("mydb", map[string][]sql.Index{
+	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {
 			newUnmergableIndex(tables, "mytable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
@@ -2835,7 +2854,7 @@ func unmergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
 }
 
 func mergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
-	return memory.NewIndexDriver("mydb", map[string][]sql.Index{
+	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {
 			newMergableIndex(tables, "mytable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
@@ -2877,6 +2896,32 @@ func mergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
 			),
 		},
 	})
+}
+
+func nativeIndexes(t *testing.T, e *sqle.Engine) error {
+	createIndexes := []string{
+		"create index mytable_i on mytable (i)",
+		"create index mytable_s on mytable (s)",
+		"create index mytable_i_s on mytable (i,s)",
+		"create index othertable_s2 on othertable (s2)",
+		"create index othertable_i2 on othertable (i2)",
+		"create index othertable_s2_i2 on othertable (s2,i2)",
+		"create index bigtable_t on bigtable (t)",
+		"create index floattable_t on floattable (f64)",
+		"create index niltable_i on niltable (i)",
+		"create index one_pk_pk on one_pk (pk)",
+		"create index two_pk_pk1_pk2 on two_pk (pk1,pk2)",
+	}
+
+	for _, q := range createIndexes {
+		_, iter, err := e.Query(newCtx(sql.NewIndexRegistry()), q)
+		require.NoError(t, err)
+
+		_, err = sql.RowIterToRows(iter)
+		require.NoError(t, err)
+	}
+
+	return nil
 }
 
 func newUnmergableIndex(tables map[string]*memory.Table, tableName string, exprs ...sql.Expression) *memory.UnmergeableIndex {
@@ -3428,25 +3473,44 @@ var debugQueryPlan = ""
 // Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that
 // the right indexes are being used for joining tables.
 func TestQueryPlans(t *testing.T) {
-	tables := allTestTables(t, 2)
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"unmergableIndexes", unmergableIndexDriver, nil},
+		{"nativeIndexes", nil, nativeIndexes},
+		{"nativeAndMergable", mergableIndexDriver, nativeIndexes},
+	}
 
-	indexDriver := unmergableIndexDriver(tables)
-	engine, idxReg := newEngineWithParallelism(t, 1, tables, indexDriver)
+	for _, indexInit := range indexBehaviors {
+		t.Run(indexInit.name, func(t *testing.T) {
+			tables := allTestTables(t, 2)
 
-	for _, tt := range planTests {
-		t.Run(tt.query, func(t *testing.T) {
-			if debugQueryPlan != "" &&  tt.query != debugQueryPlan {
-				t.Skip()
+			var indexDriver sql.IndexDriver
+			if indexInit.driverInitializer != nil {
+				indexDriver = indexInit.driverInitializer(tables)
 			}
 
-			ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+			engine, idxReg := newEngineWithParallelism(t, 1, tables, indexDriver)
 
-			parsed, err := parse.Parse(ctx, tt.query)
-			require.NoError(t, err)
+			if indexInit.indexInitializer != nil {
+				indexInit.indexInitializer(t, engine)
+			}
 
-			node, err := engine.Analyzer.Analyze(ctx, parsed)
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected, extractQueryNode(node).String())
+			for _, tt := range planTests {
+				if debugQueryPlan != "" &&  tt.query != debugQueryPlan {
+					t.Log("Ignoring test", tt.query)
+					continue
+				}
+
+				t.Run(tt.query, func(t *testing.T) {
+					ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+
+					parsed, err := parse.Parse(ctx, tt.query)
+					require.NoError(t, err)
+
+					node, err := engine.Analyzer.Analyze(ctx, parsed)
+					require.NoError(t, err)
+					assert.Equal(t, tt.expected, extractQueryNode(node).String())
+				})
+			}
 		})
 	}
 }

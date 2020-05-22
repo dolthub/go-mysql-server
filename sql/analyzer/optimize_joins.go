@@ -226,16 +226,6 @@ func findJoinIndexes(ctx *sql.Context, node sql.Node, exprAliases ExprAliases, t
 	defer indexSpan.Finish()
 
 	var indexes map[string]sql.Index
-	// release all unused indexes
-	defer func() {
-		if indexes == nil {
-			return
-		}
-
-		for _, idx := range indexes {
-			ctx.ReleaseIndex(idx)
-		}
-	}()
 
 	var err error
 	plan.Inspect(node, func(node sql.Node) bool {
@@ -252,7 +242,14 @@ func findJoinIndexes(ctx *sql.Context, node sql.Node, exprAliases ExprAliases, t
 				cond = node.Cond
 			}
 
-			indexes, err = getJoinIndexes(ctx, a, cond, exprAliases, tableAliases)
+			var indexAnalyzer *indexAnalyzer
+			indexAnalyzer, err = getIndexesForNode(ctx, a, node)
+			if err != nil {
+				return false
+			}
+			defer indexAnalyzer.releaseUsedIndexes()
+
+			indexes, err = getJoinIndexes(ctx, a, indexAnalyzer, cond, exprAliases, tableAliases)
 			if err != nil {
 				return false
 			}
@@ -268,6 +265,7 @@ func findJoinIndexes(ctx *sql.Context, node sql.Node, exprAliases ExprAliases, t
 func getJoinEqualityIndex(
 		ctx *sql.Context,
 		a *Analyzer,
+		ia *indexAnalyzer,
 		e *expression.Equals,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
@@ -280,13 +278,14 @@ func getJoinEqualityIndex(
 	}
 
 	leftIdx, rightIdx =
-			ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Left())...),
-			ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Right())...)
+			ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Left())...),
+			ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Right())...)
 	return leftIdx, rightIdx
 }
 
 func getJoinIndexes(ctx *sql.Context,
 		a *Analyzer,
+		ia *indexAnalyzer,
 		e sql.Expression,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
@@ -295,7 +294,7 @@ func getJoinIndexes(ctx *sql.Context,
 	switch e := e.(type) {
 	case *expression.Equals:
 		result := make(map[string]sql.Index)
-		leftIdx, rightIdx := getJoinEqualityIndex(ctx, a, e, exprAliases, tableAliases)
+		leftIdx, rightIdx := getJoinEqualityIndex(ctx, a, ia, e, exprAliases, tableAliases)
 		if leftIdx != nil {
 			result[leftIdx.Table()] = leftIdx
 		}
@@ -311,7 +310,7 @@ func getJoinIndexes(ctx *sql.Context,
 			}
 		}
 
-		return getMultiColumnJoinIndex(ctx, exprs, a, exprAliases, tableAliases), nil
+		return getMultiColumnJoinIndex(ctx, exprs, a, ia, exprAliases, tableAliases), nil
 	}
 
 	return nil, nil
@@ -321,6 +320,7 @@ func getMultiColumnJoinIndex(
 	ctx *sql.Context,
 	exprs []sql.Expression,
 	a *Analyzer,
+	ia *indexAnalyzer,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) map[string]sql.Index {
@@ -328,7 +328,7 @@ func getMultiColumnJoinIndex(
 
 	exprsByTable := joinExprsByTable(exprs)
 	for table, cols := range exprsByTable {
-		idx := ctx.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, extractExpressions(cols)...)...)
+		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, extractExpressions(cols)...)...)
 		if idx != nil {
 			result[normalizeTableName(tableAliases, table)] = idx
 		}

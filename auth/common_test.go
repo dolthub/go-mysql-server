@@ -1,5 +1,3 @@
-// +build !windows
-
 package auth_test
 
 import (
@@ -16,7 +14,6 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/server"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
-	"github.com/liquidata-inc/go-mysql-server/sql/index/pilosa"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,8 +44,6 @@ func authEngine(au auth.Auth) (string, *sqle.Engine, *sql.IndexRegistry, error) 
 		return "", nil, nil, err
 	}
 
-	idxReg.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
-
 	a := analyzer.NewBuilder(catalog).Build()
 	config := &sqle.Config{Auth: au}
 
@@ -63,9 +58,10 @@ func authServer(a auth.Auth) (string, *server.Server, *sql.IndexRegistry, error)
 	}
 
 	config := server.Config{
-		Protocol: "tcp",
-		Address:  fmt.Sprintf("localhost:%d", port),
-		Auth:     a,
+		Protocol:       "tcp",
+		Address:        fmt.Sprintf("localhost:%d", port),
+		Auth:           a,
+		MaxConnections: 1000,
 	}
 
 	s, err := server.NewDefaultServer(config, engine)
@@ -133,7 +129,7 @@ func testAuthentication(
 
 var queries = map[string]string{
 	"select":       "select * from test",
-	"create_index": "create index t on test using pilosa (name) with (async = false)",
+	"create_index": "create index t on test (name)",
 	"drop_index":   "drop index t on test",
 	"insert":       "insert into test (id, name) values ('id', 'name')",
 	"lock":         "lock tables test read",

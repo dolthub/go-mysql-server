@@ -172,13 +172,13 @@ func (i *showIndexesIter) Close() error {
 }
 
 type indexesToShow struct {
-	indexes []sql.Index
+	indexes []sql.DriverIndex
 	pos     int
 	epos    int
 }
 
 type idxToShow struct {
-	index      sql.Index
+	index      sql.DriverIndex
 	expression string
 	exPosition int
 }

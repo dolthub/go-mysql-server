@@ -243,7 +243,7 @@ func mergeableIndex(table string, column string, colIdx int) *memory.MergeableIn
 }
 
 func TestGetIndexes(t *testing.T) {
-	indexes := []sql.Index {
+	indexes := []sql.DriverIndex {
 		&memory.MergeableIndex{
 			TableName: "t1",
 			Exprs: []sql.Expression{
@@ -370,12 +370,12 @@ func TestGetIndexes(t *testing.T) {
 				),
 				eq(
 					col(0, "t1", "bar"),
-					lit(2),
+					lit(10),
 				),
 			),
 			map[string]*indexLookup{
 				"t1": &indexLookup{
-					intersectionLookupWithKeys("t1", "bar", 0, int64(1), int64(2)),
+					intersectionLookupWithKeys("t1", "bar", 0, int64(1), int64(10)),
 					[]sql.Index{
 						indexes[0],
 						indexes[0],
@@ -923,7 +923,10 @@ func TestGetIndexes(t *testing.T) {
 			require := require.New(t)
 
 			ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
-			result, err := getIndexes(ctx, a, tt.expr, nil, nil)
+			ia, err := getIndexesForNode(ctx, a, nil)
+			require.NoError(err)
+
+			result, err := getIndexes(ctx, a, ia, tt.expr, nil, nil)
 			if tt.ok {
 				require.NoError(err)
 				require.Equal(tt.expected, result)
@@ -985,7 +988,6 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 
 	a := NewDefault(catalog)
 
-	used := make(map[sql.Expression]struct{})
 	exprs := []sql.Expression{
 		eq(
 			col(2, "t2", "bar"),
@@ -1024,7 +1026,10 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 	}
 
 	ctx :=  sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
-	result, err := getMultiColumnIndexes(ctx, exprs, a, used, nil, nil)
+	ia, err := getIndexesForNode(ctx, a, nil)
+	require.NoError(err)
+
+	result, err := getMultiColumnIndexes(ctx, exprs, a, ia, nil, nil)
 	require.NoError(err)
 
 	expected := map[string]*indexLookup{
@@ -1063,17 +1068,6 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 	}
 
 	require.Equal(expected, result)
-
-	expectedUsed := map[sql.Expression]struct{}{
-		exprs[0]: struct{}{},
-		exprs[1]: struct{}{},
-		exprs[2]: struct{}{},
-		exprs[4]: struct{}{},
-		exprs[5]: struct{}{},
-		exprs[6]: struct{}{},
-		exprs[7]: struct{}{},
-	}
-	require.Equal(expectedUsed, used)
 }
 
 func TestContainsSources(t *testing.T) {
@@ -1152,6 +1146,12 @@ func TestExpressionSources(t *testing.T) {
 
 type DummyIndexLookup struct{}
 
+func (l DummyIndexLookup) String() string {
+	return "DummyIndexLookup"
+}
+
+var _ sql.IndexLookup = DummyIndexLookup{}
+
 func (DummyIndexLookup) Indexes() []string { return nil }
 
 func (DummyIndexLookup) Values(sql.Partition) (sql.IndexValueIter, error) {
@@ -1181,7 +1181,7 @@ func TestIndexesIntersection(t *testing.T) {
 			"a": &indexLookup{&memory.MergeableIndexLookup{Key: []interface{}{"a"}}, nil},
 			"b": &indexLookup{
 				&memory.MergedIndexLookup {
-					Intersections: []sql.IndexLookup {
+					Intersections: []sql.IndexLookup{
 						&memory.MergeableIndexLookup{
 							Key:   []interface{}{"b"},
 						},
