@@ -5419,7 +5419,7 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	tables := make(map[string]*memory.Table)
 
 	tables["mytable"] = memory.NewPartitionedTable("mytable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
 		{Name: "s", Type: sql.Text, Source: "mytable"},
 	}, numPartitions)
 
@@ -5730,15 +5730,27 @@ func newDatabaseWithoutHistoryTables(tables map[string]*memory.Table) *memory.Da
 	return db
 }
 
-const expectedTree = `Limit(5)
- └─ Offset(2)
-     └─ Project(t.foo, bar.baz)
-         └─ Filter(foo > qux)
-             └─ InnerJoin(foo = baz)
-                 ├─ TableAlias(t)
-                 │   └─ UnresolvedTable(tbl)
-                 └─ UnresolvedTable(bar)
-`
+type EngineTestHarness interface {
+	NewDatabase(name string) sql.Database
+	NewTable(name string, schema sql.Schema) sql.Table
+	InsertRows(tableName string, rows ...sql.Row) error
+	NewContext() *sql.Context
+}
+
+type IndexDriverTestHarness interface {
+	EngineTestHarness
+	IndexDriver() sql.IndexDriver
+}
+
+type IndexTestHarness interface {
+	EngineTestHarness
+	SupportsNativeIndexCreation(table string) bool
+}
+
+type VersionedDBTestHarness interface {
+	EngineTestHarness
+	NewTableAsOf(name string, asOf interface{}, rows ...sql.Row) sql.Database
+}
 
 func TestPrintTree(t *testing.T) {
 	require := require.New(t)
@@ -5751,7 +5763,15 @@ func TestPrintTree(t *testing.T) {
 		LIMIT 5
 		OFFSET 2`)
 	require.NoError(err)
-	require.Equal(expectedTree, node.String())
+	require.Equal(`Limit(5)
+ └─ Offset(2)
+     └─ Project(t.foo, bar.baz)
+         └─ Filter(foo > qux)
+             └─ InnerJoin(foo = baz)
+                 ├─ TableAlias(t)
+                 │   └─ UnresolvedTable(tbl)
+                 └─ UnresolvedTable(bar)
+`, node.String())
 }
 
 // see: https://github.com/liquidata-inc/go-mysql-server/issues/197
