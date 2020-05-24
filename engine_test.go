@@ -6049,7 +6049,7 @@ type IndexTestHarness interface {
 
 type VersionedDBTestHarness interface {
 	EngineTestHarness
-	NewTableAsOf(db sql.VersionedDatabase, name string, asOf interface{}, rows ...sql.Row) sql.Table
+	NewTableAsOf(db sql.VersionedDatabase, name string, asOf interface{}) sql.Table
 }
 
 func TestPrintTree(t *testing.T) {
