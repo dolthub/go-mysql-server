@@ -2871,6 +2871,96 @@ func mergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
 	})
 }
 
+func unmergableIndexDriver2(dbs []sql.Database) sql.IndexDriver {
+	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
+		"mytable": {
+			newUnmergableIndex2(dbs, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
+			newUnmergableIndex2(dbs, "mytable",
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+			newUnmergableIndex2(dbs, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+		},
+		"othertable": {
+			newUnmergableIndex2(dbs, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
+			newUnmergableIndex2(dbs, "othertable",
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+			newUnmergableIndex2(dbs, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+		},
+		"bigtable": {
+			newUnmergableIndex2(dbs, "bigtable",
+				expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
+		},
+		"floattable": {
+			newUnmergableIndex2(dbs, "floattable",
+				expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
+		},
+		"niltable": {
+			newUnmergableIndex2(dbs, "niltable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
+		},
+		"one_pk": {
+			newUnmergableIndex2(dbs, "one_pk",
+				expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
+		},
+		"two_pk": {
+			newUnmergableIndex2(dbs, "two_pk",
+				expression.NewGetFieldWithTable(0, sql.Int8, "two_pk", "pk1", false),
+				expression.NewGetFieldWithTable(1, sql.Int8, "two_pk", "pk2", false),
+			),
+		},
+	})
+}
+
+func mergableIndexDriver2(dbs []sql.Database) sql.IndexDriver {
+	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
+		"mytable": {
+			newMergableIndex2(dbs, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
+			newMergableIndex2(dbs, "mytable",
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+			newMergableIndex2(dbs, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+		},
+		"othertable": {
+			newMergableIndex2(dbs, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
+			newMergableIndex2(dbs, "othertable",
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+			newMergableIndex2(dbs, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+		},
+		"bigtable": {
+			newMergableIndex2(dbs, "bigtable",
+				expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
+		},
+		"floattable": {
+			newMergableIndex2(dbs, "floattable",
+				expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
+		},
+		"niltable": {
+			newMergableIndex2(dbs, "niltable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
+		},
+		"one_pk": {
+			newMergableIndex2(dbs, "one_pk",
+				expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
+		},
+		"two_pk": {
+			newMergableIndex2(dbs, "two_pk",
+				expression.NewGetFieldWithTable(0, sql.Int8, "two_pk", "pk1", false),
+				expression.NewGetFieldWithTable(1, sql.Int8, "two_pk", "pk2", false),
+			),
+		},
+	})
+}
+
 func nativeIndexes(t *testing.T, e *sqle.Engine) error {
 	createIndexes := []string{
 		"create index mytable_i on mytable (i)",
@@ -2915,6 +3005,43 @@ func newMergableIndex(tables map[string]*memory.Table, tableName string, exprs .
 		Tbl:        tables[tableName],
 		Exprs:      exprs,
 	}
+}
+
+func newUnmergableIndex2(dbs []sql.Database, tableName string, exprs ...sql.Expression) *memory.UnmergeableIndex {
+	db, table := findTable(dbs, tableName)
+	return &memory.UnmergeableIndex{
+		DB:         db.Name(),
+		DriverName: memory.IndexDriverId,
+		TableName:  tableName,
+		Tbl:        table.(*memory.Table),
+		Exprs:      exprs,
+	}
+}
+
+func newMergableIndex2(dbs []sql.Database, tableName string, exprs ...sql.Expression) *memory.MergeableIndex {
+	db, table := findTable(dbs, tableName)
+	return &memory.MergeableIndex{
+		DB:         db.Name(),
+		DriverName: memory.IndexDriverId,
+		TableName:  tableName,
+		Tbl:        table.(*memory.Table),
+		Exprs:      exprs,
+	}
+}
+
+func findTable(dbs []sql.Database, tableName string) (database sql.Database, table sql.Table) {
+	for _, db := range dbs {
+		names, err := db.GetTableNames(sql.NewEmptyContext())
+		if err != nil {
+			panic(err)
+		}
+		for _, name := range names {
+			if name == tableName {
+				return db, table
+			}
+		}
+	}
+	return nil, nil
 }
 
 type planTest struct {
@@ -5948,47 +6075,7 @@ func newEngine(t *testing.T) (*sqle.Engine, *sql.IndexRegistry) {
 }
 
 func newEngineWithParallelism(t *testing.T, parallelism int, tables map[string]*memory.Table, driver sql.IndexDriver) (*sqle.Engine, *sql.IndexRegistry) {
-	revisions := make(map[interface{}]*memory.Database)
-	for name, table := range tables {
-		if strings.HasPrefix(name, "myhistorytable") {
-			revisionStr := name[len("myhistorytable-"):]
-			db := newDatabaseWithoutHistoryTables(tables)
-			db.AddTable("myhistorytable", table)
-			revisions[revisionStr] = db
-		}
-	}
-
-	var db sql.Database
-	if len(revisions) > 0 {
-		db = memory.NewHistoryDatabase(revisions, revisions["2019-01-02"])
-	} else {
-		db = newDatabaseWithoutHistoryTables(tables)
-	}
-
-	db2 := memory.NewDatabase("foo")
-	db2.AddTable("other_table", tables["other_table"])
-
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-	catalog.AddDatabase(db2)
-	catalog.AddDatabase(sql.NewInformationSchemaDatabase(catalog))
-
-	var a *analyzer.Analyzer
-	if parallelism > 1 {
-		a = analyzer.NewBuilder(catalog).WithParallelism(parallelism).Build()
-	} else {
-		a = analyzer.NewDefault(catalog)
-	}
-
-	idxReg := sql.NewIndexRegistry()
-	if driver != nil {
-		idxReg.RegisterIndexDriver(driver)
-	}
-
-	engine := sqle.New(catalog, a, new(sqle.Config))
-	require.NoError(t, idxReg.LoadIndexes(sql.NewEmptyContext(), engine.Catalog.AllDatabases()))
-
-	return engine, idxReg
+	return nil, nil
 }
 
 func newEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, driver sql.IndexDriver) (*sqle.Engine, *sql.IndexRegistry) {
@@ -6014,16 +6101,6 @@ func newEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, d
 	require.NoError(t, idxReg.LoadIndexes(sql.NewEmptyContext(), engine.Catalog.AllDatabases()))
 
 	return engine, idxReg
-}
-
-func newDatabaseWithoutHistoryTables(tables map[string]*memory.Table) *memory.Database {
-	db := memory.NewDatabase("mydb")
-	for name, table := range tables {
-		if name != "other_table" && !strings.HasPrefix(name, "myhistorytable") {
-			db.AddTable(name, table)
-		}
-	}
-	return db
 }
 
 type memoryHarness struct {
