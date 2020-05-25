@@ -2364,7 +2364,7 @@ var queries = []queryTest{
 	},
 }
 
-var historyQueries = []queryTest {
+var versionedQueries = []queryTest {
 	{
 		"SELECT *  FROM myhistorytable AS OF '2019-01-01' AS foo ORDER BY i",
 		[]sql.Row{
@@ -2669,16 +2669,16 @@ func TestQueries(t *testing.T) {
 	testQueries(t, queries)
 }
 
-func TestHistoryQueries(t *testing.T) {
-	testQueries(t, historyQueries)
-}
+func TestVersionedQueries(t *testing.T) {
+	testQueries(t, versionedQueries)
+}	
 
-type indexDriverInitalizer2 func([]sql.Database) sql.IndexDriver
+type indexDriverInitalizer func([]sql.Database) sql.IndexDriver
 type indexInitializer func(*testing.T, *sqle.Engine) error
 type indexBehaviorTestParams struct {
 	name              string
-	driverInitializer indexDriverInitalizer2
-	indexInitializer indexInitializer
+	driverInitializer indexDriverInitalizer
+	indexInitializer  indexInitializer
 }
 
 // testQueries tests the given queries on an engine under a variety of circumstances:
@@ -2716,7 +2716,7 @@ func testQueries(t *testing.T, testQueries []queryTest) {
 		for _, indexInit := range indexBehaviors {
 			for _, parallelism := range parallelVals {
 
-				var driverInitializer indexDriverInitalizer2
+				var driverInitializer indexDriverInitalizer
 				var indexInitializer indexInitializer
 				if indexInit != nil && indexInit.indexInitializer != nil {
 					indexInitializer = indexInit.indexInitializer
@@ -3449,7 +3449,7 @@ func TestQueryPlans(t *testing.T) {
 
 	for _, indexInit := range indexBehaviors {
 		t.Run(indexInit.name, func(t *testing.T) {
-			var driverInitializer indexDriverInitalizer2
+			var driverInitializer indexDriverInitalizer
 			var indexInitializer indexInitializer
 			if indexInit != nil && indexInit.indexInitializer != nil {
 				indexInitializer = indexInit.indexInitializer
@@ -3504,6 +3504,118 @@ func TestViews(t *testing.T) {
 
 	e, idxReg := newEngine(t)
 	ctx := newCtx(idxReg)
+
+	// nested views
+	_, iter, err := e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
+	require.NoError(err)
+	iter.Close()
+
+	testCases := []queryTest{
+		{
+			"SELECT * FROM myview ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row"),
+				sql.NewRow(int64(2), "second row"),
+				sql.NewRow(int64(3), "third row"),
+			},
+		},
+		{
+			"SELECT myview.* FROM myview ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row"),
+				sql.NewRow(int64(2), "second row"),
+				sql.NewRow(int64(3), "third row"),
+			},
+		},
+		{
+			"SELECT i FROM myview ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1)),
+				sql.NewRow(int64(2)),
+				sql.NewRow(int64(3)),
+			},
+		},
+		{
+			"SELECT t.* FROM myview AS t ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row"),
+				sql.NewRow(int64(2), "second row"),
+				sql.NewRow(int64(3), "third row"),
+			},
+		},
+		{
+			"SELECT t.i FROM myview AS t ORDER BY i",
+			[]sql.Row{
+				sql.NewRow(int64(1)),
+				sql.NewRow(int64(2)),
+				sql.NewRow(int64(3)),
+			},
+		},
+		{
+			"SELECT * FROM myview2",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row"),
+			},
+		},
+		{
+			"SELECT i FROM myview2",
+			[]sql.Row{
+				sql.NewRow(int64(1)),
+			},
+		},
+		{
+			"SELECT myview2.i FROM myview2",
+			[]sql.Row{
+				sql.NewRow(int64(1)),
+			},
+		},
+		{
+			"SELECT myview2.* FROM myview2",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row"),
+			},
+		},
+		{
+			"SELECT t.* FROM myview2 as t",
+			[]sql.Row{
+				sql.NewRow(int64(1), "first row"),
+			},
+		},
+		{
+			"SELECT t.i FROM myview2 as t",
+			[]sql.Row{
+				sql.NewRow(int64(1)),
+			},
+		},
+		// info schema support
+		{
+			"select * from information_schema.views where table_schema = 'mydb'",
+			[]sql.Row{
+				sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+				sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+			},
+		},
+		{
+			"select table_name from information_schema.tables where table_schema = 'mydb' and table_type = 'VIEW' order by 1",
+			[]sql.Row{
+				sql.NewRow("myview"),
+				sql.NewRow("myview2"),
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.query, func(t *testing.T) {
+			testQueryWithContext(ctx, t, e, testCase.query, testCase.expected)
+		})
+	}
+}
+
+func TestVersionedViews(t *testing.T) {
+	require := require.New(t)
+
+	e, idxReg := newEngine(t)
+	ctx := newCtx(idxReg)
 	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
 	require.NoError(err)
 	iter.Close()
@@ -3520,22 +3632,6 @@ func TestViews(t *testing.T) {
 				sql.NewRow(int64(1), "first row, 2"),
 				sql.NewRow(int64(2), "second row, 2"),
 				sql.NewRow(int64(3), "third row, 2"),
-			},
-		},
-		{
-			"SELECT myview1.* FROM myview1 ORDER BY i",
-			[]sql.Row{
-				sql.NewRow(int64(1), "first row, 2"),
-				sql.NewRow(int64(2), "second row, 2"),
-				sql.NewRow(int64(3), "third row, 2"),
-			},
-		},
-		{
-			"SELECT i FROM myview1 ORDER BY i",
-			[]sql.Row{
-				sql.NewRow(int64(1)),
-				sql.NewRow(int64(2)),
-				sql.NewRow(int64(3)),
 			},
 		},
 		{
@@ -3629,6 +3725,7 @@ func TestViews(t *testing.T) {
 		})
 	}
 }
+
 
 func TestSessionSelectLimit(t *testing.T) {
 	q := []struct {
@@ -5786,13 +5883,13 @@ func newEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, d
 }
 
 type memoryHarness struct {
-	name string
-	numTablePartitions int
-	indexDriverInitalizer indexDriverInitalizer2
-	indexInitializer indexInitializer
+	name                  string
+	numTablePartitions    int
+	indexDriverInitalizer indexDriverInitalizer
+	indexInitializer      indexInitializer
 }
 
-func newMemoryHarness(numTablePartitions int, indexDriverInitalizer indexDriverInitalizer2, indexInitializer indexInitializer) *memoryHarness {
+func newMemoryHarness(numTablePartitions int, indexDriverInitalizer indexDriverInitalizer, indexInitializer indexInitializer) *memoryHarness {
 	return &memoryHarness{
 		numTablePartitions: numTablePartitions,
 		indexDriverInitalizer: indexDriverInitalizer,
