@@ -3832,8 +3832,6 @@ func TestClearWarnings(t *testing.T) {
 }
 
 func TestDescribe(t *testing.T) {
-
-
 	query := `DESCRIBE FORMAT=TREE SELECT * FROM mytable`
 	expectedSeq := []sql.Row{
 		sql.NewRow("Table(mytable): Projected "),
@@ -5672,24 +5670,24 @@ func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
 	return tables
 }
 
-func createTestTables(t *testing.T, harness EngineTestHarness) map[string]sql.Table {
+func createTestData(t *testing.T, harness EngineTestHarness) []sql.Database {
 	myDb := harness.NewDatabase("mydb")
-	db2 := harness.NewDatabase("db2")
-	tables := make(map[string]sql.Table)
+	foo := harness.NewDatabase("foo")
+	var table sql.Table
 
-	tables["mytable"] = harness.NewTable(myDb,"mytable", sql.Schema{
+	table = harness.NewTable(myDb,"mytable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable"},
 		{Name: "s", Type: sql.Text, Source: "mytable"},
 	})
 
 	insertRows(
-		t, mustInsertableTable(t, tables["mytable"]),
+		t, mustInsertableTable(t, table),
 		sql.NewRow(int64(1), "first row"),
 		sql.NewRow(int64(2), "second row"),
 		sql.NewRow(int64(3), "third row"),
 	)
 
-	tables["one_pk"] = harness.NewTable(myDb,"one_pk", sql.Schema{
+	table = harness.NewTable(myDb,"one_pk", sql.Schema{
 		{Name: "pk", Type: sql.Int8, Source: "one_pk", PrimaryKey: true},
 		{Name: "c1", Type: sql.Int8, Source: "one_pk"},
 		{Name: "c2", Type: sql.Int8, Source: "one_pk"},
@@ -5699,14 +5697,14 @@ func createTestTables(t *testing.T, harness EngineTestHarness) map[string]sql.Ta
 	})
 
 	insertRows(t,
-		mustInsertableTable(t, tables["one_pk"]),
+		mustInsertableTable(t, table),
 		sql.NewRow(0, 0, 0, 0, 0, 0),
 		sql.NewRow(1, 10, 10, 10, 10, 10),
 		sql.NewRow(2, 20, 20, 20, 20, 20),
 		sql.NewRow(3, 30, 30, 30, 30, 30),
 	)
 
-	tables["two_pk"] = harness.NewTable(myDb,"two_pk", sql.Schema{
+	table = harness.NewTable(myDb,"two_pk", sql.Schema{
 		{Name: "pk1", Type: sql.Int8, Source: "two_pk", PrimaryKey: true},
 		{Name: "pk2", Type: sql.Int8, Source: "two_pk", PrimaryKey: true},
 		{Name: "c1", Type: sql.Int8, Source: "two_pk"},
@@ -5717,56 +5715,56 @@ func createTestTables(t *testing.T, harness EngineTestHarness) map[string]sql.Ta
 	})
 
 	insertRows(t,
-		mustInsertableTable(t, tables["two_pk"]),
+		mustInsertableTable(t, table),
 		sql.NewRow(0, 0, 0, 0, 0, 0 ,0),
 		sql.NewRow(0, 1, 10, 10, 10, 10, 10),
 		sql.NewRow(1, 0, 20, 20, 20, 20, 20),
 		sql.NewRow(1, 1, 30, 30, 30, 30, 30),
 	)
 
-	tables["othertable"] = harness.NewTable(db2,"othertable", sql.Schema{
+	table = harness.NewTable(foo,"othertable", sql.Schema{
 		{Name: "s2", Type: sql.Text, Source: "othertable"},
 		{Name: "i2", Type: sql.Int64, Source: "othertable"},
 	})
 
 	insertRows(
-		t, mustInsertableTable(t, tables["othertable"]),
+		t, mustInsertableTable(t, table),
 		sql.NewRow("first", int64(3)),
 		sql.NewRow("second", int64(2)),
 		sql.NewRow("third", int64(1)),
 	)
 
-	tables["tabletest"] = harness.NewTable(myDb,"tabletest", sql.Schema{
+	table = harness.NewTable(myDb,"tabletest", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "tabletest"},
 		{Name: "s", Type: sql.Text, Source: "tabletest"},
 	})
 
 	insertRows(
-		t, mustInsertableTable(t, tables["tabletest"]),
+		t, mustInsertableTable(t, table),
 		sql.NewRow(int64(1), "first row"),
 		sql.NewRow(int64(2), "second row"),
 		sql.NewRow(int64(3), "third row"),
 	)
 
-	tables["other_table"] = harness.NewTable(myDb,"other_table", sql.Schema{
+	table = harness.NewTable(myDb,"other_table", sql.Schema{
 		{Name: "text", Type: sql.Text, Source: "tabletest"},
 		{Name: "number", Type: sql.Int32, Source: "tabletest"},
 	})
 
 	insertRows(
-		t, mustInsertableTable(t, tables["other_table"]),
+		t, mustInsertableTable(t, table),
 		sql.NewRow("a", int32(4)),
 		sql.NewRow("b", int32(2)),
 		sql.NewRow("c", int32(0)),
 	)
 
-	tables["bigtable"] = harness.NewTable(myDb,"bigtable", sql.Schema{
+	table = harness.NewTable(myDb,"bigtable", sql.Schema{
 		{Name: "t", Type: sql.Text, Source: "bigtable"},
 		{Name: "n", Type: sql.Int64, Source: "bigtable"},
 	})
 
 	insertRows(
-		t, mustInsertableTable(t, tables["bigtable"]),
+		t, mustInsertableTable(t, table),
 		sql.NewRow("a", int64(1)),
 		sql.NewRow("s", int64(2)),
 		sql.NewRow("f", int64(3)),
@@ -5783,14 +5781,14 @@ func createTestTables(t *testing.T, harness EngineTestHarness) map[string]sql.Ta
 		sql.NewRow("b", int64(9)),
 	)
 
-	tables["floattable"] = harness.NewTable(myDb,"floattable", sql.Schema{
+	table = harness.NewTable(myDb,"floattable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "floattable"},
 		{Name: "f32", Type: sql.Float32, Source: "floattable"},
 		{Name: "f64", Type: sql.Float64, Source: "floattable"},
 	})
 
 	insertRows(
-		t, mustInsertableTable(t, tables["floattable"]),
+		t, mustInsertableTable(t, table),
 		sql.NewRow(int64(1), float32(1.0), float64(1.0)),
 		sql.NewRow(int64(2), float32(1.5), float64(1.5)),
 		sql.NewRow(int64(3), float32(2.0), float64(2.0)),
@@ -5799,14 +5797,14 @@ func createTestTables(t *testing.T, harness EngineTestHarness) map[string]sql.Ta
 		sql.NewRow(int64(-2), float32(-1.5), float64(-1.5)),
 	)
 
-	tables["niltable"] = harness.NewTable(myDb,"niltable", sql.Schema{
+	table = harness.NewTable(myDb,"niltable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "niltable", Nullable: true},
 		{Name: "b", Type: sql.Boolean, Source: "niltable", Nullable: true},
 		{Name: "f", Type: sql.Float64, Source: "niltable", Nullable: true},
 	})
 
 	insertRows(
-		t, mustInsertableTable(t, tables["niltable"]),
+		t, mustInsertableTable(t, table),
 		sql.NewRow(int64(1), true, float64(1.0)),
 		sql.NewRow(int64(2), nil, float64(2.0)),
 		sql.NewRow(nil, false, float64(3.0)),
@@ -5814,13 +5812,13 @@ func createTestTables(t *testing.T, harness EngineTestHarness) map[string]sql.Ta
 		sql.NewRow(nil, nil, nil),
 	)
 
-	tables["newlinetable"] = harness.NewTable(myDb,"newlinetable", sql.Schema{
+	table = harness.NewTable(myDb,"newlinetable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "newlinetable"},
 		{Name: "s", Type: sql.Text, Source: "newlinetable"},
 	})
 
 	insertRows(
-		t, mustInsertableTable(t, tables["newlinetable"]),
+		t, mustInsertableTable(t, table),
 		sql.NewRow(int64(1), "\nthere is some text in here"),
 		sql.NewRow(int64(2), "there is some\ntext in here"),
 		sql.NewRow(int64(3), "there is some text\nin here"),
@@ -5828,7 +5826,7 @@ func createTestTables(t *testing.T, harness EngineTestHarness) map[string]sql.Ta
 		sql.NewRow(int64(5), "there is some text in here"),
 	)
 
-	tables["typestable"] = harness.NewTable(myDb,"typestable", sql.Schema{
+	table = harness.NewTable(myDb,"typestable", sql.Schema{
 		{Name: "id", Type: sql.Int64, Source: "typestable"},
 		{Name: "i8", Type: sql.Int8, Source: "typestable", Nullable: true},
 		{Name: "i16", Type: sql.Int16, Source: "typestable", Nullable: true},
@@ -5854,7 +5852,7 @@ func createTestTables(t *testing.T, harness EngineTestHarness) map[string]sql.Ta
 	require.NoError(t, err)
 
 	insertRows(
-		t, mustInsertableTable(t, tables["typestable"]),
+		t, mustInsertableTable(t, table),
 		sql.NewRow(
 			int64(1),
 			int8(2),
@@ -5876,13 +5874,13 @@ func createTestTables(t *testing.T, harness EngineTestHarness) map[string]sql.Ta
 		),
 	)
 
-	tables["stringandtable"] = harness.NewTable(myDb,"stringandtable", sql.Schema{
+	table = harness.NewTable(myDb,"stringandtable", sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "stringandtable", Nullable: true},
 		{Name: "v", Type: sql.Text, Source: "stringandtable", Nullable: true},
 	})
 
 	insertRows(
-		t, mustInsertableTable(t, tables["stringandtable"]),
+		t, mustInsertableTable(t, table),
 		sql.NewRow(int64(0), "0"),
 		sql.NewRow(int64(1), "1"),
 		sql.NewRow(int64(2), ""),
@@ -5892,7 +5890,7 @@ func createTestTables(t *testing.T, harness EngineTestHarness) map[string]sql.Ta
 		sql.NewRow(nil, "2"),
 	)
 
-	tables["reservedWordsTable"] = harness.NewTable(myDb,"reservedWordsTable", sql.Schema{
+	table = harness.NewTable(myDb,"reservedWordsTable", sql.Schema{
 		{Name: "Timestamp", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
 		{Name: "and", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
 		{Name: "or", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
@@ -5900,35 +5898,42 @@ func createTestTables(t *testing.T, harness EngineTestHarness) map[string]sql.Ta
 	})
 
 	insertRows(
-		t, mustInsertableTable(t, tables["reservedWordsTable"]),
+		t, mustInsertableTable(t, table),
 		sql.NewRow("1", "1.1", "aaa", "create"),
 	)
 
-	tables["myhistorytable-2019-01-01"] = harness.NewTable(myDb,"myhistorytable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "myhistorytable"},
-		{Name: "s", Type: sql.Text, Source: "myhistorytable"},
-	})
+	if versionedHarness, ok := harness.(VersionedDBTestHarness); ok {
+		versionedDb, ok := myDb.(sql.VersionedDatabase)
+		if !ok {
+			panic("VersionedDbTestHarness must provide a VersionedDatabase implementation")
+		}
 
-	insertRows(
-		t, mustInsertableTable(t, tables["myhistorytable-2019-01-01"]),
-		sql.NewRow(int64(1), "first row, 1"),
-		sql.NewRow(int64(2), "second row, 1"),
-		sql.NewRow(int64(3), "third row, 1"),
-	)
+		table = versionedHarness.NewTableAsOf(versionedDb,"myhistorytable", sql.Schema{
+			{Name: "i", Type: sql.Int64, Source: "myhistorytable"},
+			{Name: "s", Type: sql.Text, Source: "myhistorytable"},
+		}, "2019-01-01")
 
-	tables["myhistorytable-2019-01-02"] = harness.NewTable(myDb,"myhistorytable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "myhistorytable"},
-		{Name: "s", Type: sql.Text, Source: "myhistorytable"},
-	})
+		insertRows(
+			t, mustInsertableTable(t, table),
+			sql.NewRow(int64(1), "first row, 1"),
+			sql.NewRow(int64(2), "second row, 1"),
+			sql.NewRow(int64(3), "third row, 1"),
+		)
 
-	insertRows(
-		t, mustInsertableTable(t, tables["myhistorytable-2019-01-02"]),
-		sql.NewRow(int64(1), "first row, 2"),
-		sql.NewRow(int64(2), "second row, 2"),
-		sql.NewRow(int64(3), "third row, 2"),
-	)
+		table = versionedHarness.NewTableAsOf(versionedDb,"myhistorytable", sql.Schema{
+			{Name: "i", Type: sql.Int64, Source: "myhistorytable"},
+			{Name: "s", Type: sql.Text, Source: "myhistorytable"},
+		}, "2019-01-02")
 
-	return tables
+		insertRows(
+			t, mustInsertableTable(t, table),
+			sql.NewRow(int64(1), "first row, 2"),
+			sql.NewRow(int64(2), "second row, 2"),
+			sql.NewRow(int64(3), "third row, 2"),
+		)
+	}
+
+	return []sql.Database{myDb, foo}
 }
 
 func mustInsertableTable(t *testing.T, table sql.Table) sql.InsertableTable {
@@ -5986,6 +5991,31 @@ func newEngineWithParallelism(t *testing.T, parallelism int, tables map[string]*
 	return engine, idxReg
 }
 
+func newEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, driver sql.IndexDriver) (*sqle.Engine, *sql.IndexRegistry) {
+	catalog := sql.NewCatalog()
+	for _, database := range databases {
+		catalog.AddDatabase(database)
+	}
+	catalog.AddDatabase(sql.NewInformationSchemaDatabase(catalog))
+
+	var a *analyzer.Analyzer
+	if parallelism > 1 {
+		a = analyzer.NewBuilder(catalog).WithParallelism(parallelism).Build()
+	} else {
+		a = analyzer.NewDefault(catalog)
+	}
+
+	idxReg := sql.NewIndexRegistry()
+	if driver != nil {
+		idxReg.RegisterIndexDriver(driver)
+	}
+
+	engine := sqle.New(catalog, a, new(sqle.Config))
+	require.NoError(t, idxReg.LoadIndexes(sql.NewEmptyContext(), engine.Catalog.AllDatabases()))
+
+	return engine, idxReg
+}
+
 func newDatabaseWithoutHistoryTables(tables map[string]*memory.Table) *memory.Database {
 	db := memory.NewDatabase("mydb")
 	for name, table := range tables {
@@ -6009,8 +6039,10 @@ func (m *memoryHarness) SupportsNativeIndexCreation(table string) bool {
 	return true
 }
 
-func (m *memoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, asOf interface{}, rows ...sql.Row) sql.Table {
-	panic("implement me")
+func (m *memoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.Schema, asOf interface{}) sql.Table {
+	table := memory.NewPartitionedTable(name, schema, m.numTablePartitions)
+	db.(*memory.HistoryDatabase).AddTableAsOf(name, table, asOf)
+	return table
 }
 
 func (m *memoryHarness) IndexDriver() sql.IndexDriver {
@@ -6018,7 +6050,7 @@ func (m *memoryHarness) IndexDriver() sql.IndexDriver {
 }
 
 func (m *memoryHarness) NewDatabase(name string) sql.Database {
-	return memory.NewDatabase(name)
+	return memory.NewHistoryDatabase(name)
 }
 
 func (m *memoryHarness) NewTable(db sql.Database, name string, schema sql.Schema) sql.Table {
@@ -6049,7 +6081,7 @@ type IndexTestHarness interface {
 
 type VersionedDBTestHarness interface {
 	EngineTestHarness
-	NewTableAsOf(db sql.VersionedDatabase, name string, asOf interface{}) sql.Table
+	NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.Schema, asOf interface{}) sql.Table
 }
 
 func TestPrintTree(t *testing.T) {
