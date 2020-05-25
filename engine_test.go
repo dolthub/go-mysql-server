@@ -2674,10 +2674,11 @@ func TestHistoryQueries(t *testing.T) {
 }
 
 type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
+type indexDriverInitalizer2 func([]sql.Database) sql.IndexDriver
 type indexInitializer func(*testing.T, *sqle.Engine) error
 type indexBehaviorTestParams struct {
 	name              string
-	driverInitializer indexDriverInitalizer
+	driverInitializer indexDriverInitalizer2
 	indexInitializer indexInitializer
 }
 
@@ -2697,10 +2698,10 @@ func testQueries(t *testing.T, testQueries []queryTest) {
 		}
 		indexBehaviors = []*indexBehaviorTestParams{
 			nil,
-			{"unmergableIndexes", unmergableIndexDriver, nil},
-			{"mergableIndexes", mergableIndexDriver, nil},
+			{"unmergableIndexes", unmergableIndexDriver2, nil},
+			{"mergableIndexes", mergableIndexDriver2, nil},
 			{"nativeIndexes", nil, nativeIndexes},
-			{"nativeAndMergable", mergableIndexDriver, nativeIndexes},
+			{"nativeAndMergable", mergableIndexDriver2, nativeIndexes},
 		}
 		parallelVals = []int{
 			1,
@@ -2708,21 +2709,28 @@ func testQueries(t *testing.T, testQueries []queryTest) {
 		}
 	} else {
 		numPartitionsVals = []int{1}
-		indexBehaviors = []*indexBehaviorTestParams{{"unmergableIndexes", unmergableIndexDriver, nil}}
+		indexBehaviors = []*indexBehaviorTestParams{{"unmergableIndexes", unmergableIndexDriver2, nil}}
 		parallelVals = []int{1}
 	}
 
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexInit := range indexBehaviors {
 			for _, parallelism := range parallelVals {
-				tables := allTestTables(t, numPartitions)
 
-				var indexDriver sql.IndexDriver
-				if indexInit != nil && indexInit.driverInitializer != nil {
-					indexDriver = indexInit.driverInitializer(tables)
+				var driverInitializer indexDriverInitalizer2
+				var indexInitializer indexInitializer
+				if indexInit != nil && indexInit.indexInitializer != nil {
+					indexInitializer = indexInit.indexInitializer
 				}
-				engine, idxReg := newEngineWithParallelism(t, parallelism, tables, indexDriver)
+				if indexInit != nil && indexInit.driverInitializer != nil {
+					driverInitializer = indexInit.driverInitializer
+				}
 
+				harness := newMemoryHarness(numPartitions, driverInitializer, indexInitializer)
+				dbs := createTestData(t, harness)
+				engine, idxReg := newEngineWithDbs(t, parallelism, dbs, harness.IndexDriver(dbs))
+
+				// TODO: dispatch to harness
 				if indexInit != nil && indexInit.indexInitializer != nil {
 					indexInit.indexInitializer(t, engine)
 				}
@@ -3551,23 +3559,28 @@ var debugQueryPlan = ""
 // the right indexes are being used for joining tables.
 func TestQueryPlans(t *testing.T) {
 	indexBehaviors := []*indexBehaviorTestParams{
-		{"unmergableIndexes", unmergableIndexDriver, nil},
+		{"unmergableIndexes", unmergableIndexDriver2, nil},
 		{"nativeIndexes", nil, nativeIndexes},
-		{"nativeAndMergable", mergableIndexDriver, nativeIndexes},
+		{"nativeAndMergable", mergableIndexDriver2, nativeIndexes},
 	}
 
 	for _, indexInit := range indexBehaviors {
 		t.Run(indexInit.name, func(t *testing.T) {
-			tables := allTestTables(t, 2)
-
-			var indexDriver sql.IndexDriver
-			if indexInit.driverInitializer != nil {
-				indexDriver = indexInit.driverInitializer(tables)
+			var driverInitializer indexDriverInitalizer2
+			var indexInitializer indexInitializer
+			if indexInit != nil && indexInit.indexInitializer != nil {
+				indexInitializer = indexInit.indexInitializer
+			}
+			if indexInit != nil && indexInit.driverInitializer != nil {
+				driverInitializer = indexInit.driverInitializer
 			}
 
-			engine, idxReg := newEngineWithParallelism(t, 1, tables, indexDriver)
+			harness := newMemoryHarness(2, driverInitializer, indexInitializer)
+			dbs := createTestData(t, harness)
+			engine, idxReg := newEngineWithDbs(t, 1, dbs, harness.IndexDriver(dbs))
 
-			if indexInit.indexInitializer != nil {
+			// TODO: dispatch to harness
+			if indexInit != nil && indexInit.indexInitializer != nil {
 				indexInit.indexInitializer(t, engine)
 			}
 
@@ -6104,7 +6117,17 @@ func newEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, d
 }
 
 type memoryHarness struct {
+	name string
 	numTablePartitions int
+	indexDriverInitalizer indexDriverInitalizer2
+	indexInitializer indexInitializer
+}
+
+func newMemoryHarness(numTablePartitions int, indexDriverInitalizer indexDriverInitalizer2, indexInitializer indexInitializer) *memoryHarness {
+	return &memoryHarness{
+		numTablePartitions: numTablePartitions,
+		indexDriverInitalizer: indexDriverInitalizer,
+		indexInitializer: indexInitializer}
 }
 
 var _ EngineTestHarness = (*memoryHarness)(nil)
@@ -6113,7 +6136,7 @@ var _ IndexTestHarness = (*memoryHarness)(nil)
 var _ VersionedDBTestHarness = (*memoryHarness)(nil)
 
 func (m *memoryHarness) SupportsNativeIndexCreation(table string) bool {
-	return true
+	return m.indexInitializer != nil
 }
 
 func (m *memoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.Schema, asOf interface{}) sql.Table {
@@ -6122,8 +6145,11 @@ func (m *memoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, sche
 	return table
 }
 
-func (m *memoryHarness) IndexDriver() sql.IndexDriver {
-	panic("implement me")
+func (m *memoryHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
+	if m.indexDriverInitalizer != nil {
+		return m.indexDriverInitalizer(dbs)
+	}
+	return nil
 }
 
 func (m *memoryHarness) NewDatabase(name string) sql.Database {
@@ -6148,7 +6174,7 @@ type EngineTestHarness interface {
 
 type IndexDriverTestHarness interface {
 	EngineTestHarness
-	IndexDriver() sql.IndexDriver
+	IndexDriver(dbs []sql.Database) sql.IndexDriver
 }
 
 type IndexTestHarness interface {
