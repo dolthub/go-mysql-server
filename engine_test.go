@@ -2671,7 +2671,7 @@ func TestQueries(t *testing.T) {
 
 func TestVersionedQueries(t *testing.T) {
 	testQueries(t, versionedQueries)
-}	
+}
 
 type indexDriverInitalizer func([]sql.Database) sql.IndexDriver
 type indexInitializer func(*testing.T, *sqle.Engine) error
@@ -2717,20 +2717,15 @@ func testQueries(t *testing.T, testQueries []queryTest) {
 			for _, parallelism := range parallelVals {
 
 				var driverInitializer indexDriverInitalizer
-				var indexInitializer indexInitializer
-				if indexInit != nil && indexInit.indexInitializer != nil {
-					indexInitializer = indexInit.indexInitializer
-				}
 				if indexInit != nil && indexInit.driverInitializer != nil {
 					driverInitializer = indexInit.driverInitializer
 				}
 
-				harness := newMemoryHarness(numPartitions, driverInitializer, indexInitializer)
+				harness := newMemoryHarness(numPartitions, driverInitializer)
 				dbs := createTestData(t, harness)
 				engine, idxReg := newEngineWithDbs(t, parallelism, dbs, harness.IndexDriver(dbs))
 
-				// TODO: dispatch to harness
-				if indexInit != nil && indexInit.indexInitializer != nil {
+				if indexInit != nil && indexInit.indexInitializer != nil && harness.SupportsNativeIndexCreation() {
 					indexInit.indexInitializer(t, engine)
 				}
 
@@ -2774,7 +2769,7 @@ var infoSchemaTables = []string {
 // Test the info schema queries separately to avoid having to alter test query results when more test tables are added.
 // To get this effect, we only install a fixed subset of the tables defined by allTestTables().
 func TestInfoSchema(t *testing.T) {
-	engine, idxReg := newEngineWithDbs(t, 2, createSubsetTestData(t, newMemoryHarness(1, nil, nil), infoSchemaTables), nil)
+	engine, idxReg := newEngineWithDbs(t, 2, createSubsetTestData(t, newMemoryHarness(1, nil), infoSchemaTables), nil)
 	for _, tt := range infoSchemaQueries {
 		ctx := newCtx(idxReg)
 		testQueryWithContext(ctx, t, engine, tt.query, tt.expected)
@@ -3450,20 +3445,15 @@ func TestQueryPlans(t *testing.T) {
 	for _, indexInit := range indexBehaviors {
 		t.Run(indexInit.name, func(t *testing.T) {
 			var driverInitializer indexDriverInitalizer
-			var indexInitializer indexInitializer
-			if indexInit != nil && indexInit.indexInitializer != nil {
-				indexInitializer = indexInit.indexInitializer
-			}
 			if indexInit != nil && indexInit.driverInitializer != nil {
 				driverInitializer = indexInit.driverInitializer
 			}
 
-			harness := newMemoryHarness(2, driverInitializer, indexInitializer)
+			harness := newMemoryHarness(2, driverInitializer)
 			dbs := createTestData(t, harness)
 			engine, idxReg := newEngineWithDbs(t, 1, dbs, harness.IndexDriver(dbs))
 
-			// TODO: dispatch to harness
-			if indexInit != nil && indexInit.indexInitializer != nil {
+			if indexInit != nil && indexInit.indexInitializer != nil && harness.SupportsNativeIndexCreation() {
 				indexInit.indexInitializer(t, engine)
 			}
 
@@ -3891,7 +3881,7 @@ func TestWarnings(t *testing.T) {
 		}
 	})
 
-	ep, idxReg := newEngineWithDbs(t, 2, createTestData(t, newMemoryHarness(testNumPartitions, nil, nil)), nil)
+	ep, idxReg := newEngineWithDbs(t, 2, createTestData(t, newMemoryHarness(testNumPartitions, nil)), nil)
 
 	ctx = newCtx(idxReg)
 	ctx.Session.Warn(&sql.Warning{Code: 1})
@@ -3962,12 +3952,12 @@ func TestDescribe(t *testing.T) {
 		{" └─ Table(mytable): Projected "},
 	}
 
-	e, idxReg := newEngineWithDbs(t, 1, createTestData(t, newMemoryHarness(testNumPartitions, nil, nil)), nil)
+	e, idxReg := newEngineWithDbs(t, 1, createTestData(t, newMemoryHarness(testNumPartitions, nil)), nil)
 	t.Run("sequential", func(t *testing.T) {
 		testQuery(t, e, idxReg, query, expectedSeq)
 	})
 
-	ep, idxReg := newEngineWithDbs(t, 2, createTestData(t, newMemoryHarness(testNumPartitions, nil, nil)), nil)
+	ep, idxReg := newEngineWithDbs(t, 2, createTestData(t, newMemoryHarness(testNumPartitions, nil)), nil)
 	t.Run("parallel", func(t *testing.T) {
 		testQuery(t, ep, idxReg, query, expectedParallel)
 	})
@@ -5854,7 +5844,7 @@ func mustInsertableTable(t *testing.T, table sql.Table) sql.InsertableTable {
 }
 
 func newEngine(t *testing.T) (*sqle.Engine, *sql.IndexRegistry) {
-	return newEngineWithDbs(t, 1, createTestData(t, newMemoryHarness(testNumPartitions, nil, nil)), nil)
+	return newEngineWithDbs(t, 1, createTestData(t, newMemoryHarness(testNumPartitions, nil)), nil)
 }
 
 func newEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, driver sql.IndexDriver) (*sqle.Engine, *sql.IndexRegistry) {
@@ -5886,14 +5876,12 @@ type memoryHarness struct {
 	name                  string
 	numTablePartitions    int
 	indexDriverInitalizer indexDriverInitalizer
-	indexInitializer      indexInitializer
 }
 
-func newMemoryHarness(numTablePartitions int, indexDriverInitalizer indexDriverInitalizer, indexInitializer indexInitializer) *memoryHarness {
+func newMemoryHarness(numTablePartitions int, indexDriverInitalizer indexDriverInitalizer) *memoryHarness {
 	return &memoryHarness{
 		numTablePartitions: numTablePartitions,
-		indexDriverInitalizer: indexDriverInitalizer,
-		indexInitializer: indexInitializer}
+		indexDriverInitalizer: indexDriverInitalizer}
 }
 
 var _ EngineTestHarness = (*memoryHarness)(nil)
@@ -5901,8 +5889,8 @@ var _ IndexDriverTestHarness = (*memoryHarness)(nil)
 var _ IndexTestHarness = (*memoryHarness)(nil)
 var _ VersionedDBTestHarness = (*memoryHarness)(nil)
 
-func (m *memoryHarness) SupportsNativeIndexCreation(table string) bool {
-	return m.indexInitializer != nil
+func (m *memoryHarness) SupportsNativeIndexCreation() bool {
+	return true
 }
 
 func (m *memoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.Schema, asOf interface{}) sql.Table {
@@ -5945,7 +5933,7 @@ type IndexDriverTestHarness interface {
 
 type IndexTestHarness interface {
 	EngineTestHarness
-	SupportsNativeIndexCreation(table string) bool
+	SupportsNativeIndexCreation() bool
 }
 
 type VersionedDBTestHarness interface {
