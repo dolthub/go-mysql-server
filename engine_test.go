@@ -5752,7 +5752,7 @@ func createTestData(t *testing.T, harness EngineTestHarness) []sql.Database {
 		sql.NewRow(1, 1, 30, 30, 30, 30, 30),
 	)
 
-	table = harness.NewTable(foo,"othertable", sql.Schema{
+	table = harness.NewTable(myDb,"othertable", sql.Schema{
 		{Name: "s2", Type: sql.Text, Source: "othertable"},
 		{Name: "i2", Type: sql.Int64, Source: "othertable"},
 	})
@@ -5776,7 +5776,7 @@ func createTestData(t *testing.T, harness EngineTestHarness) []sql.Database {
 		sql.NewRow(int64(3), "third row"),
 	)
 
-	table = harness.NewTable(myDb,"other_table", sql.Schema{
+	table = harness.NewTable(foo,"other_table", sql.Schema{
 		{Name: "text", Type: sql.Text, Source: "tabletest"},
 		{Name: "number", Type: sql.Int32, Source: "tabletest"},
 	})
