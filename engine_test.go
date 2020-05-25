@@ -2673,7 +2673,6 @@ func TestHistoryQueries(t *testing.T) {
 	testQueries(t, historyQueries)
 }
 
-type indexDriverInitalizer func(map[string]*memory.Table) sql.IndexDriver
 type indexDriverInitalizer2 func([]sql.Database) sql.IndexDriver
 type indexInitializer func(*testing.T, *sqle.Engine) error
 type indexBehaviorTestParams struct {
@@ -2698,10 +2697,10 @@ func testQueries(t *testing.T, testQueries []queryTest) {
 		}
 		indexBehaviors = []*indexBehaviorTestParams{
 			nil,
-			{"unmergableIndexes", unmergableIndexDriver2, nil},
-			{"mergableIndexes", mergableIndexDriver2, nil},
+			{"unmergableIndexes", unmergableIndexDriver, nil},
+			{"mergableIndexes", mergableIndexDriver, nil},
 			{"nativeIndexes", nil, nativeIndexes},
-			{"nativeAndMergable", mergableIndexDriver2, nativeIndexes},
+			{"nativeAndMergable", mergableIndexDriver, nativeIndexes},
 		}
 		parallelVals = []int{
 			1,
@@ -2709,7 +2708,7 @@ func testQueries(t *testing.T, testQueries []queryTest) {
 		}
 	} else {
 		numPartitionsVals = []int{1}
-		indexBehaviors = []*indexBehaviorTestParams{{"unmergableIndexes", unmergableIndexDriver2, nil}}
+		indexBehaviors = []*indexBehaviorTestParams{{"unmergableIndexes", unmergableIndexDriver, nil}}
 		parallelVals = []int{1}
 	}
 
@@ -2789,44 +2788,44 @@ func TestInfoSchema(t *testing.T) {
 	}
 }
 
-func unmergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
+func unmergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {
-			newUnmergableIndex(tables, "mytable",
+			newUnmergableIndex(dbs, "mytable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
-			newUnmergableIndex(tables, "mytable",
+			newUnmergableIndex(dbs, "mytable",
 				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
-			newUnmergableIndex(tables, "mytable",
+			newUnmergableIndex(dbs, "mytable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
 				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
 		},
 		"othertable": {
-			newUnmergableIndex(tables, "othertable",
+			newUnmergableIndex(dbs, "othertable",
 				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
-			newUnmergableIndex(tables, "othertable",
+			newUnmergableIndex(dbs, "othertable",
 				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
-			newUnmergableIndex(tables, "othertable",
+			newUnmergableIndex(dbs, "othertable",
 				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
 				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
 		},
 		"bigtable": {
-			newUnmergableIndex(tables, "bigtable",
+			newUnmergableIndex(dbs, "bigtable",
 				expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
 		},
 		"floattable": {
-			newUnmergableIndex(tables, "floattable",
+			newUnmergableIndex(dbs, "floattable",
 				expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
 		},
 		"niltable": {
-			newUnmergableIndex(tables, "niltable",
+			newUnmergableIndex(dbs, "niltable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
 		},
 		"one_pk": {
-				newUnmergableIndex(tables, "one_pk",
-					expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
+			newUnmergableIndex(dbs, "one_pk",
+				expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
 		},
 		"two_pk": {
-			newUnmergableIndex(tables, "two_pk",
+			newUnmergableIndex(dbs, "two_pk",
 				expression.NewGetFieldWithTable(0, sql.Int8, "two_pk", "pk1", false),
 				expression.NewGetFieldWithTable(1, sql.Int8, "two_pk", "pk2", false),
 			),
@@ -2834,134 +2833,44 @@ func unmergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
 	})
 }
 
-func mergableIndexDriver(tables map[string]*memory.Table) sql.IndexDriver {
+func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {
-			newMergableIndex(tables, "mytable",
+			newMergableIndex(dbs, "mytable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
-			newMergableIndex(tables, "mytable",
+			newMergableIndex(dbs, "mytable",
 				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
-			newMergableIndex(tables, "mytable",
+			newMergableIndex(dbs, "mytable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
 				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
 		},
 		"othertable": {
-			newMergableIndex(tables, "othertable",
+			newMergableIndex(dbs, "othertable",
 				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
-			newMergableIndex(tables, "othertable",
+			newMergableIndex(dbs, "othertable",
 				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
-			newMergableIndex(tables, "othertable",
+			newMergableIndex(dbs, "othertable",
 				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
 				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
 		},
 		"bigtable": {
-			newMergableIndex(tables, "bigtable",
+			newMergableIndex(dbs, "bigtable",
 				expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
 		},
 		"floattable": {
-			newMergableIndex(tables, "floattable",
+			newMergableIndex(dbs, "floattable",
 				expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
 		},
 		"niltable": {
-			newMergableIndex(tables, "niltable",
+			newMergableIndex(dbs, "niltable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
 		},
 		"one_pk": {
-			newMergableIndex(tables, "one_pk",
+			newMergableIndex(dbs, "one_pk",
 				expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
 		},
 		"two_pk": {
-			newMergableIndex(tables, "two_pk",
-				expression.NewGetFieldWithTable(0, sql.Int8, "two_pk", "pk1", false),
-				expression.NewGetFieldWithTable(1, sql.Int8, "two_pk", "pk2", false),
-			),
-		},
-	})
-}
-
-func unmergableIndexDriver2(dbs []sql.Database) sql.IndexDriver {
-	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
-		"mytable": {
-			newUnmergableIndex2(dbs, "mytable",
-				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
-			newUnmergableIndex2(dbs, "mytable",
-				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
-			newUnmergableIndex2(dbs, "mytable",
-				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
-		},
-		"othertable": {
-			newUnmergableIndex2(dbs, "othertable",
-				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
-			newUnmergableIndex2(dbs, "othertable",
-				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
-			newUnmergableIndex2(dbs, "othertable",
-				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
-				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
-		},
-		"bigtable": {
-			newUnmergableIndex2(dbs, "bigtable",
-				expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
-		},
-		"floattable": {
-			newUnmergableIndex2(dbs, "floattable",
-				expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
-		},
-		"niltable": {
-			newUnmergableIndex2(dbs, "niltable",
-				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
-		},
-		"one_pk": {
-			newUnmergableIndex2(dbs, "one_pk",
-				expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
-		},
-		"two_pk": {
-			newUnmergableIndex2(dbs, "two_pk",
-				expression.NewGetFieldWithTable(0, sql.Int8, "two_pk", "pk1", false),
-				expression.NewGetFieldWithTable(1, sql.Int8, "two_pk", "pk2", false),
-			),
-		},
-	})
-}
-
-func mergableIndexDriver2(dbs []sql.Database) sql.IndexDriver {
-	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
-		"mytable": {
-			newMergableIndex2(dbs, "mytable",
-				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
-			newMergableIndex2(dbs, "mytable",
-				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
-			newMergableIndex2(dbs, "mytable",
-				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
-		},
-		"othertable": {
-			newMergableIndex2(dbs, "othertable",
-				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
-			newMergableIndex2(dbs, "othertable",
-				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
-			newMergableIndex2(dbs, "othertable",
-				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
-				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
-		},
-		"bigtable": {
-			newMergableIndex2(dbs, "bigtable",
-				expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
-		},
-		"floattable": {
-			newMergableIndex2(dbs, "floattable",
-				expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
-		},
-		"niltable": {
-			newMergableIndex2(dbs, "niltable",
-				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
-		},
-		"one_pk": {
-			newMergableIndex2(dbs, "one_pk",
-				expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
-		},
-		"two_pk": {
-			newMergableIndex2(dbs, "two_pk",
+			newMergableIndex(dbs, "two_pk",
 				expression.NewGetFieldWithTable(0, sql.Int8, "two_pk", "pk1", false),
 				expression.NewGetFieldWithTable(1, sql.Int8, "two_pk", "pk2", false),
 			),
@@ -2995,27 +2904,7 @@ func nativeIndexes(t *testing.T, e *sqle.Engine) error {
 	return nil
 }
 
-func newUnmergableIndex(tables map[string]*memory.Table, tableName string, exprs ...sql.Expression) *memory.UnmergeableIndex {
-	return &memory.UnmergeableIndex{
-		DB:         "mydb",
-		DriverName: memory.IndexDriverId,
-		TableName:  tableName,
-		Tbl:        tables[tableName],
-		Exprs:      exprs,
-	}
-}
-
-func newMergableIndex(tables map[string]*memory.Table, tableName string, exprs ...sql.Expression) *memory.MergeableIndex {
-	return &memory.MergeableIndex{
-		DB:         "mydb",
-		DriverName: memory.IndexDriverId,
-		TableName:  tableName,
-		Tbl:        tables[tableName],
-		Exprs:      exprs,
-	}
-}
-
-func newUnmergableIndex2(dbs []sql.Database, tableName string, exprs ...sql.Expression) *memory.UnmergeableIndex {
+func newUnmergableIndex(dbs []sql.Database, tableName string, exprs ...sql.Expression) *memory.UnmergeableIndex {
 	db, table := findTable(dbs, tableName)
 	return &memory.UnmergeableIndex{
 		DB:         db.Name(),
@@ -3026,7 +2915,7 @@ func newUnmergableIndex2(dbs []sql.Database, tableName string, exprs ...sql.Expr
 	}
 }
 
-func newMergableIndex2(dbs []sql.Database, tableName string, exprs ...sql.Expression) *memory.MergeableIndex {
+func newMergableIndex(dbs []sql.Database, tableName string, exprs ...sql.Expression) *memory.MergeableIndex {
 	db, table := findTable(dbs, tableName)
 	return &memory.MergeableIndex{
 		DB:         db.Name(),
@@ -3037,7 +2926,7 @@ func newMergableIndex2(dbs []sql.Database, tableName string, exprs ...sql.Expres
 	}
 }
 
-func findTable(dbs []sql.Database, tableName string) (database sql.Database, table sql.Table) {
+func findTable(dbs []sql.Database, tableName string) (sql.Database, sql.Table) {
 	for _, db := range dbs {
 		names, err := db.GetTableNames(sql.NewEmptyContext())
 		if err != nil {
@@ -3045,6 +2934,7 @@ func findTable(dbs []sql.Database, tableName string) (database sql.Database, tab
 		}
 		for _, name := range names {
 			if name == tableName {
+				table, _, _ := db.GetTableInsensitive(sql.NewEmptyContext(), name)
 				return db, table
 			}
 		}
@@ -3559,9 +3449,9 @@ var debugQueryPlan = ""
 // the right indexes are being used for joining tables.
 func TestQueryPlans(t *testing.T) {
 	indexBehaviors := []*indexBehaviorTestParams{
-		{"unmergableIndexes", unmergableIndexDriver2, nil},
+		{"unmergableIndexes", unmergableIndexDriver, nil},
 		{"nativeIndexes", nil, nativeIndexes},
-		{"nativeAndMergable", mergableIndexDriver2, nativeIndexes},
+		{"nativeAndMergable", mergableIndexDriver, nativeIndexes},
 	}
 
 	for _, indexInit := range indexBehaviors {
@@ -6158,7 +6048,7 @@ func (m *memoryHarness) NewDatabase(name string) sql.Database {
 
 func (m *memoryHarness) NewTable(db sql.Database, name string, schema sql.Schema) sql.Table {
 	table := memory.NewPartitionedTable(name, schema, m.numTablePartitions)
-	db.(*memory.Database).AddTable(name, table)
+	db.(*memory.HistoryDatabase).AddTable(name, table)
 	return table
 }
 
