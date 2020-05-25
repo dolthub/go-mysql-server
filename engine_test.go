@@ -2774,14 +2774,7 @@ var infoSchemaTables = []string {
 // Test the info schema queries separately to avoid having to alter test query results when more test tables are added.
 // To get this effect, we only install a fixed subset of the tables defined by allTestTables().
 func TestInfoSchema(t *testing.T) {
-	tables := allTestTables(t, 1)
-	reducedTables := make(map[string]*memory.Table)
-
-	for _, table := range infoSchemaTables {
-		reducedTables[table] = tables[table]
-	}
-
-	engine, idxReg := newEngineWithParallelism(t, 1, reducedTables, nil)
+	engine, idxReg := newEngineWithDbs(t, 2, createTestData(t, newMemoryHarness(1, nil, nil)), nil)
 	for _, tt := range infoSchemaQueries {
 		ctx := newCtx(idxReg)
 		testQueryWithContext(ctx, t, engine, tt.query, tt.expected)
@@ -3720,7 +3713,6 @@ func TestSessionDefaults(t *testing.T) {
 }
 
 func TestWarnings(t *testing.T) {
-
 	var queries = []struct {
 		query    string
 		expected []sql.Row
@@ -3801,7 +3793,7 @@ func TestWarnings(t *testing.T) {
 		}
 	})
 
-	ep, idxReg := newEngineWithParallelism(t, 2, allTestTables(t, testNumPartitions), nil)
+	ep, idxReg := newEngineWithDbs(t, 2, createTestData(t, newMemoryHarness(testNumPartitions, nil, nil)), nil)
 
 	ctx = newCtx(idxReg)
 	ctx.Session.Warn(&sql.Warning{Code: 1})
@@ -3872,12 +3864,12 @@ func TestDescribe(t *testing.T) {
 		{" └─ Table(mytable): Projected "},
 	}
 
-	e, idxReg := newEngine(t)
+	e, idxReg := newEngineWithDbs(t, 1, createTestData(t, newMemoryHarness(testNumPartitions, nil, nil)), nil)
 	t.Run("sequential", func(t *testing.T) {
 		testQuery(t, e, idxReg, query, expectedSeq)
 	})
 
-	ep, idxReg := newEngineWithParallelism(t, 2, allTestTables(t, testNumPartitions), nil)
+	ep, idxReg := newEngineWithDbs(t, 2, createTestData(t, newMemoryHarness(testNumPartitions, nil, nil)), nil)
 	t.Run("parallel", func(t *testing.T) {
 		testQuery(t, ep, idxReg, query, expectedParallel)
 	})
@@ -5443,263 +5435,6 @@ func testQueryWithContext(ctx *sql.Context, t *testing.T, e *sqle.Engine, q stri
 	})
 }
 
-func allTestTables(t *testing.T, numPartitions int) map[string]*memory.Table {
-	tables := make(map[string]*memory.Table)
-
-	tables["mytable"] = memory.NewPartitionedTable("mytable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable"},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
-	}, numPartitions)
-
-	insertRows(
-		t, tables["mytable"],
-		sql.NewRow(int64(1), "first row"),
-		sql.NewRow(int64(2), "second row"),
-		sql.NewRow(int64(3), "third row"),
-	)
-
-	tables["one_pk"] = memory.NewPartitionedTable("one_pk", sql.Schema{
-		{Name: "pk", Type: sql.Int8, Source: "one_pk", PrimaryKey: true},
-		{Name: "c1", Type: sql.Int8, Source: "one_pk"},
-		{Name: "c2", Type: sql.Int8, Source: "one_pk"},
-		{Name: "c3", Type: sql.Int8, Source: "one_pk"},
-		{Name: "c4", Type: sql.Int8, Source: "one_pk"},
-		{Name: "c5", Type: sql.Int8, Source: "one_pk", Comment: "column 5"},
-	}, numPartitions)
-
-	insertRows(t,
-		tables["one_pk"],
-		sql.NewRow(0, 0, 0, 0, 0, 0),
-		sql.NewRow(1, 10, 10, 10, 10, 10),
-		sql.NewRow(2, 20, 20, 20, 20, 20),
-		sql.NewRow(3, 30, 30, 30, 30, 30),
-	)
-
-	tables["two_pk"] = memory.NewPartitionedTable("two_pk", sql.Schema{
-		{Name: "pk1", Type: sql.Int8, Source: "two_pk", PrimaryKey: true},
-		{Name: "pk2", Type: sql.Int8, Source: "two_pk", PrimaryKey: true},
-		{Name: "c1", Type: sql.Int8, Source: "two_pk"},
-		{Name: "c2", Type: sql.Int8, Source: "two_pk"},
-		{Name: "c3", Type: sql.Int8, Source: "two_pk"},
-		{Name: "c4", Type: sql.Int8, Source: "two_pk"},
-		{Name: "c5", Type: sql.Int8, Source: "two_pk"},
-	}, numPartitions)
-
-	insertRows(t,
-		tables["two_pk"],
-		sql.NewRow(0, 0, 0, 0, 0, 0 ,0),
-		sql.NewRow(0, 1, 10, 10, 10, 10, 10),
-		sql.NewRow(1, 0, 20, 20, 20, 20, 20),
-		sql.NewRow(1, 1, 30, 30, 30, 30, 30),
-	)
-
-	tables["othertable"] = memory.NewPartitionedTable("othertable", sql.Schema{
-		{Name: "s2", Type: sql.Text, Source: "othertable"},
-		{Name: "i2", Type: sql.Int64, Source: "othertable"},
-	}, numPartitions)
-
-	insertRows(
-		t, tables["othertable"],
-		sql.NewRow("first", int64(3)),
-		sql.NewRow("second", int64(2)),
-		sql.NewRow("third", int64(1)),
-	)
-
-	tables["tabletest"] = memory.NewPartitionedTable("tabletest", sql.Schema{
-		{Name: "i", Type: sql.Int32, Source: "tabletest"},
-		{Name: "s", Type: sql.Text, Source: "tabletest"},
-	}, numPartitions)
-
-	insertRows(
-		t, tables["tabletest"],
-		sql.NewRow(int64(1), "first row"),
-		sql.NewRow(int64(2), "second row"),
-		sql.NewRow(int64(3), "third row"),
-	)
-
-	tables["other_table"] = memory.NewPartitionedTable("other_table", sql.Schema{
-		{Name: "text", Type: sql.Text, Source: "tabletest"},
-		{Name: "number", Type: sql.Int32, Source: "tabletest"},
-	}, numPartitions)
-
-	insertRows(
-		t, tables["other_table"],
-		sql.NewRow("a", int32(4)),
-		sql.NewRow("b", int32(2)),
-		sql.NewRow("c", int32(0)),
-	)
-
-	tables["bigtable"] = memory.NewPartitionedTable("bigtable", sql.Schema{
-		{Name: "t", Type: sql.Text, Source: "bigtable"},
-		{Name: "n", Type: sql.Int64, Source: "bigtable"},
-	}, numPartitions)
-
-	insertRows(
-		t, tables["bigtable"],
-		sql.NewRow("a", int64(1)),
-		sql.NewRow("s", int64(2)),
-		sql.NewRow("f", int64(3)),
-		sql.NewRow("g", int64(1)),
-		sql.NewRow("h", int64(2)),
-		sql.NewRow("j", int64(3)),
-		sql.NewRow("k", int64(1)),
-		sql.NewRow("l", int64(2)),
-		sql.NewRow("ñ", int64(4)),
-		sql.NewRow("z", int64(5)),
-		sql.NewRow("x", int64(6)),
-		sql.NewRow("c", int64(7)),
-		sql.NewRow("v", int64(8)),
-		sql.NewRow("b", int64(9)),
-	)
-
-	tables["floattable"] = memory.NewPartitionedTable("floattable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "floattable"},
-		{Name: "f32", Type: sql.Float32, Source: "floattable"},
-		{Name: "f64", Type: sql.Float64, Source: "floattable"},
-	}, numPartitions)
-
-	insertRows(
-		t, tables["floattable"],
-		sql.NewRow(int64(1), float32(1.0), float64(1.0)),
-		sql.NewRow(int64(2), float32(1.5), float64(1.5)),
-		sql.NewRow(int64(3), float32(2.0), float64(2.0)),
-		sql.NewRow(int64(4), float32(2.5), float64(2.5)),
-		sql.NewRow(int64(-1), float32(-1.0), float64(-1.0)),
-		sql.NewRow(int64(-2), float32(-1.5), float64(-1.5)),
-	)
-
-	tables["niltable"] = memory.NewPartitionedTable("niltable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "niltable", Nullable: true},
-		{Name: "b", Type: sql.Boolean, Source: "niltable", Nullable: true},
-		{Name: "f", Type: sql.Float64, Source: "niltable", Nullable: true},
-	}, numPartitions)
-
-	insertRows(
-		t, tables["niltable"],
-		sql.NewRow(int64(1), true, float64(1.0)),
-		sql.NewRow(int64(2), nil, float64(2.0)),
-		sql.NewRow(nil, false, float64(3.0)),
-		sql.NewRow(int64(4), true, nil),
-		sql.NewRow(nil, nil, nil),
-	)
-
-	tables["newlinetable"] = memory.NewPartitionedTable("newlinetable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "newlinetable"},
-		{Name: "s", Type: sql.Text, Source: "newlinetable"},
-	}, numPartitions)
-
-	insertRows(
-		t, tables["newlinetable"],
-		sql.NewRow(int64(1), "\nthere is some text in here"),
-		sql.NewRow(int64(2), "there is some\ntext in here"),
-		sql.NewRow(int64(3), "there is some text\nin here"),
-		sql.NewRow(int64(4), "there is some text in here\n"),
-		sql.NewRow(int64(5), "there is some text in here"),
-	)
-
-	tables["typestable"] = memory.NewPartitionedTable("typestable", sql.Schema{
-		{Name: "id", Type: sql.Int64, Source: "typestable"},
-		{Name: "i8", Type: sql.Int8, Source: "typestable", Nullable: true},
-		{Name: "i16", Type: sql.Int16, Source: "typestable", Nullable: true},
-		{Name: "i32", Type: sql.Int32, Source: "typestable", Nullable: true},
-		{Name: "i64", Type: sql.Int64, Source: "typestable", Nullable: true},
-		{Name: "u8", Type: sql.Uint8, Source: "typestable", Nullable: true},
-		{Name: "u16", Type: sql.Uint16, Source: "typestable", Nullable: true},
-		{Name: "u32", Type: sql.Uint32, Source: "typestable", Nullable: true},
-		{Name: "u64", Type: sql.Uint64, Source: "typestable", Nullable: true},
-		{Name: "f32", Type: sql.Float32, Source: "typestable", Nullable: true},
-		{Name: "f64", Type: sql.Float64, Source: "typestable", Nullable: true},
-		{Name: "ti", Type: sql.Timestamp, Source: "typestable", Nullable: true},
-		{Name: "da", Type: sql.Date, Source: "typestable", Nullable: true},
-		{Name: "te", Type: sql.Text, Source: "typestable", Nullable: true},
-		{Name: "bo", Type: sql.Boolean, Source: "typestable", Nullable: true},
-		{Name: "js", Type: sql.JSON, Source: "typestable", Nullable: true},
-		{Name: "bl", Type: sql.Blob, Source: "typestable", Nullable: true},
-	}, numPartitions)
-
-	t1, err := time.Parse(time.RFC3339, "2019-12-31T12:00:00Z")
-	require.NoError(t, err)
-	t2, err := time.Parse(time.RFC3339, "2019-12-31T00:00:00Z")
-	require.NoError(t, err)
-
-	insertRows(
-		t, tables["typestable"],
-		sql.NewRow(
-			int64(1),
-			int8(2),
-			int16(3),
-			int32(4),
-			int64(5),
-			uint8(6),
-			uint16(7),
-			uint32(8),
-			uint64(9),
-			float32(10),
-			float64(11),
-			t1,
-			t2,
-			"fourteen",
-			false,
-			nil,
-			nil,
-			),
-	)
-
-	tables["stringandtable"] = memory.NewPartitionedTable("stringandtable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "stringandtable", Nullable: true},
-		{Name: "v", Type: sql.Text, Source: "stringandtable", Nullable: true},
-	}, numPartitions)
-
-	insertRows(
-		t, tables["stringandtable"],
-		sql.NewRow(int64(0), "0"),
-		sql.NewRow(int64(1), "1"),
-		sql.NewRow(int64(2), ""),
-		sql.NewRow(int64(3), "true"),
-		sql.NewRow(int64(4), "false"),
-		sql.NewRow(int64(5), nil),
-		sql.NewRow(nil, "2"),
-	)
-
-	tables["reservedWordsTable"] = memory.NewPartitionedTable("reservedWordsTable", sql.Schema{
-		{Name: "Timestamp", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
-		{Name: "and", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
-		{Name: "or", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
-		{Name: "select", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
-	}, numPartitions)
-
-	insertRows(
-		t, tables["reservedWordsTable"],
-		sql.NewRow("1", "1.1", "aaa", "create"),
-	)
-
-	tables["myhistorytable-2019-01-01"] = memory.NewPartitionedTable("myhistorytable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "myhistorytable"},
-		{Name: "s", Type: sql.Text, Source: "myhistorytable"},
-	}, numPartitions)
-
-	insertRows(
-		t, tables["myhistorytable-2019-01-01"],
-		sql.NewRow(int64(1), "first row, 1"),
-		sql.NewRow(int64(2), "second row, 1"),
-		sql.NewRow(int64(3), "third row, 1"),
-	)
-
-	tables["myhistorytable-2019-01-02"] = memory.NewPartitionedTable("myhistorytable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "myhistorytable"},
-		{Name: "s", Type: sql.Text, Source: "myhistorytable"},
-	}, numPartitions)
-
-	insertRows(
-		t, tables["myhistorytable-2019-01-02"],
-		sql.NewRow(int64(1), "first row, 2"),
-		sql.NewRow(int64(2), "second row, 2"),
-		sql.NewRow(int64(3), "third row, 2"),
-	)
-
-	return tables
-}
-
 func createTestData(t *testing.T, harness EngineTestHarness) []sql.Database {
 	myDb := harness.NewDatabase("mydb")
 	foo := harness.NewDatabase("foo")
@@ -5974,11 +5709,7 @@ func mustInsertableTable(t *testing.T, table sql.Table) sql.InsertableTable {
 
 
 func newEngine(t *testing.T) (*sqle.Engine, *sql.IndexRegistry) {
-	return newEngineWithParallelism(t, 1, allTestTables(t, testNumPartitions), nil)
-}
-
-func newEngineWithParallelism(t *testing.T, parallelism int, tables map[string]*memory.Table, driver sql.IndexDriver) (*sqle.Engine, *sql.IndexRegistry) {
-	return nil, nil
+	return newEngineWithDbs(t, 1, createTestData(t, newMemoryHarness(testNumPartitions, nil, nil)), nil)
 }
 
 func newEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, driver sql.IndexDriver) (*sqle.Engine, *sql.IndexRegistry) {
