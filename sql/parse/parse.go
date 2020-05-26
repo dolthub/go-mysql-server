@@ -36,6 +36,8 @@ var (
 	errInvalidDescribeFormat = errors.NewKind("invalid format %q for DESCRIBE, supported formats: %s")
 
 	ErrInvalidIndexPrefix = errors.NewKind("invalid index prefix: %v")
+
+	ErrUnknownIndexColumn = errors.NewKind("unknown column: %s")
 )
 
 var (
@@ -764,6 +766,12 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
 func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
+	err := validateIndexes(tableSpec)
+
+	if err != nil {
+		return nil, err
+	}
+
 	var schema sql.Schema
 	for _, cd := range tableSpec.Columns {
 		column, err := columnDefinitionToColumn(ctx, cd, tableSpec.Indexes)
@@ -775,6 +783,23 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Sc
 	}
 
 	return schema, nil
+}
+
+func validateIndexes(tableSpec *sqlparser.TableSpec) error {
+	lwrNames := make(map[string]bool)
+	for _, col := range tableSpec.Columns {
+		lwrNames[col.Name.Lowered()] = true
+	}
+
+	for _, idx := range tableSpec.Indexes {
+		for _, col := range idx.Columns {
+			if !lwrNames[col.Column.Lowered()] {
+				return ErrUnknownIndexColumn.New(col.Column.String())
+			}
+		}
+	}
+
+	return nil
 }
 
 // columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table statement.
