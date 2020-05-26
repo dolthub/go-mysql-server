@@ -22,11 +22,16 @@ import (
 
 type memoryHarness struct {
 	name                  string
+	parallelism           int
 	numTablePartitions    int
 	indexDriverInitalizer indexDriverInitalizer
 }
 
-func newMemoryHarness(numTablePartitions int, indexDriverInitalizer indexDriverInitalizer) *memoryHarness {
+func (m *memoryHarness) Parallelism() int {
+	return m.parallelism
+}
+
+func newMemoryHarness(parallelism int, numTablePartitions int, indexDriverInitalizer indexDriverInitalizer) *memoryHarness {
 	return &memoryHarness{
 		numTablePartitions: numTablePartitions,
 		indexDriverInitalizer: indexDriverInitalizer}

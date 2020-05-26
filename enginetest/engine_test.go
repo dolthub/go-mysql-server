@@ -109,7 +109,7 @@ func testQueries(t *testing.T, testQueries []enginetest.QueryTest) {
 					driverInitializer = indexInit.driverInitializer
 				}
 
-				harness := newMemoryHarness(numPartitions, driverInitializer)
+				harness := newMemoryHarness(parallelism, numPartitions, driverInitializer)
 				dbs := enginetest.CreateTestData(t, harness)
 				engine, idxReg := enginetest.NewEngineWithDbs(t, parallelism, dbs, harness.IndexDriver(dbs))
 
@@ -146,7 +146,7 @@ func testQueries(t *testing.T, testQueries []enginetest.QueryTest) {
 // Test the info schema queries separately to avoid having to alter test query results when more test tables are added.
 // To get this effect, we only install a fixed subset of the tables defined by allTestTables().
 func TestInfoSchema(t *testing.T) {
-	engine, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateSubsetTestData(t, newMemoryHarness(1, nil), infoSchemaTables), nil)
+	engine, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateSubsetTestData(t, newMemoryHarness(2, 1, nil), infoSchemaTables), nil)
 	for _, tt := range enginetest.InfoSchemaQueries {
 		ctx := enginetest.NewCtx(idxReg)
 		enginetest.TestQuery(t, ctx, engine, tt.Query, tt.Expected)
@@ -826,7 +826,7 @@ func TestQueryPlans(t *testing.T) {
 				driverInitializer = indexInit.driverInitializer
 			}
 
-			harness := newMemoryHarness(2, driverInitializer)
+			harness := newMemoryHarness(1, 2, driverInitializer)
 			dbs := enginetest.CreateTestData(t, harness)
 			engine, idxReg := enginetest.NewEngineWithDbs(t, 1, dbs, harness.IndexDriver(dbs))
 
@@ -1258,7 +1258,7 @@ func TestWarnings(t *testing.T) {
 		}
 	})
 
-	ep, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateTestData(t, newMemoryHarness(testNumPartitions, nil)), nil)
+	ep, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateTestData(t, newMemoryHarness(2, testNumPartitions, nil)), nil)
 
 	ctx = enginetest.NewCtx(idxReg)
 	ctx.Session.Warn(&sql.Warning{Code: 1})
@@ -1329,12 +1329,12 @@ func TestDescribe(t *testing.T) {
 		{" └─ Table(mytable): Projected "},
 	}
 
-	e, idxReg := enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness(testNumPartitions, nil)), nil)
+	e, idxReg := enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness(1, testNumPartitions, nil)), nil)
 	t.Run("sequential", func(t *testing.T) {
 		testQuery(t, e, idxReg, query, expectedSeq)
 	})
 
-	ep, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateTestData(t, newMemoryHarness(testNumPartitions, nil)), nil)
+	ep, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateTestData(t, newMemoryHarness(1, testNumPartitions, nil)), nil)
 	t.Run("parallel", func(t *testing.T) {
 		testQuery(t, ep, idxReg, query, expectedParallel)
 	})
@@ -2881,7 +2881,7 @@ func testQuery(t *testing.T, e *sqle.Engine, idxReg *sql.IndexRegistry, q string
 }
 
 func NewEngine(t *testing.T) (*sqle.Engine, *sql.IndexRegistry) {
-	return enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness(testNumPartitions, nil)), nil)
+	return enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness(1, testNumPartitions, nil)), nil)
 }
 
 // see: https://github.com/liquidata-inc/go-mysql-server/issues/197

@@ -55,7 +55,13 @@ func NewCtx(idxReg *sql.IndexRegistry) *sql.Context {
 	return ctx
 }
 
-// NewEngineWithDbs returns a new engine with the databases provided
+// NewEngine returns a new engine for the harness given
+func NewEngine(t *testing.T, harness Harness) {
+
+}
+
+// NewEngineWithDbs returns a new engine with the databases provided. This is useful if you don't want to implement a
+// full harness but want to run your own tests on DBs you create.
 func NewEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, driver sql.IndexDriver) (*sqle.Engine, *sql.IndexRegistry) {
 	catalog := sql.NewCatalog()
 	for _, database := range databases {
