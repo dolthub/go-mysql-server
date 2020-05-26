@@ -18,6 +18,7 @@ package enginetest_test
 
 import (
 	"context"
+	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -31,7 +32,7 @@ import (
 )
 
 func TestIndexes(t *testing.T) {
-	e, idxReg := newEngine(t)
+	e, idxReg := NewEngine(t)
 	viewReg := sql.NewViewRegistry()
 
 	tmpDir, err := ioutil.TempDir(os.TempDir(), "pilosa-test")
@@ -42,19 +43,19 @@ func TestIndexes(t *testing.T) {
 	idxReg.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
 
 	_, _, err = e.Query(
-		newCtx(idxReg),
+		enginetest.NewCtx(idxReg),
 		"CREATE INDEX idx_i USING pilosa ON mytable (i)",
 	)
 	require.NoError(t, err)
 
 	_, _, err = e.Query(
-		newCtx(idxReg),
+		enginetest.NewCtx(idxReg),
 		"CREATE INDEX idx_s USING pilosa ON mytable (s)",
 	)
 	require.NoError(t, err)
 
 	_, _, err = e.Query(
-		newCtx(idxReg),
+		enginetest.NewCtx(idxReg),
 		"CREATE INDEX idx_is USING pilosa ON mytable (i, s)",
 	)
 	require.NoError(t, err)
@@ -200,7 +201,7 @@ func TestIndexes(t *testing.T) {
 
 func TestCreateIndex(t *testing.T) {
 	require := require.New(t)
-	e, idxReg := newEngine(t)
+	e, idxReg := NewEngine(t)
 
 	tmpDir, err := ioutil.TempDir(os.TempDir(), "pilosa-test")
 	require.NoError(err)
@@ -208,7 +209,7 @@ func TestCreateIndex(t *testing.T) {
 	require.NoError(os.MkdirAll(tmpDir, 0644))
 	idxReg.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
 
-	_, iter, err := e.Query(newCtx(idxReg), "CREATE INDEX myidx USING pilosa ON mytable (i)")
+	_, iter, err := e.Query(enginetest.NewCtx(idxReg), "CREATE INDEX myidx USING pilosa ON mytable (i)")
 	require.NoError(err)
 	rows, err := sql.RowIterToRows(iter)
 	require.NoError(err)

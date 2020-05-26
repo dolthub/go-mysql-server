@@ -15,10 +15,8 @@
 package enginetest
 
 import (
-	sqle "github.com/liquidata-inc/go-mysql-server"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"math"
-	"testing"
 	"time"
 )
 
@@ -2654,12 +2652,4 @@ var InfoSchemaQueries = []QueryTest{
 		`,
 		[]sql.Row{{"s"}, {"s2"}},
 	},
-}
-
-func TestQueries(t *testing.T) {
-	testQueries(t, TestQueries)
-}
-
-func TestVersionedQueries(t *testing.T) {
-	testQueries(t, versionedQueries)
 }

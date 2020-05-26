@@ -1749,3 +1749,26 @@ func TestFixSetQuery(t *testing.T) {
 		})
 	}
 }
+
+func TestPrintTree(t *testing.T) {
+	require := require.New(t)
+	node, err := Parse(sql.NewEmptyContext(), `
+		SELECT t.foo, bar.baz
+		FROM tbl t
+		INNER JOIN bar
+			ON foo = baz
+		WHERE foo > qux
+		LIMIT 5
+		OFFSET 2`)
+	require.NoError(err)
+	require.Equal(`Limit(5)
+ └─ Offset(2)
+     └─ Project(t.foo, bar.baz)
+         └─ Filter(foo > qux)
+             └─ InnerJoin(foo = baz)
+                 ├─ TableAlias(t)
+                 │   └─ UnresolvedTable(tbl)
+                 └─ UnresolvedTable(bar)
+`, node.String())
+}
+
