@@ -37,7 +37,7 @@ var (
 
 	ErrInvalidIndexPrefix = errors.NewKind("invalid index prefix: %v")
 
-	ErrUnknownIndexColumn = errors.NewKind("unknown column: %s")
+	ErrUnknownIndexColumn = errors.NewKind("unknown column: '%s' in %s index '%s'")
 )
 
 var (
@@ -794,7 +794,7 @@ func validateIndexes(tableSpec *sqlparser.TableSpec) error {
 	for _, idx := range tableSpec.Indexes {
 		for _, col := range idx.Columns {
 			if !lwrNames[col.Column.Lowered()] {
-				return ErrUnknownIndexColumn.New(col.Column.String())
+				return ErrUnknownIndexColumn.New(col.Column.String(), idx.Info.Type, idx.Info.Name.String())
 			}
 		}
 	}
