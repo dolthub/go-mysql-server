@@ -1671,6 +1671,7 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT AVG(DISTINCT foo) FROM b`:                         ErrUnsupportedSyntax,
 	`CREATE VIEW myview AS SELECT AVG(DISTINCT foo) FROM b`:   ErrUnsupportedSyntax,
 	"DESCRIBE FORMAT=pretty SELECT * FROM foo":                errInvalidDescribeFormat,
+	`CREATE TABLE test (pk int, primary key(pk, noexist))`:     ErrUnknownIndexColumn,
 }
 
 func TestParseErrors(t *testing.T) {
