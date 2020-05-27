@@ -188,6 +188,31 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	}
 }
 
+func TestExplode(t *testing.T, harness Harness) {
+	db := harness.NewDatabase("mydb")
+	table := harness.NewTable(db, "t", sql.Schema{
+		{Name: "a", Type: sql.Int64, Source: "t"},
+		{Name: "b", Type: sql.CreateArray(sql.Text), Source: "t"},
+		{Name: "c", Type: sql.Text, Source: "t"},
+	})
+
+	InsertRows(
+		t, mustInsertableTable(t,table),
+		sql.NewRow(int64(1), []interface{}{"a", "b"}, "first"),
+		sql.NewRow(int64(2), []interface{}{"c", "d"}, "second"),
+		sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"),
+	)
+
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
+	e := sqle.New(catalog, analyzer.NewDefault(catalog), new(sqle.Config))
+
+	for _, q := range ExplodeQueries {
+		TestQuery(t, NewCtx(nil), e, q.Query, q.Expected)
+	}
+}
+
+
 var pid uint64
 
 func NewCtx(idxReg *sql.IndexRegistry) *sql.Context {

@@ -2524,10 +2524,7 @@ func TestRootSpanFinish(t *testing.T) {
 	require.True(t, fakeSpan.finished)
 }
 
-var generatorQueries = []struct {
-	query    string
-	expected []sql.Row
-}{
+var ExplodeQueries = []enginetest.QueryTest{
 	{
 		`SELECT a, EXPLODE(b), c FROM t`,
 		[]sql.Row{
@@ -2568,30 +2565,8 @@ var generatorQueries = []struct {
 	},
 }
 
-func TestGenerators(t *testing.T) {
-	table := memory.NewPartitionedTable("t", sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "t"},
-		{Name: "b", Type: sql.CreateArray(sql.Text), Source: "t"},
-		{Name: "c", Type: sql.Text, Source: "t"},
-	}, testNumPartitions)
-
-	enginetest.InsertRows(
-		t, table,
-		sql.NewRow(int64(1), []interface{}{"a", "b"}, "first"),
-		sql.NewRow(int64(2), []interface{}{"c", "d"}, "second"),
-		sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"),
-	)
-
-	db := memory.NewDatabase("mydb")
-	db.AddTable("t", table)
-
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-	e := sqle.New(catalog, analyzer.NewDefault(catalog), new(sqle.Config))
-
-	for _, q := range generatorQueries {
-		testQuery(t, e, sql.NewIndexRegistry(), q.query, q.expected)
-	}
+func TestExplode(t *testing.T) {
+	enginetest.TestExplode(t, newDefaultMemoryHarness())
 }
 
 type lockableTable struct {

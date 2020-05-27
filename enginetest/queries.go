@@ -2677,3 +2677,44 @@ var InfoSchemaQueries = []QueryTest{
 		[]sql.Row{{"s"}, {"s2"}},
 	},
 }
+
+var ExplodeQueries = []QueryTest{
+	{
+		`SELECT a, EXPLODE(b), c FROM t`,
+		[]sql.Row{
+			{int64(1), "a", "first"},
+			{int64(1), "b", "first"},
+			{int64(2), "c", "second"},
+			{int64(2), "d", "second"},
+			{int64(3), "e", "third"},
+			{int64(3), "f", "third"},
+		},
+	},
+	{
+		`SELECT a, EXPLODE(b) AS x, c FROM t`,
+		[]sql.Row{
+			{int64(1), "a", "first"},
+			{int64(1), "b", "first"},
+			{int64(2), "c", "second"},
+			{int64(2), "d", "second"},
+			{int64(3), "e", "third"},
+			{int64(3), "f", "third"},
+		},
+	},
+	{
+		`SELECT EXPLODE(SPLIT(c, "")) FROM t LIMIT 5`,
+		[]sql.Row{
+			{"f"},
+			{"i"},
+			{"r"},
+			{"s"},
+			{"t"},
+		},
+	},
+	{
+		`SELECT a, EXPLODE(b) AS x, c FROM t WHERE x = 'e'`,
+		[]sql.Row{
+			{int64(3), "e", "third"},
+		},
+	},
+}
