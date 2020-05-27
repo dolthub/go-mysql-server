@@ -97,3 +97,19 @@ func TestInfoSchema(t *testing.T) {
 func TestReadOnly(t *testing.T) {
 	enginetest.TestReadOnly(t, newDefaultMemoryHarness())
 }
+
+func TestNaturalJoin(t *testing.T) {
+	enginetest.TestNaturalJoin(t, newDefaultMemoryHarness())
+}
+
+func TestNaturalJoinEqual(t *testing.T) {
+	enginetest.TestNaturalJoinEqual(t, newDefaultMemoryHarness())
+}
+
+func TestNaturalJoinDisjoint(t *testing.T) {
+	enginetest.TestNaturalJoinDisjoint(t, newDefaultMemoryHarness())
+}
+
+func TestInnerNestedInNaturalJoins(t *testing.T) {
+	enginetest.TestInnerNestedInNaturalJoins(t, newDefaultMemoryHarness())
+}

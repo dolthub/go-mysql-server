@@ -323,6 +323,222 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func TestNaturalJoin(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	db := harness.NewDatabase("mydb")
+	t1 := harness.NewTable(db, "t1", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t1"},
+		{Name: "b", Type: sql.Text, Source: "t1"},
+		{Name: "c", Type: sql.Text, Source: "t1"},
+	})
+
+	InsertRows(
+		t, mustInsertableTable(t, t1),
+		sql.NewRow("a_1", "b_1", "c_1"),
+		sql.NewRow("a_2", "b_2", "c_2"),
+		sql.NewRow("a_3", "b_3", "c_3"),
+	)
+
+	t2 := harness.NewTable(db, "t2", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t2"},
+		{Name: "b", Type: sql.Text, Source: "t2"},
+		{Name: "d", Type: sql.Text, Source: "t2"},
+	})
+
+	InsertRows(
+		t, mustInsertableTable(t, t2),
+		sql.NewRow("a_1", "b_1", "d_1"),
+		sql.NewRow("a_2", "b_2", "d_2"),
+		sql.NewRow("a_3", "b_3", "d_3"),
+	)
+
+	e := sqle.NewDefault()
+	idxReg := sql.NewIndexRegistry()
+	e.AddDatabase(db)
+
+	_, iter, err := e.Query(NewCtx(idxReg), `SELECT * FROM t1 NATURAL JOIN t2`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Equal(
+		[]sql.Row{
+			{"a_1", "b_1", "c_1", "d_1"},
+			{"a_2", "b_2", "c_2", "d_2"},
+			{"a_3", "b_3", "c_3", "d_3"},
+		},
+		rows,
+	)
+}
+
+func TestNaturalJoinEqual(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	db := harness.NewDatabase("mydb")
+	t1 := harness.NewTable(db, "t1", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t1"},
+		{Name: "b", Type: sql.Text, Source: "t1"},
+		{Name: "c", Type: sql.Text, Source: "t1"},
+	})
+
+	InsertRows(
+		t, mustInsertableTable(t, t1),
+		sql.NewRow("a_1", "b_1", "c_1"),
+		sql.NewRow("a_2", "b_2", "c_2"),
+		sql.NewRow("a_3", "b_3", "c_3"),
+	)
+
+	t2 := harness.NewTable(db, "t2", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t2"},
+		{Name: "b", Type: sql.Text, Source: "t2"},
+		{Name: "c", Type: sql.Text, Source: "t2"},
+	})
+
+	InsertRows(
+		t, mustInsertableTable(t, t2),
+		sql.NewRow("a_1", "b_1", "c_1"),
+		sql.NewRow("a_2", "b_2", "c_2"),
+		sql.NewRow("a_3", "b_3", "c_3"),
+	)
+
+	e := sqle.NewDefault()
+	idxReg := sql.NewIndexRegistry()
+	e.AddDatabase(db)
+
+	_, iter, err := e.Query(NewCtx(idxReg), `SELECT * FROM t1 NATURAL JOIN t2`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Equal(
+		[]sql.Row{
+			{"a_1", "b_1", "c_1"},
+			{"a_2", "b_2", "c_2"},
+			{"a_3", "b_3", "c_3"},
+		},
+		rows,
+	)
+}
+
+func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	db := harness.NewDatabase("mydb")
+	t1 := harness.NewTable(db, "t1", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t1"},
+	})
+
+	InsertRows(
+		t, mustInsertableTable(t, t1),
+		sql.NewRow("a1"),
+		sql.NewRow("a2"),
+		sql.NewRow("a3"),
+	)
+
+	t2 := harness.NewTable(db, "t2", sql.Schema{
+		{Name: "b", Type: sql.Text, Source: "t2"},
+	})
+	InsertRows(
+		t, mustInsertableTable(t, t2),
+		sql.NewRow("b1"),
+		sql.NewRow("b2"),
+		sql.NewRow("b3"),
+	)
+
+	e := sqle.NewDefault()
+	idxReg := sql.NewIndexRegistry()
+	e.AddDatabase(db)
+
+	_, iter, err := e.Query(NewCtx(idxReg), `SELECT * FROM t1 NATURAL JOIN t2`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Equal(
+		[]sql.Row{
+			{"a1", "b1"},
+			{"a1", "b2"},
+			{"a1", "b3"},
+			{"a2", "b1"},
+			{"a2", "b2"},
+			{"a2", "b3"},
+			{"a3", "b1"},
+			{"a3", "b2"},
+			{"a3", "b3"},
+		},
+		rows,
+	)
+}
+
+func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	db := harness.NewDatabase("mydb")
+	table1 := harness.NewTable(db,"table1", sql.Schema{
+		{Name: "i", Type: sql.Int32, Source: "table1"},
+		{Name: "f", Type: sql.Float64, Source: "table1"},
+		{Name: "t", Type: sql.Text, Source: "table1"},
+	})
+
+	InsertRows(
+		t, mustInsertableTable(t, table1),
+		sql.NewRow(int32(1), float64(2.1), "table1"),
+		sql.NewRow(int32(1), float64(2.1), "table1"),
+		sql.NewRow(int32(10), float64(2.1), "table1"),
+	)
+
+	table2 := harness.NewTable(db, "table2", sql.Schema{
+		{Name: "i2", Type: sql.Int32, Source: "table2"},
+		{Name: "f2", Type: sql.Float64, Source: "table2"},
+		{Name: "t2", Type: sql.Text, Source: "table2"},
+	})
+
+	InsertRows(
+		t, mustInsertableTable(t, table2),
+		sql.NewRow(int32(1), float64(2.2), "table2"),
+		sql.NewRow(int32(1), float64(2.2), "table2"),
+		sql.NewRow(int32(20), float64(2.2), "table2"),
+	)
+
+	table3 := harness.NewTable(db, "table3", sql.Schema{
+		{Name: "i", Type: sql.Int32, Source: "table3"},
+		{Name: "f2", Type: sql.Float64, Source: "table3"},
+		{Name: "t3", Type: sql.Text, Source: "table3"},
+	})
+
+	InsertRows(
+		t, mustInsertableTable(t, table3),
+		sql.NewRow(int32(1), float64(2.2), "table3"),
+		sql.NewRow(int32(2), float64(2.2), "table3"),
+		sql.NewRow(int32(30), float64(2.2), "table3"),
+	)
+
+	e := sqle.NewDefault()
+	idxReg := sql.NewIndexRegistry()
+	e.AddDatabase(db)
+
+	_, iter, err := e.Query(NewCtx(idxReg), `SELECT * FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Equal(
+		[]sql.Row{
+			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
+			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
+			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
+			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
+		},
+		rows,
+	)
+}
+
+
 func TestSessionVariables(t *testing.T, harness Harness) {
 	require := require.New(t)
 	e, idxReg := NewEngine(t, harness)
