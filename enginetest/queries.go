@@ -35,6 +35,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		"SELECT * FROM mytable ORDER BY i DESC;",
+		[]sql.Row{
+			{int64(3), "third row"},
+			{int64(2), "second row"},
+			{int64(1), "first row"},
+		},
+	},
+	{
 		"SELECT * FROM mytable GROUP BY i,s;",
 		[]sql.Row{
 			{int64(1), "first row"},
