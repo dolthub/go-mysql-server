@@ -410,6 +410,130 @@ func TestSessionDefaults(t *testing.T, harness Harness) {
 	})
 }
 
+func TestWarnings(t *testing.T, harness Harness) {
+	var queries = []QueryTest {
+		{
+			`
+			SHOW WARNINGS
+			`,
+			[]sql.Row{
+				{"", 3, ""},
+				{"", 2, ""},
+				{"", 1, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 1
+			`,
+			[]sql.Row{
+				{"", 3, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 1,2
+			`,
+			[]sql.Row{
+				{"", 2, ""},
+				{"", 1, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 0
+			`,
+			[]sql.Row{
+				{"", 3, ""},
+				{"", 2, ""},
+				{"", 1, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 2,0
+			`,
+			[]sql.Row{
+				{"", 1, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 10
+			`,
+			[]sql.Row{
+				{"", 3, ""},
+				{"", 2, ""},
+				{"", 1, ""},
+			},
+		},
+		{
+			`
+			SHOW WARNINGS LIMIT 10,1
+			`,
+			nil,
+		},
+	}
+
+	e, idxReg := NewEngine(t, harness)
+
+	ctx := NewCtx(idxReg)
+	ctx.Session.Warn(&sql.Warning{Code: 1})
+	ctx.Session.Warn(&sql.Warning{Code: 2})
+	ctx.Session.Warn(&sql.Warning{Code: 3})
+
+	for _, tt := range queries {
+		TestQuery(t, ctx, e, tt.Query, tt.Expected)
+	}
+}
+
+func TestClearWarnings(t *testing.T, harness Harness) {
+	require := require.New(t)
+	e, idxReg := NewEngine(t, harness)
+	ctx := NewCtx(idxReg)
+
+	_, iter, err := e.Query(ctx, "-- some empty query as a comment")
+	require.NoError(err)
+	err = iter.Close()
+	require.NoError(err)
+
+	_, iter, err = e.Query(ctx, "-- some empty query as a comment")
+	require.NoError(err)
+	err = iter.Close()
+	require.NoError(err)
+
+	_, iter, err = e.Query(ctx, "-- some empty query as a comment")
+	require.NoError(err)
+	err = iter.Close()
+	require.NoError(err)
+
+	_, iter, err = e.Query(ctx, "SHOW WARNINGS")
+	require.NoError(err)
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+	err = iter.Close()
+	require.NoError(err)
+	require.Equal(3, len(rows))
+
+	_, iter, err = e.Query(ctx, "SHOW WARNINGS LIMIT 1")
+	require.NoError(err)
+	rows, err = sql.RowIterToRows(iter)
+	require.NoError(err)
+	err = iter.Close()
+	require.NoError(err)
+	require.Equal(1, len(rows))
+
+	_, _, err = e.Query(ctx, "SELECT * FROM mytable LIMIT 1")
+	require.NoError(err)
+	_, err = sql.RowIterToRows(iter)
+	require.NoError(err)
+	err = iter.Close()
+	require.NoError(err)
+
+	require.Equal(0, len(ctx.Session.Warnings()))
+}
+
+
 var pid uint64
 
 func NewCtx(idxReg *sql.IndexRegistry) *sql.Context {
