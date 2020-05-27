@@ -85,3 +85,7 @@ func TestOrderByGroupBy(t *testing.T) {
 func TestInfoSchema(t *testing.T) {
 	enginetest.TestInfoSchema(t, newDefaultMemoryHarness())
 }
+
+func TestReadOnly(t *testing.T) {
+	enginetest.TestReadOnly(t, newDefaultMemoryHarness())
+}

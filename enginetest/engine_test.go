@@ -29,7 +29,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 
 	sqle "github.com/liquidata-inc/go-mysql-server"
-	"github.com/liquidata-inc/go-mysql-server/auth"
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
@@ -2137,45 +2136,6 @@ func TestTracing(t *testing.T) {
 	}
 
 	require.Equal(expectedSpans, spanOperations)
-}
-
-func TestReadOnly(t *testing.T) {
-	require := require.New(t)
-
-	table := memory.NewPartitionedTable("mytable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable"},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
-	}, testNumPartitions)
-
-	db := memory.NewDatabase("mydb")
-	db.AddTable("mytable", table)
-
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-
-	au := auth.NewNativeSingle("user", "pass", auth.ReadPerm)
-	cfg := &sqle.Config{Auth: au}
-	a := analyzer.NewBuilder(catalog).Build()
-	e := sqle.New(catalog, a, cfg)
-	idxReg := sql.NewIndexRegistry()
-
-	_, _, err := e.Query(enginetest.NewCtx(idxReg), `SELECT i FROM mytable`)
-	require.NoError(err)
-
-	writingQueries := []string{
-		`CREATE INDEX foo USING BTREE ON mytable (i, s)`,
-		`CREATE INDEX foo USING pilosa ON mytable (i, s)`,
-		`DROP INDEX foo ON mytable`,
-		`INSERT INTO mytable (i, s) VALUES(42, 'yolo')`,
-		`CREATE VIEW myview AS SELECT i FROM mytable`,
-		`DROP VIEW myview`,
-	}
-
-	for _, query := range writingQueries {
-		_, _, err = e.Query(enginetest.NewCtx(idxReg), query)
-		require.Error(err)
-		require.True(auth.ErrNotAuthorized.Is(err))
-	}
 }
 
 func TestSessionVariables(t *testing.T) {
