@@ -17,6 +17,7 @@ package enginetest_test
 import (
 	"context"
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/src-d/go-errors.v1"
 	"io"
@@ -1281,6 +1282,10 @@ var errorQueries = []queryError {
 		query:       "SELECT * FROM mytable AS OTHERTABLE, othertable", // alias / table conflict
 		expectedErr: sql.ErrDuplicateAliasOrTable,
 	},
+	{
+			query: `SELECT * FROM mytable WHERE s REGEXP("*main.go")`,
+			expectedErr: expression.ErrInvalidRegexp,
+	},
 }
 
 func TestQueryErrors(t *testing.T) {
@@ -1289,7 +1294,10 @@ func TestQueryErrors(t *testing.T) {
 	for _, tt := range errorQueries {
 		t.Run(tt.query, func(t *testing.T) {
 			ctx := enginetest.NewCtx(idxReg)
-			_, _, err := engine.Query(ctx, tt.query)
+			_, rowIter, err := engine.Query(ctx, tt.query)
+			if err == nil {
+				_, err = sql.RowIterToRows(rowIter)
+			}
 			require.Error(t, err)
 			require.True(t, tt.expectedErr.Is(err), "expected error of kind %s, but got %s", tt.expectedErr.Message, err.Error())
 		})
@@ -2098,18 +2106,6 @@ func TestStarPanic197(t *testing.T) {
 	require.NoError(err)
 
 	require.Len(rows, 3)
-}
-
-func TestInvalidRegexp(t *testing.T) {
-	require := require.New(t)
-	e, idxReg := NewEngine(t)
-
-	ctx := enginetest.NewCtx(idxReg)
-	_, iter, err := e.Query(ctx, `SELECT * FROM mytable WHERE s REGEXP("*main.go")`)
-	require.NoError(err)
-
-	_, err = sql.RowIterToRows(iter)
-	require.Error(err)
 }
 
 func TestTracing(t *testing.T) {

@@ -9,6 +9,8 @@ import (
 	errors "gopkg.in/src-d/go-errors.v1"
 )
 
+var ErrInvalidRegexp = errors.NewKind("Invalid regular expression: %s")
+
 // Comparer implements a comparison expression.
 type Comparer interface {
 	sql.Expression
@@ -275,7 +277,7 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 		}
 	}
 	if matcher == nil {
-		return nil, err
+		return nil, ErrInvalidRegexp.New(err.Error())
 	}
 
 	ok := matcher.Match(left.(string))

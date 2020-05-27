@@ -503,6 +503,18 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("t1", ""),
 		),
 	),
+	`SELECT a FROM t1 where a regexp '*main.go';`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+		},
+		plan.NewFilter(
+			expression.NewRegexp(
+				expression.NewUnresolvedColumn("a"),
+				expression.NewLiteral("*main.go", sql.LongText),
+			),
+			plan.NewUnresolvedTable("t1", ""),
+		),
+	),
 	`SELECT a FROM t1 where a not regexp '.*test.*';`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
