@@ -65,15 +65,11 @@ type indexBehaviorTestParams struct {
 	indexInitializer  indexInitializer
 }
 
-func TestQueries(t *testing.T) {
-
-}
-
 // testQueries tests the given queries on an engine under a variety of circumstances:
 // 1) Partitioned tables / non partitioned tables
 // 2) Mergeable / unmergeable / native / no indexes
 // 3) Parallelism on / off
-func testQueries(t *testing.T, testQueries []enginetest.QueryTest) {
+func TestQueries(t *testing.T) {
 	var numPartitionsVals []int
 	var indexBehaviors []*indexBehaviorTestParams
 	var parallelVals []int
@@ -84,7 +80,7 @@ func testQueries(t *testing.T, testQueries []enginetest.QueryTest) {
 			testNumPartitions,
 		}
 		indexBehaviors = []*indexBehaviorTestParams{
-			nil,
+			{"none", nil, nil},
 			{"unmergableIndexes", unmergableIndexDriver, nil},
 			{"mergableIndexes", mergableIndexDriver, nil},
 			{"nativeIndexes", nil, nativeIndexes},
@@ -103,39 +99,11 @@ func testQueries(t *testing.T, testQueries []enginetest.QueryTest) {
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexInit := range indexBehaviors {
 			for _, parallelism := range parallelVals {
-
-				var driverInitializer indexDriverInitalizer
-				if indexInit != nil && indexInit.driverInitializer != nil {
-					driverInitializer = indexInit.driverInitializer
-				}
-
-				harness := newMemoryHarness(parallelism, numPartitions, driverInitializer)
-				dbs := enginetest.CreateTestData(t, harness)
-				engine, idxReg := enginetest.NewEngineWithDbs(t, parallelism, dbs, harness.IndexDriver(dbs))
-
-				if indexInit != nil && indexInit.indexInitializer != nil && harness.SupportsNativeIndexCreation() {
-					indexInit.indexInitializer(t, engine)
-				}
-
-				if len(debugQuery) > 0 {
-					engine.Analyzer.Verbose = true
-					engine.Analyzer.Debug = true
-				}
-
-				indexDriverName := "none"
-				if indexInit != nil {
-					indexDriverName = indexInit.name
-				}
-				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexDriverName, parallelism)
+				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexInit.name, parallelism)
+				harness := newMemoryHarness(testName, parallelism, numPartitions, indexInit.driverInitializer)
 
 				t.Run(testName, func(t *testing.T) {
-					for _, tt := range enginetest.QueryTests {
-						if debugQuery != "" && debugQuery != tt.Query {
-							t.Log("Skipping query in debug mode:", tt.Query)
-							continue
-						}
-						testQuery(t, engine, idxReg, tt.Query, tt.Expected)
-					}
+					enginetest.TestQueries(t, harness)
 				})
 			}
 		}
@@ -146,7 +114,7 @@ func testQueries(t *testing.T, testQueries []enginetest.QueryTest) {
 // Test the info schema queries separately to avoid having to alter test query results when more test tables are added.
 // To get this effect, we only install a fixed subset of the tables defined by allTestTables().
 func TestInfoSchema(t *testing.T) {
-	engine, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateSubsetTestData(t, newMemoryHarness(2, 1, nil), infoSchemaTables), nil)
+	engine, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateSubsetTestData(t, newMemoryHarness("TODO", 2, 1, nil), infoSchemaTables), nil)
 	for _, tt := range enginetest.InfoSchemaQueries {
 		ctx := enginetest.NewCtx(idxReg)
 		enginetest.TestQuery(t, ctx, engine, tt.Query, tt.Expected)
@@ -826,7 +794,7 @@ func TestQueryPlans(t *testing.T) {
 				driverInitializer = indexInit.driverInitializer
 			}
 
-			harness := newMemoryHarness(1, 2, driverInitializer)
+			harness := newMemoryHarness("TODO", 1, 2, driverInitializer)
 			dbs := enginetest.CreateTestData(t, harness)
 			engine, idxReg := enginetest.NewEngineWithDbs(t, 1, dbs, harness.IndexDriver(dbs))
 
@@ -1093,7 +1061,6 @@ func TestVersionedViews(t *testing.T) {
 	}
 }
 
-
 func TestSessionSelectLimit(t *testing.T) {
 	q := []struct {
 		query    string
@@ -1258,7 +1225,7 @@ func TestWarnings(t *testing.T) {
 		}
 	})
 
-	ep, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateTestData(t, newMemoryHarness(2, testNumPartitions, nil)), nil)
+	ep, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateTestData(t, newMemoryHarness("TODO", 2, testNumPartitions, nil)), nil)
 
 	ctx = enginetest.NewCtx(idxReg)
 	ctx.Session.Warn(&sql.Warning{Code: 1})
@@ -1329,12 +1296,12 @@ func TestDescribe(t *testing.T) {
 		{" └─ Table(mytable): Projected "},
 	}
 
-	e, idxReg := enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness(1, testNumPartitions, nil)), nil)
+	e, idxReg := enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness("TODO", 1, testNumPartitions, nil)), nil)
 	t.Run("sequential", func(t *testing.T) {
 		testQuery(t, e, idxReg, query, expectedSeq)
 	})
 
-	ep, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateTestData(t, newMemoryHarness(1, testNumPartitions, nil)), nil)
+	ep, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateTestData(t, newMemoryHarness("TODO", 1, testNumPartitions, nil)), nil)
 	t.Run("parallel", func(t *testing.T) {
 		testQuery(t, ep, idxReg, query, expectedParallel)
 	})
@@ -2881,7 +2848,7 @@ func testQuery(t *testing.T, e *sqle.Engine, idxReg *sql.IndexRegistry, q string
 }
 
 func NewEngine(t *testing.T) (*sqle.Engine, *sql.IndexRegistry) {
-	return enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness(1, testNumPartitions, nil)), nil)
+	return enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness("TODO", 1, testNumPartitions, nil)), nil)
 }
 
 // see: https://github.com/liquidata-inc/go-mysql-server/issues/197

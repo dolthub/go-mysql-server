@@ -27,14 +27,13 @@ type memoryHarness struct {
 	indexDriverInitalizer indexDriverInitalizer
 }
 
-func (m *memoryHarness) Parallelism() int {
-	return m.parallelism
-}
-
-func newMemoryHarness(parallelism int, numTablePartitions int, indexDriverInitalizer indexDriverInitalizer) *memoryHarness {
+func newMemoryHarness(name string, parallelism int, numTablePartitions int, indexDriverInitalizer indexDriverInitalizer) *memoryHarness {
 	return &memoryHarness{
-		numTablePartitions: numTablePartitions,
-		indexDriverInitalizer: indexDriverInitalizer}
+		name:                  name,
+		numTablePartitions:    numTablePartitions,
+		indexDriverInitalizer: indexDriverInitalizer,
+		parallelism:           parallelism,
+	}
 }
 
 var _ enginetest.Harness = (*memoryHarness)(nil)
@@ -44,6 +43,10 @@ var _ enginetest.VersionedDBHarness = (*memoryHarness)(nil)
 
 func (m *memoryHarness) SupportsNativeIndexCreation() bool {
 	return true
+}
+
+func (m *memoryHarness) Parallelism() int {
+	return m.parallelism
 }
 
 func (m *memoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.Schema, asOf interface{}) sql.Table {

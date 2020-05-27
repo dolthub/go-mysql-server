@@ -15,6 +15,7 @@
 package enginetest
 
 import (
+	sqle "github.com/liquidata-inc/go-mysql-server"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -350,5 +351,31 @@ func InsertRows(t *testing.T, table sql.InsertableTable, rows ...sql.Row) {
 		require.NoError(t, inserter.Insert(ctx, r))
 	}
 	require.NoError(t, inserter.Close(ctx))
+}
+
+func createNativeIndexes(t *testing.T, e *sqle.Engine) error {
+	createIndexes := []string{
+		"create index mytable_i on mytable (i)",
+		"create index mytable_s on mytable (s)",
+		"create index mytable_i_s on mytable (i,s)",
+		"create index othertable_s2 on othertable (s2)",
+		"create index othertable_i2 on othertable (i2)",
+		"create index othertable_s2_i2 on othertable (s2,i2)",
+		"create index bigtable_t on bigtable (t)",
+		"create index floattable_t on floattable (f64)",
+		"create index niltable_i on niltable (i)",
+		"create index one_pk_pk on one_pk (pk)",
+		"create index two_pk_pk1_pk2 on two_pk (pk1,pk2)",
+	}
+
+	for _, q := range createIndexes {
+		_, iter, err := e.Query(NewCtx(sql.NewIndexRegistry()), q)
+		require.NoError(t, err)
+
+		_, err = sql.RowIterToRows(iter)
+		require.NoError(t, err)
+	}
+
+	return nil
 }
 
