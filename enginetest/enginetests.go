@@ -36,6 +36,30 @@ func TestQueries(t *testing.T, harness Harness) {
 	}
 }
 
+// To test the information schema database, we only include a subset of the tables defined in the test data when
+// creating tables. This lets us avoid having to change the information_schema tests every time we add a table to the
+// test suites.
+var infoSchemaTables = []string {
+	"mytable",
+	"othertable",
+	"tabletest",
+	"bigtable",
+	"floattable",
+	"niltable",
+	"newlinetable",
+	"typestable",
+	"other_table",
+}
+
+// Runs tests of the information_schema database.
+func TestInfoSchema(t *testing.T, harness Harness) {
+	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
+	engine, idxReg := NewEngineWithDbs(t, harness.Parallelism(), dbs, nil)
+	for _, tt := range InfoSchemaQueries {
+		TestQuery(t, NewCtx(idxReg), engine, tt.Query, tt.Expected)
+	}
+}
+
 // Tests generating the correct query plans for various queries using databases and tables provided by the given
 // harness.
 func TestQueryPlans(t *testing.T, harness Harness) {

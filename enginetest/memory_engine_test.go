@@ -82,24 +82,6 @@ func TestOrderByGroupBy(t *testing.T) {
 	enginetest.TestOrderByGroupBy(t, newDefaultMemoryHarness())
 }
 
-var infoSchemaTables = []string {
-	"mytable",
-	"othertable",
-	"tabletest",
-	"bigtable",
-	"floattable",
-	"niltable",
-	"newlinetable",
-	"typestable",
-	"other_table",
-}
-
-// Test the info schema queries separately to avoid having to alter test query results when more test tables are added.
-// To get this effect, we only install a fixed subset of the tables defined by allTestTables().
 func TestInfoSchema(t *testing.T) {
-	engine, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateSubsetTestData(t, newMemoryHarness("TODO", 2, 1, false, nil), infoSchemaTables), nil)
-	for _, tt := range enginetest.InfoSchemaQueries {
-		ctx := enginetest.NewCtx(idxReg)
-		enginetest.TestQuery(t, ctx, engine, tt.Query, tt.Expected)
-	}
+	enginetest.TestInfoSchema(t, newDefaultMemoryHarness())
 }
