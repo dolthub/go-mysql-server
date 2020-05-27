@@ -15,9 +15,12 @@
 package enginetest_test
 
 import (
+	sqle "github.com/liquidata-inc/go-mysql-server"
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"testing"
 )
 
 type memoryHarness struct {
@@ -76,3 +79,133 @@ func (m *memoryHarness) NewContext() *sql.Context {
 	panic("implement me")
 }
 
+type indexDriverInitalizer func([]sql.Database) sql.IndexDriver
+type indexInitializer func(*testing.T, *sqle.Engine) error
+
+func unmergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
+	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
+		"mytable": {
+			newUnmergableIndex(dbs, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
+			newUnmergableIndex(dbs, "mytable",
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+			newUnmergableIndex(dbs, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+		},
+		"othertable": {
+			newUnmergableIndex(dbs, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
+			newUnmergableIndex(dbs, "othertable",
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+			newUnmergableIndex(dbs, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+		},
+		"bigtable": {
+			newUnmergableIndex(dbs, "bigtable",
+				expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
+		},
+		"floattable": {
+			newUnmergableIndex(dbs, "floattable",
+				expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
+		},
+		"niltable": {
+			newUnmergableIndex(dbs, "niltable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
+		},
+		"one_pk": {
+			newUnmergableIndex(dbs, "one_pk",
+				expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
+		},
+		"two_pk": {
+			newUnmergableIndex(dbs, "two_pk",
+				expression.NewGetFieldWithTable(0, sql.Int8, "two_pk", "pk1", false),
+				expression.NewGetFieldWithTable(1, sql.Int8, "two_pk", "pk2", false),
+			),
+		},
+	})
+}
+
+func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
+	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
+		"mytable": {
+			newMergableIndex(dbs, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
+			newMergableIndex(dbs, "mytable",
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+			newMergableIndex(dbs, "mytable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+		},
+		"othertable": {
+			newMergableIndex(dbs, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
+			newMergableIndex(dbs, "othertable",
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+			newMergableIndex(dbs, "othertable",
+				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
+				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+		},
+		"bigtable": {
+			newMergableIndex(dbs, "bigtable",
+				expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
+		},
+		"floattable": {
+			newMergableIndex(dbs, "floattable",
+				expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
+		},
+		"niltable": {
+			newMergableIndex(dbs, "niltable",
+				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
+		},
+		"one_pk": {
+			newMergableIndex(dbs, "one_pk",
+				expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
+		},
+		"two_pk": {
+			newMergableIndex(dbs, "two_pk",
+				expression.NewGetFieldWithTable(0, sql.Int8, "two_pk", "pk1", false),
+				expression.NewGetFieldWithTable(1, sql.Int8, "two_pk", "pk2", false),
+			),
+		},
+	})
+}
+
+func newUnmergableIndex(dbs []sql.Database, tableName string, exprs ...sql.Expression) *memory.UnmergeableIndex {
+	db, table := findTable(dbs, tableName)
+	return &memory.UnmergeableIndex{
+		DB:         db.Name(),
+		DriverName: memory.IndexDriverId,
+		TableName:  tableName,
+		Tbl:        table.(*memory.Table),
+		Exprs:      exprs,
+	}
+}
+
+func newMergableIndex(dbs []sql.Database, tableName string, exprs ...sql.Expression) *memory.MergeableIndex {
+	db, table := findTable(dbs, tableName)
+	return &memory.MergeableIndex{
+		DB:         db.Name(),
+		DriverName: memory.IndexDriverId,
+		TableName:  tableName,
+		Tbl:        table.(*memory.Table),
+		Exprs:      exprs,
+	}
+}
+
+func findTable(dbs []sql.Database, tableName string) (sql.Database, sql.Table) {
+	for _, db := range dbs {
+		names, err := db.GetTableNames(sql.NewEmptyContext())
+		if err != nil {
+			panic(err)
+		}
+		for _, name := range names {
+			if name == tableName {
+				table, _, _ := db.GetTableInsensitive(sql.NewEmptyContext(), name)
+				return db, table
+			}
+		}
+	}
+	return nil, nil
+}

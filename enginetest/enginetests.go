@@ -19,7 +19,9 @@ import (
 	"github.com/liquidata-inc/go-mysql-server"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
+	"github.com/liquidata-inc/go-mysql-server/sql/parse"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"strings"
 	"sync/atomic"
@@ -31,6 +33,37 @@ func TestQueries(t *testing.T, harness Harness) {
 	engine, idxReg := NewEngine(t, harness)
 	for _, tt := range QueryTests {
 		TestQuery(t, NewCtx(idxReg), engine, tt.Query, tt.Expected)
+	}
+}
+
+// Tests generating the correct query plans for various queries using databases and tables provided by the given
+// harness.
+func TestQueryPlans(t *testing.T, harness Harness) {
+	engine, idxReg := NewEngine(t, harness)
+	for _, tt := range PlanTests {
+		t.Run(tt.Query, func(t *testing.T) {
+			TestQueryPlan(t, NewCtx(idxReg), engine, tt.Query, tt.ExpectedPlan)
+		})
+	}
+}
+
+func TestQueryPlan(t *testing.T, ctx *sql.Context, engine *sqle.Engine, query string, expectedPlan string) {
+	parsed, err := parse.Parse(ctx, query)
+	require.NoError(t, err)
+
+	node, err := engine.Analyzer.Analyze(ctx, parsed)
+	require.NoError(t, err)
+	assert.Equal(t, expectedPlan, extractQueryNode(node).String())
+}
+
+func extractQueryNode(node sql.Node) sql.Node {
+	switch node := node.(type) {
+	case *plan.QueryProcess:
+		return extractQueryNode(node.Child)
+	case *analyzer.Releaser:
+		return extractQueryNode(node.Child)
+	default:
+		return node
 	}
 }
 
