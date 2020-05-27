@@ -2093,21 +2093,6 @@ func NewEngine(t *testing.T) (*sqle.Engine, *sql.IndexRegistry) {
 	return enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness("default", 1, testNumPartitions, false, nil)), nil)
 }
 
-// see: https://github.com/liquidata-inc/go-mysql-server/issues/197
-func TestStarPanic197(t *testing.T) {
-	require := require.New(t)
-	e, idxReg := NewEngine(t)
-
-	ctx := enginetest.NewCtx(idxReg)
-	_, iter, err := e.Query(ctx, `SELECT * FROM mytable GROUP BY i, s`)
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	require.Len(rows, 3)
-}
-
 func TestTracing(t *testing.T) {
 	require := require.New(t)
 	e, idxReg := NewEngine(t)

@@ -27,6 +27,22 @@ type QueryTest struct {
 
 var QueryTests = []QueryTest{
 	{
+		"SELECT * FROM mytable;",
+		[]sql.Row{
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"},
+		},
+	},
+	{
+		"SELECT * FROM mytable GROUP BY i,s;",
+		[]sql.Row{
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"},
+		},
+	},
+	{
 		"SELECT i FROM mytable;",
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
