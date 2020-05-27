@@ -1286,6 +1286,10 @@ var errorQueries = []queryError {
 			query: `SELECT * FROM mytable WHERE s REGEXP("*main.go")`,
 			expectedErr: expression.ErrInvalidRegexp,
 	},
+	{
+		query: `SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(sub_s, 2, 3) AS sub_sub_s FROM mytable`,
+		expectedErr: analyzer.ErrMisusedAlias,
+	},
 }
 
 func TestQueryErrors(t *testing.T) {
@@ -2217,17 +2221,6 @@ func TestSessionVariablesONOFF(t *testing.T) {
 	require.NoError(err)
 
 	require.Equal([]sql.Row{{int64(1), int64(0), true}}, rows)
-}
-
-func TestNestedAliases(t *testing.T) {
-	require := require.New(t)
-	e, idxReg := NewEngine(t)
-
-	_, _, err := e.Query(enginetest.NewCtx(idxReg), `
-	SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(sub_s, 2, 3) AS sub_sub_s
-	FROM mytable`)
-	require.Error(err)
-	require.True(analyzer.ErrMisusedAlias.Is(err))
 }
 
 // TestColumnAliases exercises the logic for naming and referring to column aliases, and unlike other tests in this
