@@ -381,26 +381,6 @@ func TestDescribe(t *testing.T) {
 	})
 }
 
-func TestOrderByColumns(t *testing.T) {
-	require := require.New(t)
-	e, idxReg := NewEngine(t)
-
-	_, iter, err := e.Query(enginetest.NewCtx(idxReg), "SELECT s, i FROM mytable ORDER BY 2 DESC")
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	require.Equal(
-		[]sql.Row{
-			{"third row", int64(3)},
-			{"second row", int64(2)},
-			{"first row", int64(1)},
-		},
-		rows,
-	)
-}
-
 func TestInsertInto(t *testing.T) {
 	var insertions = []struct {
 		insertQuery    string
