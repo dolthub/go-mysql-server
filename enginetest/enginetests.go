@@ -323,6 +323,15 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func TestInsertInto(t *testing.T, harness Harness) {
+	for _, insertion := range InsertQueries {
+		e, idxReg := NewEngine(t, harness)
+		ctx := NewCtx(idxReg)
+		TestQuery(t, ctx, e, insertion.InsertQuery, insertion.ExpectedInsert)
+		TestQuery(t, ctx, e, insertion.SelectQuery, insertion.ExpectedSelect)
+	}
+}
+
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 
@@ -537,7 +546,6 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 		rows,
 	)
 }
-
 
 func TestSessionVariables(t *testing.T, harness Harness) {
 	require := require.New(t)
