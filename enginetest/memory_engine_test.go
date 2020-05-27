@@ -78,6 +78,10 @@ func TestQueryPlans(t *testing.T) {
 	}
 }
 
+func TestQueryErrors(t *testing.T) {
+	enginetest.TestQueryErrors(t, newDefaultMemoryHarness())
+}
+
 func TestColumnAliases(t *testing.T) {
 	enginetest.TestColumnAliases(t, newDefaultMemoryHarness())
 }

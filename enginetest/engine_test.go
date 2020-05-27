@@ -17,8 +17,6 @@ package enginetest_test
 import (
 	"context"
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"math"
 	"strings"
@@ -1223,86 +1221,6 @@ func newUpdateResult(matched, updated int) sql.OkResult {
 	return sql.OkResult{
 		RowsAffected: uint64(updated),
 		Info:         plan.UpdateInfo{matched, updated, 0},
-	}
-}
-
-type queryError struct {
-	query       string
-	expectedErr *errors.Kind
-}
-
-var errorQueries = []queryError {
-	{
-		query:       "select foo.i from mytable as a",
-		expectedErr: sql.ErrTableNotFound,
-	},
-	{
-		query:       "select foo.i from mytable",
-		expectedErr: sql.ErrTableNotFound,
-	},
-	{
-		query:       "select foo.* from mytable",
-		expectedErr: sql.ErrTableNotFound,
-	},
-	{
-		query:       "select foo.* from mytable as a",
-		expectedErr: sql.ErrTableNotFound,
-	},
-	{
-		query:       "select x from mytable",
-		expectedErr: analyzer.ErrColumnNotFound,
-	},
-	{
-		query:       "select myTable.i from mytable as mt", // alias overwrites the original table name
-		expectedErr: sql.ErrTableNotFound,
-	},
-	{
-		query:       "select myTable.* from mytable as mt", // alias overwrites the original table name
-		expectedErr: sql.ErrTableNotFound,
-	},
-	{
-		query:       "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 ORDER BY 1,2,3", // alias overwrites the original table name
-		expectedErr: sql.ErrTableNotFound,
-	},
-	{
-		query:       "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3", // alias overwrites the original table name
-		expectedErr: sql.ErrTableNotFound,
-	},
-	{
-		query:       "SELECT t.i, myview1.s FROM myview AS t ORDER BY i", // alias overwrites the original view name
-		expectedErr: sql.ErrTableNotFound,
-	},
-	{
-		query:       "SELECT * FROM mytable AS t, othertable as t", // duplicate alias
-		expectedErr: sql.ErrDuplicateAliasOrTable,
-	},
-	{
-		query:       "SELECT * FROM mytable AS OTHERTABLE, othertable", // alias / table conflict
-		expectedErr: sql.ErrDuplicateAliasOrTable,
-	},
-	{
-			query: `SELECT * FROM mytable WHERE s REGEXP("*main.go")`,
-			expectedErr: expression.ErrInvalidRegexp,
-	},
-	{
-		query: `SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(sub_s, 2, 3) AS sub_sub_s FROM mytable`,
-		expectedErr: analyzer.ErrMisusedAlias,
-	},
-}
-
-func TestQueryErrors(t *testing.T) {
-	engine, idxReg := NewEngine(t)
-
-	for _, tt := range errorQueries {
-		t.Run(tt.query, func(t *testing.T) {
-			ctx := enginetest.NewCtx(idxReg)
-			_, rowIter, err := engine.Query(ctx, tt.query)
-			if err == nil {
-				_, err = sql.RowIterToRows(rowIter)
-			}
-			require.Error(t, err)
-			require.True(t, tt.expectedErr.Is(err), "expected error of kind %s, but got %s", tt.expectedErr.Message, err.Error())
-		})
 	}
 }
 

@@ -16,6 +16,9 @@ package enginetest
 
 import (
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"gopkg.in/src-d/go-errors.v1"
 	"math"
 	"time"
 )
@@ -2716,5 +2719,69 @@ var ExplodeQueries = []QueryTest{
 		[]sql.Row{
 			{int64(3), "e", "third"},
 		},
+	},
+}
+
+type QueryErrorTest struct {
+	Query       string
+	ExpectedErr *errors.Kind
+}
+
+var errorQueries = []QueryErrorTest{
+	{
+		Query:       "select foo.i from mytable as a",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:       "select foo.i from mytable",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:       "select foo.* from mytable",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:       "select foo.* from mytable as a",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:       "select x from mytable",
+		ExpectedErr: analyzer.ErrColumnNotFound,
+	},
+	{
+		Query:       "select myTable.i from mytable as mt", // alias overwrites the original table name
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:       "select myTable.* from mytable as mt", // alias overwrites the original table name
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:       "SELECT one_pk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 ORDER BY 1,2,3", // alias overwrites the original table name
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:       "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON one_pk.pk=two_pk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3", // alias overwrites the original table name
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:       "SELECT t.i, myview1.s FROM myview AS t ORDER BY i", // alias overwrites the original view name
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:       "SELECT * FROM mytable AS t, othertable as t", // duplicate alias
+		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	},
+	{
+		Query:       "SELECT * FROM mytable AS OTHERTABLE, othertable", // alias / table conflict
+		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	},
+	{
+		Query:       `SELECT * FROM mytable WHERE s REGEXP("*main.go")`,
+		ExpectedErr: expression.ErrInvalidRegexp,
+	},
+	{
+		Query:       `SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(sub_s, 2, 3) AS sub_sub_s FROM mytable`,
+		ExpectedErr: analyzer.ErrMisusedAlias,
 	},
 }

@@ -352,6 +352,22 @@ func TestColumnAliases(t *testing.T, harness Harness) {
 	}
 }
 
+func TestQueryErrors(t *testing.T, harness Harness) {
+	engine, idxReg := NewEngine(t, harness)
+
+	for _, tt := range errorQueries {
+		t.Run(tt.Query, func(t *testing.T) {
+			ctx := NewCtx(idxReg)
+			_, rowIter, err := engine.Query(ctx, tt.Query)
+			if err == nil {
+				_, err = sql.RowIterToRows(rowIter)
+			}
+			require.Error(t, err)
+			require.True(t, tt.ExpectedErr.Is(err), "expected error of kind %s, but got %s", tt.ExpectedErr.Message, err.Error())
+		})
+	}
+}
+
 var pid uint64
 
 func NewCtx(idxReg *sql.IndexRegistry) *sql.Context {
