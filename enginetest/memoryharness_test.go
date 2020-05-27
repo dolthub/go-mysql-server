@@ -15,12 +15,10 @@
 package enginetest_test
 
 import (
-	sqle "github.com/liquidata-inc/go-mysql-server"
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"testing"
 )
 
 type memoryHarness struct {
@@ -28,14 +26,16 @@ type memoryHarness struct {
 	parallelism           int
 	numTablePartitions    int
 	indexDriverInitalizer indexDriverInitalizer
+	nativeIndexSupport    bool
 }
 
-func newMemoryHarness(name string, parallelism int, numTablePartitions int, indexDriverInitalizer indexDriverInitalizer) *memoryHarness {
+func newMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, indexDriverInitalizer indexDriverInitalizer) *memoryHarness {
 	return &memoryHarness{
 		name:                  name,
 		numTablePartitions:    numTablePartitions,
 		indexDriverInitalizer: indexDriverInitalizer,
 		parallelism:           parallelism,
+		nativeIndexSupport:    useNativeIndexes,
 	}
 }
 
@@ -45,7 +45,7 @@ var _ enginetest.IndexHarness = (*memoryHarness)(nil)
 var _ enginetest.VersionedDBHarness = (*memoryHarness)(nil)
 
 func (m *memoryHarness) SupportsNativeIndexCreation() bool {
-	return true
+	return m.nativeIndexSupport
 }
 
 func (m *memoryHarness) Parallelism() int {
@@ -80,7 +80,6 @@ func (m *memoryHarness) NewContext() *sql.Context {
 }
 
 type indexDriverInitalizer func([]sql.Database) sql.IndexDriver
-type indexInitializer func(*testing.T, *sqle.Engine) error
 
 func unmergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{

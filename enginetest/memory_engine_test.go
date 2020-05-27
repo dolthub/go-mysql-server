@@ -23,7 +23,7 @@ import (
 type indexBehaviorTestParams struct {
 	name              string
 	driverInitializer indexDriverInitalizer
-	indexInitializer  indexInitializer
+	nativeIndexes     bool
 }
 
 // testQueries tests the given queries on an engine under a variety of circumstances:
@@ -36,11 +36,11 @@ func TestQueries(t *testing.T) {
 		testNumPartitions,
 	}
 	indexBehaviors := []*indexBehaviorTestParams{
-		{"none", nil, nil},
-		{"unmergableIndexes", unmergableIndexDriver, nil},
-		{"mergableIndexes", mergableIndexDriver, nil},
-		{"nativeIndexes", nil, nativeIndexes},
-		{"nativeAndMergable", mergableIndexDriver, nativeIndexes},
+		{"none", nil, false},
+		{"unmergableIndexes", unmergableIndexDriver, false},
+		{"mergableIndexes", mergableIndexDriver, false},
+		{"nativeIndexes", nil, true},
+		{"nativeAndMergable", mergableIndexDriver, true},
 	}
 	parallelVals := []int{
 		1,
@@ -51,7 +51,7 @@ func TestQueries(t *testing.T) {
 		for _, indexInit := range indexBehaviors {
 			for _, parallelism := range parallelVals {
 				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexInit.name, parallelism)
-				harness := newMemoryHarness(testName, parallelism, numPartitions, indexInit.driverInitializer)
+				harness := newMemoryHarness(testName, parallelism, numPartitions, indexInit.nativeIndexes, indexInit.driverInitializer)
 
 				t.Run(testName, func(t *testing.T) {
 					enginetest.TestQueries(t, harness)
@@ -65,14 +65,14 @@ func TestQueries(t *testing.T) {
 // the right indexes are being used for joining tables.
 func TestQueryPlans(t *testing.T) {
 	indexBehaviors := []*indexBehaviorTestParams{
-		{"unmergableIndexes", unmergableIndexDriver, nil},
-		{"nativeIndexes", nil, nativeIndexes},
-		{"nativeAndMergable", mergableIndexDriver, nativeIndexes},
+		{"unmergableIndexes", unmergableIndexDriver, false},
+		{"nativeIndexes", nil, true},
+		{"nativeAndMergable", mergableIndexDriver, true},
 	}
 
 	for _, indexInit := range indexBehaviors {
 		t.Run(indexInit.name, func(t *testing.T) {
-			harness := newMemoryHarness(indexInit.name, 1, 2, indexInit.driverInitializer)
+			harness := newMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
 			enginetest.TestQueryPlans(t, harness)
 		})
 	}
@@ -93,7 +93,7 @@ var infoSchemaTables = []string {
 // Test the info schema queries separately to avoid having to alter test query results when more test tables are added.
 // To get this effect, we only install a fixed subset of the tables defined by allTestTables().
 func TestInfoSchema(t *testing.T) {
-	engine, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateSubsetTestData(t, newMemoryHarness("TODO", 2, 1, nil), infoSchemaTables), nil)
+	engine, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateSubsetTestData(t, newMemoryHarness("TODO", 2, 1, false, nil), infoSchemaTables), nil)
 	for _, tt := range enginetest.InfoSchemaQueries {
 		ctx := enginetest.NewCtx(idxReg)
 		enginetest.TestQuery(t, ctx, engine, tt.Query, tt.Expected)

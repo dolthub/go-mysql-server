@@ -69,18 +69,6 @@ func nativeIndexes(t *testing.T, e *sqle.Engine) error {
 // If set, skips all other query plan test queries except this one
 var debugQueryPlan = ""
 
-
-func extractQueryNode(node sql.Node) sql.Node {
-	switch node := node.(type) {
-	case *plan.QueryProcess:
-		return extractQueryNode(node.Child)
-	case *analyzer.Releaser:
-		return extractQueryNode(node.Child)
-	default:
-		return node
-	}
-}
-
 func TestViews(t *testing.T) {
 	require := require.New(t)
 
@@ -471,7 +459,7 @@ func TestWarnings(t *testing.T) {
 		}
 	})
 
-	ep, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateTestData(t, newMemoryHarness("TODO", 2, testNumPartitions, nil)), nil)
+	ep, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateTestData(t, newMemoryHarness("TODO", 2, testNumPartitions, false, nil)), nil)
 
 	ctx = enginetest.NewCtx(idxReg)
 	ctx.Session.Warn(&sql.Warning{Code: 1})
@@ -542,12 +530,12 @@ func TestDescribe(t *testing.T) {
 		{" └─ Table(mytable): Projected "},
 	}
 
-	e, idxReg := enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness("TODO", 1, testNumPartitions, nil)), nil)
+	e, idxReg := enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness("TODO", 1, testNumPartitions, false, nil)), nil)
 	t.Run("sequential", func(t *testing.T) {
 		testQuery(t, e, idxReg, query, expectedSeq)
 	})
 
-	ep, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateTestData(t, newMemoryHarness("TODO", 1, testNumPartitions, nil)), nil)
+	ep, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateTestData(t, newMemoryHarness("TODO", 1, testNumPartitions, false, nil)), nil)
 	t.Run("parallel", func(t *testing.T) {
 		testQuery(t, ep, idxReg, query, expectedParallel)
 	})
@@ -2094,7 +2082,7 @@ func testQuery(t *testing.T, e *sqle.Engine, idxReg *sql.IndexRegistry, q string
 }
 
 func NewEngine(t *testing.T) (*sqle.Engine, *sql.IndexRegistry) {
-	return enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness("TODO", 1, testNumPartitions, nil)), nil)
+	return enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness("TODO", 1, testNumPartitions, false, nil)), nil)
 }
 
 // see: https://github.com/liquidata-inc/go-mysql-server/issues/197
