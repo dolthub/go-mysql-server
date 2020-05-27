@@ -97,11 +97,3 @@ func TestInfoSchema(t *testing.T) {
 func TestReadOnly(t *testing.T) {
 	enginetest.TestReadOnly(t, newDefaultMemoryHarness())
 }
-
-func TestSessionVariables(t *testing.T) {
-	enginetest.TestSessionVariables(t, newDefaultMemoryHarness())
-}
-
-func TestSessionVariablesONOFF(t *testing.T) {
-	enginetest.TestSessionVariablesONOFF(t, newDefaultMemoryHarness())
-}

@@ -334,45 +334,15 @@ func TestSessionSelectLimit(t *testing.T) {
 }
 
 func TestSessionDefaults(t *testing.T) {
-	q := `SET @@auto_increment_increment=DEFAULT,
-			  @@max_allowed_packet=DEFAULT,
-			  @@sql_select_limit=DEFAULT,
-			  @@ndbinfo_version=DEFAULT`
+	enginetest.TestSessionDefaults(t, newDefaultMemoryHarness())
+}
 
-	e, idxReg := NewEngine(t)
+func TestSessionVariables(t *testing.T) {
+	enginetest.TestSessionVariables(t, newDefaultMemoryHarness())
+}
 
-	ctx := enginetest.NewCtx(idxReg)
-	err := ctx.Session.Set(ctx, "auto_increment_increment", sql.Int64, 0)
-	require.NoError(t, err)
-	err = ctx.Session.Set(ctx, "max_allowed_packet", sql.Int64, 0)
-	require.NoError(t, err)
-	err = ctx.Session.Set(ctx, "sql_select_limit", sql.Int64, 0)
-	require.NoError(t, err)
-	err = ctx.Session.Set(ctx, "ndbinfo_version", sql.Text, "non default value")
-	require.NoError(t, err)
-
-	defaults := sql.DefaultSessionConfig()
-	t.Run(q, func(t *testing.T) {
-		require := require.New(t)
-		_, _, err := e.Query(ctx, q)
-		require.NoError(err)
-
-		typ, val := ctx.Get("auto_increment_increment")
-		require.Equal(defaults["auto_increment_increment"].Typ, typ)
-		require.Equal(defaults["auto_increment_increment"].Value, val)
-
-		typ, val = ctx.Get("max_allowed_packet")
-		require.Equal(defaults["max_allowed_packet"].Typ, typ)
-		require.Equal(defaults["max_allowed_packet"].Value, val)
-
-		typ, val = ctx.Get("sql_select_limit")
-		require.Equal(defaults["sql_select_limit"].Typ, typ)
-		require.Equal(defaults["sql_select_limit"].Value, val)
-
-		typ, val = ctx.Get("ndbinfo_version")
-		require.Equal(defaults["ndbinfo_version"].Typ, typ)
-		require.Equal(defaults["ndbinfo_version"].Value, val)
-	})
+func TestSessionVariablesONOFF(t *testing.T) {
+	enginetest.TestSessionVariablesONOFF(t, newDefaultMemoryHarness())
 }
 
 func TestWarnings(t *testing.T) {
