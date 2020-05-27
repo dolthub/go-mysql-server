@@ -2082,7 +2082,7 @@ func testQuery(t *testing.T, e *sqle.Engine, idxReg *sql.IndexRegistry, q string
 }
 
 func NewEngine(t *testing.T) (*sqle.Engine, *sql.IndexRegistry) {
-	return enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness("TODO", 1, testNumPartitions, false, nil)), nil)
+	return enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness("default", 1, testNumPartitions, false, nil)), nil)
 }
 
 // see: https://github.com/liquidata-inc/go-mysql-server/issues/197
@@ -2109,66 +2109,6 @@ func TestInvalidRegexp(t *testing.T) {
 	require.NoError(err)
 
 	_, err = sql.RowIterToRows(iter)
-	require.Error(err)
-}
-
-func TestOrderByGroupBy(t *testing.T) {
-	require := require.New(t)
-
-	table := memory.NewPartitionedTable("members", sql.Schema{
-		{Name: "id", Type: sql.Int64, Source: "members"},
-		{Name: "team", Type: sql.Text, Source: "members"},
-	}, testNumPartitions)
-
-	enginetest.InsertRows(
-		t, table,
-		sql.NewRow(int64(3), "red"),
-		sql.NewRow(int64(4), "red"),
-		sql.NewRow(int64(5), "orange"),
-		sql.NewRow(int64(6), "orange"),
-		sql.NewRow(int64(7), "orange"),
-		sql.NewRow(int64(8), "purple"),
-	)
-
-	db := memory.NewDatabase("db")
-	db.AddTable("members", table)
-
-	e := sqle.NewDefault()
-	idxReg := sql.NewIndexRegistry()
-	e.AddDatabase(db)
-
-	_, iter, err := e.Query(
-		enginetest.NewCtx(idxReg).WithCurrentDB("db"),
-		"SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY 2",
-	)
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	expected := []sql.Row{
-		{"purple", int64(1)},
-		{"red", int64(2)},
-		{"orange", int64(3)},
-	}
-
-	require.Equal(expected, rows)
-
-	_, iter, err = e.Query(
-		enginetest.NewCtx(idxReg).WithCurrentDB("db"),
-		"SELECT team, COUNT(*) FROM members GROUP BY 1 ORDER BY 2",
-	)
-	require.NoError(err)
-
-	rows, err = sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	require.Equal(expected, rows)
-
-	_, _, err = e.Query(
-		enginetest.NewCtx(idxReg),
-		"SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY columndoesnotexist",
-	)
 	require.Error(err)
 }
 

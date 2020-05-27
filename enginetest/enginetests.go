@@ -47,6 +47,7 @@ func TestQueryPlans(t *testing.T, harness Harness) {
 	}
 }
 
+// TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.
 func TestQueryPlan(t *testing.T, ctx *sql.Context, engine *sqle.Engine, query string, expectedPlan string) {
 	parsed, err := parse.Parse(ctx, query)
 	require.NoError(t, err)
@@ -65,6 +66,64 @@ func extractQueryNode(node sql.Node) sql.Node {
 	default:
 		return node
 	}
+}
+
+func TestOrderByGroupBy(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	db := harness.NewDatabase("db")
+	table := harness.NewTable(db, "members", sql.Schema{
+		{Name: "id", Type: sql.Int64, Source: "members"},
+		{Name: "team", Type: sql.Text, Source: "members"},
+	})
+
+	InsertRows(
+		t, mustInsertableTable(t, table),
+		sql.NewRow(int64(3), "red"),
+		sql.NewRow(int64(4), "red"),
+		sql.NewRow(int64(5), "orange"),
+		sql.NewRow(int64(6), "orange"),
+		sql.NewRow(int64(7), "orange"),
+		sql.NewRow(int64(8), "purple"),
+	)
+
+	e := sqle.NewDefault()
+	idxReg := sql.NewIndexRegistry()
+	e.AddDatabase(db)
+
+	_, iter, err := e.Query(
+		NewCtx(idxReg).WithCurrentDB("db"),
+		"SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY 2",
+	)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	expected := []sql.Row{
+		{"purple", int64(1)},
+		{"red", int64(2)},
+		{"orange", int64(3)},
+	}
+
+	require.Equal(expected, rows)
+
+	_, iter, err = e.Query(
+		NewCtx(idxReg).WithCurrentDB("db"),
+		"SELECT team, COUNT(*) FROM members GROUP BY 1 ORDER BY 2",
+	)
+	require.NoError(err)
+
+	rows, err = sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	require.Equal(expected, rows)
+
+	_, _, err = e.Query(
+		NewCtx(idxReg),
+		"SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY columndoesnotexist",
+	)
+	require.Error(err)
 }
 
 var pid uint64

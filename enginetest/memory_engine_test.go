@@ -78,6 +78,10 @@ func TestQueryPlans(t *testing.T) {
 	}
 }
 
+func TestOrderByGroupBy(t *testing.T) {
+	enginetest.TestOrderByGroupBy(t, newDefaultMemoryHarness())
+}
+
 var infoSchemaTables = []string {
 	"mytable",
 	"othertable",

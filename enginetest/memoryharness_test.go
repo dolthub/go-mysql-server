@@ -39,6 +39,10 @@ func newMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 	}
 }
 
+func newDefaultMemoryHarness() *memoryHarness {
+	return newMemoryHarness("default", 1, testNumPartitions, false, nil)
+}
+
 var _ enginetest.Harness = (*memoryHarness)(nil)
 var _ enginetest.IndexDriverHarness = (*memoryHarness)(nil)
 var _ enginetest.IndexHarness = (*memoryHarness)(nil)
