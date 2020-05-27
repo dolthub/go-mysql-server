@@ -2139,48 +2139,11 @@ func TestTracing(t *testing.T) {
 }
 
 func TestSessionVariables(t *testing.T) {
-	require := require.New(t)
-	e, idxReg := NewEngine(t)
-	viewReg := sql.NewViewRegistry()
-
-	session := sql.NewBaseSession()
-	ctx := sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(1), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
-
-	_, _, err := e.Query(ctx, `set autocommit=1, sql_mode = concat(@@sql_mode,',STRICT_TRANS_TABLES')`)
-	require.NoError(err)
-
-	ctx = sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(2), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg))
-
-	_, iter, err := e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode`)
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	require.Equal([]sql.Row{{int8(1), ",STRICT_TRANS_TABLES"}}, rows)
+	enginetest.TestSessionVariables(t, newDefaultMemoryHarness())
 }
 
 func TestSessionVariablesONOFF(t *testing.T) {
-	require := require.New(t)
-	viewReg := sql.NewViewRegistry()
-
-	e, idxReg := NewEngine(t)
-
-	session := sql.NewBaseSession()
-	ctx := sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(1), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
-
-	_, _, err := e.Query(ctx, `set autocommit=ON, sql_mode = OFF, autoformat="true"`)
-	require.NoError(err)
-
-	ctx = sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(2), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
-
-	_, iter, err := e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode, @@autoformat`)
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	require.Equal([]sql.Row{{int64(1), int64(0), true}}, rows)
+	enginetest.TestSessionVariablesONOFF(t, newDefaultMemoryHarness())
 }
 
 // TestColumnAliases exercises the logic for naming and referring to column aliases, and unlike other tests in this
