@@ -78,6 +78,10 @@ func TestQueryPlans(t *testing.T) {
 	}
 }
 
+func TestColumnAliases(t *testing.T) {
+	enginetest.TestColumnAliases(t, newDefaultMemoryHarness())
+}
+
 func TestOrderByGroupBy(t *testing.T) {
 	enginetest.TestOrderByGroupBy(t, newDefaultMemoryHarness())
 }
@@ -88,4 +92,12 @@ func TestInfoSchema(t *testing.T) {
 
 func TestReadOnly(t *testing.T) {
 	enginetest.TestReadOnly(t, newDefaultMemoryHarness())
+}
+
+func TestSessionVariables(t *testing.T) {
+	enginetest.TestSessionVariables(t, newDefaultMemoryHarness())
+}
+
+func TestSessionVariablesONOFF(t *testing.T) {
+	enginetest.TestSessionVariablesONOFF(t, newDefaultMemoryHarness())
 }

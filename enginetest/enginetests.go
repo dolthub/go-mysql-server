@@ -257,6 +257,101 @@ func TestSessionVariablesONOFF(t *testing.T, harness Harness) {
 	require.Equal([]sql.Row{{int64(1), int64(0), true}}, rows)
 }
 
+// TestColumnAliases exercises the logic for naming and referring to column aliases, and unlike other tests in this
+// file checks that the name of the columns in the result schema is correct.
+func TestColumnAliases(t *testing.T, harness Harness) {
+	type testcase struct {
+		query string
+		expectedColNames []string
+		expectedRows []sql.Row
+	}
+
+	tests := []testcase{
+		{
+			query:            `SELECT i AS cOl FROM mytable`,
+			expectedColNames: []string{"cOl"},
+			expectedRows: []sql.Row{
+				{int64(1)},
+				{int64(2)},
+				{int64(3)},
+			},
+		},
+		{
+			query:            `SELECT i AS cOl, s as COL FROM mytable`,
+			expectedColNames: []string{"cOl", "COL"},
+			expectedRows: []sql.Row{
+				{int64(1), "first row"},
+				{int64(2), "second row"},
+				{int64(3), "third row"},
+			},
+		},
+		{
+			// TODO: this is actually inconsistent with MySQL, which doesn't allow column aliases in the where clause
+			query:            `SELECT i AS cOl, s as COL FROM mytable where cOl = 1`,
+			expectedColNames: []string{"cOl", "COL"},
+			expectedRows: []sql.Row{
+				{int64(1), "first row"},
+			},
+		},
+		{
+			query:            `SELECT s as COL1, SUM(i) COL2 FROM mytable group by s order by cOL2`,
+			expectedColNames: []string{"COL1", "COL2"},
+			// TODO: SUM should be integer typed for integers
+			expectedRows: []sql.Row{
+				{"first row", float64(1)},
+				{"second row", float64(2)},
+				{"third row", float64(3)},
+			},
+		},
+		{
+			query:            `SELECT s as COL1, SUM(i) COL2 FROM mytable group by col1 order by col2`,
+			expectedColNames: []string{"COL1", "COL2"},
+			expectedRows: []sql.Row{
+				{"first row", float64(1)},
+				{"second row", float64(2)},
+				{"third row", float64(3)},
+			},
+		},
+		{
+			query:            `SELECT s as coL1, SUM(i) coL2 FROM mytable group by 1 order by 2`,
+			expectedColNames: []string{"coL1", "coL2"},
+			expectedRows: []sql.Row{
+				{"first row", float64(1)},
+				{"second row", float64(2)},
+				{"third row", float64(3)},
+			},
+		},
+		{
+			query:            `SELECT s as Date, SUM(i) TimeStamp FROM mytable group by 1 order by 2`,
+			expectedColNames: []string{"Date", "TimeStamp"},
+			expectedRows: []sql.Row{
+				{"first row", float64(1)},
+				{"second row", float64(2)},
+				{"third row", float64(3)},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.query, func(t *testing.T) {
+			require := require.New(t)
+			e, idxReg := NewEngine(t, harness)
+
+			sch, rowIter, err := e.Query(NewCtx(idxReg), tt.query)
+			var colNames []string
+			for _, col := range sch {
+				colNames = append(colNames, col.Name)
+			}
+
+			require.NoError(err)
+			assert.Equal(t, tt.expectedColNames, colNames)
+			rows, err := sql.RowIterToRows(rowIter)
+			require.NoError(err)
+			assert.Equal(t, tt.expectedRows, rows)
+		})
+	}
+}
+
 var pid uint64
 
 func NewCtx(idxReg *sql.IndexRegistry) *sql.Context {
