@@ -332,6 +332,16 @@ func TestInsertInto(t *testing.T, harness Harness) {
 	}
 }
 
+func TestInsertIntoErrors(t *testing.T, harness Harness) {
+	for _, expectedFailure := range InsertErrorTests {
+		t.Run(expectedFailure.Name, func(t *testing.T) {
+			e, idxReg := NewEngine(t, harness)
+			_, _, err := e.Query(NewCtx(idxReg), expectedFailure.Query)
+			require.Error(t, err)
+		})
+	}
+}
+
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 

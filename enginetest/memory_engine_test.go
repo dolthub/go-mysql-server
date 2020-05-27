@@ -94,6 +94,14 @@ func TestInfoSchema(t *testing.T) {
 	enginetest.TestInfoSchema(t, newDefaultMemoryHarness())
 }
 
+func TestInsertInto(t *testing.T) {
+	enginetest.TestInsertInto(t, newDefaultMemoryHarness())
+}
+
+func TestInsertIntoErrors(t *testing.T) {
+	enginetest.TestInsertIntoErrors(t, newDefaultMemoryHarness())
+}
+
 func TestReadOnly(t *testing.T) {
 	enginetest.TestReadOnly(t, newDefaultMemoryHarness())
 }
