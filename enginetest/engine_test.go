@@ -60,32 +60,34 @@ func TestClearWarnings(t *testing.T) {
 	enginetest.TestClearWarnings(t, newDefaultMemoryHarness())
 }
 
+// TODO: this should be expanded and filled in (test of describe for lots of queries), and moved to enginetests, but
+//  first we need to standardize the explain output. Depends too much on integrators right now.
 func TestDescribe(t *testing.T) {
-	query := `DESCRIBE FORMAT=TREE SELECT * FROM mytable`
-	expectedSeq := []sql.Row{
-		sql.NewRow("Table(mytable): Projected "),
+	queries := []string {
+		`DESCRIBE FORMAT=TREE SELECT * FROM mytable`,
+		`EXPLAIN FORMAT=TREE SELECT * FROM mytable`,
+		`DESCRIBE SELECT * FROM mytable`,
+		`EXPLAIN SELECT * FROM mytable`,
 	}
 
-	expectedParallel := []sql.Row{
-		{"Exchange(parallelism=2)"},
-		{" └─ Table(mytable): Projected "},
-	}
-
-	e, idxReg := enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness("TODO", 1, testNumPartitions, false, nil)), nil)
+	e, idxReg := enginetest.NewEngine(t, newDefaultMemoryHarness())
 	t.Run("sequential", func(t *testing.T) {
-		testQuery(t, e, idxReg, query, expectedSeq)
+		for _, q := range queries {
+			enginetest.TestQuery(t, enginetest.NewCtx(idxReg), e, q, []sql.Row{
+				sql.NewRow("Table(mytable): Projected "),
+			})
+		}
 	})
 
-	ep, idxReg := enginetest.NewEngineWithDbs(t, 2, enginetest.CreateTestData(t, newMemoryHarness("TODO", 1, testNumPartitions, false, nil)), nil)
+	ep, idxRegp := enginetest.NewEngine(t, newMemoryHarness("parallel", 2, testNumPartitions, false, nil))
 	t.Run("parallel", func(t *testing.T) {
-		testQuery(t, ep, idxReg, query, expectedParallel)
+		for _, q := range queries {
+			enginetest.TestQuery(t, enginetest.NewCtx(idxRegp), ep, q, []sql.Row{
+				{"Exchange(parallelism=2)"},
+				{" └─ Table(mytable): Projected "},
+			})
+		}
 	})
-}
-
-const testNumPartitions = 5
-
-func testQuery(t *testing.T, e *sqle.Engine, idxReg *sql.IndexRegistry, q string, expected []sql.Row) {
-	enginetest.TestQuery(t, enginetest.NewCtx(idxReg), e, q, expected)
 }
 
 func NewEngine(t *testing.T) (*sqle.Engine, *sql.IndexRegistry) {

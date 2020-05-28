@@ -20,7 +20,6 @@ type Harness interface {
 	Parallelism() int
 	NewDatabase(name string) sql.Database
 	NewTable(db sql.Database, name string, schema sql.Schema) sql.Table
-	NewContext() *sql.Context
 }
 
 type IndexDriverHarness interface {

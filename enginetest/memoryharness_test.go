@@ -22,20 +22,22 @@ import (
 )
 
 type memoryHarness struct {
-	name                  string
-	parallelism           int
-	numTablePartitions    int
-	indexDriverInitalizer indexDriverInitalizer
-	nativeIndexSupport    bool
+	name                   string
+	parallelism            int
+	numTablePartitions     int
+	indexDriverInitializer indexDriverInitalizer
+	nativeIndexSupport     bool
 }
+
+const testNumPartitions = 5
 
 func newMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, indexDriverInitalizer indexDriverInitalizer) *memoryHarness {
 	return &memoryHarness{
-		name:                  name,
-		numTablePartitions:    numTablePartitions,
-		indexDriverInitalizer: indexDriverInitalizer,
-		parallelism:           parallelism,
-		nativeIndexSupport:    useNativeIndexes,
+		name:                   name,
+		numTablePartitions:     numTablePartitions,
+		indexDriverInitializer: indexDriverInitalizer,
+		parallelism:            parallelism,
+		nativeIndexSupport:     useNativeIndexes,
 	}
 }
 
@@ -63,8 +65,8 @@ func (m *memoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, sche
 }
 
 func (m *memoryHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
-	if m.indexDriverInitalizer != nil {
-		return m.indexDriverInitalizer(dbs)
+	if m.indexDriverInitializer != nil {
+		return m.indexDriverInitializer(dbs)
 	}
 	return nil
 }
@@ -77,10 +79,6 @@ func (m *memoryHarness) NewTable(db sql.Database, name string, schema sql.Schema
 	table := memory.NewPartitionedTable(name, schema, m.numTablePartitions)
 	db.(*memory.HistoryDatabase).AddTable(name, table)
 	return table
-}
-
-func (m *memoryHarness) NewContext() *sql.Context {
-	panic("implement me")
 }
 
 type indexDriverInitalizer func([]sql.Database) sql.IndexDriver
