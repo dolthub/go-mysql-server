@@ -102,6 +102,14 @@ func TestInsertIntoErrors(t *testing.T) {
 	enginetest.TestInsertIntoErrors(t, newDefaultMemoryHarness())
 }
 
+func TestReplaceInto(t *testing.T) {
+	enginetest.TestReplaceInto(t, newDefaultMemoryHarness())
+}
+
+func TestReplaceIntoErrors(t *testing.T) {
+	enginetest.TestReplaceIntoErrors(t, newDefaultMemoryHarness())
+}
+
 func TestReadOnly(t *testing.T) {
 	enginetest.TestReadOnly(t, newDefaultMemoryHarness())
 }
