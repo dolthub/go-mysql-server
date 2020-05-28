@@ -22,6 +22,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
 	"github.com/liquidata-inc/go-mysql-server/sql/parse"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
+	"github.com/liquidata-inc/go-mysql-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -1422,6 +1423,48 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 	for _, tt := range q {
 		TestQuery(t, ctx, e, tt.Query, tt.Expected)
 	}
+}
+
+func TestTracing(t *testing.T, harness Harness) {
+	require := require.New(t)
+	e, idxReg := NewEngine(t, harness)
+
+	tracer := new(test.MemTracer)
+
+	ctx := sql.NewContext(context.TODO(), sql.WithTracer(tracer), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+
+	_, iter, err := e.Query(ctx, `SELECT DISTINCT i
+		FROM mytable
+		WHERE s = 'first row'
+		ORDER BY i DESC
+		LIMIT 1`)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.Len(rows, 1)
+	require.NoError(err)
+
+	spans := tracer.Spans
+	var expectedSpans = []string{
+		"plan.Limit",
+		"plan.Sort",
+		"plan.Distinct",
+		"plan.Project",
+		"plan.ResolvedTable",
+	}
+
+	var spanOperations []string
+	for _, s := range spans {
+		// only check the ones inside the execution tree
+		if strings.HasPrefix(s, "plan.") ||
+				strings.HasPrefix(s, "expression.") ||
+				strings.HasPrefix(s, "function.") ||
+				strings.HasPrefix(s, "aggregation.") {
+			spanOperations = append(spanOperations, s)
+		}
+	}
+
+	require.Equal(expectedSpans, spanOperations)
 }
 
 var pid uint64

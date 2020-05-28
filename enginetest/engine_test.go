@@ -18,17 +18,23 @@ import (
 	"context"
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"github.com/opentracing/opentracing-go"
-	"strings"
 	"testing"
 
 	sqle "github.com/liquidata-inc/go-mysql-server"
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
-	"github.com/liquidata-inc/go-mysql-server/test"
-
 	"github.com/stretchr/testify/require"
 )
+
+// This file is for tests of the engine that we are very sure do not rely on a particular database implementation. They
+// use the default in-memory implementation harness, but in principle they do not rely on it being correct (beyond
+// the ability to create databases and tables without panicking) and don't test the implementation itself. Despite this,
+// most test methods dispatch to exported Test functions in the enginetest package, so that integrators can run those
+// tests against their own implementations if they choose.
+//
+// Tests that rely on a correct implementation of the in-memory database (memory package) should go in
+// memory_engine_test.go
 
 func TestSessionSelectLimit(t *testing.T) {
 	enginetest.TestSessionSelectLimit(t, newDefaultMemoryHarness())
@@ -94,50 +100,12 @@ func NewEngine(t *testing.T) (*sqle.Engine, *sql.IndexRegistry) {
 	return enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness("default", 1, testNumPartitions, false, nil)), nil)
 }
 
-func TestTracing(t *testing.T) {
-	require := require.New(t)
-	e, idxReg := enginetest.NewEngine(t, newDefaultMemoryHarness())
-
-	tracer := new(test.MemTracer)
-
-	ctx := sql.NewContext(context.TODO(), sql.WithTracer(tracer), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
-
-	_, iter, err := e.Query(ctx, `SELECT DISTINCT i
-		FROM mytable
-		WHERE s = 'first row'
-		ORDER BY i DESC
-		LIMIT 1`)
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.Len(rows, 1)
-	require.NoError(err)
-
-	spans := tracer.Spans
-	var expectedSpans = []string{
-		"plan.Limit",
-		"plan.Sort",
-		"plan.Distinct",
-		"plan.Project",
-		"plan.ResolvedTable",
-	}
-
-	var spanOperations []string
-	for _, s := range spans {
-		// only check the ones inside the execution tree
-		if strings.HasPrefix(s, "plan.") ||
-			strings.HasPrefix(s, "expression.") ||
-			strings.HasPrefix(s, "function.") ||
-			strings.HasPrefix(s, "aggregation.") {
-			spanOperations = append(spanOperations, s)
-		}
-	}
-
-	require.Equal(expectedSpans, spanOperations)
-}
-
 func TestUse(t *testing.T) {
 	enginetest.TestUse(t, newDefaultMemoryHarness())
+}
+
+func TestTracing(t *testing.T) {
+	enginetest.TestTracing(t, newDefaultMemoryHarness())
 }
 
 // TODO: it's not currently possible to test this via harness, because the underlying table implementations are added to
