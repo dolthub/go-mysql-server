@@ -31,43 +31,7 @@ import (
 )
 
 func TestSessionSelectLimit(t *testing.T) {
-	q := []struct {
-		query    string
-		expected []sql.Row
-	}{
-		{
-			"SELECT * FROM mytable ORDER BY i",
-			[]sql.Row{{int64(1), "first row"}},
-		},
-		{
-			"SELECT * FROM mytable ORDER BY i LIMIT 2",
-			[]sql.Row{
-				{int64(1), "first row"},
-				{int64(2), "second row"},
-			},
-		},
-		{
-			"SELECT i FROM (SELECT i FROM mytable LIMIT 2) t ORDER BY i",
-			[]sql.Row{{int64(1)}},
-		},
-		// TODO: this is broken: the session limit is applying inappropriately to the subquery
-		// {
-		// 	"SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC) t ORDER BY i LIMIT 2",
-		// 	[]sql.Row{{int64(1)}},
-		// },
-	}
-
-	e, idxReg := NewEngine(t)
-
-	ctx := enginetest.NewCtx(idxReg)
-	err := ctx.Session.Set(ctx, "sql_select_limit", sql.Int64, int64(1))
-	require.NoError(t, err)
-
-	t.Run("sql_select_limit", func(t *testing.T) {
-		for _, tt := range q {
-			enginetest.TestQuery(t, ctx, e, tt.query, tt.expected)
-		}
-	})
+	enginetest.TestSessionSelectLimit(t, newDefaultMemoryHarness())
 }
 
 func TestSessionDefaults(t *testing.T) {
@@ -130,7 +94,7 @@ func NewEngine(t *testing.T) (*sqle.Engine, *sql.IndexRegistry) {
 
 func TestTracing(t *testing.T) {
 	require := require.New(t)
-	e, idxReg := NewEngine(t)
+	e, idxReg := enginetest.NewEngine(t, newDefaultMemoryHarness())
 
 	tracer := new(test.MemTracer)
 
@@ -174,6 +138,10 @@ func TestUse(t *testing.T) {
 	enginetest.TestUse(t, newDefaultMemoryHarness())
 }
 
+// TODO: it's not currently possible to test this via harness, because the underlying table implementations are added to
+//  the database, rather than the wrapper tables. We need a better way of inspecting lock state to test this properly.
+//  Also, currently locks are entirely implementation dependent, so there isn't much to test except that lock and unlock
+//  are being called.
 func TestLocks(t *testing.T) {
 	require := require.New(t)
 
@@ -221,7 +189,7 @@ func (m *mockSpan) Finish() {
 }
 
 func TestRootSpanFinish(t *testing.T) {
-	e, idxReg := NewEngine(t)
+	e, idxReg := enginetest.NewEngine(t, newDefaultMemoryHarness())
 	fakeSpan := &mockSpan{Span: opentracing.NoopTracer{}.StartSpan("")}
 	ctx := sql.NewContext(
 		context.Background(),

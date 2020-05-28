@@ -1363,6 +1363,7 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 	err = iter.Close()
 	require.NoError(err)
 
+
 	require.Equal(0, len(ctx.Session.Warnings()))
 }
 
@@ -1388,6 +1389,41 @@ func TestUse(t *testing.T, harness Harness) {
 	require.Equal("foo", ctx.GetCurrentDatabase())
 }
 
+func TestSessionSelectLimit(t *testing.T, harness Harness) {
+	q := []QueryTest {
+		{
+			"SELECT * FROM mytable ORDER BY i",
+			[]sql.Row{{int64(1), "first row"}},
+		},
+		{
+			"SELECT * FROM mytable ORDER BY i LIMIT 2",
+			[]sql.Row{
+				{int64(1), "first row"},
+				{int64(2), "second row"},
+			},
+		},
+		{
+			"SELECT i FROM (SELECT i FROM mytable LIMIT 2) t ORDER BY i",
+			[]sql.Row{{int64(1)}},
+		},
+		// TODO: this is broken: the session limit is applying inappropriately to the subquery
+		// {
+		// 	"SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC) t ORDER BY i LIMIT 2",
+		// 	[]sql.Row{{int64(1)}},
+		// },
+	}
+
+	e, idxReg := NewEngine(t, harness)
+
+	ctx := NewCtx(idxReg)
+	err := ctx.Session.Set(ctx, "sql_select_limit", sql.Int64, int64(1))
+	require.NoError(t, err)
+
+	for _, tt := range q {
+		TestQuery(t, ctx, e, tt.Query, tt.Expected)
+	}
+}
+
 var pid uint64
 
 func NewCtx(idxReg *sql.IndexRegistry) *sql.Context {
@@ -1401,7 +1437,6 @@ func NewCtx(idxReg *sql.IndexRegistry) *sql.Context {
 		sql.WithViewRegistry(sql.NewViewRegistry()),
 	).WithCurrentDB("mydb")
 
-	// TODO: move to harness?
 	_ = ctx.ViewRegistry.Register("mydb",
 		plan.NewSubqueryAlias(
 			"myview",
