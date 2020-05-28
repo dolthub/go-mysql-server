@@ -666,6 +666,36 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require.True(sql.ErrTableAlreadyExists.Is(err))
 }
 
+func TestRenameColumn(t *testing.T,  harness Harness) {
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	require := require.New(t)
+
+	e, idxReg := NewEngine(t, harness)
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	TestQuery(t, NewCtx(idxReg), e,
+		"ALTER TABLE mytable RENAME COLUMN i TO i2",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "i2", Type: sql.Int64, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+	}, tbl.Schema())
+
+	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE not_exist RENAME COLUMN foo TO bar")
+	require.Error(err)
+	require.True(sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE mytable RENAME COLUMN foo TO bar")
+	require.Error(err)
+	require.True(plan.ErrColumnNotFound.Is(err))
+}
+
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 
