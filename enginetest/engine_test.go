@@ -96,10 +96,6 @@ func TestDescribe(t *testing.T) {
 	})
 }
 
-func NewEngine(t *testing.T) (*sqle.Engine, *sql.IndexRegistry) {
-	return enginetest.NewEngineWithDbs(t, 1, enginetest.CreateTestData(t, newMemoryHarness("default", 1, testNumPartitions, false, nil)), nil)
-}
-
 func TestUse(t *testing.T) {
 	enginetest.TestUse(t, newDefaultMemoryHarness())
 }

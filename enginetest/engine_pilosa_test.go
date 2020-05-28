@@ -25,22 +25,37 @@ import (
 	"time"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/index/pilosa"
 	"github.com/liquidata-inc/go-mysql-server/test"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestIndexes(t *testing.T) {
-	e, idxReg := NewEngine(t)
-	viewReg := sql.NewViewRegistry()
+type pilosaHarness struct {
+	memoryHarness
+	tmpDir
+}
 
+var _ enginetest.IndexDriverHarness = (*pilosaHarness)(nil)
+
+func (p *pilosaHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
+	return pilosa.NewDriver(p.tmpDir)
+}
+
+// TODO: we should run the entire enginetest suite against this harness, not just the tests below.
+func newPilosaHarness(tmpDir string) *pilosaHarness {
+	return &pilosaHarness{
+		memoryHarness: *newDefaultMemoryHarness(),
+		tmpDir: tmpDir,
+	}
+}
+
+func TestIndexes(t *testing.T) {
 	tmpDir, err := ioutil.TempDir(os.TempDir(), "pilosa-test")
 	require.NoError(t, err)
-
 	require.NoError(t, os.MkdirAll(tmpDir, 0644))
 
-	idxReg.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
+	e, idxReg := enginetest.NewEngine(t, newPilosaHarness(tmpDir))
+	viewReg := sql.NewViewRegistry()
 
 	_, _, err = e.Query(
 		enginetest.NewCtx(idxReg),
@@ -200,14 +215,12 @@ func TestIndexes(t *testing.T) {
 }
 
 func TestCreateIndex(t *testing.T) {
-	require := require.New(t)
-	e, idxReg := NewEngine(t)
-
 	tmpDir, err := ioutil.TempDir(os.TempDir(), "pilosa-test")
 	require.NoError(err)
-
 	require.NoError(os.MkdirAll(tmpDir, 0644))
-	idxReg.RegisterIndexDriver(pilosa.NewDriver(tmpDir))
+
+	require := require.New(t)
+	e, idxReg := enginetest.NewEngine(t, newPilosaHarness(tmpDir))
 
 	_, iter, err := e.Query(enginetest.NewCtx(idxReg), "CREATE INDEX myidx USING pilosa ON mytable (i)")
 	require.NoError(err)
