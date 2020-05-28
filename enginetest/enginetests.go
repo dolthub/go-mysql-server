@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"vitess.io/vitess/go/sqltypes"
 )
 
 // Tests a variety of queries against databases and tables provided by the given harness.
@@ -437,6 +438,120 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 		})
 	}
 }
+
+func TestCreateTable(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	e, idxReg := NewEngine(t, harness)
+
+	TestQuery(t, NewCtx(idxReg), e,
+		"CREATE TABLE t1(a INTEGER, b TEXT, c DATE, "+
+				"d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, "+
+				"b1 BOOL, b2 BOOLEAN NOT NULL, g DATETIME, h CHAR(40))",
+		[]sql.Row(nil),
+	)
+
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	ctx := NewCtx(idxReg)
+	testTable, ok, err := db.GetTableInsensitive(ctx, "t1")
+	require.NoError(err)
+	require.True(ok)
+
+	s := sql.Schema{
+		{Name: "a", Type: sql.Int32, Nullable: true, Source: "t1"},
+		{Name: "b", Type: sql.Text, Nullable: true, Source: "t1"},
+		{Name: "c", Type: sql.Date, Nullable: true, Source: "t1"},
+		{Name: "d", Type: sql.Timestamp, Nullable: true, Source: "t1"},
+		{Name: "e", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "t1"},
+		{Name: "f", Type: sql.Blob, Source: "t1"},
+		{Name: "b1", Type: sql.Boolean, Nullable: true, Source: "t1"},
+		{Name: "b2", Type: sql.Boolean, Source: "t1"},
+		{Name: "g", Type: sql.Datetime, Nullable: true, Source: "t1"},
+		{Name: "h", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 40), Nullable: true, Source: "t1"},
+	}
+
+	require.Equal(s, testTable.Schema())
+
+	TestQuery(t, NewCtx(idxReg), e,
+		"CREATE TABLE t2 (a INTEGER NOT NULL PRIMARY KEY, "+
+				"b VARCHAR(10) NOT NULL)",
+		[]sql.Row(nil),
+	)
+
+	db, err = e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	testTable, ok, err = db.GetTableInsensitive(ctx, "t2")
+	require.NoError(err)
+	require.True(ok)
+
+	s = sql.Schema{
+		{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t2"},
+		{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: false, Source: "t2"},
+	}
+
+	require.Equal(s, testTable.Schema())
+
+	TestQuery(t, NewCtx(idxReg), e,
+		"CREATE TABLE t3(a INTEGER NOT NULL,"+
+				"b TEXT NOT NULL,"+
+				"c bool, primary key (a,b))",
+		[]sql.Row(nil),
+	)
+
+	db, err = e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	testTable, ok, err = db.GetTableInsensitive(ctx, "t3")
+	require.NoError(err)
+	require.True(ok)
+
+	s = sql.Schema{
+		{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t3"},
+		{Name: "b", Type: sql.Text, Nullable: false, PrimaryKey: true, Source: "t3"},
+		{Name: "c", Type: sql.Boolean, Nullable: true, Source: "t3"},
+	}
+
+	require.Equal(s, testTable.Schema())
+
+	TestQuery(t, NewCtx(idxReg), e,
+		"CREATE TABLE t4(a INTEGER,"+
+				"b TEXT NOT NULL COMMENT 'comment',"+
+				"c bool, primary key (a))",
+		[]sql.Row(nil),
+	)
+
+	db, err = e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	testTable, ok, err = db.GetTableInsensitive(ctx, "t4")
+	require.NoError(err)
+	require.True(ok)
+
+	s = sql.Schema{
+		{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t4"},
+		{Name: "b", Type: sql.Text, Nullable: false, PrimaryKey: false, Source: "t4", Comment: "comment"},
+		{Name: "c", Type: sql.Boolean, Nullable: true, Source: "t4"},
+	}
+
+	require.Equal(s, testTable.Schema())
+
+	TestQuery(t, NewCtx(idxReg), e,
+		"CREATE TABLE IF NOT EXISTS t4(a INTEGER,"+
+				"b TEXT NOT NULL,"+
+				"c bool, primary key (a))",
+		[]sql.Row(nil),
+	)
+
+	_, _, err = e.Query(NewCtx(idxReg), "CREATE TABLE t4(a INTEGER,"+
+			"b TEXT NOT NULL,"+
+			"c bool, primary key (a))")
+	require.Error(err)
+	require.True(sql.ErrTableAlreadyExists.Is(err))
+}
+
 
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
