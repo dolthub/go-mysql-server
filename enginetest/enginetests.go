@@ -696,6 +696,103 @@ func TestRenameColumn(t *testing.T,  harness Harness) {
 	require.True(plan.ErrColumnNotFound.Is(err))
 }
 
+func TestAddColumn(t *testing.T, harness Harness) {
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	require := require.New(t)
+
+	e, idxReg := NewEngine(t, harness)
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	TestQuery(t, NewCtx(idxReg), e,
+		"ALTER TABLE mytable ADD COLUMN i2 INT COMMENT 'hello' default 42",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
+	}, tbl.Schema())
+
+	TestQuery(t, NewCtx(idxReg), e,
+		"SELECT * FROM mytable ORDER BY i",
+		[]sql.Row{
+			sql.NewRow(int64(1), "first row", int32(42)),
+			sql.NewRow(int64(2), "second row", int32(42)),
+			sql.NewRow(int64(3), "third row", int32(42)),
+		},
+	)
+
+	TestQuery(t, NewCtx(idxReg), e,
+		"ALTER TABLE mytable ADD COLUMN s2 TEXT COMMENT 'hello' AFTER i",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
+	}, tbl.Schema())
+
+	TestQuery(t, NewCtx(idxReg), e,
+		"SELECT * FROM mytable ORDER BY i",
+		[]sql.Row{
+			sql.NewRow(int64(1), nil, "first row", int32(42)),
+			sql.NewRow(int64(2), nil, "second row", int32(42)),
+			sql.NewRow(int64(3), nil, "third row", int32(42)),
+		},
+	)
+
+	TestQuery(t, NewCtx(idxReg), e,
+		"ALTER TABLE mytable ADD COLUMN s3 TEXT COMMENT 'hello' default 'yay' FIRST",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "s3", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true, Default: "yay"},
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
+	}, tbl.Schema())
+
+	TestQuery(t, NewCtx(idxReg), e,
+		"SELECT * FROM mytable ORDER BY i",
+		[]sql.Row{
+			sql.NewRow("yay", int64(1), nil, "first row", int32(42)),
+			sql.NewRow("yay", int64(2), nil, "second row", int32(42)),
+			sql.NewRow("yay", int64(3), nil, "third row", int32(42)),
+		},
+	)
+
+	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE not_exist ADD COLUMN i2 INT COMMENT 'hello'")
+	require.Error(err)
+	require.True(sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE mytable ADD COLUMN b BIGINT COMMENT 'ok' AFTER not_exist")
+	require.Error(err)
+	require.True(plan.ErrColumnNotFound.Is(err))
+
+	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE mytable ADD COLUMN b INT NOT NULL")
+	require.Error(err)
+	require.True(plan.ErrNullDefault.Is(err))
+
+	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE mytable ADD COLUMN b INT NOT NULL DEFAULT 'yes'")
+	require.Error(err)
+	require.True(plan.ErrIncompatibleDefaultType.Is(err))
+}
+
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 
