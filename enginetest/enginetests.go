@@ -327,7 +327,7 @@ func TestInsertInto(t *testing.T, harness Harness) {
 	for _, insertion := range InsertQueries {
 		e, idxReg := NewEngine(t, harness)
 		ctx := NewCtx(idxReg)
-		TestQuery(t, ctx, e, insertion.InsertQuery, insertion.ExpectedInsert)
+		TestQuery(t, ctx, e, insertion.WriteQuery, insertion.ExpectedWriteResult)
 		TestQuery(t, ctx, e, insertion.SelectQuery, insertion.ExpectedSelect)
 	}
 }
@@ -346,7 +346,7 @@ func TestReplaceInto(t *testing.T, harness Harness) {
 	for _, insertion := range ReplaceQueries {
 		e, idxReg := NewEngine(t, harness)
 		ctx := NewCtx(idxReg)
-		TestQuery(t, ctx, e, insertion.InsertQuery, insertion.ExpectedInsert)
+		TestQuery(t, ctx, e, insertion.WriteQuery, insertion.ExpectedWriteResult)
 		TestQuery(t, ctx, e, insertion.SelectQuery, insertion.ExpectedSelect)
 	}
 }

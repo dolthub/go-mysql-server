@@ -19,14 +19,7 @@ import (
 	"math"
 )
 
-type InsertQueryTest struct {
-	InsertQuery    string
-	ExpectedInsert []sql.Row
-	SelectQuery    string
-	ExpectedSelect []sql.Row
-}
-
-var InsertQueries = []InsertQueryTest{
+var InsertQueries = []WriteQueryTest{
 	{
 		"INSERT INTO mytable (s, i) VALUES ('x', 999);",
 		[]sql.Row{{sql.NewOkResult(1)}},
@@ -234,13 +227,6 @@ var InsertQueries = []InsertQueryTest{
 			{int64(11), "third row new"},
 		},
 	},
-}
-
-// GenericErrorQueryTest is a query test that is used to assert an error occurs for some query, without specifying what
-// the error was.
-type GenericErrorQueryTest struct {
-	Name string
-	Query string
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{

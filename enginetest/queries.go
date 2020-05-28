@@ -2785,3 +2785,20 @@ var errorQueries = []QueryErrorTest{
 		ExpectedErr: analyzer.ErrMisusedAlias,
 	},
 }
+
+// WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to
+// validate the results.
+type WriteQueryTest struct {
+	WriteQuery          string
+	ExpectedWriteResult []sql.Row
+	SelectQuery         string
+	ExpectedSelect      []sql.Row
+}
+
+// GenericErrorQueryTest is a query test that is used to assert an error occurs for some query, without specifying what
+// the error was.
+type GenericErrorQueryTest struct {
+	Name  string
+	Query string
+}
+

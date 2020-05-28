@@ -19,7 +19,7 @@ import (
 	"math"
 )
 
-var ReplaceQueries = []InsertQueryTest{
+var ReplaceQueries = []WriteQueryTest{
 	{
 		"REPLACE INTO mytable VALUES (1, 'first row');",
 		[]sql.Row{{sql.NewOkResult(2)}},
