@@ -94,6 +94,10 @@ func TestOrderByGroupBy(t *testing.T) {
 	enginetest.TestOrderByGroupBy(t, newDefaultMemoryHarness())
 }
 
+func TestAmbiguousColumnResolution(t *testing.T) {
+	enginetest.TestAmbiguousColumnResolution(t, newDefaultMemoryHarness())
+}
+
 func TestInsertInto(t *testing.T) {
 	enginetest.TestInsertInto(t, newDefaultMemoryHarness())
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -307,6 +308,64 @@ func TestColumnAliases(t *testing.T, harness Harness) {
 		})
 	}
 }
+
+func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	db := harness.NewDatabase("mydb")
+	table := harness.NewTable(db, "foo", sql.Schema{
+		{Name: "a", Type: sql.Int64, Source: "foo"},
+		{Name: "b", Type: sql.Text, Source: "foo"},
+	})
+
+	InsertRows(
+		t, mustInsertableTable(t, table),
+		sql.NewRow(int64(1), "foo"),
+		sql.NewRow(int64(2), "bar"),
+		sql.NewRow(int64(3), "baz"),
+	)
+
+	table2 := harness.NewTable(db, "bar", sql.Schema{
+		{Name: "b", Type: sql.Text, Source: "bar"},
+		{Name: "c", Type: sql.Int64, Source: "bar"},
+	})
+
+	InsertRows(
+		t, mustInsertableTable(t, table2),
+		sql.NewRow("qux", int64(3)),
+		sql.NewRow("mux", int64(2)),
+		sql.NewRow("pux", int64(1)),
+	)
+
+	e := sqle.NewDefault()
+	e.AddDatabase(db)
+
+	q := `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c`
+	ctx := NewCtx(sql.NewIndexRegistry())
+
+	_, rows, err := e.Query(ctx, q)
+	require.NoError(err)
+
+	var rs [][]interface{}
+	for {
+		row, err := rows.Next()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(err)
+
+		rs = append(rs, row)
+	}
+
+	expected := [][]interface{}{
+		{int64(1), "pux", "foo"},
+		{int64(2), "mux", "bar"},
+		{int64(3), "qux", "baz"},
+	}
+
+	require.Equal(expected, rs)
+}
+
 
 func TestQueryErrors(t *testing.T, harness Harness) {
 	engine, idxReg := NewEngine(t, harness)
@@ -1307,6 +1366,27 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 	require.Equal(0, len(ctx.Session.Warnings()))
 }
 
+func TestUse(t *testing.T, harness Harness) {
+	require := require.New(t)
+	e, idxReg := NewEngine(t, harness)
+
+	ctx := NewCtx(idxReg)
+	require.Equal("mydb", ctx.GetCurrentDatabase())
+
+	_, _, err := e.Query(ctx, "USE bar")
+	require.Error(err)
+
+	require.Equal("mydb", ctx.GetCurrentDatabase())
+
+	_, iter, err := e.Query(ctx, "USE foo")
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+	require.Len(rows, 0)
+
+	require.Equal("foo", ctx.GetCurrentDatabase())
+}
 
 var pid uint64
 

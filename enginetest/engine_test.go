@@ -18,7 +18,6 @@ import (
 	"context"
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"github.com/opentracing/opentracing-go"
-	"io"
 	"strings"
 	"testing"
 
@@ -121,65 +120,6 @@ func TestDescribe(t *testing.T) {
 
 const testNumPartitions = 5
 
-func TestAmbiguousColumnResolution(t *testing.T) {
-	require := require.New(t)
-
-	table := memory.NewPartitionedTable("foo", sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "foo"},
-		{Name: "b", Type: sql.Text, Source: "foo"},
-	}, testNumPartitions)
-
-	enginetest.InsertRows(
-		t, table,
-		sql.NewRow(int64(1), "foo"),
-		sql.NewRow(int64(2), "bar"),
-		sql.NewRow(int64(3), "baz"),
-	)
-
-	table2 := memory.NewPartitionedTable("bar", sql.Schema{
-		{Name: "b", Type: sql.Text, Source: "bar"},
-		{Name: "c", Type: sql.Int64, Source: "bar"},
-	}, testNumPartitions)
-	enginetest.InsertRows(
-		t, table2,
-		sql.NewRow("qux", int64(3)),
-		sql.NewRow("mux", int64(2)),
-		sql.NewRow("pux", int64(1)),
-	)
-
-	db := memory.NewDatabase("mydb")
-	db.AddTable("foo", table)
-	db.AddTable("bar", table2)
-
-	e := sqle.NewDefault()
-	e.AddDatabase(db)
-
-	q := `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c`
-	ctx := enginetest.NewCtx(sql.NewIndexRegistry())
-
-	_, rows, err := e.Query(ctx, q)
-	require.NoError(err)
-
-	var rs [][]interface{}
-	for {
-		row, err := rows.Next()
-		if err == io.EOF {
-			break
-		}
-		require.NoError(err)
-
-		rs = append(rs, row)
-	}
-
-	expected := [][]interface{}{
-		{int64(1), "pux", "foo"},
-		{int64(2), "mux", "bar"},
-		{int64(3), "qux", "baz"},
-	}
-
-	require.Equal(expected, rs)
-}
-
 func testQuery(t *testing.T, e *sqle.Engine, idxReg *sql.IndexRegistry, q string, expected []sql.Row) {
 	enginetest.TestQuery(t, enginetest.NewCtx(idxReg), e, q, expected)
 }
@@ -231,25 +171,7 @@ func TestTracing(t *testing.T) {
 }
 
 func TestUse(t *testing.T) {
-	require := require.New(t)
-	e, idxReg := NewEngine(t)
-
-	ctx := enginetest.NewCtx(idxReg)
-	require.Equal("mydb", ctx.GetCurrentDatabase())
-
-	_, _, err := e.Query(ctx, "USE bar")
-	require.Error(err)
-
-	require.Equal("mydb", ctx.GetCurrentDatabase())
-
-	_, iter, err := e.Query(ctx, "USE foo")
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-	require.Len(rows, 0)
-
-	require.Equal("foo", ctx.GetCurrentDatabase())
+	enginetest.TestUse(t, newDefaultMemoryHarness())
 }
 
 func TestLocks(t *testing.T) {
@@ -306,7 +228,7 @@ func TestRootSpanFinish(t *testing.T) {
 		sql.WithRootSpan(fakeSpan),
 		sql.WithIndexRegistry(idxReg),
 		sql.WithViewRegistry(sql.NewViewRegistry()),
-	).WithCurrentDB("mydb")
+	)
 
 	_, iter, err := e.Query(ctx, "SELECT 1")
 	require.NoError(t, err)
