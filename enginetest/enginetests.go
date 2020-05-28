@@ -552,6 +552,50 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	require.True(sql.ErrTableAlreadyExists.Is(err))
 }
 
+func TestDropTable(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	e, idxReg := NewEngine(t, harness)
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	ctx := NewCtx(idxReg)
+	_, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	require.True(ok)
+
+	TestQuery(t, NewCtx(idxReg), e,
+		"DROP TABLE IF EXISTS mytable, not_exist",
+		[]sql.Row(nil),
+	)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.False(ok)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "othertable")
+	require.NoError(err)
+	require.True(ok)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "tabletest")
+	require.NoError(err)
+	require.True(ok)
+
+	TestQuery(t, NewCtx(idxReg), e,
+		"DROP TABLE IF EXISTS othertable, tabletest",
+		[]sql.Row(nil),
+	)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "othertable")
+	require.NoError(err)
+	require.False(ok)
+
+	_, ok, err = db.GetTableInsensitive(ctx, "tabletest")
+	require.NoError(err)
+	require.False(ok)
+
+	_, _, err = e.Query(NewCtx(idxReg), "DROP TABLE not_exist")
+	require.Error(err)
+}
 
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
