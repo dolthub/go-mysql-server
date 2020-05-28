@@ -399,6 +399,45 @@ func TestDeleteErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func TestViews(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	e, idxReg := NewEngine(t, harness)
+	ctx := NewCtx(idxReg)
+
+	// nested views
+	_, iter, err := e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
+	require.NoError(err)
+	iter.Close()
+
+	for _, testCase := range ViewTests {
+		t.Run(testCase.Query, func(t *testing.T) {
+			TestQuery(t, ctx, e, testCase.Query, testCase.Expected)
+		})
+	}
+}
+
+func TestVersionedViews(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	e, idxReg := NewEngine(t, harness)
+	ctx := NewCtx(idxReg)
+	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
+	require.NoError(err)
+	iter.Close()
+
+	// nested views
+	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
+	require.NoError(err)
+	iter.Close()
+
+	for _, testCase := range VersionedViewTests {
+		t.Run(testCase.Query, func(t *testing.T) {
+			TestQuery(t, ctx, e, testCase.Query, testCase.Expected)
+		})
+	}
+}
+
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 

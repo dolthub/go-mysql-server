@@ -134,6 +134,14 @@ func TestReadOnly(t *testing.T) {
 	enginetest.TestReadOnly(t, newDefaultMemoryHarness())
 }
 
+func TestViews(t *testing.T) {
+	enginetest.TestViews(t, newDefaultMemoryHarness())
+}
+
+func TestVersionedViews(t *testing.T) {
+	enginetest.TestVersionedViews(t, newDefaultMemoryHarness())
+}
+
 func TestNaturalJoin(t *testing.T) {
 	enginetest.TestNaturalJoin(t, newDefaultMemoryHarness())
 }
