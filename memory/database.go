@@ -66,6 +66,12 @@ func (db *HistoryDatabase) GetTableInsensitiveAsOf(ctx *sql.Context, tblName str
 		return table, true, nil
 	}
 
+	// If we have revisions for the named table, but not the named revision, consider it not found.
+	if _, ok := db.Revisions[strings.ToLower(tblName)]; ok {
+		return nil, false, sql.ErrTableNotFound.New(tblName)
+	}
+
+	// Otherwise (this table has no revisions), return it as an unversioned lookup
 	return db.GetTableInsensitive(ctx, tblName)
 }
 

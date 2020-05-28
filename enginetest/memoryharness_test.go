@@ -29,6 +29,12 @@ type memoryHarness struct {
 	nativeIndexSupport     bool
 }
 
+type indexBehaviorTestParams struct {
+	name              string
+	driverInitializer indexDriverInitalizer
+	nativeIndexes     bool
+}
+
 const testNumPartitions = 5
 
 func newMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, indexDriverInitalizer indexDriverInitalizer) *memoryHarness {

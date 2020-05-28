@@ -20,11 +20,10 @@ import (
 	"testing"
 )
 
-type indexBehaviorTestParams struct {
-	name              string
-	driverInitializer indexDriverInitalizer
-	nativeIndexes     bool
-}
+// This file is for validating both the engine itself and the in-memory database implementation in the memory package.
+// Any engine test that relies on the correct implementation of the in-memory database belongs here. All test logic and
+// queries are declared in the exported enginetest package to make them usable by integrators, to validate the engine
+// against their own implementation.
 
 // testQueries tests the given queries on an engine under a variety of circumstances:
 // 1) Partitioned tables / non partitioned tables
