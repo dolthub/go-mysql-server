@@ -190,72 +190,7 @@ func TestDropTable(t *testing.T) {
 }
 
 func TestRenameTable(t *testing.T) {
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
-	require := require.New(t)
-
-	e, idxReg := NewEngine(t)
-	db, err := e.Catalog.Database("mydb")
-	require.NoError(err)
-
-	_, ok, err := db.GetTableInsensitive(ctx, "mytable")
-	require.NoError(err)
-	require.True(ok)
-
-	testQuery(t, e, idxReg,
-		"RENAME TABLE mytable TO newTableName",
-		[]sql.Row(nil),
-	)
-
-	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
-	require.NoError(err)
-	require.False(ok)
-
-	_, ok, err = db.GetTableInsensitive(ctx, "newTableName")
-	require.NoError(err)
-	require.True(ok)
-
-	testQuery(t, e, idxReg,
-		"RENAME TABLE othertable to othertable2, newTableName to mytable",
-		[]sql.Row(nil),
-	)
-
-	_, ok, err = db.GetTableInsensitive(ctx, "othertable")
-	require.NoError(err)
-	require.False(ok)
-
-	_, ok, err = db.GetTableInsensitive(ctx, "othertable2")
-	require.NoError(err)
-	require.True(ok)
-
-	_, ok, err = db.GetTableInsensitive(ctx, "newTableName")
-	require.NoError(err)
-	require.False(ok)
-
-	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
-	require.NoError(err)
-	require.True(ok)
-
-	testQuery(t, e, idxReg,
-		"ALTER TABLE mytable RENAME newTableName",
-		[]sql.Row(nil),
-	)
-
-	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
-	require.NoError(err)
-	require.False(ok)
-
-	_, ok, err = db.GetTableInsensitive(ctx, "newTableName")
-	require.NoError(err)
-	require.True(ok)
-
-
-	_, _, err = e.Query(enginetest.NewCtx(idxReg), "ALTER TABLE not_exist RENAME foo")
-	require.Error(err)
-	require.True(sql.ErrTableNotFound.Is(err))
-
-	_, _, err = e.Query(enginetest.NewCtx(idxReg), "ALTER TABLE typestable RENAME niltable")
-	require.Error(err)
-	require.True(sql.ErrTableAlreadyExists.Is(err))
+	enginetest.TestRenameTable(t, newDefaultMemoryHarness())
 }
 
 func TestRenameColumn(t *testing.T) {
