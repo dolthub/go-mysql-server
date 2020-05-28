@@ -361,6 +361,25 @@ func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func TestUpdate(t *testing.T, harness Harness) {
+	for _, update := range UpdateTests {
+		e, idxReg := NewEngine(t, harness)
+		ctx := NewCtx(idxReg)
+		TestQuery(t, ctx, e, update.WriteQuery, update.ExpectedWriteResult)
+		TestQuery(t, ctx, e, update.SelectQuery, update.ExpectedSelect)
+	}
+}
+
+func TestUpdateErrors(t *testing.T, harness Harness) {
+	for _, expectedFailure := range UpdateErrorTests {
+		t.Run(expectedFailure.Name, func(t *testing.T) {
+			e, idxReg := NewEngine(t, harness)
+			_, _, err := e.Query(NewCtx(idxReg), expectedFailure.Query)
+			require.Error(t, err)
+		})
+	}
+}
+
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 
