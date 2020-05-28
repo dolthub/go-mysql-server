@@ -26,7 +26,6 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
-	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"github.com/liquidata-inc/go-mysql-server/test"
 
 	"github.com/stretchr/testify/require"
@@ -179,59 +178,6 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 	}
 
 	require.Equal(expected, rs)
-}
-
-func TestCreateTable(t *testing.T) {
-	enginetest.TestCreateTable(t, newDefaultMemoryHarness())
-}
-
-func TestDropTable(t *testing.T) {
-	enginetest.TestDropTable(t, newDefaultMemoryHarness())
-}
-
-func TestRenameTable(t *testing.T) {
-	enginetest.TestRenameTable(t, newDefaultMemoryHarness())
-}
-
-func TestRenameColumn(t *testing.T) {
-	enginetest.TestRenameColumn(t, newDefaultMemoryHarness())
-}
-
-func TestAddColumn(t *testing.T) {
-	enginetest.TestAddColumn(t, newDefaultMemoryHarness())
-}
-
-func TestModifyColumn(t *testing.T) {
-	enginetest.TestModifyColumn(t, newDefaultMemoryHarness())
-}
-
-func TestDropColumn(t *testing.T) {
-	require := require.New(t)
-
-	e, idxReg := NewEngine(t)
-	ctx := enginetest.NewCtx(idxReg)
-	db, err := e.Catalog.Database("mydb")
-	require.NoError(err)
-
-	testQuery(t, e, idxReg,
-		"ALTER TABLE mytable DROP COLUMN i",
-		[]sql.Row(nil),
-	)
-
-	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
-		{Name: "s", Type: sql.Text, Source: "mytable"},
-	}, tbl.Schema())
-
-	_, _, err = e.Query(enginetest.NewCtx(idxReg), "ALTER TABLE not_exist DROP COLUMN s")
-	require.Error(err)
-	require.True(sql.ErrTableNotFound.Is(err))
-
-	_, _, err = e.Query(enginetest.NewCtx(idxReg), "ALTER TABLE mytable DROP COLUMN i")
-	require.Error(err)
-	require.True(plan.ErrColumnNotFound.Is(err))
 }
 
 func testQuery(t *testing.T, e *sqle.Engine, idxReg *sql.IndexRegistry, q string, expected []sql.Row) {

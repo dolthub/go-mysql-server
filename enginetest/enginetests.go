@@ -853,6 +853,34 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.True(sql.ErrTableNotFound.Is(err))
 }
 
+func TestDropColumn(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	e, idxReg := NewEngine(t, harness)
+	ctx := NewCtx(idxReg)
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	TestQuery(t, NewCtx(idxReg), e,
+		"ALTER TABLE mytable DROP COLUMN i",
+		[]sql.Row(nil),
+	)
+
+	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "s", Type: sql.Text, Source: "mytable"},
+	}, tbl.Schema())
+
+	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE not_exist DROP COLUMN s")
+	require.Error(err)
+	require.True(sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE mytable DROP COLUMN i")
+	require.Error(err)
+	require.True(plan.ErrColumnNotFound.Is(err))
+}
 
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)

@@ -126,6 +126,34 @@ func TestDeleteFromErrors(t *testing.T) {
 	enginetest.TestDeleteErrors(t, newDefaultMemoryHarness())
 }
 
+func TestCreateTable(t *testing.T) {
+	enginetest.TestCreateTable(t, newDefaultMemoryHarness())
+}
+
+func TestDropTable(t *testing.T) {
+	enginetest.TestDropTable(t, newDefaultMemoryHarness())
+}
+
+func TestRenameTable(t *testing.T) {
+	enginetest.TestRenameTable(t, newDefaultMemoryHarness())
+}
+
+func TestRenameColumn(t *testing.T) {
+	enginetest.TestRenameColumn(t, newDefaultMemoryHarness())
+}
+
+func TestAddColumn(t *testing.T) {
+	enginetest.TestAddColumn(t, newDefaultMemoryHarness())
+}
+
+func TestModifyColumn(t *testing.T) {
+	enginetest.TestModifyColumn(t, newDefaultMemoryHarness())
+}
+
+func TestDropColumn(t *testing.T) {
+	enginetest.TestDropColumn(t, newDefaultMemoryHarness())
+}
+
 func TestExplode(t *testing.T) {
 	enginetest.TestExplode(t, newDefaultMemoryHarness())
 }
