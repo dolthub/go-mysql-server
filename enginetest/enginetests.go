@@ -380,6 +380,25 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func TestDelete(t *testing.T, harness Harness) {
+	for _, delete := range DeleteTests {
+		e, idxReg := NewEngine(t, harness)
+		ctx := NewCtx(idxReg)
+		TestQuery(t, ctx, e, delete.WriteQuery, delete.ExpectedWriteResult)
+		TestQuery(t, ctx, e, delete.SelectQuery, delete.ExpectedSelect)
+	}
+}
+
+func TestDeleteErrors(t *testing.T, harness Harness) {
+	for _, expectedFailure := range DeleteErrorTests {
+		t.Run(expectedFailure.Name, func(t *testing.T) {
+			e, idxReg := NewEngine(t, harness)
+			_, _, err := e.Query(NewCtx(idxReg), expectedFailure.Query)
+			require.Error(t, err)
+		})
+	}
+}
+
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 

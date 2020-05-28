@@ -82,16 +82,16 @@ func TestQueryErrors(t *testing.T) {
 	enginetest.TestQueryErrors(t, newDefaultMemoryHarness())
 }
 
+func TestInfoSchema(t *testing.T) {
+	enginetest.TestInfoSchema(t, newDefaultMemoryHarness())
+}
+
 func TestColumnAliases(t *testing.T) {
 	enginetest.TestColumnAliases(t, newDefaultMemoryHarness())
 }
 
 func TestOrderByGroupBy(t *testing.T) {
 	enginetest.TestOrderByGroupBy(t, newDefaultMemoryHarness())
-}
-
-func TestInfoSchema(t *testing.T) {
-	enginetest.TestInfoSchema(t, newDefaultMemoryHarness())
 }
 
 func TestInsertInto(t *testing.T) {
@@ -116,6 +116,14 @@ func TestUpdate(t *testing.T) {
 
 func TestUpdateErrors(t *testing.T) {
 	enginetest.TestUpdateErrors(t, newDefaultMemoryHarness())
+}
+
+func TestDeleteFrom(t *testing.T) {
+	enginetest.TestDelete(t, newDefaultMemoryHarness())
+}
+
+func TestDeleteFromErrors(t *testing.T) {
+	enginetest.TestDeleteErrors(t, newDefaultMemoryHarness())
 }
 
 func TestReadOnly(t *testing.T) {
