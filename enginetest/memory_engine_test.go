@@ -126,6 +126,10 @@ func TestDeleteFromErrors(t *testing.T) {
 	enginetest.TestDeleteErrors(t, newDefaultMemoryHarness())
 }
 
+func TestExplode(t *testing.T) {
+	enginetest.TestExplode(t, newDefaultMemoryHarness())
+}
+
 func TestReadOnly(t *testing.T) {
 	enginetest.TestReadOnly(t, newDefaultMemoryHarness())
 }

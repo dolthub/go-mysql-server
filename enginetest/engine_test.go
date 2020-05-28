@@ -28,7 +28,6 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
-	"github.com/liquidata-inc/go-mysql-server/sql/parse"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"github.com/liquidata-inc/go-mysql-server/test"
 
@@ -993,28 +992,6 @@ func TestLocks(t *testing.T) {
 	require.Equal(1, t2.unlocks)
 }
 
-func TestDescribeNoPruneColumns(t *testing.T) {
-	require := require.New(t)
-	e, idxReg := NewEngine(t)
-	ctx := enginetest.NewCtx(idxReg)
-	query := `DESCRIBE FORMAT=TREE SELECT SUBSTRING(s, 1, 1) AS foo, s, i FROM mytable WHERE foo = 'f'`
-	parsed, err := parse.Parse(ctx, query)
-	require.NoError(err)
-	result, err := e.Analyzer.Analyze(ctx, parsed)
-	require.NoError(err)
-
-	qp, ok := result.(*plan.QueryProcess)
-	require.True(ok)
-
-	d, ok := qp.Child.(*plan.DescribeQuery)
-	require.True(ok)
-
-	p, ok := d.Child.(*plan.Project)
-	require.True(ok)
-
-	require.Len(p.Schema(), 3)
-}
-
 type mockSpan struct {
 	opentracing.Span
 	finished bool
@@ -1041,51 +1018,6 @@ func TestRootSpanFinish(t *testing.T) {
 	require.NoError(t, err)
 
 	require.True(t, fakeSpan.finished)
-}
-
-var ExplodeQueries = []enginetest.QueryTest{
-	{
-		`SELECT a, EXPLODE(b), c FROM t`,
-		[]sql.Row{
-			{int64(1), "a", "first"},
-			{int64(1), "b", "first"},
-			{int64(2), "c", "second"},
-			{int64(2), "d", "second"},
-			{int64(3), "e", "third"},
-			{int64(3), "f", "third"},
-		},
-	},
-	{
-		`SELECT a, EXPLODE(b) AS x, c FROM t`,
-		[]sql.Row{
-			{int64(1), "a", "first"},
-			{int64(1), "b", "first"},
-			{int64(2), "c", "second"},
-			{int64(2), "d", "second"},
-			{int64(3), "e", "third"},
-			{int64(3), "f", "third"},
-		},
-	},
-	{
-		`SELECT EXPLODE(SPLIT(c, "")) FROM t LIMIT 5`,
-		[]sql.Row{
-			{"f"},
-			{"i"},
-			{"r"},
-			{"s"},
-			{"t"},
-		},
-	},
-	{
-		`SELECT a, EXPLODE(b) AS x, c FROM t WHERE x = 'e'`,
-		[]sql.Row{
-			{int64(3), "e", "third"},
-		},
-	},
-}
-
-func TestExplode(t *testing.T) {
-	enginetest.TestExplode(t, newDefaultMemoryHarness())
 }
 
 type lockableTable struct {
