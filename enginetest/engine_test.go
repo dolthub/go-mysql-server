@@ -202,63 +202,7 @@ func TestAddColumn(t *testing.T) {
 }
 
 func TestModifyColumn(t *testing.T) {
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
-	require := require.New(t)
-
-	e, idxReg := NewEngine(t)
-	db, err := e.Catalog.Database("mydb")
-	require.NoError(err)
-
-	testQuery(t, e, idxReg,
-		"ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'",
-		[]sql.Row(nil),
-	)
-
-	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
-		{Name: "i", Type: sql.Text, Source: "mytable", Comment:"modified"},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
-	}, tbl.Schema())
-
-	testQuery(t, e, idxReg,
-		"ALTER TABLE mytable MODIFY COLUMN i TINYINT NULL COMMENT 'yes' AFTER s",
-		[]sql.Row(nil),
-	)
-
-	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
-		{Name: "s", Type: sql.Text, Source: "mytable"},
-		{Name: "i", Type: sql.Int8, Source: "mytable", Comment:"yes", Nullable: true},
-	}, tbl.Schema())
-
-	testQuery(t, e, idxReg,
-		"ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST",
-		[]sql.Row(nil),
-	)
-
-	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable", Comment:"ok"},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
-	}, tbl.Schema())
-
-	_, _, err = e.Query(enginetest.NewCtx(idxReg), "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST")
-	require.Error(err)
-	require.True(plan.ErrColumnNotFound.Is(err))
-
-	_, _, err = e.Query(enginetest.NewCtx(idxReg), "ALTER TABLE mytable MODIFY i BIGINT NOT NULL COMMENT 'ok' AFTER not_exist")
-	require.Error(err)
-	require.True(plan.ErrColumnNotFound.Is(err))
-
-	_, _, err = e.Query(enginetest.NewCtx(idxReg), "ALTER TABLE not_exist MODIFY COLUMN i INT NOT NULL COMMENT 'hello'")
-	require.Error(err)
-	require.True(sql.ErrTableNotFound.Is(err))
+	enginetest.TestModifyColumn(t, newDefaultMemoryHarness())
 }
 
 func TestDropColumn(t *testing.T) {
