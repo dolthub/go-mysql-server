@@ -32,18 +32,18 @@ import (
 func TestQueries(t *testing.T) {
 	numPartitionsVals := []int{
 		1,
-		testNumPartitions,
+		// testNumPartitions,
 	}
 	indexBehaviors := []*indexBehaviorTestParams{
 		{"none", nil, false},
-		{"unmergableIndexes", unmergableIndexDriver, false},
-		{"mergableIndexes", mergableIndexDriver, false},
-		{"nativeIndexes", nil, true},
-		{"nativeAndMergable", mergableIndexDriver, true},
+		// {"unmergableIndexes", unmergableIndexDriver, false},
+		// {"mergableIndexes", mergableIndexDriver, false},
+		// {"nativeIndexes", nil, true},
+		// {"nativeAndMergable", mergableIndexDriver, true},
 	}
 	parallelVals := []int{
 		1,
-		2,
+		// 2,
 	}
 
 	for _, numPartitions := range numPartitionsVals {

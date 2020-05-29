@@ -192,17 +192,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		InsertRows(
 			t, mustInsertableTable(t, table),
 			sql.NewRow(int64(1), nil, nil, nil),
-			sql.NewRow(int64(2), nil, true, nil),
+			sql.NewRow(int64(2), int64(2), true, nil),
 			sql.NewRow(int64(3), nil, false, nil),
-			sql.NewRow(int64(4), nil, nil, float64(4)),
+			sql.NewRow(int64(4), int64(4), nil, float64(4)),
 			sql.NewRow(int64(5), nil, true, float64(5)),
-			sql.NewRow(int64(6), nil, false, float64(6)),
-			sql.NewRow(int64(7), int64(7), nil, nil),
-			sql.NewRow(int64(8), int64(8), true, nil),
-			sql.NewRow(int64(9), int64(9), false, nil),
-			sql.NewRow(int64(10), int64(10), nil, float64(10)),
-			sql.NewRow(int64(11), int64(11), true, float64(11)),
-			sql.NewRow(int64(12), int64(12), false, float64(12)),
+			sql.NewRow(int64(6), int64(6), false, float64(6)),
 		)
 	}
 
