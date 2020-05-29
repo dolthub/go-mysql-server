@@ -34,7 +34,6 @@ type CreateIndex struct {
 	Config          map[string]string
 	Catalog         *sql.Catalog
 	CurrentDatabase string
-	Async           bool
 }
 
 // NewCreateIndex creates a new CreateIndex node.
@@ -45,14 +44,12 @@ func NewCreateIndex(
 	driver string,
 	config map[string]string,
 ) *CreateIndex {
-	async, ok := config["async"]
 	return &CreateIndex{
 		Name:   name,
 		Table:  table,
 		Exprs:  exprs,
 		Driver: driver,
 		Config: config,
-		Async:  async != "false" || !ok,
 	}
 }
 
@@ -175,13 +172,9 @@ func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		c.Catalog.ProcessList.Done(ctx.Pid())
 	}
 
-	log.WithField("async", c.Async).Info("starting to save the index")
+	log.Info("starting to save the index")
 
-	if c.Async {
-		go createIndex()
-	} else {
-		createIndex()
-	}
+	createIndex()
 
 	return sql.RowsToRowIter(), nil
 }
@@ -280,11 +273,6 @@ func (c *CreateIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	nc := *c
 	nc.Table = children[0]
 	return &nc, nil
-}
-
-// IsAsync implements the AsyncNode interface.
-func (c *CreateIndex) IsAsync() bool {
-	return c.Async
 }
 
 // getColumnsAndPrepareExpressions extracts the unique columns required by all

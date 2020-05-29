@@ -42,8 +42,8 @@ func (p *pilosaHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return pilosa.NewDriver(p.tmpDir)
 }
 
-// TODO: we should run the entire enginetest suite against this harness, not just the tests below. But the integration
-//  with pilosa is broken at the moment.
+// TODO: we should run the entire enginetest suite against this harness, not just the tests below. But that requires
+//  committing to support pilosa integration more seriously than we currently plan to. See note in pilosa/driver.go.
 func newPilosaHarness(tmpDir string) *pilosaHarness {
 	return &pilosaHarness{
 		memoryHarness: *newDefaultMemoryHarness(),
@@ -52,8 +52,6 @@ func newPilosaHarness(tmpDir string) *pilosaHarness {
 }
 
 func TestIndexes(t *testing.T) {
-	t.Skip("Pilosa integration is currently broken.")
-
 	tmpDir, err := ioutil.TempDir(os.TempDir(), "pilosa-test")
 	require.NoError(t, err)
 	require.NoError(t, os.MkdirAll(tmpDir, 0644))
@@ -219,8 +217,6 @@ func TestIndexes(t *testing.T) {
 }
 
 func TestCreateIndex(t *testing.T) {
-	t.Skip("Pilosa integration is currently broken.")
-
 	require := require.New(t)
 
 	tmpDir, err := ioutil.TempDir(os.TempDir(), "pilosa-test")
