@@ -15,15 +15,11 @@ func TestResolveTables(t *testing.T) {
 	f := getRule("resolve_tables")
 
 	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
-	db := memory.NewDatabase("mydb")
-	db.AddTable("mytable", table)
-
-	versionedDb := memory.NewHistoryDatabase(map[interface{}]*memory.Database{
-		"2019-01-01": db,
-	}, db)
+	db := memory.NewHistoryDatabase("mydb")
+	db.AddTableAsOf("mytable", table, "2019-01-01")
 
 	catalog := sql.NewCatalog()
-	catalog.AddDatabase(versionedDb)
+	catalog.AddDatabase(db)
 
 	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
 	ctx := sql.NewEmptyContext().WithCurrentDB("mydb")

@@ -43,7 +43,7 @@ func TestSleep(t *testing.T) {
 				require.Equal(tt.expected, v)
 
 				waited := t2.Sub(t1).Seconds()
-				require.InDelta(waited, tt.waitTime, 0.1)
+				require.InDelta(waited, tt.waitTime, 0.2)
 			}
 		})
 	}

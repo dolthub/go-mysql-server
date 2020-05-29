@@ -447,7 +447,7 @@ type TableCreator interface {
 type ViewCreator interface {
 	// Notifies the database that a view with the given name and the given
 	// select statement as been created.
-	CreateView(ctx *Context, name string, selectStatment string) error
+	CreateView(ctx *Context, name string, selectStatement string) error
 }
 
 // TableDropper should be implemented by databases that can drop tables.

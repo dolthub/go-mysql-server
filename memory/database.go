@@ -1,8 +1,8 @@
 package memory
 
 import (
-	"fmt"
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"strings"
 )
 
 // Database is an in-memory database.
@@ -49,37 +49,54 @@ func (d *Database) GetTableNames(ctx *sql.Context) ([]string, error) {
 }
 
 // HistoryDatabase is a test-only VersionedDatabase implementation. It only supports exact lookups, not AS OF queries
-// between two revisions.
+// between two revisions. It's constructed just like its non-versioned sibling, but it can receive updates to particular
+// tables via the AddTableAsOf method. Consecutive calls to AddTableAsOf with the same table must install new versions
+// of the named table each time, with ascending version identifiers, for this to work.
 type HistoryDatabase struct {
 	Database
-	Revisions map[interface{}]*Database
+	Revisions map[string]map[interface{}]sql.Table
+	currRevision interface{}
 }
 
 var _ sql.VersionedDatabase = (*HistoryDatabase)(nil)
 
 func (db *HistoryDatabase) GetTableInsensitiveAsOf(ctx *sql.Context, tblName string, time interface{}) (sql.Table, bool, error) {
-	database := db.Revisions[time]
-	if database == nil {
-		return nil, false, fmt.Errorf("No database revision for time %v", time)
+	table, ok := db.Revisions[strings.ToLower(tblName)][time]
+	if ok {
+		return table, true, nil
 	}
 
-	return database.GetTableInsensitive(ctx, tblName)
+	// If we have revisions for the named table, but not the named revision, consider it not found.
+	if _, ok := db.Revisions[strings.ToLower(tblName)]; ok {
+		return nil, false, sql.ErrTableNotFound.New(tblName)
+	}
+
+	// Otherwise (this table has no revisions), return it as an unversioned lookup
+	return db.GetTableInsensitive(ctx, tblName)
 }
 
 func (db *HistoryDatabase) GetTableNamesAsOf(ctx *sql.Context, time interface{}) ([]string, error) {
-	database := db.Revisions[time]
-	if database == nil {
-		return nil, fmt.Errorf("No database revision for time %v", time)
-	}
-
-	return database.GetTableNames(ctx)
+	// TODO: this can't make any queries fail (only used for error messages on table lookup failure), but would be nice
+	//  to support better.
+	return db.GetTableNames(ctx)
 }
 
-func NewHistoryDatabase(revisions map[interface{}]*Database, current *Database) *HistoryDatabase {
+func NewHistoryDatabase(name string) *HistoryDatabase {
 	return &HistoryDatabase{
-		Database:  *current,
-		Revisions: revisions,
+		Database:  *NewDatabase(name),
+		Revisions: make(map[string]map[interface{}]sql.Table),
 	}
+}
+
+// Adds a table with an asOf revision key. The table given becomes the current version for the name given.
+func (db *HistoryDatabase) AddTableAsOf(name string, t sql.Table, asOf interface{}) {
+	// TODO: this won't handle table names that vary only in case
+	if _, ok := db.Revisions[strings.ToLower(name)]; !ok {
+		db.Revisions[strings.ToLower(name)] = make(map[interface{}]sql.Table)
+	}
+
+	db.Revisions[strings.ToLower(name)][asOf] = t
+	db.tables[name] = t
 }
 
 // AddTable adds a new table to the database.

@@ -99,8 +99,12 @@ var (
 	BitmapHistogram = discard.NewHistogram()
 )
 
-// NewDriver returns a new instance of pilosa.Driver
-// which satisfies sql.IndexDriver interface
+// NewDriver returns a new instance of pilosa.Driver which satisfies sql.IndexDriver interface
+// PLEASE NOTE: pilosa integration is not currently well supported, and the project maintainers are not currently
+// prioritizing its development. Rather, native indexes implemented directly by integrators are the priority for
+// development moving forward. The pilosa driver is believed to work as designed, but we don't have as much confidence
+// in it as other parts of the engine. Getting better testing would be a good separable project for someone outside the
+// core team to pick up if they need better support for pilosa.
 func NewDriver(root string) *Driver {
 	return &Driver{
 		root: root,
