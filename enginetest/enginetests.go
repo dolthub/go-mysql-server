@@ -743,8 +743,8 @@ func TestRenameColumn(t *testing.T,  harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "i2", Type: sql.Int64, Source: "mytable"},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i2", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
 	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE not_exist RENAME COLUMN foo TO bar")
@@ -773,8 +773,8 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable"},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
 	}, tbl.Schema())
 
@@ -796,9 +796,9 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
 	}, tbl.Schema())
 
@@ -821,9 +821,9 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "s3", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true, Default: "yay"},
-		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
 	}, tbl.Schema())
 
@@ -871,7 +871,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "i", Type: sql.Text, Source: "mytable", Comment:"modified"},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
 	TestQuery(t, NewCtx(idxReg), e,
@@ -883,7 +883,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 		{Name: "i", Type: sql.Int8, Source: "mytable", Comment:"yes", Nullable: true},
 	}, tbl.Schema())
 
@@ -897,7 +897,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", Comment:"ok"},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
 	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST")
@@ -922,7 +922,7 @@ func TestDropColumn(t *testing.T, harness Harness) {
 	require.NoError(err)
 
 	TestQuery(t, NewCtx(idxReg), e,
-		"ALTER TABLE mytable DROP COLUMN i",
+		"ALTER TABLE mytable DROP COLUMN s",
 		[]sql.Row(nil),
 	)
 
@@ -930,14 +930,14 @@ func TestDropColumn(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 	}, tbl.Schema())
 
 	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE not_exist DROP COLUMN s")
 	require.Error(err)
 	require.True(sql.ErrTableNotFound.Is(err))
 
-	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE mytable DROP COLUMN i")
+	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE mytable DROP COLUMN s")
 	require.Error(err)
 	require.True(plan.ErrColumnNotFound.Is(err))
 }
