@@ -21,11 +21,12 @@ type Table struct {
 
 	insert int
 
-	filters    []sql.Expression
-	projection []string
-	columns    []int
-	lookup     sql.IndexLookup
-	indexes    map[string]sql.Index
+	filters          []sql.Expression
+	projection       []string
+	columns          []int
+	lookup           sql.IndexLookup
+	indexes          map[string]sql.Index
+	pkIndexesEnabled bool
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -564,13 +565,41 @@ func (t *Table) newColumnIndexesAndSchema(colNames []string) ([]int, sql.Schema,
 	return columns, schema, nil
 }
 
+// EnablePrimaryKeyIndexes enables the use of primary key indexes on this table.
+func (t *Table) EnablePrimaryKeyIndexes() {
+	t.pkIndexesEnabled = true
+}
+
 // GetIndexes implements sql.IndexedTable
 func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
-	indexes := make([]sql.Index, len(t.indexes))
-	var i int
+	indexes := make([]sql.Index, 0)
+
+	if t.pkIndexesEnabled {
+		var pkCols []*sql.Column
+		for _, col := range t.schema {
+			if col.PrimaryKey {
+				pkCols = append(pkCols, col)
+			}
+		}
+
+		if len(pkCols) > 0 {
+			exprs := make([]sql.Expression, len(pkCols))
+			for i, column := range pkCols {
+				idx, field := getField(column.Name, t.schema)
+				exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
+			}
+			indexes = append(indexes, &UnmergeableIndex{
+				DB:         "",
+				DriverName: "native",
+				Tbl:        t,
+				TableName:  t.name,
+				Exprs:      exprs,
+			})
+		}
+	}
+
 	for _, index := range t.indexes {
-		indexes[i] = index
-		i++
+		indexes = append(indexes, index)
 	}
 	return indexes, nil
 }

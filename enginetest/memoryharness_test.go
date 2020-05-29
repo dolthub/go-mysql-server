@@ -66,6 +66,9 @@ func (m *memoryHarness) Parallelism() int {
 
 func (m *memoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.Schema, asOf interface{}) sql.Table {
 	table := memory.NewPartitionedTable(name, schema, m.numTablePartitions)
+	if m.nativeIndexSupport {
+		table.EnablePrimaryKeyIndexes()
+	}
 	db.(*memory.HistoryDatabase).AddTableAsOf(name, table, asOf)
 	return table
 }
@@ -83,6 +86,9 @@ func (m *memoryHarness) NewDatabase(name string) sql.Database {
 
 func (m *memoryHarness) NewTable(db sql.Database, name string, schema sql.Schema) sql.Table {
 	table := memory.NewPartitionedTable(name, schema, m.numTablePartitions)
+	if m.nativeIndexSupport {
+		table.EnablePrimaryKeyIndexes()
+	}
 	db.(*memory.HistoryDatabase).AddTable(name, table)
 	return table
 }
