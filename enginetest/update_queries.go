@@ -64,9 +64,9 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		"UPDATE niltable SET b = NULL WHERE f IS NULL;",
-		[]sql.Row{{newUpdateResult(2, 1)}},
-		"SELECT * FROM niltable WHERE f IS NULL;",
-		[]sql.Row{{int64(4), nil, nil}, {nil, nil, nil}},
+		[]sql.Row{{newUpdateResult(3, 2)}},
+		"SELECT i,b FROM niltable WHERE f IS NULL;",
+		[]sql.Row{{int64(1), nil}, {int64(2), nil}, {int64(3), nil}},
 	},
 	{
 		"UPDATE mytable SET s = 'updated' ORDER BY i ASC LIMIT 2;",

@@ -27,10 +27,10 @@ var InsertQueries = []WriteQueryTest{
 		[]sql.Row{{int64(999)}},
 	},
 	{
-		"INSERT INTO niltable (f) VALUES (10.0), (12.0);",
+		"INSERT INTO niltable (i, f) VALUES (10, 10.0), (12, 12.0);",
 		[]sql.Row{{sql.NewOkResult(2)}},
-		"SELECT f FROM niltable WHERE f IN (10.0, 12.0) ORDER BY f;",
-		[]sql.Row{{10.0}, {12.0}},
+		"SELECT i,f FROM niltable WHERE f IN (10.0, 12.0) ORDER BY f;",
+		[]sql.Row{{int64(10), 10.0}, {int64(12), 12.0}},
 	},
 	{
 		"INSERT INTO mytable SET s = 'x', i = 999;",
