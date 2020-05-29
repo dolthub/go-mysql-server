@@ -1124,91 +1124,6 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		`SHOW COLUMNS FROM mytable`,
-		[]sql.Row{
-			{"i", "BIGINT", "NO", "", "", ""},
-			{"s", "TEXT", "NO", "", "", ""},
-		},
-	},
-	{
-		`DESCRIBE mytable`,
-		[]sql.Row{
-			{"i", "BIGINT", "NO", "", "", ""},
-			{"s", "TEXT", "NO", "", "", ""},
-		},
-	},
-	{
-		`DESC mytable`,
-		[]sql.Row{
-			{"i", "BIGINT", "NO", "", "", ""},
-			{"s", "TEXT", "NO", "", "", ""},
-		},
-	},
-	{
-		`SHOW COLUMNS FROM one_pk`,
-		[]sql.Row{
-			{"pk", "TINYINT", "NO", "PRI", "", ""},
-			{"c1", "TINYINT", "NO", "", "", ""},
-			{"c2", "TINYINT", "NO", "", "", ""},
-			{"c3", "TINYINT", "NO", "", "", ""},
-			{"c4", "TINYINT", "NO", "", "", ""},
-			{"c5", "TINYINT", "NO", "", "", ""},
-		},
-	},
-	{
-		`DESCRIBE one_pk`,
-		[]sql.Row{
-			{"pk", "TINYINT", "NO", "PRI", "", ""},
-			{"c1", "TINYINT", "NO", "", "", ""},
-			{"c2", "TINYINT", "NO", "", "", ""},
-			{"c3", "TINYINT", "NO", "", "", ""},
-			{"c4", "TINYINT", "NO", "", "", ""},
-			{"c5", "TINYINT", "NO", "", "", ""},
-		},
-	},
-	{
-		`DESC one_pk`,
-		[]sql.Row{
-			{"pk", "TINYINT", "NO", "PRI", "", ""},
-			{"c1", "TINYINT", "NO", "", "", ""},
-			{"c2", "TINYINT", "NO", "", "", ""},
-			{"c3", "TINYINT", "NO", "", "", ""},
-			{"c4", "TINYINT", "NO", "", "", ""},
-			{"c5", "TINYINT", "NO", "", "", ""},
-		},
-	},
-
-	{
-		`SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
-		[]sql.Row{
-			{"i", "BIGINT", "NO", "", "", ""},
-		},
-	},
-	{
-		`SHOW COLUMNS FROM mytable LIKE 'i'`,
-		[]sql.Row{
-			{"i", "BIGINT", "NO", "", "", ""},
-		},
-	},
-	{
-		`SHOW FULL COLUMNS FROM mytable`,
-		[]sql.Row{
-			{"i", "BIGINT", nil, "NO", "", "", "", "", ""},
-			{"s", "TEXT", "utf8_bin", "NO", "", "", "", "", ""},
-		},
-	},
-	{
-		`SHOW FULL COLUMNS FROM one_pk`,
-		[]sql.Row{
-			{"pk", "TINYINT", nil, "NO", "PRI", "", "", "", ""},
-			{"c1", "TINYINT", nil, "NO", "", "", "", "", ""},
-			{"c2", "TINYINT", nil, "NO", "", "", "", "", ""},
-			{"c3", "TINYINT", nil, "NO", "", "", "", "", ""},
-			{"c4", "TINYINT", nil, "NO", "", "", "", "", ""},
-			{"c5", "TINYINT", nil, "NO", "", "", "", "", "column 5"},
-		},
-	},
-	{
 		`SELECT * FROM foo.other_table`,
 		[]sql.Row{
 			{"a", int32(4)},
@@ -2521,6 +2436,46 @@ var InfoSchemaQueries = []QueryTest{
 			{"niltable"},
 			{"newlinetable"},
 			{"typestable"},
+		},
+	},
+	{
+		`SHOW COLUMNS FROM mytable`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "PRI", "", ""},
+			{"s", "TEXT", "NO", "", "", ""},
+		},
+	},
+	{
+		`DESCRIBE mytable`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "PRI", "", ""},
+			{"s", "TEXT", "NO", "", "", ""},
+		},
+	},
+	{
+		`DESC mytable`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "PRI", "", ""},
+			{"s", "TEXT", "NO", "", "", ""},
+		},
+	},
+	{
+		`SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "PRI", "", ""},
+		},
+	},
+	{
+		`SHOW COLUMNS FROM mytable LIKE 'i'`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "PRI", "", ""},
+		},
+	},
+	{
+		`SHOW FULL COLUMNS FROM mytable`,
+		[]sql.Row{
+			{"i", "BIGINT", nil, "NO", "PRI", "", "", "", ""},
+			{"s", "TEXT", "utf8_bin", "NO", "", "", "", "", "column s"},
 		},
 	},
 	{

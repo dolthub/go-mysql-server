@@ -46,7 +46,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	if includeTable(includedTables, "mytable") {
 		table = harness.NewTable(myDb, "mytable", sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-			{Name: "s", Type: sql.Text, Source: "mytable"},
+			{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 		})
 
 		InsertRows(
@@ -64,7 +64,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "c2", Type: sql.Int8, Source: "one_pk"},
 			{Name: "c3", Type: sql.Int8, Source: "one_pk"},
 			{Name: "c4", Type: sql.Int8, Source: "one_pk"},
-			{Name: "c5", Type: sql.Int8, Source: "one_pk", Comment: "column 5"},
+			{Name: "c5", Type: sql.Int8, Source: "one_pk"},
 		})
 
 		InsertRows(t,
