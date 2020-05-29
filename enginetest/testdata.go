@@ -45,7 +45,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 	if includeTable(includedTables, "mytable") {
 		table = harness.NewTable(myDb, "mytable", sql.Schema{
-			{Name: "i", Type: sql.Int64, Source: "mytable"},
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s", Type: sql.Text, Source: "mytable"},
 		})
 
@@ -99,7 +99,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	if includeTable(includedTables, "othertable") {
 		table = harness.NewTable(myDb, "othertable", sql.Schema{
 			{Name: "s2", Type: sql.Text, Source: "othertable"},
-			{Name: "i2", Type: sql.Int64, Source: "othertable"},
+			{Name: "i2", Type: sql.Int64, Source: "othertable", PrimaryKey: true},
 		})
 
 		InsertRows(
@@ -112,7 +112,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 	if includeTable(includedTables, "tabletest") {
 		table = harness.NewTable(myDb, "tabletest", sql.Schema{
-			{Name: "i", Type: sql.Int32, Source: "tabletest"},
+			{Name: "i", Type: sql.Int32, Source: "tabletest", PrimaryKey: true},
 			{Name: "s", Type: sql.Text, Source: "tabletest"},
 		})
 
@@ -126,8 +126,8 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 	if includeTable(includedTables, "other_table") {
 		table = harness.NewTable(foo, "other_table", sql.Schema{
-			{Name: "text", Type: sql.Text, Source: "tabletest"},
-			{Name: "number", Type: sql.Int32, Source: "tabletest"},
+			{Name: "text", Type: sql.Text, Source: "other_table"},
+			{Name: "number", Type: sql.Int32, Source: "other_table"},
 		})
 
 		InsertRows(
@@ -140,7 +140,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 	if includeTable(includedTables, "bigtable") {
 		table = harness.NewTable(myDb, "bigtable", sql.Schema{
-			{Name: "t", Type: sql.Text, Source: "bigtable"},
+			{Name: "t", Type: sql.Text, Source: "bigtable", PrimaryKey: true},
 			{Name: "n", Type: sql.Int64, Source: "bigtable"},
 		})
 
@@ -165,7 +165,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 	if includeTable(includedTables, "floattable") {
 		table = harness.NewTable(myDb, "floattable", sql.Schema{
-			{Name: "i", Type: sql.Int64, Source: "floattable"},
+			{Name: "i", Type: sql.Int64, Source: "floattable", PrimaryKey: true},
 			{Name: "f32", Type: sql.Float32, Source: "floattable"},
 			{Name: "f64", Type: sql.Float64, Source: "floattable"},
 		})
@@ -183,24 +183,32 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 	if includeTable(includedTables, "niltable") {
 		table = harness.NewTable(myDb, "niltable", sql.Schema{
-			{Name: "i", Type: sql.Int64, Source: "niltable", Nullable: true},
+			{Name: "i", Type: sql.Int64, Source: "niltable", PrimaryKey: true},
+			{Name: "i2", Type: sql.Int64, Source: "niltable", Nullable: true},
 			{Name: "b", Type: sql.Boolean, Source: "niltable", Nullable: true},
 			{Name: "f", Type: sql.Float64, Source: "niltable", Nullable: true},
 		})
 
 		InsertRows(
 			t, mustInsertableTable(t, table),
-			sql.NewRow(int64(1), true, float64(1.0)),
-			sql.NewRow(int64(2), nil, float64(2.0)),
-			sql.NewRow(nil, false, float64(3.0)),
-			sql.NewRow(int64(4), true, nil),
-			sql.NewRow(nil, nil, nil),
+			sql.NewRow(int64(1), nil, nil, nil),
+			sql.NewRow(int64(2), nil, true, nil),
+			sql.NewRow(int64(3), nil, false, nil),
+			sql.NewRow(int64(4), nil, nil, float64(4)),
+			sql.NewRow(int64(5), nil, true, float64(5)),
+			sql.NewRow(int64(6), nil, false, float64(6)),
+			sql.NewRow(int64(7), int64(7), nil, nil),
+			sql.NewRow(int64(8), int64(8), true, nil),
+			sql.NewRow(int64(9), int64(9), false, nil),
+			sql.NewRow(int64(10), int64(10), nil, float64(10)),
+			sql.NewRow(int64(11), int64(11), true, float64(11)),
+			sql.NewRow(int64(12), int64(12), false, float64(12)),
 		)
 	}
 
 	if includeTable(includedTables, "newlinetable") {
 		table = harness.NewTable(myDb, "newlinetable", sql.Schema{
-			{Name: "i", Type: sql.Int64, Source: "newlinetable"},
+			{Name: "i", Type: sql.Int64, Source: "newlinetable", PrimaryKey: true},
 			{Name: "s", Type: sql.Text, Source: "newlinetable"},
 		})
 
@@ -216,7 +224,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 	if includeTable(includedTables, "typestable") {
 		table = harness.NewTable(myDb, "typestable", sql.Schema{
-			{Name: "id", Type: sql.Int64, Source: "typestable"},
+			{Name: "id", Type: sql.Int64, Source: "typestable", PrimaryKey: true},
 			{Name: "i8", Type: sql.Int8, Source: "typestable", Nullable: true},
 			{Name: "i16", Type: sql.Int16, Source: "typestable", Nullable: true},
 			{Name: "i32", Type: sql.Int32, Source: "typestable", Nullable: true},
@@ -264,27 +272,28 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		)
 	}
 
-	if includeTable(includedTables, "stringsandtable") {
+	if includeTable(includedTables, "stringandtable") {
 		table = harness.NewTable(myDb, "stringandtable", sql.Schema{
+			{Name: "k", Type: sql.Int64, Source: "stringandtable", PrimaryKey: true},
 			{Name: "i", Type: sql.Int64, Source: "stringandtable", Nullable: true},
 			{Name: "v", Type: sql.Text, Source: "stringandtable", Nullable: true},
 		})
 
 		InsertRows(
 			t, mustInsertableTable(t, table),
-			sql.NewRow(int64(0), "0"),
-			sql.NewRow(int64(1), "1"),
-			sql.NewRow(int64(2), ""),
-			sql.NewRow(int64(3), "true"),
-			sql.NewRow(int64(4), "false"),
-			sql.NewRow(int64(5), nil),
-			sql.NewRow(nil, "2"),
+			sql.NewRow(int64(0), int64(0), "0"),
+			sql.NewRow(int64(1), int64(1), "1"),
+			sql.NewRow(int64(2), int64(2), ""),
+			sql.NewRow(int64(3), int64(3), "true"),
+			sql.NewRow(int64(4), int64(4), "false"),
+			sql.NewRow(int64(5), int64(5), nil),
+			sql.NewRow(int64(6), nil, "2"),
 		)
 	}
 
 	if includeTable(includedTables, "reservedWordsTable") {
 		table = harness.NewTable(myDb, "reservedWordsTable", sql.Schema{
-			{Name: "Timestamp", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
+			{Name: "Timestamp", Type: sql.Text, Source: "reservedWordsTable", PrimaryKey: true},
 			{Name: "and", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
 			{Name: "or", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
 			{Name: "select", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
@@ -304,7 +313,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		}
 
 		table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.Schema{
-			{Name: "i", Type: sql.Int64, Source: "myhistorytable"},
+			{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
 			{Name: "s", Type: sql.Text, Source: "myhistorytable"},
 		}, "2019-01-01")
 
@@ -316,7 +325,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		)
 
 		table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.Schema{
-			{Name: "i", Type: sql.Int64, Source: "myhistorytable"},
+			{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
 			{Name: "s", Type: sql.Text, Source: "myhistorytable"},
 		}, "2019-01-02")
 
@@ -355,15 +364,15 @@ func InsertRows(t *testing.T, table sql.InsertableTable, rows ...sql.Row) {
 
 func createNativeIndexes(t *testing.T, e *sqle.Engine) error {
 	createIndexes := []string{
-		"create index mytable_i on mytable (i)",
+		//"create index mytable_i on mytable (i)",
 		"create index mytable_s on mytable (s)",
 		"create index mytable_i_s on mytable (i,s)",
 		"create index othertable_s2 on othertable (s2)",
-		"create index othertable_i2 on othertable (i2)",
+		//"create index othertable_i2 on othertable (i2)",
 		"create index othertable_s2_i2 on othertable (s2,i2)",
-		"create index bigtable_t on bigtable (t)",
-		"create index floattable_t on floattable (f64)",
-		"create index niltable_i on niltable (i)",
+		//"create index bigtable_t on bigtable (t)",
+		"create index floattable_f on floattable (f64)",
+		//"create index niltable_i on niltable (i)",
 		"create index one_pk_pk on one_pk (pk)",
 		"create index two_pk_pk1_pk2 on two_pk (pk1,pk2)",
 	}
