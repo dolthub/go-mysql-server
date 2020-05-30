@@ -56,7 +56,7 @@ func TestIndexes(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.MkdirAll(tmpDir, 0644))
 
-	e, idxReg := enginetest.NewEngine(t, newPilosaHarness(tmpDir))
+	e := enginetest.NewEngine(t, newPilosaHarness(tmpDir))
 	viewReg := sql.NewViewRegistry()
 
 	_, _, err = e.Query(
@@ -223,7 +223,7 @@ func TestCreateIndex(t *testing.T) {
 	require.NoError(err)
 	require.NoError(os.MkdirAll(tmpDir, 0644))
 
-	e, idxReg := enginetest.NewEngine(t, newPilosaHarness(tmpDir))
+	e := enginetest.NewEngine(t, newPilosaHarness(tmpDir))
 
 	_, iter, err := e.Query(enginetest.NewCtx(idxReg), "CREATE INDEX myidx USING pilosa ON mytable (i)")
 	require.NoError(err)

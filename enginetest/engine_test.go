@@ -76,7 +76,7 @@ func TestDescribe(t *testing.T) {
 	}
 
 	harness := newDefaultMemoryHarness()
-	e, _ := enginetest.NewEngine(t, harness)
+	e := enginetest.NewEngine(t, harness)
 	t.Run("sequential", func(t *testing.T) {
 		for _, q := range queries {
 			enginetest.TestQuery(t, enginetest.NewContext(harness), e, q, []sql.Row{
@@ -86,7 +86,7 @@ func TestDescribe(t *testing.T) {
 	})
 
 	parallelHarness := newMemoryHarness("parallel", 2, testNumPartitions, false, nil)
-	ep, _ := enginetest.NewEngine(t, parallelHarness)
+	ep := enginetest.NewEngine(t, parallelHarness)
 	t.Run("parallel", func(t *testing.T) {
 		for _, q := range queries {
 			enginetest.TestQuery(t, enginetest.NewContext(parallelHarness), ep, q, []sql.Row{
@@ -157,7 +157,7 @@ func (m *mockSpan) Finish() {
 
 func TestRootSpanFinish(t *testing.T) {
 	harness := newDefaultMemoryHarness()
-	e, _ := enginetest.NewEngine(t, harness)
+	e := enginetest.NewEngine(t, harness)
 	fakeSpan := &mockSpan{Span: opentracing.NoopTracer{}.StartSpan("")}
 	ctx := enginetest.NewContext(harness)
 

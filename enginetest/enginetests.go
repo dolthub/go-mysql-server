@@ -34,9 +34,9 @@ import (
 
 // Tests a variety of queries against databases and tables provided by the given harness.
 func TestQueries(t *testing.T, harness Harness) {
-	engine, _ := NewEngine(t, harness)
+	engine := NewEngine(t, harness)
 	for _, tt := range QueryTests {
-		TestQuery(t, NewContext(harness), engine, tt.Query, tt.Expected)
+		TestQuery(t, NewContextWithEngine(harness, engine), engine, tt.Query, tt.Expected)
 	}
 }
 
@@ -58,7 +58,7 @@ var infoSchemaTables = []string {
 // Runs tests of the information_schema database.
 func TestInfoSchema(t *testing.T, harness Harness) {
 	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
-	engine, _ := NewEngineWithDbs(t, harness.Parallelism(), dbs, nil)
+	engine := NewEngineWithDbs(t, harness.Parallelism(), dbs, nil)
 	for _, tt := range InfoSchemaQueries {
 		TestQuery(t, NewContext(harness), engine, tt.Query, tt.Expected)
 	}
@@ -67,10 +67,10 @@ func TestInfoSchema(t *testing.T, harness Harness) {
 // Tests generating the correct query plans for various queries using databases and tables provided by the given
 // harness.
 func TestQueryPlans(t *testing.T, harness Harness) {
-	engine, _ := NewEngine(t, harness)
+	engine := NewEngine(t, harness)
 	for _, tt := range PlanTests {
 		t.Run(tt.Query, func(t *testing.T) {
-			TestQueryPlan(t, NewContext(harness), engine, tt.Query, tt.ExpectedPlan)
+			TestQueryPlan(t, NewContextWithEngine(harness, engine), engine, tt.Query, tt.ExpectedPlan)
 		})
 	}
 }
@@ -288,7 +288,7 @@ func TestColumnAliases(t *testing.T, harness Harness) {
 	for _, tt := range tests {
 		t.Run(tt.query, func(t *testing.T) {
 			require := require.New(t)
-			e, _ := NewEngine(t, harness)
+			e := NewEngine(t, harness)
 
 			sch, rowIter, err := e.Query(NewContext(harness), tt.query)
 			var colNames []string
@@ -354,7 +354,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 
 
 func TestQueryErrors(t *testing.T, harness Harness) {
-	engine, _ := NewEngine(t, harness)
+	engine := NewEngine(t, harness)
 
 	for _, tt := range errorQueries {
 		t.Run(tt.Query, func(t *testing.T) {
@@ -371,7 +371,7 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 
 func TestInsertInto(t *testing.T, harness Harness) {
 	for _, insertion := range InsertQueries {
-		e, _ := NewEngine(t, harness)
+		e := NewEngine(t, harness)
 		ctx := NewContext(harness)
 		TestQuery(t, ctx, e, insertion.WriteQuery, insertion.ExpectedWriteResult)
 		TestQuery(t, ctx, e, insertion.SelectQuery, insertion.ExpectedSelect)
@@ -381,7 +381,7 @@ func TestInsertInto(t *testing.T, harness Harness) {
 func TestInsertIntoErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range InsertErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
-			e, _ := NewEngine(t, harness)
+			e := NewEngine(t, harness)
 			_, _, err := e.Query(NewContext(harness), expectedFailure.Query)
 			require.Error(t, err)
 		})
@@ -390,7 +390,7 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 
 func TestReplaceInto(t *testing.T, harness Harness) {
 	for _, insertion := range ReplaceQueries {
-		e, _ := NewEngine(t, harness)
+		e := NewEngine(t, harness)
 		ctx := NewContext(harness)
 		TestQuery(t, ctx, e, insertion.WriteQuery, insertion.ExpectedWriteResult)
 		TestQuery(t, ctx, e, insertion.SelectQuery, insertion.ExpectedSelect)
@@ -400,7 +400,7 @@ func TestReplaceInto(t *testing.T, harness Harness) {
 func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range ReplaceErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
-			e, _ := NewEngine(t, harness)
+			e := NewEngine(t, harness)
 			_, _, err := e.Query(NewContext(harness), expectedFailure.Query)
 			require.Error(t, err)
 		})
@@ -409,7 +409,7 @@ func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 
 func TestUpdate(t *testing.T, harness Harness) {
 	for _, update := range UpdateTests {
-		e, _ := NewEngine(t, harness)
+		e := NewEngine(t, harness)
 		ctx := NewContext(harness)
 		TestQuery(t, ctx, e, update.WriteQuery, update.ExpectedWriteResult)
 		TestQuery(t, ctx, e, update.SelectQuery, update.ExpectedSelect)
@@ -419,7 +419,7 @@ func TestUpdate(t *testing.T, harness Harness) {
 func TestUpdateErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range UpdateErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
-			e, _ := NewEngine(t, harness)
+			e := NewEngine(t, harness)
 			_, _, err := e.Query(NewContext(harness), expectedFailure.Query)
 			require.Error(t, err)
 		})
@@ -428,7 +428,7 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 
 func TestDelete(t *testing.T, harness Harness) {
 	for _, delete := range DeleteTests {
-		e, _ := NewEngine(t, harness)
+		e := NewEngine(t, harness)
 		ctx := NewContext(harness)
 		TestQuery(t, ctx, e, delete.WriteQuery, delete.ExpectedWriteResult)
 		TestQuery(t, ctx, e, delete.SelectQuery, delete.ExpectedSelect)
@@ -438,7 +438,7 @@ func TestDelete(t *testing.T, harness Harness) {
 func TestDeleteErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range DeleteErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
-			e, _ := NewEngine(t, harness)
+			e := NewEngine(t, harness)
 			_, _, err := e.Query(NewContext(harness), expectedFailure.Query)
 			require.Error(t, err)
 		})
@@ -448,7 +448,7 @@ func TestDeleteErrors(t *testing.T, harness Harness) {
 func TestViews(t *testing.T, harness Harness) {
 	require := require.New(t)
 
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 	ctx := NewContext(harness)
 
 	// nested views
@@ -466,7 +466,7 @@ func TestViews(t *testing.T, harness Harness) {
 func TestVersionedViews(t *testing.T, harness Harness) {
 	require := require.New(t)
 
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 	ctx := NewContext(harness)
 	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
 	require.NoError(err)
@@ -487,7 +487,7 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 func TestCreateTable(t *testing.T, harness Harness) {
 	require := require.New(t)
 
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 
 	TestQuery(t, NewContext(harness), e,
 		"CREATE TABLE t1(a INTEGER, b TEXT, c DATE, "+
@@ -600,7 +600,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 func TestDropTable(t *testing.T, harness Harness) {
 	require := require.New(t)
 
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
@@ -646,7 +646,7 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
 	require := require.New(t)
 
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
@@ -715,7 +715,7 @@ func TestRenameColumn(t *testing.T,  harness Harness) {
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
 	require := require.New(t)
 
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
@@ -745,7 +745,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
 	require := require.New(t)
 
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
@@ -842,7 +842,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
 	require := require.New(t)
 
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
@@ -901,7 +901,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 func TestDropColumn(t *testing.T, harness Harness) {
 	require := require.New(t)
 
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 	ctx := NewContext(harness)
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
@@ -1095,7 +1095,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 
 func TestSessionVariables(t *testing.T, harness Harness) {
 	require := require.New(t)
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 	viewReg := sql.NewViewRegistry()
 
 	session := sql.NewBaseSession()
@@ -1119,7 +1119,7 @@ func TestSessionVariablesONOFF(t *testing.T, harness Harness) {
 	require := require.New(t)
 	viewReg := sql.NewViewRegistry()
 
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 
 	session := sql.NewBaseSession()
 	ctx := sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(1), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
@@ -1144,7 +1144,7 @@ func TestSessionDefaults(t *testing.T, harness Harness) {
 			  @@sql_select_limit=DEFAULT,
 			  @@ndbinfo_version=DEFAULT`
 
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 
 	ctx := NewContext(harness)
 	err := ctx.Session.Set(ctx, "auto_increment_increment", sql.Int64, 0)
@@ -1245,7 +1245,7 @@ func TestWarnings(t *testing.T, harness Harness) {
 		},
 	}
 
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 
 	ctx := NewContext(harness)
 	ctx.Session.Warn(&sql.Warning{Code: 1})
@@ -1259,7 +1259,7 @@ func TestWarnings(t *testing.T, harness Harness) {
 
 func TestClearWarnings(t *testing.T, harness Harness) {
 	require := require.New(t)
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 	ctx := NewContext(harness)
 
 	_, iter, err := e.Query(ctx, "-- some empty query as a comment")
@@ -1306,7 +1306,7 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 
 func TestUse(t *testing.T, harness Harness) {
 	require := require.New(t)
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 
 	ctx := NewContext(harness)
 	require.Equal("mydb", ctx.GetCurrentDatabase())
@@ -1350,7 +1350,7 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 		// },
 	}
 
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 
 	ctx := NewContext(harness)
 	err := ctx.Session.Set(ctx, "sql_select_limit", sql.Int64, int64(1))
@@ -1363,7 +1363,7 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 
 func TestTracing(t *testing.T, harness Harness) {
 	require := require.New(t)
-	e, _ := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 
 	tracer := new(test.MemTracer)
 
@@ -1439,28 +1439,42 @@ func NewContext(harness Harness) *sql.Context {
 	return ctx
 }
 
+func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
+	ctx := NewContext(harness)
+
+	// TODO: move index driver back out of context, into catalog, make this unnecessary
+	if idh, ok := harness.(IndexDriverHarness); ok {
+		driver := idh.IndexDriver(engine.Catalog.AllDatabases())
+		if driver != nil {
+			ctx.IndexRegistry.RegisterIndexDriver(driver)
+			ctx.IndexRegistry.LoadIndexes(ctx, engine.Catalog.AllDatabases())
+		}
+	}
+
+	return ctx
+}
+
 // NewEngine creates test data and returns an engine using the harness provided.
-// TODO: get rid of idx reg return value
-func NewEngine(t *testing.T, harness Harness) (*sqle.Engine, *sql.IndexRegistry) {
+func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 	dbs := CreateTestData(t, harness)
 	var idxDriver sql.IndexDriver
 	if ih, ok := harness.(IndexDriverHarness); ok {
 		idxDriver = ih.IndexDriver(dbs)
 	}
-	engine, idxReg := NewEngineWithDbs(t, harness.Parallelism(), dbs, idxDriver)
+	engine := NewEngineWithDbs(t, harness.Parallelism(), dbs, idxDriver)
 
 	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
 		err := createNativeIndexes(t, engine)
 		require.NoError(t, err)
 	}
 
-	return engine, idxReg
+	return engine
 }
 
 
 // NewEngineWithDbs returns a new engine with the databases provided. This is useful if you don't want to implement a
 // full harness but want to run your own tests on DBs you create.
-func NewEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, driver sql.IndexDriver) (*sqle.Engine, *sql.IndexRegistry) {
+func NewEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, driver sql.IndexDriver) *sqle.Engine {
 	catalog := sql.NewCatalog()
 	for _, database := range databases {
 		catalog.AddDatabase(database)
@@ -1479,10 +1493,7 @@ func NewEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, d
 		idxReg.RegisterIndexDriver(driver)
 	}
 
-	engine := sqle.New(catalog, a, new(sqle.Config))
-	require.NoError(t, idxReg.LoadIndexes(sql.NewEmptyContext(), engine.Catalog.AllDatabases()))
-
-	return engine, idxReg
+	return sqle.New(catalog, a, new(sqle.Config))
 }
 
 // RunQueryTest runs a query on the engine given and asserts that results are as expected.
