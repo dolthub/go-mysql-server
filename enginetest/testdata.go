@@ -49,12 +49,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 		})
 
-		InsertRows(
-			t, mustInsertableTable(t, table),
-			sql.NewRow(int64(1), "first row"),
-			sql.NewRow(int64(2), "second row"),
-			sql.NewRow(int64(3), "third row"),
-		)
+		InsertRows(t, nil, mustInsertableTable(t, table), sql.NewRow(int64(1), "first row"), sql.NewRow(int64(2), "second row"), sql.NewRow(int64(3), "third row"), )
 	}
 
 	if includeTable(includedTables, "one_pk") {
@@ -67,13 +62,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "c5", Type: sql.Int8, Source: "one_pk"},
 		})
 
-		InsertRows(t,
-			mustInsertableTable(t, table),
-			sql.NewRow(0, 0, 0, 0, 0, 0),
-			sql.NewRow(1, 10, 10, 10, 10, 10),
-			sql.NewRow(2, 20, 20, 20, 20, 20),
-			sql.NewRow(3, 30, 30, 30, 30, 30),
-		)
+		InsertRows(t, nil, mustInsertableTable(t, table), sql.NewRow(0, 0, 0, 0, 0, 0), sql.NewRow(1, 10, 10, 10, 10, 10), sql.NewRow(2, 20, 20, 20, 20, 20), sql.NewRow(3, 30, 30, 30, 30, 30), )
 	}
 
 	if includeTable(includedTables, "two_pk") {
@@ -87,13 +76,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "c5", Type: sql.Int8, Source: "two_pk"},
 		})
 
-		InsertRows(t,
-			mustInsertableTable(t, table),
-			sql.NewRow(0, 0, 0, 0, 0, 0, 0),
-			sql.NewRow(0, 1, 10, 10, 10, 10, 10),
-			sql.NewRow(1, 0, 20, 20, 20, 20, 20),
-			sql.NewRow(1, 1, 30, 30, 30, 30, 30),
-		)
+		InsertRows(t, nil, mustInsertableTable(t, table), sql.NewRow(0, 0, 0, 0, 0, 0, 0), sql.NewRow(0, 1, 10, 10, 10, 10, 10), sql.NewRow(1, 0, 20, 20, 20, 20, 20), sql.NewRow(1, 1, 30, 30, 30, 30, 30), )
 	}
 
 	if includeTable(includedTables, "othertable") {
@@ -102,12 +85,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "i2", Type: sql.Int64, Source: "othertable", PrimaryKey: true},
 		})
 
-		InsertRows(
-			t, mustInsertableTable(t, table),
-			sql.NewRow("first", int64(3)),
-			sql.NewRow("second", int64(2)),
-			sql.NewRow("third", int64(1)),
-		)
+		InsertRows(t, nil, mustInsertableTable(t, table), sql.NewRow("first", int64(3)), sql.NewRow("second", int64(2)), sql.NewRow("third", int64(1)), )
 	}
 
 	if includeTable(includedTables, "tabletest") {
@@ -116,12 +94,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "s", Type: sql.Text, Source: "tabletest"},
 		})
 
-		InsertRows(
-			t, mustInsertableTable(t, table),
-			sql.NewRow(int64(1), "first row"),
-			sql.NewRow(int64(2), "second row"),
-			sql.NewRow(int64(3), "third row"),
-		)
+		InsertRows(t, nil, mustInsertableTable(t, table), sql.NewRow(int64(1), "first row"), sql.NewRow(int64(2), "second row"), sql.NewRow(int64(3), "third row"), )
 	}
 
 	if includeTable(includedTables, "other_table") {
@@ -130,12 +103,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "number", Type: sql.Int32, Source: "other_table"},
 		})
 
-		InsertRows(
-			t, mustInsertableTable(t, table),
-			sql.NewRow("a", int32(4)),
-			sql.NewRow("b", int32(2)),
-			sql.NewRow("c", int32(0)),
-		)
+		InsertRows(t, nil, mustInsertableTable(t, table), sql.NewRow("a", int32(4)), sql.NewRow("b", int32(2)), sql.NewRow("c", int32(0)), )
 	}
 
 	if includeTable(includedTables, "bigtable") {
@@ -144,23 +112,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "n", Type: sql.Int64, Source: "bigtable"},
 		})
 
-		InsertRows(
-			t, mustInsertableTable(t, table),
-			sql.NewRow("a", int64(1)),
-			sql.NewRow("s", int64(2)),
-			sql.NewRow("f", int64(3)),
-			sql.NewRow("g", int64(1)),
-			sql.NewRow("h", int64(2)),
-			sql.NewRow("j", int64(3)),
-			sql.NewRow("k", int64(1)),
-			sql.NewRow("l", int64(2)),
-			sql.NewRow("ñ", int64(4)),
-			sql.NewRow("z", int64(5)),
-			sql.NewRow("x", int64(6)),
-			sql.NewRow("c", int64(7)),
-			sql.NewRow("v", int64(8)),
-			sql.NewRow("b", int64(9)),
-		)
+		InsertRows(t, nil, mustInsertableTable(t, table), sql.NewRow("a", int64(1)), sql.NewRow("s", int64(2)), sql.NewRow("f", int64(3)), sql.NewRow("g", int64(1)), sql.NewRow("h", int64(2)), sql.NewRow("j", int64(3)), sql.NewRow("k", int64(1)), sql.NewRow("l", int64(2)), sql.NewRow("ñ", int64(4)), sql.NewRow("z", int64(5)), sql.NewRow("x", int64(6)), sql.NewRow("c", int64(7)), sql.NewRow("v", int64(8)), sql.NewRow("b", int64(9)), )
 	}
 
 	if includeTable(includedTables, "floattable") {
@@ -170,15 +122,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "f64", Type: sql.Float64, Source: "floattable"},
 		})
 
-		InsertRows(
-			t, mustInsertableTable(t, table),
-			sql.NewRow(int64(1), float32(1.0), float64(1.0)),
-			sql.NewRow(int64(2), float32(1.5), float64(1.5)),
-			sql.NewRow(int64(3), float32(2.0), float64(2.0)),
-			sql.NewRow(int64(4), float32(2.5), float64(2.5)),
-			sql.NewRow(int64(-1), float32(-1.0), float64(-1.0)),
-			sql.NewRow(int64(-2), float32(-1.5), float64(-1.5)),
-		)
+		InsertRows(t, nil, mustInsertableTable(t, table), sql.NewRow(int64(1), float32(1.0), float64(1.0)), sql.NewRow(int64(2), float32(1.5), float64(1.5)), sql.NewRow(int64(3), float32(2.0), float64(2.0)), sql.NewRow(int64(4), float32(2.5), float64(2.5)), sql.NewRow(int64(-1), float32(-1.0), float64(-1.0)), sql.NewRow(int64(-2), float32(-1.5), float64(-1.5)), )
 	}
 
 	if includeTable(includedTables, "niltable") {
@@ -189,15 +133,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "f", Type: sql.Float64, Source: "niltable", Nullable: true},
 		})
 
-		InsertRows(
-			t, mustInsertableTable(t, table),
-			sql.NewRow(int64(1), nil, nil, nil),
-			sql.NewRow(int64(2), int64(2), true, nil),
-			sql.NewRow(int64(3), nil, false, nil),
-			sql.NewRow(int64(4), int64(4), nil, float64(4)),
-			sql.NewRow(int64(5), nil, true, float64(5)),
-			sql.NewRow(int64(6), int64(6), false, float64(6)),
-		)
+		InsertRows(t, nil, mustInsertableTable(t, table), sql.NewRow(int64(1), nil, nil, nil), sql.NewRow(int64(2), int64(2), true, nil), sql.NewRow(int64(3), nil, false, nil), sql.NewRow(int64(4), int64(4), nil, float64(4)), sql.NewRow(int64(5), nil, true, float64(5)), sql.NewRow(int64(6), int64(6), false, float64(6)), )
 	}
 
 	if includeTable(includedTables, "newlinetable") {
@@ -206,14 +142,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "s", Type: sql.Text, Source: "newlinetable"},
 		})
 
-		InsertRows(
-			t, mustInsertableTable(t, table),
-			sql.NewRow(int64(1), "\nthere is some text in here"),
-			sql.NewRow(int64(2), "there is some\ntext in here"),
-			sql.NewRow(int64(3), "there is some text\nin here"),
-			sql.NewRow(int64(4), "there is some text in here\n"),
-			sql.NewRow(int64(5), "there is some text in here"),
-		)
+		InsertRows(t, nil, mustInsertableTable(t, table), sql.NewRow(int64(1), "\nthere is some text in here"), sql.NewRow(int64(2), "there is some\ntext in here"), sql.NewRow(int64(3), "there is some text\nin here"), sql.NewRow(int64(4), "there is some text in here\n"), sql.NewRow(int64(5), "there is some text in here"), )
 	}
 
 	if includeTable(includedTables, "typestable") {
@@ -242,28 +171,25 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		t2, err := time.Parse(time.RFC3339, "2019-12-31T00:00:00Z")
 		require.NoError(t, err)
 
-		InsertRows(
-			t, mustInsertableTable(t, table),
-			sql.NewRow(
-				int64(1),
-				int8(2),
-				int16(3),
-				int32(4),
-				int64(5),
-				uint8(6),
-				uint16(7),
-				uint32(8),
-				uint64(9),
-				float32(10),
-				float64(11),
-				t1,
-				t2,
-				"fourteen",
-				false,
-				nil,
-				nil,
-			),
-		)
+		InsertRows(t, nil, mustInsertableTable(t, table), sql.NewRow(
+			int64(1),
+			int8(2),
+			int16(3),
+			int32(4),
+			int64(5),
+			uint8(6),
+			uint16(7),
+			uint32(8),
+			uint64(9),
+			float32(10),
+			float64(11),
+			t1,
+			t2,
+			"fourteen",
+			false,
+			nil,
+			nil,
+		), )
 	}
 
 	if includeTable(includedTables, "stringandtable") {
@@ -273,16 +199,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "v", Type: sql.Text, Source: "stringandtable", Nullable: true},
 		})
 
-		InsertRows(
-			t, mustInsertableTable(t, table),
-			sql.NewRow(int64(0), int64(0), "0"),
-			sql.NewRow(int64(1), int64(1), "1"),
-			sql.NewRow(int64(2), int64(2), ""),
-			sql.NewRow(int64(3), int64(3), "true"),
-			sql.NewRow(int64(4), int64(4), "false"),
-			sql.NewRow(int64(5), int64(5), nil),
-			sql.NewRow(int64(6), nil, "2"),
-		)
+		InsertRows(t, nil, mustInsertableTable(t, table), sql.NewRow(int64(0), int64(0), "0"), sql.NewRow(int64(1), int64(1), "1"), sql.NewRow(int64(2), int64(2), ""), sql.NewRow(int64(3), int64(3), "true"), sql.NewRow(int64(4), int64(4), "false"), sql.NewRow(int64(5), int64(5), nil), sql.NewRow(int64(6), nil, "2"), )
 	}
 
 	if includeTable(includedTables, "reservedWordsTable") {
@@ -293,10 +210,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "select", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
 		})
 
-		InsertRows(
-			t, mustInsertableTable(t, table),
-			sql.NewRow("1", "1.1", "aaa", "create"),
-		)
+		InsertRows(t, nil, mustInsertableTable(t, table), sql.NewRow("1", "1.1", "aaa", "create"), )
 	}
 
 	if versionedHarness, ok := harness.(VersionedDBHarness); ok &&
@@ -311,24 +225,14 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "s", Type: sql.Text, Source: "myhistorytable"},
 		}, "2019-01-01")
 
-		InsertRows(
-			t, mustInsertableTable(t, table),
-			sql.NewRow(int64(1), "first row, 1"),
-			sql.NewRow(int64(2), "second row, 1"),
-			sql.NewRow(int64(3), "third row, 1"),
-		)
+		InsertRows(t, nil, mustInsertableTable(t, table), sql.NewRow(int64(1), "first row, 1"), sql.NewRow(int64(2), "second row, 1"), sql.NewRow(int64(3), "third row, 1"), )
 
 		table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
 			{Name: "s", Type: sql.Text, Source: "myhistorytable"},
 		}, "2019-01-02")
 
-		InsertRows(
-			t, mustInsertableTable(t, table),
-			sql.NewRow(int64(1), "first row, 2"),
-			sql.NewRow(int64(2), "second row, 2"),
-			sql.NewRow(int64(3), "third row, 2"),
-		)
+		InsertRows(t, nil, mustInsertableTable(t, table), sql.NewRow(int64(1), "first row, 2"), sql.NewRow(int64(2), "second row, 2"), sql.NewRow(int64(3), "third row, 2"), )
 	}
 
 	return []sql.Database{myDb, foo}
@@ -345,10 +249,9 @@ func mustInsertableTable(t *testing.T, table sql.Table) sql.InsertableTable {
 	return insertable
 }
 
-func InsertRows(t *testing.T, table sql.InsertableTable, rows ...sql.Row) {
+func InsertRows(t *testing.T, ctx *sql.Context, table sql.InsertableTable, rows ...sql.Row) {
 	t.Helper()
 
-	ctx := NewCtx(sql.NewIndexRegistry())
 	inserter := table.Inserter(ctx)
 	for _, r := range rows {
 		require.NoError(t, inserter.Insert(ctx, r))

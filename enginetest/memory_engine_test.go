@@ -74,8 +74,8 @@ func TestSingleQuery(t *testing.T) {
 	}
 
 	harness := newMemoryHarness("singleTest", 1, 1, true, nil)
-	e, idxReg := enginetest.NewEngine(t, harness)
-	enginetest.TestQuery(t,enginetest.NewCtx(idxReg), e, test.Query, test.Expected)
+	e, _ := enginetest.NewEngine(t, harness)
+	enginetest.TestQuery(t, enginetest.NewContext(harness), e, test.Query, test.Expected)
 }
 
 // Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that

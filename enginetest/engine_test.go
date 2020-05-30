@@ -15,7 +15,6 @@
 package enginetest_test
 
 import (
-	"context"
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"github.com/opentracing/opentracing-go"
 	"testing"
@@ -76,19 +75,21 @@ func TestDescribe(t *testing.T) {
 		`EXPLAIN SELECT * FROM mytable`,
 	}
 
-	e, idxReg := enginetest.NewEngine(t, newDefaultMemoryHarness())
+	harness := newDefaultMemoryHarness()
+	e, _ := enginetest.NewEngine(t, harness)
 	t.Run("sequential", func(t *testing.T) {
 		for _, q := range queries {
-			enginetest.TestQuery(t, enginetest.NewCtx(idxReg), e, q, []sql.Row{
+			enginetest.TestQuery(t, enginetest.NewContext(harness), e, q, []sql.Row{
 				sql.NewRow("Table(mytable): Projected "),
 			})
 		}
 	})
 
-	ep, idxRegp := enginetest.NewEngine(t, newMemoryHarness("parallel", 2, testNumPartitions, false, nil))
+	parallelHarness := newMemoryHarness("parallel", 2, testNumPartitions, false, nil)
+	ep, _ := enginetest.NewEngine(t, parallelHarness)
 	t.Run("parallel", func(t *testing.T) {
 		for _, q := range queries {
-			enginetest.TestQuery(t, enginetest.NewCtx(idxRegp), ep, q, []sql.Row{
+			enginetest.TestQuery(t, enginetest.NewContext(parallelHarness), ep, q, []sql.Row{
 				{"Exchange(parallelism=2)"},
 				{" └─ Table(mytable): Projected "},
 			})
@@ -155,14 +156,10 @@ func (m *mockSpan) Finish() {
 }
 
 func TestRootSpanFinish(t *testing.T) {
-	e, idxReg := enginetest.NewEngine(t, newDefaultMemoryHarness())
+	harness := newDefaultMemoryHarness()
+	e, _ := enginetest.NewEngine(t, harness)
 	fakeSpan := &mockSpan{Span: opentracing.NoopTracer{}.StartSpan("")}
-	ctx := sql.NewContext(
-		context.Background(),
-		sql.WithRootSpan(fakeSpan),
-		sql.WithIndexRegistry(idxReg),
-		sql.WithViewRegistry(sql.NewViewRegistry()),
-	)
+	ctx := enginetest.NewContext(harness)
 
 	_, iter, err := e.Query(ctx, "SELECT 1")
 	require.NoError(t, err)
