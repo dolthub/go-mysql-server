@@ -64,6 +64,10 @@ func (m *memoryHarness) Parallelism() int {
 	return m.parallelism
 }
 
+func (m *memoryHarness) NewContext(idxReg *sql.IndexRegistry) *sql.Context {
+	return enginetest.NewCtx(idxReg)
+}
+
 func (m *memoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.Schema, asOf interface{}) sql.Table {
 	table := memory.NewPartitionedTable(name, schema, m.numTablePartitions)
 	if m.nativeIndexSupport {

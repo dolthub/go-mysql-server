@@ -555,7 +555,7 @@ func (t *Table) newColumnIndexesAndSchema(colNames []string) ([]int, sql.Schema,
 			columns = append(columns, i)
 		} else {
 			// get indexes for the new projections from
-			// the orginal indexes.
+			// the original indexes.
 			columns = append(columns, t.columns[i])
 		}
 
@@ -585,7 +585,7 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 		if len(pkCols) > 0 {
 			exprs := make([]sql.Expression, len(pkCols))
 			for i, column := range pkCols {
-				idx, field := getField(column.Name, t.schema)
+				idx, field := t.getField(column.Name)
 				exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
 			}
 			indexes = append(indexes, &UnmergeableIndex{
@@ -612,7 +612,7 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn) (sql.Index, 
 
 	exprs := make([]sql.Expression, len(columns))
 	for i, column := range columns {
-		idx, field := getField(column.Name, t.schema)
+		idx, field := t.getField(column.Name)
 		exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
 	}
 
@@ -625,13 +625,20 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn) (sql.Index, 
 	}, nil
 }
 
-func getField(col string, schema sql.Schema) (int, *sql.Column) {
-	for i, column := range schema {
-		if column.Name == col {
-			return i, column
-		}
+// getField returns the index and column index with the name given, if it exists, or -1, nil otherwise.
+func (t *Table) getField(col string) (int, *sql.Column) {
+	i := t.schema.IndexOf(col, t.name)
+	if i == -1 {
+		return -1, nil
 	}
-	return -1, nil
+
+	if len(t.columns) == 0 {
+		// if the table hasn't been projected before
+		// match against the original schema
+		return i, t.schema[i]
+	} else {
+		return t.columns[i], t.schema[i]
+	}
 }
 
 // CreateIndex implements sql.IndexAlterableTable
