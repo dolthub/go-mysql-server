@@ -1510,7 +1510,7 @@ func NewEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, d
 	return sqle.New(catalog, a, new(sqle.Config))
 }
 
-// RunQueryTest runs a query on the engine given and asserts that results are as expected.
+// TestQuery runs a query on the engine given and asserts that results are as expected.
 func TestQuery(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row) {
 	orderBy := strings.Contains(strings.ToUpper(q), " ORDER BY ")
 
@@ -1522,12 +1522,59 @@ func TestQuery(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expecte
 		rows, err := sql.RowIterToRows(iter)
 		require.NoError(err)
 
+		widenedRows := widenRows(rows)
+		widenedExpected := widenRows(expected)
+
 		// .Equal gives better error messages than .ElementsMatch, so use it when possible
 		if orderBy || len(expected) <= 1 {
-			require.Equal(expected, rows)
+			require.Equal(widenedExpected, widenedRows)
 		} else {
-			require.ElementsMatch(expected, rows)
+			require.ElementsMatch(widenedExpected, widenedRows)
 		}
 	})
+}
+
+// For a variety of reasons, the widths of various primitive types can vary when passed through different SQL queries
+// (and different database implementations). We may eventually decide that this undefined behavior is a problem, but
+// for now it's mostly just an issue when comparing results in tests. To get around this, we widen every type to its
+// widest value in actual and expected results.
+func widenRows(rows []sql.Row) []sql.Row {
+	widened := make([]sql.Row, len(rows))
+	for i, row := range rows {
+		widened[i] = widenRow(row)
+	}
+	return widened
+}
+
+// See widenRows
+func widenRow(row sql.Row) sql.Row {
+	widened := make(sql.Row, len(row))
+	for i, v := range row {
+		var vw interface{}
+		switch x := v.(type) {
+		case int:
+			 vw = int64(x)
+		case int8:
+			vw = int64(x)
+		case int16:
+			vw = int64(x)
+		case int32:
+			vw = int64(x)
+		case uint:
+			vw = uint64(x)
+		case uint8:
+			vw = uint64(x)
+		case uint16:
+			vw = uint64(x)
+		case uint32:
+			vw = uint64(x)
+		case float32:
+			vw = float64(x)
+		default:
+			vw = v
+		}
+		widened[i] = vw
+	}
+	return widened
 }
 
