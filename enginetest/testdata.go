@@ -99,7 +99,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 	if includeTable(includedTables, "other_table") {
 		table = harness.NewTable(foo, "other_table", sql.Schema{
-			{Name: "text", Type: sql.Text, Source: "other_table"},
+			{Name: "text", Type: sql.Text, Source: "other_table", PrimaryKey: true},
 			{Name: "number", Type: sql.Int32, Source: "other_table"},
 		})
 
