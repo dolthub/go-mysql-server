@@ -88,13 +88,13 @@ func (m *memoryHarness) NewDatabase(name string) sql.Database {
 	return memory.NewHistoryDatabase(name)
 }
 
-func (m *memoryHarness) NewTable(db sql.Database, name string, schema sql.Schema) sql.Table {
+func (m *memoryHarness) NewTable(db sql.Database, name string, schema sql.Schema) (sql.Table, error) {
 	table := memory.NewPartitionedTable(name, schema, m.numTablePartitions)
 	if m.nativeIndexSupport {
 		table.EnablePrimaryKeyIndexes()
 	}
 	db.(*memory.HistoryDatabase).AddTable(name, table)
-	return table
+	return table, nil
 }
 
 type indexDriverInitalizer func([]sql.Database) sql.IndexDriver

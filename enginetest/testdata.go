@@ -42,18 +42,23 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	myDb := harness.NewDatabase("mydb")
 	foo := harness.NewDatabase("foo")
 	var table sql.Table
+	var err error
 
 	if includeTable(includedTables, "mytable") {
-		table = harness.NewTable(myDb, "mytable", sql.Schema{
+		table, err = harness.NewTable(myDb, "mytable", sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 		})
 
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "first row"), sql.NewRow(int64(2), "second row"), sql.NewRow(int64(3), "third row"), )
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "first row"), sql.NewRow(int64(2), "second row"), sql.NewRow(int64(3), "third row"), )
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "mytable", err)
+		}
 	}
 
 	if includeTable(includedTables, "one_pk") {
-		table = harness.NewTable(myDb, "one_pk", sql.Schema{
+		table, err = harness.NewTable(myDb, "one_pk", sql.Schema{
 			{Name: "pk", Type: sql.Int8, Source: "one_pk", PrimaryKey: true},
 			{Name: "c1", Type: sql.Int8, Source: "one_pk"},
 			{Name: "c2", Type: sql.Int8, Source: "one_pk"},
@@ -62,11 +67,15 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "c5", Type: sql.Int8, Source: "one_pk"},
 		})
 
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(0, 0, 0, 0, 0, 0), sql.NewRow(1, 10, 10, 10, 10, 10), sql.NewRow(2, 20, 20, 20, 20, 20), sql.NewRow(3, 30, 30, 30, 30, 30), )
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(0, 0, 0, 0, 0, 0), sql.NewRow(1, 10, 10, 10, 10, 10), sql.NewRow(2, 20, 20, 20, 20, 20), sql.NewRow(3, 30, 30, 30, 30, 30))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "one_pk", err)
+		}
 	}
 
 	if includeTable(includedTables, "two_pk") {
-		table = harness.NewTable(myDb, "two_pk", sql.Schema{
+		table, err = harness.NewTable(myDb, "two_pk", sql.Schema{
 			{Name: "pk1", Type: sql.Int8, Source: "two_pk", PrimaryKey: true},
 			{Name: "pk2", Type: sql.Int8, Source: "two_pk", PrimaryKey: true},
 			{Name: "c1", Type: sql.Int8, Source: "two_pk"},
@@ -76,77 +85,109 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "c5", Type: sql.Int8, Source: "two_pk"},
 		})
 
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(0, 0, 0, 0, 0, 0, 0), sql.NewRow(0, 1, 10, 10, 10, 10, 10), sql.NewRow(1, 0, 20, 20, 20, 20, 20), sql.NewRow(1, 1, 30, 30, 30, 30, 30), )
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(0, 0, 0, 0, 0, 0, 0), sql.NewRow(0, 1, 10, 10, 10, 10, 10), sql.NewRow(1, 0, 20, 20, 20, 20, 20), sql.NewRow(1, 1, 30, 30, 30, 30, 30))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "two_pk", err)
+		}
 	}
 
 	if includeTable(includedTables, "othertable") {
-		table = harness.NewTable(myDb, "othertable", sql.Schema{
+		table, err = harness.NewTable(myDb, "othertable", sql.Schema{
 			{Name: "s2", Type: sql.Text, Source: "othertable"},
 			{Name: "i2", Type: sql.Int64, Source: "othertable", PrimaryKey: true},
 		})
 
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow("first", int64(3)), sql.NewRow("second", int64(2)), sql.NewRow("third", int64(1)), )
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow("first", int64(3)), sql.NewRow("second", int64(2)), sql.NewRow("third", int64(1)))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "othertable", err)
+		}
 	}
 
 	if includeTable(includedTables, "tabletest") {
-		table = harness.NewTable(myDb, "tabletest", sql.Schema{
+		table, err = harness.NewTable(myDb, "tabletest", sql.Schema{
 			{Name: "i", Type: sql.Int32, Source: "tabletest", PrimaryKey: true},
 			{Name: "s", Type: sql.Text, Source: "tabletest"},
 		})
 
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "first row"), sql.NewRow(int64(2), "second row"), sql.NewRow(int64(3), "third row"), )
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "first row"), sql.NewRow(int64(2), "second row"), sql.NewRow(int64(3), "third row"))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "tabletest", err)
+		}
 	}
 
 	if includeTable(includedTables, "other_table") {
-		table = harness.NewTable(foo, "other_table", sql.Schema{
+		table, err = harness.NewTable(foo, "other_table", sql.Schema{
 			{Name: "text", Type: sql.Text, Source: "other_table", PrimaryKey: true},
 			{Name: "number", Type: sql.Int32, Source: "other_table"},
 		})
 
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow("a", int32(4)), sql.NewRow("b", int32(2)), sql.NewRow("c", int32(0)), )
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow("a", int32(4)), sql.NewRow("b", int32(2)), sql.NewRow("c", int32(0)))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "other_table", err)
+		}
 	}
 
 	if includeTable(includedTables, "bigtable") {
-		table = harness.NewTable(myDb, "bigtable", sql.Schema{
+		table, err = harness.NewTable(myDb, "bigtable", sql.Schema{
 			{Name: "t", Type: sql.Text, Source: "bigtable", PrimaryKey: true},
 			{Name: "n", Type: sql.Int64, Source: "bigtable"},
 		})
 
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow("a", int64(1)), sql.NewRow("s", int64(2)), sql.NewRow("f", int64(3)), sql.NewRow("g", int64(1)), sql.NewRow("h", int64(2)), sql.NewRow("j", int64(3)), sql.NewRow("k", int64(1)), sql.NewRow("l", int64(2)), sql.NewRow("ñ", int64(4)), sql.NewRow("z", int64(5)), sql.NewRow("x", int64(6)), sql.NewRow("c", int64(7)), sql.NewRow("v", int64(8)), sql.NewRow("b", int64(9)), )
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow("a", int64(1)), sql.NewRow("s", int64(2)), sql.NewRow("f", int64(3)), sql.NewRow("g", int64(1)), sql.NewRow("h", int64(2)), sql.NewRow("j", int64(3)), sql.NewRow("k", int64(1)), sql.NewRow("l", int64(2)), sql.NewRow("ñ", int64(4)), sql.NewRow("z", int64(5)), sql.NewRow("x", int64(6)), sql.NewRow("c", int64(7)), sql.NewRow("v", int64(8)), sql.NewRow("b", int64(9)))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "bigtable", err)
+		}
 	}
 
 	if includeTable(includedTables, "floattable") {
-		table = harness.NewTable(myDb, "floattable", sql.Schema{
+		table, err = harness.NewTable(myDb, "floattable", sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "floattable", PrimaryKey: true},
 			{Name: "f32", Type: sql.Float32, Source: "floattable"},
 			{Name: "f64", Type: sql.Float64, Source: "floattable"},
 		})
 
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), float32(1.0), float64(1.0)), sql.NewRow(int64(2), float32(1.5), float64(1.5)), sql.NewRow(int64(3), float32(2.0), float64(2.0)), sql.NewRow(int64(4), float32(2.5), float64(2.5)), sql.NewRow(int64(-1), float32(-1.0), float64(-1.0)), sql.NewRow(int64(-2), float32(-1.5), float64(-1.5)), )
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), float32(1.0), float64(1.0)), sql.NewRow(int64(2), float32(1.5), float64(1.5)), sql.NewRow(int64(3), float32(2.0), float64(2.0)), sql.NewRow(int64(4), float32(2.5), float64(2.5)), sql.NewRow(int64(-1), float32(-1.0), float64(-1.0)), sql.NewRow(int64(-2), float32(-1.5), float64(-1.5)))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "floattable", err)
+		}
 	}
 
 	if includeTable(includedTables, "niltable") {
-		table = harness.NewTable(myDb, "niltable", sql.Schema{
+		table, err = harness.NewTable(myDb, "niltable", sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "niltable", PrimaryKey: true},
 			{Name: "i2", Type: sql.Int64, Source: "niltable", Nullable: true},
 			{Name: "b", Type: sql.Boolean, Source: "niltable", Nullable: true},
 			{Name: "f", Type: sql.Float64, Source: "niltable", Nullable: true},
 		})
 
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), nil, nil, nil), sql.NewRow(int64(2), int64(2), true, nil), sql.NewRow(int64(3), nil, false, nil), sql.NewRow(int64(4), int64(4), nil, float64(4)), sql.NewRow(int64(5), nil, true, float64(5)), sql.NewRow(int64(6), int64(6), false, float64(6)), )
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), nil, nil, nil), sql.NewRow(int64(2), int64(2), true, nil), sql.NewRow(int64(3), nil, false, nil), sql.NewRow(int64(4), int64(4), nil, float64(4)), sql.NewRow(int64(5), nil, true, float64(5)), sql.NewRow(int64(6), int64(6), false, float64(6)))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "niltable", err)
+		}
 	}
 
 	if includeTable(includedTables, "newlinetable") {
-		table = harness.NewTable(myDb, "newlinetable", sql.Schema{
+		table, err = harness.NewTable(myDb, "newlinetable", sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "newlinetable", PrimaryKey: true},
 			{Name: "s", Type: sql.Text, Source: "newlinetable"},
 		})
 
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "\nthere is some text in here"), sql.NewRow(int64(2), "there is some\ntext in here"), sql.NewRow(int64(3), "there is some text\nin here"), sql.NewRow(int64(4), "there is some text in here\n"), sql.NewRow(int64(5), "there is some text in here"), )
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "\nthere is some text in here"), sql.NewRow(int64(2), "there is some\ntext in here"), sql.NewRow(int64(3), "there is some text\nin here"), sql.NewRow(int64(4), "there is some text in here\n"), sql.NewRow(int64(5), "there is some text in here"))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "newlinetable", err)
+		}
 	}
 
 	if includeTable(includedTables, "typestable") {
-		table = harness.NewTable(myDb, "typestable", sql.Schema{
+		table, err = harness.NewTable(myDb, "typestable", sql.Schema{
 			{Name: "id", Type: sql.Int64, Source: "typestable", PrimaryKey: true},
 			{Name: "i8", Type: sql.Int8, Source: "typestable", Nullable: true},
 			{Name: "i16", Type: sql.Int16, Source: "typestable", Nullable: true},
@@ -166,51 +207,63 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "bl", Type: sql.Blob, Source: "typestable", Nullable: true},
 		})
 
-		t1, err := time.Parse(time.RFC3339, "2019-12-31T12:00:00Z")
-		require.NoError(t, err)
-		t2, err := time.Parse(time.RFC3339, "2019-12-31T00:00:00Z")
-		require.NoError(t, err)
+		if err == nil {
+			t1, err := time.Parse(time.RFC3339, "2019-12-31T12:00:00Z")
+			require.NoError(t, err)
+			t2, err := time.Parse(time.RFC3339, "2019-12-31T00:00:00Z")
+			require.NoError(t, err)
 
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(
-			int64(1),
-			int8(2),
-			int16(3),
-			int32(4),
-			int64(5),
-			uint8(6),
-			uint16(7),
-			uint32(8),
-			uint64(9),
-			float32(10),
-			float64(11),
-			t1,
-			t2,
-			"fourteen",
-			false,
-			nil,
-			nil,
-		), )
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(
+				int64(1),
+				int8(2),
+				int16(3),
+				int32(4),
+				int64(5),
+				uint8(6),
+				uint16(7),
+				uint32(8),
+				uint64(9),
+				float32(10),
+				float64(11),
+				t1,
+				t2,
+				"fourteen",
+				false,
+				nil,
+				nil,
+			))
+		}
+	} else {
+		t.Logf("Warning: could not create table %s: %s", "typestable", err)
 	}
 
 	if includeTable(includedTables, "stringandtable") {
-		table = harness.NewTable(myDb, "stringandtable", sql.Schema{
+		table, err = harness.NewTable(myDb, "stringandtable", sql.Schema{
 			{Name: "k", Type: sql.Int64, Source: "stringandtable", PrimaryKey: true},
 			{Name: "i", Type: sql.Int64, Source: "stringandtable", Nullable: true},
 			{Name: "v", Type: sql.Text, Source: "stringandtable", Nullable: true},
 		})
 
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(0), int64(0), "0"), sql.NewRow(int64(1), int64(1), "1"), sql.NewRow(int64(2), int64(2), ""), sql.NewRow(int64(3), int64(3), "true"), sql.NewRow(int64(4), int64(4), "false"), sql.NewRow(int64(5), int64(5), nil), sql.NewRow(int64(6), nil, "2"), )
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(0), int64(0), "0"), sql.NewRow(int64(1), int64(1), "1"), sql.NewRow(int64(2), int64(2), ""), sql.NewRow(int64(3), int64(3), "true"), sql.NewRow(int64(4), int64(4), "false"), sql.NewRow(int64(5), int64(5), nil), sql.NewRow(int64(6), nil, "2"))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "stringandtable", err)
+		}
 	}
 
 	if includeTable(includedTables, "reservedWordsTable") {
-		table = harness.NewTable(myDb, "reservedWordsTable", sql.Schema{
+		table, err = harness.NewTable(myDb, "reservedWordsTable", sql.Schema{
 			{Name: "Timestamp", Type: sql.Text, Source: "reservedWordsTable", PrimaryKey: true},
 			{Name: "and", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
 			{Name: "or", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
 			{Name: "select", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
 		})
 
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow("1", "1.1", "aaa", "create"), )
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow("1", "1.1", "aaa", "create"))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "reservedWordsTable", err)
+		}
 	}
 
 	if versionedHarness, ok := harness.(VersionedDBHarness); ok &&
@@ -225,14 +278,22 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "s", Type: sql.Text, Source: "myhistorytable"},
 		}, "2019-01-01")
 
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "first row, 1"), sql.NewRow(int64(2), "second row, 1"), sql.NewRow(int64(3), "third row, 1"), )
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "first row, 1"), sql.NewRow(int64(2), "second row, 1"), sql.NewRow(int64(3), "third row, 1"))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "myhistorytable", err)
+		}
 
 		table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
 			{Name: "s", Type: sql.Text, Source: "myhistorytable"},
 		}, "2019-01-02")
 
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "first row, 2"), sql.NewRow(int64(2), "second row, 2"), sql.NewRow(int64(3), "third row, 2"), )
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "first row, 2"), sql.NewRow(int64(2), "second row, 2"), sql.NewRow(int64(3), "third row, 2"))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "myhistorytable", err)
+		}
 	}
 
 	return []sql.Database{myDb, foo}

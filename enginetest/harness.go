@@ -19,7 +19,7 @@ import "github.com/liquidata-inc/go-mysql-server/sql"
 type Harness interface {
 	Parallelism() int
 	NewDatabase(name string) sql.Database
-	NewTable(db sql.Database, name string, schema sql.Schema) sql.Table
+	NewTable(db sql.Database, name string, schema sql.Schema) (sql.Table, error)
 	NewContext() *sql.Context
 }
 
