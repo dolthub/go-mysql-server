@@ -51,7 +51,6 @@ var infoSchemaTables = []string {
 	"floattable",
 	"niltable",
 	"newlinetable",
-	"typestable",
 	"other_table",
 }
 
