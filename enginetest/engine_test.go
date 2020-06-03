@@ -79,7 +79,7 @@ func TestDescribe(t *testing.T) {
 	e := enginetest.NewEngine(t, harness)
 	t.Run("sequential", func(t *testing.T) {
 		for _, q := range queries {
-			enginetest.TestQuery(t, enginetest.NewContext(harness), e, q, []sql.Row{
+			enginetest.TestQuery(t, harness, e, q, []sql.Row{
 				sql.NewRow("Table(mytable): Projected "),
 			})
 		}
@@ -89,7 +89,7 @@ func TestDescribe(t *testing.T) {
 	ep := enginetest.NewEngine(t, parallelHarness)
 	t.Run("parallel", func(t *testing.T) {
 		for _, q := range queries {
-			enginetest.TestQuery(t, enginetest.NewContext(parallelHarness), ep, q, []sql.Row{
+			enginetest.TestQuery(t, parallelHarness, ep, q, []sql.Row{
 				{"Exchange(parallelism=2)"},
 				{" └─ Table(mytable): Projected "},
 			})

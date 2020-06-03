@@ -36,7 +36,7 @@ import (
 func TestQueries(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
 	for _, tt := range QueryTests {
-		TestQuery(t, NewContextWithEngine(harness, engine), engine, tt.Query, tt.Expected)
+		TestQuery(t, harness, engine, tt.Query, tt.Expected)
 	}
 }
 
@@ -59,7 +59,7 @@ func TestInfoSchema(t *testing.T, harness Harness) {
 	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
 	engine := NewEngineWithDbs(t, harness.Parallelism(), dbs, nil)
 	for _, tt := range InfoSchemaQueries {
-		TestQuery(t, NewContext(harness), engine, tt.Query, tt.Expected)
+		TestQuery(t, harness, engine, tt.Query, tt.Expected)
 	}
 }
 
@@ -208,7 +208,7 @@ func TestExplode(t *testing.T, harness Harness) {
 	e := sqle.New(catalog, analyzer.NewDefault(catalog), new(sqle.Config))
 
 	for _, q := range ExplodeQueries {
-		TestQuery(t, NewContext(harness), e, q.Query, q.Expected)
+		TestQuery(t, harness, e, q.Query, q.Expected)
 	}
 }
 
@@ -376,9 +376,8 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 func TestInsertInto(t *testing.T, harness Harness) {
 	for _, insertion := range InsertQueries {
 		e := NewEngine(t, harness)
-		ctx := NewContext(harness)
-		TestQuery(t, ctx, e, insertion.WriteQuery, insertion.ExpectedWriteResult)
-		TestQuery(t, ctx, e, insertion.SelectQuery, insertion.ExpectedSelect)
+		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult)
+		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect)
 	}
 }
 
@@ -395,9 +394,8 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 func TestReplaceInto(t *testing.T, harness Harness) {
 	for _, insertion := range ReplaceQueries {
 		e := NewEngine(t, harness)
-		ctx := NewContext(harness)
-		TestQuery(t, ctx, e, insertion.WriteQuery, insertion.ExpectedWriteResult)
-		TestQuery(t, ctx, e, insertion.SelectQuery, insertion.ExpectedSelect)
+		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult)
+		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect)
 	}
 }
 
@@ -414,9 +412,8 @@ func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 func TestUpdate(t *testing.T, harness Harness) {
 	for _, update := range UpdateTests {
 		e := NewEngine(t, harness)
-		ctx := NewContext(harness)
-		TestQuery(t, ctx, e, update.WriteQuery, update.ExpectedWriteResult)
-		TestQuery(t, ctx, e, update.SelectQuery, update.ExpectedSelect)
+		TestQuery(t, harness, e, update.WriteQuery, update.ExpectedWriteResult)
+		TestQuery(t, harness, e, update.SelectQuery, update.ExpectedSelect)
 	}
 }
 
@@ -433,9 +430,8 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 func TestDelete(t *testing.T, harness Harness) {
 	for _, delete := range DeleteTests {
 		e := NewEngine(t, harness)
-		ctx := NewContext(harness)
-		TestQuery(t, ctx, e, delete.WriteQuery, delete.ExpectedWriteResult)
-		TestQuery(t, ctx, e, delete.SelectQuery, delete.ExpectedSelect)
+		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult)
+		TestQuery(t, harness, e, delete.SelectQuery, delete.ExpectedSelect)
 	}
 }
 
@@ -462,7 +458,7 @@ func TestViews(t *testing.T, harness Harness) {
 
 	for _, testCase := range ViewTests {
 		t.Run(testCase.Query, func(t *testing.T) {
-			TestQuery(t, ctx, e, testCase.Query, testCase.Expected)
+			TestQueryWithContext(t, ctx, e, testCase.Query, testCase.Expected)
 		})
 	}
 }
@@ -483,7 +479,7 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 
 	for _, testCase := range VersionedViewTests {
 		t.Run(testCase.Query, func(t *testing.T) {
-			TestQuery(t, ctx, e, testCase.Query, testCase.Expected)
+			TestQueryWithContext(t, ctx, e, testCase.Query, testCase.Expected)
 		})
 	}
 }
@@ -493,7 +489,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	e := NewEngine(t, harness)
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"CREATE TABLE t1(a INTEGER, b TEXT, c DATE, "+
 				"d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, "+
 				"b1 BOOL, b2 BOOLEAN NOT NULL, g DATETIME, h CHAR(40))",
@@ -523,7 +519,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	require.Equal(s, testTable.Schema())
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"CREATE TABLE t2 (a INTEGER NOT NULL PRIMARY KEY, "+
 				"b VARCHAR(10) NOT NULL)",
 		[]sql.Row(nil),
@@ -543,7 +539,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	require.Equal(s, testTable.Schema())
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"CREATE TABLE t3(a INTEGER NOT NULL,"+
 				"b TEXT NOT NULL,"+
 				"c bool, primary key (a,b))",
@@ -565,7 +561,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	require.Equal(s, testTable.Schema())
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"CREATE TABLE t4(a INTEGER,"+
 				"b TEXT NOT NULL COMMENT 'comment',"+
 				"c bool, primary key (a))",
@@ -587,7 +583,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	require.Equal(s, testTable.Schema())
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"CREATE TABLE IF NOT EXISTS t4(a INTEGER,"+
 				"b TEXT NOT NULL,"+
 				"c bool, primary key (a))",
@@ -612,7 +608,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 	_, ok, err := db.GetTableInsensitive(ctx, "mytable")
 	require.True(ok)
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"DROP TABLE IF EXISTS mytable, not_exist",
 		[]sql.Row(nil),
 	)
@@ -629,7 +625,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"DROP TABLE IF EXISTS othertable, tabletest",
 		[]sql.Row(nil),
 	)
@@ -658,7 +654,7 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"RENAME TABLE mytable TO newTableName",
 		[]sql.Row(nil),
 	)
@@ -671,7 +667,7 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"RENAME TABLE othertable to othertable2, newTableName to mytable",
 		[]sql.Row(nil),
 	)
@@ -692,7 +688,7 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable RENAME newTableName",
 		[]sql.Row(nil),
 	)
@@ -723,7 +719,7 @@ func TestRenameColumn(t *testing.T,  harness Harness) {
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable RENAME COLUMN i TO i2",
 		[]sql.Row(nil),
 	)
@@ -753,7 +749,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable ADD COLUMN i2 INT COMMENT 'hello' default 42",
 		[]sql.Row(nil),
 	)
@@ -767,7 +763,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
 	}, tbl.Schema())
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"SELECT * FROM mytable ORDER BY i",
 		[]sql.Row{
 			sql.NewRow(int64(1), "first row", int32(42)),
@@ -776,7 +772,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		},
 	)
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable ADD COLUMN s2 TEXT COMMENT 'hello' AFTER i",
 		[]sql.Row(nil),
 	)
@@ -791,7 +787,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
 	}, tbl.Schema())
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"SELECT * FROM mytable ORDER BY i",
 		[]sql.Row{
 			sql.NewRow(int64(1), nil, "first row", int32(42)),
@@ -800,7 +796,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		},
 	)
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable ADD COLUMN s3 TEXT COMMENT 'hello' default 'yay' FIRST",
 		[]sql.Row(nil),
 	)
@@ -816,7 +812,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
 	}, tbl.Schema())
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"SELECT * FROM mytable ORDER BY i",
 		[]sql.Row{
 			sql.NewRow("yay", int64(1), nil, "first row", int32(42)),
@@ -850,7 +846,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'",
 		[]sql.Row(nil),
 	)
@@ -863,7 +859,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable MODIFY COLUMN i TINYINT NULL COMMENT 'yes' AFTER s",
 		[]sql.Row(nil),
 	)
@@ -876,7 +872,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 		{Name: "i", Type: sql.Int8, Source: "mytable", Comment:"yes", Nullable: true},
 	}, tbl.Schema())
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST",
 		[]sql.Row(nil),
 	)
@@ -910,7 +906,7 @@ func TestDropColumn(t *testing.T, harness Harness) {
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	TestQuery(t, NewContext(harness), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable DROP COLUMN s",
 		[]sql.Row(nil),
 	)
@@ -1266,7 +1262,7 @@ func TestWarnings(t *testing.T, harness Harness) {
 	ctx.Session.Warn(&sql.Warning{Code: 3})
 
 	for _, tt := range queries {
-		TestQuery(t, ctx, e, tt.Query, tt.Expected)
+		TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected)
 	}
 }
 
@@ -1370,7 +1366,7 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 	require.NoError(t, err)
 
 	for _, tt := range q {
-		TestQuery(t, ctx, e, tt.Query, tt.Expected)
+		TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected)
 	}
 }
 
@@ -1510,27 +1506,39 @@ func NewEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, d
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
-func TestQuery(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row) {
+func TestQuery(t *testing.T, harness Harness, e *sqle.Engine, q string, expected []sql.Row) {
+	t.Run(q, func(t *testing.T) {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(q) {
+				t.Skipf("Skiping query %s", q)
+			}
+		}
+
+		ctx := NewContextWithEngine(harness, e)
+		TestQueryWithContext(t, ctx, e, q, expected)
+	})
+}
+
+func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row) {
+	require := require.New(t)
+
+	_, iter, err := e.Query(ctx, q)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	widenedRows := widenRows(rows)
+	widenedExpected := widenRows(expected)
+
 	orderBy := strings.Contains(strings.ToUpper(q), " ORDER BY ")
 
-	t.Run(q, func(t *testing.T) {
-		require := require.New(t)
-		_, iter, err := e.Query(ctx, q)
-		require.NoError(err)
-
-		rows, err := sql.RowIterToRows(iter)
-		require.NoError(err)
-
-		widenedRows := widenRows(rows)
-		widenedExpected := widenRows(expected)
-
-		// .Equal gives better error messages than .ElementsMatch, so use it when possible
-		if orderBy || len(expected) <= 1 {
-			require.Equal(widenedExpected, widenedRows)
-		} else {
-			require.ElementsMatch(widenedExpected, widenedRows)
-		}
-	})
+	// .Equal gives better error messages than .ElementsMatch, so use it when possible
+	if orderBy || len(expected) <= 1 {
+		require.Equal(widenedExpected, widenedRows)
+	} else {
+		require.ElementsMatch(widenedExpected, widenedRows)
+	}
 }
 
 // For a variety of reasons, the widths of various primitive types can vary when passed through different SQL queries

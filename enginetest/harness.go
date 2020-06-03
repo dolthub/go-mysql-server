@@ -23,6 +23,10 @@ type Harness interface {
 	NewContext() *sql.Context
 }
 
+type SkippingHarness interface {
+	SkipQueryTest(query string) bool
+}
+
 type IndexDriverHarness interface {
 	Harness
 	IndexDriver(dbs []sql.Database) sql.IndexDriver
