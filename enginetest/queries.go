@@ -2320,7 +2320,7 @@ var QueryTests = []QueryTest{
 	},
 }
 
-var versionedQueries = []QueryTest{
+var VersionedQueries = []QueryTest{
 	{
 		"SELECT *  FROM myhistorytable AS OF '2019-01-01' AS foo ORDER BY i",
 		[]sql.Row{

@@ -74,6 +74,18 @@ func TestQueryPlans(t *testing.T, harness Harness) {
 	}
 }
 
+// Tests a variety of queries against databases and tables provided by the given harness.
+func TestVersionedQueries(t *testing.T, harness Harness) {
+	if _, ok := harness.(VersionedDBHarness); !ok {
+		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
+	}
+
+	engine := NewEngine(t, harness)
+	for _, tt := range VersionedQueries {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected)
+	}
+}
+
 // TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.
 func TestQueryPlan(t *testing.T, ctx *sql.Context, engine *sqle.Engine, query string, expectedPlan string) {
 	parsed, err := parse.Parse(ctx, query)
@@ -464,6 +476,10 @@ func TestViews(t *testing.T, harness Harness) {
 }
 
 func TestVersionedViews(t *testing.T, harness Harness) {
+	if _, ok := harness.(VersionedDBHarness); !ok {
+		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
+	}
+
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
