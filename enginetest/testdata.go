@@ -118,6 +118,17 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		}
 	}
 
+	if includeTable(includedTables, "emptytable") {
+		table, err = harness.NewTable(myDb, "emptytable", sql.Schema{
+			{Name: "i", Type: sql.Int32, Source: "emptytable", PrimaryKey: true},
+			{Name: "s", Type: sql.Text, Source: "emptytable"},
+		})
+
+		if err != nil {
+			t.Logf("Warning: could not create table %s: %s", "tabletest", err)
+		}
+	}
+
 	if includeTable(includedTables, "other_table") {
 		table, err = harness.NewTable(foo, "other_table", sql.Schema{
 			{Name: "text", Type: sql.Text, Source: "other_table", PrimaryKey: true},
