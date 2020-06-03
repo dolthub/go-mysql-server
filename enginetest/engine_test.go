@@ -124,15 +124,14 @@ func TestLocks(t *testing.T) {
 
 	analyzer := analyzer.NewDefault(catalog)
 	engine := sqle.New(catalog, analyzer, new(sqle.Config))
-	idxReg := sql.NewIndexRegistry()
 
-	_, iter, err := engine.Query(enginetest.NewCtx(idxReg).WithCurrentDB("db"), "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
+	_, iter, err := engine.Query(enginetest.NewContext(newDefaultMemoryHarness()).WithCurrentDB("db"), "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
 	require.NoError(err)
 
 	_, err = sql.RowIterToRows(iter)
 	require.NoError(err)
 
-	_, iter, err = engine.Query(enginetest.NewCtx(idxReg).WithCurrentDB("db"), "UNLOCK TABLES")
+	_, iter, err = engine.Query(enginetest.NewContext(newDefaultMemoryHarness()).WithCurrentDB("db"), "UNLOCK TABLES")
 	require.NoError(err)
 
 	_, err = sql.RowIterToRows(iter)

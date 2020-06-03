@@ -320,7 +320,7 @@ func InsertRows(t *testing.T, ctx *sql.Context, table sql.InsertableTable, rows 
 	require.NoError(t, inserter.Close(ctx))
 }
 
-func createNativeIndexes(t *testing.T, e *sqle.Engine) error {
+func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
 	createIndexes := []string{
 		"create index mytable_s on mytable (s)",
 		"create index mytable_i_s on mytable (i,s)",
@@ -330,7 +330,7 @@ func createNativeIndexes(t *testing.T, e *sqle.Engine) error {
 	}
 
 	for _, q := range createIndexes {
-		_, iter, err := e.Query(NewCtx(sql.NewIndexRegistry()), q)
+		_, iter, err := e.Query(NewContext(harness), q)
 		require.NoError(t, err)
 
 		_, err = sql.RowIterToRows(iter)

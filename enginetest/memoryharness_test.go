@@ -15,6 +15,7 @@
 package enginetest_test
 
 import (
+	"context"
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -65,7 +66,10 @@ func (m *memoryHarness) Parallelism() int {
 }
 
 func (m *memoryHarness) NewContext() *sql.Context {
-	return enginetest.NewCtx(nil)
+	return sql.NewContext(
+		context.Background(),
+		sql.WithSession(enginetest.NewBaseSession()),
+	)
 }
 
 func (m *memoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.Schema, asOf interface{}) sql.Table {

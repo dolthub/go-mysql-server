@@ -343,7 +343,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 	e.AddDatabase(db)
 
 	q := `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c`
-	ctx := NewCtx(sql.NewIndexRegistry())
+	ctx := NewContext(harness)
 
 	_, rows, err := e.Query(ctx, q)
 	require.NoError(err)
@@ -1489,7 +1489,17 @@ func NewContext(harness Harness) *sql.Context {
 			plan.NewUnresolvedTable("mytable", "mydb"),
 		).AsView())
 
+	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
+
 	return ctx
+}
+
+var sessionId uint32
+
+// Returns a new BaseSession compatible with these tests. Most tests will work with any session implementation, but for
+// full compatibility use a session based on this one.
+func NewBaseSession() sql.Session {
+	return sql.NewSession("address", "client", "user", 1)
 }
 
 func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
@@ -1517,7 +1527,7 @@ func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 	engine := NewEngineWithDbs(t, harness.Parallelism(), dbs, idxDriver)
 
 	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
-		err := createNativeIndexes(t, engine)
+		err := createNativeIndexes(t, harness, engine)
 		require.NoError(t, err)
 	}
 
