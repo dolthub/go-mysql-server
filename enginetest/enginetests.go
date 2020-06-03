@@ -25,7 +25,6 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -112,7 +111,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("db")
 	table, err := harness.NewTable(db, "members", sql.Schema{
-		{Name: "id", Type: sql.Int64, Source: "members"},
+		{Name: "id", Type: sql.Int64, Source: "members", PrimaryKey: true},
 		{Name: "team", Type: sql.Text, Source: "members"},
 	})
 	require.NoError(err)
@@ -324,7 +323,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	table, err := harness.NewTable(db, "foo", sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "foo"},
+		{Name: "a", Type: sql.Int64, Source: "foo", PrimaryKey: true},
 		{Name: "b", Type: sql.Text, Source: "foo"},
 	})
 	require.NoError(err)
@@ -332,7 +331,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 	InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "foo"), sql.NewRow(int64(2), "bar"), sql.NewRow(int64(3), "baz"), )
 
 	table2, err := harness.NewTable(db, "bar", sql.Schema{
-		{Name: "b", Type: sql.Text, Source: "bar"},
+		{Name: "b", Type: sql.Text, Source: "bar", PrimaryKey: true},
 		{Name: "c", Type: sql.Int64, Source: "bar"},
 	})
 	require.NoError(err)
@@ -342,30 +341,13 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	q := `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c`
-	ctx := NewContext(harness)
-
-	_, rows, err := e.Query(ctx, q)
-	require.NoError(err)
-
-	var rs [][]interface{}
-	for {
-		row, err := rows.Next()
-		if err == io.EOF {
-			break
-		}
-		require.NoError(err)
-
-		rs = append(rs, row)
-	}
-
-	expected := [][]interface{}{
+	expected := []sql.Row {
 		{int64(1), "pux", "foo"},
 		{int64(2), "mux", "bar"},
 		{int64(3), "qux", "baz"},
 	}
 
-	require.Equal(expected, rs)
+	TestQuery(t, harness, e, `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c order by 1`, expected)
 }
 
 
