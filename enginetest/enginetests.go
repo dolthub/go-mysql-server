@@ -389,6 +389,13 @@ func TestInsertInto(t *testing.T, harness Harness) {
 	for _, insertion := range InsertQueries {
 		e := NewEngine(t, harness)
 		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult)
+		// If we skipped the insert, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(insertion.WriteQuery) {
+				t.Logf("Skipping query %s", insertion.SelectQuery)
+				continue
+			}
+		}
 		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect)
 	}
 }
@@ -407,6 +414,13 @@ func TestReplaceInto(t *testing.T, harness Harness) {
 	for _, insertion := range ReplaceQueries {
 		e := NewEngine(t, harness)
 		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult)
+		// If we skipped the insert, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(insertion.WriteQuery) {
+				t.Logf("Skipping query %s", insertion.SelectQuery)
+				continue
+			}
+		}
 		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect)
 	}
 }
@@ -425,6 +439,13 @@ func TestUpdate(t *testing.T, harness Harness) {
 	for _, update := range UpdateTests {
 		e := NewEngine(t, harness)
 		TestQuery(t, harness, e, update.WriteQuery, update.ExpectedWriteResult)
+		// If we skipped the update, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(update.WriteQuery) {
+				t.Logf("Skipping query %s", update.SelectQuery)
+				continue
+			}
+		}
 		TestQuery(t, harness, e, update.SelectQuery, update.ExpectedSelect)
 	}
 }
@@ -443,6 +464,13 @@ func TestDelete(t *testing.T, harness Harness) {
 	for _, delete := range DeleteTests {
 		e := NewEngine(t, harness)
 		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult)
+		// If we skipped the delete, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(delete.WriteQuery) {
+				t.Logf("Skipping query %s", delete.SelectQuery)
+				continue
+			}
+		}
 		TestQuery(t, harness, e, delete.SelectQuery, delete.ExpectedSelect)
 	}
 }
