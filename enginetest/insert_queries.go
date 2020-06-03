@@ -214,16 +214,16 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
-		"INSERT INTO mytable (i,s) SELECT (i + 10.0) / 10.0 + 10, concat(s, ' new') FROM mytable",
+		"INSERT INTO mytable (i,s) SELECT (i + 10.0) / 10.0 + 10 + i, concat(s, ' new') FROM mytable",
 		[]sql.Row{{sql.NewOkResult(3)}},
 		"SELECT * FROM mytable ORDER BY i, s",
 		[]sql.Row{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"},
-			{int64(11), "first row new"},
-			{int64(11), "second row new"},
-			{int64(11), "third row new"},
+			{int64(12), "first row new"},
+			{int64(13), "second row new"},
+			{int64(14), "third row new"},
 		},
 	},
 }
