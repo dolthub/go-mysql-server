@@ -18,6 +18,7 @@ var ErrInsertIntoNonexistentColumn = errors.NewKind("invalid column name %v")
 var ErrInsertIntoNonNullableDefaultNullColumn = errors.NewKind("column name '%v' is non-nullable but attempted to set default value of null")
 var ErrInsertIntoNonNullableProvidedNull = errors.NewKind("column name '%v' is non-nullable but attempted to set a value of null")
 var ErrInsertIntoIncompatibleTypes = errors.NewKind("cannot convert type %s to %s")
+var ErrUniqueKeyViolation = errors.NewKind("duplicate unique key for %s")
 
 // InsertInto is a node describing the insertion into some table.
 type InsertInto struct {

@@ -19,8 +19,8 @@ import (
 	"math"
 )
 
-// TODO: these tests are incorrect after adding primary keys (the memory tables don't support unique constraints on
-//  their primary key columns). Fix this.
+// TODO: none of these tests insert into tables without primary key columns, which have different semantics for
+//  REPLACE INTO queries. Add some tables / data without primary keys.
 var ReplaceQueries = []WriteQueryTest{
 	{
 		"REPLACE INTO mytable VALUES (1, 'first row');",
@@ -36,9 +36,15 @@ var ReplaceQueries = []WriteQueryTest{
 	},
 	{
 		"REPLACE INTO mytable VALUES (1, 'new row same i');",
-		[]sql.Row{{sql.NewOkResult(1)}},
+		[]sql.Row{{sql.NewOkResult(2)}},
 		"SELECT s FROM mytable WHERE i = 1;",
-		[]sql.Row{{"first row"}, {"new row same i"}},
+		[]sql.Row{{"new row same i"}},
+	},
+	{
+		"REPLACE INTO mytable SET i = 1, s = 'new row same i';",
+		[]sql.Row{{sql.NewOkResult(2)}},
+		"SELECT s FROM mytable WHERE i = 1;",
+		[]sql.Row{{"new row same i"}},
 	},
 	{
 		"REPLACE INTO mytable (s, i) VALUES ('x', 999);",

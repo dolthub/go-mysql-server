@@ -285,5 +285,12 @@ var InsertErrorTests = []GenericErrorQueryTest{
 		"column count mismatch in join select",
 		"INSERT INTO mytable (s,i) SELECT * FROM othertable o JOIN mytable m ON m.i=o.i2",
 	},
-	// TODO: need tests for duplicate keys. memory database doesn't support unique constraints yet.
+	{
+		"duplicate key",
+		"INSERT INTO mytable (i,s) values (1, 'hello')",
+	},
+	{
+		"duplicate keys",
+		"INSERT INTO mytable SELECT * from mytable",
+	},
 }

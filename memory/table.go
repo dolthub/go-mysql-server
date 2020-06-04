@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"io"
 	"strconv"
 
@@ -295,6 +296,10 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 
+	if err := t.checkUniquenessConstraints(row); err != nil {
+		return err
+	}
+
 	key := string(t.table.keys[t.table.insert])
 	t.table.insert++
 	if t.table.insert == len(t.table.keys) {
@@ -315,12 +320,25 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 	for partitionIndex, partition := range t.table.partitions {
 		for partitionRowIndex, partitionRow := range partition {
 			matches = true
+
+			// For DELETE queries, we will have previously selected the row in order to delete it. For REPLACE, we will just
+			// have the row to be replaced, so we need to consider primary key information.
+			pkColIdxes := t.pkColumnIndexes()
+			if len(pkColIdxes) > 0 {
+				if columnsMatch(pkColIdxes, partitionRow, row) {
+					t.table.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
+					break
+				}
+			}
+
+			// If we had no primary key match (or have no primary key), check each row for a total match
 			for rIndex, val := range row {
 				if val != partitionRow[rIndex] {
 					matches = false
 					break
 				}
 			}
+
 			if matches {
 				t.table.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
 				break
@@ -346,6 +364,12 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 		return err
 	}
 
+	if t.pkColsDiffer(oldRow, newRow) {
+		if err := t.checkUniquenessConstraints(newRow); err != nil {
+			return err
+		}
+	}
+
 	matches := false
 	for partitionIndex, partition := range t.table.partitions {
 		for partitionRowIndex, partitionRow := range partition {
@@ -367,6 +391,49 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 	}
 
 	return nil
+}
+
+func (t *tableEditor) checkUniquenessConstraints(row sql.Row) error {
+	pkColIdxes := t.pkColumnIndexes()
+
+	if len(pkColIdxes) > 0 {
+		for _, partition := range t.table.partitions {
+			for _, partitionRow := range partition {
+				if columnsMatch(pkColIdxes, partitionRow, row) {
+					return plan.ErrUniqueKeyViolation.New(pkColIdxes)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (t *tableEditor) pkColumnIndexes() []int {
+	var pkColIdxes []int
+	for _, column := range t.table.schema {
+		if column.PrimaryKey {
+			idx, _ := t.table.getField(column.Name)
+			pkColIdxes = append(pkColIdxes, idx)
+		}
+	}
+	return pkColIdxes
+}
+
+func (t *tableEditor) pkColsDiffer(row, row2 sql.Row) bool {
+	pkColIdxes := t.pkColumnIndexes()
+	return !columnsMatch(pkColIdxes, row, row2)
+}
+
+
+// Returns whether the values for the columns given match in the two rows provided
+func columnsMatch(colIndexes []int, row sql.Row, row2 sql.Row) bool {
+	for _, i := range colIndexes {
+		if row[i] != row2[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {
