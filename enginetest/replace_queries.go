@@ -19,6 +19,8 @@ import (
 	"math"
 )
 
+// TODO: these tests are incorrect after adding primary keys (the memory tables don't support unique constraints on
+//  their primary key columns). Fix this.
 var ReplaceQueries = []WriteQueryTest{
 	{
 		"REPLACE INTO mytable VALUES (1, 'first row');",
