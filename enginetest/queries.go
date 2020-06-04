@@ -2196,16 +2196,15 @@ var QueryTests = []QueryTest{
 			{2, int64(2), nil},
 		},
 	},
-	// TODO: this varies from the MySQL behavior (CAST(b as CHAR) gives "1" or "0", not "true")
 	{
 		"SELECT GREATEST(CAST(i AS CHAR), CAST(b AS CHAR)) FROM niltable order by i",
 		[]sql.Row{
 			{nil},
-			{"true"},
-			{"false"},
+			{"2"},
+			{"3"},
 			{nil},
-			{"true"},
-			{"false"},
+			{"5"},
+			{"6"},
 		},
 	},
 	{

@@ -178,7 +178,13 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 
 		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), nil, nil, nil), sql.NewRow(int64(2), int64(2), true, nil), sql.NewRow(int64(3), nil, false, nil), sql.NewRow(int64(4), int64(4), nil, float64(4)), sql.NewRow(int64(5), nil, true, float64(5)), sql.NewRow(int64(6), int64(6), false, float64(6)))
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow(int64(1), nil, nil, nil),
+				sql.NewRow(int64(2), int64(2), 1, nil),
+				sql.NewRow(int64(3), nil, 0, nil),
+				sql.NewRow(int64(4), int64(4), nil, float64(4)),
+				sql.NewRow(int64(5), nil, 1, float64(5)),
+				sql.NewRow(int64(6), int64(6), 0, float64(6)))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "niltable", err)
 		}
