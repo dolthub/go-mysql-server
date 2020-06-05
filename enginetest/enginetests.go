@@ -964,7 +964,10 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 	})
 	require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1), sql.NewRow("a_1", "b_1", "c_1"), sql.NewRow("a_2", "b_2", "c_2"), sql.NewRow("a_3", "b_3", "c_3"), )
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
+		sql.NewRow("a_1", "b_1", "c_1"),
+		sql.NewRow("a_2", "b_2", "c_2"),
+		sql.NewRow("a_3", "b_3", "c_3"))
 
 	t2, err := harness.NewTable(db, "t2", sql.Schema{
 		{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
@@ -973,7 +976,10 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 	})
 	require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2), sql.NewRow("a_1", "b_1", "d_1"), sql.NewRow("a_2", "b_2", "d_2"), sql.NewRow("a_3", "b_3", "d_3"), )
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
+		sql.NewRow("a_1", "b_1", "d_1"),
+		sql.NewRow("a_2", "b_2", "d_2"),
+		sql.NewRow("a_3", "b_3", "d_3"))
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
@@ -998,7 +1004,10 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 	})
 	require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1), sql.NewRow("a_1", "b_1", "c_1"), sql.NewRow("a_2", "b_2", "c_2"), sql.NewRow("a_3", "b_3", "c_3"), )
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
+		sql.NewRow("a_1", "b_1", "c_1"),
+		sql.NewRow("a_2", "b_2", "c_2"),
+		sql.NewRow("a_3", "b_3", "c_3"))
 
 	t2, err := harness.NewTable(db, "t2", sql.Schema{
 		{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
@@ -1007,7 +1016,10 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 	})
 	require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2), sql.NewRow("a_1", "b_1", "c_1"), sql.NewRow("a_2", "b_2", "c_2"), sql.NewRow("a_3", "b_3", "c_3"), )
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
+		sql.NewRow("a_1", "b_1", "c_1"),
+		sql.NewRow("a_2", "b_2", "c_2"),
+		sql.NewRow("a_3", "b_3", "c_3"))
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
@@ -1029,13 +1041,19 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 	})
 	require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1), sql.NewRow("a1"), sql.NewRow("a2"), sql.NewRow("a3"), )
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
+		sql.NewRow("a1"),
+		sql.NewRow("a2"),
+		sql.NewRow("a3"))
 
 	t2, err := harness.NewTable(db, "t2", sql.Schema{
 		{Name: "b", Type: sql.Text, Source: "t2", PrimaryKey: true},
 	})
 	require.NoError(err)
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2), sql.NewRow("b1"), sql.NewRow("b2"), sql.NewRow("b3"), )
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
+		sql.NewRow("b1"),
+		sql.NewRow("b2"),
+		sql.NewRow("b3"))
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
@@ -1376,7 +1394,8 @@ func TestTracing(t *testing.T, harness Harness) {
 
 	tracer := new(test.MemTracer)
 
-	ctx := sql.NewContext(context.TODO(), sql.WithTracer(tracer), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background(),
+		sql.WithTracer(tracer), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
 
 	_, iter, err := e.Query(ctx, `SELECT DISTINCT i
 		FROM mytable

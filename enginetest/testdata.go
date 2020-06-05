@@ -51,7 +51,10 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 
 		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "first row"), sql.NewRow(int64(2), "second row"), sql.NewRow(int64(3), "third row"), )
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow(int64(1), "first row"),
+				sql.NewRow(int64(2), "second row"),
+				sql.NewRow(int64(3), "third row"))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "mytable", err)
 		}
@@ -68,7 +71,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 
 		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(0, 0, 0, 0, 0, 0), sql.NewRow(1, 10, 10, 10, 10, 10), sql.NewRow(2, 20, 20, 20, 20, 20), sql.NewRow(3, 30, 30, 30, 30, 30))
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow(0, 0, 0, 0, 0, 0),
+				sql.NewRow(1, 10, 10, 10, 10, 10),
+				sql.NewRow(2, 20, 20, 20, 20, 20),
+				sql.NewRow(3, 30, 30, 30, 30, 30))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "one_pk", err)
 		}
@@ -86,7 +93,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 
 		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(0, 0, 0, 0, 0, 0, 0), sql.NewRow(0, 1, 10, 10, 10, 10, 10), sql.NewRow(1, 0, 20, 20, 20, 20, 20), sql.NewRow(1, 1, 30, 30, 30, 30, 30))
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow(0, 0, 0, 0, 0, 0, 0),
+				sql.NewRow(0, 1, 10, 10, 10, 10, 10),
+				sql.NewRow(1, 0, 20, 20, 20, 20, 20),
+				sql.NewRow(1, 1, 30, 30, 30, 30, 30))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "two_pk", err)
 		}
@@ -99,7 +110,10 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 
 		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow("first", int64(3)), sql.NewRow("second", int64(2)), sql.NewRow("third", int64(1)))
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow("first", int64(3)),
+				sql.NewRow("second", int64(2)),
+				sql.NewRow("third", int64(1)))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "othertable", err)
 		}
@@ -112,7 +126,10 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 
 		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "first row"), sql.NewRow(int64(2), "second row"), sql.NewRow(int64(3), "third row"))
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow(int64(1), "first row"),
+				sql.NewRow(int64(2), "second row"),
+				sql.NewRow(int64(3), "third row"))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "tabletest", err)
 		}
@@ -136,7 +153,10 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 
 		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow("a", int32(4)), sql.NewRow("b", int32(2)), sql.NewRow("c", int32(0)))
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow("a", int32(4)),
+				sql.NewRow("b", int32(2)),
+				sql.NewRow("c", int32(0)))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "other_table", err)
 		}
@@ -149,7 +169,21 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 
 		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow("a", int64(1)), sql.NewRow("s", int64(2)), sql.NewRow("f", int64(3)), sql.NewRow("g", int64(1)), sql.NewRow("h", int64(2)), sql.NewRow("j", int64(3)), sql.NewRow("k", int64(1)), sql.NewRow("l", int64(2)), sql.NewRow("ñ", int64(4)), sql.NewRow("z", int64(5)), sql.NewRow("x", int64(6)), sql.NewRow("c", int64(7)), sql.NewRow("v", int64(8)), sql.NewRow("b", int64(9)))
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow("a", int64(1)),
+				sql.NewRow("s", int64(2)),
+				sql.NewRow("f", int64(3)),
+				sql.NewRow("g", int64(1)),
+				sql.NewRow("h", int64(2)),
+				sql.NewRow("j", int64(3)),
+				sql.NewRow("k", int64(1)),
+				sql.NewRow("l", int64(2)),
+				sql.NewRow("ñ", int64(4)),
+				sql.NewRow("z", int64(5)),
+				sql.NewRow("x", int64(6)),
+				sql.NewRow("c", int64(7)),
+				sql.NewRow("v", int64(8)),
+				sql.NewRow("b", int64(9)))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "bigtable", err)
 		}
@@ -163,7 +197,13 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 
 		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), float32(1.0), float64(1.0)), sql.NewRow(int64(2), float32(1.5), float64(1.5)), sql.NewRow(int64(3), float32(2.0), float64(2.0)), sql.NewRow(int64(4), float32(2.5), float64(2.5)), sql.NewRow(int64(-1), float32(-1.0), float64(-1.0)), sql.NewRow(int64(-2), float32(-1.5), float64(-1.5)))
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow(int64(1), float32(1.0), float64(1.0)),
+				sql.NewRow(int64(2), float32(1.5), float64(1.5)),
+				sql.NewRow(int64(3), float32(2.0), float64(2.0)),
+				sql.NewRow(int64(4), float32(2.5), float64(2.5)),
+				sql.NewRow(int64(-1), float32(-1.0), float64(-1.0)),
+				sql.NewRow(int64(-2), float32(-1.5), float64(-1.5)))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "floattable", err)
 		}
@@ -197,7 +237,12 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 
 		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "\nthere is some text in here"), sql.NewRow(int64(2), "there is some\ntext in here"), sql.NewRow(int64(3), "there is some text\nin here"), sql.NewRow(int64(4), "there is some text in here\n"), sql.NewRow(int64(5), "there is some text in here"))
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow(int64(1), "\nthere is some text in here"),
+				sql.NewRow(int64(2), "there is some\ntext in here"),
+				sql.NewRow(int64(3), "there is some text\nin here"),
+				sql.NewRow(int64(4), "there is some text in here\n"),
+				sql.NewRow(int64(5), "there is some text in here"))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "newlinetable", err)
 		}
@@ -230,25 +275,26 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			t2, err := time.Parse(time.RFC3339, "2019-12-31T00:00:00Z")
 			require.NoError(t, err)
 
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(
-				int64(1),
-				int8(2),
-				int16(3),
-				int32(4),
-				int64(5),
-				uint8(6),
-				uint16(7),
-				uint32(8),
-				uint64(9),
-				float32(10),
-				float64(11),
-				t1,
-				t2,
-				"fourteen",
-				false,
-				nil,
-				nil,
-			))
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow(
+					int64(1),
+					int8(2),
+					int16(3),
+					int32(4),
+					int64(5),
+					uint8(6),
+					uint16(7),
+					uint32(8),
+					uint64(9),
+					float32(10),
+					float64(11),
+					t1,
+					t2,
+					"fourteen",
+					false,
+					nil,
+					nil,
+				))
 		}
 	} else {
 		t.Logf("Warning: could not create table %s: %s", "typestable", err)
@@ -262,7 +308,14 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 
 		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(0), int64(0), "0"), sql.NewRow(int64(1), int64(1), "1"), sql.NewRow(int64(2), int64(2), ""), sql.NewRow(int64(3), int64(3), "true"), sql.NewRow(int64(4), int64(4), "false"), sql.NewRow(int64(5), int64(5), nil), sql.NewRow(int64(6), nil, "2"))
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow(int64(0), int64(0), "0"),
+				sql.NewRow(int64(1), int64(1), "1"),
+				sql.NewRow(int64(2), int64(2), ""),
+				sql.NewRow(int64(3), int64(3), "true"),
+				sql.NewRow(int64(4), int64(4), "false"),
+				sql.NewRow(int64(5), int64(5), nil),
+				sql.NewRow(int64(6), nil, "2"))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "stringandtable", err)
 		}
@@ -277,7 +330,8 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 
 		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow("1", "1.1", "aaa", "create"))
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+sql.NewRow("1", "1.1", "aaa", "create"))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "reservedWordsTable", err)
 		}
