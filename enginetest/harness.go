@@ -40,4 +40,5 @@ type IndexHarness interface {
 type VersionedDBHarness interface {
 	Harness
 	NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.Schema, asOf interface{}) sql.Table
+	SnapshotTable(db sql.VersionedDatabase, name string, asOf interface{}) error
 }

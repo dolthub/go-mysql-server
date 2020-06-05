@@ -296,10 +296,15 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		}, "2019-01-01")
 
 		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "first row, 1"), sql.NewRow(int64(2), "second row, 1"), sql.NewRow(int64(3), "third row, 1"))
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow(int64(1), "first row, 1"),
+				sql.NewRow(int64(2), "second row, 1"),
+				sql.NewRow(int64(3), "third row, 1"))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "myhistorytable", err)
 		}
+
+		versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-01")
 
 		table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
@@ -307,10 +312,19 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		}, "2019-01-02")
 
 		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "first row, 2"), sql.NewRow(int64(2), "second row, 2"), sql.NewRow(int64(3), "third row, 2"))
+			DeleteRows(t, NewContext(harness), mustDeletableTable(t, table),
+				sql.NewRow(int64(1), "first row, 1"),
+				sql.NewRow(int64(2), "second row, 1"),
+				sql.NewRow(int64(3), "third row, 1"))
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow(int64(1), "first row, 2"),
+				sql.NewRow(int64(2), "second row, 2"),
+				sql.NewRow(int64(3), "third row, 2"))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "myhistorytable", err)
 		}
+
+		versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-02")
 	}
 
 	return []sql.Database{myDb, foo}
@@ -327,6 +341,12 @@ func mustInsertableTable(t *testing.T, table sql.Table) sql.InsertableTable {
 	return insertable
 }
 
+func mustDeletableTable(t *testing.T, table sql.Table) sql.DeletableTable {
+	deletable, ok := table.(sql.DeletableTable)
+	require.True(t, ok, "Table must implement sql.DeletableTable")
+	return deletable
+}
+
 func InsertRows(t *testing.T, ctx *sql.Context, table sql.InsertableTable, rows ...sql.Row) {
 	t.Helper()
 
@@ -335,6 +355,16 @@ func InsertRows(t *testing.T, ctx *sql.Context, table sql.InsertableTable, rows 
 		require.NoError(t, inserter.Insert(ctx, r))
 	}
 	require.NoError(t, inserter.Close(ctx))
+}
+
+func DeleteRows(t *testing.T, ctx *sql.Context, table sql.DeletableTable, rows ...sql.Row) {
+	t.Helper()
+
+	deleter := table.Deleter(ctx)
+	for _, r := range rows {
+		require.NoError(t, deleter.Delete(ctx, r))
+	}
+	require.NoError(t, deleter.Close(ctx))
 }
 
 func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
