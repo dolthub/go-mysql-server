@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"io"
 	"strconv"
 
@@ -400,7 +399,7 @@ func (t *tableEditor) checkUniquenessConstraints(row sql.Row) error {
 		for _, partition := range t.table.partitions {
 			for _, partitionRow := range partition {
 				if columnsMatch(pkColIdxes, partitionRow, row) {
-					return plan.ErrUniqueKeyViolation.New(pkColIdxes)
+					return sql.ErrUniqueKeyViolation.New(pkColIdxes)
 				}
 			}
 		}

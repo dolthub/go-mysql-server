@@ -39,6 +39,9 @@ var (
 
   // ErrDuplicateAlias should be returned when a query contains a duplicate alias / table name.
   ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
+
+  // ErrUniqueKeyViolation is returned when a unique key constraint is violated
+	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key for %s")
 )
 
 // Nameable is something that has a name.

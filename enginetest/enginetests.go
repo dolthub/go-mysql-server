@@ -1114,13 +1114,15 @@ func TestSessionVariables(t *testing.T, harness Harness) {
 	require := require.New(t)
 	e := NewEngine(t, harness)
 
-	_, _, err := e.Query(NewContext(harness), `set autocommit=1, sql_mode = concat(@@sql_mode,',STRICT_TRANS_TABLES')`)
+	ctx := NewContext(harness)
+	_, iter, err := e.Query(ctx, `set autocommit=1, sql_mode = concat(@@sql_mode,',STRICT_TRANS_TABLES')`)
 	require.NoError(err)
-
-	_, iter, err := e.Query(NewContext(harness), `SELECT @@autocommit, @@session.sql_mode`)
-	require.NoError(err)
-
 	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	_, iter, err = e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode`)
+	require.NoError(err)
+	rows, err = sql.RowIterToRows(iter)
 	require.NoError(err)
 
 	require.Equal([]sql.Row{{int8(1), ",STRICT_TRANS_TABLES"}}, rows)
@@ -1131,13 +1133,15 @@ func TestSessionVariablesONOFF(t *testing.T, harness Harness) {
 
 	e := NewEngine(t, harness)
 
-	_, _, err := e.Query(NewContext(harness), `set autocommit=ON, sql_mode = OFF, autoformat="true"`)
+	ctx := NewContext(harness)
+	_, iter, err := e.Query(ctx, `set autocommit=ON, sql_mode = OFF, autoformat="true"`)
 	require.NoError(err)
-
-	_, iter, err := e.Query(NewContext(harness), `SELECT @@autocommit, @@session.sql_mode, @@autoformat`)
-	require.NoError(err)
-
 	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	_, iter, err = e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode, @@autoformat`)
+	require.NoError(err)
+	rows, err = sql.RowIterToRows(iter)
 	require.NoError(err)
 
 	require.Equal([]sql.Row{{int64(1), int64(0), true}}, rows)

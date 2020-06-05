@@ -15,6 +15,7 @@
 package enginetest_test
 
 import (
+	"context"
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"github.com/opentracing/opentracing-go"
 	"testing"
@@ -158,7 +159,9 @@ func TestRootSpanFinish(t *testing.T) {
 	harness := newDefaultMemoryHarness()
 	e := enginetest.NewEngine(t, harness)
 	fakeSpan := &mockSpan{Span: opentracing.NoopTracer{}.StartSpan("")}
-	ctx := enginetest.NewContext(harness)
+	ctx := sql.NewContext(
+		context.Background(),
+		sql.WithRootSpan(fakeSpan))
 
 	_, iter, err := e.Query(ctx, "SELECT 1")
 	require.NoError(t, err)
