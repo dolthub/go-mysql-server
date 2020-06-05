@@ -304,7 +304,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			t.Logf("Warning: could not create table %s: %s", "myhistorytable", err)
 		}
 
-		versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-01")
+		require.NoError(t, versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-01"))
 
 		table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
@@ -324,7 +324,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			t.Logf("Warning: could not create table %s: %s", "myhistorytable", err)
 		}
 
-		versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-02")
+		require.NoError(t, versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-02"))
 	}
 
 	return []sql.Database{myDb, foo}
@@ -362,7 +362,9 @@ func DeleteRows(t *testing.T, ctx *sql.Context, table sql.DeletableTable, rows .
 
 	deleter := table.Deleter(ctx)
 	for _, r := range rows {
-		require.NoError(t, deleter.Delete(ctx, r))
+		if err := deleter.Delete(ctx, r); err != nil {
+			require.True(t, sql.ErrDeleteRowNotFound.Is(err))
+		}
 	}
 	require.NoError(t, deleter.Close(ctx))
 }

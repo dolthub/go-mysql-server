@@ -35,7 +35,7 @@ var (
 	ErrInvalidChildType = errors.NewKind("%T: invalid child type, got %T, expected %T")
 
 	// ErrDeleteRowNotFound
-	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete").New()
+	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete")
 
   // ErrDuplicateAlias should be returned when a query contains a duplicate alias / table name.
   ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
@@ -260,6 +260,7 @@ type IndexAlterableTable interface {
 
 // InsertableTable is a table that can process insertion of new rows.
 type InsertableTable interface {
+	Table
 	// Inserter returns an Inserter for this table. The Inserter will get one call to Insert() for each row to be
 	// inserted, and will end with a call to Close() to finalize the insert operation.
 	Inserter(*Context) RowInserter

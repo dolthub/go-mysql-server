@@ -350,7 +350,7 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 	}
 
 	if !matches {
-		return sql.ErrDeleteRowNotFound
+		return sql.ErrDeleteRowNotFound.New()
 	}
 
 	return nil

@@ -81,6 +81,11 @@ func (m *memoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, sche
 	return table
 }
 
+func (m *memoryHarness) SnapshotTable(db sql.VersionedDatabase, name string, asOf interface{}) error {
+	// Nothing to do for this implementation: the NewTableAsOf method does all the work of creating the snapshot.
+	return nil
+}
+
 func (m *memoryHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
 	if m.indexDriverInitializer != nil {
 		return m.indexDriverInitializer(dbs)

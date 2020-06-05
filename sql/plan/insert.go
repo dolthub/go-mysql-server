@@ -169,7 +169,7 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 
 		if replacer != nil {
 			if err = replacer.Delete(ctx, row); err != nil {
-				if err != sql.ErrDeleteRowNotFound {
+				if !sql.ErrDeleteRowNotFound.Is(err) {
 					_ = iter.Close()
 					return i, err
 				}
