@@ -261,6 +261,29 @@ type IndexAlterableTable interface {
 	RenameIndex(ctx *Context, fromIndexName string, toIndexName string) error
 }
 
+// ForeignKeyReferenceOption is the behavior for this foreign key with the relevant action is performed on the foreign
+// table.
+type ForeignKeyReferenceOption string
+const (
+	ForeignKeyReferenceOption_DefaultAction ForeignKeyReferenceOption = "DEFAULT" // No explicit action was specified
+	ForeignKeyReferenceOption_Restrict ForeignKeyReferenceOption = "RESTRICT"
+	ForeignKeyReferenceOption_Cascade ForeignKeyReferenceOption = "CASCADE"
+	ForeignKeyReferenceOption_NoAction ForeignKeyReferenceOption = "NO ACTION"
+	ForeignKeyReferenceOption_SetNull ForeignKeyReferenceOption = "SET NULL"
+	ForeignKeyReferenceOption_SetDefault ForeignKeyReferenceOption = "SET DEFAULT"
+)
+
+// ForeignKeyAlterableTable represents a table that supports foreign key modification operations.
+type ForeignKeyAlterableTable interface {
+	Table
+	// CreateForeignKey creates an index for this table, using the provided parameters.
+	// Returns an error if the foreign key name already exists.
+	CreateForeignKey(ctx *Context, fkName string, columns []string, referencedColumns []string,
+		onUpdate, onDelete ForeignKeyReferenceOption) error
+	// DropForeignKey removes a foreign key from the database.
+	DropForeignKey(ctx *Context, fkName string) error
+}
+
 // InsertableTable is a table that can process insertion of new rows.
 type InsertableTable interface {
 	Table

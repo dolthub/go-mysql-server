@@ -38,6 +38,8 @@ var (
 	ErrInvalidIndexPrefix = errors.NewKind("invalid index prefix: %v")
 
 	ErrUnknownIndexColumn = errors.NewKind("unknown column: '%s' in %s index '%s'")
+
+	ErrUnknownConstraintDefinition = errors.NewKind("unknown constraint definition: %s, %T")
 )
 
 var (
@@ -497,6 +499,22 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	if ddl.IndexSpec != nil {
 		return convertAlterIndex(ctx, ddl)
 	}
+	//TODO: support multiple constraints in a single ALTER statement
+	if ddl.ConstraintAction != "" && len(ddl.TableSpec.Constraints) == 1 {
+		table := plan.NewUnresolvedTable(ddl.Table.Name.String(), ddl.Table.Qualifier.String())
+		parsedConstraint, err := convertConstraintDefinition(ctx, ddl.TableSpec.Constraints[0])
+		if err != nil {
+			return nil, err
+		}
+		if fkConstraint, ok := parsedConstraint.(*plan.ForeignKeyDefinition); ok {
+			switch strings.ToLower(ddl.ConstraintAction) {
+			case sqlparser.AddStr:
+				return plan.NewAlterAddForeignKey(table, fkConstraint), nil
+			case sqlparser.DropStr:
+				return plan.NewAlterDropForeignKey(table, fkConstraint), nil
+			}
+		}
+	}
 	switch strings.ToLower(ddl.ColumnAction) {
 	case sqlparser.AddStr:
 		sch, err := TableSpecToSchema(ctx, ddl.TableSpec)
@@ -628,8 +646,61 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		return nil, err
 	}
 
+	var fkDefs []*plan.ForeignKeyDefinition
+	for _, unknownConstraint := range c.TableSpec.Constraints {
+		parsedConstraint, err := convertConstraintDefinition(ctx, unknownConstraint)
+		if err != nil {
+			return nil, err
+		}
+		switch constraint := parsedConstraint.(type) {
+		case *plan.ForeignKeyDefinition:
+			fkDefs = append(fkDefs, constraint)
+		default:
+			return nil, ErrUnknownConstraintDefinition.New(unknownConstraint.Name, unknownConstraint)
+		}
+	}
+
 	return plan.NewCreateTable(
-		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema, c.IfNotExists), nil
+		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema, c.IfNotExists, fkDefs), nil
+}
+
+func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefinition) (interface{}, error) {
+	if fkConstraint, ok := cd.Details.(*sqlparser.ForeignKeyDefinition); ok {
+		columns := make([]string, len(fkConstraint.Source))
+		for i, col := range fkConstraint.Source {
+			columns[i] = col.String()
+		}
+		refColumns := make([]string, len(fkConstraint.ReferencedColumns))
+		for i, col := range fkConstraint.ReferencedColumns {
+			refColumns[i] = col.String()
+		}
+		return &plan.ForeignKeyDefinition{
+			Name:              cd.Name,
+			Columns:           columns,
+			ReferencedTable:   fkConstraint.ReferencedTable.Name.String(),
+			ReferencedColumns: refColumns,
+			OnUpdate:          convertReferenceAction(fkConstraint.OnUpdate),
+			OnDelete:          convertReferenceAction(fkConstraint.OnDelete),
+		}, nil
+	}
+	return nil, ErrUnknownConstraintDefinition.New(cd.Name, cd)
+}
+
+func convertReferenceAction(action sqlparser.ReferenceAction) sql.ForeignKeyReferenceOption {
+	switch action {
+	case sqlparser.Restrict:
+		return sql.ForeignKeyReferenceOption_Restrict
+	case sqlparser.Cascade:
+		return sql.ForeignKeyReferenceOption_Cascade
+	case sqlparser.NoAction:
+		return sql.ForeignKeyReferenceOption_NoAction
+	case sqlparser.SetNull:
+		return sql.ForeignKeyReferenceOption_SetNull
+	case sqlparser.SetDefault:
+		return sql.ForeignKeyReferenceOption_SetDefault
+	default:
+		return sql.ForeignKeyReferenceOption_DefaultAction
+	}
 }
 
 func convertCreateView(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {

@@ -21,6 +21,10 @@ var ErrColumnNotFound = errors.NewKind("table %s does not have column %s")
 var ErrNullDefault = errors.NewKind("column declared not null must have a non-null default value")
 // ErrIncompatibleDefaultType is thrown when a provided default cannot be coerced into the type of the column
 var ErrIncompatibleDefaultType = errors.NewKind("incompatible type for default value")
+// ErrTableCreatedNotFound is thrown when a table is created from CREATE TABLE but cannot be found immediately afterward
+var ErrTableCreatedNotFound = errors.NewKind("table was created but could not be found")
+// ErrUnsupportedFeature is thrown when a feature is not already supported
+var ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
 
 // Ddl nodes have a reference to a database, but no children and a nil schema.
 type ddlNode struct {
@@ -44,19 +48,29 @@ func (*ddlNode) Schema() sql.Schema { return nil }
 // Children implements the Node interface.
 func (c *ddlNode) Children() []sql.Node { return nil }
 
+type ForeignKeyDefinition struct {
+	Name              string
+	Columns           []string
+	ReferencedTable   string
+	ReferencedColumns []string
+	OnUpdate          sql.ForeignKeyReferenceOption
+	OnDelete          sql.ForeignKeyReferenceOption
+}
+
 // CreateTable is a node describing the creation of some table.
 type CreateTable struct {
 	ddlNode
 	name        string
 	schema      sql.Schema
 	ifNotExists bool
+	fkDefs      []*ForeignKeyDefinition
 }
 
 var _ sql.Databaser = (*CreateTable)(nil)
 var _ sql.Node = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
-func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists bool) *CreateTable {
+func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists bool, fkDefs []*ForeignKeyDefinition) *CreateTable {
 	for _, s := range schema {
 		s.Source = name
 	}
@@ -66,6 +80,7 @@ func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists
 		name:        name,
 		schema:      schema,
 		ifNotExists: ifNotExists,
+		fkDefs:      fkDefs,
 	}
 }
 
@@ -81,10 +96,31 @@ func (c *CreateTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	creatable, ok := c.db.(sql.TableCreator)
 	if ok {
 		err := creatable.CreateTable(ctx, c.name, c.schema)
-		if sql.ErrTableAlreadyExists.Is(err) && c.ifNotExists {
-			err = nil
+		if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && c.ifNotExists) {
+			return sql.RowsToRowIter(), err
 		}
-		return sql.RowsToRowIter(), err
+		//TODO: in the event that foreign keys aren't supported, you'll be left with a created table and no foreign keys
+		//this also means that if a foreign key fails, you'll only have the ones declared up to the failure
+		if len(c.fkDefs) > 0 {
+			tableNode, ok, err := c.db.GetTableInsensitive(ctx, c.name)
+			if err != nil {
+				return sql.RowsToRowIter(), err
+			}
+			if !ok {
+				return sql.RowsToRowIter(), ErrTableCreatedNotFound.New()
+			}
+			fkAlterable, ok := tableNode.(sql.ForeignKeyAlterableTable)
+			if !ok {
+				return sql.RowsToRowIter(), ErrNoForeignKeySupport.New(c.name)
+			}
+			for _, fkDef := range c.fkDefs {
+				err = fkAlterable.CreateForeignKey(ctx, fkDef.Name, fkDef.Columns, fkDef.ReferencedColumns, fkDef.OnUpdate, fkDef.OnDelete)
+				if err != nil {
+					return sql.RowsToRowIter(), err
+				}
+			}
+		}
+		return sql.RowsToRowIter(), nil
 	}
 
 	return nil, ErrCreateTableNotSupported.New(c.db.Name())
