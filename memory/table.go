@@ -21,11 +21,12 @@ type Table struct {
 
 	insert int
 
-	filters    []sql.Expression
-	projection []string
-	columns    []int
-	lookup     sql.IndexLookup
-	indexes    map[string]sql.Index
+	filters          []sql.Expression
+	projection       []string
+	columns          []int
+	lookup           sql.IndexLookup
+	indexes          map[string]sql.Index
+	pkIndexesEnabled bool
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -294,6 +295,10 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 
+	if err := t.checkUniquenessConstraints(row); err != nil {
+		return err
+	}
+
 	key := string(t.table.keys[t.table.insert])
 	t.table.insert++
 	if t.table.insert == len(t.table.keys) {
@@ -314,12 +319,25 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 	for partitionIndex, partition := range t.table.partitions {
 		for partitionRowIndex, partitionRow := range partition {
 			matches = true
+
+			// For DELETE queries, we will have previously selected the row in order to delete it. For REPLACE, we will just
+			// have the row to be replaced, so we need to consider primary key information.
+			pkColIdxes := t.pkColumnIndexes()
+			if len(pkColIdxes) > 0 {
+				if columnsMatch(pkColIdxes, partitionRow, row) {
+					t.table.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
+					break
+				}
+			}
+
+			// If we had no primary key match (or have no primary key), check each row for a total match
 			for rIndex, val := range row {
 				if val != partitionRow[rIndex] {
 					matches = false
 					break
 				}
 			}
+
 			if matches {
 				t.table.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
 				break
@@ -331,7 +349,7 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 	}
 
 	if !matches {
-		return sql.ErrDeleteRowNotFound
+		return sql.ErrDeleteRowNotFound.New()
 	}
 
 	return nil
@@ -343,6 +361,12 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 	}
 	if err := checkRow(t.table.schema, newRow); err != nil {
 		return err
+	}
+
+	if t.pkColsDiffer(oldRow, newRow) {
+		if err := t.checkUniquenessConstraints(newRow); err != nil {
+			return err
+		}
 	}
 
 	matches := false
@@ -366,6 +390,49 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 	}
 
 	return nil
+}
+
+func (t *tableEditor) checkUniquenessConstraints(row sql.Row) error {
+	pkColIdxes := t.pkColumnIndexes()
+
+	if len(pkColIdxes) > 0 {
+		for _, partition := range t.table.partitions {
+			for _, partitionRow := range partition {
+				if columnsMatch(pkColIdxes, partitionRow, row) {
+					return sql.ErrUniqueKeyViolation.New(pkColIdxes)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (t *tableEditor) pkColumnIndexes() []int {
+	var pkColIdxes []int
+	for _, column := range t.table.schema {
+		if column.PrimaryKey {
+			idx, _ := t.table.getField(column.Name)
+			pkColIdxes = append(pkColIdxes, idx)
+		}
+	}
+	return pkColIdxes
+}
+
+func (t *tableEditor) pkColsDiffer(row, row2 sql.Row) bool {
+	pkColIdxes := t.pkColumnIndexes()
+	return !columnsMatch(pkColIdxes, row, row2)
+}
+
+
+// Returns whether the values for the columns given match in the two rows provided
+func columnsMatch(colIndexes []int, row sql.Row, row2 sql.Row) bool {
+	for _, i := range colIndexes {
+		if row[i] != row2[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {
@@ -554,7 +621,7 @@ func (t *Table) newColumnIndexesAndSchema(colNames []string) ([]int, sql.Schema,
 			columns = append(columns, i)
 		} else {
 			// get indexes for the new projections from
-			// the orginal indexes.
+			// the original indexes.
 			columns = append(columns, t.columns[i])
 		}
 
@@ -564,13 +631,41 @@ func (t *Table) newColumnIndexesAndSchema(colNames []string) ([]int, sql.Schema,
 	return columns, schema, nil
 }
 
+// EnablePrimaryKeyIndexes enables the use of primary key indexes on this table.
+func (t *Table) EnablePrimaryKeyIndexes() {
+	t.pkIndexesEnabled = true
+}
+
 // GetIndexes implements sql.IndexedTable
 func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
-	indexes := make([]sql.Index, len(t.indexes))
-	var i int
+	indexes := make([]sql.Index, 0)
+
+	if t.pkIndexesEnabled {
+		var pkCols []*sql.Column
+		for _, col := range t.schema {
+			if col.PrimaryKey {
+				pkCols = append(pkCols, col)
+			}
+		}
+
+		if len(pkCols) > 0 {
+			exprs := make([]sql.Expression, len(pkCols))
+			for i, column := range pkCols {
+				idx, field := t.getField(column.Name)
+				exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
+			}
+			indexes = append(indexes, &UnmergeableIndex{
+				DB:         "",
+				DriverName: "native",
+				Tbl:        t,
+				TableName:  t.name,
+				Exprs:      exprs,
+			})
+		}
+	}
+
 	for _, index := range t.indexes {
-		indexes[i] = index
-		i++
+		indexes = append(indexes, index)
 	}
 	return indexes, nil
 }
@@ -583,7 +678,7 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn) (sql.Index, 
 
 	exprs := make([]sql.Expression, len(columns))
 	for i, column := range columns {
-		idx, field := getField(column.Name, t.schema)
+		idx, field := t.getField(column.Name)
 		exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
 	}
 
@@ -596,13 +691,20 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn) (sql.Index, 
 	}, nil
 }
 
-func getField(col string, schema sql.Schema) (int, *sql.Column) {
-	for i, column := range schema {
-		if column.Name == col {
-			return i, column
-		}
+// getField returns the index and column index with the name given, if it exists, or -1, nil otherwise.
+func (t *Table) getField(col string) (int, *sql.Column) {
+	i := t.schema.IndexOf(col, t.name)
+	if i == -1 {
+		return -1, nil
 	}
-	return -1, nil
+
+	if len(t.columns) == 0 {
+		// if the table hasn't been projected before
+		// match against the original schema
+		return i, t.schema[i]
+	} else {
+		return t.columns[i], t.schema[i]
+	}
 }
 
 // CreateIndex implements sql.IndexAlterableTable

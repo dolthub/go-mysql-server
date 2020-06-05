@@ -315,35 +315,55 @@ var QueryTests = []QueryTest{
 	},
 	{
 		"SELECT i FROM niltable WHERE b IS NULL",
-		[]sql.Row{{int64(2)}, {nil}},
+		[]sql.Row{{int64(1)}, {int64(4)}},
 	},
 	{
 		"SELECT i FROM niltable WHERE b IS NOT NULL",
-		[]sql.Row{{int64(1)}, {nil}, {int64(4)}},
+		[]sql.Row{
+			{int64(2)}, {int64(3)},
+			{int64(5)}, {int64(6)},
+		},
 	},
 	{
 		"SELECT i FROM niltable WHERE b",
-		[]sql.Row{{int64(1)}, {int64(4)}},
+		[]sql.Row{
+			{int64(2)},
+			{int64(5)},
+		},
 	},
 	{
 		"SELECT i FROM niltable WHERE NOT b",
-		[]sql.Row{{nil}},
+		[]sql.Row{
+			{int64(3)},
+			{int64(6)},
+		},
 	},
 	{
 		"SELECT i FROM niltable WHERE b IS TRUE",
-		[]sql.Row{{int64(1)}, {int64(4)}},
+		[]sql.Row{{int64(2)}, {int64(5)}},
 	},
 	{
 		"SELECT i FROM niltable WHERE b IS NOT TRUE",
-		[]sql.Row{{int64(2)}, {nil}, {nil}},
+		[]sql.Row{
+			{int64(1)}, {int64(3)},
+			{int64(4)}, {int64(6)},
+		},
 	},
 	{
 		"SELECT f FROM niltable WHERE b IS FALSE",
-		[]sql.Row{{3.0}},
+		[]sql.Row{{nil}, {6.0}},
+	},
+	{
+		"SELECT i FROM niltable WHERE f < 5",
+		[]sql.Row{{int64(4)}},
+	},
+	{
+		"SELECT i FROM niltable WHERE f > 5",
+		[]sql.Row{{int64(6)}},
 	},
 	{
 		"SELECT i FROM niltable WHERE b IS NOT FALSE",
-		[]sql.Row{{int64(1)}, {int64(2)}, {int64(4)}, {nil}},
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(4)}, {int64(5)}},
 	},
 	{
 		"SELECT COUNT(*) FROM mytable;",
@@ -511,7 +531,7 @@ var QueryTests = []QueryTest{
 		"SELECT id FROM typestable WHERE da < date_sub('2020-01-01', INTERVAL 1 DAY)",
 		nil,
 	},	{
-		"SELECT * from stringandtable WHERE i",
+		"SELECT i,v from stringandtable WHERE i",
 		[]sql.Row{
 			{int64(1), "1"},
 			{int64(2), ""},
@@ -521,7 +541,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		"SELECT * from stringandtable WHERE i AND i",
+		"SELECT i,v from stringandtable WHERE i AND i",
 		[]sql.Row{
 			{int64(1), "1"},
 			{int64(2), ""},
@@ -531,7 +551,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		"SELECT * from stringandtable WHERE i OR i",
+		"SELECT i,v from stringandtable WHERE i OR i",
 		[]sql.Row{
 			{int64(1), "1"},
 			{int64(2), ""},
@@ -541,19 +561,19 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		"SELECT * from stringandtable WHERE NOT i",
+		"SELECT i,v from stringandtable WHERE NOT i",
 		[]sql.Row{{int64(0), "0"}},
 	},
 	{
-		"SELECT * from stringandtable WHERE NOT i AND NOT i",
+		"SELECT i,v from stringandtable WHERE NOT i AND NOT i",
 		[]sql.Row{{int64(0), "0"}},
 	},
 	{
-		"SELECT * from stringandtable WHERE NOT i OR NOT i",
+		"SELECT i,v from stringandtable WHERE NOT i OR NOT i",
 		[]sql.Row{{int64(0), "0"}},
 	},
 	{
-		"SELECT * from stringandtable WHERE i OR NOT i",
+		"SELECT i,v from stringandtable WHERE i OR NOT i",
 		[]sql.Row{
 			{int64(0), "0"},
 			{int64(1), "1"},
@@ -564,19 +584,19 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		"SELECT * from stringandtable WHERE v",
+		"SELECT i,v from stringandtable WHERE v",
 		[]sql.Row{{int64(1), "1"}, {nil, "2"}},
 	},
 	{
-		"SELECT * from stringandtable WHERE v AND v",
+		"SELECT i,v from stringandtable WHERE v AND v",
 		[]sql.Row{{int64(1), "1"}, {nil, "2"}},
 	},
 	{
-		"SELECT * from stringandtable WHERE v OR v",
+		"SELECT i,v from stringandtable WHERE v OR v",
 		[]sql.Row{{int64(1), "1"}, {nil, "2"}},
 	},
 	{
-		"SELECT * from stringandtable WHERE NOT v",
+		"SELECT i,v from stringandtable WHERE NOT v",
 		[]sql.Row{
 			{int64(0), "0"},
 			{int64(2), ""},
@@ -585,7 +605,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		"SELECT * from stringandtable WHERE NOT v AND NOT v",
+		"SELECT i,v from stringandtable WHERE NOT v AND NOT v",
 		[]sql.Row{
 			{int64(0), "0"},
 			{int64(2), ""},
@@ -594,7 +614,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		"SELECT * from stringandtable WHERE NOT v OR NOT v",
+		"SELECT i,v from stringandtable WHERE NOT v OR NOT v",
 		[]sql.Row{
 			{int64(0), "0"},
 			{int64(2), ""},
@@ -603,7 +623,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		"SELECT * from stringandtable WHERE v OR NOT v",
+		"SELECT i,v from stringandtable WHERE v OR NOT v",
 		[]sql.Row{
 			{int64(0), "0"},
 			{int64(1), "1"},
@@ -1101,91 +1121,6 @@ var QueryTests = []QueryTest{
 		`SELECT s FROM mytable WHERE s NOT LIKE '%d row'`,
 		[]sql.Row{
 			{"first row"},
-		},
-	},
-	{
-		`SHOW COLUMNS FROM mytable`,
-		[]sql.Row{
-			{"i", "BIGINT", "NO", "", "", ""},
-			{"s", "TEXT", "NO", "", "", ""},
-		},
-	},
-	{
-		`DESCRIBE mytable`,
-		[]sql.Row{
-			{"i", "BIGINT", "NO", "", "", ""},
-			{"s", "TEXT", "NO", "", "", ""},
-		},
-	},
-	{
-		`DESC mytable`,
-		[]sql.Row{
-			{"i", "BIGINT", "NO", "", "", ""},
-			{"s", "TEXT", "NO", "", "", ""},
-		},
-	},
-	{
-		`SHOW COLUMNS FROM one_pk`,
-		[]sql.Row{
-			{"pk", "TINYINT", "NO", "PRI", "", ""},
-			{"c1", "TINYINT", "NO", "", "", ""},
-			{"c2", "TINYINT", "NO", "", "", ""},
-			{"c3", "TINYINT", "NO", "", "", ""},
-			{"c4", "TINYINT", "NO", "", "", ""},
-			{"c5", "TINYINT", "NO", "", "", ""},
-		},
-	},
-	{
-		`DESCRIBE one_pk`,
-		[]sql.Row{
-			{"pk", "TINYINT", "NO", "PRI", "", ""},
-			{"c1", "TINYINT", "NO", "", "", ""},
-			{"c2", "TINYINT", "NO", "", "", ""},
-			{"c3", "TINYINT", "NO", "", "", ""},
-			{"c4", "TINYINT", "NO", "", "", ""},
-			{"c5", "TINYINT", "NO", "", "", ""},
-		},
-	},
-	{
-		`DESC one_pk`,
-		[]sql.Row{
-			{"pk", "TINYINT", "NO", "PRI", "", ""},
-			{"c1", "TINYINT", "NO", "", "", ""},
-			{"c2", "TINYINT", "NO", "", "", ""},
-			{"c3", "TINYINT", "NO", "", "", ""},
-			{"c4", "TINYINT", "NO", "", "", ""},
-			{"c5", "TINYINT", "NO", "", "", ""},
-		},
-	},
-
-	{
-		`SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
-		[]sql.Row{
-			{"i", "BIGINT", "NO", "", "", ""},
-		},
-	},
-	{
-		`SHOW COLUMNS FROM mytable LIKE 'i'`,
-		[]sql.Row{
-			{"i", "BIGINT", "NO", "", "", ""},
-		},
-	},
-	{
-		`SHOW FULL COLUMNS FROM mytable`,
-		[]sql.Row{
-			{"i", "BIGINT", nil, "NO", "", "", "", "", ""},
-			{"s", "TEXT", "utf8_bin", "NO", "", "", "", "", ""},
-		},
-	},
-	{
-		`SHOW FULL COLUMNS FROM one_pk`,
-		[]sql.Row{
-			{"pk", "TINYINT", nil, "NO", "PRI", "", "", "", ""},
-			{"c1", "TINYINT", nil, "NO", "", "", "", "", ""},
-			{"c2", "TINYINT", nil, "NO", "", "", "", "", ""},
-			{"c3", "TINYINT", nil, "NO", "", "", "", "", ""},
-			{"c4", "TINYINT", nil, "NO", "", "", "", "", ""},
-			{"c5", "TINYINT", nil, "NO", "", "", "", "", "column 5"},
 		},
 	},
 	{
@@ -2195,80 +2130,81 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i ORDER BY 1",
+		"SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i2 ORDER BY 1",
 		[]sql.Row{
 			{0, nil, nil},
-			{1, int64(1), float64(1.0)},
-			{2, int64(2), float64(2.0)},
+			{1, nil, nil},
+			{2, int64(2), nil},
 			{3, nil, nil},
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i ORDER BY 2,3",
+		"SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i2 ORDER BY 2,3",
 		[]sql.Row{
 			{nil, nil, nil},
-			{nil, nil, float64(3.0)},
-			{1, int64(1), float64(1.0)},
-			{2, int64(2), float64(2.0)},
-			{nil, int64(4), nil},
+			{nil, nil, nil},
+			{nil, nil, 5.0},
+			{2, int64(2), nil},
+			{nil, int64(4), 4.0},
+			{nil, int64(6), 6.0},
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i AND f IS NOT NULL ORDER BY 1", // NOT NULL clause in join condition is ignored
+		"SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i2 AND f IS NOT NULL ORDER BY 1", // AND clause causes right table join miss
 		[]sql.Row{
 			{0, nil, nil},
-			{1, int64(1), float64(1.0)},
-			{2, int64(2), float64(2.0)},
+			{1, nil, nil},
+			{2, nil, nil},
 			{3, nil, nil},
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i and pk > 0 ORDER BY 2,3", // > 0 clause in join condition is ignored
+		"SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i2 and pk > 0 ORDER BY 2,3", // > 0 clause in join condition is ignored
 		[]sql.Row{
 			{nil, nil, nil},
-			{nil, nil, float64(3.0)},
-			{1, int64(1), float64(1.0)},
-			{2, int64(2), float64(2.0)},
-			{nil, int64(4), nil},
+			{nil, nil, nil},
+			{nil, nil, 5.0},
+			{2, int64(2), nil},
+			{nil, int64(4), 4.0},
+			{nil, int64(6), 6.0},
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 1",
+		"SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 IS NOT NULL ORDER BY 1",
 		[]sql.Row{
-			{1, int64(1), float64(1.0)},
-			{2, int64(2), float64(2.0)},
+			{2, int64(2), nil},
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
+		"SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
 		[]sql.Row{
-			{nil, nil, float64(3.0)},
-			{1, int64(1), float64(1.0)},
-			{2, int64(2), float64(2.0)},
+			{nil, nil, 5.0},
+			{nil, int64(4), 4.0},
+			{nil, int64(6), 6.0},
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1 ORDER BY 1",
+		"SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i2 WHERE pk > 1 ORDER BY 1",
 		[]sql.Row{
-			{2, int64(2), float64(2.0)},
+			{2, int64(2), nil},
 			{3, nil, nil},
 		},
 	},
 	{
-		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE pk > 0 ORDER BY 2,3",
+		"SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i2 WHERE pk > 0 ORDER BY 2,3",
 		[]sql.Row{
-			{1, int64(1), float64(1.0)},
-			{2, int64(2), float64(2.0)},
+			{2, int64(2), nil},
 		},
 	},
 	{
-		"SELECT GREATEST(CAST(i AS CHAR), CAST(b AS CHAR)) FROM niltable",
+		"SELECT GREATEST(CAST(i AS CHAR), CAST(b AS CHAR)) FROM niltable order by i",
 		[]sql.Row{
 			{nil},
-			{"true"},
+			{"2"},
+			{"3"},
 			{nil},
-			{nil},
-			{"true"},
+			{"5"},
+			{"6"},
 		},
 	},
 	{
@@ -2383,7 +2319,7 @@ var QueryTests = []QueryTest{
 	},
 }
 
-var versionedQueries = []QueryTest{
+var VersionedQueries = []QueryTest{
 	{
 		"SELECT *  FROM myhistorytable AS OF '2019-01-01' AS foo ORDER BY i",
 		[]sql.Row{
@@ -2421,7 +2357,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"typestable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -2433,7 +2368,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"typestable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -2452,7 +2386,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"typestable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
 	},
 	{
@@ -2466,7 +2399,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"niltable"},
 			{"othertable"},
 			{"tabletest"},
-			{"typestable"},
 		},
 	},
 	{
@@ -2480,7 +2412,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"niltable", "BASE TABLE"},
 			{"othertable", "BASE TABLE"},
 			{"tabletest", "BASE TABLE"},
-			{"typestable", "BASE TABLE"},
 		},
 	},
 	{
@@ -2498,7 +2429,46 @@ var InfoSchemaQueries = []QueryTest{
 			{"floattable"},
 			{"niltable"},
 			{"newlinetable"},
-			{"typestable"},
+		},
+	},
+	{
+		`SHOW COLUMNS FROM mytable`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "PRI", "", ""},
+			{"s", "TEXT", "NO", "", "", ""},
+		},
+	},
+	{
+		`DESCRIBE mytable`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "PRI", "", ""},
+			{"s", "TEXT", "NO", "", "", ""},
+		},
+	},
+	{
+		`DESC mytable`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "PRI", "", ""},
+			{"s", "TEXT", "NO", "", "", ""},
+		},
+	},
+	{
+		`SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "PRI", "", ""},
+		},
+	},
+	{
+		`SHOW COLUMNS FROM mytable LIKE 'i'`,
+		[]sql.Row{
+			{"i", "BIGINT", "NO", "PRI", "", ""},
+		},
+	},
+	{
+		`SHOW FULL COLUMNS FROM mytable`,
+		[]sql.Row{
+			{"i", "BIGINT", nil, "NO", "PRI", "", "", "", ""},
+			{"s", "TEXT", "utf8_bin", "NO", "", "", "", "", "column s"},
 		},
 	},
 	{
@@ -2556,7 +2526,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"niltable"},
 			{"othertable"},
 			{"tabletest"},
-			{"typestable"},
 		},
 	},
 	{
@@ -2586,21 +2555,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"f64"},
 			{"b"},
 			{"f"},
-			{"id"},
-			{"i8"},
-			{"i16"},
-			{"i32"},
-			{"i64"},
-			{"u8"},
-			{"u16"},
-			{"u32"},
-			{"u64"},
-			{"ti"},
-			{"da"},
-			{"te"},
-			{"bo"},
-			{"js"},
-			{"bl"},
 		},
 	},
 	{
@@ -2620,21 +2574,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"f64"},
 			{"b"},
 			{"f"},
-			{"id"},
-			{"i8"},
-			{"i16"},
-			{"i32"},
-			{"i64"},
-			{"u8"},
-			{"u16"},
-			{"u32"},
-			{"u64"},
-			{"ti"},
-			{"da"},
-			{"te"},
-			{"bo"},
-			{"js"},
-			{"bl"},
 		},
 	},
 	{
@@ -2654,21 +2593,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"f64"},
 			{"b"},
 			{"f"},
-			{"id"},
-			{"i8"},
-			{"i16"},
-			{"i32"},
-			{"i64"},
-			{"u8"},
-			{"u16"},
-			{"u32"},
-			{"u64"},
-			{"ti"},
-			{"da"},
-			{"te"},
-			{"bo"},
-			{"js"},
-			{"bl"},
 		},
 	},
 	{

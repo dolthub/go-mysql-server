@@ -76,19 +76,21 @@ func TestDescribe(t *testing.T) {
 		`EXPLAIN SELECT * FROM mytable`,
 	}
 
-	e, idxReg := enginetest.NewEngine(t, newDefaultMemoryHarness())
+	harness := newDefaultMemoryHarness()
+	e := enginetest.NewEngine(t, harness)
 	t.Run("sequential", func(t *testing.T) {
 		for _, q := range queries {
-			enginetest.TestQuery(t, enginetest.NewCtx(idxReg), e, q, []sql.Row{
+			enginetest.TestQuery(t, harness, e, q, []sql.Row{
 				sql.NewRow("Table(mytable): Projected "),
 			})
 		}
 	})
 
-	ep, idxRegp := enginetest.NewEngine(t, newMemoryHarness("parallel", 2, testNumPartitions, false, nil))
+	parallelHarness := newMemoryHarness("parallel", 2, testNumPartitions, false, nil)
+	ep := enginetest.NewEngine(t, parallelHarness)
 	t.Run("parallel", func(t *testing.T) {
 		for _, q := range queries {
-			enginetest.TestQuery(t, enginetest.NewCtx(idxRegp), ep, q, []sql.Row{
+			enginetest.TestQuery(t, parallelHarness, ep, q, []sql.Row{
 				{"Exchange(parallelism=2)"},
 				{" └─ Table(mytable): Projected "},
 			})
@@ -123,15 +125,14 @@ func TestLocks(t *testing.T) {
 
 	analyzer := analyzer.NewDefault(catalog)
 	engine := sqle.New(catalog, analyzer, new(sqle.Config))
-	idxReg := sql.NewIndexRegistry()
 
-	_, iter, err := engine.Query(enginetest.NewCtx(idxReg).WithCurrentDB("db"), "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
+	_, iter, err := engine.Query(enginetest.NewContext(newDefaultMemoryHarness()).WithCurrentDB("db"), "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
 	require.NoError(err)
 
 	_, err = sql.RowIterToRows(iter)
 	require.NoError(err)
 
-	_, iter, err = engine.Query(enginetest.NewCtx(idxReg).WithCurrentDB("db"), "UNLOCK TABLES")
+	_, iter, err = engine.Query(enginetest.NewContext(newDefaultMemoryHarness()).WithCurrentDB("db"), "UNLOCK TABLES")
 	require.NoError(err)
 
 	_, err = sql.RowIterToRows(iter)
@@ -155,14 +156,12 @@ func (m *mockSpan) Finish() {
 }
 
 func TestRootSpanFinish(t *testing.T) {
-	e, idxReg := enginetest.NewEngine(t, newDefaultMemoryHarness())
+	harness := newDefaultMemoryHarness()
+	e := enginetest.NewEngine(t, harness)
 	fakeSpan := &mockSpan{Span: opentracing.NoopTracer{}.StartSpan("")}
 	ctx := sql.NewContext(
 		context.Background(),
-		sql.WithRootSpan(fakeSpan),
-		sql.WithIndexRegistry(idxReg),
-		sql.WithViewRegistry(sql.NewViewRegistry()),
-	)
+		sql.WithRootSpan(fakeSpan))
 
 	_, iter, err := e.Query(ctx, "SELECT 1")
 	require.NoError(t, err)

@@ -17,17 +17,13 @@
 package enginetest_test
 
 import (
-	"context"
 	"io/ioutil"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/index/pilosa"
-	"github.com/liquidata-inc/go-mysql-server/test"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,40 +52,26 @@ func TestIndexes(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.MkdirAll(tmpDir, 0644))
 
-	e, idxReg := enginetest.NewEngine(t, newPilosaHarness(tmpDir))
-	viewReg := sql.NewViewRegistry()
+	harness := newPilosaHarness(tmpDir)
+	e := enginetest.NewEngine(t, harness)
 
 	_, _, err = e.Query(
-		enginetest.NewCtx(idxReg),
+		enginetest.NewContextWithEngine(harness, e),
 		"CREATE INDEX idx_i USING pilosa ON mytable (i)",
 	)
 	require.NoError(t, err)
 
 	_, _, err = e.Query(
-		enginetest.NewCtx(idxReg),
+		enginetest.NewContextWithEngine(harness, e),
 		"CREATE INDEX idx_s USING pilosa ON mytable (s)",
 	)
 	require.NoError(t, err)
 
 	_, _, err = e.Query(
-		enginetest.NewCtx(idxReg),
+		enginetest.NewContextWithEngine(harness, e),
 		"CREATE INDEX idx_is USING pilosa ON mytable (i, s)",
 	)
 	require.NoError(t, err)
-
-	defer func() {
-		done, err := idxReg.DeleteIndex("mydb", "idx_i", true)
-		require.NoError(t, err)
-		<-done
-
-		done, err = idxReg.DeleteIndex("mydb", "idx_s", true)
-		require.NoError(t, err)
-		<-done
-
-		done, err = idxReg.DeleteIndex("foo", "idx_is", true)
-		require.NoError(t, err)
-		<-done
-	}()
 
 	testCases := []struct {
 		query    string
@@ -201,8 +183,7 @@ func TestIndexes(t *testing.T) {
 		t.Run(tt.query, func(t *testing.T) {
 			require := require.New(t)
 
-			tracer := new(test.MemTracer)
-			ctx := sql.NewContext(context.TODO(), sql.WithTracer(tracer), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
+			ctx := enginetest.NewContextWithEngine(harness, e)
 
 			_, it, err := e.Query(ctx, tt.query)
 			require.NoError(err)
@@ -211,7 +192,6 @@ func TestIndexes(t *testing.T) {
 			require.NoError(err)
 
 			require.ElementsMatch(tt.expected, rows)
-			require.Equal("plan.ResolvedTable", tracer.Spans[len(tracer.Spans)-1])
 		})
 	}
 }
@@ -223,20 +203,12 @@ func TestCreateIndex(t *testing.T) {
 	require.NoError(err)
 	require.NoError(os.MkdirAll(tmpDir, 0644))
 
-	e, idxReg := enginetest.NewEngine(t, newPilosaHarness(tmpDir))
+	harness := newPilosaHarness(tmpDir)
+	e := enginetest.NewEngine(t, harness)
 
-	_, iter, err := e.Query(enginetest.NewCtx(idxReg), "CREATE INDEX myidx USING pilosa ON mytable (i)")
+	_, iter, err := e.Query(enginetest.NewContextWithEngine(harness, e), "CREATE INDEX myidx USING pilosa ON mytable (i)")
 	require.NoError(err)
 	rows, err := sql.RowIterToRows(iter)
 	require.NoError(err)
 	require.Len(rows, 0)
-
-	defer func() {
-		time.Sleep(1 * time.Second)
-		done, err := idxReg.DeleteIndex("foo", "myidx", true)
-		require.NoError(err)
-		<-done
-
-		require.NoError(os.RemoveAll(tmpDir))
-	}()
 }

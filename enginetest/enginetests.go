@@ -25,7 +25,6 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -34,9 +33,9 @@ import (
 
 // Tests a variety of queries against databases and tables provided by the given harness.
 func TestQueries(t *testing.T, harness Harness) {
-	engine, idxReg := NewEngine(t, harness)
+	engine := NewEngine(t, harness)
 	for _, tt := range QueryTests {
-		TestQuery(t, NewCtx(idxReg), engine, tt.Query, tt.Expected)
+		TestQuery(t, harness, engine, tt.Query, tt.Expected)
 	}
 }
 
@@ -51,27 +50,38 @@ var infoSchemaTables = []string {
 	"floattable",
 	"niltable",
 	"newlinetable",
-	"typestable",
 	"other_table",
 }
 
 // Runs tests of the information_schema database.
 func TestInfoSchema(t *testing.T, harness Harness) {
 	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
-	engine, idxReg := NewEngineWithDbs(t, harness.Parallelism(), dbs, nil)
+	engine := NewEngineWithDbs(t, harness.Parallelism(), dbs, nil)
 	for _, tt := range InfoSchemaQueries {
-		TestQuery(t, NewCtx(idxReg), engine, tt.Query, tt.Expected)
+		TestQuery(t, harness, engine, tt.Query, tt.Expected)
 	}
 }
 
 // Tests generating the correct query plans for various queries using databases and tables provided by the given
 // harness.
 func TestQueryPlans(t *testing.T, harness Harness) {
-	engine, idxReg := NewEngine(t, harness)
+	engine := NewEngine(t, harness)
 	for _, tt := range PlanTests {
 		t.Run(tt.Query, func(t *testing.T) {
-			TestQueryPlan(t, NewCtx(idxReg), engine, tt.Query, tt.ExpectedPlan)
+			TestQueryPlan(t, NewContextWithEngine(harness, engine), engine, tt.Query, tt.ExpectedPlan)
 		})
+	}
+}
+
+// Tests a variety of queries against databases and tables provided by the given harness.
+func TestVersionedQueries(t *testing.T, harness Harness) {
+	if _, ok := harness.(VersionedDBHarness); !ok {
+		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
+	}
+
+	engine := NewEngine(t, harness)
+	for _, tt := range VersionedQueries {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected)
 	}
 }
 
@@ -100,13 +110,16 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("db")
-	table := harness.NewTable(db, "members", sql.Schema{
-		{Name: "id", Type: sql.Int64, Source: "members"},
+	table, err := harness.NewTable(db, "members", sql.Schema{
+		{Name: "id", Type: sql.Int64, Source: "members", PrimaryKey: true},
 		{Name: "team", Type: sql.Text, Source: "members"},
 	})
+	require.NoError(err)
+
+	ctx := harness.NewContext()
 
 	InsertRows(
-		t, mustInsertableTable(t, table),
+		t, ctx, mustInsertableTable(t, table),
 		sql.NewRow(int64(3), "red"),
 		sql.NewRow(int64(4), "red"),
 		sql.NewRow(int64(5), "orange"),
@@ -116,11 +129,10 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	)
 
 	e := sqle.NewDefault()
-	idxReg := sql.NewIndexRegistry()
 	e.AddDatabase(db)
 
 	_, iter, err := e.Query(
-		NewCtx(idxReg).WithCurrentDB("db"),
+		NewContext(harness).WithCurrentDB("db"),
 		"SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY 2",
 	)
 	require.NoError(err)
@@ -137,7 +149,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	require.Equal(expected, rows)
 
 	_, iter, err = e.Query(
-		NewCtx(idxReg).WithCurrentDB("db"),
+		NewContext(harness).WithCurrentDB("db"),
 		"SELECT team, COUNT(*) FROM members GROUP BY 1 ORDER BY 2",
 	)
 	require.NoError(err)
@@ -148,7 +160,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	require.Equal(expected, rows)
 
 	_, _, err = e.Query(
-		NewCtx(idxReg),
+		NewContext(harness),
 		"SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY columndoesnotexist",
 	)
 	require.Error(err)
@@ -158,10 +170,11 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
-	harness.NewTable(db, "mytable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable"},
+	_, err := harness.NewTable(db, "mytable", sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s", Type: sql.Text, Source: "mytable"},
 	})
+	require.NoError(err)
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
@@ -170,9 +183,8 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	cfg := &sqle.Config{Auth: au}
 	a := analyzer.NewBuilder(catalog).Build()
 	e := sqle.New(catalog, a, cfg)
-	idxReg := sql.NewIndexRegistry()
 
-	_, _, err := e.Query(NewCtx(idxReg), `SELECT i FROM mytable`)
+	_, _, err = e.Query(NewContext(harness), `SELECT i FROM mytable`)
 	require.NoError(err)
 
 	writingQueries := []string{
@@ -185,7 +197,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	}
 
 	for _, query := range writingQueries {
-		_, _, err = e.Query(NewCtx(idxReg), query)
+		_, _, err = e.Query(NewContext(harness), query)
 		require.Error(err)
 		require.True(auth.ErrNotAuthorized.Is(err))
 	}
@@ -193,25 +205,21 @@ func TestReadOnly(t *testing.T, harness Harness) {
 
 func TestExplode(t *testing.T, harness Harness) {
 	db := harness.NewDatabase("mydb")
-	table := harness.NewTable(db, "t", sql.Schema{
+	table, err := harness.NewTable(db, "t", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t"},
 		{Name: "b", Type: sql.CreateArray(sql.Text), Source: "t"},
 		{Name: "c", Type: sql.Text, Source: "t"},
 	})
+	require.NoError(t, err)
 
-	InsertRows(
-		t, mustInsertableTable(t,table),
-		sql.NewRow(int64(1), []interface{}{"a", "b"}, "first"),
-		sql.NewRow(int64(2), []interface{}{"c", "d"}, "second"),
-		sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"),
-	)
+	InsertRows(t, harness.NewContext(), mustInsertableTable(t, table), sql.NewRow(int64(1), []interface{}{"a", "b"}, "first"), sql.NewRow(int64(2), []interface{}{"c", "d"}, "second"), sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"), )
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
 	e := sqle.New(catalog, analyzer.NewDefault(catalog), new(sqle.Config))
 
 	for _, q := range ExplodeQueries {
-		TestQuery(t, NewCtx(nil), e, q.Query, q.Expected)
+		TestQuery(t, harness, e, q.Query, q.Expected)
 	}
 }
 
@@ -293,9 +301,9 @@ func TestColumnAliases(t *testing.T, harness Harness) {
 	for _, tt := range tests {
 		t.Run(tt.query, func(t *testing.T) {
 			require := require.New(t)
-			e, idxReg := NewEngine(t, harness)
+			e := NewEngine(t, harness)
 
-			sch, rowIter, err := e.Query(NewCtx(idxReg), tt.query)
+			sch, rowIter, err := e.Query(NewContext(harness), tt.query)
 			var colNames []string
 			for _, col := range sch {
 				colNames = append(colNames, col.Name)
@@ -314,66 +322,41 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
-	table := harness.NewTable(db, "foo", sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "foo"},
+	table, err := harness.NewTable(db, "foo", sql.Schema{
+		{Name: "a", Type: sql.Int64, Source: "foo", PrimaryKey: true},
 		{Name: "b", Type: sql.Text, Source: "foo"},
 	})
+	require.NoError(err)
 
-	InsertRows(
-		t, mustInsertableTable(t, table),
-		sql.NewRow(int64(1), "foo"),
-		sql.NewRow(int64(2), "bar"),
-		sql.NewRow(int64(3), "baz"),
-	)
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "foo"), sql.NewRow(int64(2), "bar"), sql.NewRow(int64(3), "baz"), )
 
-	table2 := harness.NewTable(db, "bar", sql.Schema{
-		{Name: "b", Type: sql.Text, Source: "bar"},
+	table2, err := harness.NewTable(db, "bar", sql.Schema{
+		{Name: "b", Type: sql.Text, Source: "bar", PrimaryKey: true},
 		{Name: "c", Type: sql.Int64, Source: "bar"},
 	})
+	require.NoError(err)
 
-	InsertRows(
-		t, mustInsertableTable(t, table2),
-		sql.NewRow("qux", int64(3)),
-		sql.NewRow("mux", int64(2)),
-		sql.NewRow("pux", int64(1)),
-	)
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, table2), sql.NewRow("qux", int64(3)), sql.NewRow("mux", int64(2)), sql.NewRow("pux", int64(1)), )
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	q := `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c`
-	ctx := NewCtx(sql.NewIndexRegistry())
-
-	_, rows, err := e.Query(ctx, q)
-	require.NoError(err)
-
-	var rs [][]interface{}
-	for {
-		row, err := rows.Next()
-		if err == io.EOF {
-			break
-		}
-		require.NoError(err)
-
-		rs = append(rs, row)
-	}
-
-	expected := [][]interface{}{
+	expected := []sql.Row {
 		{int64(1), "pux", "foo"},
 		{int64(2), "mux", "bar"},
 		{int64(3), "qux", "baz"},
 	}
 
-	require.Equal(expected, rs)
+	TestQuery(t, harness, e, `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c order by 1`, expected)
 }
 
 
 func TestQueryErrors(t *testing.T, harness Harness) {
-	engine, idxReg := NewEngine(t, harness)
+	engine := NewEngine(t, harness)
 
 	for _, tt := range errorQueries {
 		t.Run(tt.Query, func(t *testing.T) {
-			ctx := NewCtx(idxReg)
+			ctx := NewContext(harness)
 			_, rowIter, err := engine.Query(ctx, tt.Query)
 			if err == nil {
 				_, err = sql.RowIterToRows(rowIter)
@@ -386,18 +369,24 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 
 func TestInsertInto(t *testing.T, harness Harness) {
 	for _, insertion := range InsertQueries {
-		e, idxReg := NewEngine(t, harness)
-		ctx := NewCtx(idxReg)
-		TestQuery(t, ctx, e, insertion.WriteQuery, insertion.ExpectedWriteResult)
-		TestQuery(t, ctx, e, insertion.SelectQuery, insertion.ExpectedSelect)
+		e := NewEngine(t, harness)
+		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult)
+		// If we skipped the insert, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(insertion.WriteQuery) {
+				t.Logf("Skipping query %s", insertion.SelectQuery)
+				continue
+			}
+		}
+		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect)
 	}
 }
 
 func TestInsertIntoErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range InsertErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
-			e, idxReg := NewEngine(t, harness)
-			_, _, err := e.Query(NewCtx(idxReg), expectedFailure.Query)
+			e := NewEngine(t, harness)
+			_, _, err := e.Query(NewContext(harness), expectedFailure.Query)
 			require.Error(t, err)
 		})
 	}
@@ -405,18 +394,24 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 
 func TestReplaceInto(t *testing.T, harness Harness) {
 	for _, insertion := range ReplaceQueries {
-		e, idxReg := NewEngine(t, harness)
-		ctx := NewCtx(idxReg)
-		TestQuery(t, ctx, e, insertion.WriteQuery, insertion.ExpectedWriteResult)
-		TestQuery(t, ctx, e, insertion.SelectQuery, insertion.ExpectedSelect)
+		e := NewEngine(t, harness)
+		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult)
+		// If we skipped the insert, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(insertion.WriteQuery) {
+				t.Logf("Skipping query %s", insertion.SelectQuery)
+				continue
+			}
+		}
+		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect)
 	}
 }
 
 func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range ReplaceErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
-			e, idxReg := NewEngine(t, harness)
-			_, _, err := e.Query(NewCtx(idxReg), expectedFailure.Query)
+			e := NewEngine(t, harness)
+			_, _, err := e.Query(NewContext(harness), expectedFailure.Query)
 			require.Error(t, err)
 		})
 	}
@@ -424,18 +419,24 @@ func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 
 func TestUpdate(t *testing.T, harness Harness) {
 	for _, update := range UpdateTests {
-		e, idxReg := NewEngine(t, harness)
-		ctx := NewCtx(idxReg)
-		TestQuery(t, ctx, e, update.WriteQuery, update.ExpectedWriteResult)
-		TestQuery(t, ctx, e, update.SelectQuery, update.ExpectedSelect)
+		e := NewEngine(t, harness)
+		TestQuery(t, harness, e, update.WriteQuery, update.ExpectedWriteResult)
+		// If we skipped the update, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(update.WriteQuery) {
+				t.Logf("Skipping query %s", update.SelectQuery)
+				continue
+			}
+		}
+		TestQuery(t, harness, e, update.SelectQuery, update.ExpectedSelect)
 	}
 }
 
 func TestUpdateErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range UpdateErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
-			e, idxReg := NewEngine(t, harness)
-			_, _, err := e.Query(NewCtx(idxReg), expectedFailure.Query)
+			e := NewEngine(t, harness)
+			_, _, err := e.Query(NewContext(harness), expectedFailure.Query)
 			require.Error(t, err)
 		})
 	}
@@ -443,18 +444,24 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 
 func TestDelete(t *testing.T, harness Harness) {
 	for _, delete := range DeleteTests {
-		e, idxReg := NewEngine(t, harness)
-		ctx := NewCtx(idxReg)
-		TestQuery(t, ctx, e, delete.WriteQuery, delete.ExpectedWriteResult)
-		TestQuery(t, ctx, e, delete.SelectQuery, delete.ExpectedSelect)
+		e := NewEngine(t, harness)
+		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult)
+		// If we skipped the delete, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(delete.WriteQuery) {
+				t.Logf("Skipping query %s", delete.SelectQuery)
+				continue
+			}
+		}
+		TestQuery(t, harness, e, delete.SelectQuery, delete.ExpectedSelect)
 	}
 }
 
 func TestDeleteErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range DeleteErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
-			e, idxReg := NewEngine(t, harness)
-			_, _, err := e.Query(NewCtx(idxReg), expectedFailure.Query)
+			e := NewEngine(t, harness)
+			_, _, err := e.Query(NewContext(harness), expectedFailure.Query)
 			require.Error(t, err)
 		})
 	}
@@ -463,8 +470,8 @@ func TestDeleteErrors(t *testing.T, harness Harness) {
 func TestViews(t *testing.T, harness Harness) {
 	require := require.New(t)
 
-	e, idxReg := NewEngine(t, harness)
-	ctx := NewCtx(idxReg)
+	e := NewEngine(t, harness)
+	ctx := NewContext(harness)
 
 	// nested views
 	_, iter, err := e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
@@ -473,16 +480,20 @@ func TestViews(t *testing.T, harness Harness) {
 
 	for _, testCase := range ViewTests {
 		t.Run(testCase.Query, func(t *testing.T) {
-			TestQuery(t, ctx, e, testCase.Query, testCase.Expected)
+			TestQueryWithContext(t, ctx, e, testCase.Query, testCase.Expected)
 		})
 	}
 }
 
 func TestVersionedViews(t *testing.T, harness Harness) {
+	if _, ok := harness.(VersionedDBHarness); !ok {
+		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
+	}
+
 	require := require.New(t)
 
-	e, idxReg := NewEngine(t, harness)
-	ctx := NewCtx(idxReg)
+	e := NewEngine(t, harness)
+	ctx := NewContext(harness)
 	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
 	require.NoError(err)
 	iter.Close()
@@ -494,7 +505,7 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 
 	for _, testCase := range VersionedViewTests {
 		t.Run(testCase.Query, func(t *testing.T) {
-			TestQuery(t, ctx, e, testCase.Query, testCase.Expected)
+			TestQueryWithContext(t, ctx, e, testCase.Query, testCase.Expected)
 		})
 	}
 }
@@ -502,9 +513,9 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 func TestCreateTable(t *testing.T, harness Harness) {
 	require := require.New(t)
 
-	e, idxReg := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"CREATE TABLE t1(a INTEGER, b TEXT, c DATE, "+
 				"d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, "+
 				"b1 BOOL, b2 BOOLEAN NOT NULL, g DATETIME, h CHAR(40))",
@@ -514,7 +525,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	ctx := NewCtx(idxReg)
+	ctx := NewContext(harness)
 	testTable, ok, err := db.GetTableInsensitive(ctx, "t1")
 	require.NoError(err)
 	require.True(ok)
@@ -534,7 +545,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	require.Equal(s, testTable.Schema())
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"CREATE TABLE t2 (a INTEGER NOT NULL PRIMARY KEY, "+
 				"b VARCHAR(10) NOT NULL)",
 		[]sql.Row(nil),
@@ -554,7 +565,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	require.Equal(s, testTable.Schema())
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"CREATE TABLE t3(a INTEGER NOT NULL,"+
 				"b TEXT NOT NULL,"+
 				"c bool, primary key (a,b))",
@@ -576,7 +587,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	require.Equal(s, testTable.Schema())
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"CREATE TABLE t4(a INTEGER,"+
 				"b TEXT NOT NULL COMMENT 'comment',"+
 				"c bool, primary key (a))",
@@ -598,14 +609,14 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	require.Equal(s, testTable.Schema())
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"CREATE TABLE IF NOT EXISTS t4(a INTEGER,"+
 				"b TEXT NOT NULL,"+
 				"c bool, primary key (a))",
 		[]sql.Row(nil),
 	)
 
-	_, _, err = e.Query(NewCtx(idxReg), "CREATE TABLE t4(a INTEGER,"+
+	_, _, err = e.Query(NewContext(harness), "CREATE TABLE t4(a INTEGER,"+
 			"b TEXT NOT NULL,"+
 			"c bool, primary key (a))")
 	require.Error(err)
@@ -615,15 +626,15 @@ func TestCreateTable(t *testing.T, harness Harness) {
 func TestDropTable(t *testing.T, harness Harness) {
 	require := require.New(t)
 
-	e, idxReg := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	ctx := NewCtx(idxReg)
+	ctx := NewContext(harness)
 	_, ok, err := db.GetTableInsensitive(ctx, "mytable")
 	require.True(ok)
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"DROP TABLE IF EXISTS mytable, not_exist",
 		[]sql.Row(nil),
 	)
@@ -640,7 +651,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"DROP TABLE IF EXISTS othertable, tabletest",
 		[]sql.Row(nil),
 	)
@@ -653,15 +664,15 @@ func TestDropTable(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.False(ok)
 
-	_, _, err = e.Query(NewCtx(idxReg), "DROP TABLE not_exist")
+	_, _, err = e.Query(NewContext(harness), "DROP TABLE not_exist")
 	require.Error(err)
 }
 
 func TestRenameTable(t *testing.T, harness Harness) {
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := NewContext(harness)
 	require := require.New(t)
 
-	e, idxReg := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
@@ -669,7 +680,7 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"RENAME TABLE mytable TO newTableName",
 		[]sql.Row(nil),
 	)
@@ -682,7 +693,7 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"RENAME TABLE othertable to othertable2, newTableName to mytable",
 		[]sql.Row(nil),
 	)
@@ -703,7 +714,7 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable RENAME newTableName",
 		[]sql.Row(nil),
 	)
@@ -717,24 +728,24 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require.True(ok)
 
 
-	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE not_exist RENAME foo")
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist RENAME foo")
 	require.Error(err)
 	require.True(sql.ErrTableNotFound.Is(err))
 
-	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE typestable RENAME niltable")
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE emptytable RENAME niltable")
 	require.Error(err)
 	require.True(sql.ErrTableAlreadyExists.Is(err))
 }
 
 func TestRenameColumn(t *testing.T,  harness Harness) {
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := NewContext(harness)
 	require := require.New(t)
 
-	e, idxReg := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable RENAME COLUMN i TO i2",
 		[]sql.Row(nil),
 	)
@@ -743,28 +754,28 @@ func TestRenameColumn(t *testing.T,  harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "i2", Type: sql.Int64, Source: "mytable"},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i2", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
-	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE not_exist RENAME COLUMN foo TO bar")
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist RENAME COLUMN foo TO bar")
 	require.Error(err)
 	require.True(sql.ErrTableNotFound.Is(err))
 
-	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE mytable RENAME COLUMN foo TO bar")
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable RENAME COLUMN foo TO bar")
 	require.Error(err)
 	require.True(plan.ErrColumnNotFound.Is(err))
 }
 
 func TestAddColumn(t *testing.T, harness Harness) {
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := NewContext(harness)
 	require := require.New(t)
 
-	e, idxReg := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable ADD COLUMN i2 INT COMMENT 'hello' default 42",
 		[]sql.Row(nil),
 	)
@@ -773,12 +784,12 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable"},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
 	}, tbl.Schema())
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"SELECT * FROM mytable ORDER BY i",
 		[]sql.Row{
 			sql.NewRow(int64(1), "first row", int32(42)),
@@ -787,7 +798,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		},
 	)
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable ADD COLUMN s2 TEXT COMMENT 'hello' AFTER i",
 		[]sql.Row(nil),
 	)
@@ -796,13 +807,13 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
 	}, tbl.Schema())
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"SELECT * FROM mytable ORDER BY i",
 		[]sql.Row{
 			sql.NewRow(int64(1), nil, "first row", int32(42)),
@@ -811,7 +822,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		},
 	)
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable ADD COLUMN s3 TEXT COMMENT 'hello' default 'yay' FIRST",
 		[]sql.Row(nil),
 	)
@@ -821,13 +832,13 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "s3", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true, Default: "yay"},
-		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
 	}, tbl.Schema())
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"SELECT * FROM mytable ORDER BY i",
 		[]sql.Row{
 			sql.NewRow("yay", int64(1), nil, "first row", int32(42)),
@@ -836,32 +847,32 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		},
 	)
 
-	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE not_exist ADD COLUMN i2 INT COMMENT 'hello'")
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist ADD COLUMN i2 INT COMMENT 'hello'")
 	require.Error(err)
 	require.True(sql.ErrTableNotFound.Is(err))
 
-	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE mytable ADD COLUMN b BIGINT COMMENT 'ok' AFTER not_exist")
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable ADD COLUMN b BIGINT COMMENT 'ok' AFTER not_exist")
 	require.Error(err)
 	require.True(plan.ErrColumnNotFound.Is(err))
 
-	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE mytable ADD COLUMN b INT NOT NULL")
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable ADD COLUMN b INT NOT NULL")
 	require.Error(err)
 	require.True(plan.ErrNullDefault.Is(err))
 
-	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE mytable ADD COLUMN b INT NOT NULL DEFAULT 'yes'")
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable ADD COLUMN b INT NOT NULL DEFAULT 'yes'")
 	require.Error(err)
 	require.True(plan.ErrIncompatibleDefaultType.Is(err))
 }
 
 func TestModifyColumn(t *testing.T, harness Harness) {
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := NewContext(harness)
 	require := require.New(t)
 
-	e, idxReg := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'",
 		[]sql.Row(nil),
 	)
@@ -871,10 +882,10 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "i", Type: sql.Text, Source: "mytable", Comment:"modified"},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable MODIFY COLUMN i TINYINT NULL COMMENT 'yes' AFTER s",
 		[]sql.Row(nil),
 	)
@@ -883,11 +894,11 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 		{Name: "i", Type: sql.Int8, Source: "mytable", Comment:"yes", Nullable: true},
 	}, tbl.Schema())
 
-	TestQuery(t, NewCtx(idxReg), e,
+	TestQuery(t, harness, e,
 		"ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST",
 		[]sql.Row(nil),
 	)
@@ -897,18 +908,18 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", Comment:"ok"},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
-	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST")
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST")
 	require.Error(err)
 	require.True(plan.ErrColumnNotFound.Is(err))
 
-	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE mytable MODIFY i BIGINT NOT NULL COMMENT 'ok' AFTER not_exist")
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable MODIFY i BIGINT NOT NULL COMMENT 'ok' AFTER not_exist")
 	require.Error(err)
 	require.True(plan.ErrColumnNotFound.Is(err))
 
-	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE not_exist MODIFY COLUMN i INT NOT NULL COMMENT 'hello'")
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist MODIFY COLUMN i INT NOT NULL COMMENT 'hello'")
 	require.Error(err)
 	require.True(sql.ErrTableNotFound.Is(err))
 }
@@ -916,13 +927,13 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 func TestDropColumn(t *testing.T, harness Harness) {
 	require := require.New(t)
 
-	e, idxReg := NewEngine(t, harness)
-	ctx := NewCtx(idxReg)
+	e := NewEngine(t, harness)
+	ctx := NewContext(harness)
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	TestQuery(t, NewCtx(idxReg), e,
-		"ALTER TABLE mytable DROP COLUMN i",
+	TestQuery(t, harness, e,
+		"ALTER TABLE mytable DROP COLUMN s",
 		[]sql.Row(nil),
 	)
 
@@ -930,14 +941,14 @@ func TestDropColumn(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 	}, tbl.Schema())
 
-	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE not_exist DROP COLUMN s")
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist DROP COLUMN s")
 	require.Error(err)
 	require.True(sql.ErrTableNotFound.Is(err))
 
-	_, _, err = e.Query(NewCtx(idxReg), "ALTER TABLE mytable DROP COLUMN i")
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable DROP COLUMN s")
 	require.Error(err)
 	require.True(plan.ErrColumnNotFound.Is(err))
 }
@@ -946,49 +957,39 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
-	t1 := harness.NewTable(db, "t1", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t1"},
+	t1, err := harness.NewTable(db, "t1", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
 		{Name: "b", Type: sql.Text, Source: "t1"},
 		{Name: "c", Type: sql.Text, Source: "t1"},
 	})
+	require.NoError(err)
 
-	InsertRows(
-		t, mustInsertableTable(t, t1),
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
 		sql.NewRow("a_1", "b_1", "c_1"),
 		sql.NewRow("a_2", "b_2", "c_2"),
-		sql.NewRow("a_3", "b_3", "c_3"),
-	)
+		sql.NewRow("a_3", "b_3", "c_3"))
 
-	t2 := harness.NewTable(db, "t2", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t2"},
+	t2, err := harness.NewTable(db, "t2", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
 		{Name: "b", Type: sql.Text, Source: "t2"},
 		{Name: "d", Type: sql.Text, Source: "t2"},
 	})
+	require.NoError(err)
 
-	InsertRows(
-		t, mustInsertableTable(t, t2),
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
 		sql.NewRow("a_1", "b_1", "d_1"),
 		sql.NewRow("a_2", "b_2", "d_2"),
-		sql.NewRow("a_3", "b_3", "d_3"),
-	)
+		sql.NewRow("a_3", "b_3", "d_3"))
 
 	e := sqle.NewDefault()
-	idxReg := sql.NewIndexRegistry()
 	e.AddDatabase(db)
 
-	_, iter, err := e.Query(NewCtx(idxReg), `SELECT * FROM t1 NATURAL JOIN t2`)
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	require.Equal(
+	TestQuery(t, harness, e, `SELECT * FROM t1 NATURAL JOIN t2`,
 		[]sql.Row{
 			{"a_1", "b_1", "c_1", "d_1"},
 			{"a_2", "b_2", "c_2", "d_2"},
 			{"a_3", "b_3", "c_3", "d_3"},
 		},
-		rows,
 	)
 }
 
@@ -996,49 +997,38 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
-	t1 := harness.NewTable(db, "t1", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t1"},
+	t1, err := harness.NewTable(db, "t1", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
 		{Name: "b", Type: sql.Text, Source: "t1"},
 		{Name: "c", Type: sql.Text, Source: "t1"},
 	})
+	require.NoError(err)
 
-	InsertRows(
-		t, mustInsertableTable(t, t1),
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
 		sql.NewRow("a_1", "b_1", "c_1"),
 		sql.NewRow("a_2", "b_2", "c_2"),
-		sql.NewRow("a_3", "b_3", "c_3"),
-	)
+		sql.NewRow("a_3", "b_3", "c_3"))
 
-	t2 := harness.NewTable(db, "t2", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t2"},
+	t2, err := harness.NewTable(db, "t2", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
 		{Name: "b", Type: sql.Text, Source: "t2"},
 		{Name: "c", Type: sql.Text, Source: "t2"},
 	})
+	require.NoError(err)
 
-	InsertRows(
-		t, mustInsertableTable(t, t2),
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
 		sql.NewRow("a_1", "b_1", "c_1"),
 		sql.NewRow("a_2", "b_2", "c_2"),
-		sql.NewRow("a_3", "b_3", "c_3"),
-	)
+		sql.NewRow("a_3", "b_3", "c_3"))
 
 	e := sqle.NewDefault()
-	idxReg := sql.NewIndexRegistry()
 	e.AddDatabase(db)
 
-	_, iter, err := e.Query(NewCtx(idxReg), `SELECT * FROM t1 NATURAL JOIN t2`)
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	require.Equal(
-		[]sql.Row{
+	TestQuery(t, harness, e,`SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
 			{"a_1", "b_1", "c_1"},
 			{"a_2", "b_2", "c_2"},
 			{"a_3", "b_3", "c_3"},
 		},
-		rows,
 	)
 }
 
@@ -1046,39 +1036,29 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
-	t1 := harness.NewTable(db, "t1", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t1"},
+	t1, err := harness.NewTable(db, "t1", sql.Schema{
+		{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
 	})
+	require.NoError(err)
 
-	InsertRows(
-		t, mustInsertableTable(t, t1),
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
 		sql.NewRow("a1"),
 		sql.NewRow("a2"),
-		sql.NewRow("a3"),
-	)
+		sql.NewRow("a3"))
 
-	t2 := harness.NewTable(db, "t2", sql.Schema{
-		{Name: "b", Type: sql.Text, Source: "t2"},
+	t2, err := harness.NewTable(db, "t2", sql.Schema{
+		{Name: "b", Type: sql.Text, Source: "t2", PrimaryKey: true},
 	})
-	InsertRows(
-		t, mustInsertableTable(t, t2),
+	require.NoError(err)
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
 		sql.NewRow("b1"),
 		sql.NewRow("b2"),
-		sql.NewRow("b3"),
-	)
+		sql.NewRow("b3"))
 
 	e := sqle.NewDefault()
-	idxReg := sql.NewIndexRegistry()
 	e.AddDatabase(db)
 
-	_, iter, err := e.Query(NewCtx(idxReg), `SELECT * FROM t1 NATURAL JOIN t2`)
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	require.Equal(
-		[]sql.Row{
+	TestQuery(t, harness, e, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
 			{"a1", "b1"},
 			{"a1", "b2"},
 			{"a1", "b3"},
@@ -1089,7 +1069,6 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 			{"a3", "b2"},
 			{"a3", "b3"},
 		},
-		rows,
 	)
 }
 
@@ -1097,83 +1076,71 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
-	table1 := harness.NewTable(db,"table1", sql.Schema{
+	table1, err := harness.NewTable(db,"table1", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "table1"},
 		{Name: "f", Type: sql.Float64, Source: "table1"},
 		{Name: "t", Type: sql.Text, Source: "table1"},
 	})
+	require.NoError(err)
 
-	InsertRows(
-		t, mustInsertableTable(t, table1),
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, table1),
 		sql.NewRow(int32(1), float64(2.1), "table1"),
 		sql.NewRow(int32(1), float64(2.1), "table1"),
 		sql.NewRow(int32(10), float64(2.1), "table1"),
 	)
 
-	table2 := harness.NewTable(db, "table2", sql.Schema{
+	table2, err := harness.NewTable(db, "table2", sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "table2"},
 		{Name: "f2", Type: sql.Float64, Source: "table2"},
 		{Name: "t2", Type: sql.Text, Source: "table2"},
 	})
+	require.NoError(err)
 
-	InsertRows(
-		t, mustInsertableTable(t, table2),
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, table2),
 		sql.NewRow(int32(1), float64(2.2), "table2"),
 		sql.NewRow(int32(1), float64(2.2), "table2"),
 		sql.NewRow(int32(20), float64(2.2), "table2"),
 	)
 
-	table3 := harness.NewTable(db, "table3", sql.Schema{
+	table3, err := harness.NewTable(db, "table3", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "table3"},
 		{Name: "f2", Type: sql.Float64, Source: "table3"},
 		{Name: "t3", Type: sql.Text, Source: "table3"},
 	})
+	require.NoError(err)
 
-	InsertRows(
-		t, mustInsertableTable(t, table3),
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, table3),
 		sql.NewRow(int32(1), float64(2.2), "table3"),
 		sql.NewRow(int32(2), float64(2.2), "table3"),
 		sql.NewRow(int32(30), float64(2.2), "table3"),
 	)
 
 	e := sqle.NewDefault()
-	idxReg := sql.NewIndexRegistry()
 	e.AddDatabase(db)
 
-	_, iter, err := e.Query(NewCtx(idxReg), `SELECT * FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`)
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	require.Equal(
+	TestQuery(t, harness, e,`SELECT * FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`,
 		[]sql.Row{
 			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
 			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
 			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
 			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
 		},
-		rows,
 	)
 }
 
 func TestSessionVariables(t *testing.T, harness Harness) {
 	require := require.New(t)
-	e, idxReg := NewEngine(t, harness)
-	viewReg := sql.NewViewRegistry()
+	e := NewEngine(t, harness)
 
-	session := sql.NewBaseSession()
-	ctx := sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(1), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
-
-	_, _, err := e.Query(ctx, `set autocommit=1, sql_mode = concat(@@sql_mode,',STRICT_TRANS_TABLES')`)
+	ctx := NewContext(harness)
+	_, iter, err := e.Query(ctx, `set autocommit=1, sql_mode = concat(@@sql_mode,',STRICT_TRANS_TABLES')`)
 	require.NoError(err)
-
-	ctx = sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(2), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg))
-
-	_, iter, err := e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode`)
-	require.NoError(err)
-
 	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	_, iter, err = e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode`)
+	require.NoError(err)
+	rows, err = sql.RowIterToRows(iter)
 	require.NoError(err)
 
 	require.Equal([]sql.Row{{int8(1), ",STRICT_TRANS_TABLES"}}, rows)
@@ -1181,22 +1148,18 @@ func TestSessionVariables(t *testing.T, harness Harness) {
 
 func TestSessionVariablesONOFF(t *testing.T, harness Harness) {
 	require := require.New(t)
-	viewReg := sql.NewViewRegistry()
 
-	e, idxReg := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 
-	session := sql.NewBaseSession()
-	ctx := sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(1), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
-
-	_, _, err := e.Query(ctx, `set autocommit=ON, sql_mode = OFF, autoformat="true"`)
+	ctx := NewContext(harness)
+	_, iter, err := e.Query(ctx, `set autocommit=ON, sql_mode = OFF, autoformat="true"`)
 	require.NoError(err)
-
-	ctx = sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(2), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
-
-	_, iter, err := e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode, @@autoformat`)
-	require.NoError(err)
-
 	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	_, iter, err = e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode, @@autoformat`)
+	require.NoError(err)
+	rows, err = sql.RowIterToRows(iter)
 	require.NoError(err)
 
 	require.Equal([]sql.Row{{int64(1), int64(0), true}}, rows)
@@ -1208,9 +1171,9 @@ func TestSessionDefaults(t *testing.T, harness Harness) {
 			  @@sql_select_limit=DEFAULT,
 			  @@ndbinfo_version=DEFAULT`
 
-	e, idxReg := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 
-	ctx := NewCtx(idxReg)
+	ctx := NewContext(harness)
 	err := ctx.Session.Set(ctx, "auto_increment_increment", sql.Int64, 0)
 	require.NoError(t, err)
 	err = ctx.Session.Set(ctx, "max_allowed_packet", sql.Int64, 0)
@@ -1309,22 +1272,22 @@ func TestWarnings(t *testing.T, harness Harness) {
 		},
 	}
 
-	e, idxReg := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 
-	ctx := NewCtx(idxReg)
+	ctx := NewContext(harness)
 	ctx.Session.Warn(&sql.Warning{Code: 1})
 	ctx.Session.Warn(&sql.Warning{Code: 2})
 	ctx.Session.Warn(&sql.Warning{Code: 3})
 
 	for _, tt := range queries {
-		TestQuery(t, ctx, e, tt.Query, tt.Expected)
+		TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected)
 	}
 }
 
 func TestClearWarnings(t *testing.T, harness Harness) {
 	require := require.New(t)
-	e, idxReg := NewEngine(t, harness)
-	ctx := NewCtx(idxReg)
+	e := NewEngine(t, harness)
+	ctx := NewContext(harness)
 
 	_, iter, err := e.Query(ctx, "-- some empty query as a comment")
 	require.NoError(err)
@@ -1370,9 +1333,9 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 
 func TestUse(t *testing.T, harness Harness) {
 	require := require.New(t)
-	e, idxReg := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 
-	ctx := NewCtx(idxReg)
+	ctx := NewContext(harness)
 	require.Equal("mydb", ctx.GetCurrentDatabase())
 
 	_, _, err := e.Query(ctx, "USE bar")
@@ -1414,24 +1377,25 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 		// },
 	}
 
-	e, idxReg := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 
-	ctx := NewCtx(idxReg)
+	ctx := NewContext(harness)
 	err := ctx.Session.Set(ctx, "sql_select_limit", sql.Int64, int64(1))
 	require.NoError(t, err)
 
 	for _, tt := range q {
-		TestQuery(t, ctx, e, tt.Query, tt.Expected)
+		TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected)
 	}
 }
 
 func TestTracing(t *testing.T, harness Harness) {
 	require := require.New(t)
-	e, idxReg := NewEngine(t, harness)
+	e := NewEngine(t, harness)
 
 	tracer := new(test.MemTracer)
 
-	ctx := sql.NewContext(context.TODO(), sql.WithTracer(tracer), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background(),
+		sql.WithTracer(tracer), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
 
 	_, iter, err := e.Query(ctx, `SELECT DISTINCT i
 		FROM mytable
@@ -1490,28 +1454,65 @@ func NewCtx(idxReg *sql.IndexRegistry) *sql.Context {
 	return ctx
 }
 
+func NewContext(harness Harness) *sql.Context {
+	ctx := harness.NewContext().WithCurrentDB("mydb")
+
+	_ = ctx.ViewRegistry.Register("mydb",
+		plan.NewSubqueryAlias(
+			"myview",
+			"SELECT * FROM mytable",
+			plan.NewUnresolvedTable("mytable", "mydb"),
+		).AsView())
+
+	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
+
+	return ctx
+}
+
+var sessionId uint32
+
+// Returns a new BaseSession compatible with these tests. Most tests will work with any session implementation, but for
+// full compatibility use a session based on this one.
+func NewBaseSession() sql.Session {
+	return sql.NewSession("address", "client", "user", 1)
+}
+
+func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
+	ctx := NewContext(harness)
+
+	// TODO: move index driver back out of context, into catalog, make this unnecessary
+	if idh, ok := harness.(IndexDriverHarness); ok {
+		driver := idh.IndexDriver(engine.Catalog.AllDatabases())
+		if driver != nil {
+			ctx.IndexRegistry.RegisterIndexDriver(driver)
+			ctx.IndexRegistry.LoadIndexes(ctx, engine.Catalog.AllDatabases())
+		}
+	}
+
+	return ctx
+}
+
 // NewEngine creates test data and returns an engine using the harness provided.
-// TODO: get rid of idx reg return value
-func NewEngine(t *testing.T, harness Harness) (*sqle.Engine, *sql.IndexRegistry) {
+func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 	dbs := CreateTestData(t, harness)
 	var idxDriver sql.IndexDriver
 	if ih, ok := harness.(IndexDriverHarness); ok {
 		idxDriver = ih.IndexDriver(dbs)
 	}
-	engine, idxReg := NewEngineWithDbs(t, harness.Parallelism(), dbs, idxDriver)
+	engine := NewEngineWithDbs(t, harness.Parallelism(), dbs, idxDriver)
 
 	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
-		err := createNativeIndexes(t, engine)
+		err := createNativeIndexes(t, harness, engine)
 		require.NoError(t, err)
 	}
 
-	return engine, idxReg
+	return engine
 }
 
 
 // NewEngineWithDbs returns a new engine with the databases provided. This is useful if you don't want to implement a
 // full harness but want to run your own tests on DBs you create.
-func NewEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, driver sql.IndexDriver) (*sqle.Engine, *sql.IndexRegistry) {
+func NewEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, driver sql.IndexDriver) *sqle.Engine {
 	catalog := sql.NewCatalog()
 	for _, database := range databases {
 		catalog.AddDatabase(database)
@@ -1530,30 +1531,86 @@ func NewEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, d
 		idxReg.RegisterIndexDriver(driver)
 	}
 
-	engine := sqle.New(catalog, a, new(sqle.Config))
-	require.NoError(t, idxReg.LoadIndexes(sql.NewEmptyContext(), engine.Catalog.AllDatabases()))
-
-	return engine, idxReg
+	return sqle.New(catalog, a, new(sqle.Config))
 }
 
-// RunQueryTest runs a query on the engine given and asserts that results are as expected.
-func TestQuery(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row) {
+// TestQuery runs a query on the engine given and asserts that results are as expected.
+func TestQuery(t *testing.T, harness Harness, e *sqle.Engine, q string, expected []sql.Row) {
+	t.Run(q, func(t *testing.T) {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(q) {
+				t.Skipf("Skiping query %s", q)
+			}
+		}
+
+		ctx := NewContextWithEngine(harness, e)
+		TestQueryWithContext(t, ctx, e, q, expected)
+	})
+}
+
+func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row) {
+	require := require.New(t)
+
+	_, iter, err := e.Query(ctx, q)
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(iter)
+	require.NoError(err)
+
+	widenedRows := widenRows(rows)
+	widenedExpected := widenRows(expected)
+
 	orderBy := strings.Contains(strings.ToUpper(q), " ORDER BY ")
 
-	t.Run(q, func(t *testing.T) {
-		require := require.New(t)
-		_, iter, err := e.Query(ctx, q)
-		require.NoError(err)
+	// .Equal gives better error messages than .ElementsMatch, so use it when possible
+	if orderBy || len(expected) <= 1 {
+		require.Equal(widenedExpected, widenedRows)
+	} else {
+		require.ElementsMatch(widenedExpected, widenedRows)
+	}
+}
 
-		rows, err := sql.RowIterToRows(iter)
-		require.NoError(err)
+// For a variety of reasons, the widths of various primitive types can vary when passed through different SQL queries
+// (and different database implementations). We may eventually decide that this undefined behavior is a problem, but
+// for now it's mostly just an issue when comparing results in tests. To get around this, we widen every type to its
+// widest value in actual and expected results.
+func widenRows(rows []sql.Row) []sql.Row {
+	widened := make([]sql.Row, len(rows))
+	for i, row := range rows {
+		widened[i] = widenRow(row)
+	}
+	return widened
+}
 
-		// .Equal gives better error messages than .ElementsMatch, so use it when possible
-		if orderBy || len(expected) <= 1 {
-			require.Equal(expected, rows)
-		} else {
-			require.ElementsMatch(expected, rows)
+// See widenRows
+func widenRow(row sql.Row) sql.Row {
+	widened := make(sql.Row, len(row))
+	for i, v := range row {
+		var vw interface{}
+		switch x := v.(type) {
+		case int:
+			 vw = int64(x)
+		case int8:
+			vw = int64(x)
+		case int16:
+			vw = int64(x)
+		case int32:
+			vw = int64(x)
+		case uint:
+			vw = uint64(x)
+		case uint8:
+			vw = uint64(x)
+		case uint16:
+			vw = uint64(x)
+		case uint32:
+			vw = uint64(x)
+		case float32:
+			vw = float64(x)
+		default:
+			vw = v
 		}
-	})
+		widened[i] = vw
+	}
+	return widened
 }
 

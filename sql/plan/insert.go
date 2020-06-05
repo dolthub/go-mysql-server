@@ -168,7 +168,7 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 
 		if replacer != nil {
 			if err = replacer.Delete(ctx, row); err != nil {
-				if err != sql.ErrDeleteRowNotFound {
+				if !sql.ErrDeleteRowNotFound.Is(err) {
 					_ = iter.Close()
 					return i, err
 				}
@@ -206,7 +206,7 @@ func (p *InsertInto) rowSource(projExprs []sql.Expression) (sql.Node, error) {
 	switch n := p.Right.(type) {
 	case *Values:
 		return NewProject(projExprs, n), nil
-	case *ResolvedTable, *Project, *InnerJoin:
+	case *ResolvedTable, *Project, *InnerJoin, *Filter:
 		if err := assertCompatibleSchemas(projExprs, n.Schema()); err != nil {
 			return nil, err
 		}
@@ -256,7 +256,7 @@ func (p *InsertInto) validateValueCount(ctx *sql.Context) error {
 				return ErrInsertIntoMismatchValueCount.New()
 			}
 		}
-	case *ResolvedTable, *Project, *InnerJoin:
+	case *ResolvedTable, *Project, *InnerJoin, *Filter:
 		return p.assertColumnCountsMatch(node.Schema())
 	default:
 		return ErrInsertIntoUnsupportedValues.New(node)

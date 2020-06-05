@@ -25,27 +25,27 @@ import (
 // queries are declared in the exported enginetest package to make them usable by integrators, to validate the engine
 // against their own implementation.
 
+var numPartitionsVals = []int{
+	1,
+	testNumPartitions,
+}
+var indexBehaviors = []*indexBehaviorTestParams{
+	{"none", nil, false},
+	{"unmergableIndexes", unmergableIndexDriver, false},
+	{"mergableIndexes", mergableIndexDriver, false},
+	{"nativeIndexes", nil, true},
+	{"nativeAndMergable", mergableIndexDriver, true},
+}
+var parallelVals = []int{
+	1,
+	2,
+}
+
 // testQueries tests the given queries on an engine under a variety of circumstances:
 // 1) Partitioned tables / non partitioned tables
 // 2) Mergeable / unmergeable / native / no indexes
 // 3) Parallelism on / off
 func TestQueries(t *testing.T) {
-	numPartitionsVals := []int{
-		1,
-		testNumPartitions,
-	}
-	indexBehaviors := []*indexBehaviorTestParams{
-		{"none", nil, false},
-		{"unmergableIndexes", unmergableIndexDriver, false},
-		{"mergableIndexes", mergableIndexDriver, false},
-		{"nativeIndexes", nil, true},
-		{"nativeAndMergable", mergableIndexDriver, true},
-	}
-	parallelVals := []int{
-		1,
-		2,
-	}
-
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexInit := range indexBehaviors {
 			for _, parallelism := range parallelVals {
@@ -59,6 +59,37 @@ func TestQueries(t *testing.T) {
 		}
 	}
 }
+
+func TestVersionedQueries(t *testing.T) {
+	for _, numPartitions := range numPartitionsVals {
+		for _, indexInit := range indexBehaviors {
+			for _, parallelism := range parallelVals {
+				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexInit.name, parallelism)
+				harness := newMemoryHarness(testName, parallelism, numPartitions, indexInit.nativeIndexes, indexInit.driverInitializer)
+
+				t.Run(testName, func(t *testing.T) {
+					enginetest.TestVersionedQueries(t, harness)
+				})
+			}
+		}
+	}
+}
+
+// Convenience test for debugging a single query. Unskip and set to the desired query.
+// func TestSingleQuery(t *testing.T) {
+// 	test := enginetest.QueryTest{
+// 		"SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
+// 		[]sql.Row{
+// 			{int64(1), int64(1), "third"},
+// 			{int64(2), int64(2), "second"},
+// 			{int64(3), int64(3), "first"},
+// 		},
+// 	}
+//
+// 	harness := newMemoryHarness("singleTest", 1, 1, true, nil)
+// 	e := enginetest.NewEngine(t, harness)
+// 	enginetest.TestQuery(t, harness, e, test.Query, test.Expected)
+// }
 
 // Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that
 // the right indexes are being used for joining tables.

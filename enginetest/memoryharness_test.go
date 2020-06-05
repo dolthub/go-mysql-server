@@ -15,6 +15,7 @@
 package enginetest_test
 
 import (
+	"context"
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -64,10 +65,25 @@ func (m *memoryHarness) Parallelism() int {
 	return m.parallelism
 }
 
+func (m *memoryHarness) NewContext() *sql.Context {
+	return sql.NewContext(
+		context.Background(),
+		sql.WithSession(enginetest.NewBaseSession()),
+	)
+}
+
 func (m *memoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.Schema, asOf interface{}) sql.Table {
 	table := memory.NewPartitionedTable(name, schema, m.numTablePartitions)
+	if m.nativeIndexSupport {
+		table.EnablePrimaryKeyIndexes()
+	}
 	db.(*memory.HistoryDatabase).AddTableAsOf(name, table, asOf)
 	return table
+}
+
+func (m *memoryHarness) SnapshotTable(db sql.VersionedDatabase, name string, asOf interface{}) error {
+	// Nothing to do for this implementation: the NewTableAsOf method does all the work of creating the snapshot.
+	return nil
 }
 
 func (m *memoryHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
@@ -81,10 +97,13 @@ func (m *memoryHarness) NewDatabase(name string) sql.Database {
 	return memory.NewHistoryDatabase(name)
 }
 
-func (m *memoryHarness) NewTable(db sql.Database, name string, schema sql.Schema) sql.Table {
+func (m *memoryHarness) NewTable(db sql.Database, name string, schema sql.Schema) (sql.Table, error) {
 	table := memory.NewPartitionedTable(name, schema, m.numTablePartitions)
+	if m.nativeIndexSupport {
+		table.EnablePrimaryKeyIndexes()
+	}
 	db.(*memory.HistoryDatabase).AddTable(name, table)
-	return table
+	return table, nil
 }
 
 type indexDriverInitalizer func([]sql.Database) sql.IndexDriver

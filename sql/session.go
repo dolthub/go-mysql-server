@@ -337,6 +337,13 @@ func NewContext(
 	return c
 }
 
+// Applys the options given to the context. Mostly for tests, not safe for use after construction of the context.
+func (c *Context) ApplyOpts(opts ...ContextOption) {
+	for _, opt := range opts {
+		opt(c)
+	}
+}
+
 // NewEmptyContext returns a default context with default values.
 func NewEmptyContext() *Context { return NewContext(context.TODO()) }
 

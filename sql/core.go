@@ -35,10 +35,13 @@ var (
 	ErrInvalidChildType = errors.NewKind("%T: invalid child type, got %T, expected %T")
 
 	// ErrDeleteRowNotFound
-	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete").New()
+	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete")
 
   // ErrDuplicateAlias should be returned when a query contains a duplicate alias / table name.
   ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
+
+  // ErrUniqueKeyViolation is returned when a unique key constraint is violated
+	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key for %s")
 )
 
 // Nameable is something that has a name.
@@ -260,6 +263,7 @@ type IndexAlterableTable interface {
 
 // InsertableTable is a table that can process insertion of new rows.
 type InsertableTable interface {
+	Table
 	// Inserter returns an Inserter for this table. The Inserter will get one call to Insert() for each row to be
 	// inserted, and will end with a call to Close() to finalize the insert operation.
 	Inserter(*Context) RowInserter
@@ -277,6 +281,7 @@ type RowInserter interface {
 
 // DeleteableTable is a table that can process the deletion of rows
 type DeletableTable interface {
+	Table
 	// Deleter returns a RowDeleter for this table. The RowDeleter will get one call to Delete for each row to be deleted,
 	// and will end with a call to Close() to finalize the delete operation.
 	Deleter(*Context) RowDeleter
@@ -296,8 +301,9 @@ type Closer interface {
 	Close(*Context) error
 }
 
-// RowReplacer is a combination of RowDeleter and RowInserter. We can't embed those interfaces because go doesn't allow
-// for overlapping interfaces (they both declare Close)
+// RowReplacer is a combination of RowDeleter and RowInserter.
+// TODO: We can't embed those interfaces because go 1.13 doesn't allow for overlapping interfaces (they both declare
+//  Close). Go 1.14 fixes this problem, but we aren't ready to drop support for 1.13 yet.
 type RowReplacer interface {
 	// Insert inserts the row given, returning an error if it cannot. Insert will be called once for each row to process
 	// for the replace operation, which may involve many rows. After all rows in an operation have been processed, Close
@@ -313,6 +319,7 @@ type RowReplacer interface {
 
 // Replacer allows rows to be replaced through a Delete (if applicable) then Insert.
 type ReplaceableTable interface {
+	Table
 	// Replacer returns a RowReplacer for this table. The RowReplacer will have Insert and optionally Delete called once
 	// for each row, followed by a call to Close() when all rows have been processed.
 	Replacer(ctx *Context) RowReplacer
@@ -320,6 +327,7 @@ type ReplaceableTable interface {
 
 // UpdateableTable is a table that can process updates of existing rows via update statements.
 type UpdatableTable interface {
+	Table
 	// Updater returns a RowUpdater for this table. The RowUpdater will have Update called once for each row to be
 	// updated, followed by a call to Close() when all rows have been processed.
 	Updater(ctx *Context) RowUpdater
@@ -476,6 +484,7 @@ type ColumnOrder struct {
 
 // AlterableTable should be implemented by tables that can receive ALTER TABLE statements to modify their schemas.
 type AlterableTable interface {
+	Table
 	// AddColumn adds a column to this table as given. If non-nil, order specifies where in the schema to add the column.
 	AddColumn(ctx *Context, column *Column, order *ColumnOrder) error
 	// DropColumn drops the column with the name given.
