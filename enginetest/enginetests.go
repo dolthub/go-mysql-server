@@ -171,7 +171,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	_, err := harness.NewTable(db, "mytable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s", Type: sql.Text, Source: "mytable"},
 	})
 	require.NoError(err)
@@ -669,7 +669,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 }
 
 func TestRenameTable(t *testing.T, harness Harness) {
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := NewContext(harness)
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
@@ -732,13 +732,13 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require.Error(err)
 	require.True(sql.ErrTableNotFound.Is(err))
 
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE typestable RENAME niltable")
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE emptytable RENAME niltable")
 	require.Error(err)
 	require.True(sql.ErrTableAlreadyExists.Is(err))
 }
 
 func TestRenameColumn(t *testing.T,  harness Harness) {
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := NewContext(harness)
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
@@ -768,7 +768,7 @@ func TestRenameColumn(t *testing.T,  harness Harness) {
 }
 
 func TestAddColumn(t *testing.T, harness Harness) {
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := NewContext(harness)
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
@@ -865,7 +865,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 }
 
 func TestModifyColumn(t *testing.T, harness Harness) {
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := NewContext(harness)
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
@@ -958,7 +958,7 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	t1, err := harness.NewTable(db, "t1", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t1"},
+		{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
 		{Name: "b", Type: sql.Text, Source: "t1"},
 		{Name: "c", Type: sql.Text, Source: "t1"},
 	})
@@ -967,7 +967,7 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1), sql.NewRow("a_1", "b_1", "c_1"), sql.NewRow("a_2", "b_2", "c_2"), sql.NewRow("a_3", "b_3", "c_3"), )
 
 	t2, err := harness.NewTable(db, "t2", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t2"},
+		{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
 		{Name: "b", Type: sql.Text, Source: "t2"},
 		{Name: "d", Type: sql.Text, Source: "t2"},
 	})
@@ -978,19 +978,12 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	_, iter, err := e.Query(NewContext(harness), `SELECT * FROM t1 NATURAL JOIN t2`)
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	require.Equal(
+	TestQuery(t, harness, e, `SELECT * FROM t1 NATURAL JOIN t2`,
 		[]sql.Row{
 			{"a_1", "b_1", "c_1", "d_1"},
 			{"a_2", "b_2", "c_2", "d_2"},
 			{"a_3", "b_3", "c_3", "d_3"},
 		},
-		rows,
 	)
 }
 
@@ -999,7 +992,7 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	t1, err := harness.NewTable(db, "t1", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t1"},
+		{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
 		{Name: "b", Type: sql.Text, Source: "t1"},
 		{Name: "c", Type: sql.Text, Source: "t1"},
 	})
@@ -1008,7 +1001,7 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1), sql.NewRow("a_1", "b_1", "c_1"), sql.NewRow("a_2", "b_2", "c_2"), sql.NewRow("a_3", "b_3", "c_3"), )
 
 	t2, err := harness.NewTable(db, "t2", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t2"},
+		{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
 		{Name: "b", Type: sql.Text, Source: "t2"},
 		{Name: "c", Type: sql.Text, Source: "t2"},
 	})
@@ -1019,19 +1012,11 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	_, iter, err := e.Query(NewContext(harness), `SELECT * FROM t1 NATURAL JOIN t2`)
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	require.Equal(
-		[]sql.Row{
+	TestQuery(t, harness, e,`SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
 			{"a_1", "b_1", "c_1"},
 			{"a_2", "b_2", "c_2"},
 			{"a_3", "b_3", "c_3"},
 		},
-		rows,
 	)
 }
 
@@ -1040,14 +1025,14 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	t1, err := harness.NewTable(db, "t1", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t1"},
+		{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
 	})
 	require.NoError(err)
 
 	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1), sql.NewRow("a1"), sql.NewRow("a2"), sql.NewRow("a3"), )
 
 	t2, err := harness.NewTable(db, "t2", sql.Schema{
-		{Name: "b", Type: sql.Text, Source: "t2"},
+		{Name: "b", Type: sql.Text, Source: "t2", PrimaryKey: true},
 	})
 	require.NoError(err)
 	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2), sql.NewRow("b1"), sql.NewRow("b2"), sql.NewRow("b3"), )
@@ -1055,14 +1040,7 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	_, iter, err := e.Query(NewContext(harness), `SELECT * FROM t1 NATURAL JOIN t2`)
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	require.Equal(
-		[]sql.Row{
+	TestQuery(t, harness, e, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
 			{"a1", "b1"},
 			{"a1", "b2"},
 			{"a1", "b3"},
@@ -1073,7 +1051,6 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 			{"a3", "b2"},
 			{"a3", "b3"},
 		},
-		rows,
 	)
 }
 
@@ -1088,7 +1065,11 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 	})
 	require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, table1), sql.NewRow(int32(1), float64(2.1), "table1"), sql.NewRow(int32(1), float64(2.1), "table1"), sql.NewRow(int32(10), float64(2.1), "table1"), )
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, table1),
+		sql.NewRow(int32(1), float64(2.1), "table1"),
+		sql.NewRow(int32(1), float64(2.1), "table1"),
+		sql.NewRow(int32(10), float64(2.1), "table1"),
+	)
 
 	table2, err := harness.NewTable(db, "table2", sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "table2"},
@@ -1097,7 +1078,11 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 	})
 	require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, table2), sql.NewRow(int32(1), float64(2.2), "table2"), sql.NewRow(int32(1), float64(2.2), "table2"), sql.NewRow(int32(20), float64(2.2), "table2"), )
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, table2),
+		sql.NewRow(int32(1), float64(2.2), "table2"),
+		sql.NewRow(int32(1), float64(2.2), "table2"),
+		sql.NewRow(int32(20), float64(2.2), "table2"),
+	)
 
 	table3, err := harness.NewTable(db, "table3", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "table3"},
@@ -1106,42 +1091,33 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 	})
 	require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, table3), sql.NewRow(int32(1), float64(2.2), "table3"), sql.NewRow(int32(2), float64(2.2), "table3"), sql.NewRow(int32(30), float64(2.2), "table3"), )
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, table3),
+		sql.NewRow(int32(1), float64(2.2), "table3"),
+		sql.NewRow(int32(2), float64(2.2), "table3"),
+		sql.NewRow(int32(30), float64(2.2), "table3"),
+	)
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	_, iter, err := e.Query(NewContext(harness), `SELECT * FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`)
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	require.Equal(
+	TestQuery(t, harness, e,`SELECT * FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`,
 		[]sql.Row{
 			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
 			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
 			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
 			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
 		},
-		rows,
 	)
 }
 
 func TestSessionVariables(t *testing.T, harness Harness) {
 	require := require.New(t)
 	e := NewEngine(t, harness)
-	viewReg := sql.NewViewRegistry()
 
-	session := sql.NewBaseSession()
-	ctx := sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(1), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
-
-	_, _, err := e.Query(ctx, `set autocommit=1, sql_mode = concat(@@sql_mode,',STRICT_TRANS_TABLES')`)
+	_, _, err := e.Query(NewContext(harness), `set autocommit=1, sql_mode = concat(@@sql_mode,',STRICT_TRANS_TABLES')`)
 	require.NoError(err)
 
-	ctx = sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(2), sql.WithViewRegistry(viewReg))
-
-	_, iter, err := e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode`)
+	_, iter, err := e.Query(NewContext(harness), `SELECT @@autocommit, @@session.sql_mode`)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
@@ -1152,19 +1128,13 @@ func TestSessionVariables(t *testing.T, harness Harness) {
 
 func TestSessionVariablesONOFF(t *testing.T, harness Harness) {
 	require := require.New(t)
-	viewReg := sql.NewViewRegistry()
 
 	e := NewEngine(t, harness)
 
-	session := sql.NewBaseSession()
-	ctx := sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(1), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
-
-	_, _, err := e.Query(ctx, `set autocommit=ON, sql_mode = OFF, autoformat="true"`)
+	_, _, err := e.Query(NewContext(harness), `set autocommit=ON, sql_mode = OFF, autoformat="true"`)
 	require.NoError(err)
 
-	ctx = sql.NewContext(context.Background(), sql.WithSession(session), sql.WithPid(2), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
-
-	_, iter, err := e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode, @@autoformat`)
+	_, iter, err := e.Query(NewContext(harness), `SELECT @@autocommit, @@session.sql_mode, @@autoformat`)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
