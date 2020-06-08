@@ -278,7 +278,7 @@ type ForeignKeyAlterableTable interface {
 	Table
 	// CreateForeignKey creates an index for this table, using the provided parameters.
 	// Returns an error if the foreign key name already exists.
-	CreateForeignKey(ctx *Context, fkName string, columns []string, referencedColumns []string,
+	CreateForeignKey(ctx *Context, fkName string, columns []string, referencedTable string, referencedColumns []string,
 		onUpdate, onDelete ForeignKeyReferenceOption) error
 	// DropForeignKey removes a foreign key from the database.
 	DropForeignKey(ctx *Context, fkName string) error

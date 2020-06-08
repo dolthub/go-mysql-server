@@ -96,7 +96,7 @@ func (p *AlterForeignKey) Execute(ctx *sql.Context) error {
 			}
 		}
 
-		return fkAlterable.CreateForeignKey(ctx, p.FkDef.Name, p.FkDef.Columns, p.FkDef.ReferencedColumns, p.FkDef.OnUpdate, p.FkDef.OnDelete)
+		return fkAlterable.CreateForeignKey(ctx, p.FkDef.Name, p.FkDef.Columns, p.FkDef.ReferencedTable, p.FkDef.ReferencedColumns, p.FkDef.OnUpdate, p.FkDef.OnDelete)
 	case ForeignKeyAction_Drop:
 		return fkAlterable.DropForeignKey(ctx, p.FkDef.Name)
 	default:

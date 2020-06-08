@@ -114,7 +114,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 				return sql.RowsToRowIter(), ErrNoForeignKeySupport.New(c.name)
 			}
 			for _, fkDef := range c.fkDefs {
-				err = fkAlterable.CreateForeignKey(ctx, fkDef.Name, fkDef.Columns, fkDef.ReferencedColumns, fkDef.OnUpdate, fkDef.OnDelete)
+				err = fkAlterable.CreateForeignKey(ctx, fkDef.Name, fkDef.Columns, fkDef.ReferencedTable, fkDef.ReferencedColumns, fkDef.OnUpdate, fkDef.OnDelete)
 				if err != nil {
 					return sql.RowsToRowIter(), err
 				}
