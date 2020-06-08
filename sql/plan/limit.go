@@ -76,3 +76,11 @@ func (li *limitIter) Next() (sql.Row, error) {
 func (li *limitIter) Close() error {
 	return li.childIter.Close()
 }
+
+func (li *limitIter) RowCompareFunc(sch sql.Schema) (sql.RowCompareFunc, error) {
+	ordIter, ok := li.childIter.(sql.OrderableRowIter)
+	if !ok {
+		return nil, sql.ErrIterUnorderable.New()
+	}
+	return ordIter.RowCompareFunc(sch)
+}

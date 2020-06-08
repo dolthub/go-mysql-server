@@ -494,3 +494,11 @@ func (i *spanIter) Close() error {
 	}
 	return i.iter.Close()
 }
+
+func (i *spanIter) RowCompareFunc(sch Schema) (RowCompareFunc, error) {
+	ordIter, ok := i.iter.(OrderableRowIter)
+	if !ok {
+		return nil, ErrIterUnorderable.New()
+	}
+	return ordIter.RowCompareFunc(sch)
+}

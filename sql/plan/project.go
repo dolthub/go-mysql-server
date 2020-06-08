@@ -136,3 +136,11 @@ func projectRow(
 	}
 	return sql.NewRow(fields...), nil
 }
+
+func (i *iter) RowCompareFunc(sch sql.Schema) (sql.RowCompareFunc, error) {
+	ordIter, ok := i.childIter.(sql.OrderableRowIter)
+	if !ok {
+		return nil, sql.ErrIterUnorderable.New()
+	}
+	return ordIter.RowCompareFunc(sch)
+}
