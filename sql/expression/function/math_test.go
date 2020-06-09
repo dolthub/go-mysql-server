@@ -215,7 +215,7 @@ func TestRadians(t *testing.T) {
 			radians := f(expression.NewLiteral(test.input, nil))
 			res, err := radians.Eval(nil, nil)
 			assert.NoError(t, err)
-			assert.Equal(t, test.expected, res)
+			assert.True(t, withinRoundingErr(test.expected, res.(float64)))
 		})
 	}
 }
@@ -228,7 +228,7 @@ func TestDegrees(t *testing.T) {
 	}{
 		{"float32 pi", float32(math.Pi), 180.0},
 		{"decimal 2pi", decimal.NewFromFloat(2*math.Pi), 360.0},
-		{"float6h4 pi/2", math.Pi/2.0, 90.0},
+		{"float64 pi/2", math.Pi/2.0, 90.0},
 	}
 
 	logic := WrapUnaryMathFloatFuncLogic(DegreesFuncLogic{})
@@ -239,7 +239,7 @@ func TestDegrees(t *testing.T) {
 			degrees := f(expression.NewLiteral(test.input, nil))
 			res, err := degrees.Eval(nil, nil)
 			assert.NoError(t, err)
-			assert.Equal(t, test.expected, res)
+			assert.True(t, withinRoundingErr(test.expected, res.(float64)))
 		})
 	}
 }
@@ -252,9 +252,9 @@ func TestTrigFunctions(t *testing.T) {
 	acos := NewUnaryMathFunc("acos", WrapUnaryMathFloatFuncLogic(ACosFuncLogic{}))
 	atan := NewUnaryMathFunc("atan", WrapUnaryMathFloatFuncLogic(ATanFuncLogic{}))
 
-	const NUM_CHECKS = 24
-	delta := (2*math.Pi) / float64(NUM_CHECKS)
-	for i := 0; i <= NUM_CHECKS; i++ {
+	const numChecks = 24
+	delta := (2*math.Pi) / float64(numChecks)
+	for i := 0; i <= numChecks; i++ {
 		theta := delta * float64(i)
 		thetaLiteral := expression.NewLiteral(theta, nil)
 		sinVal, err := sin(thetaLiteral).Eval(nil, nil)
@@ -264,13 +264,13 @@ func TestTrigFunctions(t *testing.T) {
 		tanVal, err := tan(thetaLiteral).Eval(nil, nil)
 		assert.NoError(t, err)
 
-		assert.Equal(t, math.Sin(theta), sinVal)
-		assert.Equal(t, math.Cos(theta), cosVal)
-		assert.Equal(t, math.Tan(theta), tanVal)
-
 		sinF, _ := sinVal.(float64)
 		cosF, _ := cosVal.(float64)
 		tanF, _ := tanVal.(float64)
+
+		assert.True(t, withinRoundingErr(math.Sin(theta), sinF))
+		assert.True(t, withinRoundingErr(math.Cos(theta), cosF))
+		assert.True(t, withinRoundingErr(math.Tan(theta), tanF))
 
 		asinVal, err := asin(expression.NewLiteral(sinF, nil)).Eval(nil, nil)
 		assert.NoError(t, err)
@@ -279,8 +279,19 @@ func TestTrigFunctions(t *testing.T) {
 		atanVal, err := atan(expression.NewLiteral(tanF, nil)).Eval(nil, nil)
 		assert.NoError(t, err)
 
-		assert.Equal(t, math.Asin(sinF), asinVal)
-		assert.Equal(t, math.Acos(cosF), acosVal)
-		assert.Equal(t, math.Atan(tanF), atanVal)
+		assert.True(t, withinRoundingErr(math.Asin(sinF), asinVal.(float64)))
+		assert.True(t, withinRoundingErr(math.Acos(cosF), acosVal.(float64)))
+		assert.True(t, withinRoundingErr(math.Atan(tanF), atanVal.(float64)))
 	}
+}
+
+func withinRoundingErr(v1, v2 float64) bool {
+	const roundingErr = 0.00001
+	diff := v1 - v2
+
+	if diff < 0 {
+		diff = -diff
+	}
+
+	return diff < roundingErr
 }

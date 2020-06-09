@@ -113,50 +113,73 @@ func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return rand.New(rand.NewSource(seed)).Float64(), nil
 }
 
-var UintRegex, _ = regexp.Compile("^[1-9][0-9]*$*")
+// UintRegex matches unsigned ints
+var UintRegex, _ = regexp.Compile("^[1-9][0-9]*$")
+
+// IntRegex matches ints
 var IntRegex, _ = regexp.Compile("^-?[1-9][0-9]*$")
 
+// UnaryMathFloatFuncLogic is an interface for sql function logic that takes a single float64 argument
 type UnaryMathFloatFuncLogic interface {
+	// EvalFloat contains sql function logic for a function that takes a single float64 as an argument
 	EvalFloat(float64) (interface{}, error)
 }
 
+// UnaryMathFuncLogic is an interface for a sql function logic that takes a single number argument
 type UnaryMathFuncLogic interface {
+	// UnaryMathFloatFuncLogic is an embedded interface that handles the case where the number arumend passed is a float
 	UnaryMathFloatFuncLogic
+	// EvalUint handles the case where the number argument passed is a uint
 	EvalUint(uint64) (interface{}, error)
+	// EvalInt handles the case where the number argument passed is an int
 	EvalInt(int64) (interface{}, error)
+	// EvalDecimal handles the case where the number argument passed is a decimal
 	EvalDecimal(decimal.Decimal) (interface{}, error)
 }
 
+// UnaryMathFloatFuncWrapper wraps logic that handles floats and provides methods for all number types
 type UnaryMathFloatFuncWrapper struct {
 	FlLogic UnaryMathFloatFuncLogic
 }
 
+// WrapUnaryMathFloatFuncLogic takes a UnaryMathFloatFuncLogic and wraps it returning a UnaryMathFuncLogic implementation
+// which uses the float implementation for all calls
 func WrapUnaryMathFloatFuncLogic(logic UnaryMathFloatFuncLogic) UnaryMathFuncLogic {
 	return UnaryMathFloatFuncWrapper{logic}
 }
 
+// EvalFloat handles the case where the number argument passed is a float
 func (wr UnaryMathFloatFuncWrapper) EvalFloat(n float64) (interface{}, error) {
 	return wr.FlLogic.EvalFloat(n)
 }
 
+// EvalUint handles the case where the number argument passed is a uint
 func (wr UnaryMathFloatFuncWrapper) EvalUint(n uint64) (interface{}, error) {
 	return wr.FlLogic.EvalFloat(float64(n))
 }
+
+// EvalInt handles the case where the number argument passed is an int
 func (wr UnaryMathFloatFuncWrapper) EvalInt(n int64) (interface{}, error) {
 	return wr.FlLogic.EvalFloat(float64(n))
 }
 
+// EvalDecimal handles the case where the number argument passed is a decimal
 func (wr UnaryMathFloatFuncWrapper) EvalDecimal(dec decimal.Decimal) (interface{}, error) {
 	n, _ := dec.Float64()
 	return wr.FlLogic.EvalFloat(n)
 }
 
+// UnaryMathFunc is a sql function that takes a single number argument and returns a value
 type UnaryMathFunc struct {
 	expression.UnaryExpression
+	// Name is the name of the function
 	Name  string
+	// Logic contains the logic being executed when the function is called
 	Logic UnaryMathFuncLogic
 }
 
+// NewUnaryMathFunc returns a function which is called to create a sql.Expression representing the function and its
+// argemunts
 func NewUnaryMathFunc(name string, logic UnaryMathFuncLogic) func(e sql.Expression) sql.Expression {
 	return func(e sql.Expression) sql.Expression {
 		return &UnaryMathFunc{expression.UnaryExpression{Child: e}, name, logic}
@@ -204,7 +227,7 @@ func (mf *UnaryMathFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	case decimal.Decimal:
 		return mf.Logic.EvalDecimal(x)
 	case string:
-		if UintRegex.MatchString(x) {
+		if x == "0" || UintRegex.MatchString(x) {
 			n, err := strconv.ParseUint(x, 10, 64)
 
 			if err != nil {
@@ -236,7 +259,7 @@ func (mf *UnaryMathFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 
 // String implements the Stringer interface.
 func (mf *UnaryMathFunc) String() string {
-	return fmt.Sprintf("%s(%s)", strings.ToUpper(mf.Name), mf .Child.String())
+	return fmt.Sprintf("%s(%s)", strings.ToUpper(mf.Name), mf.Child.String())
 }
 
 // IsNullable implements the Expression interface.
@@ -258,12 +281,15 @@ func (mf *UnaryMathFunc) Type() sql.Type {
 	return mf.Child.Type()
 }
 
-
+// AbsFuncLogic is a UnaryMathFuncLogic implementation that returns the absolute value of a number
 type AbsFuncLogic struct{}
 
+// EvalUint handles the case where the number argument passed is a uint
 func (fl AbsFuncLogic) EvalUint(n uint64) (interface{}, error) {
 	return n, nil
 }
+
+// EvalInt handles the case where the number argument passed is an int
 func (fl AbsFuncLogic) EvalInt(n int64) (interface{}, error) {
 	if n < 0 {
 		return -n, nil
@@ -272,6 +298,7 @@ func (fl AbsFuncLogic) EvalInt(n int64) (interface{}, error) {
 	return n, nil
 }
 
+// EvalFloat handles the case where the number argument passed is a float
 func (fl AbsFuncLogic) EvalFloat(n float64) (interface{}, error) {
 	if n < 0 {
 		return -n, nil
@@ -280,67 +307,86 @@ func (fl AbsFuncLogic) EvalFloat(n float64) (interface{}, error) {
 	return n, nil
 }
 
+// EvalDecimal handles the case where the number argument passed is a decimal
 func (fl AbsFuncLogic) EvalDecimal(dec decimal.Decimal) (interface{}, error) {
 	return dec.Abs(), nil
 }
 
-
+// SinFuncLogic is a UnaryMathFloatFuncWrapper implementation which returns the sin of a value
 type SinFuncLogic struct{}
 
+// EvalFloat handles the case where the number argument passed is a float
 func (fl SinFuncLogic) EvalFloat(n float64) (interface{}, error) {
 	return math.Sin(n), nil
 }
 
+
+// CosFuncLogic is a UnaryMathFloatFuncWrapper implementation which returns the cos of a value
 type CosFuncLogic struct{}
 
+// EvalFloat handles the case where the number argument passed is a float
 func (fl CosFuncLogic) EvalFloat(n float64) (interface{}, error) {
 	return math.Cos(n), nil
 }
 
 
+// TanFuncLogic is a UnaryMathFloatFuncWrapper implementation which returns the tan of a value
 type TanFuncLogic struct{}
 
+// EvalFloat handles the case where the number argument passed is a float
 func (fl TanFuncLogic) EvalFloat(n float64) (interface{}, error) {
 	return math.Tan(n), nil
 }
 
 
+// ASinFuncLogic is a UnaryMathFloatFuncWrapper implementation which returns the asin of a value
 type ASinFuncLogic struct{}
 
+// EvalFloat handles the case where the number argument passed is a float
 func (fl ASinFuncLogic) EvalFloat(n float64) (interface{}, error) {
 	return math.Asin(n), nil
 }
 
 
+// ACosFuncLogic is a UnaryMathFloatFuncWrapper implementation which returns the acos of a value
 type ACosFuncLogic struct{}
 
+// EvalFloat handles the case where the number argument passed is a float
 func (fl ACosFuncLogic) EvalFloat(n float64) (interface{}, error) {
 	return math.Acos(n), nil
 }
 
 
+// ATanFuncLogic is a UnaryMathFloatFuncWrapper implementation which returns the atan of a value
 type ATanFuncLogic struct{}
 
+// EvalFloat handles the case where the number argument passed is a float
 func (fl ATanFuncLogic) EvalFloat(n float64) (interface{}, error) {
 	return math.Atan(n), nil
 }
 
 
+// CotFuncLogic is a UnaryMathFloatFuncWrapper implementation which returns the cot of a value
 type CotFuncLogic struct{}
 
+// EvalFloat handles the case where the number argument passed is a float
 func (fl CotFuncLogic) EvalFloat(n float64) (interface{}, error) {
 	return 1.0 / math.Tan(n), nil
 }
 
 
+// DegreesFuncLogic is a UnaryMathFloatFuncWrapper implementation which converts radians to degrees
 type DegreesFuncLogic struct {}
 
+// EvalFloat handles the case where the number argument passed is a float
 func (fl DegreesFuncLogic) EvalFloat(n float64) (interface{}, error) {
 	return (n * 180.0) / math.Pi, nil
 }
 
+// RadiansFuncLogic is a UnaryMathFloatFuncWrapper implementation which converts degrees to radians
 type RadiansFuncLogic struct {}
 
+// EvalFloat handles the case where the number argument passed is a float
 func (fl RadiansFuncLogic) EvalFloat(n float64) (interface{}, error) {
 	return (n * math.Pi) / 180.0, nil
 }
