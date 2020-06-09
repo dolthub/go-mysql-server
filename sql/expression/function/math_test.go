@@ -202,6 +202,8 @@ func TestRadians(t *testing.T) {
 		input interface{}
 		expected float64
 	}{
+		{"string '0'", "0", 0},
+		{"string -180", "-180", -math.Pi},
 		{"int val of 180", int16(180), math.Pi},
 		{"uint val of 90", uint(90), math.Pi / 2.0},
 		{"float value of 360", 360.0, 2*math.Pi},
@@ -226,9 +228,10 @@ func TestDegrees(t *testing.T) {
 		input interface{}
 		expected float64
 	}{
-		{"float32 pi", float32(math.Pi), 180.0},
+		{"string pi", "3.1415926536", 180.0},
 		{"decimal 2pi", decimal.NewFromFloat(2*math.Pi), 360.0},
 		{"float64 pi/2", math.Pi/2.0, 90.0},
+		{"float32 3*pi/2",  float32(3.0*math.Pi/2.0), 270.0},
 	}
 
 	logic := WrapUnaryMathFloatFuncLogic(DegreesFuncLogic{})
