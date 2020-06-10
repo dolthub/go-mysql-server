@@ -573,6 +573,10 @@ different requirements.
 * [dolt](https://github.com/liquidata-inc/dolt)
 * [gitbase](https://github.com/src-d/gitbase) (defunct)
 
+## Acknowledgements
+
+**go-mysql-server** was originally developed by the {source-d} organzation, and this repository was originally forked from [src-d](https://github.com/src-d/go-mysql-server). We want to thank the entire {source-d} development team for their work on this project, especially Miguel Molina (@erizocosmico) and Juanjo Álvarez Martinez (@juanjux).
+
 ## License
 
 Apache License 2.0, see [LICENSE](/LICENSE)
