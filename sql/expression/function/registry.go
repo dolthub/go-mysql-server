@@ -7,32 +7,58 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
 )
 
+func connIDFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	return ctx.ID(), nil
+}
+
+func userFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	return ctx.Client().User, nil
+}
+
 // Defaults is the function map with all the default functions.
 var Defaults = []sql.Function{
-	sql.Function0{Name: "connection_id", Fn: NewConnectionID},
-	sql.Function0{Name: "user", Fn: NewUser},
-	sql.Function0{Name: "current_user", Fn: NewUser},
-	sql.Function0{Name: "now", Fn: NewNow},
+	sql.NewFunction0("connection_id", sql.Uint32, connIDFuncLogic),
+	sql.NewFunction0("curdate", sql.LongText, currDateLogic),
+	sql.NewFunction0("current_date", sql.LongText, currDateLogic),
+	sql.NewFunction0("current_time", sql.LongText, currTimeLogic),
+	sql.NewFunction0("current_timestamp", sql.Datetime, currDatetimeLogic),
+	sql.NewFunction0("current_user", sql.LongText, userFuncLogic),
+	sql.NewFunction0("curtime", sql.LongText, currTimeLogic),
+	sql.NewFunction0("now", sql.Date, currDatetimeLogic),
+	sql.NewFunction0("user", sql.LongText, userFuncLogic),
 
-	sql.Function1{Name: "abs", Fn: NewUnaryMathFunc("abs", AbsFuncLogic{})},
-	sql.Function1{Name: "acos", Fn: NewUnaryMathFunc("acos", WrapUnaryMathFloatFuncLogic(ACosFuncLogic{}))},
+	NewUnaryMathFunc("abs", AbsFuncLogic{}),
+	NewUnaryMathFunc("acos", WrapUnaryMathFloatFuncLogic(ACosFuncLogic{})),
+	NewUnaryMathFunc("asin", WrapUnaryMathFloatFuncLogic(ASinFuncLogic{})),
+	NewUnaryMathFunc("atan", WrapUnaryMathFloatFuncLogic(TanFuncLogic{})),
+	NewUnaryMathFunc("cos", WrapUnaryMathFloatFuncLogic(CosFuncLogic{})),
+	NewUnaryMathFunc("cot", WrapUnaryMathFloatFuncLogic(CotFuncLogic{})),
+	NewUnaryMathFunc("degrees", WrapUnaryMathFloatFuncLogic(DegreesFuncLogic{})),
+	NewUnaryMathFunc("radians", WrapUnaryMathFloatFuncLogic(RadiansFuncLogic{})),
+	NewUnaryMathFunc("sin", WrapUnaryMathFloatFuncLogic(SinFuncLogic{})),
+	NewUnaryMathFunc("tan", WrapUnaryMathFloatFuncLogic(TanFuncLogic{})),
+
+	//NewUnaryDateTimeFunc("makedate", makeDateFuncLogic),
+	//NewUnaryDateTimeFunc("maketime", makeTimeFuncLogic),
+	NewUnaryDatetimeFunc("dayname", sql.LongText, dayNameFuncLogic),
+	NewUnaryDatetimeFunc("microsecond", sql.Uint64, microsecondFuncLogic),
+	NewUnaryDatetimeFunc("monthname", sql.LongText, monthNameFuncLogic),
+	NewUnaryDatetimeFunc("time_to_sec", sql.Uint64, timeToSecFuncLogic),
+	NewUnaryDatetimeFunc("week", sql.Uint64, weekFuncLogic),
+	NewUnaryDatetimeFunc("weekofyear", sql.Uint64, weekFuncLogic),
+
 	sql.Function1{Name: "array_length", Fn: NewArrayLength},
-	sql.Function1{Name: "asin", Fn: NewUnaryMathFunc("asin", WrapUnaryMathFloatFuncLogic(ASinFuncLogic{}))},
-	sql.Function1{Name: "atan", Fn: NewUnaryMathFunc("atan", WrapUnaryMathFloatFuncLogic(TanFuncLogic{}))},
 	sql.Function1{Name: "avg", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewAvg(e) }},
 	sql.Function1{Name: "ceil", Fn: NewCeil},
 	sql.Function1{Name: "ceiling", Fn: NewCeil},
 	sql.Function1{Name: "char_length", Fn: NewCharLength},
 	sql.Function1{Name: "character_length", Fn: NewCharLength},
 	sql.Function1{Name: "count", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewCount(e) }},
-	sql.Function1{Name: "cos", Fn: NewUnaryMathFunc("cos", WrapUnaryMathFloatFuncLogic(CosFuncLogic{}))},
-	sql.Function1{Name: "cot", Fn: NewUnaryMathFunc("cot", WrapUnaryMathFloatFuncLogic(CotFuncLogic{}))},
 	sql.Function1{Name: "date", Fn: NewDate},
 	sql.Function1{Name: "day", Fn: NewDay},
 	sql.Function1{Name: "dayofmonth", Fn: NewDay},
 	sql.Function1{Name: "dayofweek", Fn: NewDayOfWeek},
 	sql.Function1{Name: "dayofyear", Fn: NewDayOfYear},
-	sql.Function1{Name: "degrees", Fn: NewUnaryMathFunc("degrees", WrapUnaryMathFloatFuncLogic(DegreesFuncLogic{}))},
 	sql.Function1{Name: "explode", Fn: NewExplode},
 	sql.Function1{Name: "first", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewFirst(e) }},
 	sql.Function1{Name: "floor", Fn: NewFloor},
@@ -51,16 +77,13 @@ var Defaults = []sql.Function{
 	sql.Function1{Name: "min", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewMin(e) }},
 	sql.Function1{Name: "minute", Fn: NewMinute},
 	sql.Function1{Name: "month", Fn: NewMonth},
-	sql.Function1{Name: "radians", Fn: NewUnaryMathFunc("radians", WrapUnaryMathFloatFuncLogic(RadiansFuncLogic{}))},
 	sql.Function1{Name: "reverse", Fn: NewReverse},
 	sql.Function1{Name: "rtrim", Fn: NewTrimFunc(rTrimType)},
 	sql.Function1{Name: "second", Fn: NewSecond},
-	sql.Function1{Name: "sin", Fn: NewUnaryMathFunc("sin", WrapUnaryMathFloatFuncLogic(SinFuncLogic{}))},
 	sql.Function1{Name: "sleep", Fn: NewSleep},
 	sql.Function1{Name: "soundex", Fn: NewSoundex},
 	sql.Function1{Name: "sqrt", Fn: NewSqrt},
 	sql.Function1{Name: "sum", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewSum(e) }},
-	sql.Function1{Name: "tan", Fn: NewUnaryMathFunc("tan", WrapUnaryMathFloatFuncLogic(TanFuncLogic{}))},
 	sql.Function1{Name: "to_base64", Fn: NewToBase64},
 	sql.Function1{Name: "trim", Fn: NewTrimFunc(bTrimType)},
 	sql.Function1{Name: "upper", Fn: NewUpper},

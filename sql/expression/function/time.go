@@ -3,6 +3,7 @@ package function
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -501,45 +502,18 @@ var (
 	dayOfYear = datePartFunc((time.Time).YearDay)
 )
 
-type clock func() time.Time
-
-var defaultClock = time.Now
-
-// Now is a function that returns the current time.
-type Now struct {
-	clock
+func currTimeLogic(*sql.Context, sql.Row) (interface{}, error) {
+	t := time.Now()
+	return fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second()), nil
 }
 
-// NewNow returns a new Now node.
-func NewNow() sql.Expression {
-	return &Now{defaultClock}
+func currDateLogic(*sql.Context, sql.Row) (interface{}, error) {
+	t := time.Now()
+	return fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day()), nil
 }
 
-// Type implements the sql.Expression interface.
-func (*Now) Type() sql.Type { return sql.Datetime }
-
-func (*Now) String() string { return "NOW()" }
-
-// IsNullable implements the sql.Expression interface.
-func (*Now) IsNullable() bool { return false }
-
-// Resolved implements the sql.Expression interface.
-func (*Now) Resolved() bool { return true }
-
-// Children implements the sql.Expression interface.
-func (*Now) Children() []sql.Expression { return nil }
-
-// Eval implements the sql.Expression interface.
-func (n *Now) Eval(*sql.Context, sql.Row) (interface{}, error) {
-	return n.clock(), nil
-}
-
-// WithChildren implements the Expression interface.
-func (n *Now) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
-	}
-	return n, nil
+func currDatetimeLogic(*sql.Context, sql.Row) (interface{}, error) {
+	return time.Now(), nil
 }
 
 // Date a function takes the DATE part out from a datetime expression.
@@ -574,4 +548,96 @@ func (d *Date) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
 	return NewDate(children[0]), nil
+}
+
+type datetimeFuncLogic func(time.Time) (interface{}, error)
+
+// UnaryDatetimeFunc is a sql.Function which takes a single datetime argument
+type UnaryDatetimeFunc struct {
+	expression.UnaryExpression
+	// Name is the name of the function
+	Name  string
+	// SQLType is the return type of the function
+	SQLType sql.Type
+	// Logic is a function containing the actual sql function logic
+	Logic datetimeFuncLogic
+}
+
+func NewUnaryDatetimeFunc(name string, sqlType sql.Type, logic datetimeFuncLogic) sql.Function1 {
+	fn := func(e sql.Expression) sql.Expression {
+		return &UnaryDatetimeFunc{expression.UnaryExpression{Child: e}, name, sqlType, logic}
+	}
+
+	return sql.Function1{Name: name, Fn: fn}
+}
+
+// Eval implements the Expression interface.
+func (dtf *UnaryDatetimeFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := dtf.Child.Eval(ctx, row)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	val, err = sql.Datetime.Convert(val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return dtf.Logic(val.(time.Time))
+}
+
+// String implements the Stringer interface.
+func (dtf *UnaryDatetimeFunc) String() string {
+	return fmt.Sprintf("%s(%s)", strings.ToUpper(dtf.Name), dtf.Child.String())
+}
+
+// IsNullable implements the Expression interface.
+func (dtf *UnaryDatetimeFunc) IsNullable() bool {
+	return dtf.Child.IsNullable()
+}
+
+// WithChildren implements the Expression interface.
+func (dtf *UnaryDatetimeFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(dtf, len(children), 1)
+	}
+
+	return &UnaryDatetimeFunc{expression.UnaryExpression{Child:children[0]}, dtf.Name, dtf.SQLType, dtf.Logic}, nil
+}
+
+// Type implements the Expression interface.
+func (dtf *UnaryDatetimeFunc) Type() sql.Type {
+	return dtf.SQLType
+}
+
+
+// func makeDateFuncLogic(ctx *sql.Context, t time.Time) (interface{}, error) {}
+// func makeTimeFuncLogic(ctx *sql.Context, t time.Time) (interface{}, error) {}
+
+func dayNameFuncLogic(t time.Time) (interface{}, error) {
+	return t.Weekday().String(), nil
+}
+
+func microsecondFuncLogic(t time.Time) (interface{}, error){
+	return uint64(t.Nanosecond()) / uint64(time.Microsecond), nil
+}
+
+func monthNameFuncLogic(t time.Time) (interface{}, error) {
+	return t.Month().String(), nil
+}
+
+func timeToSecFuncLogic(t time.Time) (interface{}, error) {
+	return uint64(t.Hour()*3600 + t.Minute()*60 + t.Second()), nil
+}
+
+// returns 1 - 53
+func weekFuncLogic(t time.Time) (interface{}, error) {
+	// YearDay returns 1 - 366
+	return uint64((t.YearDay() - 1) / 7) + 1, nil
 }

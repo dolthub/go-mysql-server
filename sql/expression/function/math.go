@@ -180,10 +180,12 @@ type UnaryMathFunc struct {
 
 // NewUnaryMathFunc returns a function which is called to create a sql.Expression representing the function and its
 // argemunts
-func NewUnaryMathFunc(name string, logic UnaryMathFuncLogic) func(e sql.Expression) sql.Expression {
-	return func(e sql.Expression) sql.Expression {
+func NewUnaryMathFunc(name string, logic UnaryMathFuncLogic) sql.Function1 {
+	fn := func(e sql.Expression) sql.Expression {
 		return &UnaryMathFunc{expression.UnaryExpression{Child: e}, name, logic}
 	}
+
+	return sql.Function1{Name: name, Fn: fn}
 }
 
 // Eval implements the Expression interface.
