@@ -138,7 +138,7 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return NewSort(fields, s.Child), nil
 }
 
-type SortIter struct {
+type sortIter struct {
 	ctx        *sql.Context
 	s          *Sort
 	childIter  sql.RowIter
@@ -146,8 +146,8 @@ type SortIter struct {
 	idx        int
 }
 
-func newSortIter(ctx *sql.Context, s *Sort, child sql.RowIter) *SortIter {
-	return &SortIter{
+func newSortIter(ctx *sql.Context, s *Sort, child sql.RowIter) *sortIter {
+	return &sortIter{
 		ctx:       ctx,
 		s:         s,
 		childIter: child,
@@ -155,7 +155,7 @@ func newSortIter(ctx *sql.Context, s *Sort, child sql.RowIter) *SortIter {
 	}
 }
 
-func (i *SortIter) Next() (sql.Row, error) {
+func (i *sortIter) Next() (sql.Row, error) {
 	if i.idx == -1 {
 		err := i.computeSortedRows()
 		if err != nil {
@@ -172,59 +172,12 @@ func (i *SortIter) Next() (sql.Row, error) {
 	return row, nil
 }
 
-func (i *SortIter) Close() error {
+func (i *sortIter) Close() error {
 	i.sortedRows = nil
 	return i.childIter.Close()
 }
 
-func (i *SortIter) RowCompareFunc(_ sql.Schema) (sql.RowCompareFunc, error) {
-	cmpFunc := func(ctx *sql.Context, left, right sql.Row) (int, error) {
-		for _, sf := range i.s.SortFields {
-			typ := sf.Column.Type()
-			lv, err := sf.Column.Eval(ctx, left)
-			if err != nil {
-				return 0, err
-			}
-
-			rv, err := sf.Column.Eval(ctx, right)
-			if err != nil {
-				return 0, err
-			}
-
-			if sf.Order == Descending {
-				lv, rv = rv, lv
-			}
-
-			if lv == nil && rv == nil {
-				continue
-			} else if lv == nil {
-				if sf.NullOrdering == NullsFirst {
-					return -1, nil
-				} else {
-					return 1, nil
-				}
-			} else if rv == nil {
-				if sf.NullOrdering == NullsFirst {
-					return 1, nil
-				} else {
-					return -1, nil
-				}
-			}
-
-			cmp, err := typ.Compare(lv, rv)
-			if err != nil {
-				return 0, err
-			}
-			if cmp != 0 {
-				return cmp, nil
-			}
-		}
-		return 0, nil
-	}
-	return cmpFunc, nil
-}
-
-func (i *SortIter) computeSortedRows() error {
+func (i *sortIter) computeSortedRows() error {
 	cache, dispose := i.ctx.Memory.NewRowsCache()
 	defer dispose()
 

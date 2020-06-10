@@ -73,11 +73,3 @@ func (i *releaseIter) Close() (err error) {
 	}
 	return err
 }
-
-func (i *releaseIter) RowCompareFunc(sch sql.Schema) (sql.RowCompareFunc, error) {
-	ordIter, ok := i.child.(sql.OrderableRowIter)
-	if !ok {
-		return nil, sql.ErrIterUnorderable.New()
-	}
-	return ordIter.RowCompareFunc(sch)
-}

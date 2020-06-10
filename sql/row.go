@@ -2,11 +2,7 @@ package sql
 
 import (
 	"io"
-
-	"gopkg.in/src-d/go-errors.v1"
 )
-
-var ErrIterUnorderable = errors.NewKind("row iter tree is not orderable")
 
 // Row is a tuple of values.
 type Row []interface{}
@@ -50,15 +46,6 @@ type RowIter interface {
 	Next() (Row, error)
 	// Close the iterator.
 	Close() error
-}
-
-// RowCompareFunc compares the order of two rows
-// The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
-type RowCompareFunc func(ctx *Context, left, right Row) (int, error)
-
-type OrderableRowIter interface {
-	RowIter
-	RowCompareFunc(sch Schema) (RowCompareFunc, error)
 }
 
 // RowIterToRows converts a row iterator to a slice of rows.

@@ -193,14 +193,6 @@ func (i *trackedRowIter) Close() error {
 	return i.iter.Close()
 }
 
-func (i *trackedRowIter) RowCompareFunc(sch sql.Schema) (sql.RowCompareFunc, error) {
-	ordIter, ok := i.iter.(sql.OrderableRowIter)
-	if !ok {
-		return nil, sql.ErrIterUnorderable.New()
-	}
-	return ordIter.RowCompareFunc(sch)
-}
-
 type trackedPartitionIndexKeyValueIter struct {
 	sql.PartitionIndexKeyValueIter
 	OnPartitionDone  NamedNotifyFunc

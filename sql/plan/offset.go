@@ -78,11 +78,3 @@ func (i *offsetIter) Next() (sql.Row, error) {
 func (i *offsetIter) Close() error {
 	return i.childIter.Close()
 }
-
-func (i *offsetIter) RowCompareFunc(sch sql.Schema) (sql.RowCompareFunc, error) {
-	ordIter, ok := i.childIter.(sql.OrderableRowIter)
-	if !ok {
-		return nil, sql.ErrIterUnorderable.New()
-	}
-	return ordIter.RowCompareFunc(sch)
-}
