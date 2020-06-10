@@ -349,6 +349,12 @@ the following interfaces:
 You can see a really simple data source implementation in the `memory`
 package.
 
+## Testing your data source implementation
+
+**go-mysql-server** provides a suite of engine tests that you can use
+to validate that your implementation works as expected. See the
+`enginetest` package for details and examples.
+
 ## Indexes
 
 `go-mysql-server` exposes a series of interfaces to allow you to
