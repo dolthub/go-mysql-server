@@ -142,7 +142,7 @@ func (s *Substring) Resolved() bool {
 // Type implements the Expression interface.
 func (*Substring) Type() sql.Type { return sql.LongText }
 
-/// WithChildren implements the Expression interface.
+// WithChildren implements the Expression interface.
 func (*Substring) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewSubstring(children...)
 }
@@ -338,7 +338,7 @@ func (l Left) Resolved() bool {
 // Type implements the Expression interface.
 func (Left) Type() sql.Type { return sql.LongText }
 
-/// WithChildren implements the Expression interface.
+// WithChildren implements the Expression interface.
 func (l Left) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 2)
@@ -432,7 +432,7 @@ func (i Instr) Resolved() bool {
 // Type implements the Expression interface.
 func (Instr) Type() sql.Type { return sql.Int64 }
 
-/// WithChildren implements the Expression interface.
+// WithChildren implements the Expression interface.
 func (i Instr) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 2)
