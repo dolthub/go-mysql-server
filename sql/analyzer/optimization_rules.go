@@ -6,7 +6,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
+func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("erase_projection")
 	defer span.Finish()
 
@@ -26,7 +26,7 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, er
 	})
 }
 
-func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
+func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("optimize_distinct")
 	defer span.Finish()
 
@@ -53,7 +53,7 @@ func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, e
 	return node, nil
 }
 
-func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("reorder_projection")
 	defer span.Finish()
 
@@ -157,7 +157,7 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 			return project, nil
 		}
 
-		child, err = resolveColumns(ctx, a, child)
+		child, err = resolveColumns(ctx, a, child, scope)
 		if err != nil {
 			return nil, err
 		}
@@ -191,7 +191,7 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 	})
 }
 
-func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if !n.Resolved() {
 		a.Log("node is not resolved, skip moving join conditions to filter")
 		return n, nil
@@ -257,7 +257,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.
 	})
 }
 
-func removeUnnecessaryConverts(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func removeUnnecessaryConverts(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("remove_unnecessary_converts")
 	defer span.Finish()
 
@@ -328,7 +328,7 @@ func expressionSources(expr sql.Expression) []string {
 	return result
 }
 
-func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
+func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
 	if !node.Resolved() {
 		return node, nil
 	}

@@ -159,6 +159,10 @@ type Analyzer struct {
 	Catalog *sql.Catalog
 }
 
+type Scope struct {
+
+}
+
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
 // To add custom rules, the easiest way is use the Builder.
 func NewDefault(c *sql.Catalog) *Analyzer {
@@ -234,8 +238,4 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node) (sql.Node, error) {
 	}()
 
 	return prev, err
-}
-
-type equaler interface {
-	Equal(sql.Node) bool
 }

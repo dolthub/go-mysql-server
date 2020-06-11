@@ -29,7 +29,7 @@ func TestTrackProcess(t *testing.T) {
 	ctx, err := catalog.AddProcess(ctx, sql.QueryProcess, "SELECT foo")
 	require.NoError(err)
 
-	result, err := rule.Apply(ctx, a, node)
+	result, err := rule.Apply(ctx, a, node, nil)
 	require.NoError(err)
 
 	processes := catalog.Processes()
@@ -93,7 +93,7 @@ func TestTrackProcessSubquery(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), a, node)
+	result, err := rule.Apply(sql.NewEmptyContext(), a, node, nil)
 	require.NoError(err)
 
 	expectedChild := plan.NewProject(

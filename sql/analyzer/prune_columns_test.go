@@ -281,7 +281,7 @@ func TestPruneColumns(t *testing.T) {
 			ensureSubquerySchema(tt.expected)
 
 			require := require.New(t)
-			result, err := rule.Apply(sql.NewEmptyContext(), a, tt.input)
+			result, err := rule.Apply(sql.NewEmptyContext(), a, tt.input, nil)
 			require.NoError(err)
 			require.Equal(tt.expected.Schema(), result.Schema())
 			require.Equal(tt.expected, result)

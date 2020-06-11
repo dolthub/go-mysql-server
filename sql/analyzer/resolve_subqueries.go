@@ -1,12 +1,13 @@
 package analyzer
 
 import (
+	"context"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("resolve_subqueries")
 	defer span.Finish()
 
@@ -35,7 +36,9 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 			return e, nil
 		}
 
-		q, err := a.Analyze(ctx, s.Query)
+		subqueryCtx := ctx.NewSubContext(context.WithValue(ctx.Context, "outerScopeNode", n))
+
+		q, err := a.Analyze(subqueryCtx, s.Query)
 		if err != nil {
 			return nil, err
 		}

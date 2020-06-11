@@ -7,7 +7,7 @@ import (
 
 // trackProcess will wrap the query in a process node and add progress items
 // to the already existing process.
-func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if !n.Resolved() {
 		return n, nil
 	}

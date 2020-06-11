@@ -18,7 +18,7 @@ var (
 	)
 )
 
-func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if !n.Resolved() {
 		return n, nil
 	}

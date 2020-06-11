@@ -114,7 +114,7 @@ func TestMergeUnionSchemas(t *testing.T) {
 	for _, c := range testCases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			out, err := mergeUnionSchemas(sql.NewEmptyContext(), nil, c.in)
+			out, err := mergeUnionSchemas(sql.NewEmptyContext(), nil, c.in, nil)
 			if c.err == nil {
 				require.NoError(err)
 				require.NotNil(out)

@@ -10,7 +10,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func resolveOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func resolveOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("resolve_orderby")
 	defer span.Finish()
 
@@ -182,7 +182,7 @@ func pushSortDown(sort *plan.Sort) (sql.Node, error) {
 	}
 }
 
-func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	a.Log("resolve order by literals")
 
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {

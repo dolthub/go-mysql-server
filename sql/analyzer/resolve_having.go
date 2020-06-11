@@ -12,7 +12,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
+func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
 		having, ok := node.(*plan.Having)
 		if !ok {

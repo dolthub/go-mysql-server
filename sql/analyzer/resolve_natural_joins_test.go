@@ -33,7 +33,7 @@ func TestResolveNaturalJoins(t *testing.T) {
 	)
 	rule := getRule("resolve_natural_joins")
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -90,7 +90,7 @@ func TestResolveNaturalJoinsColumns(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -153,7 +153,7 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -229,7 +229,7 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -316,7 +316,7 @@ func TestResolveNaturalJoinsEqual(t *testing.T) {
 	)
 	rule := getRule("resolve_natural_joins")
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -368,7 +368,7 @@ func TestResolveNaturalJoinsDisjoint(t *testing.T) {
 	)
 	rule := getRule("resolve_natural_joins")
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	expected := plan.NewCrossJoin(

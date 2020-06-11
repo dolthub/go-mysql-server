@@ -34,7 +34,7 @@ func TestQualifyColumnsProject(t *testing.T) {
 		),
 	)
 
-	result, err := qualifyColumns(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err := qualifyColumns(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -73,7 +73,7 @@ func TestMisusedAlias(t *testing.T) {
 		plan.NewResolvedTable(table),
 	)
 
-	_, err := f.Apply(sql.NewEmptyContext(), nil, node)
+	_, err := f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	require.EqualError(err, ErrMisusedAlias.New("alias_i").Error())
 }
 
@@ -103,7 +103,7 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewResolvedTable(globalTable),
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), nil, node)
+	result, err := f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	assert.NoError(err)
 	assert.Equal(expected, result)
 
@@ -124,7 +124,7 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewResolvedTable(sessionTable),
 	)
 
-	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
+	result, err = f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	assert.NoError(err)
 	assert.Equal(expected, result)
 
@@ -142,7 +142,7 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewResolvedTable(table),
 	)
 
-	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
+	result, err = f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	assert.NoError(err)
 	assert.Equal(expected, result)
 
@@ -153,7 +153,7 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewResolvedTable(table),
 	)
 
-	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
+	result, err = f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	assert.NoError(err)
 	assert.Equal(expected, result)
 
@@ -171,7 +171,7 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewTableAlias("a", plan.NewResolvedTable(table)),
 	)
 
-	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
+	result, err = f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	assert.NoError(err)
 	assert.Equal(expected, result)
 
@@ -182,7 +182,7 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewTableAlias("a", plan.NewResolvedTable(table)),
 	)
 
-	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
+	result, err = f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	assert.NoError(err)
 	assert.Equal(node, result)
 
@@ -193,7 +193,7 @@ func TestQualifyColumns(t *testing.T) {
 		plan.NewTableAlias("a", plan.NewResolvedTable(table)),
 	)
 
-	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
+	result, err = f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	assert.Error(err)
 	assert.True(sql.ErrTableNotFound.Is(err))
 
@@ -207,7 +207,7 @@ func TestQualifyColumns(t *testing.T) {
 		),
 	)
 
-	_, err = f.Apply(sql.NewEmptyContext(), nil, node)
+	_, err = f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	assert.Error(err)
 	assert.True(ErrAmbiguousColumnName.Is(err))
 
@@ -243,7 +243,7 @@ func TestQualifyColumns(t *testing.T) {
 		),
 	)
 
-	result, err = f.Apply(sql.NewEmptyContext(), nil, node)
+	result, err = f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	assert.NoError(err)
 	assert.Equal(expected, result)
 }
@@ -276,7 +276,7 @@ func TestQualifyColumnsQualifiedStar(t *testing.T) {
 		plan.NewResolvedTable(table),
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), nil, node)
+	result, err := f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
 }
@@ -299,7 +299,7 @@ func TestResolveColumnsSession(t *testing.T) {
 		plan.NewResolvedTable(dualTable),
 	)
 
-	result, err := resolveColumns(ctx, NewDefault(nil), node)
+	result, err := resolveColumns(ctx, NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -375,7 +375,7 @@ func TestResolveGroupingColumns(t *testing.T) {
 		),
 	)
 
-	result, err := resolveGroupingColumns(sql.NewEmptyContext(), a, node)
+	result, err := resolveGroupingColumns(sql.NewEmptyContext(), a, node, nil)
 	require.NoError(err)
 
 	require.Equal(expected, result)

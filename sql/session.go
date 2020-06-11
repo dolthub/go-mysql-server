@@ -421,7 +421,7 @@ func (c *Context) QueryTime() time.Time {
 
 // Span creates a new tracing span with the given context.
 // It will return the span and a new context that should be passed to all
-// childrens of this span.
+// children of this span.
 func (c *Context) Span(
 	opName string,
 	opts ...opentracing.StartSpanOption,
@@ -434,6 +434,12 @@ func (c *Context) Span(
 	ctx := opentracing.ContextWithSpan(c.Context, span)
 
 	return span, &Context{ctx, c.Session, c.IndexRegistry, c.ViewRegistry, c.Memory, c.Pid(), c.Query(), c.queryTime, c.tracer, c.rootSpan}
+}
+
+// NewSubContext creates a new sub-context with the given contex.Context, which should be a parent of the current
+// context.Context.
+func (c *Context) NewSubContext(ctx context.Context) *Context {
+	return &Context{ctx, c.Session, c.IndexRegistry, c.ViewRegistry, c.Memory, c.Pid(), c.Query(), c.tracer, c.rootSpan}
 }
 
 func (c *Context) WithCurrentDB(db string) *Context {

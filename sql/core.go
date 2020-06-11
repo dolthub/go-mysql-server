@@ -126,6 +126,14 @@ type Node interface {
 	WithChildren(...Node) (Node, error)
 }
 
+// EvalNode is a node in the execution plan tree which takes an Eval context (a row from the outer scope) to use when
+// generating its row results.
+type EvalNode interface {
+	Node
+	// RowIterForRow produces a row iterator from this node.
+	RowIterForRow(*Context, Row) (RowIter, error)
+}
+
 // OpaqueNode is a node that doesn't allow transformations to its children and
 // acts a a black box.
 type OpaqueNode interface {

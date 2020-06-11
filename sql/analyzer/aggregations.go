@@ -6,7 +6,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func reorderAggregations(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func reorderAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("reorder_aggregations")
 	defer span.Finish()
 

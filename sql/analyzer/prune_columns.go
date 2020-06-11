@@ -10,7 +10,7 @@ import (
 
 type usedColumns map[string]map[string]struct{}
 
-func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	a.Log("pruning columns, node of type %T", n)
 	if !n.Resolved() {
 		return n, nil
@@ -25,7 +25,7 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	}
 
 	if describe, ok := n.(*plan.DescribeQuery); ok {
-		pruned, err := pruneColumns(ctx, a, describe.Child)
+		pruned, err := pruneColumns(ctx, a, describe.Child, scope)
 		if err != nil {
 			return nil, err
 		}

@@ -59,7 +59,7 @@ func TestReorderAggregations(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	require.Equal(expected, result)
@@ -122,7 +122,7 @@ func TestReorderAggregationsMultiple(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	require.Equal(expected, result)

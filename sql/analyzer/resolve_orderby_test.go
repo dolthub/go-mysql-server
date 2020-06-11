@@ -38,7 +38,7 @@ func TestResolveOrderBy(t *testing.T) {
 			),
 		)
 
-		result, err := rule.Apply(ctx, a, node)
+		result, err := rule.Apply(ctx, a, node, nil)
 		require.NoError(err)
 
 		require.Equal(node, result)
@@ -73,7 +73,7 @@ func TestResolveOrderBy(t *testing.T) {
 			),
 		)
 
-		result, err = rule.Apply(ctx, a, node)
+		result, err = rule.Apply(ctx, a, node, nil)
 		require.NoError(err)
 
 		require.Equal(expected, result)
@@ -116,7 +116,7 @@ func TestResolveOrderBy(t *testing.T) {
 			),
 		)
 
-		result, err = rule.Apply(ctx, a, node)
+		result, err = rule.Apply(ctx, a, node, nil)
 		require.NoError(err)
 
 		require.Equal(expected, result)
@@ -142,7 +142,7 @@ func TestResolveOrderBy(t *testing.T) {
 			),
 		)
 
-		result, err := rule.Apply(ctx, a, node)
+		result, err := rule.Apply(ctx, a, node, nil)
 		require.NoError(err)
 
 		require.Equal(node, result)
@@ -183,7 +183,7 @@ func TestResolveOrderBy(t *testing.T) {
 			),
 		)
 
-		result, err = rule.Apply(ctx, a, node)
+		result, err = rule.Apply(ctx, a, node, nil)
 		require.NoError(err)
 
 		require.Equal(expected, result)
@@ -232,7 +232,7 @@ func TestResolveOrderBy(t *testing.T) {
 			),
 		)
 
-		result, err = rule.Apply(ctx, a, node)
+		result, err = rule.Apply(ctx, a, node, nil)
 		require.NoError(err)
 
 		require.Equal(expected, result)
@@ -256,7 +256,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 		plan.NewResolvedTable(table),
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	require.Equal(
@@ -278,7 +278,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 		plan.NewResolvedTable(table),
 	)
 
-	_, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	_, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.Error(err)
 	require.True(ErrOrderByColumnIndex.Is(err))
 }

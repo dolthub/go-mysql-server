@@ -10,7 +10,7 @@ import (
 
 // convertDates wraps all expressions of date and datetime type with converts
 // to ensure the date range is validated.
-func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if !n.Resolved() {
 		return n, nil
 	}

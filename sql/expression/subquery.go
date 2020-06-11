@@ -22,7 +22,7 @@ func NewSubquery(node sql.Node) *Subquery {
 }
 
 // Eval implements the Expression interface.
-func (s *Subquery) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if s.value != nil {
 		if elems, ok := s.value.([]interface{}); ok {
 			if len(elems) > 1 {

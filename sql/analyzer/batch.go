@@ -8,7 +8,7 @@ import (
 )
 
 // RuleFunc is the function to be applied in a rule.
-type RuleFunc func(*sql.Context, *Analyzer, sql.Node) (sql.Node, error)
+type RuleFunc func(*sql.Context, *Analyzer, sql.Node, *Scope) (sql.Node, error)
 
 // Rule to transform nodes.
 type Rule struct {
@@ -70,7 +70,7 @@ func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, e
 	for _, rule := range b.Rules {
 		var err error
 		a.PushDebugContext(rule.Name)
-		result, err = rule.Apply(ctx, a, result)
+		result, err = rule.Apply(ctx, a, result, nil)
 		a.LogNode(result)
 		a.PopDebugContext()
 		if err != nil {
@@ -91,4 +91,8 @@ func nodesEqual(a, b sql.Node) bool {
 	}
 
 	return reflect.DeepEqual(a, b)
+}
+
+type equaler interface {
+	Equal(sql.Node) bool
 }

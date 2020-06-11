@@ -14,7 +14,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("check_aliases")
 	defer span.Finish()
 
@@ -136,7 +136,7 @@ type column interface {
 	sql.Expression
 }
 
-func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
 			return n, nil
@@ -325,7 +325,7 @@ const (
 	globalPrefix  = sqlparser.GlobalStr + "."
 )
 
-func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.Finish()
 
@@ -427,7 +427,7 @@ func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns ma
 // resolveGroupingColumns reorders the aggregation in a groupby so aliases
 // defined in it can be resolved in the grouping of the groupby. To do so,
 // all aliases are pushed down to a projection node under the group by.
-func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if n.Resolved() {
 		return n, nil
 	}

@@ -6,7 +6,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("pushdown")
 	defer span.Finish()
 

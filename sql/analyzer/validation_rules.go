@@ -91,7 +91,7 @@ var DefaultValidationRules = []Rule{
 	{validateUnionSchemasMatchRule, validateUnionSchemasMatch},
 }
 
-func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("validate_is_resolved")
 	defer span.Finish()
 
@@ -102,7 +102,7 @@ func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, er
 	return n, nil
 }
 
-func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("validate_order_by")
 	defer span.Finish()
 
@@ -119,7 +119,7 @@ func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 	return n, nil
 }
 
-func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("validate_group_by")
 	defer span.Finish()
 
@@ -164,7 +164,7 @@ func isValidAgg(validAggs []string, expr sql.Expression) bool {
 	}
 }
 
-func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("validate_schema_source")
 	defer span.Finish()
 
@@ -180,7 +180,7 @@ func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, 
 	return n, nil
 }
 
-func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("validate_index_creation")
 	defer span.Finish()
 
@@ -221,7 +221,7 @@ func validateSchema(t *plan.ResolvedTable) error {
 	return nil
 }
 
-func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("validate_union_schemas_match")
 	defer span.Finish()
 
@@ -279,13 +279,13 @@ func findProjectTuples(n sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-func validateProjectTuples(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func validateProjectTuples(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("validate_project_tuples")
 	defer span.Finish()
 	return findProjectTuples(n)
 }
 
-func validateCaseResultTypes(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func validateCaseResultTypes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("validate_case_result_types")
 	defer span.Finish()
 
@@ -321,7 +321,7 @@ func validateCaseResultTypes(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Nod
 	return n, nil
 }
 
-func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	var invalid bool
 	plan.InspectExpressions(n, func(e sql.Expression) bool {
 		// If it's already invalid just skip everything else.
@@ -350,7 +350,7 @@ func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node,
 	return n, nil
 }
 
-func validateExplodeUsage(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func validateExplodeUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	var invalid bool
 	plan.InspectExpressions(n, func(e sql.Expression) bool {
 		// If it's already invalid just skip everything else.
@@ -375,7 +375,7 @@ func validateExplodeUsage(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, 
 	return n, nil
 }
 
-func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	valid := true
 	plan.InspectExpressions(n, func(e sql.Expression) bool {
 		s, ok := e.(*expression.Subquery)

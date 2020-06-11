@@ -10,7 +10,7 @@ import (
 
 // optimizeJoins takes two-table InnerJoins where the join condition is an equality on an index of one of the tables,
 // and replaces it with an equivalent IndexedJoin of the same two tables.
-func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("optimize_joins")
 	defer span.Finish()
 

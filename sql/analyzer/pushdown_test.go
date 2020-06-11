@@ -81,7 +81,7 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 	)
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
-	result, err := f.Apply(ctx, a, node)
+	result, err := f.Apply(ctx, a, node, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -131,7 +131,7 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 		),
 	)
 
-	result, err = f.Apply(ctx, a, node)
+	result, err = f.Apply(ctx, a, node, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
 }

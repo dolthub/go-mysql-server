@@ -165,7 +165,7 @@ func TestConvertDates(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			input := plan.NewProject([]sql.Expression{tt.in}, table)
 			expected := plan.NewProject([]sql.Expression{tt.out}, table)
-			result, err := convertDates(sql.NewEmptyContext(), nil, input)
+			result, err := convertDates(sql.NewEmptyContext(), nil, input, nil)
 			require.NoError(t, err)
 			require.Equal(t, expected, result)
 		})
@@ -199,7 +199,7 @@ func TestConvertDatesProject(t *testing.T) {
 		}, table),
 	)
 
-	result, err := convertDates(sql.NewEmptyContext(), nil, input)
+	result, err := convertDates(sql.NewEmptyContext(), nil, input, nil)
 	require.NoError(t, err)
 	require.Equal(t, expected, result)
 }
@@ -245,7 +245,7 @@ func TestConvertDatesGroupBy(t *testing.T) {
 		),
 	)
 
-	result, err := convertDates(sql.NewEmptyContext(), nil, input)
+	result, err := convertDates(sql.NewEmptyContext(), nil, input, nil)
 	require.NoError(t, err)
 	require.Equal(t, expected, result)
 }
@@ -278,7 +278,7 @@ func TestConvertDatesFieldReference(t *testing.T) {
 		}, table),
 	)
 
-	result, err := convertDates(sql.NewEmptyContext(), nil, input)
+	result, err := convertDates(sql.NewEmptyContext(), nil, input, nil)
 	require.NoError(t, err)
 	require.Equal(t, expected, result)
 }

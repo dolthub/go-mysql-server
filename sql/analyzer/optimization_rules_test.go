@@ -126,7 +126,7 @@ func TestReorderProjection(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 
-			result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), tt.project)
+			result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), tt.project, nil)
 			require.NoError(err)
 
 			require.Equal(tt.expected, result)
@@ -175,12 +175,12 @@ func TestEraseProjection(t *testing.T) {
 		expected,
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	require.Equal(expected, result)
 
-	result, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), expected)
+	result, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), expected, nil)
 	require.NoError(err)
 
 	require.Equal(expected, result)
@@ -228,7 +228,7 @@ func TestOptimizeDistinct(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			node, err := rule.Apply(sql.NewEmptyContext(), nil, plan.NewDistinct(tt.child))
+			node, err := rule.Apply(sql.NewEmptyContext(), nil, plan.NewDistinct(tt.child), nil)
 			require.NoError(t, err)
 
 			_, ok := node.(*plan.OrderedDistinct)
@@ -270,7 +270,7 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	var expected sql.Node = plan.NewInnerJoin(
@@ -305,7 +305,7 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 		),
 	)
 
-	result, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	expected = plan.NewCrossJoin(
@@ -421,7 +421,7 @@ func TestEvalFilter(t *testing.T) {
 		t.Run(tt.filter.String(), func(t *testing.T) {
 			require := require.New(t)
 			node := plan.NewFilter(tt.filter, plan.NewResolvedTable(inner))
-			result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+			result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 			require.NoError(err)
 			require.Equal(tt.expected, result)
 		})
@@ -466,6 +466,7 @@ func TestRemoveUnnecessaryConverts(t *testing.T) {
 				sql.NewEmptyContext(),
 				NewDefault(nil),
 				node,
+				nil,
 			)
 			require.NoError(err)
 

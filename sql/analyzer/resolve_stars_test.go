@@ -178,7 +178,7 @@ func TestResolveStar(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := f.Apply(sql.NewEmptyContext(), nil, tt.node)
+			result, err := f.Apply(sql.NewEmptyContext(), nil, tt.node, nil)
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, result)
 		})

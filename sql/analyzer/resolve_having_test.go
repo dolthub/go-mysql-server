@@ -299,7 +299,7 @@ func TestResolveHaving(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			result, err := resolveHaving(sql.NewEmptyContext(), nil, tt.input)
+			result, err := resolveHaving(sql.NewEmptyContext(), nil, tt.input, nil)
 			if tt.err != nil {
 				require.Error(err)
 				require.True(tt.err.Is(err))
