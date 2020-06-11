@@ -282,7 +282,7 @@ func TestPushdownIndexable(t *testing.T) {
 	)
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry()))
-	result, err := a.Analyze(ctx, node)
+	result, err := a.Analyze(ctx, node, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
 }

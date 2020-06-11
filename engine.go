@@ -153,7 +153,7 @@ func (e *Engine) Query(
 		return nil, nil, err
 	}
 
-	analyzed, err = e.Analyzer.Analyze(ctx, parsed)
+	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
 	if err != nil {
 		return nil, nil, err
 	}

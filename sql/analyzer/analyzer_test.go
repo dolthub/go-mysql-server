@@ -35,7 +35,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable", "")
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
-	analyzed, err := a.Analyze(ctx, notAnalyzed)
+	analyzed, err := a.Analyze(ctx, notAnalyzed, nil)
 	require.NoError(err)
 	require.Equal(
 		plan.NewResolvedTable(table),
@@ -43,11 +43,11 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 
 	notAnalyzed = plan.NewUnresolvedTable("nonexistant", "")
-	analyzed, err = a.Analyze(ctx, notAnalyzed)
+	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	require.Error(err)
 	require.Nil(analyzed)
 
-	analyzed, err = a.Analyze(ctx, plan.NewResolvedTable(table))
+	analyzed, err = a.Analyze(ctx, plan.NewResolvedTable(table), nil)
 	require.NoError(err)
 	require.Equal(
 		plan.NewResolvedTable(table),
@@ -58,14 +58,14 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		[]sql.Expression{expression.NewUnresolvedColumn("o")},
 		plan.NewUnresolvedTable("mytable", ""),
 	)
-	_, err = a.Analyze(ctx, notAnalyzed)
+	_, err = a.Analyze(ctx, notAnalyzed, nil)
 	require.Error(err)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewUnresolvedColumn("i")},
 		plan.NewUnresolvedTable("mytable", ""),
 	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed)
+	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	var expected sql.Node = plan.NewResolvedTable(
 		table.WithProjection([]string{"i"}),
 	)
@@ -75,7 +75,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	notAnalyzed = plan.NewDescribe(
 		plan.NewUnresolvedTable("mytable", ""),
 	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed)
+	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	expected = plan.NewDescribe(
 		plan.NewResolvedTable(table),
 	)
@@ -86,7 +86,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		[]sql.Expression{expression.NewStar()},
 		plan.NewUnresolvedTable("mytable", ""),
 	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed)
+	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	require.NoError(err)
 	require.Equal(
 		plan.NewResolvedTable(table.WithProjection([]string{"i", "t"})),
@@ -100,7 +100,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			plan.NewUnresolvedTable("mytable", ""),
 		),
 	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed)
+	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	require.NoError(err)
 	require.Equal(
 		plan.NewResolvedTable(table.WithProjection([]string{"i", "t"})),
@@ -116,7 +116,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		},
 		plan.NewUnresolvedTable("mytable", ""),
 	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed)
+	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	expected = plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias(
@@ -139,7 +139,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			plan.NewUnresolvedTable("mytable", ""),
 		),
 	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed)
+	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	expected = plan.NewResolvedTable(
 		table.WithFilters([]sql.Expression{
 			expression.NewEquals(
@@ -162,7 +162,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			plan.NewUnresolvedTable("mytable2", ""),
 		),
 	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed)
+	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	expected = plan.NewCrossJoin(
 		plan.NewResolvedTable(table.WithProjection([]string{"i"})),
 		plan.NewResolvedTable(table2.WithProjection([]string{"i2"})),
@@ -178,7 +178,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 			plan.NewUnresolvedTable("mytable", ""),
 		),
 	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed)
+	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	expected = plan.NewLimit(
 		int64(1),
 		plan.NewResolvedTable(table.WithProjection([]string{"i"})),
@@ -220,7 +220,7 @@ func TestMaxIterations(t *testing.T) {
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
 	notAnalyzed := plan.NewUnresolvedTable(tName, "")
-	analyzed, err := a.Analyze(ctx, notAnalyzed)
+	analyzed, err := a.Analyze(ctx, notAnalyzed, nil)
 	require.NoError(err)
 	require.Equal(
 		plan.NewResolvedTable(
@@ -354,7 +354,7 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 	)
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
-	result, err := a.Analyze(ctx, node)
+	result, err := a.Analyze(ctx, node, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
 }
@@ -433,7 +433,7 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 	a := withoutProcessTracking(NewDefault(catalog))
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
-	result, err := a.Analyze(ctx, node)
+	result, err := a.Analyze(ctx, node, nil)
 	require.NoError(err)
 	require.True(result.Resolved())
 }

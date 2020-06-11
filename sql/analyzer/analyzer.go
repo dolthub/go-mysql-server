@@ -209,7 +209,7 @@ func (a *Analyzer) PopDebugContext() {
 }
 
 // Analyze the node and all its children.
-func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node) (sql.Node, error) {
+func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("analyze", opentracing.Tags{
 		"plan": n.String(),
 	})
@@ -219,7 +219,7 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node) (sql.Node, error) {
 	a.Log("starting analysis of node of type: %T", n)
 	for _, batch := range a.Batches {
 		a.PushDebugContext(batch.Desc)
-		prev, err = batch.Eval(ctx, a, prev)
+		prev, err = batch.Eval(ctx, a, prev, scope)
 		a.PopDebugContext()
 		if ErrMaxAnalysisIters.Is(err) {
 			a.Log(err.Error())

@@ -16,7 +16,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
 			a.Log("found subquery %q with child of type %T", n.Name(), n.Child)
-			child, err := a.Analyze(ctx, n.Child)
+			child, err := a.Analyze(ctx, n.Child, scope)
 			if err != nil {
 				return nil, err
 			}
@@ -38,7 +38,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 
 		subqueryCtx := ctx.NewSubContext(context.WithValue(ctx.Context, "outerScopeNode", n))
 
-		q, err := a.Analyze(subqueryCtx, s.Query)
+		q, err := a.Analyze(subqueryCtx, s.Query, scope)
 		if err != nil {
 			return nil, err
 		}
