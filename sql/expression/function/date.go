@@ -8,6 +8,10 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
+type clock func() time.Time
+
+var defaultClock = time.Now
+
 // DateAdd adds an interval to a date.
 type DateAdd struct {
 	Date     sql.Expression

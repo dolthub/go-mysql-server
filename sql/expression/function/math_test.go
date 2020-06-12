@@ -180,7 +180,7 @@ func TestAbsValue(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			for sqlType, conv := range test.typeToConv {
-				f := newAbsVal(expression.NewGetField(0, sqlType, "blob", true))
+				f := newAbsVal.Fn(expression.NewGetField(0, sqlType, "blob", true))
 
 				row := sql.NewRow(conv(test.val))
 				res, err := f.Eval(sql.NewEmptyContext(), row)
@@ -214,7 +214,7 @@ func TestRadians(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			radians := f(expression.NewLiteral(test.input, nil))
+			radians := f.Fn(expression.NewLiteral(test.input, nil))
 			res, err := radians.Eval(nil, nil)
 			assert.NoError(t, err)
 			assert.True(t, withinRoundingErr(test.expected, res.(float64)))
@@ -239,7 +239,7 @@ func TestDegrees(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			degrees := f(expression.NewLiteral(test.input, nil))
+			degrees := f.Fn(expression.NewLiteral(test.input, nil))
 			res, err := degrees.Eval(nil, nil)
 			assert.NoError(t, err)
 			assert.True(t, withinRoundingErr(test.expected, res.(float64)))
@@ -260,11 +260,11 @@ func TestTrigFunctions(t *testing.T) {
 	for i := 0; i <= numChecks; i++ {
 		theta := delta * float64(i)
 		thetaLiteral := expression.NewLiteral(theta, nil)
-		sinVal, err := sin(thetaLiteral).Eval(nil, nil)
+		sinVal, err := sin.Fn(thetaLiteral).Eval(nil, nil)
 		assert.NoError(t, err)
-		cosVal, err := cos(thetaLiteral).Eval(nil, nil)
+		cosVal, err := cos.Fn(thetaLiteral).Eval(nil, nil)
 		assert.NoError(t, err)
-		tanVal, err := tan(thetaLiteral).Eval(nil, nil)
+		tanVal, err := tan.Fn(thetaLiteral).Eval(nil, nil)
 		assert.NoError(t, err)
 
 		sinF, _ := sinVal.(float64)
@@ -275,11 +275,11 @@ func TestTrigFunctions(t *testing.T) {
 		assert.True(t, withinRoundingErr(math.Cos(theta), cosF))
 		assert.True(t, withinRoundingErr(math.Tan(theta), tanF))
 
-		asinVal, err := asin(expression.NewLiteral(sinF, nil)).Eval(nil, nil)
+		asinVal, err := asin.Fn(expression.NewLiteral(sinF, nil)).Eval(nil, nil)
 		assert.NoError(t, err)
-		acosVal, err := acos(expression.NewLiteral(cosF, nil)).Eval(nil, nil)
+		acosVal, err := acos.Fn(expression.NewLiteral(cosF, nil)).Eval(nil, nil)
 		assert.NoError(t, err)
-		atanVal, err := atan(expression.NewLiteral(tanF, nil)).Eval(nil, nil)
+		atanVal, err := atan.Fn(expression.NewLiteral(tanF, nil)).Eval(nil, nil)
 		assert.NoError(t, err)
 
 		assert.True(t, withinRoundingErr(math.Asin(sinF), asinVal.(float64)))

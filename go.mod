@@ -8,6 +8,7 @@ require (
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
+	github.com/lestrrat-go/strftime v1.0.1
 	github.com/mitchellh/hashstructure v1.0.0
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852
 	github.com/opentracing/opentracing-go v1.1.0
@@ -15,6 +16,7 @@ require (
 	github.com/sanity-io/litter v1.2.0
 	github.com/shopspring/decimal v0.0.0-20191130220710-360f2bc03045
 	github.com/sirupsen/logrus v1.4.2
+	github.com/snabb/isoweek v1.0.0
 	github.com/spf13/cast v1.3.0
 	github.com/src-d/go-oniguruma v1.1.0
 	github.com/stretchr/testify v1.4.0

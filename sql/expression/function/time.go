@@ -1,14 +1,17 @@
 package function
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
+
+var ErrInvalidArgument = errors.NewKind("invalid argument to function %s. %s.")
 
 func getDate(ctx *sql.Context,
 	u expression.UnaryExpression,
@@ -328,6 +331,7 @@ func NewYearWeek(args ...sql.Expression) (sql.Expression, error) {
 	} else {
 		yw.mode = expression.NewLiteral(0, sql.Int64)
 	}
+
 	return yw, nil
 }
 
@@ -344,15 +348,15 @@ func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	yyyy, ok := year(date).(int32)
 	if !ok {
-		return nil, errors.New("YEARWEEK: invalid year")
+		return nil, ErrInvalidArgument.New("YEARWEEK", "invalid year")
 	}
 	mm, ok := month(date).(int32)
 	if !ok {
-		return nil, errors.New("YEARWEEK: invalid month")
+		return nil, ErrInvalidArgument.New("YEARWEEK", "invalid month")
 	}
 	dd, ok := day(date).(int32)
 	if !ok {
-		return nil, errors.New("YEARWEEK: invalid day")
+		return nil, ErrInvalidArgument.New("YEARWEEK", "invalid day")
 	}
 
 	mode := int64(0)
@@ -550,6 +554,7 @@ func (d *Date) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	return NewDate(children[0]), nil
 }
 
+
 type datetimeFuncLogic func(time.Time) (interface{}, error)
 
 // UnaryDatetimeFunc is a sql.Function which takes a single datetime argument
@@ -616,10 +621,6 @@ func (dtf *UnaryDatetimeFunc) Type() sql.Type {
 	return dtf.SQLType
 }
 
-
-// func makeDateFuncLogic(ctx *sql.Context, t time.Time) (interface{}, error) {}
-// func makeTimeFuncLogic(ctx *sql.Context, t time.Time) (interface{}, error) {}
-
 func dayNameFuncLogic(t time.Time) (interface{}, error) {
 	return t.Weekday().String(), nil
 }
@@ -636,8 +637,7 @@ func timeToSecFuncLogic(t time.Time) (interface{}, error) {
 	return uint64(t.Hour()*3600 + t.Minute()*60 + t.Second()), nil
 }
 
-// returns 1 - 53
 func weekFuncLogic(t time.Time) (interface{}, error) {
-	// YearDay returns 1 - 366
-	return uint64((t.YearDay() - 1) / 7) + 1, nil
+	_, wk := t.ISOWeek()
+	return wk, nil
 }
