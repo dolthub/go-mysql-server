@@ -2,14 +2,14 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"os"
 	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
-
-	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"
@@ -161,6 +161,7 @@ type Analyzer struct {
 
 // Scope of the analysis being performed.
 type Scope struct {
+	// Stack of nested node scopes, with innermost scope first
 	nodes []sql.Node
 }
 
@@ -169,9 +170,36 @@ func (s *Scope) newScope(node sql.Node) *Scope {
 		return &Scope{[]sql.Node{node}}
 	}
 	newNodes := make([]sql.Node, len(s.nodes) + 1)
-	copy(newNodes, s.nodes)
 	newNodes = append(newNodes, node)
+	newNodes = append(newNodes, s.nodes...)
 	return &Scope{newNodes}
+}
+
+func (s *Scope) Nodes() []sql.Node {
+	if s == nil {
+		return nil
+	}
+	return s.nodes
+}
+
+func (s *Scope) transformUp(node sql.Node, fn func(n sql.Node) (sql.Node, error)) (sql.Node, error){
+	var nodes []sql.Node
+	nodes = append(nodes, node)
+	if s != nil {
+		nodes = append(nodes, s.nodes...)
+	}
+
+	var firstErr error
+	for _, n := range nodes {
+		n2, err := plan.TransformUp(n, fn)
+		if err == nil {
+			return n2, nil
+		} else if firstErr == nil {
+			firstErr = err
+		}
+	}
+
+	return nil, firstErr
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.

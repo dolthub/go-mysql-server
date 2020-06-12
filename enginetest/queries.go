@@ -1919,6 +1919,24 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{int64(1)}},
 	},
 	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk <= opk.pk) FROM one_pk opk ORDER BY 1`,
+		[]sql.Row{
+			{0,0},
+			{1,1},
+			{2,2},
+			{3,3},
+		},
+	},
+	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk <= pk) FROM one_pk opk ORDER BY 1`,
+		[]sql.Row{
+			{0,3},
+			{1,3},
+			{2,3},
+			{3,3},
+		},
+	},
+	{
 		`SELECT DISTINCT n FROM bigtable ORDER BY t`,
 		[]sql.Row{
 			{int64(1)},
