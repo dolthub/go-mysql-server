@@ -39,7 +39,7 @@ func NewAlterAddForeignKey(table sql.Node, fkDef *ForeignKeyDefinition) *AlterFo
 func NewAlterDropForeignKey(table sql.Node, fkDef *ForeignKeyDefinition) *AlterForeignKey {
 	return &AlterForeignKey{
 		UnaryNode: UnaryNode{Child: table},
-		Action:    ForeignKeyAction_Add,
+		Action:    ForeignKeyAction_Drop,
 		FkDef:     fkDef,
 	}
 }
