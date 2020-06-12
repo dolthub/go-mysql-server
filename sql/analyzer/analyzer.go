@@ -159,8 +159,19 @@ type Analyzer struct {
 	Catalog *sql.Catalog
 }
 
+// Scope of the analysis being performed.
 type Scope struct {
+	nodes []sql.Node
+}
 
+func (s *Scope) newScope(node sql.Node) *Scope {
+	if s == nil {
+		return &Scope{[]sql.Node{node}}
+	}
+	newNodes := make([]sql.Node, len(s.nodes) + 1)
+	copy(newNodes, s.nodes)
+	newNodes = append(newNodes, node)
+	return &Scope{newNodes}
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
@@ -214,12 +225,11 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node
 		"plan": n.String(),
 	})
 
-	prev := n
 	var err error
 	a.Log("starting analysis of node of type: %T", n)
 	for _, batch := range a.Batches {
 		a.PushDebugContext(batch.Desc)
-		prev, err = batch.Eval(ctx, a, prev, scope)
+		n, err = batch.Eval(ctx, a, n, scope.newScope(n))
 		a.PopDebugContext()
 		if ErrMaxAnalysisIters.Is(err) {
 			a.Log(err.Error())
@@ -231,11 +241,11 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node
 	}
 
 	defer func() {
-		if prev != nil {
-			span.SetTag("IsResolved", prev.Resolved())
+		if n != nil {
+			span.SetTag("IsResolved", n.Resolved())
 		}
 		span.Finish()
 	}()
 
-	return prev, err
+	return n, err
 }
