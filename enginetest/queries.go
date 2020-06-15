@@ -1725,14 +1725,6 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{int64(0)}},
 	},
 	{
-		`SELECT DATETIME() - NOW()`,
-		[]sql.Row{{int64(0)}},
-	},
-	{
-		`SELECT TIMESTAMP() - NOW()`,
-		[]sql.Row{{int64(0)}},
-	},
-	{
 		`SELECT NOW() - (NOW() - INTERVAL 1 SECOND)`,
 		[]sql.Row{{int64(1)}},
 	},

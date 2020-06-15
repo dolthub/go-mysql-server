@@ -394,6 +394,97 @@ func (*YearWeek) WithChildren(children ...sql.Expression) (sql.Expression, error
 	return NewYearWeek(children...)
 }
 
+// Week is a function that returns year and week for a date.
+// The year in the result may be different from the year in the date argument for the first and the last week of the year.
+// Details: https://dev.mysql.com/doc/refman/5.5/en/date-and-time-functions.html#function_yearweek
+type Week struct {
+	date sql.Expression
+	mode sql.Expression
+}
+
+// NewWeek creates a new Week UDF
+func NewWeek(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) == 0 {
+		return nil, sql.ErrInvalidArgumentNumber.New("YEARWEEK", "1 or more", 0)
+	}
+
+	w := &Week{date: args[0]}
+	if len(args) > 1 && args[1].Resolved() && sql.IsInteger(args[1].Type()) {
+		w.mode = args[1]
+	} else {
+		w.mode = expression.NewLiteral(0, sql.Int64)
+	}
+
+	return w, nil
+}
+
+func (d *Week) String() string { return fmt.Sprintf("WEEK(%s, %d)", d.date, d.mode) }
+
+// Type implements the Expression interface.
+func (d *Week) Type() sql.Type { return sql.Int32 }
+
+// Eval implements the Expression interface.
+func (d *Week) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	date, err := getDate(ctx, expression.UnaryExpression{Child: d.date}, row)
+	if err != nil {
+		return nil, err
+	}
+
+	yyyy, ok := year(date).(int32)
+	if !ok {
+		return nil, ErrInvalidArgument.New("WEEK", "invalid year")
+	}
+	mm, ok := month(date).(int32)
+	if !ok {
+		return nil, ErrInvalidArgument.New("WEEK", "invalid month")
+	}
+	dd, ok := day(date).(int32)
+	if !ok {
+		return nil, ErrInvalidArgument.New("WEEK", "invalid day")
+	}
+
+	mode := int64(0)
+	val, err := d.mode.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if val != nil {
+		if i64, err := sql.Int64.Convert(val); err == nil {
+			if mode, ok = i64.(int64); ok {
+				mode %= 8 // mode in [0, 7]
+			}
+		}
+	}
+
+	yearForWeek, week := calcWeek(yyyy, mm, dd, weekMode(mode)|weekBehaviourYear)
+
+	if yearForWeek < yyyy {
+		week = 0
+	} else if yearForWeek > yyyy {
+		week = 53
+	}
+
+	return week, nil
+}
+
+// Resolved implements the Expression interface.
+func (d *Week) Resolved() bool {
+	return d.date.Resolved() && d.mode.Resolved()
+}
+
+// Children implements the Expression interface.
+func (d *Week) Children() []sql.Expression { return []sql.Expression{d.date, d.mode} }
+
+// IsNullable implements the Expression interface.
+func (d *Week) IsNullable() bool {
+	return d.date.IsNullable()
+}
+
+// WithChildren implements the Expression interface.
+func (*Week) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewWeek(children...)
+}
+
 // Following solution of YearWeek was taken from tidb: https://github.com/pingcap/tidb/blob/master/types/mytime.go
 type weekBehaviour int64
 
@@ -506,18 +597,94 @@ var (
 	dayOfYear = datePartFunc((time.Time).YearDay)
 )
 
-func currTimeLogic(*sql.Context, sql.Row) (interface{}, error) {
-	t := time.Now()
+// Now is a function that returns the current time.
+type Now struct {
+	precision *int
+}
+
+// NewNow returns a new Now node.
+func NewNow(args ...sql.Expression) (sql.Expression, error) {
+	var precision *int
+	if len(args) > 1 {
+		return nil, sql.ErrInvalidArgumentNumber.New("TIMESTAMP", 1, len(args))
+	} else if len(args) == 1 {
+		precisionArg, err := sql.Int32.Convert(args[0])
+
+		if err != nil {
+			return nil, err
+		}
+
+		n := int(precisionArg.(int32))
+		precision = &n
+	}
+
+	return &Now{precision}, nil
+}
+
+func subSecondPrecision(t time.Time, precision int) string {
+	if precision == 0 {
+		return ""
+	}
+
+	s := fmt.Sprintf(".%09d", t.Nanosecond())
+	return s[:precision+1]
+}
+
+// Type implements the sql.Expression interface.
+func (n *Now) Type() sql.Type {
+	return sql.Datetime
+}
+
+func (n *Now) String() string {
+	if n.precision == nil {
+		return "NOW()"
+	}
+
+	return fmt.Sprintf("NOW(%d)", *n.precision)
+}
+
+// IsNullable implements the sql.Expression interface.
+func (n *Now) IsNullable() bool { return false }
+
+// Resolved implements the sql.Expression interface.
+func (n *Now) Resolved() bool { return true }
+
+// Children implements the sql.Expression interface.
+func (n *Now) Children() []sql.Expression { return nil }
+
+// Eval implements the sql.Expression interface.
+func (n *Now) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	t := ctx.QueryTime()
+	/*s, err := formatDate("%Y-%m-%d %H:%i:%s", t)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if n.precision != nil {
+		s += subSecondPrecision(t, *n.precision)
+	}*/
+
+	return t, nil
+}
+
+// WithChildren implements the Expression interface.
+func (n *Now) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewNow(children...)
+}
+
+func currTimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	t := ctx.QueryTime()
 	return fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second()), nil
 }
 
-func currDateLogic(*sql.Context, sql.Row) (interface{}, error) {
-	t := time.Now()
+func currDateLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	t := ctx.QueryTime()
 	return fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day()), nil
 }
 
-func currDatetimeLogic(*sql.Context, sql.Row) (interface{}, error) {
-	return time.Now(), nil
+func currDatetimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	return ctx.QueryTime(), nil
 }
 
 // Date a function takes the DATE part out from a datetime expression.

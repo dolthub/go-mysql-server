@@ -24,7 +24,6 @@ var Defaults = []sql.Function{
 	sql.NewFunction0("current_timestamp", sql.Datetime, currDatetimeLogic),
 	sql.NewFunction0("current_user", sql.LongText, userFuncLogic),
 	sql.NewFunction0("curtime", sql.LongText, currTimeLogic),
-	sql.NewFunction0("now", sql.Date, currDatetimeLogic),
 	sql.NewFunction0("user", sql.LongText, userFuncLogic),
 
 	NewUnaryMathFunc("abs", AbsFuncLogic{}),
@@ -113,6 +112,7 @@ var Defaults = []sql.Function{
 	sql.FunctionN{Name: "log", Fn: NewLog},
 	sql.FunctionN{Name: "lpad", Fn: NewPadFunc(lPadType)},
 	sql.FunctionN{Name: "mid", Fn: NewSubstring},
+	sql.FunctionN{Name: "now", Fn: NewNow},
 	sql.FunctionN{Name: "rand", Fn: NewRand},
 	sql.FunctionN{Name: "regexp_matches", Fn: NewRegexpMatches},
 	sql.FunctionN{Name: "round", Fn: NewRound},
@@ -123,4 +123,5 @@ var Defaults = []sql.Function{
 	sql.FunctionN{Name: "timestamp", Fn: NewTimestamp},
 	sql.FunctionN{Name: "datetime", Fn: NewDatetime},
 	sql.FunctionN{Name: "yearweek", Fn: NewYearWeek},
+	sql.FunctionN{Name: "week", Fn: NewWeek},
 }

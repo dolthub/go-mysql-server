@@ -8,9 +8,6 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
-type clock func() time.Time
-
-var defaultClock = time.Now
 
 // DateAdd adds an interval to a date.
 type DateAdd struct {
@@ -164,7 +161,6 @@ func (d *DateSub) String() string {
 
 // TimestampConversion is a shorthand function for CONVERT(expr, TIMESTAMP)
 type TimestampConversion struct {
-	clock clock
 	Date sql.Expression
 }
 
@@ -173,11 +169,8 @@ func (t *TimestampConversion) Resolved() bool {
 }
 
 func (t *TimestampConversion) String() string {
-	if t.Date != nil {
-		return fmt.Sprintf("TIMESTAMP(%s)", t.Date)
-	} else {
-		return "TIMESTAMP()"
-	}}
+	return fmt.Sprintf("TIMESTAMP(%s)", t.Date)
+}
 
 func (t *TimestampConversion) Type() sql.Type {
 	return sql.Timestamp
@@ -188,10 +181,6 @@ func (t *TimestampConversion) IsNullable() bool {
 }
 
 func (t *TimestampConversion) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
-	if t.Date == nil {
-		return sql.Timestamp.Convert(t.clock())
-	}
-
 	e, err := t.Date.Eval(ctx, r)
 	if err != nil {
 		return nil, err
@@ -211,18 +200,14 @@ func (t *TimestampConversion) WithChildren(children ...sql.Expression) (sql.Expr
 }
 
 func NewTimestamp(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) > 1 {
+	if len(args) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("TIMESTAMP", 1, len(args))
 	}
-	if len(args) == 0 {
-		return &TimestampConversion{clock: defaultClock}, nil
-	}
-	return &TimestampConversion{defaultClock, args[0]}, nil
+	return &TimestampConversion{args[0]}, nil
 }
 
 // DatetimeConversion is a shorthand function for CONVERT(expr, DATETIME)
 type DatetimeConversion struct {
-	clock clock
 	Date sql.Expression
 }
 
@@ -231,11 +216,7 @@ func (t *DatetimeConversion) Resolved() bool {
 }
 
 func (t *DatetimeConversion) String() string {
-	if t.Date != nil {
-		return fmt.Sprintf("DATETIME(%s)", t.Date)
-	} else {
-		return "DATETIME()"
-	}
+	return fmt.Sprintf("DATETIME(%s)", t.Date)
 }
 
 func (t *DatetimeConversion) Type() sql.Type {
@@ -247,10 +228,6 @@ func (t *DatetimeConversion) IsNullable() bool {
 }
 
 func (t *DatetimeConversion) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
-	if t.Date == nil {
-		return sql.Datetime.Convert(t.clock())
-	}
-
 	e, err := t.Date.Eval(ctx, r)
 	if err != nil {
 		return nil, err
@@ -270,31 +247,25 @@ func (t *DatetimeConversion) WithChildren(children ...sql.Expression) (sql.Expre
 }
 
 func NewDatetime(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) > 1 {
+	if len(args) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("DATETIME", 1, len(args))
 	}
-	if len(args) == 0 {
-		return &DatetimeConversion{clock: defaultClock}, nil
-	}
-	return &DatetimeConversion{defaultClock, args[0]}, nil
+
+	return &DatetimeConversion{args[0]}, nil
 }
 
 // UnixTimestamp converts the argument to the number of seconds since
-// 1970-01-01 00:00:00 UTC. With no argument, returns number of seconds since
-// unix epoch for the current time.
+// 1970-01-01 00:00:00 UTC.
 type UnixTimestamp struct {
-	clock clock
 	Date  sql.Expression
 }
 
 func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) > 1 {
+	if len(args) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("UNIX_TIMESTAMP", 1, len(args))
 	}
-	if len(args) == 0 {
-		return &UnixTimestamp{defaultClock, nil}, nil
-	}
-	return &UnixTimestamp{defaultClock, args[0]}, nil
+
+	return &UnixTimestamp{args[0]}, nil
 }
 
 func (ut *UnixTimestamp) Children() []sql.Expression {
@@ -324,10 +295,6 @@ func (ut *UnixTimestamp) WithChildren(children ...sql.Expression) (sql.Expressio
 }
 
 func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if ut.Date == nil {
-		return toUnixTimestamp(ut.clock())
-	}
-
 	date, err := ut.Date.Eval(ctx, row)
 
 	if err != nil {
@@ -350,9 +317,5 @@ func toUnixTimestamp(t time.Time) (interface{}, error) {
 }
 
 func (ut *UnixTimestamp) String() string {
-	if ut.Date != nil {
-		return fmt.Sprintf("UNIX_TIMESTAMP(%s)", ut.Date)
-	} else {
-		return "UNIX_TIMESTAMP()"
-	}
+	return fmt.Sprintf("UNIX_TIMESTAMP(%s)", ut.Date)
 }
