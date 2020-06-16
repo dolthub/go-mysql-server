@@ -201,11 +201,13 @@ func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 func newUnmergableIndex(dbs []sql.Database, tableName string, exprs ...sql.Expression) *memory.UnmergeableIndex {
 	db, table := findTable(dbs, tableName)
 	return &memory.UnmergeableIndex{
-		DB:         db.Name(),
-		DriverName: memory.IndexDriverId,
-		TableName:  tableName,
-		Tbl:        table.(*memory.Table),
-		Exprs:      exprs,
+		memory.MergeableIndex{
+			DB:         db.Name(),
+			DriverName: memory.IndexDriverId,
+			TableName:  tableName,
+			Tbl:        table.(*memory.Table),
+			Exprs:      exprs,
+		},
 	}
 }
 

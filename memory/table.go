@@ -654,7 +654,7 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 				idx, field := t.getField(column.Name)
 				exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
 			}
-			indexes = append(indexes, &UnmergeableIndex{
+			indexes = append(indexes, &MergeableIndex{
 				DB:         "",
 				DriverName: "native",
 				Tbl:        t,
@@ -683,11 +683,13 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn) (sql.Index, 
 	}
 
 	return &UnmergeableIndex{
-		DB:         "",
-		DriverName: "native",
-		Tbl:        t,
-		TableName:  t.name,
-		Exprs:      exprs,
+		MergeableIndex{
+			DB:         "",
+			DriverName: "native",
+			Tbl:        t,
+			TableName:  t.name,
+			Exprs:      exprs,
+		},
 	}, nil
 }
 

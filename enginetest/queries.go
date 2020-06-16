@@ -194,11 +194,23 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{int64(2)}},
 	},
 	{
+		"SELECT i FROM mytable WHERE 2 = i;",
+		[]sql.Row{{int64(2)}},
+	},
+	{
 		"SELECT i FROM mytable WHERE i > 2;",
 		[]sql.Row{{int64(3)}},
 	},
 	{
+		"SELECT i FROM mytable WHERE 2 < i;",
+		[]sql.Row{{int64(3)}},
+	},
+	{
 		"SELECT i FROM mytable WHERE i < 2;",
+		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE 2 > i;",
 		[]sql.Row{{int64(1)}},
 	},
 	{
@@ -218,7 +230,15 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{int64(2)}, {int64(3)}},
 	},
 	{
+		"SELECT i FROM mytable WHERE 2 <= i ORDER BY 1",
+		[]sql.Row{{int64(2)}, {int64(3)}},
+	},
+	{
 		"SELECT i FROM mytable WHERE i <= 2 ORDER BY 1",
+		[]sql.Row{{int64(1)}, {int64(2)}},
+	},
+	{
+		"SELECT i FROM mytable WHERE 2 >= i ORDER BY 1",
 		[]sql.Row{{int64(1)}, {int64(2)}},
 	},
 	{
