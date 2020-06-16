@@ -87,9 +87,11 @@ func TestAssignIndexes(t *testing.T) {
 	<-ready
 
 	idx3 := &memory.UnmergeableIndex{
-		TableName: "t1",
-		Exprs: []sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+		memory.MergeableIndex{
+			TableName: "t1",
+			Exprs: []sql.Expression{
+				expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
+			},
 		},
 	}
 
@@ -264,9 +266,11 @@ func TestGetIndexes(t *testing.T) {
 			},
 		},
 		&memory.UnmergeableIndex{
-			TableName: "t3",
-			Exprs: []sql.Expression{
-				col(0, "t3", "foo"),
+			memory.MergeableIndex{
+				TableName: "t3",
+				Exprs: []sql.Expression{
+					col(0, "t3", "foo"),
+				},
 			},
 		},
 	}

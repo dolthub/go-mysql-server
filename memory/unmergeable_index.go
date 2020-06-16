@@ -12,25 +12,13 @@ import (
 // stores those values to be later retrieved. Only here to test the functionality of indexed queries. This kind of index
 // cannot be merged with any other index.
 type UnmergeableIndex struct {
-	DB         string // required for engine tests with driver
-	DriverName string // required for engine tests with driver
-	Tbl        *Table // required for engine tests with driver
-	TableName  string
-	Exprs      []sql.Expression
+	MergeableIndex
 }
 
 var _ sql.Index = (*UnmergeableIndex)(nil)
-
-func (u *UnmergeableIndex) Database() string { return u.DB }
-func (u *UnmergeableIndex) Driver() string   { return u.DriverName }
-
-func (u *UnmergeableIndex) Expressions() []string {
-	var exprs []string
-	for _, e := range u.Exprs {
-		exprs = append(exprs, e.String())
-	}
-	return exprs
-}
+var _ sql.AscendIndex = (*UnmergeableIndex)(nil)
+var _ sql.DescendIndex = (*UnmergeableIndex)(nil)
+var _ sql.NegateIndex = (*UnmergeableIndex)(nil)
 
 func (u *UnmergeableIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 	return &UnmergeableIndexLookup{
@@ -46,7 +34,24 @@ type UnmergeableIndexLookup struct {
 	idx *UnmergeableIndex
 }
 
+func (u *UnmergeableIndexLookup) IsMergeable(_ sql.IndexLookup) bool {
+	return false
+}
+
+func (u *UnmergeableIndexLookup) Intersection(_ ...sql.IndexLookup) sql.IndexLookup {
+	panic("not mergeable!")
+}
+
+func (u *UnmergeableIndexLookup) Union(_ ...sql.IndexLookup) sql.IndexLookup {
+	panic("not mergeable!")
+}
+
+func (u *UnmergeableIndexLookup) Difference(_ ...sql.IndexLookup) sql.IndexLookup {
+	panic("not mergeable!")
+}
+
 var _ sql.IndexLookup = (*UnmergeableIndexLookup)(nil)
+var _ sql.MergeableIndexLookup = (*UnmergeableIndexLookup)(nil)
 
 // dummyIndexValueIter does a very simple and verifiable iteration over the table values for a given index. It does this
 // by iterating over all the table rows for a partition and evaluating each of them for inclusion in the index. This is
