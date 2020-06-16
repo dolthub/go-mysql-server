@@ -514,7 +514,7 @@ var fixtures = map[string]sql.Node{
 			OnDelete:          sql.ForeignKeyReferenceOption_Cascade,
 		},
 	),
-	`ALTER TABLE t1 DROP FOREIGN KEY fk_name`: plan.NewAlterAddForeignKey(
+	`ALTER TABLE t1 DROP FOREIGN KEY fk_name`: plan.NewAlterDropForeignKey(
 		plan.NewUnresolvedTable("t1", ""),
 		&plan.ForeignKeyDefinition{
 			Name:              "fk_name",
