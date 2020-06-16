@@ -333,16 +333,24 @@ func TestCalcWeek(t *testing.T) {
 }
 
 func TestNow(t *testing.T) {
-	require := require.New(t)
 	date := time.Date(2018, time.December, 2, 16, 25, 0, 0, time.Local)
-	clk := clock(func() time.Time {
+	testNowFunc := func() time.Time {
 		return date
-	})
-	f := &Now{clk}
+	}
 
-	result, err := f.Eval(nil, nil)
-	require.NoError(err)
-	require.Equal(date, result)
+	var ctx *sql.Context
+	err := sql.RunWithNowFunc(testNowFunc, func() error {
+		ctx = sql.NewEmptyContext()
+		return nil
+	})
+	require.NoError(t, err)
+
+	f, err := NewNow()
+	require.NoError(t, err)
+
+	result, err := f.Eval(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, date, result)
 }
 
 func TestDate(t *testing.T) {

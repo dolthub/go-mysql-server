@@ -248,6 +248,7 @@ type Context struct {
 	Memory   *MemoryManager
 	pid      uint64
 	query    string
+	queryTime time.Time
 	tracer   opentracing.Tracer
 	rootSpan opentracing.Span
 }
@@ -309,6 +310,23 @@ func WithRootSpan(s opentracing.Span) ContextOption {
 	}
 }
 
+var ctxNowFunc = time.Now
+var ctxNowFuncMutex = &sync.Mutex{}
+
+func RunWithNowFunc(nowFunc func() time.Time, fn func() error) error {
+	ctxNowFuncMutex.Lock()
+	defer ctxNowFuncMutex.Unlock()
+
+	initialNow := ctxNowFunc
+	ctxNowFunc = nowFunc
+	defer func() {
+		ctxNowFunc = initialNow
+	}()
+
+	return fn()
+}
+
+
 // NewContext creates a new query context. Options can be passed to configure
 // the context. If some aspect of the context is not configure, the default
 // value will be used.
@@ -318,7 +336,7 @@ func NewContext(
 	ctx context.Context,
 	opts ...ContextOption,
 ) *Context {
-	c := &Context{ctx, NewBaseSession(), nil, nil, nil, 0, "", opentracing.NoopTracer{}, nil}
+	c := &Context{ctx, NewBaseSession(), nil, nil, nil, 0, "", ctxNowFunc(), opentracing.NoopTracer{}, nil}
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -353,6 +371,11 @@ func (c *Context) Pid() uint64 { return c.pid }
 // Query returns the query string associated with this context.
 func (c *Context) Query() string { return c.query }
 
+// QueryTime returns the time.Time when the context associated with this query was created
+func (c *Context) QueryTime() time.Time {
+	return c.queryTime
+}
+
 // Span creates a new tracing span with the given context.
 // It will return the span and a new context that should be passed to all
 // childrens of this span.
@@ -367,7 +390,7 @@ func (c *Context) Span(
 	span := c.tracer.StartSpan(opName, opts...)
 	ctx := opentracing.ContextWithSpan(c.Context, span)
 
-	return span, &Context{ctx, c.Session, c.IndexRegistry, c.ViewRegistry, c.Memory, c.Pid(), c.Query(), c.tracer, c.rootSpan}
+	return span, &Context{ctx, c.Session, c.IndexRegistry, c.ViewRegistry, c.Memory, c.Pid(), c.Query(), c.queryTime, c.tracer, c.rootSpan}
 }
 
 func (c *Context) WithCurrentDB(db string) *Context {
@@ -377,7 +400,7 @@ func (c *Context) WithCurrentDB(db string) *Context {
 
 // WithContext returns a new context with the given underlying context.
 func (c *Context) WithContext(ctx context.Context) *Context {
-	return &Context{ctx, c.Session, c.IndexRegistry, c.ViewRegistry, c.Memory, c.Pid(), c.Query(), c.tracer, c.rootSpan}
+	return &Context{ctx, c.Session, c.IndexRegistry, c.ViewRegistry, c.Memory, c.Pid(), c.Query(), c.queryTime, c.tracer, c.rootSpan}
 }
 
 // RootSpan returns the root span, if any.

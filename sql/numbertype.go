@@ -2,6 +2,7 @@ package sql
 
 import (
 	"fmt"
+	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 	"math"
 	"strconv"
@@ -206,6 +207,11 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return float32(num), nil
 	case sqltypes.Float64:
+		if dec, ok := v.(decimal.Decimal); ok {
+			f, _ := dec.Float64()
+			return f, nil
+		}
+
 		num, err := cast.ToFloat64E(v)
 		if err != nil {
 			return nil, err
