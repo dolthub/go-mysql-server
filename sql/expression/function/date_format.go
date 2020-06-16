@@ -249,13 +249,17 @@ func NewDateFormat(ex, value sql.Expression) sql.Expression {
 
 // Eval implements the Expression interface.
 func (f *DateFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if f.Left == nil || f.Right == nil {
+		return nil, nil
+	}
+
 	left, err := f.Left.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	if left != nil {
-		return left, nil
+	if left == nil {
+		return nil, nil
 	}
 
 	timeVal, err := sql.Datetime.Convert(left)
@@ -271,25 +275,22 @@ func (f *DateFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	if right == nil {
+		return nil, nil
+	}
+
 	formatStr, ok := right.(string)
 
 	if !ok {
 		return nil, ErrInvalidArgument.New("DATE_FORMAT", "format must be a string")
 	}
 
-
-	return strftime.Format(formatStr, t)
+	return formatDate(formatStr, t)
 }
 
 // Type implements the Expression interface.
 func (f *DateFormat) Type() sql.Type {
-	if sql.IsNull(f.Left) {
-		if sql.IsNull(f.Right) {
-			return sql.Null
-		}
-		return f.Right.Type()
-	}
-	return f.Left.Type()
+	return sql.Text
 }
 
 // IsNullable implements the Expression interface.
@@ -304,7 +305,7 @@ func (f *DateFormat) IsNullable() bool {
 }
 
 func (f *DateFormat) String() string {
-	return fmt.Sprintf("ifnull(%s, %s)", f.Left, f.Right)
+	return fmt.Sprintf("date_format(%s, %s)", f.Left, f.Right)
 }
 
 // WithChildren implements the Expression interface.

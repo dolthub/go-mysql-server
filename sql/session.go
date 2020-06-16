@@ -310,7 +310,22 @@ func WithRootSpan(s opentracing.Span) ContextOption {
 	}
 }
 
-var nowFunc = time.Now
+var ctxNowFunc = time.Now
+var ctxNowFuncMutex = &sync.Mutex{}
+
+func RunWithNowFunc(nowFunc func() time.Time, fn func() error) error {
+	ctxNowFuncMutex.Lock()
+	defer ctxNowFuncMutex.Unlock()
+
+	initialNow := ctxNowFunc
+	ctxNowFunc = nowFunc
+	defer func() {
+		ctxNowFunc = initialNow
+	}()
+
+	return fn()
+}
+
 
 // NewContext creates a new query context. Options can be passed to configure
 // the context. If some aspect of the context is not configure, the default
@@ -321,7 +336,7 @@ func NewContext(
 	ctx context.Context,
 	opts ...ContextOption,
 ) *Context {
-	c := &Context{ctx, NewBaseSession(), nil, nil, nil, 0, "", nowFunc(), opentracing.NoopTracer{}, nil}
+	c := &Context{ctx, NewBaseSession(), nil, nil, nil, 0, "", ctxNowFunc(), opentracing.NoopTracer{}, nil}
 	for _, opt := range opts {
 		opt(c)
 	}

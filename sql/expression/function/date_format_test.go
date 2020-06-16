@@ -2,6 +2,8 @@ package function
 
 import (
 	"fmt"
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -138,4 +140,36 @@ func TestWeekYearFormatting(t *testing.T) {
 			assert.Equal(t, test.expectedWForSunStart, sundayWStartResult)
 		})
 	}
+}
+
+func TestDateFormatEval(t *testing.T) {
+	dt := time.Date(2020, 2,3,4,5,6,7000, time.UTC)
+	dateLit := expression.NewLiteral(dt, sql.Datetime)
+	format := expression.NewLiteral("%Y-%m-%d %H:%i:%s.%f", sql.Text)
+	nullLiteral := expression.NewLiteral(nil, sql.Null)
+
+	dateFormat := NewDateFormat(dateLit, format)
+	res, err := dateFormat.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "2020-02-03 04:05:06.000007", res)
+
+	dateFormat = NewDateFormat(dateLit, nil)
+	res, err = dateFormat.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, nil)
+
+	dateFormat = NewDateFormat(nil, format)
+	res, err = dateFormat.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, nil)
+
+	dateFormat = NewDateFormat(dateLit, nullLiteral)
+	res, err = dateFormat.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, nil)
+
+	dateFormat = NewDateFormat(nullLiteral, format)
+	res, err = dateFormat.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, nil)
 }

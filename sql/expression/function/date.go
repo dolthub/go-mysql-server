@@ -246,6 +246,8 @@ func (t *DatetimeConversion) WithChildren(children ...sql.Expression) (sql.Expre
 	return NewDatetime(children...)
 }
 
+// NewDatetime returns a DatetimeConversion instance to handle the sql function "datetime". This is
+// not a standard mysql function, but provides a shorthand for datetime conversions.
 func NewDatetime(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("DATETIME", 1, len(args))
@@ -254,17 +256,19 @@ func NewDatetime(args ...sql.Expression) (sql.Expression, error) {
 	return &DatetimeConversion{args[0]}, nil
 }
 
-// UnixTimestamp converts the argument to the number of seconds since
-// 1970-01-01 00:00:00 UTC.
+// UnixTimestamp converts the argument to the number of seconds since 1970-01-01 00:00:00 UTC.
+// With no argument, returns number of seconds since unix epoch for the current time.
 type UnixTimestamp struct {
 	Date  sql.Expression
 }
 
 func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) != 1 {
+	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("UNIX_TIMESTAMP", 1, len(args))
 	}
-
+	if len(args) == 0 {
+		return &UnixTimestamp{nil}, nil
+	}
 	return &UnixTimestamp{args[0]}, nil
 }
 
@@ -295,6 +299,10 @@ func (ut *UnixTimestamp) WithChildren(children ...sql.Expression) (sql.Expressio
 }
 
 func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if ut.Date == nil {
+		return toUnixTimestamp(ctx.QueryTime())
+	}
+
 	date, err := ut.Date.Eval(ctx, row)
 
 	if err != nil {
@@ -317,5 +325,9 @@ func toUnixTimestamp(t time.Time) (interface{}, error) {
 }
 
 func (ut *UnixTimestamp) String() string {
-	return fmt.Sprintf("UNIX_TIMESTAMP(%s)", ut.Date)
+	if ut.Date != nil {
+		return fmt.Sprintf("UNIX_TIMESTAMP(%s)", ut.Date)
+	} else {
+		return "UNIX_TIMESTAMP()"
+	}
 }

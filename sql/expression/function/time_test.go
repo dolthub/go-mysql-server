@@ -332,6 +332,27 @@ func TestCalcWeek(t *testing.T) {
 	require.EqualValues(t, w, 53)
 }
 
+func TestNow(t *testing.T) {
+	date := time.Date(2018, time.December, 2, 16, 25, 0, 0, time.Local)
+	testNowFunc := func() time.Time {
+		return date
+	}
+
+	var ctx *sql.Context
+	err := sql.RunWithNowFunc(testNowFunc, func() error {
+		ctx = sql.NewEmptyContext()
+		return nil
+	})
+	require.NoError(t, err)
+
+	f, err := NewNow()
+	require.NoError(t, err)
+
+	result, err := f.Eval(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, date, result)
+}
+
 func TestDate(t *testing.T) {
 	f := NewDate(expression.NewGetField(0, sql.LongText, "foo", false))
 	ctx := sql.NewEmptyContext()
