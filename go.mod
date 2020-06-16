@@ -1,8 +1,6 @@
 module github.com/liquidata-inc/go-mysql-server
 
 require (
-	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
-	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/go-kit/kit v0.9.0
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
@@ -16,7 +14,6 @@ require (
 	github.com/sanity-io/litter v1.2.0
 	github.com/shopspring/decimal v0.0.0-20191130220710-360f2bc03045
 	github.com/sirupsen/logrus v1.4.2
-	github.com/snabb/isoweek v1.0.0
 	github.com/spf13/cast v1.3.0
 	github.com/src-d/go-oniguruma v1.1.0
 	github.com/stretchr/testify v1.4.0
