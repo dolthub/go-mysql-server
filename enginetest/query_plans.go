@@ -88,7 +88,7 @@ var PlanTests = []QueryPlanTest{
 		Query: "SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2",
 		ExpectedPlan: "IndexedJoin(mt.i = ot.i2)\n" +
 				" ├─ TableAlias(mt)\n" +
-				" │   └─ Table(mytable): Projected Filtered \n" +
+				" │   └─ Table(mytable): Projected Filtered Indexed\n" +
 				" └─ TableAlias(ot)\n" +
 				"     └─ Table(othertable): Projected \n" +
 				"",
