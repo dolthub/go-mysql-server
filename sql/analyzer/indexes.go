@@ -375,7 +375,7 @@ func getComparisonIndex(
 	left, right := e.Left(), e.Right()
 	// if the form is SOMETHING OP {INDEXABLE EXPR}, swap it, so it's {INDEXABLE EXPR} OP SOMETHING
 	if !isEvaluable(right) {
-		left, right = right, left
+		left, right, e = swapTermsOfExpression(e)
 	}
 
 	if !isEvaluable(left) && isEvaluable(right) {
@@ -396,6 +396,24 @@ func getComparisonIndex(
 	}
 
 	return nil, nil, nil
+}
+
+// Returns an equivalent expression to the one given with the left and right terms reversed. The new left and right side
+// of the expression are returned as well.
+func swapTermsOfExpression(e expression.Comparer) (left sql.Expression, right sql.Expression, newExpr expression.Comparer) {
+	left, right = e.Left(), e.Right()
+	left, right = right, left
+	switch e.(type) {
+	case *expression.GreaterThanOrEqual:
+		e = expression.NewLessThanOrEqual(left, right)
+	case *expression.GreaterThan:
+		e = expression.NewLessThan(left, right)
+	case *expression.LessThan:
+		e = expression.NewGreaterThan(left, right)
+	case *expression.LessThanOrEqual:
+		e = expression.NewGreaterThanOrEqual(left, right)
+	}
+	return left, right, e
 }
 
 func comparisonIndexLookup(
@@ -455,7 +473,7 @@ func getNegatedIndexes(
 		left, right := e.Left(), e.Right()
 		// if the form is SOMETHING OP {INDEXABLE EXPR}, swap it, so it's {INDEXABLE EXPR} OP SOMETHING
 		if !isEvaluable(right) {
-			left, right = right, left
+			left, right, _ = swapTermsOfExpression(e)
 		}
 
 		if isEvaluable(left) || !isEvaluable(right) {
@@ -483,7 +501,7 @@ func getNegatedIndexes(
 		}
 
 		result := map[string]*indexLookup{
-			idx.Table(): &indexLookup{
+			idx.Table(): {
 				indexes: []sql.Index{idx},
 				lookup:  lookup,
 			},

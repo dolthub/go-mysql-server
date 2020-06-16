@@ -53,7 +53,7 @@ func (u *UnmergeableIndexLookup) Difference(_ ...sql.IndexLookup) sql.IndexLooku
 var _ sql.IndexLookup = (*UnmergeableIndexLookup)(nil)
 var _ sql.MergeableIndexLookup = (*UnmergeableIndexLookup)(nil)
 
-// dummyIndexValueIter does a very simple and verifiable iteration over the table values for a given index. It does this
+// indexValIter does a very simple and verifiable iteration over the table values for a given index. It does this
 // by iterating over all the table rows for a partition and evaluating each of them for inclusion in the index. This is
 // not an efficient way to store an index, and is only suitable for testing the correctness of index code in the engine.
 type indexValIter struct {
