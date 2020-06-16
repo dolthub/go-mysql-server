@@ -15,15 +15,16 @@
 package function
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"github.com/shopspring/decimal"
+	"hash/crc32"
 	"math"
 	"math/rand"
-	"regexp"
 	"strconv"
 	"strings"
+	"unsafe"
 )
 
 // Rand returns a random float 0 <= x < 1. If it has an argument, that argument will be used to seed the random number
@@ -113,282 +114,249 @@ func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return rand.New(rand.NewSource(seed)).Float64(), nil
 }
 
-// UintRegex matches unsigned ints
-var UintRegex, _ = regexp.Compile("^[1-9][0-9]*$")
-
-// IntRegex matches ints
-var IntRegex, _ = regexp.Compile("^-?[1-9][0-9]*$")
-
-// UnaryMathFloatFuncLogic is an interface for sql function logic that takes a single float64 argument
-type UnaryMathFloatFuncLogic interface {
-	// EvalFloat contains sql function logic for a function that takes a single float64 as an argument
-	EvalFloat(float64) (interface{}, error)
-}
-
-// UnaryMathFuncLogic is an interface for a sql function logic that takes a single number argument
-type UnaryMathFuncLogic interface {
-	// UnaryMathFloatFuncLogic is an embedded interface that handles the case where the number arumend passed is a float
-	UnaryMathFloatFuncLogic
-	// EvalUint handles the case where the number argument passed is a uint
-	EvalUint(uint64) (interface{}, error)
-	// EvalInt handles the case where the number argument passed is an int
-	EvalInt(int64) (interface{}, error)
-	// EvalDecimal handles the case where the number argument passed is a decimal
-	EvalDecimal(decimal.Decimal) (interface{}, error)
-}
-
-// UnaryMathFloatFuncWrapper wraps logic that handles floats and provides methods for all number types
-type UnaryMathFloatFuncWrapper struct {
-	FlLogic UnaryMathFloatFuncLogic
-}
-
-// WrapUnaryMathFloatFuncLogic takes a UnaryMathFloatFuncLogic and wraps it returning a UnaryMathFuncLogic implementation
-// which uses the float implementation for all calls
-func WrapUnaryMathFloatFuncLogic(logic UnaryMathFloatFuncLogic) UnaryMathFuncLogic {
-	return UnaryMathFloatFuncWrapper{logic}
-}
-
-// EvalFloat handles the case where the number argument passed is a float
-func (wr UnaryMathFloatFuncWrapper) EvalFloat(n float64) (interface{}, error) {
-	return wr.FlLogic.EvalFloat(n)
-}
-
-// EvalUint handles the case where the number argument passed is a uint
-func (wr UnaryMathFloatFuncWrapper) EvalUint(n uint64) (interface{}, error) {
-	return wr.FlLogic.EvalFloat(float64(n))
-}
-
-// EvalInt handles the case where the number argument passed is an int
-func (wr UnaryMathFloatFuncWrapper) EvalInt(n int64) (interface{}, error) {
-	return wr.FlLogic.EvalFloat(float64(n))
-}
-
-// EvalDecimal handles the case where the number argument passed is a decimal
-func (wr UnaryMathFloatFuncWrapper) EvalDecimal(dec decimal.Decimal) (interface{}, error) {
-	n, _ := dec.Float64()
-	return wr.FlLogic.EvalFloat(n)
-}
-
-// UnaryMathFunc is a sql function that takes a single number argument and returns a value
-type UnaryMathFunc struct {
-	expression.UnaryExpression
-	// Name is the name of the function
-	Name  string
-	// Logic contains the logic being executed when the function is called
-	Logic UnaryMathFuncLogic
-}
-
-// NewUnaryMathFunc returns a function which is called to create a sql.Expression representing the function and its
-// argemunts
-func NewUnaryMathFunc(name string, logic UnaryMathFuncLogic) sql.Function1 {
-	fn := func(e sql.Expression) sql.Expression {
-		return &UnaryMathFunc{expression.UnaryExpression{Child: e}, name, logic}
-	}
-
-	return sql.Function1{Name: name, Fn: fn}
-}
-
-// Eval implements the Expression interface.
-func (mf *UnaryMathFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	val, err := mf.Child.Eval(ctx, row)
+// SinFunc implements the sin function logic
+func SinFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+	n, err := sql.Float64.Convert(val)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if val == nil {
-		return nil, nil
+	return math.Sin(n.(float64)), nil
+}
+
+// CosFunc implements the cos function logic
+func CosFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+	n, err := sql.Float64.Convert(val)
+
+	if err != nil {
+		return nil, err
 	}
 
-	// Fucking Golang
-	switch x := val.(type) {
-	case uint8:
-		return mf.Logic.EvalUint(uint64(x))
-	case uint16:
-		return mf.Logic.EvalUint(uint64(x))
-	case uint32:
-		return mf.Logic.EvalUint(uint64(x))
-	case uint64:
-		return mf.Logic.EvalUint(x)
-	case uint:
-		return mf.Logic.EvalUint(uint64(x))
-	case int8:
-		return mf.Logic.EvalInt(int64(x))
-	case int16:
-		return mf.Logic.EvalInt(int64(x))
-	case int32:
-		return mf.Logic.EvalInt(int64(x))
-	case int64:
-		return mf.Logic.EvalInt(x)
-	case int:
-		return mf.Logic.EvalInt(int64(x))
-	case float64:
-		return mf.Logic.EvalFloat(x)
-	case float32:
-		return mf.Logic.EvalFloat(float64(x))
-	case decimal.Decimal:
-		return mf.Logic.EvalDecimal(x)
+	return math.Cos(n.(float64)), nil
+}
+
+// TanFunc implements the tan function logic
+func TanFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+	n, err := sql.Float64.Convert(val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return math.Tan(n.(float64)), nil
+}
+
+// ASinFunc implements the asin function logic
+func ASinFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+	n, err := sql.Float64.Convert(val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return math.Asin(n.(float64)), nil
+}
+
+// ACosFunc implements the acos function logic
+func ACosFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+	n, err := sql.Float64.Convert(val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return math.Acos(n.(float64)), nil
+}
+
+// ATanFunc implements the atan function logic
+func ATanFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+	n, err := sql.Float64.Convert(val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return math.Atan(n.(float64)), nil
+}
+
+// CotFunc implements the cot function logic
+func CotFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+	n, err := sql.Float64.Convert(val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return 1.0 / math.Tan(n.(float64)), nil
+}
+
+// DegreesFunc implements the degrees function logic
+func DegreesFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+	n, err := sql.Float64.Convert(val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return (n.(float64) * 180.0) / math.Pi, nil
+}
+
+// RadiansFunc implements the radians function logic
+func RadiansFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+	n, err := sql.Float64.Convert(val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return (n.(float64) * math.Pi) / 180.0, nil
+}
+
+
+func asBytes(arg interface{}) ([]byte, error) {
+	buf := bytes.NewBuffer(nil)
+	err := binary.Write(buf, binary.LittleEndian, arg)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func floatToString(f float64) string {
+	s := strconv.FormatFloat(f, 'f', -1, 32)
+	idx := strings.IndexRune(s, '.')
+
+	if idx == -1 {
+		s += ".0"
+	}
+
+	return s
+}
+
+// Crc32Func implement the sql crc32 function logic
+func Crc32Func(ctx *sql.Context, arg interface{}) (interface{}, error) {
+	var bytes []byte
+	switch val := arg.(type) {
 	case string:
-		if x == "0" || UintRegex.MatchString(x) {
-			n, err := strconv.ParseUint(x, 10, 64)
+		bytes = []byte(val)
+	case int8, int16, int32, int64, int:
+		val, err := sql.Int64.Convert(arg)
 
-			if err != nil {
-				return nil, err
-			}
-
-			return mf.Logic.EvalUint(n)
-		} else if IntRegex.MatchString(x) {
-			n, err := strconv.ParseInt(x, 10, 64)
-
-			if err != nil {
-				return nil, err
-			}
-
-			return mf.Logic.EvalInt(n)
-		} else {
-			n, err := strconv.ParseFloat(x, 64)
-
-			if err != nil {
-				return nil, err
-			}
-
-			return mf.Logic.EvalFloat(n)
+		if err != nil {
+			return nil, err
 		}
+
+		bytes = []byte(strconv.FormatInt(val.(int64), 10))
+	case uint8, uint16, uint32, uint64, uint:
+		val, err := sql.Uint64.Convert(arg)
+
+		if err != nil {
+			return nil, err
+		}
+
+		bytes = []byte(strconv.FormatUint(val.(uint64), 10))
+	case float32:
+		s := floatToString(float64(val))
+		bytes = []byte(s)
+	case float64:
+		s := floatToString(val)
+		bytes = []byte(s)
+	case bool:
+		if val {
+			bytes = []byte{1}
+		} else {
+			bytes = []byte{0}
+		}
+	default:
+		return nil, ErrInvalidArgument.New("crc32", fmt.Sprint(arg))
 	}
 
-	return nil, nil
+	return crc32.ChecksumIEEE(bytes), nil
 }
 
-// String implements the Stringer interface.
-func (mf *UnaryMathFunc) String() string {
-	return fmt.Sprintf("%s(%s)", strings.ToUpper(mf.Name), mf.Child.String())
+func hexChar(b byte) byte {
+	 if b > 9 {
+		return b - 10 + byte('A')
+	 }
+
+	 return b + byte('0')
 }
 
-// IsNullable implements the Expression interface.
-func (mf *UnaryMathFunc) IsNullable() bool {
-	return mf.Child.IsNullable()
+// MySQL expects the 64 bit 2s compliment representation for negative integer values. Typical methods for converting a
+// number to a string don't handle negative integer values in this way (strconv.FormatInt and fmt.Sprintf for example).
+func hexForNegativeInt64(n int64) string {
+	// get a pointer to the int64s memory
+	mem := (*[8]byte)(unsafe.Pointer(&n))
+	// make a copy of the data that I can manipulate
+	bytes := *mem
+	// reverse the order for printing
+	for i := 0; i < 4; i++ {
+		bytes[i], bytes[7-i] = bytes[7-i], bytes[i]
+	}
+	// print the hex encoded bytes
+	return fmt.Sprintf("%X", bytes)
 }
 
-// WithChildren implements the Expression interface.
-func (mf *UnaryMathFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(mf, len(children), 1)
+func hexForFloat(f float64) (string, error) {
+	if f < 0 {
+		f -= 0.5
+		n := int64(f)
+		return hexForNegativeInt64(n), nil
 	}
 
-	return &UnaryMathFunc{expression.UnaryExpression{Child:children[0]}, mf.Name, mf.Logic}, nil
+	f += 0.5
+	n := uint64(f)
+	return fmt.Sprintf("%X", n), nil
 }
 
-// Type implements the Expression interface.
-func (mf *UnaryMathFunc) Type() sql.Type {
-	return mf.Child.Type()
-}
+func HexFunc(ctx *sql.Context, arg interface{}) (interface{}, error) {
+	switch val := arg.(type) {
+	case string:
+		buf := make([]byte, 0, 2*len(val))
+		for _, c := range val {
+			high := byte(c / 16)
+			low := byte(c % 16)
 
-// AbsFuncLogic is a UnaryMathFuncLogic implementation that returns the absolute value of a number
-type AbsFuncLogic struct{}
+			buf = append(buf, hexChar(high))
+			buf = append(buf, hexChar(low))
+		}
 
-// EvalUint handles the case where the number argument passed is a uint
-func (fl AbsFuncLogic) EvalUint(n uint64) (interface{}, error) {
-	return n, nil
-}
+		return string(buf), nil
 
-// EvalInt handles the case where the number argument passed is an int
-func (fl AbsFuncLogic) EvalInt(n int64) (interface{}, error) {
-	if n < 0 {
-		return -n, nil
+	case uint8, uint16, uint32, uint, int, int8, int16, int32, int64:
+		n, err := sql.Int64.Convert(arg)
+
+		if err != nil {
+			return nil, err
+		}
+
+		a := n.(int64)
+		if a < 0 {
+			return hexForNegativeInt64(a), nil
+		} else {
+			return fmt.Sprintf("%X", a), nil
+		}
+
+	case uint64:
+		return fmt.Sprintf("%X", val), nil
+
+	case float32:
+		return hexForFloat(float64(val))
+
+	case float64:
+		return hexForFloat(val)
+
+	case bool:
+		if val {
+			return "1", nil
+		}
+
+		return "0", nil
+
+	default:
+		return nil, ErrInvalidArgument.New("crc32", fmt.Sprint(arg))
 	}
-
-	return n, nil
-}
-
-// EvalFloat handles the case where the number argument passed is a float
-func (fl AbsFuncLogic) EvalFloat(n float64) (interface{}, error) {
-	if n < 0 {
-		return -n, nil
-	}
-
-	return n, nil
-}
-
-// EvalDecimal handles the case where the number argument passed is a decimal
-func (fl AbsFuncLogic) EvalDecimal(dec decimal.Decimal) (interface{}, error) {
-	return dec.Abs(), nil
-}
-
-// SinFuncLogic is a UnaryMathFloatFuncWrapper implementation which returns the sin of a value
-type SinFuncLogic struct{}
-
-// EvalFloat handles the case where the number argument passed is a float
-func (fl SinFuncLogic) EvalFloat(n float64) (interface{}, error) {
-	return math.Sin(n), nil
-}
-
-
-// CosFuncLogic is a UnaryMathFloatFuncWrapper implementation which returns the cos of a value
-type CosFuncLogic struct{}
-
-// EvalFloat handles the case where the number argument passed is a float
-func (fl CosFuncLogic) EvalFloat(n float64) (interface{}, error) {
-	return math.Cos(n), nil
-}
-
-
-// TanFuncLogic is a UnaryMathFloatFuncWrapper implementation which returns the tan of a value
-type TanFuncLogic struct{}
-
-// EvalFloat handles the case where the number argument passed is a float
-func (fl TanFuncLogic) EvalFloat(n float64) (interface{}, error) {
-	return math.Tan(n), nil
-}
-
-
-// ASinFuncLogic is a UnaryMathFloatFuncWrapper implementation which returns the asin of a value
-type ASinFuncLogic struct{}
-
-// EvalFloat handles the case where the number argument passed is a float
-func (fl ASinFuncLogic) EvalFloat(n float64) (interface{}, error) {
-	return math.Asin(n), nil
-}
-
-
-// ACosFuncLogic is a UnaryMathFloatFuncWrapper implementation which returns the acos of a value
-type ACosFuncLogic struct{}
-
-// EvalFloat handles the case where the number argument passed is a float
-func (fl ACosFuncLogic) EvalFloat(n float64) (interface{}, error) {
-	return math.Acos(n), nil
-}
-
-
-// ATanFuncLogic is a UnaryMathFloatFuncWrapper implementation which returns the atan of a value
-type ATanFuncLogic struct{}
-
-// EvalFloat handles the case where the number argument passed is a float
-func (fl ATanFuncLogic) EvalFloat(n float64) (interface{}, error) {
-	return math.Atan(n), nil
-}
-
-
-// CotFuncLogic is a UnaryMathFloatFuncWrapper implementation which returns the cot of a value
-type CotFuncLogic struct{}
-
-// EvalFloat handles the case where the number argument passed is a float
-func (fl CotFuncLogic) EvalFloat(n float64) (interface{}, error) {
-	return 1.0 / math.Tan(n), nil
-}
-
-
-// DegreesFuncLogic is a UnaryMathFloatFuncWrapper implementation which converts radians to degrees
-type DegreesFuncLogic struct {}
-
-// EvalFloat handles the case where the number argument passed is a float
-func (fl DegreesFuncLogic) EvalFloat(n float64) (interface{}, error) {
-	return (n * 180.0) / math.Pi, nil
-}
-
-// RadiansFuncLogic is a UnaryMathFloatFuncWrapper implementation which converts degrees to radians
-type RadiansFuncLogic struct {}
-
-// EvalFloat handles the case where the number argument passed is a float
-func (fl RadiansFuncLogic) EvalFloat(n float64) (interface{}, error) {
-	return (n * math.Pi) / 180.0, nil
 }

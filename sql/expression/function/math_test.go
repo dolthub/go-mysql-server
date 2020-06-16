@@ -82,120 +82,6 @@ func TestRandWithSeed(t *testing.T) {
 	assert.Equal(t, f64, f642)
 }
 
-func TestAbsValue(t *testing.T) {
-	type toTypeFunc func(float64) interface{}
-
-	decimal1616 := sql.MustCreateDecimalType(16,16)
-
-	toInt64 := func(x float64) interface{} { return int64(x) }
-	toInt32 := func(x float64) interface{} { return int32(x) }
-	toInt := func(x float64) interface{} { return int(x) }
-	toInt16 := func(x float64) interface{} { return int16(x) }
-	toInt8 := func(x float64) interface{} { return int8(x) }
-	toUint64 := func(x float64) interface{} { return uint64(x) }
-	toUint32 := func(x float64) interface{} { return uint32(x) }
-	toUint := func(x float64) interface{} { return uint(x) }
-	toUint16 := func(x float64) interface{} { return uint16(x) }
-	toUint8 := func(x float64) interface{} { return uint8(x) }
-	toFloat64 := func(x float64) interface{} {return x}
-	toFloat32 := func(x float64) interface{} {return float32(x)}
-	toDecimal1616 := func(x float64) interface{} {return decimal.NewFromFloat(x)}
-
-	signedTypes := map[sql.Type]toTypeFunc {
-		sql.Int64: toInt64,
-		sql.Int32: toInt32,
-		sql.Int24: toInt,
-		sql.Int16: toInt16,
-		sql.Int8: toInt8}
-	unsignedTypes := map[sql.Type]toTypeFunc {
-		sql.Uint64: toUint64,
-		sql.Uint32: toUint32,
-		sql.Uint24: toUint,
-		sql.Uint16: toUint16,
-		sql.Uint8: toUint8}
-	floatTypes := map[sql.Type]toTypeFunc{
-		sql.Float64: toFloat64,
-		sql.Float32: toFloat32,
-		decimal1616: toDecimal1616,
-	}
-	expectedConv := map[sql.Type]toTypeFunc{
-		sql.Int64: toInt64,
-		sql.Int32: toInt64,
-		sql.Int24: toInt64,
-		sql.Int16: toInt64,
-		sql.Int8: toInt64,
-		sql.Uint64: toUint64,
-		sql.Uint32: toUint64,
-		sql.Uint24: toUint64,
-		sql.Uint16: toUint64,
-		sql.Uint8: toUint64,
-		sql.Float64: toFloat64,
-		sql.Float32: toFloat64,
-		decimal1616: toDecimal1616,
-	}
-
-	testCases := []struct {
-		name     string
-		typeToConv    map[sql.Type]toTypeFunc
-		val      float64
-		expected float64
-		err      error
-	}{
-		{
-			"signed types positive int",
-			signedTypes,
-			5.0,
-			5.0,
-			nil,
-		},{
-			"signed types negative int",
-			signedTypes,
-			-5.0,
-			5.0,
-			nil,
-		},
-		{
-			"unsigned types positive int",
-			unsignedTypes,
-			5.0,
-			5.0,
-			nil,
-		},
-		{
-			"float positive int",
-			floatTypes,
-			5.0,
-			5.0,
-			nil,
-		},{
-			"float negative int",
-			floatTypes,
-			-5.0,
-			5.0,
-			nil,
-		},
-	}
-
-	newAbsVal := NewUnaryMathFunc("abs", AbsFuncLogic{})
-	for _, test := range testCases {
-		t.Run(test.name, func(t *testing.T) {
-			for sqlType, conv := range test.typeToConv {
-				f := newAbsVal.Fn(expression.NewGetField(0, sqlType, "blob", true))
-
-				row := sql.NewRow(conv(test.val))
-				res, err := f.Eval(sql.NewEmptyContext(), row)
-
-				if test.err == nil {
-					require.NoError(t, err)
-					require.Equal(t, expectedConv[sqlType](test.expected), res)
-				} else {
-					require.Error(t, err)
-				}
-			}
-		})
-	}
-}
-
 func TestRadians(t *testing.T) {
 	tests := []struct{
 		name string
@@ -209,8 +95,7 @@ func TestRadians(t *testing.T) {
 		{"float value of 360", 360.0, 2*math.Pi},
 	}
 
-	logic := WrapUnaryMathFloatFuncLogic(RadiansFuncLogic{})
-	f := NewUnaryMathFunc("radians", logic)
+	f := NewUnaryFunc("radians", sql.Float64, RadiansFunc)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -234,26 +119,124 @@ func TestDegrees(t *testing.T) {
 		{"float32 3*pi/2",  float32(3.0*math.Pi/2.0), 270.0},
 	}
 
-	logic := WrapUnaryMathFloatFuncLogic(DegreesFuncLogic{})
-	f := NewUnaryMathFunc("degrees", logic)
+	f := NewUnaryFunc("degrees", sql.Float64, DegreesFunc)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			degrees := f.Fn(expression.NewLiteral(test.input, nil))
 			res, err := degrees.Eval(nil, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.True(t, withinRoundingErr(test.expected, res.(float64)))
 		})
 	}
 }
 
+func TestCRC32(t *testing.T) {
+	tests := []struct{
+		name string
+		input interface{}
+		expected uint32
+	}{
+		{"CRC32('MySQL)", "MySQL", 3259397556},
+		{"CRC32('mysql')", "mysql",  2501908538},
+
+		{ "CRC32('6')", "6",		498629140},
+		{ "CRC32(int 6)", 6,		498629140},
+		{ "CRC32(int8 6)", int8(6),		498629140},
+		{ "CRC32(int16 6)", int16(6),		498629140},
+		{ "CRC32(int32 6)", int32(6),		498629140},
+		{ "CRC32(int64 6)", int64(6),		498629140},
+		{ "CRC32(uint 6)", uint(6),		498629140},
+		{ "CRC32(uint8 6)", uint8(6),		498629140},
+		{ "CRC32(uint16 6)", uint16(6),		498629140},
+		{ "CRC32(uint32 6)", uint32(6),		498629140},
+		{ "CRC32(uint64 6)", uint64(6),		498629140},
+
+		{ "CRC32('6.0')", "6.0",		4068047280},
+		{ "CRC32(float32 6.0)", float32(6.0),		4068047280},
+		{ "CRC32(float64 6.0)", float64(6.0),		4068047280},
+	}
+
+	f := NewUnaryFunc("crc32", sql.Uint32, Crc32Func)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			crc32 := f.Fn(expression.NewLiteral(test.input, nil))
+			res, err := crc32.Eval(nil, nil)
+			assert.NoError(t, err)
+			assert.Equal(t, test.expected, res)
+		})
+	}
+
+	crc32 := f.Fn(nil)
+	res, err := crc32.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, res)
+
+	nullLiteral := expression.NewLiteral(nil, sql.Null)
+	crc32 = f.Fn(nullLiteral)
+	res, err = crc32.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, res)
+}
+
+func TestHexFunc(t *testing.T) {
+	tests := []struct{
+		name string
+		input interface{}
+		expected string
+	}{
+		{"HEX('test')", "test", "74657374"},
+		{"HEX(uint64 MAX_VALUE)", uint64(math.MaxUint64), "FFFFFFFFFFFFFFFF"},
+		{"HEX(uint8 5)", uint8(0x5), "5"},
+		{"HEX(uint16 5)", uint16(0x5), "5"},
+		{"HEX(uint32 5)", uint32(0x5), "5"},
+		{"HEX(uint64 5)", uint64(0x5), "5"},
+		{"HEX(uint 5)", uint(5), "5"},
+		{"HEX(float32 4.5)", float32(4.5), "5"},
+		{"HEX(float64 5.4)", float64(5.4), "5"},
+		{"HEX(-1)",-1, "FFFFFFFFFFFFFFFF"},
+		{"HEX(-16)", -16, "FFFFFFFFFFFFFFF0"},
+		{"HEX(-256)", -256, "FFFFFFFFFFFFFF00"},
+		{"HEX(-512)", -512, "FFFFFFFFFFFFFE00"},
+		{"HEX(int8 -1)", int8(-1), "FFFFFFFFFFFFFFFF"},
+		{"HEX(int16 -1)", int16(-1), "FFFFFFFFFFFFFFFF"},
+		{"HEX(int32 -1)", int32(-1), "FFFFFFFFFFFFFFFF"},
+		{"HEX(int64 -1)", int64(-1), "FFFFFFFFFFFFFFFF"},
+		{"HEX(float32 -0.5)", float32(-0.5), "FFFFFFFFFFFFFFFF"},
+		{"HEX(float64 -1.4)", float64(-1.4), "FFFFFFFFFFFFFFFF"},
+	}
+
+	f := NewUnaryFunc("hex", sql.Uint32, HexFunc)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			hex := f.Fn(expression.NewLiteral(test.input, nil))
+			res, err := hex.Eval(nil, nil)
+			assert.NoError(t, err)
+			assert.Equal(t, test.expected, res)
+		})
+	}
+
+	hex := f.Fn(nil)
+	res, err := hex.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, res)
+
+	nullLiteral := expression.NewLiteral(nil, sql.Null)
+	hex = f.Fn(nullLiteral)
+	res, err = hex.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, res)
+}
+
 func TestTrigFunctions(t *testing.T) {
-	sin := NewUnaryMathFunc("sin", WrapUnaryMathFloatFuncLogic(SinFuncLogic{}))
-	cos := NewUnaryMathFunc("cos", WrapUnaryMathFloatFuncLogic(CosFuncLogic{}))
-	tan := NewUnaryMathFunc("tan", WrapUnaryMathFloatFuncLogic(TanFuncLogic{}))
-	asin := NewUnaryMathFunc("asin", WrapUnaryMathFloatFuncLogic(ASinFuncLogic{}))
-	acos := NewUnaryMathFunc("acos", WrapUnaryMathFloatFuncLogic(ACosFuncLogic{}))
-	atan := NewUnaryMathFunc("atan", WrapUnaryMathFloatFuncLogic(ATanFuncLogic{}))
+	asin := NewUnaryFunc("asin", sql.Float64, ASinFunc)
+	acos := NewUnaryFunc("acos", sql.Float64, ACosFunc)
+	atan := NewUnaryFunc("tan", sql.Float64, ATanFunc)
+	sin := NewUnaryFunc("sin", sql.Float64, SinFunc)
+	cos := NewUnaryFunc("cos", sql.Float64, CosFunc)
+	tan := NewUnaryFunc("atan", sql.Float64, TanFunc)
 
 	const numChecks = 24
 	delta := (2*math.Pi) / float64(numChecks)
