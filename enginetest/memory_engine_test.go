@@ -33,6 +33,7 @@ var indexBehaviors = []*indexBehaviorTestParams{
 	{"none", nil, false},
 	{"unmergableIndexes", unmergableIndexDriver, false},
 	{"mergableIndexes", mergableIndexDriver, false},
+	// TODO: why isn't this test failing on native (primary key) indexes?
 	{"nativeIndexes", nil, true},
 	{"nativeAndMergable", mergableIndexDriver, true},
 }
