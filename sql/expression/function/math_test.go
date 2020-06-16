@@ -167,6 +167,17 @@ func TestCRC32(t *testing.T) {
 			assert.Equal(t, test.expected, res)
 		})
 	}
+
+	crc32 := f.Fn(nil)
+	res, err := crc32.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, res)
+
+	nullLiteral := expression.NewLiteral(nil, sql.Null)
+	crc32 = f.Fn(nullLiteral)
+	res, err = crc32.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, res)
 }
 
 func TestHexFunc(t *testing.T) {
@@ -206,6 +217,17 @@ func TestHexFunc(t *testing.T) {
 			assert.Equal(t, test.expected, res)
 		})
 	}
+
+	hex := f.Fn(nil)
+	res, err := hex.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, res)
+
+	nullLiteral := expression.NewLiteral(nil, sql.Null)
+	hex = f.Fn(nullLiteral)
+	res, err = hex.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, res)
 }
 
 func TestTrigFunctions(t *testing.T) {

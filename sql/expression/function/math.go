@@ -285,16 +285,26 @@ func hexChar(b byte) byte {
 	 return b + byte('0')
 }
 
+// MySQL expects the 64 bit 2s compliment representation for negative integer values. Typical methods for converting a
+// number to a string don't handle negative integer values in this way (strconv.FormatInt and fmt.Sprintf for example).
+func hexForNegativeInt64(n int64) string {
+	// get a pointer to the int64s memory
+	mem := (*[8]byte)(unsafe.Pointer(&n))
+	// make a copy of the data that I can manipulate
+	bytes := *mem
+	// reverse the order for printing
+	for i := 0; i < 4; i++ {
+		bytes[i], bytes[7-i] = bytes[7-i], bytes[i]
+	}
+	// print the hex encoded bytes
+	return fmt.Sprintf("%X", bytes)
+}
+
 func hexForFloat(f float64) (string, error) {
 	if f < 0 {
 		f -= 0.5
 		n := int64(f)
-		bytes := *(*[8]byte)(unsafe.Pointer(&n))
-		for i := 0; i < 4; i++ {
-			bytes[i], bytes[7-i] = bytes[7-i], bytes[i]
-		}
-
-		return fmt.Sprintf("%X", bytes), nil
+		return hexForNegativeInt64(n), nil
 	}
 
 	f += 0.5
@@ -325,12 +335,7 @@ func HexFunc(ctx *sql.Context, arg interface{}) (interface{}, error) {
 
 		a := n.(int64)
 		if a < 0 {
-			bytes := *(*[8]byte)(unsafe.Pointer(&a))
-			for i := 0; i < 4; i++ {
-				bytes[i], bytes[7-i] = bytes[7-i], bytes[i]
-			}
-
-			return fmt.Sprintf("%X", bytes), nil
+			return hexForNegativeInt64(a), nil
 		} else {
 			return fmt.Sprintf("%X", a), nil
 		}

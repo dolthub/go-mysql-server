@@ -31,6 +31,10 @@ func NewUnaryFunc(name string, retType sql.Type, logic UnaryFuncLogic) sql.Funct
 
 // Eval implements the Expression interface.
 func (uf *UnaryFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if uf.Child == nil {
+		return nil, nil
+	}
+
 	val, err := uf.Child.Eval(ctx, row)
 
 	if err != nil {
