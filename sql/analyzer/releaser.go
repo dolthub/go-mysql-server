@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"reflect"
 	"sync"
 )
@@ -23,6 +24,20 @@ func (r *Releaser) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	iter, err := r.Child.RowIter(ctx)
 	if err != nil {
 		r.Release()
+		return nil, err
+	}
+
+	return &releaseIter{child: iter, release: r.Release}, nil
+}
+
+func (r *Releaser) OrderableIter(ctx *sql.Context) (plan.OrderableIter, error) {
+	child, ok := r.Child.(plan.OrderableNode)
+	if !ok {
+		return nil, plan.ErrIterUnorderable
+	}
+
+	iter, err := child.OrderableIter(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -57,6 +72,9 @@ type releaseIter struct {
 	once    sync.Once
 }
 
+var _ plan.OrderableNode = &Releaser{}
+var _ plan.OrderableIter = &releaseIter{}
+
 func (i *releaseIter) Next() (sql.Row, error) {
 	row, err := i.child.Next()
 	if err != nil {
@@ -66,6 +84,16 @@ func (i *releaseIter) Next() (sql.Row, error) {
 	return row, nil
 }
 
+
+func (i *releaseIter) RowOrder() []plan.SortField {
+	return i.child.(plan.OrderableIter).RowOrder()
+}
+
+func (i *releaseIter) LazyProjections() []sql.Expression {
+	return i.child.(plan.OrderableIter).LazyProjections()
+}
+
+
 func (i *releaseIter) Close() (err error) {
 	i.once.Do(i.release)
 	if i.child != nil {
@@ -73,3 +101,5 @@ func (i *releaseIter) Close() (err error) {
 	}
 	return err
 }
+
+

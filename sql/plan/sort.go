@@ -88,7 +88,36 @@ func (s *Sort) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		span.Finish()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, newSortIter(ctx, s, i)), nil
+	return sql.NewSpanIter(span, newSortIter(ctx, s.SortFields, i)), nil
+}
+
+func (s *Sort) OrderableIter(ctx *sql.Context) (OrderableIter, error) {
+	child, ok := s.UnaryNode.Child.(OrderableNode)
+	if !ok {
+		return nil, ErrIterUnorderable
+	}
+
+	span, ctx := ctx.Span("plan.Sort")
+	iter, err := child.OrderableIter(ctx)
+	if err != nil {
+		span.Finish()
+		return nil, err
+	}
+
+	lazySortFields := make([]SortField, len(s.SortFields))
+	for i, f := range s.SortFields {
+		lazy, err := maybeSubLazyProjections(f.Column, iter)
+		if err != nil {
+			return nil, err
+		}
+		lazySortFields[i] = SortField{
+			Column: lazy,
+			Order: f.Order,
+			NullOrdering: f.NullOrdering,
+		}
+	}
+
+	return newSortIter(ctx, lazySortFields, iter), nil
 }
 
 func (s *Sort) String() string {
@@ -140,16 +169,19 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 
 type sortIter struct {
 	ctx        *sql.Context
-	s          *Sort
+	fields     []SortField
 	childIter  sql.RowIter
 	sortedRows []sql.Row
 	idx        int
 }
 
-func newSortIter(ctx *sql.Context, s *Sort, child sql.RowIter) *sortIter {
+var _ OrderableNode = &Sort{}
+var _ OrderableIter = &sortIter{}
+
+func newSortIter(ctx *sql.Context, fields []SortField, child sql.RowIter) *sortIter {
 	return &sortIter{
 		ctx:       ctx,
-		s:         s,
+		fields:    fields,
 		childIter: child,
 		idx:       -1,
 	}
@@ -170,6 +202,16 @@ func (i *sortIter) Next() (sql.Row, error) {
 	row := i.sortedRows[i.idx]
 	i.idx++
 	return row, nil
+}
+
+func (i *sortIter) RowOrder() []SortField {
+	// todo: prune SortFields
+	// this won't lead to incorrect results, but could lead to extra work
+	return append(i.fields, i.childIter.(OrderableIter).RowOrder()...)
+}
+
+func (i *sortIter) LazyProjections() []sql.Expression {
+	return i.childIter.(OrderableIter).LazyProjections()
 }
 
 func (i *sortIter) Close() error {
@@ -197,7 +239,7 @@ func (i *sortIter) computeSortedRows() error {
 
 	rows := cache.Get()
 	sorter := &sorter{
-		sortFields: i.s.SortFields,
+		sortFields: i.fields,
 		rows:       rows,
 		lastError:  nil,
 		ctx: i.ctx,

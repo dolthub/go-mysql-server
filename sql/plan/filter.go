@@ -36,6 +36,25 @@ func (p *Filter) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.NewSpanIter(span, NewFilterIter(ctx, p.Expression, i)), nil
 }
 
+func (p *Filter) OrderableIter(ctx *sql.Context) (OrderableIter, error) {
+	ordChild, ok := p.Child.(OrderableNode)
+	if !ok {
+		return nil, ErrIterUnorderable
+	}
+
+	iter, err := ordChild.OrderableIter(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	lazy, err := maybeSubLazyProjections(p.Expression, iter)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewFilterIter(ctx, lazy, iter), nil
+}
+
 // WithChildren implements the Node interface.
 func (p *Filter) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -83,6 +102,9 @@ func NewFilterIter(
 	return &FilterIter{cond, child, ctx}
 }
 
+var _ OrderableNode = &Filter{}
+var _ OrderableIter = &FilterIter{}
+
 // Next implements the RowIter interface.
 func (i *FilterIter) Next() (sql.Row, error) {
 	for {
@@ -100,6 +122,14 @@ func (i *FilterIter) Next() (sql.Row, error) {
 			return row, nil
 		}
 	}
+}
+
+func (i *FilterIter) RowOrder() []SortField {
+	return i.childIter.(OrderableIter).RowOrder()
+}
+
+func (i *FilterIter) LazyProjections() []sql.Expression {
+	return i.childIter.(OrderableIter).LazyProjections()
 }
 
 // Close implements the RowIter interface.

@@ -19,6 +19,10 @@ func NewTableRowIter(ctx *Context, table Table, partitions PartitionIter) *Table
 	return &TableRowIter{ctx: ctx, table: table, partitions: partitions}
 }
 
+func (i *TableRowIter) Schema() Schema {
+	return i.table.Schema()
+}
+
 func (i *TableRowIter) Next() (Row, error) {
 	select {
 	case <-i.ctx.Done():

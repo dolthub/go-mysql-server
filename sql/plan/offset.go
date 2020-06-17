@@ -1,8 +1,8 @@
 package plan
 
 import (
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // Offset is a node that skips the first N rows.
@@ -36,6 +36,20 @@ func (o *Offset) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.NewSpanIter(span, &offsetIter{o.Offset, it}), nil
 }
 
+func (o *Offset) OrderableIter(ctx *sql.Context) (OrderableIter, error) {
+	child, ok := o.UnaryNode.Child.(OrderableNode)
+	if !ok {
+		return nil, ErrIterUnorderable
+	}
+
+	iter, err := child.OrderableIter(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &offsetIter{o.Offset, iter}, nil
+}
+
 // WithChildren implements the Node interface.
 func (o *Offset) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -56,6 +70,9 @@ type offsetIter struct {
 	childIter sql.RowIter
 }
 
+var _ OrderableNode = &Offset{}
+var _ OrderableIter = &offsetIter{}
+
 func (i *offsetIter) Next() (sql.Row, error) {
 	if i.skip > 0 {
 		for i.skip > 0 {
@@ -73,6 +90,13 @@ func (i *offsetIter) Next() (sql.Row, error) {
 	}
 
 	return row, nil
+}
+
+func (i *offsetIter) RowOrder() []SortField {
+	return i.childIter.(OrderableIter).RowOrder()
+}
+func (i *offsetIter) LazyProjections() []sql.Expression {
+	return i.childIter.(OrderableIter).LazyProjections()
 }
 
 func (i *offsetIter) Close() error {

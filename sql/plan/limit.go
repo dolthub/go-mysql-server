@@ -3,8 +3,8 @@ package plan
 import (
 	"io"
 
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // Limit is a node that only allows up to N rows to be retrieved.
@@ -38,6 +38,20 @@ func (l *Limit) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.NewSpanIter(span, &limitIter{l, 0, li}), nil
 }
 
+func (l *Limit) OrderableIter(ctx *sql.Context) (OrderableIter, error) {
+	child, ok := l.UnaryNode.Child.(OrderableNode)
+	if !ok {
+		return nil, ErrIterUnorderable
+	}
+
+	iter, err := child.OrderableIter(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &limitIter{l, 0, iter}, nil
+}
+
 // WithChildren implements the Node interface.
 func (l *Limit) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -59,6 +73,9 @@ type limitIter struct {
 	childIter  sql.RowIter
 }
 
+var _ OrderableNode = &Limit{}
+var _ OrderableIter = &limitIter{}
+
 func (li *limitIter) Next() (sql.Row, error) {
 	if li.currentPos >= li.l.Limit {
 		return nil, io.EOF
@@ -71,6 +88,14 @@ func (li *limitIter) Next() (sql.Row, error) {
 	}
 
 	return childRow, nil
+}
+
+func (li *limitIter) RowOrder() []SortField {
+	return li.childIter.(OrderableIter).RowOrder()
+}
+
+func (li *limitIter) LazyProjections() []sql.Expression {
+	return li.childIter.(OrderableIter).LazyProjections()
 }
 
 func (li *limitIter) Close() error {

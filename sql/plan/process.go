@@ -40,6 +40,20 @@ func (p *QueryProcess) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return &trackedRowIter{iter: iter, onDone: p.Notify}, nil
 }
 
+func (p *QueryProcess) OrderableIter(ctx *sql.Context) (OrderableIter, error) {
+	ordChild, ok := p.Child.(OrderableNode)
+	if !ok {
+		return nil, ErrIterUnorderable
+	}
+
+	iter, err := ordChild.OrderableIter(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return iter, nil
+}
+
 func (p *QueryProcess) String() string { return p.Child.String() }
 
 // ProcessIndexableTable is a wrapper for sql.Tables inside a query process
@@ -165,6 +179,9 @@ type trackedRowIter struct {
 	onNext NotifyFunc
 }
 
+var _ OrderableNode = &QueryProcess{}
+var _ OrderableIter = &trackedRowIter{}
+
 func (i *trackedRowIter) done() {
 	if i.onDone != nil {
 		i.onDone()
@@ -186,6 +203,14 @@ func (i *trackedRowIter) Next() (sql.Row, error) {
 	}
 
 	return row, nil
+}
+
+func (i *trackedRowIter) RowOrder() []SortField {
+	return i.iter.(OrderableIter).RowOrder()
+}
+
+func (i *trackedRowIter) LazyProjections() []sql.Expression {
+	return i.iter.(OrderableIter).LazyProjections()
 }
 
 func (i *trackedRowIter) Close() error {

@@ -10,6 +10,7 @@ type ResolvedTable struct {
 }
 
 var _ sql.Node = (*ResolvedTable)(nil)
+var _ OrderableNode = (*ResolvedTable)(nil)
 
 // NewResolvedTable creates a new instance of ResolvedTable.
 func NewResolvedTable(table sql.Table) *ResolvedTable {
@@ -35,6 +36,15 @@ func (t *ResolvedTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}
 
 	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, t.Table, partitions)), nil
+}
+
+func (t *ResolvedTable) OrderableIter(ctx *sql.Context) (OrderableIter, error) {
+	partitions, err := t.Table.Partitions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &orderableTableIter{sql.NewTableRowIter(ctx, t.Table, partitions)}, nil
 }
 
 // WithChildren implements the Node interface.

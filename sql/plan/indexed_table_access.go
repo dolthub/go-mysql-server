@@ -41,6 +41,14 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return sql.NewTableRowIter(ctx, i.indexedTable, partIter), nil
 }
 
+func (i *IndexedTableAccess) OrderableIter(ctx *sql.Context) (OrderableIter, error) {
+	iter, err := i.RowIter(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &orderableTableIter{iter.(*sql.TableRowIter)}, nil
+}
+
 func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
@@ -61,3 +69,4 @@ func NewIndexedTable(resolvedTable *ResolvedTable) *IndexedTableAccess {
 }
 
 var _ sql.Node = (*IndexedTableAccess)(nil)
+var _ OrderableNode = (*IndexedTableAccess)(nil)

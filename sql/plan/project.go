@@ -1,10 +1,12 @@
 package plan
 
 import (
+	"fmt"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // Project is a projection of certain expression from the children node.
@@ -66,7 +68,30 @@ func (p *Project) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		span.Finish()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, &iter{p, i, ctx}), nil
+	return sql.NewSpanIter(span, &projectIter{p.Projections, i, ctx}), nil
+}
+
+func (p *Project) OrderableIter(ctx *sql.Context) (OrderableIter, error) {
+	child, ok := p.UnaryNode.Child.(OrderableNode)
+	if !ok {
+		return nil, ErrIterUnorderable
+	}
+
+	iter, err := child.OrderableIter(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	lazyProjections := make([]sql.Expression, 0, len(p.Projections))
+	for _, e := range p.Projections {
+		lp, err := maybeSubLazyProjections(e, iter)
+		if err != nil {
+			return nil, err
+		}
+		lazyProjections = append(lazyProjections, lp)
+	}
+
+	return &orderableProjectIter{projectIter{lazyProjections, iter, ctx}}, nil
 }
 
 func (p *Project) String() string {
@@ -103,25 +128,25 @@ func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return NewProject(exprs, p.Child), nil
 }
 
-type iter struct {
-	p         *Project
-	childIter sql.RowIter
-	ctx       *sql.Context
+type projectIter struct {
+	projections []sql.Expression
+	childIter 	sql.RowIter
+	ctx       	*sql.Context
 }
 
-func (i *iter) Next() (sql.Row, error) {
+func (i *projectIter) Next() (sql.Row, error) {
 	childRow, err := i.childIter.Next()
 	if err != nil {
 		return nil, err
 	}
-	return projectRow(i.ctx, i.p.Projections, childRow)
+	return ProjectRow(i.ctx, i.projections, childRow)
 }
 
-func (i *iter) Close() error {
+func (i *projectIter) Close() error {
 	return i.childIter.Close()
 }
 
-func projectRow(
+func ProjectRow(
 	s *sql.Context,
 	expressions []sql.Expression,
 	row sql.Row,
@@ -135,4 +160,39 @@ func projectRow(
 		fields = append(fields, f)
 	}
 	return sql.NewRow(fields...), nil
+}
+
+type orderableProjectIter struct {
+	projectIter
+}
+
+var _ OrderableNode = &Project{}
+var _ OrderableIter = &orderableProjectIter{}
+
+func (i *orderableProjectIter) Next() (sql.Row, error) {
+	return i.childIter.Next()
+}
+
+func (i *orderableProjectIter) RowOrder() []SortField {
+	return i.childIter.(OrderableIter).RowOrder()
+}
+
+func (i *orderableProjectIter) LazyProjections() []sql.Expression {
+	return i.projectIter.projections
+}
+
+// todo: handling table names
+func maybeSubLazyProjections(e sql.Expression, child OrderableIter) (sql.Expression, error) {
+	lp := child.LazyProjections()
+
+	return expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
+		gf, ok := e.(*expression.GetField)
+		if !ok {
+			return e, nil
+		}
+		if gf.Index() > len(lp) {
+			return nil, fmt.Errorf("GetField expression index out of bounds: %s", gf.String())
+		}
+		return lp[gf.Index()], nil
+	})
 }
