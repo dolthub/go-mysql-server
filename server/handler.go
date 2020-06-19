@@ -129,9 +129,9 @@ func (h *Handler) ComQuery(
 	query string,
 	callback func(*sqltypes.Result) error,
 ) (err error) {
-	ctx, err := h.sm.NewContextWithQuery(c, query)
-
 	logrus.Tracef("received query %s", query)
+
+	ctx, err := h.sm.NewContextWithQuery(c, query)
 
 	if err != nil {
 		return err
@@ -199,8 +199,7 @@ func (h *Handler) ComQuery(
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
-	// This goroutine will be select{}ed giving a chance to Vitess to call the
-	// handler.CloseConnection callback and enforcing the timeout if configured
+	// Read rows off the row iterator and send them to the row channel.
 	go func() {
 		for {
 			select {
@@ -217,52 +216,7 @@ func (h *Handler) ComQuery(
 		}
 	}()
 
-	// This second goroutine will check the socket
-	// and try to determine if the socket is in CLOSE_WAIT state
-	// (because the remote client closed the connection).
-	go func() {
-		tcpConn, ok := nc.NetConn.(*net.TCPConn)
-		if !ok {
-			logrus.Debug("Connection checker exiting, connection isn't TCP")
-			return
-		}
-
-		inode, err := sockstate.GetConnInode(tcpConn)
-		if err != nil || inode == 0 {
-			if !sockstate.ErrSocketCheckNotImplemented.Is(err) {
-				errChan <- err
-			}
-			return
-		}
-
-		t, ok := nc.NetConn.LocalAddr().(*net.TCPAddr)
-		if !ok {
-			logrus.Warn("Connection checker exiting, could not get local port")
-			return
-		}
-
-		for {
-			select {
-			case <-quit:
-				return
-			default:
-			}
-
-			st, err := sockstate.GetInodeSockState(t.Port, inode)
-			switch st {
-			case sockstate.Broken:
-				errChan <- ErrConnectionWasClosed.New()
-				return
-			case sockstate.Error:
-				errChan <- err
-				return
-			default: // Established
-				// (juanjux) this check is not free, each iteration takes about 9 milliseconds to run on my machine
-				// thus the small wait between checks
-				time.Sleep(tcpCheckerSleepTime * time.Second)
-			}
-		}
-	}()
+	go h.pollForClosedConnection(nc, errChan, quit, query)
 
 rowLoop:
 	for {
@@ -286,6 +240,8 @@ rowLoop:
 			if err == io.EOF {
 				break rowLoop
 			}
+
+			logrus.Tracef("got error %s", err.Error())
 			close(quit)
 			return err
 		case row := <-rowChan:
@@ -311,6 +267,7 @@ rowLoop:
 		case <-timer.C:
 			if h.readTimeout != 0 {
 				// Cancel and return so Vitess can call the CloseConnection callback
+				logrus.Tracef("got timeout")
 				close(quit)
 				return ErrRowTimeout.New()
 			}
@@ -341,6 +298,54 @@ rowLoop:
 	}
 
 	return callback(r)
+}
+
+// Periodically polls the connection socket to determine if it is has been closed by the client, sending an error on
+// the supplied error channel if it has. Meant to be run in a separate goroutine from the query handler routine.
+// Returns immediately on platforms that can't support TCP socket checks.
+func (h *Handler) pollForClosedConnection(nc conntainer, errChan chan error, quit chan struct{}, query string) {
+	tcpConn, ok := nc.NetConn.(*net.TCPConn)
+	if !ok {
+		logrus.Debug("Connection checker exiting, connection isn't TCP")
+		return
+	}
+
+	inode, err := sockstate.GetConnInode(tcpConn)
+	if err != nil || inode == 0 {
+		if !sockstate.ErrSocketCheckNotImplemented.Is(err) {
+			errChan <- err
+		}
+		return
+	}
+
+	t, ok := nc.NetConn.LocalAddr().(*net.TCPAddr)
+	if !ok {
+		logrus.Warn("Connection checker exiting, could not get local port")
+		return
+	}
+
+	for {
+		select {
+		case <-quit:
+			return
+		default:
+		}
+
+		st, err := sockstate.GetInodeSockState(t.Port, inode)
+		switch st {
+		case sockstate.Broken:
+			logrus.Tracef("socket state is broken, returning error")
+			errChan <- ErrConnectionWasClosed.New()
+			return
+		case sockstate.Error:
+			errChan <- err
+			return
+		default: // Established
+			// (juanjux) this check is not free, each iteration takes about 9 milliseconds to run on my machine
+			// thus the small wait between checks
+			time.Sleep(tcpCheckerSleepTime * time.Second)
+		}
+	}
 }
 
 func isSessionAutocommit(ctx *sql.Context) bool {
@@ -408,6 +413,8 @@ func (h *Handler) handleKill(conn *mysql.Conn, query string) (bool, error) {
 	if s == nil {
 		return false, nil
 	}
+
+	logrus.Tracef("killing query %s", query)
 
 	id, err := strconv.ParseUint(s[2], 10, 32)
 	if err != nil {

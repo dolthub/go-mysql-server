@@ -17,6 +17,8 @@ import (
 	"path"
 	"strconv"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -210,9 +212,29 @@ func parseSocktab(r io.Reader, accept AcceptFn) ([]sockTabEntry, error) {
 	return tab, br.Err()
 }
 
+// This net stat code appears to be broken when running a linux binary under the Windows Subsystem for Linux (WSL). If
+// we detect we are running on WSL, disable the TCP socket check, as we do on Windows and Darwin.
+var isWSL = false
+func init() {
+	osRelease, err := ioutil.ReadFile("/proc/sys/kernel/osrelease")
+	if err == nil {
+		osReleaseString := strings.ToLower(string(osRelease))
+		if strings.Contains(osReleaseString, "microsoft") {
+			isWSL = true
+		}
+	} else {
+		logrus.Warnf("Could not read /proc/sys/kernel/osrelease: %s", err.Error())
+	}
+}
+
 // tcpSocks returns a slice of active TCP sockets containing only those
 // elements that satisfy the accept function
 func tcpSocks(accept AcceptFn) ([]sockTabEntry, error) {
+	if isWSL {
+		logrus.Warn("Connection checking not implemented for WSL")
+		return nil, ErrSocketCheckNotImplemented.New()
+	}
+
 	paths := [2]string{pathTCP4Tab, pathTCP6Tab}
 	var allTabs []sockTabEntry
 	for _, p := range paths {
@@ -237,6 +259,10 @@ func tcpSocks(accept AcceptFn) ([]sockTabEntry, error) {
 
 // GetConnInode returns the Linux inode number of a TCP connection
 func GetConnInode(c *net.TCPConn) (n uint64, err error) {
+	if isWSL {
+		return 0, ErrSocketCheckNotImplemented.New()
+	}
+
 	f, err := c.File()
 	if err != nil {
 		return
