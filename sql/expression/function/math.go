@@ -19,12 +19,13 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/shopspring/decimal"
 	"hash/crc32"
 	"math"
 	"math/rand"
 	"strconv"
 	"strings"
-	"unsafe"
+	"time"
 )
 
 // Rand returns a random float 0 <= x < 1. If it has an argument, that argument will be used to seed the random number
@@ -115,7 +116,7 @@ func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // SinFunc implements the sin function logic
-func SinFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+func SinFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	n, err := sql.Float64.Convert(val)
 
 	if err != nil {
@@ -126,7 +127,7 @@ func SinFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
 }
 
 // CosFunc implements the cos function logic
-func CosFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+func CosFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	n, err := sql.Float64.Convert(val)
 
 	if err != nil {
@@ -137,7 +138,7 @@ func CosFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
 }
 
 // TanFunc implements the tan function logic
-func TanFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+func TanFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	n, err := sql.Float64.Convert(val)
 
 	if err != nil {
@@ -148,7 +149,7 @@ func TanFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
 }
 
 // ASinFunc implements the asin function logic
-func ASinFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+func ASinFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	n, err := sql.Float64.Convert(val)
 
 	if err != nil {
@@ -159,7 +160,7 @@ func ASinFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
 }
 
 // ACosFunc implements the acos function logic
-func ACosFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+func ACosFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	n, err := sql.Float64.Convert(val)
 
 	if err != nil {
@@ -170,7 +171,7 @@ func ACosFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
 }
 
 // ATanFunc implements the atan function logic
-func ATanFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+func ATanFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	n, err := sql.Float64.Convert(val)
 
 	if err != nil {
@@ -181,7 +182,7 @@ func ATanFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
 }
 
 // CotFunc implements the cot function logic
-func CotFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+func CotFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	n, err := sql.Float64.Convert(val)
 
 	if err != nil {
@@ -192,7 +193,7 @@ func CotFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
 }
 
 // DegreesFunc implements the degrees function logic
-func DegreesFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+func DegreesFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	n, err := sql.Float64.Convert(val)
 
 	if err != nil {
@@ -203,7 +204,7 @@ func DegreesFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
 }
 
 // RadiansFunc implements the radians function logic
-func RadiansFunc(ctx *sql.Context, val interface{}) (interface{}, error) {
+func RadiansFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	n, err := sql.Float64.Convert(val)
 
 	if err != nil {
@@ -237,7 +238,7 @@ func floatToString(f float64) string {
 }
 
 // Crc32Func implement the sql crc32 function logic
-func Crc32Func(ctx *sql.Context, arg interface{}) (interface{}, error) {
+func Crc32Func(_ *sql.Context, arg interface{}) (interface{}, error) {
 	var bytes []byte
 	switch val := arg.(type) {
 	case string:
@@ -277,86 +278,67 @@ func Crc32Func(ctx *sql.Context, arg interface{}) (interface{}, error) {
 	return crc32.ChecksumIEEE(bytes), nil
 }
 
-func hexChar(b byte) byte {
-	 if b > 9 {
-		return b - 10 + byte('A')
-	 }
-
-	 return b + byte('0')
-}
-
-// MySQL expects the 64 bit 2s compliment representation for negative integer values. Typical methods for converting a
-// number to a string don't handle negative integer values in this way (strconv.FormatInt and fmt.Sprintf for example).
-func hexForNegativeInt64(n int64) string {
-	// get a pointer to the int64s memory
-	mem := (*[8]byte)(unsafe.Pointer(&n))
-	// make a copy of the data that I can manipulate
-	bytes := *mem
-	// reverse the order for printing
-	for i := 0; i < 4; i++ {
-		bytes[i], bytes[7-i] = bytes[7-i], bytes[i]
-	}
-	// print the hex encoded bytes
-	return fmt.Sprintf("%X", bytes)
-}
-
-func hexForFloat(f float64) (string, error) {
-	if f < 0 {
-		f -= 0.5
-		n := int64(f)
-		return hexForNegativeInt64(n), nil
-	}
-
-	f += 0.5
-	n := uint64(f)
-	return fmt.Sprintf("%X", n), nil
-}
-
-func HexFunc(ctx *sql.Context, arg interface{}) (interface{}, error) {
-	switch val := arg.(type) {
-	case string:
-		buf := make([]byte, 0, 2*len(val))
-		for _, c := range val {
-			high := byte(c / 16)
-			low := byte(c % 16)
-
-			buf = append(buf, hexChar(high))
-			buf = append(buf, hexChar(low))
-		}
-
-		return string(buf), nil
-
-	case uint8, uint16, uint32, uint, int, int8, int16, int32, int64:
-		n, err := sql.Int64.Convert(arg)
+func SignFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
+	switch typedVal := arg.(type) {
+	case int8, int16, int32, int64, float64, float32, int, decimal.Decimal:
+		val, err := sql.Int64.Convert(arg)
 
 		if err != nil {
 			return nil, err
 		}
 
-		a := n.(int64)
-		if a < 0 {
-			return hexForNegativeInt64(a), nil
-		} else {
-			return fmt.Sprintf("%X", a), nil
+		n := val.(int64)
+		if n == 0 {
+			return int8(0), nil
+		} else if n < 0 {
+			return int8(-1), nil
 		}
 
-	case uint64:
-		return fmt.Sprintf("%X", val), nil
+		return int8(1), nil
 
-	case float32:
-		return hexForFloat(float64(val))
+	case uint8, uint16, uint32, uint64, uint:
+		val, err := sql.Uint64.Convert(arg)
 
-	case float64:
-		return hexForFloat(val)
+		if err != nil {
+			return nil, err
+		}
+
+		n := val.(uint64)
+		if n == 0 {
+			return int8(0), nil
+		}
+
+		return int8(1), nil
 
 	case bool:
-		if val {
-			return "1", nil
+		if typedVal {
+			return int8(1), nil
 		}
 
-		return "0", nil
+		return int8(0), nil
 
-	default:
-		return nil, ErrInvalidArgument.New("crc32", fmt.Sprint(arg))
+	case time.Time:
+		return int8(1), nil
+
+	case string:
+		i := 0
+		sign := int8(1)
+		if typedVal[i] == '-' {
+			sign = -1
+			i++
+		}
+
+		if typedVal[i] == '.' {
+			i++
+		}
+
+		if typedVal[i] >= '1' && typedVal[i] <= '9' {
+			return sign, nil
+		}
+
+		return int8(0), nil
 	}
+
+	return int8(0), nil
 }
+

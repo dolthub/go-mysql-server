@@ -26,53 +26,63 @@ type Function interface {
 	isFunction()
 }
 
+type CreateFunc0Args func() Expression
+type CreateFunc1Args func(e1 Expression) Expression
+type CreateFunc2Args func(e1, e2 Expression) Expression
+type CreateFunc3Args func(e1, e2, e3 Expression) Expression
+type CreateFunc4Args func(e1, e2, e3, e4 Expression) Expression
+type CreateFunc5Args func(e1, e2, e3, e4, e5 Expression) Expression
+type CreateFunc6Args func(e1, e2, e3, e4, e5, e6 Expression) Expression
+type CreateFunc7Args func(e1, e2, e3, e4, e5, e6, e7 Expression) Expression
+type CreateFuncNArgs func(args ...Expression) (Expression, error)
+
 type (
 	// Function0 is a function with 0 arguments.
 	Function0 struct {
 		Name string
-		Fn   func() Expression
+		Fn   CreateFunc0Args
 	}
 	// Function1 is a function with 1 argument.
 	Function1 struct {
 		Name string
-		Fn   func(e Expression) Expression
+		Fn   CreateFunc1Args
 	}
 	// Function2 is a function with 2 arguments.
 	Function2 struct {
 		Name string
-		Fn   func(e1, e2 Expression) Expression
+		Fn   CreateFunc2Args
 	}
 	// Function3 is a function with 3 arguments.
 	Function3 struct {
 		Name string
-		Fn   func(e1, e2, e3 Expression) Expression
+		Fn   CreateFunc3Args
 	}
 	// Function4 is a function with 4 arguments.
 	Function4 struct {
 		Name string
-		Fn   func(e1, e2, e3, e4 Expression) Expression
+		Fn   CreateFunc4Args
 	}
 	// Function5 is a function with 5 arguments.
 	Function5 struct {
 		Name string
-		Fn   func(e1, e2, e3, e4, e5 Expression) Expression
+		Fn   CreateFunc5Args
 	}
 	// Function6 is a function with 6 arguments.
 	Function6 struct {
 		Name string
-		Fn   func(e1, e2, e3, e4, e5, e6 Expression) Expression
+		Fn   CreateFunc6Args
 	}
 	// Function7 is a function with 7 arguments.
 	Function7 struct {
 		Name string
-		Fn   func(e1, e2, e3, e4, e5, e6, e7 Expression) Expression
+		Fn   CreateFunc7Args
 	}
 	// FunctionN is a function with variable number of arguments. This function
 	// is expected to return ErrInvalidArgumentNumber if the arity does not
 	// match, since the check has to be done in the implementation.
 	FunctionN struct {
 		Name string
-		Fn   func(...Expression) (Expression, error)
+		Fn   CreateFuncNArgs
 	}
 )
 
