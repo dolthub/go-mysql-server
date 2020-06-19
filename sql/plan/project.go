@@ -114,20 +114,21 @@ func (i *iter) Next() (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
-	return projectRow(i.ctx, i.p.Projections, childRow)
+	return ProjectRow(i.ctx, i.p.Projections, childRow)
 }
 
 func (i *iter) Close() error {
 	return i.childIter.Close()
 }
 
-func projectRow(
+// ProjectRow evaluates a set of projections.
+func ProjectRow(
 	s *sql.Context,
-	expressions []sql.Expression,
+	projections []sql.Expression,
 	row sql.Row,
 ) (sql.Row, error) {
 	var fields []interface{}
-	for _, expr := range expressions {
+	for _, expr := range projections {
 		f, err := expr.Eval(s, row)
 		if err != nil {
 			return nil, err
