@@ -121,13 +121,14 @@ func (i *iter) Close() error {
 	return i.childIter.Close()
 }
 
+// ProjectRow evaluates a set of projections.
 func ProjectRow(
 	s *sql.Context,
-	expressions []sql.Expression,
+	projections []sql.Expression,
 	row sql.Row,
 ) (sql.Row, error) {
 	var fields []interface{}
-	for _, expr := range expressions {
+	for _, expr := range projections {
 		f, err := expr.Eval(s, row)
 		if err != nil {
 			return nil, err
