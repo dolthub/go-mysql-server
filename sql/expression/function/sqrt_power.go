@@ -90,7 +90,7 @@ func (p *Power) WithChildren(children ...sql.Expression) (sql.Expression, error)
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 2)
 	}
-	return NewPower(children[0], children[0]), nil
+	return NewPower(children[0], children[1]), nil
 }
 
 // Eval implements the Expression interface.

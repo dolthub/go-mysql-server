@@ -2337,6 +2337,9 @@ var QueryTests = []QueryTest{
 	{ "SELECT 0.0 div 0.0 FROM dual",
 		[]sql.Row{{sql.Null}},
 	},
+	{ "SELECT POW(2,3) FROM dual",
+		[]sql.Row{{float64(8)}},
+	},
 }
 
 var VersionedQueries = []QueryTest{
