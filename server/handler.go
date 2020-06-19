@@ -334,7 +334,7 @@ func (h *Handler) pollForClosedConnection(nc conntainer, errChan chan error, qui
 		st, err := sockstate.GetInodeSockState(t.Port, inode)
 		switch st {
 		case sockstate.Broken:
-			logrus.Tracef("socket state is broken, returning error", query)
+			logrus.Tracef("socket state is broken, returning error")
 			errChan <- ErrConnectionWasClosed.New()
 			return
 		case sockstate.Error:
