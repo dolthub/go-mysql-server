@@ -6,12 +6,12 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-// fixFieldIndexesOnExpressions executes fixFieldIndexes on a list of exprs.
-func fixFieldIndexesOnExpressions(schema sql.Schema, expressions ...sql.Expression) ([]sql.Expression, error) {
+// FixFieldIndexesOnExpressions executes FixFieldIndexes on a list of exprs.
+func FixFieldIndexesOnExpressions(schema sql.Schema, expressions ...sql.Expression) ([]sql.Expression, error) {
 	var result = make([]sql.Expression, len(expressions))
 	for i, e := range expressions {
 		var err error
-		result[i], err = fixFieldIndexes(schema, e)
+		result[i], err = FixFieldIndexes(schema, e)
 		if err != nil {
 			return nil, err
 		}
@@ -19,10 +19,10 @@ func fixFieldIndexesOnExpressions(schema sql.Schema, expressions ...sql.Expressi
 	return result, nil
 }
 
-// fixFieldIndexes transforms the given expression by correcting the indexes of columns in GetField expressions,
+// FixFieldIndexes transforms the given expression by correcting the indexes of columns in GetField expressions,
 // according to the schema given. Used when combining multiple tables together into a single join result, or when
 // otherwise changing / combining schemas in the node tree.
-func fixFieldIndexes(schema sql.Schema, exp sql.Expression) (sql.Expression, error) {
+func FixFieldIndexes(schema sql.Schema, exp sql.Expression) (sql.Expression, error) {
 	return expression.TransformUp(exp, func(e sql.Expression) (sql.Expression, error) {
 		switch e := e.(type) {
 		case *expression.GetField:
@@ -47,7 +47,7 @@ func fixFieldIndexes(schema sql.Schema, exp sql.Expression) (sql.Expression, err
 }
 
 // Transforms the expressions in the Node given, fixing the field indexes.
-func fixFieldIndexesForExpressions(node sql.Node) (sql.Node, error) {
+func FixFieldIndexesForExpressions(node sql.Node) (sql.Node, error) {
 	if _, ok := node.(sql.Expressioner); !ok {
 		return node, nil
 	}
@@ -63,7 +63,7 @@ func fixFieldIndexesForExpressions(node sql.Node) (sql.Node, error) {
 
 	n, err := plan.TransformExpressions(node, func(e sql.Expression) (sql.Expression, error) {
 		for _, schema := range schemas {
-			fixed, err := fixFieldIndexes(schema, e)
+			fixed, err := FixFieldIndexes(schema, e)
 			if err == nil {
 				return fixed, nil
 			}
@@ -84,21 +84,21 @@ func fixFieldIndexesForExpressions(node sql.Node) (sql.Node, error) {
 
 	switch j := n.(type) {
 	case *plan.InnerJoin:
-		cond, err := fixFieldIndexes(j.Schema(), j.Cond)
+		cond, err := FixFieldIndexes(j.Schema(), j.Cond)
 		if err != nil {
 			return nil, err
 		}
 
 		n = plan.NewInnerJoin(j.Left, j.Right, cond)
 	case *plan.RightJoin:
-		cond, err := fixFieldIndexes(j.Schema(), j.Cond)
+		cond, err := FixFieldIndexes(j.Schema(), j.Cond)
 		if err != nil {
 			return nil, err
 		}
 
 		n = plan.NewRightJoin(j.Left, j.Right, cond)
 	case *plan.LeftJoin:
-		cond, err := fixFieldIndexes(j.Schema(), j.Cond)
+		cond, err := FixFieldIndexes(j.Schema(), j.Cond)
 		if err != nil {
 			return nil, err
 		}
