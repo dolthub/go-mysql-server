@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"math"
 	"testing"
+	"time"
 )
 
 func TestRand(t *testing.T) {
@@ -83,28 +84,14 @@ func TestRandWithSeed(t *testing.T) {
 }
 
 func TestRadians(t *testing.T) {
-	tests := []struct{
-		name string
-		input interface{}
-		expected float64
-	}{
-		{"string '0'", "0", 0},
-		{"string -180", "-180", -math.Pi},
-		{"int val of 180", int16(180), math.Pi},
-		{"uint val of 90", uint(90), math.Pi / 2.0},
-		{"float value of 360", 360.0, 2*math.Pi},
-	}
-
 	f := NewUnaryFunc("radians", sql.Float64, RadiansFunc)
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			radians := f.Fn(expression.NewLiteral(test.input, nil))
-			res, err := radians.Eval(nil, nil)
-			assert.NoError(t, err)
-			assert.True(t, withinRoundingErr(test.expected, res.(float64)))
-		})
-	}
+	tf := NewTestFactory(f.Fn)
+	tf.AddSucceeding(0.0, "0")
+	tf.AddSucceeding(-math.Pi, "-180")
+	tf.AddSucceeding(math.Pi, int16(180))
+	tf.AddSucceeding(math.Pi / 2.0, (90))
+	tf.AddSucceeding(2*math.Pi, 360.0)
+	tf.Test(t, nil, nil)
 }
 
 func TestDegrees(t *testing.T) {
@@ -180,56 +167,6 @@ func TestCRC32(t *testing.T) {
 	assert.Equal(t, nil, res)
 }
 
-func TestHexFunc(t *testing.T) {
-	tests := []struct{
-		name string
-		input interface{}
-		expected string
-	}{
-		{"HEX('test')", "test", "74657374"},
-		{"HEX(uint64 MAX_VALUE)", uint64(math.MaxUint64), "FFFFFFFFFFFFFFFF"},
-		{"HEX(uint8 5)", uint8(0x5), "5"},
-		{"HEX(uint16 5)", uint16(0x5), "5"},
-		{"HEX(uint32 5)", uint32(0x5), "5"},
-		{"HEX(uint64 5)", uint64(0x5), "5"},
-		{"HEX(uint 5)", uint(5), "5"},
-		{"HEX(float32 4.5)", float32(4.5), "5"},
-		{"HEX(float64 5.4)", float64(5.4), "5"},
-		{"HEX(-1)",-1, "FFFFFFFFFFFFFFFF"},
-		{"HEX(-16)", -16, "FFFFFFFFFFFFFFF0"},
-		{"HEX(-256)", -256, "FFFFFFFFFFFFFF00"},
-		{"HEX(-512)", -512, "FFFFFFFFFFFFFE00"},
-		{"HEX(int8 -1)", int8(-1), "FFFFFFFFFFFFFFFF"},
-		{"HEX(int16 -1)", int16(-1), "FFFFFFFFFFFFFFFF"},
-		{"HEX(int32 -1)", int32(-1), "FFFFFFFFFFFFFFFF"},
-		{"HEX(int64 -1)", int64(-1), "FFFFFFFFFFFFFFFF"},
-		{"HEX(float32 -0.5)", float32(-0.5), "FFFFFFFFFFFFFFFF"},
-		{"HEX(float64 -1.4)", float64(-1.4), "FFFFFFFFFFFFFFFF"},
-	}
-
-	f := NewUnaryFunc("hex", sql.Uint32, HexFunc)
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			hex := f.Fn(expression.NewLiteral(test.input, nil))
-			res, err := hex.Eval(nil, nil)
-			assert.NoError(t, err)
-			assert.Equal(t, test.expected, res)
-		})
-	}
-
-	hex := f.Fn(nil)
-	res, err := hex.Eval(nil, nil)
-	assert.NoError(t, err)
-	assert.Equal(t, nil, res)
-
-	nullLiteral := expression.NewLiteral(nil, sql.Null)
-	hex = f.Fn(nullLiteral)
-	res, err = hex.Eval(nil, nil)
-	assert.NoError(t, err)
-	assert.Equal(t, nil, res)
-}
-
 func TestTrigFunctions(t *testing.T) {
 	asin := NewUnaryFunc("asin", sql.Float64, ASinFunc)
 	acos := NewUnaryFunc("acos", sql.Float64, ACosFunc)
@@ -280,4 +217,35 @@ func withinRoundingErr(v1, v2 float64) bool {
 	}
 
 	return diff < roundingErr
+}
+
+func TestSignFunc(t *testing.T) {
+	f := NewUnaryFunc("sign", sql.Int8, SignFunc)
+	tf := NewTestFactory(f.Fn)
+	tf.AddSucceeding(nil, nil)
+	tf.AddSignedVariations(int8(-1), -10)
+	tf.AddFloatVariations(int8(-1), -10.0)
+	tf.AddSignedVariations(int8(1), 100)
+	tf.AddUnsignedVariations(int8(1), 100)
+	tf.AddFloatVariations(int8(1), 100.0)
+	tf.AddSignedVariations(int8(0), 0)
+	tf.AddUnsignedVariations(int8(0), 0)
+	tf.AddFloatVariations(int8(0), 0)
+	tf.AddSucceeding(int8(1), time.Now())
+	tf.AddSucceeding(int8(0), false)
+	tf.AddSucceeding(int8(1), true)
+
+	// string logic matches mysql.  It's really odd.  Uses the numeric portion of the string at the beginning.  If
+	// it starts with a nonnumeric character then
+	tf.AddSucceeding(int8(0), "0-1z1Xaoebu")
+	tf.AddSucceeding(int8(-1), "-1z1Xaoebu")
+	tf.AddSucceeding(int8(1), "1z1Xaoebu")
+	tf.AddSucceeding(int8(0), "z1Xaoebu")
+	tf.AddSucceeding(int8(-1), "-.1a,1,1")
+	tf.AddSucceeding(int8(-1), "-0.1a,1,1")
+	tf.AddSucceeding(int8(1), "0.1a,1,1")
+	tf.AddSucceeding(int8(0), "-0,1,1")
+	tf.AddSucceeding(int8(0), "-.z1,1,1")
+
+	tf.Test(t, nil, nil)
 }

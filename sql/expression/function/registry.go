@@ -17,12 +17,16 @@ func userFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 
 // Defaults is the function map with all the default functions.
 var Defaults = []sql.Function{
+	// elt, find_in_set, insert, load_file, locate
 	sql.Function1{Name: "abs", Fn: NewAbsVal},
 	NewUnaryFunc("acos", sql.Float64, ACosFunc),
 	sql.Function1{Name: "array_length", Fn: NewArrayLength},
+	NewUnaryFunc("ascii", sql.Uint8, AsciiFunc),
 	NewUnaryFunc("asin", sql.Float64, ASinFunc),
 	NewUnaryFunc("atan", sql.Float64, ATanFunc),
 	sql.Function1{Name: "avg", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewAvg(e) }},
+	NewUnaryFunc("bin", sql.Text, BinFunc),
+	NewUnaryFunc("bit_length", sql.Int32, BinFunc),
 	sql.Function1{Name: "ceil", Fn: NewCeil},
 	sql.Function1{Name: "ceiling", Fn: NewCeil},
 	sql.Function1{Name: "char_length", Fn: NewCharLength},
@@ -98,6 +102,7 @@ var Defaults = []sql.Function{
 	sql.FunctionN{Name: "rpad", Fn: NewPadFunc(rPadType)},
 	sql.Function1{Name: "rtrim", Fn: NewTrimFunc(rTrimType)},
 	sql.Function1{Name: "second", Fn: NewSecond},
+	NewUnaryFunc("sign", sql.Int8, SignFunc),
 	NewUnaryFunc("sin", sql.Float64, SinFunc),
 	sql.Function1{Name: "sleep", Fn: NewSleep},
 	sql.Function1{Name: "soundex", Fn: NewSoundex},
@@ -112,6 +117,8 @@ var Defaults = []sql.Function{
 	sql.FunctionN{Name: "timestamp", Fn: NewTimestamp},
 	sql.Function1{Name: "to_base64", Fn: NewToBase64},
 	sql.Function1{Name: "trim", Fn: NewTrimFunc(bTrimType)},
+	sql.Function1{Name: "ucase", Fn: NewUpper},
+	NewUnaryFunc("unhex", sql.Text, UnhexFunc),
 	sql.FunctionN{Name: "unix_timestamp", Fn: NewUnixTimestamp},
 	sql.Function1{Name: "upper", Fn: NewUpper},
 	sql.NewFunction0("user", sql.LongText, userFuncLogic),

@@ -630,6 +630,25 @@ func subSecondPrecision(t time.Time, precision int) string {
 	return s[:precision+1]
 }
 
+func fractionOfSecString(t time.Time) string {
+	s := fmt.Sprintf("%09d", t.Nanosecond())
+	s = s[:6]
+
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] != '0' {
+			break
+		}
+
+		s = s[:i]
+	}
+
+	if len(s) == 0 {
+		return ""
+	}
+
+	return "." + s
+}
+
 // Type implements the sql.Expression interface.
 func (n *Now) Type() sql.Type {
 	return sql.Datetime

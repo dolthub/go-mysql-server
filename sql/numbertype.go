@@ -109,6 +109,9 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 
 	switch t.baseType {
 	case sqltypes.Int8:
+		if dec, ok := v.(decimal.Decimal); ok {
+			v = dec.IntPart()
+		}
 		num, err := cast.ToInt64E(v)
 		if err != nil {
 			return nil, err
@@ -118,6 +121,9 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return int8(num), nil
 	case sqltypes.Uint8:
+		if dec, ok := v.(decimal.Decimal); ok {
+			v = dec.IntPart()
+		}
 		num, err := cast.ToUint64E(v)
 		if err != nil {
 			return nil, err
@@ -127,6 +133,9 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return uint8(num), nil
 	case sqltypes.Int16:
+		if dec, ok := v.(decimal.Decimal); ok {
+			v = dec.IntPart()
+		}
 		num, err := cast.ToInt64E(v)
 		if err != nil {
 			return nil, err
@@ -136,6 +145,9 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return int16(num), nil
 	case sqltypes.Uint16:
+		if dec, ok := v.(decimal.Decimal); ok {
+			v = dec.IntPart()
+		}
 		num, err := cast.ToUint64E(v)
 		if err != nil {
 			return nil, err
@@ -145,6 +157,9 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return uint16(num), nil
 	case sqltypes.Int24:
+		if dec, ok := v.(decimal.Decimal); ok {
+			v = dec.IntPart()
+		}
 		num, err := cast.ToInt64E(v)
 		if err != nil {
 			return nil, err
@@ -154,6 +169,9 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return int32(num), nil
 	case sqltypes.Uint24:
+		if dec, ok := v.(decimal.Decimal); ok {
+			v = dec.IntPart()
+		}
 		num, err := cast.ToUint64E(v)
 		if err != nil {
 			return nil, err
@@ -163,6 +181,9 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return uint32(num), nil
 	case sqltypes.Int32:
+		if dec, ok := v.(decimal.Decimal); ok {
+			v = dec.IntPart()
+		}
 		num, err := cast.ToInt64E(v)
 		if err != nil {
 			return nil, err
@@ -172,6 +193,9 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return int32(num), nil
 	case sqltypes.Uint32:
+		if dec, ok := v.(decimal.Decimal); ok {
+			v = dec.IntPart()
+		}
 		num, err := cast.ToUint64E(v)
 		if err != nil {
 			return nil, err
@@ -186,18 +210,28 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 				return nil, ErrOutOfRange.New(u, t)
 			}
 		}
+		if dec, ok := v.(decimal.Decimal); ok {
+			return dec.IntPart(), nil
+		}
 		num, err := cast.ToInt64E(v)
 		if err != nil {
 			return nil, err
 		}
 		return num, err
 	case sqltypes.Uint64:
+		if dec, ok := v.(decimal.Decimal); ok {
+			v = dec.IntPart()
+		}
 		num, err := cast.ToUint64E(v)
 		if err != nil {
 			return nil, err
 		}
 		return num, nil
 	case sqltypes.Float32:
+		if dec, ok := v.(decimal.Decimal); ok {
+			f, _ := dec.Float64()
+			return float32(f), nil
+		}
 		num, err := cast.ToFloat64E(v)
 		if err != nil {
 			return nil, err
