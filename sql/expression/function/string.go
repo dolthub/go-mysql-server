@@ -11,7 +11,7 @@ import (
 	"unsafe"
 )
 
-// AsciiFunc implements the sql function "ascii" which returns the
+// AsciiFunc implements the sql function "ascii" which returns the numeric value of the leftmost character
 func AsciiFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	switch x := val.(type) {
 	case bool:
@@ -43,7 +43,7 @@ func hexChar(b byte) byte {
 	return b + byte('0')
 }
 
-// MySQL expects the 64 bit 2s compliment representation for negative integer values. Typical methods for converting a
+// MySQL expects the 64 bit 2s complement representation for negative integer values. Typical methods for converting a
 // number to a string don't handle negative integer values in this way (strconv.FormatInt and fmt.Sprintf for example).
 func hexForNegativeInt64(n int64) string {
 	// get a pointer to the int64s memory
@@ -70,6 +70,7 @@ func hexForFloat(f float64) (string, error) {
 	return fmt.Sprintf("%X", n), nil
 }
 
+// HexFunc implements the sql function "hex" which returns the hexidecimal representation of the string or numeric value
 func HexFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
 	switch val := arg.(type) {
 	case string:
@@ -165,7 +166,7 @@ func UnhexFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
 	return string(res), nil
 }
 
-// MySQL expects the 64 bit 2s compliment representation for negative integer values. Typical methods for converting a
+// MySQL expects the 64 bit 2s complement representation for negative integer values. Typical methods for converting a
 // number to a string don't handle negative integer values in this way (strconv.FormatInt and fmt.Sprintf for example).
 func binForNegativeInt64(n int64) string {
 	// get a pointer to the int64s memory
@@ -181,6 +182,7 @@ func binForNegativeInt64(n int64) string {
 	return s
 }
 
+// BinFunc implements the sql function "bin" which returns the binary representation of a number
 func BinFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
 	switch val := arg.(type) {
 	case time.Time:
@@ -203,6 +205,7 @@ func BinFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
 	}
 }
 
+// BitLengthFunc implements the sql function "bit_length" which returns the length of the argument in bits
 func BitLengthFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
 	switch val := arg.(type) {
 	case uint8, int8, bool:
