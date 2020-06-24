@@ -13,6 +13,7 @@ type MergeableIndex struct {
 	Tbl        *Table // required for engine tests with driver
 	TableName  string
 	Exprs      []sql.Expression
+	Name       string
 }
 
 var _ sql.Index = (*MergeableIndex)(nil)
@@ -76,6 +77,10 @@ func (i *MergeableIndex) Has(sql.Partition, ...interface{}) (bool, error) {
 }
 
 func (i *MergeableIndex) ID() string {
+	if len(i.Name) > 0 {
+		return i.Name
+	}
+
 	if len(i.Exprs) == 1 {
 		return i.Exprs[0].String()
 	}

@@ -92,45 +92,47 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 		return nil, err
 	}
 
-	var (
-		nullable string
-		visible  string
-	)
-	columnName, expression := "NULL", show.expression
+	var expression, columnName interface{}
+	columnName, expression = nil, show.expression
 	tbl := i.table
 
 	if err != nil {
 		return nil, err
 	}
 
-	if ok, null := isColumn(show.expression, tbl); ok {
-		columnName, expression = expression, columnName
+	nullable := ""
+	if col, null := getColumn(show.expression, tbl); len(col) > 0 {
+		columnName, expression = col, nil
 		if null {
 			nullable = "YES"
 		}
 	}
 
-	// if i.registry.CanUseIndex(show.index) {
-	// 	visible = "YES"
-	// } else {
-	// 	visible = "NO"
-	// }
+	visible := "YES"
+	if x, ok := show.index.(sql.DriverIndex); ok && len(x.Driver()) > 0{
+		if !i.ctx.CanUseIndex(x) {
+			visible = "NO"
+		}
+	}
 
 	typ := "BTREE"
-	if x, ok := show.index.(sql.DriverIndex); ok {
+	if x, ok := show.index.(sql.DriverIndex); ok && len(x.Driver()) > 0 {
 		typ = x.Driver()
 	}
 
+	// TODO: get this from index
+	nonUnique := 0
+
 	return sql.NewRow(
-		i.table,             // "Table" string
-		int32(1),            // "Non_unique" int32, Values [0, 1]
+		show.index.Table(),  // "Table" string
+		nonUnique,           // "Non_unique" int32, Values [0, 1]
 		show.index.ID(),     // "Key_name" string
 		show.exPosition+1,   // "Seq_in_index" int32
 		columnName,          // "Column_name" string
-		"NULL",              // "Collation" string, Values [A, D, NULL]
-		int64(0),            // "Cardinality" int64 (returning 0, it is not being calculated for the moment)
-		"NULL",              // "Sub_part" int64
-		"NULL",              // "Packed" string
+		nil,                 // "Collation" string, Values [A, D, NULL]
+		int64(0),            // "Cardinality" int64 (not calculated)
+		nil,                 // "Sub_part" int64
+		nil,                 // "Packed" string
 		nullable,            // "Null" string, Values [YES, '']
 		typ,                 // "Index_type" string
 		"",                  // "Comment" string
@@ -140,14 +142,16 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 	), nil
 }
 
-func isColumn(ex string, table sql.Table) (bool, bool) {
+// getColumn returns the name of column from the table given using the expression string given, in the form
+// "table.column". Returns the empty string if the expression doesn't represent a column.
+func getColumn(ex string, table sql.Table) (colName string, nullable bool) {
 	for _, col := range table.Schema() {
 		if col.Source+"."+col.Name == ex {
-			return true, col.Nullable
+			return col.Name, col.Nullable
 		}
 	}
 
-	return false, false
+	return "", false
 }
 
 func (i *showIndexesIter) Close() error {

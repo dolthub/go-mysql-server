@@ -5,7 +5,6 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"io"
-	"strings"
 )
 
 // A very dumb index that iterates over the rows of a table, evaluates its matching expressions against each row, and
@@ -166,18 +165,6 @@ func (u *UnmergeableIndexLookup) Indexes() []string {
 
 func (u *UnmergeableIndex) Has(partition sql.Partition, key ...interface{}) (bool, error) {
 	panic("not implemented")
-}
-
-func (u *UnmergeableIndex) ID() string {
-	if len(u.Exprs) == 1 {
-		return u.Exprs[0].String()
-	}
-	var parts = make([]string, len(u.Exprs))
-	for i, e := range u.Exprs {
-		parts[i] = e.String()
-	}
-
-	return "(" + strings.Join(parts, ", ") + ")"
 }
 
 func (u *UnmergeableIndexLookup) String() string {

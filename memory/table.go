@@ -656,10 +656,11 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 			}
 			indexes = append(indexes, &MergeableIndex{
 				DB:         "",
-				DriverName: "native",
+				DriverName: "",
 				Tbl:        t,
 				TableName:  t.name,
 				Exprs:      exprs,
+				Name: 			"PRIMARY",
 			})
 		}
 	}
@@ -685,10 +686,11 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn) (sql.Index, 
 	return &UnmergeableIndex{
 		MergeableIndex{
 			DB:         "",
-			DriverName: "native",
+			DriverName: "",
 			Tbl:        t,
 			TableName:  t.name,
 			Exprs:      exprs,
+			Name:       name,
 		},
 	}, nil
 }

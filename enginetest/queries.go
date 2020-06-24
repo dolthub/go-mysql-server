@@ -2628,7 +2628,12 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		`SHOW INDEXES FROM mytable`,
-		[]sql.Row{{"s"}, {"s2"}},
+		[]sql.Row{
+			{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 0, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 0, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
 	},
 }
 
