@@ -2626,6 +2626,10 @@ var InfoSchemaQueries = []QueryTest{
 		`,
 		[]sql.Row{{"s"}, {"s2"}},
 	},
+	{
+		`SHOW INDEXES FROM mytable`,
+		[]sql.Row{{"s"}, {"s2"}},
+	},
 }
 
 var ExplodeQueries = []QueryTest{

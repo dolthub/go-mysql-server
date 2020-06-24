@@ -56,7 +56,7 @@ var infoSchemaTables = []string {
 // Runs tests of the information_schema database.
 func TestInfoSchema(t *testing.T, harness Harness) {
 	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
-	engine := NewEngineWithDbs(t, harness.Parallelism(), dbs, nil)
+	engine := NewEngineWithDbs(t, harness, dbs, nil)
 	for _, tt := range InfoSchemaQueries {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected)
 	}
@@ -1499,12 +1499,7 @@ func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 	if ih, ok := harness.(IndexDriverHarness); ok {
 		idxDriver = ih.IndexDriver(dbs)
 	}
-	engine := NewEngineWithDbs(t, harness.Parallelism(), dbs, idxDriver)
-
-	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
-		err := createNativeIndexes(t, harness, engine)
-		require.NoError(t, err)
-	}
+	engine := NewEngineWithDbs(t, harness, dbs, idxDriver)
 
 	return engine
 }
@@ -1512,7 +1507,7 @@ func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 
 // NewEngineWithDbs returns a new engine with the databases provided. This is useful if you don't want to implement a
 // full harness but want to run your own tests on DBs you create.
-func NewEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, driver sql.IndexDriver) *sqle.Engine {
+func NewEngineWithDbs(t *testing.T, harness Harness , databases []sql.Database, driver sql.IndexDriver) *sqle.Engine {
 	catalog := sql.NewCatalog()
 	for _, database := range databases {
 		catalog.AddDatabase(database)
@@ -1520,8 +1515,8 @@ func NewEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, d
 	catalog.AddDatabase(sql.NewInformationSchemaDatabase(catalog))
 
 	var a *analyzer.Analyzer
-	if parallelism > 1 {
-		a = analyzer.NewBuilder(catalog).WithParallelism(parallelism).Build()
+	if harness.Parallelism() > 1 {
+		a = analyzer.NewBuilder(catalog).WithParallelism(harness.Parallelism()).Build()
 	} else {
 		a = analyzer.NewDefault(catalog)
 	}
@@ -1531,7 +1526,14 @@ func NewEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, d
 		idxReg.RegisterIndexDriver(driver)
 	}
 
-	return sqle.New(catalog, a, new(sqle.Config))
+	engine := sqle.New(catalog, a, new(sqle.Config))
+
+	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
+		err := createNativeIndexes(t, harness, engine)
+		require.NoError(t, err)
+	}
+
+	return engine
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.

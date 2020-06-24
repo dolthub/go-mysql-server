@@ -10,6 +10,7 @@ import (
 // ShowIndexes is a node that shows the indexes on a table.
 type ShowIndexes struct {
 	UnaryNode
+	IndexesToShow []sql.Index
 }
 
 // NewShowIndexes creates a new ShowIndexes node. The node must represent a table.
@@ -27,7 +28,10 @@ func (n *ShowIndexes) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
 
-	return NewShowIndexes(children[0]), nil
+	return &ShowIndexes{
+		UnaryNode:     UnaryNode{children[0]},
+		IndexesToShow: n.IndexesToShow,
+	}, nil
 }
 
 // String implements the Stringer interface.
@@ -63,38 +67,11 @@ func (n *ShowIndexes) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		panic(fmt.Sprintf("unexpected type %T", n.Child))
 	}
 
-	indexes, err := findIndexesForTable(ctx, table)
-	if err != nil {
-		return nil, err
-	}
-
 	return &showIndexesIter{
 		table: table,
-		idxs:  newIndexesToShow(indexes),
+		idxs:  newIndexesToShow(n.IndexesToShow),
 		ctx:   ctx,
 	}, nil
-}
-
-func findIndexesForTable(ctx *sql.Context, table *ResolvedTable) ([]sql.Index, error) {
-	var indexes []sql.Index
-
-	it, ok := table.Table.(sql.IndexedTable)
-	if ok {
-		idxes, err := it.GetIndexes(ctx)
-		if err != nil {
-			return nil, err
-		}
-		indexes = append(indexes, idxes...)
-	}
-
-	if ctx.HasIndexes() {
-		// TODO: we need the table's database here
-		idxes := ctx.IndexesByTable(ctx.GetCurrentDatabase(), table.Name())
-		for _, idx := range idxes {
-			indexes = append(indexes, idx)
-		}
-	}
-	return indexes, nil
 }
 
 func newIndexesToShow(indexes []sql.Index) *indexesToShow {

@@ -39,6 +39,7 @@ var OnceAfterDefault = []Rule{
 	{"resolve_generators", resolveGenerators},
 	{"remove_unnecessary_converts", removeUnnecessaryConverts},
 	{"assign_catalog", assignCatalog},
+	{"assign_info_schema", assignInfoSchema},
 	{"prune_columns", pruneColumns},
 	{"convert_dates", convertDates},
 	{"pushdown", pushdown},

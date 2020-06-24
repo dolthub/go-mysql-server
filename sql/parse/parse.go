@@ -289,11 +289,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			s.IfNotExists,
 		), nil
 	case "index":
-		return plan.NewShowIndexes(
-			sql.UnresolvedDatabase(s.Database),
-			s.Table.Name.String(),
-			nil,
-		), nil
+		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Database)), nil
 	case sqlparser.KeywordString(sqlparser.TABLES):
 		var dbName string
 		var filter sql.Expression

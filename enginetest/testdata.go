@@ -295,9 +295,9 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 					nil,
 					nil,
 				))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "typestable", err)
 		}
-	} else {
-		t.Logf("Warning: could not create table %s: %s", "typestable", err)
 	}
 
 	if includeTable(includedTables, "stringandtable") {
