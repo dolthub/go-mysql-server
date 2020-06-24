@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"io"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -9,48 +10,31 @@ import (
 
 // ShowIndexes is a node that shows the indexes on a table.
 type ShowIndexes struct {
-	db       sql.Database
-	Table    string
-	Registry *sql.IndexRegistry
+	UnaryNode
+	IndexesToShow []sql.Index
 }
 
-// NewShowIndexes creates a new ShowIndexes node.
-func NewShowIndexes(db sql.Database, table string, registry *sql.IndexRegistry) sql.Node {
-	return &ShowIndexes{db, table, registry}
+// NewShowIndexes creates a new ShowIndexes node. The node must represent a table.
+func NewShowIndexes(table sql.Node) sql.Node {
+	return &ShowIndexes{
+		UnaryNode: UnaryNode{table},
+	}
 }
 
-var _ sql.Databaser = (*ShowIndexes)(nil)
-
-// Database implements the sql.Databaser interface.
-func (n *ShowIndexes) Database() sql.Database {
-	return n.db
-}
-
-// WithDatabase implements the sql.Databaser interface.
-func (n *ShowIndexes) WithDatabase(db sql.Database) (sql.Node, error) {
-	nc := *n
-	nc.db = db
-	return &nc, nil
-}
-
-// Resolved implements the Resolvable interface.
-func (n *ShowIndexes) Resolved() bool {
-	_, ok := n.db.(sql.UnresolvedDatabase)
-	return !ok
-}
+var _ sql.Node = (*ShowIndexes)(nil)
 
 // WithChildren implements the Node interface.
 func (n *ShowIndexes) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
 
-	return n, nil
+	return NewShowIndexes(children[0]), nil
 }
 
 // String implements the Stringer interface.
 func (n *ShowIndexes) String() string {
-	return fmt.Sprintf("ShowIndexes(%s)", n.Table)
+	return fmt.Sprintf("ShowIndexes(%s)", n.Child)
 }
 
 // Schema implements the Node interface.
@@ -74,39 +58,28 @@ func (n *ShowIndexes) Schema() sql.Schema {
 	}
 }
 
-// Children implements the Node interface.
-func (n *ShowIndexes) Children() []sql.Node { return nil }
-
 // RowIter implements the Node interface.
 func (n *ShowIndexes) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return &showIndexesIter{
-		db:       n.db,
-		table:    n.Table,
-		registry: n.Registry,
-		ctx:      ctx,
+		table: n.Child.(*ResolvedTable),
+		idxs: newIndexesToShow(n.IndexesToShow),
+		ctx:  ctx,
 	}, nil
 }
 
-type showIndexesIter struct {
-	db       sql.Database
-	table    string
-	registry *sql.IndexRegistry
+func newIndexesToShow(indexes []sql.Index) *indexesToShow {
+	return &indexesToShow{
+		indexes: indexes,
+	}
+}
 
-	idxs *indexesToShow
-	ctx  *sql.Context
+type showIndexesIter struct {
+	table *plan.ResolvedTable
+	idxs  *indexesToShow
+	ctx   *sql.Context
 }
 
 func (i *showIndexesIter) Next() (sql.Row, error) {
-	if i.registry == nil {
-		return nil, io.EOF
-	}
-
-	if i.idxs == nil {
-		i.idxs = &indexesToShow{
-			indexes: i.registry.IndexesByTable(i.db.Name(), i.table),
-		}
-	}
-
 	show, err := i.idxs.next()
 	if err != nil {
 		return nil, err
@@ -117,7 +90,7 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 		visible  string
 	)
 	columnName, expression := "NULL", show.expression
-	tbl, _, err := i.db.GetTableInsensitive(i.ctx, i.table)
+	tbl := i.table
 
 	if err != nil {
 		return nil, err
@@ -129,11 +102,18 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 			nullable = "YES"
 		}
 	}
-	if i.registry.CanUseIndex(show.index) {
-		visible = "YES"
-	} else {
-		visible = "NO"
+
+	// if i.registry.CanUseIndex(show.index) {
+	// 	visible = "YES"
+	// } else {
+	// 	visible = "NO"
+	// }
+
+	typ := "BTREE"
+	if x, ok := show.index.(sql.DriverIndex); ok {
+		typ = x.Driver()
 	}
+
 	return sql.NewRow(
 		i.table,             // "Table" string
 		int32(1),            // "Non_unique" int32, Values [0, 1]
@@ -145,7 +125,7 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 		"NULL",              // "Sub_part" int64
 		"NULL",              // "Packed" string
 		nullable,            // "Null" string, Values [YES, '']
-		show.index.Driver(), // "Index_type" string
+		typ,                 // "Index_type" string
 		"",                  // "Comment" string
 		"",                  // "Index_comment" string
 		visible,             // "Visible" string, Values [YES, NO]
@@ -164,21 +144,17 @@ func isColumn(ex string, table sql.Table) (bool, bool) {
 }
 
 func (i *showIndexesIter) Close() error {
-	for _, idx := range i.idxs.indexes {
-		i.registry.ReleaseIndex(idx)
-	}
-
 	return nil
 }
 
 type indexesToShow struct {
-	indexes []sql.DriverIndex
+	indexes []sql.Index
 	pos     int
 	epos    int
 }
 
 type idxToShow struct {
-	index      sql.DriverIndex
+	index      sql.Index
 	expression string
 	exPosition int
 }
