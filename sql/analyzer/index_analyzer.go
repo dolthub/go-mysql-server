@@ -14,6 +14,7 @@
 
 package analyzer
 
+
 import (
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
@@ -69,6 +70,21 @@ func getIndexesForNode(ctx *sql.Context, a *Analyzer, n sql.Node) (*indexAnalyze
 		indexesByTable: indexes,
 		indexRegistry: idxRegistry,
 	}, nil
+}
+
+// IndexesByTable returns all indexes on the table named. The table must be present in the node used to create the
+// analyzer.
+func (r *indexAnalyzer) IndexesByTable(ctx *sql.Context, db, table string) []sql.Index {
+	indexes := r.indexesByTable[table]
+
+	if r.indexRegistry != nil {
+		idxes := r.indexRegistry.IndexesByTable(db, table)
+		for _, idx := range idxes {
+			indexes = append(indexes, idx)
+		}
+	}
+
+	return indexes
 }
 
 // IndexByExpression returns an index by the given expression. It will return nil if no index is found. If more than
