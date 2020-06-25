@@ -23,6 +23,7 @@ import (
 	"hash/crc32"
 	"math"
 	"math/rand"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -278,6 +279,9 @@ func Crc32Func(_ *sql.Context, arg interface{}) (interface{}, error) {
 	return crc32.ChecksumIEEE(bytes), nil
 }
 
+var negativeSignRegex = regexp.MustCompile(`^-[0-9]*\.?[0-9]*[1-9]`)
+var positiveSignRegex = regexp.MustCompile(`^+?[0-9]*\.?[0-9]*[1-9]`)
+
 func SignFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
 	switch typedVal := arg.(type) {
 	case int8, int16, int32, int64, float64, float32, int, decimal.Decimal:
@@ -321,19 +325,10 @@ func SignFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
 		return int8(1), nil
 
 	case string:
-		i := 0
-		sign := int8(1)
-		if typedVal[i] == '-' {
-			sign = -1
-			i++
-		}
-
-		if typedVal[i] == '.' {
-			i++
-		}
-
-		if typedVal[i] >= '1' && typedVal[i] <= '9' {
-			return sign, nil
+		if negativeSignRegex.MatchString(typedVal) {
+			return int8(-1), nil
+		} else if positiveSignRegex.MatchString(typedVal) {
+			return int8(1), nil
 		}
 
 		return int8(0), nil
