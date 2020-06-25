@@ -14,6 +14,7 @@ type MergeableIndex struct {
 	TableName  string
 	Exprs      []sql.Expression
 	Name       string
+	Unique     bool
 }
 
 var _ sql.Index = (*MergeableIndex)(nil)
@@ -32,6 +33,21 @@ func (i *MergeableIndex) Expressions() []string {
 		exprs = append(exprs, e.String())
 	}
 	return exprs
+}
+
+func (i *MergeableIndex) IsUnique() bool {
+	return i.Unique
+}
+
+func (i *MergeableIndex) Comment() string {
+	return "" // TODO: implement
+}
+
+func (i *MergeableIndex) IndexType() string {
+	if len(i.DriverName) > 0 {
+		return i.DriverName
+	}
+	return "BTREE" // fake but so are you
 }
 
 func (i *MergeableIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLookup, error) {

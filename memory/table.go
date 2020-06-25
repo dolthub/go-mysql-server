@@ -660,7 +660,8 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 				Tbl:        t,
 				TableName:  t.name,
 				Exprs:      exprs,
-				Name: 			"PRIMARY",
+				Name:       "PRIMARY",
+				Unique:     true,
 			})
 		}
 	}
@@ -671,7 +672,7 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	return indexes, nil
 }
 
-func (t *Table) createIndex(name string, columns []sql.IndexColumn) (sql.Index, error) {
+func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint sql.IndexConstraint) (sql.Index, error) {
 	if t.indexes[name] != nil {
 		// TODO: extract a standard error type for this
 		return nil, fmt.Errorf("Error: index already exists")
@@ -691,6 +692,7 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn) (sql.Index, 
 			TableName:  t.name,
 			Exprs:      exprs,
 			Name:       name,
+			Unique:     constraint == sql.IndexConstraint_Unique,
 		},
 	}, nil
 }
@@ -717,7 +719,7 @@ func (t *Table) CreateIndex(ctx *sql.Context, indexName string, using sql.IndexU
 		t.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(indexName, columns)
+	index, err := t.createIndex(indexName, columns, constraint)
 	if err != nil {
 		return err
 	}

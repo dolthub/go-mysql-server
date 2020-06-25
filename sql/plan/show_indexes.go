@@ -115,30 +115,27 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 		}
 	}
 
-	typ := "BTREE"
-	if x, ok := show.index.(sql.DriverIndex); ok && len(x.Driver()) > 0 {
-		typ = x.Driver()
+	nonUnique := 0
+	if !show.index.IsUnique() {
+		nonUnique = 1
 	}
 
-	// TODO: get this from index
-	nonUnique := 0
-
 	return sql.NewRow(
-		show.index.Table(),  // "Table" string
-		nonUnique,           // "Non_unique" int32, Values [0, 1]
-		show.index.ID(),     // "Key_name" string
-		show.exPosition+1,   // "Seq_in_index" int32
-		columnName,          // "Column_name" string
-		nil,                 // "Collation" string, Values [A, D, NULL]
-		int64(0),            // "Cardinality" int64 (not calculated)
-		nil,                 // "Sub_part" int64
-		nil,                 // "Packed" string
-		nullable,            // "Null" string, Values [YES, '']
-		typ,                 // "Index_type" string
-		"",                  // "Comment" string
-		"",                  // "Index_comment" string
-		visible,             // "Visible" string, Values [YES, NO]
-		expression,          // "Expression" string
+		show.index.Table(),     // "Table" string
+		nonUnique,              // "Non_unique" int32, Values [0, 1]
+		show.index.ID(),        // "Key_name" string
+		show.exPosition+1,      // "Seq_in_index" int32
+		columnName,             // "Column_name" string
+		nil,                    // "Collation" string, Values [A, D, NULL]
+		int64(0),               // "Cardinality" int64 (not calculated)
+		nil,                    // "Sub_part" int64
+		nil,                    // "Packed" string
+		nullable,               // "Null" string, Values [YES, '']
+		show.index.IndexType(), // "Index_type" string
+		show.index.Comment(),   // "Comment" string
+		"",                     // "Index_comment" string
+		visible,                // "Visible" string, Values [YES, NO]
+		expression,             // "Expression" string
 	), nil
 }
 
