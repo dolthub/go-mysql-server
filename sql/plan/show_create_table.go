@@ -177,6 +177,11 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) stri
 	}
 
 	for _, index := range i.indexes {
+		// The primary key may or may not be declared as an index by the table. Don't print it twice if it's here.
+		if isPrimaryKeyIndex(index, table) {
+			continue
+		}
+
 		var indexCols []string
 		for _, expr := range index.Expressions() {
 			col := getColumnFromIndexExpr(expr, table)
@@ -199,6 +204,40 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) stri
 		table.Name(),
 		strings.Join(colStmts, ",\n"),
 	)
+}
+
+// isPrimaryKeyIndex returns whether the index given matches the table's primary key columns. Order is not considered.
+func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
+	var pks []*sql.Column
+
+	for _, col := range table.Schema() {
+		if col.PrimaryKey {
+			pks = append(pks, col)
+		}
+	}
+
+	if len(index.Expressions()) != len(pks) {
+		return false
+	}
+
+	for _, expr := range index.Expressions() {
+		if col := getColumnFromIndexExpr(expr, table); col != nil {
+			found := false
+			for _, pk := range pks {
+				if col == pk {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+
+	return true
 }
 
 func produceCreateViewStatement(view *SubqueryAlias) string {
