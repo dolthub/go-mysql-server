@@ -356,6 +356,9 @@ var _ sql.DriverIndex = (*mockIndex)(nil)
 func (i *mockIndex) ID() string       { return i.id }
 func (i *mockIndex) Table() string    { return i.table }
 func (i *mockIndex) Database() string { return i.db }
+func (i *mockIndex) IsUnique() bool { return false }
+func (i *mockIndex) Comment() string { return "" }
+func (i *mockIndex) IndexType() string { return "BTREE" }
 func (i *mockIndex) Expressions() []string {
 	exprs := make([]string, len(i.exprs))
 	for i, e := range i.exprs {
@@ -364,6 +367,7 @@ func (i *mockIndex) Expressions() []string {
 
 	return exprs
 }
+
 func (i *mockIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 	panic("unimplemented")
 }

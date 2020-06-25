@@ -415,6 +415,9 @@ func (i dummyIdx) Has(Partition, ...interface{}) (bool, error)   { panic("not im
 func (i dummyIdx) Database() string                            { return i.database }
 func (i dummyIdx) Table() string                               { return i.table }
 func (i dummyIdx) Driver() string                              { return "dummy" }
+func (i dummyIdx) IsUnique() bool { return false }
+func (i dummyIdx) Comment() string { return "" }
+func (i dummyIdx) IndexType() string { return "BTREE" }
 
 type dummyExpr struct {
 	index   int

@@ -1,20 +1,19 @@
 package plan
 
 import (
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"github.com/stretchr/testify/require"
 )
 
 func TestShowIndexes(t *testing.T) {
-	var require = require.New(t)
-
-	unresolved := NewShowIndexes(sql.UnresolvedDatabase(""), "table-test", nil)
-	require.False(unresolved.Resolved())
-	require.Nil(unresolved.Children())
+	unresolved := NewShowIndexes(NewUnresolvedTable("table-test", ""))
+	require.False(t, unresolved.Resolved())
+	require.Equal(t, []sql.Node{NewUnresolvedTable("table-test", "")}, unresolved.Children())
 
 	db := memory.NewDatabase("test")
 
@@ -61,11 +60,9 @@ func TestShowIndexes(t *testing.T) {
 					&sql.Column{Name: "oof", Type: sql.Text, Source: "test4", Default: "", Nullable: false},
 				},
 			),
-			isExpression: true,
 		},
 	}
 
-	r := sql.NewIndexRegistry()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			db.AddTable(test.name, test.table)
@@ -90,26 +87,24 @@ func TestShowIndexes(t *testing.T) {
 				exprs: expressions,
 			}
 
-			created, ready, err := r.AddIndex(idx)
-			require.NoError(err)
-			close(created)
-			<-ready
-
-			showIdxs := NewShowIndexes(db, test.name, r)
+			// Assigning tables and indexes manually. This mimics what happens during analysis
+			showIdxs := NewShowIndexes(NewResolvedTable(test.table))
+			showIdxs.(*ShowIndexes).IndexesToShow = []sql.Index{idx}
 
 			ctx := sql.NewEmptyContext()
 			rowIter, err := showIdxs.RowIter(ctx)
-			require.NoError(err)
+			assert.NoError(t, err)
 
 			rows, err := sql.RowIterToRows(rowIter)
-			require.NoError(err)
-			require.Len(rows, len(expressions))
+			assert.NoError(t, err)
+			assert.Len(t, rows, len(expressions))
 
 			for i, row := range rows {
 				var nullable string
-				columnName, ex := "NULL", expressions[i].String()
-				if ok, null := isColumn(ex, test.table); ok {
-					columnName, ex = ex, columnName
+				var columnName, ex interface{}
+				columnName, ex = "NULL", expressions[i].String()
+				if col, null := getColumn(ex.(string), test.table); len(col) > 0 {
+					columnName, ex = col, nil
 					if null {
 						nullable = "YES"
 					}
@@ -117,25 +112,25 @@ func TestShowIndexes(t *testing.T) {
 
 				expected := sql.NewRow(
 					test.name,
-					int32(1),
+					1,
 					idx.ID(),
 					i+1,
 					columnName,
-					"NULL",
+					nil,
 					int64(0),
-					"NULL",
-					"NULL",
+					nil,
+					nil,
 					nullable,
-					idx.Driver(),
+					"BTREE",
 					"",
 					"",
-					"YES",
+					"NO",
 					ex,
 				)
 
-				require.Equal(expected, row)
+				assert.Equal(t, expected, row)
 			}
-
 		})
 	}
 }
+
