@@ -242,9 +242,8 @@ func TestSignFunc(t *testing.T) {
 	tf.AddSucceeding(int8(1), "1z1Xaoebu")
 	tf.AddSucceeding(int8(0), "z1Xaoebu")
 	tf.AddSucceeding(int8(-1), "-.1a,1,1")
-	// TODO (bheni): fix these two or remove the tests for them
-	// tf.AddSucceeding(int8(-1), "-0.1a,1,1")
-	// tf.AddSucceeding(int8(1), "0.1a,1,1")
+	tf.AddSucceeding(int8(-1), "-0.1a,1,1")
+	tf.AddSucceeding(int8(1), "0.1a,1,1")
 	tf.AddSucceeding(int8(0), "-0,1,1")
 	tf.AddSucceeding(int8(0), "-.z1,1,1")
 
