@@ -2642,8 +2642,8 @@ var InfoSchemaQueries = []QueryTest{
 					"  `i` BIGINT NOT NULL,\n" +
 					"  `s` TEXT NOT NULL COMMENT 'column s',\n" +
 					"  PRIMARY KEY (`i`),\n" +
-					"  KEY `mytable_i_s` (`i`,`s`)\n" +
-					"  UNIQUE KEY `mytable_s` (`s`),\n" +
+					"  KEY `mytable_i_s` (`i`,`s`),\n" +
+					"  UNIQUE KEY `mytable_s` (`s`)\n" +
 					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
 		},
 	},
