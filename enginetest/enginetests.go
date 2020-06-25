@@ -34,6 +34,8 @@ import (
 // Tests a variety of queries against databases and tables provided by the given harness.
 func TestQueries(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
+	createIndexes(t, harness, engine)
+
 	for _, tt := range QueryTests {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected)
 	}
@@ -57,8 +59,17 @@ var infoSchemaTables = []string {
 func TestInfoSchema(t *testing.T, harness Harness) {
 	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
 	engine := NewEngineWithDbs(t, harness, dbs, nil)
+	createIndexes(t, harness, engine)
+
 	for _, tt := range InfoSchemaQueries {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected)
+	}
+}
+
+func createIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
+	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
+		err := createNativeIndexes(t, harness, engine)
+		require.NoError(t, err)
 	}
 }
 
@@ -1527,12 +1538,6 @@ func NewEngineWithDbs(t *testing.T, harness Harness , databases []sql.Database, 
 	}
 
 	engine := sqle.New(catalog, a, new(sqle.Config))
-
-	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
-		err := createNativeIndexes(t, harness, engine)
-		require.NoError(t, err)
-	}
-
 	return engine
 }
 
