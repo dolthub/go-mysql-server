@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"sort"
 	"strconv"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -666,10 +667,17 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 		}
 	}
 
+	nonPrimaryIndexes := make([]sql.Index, len(t.indexes))
+	var i int
 	for _, index := range t.indexes {
-		indexes = append(indexes, index)
+		nonPrimaryIndexes[i] = index
+		i++
 	}
-	return indexes, nil
+	sort.Slice(nonPrimaryIndexes, func(i, j int) bool {
+		return nonPrimaryIndexes[i].ID() < nonPrimaryIndexes[j].ID()
+	})
+
+	return append(indexes, nonPrimaryIndexes...), nil
 }
 
 func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint sql.IndexConstraint) (sql.Index, error) {
