@@ -103,9 +103,9 @@ func TestShowIndexes(t *testing.T) {
 				var nullable string
 				var columnName, ex interface{}
 				columnName, ex = "NULL", expressions[i].String()
-				if col, null := getColumn(ex.(string), test.table); len(col) > 0 {
-					columnName, ex = col, nil
-					if null {
+				if col := getColumnFromIndexExpr(ex.(string), test.table); col != nil {
+					columnName, ex = col.Name, nil
+					if col.Nullable {
 						nullable = "YES"
 					}
 				}

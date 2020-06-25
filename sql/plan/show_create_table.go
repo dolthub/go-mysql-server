@@ -15,6 +15,7 @@ var ErrNotView = errors.NewKind("'%' is not VIEW")
 type ShowCreateTable struct {
 	*UnaryNode
 	IsView bool
+	Indexes []sql.Index
 }
 
 // NewShowCreateTable creates a new ShowCreateTable node.
@@ -71,6 +72,7 @@ func (n *ShowCreateTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		ctx:    ctx,
 		table:  n.Child,
 		isView: n.IsView,
+		indexes: n.Indexes,
 	}, nil
 }
 
@@ -94,6 +96,7 @@ type showCreateTablesIter struct {
 	didIteration bool
 	isView       bool
 	ctx          *sql.Context
+	indexes      []sql.Index
 }
 
 func (i *showCreateTablesIter) Next() (sql.Row, error) {
@@ -114,7 +117,7 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 		}
 
 		tableName = table.Name()
-		composedCreateTableStatement = produceCreateTableStatement(table)
+		composedCreateTableStatement = i.produceCreateTableStatement(table)
 	case *SubqueryAlias:
 		tableName = table.Name()
 		composedCreateTableStatement = produceCreateViewStatement(table)
@@ -133,7 +136,7 @@ type NameAndSchema interface {
 	Schema() sql.Schema
 }
 
-func produceCreateTableStatement(table sql.Table) string {
+func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) string {
 	schema := table.Schema()
 	colStmts := make([]string, len(schema))
 	var primaryKeyCols []string
@@ -171,6 +174,24 @@ func produceCreateTableStatement(table sql.Table) string {
 	if len(primaryKeyCols) > 0 {
 		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(primaryKeyCols, ","))
 		colStmts = append(colStmts, primaryKey)
+	}
+
+	for _, index := range i.indexes {
+		var indexCols []string
+		for _, expr := range index.Expressions() {
+			col := getColumnFromIndexExpr(expr, table)
+			if col != nil {
+				indexCols = append(indexCols, fmt.Sprintf("`%s`", col.Name))
+			}
+		}
+
+		unique := ""
+		if index.IsUnique() {
+			unique = "UNIQUE "
+		}
+
+		key := fmt.Sprintf("  %sKEY `%s` (%s)", unique, index.ID(), strings.Join(indexCols, ","))
+		colStmts = append(colStmts, key)
 	}
 
 	return fmt.Sprintf(
