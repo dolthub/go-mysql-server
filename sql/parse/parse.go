@@ -278,8 +278,6 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	switch showType {
 	case "create table", "create view":
 		return plan.NewShowCreateTable(
-			s.Table.Qualifier.String(),
-			nil,
 			plan.NewUnresolvedTable(s.Table.Name.String(), s.Table.Qualifier.String()),
 			showType == "create view",
 		), nil

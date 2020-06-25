@@ -29,7 +29,7 @@ func TestShowCreateTable(t *testing.T) {
 	cat := sql.NewCatalog()
 	cat.AddDatabase(db)
 
-	showCreateTable := NewShowCreateTable(db.Name(), cat, NewResolvedTable(table), false)
+	showCreateTable := NewShowCreateTable(NewResolvedTable(table), false)
 
 	ctx := sql.NewEmptyContext()
 	rowIter, _ := showCreateTable.RowIter(ctx)
@@ -51,7 +51,7 @@ func TestShowCreateTable(t *testing.T) {
 
 	require.Equal(expected, row)
 
-	showCreateTable = NewShowCreateTable(db.Name(), cat, NewResolvedTable(table), true)
+	showCreateTable = NewShowCreateTable(NewResolvedTable(table), true)
 
 	ctx = sql.NewEmptyContext()
 	rowIter, _ = showCreateTable.RowIter(ctx)
@@ -81,7 +81,7 @@ func TestShowCreateView(t *testing.T) {
 	cat := sql.NewCatalog()
 	cat.AddDatabase(db)
 
-	showCreateTable := NewShowCreateTable(db.Name(), cat,
+	showCreateTable := NewShowCreateTable(
 		NewSubqueryAlias("myView", "select * from `test-table`", NewResolvedTable(table)),
 		true,
 	)
