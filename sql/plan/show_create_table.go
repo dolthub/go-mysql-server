@@ -14,17 +14,14 @@ var ErrNotView = errors.NewKind("'%' is not VIEW")
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
 	*UnaryNode
-	Catalog  *sql.Catalog
-	Database string
 	IsView bool
+	Indexes []sql.Index
 }
 
 // NewShowCreateTable creates a new ShowCreateTable node.
-func NewShowCreateTable(db string, ctl *sql.Catalog, table sql.Node, isView bool) sql.Node {
+func NewShowCreateTable(table sql.Node, isView bool) sql.Node {
 	return &ShowCreateTable{
 		UnaryNode: &UnaryNode{table},
-		Database: db,
-		Catalog:  ctl,
 		IsView: isView,
 	}
 }
@@ -71,16 +68,11 @@ func (n *ShowCreateTable) Schema() sql.Schema {
 
 // RowIter implements the Node interface
 func (n *ShowCreateTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	db, err := n.Catalog.Database(n.Database)
-	if err != nil {
-		return nil, err
-	}
-
 	return &showCreateTablesIter{
-		db:     db,
 		ctx:    ctx,
 		table:  n.Child,
 		isView: n.IsView,
+		indexes: n.Indexes,
 	}, nil
 }
 
@@ -100,11 +92,11 @@ func (n *ShowCreateTable) String() string {
 }
 
 type showCreateTablesIter struct {
-	db           sql.Database
 	table        sql.Node
 	didIteration bool
 	isView       bool
 	ctx          *sql.Context
+	indexes      []sql.Index
 }
 
 func (i *showCreateTablesIter) Next() (sql.Row, error) {
@@ -125,7 +117,7 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 		}
 
 		tableName = table.Name()
-		composedCreateTableStatement = produceCreateTableStatement(table)
+		composedCreateTableStatement = i.produceCreateTableStatement(table)
 	case *SubqueryAlias:
 		tableName = table.Name()
 		composedCreateTableStatement = produceCreateViewStatement(table)
@@ -144,7 +136,7 @@ type NameAndSchema interface {
 	Schema() sql.Schema
 }
 
-func produceCreateTableStatement(table sql.Table) string {
+func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) string {
 	schema := table.Schema()
 	colStmts := make([]string, len(schema))
 	var primaryKeyCols []string
@@ -179,9 +171,34 @@ func produceCreateTableStatement(table sql.Table) string {
 		colStmts[i] = stmt
 	}
 
+	// TODO: the order of the primary key columns might not match their order in the schema. The current interface can't
+	//  represent this. We will need a new sql.Table extension to support this cleanly.
 	if len(primaryKeyCols) > 0 {
 		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(primaryKeyCols, ","))
 		colStmts = append(colStmts, primaryKey)
+	}
+
+	for _, index := range i.indexes {
+		// The primary key may or may not be declared as an index by the table. Don't print it twice if it's here.
+		if isPrimaryKeyIndex(index, table) {
+			continue
+		}
+
+		var indexCols []string
+		for _, expr := range index.Expressions() {
+			col := getColumnFromIndexExpr(expr, table)
+			if col != nil {
+				indexCols = append(indexCols, fmt.Sprintf("`%s`", col.Name))
+			}
+		}
+
+		unique := ""
+		if index.IsUnique() {
+			unique = "UNIQUE "
+		}
+
+		key := fmt.Sprintf("  %sKEY `%s` (%s)", unique, index.ID(), strings.Join(indexCols, ","))
+		colStmts = append(colStmts, key)
 	}
 
 	return fmt.Sprintf(
@@ -189,6 +206,40 @@ func produceCreateTableStatement(table sql.Table) string {
 		table.Name(),
 		strings.Join(colStmts, ",\n"),
 	)
+}
+
+// isPrimaryKeyIndex returns whether the index given matches the table's primary key columns. Order is not considered.
+func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
+	var pks []*sql.Column
+
+	for _, col := range table.Schema() {
+		if col.PrimaryKey {
+			pks = append(pks, col)
+		}
+	}
+
+	if len(index.Expressions()) != len(pks) {
+		return false
+	}
+
+	for _, expr := range index.Expressions() {
+		if col := getColumnFromIndexExpr(expr, table); col != nil {
+			found := false
+			for _, pk := range pks {
+				if col == pk {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+
+	return true
 }
 
 func produceCreateViewStatement(view *SubqueryAlias) string {

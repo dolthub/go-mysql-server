@@ -2626,6 +2626,27 @@ var InfoSchemaQueries = []QueryTest{
 		`,
 		[]sql.Row{{"s"}, {"s2"}},
 	},
+	{
+		`SHOW INDEXES FROM mytaBLE`,
+		[]sql.Row{
+			{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
+	},
+	{
+		`SHOW CREATE TABLE mytaBLE`,
+		[]sql.Row{
+			{"mytable", "CREATE TABLE `mytable` (\n" +
+					"  `i` BIGINT NOT NULL,\n" +
+					"  `s` TEXT NOT NULL COMMENT 'column s',\n" +
+					"  PRIMARY KEY (`i`),\n" +
+					"  KEY `mytable_i_s` (`i`,`s`),\n" +
+					"  UNIQUE KEY `mytable_s` (`s`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+		},
+	},
 }
 
 var ExplodeQueries = []QueryTest{

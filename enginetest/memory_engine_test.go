@@ -113,7 +113,7 @@ func TestQueryErrors(t *testing.T) {
 }
 
 func TestInfoSchema(t *testing.T) {
-	enginetest.TestInfoSchema(t, newDefaultMemoryHarness())
+	enginetest.TestInfoSchema(t, newMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestColumnAliases(t *testing.T) {

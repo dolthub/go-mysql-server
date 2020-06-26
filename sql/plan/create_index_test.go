@@ -54,7 +54,7 @@ func TestCreateIndexAsync(t *testing.T) {
 	require.Equal([]string{"idx"}, driver.saved)
 	idx := idxReg.Index("foo", "idx")
 	require.NotNil(idx)
-	require.Equal(&mockIndex{"foo", "foo", "idx", []sql.Expression{
+	require.Equal(&mockIndex{db: "foo", table: "foo", id: "idx", exprs: []sql.Expression{
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
 		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
 	}}, idx)
@@ -159,7 +159,7 @@ func TestCreateIndexSync(t *testing.T) {
 	require.Equal([]string{"idx"}, driver.saved)
 	idx := idxReg.Index("foo", "idx")
 	require.NotNil(idx)
-	require.Equal(&mockIndex{"foo", "foo", "idx", []sql.Expression{
+	require.Equal(&mockIndex{db: "foo", table: "foo", id: "idx", exprs: []sql.Expression{
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
 		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
 	}}, idx)
@@ -349,6 +349,7 @@ type mockIndex struct {
 	table string
 	id    string
 	exprs []sql.Expression
+	unique bool
 }
 
 var _ sql.DriverIndex = (*mockIndex)(nil)
@@ -356,6 +357,9 @@ var _ sql.DriverIndex = (*mockIndex)(nil)
 func (i *mockIndex) ID() string       { return i.id }
 func (i *mockIndex) Table() string    { return i.table }
 func (i *mockIndex) Database() string { return i.db }
+func (i *mockIndex) IsUnique() bool { return i.unique }
+func (i *mockIndex) Comment() string { return "" }
+func (i *mockIndex) IndexType() string { return "BTREE" }
 func (i *mockIndex) Expressions() []string {
 	exprs := make([]string, len(i.exprs))
 	for i, e := range i.exprs {
@@ -364,6 +368,7 @@ func (i *mockIndex) Expressions() []string {
 
 	return exprs
 }
+
 func (i *mockIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
 	panic("unimplemented")
 }
@@ -387,7 +392,7 @@ func (d *mockDriver) Create(db, table, id string, exprs []sql.Expression, config
 	}
 	d.config[id] = config
 
-	return &mockIndex{db, table, id, exprs}, nil
+	return &mockIndex{db: db, table: table, id: id, exprs: exprs}, nil
 }
 func (*mockDriver) LoadAll(ctx *sql.Context, db, table string) ([]sql.DriverIndex, error) {
 	panic("not implemented")

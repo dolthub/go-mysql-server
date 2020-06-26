@@ -213,6 +213,9 @@ func newUnmergableIndex(dbs []sql.Database, tableName string, exprs ...sql.Expre
 
 func newMergableIndex(dbs []sql.Database, tableName string, exprs ...sql.Expression) *memory.MergeableIndex {
 	db, table := findTable(dbs, tableName)
+	if db == nil {
+		return nil
+	}
 	return &memory.MergeableIndex{
 		DB:         db.Name(),
 		DriverName: memory.IndexDriverId,

@@ -101,6 +101,18 @@ func (idx *pilosaIndex) Checksum() (string, error) {
 	return idx.checksum, nil
 }
 
+func (idx *pilosaIndex) IsUnique() bool {
+	return false
+}
+
+func (idx *pilosaIndex) Comment() string {
+	return ""
+}
+
+func (idx *pilosaIndex) IndexType() string {
+	return "pilosa"
+}
+
 // Get returns an IndexLookup for the given key in the index.
 // If key parameter is not present then the returned iterator
 // will go through all the locations on the index.

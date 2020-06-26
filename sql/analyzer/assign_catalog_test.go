@@ -43,14 +43,6 @@ func TestAssignCatalog(t *testing.T) {
 	require.Equal(c, di.Catalog)
 	require.Equal("foo", di.CurrentDatabase)
 
-	node, err = f.Apply(ctx, a, plan.NewShowIndexes(db, "table-test", nil))
-	require.NoError(err)
-
-	si, ok := node.(*plan.ShowIndexes)
-	require.True(ok)
-	require.Equal(db, si.Database())
-	require.Equal(idxReg, si.Registry)
-
 	node, err = f.Apply(ctx, a, plan.NewShowProcessList())
 	require.NoError(err)
 

@@ -9,48 +9,34 @@ import (
 
 // ShowIndexes is a node that shows the indexes on a table.
 type ShowIndexes struct {
-	db       sql.Database
-	Table    string
-	Registry *sql.IndexRegistry
+	UnaryNode
+	IndexesToShow []sql.Index
 }
 
-// NewShowIndexes creates a new ShowIndexes node.
-func NewShowIndexes(db sql.Database, table string, registry *sql.IndexRegistry) sql.Node {
-	return &ShowIndexes{db, table, registry}
+// NewShowIndexes creates a new ShowIndexes node. The node must represent a table.
+func NewShowIndexes(table sql.Node) sql.Node {
+	return &ShowIndexes{
+		UnaryNode: UnaryNode{table},
+	}
 }
 
-var _ sql.Databaser = (*ShowIndexes)(nil)
-
-// Database implements the sql.Databaser interface.
-func (n *ShowIndexes) Database() sql.Database {
-	return n.db
-}
-
-// WithDatabase implements the sql.Databaser interface.
-func (n *ShowIndexes) WithDatabase(db sql.Database) (sql.Node, error) {
-	nc := *n
-	nc.db = db
-	return &nc, nil
-}
-
-// Resolved implements the Resolvable interface.
-func (n *ShowIndexes) Resolved() bool {
-	_, ok := n.db.(sql.UnresolvedDatabase)
-	return !ok
-}
+var _ sql.Node = (*ShowIndexes)(nil)
 
 // WithChildren implements the Node interface.
 func (n *ShowIndexes) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
 
-	return n, nil
+	return &ShowIndexes{
+		UnaryNode:     UnaryNode{children[0]},
+		IndexesToShow: n.IndexesToShow,
+	}, nil
 }
 
 // String implements the Stringer interface.
 func (n *ShowIndexes) String() string {
-	return fmt.Sprintf("ShowIndexes(%s)", n.Table)
+	return fmt.Sprintf("ShowIndexes(%s)", n.Child)
 }
 
 // Schema implements the Node interface.
@@ -74,111 +60,109 @@ func (n *ShowIndexes) Schema() sql.Schema {
 	}
 }
 
-// Children implements the Node interface.
-func (n *ShowIndexes) Children() []sql.Node { return nil }
-
 // RowIter implements the Node interface.
 func (n *ShowIndexes) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+	table, ok := n.Child.(*ResolvedTable)
+	if !ok {
+		panic(fmt.Sprintf("unexpected type %T", n.Child))
+	}
+
 	return &showIndexesIter{
-		db:       n.db,
-		table:    n.Table,
-		registry: n.Registry,
-		ctx:      ctx,
+		table: table,
+		idxs:  newIndexesToShow(n.IndexesToShow),
+		ctx:   ctx,
 	}, nil
 }
 
-type showIndexesIter struct {
-	db       sql.Database
-	table    string
-	registry *sql.IndexRegistry
+func newIndexesToShow(indexes []sql.Index) *indexesToShow {
+	return &indexesToShow{
+		indexes: indexes,
+	}
+}
 
-	idxs *indexesToShow
-	ctx  *sql.Context
+type showIndexesIter struct {
+	table *ResolvedTable
+	idxs  *indexesToShow
+	ctx   *sql.Context
 }
 
 func (i *showIndexesIter) Next() (sql.Row, error) {
-	if i.registry == nil {
-		return nil, io.EOF
-	}
-
-	if i.idxs == nil {
-		i.idxs = &indexesToShow{
-			indexes: i.registry.IndexesByTable(i.db.Name(), i.table),
-		}
-	}
-
 	show, err := i.idxs.next()
 	if err != nil {
 		return nil, err
 	}
 
-	var (
-		nullable string
-		visible  string
-	)
-	columnName, expression := "NULL", show.expression
-	tbl, _, err := i.db.GetTableInsensitive(i.ctx, i.table)
+	var expression, columnName interface{}
+	columnName, expression = nil, show.expression
+	tbl := i.table
 
 	if err != nil {
 		return nil, err
 	}
 
-	if ok, null := isColumn(show.expression, tbl); ok {
-		columnName, expression = expression, columnName
-		if null {
+	nullable := ""
+	if col := getColumnFromIndexExpr(show.expression, tbl); col != nil {
+		columnName, expression = col.Name, nil
+		if col.Nullable {
 			nullable = "YES"
 		}
 	}
-	if i.registry.CanUseIndex(show.index) {
-		visible = "YES"
-	} else {
-		visible = "NO"
-	}
-	return sql.NewRow(
-		i.table,             // "Table" string
-		int32(1),            // "Non_unique" int32, Values [0, 1]
-		show.index.ID(),     // "Key_name" string
-		show.exPosition+1,   // "Seq_in_index" int32
-		columnName,          // "Column_name" string
-		"NULL",              // "Collation" string, Values [A, D, NULL]
-		int64(0),            // "Cardinality" int64 (returning 0, it is not being calculated for the moment)
-		"NULL",              // "Sub_part" int64
-		"NULL",              // "Packed" string
-		nullable,            // "Null" string, Values [YES, '']
-		show.index.Driver(), // "Index_type" string
-		"",                  // "Comment" string
-		"",                  // "Index_comment" string
-		visible,             // "Visible" string, Values [YES, NO]
-		expression,          // "Expression" string
-	), nil
-}
 
-func isColumn(ex string, table sql.Table) (bool, bool) {
-	for _, col := range table.Schema() {
-		if col.Source+"."+col.Name == ex {
-			return true, col.Nullable
+	visible := "YES"
+	if x, ok := show.index.(sql.DriverIndex); ok && len(x.Driver()) > 0{
+		if !i.ctx.CanUseIndex(x) {
+			visible = "NO"
 		}
 	}
 
-	return false, false
+	nonUnique := 0
+	if !show.index.IsUnique() {
+		nonUnique = 1
+	}
+
+	return sql.NewRow(
+		show.index.Table(),     // "Table" string
+		nonUnique,              // "Non_unique" int32, Values [0, 1]
+		show.index.ID(),        // "Key_name" string
+		show.exPosition+1,      // "Seq_in_index" int32
+		columnName,             // "Column_name" string
+		nil,                    // "Collation" string, Values [A, D, NULL]
+		int64(0),               // "Cardinality" int64 (not calculated)
+		nil,                    // "Sub_part" int64
+		nil,                    // "Packed" string
+		nullable,               // "Null" string, Values [YES, '']
+		show.index.IndexType(), // "Index_type" string
+		show.index.Comment(),   // "Comment" string
+		"",                     // "Index_comment" string
+		visible,                // "Visible" string, Values [YES, NO]
+		expression,             // "Expression" string
+	), nil
 }
 
-func (i *showIndexesIter) Close() error {
-	for _, idx := range i.idxs.indexes {
-		i.registry.ReleaseIndex(idx)
+// getColumn returns the name of column from the table given using the expression string given, in the form
+// "table.column". Returns nil if the expression doesn't represent a column.
+func getColumnFromIndexExpr(expr string, table sql.Table) *sql.Column {
+	for _, col := range table.Schema() {
+		if col.Source+"."+col.Name == expr {
+			return col
+		}
 	}
 
 	return nil
 }
 
+func (i *showIndexesIter) Close() error {
+	return nil
+}
+
 type indexesToShow struct {
-	indexes []sql.DriverIndex
+	indexes []sql.Index
 	pos     int
 	epos    int
 }
 
 type idxToShow struct {
-	index      sql.DriverIndex
+	index      sql.Index
 	expression string
 	exPosition int
 }

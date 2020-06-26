@@ -295,9 +295,9 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 					nil,
 					nil,
 				))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "typestable", err)
 		}
-	} else {
-		t.Logf("Warning: could not create table %s: %s", "typestable", err)
 	}
 
 	if includeTable(includedTables, "stringandtable") {
@@ -425,7 +425,7 @@ func DeleteRows(t *testing.T, ctx *sql.Context, table sql.DeletableTable, rows .
 
 func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
 	createIndexes := []string{
-		"create index mytable_s on mytable (s)",
+		"create unique index mytable_s on mytable (s)",
 		"create index mytable_i_s on mytable (i,s)",
 		"create index othertable_s2 on othertable (s2)",
 		"create index othertable_s2_i2 on othertable (s2,i2)",

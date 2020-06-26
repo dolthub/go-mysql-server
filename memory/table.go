@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"sort"
 	"strconv"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -656,21 +657,30 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 			}
 			indexes = append(indexes, &MergeableIndex{
 				DB:         "",
-				DriverName: "native",
+				DriverName: "",
 				Tbl:        t,
 				TableName:  t.name,
 				Exprs:      exprs,
+				Name:       "PRIMARY",
+				Unique:     true,
 			})
 		}
 	}
 
+	nonPrimaryIndexes := make([]sql.Index, len(t.indexes))
+	var i int
 	for _, index := range t.indexes {
-		indexes = append(indexes, index)
+		nonPrimaryIndexes[i] = index
+		i++
 	}
-	return indexes, nil
+	sort.Slice(nonPrimaryIndexes, func(i, j int) bool {
+		return nonPrimaryIndexes[i].ID() < nonPrimaryIndexes[j].ID()
+	})
+
+	return append(indexes, nonPrimaryIndexes...), nil
 }
 
-func (t *Table) createIndex(name string, columns []sql.IndexColumn) (sql.Index, error) {
+func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint sql.IndexConstraint) (sql.Index, error) {
 	if t.indexes[name] != nil {
 		// TODO: extract a standard error type for this
 		return nil, fmt.Errorf("Error: index already exists")
@@ -685,10 +695,12 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn) (sql.Index, 
 	return &UnmergeableIndex{
 		MergeableIndex{
 			DB:         "",
-			DriverName: "native",
+			DriverName: "",
 			Tbl:        t,
 			TableName:  t.name,
 			Exprs:      exprs,
+			Name:       name,
+			Unique:     constraint == sql.IndexConstraint_Unique,
 		},
 	}, nil
 }
@@ -715,7 +727,7 @@ func (t *Table) CreateIndex(ctx *sql.Context, indexName string, using sql.IndexU
 		t.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(indexName, columns)
+	index, err := t.createIndex(indexName, columns, constraint)
 	if err != nil {
 		return err
 	}

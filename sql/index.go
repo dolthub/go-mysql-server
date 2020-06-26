@@ -19,6 +19,12 @@ type Index interface {
 	// one expression, it means the index has multiple columns indexed. If it's
 	// just one, it means it may be an expression or a column.
 	Expressions() []string
+	// IsUnique returns whether this index is unique
+	IsUnique() bool
+	// Comment returns the comment for this index
+	Comment() string
+	// IndexType returns the type of this index, e.g. BTREE
+	IndexType() string
 }
 
 // AscendIndex is an index that is sorted in ascending order.

@@ -13,6 +13,8 @@ type MergeableIndex struct {
 	Tbl        *Table // required for engine tests with driver
 	TableName  string
 	Exprs      []sql.Expression
+	Name       string
+	Unique     bool
 }
 
 var _ sql.Index = (*MergeableIndex)(nil)
@@ -31,6 +33,21 @@ func (i *MergeableIndex) Expressions() []string {
 		exprs = append(exprs, e.String())
 	}
 	return exprs
+}
+
+func (i *MergeableIndex) IsUnique() bool {
+	return i.Unique
+}
+
+func (i *MergeableIndex) Comment() string {
+	return "" // TODO: implement
+}
+
+func (i *MergeableIndex) IndexType() string {
+	if len(i.DriverName) > 0 {
+		return i.DriverName
+	}
+	return "BTREE" // fake but so are you
 }
 
 func (i *MergeableIndex) AscendGreaterOrEqual(keys ...interface{}) (sql.IndexLookup, error) {
@@ -76,6 +93,10 @@ func (i *MergeableIndex) Has(sql.Partition, ...interface{}) (bool, error) {
 }
 
 func (i *MergeableIndex) ID() string {
+	if len(i.Name) > 0 {
+		return i.Name
+	}
+
 	if len(i.Exprs) == 1 {
 		return i.Exprs[0].String()
 	}
