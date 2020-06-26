@@ -1564,8 +1564,8 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 	rows, err := sql.RowIterToRows(iter)
 	require.NoError(err)
 
-	widenedRows := widenRows(rows)
-	widenedExpected := widenRows(expected)
+	widenedRows := WidenRows(rows)
+	widenedExpected := WidenRows(expected)
 
 	orderBy := strings.Contains(strings.ToUpper(q), " ORDER BY ")
 
@@ -1581,16 +1581,16 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 // (and different database implementations). We may eventually decide that this undefined behavior is a problem, but
 // for now it's mostly just an issue when comparing results in tests. To get around this, we widen every type to its
 // widest value in actual and expected results.
-func widenRows(rows []sql.Row) []sql.Row {
+func WidenRows(rows []sql.Row) []sql.Row {
 	widened := make([]sql.Row, len(rows))
 	for i, row := range rows {
-		widened[i] = widenRow(row)
+		widened[i] = WidenRow(row)
 	}
 	return widened
 }
 
-// See widenRows
-func widenRow(row sql.Row) sql.Row {
+// See WidenRows
+func WidenRow(row sql.Row) sql.Row {
 	widened := make(sql.Row, len(row))
 	for i, v := range row {
 		var vw interface{}

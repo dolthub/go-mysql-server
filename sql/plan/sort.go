@@ -196,7 +196,7 @@ func (i *sortIter) computeSortedRows() error {
 	}
 
 	rows := cache.Get()
-	sorter := &sorter{
+	sorter := &Sorter{
 		sortFields: i.s.SortFields,
 		rows:       rows,
 		lastError:  nil,
@@ -210,22 +210,22 @@ func (i *sortIter) computeSortedRows() error {
 	return nil
 }
 
-type sorter struct {
+type Sorter struct {
 	sortFields []SortField
 	rows       []sql.Row
 	lastError  error
 	ctx        *sql.Context
 }
 
-func (s *sorter) Len() int {
+func (s *Sorter) Len() int {
 	return len(s.rows)
 }
 
-func (s *sorter) Swap(i, j int) {
+func (s *Sorter) Swap(i, j int) {
 	s.rows[i], s.rows[j] = s.rows[j], s.rows[i]
 }
 
-func (s *sorter) Less(i, j int) bool {
+func (s *Sorter) Less(i, j int) bool {
 	if s.lastError != nil {
 		return false
 	}
