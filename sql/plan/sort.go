@@ -197,52 +197,52 @@ func (i *sortIter) computeSortedRows() error {
 
 	rows := cache.Get()
 	sorter := &Sorter{
-		sortFields: i.s.SortFields,
-		rows:       rows,
-		lastError:  nil,
-		ctx: i.ctx,
+		SortFields: i.s.SortFields,
+		Rows:       rows,
+		LastError:  nil,
+		Ctx: i.ctx,
 	}
 	sort.Stable(sorter)
-	if sorter.lastError != nil {
-		return sorter.lastError
+	if sorter.LastError != nil {
+		return sorter.LastError
 	}
 	i.sortedRows = rows
 	return nil
 }
 
 type Sorter struct {
-	sortFields []SortField
-	rows       []sql.Row
-	lastError  error
-	ctx        *sql.Context
+	SortFields []SortField
+	Rows       []sql.Row
+	LastError  error
+	Ctx        *sql.Context
 }
 
 func (s *Sorter) Len() int {
-	return len(s.rows)
+	return len(s.Rows)
 }
 
 func (s *Sorter) Swap(i, j int) {
-	s.rows[i], s.rows[j] = s.rows[j], s.rows[i]
+	s.Rows[i], s.Rows[j] = s.Rows[j], s.Rows[i]
 }
 
 func (s *Sorter) Less(i, j int) bool {
-	if s.lastError != nil {
+	if s.LastError != nil {
 		return false
 	}
 
-	a := s.rows[i]
-	b := s.rows[j]
-	for _, sf := range s.sortFields {
+	a := s.Rows[i]
+	b := s.Rows[j]
+	for _, sf := range s.SortFields {
 		typ := sf.Column.Type()
-		av, err := sf.Column.Eval(s.ctx, a)
+		av, err := sf.Column.Eval(s.Ctx, a)
 		if err != nil {
-			s.lastError = ErrUnableSort.Wrap(err)
+			s.LastError = ErrUnableSort.Wrap(err)
 			return false
 		}
 
-		bv, err := sf.Column.Eval(s.ctx, b)
+		bv, err := sf.Column.Eval(s.Ctx, b)
 		if err != nil {
-			s.lastError = ErrUnableSort.Wrap(err)
+			s.LastError = ErrUnableSort.Wrap(err)
 			return false
 		}
 
@@ -260,7 +260,7 @@ func (s *Sorter) Less(i, j int) bool {
 
 		cmp, err := typ.Compare(av, bv)
 		if err != nil {
-			s.lastError = err
+			s.LastError = err
 			return false
 		}
 
