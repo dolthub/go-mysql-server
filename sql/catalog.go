@@ -34,11 +34,12 @@ type Catalog struct {
 	locks           sessionLocks
 }
 
-type (
-	sessionLocks map[uint32]dbLocks
-	dbLocks      map[string]tableLocks
-	tableLocks   map[string]struct{}
-)
+type tableLocks   map[string]struct{}
+
+type dbLocks      map[string]tableLocks
+
+type sessionLocks map[uint32]dbLocks
+
 
 // NewCatalog returns a new empty Catalog.
 func NewCatalog() *Catalog {

@@ -86,7 +86,7 @@ func NewTestFactory(createFunc interface{}) *TestFactory {
 
 func (tf *TestFactory) Test(t *testing.T, ctx *sql.Context, r sql.Row) {
 	for _, test := range tf.Tests {
-		test.Run(t, nil, nil)
+		test.Run(t, ctx, r)
 	}
 }
 

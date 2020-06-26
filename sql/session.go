@@ -61,6 +61,12 @@ type Session interface {
 	ClearWarnings()
 	// WarningCount returns a number of session warnings
 	WarningCount() uint16
+	// AddLock adds a lock to the set of locks owned by this user which will need to be released if this session terminates
+	AddLock(lockName string) error
+	// DelLock removes a lock from the set of locks owned by this user
+	DelLock(lockName string) error
+	// IterLocks iterates through all locks owned by this user
+	IterLocks(cb func(name string) error) error
 }
 
 // BaseSession is the basic session type.
@@ -69,10 +75,11 @@ type BaseSession struct {
 	addr      string
 	currentDB string
 	client    Client
-	mu        sync.RWMutex
+	mu        *sync.RWMutex
 	config    map[string]TypedValue
 	warnings  []*Warning
 	warncnt   uint16
+	locks     map[string]bool
 }
 
 // CommitTransaction commits the current transaction for the current database.
@@ -177,6 +184,40 @@ func (s *BaseSession) WarningCount() uint16 {
 	return uint16(len(s.warnings))
 }
 
+// AddLock adds a lock to the set of locks owned by this user which will need to be released if this session terminates
+func (s *BaseSession) AddLock(lockName string) error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	s.locks[lockName] = true
+	return nil
+}
+
+// DelLock removes a lock from the set of locks owned by this user
+func (s *BaseSession) DelLock(lockName string) error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	delete(s.locks, lockName)
+	return nil
+}
+
+// IterLocks iterates through all locks owned by this user
+func (s *BaseSession) IterLocks(cb func(name string) error) error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for name := range s.locks {
+		err := cb(name)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 type (
 	// TypedValue is a value along with its type.
 	TypedValue struct {
@@ -229,14 +270,17 @@ func NewSession(server, client, user string, id uint32) Session {
 			User:    user,
 		},
 		config: DefaultSessionConfig(),
+		mu: &sync.RWMutex{},
+		locks: make(map[string]bool),
 	}
 }
 
-var autoSessionIDs uint32
+// Session ID 0 used as invalid SessionID
+var autoSessionIDs uint32 = 1
 
 // NewBaseSession creates a new empty session.
 func NewBaseSession() Session {
-	return &BaseSession{id: atomic.AddUint32(&autoSessionIDs, 1), config: DefaultSessionConfig()}
+	return &BaseSession{id: atomic.AddUint32(&autoSessionIDs, 1), config: DefaultSessionConfig(), mu: &sync.RWMutex{}, locks: make(map[string]bool)}
 }
 
 // Context of the query execution.
