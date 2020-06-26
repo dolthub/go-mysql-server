@@ -48,29 +48,20 @@ func (*ddlNode) Schema() sql.Schema { return nil }
 // Children implements the Node interface.
 func (c *ddlNode) Children() []sql.Node { return nil }
 
-type ForeignKeyDefinition struct {
-	Name              string
-	Columns           []string
-	ReferencedTable   string
-	ReferencedColumns []string
-	OnUpdate          sql.ForeignKeyReferenceOption
-	OnDelete          sql.ForeignKeyReferenceOption
-}
-
 // CreateTable is a node describing the creation of some table.
 type CreateTable struct {
 	ddlNode
 	name        string
 	schema      sql.Schema
 	ifNotExists bool
-	fkDefs      []*ForeignKeyDefinition
+	fkDefs      []*sql.ForeignKeyConstraint
 }
 
 var _ sql.Databaser = (*CreateTable)(nil)
 var _ sql.Node = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
-func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists bool, fkDefs []*ForeignKeyDefinition) *CreateTable {
+func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists bool, fkDefs []*sql.ForeignKeyConstraint) *CreateTable {
 	for _, s := range schema {
 		s.Source = name
 	}

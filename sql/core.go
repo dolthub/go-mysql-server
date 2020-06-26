@@ -176,6 +176,25 @@ type Table interface {
 	PartitionRows(*Context, Partition) (RowIter, error)
 }
 
+// ForeignKeyConstraint declares a constraint between the columns of two tables.
+type ForeignKeyConstraint struct {
+	Name              string
+	Columns           []string
+	ReferencedTable   string
+	ReferencedColumns []string
+	OnUpdate          ForeignKeyReferenceOption
+	OnDelete          ForeignKeyReferenceOption
+}
+
+// ConstrainedTable can be implemented by tables that can accept and enforce constraints.
+type ConstrainedTable interface {
+	Table
+	// Returns the constraints on this table.
+	// Currently supported constraint types: ForeignKeyConstraint
+	// Other types will not be processed by the engine and will be silently discarded.
+	Constraints(*Context) []interface{}
+}
+
 // TableWrapper is a node that wraps the real table. This is needed because
 // wrappers cannot implement some methods the table may implement.
 type TableWrapper interface {
@@ -579,3 +598,4 @@ func EvaluateCondition(ctx *Context, cond Expression, row Row) (bool, error) {
 		return false, nil
 	}
 }
+

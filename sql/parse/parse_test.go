@@ -169,7 +169,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
-		[]*plan.ForeignKeyDefinition{{
+		[]*sql.ForeignKeyConstraint{{
 			Name:              "",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
@@ -193,7 +193,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
-		[]*plan.ForeignKeyDefinition{{
+		[]*sql.ForeignKeyConstraint{{
 			Name:              "fk_name",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
@@ -217,7 +217,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
-		[]*plan.ForeignKeyDefinition{{
+		[]*sql.ForeignKeyConstraint{{
 			Name:              "",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
@@ -241,7 +241,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
-		[]*plan.ForeignKeyDefinition{{
+		[]*sql.ForeignKeyConstraint{{
 			Name:              "",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
@@ -265,7 +265,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
-		[]*plan.ForeignKeyDefinition{{
+		[]*sql.ForeignKeyConstraint{{
 			Name:              "",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
@@ -294,7 +294,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
-		[]*plan.ForeignKeyDefinition{{
+		[]*sql.ForeignKeyConstraint{{
 			Name:              "",
 			Columns:           []string{"b_id", "c_id"},
 			ReferencedTable:   "t0",
@@ -323,7 +323,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
-		[]*plan.ForeignKeyDefinition{{
+		[]*sql.ForeignKeyConstraint{{
 			Name:              "fk_name",
 			Columns:           []string{"b_id", "c_id"},
 			ReferencedTable:   "t0",
@@ -439,7 +439,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`ALTER TABLE t1 ADD FOREIGN KEY (b_id) REFERENCES t0(b)`: plan.NewAlterAddForeignKey(
 		plan.NewUnresolvedTable("t1", ""),
-		&plan.ForeignKeyDefinition{
+		&sql.ForeignKeyConstraint{
 			Name:              "",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
@@ -450,7 +450,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`ALTER TABLE t1 ADD CONSTRAINT fk_name FOREIGN KEY (b_id) REFERENCES t0(b)`: plan.NewAlterAddForeignKey(
 		plan.NewUnresolvedTable("t1", ""),
-		&plan.ForeignKeyDefinition{
+		&sql.ForeignKeyConstraint{
 			Name:              "fk_name",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
@@ -461,7 +461,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`ALTER TABLE t1 ADD FOREIGN KEY (b_id) REFERENCES t0(b) ON UPDATE CASCADE`: plan.NewAlterAddForeignKey(
 		plan.NewUnresolvedTable("t1", ""),
-		&plan.ForeignKeyDefinition{
+		&sql.ForeignKeyConstraint{
 			Name:              "",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
@@ -472,7 +472,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`ALTER TABLE t1 ADD FOREIGN KEY (b_id) REFERENCES t0(b) ON DELETE RESTRICT`: plan.NewAlterAddForeignKey(
 		plan.NewUnresolvedTable("t1", ""),
-		&plan.ForeignKeyDefinition{
+		&sql.ForeignKeyConstraint{
 			Name:              "",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
@@ -483,7 +483,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`ALTER TABLE t1 ADD FOREIGN KEY (b_id) REFERENCES t0(b) ON UPDATE SET NULL ON DELETE NO ACTION`: plan.NewAlterAddForeignKey(
 		plan.NewUnresolvedTable("t1", ""),
-		&plan.ForeignKeyDefinition{
+		&sql.ForeignKeyConstraint{
 			Name:              "",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
@@ -494,7 +494,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`ALTER TABLE t1 ADD FOREIGN KEY (b_id, c_id) REFERENCES t0(b, c)`: plan.NewAlterAddForeignKey(
 		plan.NewUnresolvedTable("t1", ""),
-		&plan.ForeignKeyDefinition{
+		&sql.ForeignKeyConstraint{
 			Name:              "",
 			Columns:           []string{"b_id", "c_id"},
 			ReferencedTable:   "t0",
@@ -505,7 +505,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`ALTER TABLE t1 ADD CONSTRAINT fk_name FOREIGN KEY (b_id, c_id) REFERENCES t0(b, c) ON UPDATE RESTRICT ON DELETE CASCADE`: plan.NewAlterAddForeignKey(
 		plan.NewUnresolvedTable("t1", ""),
-		&plan.ForeignKeyDefinition{
+		&sql.ForeignKeyConstraint{
 			Name:              "fk_name",
 			Columns:           []string{"b_id", "c_id"},
 			ReferencedTable:   "t0",
@@ -516,7 +516,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`ALTER TABLE t1 DROP FOREIGN KEY fk_name`: plan.NewAlterDropForeignKey(
 		plan.NewUnresolvedTable("t1", ""),
-		&plan.ForeignKeyDefinition{
+		&sql.ForeignKeyConstraint{
 			Name:              "fk_name",
 			Columns:           []string{},
 			ReferencedTable:   "",

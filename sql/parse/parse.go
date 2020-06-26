@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression/function"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
+	"github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-errors.v1"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
@@ -500,7 +500,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		if fkConstraint, ok := parsedConstraint.(*plan.ForeignKeyDefinition); ok {
+		if fkConstraint, ok := parsedConstraint.(*sql.ForeignKeyConstraint); ok {
 			switch strings.ToLower(ddl.ConstraintAction) {
 			case sqlparser.AddStr:
 				return plan.NewAlterAddForeignKey(table, fkConstraint), nil
@@ -640,14 +640,14 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		return nil, err
 	}
 
-	var fkDefs []*plan.ForeignKeyDefinition
+	var fkDefs []*sql.ForeignKeyConstraint
 	for _, unknownConstraint := range c.TableSpec.Constraints {
 		parsedConstraint, err := convertConstraintDefinition(ctx, unknownConstraint)
 		if err != nil {
 			return nil, err
 		}
 		switch constraint := parsedConstraint.(type) {
-		case *plan.ForeignKeyDefinition:
+		case *sql.ForeignKeyConstraint:
 			fkDefs = append(fkDefs, constraint)
 		default:
 			return nil, ErrUnknownConstraintDefinition.New(unknownConstraint.Name, unknownConstraint)
@@ -668,7 +668,7 @@ func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefin
 		for i, col := range fkConstraint.ReferencedColumns {
 			refColumns[i] = col.String()
 		}
-		return &plan.ForeignKeyDefinition{
+		return &sql.ForeignKeyConstraint{
 			Name:              cd.Name,
 			Columns:           columns,
 			ReferencedTable:   fkConstraint.ReferencedTable.Name.String(),

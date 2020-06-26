@@ -25,10 +25,10 @@ const (
 type AlterForeignKey struct {
 	UnaryNode
 	Action  ForeignKeyAction
-	FkDef   *ForeignKeyDefinition
+	FkDef   *sql.ForeignKeyConstraint
 }
 
-func NewAlterAddForeignKey(table sql.Node, fkDef *ForeignKeyDefinition) *AlterForeignKey {
+func NewAlterAddForeignKey(table sql.Node, fkDef *sql.ForeignKeyConstraint) *AlterForeignKey {
 	return &AlterForeignKey{
 		UnaryNode: UnaryNode{Child: table},
 		Action:    ForeignKeyAction_Add,
@@ -36,7 +36,7 @@ func NewAlterAddForeignKey(table sql.Node, fkDef *ForeignKeyDefinition) *AlterFo
 	}
 }
 
-func NewAlterDropForeignKey(table sql.Node, fkDef *ForeignKeyDefinition) *AlterForeignKey {
+func NewAlterDropForeignKey(table sql.Node, fkDef *sql.ForeignKeyConstraint) *AlterForeignKey {
 	return &AlterForeignKey{
 		UnaryNode: UnaryNode{Child: table},
 		Action:    ForeignKeyAction_Drop,
