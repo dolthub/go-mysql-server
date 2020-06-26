@@ -27,20 +27,43 @@ func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, erro
 			return n, nil
 		}
 
-		if si, ok := n.(*plan.ShowIndexes); ok {
-			ia, err := getIndexesForNode(ctx, a, si)
+		switch x := n.(type) {
+		case *plan.ShowIndexes:
+			tableIndexes, err := getIndexesForTable(ctx, a, x.Child)
 			if err != nil {
 				return nil, err
 			}
 
-			var tableName string
-			if rt, ok := si.Child.(*plan.ResolvedTable); ok {
-				tableName = rt.Name()
-			}
+			x.IndexesToShow = tableIndexes
+		case *plan.ShowCreateTable:
+			if !x.IsView {
+				tableIndexes, err := getIndexesForTable(ctx, a, x.Child)
+				if err != nil {
+					return nil, err
+				}
 
-			si.IndexesToShow = ia.IndexesByTable(ctx, ctx.GetCurrentDatabase(), tableName)
+				x.Indexes = tableIndexes
+			}
 		}
 
 		return n, nil
 	})
+}
+
+// getIndexesForTable returns all indexes on the table represented by the node given. If the node isn't a
+// *(plan.ResolvedTable), returns an empty slice.
+func getIndexesForTable(ctx *sql.Context, a *Analyzer, node sql.Node) ([]sql.Index, error) {
+	ia, err := getIndexesForNode(ctx, a, node)
+	if err != nil {
+		return nil, err
+	}
+
+	var tableName string
+	if rt, ok := node.(*plan.ResolvedTable); ok {
+		tableName = rt.Name()
+	}
+
+	// TODO: get the DB out of the table, don't just use the current DB
+	tableIndexes := ia.IndexesByTable(ctx, ctx.GetCurrentDatabase(), tableName)
+	return tableIndexes, nil
 }

@@ -30,11 +30,6 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 			nc := *node
 			nc.Catalog = a.Catalog
 			return &nc, nil
-		case *plan.ShowCreateTable:
-			nc := *node
-			nc.Catalog = a.Catalog
-			nc.Database = ctx.GetCurrentDatabase()
-			return &nc, nil
 		case *plan.ShowProcessList:
 			nc := *node
 			nc.Database = ctx.GetCurrentDatabase()

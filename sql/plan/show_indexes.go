@@ -101,9 +101,9 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 	}
 
 	nullable := ""
-	if col, null := getColumn(show.expression, tbl); len(col) > 0 {
-		columnName, expression = col, nil
-		if null {
+	if col := getColumnFromIndexExpr(show.expression, tbl); col != nil {
+		columnName, expression = col.Name, nil
+		if col.Nullable {
 			nullable = "YES"
 		}
 	}
@@ -140,15 +140,15 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 }
 
 // getColumn returns the name of column from the table given using the expression string given, in the form
-// "table.column". Returns the empty string if the expression doesn't represent a column.
-func getColumn(ex string, table sql.Table) (colName string, nullable bool) {
+// "table.column". Returns nil if the expression doesn't represent a column.
+func getColumnFromIndexExpr(expr string, table sql.Table) *sql.Column {
 	for _, col := range table.Schema() {
-		if col.Source+"."+col.Name == ex {
-			return col.Name, col.Nullable
+		if col.Source+"."+col.Name == expr {
+			return col
 		}
 	}
 
-	return "", false
+	return nil
 }
 
 func (i *showIndexesIter) Close() error {
