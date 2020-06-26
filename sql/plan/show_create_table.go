@@ -171,6 +171,8 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) stri
 		colStmts[i] = stmt
 	}
 
+	// TODO: the order of the primary key columns might not match their order in the schema. The current interface can't
+	//  represent this. We will need a new sql.Table extension to support this cleanly.
 	if len(primaryKeyCols) > 0 {
 		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(primaryKeyCols, ","))
 		colStmts = append(colStmts, primaryKey)
