@@ -9,24 +9,20 @@ import (
 	"time"
 )
 
-/*
-GET_LOCK(str,timeout)	Get a named lock
-IS_FREE_LOCK(str)	Whether the named lock is free
-IS_USED_LOCK(str)	Whether the named lock is in use; return connection identifier if true
-RELEASE_ALL_LOCKS()	Release all current named locks
-RELEASE_LOCK(str)	Release the named lock
-*/
-
+// ErrIllegalLockNameArgType is a kind of error that is thrown when the parameter passed as a lock name is not a string.
 var ErrIllegalLockNameArgType = errors.NewKind("Illegal parameter data type %s for operation '%s'")
 
+// ReleaseAllLocksForLS returns the logic to execute whet the sql function release_all_locks is executed
 func ReleaseAllLocksForLS(ls *sql.LockSubsystem) sql.EvalLogic {
 	return func(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 		return ls.ReleaseAll(ctx)
 	}
 }
 
+// NamedLockFuncLogic is the logic executed when one of the single argument named lock functions is executeed
 type NamedLockFuncLogic func(ctx *sql.Context, ls *sql.LockSubsystem, lockName string) (interface{}, error)
 
+// NamedLockFunction is a sql function that takes just the name of a lock as an argument
 type NamedLockFunction struct {
 	expression.UnaryExpression
 	ls *sql.LockSubsystem
@@ -35,6 +31,7 @@ type NamedLockFunction struct {
 	logic NamedLockFuncLogic
 }
 
+// NewNamedLockFunc creates a NamedLockFunction
 func NewNamedLockFunc(ls *sql.LockSubsystem, funcName string, retType sql.Type, logic NamedLockFuncLogic) sql.Function1 {
 	fn := func(e sql.Expression) sql.Expression {
 		return &NamedLockFunction{expression.UnaryExpression{Child: e}, ls, funcName, retType, logic}
@@ -92,7 +89,7 @@ func (nl *NamedLockFunction) Type() sql.Type {
 	return nl.retType
 }
 
-
+// ReleaseLockFunc is the function logic that is executed when the release_lock function is called.
 func ReleaseLockFunc(ctx *sql.Context, ls *sql.LockSubsystem, lockName string) (interface{}, error) {
 	err := ls.Unlock(ctx, lockName)
 
@@ -109,6 +106,7 @@ func ReleaseLockFunc(ctx *sql.Context, ls *sql.LockSubsystem, lockName string) (
 	return int8(1), nil
 }
 
+// IsFreeLockFunc is the function logic that is executed when the is_free_lock function is called.
 func IsFreeLockFunc(_ *sql.Context, ls *sql.LockSubsystem, lockName string) (interface{}, error) {
 	state, _ := ls.GetLockState(lockName)
 
@@ -120,6 +118,7 @@ func IsFreeLockFunc(_ *sql.Context, ls *sql.LockSubsystem, lockName string) (int
 	}
 }
 
+// IsUsedLockFunc is the function logic that is executed when the is_used_lock function is called.
 func IsUsedLockFunc(ctx *sql.Context, ls *sql.LockSubsystem, lockName string) (interface{}, error) {
 	state, owner := ls.GetLockState(lockName)
 
@@ -131,11 +130,13 @@ func IsUsedLockFunc(ctx *sql.Context, ls *sql.LockSubsystem, lockName string) (i
 	}
 }
 
+// GetLock is a SQL function implementing get_lock
 type GetLock struct {
 	expression.BinaryExpression
 	ls *sql.LockSubsystem
 }
 
+// CreateNewGetLock returns a new GetLock object
 func CreateNewGetLock(ls *sql.LockSubsystem) func(e1, e2 sql.Expression) sql.Expression {
 	return func(e1, e2 sql.Expression) sql.Expression {
 		return &GetLock{expression.BinaryExpression{e1, e2}, ls}

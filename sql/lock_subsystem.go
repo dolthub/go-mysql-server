@@ -8,8 +8,11 @@ import (
 	"unsafe"
 )
 
+// ErrLockTimeout is the kind of error returned when acquiring a lock takes longer than the user specified timeout
 var ErrLockTimeout = errors.NewKind("Timeout acquiring lock '%s'.")
+// ErrLockDoesNotExist is the kind of error returned when a named lock does not exist and the operation does not created it
 var ErrLockDoesNotExist = errors.NewKind("Lock '%s' does not exist.")
+// ErrLockNotOwned is the kind of error returned when attempting an operation against a lock that the given context does not own.
 var ErrLockNotOwned = errors.NewKind("Operation '%s' failed as the lock '%s' has a different owner.")
 
 type ownedLock struct {
@@ -17,11 +20,13 @@ type ownedLock struct {
 	Count int64
 }
 
+// LockSubsystem manages reentrant named locks
 type LockSubsystem struct {
 	lockLock *sync.RWMutex
 	locks map[string]**ownedLock
 }
 
+// NewLockSubsystem creates a LockSubsystem object
 func NewLockSubsystem() *LockSubsystem {
 	return &LockSubsystem{&sync.RWMutex{}, make(map[string]**ownedLock)}
 }
@@ -48,6 +53,8 @@ func (ls *LockSubsystem) createLock(name string) **ownedLock {
 	return  nl
 }
 
+// Lock attempts to acquire a lock with a given name for the Id associated with the given ctx.Session within the given
+// timeout
 func (ls *LockSubsystem) Lock(ctx *Context, name string, timeout time.Duration) error {
 	nl := ls.getNamedLock(name)
 
@@ -79,6 +86,7 @@ func (ls *LockSubsystem) Lock(ctx *Context, name string, timeout time.Duration) 
 	return ErrLockTimeout.New(name)
 }
 
+// Unlock releases a lock with a given name for the ID associated with the given ctx.Session
 func (ls *LockSubsystem) Unlock(ctx *Context, name string) error {
 	nl := ls.getNamedLock(name)
 
@@ -111,6 +119,7 @@ func (ls *LockSubsystem) Unlock(ctx *Context, name string) error {
 	}
 }
 
+// ReleaseALl releases all locks the ID associated with the given ctx.Session
 func (ls *LockSubsystem) ReleaseAll(ctx *Context) (int, error) {
 	releaseCount := 0
 	_ = ctx.Session.IterLocks(func(name string) error {
@@ -140,14 +149,19 @@ func (ls *LockSubsystem) ReleaseAll(ctx *Context) (int, error) {
 	return releaseCount, nil
 }
 
+// LockState represents the different states a lock can be in
 type LockState int
 
 const (
+	// LockDoesNotExist is the state where a lock has never been created
 	LockDoesNotExist LockState = iota
+	// LockInUse is the state where a lock has been acquired by a user
 	LockInUse
+	// LockFree is the state where a lock has been created, but is not currently owned by any user
 	LockFree
 )
 
+// GetLockState returns the LockState and owner ID for a lock with a given name.
 func (ls *LockSubsystem) GetLockState(name string) (state LockState, owner uint32) {
 	nl := ls.getNamedLock(name)
 
