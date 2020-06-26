@@ -24,8 +24,8 @@ type indexAnalyzer struct {
 	//  tables with the same name in different databases. But right now table nodes aren't qualified by their resolved
 	//  database in the plan, so we can't do this.
 	indexesByTable map[string][]sql.Index
-	indexRegistry *sql.IndexRegistry
-	registryIdxes []sql.Index
+	indexRegistry  *sql.IndexRegistry
+	registryIdxes  []sql.Index
 }
 
 // getIndexesForNode returns an analyzer for indexes available in the node given. These might come from either the
@@ -67,7 +67,7 @@ func getIndexesForNode(ctx *sql.Context, a *Analyzer, n sql.Node) (*indexAnalyze
 
 	return &indexAnalyzer{
 		indexesByTable: indexes,
-		indexRegistry: idxRegistry,
+		indexRegistry:  idxRegistry,
 	}, nil
 }
 

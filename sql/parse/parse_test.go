@@ -1,18 +1,18 @@
 package parse
 
 import (
-	"github.com/stretchr/testify/assert"
 	"math"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
+	"vitess.io/vitess/go/sqltypes"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-	"gopkg.in/src-d/go-errors.v1"
-
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/stretchr/testify/require"
-	"vitess.io/vitess/go/sqltypes"
 )
 
 var showCollationProjection = plan.NewProject([]sql.Expression{
@@ -358,62 +358,62 @@ var fixtures = map[string]sql.Node{
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL`: plan.NewAddColumn(
 		sql.UnresolvedDatabase(""), "foo", &sql.Column{
-			Name:       "bar",
-			Type:       sql.Int32,
-			Nullable:   false,
+			Name:     "bar",
+			Type:     sql.Int32,
+			Nullable: false,
 		}, nil,
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT 42 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
 		sql.UnresolvedDatabase(""), "foo", &sql.Column{
-			Name:       "bar",
-			Type:       sql.Int32,
-			Nullable:   false,
-			Comment:    "hello",
-			Default:    int8(42),
+			Name:     "bar",
+			Type:     sql.Int32,
+			Nullable: false,
+			Comment:  "hello",
+			Default:  int8(42),
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT -42.0 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
 		sql.UnresolvedDatabase(""), "foo", &sql.Column{
-			Name:       "bar",
-			Type:       sql.Int32,
-			Nullable:   false,
-			Comment:    "hello",
-			Default:    float64(-42.0),
+			Name:     "bar",
+			Type:     sql.Int32,
+			Nullable: false,
+			Comment:  "hello",
+			Default:  float64(-42.0),
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT (2+2)/2 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
 		sql.UnresolvedDatabase(""), "foo", &sql.Column{
-			Name:       "bar",
-			Type:       sql.Int32,
-			Nullable:   false,
-			Comment:    "hello",
-			Default:    int64(2),
+			Name:     "bar",
+			Type:     sql.Int32,
+			Nullable: false,
+			Comment:  "hello",
+			Default:  int64(2),
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE foo ADD COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello'`: plan.NewAddColumn(
 		sql.UnresolvedDatabase(""), "foo", &sql.Column{
-			Name:       "bar",
-			Type:       sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
-			Nullable:   true,
-			Comment:    "hello",
-			Default:    "string",
+			Name:     "bar",
+			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
+			Nullable: true,
+			Comment:  "hello",
+			Default:  "string",
 		}, nil,
 	),
 	`ALTER TABLE foo ADD COLUMN bar FLOAT NULL DEFAULT 32.0 COMMENT 'hello'`: plan.NewAddColumn(
 		sql.UnresolvedDatabase(""), "foo", &sql.Column{
-			Name:       "bar",
-			Type:       sql.Float32,
-			Nullable:   true,
-			Comment:    "hello",
-			Default:    float64(32.0),
+			Name:     "bar",
+			Type:     sql.Float32,
+			Nullable: true,
+			Comment:  "hello",
+			Default:  float64(32.0),
 		}, nil,
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT DEFAULT 1 FIRST`: plan.NewAddColumn(
 		sql.UnresolvedDatabase(""), "foo", &sql.Column{
-			Name:       "bar",
-			Type:       sql.Int32,
-			Nullable:   true,
-			Default:    int8(1),
+			Name:     "bar",
+			Type:     sql.Int32,
+			Nullable: true,
+			Default:  int8(1),
 		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE foo DROP COLUMN bar`: plan.NewDropColumn(
@@ -421,20 +421,20 @@ var fixtures = map[string]sql.Node{
 	),
 	`ALTER TABLE foo MODIFY COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
 		sql.UnresolvedDatabase(""), "foo", "bar", &sql.Column{
-			Name:       "bar",
-			Type:       sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
-			Nullable:   true,
-			Comment:    "hello",
-			Default:    "string",
+			Name:     "bar",
+			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
+			Nullable: true,
+			Comment:  "hello",
+			Default:  "string",
 		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE foo CHANGE COLUMN bar baz VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
 		sql.UnresolvedDatabase(""), "foo", "bar", &sql.Column{
-			Name:       "baz",
-			Type:       sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
-			Nullable:   true,
-			Comment:    "hello",
-			Default:    "string",
+			Name:     "baz",
+			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
+			Nullable: true,
+			Comment:  "hello",
+			Default:  "string",
 		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE t1 ADD FOREIGN KEY (b_id) REFERENCES t0(b)`: plan.NewAlterAddForeignKey(
@@ -533,18 +533,18 @@ var fixtures = map[string]sql.Node{
 	),
 	"DESCRIBE FORMAT=tree SELECT * FROM foo": plan.NewDescribeQuery(
 		"tree", plan.NewProject(
-		[]sql.Expression{expression.NewStar()},
-		plan.NewUnresolvedTable("foo", ""),
-	)),
+			[]sql.Expression{expression.NewStar()},
+			plan.NewUnresolvedTable("foo", ""),
+		)),
 	"DESC FORMAT=tree SELECT * FROM foo": plan.NewDescribeQuery(
 		"tree", plan.NewProject(
-		[]sql.Expression{expression.NewStar()},
-		plan.NewUnresolvedTable("foo", ""),
-	)),
+			[]sql.Expression{expression.NewStar()},
+			plan.NewUnresolvedTable("foo", ""),
+		)),
 	"EXPLAIN FORMAT=tree SELECT * FROM foo": plan.NewDescribeQuery(
 		"tree", plan.NewProject(
-		[]sql.Expression{expression.NewStar()},
-		plan.NewUnresolvedTable("foo", "")),
+			[]sql.Expression{expression.NewStar()},
+			plan.NewUnresolvedTable("foo", "")),
 	),
 	"DESCRIBE SELECT * FROM foo": plan.NewDescribeQuery(
 		"tree", plan.NewProject(
@@ -1552,10 +1552,10 @@ var fixtures = map[string]sql.Node{
 		{Table: plan.NewUnresolvedTable("bar", ""), Write: true},
 		{Table: plan.NewUnresolvedTable("baz", "")},
 	}),
-	`SHOW CREATE DATABASE foo`:               plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
-	`SHOW CREATE SCHEMA foo`:                 plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
-	`SHOW CREATE DATABASE IF NOT EXISTS foo`: plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
-	`SHOW CREATE SCHEMA IF NOT EXISTS foo`:   plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
+	`SHOW CREATE DATABASE foo`:                 plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
+	`SHOW CREATE SCHEMA foo`:                   plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
+	`SHOW CREATE DATABASE IF NOT EXISTS foo`:   plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
+	`SHOW CREATE SCHEMA IF NOT EXISTS foo`:     plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
 	`SHOW WARNINGS`:                            plan.NewOffset(0, plan.ShowWarnings(sql.NewEmptyContext().Warnings())),
 	`SHOW WARNINGS LIMIT 10`:                   plan.NewLimit(10, plan.NewOffset(0, plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
 	`SHOW WARNINGS LIMIT 5,10`:                 plan.NewLimit(10, plan.NewOffset(5, plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
@@ -1647,17 +1647,17 @@ var fixtures = map[string]sql.Node{
 	"SHOW CREATE TABLE `my``db`.`my``table`": plan.NewShowCreateTable("my`db", nil, plan.NewUnresolvedTable("my`table", "my`db"), false),
 	"SHOW CREATE TABLE ````":                 plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("`", ""), false),
 	"SHOW CREATE TABLE `.`":                  plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable(".", ""), false),
-	"SHOW CREATE VIEW `mytable`":            plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("mytable", ""), true),
-	"SHOW CREATE VIEW mytable":              plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("mytable", ""), true),
-	"SHOW CREATE VIEW mydb.`mytable`":       plan.NewShowCreateTable("mydb", nil, plan.NewUnresolvedTable("mytable", "mydb"), true),
-	"SHOW CREATE VIEW `mydb`.mytable":       plan.NewShowCreateTable("mydb", nil, plan.NewUnresolvedTable("mytable", "mydb"), true),
-	"SHOW CREATE VIEW `mydb`.`mytable`":     plan.NewShowCreateTable("mydb", nil, plan.NewUnresolvedTable("mytable", "mydb"), true),
-	"SHOW CREATE VIEW `my.table`":           plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("my.table", ""), true),
-	"SHOW CREATE VIEW `my.db`.`my.table`":   plan.NewShowCreateTable("my.db", nil, plan.NewUnresolvedTable("my.table", "my.db"), true),
-	"SHOW CREATE VIEW `my``table`":          plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("my`table", ""), true),
-	"SHOW CREATE VIEW `my``db`.`my``table`": plan.NewShowCreateTable("my`db", nil, plan.NewUnresolvedTable("my`table", "my`db"), true),
-	"SHOW CREATE VIEW ````":                 plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("`", ""), true),
-	"SHOW CREATE VIEW `.`":                  plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable(".", ""), true),
+	"SHOW CREATE VIEW `mytable`":             plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("mytable", ""), true),
+	"SHOW CREATE VIEW mytable":               plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("mytable", ""), true),
+	"SHOW CREATE VIEW mydb.`mytable`":        plan.NewShowCreateTable("mydb", nil, plan.NewUnresolvedTable("mytable", "mydb"), true),
+	"SHOW CREATE VIEW `mydb`.mytable":        plan.NewShowCreateTable("mydb", nil, plan.NewUnresolvedTable("mytable", "mydb"), true),
+	"SHOW CREATE VIEW `mydb`.`mytable`":      plan.NewShowCreateTable("mydb", nil, plan.NewUnresolvedTable("mytable", "mydb"), true),
+	"SHOW CREATE VIEW `my.table`":            plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("my.table", ""), true),
+	"SHOW CREATE VIEW `my.db`.`my.table`":    plan.NewShowCreateTable("my.db", nil, plan.NewUnresolvedTable("my.table", "my.db"), true),
+	"SHOW CREATE VIEW `my``table`":           plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("my`table", ""), true),
+	"SHOW CREATE VIEW `my``db`.`my``table`":  plan.NewShowCreateTable("my`db", nil, plan.NewUnresolvedTable("my`table", "my`db"), true),
+	"SHOW CREATE VIEW ````":                  plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable("`", ""), true),
+	"SHOW CREATE VIEW `.`":                   plan.NewShowCreateTable("", nil, plan.NewUnresolvedTable(".", ""), true),
 	`SELECT '2018-05-01' + INTERVAL 1 DAY`: plan.NewProject(
 		[]sql.Expression{expression.NewArithmetic(
 			expression.NewLiteral("2018-05-01", sql.LongText),
@@ -1815,7 +1815,7 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
-	`CREATE VIEW v AS SELECT * FROM foo` : plan.NewCreateView(
+	`CREATE VIEW v AS SELECT * FROM foo`: plan.NewCreateView(
 		sql.UnresolvedDatabase(""),
 		"v",
 		[]string{},
@@ -1828,7 +1828,7 @@ var fixtures = map[string]sql.Node{
 		),
 		false,
 	),
-	`CREATE OR REPLACE VIEW v AS SELECT * FROM foo` : plan.NewCreateView(
+	`CREATE OR REPLACE VIEW v AS SELECT * FROM foo`: plan.NewCreateView(
 		sql.UnresolvedDatabase(""),
 		"v",
 		[]string{},
@@ -1841,7 +1841,7 @@ var fixtures = map[string]sql.Node{
 		),
 		true,
 	),
-	`SELECT 2 UNION SELECT 3` : plan.NewUnion(
+	`SELECT 2 UNION SELECT 3`: plan.NewUnion(
 		plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
 			plan.NewUnresolvedTable("dual", ""),
@@ -1851,7 +1851,7 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("dual", ""),
 		),
 	),
-	`(SELECT 2) UNION (SELECT 3)` : plan.NewUnion(
+	`(SELECT 2) UNION (SELECT 3)`: plan.NewUnion(
 		plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
 			plan.NewUnresolvedTable("dual", ""),
@@ -1861,7 +1861,7 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("dual", ""),
 		),
 	),
-	`SELECT 2 UNION SELECT 3 UNION SELECT 4` : plan.NewUnion(
+	`SELECT 2 UNION SELECT 3 UNION SELECT 4`: plan.NewUnion(
 		plan.NewUnion(
 			plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
@@ -1877,7 +1877,7 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("dual", ""),
 		),
 	),
-	`SELECT 2 UNION (SELECT 3 UNION SELECT 4)` : plan.NewUnion(
+	`SELECT 2 UNION (SELECT 3 UNION SELECT 4)`: plan.NewUnion(
 		plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
 			plan.NewUnresolvedTable("dual", ""),
@@ -1893,7 +1893,7 @@ var fixtures = map[string]sql.Node{
 			),
 		),
 	),
-	`SELECT 2 UNION ALL SELECT 3` : plan.NewUnion(
+	`SELECT 2 UNION ALL SELECT 3`: plan.NewUnion(
 		plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
 			plan.NewUnresolvedTable("dual", ""),
@@ -1903,7 +1903,7 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("dual", ""),
 		),
 	),
-	`SELECT 2 UNION DISTINCT SELECT 3` : plan.NewDistinct(
+	`SELECT 2 UNION DISTINCT SELECT 3`: plan.NewDistinct(
 		plan.NewUnion(
 			plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
@@ -1941,11 +1941,11 @@ func TestParse(t *testing.T) {
 }
 
 var fixturesErrors = map[string]*errors.Kind{
-	`SHOW METHEMONEY`:                           ErrUnsupportedFeature,
-	`LOCK TABLES foo AS READ`:                   errUnexpectedSyntax,
-	`LOCK TABLES foo LOW_PRIORITY READ`:         errUnexpectedSyntax,
-	`SELECT * FROM mytable LIMIT -100`:          ErrUnsupportedSyntax,
-	`SELECT * FROM mytable LIMIT 100 OFFSET -1`: ErrUnsupportedSyntax,
+	`SHOW METHEMONEY`:                                         ErrUnsupportedFeature,
+	`LOCK TABLES foo AS READ`:                                 errUnexpectedSyntax,
+	`LOCK TABLES foo LOW_PRIORITY READ`:                       errUnexpectedSyntax,
+	`SELECT * FROM mytable LIMIT -100`:                        ErrUnsupportedSyntax,
+	`SELECT * FROM mytable LIMIT 100 OFFSET -1`:               ErrUnsupportedSyntax,
 	`SELECT INTERVAL 1 DAY - '2018-05-01'`:                    ErrUnsupportedSyntax,
 	`SELECT INTERVAL 1 DAY * '2018-05-01'`:                    ErrUnsupportedSyntax,
 	`SELECT '2018-05-01' * INTERVAL 1 DAY`:                    ErrUnsupportedSyntax,
@@ -1955,7 +1955,7 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT AVG(DISTINCT foo) FROM b`:                         ErrUnsupportedSyntax,
 	`CREATE VIEW myview AS SELECT AVG(DISTINCT foo) FROM b`:   ErrUnsupportedSyntax,
 	"DESCRIBE FORMAT=pretty SELECT * FROM foo":                errInvalidDescribeFormat,
-	`CREATE TABLE test (pk int, primary key(pk, noexist))`:     ErrUnknownIndexColumn,
+	`CREATE TABLE test (pk int, primary key(pk, noexist))`:    ErrUnknownIndexColumn,
 }
 
 func TestParseErrors(t *testing.T) {
@@ -2056,4 +2056,3 @@ func TestPrintTree(t *testing.T) {
                  └─ UnresolvedTable(bar)
 `, node.String())
 }
-

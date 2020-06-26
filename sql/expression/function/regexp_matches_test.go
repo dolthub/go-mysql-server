@@ -3,11 +3,11 @@ package function
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	errors "gopkg.in/src-d/go-errors.v1"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"github.com/stretchr/testify/require"
-
-	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 func TestRegexpMatches(t *testing.T) {

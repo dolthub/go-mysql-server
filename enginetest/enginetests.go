@@ -16,19 +16,21 @@ package enginetest
 
 import (
 	"context"
-	"github.com/liquidata-inc/go-mysql-server"
+	"strings"
+	"sync/atomic"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"vitess.io/vitess/go/sqltypes"
+
+	sqle "github.com/liquidata-inc/go-mysql-server"
 	"github.com/liquidata-inc/go-mysql-server/auth"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
 	"github.com/liquidata-inc/go-mysql-server/sql/parse"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"github.com/liquidata-inc/go-mysql-server/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"strings"
-	"sync/atomic"
-	"testing"
-	"vitess.io/vitess/go/sqltypes"
 )
 
 // Tests a variety of queries against databases and tables provided by the given harness.
@@ -42,7 +44,7 @@ func TestQueries(t *testing.T, harness Harness) {
 // To test the information schema database, we only include a subset of the tables defined in the test data when
 // creating tables. This lets us avoid having to change the information_schema tests every time we add a table to the
 // test suites.
-var infoSchemaTables = []string {
+var infoSchemaTables = []string{
 	"mytable",
 	"othertable",
 	"tabletest",
@@ -212,7 +214,7 @@ func TestExplode(t *testing.T, harness Harness) {
 	})
 	require.NoError(t, err)
 
-	InsertRows(t, harness.NewContext(), mustInsertableTable(t, table), sql.NewRow(int64(1), []interface{}{"a", "b"}, "first"), sql.NewRow(int64(2), []interface{}{"c", "d"}, "second"), sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"), )
+	InsertRows(t, harness.NewContext(), mustInsertableTable(t, table), sql.NewRow(int64(1), []interface{}{"a", "b"}, "first"), sql.NewRow(int64(2), []interface{}{"c", "d"}, "second"), sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"))
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
@@ -227,9 +229,9 @@ func TestExplode(t *testing.T, harness Harness) {
 // file checks that the name of the columns in the result schema is correct.
 func TestColumnAliases(t *testing.T, harness Harness) {
 	type testcase struct {
-		query string
+		query            string
 		expectedColNames []string
-		expectedRows []sql.Row
+		expectedRows     []sql.Row
 	}
 
 	tests := []testcase{
@@ -328,7 +330,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 	})
 	require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "foo"), sql.NewRow(int64(2), "bar"), sql.NewRow(int64(3), "baz"), )
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "foo"), sql.NewRow(int64(2), "bar"), sql.NewRow(int64(3), "baz"))
 
 	table2, err := harness.NewTable(db, "bar", sql.Schema{
 		{Name: "b", Type: sql.Text, Source: "bar", PrimaryKey: true},
@@ -336,12 +338,12 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 	})
 	require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, table2), sql.NewRow("qux", int64(3)), sql.NewRow("mux", int64(2)), sql.NewRow("pux", int64(1)), )
+	InsertRows(t, NewContext(harness), mustInsertableTable(t, table2), sql.NewRow("qux", int64(3)), sql.NewRow("mux", int64(2)), sql.NewRow("pux", int64(1)))
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	expected := []sql.Row {
+	expected := []sql.Row{
 		{int64(1), "pux", "foo"},
 		{int64(2), "mux", "bar"},
 		{int64(3), "qux", "baz"},
@@ -349,7 +351,6 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 
 	TestQuery(t, harness, e, `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c order by 1`, expected)
 }
-
 
 func TestQueryErrors(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
@@ -517,8 +518,8 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	TestQuery(t, harness, e,
 		"CREATE TABLE t1(a INTEGER, b TEXT, c DATE, "+
-				"d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, "+
-				"b1 BOOL, b2 BOOLEAN NOT NULL, g DATETIME, h CHAR(40))",
+			"d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, "+
+			"b1 BOOL, b2 BOOLEAN NOT NULL, g DATETIME, h CHAR(40))",
 		[]sql.Row(nil),
 	)
 
@@ -547,7 +548,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	TestQuery(t, harness, e,
 		"CREATE TABLE t2 (a INTEGER NOT NULL PRIMARY KEY, "+
-				"b VARCHAR(10) NOT NULL)",
+			"b VARCHAR(10) NOT NULL)",
 		[]sql.Row(nil),
 	)
 
@@ -567,8 +568,8 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	TestQuery(t, harness, e,
 		"CREATE TABLE t3(a INTEGER NOT NULL,"+
-				"b TEXT NOT NULL,"+
-				"c bool, primary key (a,b))",
+			"b TEXT NOT NULL,"+
+			"c bool, primary key (a,b))",
 		[]sql.Row(nil),
 	)
 
@@ -589,8 +590,8 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	TestQuery(t, harness, e,
 		"CREATE TABLE t4(a INTEGER,"+
-				"b TEXT NOT NULL COMMENT 'comment',"+
-				"c bool, primary key (a))",
+			"b TEXT NOT NULL COMMENT 'comment',"+
+			"c bool, primary key (a))",
 		[]sql.Row(nil),
 	)
 
@@ -611,14 +612,14 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	TestQuery(t, harness, e,
 		"CREATE TABLE IF NOT EXISTS t4(a INTEGER,"+
-				"b TEXT NOT NULL,"+
-				"c bool, primary key (a))",
+			"b TEXT NOT NULL,"+
+			"c bool, primary key (a))",
 		[]sql.Row(nil),
 	)
 
 	_, _, err = e.Query(NewContext(harness), "CREATE TABLE t4(a INTEGER,"+
-			"b TEXT NOT NULL,"+
-			"c bool, primary key (a))")
+		"b TEXT NOT NULL,"+
+		"c bool, primary key (a))")
 	require.Error(err)
 	require.True(sql.ErrTableAlreadyExists.Is(err))
 }
@@ -727,7 +728,6 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist RENAME foo")
 	require.Error(err)
 	require.True(sql.ErrTableNotFound.Is(err))
@@ -737,7 +737,7 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require.True(sql.ErrTableAlreadyExists.Is(err))
 }
 
-func TestRenameColumn(t *testing.T,  harness Harness) {
+func TestRenameColumn(t *testing.T, harness Harness) {
 	ctx := NewContext(harness)
 	require := require.New(t)
 
@@ -881,7 +881,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "i", Type: sql.Text, Source: "mytable", Comment:"modified"},
+		{Name: "i", Type: sql.Text, Source: "mytable", Comment: "modified"},
 		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
@@ -895,7 +895,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
-		{Name: "i", Type: sql.Int8, Source: "mytable", Comment:"yes", Nullable: true},
+		{Name: "i", Type: sql.Int8, Source: "mytable", Comment: "yes", Nullable: true},
 	}, tbl.Schema())
 
 	TestQuery(t, harness, e,
@@ -907,7 +907,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable", Comment:"ok"},
+		{Name: "i", Type: sql.Int64, Source: "mytable", Comment: "ok"},
 		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
@@ -1024,11 +1024,11 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	TestQuery(t, harness, e,`SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
-			{"a_1", "b_1", "c_1"},
-			{"a_2", "b_2", "c_2"},
-			{"a_3", "b_3", "c_3"},
-		},
+	TestQuery(t, harness, e, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
+		{"a_1", "b_1", "c_1"},
+		{"a_2", "b_2", "c_2"},
+		{"a_3", "b_3", "c_3"},
+	},
 	)
 }
 
@@ -1059,16 +1059,16 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 	e.AddDatabase(db)
 
 	TestQuery(t, harness, e, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
-			{"a1", "b1"},
-			{"a1", "b2"},
-			{"a1", "b3"},
-			{"a2", "b1"},
-			{"a2", "b2"},
-			{"a2", "b3"},
-			{"a3", "b1"},
-			{"a3", "b2"},
-			{"a3", "b3"},
-		},
+		{"a1", "b1"},
+		{"a1", "b2"},
+		{"a1", "b3"},
+		{"a2", "b1"},
+		{"a2", "b2"},
+		{"a2", "b3"},
+		{"a3", "b1"},
+		{"a3", "b2"},
+		{"a3", "b3"},
+	},
 	)
 }
 
@@ -1076,7 +1076,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
-	table1, err := harness.NewTable(db,"table1", sql.Schema{
+	table1, err := harness.NewTable(db, "table1", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "table1"},
 		{Name: "f", Type: sql.Float64, Source: "table1"},
 		{Name: "t", Type: sql.Text, Source: "table1"},
@@ -1118,7 +1118,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	TestQuery(t, harness, e,`SELECT * FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`,
+	TestQuery(t, harness, e, `SELECT * FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`,
 		[]sql.Row{
 			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
 			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
@@ -1208,7 +1208,7 @@ func TestSessionDefaults(t *testing.T, harness Harness) {
 }
 
 func TestWarnings(t *testing.T, harness Harness) {
-	var queries = []QueryTest {
+	var queries = []QueryTest{
 		{
 			`
 			SHOW WARNINGS
@@ -1327,7 +1327,6 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 	err = iter.Close()
 	require.NoError(err)
 
-
 	require.Equal(0, len(ctx.Session.Warnings()))
 }
 
@@ -1354,7 +1353,7 @@ func TestUse(t *testing.T, harness Harness) {
 }
 
 func TestSessionSelectLimit(t *testing.T, harness Harness) {
-	q := []QueryTest {
+	q := []QueryTest{
 		{
 			"SELECT * FROM mytable ORDER BY i",
 			[]sql.Row{{int64(1), "first row"}},
@@ -1421,9 +1420,9 @@ func TestTracing(t *testing.T, harness Harness) {
 	for _, s := range spans {
 		// only check the ones inside the execution tree
 		if strings.HasPrefix(s, "plan.") ||
-				strings.HasPrefix(s, "expression.") ||
-				strings.HasPrefix(s, "function.") ||
-				strings.HasPrefix(s, "aggregation.") {
+			strings.HasPrefix(s, "expression.") ||
+			strings.HasPrefix(s, "function.") ||
+			strings.HasPrefix(s, "aggregation.") {
 			spanOperations = append(spanOperations, s)
 		}
 	}
@@ -1509,7 +1508,6 @@ func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 	return engine
 }
 
-
 // NewEngineWithDbs returns a new engine with the databases provided. This is useful if you don't want to implement a
 // full harness but want to run your own tests on DBs you create.
 func NewEngineWithDbs(t *testing.T, parallelism int, databases []sql.Database, driver sql.IndexDriver) *sqle.Engine {
@@ -1589,7 +1587,7 @@ func widenRow(row sql.Row) sql.Row {
 		var vw interface{}
 		switch x := v.(type) {
 		case int:
-			 vw = int64(x)
+			vw = int64(x)
 		case int8:
 			vw = int64(x)
 		case int16:
@@ -1613,4 +1611,3 @@ func widenRow(row sql.Row) sql.Row {
 	}
 	return widened
 }
-

@@ -16,8 +16,9 @@ package enginetest_test
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"testing"
+
+	"github.com/liquidata-inc/go-mysql-server/enginetest"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.

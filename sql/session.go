@@ -21,7 +21,7 @@ const (
 )
 
 const (
-	CurrentDBSessionVar = "current_database"
+	CurrentDBSessionVar  = "current_database"
 	AutoCommitSessionVar = "autocommit"
 )
 
@@ -245,12 +245,12 @@ type Context struct {
 	Session
 	*IndexRegistry
 	*ViewRegistry
-	Memory   *MemoryManager
-	pid      uint64
-	query    string
+	Memory    *MemoryManager
+	pid       uint64
+	query     string
 	queryTime time.Time
-	tracer   opentracing.Tracer
-	rootSpan opentracing.Span
+	tracer    opentracing.Tracer
+	rootSpan  opentracing.Span
 }
 
 // ContextOption is a function to configure the context.
@@ -325,7 +325,6 @@ func RunWithNowFunc(nowFunc func() time.Time, fn func() error) error {
 
 	return fn()
 }
-
 
 // NewContext creates a new query context. Options can be passed to configure
 // the context. If some aspect of the context is not configure, the default

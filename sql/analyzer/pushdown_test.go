@@ -4,11 +4,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-	"github.com/stretchr/testify/require"
 )
 
 func TestPushdownProjectionAndFilters(t *testing.T) {
@@ -241,23 +242,23 @@ func TestPushdownIndexable(t *testing.T) {
 					),
 				}).(*memory.Table).
 					WithProjection([]string{"i", "f"}).(*memory.Table).
-						WithIndexLookup(
-							// TODO: These two indexes should not be mergeable, and fetching the values of
-							//  them will not yield correct results with the current implementation of these indexes.
-							&memory.MergedIndexLookup{
-								Intersections: []sql.IndexLookup{
-									&memory.MergeableIndexLookup{
-										Key:   []interface{}{float64(3.14)},
-										Index: idx2,
-									},
-									&memory.DescendIndexLookup{
-										Gt:    []interface{}{1},
-										Index: idx1,
-									},
+					WithIndexLookup(
+						// TODO: These two indexes should not be mergeable, and fetching the values of
+						//  them will not yield correct results with the current implementation of these indexes.
+						&memory.MergedIndexLookup{
+							Intersections: []sql.IndexLookup{
+								&memory.MergeableIndexLookup{
+									Key:   []interface{}{float64(3.14)},
+									Index: idx2,
 								},
-								Index: idx2,
+								&memory.DescendIndexLookup{
+									Gt:    []interface{}{1},
+									Index: idx1,
+								},
 							},
-						),
+							Index: idx2,
+						},
+					),
 			),
 			plan.NewResolvedTable(
 				table2.WithFilters([]sql.Expression{
@@ -269,13 +270,13 @@ func TestPushdownIndexable(t *testing.T) {
 					),
 				}).(*memory.Table).
 					WithProjection([]string{"i2"}).(*memory.Table).
-						WithIndexLookup(&memory.NegateIndexLookup{
-							Lookup: &memory.MergeableIndexLookup{
-								Key:   []interface{}{2},
-								Index: idx3,
-							},
+					WithIndexLookup(&memory.NegateIndexLookup{
+						Lookup: &memory.MergeableIndexLookup{
+							Key:   []interface{}{2},
 							Index: idx3,
-						}),
+						},
+						Index: idx3,
+					}),
 			),
 		),
 	)

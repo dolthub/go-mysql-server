@@ -3,13 +3,14 @@ package expression
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/cast"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/spf13/cast"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // ErrConvertExpression is returned when a conversion is not possible.

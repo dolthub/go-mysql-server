@@ -4,10 +4,10 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	"vitess.io/vitess/go/mysql"
+
 	sqle "github.com/liquidata-inc/go-mysql-server"
 	"github.com/liquidata-inc/go-mysql-server/auth"
-
-	"vitess.io/vitess/go/mysql"
 )
 
 // Server is a MySQL server for SQLe engines.
@@ -30,7 +30,7 @@ type Config struct {
 	// Version string to advertise in running server
 	Version string
 	// ConnReadTimeout is the server's read timeout
-	ConnReadTimeout  time.Duration
+	ConnReadTimeout time.Duration
 	// ConnWriteTimeout is the server's write timeout
 	ConnWriteTimeout time.Duration
 	// MaxConnections is the maximum number of simultaneous connections that the server will allow.

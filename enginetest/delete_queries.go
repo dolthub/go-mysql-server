@@ -125,4 +125,3 @@ var DeleteErrorTests = []GenericErrorQueryTest{
 		"DELETE mytable WHERE id = 1;",
 	},
 }
-

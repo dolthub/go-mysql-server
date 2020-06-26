@@ -29,9 +29,9 @@ type Catalog struct {
 	*ProcessList
 	*MemoryManager
 
-	mu              sync.RWMutex
-	dbs             Databases
-	locks           sessionLocks
+	mu    sync.RWMutex
+	dbs   Databases
+	locks sessionLocks
 }
 
 type (

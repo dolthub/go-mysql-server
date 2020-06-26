@@ -5,9 +5,10 @@ import (
 	"math"
 	"reflect"
 
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 // ErrInvalidArgumentForLogarithm is returned when an invalid argument value is passed to a

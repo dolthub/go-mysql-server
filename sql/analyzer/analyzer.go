@@ -2,12 +2,14 @@ package analyzer
 
 import (
 	"fmt"
-	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/sirupsen/logrus"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"gopkg.in/src-d/go-errors.v1"
 	"os"
 	"strings"
+
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/sirupsen/logrus"
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"
@@ -145,9 +147,9 @@ func (ab *Builder) Build() *Analyzer {
 // to them.
 type Analyzer struct {
 	// Whether to log various debugging messages
-	Debug       bool
+	Debug bool
 	// Whether to output the query plan at each step of the analyzer
-	Verbose     bool
+	Verbose bool
 	// A stack of debugger context. See PushDebugContext, PopDebugContext
 	contextStack []string
 	Parallelism  int
@@ -201,7 +203,6 @@ func (a *Analyzer) PopDebugContext() {
 		a.contextStack = a.contextStack[:len(a.contextStack)-1]
 	}
 }
-
 
 // Analyze the node and all its children.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node) (sql.Node, error) {

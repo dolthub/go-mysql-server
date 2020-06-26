@@ -6,8 +6,8 @@ import "fmt"
 // can be returned as the only element in the row for a Node that doesn't select anything.
 // See https://dev.mysql.com/doc/internals/en/packet-OK_Packet.html
 type OkResult struct {
-	RowsAffected uint64 // Number of rows affected by this operation
-	InsertID     uint64 // Inserted ID, if any, or -1 if not
+	RowsAffected uint64       // Number of rows affected by this operation
+	InsertID     uint64       // Inserted ID, if any, or -1 if not
 	Info         fmt.Stringer // Human-readable status string for extra status info, echoed verbatim to clients.
 }
 

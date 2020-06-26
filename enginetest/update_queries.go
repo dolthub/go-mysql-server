@@ -204,4 +204,3 @@ var UpdateErrorTests = []GenericErrorQueryTest{
 		"UPDATE mytable SET s = NULL;",
 	},
 }
-

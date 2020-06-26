@@ -86,8 +86,8 @@ func (s *ShowColumns) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 				null,
 				key, // Key
 				defaultVal,
-				"", // Extra
-				"", // Privileges
+				"",          // Extra
+				"",          // Privileges
 				col.Comment, // Comment
 			}
 		} else {

@@ -2,12 +2,13 @@ package sql
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"math"
 	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 var (
@@ -37,10 +38,10 @@ var (
 	// ErrDeleteRowNotFound
 	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete")
 
-  // ErrDuplicateAlias should be returned when a query contains a duplicate alias / table name.
-  ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
+	// ErrDuplicateAlias should be returned when a query contains a duplicate alias / table name.
+	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
-  // ErrUniqueKeyViolation is returned when a unique key constraint is violated
+	// ErrUniqueKeyViolation is returned when a unique key constraint is violated
 	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key for %s")
 )
 
@@ -208,6 +209,7 @@ type ProjectedTable interface {
 
 // IndexUsing is the desired storage type.
 type IndexUsing byte
+
 const (
 	IndexUsing_Default IndexUsing = iota
 	IndexUsing_BTree
@@ -216,6 +218,7 @@ const (
 
 // IndexConstraint represents any constraints that should be applied to the index.
 type IndexConstraint byte
+
 const (
 	IndexConstraint_None IndexConstraint = iota
 	IndexConstraint_Unique
@@ -264,13 +267,14 @@ type IndexAlterableTable interface {
 // ForeignKeyReferenceOption is the behavior for this foreign key with the relevant action is performed on the foreign
 // table.
 type ForeignKeyReferenceOption string
+
 const (
 	ForeignKeyReferenceOption_DefaultAction ForeignKeyReferenceOption = "DEFAULT" // No explicit action was specified
-	ForeignKeyReferenceOption_Restrict ForeignKeyReferenceOption = "RESTRICT"
-	ForeignKeyReferenceOption_Cascade ForeignKeyReferenceOption = "CASCADE"
-	ForeignKeyReferenceOption_NoAction ForeignKeyReferenceOption = "NO ACTION"
-	ForeignKeyReferenceOption_SetNull ForeignKeyReferenceOption = "SET NULL"
-	ForeignKeyReferenceOption_SetDefault ForeignKeyReferenceOption = "SET DEFAULT"
+	ForeignKeyReferenceOption_Restrict      ForeignKeyReferenceOption = "RESTRICT"
+	ForeignKeyReferenceOption_Cascade       ForeignKeyReferenceOption = "CASCADE"
+	ForeignKeyReferenceOption_NoAction      ForeignKeyReferenceOption = "NO ACTION"
+	ForeignKeyReferenceOption_SetNull       ForeignKeyReferenceOption = "SET NULL"
+	ForeignKeyReferenceOption_SetDefault    ForeignKeyReferenceOption = "SET DEFAULT"
 )
 
 // ForeignKeyAlterableTable represents a table that supports foreign key modification operations.
@@ -501,7 +505,7 @@ type TableRenamer interface {
 
 // ColumnOrder is used in ALTER TABLE statements to change the order of inserted / modified columns.
 type ColumnOrder struct {
-	First bool // True if this column should come first
+	First       bool   // True if this column should come first
 	AfterColumn string // Set to the name of the column after which this column should appear
 }
 

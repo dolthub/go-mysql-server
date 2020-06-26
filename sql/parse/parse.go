@@ -10,13 +10,14 @@ import (
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
+	"gopkg.in/src-d/go-errors.v1"
+	"vitess.io/vitess/go/vt/sqlparser"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression/function"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-	"gopkg.in/src-d/go-errors.v1"
-	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 var (
@@ -363,8 +364,8 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		// show collation statements are functionally identical to selecting from the collations table in
 		// information_schema, with slightly different syntax and with some columns aliased.
 		// TODO: install information_schema automatically for all catalogs
-		infoSchemaSelect, err := Parse(ctx, "select collation_name as `collation`, character_set_name as charset, id," +
-				"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations")
+		infoSchemaSelect, err := Parse(ctx, "select collation_name as `collation`, character_set_name as charset, id,"+
+			"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations")
 		if err != nil {
 			return nil, err
 		}
@@ -577,7 +578,7 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 				}
 			}
 			columns[i] = sql.IndexColumn{
-				Name: col.Column.String(),
+				Name:   col.Column.String(),
 				Length: 0,
 			}
 		}
@@ -610,7 +611,7 @@ func convertExternalCreateIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node,
 	}
 	cols := make([]sql.Expression, len(ddl.IndexSpec.Columns))
 	for i, col := range ddl.IndexSpec.Columns {
-		cols[i] =  expression.NewUnresolvedColumn(col.Column.String())
+		cols[i] = expression.NewUnresolvedColumn(col.Column.String())
 	}
 	return plan.NewCreateIndex(
 		ddl.IndexSpec.ToName.String(),

@@ -6,8 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // ErrUnableSort is thrown when something happens on sorting
@@ -200,7 +201,7 @@ func (i *sortIter) computeSortedRows() error {
 		sortFields: i.s.SortFields,
 		rows:       rows,
 		lastError:  nil,
-		ctx: i.ctx,
+		ctx:        i.ctx,
 	}
 	sort.Stable(sorter)
 	if sorter.lastError != nil {

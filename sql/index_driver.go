@@ -1,8 +1,9 @@
 package sql
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
 	"io"
+
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // IndexBatchSize is the number of rows to save at a time when creating indexes.

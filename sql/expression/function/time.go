@@ -742,14 +742,13 @@ func (d *Date) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	return NewDate(children[0]), nil
 }
 
-
 type datetimeFuncLogic func(time.Time) (interface{}, error)
 
 // UnaryDatetimeFunc is a sql.Function which takes a single datetime argument
 type UnaryDatetimeFunc struct {
 	expression.UnaryExpression
 	// Name is the name of the function
-	Name  string
+	Name string
 	// SQLType is the return type of the function
 	SQLType sql.Type
 	// Logic is a function containing the actual sql function logic
@@ -801,7 +800,7 @@ func (dtf *UnaryDatetimeFunc) WithChildren(children ...sql.Expression) (sql.Expr
 		return nil, sql.ErrInvalidChildrenNumber.New(dtf, len(children), 1)
 	}
 
-	return &UnaryDatetimeFunc{expression.UnaryExpression{Child:children[0]}, dtf.Name, dtf.SQLType, dtf.Logic}, nil
+	return &UnaryDatetimeFunc{expression.UnaryExpression{Child: children[0]}, dtf.Name, dtf.SQLType, dtf.Logic}, nil
 }
 
 // Type implements the Expression interface.
@@ -813,7 +812,7 @@ func dayNameFuncLogic(t time.Time) (interface{}, error) {
 	return t.Weekday().String(), nil
 }
 
-func microsecondFuncLogic(t time.Time) (interface{}, error){
+func microsecondFuncLogic(t time.Time) (interface{}, error) {
 	return uint64(t.Nanosecond()) / uint64(time.Microsecond), nil
 }
 

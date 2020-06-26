@@ -2,9 +2,10 @@ package plan
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"strings"
+
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )
@@ -16,16 +17,16 @@ type ShowCreateTable struct {
 	*UnaryNode
 	Catalog  *sql.Catalog
 	Database string
-	IsView bool
+	IsView   bool
 }
 
 // NewShowCreateTable creates a new ShowCreateTable node.
 func NewShowCreateTable(db string, ctl *sql.Catalog, table sql.Node, isView bool) sql.Node {
 	return &ShowCreateTable{
 		UnaryNode: &UnaryNode{table},
-		Database: db,
-		Catalog:  ctl,
-		IsView: isView,
+		Database:  db,
+		Catalog:   ctl,
+		IsView:    isView,
 	}
 }
 

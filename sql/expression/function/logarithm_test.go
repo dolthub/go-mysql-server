@@ -5,10 +5,11 @@ import (
 	"math"
 	"testing"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 var epsilon = math.Nextafter(1, 2) - 1

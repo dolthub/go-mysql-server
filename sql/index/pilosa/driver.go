@@ -22,9 +22,10 @@ import (
 	pilosa "github.com/pilosa/pilosa"
 	"github.com/pilosa/pilosa/syswrap"
 	"github.com/sirupsen/logrus"
+	errors "gopkg.in/src-d/go-errors.v1"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/index"
-	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 const (

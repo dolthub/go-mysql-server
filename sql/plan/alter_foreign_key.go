@@ -2,9 +2,11 @@ package plan
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"gopkg.in/src-d/go-errors.v1"
 	"strings"
+
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 var (
@@ -17,6 +19,7 @@ var (
 )
 
 type ForeignKeyAction byte
+
 const (
 	ForeignKeyAction_Add ForeignKeyAction = iota
 	ForeignKeyAction_Drop
@@ -24,8 +27,8 @@ const (
 
 type AlterForeignKey struct {
 	UnaryNode
-	Action  ForeignKeyAction
-	FkDef   *ForeignKeyDefinition
+	Action ForeignKeyAction
+	FkDef  *ForeignKeyDefinition
 }
 
 func NewAlterAddForeignKey(table sql.Node, fkDef *ForeignKeyDefinition) *AlterForeignKey {

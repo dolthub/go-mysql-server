@@ -2,10 +2,11 @@ package memory
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"io"
 	"strings"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 // A very dumb index that iterates over the rows of a table, evaluates its matching expressions against each row, and
@@ -57,11 +58,11 @@ var _ sql.MergeableIndexLookup = (*UnmergeableIndexLookup)(nil)
 // by iterating over all the table rows for a partition and evaluating each of them for inclusion in the index. This is
 // not an efficient way to store an index, and is only suitable for testing the correctness of index code in the engine.
 type indexValIter struct {
-	tbl *Table
-	partition sql.Partition
+	tbl             *Table
+	partition       sql.Partition
 	matchExpression sql.Expression
-	values [][]byte
-	i int
+	values          [][]byte
+	i               int
 }
 
 func (u *indexValIter) Next() ([]byte, error) {
@@ -135,7 +136,8 @@ func getType(val interface{}) (interface{}, sql.Type) {
 		return float64(val), sql.Float64
 	case string:
 		return val, sql.LongText
-	default:panic(fmt.Sprintf("Unsupported type for %v of type %T", val, val))
+	default:
+		panic(fmt.Sprintf("Unsupported type for %v of type %T", val, val))
 	}
 }
 

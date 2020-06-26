@@ -2,9 +2,10 @@ package function
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"strings"
 )
 
 type UnaryFuncLogic func(*sql.Context, interface{}) (interface{}, error)
@@ -12,7 +13,7 @@ type UnaryFuncLogic func(*sql.Context, interface{}) (interface{}, error)
 type UnaryFunc struct {
 	expression.UnaryExpression
 	// Name is the name of the function
-	Name  string
+	Name string
 	// The type returned by the function
 	RetType sql.Type
 	// Logic contains the logic being executed when the function is called
@@ -64,7 +65,7 @@ func (uf *UnaryFunc) WithChildren(children ...sql.Expression) (sql.Expression, e
 		return nil, sql.ErrInvalidChildrenNumber.New(uf, len(children), 1)
 	}
 
-	return &UnaryFunc{expression.UnaryExpression{Child:children[0]}, uf.Name, uf.RetType, uf.Logic}, nil
+	return &UnaryFunc{expression.UnaryExpression{Child: children[0]}, uf.Name, uf.RetType, uf.Logic}, nil
 }
 
 // Type implements the Expression interface.

@@ -25,7 +25,7 @@ const (
 	// StatisticsTableName is the name of the statistics table.
 	StatisticsTableName = "statistics"
 	// TableConstraintsTableName is the name of the table_constraints table.
-	TableConstraintsTableName  = "table_constraints"
+	TableConstraintsTableName = "table_constraints"
 	// ReferentialConstraintsTableName is the name of the table_constraints table.
 	ReferentialConstraintsTableName = "referential_constraints"
 	// KeyColumnUsageTableName is the name of the key_column_usage table.
@@ -452,30 +452,30 @@ func columnsRowIter(ctx *Context, cat *Catalog) RowIter {
 					collName = "utf8_bin"
 				}
 				rows = append(rows, Row{
-					"def",                                  // table_catalog
-					db.Name(),                              // table_schema
-					t.Name(),                               // table_name
-					c.Name,                                 // column_name
-					uint64(i),                              // ordinal_position
-					c.Default,                              // column_default
-					nullable,                               // is_nullable
-					strings.ToLower(c.Type.String()),       // data_type
-					nil,                                    // character_maximum_length
-					nil,                                    // character_octet_length
-					nil,                                    // numeric_precision
-					nil,                                    // numeric_scale
-					nil,                                    // datetime_precision
-					charName,                               // character_set_name
-					collName,                               // collation_name
-					strings.ToLower(c.Type.String()),       // column_type
-					"",                                     // column_key
-					"",                                     // extra
-					"select",                               // privileges
-					"",                                     // column_comment
-					"",                                     // generation_expression
+					"def",                            // table_catalog
+					db.Name(),                        // table_schema
+					t.Name(),                         // table_name
+					c.Name,                           // column_name
+					uint64(i),                        // ordinal_position
+					c.Default,                        // column_default
+					nullable,                         // is_nullable
+					strings.ToLower(c.Type.String()), // data_type
+					nil,                              // character_maximum_length
+					nil,                              // character_octet_length
+					nil,                              // numeric_precision
+					nil,                              // numeric_scale
+					nil,                              // datetime_precision
+					charName,                         // character_set_name
+					collName,                         // collation_name
+					strings.ToLower(c.Type.String()), // column_type
+					"",                               // column_key
+					"",                               // extra
+					"select",                         // privileges
+					"",                               // column_comment
+					"",                               // generation_expression
 				})
 			}
-		return true, nil
+			return true, nil
 		})
 
 		// TODO: fix panics

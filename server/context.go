@@ -5,8 +5,9 @@ import (
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"vitess.io/vitess/go/mysql"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // SessionBuilder creates sessions given a MySQL connection and a server address.
@@ -26,16 +27,16 @@ func DefaultSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql
 // connections and keep track of which sessions are in each connection, so
 // they can be cancelled if the connection is closed.
 type SessionManager struct {
-	addr     string
-	tracer   opentracing.Tracer
+	addr      string
+	tracer    opentracing.Tracer
 	hasDBFunc func(name string) bool
-	memory   *sql.MemoryManager
-	mu       *sync.Mutex
-	builder  SessionBuilder
-	sessions map[uint32]sql.Session
-	idxRegs  map[uint32]*sql.IndexRegistry
-	viewRegs map[uint32]*sql.ViewRegistry
-	pid      uint64
+	memory    *sql.MemoryManager
+	mu        *sync.Mutex
+	builder   SessionBuilder
+	sessions  map[uint32]sql.Session
+	idxRegs   map[uint32]*sql.IndexRegistry
+	viewRegs  map[uint32]*sql.ViewRegistry
+	pid       uint64
 }
 
 // NewSessionManager creates a SessionManager with the given SessionBuilder.
@@ -104,7 +105,7 @@ func (s *SessionManager) NewContext(conn *mysql.Conn) (*sql.Context, error) {
 	return s.NewContextWithQuery(conn, "")
 }
 
-func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Conn) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry, error){
+func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Conn) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry, error) {
 	s.mu.Lock()
 	sess, ok := s.sessions[conn.ConnectionID]
 	ir := s.idxRegs[conn.ConnectionID]
@@ -127,7 +128,7 @@ func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Con
 }
 
 // NewContextWithQuery creates a new context for the session at the given conn.
-func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string, ) (*sql.Context, error) {
+func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*sql.Context, error) {
 	ctx := context.Background()
 	sess, ir, vr, err := s.getOrCreateSession(ctx, conn)
 

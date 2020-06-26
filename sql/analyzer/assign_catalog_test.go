@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-	"github.com/stretchr/testify/require"
 )
 
 func TestAssignCatalog(t *testing.T) {
@@ -23,7 +24,6 @@ func TestAssignCatalog(t *testing.T) {
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("foo")
 
 	tbl := memory.NewTable("foo", nil)
-
 
 	node, err := f.Apply(ctx, a,
 		plan.NewCreateIndex("", plan.NewResolvedTable(tbl), nil, "", make(map[string]string)))
