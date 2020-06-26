@@ -93,7 +93,7 @@ func transformJoins(
 			}
 
 			joinSchema := append(primaryTable.Schema(), secondaryTable.Schema()...)
-			joinCond, err := fixFieldIndexes(joinSchema, cond)
+			joinCond, err := FixFieldIndexes(joinSchema, cond)
 			if err != nil {
 				return nil, err
 			}
@@ -126,7 +126,7 @@ func transformJoins(
 			// TODO: should we just do this for every query plan as a final part of the analysis?
 			//  This would involve enforcing that every type of Node implement Expressioner.
 			a.Log("transforming node of type: %T", node)
-			return fixFieldIndexesForExpressions(node)
+			return FixFieldIndexesForExpressions(node)
 		})
 	}
 
@@ -153,7 +153,7 @@ func analyzeJoinIndexes(
 	// left join, or the right as secondary for a right join.
 	rightIdx := indexes[normalizeTableName(tableAliases, rightTableName)]
 	if rightIdx != nil && exprByTable[leftTableName] != nil && joinType != plan.JoinTypeRight {
-		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(rightIdx, exprByTable[leftTableName], exprAliases, tableAliases)...)
+		primaryTableExpr, err := FixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(rightIdx, exprByTable[leftTableName], exprAliases, tableAliases)...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -162,7 +162,7 @@ func analyzeJoinIndexes(
 
 	leftIdx := indexes[normalizeTableName(tableAliases, leftTableName)]
 	if leftIdx != nil && exprByTable[rightTableName] != nil && joinType != plan.JoinTypeLeft {
-		primaryTableExpr, err := fixFieldIndexesOnExpressions(node.Right.Schema(), createPrimaryTableExpr(leftIdx, exprByTable[rightTableName], exprAliases, tableAliases)...)
+		primaryTableExpr, err := FixFieldIndexesOnExpressions(node.Right.Schema(), createPrimaryTableExpr(leftIdx, exprByTable[rightTableName], exprAliases, tableAliases)...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}

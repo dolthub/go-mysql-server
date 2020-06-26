@@ -101,7 +101,7 @@ func transformPushdown(
 			if err != nil {
 				return nil, err
 			}
-			return fixFieldIndexesForExpressions(n)
+			return FixFieldIndexesForExpressions(n)
 		case *plan.TableAlias:
 			table, err := pushdownToTable(
 				a,
@@ -117,7 +117,7 @@ func transformPushdown(
 			if err != nil {
 				return nil, err
 			}
-			return fixFieldIndexesForExpressions(table)
+			return FixFieldIndexesForExpressions(table)
 		case *plan.ResolvedTable:
 			table, err := pushdownToTable(
 				a,
@@ -133,9 +133,9 @@ func transformPushdown(
 			if err != nil {
 				return nil, err
 			}
-			return fixFieldIndexesForExpressions(table)
+			return FixFieldIndexesForExpressions(table)
 		default:
-			return fixFieldIndexesForExpressions(node)
+			return FixFieldIndexesForExpressions(node)
 		}
 	})
 
@@ -176,7 +176,7 @@ func pushdownToTable(
 		handled := ft.HandledFilters(normalizeExpressions(exprAliases, tableAliases, subtractExprSet(tableFilters, *handledFilters)...))
 		*handledFilters = append(*handledFilters, handled...)
 		schema := table.Schema()
-		handled, err := fixFieldIndexesOnExpressions(schema, handled...)
+		handled, err := FixFieldIndexesOnExpressions(schema, handled...)
 		if err != nil {
 			return nil, err
 		}
