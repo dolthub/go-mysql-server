@@ -26,11 +26,7 @@ func TestShowCreateTable(t *testing.T) {
 		})
 
 	ctx := sql.NewEmptyContext()
-	require.NoError(table.CreateForeignKey(ctx, "fk1", []string{"baz", "zab"}, "otherTable", []string{"a", "b"}, sql.ForeignKeyReferenceOption_DefaultAction, sql.ForeignKeyReferenceOption_Cascade))
-	require.NoError(table.CreateForeignKey(ctx, "fk2", []string{"foo"}, "otherTable", []string{"b"}, sql.ForeignKeyReferenceOption_Restrict, sql.ForeignKeyReferenceOption_DefaultAction))
-	require.NoError(table.CreateForeignKey(ctx, "fk3", []string{"bza"}, "otherTable", []string{"c"}, sql.ForeignKeyReferenceOption_DefaultAction, sql.ForeignKeyReferenceOption_DefaultAction))
 	db.AddTable(table.Name(), table)
-
 
 	cat := sql.NewCatalog()
 	cat.AddDatabase(db)
@@ -66,7 +62,7 @@ func TestShowCreateTable(t *testing.T) {
 	require.True(ErrNotView.Is(err), "wrong error kind")
 }
 
-func TestShowCreateTableWithIndex(t *testing.T) {
+func TestShowCreateTableWithIndexAndForeignKeys(t *testing.T) {
 	var require = require.New(t)
 
 	db := memory.NewDatabase("testdb")
@@ -80,6 +76,11 @@ func TestShowCreateTableWithIndex(t *testing.T) {
 			&sql.Column{Name: "foo", Source: "test-table", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: "", Nullable: true},
 			&sql.Column{Name: "pok", Source: "test-table", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: "", Nullable: true},
 		})
+
+	ctx := sql.NewEmptyContext()
+	require.NoError(table.CreateForeignKey(ctx, "fk1", []string{"baz", "zab"}, "otherTable", []string{"a", "b"}, sql.ForeignKeyReferenceOption_DefaultAction, sql.ForeignKeyReferenceOption_Cascade))
+	require.NoError(table.CreateForeignKey(ctx, "fk2", []string{"foo"}, "otherTable", []string{"b"}, sql.ForeignKeyReferenceOption_Restrict, sql.ForeignKeyReferenceOption_DefaultAction))
+	require.NoError(table.CreateForeignKey(ctx, "fk3", []string{"bza"}, "otherTable", []string{"c"}, sql.ForeignKeyReferenceOption_DefaultAction, sql.ForeignKeyReferenceOption_DefaultAction))
 
 	db.AddTable(table.Name(), table)
 
@@ -109,7 +110,6 @@ func TestShowCreateTableWithIndex(t *testing.T) {
 		},
 	}
 
-	ctx := sql.NewEmptyContext()
 	rowIter, _ := showCreateTable.RowIter(ctx)
 
 	row, err := rowIter.Next()
@@ -122,10 +122,13 @@ func TestShowCreateTableWithIndex(t *testing.T) {
 				"  `zab` INT DEFAULT 0,\n"+
 				"  `bza` BIGINT UNSIGNED DEFAULT 0 COMMENT 'hello',\n"+
 				"  `foo` VARCHAR(123),\n"+
-				"  `pok` CHAR(123),\n" +
-				"  PRIMARY KEY (`baz`,`zab`),\n" +
- 				"  UNIQUE KEY `qux` (`foo`),\n" +
-				"  KEY `zug` (`pok`,`foo`)\n" +
+				"  `pok` CHAR(123),\n"+
+				"  PRIMARY KEY (`baz`,`zab`),\n"+
+				"  UNIQUE KEY `qux` (`foo`),\n"+
+				"  KEY `zug` (`pok`,`foo`),\n"+
+				"  CONSTRAINT `fk1` FOREIGN KEY (`baz`,`zab`) REFERENCES `otherTable` (`a`,`b`) ON DELETE CASCADE,\n"+
+				"  CONSTRAINT `fk2` FOREIGN KEY (`foo`) REFERENCES `otherTable` (`b`) ON UPDATE RESTRICT,\n"+
+				"  CONSTRAINT `fk3` FOREIGN KEY (`bza`) REFERENCES `otherTable` (`c`)\n"+
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 	)
 

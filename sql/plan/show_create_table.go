@@ -118,7 +118,7 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 
 		tableName = table.Name()
 		var err error
-		composedCreateTableStatement, err = i.produceCreateTableStatement(table)
+		composedCreateTableStatement, err = i.produceCreateTableStatement(table.Table)
 		if err != nil {
 			return nil, err
 		}
@@ -169,7 +169,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 		}
 
 		if col.PrimaryKey {
-			primaryKeyCols = append(primaryKeyCols, fmt.Sprintf("`%s`", col.Name))
+			primaryKeyCols = append(primaryKeyCols, col.Name)
 		}
 
 		colStmts[i] = stmt
@@ -178,7 +178,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 	// TODO: the order of the primary key columns might not match their order in the schema. The current interface can't
 	//  represent this. We will need a new sql.Table extension to support this cleanly.
 	if len(primaryKeyCols) > 0 {
-		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(primaryKeyCols, ","))
+		primaryKey := fmt.Sprintf( "  PRIMARY KEY (%s)", strings.Join(quoteIdentifiers(primaryKeyCols), ","))
 		colStmts = append(colStmts, primaryKey)
 	}
 
@@ -205,23 +205,23 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 		colStmts = append(colStmts, key)
 	}
 
-	if fkt, ok := i.table.(sql.ForeignKeyTable); ok {
+	if fkt, ok := table.(sql.ForeignKeyTable); ok {
 		fks, err := fkt.GetForeignKeys(i.ctx)
 		if err != nil {
 			return "", err
 		}
 		for _, fk := range fks {
-			keyCols := strings.Join(fk.Columns, ",")
-			refCols := strings.Join(fk.ReferencedColumns, ",")
+			keyCols := strings.Join(quoteIdentifiers(fk.Columns), ",")
+			refCols := strings.Join(quoteIdentifiers(fk.ReferencedColumns), ",")
 			onDelete := ""
 			if len(fk.OnDelete) > 0 && fk.OnDelete != sql.ForeignKeyReferenceOption_DefaultAction {
-				onDelete = " " + string(fk.OnDelete)
+				onDelete = " ON DELETE " + string(fk.OnDelete)
 			}
 			onUpdate := ""
 			if len(fk.OnUpdate) > 0 && fk.OnUpdate != sql.ForeignKeyReferenceOption_DefaultAction {
-				onUpdate = " " + string(fk.OnUpdate)
+				onUpdate = " ON UPDATE " + string(fk.OnUpdate)
 			}
-			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s` (`%s`)%s%s", fk.Name, keyCols, fk.ReferencedTable, refCols, onDelete, onUpdate))
+			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` FOREIGN KEY (%s) REFERENCES `%s` (%s)%s%s", fk.Name, keyCols, fk.ReferencedTable, refCols, onDelete, onUpdate))
 		}
 	}
 
@@ -230,6 +230,14 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 		table.Name(),
 		strings.Join(colStmts, ",\n"),
 	), nil
+}
+
+func quoteIdentifiers(ids []string) []string {
+	quoted := make([]string, len(ids))
+	for i, id := range ids {
+		quoted[i] = fmt.Sprintf("`%s`", id)
+	}
+	return quoted
 }
 
 // isPrimaryKeyIndex returns whether the index given matches the table's primary key columns. Order is not considered.
