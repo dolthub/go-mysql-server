@@ -84,7 +84,7 @@ func (n *ShowCreateTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}, nil
 }
 
-// String implements the Stringer interface.
+// String implements the fmt.Stringer interface.
 func (n *ShowCreateTable) String() string {
 	t := "TABLE"
 	if n.IsView {

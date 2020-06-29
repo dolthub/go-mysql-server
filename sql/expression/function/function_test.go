@@ -6,6 +6,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
 	"time"
@@ -20,7 +21,10 @@ type FuncTest struct {
 
 func (ft FuncTest) Run(t *testing.T, ctx *sql.Context, r sql.Row) {
 	t.Run(ft.name, func(t *testing.T) {
-		res, err := ft.expr.Eval(ctx, r)
+		expr, err := ft.expr.WithChildren(ft.expr.Children()...)
+		require.NoError(t, err)
+
+		res, err := expr.Eval(ctx, r)
 
 		if ft.expectErr {
 			assert.Error(t, err)

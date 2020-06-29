@@ -186,8 +186,8 @@ func (s *BaseSession) WarningCount() uint16 {
 
 // AddLock adds a lock to the set of locks owned by this user which will need to be released if this session terminates
 func (s *BaseSession) AddLock(lockName string) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.locks[lockName] = true
 	return nil
@@ -195,8 +195,8 @@ func (s *BaseSession) AddLock(lockName string) error {
 
 // DelLock removes a lock from the set of locks owned by this user
 func (s *BaseSession) DelLock(lockName string) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	delete(s.locks, lockName)
 	return nil

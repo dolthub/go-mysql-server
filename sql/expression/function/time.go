@@ -785,7 +785,7 @@ func (dtf *UnaryDatetimeFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 	return dtf.Logic(val.(time.Time))
 }
 
-// String implements the Stringer interface.
+// String implements the fmt.Stringer interface.
 func (dtf *UnaryDatetimeFunc) String() string {
 	return fmt.Sprintf("%s(%s)", strings.ToUpper(dtf.Name), dtf.Child.String())
 }

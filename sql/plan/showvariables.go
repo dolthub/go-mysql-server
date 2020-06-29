@@ -37,7 +37,7 @@ func (sv *ShowVariables) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return sv, nil
 }
 
-// String implements the Stringer interface.
+// String implements the fmt.Stringer interface.
 func (sv *ShowVariables) String() string {
 	var like string
 	if sv.pattern != "" {

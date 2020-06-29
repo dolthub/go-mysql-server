@@ -119,7 +119,8 @@ func (ls *LockSubsystem) Unlock(ctx *Context, name string) error {
 	}
 }
 
-// ReleaseALl releases all locks the ID associated with the given ctx.Session
+// ReleaseAll releases all locks the ID associated with the given ctx.Session, and returns the number of locks that were
+// succeessfully released.
 func (ls *LockSubsystem) ReleaseAll(ctx *Context) (int, error) {
 	releaseCount := 0
 	_ = ctx.Session.IterLocks(func(name string) error {

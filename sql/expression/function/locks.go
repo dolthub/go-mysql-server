@@ -12,7 +12,7 @@ import (
 // ErrIllegalLockNameArgType is a kind of error that is thrown when the parameter passed as a lock name is not a string.
 var ErrIllegalLockNameArgType = errors.NewKind("Illegal parameter data type %s for operation '%s'")
 
-// ReleaseAllLocksForLS returns the logic to execute whet the sql function release_all_locks is executed
+// ReleaseAllLocksForLS returns the logic to execute when the sql function release_all_locks is executed
 func ReleaseAllLocksForLS(ls *sql.LockSubsystem) sql.EvalLogic {
 	return func(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 		return ls.ReleaseAll(ctx)
@@ -65,7 +65,7 @@ func (nl *NamedLockFunction) Eval(ctx *sql.Context, row sql.Row) (interface{}, e
 	return nl.logic(ctx, nl.ls, lockName)
 }
 
-// String implements the Stringer interface.
+// String implements the fmt.Stringer interface.
 func (nl *NamedLockFunction) String() string {
 	return fmt.Sprintf("%s(%s)", strings.ToUpper(nl.funcName), nl.Child.String())
 }
@@ -149,13 +149,13 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val0, err := gl.Left.Eval(ctx, row)
+	leftVal, err := gl.Left.Eval(ctx, row)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if val0 == nil {
+	if leftVal == nil {
 		return nil, nil
 	}
 
@@ -163,26 +163,26 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val1, err := gl.Right.Eval(ctx, row)
+	rightVal, err := gl.Right.Eval(ctx, row)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if val1 == nil {
+	if rightVal == nil {
 		return nil, nil
 	}
 
-	lockName, ok := val0.(string)
+	lockName, ok := leftVal.(string)
 
 	if !ok {
 		return nil, ErrIllegalLockNameArgType.New(gl.Left.Type().String(), "get_lock")
 	}
 
-	timeout, err := sql.Int64.Convert(val1)
+	timeout, err := sql.Int64.Convert(rightVal)
 
 	if err != nil {
-		return nil, fmt.Errorf("illegal value for timeeout %v", timeout)
+		return nil, fmt.Errorf("illegal value for timeout %v", timeout)
 	}
 
 	err = gl.ls.Lock(ctx, lockName, time.Second * time.Duration(timeout.(int64)))
@@ -198,7 +198,7 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return int8(1), nil
 }
 
-// String implements the Stringer interface.
+// String implements the fmt.Stringer interface.
 func (gl *GetLock) String() string {
 	return fmt.Sprintf("get_lock(%s, %s)", gl.Left.String(), gl.Right.String())
 }
@@ -210,7 +210,7 @@ func (gl *GetLock) IsNullable() bool {
 
 // WithChildren implements the Expression interface.
 func (gl *GetLock) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 1 {
+	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(gl, len(children), 1)
 	}
 

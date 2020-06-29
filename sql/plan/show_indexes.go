@@ -48,7 +48,7 @@ func (n *ShowIndexes) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// String implements the Stringer interface.
+// String implements the fmt.Stringer interface.
 func (n *ShowIndexes) String() string {
 	return fmt.Sprintf("ShowIndexes(%s)", n.Table)
 }

@@ -62,7 +62,7 @@ func (t *ToBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return out.String(), nil
 }
 
-// String implements the Stringer interface.
+// String implements the fmt.Stringer interface.
 func (t *ToBase64) String() string {
 	return fmt.Sprintf("TO_BASE64(%s)", t.Child)
 }
@@ -121,7 +121,7 @@ func (t *FromBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return string(decoded), nil
 }
 
-// String implements the Stringer interface.
+// String implements the fmt.Stringer interface.
 func (t *FromBase64) String() string {
 	return fmt.Sprintf("FROM_BASE64(%s)", t.Child)
 }

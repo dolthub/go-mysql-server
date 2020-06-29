@@ -938,6 +938,22 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{float64(6)}},
 	},
 	{
+		`SELECT GET_LOCK("test", 0)`,
+		[]sql.Row{{int8(1)}},
+	},
+	{
+		`SELECT IS_FREE_LOCK("test")`,
+		[]sql.Row{{int8(0)}},
+	},
+	{
+		`SELECT RELEASE_LOCK("test")`,
+		[]sql.Row{{int8(1)}},
+	},
+	{
+		`SELECT RELEASE_ALL_LOCKS()`,
+		[]sql.Row{{int32(0)}},
+	},
+	{
 		`SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2`,
 		[]sql.Row{
 			{int64(3), "third row", "first", int64(3)},
