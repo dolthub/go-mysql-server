@@ -186,15 +186,6 @@ type ForeignKeyConstraint struct {
 	OnDelete          ForeignKeyReferenceOption
 }
 
-// ConstrainedTable can be implemented by tables that can accept and enforce constraints.
-type ConstrainedTable interface {
-	Table
-	// Returns the constraints on this table.
-	// Currently supported constraint types: ForeignKeyConstraint
-	// Other types will not be processed by the engine and will be silently discarded.
-	Constraints(*Context) []interface{}
-}
-
 // TableWrapper is a node that wraps the real table. This is needed because
 // wrappers cannot implement some methods the table may implement.
 type TableWrapper interface {
@@ -291,6 +282,13 @@ const (
 	ForeignKeyReferenceOption_SetNull ForeignKeyReferenceOption = "SET NULL"
 	ForeignKeyReferenceOption_SetDefault ForeignKeyReferenceOption = "SET DEFAULT"
 )
+
+// ForeignKeyTable is a table that can declare its foreign key constraints.
+type ForeignKeyTable interface {
+	Table
+	// GetForeignKeys returns the foreign key constraints on this table.
+	GetForeignKeys(ctx *Context) ([]ForeignKeyConstraint, error)
+}
 
 // ForeignKeyAlterableTable represents a table that supports foreign key modification operations.
 type ForeignKeyAlterableTable interface {

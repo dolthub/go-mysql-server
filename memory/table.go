@@ -28,6 +28,7 @@ type Table struct {
 	lookup           sql.IndexLookup
 	indexes          map[string]sql.Index
 	pkIndexesEnabled bool
+	foreignKeys      []sql.ForeignKeyConstraint
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -41,6 +42,8 @@ var _ sql.DriverIndexableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
 var _ sql.IndexAlterableTable = (*Table)(nil)
 var _ sql.IndexedTable = (*Table)(nil)
+var _ sql.ForeignKeyAlterableTable = (*Table)(nil)
+var _ sql.ForeignKeyTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema.
 func NewTable(name string, schema sql.Schema) *Table {
@@ -678,6 +681,42 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	})
 
 	return append(indexes, nonPrimaryIndexes...), nil
+}
+
+// GetForeignKeys implements sql.ForeignKeyTable
+func (t *Table) GetForeignKeys(_ *sql.Context) ([]sql.ForeignKeyConstraint, error) {
+	return t.foreignKeys, nil
+}
+
+// CreateForeignKey implements sql.ForeignKeyAlterableTable. Foreign keys are not enforced on update / delete.
+func (t *Table) CreateForeignKey(_ *sql.Context, fkName string, columns []string, referencedTable string, referencedColumns []string, onUpdate, onDelete sql.ForeignKeyReferenceOption) error {
+	for _, key := range t.foreignKeys {
+		if key.Name == fkName {
+			return fmt.Errorf("Constraint %s already exists", fkName)
+		}
+	}
+
+	t.foreignKeys = append(t.foreignKeys, sql.ForeignKeyConstraint{
+		Name:              fkName,
+		Columns:           columns,
+		ReferencedTable:   referencedTable,
+		ReferencedColumns: referencedColumns,
+		OnUpdate:          onUpdate,
+		OnDelete:          onDelete,
+	})
+
+	return nil
+}
+
+// DropForeignKey implements sql.ForeignKeyAlterableTable.
+func (t *Table) DropForeignKey(ctx *sql.Context, fkName string) error {
+	for i, key := range t.foreignKeys {
+		if key.Name == fkName {
+			t.foreignKeys = append(t.foreignKeys[:i], t.foreignKeys[i+1:]...)
+			return nil
+		}
+	}
+	return nil
 }
 
 func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint sql.IndexConstraint) (sql.Index, error) {

@@ -117,7 +117,11 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 		}
 
 		tableName = table.Name()
-		composedCreateTableStatement = i.produceCreateTableStatement(table)
+		var err error
+		composedCreateTableStatement, err = i.produceCreateTableStatement(table)
+		if err != nil {
+			return nil, err
+		}
 	case *SubqueryAlias:
 		tableName = table.Name()
 		composedCreateTableStatement = produceCreateViewStatement(table)
@@ -136,7 +140,7 @@ type NameAndSchema interface {
 	Schema() sql.Schema
 }
 
-func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) string {
+func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (string, error) {
 	schema := table.Schema()
 	colStmts := make([]string, len(schema))
 	var primaryKeyCols []string
@@ -201,11 +205,31 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) stri
 		colStmts = append(colStmts, key)
 	}
 
+	if fkt, ok := i.table.(sql.ForeignKeyTable); ok {
+		fks, err := fkt.GetForeignKeys(i.ctx)
+		if err != nil {
+			return "", err
+		}
+		for _, fk := range fks {
+			keyCols := strings.Join(fk.Columns, ",")
+			refCols := strings.Join(fk.ReferencedColumns, ",")
+			onDelete := ""
+			if len(fk.OnDelete) > 0 && fk.OnDelete != sql.ForeignKeyReferenceOption_DefaultAction {
+				onDelete = " " + string(fk.OnDelete)
+			}
+			onUpdate := ""
+			if len(fk.OnUpdate) > 0 && fk.OnUpdate != sql.ForeignKeyReferenceOption_DefaultAction {
+				onUpdate = " " + string(fk.OnUpdate)
+			}
+			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s` (`%s`)%s%s", fk.Name, keyCols, fk.ReferencedTable, refCols, onDelete, onUpdate))
+		}
+	}
+
 	return fmt.Sprintf(
 		"CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 		table.Name(),
 		strings.Join(colStmts, ",\n"),
-	)
+	), nil
 }
 
 // isPrimaryKeyIndex returns whether the index given matches the table's primary key columns. Order is not considered.
