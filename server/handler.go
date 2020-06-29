@@ -107,6 +107,7 @@ func (h *Handler) ComResetConnection(c *mysql.Conn) {
 
 // ConnectionClosed reports that a connection has been closed.
 func (h *Handler) ConnectionClosed(c *mysql.Conn) {
+	ctx, _ := h.sm.NewContextWithQuery(c, "")
 	h.sm.CloseConn(c)
 
 	h.mu.Lock()
@@ -115,8 +116,7 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 
 	// If connection was closed, kill only its associated queries.
 	h.e.Catalog.ProcessList.KillOnlyQueries(c.ConnectionID)
-
-	if err := h.e.Catalog.UnlockTables(nil, c.ConnectionID); err != nil {
+	if err := h.e.Catalog.UnlockTables(ctx, c.ConnectionID); err != nil {
 		logrus.Errorf("unable to unlock tables on session close: %s", err)
 	}
 

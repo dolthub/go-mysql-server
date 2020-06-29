@@ -48,7 +48,7 @@ func (uf *UnaryFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return uf.Logic(ctx, val)
 }
 
-// String implements the Stringer interface.
+// String implements the fmt.Stringer interface.
 func (uf *UnaryFunc) String() string {
 	return fmt.Sprintf("%s(%s)", strings.ToUpper(uf.Name), uf.Child.String())
 }

@@ -21,7 +21,7 @@ func (sw ShowWarnings) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return sw, nil
 }
 
-// String implements the Stringer interface.
+// String implements the fmt.Stringer interface.
 func (ShowWarnings) String() string {
 	return "SHOW WARNINGS"
 }

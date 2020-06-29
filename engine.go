@@ -27,6 +27,7 @@ type Engine struct {
 	Catalog  *sql.Catalog
 	Analyzer *analyzer.Analyzer
 	Auth     auth.Auth
+	LS       *sql.LockSubsystem
 }
 
 var (
@@ -65,6 +66,8 @@ func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 		versionPostfix = cfg.VersionPostfix
 	}
 
+	ls := sql.NewLockSubsystem()
+
 	c.MustRegister(
 		sql.FunctionN{
 			Name: "version",
@@ -78,7 +81,9 @@ func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 			Name: "schema",
 			Fn:   function.NewDatabase(c),
 		})
+
 	c.MustRegister(function.Defaults...)
+	c.MustRegister(function.GetLockingFuncs(ls)...)
 
 	// use auth.None if auth is not specified
 	var au auth.Auth
@@ -88,7 +93,7 @@ func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 		au = cfg.Auth
 	}
 
-	return &Engine{c, a, au}
+	return &Engine{c, a, au, ls}
 }
 
 // NewDefault creates a new default Engine.

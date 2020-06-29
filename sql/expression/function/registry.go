@@ -128,3 +128,13 @@ var Defaults = []sql.Function{
 	sql.Function1{Name: "year", Fn: NewYear},
 	sql.FunctionN{Name: "yearweek", Fn: NewYearWeek},
 }
+
+func GetLockingFuncs(ls *sql.LockSubsystem) []sql.Function {
+	return []sql.Function {
+		sql.Function2{Name: "get_lock", Fn: CreateNewGetLock(ls)},
+		NewNamedLockFunc(ls, "is_free_lock", sql.Int8, IsFreeLockFunc),
+		NewNamedLockFunc(ls, "is_used_lock", sql.Uint32, IsUsedLockFunc),
+		sql.NewFunction0("release_all_locks", sql.Int32, ReleaseAllLocksForLS(ls)),
+		NewNamedLockFunc(ls, "release_lock", sql.Int8, ReleaseLockFunc),
+	}
+}
