@@ -205,7 +205,8 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 		colStmts = append(colStmts, key)
 	}
 
-	if fkt, ok := table.(sql.ForeignKeyTable); ok {
+	fkt := getForeignKeyTable(table)
+	if fkt != nil {
 		fks, err := fkt.GetForeignKeys(i.ctx)
 		if err != nil {
 			return "", err
@@ -230,6 +231,18 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 		table.Name(),
 		strings.Join(colStmts, ",\n"),
 	), nil
+}
+
+// getForeignKeyTable returns the underlying ForeignKeyTable for the table given, or nil if it isn't a ForeignKeyTable
+func getForeignKeyTable(t sql.Table) sql.ForeignKeyTable {
+	switch t := t.(type) {
+	case sql.ForeignKeyTable:
+		return t
+	case sql.TableWrapper:
+		return getForeignKeyTable(t.Underlying())
+	default:
+		return nil
+	}
 }
 
 func quoteIdentifiers(ids []string) []string {
