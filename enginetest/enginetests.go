@@ -35,6 +35,7 @@ import (
 func TestQueries(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
 	createIndexes(t, harness, engine)
+	createForeignKeys(t, harness, engine)
 
 	for _, tt := range QueryTests {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected)
@@ -53,6 +54,7 @@ var infoSchemaTables = []string {
 	"niltable",
 	"newlinetable",
 	"other_table",
+	"fk_tbl",
 }
 
 // Runs tests of the information_schema database.
@@ -60,6 +62,7 @@ func TestInfoSchema(t *testing.T, harness Harness) {
 	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
 	engine := NewEngineWithDbs(t, harness, dbs, nil)
 	createIndexes(t, harness, engine)
+	createForeignKeys(t, harness, engine)
 
 	for _, tt := range InfoSchemaQueries {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected)
@@ -70,6 +73,15 @@ func createIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
 	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
 		err := createNativeIndexes(t, harness, engine)
 		require.NoError(t, err)
+	}
+}
+
+func createForeignKeys(t *testing.T, harness Harness, engine *sqle.Engine) {
+	if fkh, ok := harness.(ForeignKeyHarness); ok && fkh.SupportsForeignKeys() {
+		ctx := NewContextWithEngine(harness, engine)
+		TestQueryWithContext(t, ctx, engine,
+			"ALTER TABLE fk_tbl ADD CONSTRAINT fk1 FOREIGN KEY (a,b) REFERENCES mytable (i,s) ON DELETE CASCADE",
+			nil)
 	}
 }
 

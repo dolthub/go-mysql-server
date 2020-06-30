@@ -2394,6 +2394,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"fk_tbl", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 		},
@@ -2422,6 +2423,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"fk_tbl", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
@@ -2432,6 +2434,7 @@ var InfoSchemaQueries = []QueryTest{
 		[]sql.Row{
 			{"bigtable"},
 			{"floattable"},
+			{"fk_tbl"},
 			{"mytable"},
 			{"myview"},
 			{"newlinetable"},
@@ -2444,6 +2447,7 @@ var InfoSchemaQueries = []QueryTest{
 		"SHOW FULL TABLES",
 		[]sql.Row{
 			{"bigtable", "BASE TABLE"},
+			{"fk_tbl", "BASE TABLE"},
 			{"floattable", "BASE TABLE"},
 			{"mytable", "BASE TABLE"},
 			{"myview", "VIEW"},
@@ -2559,6 +2563,7 @@ var InfoSchemaQueries = []QueryTest{
 		[]sql.Row{
 			{"bigtable"},
 			{"floattable"},
+			{"fk_tbl"},
 			{"mytable"},
 			{"myview"},
 			{"newlinetable"},
@@ -2660,6 +2665,18 @@ var InfoSchemaQueries = []QueryTest{
 					"  PRIMARY KEY (`i`),\n" +
 					"  KEY `mytable_i_s` (`i`,`s`),\n" +
 					"  UNIQUE KEY `mytable_s` (`s`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+		},
+	},
+	{
+		`SHOW CREATE TABLE fk_TBL`,
+		[]sql.Row{
+			{"fk_tbl", "CREATE TABLE `fk_tbl` (\n" +
+					"  `pk` BIGINT NOT NULL,\n" +
+					"  `a` BIGINT,\n" +
+					"  `b` TEXT,\n" +
+					"  PRIMARY KEY (`pk`),\n" +
+					"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
 					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
 		},
 	},
