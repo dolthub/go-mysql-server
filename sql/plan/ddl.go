@@ -15,8 +15,7 @@ var ErrDropTableNotSupported = errors.NewKind("tables cannot be dropped on datab
 var ErrRenameTableNotSupported = errors.NewKind("tables cannot be renamed on database %s")
 // ErrAlterTableNotSupported is thrown when the database doesn't support ALTER TABLE statements
 var ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered on database %s")
-// ErrColumnNotFound is thrown when a column named cannot be found in scope
-var ErrColumnNotFound = errors.NewKind("table %s does not have column %s")
+
 // ErrNullDefault is thrown when a non-null column is added with a null default
 var ErrNullDefault = errors.NewKind("column declared not null must have a non-null default value")
 // ErrIncompatibleDefaultType is thrown when a provided default cannot be coerced into the type of the column
@@ -300,7 +299,7 @@ func (a *AddColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	if a.order != nil && !a.order.First {
 		idx := tbl.Schema().IndexOf(a.order.AfterColumn, tbl.Name())
 		if idx < 0 {
-			return nil, ErrColumnNotFound.New(tbl.Name(), a.order.AfterColumn)
+			return nil, sql.ErrColumnNotFound.New(tbl.Name(), a.order.AfterColumn)
 		}
 	}
 
@@ -368,7 +367,7 @@ func (d *DropColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}
 
 	if !found {
-		return nil, ErrColumnNotFound.New(tbl.Name(), d.column)
+		return nil, sql.ErrColumnNotFound.New(tbl.Name(), d.column)
 	}
 
 	return sql.RowsToRowIter(), alterable.DropColumn(ctx, d.column)
@@ -416,7 +415,7 @@ func (r *RenameColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	tbl := alterable.(sql.Table)
 	idx := tbl.Schema().IndexOf(r.columnName, tbl.Name())
 	if idx < 0 {
-		return nil, ErrColumnNotFound.New(tbl.Name(), r.columnName)
+		return nil, sql.ErrColumnNotFound.New(tbl.Name(), r.columnName)
 	}
 
 	nc := *tbl.Schema()[idx]
@@ -470,13 +469,13 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	tbl := alterable.(sql.Table)
 	idx := tbl.Schema().IndexOf(m.columnName, tbl.Name())
 	if idx < 0 {
-		return nil, ErrColumnNotFound.New(tbl.Name(), m.columnName)
+		return nil, sql.ErrColumnNotFound.New(tbl.Name(), m.columnName)
 	}
 
 	if m.order != nil && !m.order.First {
 		idx = tbl.Schema().IndexOf(m.order.AfterColumn, tbl.Name())
 		if idx < 0 {
-			return nil, ErrColumnNotFound.New(tbl.Name(), m.order.AfterColumn)
+			return nil, sql.ErrColumnNotFound.New(tbl.Name(), m.order.AfterColumn)
 		}
 	}
 

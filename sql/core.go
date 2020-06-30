@@ -23,7 +23,10 @@ var (
 	// current scope.
 	ErrTableNotFound = errors.NewKind("table not found: %s")
 
-	//ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
+	// ErrColumnNotFound is thrown when a column named cannot be found in scope
+	ErrColumnNotFound = errors.NewKind("table %s does not have column %s")
+
+	// ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
 	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
 
 	// ErrInvalidChildrenNumber is returned when the WithChildren method of a
@@ -596,4 +599,3 @@ func EvaluateCondition(ctx *Context, cond Expression, row Row) (bool, error) {
 		return false, nil
 	}
 }
-
