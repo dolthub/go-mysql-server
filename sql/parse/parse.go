@@ -500,15 +500,28 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		if fkConstraint, ok := parsedConstraint.(*sql.ForeignKeyConstraint); ok {
-			switch strings.ToLower(ddl.ConstraintAction) {
-			case sqlparser.AddStr:
+		switch strings.ToLower(ddl.ConstraintAction) {
+		case sqlparser.AddStr:
+			if fkConstraint, ok := parsedConstraint.(*sql.ForeignKeyConstraint); ok {
 				return plan.NewAlterAddForeignKey(
 					table,
 					plan.NewUnresolvedTable(fkConstraint.ReferencedTable, ddl.Table.Qualifier.String()),
 					fkConstraint), nil
-			case sqlparser.DropStr:
-				return plan.NewAlterDropForeignKey(table, fkConstraint), nil
+			} else {
+				return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
+			}
+		case sqlparser.DropStr:
+			switch c := parsedConstraint.(type) {
+			case *sql.ForeignKeyConstraint:
+				return plan.NewAlterDropForeignKey(table, c), nil
+			case namedConstraint:
+				// For simple named constraint drops, fill in a partial foreign key constraint. This will need to be changed if
+				// we ever support other kinds of constraints than foreign keys (e.g. CHECK)
+				return plan.NewAlterDropForeignKey(table, &sql.ForeignKeyConstraint{
+					Name: c.name,
+				}), nil
+			default:
+				return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
 			}
 		}
 	}
@@ -661,6 +674,10 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema, c.IfNotExists, fkDefs), nil
 }
 
+type namedConstraint struct {
+	name string
+}
+
 func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefinition) (interface{}, error) {
 	if fkConstraint, ok := cd.Details.(*sqlparser.ForeignKeyDefinition); ok {
 		columns := make([]string, len(fkConstraint.Source))
@@ -679,6 +696,8 @@ func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefin
 			OnUpdate:          convertReferenceAction(fkConstraint.OnUpdate),
 			OnDelete:          convertReferenceAction(fkConstraint.OnDelete),
 		}, nil
+	} else if len(cd.Name) > 0 && cd.Details == nil {
+		return namedConstraint{cd.Name}, nil
 	}
 	return nil, ErrUnknownConstraintDefinition.New(cd.Name, cd)
 }

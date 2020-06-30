@@ -532,6 +532,12 @@ var fixtures = map[string]sql.Node{
 			OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
 		},
 	),
+	`ALTER TABLE t1 DROP CONSTRAINT fk_name`: plan.NewAlterDropForeignKey(
+		plan.NewUnresolvedTable("t1", ""),
+		&sql.ForeignKeyConstraint{
+			Name:              "fk_name",
+		},
+	),
 	`DESCRIBE foo;`: plan.NewShowColumns(false,
 		plan.NewUnresolvedTable("foo", ""),
 	),

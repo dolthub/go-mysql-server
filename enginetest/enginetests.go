@@ -1124,8 +1124,26 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 	}
 	assert.Equal(t, expected, fks)
 
+	TestQuery(t, harness, e,
+		"ALTER TABLE child2 DROP FOREIGN KEY fk3",
+		[]sql.Row(nil),
+	)
+
+	child, ok, err = db.GetTableInsensitive(sql.NewEmptyContext(), "child2")
+	require.NoError(err)
+	require.True(ok)
+
+	fkt, ok = child.(sql.ForeignKeyTable)
+	require.True(ok)
+
+	fks, err = fkt.GetForeignKeys(sql.NewEmptyContext())
+	require.NoError(err)
+
+	expected = []sql.ForeignKeyConstraint{}
+	assert.Equal(t, expected, fks)
+
 	// Some error queries
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE child2 DROP CONSTRAINT dne")
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE child3 DROP CONSTRAINT dne")
 	require.Error(err)
 	assert.True(t, sql.ErrTableNotFound.Is(err))
 }
