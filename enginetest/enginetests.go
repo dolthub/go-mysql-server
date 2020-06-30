@@ -1005,8 +1005,130 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 		},
 	}
 	assert.Equal(t, expected, fks)
+
+	TestQuery(t, harness, e,
+		"CREATE TABLE child2(e INTEGER PRIMARY KEY, f INTEGER)",
+		[]sql.Row(nil),
+	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE child2 ADD CONSTRAINT fk2 FOREIGN KEY (f) REFERENCES parent(b) ON DELETE RESTRICT",
+		[]sql.Row(nil),
+	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE child2 ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL",
+		[]sql.Row(nil),
+	)
+
+	child, ok, err = db.GetTableInsensitive(ctx, "child2")
+	require.NoError(err)
+	require.True(ok)
+
+	fkt, ok = child.(sql.ForeignKeyTable)
+	require.True(ok)
+
+	fks, err = fkt.GetForeignKeys(sql.NewEmptyContext())
+	require.NoError(err)
+
+	expected = []sql.ForeignKeyConstraint{
+		{
+			Name:              "fk2",
+			Columns:           []string{"f"},
+			ReferencedTable:   "parent",
+			ReferencedColumns: []string{"b"},
+			OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
+			OnDelete:          sql.ForeignKeyReferenceOption_Restrict,
+		},
+		{
+			Name:              "fk3",
+			Columns:           []string{"f"},
+			ReferencedTable:   "child",
+			ReferencedColumns: []string{"d"},
+			OnUpdate:          sql.ForeignKeyReferenceOption_SetNull,
+			OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
+		},
+	}
+	assert.Equal(t, expected, fks)
+
+	// Some faulty create statements
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE child2 ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES dne(d) ON UPDATE SET NULL")
+	require.Error(err)
+
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE child2 ADD CONSTRAINT fk4 FOREIGN KEY (f) REFERENCES dne(d) ON UPDATE SET NULL")
+	require.Error(err)
+	assert.True(t, sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE dne ADD CONSTRAINT fk4 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL")
+	require.Error(err)
+	assert.True(t, sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE child2 ADD CONSTRAINT fk4 FOREIGN KEY (f) REFERENCES child(dne) ON UPDATE SET NULL")
+	require.Error(err)
+	assert.True(t, analyzer.ErrColumnNotFound.Is(err))
 }
 
+func TestDropForeignKeys(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	e := NewEngine(t, harness)
+
+	TestQuery(t, harness, e,
+		"CREATE TABLE parent(a INTEGER PRIMARY KEY, b VARCHAR(10))",
+		[]sql.Row(nil),
+	)
+	TestQuery(t, harness, e,
+		"CREATE TABLE child(c INTEGER PRIMARY KEY, d INTEGER, "+
+				"CONSTRAINT fk1 FOREIGN KEY (d) REFERENCES parent(b) ON DELETE CASCADE"+
+				")",
+		[]sql.Row(nil),
+	)
+
+	TestQuery(t, harness, e,
+		"CREATE TABLE child2(e INTEGER PRIMARY KEY, f INTEGER)",
+		[]sql.Row(nil),
+	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE child2 ADD CONSTRAINT fk2 FOREIGN KEY (f) REFERENCES parent(b) ON DELETE RESTRICT",
+		[]sql.Row(nil),
+	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE child2 ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL",
+		[]sql.Row(nil),
+	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE child2 DROP CONSTRAINT fk2",
+		[]sql.Row(nil),
+	)
+
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	child, ok, err := db.GetTableInsensitive(sql.NewEmptyContext(), "child2")
+	require.NoError(err)
+	require.True(ok)
+
+	fkt, ok := child.(sql.ForeignKeyTable)
+	require.True(ok)
+
+	fks, err := fkt.GetForeignKeys(sql.NewEmptyContext())
+	require.NoError(err)
+
+	expected := []sql.ForeignKeyConstraint{
+		{
+			Name:              "fk3",
+			Columns:           []string{"f"},
+			ReferencedTable:   "child",
+			ReferencedColumns: []string{"d"},
+			OnUpdate:          sql.ForeignKeyReferenceOption_SetNull,
+			OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
+		},
+	}
+	assert.Equal(t, expected, fks)
+
+	// Some error queries
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE child2 DROP CONSTRAINT dne")
+	require.Error(err)
+	assert.True(t, sql.ErrTableNotFound.Is(err))
+}
 
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)

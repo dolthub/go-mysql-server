@@ -503,7 +503,10 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		if fkConstraint, ok := parsedConstraint.(*sql.ForeignKeyConstraint); ok {
 			switch strings.ToLower(ddl.ConstraintAction) {
 			case sqlparser.AddStr:
-				return plan.NewAlterAddForeignKey(table, fkConstraint), nil
+				return plan.NewAlterAddForeignKey(
+					table,
+					plan.NewUnresolvedTable(fkConstraint.ReferencedTable, ddl.Table.Qualifier.String()),
+					fkConstraint), nil
 			case sqlparser.DropStr:
 				return plan.NewAlterDropForeignKey(table, fkConstraint), nil
 			}

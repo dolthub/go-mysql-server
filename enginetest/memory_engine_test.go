@@ -192,6 +192,10 @@ func TestCreateForeignKeys(t *testing.T) {
 	enginetest.TestCreateForeignKeys(t, newDefaultMemoryHarness())
 }
 
+func TestDropForeignKeys(t *testing.T) {
+	enginetest.TestDropForeignKeys(t, newDefaultMemoryHarness())
+}
+
 func TestExplode(t *testing.T) {
 	enginetest.TestExplode(t, newDefaultMemoryHarness())
 }

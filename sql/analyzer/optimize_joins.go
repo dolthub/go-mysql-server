@@ -20,7 +20,7 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) 
 
 	// skip certain queries (list is probably incomplete)
 	switch n.(type) {
-	case *plan.AlterForeignKey, *plan.AlterIndex, *plan.CreateIndex, *plan.InsertInto:
+	case *plan.CreateForeignKey, *plan.DropForeignKey, *plan.AlterIndex, *plan.CreateIndex, *plan.InsertInto:
 		return n, nil
 	}
 
