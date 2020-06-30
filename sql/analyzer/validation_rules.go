@@ -5,11 +5,12 @@ import (
 	"reflect"
 	"strings"
 
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression/function"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 const (

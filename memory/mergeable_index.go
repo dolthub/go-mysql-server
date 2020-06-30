@@ -2,9 +2,10 @@ package memory
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"strings"
 )
 
 type MergeableIndex struct {
@@ -118,7 +119,7 @@ type MergeableLookup interface {
 
 // ExpressionsIndex is an index made out of one or more expressions (usually field expressions), linked to a Table.
 type ExpressionsIndex interface {
-	MemTable() 					*Table
+	MemTable() *Table
 	ColumnExpressions() []sql.Expression
 }
 
@@ -136,7 +137,7 @@ type memoryIndexLookup interface {
 var _ sql.MergeableIndexLookup = (*MergeableIndexLookup)(nil)
 var _ memoryIndexLookup = (*MergeableIndexLookup)(nil)
 
-func (i *MergeableIndexLookup) ID() string { return strings.Join(i.Indexes(), ",") }
+func (i *MergeableIndexLookup) ID() string     { return strings.Join(i.Indexes(), ",") }
 func (i *MergeableIndexLookup) String() string { return strings.Join(i.Indexes(), ",") }
 
 func (i *MergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {

@@ -14,9 +14,9 @@ import (
 
 func TestDatetimeCompare(t *testing.T) {
 	tests := []struct {
-		typ Type
-		val1 interface{}
-		val2 interface{}
+		typ         Type
+		val1        interface{}
+		val2        interface{}
 		expectedCmp int
 	}{
 		{Date, nil, 0, -1},
@@ -54,9 +54,9 @@ func TestDatetimeCompare(t *testing.T) {
 
 func TestDatetimeCreate(t *testing.T) {
 	tests := []struct {
-		baseType query.Type
+		baseType     query.Type
 		expectedType datetimeType
-		expectedErr bool
+		expectedErr  bool
 	}{
 		{sqltypes.Date, datetimeType{sqltypes.Date}, false},
 		{sqltypes.Datetime, datetimeType{sqltypes.Datetime}, false},
@@ -78,9 +78,9 @@ func TestDatetimeCreate(t *testing.T) {
 
 func TestDatetimeCreateInvalidBaseTypes(t *testing.T) {
 	tests := []struct {
-		baseType query.Type
+		baseType     query.Type
 		expectedType datetimeType
-		expectedErr bool
+		expectedErr  bool
 	}{
 		{sqltypes.Binary, datetimeType{}, true},
 		{sqltypes.Bit, datetimeType{}, true},
@@ -127,8 +127,8 @@ func TestDatetimeCreateInvalidBaseTypes(t *testing.T) {
 
 func TestDatetimeConvert(t *testing.T) {
 	tests := []struct {
-		typ Type
-		val interface{}
+		typ         Type
+		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
 	}{
@@ -232,7 +232,7 @@ func TestDatetimeConvert(t *testing.T) {
 
 func TestDatetimeString(t *testing.T) {
 	tests := []struct {
-		typ Type
+		typ         Type
 		expectedStr string
 	}{
 		{MustCreateDatetimeType(sqltypes.Date), "DATE"},

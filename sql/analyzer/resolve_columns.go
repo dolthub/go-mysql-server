@@ -5,12 +5,13 @@ import (
 	"sort"
 	"strings"
 
+	"gopkg.in/src-d/go-errors.v1"
+	"vitess.io/vitess/go/vt/sqlparser"
+
 	"github.com/liquidata-inc/go-mysql-server/internal/similartext"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-	"gopkg.in/src-d/go-errors.v1"
-	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
@@ -392,7 +393,7 @@ func resolveGlobalOrSessionColumn(ctx *sql.Context, a *Analyzer, col column) (sq
 	return expression.NewGetSessionField(name, typ, value), nil
 }
 
-func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns map[tableCol]indexedCol, ) (sql.Expression, error) {
+func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns map[tableCol]indexedCol) (sql.Expression, error) {
 	name := strings.ToLower(e.Name())
 	table := strings.ToLower(e.Table())
 	col, ok := columns[tableCol{table, name}]

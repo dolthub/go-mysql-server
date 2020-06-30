@@ -2,8 +2,10 @@ package expression
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql"
+
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 var errCannotSetField = errors.NewKind("Expected GetField expression on left but got %T")

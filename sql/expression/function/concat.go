@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	errors "gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // Concat joins several strings together.

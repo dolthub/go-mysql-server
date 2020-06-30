@@ -109,7 +109,7 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 	}
 
 	visible := "YES"
-	if x, ok := show.index.(sql.DriverIndex); ok && len(x.Driver()) > 0{
+	if x, ok := show.index.(sql.DriverIndex); ok && len(x.Driver()) > 0 {
 		if !i.ctx.CanUseIndex(x) {
 			visible = "NO"
 		}

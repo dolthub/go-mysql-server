@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"github.com/stretchr/testify/require"
 )
 
 func TestDeleteIndex(t *testing.T) {

@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 func TestConnectionID(t *testing.T) {

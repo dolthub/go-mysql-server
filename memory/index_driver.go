@@ -10,7 +10,7 @@ const IndexDriverId = "MemoryIndexDriver"
 // create or delete indexes, but will use the index types defined in this package to alter how queries are executed,
 // retrieving values from the indexes rather than from the tables directly.
 type TestIndexDriver struct {
-	db string
+	db      string
 	indexes map[string][]sql.DriverIndex
 }
 

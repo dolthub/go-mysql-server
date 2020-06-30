@@ -18,8 +18,8 @@ func TestArrayType(t *testing.T) {
 	require.Error(err)
 	require.True(ErrNotArray.Is(err))
 
-	conversions := []struct{
-		val interface{}
+	conversions := []struct {
+		val         interface{}
 		expectedVal interface{}
 	}{
 		{[]interface{}{1, 2, 3}, []interface{}{int64(1), int64(2), int64(3)}},
@@ -29,16 +29,16 @@ func TestArrayType(t *testing.T) {
 	for _, conversion := range conversions {
 		t.Run(fmt.Sprintf("%v %v", conversion.val, conversion.expectedVal), func(t *testing.T) {
 			val, err := typ.Convert(conversion.val)
-			require.NoError( err)
+			require.NoError(err)
 			assert.Equal(t, conversion.expectedVal, val)
 		})
 	}
 
 	require.Equal(sqltypes.TypeJSON, typ.Type())
 
-	comparisons := []struct{
-		val1 []interface{}
-		val2 []interface{}
+	comparisons := []struct {
+		val1        []interface{}
+		val2        []interface{}
 		expectedCmp int
 	}{
 		{[]interface{}{5, 6}, []interface{}{2, 2, 3}, -1},
@@ -55,7 +55,7 @@ func TestArrayType(t *testing.T) {
 	for _, comparison := range comparisons {
 		t.Run(fmt.Sprintf("%v %v", comparison.val1, comparison.val2), func(t *testing.T) {
 			cmp, err := typ.Compare(comparison.val1, comparison.val2)
-			require.NoError( err)
+			require.NoError(err)
 			assert.Equal(t, comparison.expectedCmp, cmp)
 		})
 	}

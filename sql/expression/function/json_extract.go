@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/oliveagle/jsonpath"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 

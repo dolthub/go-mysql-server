@@ -2,10 +2,11 @@ package analyzer
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-	"strings"
 )
 
 type ExprAliases map[string]sql.Expression
@@ -110,7 +111,7 @@ func normalizeExpressions(exprAliases ExprAliases, tableAliases TableAliases, ex
 // with their underlying names. This is necessary to match such expressions against those declared by implementors of
 // various interfaces that declare expressions to handle, such as Index.Expressions(), FilteredTable, etc.
 func normalizeExpression(exprAliases ExprAliases, tableAliases TableAliases, e sql.Expression) sql.Expression {
- 	name := e.String()
+	name := e.String()
 	if n, ok := e.(sql.Nameable); ok {
 		name = n.Name()
 	}

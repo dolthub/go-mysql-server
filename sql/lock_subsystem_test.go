@@ -1,23 +1,24 @@
 package sql
 
 import (
-	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const testLockName = "my_lock"
 
 type lockDiffs struct {
 	missing []string
-	extra []string
+	extra   []string
 }
 
 func getLockDiffs(ctx *Context, testLockNames ...string) *lockDiffs {
 	var missing []string
-	var extra [] string
+	var extra []string
 
 	locks := make(map[string]bool)
 	for _, name := range testLockNames {

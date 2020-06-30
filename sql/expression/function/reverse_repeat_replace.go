@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 // Reverse is a function that returns the reverse of the text provided.

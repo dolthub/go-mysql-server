@@ -15,14 +15,16 @@
 package function
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"math"
 	"testing"
 	"time"
+
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 func TestRand(t *testing.T) {
@@ -89,21 +91,21 @@ func TestRadians(t *testing.T) {
 	tf.AddSucceeding(0.0, "0")
 	tf.AddSucceeding(-math.Pi, "-180")
 	tf.AddSucceeding(math.Pi, int16(180))
-	tf.AddSucceeding(math.Pi / 2.0, (90))
+	tf.AddSucceeding(math.Pi/2.0, (90))
 	tf.AddSucceeding(2*math.Pi, 360.0)
 	tf.Test(t, nil, nil)
 }
 
 func TestDegrees(t *testing.T) {
-	tests := []struct{
-		name string
-		input interface{}
+	tests := []struct {
+		name     string
+		input    interface{}
 		expected float64
 	}{
 		{"string pi", "3.1415926536", 180.0},
-		{"decimal 2pi", decimal.NewFromFloat(2*math.Pi), 360.0},
-		{"float64 pi/2", math.Pi/2.0, 90.0},
-		{"float32 3*pi/2",  float32(3.0*math.Pi/2.0), 270.0},
+		{"decimal 2pi", decimal.NewFromFloat(2 * math.Pi), 360.0},
+		{"float64 pi/2", math.Pi / 2.0, 90.0},
+		{"float32 3*pi/2", float32(3.0 * math.Pi / 2.0), 270.0},
 	}
 
 	f := NewUnaryFunc("degrees", sql.Float64, DegreesFunc)
@@ -119,29 +121,29 @@ func TestDegrees(t *testing.T) {
 }
 
 func TestCRC32(t *testing.T) {
-	tests := []struct{
-		name string
-		input interface{}
+	tests := []struct {
+		name     string
+		input    interface{}
 		expected uint32
 	}{
 		{"CRC32('MySQL)", "MySQL", 3259397556},
-		{"CRC32('mysql')", "mysql",  2501908538},
+		{"CRC32('mysql')", "mysql", 2501908538},
 
-		{ "CRC32('6')", "6",		498629140},
-		{ "CRC32(int 6)", 6,		498629140},
-		{ "CRC32(int8 6)", int8(6),		498629140},
-		{ "CRC32(int16 6)", int16(6),		498629140},
-		{ "CRC32(int32 6)", int32(6),		498629140},
-		{ "CRC32(int64 6)", int64(6),		498629140},
-		{ "CRC32(uint 6)", uint(6),		498629140},
-		{ "CRC32(uint8 6)", uint8(6),		498629140},
-		{ "CRC32(uint16 6)", uint16(6),		498629140},
-		{ "CRC32(uint32 6)", uint32(6),		498629140},
-		{ "CRC32(uint64 6)", uint64(6),		498629140},
+		{"CRC32('6')", "6", 498629140},
+		{"CRC32(int 6)", 6, 498629140},
+		{"CRC32(int8 6)", int8(6), 498629140},
+		{"CRC32(int16 6)", int16(6), 498629140},
+		{"CRC32(int32 6)", int32(6), 498629140},
+		{"CRC32(int64 6)", int64(6), 498629140},
+		{"CRC32(uint 6)", uint(6), 498629140},
+		{"CRC32(uint8 6)", uint8(6), 498629140},
+		{"CRC32(uint16 6)", uint16(6), 498629140},
+		{"CRC32(uint32 6)", uint32(6), 498629140},
+		{"CRC32(uint64 6)", uint64(6), 498629140},
 
-		{ "CRC32('6.0')", "6.0",		4068047280},
-		{ "CRC32(float32 6.0)", float32(6.0),		4068047280},
-		{ "CRC32(float64 6.0)", float64(6.0),		4068047280},
+		{"CRC32('6.0')", "6.0", 4068047280},
+		{"CRC32(float32 6.0)", float32(6.0), 4068047280},
+		{"CRC32(float64 6.0)", float64(6.0), 4068047280},
 	}
 
 	f := NewUnaryFunc("crc32", sql.Uint32, Crc32Func)
@@ -176,7 +178,7 @@ func TestTrigFunctions(t *testing.T) {
 	tan := NewUnaryFunc("atan", sql.Float64, TanFunc)
 
 	const numChecks = 24
-	delta := (2*math.Pi) / float64(numChecks)
+	delta := (2 * math.Pi) / float64(numChecks)
 	for i := 0; i <= numChecks; i++ {
 		theta := delta * float64(i)
 		thetaLiteral := expression.NewLiteral(theta, nil)

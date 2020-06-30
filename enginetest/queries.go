@@ -15,12 +15,14 @@
 package enginetest
 
 import (
+	"math"
+	"time"
+
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"gopkg.in/src-d/go-errors.v1"
-	"math"
-	"time"
 )
 
 type QueryTest struct {
@@ -550,7 +552,7 @@ var QueryTests = []QueryTest{
 	{
 		"SELECT id FROM typestable WHERE da < date_sub('2020-01-01', INTERVAL 1 DAY)",
 		nil,
-	},	{
+	}, {
 		"SELECT i,v from stringandtable WHERE i",
 		[]sql.Row{
 			{int64(1), "1"},
@@ -683,7 +685,7 @@ var QueryTests = []QueryTest{
 		[]sql.Row{
 			{"third", int64(1), int64(1)},
 			{"second", int64(2), int64(2)},
-			{ "first", int64(3), int64(3)},
+			{"first", int64(3), int64(3)},
 		},
 	},
 	{
@@ -699,7 +701,7 @@ var QueryTests = []QueryTest{
 		[]sql.Row{
 			{"third", int64(1), int64(1)},
 			{"second", int64(2), int64(2)},
-			{ "first", int64(3), int64(3)},
+			{"first", int64(3), int64(3)},
 		},
 	},
 	{
@@ -732,7 +734,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		"SELECT s FROM mytable INNER JOIN othertable " +
-				"ON substring(s2, 1, 2) != '' AND i = i2 ORDER BY 1",
+			"ON substring(s2, 1, 2) != '' AND i = i2 ORDER BY 1",
 		[]sql.Row{
 			{"first row"},
 			{"second row"},
@@ -1257,15 +1259,15 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{
 			"two_pk",
 			"CREATE TABLE `two_pk` (\n" +
-					"  `pk1` TINYINT NOT NULL,\n" +
-					"  `pk2` TINYINT NOT NULL,\n" +
-					"  `c1` TINYINT NOT NULL,\n" +
-					"  `c2` TINYINT NOT NULL,\n" +
-					"  `c3` TINYINT NOT NULL,\n" +
-					"  `c4` TINYINT NOT NULL,\n" +
-					"  `c5` TINYINT NOT NULL,\n" +
-					"  PRIMARY KEY (`pk1`,`pk2`)\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+				"  `pk1` TINYINT NOT NULL,\n" +
+				"  `pk2` TINYINT NOT NULL,\n" +
+				"  `c1` TINYINT NOT NULL,\n" +
+				"  `c2` TINYINT NOT NULL,\n" +
+				"  `c3` TINYINT NOT NULL,\n" +
+				"  `c4` TINYINT NOT NULL,\n" +
+				"  `c5` TINYINT NOT NULL,\n" +
+				"  PRIMARY KEY (`pk1`,`pk2`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 		}},
 	},
 	{
@@ -2327,33 +2329,33 @@ var QueryTests = []QueryTest{
 	},
 	{
 		"SELECT (CASE WHEN i THEN i ELSE 0 END) as cases_i from mytable",
-		[]sql.Row{{int64(1)},{int64(2)},{int64(3)}},
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
-	{ "SELECT 1/0 FROM dual",
+	{"SELECT 1/0 FROM dual",
 		[]sql.Row{{sql.Null}},
 	},
-	{ "SELECT 0/0 FROM dual",
+	{"SELECT 0/0 FROM dual",
 		[]sql.Row{{sql.Null}},
 	},
-	{ "SELECT 1.0/0.0 FROM dual",
+	{"SELECT 1.0/0.0 FROM dual",
 		[]sql.Row{{sql.Null}},
 	},
-	{ "SELECT 0.0/0.0 FROM dual",
+	{"SELECT 0.0/0.0 FROM dual",
 		[]sql.Row{{sql.Null}},
 	},
-	{ "SELECT 1 div 0 FROM dual",
+	{"SELECT 1 div 0 FROM dual",
 		[]sql.Row{{sql.Null}},
 	},
-	{ "SELECT 1.0 div 0.0 FROM dual",
+	{"SELECT 1.0 div 0.0 FROM dual",
 		[]sql.Row{{sql.Null}},
 	},
-	{ "SELECT 0 div 0 FROM dual",
+	{"SELECT 0 div 0 FROM dual",
 		[]sql.Row{{sql.Null}},
 	},
-	{ "SELECT 0.0 div 0.0 FROM dual",
+	{"SELECT 0.0 div 0.0 FROM dual",
 		[]sql.Row{{sql.Null}},
 	},
-	{ "SELECT POW(2,3) FROM dual",
+	{"SELECT POW(2,3) FROM dual",
 		[]sql.Row{{float64(8)}},
 	},
 }
@@ -2660,24 +2662,24 @@ var InfoSchemaQueries = []QueryTest{
 		`SHOW CREATE TABLE mytaBLE`,
 		[]sql.Row{
 			{"mytable", "CREATE TABLE `mytable` (\n" +
-					"  `i` BIGINT NOT NULL,\n" +
-					"  `s` TEXT NOT NULL COMMENT 'column s',\n" +
-					"  PRIMARY KEY (`i`),\n" +
-					"  KEY `mytable_i_s` (`i`,`s`),\n" +
-					"  UNIQUE KEY `mytable_s` (`s`)\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+				"  `i` BIGINT NOT NULL,\n" +
+				"  `s` TEXT NOT NULL COMMENT 'column s',\n" +
+				"  PRIMARY KEY (`i`),\n" +
+				"  KEY `mytable_i_s` (`i`,`s`),\n" +
+				"  UNIQUE KEY `mytable_s` (`s`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
 		},
 	},
 	{
 		`SHOW CREATE TABLE fk_TBL`,
 		[]sql.Row{
 			{"fk_tbl", "CREATE TABLE `fk_tbl` (\n" +
-					"  `pk` BIGINT NOT NULL,\n" +
-					"  `a` BIGINT,\n" +
-					"  `b` TEXT,\n" +
-					"  PRIMARY KEY (`pk`),\n" +
-					"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+				"  `pk` BIGINT NOT NULL,\n" +
+				"  `a` BIGINT,\n" +
+				"  `b` TEXT,\n" +
+				"  PRIMARY KEY (`pk`),\n" +
+				"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
 		},
 	},
 }
@@ -2990,4 +2992,3 @@ var VersionedViewTests = []QueryTest{
 		},
 	},
 }
-

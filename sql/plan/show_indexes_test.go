@@ -1,9 +1,10 @@
 package plan
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -133,4 +134,3 @@ func TestShowIndexes(t *testing.T) {
 		})
 	}
 }
-

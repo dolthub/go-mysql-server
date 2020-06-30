@@ -2,16 +2,17 @@ package sql
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestYearCompare(t *testing.T) {
 	tests := []struct {
-		val1 interface{}
-		val2 interface{}
+		val1        interface{}
+		val2        interface{}
 		expectedCmp int
 	}{
 		{nil, 0, -1},
@@ -22,7 +23,7 @@ func TestYearCompare(t *testing.T) {
 		{0, "0", -1},
 		{2050, 50, 0},
 		{"2050", "2050", 0},
-		{10, time.Date(2010, 1, 2, 3, 4, 5 ,0, time.UTC), 0},
+		{10, time.Date(2010, 1, 2, 3, 4, 5, 0, time.UTC), 0},
 	}
 
 	for _, test := range tests {
@@ -36,7 +37,7 @@ func TestYearCompare(t *testing.T) {
 
 func TestYearConvert(t *testing.T) {
 	tests := []struct {
-		val interface{}
+		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
 	}{
@@ -62,7 +63,7 @@ func TestYearConvert(t *testing.T) {
 		{"2000", int16(2000), false},
 		{"2100", int16(2100), false},
 		{"2155", int16(2155), false},
-		{time.Date(2010, 1, 2, 3, 4, 5 ,0, time.UTC), int16(2010), false},
+		{time.Date(2010, 1, 2, 3, 4, 5, 0, time.UTC), int16(2010), false},
 
 		{100, nil, true},
 		{"100", nil, true},

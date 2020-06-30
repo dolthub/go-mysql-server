@@ -8,7 +8,6 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
-
 // DateAdd adds an interval to a date.
 type DateAdd struct {
 	Date     sql.Expression
@@ -259,7 +258,7 @@ func NewDatetime(args ...sql.Expression) (sql.Expression, error) {
 // UnixTimestamp converts the argument to the number of seconds since 1970-01-01 00:00:00 UTC.
 // With no argument, returns number of seconds since unix epoch for the current time.
 type UnixTimestamp struct {
-	Date  sql.Expression
+	Date sql.Expression
 }
 
 func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {

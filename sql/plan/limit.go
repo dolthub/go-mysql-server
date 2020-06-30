@@ -4,6 +4,7 @@ import (
 	"io"
 
 	opentracing "github.com/opentracing/opentracing-go"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 

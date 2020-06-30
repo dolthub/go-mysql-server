@@ -15,9 +15,9 @@ import (
 
 func TestNumberCompare(t *testing.T) {
 	tests := []struct {
-		typ Type
-		val1 interface{}
-		val2 interface{}
+		typ         Type
+		val1        interface{}
+		val2        interface{}
 		expectedCmp int
 	}{
 		{Int8, nil, 0, -1},
@@ -76,9 +76,9 @@ func TestNumberCompare(t *testing.T) {
 
 func TestNumberCreate(t *testing.T) {
 	tests := []struct {
-		baseType query.Type
+		baseType     query.Type
 		expectedType numberTypeImpl
-		expectedErr bool
+		expectedErr  bool
 	}{
 		{sqltypes.Int8, numberTypeImpl{sqltypes.Int8}, false},
 		{sqltypes.Int16, numberTypeImpl{sqltypes.Int16}, false},
@@ -109,9 +109,9 @@ func TestNumberCreate(t *testing.T) {
 
 func TestNumberCreateInvalidBaseTypes(t *testing.T) {
 	tests := []struct {
-		baseType query.Type
+		baseType     query.Type
 		expectedType numberTypeImpl
-		expectedErr bool
+		expectedErr  bool
 	}{
 		{sqltypes.Binary, numberTypeImpl{}, true},
 		{sqltypes.Bit, numberTypeImpl{}, true},
@@ -149,8 +149,8 @@ func TestNumberCreateInvalidBaseTypes(t *testing.T) {
 
 func TestNumberConvert(t *testing.T) {
 	tests := []struct {
-		typ Type
-		val interface{}
+		typ         Type
+		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
 	}{
@@ -173,7 +173,7 @@ func TestNumberConvert(t *testing.T) {
 		{Int8, math.MinInt8 - 1, nil, true},
 		{Int16, math.MaxInt16 + 1, nil, true},
 		{Int16, math.MinInt16 - 1, nil, true},
-		{Int24, 1<<23, nil, true},
+		{Int24, 1 << 23, nil, true},
 		{Int24, -1<<23 - 1, nil, true},
 		{Int32, math.MaxInt32 + 1, nil, true},
 		{Int32, math.MinInt32 - 1, nil, true},
@@ -182,7 +182,7 @@ func TestNumberConvert(t *testing.T) {
 		{Uint8, -1, nil, true},
 		{Uint16, math.MaxUint16 + 1, nil, true},
 		{Uint16, -1, nil, true},
-		{Uint24, 1<<24, nil, true},
+		{Uint24, 1 << 24, nil, true},
 		{Uint24, -1, nil, true},
 		{Uint32, math.MaxUint32 + 1, nil, true},
 		{Uint32, -1, nil, true},
@@ -211,7 +211,7 @@ func TestNumberConvert(t *testing.T) {
 
 func TestNumberString(t *testing.T) {
 	tests := []struct {
-		typ Type
+		typ         Type
 		expectedStr string
 	}{
 		{Boolean, "TINYINT"},

@@ -21,7 +21,7 @@ const (
 )
 
 const (
-	CurrentDBSessionVar = "current_database"
+	CurrentDBSessionVar  = "current_database"
 	AutoCommitSessionVar = "autocommit"
 )
 
@@ -270,8 +270,8 @@ func NewSession(server, client, user string, id uint32) Session {
 			User:    user,
 		},
 		config: DefaultSessionConfig(),
-		mu: &sync.RWMutex{},
-		locks: make(map[string]bool),
+		mu:     &sync.RWMutex{},
+		locks:  make(map[string]bool),
 	}
 }
 
@@ -289,12 +289,12 @@ type Context struct {
 	Session
 	*IndexRegistry
 	*ViewRegistry
-	Memory   *MemoryManager
-	pid      uint64
-	query    string
+	Memory    *MemoryManager
+	pid       uint64
+	query     string
 	queryTime time.Time
-	tracer   opentracing.Tracer
-	rootSpan opentracing.Span
+	tracer    opentracing.Tracer
+	rootSpan  opentracing.Span
 }
 
 // ContextOption is a function to configure the context.
@@ -369,7 +369,6 @@ func RunWithNowFunc(nowFunc func() time.Time, fn func() error) error {
 
 	return fn()
 }
-
 
 // NewContext creates a new query context. Options can be passed to configure
 // the context. If some aspect of the context is not configure, the default

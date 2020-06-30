@@ -15,11 +15,13 @@
 package enginetest
 
 import (
-	sqle "github.com/liquidata-inc/go-mysql-server"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+
+	sqle "github.com/liquidata-inc/go-mysql-server"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // returns whether to include the table name given in the test data setup. A nil set of included tables will include
@@ -356,7 +358,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	}
 
 	if versionedHarness, ok := harness.(VersionedDBHarness); ok &&
-			includeTable(includedTables, "myhistorytable") {
+		includeTable(includedTables, "myhistorytable") {
 		versionedDb, ok := myDb.(sql.VersionedDatabase)
 		if !ok {
 			panic("VersionedDbTestHarness must provide a VersionedDatabase implementation")
@@ -460,4 +462,3 @@ func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
 
 	return nil
 }
-

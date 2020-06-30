@@ -3,12 +3,14 @@ package function
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/shopspring/decimal"
 	"strconv"
 	"strings"
 	"time"
 	"unsafe"
+
+	"github.com/shopspring/decimal"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // AsciiFunc implements the sql function "ascii" which returns the numeric value of the leftmost character
@@ -146,7 +148,7 @@ func UnhexFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
 	}
 
 	s := val.(string)
-	if len(s) % 2 != 0 {
+	if len(s)%2 != 0 {
 		return nil, nil
 	}
 
@@ -217,7 +219,7 @@ func BitLengthFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
 	case uint64, int64, float64:
 		return 64, nil
 	case string:
-		return 8*len([]byte(val)), nil
+		return 8 * len([]byte(val)), nil
 	case time.Time:
 		return 128, nil
 	}

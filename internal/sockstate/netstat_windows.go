@@ -3,8 +3,9 @@
 package sockstate
 
 import (
-	"github.com/sirupsen/logrus"
 	"net"
+
+	"github.com/sirupsen/logrus"
 )
 
 // tcpSocks returns a slice of active TCP sockets containing only those

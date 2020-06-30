@@ -1,12 +1,13 @@
 package plan
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/stretchr/testify/require"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 func TestShowColumns(t *testing.T) {
@@ -47,22 +48,22 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	showColumns := NewShowColumns(false, table)
 
 	// Assign indexes. This mimics what happens during analysis
-	showColumns.Indexes = []sql.Index {
+	showColumns.Indexes = []sql.Index{
 		&mockIndex{
-			db:     "mydb",
-			table:  "foo",
-			id:     "a",
-			exprs:  []sql.Expression {
+			db:    "mydb",
+			table: "foo",
+			id:    "a",
+			exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", true),
 				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
 			},
 			unique: true,
 		},
 		&mockIndex{
-			db:     "mydb",
-			table:  "foo",
-			id:     "b",
-			exprs:  []sql.Expression {
+			db:    "mydb",
+			table: "foo",
+			id:    "b",
+			exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "d", true),
 				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "e", true),
 			},
@@ -89,20 +90,20 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	// Test the precedence of key type. PRI > UNI > MUL
 	showColumns.Indexes = append(showColumns.Indexes,
 		&mockIndex{
-			db:     "mydb",
-			table:  "foo",
-			id:     "c",
-			exprs:  []sql.Expression {
+			db:    "mydb",
+			table: "foo",
+			id:    "c",
+			exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
 				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", true),
 			},
 			unique: true,
 		},
 		&mockIndex{
-			db:     "mydb",
-			table:  "foo",
-			id:     "d",
-			exprs:  []sql.Expression {
+			db:    "mydb",
+			table: "foo",
+			id:    "d",
+			exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", true),
 				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "d", true),
 			},
@@ -118,7 +119,6 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 
 	require.Equal(expected, rows)
 }
-
 
 func TestShowColumnsFull(t *testing.T) {
 	require := require.New(t)

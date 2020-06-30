@@ -1,10 +1,12 @@
 package plan
 
 import (
-	"github.com/opentracing/opentracing-go"
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"io"
 	"reflect"
+
+	"github.com/opentracing/opentracing-go"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // An IndexedJoin is a join that uses index lookups for the secondary table.
@@ -260,4 +262,3 @@ func (i *indexedJoinIter) Close() (err error) {
 
 	return err
 }
-

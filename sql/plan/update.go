@@ -2,9 +2,11 @@ package plan
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"gopkg.in/src-d/go-errors.v1"
 	"io"
+
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 var ErrUpdateNotSupported = errors.NewKind("table doesn't support UPDATE")

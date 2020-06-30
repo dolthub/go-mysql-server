@@ -4,9 +4,10 @@ import (
 	"io"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/stretchr/testify/require"
 )
 
 func TestTableAlias(t *testing.T) {

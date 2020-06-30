@@ -11,31 +11,30 @@ import (
 	"vitess.io/vitess/go/vt/proto/query"
 )
 
-
 const (
-	charBinaryMax = 255
+	charBinaryMax       = 255
 	varcharVarbinaryMax = 65535
 
-	tinyTextBlobMax = charBinaryMax
-	textBlobMax = varcharVarbinaryMax
+	tinyTextBlobMax   = charBinaryMax
+	textBlobMax       = varcharVarbinaryMax
 	mediumTextBlobMax = 16777215
-	longTextBlobMax = int64(4294967295)
+	longTextBlobMax   = int64(4294967295)
 )
 
 var (
 	// ErrLengthTooLarge is thrown when a string's length is too large given the other parameters.
-	ErrLengthTooLarge = errors.NewKind("length is %v but max allowed is %v")
+	ErrLengthTooLarge    = errors.NewKind("length is %v but max allowed is %v")
 	ErrLengthBeyondLimit = errors.NewKind("string is too large for column")
-	ErrBinaryCollation = errors.NewKind("binary types must have the binary collation")
+	ErrBinaryCollation   = errors.NewKind("binary types must have the binary collation")
 
-	TinyText   = MustCreateStringWithDefaults(sqltypes.Text, tinyTextBlobMax / Collation_Default.CharacterSet().MaxLength())
-	Text   = MustCreateStringWithDefaults(sqltypes.Text, textBlobMax / Collation_Default.CharacterSet().MaxLength())
-	MediumText = MustCreateStringWithDefaults(sqltypes.Text, mediumTextBlobMax / Collation_Default.CharacterSet().MaxLength())
-	LongText = MustCreateStringWithDefaults(sqltypes.Text, longTextBlobMax)
-	TinyBlob = MustCreateBinary(sqltypes.Blob, tinyTextBlobMax)
-	Blob = MustCreateBinary(sqltypes.Blob, textBlobMax)
+	TinyText   = MustCreateStringWithDefaults(sqltypes.Text, tinyTextBlobMax/Collation_Default.CharacterSet().MaxLength())
+	Text       = MustCreateStringWithDefaults(sqltypes.Text, textBlobMax/Collation_Default.CharacterSet().MaxLength())
+	MediumText = MustCreateStringWithDefaults(sqltypes.Text, mediumTextBlobMax/Collation_Default.CharacterSet().MaxLength())
+	LongText   = MustCreateStringWithDefaults(sqltypes.Text, longTextBlobMax)
+	TinyBlob   = MustCreateBinary(sqltypes.Blob, tinyTextBlobMax)
+	Blob       = MustCreateBinary(sqltypes.Blob, textBlobMax)
 	MediumBlob = MustCreateBinary(sqltypes.Blob, mediumTextBlobMax)
-	LongBlob = MustCreateBinary(sqltypes.Blob, longTextBlobMax)
+	LongBlob   = MustCreateBinary(sqltypes.Blob, longTextBlobMax)
 )
 
 // StringType represents all string types, including VARCHAR and BLOB.
@@ -51,9 +50,9 @@ type StringType interface {
 }
 
 type stringType struct {
-	baseType query.Type
+	baseType   query.Type
 	charLength int64
-	collation Collation
+	collation  Collation
 }
 
 // CreateString creates a StringType.
@@ -101,7 +100,7 @@ func CreateString(baseType query.Type, length int64, collation Collation) (Strin
 	case sqltypes.VarChar, sqltypes.VarBinary:
 		// We limit on byte length, so acceptable character lengths are variable
 		if byteLength > varcharVarbinaryMax {
-			return nil, ErrLengthTooLarge.New(length, varcharVarbinaryMax / charsetMaxLength)
+			return nil, ErrLengthTooLarge.New(length, varcharVarbinaryMax/charsetMaxLength)
 		}
 	case sqltypes.Text, sqltypes.Blob:
 		// We overall limit on character length, but determine tiny, medium, etc. based on byte length.
@@ -154,22 +153,22 @@ func MustCreateBinary(baseType query.Type, lengthHint int64) StringType {
 
 // CreateTinyText creates a TINYTEXT with the given collation.
 func CreateTinyText(collation Collation) StringType {
-	return MustCreateString(sqltypes.Text, tinyTextBlobMax / collation.CharacterSet().MaxLength(), collation)
+	return MustCreateString(sqltypes.Text, tinyTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 }
 
 // CreateText creates a TEXT with the given collation.
 func CreateText(collation Collation) StringType {
-	return MustCreateString(sqltypes.Text, textBlobMax / collation.CharacterSet().MaxLength(), collation)
+	return MustCreateString(sqltypes.Text, textBlobMax/collation.CharacterSet().MaxLength(), collation)
 }
 
 // CreateMediumText creates a MEDIUMTEXT with the given collation.
 func CreateMediumText(collation Collation) StringType {
-	return MustCreateString(sqltypes.Text, mediumTextBlobMax / collation.CharacterSet().MaxLength(), collation)
+	return MustCreateString(sqltypes.Text, mediumTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 }
 
 // CreateLongText creates a LONGTEXT with the given collation.
 func CreateLongText(collation Collation) StringType {
-	return MustCreateString(sqltypes.Text, longTextBlobMax / collation.CharacterSet().MaxLength(), collation)
+	return MustCreateString(sqltypes.Text, longTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 }
 
 // Compare implements Type interface.
@@ -234,7 +233,7 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 	}
 
 	if t.baseType == sqltypes.Binary {
-		val += strings.Repeat(string([]byte{0}), int(t.charLength) - len(val))
+		val += strings.Repeat(string([]byte{0}), int(t.charLength)-len(val))
 	}
 
 	return val, nil

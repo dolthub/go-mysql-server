@@ -1,17 +1,19 @@
 package function
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"testing"
+
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 func TestAbsValue(t *testing.T) {
 	type toTypeFunc func(float64) interface{}
 
-	decimal1616 := sql.MustCreateDecimalType(16,16)
+	decimal1616 := sql.MustCreateDecimalType(16, 16)
 
 	toInt64 := func(x float64) interface{} { return int64(x) }
 	toInt32 := func(x float64) interface{} { return int32(x) }
@@ -23,22 +25,22 @@ func TestAbsValue(t *testing.T) {
 	toUint := func(x float64) interface{} { return uint(x) }
 	toUint16 := func(x float64) interface{} { return uint16(x) }
 	toUint8 := func(x float64) interface{} { return uint8(x) }
-	toFloat64 := func(x float64) interface{} {return x}
-	toFloat32 := func(x float64) interface{} {return float32(x)}
-	toDecimal1616 := func(x float64) interface{} {return decimal.NewFromFloat(x)}
+	toFloat64 := func(x float64) interface{} { return x }
+	toFloat32 := func(x float64) interface{} { return float32(x) }
+	toDecimal1616 := func(x float64) interface{} { return decimal.NewFromFloat(x) }
 
-	signedTypes := map[sql.Type]toTypeFunc {
+	signedTypes := map[sql.Type]toTypeFunc{
 		sql.Int64: toInt64,
 		sql.Int32: toInt32,
 		sql.Int24: toInt,
 		sql.Int16: toInt16,
-		sql.Int8: toInt8}
-	unsignedTypes := map[sql.Type]toTypeFunc {
+		sql.Int8:  toInt8}
+	unsignedTypes := map[sql.Type]toTypeFunc{
 		sql.Uint64: toUint64,
 		sql.Uint32: toUint32,
 		sql.Uint24: toUint,
 		sql.Uint16: toUint16,
-		sql.Uint8: toUint8}
+		sql.Uint8:  toUint8}
 	floatTypes := map[sql.Type]toTypeFunc{
 		sql.Float64: toFloat64,
 		sql.Float32: toFloat32,
@@ -46,11 +48,11 @@ func TestAbsValue(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name     string
-		typeToConv    map[sql.Type]toTypeFunc
-		val      float64
-		expected float64
-		err      error
+		name       string
+		typeToConv map[sql.Type]toTypeFunc
+		val        float64
+		expected   float64
+		err        error
 	}{
 		{
 			"signed types positive int",
@@ -58,7 +60,7 @@ func TestAbsValue(t *testing.T) {
 			5.0,
 			5.0,
 			nil,
-		},{
+		}, {
 			"signed types negative int",
 			signedTypes,
 			-5.0,
@@ -78,7 +80,7 @@ func TestAbsValue(t *testing.T) {
 			5.0,
 			5.0,
 			nil,
-		},{
+		}, {
 			"float negative int",
 			floatTypes,
 			-5.0,

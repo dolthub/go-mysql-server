@@ -3,8 +3,9 @@ package expression
 import (
 	"fmt"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	errors "gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // GetField is an expression to get the field of a table.

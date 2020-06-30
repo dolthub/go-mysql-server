@@ -2,9 +2,11 @@ package function
 
 import (
 	"fmt"
+
+	"github.com/shopspring/decimal"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"github.com/shopspring/decimal"
 )
 
 // AbsVal is a function that takes the absolute value of a number
@@ -31,7 +33,7 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Fucking Golang
 	switch x := val.(type) {
-	case uint,uint64,uint32,uint16,uint8:
+	case uint, uint64, uint32, uint16, uint8:
 		return x, nil
 	case int:
 		if x < 0 {

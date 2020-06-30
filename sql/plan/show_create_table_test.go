@@ -1,13 +1,14 @@
 package plan
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 	"vitess.io/vitess/go/sqltypes"
 
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/stretchr/testify/require"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 func TestShowCreateTable(t *testing.T) {
@@ -45,7 +46,7 @@ func TestShowCreateTable(t *testing.T) {
 			"  `zab` INT DEFAULT 0,\n"+
 			"  `bza` BIGINT UNSIGNED DEFAULT 0 COMMENT 'hello',\n"+
 			"  `foo` VARCHAR(123),\n"+
-			"  `pok` CHAR(123),\n" +
+			"  `pok` CHAR(123),\n"+
 			"  PRIMARY KEY (`baz`,`zab`)\n"+
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 	)
@@ -119,22 +120,21 @@ func TestShowCreateTableWithIndexAndForeignKeys(t *testing.T) {
 	expected := sql.NewRow(
 		table.Name(),
 		"CREATE TABLE `test-table` (\n  `baz` TEXT NOT NULL,\n"+
-				"  `zab` INT DEFAULT 0,\n"+
-				"  `bza` BIGINT UNSIGNED DEFAULT 0 COMMENT 'hello',\n"+
-				"  `foo` VARCHAR(123),\n"+
-				"  `pok` CHAR(123),\n"+
-				"  PRIMARY KEY (`baz`,`zab`),\n"+
-				"  UNIQUE KEY `qux` (`foo`),\n"+
-				"  KEY `zug` (`pok`,`foo`),\n"+
-				"  CONSTRAINT `fk1` FOREIGN KEY (`baz`,`zab`) REFERENCES `otherTable` (`a`,`b`) ON DELETE CASCADE,\n"+
-				"  CONSTRAINT `fk2` FOREIGN KEY (`foo`) REFERENCES `otherTable` (`b`) ON UPDATE RESTRICT,\n"+
-				"  CONSTRAINT `fk3` FOREIGN KEY (`bza`) REFERENCES `otherTable` (`c`)\n"+
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+			"  `zab` INT DEFAULT 0,\n"+
+			"  `bza` BIGINT UNSIGNED DEFAULT 0 COMMENT 'hello',\n"+
+			"  `foo` VARCHAR(123),\n"+
+			"  `pok` CHAR(123),\n"+
+			"  PRIMARY KEY (`baz`,`zab`),\n"+
+			"  UNIQUE KEY `qux` (`foo`),\n"+
+			"  KEY `zug` (`pok`,`foo`),\n"+
+			"  CONSTRAINT `fk1` FOREIGN KEY (`baz`,`zab`) REFERENCES `otherTable` (`a`,`b`) ON DELETE CASCADE,\n"+
+			"  CONSTRAINT `fk2` FOREIGN KEY (`foo`) REFERENCES `otherTable` (`b`) ON UPDATE RESTRICT,\n"+
+			"  CONSTRAINT `fk3` FOREIGN KEY (`bza`) REFERENCES `otherTable` (`c`)\n"+
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 	)
 
 	require.Equal(expected, row)
 }
-
 
 func TestShowCreateView(t *testing.T) {
 	var require = require.New(t)
@@ -175,4 +175,3 @@ func TestShowCreateView(t *testing.T) {
 
 	require.Equal(expected, row)
 }
-

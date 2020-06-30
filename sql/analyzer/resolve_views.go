@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"fmt"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
