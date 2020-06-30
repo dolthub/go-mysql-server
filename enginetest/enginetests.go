@@ -1063,7 +1063,7 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE child2 ADD CONSTRAINT fk4 FOREIGN KEY (f) REFERENCES child(dne) ON UPDATE SET NULL")
 	require.Error(err)
-	assert.True(t, analyzer.ErrColumnNotFound.Is(err))
+	assert.True(t, plan.ErrColumnNotFound.Is(err))
 }
 
 func TestDropForeignKeys(t *testing.T, harness Harness) {

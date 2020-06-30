@@ -90,6 +90,13 @@ func (p *CreateForeignKey) Execute(ctx *sql.Context) error {
 		}
 	}
 
+	// Make sure that the ref columns exist
+	for _, refCol := range p.FkDef.ReferencedColumns {
+		if !p.Right.Schema().Contains(refCol, p.FkDef.ReferencedTable) {
+			return ErrColumnNotFound.New(refCol)
+		}
+	}
+
 	return fkAlterable.CreateForeignKey(ctx, p.FkDef.Name, p.FkDef.Columns, p.FkDef.ReferencedTable, p.FkDef.ReferencedColumns, p.FkDef.OnUpdate, p.FkDef.OnDelete)
 }
 
