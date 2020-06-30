@@ -964,6 +964,50 @@ func TestDropColumn(t *testing.T, harness Harness) {
 	require.True(plan.ErrColumnNotFound.Is(err))
 }
 
+func TestCreateForeignKeys(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	e := NewEngine(t, harness)
+
+	TestQuery(t, harness, e,
+		"CREATE TABLE parent(a INTEGER PRIMARY KEY, b VARCHAR(10))",
+		[]sql.Row(nil),
+	)
+	TestQuery(t, harness, e,
+		"CREATE TABLE child(c INTEGER PRIMARY KEY, d INTEGER, "+
+				"CONSTRAINT fk1 FOREIGN KEY (d) REFERENCES parent(b) ON DELETE CASCADE"+
+				")",
+		[]sql.Row(nil),
+	)
+
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	ctx := NewContext(harness)
+	child, ok, err := db.GetTableInsensitive(ctx, "child")
+	require.NoError(err)
+	require.True(ok)
+
+	fkt, ok := child.(sql.ForeignKeyTable)
+	require.True(ok)
+
+	fks, err := fkt.GetForeignKeys(sql.NewEmptyContext())
+	require.NoError(err)
+
+	expected := []sql.ForeignKeyConstraint{
+		{
+			Name:              "fk1",
+			Columns:           []string{"d"},
+			ReferencedTable:   "parent",
+			ReferencedColumns: []string{"b"},
+			OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
+			OnDelete:          sql.ForeignKeyReferenceOption_Cascade,
+		},
+	}
+	assert.Equal(t, expected, fks)
+}
+
+
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 
@@ -1444,27 +1488,6 @@ func TestTracing(t *testing.T, harness Harness) {
 
 var pid uint64
 
-func NewCtx(idxReg *sql.IndexRegistry) *sql.Context {
-	session := sql.NewSession("address", "client", "user", 1)
-
-	ctx := sql.NewContext(
-		context.Background(),
-		sql.WithPid(atomic.AddUint64(&pid, 1)),
-		sql.WithSession(session),
-		sql.WithIndexRegistry(idxReg),
-		sql.WithViewRegistry(sql.NewViewRegistry()),
-	).WithCurrentDB("mydb")
-
-	_ = ctx.ViewRegistry.Register("mydb",
-		plan.NewSubqueryAlias(
-			"myview",
-			"SELECT * FROM mytable",
-			plan.NewUnresolvedTable("mytable", "mydb"),
-		).AsView())
-
-	return ctx
-}
-
 func NewContext(harness Harness) *sql.Context {
 	ctx := harness.NewContext().WithCurrentDB("mydb")
 
@@ -1620,4 +1643,3 @@ func WidenRow(row sql.Row) sql.Row {
 	}
 	return widened
 }
-

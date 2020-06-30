@@ -188,6 +188,10 @@ func TestDropColumn(t *testing.T) {
 	enginetest.TestDropColumn(t, newDefaultMemoryHarness())
 }
 
+func TestCreateForeignKeys(t *testing.T) {
+	enginetest.TestCreateForeignKeys(t, newDefaultMemoryHarness())
+}
+
 func TestExplode(t *testing.T) {
 	enginetest.TestExplode(t, newDefaultMemoryHarness())
 }
