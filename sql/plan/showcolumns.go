@@ -125,7 +125,9 @@ func (s *ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
 
-	return NewShowColumns(s.Full, children[0]), nil
+	showColumns := NewShowColumns(s.Full, children[0])
+	showColumns.Indexes = s.Indexes
+	return showColumns, nil
 }
 
 func (s *ShowColumns) String() string {
@@ -146,7 +148,9 @@ func (s *ShowColumns) isFirstColInUniqueKey(col *sql.Column, table sql.Table) bo
 		}
 
 		firstIndexCol := getColumnFromIndexExpr(idx.Expressions()[0], table)
-		return col != nil && firstIndexCol.Name == col.Name
+		if firstIndexCol != nil && firstIndexCol.Name == col.Name {
+			return true
+		}
 	}
 
 	return false
@@ -159,7 +163,9 @@ func (s *ShowColumns) isFirstColInNonUniqueKey(col *sql.Column, table sql.Table)
 		}
 
 		firstIndexCol := getColumnFromIndexExpr(idx.Expressions()[0], table)
-		return col != nil && firstIndexCol.Name == col.Name
+		if firstIndexCol != nil && firstIndexCol.Name == col.Name {
+			return true
+		}
 	}
 
 	return false

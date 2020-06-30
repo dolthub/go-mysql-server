@@ -2478,21 +2478,21 @@ var InfoSchemaQueries = []QueryTest{
 		`SHOW COLUMNS FROM mytable`,
 		[]sql.Row{
 			{"i", "BIGINT", "NO", "PRI", "", ""},
-			{"s", "TEXT", "NO", "", "", ""},
+			{"s", "TEXT", "NO", "UNI", "", ""},
 		},
 	},
 	{
 		`DESCRIBE mytable`,
 		[]sql.Row{
 			{"i", "BIGINT", "NO", "PRI", "", ""},
-			{"s", "TEXT", "NO", "", "", ""},
+			{"s", "TEXT", "NO", "UNI", "", ""},
 		},
 	},
 	{
 		`DESC mytable`,
 		[]sql.Row{
 			{"i", "BIGINT", "NO", "PRI", "", ""},
-			{"s", "TEXT", "NO", "", "", ""},
+			{"s", "TEXT", "NO", "UNI", "", ""},
 		},
 	},
 	{
@@ -2511,7 +2511,7 @@ var InfoSchemaQueries = []QueryTest{
 		`SHOW FULL COLUMNS FROM mytable`,
 		[]sql.Row{
 			{"i", "BIGINT", nil, "NO", "PRI", "", "", "", ""},
-			{"s", "TEXT", "utf8_bin", "NO", "", "", "", "", "column s"},
+			{"s", "TEXT", "utf8_bin", "NO", "UNI", "", "", "", "column s"},
 		},
 	},
 	{
