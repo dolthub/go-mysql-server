@@ -10,6 +10,7 @@ import (
 type ShowColumns struct {
 	UnaryNode
 	Full bool
+	Indexes []sql.Index
 }
 
 var (
@@ -37,7 +38,7 @@ var (
 
 // NewShowColumns creates a new ShowColumns node.
 func NewShowColumns(full bool, child sql.Node) *ShowColumns {
-	return &ShowColumns{UnaryNode{Child: child}, full}
+	return &ShowColumns{UnaryNode: UnaryNode{Child: child}, Full: full}
 }
 
 var _ sql.Node = (*ShowColumns)(nil)
@@ -69,8 +70,19 @@ func (s *ShowColumns) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		}
 
 		key := ""
-		if col.PrimaryKey {
-			key = "PRI"
+		switch table := s.Child.(type) {
+		case *ResolvedTable:
+			if col.PrimaryKey {
+				key = "PRI"
+			} else if s.isFirstColInUniqueKey(col, table) {
+				key = "UNI"
+			} else if s.isFirstColInNonUniqueKey(col, table) {
+				key = "MUL"
+			}
+		case *SubqueryAlias:
+			// no key info for views
+		default:
+			panic(fmt.Sprintf("unexpected type %T", s.Child))
 		}
 
 		var defaultVal string
@@ -125,4 +137,30 @@ func (s *ShowColumns) String() string {
 	}
 	_ = tp.WriteChildren(s.Child.String())
 	return tp.String()
+}
+
+func (s *ShowColumns) isFirstColInUniqueKey(col *sql.Column, table sql.Table) bool {
+	for _, idx := range s.Indexes {
+		if !idx.IsUnique() {
+			continue
+		}
+
+		firstIndexCol := getColumnFromIndexExpr(idx.Expressions()[0], table)
+		return col != nil && firstIndexCol.Name == col.Name
+	}
+
+	return false
+}
+
+func (s *ShowColumns) isFirstColInNonUniqueKey(col *sql.Column, table sql.Table) bool {
+	for _, idx := range s.Indexes {
+		if idx.IsUnique() {
+			continue
+		}
+
+		firstIndexCol := getColumnFromIndexExpr(idx.Expressions()[0], table)
+		return col != nil && firstIndexCol.Name == col.Name
+	}
+
+	return false
 }

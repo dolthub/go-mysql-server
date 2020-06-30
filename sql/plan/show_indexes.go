@@ -139,7 +139,7 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 	), nil
 }
 
-// getColumn returns the name of column from the table given using the expression string given, in the form
+// getColumnFromIndexExpr returns column from the table given using the expression string given, in the form
 // "table.column". Returns nil if the expression doesn't represent a column.
 func getColumnFromIndexExpr(expr string, table sql.Table) *sql.Column {
 	for _, col := range table.Schema() {
