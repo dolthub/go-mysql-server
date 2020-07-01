@@ -778,7 +778,7 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "i2", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
+		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist RENAME COLUMN foo TO bar")
@@ -808,7 +808,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
+		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
 	}, tbl.Schema())
 
@@ -832,7 +832,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	require.Equal(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
-		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
+		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
 	}, tbl.Schema())
 
@@ -857,7 +857,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		{Name: "s3", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true, Default: "yay"},
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
-		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
+		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: int32(42)},
 	}, tbl.Schema())
 
@@ -905,7 +905,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "i", Type: sql.Text, Source: "mytable", Comment: "modified"},
-		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
+		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
 	TestQuery(t, harness, e,
@@ -917,7 +917,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
+		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 		{Name: "i", Type: sql.Int8, Source: "mytable", Comment: "yes", Nullable: true},
 	}, tbl.Schema())
 
@@ -931,7 +931,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", Comment: "ok"},
-		{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
+		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST")
@@ -982,7 +982,7 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 
 	TestQuery(t, harness, e,
-		"CREATE TABLE parent(a INTEGER PRIMARY KEY, b VARCHAR(10))",
+		"CREATE TABLE parent(a INTEGER PRIMARY KEY, b INTEGER)",
 		[]sql.Row(nil),
 	)
 	TestQuery(t, harness, e,
@@ -1003,7 +1003,7 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	fkt, ok := child.(sql.ForeignKeyTable)
 	require.True(ok)
 
-	fks, err := fkt.GetForeignKeys(sql.NewEmptyContext())
+	fks, err := fkt.GetForeignKeys(NewContext(harness))
 	require.NoError(err)
 
 	expected := []sql.ForeignKeyConstraint{
@@ -1038,7 +1038,7 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	fkt, ok = child.(sql.ForeignKeyTable)
 	require.True(ok)
 
-	fks, err = fkt.GetForeignKeys(sql.NewEmptyContext())
+	fks, err = fkt.GetForeignKeys(NewContext(harness))
 	require.NoError(err)
 
 	expected = []sql.ForeignKeyConstraint{
@@ -1084,7 +1084,7 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 
 	TestQuery(t, harness, e,
-		"CREATE TABLE parent(a INTEGER PRIMARY KEY, b VARCHAR(10))",
+		"CREATE TABLE parent(a INTEGER PRIMARY KEY, b INTEGER)",
 		[]sql.Row(nil),
 	)
 	TestQuery(t, harness, e,
@@ -1114,14 +1114,14 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	child, ok, err := db.GetTableInsensitive(sql.NewEmptyContext(), "child2")
+	child, ok, err := db.GetTableInsensitive(NewContext(harness), "child2")
 	require.NoError(err)
 	require.True(ok)
 
 	fkt, ok := child.(sql.ForeignKeyTable)
 	require.True(ok)
 
-	fks, err := fkt.GetForeignKeys(sql.NewEmptyContext())
+	fks, err := fkt.GetForeignKeys(NewContext(harness))
 	require.NoError(err)
 
 	expected := []sql.ForeignKeyConstraint{
@@ -1141,14 +1141,14 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 		[]sql.Row(nil),
 	)
 
-	child, ok, err = db.GetTableInsensitive(sql.NewEmptyContext(), "child2")
+	child, ok, err = db.GetTableInsensitive(NewContext(harness), "child2")
 	require.NoError(err)
 	require.True(ok)
 
 	fkt, ok = child.(sql.ForeignKeyTable)
 	require.True(ok)
 
-	fks, err = fkt.GetForeignKeys(sql.NewEmptyContext())
+	fks, err = fkt.GetForeignKeys(NewContext(harness))
 	require.NoError(err)
 
 	expected = []sql.ForeignKeyConstraint{}
@@ -1719,7 +1719,7 @@ func TestQuery(t *testing.T, harness Harness, e *sqle.Engine, q string, expected
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(q) {
-				t.Skipf("Skiping query %s", q)
+				t.Skipf("Skipping query %s", q)
 			}
 		}
 
