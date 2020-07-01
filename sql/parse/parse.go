@@ -10,13 +10,14 @@ import (
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
+	"gopkg.in/src-d/go-errors.v1"
+	"vitess.io/vitess/go/vt/sqlparser"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression/function"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-	"gopkg.in/src-d/go-errors.v1"
-	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 var (
@@ -357,8 +358,8 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		// show collation statements are functionally identical to selecting from the collations table in
 		// information_schema, with slightly different syntax and with some columns aliased.
 		// TODO: install information_schema automatically for all catalogs
-		infoSchemaSelect, err := Parse(ctx, "select collation_name as `collation`, character_set_name as charset, id," +
-				"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations")
+		infoSchemaSelect, err := Parse(ctx, "select collation_name as `collation`, character_set_name as charset, id,"+
+			"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations")
 		if err != nil {
 			return nil, err
 		}
@@ -500,12 +501,28 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		if fkConstraint, ok := parsedConstraint.(*plan.ForeignKeyDefinition); ok {
-			switch strings.ToLower(ddl.ConstraintAction) {
-			case sqlparser.AddStr:
-				return plan.NewAlterAddForeignKey(table, fkConstraint), nil
-			case sqlparser.DropStr:
-				return plan.NewAlterDropForeignKey(table, fkConstraint), nil
+		switch strings.ToLower(ddl.ConstraintAction) {
+		case sqlparser.AddStr:
+			if fkConstraint, ok := parsedConstraint.(*sql.ForeignKeyConstraint); ok {
+				return plan.NewAlterAddForeignKey(
+					table,
+					plan.NewUnresolvedTable(fkConstraint.ReferencedTable, ddl.Table.Qualifier.String()),
+					fkConstraint), nil
+			} else {
+				return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
+			}
+		case sqlparser.DropStr:
+			switch c := parsedConstraint.(type) {
+			case *sql.ForeignKeyConstraint:
+				return plan.NewAlterDropForeignKey(table, c), nil
+			case namedConstraint:
+				// For simple named constraint drops, fill in a partial foreign key constraint. This will need to be changed if
+				// we ever support other kinds of constraints than foreign keys (e.g. CHECK)
+				return plan.NewAlterDropForeignKey(table, &sql.ForeignKeyConstraint{
+					Name: c.name,
+				}), nil
+			default:
+				return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
 			}
 		}
 	}
@@ -571,7 +588,7 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 				}
 			}
 			columns[i] = sql.IndexColumn{
-				Name: col.Column.String(),
+				Name:   col.Column.String(),
 				Length: 0,
 			}
 		}
@@ -604,7 +621,7 @@ func convertExternalCreateIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node,
 	}
 	cols := make([]sql.Expression, len(ddl.IndexSpec.Columns))
 	for i, col := range ddl.IndexSpec.Columns {
-		cols[i] =  expression.NewUnresolvedColumn(col.Column.String())
+		cols[i] = expression.NewUnresolvedColumn(col.Column.String())
 	}
 	return plan.NewCreateIndex(
 		ddl.IndexSpec.ToName.String(),
@@ -640,14 +657,14 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		return nil, err
 	}
 
-	var fkDefs []*plan.ForeignKeyDefinition
+	var fkDefs []*sql.ForeignKeyConstraint
 	for _, unknownConstraint := range c.TableSpec.Constraints {
 		parsedConstraint, err := convertConstraintDefinition(ctx, unknownConstraint)
 		if err != nil {
 			return nil, err
 		}
 		switch constraint := parsedConstraint.(type) {
-		case *plan.ForeignKeyDefinition:
+		case *sql.ForeignKeyConstraint:
 			fkDefs = append(fkDefs, constraint)
 		default:
 			return nil, ErrUnknownConstraintDefinition.New(unknownConstraint.Name, unknownConstraint)
@@ -656,6 +673,10 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 
 	return plan.NewCreateTable(
 		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema, c.IfNotExists, fkDefs), nil
+}
+
+type namedConstraint struct {
+	name string
 }
 
 func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefinition) (interface{}, error) {
@@ -668,7 +689,7 @@ func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefin
 		for i, col := range fkConstraint.ReferencedColumns {
 			refColumns[i] = col.String()
 		}
-		return &plan.ForeignKeyDefinition{
+		return &sql.ForeignKeyConstraint{
 			Name:              cd.Name,
 			Columns:           columns,
 			ReferencedTable:   fkConstraint.ReferencedTable.Name.String(),
@@ -676,6 +697,8 @@ func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefin
 			OnUpdate:          convertReferenceAction(fkConstraint.OnUpdate),
 			OnDelete:          convertReferenceAction(fkConstraint.OnDelete),
 		}, nil
+	} else if len(cd.Name) > 0 && cd.Details == nil {
+		return namedConstraint{cd.Name}, nil
 	}
 	return nil, ErrUnknownConstraintDefinition.New(cd.Name, cd)
 }

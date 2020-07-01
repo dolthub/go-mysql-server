@@ -178,14 +178,14 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		if err != nil {
 			return nil, err
 		}
-		return CreateString(sqltypes.Text, tinyTextBlobMax / collation.CharacterSet().MaxLength(), collation)
+		return CreateString(sqltypes.Text, tinyTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 	case "text":
 		collation, err := ParseCollation(&ct.Charset, &ct.Collate, false)
 		if err != nil {
 			return nil, err
 		}
 		if ct.Length == nil {
-			return CreateString(sqltypes.Text, textBlobMax / collation.CharacterSet().MaxLength(), collation)
+			return CreateString(sqltypes.Text, textBlobMax/collation.CharacterSet().MaxLength(), collation)
 		}
 		length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
 		if err != nil {
@@ -197,13 +197,13 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		if err != nil {
 			return nil, err
 		}
-		return CreateString(sqltypes.Text, mediumTextBlobMax / collation.CharacterSet().MaxLength(), collation)
+		return CreateString(sqltypes.Text, mediumTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 	case "longtext":
 		collation, err := ParseCollation(&ct.Charset, &ct.Collate, false)
 		if err != nil {
 			return nil, err
 		}
-		return CreateString(sqltypes.Text, longTextBlobMax / collation.CharacterSet().MaxLength(), collation)
+		return CreateString(sqltypes.Text, longTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 	case "char", "character":
 		collation, err := ParseCollation(&ct.Charset, &ct.Collate, false)
 		if err != nil {

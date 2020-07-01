@@ -19,7 +19,7 @@ const (
 )
 
 var (
-	ErrConvertingToEnum = errors.NewKind("value %v is not valid for this Enum")
+	ErrConvertingToEnum  = errors.NewKind("value %v is not valid for this Enum")
 	ErrUnmarshallingEnum = errors.NewKind("value %v is not a marshalled value for this Enum")
 )
 
@@ -41,8 +41,8 @@ type EnumType interface {
 	Values() []string
 }
 
-type enumType struct{
-	collation Collation
+type enumType struct {
+	collation  Collation
 	valToIndex map[string]int
 	indexToVal []string
 }
@@ -69,7 +69,7 @@ func CreateEnumType(values []string, collation Collation) (EnumType, error) {
 		valToIndex[value] = i + 1
 	}
 	return enumType{
-		collation: collation,
+		collation:  collation,
 		valToIndex: valToIndex,
 		indexToVal: values,
 	}, nil
@@ -145,7 +145,7 @@ func (t enumType) Convert(v interface{}) (interface{}, error) {
 			realStr, _ := t.At(index)
 			return realStr, nil
 		}
-		return nil, ErrConvertingToEnum.New(`"`+value+`"`)
+		return nil, ErrConvertingToEnum.New(`"` + value + `"`)
 	case []byte:
 		return t.Convert(string(value))
 	}

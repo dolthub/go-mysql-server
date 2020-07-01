@@ -8,8 +8,8 @@ import (
 
 // If function returns the second value if the first is true, the third value otherwise.
 type If struct {
-	expr sql.Expression
-	ifTrue sql.Expression
+	expr    sql.Expression
+	ifTrue  sql.Expression
 	ifFalse sql.Expression
 }
 
@@ -18,7 +18,7 @@ func (f *If) Resolved() bool {
 }
 
 func (f *If) Children() []sql.Expression {
-	return []sql.Expression {
+	return []sql.Expression{
 		f.expr, f.ifTrue, f.ifFalse,
 	}
 }

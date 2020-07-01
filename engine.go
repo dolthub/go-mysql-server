@@ -6,6 +6,7 @@ import (
 	"github.com/go-kit/kit/metrics/discard"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
+
 	"github.com/liquidata-inc/go-mysql-server/auth"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
@@ -106,8 +107,8 @@ func NewDefault() *Engine {
 
 // Query executes a query.
 func (e *Engine) Query(
-		ctx *sql.Context,
-		query string,
+	ctx *sql.Context,
+	query string,
 ) (sql.Schema, sql.RowIter, error) {
 	var (
 		parsed, analyzed sql.Node
@@ -129,10 +130,10 @@ func (e *Engine) Query(
 	case *plan.CreateIndex:
 		typ = sql.CreateIndexProcess
 		perm = auth.ReadPerm | auth.WritePerm
-	case *plan.AlterForeignKey, *plan.AlterIndex, *plan.CreateView,
-	*plan.DeleteFrom, *plan.DropIndex, *plan.DropView,
-	*plan.InsertInto, *plan.LockTables, *plan.UnlockTables,
-	*plan.Update:
+	case *plan.CreateForeignKey, *plan.DropForeignKey, *plan.AlterIndex, *plan.CreateView,
+		*plan.DeleteFrom, *plan.DropIndex, *plan.DropView,
+		*plan.InsertInto, *plan.LockTables, *plan.UnlockTables,
+		*plan.Update:
 		perm = auth.ReadPerm | auth.WritePerm
 	}
 
@@ -181,4 +182,3 @@ func (e *Engine) Async(ctx *sql.Context, query string) bool {
 func (e *Engine) AddDatabase(db sql.Database) {
 	e.Catalog.AddDatabase(db)
 }
-

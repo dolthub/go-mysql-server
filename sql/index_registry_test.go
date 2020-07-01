@@ -364,7 +364,6 @@ func (d dummyDB) GetTableNames(ctx *Context) ([]string, error) {
 	return tblNames, nil
 }
 
-
 type dummyTable struct {
 	Table
 	name string
@@ -390,8 +389,10 @@ func (d loadDriver) LoadAll(ctx *Context, db, table string) ([]DriverIndex, erro
 	}
 	return result, nil
 }
-func (loadDriver) Save(ctx *Context, index DriverIndex, iter PartitionIndexKeyValueIter) error { return nil }
-func (loadDriver) Delete(DriverIndex, PartitionIter) error                                     { return nil }
+func (loadDriver) Save(ctx *Context, index DriverIndex, iter PartitionIndexKeyValueIter) error {
+	return nil
+}
+func (loadDriver) Delete(DriverIndex, PartitionIter) error { return nil }
 
 type dummyIdx struct {
 	id       string
@@ -409,15 +410,15 @@ func (i dummyIdx) Expressions() []string {
 	}
 	return exprs
 }
-func (i dummyIdx) ID() string                                    { return i.id }
-func (i dummyIdx) Get(...interface{}) (IndexLookup, error) { panic("not implemented") }
-func (i dummyIdx) Has(Partition, ...interface{}) (bool, error)   { panic("not implemented") }
+func (i dummyIdx) ID() string                                  { return i.id }
+func (i dummyIdx) Get(...interface{}) (IndexLookup, error)     { panic("not implemented") }
+func (i dummyIdx) Has(Partition, ...interface{}) (bool, error) { panic("not implemented") }
 func (i dummyIdx) Database() string                            { return i.database }
 func (i dummyIdx) Table() string                               { return i.table }
 func (i dummyIdx) Driver() string                              { return "dummy" }
-func (i dummyIdx) IsUnique() bool { return false }
-func (i dummyIdx) Comment() string { return "" }
-func (i dummyIdx) IndexType() string { return "BTREE" }
+func (i dummyIdx) IsUnique() bool                              { return false }
+func (i dummyIdx) Comment() string                             { return "" }
+func (i dummyIdx) IndexType() string                           { return "BTREE" }
 
 type dummyExpr struct {
 	index   int

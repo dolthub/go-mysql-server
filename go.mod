@@ -22,7 +22,6 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/tebeka/strftime v0.1.4 // indirect
 	go.etcd.io/bbolt v1.3.3
-	golang.org/x/net v0.0.0-20191119073136-fc4aabc6c914 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/grpc v1.27.0 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0
@@ -30,6 +29,6 @@ require (
 	vitess.io/vitess v3.0.0-rc.3.0.20190602171040-12bfde34629c+incompatible
 )
 
-replace vitess.io/vitess => github.com/liquidata-inc/vitess v0.0.0-20200617162426-38f250caf447
+replace vitess.io/vitess => github.com/liquidata-inc/vitess v0.0.0-20200630190834-3008c538467b
 
 go 1.13

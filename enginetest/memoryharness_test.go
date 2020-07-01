@@ -16,6 +16,7 @@ package enginetest_test
 
 import (
 	"context"
+
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -56,9 +57,14 @@ var _ enginetest.Harness = (*memoryHarness)(nil)
 var _ enginetest.IndexDriverHarness = (*memoryHarness)(nil)
 var _ enginetest.IndexHarness = (*memoryHarness)(nil)
 var _ enginetest.VersionedDBHarness = (*memoryHarness)(nil)
+var _ enginetest.ForeignKeyHarness = (*memoryHarness)(nil)
 
 func (m *memoryHarness) SupportsNativeIndexCreation() bool {
 	return m.nativeIndexSupport
+}
+
+func (m *memoryHarness) SupportsForeignKeys() bool {
+	return true
 }
 
 func (m *memoryHarness) Parallelism() int {

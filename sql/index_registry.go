@@ -1,10 +1,12 @@
 package sql
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/internal/similartext"
-	"github.com/sirupsen/logrus"
 	"strings"
 	"sync"
+
+	"github.com/sirupsen/logrus"
+
+	"github.com/liquidata-inc/go-mysql-server/internal/similartext"
 )
 
 // IndexRegistry keeps track of all driver-provided indexes in the engine.
@@ -315,8 +317,8 @@ func (r *IndexRegistry) IndexByExpression(ctx *Context, db string, expr ...Expre
 // ExpressionsWithIndexes finds all the combinations of expressions with
 // matching indexes. This only matches multi-column indexes.
 func (r *IndexRegistry) ExpressionsWithIndexes(
-		db string,
-		exprs ...Expression,
+	db string,
+	exprs ...Expression,
 ) [][]Expression {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
@@ -424,7 +426,7 @@ func exprListsEqual(a, b []string) bool {
 // finished its creation and will be marked as ready.
 // Another channel is returned to notify the user when the index is ready.
 func (r *IndexRegistry) AddIndex(
-		idx DriverIndex,
+	idx DriverIndex,
 ) (created chan<- struct{}, ready <-chan struct{}, err error) {
 	if err := r.validateIndexToAdd(idx); err != nil {
 		return nil, nil, err

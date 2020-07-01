@@ -5,9 +5,10 @@ import (
 	"regexp"
 	"strings"
 
+	errors "gopkg.in/src-d/go-errors.v1"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 // RegexpMatches returns the matches of a regular expression.

@@ -2,11 +2,12 @@ package sql
 
 import (
 	"fmt"
-	"github.com/shopspring/decimal"
-	"gopkg.in/src-d/go-errors.v1"
 	"math"
 	"strconv"
 	"time"
+
+	"github.com/shopspring/decimal"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/spf13/cast"
 	"vitess.io/vitess/go/sqltypes"
@@ -68,7 +69,7 @@ type numberTypeImpl struct {
 func CreateNumberType(baseType query.Type) (NumberType, error) {
 	switch baseType {
 	case sqltypes.Int8, sqltypes.Uint8, sqltypes.Int16, sqltypes.Uint16, sqltypes.Int24, sqltypes.Uint24,
-	sqltypes.Int32, sqltypes.Uint32, sqltypes.Int64, sqltypes.Uint64, sqltypes.Float32, sqltypes.Float64:
+		sqltypes.Int32, sqltypes.Uint32, sqltypes.Int64, sqltypes.Uint64, sqltypes.Float32, sqltypes.Float64:
 		return numberTypeImpl{
 			baseType: baseType,
 		}, nil
@@ -164,7 +165,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		if num > (1<<23 - 1) || num < (-1<<23) {
+		if num > (1<<23-1) || num < (-1<<23) {
 			return nil, ErrOutOfRange.New(num, t)
 		}
 		return int32(num), nil

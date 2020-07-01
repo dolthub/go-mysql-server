@@ -2,9 +2,10 @@ package plan
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"strings"
+
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )
@@ -14,7 +15,7 @@ var ErrNotView = errors.NewKind("'%' is not VIEW")
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
 	*UnaryNode
-	IsView bool
+	IsView  bool
 	Indexes []sql.Index
 }
 
@@ -22,7 +23,7 @@ type ShowCreateTable struct {
 func NewShowCreateTable(table sql.Node, isView bool) sql.Node {
 	return &ShowCreateTable{
 		UnaryNode: &UnaryNode{table},
-		IsView: isView,
+		IsView:    isView,
 	}
 }
 
@@ -69,9 +70,9 @@ func (n *ShowCreateTable) Schema() sql.Schema {
 // RowIter implements the Node interface
 func (n *ShowCreateTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return &showCreateTablesIter{
-		ctx:    ctx,
-		table:  n.Child,
-		isView: n.IsView,
+		ctx:     ctx,
+		table:   n.Child,
+		isView:  n.IsView,
 		indexes: n.Indexes,
 	}, nil
 }
@@ -117,7 +118,11 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 		}
 
 		tableName = table.Name()
-		composedCreateTableStatement = i.produceCreateTableStatement(table)
+		var err error
+		composedCreateTableStatement, err = i.produceCreateTableStatement(table.Table)
+		if err != nil {
+			return nil, err
+		}
 	case *SubqueryAlias:
 		tableName = table.Name()
 		composedCreateTableStatement = produceCreateViewStatement(table)
@@ -136,7 +141,7 @@ type NameAndSchema interface {
 	Schema() sql.Schema
 }
 
-func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) string {
+func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (string, error) {
 	schema := table.Schema()
 	colStmts := make([]string, len(schema))
 	var primaryKeyCols []string
@@ -165,7 +170,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) stri
 		}
 
 		if col.PrimaryKey {
-			primaryKeyCols = append(primaryKeyCols, fmt.Sprintf("`%s`", col.Name))
+			primaryKeyCols = append(primaryKeyCols, col.Name)
 		}
 
 		colStmts[i] = stmt
@@ -174,7 +179,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) stri
 	// TODO: the order of the primary key columns might not match their order in the schema. The current interface can't
 	//  represent this. We will need a new sql.Table extension to support this cleanly.
 	if len(primaryKeyCols) > 0 {
-		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(primaryKeyCols, ","))
+		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(quoteIdentifiers(primaryKeyCols), ","))
 		colStmts = append(colStmts, primaryKey)
 	}
 
@@ -201,11 +206,52 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) stri
 		colStmts = append(colStmts, key)
 	}
 
+	fkt := getForeignKeyTable(table)
+	if fkt != nil {
+		fks, err := fkt.GetForeignKeys(i.ctx)
+		if err != nil {
+			return "", err
+		}
+		for _, fk := range fks {
+			keyCols := strings.Join(quoteIdentifiers(fk.Columns), ",")
+			refCols := strings.Join(quoteIdentifiers(fk.ReferencedColumns), ",")
+			onDelete := ""
+			if len(fk.OnDelete) > 0 && fk.OnDelete != sql.ForeignKeyReferenceOption_DefaultAction {
+				onDelete = " ON DELETE " + string(fk.OnDelete)
+			}
+			onUpdate := ""
+			if len(fk.OnUpdate) > 0 && fk.OnUpdate != sql.ForeignKeyReferenceOption_DefaultAction {
+				onUpdate = " ON UPDATE " + string(fk.OnUpdate)
+			}
+			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` FOREIGN KEY (%s) REFERENCES `%s` (%s)%s%s", fk.Name, keyCols, fk.ReferencedTable, refCols, onDelete, onUpdate))
+		}
+	}
+
 	return fmt.Sprintf(
 		"CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 		table.Name(),
 		strings.Join(colStmts, ",\n"),
-	)
+	), nil
+}
+
+// getForeignKeyTable returns the underlying ForeignKeyTable for the table given, or nil if it isn't a ForeignKeyTable
+func getForeignKeyTable(t sql.Table) sql.ForeignKeyTable {
+	switch t := t.(type) {
+	case sql.ForeignKeyTable:
+		return t
+	case sql.TableWrapper:
+		return getForeignKeyTable(t.Underlying())
+	default:
+		return nil
+	}
+}
+
+func quoteIdentifiers(ids []string) []string {
+	quoted := make([]string, len(ids))
+	for i, id := range ids {
+		quoted[i] = fmt.Sprintf("`%s`", id)
+	}
+	return quoted
 }
 
 // isPrimaryKeyIndex returns whether the index given matches the table's primary key columns. Order is not considered.

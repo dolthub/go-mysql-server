@@ -1,9 +1,10 @@
 package plan
 
 import (
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/liquidata-inc/go-mysql-server/internal/similartext"
 	"github.com/liquidata-inc/go-mysql-server/sql"
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 var (

@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"vitess.io/vitess/go/vt/sqlparser"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 // Set configuration variables. Right now, only session variables are supported.

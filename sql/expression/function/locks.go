@@ -2,11 +2,13 @@ package function
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"gopkg.in/src-d/go-errors.v1"
 	"strings"
 	"time"
+
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 // ErrIllegalLockNameArgType is a kind of error that is thrown when the parameter passed as a lock name is not a string.
@@ -25,10 +27,10 @@ type NamedLockFuncLogic func(ctx *sql.Context, ls *sql.LockSubsystem, lockName s
 // NamedLockFunction is a sql function that takes just the name of a lock as an argument
 type NamedLockFunction struct {
 	expression.UnaryExpression
-	ls *sql.LockSubsystem
+	ls       *sql.LockSubsystem
 	funcName string
-	retType sql.Type
-	logic NamedLockFuncLogic
+	retType  sql.Type
+	logic    NamedLockFuncLogic
 }
 
 // NewNamedLockFunc creates a NamedLockFunction
@@ -81,7 +83,7 @@ func (nl *NamedLockFunction) WithChildren(children ...sql.Expression) (sql.Expre
 		return nil, sql.ErrInvalidChildrenNumber.New(nl, len(children), 1)
 	}
 
-	return &NamedLockFunction{expression.UnaryExpression{Child:children[0]}, nl.ls, nl.funcName, nl.retType, nl.logic}, nil
+	return &NamedLockFunction{expression.UnaryExpression{Child: children[0]}, nl.ls, nl.funcName, nl.retType, nl.logic}, nil
 }
 
 // Type implements the Expression interface.
@@ -185,7 +187,7 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, fmt.Errorf("illegal value for timeout %v", timeout)
 	}
 
-	err = gl.ls.Lock(ctx, lockName, time.Second * time.Duration(timeout.(int64)))
+	err = gl.ls.Lock(ctx, lockName, time.Second*time.Duration(timeout.(int64)))
 
 	if err != nil {
 		if sql.ErrLockTimeout.Is(err) {

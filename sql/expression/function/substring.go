@@ -260,8 +260,8 @@ func (s *SubstringIndex) WithChildren(children ...sql.Expression) (sql.Expressio
 
 // Left is a function that returns the first N characters of a string expression.
 type Left struct {
-	str   sql.Expression
-	len   sql.Expression
+	str sql.Expression
+	len sql.Expression
 }
 
 // NewLeft creates a new LEFT function.
@@ -347,7 +347,7 @@ func (l Left) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 type Instr struct {
-	str sql.Expression
+	str    sql.Expression
 	substr sql.Expression
 }
 
@@ -401,7 +401,7 @@ func (i Instr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 func findSubsequence(text []rune, subtext []rune) int64 {
-	for i := 0; i <= len(text) - len(subtext); i++ {
+	for i := 0; i <= len(text)-len(subtext); i++ {
 		var j int
 		for j = 0; j < len(subtext); j++ {
 			if text[i+j] != subtext[j] {

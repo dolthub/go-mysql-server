@@ -2,12 +2,13 @@ package sql
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"math"
 	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 var (
@@ -23,7 +24,10 @@ var (
 	// current scope.
 	ErrTableNotFound = errors.NewKind("table not found: %s")
 
-	//ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
+	// ErrColumnNotFound is thrown when a column named cannot be found in scope
+	ErrColumnNotFound = errors.NewKind("table %s does not have column %s")
+
+	// ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
 	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
 
 	// ErrInvalidChildrenNumber is returned when the WithChildren method of a
@@ -37,10 +41,10 @@ var (
 	// ErrDeleteRowNotFound
 	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete")
 
-  // ErrDuplicateAlias should be returned when a query contains a duplicate alias / table name.
-  ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
+	// ErrDuplicateAlias should be returned when a query contains a duplicate alias / table name.
+	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
-  // ErrUniqueKeyViolation is returned when a unique key constraint is violated
+	// ErrUniqueKeyViolation is returned when a unique key constraint is violated
 	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key for %s")
 )
 
@@ -176,6 +180,16 @@ type Table interface {
 	PartitionRows(*Context, Partition) (RowIter, error)
 }
 
+// ForeignKeyConstraint declares a constraint between the columns of two tables.
+type ForeignKeyConstraint struct {
+	Name              string
+	Columns           []string
+	ReferencedTable   string
+	ReferencedColumns []string
+	OnUpdate          ForeignKeyReferenceOption
+	OnDelete          ForeignKeyReferenceOption
+}
+
 // TableWrapper is a node that wraps the real table. This is needed because
 // wrappers cannot implement some methods the table may implement.
 type TableWrapper interface {
@@ -208,6 +222,7 @@ type ProjectedTable interface {
 
 // IndexUsing is the desired storage type.
 type IndexUsing byte
+
 const (
 	IndexUsing_Default IndexUsing = iota
 	IndexUsing_BTree
@@ -216,6 +231,7 @@ const (
 
 // IndexConstraint represents any constraints that should be applied to the index.
 type IndexConstraint byte
+
 const (
 	IndexConstraint_None IndexConstraint = iota
 	IndexConstraint_Unique
@@ -264,14 +280,22 @@ type IndexAlterableTable interface {
 // ForeignKeyReferenceOption is the behavior for this foreign key with the relevant action is performed on the foreign
 // table.
 type ForeignKeyReferenceOption string
+
 const (
 	ForeignKeyReferenceOption_DefaultAction ForeignKeyReferenceOption = "DEFAULT" // No explicit action was specified
-	ForeignKeyReferenceOption_Restrict ForeignKeyReferenceOption = "RESTRICT"
-	ForeignKeyReferenceOption_Cascade ForeignKeyReferenceOption = "CASCADE"
-	ForeignKeyReferenceOption_NoAction ForeignKeyReferenceOption = "NO ACTION"
-	ForeignKeyReferenceOption_SetNull ForeignKeyReferenceOption = "SET NULL"
-	ForeignKeyReferenceOption_SetDefault ForeignKeyReferenceOption = "SET DEFAULT"
+	ForeignKeyReferenceOption_Restrict      ForeignKeyReferenceOption = "RESTRICT"
+	ForeignKeyReferenceOption_Cascade       ForeignKeyReferenceOption = "CASCADE"
+	ForeignKeyReferenceOption_NoAction      ForeignKeyReferenceOption = "NO ACTION"
+	ForeignKeyReferenceOption_SetNull       ForeignKeyReferenceOption = "SET NULL"
+	ForeignKeyReferenceOption_SetDefault    ForeignKeyReferenceOption = "SET DEFAULT"
 )
+
+// ForeignKeyTable is a table that can declare its foreign key constraints.
+type ForeignKeyTable interface {
+	Table
+	// GetForeignKeys returns the foreign key constraints on this table.
+	GetForeignKeys(ctx *Context) ([]ForeignKeyConstraint, error)
+}
 
 // ForeignKeyAlterableTable represents a table that supports foreign key modification operations.
 type ForeignKeyAlterableTable interface {
@@ -501,7 +525,7 @@ type TableRenamer interface {
 
 // ColumnOrder is used in ALTER TABLE statements to change the order of inserted / modified columns.
 type ColumnOrder struct {
-	First bool // True if this column should come first
+	First       bool   // True if this column should come first
 	AfterColumn string // Set to the name of the column after which this column should appear
 }
 

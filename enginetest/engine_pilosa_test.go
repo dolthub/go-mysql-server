@@ -21,10 +21,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/index/pilosa"
-	"github.com/stretchr/testify/require"
 )
 
 type pilosaHarness struct {
@@ -43,7 +44,7 @@ func (p *pilosaHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
 func newPilosaHarness(tmpDir string) *pilosaHarness {
 	return &pilosaHarness{
 		memoryHarness: *newDefaultMemoryHarness(),
-		tmpDir: tmpDir,
+		tmpDir:        tmpDir,
 	}
 }
 

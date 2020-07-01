@@ -17,10 +17,10 @@ const (
 )
 
 var (
-	ErrConvertingToSet = errors.NewKind("value %v is not valid for this set")
+	ErrConvertingToSet   = errors.NewKind("value %v is not valid for this set")
 	ErrDuplicateEntrySet = errors.NewKind("duplicate entry: %v")
-	ErrInvalidSetValue = errors.NewKind("value %v was not found in the set")
-	ErrTooLargeForSet = errors.NewKind(`value "%v" is too large for this set`)
+	ErrInvalidSetValue   = errors.NewKind("value %v was not found in the set")
+	ErrTooLargeForSet    = errors.NewKind(`value "%v" is too large for this set`)
 )
 
 // Comments with three slashes were taken directly from the linked documentation.
@@ -38,11 +38,11 @@ type SetType interface {
 	Values() []string
 }
 
-type setType struct{
-	collation Collation
+type setType struct {
+	collation         Collation
 	compareToOriginal map[string]string
-	valToBit map[string]uint64
-	bitToVal map[uint64]string
+	valToBit          map[string]uint64
+	bitToVal          map[uint64]string
 }
 
 // CreateSetType creates a SetType.
@@ -84,10 +84,10 @@ func CreateSetType(values []string, collation Collation) (SetType, error) {
 		bitToVal[bit] = value
 	}
 	return setType{
-		collation: collation,
+		collation:         collation,
 		compareToOriginal: compareToOriginal,
-		valToBit: valToBit,
-		bitToVal: bitToVal,
+		valToBit:          valToBit,
+		bitToVal:          bitToVal,
 	}, nil
 }
 
@@ -296,7 +296,7 @@ func (t setType) allValuesBitField() uint64 {
 	}
 	// A set with 3 values will have an upper bound of 8, or 0b1000.
 	// 8 - 1 == 7, and 7 is 0b0111, which would map to every value in the set.
-	return uint64(1 << valCount) - 1
+	return uint64(1<<valCount) - 1
 }
 
 // convertBitFieldToString converts the given bit field into the equivalent comma-delimited string.
@@ -309,7 +309,7 @@ func (t setType) convertBitFieldToString(bitField uint64) (string, error) {
 	}
 	for i := 0; i < bitEdge; i++ {
 		bit := uint64(1 << uint64(i))
-		if bit & bitField != 0 {
+		if bit&bitField != 0 {
 			val, ok := t.bitToVal[bit]
 			if !ok {
 				return "", ErrInvalidSetValue.New(bitField)

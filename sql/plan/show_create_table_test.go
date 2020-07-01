@@ -1,13 +1,14 @@
 package plan
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 	"vitess.io/vitess/go/sqltypes"
 
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/stretchr/testify/require"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 func TestShowCreateTable(t *testing.T) {
@@ -25,6 +26,7 @@ func TestShowCreateTable(t *testing.T) {
 			&sql.Column{Name: "pok", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: "", Nullable: true},
 		})
 
+	ctx := sql.NewEmptyContext()
 	db.AddTable(table.Name(), table)
 
 	cat := sql.NewCatalog()
@@ -32,7 +34,6 @@ func TestShowCreateTable(t *testing.T) {
 
 	showCreateTable := NewShowCreateTable(NewResolvedTable(table), false)
 
-	ctx := sql.NewEmptyContext()
 	rowIter, _ := showCreateTable.RowIter(ctx)
 
 	row, err := rowIter.Next()
@@ -45,7 +46,7 @@ func TestShowCreateTable(t *testing.T) {
 			"  `zab` INT DEFAULT 0,\n"+
 			"  `bza` BIGINT UNSIGNED DEFAULT 0 COMMENT 'hello',\n"+
 			"  `foo` VARCHAR(123),\n"+
-			"  `pok` CHAR(123),\n" +
+			"  `pok` CHAR(123),\n"+
 			"  PRIMARY KEY (`baz`,`zab`)\n"+
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 	)
@@ -62,7 +63,7 @@ func TestShowCreateTable(t *testing.T) {
 	require.True(ErrNotView.Is(err), "wrong error kind")
 }
 
-func TestShowCreateTableWithIndex(t *testing.T) {
+func TestShowCreateTableWithIndexAndForeignKeys(t *testing.T) {
 	var require = require.New(t)
 
 	db := memory.NewDatabase("testdb")
@@ -76,6 +77,11 @@ func TestShowCreateTableWithIndex(t *testing.T) {
 			&sql.Column{Name: "foo", Source: "test-table", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: "", Nullable: true},
 			&sql.Column{Name: "pok", Source: "test-table", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: "", Nullable: true},
 		})
+
+	ctx := sql.NewEmptyContext()
+	require.NoError(table.CreateForeignKey(ctx, "fk1", []string{"baz", "zab"}, "otherTable", []string{"a", "b"}, sql.ForeignKeyReferenceOption_DefaultAction, sql.ForeignKeyReferenceOption_Cascade))
+	require.NoError(table.CreateForeignKey(ctx, "fk2", []string{"foo"}, "otherTable", []string{"b"}, sql.ForeignKeyReferenceOption_Restrict, sql.ForeignKeyReferenceOption_DefaultAction))
+	require.NoError(table.CreateForeignKey(ctx, "fk3", []string{"bza"}, "otherTable", []string{"c"}, sql.ForeignKeyReferenceOption_DefaultAction, sql.ForeignKeyReferenceOption_DefaultAction))
 
 	db.AddTable(table.Name(), table)
 
@@ -105,7 +111,6 @@ func TestShowCreateTableWithIndex(t *testing.T) {
 		},
 	}
 
-	ctx := sql.NewEmptyContext()
 	rowIter, _ := showCreateTable.RowIter(ctx)
 
 	row, err := rowIter.Next()
@@ -115,19 +120,21 @@ func TestShowCreateTableWithIndex(t *testing.T) {
 	expected := sql.NewRow(
 		table.Name(),
 		"CREATE TABLE `test-table` (\n  `baz` TEXT NOT NULL,\n"+
-				"  `zab` INT DEFAULT 0,\n"+
-				"  `bza` BIGINT UNSIGNED DEFAULT 0 COMMENT 'hello',\n"+
-				"  `foo` VARCHAR(123),\n"+
-				"  `pok` CHAR(123),\n" +
-				"  PRIMARY KEY (`baz`,`zab`),\n" +
- 				"  UNIQUE KEY `qux` (`foo`),\n" +
-				"  KEY `zug` (`pok`,`foo`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+			"  `zab` INT DEFAULT 0,\n"+
+			"  `bza` BIGINT UNSIGNED DEFAULT 0 COMMENT 'hello',\n"+
+			"  `foo` VARCHAR(123),\n"+
+			"  `pok` CHAR(123),\n"+
+			"  PRIMARY KEY (`baz`,`zab`),\n"+
+			"  UNIQUE KEY `qux` (`foo`),\n"+
+			"  KEY `zug` (`pok`,`foo`),\n"+
+			"  CONSTRAINT `fk1` FOREIGN KEY (`baz`,`zab`) REFERENCES `otherTable` (`a`,`b`) ON DELETE CASCADE,\n"+
+			"  CONSTRAINT `fk2` FOREIGN KEY (`foo`) REFERENCES `otherTable` (`b`) ON UPDATE RESTRICT,\n"+
+			"  CONSTRAINT `fk3` FOREIGN KEY (`bza`) REFERENCES `otherTable` (`c`)\n"+
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 	)
 
 	require.Equal(expected, row)
 }
-
 
 func TestShowCreateView(t *testing.T) {
 	var require = require.New(t)
@@ -168,4 +175,3 @@ func TestShowCreateView(t *testing.T) {
 
 	require.Equal(expected, row)
 }
-

@@ -2,6 +2,7 @@ package expression
 
 import (
 	"errors"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 

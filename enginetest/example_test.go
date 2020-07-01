@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/liquidata-inc/go-mysql-server"
+	sqle "github.com/liquidata-inc/go-mysql-server"
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )

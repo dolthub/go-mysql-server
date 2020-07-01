@@ -29,17 +29,16 @@ type Catalog struct {
 	*ProcessList
 	*MemoryManager
 
-	mu              sync.RWMutex
-	dbs             Databases
-	locks           sessionLocks
+	mu    sync.RWMutex
+	dbs   Databases
+	locks sessionLocks
 }
 
-type tableLocks   map[string]struct{}
+type tableLocks map[string]struct{}
 
-type dbLocks      map[string]tableLocks
+type dbLocks map[string]tableLocks
 
 type sessionLocks map[uint32]dbLocks
-
 
 // NewCatalog returns a new empty Catalog.
 func NewCatalog() *Catalog {

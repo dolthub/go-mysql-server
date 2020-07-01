@@ -2,11 +2,12 @@ package function
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 	"vitess.io/vitess/go/sqltypes"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNullIf(t *testing.T) {

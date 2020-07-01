@@ -15,11 +15,13 @@
 package enginetest
 
 import (
-	sqle "github.com/liquidata-inc/go-mysql-server"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+
+	sqle "github.com/liquidata-inc/go-mysql-server"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // returns whether to include the table name given in the test data setup. A nil set of included tables will include
@@ -331,14 +333,32 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 		if err == nil {
 			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-sql.NewRow("1", "1.1", "aaa", "create"))
+				sql.NewRow("1", "1.1", "aaa", "create"))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "reservedWordsTable", err)
 		}
 	}
 
+	if includeTable(includedTables, "fk_tbl") {
+		table, err = harness.NewTable(myDb, "fk_tbl", sql.Schema{
+			{Name: "pk", Type: sql.Int64, Source: "fk_tbl", PrimaryKey: true},
+			{Name: "a", Type: sql.Int64, Source: "fk_tbl", Nullable: true},
+			{Name: "b", Type: sql.Text, Source: "fk_tbl", Nullable: true},
+		})
+
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow(1, 1, "first row"),
+				sql.NewRow(2, 2, "second row"),
+				sql.NewRow(3, 3, "third row"),
+			)
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "fk_tbl", err)
+		}
+	}
+
 	if versionedHarness, ok := harness.(VersionedDBHarness); ok &&
-			includeTable(includedTables, "myhistorytable") {
+		includeTable(includedTables, "myhistorytable") {
 		versionedDb, ok := myDb.(sql.VersionedDatabase)
 		if !ok {
 			panic("VersionedDbTestHarness must provide a VersionedDatabase implementation")
@@ -442,4 +462,3 @@ func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
 
 	return nil
 }
-

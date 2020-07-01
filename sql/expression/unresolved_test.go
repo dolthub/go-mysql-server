@@ -3,8 +3,9 @@ package expression
 import (
 	"testing"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 func TestUnresolvedExpression(t *testing.T) {

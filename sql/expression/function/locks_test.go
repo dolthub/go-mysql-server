@@ -1,15 +1,17 @@
 package function
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 const (
 	alreadyLocked = "already_locked"
-	unlocked = "unlocked"
+	unlocked      = "unlocked"
 )
 
 func TestGetLock(t *testing.T) {

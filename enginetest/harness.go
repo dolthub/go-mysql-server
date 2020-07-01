@@ -57,6 +57,15 @@ type IndexHarness interface {
 	SupportsNativeIndexCreation() bool
 }
 
+// ForeignKeyHarness is an extension to Harness that lets an integrator test their implementation with foreign keys.
+// Integrator tables must implement sql.ForeignKeyAlterableTable and sql.ForeignKeyTable.
+type ForeignKeyHarness interface {
+	Harness
+	// SupportsForeignKeys returns whether this harness should accept CREATE FOREIGN KEY statements as part of test
+	// setup.
+	SupportsForeignKeys() bool
+}
+
 // VersionedDBHarness is an extension to Harness that lets an integrator test their implementation of versioned (AS OF)
 // queries. Integrators must implement sql.VersionedDatabase. For each table version being created, there will be a
 // call to NewTableAsOf, some number of Delete and Insert operations, and then a call to SnapshotTable.

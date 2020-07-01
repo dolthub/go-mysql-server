@@ -44,6 +44,13 @@ func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, erro
 
 				x.Indexes = tableIndexes
 			}
+		case *plan.ShowColumns:
+			tableIndexes, err := getIndexesForTable(ctx, a, x.Child)
+			if err != nil {
+				return nil, err
+			}
+
+			x.Indexes = tableIndexes
 		}
 
 		return n, nil

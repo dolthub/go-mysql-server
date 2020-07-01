@@ -82,14 +82,14 @@ func getFieldsByTable(ctx *sql.Context, n sql.Node) fieldsByTable {
 }
 
 func transformPushdown(
-		ctx *sql.Context,
-		a *Analyzer,
-		n sql.Node,
-		filters filtersByTable,
-		indexes indexLookupsByTable,
-		fieldNamesByTable fieldsByTable,
-		exprAliases ExprAliases,
-		tableAliases TableAliases,
+	ctx *sql.Context,
+	a *Analyzer,
+	n sql.Node,
+	filters filtersByTable,
+	indexes indexLookupsByTable,
+	fieldNamesByTable fieldsByTable,
+	exprAliases ExprAliases,
+	tableAliases TableAliases,
 ) (sql.Node, error) {
 	var handledFilters []sql.Expression
 	usedFieldsByTable := make(fieldsByTable)
@@ -155,15 +155,15 @@ type NameableNode interface {
 // TODO: this should also push predicates down to individual tables via wrapping them with a Filter node, not just via
 //  the sql.FilteredTable interface.
 func pushdownToTable(
-		a *Analyzer,
-		tableNode NameableNode,
-		filters filtersByTable,
-		handledFilters *[]sql.Expression,
-		fieldsByTable fieldsByTable,
-		usedProjections fieldsByTable,
-		indexes map[string]*indexLookup,
-		exprAliases ExprAliases,
-		tableAliases TableAliases,
+	a *Analyzer,
+	tableNode NameableNode,
+	filters filtersByTable,
+	handledFilters *[]sql.Expression,
+	fieldsByTable fieldsByTable,
+	usedProjections fieldsByTable,
+	indexes map[string]*indexLookup,
+	exprAliases ExprAliases,
+	tableAliases TableAliases,
 ) (sql.Node, error) {
 
 	table := getTable(tableNode)
@@ -251,11 +251,11 @@ func getTable(node sql.Node) sql.Table {
 // removePushedDownPredicates removes all handled filter predicates from the filter given and returns. If all
 // predicates have been handled, it replaces the filter with its child.
 func removePushedDownPredicates(
-		a *Analyzer,
-		node *plan.Filter,
-		handledFilters []sql.Expression,
-		exprAliases ExprAliases,
-		tableAliases TableAliases,
+	a *Analyzer,
+	node *plan.Filter,
+	handledFilters []sql.Expression,
+	exprAliases ExprAliases,
+	tableAliases TableAliases,
 ) (sql.Node, error) {
 
 	if len(handledFilters) == 0 {

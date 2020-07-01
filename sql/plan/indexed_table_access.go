@@ -1,8 +1,9 @@
 package plan
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 var ErrNoIndexableTable = errors.NewKind("expected an IndexableTable, couldn't find one in %v")

@@ -7,8 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	errors "gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // Interval defines a time duration.

@@ -1,8 +1,9 @@
 package memory
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"strings"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // Database is an in-memory database.
@@ -54,7 +55,7 @@ func (d *Database) GetTableNames(ctx *sql.Context) ([]string, error) {
 // of the named table each time, with ascending version identifiers, for this to work.
 type HistoryDatabase struct {
 	Database
-	Revisions map[string]map[interface{}]sql.Table
+	Revisions    map[string]map[interface{}]sql.Table
 	currRevision interface{}
 }
 
