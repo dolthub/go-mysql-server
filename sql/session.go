@@ -433,13 +433,35 @@ func (c *Context) Span(
 	span := c.tracer.StartSpan(opName, opts...)
 	ctx := opentracing.ContextWithSpan(c.Context, span)
 
-	return span, &Context{ctx, c.Session, c.IndexRegistry, c.ViewRegistry, c.Memory, c.Pid(), c.Query(), c.queryTime, c.tracer, c.rootSpan}
+	return span, &Context{
+		Context:       ctx,
+		Session:       c.Session,
+		IndexRegistry: c.IndexRegistry,
+		ViewRegistry:  c.ViewRegistry,
+		Memory:        c.Memory,
+		pid:           c.Pid(),
+		query:         c.Query(),
+		queryTime:     c.queryTime,
+		tracer:        c.tracer,
+		rootSpan:      c.rootSpan,
+	}
 }
 
 // NewSubContext creates a new sub-context with the given contex.Context, which should be a parent of the current
 // context.Context.
 func (c *Context) NewSubContext(ctx context.Context) *Context {
-	return &Context{ctx, c.Session, c.IndexRegistry, c.ViewRegistry, c.Memory, c.Pid(), c.Query(), c.tracer, c.rootSpan}
+	return &Context{
+		Context:       ctx,
+		Session:       c.Session,
+		IndexRegistry: c.IndexRegistry,
+		ViewRegistry:  c.ViewRegistry,
+		Memory:        c.Memory,
+		pid:           c.Pid(),
+		query:         c.Query(),
+		queryTime:     c.queryTime,
+		tracer:        c.tracer,
+		rootSpan:      c.rootSpan,
+	}
 }
 
 func (c *Context) WithCurrentDB(db string) *Context {
@@ -449,7 +471,18 @@ func (c *Context) WithCurrentDB(db string) *Context {
 
 // WithContext returns a new context with the given underlying context.
 func (c *Context) WithContext(ctx context.Context) *Context {
-	return &Context{ctx, c.Session, c.IndexRegistry, c.ViewRegistry, c.Memory, c.Pid(), c.Query(), c.queryTime, c.tracer, c.rootSpan}
+	return &Context{
+		Context:       ctx,
+		Session:       c.Session,
+		IndexRegistry: c.IndexRegistry,
+		ViewRegistry:  c.ViewRegistry,
+		Memory:        c.Memory,
+		pid:           c.Pid(),
+		query:         c.Query(),
+		queryTime:     c.queryTime,
+		tracer:        c.tracer,
+		rootSpan:      c.rootSpan,
+	}
 }
 
 // RootSpan returns the root span, if any.
