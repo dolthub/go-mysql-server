@@ -17,6 +17,7 @@ package enginetest
 import (
 	"testing"
 	"time"
+	"vitess.io/vitess/go/sqltypes"
 
 	"github.com/stretchr/testify/require"
 
@@ -49,7 +50,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	if includeTable(includedTables, "mytable") {
 		table, err = harness.NewTable(myDb, "mytable", sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-			{Name: "s", Type: sql.Text, Source: "mytable", Comment: "column s"},
+			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 		})
 
 		if err == nil {
@@ -343,7 +344,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		table, err = harness.NewTable(myDb, "fk_tbl", sql.Schema{
 			{Name: "pk", Type: sql.Int64, Source: "fk_tbl", PrimaryKey: true},
 			{Name: "a", Type: sql.Int64, Source: "fk_tbl", Nullable: true},
-			{Name: "b", Type: sql.Text, Source: "fk_tbl", Nullable: true},
+			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "fk_tbl", Nullable: true},
 		})
 
 		if err == nil {

@@ -2480,21 +2480,21 @@ var InfoSchemaQueries = []QueryTest{
 		`SHOW COLUMNS FROM mytable`,
 		[]sql.Row{
 			{"i", "BIGINT", "NO", "PRI", "", ""},
-			{"s", "TEXT", "NO", "UNI", "", ""},
+			{"s", "VARCHAR(20)", "NO", "UNI", "", ""},
 		},
 	},
 	{
 		`DESCRIBE mytable`,
 		[]sql.Row{
 			{"i", "BIGINT", "NO", "PRI", "", ""},
-			{"s", "TEXT", "NO", "UNI", "", ""},
+			{"s", "VARCHAR(20)", "NO", "UNI", "", ""},
 		},
 	},
 	{
 		`DESC mytable`,
 		[]sql.Row{
 			{"i", "BIGINT", "NO", "PRI", "", ""},
-			{"s", "TEXT", "NO", "UNI", "", ""},
+			{"s", "VARCHAR(20)", "NO", "UNI", "", ""},
 		},
 	},
 	{
@@ -2513,7 +2513,7 @@ var InfoSchemaQueries = []QueryTest{
 		`SHOW FULL COLUMNS FROM mytable`,
 		[]sql.Row{
 			{"i", "BIGINT", nil, "NO", "PRI", "", "", "", ""},
-			{"s", "TEXT", "utf8_bin", "NO", "UNI", "", "", "", "column s"},
+			{"s", "VARCHAR(20)", "utf8_bin", "NO", "UNI", "", "", "", "column s"},
 		},
 	},
 	{
@@ -2574,13 +2574,14 @@ var InfoSchemaQueries = []QueryTest{
 			{"tabletest"},
 		},
 	},
+	// TODO: these type names should be upper cased
 	{
 		`
 		SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS
 		WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='mytable'
 		`,
 		[]sql.Row{
-			{"s", "text"},
+			{"s", "varchar(20)"},
 			{"i", "bigint"},
 		},
 	},
@@ -2663,7 +2664,7 @@ var InfoSchemaQueries = []QueryTest{
 		[]sql.Row{
 			{"mytable", "CREATE TABLE `mytable` (\n" +
 				"  `i` BIGINT NOT NULL,\n" +
-				"  `s` TEXT NOT NULL COMMENT 'column s',\n" +
+				"  `s` VARCHAR(20) NOT NULL COMMENT 'column s',\n" +
 				"  PRIMARY KEY (`i`),\n" +
 				"  KEY `mytable_i_s` (`i`,`s`),\n" +
 				"  UNIQUE KEY `mytable_s` (`s`)\n" +
@@ -2676,7 +2677,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"fk_tbl", "CREATE TABLE `fk_tbl` (\n" +
 				"  `pk` BIGINT NOT NULL,\n" +
 				"  `a` BIGINT,\n" +
-				"  `b` TEXT,\n" +
+				"  `b` VARCHAR(20),\n" +
 				"  PRIMARY KEY (`pk`),\n" +
 				"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
