@@ -16,15 +16,16 @@ package enginetest_test
 
 import (
 	"context"
-	"github.com/liquidata-inc/go-mysql-server/enginetest"
-	"github.com/opentracing/opentracing-go"
 	"testing"
 
+	"github.com/opentracing/opentracing-go"
+	"github.com/stretchr/testify/require"
+
 	sqle "github.com/liquidata-inc/go-mysql-server"
+	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
-	"github.com/stretchr/testify/require"
 )
 
 // This file is for tests of the engine that we are very sure do not rely on a particular database implementation. They
@@ -69,7 +70,7 @@ func TestClearWarnings(t *testing.T) {
 // TODO: this should be expanded and filled in (test of describe for lots of queries), and moved to enginetests, but
 //  first we need to standardize the explain output. Depends too much on integrators right now.
 func TestDescribe(t *testing.T) {
-	queries := []string {
+	queries := []string{
 		`DESCRIBE FORMAT=TREE SELECT * FROM mytable`,
 		`EXPLAIN FORMAT=TREE SELECT * FROM mytable`,
 		`DESCRIBE SELECT * FROM mytable`,

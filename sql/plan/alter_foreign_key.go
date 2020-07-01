@@ -2,9 +2,11 @@ package plan
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"gopkg.in/src-d/go-errors.v1"
 	"strings"
+
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 var (
@@ -29,7 +31,7 @@ type DropForeignKey struct {
 func NewAlterAddForeignKey(table, refTable sql.Node, fkDef *sql.ForeignKeyConstraint) *CreateForeignKey {
 	return &CreateForeignKey{
 		BinaryNode: BinaryNode{table, refTable},
-		FkDef:     fkDef,
+		FkDef:      fkDef,
 	}
 }
 
@@ -137,7 +139,7 @@ func (p *CreateForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) 
 }
 
 func (p *CreateForeignKey) Schema() sql.Schema { return nil }
-func (p *DropForeignKey) Schema() sql.Schema { return nil }
+func (p *DropForeignKey) Schema() sql.Schema   { return nil }
 
 func (p *CreateForeignKey) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	err := p.Execute(ctx)
@@ -167,4 +169,3 @@ func (p CreateForeignKey) String() string {
 		fmt.Sprintf("OnDelete(%s)", p.FkDef.OnDelete))
 	return pr.String()
 }
-

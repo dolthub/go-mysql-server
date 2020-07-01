@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mitchellh/hashstructure"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )

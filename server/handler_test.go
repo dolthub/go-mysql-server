@@ -7,15 +7,14 @@ import (
 	"testing"
 	"time"
 
-	sqle "github.com/liquidata-inc/go-mysql-server"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-
+	"github.com/opentracing/opentracing-go"
+	"github.com/stretchr/testify/require"
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/proto/query"
 
-	"github.com/opentracing/opentracing-go"
-	"github.com/stretchr/testify/require"
+	sqle "github.com/liquidata-inc/go-mysql-server"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 func TestHandlerOutput(t *testing.T) {
@@ -27,7 +26,7 @@ func TestHandlerOutput(t *testing.T) {
 		NewSessionManager(
 			testSessionBuilder,
 			opentracing.NoopTracer{},
-			func(db string) bool {return db == "test"},
+			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			"foo",
 		),
@@ -138,7 +137,7 @@ func TestHandlerKill(t *testing.T) {
 				return sql.NewSession(addr, "", "", conn.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry(), nil
 			},
 			opentracing.NoopTracer{},
-			func(db string) bool {return db == "test"},
+			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			"foo",
 		),
@@ -229,7 +228,7 @@ func TestHandlerTimeout(t *testing.T) {
 	timeOutHandler := NewHandler(
 		e, NewSessionManager(testSessionBuilder,
 			opentracing.NoopTracer{},
-			func(db string) bool {return db == "test"},
+			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			"foo"),
 		1*time.Second)
@@ -237,7 +236,7 @@ func TestHandlerTimeout(t *testing.T) {
 	noTimeOutHandler := NewHandler(
 		e2, NewSessionManager(testSessionBuilder,
 			opentracing.NoopTracer{},
-			func(db string) bool {return db == "test"},
+			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			"foo"),
 		0)
@@ -288,7 +287,7 @@ func TestOkClosedConnection(t *testing.T) {
 		NewSessionManager(
 			testSessionBuilder,
 			opentracing.NoopTracer{},
-			func(db string) bool {return db == "test"},
+			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			"foo",
 		),

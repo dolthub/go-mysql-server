@@ -2,15 +2,16 @@ package sql
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestJsonCompare(t *testing.T) {
 	tests := []struct {
-		val1 interface{}
-		val2 interface{}
+		val1        interface{}
+		val2        interface{}
 		expectedCmp int
 	}{
 		{nil, 0, -1},
@@ -32,7 +33,7 @@ func TestJsonCompare(t *testing.T) {
 
 func TestJsonConvert(t *testing.T) {
 	tests := []struct {
-		val interface{}
+		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
 	}{

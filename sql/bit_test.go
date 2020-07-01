@@ -11,9 +11,9 @@ import (
 
 func TestBitCompare(t *testing.T) {
 	tests := []struct {
-		typ Type
-		val1 interface{}
-		val2 interface{}
+		typ         Type
+		val1        interface{}
+		val2        interface{}
 		expectedCmp int
 	}{
 		{MustCreateBitType(1), nil, 0, -1},
@@ -46,9 +46,9 @@ func TestBitCompare(t *testing.T) {
 
 func TestBitCreate(t *testing.T) {
 	tests := []struct {
-		numOfBits uint8
+		numOfBits    uint8
 		expectedType bitType
-		expectedErr bool
+		expectedErr  bool
 	}{
 		{1, bitType{1}, false},
 		{10, bitType{10}, false},
@@ -72,8 +72,8 @@ func TestBitCreate(t *testing.T) {
 
 func TestBitConvert(t *testing.T) {
 	tests := []struct {
-		typ Type
-		val interface{}
+		typ         Type
+		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
 	}{
@@ -121,7 +121,7 @@ func TestBitConvert(t *testing.T) {
 
 func TestBitString(t *testing.T) {
 	tests := []struct {
-		typ Type
+		typ         Type
 		expectedStr string
 	}{
 		{MustCreateBitType(1), "BIT(1)"},

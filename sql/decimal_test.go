@@ -2,11 +2,12 @@ package sql
 
 import (
 	"fmt"
-	"github.com/shopspring/decimal"
 	"math/big"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,39 +18,39 @@ func TestDecimalAccuracy(t *testing.T) {
 	precision := 65
 
 	tests := []struct {
-		scale int
+		scale     int
 		intervals []string
 	}{
-		{1,  []string{"1"}},
-		{2,  []string{"1"}},
-		{3,  []string{"1"}},
-		{4,  []string{"1","2"}},
-		{5,  []string{"1","7","19"}},
-		{6,  []string{"1","17","173"}},
-		{7,  []string{"1","13","1381"}},
-		{8,  []string{"1","127","15139"}},
-		{9,  []string{"1","167","11311","157733"}},
-		{10, []string{"1","193","12119","1299827"}},
-		{11, []string{"1","1409","13597","11566817"}},
-		{12, []string{"1","1462","162736","19973059","153698913"}},
-		{13, []string{"1","17173","164916","12810490","1106465924"}},
-		{14, []string{"1","14145","1929683","11237352","12259001771"}},
-		{15, []string{"1","19702","1826075","197350780","117062654737"}},
-		{16, []string{"1","154259","1722308","192079755","1568355872155"}},
-		{17, []string{"1","199621","17380400","189789317","18535814105416"}},
-		{18, []string{"1","164284","19555364","1343158899","191285386028951"}},
-		{19, []string{"1","1370167","14327353","1613296706","1786126145971438"}},
-		{20, []string{"1","1682382","156896829","1502199604","15400467202762943"}},
-		{21, []string{"1","1908105","132910114","17668300548","145914194398307528"}},
-		{22, []string{"1","11192652","181987462","13471431866","1112655573846229769"}},
-		{23, []string{"1","19628451","1498686974","13119001111","17583200755082903973"}},
-		{24, []string{"1","14855266","1844358042","140667369937","138362583526008386641"}},
-		{25, []string{"1","132605238","1459826257","138157739511","1456272936346618537992"}},
-		{26, []string{"1","178623779","19310677332","124692319379","15924740334465525606269"}},
-		{27, []string{"1","136953077","13506952725","1383331590521","137480986566749829385216"}},
-		{28, []string{"1","1838754847","16879518108","1840612305937","1389868035366355336138689"}},
-		{29, []string{"1","1760427312","169649694515","1810557411178","12907494895459213754558234"}},
-		{30, []string{"1","1823936104","131352779146","17050328377892","146384189585475736836539491"}},
+		{1, []string{"1"}},
+		{2, []string{"1"}},
+		{3, []string{"1"}},
+		{4, []string{"1", "2"}},
+		{5, []string{"1", "7", "19"}},
+		{6, []string{"1", "17", "173"}},
+		{7, []string{"1", "13", "1381"}},
+		{8, []string{"1", "127", "15139"}},
+		{9, []string{"1", "167", "11311", "157733"}},
+		{10, []string{"1", "193", "12119", "1299827"}},
+		{11, []string{"1", "1409", "13597", "11566817"}},
+		{12, []string{"1", "1462", "162736", "19973059", "153698913"}},
+		{13, []string{"1", "17173", "164916", "12810490", "1106465924"}},
+		{14, []string{"1", "14145", "1929683", "11237352", "12259001771"}},
+		{15, []string{"1", "19702", "1826075", "197350780", "117062654737"}},
+		{16, []string{"1", "154259", "1722308", "192079755", "1568355872155"}},
+		{17, []string{"1", "199621", "17380400", "189789317", "18535814105416"}},
+		{18, []string{"1", "164284", "19555364", "1343158899", "191285386028951"}},
+		{19, []string{"1", "1370167", "14327353", "1613296706", "1786126145971438"}},
+		{20, []string{"1", "1682382", "156896829", "1502199604", "15400467202762943"}},
+		{21, []string{"1", "1908105", "132910114", "17668300548", "145914194398307528"}},
+		{22, []string{"1", "11192652", "181987462", "13471431866", "1112655573846229769"}},
+		{23, []string{"1", "19628451", "1498686974", "13119001111", "17583200755082903973"}},
+		{24, []string{"1", "14855266", "1844358042", "140667369937", "138362583526008386641"}},
+		{25, []string{"1", "132605238", "1459826257", "138157739511", "1456272936346618537992"}},
+		{26, []string{"1", "178623779", "19310677332", "124692319379", "15924740334465525606269"}},
+		{27, []string{"1", "136953077", "13506952725", "1383331590521", "137480986566749829385216"}},
+		{28, []string{"1", "1838754847", "16879518108", "1840612305937", "1389868035366355336138689"}},
+		{29, []string{"1", "1760427312", "169649694515", "1810557411178", "12907494895459213754558234"}},
+		{30, []string{"1", "1823936104", "131352779146", "17050328377892", "146384189585475736836539491"}},
 	}
 
 	for _, test := range tests {
@@ -62,13 +63,13 @@ func TestDecimalAccuracy(t *testing.T) {
 			bigIntervals[i] = bigInterval
 		}
 		intervalIndex := 0
-		baseStr := strings.Repeat("9", precision - test.scale) + "."
+		baseStr := strings.Repeat("9", precision-test.scale) + "."
 		upperBound := new(big.Int)
 		_ = upperBound.UnmarshalText([]byte("1" + strings.Repeat("0", test.scale)))
 
 		for decimal.Cmp(upperBound) == -1 {
 			decimalStr := decimal.Text(10)
-			fullDecimalStr := strings.Repeat("0", test.scale - len(decimalStr)) + decimalStr
+			fullDecimalStr := strings.Repeat("0", test.scale-len(decimalStr)) + decimalStr
 			fullStr := baseStr + fullDecimalStr
 
 			t.Run(fmt.Sprintf("Scale:%v DecVal:%v", test.scale, fullDecimalStr), func(t *testing.T) {
@@ -85,10 +86,10 @@ func TestDecimalAccuracy(t *testing.T) {
 
 func TestDecimalCompare(t *testing.T) {
 	tests := []struct {
-		precision uint8
-		scale uint8
-		val1 interface{}
-		val2 interface{}
+		precision   uint8
+		scale       uint8
+		val1        interface{}
+		val2        interface{}
 		expectedCmp int
 	}{
 		{1, 0, nil, 0, -1},
@@ -120,10 +121,10 @@ func TestDecimalCompare(t *testing.T) {
 
 func TestDecimalCreate(t *testing.T) {
 	tests := []struct {
-		precision uint8
-		scale uint8
+		precision    uint8
+		scale        uint8
 		expectedType decimalType
-		expectedErr bool
+		expectedErr  bool
 	}{
 		{0, 0, decimalType{decimal.New(1, 10), 10, 0}, false},
 		{0, 1, decimalType{}, true},
@@ -191,9 +192,9 @@ func TestDecimalCreate(t *testing.T) {
 
 func TestDecimalConvert(t *testing.T) {
 	tests := []struct {
-		precision uint8
-		scale uint8
-		val interface{}
+		precision   uint8
+		scale       uint8
+		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
 	}{
@@ -265,8 +266,8 @@ func TestDecimalConvert(t *testing.T) {
 
 func TestDecimalString(t *testing.T) {
 	tests := []struct {
-		precision uint8
-		scale uint8
+		precision   uint8
+		scale       uint8
 		expectedStr string
 	}{
 		{0, 0, "DECIMAL(10,0)"},

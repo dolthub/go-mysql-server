@@ -9,7 +9,7 @@ import (
 // ShowColumns shows the columns details of a table.
 type ShowColumns struct {
 	UnaryNode
-	Full bool
+	Full    bool
 	Indexes []sql.Index
 }
 
@@ -98,8 +98,8 @@ func (s *ShowColumns) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 				null,
 				key, // Key
 				defaultVal,
-				"", // Extra
-				"", // Privileges
+				"",          // Extra
+				"",          // Privileges
 				col.Comment, // Comment
 			}
 		} else {

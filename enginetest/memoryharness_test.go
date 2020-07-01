@@ -16,6 +16,7 @@ package enginetest_test
 
 import (
 	"context"
+
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"

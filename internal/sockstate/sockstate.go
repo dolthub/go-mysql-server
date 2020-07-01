@@ -1,8 +1,9 @@
 package sockstate
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
 	"strconv"
+
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 type SockState uint8

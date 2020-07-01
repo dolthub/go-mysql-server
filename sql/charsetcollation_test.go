@@ -9,12 +9,12 @@ import (
 )
 
 func TestParseCollation(t *testing.T) {
-	tests := []struct{
-		charset string
-		collation string
-		binaryAttribute bool
+	tests := []struct {
+		charset           string
+		collation         string
+		binaryAttribute   bool
 		expectedCollation Collation
-		expectedErr bool
+		expectedErr       bool
 	}{
 		{"", "", false, Collation_Default, false},
 		{"", "", true, Collation_Default.CharacterSet().BinaryCollation(), false},

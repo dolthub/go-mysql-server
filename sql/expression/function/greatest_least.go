@@ -6,8 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 var ErrUintOverflow = errors.NewKind(

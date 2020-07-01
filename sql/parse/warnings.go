@@ -8,9 +8,10 @@ import (
 	"strings"
 	"unicode"
 
+	errors "gopkg.in/src-d/go-errors.v1"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 var errInvalidIndex = errors.NewKind("invalid %s index %d (index must be non-negative)")

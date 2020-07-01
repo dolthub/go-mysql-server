@@ -3,8 +3,9 @@ package function
 import (
 	"testing"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 func eval(t *testing.T, e sql.Expression, row sql.Row) interface{} {

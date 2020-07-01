@@ -1,17 +1,20 @@
 package sql
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
 	"sync"
 	"sync/atomic"
 	"time"
 	"unsafe"
+
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // ErrLockTimeout is the kind of error returned when acquiring a lock takes longer than the user specified timeout
 var ErrLockTimeout = errors.NewKind("Timeout acquiring lock '%s'.")
+
 // ErrLockDoesNotExist is the kind of error returned when a named lock does not exist and the operation does not created it
 var ErrLockDoesNotExist = errors.NewKind("Lock '%s' does not exist.")
+
 // ErrLockNotOwned is the kind of error returned when attempting an operation against a lock that the given context does not own.
 var ErrLockNotOwned = errors.NewKind("Operation '%s' failed as the lock '%s' has a different owner.")
 
@@ -23,7 +26,7 @@ type ownedLock struct {
 // LockSubsystem manages reentrant named locks
 type LockSubsystem struct {
 	lockLock *sync.RWMutex
-	locks map[string]**ownedLock
+	locks    map[string]**ownedLock
 }
 
 // NewLockSubsystem creates a LockSubsystem object
@@ -50,7 +53,7 @@ func (ls *LockSubsystem) createLock(name string) **ownedLock {
 		nl = &newLock
 	}
 
-	return  nl
+	return nl
 }
 
 // Lock attempts to acquire a lock with a given name for the Id associated with the given ctx.Session within the given
@@ -80,7 +83,7 @@ func (ls *LockSubsystem) Lock(ctx *Context, name string, timeout time.Duration) 
 			}
 		}
 
-		time.Sleep(100*time.Microsecond)
+		time.Sleep(100 * time.Microsecond)
 	}
 
 	return ErrLockTimeout.New(name)

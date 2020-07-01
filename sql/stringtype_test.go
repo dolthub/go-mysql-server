@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/proto/query"
 
@@ -14,9 +15,9 @@ import (
 
 func TestStringCompare(t *testing.T) {
 	tests := []struct {
-		typ StringType
-		val1 interface{}
-		val2 interface{}
+		typ         StringType
+		val1        interface{}
+		val2        interface{}
 		expectedCmp int
 	}{
 		{MustCreateBinary(sqltypes.Binary, 10), nil, 0, -1},
@@ -59,7 +60,6 @@ func TestStringCompare(t *testing.T) {
 		{MustCreateBinary(sqltypes.VarBinary, 10), false, 1, 1},
 		{MustCreateBinary(sqltypes.VarBinary, 10), 0, 1, -1},
 		{MustCreateBinary(sqltypes.VarBinary, 10), []byte("254"), 254, 0},
-
 	}
 
 	for _, test := range tests {
@@ -73,10 +73,10 @@ func TestStringCompare(t *testing.T) {
 
 func TestStringCreateBlob(t *testing.T) {
 	tests := []struct {
-		baseType query.Type
-		length int64
+		baseType     query.Type
+		length       int64
 		expectedType stringType
-		expectedErr bool
+		expectedErr  bool
 	}{
 		{sqltypes.Binary, 10,
 			stringType{sqltypes.Binary, 10, Collation_binary}, false},
@@ -107,10 +107,10 @@ func TestStringCreateBlob(t *testing.T) {
 
 func TestStringCreateBlobInvalidBaseTypes(t *testing.T) {
 	tests := []struct {
-		baseType query.Type
-		length int64
+		baseType     query.Type
+		length       int64
 		expectedType stringType
-		expectedErr bool
+		expectedErr  bool
 	}{
 		{sqltypes.Bit, 10, stringType{}, true},
 		{sqltypes.Date, 10, stringType{}, true},
@@ -154,11 +154,11 @@ func TestStringCreateBlobInvalidBaseTypes(t *testing.T) {
 
 func TestStringCreateString(t *testing.T) {
 	tests := []struct {
-		baseType query.Type
-		length int64
-		collation Collation
+		baseType     query.Type
+		length       int64
+		collation    Collation
 		expectedType stringType
-		expectedErr bool
+		expectedErr  bool
 	}{
 		{sqltypes.Binary, 10, Collation_binary,
 			stringType{sqltypes.Binary, 10, Collation_binary}, false},
@@ -214,11 +214,11 @@ func TestStringCreateString(t *testing.T) {
 
 func TestStringCreateStringInvalidBaseTypes(t *testing.T) {
 	tests := []struct {
-		baseType query.Type
-		length int64
-		collation Collation
+		baseType     query.Type
+		length       int64
+		collation    Collation
 		expectedType stringType
-		expectedErr bool
+		expectedErr  bool
 	}{
 		{sqltypes.Bit, 10, Collation_Default, stringType{}, true},
 		{sqltypes.Date, 10, Collation_Default, stringType{}, true},
@@ -262,8 +262,8 @@ func TestStringCreateStringInvalidBaseTypes(t *testing.T) {
 
 func TestStringConvert(t *testing.T) {
 	tests := []struct {
-		typ StringType
-		val interface{}
+		typ         StringType
+		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
 	}{
@@ -297,9 +297,9 @@ func TestStringConvert(t *testing.T) {
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 40), time.Date(2019, 12, 12, 12, 12, 12, 0, time.UTC), "2019-12-12 12:12:12", false},
 
 		{MustCreateBinary(sqltypes.Binary, 3), "abcd", nil, true},
-		{MustCreateBinary(sqltypes.Blob, 3), strings.Repeat("0", tinyTextBlobMax + 1), nil, true},
+		{MustCreateBinary(sqltypes.Blob, 3), strings.Repeat("0", tinyTextBlobMax+1), nil, true},
 		{MustCreateStringWithDefaults(sqltypes.Char, 3), "abcd", nil, true},
-		{MustCreateStringWithDefaults(sqltypes.Text, 3), strings.Repeat("𒁏", int(tinyTextBlobMax / Collation_Default.CharacterSet().MaxLength()) + 1), nil, true},
+		{MustCreateStringWithDefaults(sqltypes.Text, 3), strings.Repeat("𒁏", int(tinyTextBlobMax/Collation_Default.CharacterSet().MaxLength())+1), nil, true},
 		{MustCreateBinary(sqltypes.VarBinary, 3), []byte{01, 02, 03, 04}, nil, true},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 3), []byte("abcd"), nil, true},
 	}
@@ -319,38 +319,38 @@ func TestStringConvert(t *testing.T) {
 
 func TestStringString(t *testing.T) {
 	tests := []struct {
-		typ Type
+		typ         Type
 		expectedStr string
 	}{
 		{MustCreateBinary(sqltypes.Binary, 10), "BINARY(10)"},
 		{MustCreateBinary(sqltypes.Binary, charBinaryMax), fmt.Sprintf("BINARY(%v)", charBinaryMax)},
 		{MustCreateBinary(sqltypes.Blob, 0), "TINYBLOB"},
-		{MustCreateBinary(sqltypes.Blob, tinyTextBlobMax - 1), "TINYBLOB"},
+		{MustCreateBinary(sqltypes.Blob, tinyTextBlobMax-1), "TINYBLOB"},
 		{MustCreateBinary(sqltypes.Blob, tinyTextBlobMax), "TINYBLOB"},
-		{MustCreateBinary(sqltypes.Blob, tinyTextBlobMax + 1), "BLOB"},
-		{MustCreateBinary(sqltypes.Blob, textBlobMax - 1), "BLOB"},
+		{MustCreateBinary(sqltypes.Blob, tinyTextBlobMax+1), "BLOB"},
+		{MustCreateBinary(sqltypes.Blob, textBlobMax-1), "BLOB"},
 		{MustCreateBinary(sqltypes.Blob, textBlobMax), "BLOB"},
-		{MustCreateBinary(sqltypes.Blob, textBlobMax + 1), "MEDIUMBLOB"},
-		{MustCreateBinary(sqltypes.Blob, mediumTextBlobMax - 1), "MEDIUMBLOB"},
+		{MustCreateBinary(sqltypes.Blob, textBlobMax+1), "MEDIUMBLOB"},
+		{MustCreateBinary(sqltypes.Blob, mediumTextBlobMax-1), "MEDIUMBLOB"},
 		{MustCreateBinary(sqltypes.Blob, mediumTextBlobMax), "MEDIUMBLOB"},
-		{MustCreateBinary(sqltypes.Blob, mediumTextBlobMax + 1), "LONGBLOB"},
+		{MustCreateBinary(sqltypes.Blob, mediumTextBlobMax+1), "LONGBLOB"},
 		{MustCreateBinary(sqltypes.Blob, longTextBlobMax), "LONGBLOB"},
 		{MustCreateString(sqltypes.Char, 10, Collation_Default), "CHAR(10)"},
 		{MustCreateString(sqltypes.Char, charBinaryMax, Collation_Default), fmt.Sprintf("CHAR(%v)", charBinaryMax)},
 		{MustCreateString(sqltypes.Text, 0, Collation_Default), "TINYTEXT"},
-		{MustCreateString(sqltypes.Text, tinyTextBlobMax / Collation_Default.CharacterSet().MaxLength(), Collation_Default), "TINYTEXT"},
+		{MustCreateString(sqltypes.Text, tinyTextBlobMax/Collation_Default.CharacterSet().MaxLength(), Collation_Default), "TINYTEXT"},
 		{MustCreateString(sqltypes.Text, tinyTextBlobMax, Collation_Default), "TEXT"},
-		{MustCreateString(sqltypes.Text, textBlobMax / Collation_Default.CharacterSet().MaxLength(), Collation_Default), "TEXT"},
+		{MustCreateString(sqltypes.Text, textBlobMax/Collation_Default.CharacterSet().MaxLength(), Collation_Default), "TEXT"},
 		{MustCreateString(sqltypes.Text, textBlobMax, Collation_Default), "MEDIUMTEXT"},
-		{MustCreateString(sqltypes.Text, mediumTextBlobMax / Collation_Default.CharacterSet().MaxLength(), Collation_Default), "MEDIUMTEXT"},
+		{MustCreateString(sqltypes.Text, mediumTextBlobMax/Collation_Default.CharacterSet().MaxLength(), Collation_Default), "MEDIUMTEXT"},
 		{MustCreateString(sqltypes.Text, mediumTextBlobMax, Collation_Default), "LONGTEXT"},
-		{MustCreateString(sqltypes.Text, longTextBlobMax / Collation_Default.CharacterSet().MaxLength(), Collation_Default), "LONGTEXT"},
+		{MustCreateString(sqltypes.Text, longTextBlobMax/Collation_Default.CharacterSet().MaxLength(), Collation_Default), "LONGTEXT"},
 		{MustCreateString(sqltypes.Text, longTextBlobMax, Collation_Default), "LONGTEXT"},
 		{MustCreateBinary(sqltypes.VarBinary, 10), "VARBINARY(10)"},
 		{MustCreateBinary(sqltypes.VarBinary, varcharVarbinaryMax), fmt.Sprintf("VARBINARY(%v)", varcharVarbinaryMax)},
 		{MustCreateString(sqltypes.VarChar, 10, Collation_Default), "VARCHAR(10)"},
-		{MustCreateString(sqltypes.VarChar, varcharVarbinaryMax / Collation_Default.CharacterSet().MaxLength(), Collation_Default),
-			fmt.Sprintf("VARCHAR(%v)", varcharVarbinaryMax / Collation_Default.CharacterSet().MaxLength())},
+		{MustCreateString(sqltypes.VarChar, varcharVarbinaryMax/Collation_Default.CharacterSet().MaxLength(), Collation_Default),
+			fmt.Sprintf("VARCHAR(%v)", varcharVarbinaryMax/Collation_Default.CharacterSet().MaxLength())},
 
 		{MustCreateString(sqltypes.Char, 10, Collation_Default.CharacterSet().BinaryCollation()),
 			fmt.Sprintf("CHAR(10) COLLATE %v", Collation_Default.CharacterSet().BinaryCollation())},

@@ -20,8 +20,8 @@ func TestTimeCompare(t *testing.T) {
 	}
 
 	tests := []struct {
-		val1 interface{}
-		val2 interface{}
+		val1        interface{}
+		val2        interface{}
 		expectedCmp int
 	}{
 		{nil, 0, -1},
@@ -67,7 +67,7 @@ func TestTimeConvert(t *testing.T) {
 	}
 
 	tests := []struct {
-		val interface{}
+		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
 	}{

@@ -215,6 +215,7 @@ func parseSocktab(r io.Reader, accept AcceptFn) ([]sockTabEntry, error) {
 // This net stat code appears to be broken when running a linux binary under the Windows Subsystem for Linux (WSL). If
 // we detect we are running on WSL, disable the TCP socket check, as we do on Windows and Darwin.
 var isWSL = false
+
 func init() {
 	osRelease, err := ioutil.ReadFile("/proc/sys/kernel/osrelease")
 	if err == nil {

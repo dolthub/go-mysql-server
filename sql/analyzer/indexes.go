@@ -3,10 +3,11 @@ package analyzer
 import (
 	"reflect"
 
+	errors "gopkg.in/src-d/go-errors.v1"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 var errInvalidInRightEvaluation = errors.NewKind("expecting evaluation of IN expression right hand side to be a tuple, but it is %T")
@@ -66,12 +67,12 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node) (indexLooku
 }
 
 func getIndexes(
-		ctx *sql.Context,
-		a *Analyzer,
-		ia *indexAnalyzer,
-		e sql.Expression,
-		exprAliases ExprAliases,
-		tableAliases TableAliases,
+	ctx *sql.Context,
+	a *Analyzer,
+	ia *indexAnalyzer,
+	e sql.Expression,
+	exprAliases ExprAliases,
+	tableAliases TableAliases,
 ) (map[string]*indexLookup, error) {
 	var result = make(map[string]*indexLookup)
 	switch e := e.(type) {
@@ -365,12 +366,12 @@ func betweenIndexLookup(index sql.Index, upper, lower []interface{}) (sql.IndexL
 // TODO(erizocosmico): add support for BETWEEN once the appropiate interfaces
 //  can handle inclusiveness on both sides.
 func getComparisonIndex(
-		ctx *sql.Context,
-		a *Analyzer,
-		ia *indexAnalyzer,
-		e expression.Comparer,
-		exprAliases ExprAliases,
-		tableAliases TableAliases,
+	ctx *sql.Context,
+	a *Analyzer,
+	ia *indexAnalyzer,
+	e expression.Comparer,
+	exprAliases ExprAliases,
+	tableAliases TableAliases,
 ) (sql.Index, sql.IndexLookup, error) {
 	left, right := e.Left(), e.Right()
 	// if the form is SOMETHING OP {INDEXABLE EXPR}, swap it, so it's {INDEXABLE EXPR} OP SOMETHING
@@ -578,7 +579,7 @@ func getMultiColumnIndexes(
 	ctx *sql.Context,
 	exprs []sql.Expression,
 	a *Analyzer,
-  ia *indexAnalyzer,
+	ia *indexAnalyzer,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) (map[string]*indexLookup, error) {
@@ -632,7 +633,7 @@ func getMultiColumnIndexForExpressions(
 	ia *indexAnalyzer,
 	selected []sql.Expression,
 	exprs []columnExpr,
-  exprAliases ExprAliases,
+	exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) (index sql.Index, lookup sql.IndexLookup, err error) {
 

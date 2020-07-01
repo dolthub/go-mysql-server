@@ -1,10 +1,11 @@
 package function
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"math"
 	"testing"
 	"time"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 func TestAsciiFunc(t *testing.T) {
@@ -13,13 +14,12 @@ func TestAsciiFunc(t *testing.T) {
 	tf.AddSucceeding(nil, nil)
 	tf.AddSucceeding(uint8(115), "string")
 	tf.AddSucceeding(uint8(49), true)
-	tf.AddSucceeding(uint8(50), time.Date(2020, 1,1, 0,0,0,0, time.UTC))
+	tf.AddSucceeding(uint8(50), time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))
 	tf.AddSignedVariations(uint8(48), 0)
 	tf.AddUnsignedVariations(uint8(48), 0)
 	tf.AddFloatVariations(uint8(54), 6.0)
 	tf.Test(t, nil, nil)
 }
-
 
 func TestHexFunc(t *testing.T) {
 	f := NewUnaryFunc("hex", sql.Text, HexFunc)
@@ -30,16 +30,16 @@ func TestHexFunc(t *testing.T) {
 	tf.AddFloatVariations("5", 4.5)
 	tf.AddFloatVariations("5", 5.4)
 	tf.AddSucceeding("FFFFFFFFFFFFFFFF", uint64(math.MaxUint64))
-	tf.AddSucceeding("74657374","test")
+	tf.AddSucceeding("74657374", "test")
 	tf.AddSignedVariations("FFFFFFFFFFFFFFF0", -16)
 	tf.AddSignedVariations("FFFFFFFFFFFFFF00", -256)
 	tf.AddSignedVariations("FFFFFFFFFFFFFE00", -512)
 	tf.AddFloatVariations("FFFFFFFFFFFFFFFF", -0.5)
 	tf.AddFloatVariations("FFFFFFFFFFFFFFFF", -1.4)
-	tf.AddSucceeding("323032302D30322D30342031343A31303A33322E35", time.Date(2020, 2,4, 14,10,32,500000000, time.UTC))
-	tf.AddSucceeding("323032302D30322D30342031343A31303A33322E30303035", time.Date(2020, 2,4, 14,10,32,500000, time.UTC))
-	tf.AddSucceeding("323032302D30322D30342031343A31303A33322E303030303035", time.Date(2020, 2,4, 14,10,32,5000, time.UTC))
-	tf.AddSucceeding("323032302D30322D30342031343A31303A3332", time.Date(2020, 2,4, 14,10,32,500, time.UTC))
+	tf.AddSucceeding("323032302D30322D30342031343A31303A33322E35", time.Date(2020, 2, 4, 14, 10, 32, 500000000, time.UTC))
+	tf.AddSucceeding("323032302D30322D30342031343A31303A33322E30303035", time.Date(2020, 2, 4, 14, 10, 32, 500000, time.UTC))
+	tf.AddSucceeding("323032302D30322D30342031343A31303A33322E303030303035", time.Date(2020, 2, 4, 14, 10, 32, 5000, time.UTC))
+	tf.AddSucceeding("323032302D30322D30342031343A31303A3332", time.Date(2020, 2, 4, 14, 10, 32, 500, time.UTC))
 
 	tf.Test(t, nil, nil)
 }
@@ -66,7 +66,7 @@ func TestBinFunc(t *testing.T) {
 	tf.AddSucceeding(nil, nil)
 	tf.AddSucceeding("1100", "12")
 	tf.AddSucceeding("0", "TEST")
-	tf.AddSucceeding("11111100100", time.Date(2020, 1,1, 0,0,0,0, time.UTC))
+	tf.AddSucceeding("11111100100", time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))
 	tf.AddSignedVariations("1100", 12)
 	tf.AddUnsignedVariations("1100", 12)
 	tf.AddFloatVariations("1100", 12.5)

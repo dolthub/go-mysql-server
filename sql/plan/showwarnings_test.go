@@ -4,8 +4,9 @@ import (
 	"io"
 	"testing"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 func TestShowWarnings(t *testing.T) {
