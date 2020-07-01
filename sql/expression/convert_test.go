@@ -1,10 +1,12 @@
 package expression
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 func TestConvert(t *testing.T) {

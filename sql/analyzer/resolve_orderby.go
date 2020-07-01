@@ -3,10 +3,11 @@ package analyzer
 import (
 	"strings"
 
+	errors "gopkg.in/src-d/go-errors.v1"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-	errors "gopkg.in/src-d/go-errors.v1"
 )
 
 func resolveOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {

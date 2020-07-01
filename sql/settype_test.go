@@ -12,10 +12,10 @@ import (
 
 func TestSetCompare(t *testing.T) {
 	tests := []struct {
-		vals []string
-		collation Collation
-		val1 interface{}
-		val2 interface{}
+		vals        []string
+		collation   Collation
+		val1        interface{}
+		val2        interface{}
 		expectedCmp int
 	}{
 		{[]string{"one", "two"}, Collation_Default, nil, 1, -1},
@@ -48,10 +48,10 @@ func TestSetCompare(t *testing.T) {
 
 func TestSetCompareErrors(t *testing.T) {
 	tests := []struct {
-		vals []string
+		vals      []string
 		collation Collation
-		val1 interface{}
-		val2 interface{}
+		val1      interface{}
+		val2      interface{}
 	}{
 		{[]string{"one", "two"}, Collation_Default, "three", "two"},
 		{[]string{"one", "two"}, Collation_Default, time.Date(2019, 12, 12, 12, 12, 12, 0, time.UTC), []byte("one")},
@@ -68,10 +68,10 @@ func TestSetCompareErrors(t *testing.T) {
 
 func TestSetCreate(t *testing.T) {
 	tests := []struct {
-		vals []string
-		collation Collation
+		vals         []string
+		collation    Collation
 		expectedVals map[string]uint64
-		expectedErr bool
+		expectedErr  bool
 	}{
 		{[]string{"one"}, Collation_Default,
 			map[string]uint64{"one": 1}, false},
@@ -126,9 +126,9 @@ func TestSetCreateTooLarge(t *testing.T) {
 
 func TestSetConvert(t *testing.T) {
 	tests := []struct {
-		vals []string
-		collation Collation
-		val interface{}
+		vals        []string
+		collation   Collation
+		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
 	}{
@@ -208,8 +208,8 @@ func TestSetMarshalMax(t *testing.T) {
 
 func TestSetString(t *testing.T) {
 	tests := []struct {
-		vals []string
-		collation Collation
+		vals        []string
+		collation   Collation
 		expectedStr string
 	}{
 		{[]string{"one"}, Collation_Default, "SET('one')"},

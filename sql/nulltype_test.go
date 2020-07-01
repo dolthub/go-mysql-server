@@ -30,7 +30,7 @@ func TestNullCompare(t *testing.T) {
 
 func TestNullConvert(t *testing.T) {
 	tests := []struct {
-		val interface{}
+		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
 	}{

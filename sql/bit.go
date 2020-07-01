@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"encoding/binary"
+
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/proto/query"
 )
@@ -25,7 +26,7 @@ type BitType interface {
 	NumberOfBits() uint8
 }
 
-type bitType struct{
+type bitType struct {
 	numOfBits uint8
 }
 
@@ -125,7 +126,7 @@ func (t bitType) Convert(v interface{}) (interface{}, error) {
 		return nil, ErrInvalidType.New(t)
 	}
 
-	if value > uint64(1 << t.numOfBits - 1) {
+	if value > uint64(1<<t.numOfBits-1) {
 		return nil, fmt.Errorf("%v is beyond the maximum value that can be held by %v bits", value, t.numOfBits)
 	}
 	return value, nil

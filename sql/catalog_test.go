@@ -4,9 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/stretchr/testify/require"
 )
 
 func TestAllDatabases(t *testing.T) {
@@ -52,29 +53,29 @@ func TestCatalogTable(t *testing.T) {
 	c := sql.NewCatalog()
 	ctx := sql.NewEmptyContext()
 
-	table, err := c.Table(ctx,"foo", "bar")
+	table, err := c.Table(ctx, "foo", "bar")
 	require.EqualError(err, "database not found: foo")
 	require.Nil(table)
 
 	db := memory.NewDatabase("foo")
 	c.AddDatabase(db)
 
-	table, err = c.Table(ctx,"foo", "bar")
+	table, err = c.Table(ctx, "foo", "bar")
 	require.EqualError(err, "table not found: bar")
 	require.Nil(table)
 
 	mytable := memory.NewTable("bar", nil)
 	db.AddTable("bar", mytable)
 
-	table, err = c.Table(ctx,"foo", "baz")
+	table, err = c.Table(ctx, "foo", "baz")
 	require.EqualError(err, "table not found: baz, maybe you mean bar?")
 	require.Nil(table)
 
-	table, err = c.Table(ctx,"foo", "bar")
+	table, err = c.Table(ctx, "foo", "bar")
 	require.NoError(err)
 	require.Equal(mytable, table)
 
-	table, err = c.Table(ctx,"foo", "BAR")
+	table, err = c.Table(ctx, "foo", "BAR")
 	require.NoError(err)
 	require.Equal(mytable, table)
 }

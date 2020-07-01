@@ -18,7 +18,7 @@ const (
 	// using the format of Go "time" package.
 	TimestampDatetimeLayout = "2006-01-02 15:04:05.999999"
 
-	zeroDateStr = "0000-00-00"
+	zeroDateStr              = "0000-00-00"
 	zeroTimestampDatetimeStr = "0000-00-00 00:00:00"
 )
 
@@ -74,7 +74,7 @@ type DatetimeType interface {
 	MinimumTime() time.Time
 }
 
-type datetimeType struct{
+type datetimeType struct {
 	baseType query.Type
 }
 
@@ -135,7 +135,7 @@ func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t datetimeType) Convert(v interface{}) (interface{}, error)  {
+func (t datetimeType) Convert(v interface{}) (interface{}, error) {
 	if v == nil {
 		return nil, nil
 	}

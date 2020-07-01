@@ -2,12 +2,13 @@ package sql
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"math"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/src-d/go-errors.v1"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/proto/query"
 )
@@ -17,12 +18,12 @@ var (
 
 	ErrConvertingToTimeType = errors.NewKind("value %v is not a valid Time")
 
-	timespanRegex = regexp.MustCompile(`^-?(\d{1,3}):(\d{1,2})(:(\d{1,2})(\.(\d{1,9}))?)?$`)
-	timespanMinimum int64 = -3020399000000
-	timespanMaximum int64 = 3020399000000
+	timespanRegex               = regexp.MustCompile(`^-?(\d{1,3}):(\d{1,2})(:(\d{1,2})(\.(\d{1,9}))?)?$`)
+	timespanMinimum       int64 = -3020399000000
+	timespanMaximum       int64 = 3020399000000
 	microsecondsPerSecond int64 = 1000000
 	microsecondsPerMinute int64 = 60000000
-	microsecondsPerHour int64 = 3600000000
+	microsecondsPerHour   int64 = 3600000000
 )
 
 // Represents the TIME type.
@@ -35,11 +36,11 @@ type TimeType interface {
 }
 
 type timespanType struct{}
-type timespanImpl struct{
-	negative bool
-	hours int16
-	minutes int8
-	seconds int8
+type timespanImpl struct {
+	negative     bool
+	hours        int16
+	minutes      int8
+	seconds      int8
 	microseconds int32
 }
 
@@ -118,7 +119,7 @@ func (t timespanType) ConvertToTimespanImpl(v interface{}) (timespanImpl, error)
 			seconds := absValue % 100
 			if minutes <= 59 && seconds <= 59 {
 				if value < 0 {
-					return microsecondsToTimespan(-1 * (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute)), nil
+					return microsecondsToTimespan(-1*(seconds*microsecondsPerSecond) + (minutes * microsecondsPerMinute)), nil
 				}
 				return microsecondsToTimespan((seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute)), nil
 			}
@@ -145,7 +146,7 @@ func (t timespanType) ConvertToTimespanImpl(v interface{}) (timespanImpl, error)
 			seconds := absValue % 100
 			if minutes <= 59 && seconds <= 59 {
 				if intValue < 0 {
-					return microsecondsToTimespan(-1 * (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + microseconds), nil
+					return microsecondsToTimespan(-1*(seconds*microsecondsPerSecond) + (minutes * microsecondsPerMinute) + microseconds), nil
 				}
 				return microsecondsToTimespan((seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + microseconds), nil
 			}
@@ -246,12 +247,12 @@ func stringToTimespan(s string) (timespanImpl, error) {
 		}
 		microseconds, _ := strconv.Atoi(matches[6])
 		if int64(microseconds) >= microsecondsPerSecond {
-			for i := microsecondsPerSecond * 1000; i >= microsecondsPerSecond * 10; i /= 10 {
+			for i := microsecondsPerSecond * 1000; i >= microsecondsPerSecond*10; i /= 10 {
 				if int64(microseconds) > i {
 					microseconds /= 10
 				}
 			}
-			if microseconds % 10 >= 5 {
+			if microseconds%10 >= 5 {
 				microseconds += 10
 			}
 			microseconds /= 10
@@ -283,9 +284,9 @@ func stringToTimespan(s string) (timespanImpl, error) {
 			microseconds = 0
 		}
 		impl := timespanImpl{
-			hours: int16(hours),
-			minutes: int8(minutes),
-			seconds: int8(seconds),
+			hours:        int16(hours),
+			minutes:      int8(minutes),
+			seconds:      int8(seconds),
 			microseconds: int32(microseconds),
 		}
 		if s[0] == '-' {
@@ -306,10 +307,10 @@ func microsecondsToTimespan(v int64) timespanImpl {
 	absV := int64Abs(v)
 
 	return timespanImpl{
-		negative: v < 0,
-		hours: int16(absV / microsecondsPerHour),
-		minutes: int8((absV / microsecondsPerMinute) % 60),
-		seconds: int8((absV / microsecondsPerSecond) % 60),
+		negative:     v < 0,
+		hours:        int16(absV / microsecondsPerHour),
+		minutes:      int8((absV / microsecondsPerMinute) % 60),
+		seconds:      int8((absV / microsecondsPerSecond) % 60),
 		microseconds: int32(absV % microsecondsPerSecond),
 	}
 }

@@ -2,11 +2,13 @@ package function
 
 import (
 	"fmt"
-	"github.com/lestrrat-go/strftime"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"strconv"
 	"time"
+
+	"github.com/lestrrat-go/strftime"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 func panicIfErr(err error) {
@@ -41,7 +43,7 @@ func dayOfMonth(t time.Time) string {
 }
 
 func microsecondsStr(t time.Time) string {
-	micros := t.Nanosecond()/int(time.Microsecond)
+	micros := t.Nanosecond() / int(time.Microsecond)
 	return fmt.Sprintf("%06d", micros)
 }
 
@@ -78,11 +80,11 @@ func twentyFourHourNoPadding(t time.Time) string {
 }
 
 func fullMonthName(t time.Time) string {
-	 return t.Month().String()
+	return t.Month().String()
 }
 
 func ampmClockStr(t time.Time) string {
-	hour, ampm :=twelveHour(t)
+	hour, ampm := twelveHour(t)
 	return fmt.Sprintf("%02d:%02d:%02d %s", hour, t.Minute(), t.Second(), ampm)
 }
 
@@ -148,7 +150,7 @@ func dayName(t time.Time) string {
 }
 
 func yearTwoDigit(t time.Time) string {
-	return strconv.FormatInt(int64(t.Year()) % 100, 10)
+	return strconv.FormatInt(int64(t.Year())%100, 10)
 }
 
 type AppendFuncWrapper struct {
@@ -165,7 +167,7 @@ func (af AppendFuncWrapper) Append(bytes []byte, t time.Time) []byte {
 }
 
 var mysqlDateFormatSpec = strftime.NewSpecificationSet()
-var specifierToFunc = map[byte]func(time.Time) string {
+var specifierToFunc = map[byte]func(time.Time) string{
 	'a': nil,
 	'b': nil,
 	'c': monthNum,

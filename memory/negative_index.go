@@ -7,14 +7,13 @@ import (
 
 type NegateIndexLookup struct {
 	Lookup MergeableLookup
-	Index ExpressionsIndex
+	Index  ExpressionsIndex
 }
-
 
 var _ memoryIndexLookup = (*NegateIndexLookup)(nil)
 var _ sql.IndexLookup = (*NegateIndexLookup)(nil)
 
-func (l *NegateIndexLookup) ID() string { return "not " + l.Lookup.ID() }
+func (l *NegateIndexLookup) ID() string     { return "not " + l.Lookup.ID() }
 func (l *NegateIndexLookup) String() string { return "not " + l.Lookup.ID() }
 
 func (l *NegateIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {

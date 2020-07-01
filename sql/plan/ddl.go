@@ -2,26 +2,34 @@ package plan
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"gopkg.in/src-d/go-errors.v1"
 	"strings"
+
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // ErrCreateTable is thrown when the database doesn't support table creation
 var ErrCreateTableNotSupported = errors.NewKind("tables cannot be created on database %s")
+
 // ErrDropTableNotSupported is thrown when the database doesn't support dropping tables
 var ErrDropTableNotSupported = errors.NewKind("tables cannot be dropped on database %s")
+
 // ErrRenameTableNotSupported is thrown when the database doesn't support renaming tables
 var ErrRenameTableNotSupported = errors.NewKind("tables cannot be renamed on database %s")
+
 // ErrAlterTableNotSupported is thrown when the database doesn't support ALTER TABLE statements
 var ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered on database %s")
 
 // ErrNullDefault is thrown when a non-null column is added with a null default
 var ErrNullDefault = errors.NewKind("column declared not null must have a non-null default value")
+
 // ErrIncompatibleDefaultType is thrown when a provided default cannot be coerced into the type of the column
 var ErrIncompatibleDefaultType = errors.NewKind("incompatible type for default value")
+
 // ErrTableCreatedNotFound is thrown when a table is created from CREATE TABLE but cannot be found immediately afterward
 var ErrTableCreatedNotFound = errors.NewKind("table was created but could not be found")
+
 // ErrUnsupportedFeature is thrown when a feature is not already supported
 var ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
 
@@ -263,8 +271,8 @@ func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 type AddColumn struct {
 	ddlNode
 	tableName string
-	column *sql.Column
-	order *sql.ColumnOrder
+	column    *sql.Column
+	order     *sql.ColumnOrder
 }
 
 var _ sql.Node = (*AddColumn)(nil)
@@ -290,7 +298,7 @@ func (a *AddColumn) String() string {
 }
 
 func (a *AddColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	alterable, err  := getAlterableTable(a.db, ctx, a.tableName)
+	alterable, err := getAlterableTable(a.db, ctx, a.tableName)
 	if err != nil {
 		return nil, err
 	}
@@ -326,8 +334,8 @@ func (a *AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 type DropColumn struct {
 	ddlNode
 	tableName string
-	column string
-	order *sql.ColumnOrder
+	column    string
+	order     *sql.ColumnOrder
 }
 
 var _ sql.Node = (*DropColumn)(nil)
@@ -352,7 +360,7 @@ func (d *DropColumn) String() string {
 }
 
 func (d *DropColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	alterable, err  := getAlterableTable(d.db, ctx, d.tableName)
+	alterable, err := getAlterableTable(d.db, ctx, d.tableName)
 	if err != nil {
 		return nil, err
 	}
@@ -379,8 +387,8 @@ func (d *DropColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 type RenameColumn struct {
 	ddlNode
-	tableName string
-	columnName string
+	tableName     string
+	columnName    string
 	newColumnName string
 }
 
@@ -407,7 +415,7 @@ func (r *RenameColumn) String() string {
 }
 
 func (r *RenameColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	alterable, err  := getAlterableTable(r.db, ctx, r.tableName)
+	alterable, err := getAlterableTable(r.db, ctx, r.tableName)
 	if err != nil {
 		return nil, err
 	}
@@ -431,10 +439,10 @@ func (r *RenameColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 type ModifyColumn struct {
 	ddlNode
-	tableName string
+	tableName  string
 	columnName string
-	column *sql.Column
-	order *sql.ColumnOrder
+	column     *sql.Column
+	order      *sql.ColumnOrder
 }
 
 var _ sql.Node = (*ModifyColumn)(nil)
@@ -461,7 +469,7 @@ func (m *ModifyColumn) String() string {
 }
 
 func (m *ModifyColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	alterable, err  := getAlterableTable(m.db, ctx, m.tableName)
+	alterable, err := getAlterableTable(m.db, ctx, m.tableName)
 	if err != nil {
 		return nil, err
 	}

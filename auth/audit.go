@@ -4,10 +4,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/sirupsen/logrus"
 	"vitess.io/vitess/go/mysql"
 
-	"github.com/sirupsen/logrus"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // AuditMethod is called to log the audit trail of actions.

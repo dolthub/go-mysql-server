@@ -23,7 +23,7 @@ func TestTuple(t *testing.T) {
 	require.True(ErrInvalidColumnNumber.Is(err))
 
 	conVal, err := typ.Convert([]interface{}{1, 2, 3})
-	require.NoError( err)
+	require.NoError(err)
 	assert.Equal(t, []interface{}{int32(1), "2", int64(3)}, conVal)
 
 	_, err = typ.SQL(nil)
@@ -31,9 +31,9 @@ func TestTuple(t *testing.T) {
 
 	require.Equal(sqltypes.Expression, typ.Type())
 
-	comparisons := []struct{
-		val1 []interface{}
-		val2 []interface{}
+	comparisons := []struct {
+		val1        []interface{}
+		val2        []interface{}
 		expectedCmp int
 	}{
 		{[]interface{}{1, 2, 3}, []interface{}{2, 2, 3}, -1},
@@ -48,7 +48,7 @@ func TestTuple(t *testing.T) {
 	for _, comparison := range comparisons {
 		t.Run(fmt.Sprintf("%v %v", comparison.val1, comparison.val2), func(t *testing.T) {
 			cmp, err := typ.Compare(comparison.val1, comparison.val2)
-			require.NoError( err)
+			require.NoError(err)
 			assert.Equal(t, comparison.expectedCmp, cmp)
 		})
 	}

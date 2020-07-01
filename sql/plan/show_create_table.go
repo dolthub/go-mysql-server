@@ -2,9 +2,10 @@ package plan
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"strings"
+
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )
@@ -14,7 +15,7 @@ var ErrNotView = errors.NewKind("'%' is not VIEW")
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
 	*UnaryNode
-	IsView bool
+	IsView  bool
 	Indexes []sql.Index
 }
 
@@ -22,7 +23,7 @@ type ShowCreateTable struct {
 func NewShowCreateTable(table sql.Node, isView bool) sql.Node {
 	return &ShowCreateTable{
 		UnaryNode: &UnaryNode{table},
-		IsView: isView,
+		IsView:    isView,
 	}
 }
 
@@ -69,9 +70,9 @@ func (n *ShowCreateTable) Schema() sql.Schema {
 // RowIter implements the Node interface
 func (n *ShowCreateTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	return &showCreateTablesIter{
-		ctx:    ctx,
-		table:  n.Child,
-		isView: n.IsView,
+		ctx:     ctx,
+		table:   n.Child,
+		isView:  n.IsView,
 		indexes: n.Indexes,
 	}, nil
 }
@@ -178,7 +179,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 	// TODO: the order of the primary key columns might not match their order in the schema. The current interface can't
 	//  represent this. We will need a new sql.Table extension to support this cleanly.
 	if len(primaryKeyCols) > 0 {
-		primaryKey := fmt.Sprintf( "  PRIMARY KEY (%s)", strings.Join(quoteIdentifiers(primaryKeyCols), ","))
+		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(quoteIdentifiers(primaryKeyCols), ","))
 		colStmts = append(colStmts, primaryKey)
 	}
 

@@ -1,9 +1,11 @@
 package sql
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/internal/similartext"
-	"gopkg.in/src-d/go-errors.v1"
 	"strings"
+
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/internal/similartext"
 )
 
 // ErrFunctionAlreadyRegistered is thrown when a function is already registered
@@ -89,9 +91,9 @@ type (
 type EvalLogic func(*Context, Row) (interface{}, error)
 
 type NoArgFunc struct {
-	Name string
+	Name    string
 	SQLType Type
-	Logic EvalLogic
+	Logic   EvalLogic
 }
 
 // NewFunction0 returns a sql function that takes 0 arguments

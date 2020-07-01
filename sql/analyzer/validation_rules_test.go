@@ -213,10 +213,10 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		memory.NewTable(
 			"mytable",
 			sql.Schema{
-				{Name: "foo",  Source: "mytable", Type: sql.Text},
-				{Name: "bar",  Source: "mytable", Type: sql.Int64},
-				{Name: "rab",  Source: "mytable", Type: sql.Text},
-				{Name: "zab",  Source: "mytable", Type: sql.Int64},
+				{Name: "foo", Source: "mytable", Type: sql.Text},
+				{Name: "bar", Source: "mytable", Type: sql.Int64},
+				{Name: "rab", Source: "mytable", Type: sql.Text},
+				{Name: "zab", Source: "mytable", Type: sql.Int64},
 				{Name: "quuz", Source: "mytable", Type: sql.Boolean},
 			},
 		),
@@ -322,7 +322,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		{
 			"subquery union",
 			plan.NewSubqueryAlias(
-				"aliased","select bar, baz from mytable union select rab, zab from mytable",
+				"aliased", "select bar, baz from mytable union select rab, zab from mytable",
 				plan.NewUnion(
 					plan.NewProject(
 						[]sql.Expression{

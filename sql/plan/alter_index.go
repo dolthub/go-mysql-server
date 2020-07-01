@@ -2,9 +2,11 @@ package plan
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"gopkg.in/src-d/go-errors.v1"
 	"strings"
+
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 var (
@@ -19,6 +21,7 @@ var (
 )
 
 type IndexAction byte
+
 const (
 	IndexAction_Create IndexAction = iota
 	IndexAction_Drop
@@ -46,29 +49,29 @@ type AlterIndex struct {
 
 func NewAlterCreateIndex(table sql.Node, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
 	return &AlterIndex{
-		Action: IndexAction_Create,
-		Table: table,
-		IndexName: indexName,
-		Using: using,
+		Action:     IndexAction_Create,
+		Table:      table,
+		IndexName:  indexName,
+		Using:      using,
 		Constraint: constraint,
-		Columns: columns,
-		Comment: comment,
+		Columns:    columns,
+		Comment:    comment,
 	}
 }
 
 func NewAlterDropIndex(table sql.Node, indexName string) *AlterIndex {
 	return &AlterIndex{
-		Action: IndexAction_Drop,
-		Table: table,
+		Action:    IndexAction_Drop,
+		Table:     table,
 		IndexName: indexName,
 	}
 }
 
 func NewAlterRenameIndex(table sql.Node, fromIndexName, toIndexName string) *AlterIndex {
 	return &AlterIndex{
-		Action: IndexAction_Rename,
-		Table: table,
-		IndexName: toIndexName,
+		Action:            IndexAction_Rename,
+		Table:             table,
+		IndexName:         toIndexName,
 		PreviousIndexName: fromIndexName,
 	}
 }

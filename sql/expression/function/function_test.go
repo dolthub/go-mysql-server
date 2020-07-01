@@ -2,20 +2,22 @@ package function
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 type FuncTest struct {
-	name string
-	expr sql.Expression
-	expected interface{}
+	name      string
+	expr      sql.Expression
+	expected  interface{}
 	expectErr bool
 }
 
@@ -36,7 +38,7 @@ func (ft FuncTest) Run(t *testing.T, ctx *sql.Context, r sql.Row) {
 	})
 }
 
-func assertResultType(t *testing.T, expectedType sql.Type, result interface{})  {
+func assertResultType(t *testing.T, expectedType sql.Type, result interface{}) {
 	if result == nil {
 		return
 	}
@@ -75,7 +77,7 @@ func assertResultType(t *testing.T, expectedType sql.Type, result interface{})  
 
 type TestFactory struct {
 	createFunc interface{}
-	Tests []FuncTest
+	Tests      []FuncTest
 }
 
 func NewTestFactory(createFunc interface{}) *TestFactory {
@@ -104,56 +106,56 @@ func (tf *TestFactory) AddTest(name string, expected interface{}, expectErr bool
 			panic(fmt.Sprintf("error in test: %s. params provided: %d, params required: %d", name, len(inputExprs), 0))
 		}
 		sqlFuncExpr := fn()
-		test = FuncTest{name, sqlFuncExpr, expected , expectErr}
+		test = FuncTest{name, sqlFuncExpr, expected, expectErr}
 
 	case sql.CreateFunc1Args:
 		if len(inputExprs) != 1 {
 			panic(fmt.Sprintf("error in test: %s. params provided: %d, params required: %d", name, len(inputExprs), 1))
 		}
 		sqlFuncExpr := fn(inputExprs[0])
-		test = FuncTest{name, sqlFuncExpr, expected , expectErr}
+		test = FuncTest{name, sqlFuncExpr, expected, expectErr}
 
 	case sql.CreateFunc2Args:
 		if len(inputExprs) != 2 {
 			panic(fmt.Sprintf("error in test: %s. params provided: %d, params required: %d", name, len(inputExprs), 2))
 		}
 		sqlFuncExpr := fn(inputExprs[0], inputExprs[1])
-		test = FuncTest{name, sqlFuncExpr, expected , expectErr}
+		test = FuncTest{name, sqlFuncExpr, expected, expectErr}
 
 	case sql.CreateFunc3Args:
 		if len(inputExprs) != 3 {
 			panic(fmt.Sprintf("error in test: %s. params provided: %d, params required: %d", name, len(inputExprs), 3))
 		}
 		sqlFuncExpr := fn(inputExprs[0], inputExprs[1], inputExprs[2])
-		test = FuncTest{name, sqlFuncExpr, expected , expectErr}
+		test = FuncTest{name, sqlFuncExpr, expected, expectErr}
 
 	case sql.CreateFunc4Args:
 		if len(inputExprs) != 4 {
 			panic(fmt.Sprintf("error in test: %s. params provided: %d, params required: %d", name, len(inputExprs), 4))
 		}
 		sqlFuncExpr := fn(inputExprs[0], inputExprs[1], inputExprs[2], inputExprs[3])
-		test = FuncTest{name, sqlFuncExpr, expected , expectErr}
+		test = FuncTest{name, sqlFuncExpr, expected, expectErr}
 
 	case sql.CreateFunc5Args:
 		if len(inputExprs) != 5 {
 			panic(fmt.Sprintf("error in test: %s. params provided: %d, params required: %d", name, len(inputExprs), 5))
 		}
 		sqlFuncExpr := fn(inputExprs[0], inputExprs[1], inputExprs[2], inputExprs[3], inputExprs[4])
-		test = FuncTest{name, sqlFuncExpr, expected , expectErr}
+		test = FuncTest{name, sqlFuncExpr, expected, expectErr}
 
 	case sql.CreateFunc6Args:
 		if len(inputExprs) != 6 {
 			panic(fmt.Sprintf("error in test: %s. params provided: %d, params required: %d", name, len(inputExprs), 6))
 		}
 		sqlFuncExpr := fn(inputExprs[0], inputExprs[1], inputExprs[2], inputExprs[3], inputExprs[4], inputExprs[5])
-		test = FuncTest{name, sqlFuncExpr, expected , expectErr}
+		test = FuncTest{name, sqlFuncExpr, expected, expectErr}
 
 	case sql.CreateFunc7Args:
 		if len(inputExprs) != 7 {
 			panic(fmt.Sprintf("error in test: %s. params provided: %d, params required: %d", name, len(inputExprs), 7))
 		}
 		sqlFuncExpr := fn(inputExprs[0], inputExprs[1], inputExprs[2], inputExprs[3], inputExprs[4], inputExprs[5], inputExprs[6])
-		test = FuncTest{name, sqlFuncExpr, expected , expectErr}
+		test = FuncTest{name, sqlFuncExpr, expected, expectErr}
 
 	case sql.CreateFuncNArgs:
 		sqlFuncExpr, err := fn(inputExprs...)
@@ -162,7 +164,7 @@ func (tf *TestFactory) AddTest(name string, expected interface{}, expectErr bool
 			panic(fmt.Sprintf("error in test: %s. %s", name, err.Error()))
 		}
 
-		test = FuncTest{name, sqlFuncExpr, expected , expectErr}
+		test = FuncTest{name, sqlFuncExpr, expected, expectErr}
 
 	default:
 		panic("should never get here.  Should have failed in NewTestFactory already.")
@@ -182,8 +184,8 @@ func (tf *TestFactory) AddFailing(args ...interface{}) {
 }
 
 func isValidIntOfSize(bits int, n int64) bool {
-	var max int64 = 1 << (bits-1) -1
-	var min int64 = -(1 << (bits-1))
+	var max int64 = 1<<(bits-1) - 1
+	var min int64 = -(1 << (bits - 1))
 	return n < max && n > min
 }
 

@@ -1,11 +1,13 @@
 package plan
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"strings"
+
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 // ErrInsertIntoNotSupported is thrown when a table doesn't support inserts

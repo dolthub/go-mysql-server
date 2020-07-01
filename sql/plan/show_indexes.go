@@ -109,7 +109,7 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 	}
 
 	visible := "YES"
-	if x, ok := show.index.(sql.DriverIndex); ok && len(x.Driver()) > 0{
+	if x, ok := show.index.(sql.DriverIndex); ok && len(x.Driver()) > 0 {
 		if !i.ctx.CanUseIndex(x) {
 			visible = "NO"
 		}
@@ -139,7 +139,7 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 	), nil
 }
 
-// getColumn returns the name of column from the table given using the expression string given, in the form
+// getColumnFromIndexExpr returns column from the table given using the expression string given, in the form
 // "table.column". Returns nil if the expression doesn't represent a column.
 func getColumnFromIndexExpr(expr string, table sql.Table) *sql.Column {
 	for _, col := range table.Schema() {

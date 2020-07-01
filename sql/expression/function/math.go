@@ -18,8 +18,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/shopspring/decimal"
 	"hash/crc32"
 	"math"
 	"math/rand"
@@ -27,6 +25,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/shopspring/decimal"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // Rand returns a random float 0 <= x < 1. If it has an argument, that argument will be used to seed the random number
@@ -36,7 +38,6 @@ type Rand struct {
 }
 
 var _ sql.Expression = (*Rand)(nil)
-
 
 // NewRand creates a new Rand expression.
 func NewRand(exprs ...sql.Expression) (sql.Expression, error) {
@@ -215,7 +216,6 @@ func RadiansFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	return (n.(float64) * math.Pi) / 180.0, nil
 }
 
-
 func asBytes(arg interface{}) ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	err := binary.Write(buf, binary.LittleEndian, arg)
@@ -336,4 +336,3 @@ func SignFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
 
 	return int8(0), nil
 }
-

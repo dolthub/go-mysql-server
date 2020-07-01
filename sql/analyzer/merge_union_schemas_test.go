@@ -4,11 +4,11 @@ import (
 	"errors"
 	"testing"
 
-        "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require"
 
-        "github.com/liquidata-inc/go-mysql-server/sql"
-        "github.com/liquidata-inc/go-mysql-server/sql/expression"
-        "github.com/liquidata-inc/go-mysql-server/sql/plan"
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
 func TestMergeUnionSchemas(t *testing.T) {
@@ -34,21 +34,21 @@ func TestMergeUnionSchemas(t *testing.T) {
 			"Matching Schemas is Unchanged",
 			plan.NewUnion(
 				plan.NewProject(
-					[]sql.Expression{ expression.NewLiteral(int64(1), sql.Int64) },
+					[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
 					plan.NewResolvedTable(dualTable),
 				),
 				plan.NewProject(
-					[]sql.Expression{ expression.NewLiteral(int64(3), sql.Int64) },
+					[]sql.Expression{expression.NewLiteral(int64(3), sql.Int64)},
 					plan.NewResolvedTable(dualTable),
 				),
 			),
 			plan.NewUnion(
 				plan.NewProject(
-					[]sql.Expression{ expression.NewLiteral(int64(1), sql.Int64) },
+					[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
 					plan.NewResolvedTable(dualTable),
 				),
 				plan.NewProject(
-					[]sql.Expression{ expression.NewLiteral(int64(3), sql.Int64) },
+					[]sql.Expression{expression.NewLiteral(int64(3), sql.Int64)},
 					plan.NewResolvedTable(dualTable),
 				),
 			),
@@ -58,7 +58,7 @@ func TestMergeUnionSchemas(t *testing.T) {
 			"Mismatched Lengths is error",
 			plan.NewUnion(
 				plan.NewProject(
-					[]sql.Expression{ expression.NewLiteral(int64(1), sql.Int64) },
+					[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
 					plan.NewResolvedTable(dualTable),
 				),
 				plan.NewProject(
@@ -76,11 +76,11 @@ func TestMergeUnionSchemas(t *testing.T) {
 			"Mismatched Types Coerced to Strings",
 			plan.NewUnion(
 				plan.NewProject(
-					[]sql.Expression{ expression.NewLiteral(int64(1), sql.Int64) },
+					[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
 					plan.NewResolvedTable(dualTable),
 				),
 				plan.NewProject(
-					[]sql.Expression{ expression.NewLiteral(int32(3), sql.Int32) },
+					[]sql.Expression{expression.NewLiteral(int32(3), sql.Int32)},
 					plan.NewResolvedTable(dualTable),
 				),
 			),
@@ -92,7 +92,7 @@ func TestMergeUnionSchemas(t *testing.T) {
 								expression.NewGetField(0, sql.Int64, "1", false), "char"), "1"),
 					},
 					plan.NewProject(
-						[]sql.Expression{ expression.NewLiteral(int64(1), sql.Int64) },
+						[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
 						plan.NewResolvedTable(dualTable),
 					),
 				),
@@ -103,7 +103,7 @@ func TestMergeUnionSchemas(t *testing.T) {
 								expression.NewGetField(0, sql.Int32, "3", false), "char"), "3"),
 					},
 					plan.NewProject(
-						[]sql.Expression{ expression.NewLiteral(int32(3), sql.Int32) },
+						[]sql.Expression{expression.NewLiteral(int32(3), sql.Int32)},
 						plan.NewResolvedTable(dualTable),
 					),
 				),

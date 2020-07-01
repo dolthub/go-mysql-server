@@ -3,9 +3,10 @@ package auth
 import (
 	"strings"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
 	"vitess.io/vitess/go/mysql"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // Permission holds permissions required by a query or grated to a user.
