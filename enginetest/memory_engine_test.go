@@ -16,6 +16,7 @@ package enginetest_test
 
 import (
 	"fmt"
+	"github.com/liquidata-inc/go-mysql-server/sql"
 	"testing"
 
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
@@ -78,17 +79,17 @@ func TestVersionedQueries(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	// test := enginetest.QueryTest{
-	// 	"SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
-	// 	[]sql.Row{
-	// 		{int64(1), int64(1), "third"},
-	// 		{int64(2), int64(2), "second"},
-	// 		{int64(3), int64(3), "first"},
-	// 	},
-	// }
+	test := enginetest.QueryTest{
+		"SELECT i FROM mytable;",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	}
 
 	harness := newMemoryHarness("", 1, testNumPartitions, true, nil)
-	enginetest.TestQueries(t, harness)
+	engine := enginetest.NewEngine(t, harness)
+	engine.Analyzer.Debug = true
+	engine.Analyzer.Verbose = true
+
+	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected)
 }
 
 // Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that
