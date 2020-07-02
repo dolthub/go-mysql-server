@@ -142,8 +142,8 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			return n, nil
 		}
 
-		columns := getNodeAvailableColumns(append([]sql.Node{n}, scope.Nodes()...)...)
-		tables := getTableNamesInNode(append([]sql.Node{n}, scope.Nodes()...)...)
+		columns := getNodeAvailableColumns(append(n.Children(), scope.Nodes()...)...)
+		tables := getTableNamesInNode(append(n.Children(), scope.Nodes()...)...)
 
 		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 			return qualifyExpression(e, columns, tables)
@@ -245,22 +245,24 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 			case *expression.Alias:
 				indexCol("", e.Name())
 			case *expression.GetField:
-				indexCol(e.Table(), e.Name())
+				if len(e.Table()) > 0 {
+					indexCol(e.Table(), e.Name())
+				}
 			case *expression.UnresolvedColumn:
-				indexCol(e.Table(), e.Name())
+				if len(e.Table()) > 0 {
+					indexCol(e.Table(), e.Name())
+				}
 			}
 		}
 	}
 
 	for _, node := range nodes {
 		switch n := node.(type) {
-		case *plan.TableAlias:
+		case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias:
 			for _, col := range n.Schema() {
-				indexCol(col.Source, col.Name)
-			}
-		case *plan.ResolvedTable, *plan.SubqueryAlias:
-			for _, col := range n.Schema() {
-				indexCol(col.Source, col.Name)
+				if len(col.Source) > 0 {
+					indexCol(col.Source, col.Name)
+				}
 			}
 		case *plan.Project:
 			indexExpressions(n.Projections)

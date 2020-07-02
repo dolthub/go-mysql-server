@@ -257,7 +257,7 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node
 	a.Log("starting analysis of node of type: %T", n)
 	for _, batch := range a.Batches {
 		a.PushDebugContext(batch.Desc)
-		n, err = batch.Eval(ctx, a, n, scope.newScope(n))
+		n, err = batch.Eval(ctx, a, n, scope)
 		a.PopDebugContext()
 		if ErrMaxAnalysisIters.Is(err) {
 			a.Log(err.Error())
