@@ -80,13 +80,13 @@ func TestVersionedQueries(t *testing.T) {
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
 	test := enginetest.QueryTest{
-		"SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk <= opk.pk) FROM one_pk opk ORDER BY 1",
+		"select i as x from mytable order by i",
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	}
 	fmt.Sprintf("%v", test)
 
 	harness := newMemoryHarness("", 1, testNumPartitions, true, nil)
-	// enginetest.TestQueries(t, harness)
+	//enginetest.TestQueries(t, harness)
 	engine := enginetest.NewEngine(t, harness)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true

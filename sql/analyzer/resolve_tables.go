@@ -22,7 +22,7 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	defer span.Finish()
 
 	a.Log("resolve table, node of type: %T", n)
-	return scope.transformUp(n, func(n sql.Node) (sql.Node, error) {
+	return scope.resolveUp(n, func(n sql.Node) (sql.Node, error) {
 		if n.Resolved() {
 			return n, nil
 		}

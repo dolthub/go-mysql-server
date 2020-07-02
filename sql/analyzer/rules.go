@@ -4,6 +4,15 @@ import (
 	errors "gopkg.in/src-d/go-errors.v1"
 )
 
+// OnceBeforeDefault contains the rules to be applied just once before the
+// DefaultRules.
+var OnceBeforeDefault = []Rule{
+	{"resolve_views", resolveViews},
+	{"resolve_subqueries", resolveSubqueries},
+	{"resolve_tables", resolveTables},
+	{"check_aliases", checkAliases},
+}
+
 // DefaultRules to apply when analyzing nodes.
 var DefaultRules = []Rule{
 	{"resolve_natural_joins", resolveNaturalJoins},
@@ -22,15 +31,6 @@ var DefaultRules = []Rule{
 	{"move_join_conds_to_filter", moveJoinConditionsToFilter},
 	{"eval_filter", evalFilter},
 	{"optimize_distinct", optimizeDistinct},
-}
-
-// OnceBeforeDefault contains the rules to be applied just once before the
-// DefaultRules.
-var OnceBeforeDefault = []Rule{
-	{"resolve_views", resolveViews},
-	{"resolve_subqueries", resolveSubqueries},
-	{"resolve_tables", resolveTables},
-	{"check_aliases", checkAliases},
 }
 
 // OnceAfterDefault contains the rules to be applied just once after the

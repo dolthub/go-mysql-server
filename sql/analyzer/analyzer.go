@@ -182,7 +182,7 @@ func (s *Scope) Nodes() []sql.Node {
 	return s.nodes
 }
 
-func (s *Scope) transformUp(node sql.Node, fn func(n sql.Node) (sql.Node, error)) (sql.Node, error){
+func (s *Scope) resolveUp(node sql.Node, fn func(n sql.Node) (sql.Node, error)) (sql.Node, error){
 	var nodes []sql.Node
 	nodes = append(nodes, node)
 	if s != nil {
@@ -192,7 +192,7 @@ func (s *Scope) transformUp(node sql.Node, fn func(n sql.Node) (sql.Node, error)
 	var firstErr error
 	for _, n := range nodes {
 		n2, err := plan.TransformUp(n, fn)
-		if err == nil {
+		if err == nil && n2.Resolved() {
 			return n2, nil
 		} else if firstErr == nil {
 			firstErr = err
