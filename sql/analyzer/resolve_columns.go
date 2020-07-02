@@ -142,8 +142,8 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			return n, nil
 		}
 
-		columns := getNodeAvailableColumns(append(n.Children(), scope.Nodes()...)...)
-		tables := getTableNamesInNode(append(n.Children(), scope.Nodes()...)...)
+		columns := getNodeAvailableColumns(n)
+		tables := getTableNamesInNode(n)
 
 		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 			return qualifyExpression(e, columns, tables)
@@ -227,9 +227,9 @@ func qualifyExpression(
 	}
 }
 
-func getNodeAvailableColumns(nodes ...sql.Node) map[string][]string {
+func getNodeAvailableColumns(node sql.Node) map[string][]string {
 	var columns = make(map[string][]string)
-	getColumnsInNodes(nodes, columns)
+	getColumnsInNodes(node.Children(), columns)
 	return columns
 }
 
@@ -245,13 +245,9 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 			case *expression.Alias:
 				indexCol("", e.Name())
 			case *expression.GetField:
-				if len(e.Table()) > 0 {
-					indexCol(e.Table(), e.Name())
-				}
+				indexCol(e.Table(), e.Name())
 			case *expression.UnresolvedColumn:
-				if len(e.Table()) > 0 {
-					indexCol(e.Table(), e.Name())
-				}
+				indexCol(e.Table(), e.Name())
 			}
 		}
 	}
@@ -260,9 +256,7 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 		switch n := node.(type) {
 		case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias:
 			for _, col := range n.Schema() {
-				if len(col.Source) > 0 {
-					indexCol(col.Source, col.Name)
-				}
+				indexCol(col.Source, col.Name)
 			}
 		case *plan.Project:
 			indexExpressions(n.Projections)
@@ -277,29 +271,27 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 // getNodeAvailableTables returns the set of table names and table aliases in the node given, keyed by their
 // lower-cased names. Table aliases overwrite table names: the original name is not considered accessible once aliased.
 // The value of the map is the same as the key, just used for existence checks.
-func getTableNamesInNode(nodes ...sql.Node) map[string]string {
+func getTableNamesInNode(node sql.Node) map[string]string {
 	tables := make(map[string]string)
 
-	for _, node := range nodes {
-		plan.Inspect(node, func(n sql.Node) bool {
-			switch n := n.(type) {
-			case *plan.SubqueryAlias, *plan.ResolvedTable:
-				name := strings.ToLower(n.(sql.Nameable).Name())
-				tables[name] = name
-				return false
-			case *plan.TableAlias:
-				switch t := n.Child.(type) {
-				case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias:
-					name := strings.ToLower(t.(sql.Nameable).Name())
-					alias := strings.ToLower(n.Name())
-					tables[alias] = name
-				}
-				return false
+	plan.Inspect(node, func(n sql.Node) bool {
+		switch n := n.(type) {
+		case *plan.SubqueryAlias, *plan.ResolvedTable:
+			name := strings.ToLower(n.(sql.Nameable).Name())
+			tables[name] = name
+			return false
+		case *plan.TableAlias:
+			switch t := n.Child.(type) {
+			case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias:
+				name := strings.ToLower(t.(sql.Nameable).Name())
+				alias := strings.ToLower(n.Name())
+				tables[alias] = name
 			}
+			return false
+		}
 
-			return true
-		})
-	}
+		return true
+	})
 
 	return tables
 }
