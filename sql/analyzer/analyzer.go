@@ -226,7 +226,7 @@ func (a *Analyzer) LogNode(n sql.Node) {
 	if a != nil && n != nil && a.Verbose {
 		if len(a.contextStack) > 0 {
 			ctx := strings.Join(a.contextStack, "/")
-			fmt.Printf("%s: %s", ctx, n.String())
+			fmt.Printf("%s:\n%s", ctx, n.String())
 		} else {
 			fmt.Printf("%s", n.String())
 		}

@@ -17,7 +17,7 @@ var OnceBeforeDefault = []Rule{
 var DefaultRules = []Rule{
 	{"resolve_natural_joins", resolveNaturalJoins},
 	{"resolve_orderby_literals", resolveOrderByLiterals},
-	{"resolve_orderby", resolveOrderBy},
+	{"pushdown_sort", pushdownSort},
 	{"resolve_grouping_columns", resolveGroupingColumns},
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},

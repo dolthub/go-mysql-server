@@ -60,6 +60,14 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
+		"SELECT i AS x FROM mytable ORDER BY i",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
+		"SELECT i AS x FROM mytable ORDER BY x",
+		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
 		"SELECT i FROM mytable AS mt;",
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},

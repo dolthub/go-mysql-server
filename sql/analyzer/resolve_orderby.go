@@ -10,11 +10,12 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func resolveOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	span, _ := ctx.Span("resolve_orderby")
+// pushdownSort pushes the Sort node underneath the Project or GroupBy node in the case that columns needed to
+// sort would be projected away before sorting. This can also alter the projection in some cases.
+func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	span, _ := ctx.Span("pushdownSort")
 	defer span.Finish()
 
-	a.Log("resolving order bys, node of type: %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		sort, ok := n.(*plan.Sort)
 		if !ok {
@@ -176,7 +177,7 @@ func pushSortDown(sort *plan.Sort) (sql.Node, error) {
 			return child.WithChildren(newChild)
 		}
 
-		// If the child has more than one children we don't know to which side
+		// If the child has more than one child we don't know to which side
 		// the sort must be pushed down.
 		return nil, errSortPushdown.New(child)
 	}
