@@ -1928,11 +1928,74 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE one_pk.pk <= one_pk.pk) FROM one_pk ORDER BY 1`,
+		[]sql.Row{
+			{0,3},
+			{1,3},
+			{2,3},
+			{3,3},
+		},
+	},
+	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE one_pk.pk * 10 <= opk.c1) FROM one_pk opk ORDER BY 1`,
+		[]sql.Row{
+			{0,0},
+			{1,1},
+			{2,2},
+			{3,3},
+		},
+	},
+	{
+		`SELECT pk as a, (SELECT max(pk) FROM one_pk WHERE pk <= a) FROM one_pk ORDER BY 1`,
+		[]sql.Row{
+			{0,0},
+			{1,1},
+			{2,2},
+			{3,3},
+		},
+	},
+	{
+		`SELECT pk as a, (SELECT max(pk) FROM one_pk WHERE pk <= a) FROM one_pk opk ORDER BY 1`,
+		[]sql.Row{
+			{0,0},
+			{1,1},
+			{2,2},
+			{3,3},
+		},
+	},
+	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= opk.pk) FROM one_pk opk ORDER BY 1`,
+		[]sql.Row{
+			{0,0},
+			{1,1},
+			{2,2},
+			{3,3},
+		},
+	},
+	{
 		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk <= pk) FROM one_pk opk ORDER BY 1`,
 		[]sql.Row{
 			{0,3},
 			{1,3},
 			{2,3},
+			{3,3},
+		},
+	},
+	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= pk) FROM one_pk opk ORDER BY 1`,
+		[]sql.Row{
+			{0,3},
+			{1,3},
+			{2,3},
+			{3,3},
+		},
+	},
+	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= one_pk.pk) FROM one_pk ORDER BY 1`,
+		[]sql.Row{
+			{0,0},
+			{1,1},
+			{2,2},
 			{3,3},
 		},
 	},
@@ -2805,6 +2868,18 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       `SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(sub_s, 2, 3) AS sub_sub_s FROM mytable`,
 		ExpectedErr: analyzer.ErrMisusedAlias,
+	},
+	{
+		Query:       "SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= one_pk.pk) FROM one_pk opk ORDER BY 1",
+		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
+		Query:       "SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= one_pk.pk) FROM one_pk opk ORDER BY 1",
+		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
+		Query:       "SELECT pk, (SELECT max(pk) FROM one_pk WHERE b.pk <= one_pk.pk) FROM one_pk opk ORDER BY 1",
+		ExpectedErr: sql.ErrColumnNotFound,
 	},
 }
 

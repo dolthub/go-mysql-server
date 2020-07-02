@@ -80,18 +80,18 @@ func TestVersionedQueries(t *testing.T) {
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
 	test := enginetest.QueryTest{
-		"SELECT i as i from mytable group by 1",
+		"SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk <= opk.pk) FROM one_pk opk ORDER BY 1",
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	}
 	fmt.Sprintf("%v", test)
 
 	harness := newMemoryHarness("", 1, testNumPartitions, true, nil)
-	enginetest.TestQueries(t, harness)
-	// engine := enginetest.NewEngine(t, harness)
-	// engine.Analyzer.Debug = true
-	// engine.Analyzer.Verbose = true
-	//
-	// enginetest.TestQuery(t, harness, engine, test.Query, test.Expected)
+	// enginetest.TestQueries(t, harness)
+	engine := enginetest.NewEngine(t, harness)
+	engine.Analyzer.Debug = true
+	engine.Analyzer.Verbose = true
+
+	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected)
 }
 
 // Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that
