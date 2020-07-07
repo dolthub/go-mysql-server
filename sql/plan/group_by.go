@@ -24,11 +24,7 @@ type GroupBy struct {
 }
 
 // NewGroupBy creates a new GroupBy node.
-func NewGroupBy(
-	aggregates []sql.Expression,
-	groupings []sql.Expression,
-	child sql.Node,
-) *GroupBy {
+func NewGroupBy(aggregates, groupings []sql.Expression, child sql.Node) *GroupBy {
 	return &GroupBy{
 		UnaryNode:  UnaryNode{Child: child},
 		Aggregates: aggregates,

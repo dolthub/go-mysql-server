@@ -21,8 +21,8 @@ func TestResolveHaving(t *testing.T) {
 		err      *errors.Kind
 	}{
 		{
-			"replace existing aggregation in group by",
-			plan.NewHaving(
+			name: "replace existing aggregation in group by",
+			input: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewAvg(expression.NewUnresolvedColumn("foo")),
 					expression.NewLiteral(int64(5), sql.Int64),
@@ -36,7 +36,7 @@ func TestResolveHaving(t *testing.T) {
 					plan.NewResolvedTable(memory.NewTable("t", nil)),
 				),
 			),
-			plan.NewHaving(
+			expected: plan.NewHaving(
 				expression.NewGreaterThan(
 					expression.NewGetField(0, sql.Float64, "x", true),
 					expression.NewLiteral(int64(5), sql.Int64),
@@ -50,11 +50,10 @@ func TestResolveHaving(t *testing.T) {
 					plan.NewResolvedTable(memory.NewTable("t", nil)),
 				),
 			),
-			nil,
 		},
 		{
-			"push down aggregation to group by",
-			plan.NewHaving(
+			name: "push down aggregation to group by",
+			input: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewCount(expression.NewStar()),
 					expression.NewLiteral(int64(5), sql.Int64),
@@ -68,7 +67,7 @@ func TestResolveHaving(t *testing.T) {
 					plan.NewResolvedTable(memory.NewTable("t", nil)),
 				),
 			),
-			plan.NewProject(
+			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetField(0, sql.Float64, "x", true),
 					expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false),
@@ -89,11 +88,10 @@ func TestResolveHaving(t *testing.T) {
 					),
 				),
 			),
-			nil,
 		},
 		{
-			"push up missing column",
-			plan.NewHaving(
+			name: "push up missing column",
+			input: plan.NewHaving(
 				expression.NewGreaterThan(
 					expression.NewUnresolvedColumn("i"),
 					expression.NewLiteral(int64(5), sql.Int64),
@@ -109,7 +107,7 @@ func TestResolveHaving(t *testing.T) {
 					})),
 				),
 			),
-			plan.NewProject(
+			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
 				},
@@ -131,11 +129,10 @@ func TestResolveHaving(t *testing.T) {
 					),
 				),
 			),
-			nil,
 		},
 		{
-			"push up missing column with nodes in between",
-			plan.NewHaving(
+			name: "push up missing column with nodes in between",
+			input: plan.NewHaving(
 				expression.NewGreaterThan(
 					expression.NewUnresolvedColumn("i"),
 					expression.NewLiteral(int64(5), sql.Int64),
@@ -156,7 +153,7 @@ func TestResolveHaving(t *testing.T) {
 					),
 				),
 			),
-			plan.NewProject(
+			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
 				},
@@ -184,11 +181,10 @@ func TestResolveHaving(t *testing.T) {
 					),
 				),
 			),
-			nil,
 		},
 		{
-			"push down aggregations with nodes in between",
-			plan.NewHaving(
+			name: "push down aggregations with nodes in between",
+			input: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewCount(expression.NewStar()),
 					expression.NewLiteral(int64(5), sql.Int64),
@@ -208,7 +204,7 @@ func TestResolveHaving(t *testing.T) {
 					),
 				),
 			),
-			plan.NewProject(
+			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetField(0, sql.Float64, "x", false),
 					expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false),
@@ -236,11 +232,10 @@ func TestResolveHaving(t *testing.T) {
 					),
 				),
 			),
-			nil,
 		},
 		{
-			"replace existing aggregation in group by with nodes in between",
-			plan.NewHaving(
+			name: "replace existing aggregation in group by with nodes in between",
+			input: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewAvg(expression.NewUnresolvedColumn("foo")),
 					expression.NewLiteral(int64(5), sql.Int64),
@@ -260,7 +255,7 @@ func TestResolveHaving(t *testing.T) {
 					),
 				),
 			),
-			plan.NewHaving(
+			expected: plan.NewHaving(
 				expression.NewGreaterThan(
 					expression.NewGetField(0, sql.Float64, "x", false),
 					expression.NewLiteral(int64(5), sql.Int64),
@@ -280,19 +275,17 @@ func TestResolveHaving(t *testing.T) {
 					),
 				),
 			),
-			nil,
 		},
 		{
-			"missing groupby",
-			plan.NewHaving(
+			name: "missing groupby",
+			input: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewCount(expression.NewStar()),
 					expression.NewLiteral(int64(5), sql.Int64),
 				),
 				plan.NewResolvedTable(memory.NewTable("t", nil)),
 			),
-			nil,
-			errHavingNeedsGroupBy,
+			err: errHavingNeedsGroupBy,
 		},
 	}
 

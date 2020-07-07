@@ -1713,6 +1713,19 @@ var fixtures = map[string]sql.Node{
 		)},
 		plan.NewUnresolvedTable("dual", ""),
 	),
+	`SELECT bar, AVG(baz) FROM foo GROUP BY bar HAVING COUNT(*) > 5`: plan.NewHaving(
+		expression.NewGreaterThan(
+			expression.NewUnresolvedFunction("count", true, expression.NewStar()),
+			expression.NewLiteral(int8(5), sql.Int8),
+		),
+		plan.NewGroupBy(
+			[]sql.Expression{
+				expression.NewUnresolvedColumn("bar"),
+				expression.NewUnresolvedFunction("avg", true, expression.NewUnresolvedColumn("baz"))},
+			[]sql.Expression{expression.NewUnresolvedColumn("bar")},
+			plan.NewUnresolvedTable("foo", ""),
+		),
+	),
 	`SELECT COUNT(*) FROM foo GROUP BY a HAVING COUNT(*) > 5`: plan.NewHaving(
 		expression.NewGreaterThan(
 			expression.NewUnresolvedFunction("count", true, expression.NewStar()),
