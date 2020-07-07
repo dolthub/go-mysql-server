@@ -233,7 +233,7 @@ func (s simpleLogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		lvl = "TRACE"
 	}
 
-	msg := fmt.Sprintf("%s: %s", lvl, entry.Message)
+	msg := fmt.Sprintf("%s: %s\n", lvl, entry.Message)
 	return ([]byte)(msg), nil
 }
 

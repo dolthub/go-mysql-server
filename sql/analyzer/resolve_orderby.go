@@ -23,7 +23,6 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		}
 
 		if !sort.Child.Resolved() {
-			a.Log("child of type %T is not resolved yet, skipping", sort.Child)
 			return n, nil
 		}
 

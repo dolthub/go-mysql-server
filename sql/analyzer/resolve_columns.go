@@ -410,7 +410,7 @@ func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns ma
 	}
 
 	a.Log("column %s resolved to GetFieldWithTable: idx %d, typ %s, table %s, name %s, nullable %t",
-		e.Name(), col.index, col.Type, col.Source, col.Name, col.Nullable)
+		e, col.index, col.Type, col.Source, col.Name, col.Nullable)
 	return expression.NewGetFieldWithTable(
 		col.index,
 		col.Type,
