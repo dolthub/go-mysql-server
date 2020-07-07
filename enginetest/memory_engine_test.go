@@ -16,8 +16,9 @@ package enginetest_test
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"testing"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 )
@@ -79,7 +80,7 @@ func TestVersionedQueries(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	test := enginetest.QueryTest	{
+	test := enginetest.QueryTest{
 		"SELECT pk DIV 2, SUM(c3) FROM one_pk GROUP BY 1 ORDER BY 1;",
 		[]sql.Row{
 			{int64(0), float64(10)},

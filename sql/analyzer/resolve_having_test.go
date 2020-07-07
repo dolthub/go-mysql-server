@@ -29,7 +29,7 @@ func TestResolveHaving(t *testing.T) {
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias(aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false)), "x"),
+						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
 						expression.NewGetField(0, sql.Int64, "foo", false),
 					},
 					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
@@ -43,7 +43,7 @@ func TestResolveHaving(t *testing.T) {
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias(aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false)), "x"),
+						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
 						expression.NewGetField(0, sql.Int64, "foo", false),
 					},
 					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
@@ -61,7 +61,7 @@ func TestResolveHaving(t *testing.T) {
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias(aggregation.NewAvg(expression.NewGetField(0, sql.Int64, "foo", false)), "x"),
+						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetField(0, sql.Int64, "foo", false))),
 						expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
 					},
 					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
@@ -80,7 +80,7 @@ func TestResolveHaving(t *testing.T) {
 					),
 					plan.NewGroupBy(
 						[]sql.Expression{
-							expression.NewAlias(aggregation.NewAvg(expression.NewGetField(0, sql.Int64, "foo", false)), "x"),
+							expression.NewAlias("x", aggregation.NewAvg(expression.NewGetField(0, sql.Int64, "foo", false))),
 							expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
 							aggregation.NewCount(expression.NewStar()),
 						},
@@ -195,7 +195,7 @@ func TestResolveHaving(t *testing.T) {
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewAlias(expression.NewGetField(0, sql.Float64, "avg(foo)", false), "x"),
+						expression.NewAlias("x", expression.NewGetField(0, sql.Float64, "avg(foo)", false)),
 						expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false),
 					},
 					plan.NewGroupBy(
@@ -220,7 +220,7 @@ func TestResolveHaving(t *testing.T) {
 					),
 					plan.NewProject(
 						[]sql.Expression{
-							expression.NewAlias(expression.NewGetField(0, sql.Float64, "avg(foo)", false), "x"),
+							expression.NewAlias("x", expression.NewGetField(0, sql.Float64, "avg(foo)", false)),
 							expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false),
 							expression.NewGetField(2, sql.Int64, "COUNT(*)", false),
 						},
@@ -252,7 +252,7 @@ func TestResolveHaving(t *testing.T) {
 					},
 					plan.NewGroupBy(
 						[]sql.Expression{
-							expression.NewAlias(aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false)), "x"),
+							expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
 							expression.NewGetField(0, sql.Int64, "foo", false),
 						},
 						[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
@@ -272,7 +272,7 @@ func TestResolveHaving(t *testing.T) {
 					},
 					plan.NewGroupBy(
 						[]sql.Expression{
-							expression.NewAlias(aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false)), "x"),
+							expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
 							expression.NewGetField(0, sql.Int64, "foo", false),
 						},
 						[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},

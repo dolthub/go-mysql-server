@@ -16,11 +16,11 @@ import (
 )
 
 var showCollationProjection = plan.NewProject([]sql.Expression{
-	expression.NewAlias(expression.NewUnresolvedColumn("collation_name"), "collation"),
-	expression.NewAlias(expression.NewUnresolvedColumn("character_set_name"), "charset"),
+	expression.NewAlias("collation", expression.NewUnresolvedColumn("collation_name")),
+	expression.NewAlias("charset", expression.NewUnresolvedColumn("character_set_name")),
 	expression.NewUnresolvedColumn("id"),
-	expression.NewAlias(expression.NewUnresolvedColumn("is_default"), "default"),
-	expression.NewAlias(expression.NewUnresolvedColumn("is_compiled"), "compiled"),
+	expression.NewAlias("default", expression.NewUnresolvedColumn("is_default")),
+	expression.NewAlias("compiled", expression.NewUnresolvedColumn("is_compiled")),
 	expression.NewUnresolvedColumn("sortlen"),
 	expression.NewUnresolvedColumn("pad_attribute"),
 },
@@ -597,28 +597,19 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT foo AS bar FROM foo;`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewAlias(
-				expression.NewUnresolvedColumn("foo"),
-				"bar",
-			),
+			expression.NewAlias("bar", expression.NewUnresolvedColumn("foo")),
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT foo AS bAz FROM foo;`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewAlias(
-				expression.NewUnresolvedColumn("foo"),
-				"bAz",
-			),
+			expression.NewAlias("bAz", expression.NewUnresolvedColumn("foo")),
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT foo AS bar FROM foo AS OF '2019-01-01' AS baz;`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewAlias(
-				expression.NewUnresolvedColumn("foo"),
-				"bar",
-			),
+			expression.NewAlias("bar", expression.NewUnresolvedColumn("foo")),
 		},
 		plan.NewTableAlias("baz",
 			plan.NewUnresolvedTableAsOf("foo", "",

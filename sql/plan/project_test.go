@@ -51,10 +51,7 @@ func TestProject(t *testing.T) {
 	require.Equal(0, len(p.Schema()))
 
 	p = NewProject([]sql.Expression{
-		expression.NewAlias(
-			expression.NewGetField(1, sql.Text, "col2", true),
-			"foo",
-		),
+		expression.NewAlias("foo", expression.NewGetField(1, sql.Text, "col2", true)),
 	}, NewResolvedTable(child))
 	schema = sql.Schema{
 		{Name: "foo", Type: sql.Text, Nullable: true},

@@ -73,7 +73,7 @@ func TestValidateGroupBy(t *testing.T) {
 
 	p := plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewAlias(expression.NewGetField(0, sql.Text, "col1", true), "alias"),
+			expression.NewAlias("alias", expression.NewGetField(0, sql.Text, "col1", true)),
 			expression.NewGetField(0, sql.Text, "col1", true),
 			aggregation.NewCount(expression.NewGetField(1, sql.Int64, "col2", true)),
 		},
@@ -406,13 +406,10 @@ func TestValidateProjectTuples(t *testing.T) {
 			"alias with a tuple",
 			plan.NewProject(
 				[]sql.Expression{
-					expression.NewAlias(
-						expression.NewTuple(
-							expression.NewLiteral(1, sql.Int64),
-							expression.NewLiteral(2, sql.Int64),
-						),
-						"foo",
-					),
+					expression.NewAlias("foo", expression.NewTuple(
+						expression.NewLiteral(1, sql.Int64),
+						expression.NewLiteral(2, sql.Int64),
+					)),
 				},
 				plan.NewUnresolvedTable("dual", ""),
 			),
@@ -718,13 +715,10 @@ func TestValidateIntervalUsage(t *testing.T) {
 			"alias",
 			plan.NewProject(
 				[]sql.Expression{
-					expression.NewAlias(
-						expression.NewInterval(
-							expression.NewLiteral(int64(1), sql.Int64),
-							"DAY",
-						),
-						"foo",
-					),
+					expression.NewAlias("foo", expression.NewInterval(
+						expression.NewLiteral(int64(1), sql.Int64),
+						"DAY",
+					)),
 				},
 				plan.NewUnresolvedTable("dual", ""),
 			),
@@ -758,12 +752,9 @@ func TestValidateExplodeUsage(t *testing.T) {
 			plan.NewGenerate(
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewAlias(
-							function.NewGenerate(
-								expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
-							),
-							"foo",
-						),
+						expression.NewAlias("foo", function.NewGenerate(
+							expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
+						)),
 					},
 					plan.NewUnresolvedTable("dual", ""),
 				),
@@ -782,12 +773,9 @@ func TestValidateExplodeUsage(t *testing.T) {
 				plan.NewGenerate(
 					plan.NewProject(
 						[]sql.Expression{
-							expression.NewAlias(
-								function.NewGenerate(
-									expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
-								),
-								"foo",
-							),
+							expression.NewAlias("foo", function.NewGenerate(
+								expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
+							)),
 						},
 						plan.NewUnresolvedTable("dual", ""),
 					),
@@ -801,20 +789,14 @@ func TestValidateExplodeUsage(t *testing.T) {
 			plan.NewGenerate(
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias(
-							function.NewExplode(
-								expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
-							),
-							"foo",
-						),
+						expression.NewAlias("foo", function.NewExplode(
+							expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
+						)),
 					},
 					[]sql.Expression{
-						expression.NewAlias(
-							function.NewExplode(
-								expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
-							),
-							"foo",
-						),
+						expression.NewAlias("foo", function.NewExplode(
+							expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
+						)),
 					},
 					plan.NewUnresolvedTable("dual", ""),
 				),

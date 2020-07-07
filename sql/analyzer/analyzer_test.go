@@ -109,20 +109,14 @@ func TestAnalyzer_Analyze(t *testing.T) {
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{
-			expression.NewAlias(
-				expression.NewUnresolvedColumn("i"),
-				"foo",
-			),
+			expression.NewAlias("foo", expression.NewUnresolvedColumn("i")),
 		},
 		plan.NewUnresolvedTable("mytable", ""),
 	)
 	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	expected = plan.NewProject(
 		[]sql.Expression{
-			expression.NewAlias(
-				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-				"foo",
-			),
+			expression.NewAlias("foo", expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false)),
 		},
 		plan.NewResolvedTable(table.WithProjection([]string{"i"})),
 	)

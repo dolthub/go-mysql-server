@@ -64,10 +64,7 @@ func TestMisusedAlias(t *testing.T) {
 
 	node := plan.NewProject(
 		[]sql.Expression{
-			expression.NewAlias(
-				expression.NewUnresolvedColumn("i"),
-				"alias_i",
-			),
+			expression.NewAlias("alias_i", expression.NewUnresolvedColumn("i")),
 			expression.NewUnresolvedColumn("alias_i"),
 		},
 		plan.NewResolvedTable(table),
@@ -314,22 +311,16 @@ func TestResolveColumnsSession(t *testing.T) {
 	require.Equal(expected, result)
 }
 
-func TestResolveGroupingColumns(t *testing.T) {
+func TestPushdownGroupByAliases(t *testing.T) {
 	require := require.New(t)
 
 	a := NewDefault(nil)
 	node := plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewAlias(
-				expression.NewUnresolvedFunction("foo", true,
-					expression.NewUnresolvedColumn("c"),
-				),
-				"c",
-			),
-			expression.NewAlias(
-				expression.NewUnresolvedColumn("d"),
-				"b",
-			),
+			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", true,
+				expression.NewUnresolvedColumn("c"),
+			)),
+			expression.NewAlias("b", expression.NewUnresolvedColumn("d")),
 			expression.NewUnresolvedFunction("bar", false,
 				expression.NewUnresolvedColumn("b"),
 			),
@@ -343,12 +334,9 @@ func TestResolveGroupingColumns(t *testing.T) {
 
 	expected := plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewAlias(
-				expression.NewUnresolvedFunction("foo", true,
-					expression.NewUnresolvedColumn("c"),
-				),
-				"c",
-			),
+			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", true,
+				expression.NewUnresolvedColumn("c"),
+			)),
 			expression.NewUnresolvedColumn("b"),
 			expression.NewUnresolvedFunction("bar", false,
 				expression.NewUnresolvedColumn("b_01"),
@@ -360,15 +348,9 @@ func TestResolveGroupingColumns(t *testing.T) {
 		},
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewAlias(
-					expression.NewUnresolvedColumn("d"),
-					"b",
-				),
+				expression.NewAlias("b", expression.NewUnresolvedColumn("d")),
 				expression.NewUnresolvedColumn("a"),
-				expression.NewAlias(
-					expression.NewUnresolvedColumn("b"),
-					"b_01",
-				),
+				expression.NewAlias("b_01", expression.NewUnresolvedColumn("b")),
 				expression.NewUnresolvedColumn("c"),
 			},
 			plan.NewResolvedTable(memory.NewTable("table", nil)),

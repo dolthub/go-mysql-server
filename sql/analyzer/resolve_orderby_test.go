@@ -28,10 +28,7 @@ func TestPushdownSortProject(t *testing.T) {
 		},
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewAlias(
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-					"x",
-				),
+				expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 			},
 			plan.NewResolvedTable(table),
 		),
@@ -48,10 +45,7 @@ func TestPushdownSortProject(t *testing.T) {
 		},
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewAlias(
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-					"x",
-				),
+				expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 			},
 			plan.NewResolvedTable(table),
 		),
@@ -59,10 +53,7 @@ func TestPushdownSortProject(t *testing.T) {
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewAlias(
-				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-				"x",
-			),
+			expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 		},
 		plan.NewSort(
 			[]plan.SortField{
@@ -84,10 +75,7 @@ func TestPushdownSortProject(t *testing.T) {
 		},
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewAlias(
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-					"x",
-				),
+				expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 			},
 			plan.NewResolvedTable(table),
 		),
@@ -104,10 +92,7 @@ func TestPushdownSortProject(t *testing.T) {
 			},
 			plan.NewProject(
 				[]sql.Expression{
-					expression.NewAlias(
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-						"x",
-					),
+					expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 					expression.NewUnresolvedColumn("a"),
 				},
 				plan.NewResolvedTable(table),
@@ -138,10 +123,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 		},
 		plan.NewGroupBy(
 			[]sql.Expression{
-				expression.NewAlias(
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-					"x",
-				),
+				expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 			},
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
@@ -161,10 +143,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 		},
 		plan.NewGroupBy(
 			[]sql.Expression{
-				expression.NewAlias(
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-					"x",
-				),
+				expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 			},
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
@@ -175,10 +154,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 
 	var expected sql.Node = plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewAlias(
-				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-				"x",
-			),
+			expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 		},
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
@@ -203,10 +179,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 		},
 		plan.NewGroupBy(
 			[]sql.Expression{
-				expression.NewAlias(
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-					"x",
-				),
+				expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 			},
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
@@ -226,10 +199,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 			},
 			plan.NewGroupBy(
 				[]sql.Expression{
-					expression.NewAlias(
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-						"x",
-					),
+					expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 					expression.NewUnresolvedColumn("a"),
 				},
 				[]sql.Expression{

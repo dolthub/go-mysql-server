@@ -178,7 +178,7 @@ func addDateConvert(
 		// and propagate the changes up the chain.
 		if gf, ok := e.(*expression.GetField); ok && expressions[e.String()] && aliasRootProjections {
 			if _, ok := result.(*expression.GetField); !ok {
-				result = expression.NewAlias(result, gf.Name())
+				result = expression.NewAlias(gf.Name(), result)
 				nodeReplacements[tableCol{gf.Table(), gf.Name()}] = gf.Name()
 			}
 		}

@@ -2,10 +2,11 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"os"
 	"strings"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
@@ -169,7 +170,7 @@ func (s *Scope) newScope(node sql.Node) *Scope {
 	if s == nil {
 		return &Scope{[]sql.Node{node}}
 	}
-	newNodes := make([]sql.Node, len(s.nodes) + 1)
+	newNodes := make([]sql.Node, len(s.nodes)+1)
 	newNodes = append(newNodes, node)
 	newNodes = append(newNodes, s.nodes...)
 	return &Scope{newNodes}
@@ -182,7 +183,7 @@ func (s *Scope) Nodes() []sql.Node {
 	return s.nodes
 }
 
-func (s *Scope) resolveUp(node sql.Node, fn func(n sql.Node) (sql.Node, error)) (sql.Node, error){
+func (s *Scope) resolveUp(node sql.Node, fn func(n sql.Node) (sql.Node, error)) (sql.Node, error) {
 	var nodes []sql.Node
 	nodes = append(nodes, node)
 	if s != nil {

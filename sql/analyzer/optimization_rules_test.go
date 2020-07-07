@@ -28,8 +28,8 @@ func TestReorderProjection(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-					expression.NewAlias(expression.NewLiteral(1, sql.Int64), "foo"),
-					expression.NewAlias(expression.NewLiteral(2, sql.Int64), "bar"),
+					expression.NewAlias("foo", expression.NewLiteral(1, sql.Int64)),
+					expression.NewAlias("bar", expression.NewLiteral(2, sql.Int64)),
 				},
 				plan.NewSort(
 					[]plan.SortField{
@@ -56,7 +56,7 @@ func TestReorderProjection(t *testing.T) {
 						[]sql.Expression{
 							expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
 							expression.NewGetField(1, sql.Int64, "bar", false),
-							expression.NewAlias(expression.NewLiteral(1, sql.Int64), "foo"),
+							expression.NewAlias("foo", expression.NewLiteral(1, sql.Int64)),
 						},
 						plan.NewFilter(
 							expression.NewEquals(
@@ -66,7 +66,7 @@ func TestReorderProjection(t *testing.T) {
 							plan.NewProject(
 								[]sql.Expression{
 									expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-									expression.NewAlias(expression.NewLiteral(2, sql.Int64), "bar"),
+									expression.NewAlias("bar", expression.NewLiteral(2, sql.Int64)),
 								},
 								plan.NewResolvedTable(table),
 							),
@@ -79,7 +79,7 @@ func TestReorderProjection(t *testing.T) {
 			"use alias twice",
 			plan.NewProject(
 				[]sql.Expression{
-					expression.NewAlias(expression.NewLiteral(1, sql.Int64), "foo"),
+					expression.NewAlias("foo", expression.NewLiteral(1, sql.Int64)),
 				},
 				plan.NewFilter(
 					expression.NewOr(
@@ -113,7 +113,7 @@ func TestReorderProjection(t *testing.T) {
 					plan.NewProject(
 						[]sql.Expression{
 							expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-							expression.NewAlias(expression.NewLiteral(1, sql.Int64), "foo"),
+							expression.NewAlias("foo", expression.NewLiteral(1, sql.Int64)),
 						},
 						plan.NewResolvedTable(table),
 					),
@@ -148,7 +148,7 @@ func TestEraseProjection(t *testing.T) {
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
 				expression.NewGetField(1, sql.Int64, "bar", false),
-				expression.NewAlias(expression.NewLiteral(1, sql.Int64), "foo"),
+				expression.NewAlias("foo", expression.NewLiteral(1, sql.Int64)),
 			},
 			plan.NewFilter(
 				expression.NewEquals(
@@ -158,7 +158,7 @@ func TestEraseProjection(t *testing.T) {
 				plan.NewProject(
 					[]sql.Expression{
 						expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-						expression.NewAlias(expression.NewLiteral(2, sql.Int64), "bar"),
+						expression.NewAlias("bar", expression.NewLiteral(2, sql.Int64)),
 					},
 					plan.NewResolvedTable(table),
 				),

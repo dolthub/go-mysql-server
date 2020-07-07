@@ -71,10 +71,7 @@ func findGenerator(exprs []sql.Expression) (*generator, error) {
 		case *expression.Alias:
 			if exp, ok := e.Child.(*function.Explode); ok {
 				found = true
-				g.expr = expression.NewAlias(
-					function.NewGenerate(exp.Child),
-					e.Name(),
-				)
+				g.expr = expression.NewAlias(e.Name(), function.NewGenerate(exp.Child))
 			}
 		}
 

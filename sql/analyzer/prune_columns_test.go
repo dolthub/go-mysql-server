@@ -42,7 +42,7 @@ func TestPruneColumns(t *testing.T) {
 				plan.NewProject(
 					[]sql.Expression{
 						gf(0, "t1", "foo"),
-						expression.NewAlias(gf(1, "t1", "bar"), "some_alias"),
+						expression.NewAlias("some_alias", gf(1, "t1", "bar")),
 					},
 					plan.NewFilter(
 						eq(gf(0, "t1", "foo"), gf(4, "t2", "baz")),
@@ -68,7 +68,7 @@ func TestPruneColumns(t *testing.T) {
 				plan.NewProject(
 					[]sql.Expression{
 						gf(0, "t1", "foo"),
-						expression.NewAlias(gf(1, "t1", "bar"), "some_alias"),
+						expression.NewAlias("some_alias", gf(1, "t1", "bar")),
 					},
 					plan.NewFilter(
 						eq(gf(0, "t1", "foo"), gf(2, "t2", "baz")),
@@ -95,7 +95,7 @@ func TestPruneColumns(t *testing.T) {
 				plan.NewProject(
 					[]sql.Expression{
 						gf(0, "t", "foo"),
-						expression.NewAlias(gf(1, "t", "bar"), "some_alias"),
+						expression.NewAlias("some_alias", gf(1, "t", "bar")),
 					},
 					plan.NewFilter(
 						eq(gf(0, "t", "foo"), gf(4, "t", "baz")),
@@ -123,7 +123,7 @@ func TestPruneColumns(t *testing.T) {
 				plan.NewProject(
 					[]sql.Expression{
 						gf(0, "t", "foo"),
-						expression.NewAlias(gf(1, "t", "bar"), "some_alias"),
+						expression.NewAlias("some_alias", gf(1, "t", "bar")),
 					},
 					plan.NewFilter(
 						eq(gf(0, "t", "foo"), gf(2, "t", "baz")),
@@ -157,7 +157,7 @@ func TestPruneColumns(t *testing.T) {
 				plan.NewProject(
 					[]sql.Expression{
 						gf(0, "t1", "foo"),
-						expression.NewAlias(gf(1, "t1", "bar"), "some_alias"),
+						expression.NewAlias("some_alias", gf(1, "t1", "bar")),
 						gf(5, "t2", "bux"),
 					},
 					plan.NewFilter(
@@ -189,7 +189,7 @@ func TestPruneColumns(t *testing.T) {
 				plan.NewProject(
 					[]sql.Expression{
 						gf(0, "t1", "foo"),
-						expression.NewAlias(gf(1, "t1", "bar"), "some_alias"),
+						expression.NewAlias("some_alias", gf(1, "t1", "bar")),
 						gf(3, "t2", "bux"),
 					},
 					plan.NewFilter(

@@ -13,8 +13,8 @@ type Alias struct {
 }
 
 // NewAlias returns a new Alias node.
-func NewAlias(child sql.Expression, name string) *Alias {
-	return &Alias{UnaryExpression{child}, name}
+func NewAlias(name string, expr sql.Expression) *Alias {
+	return &Alias{UnaryExpression{expr}, name}
 }
 
 // Type returns the type of the expression.
@@ -36,7 +36,7 @@ func (e *Alias) WithChildren(children ...sql.Expression) (sql.Expression, error)
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
-	return NewAlias(children[0], e.name), nil
+	return NewAlias(e.name, children[0]), nil
 }
 
 // Name implements the Nameable interface.

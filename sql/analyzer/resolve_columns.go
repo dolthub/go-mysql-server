@@ -531,10 +531,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 				projection = append(projection, expression.NewUnresolvedColumn(col))
 			} else {
 				renames[col] = name
-				projection = append(projection, expression.NewAlias(
-					expression.NewUnresolvedColumn(col),
-					name,
-				))
+				projection = append(projection, expression.NewAlias(name, expression.NewUnresolvedColumn(col)))
 			}
 		}
 
