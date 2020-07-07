@@ -420,10 +420,9 @@ func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns ma
 	), nil
 }
 
-// resolveGroupingColumns reorders the aggregation in a groupby so aliases
-// defined in it can be resolved in the grouping of the groupby. To do so,
-// all aliases are pushed down to a projection node under the group by.
-func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+// pushdownGroupByAliases reorders the aggregation in a groupby so aliases defined in it can be resolved in the grouping
+// of the groupby. To do so, all aliases are pushed down to a projection node under the group by.
+func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if n.Resolved() {
 		return n, nil
 	}

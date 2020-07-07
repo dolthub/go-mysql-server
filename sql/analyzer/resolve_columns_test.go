@@ -375,7 +375,7 @@ func TestResolveGroupingColumns(t *testing.T) {
 		),
 	)
 
-	result, err := resolveGroupingColumns(sql.NewEmptyContext(), a, node, nil)
+	result, err := pushdownGroupByAliases(sql.NewEmptyContext(), a, node, nil)
 	require.NoError(err)
 
 	require.Equal(expected, result)

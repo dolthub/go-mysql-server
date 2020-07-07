@@ -18,7 +18,7 @@ var DefaultRules = []Rule{
 	{"resolve_natural_joins", resolveNaturalJoins},
 	{"resolve_orderby_literals", resolveOrderByLiterals},
 	{"pushdown_sort", pushdownSort},
-	{"resolve_grouping_columns", resolveGroupingColumns},
+	{"pushdown_groupby_aliases", pushdownGroupByAliases},
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
 	{"resolve_database", resolveDatabase},
