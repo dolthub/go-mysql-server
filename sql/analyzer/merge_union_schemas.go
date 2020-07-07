@@ -43,8 +43,8 @@ func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 				res[i] = expression.NewConvert(res[i], expression.ConvertToChar)
 
 				// Preserve schema names across the conversion.
-				les[i] = expression.NewAlias(les[i], ls[i].Name)
-				res[i] = expression.NewAlias(res[i], rs[i].Name)
+				les[i] = expression.NewAlias(ls[i].Name, les[i])
+				res[i] = expression.NewAlias(rs[i].Name, res[i])
 			}
 			if hasdiff {
 				return u.WithChildren(

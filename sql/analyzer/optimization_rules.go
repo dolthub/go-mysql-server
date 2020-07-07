@@ -14,7 +14,6 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope)
 		return node, nil
 	}
 
-	a.Log("erase projection, node of type: %T", node)
 	return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
 		project, ok := node.(*plan.Project)
 		if ok && project.Schema().Equals(project.Child.Schema()) {
@@ -30,7 +29,6 @@ func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope
 	span, _ := ctx.Span("optimize_distinct")
 	defer span.Finish()
 
-	a.Log("optimize distinct, node of type: %T", node)
 	if n, ok := node.(*plan.Distinct); ok {
 		var sortField *expression.GetField
 		plan.Inspect(n, func(node sql.Node) bool {
@@ -61,9 +59,6 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return n, nil
 	}
 
-	a.Log("reorder projection, node of type: %T", n)
-
-	// Then we transform the projection
 	return plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
 		project, ok := node.(*plan.Project)
 		// When we transform the projection, the children will always be
@@ -193,11 +188,8 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 
 func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if !n.Resolved() {
-		a.Log("node is not resolved, skip moving join conditions to filter")
 		return n, nil
 	}
-
-	a.Log("moving join conditions to filter, node of type: %T", n)
 
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		join, ok := n.(*plan.InnerJoin)
@@ -265,8 +257,6 @@ func removeUnnecessaryConverts(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 		return n, nil
 	}
 
-	a.Log("removing unnecessary converts, node of type: %T", n)
-
 	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
 		if c, ok := e.(*expression.Convert); ok && c.Child.Type() == c.Type() {
 			return c.Child, nil
@@ -332,8 +322,6 @@ func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql
 	if !node.Resolved() {
 		return node, nil
 	}
-
-	a.Log("evaluating filters, node of type: %T", node)
 
 	return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
 		filter, ok := node.(*plan.Filter)

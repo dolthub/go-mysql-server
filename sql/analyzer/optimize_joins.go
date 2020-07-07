@@ -14,7 +14,6 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	span, ctx := ctx.Span("optimize_joins")
 	defer span.Finish()
 
-	a.Log("optimize_joins, node of type: %T", n)
 	if !n.Resolved() {
 		return n, nil
 	}

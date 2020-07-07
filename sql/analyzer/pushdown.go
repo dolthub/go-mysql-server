@@ -41,10 +41,7 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node
 
 	// First step is to find all col exprs and group them by the table they mention.
 	// Even if they appear multiple times, only the first one will be used.
-	a.Log("finding used columns in node")
 	fieldsByTable := getFieldsByTable(ctx, n)
-
-	a.Log("finding filters in node")
 	filters := getFiltersByTable(ctx, n)
 
 	indexes, err := getIndexesByTable(ctx, a, n)
@@ -58,7 +55,6 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node
 		return nil, err
 	}
 
-	a.Log("transforming nodes with pushdown of filters, projections and indexes")
 	return transformPushdown(ctx, a, n, filters, indexes, fieldsByTable, exprAliases, tableAliases)
 }
 

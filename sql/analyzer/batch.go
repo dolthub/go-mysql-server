@@ -69,6 +69,7 @@ func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	result := n
 	for _, rule := range b.Rules {
 		var err error
+		a.Log("Evaluating rule %s", rule.Name)
 		a.PushDebugContext(rule.Name)
 		result, err = rule.Apply(ctx, a, result, scope)
 		a.LogNode(result)

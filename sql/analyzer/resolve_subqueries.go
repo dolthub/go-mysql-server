@@ -10,7 +10,6 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 	span, ctx := ctx.Span("resolve_subqueries")
 	defer span.Finish()
 
-	a.Log("resolving subqueries")
 	n, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:

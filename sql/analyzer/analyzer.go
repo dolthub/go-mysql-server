@@ -84,6 +84,10 @@ func (ab *Builder) AddPostValidationRule(name string, fn RuleFunc) *Builder {
 	return ab
 }
 
+func init() {
+	logrus.SetFormatter(simpleLogFormatter{})
+}
+
 // Build creates a new Analyzer using all previous data setted to the Builder
 func (ab *Builder) Build() *Analyzer {
 	_, debug := os.LookupEnv(debugAnalyzerKey)
@@ -207,6 +211,30 @@ func (s *Scope) resolveUp(node sql.Node, fn func(n sql.Node) (sql.Node, error)) 
 // To add custom rules, the easiest way is use the Builder.
 func NewDefault(c *sql.Catalog) *Analyzer {
 	return NewBuilder(c).Build()
+}
+
+type simpleLogFormatter struct {}
+func (s simpleLogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+	lvl := ""
+	switch entry.Level {
+	case logrus.PanicLevel:
+		lvl = "PANIC"
+		case logrus.FatalLevel:
+			lvl = "FATAL"
+		case logrus.ErrorLevel:
+			lvl = "ERROR"
+		case logrus.WarnLevel:
+			lvl = "WARN"
+		case logrus.InfoLevel:
+			lvl = "INFO"
+		case logrus.DebugLevel:
+			lvl = "DEBUG"
+	case logrus.TraceLevel:
+		lvl = "TRACE"
+	}
+
+	msg := fmt.Sprintf("%s: %s", lvl, entry.Message)
+	return ([]byte)(msg), nil
 }
 
 // Log prints an INFO message to stdout with the given message and args

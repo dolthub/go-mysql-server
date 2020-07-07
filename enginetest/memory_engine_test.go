@@ -81,11 +81,8 @@ func TestVersionedQueries(t *testing.T) {
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
 	test := enginetest.QueryTest{
-		"SELECT pk DIV 2, SUM(c3) FROM one_pk GROUP BY 1 ORDER BY 1;",
-		[]sql.Row{
-			{int64(0), float64(10)},
-			{int64(1), float64(50)},
-		},
+			"SELECT i AS x FROM mytable ORDER BY i DESC",
+			[]sql.Row{{3}, {2}, {1}},
 	}
 	fmt.Sprintf("%v", test)
 

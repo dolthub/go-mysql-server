@@ -136,6 +136,7 @@ type column interface {
 	sql.Expression
 }
 
+// qualifyColumns assigns a table to any column expressions that don't have one already
 func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
@@ -325,7 +326,6 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.Finish()
 
-	a.Log("resolve columns, node of type: %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		if n.Resolved() {
 			return n, nil

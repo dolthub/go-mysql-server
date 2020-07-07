@@ -11,7 +11,6 @@ import (
 type usedColumns map[string]map[string]struct{}
 
 func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	a.Log("pruning columns, node of type %T", n)
 	if !n.Resolved() {
 		return n, nil
 	}

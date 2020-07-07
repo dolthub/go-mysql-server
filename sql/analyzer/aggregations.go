@@ -14,8 +14,6 @@ func reorderAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, nil
 	}
 
-	a.Log("reorder aggregations, node of type: %T", n)
-
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.GroupBy:

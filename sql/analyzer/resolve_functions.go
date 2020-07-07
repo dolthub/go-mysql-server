@@ -10,7 +10,6 @@ func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	span, _ := ctx.Span("resolve_functions")
 	defer span.Finish()
 
-	a.Log("resolve functions, node of type %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		if n.Resolved() {
 			return n, nil

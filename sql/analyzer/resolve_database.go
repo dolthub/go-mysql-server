@@ -9,8 +9,6 @@ func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	span, _ := ctx.Span("resolve_database")
 	defer span.Finish()
 
-	a.Log("resolve database, node of type: %T", n)
-
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		d, ok := n.(sql.Databaser)
 		if !ok {

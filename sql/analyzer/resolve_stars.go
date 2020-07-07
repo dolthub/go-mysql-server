@@ -17,7 +17,6 @@ func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.N
 		return nil, err
 	}
 
-	a.Log("resolving star, node of type: %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		if n.Resolved() {
 			return n, nil
