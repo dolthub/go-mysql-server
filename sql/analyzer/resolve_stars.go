@@ -40,12 +40,12 @@ func resolveStar(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.N
 				return n, nil
 			}
 
-			aggregate, err := expandStars(a, n.Aggregate, n.Child.Schema(), tableAliases)
+			aggregate, err := expandStars(a, n.Aggregates, n.Child.Schema(), tableAliases)
 			if err != nil {
 				return nil, err
 			}
 
-			return plan.NewGroupBy(aggregate, n.Grouping, n.Child), nil
+			return plan.NewGroupBy(aggregate, n.Groupings, n.Child), nil
 		default:
 			return n, nil
 		}

@@ -127,19 +127,19 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	case *plan.GroupBy:
 		// Allow the parser use the GroupBy node to eval the aggregation functions
 		// for sql statementes that don't make use of the GROUP BY expression.
-		if len(n.Grouping) == 0 {
+		if len(n.Groupings) == 0 {
 			return n, nil
 		}
 
 		var validAggs []string
-		for _, expr := range n.Grouping {
+		for _, expr := range n.Groupings {
 			validAggs = append(validAggs, expr.String())
 		}
 
 		// TODO: validate columns inside aggregations
 		// and allow any kind of expression that make use of the grouping
 		// columns.
-		for _, expr := range n.Aggregate {
+		for _, expr := range n.Aggregates {
 			if _, ok := expr.(sql.Aggregation); !ok {
 				if !isValidAgg(validAggs, expr) {
 					return nil, ErrValidationGroupBy.New(expr.String())

@@ -27,7 +27,7 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 			return n, nil
 		}
 
-		childNewCols := columnsDefinedInNode(sort.Child)
+		childAliases := aliasesDefinedInNode(sort.Child)
 		var schemaCols []string
 		for _, col := range sort.Child.Schema() {
 			schemaCols = append(schemaCols, strings.ToLower(col.Name))
@@ -40,7 +40,7 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 
 			for _, n := range ns {
 				name := strings.ToLower(n.Name())
-				if stringContains(childNewCols, name) {
+				if stringContains(childAliases, name) {
 					colsFromChild = append(colsFromChild, n.Name())
 				} else if !stringContains(schemaCols, name) {
 					missingCols = append(missingCols, n.Name())
@@ -56,7 +56,7 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 
 		// If there are no columns required by the order by available, then move the order by
 		// below its child.
-		if len(colsFromChild) == 0 && len(missingCols) > 0 {
+		if len(colsFromChild) == 0 {
 			a.Log("pushing down sort, missing columns: %s", strings.Join(missingCols, ", "))
 			return pushSortDown(sort)
 		}
@@ -65,20 +65,21 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 
 		// If there are some columns required by the order by on the child but some are missing
 		// we have to do some more complex logic and split the projection in two.
-		return fixSortDependencies(sort, missingCols)
+		return reorderSort(sort, missingCols)
 	})
 }
 
-// fixSortDependencies replaces the sort node by a node with the child projection
-// followed by the sort, an intermediate projection or group by with all the missing
-// columns required for the sort and then the child of the child projection or group by.
-func fixSortDependencies(sort *plan.Sort, missingCols []string) (sql.Node, error) {
+// reorderSort replaces the sort node by adding necessary missing columns to the child node and then reordering the
+// sort with its child:
+// sort(project(a)) becomes project(sort(project(a)))
+// sort(groupBy(a)) becomes project(sort(groupby(a)))
+func reorderSort(sort *plan.Sort, missingCols []string) (sql.Node, error) {
 	var expressions []sql.Expression
 	switch child := sort.Child.(type) {
 	case *plan.Project:
 		expressions = child.Projections
 	case *plan.GroupBy:
-		expressions = child.Aggregate
+		expressions = child.Aggregates
 	default:
 		return nil, errSortPushdown.New(child)
 	}
@@ -119,7 +120,7 @@ func fixSortDependencies(sort *plan.Sort, missingCols []string) (sql.Node, error
 			expressions,
 			plan.NewSort(
 				sort.SortFields,
-				plan.NewGroupBy(newExpressions, child.Grouping, child.Child),
+				plan.NewGroupBy(newExpressions, child.Groupings, child.Child),
 			),
 		), nil
 	default:
@@ -127,15 +128,14 @@ func fixSortDependencies(sort *plan.Sort, missingCols []string) (sql.Node, error
 	}
 }
 
-// columnsDefinedInNode returns the columns that were defined in this node,
-// which, by definition, can only be plan.Project or plan.GroupBy.
-func columnsDefinedInNode(n sql.Node) []string {
+// aliasesDefinedInNode returns the expression aliases that are defined in the Project or GroupBy node given
+func aliasesDefinedInNode(n sql.Node) []string {
 	var exprs []sql.Expression
 	switch n := n.(type) {
 	case *plan.Project:
 		exprs = n.Projections
 	case *plan.GroupBy:
-		exprs = n.Aggregate
+		exprs = n.Aggregates
 	}
 
 	var cols []string
@@ -160,8 +160,8 @@ func pushSortDown(sort *plan.Sort) (sql.Node, error) {
 		), nil
 	case *plan.GroupBy:
 		return plan.NewGroupBy(
-			child.Aggregate,
-			child.Grouping,
+			child.Aggregates,
+			child.Groupings,
 			plan.NewSort(sort.SortFields, child.Child),
 		), nil
 	case *plan.ResolvedTable:

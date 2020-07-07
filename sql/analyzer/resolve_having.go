@@ -176,7 +176,7 @@ func addColumnsToGroupBy(node sql.Node, columns []sql.Expression) (sql.Node, err
 		}
 		return node.WithChildren(child)
 	case *plan.GroupBy:
-		return plan.NewGroupBy(append(node.Aggregate, columns...), node.Grouping, node.Child), nil
+		return plan.NewGroupBy(append(node.Aggregates, columns...), node.Groupings, node.Child), nil
 	default:
 		return nil, errHavingNeedsGroupBy.New()
 	}
@@ -300,7 +300,7 @@ func replaceAggregations(having *plan.Having) (*plan.Having, bool, error) {
 			return e, nil
 		}
 
-		for i, expr := range groupBy.Aggregate {
+		for i, expr := range groupBy.Aggregates {
 			if aggregationEquals(agg, expr) {
 				token := pushUpToken
 				pushUpToken--

@@ -56,6 +56,13 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		"SELECT pk DIV 2, SUM(c3) FROM one_pk GROUP BY 1 ORDER BY 1",
+		[]sql.Row{
+			{int64(0), float64(10)},
+			{int64(1), float64(50)},
+		},
+	},
+	{
 		"SELECT i FROM mytable;",
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},

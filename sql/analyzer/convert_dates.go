@@ -37,7 +37,7 @@ func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 				expressions[e.String()] = true
 			}
 		case *plan.GroupBy:
-			for _, e := range exp.Aggregate {
+			for _, e := range exp.Aggregates {
 				expressions[e.String()] = true
 			}
 		}
@@ -46,8 +46,8 @@ func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		var err error
 		switch exp := exp.(type) {
 		case *plan.GroupBy:
-			var aggregate = make([]sql.Expression, len(exp.Aggregate))
-			for i, a := range exp.Aggregate {
+			var aggregate = make([]sql.Expression, len(exp.Aggregates))
+			for i, a := range exp.Aggregates {
 				agg, err := expression.TransformUp(a, func(e sql.Expression) (sql.Expression, error) {
 					return addDateConvert(e, exp, replacements, nodeReplacements, expressions, true)
 				})
@@ -62,8 +62,8 @@ func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 				}
 			}
 
-			var grouping = make([]sql.Expression, len(exp.Grouping))
-			for i, g := range exp.Grouping {
+			var grouping = make([]sql.Expression, len(exp.Groupings))
+			for i, g := range exp.Groupings {
 				gr, err := expression.TransformUp(g, func(e sql.Expression) (sql.Expression, error) {
 					return addDateConvert(e, exp, replacements, nodeReplacements, expressions, false)
 				})

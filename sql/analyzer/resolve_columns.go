@@ -261,7 +261,7 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 		case *plan.Project:
 			indexExpressions(n.Projections)
 		case *plan.GroupBy:
-			indexExpressions(n.Aggregate)
+			indexExpressions(n.Aggregates)
 		default:
 			getColumnsInNodes(n.Children(), columns)
 		}
@@ -430,7 +430,7 @@ func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		g, ok := n.(*plan.GroupBy)
-		if n.Resolved() || !ok || len(g.Grouping) == 0 {
+		if n.Resolved() || !ok || len(g.Groupings) == 0 {
 			return n, nil
 		}
 
@@ -441,14 +441,14 @@ func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		// in the aggregate, aliases in that same aggregate cannot be used,
 		// so it refers to the column in the child node.
 		var groupingColumns = make(map[string]struct{})
-		for _, g := range g.Grouping {
+		for _, g := range g.Groupings {
 			for _, n := range findAllColumns(g) {
 				groupingColumns[strings.ToLower(n)] = struct{}{}
 			}
 		}
 
 		var aggregateColumns = make(map[string]struct{})
-		for _, agg := range g.Aggregate {
+		for _, agg := range g.Aggregates {
 			// This alias is going to be pushed down, so don't bother gathering
 			// its requirements.
 			if alias, ok := agg.(*expression.Alias); ok {
@@ -469,7 +469,7 @@ func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		var aliases = make(map[string]int)
 
 		var needsReorder bool
-		for _, a := range g.Aggregate {
+		for _, a := range g.Aggregates {
 			alias, ok := a.(*expression.Alias)
 			// Note that aliases of aggregations cannot be used in the grouping
 			// because the grouping is needed before computing the aggregation.
@@ -563,7 +563,7 @@ func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		}
 
 		return plan.NewGroupBy(
-			newAggregate, g.Grouping,
+			newAggregate, g.Groupings,
 			plan.NewProject(projection, g.Child),
 		), nil
 	})
