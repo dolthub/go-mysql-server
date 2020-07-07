@@ -11,8 +11,8 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func TestResolveStar(t *testing.T) {
-	f := getRule("resolve_star")
+func TestExpandStars(t *testing.T) {
+	f := getRule("expand_stars")
 
 	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "a", Type: sql.Int32, Source: "mytable"},

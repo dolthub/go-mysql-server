@@ -22,7 +22,7 @@ var DefaultRules = []Rule{
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
 	{"resolve_database", resolveDatabase},
-	{"resolve_star", resolveStar},
+	{"expand_stars", expandStars},
 	{"resolve_functions", resolveFunctions},
 	{"resolve_having", resolveHaving},
 	{"merge_union_schemas", mergeUnionSchemas},
