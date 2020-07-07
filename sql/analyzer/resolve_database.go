@@ -5,6 +5,8 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
+// resolveDatabase sets a database for nodes that implement sql.Databaser. Replaces sql.UnresolvedDatabase with the
+// actual sql.Database implementation from the catalog.
 func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("resolve_database")
 	defer span.Finish()
