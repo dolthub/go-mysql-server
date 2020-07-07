@@ -322,6 +322,8 @@ const (
 	globalPrefix  = sqlparser.GlobalStr + "."
 )
 
+// resolveColumns replaces UnresolvedColumn expressions with GetField expressions for the appropriate numbered field in
+// the expression's child node. Also handles replacing session variables (treated as columns) with their values.
 func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.Finish()
