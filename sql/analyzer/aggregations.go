@@ -17,13 +17,13 @@ func reorderAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.GroupBy:
-			if !hasHiddenAggregations(n.Aggregates...) {
+			if !hasHiddenAggregations(n.SelectedExprs...) {
 				return n, nil
 			}
 
 			a.Log("fixing aggregations of node of type: %T", n)
 
-			return fixAggregations(n.Aggregates, n.Groupings, n.Child)
+			return fixAggregations(n.SelectedExprs, n.GroupByExprs, n.Child)
 		default:
 			return n, nil
 		}

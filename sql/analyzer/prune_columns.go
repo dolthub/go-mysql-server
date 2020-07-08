@@ -122,8 +122,8 @@ func findUsedColumns(columns usedColumns, n sql.Node) {
 			addUsedProjectColumns(columns, n.Projections)
 			return true
 		case *plan.GroupBy:
-			addUsedProjectColumns(columns, n.Aggregates)
-			addUsedColumns(columns, n.Groupings)
+			addUsedProjectColumns(columns, n.SelectedExprs)
+			addUsedColumns(columns, n.GroupByExprs)
 			return true
 		case *plan.SubqueryAlias:
 			return false
@@ -268,7 +268,7 @@ func pruneProject(n *plan.Project, columns usedColumns) sql.Node {
 
 func pruneGroupBy(n *plan.GroupBy, columns usedColumns) sql.Node {
 	var remaining []sql.Expression
-	for _, e := range n.Aggregates {
+	for _, e := range n.SelectedExprs {
 		if !shouldPruneExpr(e, columns) {
 			remaining = append(remaining, e)
 		}
@@ -278,7 +278,7 @@ func pruneGroupBy(n *plan.GroupBy, columns usedColumns) sql.Node {
 		return n.Child
 	}
 
-	return plan.NewGroupBy(remaining, n.Groupings, n.Child)
+	return plan.NewGroupBy(remaining, n.GroupByExprs, n.Child)
 }
 
 func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {

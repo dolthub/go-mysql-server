@@ -262,7 +262,7 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 		case *plan.Project:
 			indexExpressions(n.Projections)
 		case *plan.GroupBy:
-			indexExpressions(n.Aggregates)
+			indexExpressions(n.SelectedExprs)
 		default:
 			getColumnsInNodes(n.Children(), columns)
 		}
@@ -431,7 +431,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		g, ok := n.(*plan.GroupBy)
-		if n.Resolved() || !ok || len(g.Groupings) == 0 {
+		if n.Resolved() || !ok || len(g.GroupByExprs) == 0 {
 			return n, nil
 		}
 
@@ -442,14 +442,14 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		// in the aggregate, aliases in that same aggregate cannot be used,
 		// so it refers to the column in the child node.
 		var groupingColumns = make(map[string]struct{})
-		for _, g := range g.Groupings {
+		for _, g := range g.GroupByExprs {
 			for _, n := range findAllColumns(g) {
 				groupingColumns[strings.ToLower(n)] = struct{}{}
 			}
 		}
 
 		var aggregateColumns = make(map[string]struct{})
-		for _, agg := range g.Aggregates {
+		for _, agg := range g.SelectedExprs {
 			// This alias is going to be pushed down, so don't bother gathering
 			// its requirements.
 			if alias, ok := agg.(*expression.Alias); ok {
@@ -470,7 +470,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		var aliases = make(map[string]int)
 
 		var needsReorder bool
-		for _, a := range g.Aggregates {
+		for _, a := range g.SelectedExprs {
 			alias, ok := a.(*expression.Alias)
 			// Note that aliases of aggregations cannot be used in the grouping
 			// because the grouping is needed before computing the aggregation.
@@ -561,7 +561,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		}
 
 		return plan.NewGroupBy(
-			newAggregate, g.Groupings,
+			newAggregate, g.GroupByExprs,
 			plan.NewProject(projection, g.Child),
 		), nil
 	})

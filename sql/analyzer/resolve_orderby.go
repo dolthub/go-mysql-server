@@ -78,7 +78,7 @@ func reorderSort(sort *plan.Sort, missingCols []string) (sql.Node, error) {
 	case *plan.Project:
 		expressions = child.Projections
 	case *plan.GroupBy:
-		expressions = child.Aggregates
+		expressions = child.SelectedExprs
 	default:
 		return nil, errSortPushdown.New(child)
 	}
@@ -119,7 +119,7 @@ func reorderSort(sort *plan.Sort, missingCols []string) (sql.Node, error) {
 			expressions,
 			plan.NewSort(
 				sort.SortFields,
-				plan.NewGroupBy(newExpressions, child.Groupings, child.Child),
+				plan.NewGroupBy(newExpressions, child.GroupByExprs, child.Child),
 			),
 		), nil
 	default:
@@ -134,7 +134,7 @@ func aliasesDefinedInNode(n sql.Node) []string {
 	case *plan.Project:
 		exprs = n.Projections
 	case *plan.GroupBy:
-		exprs = n.Aggregates
+		exprs = n.SelectedExprs
 	}
 
 	var cols []string
@@ -159,8 +159,8 @@ func pushSortDown(sort *plan.Sort) (sql.Node, error) {
 		), nil
 	case *plan.GroupBy:
 		return plan.NewGroupBy(
-			child.Aggregates,
-			child.Groupings,
+			child.SelectedExprs,
+			child.GroupByExprs,
 			plan.NewSort(sort.SortFields, child.Child),
 		), nil
 	case *plan.ResolvedTable:

@@ -84,10 +84,7 @@ func projectOriginalAggregation(having *plan.Having, schema sql.Schema) *plan.Pr
 
 var errHavingChildMissingRef = errors.NewKind("cannot find column %s referenced in HAVING clause in either GROUP BY or its child")
 
-func pullMissingColumnsUp(
-	having *plan.Having,
-	missingCols []string,
-) (*plan.Having, error) {
+func pullMissingColumnsUp(having *plan.Having, missingCols []string) (*plan.Having, error) {
 	groupBy, err := findGroupBy(having)
 	if err != nil {
 		return nil, err
@@ -176,7 +173,7 @@ func addColumnsToGroupBy(node sql.Node, columns []sql.Expression) (sql.Node, err
 		}
 		return node.WithChildren(child)
 	case *plan.GroupBy:
-		return plan.NewGroupBy(append(node.Aggregates, columns...), node.Groupings, node.Child), nil
+		return plan.NewGroupBy(append(node.SelectedExprs, columns...), node.GroupByExprs, node.Child), nil
 	default:
 		return nil, errHavingNeedsGroupBy.New()
 	}
@@ -300,7 +297,7 @@ func replaceAggregations(having *plan.Having) (*plan.Having, bool, error) {
 			return e, nil
 		}
 
-		for i, expr := range groupBy.Aggregates {
+		for i, expr := range groupBy.SelectedExprs {
 			if aggregationEquals(agg, expr) {
 				token := pushUpToken
 				pushUpToken--
