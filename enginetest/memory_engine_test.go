@@ -44,7 +44,7 @@ var parallelVals = []int{
 	2,
 }
 
-// testQueries tests the given queries on an engine under a variety of circumstances:
+// TestQueries tests the given queries on an engine under a variety of circumstances:
 // 1) Partitioned tables / non partitioned tables
 // 2) Mergeable / unmergeable / native / no indexes
 // 3) Parallelism on / off
@@ -61,6 +61,15 @@ func TestQueries(t *testing.T) {
 			}
 		}
 	}
+}
+
+// TestQueriesSimple runs the canonical tests queries with against a single index enabled harness.
+func TestQueriesSimple(t *testing.T) {
+	enginetest.TestQueries(t, newMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
+func TestBrokenQueries(t *testing.T) {
+	enginetest.RunQueryTests(t, newMemoryHarness("simple", 1, testNumPartitions, true, nil), enginetest.BrokenQueries)
 }
 
 func TestVersionedQueries(t *testing.T) {

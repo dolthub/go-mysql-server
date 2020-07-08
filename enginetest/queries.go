@@ -63,6 +63,17 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		"SELECT pk1, SUM(c1) FROM two_pk GROUP BY pk1 ORDER BY pk1;",
+		[]sql.Row{
+			{0, 10.0},
+			{1, 50.0},
+		},
+	},
+	{
+		"SELECT pk1, SUM(c1) FROM two_pk WHERE pk1 = 0",
+		[]sql.Row{{0, 10.0}},
+	},
+	{
 		"SELECT i FROM mytable;",
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
@@ -71,8 +82,8 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{3}, {2}, {1}},
 	},
 	{
-		"SELECT i AS x FROM mytable ORDER BY x",
-		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		"SELECT i AS x FROM mytable ORDER BY x DESC",
+		[]sql.Row{{3}, {2}, {1}},
 	},
 	{
 		"SELECT i FROM mytable AS mt;",
@@ -2457,6 +2468,14 @@ var QueryTests = []QueryTest{
 	},
 }
 
+// Queries that are known to be broken in the engine.
+var BrokenQueries = []QueryTest{
+	{
+		"SELECT pk1, SUM(c1) FROM two_pk",
+		[]sql.Row{{0, 60.0}},
+	},
+}
+
 var VersionedQueries = []QueryTest{
 	{
 		"SELECT *  FROM myhistorytable AS OF '2019-01-01' AS foo ORDER BY i",
@@ -2893,6 +2912,15 @@ var errorQueries = []QueryErrorTest{
 		Query:       "SELECT pk, (SELECT max(pk) FROM one_pk WHERE b.pk <= one_pk.pk) FROM one_pk opk ORDER BY 1",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
+	{
+		Query:       "SELECT pk, (SELECT max(pk) FROM one_pk WHERE b.pk <= one_pk.pk) FROM one_pk opk ORDER BY 1",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	// TODO: Bug: the having column must appear in the select list
+	// {
+	// 	Query:       "SELECT pk1, sum(c1) FROM two_pk GROUP BY 1 having c1 > 10;",
+	// 	ExpectedErr: sql.ErrColumnNotFound,
+	// },
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to

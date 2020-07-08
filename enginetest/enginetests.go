@@ -44,6 +44,18 @@ func TestQueries(t *testing.T, harness Harness) {
 	}
 }
 
+// Runs the query tests given after setting up the engine. Useful for testing out a smaller subset of queries during
+// debugging.
+func RunQueryTests(t *testing.T, harness Harness, queries []QueryTest) {
+	engine := NewEngine(t, harness)
+	createIndexes(t, harness, engine)
+	createForeignKeys(t, harness, engine)
+
+	for _, tt := range queries {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected)
+	}
+}
+
 // To test the information schema database, we only include a subset of the tables defined in the test data when
 // creating tables. This lets us avoid having to change the information_schema tests every time we add a table to the
 // test suites.
