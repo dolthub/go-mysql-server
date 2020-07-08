@@ -69,7 +69,7 @@ func TestQueriesSimple(t *testing.T) {
 }
 
 func TestBrokenQueries(t *testing.T) {
-	enginetest.RunQueryTests(t, newMemoryHarness("simple", 1, testNumPartitions, true, nil), enginetest.BrokenQueries)
+	enginetest.RunQueryTests(t, newSkippingMemoryHarness(), enginetest.BrokenQueries)
 }
 
 func TestVersionedQueries(t *testing.T) {
@@ -89,6 +89,7 @@ func TestVersionedQueries(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
+	t.Skip()
 	test := enginetest.QueryTest{
 			"SELECT i AS x FROM mytable ORDER BY i DESC",
 			[]sql.Row{{3}, {2}, {1}},

@@ -53,11 +53,26 @@ func newDefaultMemoryHarness() *memoryHarness {
 	return newMemoryHarness("default", 1, testNumPartitions, false, nil)
 }
 
+func newSkippingMemoryHarness() *skippingMemoryHarness {
+	return &skippingMemoryHarness{
+		memoryHarness: *newDefaultMemoryHarness(),
+	}
+}
+
 var _ enginetest.Harness = (*memoryHarness)(nil)
 var _ enginetest.IndexDriverHarness = (*memoryHarness)(nil)
 var _ enginetest.IndexHarness = (*memoryHarness)(nil)
 var _ enginetest.VersionedDBHarness = (*memoryHarness)(nil)
 var _ enginetest.ForeignKeyHarness = (*memoryHarness)(nil)
+var _ enginetest.SkippingHarness = (*skippingMemoryHarness)(nil)
+
+type skippingMemoryHarness struct {
+	memoryHarness
+}
+
+func (s skippingMemoryHarness) SkipQueryTest(query string) bool {
+	return true
+}
 
 func (m *memoryHarness) SupportsNativeIndexCreation() bool {
 	return m.nativeIndexSupport
