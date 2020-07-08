@@ -149,7 +149,7 @@ func TestResolveHaving(t *testing.T) {
 						[]sql.Expression{expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false)},
 						plan.NewResolvedTable(memory.NewTable("t", sql.Schema{
 							{Type: sql.Int64, Name: "i", Source: "t"},
-							{Type: sql.Int64, Name: "i", Source: "foo"},
+							{Type: sql.Int64, Name: "foo", Source: "t"},
 						})),
 					),
 				),
@@ -176,7 +176,7 @@ func TestResolveHaving(t *testing.T) {
 							[]sql.Expression{expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false)},
 							plan.NewResolvedTable(memory.NewTable("t", sql.Schema{
 								{Type: sql.Int64, Name: "i", Source: "t"},
-								{Type: sql.Int64, Name: "i", Source: "foo"},
+								{Type: sql.Int64, Name: "foo", Source: "t"},
 							})),
 						),
 					),

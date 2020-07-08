@@ -38,6 +38,8 @@ func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (
 		// If any columns required by the having aren't available, pull them up.
 		if len(missingCols) > 0 {
 			var err error
+			// TODO: this should be an error for most queries. having expressions must appear in the group-by clause (even
+			//  in non-strict mode)
 			having, err = pullMissingColumnsUp(having, missingCols)
 			if err != nil {
 				return nil, err
