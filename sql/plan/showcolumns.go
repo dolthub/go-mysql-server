@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )
@@ -90,10 +91,11 @@ func (s *ShowColumns) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 			defaultVal = fmt.Sprint(col.Default)
 		}
 
+		// TODO: rather than lower-casing here, we should lower-case the String() method of types
 		if s.Full {
 			row = sql.Row{
 				col.Name,
-				col.Type.String(),
+				strings.ToLower(col.Type.String()),
 				collation,
 				null,
 				key, // Key
@@ -105,7 +107,7 @@ func (s *ShowColumns) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		} else {
 			row = sql.Row{
 				col.Name,
-				col.Type.String(),
+				strings.ToLower(col.Type.String()),
 				null,
 				key,
 				defaultVal,

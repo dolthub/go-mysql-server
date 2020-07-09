@@ -147,8 +147,9 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 	var primaryKeyCols []string
 
 	// Statement creation parts for each column
+	// TODO: rather than lower-casing here, we should do it in the String() method of types
 	for i, col := range schema {
-		stmt := fmt.Sprintf("  `%s` %s", col.Name, col.Type.String())
+		stmt := fmt.Sprintf("  `%s` %s", col.Name, strings.ToLower(col.Type.String()))
 
 		if !col.Nullable {
 			stmt = fmt.Sprintf("%s NOT NULL", stmt)

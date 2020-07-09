@@ -1259,13 +1259,13 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{
 			"two_pk",
 			"CREATE TABLE `two_pk` (\n" +
-				"  `pk1` TINYINT NOT NULL,\n" +
-				"  `pk2` TINYINT NOT NULL,\n" +
-				"  `c1` TINYINT NOT NULL,\n" +
-				"  `c2` TINYINT NOT NULL,\n" +
-				"  `c3` TINYINT NOT NULL,\n" +
-				"  `c4` TINYINT NOT NULL,\n" +
-				"  `c5` TINYINT NOT NULL,\n" +
+				"  `pk1` tinyint NOT NULL,\n" +
+				"  `pk2` tinyint NOT NULL,\n" +
+				"  `c1` tinyint NOT NULL,\n" +
+				"  `c2` tinyint NOT NULL,\n" +
+				"  `c3` tinyint NOT NULL,\n" +
+				"  `c4` tinyint NOT NULL,\n" +
+				"  `c5` tinyint NOT NULL,\n" +
 				"  PRIMARY KEY (`pk1`,`pk2`)\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 		}},
@@ -2479,41 +2479,41 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		`SHOW COLUMNS FROM mytable`,
 		[]sql.Row{
-			{"i", "BIGINT", "NO", "PRI", "", ""},
-			{"s", "VARCHAR(20)", "NO", "UNI", "", ""},
+			{"i", "bigint", "NO", "PRI", "", ""},
+			{"s", "varchar(20)", "NO", "UNI", "", ""},
 		},
 	},
 	{
 		`DESCRIBE mytable`,
 		[]sql.Row{
-			{"i", "BIGINT", "NO", "PRI", "", ""},
-			{"s", "VARCHAR(20)", "NO", "UNI", "", ""},
+			{"i", "bigint", "NO", "PRI", "", ""},
+			{"s", "varchar(20)", "NO", "UNI", "", ""},
 		},
 	},
 	{
 		`DESC mytable`,
 		[]sql.Row{
-			{"i", "BIGINT", "NO", "PRI", "", ""},
-			{"s", "VARCHAR(20)", "NO", "UNI", "", ""},
+			{"i", "bigint", "NO", "PRI", "", ""},
+			{"s", "varchar(20)", "NO", "UNI", "", ""},
 		},
 	},
 	{
 		`SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
 		[]sql.Row{
-			{"i", "BIGINT", "NO", "PRI", "", ""},
+			{"i", "bigint", "NO", "PRI", "", ""},
 		},
 	},
 	{
 		`SHOW COLUMNS FROM mytable LIKE 'i'`,
 		[]sql.Row{
-			{"i", "BIGINT", "NO", "PRI", "", ""},
+			{"i", "bigint", "NO", "PRI", "", ""},
 		},
 	},
 	{
 		`SHOW FULL COLUMNS FROM mytable`,
 		[]sql.Row{
-			{"i", "BIGINT", nil, "NO", "PRI", "", "", "", ""},
-			{"s", "VARCHAR(20)", "utf8_bin", "NO", "UNI", "", "", "", "column s"},
+			{"i", "bigint", nil, "NO", "PRI", "", "", "", ""},
+			{"s", "varchar(20)", "utf8_bin", "NO", "UNI", "", "", "", "column s"},
 		},
 	},
 	{
@@ -2663,8 +2663,8 @@ var InfoSchemaQueries = []QueryTest{
 		`SHOW CREATE TABLE mytaBLE`,
 		[]sql.Row{
 			{"mytable", "CREATE TABLE `mytable` (\n" +
-				"  `i` BIGINT NOT NULL,\n" +
-				"  `s` VARCHAR(20) NOT NULL COMMENT 'column s',\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` varchar(20) NOT NULL COMMENT 'column s',\n" +
 				"  PRIMARY KEY (`i`),\n" +
 				"  KEY `mytable_i_s` (`i`,`s`),\n" +
 				"  UNIQUE KEY `mytable_s` (`s`)\n" +
@@ -2675,9 +2675,9 @@ var InfoSchemaQueries = []QueryTest{
 		`SHOW CREATE TABLE fk_TBL`,
 		[]sql.Row{
 			{"fk_tbl", "CREATE TABLE `fk_tbl` (\n" +
-				"  `pk` BIGINT NOT NULL,\n" +
-				"  `a` BIGINT,\n" +
-				"  `b` VARCHAR(20),\n" +
+				"  `pk` bigint NOT NULL,\n" +
+				"  `a` bigint,\n" +
+				"  `b` varchar(20),\n" +
 				"  PRIMARY KEY (`pk`),\n" +
 				"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},

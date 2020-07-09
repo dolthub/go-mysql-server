@@ -42,11 +42,11 @@ func TestShowCreateTable(t *testing.T) {
 
 	expected := sql.NewRow(
 		table.Name(),
-		"CREATE TABLE `test-table` (\n  `baz` TEXT NOT NULL,\n"+
-			"  `zab` INT DEFAULT 0,\n"+
-			"  `bza` BIGINT UNSIGNED DEFAULT 0 COMMENT 'hello',\n"+
-			"  `foo` VARCHAR(123),\n"+
-			"  `pok` CHAR(123),\n"+
+		"CREATE TABLE `test-table` (\n  `baz` text NOT NULL,\n"+
+			"  `zab` int DEFAULT 0,\n"+
+			"  `bza` bigint unsigned DEFAULT 0 COMMENT 'hello',\n"+
+			"  `foo` varchar(123),\n"+
+			"  `pok` char(123),\n"+
 			"  PRIMARY KEY (`baz`,`zab`)\n"+
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 	)
@@ -119,11 +119,11 @@ func TestShowCreateTableWithIndexAndForeignKeys(t *testing.T) {
 
 	expected := sql.NewRow(
 		table.Name(),
-		"CREATE TABLE `test-table` (\n  `baz` TEXT NOT NULL,\n"+
-			"  `zab` INT DEFAULT 0,\n"+
-			"  `bza` BIGINT UNSIGNED DEFAULT 0 COMMENT 'hello',\n"+
-			"  `foo` VARCHAR(123),\n"+
-			"  `pok` CHAR(123),\n"+
+		"CREATE TABLE `test-table` (\n  `baz` text NOT NULL,\n"+
+			"  `zab` int DEFAULT 0,\n"+
+			"  `bza` bigint unsigned DEFAULT 0 COMMENT 'hello',\n"+
+			"  `foo` varchar(123),\n"+
+			"  `pok` char(123),\n"+
 			"  PRIMARY KEY (`baz`,`zab`),\n"+
 			"  UNIQUE KEY `qux` (`foo`),\n"+
 			"  KEY `zug` (`pok`,`foo`),\n"+

@@ -26,9 +26,9 @@ func TestShowColumns(t *testing.T) {
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{"a", "TEXT", "NO", "PRI", "", ""},
-		{"b", "BIGINT", "YES", "", "", ""},
-		{"c", "BIGINT", "NO", "", "1", ""},
+		{"a", "text", "NO", "PRI", "", ""},
+		{"b", "bigint", "YES", "", "", ""},
+		{"c", "bigint", "NO", "", "1", ""},
 	}
 
 	require.Equal(expected, rows)
@@ -78,11 +78,11 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{"a", "TEXT", "NO", "PRI", "", ""},
-		{"b", "BIGINT", "YES", "UNI", "", ""},
-		{"c", "BIGINT", "NO", "", "1", ""},
-		{"d", "BIGINT", "YES", "MUL", "", ""},
-		{"e", "BIGINT", "NO", "", "1", ""},
+		{"a", "text", "NO", "PRI", "", ""},
+		{"b", "bigint", "YES", "UNI", "", ""},
+		{"c", "bigint", "NO", "", "1", ""},
+		{"d", "bigint", "YES", "MUL", "", ""},
+		{"e", "bigint", "NO", "", "1", ""},
 	}
 
 	require.Equal(expected, rows)
@@ -136,9 +136,9 @@ func TestShowColumnsFull(t *testing.T) {
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{"a", "TEXT", "utf8_bin", "NO", "PRI", "", "", "", ""},
-		{"b", "BIGINT", nil, "YES", "", "", "", "", ""},
-		{"c", "BIGINT", nil, "NO", "", "1", "", "", "a comment"},
+		{"a", "text", "utf8_bin", "NO", "PRI", "", "", "", ""},
+		{"b", "bigint", nil, "YES", "", "", "", "", ""},
+		{"c", "bigint", nil, "NO", "", "1", "", "", "a comment"},
 	}
 
 	require.Equal(expected, rows)
