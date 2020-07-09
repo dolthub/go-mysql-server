@@ -1206,6 +1206,13 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
+	`SELECT 1 + 1 as foo;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewAlias("foo",
+				expression.NewPlus(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
+		},
+		plan.NewUnresolvedTable("dual", ""),
+	),
 	`SELECT 1 * (2 + 1);`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewMult(expression.NewLiteral(int8(1), sql.Int8),
