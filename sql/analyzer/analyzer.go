@@ -2,7 +2,9 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/pmezard/go-difflib/difflib"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -258,6 +260,30 @@ func (a *Analyzer) LogNode(n sql.Node) {
 			fmt.Printf("%s:\n%s", ctx, n.String())
 		} else {
 			fmt.Printf("%s", n.String())
+		}
+	}
+}
+
+// LogDiff logs the diff between the query plans after a transformation rules has been applied.
+// Only can print a diff when the string representations of the nodes differ, which isn't always the case.
+func (a *Analyzer) LogDiff(prev, next sql.Node) {
+	if a.Debug && a.Verbose {
+		if !reflect.DeepEqual(next, prev) {
+			diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+				A:        difflib.SplitLines(prev.String()),
+				B:        difflib.SplitLines(next.String()),
+				FromFile: "Prev",
+				FromDate: "",
+				ToFile:   "Next",
+				ToDate:   "",
+				Context:  1,
+			})
+			if err != nil {
+				panic(err)
+			}
+			if len(diff) > 0 {
+				a.Log(diff)
+			}
 		}
 	}
 }

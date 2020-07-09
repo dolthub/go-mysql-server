@@ -174,6 +174,26 @@ var QueryTests = []QueryTest{
 			{"third row", int64(3)}},
 	},
 	{
+		"SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 2 ORDER BY foo, i;",
+		[]sql.Row{
+			{1, 1, 2},
+			{2, 1, 2},
+			{3, 1, 2}},
+	},
+	{
+		"SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 1 ORDER BY foo, i;",
+		[]sql.Row{},
+	},
+	{
+		"SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = 2) AS a ORDER BY foo, i",
+		[]sql.Row{
+			{2, 1, 2}},
+	},
+	{
+		"SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 1 ORDER BY foo, i;",
+		[]sql.Row{},
+	},
+	{
 		"SELECT timestamp FROM reservedWordsTable;",
 		[]sql.Row{{"1"}},
 	},

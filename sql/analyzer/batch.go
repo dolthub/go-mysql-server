@@ -66,20 +66,22 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 }
 
 func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	result := n
+	prev := n
 	for _, rule := range b.Rules {
 		var err error
 		a.Log("Evaluating rule %s", rule.Name)
 		a.PushDebugContext(rule.Name)
-		result, err = rule.Apply(ctx, a, result, scope)
-		a.LogNode(result)
+		next, err := rule.Apply(ctx, a, prev, scope)
+		a.LogDiff(prev, next)
+		prev = next
+		a.LogNode(prev)
 		a.PopDebugContext()
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return result, nil
+	return prev, nil
 }
 
 func nodesEqual(a, b sql.Node) bool {

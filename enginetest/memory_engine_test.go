@@ -16,9 +16,8 @@ package enginetest_test
 
 import (
 	"fmt"
-	"testing"
-
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"testing"
 
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 )
@@ -68,6 +67,32 @@ func TestQueriesSimple(t *testing.T) {
 	enginetest.TestQueries(t, newMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+// Convenience test for debugging a single query. Unskip and set to the desired query.
+func TestSingleQuery(t *testing.T) {
+	test := enginetest.QueryTest{
+		"SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 2 ORDER BY foo, i;",
+		[]sql.Row{
+			{1, 1, 2},
+			{2, 1, 2},
+			{3, 1, 2}},
+	}
+
+	// test := enginetest.QueryTest{
+	// 	"SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = 2) AS a ORDER BY foo, i",
+	// 			[]sql.Row{
+	// 				{2, 1, 2}},
+	// }
+	fmt.Sprintf("%v", test)
+
+	harness := newMemoryHarness("", 1, testNumPartitions, true, nil)
+	//enginetest.TestQueries(t, harness)
+	engine := enginetest.NewEngine(t, harness)
+	engine.Analyzer.Debug = true
+	engine.Analyzer.Verbose = true
+
+	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected)
+}
+
 func TestBrokenQueries(t *testing.T) {
 	enginetest.RunQueryTests(t, newSkippingMemoryHarness(), enginetest.BrokenQueries)
 }
@@ -85,24 +110,6 @@ func TestVersionedQueries(t *testing.T) {
 			}
 		}
 	}
-}
-
-// Convenience test for debugging a single query. Unskip and set to the desired query.
-func TestSingleQuery(t *testing.T) {
-	t.Skip()
-	test := enginetest.QueryTest{
-			"SELECT i AS x FROM mytable ORDER BY i DESC",
-			[]sql.Row{{3}, {2}, {1}},
-	}
-	fmt.Sprintf("%v", test)
-
-	harness := newMemoryHarness("", 1, testNumPartitions, true, nil)
-	//enginetest.TestQueries(t, harness)
-	engine := enginetest.NewEngine(t, harness)
-	engine.Analyzer.Debug = true
-	engine.Analyzer.Verbose = true
-
-	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected)
 }
 
 // Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that
