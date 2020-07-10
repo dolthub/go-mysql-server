@@ -2,15 +2,16 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/pmezard/go-difflib/difflib"
 	"os"
 	"reflect"
 	"strings"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pmezard/go-difflib/difflib"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"
@@ -193,22 +194,23 @@ func NewDefault(c *sql.Catalog) *Analyzer {
 	return NewBuilder(c).Build()
 }
 
-type simpleLogFormatter struct {}
+type simpleLogFormatter struct{}
+
 func (s simpleLogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	lvl := ""
 	switch entry.Level {
 	case logrus.PanicLevel:
 		lvl = "PANIC"
-		case logrus.FatalLevel:
-			lvl = "FATAL"
-		case logrus.ErrorLevel:
-			lvl = "ERROR"
-		case logrus.WarnLevel:
-			lvl = "WARN"
-		case logrus.InfoLevel:
-			lvl = "INFO"
-		case logrus.DebugLevel:
-			lvl = "DEBUG"
+	case logrus.FatalLevel:
+		lvl = "FATAL"
+	case logrus.ErrorLevel:
+		lvl = "ERROR"
+	case logrus.WarnLevel:
+		lvl = "WARN"
+	case logrus.InfoLevel:
+		lvl = "INFO"
+	case logrus.DebugLevel:
+		lvl = "DEBUG"
 	case logrus.TraceLevel:
 		lvl = "TRACE"
 	}

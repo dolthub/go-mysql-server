@@ -23,8 +23,8 @@ func TestFlattenGroupByAggregations(t *testing.T) {
 	rule := getRule("flatten_group_by_aggregations")
 
 	tests := []struct {
-		name string
-		node sql.Node
+		name     string
+		node     sql.Node
 		expected sql.Node
 	}{
 		{

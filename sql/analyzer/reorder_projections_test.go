@@ -15,20 +15,22 @@
 package analyzer
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestReorderProjection(t *testing.T) {
 	f := getRule("reorder_projection")
 
 	table := memory.NewTable("mytable", sql.Schema{
-		{ Name: "i", Source: "mytable", Type: sql.Int64 },
-		{ Name: "s", Source: "mytable", Type: sql.Text },
+		{Name: "i", Source: "mytable", Type: sql.Int64},
+		{Name: "s", Source: "mytable", Type: sql.Text},
 	})
 
 	testCases := []struct {
@@ -149,4 +151,3 @@ func TestReorderProjection(t *testing.T) {
 		})
 	}
 }
-

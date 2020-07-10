@@ -96,7 +96,6 @@ func hasHiddenAggregations(exprs ...sql.Expression) bool {
 	return false
 }
 
-
 // containsHiddenAggregation returns whether the given expressions has a hidden aggregation. That is, an aggregation
 // that is not at the root of the expression.
 func containsHiddenAggregation(e sql.Expression) bool {
