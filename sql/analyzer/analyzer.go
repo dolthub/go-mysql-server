@@ -8,8 +8,6 @@ import (
 	"strings"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
@@ -166,7 +164,7 @@ type Analyzer struct {
 	Catalog *sql.Catalog
 }
 
-// Scope of the analysis being performed.
+// Scope of the analysis being performed, used when analyzing subqueries to give such analysis access to outer scope.
 type Scope struct {
 	// Stack of nested node scopes, with innermost scope first
 	nodes []sql.Node
@@ -187,26 +185,6 @@ func (s *Scope) Nodes() []sql.Node {
 		return nil
 	}
 	return s.nodes
-}
-
-func (s *Scope) resolveUp(node sql.Node, fn func(n sql.Node) (sql.Node, error)) (sql.Node, error) {
-	var nodes []sql.Node
-	nodes = append(nodes, node)
-	if s != nil {
-		nodes = append(nodes, s.nodes...)
-	}
-
-	var firstErr error
-	for _, n := range nodes {
-		n2, err := plan.TransformUp(n, fn)
-		if err == nil && n2.Resolved() {
-			return n2, nil
-		} else if firstErr == nil {
-			firstErr = err
-		}
-	}
-
-	return nil, firstErr
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
