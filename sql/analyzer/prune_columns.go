@@ -10,6 +10,22 @@ import (
 
 type usedColumns map[string]map[string]struct{}
 
+func (uc usedColumns) add(table, col string) {
+	if _, ok := uc[table]; !ok {
+		uc[table] = make(map[string]struct{})
+	}
+	uc[table][col] = struct{}{}
+}
+
+func (uc usedColumns) has(table, col string) bool {
+	if _, ok := uc[table]; !ok {
+		return false
+	}
+	_, ok := uc[table][col]
+	return ok
+}
+
+// pruneColumns removes unneeded columns from Project and GroupBy nodes.
 func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if !n.Resolved() {
 		return n, nil
@@ -32,7 +48,7 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		return plan.NewDescribeQuery(describe.Format, pruned), nil
 	}
 
-	columns := findRequiredColumns(n)
+	columns := columnsUsedByNode(n)
 
 	findUsedColumns(columns, n)
 
@@ -49,16 +65,11 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 	return fixRemainingFieldsIndexes(n)
 }
 
-func findRequiredColumns(n sql.Node) usedColumns {
+func columnsUsedByNode(n sql.Node) usedColumns {
 	columns := make(usedColumns)
 
-	// All the columns required for the output of the query must be mark as
-	// used, otherwise the schema would change.
 	for _, col := range n.Schema() {
-		if _, ok := columns[col.Source]; !ok {
-			columns[col.Source] = make(map[string]struct{})
-		}
-		columns[col.Source][col.Name] = struct{}{}
+		columns.add(col.Source, col.Name)
 	}
 
 	return columns
@@ -89,11 +100,7 @@ func pruneSubqueryColumns(
 			return nil, fmt.Errorf("this is likely a bug: missing projected column %q on subquery %q", col, n.Name())
 		}
 
-		if _, ok := columns[table]; !ok {
-			columns[table] = make(map[string]struct{})
-		}
-
-		columns[table][col] = struct{}{}
+		columns.add(table, col)
 	}
 
 	findUsedColumns(columns, n.Child)
@@ -138,6 +145,33 @@ func findUsedColumns(columns usedColumns, n sql.Node) {
 	})
 }
 
+func addUsedProjectColumns(columns usedColumns, projection []sql.Expression) {
+	var candidates []sql.Expression
+	for _, e := range projection {
+		// Only check for expressions that are not directly a GetField. This
+		// is because in a projection we only care about those that were used
+		// to compute new columns, such as aliases and so on. The fields that
+		// are just passed up in the tree will already be in some other part
+		// if they are really used.
+		if _, ok := e.(*expression.GetField); !ok {
+			candidates = append(candidates, e)
+		}
+	}
+
+	addUsedColumns(columns, candidates)
+}
+
+func addUsedColumns(columns usedColumns, exprs []sql.Expression) {
+	for _, e := range exprs {
+		sql.Inspect(e, func(e sql.Expression) bool {
+			if gf, ok := e.(*expression.GetField); ok {
+				columns.add(gf.Table(), gf.Name())
+			}
+			return true
+		})
+	}
+}
+
 func pruneSubqueries(
 	ctx *sql.Context,
 	a *Analyzer,
@@ -165,90 +199,6 @@ func pruneUnusedColumns(n sql.Node, columns usedColumns) (sql.Node, error) {
 			return n, nil
 		}
 	})
-}
-
-func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		switch n := n.(type) {
-		case *plan.SubqueryAlias:
-			child, err := fixRemainingFieldsIndexes(n.Child)
-			if err != nil {
-				return nil, err
-			}
-
-			return n.WithChildren(child)
-		default:
-			if _, ok := n.(sql.Expressioner); !ok {
-				return n, nil
-			}
-
-			var schema sql.Schema
-			for _, c := range n.Children() {
-				schema = append(schema, c.Schema()...)
-			}
-
-			if len(schema) == 0 {
-				return n, nil
-			}
-
-			indexes := make(map[tableCol]int)
-			for i, col := range schema {
-				indexes[tableCol{col.Source, col.Name}] = i
-			}
-
-			return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
-				gf, ok := e.(*expression.GetField)
-				if !ok {
-					return e, nil
-				}
-
-				idx, ok := indexes[tableCol{gf.Table(), gf.Name()}]
-				if !ok {
-					return nil, ErrColumnTableNotFound.New(gf.Table(), gf.Name())
-				}
-
-				if idx == gf.Index() {
-					return gf, nil
-				}
-
-				ngf := *gf
-				return ngf.WithIndex(idx), nil
-			})
-		}
-	})
-}
-
-func addUsedProjectColumns(
-	columns usedColumns,
-	projection []sql.Expression,
-) {
-	var candidates []sql.Expression
-	for _, e := range projection {
-		// Only check for expressions that are not directly a GetField. This
-		// is because in a projection we only care about those that were used
-		// to compute new columns, such as aliases and so on. The fields that
-		// are just passed up in the tree will already be in some other part
-		// if they are really used.
-		if _, ok := e.(*expression.GetField); !ok {
-			candidates = append(candidates, e)
-		}
-	}
-
-	addUsedColumns(columns, candidates)
-}
-
-func addUsedColumns(columns usedColumns, exprs []sql.Expression) {
-	for _, e := range exprs {
-		sql.Inspect(e, func(e sql.Expression) bool {
-			if gf, ok := e.(*expression.GetField); ok {
-				if _, ok := columns[gf.Table()]; !ok {
-					columns[gf.Table()] = make(map[string]struct{})
-				}
-				columns[gf.Table()][gf.Name()] = struct{}{}
-			}
-			return true
-		})
-	}
 }
 
 func pruneProject(n *plan.Project, columns usedColumns) sql.Node {
@@ -291,11 +241,51 @@ func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
 		return false
 	}
 
-	if c, ok := cols[gf.Table()]; ok {
-		if _, ok := c[gf.Name()]; ok {
-			return false
-		}
-	}
+	return !cols.has(gf.Table(), gf.Name())
+}
 
-	return true
+func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.SubqueryAlias:
+			child, err := fixRemainingFieldsIndexes(n.Child)
+			if err != nil {
+				return nil, err
+			}
+
+			return n.WithChildren(child)
+		default:
+			if _, ok := n.(sql.Expressioner); !ok {
+				return n, nil
+			}
+
+			var schema sql.Schema
+			for _, c := range n.Children() {
+				schema = append(schema, c.Schema()...)
+			}
+
+			if len(schema) == 0 {
+				return n, nil
+			}
+
+			indexes := make(map[tableCol]int)
+			for i, col := range schema {
+				indexes[tableCol{col.Source, col.Name}] = i
+			}
+
+			return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
+				gf, ok := e.(*expression.GetField)
+				if !ok {
+					return e, nil
+				}
+
+				idx, ok := indexes[tableCol{gf.Table(), gf.Name()}]
+				if !ok {
+					return nil, ErrColumnTableNotFound.New(gf.Table(), gf.Name())
+				}
+
+				return gf.WithIndex(idx), nil
+			})
+		}
+	})
 }
