@@ -42,7 +42,7 @@ var OnceAfterDefault = []Rule{
 	{"assign_info_schema", assignInfoSchema},
 	{"prune_columns", pruneColumns},
 	{"convert_dates", convertDates},
-	{"pushdown", pushdown},
+	{"pushdown_filters", pushdownFilters},
 	{"optimize_joins", optimizeJoins},
 	{"erase_projection", eraseProjection},
 }
