@@ -50,10 +50,14 @@ var parallelVals = []int{
 // 3) Parallelism on / off
 func TestQueries(t *testing.T) {
 	for _, numPartitions := range numPartitionsVals {
-		for _, indexInit := range indexBehaviors {
+		for _, indexBehavior := range indexBehaviors {
 			for _, parallelism := range parallelVals {
-				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexInit.name, parallelism)
-				harness := newMemoryHarness(testName, parallelism, numPartitions, indexInit.nativeIndexes, indexInit.driverInitializer)
+				if parallelism == 1 && numPartitions == testNumPartitions && indexBehavior.name == "nativeIndexes" {
+					// This case is covered by TestQueriesSimple
+					continue
+				}
+				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexBehavior.name, parallelism)
+				harness := newMemoryHarness(testName, parallelism, numPartitions, indexBehavior.nativeIndexes, indexBehavior.driverInitializer)
 
 				t.Run(testName, func(t *testing.T) {
 					enginetest.TestQueries(t, harness)
@@ -70,6 +74,8 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
+	t.Skip()
+
 	test := enginetest.QueryTest{
 		"SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 2 ORDER BY foo, i;",
 		[]sql.Row{
@@ -78,15 +84,9 @@ func TestSingleQuery(t *testing.T) {
 			{3, 1, 2}},
 	}
 
-	// test := enginetest.QueryTest{
-	// 	"SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = 2) AS a ORDER BY foo, i",
-	// 			[]sql.Row{
-	// 				{2, 1, 2}},
-	// }
 	fmt.Sprintf("%v", test)
 
 	harness := newMemoryHarness("", 1, testNumPartitions, true, nil)
-	//enginetest.TestQueries(t, harness)
 	engine := enginetest.NewEngine(t, harness)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
