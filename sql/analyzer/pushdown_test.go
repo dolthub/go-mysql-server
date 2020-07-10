@@ -14,7 +14,7 @@ import (
 
 func TestPushdownProjectionAndFilters(t *testing.T) {
 	require := require.New(t)
-	f := getRule("pushdown")
+	f := getRule("pushdown_filters")
 
 	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},

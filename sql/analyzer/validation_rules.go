@@ -126,7 +126,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	switch n := n.(type) {
 	case *plan.GroupBy:
 		// Allow the parser use the GroupBy node to eval the aggregation functions
-		// for sql statementes that don't make use of the GROUP BY expression.
+		// for sql statements that don't make use of the GROUP BY expression.
 		if len(n.GroupByExprs) == 0 {
 			return n, nil
 		}
