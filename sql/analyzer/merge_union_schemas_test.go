@@ -87,9 +87,8 @@ func TestMergeUnionSchemas(t *testing.T) {
 			plan.NewUnion(
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewAlias(
-							expression.NewConvert(
-								expression.NewGetField(0, sql.Int64, "1", false), "char"), "1"),
+						expression.NewAlias("1", expression.NewConvert(
+							expression.NewGetField(0, sql.Int64, "1", false), "char")),
 					},
 					plan.NewProject(
 						[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
@@ -98,9 +97,8 @@ func TestMergeUnionSchemas(t *testing.T) {
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewAlias(
-							expression.NewConvert(
-								expression.NewGetField(0, sql.Int32, "3", false), "char"), "3"),
+						expression.NewAlias("3", expression.NewConvert(
+							expression.NewGetField(0, sql.Int32, "3", false), "char")),
 					},
 					plan.NewProject(
 						[]sql.Expression{expression.NewLiteral(int32(3), sql.Int32)},
@@ -114,7 +112,7 @@ func TestMergeUnionSchemas(t *testing.T) {
 	for _, c := range testCases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			out, err := mergeUnionSchemas(sql.NewEmptyContext(), nil, c.in)
+			out, err := mergeUnionSchemas(sql.NewEmptyContext(), nil, c.in, nil)
 			if c.err == nil {
 				require.NoError(err)
 				require.NotNil(out)

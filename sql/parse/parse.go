@@ -1637,7 +1637,7 @@ func selectExprToExpression(ctx *sql.Context, se sqlparser.SelectExpr) (sql.Expr
 			return expr, nil
 		}
 
-		return expression.NewAlias(expr, e.As.String()), nil
+		return expression.NewAlias(e.As.String(), expr), nil
 	}
 }
 

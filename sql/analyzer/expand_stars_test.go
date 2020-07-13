@@ -11,8 +11,8 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func TestResolveStar(t *testing.T) {
-	f := getRule("resolve_star")
+func TestExpandStars(t *testing.T) {
+	f := getRule("expand_stars")
 
 	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "a", Type: sql.Int32, Source: "mytable"},
@@ -178,7 +178,7 @@ func TestResolveStar(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := f.Apply(sql.NewEmptyContext(), nil, tt.node)
+			result, err := f.Apply(sql.NewEmptyContext(), nil, tt.node, nil)
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, result)
 		})

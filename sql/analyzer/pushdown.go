@@ -6,8 +6,12 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	span, ctx := ctx.Span("pushdown")
+// pushdownFilters attempts to push conditions in filters down to individual tables. Tables that implement
+// sql.FilteredTable will get such conditions applied to them. For conditions that have an index, tables that implement
+// sql.IndexAddressableTable will get an appropriate index lookup applied. Additionally, projections are pushed down
+// onto tables that implement sql.ProjectedTable.
+func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	span, ctx := ctx.Span("pushdown_filters")
 	defer span.Finish()
 
 	if !n.Resolved() {
@@ -41,10 +45,7 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 
 	// First step is to find all col exprs and group them by the table they mention.
 	// Even if they appear multiple times, only the first one will be used.
-	a.Log("finding used columns in node")
 	fieldsByTable := getFieldsByTable(ctx, n)
-
-	a.Log("finding filters in node")
 	filters := getFiltersByTable(ctx, n)
 
 	indexes, err := getIndexesByTable(ctx, a, n)
@@ -58,7 +59,6 @@ func pushdown(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return nil, err
 	}
 
-	a.Log("transforming nodes with pushdown of filters, projections and indexes")
 	return transformPushdown(ctx, a, n, filters, indexes, fieldsByTable, exprAliases, tableAliases)
 }
 

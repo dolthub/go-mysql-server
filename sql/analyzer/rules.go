@@ -4,26 +4,6 @@ import (
 	errors "gopkg.in/src-d/go-errors.v1"
 )
 
-// DefaultRules to apply when analyzing nodes.
-var DefaultRules = []Rule{
-	{"resolve_natural_joins", resolveNaturalJoins},
-	{"resolve_orderby_literals", resolveOrderByLiterals},
-	{"resolve_orderby", resolveOrderBy},
-	{"resolve_grouping_columns", resolveGroupingColumns},
-	{"qualify_columns", qualifyColumns},
-	{"resolve_columns", resolveColumns},
-	{"resolve_database", resolveDatabase},
-	{"resolve_star", resolveStar},
-	{"resolve_functions", resolveFunctions},
-	{"resolve_having", resolveHaving},
-	{"merge_union_schemas", mergeUnionSchemas},
-	{"reorder_aggregations", reorderAggregations},
-	{"reorder_projection", reorderProjection},
-	{"move_join_conds_to_filter", moveJoinConditionsToFilter},
-	{"eval_filter", evalFilter},
-	{"optimize_distinct", optimizeDistinct},
-}
-
 // OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
@@ -31,6 +11,26 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_subqueries", resolveSubqueries},
 	{"resolve_tables", resolveTables},
 	{"check_aliases", checkAliases},
+}
+
+// DefaultRules to apply when analyzing nodes.
+var DefaultRules = []Rule{
+	{"resolve_natural_joins", resolveNaturalJoins},
+	{"resolve_orderby_literals", resolveOrderByLiterals},
+	{"pushdown_sort", pushdownSort},
+	{"pushdown_groupby_aliases", pushdownGroupByAliases},
+	{"qualify_columns", qualifyColumns},
+	{"resolve_columns", resolveColumns},
+	{"resolve_database", resolveDatabase},
+	{"expand_stars", expandStars},
+	{"resolve_functions", resolveFunctions},
+	{"resolve_having", resolveHaving},
+	{"merge_union_schemas", mergeUnionSchemas},
+	{"flatten_group_by_aggregations", flattenGroupByAggregations},
+	{"reorder_projection", reorderProjection},
+	{"move_join_conds_to_filter", moveJoinConditionsToFilter},
+	{"eval_filter", evalFilter},
+	{"optimize_distinct", optimizeDistinct},
 }
 
 // OnceAfterDefault contains the rules to be applied just once after the
@@ -42,7 +42,7 @@ var OnceAfterDefault = []Rule{
 	{"assign_info_schema", assignInfoSchema},
 	{"prune_columns", pruneColumns},
 	{"convert_dates", convertDates},
-	{"pushdown", pushdown},
+	{"pushdown_filters", pushdownFilters},
 	{"optimize_joins", optimizeJoins},
 	{"erase_projection", eraseProjection},
 }

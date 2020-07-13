@@ -16,8 +16,8 @@ func TestGroupBySchema(t *testing.T) {
 
 	child := memory.NewTable("test", nil)
 	agg := []sql.Expression{
-		expression.NewAlias(expression.NewLiteral("s", sql.LongText), "c1"),
-		expression.NewAlias(aggregation.NewCount(expression.NewStar()), "c2"),
+		expression.NewAlias("c1", expression.NewLiteral("s", sql.LongText)),
+		expression.NewAlias("c2", aggregation.NewCount(expression.NewStar())),
 	}
 	gb := NewGroupBy(agg, nil, NewResolvedTable(child))
 	require.Equal(sql.Schema{
@@ -31,7 +31,7 @@ func TestGroupByResolved(t *testing.T) {
 
 	child := memory.NewTable("test", nil)
 	agg := []sql.Expression{
-		expression.NewAlias(aggregation.NewCount(expression.NewStar()), "c2"),
+		expression.NewAlias("c2", aggregation.NewCount(expression.NewStar())),
 	}
 	gb := NewGroupBy(agg, nil, NewResolvedTable(child))
 	require.True(gb.Resolved())

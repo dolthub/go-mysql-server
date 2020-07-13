@@ -14,7 +14,7 @@ var (
 	errExplodeNotArray    = errors.NewKind("argument of type %q given to EXPLODE, expecting array")
 )
 
-func resolveGenerators(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func resolveGenerators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		p, ok := n.(*plan.Project)
 		if !ok {
@@ -71,10 +71,7 @@ func findGenerator(exprs []sql.Expression) (*generator, error) {
 		case *expression.Alias:
 			if exp, ok := e.Child.(*function.Explode); ok {
 				found = true
-				g.expr = expression.NewAlias(
-					function.NewGenerate(exp.Child),
-					e.Name(),
-				)
+				g.expr = expression.NewAlias(e.Name(), function.NewGenerate(exp.Child))
 			}
 		}
 

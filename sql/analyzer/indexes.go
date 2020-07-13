@@ -23,9 +23,7 @@ type indexLookupsByTable map[string]*indexLookup
 
 // getIndexesByTable returns applicable index lookups for each table named in the query node given
 func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node) (indexLookupsByTable, error) {
-	a.Log("assigning indexes, node of type: %T", node)
-
-	indexSpan, _ := ctx.Span("assign_indexes")
+	indexSpan, _ := ctx.Span("getIndexesByTable")
 	defer indexSpan.Finish()
 
 	exprAliases := getExpressionAliases(node)

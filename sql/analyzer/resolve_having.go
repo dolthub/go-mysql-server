@@ -12,7 +12,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
+func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
 		having, ok := node.(*plan.Having)
 		if !ok {
@@ -35,10 +35,12 @@ func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, erro
 		}
 
 		missingCols := findMissingColumns(having, having.Cond)
-		// If all the columns required by the having are available, do nothing about it.
+		// If any columns required by the having aren't available, pull them up.
 		if len(missingCols) > 0 {
 			var err error
-			having, err = pushMissingColumnsUp(having, missingCols)
+			// TODO: this should be an error for most queries. having expressions must appear in the group-by clause (even
+			//  in non-strict mode)
+			having, err = pullMissingColumnsUp(having, missingCols)
 			if err != nil {
 				return nil, err
 			}
@@ -84,10 +86,7 @@ func projectOriginalAggregation(having *plan.Having, schema sql.Schema) *plan.Pr
 
 var errHavingChildMissingRef = errors.NewKind("cannot find column %s referenced in HAVING clause in either GROUP BY or its child")
 
-func pushMissingColumnsUp(
-	having *plan.Having,
-	missingCols []string,
-) (*plan.Having, error) {
+func pullMissingColumnsUp(having *plan.Having, missingCols []string) (*plan.Having, error) {
 	groupBy, err := findGroupBy(having)
 	if err != nil {
 		return nil, err
@@ -176,7 +175,7 @@ func addColumnsToGroupBy(node sql.Node, columns []sql.Expression) (sql.Node, err
 		}
 		return node.WithChildren(child)
 	case *plan.GroupBy:
-		return plan.NewGroupBy(append(node.Aggregate, columns...), node.Grouping, node.Child), nil
+		return plan.NewGroupBy(append(node.SelectedExprs, columns...), node.GroupByExprs, node.Child), nil
 	default:
 		return nil, errHavingNeedsGroupBy.New()
 	}
@@ -300,7 +299,7 @@ func replaceAggregations(having *plan.Having) (*plan.Having, bool, error) {
 			return e, nil
 		}
 
-		for i, expr := range groupBy.Aggregate {
+		for i, expr := range groupBy.SelectedExprs {
 			if aggregationEquals(agg, expr) {
 				token := pushUpToken
 				pushUpToken--
@@ -488,16 +487,3 @@ func aggregationChildEquals(a, b sql.Expression) bool {
 }
 
 var errHavingNeedsGroupBy = errors.NewKind("found HAVING clause with no GROUP BY")
-
-func hasAggregations(expr sql.Expression) bool {
-	var has bool
-	sql.Inspect(expr, func(e sql.Expression) bool {
-		_, ok := e.(sql.Aggregation)
-		if ok {
-			has = true
-			return false
-		}
-		return true
-	})
-	return has
-}

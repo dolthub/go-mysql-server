@@ -26,41 +26,41 @@ func TestResolveTables(t *testing.T) {
 	ctx := sql.NewEmptyContext().WithCurrentDB("mydb")
 
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable", "")
-	analyzed, err := f.Apply(ctx, a, notAnalyzed)
+	analyzed, err := f.Apply(ctx, a, notAnalyzed, nil)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("MyTable", "")
-	analyzed, err = f.Apply(ctx, a, notAnalyzed)
+	analyzed, err = f.Apply(ctx, a, notAnalyzed, nil)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("nonexistant", "")
-	analyzed, err = f.Apply(ctx, a, notAnalyzed)
+	analyzed, err = f.Apply(ctx, a, notAnalyzed, nil)
 	require.Error(err)
 	require.Nil(analyzed)
 
-	analyzed, err = f.Apply(ctx, a, plan.NewResolvedTable(table))
+	analyzed, err = f.Apply(ctx, a, plan.NewResolvedTable(table), nil)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("dual", "")
-	analyzed, err = f.Apply(ctx, a, notAnalyzed)
+	analyzed, err = f.Apply(ctx, a, notAnalyzed, nil)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(dualTable), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("dual", "")
-	analyzed, err = f.Apply(ctx, a, notAnalyzed)
+	analyzed, err = f.Apply(ctx, a, notAnalyzed, nil)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(dualTable), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTableAsOf("myTable", "", expression.NewLiteral("2019-01-01", sql.LongText))
-	analyzed, err = f.Apply(ctx, a, notAnalyzed)
+	analyzed, err = f.Apply(ctx, a, notAnalyzed, nil)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTableAsOf("myTable", "", expression.NewLiteral("2019-01-02", sql.LongText))
-	analyzed, err = f.Apply(ctx, a, notAnalyzed)
+	analyzed, err = f.Apply(ctx, a, notAnalyzed, nil)
 	require.Error(err)
 }
 
@@ -79,17 +79,17 @@ func TestResolveTablesNoCurrentDB(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable", "")
-	_, err := f.Apply(ctx, a, notAnalyzed)
+	_, err := f.Apply(ctx, a, notAnalyzed, nil)
 	require.Error(err)
 	require.True(sql.ErrNoDatabaseSelected.Is(err), "wrong error kind")
 
 	notAnalyzed = plan.NewUnresolvedTable("mytable", "doesNotExist")
-	_, err = f.Apply(ctx, a, notAnalyzed)
+	_, err = f.Apply(ctx, a, notAnalyzed, nil)
 	require.Error(err)
 	require.True(sql.ErrDatabaseNotFound.Is(err), "wrong error kind")
 
 	notAnalyzed = plan.NewUnresolvedTable("dual", "")
-	analyzed, err := f.Apply(ctx, a, notAnalyzed)
+	analyzed, err := f.Apply(ctx, a, notAnalyzed, nil)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(dualTable), analyzed)
 }
@@ -117,7 +117,7 @@ func TestResolveTablesNested(t *testing.T) {
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},
 		plan.NewUnresolvedTable("mytable", ""),
 	)
-	analyzed, err := f.Apply(ctx, a, notAnalyzed)
+	analyzed, err := f.Apply(ctx, a, notAnalyzed, nil)
 	require.NoError(err)
 	expected := plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},
@@ -129,7 +129,7 @@ func TestResolveTablesNested(t *testing.T) {
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},
 		plan.NewUnresolvedTable("my_other_table", "my_other_db"),
 	)
-	analyzed, err = f.Apply(ctx, a, notAnalyzed)
+	analyzed, err = f.Apply(ctx, a, notAnalyzed, nil)
 	require.NoError(err)
 	expected = plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},

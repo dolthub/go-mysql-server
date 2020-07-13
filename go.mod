@@ -14,6 +14,7 @@ require (
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pilosa/pilosa v1.4.0
+	github.com/pmezard/go-difflib v1.0.0
 	github.com/sanity-io/litter v1.2.0
 	github.com/shopspring/decimal v0.0.0-20191130220710-360f2bc03045
 	github.com/sirupsen/logrus v1.4.2

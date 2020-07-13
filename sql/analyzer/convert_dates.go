@@ -10,7 +10,7 @@ import (
 
 // convertDates wraps all expressions of date and datetime type with converts
 // to ensure the date range is validated.
-func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if !n.Resolved() {
 		return n, nil
 	}
@@ -37,7 +37,7 @@ func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 				expressions[e.String()] = true
 			}
 		case *plan.GroupBy:
-			for _, e := range exp.Aggregate {
+			for _, e := range exp.SelectedExprs {
 				expressions[e.String()] = true
 			}
 		}
@@ -46,8 +46,8 @@ func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		var err error
 		switch exp := exp.(type) {
 		case *plan.GroupBy:
-			var aggregate = make([]sql.Expression, len(exp.Aggregate))
-			for i, a := range exp.Aggregate {
+			var aggregate = make([]sql.Expression, len(exp.SelectedExprs))
+			for i, a := range exp.SelectedExprs {
 				agg, err := expression.TransformUp(a, func(e sql.Expression) (sql.Expression, error) {
 					return addDateConvert(e, exp, replacements, nodeReplacements, expressions, true)
 				})
@@ -62,8 +62,8 @@ func convertDates(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 				}
 			}
 
-			var grouping = make([]sql.Expression, len(exp.Grouping))
-			for i, g := range exp.Grouping {
+			var grouping = make([]sql.Expression, len(exp.GroupByExprs))
+			for i, g := range exp.GroupByExprs {
 				gr, err := expression.TransformUp(g, func(e sql.Expression) (sql.Expression, error) {
 					return addDateConvert(e, exp, replacements, nodeReplacements, expressions, false)
 				})
@@ -178,7 +178,7 @@ func addDateConvert(
 		// and propagate the changes up the chain.
 		if gf, ok := e.(*expression.GetField); ok && expressions[e.String()] && aliasRootProjections {
 			if _, ok := result.(*expression.GetField); !ok {
-				result = expression.NewAlias(result, gf.Name())
+				result = expression.NewAlias(gf.Name(), result)
 				nodeReplacements[tableCol{gf.Table(), gf.Name()}] = gf.Name()
 			}
 		}

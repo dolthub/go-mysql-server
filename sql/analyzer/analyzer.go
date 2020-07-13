@@ -3,9 +3,11 @@ package analyzer
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pmezard/go-difflib/difflib"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -81,6 +83,10 @@ func (ab *Builder) AddPostValidationRule(name string, fn RuleFunc) *Builder {
 	ab.postValidationRules = append(ab.postValidationRules, Rule{name, fn})
 
 	return ab
+}
+
+func init() {
+	logrus.SetFormatter(simpleLogFormatter{})
 }
 
 // Build creates a new Analyzer using all previous data setted to the Builder
@@ -159,10 +165,58 @@ type Analyzer struct {
 	Catalog *sql.Catalog
 }
 
+// Scope of the analysis being performed, used when analyzing subqueries to give such analysis access to outer scope.
+type Scope struct {
+	// Stack of nested node scopes, with innermost scope first
+	nodes []sql.Node
+}
+
+func (s *Scope) newScope(node sql.Node) *Scope {
+	if s == nil {
+		return &Scope{[]sql.Node{node}}
+	}
+	newNodes := make([]sql.Node, len(s.nodes)+1)
+	newNodes = append(newNodes, node)
+	newNodes = append(newNodes, s.nodes...)
+	return &Scope{newNodes}
+}
+
+func (s *Scope) Nodes() []sql.Node {
+	if s == nil {
+		return nil
+	}
+	return s.nodes
+}
+
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
 // To add custom rules, the easiest way is use the Builder.
 func NewDefault(c *sql.Catalog) *Analyzer {
 	return NewBuilder(c).Build()
+}
+
+type simpleLogFormatter struct{}
+
+func (s simpleLogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+	lvl := ""
+	switch entry.Level {
+	case logrus.PanicLevel:
+		lvl = "PANIC"
+	case logrus.FatalLevel:
+		lvl = "FATAL"
+	case logrus.ErrorLevel:
+		lvl = "ERROR"
+	case logrus.WarnLevel:
+		lvl = "WARN"
+	case logrus.InfoLevel:
+		lvl = "INFO"
+	case logrus.DebugLevel:
+		lvl = "DEBUG"
+	case logrus.TraceLevel:
+		lvl = "TRACE"
+	}
+
+	msg := fmt.Sprintf("%s: %s\n", lvl, entry.Message)
+	return ([]byte)(msg), nil
 }
 
 // Log prints an INFO message to stdout with the given message and args
@@ -183,9 +237,33 @@ func (a *Analyzer) LogNode(n sql.Node) {
 	if a != nil && n != nil && a.Verbose {
 		if len(a.contextStack) > 0 {
 			ctx := strings.Join(a.contextStack, "/")
-			fmt.Printf("%s: %s", ctx, n.String())
+			fmt.Printf("%s:\n%s", ctx, n.String())
 		} else {
 			fmt.Printf("%s", n.String())
+		}
+	}
+}
+
+// LogDiff logs the diff between the query plans after a transformation rules has been applied.
+// Only can print a diff when the string representations of the nodes differ, which isn't always the case.
+func (a *Analyzer) LogDiff(prev, next sql.Node) {
+	if a.Debug && a.Verbose {
+		if !reflect.DeepEqual(next, prev) {
+			diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+				A:        difflib.SplitLines(prev.String()),
+				B:        difflib.SplitLines(next.String()),
+				FromFile: "Prev",
+				FromDate: "",
+				ToFile:   "Next",
+				ToDate:   "",
+				Context:  1,
+			})
+			if err != nil {
+				panic(err)
+			}
+			if len(diff) > 0 {
+				a.Log(diff)
+			}
 		}
 	}
 }
@@ -205,17 +283,16 @@ func (a *Analyzer) PopDebugContext() {
 }
 
 // Analyze the node and all its children.
-func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node) (sql.Node, error) {
+func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("analyze", opentracing.Tags{
 		"plan": n.String(),
 	})
 
-	prev := n
 	var err error
 	a.Log("starting analysis of node of type: %T", n)
 	for _, batch := range a.Batches {
 		a.PushDebugContext(batch.Desc)
-		prev, err = batch.Eval(ctx, a, prev)
+		n, err = batch.Eval(ctx, a, n, scope)
 		a.PopDebugContext()
 		if ErrMaxAnalysisIters.Is(err) {
 			a.Log(err.Error())
@@ -227,15 +304,11 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node) (sql.Node, error) {
 	}
 
 	defer func() {
-		if prev != nil {
-			span.SetTag("IsResolved", prev.Resolved())
+		if n != nil {
+			span.SetTag("IsResolved", n.Resolved())
 		}
 		span.Finish()
 	}()
 
-	return prev, err
-}
-
-type equaler interface {
-	Equal(sql.Node) bool
+	return n, err
 }

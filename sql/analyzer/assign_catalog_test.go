@@ -26,7 +26,7 @@ func TestAssignCatalog(t *testing.T) {
 	tbl := memory.NewTable("foo", nil)
 
 	node, err := f.Apply(ctx, a,
-		plan.NewCreateIndex("", plan.NewResolvedTable(tbl), nil, "", make(map[string]string)))
+		plan.NewCreateIndex("", plan.NewResolvedTable(tbl), nil, "", make(map[string]string)), nil)
 	require.NoError(err)
 
 	ci, ok := node.(*plan.CreateIndex)
@@ -35,7 +35,7 @@ func TestAssignCatalog(t *testing.T) {
 	require.Equal("foo", ci.CurrentDatabase)
 
 	node, err = f.Apply(ctx, a,
-		plan.NewDropIndex("foo", plan.NewResolvedTable(tbl)))
+		plan.NewDropIndex("foo", plan.NewResolvedTable(tbl)), nil)
 	require.NoError(err)
 
 	di, ok := node.(*plan.DropIndex)
@@ -43,7 +43,7 @@ func TestAssignCatalog(t *testing.T) {
 	require.Equal(c, di.Catalog)
 	require.Equal("foo", di.CurrentDatabase)
 
-	node, err = f.Apply(ctx, a, plan.NewShowProcessList())
+	node, err = f.Apply(ctx, a, plan.NewShowProcessList(), nil)
 	require.NoError(err)
 
 	pl, ok := node.(*plan.ShowProcessList)
@@ -51,19 +51,19 @@ func TestAssignCatalog(t *testing.T) {
 	require.Equal(db.Name(), pl.Database)
 	require.Equal(c.ProcessList, pl.ProcessList)
 
-	node, err = f.Apply(ctx, a, plan.NewShowDatabases())
+	node, err = f.Apply(ctx, a, plan.NewShowDatabases(), nil)
 	require.NoError(err)
 	sd, ok := node.(*plan.ShowDatabases)
 	require.True(ok)
 	require.Equal(c, sd.Catalog)
 
-	node, err = f.Apply(ctx, a, plan.NewLockTables(nil))
+	node, err = f.Apply(ctx, a, plan.NewLockTables(nil), nil)
 	require.NoError(err)
 	lt, ok := node.(*plan.LockTables)
 	require.True(ok)
 	require.Equal(c, lt.Catalog)
 
-	node, err = f.Apply(ctx, a, plan.NewUnlockTables())
+	node, err = f.Apply(ctx, a, plan.NewUnlockTables(), nil)
 	require.NoError(err)
 	ut, ok := node.(*plan.UnlockTables)
 	require.True(ok)
@@ -71,13 +71,13 @@ func TestAssignCatalog(t *testing.T) {
 
 	mockSubquery := plan.NewSubqueryAlias("mock", "", plan.NewResolvedTable(tbl))
 	mockView := plan.NewCreateView(db, "", nil, mockSubquery, false)
-	node, err = f.Apply(ctx, a, mockView)
+	node, err = f.Apply(ctx, a, mockView, nil)
 	require.NoError(err)
 	cv, ok := node.(*plan.CreateView)
 	require.True(ok)
 	require.Equal(c, cv.Catalog)
 
-	node, err = f.Apply(ctx, a, plan.NewDropView(nil, false))
+	node, err = f.Apply(ctx, a, plan.NewDropView(nil, false), nil)
 	require.NoError(err)
 	dv, ok := node.(*plan.DropView)
 	require.True(ok)

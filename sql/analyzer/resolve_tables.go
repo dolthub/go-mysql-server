@@ -17,11 +17,10 @@ var dualTable = func() sql.Table {
 	return t
 }()
 
-func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("resolve_tables")
 	defer span.Finish()
 
-	a.Log("resolve table, node of type: %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		if n.Resolved() {
 			return n, nil

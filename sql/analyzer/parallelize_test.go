@@ -51,7 +51,7 @@ func TestParallelize(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 2}, node)
+	result, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 2}, node, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
 }
@@ -68,7 +68,7 @@ func TestParallelizeCreateIndex(t *testing.T) {
 		nil,
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 1}, node)
+	result, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 1}, node, nil)
 	require.NoError(err)
 	require.Equal(node, result)
 }

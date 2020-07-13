@@ -5,11 +5,11 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+// resolveDatabase sets a database for nodes that implement sql.Databaser. Replaces sql.UnresolvedDatabase with the
+// actual sql.Database implementation from the catalog.
+func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("resolve_database")
 	defer span.Finish()
-
-	a.Log("resolve database, node of type: %T", n)
 
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		d, ok := n.(sql.Databaser)

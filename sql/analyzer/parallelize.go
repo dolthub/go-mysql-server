@@ -25,7 +25,7 @@ func shouldParallelize(node sql.Node) bool {
 	}
 }
 
-func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node) (sql.Node, error) {
+func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
 	if a.Parallelism <= 1 || !node.Resolved() {
 		return node, nil
 	}

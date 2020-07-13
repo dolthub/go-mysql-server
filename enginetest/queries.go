@@ -56,8 +56,34 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		"SELECT pk DIV 2, SUM(c3) FROM one_pk GROUP BY 1 ORDER BY 1",
+		[]sql.Row{
+			{int64(0), float64(10)},
+			{int64(1), float64(50)},
+		},
+	},
+	{
+		"SELECT pk1, SUM(c1) FROM two_pk GROUP BY pk1 ORDER BY pk1;",
+		[]sql.Row{
+			{0, 10.0},
+			{1, 50.0},
+		},
+	},
+	{
+		"SELECT pk1, SUM(c1) FROM two_pk WHERE pk1 = 0",
+		[]sql.Row{{0, 10.0}},
+	},
+	{
 		"SELECT i FROM mytable;",
 		[]sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
+		"SELECT i AS x FROM mytable ORDER BY i DESC",
+		[]sql.Row{{3}, {2}, {1}},
+	},
+	{
+		"SELECT i AS x FROM mytable ORDER BY x DESC",
+		[]sql.Row{{3}, {2}, {1}},
 	},
 	{
 		"SELECT i FROM mytable AS mt;",
@@ -146,6 +172,26 @@ var QueryTests = []QueryTest{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)}},
+	},
+	{
+		"SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 2 ORDER BY foo, i;",
+		[]sql.Row{
+			{1, 1, 2},
+			{2, 1, 2},
+			{3, 1, 2}},
+	},
+	{
+		"SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 1 ORDER BY foo, i;",
+		[]sql.Row{},
+	},
+	{
+		"SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = 2) AS a ORDER BY foo, i",
+		[]sql.Row{
+			{2, 1, 2}},
+	},
+	{
+		"SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 1 ORDER BY foo, i;",
+		[]sql.Row{},
 	},
 	{
 		"SELECT timestamp FROM reservedWordsTable;",
@@ -1918,6 +1964,88 @@ var QueryTests = []QueryTest{
 		`SELECT (SELECT i FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
 		[]sql.Row{{int64(1)}},
 	},
+	// TODO: using outer scope in subqueries is broken
+	// {
+	// 	`SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk <= opk.pk) FROM one_pk opk ORDER BY 1`,
+	// 	[]sql.Row{
+	// 		{0,0},
+	// 		{1,1},
+	// 		{2,2},
+	// 		{3,3},
+	// 	},
+	// },
+	// {
+	// 	`SELECT pk, (SELECT max(pk) FROM one_pk WHERE one_pk.pk <= one_pk.pk) FROM one_pk ORDER BY 1`,
+	// 	[]sql.Row{
+	// 		{0,3},
+	// 		{1,3},
+	// 		{2,3},
+	// 		{3,3},
+	// 	},
+	// },
+	// {
+	// 	`SELECT pk, (SELECT max(pk) FROM one_pk WHERE one_pk.pk * 10 <= opk.c1) FROM one_pk opk ORDER BY 1`,
+	// 	[]sql.Row{
+	// 		{0,0},
+	// 		{1,1},
+	// 		{2,2},
+	// 		{3,3},
+	// 	},
+	// },
+	// {
+	// 	`SELECT pk as a, (SELECT max(pk) FROM one_pk WHERE pk <= a) FROM one_pk ORDER BY 1`,
+	// 	[]sql.Row{
+	// 		{0,0},
+	// 		{1,1},
+	// 		{2,2},
+	// 		{3,3},
+	// 	},
+	// },
+	// {
+	// 	`SELECT pk as a, (SELECT max(pk) FROM one_pk WHERE pk <= a) FROM one_pk opk ORDER BY 1`,
+	// 	[]sql.Row{
+	// 		{0,0},
+	// 		{1,1},
+	// 		{2,2},
+	// 		{3,3},
+	// 	},
+	// },
+	// {
+	// 	`SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= opk.pk) FROM one_pk opk ORDER BY 1`,
+	// 	[]sql.Row{
+	// 		{0,0},
+	// 		{1,1},
+	// 		{2,2},
+	// 		{3,3},
+	// 	},
+	// },
+	// {
+	// 	`SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk <= pk) FROM one_pk opk ORDER BY 1`,
+	// 	[]sql.Row{
+	// 		{0,3},
+	// 		{1,3},
+	// 		{2,3},
+	// 		{3,3},
+	// 	},
+	// },
+	// {
+	// 	`SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= pk) FROM one_pk opk ORDER BY 1`,
+	// 	[]sql.Row{
+	// 		{0,3},
+	// 		{1,3},
+	// 		{2,3},
+	// 		{3,3},
+	// 	},
+	// },
+	// {
+	// 	`SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= one_pk.pk) FROM one_pk ORDER BY 1`,
+	// 	[]sql.Row{
+	// 		{0,0},
+	// 		{1,1},
+	// 		{2,2},
+	// 		{3,3},
+	// 	},
+	// },
 	{
 		`SELECT DISTINCT n FROM bigtable ORDER BY t`,
 		[]sql.Row{
@@ -2360,6 +2488,14 @@ var QueryTests = []QueryTest{
 	},
 }
 
+// Queries that are known to be broken in the engine.
+var BrokenQueries = []QueryTest{
+	{
+		"SELECT pk1, SUM(c1) FROM two_pk",
+		[]sql.Row{{0, 60.0}},
+	},
+}
+
 var VersionedQueries = []QueryTest{
 	{
 		"SELECT *  FROM myhistorytable AS OF '2019-01-01' AS foo ORDER BY i",
@@ -2788,6 +2924,23 @@ var errorQueries = []QueryErrorTest{
 		Query:       `SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(sub_s, 2, 3) AS sub_sub_s FROM mytable`,
 		ExpectedErr: analyzer.ErrMisusedAlias,
 	},
+	{
+		Query:       "SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= one_pk.pk) FROM one_pk opk ORDER BY 1",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:       "SELECT pk, (SELECT max(pk) FROM one_pk WHERE b.pk <= one_pk.pk) FROM one_pk opk ORDER BY 1",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:       "SELECT pk, (SELECT max(pk) FROM one_pk WHERE b.pk <= one_pk.pk) FROM one_pk opk ORDER BY 1",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	// TODO: Bug: the having column must appear in the select list
+	// {
+	// 	Query:       "SELECT pk1, sum(c1) FROM two_pk GROUP BY 1 having c1 > 10;",
+	// 	ExpectedErr: sql.ErrColumnNotFound,
+	// },
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to

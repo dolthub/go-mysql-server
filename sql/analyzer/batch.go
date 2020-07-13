@@ -8,7 +8,7 @@ import (
 )
 
 // RuleFunc is the function to be applied in a rule.
-type RuleFunc func(*sql.Context, *Analyzer, sql.Node) (sql.Node, error)
+type RuleFunc func(*sql.Context, *Analyzer, sql.Node, *Scope) (sql.Node, error)
 
 // Rule to transform nodes.
 type Rule struct {
@@ -30,14 +30,14 @@ type Batch struct {
 // Eval executes the actual rules the specified number of times on the Batch.
 // If max number of iterations is reached, this method will return the actual
 // processed Node and ErrMaxAnalysisIters error.
-func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if b.Iterations == 0 {
 		return n, nil
 	}
 
 	prev := n
 	a.PushDebugContext("0")
-	cur, err := b.evalOnce(ctx, a, n)
+	cur, err := b.evalOnce(ctx, a, n, scope)
 	a.PopDebugContext()
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 	for i := 1; !nodesEqual(prev, cur); {
 		prev = cur
 		a.PushDebugContext(strconv.Itoa(i))
-		cur, err = b.evalOnce(ctx, a, cur)
+		cur, err = b.evalOnce(ctx, a, cur, scope)
 		a.PopDebugContext()
 		if err != nil {
 			return nil, err
@@ -65,20 +65,23 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error
 	return cur, nil
 }
 
-func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	result := n
+func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	prev := n
 	for _, rule := range b.Rules {
 		var err error
+		a.Log("Evaluating rule %s", rule.Name)
 		a.PushDebugContext(rule.Name)
-		result, err = rule.Apply(ctx, a, result)
-		a.LogNode(result)
+		next, err := rule.Apply(ctx, a, prev, scope)
+		a.LogDiff(prev, next)
+		prev = next
+		a.LogNode(prev)
 		a.PopDebugContext()
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return result, nil
+	return prev, nil
 }
 
 func nodesEqual(a, b sql.Node) bool {
@@ -91,4 +94,8 @@ func nodesEqual(a, b sql.Node) bool {
 	}
 
 	return reflect.DeepEqual(a, b)
+}
+
+type equaler interface {
+	Equal(sql.Node) bool
 }

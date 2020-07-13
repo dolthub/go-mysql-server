@@ -47,12 +47,9 @@ func TestResolveGenerators(t *testing.T) {
 			node: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetField(0, sql.Int64, "a", false),
-					expression.NewAlias(
-						function.NewExplode(
-							expression.NewGetField(1, sql.CreateArray(sql.Int64), "b", false),
-						),
-						"x",
-					),
+					expression.NewAlias("x", function.NewExplode(
+						expression.NewGetField(1, sql.CreateArray(sql.Int64), "b", false),
+					)),
 					expression.NewGetField(2, sql.Int64, "c", false),
 				},
 				plan.NewUnresolvedTable("foo", ""),
@@ -61,12 +58,9 @@ func TestResolveGenerators(t *testing.T) {
 				plan.NewProject(
 					[]sql.Expression{
 						expression.NewGetField(0, sql.Int64, "a", false),
-						expression.NewAlias(
-							function.NewGenerate(
-								expression.NewGetField(1, sql.CreateArray(sql.Int64), "b", false),
-							),
-							"x",
-						),
+						expression.NewAlias("x", function.NewGenerate(
+							expression.NewGetField(1, sql.CreateArray(sql.Int64), "b", false),
+						)),
 						expression.NewGetField(2, sql.Int64, "c", false),
 					},
 					plan.NewUnresolvedTable("foo", ""),
@@ -105,7 +99,7 @@ func TestResolveGenerators(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			result, err := resolveGenerators(sql.NewEmptyContext(), nil, tt.node)
+			result, err := resolveGenerators(sql.NewEmptyContext(), nil, tt.node, nil)
 			if tt.err != nil {
 				require.Error(err)
 				require.True(tt.err.Is(err))

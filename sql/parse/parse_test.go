@@ -16,11 +16,11 @@ import (
 )
 
 var showCollationProjection = plan.NewProject([]sql.Expression{
-	expression.NewAlias(expression.NewUnresolvedColumn("collation_name"), "collation"),
-	expression.NewAlias(expression.NewUnresolvedColumn("character_set_name"), "charset"),
+	expression.NewAlias("collation", expression.NewUnresolvedColumn("collation_name")),
+	expression.NewAlias("charset", expression.NewUnresolvedColumn("character_set_name")),
 	expression.NewUnresolvedColumn("id"),
-	expression.NewAlias(expression.NewUnresolvedColumn("is_default"), "default"),
-	expression.NewAlias(expression.NewUnresolvedColumn("is_compiled"), "compiled"),
+	expression.NewAlias("default", expression.NewUnresolvedColumn("is_default")),
+	expression.NewAlias("compiled", expression.NewUnresolvedColumn("is_compiled")),
 	expression.NewUnresolvedColumn("sortlen"),
 	expression.NewUnresolvedColumn("pad_attribute"),
 },
@@ -597,28 +597,19 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT foo AS bar FROM foo;`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewAlias(
-				expression.NewUnresolvedColumn("foo"),
-				"bar",
-			),
+			expression.NewAlias("bar", expression.NewUnresolvedColumn("foo")),
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT foo AS bAz FROM foo;`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewAlias(
-				expression.NewUnresolvedColumn("foo"),
-				"bAz",
-			),
+			expression.NewAlias("bAz", expression.NewUnresolvedColumn("foo")),
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT foo AS bar FROM foo AS OF '2019-01-01' AS baz;`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewAlias(
-				expression.NewUnresolvedColumn("foo"),
-				"bar",
-			),
+			expression.NewAlias("bar", expression.NewUnresolvedColumn("foo")),
 		},
 		plan.NewTableAlias("baz",
 			plan.NewUnresolvedTableAsOf("foo", "",
@@ -1215,6 +1206,13 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
+	`SELECT 1 + 1 as foo;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewAlias("foo",
+				expression.NewPlus(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
+		},
+		plan.NewUnresolvedTable("dual", ""),
+	),
 	`SELECT 1 * (2 + 1);`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewMult(expression.NewLiteral(int8(1), sql.Int8),
@@ -1721,6 +1719,30 @@ var fixtures = map[string]sql.Node{
 			"+",
 		)},
 		plan.NewUnresolvedTable("dual", ""),
+	),
+	`SELECT bar, AVG(baz) FROM foo GROUP BY bar HAVING COUNT(*) > 5`: plan.NewHaving(
+		expression.NewGreaterThan(
+			expression.NewUnresolvedFunction("count", true, expression.NewStar()),
+			expression.NewLiteral(int8(5), sql.Int8),
+		),
+		plan.NewGroupBy(
+			[]sql.Expression{
+				expression.NewUnresolvedColumn("bar"),
+				expression.NewUnresolvedFunction("avg", true, expression.NewUnresolvedColumn("baz"))},
+			[]sql.Expression{expression.NewUnresolvedColumn("bar")},
+			plan.NewUnresolvedTable("foo", ""),
+		),
+	),
+	`SELECT foo FROM t GROUP BY foo HAVING i > 5`: plan.NewHaving(
+		expression.NewGreaterThan(
+			expression.NewUnresolvedColumn("i"),
+			expression.NewLiteral(int8(5), sql.Int8),
+		),
+		plan.NewGroupBy(
+			[]sql.Expression{expression.NewUnresolvedColumn("foo")},
+			[]sql.Expression{expression.NewUnresolvedColumn("foo")},
+			plan.NewUnresolvedTable("t", ""),
+		),
 	),
 	`SELECT COUNT(*) FROM foo GROUP BY a HAVING COUNT(*) > 5`: plan.NewHaving(
 		expression.NewGreaterThan(

@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/liquidata-inc/go-mysql-server/sql"
+
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 )
 
@@ -42,16 +44,20 @@ var parallelVals = []int{
 	2,
 }
 
-// testQueries tests the given queries on an engine under a variety of circumstances:
+// TestQueries tests the given queries on an engine under a variety of circumstances:
 // 1) Partitioned tables / non partitioned tables
 // 2) Mergeable / unmergeable / native / no indexes
 // 3) Parallelism on / off
 func TestQueries(t *testing.T) {
 	for _, numPartitions := range numPartitionsVals {
-		for _, indexInit := range indexBehaviors {
+		for _, indexBehavior := range indexBehaviors {
 			for _, parallelism := range parallelVals {
-				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexInit.name, parallelism)
-				harness := newMemoryHarness(testName, parallelism, numPartitions, indexInit.nativeIndexes, indexInit.driverInitializer)
+				if parallelism == 1 && numPartitions == testNumPartitions && indexBehavior.name == "nativeIndexes" {
+					// This case is covered by TestQueriesSimple
+					continue
+				}
+				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexBehavior.name, parallelism)
+				harness := newMemoryHarness(testName, parallelism, numPartitions, indexBehavior.nativeIndexes, indexBehavior.driverInitializer)
 
 				t.Run(testName, func(t *testing.T) {
 					enginetest.TestQueries(t, harness)
@@ -59,6 +65,37 @@ func TestQueries(t *testing.T) {
 			}
 		}
 	}
+}
+
+// TestQueriesSimple runs the canonical tests queries with against a single index enabled harness.
+func TestQueriesSimple(t *testing.T) {
+	enginetest.TestQueries(t, newMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
+// Convenience test for debugging a single query. Unskip and set to the desired query.
+func TestSingleQuery(t *testing.T) {
+	t.Skip()
+
+	test := enginetest.QueryTest{
+		"SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 2 ORDER BY foo, i;",
+		[]sql.Row{
+			{1, 1, 2},
+			{2, 1, 2},
+			{3, 1, 2}},
+	}
+
+	fmt.Sprintf("%v", test)
+
+	harness := newMemoryHarness("", 1, testNumPartitions, true, nil)
+	engine := enginetest.NewEngine(t, harness)
+	engine.Analyzer.Debug = true
+	engine.Analyzer.Verbose = true
+
+	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected)
+}
+
+func TestBrokenQueries(t *testing.T) {
+	enginetest.RunQueryTests(t, newSkippingMemoryHarness(), enginetest.BrokenQueries)
 }
 
 func TestVersionedQueries(t *testing.T) {
@@ -75,22 +112,6 @@ func TestVersionedQueries(t *testing.T) {
 		}
 	}
 }
-
-// Convenience test for debugging a single query. Unskip and set to the desired query.
-// func TestSingleQuery(t *testing.T) {
-// 	test := enginetest.QueryTest{
-// 		"SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
-// 		[]sql.Row{
-// 			{int64(1), int64(1), "third"},
-// 			{int64(2), int64(2), "second"},
-// 			{int64(3), int64(3), "first"},
-// 		},
-// 	}
-//
-// 	harness := newMemoryHarness("singleTest", 1, 1, true, nil)
-// 	e := enginetest.NewEngine(t, harness)
-// 	enginetest.TestQuery(t, harness, e, test.Query, test.Expected)
-// }
 
 // Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that
 // the right indexes are being used for joining tables.

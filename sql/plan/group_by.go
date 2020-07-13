@@ -19,34 +19,33 @@ var ErrGroupBy = errors.NewKind("group by aggregation '%v' not supported")
 // GroupBy groups the rows by some expressions.
 type GroupBy struct {
 	UnaryNode
-	Aggregate []sql.Expression
-	Grouping  []sql.Expression
+	SelectedExprs []sql.Expression
+	GroupByExprs  []sql.Expression
 }
 
-// NewGroupBy creates a new GroupBy node.
-func NewGroupBy(
-	aggregate []sql.Expression,
-	grouping []sql.Expression,
-	child sql.Node,
-) *GroupBy {
+// NewGroupBy creates a new GroupBy node. Like Project, GroupBy is a top-level node, and contains all the fields that
+// will appear in the output of the query. Some of these fields may be aggregate functions, some may be columns or
+// other expressions. Unlike a project, the GroupBy also has a list of group-by expressions, which usually also appear
+// in the list of selected expressions.
+func NewGroupBy(selectedExprs, groupByExprs []sql.Expression, child sql.Node) *GroupBy {
 	return &GroupBy{
-		UnaryNode: UnaryNode{Child: child},
-		Aggregate: aggregate,
-		Grouping:  grouping,
+		UnaryNode:     UnaryNode{Child: child},
+		SelectedExprs: selectedExprs,
+		GroupByExprs:  groupByExprs,
 	}
 }
 
 // Resolved implements the Resolvable interface.
 func (p *GroupBy) Resolved() bool {
 	return p.UnaryNode.Child.Resolved() &&
-		expressionsResolved(p.Aggregate...) &&
-		expressionsResolved(p.Grouping...)
+		expressionsResolved(p.SelectedExprs...) &&
+		expressionsResolved(p.GroupByExprs...)
 }
 
 // Schema implements the Node interface.
 func (p *GroupBy) Schema() sql.Schema {
-	var s = make(sql.Schema, len(p.Aggregate))
-	for i, e := range p.Aggregate {
+	var s = make(sql.Schema, len(p.SelectedExprs))
+	for i, e := range p.SelectedExprs {
 		var name string
 		if n, ok := e.(sql.Nameable); ok {
 			name = n.Name()
@@ -73,8 +72,8 @@ func (p *GroupBy) Schema() sql.Schema {
 // RowIter implements the Node interface.
 func (p *GroupBy) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.GroupBy", opentracing.Tags{
-		"groupings":  len(p.Grouping),
-		"aggregates": len(p.Aggregate),
+		"groupings":  len(p.GroupByExprs),
+		"aggregates": len(p.SelectedExprs),
 	})
 
 	i, err := p.Child.RowIter(ctx)
@@ -84,10 +83,10 @@ func (p *GroupBy) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}
 
 	var iter sql.RowIter
-	if len(p.Grouping) == 0 {
-		iter = newGroupByIter(ctx, p.Aggregate, i)
+	if len(p.GroupByExprs) == 0 {
+		iter = newGroupByIter(ctx, p.SelectedExprs, i)
 	} else {
-		iter = newGroupByGroupingIter(ctx, p.Aggregate, p.Grouping, i)
+		iter = newGroupByGroupingIter(ctx, p.SelectedExprs, p.GroupByExprs, i)
 	}
 
 	return sql.NewSpanIter(span, iter), nil
@@ -99,24 +98,24 @@ func (p *GroupBy) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
 
-	return NewGroupBy(p.Aggregate, p.Grouping, children[0]), nil
+	return NewGroupBy(p.SelectedExprs, p.GroupByExprs, children[0]), nil
 }
 
 // WithExpressions implements the Node interface.
 func (p *GroupBy) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	expected := len(p.Aggregate) + len(p.Grouping)
+	expected := len(p.SelectedExprs) + len(p.GroupByExprs)
 	if len(exprs) != expected {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(exprs), expected)
 	}
 
-	var agg = make([]sql.Expression, len(p.Aggregate))
-	for i := 0; i < len(p.Aggregate); i++ {
+	var agg = make([]sql.Expression, len(p.SelectedExprs))
+	for i := 0; i < len(p.SelectedExprs); i++ {
 		agg[i] = exprs[i]
 	}
 
-	var grouping = make([]sql.Expression, len(p.Grouping))
-	offset := len(p.Aggregate)
-	for i := 0; i < len(p.Grouping); i++ {
+	var grouping = make([]sql.Expression, len(p.GroupByExprs))
+	offset := len(p.SelectedExprs)
+	for i := 0; i < len(p.GroupByExprs); i++ {
 		grouping[i] = exprs[i+offset]
 	}
 
@@ -127,13 +126,13 @@ func (p *GroupBy) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("GroupBy")
 
-	var aggregate = make([]string, len(p.Aggregate))
-	for i, agg := range p.Aggregate {
+	var aggregate = make([]string, len(p.SelectedExprs))
+	for i, agg := range p.SelectedExprs {
 		aggregate[i] = agg.String()
 	}
 
-	var grouping = make([]string, len(p.Grouping))
-	for i, g := range p.Grouping {
+	var grouping = make([]string, len(p.GroupByExprs))
+	for i, g := range p.GroupByExprs {
 		grouping[i] = g.String()
 	}
 
@@ -148,25 +147,25 @@ func (p *GroupBy) String() string {
 // Expressions implements the Expressioner interface.
 func (p *GroupBy) Expressions() []sql.Expression {
 	var exprs []sql.Expression
-	exprs = append(exprs, p.Aggregate...)
-	exprs = append(exprs, p.Grouping...)
+	exprs = append(exprs, p.SelectedExprs...)
+	exprs = append(exprs, p.GroupByExprs...)
 	return exprs
 }
 
 type groupByIter struct {
-	aggregate []sql.Expression
-	child     sql.RowIter
-	ctx       *sql.Context
-	buf       []sql.Row
-	done      bool
+	selectedExprs []sql.Expression
+	child         sql.RowIter
+	ctx           *sql.Context
+	buf           []sql.Row
+	done          bool
 }
 
-func newGroupByIter(ctx *sql.Context, aggregate []sql.Expression, child sql.RowIter) *groupByIter {
+func newGroupByIter(ctx *sql.Context, selectedExprs []sql.Expression, child sql.RowIter) *groupByIter {
 	return &groupByIter{
-		aggregate: aggregate,
-		child:     child,
-		ctx:       ctx,
-		buf:       make([]sql.Row, len(aggregate)),
+		selectedExprs: selectedExprs,
+		child:         child,
+		ctx:           ctx,
+		buf:           make([]sql.Row, len(selectedExprs)),
 	}
 }
 
@@ -177,7 +176,7 @@ func (i *groupByIter) Next() (sql.Row, error) {
 
 	i.done = true
 
-	for j, a := range i.aggregate {
+	for j, a := range i.selectedExprs {
 		i.buf[j] = fillBuffer(a)
 	}
 
@@ -190,12 +189,12 @@ func (i *groupByIter) Next() (sql.Row, error) {
 			return nil, err
 		}
 
-		if err := updateBuffers(i.ctx, i.buf, i.aggregate, row); err != nil {
+		if err := updateBuffers(i.ctx, i.buf, i.selectedExprs, row); err != nil {
 			return nil, err
 		}
 	}
 
-	return evalBuffers(i.ctx, i.buf, i.aggregate)
+	return evalBuffers(i.ctx, i.buf, i.selectedExprs)
 }
 
 func (i *groupByIter) Close() error {
@@ -204,32 +203,32 @@ func (i *groupByIter) Close() error {
 }
 
 type groupByGroupingIter struct {
-	aggregate   []sql.Expression
-	grouping    []sql.Expression
-	aggregation sql.KeyValueCache
-	keys        []uint64
-	pos         int
-	child       sql.RowIter
-	ctx         *sql.Context
-	dispose     sql.DisposeFunc
+	selectedExprs []sql.Expression
+	groupByExprs  []sql.Expression
+	aggregations  sql.KeyValueCache
+	keys          []uint64
+	pos           int
+	child         sql.RowIter
+	ctx           *sql.Context
+	dispose       sql.DisposeFunc
 }
 
 func newGroupByGroupingIter(
 	ctx *sql.Context,
-	aggregate, grouping []sql.Expression,
+	selectedExprs, groupByExprs []sql.Expression,
 	child sql.RowIter,
 ) *groupByGroupingIter {
 	return &groupByGroupingIter{
-		aggregate: aggregate,
-		grouping:  grouping,
-		child:     child,
-		ctx:       ctx,
+		selectedExprs: selectedExprs,
+		groupByExprs:  groupByExprs,
+		child:         child,
+		ctx:           ctx,
 	}
 }
 
 func (i *groupByGroupingIter) Next() (sql.Row, error) {
-	if i.aggregation == nil {
-		i.aggregation, i.dispose = i.ctx.Memory.NewHistoryCache()
+	if i.aggregations == nil {
+		i.aggregations, i.dispose = i.ctx.Memory.NewHistoryCache()
 		if err := i.compute(); err != nil {
 			return nil, err
 		}
@@ -239,12 +238,12 @@ func (i *groupByGroupingIter) Next() (sql.Row, error) {
 		return nil, io.EOF
 	}
 
-	buffers, err := i.aggregation.Get(i.keys[i.pos])
+	buffers, err := i.aggregations.Get(i.keys[i.pos])
 	if err != nil {
 		return nil, err
 	}
 	i.pos++
-	return evalBuffers(i.ctx, buffers.([]sql.Row), i.aggregate)
+	return evalBuffers(i.ctx, buffers.([]sql.Row), i.selectedExprs)
 }
 
 func (i *groupByGroupingIter) compute() error {
@@ -257,30 +256,30 @@ func (i *groupByGroupingIter) compute() error {
 			return err
 		}
 
-		key, err := groupingKey(i.ctx, i.grouping, row)
+		key, err := groupingKey(i.ctx, i.groupByExprs, row)
 		if err != nil {
 			return err
 		}
 
-		if _, err := i.aggregation.Get(key); err != nil {
-			var buf = make([]sql.Row, len(i.aggregate))
-			for j, a := range i.aggregate {
+		if _, err := i.aggregations.Get(key); err != nil {
+			var buf = make([]sql.Row, len(i.selectedExprs))
+			for j, a := range i.selectedExprs {
 				buf[j] = fillBuffer(a)
 			}
 
-			if err := i.aggregation.Put(key, buf); err != nil {
+			if err := i.aggregations.Put(key, buf); err != nil {
 				return err
 			}
 
 			i.keys = append(i.keys, key)
 		}
 
-		b, err := i.aggregation.Get(key)
+		b, err := i.aggregations.Get(key)
 		if err != nil {
 			return err
 		}
 
-		err = updateBuffers(i.ctx, b.([]sql.Row), i.aggregate, row)
+		err = updateBuffers(i.ctx, b.([]sql.Row), i.selectedExprs, row)
 		if err != nil {
 			return err
 		}
@@ -290,7 +289,7 @@ func (i *groupByGroupingIter) compute() error {
 }
 
 func (i *groupByGroupingIter) Close() error {
-	i.aggregation = nil
+	i.aggregations = nil
 	return i.child.Close()
 }
 
@@ -311,6 +310,7 @@ func groupingKey(
 		vals = append(vals, fmt.Sprintf("%#v", v))
 	}
 
+	// TODO: use a faster hash func
 	return crc64.Checksum([]byte(strings.Join(vals, ",")), table), nil
 }
 
@@ -328,10 +328,10 @@ func fillBuffer(expr sql.Expression) sql.Row {
 func updateBuffers(
 	ctx *sql.Context,
 	buffers []sql.Row,
-	aggregate []sql.Expression,
+	aggregates []sql.Expression,
 	row sql.Row,
 ) error {
-	for i, a := range aggregate {
+	for i, a := range aggregates {
 		if err := updateBuffer(ctx, buffers, i, a, row); err != nil {
 			return err
 		}
@@ -365,11 +365,11 @@ func updateBuffer(
 func evalBuffers(
 	ctx *sql.Context,
 	buffers []sql.Row,
-	aggregate []sql.Expression,
+	aggregates []sql.Expression,
 ) (sql.Row, error) {
-	var row = make(sql.Row, len(aggregate))
+	var row = make(sql.Row, len(aggregates))
 
-	for i, agg := range aggregate {
+	for i, agg := range aggregates {
 		val, err := evalBuffer(ctx, agg, buffers[i])
 		if err != nil {
 			return nil, err

@@ -14,7 +14,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("check_aliases")
 	defer span.Finish()
 
@@ -136,7 +136,8 @@ type column interface {
 	sql.Expression
 }
 
-func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+// qualifyColumns assigns a table to any column expressions that don't have one already
+func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
 			return n, nil
@@ -227,9 +228,9 @@ func qualifyExpression(
 	}
 }
 
-func getNodeAvailableColumns(n sql.Node) map[string][]string {
+func getNodeAvailableColumns(node sql.Node) map[string][]string {
 	var columns = make(map[string][]string)
-	getColumnsInNodes(n.Children(), columns)
+	getColumnsInNodes(node.Children(), columns)
 	return columns
 }
 
@@ -254,18 +255,14 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 
 	for _, node := range nodes {
 		switch n := node.(type) {
-		case *plan.TableAlias:
-			for _, col := range n.Schema() {
-				indexCol(col.Source, col.Name)
-			}
-		case *plan.ResolvedTable, *plan.SubqueryAlias:
+		case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias:
 			for _, col := range n.Schema() {
 				indexCol(col.Source, col.Name)
 			}
 		case *plan.Project:
 			indexExpressions(n.Projections)
 		case *plan.GroupBy:
-			indexExpressions(n.Aggregate)
+			indexExpressions(n.SelectedExprs)
 		default:
 			getColumnsInNodes(n.Children(), columns)
 		}
@@ -325,11 +322,12 @@ const (
 	globalPrefix  = sqlparser.GlobalStr + "."
 )
 
-func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+// resolveColumns replaces UnresolvedColumn expressions with GetField expressions for the appropriate numbered field in
+// the expression's child node. Also handles replacing session variables (treated as columns) with their values.
+func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.Finish()
 
-	a.Log("resolve columns, node of type: %T", n)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		if n.Resolved() {
 			return n, nil
@@ -414,7 +412,7 @@ func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns ma
 	}
 
 	a.Log("column %s resolved to GetFieldWithTable: idx %d, typ %s, table %s, name %s, nullable %t",
-		e.Name(), col.index, col.Type, col.Source, col.Name, col.Nullable)
+		e, col.index, col.Type, col.Source, col.Name, col.Nullable)
 	return expression.NewGetFieldWithTable(
 		col.index,
 		col.Type,
@@ -424,17 +422,16 @@ func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns ma
 	), nil
 }
 
-// resolveGroupingColumns reorders the aggregation in a groupby so aliases
-// defined in it can be resolved in the grouping of the groupby. To do so,
-// all aliases are pushed down to a projection node under the group by.
-func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+// pushdownGroupByAliases reorders the aggregation in a groupby so aliases defined in it can be resolved in the grouping
+// of the groupby. To do so, all aliases are pushed down to a projection node under the group by.
+func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if n.Resolved() {
 		return n, nil
 	}
 
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		g, ok := n.(*plan.GroupBy)
-		if n.Resolved() || !ok || len(g.Grouping) == 0 {
+		if n.Resolved() || !ok || len(g.GroupByExprs) == 0 {
 			return n, nil
 		}
 
@@ -445,14 +442,14 @@ func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 		// in the aggregate, aliases in that same aggregate cannot be used,
 		// so it refers to the column in the child node.
 		var groupingColumns = make(map[string]struct{})
-		for _, g := range g.Grouping {
+		for _, g := range g.GroupByExprs {
 			for _, n := range findAllColumns(g) {
 				groupingColumns[strings.ToLower(n)] = struct{}{}
 			}
 		}
 
 		var aggregateColumns = make(map[string]struct{})
-		for _, agg := range g.Aggregate {
+		for _, agg := range g.SelectedExprs {
 			// This alias is going to be pushed down, so don't bother gathering
 			// its requirements.
 			if alias, ok := agg.(*expression.Alias); ok {
@@ -473,7 +470,7 @@ func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 		var aliases = make(map[string]int)
 
 		var needsReorder bool
-		for _, a := range g.Aggregate {
+		for _, a := range g.SelectedExprs {
 			alias, ok := a.(*expression.Alias)
 			// Note that aliases of aggregations cannot be used in the grouping
 			// because the grouping is needed before computing the aggregation.
@@ -536,10 +533,7 @@ func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 				projection = append(projection, expression.NewUnresolvedColumn(col))
 			} else {
 				renames[col] = name
-				projection = append(projection, expression.NewAlias(
-					expression.NewUnresolvedColumn(col),
-					name,
-				))
+				projection = append(projection, expression.NewAlias(name, expression.NewUnresolvedColumn(col)))
 			}
 		}
 
@@ -567,7 +561,7 @@ func resolveGroupingColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node
 		}
 
 		return plan.NewGroupBy(
-			newAggregate, g.Grouping,
+			newAggregate, g.GroupByExprs,
 			plan.NewProject(projection, g.Child),
 		), nil
 	})

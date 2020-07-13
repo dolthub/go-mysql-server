@@ -6,16 +6,15 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("resolve_subqueries")
 	defer span.Finish()
 
-	a.Log("resolving subqueries")
 	n, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
 			a.Log("found subquery %q with child of type %T", n.Name(), n.Child)
-			child, err := a.Analyze(ctx, n.Child)
+			child, err := a.Analyze(ctx, n.Child, scope)
 			if err != nil {
 				return nil, err
 			}
@@ -35,7 +34,11 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, err
 			return e, nil
 		}
 
-		q, err := a.Analyze(ctx, s.Query)
+		subqueryCtx := ctx.NewSubContext(ctx.Context)
+
+		subScope := scope.newScope(n)
+
+		q, err := a.Analyze(subqueryCtx, s.Query, subScope)
 		if err != nil {
 			return nil, err
 		}

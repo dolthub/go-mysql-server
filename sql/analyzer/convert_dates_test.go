@@ -103,31 +103,19 @@ func TestConvertDates(t *testing.T) {
 		},
 		{
 			"datetime col in alias",
-			expression.NewAlias(
+			expression.NewAlias("foo", expression.NewLiteral("", sql.Timestamp)),
+			expression.NewAlias("foo", expression.NewConvert(
 				expression.NewLiteral("", sql.Timestamp),
-				"foo",
-			),
-			expression.NewAlias(
-				expression.NewConvert(
-					expression.NewLiteral("", sql.Timestamp),
-					expression.ConvertToDatetime,
-				),
-				"foo",
-			),
+				expression.ConvertToDatetime,
+			)),
 		},
 		{
 			"date col in alias",
-			expression.NewAlias(
+			expression.NewAlias("foo", expression.NewLiteral("", sql.Date)),
+			expression.NewAlias("foo", expression.NewConvert(
 				expression.NewLiteral("", sql.Date),
-				"foo",
-			),
-			expression.NewAlias(
-				expression.NewConvert(
-					expression.NewLiteral("", sql.Date),
-					expression.ConvertToDate,
-				),
-				"foo",
-			),
+				expression.ConvertToDate,
+			)),
 		},
 		{
 			"date add",
@@ -165,7 +153,7 @@ func TestConvertDates(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			input := plan.NewProject([]sql.Expression{tt.in}, table)
 			expected := plan.NewProject([]sql.Expression{tt.out}, table)
-			result, err := convertDates(sql.NewEmptyContext(), nil, input)
+			result, err := convertDates(sql.NewEmptyContext(), nil, input, nil)
 			require.NoError(t, err)
 			require.Equal(t, expected, result)
 		})
@@ -189,17 +177,14 @@ func TestConvertDatesProject(t *testing.T) {
 			expression.NewLiteral("2019-06-06 00:00:00", sql.LongText),
 		),
 		plan.NewProject([]sql.Expression{
-			expression.NewAlias(
-				expression.NewConvert(
-					expression.NewGetField(0, sql.Timestamp, "foo", false),
-					expression.ConvertToDatetime,
-				),
-				"foo",
-			),
+			expression.NewAlias("foo", expression.NewConvert(
+				expression.NewGetField(0, sql.Timestamp, "foo", false),
+				expression.ConvertToDatetime,
+			)),
 		}, table),
 	)
 
-	result, err := convertDates(sql.NewEmptyContext(), nil, input)
+	result, err := convertDates(sql.NewEmptyContext(), nil, input, nil)
 	require.NoError(t, err)
 	require.Equal(t, expected, result)
 }
@@ -227,13 +212,10 @@ func TestConvertDatesGroupBy(t *testing.T) {
 		),
 		plan.NewGroupBy(
 			[]sql.Expression{
-				expression.NewAlias(
-					expression.NewConvert(
-						expression.NewGetField(0, sql.Timestamp, "foo", false),
-						expression.ConvertToDatetime,
-					),
-					"foo",
-				),
+				expression.NewAlias("foo", expression.NewConvert(
+					expression.NewGetField(0, sql.Timestamp, "foo", false),
+					expression.ConvertToDatetime,
+				)),
 			},
 			[]sql.Expression{
 				expression.NewConvert(
@@ -245,7 +227,7 @@ func TestConvertDatesGroupBy(t *testing.T) {
 		),
 	)
 
-	result, err := convertDates(sql.NewEmptyContext(), nil, input)
+	result, err := convertDates(sql.NewEmptyContext(), nil, input, nil)
 	require.NoError(t, err)
 	require.Equal(t, expected, result)
 }
@@ -278,7 +260,7 @@ func TestConvertDatesFieldReference(t *testing.T) {
 		}, table),
 	)
 
-	result, err := convertDates(sql.NewEmptyContext(), nil, input)
+	result, err := convertDates(sql.NewEmptyContext(), nil, input, nil)
 	require.NoError(t, err)
 	require.Equal(t, expected, result)
 }

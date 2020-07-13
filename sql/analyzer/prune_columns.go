@@ -10,8 +10,23 @@ import (
 
 type usedColumns map[string]map[string]struct{}
 
-func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
-	a.Log("pruning columns, node of type %T", n)
+func (uc usedColumns) add(table, col string) {
+	if _, ok := uc[table]; !ok {
+		uc[table] = make(map[string]struct{})
+	}
+	uc[table][col] = struct{}{}
+}
+
+func (uc usedColumns) has(table, col string) bool {
+	if _, ok := uc[table]; !ok {
+		return false
+	}
+	_, ok := uc[table][col]
+	return ok
+}
+
+// pruneColumns removes unneeded columns from Project and GroupBy nodes.
+func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if !n.Resolved() {
 		return n, nil
 	}
@@ -25,7 +40,7 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	}
 
 	if describe, ok := n.(*plan.DescribeQuery); ok {
-		pruned, err := pruneColumns(ctx, a, describe.Child)
+		pruned, err := pruneColumns(ctx, a, describe.Child, scope)
 		if err != nil {
 			return nil, err
 		}
@@ -33,7 +48,7 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 		return plan.NewDescribeQuery(describe.Format, pruned), nil
 	}
 
-	columns := findRequiredColumns(n)
+	columns := columnsUsedByNode(n)
 
 	findUsedColumns(columns, n)
 
@@ -50,16 +65,11 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
 	return fixRemainingFieldsIndexes(n)
 }
 
-func findRequiredColumns(n sql.Node) usedColumns {
+func columnsUsedByNode(n sql.Node) usedColumns {
 	columns := make(usedColumns)
 
-	// All the columns required for the output of the query must be mark as
-	// used, otherwise the schema would change.
 	for _, col := range n.Schema() {
-		if _, ok := columns[col.Source]; !ok {
-			columns[col.Source] = make(map[string]struct{})
-		}
-		columns[col.Source][col.Name] = struct{}{}
+		columns.add(col.Source, col.Name)
 	}
 
 	return columns
@@ -90,11 +100,7 @@ func pruneSubqueryColumns(
 			return nil, fmt.Errorf("this is likely a bug: missing projected column %q on subquery %q", col, n.Name())
 		}
 
-		if _, ok := columns[table]; !ok {
-			columns[table] = make(map[string]struct{})
-		}
-
-		columns[table][col] = struct{}{}
+		columns.add(table, col)
 	}
 
 	findUsedColumns(columns, n.Child)
@@ -123,8 +129,8 @@ func findUsedColumns(columns usedColumns, n sql.Node) {
 			addUsedProjectColumns(columns, n.Projections)
 			return true
 		case *plan.GroupBy:
-			addUsedProjectColumns(columns, n.Aggregate)
-			addUsedColumns(columns, n.Grouping)
+			addUsedProjectColumns(columns, n.SelectedExprs)
+			addUsedColumns(columns, n.GroupByExprs)
 			return true
 		case *plan.SubqueryAlias:
 			return false
@@ -137,6 +143,33 @@ func findUsedColumns(columns usedColumns, n sql.Node) {
 
 		return true
 	})
+}
+
+func addUsedProjectColumns(columns usedColumns, projection []sql.Expression) {
+	var candidates []sql.Expression
+	for _, e := range projection {
+		// Only check for expressions that are not directly a GetField. This
+		// is because in a projection we only care about those that were used
+		// to compute new columns, such as aliases and so on. The fields that
+		// are just passed up in the tree will already be in some other part
+		// if they are really used.
+		if _, ok := e.(*expression.GetField); !ok {
+			candidates = append(candidates, e)
+		}
+	}
+
+	addUsedColumns(columns, candidates)
+}
+
+func addUsedColumns(columns usedColumns, exprs []sql.Expression) {
+	for _, e := range exprs {
+		sql.Inspect(e, func(e sql.Expression) bool {
+			if gf, ok := e.(*expression.GetField); ok {
+				columns.add(gf.Table(), gf.Name())
+			}
+			return true
+		})
+	}
 }
 
 func pruneSubqueries(
@@ -166,6 +199,49 @@ func pruneUnusedColumns(n sql.Node, columns usedColumns) (sql.Node, error) {
 			return n, nil
 		}
 	})
+}
+
+func pruneProject(n *plan.Project, columns usedColumns) sql.Node {
+	var remaining []sql.Expression
+	for _, e := range n.Projections {
+		if !shouldPruneExpr(e, columns) {
+			remaining = append(remaining, e)
+		}
+	}
+
+	if len(remaining) == 0 {
+		return n.Child
+	}
+
+	return plan.NewProject(remaining, n.Child)
+}
+
+func pruneGroupBy(n *plan.GroupBy, columns usedColumns) sql.Node {
+	var remaining []sql.Expression
+	for _, e := range n.SelectedExprs {
+		if !shouldPruneExpr(e, columns) {
+			remaining = append(remaining, e)
+		}
+	}
+
+	if len(remaining) == 0 {
+		return n.Child
+	}
+
+	return plan.NewGroupBy(remaining, n.GroupByExprs, n.Child)
+}
+
+func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
+	gf, ok := e.(*expression.GetField)
+	if !ok {
+		return false
+	}
+
+	if gf.Table() == "" {
+		return false
+	}
+
+	return !cols.has(gf.Table(), gf.Name())
 }
 
 func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
@@ -208,95 +284,8 @@ func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
 					return nil, ErrColumnTableNotFound.New(gf.Table(), gf.Name())
 				}
 
-				if idx == gf.Index() {
-					return gf, nil
-				}
-
-				ngf := *gf
-				return ngf.WithIndex(idx), nil
+				return gf.WithIndex(idx), nil
 			})
 		}
 	})
-}
-
-func addUsedProjectColumns(
-	columns usedColumns,
-	projection []sql.Expression,
-) {
-	var candidates []sql.Expression
-	for _, e := range projection {
-		// Only check for expressions that are not directly a GetField. This
-		// is because in a projection we only care about those that were used
-		// to compute new columns, such as aliases and so on. The fields that
-		// are just passed up in the tree will already be in some other part
-		// if they are really used.
-		if _, ok := e.(*expression.GetField); !ok {
-			candidates = append(candidates, e)
-		}
-	}
-
-	addUsedColumns(columns, candidates)
-}
-
-func addUsedColumns(columns usedColumns, exprs []sql.Expression) {
-	for _, e := range exprs {
-		sql.Inspect(e, func(e sql.Expression) bool {
-			if gf, ok := e.(*expression.GetField); ok {
-				if _, ok := columns[gf.Table()]; !ok {
-					columns[gf.Table()] = make(map[string]struct{})
-				}
-				columns[gf.Table()][gf.Name()] = struct{}{}
-			}
-			return true
-		})
-	}
-}
-
-func pruneProject(n *plan.Project, columns usedColumns) sql.Node {
-	var remaining []sql.Expression
-	for _, e := range n.Projections {
-		if !shouldPruneExpr(e, columns) {
-			remaining = append(remaining, e)
-		}
-	}
-
-	if len(remaining) == 0 {
-		return n.Child
-	}
-
-	return plan.NewProject(remaining, n.Child)
-}
-
-func pruneGroupBy(n *plan.GroupBy, columns usedColumns) sql.Node {
-	var remaining []sql.Expression
-	for _, e := range n.Aggregate {
-		if !shouldPruneExpr(e, columns) {
-			remaining = append(remaining, e)
-		}
-	}
-
-	if len(remaining) == 0 {
-		return n.Child
-	}
-
-	return plan.NewGroupBy(remaining, n.Grouping, n.Child)
-}
-
-func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
-	gf, ok := e.(*expression.GetField)
-	if !ok {
-		return false
-	}
-
-	if gf.Table() == "" {
-		return false
-	}
-
-	if c, ok := cols[gf.Table()]; ok {
-		if _, ok := c[gf.Name()]; ok {
-			return false
-		}
-	}
-
-	return true
 }

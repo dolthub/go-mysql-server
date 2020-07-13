@@ -11,129 +11,6 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func TestReorderProjection(t *testing.T) {
-	f := getRule("reorder_projection")
-
-	table := memory.NewTable("mytable", sql.Schema{{
-		Name: "i", Source: "mytable", Type: sql.Int64,
-	}})
-
-	testCases := []struct {
-		name     string
-		project  sql.Node
-		expected sql.Node
-	}{
-		{
-			"sort",
-			plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-					expression.NewAlias(expression.NewLiteral(1, sql.Int64), "foo"),
-					expression.NewAlias(expression.NewLiteral(2, sql.Int64), "bar"),
-				},
-				plan.NewSort(
-					[]plan.SortField{
-						{Column: expression.NewUnresolvedColumn("foo")},
-					},
-					plan.NewFilter(
-						expression.NewEquals(
-							expression.NewLiteral(1, sql.Int64),
-							expression.NewUnresolvedColumn("bar"),
-						),
-						plan.NewResolvedTable(table),
-					),
-				),
-			),
-			plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-					expression.NewGetField(2, sql.Int64, "foo", false),
-					expression.NewGetField(1, sql.Int64, "bar", false),
-				},
-				plan.NewSort(
-					[]plan.SortField{{Column: expression.NewGetField(2, sql.Int64, "foo", false)}},
-					plan.NewProject(
-						[]sql.Expression{
-							expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-							expression.NewGetField(1, sql.Int64, "bar", false),
-							expression.NewAlias(expression.NewLiteral(1, sql.Int64), "foo"),
-						},
-						plan.NewFilter(
-							expression.NewEquals(
-								expression.NewLiteral(1, sql.Int64),
-								expression.NewGetField(1, sql.Int64, "bar", false),
-							),
-							plan.NewProject(
-								[]sql.Expression{
-									expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-									expression.NewAlias(expression.NewLiteral(2, sql.Int64), "bar"),
-								},
-								plan.NewResolvedTable(table),
-							),
-						),
-					),
-				),
-			),
-		},
-		{
-			"use alias twice",
-			plan.NewProject(
-				[]sql.Expression{
-					expression.NewAlias(expression.NewLiteral(1, sql.Int64), "foo"),
-				},
-				plan.NewFilter(
-					expression.NewOr(
-						expression.NewEquals(
-							expression.NewLiteral(1, sql.Int64),
-							expression.NewUnresolvedColumn("foo"),
-						),
-						expression.NewEquals(
-							expression.NewLiteral(1, sql.Int64),
-							expression.NewUnresolvedColumn("foo"),
-						),
-					),
-					plan.NewResolvedTable(table),
-				),
-			),
-			plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(1, sql.Int64, "foo", false),
-				},
-				plan.NewFilter(
-					expression.NewOr(
-						expression.NewEquals(
-							expression.NewLiteral(1, sql.Int64),
-							expression.NewGetField(1, sql.Int64, "foo", false),
-						),
-						expression.NewEquals(
-							expression.NewLiteral(1, sql.Int64),
-							expression.NewGetField(1, sql.Int64, "foo", false),
-						),
-					),
-					plan.NewProject(
-						[]sql.Expression{
-							expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-							expression.NewAlias(expression.NewLiteral(1, sql.Int64), "foo"),
-						},
-						plan.NewResolvedTable(table),
-					),
-				),
-			),
-		},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
-
-			result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), tt.project)
-			require.NoError(err)
-
-			require.Equal(tt.expected, result)
-		})
-	}
-}
-
 func TestEraseProjection(t *testing.T) {
 	require := require.New(t)
 	f := getRule("erase_projection")
@@ -148,7 +25,7 @@ func TestEraseProjection(t *testing.T) {
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
 				expression.NewGetField(1, sql.Int64, "bar", false),
-				expression.NewAlias(expression.NewLiteral(1, sql.Int64), "foo"),
+				expression.NewAlias("foo", expression.NewLiteral(1, sql.Int64)),
 			},
 			plan.NewFilter(
 				expression.NewEquals(
@@ -158,7 +35,7 @@ func TestEraseProjection(t *testing.T) {
 				plan.NewProject(
 					[]sql.Expression{
 						expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-						expression.NewAlias(expression.NewLiteral(2, sql.Int64), "bar"),
+						expression.NewAlias("bar", expression.NewLiteral(2, sql.Int64)),
 					},
 					plan.NewResolvedTable(table),
 				),
@@ -175,12 +52,12 @@ func TestEraseProjection(t *testing.T) {
 		expected,
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	require.Equal(expected, result)
 
-	result, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), expected)
+	result, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), expected, nil)
 	require.NoError(err)
 
 	require.Equal(expected, result)
@@ -228,7 +105,7 @@ func TestOptimizeDistinct(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			node, err := rule.Apply(sql.NewEmptyContext(), nil, plan.NewDistinct(tt.child))
+			node, err := rule.Apply(sql.NewEmptyContext(), nil, plan.NewDistinct(tt.child), nil)
 			require.NoError(t, err)
 
 			_, ok := node.(*plan.OrderedDistinct)
@@ -270,7 +147,7 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	var expected sql.Node = plan.NewInnerJoin(
@@ -305,7 +182,7 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 		),
 	)
 
-	result, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+	result, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	expected = plan.NewCrossJoin(
@@ -421,7 +298,7 @@ func TestEvalFilter(t *testing.T) {
 		t.Run(tt.filter.String(), func(t *testing.T) {
 			require := require.New(t)
 			node := plan.NewFilter(tt.filter, plan.NewResolvedTable(inner))
-			result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node)
+			result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 			require.NoError(err)
 			require.Equal(tt.expected, result)
 		})
@@ -466,6 +343,7 @@ func TestRemoveUnnecessaryConverts(t *testing.T) {
 				sql.NewEmptyContext(),
 				NewDefault(nil),
 				node,
+				nil,
 			)
 			require.NoError(err)
 

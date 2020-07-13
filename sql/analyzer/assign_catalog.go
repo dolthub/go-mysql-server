@@ -6,7 +6,7 @@ import (
 )
 
 // assignCatalog sets the catalog in the required nodes.
-func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("assign_catalog")
 	defer span.Finish()
 
