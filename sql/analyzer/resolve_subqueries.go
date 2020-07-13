@@ -10,7 +10,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 	span, ctx := ctx.Span("resolve_subqueries")
 	defer span.Finish()
 
-	n, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
 			a.Log("found subquery %q with child of type %T", n.Name(), n.Child)
@@ -24,10 +24,9 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			return n, nil
 		}
 	})
-	if err != nil {
-		return nil, err
-	}
+}
 
+func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
 		s, ok := e.(*expression.Subquery)
 		if !ok || s.Resolved() {
@@ -38,15 +37,19 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 
 		subScope := scope.newScope(n)
 
-		q, err := a.Analyze(subqueryCtx, s.Query, subScope)
+		analyzed, err := a.Analyze(subqueryCtx, s.Query, subScope)
 		if err != nil {
+			if sql.ErrTableNotFound.Is(err) || sql.ErrColumnNotFound.Is(err) {
+				// defer analysis of this subquery until a later pass of analysis
+				return e, nil
+			}
 			return nil, err
 		}
 
-		if qp, ok := q.(*plan.QueryProcess); ok {
-			q = qp.Child
+		if qp, ok := analyzed.(*plan.QueryProcess); ok {
+			analyzed = qp.Child
 		}
 
-		return s.WithQuery(q), nil
+		return s.WithQuery(analyzed), nil
 	})
 }

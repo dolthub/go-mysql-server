@@ -74,16 +74,24 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
-
-	test := enginetest.QueryTest{
-		"SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 2 ORDER BY foo, i;",
+	test := enginetest.QueryTest	{
+		`SELECT pk, (SELECT pk FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1`,
 		[]sql.Row{
-			{1, 1, 2},
-			{2, 1, 2},
-			{3, 1, 2}},
+			{0,0},
+			{1,1},
+			{2,2},
+			{3,3},
+		},
 	}
-
+	// test := enginetest.QueryTest	{
+	// 	`SELECT pk FROM one_pk opk ORDER BY 1`,
+	// 	[]sql.Row{
+	// 		{0,0},
+	// 		{1,1},
+	// 		{2,2},
+	// 		{3,3},
+	// 	},
+	// }
 	fmt.Sprintf("%v", test)
 
 	harness := newMemoryHarness("", 1, testNumPartitions, true, nil)

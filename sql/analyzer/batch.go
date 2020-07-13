@@ -72,9 +72,11 @@ func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		a.Log("Evaluating rule %s", rule.Name)
 		a.PushDebugContext(rule.Name)
 		next, err := rule.Apply(ctx, a, prev, scope)
-		a.LogDiff(prev, next)
-		prev = next
-		a.LogNode(prev)
+		if next != nil {
+			a.LogDiff(prev, next)
+			prev = next
+			a.LogNode(prev)
+		}
 		a.PopDebugContext()
 		if err != nil {
 			return nil, err

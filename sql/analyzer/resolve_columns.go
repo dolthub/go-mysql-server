@@ -143,8 +143,8 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			return n, nil
 		}
 
-		columns := getNodeAvailableColumns(n)
-		tables := getTableNamesInNode(n)
+		columns := getNodeAvailableColumns(n, scope)
+		tables := getTableNamesInNode(n, scope)
 
 		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 			return qualifyExpression(e, columns, tables)
@@ -228,8 +228,21 @@ func qualifyExpression(
 	}
 }
 
-func getNodeAvailableColumns(node sql.Node) map[string][]string {
+func getNodeAvailableColumns(node sql.Node, scope *Scope) map[string][]string {
 	var columns = make(map[string][]string)
+	// First make available any columns in out scopes, in outer-to-inner order. Inner names will overwrite outer names.
+	for _, n := range scope.Nodes() {
+		plan.Inspect(n, func(n sql.Node) bool {
+			if n == nil {
+				return false
+			}
+
+			// TODO: don't examine all nodes in plan
+			getColumnsInNodes(n.Children(), columns)
+			return true
+		})
+	}
+	// Then examine all columns in this node
 	getColumnsInNodes(node.Children(), columns)
 	return columns
 }
@@ -272,28 +285,30 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 // getNodeAvailableTables returns the set of table names and table aliases in the node given, keyed by their
 // lower-cased names. Table aliases overwrite table names: the original name is not considered accessible once aliased.
 // The value of the map is the same as the key, just used for existence checks.
-func getTableNamesInNode(node sql.Node) map[string]string {
+func getTableNamesInNode(node sql.Node, scope *Scope) map[string]string {
 	tables := make(map[string]string)
 
-	plan.Inspect(node, func(n sql.Node) bool {
-		switch n := n.(type) {
-		case *plan.SubqueryAlias, *plan.ResolvedTable:
-			name := strings.ToLower(n.(sql.Nameable).Name())
-			tables[name] = name
-			return false
-		case *plan.TableAlias:
-			switch t := n.Child.(type) {
-			case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias:
-				name := strings.ToLower(t.(sql.Nameable).Name())
-				alias := strings.ToLower(n.Name())
-				tables[alias] = name
+	// Get table names in all outer scopes and nodes. Inner scoped names will overwrite those from the outer scope.
+	for _, n := range append(append(([]sql.Node)(nil), node), scope.Nodes()...) {
+		plan.Inspect(n, func(n sql.Node) bool {
+			switch n := n.(type) {
+			case *plan.SubqueryAlias, *plan.ResolvedTable:
+				name := strings.ToLower(n.(sql.Nameable).Name())
+				tables[name] = name
+				return false
+			case *plan.TableAlias:
+				switch t := n.Child.(type) {
+				case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias:
+					name := strings.ToLower(t.(sql.Nameable).Name())
+					alias := strings.ToLower(n.Name())
+					tables[alias] = name
+				}
+				return false
 			}
-			return false
-		}
 
-		return true
-	})
-
+			return true
+		})
+	}
 	return tables
 }
 

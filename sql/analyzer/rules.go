@@ -8,8 +8,8 @@ import (
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
 	{"resolve_views", resolveViews},
-	{"resolve_subqueries", resolveSubqueries},
 	{"resolve_tables", resolveTables},
+	{"resolve_subqueries", resolveSubqueries},
 	{"check_aliases", checkAliases},
 }
 
@@ -28,6 +28,7 @@ var DefaultRules = []Rule{
 	{"merge_union_schemas", mergeUnionSchemas},
 	{"flatten_group_by_aggregations", flattenGroupByAggregations},
 	{"reorder_projection", reorderProjection},
+	{"resolve_subquery_exprs", resolveSubqueryExpressions},
 	{"move_join_conds_to_filter", moveJoinConditionsToFilter},
 	{"eval_filter", evalFilter},
 	{"optimize_distinct", optimizeDistinct},
