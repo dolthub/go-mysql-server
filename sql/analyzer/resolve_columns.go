@@ -432,8 +432,8 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			return n, nil
 		}
 
-		// We need to use the schema, so all children must be resolved.
-		for _, c := range n.Children() {
+		// We need to use the schema, so all children and outer scope must be resolved.
+		for _, c := range append(scope.OuterToInner(), n.Children()...) {
 			if !c.Resolved() {
 				return n, nil
 			}
@@ -456,18 +456,31 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 }
 
 func findChildIndexedColumns(n sql.Node, scope *Scope) map[tableCol]indexedCol {
-	var idx int
 	var columns = make(map[tableCol]indexedCol)
 
-	for _, child := range n.Children() {
-		childSch := child.Schema()
-		for _, col := range childSch {
+	var idx int
+	indexNode := func(n sql.Node) {
+		for _, col := range n.Schema() {
 			columns[tableCol{
 				table: strings.ToLower(col.Source),
 				col:   strings.ToLower(col.Name),
 			}] = indexedCol{col, idx}
 			idx++
 		}
+	}
+
+	// Index the columns in the outer scope, outer to inner. This means inner scope columns will overwrite the outer
+	// ones
+	for _, n := range scope.OuterToInner() {
+		idx = 0
+		indexNode(n)
+	}
+
+	// For the innermost scope (the node being evaluated), look at the schemas of the children instead of this node
+	// itself.
+	idx = 0
+	for _, child := range n.Children() {
+		indexNode(child)
 	}
 
 	return columns

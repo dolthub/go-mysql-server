@@ -198,7 +198,7 @@ func (s *Scope) OuterToInner() []sql.Node {
 	}
 	reversed := make([]sql.Node, len(s.nodes))
 	for i := range s.nodes {
-		reversed[i] = s.nodes[len(s.nodes)-i]
+		reversed[i] = s.nodes[len(s.nodes)-i-1]
 	}
 	return reversed
 }
