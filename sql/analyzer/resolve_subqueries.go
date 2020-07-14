@@ -38,7 +38,7 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 		analyzed, err := a.Analyze(subqueryCtx, s.Query, subScope)
 		if err != nil {
-			if sql.ErrTableNotFound.Is(err) || sql.ErrTableColumnNotFound.Is(err) || ErrAmbiguousColumnName.Is(err) || ErrValidationResolved.Is(err) {
+			if sql.ErrTableNotFound.Is(err) || sql.ErrTableColumnNotFound.Is(err) || sql.ErrAmbiguousColumnName.Is(err) || ErrValidationResolved.Is(err) {
 				// defer analysis of this subquery until a later pass of analysis
 				return e, nil
 			}

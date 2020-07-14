@@ -71,7 +71,7 @@ func TestMisusedAlias(t *testing.T) {
 	)
 
 	_, err := f.Apply(sql.NewEmptyContext(), nil, node, nil)
-	require.EqualError(err, ErrMisusedAlias.New("alias_i").Error())
+	require.EqualError(err, sql.ErrMisusedAlias.New("alias_i").Error())
 }
 
 func TestQualifyColumns(t *testing.T) {
@@ -206,7 +206,7 @@ func TestQualifyColumns(t *testing.T) {
 
 	_, err = f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	assert.Error(err)
-	assert.True(ErrAmbiguousColumnName.Is(err))
+	assert.True(sql.ErrAmbiguousColumnName.Is(err))
 
 	subquery := plan.NewSubqueryAlias(
 		"b", "",

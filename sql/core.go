@@ -31,6 +31,10 @@ var (
 	// table in scope.
 	ErrColumnNotFound = errors.NewKind("column %q could not be found in any table in scope")
 
+	// ErrAmbiguousColumnName is returned when there is a column reference that
+	// is present in more than one table.
+	ErrAmbiguousColumnName = errors.NewKind("ambiguous column name %q, it's present in all these tables: %v")
+
 	// ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
 	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
 
@@ -50,6 +54,10 @@ var (
 
 	// ErrUniqueKeyViolation is returned when a unique key constraint is violated
 	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key for %s")
+
+	// ErrMisusedAlias is returned when a alias is defined and used in the same projection.
+	ErrMisusedAlias = errors.NewKind("column %q does not exist in scope, but there is an alias defined in" +
+			" this projection with that name. Aliases cannot be used in the same projection they're defined in")
 )
 
 // Nameable is something that has a name.
@@ -315,7 +323,7 @@ type ForeignKeyAlterableTable interface {
 	// CreateForeignKey creates an index for this table, using the provided parameters.
 	// Returns an error if the foreign key name already exists.
 	CreateForeignKey(ctx *Context, fkName string, columns []string, referencedTable string, referencedColumns []string,
-		onUpdate, onDelete ForeignKeyReferenceOption) error
+			onUpdate, onDelete ForeignKeyReferenceOption) error
 	// DropForeignKey removes a foreign key from the database.
 	DropForeignKey(ctx *Context, fkName string) error
 }

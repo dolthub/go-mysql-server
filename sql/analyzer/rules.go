@@ -57,15 +57,9 @@ var OnceAfterAll = []Rule{
 }
 
 var (
-	// ErrAmbiguousColumnName is returned when there is a column reference that
-	// is present in more than one table.
-	ErrAmbiguousColumnName = errors.NewKind("ambiguous column name %q, it's present in all these tables: %v")
 	// ErrFieldMissing is returned when the field is not on the schema.
 	ErrFieldMissing = errors.NewKind("field %q is not on schema")
 	// ErrOrderByColumnIndex is returned when in an order clause there is a
 	// column that is unknown.
 	ErrOrderByColumnIndex = errors.NewKind("unknown column %d in order by clause")
-	// ErrMisusedAlias is returned when a alias is defined and used in the same projection.
-	ErrMisusedAlias = errors.NewKind("column %q does not exist in scope, but there is an alias defined in" +
-		" this projection with that name. Aliases cannot be used in the same projection they're defined in")
 )

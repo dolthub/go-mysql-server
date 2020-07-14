@@ -21,7 +21,6 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
@@ -2952,7 +2951,7 @@ var errorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       `SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(sub_s, 2, 3) AS sub_sub_s FROM mytable`,
-		ExpectedErr: analyzer.ErrMisusedAlias,
+		ExpectedErr: sql.ErrMisusedAlias,
 	},
 	{
 		Query:       "SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= one_pk.pk) FROM one_pk opk ORDER BY 1",

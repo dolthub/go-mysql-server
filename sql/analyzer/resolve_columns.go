@@ -39,7 +39,7 @@ func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		aliases := lookForAliasDeclarations(p)
 		for alias := range aliases {
 			if isAliasUsed(p, alias) {
-				err = ErrMisusedAlias.New(alias)
+				err = sql.ErrMisusedAlias.New(alias)
 			}
 		}
 
@@ -328,7 +328,7 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 					col.Name(),
 				), nil
 			default:
-				return nil, ErrAmbiguousColumnName.New(col.Name(), strings.Join(tablesForColumn, ", "))
+				return nil, sql.ErrAmbiguousColumnName.New(col.Name(), strings.Join(tablesForColumn, ", "))
 			}
 		}
 
