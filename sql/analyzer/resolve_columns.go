@@ -136,6 +136,9 @@ type column interface {
 	sql.Expression
 }
 
+type availableColumns map[string]map[int][]string
+type availableTables map[string]string
+
 // qualifyColumns assigns a table to any column expressions that don't have one already
 func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
@@ -152,11 +155,7 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 	})
 }
 
-func qualifyExpression(
-	e sql.Expression,
-	columns map[string][]string,
-	tables map[string]string,
-) (sql.Expression, error) {
+func qualifyExpression(e sql.Expression, columns availableColumns, tables availableTables) (sql.Expression, error) {
 	switch col := e.(type) {
 	case column:
 		// Skip this step for global and session variables
@@ -173,42 +172,55 @@ func qualifyExpression(
 		}
 
 		name, table := strings.ToLower(col.Name()), strings.ToLower(col.Table())
-		availableTables := dedupStrings(columns[name])
-		if table != "" {
-			table, ok := tables[table]
-			if !ok {
-				if len(tables) == 0 {
-					return nil, sql.ErrTableNotFound.New(col.Table())
+
+		nestingLevels := columns.nestingLevels(name)
+
+		// If there are no tables found for this column in any scope, we'll never enter the loop below. Assume that this
+		// column will be resolved later.
+		if len(nestingLevels) == 0 {
+			return col, nil
+		}
+
+		for _, level := range nestingLevels {
+			tablesForColumn := columns.tablesAtLevel(name, level)
+			if table != "" {
+				table, ok := tables[table]
+				if !ok {
+					if len(tables) == 0 {
+						return nil, sql.ErrTableNotFound.New(col.Table())
+					}
+
+					similar := similartext.FindFromMap(tables, col.Table())
+					return nil, sql.ErrTableNotFound.New(col.Table() + similar)
 				}
 
-				similar := similartext.FindFromMap(tables, col.Table())
-				return nil, sql.ErrTableNotFound.New(col.Table() + similar)
+				// If the table exists but it's not available for this node it
+				// means some work is still needed, so just return the column
+				// and let it be resolved in the next pass.
+				if !stringContains(tablesForColumn, table) {
+					return col, nil
+				}
+
+				return expression.NewUnresolvedQualifiedColumn(table, col.Name()), nil
 			}
 
-			// If the table exists but it's not available for this node it
-			// means some work is still needed, so just return the column
-			// and let it be resolved in the next pass.
-			if !stringContains(availableTables, table) {
+			switch len(tablesForColumn) {
+			case 0:
+				// If there are no tables that have any column with the column
+				// name let's just return it as it is. This may be an alias, so
+				// we'll wait for the reorder of the projection.
 				return col, nil
+			case 1:
+				return expression.NewUnresolvedQualifiedColumn(
+					tablesForColumn[0],
+					col.Name(),
+				), nil
+			default:
+				return nil, ErrAmbiguousColumnName.New(col.Name(), strings.Join(tablesForColumn, ", "))
 			}
-
-			return expression.NewUnresolvedQualifiedColumn(table, col.Name()), nil
 		}
 
-		switch len(availableTables) {
-		case 0:
-			// If there are no tables that have any column with the column
-			// name let's just return it as it is. This may be an alias, so
-			// we'll wait for the reorder of the projection.
-			return col, nil
-		case 1:
-			return expression.NewUnresolvedQualifiedColumn(
-				availableTables[0],
-				col.Name(),
-			), nil
-		default:
-			return nil, ErrAmbiguousColumnName.New(col.Name(), strings.Join(availableTables, ", "))
-		}
+		return nil, ErrInAnalysis.New("Should have made a decision already")
 	case *expression.Star:
 		if col.Table != "" {
 			if _, ok := tables[strings.ToLower(col.Table)]; !ok {
@@ -228,40 +240,55 @@ func qualifyExpression(
 	}
 }
 
-func getNodeAvailableColumns(node sql.Node, scope *Scope) map[string][]string {
-	var columns = make(map[string][]string)
-	// First make available any columns in out scopes, in outer-to-inner order. Inner names will overwrite outer names.
-	for _, n := range scope.Nodes() {
-		plan.Inspect(n, func(n sql.Node) bool {
-			if n == nil {
-				return false
-			}
-
-			// TODO: don't examine all nodes in plan
-			getColumnsInNodes(n.Children(), columns)
-			return true
-		})
+func getNodeAvailableColumns(node sql.Node, scope *Scope) availableColumns {
+	var columns = make(availableColumns)
+	// Examine all columns, from the innermost scope (this one) outward.
+	getColumnsInNodes(node.Children(), columns, 0)
+	for i, n := range scope.Nodes() {
+		// For the inner scope, we want all available columns in child nodes. For the outer scope, we are interested in
+		// available columns in the sibling node
+		getColumnsInNodes([]sql.Node{n}, columns, i+1)
 	}
-	// Then examine all columns in this node
-	getColumnsInNodes(node.Children(), columns)
 	return columns
 }
 
-func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
-	indexCol := func(table, col string) {
-		col = strings.ToLower(col)
-		columns[col] = append(columns[col], strings.ToLower(table))
+// indexColumn adds a column with the given table and column name at the given nesting level
+func (a availableColumns) indexColumn(table, col string, nestingLevel int) {
+	col = strings.ToLower(col)
+	_, ok := a[col]
+	if !ok {
+		a[col] = make(map[int][]string)
 	}
+	if !stringContains(a[col][nestingLevel], strings.ToLower(table)) {
+		a[col][nestingLevel] = append(a[col][nestingLevel], strings.ToLower(table))
+	}
+}
 
+func (a availableColumns) nestingLevels(column string) []int {
+	var nestingLevels []int
+	for s := range a[column] {
+		nestingLevels = append(nestingLevels, s)
+	}
+	return nestingLevels
+}
+
+func (a availableColumns) tablesAtLevel(column string, nestingLevel int) []string {
+	if tablesAtLevel, ok :=  a[column]; ok {
+		return tablesAtLevel[nestingLevel]
+	}
+	return nil
+}
+
+func getColumnsInNodes(nodes []sql.Node, columns availableColumns, nestingLevel int) {
 	indexExpressions := func(exprs []sql.Expression) {
 		for _, e := range exprs {
 			switch e := e.(type) {
 			case *expression.Alias:
-				indexCol("", e.Name())
+				columns.indexColumn("", e.Name(), nestingLevel)
 			case *expression.GetField:
-				indexCol(e.Table(), e.Name())
+				columns.indexColumn(e.Table(), e.Name(), nestingLevel)
 			case *expression.UnresolvedColumn:
-				indexCol(e.Table(), e.Name())
+				columns.indexColumn(e.Table(), e.Name(), nestingLevel)
 			}
 		}
 	}
@@ -270,14 +297,14 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 		switch n := node.(type) {
 		case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias:
 			for _, col := range n.Schema() {
-				indexCol(col.Source, col.Name)
+				columns.indexColumn(col.Source, col.Name, nestingLevel)
 			}
 		case *plan.Project:
 			indexExpressions(n.Projections)
 		case *plan.GroupBy:
 			indexExpressions(n.SelectedExprs)
 		default:
-			getColumnsInNodes(n.Children(), columns)
+			getColumnsInNodes(n.Children(), columns, nestingLevel)
 		}
 	}
 }
@@ -285,7 +312,7 @@ func getColumnsInNodes(nodes []sql.Node, columns map[string][]string) {
 // getNodeAvailableTables returns the set of table names and table aliases in the node given, keyed by their
 // lower-cased names. Table aliases overwrite table names: the original name is not considered accessible once aliased.
 // The value of the map is the same as the key, just used for existence checks.
-func getTableNamesInNode(node sql.Node, scope *Scope) map[string]string {
+func getTableNamesInNode(node sql.Node, scope *Scope) availableTables {
 	tables := make(map[string]string)
 
 	// Get table names in all outer scopes and nodes. Inner scoped names will overwrite those from the outer scope.
@@ -592,18 +619,6 @@ func findAllColumns(e sql.Expression) []string {
 		return true
 	})
 	return cols
-}
-
-func dedupStrings(in []string) []string {
-	var seen = make(map[string]struct{})
-	var result []string
-	for _, s := range in {
-		if _, ok := seen[s]; !ok {
-			seen[s] = struct{}{}
-			result = append(result, s)
-		}
-	}
-	return result
 }
 
 func isGlobalOrSessionColumn(col column) bool {
