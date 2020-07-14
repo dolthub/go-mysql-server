@@ -88,14 +88,14 @@ func (p *CreateForeignKey) Execute(ctx *sql.Context) error {
 				return ErrAddForeignKeyDuplicateColumn.New(fkCol)
 			}
 		} else {
-			return sql.ErrColumnNotFound.New(fkCol)
+			return sql.ErrTableColumnNotFound.New(fkCol)
 		}
 	}
 
 	// Make sure that the ref columns exist
 	for _, refCol := range p.FkDef.ReferencedColumns {
 		if !p.Right.Schema().Contains(refCol, p.FkDef.ReferencedTable) {
-			return sql.ErrColumnNotFound.New(refCol)
+			return sql.ErrTableColumnNotFound.New(refCol)
 		}
 	}
 

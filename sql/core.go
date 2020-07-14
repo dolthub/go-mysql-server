@@ -25,7 +25,11 @@ var (
 	ErrTableNotFound = errors.NewKind("table not found: %s")
 
 	// ErrColumnNotFound is thrown when a column named cannot be found in scope
-	ErrColumnNotFound = errors.NewKind("table %s does not have column %s")
+	ErrTableColumnNotFound = errors.NewKind("table %q does not have column %q")
+
+	// ErrColumnNotFound is returned when the column does not exist in any
+	// table in scope.
+	ErrColumnNotFound = errors.NewKind("column %q could not be found in any table in scope")
 
 	// ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
 	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")

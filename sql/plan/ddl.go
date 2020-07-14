@@ -307,7 +307,7 @@ func (a *AddColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	if a.order != nil && !a.order.First {
 		idx := tbl.Schema().IndexOf(a.order.AfterColumn, tbl.Name())
 		if idx < 0 {
-			return nil, sql.ErrColumnNotFound.New(tbl.Name(), a.order.AfterColumn)
+			return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), a.order.AfterColumn)
 		}
 	}
 
@@ -375,7 +375,7 @@ func (d *DropColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	}
 
 	if !found {
-		return nil, sql.ErrColumnNotFound.New(tbl.Name(), d.column)
+		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), d.column)
 	}
 
 	return sql.RowsToRowIter(), alterable.DropColumn(ctx, d.column)
@@ -423,7 +423,7 @@ func (r *RenameColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	tbl := alterable.(sql.Table)
 	idx := tbl.Schema().IndexOf(r.columnName, tbl.Name())
 	if idx < 0 {
-		return nil, sql.ErrColumnNotFound.New(tbl.Name(), r.columnName)
+		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), r.columnName)
 	}
 
 	nc := *tbl.Schema()[idx]
@@ -477,13 +477,13 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 	tbl := alterable.(sql.Table)
 	idx := tbl.Schema().IndexOf(m.columnName, tbl.Name())
 	if idx < 0 {
-		return nil, sql.ErrColumnNotFound.New(tbl.Name(), m.columnName)
+		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), m.columnName)
 	}
 
 	if m.order != nil && !m.order.First {
 		idx = tbl.Schema().IndexOf(m.order.AfterColumn, tbl.Name())
 		if idx < 0 {
-			return nil, sql.ErrColumnNotFound.New(tbl.Name(), m.order.AfterColumn)
+			return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), m.order.AfterColumn)
 		}
 	}
 

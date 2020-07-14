@@ -281,7 +281,7 @@ func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
 
 				idx, ok := indexes[tableCol{gf.Table(), gf.Name()}]
 				if !ok {
-					return nil, ErrColumnTableNotFound.New(gf.Table(), gf.Name())
+					return nil, sql.ErrTableColumnNotFound.New(gf.Table(), gf.Name())
 				}
 
 				return gf.WithIndex(idx), nil

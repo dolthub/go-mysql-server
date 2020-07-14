@@ -2904,7 +2904,19 @@ var errorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       "select x from mytable",
-		ExpectedErr: analyzer.ErrColumnNotFound,
+		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
+		Query:       "select mytable.x from mytable",
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	{
+		Query:       "select a.x from mytable as a",
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	{
+		Query:       "select a from notable",
+		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
 		Query:       "select myTable.i from mytable as mt", // alias overwrites the original table name

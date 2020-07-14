@@ -799,7 +799,7 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable RENAME COLUMN foo TO bar")
 	require.Error(err)
-	require.True(sql.ErrColumnNotFound.Is(err))
+	require.True(sql.ErrTableColumnNotFound.Is(err))
 }
 
 func TestAddColumn(t *testing.T, harness Harness) {
@@ -888,7 +888,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable ADD COLUMN b BIGINT COMMENT 'ok' AFTER not_exist")
 	require.Error(err)
-	require.True(sql.ErrColumnNotFound.Is(err))
+	require.True(sql.ErrTableColumnNotFound.Is(err))
 
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable ADD COLUMN b INT NOT NULL")
 	require.Error(err)
@@ -948,11 +948,11 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST")
 	require.Error(err)
-	require.True(sql.ErrColumnNotFound.Is(err))
+	require.True(sql.ErrTableColumnNotFound.Is(err))
 
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable MODIFY i BIGINT NOT NULL COMMENT 'ok' AFTER not_exist")
 	require.Error(err)
-	require.True(sql.ErrColumnNotFound.Is(err))
+	require.True(sql.ErrTableColumnNotFound.Is(err))
 
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist MODIFY COLUMN i INT NOT NULL COMMENT 'hello'")
 	require.Error(err)
@@ -985,7 +985,7 @@ func TestDropColumn(t *testing.T, harness Harness) {
 
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable DROP COLUMN s")
 	require.Error(err)
-	require.True(sql.ErrColumnNotFound.Is(err))
+	require.True(sql.ErrTableColumnNotFound.Is(err))
 }
 
 func TestCreateForeignKeys(t *testing.T, harness Harness) {
@@ -1087,7 +1087,7 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE child2 ADD CONSTRAINT fk4 FOREIGN KEY (f) REFERENCES child(dne) ON UPDATE SET NULL")
 	require.Error(err)
-	assert.True(t, sql.ErrColumnNotFound.Is(err))
+	assert.True(t, sql.ErrTableColumnNotFound.Is(err))
 }
 
 func TestDropForeignKeys(t *testing.T, harness Harness) {

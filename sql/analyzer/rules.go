@@ -57,12 +57,6 @@ var OnceAfterAll = []Rule{
 }
 
 var (
-	// ErrColumnTableNotFound is returned when the column does not exist in a
-	// the table.
-	ErrColumnTableNotFound = errors.NewKind("table %q does not have column %q")
-	// ErrColumnNotFound is returned when the column does not exist in any
-	// table in scope.
-	ErrColumnNotFound = errors.NewKind("column %q could not be found in any table in scope")
 	// ErrAmbiguousColumnName is returned when there is a column reference that
 	// is present in more than one table.
 	ErrAmbiguousColumnName = errors.NewKind("ambiguous column name %q, it's present in all these tables: %v")

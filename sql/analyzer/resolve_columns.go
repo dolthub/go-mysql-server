@@ -282,7 +282,7 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 		}
 
 		// TODO: more tests for error conditions
-		
+
 		// If this column is already qualified, make sure the table name is known
 		if col.Table() != "" {
 			// TODO: method for this
@@ -499,10 +499,10 @@ func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns ma
 			return &deferredColumn{uc}, nil
 		default:
 			if table != "" {
-				return nil, ErrColumnTableNotFound.New(e.Table(), e.Name())
+				return nil, sql.ErrTableColumnNotFound.New(e.Table(), e.Name())
 			}
 
-			return nil, ErrColumnNotFound.New(e.Name())
+			return nil, sql.ErrColumnNotFound.New(e.Name())
 		}
 	}
 
