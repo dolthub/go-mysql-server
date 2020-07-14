@@ -234,14 +234,14 @@ func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
 
 	// Examine all columns, from the innermost scope (this one) outward.
 	getColumnsInNodes(n.Children(), names, 0)
-	for i, n := range scope.Nodes() {
+	for i, n := range scope.InnerToOuter() {
 		// For the inner scope, we want all available columns in child nodes. For the outer scope, we are interested in
 		// available columns in the sibling node
 		getColumnsInNodes([]sql.Node{n}, names, i+1)
 	}
 
 	// Get table names in all outer scopes and nodes. Inner scoped names will overwrite those from the outer scope.
-	for i, n := range append(append(([]sql.Node)(nil), n), scope.Nodes()...) {
+	for i, n := range append(append(([]sql.Node)(nil), n), scope.InnerToOuter()...) {
 		plan.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
 			case *plan.SubqueryAlias, *plan.ResolvedTable:
@@ -439,7 +439,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			}
 		}
 
-		columns := findChildIndexedColumns(n)
+		columns := findChildIndexedColumns(n, scope)
 		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
@@ -455,7 +455,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 	})
 }
 
-func findChildIndexedColumns(n sql.Node) map[tableCol]indexedCol {
+func findChildIndexedColumns(n sql.Node, scope *Scope) map[tableCol]indexedCol {
 	var idx int
 	var columns = make(map[tableCol]indexedCol)
 

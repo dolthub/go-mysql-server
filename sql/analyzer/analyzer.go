@@ -171,6 +171,8 @@ type Scope struct {
 	nodes []sql.Node
 }
 
+// newScope creates a new Scope object with the additional innermost Node context. When constructing with a subquery,
+// the Node given should be the sibling Node of the subquery.
 func (s *Scope) newScope(node sql.Node) *Scope {
 	if s == nil {
 		return &Scope{[]sql.Node{node}}
@@ -181,12 +183,26 @@ func (s *Scope) newScope(node sql.Node) *Scope {
 	return &Scope{newNodes}
 }
 
-func (s *Scope) Nodes() []sql.Node {
+// InnerToOuter returns the scope Nodes in order of innermost scope to outermost scope.
+func (s *Scope) InnerToOuter() []sql.Node {
 	if s == nil {
 		return nil
 	}
 	return s.nodes
 }
+
+// OuterToInner returns the scope nodes in order of outermost scope to innermost scope.
+func (s *Scope) OuterToInner() []sql.Node {
+	if s == nil {
+		return nil
+	}
+	reversed := make([]sql.Node, len(s.nodes))
+	for i := range s.nodes {
+		reversed[i] = s.nodes[len(s.nodes)-i]
+	}
+	return reversed
+}
+
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
 // To add custom rules, the easiest way is use the Builder.
@@ -282,7 +298,8 @@ func (a *Analyzer) PopDebugContext() {
 	}
 }
 
-// Analyze the node and all its children.
+// Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
+// transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("analyze", opentracing.Tags{
 		"plan": n.String(),
@@ -293,14 +310,15 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node
 	for _, batch := range a.Batches {
 		a.PushDebugContext(batch.Desc)
 		n, err = batch.Eval(ctx, a, n, scope)
-		a.PopDebugContext()
-		if ErrMaxAnalysisIters.Is(err) {
-			a.Log(err.Error())
-			continue
-		}
 		if err != nil {
-			return nil, err
+			a.Log("Encountered error: %v", err)
+			a.PopDebugContext()
+			if ErrMaxAnalysisIters.Is(err) {
+				continue
+			}
+			return n, err
 		}
+		a.PopDebugContext()
 	}
 
 	defer func() {
