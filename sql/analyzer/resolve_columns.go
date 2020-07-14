@@ -148,15 +148,7 @@ func newNestingLevelSymbols() nestingLevelSymbols {
 	}
 }
 
-type availableSymbols struct {
-	symbols map[int]nestingLevelSymbols
-}
-
-func newAvailableSymbols() availableSymbols {
-	return availableSymbols{
-		symbols: make(map[int]nestingLevelSymbols),
-	}
-}
+type availableNames map[int]nestingLevelSymbols
 
 // qualifyColumns assigns a table to any column expressions that don't have one already
 func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
@@ -165,7 +157,7 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			return n, nil
 		}
 
-		symbols := getNodeAvailableSymbols(n, scope)
+		symbols := getNodeAvailableNames(n, scope)
 
 		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 			return qualifyExpression(e, symbols)
@@ -174,29 +166,29 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 }
 
 // indexColumn adds a column with the given table and column name at the given nesting level
-func (a availableSymbols) indexColumn(table, col string, nestingLevel int) {
+func (a availableNames) indexColumn(table, col string, nestingLevel int) {
 	col = strings.ToLower(col)
-	_, ok := a.symbols[nestingLevel]
+	_, ok := a[nestingLevel]
 	if !ok {
-		a.symbols[nestingLevel] = newNestingLevelSymbols()
+		a[nestingLevel] = newNestingLevelSymbols()
 	}
-	if !stringContains(a.symbols[nestingLevel].availableColumns[col], strings.ToLower(table)) {
-		a.symbols[nestingLevel].availableColumns[col] = append(a.symbols[nestingLevel].availableColumns[col], strings.ToLower(table))
+	if !stringContains(a[nestingLevel].availableColumns[col], strings.ToLower(table)) {
+		a[nestingLevel].availableColumns[col] = append(a[nestingLevel].availableColumns[col], strings.ToLower(table))
 	}
 }
 
 // indexTable adds a table with the given name at the given nesting level
-func (a availableSymbols) indexTable(alias, name string, nestingLevel int) {
+func (a availableNames) indexTable(alias, name string, nestingLevel int) {
 	alias = strings.ToLower(alias)
-	_, ok := a.symbols[nestingLevel]
+	_, ok := a[nestingLevel]
 	if !ok {
-		a.symbols[nestingLevel] = newNestingLevelSymbols()
+		a[nestingLevel] = newNestingLevelSymbols()
 	}
-	a.symbols[nestingLevel].availableTables[alias] = strings.ToLower(name)
+	a[nestingLevel].availableTables[alias] = strings.ToLower(name)
 }
 
-func (a availableSymbols) nestingLevels() []int {
-	levels := make([]int, len(a.symbols))
+func (a availableNames) nestingLevels() []int {
+	levels := make([]int, len(a))
 	// level numbers are always 0 through N-1
 	for i := 0;  i < len(levels); i++ {
 		levels[i] = i
@@ -204,18 +196,22 @@ func (a availableSymbols) nestingLevels() []int {
 	return levels
 }
 
-func (a availableSymbols) tablesAtLevel(level int) map[string]string {
-	return a.symbols[level].availableTables
+func (a availableNames) tablesAtLevel(level int) map[string]string {
+	return a[level].availableTables
 }
 
-func (a availableSymbols) allTables() []string {
+func (a availableNames) allTables() []string {
 	var allTables []string
-	for _, level := range a.symbols {
+	for _, level := range a {
 		for name, table := range level.availableTables {
 			allTables = append(allTables, name, table)
 		}
 	}
 	return dedupStrings(allTables)
+}
+
+func (a availableNames) tablesForColumnAtLevel(column string, level int) []string {
+	return a[level].availableColumns[column]
 }
 
 func dedupStrings(in []string) []string {
@@ -230,15 +226,11 @@ func dedupStrings(in []string) []string {
 	return result
 }
 
-func (a availableSymbols) tablesForColumnAtLevel(column string, level int) []string {
-	return a.symbols[level].availableColumns[column]
-}
-
 // getNodeAvailableSymbols returns the set of table and column names accessible to the node given and using the scope
 // given. Table aliases overwrite table names: the original name is not considered accessible once aliased.
 // The value of the map is the same as the key, just used for existence checks.
-func getNodeAvailableSymbols(n sql.Node, scope *Scope) availableSymbols {
-	symbols := newAvailableSymbols()
+func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
+	symbols := make(availableNames)
 
 	// Examine all columns, from the innermost scope (this one) outward.
 	getColumnsInNodes(n.Children(), symbols, 0)
@@ -273,7 +265,7 @@ func getNodeAvailableSymbols(n sql.Node, scope *Scope) availableSymbols {
 	return symbols
 }
 
-func qualifyExpression(e sql.Expression, symbols availableSymbols) (sql.Expression, error) {
+func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression, error) {
 	switch col := e.(type) {
 	case column:
 		// Skip this step for global and session variables
@@ -368,7 +360,7 @@ func qualifyExpression(e sql.Expression, symbols availableSymbols) (sql.Expressi
 	}
 }
 
-func getColumnsInNodes(nodes []sql.Node, columns availableSymbols, nestingLevel int) {
+func getColumnsInNodes(nodes []sql.Node, columns availableNames, nestingLevel int) {
 	indexExpressions := func(exprs []sql.Expression) {
 		for _, e := range exprs {
 			switch e := e.(type) {
