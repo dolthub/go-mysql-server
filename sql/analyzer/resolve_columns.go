@@ -230,14 +230,14 @@ func dedupStrings(in []string) []string {
 // given. Table aliases overwrite table names: the original name is not considered accessible once aliased.
 // The value of the map is the same as the key, just used for existence checks.
 func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
-	symbols := make(availableNames)
+	names := make(availableNames)
 
 	// Examine all columns, from the innermost scope (this one) outward.
-	getColumnsInNodes(n.Children(), symbols, 0)
+	getColumnsInNodes(n.Children(), names, 0)
 	for i, n := range scope.Nodes() {
 		// For the inner scope, we want all available columns in child nodes. For the outer scope, we are interested in
 		// available columns in the sibling node
-		getColumnsInNodes([]sql.Node{n}, symbols, i+1)
+		getColumnsInNodes([]sql.Node{n}, names, i+1)
 	}
 
 	// Get table names in all outer scopes and nodes. Inner scoped names will overwrite those from the outer scope.
@@ -246,14 +246,14 @@ func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
 			switch n := n.(type) {
 			case *plan.SubqueryAlias, *plan.ResolvedTable:
 				name := strings.ToLower(n.(sql.Nameable).Name())
-				symbols.indexTable(name, name, i)
+				names.indexTable(name, name, i)
 				return false
 			case *plan.TableAlias:
 				switch t := n.Child.(type) {
 				case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias:
 					name := strings.ToLower(t.(sql.Nameable).Name())
 					alias := strings.ToLower(n.Name())
-					symbols.indexTable(alias, name, i)
+					names.indexTable(alias, name, i)
 				}
 				return false
 			}
@@ -262,7 +262,7 @@ func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
 		})
 	}
 
-	return symbols
+	return names
 }
 
 func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression, error) {
@@ -281,6 +281,8 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 			return col, nil
 		}
 
+		// TODO: more tests for error conditions
+		
 		// If this column is already qualified, make sure the table name is known
 		if col.Table() != "" {
 			// TODO: method for this
@@ -360,16 +362,16 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 	}
 }
 
-func getColumnsInNodes(nodes []sql.Node, columns availableNames, nestingLevel int) {
+func getColumnsInNodes(nodes []sql.Node, names availableNames, nestingLevel int) {
 	indexExpressions := func(exprs []sql.Expression) {
 		for _, e := range exprs {
 			switch e := e.(type) {
 			case *expression.Alias:
-				columns.indexColumn("", e.Name(), nestingLevel)
+				names.indexColumn("", e.Name(), nestingLevel)
 			case *expression.GetField:
-				columns.indexColumn(e.Table(), e.Name(), nestingLevel)
+				names.indexColumn(e.Table(), e.Name(), nestingLevel)
 			case *expression.UnresolvedColumn:
-				columns.indexColumn(e.Table(), e.Name(), nestingLevel)
+				names.indexColumn(e.Table(), e.Name(), nestingLevel)
 			}
 		}
 	}
@@ -378,14 +380,14 @@ func getColumnsInNodes(nodes []sql.Node, columns availableNames, nestingLevel in
 		switch n := node.(type) {
 		case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias:
 			for _, col := range n.Schema() {
-				columns.indexColumn(col.Source, col.Name, nestingLevel)
+				names.indexColumn(col.Source, col.Name, nestingLevel)
 			}
 		case *plan.Project:
 			indexExpressions(n.Projections)
 		case *plan.GroupBy:
 			indexExpressions(n.SelectedExprs)
 		default:
-			getColumnsInNodes(n.Children(), columns, nestingLevel)
+			getColumnsInNodes(n.Children(), names, nestingLevel)
 		}
 	}
 }
