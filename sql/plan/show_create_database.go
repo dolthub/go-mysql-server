@@ -38,7 +38,7 @@ func (s *ShowCreateDatabase) WithDatabase(db sql.Database) (sql.Node, error) {
 }
 
 // RowIter implements the sql.Node interface.
-func (s *ShowCreateDatabase) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (s *ShowCreateDatabase) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var name = s.db.Name()
 
 	var buf bytes.Buffer

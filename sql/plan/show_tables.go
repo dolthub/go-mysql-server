@@ -64,7 +64,7 @@ func (p *ShowTables) Schema() sql.Schema {
 }
 
 // RowIter implements the Node interface.
-func (p *ShowTables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *ShowTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	tableNames, err := p.db.GetTableNames(ctx)
 
 	if err != nil {

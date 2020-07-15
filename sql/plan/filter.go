@@ -24,10 +24,10 @@ func (p *Filter) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (p *Filter) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *Filter) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Filter")
 
-	i, err := p.Child.RowIter(ctx)
+	i, err := p.Child.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err

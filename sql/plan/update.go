@@ -85,7 +85,7 @@ func (p *Update) Execute(ctx *sql.Context) (int, int, error) {
 	}
 	schema := p.Node.Schema()
 
-	iter, err := p.Node.RowIter(ctx)
+	iter, err := p.Node.RowIter(ctx, nil)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -143,7 +143,7 @@ func (ui UpdateInfo) String() string {
 }
 
 // RowIter implements the Node interface.
-func (p *Update) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *Update) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	matched, updated, err := p.Execute(ctx)
 	if err != nil {
 		return nil, err

@@ -90,9 +90,9 @@ func (s *Sort) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (s *Sort) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (s *Sort) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Sort")
-	i, err := s.UnaryNode.Child.RowIter(ctx)
+	i, err := s.UnaryNode.Child.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err

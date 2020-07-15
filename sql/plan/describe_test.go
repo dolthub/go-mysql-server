@@ -21,7 +21,7 @@ func TestDescribe(t *testing.T) {
 	})
 
 	d := NewDescribe(NewResolvedTable(table))
-	iter, err := d.RowIter(ctx)
+	iter, err := d.RowIter(ctx, nil)
 	require.NoError(err)
 	require.NotNil(iter)
 
@@ -44,7 +44,7 @@ func TestDescribe_Empty(t *testing.T) {
 
 	d := NewDescribe(NewUnresolvedTable("test_table", ""))
 
-	iter, err := d.RowIter(ctx)
+	iter, err := d.RowIter(ctx, nil)
 	require.NoError(err)
 	require.NotNil(iter)
 
@@ -75,7 +75,7 @@ func TestDescribeQuery(t *testing.T) {
 		),
 	))
 
-	iter, err := node.RowIter(sql.NewEmptyContext())
+	iter, err := node.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)

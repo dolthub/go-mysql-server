@@ -109,7 +109,7 @@ func getLimitedIterator(t *testing.T, limitSize int64) (sql.RowIter, error) {
 	ctx := sql.NewEmptyContext()
 	table, _ := getTestingTable(t)
 	limitPlan := NewLimit(limitSize, NewResolvedTable(table))
-	return limitPlan.RowIter(ctx)
+	return limitPlan.RowIter(ctx, nil)
 }
 
 func receivesNode(n sql.Node) bool {

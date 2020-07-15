@@ -172,7 +172,7 @@ func BenchmarkGroupBy(b *testing.B) {
 			require := require.New(b)
 
 			for i := 0; i < b.N; i++ {
-				iter, err := node.RowIter(sql.NewEmptyContext())
+				iter, err := node.RowIter(sql.NewEmptyContext(), nil)
 				require.NoError(err)
 
 				rows, err := sql.RowIterToRows(iter)

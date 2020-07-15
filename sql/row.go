@@ -69,7 +69,7 @@ func RowIterToRows(i RowIter) ([]Row, error) {
 
 // NodeToRows converts a node to a slice of rows.
 func NodeToRows(ctx *Context, n Node) ([]Row, error) {
-	i, err := n.RowIter(ctx)
+	i, err := n.RowIter(ctx, nil)
 	if err != nil {
 		return nil, err
 	}

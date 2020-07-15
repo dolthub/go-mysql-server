@@ -11,7 +11,7 @@ func (nothing) String() string       { return "NOTHING" }
 func (nothing) Resolved() bool       { return true }
 func (nothing) Schema() sql.Schema   { return nil }
 func (nothing) Children() []sql.Node { return nil }
-func (nothing) RowIter(*sql.Context) (sql.RowIter, error) {
+func (nothing) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
 }
 

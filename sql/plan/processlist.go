@@ -70,7 +70,7 @@ func (p *ShowProcessList) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (p *ShowProcessList) Schema() sql.Schema { return processListSchema }
 
 // RowIter implements the Node interface.
-func (p *ShowProcessList) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *ShowProcessList) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	processes := p.Processes()
 	var rows = make([]sql.Row, len(processes))
 

@@ -37,7 +37,7 @@ func (*ShowDatabases) Schema() sql.Schema {
 }
 
 // RowIter implements the Node interface.
-func (p *ShowDatabases) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *ShowDatabases) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	dbs := p.Catalog.AllDatabases()
 	var rows = make([]sql.Row, 0, len(dbs))
 	for _, db := range dbs {

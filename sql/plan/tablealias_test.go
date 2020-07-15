@@ -34,7 +34,7 @@ func TestTableAlias(t *testing.T) {
 		{Name: "a", Source: "foo", Type: sql.Text, Nullable: true},
 		{Name: "b", Source: "foo", Type: sql.Text, Nullable: true},
 	}, alias.Schema())
-	iter, err := alias.RowIter(ctx)
+	iter, err := alias.RowIter(ctx, nil)
 	require.NoError(err)
 
 	var i int

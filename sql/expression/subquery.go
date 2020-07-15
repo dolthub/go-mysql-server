@@ -37,7 +37,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return s.value, nil
 	}
 
-	iter, err := s.Query.RowIter(ctx)
+	iter, err := s.Query.RowIter(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context) ([]interface{}, error) {
 		return s.value.([]interface{}), nil
 	}
 
-	iter, err := s.Query.RowIter(ctx)
+	iter, err := s.Query.RowIter(ctx, nil)
 	if err != nil {
 		return nil, err
 	}

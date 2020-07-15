@@ -113,7 +113,7 @@ func (p *DropForeignKey) Execute(ctx *sql.Context) error {
 }
 
 // RowIter implements the Node interface.
-func (p *DropForeignKey) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *DropForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	err := p.Execute(ctx)
 	if err != nil {
 		return nil, err
@@ -141,7 +141,7 @@ func (p *CreateForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) 
 func (p *CreateForeignKey) Schema() sql.Schema { return nil }
 func (p *DropForeignKey) Schema() sql.Schema   { return nil }
 
-func (p *CreateForeignKey) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *CreateForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	err := p.Execute(ctx)
 	if err != nil {
 		return nil, err

@@ -70,13 +70,13 @@ func (p *GroupBy) Schema() sql.Schema {
 }
 
 // RowIter implements the Node interface.
-func (p *GroupBy) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *GroupBy) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.GroupBy", opentracing.Tags{
 		"groupings":  len(p.GroupByExprs),
 		"aggregates": len(p.SelectedExprs),
 	})
 
-	i, err := p.Child.RowIter(ctx)
+	i, err := p.Child.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err

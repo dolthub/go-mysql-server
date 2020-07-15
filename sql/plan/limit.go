@@ -28,10 +28,10 @@ func (l *Limit) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (l *Limit) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (l *Limit) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Limit", opentracing.Tag{Key: "limit", Value: l.Limit})
 
-	li, err := l.Child.RowIter(ctx)
+	li, err := l.Child.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err

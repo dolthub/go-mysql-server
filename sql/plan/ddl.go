@@ -90,7 +90,7 @@ func (c *CreateTable) WithDatabase(db sql.Database) (sql.Node, error) {
 }
 
 // RowIter implements the Node interface.
-func (c *CreateTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	creatable, ok := c.db.(sql.TableCreator)
 	if ok {
 		err := creatable.CreateTable(ctx, c.name, c.schema)
@@ -164,7 +164,7 @@ func (d *DropTable) WithDatabase(db sql.Database) (sql.Node, error) {
 }
 
 // RowIter implements the Node interface.
-func (d *DropTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	droppable, ok := d.db.(sql.TableDropper)
 	if !ok {
 		return nil, ErrDropTableNotSupported.New(d.db.Name())
@@ -236,7 +236,7 @@ func (r *RenameTable) String() string {
 	return fmt.Sprintf("Rename table %s to %s", r.oldNames, r.newNames)
 }
 
-func (r *RenameTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (r *RenameTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	renamer, ok := r.db.(sql.TableRenamer)
 	if !ok {
 		return nil, ErrRenameTableNotSupported.New(r.db.Name())
@@ -297,7 +297,7 @@ func (a *AddColumn) String() string {
 	return fmt.Sprintf("add column %s", a.column.Name)
 }
 
-func (a *AddColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	alterable, err := getAlterableTable(a.db, ctx, a.tableName)
 	if err != nil {
 		return nil, err
@@ -359,7 +359,7 @@ func (d *DropColumn) String() string {
 	return fmt.Sprintf("drop column %s", d.column)
 }
 
-func (d *DropColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	alterable, err := getAlterableTable(d.db, ctx, d.tableName)
 	if err != nil {
 		return nil, err
@@ -414,7 +414,7 @@ func (r *RenameColumn) String() string {
 	return fmt.Sprintf("rename column %s to %s", r.columnName, r.newColumnName)
 }
 
-func (r *RenameColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (r *RenameColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	alterable, err := getAlterableTable(r.db, ctx, r.tableName)
 	if err != nil {
 		return nil, err
@@ -468,7 +468,7 @@ func (m *ModifyColumn) String() string {
 	return fmt.Sprintf("modify column %s", m.column.Name)
 }
 
-func (m *ModifyColumn) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	alterable, err := getAlterableTable(m.db, ctx, m.tableName)
 	if err != nil {
 		return nil, err

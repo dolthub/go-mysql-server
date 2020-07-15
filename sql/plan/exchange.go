@@ -34,7 +34,7 @@ func NewExchange(
 }
 
 // RowIter implements the sql.Node interface.
-func (e *Exchange) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (e *Exchange) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var t sql.Table
 	Inspect(e.Child, func(n sql.Node) bool {
 		if table, ok := n.(sql.Table); ok {
@@ -218,7 +218,7 @@ func (it *exchangeRowIter) iterPartition(p sql.Partition) {
 		return
 	}
 
-	rows, err := node.RowIter(it.ctx)
+	rows, err := node.RowIter(it.ctx, nil)
 	if err != nil {
 		it.err <- err
 		return
@@ -308,7 +308,7 @@ func (exchangePartition) Children() []sql.Node { return nil }
 
 func (exchangePartition) Resolved() bool { return true }
 
-func (p *exchangePartition) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *exchangePartition) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return p.table.PartitionRows(ctx, p.Partition)
 }
 

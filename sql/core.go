@@ -78,8 +78,9 @@ type Node interface {
 	Schema() Schema
 	// Children nodes.
 	Children() []Node
-	// RowIter produces a row iterator from this node.
-	RowIter(*Context) (RowIter, error)
+	// RowIter produces a row iterator from this node. The current row being evaluated is provided, as well the context
+	// of the query.
+	RowIter(ctx *Context, row Row) (RowIter, error)
 	// WithChildren returns a copy of the node with children replaced.
 	// It will return an error if the number of children is different than
 	// the current number of children. They must be given in the same order
@@ -103,14 +104,6 @@ func DebugString(nodeOrExpression interface{}) string {
 		return s.String()
 	}
 	panic(fmt.Sprintf("Expected sql.DebugString or fmt.Stringer for %T", nodeOrExpression))
-}
-
-// EvalNode is a node in the execution plan tree which takes an Eval context (a row from the outer scope) to use when
-// generating its row results.
-type EvalNode interface {
-	Node
-	// RowIterForRow produces a row iterator from this node.
-	RowIterForRow(*Context, Row) (RowIter, error)
 }
 
 // OpaqueNode is a node that doesn't allow transformations to its children and

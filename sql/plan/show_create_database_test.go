@@ -12,7 +12,7 @@ func TestShowCreateDatabase(t *testing.T) {
 	require := require.New(t)
 
 	node := NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true)
-	iter, err := node.RowIter(sql.NewEmptyContext())
+	iter, err := node.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
@@ -23,7 +23,7 @@ func TestShowCreateDatabase(t *testing.T) {
 	}, rows)
 
 	node = NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false)
-	iter, err = node.RowIter(sql.NewEmptyContext())
+	iter, err = node.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	rows, err = sql.RowIterToRows(iter)

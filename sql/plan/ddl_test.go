@@ -55,7 +55,7 @@ func TestDropTable(t *testing.T) {
 	require.NoError(createTable(t, db, "testTable3", s, false))
 
 	d := NewDropTable(db, false, "testTable1", "testTable2")
-	rows, err := d.RowIter(sql.NewEmptyContext())
+	rows, err := d.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	r, err := rows.Next()
@@ -70,15 +70,15 @@ func TestDropTable(t *testing.T) {
 	require.True(ok)
 
 	d = NewDropTable(db, false, "testTable1")
-	_, err = d.RowIter(sql.NewEmptyContext())
+	_, err = d.RowIter(sql.NewEmptyContext(), nil)
 	require.Error(err)
 
 	d = NewDropTable(db, true, "testTable1")
-	_, err = d.RowIter(sql.NewEmptyContext())
+	_, err = d.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	d = NewDropTable(db, true, "testTable1", "testTable2", "testTable3")
-	_, err = d.RowIter(sql.NewEmptyContext())
+	_, err = d.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	_, ok = db.Tables()["testTable3"]
@@ -88,7 +88,7 @@ func TestDropTable(t *testing.T) {
 func createTable(t *testing.T, db sql.Database, name string, schema sql.Schema, ifNotExists bool) error {
 	c := NewCreateTable(db, name, schema, ifNotExists, nil)
 
-	rows, err := c.RowIter(sql.NewEmptyContext())
+	rows, err := c.RowIter(sql.NewEmptyContext(), nil)
 	if err != nil {
 		return err
 	}

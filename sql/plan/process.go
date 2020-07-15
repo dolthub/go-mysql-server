@@ -31,8 +31,8 @@ func (p *QueryProcess) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 // RowIter implements the sql.Node interface.
-func (p *QueryProcess) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	iter, err := p.Child.RowIter(ctx)
+func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	iter, err := p.Child.RowIter(ctx, nil)
 	if err != nil {
 		return nil, err
 	}

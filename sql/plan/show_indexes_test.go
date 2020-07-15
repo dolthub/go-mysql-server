@@ -93,7 +93,7 @@ func TestShowIndexes(t *testing.T) {
 			showIdxs.(*ShowIndexes).IndexesToShow = []sql.Index{idx}
 
 			ctx := sql.NewEmptyContext()
-			rowIter, err := showIdxs.RowIter(ctx)
+			rowIter, err := showIdxs.RowIter(ctx, nil)
 			assert.NoError(t, err)
 
 			rows, err := sql.RowIterToRows(rowIter)

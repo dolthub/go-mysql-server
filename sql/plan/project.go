@@ -40,13 +40,13 @@ func (p *Project) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (p *Project) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *Project) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Project", opentracing.Tag{
 		Key:   "projections",
 		Value: len(p.Projections),
 	})
 
-	i, err := p.Child.RowIter(ctx)
+	i, err := p.Child.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err

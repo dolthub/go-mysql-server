@@ -17,7 +17,7 @@ func TestResolvedTable(t *testing.T) {
 	table := NewResolvedTable(newTableTest("test"))
 	require.NotNil(table)
 
-	iter, err := table.RowIter(sql.NewEmptyContext())
+	iter, err := table.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
@@ -42,7 +42,7 @@ func TestResolvedTableCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	iter, err := table.RowIter(sql.NewContext(ctx))
+	iter, err := table.RowIter(sql.NewContext(ctx), nil)
 	require.NoError(err)
 
 	_, err = iter.Next()

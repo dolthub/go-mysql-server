@@ -43,9 +43,9 @@ func (h *Having) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 }
 
 // RowIter implements the sql.Node interface.
-func (h *Having) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (h *Having) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Having")
-	iter, err := h.Child.RowIter(ctx)
+	iter, err := h.Child.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err

@@ -59,7 +59,7 @@ func (*ShowVariables) Children() []sql.Node { return nil }
 
 // RowIter implements the sql.Node interface.
 // The function returns an iterator for filtered variables (based on like pattern)
-func (sv *ShowVariables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var (
 		rows []sql.Row
 		like sql.Expression

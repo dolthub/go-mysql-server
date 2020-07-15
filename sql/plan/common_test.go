@@ -94,7 +94,7 @@ func collectRows(t *testing.T, node sql.Node) []sql.Row {
 	t.Helper()
 	ctx := sql.NewEmptyContext()
 
-	iter, err := node.RowIter(ctx)
+	iter, err := node.RowIter(ctx, nil)
 	require.NoError(t, err)
 
 	var rows []sql.Row

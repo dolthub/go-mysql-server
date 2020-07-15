@@ -28,7 +28,7 @@ func TestShowTables(t *testing.T) {
 	require.True(resolvedShowTables.Resolved())
 	require.Nil(resolvedShowTables.Children())
 
-	iter, err := resolvedShowTables.RowIter(ctx)
+	iter, err := resolvedShowTables.RowIter(ctx, nil)
 	require.NoError(err)
 
 	res, err := iter.Next()

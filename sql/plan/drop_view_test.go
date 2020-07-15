@@ -40,7 +40,7 @@ func mockData(require *require.Assertions) (sql.Database, *sql.Catalog, *sql.Con
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
 
-	_, err := createView.RowIter(ctx)
+	_, err := createView.RowIter(ctx, nil)
 	require.NoError(err)
 
 	return db, catalog, ctx, createView.View()
@@ -58,7 +58,7 @@ func TestDropExistingView(t *testing.T) {
 		dropView := NewDropView([]sql.Node{singleDropView}, ifExists)
 		dropView.Catalog = catalog
 
-		_, err := dropView.RowIter(ctx)
+		_, err := dropView.RowIter(ctx, nil)
 		require.NoError(err)
 
 		require.False(ctx.Exists(db.Name(), view.Name()))
@@ -80,7 +80,7 @@ func TestDropNonExistingView(t *testing.T) {
 		dropView := NewDropView([]sql.Node{singleDropView}, ifExists)
 		dropView.Catalog = catalog
 
-		_, err := dropView.RowIter(ctx)
+		_, err := dropView.RowIter(ctx, nil)
 
 		require.True(ctx.Exists(db.Name(), view.Name()))
 

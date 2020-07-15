@@ -69,7 +69,7 @@ func TestUnion(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		iter, err := c.node.RowIter(sql.NewEmptyContext())
+		iter, err := c.node.RowIter(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.NotNil(iter)
 

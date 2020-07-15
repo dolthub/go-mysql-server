@@ -54,7 +54,7 @@ func (ij *IndexedJoin) Schema() sql.Schema {
 	return append(ij.Left.Schema(), ij.Right.Schema()...)
 }
 
-func (ij *IndexedJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (ij *IndexedJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var indexedTable *IndexedTableAccess
 	Inspect(ij.Right, func(node sql.Node) bool {
 		if it, ok := node.(*IndexedTableAccess); ok {
@@ -97,7 +97,7 @@ func indexedJoinRowIter(ctx *sql.Context, left sql.Node, right sql.Node, indexAc
 		"right": rightName,
 	})
 
-	l, err := left.RowIter(ctx)
+	l, err := left.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err
@@ -170,7 +170,7 @@ func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 		}
 
 		span, ctx := i.ctx.Span("plan.IndexedJoin indexed lookup")
-		rowIter, err := i.secondaryProvider.RowIter(ctx)
+		rowIter, err := i.secondaryProvider.RowIter(ctx, nil)
 		if err != nil {
 			span.Finish()
 			return nil, err
