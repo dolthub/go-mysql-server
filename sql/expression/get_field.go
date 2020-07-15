@@ -95,6 +95,10 @@ func (p *GetField) String() string {
 	return fmt.Sprintf("%s.%s", p.table, p.name)
 }
 
+func (p *GetField) DebugString() string {
+	return fmt.Sprintf("%s.%s, idx=%d, type=%s, nullable=%t", p.table, p.name, p.fieldIndex, p.fieldType, p.nullable)
+}
+
 // WithIndex returns this same GetField with a new index.
 func (p *GetField) WithIndex(n int) sql.Expression {
 	p2 := *p
@@ -133,6 +137,10 @@ func (f *GetSessionField) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
 func (f *GetSessionField) String() string { return "@@" + f.name }
+
+func (f *GetSessionField) DebugString() string {
+	return fmt.Sprintf("@@%s, type=%s, val=%v", f.name, f.typ, f.value)
+}
 
 // WithChildren implements the Expression interface.
 func (f *GetSessionField) WithChildren(children ...sql.Expression) (sql.Expression, error) {

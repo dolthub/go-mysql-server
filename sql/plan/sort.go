@@ -61,6 +61,14 @@ type SortField struct {
 	NullOrdering NullOrdering
 }
 
+func (s SortField) DebugString() string {
+	nullOrdering := "nullsFirst"
+	if s.NullOrdering == NullsLast {
+		nullOrdering = "nullsLast"
+	}
+	return fmt.Sprintf("%s %s %s", sql.DebugString(s.Column), s.Order, nullOrdering)
+}
+
 // NewSort creates a new Sort node.
 func NewSort(sortFields []SortField, child sql.Node) *Sort {
 	return &Sort{
@@ -100,6 +108,17 @@ func (s *Sort) String() string {
 	}
 	_ = pr.WriteNode("Sort(%s)", strings.Join(fields, ", "))
 	_ = pr.WriteChildren(s.Child.String())
+	return pr.String()
+}
+
+func (s *Sort) DebugString() string {
+	pr := sql.NewTreePrinter()
+	var fields = make([]string, len(s.SortFields))
+	for i, f := range s.SortFields {
+		fields[i] = sql.DebugString(f)
+	}
+	_ = pr.WriteNode("Sort(%s)", strings.Join(fields, ", "))
+	_ = pr.WriteChildren(sql.DebugString(s.Child))
 	return pr.String()
 }
 

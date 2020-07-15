@@ -87,6 +87,24 @@ type Node interface {
 	WithChildren(...Node) (Node, error)
 }
 
+// DebugStringer is shared by implementors of Node and Expression, and is used for debugging the analyzer. It allows
+// a node or expression to be printed in greater detail than its default String() representation.
+type DebugStringer interface {
+	// DebugString prints a debug string of the node in question.
+	DebugString() string
+}
+
+// DebugString returns a debug string for the Node or Expression given.
+func DebugString(nodeOrExpression interface{}) string {
+	if ds, ok := nodeOrExpression.(DebugStringer); ok {
+		return ds.DebugString()
+	}
+	if s, ok := nodeOrExpression.(fmt.Stringer); ok {
+		return s.String()
+	}
+	panic(fmt.Sprintf("Expected sql.DebugString or fmt.Stringer for %T", nodeOrExpression))
+}
+
 // EvalNode is a node in the execution plan tree which takes an Eval context (a row from the outer scope) to use when
 // generating its row results.
 type EvalNode interface {

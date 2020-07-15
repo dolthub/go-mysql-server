@@ -95,6 +95,10 @@ func (s *Subquery) String() string {
 	return fmt.Sprintf("(%s)", s.Query)
 }
 
+func (s *Subquery) DebugString() string {
+	return fmt.Sprintf("(%s)", sql.DebugString(s.Query))
+}
+
 // Resolved implements the Expression interface.
 func (s *Subquery) Resolved() bool {
 	return s.Query.Resolved()

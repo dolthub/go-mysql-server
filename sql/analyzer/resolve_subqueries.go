@@ -27,7 +27,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 }
 
 func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		s, ok := e.(*expression.Subquery)
 		if !ok || s.Resolved() {
 			return e, nil
@@ -38,7 +38,7 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 		analyzed, err := a.Analyze(subqueryCtx, s.Query, subScope)
 		if err != nil {
-			if sql.ErrTableNotFound.Is(err) || sql.ErrTableColumnNotFound.Is(err) || sql.ErrAmbiguousColumnName.Is(err) || ErrValidationResolved.Is(err) {
+			if ErrValidationResolved.Is(err) {
 				// keep the work we have and defer remainder of analysis of this subquery until a later pass
 				return s.WithQuery(analyzed), nil
 			}

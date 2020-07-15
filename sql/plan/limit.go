@@ -54,6 +54,13 @@ func (l Limit) String() string {
 	return pr.String()
 }
 
+func (l Limit) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Limit(%d)", l.Limit)
+	_ = pr.WriteChildren(sql.DebugString(l.Child))
+	return pr.String()
+}
+
 type limitIter struct {
 	l          *Limit
 	currentPos int64

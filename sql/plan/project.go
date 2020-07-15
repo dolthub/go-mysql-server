@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -27,24 +28,7 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))
 	for i, e := range p.Projections {
-		var name string
-		if n, ok := e.(sql.Nameable); ok {
-			name = n.Name()
-		} else {
-			name = e.String()
-		}
-
-		var table string
-		if t, ok := e.(sql.Tableable); ok {
-			table = t.Table()
-		}
-
-		s[i] = &sql.Column{
-			Name:     name,
-			Type:     e.Type(),
-			Nullable: e.IsNullable(),
-			Source:   table,
-		}
+		s[i] = expression.ExpressionToColumn(e)
 	}
 	return s
 }
@@ -78,6 +62,17 @@ func (p *Project) String() string {
 	}
 	_ = pr.WriteNode("Project(%s)", strings.Join(exprs, ", "))
 	_ = pr.WriteChildren(p.Child.String())
+	return pr.String()
+}
+
+func (p *Project) DebugString() string {
+	pr := sql.NewTreePrinter()
+	var exprs = make([]string, len(p.Projections))
+	for i, expr := range p.Projections {
+		exprs[i] = sql.DebugString(expr)
+	}
+	_ = pr.WriteNode("Project(%s)", strings.Join(exprs, ", "))
+	_ = pr.WriteChildren(sql.DebugString(p.Child))
 	return pr.String()
 }
 

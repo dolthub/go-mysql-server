@@ -61,6 +61,13 @@ func (p *Filter) String() string {
 	return pr.String()
 }
 
+func (p *Filter) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Filter(%s)", sql.DebugString(p.Expression))
+	_ = pr.WriteChildren(sql.DebugString(p.Child))
+	return pr.String()
+}
+
 // Expressions implements the Expressioner interface.
 func (p *Filter) Expressions() []sql.Expression {
 	return []sql.Expression{p.Expression}

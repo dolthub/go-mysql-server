@@ -253,9 +253,9 @@ func (a *Analyzer) LogNode(n sql.Node) {
 	if a != nil && n != nil && a.Verbose {
 		if len(a.contextStack) > 0 {
 			ctx := strings.Join(a.contextStack, "/")
-			fmt.Printf("%s:\n%s", ctx, n.String())
+			fmt.Printf("%s:\n%s", ctx, sql.DebugString(n))
 		} else {
-			fmt.Printf("%s", n.String())
+			fmt.Printf("%s", sql.DebugString(n))
 		}
 	}
 }
@@ -266,8 +266,8 @@ func (a *Analyzer) LogDiff(prev, next sql.Node) {
 	if a.Debug && a.Verbose {
 		if !reflect.DeepEqual(next, prev) {
 			diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
-				A:        difflib.SplitLines(prev.String()),
-				B:        difflib.SplitLines(next.String()),
+				A:        difflib.SplitLines(sql.DebugString(prev)),
+				B:        difflib.SplitLines(sql.DebugString(next)),
 				FromFile: "Prev",
 				FromDate: "",
 				ToFile:   "Next",

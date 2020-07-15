@@ -189,6 +189,10 @@ func (e *Equals) String() string {
 	return fmt.Sprintf("%s = %s", e.Left(), e.Right())
 }
 
+func (e *Equals) DebugString() string {
+	return fmt.Sprintf("%s = %s", sql.DebugString(e.Left()), sql.DebugString(e.Right()))
+}
+
 // Regexp is a comparison that checks an expression matches a regexp.
 type Regexp struct {
 	comparison
@@ -303,6 +307,10 @@ func (re *Regexp) String() string {
 	return fmt.Sprintf("%s REGEXP %s", re.Left(), re.Right())
 }
 
+func (re *Regexp) DebugString() string {
+	return fmt.Sprintf("%s REGEXP %s", sql.DebugString(re.Left()), sql.DebugString(re.Right()))
+}
+
 // GreaterThan is a comparison that checks an expression is greater than another.
 type GreaterThan struct {
 	comparison
@@ -339,6 +347,10 @@ func (gt *GreaterThan) String() string {
 	return fmt.Sprintf("%s > %s", gt.Left(), gt.Right())
 }
 
+func (gt *GreaterThan) DebugString() string {
+	return fmt.Sprintf("%s > %s", sql.DebugString(gt.Left()), sql.DebugString(gt.Right()))
+}
+
 // LessThan is a comparison that checks an expression is less than another.
 type LessThan struct {
 	comparison
@@ -373,6 +385,10 @@ func (lt *LessThan) WithChildren(children ...sql.Expression) (sql.Expression, er
 
 func (lt *LessThan) String() string {
 	return fmt.Sprintf("%s < %s", lt.Left(), lt.Right())
+}
+
+func (lt *LessThan) DebugString() string {
+	return fmt.Sprintf("%s < %s", sql.DebugString(lt.Left()), sql.DebugString(lt.Right()))
 }
 
 // GreaterThanOrEqual is a comparison that checks an expression is greater or equal to
@@ -412,6 +428,10 @@ func (gte *GreaterThanOrEqual) String() string {
 	return fmt.Sprintf("%s >= %s", gte.Left(), gte.Right())
 }
 
+func (gte *GreaterThanOrEqual) DebugString() string {
+	return fmt.Sprintf("%s >= %s", sql.DebugString(gte.Left()), sql.DebugString(gte.Right()))
+}
+
 // LessThanOrEqual is a comparison that checks an expression is equal or lower than
 // another.
 type LessThanOrEqual struct {
@@ -447,6 +467,10 @@ func (lte *LessThanOrEqual) WithChildren(children ...sql.Expression) (sql.Expres
 
 func (lte *LessThanOrEqual) String() string {
 	return fmt.Sprintf("%s <= %s", lte.Left(), lte.Right())
+}
+
+func (lte *LessThanOrEqual) DebugString() string {
+	return fmt.Sprintf("%s <= %s", sql.DebugString(lte.Left()), sql.DebugString(lte.Right()))
 }
 
 var (
@@ -561,6 +585,10 @@ func (in *In) String() string {
 	return fmt.Sprintf("%s IN %s", in.Left(), in.Right())
 }
 
+func (in *In) DebugString() string {
+	return fmt.Sprintf("%s IN %s", sql.DebugString(in.Left()), sql.DebugString(in.Right()))
+}
+
 // Children implements the Expression interface.
 func (in *In) Children() []sql.Expression {
 	return []sql.Expression{in.Left(), in.Right()}
@@ -667,6 +695,10 @@ func (in *NotIn) WithChildren(children ...sql.Expression) (sql.Expression, error
 
 func (in *NotIn) String() string {
 	return fmt.Sprintf("%s NOT IN %s", in.Left(), in.Right())
+}
+
+func (in *NotIn) DebugString() string {
+	return fmt.Sprintf("%s NOT IN %s", sql.DebugString(in.Left()), sql.DebugString(in.Right()))
 }
 
 // Children implements the Expression interface.

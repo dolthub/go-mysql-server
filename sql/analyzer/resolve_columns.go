@@ -432,14 +432,16 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			return n, nil
 		}
 
-		// We need to use the schema, so all children and outer scope must be resolved.
-		for _, c := range append(scope.OuterToInner(), n.Children()...) {
+		// We need to use the schema, so all children must be resolved.
+		// TODO: also enforce the equivalent constraint for outer scopes. More complicated, because the outer scope can't
+		//  be Resolved() owing to a child expression (the one being evaluated) not being resolved yet.
+		for _, c := range n.Children() {
 			if !c.Resolved() {
 				return n, nil
 			}
 		}
 
-		columns := findChildIndexedColumns(n, scope)
+		columns := indexColumnsInScope(a, n, scope)
 		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
@@ -455,7 +457,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 	})
 }
 
-func findChildIndexedColumns(n sql.Node, scope *Scope) map[tableCol]indexedCol {
+func indexColumnsInScope(a *Analyzer, n sql.Node, scope *Scope) map[tableCol]indexedCol {
 	var columns = make(map[tableCol]indexedCol)
 
 	var idx int
@@ -469,11 +471,45 @@ func findChildIndexedColumns(n sql.Node, scope *Scope) map[tableCol]indexedCol {
 		}
 	}
 
+	indexScope := func(n sql.Node) {
+		if n.Resolved() {
+			indexNode(n)
+			return
+		}
+
+		// If this scope node isn't resolved, we can't use Schema on it. Instead, assemble an equivalent Schema, with
+		// placeholder columns where necessary, for the purpose of analysis.
+		switch n := n.(type) {
+		case *plan.Project:
+			for _, expr := range n.Projections {
+				var col *sql.Column
+				if expr.Resolved() {
+					col = expression.ExpressionToColumn(expr)
+				} else {
+					// TODO: a new type here?
+					col = &sql.Column{
+						Name:       "",
+						Type:       nil,
+						Nullable:   false,
+						Source:     "",
+					}
+				}
+				columns[tableCol{
+					table: strings.ToLower(col.Source),
+					col:   strings.ToLower(col.Name),
+				}] = indexedCol{col, idx}
+				idx++
+			}
+		default:
+			a.Log("Unsupported scope node, ignoring %T", n)
+		}
+	}
+
 	// Index the columns in the outer scope, outer to inner. This means inner scope columns will overwrite the outer
 	// ones
 	for _, n := range scope.OuterToInner() {
 		idx = 0
-		indexNode(n)
+		indexScope(n)
 	}
 
 	// For the innermost scope (the node being evaluated), look at the schemas of the children instead of this node
