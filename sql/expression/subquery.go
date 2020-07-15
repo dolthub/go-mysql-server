@@ -10,15 +10,19 @@ import (
 
 var errExpectedSingleRow = errors.NewKind("the subquery returned more than 1 row")
 
-// Subquery that is executed as an expression.
+// Subquery is as an expression whose value is derived by executing a subquery. It must be executed for every row in
+// the outer result set.
 type Subquery struct {
 	Query sql.Node
+	// OuterScopeSchema contains the schema of rows from the outer scope, which will be used in the evaluation of the
+	// query for each outer scope row.
+	OuterScopeSchema sql.Schema
 	value interface{}
 }
 
-// NewSubquery returns a new subquery node.
+// NewSubquery returns a new subquery expression.
 func NewSubquery(node sql.Node) *Subquery {
-	return &Subquery{node, nil}
+	return &Subquery{Query: node}
 }
 
 // Eval implements the Expression interface.
@@ -106,6 +110,7 @@ func (s *Subquery) Resolved() bool {
 
 // Type implements the Expression interface.
 func (s *Subquery) Type() sql.Type {
+	// TODO: handle row results (more than one column)
 	return s.Query.Schema()[0].Type
 }
 
@@ -126,5 +131,12 @@ func (s *Subquery) Children() []sql.Expression {
 func (s *Subquery) WithQuery(node sql.Node) *Subquery {
 	ns := *s
 	ns.Query = node
+	return &ns
+}
+
+// WithOuterScopeSchema returns the subquery with the outer scope schema changed
+func (s *Subquery) WithOuterScopeSchema(schema sql.Schema) *Subquery {
+	ns := *s
+	ns.OuterScopeSchema = schema
 	return &ns
 }

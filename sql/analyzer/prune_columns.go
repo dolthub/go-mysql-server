@@ -62,7 +62,7 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		return nil, err
 	}
 
-	return fixRemainingFieldsIndexes(n)
+	return fixRemainingFieldsIndexes(n, scope)
 }
 
 func columnsUsedByNode(n sql.Node) usedColumns {
@@ -244,11 +244,11 @@ func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
 	return !cols.has(gf.Table(), gf.Name())
 }
 
-func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
+func fixRemainingFieldsIndexes(n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
-			child, err := fixRemainingFieldsIndexes(n.Child)
+			child, err := fixRemainingFieldsIndexes(n.Child, scope)
 			if err != nil {
 				return nil, err
 			}
@@ -268,9 +268,10 @@ func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
 				return n, nil
 			}
 
-			indexes := make(map[tableCol]int)
+			indexedCols := make(map[tableCol]int)
+			offset := scope.SchemaLength()
 			for i, col := range schema {
-				indexes[tableCol{col.Source, col.Name}] = i
+				indexedCols[tableCol{col.Source, col.Name}] = i + offset
 			}
 
 			return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
@@ -279,7 +280,7 @@ func fixRemainingFieldsIndexes(n sql.Node) (sql.Node, error) {
 					return e, nil
 				}
 
-				idx, ok := indexes[tableCol{gf.Table(), gf.Name()}]
+				idx, ok := indexedCols[tableCol{gf.Table(), gf.Name()}]
 				if !ok {
 					return nil, sql.ErrTableColumnNotFound.New(gf.Table(), gf.Name())
 				}

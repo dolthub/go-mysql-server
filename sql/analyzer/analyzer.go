@@ -2,6 +2,8 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"os"
 	"reflect"
 	"strings"
@@ -203,6 +205,62 @@ func (s *Scope) OuterToInner() []sql.Node {
 	return reversed
 }
 
+// SchemaLength returns the length of the scope part of the schema for nodes subject to this scope. Rows for this node
+// will have all scoped schemas pre-pended to them, so that the results of the node under analysis begins with index
+// SchemaLength().
+func (s *Scope) SchemaLength() int {
+	if s == nil {
+		return 0
+	}
+
+	// Nodes in the scope might not be resolved, so we can't call Schema() on them. Instead, examine them manually.
+	var length int
+	for _, n := range s.OuterToInner() {
+		switch n := n.(type) {
+		case *plan.Project:
+			length += len(n.Projections)
+		default:
+			// TODO: log this
+			// panic(fmt.Sprintf("Unsupported scope node %T", n))
+		}
+	}
+	return length
+}
+
+// Schema returns the equivalent schema of this scope, which consists of the schemas of all constituent scope nodes
+// concatenated from outer to inner. Because we can only calculate the Schema() of nodes that are Resolved(), this
+// method fills in place holder columns as necessary.
+func (s *Scope) Schema() sql.Schema {
+	var schema sql.Schema
+	for _, n := range s.OuterToInner() {
+		if n.Resolved() {
+			schema = append(schema, n.Schema()...)
+		}
+
+		// If this scope node isn't resolved, we can't use Schema() on it. Instead, assemble an equivalent Schema, with
+		// placeholder columns where necessary, for the purpose of analysis.
+		switch n := n.(type) {
+		case *plan.Project:
+			for _, expr := range n.Projections {
+				var col *sql.Column
+				if expr.Resolved() {
+					col = expression.ExpressionToColumn(expr)
+				} else {
+					// TODO: a new type here?
+					col = &sql.Column{
+						Name:       "",
+						Source:     "",
+					}
+				}
+				schema = append(schema, col)
+			}
+		default:
+			// TODO: log this
+			// panic(fmt.Sprintf("Unsupported scope node %T", n))
+		}
+	}
+	return schema
+}
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
 // To add custom rules, the easiest way is use the Builder.

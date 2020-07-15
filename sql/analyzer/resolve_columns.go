@@ -441,7 +441,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			}
 		}
 
-		columns := indexColumnsInScope(a, n, scope)
+		columns := indexColumns(a, n, scope)
 		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
@@ -457,12 +457,15 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 	})
 }
 
-func indexColumnsInScope(a *Analyzer, n sql.Node, scope *Scope) map[tableCol]indexedCol {
+// indexColumns returns a map of column identifiers to their index in the node's schema. Columns from outer scopes are
+// included as well, with lower indexes (prepended to node schema) but lower precedence (overwritten by inner nodes in
+// map)
+func indexColumns(a *Analyzer, n sql.Node, scope *Scope) map[tableCol]indexedCol {
 	var columns = make(map[tableCol]indexedCol)
 
 	var idx int
-	indexNode := func(n sql.Node) {
-		for _, col := range n.Schema() {
+	indexSchema := func(n sql.Schema) {
+		for _, col := range n {
 			columns[tableCol{
 				table: strings.ToLower(col.Source),
 				col:   strings.ToLower(col.Name),
@@ -471,55 +474,21 @@ func indexColumnsInScope(a *Analyzer, n sql.Node, scope *Scope) map[tableCol]ind
 		}
 	}
 
-	indexScope := func(n sql.Node) {
-		if n.Resolved() {
-			indexNode(n)
-			return
-		}
-
-		// If this scope node isn't resolved, we can't use Schema on it. Instead, assemble an equivalent Schema, with
-		// placeholder columns where necessary, for the purpose of analysis.
-		switch n := n.(type) {
-		case *plan.Project:
-			for _, expr := range n.Projections {
-				var col *sql.Column
-				if expr.Resolved() {
-					col = expression.ExpressionToColumn(expr)
-				} else {
-					// TODO: a new type here?
-					col = &sql.Column{
-						Name:       "",
-						Type:       nil,
-						Nullable:   false,
-						Source:     "",
-					}
-				}
-				columns[tableCol{
-					table: strings.ToLower(col.Source),
-					col:   strings.ToLower(col.Name),
-				}] = indexedCol{col, idx}
-				idx++
-			}
-		default:
-			a.Log("Unsupported scope node, ignoring %T", n)
-		}
-	}
-
 	// Index the columns in the outer scope, outer to inner. This means inner scope columns will overwrite the outer
-	// ones
-	for _, n := range scope.OuterToInner() {
-		idx = 0
-		indexScope(n)
-	}
+	// ones of the same name. This matches the MySQL scope precedence rules.
+	indexSchema(scope.Schema())
 
 	// For the innermost scope (the node being evaluated), look at the schemas of the children instead of this node
 	// itself.
-	idx = 0
 	for _, child := range n.Children() {
-		indexNode(child)
+		indexSchema(child.Schema())
 	}
 
 	return columns
+}
+
+func indexColumnsInScope(a *Analyzer, scope *Scope) map[tableCol]indexedCol {
+	return nil
 }
 
 func resolveGlobalOrSessionColumn(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {
