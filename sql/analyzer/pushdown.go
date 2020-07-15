@@ -24,6 +24,11 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		return n, nil
 	}
 
+	if len(scope.Schema()) > 0 {
+		// TODO: field index rewriting is broken for subqueries, skip it for now
+		return n, nil
+	}
+
 	// Pushdown interferes with left and right joins (some where clauses must only be evaluated on the result of the join,
 	// not pushed down to the tables), so skip them.
 	// TODO: only some join queries are incompatible with pushdown semantics, and we could be more judicious with this

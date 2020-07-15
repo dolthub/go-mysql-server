@@ -269,9 +269,8 @@ func fixRemainingFieldsIndexes(n sql.Node, scope *Scope) (sql.Node, error) {
 			}
 
 			indexedCols := make(map[tableCol]int)
-			offset := scope.SchemaLength()
-			for i, col := range schema {
-				indexedCols[tableCol{col.Source, col.Name}] = i + offset
+			for i, col := range append(scope.Schema(), schema...) {
+				indexedCols[tableCol{col.Source, col.Name}] = i
 			}
 
 			return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
