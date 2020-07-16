@@ -42,6 +42,8 @@ func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 
 func (p *QueryProcess) String() string { return p.Child.String() }
 
+func (p *QueryProcess) DebugString() string { return sql.DebugString(p.Child) }
+
 // ProcessIndexableTable is a wrapper for sql.Tables inside a query process
 // that support indexing.
 // It notifies the process manager about the status of a query when a

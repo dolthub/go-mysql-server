@@ -52,13 +52,20 @@ func (e *Exchange) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return newExchangeRowIter(ctx, e.Parallelism, partitions, e.Child), nil
+	return newExchangeRowIter(ctx, e.Parallelism, partitions, row, e.Child), nil
 }
 
 func (e *Exchange) String() string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("Exchange(parallelism=%d)", e.Parallelism)
 	_ = p.WriteChildren(e.Child.String())
+	return p.String()
+}
+
+func (e *Exchange) DebugString() string {
+	p := sql.NewTreePrinter()
+	_ = p.WriteNode("Exchange(parallelism=%d)", e.Parallelism)
+	_ = p.WriteChildren(sql.DebugString(e.Child))
 	return p.String()
 }
 
@@ -75,6 +82,7 @@ type exchangeRowIter struct {
 	ctx         *sql.Context
 	parallelism int
 	partitions  sql.PartitionIter
+	row         sql.Row
 	tree        sql.Node
 	mut         sync.RWMutex
 	tokensChan  chan struct{}
@@ -90,6 +98,7 @@ func newExchangeRowIter(
 	ctx *sql.Context,
 	parallelism int,
 	iter sql.PartitionIter,
+	row  sql.Row,
 	tree sql.Node,
 ) *exchangeRowIter {
 	return &exchangeRowIter{
@@ -100,6 +109,7 @@ func newExchangeRowIter(
 		started:     false,
 		tree:        tree,
 		partitions:  iter,
+		row:         row,
 		quitChan:    make(chan struct{}),
 	}
 }
@@ -218,7 +228,7 @@ func (it *exchangeRowIter) iterPartition(p sql.Partition) {
 		return
 	}
 
-	rows, err := node.RowIter(it.ctx, nil)
+	rows, err := node.RowIter(it.ctx, it.row)
 	if err != nil {
 		it.err <- err
 		return

@@ -1963,6 +1963,11 @@ var QueryTests = []QueryTest{
 		`SELECT (SELECT i FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
 		[]sql.Row{{int64(1)}},
 	},
+	// TODO: fix this, panics
+	// {
+	// 	`SELECT (SELECT s FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
+	// 	[]sql.Row{{"first row"}},
+	// },
 	// TODO: using outer scope in subqueries is broken
 	{
 		`SELECT pk, (SELECT pk FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1`,
