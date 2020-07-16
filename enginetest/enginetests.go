@@ -1756,9 +1756,9 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 
 	// .Equal gives better error messages than .ElementsMatch, so use it when possible
 	if orderBy || len(expected) <= 1 {
-		require.Equal(widenedExpected, widenedRows)
+		require.Equal(widenedExpected, widenedRows, "Unexpected result for query %s", q)
 	} else {
-		require.ElementsMatch(widenedExpected, widenedRows)
+		require.ElementsMatch(widenedExpected, widenedRows, "Unexpected result for query %s", q)
 	}
 }
 
