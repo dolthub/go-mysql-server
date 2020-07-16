@@ -45,13 +45,13 @@ func (h *Having) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 // RowIter implements the sql.Node interface.
 func (h *Having) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Having")
-	iter, err := h.Child.RowIter(ctx, nil)
+	iter, err := h.Child.RowIter(ctx, row)
 	if err != nil {
 		span.Finish()
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, NewFilterIter(ctx, h.Cond, iter)), nil
+	return sql.NewSpanIter(span, NewFilterIter(ctx, h.Cond, iter, row)), nil
 }
 
 func (h *Having) String() string {

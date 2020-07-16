@@ -19,6 +19,18 @@ func (r Row) Copy() Row {
 	return NewRow(r...)
 }
 
+// Append appends all the values in r2 to this row and returns the result
+func (r Row) Append(r2 Row) Row {
+	row := make(Row, len(r) + len(r2))
+	for i := range r {
+		row[i] = r[i]
+	}
+	for i := range r2 {
+		row[i+len(r)] = r2[i]
+	}
+	return NewRow(row...)
+}
+
 // Equals checks whether two rows are equal given a schema.
 func (r Row) Equals(row Row, schema Schema) (bool, error) {
 	if len(row) != len(r) || len(row) != len(schema) {

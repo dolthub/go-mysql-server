@@ -46,12 +46,18 @@ func (p *Project) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		Value: len(p.Projections),
 	})
 
-	i, err := p.Child.RowIter(ctx, nil)
+	i, err := p.Child.RowIter(ctx, row)
 	if err != nil {
 		span.Finish()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, &iter{p, i, ctx}), nil
+
+	return sql.NewSpanIter(span, &iter{
+		p: p,
+		childIter: i,
+		ctx: ctx,
+		row: row,
+	}), nil
 }
 
 func (p *Project) String() string {
@@ -102,6 +108,7 @@ func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 type iter struct {
 	p         *Project
 	childIter sql.RowIter
+	row       sql.Row
 	ctx       *sql.Context
 }
 
@@ -110,7 +117,7 @@ func (i *iter) Next() (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ProjectRow(i.ctx, i.p.Projections, childRow)
+	return ProjectRow(i.ctx, i.p.Projections, i.row.Append(childRow))
 }
 
 func (i *iter) Close() error {
@@ -123,13 +130,23 @@ func ProjectRow(
 	projections []sql.Expression,
 	row sql.Row,
 ) (sql.Row, error) {
-	var fields []interface{}
-	for _, expr := range projections {
-		f, err := expr.Eval(s, row)
+	fields := make(sql.Row, len(projections))
+//	var fields sql.Row
+	// TODO: the row being evaluated here might be shorter than the number of projections (the schema of this project
+	//  node). This creates a problem for the evaluation of subquery rows -- all the indexes will be off, since they
+	//  expect to be given a row that matches the schema of their scope. We get around this by passing the fields instead,
+	//  but it seems likely we need to deal with this in the analyzer instead.
+	evalRow := row
+	if len(row) < len(projections) {
+		copy(fields, row)
+		evalRow = fields
+	}
+	for i, expr := range projections {
+		f, err := expr.Eval(s, evalRow)
 		if err != nil {
 			return nil, err
 		}
-		fields = append(fields, f)
+		fields[i] = f
 	}
 	return sql.NewRow(fields...), nil
 }

@@ -92,12 +92,12 @@ func (s *Sort) Resolved() bool {
 // RowIter implements the Node interface.
 func (s *Sort) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Sort")
-	i, err := s.UnaryNode.Child.RowIter(ctx, nil)
+	i, err := s.UnaryNode.Child.RowIter(ctx, row)
 	if err != nil {
 		span.Finish()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, newSortIter(ctx, s, i)), nil
+	return sql.NewSpanIter(span, newSortIter(ctx, s, i, row)), nil
 }
 
 func (s *Sort) String() string {
@@ -161,16 +161,18 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 type sortIter struct {
 	ctx        *sql.Context
 	s          *Sort
+	row        sql.Row
 	childIter  sql.RowIter
 	sortedRows []sql.Row
 	idx        int
 }
 
-func newSortIter(ctx *sql.Context, s *Sort, child sql.RowIter) *sortIter {
+func newSortIter(ctx *sql.Context, s *Sort, child sql.RowIter, row sql.Row) *sortIter {
 	return &sortIter{
 		ctx:       ctx,
 		s:         s,
 		childIter: child,
+		row:       row,
 		idx:       -1,
 	}
 }
