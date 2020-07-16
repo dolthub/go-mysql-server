@@ -205,6 +205,8 @@ func (i *sortIter) computeSortedRows() error {
 
 	for {
 		row, err := i.childIter.Next()
+		row = i.row.Append(row)
+
 		if err == io.EOF {
 			break
 		}

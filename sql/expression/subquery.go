@@ -41,7 +41,12 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, errExpectedSingleRow.New()
 	}
 
-	return rows[0][0], nil
+	// TODO: fix this
+	col := 0
+	if len(row) <= len(rows[0]) {
+		col = len(row)
+	}
+	return rows[0][col], nil
 }
 
 // EvalMultiple returns all rows returned by a subquery.
