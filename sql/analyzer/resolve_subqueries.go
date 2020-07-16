@@ -40,7 +40,7 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		if err != nil {
 			if ErrValidationResolved.Is(err) {
 				// keep the work we have and defer remainder of analysis of this subquery until a later pass
-				return s.WithQuery(analyzed), nil
+				return s.WithQuery(analyzed).WithScopeLen(subScope.SchemaLength()), nil
 			}
 			return nil, err
 		}
@@ -49,6 +49,6 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			analyzed = qp.Child
 		}
 
-		return s.WithQuery(analyzed), nil
+		return s.WithQuery(analyzed).WithScopeLen(subScope.SchemaLength()), nil
 	})
 }

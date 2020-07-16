@@ -1744,10 +1744,10 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 	require := require.New(t)
 
 	_, iter, err := e.Query(ctx, q)
-	require.NoError(err)
+	require.NoError(err, "Unexpected error for query %s", q)
 
 	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
+	require.NoError(err, "Unexpected error for query %s", q)
 
 	widenedRows := WidenRows(rows)
 	widenedExpected := WidenRows(expected)

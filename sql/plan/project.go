@@ -117,6 +117,7 @@ func (i *iter) Next() (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return ProjectRow(i.ctx, i.p.Projections, i.row.Append(childRow))
 }
 
@@ -130,23 +131,13 @@ func ProjectRow(
 	projections []sql.Expression,
 	row sql.Row,
 ) (sql.Row, error) {
-	fields := make(sql.Row, len(projections))
-//	var fields sql.Row
-	// TODO: the row being evaluated here might be shorter than the number of projections (the schema of this project
-	//  node). This creates a problem for the evaluation of subquery rows -- all the indexes will be off, since they
-	//  expect to be given a row that matches the schema of their scope. We get around this by passing the fields instead,
-	//  but it seems likely we need to deal with this in the analyzer instead.
-	evalRow := row
-	if len(row) < len(projections) {
-		copy(fields, row)
-		evalRow = fields
-	}
-	for i, expr := range projections {
-		f, err := expr.Eval(s, evalRow)
+	var fields sql.Row
+	for _, expr := range projections {
+		f, err := expr.Eval(s, row)
 		if err != nil {
 			return nil, err
 		}
-		fields[i] = f
+		fields = append(fields, f)
 	}
 	return sql.NewRow(fields...), nil
 }

@@ -74,7 +74,7 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	test := enginetest.QueryTest {
+	test := enginetest.QueryTest	{
 		`SELECT pk, (SELECT pk FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1`,
 		[]sql.Row{
 			{0,nil},
@@ -83,6 +83,13 @@ func TestSingleQuery(t *testing.T) {
 			{3,2},
 		},
 	}
+	// test := enginetest.QueryTest{
+	// 	"SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 2 ORDER BY foo, i;",
+	// 	[]sql.Row{
+	// 		{1, 1, 2},
+	// 		{2, 1, 2},
+	// 		{3, 1, 2}},
+	// }
 	// test := enginetest.QueryTest	{
 	// 	`SELECT pk FROM one_pk opk ORDER BY 1`,
 	// 	[]sql.Row{

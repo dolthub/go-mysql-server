@@ -1973,15 +1973,15 @@ var QueryTests = []QueryTest{
 			{3,2},
 		},
 	},
-	{
-		`SELECT pk, (SELECT pk FROM one_pk WHERE c1 < opk.c1 ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1;`,
-		[]sql.Row{
-			{0,nil},
-			{1,0},
-			{2,1},
-			{3,2},
-		},
-	},
+	// {
+	// 	`SELECT pk, (SELECT pk FROM one_pk WHERE c1 < opk.c1 ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1;`,
+	// 	[]sql.Row{
+	// 		{0,nil},
+	// 		{1,0},
+	// 		{2,1},
+	// 		{3,2},
+	// 	},
+	// },
 	// {
 	// 	`SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk <= opk.pk) FROM one_pk opk ORDER BY 1`,
 	// 	[]sql.Row{
