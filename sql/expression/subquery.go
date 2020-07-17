@@ -56,10 +56,10 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, errExpectedSingleRow.New()
 	}
 
-	// TODO: fix this. Scope schema pre-pending is still missing in many parts of the engine, which means we don't always
-	//  have the right length here.
+	// TODO: fix this. This should always be true, but isn't, because we don't consistently pass the scope row in all
+	//  parts of the engine.
 	col := 0
-	if len(scopeRow) <= len(rows[0]) {
+	if len(scopeRow) < len(rows[0]) {
 		col = len(scopeRow)
 	}
 

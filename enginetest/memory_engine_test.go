@@ -75,12 +75,12 @@ func TestQueriesSimple(t *testing.T) {
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
 	test := enginetest.QueryTest	{
-		`SELECT (SELECT i FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
-		[]sql.Row{{int64(1)}},
+		`SELECT (SELECT s FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
+		[]sql.Row{{"first row"}},
 	}
 	fmt.Sprintf("%v", test)
 
-	harness := newMemoryHarness("", 2, testNumPartitions, true, nil)
+	harness := newMemoryHarness("", 1, testNumPartitions, true, nil)
 	engine := enginetest.NewEngine(t, harness)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
