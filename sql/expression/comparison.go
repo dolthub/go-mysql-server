@@ -540,34 +540,35 @@ func (in *In) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		return false, nil
-	case *Subquery:
-		if leftElems > 1 {
-			return nil, ErrInvalidOperandColumns.New(leftElems, 1)
-		}
-
-		typ := right.Type()
-		values, err := right.EvalMultiple(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, val := range values {
-			val, err = typ.Convert(val)
-			if err != nil {
-				return nil, err
-			}
-
-			cmp, err := typ.Compare(left, val)
-			if err != nil {
-				return nil, err
-			}
-
-			if cmp == 0 {
-				return true, nil
-			}
-		}
-
-		return false, nil
+	// TODO: fix this. circular dependency
+	// case *plan.Subquery:
+	// 	if leftElems > 1 {
+	// 		return nil, ErrInvalidOperandColumns.New(leftElems, 1)
+	// 	}
+	//
+	// 	typ := right.Type()
+	// 	values, err := right.EvalMultiple(ctx)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	//
+	// 	for _, val := range values {
+	// 		val, err = typ.Convert(val)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	//
+	// 		cmp, err := typ.Compare(left, val)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	//
+	// 		if cmp == 0 {
+	// 			return true, nil
+	// 		}
+	// 	}
+	//
+	// 	return false, nil
 	default:
 		return nil, ErrUnsupportedInOperand.New(right)
 	}
@@ -652,32 +653,33 @@ func (in *NotIn) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		return true, nil
-	case *Subquery:
-		if leftElems > 1 {
-			return nil, ErrInvalidOperandColumns.New(leftElems, 1)
-		}
-
-		typ := right.Type()
-		values, err := right.EvalMultiple(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, val := range values {
-			val, err = typ.Convert(val)
-			if err != nil {
-				return nil, err
-			}
-
-			cmp, err := typ.Compare(left, val)
-			if err != nil {
-				return nil, err
-			}
-
-			if cmp == 0 {
-				return false, nil
-			}
-		}
+	// TODO: fix this. circular dependency
+	// case *Subquery:
+	// 	if leftElems > 1 {
+	// 		return nil, ErrInvalidOperandColumns.New(leftElems, 1)
+	// 	}
+	//
+	// 	typ := right.Type()
+	// 	values, err := right.EvalMultiple(ctx)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	//
+	// 	for _, val := range values {
+	// 		val, err = typ.Convert(val)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	//
+	// 		cmp, err := typ.Compare(left, val)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	//
+	// 		if cmp == 0 {
+	// 			return false, nil
+	// 		}
+	// 	}
 
 		return true, nil
 	default:

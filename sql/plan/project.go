@@ -118,7 +118,7 @@ func (i *iter) Next() (sql.Row, error) {
 		return nil, err
 	}
 
-	return ProjectRow(i.ctx, i.p.Projections, i.row.Append(childRow))
+	return ProjectRow(i.ctx, i.p.Projections, childRow)
 }
 
 func (i *iter) Close() error {

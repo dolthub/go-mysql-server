@@ -819,7 +819,7 @@ func containsColumns(e sql.Expression) bool {
 func containsSubquery(e sql.Expression) bool {
 	var result bool
 	sql.Inspect(e, func(e sql.Expression) bool {
-		if _, ok := e.(*expression.Subquery); ok {
+		if _, ok := e.(*plan.Subquery); ok {
 			result = true
 			return false
 		}

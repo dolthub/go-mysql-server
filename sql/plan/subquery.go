@@ -1,8 +1,21 @@
-package expression
+// Copyright 2020 Liquidata, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package plan
 
 import (
 	"fmt"
-
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -11,7 +24,8 @@ import (
 var errExpectedSingleRow = errors.NewKind("the subquery returned more than 1 row")
 
 // Subquery is as an expression whose value is derived by executing a subquery. It must be executed for every row in
-// the outer result set.
+// the outer result set. It's in the plan package instead of the expression package because it functions more like a
+// plan Node than an expression.
 type Subquery struct {
 	// The subquery to execute for each row in the outer result set
 	Query sql.Node
@@ -22,6 +36,55 @@ type Subquery struct {
 // NewSubquery returns a new subquery expression.
 func NewSubquery(node sql.Node) *Subquery {
 	return &Subquery{Query: node}
+}
+
+// prependNode wraps its child by prepending column values onto any result rows
+type prependNode struct {
+	UnaryNode
+	row sql.Row
+}
+
+type prependRowIter struct {
+	row sql.Row
+	childIter sql.RowIter
+}
+
+func (p *prependRowIter) Next() (sql.Row, error) {
+	next, err := p.childIter.Next()
+	if err != nil {
+		return next, err
+	}
+	return p.row.Append(next), nil
+}
+
+func (p *prependRowIter) Close() error {
+	return p.childIter.Close()
+}
+
+func (p *prependNode) String() string {
+	return p.Child.String()
+}
+
+func (p *prependNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	childIter, err := p.Child.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	return &prependRowIter{
+		row:       p.row,
+		childIter: childIter,
+	}, nil
+}
+
+func (p *prependNode) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
+	}
+	return &prependNode{
+		UnaryNode: UnaryNode{Child: children[0]},
+		row:       p.row,
+	}, nil
 }
 
 // Eval implements the Expression interface.
@@ -38,7 +101,25 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		copy(scopeRow, row)
 	}
 
-	iter, err := s.Query.RowIter(ctx, scopeRow)
+	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
+	// result rows are prepended with the scope row.
+	q, err := TransformUp(s.Query, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *Project, sql.Table:
+			return &prependNode{
+				UnaryNode: UnaryNode{Child: n},
+				row:       scopeRow,
+			}, nil
+		default:
+			return n, nil
+		}
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	iter, err := q.RowIter(ctx, scopeRow)
 	if err != nil {
 		return nil, err
 	}

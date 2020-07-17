@@ -378,7 +378,7 @@ func validateExplodeUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	valid := true
 	plan.InspectExpressions(n, func(e sql.Expression) bool {
-		s, ok := e.(*expression.Subquery)
+		s, ok := e.(*plan.Subquery)
 		if ok && len(s.Query.Schema()) != 1 {
 			valid = false
 			return false

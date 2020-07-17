@@ -1447,7 +1447,7 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		if err != nil {
 			return nil, err
 		}
-		return expression.NewSubquery(node), nil
+		return plan.NewSubquery(node), nil
 	case *sqlparser.CaseExpr:
 		return caseExprToExpression(ctx, v)
 	case *sqlparser.IntervalExpr:

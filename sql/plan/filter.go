@@ -100,7 +100,7 @@ func (i *FilterIter) Next() (sql.Row, error) {
 			return nil, err
 		}
 
-		ok, err := sql.EvaluateCondition(i.ctx, i.cond, i.row.Append(row))
+		ok, err := sql.EvaluateCondition(i.ctx, i.cond, row)
 		if err != nil {
 			return nil, err
 		}
