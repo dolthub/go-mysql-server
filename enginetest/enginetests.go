@@ -998,6 +998,10 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 		[]sql.Row(nil),
 	)
 	TestQuery(t, harness, e,
+		"ALTER TABLE parent ADD INDEX pb (b)",
+		[]sql.Row(nil),
+	)
+	TestQuery(t, harness, e,
 		"CREATE TABLE child(c INTEGER PRIMARY KEY, d INTEGER, "+
 			"CONSTRAINT fk1 FOREIGN KEY (d) REFERENCES parent(b) ON DELETE CASCADE"+
 			")",
@@ -1097,6 +1101,10 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 
 	TestQuery(t, harness, e,
 		"CREATE TABLE parent(a INTEGER PRIMARY KEY, b INTEGER)",
+		[]sql.Row(nil),
+	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE parent ADD INDEX pb (b)",
 		[]sql.Row(nil),
 	)
 	TestQuery(t, harness, e,
