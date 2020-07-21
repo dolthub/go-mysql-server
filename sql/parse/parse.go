@@ -671,8 +671,56 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 	}
 
+	var idxDefs []*plan.IndexDefinition
+	for _, idxDef := range c.TableSpec.Indexes {
+		if idxDef.Info.Primary {
+			continue
+		}
+
+		//TODO: add vitess support for FULLTEXT
+		constraint := sql.IndexConstraint_None
+		if idxDef.Info.Unique {
+			constraint = sql.IndexConstraint_Unique
+		} else if idxDef.Info.Spatial {
+			constraint = sql.IndexConstraint_Spatial
+		}
+
+		columns := make([]sql.IndexColumn, len(idxDef.Columns))
+		for i, col := range idxDef.Columns {
+			if col.Length != nil {
+				if col.Length.Type == sqlparser.IntVal {
+					length, err := strconv.ParseInt(string(col.Length.Val), 10, 64)
+					if err != nil {
+						return nil, err
+					}
+					if length < 1 {
+						return nil, ErrInvalidIndexPrefix.New(length)
+					}
+				}
+			}
+			columns[i] = sql.IndexColumn{
+				Name:   col.Column.String(),
+				Length: 0,
+			}
+		}
+
+		var comment string
+		for _, option := range idxDef.Options {
+			if strings.ToLower(option.Name) == strings.ToLower(sqlparser.KeywordString(sqlparser.COMMENT_KEYWORD)) {
+				comment = string(option.Value.Val)
+			}
+		}
+		idxDefs = append(idxDefs, &plan.IndexDefinition{
+			IndexName:  idxDef.Info.Name.String(),
+			Using:      sql.IndexUsing_Default, //TODO: add vitess support for USING
+			Constraint: constraint,
+			Columns:    columns,
+			Comment:    comment,
+		})
+	}
+
 	return plan.NewCreateTable(
-		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema, c.IfNotExists, fkDefs), nil
+		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema, c.IfNotExists, idxDefs, fkDefs), nil
 }
 
 type namedConstraint struct {
