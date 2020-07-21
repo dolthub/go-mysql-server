@@ -66,6 +66,7 @@ var fixtures = map[string]sql.Node{
 		}},
 		false,
 		nil,
+		nil,
 	),
 	`CREATE TABLE t1(a INTEGER NOT NULL PRIMARY KEY, b TEXT)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -82,6 +83,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
+		nil,
 		nil,
 	),
 	`CREATE TABLE t1(a INTEGER NOT NULL PRIMARY KEY COMMENT "hello", b TEXT COMMENT "goodbye")`: plan.NewCreateTable(
@@ -102,6 +104,7 @@ var fixtures = map[string]sql.Node{
 		}},
 		false,
 		nil,
+		nil,
 	),
 	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -118,6 +121,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
+		nil,
 		nil,
 	),
 	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a, b))`: plan.NewCreateTable(
@@ -136,6 +140,7 @@ var fixtures = map[string]sql.Node{
 		}},
 		false,
 		nil,
+		nil,
 	),
 	`CREATE TABLE IF NOT EXISTS t1(a INTEGER, b TEXT, PRIMARY KEY (a, b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -153,6 +158,181 @@ var fixtures = map[string]sql.Node{
 		}},
 		true,
 		nil,
+		nil,
+	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX (b))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:       "a",
+			Type:       sql.Int32,
+			Nullable:   false,
+			PrimaryKey: true,
+		}, {
+			Name:       "b",
+			Type:       sql.Int32,
+			Nullable:   true,
+			PrimaryKey: false,
+		}},
+		false,
+		[]*plan.IndexDefinition{{
+			IndexName:  "",
+			Using:      sql.IndexUsing_Default,
+			Constraint: sql.IndexConstraint_None,
+			Columns:    []sql.IndexColumn{{"b", 0}},
+			Comment:    "",
+		}},
+		nil,
+	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX idx_name (b))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:       "a",
+			Type:       sql.Int32,
+			Nullable:   false,
+			PrimaryKey: true,
+		}, {
+			Name:       "b",
+			Type:       sql.Int32,
+			Nullable:   true,
+			PrimaryKey: false,
+		}},
+		false,
+		[]*plan.IndexDefinition{{
+			IndexName:  "idx_name",
+			Using:      sql.IndexUsing_Default,
+			Constraint: sql.IndexConstraint_None,
+			Columns:    []sql.IndexColumn{{"b", 0}},
+			Comment:    "",
+		}},
+		nil,
+	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX idx_name (b) COMMENT 'hi')`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:       "a",
+			Type:       sql.Int32,
+			Nullable:   false,
+			PrimaryKey: true,
+		}, {
+			Name:       "b",
+			Type:       sql.Int32,
+			Nullable:   true,
+			PrimaryKey: false,
+		}},
+		false,
+		[]*plan.IndexDefinition{{
+			IndexName:  "idx_name",
+			Using:      sql.IndexUsing_Default,
+			Constraint: sql.IndexConstraint_None,
+			Columns:    []sql.IndexColumn{{"b", 0}},
+			Comment:    "hi",
+		}},
+		nil,
+	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, UNIQUE INDEX (b))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:       "a",
+			Type:       sql.Int32,
+			Nullable:   false,
+			PrimaryKey: true,
+		}, {
+			Name:       "b",
+			Type:       sql.Int32,
+			Nullable:   true,
+			PrimaryKey: false,
+		}},
+		false,
+		[]*plan.IndexDefinition{{
+			IndexName:  "",
+			Using:      sql.IndexUsing_Default,
+			Constraint: sql.IndexConstraint_Unique,
+			Columns:    []sql.IndexColumn{{"b", 0}},
+			Comment:    "",
+		}},
+		nil,
+	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, UNIQUE (b))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:       "a",
+			Type:       sql.Int32,
+			Nullable:   false,
+			PrimaryKey: true,
+		}, {
+			Name:       "b",
+			Type:       sql.Int32,
+			Nullable:   true,
+			PrimaryKey: false,
+		}},
+		false,
+		[]*plan.IndexDefinition{{
+			IndexName:  "",
+			Using:      sql.IndexUsing_Default,
+			Constraint: sql.IndexConstraint_Unique,
+			Columns:    []sql.IndexColumn{{"b", 0}},
+			Comment:    "",
+		}},
+		nil,
+	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX (b, a))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:       "a",
+			Type:       sql.Int32,
+			Nullable:   false,
+			PrimaryKey: true,
+		}, {
+			Name:       "b",
+			Type:       sql.Int32,
+			Nullable:   true,
+			PrimaryKey: false,
+		}},
+		false,
+		[]*plan.IndexDefinition{{
+			IndexName:  "",
+			Using:      sql.IndexUsing_Default,
+			Constraint: sql.IndexConstraint_None,
+			Columns:    []sql.IndexColumn{{"b", 0}, {"a", 0}},
+			Comment:    "",
+		}},
+		nil,
+	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX (b), INDEX (b, a))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:       "a",
+			Type:       sql.Int32,
+			Nullable:   false,
+			PrimaryKey: true,
+		}, {
+			Name:       "b",
+			Type:       sql.Int32,
+			Nullable:   true,
+			PrimaryKey: false,
+		}},
+		false,
+		[]*plan.IndexDefinition{{
+			IndexName:  "",
+			Using:      sql.IndexUsing_Default,
+			Constraint: sql.IndexConstraint_None,
+			Columns:    []sql.IndexColumn{{"b", 0}},
+			Comment:    "",
+		}, {
+			IndexName:  "",
+			Using:      sql.IndexUsing_Default,
+			Constraint: sql.IndexConstraint_None,
+			Columns:    []sql.IndexColumn{{"b", 0}, {"a", 0}},
+			Comment:    "",
+		}},
+		nil,
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, FOREIGN KEY (b_id) REFERENCES t0(b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -169,6 +349,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
+		nil,
 		[]*sql.ForeignKeyConstraint{{
 			Name:              "",
 			Columns:           []string{"b_id"},
@@ -193,6 +374,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
+		nil,
 		[]*sql.ForeignKeyConstraint{{
 			Name:              "fk_name",
 			Columns:           []string{"b_id"},
@@ -217,6 +399,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
+		nil,
 		[]*sql.ForeignKeyConstraint{{
 			Name:              "",
 			Columns:           []string{"b_id"},
@@ -241,6 +424,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
+		nil,
 		[]*sql.ForeignKeyConstraint{{
 			Name:              "",
 			Columns:           []string{"b_id"},
@@ -265,6 +449,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
+		nil,
 		[]*sql.ForeignKeyConstraint{{
 			Name:              "",
 			Columns:           []string{"b_id"},
@@ -294,6 +479,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
+		nil,
 		[]*sql.ForeignKeyConstraint{{
 			Name:              "",
 			Columns:           []string{"b_id", "c_id"},
@@ -323,6 +509,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
+		nil,
 		[]*sql.ForeignKeyConstraint{{
 			Name:              "fk_name",
 			Columns:           []string{"b_id", "c_id"},

@@ -55,6 +55,14 @@ func (*ddlNode) Schema() sql.Schema { return nil }
 // Children implements the Node interface.
 func (c *ddlNode) Children() []sql.Node { return nil }
 
+type IndexDefinition struct {
+	IndexName string
+	Using sql.IndexUsing
+	Constraint sql.IndexConstraint
+	Columns []sql.IndexColumn
+	Comment string
+}
+
 // CreateTable is a node describing the creation of some table.
 type CreateTable struct {
 	ddlNode
@@ -62,13 +70,14 @@ type CreateTable struct {
 	schema      sql.Schema
 	ifNotExists bool
 	fkDefs      []*sql.ForeignKeyConstraint
+	idxDefs     []*IndexDefinition
 }
 
 var _ sql.Databaser = (*CreateTable)(nil)
 var _ sql.Node = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
-func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists bool, fkDefs []*sql.ForeignKeyConstraint) *CreateTable {
+func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists bool, idxDefs []*IndexDefinition, fkDefs []*sql.ForeignKeyConstraint) *CreateTable {
 	for _, s := range schema {
 		s.Source = name
 	}
@@ -78,6 +87,7 @@ func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists
 		name:        name,
 		schema:      schema,
 		ifNotExists: ifNotExists,
+		idxDefs:     idxDefs,
 		fkDefs:      fkDefs,
 	}
 }
@@ -97,9 +107,9 @@ func (c *CreateTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && c.ifNotExists) {
 			return sql.RowsToRowIter(), err
 		}
-		//TODO: in the event that foreign keys aren't supported, you'll be left with a created table and no foreign keys
-		//this also means that if a foreign key fails, you'll only have the ones declared up to the failure
-		if len(c.fkDefs) > 0 {
+		//TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
+		//this also means that if a foreign key or index fails, you'll only have what was declared up to the failure
+		if len(c.idxDefs) > 0 || len(c.fkDefs) > 0 {
 			tableNode, ok, err := c.db.GetTableInsensitive(ctx, c.name)
 			if err != nil {
 				return sql.RowsToRowIter(), err
@@ -107,14 +117,28 @@ func (c *CreateTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 			if !ok {
 				return sql.RowsToRowIter(), ErrTableCreatedNotFound.New()
 			}
-			fkAlterable, ok := tableNode.(sql.ForeignKeyAlterableTable)
-			if !ok {
-				return sql.RowsToRowIter(), ErrNoForeignKeySupport.New(c.name)
+			if len(c.idxDefs) > 0 {
+				idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
+				if !ok {
+					return sql.RowsToRowIter(), ErrNotIndexable.New()
+				}
+				for _, idxDef := range c.idxDefs {
+					err = idxAlterable.CreateIndex(ctx, idxDef.IndexName, idxDef.Using, idxDef.Constraint, idxDef.Columns, idxDef.Comment)
+					if err != nil {
+						return sql.RowsToRowIter(), err
+					}
+				}
 			}
-			for _, fkDef := range c.fkDefs {
-				err = fkAlterable.CreateForeignKey(ctx, fkDef.Name, fkDef.Columns, fkDef.ReferencedTable, fkDef.ReferencedColumns, fkDef.OnUpdate, fkDef.OnDelete)
-				if err != nil {
-					return sql.RowsToRowIter(), err
+			if len(c.fkDefs) > 0 {
+				fkAlterable, ok := tableNode.(sql.ForeignKeyAlterableTable)
+				if !ok {
+					return sql.RowsToRowIter(), ErrNoForeignKeySupport.New(c.name)
+				}
+				for _, fkDef := range c.fkDefs {
+					err = fkAlterable.CreateForeignKey(ctx, fkDef.Name, fkDef.Columns, fkDef.ReferencedTable, fkDef.ReferencedColumns, fkDef.OnUpdate, fkDef.OnDelete)
+					if err != nil {
+						return sql.RowsToRowIter(), err
+					}
 				}
 			}
 		}
