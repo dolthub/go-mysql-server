@@ -175,6 +175,8 @@ github.com/lestrrat-go/strftime v1.0.1 h1:o7qz5pmLzPDLyGW4lG6JvTKPUfTFXwe+vOamIY
 github.com/lestrrat-go/strftime v1.0.1/go.mod h1:E1nN3pCbtMSu1yjSVeyuRFVm/U0xoR76fd03sz+Qz4g=
 github.com/liquidata-inc/vitess v0.0.0-20200630190834-3008c538467b h1:273sQxHnQq1QsgUpRVXRMEPwktf4y3dPTWm1Y8XEpkw=
 github.com/liquidata-inc/vitess v0.0.0-20200630190834-3008c538467b/go.mod h1:zCpP+FJseQinxNM5gkVPahLzv7lt3YI0aSvrT5k95Qk=
+github.com/liquidata-inc/vitess v0.0.0-20200722094123-05e391e1fbbd h1:YMtwl24HF2xmp3absIDbjZKJ6uCVvEAutNXtgKIiQ4A=
+github.com/liquidata-inc/vitess v0.0.0-20200722094123-05e391e1fbbd/go.mod h1:zCpP+FJseQinxNM5gkVPahLzv7lt3YI0aSvrT5k95Qk=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/mattn/go-runewidth v0.0.1/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=

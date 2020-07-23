@@ -603,6 +603,14 @@ var fixtures = map[string]sql.Node{
 			Default:  int8(1),
 		}, &sql.ColumnOrder{First: true},
 	),
+	`ALTER TABLE foo ADD INDEX (v1)`: plan.NewAlterCreateIndex(
+		plan.NewUnresolvedTable("foo", ""),
+		"",
+		sql.IndexUsing_BTree,
+		sql.IndexConstraint_None,
+		[]sql.IndexColumn{{"v1", 0}},
+		"",
+	),
 	`ALTER TABLE foo DROP COLUMN bar`: plan.NewDropColumn(
 		sql.UnresolvedDatabase(""), "foo", "bar",
 	),
