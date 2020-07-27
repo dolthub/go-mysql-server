@@ -1573,8 +1573,6 @@ func comparisonExprToExpression(ctx *sql.Context, c *sqlparser.ComparisonExpr) (
 	}
 
 	switch strings.ToLower(c.Operator) {
-	default:
-		return nil, ErrUnsupportedFeature.New(c.Operator)
 	case sqlparser.RegexpStr:
 		return expression.NewRegexp(left, right), nil
 	case sqlparser.NotRegexpStr:
@@ -1594,13 +1592,29 @@ func comparisonExprToExpression(ctx *sql.Context, c *sqlparser.ComparisonExpr) (
 			expression.NewEquals(left, right),
 		), nil
 	case sqlparser.InStr:
-		return expression.NewInTuple(left, right), nil
+		switch right.(type) {
+		case expression.Tuple:
+			return expression.NewInTuple(left, right), nil
+		case *plan.Subquery:
+			return plan.NewInSubquery(left, right), nil
+		default:
+			return nil, ErrUnsupportedFeature.New(fmt.Sprintf("IN %T", right))
+		}
 	case sqlparser.NotInStr:
-		return expression.NewNotInTuple(left, right), nil
+		switch right.(type) {
+		case expression.Tuple:
+			return expression.NewNotInTuple(left, right), nil
+		case *plan.Subquery:
+			return plan.NewNotInSubquery(left, right), nil
+		default:
+			return nil, ErrUnsupportedFeature.New(fmt.Sprintf("NOT IN %T", right))
+		}
 	case sqlparser.LikeStr:
 		return expression.NewLike(left, right), nil
 	case sqlparser.NotLikeStr:
 		return expression.NewNot(expression.NewLike(left, right)), nil
+	default:
+		return nil, ErrUnsupportedFeature.New(c.Operator)
 	}
 }
 
