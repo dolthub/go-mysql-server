@@ -180,10 +180,6 @@ var QueryTests = []QueryTest{
 			{3, 1, 2}},
 	},
 	{
-		"SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 1 ORDER BY foo, i;",
-		[]sql.Row{},
-	},
-	{
 		"SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = 2) AS a ORDER BY foo, i",
 		[]sql.Row{
 			{2, 1, 2}},
@@ -1946,7 +1942,7 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{int64(1)}},
 	},
 	{
-		`SELECT i FROM mytable WHERE i IN (SELECT i FROM mytable)`,
+		`SELECT i FROM mytable WHERE i IN (SELECT i FROM mytable) ORDER BY i`,
 		[]sql.Row{
 			{int64(1)},
 			{int64(2)},
@@ -1954,7 +1950,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		`SELECT i FROM mytable WHERE i IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 2)`,
+		`SELECT i FROM mytable WHERE i IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 2) ORDER BY i`,
 		[]sql.Row{
 			{int64(1)},
 			{int64(2)},
@@ -1967,7 +1963,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		`SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 1)`,
+		`SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 1) ORDER BY i`,
 		[]sql.Row{
 			{2},
 			{3},
@@ -2026,88 +2022,69 @@ var QueryTests = []QueryTest{
 			{3,nil},
 		},
 	},
-	// TODO: using outer scope in subqueries is broken
-	// {
-	// 	`SELECT pk, (SELECT pk FROM one_pk WHERE c1 < opk.c1 ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1;`,
-	// 	[]sql.Row{
-	// 		{0,nil},
-	// 		{1,0},
-	// 		{2,1},
-	// 		{3,2},
-	// 	},
-	// },
-	// {
-	// 	`SELECT pk, (SELECT max(pk) FROM one_pk WHERE one_pk.pk <= one_pk.pk) FROM one_pk ORDER BY 1`,
-	// 	[]sql.Row{
-	// 		{0,3},
-	// 		{1,3},
-	// 		{2,3},
-	// 		{3,3},
-	// 	},
-	// },
-	// {
-	// 	`SELECT pk, (SELECT max(pk) FROM one_pk WHERE one_pk.pk * 10 <= opk.c1) FROM one_pk opk ORDER BY 1`,
-	// 	[]sql.Row{
-	// 		{0,0},
-	// 		{1,1},
-	// 		{2,2},
-	// 		{3,3},
-	// 	},
-	// },
-	// {
-	// 	`SELECT pk as a, (SELECT max(pk) FROM one_pk WHERE pk <= a) FROM one_pk ORDER BY 1`,
-	// 	[]sql.Row{
-	// 		{0,0},
-	// 		{1,1},
-	// 		{2,2},
-	// 		{3,3},
-	// 	},
-	// },
-	// {
-	// 	`SELECT pk as a, (SELECT max(pk) FROM one_pk WHERE pk <= a) FROM one_pk opk ORDER BY 1`,
-	// 	[]sql.Row{
-	// 		{0,0},
-	// 		{1,1},
-	// 		{2,2},
-	// 		{3,3},
-	// 	},
-	// },
-	// {
-	// 	`SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= opk.pk) FROM one_pk opk ORDER BY 1`,
-	// 	[]sql.Row{
-	// 		{0,0},
-	// 		{1,1},
-	// 		{2,2},
-	// 		{3,3},
-	// 	},
-	// },
-	// {
-	// 	`SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk <= pk) FROM one_pk opk ORDER BY 1`,
-	// 	[]sql.Row{
-	// 		{0,3},
-	// 		{1,3},
-	// 		{2,3},
-	// 		{3,3},
-	// 	},
-	// },
-	// {
-	// 	`SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= pk) FROM one_pk opk ORDER BY 1`,
-	// 	[]sql.Row{
-	// 		{0,3},
-	// 		{1,3},
-	// 		{2,3},
-	// 		{3,3},
-	// 	},
-	// },
-	// {
-	// 	`SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= one_pk.pk) FROM one_pk ORDER BY 1`,
-	// 	[]sql.Row{
-	// 		{0,0},
-	// 		{1,1},
-	// 		{2,2},
-	// 		{3,3},
-	// 	},
-	// },
+	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE one_pk.pk <= one_pk.pk) FROM one_pk ORDER BY 1`,
+		[]sql.Row{
+			{0,3},
+			{1,3},
+			{2,3},
+			{3,3},
+		},
+	},
+	{
+		`SELECT pk as a, (SELECT max(pk) FROM one_pk WHERE pk <= a) FROM one_pk ORDER BY 1`,
+		[]sql.Row{
+			{0,0},
+			{1,1},
+			{2,2},
+			{3,3},
+		},
+	},
+	{
+		`SELECT pk as a, (SELECT max(pk) FROM one_pk WHERE pk <= a) FROM one_pk opk ORDER BY 1`,
+		[]sql.Row{
+			{0,0},
+			{1,1},
+			{2,2},
+			{3,3},
+		},
+	},
+	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= opk.pk) FROM one_pk opk ORDER BY 1`,
+		[]sql.Row{
+			{0,0},
+			{1,1},
+			{2,2},
+			{3,3},
+		},
+	},
+	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk <= pk) FROM one_pk opk ORDER BY 1`,
+		[]sql.Row{
+			{0,3},
+			{1,3},
+			{2,3},
+			{3,3},
+		},
+	},
+	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= pk) FROM one_pk opk ORDER BY 1`,
+		[]sql.Row{
+			{0,3},
+			{1,3},
+			{2,3},
+			{3,3},
+		},
+	},
+	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= one_pk.pk) FROM one_pk ORDER BY 1`,
+		[]sql.Row{
+			{0,0},
+			{1,1},
+			{2,2},
+			{3,3},
+		},
+	},
 	{
 		`SELECT DISTINCT n FROM bigtable ORDER BY t`,
 		[]sql.Row{
@@ -2555,6 +2532,24 @@ var BrokenQueries = []QueryTest{
 	{
 		"SELECT pk1, SUM(c1) FROM two_pk",
 		[]sql.Row{{0, 60.0}},
+	},
+	{
+		`SELECT pk, (SELECT pk FROM one_pk WHERE c1 < opk.c1 ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1;`,
+		[]sql.Row{
+			{0,nil},
+			{1,0},
+			{2,1},
+			{3,2},
+		},
+	},
+	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE one_pk.pk * 10 <= opk.c1) FROM one_pk opk ORDER BY 1`,
+		[]sql.Row{
+			{0,0},
+			{1,1},
+			{2,2},
+			{3,3},
+		},
 	},
 }
 
