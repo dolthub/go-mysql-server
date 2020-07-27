@@ -1594,9 +1594,9 @@ func comparisonExprToExpression(ctx *sql.Context, c *sqlparser.ComparisonExpr) (
 			expression.NewEquals(left, right),
 		), nil
 	case sqlparser.InStr:
-		return expression.NewIn(left, right), nil
+		return expression.NewInTuple(left, right), nil
 	case sqlparser.NotInStr:
-		return expression.NewNotIn(left, right), nil
+		return expression.NewNotInTuple(left, right), nil
 	case sqlparser.LikeStr:
 		return expression.NewLike(left, right), nil
 	case sqlparser.NotLikeStr:

@@ -30,7 +30,7 @@ func or(left, right sql.Expression) sql.Expression {
 }
 
 func in(col sql.Expression, tuple sql.Expression) sql.Expression {
-	return expression.NewIn(col, tuple)
+	return expression.NewInTuple(col, tuple)
 }
 
 func tuple(vals ...sql.Expression) sql.Expression {

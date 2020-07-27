@@ -1123,7 +1123,7 @@ var fixtures = map[string]sql.Node{
 	`SELECT * FROM foo WHERE 1 IN ('1', 2)`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewFilter(
-			expression.NewIn(
+			expression.NewInTuple(
 				expression.NewLiteral(int8(1), sql.Int8),
 				expression.NewTuple(
 					expression.NewLiteral("1", sql.LongText),
@@ -1136,7 +1136,7 @@ var fixtures = map[string]sql.Node{
 	`SELECT * FROM foo WHERE 1 NOT IN ('1', 2)`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewFilter(
-			expression.NewNotIn(
+			expression.NewNotInTuple(
 				expression.NewLiteral(int8(1), sql.Int8),
 				expression.NewTuple(
 					expression.NewLiteral("1", sql.LongText),

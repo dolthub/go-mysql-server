@@ -180,7 +180,7 @@ func TestAssignIndexes(t *testing.T) {
 	node = plan.NewProject(
 		[]sql.Expression{},
 		plan.NewFilter(
-			expression.NewIn(
+			expression.NewInTuple(
 				expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
 				expression.NewTuple(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(2), sql.Int64)),
 			),
@@ -875,7 +875,7 @@ func TestGetIndexes(t *testing.T) {
 			true,
 		},
 		{
-			expression.NewNotIn(
+			expression.NewNotInTuple(
 				col(0, "t1", "bar"),
 				expression.NewTuple(
 					lit(1),
