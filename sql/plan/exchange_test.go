@@ -94,7 +94,7 @@ func TestExchangeCancelled(t *testing.T) {
 func TestExchangePanicRecover(t *testing.T) {
 	ctx := sql.NewContext(context.Background())
 	it := &partitionPanic{}
-	ex := newExchangeRowIter(ctx, 1, it, nil)
+	ex := newExchangeRowIter(ctx, 1, it, nil, nil)
 	ex.start()
 	it.Close()
 
