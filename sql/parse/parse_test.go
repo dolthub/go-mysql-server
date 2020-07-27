@@ -1146,6 +1146,32 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
+	`SELECT * FROM foo WHERE i IN (SELECT j FROM baz)`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			plan.NewInSubquery(
+				expression.NewUnresolvedColumn("i"),
+				plan.NewSubquery(plan.NewProject(
+					[]sql.Expression{expression.NewUnresolvedColumn("j")},
+					plan.NewUnresolvedTable("baz", ""),
+				)),
+			),
+			plan.NewUnresolvedTable("foo", ""),
+		),
+	),
+	`SELECT * FROM foo WHERE i NOT IN (SELECT j FROM baz)`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			plan.NewNotInSubquery(
+				expression.NewUnresolvedColumn("i"),
+				plan.NewSubquery(plan.NewProject(
+					[]sql.Expression{expression.NewUnresolvedColumn("j")},
+					plan.NewUnresolvedTable("baz", ""),
+				)),
+			),
+			plan.NewUnresolvedTable("foo", ""),
+		),
+	),
 	`SELECT a, b FROM t ORDER BY 2, 1`: plan.NewSort(
 		[]plan.SortField{
 			{
