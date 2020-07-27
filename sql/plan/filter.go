@@ -79,7 +79,7 @@ type FilterIter struct {
 	cond      sql.Expression
 	childIter sql.RowIter
 	ctx       *sql.Context
-	row 			sql.Row
+	row       sql.Row
 }
 
 // NewFilterIter creates a new FilterIter.

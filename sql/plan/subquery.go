@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -45,7 +46,7 @@ type prependNode struct {
 }
 
 type prependRowIter struct {
-	row sql.Row
+	row       sql.Row
 	childIter sql.RowIter
 }
 

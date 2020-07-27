@@ -98,7 +98,7 @@ func newExchangeRowIter(
 	ctx *sql.Context,
 	parallelism int,
 	iter sql.PartitionIter,
-	row  sql.Row,
+	row sql.Row,
 	tree sql.Node,
 ) *exchangeRowIter {
 	return &exchangeRowIter{

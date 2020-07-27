@@ -76,8 +76,8 @@ func newFakeNode(s sql.Schema, iter sql.RowIter) *fakeNode {
 	return &fakeNode{s, iter}
 }
 
-func (n *fakeNode) Children() []sql.Node                      { return nil }
-func (n *fakeNode) Resolved() bool                            { return true }
+func (n *fakeNode) Children() []sql.Node                               { return nil }
+func (n *fakeNode) Resolved() bool                                     { return true }
 func (n *fakeNode) Schema() sql.Schema                                 { return n.schema }
 func (n *fakeNode) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) { return n.iter, nil }
 func (n *fakeNode) String() string                                     { return "fakeNode" }

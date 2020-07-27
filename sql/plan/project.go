@@ -1,12 +1,12 @@
 package plan
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 // Project is a projection of certain expression from the children node.
@@ -53,10 +53,10 @@ func (p *Project) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	}
 
 	return sql.NewSpanIter(span, &iter{
-		p: p,
+		p:         p,
 		childIter: i,
-		ctx: ctx,
-		row: row,
+		ctx:       ctx,
+		row:       row,
 	}), nil
 }
 

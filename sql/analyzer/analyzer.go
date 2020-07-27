@@ -2,8 +2,6 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"os"
 	"reflect"
 	"strings"
@@ -14,6 +12,8 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"
@@ -235,6 +235,7 @@ func (s *Scope) Schema() sql.Schema {
 	for _, n := range s.OuterToInner() {
 		if n.Resolved() {
 			schema = append(schema, n.Schema()...)
+			continue
 		}
 
 		// If this scope node isn't resolved, we can't use Schema() on it. Instead, assemble an equivalent Schema, with
@@ -248,8 +249,8 @@ func (s *Scope) Schema() sql.Schema {
 				} else {
 					// TODO: a new type here?
 					col = &sql.Column{
-						Name:       "",
-						Source:     "",
+						Name:   "",
+						Source: "",
 					}
 				}
 				schema = append(schema, col)

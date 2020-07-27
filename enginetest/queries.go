@@ -1970,19 +1970,19 @@ var QueryTests = []QueryTest{
 	{
 		`SELECT pk, (SELECT pk FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1`,
 		[]sql.Row{
-			{0,nil},
-			{1,0},
-			{2,1},
-			{3,2},
+			{0, nil},
+			{1, 0},
+			{2, 1},
+			{3, 2},
 		},
 	},
 	{
 		`SELECT pk, (SELECT c3 FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1`,
 		[]sql.Row{
-			{0,nil},
-			{1,0},
-			{2,10},
-			{3,20},
+			{0, nil},
+			{1, 0},
+			{2, 10},
+			{3, 20},
 		},
 	},
 	// TODO: using outer scope in subqueries is broken

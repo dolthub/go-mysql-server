@@ -15,7 +15,6 @@
 package plan_test
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -23,6 +22,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
 func TestSubquery(t *testing.T) {

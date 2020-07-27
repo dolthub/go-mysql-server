@@ -15,11 +15,13 @@
 package expression_test
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"testing"
+
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
-	"testing"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 func TestIn(t *testing.T) {

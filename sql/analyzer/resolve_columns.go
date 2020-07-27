@@ -138,7 +138,7 @@ type column interface {
 
 type nestingLevelSymbols struct {
 	availableColumns map[string][]string
-	availableTables map[string]string
+	availableTables  map[string]string
 }
 
 func newNestingLevelSymbols() nestingLevelSymbols {
@@ -190,7 +190,7 @@ func (a availableNames) indexTable(alias, name string, nestingLevel int) {
 func (a availableNames) nestingLevels() []int {
 	levels := make([]int, len(a))
 	// level numbers are always 0 through N-1
-	for i := 0;  i < len(levels); i++ {
+	for i := 0; i < len(levels); i++ {
 		levels[i] = i
 	}
 	return levels
@@ -305,15 +305,15 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 
 		for _, level := range nestingLevels {
 			name := strings.ToLower(col.Name())
- 			tablesForColumn := symbols.tablesForColumnAtLevel(name, level)
+			tablesForColumn := symbols.tablesForColumnAtLevel(name, level)
 
-				// If the table exists but it's not available for this node it
-				// means some work is still needed, so just return the column
-				// and let it be resolved in the next pass.
-				// TODO:
-				// if !stringContains(tablesForColumn, table) {
-				// 	return col, nil
-				// }
+			// If the table exists but it's not available for this node it
+			// means some work is still needed, so just return the column
+			// and let it be resolved in the next pass.
+			// TODO:
+			// if !stringContains(tablesForColumn, table) {
+			// 	return col, nil
+			// }
 
 			switch len(tablesForColumn) {
 			case 0:

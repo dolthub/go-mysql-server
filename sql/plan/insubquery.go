@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
@@ -200,4 +201,3 @@ func (in *NotInSubquery) DebugString() string {
 func (in *NotInSubquery) Children() []sql.Expression {
 	return []sql.Expression{in.Left, in.Right}
 }
-

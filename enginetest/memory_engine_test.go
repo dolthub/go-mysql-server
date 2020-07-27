@@ -74,7 +74,7 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	test := enginetest.QueryTest	{
+	test := enginetest.QueryTest{
 		`SELECT (SELECT s FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
 		[]sql.Row{{"first row"}},
 	}

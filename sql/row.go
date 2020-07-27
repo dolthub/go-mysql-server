@@ -21,7 +21,7 @@ func (r Row) Copy() Row {
 
 // Append appends all the values in r2 to this row and returns the result
 func (r Row) Append(r2 Row) Row {
-	row := make(Row, len(r) + len(r2))
+	row := make(Row, len(r)+len(r2))
 	for i := range r {
 		row[i] = r[i]
 	}
