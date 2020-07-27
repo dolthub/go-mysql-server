@@ -1954,9 +1954,23 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		`SELECT i FROM mytable WHERE i IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 2)`,
+		[]sql.Row{
+			{int64(1)},
+			{int64(2)},
+		},
+	},
+	{
 		`SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 2)`,
 		[]sql.Row{
 			{int64(3)},
+		},
+	},
+	{
+		`SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 1)`,
+		[]sql.Row{
+			{2},
+			{3},
 		},
 	},
 	{
