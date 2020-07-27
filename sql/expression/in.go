@@ -19,28 +19,43 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
-// InTuple is an expression that checks an expression is inside a list of expressions.
-type InTuple struct {
+type InExpression struct {
 	BinaryExpression
 }
 
-var _ sql.Expression = (*InTuple)(nil)
-
-// Type implements sql.Expression
-func (in *InTuple) Type() sql.Type {
+func (i InExpression) Type() sql.Type {
 	return sql.Boolean
 }
 
+func (i InExpression) Compare(ctx *sql.Context, row sql.Row) (int, error) {
+	panic("Compare() not implemented for InExpression")
+}
+
+func (i InExpression) Left() sql.Expression {
+	return i.BinaryExpression.Left
+}
+
+func (i InExpression) Right() sql.Expression {
+	return i.BinaryExpression.Right
+}
+
+// InTuple is an expression that checks an expression is inside a list of expressions.
+type InTuple struct {
+	InExpression
+}
+
+var _ Comparer = (*InTuple)(nil)
+
 // NewInTuple creates an InTuple expression.
 func NewInTuple(left sql.Expression, right sql.Expression) *InTuple {
-	return &InTuple{BinaryExpression{left, right}}
+	return &InTuple{InExpression{BinaryExpression{left, right}}}
 }
 
 // Eval implements the Expression interface.
 func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	typ := in.Left.Type().Promote()
+	typ := in.Left().Type().Promote()
 	leftElems := sql.NumColumns(typ)
-	left, err := in.Left.Eval(ctx, row)
+	left, err := in.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +69,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	switch right := in.Right.(type) {
+	switch right := in.Right().(type) {
 	case Tuple:
 		for _, el := range right {
 			if sql.NumColumns(el.Type()) != leftElems {
@@ -84,35 +99,6 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		return false, nil
-	// TODO: fix this. circular dependency
-	// case *plan.Subquery:
-	// 	if leftElems > 1 {
-	// 		return nil, ErrInvalidOperandColumns.New(leftElems, 1)
-	// 	}
-	//
-	// 	typ := right.Type()
-	// 	values, err := right.EvalMultiple(ctx)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	//
-	// 	for _, val := range values {
-	// 		val, err = typ.Convert(val)
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	//
-	// 		cmp, err := typ.Compare(left, val)
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	//
-	// 		if cmp == 0 {
-	// 			return true, nil
-	// 		}
-	// 	}
-	//
-	// 	return false, nil
 	default:
 		return nil, ErrUnsupportedInOperand.New(right)
 	}
@@ -136,30 +122,26 @@ func (in *InTuple) DebugString() string {
 
 // Children implements the Expression interface.
 func (in *InTuple) Children() []sql.Expression {
-	return []sql.Expression{in.Left, in.Right}
+	return []sql.Expression{in.Left(), in.Right()}
 }
 
 // NotInTuple is an expression that checks an expression is not inside a list of expressions.
 type NotInTuple struct {
-	BinaryExpression
+	InExpression
 }
 
-var _ sql.Expression = (*NotInTuple)(nil)
-
-func (in *NotInTuple) Type() sql.Type {
-	return sql.Boolean
-}
+var _ Comparer = (*NotInTuple)(nil)
 
 // NewNotInTuple creates a new NotInTuple expression.
 func NewNotInTuple(left sql.Expression, right sql.Expression) *NotInTuple {
-	return &NotInTuple{BinaryExpression{left, right}}
+	return &NotInTuple{InExpression{BinaryExpression{left, right}}}
 }
 
 // Eval implements the Expression interface.
 func (in *NotInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	typ := in.Left.Type().Promote()
+	typ := in.Left().Type().Promote()
 	leftElems := sql.NumColumns(typ)
-	left, err := in.Left.Eval(ctx, row)
+	left, err := in.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +155,7 @@ func (in *NotInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	switch right := in.Right.(type) {
+	switch right := in.Right().(type) {
 	case Tuple:
 		for _, el := range right {
 			if sql.NumColumns(el.Type()) != leftElems {
@@ -203,35 +185,6 @@ func (in *NotInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		return true, nil
-		// TODO: fix this. circular dependency
-		// case *Subquery:
-		// 	if leftElems > 1 {
-		// 		return nil, ErrInvalidOperandColumns.New(leftElems, 1)
-		// 	}
-		//
-		// 	typ := right.Type()
-		// 	values, err := right.EvalMultiple(ctx)
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}
-		//
-		// 	for _, val := range values {
-		// 		val, err = typ.Convert(val)
-		// 		if err != nil {
-		// 			return nil, err
-		// 		}
-		//
-		// 		cmp, err := typ.Compare(left, val)
-		// 		if err != nil {
-		// 			return nil, err
-		// 		}
-		//
-		// 		if cmp == 0 {
-		// 			return false, nil
-		// 		}
-		// 	}
-
-		return true, nil
 	default:
 		return nil, ErrUnsupportedInOperand.New(right)
 	}
@@ -255,5 +208,5 @@ func (in *NotInTuple) DebugString() string {
 
 // Children implements the Expression interface.
 func (in *NotInTuple) Children() []sql.Expression {
-	return []sql.Expression{in.Left, in.Right}
+	return []sql.Expression{in.Left(), in.Right()}
 }
