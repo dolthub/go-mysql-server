@@ -826,7 +826,7 @@ func TestValidateSubqueryColumns(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	node := plan.NewProject([]sql.Expression{
-		expression.NewSubquery(plan.NewProject(
+		plan.NewSubquery(plan.NewProject(
 			[]sql.Expression{
 				lit(1),
 				lit(2),
@@ -840,7 +840,7 @@ func TestValidateSubqueryColumns(t *testing.T) {
 	require.True(ErrSubqueryColumns.Is(err))
 
 	node = plan.NewProject([]sql.Expression{
-		expression.NewSubquery(plan.NewProject(
+		plan.NewSubquery(plan.NewProject(
 			[]sql.Expression{
 				lit(1),
 			},
