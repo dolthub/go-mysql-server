@@ -1447,7 +1447,10 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		if err != nil {
 			return nil, err
 		}
-		return plan.NewSubquery(node), nil
+
+		// TODO: get the original select statement, not the reconstruction
+		selectString := sqlparser.String(v.Select)
+		return plan.NewSubquery(node, selectString), nil
 	case *sqlparser.CaseExpr:
 		return caseExprToExpression(ctx, v)
 	case *sqlparser.IntervalExpr:

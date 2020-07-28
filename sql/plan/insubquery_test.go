@@ -101,7 +101,7 @@ func TestInSubquery(t *testing.T) {
 
 			result, err := plan.NewInSubquery(
 				tt.left,
-				plan.NewSubquery(tt.right),
+				plan.NewSubquery(tt.right, ""),
 			).Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err != nil {
 				require.Error(err)
@@ -189,7 +189,7 @@ func TestNotInSubquery(t *testing.T) {
 
 			result, err := plan.NewNotInSubquery(
 				tt.left,
-				plan.NewSubquery(tt.right),
+				plan.NewSubquery(tt.right, ""),
 			).Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err != nil {
 				require.Error(err)

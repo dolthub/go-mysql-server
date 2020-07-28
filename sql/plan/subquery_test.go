@@ -35,7 +35,7 @@ func TestSubquery(t *testing.T) {
 			expression.NewLiteral("one", sql.LongText),
 		},
 		plan.NewResolvedTable(table),
-	))
+	), "select 'one'")
 
 	value, err := subquery.Eval(sql.NewEmptyContext(), nil)
 	require.NoError(err)
@@ -53,7 +53,7 @@ func TestSubqueryTooManyRows(t *testing.T) {
 			expression.NewLiteral("one", sql.LongText),
 		},
 		plan.NewResolvedTable(table),
-	))
+	), "select 'one'")
 
 	_, err := subquery.Eval(sql.NewEmptyContext(), nil)
 	require.Error(err)
@@ -76,7 +76,7 @@ func TestSubqueryMultipleRows(t *testing.T) {
 			expression.NewGetField(0, sql.Text, "t", false),
 		},
 		plan.NewResolvedTable(table),
-	))
+	), "select t from foo")
 
 	values, err := subquery.EvalMultiple(ctx)
 	require.NoError(err)

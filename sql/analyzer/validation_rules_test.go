@@ -832,7 +832,7 @@ func TestValidateSubqueryColumns(t *testing.T) {
 				lit(2),
 			},
 			dummyNode{true},
-		)),
+		), "select 1, 2"),
 	}, dummyNode{true})
 
 	_, err := validateSubqueryColumns(ctx, nil, node, nil)
@@ -845,7 +845,7 @@ func TestValidateSubqueryColumns(t *testing.T) {
 				lit(1),
 			},
 			dummyNode{true},
-		)),
+		), "select 1"),
 	}, dummyNode{true})
 
 	_, err = validateSubqueryColumns(ctx, nil, node, nil)

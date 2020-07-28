@@ -30,13 +30,15 @@ var errExpectedSingleRow = errors.NewKind("the subquery returned more than 1 row
 type Subquery struct {
 	// The subquery to execute for each row in the outer result set
 	Query sql.Node
+	// The original verbatim select statement for this subquery
+	QueryString string
 	// The number of columns of outer scope schema expected before inner-query result row columns
 	ScopeLen int
 }
 
 // NewSubquery returns a new subquery expression.
-func NewSubquery(node sql.Node) *Subquery {
-	return &Subquery{Query: node}
+func NewSubquery(node sql.Node, queryString string) *Subquery {
+	return &Subquery{Query: node, QueryString: queryString}
 }
 
 // prependNode wraps its child by prepending column values onto any result rows
