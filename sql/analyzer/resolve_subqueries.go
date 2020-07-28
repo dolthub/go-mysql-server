@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
@@ -67,21 +68,44 @@ func pullUpMissingSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		}
 
 		var deferredColumns []*deferredColumn
+		var exprs []sql.Expression
 		for _, e := range e.Expressions() {
+			// TODO: handle aliases to subqueries as well
 			s, ok := e.(*plan.Subquery)
 			if !ok {
+				exprs = append(exprs, e)
 				continue
 			}
 
+			// wrap any subqueries in an alias so that they can be identified by parent nodes during further analysis
+			exprs = append(exprs, expression.NewAlias(s.QueryString, s))
 			deferredColumns = append(deferredColumns, findDeferredColumns(s.Query)...)
 		}
 
 		if len(deferredColumns) > 0 {
+			switch n.(type) {
+			case *plan.Project:
+				var err error
+				n, err = replaceExpressions(n, exprs)
+				if err != nil {
+					return nil, err
+				}
+			}
+
 			return addDeferredColumns(n, deferredColumns)
 		}
 
 		return n, nil
 	})
+}
+
+func replaceExpressions(n sql.Node, exprs []sql.Expression) (sql.Node, error) {
+	switch nn := n.(type) {
+	case sql.Expressioner:
+		return nn.WithExpressions(exprs...)
+	default:
+		panic(fmt.Sprintf("Cannot replace expressions for node %T", n))
+	}
 }
 
 // addDeferredColumns adds the given deferred columns to necessary nodes in the tree given, as well as a top-level
