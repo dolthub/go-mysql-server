@@ -105,8 +105,7 @@ func projectionsToGetFields(projections []sql.Expression) []sql.Expression {
 		if projection.Resolved() {
 			getFields[i] = expression.NewGetField(i, projection.Type(), getName(projection), projection.IsNullable())
 		} else {
-			// TODO: nonsense type and nullability. New expression type instead?
-			getFields[i] = expression.NewGetField(i, sql.Boolean, getName(projection), false)
+			getFields[i] = expression.NewGetIndexedField(i, getName(projection))
 		}
 	}
 	return getFields
@@ -115,6 +114,9 @@ func projectionsToGetFields(projections []sql.Expression) []sql.Expression {
 func getName(e sql.Expression) string {
 	if n, ok := e.(sql.Nameable); ok {
 		return n.Name()
+	}
+	if _, ok := e.(*plan.Subquery); ok {
+		return "subquery"
 	}
 	return e.String()
 }
