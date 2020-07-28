@@ -91,15 +91,32 @@ func addDeferredColumns(n sql.Node, columns []*deferredColumn) (sql.Node, error)
 		switch n := n.(type) {
 		case *plan.Project:
 			// TODO: error check to make sure that these expressions aren't already included here
-			nn, err := n.WithExpressions(append(n.Expressions(), deferredColumnsToUnresolvedColumns(columns)...)...)
-			if err != nil {
-				return nil, err
-			}
-			return plan.NewProject(n.Expressions(), nn), nil
+			nn := plan.NewProject(append(n.Expressions(), deferredColumnsToUnresolvedColumns(columns)...), n.Child)
+			return plan.NewProject(projectionsToGetFields(n.Projections), nn), nil
 		default:
 			return n, nil
 		}
 	})
+}
+
+func projectionsToGetFields(projections []sql.Expression) []sql.Expression {
+	getFields := make([]sql.Expression, len(projections))
+	for i, projection := range projections {
+		if projection.Resolved() {
+			getFields[i] = expression.NewGetField(i, projection.Type(), getName(projection), projection.IsNullable())
+		} else {
+			// TODO: nonsense type and nullability. New expression type instead?
+			getFields[i] = expression.NewGetField(i, sql.Boolean, getName(projection), false)
+		}
+	}
+	return getFields
+}
+
+func getName(e sql.Expression) string {
+	if n, ok := e.(sql.Nameable); ok {
+		return n.Name()
+	}
+	return e.String()
 }
 
 func deferredColumnsToUnresolvedColumns(dcs []*deferredColumn) []sql.Expression {
