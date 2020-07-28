@@ -96,10 +96,35 @@ func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope)
 	defer span.Finish()
 
 	if !n.Resolved() {
-		return nil, ErrValidationResolved.New(n)
+		return nil, unresolvedError(n)
 	}
 
 	return n, nil
+}
+
+// unresolvedError returns an appropriate error message for the unresolved node given
+func unresolvedError(n sql.Node) error {
+	var err error
+	var walkFn func(sql.Expression) bool
+	walkFn = func(e sql.Expression) bool {
+		switch e := e.(type) {
+		case *plan.Subquery:
+			plan.InspectExpressions(e.Query, walkFn)
+			if err != nil {
+				return false
+			}
+		case *deferredColumn:
+			err = sql.ErrTableColumnNotFound.New(e.Table(), e.Name())
+			return false
+		}
+		return true
+	}
+	plan.InspectExpressions(n, walkFn)
+
+	if err != nil {
+		return err
+	}
+	return ErrValidationResolved.New(n)
 }
 
 func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
