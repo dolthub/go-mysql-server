@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
@@ -59,28 +60,64 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 // pullUpMissingSubqueryColumns examines subqueries to see which columns from outer scopes are missing in the scope
 // node, and pulls them up. An additional higher-level projection is added as necessary.
 func pullUpMissingSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
-		s, ok := e.(*plan.Subquery)
-		if !ok || s.Resolved() {
-			return e, nil
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		e, ok := n.(sql.Expressioner)
+		if !ok {
+			return n, nil
 		}
 
-		subqueryCtx := ctx.NewSubContext(ctx.Context)
-		subScope := scope.newScope(n)
-
-		analyzed, err := a.Analyze(subqueryCtx, s.Query, subScope)
-		if err != nil {
-			if ErrValidationResolved.Is(err) {
-				// keep the work we have and defer remainder of analysis of this subquery until a later pass
-				return s.WithQuery(analyzed).WithScopeLen(subScope.SchemaLength()), nil
+		var deferredColumns []*deferredColumn
+		for _, e := range e.Expressions() {
+			s, ok := e.(*plan.Subquery)
+			if !ok {
+				continue
 			}
-			return nil, err
+
+			deferredColumns = append(deferredColumns, findDeferredColumns(s.Query)...)
 		}
 
-		if qp, ok := analyzed.(*plan.QueryProcess); ok {
-			analyzed = qp.Child
+		if len(deferredColumns) > 0 {
+			return addDeferredColumns(n, deferredColumns)
 		}
 
-		return s.WithQuery(analyzed).WithScopeLen(subScope.SchemaLength()), nil
+		return n, nil
 	})
+}
+
+// addDeferredColumns adds the given deferred columns to necessary nodes in the tree given, as well as a top-level
+// projection to restore the original schema.
+func addDeferredColumns(n sql.Node, columns []*deferredColumn) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.Project:
+			// TODO: error check to make sure that these expressions aren't already included here
+			nn, err := n.WithExpressions(append(n.Expressions(), deferredColumnsToUnresolvedColumns(columns)...)...)
+			if err != nil {
+				return nil, err
+			}
+			return plan.NewProject(n.Expressions(), nn), nil
+		default:
+			return n, nil
+		}
+	})
+}
+
+func deferredColumnsToUnresolvedColumns(dcs []*deferredColumn) []sql.Expression {
+	ucs := make([]sql.Expression, len(dcs))
+	for i, dc := range dcs {
+		ucs[i] = expression.NewUnresolvedQualifiedColumn(dc.Table(), dc.Name())
+	}
+	return ucs
+}
+
+func findDeferredColumns(n sql.Node) []*deferredColumn {
+	var cols []*deferredColumn
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
+		if dc, ok := e.(*deferredColumn); ok {
+			cols = append(cols, dc)
+		}
+		return true
+	})
+
+	return cols
 }

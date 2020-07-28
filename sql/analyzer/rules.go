@@ -29,6 +29,7 @@ var DefaultRules = []Rule{
 	{"flatten_group_by_aggregations", flattenGroupByAggregations},
 	{"reorder_projection", reorderProjection},
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},
+	{"pull_up_missing_subquery_columns", pullUpMissingSubqueryColumns},
 	{"move_join_conds_to_filter", moveJoinConditionsToFilter},
 	{"eval_filter", evalFilter},
 	{"optimize_distinct", optimizeDistinct},
