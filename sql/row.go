@@ -28,7 +28,7 @@ func (r Row) Append(r2 Row) Row {
 	for i := range r2 {
 		row[i+len(r)] = r2[i]
 	}
-	return NewRow(row...)
+	return row
 }
 
 // Equals checks whether two rows are equal given a schema.
