@@ -487,10 +487,6 @@ func indexColumns(a *Analyzer, n sql.Node, scope *Scope) map[tableCol]indexedCol
 	return columns
 }
 
-func indexColumnsInScope(a *Analyzer, scope *Scope) map[tableCol]indexedCol {
-	return nil
-}
-
 func resolveGlobalOrSessionColumn(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {
 	if col.Table() != "" && strings.ToLower(col.Table()) != sessionTable {
 		return nil, errGlobalVariablesNotSupported.New(col)
@@ -533,6 +529,47 @@ func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns ma
 		col.Name,
 		col.Nullable,
 	), nil
+}
+
+// resolveGetIndexedFields attempts to resolve GetIndexedField expressions in the plan. Such fields are placeholders to
+// handle projections etc. on expressions that can't be resolved yet, and can be replaced by normal GetField expressions
+// once their children are resolved.
+func resolveGetIndexedFields(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+		gif, ok := e.(*expression.GetIndexedField)
+		if !ok {
+			return e, nil
+		}
+
+		// If the expression in the child node that this expression refers to is resolved, we can replace it with a normal
+		// GetField expression. We could just check the child expression itself, but just wait for the entire child to be
+		// resolved. It makes it easier to get the schema of the field being resolved.
+		if !allResolved(n.Children()) {
+			return e, nil
+		}
+
+		childSchema := schema(n.Children())
+
+		return expression.NewGetField(
+			gif.Index(), childSchema[gif.Index()].Type, gif.Name(), childSchema[gif.Index()].Nullable), nil
+	})
+}
+
+func allResolved(nodes []sql.Node) bool {
+	for _, n := range nodes {
+		if !n.Resolved() {
+			return false
+		}
+	}
+	return true
+}
+
+func schema(nodes []sql.Node) sql.Schema {
+	var schema sql.Schema
+	for _, n := range nodes {
+		schema = append(schema, n.Schema()...)
+	}
+	return schema
 }
 
 // pushdownGroupByAliases reorders the aggregation in a groupby so aliases defined in it can be resolved in the grouping
