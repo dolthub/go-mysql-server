@@ -133,6 +133,7 @@ func findUsedColumns(columns usedColumns, n sql.Node) {
 			addUsedColumns(columns, n.GroupByExprs)
 			return true
 		case *plan.SubqueryAlias:
+			// TODO: inspect subquery for references to outer scope nodes
 			return false
 		}
 
@@ -148,6 +149,14 @@ func findUsedColumns(columns usedColumns, n sql.Node) {
 func addUsedProjectColumns(columns usedColumns, projection []sql.Expression) {
 	var candidates []sql.Expression
 	for _, e := range projection {
+		if alias, ok := e.(*expression.Alias); ok {
+			e = alias.Child
+		}
+		// TODO: not all of the columns mentioned in the subquery are relevant, just the ones that reference the outer scope
+		if sub, ok := e.(*plan.Subquery); ok {
+			findUsedColumns(columns, sub.Query)
+			continue
+		}
 		// Only check for expressions that are not directly a GetField. This
 		// is because in a projection we only care about those that were used
 		// to compute new columns, such as aliases and so on. The fields that
