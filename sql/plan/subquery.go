@@ -178,9 +178,16 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 		return nil, nil
 	}
 
+	// TODO: fix this. This should always be true, but isn't, because we don't consistently pass the scope row in all
+	//  parts of the engine.
+	col := 0
+	if len(row) < len(rows[0]) {
+		col = len(row)
+	}
+
 	var result = make([]interface{}, len(rows))
 	for i, row := range rows {
-		result[i] = row[0]
+		result[i] = row[col]
 	}
 
 	return result, nil

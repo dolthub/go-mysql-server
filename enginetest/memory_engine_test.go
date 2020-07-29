@@ -75,11 +75,11 @@ func TestQueriesSimple(t *testing.T) {
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
 	test := enginetest.QueryTest{
-		`SELECT i FROM mytable WHERE i IN (SELECT i FROM mytable) ORDER BY i`,
+		`SELECT i FROM mytable WHERE i IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 2) ORDER BY i`,
 		[]sql.Row{
 			{int64(1)},
 			{int64(2)},
-			{int64(3)}},
+		},
 	}
 	// {
 	// 	`SELECT pk, (SELECT pk FROM one_pk WHERE c1 < opk.c1 ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1;`,
