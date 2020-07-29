@@ -237,7 +237,7 @@ func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
 	for i, n := range scope.InnerToOuter() {
 		// For the inner scope, we want all available columns in child nodes. For the outer scope, we are interested in
 		// available columns in the sibling node
-		getColumnsInNodes([]sql.Node{n}, names, i+1)
+		getColumnsInNodes(n.Children(), names, i+1)
 	}
 
 	// Get table names in all outer scopes and nodes. Inner scoped names will overwrite those from the outer scope.

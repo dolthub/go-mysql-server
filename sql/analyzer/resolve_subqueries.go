@@ -45,7 +45,7 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			//  recover the actual error in the validation step.
 			if ErrValidationResolved.Is(err) || sql.ErrTableColumnNotFound.Is(err) {
 				// keep the work we have and defer remainder of analysis of this subquery until a later pass
-				return s.WithQuery(analyzed).WithScopeLen(subScope.SchemaLength()), nil
+				return s.WithQuery(analyzed), nil
 			}
 			return nil, err
 		}
@@ -54,7 +54,7 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			analyzed = qp.Child
 		}
 
-		return s.WithQuery(analyzed).WithScopeLen(subScope.SchemaLength()), nil
+		return s.WithQuery(analyzed), nil
 	})
 }
 

@@ -78,7 +78,7 @@ func TestSubqueryMultipleRows(t *testing.T) {
 		plan.NewResolvedTable(table),
 	), "select t from foo")
 
-	values, err := subquery.EvalMultiple(ctx)
+	values, err := subquery.EvalMultiple(ctx, nil)
 	require.NoError(err)
 	require.Equal(values, []interface{}{"one", "two", "three"})
 }

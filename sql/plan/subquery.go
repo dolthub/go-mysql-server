@@ -99,24 +99,14 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	//  their scope node. In this case, we fix the indexes by filling in zero values for the missing elements. This should
 	//  probably be dealt with by adjustments to field indexes in the analyzer instead.
 	scopeRow := row
-	if len(scopeRow) < s.ScopeLen {
-		scopeRow = make(sql.Row, s.ScopeLen)
-		copy(scopeRow, row)
-	}
+	// if len(scopeRow) < s.ScopeLen {
+	// 	scopeRow = make(sql.Row, s.ScopeLen)
+	// 	copy(scopeRow, row)
+	// }
 
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
-	q, err := TransformUp(s.Query, func(n sql.Node) (sql.Node, error) {
-		switch n := n.(type) {
-		case *Project, sql.Table:
-			return &prependNode{
-				UnaryNode: UnaryNode{Child: n},
-				row:       scopeRow,
-			}, nil
-		default:
-			return n, nil
-		}
-	})
+	q, err := TransformUp(s.Query, prependScopeRowInPlan(scopeRow))
 
 	if err != nil {
 		return nil, err
@@ -150,10 +140,31 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return rows[0][col], nil
 }
 
+// prependScopeRowInPlan returns a transformation function that prepends the row given to any row source in a query
+// plan. Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
+// result rows are prepended with the scope row.
+func prependScopeRowInPlan(scopeRow sql.Row) func(n sql.Node) (sql.Node, error) {
+	return func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *Project, sql.Table:
+			return &prependNode{
+				UnaryNode: UnaryNode{Child: n},
+				row:       scopeRow,
+			}, nil
+		default:
+			return n, nil
+		}
+	}
+}
+
 // EvalMultiple returns all rows returned by a subquery.
-// TODO: give row context
-func (s *Subquery) EvalMultiple(ctx *sql.Context) ([]interface{}, error) {
-	iter, err := s.Query.RowIter(ctx, nil)
+func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
+	q, err := TransformUp(s.Query, prependScopeRowInPlan(row))
+	if err != nil {
+		return nil, err
+	}
+
+	iter, err := q.RowIter(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -220,8 +231,8 @@ func (s *Subquery) WithQuery(node sql.Node) *Subquery {
 }
 
 // WithScopeLen returns the subquery with the scope length changed.
-func (s *Subquery) WithScopeLen(length int) *Subquery {
-	ns := *s
-	ns.ScopeLen = length
-	return &ns
-}
+// func (s *Subquery) WithScopeLen(length int) *Subquery {
+// 	ns := *s
+// 	ns.ScopeLen = length
+// 	return &ns
+// }

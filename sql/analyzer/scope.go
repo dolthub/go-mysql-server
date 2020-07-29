@@ -22,7 +22,8 @@ import (
 
 // Scope of the analysis being performed, used when analyzing subqueries to give such analysis access to outer scope.
 type Scope struct {
-	// Stack of nested node scopes, with innermost scope first
+	// Stack of nested node scopes, with innermost scope first. A scope node is the node in which the subquery is
+	// defined, or an appropriate sibling.
 	nodes []sql.Node
 }
 
@@ -38,7 +39,9 @@ func (s *Scope) newScope(node sql.Node) *Scope {
 	return &Scope{newNodes}
 }
 
-// InnerToOuter returns the scope Nodes in order of innermost scope to outermost scope.
+// InnerToOuter returns the scope Nodes in order of innermost scope to outermost scope. When using these nodes for
+// analysis, always inspect the children of the nodes, rather than the nodes themselves. The children define the schema
+// of the rows being processed by the scope node itself.
 func (s *Scope) InnerToOuter() []sql.Node {
 	if s == nil {
 		return nil
@@ -46,7 +49,9 @@ func (s *Scope) InnerToOuter() []sql.Node {
 	return s.nodes
 }
 
-// OuterToInner returns the scope nodes in order of outermost scope to innermost scope.
+// OuterToInner returns the scope nodes in order of outermost scope to innermost scope. When using these nodes for
+// analysis, always inspect the children of the nodes, rather than the nodes themselves. The children define the schema
+// of the rows being processed by the scope node itself.
 func (s *Scope) OuterToInner() []sql.Node {
 	if s == nil {
 		return nil
@@ -86,31 +91,33 @@ func (s *Scope) SchemaLength() int {
 func (s *Scope) Schema() sql.Schema {
 	var schema sql.Schema
 	for _, n := range s.OuterToInner() {
-		if n.Resolved() {
-			schema = append(schema, n.Schema()...)
-			continue
-		}
-
-		// If this scope node isn't resolved, we can't use Schema() on it. Instead, assemble an equivalent Schema, with
-		// placeholder columns where necessary, for the purpose of analysis.
-		switch n := n.(type) {
-		case *plan.Project:
-			for _, expr := range n.Projections {
-				var col *sql.Column
-				if expr.Resolved() {
-					col = expression.ExpressionToColumn(expr)
-				} else {
-					// TODO: a new type here?
-					col = &sql.Column{
-						Name:   "",
-						Source: "",
-					}
-				}
-				schema = append(schema, col)
+		for _, n := range n.Children() {
+			if n.Resolved() {
+				schema = append(schema, n.Schema()...)
+				continue
 			}
-		default:
-			// TODO: log this
-			// panic(fmt.Sprintf("Unsupported scope node %T", n))
+
+			// If this scope node isn't resolved, we can't use Schema() on it. Instead, assemble an equivalent Schema, with
+			// placeholder columns where necessary, for the purpose of analysis.
+			switch n := n.(type) {
+			case *plan.Project:
+				for _, expr := range n.Projections {
+					var col *sql.Column
+					if expr.Resolved() {
+						col = expression.ExpressionToColumn(expr)
+					} else {
+						// TODO: a new type here?
+						col = &sql.Column{
+							Name:   "",
+							Source: "",
+						}
+					}
+					schema = append(schema, col)
+				}
+			default:
+				// TODO: log this
+				// panic(fmt.Sprintf("Unsupported scope node %T", n))
+			}
 		}
 	}
 	return schema
