@@ -46,7 +46,7 @@ var OnceAfterDefault = []Rule{
 	{"prune_columns", pruneColumns},
 	{"convert_dates", convertDates},
 	// TODO: pushdown breaks subquery indexes in some cases
-	// {"pushdown_filters", pushdownFilters},
+	{"pushdown_filters", pushdownFilters},
 	{"optimize_joins", optimizeJoins},
 	{"erase_projection", eraseProjection},
 	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
