@@ -1996,6 +1996,33 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		`SELECT pk, (SELECT pk FROM one_pk WHERE c1 < opk.c1 ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1;`,
+		[]sql.Row{
+			{0,nil},
+			{1,0},
+			{2,1},
+			{3,2},
+		},
+	},
+	{
+		`SELECT pk, (SELECT c3 FROM one_pk WHERE c4 < opk.c2 ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1;`,
+		[]sql.Row{
+			{0,nil},
+			{1,0},
+			{2,10},
+			{3,20},
+		},
+	},
+	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE one_pk.pk * 10 <= opk.c1) FROM one_pk opk ORDER BY 1`,
+		[]sql.Row{
+			{0,0},
+			{1,1},
+			{2,2},
+			{3,3},
+		},
+	},
+	{
 		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk <= opk.pk) FROM one_pk opk ORDER BY 1`,
 		[]sql.Row{
 			{0,0},
@@ -2532,24 +2559,6 @@ var BrokenQueries = []QueryTest{
 	{
 		"SELECT pk1, SUM(c1) FROM two_pk",
 		[]sql.Row{{0, 60.0}},
-	},
-	{
-		`SELECT pk, (SELECT pk FROM one_pk WHERE c1 < opk.c1 ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1;`,
-		[]sql.Row{
-			{0,nil},
-			{1,0},
-			{2,1},
-			{3,2},
-		},
-	},
-	{
-		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE one_pk.pk * 10 <= opk.c1) FROM one_pk opk ORDER BY 1`,
-		[]sql.Row{
-			{0,0},
-			{1,1},
-			{2,2},
-			{3,3},
-		},
 	},
 }
 

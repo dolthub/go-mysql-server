@@ -74,15 +74,24 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	test := enginetest.QueryTest{
-		`SELECT pk as a, (SELECT max(pk) FROM one_pk WHERE pk <= a) FROM one_pk ORDER BY 1`,
+	test := enginetest.QueryTest	{
+		`SELECT pk, (SELECT pk FROM one_pk WHERE c1 < opk.c1 ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1;`,
 		[]sql.Row{
-			{0,0},
-			{1,1},
-			{2,2},
-			{3,3},
+			{0,nil},
+			{1,0},
+			{2,1},
+			{3,2},
 		},
 	}
+	// {
+	// 	`SELECT pk as a, (SELECT max(pk) FROM one_pk WHERE pk <= a) FROM one_pk ORDER BY 1`,
+	// 	[]sql.Row{
+	// 		{0,0},
+	// 		{1,1},
+	// 		{2,2},
+	// 		{3,3},
+	// 	},
+	// }
 	fmt.Sprintf("%v", test)
 
 	harness := newMemoryHarness("", 1, testNumPartitions, true, nil)
