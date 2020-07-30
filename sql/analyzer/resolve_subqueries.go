@@ -43,7 +43,7 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			// resolved or a column can't be found in the scope node, wait until a later pass.
 			// TODO: we won't be able to give the right error message in all cases when we do this, although we attempt to
 			//  recover the actual error in the validation step.
-			if ErrValidationResolved.Is(err) || sql.ErrTableColumnNotFound.Is(err) {
+			if ErrValidationResolved.Is(err) || sql.ErrTableColumnNotFound.Is(err) || sql.ErrColumnNotFound.Is(err) {
 				// keep the work we have and defer remainder of analysis of this subquery until a later pass
 				return s.WithQuery(analyzed), nil
 			}

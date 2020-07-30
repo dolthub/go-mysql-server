@@ -199,8 +199,9 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 			}
 		}
 
-		// TODO: this isn't right, we need to replace the child with a new project
-		child, err = child.(sql.Expressioner).WithExpressions(projections...)
+		// TODO: now that we've projected the alias, we need to eliminate it from the original project
+		child = plan.NewProject(projections, child)
+		neededReorder = true
 	}
 
 	return neededReorder, child, err

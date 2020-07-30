@@ -33,6 +33,10 @@ func (m *Max) String() string {
 	return fmt.Sprintf("MAX(%s)", m.Child)
 }
 
+func (m *Max) DebugString() string {
+	return fmt.Sprintf("MAX(%s)", sql.DebugString(m.Child))
+}
+
 // IsNullable returns whether the return value can be null.
 func (m *Max) IsNullable() bool {
 	return false

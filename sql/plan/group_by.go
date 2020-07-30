@@ -144,6 +144,29 @@ func (p *GroupBy) String() string {
 	return pr.String()
 }
 
+func (p *GroupBy) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("GroupBy")
+
+	var aggregate = make([]string, len(p.SelectedExprs))
+	for i, agg := range p.SelectedExprs {
+		aggregate[i] = sql.DebugString(agg)
+	}
+
+	var grouping = make([]string, len(p.GroupByExprs))
+	for i, g := range p.GroupByExprs {
+		grouping[i] = sql.DebugString(g)
+	}
+
+	_ = pr.WriteChildren(
+		fmt.Sprintf("Aggregate(%s)", strings.Join(aggregate, ", ")),
+		fmt.Sprintf("Grouping(%s)", strings.Join(grouping, ", ")),
+		sql.DebugString(p.Child),
+	)
+	return pr.String()
+}
+
+
 // Expressions implements the Expressioner interface.
 func (p *GroupBy) Expressions() []sql.Expression {
 	var exprs []sql.Expression
