@@ -108,6 +108,7 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 }
 
 func addIntermediateProjections(project *plan.Project, projectedAliases map[string]sql.Expression) (neededReorder bool, child sql.Node, err error) {
+	appliedProjections := make(map[string]bool)
 	child, err = plan.TransformUp(project.Child, func(node sql.Node) (sql.Node, error) {
 		var missingColumns []string
 		switch node := node.(type) {
@@ -120,7 +121,7 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 
 					uc, ok := e.(column)
 					if ok && uc.Table() == "" {
-						if _, ok := projectedAliases[uc.Name()]; ok {
+						if _, ok := projectedAliases[uc.Name()]; ok && !appliedProjections[uc.Name()] {
 							missingColumns = append(missingColumns, uc.Name())
 						}
 					}
@@ -149,9 +150,9 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 		}
 
 		for _, col := range missingColumns {
-			if c, ok := projectedAliases[col]; ok {
+			if c, ok := projectedAliases[col]; ok && !appliedProjections[col] {
 				projections = append(projections, c)
-				delete(projectedAliases, col)
+				appliedProjections[col] = true
 			}
 		}
 
@@ -165,6 +166,42 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 			return nil, ErrInvalidNodeType.New("reorderProjection", node)
 		}
 	})
+
+	// If any subqueries reference these aliases, the child of the project also needs it. A subquery expression is just
+	// like a child node in this respect. We identify any missing subquery columns by their being deferred from a previous
+	// analyzer step for the subquery.
+	var deferredColumns []*deferredColumn
+	for _, e := range project.Projections {
+		if a, ok := e.(*expression.Alias); ok {
+			e = a.Child
+		}
+		s, ok := e.(*plan.Subquery)
+		if !ok {
+			continue
+		}
+
+		deferredColumns = append(deferredColumns, findDeferredColumns(s.Query)...)
+	}
+
+	if len(deferredColumns) > 0 {
+		schema := child.Schema()
+		var projections = make([]sql.Expression, 0, len(schema)+len(deferredColumns))
+		for i, col := range schema {
+			projections = append(projections, expression.NewGetFieldWithTable(
+				i, col.Type, col.Source, col.Name, col.Nullable,
+			))
+		}
+
+		// Add a projection for each missing column from the subqueries that has an alias
+		for _, dc := range deferredColumns {
+			if c, ok := projectedAliases[dc.Name()]; ok && dc.Table() == ""{
+				projections = append(projections, c)
+			}
+		}
+
+		// TODO: this isn't right, we need to replace the child with a new project
+		child, err = child.(sql.Expressioner).WithExpressions(projections...)
+	}
 
 	return neededReorder, child, err
 }

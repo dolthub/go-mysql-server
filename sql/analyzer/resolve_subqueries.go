@@ -70,14 +70,18 @@ func pullUpMissingSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		var deferredColumns []*deferredColumn
 		var exprs []sql.Expression
 		for _, e := range e.Expressions() {
-			// TODO: handle aliases to subqueries as well
+			// var subquery sql.Expression
+			// if a, ok := e.(*expression.Alias); ok {
+			//
+			// }
+			// TODO: handle aliases
 			s, ok := e.(*plan.Subquery)
 			if !ok {
 				exprs = append(exprs, e)
 				continue
 			}
 
-			// wrap any subqueries in an alias so that they can be identified by parent nodes during further analysis
+			// wrap any unaliased subqueries in an alias so that they can be identified by parent nodes during further analysis
 			exprs = append(exprs, expression.NewAlias(s.QueryString, s))
 			deferredColumns = append(deferredColumns, findDeferredColumns(s.Query)...)
 		}
