@@ -45,10 +45,13 @@ var OnceAfterDefault = []Rule{
 	{"assign_info_schema", assignInfoSchema},
 	{"prune_columns", pruneColumns},
 	{"convert_dates", convertDates},
-	// TODO: pushdown breaks subquery indexes
+	// TODO: pushdown breaks subquery indexes in some cases
 	// {"pushdown_filters", pushdownFilters},
 	{"optimize_joins", optimizeJoins},
 	{"erase_projection", eraseProjection},
+	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
+	// previous rules
+	{"resolve_subquery_exprs", resolveSubqueryExpressions},
 }
 
 // OnceAfterAll contains the rules to be applied just once after all other

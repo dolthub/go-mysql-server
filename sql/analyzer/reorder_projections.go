@@ -108,6 +108,9 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 }
 
 func addIntermediateProjections(project *plan.Project, projectedAliases map[string]sql.Expression) (neededReorder bool, child sql.Node, err error) {
+	// We only want to apply each projection once, even if it occurs multiple times in the tree. Lower tree levels are
+	// processed first, so only the lowest mention of each alias will be applied at that layer. High layers will just have
+	// a normal GetField expression to reference the lower layer.
 	appliedProjections := make(map[string]bool)
 	child, err = plan.TransformUp(project.Child, func(node sql.Node) (sql.Node, error) {
 		var missingColumns []string
@@ -168,8 +171,8 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 	})
 
 	// If any subqueries reference these aliases, the child of the project also needs it. A subquery expression is just
-	// like a child node in this respect. We identify any missing subquery columns by their being deferred from a previous
-	// analyzer step for the subquery.
+	// like a child node in this respect -- it draws its outer scope schema from the child of the node in which it's
+	// embedded. We identify any missing subquery columns by their being deferred from a previous analyzer step.
 	var deferredColumns []*deferredColumn
 	for _, e := range project.Projections {
 		if a, ok := e.(*expression.Alias); ok {
@@ -199,7 +202,6 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 			}
 		}
 
-		// TODO: now that we've projected the alias, we need to eliminate it from the original project
 		child = plan.NewProject(projections, child)
 		neededReorder = true
 	}

@@ -30,7 +30,9 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		s, ok := e.(*plan.Subquery)
-		if !ok || s.Resolved() {
+		// We always analyze subquery expressions even if they are resolved, since other transformations to the surrounding
+		// query might cause them to need to shift their field indexes.
+		if !ok {
 			return e, nil
 		}
 

@@ -96,11 +96,14 @@ func isAliasUsed(node sql.Expressioner, alias string) bool {
 	return found
 }
 
-// deferredColumn is a wrapper on UnresolvedColumn used only to defer the
-// resolution of the column because it may require some work done by
-// other analyzer phases.
+// deferredColumn is a wrapper on UnresolvedColumn used to defer the resolution of the column because it may require
+// some work done by other analyzer phases.
 type deferredColumn struct {
 	*expression.UnresolvedColumn
+}
+
+func (dc deferredColumn) DebugString() string {
+	return fmt.Sprintf("deferred(%s)", dc.UnresolvedColumn.String())
 }
 
 // IsNullable implements the Expression interface.
@@ -112,11 +115,11 @@ func (deferredColumn) IsNullable() bool {
 func (deferredColumn) Children() []sql.Expression { return nil }
 
 // WithChildren implements the Expression interface.
-func (e deferredColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (dc deferredColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 0)
+		return nil, sql.ErrInvalidChildrenNumber.New(dc, len(children), 0)
 	}
-	return e, nil
+	return dc, nil
 }
 
 type tableCol struct {
@@ -136,6 +139,8 @@ type column interface {
 	sql.Expression
 }
 
+// nestingLevelSymbols tracks available table and column name symbols at a nesting level for a query. Each nested
+// subquery represents an additional nesting level.
 type nestingLevelSymbols struct {
 	availableColumns map[string][]string
 	availableTables  map[string]string
@@ -148,22 +153,9 @@ func newNestingLevelSymbols() nestingLevelSymbols {
 	}
 }
 
+// availableNames tracks available table and column name symbols at each nesting level for a query, where level 0
+// is the node being analyzed, and each additional level is one layer of query scope outward.
 type availableNames map[int]nestingLevelSymbols
-
-// qualifyColumns assigns a table to any column expressions that don't have one already
-func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
-			return n, nil
-		}
-
-		symbols := getNodeAvailableNames(n, scope)
-
-		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
-			return qualifyExpression(e, symbols)
-		})
-	})
-}
 
 // indexColumn adds a column with the given table and column name at the given nesting level
 func (a availableNames) indexColumn(table, col string, nestingLevel int) {
@@ -224,6 +216,21 @@ func dedupStrings(in []string) []string {
 		}
 	}
 	return result
+}
+
+// qualifyColumns assigns a table to any column expressions that don't have one already
+func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
+			return n, nil
+		}
+
+		symbols := getNodeAvailableNames(n, scope)
+
+		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
+			return qualifyExpression(e, symbols)
+		})
+	})
 }
 
 // getNodeAvailableSymbols returns the set of table and column names accessible to the node given and using the scope
