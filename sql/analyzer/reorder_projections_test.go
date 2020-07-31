@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -35,12 +36,12 @@ func TestReorderProjection(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		project  sql.Node
+		node     sql.Node
 		expected sql.Node
 	}{
 		{
 			name: "sort",
-			project: plan.NewProject(
+			node: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
 					expression.NewAlias("foo", expression.NewLiteral(1, sql.Int64)),
@@ -94,7 +95,7 @@ func TestReorderProjection(t *testing.T) {
 		},
 		{
 			name: "use alias twice",
-			project: plan.NewProject(
+			node: plan.NewProject(
 				[]sql.Expression{
 					expression.NewAlias("foo", expression.NewLiteral(1, sql.Int64)),
 				},
@@ -144,10 +145,98 @@ func TestReorderProjection(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 
-			result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), tt.project, nil)
+			result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), tt.node, nil)
 			require.NoError(err)
 
 			require.Equal(tt.expected, result)
 		})
 	}
 }
+
+func TestReorderProjectionWithSubqueries(t *testing.T) {
+	f := getRule("reorder_projection")
+
+	onepk := memory.NewTable("one_pk", sql.Schema{
+		{Name: "pk", Source: "mytable", Type: sql.Int64, PrimaryKey: true},
+		{Name: "c1", Source: "mytable", Type: sql.Int64},
+	})
+	twopk := memory.NewTable("two_pk", sql.Schema{
+		{Name: "pk1", Source: "mytable", Type: sql.Int64, PrimaryKey: true},
+		{Name: "pk2", Source: "mytable", Type: sql.Int64, PrimaryKey: true},
+		{Name: "c1", Source: "mytable", Type: sql.Int64},
+	})
+
+	testCases := []struct {
+		name     string
+		node     sql.Node
+		expected sql.Node
+	}{
+		{
+			name: "sort",
+			node: plan.NewSort(
+				[]plan.SortField{
+					{Column: expression.NewGetFieldWithTable(0, sql.Int64, "one_pk", "pk", false)},
+				}, plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetFieldWithTable(0, sql.Int64, "one_pk", "pk", false),
+						plan.NewSubquery(
+							plan.NewGroupBy(
+								[]sql.Expression{
+									aggregation.NewMax(expression.NewUnresolvedQualifiedColumn("two_pk", "pk1")),
+								},
+								nil,
+								plan.NewFilter(
+									expression.NewLessThan(
+										expression.NewGetFieldWithTable(2, sql.Int64, "one_pk", "pk1", false),
+										&deferredColumn{expression.NewUnresolvedColumn("pk")},
+									),
+									plan.NewResolvedTable(twopk),
+								),
+							),
+							"select max(pk1) from two_pk where pk1 < pk"),
+					}, plan.NewResolvedTable(onepk)),
+			),
+			expected: plan.NewSort(
+				[]plan.SortField{
+					{Column: expression.NewGetFieldWithTable(0, sql.Int64, "one_pk", "pk", false)},
+				}, plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetFieldWithTable(0, sql.Int64, "one_pk", "pk", false),
+						plan.NewSubquery(
+							plan.NewGroupBy(
+								[]sql.Expression{
+									aggregation.NewMax(expression.NewUnresolvedQualifiedColumn("two_pk", "pk1")),
+								},
+								nil,
+								plan.NewFilter(
+									expression.NewLessThan(
+										expression.NewGetFieldWithTable(2, sql.Int64, "one_pk", "pk1", false),
+										&deferredColumn{expression.NewUnresolvedColumn("pk")},
+									),
+									plan.NewResolvedTable(twopk),
+								),
+							),
+							"select max(pk1) from two_pk where pk1 < pk"),
+					}, plan.NewProject(
+						[]sql.Expression{
+							expression.NewGetFieldWithTable(0, sql.Int64, "one_pk", "pk", false),
+							expression.NewGetFieldWithTable(1, sql.Int64, "one_pk", "c1", false),
+						}, plan.NewResolvedTable(onepk),
+					),
+				),
+			),
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+
+			result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), tt.node, nil)
+			require.NoError(err)
+
+			require.Equal(tt.expected, result)
+		})
+	}
+}
+

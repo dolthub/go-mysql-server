@@ -102,20 +102,20 @@ type deferredColumn struct {
 	*expression.UnresolvedColumn
 }
 
-func (dc deferredColumn) DebugString() string {
+func (dc *deferredColumn) DebugString() string {
 	return fmt.Sprintf("deferred(%s)", dc.UnresolvedColumn.String())
 }
 
 // IsNullable implements the Expression interface.
-func (deferredColumn) IsNullable() bool {
+func (*deferredColumn) IsNullable() bool {
 	return true
 }
 
 // Children implements the Expression interface.
-func (deferredColumn) Children() []sql.Expression { return nil }
+func (*deferredColumn) Children() []sql.Expression { return nil }
 
 // WithChildren implements the Expression interface.
-func (dc deferredColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (dc *deferredColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(dc, len(children), 0)
 	}
