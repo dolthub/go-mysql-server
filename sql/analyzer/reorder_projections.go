@@ -199,11 +199,11 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 		for _, dc := range deferredColumns {
 			if c, ok := projectedAliases[dc.Name()]; ok && dc.Table() == ""{
 				projections = append(projections, c)
+				neededReorder = true
 			}
 		}
 
 		child = plan.NewProject(projections, child)
-		neededReorder = true
 	}
 
 	return neededReorder, child, err

@@ -196,35 +196,7 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 							"select max(pk1) from two_pk where pk1 < pk"),
 					}, plan.NewResolvedTable(onepk)),
 			),
-			expected: plan.NewSort(
-				[]plan.SortField{
-					{Column: expression.NewGetFieldWithTable(0, sql.Int64, "one_pk", "pk", false)},
-				}, plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int64, "one_pk", "pk", false),
-						plan.NewSubquery(
-							plan.NewGroupBy(
-								[]sql.Expression{
-									aggregation.NewMax(expression.NewUnresolvedQualifiedColumn("two_pk", "pk1")),
-								},
-								nil,
-								plan.NewFilter(
-									expression.NewLessThan(
-										expression.NewGetFieldWithTable(2, sql.Int64, "one_pk", "pk1", false),
-										&deferredColumn{expression.NewUnresolvedColumn("pk")},
-									),
-									plan.NewResolvedTable(twopk),
-								),
-							),
-							"select max(pk1) from two_pk where pk1 < pk"),
-					}, plan.NewProject(
-						[]sql.Expression{
-							expression.NewGetFieldWithTable(0, sql.Int64, "one_pk", "pk", false),
-							expression.NewGetFieldWithTable(1, sql.Int64, "one_pk", "c1", false),
-						}, plan.NewResolvedTable(onepk),
-					),
-				),
-			),
+			expected: nil,
 		},
 	}
 
@@ -232,10 +204,14 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 
+			expected := tt.expected
+			if expected == nil {
+				expected = tt.node
+			}
 			result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), tt.node, nil)
 			require.NoError(err)
 
-			require.Equal(tt.expected, result)
+			require.Equal(expected, result)
 		})
 	}
 }
