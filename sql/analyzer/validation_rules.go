@@ -63,10 +63,16 @@ var (
 		"using EXPLODE is not supported outside a Project node",
 	)
 
-	// ErrSubqueryColumns is returned when an expression subquery returns
+	// ErrSubqueryMultipleColumns is returned when an expression subquery returns
 	// more than a single column.
-	ErrSubqueryColumns = errors.NewKind(
+	ErrSubqueryMultipleColumns = errors.NewKind(
 		"subquery expressions can only return a single column",
+	)
+
+	// ErrSubqueryFieldIndex is returned when an expression subquery references a field outside the range of the rows it
+	// works on.
+	ErrSubqueryFieldIndex = errors.NewKind(
+		"subquery field index out of range for expression %s: only %d columns available",
 	)
 
 	// ErrUnionSchemasMatch is returned when both sides of a UNION do not
@@ -401,6 +407,8 @@ func validateExplodeUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 }
 
 func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+
+	// First validate that every subquery expression returns a single column
 	valid := true
 	plan.InspectExpressions(n, func(e sql.Expression) bool {
 		s, ok := e.(*plan.Subquery)
@@ -413,7 +421,35 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 	})
 
 	if !valid {
-		return nil, ErrSubqueryColumns.New()
+		return nil, ErrSubqueryMultipleColumns.New()
+	}
+
+	// Then validate that every subquery has field indexes within the correct range
+	var outOfRangeIndexExpression sql.Expression
+	var outOfRangeColumns int
+	plan.InspectExpressionsWithNode(n, func(n sql.Node, e sql.Expression) bool {
+		s, ok := e.(*plan.Subquery)
+		if !ok {
+			return true
+		}
+
+		outerScopeRowLen := len(schema(n.Children()))
+		plan.InspectExpressionsWithNode(s.Query, func(n sql.Node, e sql.Expression) bool {
+			if gf, ok := e.(*expression.GetField); ok {
+				if gf.Index() >= outerScopeRowLen + len(schema(n.Children())) {
+					outOfRangeIndexExpression = gf
+					outOfRangeColumns = outerScopeRowLen + len(schema(n.Children()))
+					return false
+				}
+			}
+			return true
+		})
+
+		return outOfRangeIndexExpression == nil
+	})
+
+	if !valid {
+		return nil, ErrSubqueryFieldIndex.New(outOfRangeIndexExpression, outOfRangeColumns)
 	}
 
 	return n, nil
