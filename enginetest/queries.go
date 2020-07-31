@@ -2023,6 +2023,54 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		`SELECT pk,
+					(SELECT c3 FROM one_pk WHERE c4 < opk.c2 ORDER BY 1 DESC LIMIT 1),
+					(SELECT c5 + 1 FROM one_pk WHERE c5 < opk.c5 ORDER BY 1 DESC LIMIT 1)
+					FROM one_pk opk ORDER BY 1;`,
+		[]sql.Row{
+			{0,nil,nil},
+			{1,0,1},
+			{2,10,11},
+			{3,20,21},
+		},
+	},
+	{
+		`SELECT pk, 
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk),
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk)
+					FROM one_pk opk ORDER BY 1;`,
+		[]sql.Row{
+			{0,nil,1},
+			{1,0,2},
+			{2,1,3},
+			{3,2,nil},
+		},
+	},
+	{
+		`SELECT pk, 
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
+					FROM one_pk opk ORDER BY min;`,
+		[]sql.Row{
+			{0,nil,1},
+			{1,0,2},
+			{2,1,3},
+			{3,2,nil},
+		},
+	},
+	{
+		`SELECT pk, 
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
+					FROM one_pk opk ORDER BY max;`,
+		[]sql.Row{
+			{3,2,nil},
+			{0,nil,1},
+			{1,0,2},
+			{2,1,3},
+		},
+	},
+	{
 		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE one_pk.pk * 10 <= opk.c1) FROM one_pk opk ORDER BY 1`,
 		[]sql.Row{
 			{0,0},
