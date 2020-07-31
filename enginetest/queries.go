@@ -2048,11 +2048,11 @@ var QueryTests = []QueryTest{
 	},
 	{
 		`SELECT pk, 
-					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
 					FROM one_pk opk 
 					WHERE (SELECT min(pk) FROM one_pk WHERE pk > opk.pk) IS NOT NULL
-					ORDER BY min;`,
+					ORDER BY max;`,
 		[]sql.Row{
 			{0,nil,1},
 			{1,0,2},
@@ -2061,11 +2061,11 @@ var QueryTests = []QueryTest{
 	},
 	{
 		`SELECT pk, 
-					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min 
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk) > 0
-					ORDER BY max;`,
+					ORDER BY min;`,
 		[]sql.Row{
 			{3,2,nil},
 			{0,nil,1},
@@ -2075,11 +2075,11 @@ var QueryTests = []QueryTest{
 	},
 	{
 		`SELECT pk, 
-					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min 
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk > opk.pk) > 0
-					ORDER BY max;`,
+					ORDER BY min;`,
 		[]sql.Row{
 			{0,nil,1},
 			{1,0,2},
@@ -2088,11 +2088,11 @@ var QueryTests = []QueryTest{
 	},
 	{
 		`SELECT pk, 
-					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min 
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk > opk.pk) > 0
-					ORDER BY min;`,
+					ORDER BY max;`,
 		[]sql.Row{
 			{0,nil,1},
 			{1,0,2},
@@ -2101,11 +2101,11 @@ var QueryTests = []QueryTest{
 	},
 	{
 		`SELECT pk,
-					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) IS NOT NULL
-					ORDER BY max;`,
+					ORDER BY min;`,
 		[]sql.Row{
 			{3,2,nil},
 			{1,0,2},
@@ -2114,9 +2114,9 @@ var QueryTests = []QueryTest{
 	},
 	{
 		`SELECT pk, 
-					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
-					FROM one_pk opk ORDER BY max;`,
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min 
+					FROM one_pk opk ORDER BY min;`,
 		[]sql.Row{
 			{3,2,nil},
 			{0,nil,1},
@@ -2135,11 +2135,11 @@ var QueryTests = []QueryTest{
 	},
 	{
 		`SELECT pk, 
-					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min 
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk)
-					ORDER BY max;`,
+					ORDER BY min;`,
 		[]sql.Row{
 			{3,2,nil},
 			{0,nil,1},
@@ -2149,11 +2149,11 @@ var QueryTests = []QueryTest{
 	},
 	{
 		`SELECT pk,
-					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk) > 0
-					ORDER BY max;`,
+					ORDER BY min;`,
 		[]sql.Row{
 			{3,2,nil},
 			{0,nil,1},
@@ -2804,14 +2804,27 @@ var BrokenQueries = []QueryTest{
 	},
 	{
 		`SELECT pk,
-					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS min,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS max
 					FROM one_pk opk
 					WHERE max > 1
 					ORDER BY max;`,
 		[]sql.Row{
 			{1,0,2},
 			{2,1,3},
+		},
+	},
+	// This hangs the engine
+	{
+		`SELECT pk, 
+					(SELECT max(pk1) FROM two_pk WHERE pk1 < pk) AS min,
+					(SELECT min(pk2) FROM two_pk WHERE pk2 > pk) AS max 
+					FROM one_pk ORDER BY min, pk;`,
+		[]sql.Row{
+			{1,0,nil},
+			{2,1,nil},
+			{3,1,nil},
+			{0,nil,1},
 		},
 	},
 }
