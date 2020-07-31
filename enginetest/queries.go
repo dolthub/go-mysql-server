@@ -2711,6 +2711,60 @@ var BrokenQueries = []QueryTest{
 			{3,2},
 		},
 	},
+	{
+		`SELECT pk, 
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
+					FROM one_pk opk
+					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk)
+					ORDER BY max;`,
+		[]sql.Row{
+			{3,2,nil},
+			{0,nil,1},
+			{1,0,2},
+			{2,1,3},
+		},
+	},
+	{
+		`SELECT pk, 
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
+					FROM one_pk opk
+					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk) > 0
+					ORDER BY max;`,
+		[]sql.Row{
+			{3,2,nil},
+			{0,nil,1},
+			{1,0,2},
+			{2,1,3},
+		},
+	},
+	{
+		`SELECT pk,
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max
+					FROM one_pk opk
+					WHERE max > 1
+					ORDER BY max;`,
+		[]sql.Row{
+			{1,0,2},
+			{2,1,3},
+		},
+	},
+	{
+		`SELECT pk,
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max
+					FROM one_pk opk
+					WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) IS NOT NULL
+					ORDER BY max;`,
+		[]sql.Row{
+			{3,2,nil},
+			{0,nil,1},
+			{1,0,2},
+			{2,1,3},
+		},
+	},
 }
 
 var VersionedQueries = []QueryTest{
