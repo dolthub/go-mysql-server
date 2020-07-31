@@ -2049,13 +2049,67 @@ var QueryTests = []QueryTest{
 	{
 		`SELECT pk, 
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
-					FROM one_pk opk ORDER BY min;`,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max
+					FROM one_pk opk 
+					WHERE (SELECT min(pk) FROM one_pk WHERE pk > opk.pk) IS NOT NULL
+					ORDER BY min;`,
 		[]sql.Row{
 			{0,nil,1},
 			{1,0,2},
 			{2,1,3},
+		},
+	},
+	{
+		`SELECT pk, 
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
+					FROM one_pk opk
+					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk) > 0
+					ORDER BY max;`,
+		[]sql.Row{
 			{3,2,nil},
+			{0,nil,1},
+			{1,0,2},
+			{2,1,3},
+		},
+	},
+	{
+		`SELECT pk, 
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
+					FROM one_pk opk
+					WHERE (SELECT max(pk) FROM one_pk WHERE pk > opk.pk) > 0
+					ORDER BY max;`,
+		[]sql.Row{
+			{0,nil,1},
+			{1,0,2},
+			{2,1,3},
+		},
+	},
+	{
+		`SELECT pk, 
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
+					FROM one_pk opk
+					WHERE (SELECT max(pk) FROM one_pk WHERE pk > opk.pk) > 0
+					ORDER BY min;`,
+		[]sql.Row{
+			{0,nil,1},
+			{1,0,2},
+			{2,1,3},
+		},
+	},
+	{
+		`SELECT pk,
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max
+					FROM one_pk opk
+					WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) IS NOT NULL
+					ORDER BY max;`,
+		[]sql.Row{
+			{3,2,nil},
+			{1,0,2},
+			{2,1,3},
 		},
 	},
 	{
@@ -2063,6 +2117,43 @@ var QueryTests = []QueryTest{
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
 					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
 					FROM one_pk opk ORDER BY max;`,
+		[]sql.Row{
+			{3,2,nil},
+			{0,nil,1},
+			{1,0,2},
+			{2,1,3},
+		},
+	},
+	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x FROM one_pk opk GROUP BY x ORDER BY x`,
+		[]sql.Row{
+			{0,nil},
+			{1,0},
+			{2,1},
+			{3,2},
+		},
+	},
+	{
+		`SELECT pk, 
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
+					FROM one_pk opk
+					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk)
+					ORDER BY max;`,
+		[]sql.Row{
+			{3,2,nil},
+			{0,nil,1},
+			{1,0,2},
+			{2,1,3},
+		},
+	},
+	{
+		`SELECT pk,
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max
+					FROM one_pk opk
+					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk) > 0
+					ORDER BY max;`,
 		[]sql.Row{
 			{3,2,nil},
 			{0,nil,1},
@@ -2118,6 +2209,15 @@ var QueryTests = []QueryTest{
 	{
 		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) IS NOT NULL ORDER BY x`,
+		[]sql.Row{
+			{1,0},
+			{2,1},
+			{3,2},
+		},
+	},
+	{
+		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max 
+						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) IS NOT NULL ORDER BY max`,
 		[]sql.Row{
 			{1,0},
 			{2,1},
@@ -2693,15 +2793,6 @@ var BrokenQueries = []QueryTest{
 		"SELECT pk1, SUM(c1) FROM two_pk",
 		[]sql.Row{{0, 60.0}},
 	},
-	{
-		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x FROM one_pk opk GROUP BY x ORDER BY x`,
-		[]sql.Row{
-			{0,nil},
-			{1,0},
-			{2,1},
-			{3,2},
-		},
-	},
 	// this doesn't parse in MySQL (can't use an alias in a where clause), panics in engine
 	{
 		`SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
@@ -2712,34 +2803,6 @@ var BrokenQueries = []QueryTest{
 		},
 	},
 	{
-		`SELECT pk, 
-					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
-					FROM one_pk opk
-					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk)
-					ORDER BY max;`,
-		[]sql.Row{
-			{3,2,nil},
-			{0,nil,1},
-			{1,0,2},
-			{2,1,3},
-		},
-	},
-	{
-		`SELECT pk, 
-					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max 
-					FROM one_pk opk
-					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk) > 0
-					ORDER BY max;`,
-		[]sql.Row{
-			{3,2,nil},
-			{0,nil,1},
-			{1,0,2},
-			{2,1,3},
-		},
-	},
-	{
 		`SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
 					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max
@@ -2747,20 +2810,6 @@ var BrokenQueries = []QueryTest{
 					WHERE max > 1
 					ORDER BY max;`,
 		[]sql.Row{
-			{1,0,2},
-			{2,1,3},
-		},
-	},
-	{
-		`SELECT pk,
-					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) as min,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) as max
-					FROM one_pk opk
-					WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) IS NOT NULL
-					ORDER BY max;`,
-		[]sql.Row{
-			{3,2,nil},
-			{0,nil,1},
 			{1,0,2},
 			{2,1,3},
 		},
