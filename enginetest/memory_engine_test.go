@@ -78,7 +78,8 @@ func TestSingleQuery(t *testing.T) {
 
 	test = enginetest.QueryTest	{
 		`SELECT pk, 
-					(SELECT max(pk1) FROM two_pk WHERE pk1 < pk) AS min
+					(SELECT max(pk1) FROM two_pk WHERE pk1 < pk) AS min,
+					(SELECT min(pk2) FROM two_pk WHERE pk2 > pk) AS max 
 					FROM one_pk ORDER BY min, pk;`,
 		[]sql.Row{
 			{1,0,nil},
