@@ -16,9 +16,8 @@ package enginetest_test
 
 import (
 	"fmt"
-	"testing"
-
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"testing"
 
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 )
@@ -76,28 +75,27 @@ func TestQueriesSimple(t *testing.T) {
 func TestSingleQuery(t *testing.T) {
 	var test enginetest.QueryTest
 
-	test = enginetest.QueryTest	{
-		`SELECT pk, 
-					(SELECT max(pk1) FROM two_pk WHERE pk1 < pk) AS min,
-					(SELECT min(pk2) FROM two_pk WHERE pk2 > pk) AS max 
-					FROM one_pk ORDER BY min, pk;`,
-		[]sql.Row{
-			{1,0,nil},
-			{2,1,nil},
-			{3,1,nil},
-			{0,nil,1},
-		},
-	}
-
-	// test = enginetest.QueryTest{
-	// 	`SELECT pk as a, (SELECT max(pk) FROM one_pk WHERE pk <= a) FROM one_pk ORDER BY 1`,
+	// test = enginetest.QueryTest	{
+	// 	`SELECT pk,
+	// 				(SELECT max(pk1) FROM two_pk WHERE pk1 < pk) AS min
+	// 				FROM one_pk ORDER BY min, pk;`,
 	// 	[]sql.Row{
-	// 		{0,0},
-	// 		{1,1},
-	// 		{2,2},
-	// 		{3,3},
+	// 		{0,nil},
+	// 		{1,0},
+	// 		{2,1},
+	// 		{3,1},
 	// 	},
 	// }
+
+	test = enginetest.QueryTest{
+		`SELECT pk as a, (SELECT max(pk) FROM one_pk WHERE pk <= a) FROM one_pk ORDER BY 1`,
+		[]sql.Row{
+			{0,0},
+			{1,1},
+			{2,2},
+			{3,3},
+		},
+	}
 	// {
 	// 	`SELECT pk, (SELECT pk FROM one_pk WHERE c1 < opk.c1 ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1;`,
 	// 	[]sql.Row{

@@ -15,7 +15,10 @@
 package analyzer
 
 import (
+	"fmt"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/pmezard/go-difflib/difflib"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -157,13 +160,13 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 	f := getRule("reorder_projection")
 
 	onepk := memory.NewTable("one_pk", sql.Schema{
-		{Name: "pk", Source: "mytable", Type: sql.Int64, PrimaryKey: true},
-		{Name: "c1", Source: "mytable", Type: sql.Int64},
+		{Name: "pk", Source: "one_pk", Type: sql.Int64, PrimaryKey: true},
+		{Name: "c1", Source: "one_pk", Type: sql.Int64},
 	})
 	twopk := memory.NewTable("two_pk", sql.Schema{
-		{Name: "pk1", Source: "mytable", Type: sql.Int64, PrimaryKey: true},
-		{Name: "pk2", Source: "mytable", Type: sql.Int64, PrimaryKey: true},
-		{Name: "c1", Source: "mytable", Type: sql.Int64},
+		{Name: "pk1", Source: "two_pk", Type: sql.Int64, PrimaryKey: true},
+		{Name: "pk2", Source: "two_pk", Type: sql.Int64, PrimaryKey: true},
+		{Name: "c1", Source: "two_pk", Type: sql.Int64},
 	})
 
 	testCases := []struct {
@@ -172,7 +175,7 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 		expected sql.Node
 	}{
 		{
-			name: "sort",
+			name: "no reorder needed",
 			node: plan.NewSort(
 				[]plan.SortField{
 					{Column: expression.NewGetFieldWithTable(0, sql.Int64, "one_pk", "pk", false)},
@@ -198,6 +201,63 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 			),
 			expected: nil,
 		},
+		{
+			name: "subquery with an alias reference",
+			node: plan.NewSort(
+				[]plan.SortField{
+					{Column: expression.NewGetFieldWithTable(0, sql.Int64, "one_pk", "pk", false)},
+				}, plan.NewProject(
+					[]sql.Expression{
+						expression.NewAlias("a", expression.NewGetFieldWithTable(0, sql.Int64, "one_pk", "pk", false)),
+						plan.NewSubquery(
+							plan.NewGroupBy(
+								[]sql.Expression{
+									aggregation.NewMax(expression.NewUnresolvedQualifiedColumn("one_pk", "pk")),
+								},
+								nil,
+								plan.NewFilter(
+									expression.NewLessThanOrEqual(
+										expression.NewGetFieldWithTable(2, sql.Int64, "one_pk", "pk", false),
+										&deferredColumn{expression.NewUnresolvedColumn("a")},
+									),
+									plan.NewResolvedTable(onepk),
+								),
+							),
+							"SELECT max(pk) FROM one_pk WHERE pk <= a"),
+					}, plan.NewResolvedTable(onepk)),
+			),
+			expected: plan.NewSort(
+				[]plan.SortField{
+					{Column: expression.NewGetFieldWithTable(0, sql.Int64, "one_pk", "pk", false)},
+				}, plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, sql.Int64, "a", false),
+						plan.NewSubquery(
+							plan.NewGroupBy(
+								[]sql.Expression{
+									aggregation.NewMax(expression.NewUnresolvedQualifiedColumn("one_pk", "pk")),
+								},
+								nil,
+								plan.NewFilter(
+									expression.NewLessThanOrEqual(
+										expression.NewGetFieldWithTable(2, sql.Int64, "one_pk", "pk", false),
+										&deferredColumn{expression.NewUnresolvedColumn("a")},
+									),
+									plan.NewResolvedTable(onepk),
+								),
+							),
+							"SELECT max(pk) FROM one_pk WHERE pk <= a"),
+					}, plan.NewProject(
+						[]sql.Expression{
+							expression.NewGetFieldWithTable(0, sql.Int64, "one_pk", "pk", false),
+							expression.NewGetFieldWithTable(1, sql.Int64, "one_pk", "c1", false),
+							expression.NewAlias("a", expression.NewGetFieldWithTable(0, sql.Int64, "one_pk", "pk", false)),
+						},
+						plan.NewResolvedTable(onepk),
+					),
+				),
+			),
+		},
 	}
 
 	for _, tt := range testCases {
@@ -211,8 +271,28 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 			result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), tt.node, nil)
 			require.NoError(err)
 
-			require.Equal(expected, result)
+			assertNodesEqualWithDiff(t, expected, result)
 		})
 	}
 }
 
+// assertNodesEqualWithDiff asserts the two nodes given to be equal and prints any diff according to their DebugString
+// methods.
+func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
+	diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+		A:        difflib.SplitLines(sql.DebugString(expected)),
+		B:        difflib.SplitLines(sql.DebugString(actual)),
+		FromFile: "expected",
+		FromDate: "",
+		ToFile:   "actual",
+		ToDate:   "",
+		Context:  1,
+	})
+	require.NoError(t, err)
+
+	if len(diff) > 0 {
+		fmt.Println(diff)
+	}
+
+	assert.Equal(t, expected, actual)
+}
