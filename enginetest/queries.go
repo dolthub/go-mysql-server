@@ -2274,6 +2274,18 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		`SELECT pk, 
+					(SELECT max(pk1) FROM two_pk WHERE pk1 < pk) AS max,
+					(SELECT min(pk2) FROM two_pk WHERE pk2 > pk) AS min 
+					FROM one_pk ORDER BY min, pk;`,
+		[]sql.Row{
+			{1,0,nil},
+			{2,1,nil},
+			{3,1,nil},
+			{0,nil,1},
+		},
+	},
+	{
 		`SELECT pk, (SELECT min(pk) FROM one_pk WHERE pk > opk.pk) FROM one_pk opk ORDER BY 1`,
 		[]sql.Row{
 			{0,1},
@@ -2812,19 +2824,6 @@ var BrokenQueries = []QueryTest{
 		[]sql.Row{
 			{1,0,2},
 			{2,1,3},
-		},
-	},
-	// This hangs the engine
-	{
-		`SELECT pk, 
-					(SELECT max(pk1) FROM two_pk WHERE pk1 < pk) AS min,
-					(SELECT min(pk2) FROM two_pk WHERE pk2 > pk) AS max 
-					FROM one_pk ORDER BY min, pk;`,
-		[]sql.Row{
-			{1,0,nil},
-			{2,1,nil},
-			{3,1,nil},
-			{0,nil,1},
 		},
 	},
 }

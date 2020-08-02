@@ -310,6 +310,8 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 			return col, nil
 		}
 
+		// Look in all the scope, inner to outer, to identify the column. Stop as soon as we have a scope with exactly 1
+		// match for the column name. If any scope has ambiguity in available column names, that's an error.
 		for _, level := range nestingLevels {
 			name := strings.ToLower(col.Name())
 			tablesForColumn := symbols.tablesForColumnAtLevel(name, level)
@@ -324,11 +326,8 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 
 			switch len(tablesForColumn) {
 			case 0:
-				// If there are no tables that have any column with the column
-				// name let's just return it as it is. This may be an alias, so
-				// we'll wait for the reorder of the projection.
-				// TODO: look in other scope levels
-				return col, nil
+				// This column could be in an outer scope, keep going
+				continue
 			case 1:
 				return expression.NewUnresolvedQualifiedColumn(
 					tablesForColumn[0],
@@ -339,7 +338,9 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 			}
 		}
 
-		return nil, ErrInAnalysis.New("Should have made a decision already")
+		// If there are no tables that have any column with the column name let's just return it as it is. This may be an
+		// alias, so we'll wait for the reorder of the projection to resolve it.
+		return col, nil
 	case *expression.Star:
 		// Make sure that any qualified stars reference known tables
 		if col.Table != "" {
