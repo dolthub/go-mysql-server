@@ -24,7 +24,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
-func TestIn(t *testing.T) {
+func TestInTuple(t *testing.T) {
 	testCases := []struct {
 		name   string
 		left   sql.Expression
@@ -107,7 +107,7 @@ func TestIn(t *testing.T) {
 	}
 }
 
-func TestNotIn(t *testing.T) {
+func TestNotInTuple(t *testing.T) {
 	testCases := []struct {
 		name   string
 		left   sql.Expression

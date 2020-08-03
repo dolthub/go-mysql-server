@@ -52,11 +52,11 @@ func TestInSubquery(t *testing.T) {
 	}{
 		{
 			"left is nil",
-			expression.NewLiteral(nil, sql.Null),
+			expression.NewGetField(0, sql.Text, "foo", false),
 			project(
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewGetField(1, sql.Text, "foo", false),
 			),
-			nil,
+			sql.NewRow(nil),
 			nil,
 			nil,
 		},
@@ -67,7 +67,7 @@ func TestInSubquery(t *testing.T) {
 				expression.NewLiteral(int64(1), sql.Int64),
 			),
 			project(
-				expression.NewLiteral(int64(2), sql.Int64),
+				expression.NewGetField(1, sql.Text, "foo", false),
 			),
 			nil,
 			nil,
@@ -77,7 +77,7 @@ func TestInSubquery(t *testing.T) {
 			"left is in right",
 			expression.NewGetField(0, sql.Text, "foo", false),
 			project(
-				expression.NewGetField(0, sql.Text, "foo", false),
+				expression.NewGetField(1, sql.Text, "foo", false),
 			),
 			sql.NewRow("two"),
 			true,
@@ -87,7 +87,7 @@ func TestInSubquery(t *testing.T) {
 			"left is not in right",
 			expression.NewGetField(0, sql.Text, "foo", false),
 			project(
-				expression.NewGetField(0, sql.Text, "foo", false),
+				expression.NewGetField(1, sql.Text, "foo", false),
 			),
 			sql.NewRow("four"),
 			false,
@@ -140,11 +140,11 @@ func TestNotInSubquery(t *testing.T) {
 	}{
 		{
 			"left is nil",
-			expression.NewLiteral(nil, sql.Null),
+			expression.NewGetField(0, sql.Text, "foo", false),
 			project(
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewGetField(1, sql.Text, "foo", false),
 			),
-			nil,
+			sql.NewRow(nil),
 			nil,
 			nil,
 		},
@@ -165,7 +165,7 @@ func TestNotInSubquery(t *testing.T) {
 			"left is in right",
 			expression.NewGetField(0, sql.Text, "foo", false),
 			project(
-				expression.NewGetField(0, sql.Text, "foo", false),
+				expression.NewGetField(1, sql.Text, "foo", false),
 			),
 			sql.NewRow("two"),
 			false,
@@ -175,7 +175,7 @@ func TestNotInSubquery(t *testing.T) {
 			"left is not in right",
 			expression.NewGetField(0, sql.Text, "foo", false),
 			project(
-				expression.NewGetField(0, sql.Text, "foo", false),
+				expression.NewGetField(1, sql.Text, "foo", false),
 			),
 			sql.NewRow("four"),
 			true,
