@@ -2286,6 +2286,18 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		`SELECT pk,
+						(SELECT max(pk1) FROM two_pk tpk WHERE pk1 in (select pk1 from two_pk where pk1 = tpk.pk2)) AS one,
+						(SELECT min(pk2) FROM two_pk tpk WHERE pk2 in (select pk2 from two_pk where pk2 = tpk.pk1)) AS zero
+						FROM one_pk ORDER BY pk;`,
+		[]sql.Row{
+			{0,1,0},
+			{1,1,0},
+			{2,1,0},
+			{3,1,0},
+		},
+	},
+	{
 		`SELECT pk, (SELECT min(pk) FROM one_pk WHERE pk > opk.pk) FROM one_pk opk ORDER BY 1`,
 		[]sql.Row{
 			{0,1},
