@@ -75,18 +75,31 @@ func TestQueriesSimple(t *testing.T) {
 func TestSingleQuery(t *testing.T) {
 	var test enginetest.QueryTest
 
-	test = enginetest.QueryTest	{
+	test = enginetest.QueryTest{
 		`SELECT pk,
-						(SELECT max(pk1) FROM two_pk tpk WHERE pk1 in (select pk1 from two_pk where pk1 = tpk.pk2)) AS one,
-						(SELECT min(pk2) FROM two_pk tpk WHERE pk2 in (select pk2 from two_pk where pk2 = tpk.pk1)) AS zero
-						FROM one_pk ORDER BY pk;`,
+						(SELECT sum(c1) FROM two_pk WHERE c1 IN (SELECT c4 FROM two_pk WHERE c3 > opk.c5)) AS sum,
+						(SELECT avg(c1) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE c1 < opk.c2)) AS avg
+					FROM one_pk opk ORDER BY pk`,
 		[]sql.Row{
-			{0,1,0},
-			{1,1,0},
-			{2,1,0},
-			{3,1,0},
+			{0, 60.0, nil},
+			{1, 50.0, 10.0},
+			{2, 30.0, 15.0},
+			{3, nil, 15,0},
 		},
 	}
+
+	// test = enginetest.QueryTest	{
+	// 	`SELECT pk,
+	// 					(SELECT max(pk1) FROM two_pk tpk WHERE pk1 in (select pk1 from two_pk where pk1 = tpk.pk2)) AS one,
+	// 					(SELECT min(pk2) FROM two_pk tpk WHERE pk2 in (select pk2 from two_pk where pk2 = tpk.pk1)) AS zero
+	// 					FROM one_pk ORDER BY pk;`,
+	// 	[]sql.Row{
+	// 		{0,1,0},
+	// 		{1,1,0},
+	// 		{2,1,0},
+	// 		{3,1,0},
+	// 	},
+	// }
 
 	// test = enginetest.QueryTest	{
 	// 	`SELECT pk,
