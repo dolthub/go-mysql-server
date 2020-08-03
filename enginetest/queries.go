@@ -2862,7 +2862,7 @@ var BrokenQueries = []QueryTest{
 			{2,1,3},
 		},
 	},
-	// AVG gives the wrong result for a couple of these
+	// AVG gives the wrong result for the first row
 	{
 		`SELECT pk,
 						(SELECT sum(c1) FROM two_pk WHERE c1 IN (SELECT c4 FROM two_pk WHERE c3 > opk.c5)) AS sum,
@@ -2872,7 +2872,7 @@ var BrokenQueries = []QueryTest{
 			{0, 60.0, nil},
 			{1, 50.0, 10.0},
 			{2, 30.0, 15.0},
-			{3, nil, 15,0},
+			{3, nil, 15.0},
 		},
 	},
 }

@@ -24,7 +24,7 @@ func NewLimit(size int64, child sql.Node) *Limit {
 
 // Resolved implements the Resolvable interface.
 func (l *Limit) Resolved() bool {
-	return l.UnaryNode.Child.Resolved()
+	return l.UnaryNode.Child.Resolved()	
 }
 
 // RowIter implements the Node interface.
