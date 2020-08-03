@@ -2287,8 +2287,8 @@ var QueryTests = []QueryTest{
 	},
 	{
 		`SELECT pk,
-						(SELECT max(pk1) FROM two_pk tpk WHERE pk1 in (select pk1 from two_pk where pk1 = tpk.pk2)) AS one,
-						(SELECT min(pk2) FROM two_pk tpk WHERE pk2 in (select pk2 from two_pk where pk2 = tpk.pk1)) AS zero
+						(SELECT max(pk1) FROM two_pk tpk WHERE pk1 IN (SELECT pk1 FROM two_pk WHERE pk1 = tpk.pk2)) AS one,
+						(SELECT min(pk2) FROM two_pk tpk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE pk2 = tpk.pk1)) AS zero
 						FROM one_pk ORDER BY pk;`,
 		[]sql.Row{
 			{0,1,0},
@@ -2309,18 +2309,18 @@ var QueryTests = []QueryTest{
 			{3,nil,nil},
 		},
 	},
-	// {
-	// 	`SELECT pk,
-	// 					(SELECT sum(c1) FROM two_pk WHERE c1 IN (SELECT c4 FROM two_pk WHERE c3 > opk.c5)) AS sum,
-	// 					(SELECT avg(c1) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE c1 < opk.c2)) AS avg
-	// 				FROM one_pk opk ORDER BY pk`,
-	// 	[]sql.Row{
-	// 		{0, 60.0, nil},
-	// 		{1, 50.0, 10.0},
-	// 		{2, 30.0, 15.0},
-	// 		{3, nil, 15,0},
-	// 	},
-	// },
+	{
+		`SELECT pk,
+						(SELECT sum(c1) FROM two_pk WHERE c1 IN (SELECT c4 FROM two_pk WHERE c3 > opk.c5)) AS sum,
+						(SELECT sum(c1) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE c1 < opk.c2)) AS sum2
+					FROM one_pk opk ORDER BY pk`,
+		[]sql.Row{
+			{0, 60.0, nil},
+			{1, 50.0, 20.0},
+			{2, 30.0, 60.0},
+			{3, nil, 60.0},
+		},
+	},
 	{
 		`SELECT pk, (SELECT min(pk) FROM one_pk WHERE pk > opk.pk) FROM one_pk opk ORDER BY 1`,
 		[]sql.Row{
@@ -2860,6 +2860,19 @@ var BrokenQueries = []QueryTest{
 		[]sql.Row{
 			{1,0,2},
 			{2,1,3},
+		},
+	},
+	// AVG gives the wrong result for a couple of these
+	{
+		`SELECT pk,
+						(SELECT sum(c1) FROM two_pk WHERE c1 IN (SELECT c4 FROM two_pk WHERE c3 > opk.c5)) AS sum,
+						(SELECT avg(c1) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE c1 < opk.c2)) AS avg
+					FROM one_pk opk ORDER BY pk`,
+		[]sql.Row{
+			{0, 60.0, nil},
+			{1, 50.0, 10.0},
+			{2, 30.0, 15.0},
+			{3, nil, 15,0},
 		},
 	},
 }

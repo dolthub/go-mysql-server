@@ -21,11 +21,6 @@ func (a *Avg) String() string {
 	return fmt.Sprintf("AVG(%s)", a.Child)
 }
 
-// Resolved implements AggregationExpression interface. (AggregationExpression[Expression[Resolvable]]])
-func (a *Avg) Resolved() bool {
-	return true
-}
-
 // Type implements AggregationExpression interface. (AggregationExpression[Expression]])
 func (a *Avg) Type() sql.Type {
 	return sql.Float64

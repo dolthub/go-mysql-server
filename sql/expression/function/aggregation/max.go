@@ -19,11 +19,6 @@ func NewMax(e sql.Expression) *Max {
 	return &Max{expression.UnaryExpression{Child: e}}
 }
 
-// Resolved implements the Resolvable interface.
-func (m *Max) Resolved() bool {
-	return m.Child.Resolved()
-}
-
 // Type returns the resultant type of the aggregation.
 func (m *Max) Type() sql.Type {
 	return m.Child.Type()
