@@ -33,7 +33,7 @@ func (s *Scope) newScope(node sql.Node) *Scope {
 	if s == nil {
 		return &Scope{[]sql.Node{node}}
 	}
-	newNodes := make([]sql.Node, len(s.nodes)+1)
+	var newNodes []sql.Node
 	newNodes = append(newNodes, node)
 	newNodes = append(newNodes, s.nodes...)
 	return &Scope{newNodes}
