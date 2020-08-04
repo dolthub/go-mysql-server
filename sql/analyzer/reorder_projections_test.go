@@ -15,10 +15,7 @@
 package analyzer
 
 import (
-	"fmt"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
-	"github.com/pmezard/go-difflib/difflib"
-	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -274,25 +271,4 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 			assertNodesEqualWithDiff(t, expected, result)
 		})
 	}
-}
-
-// assertNodesEqualWithDiff asserts the two nodes given to be equal and prints any diff according to their DebugString
-// methods.
-func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
-	diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
-		A:        difflib.SplitLines(sql.DebugString(expected)),
-		B:        difflib.SplitLines(sql.DebugString(actual)),
-		FromFile: "expected",
-		FromDate: "",
-		ToFile:   "actual",
-		ToDate:   "",
-		Context:  1,
-	})
-	require.NoError(t, err)
-
-	if len(diff) > 0 {
-		fmt.Println(diff)
-	}
-
-	assert.Equal(t, expected, actual)
 }

@@ -1,7 +1,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -277,17 +276,23 @@ func TestPruneColumns(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			fmt.Println(sql.DebugString(tt.input))
-			fmt.Println(sql.DebugString(tt.expected))
+
+			// SubqueryAlias has a schema that's computed on demand, so fill it in the node for comparison
+			ensureSubquerySchema(tt.expected)
+
 			result, err := rule.Apply(sql.NewEmptyContext(), a, tt.input, nil)
 			require.NoError(err)
 			require.Equal(tt.expected.Schema(), result.Schema())
 			assertNodesEqualWithDiff(t, tt.expected, result)
-//			require.Equal(tt.expected, result)
 		})
 	}
 }
 
-func gf(idx int, table, name string) *expression.GetField {
-	return expression.NewGetFieldWithTable(idx, sql.Int64, table, name, false)
+func ensureSubquerySchema(n sql.Node) {
+	plan.Inspect(n, func(n sql.Node) bool {
+		if _, ok := n.(*plan.SubqueryAlias); ok {
+			_ = n.Schema()
+		}
+		return true
+	})
 }

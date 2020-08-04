@@ -1,8 +1,13 @@
 package analyzer
 
 import (
+	"fmt"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/pmezard/go-difflib/difflib"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 func not(e sql.Expression) sql.Expression {
@@ -53,6 +58,10 @@ func lit(n int64) sql.Expression {
 	return expression.NewLiteral(n, sql.Int64)
 }
 
+func gf(idx int, table, name string) *expression.GetField {
+	return expression.NewGetFieldWithTable(idx, sql.Int64, table, name, false)
+}
+
 var analyzeRules = [][]Rule{
 	OnceBeforeDefault,
 	DefaultRules,
@@ -78,4 +87,25 @@ func getRuleFrom(rules []Rule, name string) *Rule {
 	}
 
 	return nil
+}
+
+// assertNodesEqualWithDiff asserts the two nodes given to be equal and prints any diff according to their DebugString
+// methods.
+func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
+	diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+		A:        difflib.SplitLines(sql.DebugString(expected)),
+		B:        difflib.SplitLines(sql.DebugString(actual)),
+		FromFile: "expected",
+		FromDate: "",
+		ToFile:   "actual",
+		ToDate:   "",
+		Context:  1,
+	})
+	require.NoError(t, err)
+
+	if len(diff) > 0 {
+		fmt.Println(diff)
+	}
+
+	assert.Equal(t, expected, actual)
 }
