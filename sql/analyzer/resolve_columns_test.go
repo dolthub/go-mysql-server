@@ -477,7 +477,7 @@ func TestResolveColumns(t *testing.T) {
 			),
 		},
 		{
-			name: "Deferred columns",
+			name: "Unfound columns deferred",
 			node: plan.NewProject(
 				[]sql.Expression{
 					uqc("t2", "x"),
@@ -498,6 +498,96 @@ func TestResolveColumns(t *testing.T) {
 					gt(
 						gf(1,"t2", "y"),
 						gf(0,"t2", "i"),
+					),
+					plan.NewResolvedTable(t2),
+				),
+			),
+		},
+		{
+			name: "Deferred columns resolved",
+			node: plan.NewProject(
+				[]sql.Expression{
+					&deferredColumn{uqc("t2", "y")},
+				},
+				plan.NewFilter(
+					gt(
+						gf(1,"t2", "y"),
+						gf(0,"t2", "i"),
+					),
+					plan.NewResolvedTable(t2),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					gf(1,"t2", "y"),
+				},
+				plan.NewFilter(
+					gt(
+						gf(1,"t2", "y"),
+						gf(0,"t2", "i"),
+					),
+					plan.NewResolvedTable(t2),
+				),
+			),
+		},
+		{
+			name: "Deferred columns still not found throw error",
+			node: plan.NewProject(
+				[]sql.Expression{
+					&deferredColumn{uqc("t2", "x")},
+				},
+				plan.NewFilter(
+					gt(
+						gf(1,"t2", "y"),
+						gf(0,"t2", "i"),
+					),
+					plan.NewResolvedTable(t2),
+				),
+			),
+			err: sql.ErrTableColumnNotFound,
+		},
+		{
+			name: "resolve deferred columns in subquery expressions",
+			scope: newScope(plan.NewProject(
+				[]sql.Expression{
+					uc("i"),
+					plan.NewSubquery(
+						plan.NewProject(
+							[]sql.Expression{
+								aggregation.NewMax(gf(3, "t2", "y")),
+							},
+							plan.NewFilter(
+								gt(
+									&deferredColumn{uqc("t1","x")},
+									gf(2, "t2","i"),
+								),
+								plan.NewResolvedTable(t2),
+							),
+						),
+						"select y from t2 where x > i"),
+				},
+				plan.NewResolvedTable(t1),
+			)),
+			node: plan.NewProject(
+				[]sql.Expression{
+					aggregation.NewMax(gf(3, "t2", "y")),
+				},
+				plan.NewFilter(
+					gt(
+						&deferredColumn{uqc("t1","x")},
+						gf(2, "t2","i"),
+					),
+					plan.NewResolvedTable(t2),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					aggregation.NewMax(gf(3, "t2", "y")),
+				},
+				plan.NewFilter(
+					gt(
+						gf(1,"t1","x"),
+						gf(2, "t2","i"),
 					),
 					plan.NewResolvedTable(t2),
 				),
