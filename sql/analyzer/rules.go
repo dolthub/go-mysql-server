@@ -29,8 +29,6 @@ var DefaultRules = []Rule{
 	{"flatten_group_by_aggregations", flattenGroupByAggregations},
 	{"reorder_projection", reorderProjection},
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},
-	// {"pull_up_missing_subquery_columns", pullUpMissingSubqueryColumns},
-	{"resolve_get_indexed_fields", resolveGetIndexedFields},
 	{"move_join_conds_to_filter", moveJoinConditionsToFilter},
 	{"eval_filter", evalFilter},
 	{"optimize_distinct", optimizeDistinct},
@@ -45,12 +43,11 @@ var OnceAfterDefault = []Rule{
 	{"assign_info_schema", assignInfoSchema},
 	{"prune_columns", pruneColumns},
 	{"convert_dates", convertDates},
-	// TODO: pushdown breaks subquery indexes in some cases
 	{"pushdown_filters", pushdownFilters},
 	{"optimize_joins", optimizeJoins},
 	{"erase_projection", eraseProjection},
 	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
-	// previous rules
+	// previous rules.
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},
 }
 

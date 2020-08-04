@@ -209,6 +209,19 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 	return neededReorder, child, err
 }
 
+// findDeferredColumns returns all the deferredColumn expressions in the node given
+func findDeferredColumns(n sql.Node) []*deferredColumn {
+	var cols []*deferredColumn
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
+		if dc, ok := e.(*deferredColumn); ok {
+			cols = append(cols, dc)
+		}
+		return true
+	})
+
+	return cols
+}
+
 // hasNaturalJoin checks whether there is a natural join at some point in the
 // given node and its children.
 func hasNaturalJoin(node sql.Node) bool {

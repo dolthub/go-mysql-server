@@ -459,6 +459,14 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 	return n, nil
 }
 
+func schema(nodes []sql.Node) sql.Schema {
+	var schema sql.Schema
+	for _, n := range nodes {
+		schema = append(schema, n.Schema()...)
+	}
+	return schema
+}
+
 func stringContains(strs []string, target string) bool {
 	for _, s := range strs {
 		if s == target {
