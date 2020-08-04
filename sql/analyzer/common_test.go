@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -87,6 +88,17 @@ func getRuleFrom(rules []Rule, name string) *Rule {
 	}
 
 	return nil
+}
+
+// Since SubqueryAlias nodes' schemas are loaded on demand, this method loads the schema of any such nodes for uses in
+// test comparisons.
+func ensureSubquerySchema(n sql.Node) {
+	plan.Inspect(n, func(n sql.Node) bool {
+		if _, ok := n.(*plan.SubqueryAlias); ok {
+			_ = n.Schema()
+		}
+		return true
+	})
 }
 
 // assertNodesEqualWithDiff asserts the two nodes given to be equal and prints any diff according to their DebugString

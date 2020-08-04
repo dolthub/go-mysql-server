@@ -287,12 +287,3 @@ func TestPruneColumns(t *testing.T) {
 		})
 	}
 }
-
-func ensureSubquerySchema(n sql.Node) {
-	plan.Inspect(n, func(n sql.Node) bool {
-		if _, ok := n.(*plan.SubqueryAlias); ok {
-			_ = n.Schema()
-		}
-		return true
-	})
-}
