@@ -282,6 +282,53 @@ func TestQualifyColumns(t *testing.T) {
 				plan.NewResolvedTable(table),
 			),
 		},
+		{
+			name: "qualify in subquery expression",
+			scope: newScope(plan.NewProject(
+				[]sql.Expression{
+					expression.NewUnresolvedColumn("i"),
+					plan.NewSubquery(
+						plan.NewProject(
+							[]sql.Expression{
+								aggregation.NewMax(expression.NewUnresolvedColumn("y")),
+							},
+							plan.NewFilter(
+								expression.NewGreaterThan(
+									expression.NewUnresolvedColumn("x"),
+									expression.NewUnresolvedColumn("i"),
+								),
+								plan.NewResolvedTable(table2),
+							),
+						),
+						"select y from mytable2 where x > i"),
+				},
+				plan.NewResolvedTable(table),
+			)),
+			node: plan.NewProject(
+				[]sql.Expression{
+					aggregation.NewMax(expression.NewUnresolvedColumn("y")),
+				},
+				plan.NewFilter(
+					expression.NewGreaterThan(
+						expression.NewUnresolvedColumn("x"),
+						expression.NewUnresolvedColumn("i"),
+					),
+					plan.NewResolvedTable(table2),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					aggregation.NewMax(expression.NewUnresolvedQualifiedColumn("mytable2", "y")),
+				},
+				plan.NewFilter(
+					expression.NewGreaterThan(
+						expression.NewUnresolvedQualifiedColumn("mytable","x"),
+						expression.NewUnresolvedQualifiedColumn("mytable2","i"),
+					),
+					plan.NewResolvedTable(table2),
+				),
+			),
+		},
 	}
 
 	runTestCases(t, testCases, f)
