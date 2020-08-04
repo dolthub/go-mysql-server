@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"context"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
 	"gopkg.in/src-d/go-errors.v1"
 	"testing"
 
@@ -127,8 +128,14 @@ func TestQualifyVariables(t *testing.T) {
 
 func TestQualifyColumns(t *testing.T) {
 	f := getRule("qualify_columns")
-	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32, Source: "mytable"}})
-	table2 := memory.NewTable("mytable2", sql.Schema{{Name: "i", Type: sql.Int32, Source: "mytable2"}})
+	table := memory.NewTable("mytable", sql.Schema{
+		{Name: "i", Type: sql.Int32, Source: "mytable"},
+		{Name: "x", Type: sql.Int32, Source: "mytable"},
+	})
+	table2 := memory.NewTable("mytable2", sql.Schema{
+		{Name: "i", Type: sql.Int32, Source: "mytable2"},
+		{Name: "y", Type: sql.Int32, Source: "mytable2"},
+	})
 
 	type testCase struct {
 		name     string
@@ -238,6 +245,49 @@ func TestQualifyColumns(t *testing.T) {
 						),
 					),
 				),
+			),
+		},
+		{
+			name: "subquery expression, columns not qualified",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewUnresolvedColumn("i"),
+					plan.NewSubquery(
+						plan.NewFilter(
+							expression.NewGreaterThan(
+								expression.NewUnresolvedColumn("x"),
+								expression.NewUnresolvedColumn("i"),
+							),
+							plan.NewProject(
+								[]sql.Expression{
+									aggregation.NewMax(expression.NewUnresolvedColumn("y")),
+								},
+								plan.NewResolvedTable(table2),
+							),
+						),
+						""),
+				},
+				plan.NewResolvedTable(table),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+					plan.NewSubquery(
+						plan.NewFilter(
+							expression.NewGreaterThan(
+								expression.NewUnresolvedQualifiedColumn("mytable", "x"),
+								expression.NewUnresolvedQualifiedColumn("mytable2", "i"),
+							),
+							plan.NewProject(
+								[]sql.Expression{
+									aggregation.NewMax(expression.NewUnresolvedQualifiedColumn("mytable2","y")),
+								},
+								plan.NewResolvedTable(table2),
+							),
+						),
+						""),
+				},
+				plan.NewResolvedTable(table),
 			),
 		},
 	}
