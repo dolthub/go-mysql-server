@@ -1,9 +1,8 @@
 package analyzer
 
 import (
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -13,7 +12,6 @@ import (
 
 func TestPruneColumns(t *testing.T) {
 	rule := getRuleFrom(OnceAfterDefault, "prune_columns")
-	a := NewDefault(nil)
 
 	t1 := plan.NewResolvedTable(memory.NewTable("t1", sql.Schema{
 		{Name: "foo", Type: sql.Int64, Source: "t1"},
@@ -27,14 +25,10 @@ func TestPruneColumns(t *testing.T) {
 		{Name: "bux", Type: sql.Int64, Source: "t2"},
 	}))
 
-	testCases := []struct {
-		name     string
-		input    sql.Node
-		expected sql.Node
-	}{
+	testCases := []analyzerFnTestCase{
 		{
-			"natural join",
-			plan.NewProject(
+			name: "natural join",
+			node: plan.NewProject(
 				[]sql.Expression{
 					gf(0, "t1", "foo"),
 					gf(1, "", "some_alias"),
@@ -59,8 +53,7 @@ func TestPruneColumns(t *testing.T) {
 					),
 				),
 			),
-
-			plan.NewProject(
+			expected: plan.NewProject(
 				[]sql.Expression{
 					gf(0, "t1", "foo"),
 					gf(1, "", "some_alias"),
@@ -84,10 +77,9 @@ func TestPruneColumns(t *testing.T) {
 				),
 			),
 		},
-
 		{
-			"subquery",
-			plan.NewProject(
+			name: "subquery",
+			node: plan.NewProject(
 				[]sql.Expression{
 					gf(0, "t", "foo"),
 					gf(1, "", "some_alias"),
@@ -114,8 +106,7 @@ func TestPruneColumns(t *testing.T) {
 					),
 				),
 			),
-
-			plan.NewProject(
+			expected: plan.NewProject(
 				[]sql.Expression{
 					gf(0, "t", "foo"),
 					gf(1, "", "some_alias"),
@@ -141,10 +132,9 @@ func TestPruneColumns(t *testing.T) {
 				),
 			),
 		},
-
 		{
-			"group by",
-			plan.NewGroupBy(
+			name: "group by",
+			node: plan.NewGroupBy(
 				[]sql.Expression{
 					gf(0, "t1", "foo"),
 					gf(1, "", "some_alias"),
@@ -175,8 +165,7 @@ func TestPruneColumns(t *testing.T) {
 					),
 				),
 			),
-
-			plan.NewGroupBy(
+			expected: plan.NewGroupBy(
 				[]sql.Expression{
 					gf(0, "t1", "foo"),
 					gf(1, "", "some_alias"),
@@ -207,10 +196,9 @@ func TestPruneColumns(t *testing.T) {
 				),
 			),
 		},
-
 		{
-			"used inside subquery and not outside",
-			plan.NewProject(
+			name: "used inside subquery and not outside",
+			node: plan.NewProject(
 				[]sql.Expression{
 					gf(0, "sq", "foo"),
 				},
@@ -242,7 +230,7 @@ func TestPruneColumns(t *testing.T) {
 					),
 				),
 			),
-			plan.NewProject(
+			expected: plan.NewProject(
 				[]sql.Expression{
 					gf(0, "sq", "foo"),
 				},
@@ -271,19 +259,30 @@ func TestPruneColumns(t *testing.T) {
 				),
 			),
 		},
+		{
+			name: "Unqualified columns in subquery",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+					plan.NewSubquery(
+						plan.NewFilter(
+							expression.NewGreaterThan(
+								expression.NewUnresolvedQualifiedColumn("mytable", "x"),
+								expression.NewUnresolvedQualifiedColumn("mytable2", "i"),
+							),
+							plan.NewProject(
+								[]sql.Expression{
+									aggregation.NewMax(expression.NewUnresolvedQualifiedColumn("mytable2","y")),
+								},
+								plan.NewResolvedTable(t2),
+							),
+						),
+						""),
+				},
+				plan.NewResolvedTable(t1),
+			),
+		},
 	}
 
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
-
-			// SubqueryAlias has a schema that's computed on demand, so fill it in the node for comparison
-			ensureSubquerySchema(tt.expected)
-
-			result, err := rule.Apply(sql.NewEmptyContext(), a, tt.input, nil)
-			require.NoError(err)
-			require.Equal(tt.expected.Schema(), result.Schema())
-			assertNodesEqualWithDiff(t, tt.expected, result)
-		})
-	}
+	runTestCases(t, testCases, *rule)
 }

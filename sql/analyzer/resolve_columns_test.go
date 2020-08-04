@@ -3,7 +3,6 @@ package analyzer
 import (
 	"context"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
-	"gopkg.in/src-d/go-errors.v1"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -137,14 +136,7 @@ func TestQualifyColumns(t *testing.T) {
 		{Name: "y", Type: sql.Int32, Source: "mytable2"},
 	})
 
-	type testCase struct {
-		name     string
-		node     sql.Node
-		expected sql.Node
-		err      *errors.Kind
-	}
-
-	testCases := []testCase{
+	testCases := []analyzerFnTestCase{
 		{
 			name: "simple",
 			node: plan.NewProject(
@@ -275,12 +267,12 @@ func TestQualifyColumns(t *testing.T) {
 					plan.NewSubquery(
 						plan.NewFilter(
 							expression.NewGreaterThan(
-								expression.NewUnresolvedQualifiedColumn("mytable", "x"),
-								expression.NewUnresolvedQualifiedColumn("mytable2", "i"),
+								expression.NewUnresolvedColumn("x"),
+								expression.NewUnresolvedColumn("i"),
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									aggregation.NewMax(expression.NewUnresolvedQualifiedColumn("mytable2","y")),
+									aggregation.NewMax(expression.NewUnresolvedColumn("y")),
 								},
 								plan.NewResolvedTable(table2),
 							),
@@ -292,25 +284,7 @@ func TestQualifyColumns(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := f.Apply(sql.NewEmptyContext(), nil, tt.node, nil)
-			if tt.err != nil {
-				require.Error(t, err)
-				require.True(t, tt.err.Is(err))
-				return
-			}
-			require.NoError(t, err)
-
-			expected := tt.expected
-			if expected == nil {
-				expected = tt.node
-			}
-
-			ensureSubquerySchema(expected)
-			assertNodesEqualWithDiff(t, expected, result)
-		})
-	}
+	runTestCases(t, testCases, f)
 }
 
 func TestQualifyColumnsQualifiedStar(t *testing.T) {

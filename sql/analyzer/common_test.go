@@ -8,6 +8,7 @@ import (
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
 	"testing"
 )
 
@@ -90,7 +91,36 @@ func getRuleFrom(rules []Rule, name string) *Rule {
 	return nil
 }
 
-// Since SubqueryAlias nodes' schemas are loaded on demand, this method loads the schema of any such nodes for uses in
+type analyzerFnTestCase struct {
+	name     string
+	node     sql.Node
+	expected sql.Node
+	err      *errors.Kind
+}
+
+func runTestCases(t *testing.T, testCases []analyzerFnTestCase, f Rule) {
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := f.Apply(sql.NewEmptyContext(), nil, tt.node, nil)
+			if tt.err != nil {
+				require.Error(t, err)
+				require.True(t, tt.err.Is(err))
+				return
+			}
+			require.NoError(t, err)
+
+			expected := tt.expected
+			if expected == nil {
+				expected = tt.node
+			}
+
+			ensureSubquerySchema(expected)
+			assertNodesEqualWithDiff(t, expected, result)
+		})
+	}
+}
+
+// Since SubqueryAlias nodes' schemas are loaded on demand, this method loads the schema of any such nodes for use in
 // test comparisons.
 func ensureSubquerySchema(n sql.Node) {
 	plan.Inspect(n, func(n sql.Node) bool {
