@@ -16,8 +16,9 @@ package enginetest_test
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"testing"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 )

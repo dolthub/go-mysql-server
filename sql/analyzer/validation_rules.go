@@ -440,7 +440,7 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 		outerScopeRowLen := len(schema(n.Children()))
 		plan.InspectExpressionsWithNode(s.Query, func(n sql.Node, e sql.Expression) bool {
 			if gf, ok := e.(*expression.GetField); ok {
-				if gf.Index() >= outerScopeRowLen + len(schema(n.Children())) {
+				if gf.Index() >= outerScopeRowLen+len(schema(n.Children())) {
 					outOfRangeIndexExpression = gf
 					outOfRangeColumns = outerScopeRowLen + len(schema(n.Children()))
 					return false

@@ -78,4 +78,3 @@ func (n SubqueryAlias) DebugString() string {
 	_ = pr.WriteChildren(sql.DebugString(n.Child))
 	return pr.String()
 }
-

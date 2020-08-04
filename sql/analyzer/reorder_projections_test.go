@@ -15,8 +15,9 @@
 package analyzer
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
 	"testing"
+
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
 
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -64,7 +65,7 @@ func TestReorderProjection(t *testing.T) {
 					[]plan.SortField{{Column: gf(3, "", "foo")}},
 					plan.NewProject(
 						[]sql.Expression{
-							gf(0,"mytable", "i"),
+							gf(0, "mytable", "i"),
 							gf(1, "mytable", "s"),
 							gf(2, "", "bar"),
 							expression.NewAlias("foo", lit(1)),
@@ -159,7 +160,7 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 					{Column: gf(0, "one_pk", "pk")},
 				}, plan.NewProject(
 					[]sql.Expression{
-						gf(0,"one_pk", "pk"),
+						gf(0, "one_pk", "pk"),
 						plan.NewSubquery(
 							plan.NewGroupBy(
 								[]sql.Expression{
@@ -168,7 +169,7 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 								nil,
 								plan.NewFilter(
 									expression.NewLessThan(
-										gf(2,"one_pk", "pk1"),
+										gf(2, "one_pk", "pk1"),
 										&deferredColumn{uc("pk")},
 									),
 									plan.NewResolvedTable(twopk),
@@ -195,7 +196,7 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 								nil,
 								plan.NewFilter(
 									expression.NewLessThanOrEqual(
-										gf(2,"one_pk", "pk"),
+										gf(2, "one_pk", "pk"),
 										&deferredColumn{uc("a")},
 									),
 									plan.NewResolvedTable(onepk),
@@ -218,7 +219,7 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 								nil,
 								plan.NewFilter(
 									expression.NewLessThanOrEqual(
-										gf(2,  "one_pk", "pk"),
+										gf(2, "one_pk", "pk"),
 										&deferredColumn{uc("a")},
 									),
 									plan.NewResolvedTable(onepk),
@@ -227,8 +228,8 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 							"SELECT max(pk) FROM one_pk WHERE pk <= a"),
 					}, plan.NewProject(
 						[]sql.Expression{
-							gf(0,  "one_pk", "pk"),
-							gf(1,  "one_pk", "c1"),
+							gf(0, "one_pk", "pk"),
+							gf(1, "one_pk", "c1"),
 							expression.NewAlias("a", gf(0, "one_pk", "pk")),
 						},
 						plan.NewResolvedTable(onepk),

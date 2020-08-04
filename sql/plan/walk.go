@@ -99,4 +99,3 @@ func (f exprWithNodeInspector) Visit(n sql.Node, e sql.Expression) sql.NodeVisit
 	}
 	return nil
 }
-

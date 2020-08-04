@@ -166,7 +166,6 @@ func (g *GroupBy) DebugString() string {
 	return pr.String()
 }
 
-
 // Expressions implements the Expressioner interface.
 func (g *GroupBy) Expressions() []sql.Expression {
 	var exprs []sql.Expression

@@ -197,7 +197,7 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 
 		// Add a projection for each missing column from the subqueries that has an alias
 		for _, dc := range deferredColumns {
-			if c, ok := projectedAliases[dc.Name()]; ok && dc.Table() == ""{
+			if c, ok := projectedAliases[dc.Name()]; ok && dc.Table() == "" {
 				projections = append(projections, c)
 				neededReorder = true
 			}

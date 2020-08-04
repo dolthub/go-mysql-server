@@ -2,7 +2,6 @@ package analyzer
 
 import (
 	"context"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,6 +10,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
@@ -322,8 +322,8 @@ func TestQualifyColumns(t *testing.T) {
 				},
 				plan.NewFilter(
 					gt(
-						uqc("mytable","x"),
-						uqc("mytable2","i"),
+						uqc("mytable", "x"),
+						uqc("mytable2", "i"),
 					),
 					plan.NewResolvedTable(table2),
 				),
@@ -341,8 +341,8 @@ func TestQualifyColumns(t *testing.T) {
 							},
 							plan.NewFilter(
 								gt(
-									uqc("mytable","x"),
-									uqc("mytable2","i"),
+									uqc("mytable", "x"),
+									uqc("mytable2", "i"),
 								),
 								plan.NewResolvedTable(table2),
 							),
@@ -357,8 +357,8 @@ func TestQualifyColumns(t *testing.T) {
 				},
 				plan.NewFilter(
 					gt(
-						uqc("mytable","x"),
-						uqc("mytable2","i"),
+						uqc("mytable", "x"),
+						uqc("mytable2", "i"),
 					),
 					plan.NewResolvedTable(table2),
 				),
@@ -422,8 +422,8 @@ func TestResolveColumns(t *testing.T) {
 				},
 				plan.NewFilter(
 					gt(
-						uqc("t2","y"),
-						uqc("t2","i"),
+						uqc("t2", "y"),
+						uqc("t2", "i"),
 					),
 					plan.NewResolvedTable(t2),
 				),
@@ -434,8 +434,8 @@ func TestResolveColumns(t *testing.T) {
 				},
 				plan.NewFilter(
 					gt(
-						gf(1,"t2", "y"),
-						gf(0,"t2", "i"),
+						gf(1, "t2", "y"),
+						gf(0, "t2", "i"),
 					),
 					plan.NewResolvedTable(t2),
 				),
@@ -484,8 +484,8 @@ func TestResolveColumns(t *testing.T) {
 				},
 				plan.NewFilter(
 					gt(
-						uqc("t2","y"),
-						uqc("t2","i"),
+						uqc("t2", "y"),
+						uqc("t2", "i"),
 					),
 					plan.NewResolvedTable(t2),
 				),
@@ -496,8 +496,8 @@ func TestResolveColumns(t *testing.T) {
 				},
 				plan.NewFilter(
 					gt(
-						gf(1,"t2", "y"),
-						gf(0,"t2", "i"),
+						gf(1, "t2", "y"),
+						gf(0, "t2", "i"),
 					),
 					plan.NewResolvedTable(t2),
 				),
@@ -511,20 +511,20 @@ func TestResolveColumns(t *testing.T) {
 				},
 				plan.NewFilter(
 					gt(
-						gf(1,"t2", "y"),
-						gf(0,"t2", "i"),
+						gf(1, "t2", "y"),
+						gf(0, "t2", "i"),
 					),
 					plan.NewResolvedTable(t2),
 				),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					gf(1,"t2", "y"),
+					gf(1, "t2", "y"),
 				},
 				plan.NewFilter(
 					gt(
-						gf(1,"t2", "y"),
-						gf(0,"t2", "i"),
+						gf(1, "t2", "y"),
+						gf(0, "t2", "i"),
 					),
 					plan.NewResolvedTable(t2),
 				),
@@ -538,8 +538,8 @@ func TestResolveColumns(t *testing.T) {
 				},
 				plan.NewFilter(
 					gt(
-						gf(1,"t2", "y"),
-						gf(0,"t2", "i"),
+						gf(1, "t2", "y"),
+						gf(0, "t2", "i"),
 					),
 					plan.NewResolvedTable(t2),
 				),
@@ -558,8 +558,8 @@ func TestResolveColumns(t *testing.T) {
 							},
 							plan.NewFilter(
 								gt(
-									&deferredColumn{uqc("t1","x")},
-									gf(2, "t2","i"),
+									&deferredColumn{uqc("t1", "x")},
+									gf(2, "t2", "i"),
 								),
 								plan.NewResolvedTable(t2),
 							),
@@ -574,8 +574,8 @@ func TestResolveColumns(t *testing.T) {
 				},
 				plan.NewFilter(
 					gt(
-						&deferredColumn{uqc("t1","x")},
-						gf(2, "t2","i"),
+						&deferredColumn{uqc("t1", "x")},
+						gf(2, "t2", "i"),
 					),
 					plan.NewResolvedTable(t2),
 				),
@@ -586,8 +586,8 @@ func TestResolveColumns(t *testing.T) {
 				},
 				plan.NewFilter(
 					gt(
-						gf(1,"t1","x"),
-						gf(2, "t2","i"),
+						gf(1, "t1", "x"),
+						gf(2, "t2", "i"),
 					),
 					plan.NewResolvedTable(t2),
 				),

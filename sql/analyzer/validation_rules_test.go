@@ -876,7 +876,6 @@ func TestValidateSubqueryColumns(t *testing.T) {
 	_, err = validateSubqueryColumns(ctx, nil, node, nil)
 	require.NoError(err)
 
-
 	node = plan.NewProject([]sql.Expression{
 		plan.NewSubquery(plan.NewProject(
 			[]sql.Expression{
