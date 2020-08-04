@@ -2148,6 +2148,25 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		`SELECT pk FROM one_pk
+					WHERE (SELECT max(pk1) FROM two_pk WHERE pk1 >= pk) IS NOT NULL
+					ORDER BY 1;`,
+		[]sql.Row{
+			{0},
+			{1},
+		},
+	},
+	{
+		`SELECT pk FROM one_pk opk
+					WHERE (SELECT count(*) FROM two_pk where pk1 * 10 <= opk.c1) > 2
+					ORDER BY 1;`,
+		[]sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
+	{
 		`SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
 					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
