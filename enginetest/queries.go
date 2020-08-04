@@ -3348,6 +3348,18 @@ var errorQueries = []QueryErrorTest{
 		Query:       "SELECT pk, (SELECT max(pk) FROM one_pk WHERE b.pk <= one_pk.pk) FROM one_pk opk ORDER BY 1",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
+	{
+		Query:       "SELECT pk, (SELECT max(pk) FROM two_pk WHERE pk <= one_pk.pk3) FROM one_pk ORDER BY 1",
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	{
+		Query:       "SELECT pk, (SELECT max(pk) FROM dne WHERE pk <= one_pk.pk3) FROM one_pk ORDER BY 1",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:       "SELECT pk, (SELECT max(pk) FROM two_pk WHERE pk <= c6) FROM one_pk ORDER BY 1",
+		ExpectedErr: sql.ErrColumnNotFound,
+	},
 	// TODO: Bug: the having column must appear in the select list
 	// {
 	// 	Query:       "SELECT pk1, sum(c1) FROM two_pk GROUP BY 1 having c1 > 10;",
