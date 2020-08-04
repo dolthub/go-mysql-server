@@ -32,8 +32,6 @@ type Subquery struct {
 	Query sql.Node
 	// The original verbatim select statement for this subquery
 	QueryString string
-	// The number of columns of outer scope schema expected before inner-query result row columns
-	ScopeLen int
 }
 
 // NewSubquery returns a new subquery expression.
@@ -92,17 +90,7 @@ func (p *prependNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // Eval implements the Expression interface.
 func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// TODO: the row being evaluated here might be shorter than the schema of the wrapping scope node. This is typically a
-	//  problem for Project nodes, where there isn't a 1:1 correspondence between child row results and projections (more
-	//  projections than unique columns in the underlying result set). This creates a problem for the evaluation of
-	//  subquery rows -- all the indexes will be off, since they expect to be given a row the same length as the schema of
-	//  their scope node. In this case, we fix the indexes by filling in zero values for the missing elements. This should
-	//  probably be dealt with by adjustments to field indexes in the analyzer instead.
 	scopeRow := row
-	// if len(scopeRow) < s.ScopeLen {
-	// 	scopeRow = make(sql.Row, s.ScopeLen)
-	// 	copy(scopeRow, row)
-	// }
 
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
@@ -236,10 +224,3 @@ func (s *Subquery) WithQuery(node sql.Node) *Subquery {
 	ns.Query = node
 	return &ns
 }
-
-// WithScopeLen returns the subquery with the scope length changed.
-// func (s *Subquery) WithScopeLen(length int) *Subquery {
-// 	ns := *s
-// 	ns.ScopeLen = length
-// 	return &ns
-// }
