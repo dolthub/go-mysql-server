@@ -64,6 +64,11 @@ func gf(idx int, table, name string) *expression.GetField {
 	return expression.NewGetFieldWithTable(idx, sql.Int64, table, name, false)
 }
 
+// Creates a new top-level scope from the node given
+func newScope(n sql.Node) *Scope {
+	return (*Scope)(nil).newScope(n)
+}
+
 var analyzeRules = [][]Rule{
 	OnceBeforeDefault,
 	DefaultRules,
@@ -91,9 +96,13 @@ func getRuleFrom(rules []Rule, name string) *Rule {
 	return nil
 }
 
+// Common test struct for analyzer transformation tests. Name and node are required, other fields are optional.
+// The expected node is optional: if omitted, the tests asserts that input == output. The optional err field is the
+// kind of error expected, if any.
 type analyzerFnTestCase struct {
 	name     string
 	node     sql.Node
+	scope    *Scope
 	expected sql.Node
 	err      *errors.Kind
 }
@@ -101,7 +110,7 @@ type analyzerFnTestCase struct {
 func runTestCases(t *testing.T, testCases []analyzerFnTestCase, f Rule) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := f.Apply(sql.NewEmptyContext(), nil, tt.node, nil)
+			result, err := f.Apply(sql.NewEmptyContext(), nil, tt.node, tt.scope)
 			if tt.err != nil {
 				require.Error(t, err)
 				require.True(t, tt.err.Is(err))

@@ -263,16 +263,16 @@ func TestPruneColumns(t *testing.T) {
 			name: "Unqualified columns in subquery",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+					expression.NewUnresolvedQualifiedColumn("t1", "foo"),
 					plan.NewSubquery(
 						plan.NewFilter(
 							expression.NewGreaterThan(
-								expression.NewUnresolvedQualifiedColumn("mytable", "x"),
-								expression.NewUnresolvedQualifiedColumn("mytable2", "i"),
+								expression.NewUnresolvedQualifiedColumn("t1", "bar"),
+								expression.NewUnresolvedQualifiedColumn("t2", "foo"),
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									aggregation.NewMax(expression.NewUnresolvedQualifiedColumn("mytable2","y")),
+									aggregation.NewMax(expression.NewUnresolvedQualifiedColumn("t2","baz")),
 								},
 								plan.NewResolvedTable(t2),
 							),
@@ -280,6 +280,226 @@ func TestPruneColumns(t *testing.T) {
 						""),
 				},
 				plan.NewResolvedTable(t1),
+			),
+		},
+		{
+			name: "Retain projected columns used in subquery",
+			node: plan.NewProject(
+				[]sql.Expression{
+					gf(0, "t1", "foo"),
+					plan.NewSubquery(
+						plan.NewFilter(
+							expression.NewGreaterThan(
+								gf(1, "t1", "bar"),
+								gf(2, "t2", "foo"),
+							),
+							plan.NewProject(
+								[]sql.Expression{
+									aggregation.NewMax(gf(3,"t2","baz")),
+								},
+								plan.NewResolvedTable(t2),
+							),
+						),
+						""),
+				},
+				plan.NewProject(
+					[]sql.Expression{
+						gf(0, "t1", "foo"),
+						gf(1, "t1", "bar"),
+					},
+					plan.NewResolvedTable(t1),
+				),
+			),
+		},
+		{
+			name: "Retain alias used in subquery",
+			node: plan.NewProject(
+				[]sql.Expression{
+					gf(0, "t1", "foo"),
+					plan.NewSubquery(
+						plan.NewFilter(
+							expression.NewGreaterThan(
+								gf(1, "t1", "bar"),
+								gf(3, "", "x"),
+							),
+							plan.NewProject(
+								[]sql.Expression{
+									aggregation.NewMax(gf(4,"t2","baz")),
+								},
+								plan.NewResolvedTable(t2),
+							),
+						),
+						""),
+				},
+				plan.NewProject(
+					[]sql.Expression{
+						gf(0, "t1", "foo"),
+						gf(1, "t1", "bar"),
+						expression.NewAlias("x", gf(0, "t1", "foo")),
+					},
+					plan.NewResolvedTable(t1),
+				),
+			),
+		},
+		{
+			name: "Drop projected columns not in subquery",
+			node: plan.NewProject(
+				[]sql.Expression{
+					gf(0, "t1", "foo"),
+					plan.NewSubquery(
+						plan.NewFilter(
+							expression.NewGreaterThan(
+								gf(1, "t1", "foo"),
+								gf(1, "t1", "foo"),
+							),
+							plan.NewProject(
+								[]sql.Expression{
+									aggregation.NewMax(gf(2,"t2","baz")),
+								},
+								plan.NewResolvedTable(t2),
+							),
+						),
+						""),
+				},
+				plan.NewProject(
+					[]sql.Expression{
+						gf(0, "t1", "foo"),
+						gf(1, "t1", "bar"),
+					},
+					plan.NewResolvedTable(t1),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					gf(0, "t1", "foo"),
+					plan.NewSubquery(
+						plan.NewFilter(
+							expression.NewGreaterThan(
+								gf(1, "t1", "foo"),
+								gf(1, "t1", "foo"),
+							),
+							plan.NewProject(
+								[]sql.Expression{
+									aggregation.NewMax(gf(2,"t2","baz")),
+								},
+								plan.NewResolvedTable(t2),
+							),
+						),
+						""),
+				},
+				plan.NewProject(
+					[]sql.Expression{
+						gf(0, "t1", "foo"),
+					},
+					plan.NewResolvedTable(t1),
+				),
+			),
+		},
+		{
+			name: "Fix indexes in subquery expression",
+			scope: newScope(plan.NewProject(
+				[]sql.Expression{
+					gf(0, "t1", "foo"),
+					plan.NewSubquery(
+						plan.NewFilter(
+							expression.NewGreaterThan(
+								gf(4, "t1", "foo"),
+								gf(5, "t1", "bar"),
+							),
+							plan.NewProject(
+								[]sql.Expression{
+									aggregation.NewMax(gf(6,"t2","baz")),
+								},
+								plan.NewResolvedTable(t2),
+							),
+						),
+						""),
+				},
+				plan.NewProject(
+					[]sql.Expression{
+						gf(0, "t1", "foo"),
+						gf(1, "t1", "bar"),
+					},
+					plan.NewResolvedTable(t1),
+				),
+			)),
+			node: plan.NewFilter(
+				expression.NewGreaterThan(
+					gf(4, "t1", "foo"),
+					gf(5, "t1", "bar"),
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						aggregation.NewMax(gf(6,"t2","baz")),
+					},
+					plan.NewResolvedTable(t2),
+				),
+			),
+			expected: plan.NewFilter(
+				expression.NewGreaterThan(
+					gf(0, "t1", "foo"),
+					gf(1, "t1", "bar"),
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						aggregation.NewMax(gf(3,"t2","baz")),
+					},
+					plan.NewResolvedTable(t2),
+				),
+			),
+		},
+		{
+			name: "Fix indexes in subquery expression with aliases",
+			scope: newScope(plan.NewProject(
+				[]sql.Expression{
+					gf(0, "t1", "foo"),
+					plan.NewSubquery(
+						plan.NewFilter(
+							expression.NewGreaterThan(
+								gf(4, "t1", "foo"),
+								gf(5, "", "x"),
+							),
+							plan.NewProject(
+								[]sql.Expression{
+									aggregation.NewMax(gf(6,"t2","baz")),
+								},
+								plan.NewResolvedTable(t2),
+							),
+						),
+						""),
+				},
+				plan.NewProject(
+					[]sql.Expression{
+						gf(0, "t1", "foo"),
+						gf(1, "t1", "bar"),
+						expression.NewAlias("x", gf(0, "t1", "foo")),
+					},
+					plan.NewResolvedTable(t1),
+				),
+			)),
+			node: plan.NewFilter(
+				expression.NewGreaterThan(
+					gf(4, "t1", "foo"),
+					gf(5, "", "x"),
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						aggregation.NewMax(gf(6,"t2","baz")),
+					},
+					plan.NewResolvedTable(t2),
+				),
+			),
+			expected: plan.NewFilter(
+				expression.NewGreaterThan(
+					gf(0, "t1", "foo"),
+					gf(2, "", "x"),
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						aggregation.NewMax(gf(4,"t2","baz")),
+					},
+					plan.NewResolvedTable(t2),
+				),
 			),
 		},
 	}
