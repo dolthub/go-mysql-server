@@ -24,12 +24,12 @@ func TestQualifyColumnsProject(t *testing.T) {
 
 	node := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedColumn("a"),
-			expression.NewUnresolvedColumn("b"),
+			uc("a"),
+			uc("b"),
 		},
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewUnresolvedQualifiedColumn("foo", "a"),
+				uqc("foo", "a"),
 			},
 			plan.NewResolvedTable(table),
 		),
@@ -40,13 +40,13 @@ func TestQualifyColumnsProject(t *testing.T) {
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("foo", "a"),
+			uqc("foo", "a"),
 			// b is not qualified because it's not projected
-			expression.NewUnresolvedColumn("b"),
+			uc("b"),
 		},
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewUnresolvedQualifiedColumn("foo", "a"),
+				uqc("foo", "a"),
 			},
 			plan.NewResolvedTable(table),
 		),
@@ -65,8 +65,8 @@ func TestMisusedAlias(t *testing.T) {
 
 	node := plan.NewProject(
 		[]sql.Expression{
-			expression.NewAlias("alias_i", expression.NewUnresolvedColumn("i")),
-			expression.NewUnresolvedColumn("alias_i"),
+			expression.NewAlias("alias_i", uc("i")),
+			uc("alias_i"),
 		},
 		plan.NewResolvedTable(table),
 	)
@@ -84,7 +84,7 @@ func TestQualifyVariables(t *testing.T) {
 
 	node := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedColumn("@@max_allowed_packet"),
+			uc("@@max_allowed_packet"),
 		},
 		plan.NewResolvedTable(globalTable),
 	)
@@ -94,7 +94,7 @@ func TestQualifyVariables(t *testing.T) {
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("", "@@max_allowed_packet"),
+			uqc("", "@@max_allowed_packet"),
 		},
 		plan.NewResolvedTable(globalTable),
 	)
@@ -105,7 +105,7 @@ func TestQualifyVariables(t *testing.T) {
 
 	node = plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedColumn("@@autocommit"),
+			uc("@@autocommit"),
 		},
 		plan.NewResolvedTable(sessionTable),
 	)
@@ -115,7 +115,7 @@ func TestQualifyVariables(t *testing.T) {
 
 	expected = plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("", "@@autocommit"),
+			uqc("", "@@autocommit"),
 		},
 		plan.NewResolvedTable(sessionTable),
 	)
@@ -141,13 +141,13 @@ func TestQualifyColumns(t *testing.T) {
 			name: "simple",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewUnresolvedColumn("i"),
+					uc("i"),
 				},
 				plan.NewResolvedTable(table),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+					uqc("mytable", "i"),
 				},
 				plan.NewResolvedTable(table),
 			),
@@ -156,7 +156,7 @@ func TestQualifyColumns(t *testing.T) {
 			name: "already qualified",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+					uqc("mytable", "i"),
 				},
 				plan.NewResolvedTable(table),
 			),
@@ -165,7 +165,7 @@ func TestQualifyColumns(t *testing.T) {
 			name: "already qualified with alias",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewUnresolvedQualifiedColumn("a", "i"),
+					uqc("a", "i"),
 				},
 				plan.NewTableAlias("a", plan.NewResolvedTable(table)),
 			),
@@ -174,7 +174,7 @@ func TestQualifyColumns(t *testing.T) {
 			name: "unknown column",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewUnresolvedColumn("z"),
+					uc("z"),
 				},
 				plan.NewTableAlias("a", plan.NewResolvedTable(table)),
 			),
@@ -183,7 +183,7 @@ func TestQualifyColumns(t *testing.T) {
 			name: "qualified with unknown table name",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewUnresolvedQualifiedColumn("foo", "i"),
+					uqc("foo", "i"),
 				},
 				plan.NewTableAlias("a", plan.NewResolvedTable(table)),
 			),
@@ -193,7 +193,7 @@ func TestQualifyColumns(t *testing.T) {
 			name: "ambiguous column name",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewUnresolvedColumn("i"),
+					uc("i"),
 				},
 				plan.NewCrossJoin(
 					plan.NewResolvedTable(table),
@@ -206,7 +206,7 @@ func TestQualifyColumns(t *testing.T) {
 			name: "subquery, all columns already qualified",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewUnresolvedQualifiedColumn("a", "i"),
+					uqc("a", "i"),
 				},
 				plan.NewCrossJoin(
 					plan.NewTableAlias("a", plan.NewResolvedTable(table)),
@@ -223,7 +223,7 @@ func TestQualifyColumns(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewUnresolvedQualifiedColumn("a", "i"),
+					uqc("a", "i"),
 				},
 				plan.NewCrossJoin(
 					plan.NewTableAlias("a", plan.NewResolvedTable(table)),
@@ -243,16 +243,16 @@ func TestQualifyColumns(t *testing.T) {
 			name: "subquery expression, columns not qualified",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewUnresolvedColumn("i"),
+					uc("i"),
 					plan.NewSubquery(
 						plan.NewFilter(
-							expression.NewGreaterThan(
-								expression.NewUnresolvedColumn("x"),
-								expression.NewUnresolvedColumn("i"),
+							gt(
+								uc("x"),
+								uc("i"),
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									aggregation.NewMax(expression.NewUnresolvedColumn("y")),
+									aggregation.NewMax(uc("y")),
 								},
 								plan.NewResolvedTable(table2),
 							),
@@ -263,16 +263,16 @@ func TestQualifyColumns(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+					uqc("mytable", "i"),
 					plan.NewSubquery(
 						plan.NewFilter(
-							expression.NewGreaterThan(
-								expression.NewUnresolvedColumn("x"),
-								expression.NewUnresolvedColumn("i"),
+							gt(
+								uc("x"),
+								uc("i"),
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									aggregation.NewMax(expression.NewUnresolvedColumn("y")),
+									aggregation.NewMax(uc("y")),
 								},
 								plan.NewResolvedTable(table2),
 							),
@@ -286,16 +286,16 @@ func TestQualifyColumns(t *testing.T) {
 			name: "qualify in subquery expression",
 			scope: newScope(plan.NewProject(
 				[]sql.Expression{
-					expression.NewUnresolvedColumn("i"),
+					uc("i"),
 					plan.NewSubquery(
 						plan.NewProject(
 							[]sql.Expression{
-								aggregation.NewMax(expression.NewUnresolvedColumn("y")),
+								aggregation.NewMax(uc("y")),
 							},
 							plan.NewFilter(
-								expression.NewGreaterThan(
-									expression.NewUnresolvedColumn("x"),
-									expression.NewUnresolvedColumn("i"),
+								gt(
+									uc("x"),
+									uc("i"),
 								),
 								plan.NewResolvedTable(table2),
 							),
@@ -306,24 +306,24 @@ func TestQualifyColumns(t *testing.T) {
 			)),
 			node: plan.NewProject(
 				[]sql.Expression{
-					aggregation.NewMax(expression.NewUnresolvedColumn("y")),
+					aggregation.NewMax(uc("y")),
 				},
 				plan.NewFilter(
-					expression.NewGreaterThan(
-						expression.NewUnresolvedColumn("x"),
-						expression.NewUnresolvedColumn("i"),
+					gt(
+						uc("x"),
+						uc("i"),
 					),
 					plan.NewResolvedTable(table2),
 				),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					aggregation.NewMax(expression.NewUnresolvedQualifiedColumn("mytable2", "y")),
+					aggregation.NewMax(uqc("mytable2", "y")),
 				},
 				plan.NewFilter(
-					expression.NewGreaterThan(
-						expression.NewUnresolvedQualifiedColumn("mytable","x"),
-						expression.NewUnresolvedQualifiedColumn("mytable2","i"),
+					gt(
+						uqc("mytable","x"),
+						uqc("mytable2","i"),
 					),
 					plan.NewResolvedTable(table2),
 				),
@@ -333,16 +333,16 @@ func TestQualifyColumns(t *testing.T) {
 			name: "qualify in subquery expression, already qualified",
 			scope: newScope(plan.NewProject(
 				[]sql.Expression{
-					expression.NewUnresolvedColumn("i"),
+					uc("i"),
 					plan.NewSubquery(
 						plan.NewProject(
 							[]sql.Expression{
-								aggregation.NewMax(expression.NewUnresolvedQualifiedColumn("mytable2", "y")),
+								aggregation.NewMax(uqc("mytable2", "y")),
 							},
 							plan.NewFilter(
-								expression.NewGreaterThan(
-									expression.NewUnresolvedQualifiedColumn("mytable","x"),
-									expression.NewUnresolvedQualifiedColumn("mytable2","i"),
+								gt(
+									uqc("mytable","x"),
+									uqc("mytable2","i"),
 								),
 								plan.NewResolvedTable(table2),
 							),
@@ -353,12 +353,12 @@ func TestQualifyColumns(t *testing.T) {
 			)),
 			node: plan.NewProject(
 				[]sql.Expression{
-					aggregation.NewMax(expression.NewUnresolvedQualifiedColumn("mytable2", "y")),
+					aggregation.NewMax(uqc("mytable2", "y")),
 				},
 				plan.NewFilter(
-					expression.NewGreaterThan(
-						expression.NewUnresolvedQualifiedColumn("mytable","x"),
-						expression.NewUnresolvedQualifiedColumn("mytable2","i"),
+					gt(
+						uqc("mytable","x"),
+						uqc("mytable2","i"),
 					),
 					plan.NewResolvedTable(table2),
 				),
@@ -402,6 +402,112 @@ func TestQualifyColumnsQualifiedStar(t *testing.T) {
 	require.Equal(expected, result)
 }
 
+func TestResolveColumns(t *testing.T) {
+	f := getRule("resolve_columns")
+	t1 := memory.NewTable("t1", sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "t1"},
+		{Name: "x", Type: sql.Int64, Source: "t1"},
+	})
+	t2 := memory.NewTable("t2", sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "t2"},
+		{Name: "y", Type: sql.Int64, Source: "t2"},
+	})
+
+	testCases := []analyzerFnTestCase{
+		{
+			name: "Project with filter, one table",
+			node: plan.NewProject(
+				[]sql.Expression{
+					uqc("t2", "y"),
+				},
+				plan.NewFilter(
+					gt(
+						uqc("t2","y"),
+						uqc("t2","i"),
+					),
+					plan.NewResolvedTable(t2),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					gf(1, "t2", "y"),
+				},
+				plan.NewFilter(
+					gt(
+						gf(1,"t2", "y"),
+						gf(0,"t2", "i"),
+					),
+					plan.NewResolvedTable(t2),
+				),
+			),
+		},
+		{
+			name: "Project with filter, two tables",
+			node: plan.NewProject(
+				[]sql.Expression{
+					uqc("t2", "y"),
+					uqc("t1", "i"),
+				},
+				plan.NewFilter(
+					gt(
+						uqc("t1", "x"),
+						uqc("t2", "i"),
+					),
+					plan.NewCrossJoin(
+						plan.NewResolvedTable(t1),
+						plan.NewResolvedTable(t2),
+					),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					gf(3, "t2", "y"),
+					gf(0, "t1", "i"),
+				},
+				plan.NewFilter(
+					gt(
+						gf(1, "t1", "x"),
+						gf(2, "t2", "i"),
+					),
+					plan.NewCrossJoin(
+						plan.NewResolvedTable(t1),
+						plan.NewResolvedTable(t2),
+					),
+				),
+			),
+		},
+		{
+			name: "Deferred columns",
+			node: plan.NewProject(
+				[]sql.Expression{
+					uqc("t2", "x"),
+				},
+				plan.NewFilter(
+					gt(
+						uqc("t2","y"),
+						uqc("t2","i"),
+					),
+					plan.NewResolvedTable(t2),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					&deferredColumn{uqc("t2", "x")},
+				},
+				plan.NewFilter(
+					gt(
+						gf(1,"t2", "y"),
+						gf(0,"t2", "i"),
+					),
+					plan.NewResolvedTable(t2),
+				),
+			),
+		},
+	}
+
+	runTestCases(t, testCases, f)
+}
+
 func TestResolveColumnsSession(t *testing.T) {
 	require := require.New(t)
 
@@ -413,9 +519,9 @@ func TestResolveColumnsSession(t *testing.T) {
 
 	node := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedColumn("@@foo_bar"),
-			expression.NewUnresolvedColumn("@@bar_baz"),
-			expression.NewUnresolvedColumn("@@autocommit"),
+			uc("@@foo_bar"),
+			uc("@@bar_baz"),
+			uc("@@autocommit"),
 		},
 		plan.NewResolvedTable(dualTable),
 	)
@@ -442,16 +548,16 @@ func TestPushdownGroupByAliases(t *testing.T) {
 	node := plan.NewGroupBy(
 		[]sql.Expression{
 			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", true,
-				expression.NewUnresolvedColumn("c"),
+				uc("c"),
 			)),
-			expression.NewAlias("b", expression.NewUnresolvedColumn("d")),
+			expression.NewAlias("b", uc("d")),
 			expression.NewUnresolvedFunction("bar", false,
-				expression.NewUnresolvedColumn("b"),
+				uc("b"),
 			),
 		},
 		[]sql.Expression{
-			expression.NewUnresolvedColumn("a"),
-			expression.NewUnresolvedColumn("b"),
+			uc("a"),
+			uc("b"),
 		},
 		plan.NewResolvedTable(memory.NewTable("table", nil)),
 	)
@@ -459,23 +565,23 @@ func TestPushdownGroupByAliases(t *testing.T) {
 	expected := plan.NewGroupBy(
 		[]sql.Expression{
 			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", true,
-				expression.NewUnresolvedColumn("c"),
+				uc("c"),
 			)),
-			expression.NewUnresolvedColumn("b"),
+			uc("b"),
 			expression.NewUnresolvedFunction("bar", false,
-				expression.NewUnresolvedColumn("b_01"),
+				uc("b_01"),
 			),
 		},
 		[]sql.Expression{
-			expression.NewUnresolvedColumn("a"),
-			expression.NewUnresolvedColumn("b"),
+			uc("a"),
+			uc("b"),
 		},
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewAlias("b", expression.NewUnresolvedColumn("d")),
-				expression.NewUnresolvedColumn("a"),
-				expression.NewAlias("b_01", expression.NewUnresolvedColumn("b")),
-				expression.NewUnresolvedColumn("c"),
+				expression.NewAlias("b", uc("d")),
+				uc("a"),
+				expression.NewAlias("b_01", uc("b")),
+				uc("c"),
 			},
 			plan.NewResolvedTable(memory.NewTable("table", nil)),
 		),

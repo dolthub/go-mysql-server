@@ -64,6 +64,14 @@ func gf(idx int, table, name string) *expression.GetField {
 	return expression.NewGetFieldWithTable(idx, sql.Int64, table, name, false)
 }
 
+func uc(name string) *expression.UnresolvedColumn {
+	return expression.NewUnresolvedColumn(name)
+}
+
+func uqc(table, name string) *expression.UnresolvedColumn {
+	return expression.NewUnresolvedQualifiedColumn(table, name)
+}
+
 // Creates a new top-level scope from the node given
 func newScope(n sql.Node) *Scope {
 	return (*Scope)(nil).newScope(n)
