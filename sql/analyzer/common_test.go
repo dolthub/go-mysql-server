@@ -117,10 +117,14 @@ type analyzerFnTestCase struct {
 	err      *errors.Kind
 }
 
-func runTestCases(t *testing.T, testCases []analyzerFnTestCase, f Rule) {
+func runTestCases(t *testing.T, ctx *sql.Context, testCases []analyzerFnTestCase, a *Analyzer, f Rule) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := f.Apply(sql.NewEmptyContext(), nil, tt.node, tt.scope)
+			context := ctx
+			if context == nil {
+				context = sql.NewEmptyContext()
+			}
+			result, err := f.Apply(context, a, tt.node, tt.scope)
 			if tt.err != nil {
 				require.Error(t, err)
 				require.True(t, tt.err.Is(err))
@@ -134,6 +138,7 @@ func runTestCases(t *testing.T, testCases []analyzerFnTestCase, f Rule) {
 			}
 
 			ensureSubquerySchema(expected)
+			ensureSubquerySchema(result)
 			assertNodesEqualWithDiff(t, expected, result)
 		})
 	}
@@ -153,9 +158,11 @@ func ensureSubquerySchema(n sql.Node) {
 // assertNodesEqualWithDiff asserts the two nodes given to be equal and prints any diff according to their DebugString
 // methods.
 func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
+	expectedStr := sql.DebugString(expected)
+	actualStr := sql.DebugString(actual)
 	diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
-		A:        difflib.SplitLines(sql.DebugString(expected)),
-		B:        difflib.SplitLines(sql.DebugString(actual)),
+		A:        difflib.SplitLines(expectedStr),
+		B:        difflib.SplitLines(actualStr),
 		FromFile: "expected",
 		FromDate: "",
 		ToFile:   "actual",

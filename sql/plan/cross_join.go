@@ -83,6 +83,13 @@ func (p *CrossJoin) String() string {
 	return pr.String()
 }
 
+func (p *CrossJoin) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("CrossJoin")
+	_ = pr.WriteChildren(sql.DebugString(p.Left), sql.DebugString(p.Right))
+	return pr.String()
+}
+
 type rowIterProvider interface {
 	RowIter(*sql.Context, sql.Row) (sql.RowIter, error)
 }

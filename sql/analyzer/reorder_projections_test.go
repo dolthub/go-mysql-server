@@ -136,7 +136,7 @@ func TestReorderProjection(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, testCases, f)
+	runTestCases(t, nil, testCases, nil, f)
 }
 
 func TestReorderProjectionWithSubqueries(t *testing.T) {
@@ -239,5 +239,5 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, testCases, f)
+	runTestCases(t, nil, testCases, nil, f)
 }

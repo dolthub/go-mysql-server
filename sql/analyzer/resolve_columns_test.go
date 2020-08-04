@@ -366,7 +366,7 @@ func TestQualifyColumns(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, testCases, f)
+	runTestCases(t, nil, testCases, nil, f)
 }
 
 func TestQualifyColumnsQualifiedStar(t *testing.T) {
@@ -595,7 +595,7 @@ func TestResolveColumns(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, testCases, f)
+	runTestCases(t, nil, testCases, nil, f)
 }
 
 func TestResolveColumnsSession(t *testing.T) {

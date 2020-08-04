@@ -505,5 +505,5 @@ func TestPruneColumns(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, testCases, *rule)
+	runTestCases(t, nil, testCases, nil, *rule)
 }
