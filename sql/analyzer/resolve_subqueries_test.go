@@ -120,14 +120,14 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 					plan.NewSubquery(
 						plan.NewProject(
 							[]sql.Expression{
-								uc( "y"),
+								uc("y"),
 							},
 							plan.NewFilter(
 								gt(
-									uc( "x"),
-									uc( "i"),
+									uc("x"),
+									uc("i"),
 								),
-								plan.NewUnresolvedTable("mytable2","" ),
+								plan.NewUnresolvedTable("mytable2", ""),
 							),
 						),
 						""),
@@ -163,14 +163,14 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 					plan.NewSubquery(
 						plan.NewProject(
 							[]sql.Expression{
-								uqc( "mytable2", "y"),
+								uqc("mytable2", "y"),
 							},
 							plan.NewFilter(
 								gt(
-									uqc( "mytable", "x"),
-									uqc( "mytable", "i"),
+									uqc("mytable", "x"),
+									uqc("mytable", "i"),
 								),
-								plan.NewUnresolvedTable("mytable2","" ),
+								plan.NewUnresolvedTable("mytable2", ""),
 							),
 						),
 						""),
@@ -206,14 +206,14 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 					plan.NewSubquery(
 						plan.NewProject(
 							[]sql.Expression{
-								uqc( "notable", "y"),
+								uqc("notable", "y"),
 							},
 							plan.NewFilter(
 								gt(
-									uqc( "mytable", "x"),
-									uqc( "mytable", "i"),
+									uqc("mytable", "x"),
+									uqc("mytable", "i"),
 								),
-								plan.NewUnresolvedTable("mytable2","" ),
+								plan.NewUnresolvedTable("mytable2", ""),
 							),
 						),
 						""),
@@ -234,10 +234,10 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 							},
 							plan.NewFilter(
 								gt(
-									uqc( "mytable", "x"),
-									uqc( "mytable", "i"),
+									uqc("mytable", "x"),
+									uqc("mytable", "i"),
 								),
-								plan.NewUnresolvedTable("notable","" ),
+								plan.NewUnresolvedTable("notable", ""),
 							),
 						),
 						""),
@@ -258,10 +258,10 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 							},
 							plan.NewFilter(
 								gt(
-									uqc( "mytable", "x"),
-									uqc( "mytable", "i"),
+									uqc("mytable", "x"),
+									uqc("mytable", "i"),
 								),
-								plan.NewUnresolvedTable("mytable2","" ),
+								plan.NewUnresolvedTable("mytable2", ""),
 							),
 						),
 						""),
@@ -340,7 +340,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 					plan.NewSubquery(
 						plan.NewProject(
 							[]sql.Expression{
-								uc( "y"),
+								uc("y"),
 							},
 							plan.NewFilter(
 								gt(
@@ -360,7 +360,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 										),
 										""),
 								),
-								plan.NewUnresolvedTable("mytable2","" ),
+								plan.NewUnresolvedTable("mytable2", ""),
 							),
 						),
 						""),
