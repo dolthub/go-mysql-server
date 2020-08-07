@@ -3,7 +3,7 @@ package sqle
 import (
 	"github.com/golang/glog"
 	"github.com/sirupsen/logrus"
-	vtlog "vitess.io/vitess/go/vt/log"
+	vtlog "github.com/liquidata-inc/vitess/go/vt/log"
 )
 
 func init() {

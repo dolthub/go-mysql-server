@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/liquidata-inc/vitess/go/vt/sqlparser"
 
 	"github.com/liquidata-inc/go-mysql-server/internal/similartext"
 	"github.com/liquidata-inc/go-mysql-server/sql"
