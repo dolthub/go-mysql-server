@@ -657,6 +657,12 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		"c bool, primary key (a))")
 	require.Error(err)
 	require.True(sql.ErrTableAlreadyExists.Is(err))
+
+	_, _, err = e.Query(NewContext(harness), "CREATE TABLE t10(a INTEGER,"+
+			"`create_time` timestamp(6) NOT NULL DEFAULT NOW(),"+
+			"primary key (a))")
+	require.Error(err)
+	require.True(sql.ErrUnsupportedDefault.Is(err))
 }
 
 func TestDropTable(t *testing.T, harness Harness) {
