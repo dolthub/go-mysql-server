@@ -24,10 +24,10 @@ func (d *Distinct) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (d *Distinct) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (d *Distinct) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Distinct")
 
-	it, err := d.Child.RowIter(ctx)
+	it, err := d.Child.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err
@@ -125,10 +125,10 @@ func (d *OrderedDistinct) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (d *OrderedDistinct) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (d *OrderedDistinct) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.OrderedDistinct")
 
-	it, err := d.Child.RowIter(ctx)
+	it, err := d.Child.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err

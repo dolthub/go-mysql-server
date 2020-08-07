@@ -826,40 +826,78 @@ func TestValidateSubqueryColumns(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	node := plan.NewProject([]sql.Expression{
-		expression.NewSubquery(plan.NewProject(
+		plan.NewSubquery(plan.NewProject(
 			[]sql.Expression{
 				lit(1),
 				lit(2),
 			},
 			dummyNode{true},
-		)),
+		), "select 1, 2"),
 	}, dummyNode{true})
 
 	_, err := validateSubqueryColumns(ctx, nil, node, nil)
 	require.Error(err)
-	require.True(ErrSubqueryColumns.Is(err))
+	require.True(ErrSubqueryMultipleColumns.Is(err))
+
+	table := memory.NewTable("test", sql.Schema{
+		{Name: "foo", Type: sql.Text},
+	})
+	subTable := memory.NewTable("subtest", sql.Schema{
+		{Name: "bar", Type: sql.Text},
+	})
 
 	node = plan.NewProject([]sql.Expression{
-		expression.NewSubquery(plan.NewProject(
+		plan.NewSubquery(plan.NewFilter(expression.NewGreaterThan(
+			expression.NewGetField(0, sql.Boolean, "foo", false),
+			lit(1),
+		), plan.NewProject(
+			[]sql.Expression{
+				expression.NewGetField(1, sql.Boolean, "bar", false),
+			},
+			plan.NewResolvedTable(subTable),
+		)), "select bar from subtest where foo > 1"),
+	}, plan.NewResolvedTable(table))
+
+	_, err = validateSubqueryColumns(ctx, nil, node, nil)
+	require.NoError(err)
+
+	node = plan.NewProject([]sql.Expression{
+		plan.NewSubquery(plan.NewFilter(expression.NewGreaterThan(
+			expression.NewGetField(1, sql.Boolean, "foo", false),
+			lit(1),
+		), plan.NewProject(
+			[]sql.Expression{
+				expression.NewGetField(2, sql.Boolean, "bar", false),
+			},
+			plan.NewResolvedTable(subTable),
+		)), "select bar from subtest where foo > 1"),
+	}, plan.NewResolvedTable(table))
+
+	_, err = validateSubqueryColumns(ctx, nil, node, nil)
+	require.NoError(err)
+
+	node = plan.NewProject([]sql.Expression{
+		plan.NewSubquery(plan.NewProject(
 			[]sql.Expression{
 				lit(1),
 			},
 			dummyNode{true},
-		)),
+		), "select 1"),
 	}, dummyNode{true})
 
 	_, err = validateSubqueryColumns(ctx, nil, node, nil)
 	require.NoError(err)
+
 }
 
 type dummyNode struct{ resolved bool }
 
-func (n dummyNode) String() string                           { return "dummynode" }
-func (n dummyNode) Resolved() bool                           { return n.resolved }
-func (dummyNode) Schema() sql.Schema                         { return nil }
-func (dummyNode) Children() []sql.Node                       { return nil }
-func (dummyNode) RowIter(*sql.Context) (sql.RowIter, error)  { return nil, nil }
-func (dummyNode) WithChildren(...sql.Node) (sql.Node, error) { return nil, nil }
+func (n dummyNode) String() string                                   { return "dummynode" }
+func (n dummyNode) Resolved() bool                                   { return n.resolved }
+func (dummyNode) Schema() sql.Schema                                 { return nil }
+func (dummyNode) Children() []sql.Node                               { return nil }
+func (dummyNode) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) { return nil, nil }
+func (dummyNode) WithChildren(...sql.Node) (sql.Node, error)         { return nil, nil }
 
 func getValidationRule(name string) Rule {
 	for _, rule := range DefaultValidationRules {

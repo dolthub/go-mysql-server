@@ -30,7 +30,7 @@ func TestProject(t *testing.T) {
 		{Name: "col2", Type: sql.Text, Nullable: true},
 	}
 	require.Equal(schema, p.Schema())
-	iter, err := p.RowIter(ctx)
+	iter, err := p.RowIter(ctx, nil)
 	require.NoError(err)
 	require.NotNil(iter)
 	row, err := iter.Next()
@@ -73,7 +73,7 @@ func BenchmarkProject(b *testing.B) {
 			expression.NewGetField(5, sql.Blob, "blobfield", false),
 		}, NewResolvedTable(benchtable))
 
-		iter, err := d.RowIter(ctx)
+		iter, err := d.RowIter(ctx, nil)
 		require.NoError(err)
 		require.NotNil(iter)
 

@@ -19,7 +19,7 @@ func TestShowColumns(t *testing.T) {
 		{Name: "c", Source: "foo", Type: sql.Int64, Default: int64(1)},
 	}))
 
-	iter, err := NewShowColumns(false, table).RowIter(sql.NewEmptyContext())
+	iter, err := NewShowColumns(false, table).RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
@@ -71,7 +71,7 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 		},
 	}
 
-	iter, err := showColumns.RowIter(sql.NewEmptyContext())
+	iter, err := showColumns.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
@@ -111,7 +111,7 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 		},
 	)
 
-	iter, err = showColumns.RowIter(sql.NewEmptyContext())
+	iter, err = showColumns.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	rows, err = sql.RowIterToRows(iter)
@@ -129,7 +129,7 @@ func TestShowColumnsFull(t *testing.T) {
 		{Name: "c", Type: sql.Int64, Default: int64(1), Comment: "a comment"},
 	}))
 
-	iter, err := NewShowColumns(true, table).RowIter(sql.NewEmptyContext())
+	iter, err := NewShowColumns(true, table).RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)

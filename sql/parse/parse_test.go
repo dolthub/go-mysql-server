@@ -1318,7 +1318,7 @@ var fixtures = map[string]sql.Node{
 	`SELECT * FROM foo WHERE 1 IN ('1', 2)`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewFilter(
-			expression.NewIn(
+			expression.NewInTuple(
 				expression.NewLiteral(int8(1), sql.Int8),
 				expression.NewTuple(
 					expression.NewLiteral("1", sql.LongText),
@@ -1331,12 +1331,38 @@ var fixtures = map[string]sql.Node{
 	`SELECT * FROM foo WHERE 1 NOT IN ('1', 2)`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewFilter(
-			expression.NewNotIn(
+			expression.NewNotInTuple(
 				expression.NewLiteral(int8(1), sql.Int8),
 				expression.NewTuple(
 					expression.NewLiteral("1", sql.LongText),
 					expression.NewLiteral(int8(2), sql.Int8),
 				),
+			),
+			plan.NewUnresolvedTable("foo", ""),
+		),
+	),
+	`SELECT * FROM foo WHERE i IN (SELECT j FROM baz)`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			plan.NewInSubquery(
+				expression.NewUnresolvedColumn("i"),
+				plan.NewSubquery(plan.NewProject(
+					[]sql.Expression{expression.NewUnresolvedColumn("j")},
+					plan.NewUnresolvedTable("baz", ""),
+				), "select j from baz"),
+			),
+			plan.NewUnresolvedTable("foo", ""),
+		),
+	),
+	`SELECT * FROM foo WHERE i NOT IN (SELECT j FROM baz)`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			plan.NewNotInSubquery(
+				expression.NewUnresolvedColumn("i"),
+				plan.NewSubquery(plan.NewProject(
+					[]sql.Expression{expression.NewUnresolvedColumn("j")},
+					plan.NewUnresolvedTable("baz", ""),
+				), "select j from baz"),
 			),
 			plan.NewUnresolvedTable("foo", ""),
 		),

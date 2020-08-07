@@ -49,7 +49,7 @@ func (t *LockTables) Resolved() bool {
 func (t *LockTables) Schema() sql.Schema { return nil }
 
 // RowIter implements the sql.Node interface.
-func (t *LockTables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (t *LockTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.LockTables")
 	defer span.Finish()
 
@@ -147,7 +147,7 @@ func (t *UnlockTables) Resolved() bool { return true }
 func (t *UnlockTables) Schema() sql.Schema { return nil }
 
 // RowIter implements the sql.Node interface.
-func (t *UnlockTables) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (t *UnlockTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.UnlockTables")
 	defer span.Finish()
 

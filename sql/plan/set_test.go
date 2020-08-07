@@ -20,7 +20,7 @@ func TestSet(t *testing.T) {
 		SetVariable{"@@baz", expression.NewLiteral(int64(1), sql.Int64)},
 	)
 
-	_, err := s.RowIter(ctx)
+	_, err := s.RowIter(ctx, nil)
 	require.NoError(err)
 
 	typ, v := ctx.Get("foo")
@@ -42,7 +42,7 @@ func TestSetDesfault(t *testing.T) {
 		SetVariable{"@@sql_select_limit", expression.NewLiteral(int64(1), sql.Int64)},
 	)
 
-	_, err := s.RowIter(ctx)
+	_, err := s.RowIter(ctx, nil)
 	require.NoError(err)
 
 	typ, v := ctx.Get("auto_increment_increment")
@@ -58,7 +58,7 @@ func TestSetDesfault(t *testing.T) {
 		SetVariable{"@@sql_select_limit", expression.NewDefaultColumn("")},
 	)
 
-	_, err = s.RowIter(ctx)
+	_, err = s.RowIter(ctx, nil)
 	require.NoError(err)
 
 	defaults := sql.DefaultSessionConfig()

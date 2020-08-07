@@ -126,13 +126,13 @@ func getIndexes(
 		if len(rightIndexes) > 0 {
 			return nil, nil
 		}
-	case *expression.In, *expression.NotIn:
+	case *expression.InTuple, *expression.NotInTuple:
 		c, ok := e.(expression.Comparer)
 		if !ok {
 			return nil, nil
 		}
 
-		_, negate := e.(*expression.NotIn)
+		_, negate := e.(*expression.NotInTuple)
 
 		// Take the index of a SOMETHING IN SOMETHING expression only if:
 		// the right branch is evaluable and the indexlookup supports set
@@ -819,7 +819,7 @@ func containsColumns(e sql.Expression) bool {
 func containsSubquery(e sql.Expression) bool {
 	var result bool
 	sql.Inspect(e, func(e sql.Expression) bool {
-		if _, ok := e.(*expression.Subquery); ok {
+		if _, ok := e.(*plan.Subquery); ok {
 			result = true
 			return false
 		}

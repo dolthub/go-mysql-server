@@ -36,16 +36,16 @@ func NewGroupBy(selectedExprs, groupByExprs []sql.Expression, child sql.Node) *G
 }
 
 // Resolved implements the Resolvable interface.
-func (p *GroupBy) Resolved() bool {
-	return p.UnaryNode.Child.Resolved() &&
-		expressionsResolved(p.SelectedExprs...) &&
-		expressionsResolved(p.GroupByExprs...)
+func (g *GroupBy) Resolved() bool {
+	return g.UnaryNode.Child.Resolved() &&
+		expressionsResolved(g.SelectedExprs...) &&
+		expressionsResolved(g.GroupByExprs...)
 }
 
 // Schema implements the Node interface.
-func (p *GroupBy) Schema() sql.Schema {
-	var s = make(sql.Schema, len(p.SelectedExprs))
-	for i, e := range p.SelectedExprs {
+func (g *GroupBy) Schema() sql.Schema {
+	var s = make(sql.Schema, len(g.SelectedExprs))
+	for i, e := range g.SelectedExprs {
 		var name string
 		if n, ok := e.(sql.Nameable); ok {
 			name = n.Name()
@@ -70,85 +70,107 @@ func (p *GroupBy) Schema() sql.Schema {
 }
 
 // RowIter implements the Node interface.
-func (p *GroupBy) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (g *GroupBy) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.GroupBy", opentracing.Tags{
-		"groupings":  len(p.GroupByExprs),
-		"aggregates": len(p.SelectedExprs),
+		"groupings":  len(g.GroupByExprs),
+		"aggregates": len(g.SelectedExprs),
 	})
 
-	i, err := p.Child.RowIter(ctx)
+	i, err := g.Child.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err
 	}
 
 	var iter sql.RowIter
-	if len(p.GroupByExprs) == 0 {
-		iter = newGroupByIter(ctx, p.SelectedExprs, i)
+	if len(g.GroupByExprs) == 0 {
+		iter = newGroupByIter(ctx, g.SelectedExprs, i)
 	} else {
-		iter = newGroupByGroupingIter(ctx, p.SelectedExprs, p.GroupByExprs, i)
+		iter = newGroupByGroupingIter(ctx, g.SelectedExprs, g.GroupByExprs, i)
 	}
 
 	return sql.NewSpanIter(span, iter), nil
 }
 
 // WithChildren implements the Node interface.
-func (p *GroupBy) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (g *GroupBy) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
+		return nil, sql.ErrInvalidChildrenNumber.New(g, len(children), 1)
 	}
 
-	return NewGroupBy(p.SelectedExprs, p.GroupByExprs, children[0]), nil
+	return NewGroupBy(g.SelectedExprs, g.GroupByExprs, children[0]), nil
 }
 
 // WithExpressions implements the Node interface.
-func (p *GroupBy) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	expected := len(p.SelectedExprs) + len(p.GroupByExprs)
+func (g *GroupBy) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	expected := len(g.SelectedExprs) + len(g.GroupByExprs)
 	if len(exprs) != expected {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(exprs), expected)
+		return nil, sql.ErrInvalidChildrenNumber.New(g, len(exprs), expected)
 	}
 
-	var agg = make([]sql.Expression, len(p.SelectedExprs))
-	for i := 0; i < len(p.SelectedExprs); i++ {
+	var agg = make([]sql.Expression, len(g.SelectedExprs))
+	for i := 0; i < len(g.SelectedExprs); i++ {
 		agg[i] = exprs[i]
 	}
 
-	var grouping = make([]sql.Expression, len(p.GroupByExprs))
-	offset := len(p.SelectedExprs)
-	for i := 0; i < len(p.GroupByExprs); i++ {
+	var grouping = make([]sql.Expression, len(g.GroupByExprs))
+	offset := len(g.SelectedExprs)
+	for i := 0; i < len(g.GroupByExprs); i++ {
 		grouping[i] = exprs[i+offset]
 	}
 
-	return NewGroupBy(agg, grouping, p.Child), nil
+	return NewGroupBy(agg, grouping, g.Child), nil
 }
 
-func (p *GroupBy) String() string {
+func (g *GroupBy) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("GroupBy")
 
-	var aggregate = make([]string, len(p.SelectedExprs))
-	for i, agg := range p.SelectedExprs {
-		aggregate[i] = agg.String()
+	var selectedExprs = make([]string, len(g.SelectedExprs))
+	for i, e := range g.SelectedExprs {
+		selectedExprs[i] = e.String()
 	}
 
-	var grouping = make([]string, len(p.GroupByExprs))
-	for i, g := range p.GroupByExprs {
+	var grouping = make([]string, len(g.GroupByExprs))
+	for i, g := range g.GroupByExprs {
 		grouping[i] = g.String()
 	}
 
 	_ = pr.WriteChildren(
-		fmt.Sprintf("Aggregate(%s)", strings.Join(aggregate, ", ")),
+		fmt.Sprintf("SelectedExprs(%s)", strings.Join(selectedExprs, ", ")),
 		fmt.Sprintf("Grouping(%s)", strings.Join(grouping, ", ")),
-		p.Child.String(),
+		g.Child.String(),
+	)
+	return pr.String()
+}
+
+func (g *GroupBy) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("GroupBy")
+
+	var selectedExprs = make([]string, len(g.SelectedExprs))
+	for i, e := range g.SelectedExprs {
+		selectedExprs[i] = sql.DebugString(e)
+	}
+
+	var grouping = make([]string, len(g.GroupByExprs))
+	for i, g := range g.GroupByExprs {
+		grouping[i] = sql.DebugString(g)
+	}
+
+	_ = pr.WriteChildren(
+		fmt.Sprintf("SelectedExprs(%s)", strings.Join(selectedExprs, ", ")),
+		fmt.Sprintf("Grouping(%s)", strings.Join(grouping, ", ")),
+		sql.DebugString(g.Child),
 	)
 	return pr.String()
 }
 
 // Expressions implements the Expressioner interface.
-func (p *GroupBy) Expressions() []sql.Expression {
+func (g *GroupBy) Expressions() []sql.Expression {
 	var exprs []sql.Expression
-	exprs = append(exprs, p.SelectedExprs...)
-	exprs = append(exprs, p.GroupByExprs...)
+	exprs = append(exprs, g.SelectedExprs...)
+	exprs = append(exprs, g.GroupByExprs...)
 	return exprs
 }
 

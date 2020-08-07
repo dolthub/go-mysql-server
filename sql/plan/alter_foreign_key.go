@@ -88,14 +88,14 @@ func (p *CreateForeignKey) Execute(ctx *sql.Context) error {
 				return ErrAddForeignKeyDuplicateColumn.New(fkCol)
 			}
 		} else {
-			return sql.ErrColumnNotFound.New(fkCol)
+			return sql.ErrTableColumnNotFound.New(fkCol)
 		}
 	}
 
 	// Make sure that the ref columns exist
 	for _, refCol := range p.FkDef.ReferencedColumns {
 		if !p.Right.Schema().Contains(refCol, p.FkDef.ReferencedTable) {
-			return sql.ErrColumnNotFound.New(refCol)
+			return sql.ErrTableColumnNotFound.New(refCol)
 		}
 	}
 
@@ -113,7 +113,7 @@ func (p *DropForeignKey) Execute(ctx *sql.Context) error {
 }
 
 // RowIter implements the Node interface.
-func (p *DropForeignKey) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *DropForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	err := p.Execute(ctx)
 	if err != nil {
 		return nil, err
@@ -141,7 +141,7 @@ func (p *CreateForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) 
 func (p *CreateForeignKey) Schema() sql.Schema { return nil }
 func (p *DropForeignKey) Schema() sql.Schema   { return nil }
 
-func (p *CreateForeignKey) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *CreateForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	err := p.Execute(ctx)
 	if err != nil {
 		return nil, err

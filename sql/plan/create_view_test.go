@@ -47,7 +47,7 @@ func TestCreateView(t *testing.T) {
 	viewReg := sql.NewViewRegistry()
 
 	ctx := sql.NewContext(context.Background(), sql.WithViewRegistry(viewReg))
-	_, err := createView.RowIter(ctx)
+	_, err := createView.RowIter(ctx, nil)
 	require.NoError(err)
 
 	expectedView := sql.NewView(createView.Name, createView.Child, createView.Definition.TextDefinition)
@@ -68,7 +68,7 @@ func TestCreateExistingView(t *testing.T) {
 	require.NoError(err)
 
 	ctx := sql.NewContext(context.Background(), sql.WithViewRegistry(viewReg))
-	_, err = createView.RowIter(ctx)
+	_, err = createView.RowIter(ctx, nil)
 	require.Error(err)
 	require.True(sql.ErrExistingView.Is(err))
 }
@@ -88,7 +88,7 @@ func TestReplaceExistingView(t *testing.T) {
 	createView.IsReplace = true
 
 	ctx := sql.NewContext(context.Background(), sql.WithViewRegistry(viewReg))
-	_, err = createView.RowIter(ctx)
+	_, err = createView.RowIter(ctx, nil)
 	require.NoError(err)
 
 	expectedView := createView.View()

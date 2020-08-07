@@ -68,7 +68,7 @@ func (n *ShowCreateTable) Schema() sql.Schema {
 }
 
 // RowIter implements the Node interface
-func (n *ShowCreateTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (n *ShowCreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &showCreateTablesIter{
 		ctx:     ctx,
 		table:   n.Child,

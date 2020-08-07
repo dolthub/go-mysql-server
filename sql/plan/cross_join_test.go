@@ -51,7 +51,7 @@ func TestCrossJoin(t *testing.T) {
 
 	require.Equal(resultSchema, j.Schema())
 
-	iter, err := j.RowIter(ctx)
+	iter, err := j.RowIter(ctx, nil)
 	require.NoError(err)
 	require.NotNil(iter)
 
@@ -109,7 +109,7 @@ func TestCrossJoin_Empty(t *testing.T) {
 		NewResolvedTable(rtable),
 	)
 
-	iter, err := j.RowIter(ctx)
+	iter, err := j.RowIter(ctx, nil)
 	require.NoError(err)
 	require.NotNil(iter)
 
@@ -126,7 +126,7 @@ func TestCrossJoin_Empty(t *testing.T) {
 		NewResolvedTable(rtable),
 	)
 
-	iter, err = j.RowIter(ctx)
+	iter, err = j.RowIter(ctx, nil)
 	require.NoError(err)
 	require.NotNil(iter)
 

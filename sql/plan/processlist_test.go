@@ -41,7 +41,7 @@ func TestShowProcessList(t *testing.T) {
 	n.ProcessList = p
 	n.Database = "foo"
 
-	iter, err := n.RowIter(ctx)
+	iter, err := n.RowIter(ctx, nil)
 	require.NoError(err)
 	rows, err := sql.RowIterToRows(iter)
 	require.NoError(err)

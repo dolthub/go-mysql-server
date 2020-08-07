@@ -165,29 +165,6 @@ type Analyzer struct {
 	Catalog *sql.Catalog
 }
 
-// Scope of the analysis being performed, used when analyzing subqueries to give such analysis access to outer scope.
-type Scope struct {
-	// Stack of nested node scopes, with innermost scope first
-	nodes []sql.Node
-}
-
-func (s *Scope) newScope(node sql.Node) *Scope {
-	if s == nil {
-		return &Scope{[]sql.Node{node}}
-	}
-	newNodes := make([]sql.Node, len(s.nodes)+1)
-	newNodes = append(newNodes, node)
-	newNodes = append(newNodes, s.nodes...)
-	return &Scope{newNodes}
-}
-
-func (s *Scope) Nodes() []sql.Node {
-	if s == nil {
-		return nil
-	}
-	return s.nodes
-}
-
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
 // To add custom rules, the easiest way is use the Builder.
 func NewDefault(c *sql.Catalog) *Analyzer {
@@ -237,9 +214,9 @@ func (a *Analyzer) LogNode(n sql.Node) {
 	if a != nil && n != nil && a.Verbose {
 		if len(a.contextStack) > 0 {
 			ctx := strings.Join(a.contextStack, "/")
-			fmt.Printf("%s:\n%s", ctx, n.String())
+			fmt.Printf("%s:\n%s", ctx, sql.DebugString(n))
 		} else {
-			fmt.Printf("%s", n.String())
+			fmt.Printf("%s", sql.DebugString(n))
 		}
 	}
 }
@@ -250,8 +227,8 @@ func (a *Analyzer) LogDiff(prev, next sql.Node) {
 	if a.Debug && a.Verbose {
 		if !reflect.DeepEqual(next, prev) {
 			diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
-				A:        difflib.SplitLines(prev.String()),
-				B:        difflib.SplitLines(next.String()),
+				A:        difflib.SplitLines(sql.DebugString(prev)),
+				B:        difflib.SplitLines(sql.DebugString(next)),
 				FromFile: "Prev",
 				FromDate: "",
 				ToFile:   "Next",
@@ -282,7 +259,8 @@ func (a *Analyzer) PopDebugContext() {
 	}
 }
 
-// Analyze the node and all its children.
+// Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
+// transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("analyze", opentracing.Tags{
 		"plan": n.String(),
@@ -293,14 +271,15 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node
 	for _, batch := range a.Batches {
 		a.PushDebugContext(batch.Desc)
 		n, err = batch.Eval(ctx, a, n, scope)
-		a.PopDebugContext()
-		if ErrMaxAnalysisIters.Is(err) {
-			a.Log(err.Error())
-			continue
-		}
 		if err != nil {
-			return nil, err
+			a.Log("Encountered error: %v", err)
+			a.PopDebugContext()
+			if ErrMaxAnalysisIters.Is(err) {
+				continue
+			}
+			return n, err
 		}
+		a.PopDebugContext()
 	}
 
 	defer func() {

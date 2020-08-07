@@ -27,9 +27,9 @@ type Batch struct {
 	Rules      []Rule
 }
 
-// Eval executes the actual rules the specified number of times on the Batch.
-// If max number of iterations is reached, this method will return the actual
-// processed Node and ErrMaxAnalysisIters error.
+// Eval executes the rules of the batch. On any error, the partially transformed node is returned along with the error.
+// If the batch's max number of iterations is reached without achieving stabilization (batch evaluation no longer
+// changes the node), then this method returns ErrMaxAnalysisIters.
 func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if b.Iterations == 0 {
 		return n, nil
@@ -40,7 +40,7 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	cur, err := b.evalOnce(ctx, a, n, scope)
 	a.PopDebugContext()
 	if err != nil {
-		return nil, err
+		return cur, err
 	}
 
 	if b.Iterations == 1 {
@@ -53,7 +53,7 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		cur, err = b.evalOnce(ctx, a, cur, scope)
 		a.PopDebugContext()
 		if err != nil {
-			return nil, err
+			return cur, err
 		}
 
 		i++
@@ -65,6 +65,9 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	return cur, nil
 }
 
+// evalOnce returns the result of evaluating a batch of rules on the node given. In the result of an error, the result
+// of the last successful transformation is returned along with the error. If no transformation was successful, the
+// input node is returned as-is.
 func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	prev := n
 	for _, rule := range b.Rules {
@@ -72,12 +75,17 @@ func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		a.Log("Evaluating rule %s", rule.Name)
 		a.PushDebugContext(rule.Name)
 		next, err := rule.Apply(ctx, a, prev, scope)
-		a.LogDiff(prev, next)
-		prev = next
-		a.LogNode(prev)
+		if next != nil {
+			a.LogDiff(prev, next)
+			prev = next
+			a.LogNode(prev)
+		}
 		a.PopDebugContext()
 		if err != nil {
-			return nil, err
+			// Returning the last node before the error is important. This is non-idiomatic, but in the case of partial
+			// resolution before an error we want the last successful transformation result. Very important for resolving
+			// subqueries.
+			return prev, err
 		}
 	}
 

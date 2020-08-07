@@ -16,7 +16,7 @@ func NewNaturalJoin(left, right sql.Node) *NaturalJoin {
 }
 
 // RowIter implements the Node interface.
-func (NaturalJoin) RowIter(*sql.Context) (sql.RowIter, error) {
+func (NaturalJoin) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) {
 	panic("NaturalJoin is a placeholder, RowIter called")
 }
 

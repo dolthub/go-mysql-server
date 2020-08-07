@@ -29,7 +29,7 @@ func (d *Describe) Schema() sql.Schema {
 }
 
 // RowIter implements the Node interface.
-func (d *Describe) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (d *Describe) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &describeIter{schema: d.Child.Schema()}, nil
 }
 
@@ -90,7 +90,7 @@ func (d *DescribeQuery) Schema() sql.Schema {
 }
 
 // RowIter implements the Node interface.
-func (d *DescribeQuery) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (d *DescribeQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var rows []sql.Row
 	for _, l := range strings.Split(d.Child.String(), "\n") {
 		if strings.TrimSpace(l) != "" {

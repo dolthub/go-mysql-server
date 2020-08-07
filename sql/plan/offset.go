@@ -26,10 +26,10 @@ func (o *Offset) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (o *Offset) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (o *Offset) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Offset", opentracing.Tag{Key: "offset", Value: o.Offset})
 
-	it, err := o.Child.RowIter(ctx)
+	it, err := o.Child.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err

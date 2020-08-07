@@ -40,7 +40,7 @@ func (ShowWarnings) Children() []sql.Node { return nil }
 
 // RowIter implements the sql.Node interface.
 // The function returns an iterator for warnings (considering offset and counter)
-func (sw ShowWarnings) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (sw ShowWarnings) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var rows []sql.Row
 	for _, w := range sw {
 		rows = append(rows, sql.NewRow(w.Level, w.Code, w.Message))

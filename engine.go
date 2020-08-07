@@ -158,7 +158,7 @@ func (e *Engine) Query(
 		return nil, nil, err
 	}
 
-	iter, err = analyzed.RowIter(ctx)
+	iter, err = analyzed.RowIter(ctx, nil)
 	if err != nil {
 		return nil, nil, err
 	}

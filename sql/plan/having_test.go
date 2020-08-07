@@ -41,7 +41,7 @@ func TestHaving(t *testing.T) {
 
 	require.Equal(1, len(f.Children()))
 
-	iter, err := f.RowIter(ctx)
+	iter, err := f.RowIter(ctx, nil)
 	require.NoError(err)
 	require.NotNil(iter)
 
@@ -64,7 +64,7 @@ func TestHaving(t *testing.T) {
 		NewResolvedTable(child),
 	)
 
-	iter, err = f.RowIter(ctx)
+	iter, err = f.RowIter(ctx, nil)
 	require.NoError(err)
 	require.NotNil(iter)
 
@@ -83,7 +83,7 @@ func TestHaving(t *testing.T) {
 		NewResolvedTable(child),
 	)
 
-	iter, err = f.RowIter(ctx)
+	iter, err = f.RowIter(ctx, nil)
 	require.NoError(err)
 	require.NotNil(iter)
 

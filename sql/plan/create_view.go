@@ -62,7 +62,7 @@ func (cv *CreateView) Resolved() bool {
 // (or replaces) the view. It can error if the CraeteView's IsReplace member is
 // set to false and the view already exists. The RowIter returned is always
 // empty.
-func (cv *CreateView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (cv *CreateView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	view := cv.View()
 	registry := ctx.ViewRegistry
 

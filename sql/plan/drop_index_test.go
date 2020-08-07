@@ -48,7 +48,7 @@ func TestDeleteIndex(t *testing.T) {
 	di.CurrentDatabase = "foo"
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
-	_, err = di.RowIter(ctx)
+	_, err = di.RowIter(ctx, nil)
 	require.NoError(err)
 
 	time.Sleep(50 * time.Millisecond)
@@ -91,7 +91,7 @@ func TestDeleteIndexNotReady(t *testing.T) {
 	di.Catalog = catalog
 	di.CurrentDatabase = "foo"
 
-	_, err = di.RowIter(ctx)
+	_, err = di.RowIter(ctx, nil)
 	require.Error(err)
 	require.True(ErrIndexNotAvailable.Is(err))
 
@@ -141,7 +141,7 @@ func TestDeleteIndexOutdated(t *testing.T) {
 	di.Catalog = catalog
 	di.CurrentDatabase = "foo"
 
-	_, err = di.RowIter(ctx)
+	_, err = di.RowIter(ctx, nil)
 	require.NoError(err)
 
 	time.Sleep(50 * time.Millisecond)

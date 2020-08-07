@@ -48,7 +48,7 @@ func TestExchange(t *testing.T) {
 			require := require.New(t)
 
 			exchange := NewExchange(i, children)
-			iter, err := exchange.RowIter(sql.NewEmptyContext())
+			iter, err := exchange.RowIter(sql.NewEmptyContext(), nil)
 			require.NoError(err)
 
 			rows, err := sql.RowIterToRows(iter)
@@ -84,7 +84,7 @@ func TestExchangeCancelled(t *testing.T) {
 	ctx := sql.NewContext(c)
 	cancel()
 
-	iter, err := exchange.RowIter(ctx)
+	iter, err := exchange.RowIter(ctx, nil)
 	require.NoError(err)
 
 	_, err = iter.Next()
@@ -94,7 +94,7 @@ func TestExchangeCancelled(t *testing.T) {
 func TestExchangePanicRecover(t *testing.T) {
 	ctx := sql.NewContext(context.Background())
 	it := &partitionPanic{}
-	ex := newExchangeRowIter(ctx, 1, it, nil)
+	ex := newExchangeRowIter(ctx, 1, it, nil, nil)
 	ex.start()
 	it.Close()
 

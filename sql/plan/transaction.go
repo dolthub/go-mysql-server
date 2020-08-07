@@ -10,7 +10,7 @@ type Commit struct{}
 func NewCommit() *Commit { return new(Commit) }
 
 // RowIter implements the sql.Node interface.
-func (*Commit) RowIter(*sql.Context) (sql.RowIter, error) {
+func (*Commit) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
 }
 
@@ -42,7 +42,7 @@ type Rollback struct{}
 func NewRollback() *Rollback { return new(Rollback) }
 
 // RowIter implements the sql.Node interface.
-func (*Rollback) RowIter(*sql.Context) (sql.RowIter, error) {
+func (*Rollback) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
 }
 

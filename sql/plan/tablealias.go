@@ -47,7 +47,7 @@ func (t *TableAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 // RowIter implements the Node interface.
-func (t *TableAlias) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (t *TableAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var table string
 	if tbl, ok := t.Child.(sql.Nameable); ok {
 		table = tbl.Name()
@@ -57,7 +57,7 @@ func (t *TableAlias) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 
 	span, ctx := ctx.Span("sql.TableAlias", opentracing.Tag{Key: "table", Value: table})
 
-	iter, err := t.Child.RowIter(ctx)
+	iter, err := t.Child.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err

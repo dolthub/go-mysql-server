@@ -189,6 +189,10 @@ func (e *Equals) String() string {
 	return fmt.Sprintf("%s = %s", e.Left(), e.Right())
 }
 
+func (e *Equals) DebugString() string {
+	return fmt.Sprintf("%s = %s", sql.DebugString(e.Left()), sql.DebugString(e.Right()))
+}
+
 // Regexp is a comparison that checks an expression matches a regexp.
 type Regexp struct {
 	comparison
@@ -303,6 +307,10 @@ func (re *Regexp) String() string {
 	return fmt.Sprintf("%s REGEXP %s", re.Left(), re.Right())
 }
 
+func (re *Regexp) DebugString() string {
+	return fmt.Sprintf("%s REGEXP %s", sql.DebugString(re.Left()), sql.DebugString(re.Right()))
+}
+
 // GreaterThan is a comparison that checks an expression is greater than another.
 type GreaterThan struct {
 	comparison
@@ -339,6 +347,10 @@ func (gt *GreaterThan) String() string {
 	return fmt.Sprintf("%s > %s", gt.Left(), gt.Right())
 }
 
+func (gt *GreaterThan) DebugString() string {
+	return fmt.Sprintf("%s > %s", sql.DebugString(gt.Left()), sql.DebugString(gt.Right()))
+}
+
 // LessThan is a comparison that checks an expression is less than another.
 type LessThan struct {
 	comparison
@@ -373,6 +385,10 @@ func (lt *LessThan) WithChildren(children ...sql.Expression) (sql.Expression, er
 
 func (lt *LessThan) String() string {
 	return fmt.Sprintf("%s < %s", lt.Left(), lt.Right())
+}
+
+func (lt *LessThan) DebugString() string {
+	return fmt.Sprintf("%s < %s", sql.DebugString(lt.Left()), sql.DebugString(lt.Right()))
 }
 
 // GreaterThanOrEqual is a comparison that checks an expression is greater or equal to
@@ -412,6 +428,10 @@ func (gte *GreaterThanOrEqual) String() string {
 	return fmt.Sprintf("%s >= %s", gte.Left(), gte.Right())
 }
 
+func (gte *GreaterThanOrEqual) DebugString() string {
+	return fmt.Sprintf("%s >= %s", sql.DebugString(gte.Left()), sql.DebugString(gte.Right()))
+}
+
 // LessThanOrEqual is a comparison that checks an expression is equal or lower than
 // another.
 type LessThanOrEqual struct {
@@ -449,6 +469,10 @@ func (lte *LessThanOrEqual) String() string {
 	return fmt.Sprintf("%s <= %s", lte.Left(), lte.Right())
 }
 
+func (lte *LessThanOrEqual) DebugString() string {
+	return fmt.Sprintf("%s <= %s", sql.DebugString(lte.Left()), sql.DebugString(lte.Right()))
+}
+
 var (
 	// ErrUnsupportedInOperand is returned when there is an invalid righthand
 	// operand in an IN operator.
@@ -457,219 +481,3 @@ var (
 	// and the elements of the right operand don't match.
 	ErrInvalidOperandColumns = errors.NewKind("operand should have %d columns, but has %d")
 )
-
-// In is a comparison that checks an expression is inside a list of expressions.
-type In struct {
-	comparison
-}
-
-// NewIn creates a In expression.
-func NewIn(left sql.Expression, right sql.Expression) *In {
-	return &In{newComparison(left, right)}
-}
-
-// Eval implements the Expression interface.
-func (in *In) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	typ := in.Left().Type().Promote()
-	leftElems := sql.NumColumns(typ)
-	left, err := in.Left().Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if left == nil {
-		return nil, err
-	}
-
-	left, err = typ.Convert(left)
-	if err != nil {
-		return nil, err
-	}
-
-	switch right := in.Right().(type) {
-	case Tuple:
-		for _, el := range right {
-			if sql.NumColumns(el.Type()) != leftElems {
-				return nil, ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(el.Type()))
-			}
-		}
-
-		for _, el := range right {
-			right, err := el.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
-
-			right, err = typ.Convert(right)
-			if err != nil {
-				return nil, err
-			}
-
-			cmp, err := typ.Compare(left, right)
-			if err != nil {
-				return nil, err
-			}
-
-			if cmp == 0 {
-				return true, nil
-			}
-		}
-
-		return false, nil
-	case *Subquery:
-		if leftElems > 1 {
-			return nil, ErrInvalidOperandColumns.New(leftElems, 1)
-		}
-
-		typ := right.Type()
-		values, err := right.EvalMultiple(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, val := range values {
-			val, err = typ.Convert(val)
-			if err != nil {
-				return nil, err
-			}
-
-			cmp, err := typ.Compare(left, val)
-			if err != nil {
-				return nil, err
-			}
-
-			if cmp == 0 {
-				return true, nil
-			}
-		}
-
-		return false, nil
-	default:
-		return nil, ErrUnsupportedInOperand.New(right)
-	}
-}
-
-// WithChildren implements the Expression interface.
-func (in *In) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(in, len(children), 2)
-	}
-	return NewIn(children[0], children[1]), nil
-}
-
-func (in *In) String() string {
-	return fmt.Sprintf("%s IN %s", in.Left(), in.Right())
-}
-
-// Children implements the Expression interface.
-func (in *In) Children() []sql.Expression {
-	return []sql.Expression{in.Left(), in.Right()}
-}
-
-// NotIn is a comparison that checks an expression is not inside a list of expressions.
-type NotIn struct {
-	comparison
-}
-
-// NewNotIn creates a In expression.
-func NewNotIn(left sql.Expression, right sql.Expression) *NotIn {
-	return &NotIn{newComparison(left, right)}
-}
-
-// Eval implements the Expression interface.
-func (in *NotIn) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	typ := in.Left().Type().Promote()
-	leftElems := sql.NumColumns(typ)
-	left, err := in.Left().Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if left == nil {
-		return nil, err
-	}
-
-	left, err = typ.Convert(left)
-	if err != nil {
-		return nil, err
-	}
-
-	switch right := in.Right().(type) {
-	case Tuple:
-		for _, el := range right {
-			if sql.NumColumns(el.Type()) != leftElems {
-				return nil, ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(el.Type()))
-			}
-		}
-
-		for _, el := range right {
-			right, err := el.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
-
-			right, err = typ.Convert(right)
-			if err != nil {
-				return nil, err
-			}
-
-			cmp, err := typ.Compare(left, right)
-			if err != nil {
-				return nil, err
-			}
-
-			if cmp == 0 {
-				return false, nil
-			}
-		}
-
-		return true, nil
-	case *Subquery:
-		if leftElems > 1 {
-			return nil, ErrInvalidOperandColumns.New(leftElems, 1)
-		}
-
-		typ := right.Type()
-		values, err := right.EvalMultiple(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, val := range values {
-			val, err = typ.Convert(val)
-			if err != nil {
-				return nil, err
-			}
-
-			cmp, err := typ.Compare(left, val)
-			if err != nil {
-				return nil, err
-			}
-
-			if cmp == 0 {
-				return false, nil
-			}
-		}
-
-		return true, nil
-	default:
-		return nil, ErrUnsupportedInOperand.New(right)
-	}
-}
-
-// WithChildren implements the Expression interface.
-func (in *NotIn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(in, len(children), 2)
-	}
-	return NewNotIn(children[0], children[1]), nil
-}
-
-func (in *NotIn) String() string {
-	return fmt.Sprintf("%s NOT IN %s", in.Left(), in.Right())
-}
-
-// Children implements the Expression interface.
-func (in *NotIn) Children() []sql.Expression {
-	return []sql.Expression{in.Left(), in.Right()}
-}

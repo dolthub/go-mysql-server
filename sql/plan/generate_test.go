@@ -27,7 +27,7 @@ func TestGenerateRowIter(t *testing.T) {
 	iter, err := NewGenerate(
 		child,
 		expression.NewGetFieldWithTable(1, sql.CreateArray(sql.Text), "foo", "b", false),
-	).RowIter(sql.NewEmptyContext())
+	).RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
@@ -76,11 +76,11 @@ func newFakeNode(s sql.Schema, iter sql.RowIter) *fakeNode {
 	return &fakeNode{s, iter}
 }
 
-func (n *fakeNode) Children() []sql.Node                      { return nil }
-func (n *fakeNode) Resolved() bool                            { return true }
-func (n *fakeNode) Schema() sql.Schema                        { return n.schema }
-func (n *fakeNode) RowIter(*sql.Context) (sql.RowIter, error) { return n.iter, nil }
-func (n *fakeNode) String() string                            { return "fakeNode" }
+func (n *fakeNode) Children() []sql.Node                               { return nil }
+func (n *fakeNode) Resolved() bool                                     { return true }
+func (n *fakeNode) Schema() sql.Schema                                 { return n.schema }
+func (n *fakeNode) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) { return n.iter, nil }
+func (n *fakeNode) String() string                                     { return "fakeNode" }
 func (*fakeNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	panic("placeholder")
 }

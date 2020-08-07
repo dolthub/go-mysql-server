@@ -7,45 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"gopkg.in/src-d/go-errors.v1"
-)
-
-var (
-	// ErrInvalidType is thrown when there is an unexpected type at some part of
-	// the execution tree.
-	ErrInvalidType = errors.NewKind("invalid type: %s")
-
-	// ErrTableAlreadyExists is thrown when someone tries to create a
-	// table with a name of an existing one
-	ErrTableAlreadyExists = errors.NewKind("table with name %s already exists")
-
-	// ErrTableNotFound is returned when the table is not available from the
-	// current scope.
-	ErrTableNotFound = errors.NewKind("table not found: %s")
-
-	// ErrColumnNotFound is thrown when a column named cannot be found in scope
-	ErrColumnNotFound = errors.NewKind("table %s does not have column %s")
-
-	// ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
-	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
-
-	// ErrInvalidChildrenNumber is returned when the WithChildren method of a
-	// node or expression is called with an invalid number of arguments.
-	ErrInvalidChildrenNumber = errors.NewKind("%T: invalid children number, got %d, expected %d")
-
-	// ErrInvalidChildType is returned when the WithChildren method of a
-	// node or expression is called with an invalid child type. This error is indicative of a bug.
-	ErrInvalidChildType = errors.NewKind("%T: invalid child type, got %T, expected %T")
-
-	// ErrDeleteRowNotFound
-	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete")
-
-	// ErrDuplicateAlias should be returned when a query contains a duplicate alias / table name.
-	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
-
-	// ErrUniqueKeyViolation is returned when a unique key constraint is violated
-	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key for %s")
 )
 
 // Nameable is something that has a name.
@@ -117,8 +78,9 @@ type Node interface {
 	Schema() Schema
 	// Children nodes.
 	Children() []Node
-	// RowIter produces a row iterator from this node.
-	RowIter(*Context) (RowIter, error)
+	// RowIter produces a row iterator from this node. The current row being evaluated is provided, as well the context
+	// of the query.
+	RowIter(ctx *Context, row Row) (RowIter, error)
 	// WithChildren returns a copy of the node with children replaced.
 	// It will return an error if the number of children is different than
 	// the current number of children. They must be given in the same order
@@ -126,12 +88,22 @@ type Node interface {
 	WithChildren(...Node) (Node, error)
 }
 
-// EvalNode is a node in the execution plan tree which takes an Eval context (a row from the outer scope) to use when
-// generating its row results.
-type EvalNode interface {
-	Node
-	// RowIterForRow produces a row iterator from this node.
-	RowIterForRow(*Context, Row) (RowIter, error)
+// DebugStringer is shared by implementors of Node and Expression, and is used for debugging the analyzer. It allows
+// a node or expression to be printed in greater detail than its default String() representation.
+type DebugStringer interface {
+	// DebugString prints a debug string of the node in question.
+	DebugString() string
+}
+
+// DebugString returns a debug string for the Node or Expression given.
+func DebugString(nodeOrExpression interface{}) string {
+	if ds, ok := nodeOrExpression.(DebugStringer); ok {
+		return ds.DebugString()
+	}
+	if s, ok := nodeOrExpression.(fmt.Stringer); ok {
+		return s.String()
+	}
+	panic(fmt.Sprintf("Expected sql.DebugString or fmt.Stringer for %T", nodeOrExpression))
 }
 
 // OpaqueNode is a node that doesn't allow transformations to its children and

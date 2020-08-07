@@ -34,7 +34,7 @@ func (dv *SingleDropView) Resolved() bool {
 }
 
 // RowIter implements the Node interface. It always returns an empty iterator.
-func (dv *SingleDropView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (dv *SingleDropView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
 }
 
@@ -108,7 +108,7 @@ func (dvs *DropView) Resolved() bool {
 // RowIter implements the Node interface. When executed, this function drops
 // all the views defined by the node's children. It errors if the flag ifExists
 // is set to false and there is some view that does not exist.
-func (dvs *DropView) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (dvs *DropView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	viewList := make([]sql.ViewKey, len(dvs.children))
 	for i, child := range dvs.children {
 		drop, ok := child.(*SingleDropView)

@@ -32,10 +32,10 @@ func (g *Generate) Schema() sql.Schema {
 }
 
 // RowIter implements the sql.Node interface.
-func (g *Generate) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (g *Generate) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Generate")
 
-	childIter, err := g.Child.RowIter(ctx)
+	childIter, err := g.Child.RowIter(ctx, nil)
 	if err != nil {
 		return nil, err
 	}

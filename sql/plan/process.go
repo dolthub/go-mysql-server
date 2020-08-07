@@ -31,8 +31,8 @@ func (p *QueryProcess) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 // RowIter implements the sql.Node interface.
-func (p *QueryProcess) RowIter(ctx *sql.Context) (sql.RowIter, error) {
-	iter, err := p.Child.RowIter(ctx)
+func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	iter, err := p.Child.RowIter(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -41,6 +41,8 @@ func (p *QueryProcess) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 }
 
 func (p *QueryProcess) String() string { return p.Child.String() }
+
+func (p *QueryProcess) DebugString() string { return sql.DebugString(p.Child) }
 
 // ProcessIndexableTable is a wrapper for sql.Tables inside a query process
 // that support indexing.

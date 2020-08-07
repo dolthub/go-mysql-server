@@ -25,7 +25,7 @@ func (*ResolvedTable) Resolved() bool {
 func (*ResolvedTable) Children() []sql.Node { return nil }
 
 // RowIter implements the RowIter interface.
-func (t *ResolvedTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (t *ResolvedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.ResolvedTable")
 
 	partitions, err := t.Table.Partitions(ctx)

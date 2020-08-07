@@ -1495,7 +1495,10 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		if err != nil {
 			return nil, err
 		}
-		return expression.NewSubquery(node), nil
+
+		// TODO: get the original select statement, not the reconstruction
+		selectString := sqlparser.String(v.Select)
+		return plan.NewSubquery(node, selectString), nil
 	case *sqlparser.CaseExpr:
 		return caseExprToExpression(ctx, v)
 	case *sqlparser.IntervalExpr:
@@ -1621,8 +1624,6 @@ func comparisonExprToExpression(ctx *sql.Context, c *sqlparser.ComparisonExpr) (
 	}
 
 	switch strings.ToLower(c.Operator) {
-	default:
-		return nil, ErrUnsupportedFeature.New(c.Operator)
 	case sqlparser.RegexpStr:
 		return expression.NewRegexp(left, right), nil
 	case sqlparser.NotRegexpStr:
@@ -1642,13 +1643,29 @@ func comparisonExprToExpression(ctx *sql.Context, c *sqlparser.ComparisonExpr) (
 			expression.NewEquals(left, right),
 		), nil
 	case sqlparser.InStr:
-		return expression.NewIn(left, right), nil
+		switch right.(type) {
+		case expression.Tuple:
+			return expression.NewInTuple(left, right), nil
+		case *plan.Subquery:
+			return plan.NewInSubquery(left, right), nil
+		default:
+			return nil, ErrUnsupportedFeature.New(fmt.Sprintf("IN %T", right))
+		}
 	case sqlparser.NotInStr:
-		return expression.NewNotIn(left, right), nil
+		switch right.(type) {
+		case expression.Tuple:
+			return expression.NewNotInTuple(left, right), nil
+		case *plan.Subquery:
+			return plan.NewNotInSubquery(left, right), nil
+		default:
+			return nil, ErrUnsupportedFeature.New(fmt.Sprintf("NOT IN %T", right))
+		}
 	case sqlparser.LikeStr:
 		return expression.NewLike(left, right), nil
 	case sqlparser.NotLikeStr:
 		return expression.NewNot(expression.NewLike(left, right)), nil
+	default:
+		return nil, ErrUnsupportedFeature.New(c.Operator)
 	}
 }
 

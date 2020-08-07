@@ -95,7 +95,7 @@ func getChecksumable(t sql.Table) sql.Checksumable {
 }
 
 // RowIter implements the Node interface.
-func (c *CreateIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (c *CreateIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	table, ok := c.Table.(*ResolvedTable)
 	if !ok {
 		return nil, ErrNotIndexable.New()

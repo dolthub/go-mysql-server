@@ -45,7 +45,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	notAnalyzed = plan.NewUnresolvedTable("nonexistant", "")
 	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	require.Error(err)
-	require.Nil(analyzed)
+	require.NotNil(analyzed)
 
 	analyzed, err = a.Analyze(ctx, plan.NewResolvedTable(table), nil)
 	require.NoError(err)

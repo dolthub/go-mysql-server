@@ -35,7 +35,7 @@ func (p *CrossJoin) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (p *CrossJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *CrossJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var left, right string
 	if leftTable, ok := p.Left.(sql.Nameable); ok {
 		left = leftTable.Name()
@@ -54,7 +54,7 @@ func (p *CrossJoin) RowIter(ctx *sql.Context) (sql.RowIter, error) {
 		"right": right,
 	})
 
-	li, err := p.Left.RowIter(ctx)
+	li, err := p.Left.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err
@@ -83,8 +83,15 @@ func (p *CrossJoin) String() string {
 	return pr.String()
 }
 
+func (p *CrossJoin) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("CrossJoin")
+	_ = pr.WriteChildren(sql.DebugString(p.Left), sql.DebugString(p.Right))
+	return pr.String()
+}
+
 type rowIterProvider interface {
-	RowIter(*sql.Context) (sql.RowIter, error)
+	RowIter(*sql.Context, sql.Row) (sql.RowIter, error)
 }
 
 type crossJoinIterator struct {
@@ -108,7 +115,7 @@ func (i *crossJoinIterator) Next() (sql.Row, error) {
 		}
 
 		if i.r == nil {
-			iter, err := i.rp.RowIter(i.s)
+			iter, err := i.rp.RowIter(i.s, nil)
 			if err != nil {
 				return nil, err
 			}

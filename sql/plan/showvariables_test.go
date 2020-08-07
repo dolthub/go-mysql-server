@@ -17,7 +17,7 @@ func TestShowVariables(t *testing.T) {
 	sv := NewShowVariables(config, "")
 	require.True(sv.Resolved())
 
-	it, err := sv.RowIter(ctx)
+	it, err := sv.RowIter(ctx, nil)
 	require.NoError(err)
 
 	for row, err := it.Next(); err == nil; row, err = it.Next() {
@@ -48,7 +48,7 @@ func TestShowVariablesWithLike(t *testing.T) {
 	sv := NewShowVariables(vars, "int%")
 	require.True(sv.Resolved())
 
-	it, err := sv.RowIter(sql.NewEmptyContext())
+	it, err := sv.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	for row, err := it.Next(); err == nil; row, err = it.Next() {

@@ -29,7 +29,7 @@ func (i *IndexedTableAccess) SetIndexLookup(ctx *sql.Context, lookup sql.IndexLo
 	return nil
 }
 
-func (i *IndexedTableAccess) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if i.indexedTable == nil {
 		return nil, ErrIndexedTableAccessNotInitialized.New()
 	}

@@ -45,7 +45,7 @@ func (*UnresolvedTable) Children() []sql.Node { return nil }
 func (*UnresolvedTable) Schema() sql.Schema { return nil }
 
 // RowIter implements the RowIter interface.
-func (*UnresolvedTable) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (*UnresolvedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return nil, ErrUnresolvedTable.New()
 }
 

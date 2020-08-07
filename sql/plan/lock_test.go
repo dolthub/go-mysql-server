@@ -21,7 +21,7 @@ func TestLockTables(t *testing.T) {
 	})
 	node.Catalog = sql.NewCatalog()
 
-	_, err := node.RowIter(sql.NewEmptyContext())
+	_, err := node.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	require.Equal(1, t1.writeLocks)
@@ -51,7 +51,7 @@ func TestUnlockTables(t *testing.T) {
 	node := NewUnlockTables()
 	node.Catalog = catalog
 
-	_, err := node.RowIter(ctx)
+	_, err := node.RowIter(ctx, nil)
 	require.NoError(err)
 
 	require.Equal(1, t1.unlocks)

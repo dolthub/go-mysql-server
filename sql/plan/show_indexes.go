@@ -61,7 +61,7 @@ func (n *ShowIndexes) Schema() sql.Schema {
 }
 
 // RowIter implements the Node interface.
-func (n *ShowIndexes) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (n *ShowIndexes) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	table, ok := n.Child.(*ResolvedTable)
 	if !ok {
 		panic(fmt.Sprintf("unexpected type %T", n.Child))

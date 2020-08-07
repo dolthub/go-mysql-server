@@ -34,7 +34,7 @@ func TestShowCreateTable(t *testing.T) {
 
 	showCreateTable := NewShowCreateTable(NewResolvedTable(table), false)
 
-	rowIter, _ := showCreateTable.RowIter(ctx)
+	rowIter, _ := showCreateTable.RowIter(ctx, nil)
 
 	row, err := rowIter.Next()
 
@@ -56,7 +56,7 @@ func TestShowCreateTable(t *testing.T) {
 	showCreateTable = NewShowCreateTable(NewResolvedTable(table), true)
 
 	ctx = sql.NewEmptyContext()
-	rowIter, _ = showCreateTable.RowIter(ctx)
+	rowIter, _ = showCreateTable.RowIter(ctx, nil)
 
 	_, err = rowIter.Next()
 	require.Error(err)
@@ -111,7 +111,7 @@ func TestShowCreateTableWithIndexAndForeignKeys(t *testing.T) {
 		},
 	}
 
-	rowIter, _ := showCreateTable.RowIter(ctx)
+	rowIter, _ := showCreateTable.RowIter(ctx, nil)
 
 	row, err := rowIter.Next()
 
@@ -162,7 +162,7 @@ func TestShowCreateView(t *testing.T) {
 	)
 
 	ctx := sql.NewEmptyContext()
-	rowIter, _ := showCreateTable.RowIter(ctx)
+	rowIter, _ := showCreateTable.RowIter(ctx, nil)
 
 	row, err := rowIter.Next()
 

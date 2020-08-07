@@ -1,8 +1,17 @@
 package analyzer
 
 import (
+	"fmt"
+	"testing"
+
+	"github.com/pmezard/go-difflib/difflib"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
 func not(e sql.Expression) sql.Expression {
@@ -30,7 +39,7 @@ func or(left, right sql.Expression) sql.Expression {
 }
 
 func in(col sql.Expression, tuple sql.Expression) sql.Expression {
-	return expression.NewIn(col, tuple)
+	return expression.NewInTuple(col, tuple)
 }
 
 func tuple(vals ...sql.Expression) sql.Expression {
@@ -51,6 +60,23 @@ func eq(left, right sql.Expression) sql.Expression {
 
 func lit(n int64) sql.Expression {
 	return expression.NewLiteral(n, sql.Int64)
+}
+
+func gf(idx int, table, name string) *expression.GetField {
+	return expression.NewGetFieldWithTable(idx, sql.Int64, table, name, false)
+}
+
+func uc(name string) *expression.UnresolvedColumn {
+	return expression.NewUnresolvedColumn(name)
+}
+
+func uqc(table, name string) *expression.UnresolvedColumn {
+	return expression.NewUnresolvedQualifiedColumn(table, name)
+}
+
+// Creates a new top-level scope from the node given
+func newScope(n sql.Node) *Scope {
+	return (*Scope)(nil).newScope(n)
 }
 
 var analyzeRules = [][]Rule{
@@ -78,4 +104,76 @@ func getRuleFrom(rules []Rule, name string) *Rule {
 	}
 
 	return nil
+}
+
+// Common test struct for analyzer transformation tests. Name and node are required, other fields are optional.
+// The expected node is optional: if omitted, the tests asserts that input == output. The optional err field is the
+// kind of error expected, if any.
+type analyzerFnTestCase struct {
+	name     string
+	node     sql.Node
+	scope    *Scope
+	expected sql.Node
+	err      *errors.Kind
+}
+
+func runTestCases(t *testing.T, ctx *sql.Context, testCases []analyzerFnTestCase, a *Analyzer, f Rule) {
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			context := ctx
+			if context == nil {
+				context = sql.NewEmptyContext()
+			}
+			result, err := f.Apply(context, a, tt.node, tt.scope)
+			if tt.err != nil {
+				require.Error(t, err)
+				require.True(t, tt.err.Is(err), fmt.Sprintf("Expected error of type %T but got %T", tt.err, err))
+				return
+			}
+			require.NoError(t, err)
+
+			expected := tt.expected
+			if expected == nil {
+				expected = tt.node
+			}
+
+			ensureSubquerySchema(expected)
+			ensureSubquerySchema(result)
+			assertNodesEqualWithDiff(t, expected, result)
+		})
+	}
+}
+
+// Since SubqueryAlias nodes' schemas are loaded on demand, this method loads the schema of any such nodes for use in
+// test comparisons.
+func ensureSubquerySchema(n sql.Node) {
+	plan.Inspect(n, func(n sql.Node) bool {
+		if _, ok := n.(*plan.SubqueryAlias); ok {
+			_ = n.Schema()
+		}
+		return true
+	})
+}
+
+// assertNodesEqualWithDiff asserts the two nodes given to be equal and prints any diff according to their DebugString
+// methods.
+func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
+	expectedStr := sql.DebugString(expected)
+	actualStr := sql.DebugString(actual)
+	diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+		A:        difflib.SplitLines(expectedStr),
+		B:        difflib.SplitLines(actualStr),
+		FromFile: "expected",
+		FromDate: "",
+		ToFile:   "actual",
+		ToDate:   "",
+		Context:  1,
+	})
+	require.NoError(t, err)
+
+	if len(diff) > 0 {
+		fmt.Println(diff)
+	}
+
+	assert.Equal(t, expected, actual)
 }

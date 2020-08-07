@@ -40,7 +40,7 @@ func TestFilter(t *testing.T) {
 
 	require.Equal(1, len(f.Children()))
 
-	iter, err := f.RowIter(ctx)
+	iter, err := f.RowIter(ctx, nil)
 	require.NoError(err)
 	require.NotNil(iter)
 
@@ -60,7 +60,7 @@ func TestFilter(t *testing.T) {
 		expression.NewLiteral(int32(1111),
 			sql.Int32)), NewResolvedTable(child))
 
-	iter, err = f.RowIter(ctx)
+	iter, err = f.RowIter(ctx, nil)
 	require.NoError(err)
 	require.NotNil(iter)
 
@@ -76,7 +76,7 @@ func TestFilter(t *testing.T) {
 		expression.NewLiteral(int64(4444), sql.Int64)),
 		NewResolvedTable(child))
 
-	iter, err = f.RowIter(ctx)
+	iter, err = f.RowIter(ctx, nil)
 	require.NoError(err)
 	require.NotNil(iter)
 

@@ -20,7 +20,7 @@ func TestShowWarnings(t *testing.T) {
 	sw := ShowWarnings(ctx.Session.Warnings())
 	require.True(sw.Resolved())
 
-	it, err := sw.RowIter(ctx)
+	it, err := sw.RowIter(ctx, nil)
 	require.NoError(err)
 
 	n := 3

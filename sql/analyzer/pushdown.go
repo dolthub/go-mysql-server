@@ -24,6 +24,11 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		return n, nil
 	}
 
+	if len(scope.Schema()) > 0 {
+		// TODO: field index rewriting is broken for subqueries, skip it for now
+		return n, nil
+	}
+
 	// Pushdown interferes with left and right joins (some where clauses must only be evaluated on the result of the join,
 	// not pushed down to the tables), so skip them.
 	// TODO: only some join queries are incompatible with pushdown semantics, and we could be more judicious with this
@@ -64,17 +69,34 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 
 type fieldsByTable map[string][]string
 
+// add adds the table and field given if not already present
+func (f fieldsByTable) add(table, field string) {
+	if !stringContains(f[table], field) {
+		f[table] = append(f[table], field)
+	}
+}
+
+// addAll adds the tables and fields given if not already present
+func (f fieldsByTable) addAll(f2 fieldsByTable) {
+	for table, fields := range f2 {
+		for _, field := range fields {
+			f.add(table, field)
+		}
+	}
+}
+
 // getFieldsByTable returns a map of table name to set of field names in the node provided
 func getFieldsByTable(ctx *sql.Context, n sql.Node) fieldsByTable {
 	colSpan, _ := ctx.Span("getFieldsByTable")
 	defer colSpan.Finish()
 
-	var fieldsByTable = make(map[string][]string)
-	plan.InspectExpressions(n, func(e sql.Expression) bool {
+	var fieldsByTable = make(fieldsByTable)
+	plan.InspectExpressionsWithNode(n, func(n sql.Node, e sql.Expression) bool {
 		if gf, ok := e.(*expression.GetField); ok {
-			if !stringContains(fieldsByTable[gf.Table()], gf.Name()) {
-				fieldsByTable[gf.Table()] = append(fieldsByTable[gf.Table()], gf.Name())
-			}
+			fieldsByTable.add(gf.Table(), gf.Name())
+		}
+		if s, ok := e.(*plan.Subquery); ok {
+			fieldsByTable.addAll(getFieldsByTable(ctx, s.Query))
 		}
 		return true
 	})

@@ -35,7 +35,7 @@ func TestQueryProcess(t *testing.T) {
 		},
 	)
 
-	iter, err := node.RowIter(sql.NewEmptyContext())
+	iter, err := node.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
@@ -86,7 +86,7 @@ func TestProcessTable(t *testing.T) {
 		),
 	)
 
-	iter, err := node.RowIter(sql.NewEmptyContext())
+	iter, err := node.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)

@@ -144,7 +144,7 @@ func (p *AlterIndex) Execute(ctx *sql.Context) error {
 }
 
 // RowIter implements the Node interface.
-func (p *AlterIndex) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *AlterIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	err := p.Execute(ctx)
 	if err != nil {
 		return nil, err

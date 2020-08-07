@@ -124,7 +124,7 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 		return 0, err
 	}
 
-	iter, err := rowSource.RowIter(ctx)
+	iter, err := rowSource.RowIter(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -219,7 +219,7 @@ func (p *InsertInto) rowSource(projExprs []sql.Expression) (sql.Node, error) {
 }
 
 // RowIter implements the Node interface.
-func (p *InsertInto) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *InsertInto) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	updated, err := p.Execute(ctx)
 	if err != nil {
 		return nil, err

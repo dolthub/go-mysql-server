@@ -63,7 +63,7 @@ func TestTrackProcess(t *testing.T) {
 	_, ok = rhs.Table.(*plan.ProcessIndexableTable)
 	require.True(ok)
 
-	iter, err := proc.RowIter(ctx)
+	iter, err := proc.RowIter(ctx, nil)
 	require.NoError(err)
 	_, err = sql.RowIterToRows(iter)
 	require.NoError(err)

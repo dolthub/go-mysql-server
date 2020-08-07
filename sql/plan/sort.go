@@ -61,6 +61,14 @@ type SortField struct {
 	NullOrdering NullOrdering
 }
 
+func (s SortField) DebugString() string {
+	nullOrdering := "nullsFirst"
+	if s.NullOrdering == NullsLast {
+		nullOrdering = "nullsLast"
+	}
+	return fmt.Sprintf("%s %s %s", sql.DebugString(s.Column), s.Order, nullOrdering)
+}
+
 // NewSort creates a new Sort node.
 func NewSort(sortFields []SortField, child sql.Node) *Sort {
 	return &Sort{
@@ -82,14 +90,14 @@ func (s *Sort) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (s *Sort) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (s *Sort) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Sort")
-	i, err := s.UnaryNode.Child.RowIter(ctx)
+	i, err := s.UnaryNode.Child.RowIter(ctx, row)
 	if err != nil {
 		span.Finish()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, newSortIter(ctx, s, i)), nil
+	return sql.NewSpanIter(span, newSortIter(ctx, s, i, row)), nil
 }
 
 func (s *Sort) String() string {
@@ -100,6 +108,17 @@ func (s *Sort) String() string {
 	}
 	_ = pr.WriteNode("Sort(%s)", strings.Join(fields, ", "))
 	_ = pr.WriteChildren(s.Child.String())
+	return pr.String()
+}
+
+func (s *Sort) DebugString() string {
+	pr := sql.NewTreePrinter()
+	var fields = make([]string, len(s.SortFields))
+	for i, f := range s.SortFields {
+		fields[i] = sql.DebugString(f)
+	}
+	_ = pr.WriteNode("Sort(%s)", strings.Join(fields, ", "))
+	_ = pr.WriteChildren(sql.DebugString(s.Child))
 	return pr.String()
 }
 
@@ -142,16 +161,18 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 type sortIter struct {
 	ctx        *sql.Context
 	s          *Sort
+	row        sql.Row
 	childIter  sql.RowIter
 	sortedRows []sql.Row
 	idx        int
 }
 
-func newSortIter(ctx *sql.Context, s *Sort, child sql.RowIter) *sortIter {
+func newSortIter(ctx *sql.Context, s *Sort, child sql.RowIter, row sql.Row) *sortIter {
 	return &sortIter{
 		ctx:       ctx,
 		s:         s,
 		childIter: child,
+		row:       row,
 		idx:       -1,
 	}
 }
@@ -184,6 +205,7 @@ func (i *sortIter) computeSortedRows() error {
 
 	for {
 		row, err := i.childIter.Next()
+
 		if err == io.EOF {
 			break
 		}

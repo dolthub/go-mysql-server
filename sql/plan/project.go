@@ -6,6 +6,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 // Project is a projection of certain expression from the children node.
@@ -27,24 +28,7 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))
 	for i, e := range p.Projections {
-		var name string
-		if n, ok := e.(sql.Nameable); ok {
-			name = n.Name()
-		} else {
-			name = e.String()
-		}
-
-		var table string
-		if t, ok := e.(sql.Tableable); ok {
-			table = t.Table()
-		}
-
-		s[i] = &sql.Column{
-			Name:     name,
-			Type:     e.Type(),
-			Nullable: e.IsNullable(),
-			Source:   table,
-		}
+		s[i] = expression.ExpressionToColumn(e)
 	}
 	return s
 }
@@ -56,18 +40,24 @@ func (p *Project) Resolved() bool {
 }
 
 // RowIter implements the Node interface.
-func (p *Project) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (p *Project) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Project", opentracing.Tag{
 		Key:   "projections",
 		Value: len(p.Projections),
 	})
 
-	i, err := p.Child.RowIter(ctx)
+	i, err := p.Child.RowIter(ctx, row)
 	if err != nil {
 		span.Finish()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, &iter{p, i, ctx}), nil
+
+	return sql.NewSpanIter(span, &iter{
+		p:         p,
+		childIter: i,
+		ctx:       ctx,
+		row:       row,
+	}), nil
 }
 
 func (p *Project) String() string {
@@ -78,6 +68,17 @@ func (p *Project) String() string {
 	}
 	_ = pr.WriteNode("Project(%s)", strings.Join(exprs, ", "))
 	_ = pr.WriteChildren(p.Child.String())
+	return pr.String()
+}
+
+func (p *Project) DebugString() string {
+	pr := sql.NewTreePrinter()
+	var exprs = make([]string, len(p.Projections))
+	for i, expr := range p.Projections {
+		exprs[i] = sql.DebugString(expr)
+	}
+	_ = pr.WriteNode("Project(%s)", strings.Join(exprs, ", "))
+	_ = pr.WriteChildren(sql.DebugString(p.Child))
 	return pr.String()
 }
 
@@ -107,6 +108,7 @@ func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 type iter struct {
 	p         *Project
 	childIter sql.RowIter
+	row       sql.Row
 	ctx       *sql.Context
 }
 
@@ -115,6 +117,7 @@ func (i *iter) Next() (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return ProjectRow(i.ctx, i.p.Projections, childRow)
 }
 
@@ -128,7 +131,7 @@ func ProjectRow(
 	projections []sql.Expression,
 	row sql.Row,
 ) (sql.Row, error) {
-	var fields []interface{}
+	var fields sql.Row
 	for _, expr := range projections {
 		f, err := expr.Eval(s, row)
 		if err != nil {

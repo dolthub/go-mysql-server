@@ -17,7 +17,7 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
 
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -30,30 +30,26 @@ func TestReorderProjection(t *testing.T) {
 
 	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "i", Source: "mytable", Type: sql.Int64},
-		{Name: "s", Source: "mytable", Type: sql.Text},
+		{Name: "s", Source: "mytable", Type: sql.Int64},
 	})
 
-	testCases := []struct {
-		name     string
-		project  sql.Node
-		expected sql.Node
-	}{
+	testCases := []analyzerFnTestCase{
 		{
 			name: "sort",
-			project: plan.NewProject(
+			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-					expression.NewAlias("foo", expression.NewLiteral(1, sql.Int64)),
-					expression.NewAlias("bar", expression.NewLiteral(2, sql.Int64)),
+					gf(0, "mytable", "i"),
+					expression.NewAlias("foo", lit(1)),
+					expression.NewAlias("bar", lit(2)),
 				},
 				plan.NewSort(
 					[]plan.SortField{
-						{Column: expression.NewUnresolvedColumn("foo")},
+						{Column: uc("foo")},
 					},
 					plan.NewFilter(
 						expression.NewEquals(
-							expression.NewLiteral(1, sql.Int64),
-							expression.NewUnresolvedColumn("bar"),
+							lit(1),
+							uc("bar"),
 						),
 						plan.NewResolvedTable(table),
 					),
@@ -61,29 +57,29 @@ func TestReorderProjection(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-					expression.NewGetField(3, sql.Int64, "foo", false),
-					expression.NewGetField(2, sql.Int64, "bar", false),
+					gf(0, "mytable", "i"),
+					gf(3, "", "foo"),
+					gf(2, "", "bar"),
 				},
 				plan.NewSort(
-					[]plan.SortField{{Column: expression.NewGetField(3, sql.Int64, "foo", false)}},
+					[]plan.SortField{{Column: gf(3, "", "foo")}},
 					plan.NewProject(
 						[]sql.Expression{
-							expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-							expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false),
-							expression.NewGetField(2, sql.Int64, "bar", false),
-							expression.NewAlias("foo", expression.NewLiteral(1, sql.Int64)),
+							gf(0, "mytable", "i"),
+							gf(1, "mytable", "s"),
+							gf(2, "", "bar"),
+							expression.NewAlias("foo", lit(1)),
 						},
 						plan.NewFilter(
 							expression.NewEquals(
-								expression.NewLiteral(1, sql.Int64),
-								expression.NewGetField(2, sql.Int64, "bar", false),
+								lit(1),
+								gf(2, "", "bar"),
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-									expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false),
-									expression.NewAlias("bar", expression.NewLiteral(2, sql.Int64)),
+									gf(0, "mytable", "i"),
+									gf(1, "mytable", "s"),
+									expression.NewAlias("bar", lit(2)),
 								},
 								plan.NewResolvedTable(table),
 							),
@@ -94,19 +90,19 @@ func TestReorderProjection(t *testing.T) {
 		},
 		{
 			name: "use alias twice",
-			project: plan.NewProject(
+			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewAlias("foo", expression.NewLiteral(1, sql.Int64)),
+					expression.NewAlias("foo", lit(1)),
 				},
 				plan.NewFilter(
 					expression.NewOr(
 						expression.NewEquals(
-							expression.NewLiteral(1, sql.Int64),
-							expression.NewUnresolvedColumn("foo"),
+							lit(1),
+							uc("foo"),
 						),
 						expression.NewEquals(
-							expression.NewLiteral(1, sql.Int64),
-							expression.NewUnresolvedColumn("foo"),
+							lit(1),
+							uc("foo"),
 						),
 					),
 					plan.NewResolvedTable(table),
@@ -114,24 +110,24 @@ func TestReorderProjection(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetField(2, sql.Int64, "foo", false),
+					gf(2, "", "foo"),
 				},
 				plan.NewFilter(
 					expression.NewOr(
 						expression.NewEquals(
-							expression.NewLiteral(1, sql.Int64),
-							expression.NewGetField(2, sql.Int64, "foo", false),
+							lit(1),
+							gf(2, "", "foo"),
 						),
 						expression.NewEquals(
-							expression.NewLiteral(1, sql.Int64),
-							expression.NewGetField(2, sql.Int64, "foo", false),
+							lit(1),
+							gf(2, "", "foo"),
 						),
 					),
 					plan.NewProject(
 						[]sql.Expression{
-							expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-							expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false),
-							expression.NewAlias("foo", expression.NewLiteral(1, sql.Int64)),
+							gf(0, "mytable", "i"),
+							gf(1, "mytable", "s"),
+							expression.NewAlias("foo", lit(1)),
 						},
 						plan.NewResolvedTable(table),
 					),
@@ -140,14 +136,108 @@ func TestReorderProjection(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
+	runTestCases(t, nil, testCases, nil, f)
+}
 
-			result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), tt.project, nil)
-			require.NoError(err)
+func TestReorderProjectionWithSubqueries(t *testing.T) {
+	f := getRule("reorder_projection")
 
-			require.Equal(tt.expected, result)
-		})
+	onepk := memory.NewTable("one_pk", sql.Schema{
+		{Name: "pk", Source: "one_pk", Type: sql.Int64, PrimaryKey: true},
+		{Name: "c1", Source: "one_pk", Type: sql.Int64},
+	})
+	twopk := memory.NewTable("two_pk", sql.Schema{
+		{Name: "pk1", Source: "two_pk", Type: sql.Int64, PrimaryKey: true},
+		{Name: "pk2", Source: "two_pk", Type: sql.Int64, PrimaryKey: true},
+		{Name: "c1", Source: "two_pk", Type: sql.Int64},
+	})
+
+	testCases := []analyzerFnTestCase{
+		{
+			name: "no reorder needed",
+			node: plan.NewSort(
+				[]plan.SortField{
+					{Column: gf(0, "one_pk", "pk")},
+				}, plan.NewProject(
+					[]sql.Expression{
+						gf(0, "one_pk", "pk"),
+						plan.NewSubquery(
+							plan.NewGroupBy(
+								[]sql.Expression{
+									aggregation.NewMax(uqc("two_pk", "pk1")),
+								},
+								nil,
+								plan.NewFilter(
+									expression.NewLessThan(
+										gf(2, "one_pk", "pk1"),
+										&deferredColumn{uc("pk")},
+									),
+									plan.NewResolvedTable(twopk),
+								),
+							),
+							"select max(pk1) from two_pk where pk1 < pk"),
+					}, plan.NewResolvedTable(onepk)),
+			),
+			expected: nil,
+		},
+		{
+			name: "subquery with an alias reference",
+			node: plan.NewSort(
+				[]plan.SortField{
+					{Column: gf(0, "one_pk", "pk")},
+				}, plan.NewProject(
+					[]sql.Expression{
+						expression.NewAlias("a", gf(0, "one_pk", "pk")),
+						plan.NewSubquery(
+							plan.NewGroupBy(
+								[]sql.Expression{
+									aggregation.NewMax(uqc("one_pk", "pk")),
+								},
+								nil,
+								plan.NewFilter(
+									expression.NewLessThanOrEqual(
+										gf(2, "one_pk", "pk"),
+										&deferredColumn{uc("a")},
+									),
+									plan.NewResolvedTable(onepk),
+								),
+							),
+							"SELECT max(pk) FROM one_pk WHERE pk <= a"),
+					}, plan.NewResolvedTable(onepk)),
+			),
+			expected: plan.NewSort(
+				[]plan.SortField{
+					{Column: gf(0, "one_pk", "pk")},
+				}, plan.NewProject(
+					[]sql.Expression{
+						gf(2, "", "a"),
+						plan.NewSubquery(
+							plan.NewGroupBy(
+								[]sql.Expression{
+									aggregation.NewMax(uqc("one_pk", "pk")),
+								},
+								nil,
+								plan.NewFilter(
+									expression.NewLessThanOrEqual(
+										gf(2, "one_pk", "pk"),
+										&deferredColumn{uc("a")},
+									),
+									plan.NewResolvedTable(onepk),
+								),
+							),
+							"SELECT max(pk) FROM one_pk WHERE pk <= a"),
+					}, plan.NewProject(
+						[]sql.Expression{
+							gf(0, "one_pk", "pk"),
+							gf(1, "one_pk", "c1"),
+							expression.NewAlias("a", gf(0, "one_pk", "pk")),
+						},
+						plan.NewResolvedTable(onepk),
+					),
+				),
+			),
+		},
 	}
+
+	runTestCases(t, nil, testCases, nil, f)
 }

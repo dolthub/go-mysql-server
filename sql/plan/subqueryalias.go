@@ -38,9 +38,9 @@ func (n *SubqueryAlias) Schema() sql.Schema {
 }
 
 // RowIter implements the Node interface.
-func (n *SubqueryAlias) RowIter(ctx *sql.Context) (sql.RowIter, error) {
+func (n *SubqueryAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.SubqueryAlias")
-	iter, err := n.Child.RowIter(ctx)
+	iter, err := n.Child.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err
@@ -69,5 +69,12 @@ func (n SubqueryAlias) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("SubqueryAlias(%s)", n.name)
 	_ = pr.WriteChildren(n.Child.String())
+	return pr.String()
+}
+
+func (n SubqueryAlias) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("SubqueryAlias(%s)", n.name)
+	_ = pr.WriteChildren(sql.DebugString(n.Child))
 	return pr.String()
 }

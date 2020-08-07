@@ -108,6 +108,10 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 }
 
 func addIntermediateProjections(project *plan.Project, projectedAliases map[string]sql.Expression) (neededReorder bool, child sql.Node, err error) {
+	// We only want to apply each projection once, even if it occurs multiple times in the tree. Lower tree levels are
+	// processed first, so only the lowest mention of each alias will be applied at that layer. High layers will just have
+	// a normal GetField expression to reference the lower layer.
+	appliedProjections := make(map[string]bool)
 	child, err = plan.TransformUp(project.Child, func(node sql.Node) (sql.Node, error) {
 		var missingColumns []string
 		switch node := node.(type) {
@@ -120,7 +124,7 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 
 					uc, ok := e.(column)
 					if ok && uc.Table() == "" {
-						if _, ok := projectedAliases[uc.Name()]; ok {
+						if _, ok := projectedAliases[uc.Name()]; ok && !appliedProjections[uc.Name()] {
 							missingColumns = append(missingColumns, uc.Name())
 						}
 					}
@@ -149,9 +153,9 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 		}
 
 		for _, col := range missingColumns {
-			if c, ok := projectedAliases[col]; ok {
+			if c, ok := projectedAliases[col]; ok && !appliedProjections[col] {
 				projections = append(projections, c)
-				delete(projectedAliases, col)
+				appliedProjections[col] = true
 			}
 		}
 
@@ -166,7 +170,56 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 		}
 	})
 
+	// If any subqueries reference these aliases, the child of the project also needs it. A subquery expression is just
+	// like a child node in this respect -- it draws its outer scope schema from the child of the node in which it's
+	// embedded. We identify any missing subquery columns by their being deferred from a previous analyzer step.
+	var deferredColumns []*deferredColumn
+	for _, e := range project.Projections {
+		if a, ok := e.(*expression.Alias); ok {
+			e = a.Child
+		}
+		s, ok := e.(*plan.Subquery)
+		if !ok {
+			continue
+		}
+
+		deferredColumns = append(deferredColumns, findDeferredColumns(s.Query)...)
+	}
+
+	if len(deferredColumns) > 0 {
+		schema := child.Schema()
+		var projections = make([]sql.Expression, 0, len(schema)+len(deferredColumns))
+		for i, col := range schema {
+			projections = append(projections, expression.NewGetFieldWithTable(
+				i, col.Type, col.Source, col.Name, col.Nullable,
+			))
+		}
+
+		// Add a projection for each missing column from the subqueries that has an alias
+		for _, dc := range deferredColumns {
+			if c, ok := projectedAliases[dc.Name()]; ok && dc.Table() == "" {
+				projections = append(projections, c)
+				neededReorder = true
+			}
+		}
+
+		child = plan.NewProject(projections, child)
+	}
+
 	return neededReorder, child, err
+}
+
+// findDeferredColumns returns all the deferredColumn expressions in the node given
+func findDeferredColumns(n sql.Node) []*deferredColumn {
+	var cols []*deferredColumn
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
+		if dc, ok := e.(*deferredColumn); ok {
+			cols = append(cols, dc)
+		}
+		return true
+	})
+
+	return cols
 }
 
 // hasNaturalJoin checks whether there is a natural join at some point in the
