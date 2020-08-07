@@ -46,6 +46,10 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 				return nil, err
 			}
 
+			if !asOfExpr.Resolved() {
+				return nil, sql.ErrInvalidAsOfExpression.New(asOfExpr.String())
+			}
+
 			asOf, err := asOfExpr.Eval(ctx, nil)
 			if err != nil {
 				return nil, err

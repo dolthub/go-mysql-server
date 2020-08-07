@@ -2913,6 +2913,15 @@ var VersionedQueries = []QueryTest{
 			{int64(3), "third row, 2"},
 		},
 	},
+	// Testing support of function evaluation in AS OF
+	{
+		"SELECT *  FROM myhistorytable AS OF GREATEST('2019-01-02','2019-01-01','') foo ORDER BY i",
+		[]sql.Row{
+			{int64(1), "first row, 2"},
+			{int64(2), "second row, 2"},
+			{int64(3), "third row, 2"},
+		},
+	},
 	{
 		"SELECT *  FROM myhistorytable ORDER BY i",
 		[]sql.Row{
@@ -3359,6 +3368,14 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       "SELECT pk, (SELECT max(pk) FROM two_pk WHERE pk <= c6) FROM one_pk ORDER BY 1",
 		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
+		Query:       "SELECT i FROM myhistorytable AS OF abc",
+		ExpectedErr: sql.ErrInvalidAsOfExpression,
+	},
+	{
+		Query:       "SELECT i FROM myhistorytable AS OF MAX(abc)",
+		ExpectedErr: sql.ErrInvalidAsOfExpression,
 	},
 	// TODO: Bug: the having column must appear in the select list
 	// {

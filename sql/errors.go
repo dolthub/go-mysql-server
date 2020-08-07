@@ -63,4 +63,7 @@ var (
 	// ErrMisusedAlias is returned when a alias is defined and used in the same projection.
 	ErrMisusedAlias = errors.NewKind("column %q does not exist in scope, but there is an alias defined in" +
 		" this projection with that name. Aliases cannot be used in the same projection they're defined in")
+
+	// ErrInvalidAsOfExpression is returned when an expression for AS OF cannot be used
+	ErrInvalidAsOfExpression = errors.NewKind("Expression %s cannot be used in AS OF")
 )
