@@ -65,5 +65,8 @@ var (
 		" this projection with that name. Aliases cannot be used in the same projection they're defined in")
 
 	// ErrInvalidAsOfExpression is returned when an expression for AS OF cannot be used
-	ErrInvalidAsOfExpression = errors.NewKind("Expression %s cannot be used in AS OF")
+	ErrInvalidAsOfExpression = errors.NewKind("expression %s cannot be used in AS OF")
+
+	// ErrUnsupportedDefault return when an expression for a column default is not supported
+	ErrUnsupportedDefault = errors.NewKind("column default %s is not supported")
 )

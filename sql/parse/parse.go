@@ -978,6 +978,9 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		// TODO: this isn't quite right -- some default expressions here (like function calls) need to be stored by the
 		//  implementor and deferred until row insertion time. We can't do that, but we can at least do a better job
 		//  detecting when this happens and erroring out.
+		if !dflt.Resolved() {
+			return nil, sql.ErrUnsupportedDefault.New(dflt.String())
+		}
 		defaultVal, err = dflt.Eval(ctx, nil)
 		if err != nil {
 			return nil, ErrUnsupportedFeature.New("column defaults must be evaluable at schema modification time")
