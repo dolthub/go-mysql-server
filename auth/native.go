@@ -12,7 +12,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql"
 
 	"gopkg.in/src-d/go-errors.v1"
-	"vitess.io/vitess/go/mysql"
+	"github.com/liquidata-inc/vitess/go/mysql"
 )
 
 var (

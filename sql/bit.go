@@ -6,8 +6,8 @@ import (
 
 	"encoding/binary"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/proto/query"
+	"github.com/liquidata-inc/vitess/go/sqltypes"
+	"github.com/liquidata-inc/vitess/go/vt/proto/query"
 )
 
 const (

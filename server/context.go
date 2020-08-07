@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
-	"vitess.io/vitess/go/mysql"
+	"github.com/liquidata-inc/vitess/go/mysql"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )

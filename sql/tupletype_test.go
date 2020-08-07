@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/liquidata-inc/vitess/go/sqltypes"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
