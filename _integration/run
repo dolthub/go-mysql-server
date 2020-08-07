@@ -1,10 +1,16 @@
 #!/bin/sh
 
-go build -o test-server ./_example/main.go
+if [ -z "$1" ]
+then
+   echo "Usage: run <dir>"
+   exit 1
+fi
+
+go build -o test-server ../_example/main.go
 ./test-server > /dev/null 2>&1 &
 SERVER_PID=$!
 sleep 5
-cd "./_integration/$1" \
+cd "./$1" \
     && make test \
     && kill -9 $SERVER_PID \
     && rm -rf ../../test-server

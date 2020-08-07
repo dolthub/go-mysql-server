@@ -5,8 +5,9 @@ class TestMySQL(unittest.TestCase):
 
     def test_connect(self):
         connection = mysql.connector.connect(host='127.0.0.1',
-                                     user='root',
-                                     passwd='')
+                                             user='root',
+                                             passwd='',
+                                             database="mydb")
 
         try:
             cursor = connection.cursor()
