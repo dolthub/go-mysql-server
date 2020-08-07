@@ -19,58 +19,58 @@ func NewFilter(expression sql.Expression, child sql.Node) *Filter {
 }
 
 // Resolved implements the Resolvable interface.
-func (p *Filter) Resolved() bool {
-	return p.UnaryNode.Child.Resolved() && p.Expression.Resolved()
+func (f *Filter) Resolved() bool {
+	return f.UnaryNode.Child.Resolved() && f.Expression.Resolved()
 }
 
 // RowIter implements the Node interface.
-func (p *Filter) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+func (f *Filter) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Filter")
 
-	i, err := p.Child.RowIter(ctx, row)
+	i, err := f.Child.RowIter(ctx, row)
 	if err != nil {
 		span.Finish()
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, NewFilterIter(ctx, p.Expression, i, row)), nil
+	return sql.NewSpanIter(span, NewFilterIter(ctx, f.Expression, i, row)), nil
 }
 
 // WithChildren implements the Node interface.
-func (p *Filter) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (f *Filter) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
 
-	return NewFilter(p.Expression, children[0]), nil
+	return NewFilter(f.Expression, children[0]), nil
 }
 
 // WithExpressions implements the Expressioner interface.
-func (p *Filter) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (f *Filter) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(exprs), 1)
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(exprs), 1)
 	}
 
-	return NewFilter(exprs[0], p.Child), nil
+	return NewFilter(exprs[0], f.Child), nil
 }
 
-func (p *Filter) String() string {
+func (f *Filter) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Filter(%s)", p.Expression)
-	_ = pr.WriteChildren(p.Child.String())
+	_ = pr.WriteNode("Filter(%s)", f.Expression)
+	_ = pr.WriteChildren(f.Child.String())
 	return pr.String()
 }
 
-func (p *Filter) DebugString() string {
+func (f *Filter) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Filter(%s)", sql.DebugString(p.Expression))
-	_ = pr.WriteChildren(sql.DebugString(p.Child))
+	_ = pr.WriteNode("Filter(%s)", sql.DebugString(f.Expression))
+	_ = pr.WriteChildren(sql.DebugString(f.Child))
 	return pr.String()
 }
 
 // Expressions implements the Expressioner interface.
-func (p *Filter) Expressions() []sql.Expression {
-	return []sql.Expression{p.Expression}
+func (f *Filter) Expressions() []sql.Expression {
+	return []sql.Expression{f.Expression}
 }
 
 // FilterIter is an iterator that filters another iterator and skips rows that

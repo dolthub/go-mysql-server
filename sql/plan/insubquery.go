@@ -65,7 +65,7 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		typ := right.Type()
-		values, err := right.EvalMultiple(ctx)
+		values, err := right.EvalMultiple(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -154,7 +154,7 @@ func (in *NotInSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		}
 
 		typ := right.Type()
-		values, err := right.EvalMultiple(ctx)
+		values, err := right.EvalMultiple(ctx, row)
 		if err != nil {
 			return nil, err
 		}

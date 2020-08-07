@@ -96,27 +96,30 @@ func isAliasUsed(node sql.Expressioner, alias string) bool {
 	return found
 }
 
-// deferredColumn is a wrapper on UnresolvedColumn used only to defer the
-// resolution of the column because it may require some work done by
-// other analyzer phases.
+// deferredColumn is a wrapper on UnresolvedColumn used to defer the resolution of the column because it may require
+// some work done by other analyzer phases.
 type deferredColumn struct {
 	*expression.UnresolvedColumn
 }
 
+func (dc *deferredColumn) DebugString() string {
+	return fmt.Sprintf("deferred(%s)", dc.UnresolvedColumn.String())
+}
+
 // IsNullable implements the Expression interface.
-func (deferredColumn) IsNullable() bool {
+func (*deferredColumn) IsNullable() bool {
 	return true
 }
 
 // Children implements the Expression interface.
-func (deferredColumn) Children() []sql.Expression { return nil }
+func (*deferredColumn) Children() []sql.Expression { return nil }
 
 // WithChildren implements the Expression interface.
-func (e deferredColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (dc *deferredColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 0)
+		return nil, sql.ErrInvalidChildrenNumber.New(dc, len(children), 0)
 	}
-	return e, nil
+	return dc, nil
 }
 
 type tableCol struct {
@@ -136,6 +139,8 @@ type column interface {
 	sql.Expression
 }
 
+// nestingLevelSymbols tracks available table and column name symbols at a nesting level for a query. Each nested
+// subquery represents an additional nesting level.
 type nestingLevelSymbols struct {
 	availableColumns map[string][]string
 	availableTables  map[string]string
@@ -148,22 +153,9 @@ func newNestingLevelSymbols() nestingLevelSymbols {
 	}
 }
 
+// availableNames tracks available table and column name symbols at each nesting level for a query, where level 0
+// is the node being analyzed, and each additional level is one layer of query scope outward.
 type availableNames map[int]nestingLevelSymbols
-
-// qualifyColumns assigns a table to any column expressions that don't have one already
-func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
-			return n, nil
-		}
-
-		symbols := getNodeAvailableNames(n, scope)
-
-		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
-			return qualifyExpression(e, symbols)
-		})
-	})
-}
 
 // indexColumn adds a column with the given table and column name at the given nesting level
 func (a availableNames) indexColumn(table, col string, nestingLevel int) {
@@ -226,6 +218,21 @@ func dedupStrings(in []string) []string {
 	return result
 }
 
+// qualifyColumns assigns a table to any column expressions that don't have one already
+func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
+			return n, nil
+		}
+
+		symbols := getNodeAvailableNames(n, scope)
+
+		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
+			return qualifyExpression(e, symbols)
+		})
+	})
+}
+
 // getNodeAvailableSymbols returns the set of table and column names accessible to the node given and using the scope
 // given. Table aliases overwrite table names: the original name is not considered accessible once aliased.
 // The value of the map is the same as the key, just used for existence checks.
@@ -237,7 +244,7 @@ func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
 	for i, n := range scope.InnerToOuter() {
 		// For the inner scope, we want all available columns in child nodes. For the outer scope, we are interested in
 		// available columns in the sibling node
-		getColumnsInNodes([]sql.Node{n}, names, i+1)
+		getColumnsInNodes(n.Children(), names, i+1)
 	}
 
 	// Get table names in all outer scopes and nodes. Inner scoped names will overwrite those from the outer scope.
@@ -303,6 +310,8 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 			return col, nil
 		}
 
+		// Look in all the scope, inner to outer, to identify the column. Stop as soon as we have a scope with exactly 1
+		// match for the column name. If any scope has ambiguity in available column names, that's an error.
 		for _, level := range nestingLevels {
 			name := strings.ToLower(col.Name())
 			tablesForColumn := symbols.tablesForColumnAtLevel(name, level)
@@ -317,11 +326,8 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 
 			switch len(tablesForColumn) {
 			case 0:
-				// If there are no tables that have any column with the column
-				// name let's just return it as it is. This may be an alias, so
-				// we'll wait for the reorder of the projection.
-				// TODO: look in other scope levels
-				return col, nil
+				// This column could be in an outer scope, keep going
+				continue
 			case 1:
 				return expression.NewUnresolvedQualifiedColumn(
 					tablesForColumn[0],
@@ -332,7 +338,9 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 			}
 		}
 
-		return nil, ErrInAnalysis.New("Should have made a decision already")
+		// If there are no tables that have any column with the column name let's just return it as it is. This may be an
+		// alias, so we'll wait for the reorder of the projection to resolve it.
+		return col, nil
 	case *expression.Star:
 		// Make sure that any qualified stars reference known tables
 		if col.Table != "" {
@@ -485,10 +493,6 @@ func indexColumns(a *Analyzer, n sql.Node, scope *Scope) map[tableCol]indexedCol
 	}
 
 	return columns
-}
-
-func indexColumnsInScope(a *Analyzer, scope *Scope) map[tableCol]indexedCol {
-	return nil
 }
 
 func resolveGlobalOrSessionColumn(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {

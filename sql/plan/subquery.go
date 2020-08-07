@@ -30,13 +30,13 @@ var errExpectedSingleRow = errors.NewKind("the subquery returned more than 1 row
 type Subquery struct {
 	// The subquery to execute for each row in the outer result set
 	Query sql.Node
-	// The number of columns of outer scope schema expected before inner-query result row columns
-	ScopeLen int
+	// The original verbatim select statement for this subquery
+	QueryString string
 }
 
 // NewSubquery returns a new subquery expression.
-func NewSubquery(node sql.Node) *Subquery {
-	return &Subquery{Query: node}
+func NewSubquery(node sql.Node, queryString string) *Subquery {
+	return &Subquery{Query: node, QueryString: queryString}
 }
 
 // prependNode wraps its child by prepending column values onto any result rows
@@ -90,31 +90,11 @@ func (p *prependNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // Eval implements the Expression interface.
 func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// TODO: the row being evaluated here might be shorter than the schema of the wrapping scope node. This is typically a
-	//  problem for Project nodes, where there isn't a 1:1 correspondence between child row results and projections (more
-	//  projections than unique columns in the underlying result set). This creates a problem for the evaluation of
-	//  subquery rows -- all the indexes will be off, since they expect to be given a row the same length as the schema of
-	//  their scope node. In this case, we fix the indexes by filling in zero values for the missing elements. This should
-	//  probably be dealt with by adjustments to field indexes in the analyzer instead.
 	scopeRow := row
-	if len(scopeRow) < s.ScopeLen {
-		scopeRow = make(sql.Row, s.ScopeLen)
-		copy(scopeRow, row)
-	}
 
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
-	q, err := TransformUp(s.Query, func(n sql.Node) (sql.Node, error) {
-		switch n := n.(type) {
-		case *Project, sql.Table:
-			return &prependNode{
-				UnaryNode: UnaryNode{Child: n},
-				row:       scopeRow,
-			}, nil
-		default:
-			return n, nil
-		}
-	})
+	q, err := TransformUp(s.Query, prependScopeRowInPlan(scopeRow))
 
 	if err != nil {
 		return nil, err
@@ -148,10 +128,31 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return rows[0][col], nil
 }
 
+// prependScopeRowInPlan returns a transformation function that prepends the row given to any row source in a query
+// plan. Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
+// result rows are prepended with the scope row.
+func prependScopeRowInPlan(scopeRow sql.Row) func(n sql.Node) (sql.Node, error) {
+	return func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *Project, sql.Table:
+			return &prependNode{
+				UnaryNode: UnaryNode{Child: n},
+				row:       scopeRow,
+			}, nil
+		default:
+			return n, nil
+		}
+	}
+}
+
 // EvalMultiple returns all rows returned by a subquery.
-// TODO: give row context
-func (s *Subquery) EvalMultiple(ctx *sql.Context) ([]interface{}, error) {
-	iter, err := s.Query.RowIter(ctx, nil)
+func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
+	q, err := TransformUp(s.Query, prependScopeRowInPlan(row))
+	if err != nil {
+		return nil, err
+	}
+
+	iter, err := q.RowIter(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -165,9 +166,16 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context) ([]interface{}, error) {
 		return nil, nil
 	}
 
+	// TODO: fix this. This should always be true, but isn't, because we don't consistently pass the scope row in all
+	//  parts of the engine.
+	col := 0
+	if len(row) < len(rows[0]) {
+		col = len(row)
+	}
+
 	var result = make([]interface{}, len(rows))
 	for i, row := range rows {
-		result[i] = row[0]
+		result[i] = row[col]
 	}
 
 	return result, nil
@@ -214,12 +222,5 @@ func (s *Subquery) Children() []sql.Expression {
 func (s *Subquery) WithQuery(node sql.Node) *Subquery {
 	ns := *s
 	ns.Query = node
-	return &ns
-}
-
-// WithScopeLen returns the subquery with the scope length changed.
-func (s *Subquery) WithScopeLen(length int) *Subquery {
-	ns := *s
-	ns.ScopeLen = length
 	return &ns
 }

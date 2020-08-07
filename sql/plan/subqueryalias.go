@@ -71,3 +71,10 @@ func (n SubqueryAlias) String() string {
 	_ = pr.WriteChildren(n.Child.String())
 	return pr.String()
 }
+
+func (n SubqueryAlias) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("SubqueryAlias(%s)", n.name)
+	_ = pr.WriteChildren(sql.DebugString(n.Child))
+	return pr.String()
+}

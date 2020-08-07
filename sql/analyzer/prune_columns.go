@@ -25,7 +25,9 @@ func (uc usedColumns) has(table, col string) bool {
 	return ok
 }
 
-// pruneColumns removes unneeded columns from Project and GroupBy nodes.
+// pruneColumns removes unneeded columns from Project and GroupBy nodes. It also rewrites field indexes as necessary,
+// even if no columns were pruned. This is especially important for subqueries -- this function handles fixing field
+// indexes when the outer scope schema changes as a result of other analyzer functions.
 func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if !n.Resolved() {
 		return n, nil
@@ -49,7 +51,6 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 	}
 
 	columns := columnsUsedByNode(n)
-
 	findUsedColumns(columns, n)
 
 	n, err := pruneUnusedColumns(n, columns)
@@ -133,6 +134,7 @@ func findUsedColumns(columns usedColumns, n sql.Node) {
 			addUsedColumns(columns, n.GroupByExprs)
 			return true
 		case *plan.SubqueryAlias:
+			// TODO: inspect subquery for references to outer scope nodes
 			return false
 		}
 
@@ -148,6 +150,11 @@ func findUsedColumns(columns usedColumns, n sql.Node) {
 func addUsedProjectColumns(columns usedColumns, projection []sql.Expression) {
 	var candidates []sql.Expression
 	for _, e := range projection {
+		// TODO: not all of the columns mentioned in the subquery are relevant, just the ones that reference the outer scope
+		if sub, ok := e.(*plan.Subquery); ok {
+			findUsedColumns(columns, sub.Query)
+			continue
+		}
 		// Only check for expressions that are not directly a GetField. This
 		// is because in a projection we only care about those that were used
 		// to compute new columns, such as aliases and so on. The fields that

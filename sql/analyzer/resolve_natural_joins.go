@@ -23,7 +23,7 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		case *plan.NaturalJoin:
 			return resolveNaturalJoin(n, replacements)
 		case sql.Expressioner:
-			return replaceExpressions(node, replacements, tableAliases)
+			return replaceExpressionsForNaturalJoin(node, replacements, tableAliases)
 		default:
 			return n, nil
 		}
@@ -112,7 +112,7 @@ func findCol(s sql.Schema, name string) (int, *sql.Column) {
 	return -1, nil
 }
 
-func replaceExpressions(
+func replaceExpressionsForNaturalJoin(
 	n sql.Node,
 	replacements map[tableCol]tableCol,
 	tableAliases TableAliases,

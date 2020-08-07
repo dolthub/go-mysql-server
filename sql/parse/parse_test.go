@@ -1154,7 +1154,7 @@ var fixtures = map[string]sql.Node{
 				plan.NewSubquery(plan.NewProject(
 					[]sql.Expression{expression.NewUnresolvedColumn("j")},
 					plan.NewUnresolvedTable("baz", ""),
-				)),
+				), "select j from baz"),
 			),
 			plan.NewUnresolvedTable("foo", ""),
 		),
@@ -1167,7 +1167,7 @@ var fixtures = map[string]sql.Node{
 				plan.NewSubquery(plan.NewProject(
 					[]sql.Expression{expression.NewUnresolvedColumn("j")},
 					plan.NewUnresolvedTable("baz", ""),
-				)),
+				), "select j from baz"),
 			),
 			plan.NewUnresolvedTable("foo", ""),
 		),

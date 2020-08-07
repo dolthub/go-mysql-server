@@ -19,11 +19,6 @@ func NewMin(e sql.Expression) *Min {
 	return &Min{expression.UnaryExpression{Child: e}}
 }
 
-// Resolved implements the Resolvable interface.
-func (m *Min) Resolved() bool {
-	return m.Child.Resolved()
-}
-
 // Type returns the resultant type of the aggregation.
 func (m *Min) Type() sql.Type {
 	return m.Child.Type()
