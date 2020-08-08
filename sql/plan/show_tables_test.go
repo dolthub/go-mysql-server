@@ -14,7 +14,7 @@ func TestShowTables(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	unresolvedShowTables := NewShowTables(sql.UnresolvedDatabase(""), false)
+	unresolvedShowTables := NewShowTables(sql.UnresolvedDatabase(""), false, nil)
 
 	require.False(unresolvedShowTables.Resolved())
 	require.Nil(unresolvedShowTables.Children())
@@ -24,7 +24,7 @@ func TestShowTables(t *testing.T) {
 	db.AddTable("test2", memory.NewTable("test2", nil))
 	db.AddTable("test3", memory.NewTable("test3", nil))
 
-	resolvedShowTables := NewShowTables(db, false)
+	resolvedShowTables := NewShowTables(db, false, nil)
 	require.True(resolvedShowTables.Resolved())
 	require.Nil(resolvedShowTables.Children())
 

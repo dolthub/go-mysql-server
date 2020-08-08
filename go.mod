@@ -30,4 +30,6 @@ require (
 	gopkg.in/yaml.v2 v2.2.4
 )
 
+replace github.com/liquidata-inc/vitess => ../vitess
+
 go 1.13

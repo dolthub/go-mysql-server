@@ -10,6 +10,7 @@ import (
 type ShowTables struct {
 	db   sql.Database
 	Full bool
+	AsOf sql.Expression
 }
 
 var showTablesSchema = sql.Schema{
@@ -22,14 +23,16 @@ var showTablesFullSchema = sql.Schema{
 }
 
 // NewShowTables creates a new show tables node given a database.
-func NewShowTables(database sql.Database, full bool) *ShowTables {
+func NewShowTables(database sql.Database, full bool, asOf sql.Expression) *ShowTables {
 	return &ShowTables{
 		db:   database,
 		Full: full,
+		AsOf: asOf,
 	}
 }
 
 var _ sql.Databaser = (*ShowTables)(nil)
+var _ sql.Expressioner = (*ShowTables)(nil)
 
 // Database implements the sql.Databaser interface.
 func (p *ShowTables) Database() sql.Database {
@@ -109,3 +112,21 @@ func (p *ShowTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (p ShowTables) String() string {
 	return "ShowTables"
 }
+
+func (p *ShowTables) Expressions() []sql.Expression {
+	if p.AsOf == nil {
+		return nil
+	}
+	return []sql.Expression{p.AsOf}
+}
+
+func (p *ShowTables) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(exprs), 1)
+	}
+
+	np := *p
+	np.AsOf = exprs[0]
+	return &np, nil
+}
+
