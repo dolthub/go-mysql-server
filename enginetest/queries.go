@@ -2930,6 +2930,18 @@ var VersionedQueries = []QueryTest{
 			{int64(3), "third row, 2"},
 		},
 	},
+	{
+		"SHOW TABLES AS OF '2019-01-02' LIKE 'myhistorytable'",
+		[]sql.Row{
+			{"myhistorytable"},
+		},
+	},
+	{
+		"SHOW TABLES FROM mydb AS OF '2019-01-02' LIKE 'myhistorytable'",
+		[]sql.Row{
+			{"myhistorytable"},
+		},
+	},
 }
 
 var InfoSchemaQueries = []QueryTest{
