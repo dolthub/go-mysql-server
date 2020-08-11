@@ -75,10 +75,10 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 		if err == nil {
 			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-				sql.NewRow(0, 0, 0, 0, 0, 0),
-				sql.NewRow(1, 10, 10, 10, 10, 10),
-				sql.NewRow(2, 20, 20, 20, 20, 20),
-				sql.NewRow(3, 30, 30, 30, 30, 30))
+				sql.NewRow(0, 0, 1, 2, 3, 4),
+				sql.NewRow(1, 10, 11, 12, 13, 14),
+				sql.NewRow(2, 20, 21, 22, 23, 24),
+				sql.NewRow(3, 30, 31, 32, 33, 34))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "one_pk", err)
 		}
@@ -97,10 +97,10 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 		if err == nil {
 			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-				sql.NewRow(0, 0, 0, 0, 0, 0, 0),
-				sql.NewRow(0, 1, 10, 10, 10, 10, 10),
-				sql.NewRow(1, 0, 20, 20, 20, 20, 20),
-				sql.NewRow(1, 1, 30, 30, 30, 30, 30))
+				sql.NewRow(0, 0, 0, 1, 2, 3, 4),
+				sql.NewRow(0, 1, 10, 11, 12, 13, 14),
+				sql.NewRow(1, 0, 20, 21, 22, 23, 24),
+				sql.NewRow(1, 1, 30, 31, 32, 33, 34))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "two_pk", err)
 		}

@@ -57,8 +57,8 @@ var QueryTests = []QueryTest{
 	{
 		"SELECT pk DIV 2, SUM(c3) FROM one_pk GROUP BY 1 ORDER BY 1",
 		[]sql.Row{
-			{int64(0), float64(10)},
-			{int64(1), float64(50)},
+			{int64(0), float64(14)},
+			{int64(1), float64(54)},
 		},
 	},
 	{
@@ -1990,18 +1990,18 @@ var QueryTests = []QueryTest{
 		`SELECT pk, (SELECT c3 FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1`,
 		[]sql.Row{
 			{0, nil},
-			{1, 0},
-			{2, 10},
-			{3, 20},
+			{1, 2},
+			{2, 12},
+			{3, 22},
 		},
 	},
 	{
 		`SELECT pk, (SELECT c5 FROM one_pk WHERE c5 < opk.c5 ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1`,
 		[]sql.Row{
 			{0, nil},
-			{1, 0},
-			{2, 10},
-			{3, 20},
+			{1, 4},
+			{2, 14},
+			{3, 24},
 		},
 	},
 	{
@@ -2017,9 +2017,9 @@ var QueryTests = []QueryTest{
 		`SELECT pk, (SELECT c3 FROM one_pk WHERE c4 < opk.c2 ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1;`,
 		[]sql.Row{
 			{0, nil},
-			{1, 0},
-			{2, 10},
-			{3, 20},
+			{1, 2},
+			{2, 12},
+			{3, 22},
 		},
 	},
 	{
@@ -2029,9 +2029,9 @@ var QueryTests = []QueryTest{
 					FROM one_pk opk ORDER BY 1;`,
 		[]sql.Row{
 			{0, nil, nil},
-			{1, 0, 1},
-			{2, 10, 11},
-			{3, 20, 21},
+			{1, 2, 5},
+			{2, 12, 15},
+			{3, 22, 25},
 		},
 	},
 	{
@@ -2330,8 +2330,8 @@ var QueryTests = []QueryTest{
 	},
 	{
 		`SELECT pk,
-						(SELECT sum(c1) FROM two_pk WHERE c1 IN (SELECT c4 FROM two_pk WHERE c3 > opk.c5)) AS sum,
-						(SELECT sum(c1) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE c1 < opk.c2)) AS sum2
+						(SELECT sum(c1) FROM two_pk WHERE c1 + 3 IN (SELECT c4 FROM two_pk WHERE c3 > opk.c5)) AS sum,
+						(SELECT sum(c1) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE c1 + 1 < opk.c2)) AS sum2
 					FROM one_pk opk ORDER BY pk`,
 		[]sql.Row{
 			{0, 60.0, nil},
@@ -2450,36 +2450,36 @@ var QueryTests = []QueryTest{
 	{
 		"SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE pk1=1 AND pk2=1 ORDER BY 1,2",
 		[]sql.Row{
-			{0, 30},
-			{10, 30},
-			{20, 30},
-			{30, 30},
+			{0, 31},
+			{10, 31},
+			{20, 31},
+			{30, 31},
 		},
 	},
 	{
 		"SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE t2.pk1=1 AND t2.pk2=1 ORDER BY 1,2",
 		[]sql.Row{
-			{0, 30},
-			{10, 30},
-			{20, 30},
-			{30, 30},
+			{0, 31},
+			{10, 31},
+			{20, 31},
+			{30, 31},
 		},
 	},
 	{
 		"SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE pk1=1 OR pk2=1 ORDER BY 1,2",
 		[]sql.Row{
-			{0, 10},
-			{0, 20},
-			{0, 30},
-			{10, 10},
-			{10, 20},
-			{10, 30},
-			{20, 10},
-			{20, 20},
-			{20, 30},
-			{30, 10},
-			{30, 20},
-			{30, 30},
+			{0, 11},
+			{0, 21},
+			{0, 31},
+			{10, 11},
+			{10, 21},
+			{10, 31},
+			{20, 11},
+			{20, 21},
+			{20, 31},
+			{30, 11},
+			{30, 21},
+			{30, 31},
 		},
 	},
 	{
@@ -2515,46 +2515,46 @@ var QueryTests = []QueryTest{
 	{
 		"SELECT one_pk.c5,pk1,pk2 FROM one_pk,two_pk WHERE pk=pk1 ORDER BY 1,2,3",
 		[]sql.Row{
-			{0, 0, 0},
-			{0, 0, 1},
-			{10, 1, 0},
-			{10, 1, 1},
+			{4, 0, 0},
+			{4, 0, 1},
+			{14, 1, 0},
+			{14, 1, 1},
 		},
 	},
 	{
 		"SELECT opk.c5,pk1,pk2 FROM one_pk opk, two_pk tpk WHERE pk=pk1 ORDER BY 1,2,3",
 		[]sql.Row{
-			{0, 0, 0},
-			{0, 0, 1},
-			{10, 1, 0},
-			{10, 1, 1},
+			{4, 0, 0},
+			{4, 0, 1},
+			{14, 1, 0},
+			{14, 1, 1},
 		},
 	},
 	{
 		"SELECT one_pk.c5,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
 		[]sql.Row{
-			{0, 0, 0},
-			{0, 0, 1},
-			{10, 1, 0},
-			{10, 1, 1},
+			{4, 0, 0},
+			{4, 0, 1},
+			{14, 1, 0},
+			{14, 1, 1},
 		},
 	},
 	{
 		"SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1,2,3",
 		[]sql.Row{
-			{0, 0, 0},
-			{0, 0, 1},
-			{10, 1, 0},
-			{10, 1, 1},
+			{4, 0, 0},
+			{4, 0, 1},
+			{14, 1, 0},
+			{14, 1, 1},
 		},
 	},
 	{
 		"SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3",
 		[]sql.Row{
-			{0, 0, 0},
-			{0, 0, 1},
-			{10, 1, 0},
-			{10, 1, 1},
+			{4, 0, 0},
+			{4, 0, 1},
+			{14, 1, 0},
+			{14, 1, 1},
 		},
 	},
 	{
