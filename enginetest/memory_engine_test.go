@@ -179,6 +179,10 @@ func TestDeleteFromErrors(t *testing.T) {
 	enginetest.TestDeleteErrors(t, newDefaultMemoryHarness())
 }
 
+func TestScripts(t *testing.T) {
+	enginetest.TestScripts(t, newDefaultMemoryHarness())
+}
+
 func TestCreateTable(t *testing.T) {
 	enginetest.TestCreateTable(t, newDefaultMemoryHarness())
 }

@@ -503,6 +503,34 @@ func TestDeleteErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func TestScripts(t *testing.T, harness Harness) {
+	for _, script := range ScriptTests {
+		t.Run(script.Name, func(t *testing.T) {
+			myDb := harness.NewDatabase("mydb")
+			databases := []sql.Database{myDb}
+
+			var idxDriver sql.IndexDriver
+			if ih, ok := harness.(IndexDriverHarness); ok {
+				idxDriver = ih.IndexDriver(databases)
+			}
+			e := NewEngineWithDbs(t, harness, databases, idxDriver)
+
+			for _, statement := range script.SetUpScript {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(statement) {
+						t.Skip()
+					}
+				}
+
+				_, _, err := e.Query(NewContext(harness), statement)
+				require.NoError(t, err)
+			}
+
+			TestQuery(t, harness, e, script.Query, script.Expected)
+		})
+	}
+}
+
 func TestViews(t *testing.T, harness Harness) {
 	require := require.New(t)
 
