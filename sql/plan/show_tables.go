@@ -10,6 +10,7 @@ import (
 type ShowTables struct {
 	db   sql.Database
 	Full bool
+	AsOf sql.Expression
 }
 
 var showTablesSchema = sql.Schema{
@@ -22,14 +23,16 @@ var showTablesFullSchema = sql.Schema{
 }
 
 // NewShowTables creates a new show tables node given a database.
-func NewShowTables(database sql.Database, full bool) *ShowTables {
+func NewShowTables(database sql.Database, full bool, asOf sql.Expression) *ShowTables {
 	return &ShowTables{
 		db:   database,
 		Full: full,
+		AsOf: asOf,
 	}
 }
 
 var _ sql.Databaser = (*ShowTables)(nil)
+var _ sql.Expressioner = (*ShowTables)(nil)
 
 // Database implements the sql.Databaser interface.
 func (p *ShowTables) Database() sql.Database {
@@ -46,7 +49,7 @@ func (p *ShowTables) WithDatabase(db sql.Database) (sql.Node, error) {
 // Resolved implements the Resolvable interface.
 func (p *ShowTables) Resolved() bool {
 	_, ok := p.db.(sql.UnresolvedDatabase)
-	return !ok
+	return !ok && expressionsResolved(p.Expressions()...)
 }
 
 // Children implements the Node interface.
@@ -65,10 +68,29 @@ func (p *ShowTables) Schema() sql.Schema {
 
 // RowIter implements the Node interface.
 func (p *ShowTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	tableNames, err := p.db.GetTableNames(ctx)
+	var tableNames []string
 
-	if err != nil {
-		return nil, err
+	// TODO: this entire analysis should really happen in the analyzer, as opposed to at execution time
+	if p.AsOf != nil {
+		if vdb, ok := p.db.(sql.VersionedDatabase); ok {
+			asOf, err := p.AsOf.Eval(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
+
+			tableNames, err = vdb.GetTableNamesAsOf(ctx, asOf)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, sql.ErrAsOfNotSupported.New(p.db.Name())
+		}
+	} else {
+		var err error
+		tableNames, err = p.db.GetTableNames(ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	sort.Strings(tableNames)
@@ -82,6 +104,8 @@ func (p *ShowTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		rows = append(rows, row)
 	}
 
+	// TODO: currently there is no way to see views AS OF a particular time, because they are always defined in the
+	//  context's view registry, rather than through a true integration point.
 	for _, view := range ctx.ViewsInDatabase(p.db.Name()) {
 		row := sql.Row{view.Name()}
 		if p.Full {
@@ -109,3 +133,23 @@ func (p *ShowTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (p ShowTables) String() string {
 	return "ShowTables"
 }
+
+// Expressions implements sql.Expressioner
+func (p *ShowTables) Expressions() []sql.Expression {
+	if p.AsOf == nil {
+		return nil
+	}
+	return []sql.Expression{p.AsOf}
+}
+
+// WithExpressions implements sql.Expressioner
+func (p *ShowTables) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(exprs), 1)
+	}
+
+	np := *p
+	np.AsOf = exprs[0]
+	return &np, nil
+}
+

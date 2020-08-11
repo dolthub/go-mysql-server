@@ -1018,53 +1018,72 @@ var fixtures = map[string]sql.Node{
 		true,
 		[]string{"col1", "col2"},
 	),
-	`SHOW TABLES`:               plan.NewShowTables(sql.UnresolvedDatabase(""), false),
-	`SHOW FULL TABLES`:          plan.NewShowTables(sql.UnresolvedDatabase(""), true),
-	`SHOW TABLES FROM foo`:      plan.NewShowTables(sql.UnresolvedDatabase("foo"), false),
-	`SHOW TABLES IN foo`:        plan.NewShowTables(sql.UnresolvedDatabase("foo"), false),
-	`SHOW FULL TABLES FROM foo`: plan.NewShowTables(sql.UnresolvedDatabase("foo"), true),
-	`SHOW FULL TABLES IN foo`:   plan.NewShowTables(sql.UnresolvedDatabase("foo"), true),
+	`SHOW TABLES`:               plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
+	`SHOW FULL TABLES`:          plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
+	`SHOW TABLES FROM foo`:      plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, nil),
+	`SHOW TABLES IN foo`:        plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, nil),
+	`SHOW FULL TABLES FROM foo`: plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, nil),
+	`SHOW FULL TABLES IN foo`:   plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, nil),
+	`SHOW TABLES AS OF 'abc'`:               plan.NewShowTables(sql.UnresolvedDatabase(""), false, expression.NewLiteral("abc", sql.LongText)),
+	`SHOW FULL TABLES AS OF 'abc'`:          plan.NewShowTables(sql.UnresolvedDatabase(""), true, expression.NewLiteral("abc", sql.LongText)),
+	`SHOW TABLES FROM foo AS OF 'abc'`:      plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, expression.NewLiteral("abc", sql.LongText)),
+	`SHOW FULL TABLES FROM foo AS OF 'abc'`: plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, expression.NewLiteral("abc", sql.LongText)),
+	`SHOW FULL TABLES IN foo AS OF 'abc'`:   plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, expression.NewLiteral("abc", sql.LongText)),
 	`SHOW TABLES LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Table"),
 			expression.NewLiteral("foo", sql.LongText),
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase(""), false),
+		plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
+	),
+	`SHOW TABLES AS OF 'abc' LIKE 'foo'`: plan.NewFilter(
+		expression.NewLike(
+			expression.NewUnresolvedColumn("Table"),
+			expression.NewLiteral("foo", sql.LongText),
+		),
+		plan.NewShowTables(sql.UnresolvedDatabase(""), false, expression.NewLiteral("abc", sql.LongText)),
 	),
 	"SHOW TABLES WHERE `Table` = 'foo'": plan.NewFilter(
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("Table"),
 			expression.NewLiteral("foo", sql.LongText),
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase(""), false),
+		plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
 	),
 	`SHOW FULL TABLES LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Table"),
 			expression.NewLiteral("foo", sql.LongText),
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase(""), true),
+		plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
 	),
 	"SHOW FULL TABLES WHERE `Table` = 'foo'": plan.NewFilter(
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("Table"),
 			expression.NewLiteral("foo", sql.LongText),
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase(""), true),
+		plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
 	),
 	`SHOW FULL TABLES FROM bar LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Table"),
 			expression.NewLiteral("foo", sql.LongText),
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true),
+		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, nil),
+	),
+	`SHOW FULL TABLES FROM bar AS OF 'abc' LIKE 'foo'`: plan.NewFilter(
+		expression.NewLike(
+			expression.NewUnresolvedColumn("Table"),
+			expression.NewLiteral("foo", sql.LongText),
+		),
+		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, expression.NewLiteral("abc", sql.LongText)),
 	),
 	"SHOW FULL TABLES FROM bar WHERE `Table` = 'foo'": plan.NewFilter(
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("Table"),
 			expression.NewLiteral("foo", sql.LongText),
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true),
+		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, nil),
 	),
 	`SELECT DISTINCT foo, bar FROM foo;`: plan.NewDistinct(
 		plan.NewProject(

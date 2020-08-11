@@ -16,6 +16,14 @@ package enginetest_test
 
 import (
 	"context"
+	"fmt"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function"
+	"github.com/liquidata-inc/go-mysql-server/sql/parse"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
+	"github.com/pmezard/go-difflib/difflib"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/src-d/go-errors.v1"
 	"testing"
 
 	"github.com/opentracing/opentracing-go"
@@ -198,4 +206,107 @@ func (l *lockableTable) Lock(ctx *sql.Context, write bool) error {
 func (l *lockableTable) Unlock(ctx *sql.Context, id uint32) error {
 	l.unlocks++
 	return nil
+}
+
+type analyzerTestCase struct {
+	name string
+	query string
+	planGenerator func (*testing.T, *sqle.Engine) sql.Node
+	err *errors.Kind
+}
+
+// Grab bag tests for testing analysis of various nodes that are difficult to verify through other means
+func TestAnalyzer(t *testing.T) {
+	testCases := []analyzerTestCase{
+		{
+			name:  "show tables as of",
+			query: "SHOW TABLES AS OF 'abc123'",
+			planGenerator: func(t *testing.T, engine *sqle.Engine) sql.Node {
+				db, err := engine.Catalog.Database("mydb")
+				require.NoError(t, err)
+				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
+			},
+		},
+		{
+			name:  "show tables as of, from",
+			query: "SHOW TABLES FROM foo AS OF 'abc123'",
+			planGenerator: func(t *testing.T, engine *sqle.Engine) sql.Node {
+				db, err := engine.Catalog.Database("foo")
+				require.NoError(t, err)
+				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
+			},
+		},
+		{
+			name:  "show tables as of, function call",
+			query: "SHOW TABLES FROM foo AS OF GREATEST('abc123', 'cde456')",
+			planGenerator: func(t *testing.T, engine *sqle.Engine) sql.Node {
+				db, err := engine.Catalog.Database("foo")
+				require.NoError(t, err)
+				greatest, err := function.NewGreatest(
+					expression.NewLiteral("abc123", sql.LongText),
+					expression.NewLiteral("cde456", sql.LongText),
+				)
+				require.NoError(t, err)
+				return plan.NewShowTables(db, false, greatest)
+			},
+		},
+		{
+			name:  "show tables as of, timestamp",
+			query: "SHOW TABLES FROM foo AS OF TIMESTAMP('20200101:120000Z')",
+			planGenerator: func(t *testing.T, engine *sqle.Engine) sql.Node {
+				db, err := engine.Catalog.Database("foo")
+				require.NoError(t, err)
+				timestamp, err := function.NewTimestamp(
+					expression.NewLiteral("20200101:120000Z", sql.LongText),
+				)
+				convert := expression.NewConvert(timestamp, "datetime")
+				require.NoError(t, err)
+				return plan.NewShowTables(db, false, convert)
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			harness := newDefaultMemoryHarness()
+			e := enginetest.NewEngine(t, harness)
+
+			ctx := enginetest.NewContext(harness)
+			parsed, err := parse.Parse(ctx, tt.query)
+			require.NoError(t, err)
+
+			analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
+			if tt.err != nil {
+				require.Error(t, err)
+				assert.True(t, tt.err.Is(err))
+			} else {
+				assertNodesEqualWithDiff(t, tt.planGenerator(t, e), analyzed)
+			}
+		})
+	}
+}
+
+func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
+	if x, ok := actual.(*plan.QueryProcess); ok {
+		actual = x.Child
+	}
+
+	if !assert.Equal(t, expected, actual) {
+		expectedStr := sql.DebugString(expected)
+		actualStr := sql.DebugString(actual)
+		diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+			A:        difflib.SplitLines(expectedStr),
+			B:        difflib.SplitLines(actualStr),
+			FromFile: "expected",
+			FromDate: "",
+			ToFile:   "actual",
+			ToDate:   "",
+			Context:  1,
+		})
+		require.NoError(t, err)
+
+		if len(diff) > 0 {
+			fmt.Println(diff)
+		}
+	}
 }

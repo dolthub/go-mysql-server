@@ -292,7 +292,9 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case sqlparser.KeywordString(sqlparser.TABLES):
 		var dbName string
 		var filter sql.Expression
+		var asOf sql.Expression
 		var full bool
+
 		if s.ShowTablesOpt != nil {
 			dbName = s.ShowTablesOpt.DbName
 			full = s.ShowTablesOpt.Full != ""
@@ -311,9 +313,17 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 					)
 				}
 			}
+
+			if s.ShowTablesOpt.AsOf != nil {
+				var err error
+				asOf, err = exprToExpression(ctx, s.ShowTablesOpt.AsOf)
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
 
-		var node sql.Node = plan.NewShowTables(sql.UnresolvedDatabase(dbName), full)
+		var node sql.Node = plan.NewShowTables(sql.UnresolvedDatabase(dbName), full, asOf)
 		if filter != nil {
 			node = plan.NewFilter(filter, node)
 		}
