@@ -49,9 +49,13 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	if left == nil {
-		return nil, err
-	}
+	// The NULL handling for IN expressions is tricky. According to
+	// https://dev.mysql.com/doc/refman/8.0/en/comparison-operators.html#operator_in:
+	// To comply with the SQL standard, IN() returns NULL not only if the expression on the left hand side is NULL, but
+	// also if no match is found in the list and one of the expressions in the list is NULL.
+	// However, there's a strange edge case. NULL IN (empty list) return 0, not NULL.
+	leftNull := left == nil
+	rightNull := false
 
 	left, err = typ.Convert(left)
 	if err != nil {
@@ -71,9 +75,18 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		for _, val := range values {
+			// If there are any values in the right-hand side, and the left-hand side is nil, IN evaluates to NULL
+			if leftNull {
+				return nil, nil
+			}
+
 			val, err = typ.Convert(val)
 			if err != nil {
 				return nil, err
+			}
+
+			if !rightNull && val == nil {
+				rightNull = true
 			}
 
 			cmp, err := typ.Compare(left, val)
@@ -84,6 +97,10 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			if cmp == 0 {
 				return true, nil
 			}
+		}
+
+		if rightNull {
+			return nil, nil
 		}
 
 		return false, nil
@@ -113,91 +130,7 @@ func (in *InSubquery) Children() []sql.Expression {
 	return []sql.Expression{in.Left, in.Right}
 }
 
-// NotInSubquery is an expression that checks an expression is not in the result of a subquery.
-type NotInSubquery struct {
-	expression.BinaryExpression
-}
-
-var _ sql.Expression = (*NotInSubquery)(nil)
-
-func (in *NotInSubquery) Type() sql.Type {
-	return sql.Boolean
-}
-
 // NewNotInSubquery creates a new NotInSubquery expression.
-func NewNotInSubquery(left sql.Expression, right sql.Expression) *NotInSubquery {
-	return &NotInSubquery{expression.BinaryExpression{Left: left, Right: right}}
-}
-
-// Eval implements the Expression interface.
-func (in *NotInSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	typ := in.Left.Type().Promote()
-	leftElems := sql.NumColumns(typ)
-	left, err := in.Left.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if left == nil {
-		return nil, err
-	}
-
-	left, err = typ.Convert(left)
-	if err != nil {
-		return nil, err
-	}
-
-	switch right := in.Right.(type) {
-	case *Subquery:
-		if leftElems > 1 {
-			return nil, expression.ErrInvalidOperandColumns.New(leftElems, 1)
-		}
-
-		typ := right.Type()
-		values, err := right.EvalMultiple(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, val := range values {
-			val, err = typ.Convert(val)
-			if err != nil {
-				return nil, err
-			}
-
-			cmp, err := typ.Compare(left, val)
-			if err != nil {
-				return nil, err
-			}
-
-			if cmp == 0 {
-				return false, nil
-			}
-		}
-
-		return true, nil
-	default:
-		return nil, expression.ErrUnsupportedInOperand.New(right)
-	}
-}
-
-// WithChildren implements the Expression interface.
-func (in *NotInSubquery) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(in, len(children), 2)
-	}
-	return NewNotInSubquery(children[0], children[1]), nil
-}
-
-func (in *NotInSubquery) String() string {
-	return fmt.Sprintf("%s NOT IN %s", in.Left, in.Right)
-}
-
-func (in *NotInSubquery) DebugString() string {
-	return fmt.Sprintf("%s NOT IN %s", sql.DebugString(in.Left), sql.DebugString(in.Right))
-}
-
-// Children implements the Expression interface.
-func (in *NotInSubquery) Children() []sql.Expression {
-	return []sql.Expression{in.Left, in.Right}
+func NewNotInSubquery(left sql.Expression, right sql.Expression) sql.Expression {
+	return expression.NewNot(NewInSubquery(left, right))
 }

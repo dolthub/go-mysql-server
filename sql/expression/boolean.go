@@ -46,6 +46,10 @@ func (e *Not) String() string {
 	return fmt.Sprintf("NOT(%s)", e.Child)
 }
 
+func (e *Not) DebugString() string {
+	return fmt.Sprintf("NOT(%s)", sql.DebugString(e.Child))
+}
+
 // WithChildren implements the Expression interface.
 func (e *Not) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {

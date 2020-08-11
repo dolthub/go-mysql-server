@@ -261,6 +261,46 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{int64(1)}, {int64(3)}},
 	},
 	{
+		"SELECT NULL IN (SELECT i FROM emptytable)",
+		[]sql.Row{{false}},
+	},
+	{
+		"SELECT NULL NOT IN (SELECT i FROM emptytable)",
+		[]sql.Row{{true}},
+	},
+	{
+		"SELECT NULL IN (SELECT i FROM mytable)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT NULL NOT IN (SELECT i FROM mytable)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT NULL IN (SELECT i2 FROM niltable)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT NULL NOT IN (SELECT i2 FROM niltable)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT 2 IN (SELECT i2 FROM niltable)",
+		[]sql.Row{{true}},
+	},
+	{
+		"SELECT 2 NOT IN (SELECT i2 FROM niltable)",
+		[]sql.Row{{false}},
+	},
+	{
+		"SELECT 100 IN (SELECT i2 FROM niltable)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT 100 NOT IN (SELECT i2 FROM niltable)",
+		[]sql.Row{{nil}},
+	},
+	{
 		"SELECT i FROM mytable WHERE i IN (1, 3)",
 		[]sql.Row{{int64(1)}, {int64(3)}},
 	},

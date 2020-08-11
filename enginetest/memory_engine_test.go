@@ -74,20 +74,11 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
 	var test enginetest.QueryTest
 
 	test = enginetest.QueryTest{
-		`SELECT pk,
-						(SELECT sum(c1) FROM two_pk WHERE c1 IN (SELECT c4 FROM two_pk WHERE c3 > opk.c5)) AS sum,
-						(SELECT avg(c1) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE c1 < opk.c2)) AS avg
-					FROM one_pk opk ORDER BY pk`,
-		[]sql.Row{
-			{0, 60.0, nil},
-			{1, 50.0, 10.0},
-			{2, 30.0, 15.0},
-			{3, nil, 15.0},
-		},
+		"SELECT NULL IN (SELECT i FROM emptytable)",
+		[]sql.Row{{false}},
 	}
 
 	fmt.Sprintf("%v", test)
