@@ -29,6 +29,7 @@ type QueryTest struct {
 	Expected []sql.Row
 }
 
+// TODO: need queries that exercise multi-column indexes better, for all comparison (=, <, >, etc)
 var QueryTests = []QueryTest{
 	{
 		"SELECT * FROM mytable;",
