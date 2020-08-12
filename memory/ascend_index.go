@@ -39,33 +39,34 @@ func (l *AscendIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
 }
 
 func (l *AscendIndexLookup) EvalExpression() sql.Expression {
-	if len(l.Index.ColumnExpressions()) > 1 {
-		panic("Ascend index unsupported for multi-column indexes")
+	var columnExprs []sql.Expression
+	for i, indexExpr := range l.Index.ColumnExpressions() {
+		var ltExpr, gtExpr sql.Expression
+		hasLt := len(l.Lt) > 0
+		hasGte := len(l.Gte) > 0
+
+		if hasLt {
+			lt, typ := getType(l.Lt[i])
+			ltExpr = expression.NewLessThan(indexExpr, expression.NewLiteral(lt, typ))
+		}
+		if hasGte {
+			gte, typ := getType(l.Gte[i])
+			gtExpr = expression.NewGreaterThanOrEqual(indexExpr, expression.NewLiteral(gte, typ))
+		}
+
+		switch {
+		case hasLt && hasGte:
+			columnExprs = append(columnExprs, ltExpr, gtExpr)
+		case hasLt:
+			columnExprs = append(columnExprs, ltExpr)
+		case hasGte:
+			columnExprs = append(columnExprs, gtExpr)
+		default:
+			panic("Either Lt or Gte must be set")
+		}
 	}
 
-	var ltExpr, gtExpr sql.Expression
-	hasLt := len(l.Lt) > 0
-	hasGte := len(l.Gte) > 0
-
-	if hasLt {
-		lt, typ := getType(l.Lt[0])
-		ltExpr = expression.NewLessThan(l.Index.ColumnExpressions()[0], expression.NewLiteral(lt, typ))
-	}
-	if hasGte {
-		gte, typ := getType(l.Gte[0])
-		gtExpr = expression.NewGreaterThanOrEqual(l.Index.ColumnExpressions()[0], expression.NewLiteral(gte, typ))
-	}
-
-	switch {
-	case hasLt && hasGte:
-		return and(ltExpr, gtExpr)
-	case hasLt:
-		return ltExpr
-	case hasGte:
-		return gtExpr
-	default:
-		panic("Either Lt or Gte must be set")
-	}
+	return and(columnExprs...)
 }
 
 func (*AscendIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {

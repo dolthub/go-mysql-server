@@ -776,7 +776,7 @@ func extractColumnExpr(e sql.Expression) (string, *columnExpr) {
 		cmp := e.(expression.Comparer)
 		left, right := cmp.Left(), cmp.Right()
 		if !isEvaluable(right) {
-			left, right = right, left
+			left, right, e = swapTermsOfExpression(cmp)
 		}
 
 		if !isEvaluable(right) {
