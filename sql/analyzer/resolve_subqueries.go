@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
@@ -55,5 +56,35 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 
 		return s.WithQuery(analyzed), nil
+	})
+}
+
+// cacheSubqueryResults determines whether it's safe to cache the results for any subquery expressions. Caching
+// subquery results is safe in the case that no outer scope columns are referenced.
+func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+		s, ok := e.(*plan.Subquery)
+		if !ok || s.Resolved() {
+			return e, nil
+		}
+
+		scopeLen := scope.newScope(n).SchemaLength()
+		outerScopeFound := false
+
+		plan.InspectExpressions(s.Query, func(expr sql.Expression) bool {
+			if gf, ok := expr.(*expression.GetField); ok {
+				if gf.Index() < scopeLen {
+					outerScopeFound = true
+					return false
+				}
+			}
+			return true
+		})
+
+		if !outerScopeFound {
+			return s.WithCachedResults(), nil
+		}
+
+		return s, nil
 	})
 }

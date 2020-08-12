@@ -32,6 +32,12 @@ type Subquery struct {
 	Query sql.Node
 	// The original verbatim select statement for this subquery
 	QueryString string
+	// Whether it's safe to cache result values for this subquery
+	canCacheResults bool
+	// Whether results have been cached
+	resultsCached bool
+	// Cached results, if any
+	cache interface{}
 }
 
 // NewSubquery returns a new subquery expression.
@@ -90,6 +96,10 @@ func (p *prependNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // Eval implements the Expression interface.
 func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if s.resultsCached {
+		return s.cache, nil
+	}
+
 	scopeRow := row
 
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
@@ -125,7 +135,12 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		col = len(scopeRow)
 	}
 
-	return rows[0][col], nil
+	result := rows[0][col]
+	if s.canCacheResults {
+		s.cache, s.resultsCached = result, true
+	}
+
+	return result, nil
 }
 
 // prependScopeRowInPlan returns a transformation function that prepends the row given to any row source in a query
@@ -147,6 +162,10 @@ func prependScopeRowInPlan(scopeRow sql.Row) func(n sql.Node) (sql.Node, error) 
 
 // EvalMultiple returns all rows returned by a subquery.
 func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
+	if s.resultsCached {
+		return s.cache.([]interface{}), nil
+	}
+
 	q, err := TransformUp(s.Query, prependScopeRowInPlan(row))
 	if err != nil {
 		return nil, err
@@ -176,6 +195,10 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 	var result = make([]interface{}, len(rows))
 	for i, row := range rows {
 		result[i] = row[col]
+	}
+
+	if s.canCacheResults {
+		s.cache, s.resultsCached = result, true
 	}
 
 	return result, nil
@@ -224,3 +247,11 @@ func (s *Subquery) WithQuery(node sql.Node) *Subquery {
 	ns.Query = node
 	return &ns
 }
+
+// WithCachedResults returns the subquery with CanCacheResults set to true.
+func (s *Subquery) WithCachedResults() *Subquery {
+	ns := *s
+	ns.canCacheResults = true
+	return &ns
+}
+

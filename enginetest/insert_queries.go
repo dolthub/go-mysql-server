@@ -130,12 +130,6 @@ var InsertQueries = []WriteQueryTest{
 		[]sql.Row{{int64(10), "NULL"}},
 	},
 	{
-		`INSERT INTO mytable (i,s) VALUES (10, NULL)`,
-		[]sql.Row{{sql.NewOkResult(1)}},
-		"SELECT * FROM mytable WHERE i = 10;",
-		[]sql.Row{{int64(10), nil}},
-	},
-	{
 		`INSERT INTO typestable VALUES (999, null, null, null, null, null, null, null, null,
 			null, null, null, null, null, null, null, null);`,
 		[]sql.Row{{sql.NewOkResult(1)}},

@@ -49,6 +49,7 @@ var OnceAfterDefault = []Rule{
 	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
 	// previous rules.
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},
+	{"cache_subquery_results", cacheSubqueryResults},
 }
 
 // OnceAfterAll contains the rules to be applied just once after all other
