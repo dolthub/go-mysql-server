@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/liquidata-inc/vitess/go/vt/sqlparser"
 	"github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-errors.v1"
-	"github.com/liquidata-inc/vitess/go/vt/sqlparser"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
@@ -53,6 +53,13 @@ var (
 )
 
 var describeSupportedFormats = []string{"tree"}
+var allBuiltInFuncs = func() sql.FunctionRegistry {
+	allBuiltInFuncs := sql.NewFunctionRegistry()
+	if err := allBuiltInFuncs.Register(function.Defaults...); err != nil {
+		panic(err)
+	}
+	return allBuiltInFuncs
+}()
 
 // These constants aren't exported from vitess for some reason. This could be removed if we changed this.
 const (
@@ -978,22 +985,19 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		comment = string(cd.Type.Comment.Val)
 	}
 
-	var defaultVal interface{}
+	var defaultVal *sql.ColumnDefaultValue
 	if cd.Type.Default != nil {
-		dflt, err := exprToExpression(ctx, cd.Type.Default)
+		parsedExpr, err := exprToExpression(ctx, cd.Type.Default)
 		if err != nil {
 			return nil, err
 		}
-
-		// TODO: this isn't quite right -- some default expressions here (like function calls) need to be stored by the
-		//  implementor and deferred until row insertion time. We can't do that, but we can at least do a better job
-		//  detecting when this happens and erroring out.
-		if !dflt.Resolved() {
-			return nil, sql.ErrUnsupportedDefault.New(dflt.String())
-		}
-		defaultVal, err = dflt.Eval(ctx, nil)
+		// The literal and expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
+		_, isExpr := cd.Type.Default.(*sqlparser.ParenExpr)
+		// A literal will never have children, thus we can also check for that.
+		isExpr = isExpr || len(parsedExpr.Children()) != 0
+		defaultVal, err = ExpressionToColumnDefaultValue(ctx, parsedExpr, !isExpr)
 		if err != nil {
-			return nil, ErrUnsupportedFeature.New("column defaults must be evaluable at schema modification time")
+			return nil, err
 		}
 	}
 
@@ -1352,6 +1356,75 @@ func selectExprsToExpressions(ctx *sql.Context, se sqlparser.SelectExprs) ([]sql
 	}
 
 	return exprs, nil
+}
+
+// StringToColumnDefaultValue takes in a string representing a default value and returns the equivalent Expression.
+func StringToColumnDefaultValue(ctx *sql.Context, exprStr string) (*sql.ColumnDefaultValue, error) {
+	// all valid default expressions will parse correctly with SELECT prepended, as the parser will not parse raw expressions
+	stmt, err := sqlparser.Parse("SELECT " + exprStr)
+	if err != nil {
+		return nil, err
+	}
+	//TODO: change these from fmt.Errorf
+	parserSelect, ok := stmt.(*sqlparser.Select)
+	if !ok {
+		return nil, fmt.Errorf("DefaultStringToExpression expected sqlparser.Select but received %T", stmt)
+	}
+	if len(parserSelect.SelectExprs) != 1 {
+		return nil, fmt.Errorf("default string does not have only one expression")
+	}
+	aliasedExpr, ok := parserSelect.SelectExprs[0].(*sqlparser.AliasedExpr)
+	if !ok {
+		return nil, fmt.Errorf("DefaultStringToExpression expected *sqlparser.AliasedExpr but received %T", parserSelect.SelectExprs[0])
+	}
+	parsedExpr, err := exprToExpression(ctx, aliasedExpr.Expr)
+	if err != nil {
+		return nil, err
+	}
+	// The literal and expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
+	// 2+2 would evaluate to a literal under the parentheses check, but will have children due to being an Arithmetic expression, thus we check for children.
+	return ExpressionToColumnDefaultValue(ctx, parsedExpr, len(parsedExpr.Children()) == 0 && !strings.HasPrefix(exprStr, "("))
+}
+
+// ExpressionToColumnDefaultValue takes in an Expression and returns the equivalent ColumnDefaultValue if the expression
+// is valid for a default value. If the expression represents a literal (and not an expression that returns a literal, so "5"
+// rather than "(5)"), then the parameter "isLiteral" should be true.
+func ExpressionToColumnDefaultValue(ctx *sql.Context, inputExpr sql.Expression, isLiteral bool) (*sql.ColumnDefaultValue, error) {
+	expr, err := expression.TransformUp(inputExpr, func(e sql.Expression) (sql.Expression, error) {
+		switch expr := e.(type) {
+		case *expression.UnresolvedFunction:
+			funcName := expr.Name()
+			builtInFunc, err := allBuiltInFuncs.Function(funcName)
+			if err != nil {
+				return nil, err
+			}
+			resolvedFunc, err := builtInFunc.Call(expr.Arguments...)
+			if err != nil {
+				return nil, err
+			}
+			return resolvedFunc, nil
+		case *expression.UnresolvedColumn:
+			//TODO: handle this
+			return nil, fmt.Errorf("columns in default are not yet supported")
+		default:
+			//TODO: explicitly handle all accepted expressions and reject in the default
+			return e, nil
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	//TODO: currently (2+2)/2 will, when output as a string, give (2 + 2 / 2), which is clearly wrong
+	return sql.NewColumnDefaultValue(expr, isLiteral), nil
+}
+
+// MustStringToColumnDefaultValue is StringToColumnDefaultValue except that it panics on errors.
+func MustStringToColumnDefaultValue(ctx *sql.Context, exprStr string) *sql.ColumnDefaultValue {
+	expr, err := StringToColumnDefaultValue(ctx, exprStr)
+	if err != nil {
+		panic(err)
+	}
+	return expr
 }
 
 func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error) {

@@ -339,13 +339,14 @@ func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		return nil, ErrNullDefault.New()
 	}
 
-	var defaultVal interface{}
+	//TODO: verify that the returned expression can be implicitly coerced into the target type
+	//var defaultVal interface{}
 	if a.column.Default != nil {
-		defaultVal, err = a.column.Type.Convert(a.column.Default)
-		if err != nil {
-			return nil, ErrIncompatibleDefaultType.New()
-		}
-		a.column.Default = defaultVal
+		//defaultVal, err = a.column.Type.Convert(a.column.Default)
+		//if err != nil {
+		//	return nil, ErrIncompatibleDefaultType.New()
+		//}
+		//a.column.Default = defaultVal
 	}
 
 	return sql.RowsToRowIter(), alterable.AddColumn(ctx, a.column, a.order)
@@ -511,13 +512,14 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		}
 	}
 
+	//TODO: verify that the returned expression can be implicitly coerced into the target type
 	if m.column.Default != nil {
-		var defaultVal interface{}
-		defaultVal, err = m.column.Type.Convert(m.column.Default)
-		if err != nil {
-			return nil, ErrIncompatibleDefaultType.New()
-		}
-		m.column.Default = defaultVal
+		//var defaultVal interface{}
+		//defaultVal, err = m.column.Type.Convert(m.column.Default)
+		//if err != nil {
+		//	return nil, ErrIncompatibleDefaultType.New()
+		//}
+		//m.column.Default = defaultVal
 	}
 
 	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, m.columnName, m.column, m.order)

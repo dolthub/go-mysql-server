@@ -35,8 +35,8 @@ func TestShowTableStatus(t *testing.T) {
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{"t1", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-		{"t2", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+		{"t1", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, sql.Collation_Default.String(), nil, nil},
+		{"t2", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, sql.Collation_Default.String(), nil, nil},
 	}
 
 	require.Equal(expected, rows)
@@ -51,8 +51,8 @@ func TestShowTableStatus(t *testing.T) {
 	require.NoError(err)
 
 	expected = []sql.Row{
-		{"t1", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-		{"t2", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+		{"t1", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, sql.Collation_Default.String(), nil, nil},
+		{"t2", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, sql.Collation_Default.String(), nil, nil},
 	}
 
 	require.Equal(expected, rows)

@@ -1,4 +1,4 @@
-package plan
+package plan_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	. "github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"github.com/liquidata-inc/go-mysql-server/test"
 
 	"github.com/stretchr/testify/require"
@@ -294,19 +295,14 @@ func TestCreateIndexWithIter(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	columns, exprs, err := getColumnsAndPrepareExpressions(ci.Exprs)
+	columns, exprs, err := GetColumnsAndPrepareExpressions(ci.Exprs)
 	require.NoError(err)
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
 	iter, err := foo.IndexKeyValues(ctx, columns)
 	require.NoError(err)
 
-	iter = &evalPartitionKeyValueIter{
-		ctx:     ctx,
-		columns: columns,
-		exprs:   exprs,
-		iter:    iter,
-	}
+	iter = NewEvalPartitionKeyValueIter(ctx, iter, columns, exprs)
 
 	var (
 		vals [][]interface{}

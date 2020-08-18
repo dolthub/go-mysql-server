@@ -62,7 +62,7 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		var row sql.Row
 		var collation interface{}
 		if sql.IsTextOnly(col.Type) {
-			collation = sql.DefaultCollation
+			collation = sql.Collation_Default.String()
 		}
 
 		var null = "NO"
@@ -88,7 +88,7 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 		var defaultVal string
 		if col.Default != nil {
-			defaultVal = fmt.Sprint(col.Default)
+			defaultVal = col.Default.String()
 		}
 
 		// TODO: rather than lower-casing here, we should lower-case the String() method of types
@@ -149,7 +149,7 @@ func (s *ShowColumns) isFirstColInUniqueKey(col *sql.Column, table sql.Table) bo
 			continue
 		}
 
-		firstIndexCol := getColumnFromIndexExpr(idx.Expressions()[0], table)
+		firstIndexCol := GetColumnFromIndexExpr(idx.Expressions()[0], table)
 		if firstIndexCol != nil && firstIndexCol.Name == col.Name {
 			return true
 		}
@@ -164,7 +164,7 @@ func (s *ShowColumns) isFirstColInNonUniqueKey(col *sql.Column, table sql.Table)
 			continue
 		}
 
-		firstIndexCol := getColumnFromIndexExpr(idx.Expressions()[0], table)
+		firstIndexCol := GetColumnFromIndexExpr(idx.Expressions()[0], table)
 		if firstIndexCol != nil && firstIndexCol.Name == col.Name {
 			return true
 		}
