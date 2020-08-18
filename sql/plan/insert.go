@@ -44,6 +44,8 @@ func (p *InsertInto) Schema() sql.Schema {
 
 func getInsertable(node sql.Node) (sql.InsertableTable, error) {
 	switch node := node.(type) {
+	case *Exchange:
+		return getInsertable(node.Child)
 	case sql.InsertableTable:
 		return node, nil
 	case *ResolvedTable:
@@ -205,7 +207,12 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 }
 
 func (p *InsertInto) rowSource(projExprs []sql.Expression) (sql.Node, error) {
-	switch n := p.Right.(type) {
+	right := p.Right
+	if exchange, ok := right.(*Exchange); ok {
+		right = exchange.Child
+	}
+
+	switch n := right.(type) {
 	case *Values:
 		return NewProject(projExprs, n), nil
 	case *ResolvedTable, *Project, *InnerJoin, *Filter:
@@ -251,7 +258,12 @@ func (p InsertInto) String() string {
 }
 
 func (p *InsertInto) validateValueCount(ctx *sql.Context) error {
-	switch node := p.Right.(type) {
+	right := p.Right
+	if exchange, ok := right.(*Exchange); ok {
+		right = exchange.Child
+	}
+
+	switch node := right.(type) {
 	case *Values:
 		for _, exprTuple := range node.ExpressionTuples {
 			if len(exprTuple) != len(p.ColumnNames) {
