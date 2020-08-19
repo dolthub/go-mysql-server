@@ -17,23 +17,23 @@ package enginetest_test
 import (
 	"context"
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression/function"
-	"github.com/liquidata-inc/go-mysql-server/sql/parse"
-	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-	"github.com/pmezard/go-difflib/difflib"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/src-d/go-errors.v1"
 	"testing"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/pmezard/go-difflib/difflib"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/liquidata-inc/go-mysql-server"
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/analyzer"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function"
+	"github.com/liquidata-inc/go-mysql-server/sql/parse"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
 // This file is for tests of the engine that we are very sure do not rely on a particular database implementation. They
@@ -209,10 +209,10 @@ func (l *lockableTable) Unlock(ctx *sql.Context, id uint32) error {
 }
 
 type analyzerTestCase struct {
-	name string
-	query string
-	planGenerator func (*testing.T, *sqle.Engine) sql.Node
-	err *errors.Kind
+	name          string
+	query         string
+	planGenerator func(*testing.T, *sqle.Engine) sql.Node
+	err           *errors.Kind
 }
 
 // Grab bag tests for testing analysis of various nodes that are difficult to verify through other means

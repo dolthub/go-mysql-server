@@ -4,8 +4,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/liquidata-inc/vitess/go/mysql"
+	"github.com/sirupsen/logrus"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )

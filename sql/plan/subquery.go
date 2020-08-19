@@ -254,4 +254,3 @@ func (s *Subquery) WithCachedResults() *Subquery {
 	ns.canCacheResults = true
 	return &ns
 }
-

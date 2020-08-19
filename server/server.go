@@ -3,8 +3,8 @@ package server
 import (
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/liquidata-inc/vitess/go/mysql"
+	"github.com/opentracing/opentracing-go"
 
 	sqle "github.com/liquidata-inc/go-mysql-server"
 	"github.com/liquidata-inc/go-mysql-server/auth"

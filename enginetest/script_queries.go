@@ -34,13 +34,13 @@ var ScriptTests = []ScriptTest{
 			"INSERT INTO t1 VALUES(0,'false')",
 			"INSERT INTO t1 VALUES(NULL,'NULL')",
 		},
-		Query:       "SELECT count(DISTINCT x) FROM t1",
-		Expected:    []sql.Row{
+		Query: "SELECT count(DISTINCT x) FROM t1",
+		Expected: []sql.Row{
 			{2},
 		},
 	},
 	{
-		Name:        "sqllogictest index/commute/10/slt_good_1.test",
+		Name: "sqllogictest index/commute/10/slt_good_1.test",
 		SetUpScript: []string{
 			"CREATE TABLE tab0(pk INTEGER PRIMARY KEY, col0 INTEGER, col1 FLOAT, col2 TEXT, col3 INTEGER, col4 FLOAT, col5 TEXT)",
 			"INSERT INTO tab0 VALUES(0,42,58.92,'fnbtk',54,68.41,'xmttf')",

@@ -56,11 +56,11 @@ func (*ddlNode) Schema() sql.Schema { return nil }
 func (c *ddlNode) Children() []sql.Node { return nil }
 
 type IndexDefinition struct {
-	IndexName string
-	Using sql.IndexUsing
+	IndexName  string
+	Using      sql.IndexUsing
 	Constraint sql.IndexConstraint
-	Columns []sql.IndexColumn
-	Comment string
+	Columns    []sql.IndexColumn
+	Comment    string
 }
 
 // CreateTable is a node describing the creation of some table.

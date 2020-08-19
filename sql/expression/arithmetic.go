@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	errors "gopkg.in/src-d/go-errors.v1"
 	"github.com/liquidata-inc/vitess/go/vt/sqlparser"
+	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )

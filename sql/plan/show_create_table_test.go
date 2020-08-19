@@ -3,8 +3,8 @@ package plan
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/liquidata-inc/vitess/go/sqltypes"
+	"github.com/stretchr/testify/require"
 
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"

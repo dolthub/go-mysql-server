@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cast"
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/liquidata-inc/vitess/go/sqltypes"
 	"github.com/liquidata-inc/vitess/go/vt/proto/query"
+	"github.com/spf13/cast"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 const (

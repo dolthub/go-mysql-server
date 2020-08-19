@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
-	"github.com/stretchr/testify/require"
 	"github.com/liquidata-inc/vitess/go/mysql"
 	"github.com/liquidata-inc/vitess/go/sqltypes"
 	"github.com/liquidata-inc/vitess/go/vt/proto/query"
+	"github.com/opentracing/opentracing-go"
+	"github.com/stretchr/testify/require"
 
 	sqle "github.com/liquidata-inc/go-mysql-server"
 	"github.com/liquidata-inc/go-mysql-server/sql"

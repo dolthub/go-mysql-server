@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/liquidata-inc/vitess/go/mysql"
+	"github.com/opentracing/opentracing-go"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )

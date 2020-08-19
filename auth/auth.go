@@ -3,8 +3,8 @@ package auth
 import (
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/liquidata-inc/vitess/go/mysql"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )

@@ -152,4 +152,3 @@ func (p *ShowTables) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 	np.AsOf = exprs[0]
 	return &np, nil
 }
-

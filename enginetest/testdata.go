@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	"github.com/liquidata-inc/vitess/go/sqltypes"
+	"github.com/stretchr/testify/require"
 
 	sqle "github.com/liquidata-inc/go-mysql-server"
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -50,7 +50,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	if includeTable(includedTables, "mytable") {
 		table, err = harness.NewTable(myDb, "mytable", sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-			 {Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 		})
 
 		if err == nil {
