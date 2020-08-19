@@ -301,6 +301,14 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{nil}},
 	},
 	{
+		"SELECT 1 IN (2,3,4,null)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT 1 NOT IN (2,3,4,null)",
+		[]sql.Row{{nil}},
+	},
+	{
 		"SELECT i FROM mytable WHERE i IN (1, 3)",
 		[]sql.Row{{int64(1)}, {int64(3)}},
 	},

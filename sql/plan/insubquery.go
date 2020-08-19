@@ -80,13 +80,14 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				return nil, nil
 			}
 
+			if !rightNull && val == nil {
+				rightNull = true
+				continue
+			}
+
 			val, err = typ.Convert(val)
 			if err != nil {
 				return nil, err
-			}
-
-			if !rightNull && val == nil {
-				rightNull = true
 			}
 
 			cmp, err := typ.Compare(left, val)
