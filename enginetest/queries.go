@@ -305,8 +305,72 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{nil}},
 	},
 	{
+		"SELECT 1 IN (2,3,4,null,1)",
+		[]sql.Row{{true}},
+	},
+	{
+		"SELECT 1 IN (1,2,3)",
+		[]sql.Row{{true}},
+	},
+	{
+		"SELECT 1 IN (2,3,4)",
+		[]sql.Row{{false}},
+	},
+	{
+		"SELECT NULL IN (2,3,4)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT NULL IN (2,3,4,null)",
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT 'a' IN ('b','c',null,'d')`,
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT 'a' IN ('a','b','c','d')`,
+		[]sql.Row{{true}},
+	},
+	{
+		`SELECT 'a' IN ('b','c','d')`,
+		[]sql.Row{{false}},
+	},
+	{
 		"SELECT 1 NOT IN (2,3,4,null)",
 		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT 1 NOT IN (2,3,4,null,1)",
+		[]sql.Row{{false}},
+	},
+	{
+		"SELECT 1 NOT IN (1,2,3)",
+		[]sql.Row{{false}},
+	},
+	{
+		"SELECT 1 NOT IN (2,3,4)",
+		[]sql.Row{{true}},
+	},
+	{
+		"SELECT NULL NOT IN (2,3,4)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT NULL NOT IN (2,3,4,null)",
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT 'a' NOT IN ('b','c',null,'d')`,
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT 'a' NOT IN ('a','b','c','d')`,
+		[]sql.Row{{false}},
+	},
+	{
+		`SELECT 'a' NOT IN ('b','c','d')`,
+		[]sql.Row{{true}},
 	},
 	{
 		"SELECT i FROM mytable WHERE i IN (1, 3)",
