@@ -29,7 +29,6 @@ type QueryTest struct {
 	Expected []sql.Row
 }
 
-// TODO: need queries that exercise multi-column indexes better, for all comparison (=, <, >, etc)
 var QueryTests = []QueryTest{
 	{
 		"SELECT * FROM mytable;",
@@ -762,6 +761,32 @@ var QueryTests = []QueryTest{
 	// 		{int64(3), int64(3), "first"},
 	// 	},
 	// },
+	{
+		`SELECT s2, i2 FROM othertable WHERE s2 >= "first" AND i2 >= 2 ORDER BY 1`,
+		[]sql.Row{
+			{"first", int64(3)},
+			{"second", int64(2)},
+		},
+	},
+	{
+		`SELECT s2, i2 FROM othertable WHERE "first" <= s2 AND 2 <= i2 ORDER BY 1`,
+		[]sql.Row{
+			{"first", int64(3)},
+			{"second", int64(2)},
+		},
+	},
+	{
+		`SELECT s2, i2 FROM othertable WHERE s2 <= "second" AND i2 <= 2 ORDER BY 1`,
+		[]sql.Row{
+			{"second", int64(2)},
+		},
+	},
+	{
+		`SELECT s2, i2 FROM othertable WHERE "second" >= s2 AND 2 >= i2 ORDER BY 1`,
+		[]sql.Row{
+			{"second", int64(2)},
+		},
+	},
 	{
 		"SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
 		[]sql.Row{
