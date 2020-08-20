@@ -420,7 +420,7 @@ func exprListsEqual(a, b []string) bool {
 }
 
 // AddIndex adds the given index to the registry. The added index will be
-// marked as creating, so nobody can't register two indexes with the same
+// marked as creating, so nobody can register two indexes with the same
 // expression or id while the other is still being created.
 // When something is sent through the returned channel, it means the index has
 // finished its creation and will be marked as ready.

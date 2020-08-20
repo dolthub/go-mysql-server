@@ -70,8 +70,12 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 			null = "YES"
 		}
 
+		node := s.Child
+		if exchange, ok := node.(*Exchange); ok {
+			node = exchange.Child
+		}
 		key := ""
-		switch table := s.Child.(type) {
+		switch table := node.(type) {
 		case *ResolvedTable:
 			if col.PrimaryKey {
 				key = "PRI"

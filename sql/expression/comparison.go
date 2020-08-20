@@ -235,6 +235,11 @@ func (re *Regexp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return result == 0, nil
 }
 
+type matcherErrTuple struct {
+	matcher regex.Matcher
+	err error
+}
+
 func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	left, err := re.Left().Eval(ctx, row)
 	if err != nil || left == nil {
@@ -269,18 +274,18 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 			re.pool = &sync.Pool{
 				New: func() interface{} {
 					r, _, e := regex.New(regex.Default(), right.(string))
-					if e != nil {
-						err = e
-						return nil
-					}
-					return r
+					return matcherErrTuple{r, e}
 				},
 			}
 		}
+
 		if obj := re.pool.Get(); obj != nil {
-			matcher = obj.(regex.Matcher)
+			met := obj.(matcherErrTuple)
+			matcher = met.matcher
+			err = met.err
 		}
 	}
+
 	if matcher == nil {
 		return nil, ErrInvalidRegexp.New(err.Error())
 	}
