@@ -79,14 +79,14 @@ func TestSingleQuery(t *testing.T) {
 
 	test = enginetest.QueryTest{
 		`SELECT pk,
-						(SELECT sum(c1) FROM two_pk WHERE c1 IN (SELECT c4 FROM two_pk WHERE c3 > opk.c5)) AS sum,
-						(SELECT avg(c1) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE c1 < opk.c2)) AS avg
-					FROM one_pk opk ORDER BY pk`,
+						(SELECT sum(pk1+pk2) FROM two_pk WHERE pk1+pk2 IN (SELECT pk1+pk2 FROM two_pk WHERE pk1+pk2 = pk)) AS sum,
+						(SELECT min(pk2) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE pk2 = pk)) AS equal
+						FROM one_pk ORDER BY pk;`,
 		[]sql.Row{
-			{0, 60.0, nil},
-			{1, 50.0, 10.0},
-			{2, 30.0, 15.0},
-			{3, nil, 15.0},
+			{0, 0.0, 0},
+			{1, 2.0, 1},
+			{2, 2.0, nil},
+			{3, nil, nil},
 		},
 	}
 
@@ -186,6 +186,10 @@ func TestDeleteFrom(t *testing.T) {
 
 func TestDeleteFromErrors(t *testing.T) {
 	enginetest.TestDeleteErrors(t, newDefaultMemoryHarness())
+}
+
+func TestScripts(t *testing.T) {
+	enginetest.TestScripts(t, newDefaultMemoryHarness())
 }
 
 func TestCreateTable(t *testing.T) {

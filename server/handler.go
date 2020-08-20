@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/liquidata-inc/vitess/go/mysql"
 	"github.com/liquidata-inc/vitess/go/sqltypes"
 	"github.com/liquidata-inc/vitess/go/vt/proto/query"
 	"github.com/liquidata-inc/vitess/go/vt/sqlparser"
+	"github.com/sirupsen/logrus"
+	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/liquidata-inc/go-mysql-server"
 	"github.com/liquidata-inc/go-mysql-server/auth"

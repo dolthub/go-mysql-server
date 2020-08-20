@@ -20,36 +20,33 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
-type InExpression struct {
+// InTuple is an expression that checks an expression is inside a list of expressions.
+type InTuple struct {
 	BinaryExpression
 }
 
-func (i InExpression) Type() sql.Type {
+// We implement Comparer because we have a Left() and a Right(), but we can't be Compare()d
+var _ Comparer = (*InTuple)(nil)
+
+func (in *InTuple) Compare(ctx *sql.Context, row sql.Row) (int, error) {
+	panic("Compare not implemented for InTuple")
+}
+
+func (in *InTuple) Type() sql.Type {
 	return sql.Boolean
 }
 
-func (i InExpression) Compare(ctx *sql.Context, row sql.Row) (int, error) {
-	panic("Compare() not implemented for InExpression")
+func (in *InTuple) Left() sql.Expression {
+	return in.BinaryExpression.Left
 }
 
-func (i InExpression) Left() sql.Expression {
-	return i.BinaryExpression.Left
+func (in *InTuple) Right() sql.Expression {
+	return in.BinaryExpression.Right
 }
-
-func (i InExpression) Right() sql.Expression {
-	return i.BinaryExpression.Right
-}
-
-// InTuple is an expression that checks an expression is inside a list of expressions.
-type InTuple struct {
-	InExpression
-}
-
-var _ Comparer = (*InTuple)(nil)
 
 // NewInTuple creates an InTuple expression.
 func NewInTuple(left sql.Expression, right sql.Expression) *InTuple {
-	return &InTuple{InExpression{BinaryExpression{left, right}}}
+	return &InTuple{BinaryExpression{left, right}}
 }
 
 // Eval implements the Expression interface.
@@ -62,8 +59,14 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if left == nil {
-		return nil, err
+		return nil, nil
 	}
+
+	// The NULL handling for IN expressions is tricky. According to
+	// https://dev.mysql.com/doc/refman/8.0/en/comparison-operators.html#operator_in:
+	// To comply with the SQL standard, IN() returns NULL not only if the expression on the left hand side is NULL, but
+	// also if no match is found in the list and one of the expressions in the list is NULL.
+	rightNull := false
 
 	left, err = typ.Convert(left)
 	if err != nil {
@@ -84,6 +87,11 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				return nil, err
 			}
 
+			if !rightNull && right == nil {
+				rightNull = true
+				continue
+			}
+
 			right, err = typ.Convert(right)
 			if err != nil {
 				return nil, err
@@ -97,6 +105,10 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			if cmp == 0 {
 				return true, nil
 			}
+		}
+
+		if rightNull {
+			return nil, nil
 		}
 
 		return false, nil
@@ -126,88 +138,7 @@ func (in *InTuple) Children() []sql.Expression {
 	return []sql.Expression{in.Left(), in.Right()}
 }
 
-// NotInTuple is an expression that checks an expression is not inside a list of expressions.
-type NotInTuple struct {
-	InExpression
-}
-
-var _ Comparer = (*NotInTuple)(nil)
-
 // NewNotInTuple creates a new NotInTuple expression.
-func NewNotInTuple(left sql.Expression, right sql.Expression) *NotInTuple {
-	return &NotInTuple{InExpression{BinaryExpression{left, right}}}
-}
-
-// Eval implements the Expression interface.
-func (in *NotInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	typ := in.Left().Type().Promote()
-	leftElems := sql.NumColumns(typ)
-	left, err := in.Left().Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if left == nil {
-		return nil, err
-	}
-
-	left, err = typ.Convert(left)
-	if err != nil {
-		return nil, err
-	}
-
-	switch right := in.Right().(type) {
-	case Tuple:
-		for _, el := range right {
-			if sql.NumColumns(el.Type()) != leftElems {
-				return nil, ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(el.Type()))
-			}
-		}
-
-		for _, el := range right {
-			right, err := el.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
-
-			right, err = typ.Convert(right)
-			if err != nil {
-				return nil, err
-			}
-
-			cmp, err := typ.Compare(left, right)
-			if err != nil {
-				return nil, err
-			}
-
-			if cmp == 0 {
-				return false, nil
-			}
-		}
-
-		return true, nil
-	default:
-		return nil, ErrUnsupportedInOperand.New(right)
-	}
-}
-
-// WithChildren implements the Expression interface.
-func (in *NotInTuple) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(in, len(children), 2)
-	}
-	return NewNotInTuple(children[0], children[1]), nil
-}
-
-func (in *NotInTuple) String() string {
-	return fmt.Sprintf("%s NOT IN %s", in.Left(), in.Right())
-}
-
-func (in *NotInTuple) DebugString() string {
-	return fmt.Sprintf("%s NOT IN %s", sql.DebugString(in.Left()), sql.DebugString(in.Right()))
-}
-
-// Children implements the Expression interface.
-func (in *NotInTuple) Children() []sql.Expression {
-	return []sql.Expression{in.Left(), in.Right()}
+func NewNotInTuple(left sql.Expression, right sql.Expression) sql.Expression {
+	return NewNot(NewInTuple(left, right))
 }

@@ -261,6 +261,118 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{int64(1)}, {int64(3)}},
 	},
 	{
+		"SELECT NULL IN (SELECT i FROM emptytable)",
+		[]sql.Row{{false}},
+	},
+	{
+		"SELECT NULL NOT IN (SELECT i FROM emptytable)",
+		[]sql.Row{{true}},
+	},
+	{
+		"SELECT NULL IN (SELECT i FROM mytable)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT NULL NOT IN (SELECT i FROM mytable)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT NULL IN (SELECT i2 FROM niltable)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT NULL NOT IN (SELECT i2 FROM niltable)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT 2 IN (SELECT i2 FROM niltable)",
+		[]sql.Row{{true}},
+	},
+	{
+		"SELECT 2 NOT IN (SELECT i2 FROM niltable)",
+		[]sql.Row{{false}},
+	},
+	{
+		"SELECT 100 IN (SELECT i2 FROM niltable)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT 100 NOT IN (SELECT i2 FROM niltable)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT 1 IN (2,3,4,null)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT 1 IN (2,3,4,null,1)",
+		[]sql.Row{{true}},
+	},
+	{
+		"SELECT 1 IN (1,2,3)",
+		[]sql.Row{{true}},
+	},
+	{
+		"SELECT 1 IN (2,3,4)",
+		[]sql.Row{{false}},
+	},
+	{
+		"SELECT NULL IN (2,3,4)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT NULL IN (2,3,4,null)",
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT 'a' IN ('b','c',null,'d')`,
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT 'a' IN ('a','b','c','d')`,
+		[]sql.Row{{true}},
+	},
+	{
+		`SELECT 'a' IN ('b','c','d')`,
+		[]sql.Row{{false}},
+	},
+	{
+		"SELECT 1 NOT IN (2,3,4,null)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT 1 NOT IN (2,3,4,null,1)",
+		[]sql.Row{{false}},
+	},
+	{
+		"SELECT 1 NOT IN (1,2,3)",
+		[]sql.Row{{false}},
+	},
+	{
+		"SELECT 1 NOT IN (2,3,4)",
+		[]sql.Row{{true}},
+	},
+	{
+		"SELECT NULL NOT IN (2,3,4)",
+		[]sql.Row{{nil}},
+	},
+	{
+		"SELECT NULL NOT IN (2,3,4,null)",
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT 'a' NOT IN ('b','c',null,'d')`,
+		[]sql.Row{{nil}},
+	},
+	{
+		`SELECT 'a' NOT IN ('a','b','c','d')`,
+		[]sql.Row{{false}},
+	},
+	{
+		`SELECT 'a' NOT IN ('b','c','d')`,
+		[]sql.Row{{true}},
+	},
+	{
 		"SELECT i FROM mytable WHERE i IN (1, 3)",
 		[]sql.Row{{int64(1)}, {int64(3)}},
 	},
@@ -721,6 +833,32 @@ var QueryTests = []QueryTest{
 	// 		{int64(3), int64(3), "first"},
 	// 	},
 	// },
+	{
+		`SELECT s2, i2 FROM othertable WHERE s2 >= "first" AND i2 >= 2 ORDER BY 1`,
+		[]sql.Row{
+			{"first", int64(3)},
+			{"second", int64(2)},
+		},
+	},
+	{
+		`SELECT s2, i2 FROM othertable WHERE "first" <= s2 AND 2 <= i2 ORDER BY 1`,
+		[]sql.Row{
+			{"first", int64(3)},
+			{"second", int64(2)},
+		},
+	},
+	{
+		`SELECT s2, i2 FROM othertable WHERE s2 <= "second" AND i2 <= 2 ORDER BY 1`,
+		[]sql.Row{
+			{"second", int64(2)},
+		},
+	},
+	{
+		`SELECT s2, i2 FROM othertable WHERE "second" >= s2 AND 2 >= i2 ORDER BY 1`,
+		[]sql.Row{
+			{"second", int64(2)},
+		},
+	},
 	{
 		"SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
 		[]sql.Row{

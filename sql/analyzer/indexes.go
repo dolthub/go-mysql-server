@@ -126,29 +126,15 @@ func getIndexes(
 		if len(rightIndexes) > 0 {
 			return nil, nil
 		}
-	case *expression.InTuple, *expression.NotInTuple:
-		c, ok := e.(expression.Comparer)
-		if !ok {
-			return nil, nil
-		}
-
-		_, negate := e.(*expression.NotInTuple)
+	case *expression.InTuple:
 
 		// Take the index of a SOMETHING IN SOMETHING expression only if:
 		// the right branch is evaluable and the indexlookup supports set
 		// operations.
-		if !isEvaluable(c.Left()) && isEvaluable(c.Right()) {
-			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, c.Left())...)
+		if !isEvaluable(e.Left()) && isEvaluable(e.Right()) {
+			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Left())...)
 			if idx != nil {
-				var nidx sql.NegateIndex
-				if negate {
-					nidx, ok = idx.(sql.NegateIndex)
-					if !ok {
-						return nil, nil
-					}
-				}
-
-				value, err := c.Right().Eval(sql.NewEmptyContext(), nil)
+				value, err := e.Right().Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
 					return nil, err
 				}
@@ -158,26 +144,14 @@ func getIndexes(
 					return nil, errInvalidInRightEvaluation.New(value)
 				}
 
-				var lookup sql.IndexLookup
-				var errLookup error
-				if negate {
-					lookup, errLookup = nidx.Not(values[0])
-				} else {
-					lookup, errLookup = idx.Get(values[0])
-				}
+				lookup, errLookup := idx.Get(values[0])
 
 				if errLookup != nil {
 					return nil, err
 				}
 
 				for _, v := range values[1:] {
-					var lookup2 sql.IndexLookup
-					var errLookup error
-					if negate {
-						lookup2, errLookup = nidx.Not(v)
-					} else {
-						lookup2, errLookup = idx.Get(v)
-					}
+					lookup2, errLookup := idx.Get(v)
 
 					if errLookup != nil {
 						return nil, err
@@ -188,11 +162,7 @@ func getIndexes(
 						return nil, nil
 					}
 
-					if negate {
-						lookup = lookup.(sql.MergeableIndexLookup).Intersection(lookup2)
-					} else {
-						lookup = lookup.(sql.MergeableIndexLookup).Union(lookup2)
-					}
+					lookup = lookup.(sql.MergeableIndexLookup).Union(lookup2)
 				}
 
 				result[idx.Table()] = &indexLookup{
@@ -507,6 +477,57 @@ func getNegatedIndexes(
 		}
 
 		return result, nil
+	case *expression.InTuple:
+		// Take the index of a SOMETHING IN SOMETHING expression only if:
+		// the right branch is evaluable and the indexlookup supports set
+		// operations.
+		if !isEvaluable(e.Left()) && isEvaluable(e.Right()) {
+			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Left())...)
+			if idx != nil {
+				nidx, ok := idx.(sql.NegateIndex)
+				if !ok {
+					return nil, nil
+				}
+
+				value, err := e.Right().Eval(sql.NewEmptyContext(), nil)
+				if err != nil {
+					return nil, err
+				}
+
+				values, ok := value.([]interface{})
+				if !ok {
+					return nil, errInvalidInRightEvaluation.New(value)
+				}
+
+				lookup, errLookup := nidx.Not(values[0])
+				if errLookup != nil {
+					return nil, err
+				}
+
+				for _, v := range values[1:] {
+					lookup2, errLookup := nidx.Not(v)
+					if errLookup != nil {
+						return nil, err
+					}
+
+					// if one of the indexes cannot be merged, return a nil result for this table
+					if !canMergeIndexes(lookup, lookup2) {
+						return nil, nil
+					}
+
+					lookup = lookup.(sql.MergeableIndexLookup).Intersection(lookup2)
+				}
+
+				return map[string]*indexLookup{
+					idx.Table(): {
+						indexes: []sql.Index{idx},
+						lookup:  lookup,
+					},
+				}, nil
+			}
+		}
+
+		return nil, nil
 	case *expression.GreaterThan:
 		lte := expression.NewLessThanOrEqual(e.Left(), e.Right())
 		return getIndexes(ctx, a, ia, lte, exprAliases, tableAliases)
@@ -776,7 +797,7 @@ func extractColumnExpr(e sql.Expression) (string, *columnExpr) {
 		cmp := e.(expression.Comparer)
 		left, right := cmp.Left(), cmp.Right()
 		if !isEvaluable(right) {
-			left, right = right, left
+			left, right, e = swapTermsOfExpression(cmp)
 		}
 
 		if !isEvaluable(right) {

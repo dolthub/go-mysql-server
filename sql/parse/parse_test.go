@@ -4,10 +4,10 @@ import (
 	"math"
 	"testing"
 
+	"github.com/liquidata-inc/vitess/go/sqltypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
-	"github.com/liquidata-inc/vitess/go/sqltypes"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
@@ -1018,12 +1018,12 @@ var fixtures = map[string]sql.Node{
 		true,
 		[]string{"col1", "col2"},
 	),
-	`SHOW TABLES`:               plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
-	`SHOW FULL TABLES`:          plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
-	`SHOW TABLES FROM foo`:      plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, nil),
-	`SHOW TABLES IN foo`:        plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, nil),
-	`SHOW FULL TABLES FROM foo`: plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, nil),
-	`SHOW FULL TABLES IN foo`:   plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, nil),
+	`SHOW TABLES`:                           plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
+	`SHOW FULL TABLES`:                      plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
+	`SHOW TABLES FROM foo`:                  plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, nil),
+	`SHOW TABLES IN foo`:                    plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, nil),
+	`SHOW FULL TABLES FROM foo`:             plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, nil),
+	`SHOW FULL TABLES IN foo`:               plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, nil),
 	`SHOW TABLES AS OF 'abc'`:               plan.NewShowTables(sql.UnresolvedDatabase(""), false, expression.NewLiteral("abc", sql.LongText)),
 	`SHOW FULL TABLES AS OF 'abc'`:          plan.NewShowTables(sql.UnresolvedDatabase(""), true, expression.NewLiteral("abc", sql.LongText)),
 	`SHOW TABLES FROM foo AS OF 'abc'`:      plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, expression.NewLiteral("abc", sql.LongText)),

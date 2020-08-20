@@ -2,8 +2,8 @@ package sqle
 
 import (
 	"github.com/golang/glog"
-	"github.com/sirupsen/logrus"
 	vtlog "github.com/liquidata-inc/vitess/go/vt/log"
+	"github.com/sirupsen/logrus"
 )
 
 func init() {

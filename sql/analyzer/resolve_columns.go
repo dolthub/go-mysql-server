@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
 	"github.com/liquidata-inc/vitess/go/vt/sqlparser"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/liquidata-inc/go-mysql-server/internal/similartext"
 	"github.com/liquidata-inc/go-mysql-server/sql"

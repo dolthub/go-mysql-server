@@ -9,8 +9,8 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/stretchr/testify/require"
 	"github.com/liquidata-inc/vitess/go/mysql"
+	"github.com/stretchr/testify/require"
 
 	sqle "github.com/liquidata-inc/go-mysql-server"
 	"github.com/liquidata-inc/go-mysql-server/memory"
