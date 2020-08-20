@@ -54,11 +54,11 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	// TODO: fix this
 	containsSubquery := false
 	plan.InspectExpressions(n, func(e sql.Expression) bool {
-			if _, ok := e.(*plan.Subquery); ok {
-				containsSubquery = true
-				return false
-			}
-			return true
+		if _, ok := e.(*plan.Subquery); ok {
+			containsSubquery = true
+			return false
+		}
+		return true
 	})
 
 	if containsSubquery {

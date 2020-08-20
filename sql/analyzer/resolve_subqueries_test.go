@@ -2,8 +2,9 @@ package analyzer
 
 import (
 	"context"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression/function"
 	"testing"
+
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function"
 
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
