@@ -601,7 +601,11 @@ func (t *Table) WithProjection(colNames []string) sql.Table {
 	}
 
 	nt := *t
-	columns, schema, _ := nt.newColumnIndexesAndSchema(colNames)
+	columns, schema, err := nt.newColumnIndexesAndSchema(colNames)
+	if err != nil {
+		panic(err)
+	}
+
 	nt.columns = columns
 	nt.projection = colNames
 	nt.schema = schema

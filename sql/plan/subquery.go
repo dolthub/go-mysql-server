@@ -45,6 +45,8 @@ func NewSubquery(node sql.Node, queryString string) *Subquery {
 	return &Subquery{Query: node, QueryString: queryString}
 }
 
+var _ sql.NonDeterministicExpression = (*Subquery)(nil)
+
 // prependNode wraps its child by prepending column values onto any result rows
 type prependNode struct {
 	UnaryNode
@@ -246,6 +248,10 @@ func (s *Subquery) WithQuery(node sql.Node) *Subquery {
 	ns := *s
 	ns.Query = node
 	return &ns
+}
+
+func (s *Subquery) IsNonDeterministic() bool {
+	return !s.canCacheResults
 }
 
 // WithCachedResults returns the subquery with CanCacheResults set to true.

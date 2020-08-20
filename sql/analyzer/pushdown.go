@@ -48,6 +48,24 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		return n, nil
 	}
 
+	// Pushdown of projections interferes with subqueries on the same table: the table gets two different sets of
+	// projected columns pushed down, once for its alias in the subquery and once for its alias outside. For that reason,
+	// skip pushdown for any query with a subquery in it.
+	// TODO: fix this
+	containsSubquery := false
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
+			if _, ok := e.(*plan.Subquery); ok {
+				containsSubquery = true
+				return false
+			}
+			return true
+	})
+
+	if containsSubquery {
+		a.Log("skipping pushdown for query with subquery")
+		return n, nil
+	}
+
 	// First step is to find all col exprs and group them by the table they mention.
 	// Even if they appear multiple times, only the first one will be used.
 	fieldsByTable := getFieldsByTable(ctx, n)

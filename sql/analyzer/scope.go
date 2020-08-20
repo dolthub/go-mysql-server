@@ -63,28 +63,6 @@ func (s *Scope) OuterToInner() []sql.Node {
 	return reversed
 }
 
-// SchemaLength returns the length of the scope part of the schema for nodes subject to this scope. Rows for this node
-// will have all scoped schemas pre-pended to them, so that the results of the node under analysis begins with index
-// SchemaLength().
-func (s *Scope) SchemaLength() int {
-	if s == nil {
-		return 0
-	}
-
-	// Nodes in the scope might not be resolved, so we can't call Schema() on them. Instead, examine them manually.
-	var length int
-	for _, n := range s.OuterToInner() {
-		switch n := n.(type) {
-		case *plan.Project:
-			length += len(n.Projections)
-		default:
-			// TODO: log this
-			// panic(fmt.Sprintf("Unsupported scope node %T", n))
-		}
-	}
-	return length
-}
-
 // Schema returns the equivalent schema of this scope, which consists of the schemas of all constituent scope nodes
 // concatenated from outer to inner. Because we can only calculate the Schema() of nodes that are Resolved(), this
 // method fills in place holder columns as necessary.

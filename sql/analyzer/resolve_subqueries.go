@@ -69,7 +69,7 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 			return e, nil
 		}
 
-		scopeLen := scope.newScope(n).SchemaLength()
+		scopeLen := len(scope.newScope(n).Schema())
 		cacheable := true
 
 		plan.InspectExpressions(s.Query, func(expr sql.Expression) bool {
