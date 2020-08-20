@@ -60,8 +60,8 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 		cfg.ConnWriteTimeout = 0
 	}
 
-	if cfg.MaxConnections == 0 {
-		cfg.MaxConnections = 1
+	if cfg.MaxConnections < 0 {
+		cfg.MaxConnections = 0
 	}
 
 	handler := NewHandler(e,
