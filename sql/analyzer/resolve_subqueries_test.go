@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"context"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function"
 	"testing"
 
 	"github.com/liquidata-inc/go-mysql-server/memory"
@@ -407,4 +408,139 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 		sql.WithIndexRegistry(sql.NewIndexRegistry()),
 		sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
 	runTestCases(t, ctx, testCases, a, getRule("resolve_subquery_exprs"))
+}
+
+func TestCacheSubqueryResults(t *testing.T) {
+	table := memory.NewTable("mytable", sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "x", Type: sql.Int64, Source: "mytable"},
+	})
+	table2 := memory.NewTable("mytable2", sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable2"},
+		{Name: "y", Type: sql.Int64, Source: "mytable2"},
+	})
+
+	testCases := []analyzerFnTestCase{
+		{
+			name: "not resolved",
+			node: plan.NewProject(
+				[]sql.Expression{
+					uc("i"),
+					plan.NewSubquery(
+						plan.NewProject(
+							[]sql.Expression{
+								gf(3, "mytable2", "y"),
+							},
+							plan.NewFilter(
+								gt(
+									gf(1, "mytable", "x"),
+									gf(2, "mytable2", "i"),
+								),
+								plan.NewResolvedTable(table2),
+							),
+						),
+						""),
+				},
+				plan.NewResolvedTable(table),
+			),
+		},
+		{
+			name: "cacheable",
+			node: plan.NewProject(
+				[]sql.Expression{
+					gf(0, "mytable", "i"),
+					plan.NewSubquery(
+						plan.NewProject(
+							[]sql.Expression{
+								gf(3, "mytables", "x"),
+							},
+							plan.NewFilter(
+								gt(
+									gf(2, "mytable2", "i"),
+									gf(3, "mytable2", "x"),
+								),
+								plan.NewResolvedTable(table2),
+							),
+						),
+						""),
+				},
+				plan.NewResolvedTable(table),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					gf(0, "mytable", "i"),
+					plan.NewSubquery(
+						plan.NewProject(
+							[]sql.Expression{
+								gf(3, "mytables", "x"),
+							},
+							plan.NewFilter(
+								gt(
+									gf(2, "mytable2", "i"),
+									gf(3, "mytable2", "x"),
+								),
+								plan.NewResolvedTable(table2),
+							),
+						),
+						"").WithCachedResults(),
+				},
+				plan.NewResolvedTable(table),
+			),
+		},
+		{
+			name: "not cacheable, outer scope referenced",
+			node: plan.NewProject(
+				[]sql.Expression{
+					gf(0, "mytable", "i"),
+					plan.NewSubquery(
+						plan.NewProject(
+							[]sql.Expression{
+								gf(3, "mytables", "x"),
+							},
+							plan.NewFilter(
+								gt(
+									gf(0, "mytable", "i"),
+									gf(3, "mytable2", "x"),
+								),
+								plan.NewResolvedTable(table2),
+							),
+						),
+						""),
+				},
+				plan.NewResolvedTable(table),
+			),
+		},
+		{
+			name: "not cacheable, non-deterministic expression",
+			node: plan.NewProject(
+				[]sql.Expression{
+					gf(0, "mytable", "i"),
+					plan.NewSubquery(
+						plan.NewProject(
+							[]sql.Expression{
+								gf(3, "mytables", "x"),
+							},
+							plan.NewFilter(
+								gt(
+									mustExpr(function.NewRand()),
+									gf(3, "mytable2", "x"),
+								),
+								plan.NewResolvedTable(table2),
+							),
+						),
+						""),
+				},
+				plan.NewResolvedTable(table),
+			),
+		},
+	}
+
+	runTestCases(t, sql.NewEmptyContext(), testCases, nil, getRule("cache_subquery_results"))
+}
+
+func mustExpr(e sql.Expression, err error) sql.Expression {
+	if err != nil {
+		panic(err)
+	}
+	return e
 }

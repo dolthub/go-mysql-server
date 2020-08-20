@@ -214,7 +214,7 @@ func (s *Subquery) String() string {
 }
 
 func (s *Subquery) DebugString() string {
-	return fmt.Sprintf("(%s)", sql.DebugString(s.Query))
+	return fmt.Sprintf("(%s), cacheable = %t", sql.DebugString(s.Query), s.canCacheResults)
 }
 
 // Resolved implements the Expression interface.

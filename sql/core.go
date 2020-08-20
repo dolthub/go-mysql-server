@@ -54,6 +54,15 @@ type Expression interface {
 	WithChildren(...Expression) (Expression, error)
 }
 
+// NonDeterministicExpression allows a way for expressions to declare that they are non-deterministic, which will
+// signal the engine to not cache their results when this would otherwise appear to be safe.
+type NonDeterministicExpression interface {
+	Expression
+	// IsNonDeterministic returns whether this expression returns a non-deterministic result. An expression is
+	// non-deterministic if it can return different results on subsequent evaluations.
+	IsNonDeterministic() bool
+}
+
 // Aggregation implements an aggregation expression, where an
 // aggregation buffer is created for each grouping (NewBuffer) and rows in the
 // grouping are fed to the buffer (Update). Multiple buffers can be merged

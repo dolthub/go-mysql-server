@@ -59,29 +59,36 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	})
 }
 
-// cacheSubqueryResults determines whether it's safe to cache the results for any subquery expressions. Caching
-// subquery results is safe in the case that no outer scope columns are referenced.
+// cacheSubqueryResults determines whether it's safe to cache the results for any subquery expressions, and marks the
+// subquery as cacheable if so. Caching subquery results is safe in the case that no outer scope columns are referenced,
+// and if all expressions in the subquery are deterministic.
 func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		s, ok := e.(*plan.Subquery)
-		if !ok || s.Resolved() {
+		if !ok || !s.Resolved() {
 			return e, nil
 		}
 
 		scopeLen := scope.newScope(n).SchemaLength()
-		outerScopeFound := false
+		cacheable := true
 
 		plan.InspectExpressions(s.Query, func(expr sql.Expression) bool {
 			if gf, ok := expr.(*expression.GetField); ok {
 				if gf.Index() < scopeLen {
-					outerScopeFound = true
+					cacheable = false
 					return false
 				}
 			}
+
+			if nd, ok := expr.(sql.NonDeterministicExpression); ok && nd.IsNonDeterministic() {
+				cacheable = false
+				return false
+			}
+
 			return true
 		})
 
-		if !outerScopeFound {
+		if cacheable {
 			return s.WithCachedResults(), nil
 		}
 

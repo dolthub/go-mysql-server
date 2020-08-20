@@ -38,6 +38,7 @@ type Rand struct {
 }
 
 var _ sql.Expression = (*Rand)(nil)
+var _ sql.NonDeterministicExpression = (*Rand)(nil)
 
 // NewRand creates a new Rand expression.
 func NewRand(exprs ...sql.Expression) (sql.Expression, error) {
@@ -50,17 +51,22 @@ func NewRand(exprs ...sql.Expression) (sql.Expression, error) {
 	return &Rand{}, nil
 }
 
-// Type implements the Expression interface.
+// Type implements sql.Expression.
 func (r *Rand) Type() sql.Type {
 	return sql.Float64
 }
 
-// IsNullable implements the Expression interface
+// IsNonDeterministic implements sql.NonDeterministicExpression
+func (r *Rand) IsNonDeterministic() bool {
+	return r.Child == nil
+}
+
+// IsNullable implements sql.Expression
 func (r *Rand) IsNullable() bool {
 	return false
 }
 
-// Resolved implements the Expression interface
+// Resolved implements sql.Expression
 func (r *Rand) Resolved() bool {
 	return r.Child == nil || r.Child.Resolved()
 }
@@ -72,7 +78,7 @@ func (r *Rand) String() string {
 	return fmt.Sprintf("RAND()")
 }
 
-// WithChildren implements the Expression interface.
+// WithChildren implements sql.Expression.
 func (r *Rand) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) > 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 1)
@@ -84,7 +90,7 @@ func (r *Rand) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	return NewRand(children[0])
 }
 
-// Children implements the Expression interface
+// Children implements sql.Expression
 func (r *Rand) Children() []sql.Expression {
 	if r.Child == nil {
 		return nil
@@ -92,7 +98,7 @@ func (r *Rand) Children() []sql.Expression {
 	return []sql.Expression{r.Child}
 }
 
-// Eval implements the Expression interface.
+// Eval implements sql.Expression.
 func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if r.Child == nil {
 		return rand.Float64(), nil
