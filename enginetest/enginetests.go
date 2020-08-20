@@ -350,7 +350,15 @@ func TestColumnAliases(t *testing.T, harness Harness) {
 			assert.Equal(t, tt.expectedColNames, colNames)
 			rows, err := sql.RowIterToRows(rowIter)
 			require.NoError(err)
-			assert.Equal(t, tt.expectedRows, rows)
+
+			orderBy := strings.Contains(strings.ToUpper(tt.query), " ORDER BY ")
+
+			// .Equal gives better error messages than .ElementsMatch, so use it when possible
+			if orderBy || len(tt.expectedRows) <= 1 {
+				require.Equal(tt.expectedRows, rows, "Unexpected result for query %s", tt.query)
+			} else {
+				require.ElementsMatch(tt.expectedRows, rows, "Unexpected result for query %s", tt.query)
+			}
 		})
 	}
 }
