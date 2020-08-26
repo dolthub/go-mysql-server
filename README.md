@@ -212,6 +212,16 @@ from your source. Here you can see an example using the in-memory
 database implementation:
 
 ```go
+import (
+    "time"
+
+    "github.com/liquidata-inc/go-mysql-server/auth"
+    "github.com/liquidata-inc/go-mysql-server/memory"
+    "github.com/liquidata-inc/go-mysql-server/server"
+    "github.com/liquidata-inc/go-mysql-server/sql"
+    sqle "github.com/liquidata-inc/go-mysql-server"
+)
+
 func main() {
     driver := sqle.NewDefault()
     driver.AddDatabase(createTestDatabase())
