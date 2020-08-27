@@ -16,6 +16,8 @@ type JSONExtract struct {
 	Paths []sql.Expression
 }
 
+var _ sql.FunctionExpression = (*JSONExtract)(nil)
+
 // NewJSONExtract creates a new JSONExtract UDF.
 func NewJSONExtract(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 {
@@ -23,6 +25,11 @@ func NewJSONExtract(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	return &JSONExtract{args[0], args[1:]}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j *JSONExtract) FunctionName() string {
+	return "json_extract"
 }
 
 // Resolved implements the sql.Expression interface.

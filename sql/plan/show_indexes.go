@@ -101,7 +101,7 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 	}
 
 	nullable := ""
-	if col := getColumnFromIndexExpr(show.expression, tbl); col != nil {
+	if col := GetColumnFromIndexExpr(show.expression, tbl); col != nil {
 		columnName, expression = col.Name, nil
 		if col.Nullable {
 			nullable = "YES"
@@ -139,9 +139,9 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 	), nil
 }
 
-// getColumnFromIndexExpr returns column from the table given using the expression string given, in the form
+// GetColumnFromIndexExpr returns column from the table given using the expression string given, in the form
 // "table.column". Returns nil if the expression doesn't represent a column.
-func getColumnFromIndexExpr(expr string, table sql.Table) *sql.Column {
+func GetColumnFromIndexExpr(expr string, table sql.Table) *sql.Column {
 	for _, col := range table.Schema() {
 		if col.Source+"."+col.Name == expr {
 			return col

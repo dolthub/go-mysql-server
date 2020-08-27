@@ -7,6 +7,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 // ErrCreateTable is thrown when the database doesn't support table creation
@@ -23,9 +24,6 @@ var ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered on da
 
 // ErrNullDefault is thrown when a non-null column is added with a null default
 var ErrNullDefault = errors.NewKind("column declared not null must have a non-null default value")
-
-// ErrIncompatibleDefaultType is thrown when a provided default cannot be coerced into the type of the column
-var ErrIncompatibleDefaultType = errors.NewKind("incompatible type for default value")
 
 // ErrTableCreatedNotFound is thrown when a table is created from CREATE TABLE but cannot be found immediately afterward
 var ErrTableCreatedNotFound = errors.NewKind("table was created but could not be found")
@@ -75,6 +73,7 @@ type CreateTable struct {
 
 var _ sql.Databaser = (*CreateTable)(nil)
 var _ sql.Node = (*CreateTable)(nil)
+var _ sql.Expressioner = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
 func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists bool, idxDefs []*IndexDefinition, fkDefs []*sql.ForeignKeyConstraint) *CreateTable {
@@ -99,10 +98,28 @@ func (c *CreateTable) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &nc, nil
 }
 
+// Schema implements the sql.SchemeModifiable interface.
+func (c *CreateTable) Schema() sql.Schema {
+	return c.schema
+}
+
+// Resolved implements the Resolvable interface.
+func (c *CreateTable) Resolved() bool {
+	resolved := c.ddlNode.Resolved()
+	for _, col := range c.schema {
+		resolved = resolved && col.Default.Resolved()
+	}
+	return resolved
+}
+
 // RowIter implements the Node interface.
 func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	creatable, ok := c.db.(sql.TableCreator)
 	if ok {
+		if err := c.validateDefaultPosition(); err != nil {
+			return sql.RowsToRowIter(), err
+		}
+
 		err := creatable.CreateTable(ctx, c.name, c.schema)
 		if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && c.ifNotExists) {
 			return sql.RowsToRowIter(), err
@@ -159,6 +176,43 @@ func (c *CreateTable) String() string {
 		ifNotExists = "if not exists "
 	}
 	return fmt.Sprintf("Create table %s%s", ifNotExists, c.name)
+}
+
+func (c *CreateTable) Expressions() []sql.Expression {
+	exprs := make([]sql.Expression, len(c.schema))
+	for i, col := range c.schema {
+		exprs[i] = expression.WrapExpression(col.Default)
+	}
+	return exprs
+}
+
+func (c *CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(c.schema) {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), len(c.schema))
+	}
+	nc := *c
+	for i, expr := range exprs {
+		unwrappedColDefVal, ok := expr.(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+		if ok {
+			nc.schema[i].Default = unwrappedColDefVal
+		} else { // nil fails type check
+			nc.schema[i].Default = nil
+		}
+	}
+	return &nc, nil
+}
+
+func (c *CreateTable) validateDefaultPosition() error {
+	colsAfterThis := make(map[string]*sql.Column)
+	for i := len(c.schema) - 1; i >= 0; i-- {
+		col := c.schema[i]
+		colsAfterThis[col.Name] = col
+		if err := inspectDefaultForInvalidColumns(col, colsAfterThis); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // DropTable is a node describing dropping one or more tables
@@ -301,6 +355,7 @@ type AddColumn struct {
 
 var _ sql.Node = (*AddColumn)(nil)
 var _ sql.Databaser = (*AddColumn)(nil)
+var _ sql.Expressioner = (*AddColumn)(nil)
 
 func NewAddColumn(db sql.Database, tableName string, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
 	return &AddColumn{
@@ -317,6 +372,11 @@ func (a *AddColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &na, nil
 }
 
+// Schema implements the sql.SchemeModifiable interface.
+func (a *AddColumn) Schema() sql.Schema {
+	return sql.Schema{a.column}
+}
+
 func (a *AddColumn) String() string {
 	return fmt.Sprintf("add column %s", a.column.Name)
 }
@@ -328,8 +388,9 @@ func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	}
 
 	tbl := alterable.(sql.Table)
+	tblSch := tbl.Schema()
 	if a.order != nil && !a.order.First {
-		idx := tbl.Schema().IndexOf(a.order.AfterColumn, tbl.Name())
+		idx := tblSch.IndexOf(a.order.AfterColumn, tbl.Name())
 		if idx < 0 {
 			return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), a.order.AfterColumn)
 		}
@@ -339,16 +400,62 @@ func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		return nil, ErrNullDefault.New()
 	}
 
-	var defaultVal interface{}
-	if a.column.Default != nil {
-		defaultVal, err = a.column.Type.Convert(a.column.Default)
-		if err != nil {
-			return nil, ErrIncompatibleDefaultType.New()
-		}
-		a.column.Default = defaultVal
+	if err := a.validateDefaultPosition(tblSch); err != nil {
+		return nil, err
 	}
 
 	return sql.RowsToRowIter(), alterable.AddColumn(ctx, a.column, a.order)
+}
+
+func (a *AddColumn) Expressions() []sql.Expression {
+	return expression.WrapExpressions(a.column.Default)
+}
+
+func (a *AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), 1)
+	}
+	na := *a
+	unwrappedColDefVal, ok := exprs[0].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+	if ok {
+		na.column.Default = unwrappedColDefVal
+	} else { // nil fails type check
+		na.column.Default = nil
+	}
+	return &na, nil
+}
+
+// Resolved implements the Resolvable interface.
+func (a *AddColumn) Resolved() bool {
+	return a.ddlNode.Resolved() && a.column.Default.Resolved()
+}
+
+func (a *AddColumn) validateDefaultPosition(tblSch sql.Schema) error {
+	colsAfterThis := map[string]*sql.Column{a.column.Name: a.column}
+	if a.order != nil {
+		if a.order.First {
+			for i := 0; i < len(tblSch); i++ {
+				colsAfterThis[tblSch[i].Name] = tblSch[i]
+			}
+		} else {
+			i := 0
+			for ; i < len(tblSch); i++ {
+				if tblSch[i].Name == a.order.AfterColumn {
+					break
+				}
+			}
+			for ; i < len(tblSch); i++ {
+				colsAfterThis[tblSch[i].Name] = tblSch[i]
+			}
+		}
+	}
+
+	err := inspectDefaultForInvalidColumns(a.column, colsAfterThis)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (a *AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -400,6 +507,26 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 	if !found {
 		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), d.column)
+	}
+
+	for _, col := range tbl.Schema() {
+		if col.Default == nil {
+			continue
+		}
+		var err error
+		sql.Inspect(col.Default, func(expr sql.Expression) bool {
+			switch expr := expr.(type) {
+			case *expression.GetField:
+				if expr.Name() == d.column {
+					err = fmt.Errorf(`cannot drop column "%s" as default value of column "%s" references it`, d.column, expr.Name())
+					return false
+				}
+			}
+			return true
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return sql.RowsToRowIter(), alterable.DropColumn(ctx, d.column)
@@ -471,6 +598,7 @@ type ModifyColumn struct {
 
 var _ sql.Node = (*ModifyColumn)(nil)
 var _ sql.Databaser = (*ModifyColumn)(nil)
+var _ sql.Expressioner = (*ModifyColumn)(nil)
 
 func NewModifyColumn(db sql.Database, tableName string, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
 	return &ModifyColumn{
@@ -488,6 +616,11 @@ func (m *ModifyColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &nm, nil
 }
 
+// Schema implements the sql.SchemeModifiable interface.
+func (m *ModifyColumn) Schema() sql.Schema {
+	return sql.Schema{m.column}
+}
+
 func (m *ModifyColumn) String() string {
 	return fmt.Sprintf("modify column %s", m.column.Name)
 }
@@ -499,25 +632,21 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	}
 
 	tbl := alterable.(sql.Table)
-	idx := tbl.Schema().IndexOf(m.columnName, tbl.Name())
+	tblSch := tbl.Schema()
+	idx := tblSch.IndexOf(m.columnName, tbl.Name())
 	if idx < 0 {
 		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), m.columnName)
 	}
 
 	if m.order != nil && !m.order.First {
-		idx = tbl.Schema().IndexOf(m.order.AfterColumn, tbl.Name())
+		idx = tblSch.IndexOf(m.order.AfterColumn, tbl.Name())
 		if idx < 0 {
 			return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), m.order.AfterColumn)
 		}
 	}
 
-	if m.column.Default != nil {
-		var defaultVal interface{}
-		defaultVal, err = m.column.Type.Convert(m.column.Default)
-		if err != nil {
-			return nil, ErrIncompatibleDefaultType.New()
-		}
-		m.column.Default = defaultVal
+	if err := m.validateDefaultPosition(tblSch); err != nil {
+		return nil, err
 	}
 
 	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, m.columnName, m.column, m.order)
@@ -525,6 +654,78 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 
 func (m *ModifyColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(m, children...)
+}
+
+func (m *ModifyColumn) Expressions() []sql.Expression {
+	return expression.WrapExpressions(m.column.Default)
+}
+
+func (m *ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(exprs), 1)
+	}
+	nm := *m
+	unwrappedColDefVal, ok := exprs[0].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+	if ok {
+		nm.column.Default = unwrappedColDefVal
+	} else { // nil fails type check
+		nm.column.Default = nil
+	}
+	return &nm, nil
+}
+
+// Resolved implements the Resolvable interface.
+func (m *ModifyColumn) Resolved() bool {
+	return m.ddlNode.Resolved() && m.column.Default.Resolved()
+}
+
+func (m *ModifyColumn) validateDefaultPosition(tblSch sql.Schema) error {
+	colsBeforeThis := make(map[string]*sql.Column)
+	colsAfterThis := make(map[string]*sql.Column) // includes the modified column
+	if m.order == nil {
+		i := 0
+		for ; i < len(tblSch); i++ {
+			if tblSch[i].Name == m.column.Name {
+				colsAfterThis[m.column.Name] = m.column
+				break
+			}
+			colsBeforeThis[tblSch[i].Name] = tblSch[i]
+		}
+		for ; i < len(tblSch); i++ {
+			colsAfterThis[tblSch[i].Name] = tblSch[i]
+		}
+	} else if m.order.First {
+		for i := 0; i < len(tblSch); i++ {
+			colsAfterThis[tblSch[i].Name] = tblSch[i]
+		}
+	} else {
+		i := 0
+		for ; i < len(tblSch); i++ {
+			colsBeforeThis[tblSch[i].Name] = tblSch[i]
+			if tblSch[i].Name == m.order.AfterColumn {
+				break
+			}
+		}
+		for ; i < len(tblSch); i++ {
+			colsAfterThis[tblSch[i].Name] = tblSch[i]
+		}
+		delete(colsBeforeThis, m.column.Name)
+		colsAfterThis[m.column.Name] = m.column
+	}
+
+	err := inspectDefaultForInvalidColumns(m.column, colsAfterThis)
+	if err != nil {
+		return err
+	}
+	thisCol := map[string]*sql.Column{m.column.Name: m.column}
+	for _, colBefore := range colsBeforeThis {
+		err = inspectDefaultForInvalidColumns(colBefore, thisCol)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Gets an AlterableTable with the name given from the database, or an error if it cannot.
@@ -544,4 +745,22 @@ func getAlterableTable(db sql.Database, ctx *sql.Context, tableName string) (sql
 	}
 
 	return alterable, nil
+}
+
+func inspectDefaultForInvalidColumns(col *sql.Column, columnsAfterThis map[string]*sql.Column) error {
+	if col.Default == nil {
+		return nil
+	}
+	var err error
+	sql.Inspect(col.Default, func(expr sql.Expression) bool {
+		switch expr := expr.(type) {
+		case *expression.GetField:
+			if col, ok := columnsAfterThis[expr.Name()]; ok && col.Default != nil && !col.Default.IsLiteral() {
+				err = fmt.Errorf(`default value of column "%s" cannot refer to a column defined after it if those columns have an expression default value`, col.Name)
+				return false
+			}
+		}
+		return true
+	})
+	return err
 }

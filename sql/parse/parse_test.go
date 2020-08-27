@@ -558,7 +558,7 @@ var fixtures = map[string]sql.Node{
 			Type:     sql.Int32,
 			Nullable: false,
 			Comment:  "hello",
-			Default:  int8(42),
+			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "42", nil, true),
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT -42.0 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
@@ -567,7 +567,7 @@ var fixtures = map[string]sql.Node{
 			Type:     sql.Int32,
 			Nullable: false,
 			Comment:  "hello",
-			Default:  float64(-42.0),
+			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "-42.0", nil, true),
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT (2+2)/2 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
@@ -576,7 +576,7 @@ var fixtures = map[string]sql.Node{
 			Type:     sql.Int32,
 			Nullable: false,
 			Comment:  "hello",
-			Default:  int64(2),
+			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "(2+2)/2", nil, true),
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE foo ADD COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello'`: plan.NewAddColumn(
@@ -585,7 +585,7 @@ var fixtures = map[string]sql.Node{
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
 			Nullable: true,
 			Comment:  "hello",
-			Default:  "string",
+			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
 		}, nil,
 	),
 	`ALTER TABLE foo ADD COLUMN bar FLOAT NULL DEFAULT 32.0 COMMENT 'hello'`: plan.NewAddColumn(
@@ -594,7 +594,7 @@ var fixtures = map[string]sql.Node{
 			Type:     sql.Float32,
 			Nullable: true,
 			Comment:  "hello",
-			Default:  float64(32.0),
+			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "32.0", nil, true),
 		}, nil,
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT DEFAULT 1 FIRST`: plan.NewAddColumn(
@@ -602,7 +602,7 @@ var fixtures = map[string]sql.Node{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: true,
-			Default:  int8(1),
+			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "1", nil, true),
 		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE foo ADD INDEX (v1)`: plan.NewAlterCreateIndex(
@@ -622,7 +622,7 @@ var fixtures = map[string]sql.Node{
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
 			Nullable: true,
 			Comment:  "hello",
-			Default:  "string",
+			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
 		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE foo CHANGE COLUMN bar baz VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
@@ -631,7 +631,7 @@ var fixtures = map[string]sql.Node{
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
 			Nullable: true,
 			Comment:  "hello",
-			Default:  "string",
+			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
 		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE t1 ADD FOREIGN KEY (b_id) REFERENCES t0(b)`: plan.NewAlterAddForeignKey(

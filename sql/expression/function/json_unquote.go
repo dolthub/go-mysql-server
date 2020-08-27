@@ -19,9 +19,16 @@ type JSONUnquote struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*JSONUnquote)(nil)
+
 // NewJSONUnquote creates a new JSONUnquote UDF.
 func NewJSONUnquote(json sql.Expression) sql.Expression {
 	return &JSONUnquote{expression.UnaryExpression{Child: json}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (js *JSONUnquote) FunctionName() string {
+	return "json_unquote"
 }
 
 func (js *JSONUnquote) String() string {

@@ -1,6 +1,7 @@
 package sqle
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/go-kit/kit/metrics/discard"
@@ -164,6 +165,42 @@ func (e *Engine) Query(
 	}
 
 	return analyzed.Schema(), iter, nil
+}
+
+// ApplyDefaults applies the default values of the given column indices to the given row, and returns a new row with the updated values.
+// This assumes that the given row has placeholder `nil` values for the default entries, and also that each column in a table is
+// present and in the order as represented by the schema. If no columns are given, then the given row is returned. Column indices should
+// be sorted and in ascending order, however this is not enforced.
+func (e *Engine) ApplyDefaults(ctx *sql.Context, database, table string, cols []int, row sql.Row) (sql.Row, error) {
+	if len(cols) == 0 {
+		return row, nil
+	}
+	newRow := row.Copy()
+	if database == "" {
+		database = ctx.GetCurrentDatabase()
+	}
+	tbl, err := e.Catalog.Table(ctx, database, table)
+	if err != nil {
+		return nil, err
+	}
+	tblSch := tbl.Schema()
+	if len(tblSch) != len(row) {
+		return nil, fmt.Errorf("any row given to ApplyDefaults must be of the same length as the table it represents")
+	}
+	for _, col := range cols {
+		if col < 0 || col > len(tblSch) {
+			return nil, fmt.Errorf("column index `%d` is out of bounds, table schema has `%d` number of columns", col, len(tblSch))
+		}
+		val, err := tblSch[col].Default.Eval(ctx, newRow)
+		if err != nil {
+			return nil, err
+		}
+		newRow[col], err = tblSch[col].Type.Convert(val)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return newRow, nil
 }
 
 // Async returns true if the query is async. If there are any errors with the

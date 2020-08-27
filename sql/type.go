@@ -428,6 +428,16 @@ func IsText(t Type) bool {
 	return ok || t == JSON
 }
 
+// IsTextBlob checks if t is one of the TEXTs or BLOBs.
+func IsTextBlob(t Type) bool {
+	switch t.Type() {
+	case sqltypes.Text, sqltypes.Blob:
+		return true
+	default:
+		return false
+	}
+}
+
 // IsTextOnly checks if t is CHAR, VARCHAR, or one of the TEXTs.
 func IsTextOnly(t Type) bool {
 	switch t.Type() {

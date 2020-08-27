@@ -1,4 +1,4 @@
-package plan
+package plan_test
 
 import (
 	"testing"
@@ -8,18 +8,21 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/parse"
+	. "github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
 func TestShowColumns(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
 
 	table := NewResolvedTable(memory.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Text, PrimaryKey: true},
 		{Name: "b", Source: "foo", Type: sql.Int64, Nullable: true},
-		{Name: "c", Source: "foo", Type: sql.Int64, Default: int64(1)},
+		{Name: "c", Source: "foo", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false)},
 	}))
 
-	iter, err := NewShowColumns(false, table).RowIter(sql.NewEmptyContext(), nil)
+	iter, err := NewShowColumns(false, table).RowIter(ctx, nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
@@ -36,13 +39,14 @@ func TestShowColumns(t *testing.T) {
 
 func TestShowColumnsWithIndexes(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
 
 	table := NewResolvedTable(memory.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Text, PrimaryKey: true},
 		{Name: "b", Source: "foo", Type: sql.Int64, Nullable: true},
-		{Name: "c", Source: "foo", Type: sql.Int64, Default: int64(1)},
+		{Name: "c", Source: "foo", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false)},
 		{Name: "d", Source: "foo", Type: sql.Int64, Nullable: true},
-		{Name: "e", Source: "foo", Type: sql.Int64, Default: int64(1)},
+		{Name: "e", Source: "foo", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false)},
 	}))
 
 	showColumns := NewShowColumns(false, table)
@@ -71,7 +75,7 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 		},
 	}
 
-	iter, err := showColumns.RowIter(sql.NewEmptyContext(), nil)
+	iter, err := showColumns.RowIter(ctx, nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
@@ -122,21 +126,22 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 
 func TestShowColumnsFull(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
 
 	table := NewResolvedTable(memory.NewTable("foo", sql.Schema{
 		{Name: "a", Type: sql.Text, PrimaryKey: true},
 		{Name: "b", Type: sql.Int64, Nullable: true},
-		{Name: "c", Type: sql.Int64, Default: int64(1), Comment: "a comment"},
+		{Name: "c", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false), Comment: "a comment"},
 	}))
 
-	iter, err := NewShowColumns(true, table).RowIter(sql.NewEmptyContext(), nil)
+	iter, err := NewShowColumns(true, table).RowIter(ctx, nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{"a", "text", "utf8_bin", "NO", "PRI", "", "", "", ""},
+		{"a", "text", "utf8mb4_0900_ai_ci", "NO", "PRI", "", "", "", ""},
 		{"b", "bigint", nil, "YES", "", "", "", "", ""},
 		{"c", "bigint", nil, "NO", "", "1", "", "", "a comment"},
 	}

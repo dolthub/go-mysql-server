@@ -14,9 +14,16 @@ type Ceil struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*Ceil)(nil)
+
 // NewCeil creates a new Ceil expression.
 func NewCeil(num sql.Expression) sql.Expression {
 	return &Ceil{expression.UnaryExpression{Child: num}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (c *Ceil) FunctionName() string {
+	return "ceil"
 }
 
 // Type implements the Expression interface.
@@ -80,9 +87,16 @@ type Floor struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*Floor)(nil)
+
 // NewFloor returns a new Floor expression.
 func NewFloor(num sql.Expression) sql.Expression {
 	return &Floor{expression.UnaryExpression{Child: num}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (f *Floor) FunctionName() string {
+	return "floor"
 }
 
 // Type implements the Expression interface.
@@ -149,6 +163,8 @@ type Round struct {
 	expression.BinaryExpression
 }
 
+var _ sql.FunctionExpression = (*Round)(nil)
+
 // NewRound returns a new Round expression.
 func NewRound(args ...sql.Expression) (sql.Expression, error) {
 	argLen := len(args)
@@ -162,6 +178,11 @@ func NewRound(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	return &Round{expression.BinaryExpression{Left: args[0], Right: right}}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (r *Round) FunctionName() string {
+	return "round"
 }
 
 // Children implements the Expression interface.

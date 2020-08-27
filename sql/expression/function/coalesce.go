@@ -12,6 +12,8 @@ type Coalesce struct {
 	args []sql.Expression
 }
 
+var _ sql.FunctionExpression = (*Coalesce)(nil)
+
 // NewCoalesce creates a new Coalesce sql.Expression.
 func NewCoalesce(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) == 0 {
@@ -19,6 +21,11 @@ func NewCoalesce(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	return &Coalesce{args}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (c *Coalesce) FunctionName() string {
+	return "coalesce"
 }
 
 // Type implements the sql.Expression interface.

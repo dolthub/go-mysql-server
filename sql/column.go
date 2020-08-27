@@ -11,8 +11,8 @@ type Column struct {
 	Name string
 	// Type is the data type of the column.
 	Type Type
-	// Default contains the default value of the column or nil if it is NULL.
-	Default interface{}
+	// Default contains the default value of the column or nil if it was not explicitly defined. A nil instance is valid, thus calls do not error.
+	Default *ColumnDefaultValue
 	// Nullable is true if the column can contain NULL values, or false
 	// otherwise.
 	Nullable bool

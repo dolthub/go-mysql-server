@@ -96,6 +96,8 @@ type NoArgFunc struct {
 	Logic   EvalLogic
 }
 
+var _ FunctionExpression = (*NoArgFunc)(nil)
+
 // NewFunction0 returns a sql function that takes 0 arguments
 func NewFunction0(name string, sqlType Type, logic EvalLogic) Function0 {
 	fn := func() Expression {
@@ -103,6 +105,11 @@ func NewFunction0(name string, sqlType Type, logic EvalLogic) Function0 {
 	}
 
 	return Function0{Name: name, Fn: fn}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (fn *NoArgFunc) FunctionName() string {
+	return fn.Name
 }
 
 // Type implements the Expression interface.

@@ -15,6 +15,8 @@ type ConcatWithSeparator struct {
 	args []sql.Expression
 }
 
+var _ sql.FunctionExpression = (*ConcatWithSeparator)(nil)
+
 // NewConcatWithSeparator creates a new NewConcatWithSeparator UDF.
 func NewConcatWithSeparator(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) == 0 {
@@ -38,6 +40,11 @@ func NewConcatWithSeparator(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	return &ConcatWithSeparator{args}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (f *ConcatWithSeparator) FunctionName() string {
+	return "concat_ws"
 }
 
 // Type implements the Expression interface.

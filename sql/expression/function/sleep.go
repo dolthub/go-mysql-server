@@ -16,9 +16,16 @@ type Sleep struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*Sleep)(nil)
+
 // NewSleep creates a new Sleep expression.
 func NewSleep(e sql.Expression) sql.Expression {
 	return &Sleep{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (s *Sleep) FunctionName() string {
+	return "sleep"
 }
 
 // Eval implements the Expression interface.

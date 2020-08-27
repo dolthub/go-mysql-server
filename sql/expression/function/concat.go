@@ -14,6 +14,8 @@ type Concat struct {
 	args []sql.Expression
 }
 
+var _ sql.FunctionExpression = (*Concat)(nil)
+
 // ErrConcatArrayWithOthers is returned when there are more than 1 argument in
 // concat and any of them is an array.
 var ErrConcatArrayWithOthers = errors.NewKind("can't concat a string array with any other elements")
@@ -41,6 +43,11 @@ func NewConcat(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	return &Concat{args}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (c *Concat) FunctionName() string {
+	return "concat"
 }
 
 // Type implements the Expression interface.

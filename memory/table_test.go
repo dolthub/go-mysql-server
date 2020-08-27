@@ -9,6 +9,7 @@ import (
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/parse"
 )
 
 func TestTablePartitionsCount(t *testing.T) {
@@ -112,9 +113,9 @@ var tests = []struct {
 	{
 		name: "test",
 		schema: sql.Schema{
-			&sql.Column{Name: "col1", Source: "test", Type: sql.Text, Nullable: false, Default: ""},
-			&sql.Column{Name: "col2", Source: "test", Type: sql.Int32, Nullable: false, Default: int32(0)},
-			&sql.Column{Name: "col3", Source: "test", Type: sql.Int64, Nullable: false, Default: int64(0)},
+			&sql.Column{Name: "col1", Source: "test", Type: sql.Text, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, sql.Text, false)},
+			&sql.Column{Name: "col2", Source: "test", Type: sql.Int32, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int32, false)},
+			&sql.Column{Name: "col3", Source: "test", Type: sql.Int64, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int64, false)},
 		},
 		numPartitions: 2,
 		rows: []sql.Row{
@@ -138,8 +139,8 @@ var tests = []struct {
 		},
 		columns: []string{"col3", "col1"},
 		expectedSchema: sql.Schema{
-			&sql.Column{Name: "col3", Source: "test", Type: sql.Int64, Nullable: false, Default: int64(0)},
-			&sql.Column{Name: "col1", Source: "test", Type: sql.Text, Nullable: false, Default: ""},
+			&sql.Column{Name: "col3", Source: "test", Type: sql.Int64, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int64, false)},
+			&sql.Column{Name: "col1", Source: "test", Type: sql.Text, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, sql.Text, false)},
 		},
 		expectedProjected: []sql.Row{
 			sql.NewRow(int64(100), "a"),

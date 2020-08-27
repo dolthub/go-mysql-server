@@ -14,9 +14,16 @@ type Min struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*Min)(nil)
+
 // NewMin creates a new Min node.
 func NewMin(e sql.Expression) *Min {
 	return &Min{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (m *Min) FunctionName() string {
+	return "min"
 }
 
 // Type returns the resultant type of the aggregation.

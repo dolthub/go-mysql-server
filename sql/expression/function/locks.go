@@ -33,6 +33,8 @@ type NamedLockFunction struct {
 	logic    NamedLockFuncLogic
 }
 
+var _ sql.FunctionExpression = (*NamedLockFunction)(nil)
+
 // NewNamedLockFunc creates a NamedLockFunction
 func NewNamedLockFunc(ls *sql.LockSubsystem, funcName string, retType sql.Type, logic NamedLockFuncLogic) sql.Function1 {
 	fn := func(e sql.Expression) sql.Expression {
@@ -40,6 +42,11 @@ func NewNamedLockFunc(ls *sql.LockSubsystem, funcName string, retType sql.Type, 
 	}
 
 	return sql.Function1{Name: funcName, Fn: fn}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (nl *NamedLockFunction) FunctionName() string {
+	return nl.funcName
 }
 
 // Eval implements the Expression interface.
@@ -138,11 +145,18 @@ type GetLock struct {
 	ls *sql.LockSubsystem
 }
 
+var _ sql.FunctionExpression = (*GetLock)(nil)
+
 // CreateNewGetLock returns a new GetLock object
 func CreateNewGetLock(ls *sql.LockSubsystem) func(e1, e2 sql.Expression) sql.Expression {
 	return func(e1, e2 sql.Expression) sql.Expression {
 		return &GetLock{expression.BinaryExpression{e1, e2}, ls}
 	}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (gl *GetLock) FunctionName() string {
+	return "get_lock"
 }
 
 // Eval implements the Expression interface.

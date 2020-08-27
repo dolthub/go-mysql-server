@@ -12,9 +12,16 @@ type Avg struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*Avg)(nil)
+
 // NewAvg creates a new Avg node.
 func NewAvg(e sql.Expression) *Avg {
 	return &Avg{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (a *Avg) FunctionName() string {
+	return "avg"
 }
 
 func (a *Avg) String() string {

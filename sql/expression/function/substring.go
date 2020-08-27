@@ -20,6 +20,8 @@ type Substring struct {
 	len   sql.Expression
 }
 
+var _ sql.FunctionExpression = (*Substring)(nil)
+
 // NewSubstring creates a new substring UDF.
 func NewSubstring(args ...sql.Expression) (sql.Expression, error) {
 	var str, start, ln sql.Expression
@@ -36,6 +38,11 @@ func NewSubstring(args ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidArgumentNumber.New("SUBSTRING", "2 or 3", len(args))
 	}
 	return &Substring{str, start, ln}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (s *Substring) FunctionName() string {
+	return "substring"
 }
 
 // Children implements the Expression interface.
@@ -157,9 +164,16 @@ type SubstringIndex struct {
 	count sql.Expression
 }
 
+var _ sql.FunctionExpression = (*SubstringIndex)(nil)
+
 // NewSubstringIndex creates a new SubstringIndex UDF.
 func NewSubstringIndex(str, delim, count sql.Expression) sql.Expression {
 	return &SubstringIndex{str, delim, count}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (s *SubstringIndex) FunctionName() string {
+	return "substring_index"
 }
 
 // Children implements the Expression interface.
@@ -264,9 +278,16 @@ type Left struct {
 	len sql.Expression
 }
 
+var _ sql.FunctionExpression = (*Left)(nil)
+
 // NewLeft creates a new LEFT function.
 func NewLeft(str, len sql.Expression) sql.Expression {
 	return Left{str, len}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (l *Left) FunctionName() string {
+	return "left"
 }
 
 // Children implements the Expression interface.
@@ -351,9 +372,16 @@ type Instr struct {
 	substr sql.Expression
 }
 
+var _ sql.FunctionExpression = (*Instr)(nil)
+
 // NewInstr creates a new instr UDF.
 func NewInstr(str, substr sql.Expression) sql.Expression {
 	return Instr{str, substr}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (i *Instr) FunctionName() string {
+	return "instr"
 }
 
 // Children implements the Expression interface.

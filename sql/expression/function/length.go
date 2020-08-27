@@ -15,6 +15,8 @@ type Length struct {
 	CountType CountType
 }
 
+var _ sql.FunctionExpression = (*Length)(nil)
+
 // CountType is the kind of length count.
 type CountType bool
 
@@ -33,6 +35,17 @@ func NewLength(e sql.Expression) sql.Expression {
 // NewCharLength returns a new CHAR_LENGTH function.
 func NewCharLength(e sql.Expression) sql.Expression {
 	return &Length{expression.UnaryExpression{Child: e}, NumChars}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (l *Length) FunctionName() string {
+	if l.CountType == NumChars {
+		return "character_length"
+	} else if l.CountType == NumBytes {
+		return "length"
+	} else {
+		panic("unknown name for length count type")
+	}
 }
 
 // WithChildren implements the Expression interface.
