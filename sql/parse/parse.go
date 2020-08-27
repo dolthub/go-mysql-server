@@ -789,7 +789,7 @@ func convertCreateView(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.No
 		return nil, err
 	}
 
-	selectStr := query[c.ViewSelectPositionStart:c.ViewSelectPositionEnd]
+	selectStr := query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
 	queryAlias := plan.NewSubqueryAlias(c.View.Name.String(), selectStr, queryNode)
 
 	return plan.NewCreateView(
