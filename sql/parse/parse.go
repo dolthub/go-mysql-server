@@ -466,6 +466,9 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
 	switch strings.ToLower(c.Action) {
 	case sqlparser.CreateStr:
+		if c.TriggerSpec != nil {
+			return convertCreateTrigger(ctx, query, c)
+		}
 		if !c.View.IsEmpty() {
 			return convertCreateView(ctx, query, c)
 		}
@@ -482,6 +485,24 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	default:
 		return nil, ErrUnsupportedSyntax.New(sqlparser.String(c))
 	}
+}
+
+func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
+	var triggerOrder *plan.TriggerOrder
+	if c.TriggerSpec.Order != nil {
+		triggerOrder = &plan.TriggerOrder{
+			PrecedesOrFollows: c.TriggerSpec.Order.PrecedesOrFollows,
+			OtherTriggerName: c.TriggerSpec.Order.OtherTriggerName,
+		}
+	}
+
+	bodyStr := query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
+	body, err := convert(ctx, c.TriggerSpec.Body, bodyStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewCreateTrigger(c.TriggerSpec.Name, c.TriggerSpec.Time, c.TriggerSpec.Event, triggerOrder, tableNameToUnresolvedTable(c.Table), body, bodyStr), nil
 }
 
 func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
@@ -506,7 +527,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	}
 	//TODO: support multiple constraints in a single ALTER statement
 	if ddl.ConstraintAction != "" && len(ddl.TableSpec.Constraints) == 1 {
-		table := plan.NewUnresolvedTable(ddl.Table.Name.String(), ddl.Table.Qualifier.String())
+		table := tableNameToUnresolvedTable(ddl.Table)
 		parsedConstraint, err := convertConstraintDefinition(ctx, ddl.TableSpec.Constraints[0])
 		if err != nil {
 			return nil, err
@@ -556,6 +577,10 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	default:
 		return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
 	}
+}
+
+func tableNameToUnresolvedTable(tableName sqlparser.TableName) *plan.UnresolvedTable {
+	return plan.NewUnresolvedTable(tableName.Name.String(), tableName.Qualifier.String())
 }
 
 func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
