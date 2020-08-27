@@ -1316,9 +1316,9 @@ var QueryTests = []QueryTest{
 	{
 		`SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA`,
 		[]sql.Row{
-			{"information_schema", "utf8mb4", "utf8_bin"},
-			{"mydb", "utf8mb4", "utf8_bin"},
-			{"foo", "utf8mb4", "utf8_bin"},
+			{"information_schema", "utf8mb4", "utf8mb4_0900_ai_ci"},
+			{"mydb", "utf8mb4", "utf8mb4_0900_ai_ci"},
+			{"foo", "utf8mb4", "utf8mb4_0900_ai_ci"},
 		},
 	},
 	{
@@ -1375,7 +1375,7 @@ var QueryTests = []QueryTest{
 			{"max_allowed_packet", math.MaxInt32},
 			{"sql_mode", ""},
 			{"gtid_mode", int32(0)},
-			{"collation_database", "utf8_bin"},
+			{"collation_database", "utf8mb4_0900_ai_ci"},
 			{"ndbinfo_version", ""},
 			{"sql_select_limit", math.MaxInt32},
 			{"transaction_isolation", "READ UNCOMMITTED"},
@@ -1430,7 +1430,7 @@ var QueryTests = []QueryTest{
 		`SHOW CREATE DATABASE mydb`,
 		[]sql.Row{{
 			"mydb",
-			"CREATE DATABASE `mydb` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8_bin */",
+			"CREATE DATABASE `mydb` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */",
 		}},
 	},
 	{
@@ -1639,7 +1639,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		`SHOW COLLATION`,
-		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1), "PAD SPACE"}},
+		[]sql.Row{{"utf8mb4_0900_ai_ci", "utf8mb4", int64(1), "Yes", "Yes", int64(1), "PAD SPACE"}},
 	},
 	{
 		`SHOW COLLATION LIKE 'foo'`,
@@ -1647,7 +1647,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		`SHOW COLLATION LIKE 'utf8%'`,
-		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1), "PAD SPACE"}},
+		[]sql.Row{{"utf8mb4_0900_ai_ci", "utf8mb4", int64(1), "Yes", "Yes", int64(1), "PAD SPACE"}},
 	},
 	{
 		`SHOW COLLATION WHERE charset = 'foo'`,
@@ -1655,7 +1655,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		"SHOW COLLATION WHERE `Default` = 'Yes'",
-		[]sql.Row{{"utf8_bin", "utf8mb4", int64(1), "Yes", "Yes", int64(1), "PAD SPACE"}},
+		[]sql.Row{{"utf8mb4_0900_ai_ci", "utf8mb4", int64(1), "Yes", "Yes", int64(1), "PAD SPACE"}},
 	},
 	{
 		"ROLLBACK",
@@ -3086,44 +3086,44 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		`SHOW TABLE STATUS FROM mydb`,
 		[]sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"fk_tbl", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"fk_tbl", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 		},
 	},
 	{
 		`SHOW TABLE STATUS LIKE '%table'`,
 		[]sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 		},
 	},
 	{
 		`SHOW TABLE STATUS WHERE Name = 'mytable'`,
 		[]sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 		},
 	},
 	{
 		`SHOW TABLE STATUS`,
 		[]sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"fk_tbl", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
-			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8_bin", nil, nil},
+			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"bigtable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"fk_tbl", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 		},
 	},
 	{
@@ -3208,7 +3208,7 @@ var InfoSchemaQueries = []QueryTest{
 		`SHOW FULL COLUMNS FROM mytable`,
 		[]sql.Row{
 			{"i", "bigint", nil, "NO", "PRI", "", "", "", ""},
-			{"s", "varchar(20)", "utf8_bin", "NO", "UNI", "", "", "", "column s"},
+			{"s", "varchar(20)", "utf8mb4_0900_ai_ci", "NO", "UNI", "", "", "", "column s"},
 		},
 	},
 	{
@@ -3631,8 +3631,8 @@ var ViewTests = []QueryTest{
 	{
 		"select * from information_schema.views where table_schema = 'mydb'",
 		[]sql.Row{
-			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
-			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_ai_ci"),
+			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_ai_ci"),
 		},
 	},
 	{
@@ -3723,9 +3723,9 @@ var VersionedViewTests = []QueryTest{
 	{
 		"select * from information_schema.views where table_schema = 'mydb'",
 		[]sql.Row{
-			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
-			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
-			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8_bin"),
+			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_ai_ci"),
+			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_ai_ci"),
+			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_ai_ci"),
 		},
 	},
 	{

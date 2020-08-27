@@ -21,6 +21,8 @@ type RegexpMatches struct {
 	re        *regexp.Regexp
 }
 
+var _ sql.FunctionExpression = (*RegexpMatches)(nil)
+
 // NewRegexpMatches creates a new RegexpMatches expression.
 func NewRegexpMatches(args ...sql.Expression) (sql.Expression, error) {
 	var r RegexpMatches
@@ -40,6 +42,11 @@ func NewRegexpMatches(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	return &r, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (r *RegexpMatches) FunctionName() string {
+	return "regexp_matches"
 }
 
 // Type implements the sql.Expression interface.

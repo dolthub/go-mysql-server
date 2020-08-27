@@ -13,9 +13,16 @@ type Sqrt struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*Sqrt)(nil)
+
 // NewSqrt creates a new Sqrt expression.
 func NewSqrt(e sql.Expression) sql.Expression {
 	return &Sqrt{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (s *Sqrt) FunctionName() string {
+	return "sqrt"
 }
 
 func (s *Sqrt) String() string {
@@ -65,6 +72,8 @@ type Power struct {
 	expression.BinaryExpression
 }
 
+var _ sql.FunctionExpression = (*Power)(nil)
+
 // NewPower creates a new Power expression.
 func NewPower(e1, e2 sql.Expression) sql.Expression {
 	return &Power{
@@ -73,6 +82,11 @@ func NewPower(e1, e2 sql.Expression) sql.Expression {
 			Right: e2,
 		},
 	}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (p *Power) FunctionName() string {
+	return "power"
 }
 
 // Type implements the Expression interface.

@@ -159,13 +159,20 @@ func addDateConvert(
 			}
 		}
 
+		_, isDefaultVal := e.(*sql.ColumnDefaultValue)
+		_, isWrapper := e.(*expression.Wrapper)
 		// TODO: we really want to be converting the literals, instead we're converting the GetFields
-		switch e.Type() {
-		case sql.Date:
-			result = expression.NewConvert(e, expression.ConvertToDate)
-		case sql.Datetime, sql.Timestamp:
-			result = expression.NewConvert(e, expression.ConvertToDatetime)
-		default:
+		// TODO: we also need to make sure this isn't called for every expression up the expression tree
+		if e.Resolved() && !isDefaultVal && !isWrapper {
+			switch e.Type() {
+			case sql.Date:
+				result = expression.NewConvert(e, expression.ConvertToDate)
+			case sql.Datetime, sql.Timestamp:
+				result = expression.NewConvert(e, expression.ConvertToDatetime)
+			default:
+				result = e
+			}
+		} else {
 			result = e
 		}
 	}

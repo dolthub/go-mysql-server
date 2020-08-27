@@ -14,12 +14,19 @@ type Split struct {
 	expression.BinaryExpression
 }
 
+var _ sql.FunctionExpression = (*Split)(nil)
+
 // NewSplit creates a new Split UDF.
 func NewSplit(str, delimiter sql.Expression) sql.Expression {
 	return &Split{expression.BinaryExpression{
 		Left:  str,
 		Right: delimiter,
 	}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (f *Split) FunctionName() string {
+	return "split"
 }
 
 // Eval implements the Expression interface.

@@ -11,11 +11,18 @@ const mysqlVersion = "8.0.11"
 // Version is a function that returns server version.
 type Version string
 
+var _ sql.FunctionExpression = (Version)("")
+
 // NewVersion creates a new Version UDF.
 func NewVersion(versionPostfix string) func(...sql.Expression) (sql.Expression, error) {
 	return func(...sql.Expression) (sql.Expression, error) {
 		return Version(versionPostfix), nil
 	}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (f Version) FunctionName() string {
+	return "version"
 }
 
 // Type implements the Expression interface.

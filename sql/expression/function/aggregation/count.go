@@ -14,9 +14,16 @@ type Count struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*Count)(nil)
+
 // NewCount creates a new Count node.
 func NewCount(e sql.Expression) *Count {
 	return &Count{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (c *Count) FunctionName() string {
+	return "count"
 }
 
 // NewBuffer creates a new buffer for the aggregation.

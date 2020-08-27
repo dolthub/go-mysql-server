@@ -239,6 +239,13 @@ type DateFormat struct {
 	expression.BinaryExpression
 }
 
+var _ sql.FunctionExpression = (*DateFormat)(nil)
+
+// FunctionName implements sql.FunctionExpression
+func (f *DateFormat) FunctionName() string {
+	return "date_format"
+}
+
 // NewDateFormat returns a new DateFormat UDF
 func NewDateFormat(ex, value sql.Expression) sql.Expression {
 	return &DateFormat{

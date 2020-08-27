@@ -20,6 +20,8 @@ type UnaryFunc struct {
 	Logic UnaryFuncLogic
 }
 
+var _ sql.FunctionExpression = (*UnaryFunc)(nil)
+
 // NewUnaryFunc returns a function which is called to create a sql.Expression representing the function and its
 // argemunts
 func NewUnaryFunc(name string, retType sql.Type, logic UnaryFuncLogic) sql.Function1 {
@@ -28,6 +30,11 @@ func NewUnaryFunc(name string, retType sql.Type, logic UnaryFuncLogic) sql.Funct
 	}
 
 	return sql.Function1{Name: name, Fn: fn}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (uf *UnaryFunc) FunctionName() string {
+	return uf.Name
 }
 
 // Eval implements the Expression interface.

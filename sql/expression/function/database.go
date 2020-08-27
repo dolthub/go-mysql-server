@@ -9,11 +9,18 @@ type Database struct {
 	catalog *sql.Catalog
 }
 
+var _ sql.FunctionExpression = (*Database)(nil)
+
 // NewDatabase returns a new Database function
 func NewDatabase(c *sql.Catalog) func() sql.Expression {
 	return func() sql.Expression {
 		return &Database{c}
 	}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (db *Database) FunctionName() string {
+	return "database"
 }
 
 // Type implements the sql.Expression (sql.LongText)

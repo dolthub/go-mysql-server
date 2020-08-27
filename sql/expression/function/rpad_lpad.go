@@ -44,6 +44,19 @@ type Pad struct {
 	padType padType
 }
 
+var _ sql.FunctionExpression = (*Pad)(nil)
+
+// FunctionName implements sql.FunctionExpression
+func (p *Pad) FunctionName() string {
+	if p.padType == lPadType {
+		return "lpad"
+	} else if p.padType == rPadType {
+		return "rpad"
+	} else {
+		panic("unknown name for pad type")
+	}
+}
+
 // Children implements the Expression interface.
 func (p *Pad) Children() []sql.Expression {
 	return []sql.Expression{p.str, p.length, p.padStr}

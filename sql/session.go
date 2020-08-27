@@ -242,7 +242,7 @@ func DefaultSessionConfig() map[string]TypedValue {
 		"max_allowed_packet":       TypedValue{Int32, math.MaxInt32},
 		"sql_mode":                 TypedValue{LongText, ""},
 		"gtid_mode":                TypedValue{Int32, int32(0)},
-		"collation_database":       TypedValue{LongText, "utf8_bin"},
+		"collation_database":       TypedValue{LongText, Collation_Default.String()},
 		"ndbinfo_version":          TypedValue{LongText, ""},
 		"sql_select_limit":         TypedValue{Int32, math.MaxInt32},
 		"transaction_isolation":    TypedValue{LongText, "READ UNCOMMITTED"},

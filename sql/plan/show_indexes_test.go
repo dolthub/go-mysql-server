@@ -1,4 +1,4 @@
-package plan
+package plan_test
 
 import (
 	"testing"
@@ -9,9 +9,12 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/memory"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/parse"
+	. "github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
 func TestShowIndexes(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	unresolved := NewShowIndexes(NewUnresolvedTable("table-test", ""))
 	require.False(t, unresolved.Resolved())
 	require.Equal(t, []sql.Node{NewUnresolvedTable("table-test", "")}, unresolved.Children())
@@ -28,7 +31,7 @@ func TestShowIndexes(t *testing.T) {
 			table: memory.NewTable(
 				"test1",
 				sql.Schema{
-					&sql.Column{Name: "foo", Type: sql.Int32, Source: "test1", Default: int32(0), Nullable: false},
+					&sql.Column{Name: "foo", Type: sql.Int32, Source: "test1", Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, false), Nullable: false},
 				},
 			),
 		},
@@ -37,8 +40,8 @@ func TestShowIndexes(t *testing.T) {
 			table: memory.NewTable(
 				"test2",
 				sql.Schema{
-					&sql.Column{Name: "bar", Type: sql.Int64, Source: "test2", Default: int64(0), Nullable: true},
-					&sql.Column{Name: "rab", Type: sql.Int64, Source: "test2", Default: int32(0), Nullable: false},
+					&sql.Column{Name: "bar", Type: sql.Int64, Source: "test2", Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int64, true), Nullable: true},
+					&sql.Column{Name: "rab", Type: sql.Int64, Source: "test2", Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int64, false), Nullable: false},
 				},
 			),
 		},
@@ -47,9 +50,9 @@ func TestShowIndexes(t *testing.T) {
 			table: memory.NewTable(
 				"test3",
 				sql.Schema{
-					&sql.Column{Name: "baz", Type: sql.Text, Source: "test3", Default: "", Nullable: false},
-					&sql.Column{Name: "zab", Type: sql.Int32, Source: "test3", Default: int32(0), Nullable: true},
-					&sql.Column{Name: "bza", Type: sql.Int64, Source: "test3", Default: int64(0), Nullable: true},
+					&sql.Column{Name: "baz", Type: sql.Text, Source: "test3", Default: parse.MustStringToColumnDefaultValue(ctx, `""`, sql.Text, false), Nullable: false},
+					&sql.Column{Name: "zab", Type: sql.Int32, Source: "test3", Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true},
+					&sql.Column{Name: "bza", Type: sql.Int64, Source: "test3", Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int64, true), Nullable: true},
 				},
 			),
 		},
@@ -58,7 +61,7 @@ func TestShowIndexes(t *testing.T) {
 			table: memory.NewTable(
 				"test4",
 				sql.Schema{
-					&sql.Column{Name: "oof", Type: sql.Text, Source: "test4", Default: "", Nullable: false},
+					&sql.Column{Name: "oof", Type: sql.Text, Source: "test4", Default: parse.MustStringToColumnDefaultValue(ctx, `""`, sql.Text, false), Nullable: false},
 				},
 			),
 		},
@@ -92,7 +95,6 @@ func TestShowIndexes(t *testing.T) {
 			showIdxs := NewShowIndexes(NewResolvedTable(test.table))
 			showIdxs.(*ShowIndexes).IndexesToShow = []sql.Index{idx}
 
-			ctx := sql.NewEmptyContext()
 			rowIter, err := showIdxs.RowIter(ctx, nil)
 			assert.NoError(t, err)
 
@@ -104,7 +106,7 @@ func TestShowIndexes(t *testing.T) {
 				var nullable string
 				var columnName, ex interface{}
 				columnName, ex = "NULL", expressions[i].String()
-				if col := getColumnFromIndexExpr(ex.(string), test.table); col != nil {
+				if col := GetColumnFromIndexExpr(ex.(string), test.table); col != nil {
 					columnName, ex = col.Name, nil
 					if col.Nullable {
 						nullable = "YES"

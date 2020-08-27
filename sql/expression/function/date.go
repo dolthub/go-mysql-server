@@ -14,6 +14,8 @@ type DateAdd struct {
 	Interval *expression.Interval
 }
 
+var _ sql.FunctionExpression = (*DateAdd)(nil)
+
 // NewDateAdd creates a new date add function.
 func NewDateAdd(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 {
@@ -26,6 +28,11 @@ func NewDateAdd(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	return &DateAdd{args[0], i}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (d *DateAdd) FunctionName() string {
+	return "date_add"
 }
 
 // Children implements the sql.Expression interface.
@@ -89,6 +96,8 @@ type DateSub struct {
 	Interval *expression.Interval
 }
 
+var _ sql.FunctionExpression = (*DateSub)(nil)
+
 // NewDateSub creates a new date add function.
 func NewDateSub(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 {
@@ -101,6 +110,11 @@ func NewDateSub(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	return &DateSub{args[0], i}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (d *DateSub) FunctionName() string {
+	return "date_sub"
 }
 
 // Children implements the sql.Expression interface.
@@ -163,6 +177,13 @@ type TimestampConversion struct {
 	Date sql.Expression
 }
 
+var _ sql.FunctionExpression = (*TimestampConversion)(nil)
+
+// FunctionName implements sql.FunctionExpression
+func (t *TimestampConversion) FunctionName() string {
+	return "timestamp"
+}
+
 func (t *TimestampConversion) Resolved() bool {
 	return t.Date == nil || t.Date.Resolved()
 }
@@ -208,6 +229,13 @@ func NewTimestamp(args ...sql.Expression) (sql.Expression, error) {
 // DatetimeConversion is a shorthand function for CONVERT(expr, DATETIME)
 type DatetimeConversion struct {
 	Date sql.Expression
+}
+
+var _ sql.FunctionExpression = (*DatetimeConversion)(nil)
+
+// FunctionName implements sql.FunctionExpression
+func (t *DatetimeConversion) FunctionName() string {
+	return "datetime"
 }
 
 func (t *DatetimeConversion) Resolved() bool {
@@ -261,6 +289,8 @@ type UnixTimestamp struct {
 	Date sql.Expression
 }
 
+var _ sql.FunctionExpression = (*UnixTimestamp)(nil)
+
 func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("UNIX_TIMESTAMP", 1, len(args))
@@ -269,6 +299,11 @@ func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 		return &UnixTimestamp{nil}, nil
 	}
 	return &UnixTimestamp{args[0]}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (ut *UnixTimestamp) FunctionName() string {
+	return "unix_timestamp"
 }
 
 func (ut *UnixTimestamp) Children() []sql.Expression {

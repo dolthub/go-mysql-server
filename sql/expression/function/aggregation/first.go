@@ -13,9 +13,16 @@ type First struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*First)(nil)
+
 // NewFirst returns a new First node.
 func NewFirst(e sql.Expression) *First {
 	return &First{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (f *First) FunctionName() string {
+	return "first"
 }
 
 // Type returns the resultant type of the aggregation.

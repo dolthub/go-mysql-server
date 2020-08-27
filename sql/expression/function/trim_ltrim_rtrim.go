@@ -36,6 +36,22 @@ type Trim struct {
 	trimType
 }
 
+var _ sql.FunctionExpression = (*Trim)(nil)
+
+// FunctionName implements sql.FunctionExpression
+func (t *Trim) FunctionName() string {
+	switch t.trimType {
+	case lTrimType:
+		return "ltrim"
+	case rTrimType:
+		return "rtrim"
+	case bTrimType:
+		return "trim"
+	default:
+		panic("unknown name for trim type")
+	}
+}
+
 // Type implements the Expression interface.
 func (t *Trim) Type() sql.Type { return sql.LongText }
 

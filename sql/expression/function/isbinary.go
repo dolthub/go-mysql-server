@@ -13,9 +13,16 @@ type IsBinary struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*IsBinary)(nil)
+
 // NewIsBinary creates a new IsBinary expression.
 func NewIsBinary(e sql.Expression) sql.Expression {
 	return &IsBinary{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (ib *IsBinary) FunctionName() string {
+	return "is_binary"
 }
 
 // Eval implements the Expression interface.

@@ -117,7 +117,7 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 			if !f.Nullable && f.Default == nil {
 				return 0, ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
-			projExprs[i] = expression.NewLiteral(f.Default, f.Type)
+			projExprs[i] = f.Default
 		}
 	}
 

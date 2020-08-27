@@ -461,17 +461,19 @@ func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.Colum
 	}
 
 	t.schema = newSch
-	// TODO: only do if the column is declared not null?
-	t.insertValueInRows(newColIdx, column.Default)
-	return nil
+	return t.insertValueInRows(ctx, newColIdx, column.Default)
 }
 
-func (t *Table) insertValueInRows(idx int, val interface{}) {
+func (t *Table) insertValueInRows(ctx *sql.Context, idx int, colDefault *sql.ColumnDefaultValue) error {
 	for k, p := range t.partitions {
 		newP := make([]sql.Row, len(p))
 		for i, row := range p {
 			var newRow sql.Row
 			newRow = append(newRow, row[:idx]...)
+			val, err := colDefault.Eval(ctx, newRow)
+			if err != nil {
+				return err
+			}
 			newRow = append(newRow, val)
 			if idx < len(row) {
 				newRow = append(newRow, row[idx:]...)
@@ -480,6 +482,7 @@ func (t *Table) insertValueInRows(idx int, val interface{}) {
 		}
 		t.partitions[k] = newP
 	}
+	return nil
 }
 
 func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {

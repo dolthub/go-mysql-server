@@ -12,9 +12,16 @@ type ArrayLength struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*ArrayLength)(nil)
+
 // NewArrayLength creates a new ArrayLength UDF.
 func NewArrayLength(array sql.Expression) sql.Expression {
 	return &ArrayLength{expression.UnaryExpression{Child: array}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (f *ArrayLength) FunctionName() string {
+	return "array_length"
 }
 
 // Type implements the Expression interface.

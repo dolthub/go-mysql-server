@@ -67,6 +67,18 @@ var (
 	// ErrInvalidAsOfExpression is returned when an expression for AS OF cannot be used
 	ErrInvalidAsOfExpression = errors.NewKind("expression %s cannot be used in AS OF")
 
-	// ErrUnsupportedDefault return when an expression for a column default is not supported
-	ErrUnsupportedDefault = errors.NewKind("column default %s is not supported")
+	// ErrIncompatibleDefaultType is returned when a provided default cannot be coerced into the type of the column
+	ErrIncompatibleDefaultType = errors.NewKind("incompatible type for default value")
+
+	// ErrInvalidTextBlobColumnDefault is returned when a column of type text/blob (or related) has a literal default set.
+	ErrInvalidTextBlobColumnDefault = errors.NewKind("text/blob types may only have expression default values")
+
+	// ErrInvalidColumnDefaultFunction is returned when an invalid function is used in a default value.
+	ErrInvalidColumnDefaultFunction = errors.NewKind("function `%s` on column `%s` is not valid for usage in a default value")
+
+	// ErrColumnDefaultDatetimeOnlyFunc is returned when a non datetime/timestamp column attempts to declare now/current_timestamp as a default value literal.
+	ErrColumnDefaultDatetimeOnlyFunc = errors.NewKind("only datetime/timestamp may declare default values of now()/current_timestamp() without surrounding parentheses")
+
+	// ErrColumnDefaultSubquery is returned when a default value contains a subquery.
+	ErrColumnDefaultSubquery = errors.NewKind("default value on column `%s` may not contain subqueries")
 )

@@ -117,7 +117,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		return nil, ErrInvalidIndexDriver.New(c.Driver)
 	}
 
-	columns, exprs, err := getColumnsAndPrepareExpressions(c.Exprs)
+	columns, exprs, err := GetColumnsAndPrepareExpressions(c.Exprs)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		return nil, err
 	}
 
-	iter = &evalPartitionKeyValueIter{
+	iter = &EvalPartitionKeyValueIter{
 		ctx:     ctx,
 		columns: columns,
 		exprs:   exprs,
@@ -276,10 +276,10 @@ func (c *CreateIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nc, nil
 }
 
-// getColumnsAndPrepareExpressions extracts the unique columns required by all
+// GetColumnsAndPrepareExpressions extracts the unique columns required by all
 // those expressions and fixes the indexes of the GetFields in the expressions
 // to match a row with only the returned columns in that same order.
-func getColumnsAndPrepareExpressions(
+func GetColumnsAndPrepareExpressions(
 	exprs []sql.Expression,
 ) ([]string, []sql.Expression, error) {
 	var columns []string
@@ -321,14 +321,23 @@ func getColumnsAndPrepareExpressions(
 	return columns, expressions, nil
 }
 
-type evalPartitionKeyValueIter struct {
+type EvalPartitionKeyValueIter struct {
 	iter    sql.PartitionIndexKeyValueIter
 	columns []string
 	exprs   []sql.Expression
 	ctx     *sql.Context
 }
 
-func (i *evalPartitionKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, error) {
+func NewEvalPartitionKeyValueIter(ctx *sql.Context, iter sql.PartitionIndexKeyValueIter, columns []string, exprs []sql.Expression) *EvalPartitionKeyValueIter {
+	return &EvalPartitionKeyValueIter{
+		ctx:     ctx,
+		iter:    iter,
+		columns: columns,
+		exprs:   exprs,
+	}
+}
+
+func (i *EvalPartitionKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, error) {
 	p, iter, err := i.iter.Next()
 	if err != nil {
 		return nil, nil, err
@@ -342,7 +351,7 @@ func (i *evalPartitionKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter
 	}, nil
 }
 
-func (i *evalPartitionKeyValueIter) Close() error {
+func (i *EvalPartitionKeyValueIter) Close() error {
 	return i.iter.Close()
 }
 
