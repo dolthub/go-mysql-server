@@ -1,6 +1,8 @@
 package parse
 
 import (
+	"fmt"
+	"github.com/pmezard/go-difflib/difflib"
 	"math"
 	"testing"
 
@@ -2116,6 +2118,41 @@ var fixtures = map[string]sql.Node{
 		),
 		true,
 	),
+	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW 
+   BEGIN 
+     UPDATE bar SET x = old.y WHERE z = new.y;
+		 DELETE FROM baz WHERE a = old.b;
+		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
+   END`: plan.NewCreateTrigger("myTrigger", "before", "update", nil, plan.NewUnresolvedTable("foo", ""), plan.NewBeginEndBlock(
+		[]sql.Node{
+			plan.NewUpdate(
+				plan.NewFilter(
+					expression.NewEquals(expression.NewUnresolvedColumn("z"), expression.NewUnresolvedQualifiedColumn("new", "y")),
+					plan.NewUnresolvedTable("bar", ""),
+				),
+				[]sql.Expression{
+					expression.NewSetField(expression.NewUnresolvedColumn("x"), expression.NewUnresolvedQualifiedColumn("old", "x")),
+				},
+			),
+			plan.NewDeleteFrom(
+				plan.NewFilter(
+					expression.NewEquals(expression.NewUnresolvedColumn("a"), expression.NewUnresolvedQualifiedColumn("old", "b")),
+					plan.NewUnresolvedTable("baz", ""),
+				),
+			),
+			plan.NewInsertInto(
+				plan.NewUnresolvedTable("zzz", ""),
+				plan.NewValues([][]sql.Expression{{
+					expression.NewUnresolvedQualifiedColumn("old", "a"),
+					expression.NewUnresolvedQualifiedColumn("old", "b"),
+				}},
+				),
+				false,
+				[]string{"a", "b"},
+			),
+		},
+	), "",
+	),
 	`SELECT 2 UNION SELECT 3`: plan.NewUnion(
 		plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
@@ -2209,11 +2246,34 @@ func TestParse(t *testing.T) {
 					require.Equal(ex, ac)
 				}
 			}
-			require.Equal(expectedPlan, p,
-				"plans do not match for query '%s'", query)
+			assertNodesEqualWithDiff(t, expectedPlan, p)
 		})
 	}
 }
+
+// assertNodesEqualWithDiff asserts the two nodes given to be equal and prints any diff according to their DebugString
+// methods.
+func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
+	expectedStr := sql.DebugString(expected)
+	actualStr := sql.DebugString(actual)
+	diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+		A:        difflib.SplitLines(expectedStr),
+		B:        difflib.SplitLines(actualStr),
+		FromFile: "expected",
+		FromDate: "",
+		ToFile:   "actual",
+		ToDate:   "",
+		Context:  1,
+	})
+	require.NoError(t, err)
+
+	if !assert.Equal(t, expected, actual) {
+		if len(diff) > 0 {
+			fmt.Println(diff)
+		}
+	}
+}
+
 
 var fixturesErrors = map[string]*errors.Kind{
 	`SHOW METHEMONEY`:                                         ErrUnsupportedFeature,

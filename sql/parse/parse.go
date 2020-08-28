@@ -137,6 +137,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	switch n := stmt.(type) {
 	default:
 		return nil, ErrUnsupportedSyntax.New(sqlparser.String(n))
+	case *sqlparser.BeginEndBlock:
+		return convertBeginEndBlock(ctx, n, query)
 	case *sqlparser.Show:
 		// When a query is empty it means it comes from a subquery, as we don't
 		// have the query itself in a subquery. Hence, a SHOW could not be
@@ -169,6 +171,18 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.Update:
 		return convertUpdate(ctx, n)
 	}
+}
+
+func convertBeginEndBlock(ctx *sql.Context, n *sqlparser.BeginEndBlock, query string) (sql.Node, error) {
+	var statements []sql.Node
+	for _, s := range n.Statements {
+		statement, err := convert(ctx, s, "compound statement in begin..end block")
+		if err != nil {
+			return nil, err
+		}
+		statements = append(statements, statement)
+	}
+	return plan.NewBeginEndBlock(statements), nil
 }
 
 func convertSelectStatement(ctx *sql.Context, ss sqlparser.SelectStatement) (sql.Node, error) {
