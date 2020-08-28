@@ -128,3 +128,10 @@ func (p DeleteFrom) String() string {
 	_ = pr.WriteChildren(p.Node.String())
 	return pr.String()
 }
+
+func (p DeleteFrom) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Delete")
+	_ = pr.WriteChildren(sql.DebugString(p.Node))
+	return pr.String()
+}

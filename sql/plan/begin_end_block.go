@@ -40,9 +40,22 @@ func (b *BeginEndBlock) Resolved() bool {
 func (b *BeginEndBlock) String() string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("BEGIN .. END")
+	var children []string
 	for _, s := range b.statements {
-		_ = p.WriteChildren(s.String())
+		children = append(children, s.String())
 	}
+	_ = p.WriteChildren(children...)
+	return p.String()
+}
+
+func (b *BeginEndBlock) DebugString() string {
+	p := sql.NewTreePrinter()
+	_ = p.WriteNode("BEGIN .. END")
+	var children []string
+	for _, s := range b.statements {
+		children = append(children, sql.DebugString(s))
+	}
+	_ = p.WriteChildren(children...)
 	return p.String()
 }
 

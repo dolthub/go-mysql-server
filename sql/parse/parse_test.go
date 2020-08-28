@@ -2123,35 +2123,37 @@ var fixtures = map[string]sql.Node{
      UPDATE bar SET x = old.y WHERE z = new.y;
 		 DELETE FROM baz WHERE a = old.b;
 		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
-   END`: plan.NewCreateTrigger("myTrigger", "before", "update", nil, plan.NewUnresolvedTable("foo", ""), plan.NewBeginEndBlock(
-		[]sql.Node{
-			plan.NewUpdate(
-				plan.NewFilter(
-					expression.NewEquals(expression.NewUnresolvedColumn("z"), expression.NewUnresolvedQualifiedColumn("new", "y")),
-					plan.NewUnresolvedTable("bar", ""),
+   END`: plan.NewCreateTrigger("myTrigger", "before", "update", nil,
+		plan.NewUnresolvedTable("foo", ""),
+		plan.NewBeginEndBlock(
+			[]sql.Node{
+				plan.NewUpdate(
+					plan.NewFilter(
+						expression.NewEquals(expression.NewUnresolvedColumn("z"), expression.NewUnresolvedQualifiedColumn("new", "y")),
+						plan.NewUnresolvedTable("bar", ""),
+					),
+					[]sql.Expression{
+						expression.NewSetField(expression.NewUnresolvedColumn("x"), expression.NewUnresolvedQualifiedColumn("old", "y")),
+					},
 				),
-				[]sql.Expression{
-					expression.NewSetField(expression.NewUnresolvedColumn("x"), expression.NewUnresolvedQualifiedColumn("old", "x")),
-				},
-			),
-			plan.NewDeleteFrom(
-				plan.NewFilter(
-					expression.NewEquals(expression.NewUnresolvedColumn("a"), expression.NewUnresolvedQualifiedColumn("old", "b")),
-					plan.NewUnresolvedTable("baz", ""),
+				plan.NewDeleteFrom(
+					plan.NewFilter(
+						expression.NewEquals(expression.NewUnresolvedColumn("a"), expression.NewUnresolvedQualifiedColumn("old", "b")),
+						plan.NewUnresolvedTable("baz", ""),
+					),
 				),
-			),
-			plan.NewInsertInto(
-				plan.NewUnresolvedTable("zzz", ""),
-				plan.NewValues([][]sql.Expression{{
-					expression.NewUnresolvedQualifiedColumn("old", "a"),
-					expression.NewUnresolvedQualifiedColumn("old", "b"),
-				}},
+				plan.NewInsertInto(
+					plan.NewUnresolvedTable("zzz", ""),
+					plan.NewValues([][]sql.Expression{{
+						expression.NewUnresolvedQualifiedColumn("old", "a"),
+						expression.NewUnresolvedQualifiedColumn("old", "b"),
+					}},
+					),
+					false,
+					[]string{"a", "b"},
 				),
-				false,
-				[]string{"a", "b"},
-			),
-		},
-	), "",
+			},
+		), "",
 	),
 	`SELECT 2 UNION SELECT 3`: plan.NewUnion(
 		plan.NewProject(
@@ -2254,26 +2256,31 @@ func TestParse(t *testing.T) {
 // assertNodesEqualWithDiff asserts the two nodes given to be equal and prints any diff according to their DebugString
 // methods.
 func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
-	expectedStr := sql.DebugString(expected)
-	actualStr := sql.DebugString(actual)
-	diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
-		A:        difflib.SplitLines(expectedStr),
-		B:        difflib.SplitLines(actualStr),
-		FromFile: "expected",
-		FromDate: "",
-		ToFile:   "actual",
-		ToDate:   "",
-		Context:  1,
-	})
-	require.NoError(t, err)
-
 	if !assert.Equal(t, expected, actual) {
+		expectedStr := sql.DebugString(expected)
+		actualStr := sql.DebugString(actual)
+		diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+			A:        difflib.SplitLines(expectedStr),
+			B:        difflib.SplitLines(actualStr),
+			FromFile: "expected",
+			FromDate: "",
+			ToFile:   "actual",
+			ToDate:   "",
+			Context:  1,
+		})
+		require.NoError(t, err)
+
+		a := make([]string, 0, 2)
+		b := make([]string, 0, 1)
+		a = append(a, "a")
+		b = append(b, "a")
+		require.Equal(t, a, b)
+
 		if len(diff) > 0 {
 			fmt.Println(diff)
 		}
 	}
 }
-
 
 var fixturesErrors = map[string]*errors.Kind{
 	`SHOW METHEMONEY`:                                         ErrUnsupportedFeature,
