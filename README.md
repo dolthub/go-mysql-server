@@ -57,14 +57,6 @@ To install it, run:
 go get github.com/liquidata-inc/go-mysql-server
 ```
 
-go-mysql-server relies on a fork of vitess, which implements the SQL
-parsing and SQL server for the engine. To use this fork of vitess, you
-must include the same replace directive in your project's `go.mod`
-file as this package does (see the `go.mod` file for the exact line to
-copy and paste):
-
-`replace vitess.io/vitess => github.com/liquidata-inc/vitess v0.0.0-20200430040751-192bb76ecd8b`
-
 ## Go Documentation
 
 * [go-mysql-server godoc](https://godoc.org/github.com/liquidata-inc/go-mysql-server)
