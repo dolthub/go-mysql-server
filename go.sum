@@ -170,8 +170,8 @@ github.com/lestrrat-go/envload v0.0.0-20180220234015-a3eb8ddeffcc h1:RKf14vYWi2t
 github.com/lestrrat-go/envload v0.0.0-20180220234015-a3eb8ddeffcc/go.mod h1:kopuH9ugFRkIXf3YoqHKyrJ9YfUFsckUU9S7B+XP+is=
 github.com/lestrrat-go/strftime v1.0.1 h1:o7qz5pmLzPDLyGW4lG6JvTKPUfTFXwe+vOamIYWtnVU=
 github.com/lestrrat-go/strftime v1.0.1/go.mod h1:E1nN3pCbtMSu1yjSVeyuRFVm/U0xoR76fd03sz+Qz4g=
-github.com/liquidata-inc/vitess v0.0.0-20200810233321-367ca83596b2 h1:1j3VcjylQSVHZXR5PncoYSmZoIhNMThqkTOtqAgatlU=
-github.com/liquidata-inc/vitess v0.0.0-20200810233321-367ca83596b2/go.mod h1:E8nYT1vcL2NROtFwUN02CiA6cz276CFuB0Q1Zja5CAo=
+github.com/liquidata-inc/vitess v0.0.0-20200828190113-f278600fb87c h1:b04Et1PkwHuuex4zIly5Iji7xXVkKldzBjMazAJRGV4=
+github.com/liquidata-inc/vitess v0.0.0-20200828190113-f278600fb87c/go.mod h1:E8nYT1vcL2NROtFwUN02CiA6cz276CFuB0Q1Zja5CAo=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/mattn/go-runewidth v0.0.1/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
