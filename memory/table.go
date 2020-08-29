@@ -440,13 +440,19 @@ func columnsMatch(colIndexes []int, row sql.Row, row2 sql.Row) bool {
 }
 
 func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {
-	column.Source = t.Name()
+	newColIdx := t.addColumnToSchema(ctx, column, order)
+	return t.insertValueInRows(ctx, newColIdx, column.Default)
+}
+
+// addColumnToSchema adds the given column to the schema and returns the new index
+func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *sql.ColumnOrder) int {
+	newCol.Source = t.Name()
 	newSch := make(sql.Schema, len(t.schema)+1)
 
 	newColIdx := 0
 	var i int
 	if order != nil && order.First {
-		newSch[i] = column
+		newSch[i] = newCol
 		i++
 	}
 
@@ -454,14 +460,27 @@ func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.Colum
 		newSch[i] = col
 		i++
 		if (order != nil && order.AfterColumn == col.Name) || (order == nil && i == len(t.schema)) {
-			newSch[i] = column
+			newSch[i] = newCol
 			newColIdx = i
 			i++
 		}
 	}
 
+	for i, newSchCol := range newSch {
+		if i == newColIdx {
+			continue
+		}
+		newDefault, _ := expression.TransformUp(newSchCol.Default, func(expr sql.Expression) (sql.Expression, error) {
+			if expr, ok := expr.(*expression.GetField); ok {
+				return expr.WithIndex(newSch.IndexOf(expr.Name(), t.name)), nil
+			}
+			return expr, nil
+		})
+		newSchCol.Default = newDefault.(*sql.ColumnDefaultValue)
+	}
+
 	t.schema = newSch
-	return t.insertValueInRows(ctx, newColIdx, column.Default)
+	return newColIdx
 }
 
 func (t *Table) insertValueInRows(ctx *sql.Context, idx int, colDefault *sql.ColumnDefaultValue) error {
@@ -470,13 +489,12 @@ func (t *Table) insertValueInRows(ctx *sql.Context, idx int, colDefault *sql.Col
 		for i, row := range p {
 			var newRow sql.Row
 			newRow = append(newRow, row[:idx]...)
-			val, err := colDefault.Eval(ctx, newRow)
+			newRow = append(newRow, nil)
+			newRow = append(newRow, row[idx:]...)
+			var err error
+			newRow[idx], err = colDefault.Eval(ctx, newRow)
 			if err != nil {
 				return err
-			}
-			newRow = append(newRow, val)
-			if idx < len(row) {
-				newRow = append(newRow, row[idx:]...)
 			}
 			newP[i] = newRow
 		}
@@ -486,41 +504,87 @@ func (t *Table) insertValueInRows(ctx *sql.Context, idx int, colDefault *sql.Col
 }
 
 func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {
+	droppedCol := t.dropColumnFromSchema(ctx, columnName)
+	for k, p := range t.partitions {
+		newP := make([]sql.Row, len(p))
+		for i, row := range p {
+			var newRow sql.Row
+			newRow = append(newRow, row[:droppedCol]...)
+			newRow = append(newRow, row[droppedCol+1:]...)
+			newP[i] = newRow
+		}
+		t.partitions[k] = newP
+	}
+	return nil
+}
+
+// dropColumnFromSchema drops the given column name from the schema and returns its old index.
+func (t *Table) dropColumnFromSchema(ctx *sql.Context, columnName string) int {
 	newSch := make(sql.Schema, len(t.schema)-1)
 	var i int
+	droppedCol := -1
 	for _, col := range t.schema {
 		if col.Name != columnName {
 			newSch[i] = col
 			i++
+		} else {
+			droppedCol = i
 		}
 	}
 	t.schema = newSch
-	return nil
+	return droppedCol
 }
 
 func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Column, order *sql.ColumnOrder) error {
+	oldIdx := -1
+	newIdx := 0
+	for i, col := range t.schema {
+		if col.Name == columnName {
+			oldIdx = i
+			break
+		}
+	}
 	if order == nil {
-		colIdx := -1
-		for i, col := range t.schema {
-			if col.Name == columnName {
-				colIdx = i
+		newIdx = oldIdx
+		if newIdx == 0 {
+			order = &sql.ColumnOrder{First: true}
+		} else {
+			order = &sql.ColumnOrder{AfterColumn: t.schema[newIdx-1].Name}
+		}
+	} else if !order.First {
+		var oldSchemaWithoutCol sql.Schema
+		oldSchemaWithoutCol = append(oldSchemaWithoutCol, t.schema[:oldIdx]...)
+		oldSchemaWithoutCol = append(oldSchemaWithoutCol, t.schema[oldIdx+1:]...)
+		for i, col := range oldSchemaWithoutCol {
+			if col.Name == order.AfterColumn {
+				newIdx = i + 1
 				break
 			}
 		}
-		if colIdx <= 0 {
-			order = &sql.ColumnOrder{
-				First: true,
+	}
+
+	for k, p := range t.partitions {
+		newP := make([]sql.Row, len(p))
+		for i, row := range p {
+			var oldRowWithoutVal sql.Row
+			oldRowWithoutVal = append(oldRowWithoutVal, row[:oldIdx]...)
+			oldRowWithoutVal = append(oldRowWithoutVal, row[oldIdx+1:]...)
+			newVal, err := column.Type.Convert(row[oldIdx])
+			if err != nil {
+				return err
 			}
-		} else {
-			order = &sql.ColumnOrder{
-				AfterColumn: t.schema[colIdx-1].Name,
-			}
+			var newRow sql.Row
+			newRow = append(newRow, oldRowWithoutVal[:newIdx]...)
+			newRow = append(newRow, newVal)
+			newRow = append(newRow, oldRowWithoutVal[newIdx:]...)
+			newP[i] = newRow
 		}
+		t.partitions[k] = newP
 	}
-	if err := t.DropColumn(ctx, columnName); err != nil {
-		return err
-	}
-	return t.AddColumn(ctx, column, order)
+
+	_ = t.dropColumnFromSchema(ctx, columnName)
+	t.addColumnToSchema(ctx, column, order)
+	return nil
 }
 
 func checkRow(schema sql.Schema, row sql.Row) error {
