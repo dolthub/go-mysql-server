@@ -98,7 +98,7 @@ func (c *CreateTable) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &nc, nil
 }
 
-// Schema implements the sql.SchemeModifiable interface.
+// Schema implements the sql.Node interface.
 func (c *CreateTable) Schema() sql.Schema {
 	return c.schema
 }
@@ -384,7 +384,7 @@ func (a *AddColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &na, nil
 }
 
-// Schema implements the sql.SchemeModifiable interface.
+// Schema implements the sql.Node interface.
 func (a *AddColumn) Schema() sql.Schema {
 	return sql.Schema{a.column}
 }
@@ -640,7 +640,7 @@ func (m *ModifyColumn) Order() *sql.ColumnOrder {
 	return m.order
 }
 
-// Schema implements the sql.SchemeModifiable interface.
+// Schema implements the sql.Node interface.
 func (m *ModifyColumn) Schema() sql.Schema {
 	return sql.Schema{m.column}
 }
