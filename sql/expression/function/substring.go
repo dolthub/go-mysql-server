@@ -278,7 +278,7 @@ type Left struct {
 	len sql.Expression
 }
 
-var _ sql.FunctionExpression = (*Left)(nil)
+var _ sql.FunctionExpression = Left{}
 
 // NewLeft creates a new LEFT function.
 func NewLeft(str, len sql.Expression) sql.Expression {
@@ -286,7 +286,7 @@ func NewLeft(str, len sql.Expression) sql.Expression {
 }
 
 // FunctionName implements sql.FunctionExpression
-func (l *Left) FunctionName() string {
+func (l Left) FunctionName() string {
 	return "left"
 }
 
@@ -372,7 +372,7 @@ type Instr struct {
 	substr sql.Expression
 }
 
-var _ sql.FunctionExpression = (*Instr)(nil)
+var _ sql.FunctionExpression = Instr{}
 
 // NewInstr creates a new instr UDF.
 func NewInstr(str, substr sql.Expression) sql.Expression {
@@ -380,7 +380,7 @@ func NewInstr(str, substr sql.Expression) sql.Expression {
 }
 
 // FunctionName implements sql.FunctionExpression
-func (i *Instr) FunctionName() string {
+func (i Instr) FunctionName() string {
 	return "instr"
 }
 

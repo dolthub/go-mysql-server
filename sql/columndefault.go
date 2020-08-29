@@ -53,6 +53,9 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 			return nil, err
 		}
 	}
+	if val == nil && !e.returnNil {
+		return nil, ErrColumnDefaultReturnedNull.New()
+	}
 	return val, nil
 }
 
@@ -139,6 +142,9 @@ func (e *ColumnDefaultValue) checkType(outType Type) error {
 		val, err := e.Expression.Eval(NewEmptyContext(), nil) // since it's a literal, we can use an empty context
 		if err != nil {
 			return err
+		}
+		if val == nil && !e.returnNil {
+			return ErrIncompatibleDefaultType.New()
 		}
 		_, err = outType.Convert(val)
 		if err != nil {

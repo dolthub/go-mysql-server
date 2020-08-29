@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"context"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function"
 	"github.com/liquidata-inc/go-mysql-server/sql/information_schema"
 	"strings"
 	"sync/atomic"
@@ -1698,6 +1699,572 @@ func TestTracing(t *testing.T, harness Harness) {
 	}
 
 	require.Equal(expectedSpans, spanOperations)
+}
+
+func TestColumnDefaults(t *testing.T, harness Harness) {
+	require := require.New(t)
+	e := NewEngine(t, harness)
+	err := e.Catalog.Register(function.NewUnaryFunc("customfunc", sql.Int64, func(*sql.Context,interface{}) (interface{}, error) {
+		return int64(5), nil
+	}))
+	require.NoError(err)
+
+	t.Run("Standard default literal", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t1(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 2)",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t1 (pk) VALUES (1), (2)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t1",
+			[]sql.Row{{1, 2}, {2, 2}},
+		)
+	})
+
+	t.Run("Default expression with function and referenced column", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t2(pk BIGINT PRIMARY KEY, v1 SMALLINT DEFAULT (GREATEST(pk, 2)))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t2 (pk) VALUES (1), (2), (3)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t2",
+			[]sql.Row{{1, 2}, {2, 2}, {3, 3}},
+		)
+	})
+
+	t.Run("Default expression converting to proper column type", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t3(pk BIGINT PRIMARY KEY, v1 VARCHAR(20) DEFAULT (GREATEST(pk, 2)))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t3 (pk) VALUES (1), (2), (3)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t3",
+			[]sql.Row{{1, "2"}, {2, "2"}, {3, "3"}},
+		)
+	})
+
+	t.Run("Default literal of different type but implicitly converts", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t4(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t4 (pk) VALUES (1), (2)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t4",
+			[]sql.Row{{1, 4}, {2, 4}},
+		)
+	})
+
+	t.Run("Back reference to default literal", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t5(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2), v2 BIGINT DEFAULT 7)",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t5 (pk) VALUES (1), (2)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t5",
+			[]sql.Row{{1, 7, 7}, {2, 7, 7}},
+		)
+	})
+
+	t.Run("Forward reference to default literal", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t6(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 9, v2 BIGINT DEFAULT (v1))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t6 (pk) VALUES (1), (2)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t6",
+			[]sql.Row{{1, 9, 9}, {2, 9, 9}},
+		)
+	})
+
+	t.Run("Forward reference to default expression", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t7(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (8), v2 BIGINT DEFAULT (v1))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t7 (pk) VALUES (1), (2)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t7",
+			[]sql.Row{{1, 8, 8}, {2, 8, 8}},
+		)
+	})
+
+	t.Run("Back reference to value", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t8(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2 + 1), v2 BIGINT)",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t8 (pk, v2) VALUES (1, 4), (2, 6)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t8",
+			[]sql.Row{{1, 5, 4}, {2, 7, 6}},
+		)
+	})
+
+	t.Run("TEXT expression", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t9(pk BIGINT PRIMARY KEY, v1 LONGTEXT DEFAULT (77))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t9 (pk) VALUES (1), (2)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t9",
+			[]sql.Row{{1, "77"}, {2, "77"}},
+		)
+	})
+
+	// TODO: test that the correct values are set once we set the clock
+	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP literal", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t10(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT NOW(), v2 DATETIME DEFAULT CURRENT_TIMESTAMP()," +
+				"v3 TIMESTAMP DEFAULT NOW(), v4 TIMESTAMP DEFAULT CURRENT_TIMESTAMP())",
+			[]sql.Row(nil),
+		)
+	})
+
+	// TODO: test that the correct values are set once we set the clock
+	t.Run("Non-DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP expression", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t11(pk BIGINT PRIMARY KEY, v1 DATE DEFAULT (NOW()), v2 VARCHAR(20) DEFAULT (CURRENT_TIMESTAMP()))",
+			[]sql.Row(nil),
+		)
+	})
+
+	t.Run("REPLACE INTO with default expression", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t12(pk BIGINT PRIMARY KEY, v1 SMALLINT DEFAULT (GREATEST(pk, 2)))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t12 (pk) VALUES (1), (2)")
+		require.NoError(err)
+		_, _, err = e.Query(NewContext(harness), "REPLACE INTO t12 (pk) VALUES (2), (3)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t12",
+			[]sql.Row{{1, 2}, {2, 2}, {3, 3}},
+		)
+	})
+
+	t.Run("Add column last default literal", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t13(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t13 (pk) VALUES (1), (2)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"ALTER TABLE t13 ADD COLUMN v2 BIGINT DEFAULT 5",
+			[]sql.Row(nil),
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t13",
+			[]sql.Row{{1, 4, 5}, {2, 4, 5}},
+		)
+	})
+
+	t.Run("Add column implicit last default expression", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t14(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t14 (pk) VALUES (1), (2)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"ALTER TABLE t14 ADD COLUMN v2 BIGINT DEFAULT (v1 + 2)",
+			[]sql.Row(nil),
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t14",
+			[]sql.Row{{1, 2, 4}, {2, 3, 5}},
+		)
+	})
+
+	t.Run(" Add column explicit last default expression", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t15(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t15 (pk) VALUES (1), (2)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"ALTER TABLE t15 ADD COLUMN v2 BIGINT DEFAULT (v1 + 2) AFTER v1",
+			[]sql.Row(nil),
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t15",
+			[]sql.Row{{1, 2, 4}, {2, 3, 5}},
+		)
+	})
+
+	t.Run("Add column first default literal", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t16(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t16 (pk) VALUES (1), (2)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"ALTER TABLE t16 ADD COLUMN v2 BIGINT DEFAULT 5 FIRST",
+			[]sql.Row(nil),
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t16",
+			[]sql.Row{{5, 1, 4}, {5, 2, 4}},
+		)
+	})
+
+	t.Run("Add column first default expression", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t17(pk BIGINT PRIMARY KEY, v1 BIGINT)",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t17 VALUES (1, 3), (2, 4)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"ALTER TABLE t17 ADD COLUMN v2 BIGINT DEFAULT (v1 + 2) FIRST",
+			[]sql.Row(nil),
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t17",
+			[]sql.Row{{5, 1, 3}, {6, 2, 4}},
+		)
+	})
+
+	t.Run("Add column forward reference to default expression", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t18(pk BIGINT DEFAULT (v1) PRIMARY KEY, v1 BIGINT)",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t18 (v1) VALUES (1), (2)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"ALTER TABLE t18 ADD COLUMN v2 BIGINT DEFAULT (pk + 1) AFTER pk",
+			[]sql.Row(nil),
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t18",
+			[]sql.Row{{1, 2, 1}, {2, 3, 2}},
+		)
+	})
+
+	t.Run("Add column back reference to default literal", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t19(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 5)",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t19 (pk) VALUES (1), (2)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"ALTER TABLE t19 ADD COLUMN v2 BIGINT DEFAULT (v1 - 1) AFTER pk",
+			[]sql.Row(nil),
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t19",
+			[]sql.Row{{1, 4, 5}, {2, 4, 5}},
+		)
+	})
+
+	t.Run("Add column first with existing defaults still functioning", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t20(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 10))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t20 (pk) VALUES (1), (2)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"ALTER TABLE t20 ADD COLUMN v2 BIGINT DEFAULT (-pk) FIRST",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t20 (pk) VALUES (3)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t20",
+			[]sql.Row{{-1, 1, 11}, {-2, 2, 12}, {-3, 3, 13}},
+		)
+	})
+
+	t.Run("Drop column referencing other column", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t21(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2), v2 BIGINT)",
+			[]sql.Row(nil),
+		)
+		TestQuery(t, harness, e,
+			"ALTER TABLE t21 DROP COLUMN v1",
+			[]sql.Row(nil),
+		)
+	})
+
+	t.Run("Modify column move first forward reference default literal", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t22(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 2), v2 BIGINT DEFAULT (pk + 1))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t22 (pk) VALUES (1), (2)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"ALTER TABLE t22 MODIFY COLUMN v1 BIGINT DEFAULT (pk + 2) FIRST",
+			[]sql.Row(nil),
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t22",
+			[]sql.Row{{3, 1, 2}, {4, 2, 3}},
+		)
+	})
+
+	t.Run("Modify column move first add reference", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t23(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (v1 + 1))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t23 (pk, v1) VALUES (1, 2), (2, 3)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"ALTER TABLE t23 MODIFY COLUMN v1 BIGINT DEFAULT (pk + 5) FIRST",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t23 (pk) VALUES (3)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t23",
+			[]sql.Row{{2, 1, 3}, {3, 2, 4}, {8, 3, 9}},
+		)
+	})
+
+	t.Run("Modify column move last being referenced", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t24(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (v1 + 1))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t24 (pk, v1) VALUES (1, 2), (2, 3)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"ALTER TABLE t24 MODIFY COLUMN v1 BIGINT AFTER v2",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t24 (pk, v1) VALUES (3, 4)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t24",
+			[]sql.Row{{1, 3, 2}, {2, 4, 3}, {3, 5, 4}},
+		)
+	})
+
+	t.Run("Modify column move last add reference", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t25(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (pk * 2))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t25 (pk, v1) VALUES (1, 2), (2, 3)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"ALTER TABLE t25 MODIFY COLUMN v1 BIGINT DEFAULT (-pk) AFTER v2",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t25 (pk) VALUES (3)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t25",
+			[]sql.Row{{1, 2, 2}, {2, 4, 3}, {3, 6, -3}},
+		)
+	})
+
+	t.Run("Modify column no move add reference", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t26(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (pk * 2))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t26 (pk, v1) VALUES (1, 2), (2, 3)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"ALTER TABLE t26 MODIFY COLUMN v1 BIGINT DEFAULT (-pk)",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t26 (pk) VALUES (3)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t26",
+			[]sql.Row{{1, 2, 2}, {2, 3, 4}, {3, -3, 6}},
+		)
+	})
+
+	t.Run("Invalid literal for column type", func(t *testing.T) {
+		_, _, err = e.Query(NewContext(harness), "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 INT UNSIGNED DEFAULT -1)")
+		require.Error(err)
+		require.True(sql.ErrIncompatibleDefaultType.Is(err))
+	})
+
+	t.Run("Invalid literal for column type", func(t *testing.T) {
+		_, _, err = e.Query(NewContext(harness), "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 'hi')")
+		require.Error(err)
+		require.True(sql.ErrIncompatibleDefaultType.Is(err))
+	})
+
+	t.Run("Expression contains invalid literal once implicitly converted", func(t *testing.T) {
+		_, _, err = e.Query(NewContext(harness), "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 INT UNSIGNED DEFAULT '-1')")
+		require.Error(err)
+		require.True(sql.ErrIncompatibleDefaultType.Is(err))
+	})
+
+	t.Run("Null literal is invalid for NOT NULL", func(t *testing.T) {
+		_, _, err = e.Query(NewContext(harness), "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT NULL)")
+		require.Error(err)
+		require.True(sql.ErrIncompatibleDefaultType.Is(err))
+	})
+
+	t.Run("Back reference to expression", func(t *testing.T) {
+		_, _, err = e.Query(NewContext(harness), "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2), v2 BIGINT DEFAULT (9))")
+		require.Error(err)
+		require.True(sql.ErrInvalidDefaultValueOrder.Is(err))
+	})
+
+	t.Run("TEXT literals", func(t *testing.T) {
+		_, _, err = e.Query(NewContext(harness), "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 TEXT DEFAULT 'hi')")
+		require.Error(err)
+		require.True(sql.ErrInvalidTextBlobColumnDefault.Is(err))
+		_, _, err = e.Query(NewContext(harness), "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 LONGTEXT DEFAULT 'hi')")
+		require.Error(err)
+		require.True(sql.ErrInvalidTextBlobColumnDefault.Is(err))
+	})
+
+	t.Run("Other types using NOW/CURRENT_TIMESTAMP literal", func(t *testing.T) {
+		_, _, err = e.Query(NewContext(harness), "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT NOW())")
+		require.Error(err)
+		require.True(sql.ErrColumnDefaultDatetimeOnlyFunc.Is(err))
+		_, _, err = e.Query(NewContext(harness), "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 VARCHAR(20) DEFAULT CURRENT_TIMESTAMP())")
+		require.Error(err)
+		require.True(sql.ErrColumnDefaultDatetimeOnlyFunc.Is(err))
+		_, _, err = e.Query(NewContext(harness), "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIT(5) DEFAULT NOW())")
+		require.Error(err)
+		require.True(sql.ErrColumnDefaultDatetimeOnlyFunc.Is(err))
+		_, _, err = e.Query(NewContext(harness), "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 DATE DEFAULT CURRENT_TIMESTAMP())")
+		require.Error(err)
+		require.True(sql.ErrColumnDefaultDatetimeOnlyFunc.Is(err))
+	})
+
+	t.Run("Custom functions are invalid", func(t *testing.T) {
+		_, _, err = e.Query(NewContext(harness), "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (CUSTOMFUNC(1)))")
+		require.Error(err)
+		require.True(sql.ErrInvalidColumnDefaultFunction.Is(err))
+	})
+
+	t.Run("Default expression references own column", func(t *testing.T) {
+		_, _, err = e.Query(NewContext(harness), "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v1))")
+		require.Error(err)
+		require.True(sql.ErrInvalidDefaultValueOrder.Is(err))
+	})
+
+	t.Run("Expression contains invalid literal, fails on insertion", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t1000(pk BIGINT PRIMARY KEY, v1 INT UNSIGNED DEFAULT (-1))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t1000 (pk) VALUES (1)")
+		require.Error(err)
+		require.True(strings.Contains(err.Error(), "negative"))
+	})
+
+	t.Run("Expression contains null on NOT NULL, fails on insertion", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t1001(pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT (NULL))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t1001 (pk) VALUES (1)")
+		require.Error(err)
+		require.True(sql.ErrColumnDefaultReturnedNull.Is(err))
+	})
+
+	t.Run("Add column first back reference to expression", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t1002(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1002 ADD COLUMN v2 BIGINT DEFAULT (v1 + 2) FIRST")
+		require.Error(err)
+		require.True(sql.ErrInvalidDefaultValueOrder.Is(err))
+	})
+
+	t.Run("Add column after back reference to expression", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t1003(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1003 ADD COLUMN v2 BIGINT DEFAULT (v1 + 2) AFTER pk")
+		require.Error(err)
+		require.True(sql.ErrInvalidDefaultValueOrder.Is(err))
+	})
+
+	t.Run("Add column self reference", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t1004(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1004 ADD COLUMN v2 BIGINT DEFAULT (v2)")
+		require.Error(err)
+		require.True(sql.ErrInvalidDefaultValueOrder.Is(err))
+	})
+
+	t.Run("Drop column referenced by other column", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t1005(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (v1))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1005 DROP COLUMN v1")
+		require.Error(err)
+		require.True(sql.ErrDropColumnReferencedInDefault.Is(err))
+	})
+
+	t.Run("Modify column moving back creates back reference to expression", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t1006(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT DEFAULT (v1))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1006 MODIFY COLUMN v1 BIGINT DEFAULT (pk) AFTER v2")
+		require.Error(err)
+		require.True(sql.ErrInvalidDefaultValueOrder.Is(err))
+	})
+
+	t.Run("Modify column moving forward creates back reference to expression", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t1007(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1007 MODIFY COLUMN v1 BIGINT DEFAULT (pk) FIRST")
+		require.Error(err)
+		require.True(sql.ErrInvalidDefaultValueOrder.Is(err))
+	})
+
+	t.Run("Modify column invalid after", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t1008(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1008 MODIFY COLUMN v1 BIGINT DEFAULT (pk) AFTER v3")
+		require.Error(err)
+		require.True(sql.ErrTableColumnNotFound.Is(err))
+	})
+
+	t.Run("Add column invalid after", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t1009(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1009 ADD COLUMN v1 BIGINT DEFAULT (pk) AFTER v3")
+		require.Error(err)
+		require.True(sql.ErrTableColumnNotFound.Is(err))
+	})
 }
 
 var pid uint64

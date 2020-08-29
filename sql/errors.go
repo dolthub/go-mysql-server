@@ -81,4 +81,13 @@ var (
 
 	// ErrColumnDefaultSubquery is returned when a default value contains a subquery.
 	ErrColumnDefaultSubquery = errors.NewKind("default value on column `%s` may not contain subqueries")
+
+	// ErrInvalidDefaultValueOrder is returned when a default value references a column that comes after it and contains a default expression.
+	ErrInvalidDefaultValueOrder = errors.NewKind(`default value of column "%s" cannot refer to a column defined after it if those columns have an expression default value`)
+
+	// ErrColumnDefaultReturnedNull is returned when a default expression evaluates to nil but the column is non-nullable.
+	ErrColumnDefaultReturnedNull = errors.NewKind(`default value attempted to return null but column is non-nullable`)
+
+	// ErrDropColumnReferencedInDefault is returned when a column cannot be dropped as it is referenced by another column's default value.
+	ErrDropColumnReferencedInDefault = errors.NewKind(`cannot drop column "%s" as default value of column "%s" references it`)
 )

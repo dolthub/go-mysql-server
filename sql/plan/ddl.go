@@ -366,6 +366,18 @@ func NewAddColumn(db sql.Database, tableName string, column *sql.Column, order *
 	}
 }
 
+func (a *AddColumn) TableName() string {
+	return a.tableName
+}
+
+func (a *AddColumn) Column() *sql.Column {
+	return a.column
+}
+
+func (a *AddColumn) Order() *sql.ColumnOrder {
+	return a.order
+}
+
 func (a *AddColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 	na := *a
 	na.db = db
@@ -438,9 +450,9 @@ func (a *AddColumn) validateDefaultPosition(tblSch sql.Schema) error {
 				colsAfterThis[tblSch[i].Name] = tblSch[i]
 			}
 		} else {
-			i := 0
+			i := 1
 			for ; i < len(tblSch); i++ {
-				if tblSch[i].Name == a.order.AfterColumn {
+				if tblSch[i-1].Name == a.order.AfterColumn {
 					break
 				}
 			}
@@ -518,7 +530,7 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			switch expr := expr.(type) {
 			case *expression.GetField:
 				if expr.Name() == d.column {
-					err = fmt.Errorf(`cannot drop column "%s" as default value of column "%s" references it`, d.column, expr.Name())
+					err = sql.ErrDropColumnReferencedInDefault.New(d.column, expr.Name())
 					return false
 				}
 			}
@@ -616,6 +628,18 @@ func (m *ModifyColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &nm, nil
 }
 
+func (m *ModifyColumn) TableName() string {
+	return m.tableName
+}
+
+func (m *ModifyColumn) Column() *sql.Column {
+	return m.column
+}
+
+func (m *ModifyColumn) Order() *sql.ColumnOrder {
+	return m.order
+}
+
 // Schema implements the sql.SchemeModifiable interface.
 func (m *ModifyColumn) Schema() sql.Schema {
 	return sql.Schema{m.column}
@@ -699,10 +723,10 @@ func (m *ModifyColumn) validateDefaultPosition(tblSch sql.Schema) error {
 			colsAfterThis[tblSch[i].Name] = tblSch[i]
 		}
 	} else {
-		i := 0
+		i := 1
 		for ; i < len(tblSch); i++ {
 			colsBeforeThis[tblSch[i].Name] = tblSch[i]
-			if tblSch[i].Name == m.order.AfterColumn {
+			if tblSch[i-1].Name == m.order.AfterColumn {
 				break
 			}
 		}
@@ -756,7 +780,7 @@ func inspectDefaultForInvalidColumns(col *sql.Column, columnsAfterThis map[strin
 		switch expr := expr.(type) {
 		case *expression.GetField:
 			if col, ok := columnsAfterThis[expr.Name()]; ok && col.Default != nil && !col.Default.IsLiteral() {
-				err = fmt.Errorf(`default value of column "%s" cannot refer to a column defined after it if those columns have an expression default value`, col.Name)
+				err = sql.ErrInvalidDefaultValueOrder.New(col.Name)
 				return false
 			}
 		}
