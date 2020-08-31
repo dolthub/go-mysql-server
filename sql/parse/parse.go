@@ -506,7 +506,7 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 	if c.TriggerSpec.Order != nil {
 		triggerOrder = &plan.TriggerOrder{
 			PrecedesOrFollows: c.TriggerSpec.Order.PrecedesOrFollows,
-			OtherTriggerName: c.TriggerSpec.Order.OtherTriggerName,
+			OtherTriggerName:  c.TriggerSpec.Order.OtherTriggerName,
 		}
 	}
 

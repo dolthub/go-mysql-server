@@ -2,11 +2,11 @@ package parse
 
 import (
 	"fmt"
-	"github.com/pmezard/go-difflib/difflib"
 	"math"
 	"testing"
 
 	"github.com/liquidata-inc/vitess/go/sqltypes"
+	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"

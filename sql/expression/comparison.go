@@ -237,7 +237,7 @@ func (re *Regexp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 type matcherErrTuple struct {
 	matcher regex.Matcher
-	err error
+	err     error
 }
 
 func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, error) {

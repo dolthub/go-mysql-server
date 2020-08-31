@@ -15,9 +15,10 @@
 package plan
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"io"
 	"sync"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 type BeginEndBlock struct {
@@ -29,7 +30,7 @@ func NewBeginEndBlock(statements []sql.Node) *BeginEndBlock {
 }
 
 func (b *BeginEndBlock) Resolved() bool {
-	for _, s := range b.statements{
+	for _, s := range b.statements {
 		if !s.Resolved() {
 			return false
 		}
@@ -70,9 +71,9 @@ func (b *BeginEndBlock) Children() []sql.Node {
 
 type blockIter struct {
 	statements []sql.Node
-	ctx *sql.Context
-	row sql.Row
-	once *sync.Once
+	ctx        *sql.Context
+	row        sql.Row
+	once       *sync.Once
 }
 
 func (i *blockIter) Next() (sql.Row, error) {

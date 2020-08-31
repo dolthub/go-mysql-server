@@ -16,22 +16,23 @@ package plan
 
 import (
 	"fmt"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 type TriggerOrder struct {
 	PrecedesOrFollows string // PrecedesStr, FollowsStr
-	OtherTriggerName string
+	OtherTriggerName  string
 }
 
 type CreateTrigger struct {
-	triggerName string
-	triggerTime string
+	triggerName  string
+	triggerTime  string
 	triggerEvent string
 	triggerOrder *TriggerOrder
-	table sql.Node
-	body sql.Node
-	bodyString string
+	table        sql.Node
+	body         sql.Node
+	bodyString   string
 }
 
 func NewCreateTrigger(triggerName, triggerTime, triggerEvent string, triggerOrder *TriggerOrder, table sql.Node, body sql.Node, bodyString string) *CreateTrigger {
