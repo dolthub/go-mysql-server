@@ -39,7 +39,7 @@ func NewInsertInto(dst, src sql.Node, isReplace bool, cols []string) *InsertInto
 
 // Schema implements the Node interface.
 func (p *InsertInto) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return p.Left.Schema()
 }
 
 func getInsertable(node sql.Node) (sql.InsertableTable, error) {
@@ -66,146 +66,6 @@ func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
 	}
 }
 
-// Execute inserts the rows in the database.
-func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
-	insertable, err := getInsertable(p.Left)
-	if err != nil {
-		return 0, err
-	}
-
-	var replaceable sql.ReplaceableTable
-	if p.IsReplace {
-		var ok bool
-		replaceable, ok = insertable.(sql.ReplaceableTable)
-		if !ok {
-			return 0, ErrReplaceIntoNotSupported.New()
-		}
-	}
-
-	dstSchema := p.Left.Schema()
-
-	// If no columns are given, we assume the full schema in order
-	if len(p.ColumnNames) == 0 {
-		p.ColumnNames = make([]string, len(dstSchema))
-		for i, f := range dstSchema {
-			p.ColumnNames[i] = f.Name
-		}
-	} else {
-		err = p.validateColumns(dstSchema)
-		if err != nil {
-			return 0, err
-		}
-	}
-
-	err = p.validateValueCount(ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	projExprs := make([]sql.Expression, len(dstSchema))
-	for i, f := range dstSchema {
-		found := false
-		for j, col := range p.ColumnNames {
-			if f.Name == col {
-				projExprs[i] = expression.NewGetField(j, f.Type, f.Name, f.Nullable)
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			if !f.Nullable && f.Default == nil {
-				return 0, ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
-			}
-			projExprs[i] = expression.NewLiteral(f.Default, f.Type)
-		}
-	}
-
-	rowSource, err := p.rowSource(projExprs)
-	if err != nil {
-		return 0, err
-	}
-
-	iter, err := rowSource.RowIter(ctx, nil)
-	if err != nil {
-		return 0, err
-	}
-
-	var inserter sql.RowInserter
-	var replacer sql.RowReplacer
-	if replaceable != nil {
-		replacer = replaceable.Replacer(ctx)
-	} else {
-		inserter = insertable.Inserter(ctx)
-	}
-
-	i := 0
-	for {
-		row, err := iter.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			_ = iter.Close()
-			return i, err
-		}
-
-		err = p.validateNullability(dstSchema, row)
-		if err != nil {
-			_ = iter.Close()
-			return i, err
-		}
-
-		// Convert values to the destination schema type
-		for colIdx, oldValue := range row {
-			dstColType := projExprs[colIdx].Type()
-
-			if oldValue != nil {
-				newValue, err := dstColType.Convert(oldValue)
-				if err != nil {
-					return i, err
-				}
-
-				row[colIdx] = newValue
-			}
-		}
-
-		if replacer != nil {
-			if err = replacer.Delete(ctx, row); err != nil {
-				if !sql.ErrDeleteRowNotFound.Is(err) {
-					_ = iter.Close()
-					return i, err
-				}
-			} else {
-				i++
-			}
-
-			if err = replacer.Insert(ctx, row); err != nil {
-				_ = iter.Close()
-				return i, err
-			}
-		} else {
-			if err := inserter.Insert(ctx, row); err != nil {
-				_ = iter.Close()
-				return i, err
-			}
-		}
-		i++
-	}
-
-	if replacer != nil {
-		if err := replacer.Close(ctx); err != nil {
-			return 0, err
-		}
-	} else {
-		if err := inserter.Close(ctx); err != nil {
-			return 0, err
-		}
-	}
-
-	return i, nil
-}
-
 func (p *InsertInto) rowSource(projExprs []sql.Expression) (sql.Node, error) {
 	right := p.Right
 	if exchange, ok := right.(*Exchange); ok {
@@ -225,16 +85,234 @@ func (p *InsertInto) rowSource(projExprs []sql.Expression) (sql.Node, error) {
 	}
 }
 
-// RowIter implements the Node interface.
-func (p *InsertInto) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	updated, err := p.Execute(ctx)
+func validateColumns(columnNames []string, dstSchema sql.Schema) error {
+	dstColNames := make(map[string]struct{})
+	for _, dstCol := range dstSchema {
+		dstColNames[dstCol.Name] = struct{}{}
+	}
+	usedNames := make(map[string]struct{})
+	for _, columnName := range columnNames {
+		if _, exists := dstColNames[columnName]; !exists {
+			return ErrInsertIntoNonexistentColumn.New(columnName)
+		}
+		if _, exists := usedNames[columnName]; !exists {
+			usedNames[columnName] = struct{}{}
+		} else {
+			return ErrInsertIntoDuplicateColumn.New(columnName)
+		}
+	}
+	return nil
+}
+
+func validateValueCount(columnNames []string, values sql.Node) error {
+	right := values
+	if exchange, ok := right.(*Exchange); ok {
+		right = exchange.Child
+	}
+
+	switch node := right.(type) {
+	case *Values:
+		for _, exprTuple := range node.ExpressionTuples {
+			if len(exprTuple) != len(columnNames) {
+				return ErrInsertIntoMismatchValueCount.New()
+			}
+		}
+	case *ResolvedTable, *Project, *InnerJoin, *Filter:
+		if len(columnNames) != len(right.Schema()) {
+			return ErrInsertIntoMismatchValueCount.New()
+		}
+	default:
+		return ErrInsertIntoUnsupportedValues.New(node)
+	}
+	return nil
+}
+
+type insertIter struct {
+	schema      sql.Schema
+	inserter    sql.RowInserter
+	replacer    sql.RowReplacer
+	rowSource   sql.RowIter
+	projections []sql.Expression
+	ctx         *sql.Context
+}
+
+func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, columnNames []string, isReplace bool) (*insertIter, error) {
+	insertable, err := getInsertable(table)
 	if err != nil {
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.OkResult{
-		RowsAffected: uint64(updated),
-	})), nil
+	var replaceable sql.ReplaceableTable
+	if isReplace {
+		var ok bool
+		replaceable, ok = insertable.(sql.ReplaceableTable)
+		if !ok {
+			return nil, ErrReplaceIntoNotSupported.New()
+		}
+	}
+
+	dstSchema := insertable.Schema()
+
+	// If no columns are given, we assume the full schema in order
+	if len(columnNames) == 0 {
+		columnNames = make([]string, len(dstSchema))
+		for i, f := range dstSchema {
+			columnNames[i] = f.Name
+		}
+	} else {
+		err = validateColumns(columnNames, dstSchema)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = validateValueCount(columnNames, values)
+	if err != nil {
+		return nil, err
+	}
+
+	projExprs := make([]sql.Expression, len(dstSchema))
+	for i, f := range dstSchema {
+		found := false
+		for j, col := range columnNames {
+			if f.Name == col {
+				projExprs[i] = expression.NewGetField(j, f.Type, f.Name, f.Nullable)
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			if !f.Nullable && f.Default == nil {
+				return nil, ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
+			}
+			projExprs[i] = expression.NewLiteral(f.Default, f.Type)
+		}
+	}
+
+	rowSource, err := rowSource(values, projExprs)
+	if err != nil {
+		return nil, err
+	}
+
+	var inserter sql.RowInserter
+	var replacer sql.RowReplacer
+	if replaceable != nil {
+		replacer = replaceable.Replacer(ctx)
+	} else {
+		inserter = insertable.Inserter(ctx)
+	}
+
+	rowIter, err := rowSource.RowIter(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &insertIter{
+		schema:      dstSchema,
+		inserter:    inserter,
+		replacer:    replacer,
+		rowSource:   rowIter,
+		projections: projExprs,
+		ctx:         ctx,
+	}, nil
+}
+
+func rowSource(values sql.Node, projExprs []sql.Expression) (sql.Node, error) {
+	right := values
+	if exchange, ok := right.(*Exchange); ok {
+		right = exchange.Child
+	}
+
+	switch n := right.(type) {
+	case *Values:
+		return NewProject(projExprs, n), nil
+	case *ResolvedTable, *Project, *InnerJoin, *Filter:
+		if err := assertCompatibleSchemas(projExprs, n.Schema()); err != nil {
+			return nil, err
+		}
+		return NewProject(projExprs, n), nil
+	default:
+		return nil, ErrInsertIntoUnsupportedValues.New(n)
+	}
+}
+
+func (i insertIter) Next() (sql.Row, error) {
+	row, err := i.rowSource.Next()
+	if err == io.EOF {
+		return nil, err
+	}
+	if err != nil {
+		_ = i.rowSource.Close()
+		return nil, err
+	}
+
+	err = validateNullability(i.schema, row)
+	if err != nil {
+		_ = i.rowSource.Close()
+		return nil, err
+	}
+
+	// Convert values to the destination schema type
+	for colIdx, oldValue := range row {
+		dstColType := i.projections[colIdx].Type()
+
+		if oldValue != nil {
+			newValue, err := dstColType.Convert(oldValue)
+			if err != nil {
+				return nil, err
+			}
+
+			row[colIdx] = newValue
+		}
+	}
+
+	if i.replacer != nil {
+		if err = i.replacer.Delete(i.ctx, row); err != nil {
+			if !sql.ErrDeleteRowNotFound.Is(err) {
+				_ = i.rowSource.Close()
+				return nil, err
+			}
+		}
+		// TODO: row update count should go up here
+
+		if err = i.replacer.Insert(i.ctx, row); err != nil {
+			_ = i.rowSource.Close()
+			return nil, err
+		}
+	} else {
+		if err := i.inserter.Insert(i.ctx, row); err != nil {
+			_ = i.rowSource.Close()
+			return nil, err
+		}
+	}
+
+	return row, nil
+}
+
+func (i insertIter) Close() error {
+	if i.inserter != nil {
+		if err := i.inserter.Close(i.ctx); err != nil {
+			return err
+		}
+	}
+	if i.replacer != nil {
+		if err := i.replacer.Close(i.ctx); err != nil {
+			return err
+		}
+	}
+	if i.rowSource != nil {
+		if err := i.rowSource.Close(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// RowIter implements the Node interface.
+func (p *InsertInto) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	return newInsertIter(ctx, p.Left, p.Right, p.ColumnNames, p.IsReplace)
 }
 
 // WithChildren implements the Node interface.
@@ -268,58 +346,11 @@ func (p InsertInto) DebugString() string {
 	return pr.String()
 }
 
-func (p *InsertInto) validateValueCount(ctx *sql.Context) error {
-	right := p.Right
-	if exchange, ok := right.(*Exchange); ok {
-		right = exchange.Child
-	}
-
-	switch node := right.(type) {
-	case *Values:
-		for _, exprTuple := range node.ExpressionTuples {
-			if len(exprTuple) != len(p.ColumnNames) {
-				return ErrInsertIntoMismatchValueCount.New()
-			}
-		}
-	case *ResolvedTable, *Project, *InnerJoin, *Filter:
-		return p.assertColumnCountsMatch(node.Schema())
-	default:
-		return ErrInsertIntoUnsupportedValues.New(node)
-	}
-	return nil
-}
-
-func (p *InsertInto) validateColumns(dstSchema sql.Schema) error {
-	dstColNames := make(map[string]struct{})
-	for _, dstCol := range dstSchema {
-		dstColNames[dstCol.Name] = struct{}{}
-	}
-	columnNames := make(map[string]struct{})
-	for _, columnName := range p.ColumnNames {
-		if _, exists := dstColNames[columnName]; !exists {
-			return ErrInsertIntoNonexistentColumn.New(columnName)
-		}
-		if _, exists := columnNames[columnName]; !exists {
-			columnNames[columnName] = struct{}{}
-		} else {
-			return ErrInsertIntoDuplicateColumn.New(columnName)
-		}
-	}
-	return nil
-}
-
-func (p *InsertInto) validateNullability(dstSchema sql.Schema, row sql.Row) error {
+func validateNullability(dstSchema sql.Schema, row sql.Row) error {
 	for i, col := range dstSchema {
 		if !col.Nullable && row[i] == nil {
 			return ErrInsertIntoNonNullableProvidedNull.New(col.Name)
 		}
-	}
-	return nil
-}
-
-func (p *InsertInto) assertColumnCountsMatch(schema sql.Schema) error {
-	if len(p.ColumnNames) != len(schema) {
-		return ErrInsertIntoMismatchValueCount.New()
 	}
 	return nil
 }
