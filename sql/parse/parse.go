@@ -293,7 +293,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	switch showType {
 	case "create table", "create view":
 		return plan.NewShowCreateTable(
-			plan.NewUnresolvedTable(s.Table.Name.String(), s.Table.Qualifier.String()),
+			tableNameToUnresolvedTable(s.Table),
 			showType == "create view",
 		), nil
 	case "create database", "create schema":
@@ -347,7 +347,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		return plan.NewShowDatabases(), nil
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
 		// TODO(erizocosmico): vitess parser does not support EXTENDED.
-		table := plan.NewUnresolvedTable(s.OnTable.Name.String(), s.OnTable.Qualifier.String())
+		table := tableNameToUnresolvedTable(s.OnTable)
 		full := s.ShowTablesOpt != nil && s.ShowTablesOpt.Full != ""
 
 		var node sql.Node = plan.NewShowColumns(full, table)
@@ -598,7 +598,7 @@ func tableNameToUnresolvedTable(tableName sqlparser.TableName) *plan.UnresolvedT
 }
 
 func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
-	table := plan.NewUnresolvedTable(ddl.Table.Name.String(), ddl.Table.Qualifier.String())
+	table := tableNameToUnresolvedTable(ddl.Table)
 	switch strings.ToLower(ddl.IndexSpec.Action) {
 	case sqlparser.CreateStr:
 		var using sql.IndexUsing
@@ -674,7 +674,7 @@ func convertExternalCreateIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node,
 	}
 	return plan.NewCreateIndex(
 		ddl.IndexSpec.ToName.String(),
-		plan.NewUnresolvedTable(ddl.Table.Name.String(), ddl.Table.Qualifier.String()),
+		tableNameToUnresolvedTable(ddl.Table),
 		cols,
 		ddl.IndexSpec.Using.Lowered(),
 		config,
@@ -860,7 +860,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 	}
 
 	return plan.NewInsertInto(
-		plan.NewUnresolvedTable(i.Table.Name.String(), i.Table.Qualifier.String()),
+		tableNameToUnresolvedTable(i.Table),
 		src,
 		isReplace,
 		columnsToStrings(i.Columns),
@@ -1135,7 +1135,7 @@ func tableExprToTable(
 				}
 				node = plan.NewUnresolvedTableAsOf(e.Name.String(), e.Qualifier.String(), asOfExpr)
 			} else {
-				node = plan.NewUnresolvedTable(e.Name.String(), e.Qualifier.String())
+				node = tableNameToUnresolvedTable(e)
 			}
 
 			if !t.As.IsEmpty() {
