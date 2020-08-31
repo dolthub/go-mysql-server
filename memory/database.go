@@ -10,12 +10,14 @@ import (
 type Database struct {
 	name   string
 	tables map[string]sql.Table
+	trigger map[string]sql.TriggerDefinition
 }
 
 var _ sql.Database = (*Database)(nil)
 var _ sql.TableCreator = (*Database)(nil)
 var _ sql.TableDropper = (*Database)(nil)
 var _ sql.TableRenamer = (*Database)(nil)
+var _ sql.TriggerDatabase = (*Database)(nil)
 
 // NewDatabase creates a new database with the given name.
 func NewDatabase(name string) *Database {
@@ -143,5 +145,23 @@ func (d *Database) RenameTable(ctx *sql.Context, oldName, newName string) error 
 	d.tables[newName] = tbl
 	delete(d.tables, oldName)
 
+	return nil
+}
+
+func (d *Database) GetTriggers(ctx *sql.Context) ([]sql.TriggerDefinition, error) {
+	var triggers []sql.TriggerDefinition
+	for _, def := range d.trigger {
+		triggers = append(triggers, def)
+	}
+	return triggers, nil
+}
+
+func (d *Database) CreateTrigger(ctx *sql.Context, definition sql.TriggerDefinition) error {
+	d.trigger[definition.Name] = definition
+	return nil
+}
+
+func (d *Database) DropTrigger(ctx *sql.Context, name string) error {
+	delete(d.trigger, name)
 	return nil
 }
