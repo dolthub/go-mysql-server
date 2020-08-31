@@ -3,6 +3,7 @@ package plan
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -177,9 +178,27 @@ func (p Update) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Update")
 	_ = pr.WriteChildren(p.Node.String())
+	var children []string
 	for _, updateExpr := range p.UpdateExprs {
-		_ = pr.WriteChildren(updateExpr.String())
+		children = append(children, updateExpr.String())
 	}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
+}
+
+func (p Update) DebugString() string {
+	pr := sql.NewTreePrinter()
+	var updateExprs []string
+	for _, e := range p.UpdateExprs {
+		updateExprs = append(updateExprs, sql.DebugString(e))
+	}
+	_ = pr.WriteNode(fmt.Sprintf("Update(%s)", strings.Join(updateExprs, ",")))
+	_ = pr.WriteChildren(sql.DebugString(p.Node))
+	var children []string
+	for _, updateExpr := range p.UpdateExprs {
+		children = append(children, sql.DebugString(updateExpr))
+	}
+	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 

@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )
@@ -78,6 +79,27 @@ func (p *Values) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 func (p *Values) String() string {
 	return fmt.Sprintf("Values(%d tuples)", len(p.ExpressionTuples))
+}
+
+func (p *Values) DebugString() string {
+	var sb strings.Builder
+	sb.WriteString("Values(")
+	for i, tuple := range p.ExpressionTuples {
+		sb.WriteRune('[')
+		if i > 0 {
+			sb.WriteString(",\n")
+		}
+		for j, e := range tuple {
+			if j > 0 {
+				sb.WriteString(",")
+			}
+			sb.WriteString(sql.DebugString(e))
+		}
+		sb.WriteRune(']')
+	}
+
+	sb.WriteString(")")
+	return sb.String()
 }
 
 // Expressions implements the Expressioner interface.

@@ -137,6 +137,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	switch n := stmt.(type) {
 	default:
 		return nil, ErrUnsupportedSyntax.New(sqlparser.String(n))
+	case *sqlparser.BeginEndBlock:
+		return convertBeginEndBlock(ctx, n, query)
 	case *sqlparser.Show:
 		// When a query is empty it means it comes from a subquery, as we don't
 		// have the query itself in a subquery. Hence, a SHOW could not be
@@ -169,6 +171,18 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.Update:
 		return convertUpdate(ctx, n)
 	}
+}
+
+func convertBeginEndBlock(ctx *sql.Context, n *sqlparser.BeginEndBlock, query string) (sql.Node, error) {
+	var statements []sql.Node
+	for _, s := range n.Statements {
+		statement, err := convert(ctx, s, "compound statement in begin..end block")
+		if err != nil {
+			return nil, err
+		}
+		statements = append(statements, statement)
+	}
+	return plan.NewBeginEndBlock(statements), nil
 }
 
 func convertSelectStatement(ctx *sql.Context, ss sqlparser.SelectStatement) (sql.Node, error) {
@@ -279,7 +293,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	switch showType {
 	case "create table", "create view":
 		return plan.NewShowCreateTable(
-			plan.NewUnresolvedTable(s.Table.Name.String(), s.Table.Qualifier.String()),
+			tableNameToUnresolvedTable(s.Table),
 			showType == "create view",
 		), nil
 	case "create database", "create schema":
@@ -333,7 +347,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		return plan.NewShowDatabases(), nil
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
 		// TODO(erizocosmico): vitess parser does not support EXTENDED.
-		table := plan.NewUnresolvedTable(s.OnTable.Name.String(), s.OnTable.Qualifier.String())
+		table := tableNameToUnresolvedTable(s.OnTable)
 		full := s.ShowTablesOpt != nil && s.ShowTablesOpt.Full != ""
 
 		var node sql.Node = plan.NewShowColumns(full, table)
@@ -466,6 +480,9 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
 	switch strings.ToLower(c.Action) {
 	case sqlparser.CreateStr:
+		if c.TriggerSpec != nil {
+			return convertCreateTrigger(ctx, query, c)
+		}
 		if !c.View.IsEmpty() {
 			return convertCreateView(ctx, query, c)
 		}
@@ -482,6 +499,24 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	default:
 		return nil, ErrUnsupportedSyntax.New(sqlparser.String(c))
 	}
+}
+
+func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
+	var triggerOrder *plan.TriggerOrder
+	if c.TriggerSpec.Order != nil {
+		triggerOrder = &plan.TriggerOrder{
+			PrecedesOrFollows: c.TriggerSpec.Order.PrecedesOrFollows,
+			OtherTriggerName:  c.TriggerSpec.Order.OtherTriggerName,
+		}
+	}
+
+	bodyStr := query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
+	body, err := convert(ctx, c.TriggerSpec.Body, bodyStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewCreateTrigger(c.TriggerSpec.Name, c.TriggerSpec.Time, c.TriggerSpec.Event, triggerOrder, tableNameToUnresolvedTable(c.Table), body, bodyStr), nil
 }
 
 func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
@@ -506,7 +541,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	}
 	//TODO: support multiple constraints in a single ALTER statement
 	if ddl.ConstraintAction != "" && len(ddl.TableSpec.Constraints) == 1 {
-		table := plan.NewUnresolvedTable(ddl.Table.Name.String(), ddl.Table.Qualifier.String())
+		table := tableNameToUnresolvedTable(ddl.Table)
 		parsedConstraint, err := convertConstraintDefinition(ctx, ddl.TableSpec.Constraints[0])
 		if err != nil {
 			return nil, err
@@ -558,8 +593,12 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	}
 }
 
+func tableNameToUnresolvedTable(tableName sqlparser.TableName) *plan.UnresolvedTable {
+	return plan.NewUnresolvedTable(tableName.Name.String(), tableName.Qualifier.String())
+}
+
 func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
-	table := plan.NewUnresolvedTable(ddl.Table.Name.String(), ddl.Table.Qualifier.String())
+	table := tableNameToUnresolvedTable(ddl.Table)
 	switch strings.ToLower(ddl.IndexSpec.Action) {
 	case sqlparser.CreateStr:
 		var using sql.IndexUsing
@@ -635,7 +674,7 @@ func convertExternalCreateIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node,
 	}
 	return plan.NewCreateIndex(
 		ddl.IndexSpec.ToName.String(),
-		plan.NewUnresolvedTable(ddl.Table.Name.String(), ddl.Table.Qualifier.String()),
+		tableNameToUnresolvedTable(ddl.Table),
 		cols,
 		ddl.IndexSpec.Using.Lowered(),
 		config,
@@ -789,7 +828,7 @@ func convertCreateView(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.No
 		return nil, err
 	}
 
-	selectStr := query[c.ViewSelectPositionStart:c.ViewSelectPositionEnd]
+	selectStr := query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
 	queryAlias := plan.NewSubqueryAlias(c.View.Name.String(), selectStr, queryNode)
 
 	return plan.NewCreateView(
@@ -821,7 +860,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 	}
 
 	return plan.NewInsertInto(
-		plan.NewUnresolvedTable(i.Table.Name.String(), i.Table.Qualifier.String()),
+		tableNameToUnresolvedTable(i.Table),
 		src,
 		isReplace,
 		columnsToStrings(i.Columns),
@@ -1096,7 +1135,7 @@ func tableExprToTable(
 				}
 				node = plan.NewUnresolvedTableAsOf(e.Name.String(), e.Qualifier.String(), asOfExpr)
 			} else {
-				node = plan.NewUnresolvedTable(e.Name.String(), e.Qualifier.String())
+				node = tableNameToUnresolvedTable(e)
 			}
 
 			if !t.As.IsEmpty() {

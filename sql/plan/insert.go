@@ -257,6 +257,17 @@ func (p InsertInto) String() string {
 	return pr.String()
 }
 
+func (p InsertInto) DebugString() string {
+	pr := sql.NewTreePrinter()
+	if p.IsReplace {
+		_ = pr.WriteNode("Replace(%s)", strings.Join(p.ColumnNames, ", "))
+	} else {
+		_ = pr.WriteNode("Insert(%s)", strings.Join(p.ColumnNames, ", "))
+	}
+	_ = pr.WriteChildren(sql.DebugString(p.Left), sql.DebugString(p.Right))
+	return pr.String()
+}
+
 func (p *InsertInto) validateValueCount(ctx *sql.Context) error {
 	right := p.Right
 	if exchange, ok := right.(*Exchange); ok {
