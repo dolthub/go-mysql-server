@@ -412,6 +412,30 @@ type VersionedDatabase interface {
 	GetTableNamesAsOf(ctx *Context, asOf interface{}) ([]string, error)
 }
 
+// TriggerDefinition defines a trigger. Integrators are not expected to parse or understand the trigger definitions,
+// but must store and return them when asked.
+type TriggerDefinition struct {
+	Name string // The name of this trigger. Trigger names in a database are unique.
+	CreateStatement string // The text of the statement to create this trigger.
+}
+
+// TriggerDatabase is a Database that supports the creation and execution of triggers. The engine handles all parsing
+// and execution logic for triggers. Integrators are not expected to parse or understand the trigger definitions, but
+// must store and return them when asked.
+type TriggerDatabase interface {
+	Database
+
+	// GetTriggers returns all trigger definitions for the database
+	GetTriggers(ctx *Context) ([]TriggerDefinition, error)
+
+	// CreateTrigger is called when an integrator is asked to create a trigger. The create trigger statement string is
+	// provided to store, along with the name of the trigger.
+	CreateTrigger(ctx *Context, definition TriggerDefinition) error
+
+	// DropTrigger is called when a trigger should no longer be stored. The name has already been validated.
+	DropTrigger(ctx *Context, name string) error
+}
+
 // GetTableInsensitive implements a case insensitive map lookup for tables keyed off of the table name.
 // Looks for exact matches first.  If no exact matches are found then any table matching the name case insensitively
 // should be returned.  If there is more than one table that matches a case insensitive comparison the resolution
