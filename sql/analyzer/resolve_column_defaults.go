@@ -468,7 +468,21 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 				if err != nil {
 					return nil, err
 				}
-				newDefault, err = sql.NewColumnDefaultValue(newDefault.Expression, col.Type, newDefault.IsLiteral(), col.Nullable)
+				//TODO: fix the vitess parser so that it parses negative numbers as numbers and not negation of an expression
+				isLiteral := newDefault.IsLiteral()
+				if unaryMinusExpr, ok := newDefault.Expression.(*expression.UnaryMinus); ok {
+					if literalExpr, ok := unaryMinusExpr.Child.(*expression.Literal); ok {
+						switch val := literalExpr.Value().(type) {
+						case float32:
+							newDefault.Expression = expression.NewLiteral(-val, sql.Float32)
+							isLiteral = true
+						case float64:
+							newDefault.Expression = expression.NewLiteral(-val, sql.Float64)
+							isLiteral = true
+						}
+					}
+				}
+				newDefault, err = sql.NewColumnDefaultValue(newDefault.Expression, col.Type, isLiteral, col.Nullable)
 				if err != nil {
 					return nil, err
 				}

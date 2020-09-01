@@ -508,6 +508,10 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) map[t
 				table: "",
 				col:   strings.ToLower(col.Name),
 			}] = indexedCol{col, idx}
+			columns[tableCol{
+				table: strings.ToLower(col.Source),
+				col:   strings.ToLower(col.Name),
+			}] = indexedCol{col, idx}
 			idx++
 		}
 	}
@@ -527,6 +531,10 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) map[t
 		for _, col := range node.Schema() {
 			columns[tableCol{
 				table: "",
+				col:   strings.ToLower(col.Name),
+			}] = indexedCol{col, idx}
+			columns[tableCol{
+				table: strings.ToLower(col.Source),
 				col:   strings.ToLower(col.Name),
 			}] = indexedCol{col, idx}
 			idx++
