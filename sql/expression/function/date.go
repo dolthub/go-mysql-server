@@ -2,6 +2,7 @@ package function
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -457,7 +458,7 @@ func NewTimeDiff(e1, e2 sql.Expression) sql.Expression {
 }
 
 // Type implements the Expression interface.
-func (td *TimeDiff) Type() sql.Type { return sql.Timestamp }
+func (td *TimeDiff) Type() sql.Type { return sql.LongText }
 
 // IsNullable implements the Expression interface.
 func (td *TimeDiff) IsNullable() bool { return td.Left.IsNullable() || td.Right.IsNullable() }
@@ -504,10 +505,31 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return toTimeDiff(leftDate.(time.Time), rightDate.(time.Time))
+	return toTimeDiff(leftDate.(time.Time), rightDate.(time.Time)), nil
 }
 
-func toTimeDiff(left, right time.Time) (interface{}, error) {
-	d := left.Sub(right)
-	return sql.Timestamp.Convert(d)
+func toTimeDiff(left, right time.Time) interface{} {
+	inverted, h, m, s := elapsed(left, right)
+	if inverted {
+		return fmt.Sprintf("%02d:%02d:%09.6f",h, m,s)
+	}
+	return fmt.Sprintf("-%02d:%02d:%09.6f",h,m,s)
+}
+
+func elapsed(left, right time.Time) (inverted bool, hours, minutes int, seconds float64) {
+	if left.Location() != right.Location() {
+		right = right.In(right.Location())
+	}
+
+	inverted = false
+	if left.After(right) {
+		inverted = true
+		left, right = right, left
+	}
+
+	duration := left.Sub(right)
+	hours = int(math.Abs(duration.Hours()))
+	minutes = int(math.Abs(math.Mod(duration.Minutes(), 60)))
+	seconds = math.Abs(math.Mod(duration.Seconds(), 60))
+	return
 }
