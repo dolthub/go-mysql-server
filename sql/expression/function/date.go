@@ -366,7 +366,7 @@ func (ut *UnixTimestamp) String() string {
 	}
 }
 
-// UTCTimestamp
+// UTCTimestamp converts argument to UTC.
 type UTCTimestamp struct {
 	Date sql.Expression
 }
@@ -439,4 +439,75 @@ func (ut *UTCTimestamp) String() string {
 	} else {
 		return "UTC_TIMESTAMP()"
 	}
+}
+
+// TimeDiff subtracts the second argument from the first expressed as a time value.
+type TimeDiff struct {
+	expression.BinaryExpression
+}
+
+// NewTimeDiff creates a new NewTimeDiff expression.
+func NewTimeDiff(e1, e2 sql.Expression) sql.Expression {
+	return &TimeDiff{
+		expression.BinaryExpression{
+			Left:  e1,
+			Right: e2,
+		},
+	}
+}
+
+// Type implements the Expression interface.
+func (td *TimeDiff) Type() sql.Type { return sql.Timestamp }
+
+// IsNullable implements the Expression interface.
+func (td *TimeDiff) IsNullable() bool { return td.Left.IsNullable() || td.Right.IsNullable() }
+
+func (td *TimeDiff) String() string {
+	return fmt.Sprintf("timediff(%s, %s)", td.Left, td.Right)
+}
+
+// WithChildren implements the Expression interface.
+func (td *TimeDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(td, len(children), 2)
+	}
+	return NewTimeDiff(children[0], children[1]), nil
+}
+
+// Eval implements the Expression interface.
+func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	left, err := td.Left.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if left == nil {
+		return nil, nil
+	}
+
+	leftDate, err := sql.Datetime.Convert(left)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := td.Right.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if right == nil {
+		return nil, nil
+	}
+
+	rightDate, err := sql.Datetime.Convert(right)
+	if err != nil {
+		return nil, err
+	}
+
+	return toTimeDiff(leftDate.(time.Time), rightDate.(time.Time))
+}
+
+func toTimeDiff(left, right time.Time) (interface{}, error) {
+	d := left.Sub(right)
+	return sql.Timestamp.Convert(d)
 }
