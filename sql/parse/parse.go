@@ -859,12 +859,13 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 		return nil, err
 	}
 
-	return plan.NewInsertInto(
-		tableNameToUnresolvedTable(i.Table),
-		src,
-		isReplace,
-		columnsToStrings(i.Columns),
-	), nil
+	return plan.NewRowUpdateAccumulator(
+		plan.NewInsertInto(
+			tableNameToUnresolvedTable(i.Table),
+			src,
+			isReplace,
+			columnsToStrings(i.Columns),
+		)), nil
 }
 
 func convertDelete(ctx *sql.Context, d *sqlparser.Delete) (sql.Node, error) {
