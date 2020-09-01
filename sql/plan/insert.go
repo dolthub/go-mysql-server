@@ -66,25 +66,6 @@ func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
 	}
 }
 
-func (p *InsertInto) rowSource(projExprs []sql.Expression) (sql.Node, error) {
-	right := p.Right
-	if exchange, ok := right.(*Exchange); ok {
-		right = exchange.Child
-	}
-
-	switch n := right.(type) {
-	case *Values:
-		return NewProject(projExprs, n), nil
-	case *ResolvedTable, *Project, *InnerJoin, *Filter:
-		if err := assertCompatibleSchemas(projExprs, n.Schema()); err != nil {
-			return nil, err
-		}
-		return NewProject(projExprs, n), nil
-	default:
-		return nil, ErrInsertIntoUnsupportedValues.New(n)
-	}
-}
-
 func validateColumns(columnNames []string, dstSchema sql.Schema) error {
 	dstColNames := make(map[string]struct{})
 	for _, dstCol := range dstSchema {
@@ -105,12 +86,11 @@ func validateColumns(columnNames []string, dstSchema sql.Schema) error {
 }
 
 func validateValueCount(columnNames []string, values sql.Node) error {
-	right := values
-	if exchange, ok := right.(*Exchange); ok {
-		right = exchange.Child
+	if exchange, ok := values.(*Exchange); ok {
+		values = exchange.Child
 	}
 
-	switch node := right.(type) {
+	switch node := values.(type) {
 	case *Values:
 		for _, exprTuple := range node.ExpressionTuples {
 			if len(exprTuple) != len(columnNames) {
@@ -118,7 +98,7 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 			}
 		}
 	case *ResolvedTable, *Project, *InnerJoin, *Filter:
-		if len(columnNames) != len(right.Schema()) {
+		if len(columnNames) != len(values.Schema()) {
 			return ErrInsertIntoMismatchValueCount.New()
 		}
 	default:
@@ -219,12 +199,11 @@ func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, columnName
 }
 
 func rowSource(values sql.Node, projExprs []sql.Expression) (sql.Node, error) {
-	right := values
-	if exchange, ok := right.(*Exchange); ok {
-		right = exchange.Child
+	if exchange, ok := values.(*Exchange); ok {
+		values = exchange.Child
 	}
 
-	switch n := right.(type) {
+	switch n := values.(type) {
 	case *Values:
 		return NewProject(projExprs, n), nil
 	case *ResolvedTable, *Project, *InnerJoin, *Filter:
