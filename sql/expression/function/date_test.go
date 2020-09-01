@@ -137,3 +137,53 @@ func TestUnixTimestamp(t *testing.T) {
 	require.NoError(err)
 	require.Equal(expected, result)
 }
+
+func TestUTCTimestamp(t *testing.T) {
+	require := require.New(t)
+
+	_, err := NewUTCTimestamp()
+	require.NoError(err)
+
+	_, err = NewUTCTimestamp(expression.NewLiteral("2018-05-02", sql.LongText))
+	require.NoError(err)
+
+	_, err = NewUTCTimestamp(expression.NewLiteral("2018-05-02", sql.LongText))
+	require.NoError(err)
+
+	_, err = NewUTCTimestamp(expression.NewLiteral("2018-05-02", sql.LongText), expression.NewLiteral("2018-05-02", sql.LongText))
+	require.Error(err)
+
+	date := time.Date(2018, time.December, 2, 16, 25, 0, 0, time.Local)
+	testNowFunc := func() time.Time {
+		return date
+	}
+
+	var ctx *sql.Context
+	err = sql.RunWithNowFunc(testNowFunc, func() error {
+		ctx = sql.NewEmptyContext()
+		return nil
+	})
+	require.NoError(err)
+
+	var ut sql.Expression
+	var expected interface{}
+	ut = &UTCTimestamp{nil}
+	expected = date.UTC()
+	result, err := ut.Eval(ctx, nil)
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	ut, err = NewUTCTimestamp(expression.NewLiteral("2018-05-02", sql.LongText))
+	require.NoError(err)
+	expected = time.Date(2018, 5, 2, 0, 0, 0, 0, time.UTC)
+	result, err = ut.Eval(ctx, nil)
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	ut, err = NewUTCTimestamp(expression.NewLiteral(nil, sql.Null))
+	require.NoError(err)
+	expected = nil
+	result, err = ut.Eval(ctx, nil)
+	require.NoError(err)
+	require.Equal(expected, result)
+}

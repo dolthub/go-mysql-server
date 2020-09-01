@@ -365,3 +365,78 @@ func (ut *UnixTimestamp) String() string {
 		return "UNIX_TIMESTAMP()"
 	}
 }
+
+// UTCTimestamp
+type UTCTimestamp struct {
+	Date sql.Expression
+}
+
+func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) > 1 {
+		return nil, sql.ErrInvalidArgumentNumber.New("UTC_TIMESTAMP", 1, len(args))
+	}
+	if len(args) == 0 {
+		return &UTCTimestamp{nil}, nil
+	}
+	return &UTCTimestamp{args[0]}, nil
+}
+
+func (ut *UTCTimestamp) Children() []sql.Expression {
+	if ut.Date != nil {
+		return []sql.Expression{ut.Date}
+	}
+	return nil
+}
+
+func (ut *UTCTimestamp) Resolved() bool {
+	if ut.Date != nil {
+		return ut.Date.Resolved()
+	}
+	return true
+}
+
+func (ut *UTCTimestamp) IsNullable() bool {
+	return true
+}
+
+func (ut *UTCTimestamp) Type() sql.Type {
+	return sql.Timestamp
+}
+
+func (ut *UTCTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewUTCTimestamp(children...)
+}
+
+func (ut *UTCTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if ut.Date == nil {
+		return toUTCTimestamp(ctx.QueryTime())
+	}
+
+	date, err := ut.Date.Eval(ctx, row)
+
+	if err != nil {
+		return nil, err
+	}
+	if date == nil {
+		return nil, nil
+	}
+
+	date, err = sql.Datetime.Convert(date)
+	if err != nil {
+		return nil, err
+	}
+
+	return toUTCTimestamp(date.(time.Time))
+}
+
+func toUTCTimestamp(t time.Time) (interface{}, error) {
+	return sql.Timestamp.Convert(t.UTC())
+}
+
+func (ut *UTCTimestamp) String() string {
+	if ut.Date != nil {
+		return fmt.Sprintf("UTC_TIMESTAMP(%s)", ut.Date)
+	} else {
+		return "UTC_TIMESTAMP()"
+	}
+}
