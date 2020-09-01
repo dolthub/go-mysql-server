@@ -50,6 +50,7 @@ var OnceAfterDefault = []Rule{
 	// previous rules.
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},
 	{"cache_subquery_results", cacheSubqueryResults},
+	{"apply_row_update_accumulators", applyUpdateAccumulators},
 }
 
 // OnceAfterAll contains the rules to be applied just once after all other

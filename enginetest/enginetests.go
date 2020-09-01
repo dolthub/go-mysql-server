@@ -430,7 +430,10 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range InsertErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
 			e := NewEngine(t, harness)
-			_, _, err := e.Query(NewContext(harness), expectedFailure.Query)
+			_, rowIter, err := e.Query(NewContext(harness), expectedFailure.Query)
+			if err == nil {
+				_, err = sql.RowIterToRows(rowIter)
+			}
 			require.Error(t, err)
 		})
 	}
@@ -455,8 +458,10 @@ func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range ReplaceErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
 			e := NewEngine(t, harness)
-			_, _, err := e.Query(NewContext(harness), expectedFailure.Query)
-			require.Error(t, err)
+			_, rowIter, err := e.Query(NewContext(harness), expectedFailure.Query)
+			if err == nil {
+				_, err = sql.RowIterToRows(rowIter)
+			}
 		})
 	}
 }
@@ -480,8 +485,10 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range UpdateErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
 			e := NewEngine(t, harness)
-			_, _, err := e.Query(NewContext(harness), expectedFailure.Query)
-			require.Error(t, err)
+			_, rowIter, err := e.Query(NewContext(harness), expectedFailure.Query)
+			if err == nil {
+				_, err = sql.RowIterToRows(rowIter)
+			}
 		})
 	}
 }
@@ -505,8 +512,10 @@ func TestDeleteErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range DeleteErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
 			e := NewEngine(t, harness)
-			_, _, err := e.Query(NewContext(harness), expectedFailure.Query)
-			require.Error(t, err)
+			_, rowIter, err := e.Query(NewContext(harness), expectedFailure.Query)
+			if err == nil {
+				_, err = sql.RowIterToRows(rowIter)
+			}
 		})
 	}
 }
@@ -530,7 +539,11 @@ func TestScripts(t *testing.T, harness Harness) {
 					}
 				}
 
-				_, _, err := e.Query(NewContext(harness), statement)
+				_, iter, err := e.Query(NewContext(harness), statement)
+				require.NoError(t, err)
+
+				// important to drain and close the iterator here for inserts / updates to work correctly
+				_, err = sql.RowIterToRows(iter)
 				require.NoError(t, err)
 			}
 

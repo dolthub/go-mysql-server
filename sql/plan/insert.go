@@ -253,7 +253,7 @@ func (i insertIter) Next() (sql.Row, error) {
 				return nil, err
 			}
 		}
-		// TODO: row update count should go up here
+		// TODO: row update count should go up here for the delete
 
 		if err = i.replacer.Insert(i.ctx, row); err != nil {
 			_ = i.rowSource.Close()
