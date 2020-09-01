@@ -48,6 +48,8 @@ func (p *Literal) String() string {
 		return fmt.Sprintf("%q", v)
 	case []byte:
 		return "BLOB"
+	case nil:
+		return "NULL"
 	default:
 		return fmt.Sprint(v)
 	}

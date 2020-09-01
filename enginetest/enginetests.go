@@ -1892,7 +1892,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		)
 	})
 
-	t.Run(" Add column explicit last default expression", func(t *testing.T) {
+	t.Run("Add column explicit last default expression", func(t *testing.T) {
 		TestQuery(t, harness, e,
 			"CREATE TABLE t15(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))",
 			[]sql.Row(nil),
@@ -2097,6 +2097,30 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQuery(t, harness, e,
 			"SELECT * FROM t26",
 			[]sql.Row{{1, 2, 2}, {2, 3, 4}, {3, -3, 6}},
+		)
+	})
+
+	t.Run("Negative float literal", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t27(pk BIGINT PRIMARY KEY, v1 DOUBLE DEFAULT -1.1)",
+			[]sql.Row(nil),
+		)
+		TestQuery(t, harness, e,
+			"DESCRIBE t27",
+			[]sql.Row{{"pk", "bigint", "NO", "PRI", "", ""}, {"v1", "double", "YES", "", "-1.1", ""}},
+		)
+	})
+
+	t.Run("Table referenced with column", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t28(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (t28.pk))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t28 (pk) VALUES (1), (2)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t28",
+			[]sql.Row{{1, 1}, {2, 2}},
 		)
 	})
 
