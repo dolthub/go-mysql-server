@@ -2,7 +2,6 @@ package sqle
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/memory"
 	"time"
 
 	"github.com/go-kit/kit/metrics/discard"
@@ -178,7 +177,7 @@ func (e *Engine) Query(
 func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Schema, error) {
 	ctx := sql.NewEmptyContext()
 	e := NewDefault()
-	db := memory.NewDatabase("temporary")
+	db := plan.NewDummyResolvedDB("temporary")
 	unresolvedSchema := make(sql.Schema, len(schema))
 	defaultCount := 0
 	for i, col := range schema {
