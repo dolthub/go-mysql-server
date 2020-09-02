@@ -22,6 +22,9 @@ var ErrArgumentTypeMisMatch = errors.NewKind("function '%s' received mismatched 
 // ErrTimeUnexpectedlyNil is thrown when a function encounters and unexpectedly nil time
 var ErrTimeUnexpectedlyNil = errors.NewKind("time in function '%s' unexpectedly nil")
 
+// ErrUnknownType is thrown when a function encounters and unknown type
+var ErrUnknownType = errors.NewKind("function '%s' encountered unknown type %T")
+
 func getDate(ctx *sql.Context,
 	u expression.UnaryExpression,
 	row sql.Row) (interface{}, error) {
@@ -1057,8 +1060,18 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, ErrTimeUnexpectedlyNil.New("TIMEDIFF")
 		}
 
-		leftTime := time.Unix(0, left.(int64))
-		rightTime := time.Unix(0, right.(int64))
+		var leftTime time.Time
+		var rightTime time.Time
+		switch left.(type) {
+		case int64:
+			leftTime = time.Unix(0, left.(int64))
+			rightTime = time.Unix(0, right.(int64))
+		case time.Time:
+			leftTime = left.(time.Time)
+			rightTime = right.(time.Time)
+		default:
+			return nil, ErrUnknownType.New("TIMEDIFF", left)
+		}
 
 		duration := elapsed(leftTime, rightTime)
 		return sql.Time.Convert(duration)

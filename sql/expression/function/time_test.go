@@ -422,7 +422,7 @@ func TestTimeDiff(t *testing.T) {
 
 	from := time.Date(2018, time.May, 2, 0, 0, 0, 0, time.Local)
 	to := time.Date(2018, time.May, 2, 0, 0, 1, 0, time.Local)
-	diff := NewTimeDiff(expression.NewLiteral(from.UnixNano(), sql.Time), expression.NewLiteral(to.UnixNano(), sql.Time))
+	diff := NewTimeDiff(expression.NewLiteral(from, sql.Timestamp), expression.NewLiteral(to, sql.Timestamp))
 	result, err := diff.Eval(ctx, nil)
 	require.NoError(err)
 	expected := "-00:00:01"
