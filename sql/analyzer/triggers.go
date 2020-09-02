@@ -20,17 +20,30 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
+type triggerColumnRef struct {
+	*expression.UnresolvedColumn
+}
+
+func (r *triggerColumnRef) Resolved() bool {
+	return true
+}
+
+func (r *triggerColumnRef) Type() sql.Type {
+	return sql.Boolean
+}
+
 func resolveNewAndOldReferences(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	switch n := n.(type) {
+	switch n.(type) {
 	case *plan.CreateTrigger:
-		return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
+		return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 			switch e := e.(type) {
 			case *deferredColumn:
-				// For create triggers, we just want to verify that the trigger is correctly defined before creating it.
-				// So replace new and old with the table name the trigger is defined on.
+				// For create triggers, we just want to verify that the trigger is correctly defined before creating it. If it
+				// is, we replace the UnresolvedColumn expressions with placeholder expressions that say they are Resolved().
+				// TODO: validate columns better (although mysql does not do this on trigger creation)
 				// TODO: this might work badly for databases with tables named new and old. Needs tests.
 				if e.Table() == "new" || e.Table() == "old" {
-					return expression.NewUnresolvedQualifiedColumn(n.Table.(sql.Nameable).Name(), e.Name()), nil
+					return &triggerColumnRef{e.UnresolvedColumn}, nil
 				}
 			}
 			return e, nil
