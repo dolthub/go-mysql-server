@@ -425,18 +425,22 @@ func TestTimeDiff(t *testing.T) {
 	diff := NewTimeDiff(expression.NewLiteral(from.UnixNano(), sql.Time), expression.NewLiteral(to.UnixNano(), sql.Time))
 	result, err := diff.Eval(ctx, nil)
 	require.NoError(err)
-	expected := "-00:00:01.000000"
+	expected := "-00:00:01"
 	require.Equal(expected, result)
 
-	//diff = NewTimeDiff(expression.NewLiteral("2008-12-31 23:59:59.000001", sql.Time), expression.NewLiteral("2008-12-30 01:01:01.000002", sql.Time))
-	//result, err = diff.Eval(ctx, nil)
-	//require.NoError(err)
-	//expected = "46:58:57.999999"
-	//require.Equal(expected, result)
-	//
-	//diff = NewTimeDiff(expression.NewLiteral("2008-12-29", sql.Time), expression.NewLiteral("2008-12-30", sql.Time))
-	//result, err = diff.Eval(ctx, nil)
-	//require.NoError(err)
-	//expected = "-24:00:00.000000"
-	//require.Equal(expected, result)
+	from = time.Date(2008, time.December, 31, 23, 59, 59, 1, time.Local)
+	to = time.Date(2008, time.December, 30, 1, 1, 1, 2, time.Local)
+	diff = NewTimeDiff(expression.NewLiteral(from.UnixNano(), sql.Time), expression.NewLiteral(to.UnixNano(), sql.Time))
+	result, err = diff.Eval(ctx, nil)
+	require.NoError(err)
+	expected = "46:58:57.999999"
+	require.Equal(expected, result)
+
+	from = time.Date(2008, time.December, 29, 0, 0, 0, 0, time.Local)
+	to = time.Date(2008, time.December, 30, 0, 0, 0, 0, time.Local)
+	diff = NewTimeDiff(expression.NewLiteral(from.UnixNano(), sql.Time), expression.NewLiteral(to.UnixNano(), sql.Time))
+	result, err = diff.Eval(ctx, nil)
+	require.NoError(err)
+	expected = "-24:00:00"
+	require.Equal(expected, result)
 }

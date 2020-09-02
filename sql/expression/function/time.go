@@ -17,7 +17,7 @@ var ErrInvalidArgument = errors.NewKind("invalid argument to function %s. %s.")
 var ErrInvalidArgumentType = errors.NewKind("function '%s' received invalid argument types")
 
 // ErrInvalidArgumentType is thrown when a function receives mismatched argument types
-var ErrArgumentTypeMisMatch = errors.NewKind("function '%s' received mismatched argument types of %v and %v")
+var ErrArgumentTypeMisMatch = errors.NewKind("function '%s' received mismatched argument types of %T and %T")
 
 // ErrTimeUnexpectedlyNil is thrown when a function encounters and unexpectedly nil time
 var ErrTimeUnexpectedlyNil = errors.NewKind("time in function '%s' unexpectedly nil")
@@ -1040,19 +1040,10 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		// handle type mismatch
 		if td.Left.Type() != td.Right.Type() {
-			return nil, ErrArgumentTypeMisMatch.New("TIMEDIFF", td.Left.Type(), td.Right.Type())
+			return nil, ErrArgumentTypeMisMatch.New("TIMEDIFF", td.Left, td.Right)
 		}
 
 		left, err := td.Left.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-
-		if left == nil {
-			return nil, nil
-		}
-
-		leftTime, err := sql.Time.Convert(left)
 		if err != nil {
 			return nil, err
 		}
@@ -1062,34 +1053,22 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		if right == nil {
-			return nil, nil
-		}
-
-		rightTime, err := sql.Time.Convert(right)
-		if err != nil {
-			return nil, err
-		}
-
-		if leftTime == nil || rightTime == nil {
+		if left == nil || right == nil {
 			return nil, ErrTimeUnexpectedlyNil.New("TIMEDIFF")
 		}
 
-		_, duration := elapsed(leftTime.(time.Time), rightTime.(time.Time))
+		leftTime := time.Unix(0, left.(int64))
+		rightTime := time.Unix(0, right.(int64))
 
+		duration := elapsed(leftTime, rightTime)
 		return sql.Time.Convert(duration)
 	}
 	return nil, ErrInvalidArgumentType.New("TIMEDIFF")
 }
 
-func elapsed(left, right time.Time) (bool, time.Duration) {
+func elapsed(left, right time.Time) time.Duration {
 	if left.Location() != right.Location() {
 		right = right.In(right.Location())
 	}
-	inverted := false
-	if left.After(right) {
-		inverted = true
-		left, right = right, left
-	}
-	return inverted, left.Sub(right)
+	return left.Sub(right)
 }
