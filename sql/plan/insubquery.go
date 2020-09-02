@@ -80,14 +80,21 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				return nil, nil
 			}
 
+<<<<<<< Updated upstream
 			if !rightNull && val == nil {
 				rightNull = true
 				continue
 			}
 
+=======
+>>>>>>> Stashed changes
 			val, err = typ.Convert(val)
 			if err != nil {
 				return nil, err
+			}
+
+			if !rightNull && val == nil {
+				rightNull = true
 			}
 
 			cmp, err := typ.Compare(left, val)
@@ -134,4 +141,8 @@ func (in *InSubquery) Children() []sql.Expression {
 // NewNotInSubquery creates a new NotInSubquery expression.
 func NewNotInSubquery(left sql.Expression, right sql.Expression) sql.Expression {
 	return expression.NewNot(NewInSubquery(left, right))
+<<<<<<< Updated upstream
 }
+=======
+}
+>>>>>>> Stashed changes

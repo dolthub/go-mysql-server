@@ -8,10 +8,10 @@ import (
 // and a default expression. A nil pointer of this type represents an implicit default value and is thus valid, so all
 // method calls will return without error.
 type ColumnDefaultValue struct {
-	Expression     // the expression representing this default value
-	outType   Type // if non-nil, converts the output of the expression into this type
-	literal   bool // whether the default value is a literal or expression
-	returnNil bool // if the expression returns a nil value, then this determines whether the result is returned or an error is returned
+	Expression      // the expression representing this default value
+	outType    Type // if non-nil, converts the output of the expression into this type
+	literal    bool // whether the default value is a literal or expression
+	returnNil  bool // if the expression returns a nil value, then this determines whether the result is returned or an error is returned
 }
 
 var _ Expression = (*ColumnDefaultValue)(nil)
@@ -153,4 +153,3 @@ func (e *ColumnDefaultValue) checkType(outType Type) error {
 	}
 	return nil
 }
-

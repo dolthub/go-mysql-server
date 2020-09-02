@@ -15,9 +15,10 @@
 package plan
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"io"
 	"sync"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // RowUpdateAccumulator wraps other nodes that update tables, and returns their results as OKResults with the appropriate
@@ -99,8 +100,3 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 
 	return &accumulatorIter{iter: rowIter}, nil
 }
-
-
-
-
-

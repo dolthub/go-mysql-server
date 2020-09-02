@@ -8,8 +8,8 @@ import (
 
 // Database is an in-memory database.
 type Database struct {
-	name   string
-	tables map[string]sql.Table
+	name    string
+	tables  map[string]sql.Table
 	trigger map[string]sql.TriggerDefinition
 }
 

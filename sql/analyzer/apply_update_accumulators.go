@@ -29,4 +29,3 @@ func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 
 	return n, nil
 }
-

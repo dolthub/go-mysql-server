@@ -42,11 +42,11 @@ func (p *InsertInto) Schema() sql.Schema {
 }
 
 type insertIter struct {
-	schema      sql.Schema
-	inserter    sql.RowInserter
-	replacer    sql.RowReplacer
-	rowSource   sql.RowIter
-	ctx         *sql.Context
+	schema    sql.Schema
+	inserter  sql.RowInserter
+	replacer  sql.RowReplacer
+	rowSource sql.RowIter
+	ctx       *sql.Context
 }
 
 func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
@@ -95,11 +95,11 @@ func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, isReplace 
 	}
 
 	return &insertIter{
-		schema:      dstSchema,
-		inserter:    inserter,
-		replacer:    replacer,
-		rowSource:   rowIter,
-		ctx:         ctx,
+		schema:    dstSchema,
+		inserter:  inserter,
+		replacer:  replacer,
+		rowSource: rowIter,
+		ctx:       ctx,
 	}, nil
 }
 
@@ -107,7 +107,7 @@ func (i insertIter) Next() (sql.Row, error) {
 	row, err := i.rowSource.Next()
 	if err == io.EOF {
 		return nil, err
- 	}
+	}
 
 	if err != nil {
 		_ = i.rowSource.Close()

@@ -301,6 +301,7 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{nil}},
 	},
 	{
+<<<<<<< Updated upstream
 		"SELECT 1 IN (2,3,4,null)",
 		[]sql.Row{{nil}},
 	},
@@ -373,6 +374,8 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{true}},
 	},
 	{
+=======
+>>>>>>> Stashed changes
 		"SELECT i FROM mytable WHERE i IN (1, 3)",
 		[]sql.Row{{int64(1)}, {int64(3)}},
 	},
