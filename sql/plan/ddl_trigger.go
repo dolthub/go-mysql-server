@@ -26,29 +26,29 @@ type TriggerOrder struct {
 }
 
 type CreateTrigger struct {
-	triggerName  string
-	triggerTime  string
-	triggerEvent string
-	triggerOrder *TriggerOrder
-	table        sql.Node
-	body         sql.Node
-	bodyString   string
+	TriggerName  string
+	TriggerTime  string
+	TriggerEvent string
+	TriggerOrder *TriggerOrder
+	Table        sql.Node
+	Body         sql.Node
+	BodyString   string
 }
 
 func NewCreateTrigger(triggerName, triggerTime, triggerEvent string, triggerOrder *TriggerOrder, table sql.Node, body sql.Node, bodyString string) *CreateTrigger {
 	return &CreateTrigger{
-		triggerName:  triggerName,
-		triggerTime:  triggerTime,
-		triggerEvent: triggerEvent,
-		triggerOrder: triggerOrder,
-		table:        table,
-		body:         body,
-		bodyString:   bodyString,
+		TriggerName:  triggerName,
+		TriggerTime:  triggerTime,
+		TriggerEvent: triggerEvent,
+		TriggerOrder: triggerOrder,
+		Table:        table,
+		Body:         body,
+		BodyString:   bodyString,
 	}
 }
 
 func (c *CreateTrigger) Resolved() bool {
-	return c.table.Resolved() && c.body.Resolved()
+	return c.Table.Resolved() && c.Body.Resolved()
 }
 
 func (c *CreateTrigger) Schema() sql.Schema {
@@ -56,7 +56,7 @@ func (c *CreateTrigger) Schema() sql.Schema {
 }
 
 func (c *CreateTrigger) Children() []sql.Node {
-	return []sql.Node{c.table, c.body}
+	return []sql.Node{c.Table, c.Body}
 }
 
 func (c *CreateTrigger) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -65,25 +65,25 @@ func (c *CreateTrigger) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	nc := *c
-	nc.table = children[0]
-	nc.body = children[1]
+	nc.Table = children[0]
+	nc.Body = children[1]
 	return &nc, nil
 }
 
 func (c *CreateTrigger) String() string {
 	order := ""
-	if c.triggerOrder != nil {
-		order = fmt.Sprintf("%s %s ", c.triggerOrder.PrecedesOrFollows, c.triggerOrder.OtherTriggerName)
+	if c.TriggerOrder != nil {
+		order = fmt.Sprintf("%s %s ", c.TriggerOrder.PrecedesOrFollows, c.TriggerOrder.OtherTriggerName)
 	}
-	return fmt.Sprintf("CREATE TRIGGER %s %s %s ON %s FOR EACH ROW %s%s", c.triggerName, c.triggerTime, c.triggerEvent, c.table, order, c.bodyString)
+	return fmt.Sprintf("CREATE TRIGGER %s %s %s ON %s FOR EACH ROW %s%s", c.TriggerName, c.TriggerTime, c.TriggerEvent, c.Table, order, c.BodyString)
 }
 
 func (c *CreateTrigger) DebugString() string {
 	order := ""
-	if c.triggerOrder != nil {
-		order = fmt.Sprintf("%s %s ", c.triggerOrder.PrecedesOrFollows, c.triggerOrder.OtherTriggerName)
+	if c.TriggerOrder != nil {
+		order = fmt.Sprintf("%s %s ", c.TriggerOrder.PrecedesOrFollows, c.TriggerOrder.OtherTriggerName)
 	}
-	return fmt.Sprintf("CREATE TRIGGER %s %s %s ON %s FOR EACH ROW %s%s", c.triggerName, c.triggerTime, c.triggerEvent, sql.DebugString(c.table), order, sql.DebugString(c.body))
+	return fmt.Sprintf("CREATE TRIGGER %s %s %s ON %s FOR EACH ROW %s%s", c.TriggerName, c.TriggerTime, c.TriggerEvent, sql.DebugString(c.Table), order, sql.DebugString(c.Body))
 }
 
 func (c *CreateTrigger) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
