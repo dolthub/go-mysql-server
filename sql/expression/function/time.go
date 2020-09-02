@@ -782,6 +782,75 @@ func (n *Now) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewNow(children...)
 }
 
+// UTCTimestamp is a function that returns the current time.
+type UTCTimestamp struct {
+	precision *int
+}
+
+// NewUTCTimestamp returns a new UTCTimestamp node.
+func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
+	var precision *int
+	if len(args) > 1 {
+		return nil, sql.ErrInvalidArgumentNumber.New("UTC_TIMESTAMP", 1, len(args))
+	} else if len(args) == 1 {
+		precisionArg, err := sql.Int32.Convert(args[0])
+
+		if err != nil {
+			return nil, err
+		}
+
+		n := int(precisionArg.(int32))
+		precision = &n
+	}
+
+	return &UTCTimestamp{precision}, nil
+}
+
+// Type implements the sql.Expression interface.
+func (ut *UTCTimestamp) Type() sql.Type {
+	return sql.Datetime
+}
+
+func (ut *UTCTimestamp) String() string {
+	if ut.precision == nil {
+		return "UTC_TIMESTAMP()"
+	}
+
+	return fmt.Sprintf("UTC_TIMESTAMP(%d)", *ut.precision)
+}
+
+// IsNullable implements the sql.Expression interface.
+func (ut *UTCTimestamp) IsNullable() bool { return false }
+
+// Resolved implements the sql.Expression interface.
+func (ut *UTCTimestamp) Resolved() bool { return true }
+
+// Children implements the sql.Expression interface.
+func (ut *UTCTimestamp) Children() []sql.Expression { return nil }
+
+// Eval implements the sql.Expression interface.
+func (ut *UTCTimestamp) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	t := ctx.QueryTime()
+	// TODO: Now should return a string formatted depending on context.  This code handles string formatting
+	// and should be enabled at the time we fix the return type
+	/*s, err := formatDate("%Y-%m-%d %H:%i:%s", t)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if n.precision != nil {
+		s += subSecondPrecision(t, *n.precision)
+	}*/
+
+	return t.UTC(), nil
+}
+
+// WithChildren implements the Expression interface.
+func (ut *UTCTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewUTCTimestamp(children...)
+}
+
 func currTimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 	t := ctx.QueryTime()
 	return fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second()), nil
