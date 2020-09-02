@@ -403,13 +403,7 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 
 	for _, tt := range errorQueries {
 		t.Run(tt.Query, func(t *testing.T) {
-			ctx := NewContext(harness)
-			_, rowIter, err := engine.Query(ctx, tt.Query)
-			if err == nil {
-				_, err = sql.RowIterToRows(rowIter)
-			}
-			require.Error(t, err)
-			require.True(t, tt.ExpectedErr.Is(err), "expected error of kind %s, but got %s", tt.ExpectedErr.Message, err.Error())
+			AssertErr(t, engine, harness, tt.Query, tt.ExpectedErr)
 		})
 	}
 }
@@ -432,12 +426,7 @@ func TestInsertInto(t *testing.T, harness Harness) {
 func TestInsertIntoErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range InsertErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
-			e := NewEngine(t, harness)
-			_, rowIter, err := e.Query(NewContext(harness), expectedFailure.Query)
-			if err == nil {
-				_, err = sql.RowIterToRows(rowIter)
-			}
-			require.Error(t, err)
+			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
 		})
 	}
 }
@@ -460,11 +449,7 @@ func TestReplaceInto(t *testing.T, harness Harness) {
 func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range ReplaceErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
-			e := NewEngine(t, harness)
-			_, rowIter, err := e.Query(NewContext(harness), expectedFailure.Query)
-			if err == nil {
-				_, err = sql.RowIterToRows(rowIter)
-			}
+			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
 		})
 	}
 }
@@ -487,11 +472,7 @@ func TestUpdate(t *testing.T, harness Harness) {
 func TestUpdateErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range UpdateErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
-			e := NewEngine(t, harness)
-			_, rowIter, err := e.Query(NewContext(harness), expectedFailure.Query)
-			if err == nil {
-				_, err = sql.RowIterToRows(rowIter)
-			}
+			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
 		})
 	}
 }
@@ -514,11 +495,7 @@ func TestDelete(t *testing.T, harness Harness) {
 func TestDeleteErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range DeleteErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
-			e := NewEngine(t, harness)
-			_, rowIter, err := e.Query(NewContext(harness), expectedFailure.Query)
-			if err == nil {
-				_, err = sql.RowIterToRows(rowIter)
-			}
+			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
 		})
 	}
 }
