@@ -404,3 +404,39 @@ func TestDate(t *testing.T) {
 		})
 	}
 }
+
+func TestTimeDiff(t *testing.T) {
+	require := require.New(t)
+
+	date := time.Date(2018, time.December, 2, 16, 25, 0, 0, time.Local)
+	testNowFunc := func() time.Time {
+		return date
+	}
+
+	var ctx *sql.Context
+	err := sql.RunWithNowFunc(testNowFunc, func() error {
+		ctx = sql.NewEmptyContext()
+		return nil
+	})
+	require.NoError(err)
+
+	from := time.Date(2018, time.May, 2, 0, 0, 0, 0, time.Local)
+	to := time.Date(2018, time.May, 2, 0, 0, 1, 0, time.Local)
+	diff := NewTimeDiff(expression.NewLiteral(from.UnixNano(), sql.Time), expression.NewLiteral(to.UnixNano(), sql.Time))
+	result, err := diff.Eval(ctx, nil)
+	require.NoError(err)
+	expected := "-00:00:01.000000"
+	require.Equal(expected, result)
+
+	//diff = NewTimeDiff(expression.NewLiteral("2008-12-31 23:59:59.000001", sql.Time), expression.NewLiteral("2008-12-30 01:01:01.000002", sql.Time))
+	//result, err = diff.Eval(ctx, nil)
+	//require.NoError(err)
+	//expected = "46:58:57.999999"
+	//require.Equal(expected, result)
+	//
+	//diff = NewTimeDiff(expression.NewLiteral("2008-12-29", sql.Time), expression.NewLiteral("2008-12-30", sql.Time))
+	//result, err = diff.Eval(ctx, nil)
+	//require.NoError(err)
+	//expected = "-24:00:00.000000"
+	//require.Equal(expected, result)
+}

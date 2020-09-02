@@ -2,6 +2,7 @@ package function
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -12,6 +13,12 @@ import (
 )
 
 var ErrInvalidArgument = errors.NewKind("invalid argument to function %s. %s.")
+
+// ErrInvalidArgumentType is thrown when a function receives invalid argument types
+var ErrInvalidArgumentType = errors.NewKind("function '%s' received invalid argument types")
+
+// ErrInvalidArgumentType is thrown when a function receives mismatched argument types
+var ErrArgumentTypeMisMatch = errors.NewKind("function '%s' received mismatched argument types of %v and %v")
 
 func getDate(ctx *sql.Context,
 	u expression.UnaryExpression,
@@ -998,4 +1005,112 @@ func timeToSecFuncLogic(t time.Time) (interface{}, error) {
 func weekFuncLogic(t time.Time) (interface{}, error) {
 	_, wk := t.ISOWeek()
 	return wk, nil
+}
+
+// TimeDiff subtracts the second argument from the first expressed as a time value.
+type TimeDiff struct {
+	expression.BinaryExpression
+}
+
+// NewTimeDiff creates a new NewTimeDiff expression.
+func NewTimeDiff(e1, e2 sql.Expression) sql.Expression {
+	return &TimeDiff{
+		expression.BinaryExpression{
+			Left:  e1,
+			Right: e2,
+		},
+	}
+}
+
+// Type implements the Expression interface.
+func (td *TimeDiff) Type() sql.Type { return sql.Time }
+
+// IsNullable implements the Expression interface.
+func (td *TimeDiff) IsNullable() bool { return false }
+
+func (td *TimeDiff) String() string {
+	return fmt.Sprintf("timediff(%s, %s)", td.Left, td.Right)
+}
+
+// WithChildren implements the Expression interface.
+func (td *TimeDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(td, len(children), 2)
+	}
+	return NewTimeDiff(children[0], children[1]), nil
+}
+
+// Eval implements the Expression interface.
+func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// check for valid types
+	if (td.Left.Type() == sql.Time || td.Left.Type() == sql.Timestamp ||
+		td.Left.Type() == sql.Datetime) && (td.Right.Type() == sql.Time ||
+		td.Right.Type() == sql.Timestamp || td.Right.Type() == sql.Datetime) {
+
+		// handle type mismatch
+		if td.Left.Type() != td.Right.Type() {
+			return nil, ErrArgumentTypeMisMatch.New("TIMEDIFF", td.Left, td.Right)
+		}
+
+		left, err := td.Left.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+
+		if left == nil {
+			return nil, nil
+		}
+
+		leftTime, err := sql.Time.Convert(left)
+		if err != nil {
+			return nil, err
+		}
+
+		right, err := td.Right.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+
+		if right == nil {
+			return nil, nil
+		}
+
+		rightTime, err := sql.Time.Convert(right)
+		if err != nil {
+			return nil, err
+		}
+
+		if leftTime == nil || rightTime == nil {
+			return nil, nil
+		}
+
+		return toTimeDiff(leftTime.(time.Time), rightTime.(time.Time)), nil
+	}
+	return nil, ErrInvalidArgumentType.New("TIMEDIFF")
+}
+
+func toTimeDiff(left, right time.Time) interface{} {
+	inverted, h, m, s := elapsed(left, right)
+	if inverted {
+		return fmt.Sprintf("%02d:%02d:%09.6f", h, m, s)
+	}
+	return fmt.Sprintf("-%02d:%02d:%09.6f", h, m, s)
+}
+
+func elapsed(left, right time.Time) (inverted bool, hours, minutes int, seconds float64) {
+	if left.Location() != right.Location() {
+		right = right.In(right.Location())
+	}
+
+	inverted = false
+	if left.After(right) {
+		inverted = true
+		left, right = right, left
+	}
+
+	duration := left.Sub(right)
+	hours = int(math.Abs(duration.Hours()))
+	minutes = int(math.Abs(math.Mod(duration.Minutes(), 60)))
+	seconds = math.Abs(math.Mod(duration.Seconds(), 60))
+	return
 }
