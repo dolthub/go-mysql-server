@@ -50,6 +50,7 @@ var OnceAfterDefault = []Rule{
 	// previous rules.
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},
 	{"cache_subquery_results", cacheSubqueryResults},
+	{"resolve_insert_rows", applyInsertRowSource},
 	{"apply_row_update_accumulators", applyUpdateAccumulators},
 }
 

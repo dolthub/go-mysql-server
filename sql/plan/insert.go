@@ -42,6 +42,15 @@ func (p *InsertInto) Schema() sql.Schema {
 	return p.Left.Schema()
 }
 
+type insertIter struct {
+	schema      sql.Schema
+	inserter    sql.RowInserter
+	replacer    sql.RowReplacer
+	rowSource   sql.RowIter
+	projections []sql.Expression
+	ctx         *sql.Context
+}
+
 func getInsertable(node sql.Node) (sql.InsertableTable, error) {
 	switch node := node.(type) {
 	case *Exchange:
@@ -66,124 +75,43 @@ func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
 	}
 }
 
-func validateColumns(columnNames []string, dstSchema sql.Schema) error {
-	dstColNames := make(map[string]struct{})
-	for _, dstCol := range dstSchema {
-		dstColNames[dstCol.Name] = struct{}{}
-	}
-	usedNames := make(map[string]struct{})
-	for _, columnName := range columnNames {
-		if _, exists := dstColNames[columnName]; !exists {
-			return ErrInsertIntoNonexistentColumn.New(columnName)
-		}
-		if _, exists := usedNames[columnName]; !exists {
-			usedNames[columnName] = struct{}{}
-		} else {
-			return ErrInsertIntoDuplicateColumn.New(columnName)
-		}
-	}
-	return nil
-}
-
-func validateValueCount(columnNames []string, values sql.Node) error {
-	if exchange, ok := values.(*Exchange); ok {
-		values = exchange.Child
-	}
-
-	switch node := values.(type) {
-	case *Values:
-		for _, exprTuple := range node.ExpressionTuples {
-			if len(exprTuple) != len(columnNames) {
-				return ErrInsertIntoMismatchValueCount.New()
-			}
-		}
-	case *ResolvedTable, *Project, *InnerJoin, *Filter:
-		if len(columnNames) != len(values.Schema()) {
-			return ErrInsertIntoMismatchValueCount.New()
-		}
-	default:
-		return ErrInsertIntoUnsupportedValues.New(node)
-	}
-	return nil
-}
-
-type insertIter struct {
-	schema      sql.Schema
-	inserter    sql.RowInserter
-	replacer    sql.RowReplacer
-	rowSource   sql.RowIter
-	projections []sql.Expression
-	ctx         *sql.Context
-}
-
 func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, columnNames []string, isReplace bool) (*insertIter, error) {
+	dstSchema := table.Schema()
+
 	insertable, err := getInsertable(table)
 	if err != nil {
 		return nil, err
 	}
 
-	var replaceable sql.ReplaceableTable
-	if isReplace {
-		var ok bool
-		replaceable, ok = insertable.(sql.ReplaceableTable)
-		if !ok {
-			return nil, ErrReplaceIntoNotSupported.New()
-		}
-	}
-
-	dstSchema := insertable.Schema()
-
 	// If no columns are given, we assume the full schema in order
+	// TODO: move to analysis
 	if len(columnNames) == 0 {
 		columnNames = make([]string, len(dstSchema))
 		for i, f := range dstSchema {
 			columnNames[i] = f.Name
 		}
-	} else {
-		err = validateColumns(columnNames, dstSchema)
-		if err != nil {
-			return nil, err
-		}
 	}
 
-	err = validateValueCount(columnNames, values)
-	if err != nil {
-		return nil, err
-	}
-
+	// TODO: move to analysis
 	projExprs := make([]sql.Expression, len(dstSchema))
 	for i, f := range dstSchema {
-		found := false
 		for j, col := range columnNames {
 			if f.Name == col {
 				projExprs[i] = expression.NewGetField(j, f.Type, f.Name, f.Nullable)
-				found = true
 				break
 			}
 		}
-
-		if !found {
-			if !f.Nullable && f.Default == nil {
-				return nil, ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
-			}
-			projExprs[i] = expression.NewLiteral(f.Default, f.Type)
-		}
-	}
-
-	rowSource, err := rowSource(values, projExprs)
-	if err != nil {
-		return nil, err
 	}
 
 	var inserter sql.RowInserter
 	var replacer sql.RowReplacer
-	if replaceable != nil {
-		replacer = replaceable.Replacer(ctx)
+	if isReplace {
+		replacer = insertable.(sql.ReplaceableTable).Replacer(ctx)
 	} else {
-		inserter = insertable.Inserter(ctx)
+		inserter = insertable.(sql.InsertableTable).Inserter(ctx)
 	}
 
-	rowIter, err := rowSource.RowIter(ctx, nil)
+	rowIter, err := values.RowIter(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -196,24 +124,6 @@ func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, columnName
 		projections: projExprs,
 		ctx:         ctx,
 	}, nil
-}
-
-func rowSource(values sql.Node, projExprs []sql.Expression) (sql.Node, error) {
-	if exchange, ok := values.(*Exchange); ok {
-		values = exchange.Child
-	}
-
-	switch n := values.(type) {
-	case *Values:
-		return NewProject(projExprs, n), nil
-	case *ResolvedTable, *Project, *InnerJoin, *Filter:
-		if err := assertCompatibleSchemas(projExprs, n.Schema()); err != nil {
-			return nil, err
-		}
-		return NewProject(projExprs, n), nil
-	default:
-		return nil, ErrInsertIntoUnsupportedValues.New(n)
-	}
 }
 
 func (i insertIter) Next() (sql.Row, error) {
@@ -329,24 +239,6 @@ func validateNullability(dstSchema sql.Schema, row sql.Row) error {
 	for i, col := range dstSchema {
 		if !col.Nullable && row[i] == nil {
 			return ErrInsertIntoNonNullableProvidedNull.New(col.Name)
-		}
-	}
-	return nil
-}
-
-func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) error {
-	for _, expr := range projExprs {
-		switch e := expr.(type) {
-		case *expression.Literal:
-			continue
-		case *expression.GetField:
-			otherCol := schema[e.Index()]
-			_, err := otherCol.Type.Convert(expr.Type().Zero())
-			if err != nil {
-				return ErrInsertIntoIncompatibleTypes.New(otherCol.Type.String(), expr.Type().String())
-			}
-		default:
-			return ErrInsertIntoUnsupportedValues.New(expr)
 		}
 	}
 	return nil
