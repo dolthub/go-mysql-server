@@ -7,7 +7,6 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 // ErrInsertIntoNotSupported is thrown when a table doesn't support inserts
@@ -47,14 +46,13 @@ type insertIter struct {
 	inserter    sql.RowInserter
 	replacer    sql.RowReplacer
 	rowSource   sql.RowIter
-	projections []sql.Expression
 	ctx         *sql.Context
 }
 
-func getInsertable(node sql.Node) (sql.InsertableTable, error) {
+func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
 	switch node := node.(type) {
 	case *Exchange:
-		return getInsertable(node.Child)
+		return GetInsertable(node.Child)
 	case sql.InsertableTable:
 		return node, nil
 	case *ResolvedTable:
@@ -78,29 +76,9 @@ func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
 func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, columnNames []string, isReplace bool) (*insertIter, error) {
 	dstSchema := table.Schema()
 
-	insertable, err := getInsertable(table)
+	insertable, err := GetInsertable(table)
 	if err != nil {
 		return nil, err
-	}
-
-	// If no columns are given, we assume the full schema in order
-	// TODO: move to analysis
-	if len(columnNames) == 0 {
-		columnNames = make([]string, len(dstSchema))
-		for i, f := range dstSchema {
-			columnNames[i] = f.Name
-		}
-	}
-
-	// TODO: move to analysis
-	projExprs := make([]sql.Expression, len(dstSchema))
-	for i, f := range dstSchema {
-		for j, col := range columnNames {
-			if f.Name == col {
-				projExprs[i] = expression.NewGetField(j, f.Type, f.Name, f.Nullable)
-				break
-			}
-		}
 	}
 
 	var inserter sql.RowInserter
@@ -121,7 +99,6 @@ func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, columnName
 		inserter:    inserter,
 		replacer:    replacer,
 		rowSource:   rowIter,
-		projections: projExprs,
 		ctx:         ctx,
 	}, nil
 }
@@ -144,7 +121,7 @@ func (i insertIter) Next() (sql.Row, error) {
 
 	// Convert values to the destination schema type
 	for colIdx, oldValue := range row {
-		dstColType := i.projections[colIdx].Type()
+		dstColType := i.schema[colIdx].Type
 
 		if oldValue != nil {
 			newValue, err := dstColType.Convert(oldValue)

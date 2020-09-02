@@ -26,7 +26,7 @@ func applyInsertRowSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		return n, nil
 	}
 
-	insertable, err := getInsertable(insert.Left)
+	insertable, err := plan.GetInsertable(insert.Left)
 	if err != nil {
 		return nil, err
 	}
@@ -126,30 +126,6 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 		return plan.ErrInsertIntoUnsupportedValues.New(node)
 	}
 	return nil
-}
-
-func getInsertable(node sql.Node) (sql.InsertableTable, error) {
-	switch node := node.(type) {
-	case *plan.Exchange:
-		return getInsertable(node.Child)
-	case sql.InsertableTable:
-		return node, nil
-	case *plan.ResolvedTable:
-		return getInsertableTable(node.Table)
-	default:
-		return nil, plan.ErrInsertIntoNotSupported.New()
-	}
-}
-
-func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
-	switch t := t.(type) {
-	case sql.InsertableTable:
-		return t, nil
-	case sql.TableWrapper:
-		return getInsertableTable(t.Underlying())
-	default:
-		return nil, plan.ErrInsertIntoNotSupported.New()
-	}
 }
 
 func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) error {
