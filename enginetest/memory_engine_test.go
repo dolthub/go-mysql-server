@@ -74,10 +74,10 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	var test enginetest.QueryTest
+	t.Skip()
 
+	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-<<<<<<< Updated upstream
 		`SELECT pk,
 						(SELECT sum(pk1+pk2) FROM two_pk WHERE pk1+pk2 IN (SELECT pk1+pk2 FROM two_pk WHERE pk1+pk2 = pk)) AS sum,
 						(SELECT min(pk2) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE pk2 = pk)) AS equal
@@ -88,10 +88,6 @@ func TestSingleQuery(t *testing.T) {
 			{2, 2.0, nil},
 			{3, nil, nil},
 		},
-=======
-		"SELECT NULL IN (SELECT i FROM emptytable)",
-		[]sql.Row{{false}},
->>>>>>> Stashed changes
 	}
 
 	fmt.Sprintf("%v", test)
