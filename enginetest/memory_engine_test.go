@@ -192,6 +192,10 @@ func TestScripts(t *testing.T) {
 	enginetest.TestScripts(t, newDefaultMemoryHarness())
 }
 
+func TestTriggers(t *testing.T) {
+	enginetest.TestTriggers(t, newDefaultMemoryHarness())
+}
+
 func TestCreateTable(t *testing.T) {
 	enginetest.TestCreateTable(t, newDefaultMemoryHarness())
 }
