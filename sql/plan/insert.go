@@ -73,7 +73,7 @@ func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
 	}
 }
 
-func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, columnNames []string, isReplace bool) (*insertIter, error) {
+func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, isReplace bool) (*insertIter, error) {
 	dstSchema := table.Schema()
 
 	insertable, err := GetInsertable(table)
@@ -178,7 +178,7 @@ func (i insertIter) Close() error {
 
 // RowIter implements the Node interface.
 func (p *InsertInto) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return newInsertIter(ctx, p.Left, p.Right, p.ColumnNames, p.IsReplace)
+	return newInsertIter(ctx, p.Left, p.Right, p.IsReplace)
 }
 
 // WithChildren implements the Node interface.
