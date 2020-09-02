@@ -2,7 +2,6 @@ package function
 
 import (
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -19,6 +18,9 @@ var ErrInvalidArgumentType = errors.NewKind("function '%s' received invalid argu
 
 // ErrInvalidArgumentType is thrown when a function receives mismatched argument types
 var ErrArgumentTypeMisMatch = errors.NewKind("function '%s' received mismatched argument types of %v and %v")
+
+// ErrTimeUnexpectedlyNil is thrown when a function encounters and unexpectedly nil time
+var ErrTimeUnexpectedlyNil = errors.NewKind("time in function '%s' unexpectedly nil")
 
 func getDate(ctx *sql.Context,
 	u expression.UnaryExpression,
@@ -839,17 +841,6 @@ func (ut *UTCTimestamp) Children() []sql.Expression { return nil }
 func (ut *UTCTimestamp) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 	t := ctx.QueryTime()
 	// TODO: Now should return a string formatted depending on context.  This code handles string formatting
-	// and should be enabled at the time we fix the return type
-	/*s, err := formatDate("%Y-%m-%d %H:%i:%s", t)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if n.precision != nil {
-		s += subSecondPrecision(t, *n.precision)
-	}*/
-
 	return t.UTC(), nil
 }
 
@@ -1029,7 +1020,7 @@ func (td *TimeDiff) Type() sql.Type { return sql.Time }
 func (td *TimeDiff) IsNullable() bool { return false }
 
 func (td *TimeDiff) String() string {
-	return fmt.Sprintf("timediff(%s, %s)", td.Left, td.Right)
+	return fmt.Sprintf("TIMEDIFF(%s, %s)", td.Left, td.Right)
 }
 
 // WithChildren implements the Expression interface.
@@ -1049,7 +1040,7 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		// handle type mismatch
 		if td.Left.Type() != td.Right.Type() {
-			return nil, ErrArgumentTypeMisMatch.New("TIMEDIFF", td.Left, td.Right)
+			return nil, ErrArgumentTypeMisMatch.New("TIMEDIFF", td.Left.Type(), td.Right.Type())
 		}
 
 		left, err := td.Left.Eval(ctx, row)
@@ -1081,36 +1072,24 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		if leftTime == nil || rightTime == nil {
-			return nil, nil
+			return nil, ErrTimeUnexpectedlyNil.New("TIMEDIFF")
 		}
 
-		return toTimeDiff(leftTime.(time.Time), rightTime.(time.Time)), nil
+		_, duration := elapsed(leftTime.(time.Time), rightTime.(time.Time))
+
+		return sql.Time.Convert(duration)
 	}
 	return nil, ErrInvalidArgumentType.New("TIMEDIFF")
 }
 
-func toTimeDiff(left, right time.Time) interface{} {
-	inverted, h, m, s := elapsed(left, right)
-	if inverted {
-		return fmt.Sprintf("%02d:%02d:%09.6f", h, m, s)
-	}
-	return fmt.Sprintf("-%02d:%02d:%09.6f", h, m, s)
-}
-
-func elapsed(left, right time.Time) (inverted bool, hours, minutes int, seconds float64) {
+func elapsed(left, right time.Time) (bool, time.Duration) {
 	if left.Location() != right.Location() {
 		right = right.In(right.Location())
 	}
-
-	inverted = false
+	inverted := false
 	if left.After(right) {
 		inverted = true
 		left, right = right, left
 	}
-
-	duration := left.Sub(right)
-	hours = int(math.Abs(duration.Hours()))
-	minutes = int(math.Abs(math.Mod(duration.Minutes(), 60)))
-	seconds = math.Abs(math.Mod(duration.Seconds(), 60))
-	return
+	return inverted, left.Sub(right)
 }
