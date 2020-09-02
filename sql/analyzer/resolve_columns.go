@@ -449,7 +449,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			}
 		}
 
-		columns := indexColumns(a, n, scope)
+		columns := indexColumns(ctx, a, n, scope)
 		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
@@ -468,12 +468,46 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 // indexColumns returns a map of column identifiers to their index in the node's schema. Columns from outer scopes are
 // included as well, with lower indexes (prepended to node schema) but lower precedence (overwritten by inner nodes in
 // map)
-func indexColumns(a *Analyzer, n sql.Node, scope *Scope) map[tableCol]indexedCol {
+func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) map[tableCol]indexedCol {
 	var columns = make(map[tableCol]indexedCol)
 
 	var idx int
 	indexSchema := func(n sql.Schema) {
 		for _, col := range n {
+			columns[tableCol{
+				table: strings.ToLower(col.Source),
+				col:   strings.ToLower(col.Name),
+			}] = indexedCol{col, idx}
+			idx++
+		}
+	}
+	indexSchemaForDefaults := func(column *sql.Column, order *sql.ColumnOrder, sch sql.Schema) {
+		tblSch := make(sql.Schema, len(sch))
+		copy(tblSch, sch)
+		if order == nil {
+			tblSch = append(tblSch, column)
+		} else if order.First {
+			tblSch = append(sql.Schema{column}, tblSch...)
+		} else { // must be After
+			index := 1
+			afterColumn := strings.ToLower(order.AfterColumn)
+			for _, col := range tblSch {
+				if strings.ToLower(col.Name) == afterColumn {
+					break
+				}
+				index++
+			}
+			if index <= len(tblSch) {
+				tblSch = append(tblSch, nil)
+				copy(tblSch[index+1:], tblSch[index:])
+				tblSch[index] = column
+			}
+		}
+		for _, col := range tblSch {
+			columns[tableCol{
+				table: "",
+				col:   strings.ToLower(col.Name),
+			}] = indexedCol{col, idx}
 			columns[tableCol{
 				table: strings.ToLower(col.Source),
 				col:   strings.ToLower(col.Name),
@@ -490,6 +524,33 @@ func indexColumns(a *Analyzer, n sql.Node, scope *Scope) map[tableCol]indexedCol
 	// itself.
 	for _, child := range n.Children() {
 		indexSchema(child.Schema())
+	}
+
+	switch node := n.(type) {
+	case *plan.CreateTable: // For this node in particular, the columns will only come into existence after the analyzer step, so we forge them here.
+		for _, col := range node.Schema() {
+			columns[tableCol{
+				table: "",
+				col:   strings.ToLower(col.Name),
+			}] = indexedCol{col, idx}
+			columns[tableCol{
+				table: strings.ToLower(col.Source),
+				col:   strings.ToLower(col.Name),
+			}] = indexedCol{col, idx}
+			idx++
+		}
+	case *plan.AddColumn: // Add/Modify need to have the full column set in order to resolve a default expression.
+		if tbl, ok, _ := node.Database().GetTableInsensitive(ctx, node.TableName()); ok {
+			indexSchemaForDefaults(node.Column(), node.Order(), tbl.Schema())
+		}
+	case *plan.ModifyColumn:
+		if tbl, ok, _ := node.Database().GetTableInsensitive(ctx, node.TableName()); ok {
+			colIdx := tbl.Schema().IndexOf(node.Column().Name, node.TableName())
+			var newSch sql.Schema
+			newSch = append(newSch, tbl.Schema()[:colIdx]...)
+			newSch = append(newSch, tbl.Schema()[colIdx+1:]...)
+			indexSchemaForDefaults(node.Column(), node.Order(), newSch)
+		}
 	}
 
 	return columns

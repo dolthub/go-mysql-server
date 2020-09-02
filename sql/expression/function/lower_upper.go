@@ -13,9 +13,16 @@ type Lower struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*Lower)(nil)
+
 // NewLower creates a new Lower expression.
 func NewLower(e sql.Expression) sql.Expression {
 	return &Lower{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (l *Lower) FunctionName() string {
+	return "lower"
 }
 
 // Eval implements the Expression interface.
@@ -60,6 +67,13 @@ func (l *Lower) Type() sql.Type {
 // Upper is a function that returns the UPPERCASE of the text provided.
 type Upper struct {
 	expression.UnaryExpression
+}
+
+var _ sql.FunctionExpression = (*Upper)(nil)
+
+// FunctionName implements sql.FunctionExpression
+func (u *Upper) FunctionName() string {
+	return "upper"
 }
 
 // NewUpper creates a new Lower expression.

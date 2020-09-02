@@ -12,6 +12,8 @@ type IfNull struct {
 	expression.BinaryExpression
 }
 
+var _ sql.FunctionExpression = (*IfNull)(nil)
+
 // NewIfNull returns a new IFNULL UDF
 func NewIfNull(ex, value sql.Expression) sql.Expression {
 	return &IfNull{
@@ -20,6 +22,11 @@ func NewIfNull(ex, value sql.Expression) sql.Expression {
 			Right: value,
 		},
 	}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (f *IfNull) FunctionName() string {
+	return "ifnull"
 }
 
 // Eval implements the Expression interface.

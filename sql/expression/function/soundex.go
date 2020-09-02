@@ -17,9 +17,16 @@ type Soundex struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*Soundex)(nil)
+
 // NewSoundex creates a new Soundex expression.
 func NewSoundex(e sql.Expression) sql.Expression {
 	return &Soundex{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (s *Soundex) FunctionName() string {
+	return "soundex"
 }
 
 // Eval implements the Expression interface.

@@ -180,6 +180,8 @@ type Greatest struct {
 	returnType sql.Type
 }
 
+var _ sql.FunctionExpression = (*Greatest)(nil)
+
 // ErrUnsupportedType is returned when an argument to Greatest or Latest is not numeric or string
 var ErrUnsupportedType = errors.NewKind("unsupported type for greatest/least argument: %T")
 
@@ -191,6 +193,11 @@ func NewGreatest(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	return &Greatest{args, retType}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (f *Greatest) FunctionName() string {
+	return "greatest"
 }
 
 // Type implements the Expression interface.
@@ -277,6 +284,8 @@ type Least struct {
 	returnType sql.Type
 }
 
+var _ sql.FunctionExpression = (*Least)(nil)
+
 // NewLeast creates a new Least UDF
 func NewLeast(args ...sql.Expression) (sql.Expression, error) {
 	retType, err := compRetType(args...)
@@ -285,6 +294,11 @@ func NewLeast(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	return &Least{args, retType}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (f *Least) FunctionName() string {
+	return "least"
 }
 
 // Type implements the Expression interface.

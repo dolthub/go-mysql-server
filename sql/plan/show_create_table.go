@@ -155,15 +155,8 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 			stmt = fmt.Sprintf("%s NOT NULL", stmt)
 		}
 
-		switch def := col.Default.(type) {
-		case string:
-			if def != "" {
-				stmt = fmt.Sprintf("%s DEFAULT %q", stmt, def)
-			}
-		default:
-			if def != nil {
-				stmt = fmt.Sprintf("%s DEFAULT %v", stmt, col.Default)
-			}
+		if col.Default != nil {
+			stmt = fmt.Sprintf("%s DEFAULT %s", stmt, col.Default.String())
 		}
 
 		if col.Comment != "" {
@@ -192,7 +185,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 
 		var indexCols []string
 		for _, expr := range index.Expressions() {
-			col := getColumnFromIndexExpr(expr, table)
+			col := GetColumnFromIndexExpr(expr, table)
 			if col != nil {
 				indexCols = append(indexCols, fmt.Sprintf("`%s`", col.Name))
 			}
@@ -270,7 +263,7 @@ func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
 	}
 
 	for _, expr := range index.Expressions() {
-		if col := getColumnFromIndexExpr(expr, table); col != nil {
+		if col := GetColumnFromIndexExpr(expr, table); col != nil {
 			found := false
 			for _, pk := range pks {
 				if col == pk {

@@ -12,6 +12,8 @@ type NullIf struct {
 	expression.BinaryExpression
 }
 
+var _ sql.FunctionExpression = (*NullIf)(nil)
+
 // NewNullIf returns a new NULLIF UDF
 func NewNullIf(ex1, ex2 sql.Expression) sql.Expression {
 	return &NullIf{
@@ -20,6 +22,11 @@ func NewNullIf(ex1, ex2 sql.Expression) sql.Expression {
 			Right: ex2,
 		},
 	}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (f *NullIf) FunctionName() string {
+	return "nullif"
 }
 
 // Eval implements the Expression interface.

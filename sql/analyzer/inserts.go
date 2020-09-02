@@ -75,7 +75,7 @@ func applyInsertRowSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 			if !f.Nullable && f.Default == nil {
 				return nil, plan.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
-			projExprs[i] = expression.NewLiteral(f.Default, f.Type)
+			projExprs[i] = f.Default
 		}
 	}
 

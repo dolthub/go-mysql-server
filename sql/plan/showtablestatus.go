@@ -116,20 +116,20 @@ func tableToStatusRow(table string) sql.Row {
 		// This column is unused. With the removal of .frm files in MySQL 8.0, this
 		// column now reports a hardcoded value of 10, which is the last .frm file
 		// version used in MySQL 5.7.
-		"10",       // Version
-		"Fixed",    // Row_format
-		int64(0),   // Rows
-		int64(0),   // Avg_row_length
-		int64(0),   // Data_length
-		int64(0),   // Max_data_length
-		int64(0),   // Index_length
-		int64(0),   // Data_free
-		int64(0),   // Auto_increment
-		nil,        // Create_time
-		nil,        // Update_time
-		nil,        // Check_time
-		"utf8_bin", // Collation
-		nil,        // Create_options
-		nil,        // Comments
+		"10",                           // Version
+		"Fixed",                        // Row_format
+		int64(0),                       // Rows
+		int64(0),                       // Avg_row_length
+		int64(0),                       // Data_length
+		int64(0),                       // Max_data_length
+		int64(0),                       // Index_length
+		int64(0),                       // Data_free
+		int64(0),                       // Auto_increment
+		nil,                            // Create_time
+		nil,                            // Update_time
+		nil,                            // Check_time
+		sql.Collation_Default.String(), // Collation
+		nil,                            // Create_options
+		nil,                            // Comments
 	)
 }

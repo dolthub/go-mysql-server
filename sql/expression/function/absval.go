@@ -14,9 +14,15 @@ type AbsVal struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*AbsVal)(nil)
+
 // NewAbsVal creates a new AbsVal expression.
 func NewAbsVal(e sql.Expression) sql.Expression {
 	return &AbsVal{expression.UnaryExpression{Child: e}}
+}
+
+func (t *AbsVal) FunctionName() string {
+	return "abs"
 }
 
 // Eval implements the Expression interface.

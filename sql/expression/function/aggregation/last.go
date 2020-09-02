@@ -13,9 +13,16 @@ type Last struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*Last)(nil)
+
 // NewLast returns a new Last node.
 func NewLast(e sql.Expression) *Last {
 	return &Last{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (l *Last) FunctionName() string {
+	return "last"
 }
 
 // Type returns the resultant type of the aggregation.

@@ -1,10 +1,13 @@
-package sql
+package information_schema
 
 import (
 	"bytes"
 	"fmt"
 	"io"
 	"strings"
+
+	. "github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/parse"
 )
 
 const (
@@ -40,11 +43,6 @@ const (
 	ViewsTableName = "views"
 	// UserPrivilegesTableName is the name of the user_privileges table
 	UserPrivilegesTableName = "user_privileges"
-)
-
-const (
-	DefaultCollation    = "utf8_bin"
-	DefaultCharacterSet = "utf8mb4"
 )
 
 var _ Database = (*informationSchemaDatabase)(nil)
@@ -126,10 +124,10 @@ var columnStatisticsSchema = Schema{
 }
 
 var tablesSchema = Schema{
-	{Name: "table_catalog", Type: LongText, Default: "", Nullable: false, Source: TablesTableName},
-	{Name: "table_schema", Type: LongText, Default: "", Nullable: false, Source: TablesTableName},
-	{Name: "table_name", Type: LongText, Default: "", Nullable: false, Source: TablesTableName},
-	{Name: "table_type", Type: LongText, Default: "", Nullable: false, Source: TablesTableName},
+	{Name: "table_catalog", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: TablesTableName},
+	{Name: "table_schema", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: TablesTableName},
+	{Name: "table_name", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: TablesTableName},
+	{Name: "table_type", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: TablesTableName},
 	{Name: "engine", Type: LongText, Default: nil, Nullable: true, Source: TablesTableName},
 	{Name: "version", Type: Uint64, Default: nil, Nullable: true, Source: TablesTableName},
 	{Name: "row_format", Type: LongText, Default: nil, Nullable: true, Source: TablesTableName},
@@ -146,18 +144,18 @@ var tablesSchema = Schema{
 	{Name: "table_collation", Type: LongText, Default: nil, Nullable: true, Source: TablesTableName},
 	{Name: "checksum", Type: Uint64, Default: nil, Nullable: true, Source: TablesTableName},
 	{Name: "create_options", Type: LongText, Default: nil, Nullable: true, Source: TablesTableName},
-	{Name: "table_comment", Type: LongText, Default: "", Nullable: false, Source: TablesTableName},
+	{Name: "table_comment", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: TablesTableName},
 }
 
 var columnsSchema = Schema{
-	{Name: "table_catalog", Type: LongText, Default: "", Nullable: false, Source: ColumnsTableName},
-	{Name: "table_schema", Type: LongText, Default: "", Nullable: false, Source: ColumnsTableName},
-	{Name: "table_name", Type: LongText, Default: "", Nullable: false, Source: ColumnsTableName},
-	{Name: "column_name", Type: LongText, Default: "", Nullable: false, Source: ColumnsTableName},
-	{Name: "ordinal_position", Type: Uint64, Default: 0, Nullable: false, Source: ColumnsTableName},
+	{Name: "table_catalog", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: ColumnsTableName},
+	{Name: "table_schema", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: ColumnsTableName},
+	{Name: "table_name", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: ColumnsTableName},
+	{Name: "column_name", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: ColumnsTableName},
+	{Name: "ordinal_position", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: ColumnsTableName},
 	{Name: "column_default", Type: LongText, Default: nil, Nullable: true, Source: ColumnsTableName},
-	{Name: "is_nullable", Type: LongText, Default: "", Nullable: false, Source: ColumnsTableName},
-	{Name: "data_type", Type: LongText, Default: "", Nullable: false, Source: ColumnsTableName},
+	{Name: "is_nullable", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: ColumnsTableName},
+	{Name: "data_type", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: ColumnsTableName},
 	{Name: "character_maximum_length", Type: Uint64, Default: nil, Nullable: true, Source: ColumnsTableName},
 	{Name: "character_octet_length", Type: Uint64, Default: nil, Nullable: true, Source: ColumnsTableName},
 	{Name: "numeric_precision", Type: Uint64, Default: nil, Nullable: true, Source: ColumnsTableName},
@@ -165,12 +163,12 @@ var columnsSchema = Schema{
 	{Name: "datetime_precision", Type: Uint64, Default: nil, Nullable: true, Source: ColumnsTableName},
 	{Name: "character_set_name", Type: LongText, Default: nil, Nullable: true, Source: ColumnsTableName},
 	{Name: "collation_name", Type: LongText, Default: nil, Nullable: true, Source: ColumnsTableName},
-	{Name: "column_type", Type: LongText, Default: "", Nullable: false, Source: ColumnsTableName},
-	{Name: "column_key", Type: LongText, Default: "", Nullable: false, Source: ColumnsTableName},
-	{Name: "extra", Type: LongText, Default: "", Nullable: false, Source: ColumnsTableName},
-	{Name: "privileges", Type: LongText, Default: "", Nullable: false, Source: ColumnsTableName},
-	{Name: "column_comment", Type: LongText, Default: "", Nullable: false, Source: ColumnsTableName},
-	{Name: "generation_expression", Type: LongText, Default: "", Nullable: false, Source: ColumnsTableName},
+	{Name: "column_type", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: ColumnsTableName},
+	{Name: "column_key", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: ColumnsTableName},
+	{Name: "extra", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: ColumnsTableName},
+	{Name: "privileges", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: ColumnsTableName},
+	{Name: "column_comment", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: ColumnsTableName},
+	{Name: "generation_expression", Type: LongText, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: ColumnsTableName},
 }
 
 var schemataSchema = Schema{
@@ -371,27 +369,27 @@ func tablesRowIter(ctx *Context, cat *Catalog) RowIter {
 
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			rows = append(rows, Row{
-				"def",            // table_catalog
-				db.Name(),        // table_schema
-				t.Name(),         // table_name
-				tableType,        // table_type
-				engine,           // engine
-				10,               // version (protocol, always 10)
-				rowFormat,        // row_format
-				nil,              // table_rows
-				nil,              // avg_row_length
-				nil,              // data_length
-				nil,              // max_data_length
-				nil,              // max_data_length
-				nil,              // data_free
-				nil,              // auto_increment
-				nil,              // create_time
-				nil,              // update_time
-				nil,              // check_time
-				DefaultCollation, // table_collation
-				nil,              // checksum
-				nil,              // create_options
-				"",               // table_comment
+				"def",                      // table_catalog
+				db.Name(),                  // table_schema
+				t.Name(),                   // table_name
+				tableType,                  // table_type
+				engine,                     // engine
+				10,                         // version (protocol, always 10)
+				rowFormat,                  // row_format
+				nil,                        // table_rows
+				nil,                        // avg_row_length
+				nil,                        // data_length
+				nil,                        // max_data_length
+				nil,                        // max_data_length
+				nil,                        // data_free
+				nil,                        // auto_increment
+				nil,                        // create_time
+				nil,                        // update_time
+				nil,                        // check_time
+				Collation_Default.String(), // table_collation
+				nil,                        // checksum
+				nil,                        // create_options
+				"",                         // table_comment
 			})
 
 			return true, nil
@@ -399,27 +397,27 @@ func tablesRowIter(ctx *Context, cat *Catalog) RowIter {
 
 		for _, view := range ctx.ViewsInDatabase(db.Name()) {
 			rows = append(rows, Row{
-				"def",            // table_catalog
-				db.Name(),        // table_schema
-				view.Name(),      // table_name
-				"VIEW",           // table_type
-				engine,           // engine
-				10,               // version (protocol, always 10)
-				rowFormat,        // row_format
-				nil,              // table_rows
-				nil,              // avg_row_length
-				nil,              // data_length
-				nil,              // max_data_length
-				nil,              // max_data_length
-				nil,              // data_free
-				nil,              // auto_increment
-				nil,              // create_time
-				nil,              // update_time
-				nil,              // check_time
-				DefaultCollation, // table_collation
-				nil,              // checksum
-				nil,              // create_options
-				"",               // table_comment
+				"def",                      // table_catalog
+				db.Name(),                  // table_schema
+				view.Name(),                // table_name
+				"VIEW",                     // table_type
+				engine,                     // engine
+				10,                         // version (protocol, always 10)
+				rowFormat,                  // row_format
+				nil,                        // table_rows
+				nil,                        // avg_row_length
+				nil,                        // data_length
+				nil,                        // max_data_length
+				nil,                        // max_data_length
+				nil,                        // data_free
+				nil,                        // auto_increment
+				nil,                        // create_time
+				nil,                        // update_time
+				nil,                        // check_time
+				Collation_Default.String(), // table_collation
+				nil,                        // checksum
+				nil,                        // create_options
+				"",                         // table_comment
 			})
 		}
 
@@ -448,8 +446,8 @@ func columnsRowIter(ctx *Context, cat *Catalog) RowIter {
 					nullable = "NO"
 				}
 				if IsText(c.Type) {
-					charName = "utf8mb4"
-					collName = "utf8_bin"
+					charName = Collation_Default.CharacterSet().String()
+					collName = Collation_Default.String()
 				}
 				rows = append(rows, Row{
 					"def",                            // table_catalog
@@ -457,7 +455,7 @@ func columnsRowIter(ctx *Context, cat *Catalog) RowIter {
 					t.Name(),                         // table_name
 					c.Name,                           // column_name
 					uint64(i),                        // ordinal_position
-					c.Default,                        // column_default
+					c.Default.String(),               // column_default
 					nullable,                         // is_nullable
 					strings.ToLower(c.Type.String()), // data_type
 					nil,                              // character_maximum_length
@@ -494,8 +492,8 @@ func schemataRowIter(ctx *Context, c *Catalog) RowIter {
 		rows = append(rows, Row{
 			"def",
 			db.Name(),
-			"utf8mb4",
-			"utf8_bin",
+			Collation_Default.CharacterSet().String(),
+			Collation_Default.String(),
 			nil,
 		})
 	}
@@ -505,8 +503,8 @@ func schemataRowIter(ctx *Context, c *Catalog) RowIter {
 
 func collationsRowIter(ctx *Context, c *Catalog) RowIter {
 	return RowsToRowIter(Row{
-		DefaultCollation,
-		DefaultCharacterSet,
+		Collation_Default.String(),
+		Collation_Default.CharacterSet().String(),
 		int64(1),
 		"Yes",
 		"Yes",
@@ -618,7 +616,7 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 
 func viewRowIter(context *Context, catalog *Catalog) RowIter {
 	var rows []Row
-	for _, db := range catalog.dbs {
+	for _, db := range catalog.AllDatabases() {
 		database := db.Name()
 		for _, view := range context.ViewRegistry.ViewsInDatabase(database) {
 			rows = append(rows, Row{
@@ -630,8 +628,8 @@ func viewRowIter(context *Context, catalog *Catalog) RowIter {
 				"YES",
 				"",
 				"DEFINER",
-				DefaultCharacterSet,
-				DefaultCollation,
+				Collation_Default.CharacterSet().String(),
+				Collation_Default.String(),
 			})
 		}
 	}

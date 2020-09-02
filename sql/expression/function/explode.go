@@ -12,9 +12,16 @@ type Explode struct {
 	Child sql.Expression
 }
 
+var _ sql.FunctionExpression = (*Explode)(nil)
+
 // NewExplode creates a new Explode function.
 func NewExplode(child sql.Expression) sql.Expression {
 	return &Explode{child}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (e *Explode) FunctionName() string {
+	return "explode"
 }
 
 // Resolved implements the sql.Expression interface.

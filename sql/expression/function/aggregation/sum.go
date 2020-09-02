@@ -13,9 +13,16 @@ type Sum struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*Sum)(nil)
+
 // NewSum returns a new Sum node.
 func NewSum(e sql.Expression) *Sum {
 	return &Sum{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (m *Sum) FunctionName() string {
+	return "sum"
 }
 
 // Type returns the resultant type of the aggregation.

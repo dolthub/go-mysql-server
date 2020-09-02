@@ -14,9 +14,16 @@ type Max struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*Max)(nil)
+
 // NewMax returns a new Max node.
 func NewMax(e sql.Expression) *Max {
 	return &Max{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (m *Max) FunctionName() string {
+	return "max"
 }
 
 // Type returns the resultant type of the aggregation.

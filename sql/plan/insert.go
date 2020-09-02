@@ -107,7 +107,8 @@ func (i insertIter) Next() (sql.Row, error) {
 	row, err := i.rowSource.Next()
 	if err == io.EOF {
 		return nil, err
-	}
+ 	}
+
 	if err != nil {
 		_ = i.rowSource.Close()
 		return nil, err

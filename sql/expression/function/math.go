@@ -39,6 +39,7 @@ type Rand struct {
 
 var _ sql.Expression = (*Rand)(nil)
 var _ sql.NonDeterministicExpression = (*Rand)(nil)
+var _ sql.FunctionExpression = (*Rand)(nil)
 
 // NewRand creates a new Rand expression.
 func NewRand(exprs ...sql.Expression) (sql.Expression, error) {
@@ -49,6 +50,11 @@ func NewRand(exprs ...sql.Expression) (sql.Expression, error) {
 		return &Rand{Child: exprs[0]}, nil
 	}
 	return &Rand{}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (r *Rand) FunctionName() string {
+	return "rand"
 }
 
 // Type implements sql.Expression.

@@ -13,6 +13,13 @@ type If struct {
 	ifFalse sql.Expression
 }
 
+var _ sql.FunctionExpression = (*If)(nil)
+
+// FunctionName implements sql.FunctionExpression
+func (f *If) FunctionName() string {
+	return "if"
+}
+
 func (f *If) Resolved() bool {
 	return f.expr.Resolved() && f.ifTrue.Resolved() && f.ifFalse.Resolved()
 }

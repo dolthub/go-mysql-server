@@ -53,8 +53,8 @@ func (s *ShowCreateDatabase) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 	buf.WriteRune('`')
 	buf.WriteString(fmt.Sprintf(
 		" /*!40100 DEFAULT CHARACTER SET %s COLLATE %s */",
-		sql.DefaultCharacterSet,
-		sql.DefaultCollation,
+		sql.Collation_Default.CharacterSet().String(),
+		sql.Collation_Default.String(),
 	))
 
 	return sql.RowsToRowIter(

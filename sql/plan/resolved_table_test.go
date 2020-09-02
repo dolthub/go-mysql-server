@@ -1,4 +1,4 @@
-package plan
+package plan_test
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/parse"
+	. "github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
 func TestResolvedTable(t *testing.T) {
@@ -51,9 +53,9 @@ func TestResolvedTableCancelled(t *testing.T) {
 
 func newTableTest(source string) sql.Table {
 	schema := []*sql.Column{
-		{Name: "col1", Type: sql.Int32, Source: source, Default: int32(0), Nullable: false},
-		{Name: "col2", Type: sql.Int64, Source: source, Default: int64(0), Nullable: false},
-		{Name: "col3", Type: sql.Text, Source: source, Default: "", Nullable: false},
+		{Name: "col1", Type: sql.Int32, Source: source, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int32, false), Nullable: false},
+		{Name: "col2", Type: sql.Int64, Source: source, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int64, false), Nullable: false},
+		{Name: "col3", Type: sql.Text, Source: source, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, sql.Text, false), Nullable: false},
 	}
 
 	keys := [][]byte{

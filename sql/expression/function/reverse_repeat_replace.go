@@ -15,9 +15,16 @@ type Reverse struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*Reverse)(nil)
+
 // NewReverse creates a new Reverse expression.
 func NewReverse(e sql.Expression) sql.Expression {
 	return &Reverse{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (r *Reverse) FunctionName() string {
+	return "reverse"
 }
 
 // Eval implements the Expression interface.
@@ -70,9 +77,16 @@ type Repeat struct {
 	expression.BinaryExpression
 }
 
+var _ sql.FunctionExpression = (*Repeat)(nil)
+
 // NewRepeat creates a new Repeat expression.
 func NewRepeat(str sql.Expression, count sql.Expression) sql.Expression {
 	return &Repeat{expression.BinaryExpression{Left: str, Right: count}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (r *Repeat) FunctionName() string {
+	return "repeat"
 }
 
 func (r *Repeat) String() string {
@@ -130,9 +144,16 @@ type Replace struct {
 	toStr   sql.Expression
 }
 
+var _ sql.FunctionExpression = (*Replace)(nil)
+
 // NewReplace creates a new Replace expression.
 func NewReplace(str sql.Expression, fromStr sql.Expression, toStr sql.Expression) sql.Expression {
 	return &Replace{str, fromStr, toStr}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (r *Replace) FunctionName() string {
+	return "replace"
 }
 
 // Children implements the Expression interface.

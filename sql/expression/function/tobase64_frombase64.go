@@ -16,9 +16,16 @@ type ToBase64 struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*ToBase64)(nil)
+
 // NewToBase64 creates a new ToBase64 expression.
 func NewToBase64(e sql.Expression) sql.Expression {
 	return &ToBase64{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (t *ToBase64) FunctionName() string {
+	return "to_base64"
 }
 
 // Eval implements the Expression interface.
@@ -91,9 +98,16 @@ type FromBase64 struct {
 	expression.UnaryExpression
 }
 
+var _ sql.FunctionExpression = (*FromBase64)(nil)
+
 // NewFromBase64 creates a new FromBase64 expression.
 func NewFromBase64(e sql.Expression) sql.Expression {
 	return &FromBase64{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (t *FromBase64) FunctionName() string {
+	return "from_base64"
 }
 
 // Eval implements the Expression interface.

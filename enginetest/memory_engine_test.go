@@ -263,3 +263,7 @@ func TestNaturalJoinDisjoint(t *testing.T) {
 func TestInnerNestedInNaturalJoins(t *testing.T) {
 	enginetest.TestInnerNestedInNaturalJoins(t, newDefaultMemoryHarness())
 }
+
+func TestColumnDefaults(t *testing.T) {
+	enginetest.TestColumnDefaults(t, newDefaultMemoryHarness())
+}
