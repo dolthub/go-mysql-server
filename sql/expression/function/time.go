@@ -1041,9 +1041,8 @@ func (td *TimeDiff) WithChildren(children ...sql.Expression) (sql.Expression, er
 // Eval implements the Expression interface.
 func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// check for valid types
-	if (td.Left.Type() == sql.Time || td.Left.Type() == sql.Timestamp ||
-		td.Left.Type() == sql.Datetime) && (td.Right.Type() == sql.Time ||
-		td.Right.Type() == sql.Timestamp || td.Right.Type() == sql.Datetime) {
+	if (td.Left.Type() == sql.Timestamp || td.Left.Type() == sql.Datetime) &&
+		( td.Right.Type() == sql.Timestamp || td.Right.Type() == sql.Datetime) {
 
 		// handle type mismatch
 		if td.Left.Type().Promote() != td.Right.Type().Promote() {
