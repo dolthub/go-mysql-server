@@ -114,7 +114,10 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	// For the reference to the row in the trigger table, we use the scope mechanism. This is a little strange because
 	// scopes for subqueries work with the child schemas of a scope node, but we don't have such a node here. Instead we
 	// fabricate one with the right properties (its child schema matches the table schema, with the right aliased name)
-	scopeNode := plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewTableAlias("new", getResolvedTable(n))
+	scopeNode := plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewTableAlias("new", getResolvedTable(n)),
+	)
 	triggerLogic, err := a.Analyze(ctx, trigger.Body, ((*Scope)(nil)).newScope(scopeNode))
 	if err != nil {
 		return nil, err

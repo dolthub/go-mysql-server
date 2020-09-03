@@ -100,6 +100,37 @@ func TestSingleQuery(t *testing.T) {
 	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected)
 }
 
+// Convenience test for debugging a single query. Unskip and set to the desired query.
+func TestSingleScript(t *testing.T) {
+	var test enginetest.ScriptTest
+	test = enginetest.ScriptTest{
+		Name: "trigger after insert, insert into other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"create trigger insert_into_b after insert on a for each row insert into b values (new.x + 1)",
+			"insert into a values (1), (3), (5)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{2}, {4}, {6},
+		},
+	}
+
+	fmt.Sprintf("%v", test)
+
+	harness := newMemoryHarness("", 1, testNumPartitions, true, nil)
+	engine := enginetest.NewEngine(t, harness)
+	engine.Analyzer.Debug = true
+	engine.Analyzer.Verbose = true
+
+	for _, statement := range test.SetUpScript {
+		enginetest.RunQuery(t, engine, harness, statement)
+	}
+
+	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected)
+}
+
 func TestBrokenQueries(t *testing.T) {
 	enginetest.RunQueryTests(t, newSkippingMemoryHarness(), enginetest.BrokenQueries)
 }

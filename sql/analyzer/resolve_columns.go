@@ -179,12 +179,13 @@ func (a availableNames) indexTable(alias, name string, nestingLevel int) {
 	a[nestingLevel].availableTables[alias] = strings.ToLower(name)
 }
 
+// nesting levels returns all levels present, from inner to outer
 func (a availableNames) nestingLevels() []int {
 	levels := make([]int, len(a))
-	// level numbers are always 0 through N-1
-	for i := 0; i < len(levels); i++ {
-		levels[i] = i
+	for level := range a {
+		levels = append(levels, level)
 	}
+	sort.Ints(levels)
 	return levels
 }
 
