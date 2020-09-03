@@ -72,17 +72,30 @@ type triggerIter struct {
 	ctx *sql.Context
 }
 
-func (t triggerIter) Next() (sql.Row, error) {
-	next, err := t.child.Next()
+func (t *triggerIter) Next() (row sql.Row, returnErr error) {
+	childRow, err := t.child.Next()
 	if err != nil {
 		return nil, err
 	}
 
-	logicIter, err := t.executionLogic.RowIter(t.ctx, next)
+	// Wrap the execution logic with the current child row before executing it
+	// TODO: for update, this needs to get the old row and then the new row both appended
+	logic, err := TransformUp(t.executionLogic, prependRowInPlan(childRow))
 	if err != nil {
 		return nil, err
 	}
-	defer logicIter.Close()
+
+	logicIter, err := logic.RowIter(t.ctx, childRow)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		err := logicIter.Close()
+		if returnErr != nil {
+			returnErr = err
+		}
+	}()
 
 	for {
 		_, err := logicIter.Next()
@@ -94,10 +107,10 @@ func (t triggerIter) Next() (sql.Row, error) {
 		}
 	}
 
-	return next, nil
+	return childRow, nil
 }
 
-func (t triggerIter) Close() error {
+func (t *triggerIter) Close() error {
 	return t.child.Close()
 }
 
