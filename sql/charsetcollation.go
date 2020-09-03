@@ -1163,10 +1163,9 @@ var (
 		CharacterSet_utf8mb4:  4,
 	}
 
-	collationToMySQLIDs = map[Collation]int64{
+	CollationToMySQLIDs = map[Collation]int64{
 		Collation_binary: 63,
 		Collation_utf8_general_ci: 33,
-		Collation_big5_chinese_ci: 1,
 		Collation_utf8mb4_0900_ai_ci: 255,
 	}
 
@@ -1283,7 +1282,7 @@ func (c Collation) String() string {
 
 // ID returns the id of the Collation.
 func (c Collation) ID() int64 {
-	id, ok := collationToMySQLIDs[c]
+	id, ok := CollationToMySQLIDs[c]
 	if !ok {
 		// return Collation_utf8_general_ci id if not found
 		return 33
