@@ -98,7 +98,7 @@ func (t triggerIter) Next() (sql.Row, error) {
 }
 
 func (t triggerIter) Close() error {
-	panic("implement me")
+	return t.child.Close()
 }
 
 func (t *TriggerExecutor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
