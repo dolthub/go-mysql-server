@@ -17,7 +17,9 @@ package analyzer
 import (
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/parse"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
+	"github.com/liquidata-inc/vitess/go/vt/sqlparser"
 )
 
 type triggerColumnRef struct {
@@ -51,4 +53,90 @@ func resolveNewAndOldReferences(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	}
 
 	return n, nil
+}
+
+func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	var affectedTables []string
+	plan.Inspect(n, func(n sql.Node) bool {
+		// TODO: update, delete
+		switch n := n.(type) {
+		case *plan.InsertInto:
+			affectedTables = append(affectedTables, findTableName(n))
+		}
+		return true
+	})
+
+	if len(affectedTables) == 0 {
+		return n, nil
+	}
+
+	// TODO: database should be dependent on the table being inserted / updated, but we don't have that info available
+	//  from the table object yet.
+	db := ctx.GetCurrentDatabase()
+	database, err := a.Catalog.Database(db)
+	if err != nil {
+		return nil, err
+	}
+
+	var affectedTriggers []*plan.CreateTrigger
+	if tdb, ok := database.(sql.TriggerDatabase); ok {
+		triggers, err := tdb.GetTriggers(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, trigger := range triggers {
+			parsedTrigger, err := parse.Parse(ctx, trigger.CreateStatement)
+			if err != nil {
+				return nil, err
+			}
+
+			ct, ok := parsedTrigger.(*plan.CreateTrigger)
+			if !ok {
+				return nil, sql.ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
+			}
+
+			triggerTable := findTableName(ct.Table)
+			if stringContains(affectedTables, triggerTable) {
+				// TODO: ordering of multiple triggers
+				affectedTriggers = append(affectedTriggers, ct)
+			}
+		}
+	}
+
+	if len(affectedTriggers) == 0 {
+		return n, nil
+	}
+
+	// TODO: multiple triggers
+	trigger := affectedTriggers[0]
+
+	// For the reference to the row in the trigger table, we use the scope mechanism. This is a little strange because
+	// scopes for subqueries work with the child schemas of a scope node, but we don't have such a node here. Instead we
+	// fabricate one with the right properties (its child schema matches the table schema, with the right aliased name)
+	scopeNode := plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewTableAlias("new", getResolvedTable(n))
+	triggerLogic, err := a.Analyze(ctx, trigger.Body, ((*Scope)(nil)).newScope(scopeNode))
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.InsertInto:
+			if trigger.TriggerTime == sqlparser.BeforeStr {
+				triggerExecutor := plan.NewTriggerExecutor(n.Right, triggerLogic, plan.InsertTrigger, sql.TriggerDefinition{
+					Name:            trigger.TriggerName,
+					CreateStatement: trigger.CreateTriggerString,
+				})
+				return n.WithChildren(n.Left, triggerExecutor)
+			} else {
+				return plan.NewTriggerExecutor(n, triggerLogic, plan.InsertTrigger, sql.TriggerDefinition{
+					Name:            trigger.TriggerName,
+					CreateStatement: trigger.CreateTriggerString,
+				}), nil
+			}
+		}
+
+		return n, nil
+	})
 }
