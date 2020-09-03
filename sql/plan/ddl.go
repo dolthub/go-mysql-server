@@ -593,6 +593,10 @@ func (r *RenameColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	nc.Name = r.newColumnName
 	col := &nc
 
+	if err := updateDefaultsOnColumnRename(ctx, alterable, strings.ToLower(r.columnName), r.newColumnName); err != nil {
+		return nil, err
+	}
+
 	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, r.columnName, col, nil)
 }
 
@@ -670,6 +674,9 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	}
 
 	if err := m.validateDefaultPosition(tblSch); err != nil {
+		return nil, err
+	}
+	if err := updateDefaultsOnColumnRename(ctx, alterable, m.columnName, m.column.Name); err != nil {
 		return nil, err
 	}
 
@@ -787,4 +794,38 @@ func inspectDefaultForInvalidColumns(col *sql.Column, columnsAfterThis map[strin
 		return true
 	})
 	return err
+}
+
+// updateDefaultsOnColumnRename updates each column that references the old column name within its default value.
+func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, oldName, newName string) error {
+	if oldName == newName {
+		return nil
+	}
+	var err error
+	colsToModify := make(map[*sql.Column]struct{})
+	for _, col := range tbl.Schema() {
+		if col.Default == nil {
+			continue
+		}
+		newCol := *col
+		newCol.Default.Expression, err = expression.TransformUp(col.Default.Expression, func(e sql.Expression) (sql.Expression, error) {
+			if expr, ok := e.(*expression.GetField); ok {
+				if strings.ToLower(expr.Name()) == oldName {
+					colsToModify[&newCol] = struct{}{}
+					return expr.WithName(newName), nil
+				}
+			}
+			return e, nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+	for col := range colsToModify {
+		err := tbl.ModifyColumn(ctx, col.Name, col, nil)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
