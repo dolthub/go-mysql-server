@@ -805,7 +805,11 @@ func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("UTC_TIMESTAMP", 1, len(args))
 	} else if len(args) == 1 {
-		precisionArg, err := sql.Int32.Convert(args[0])
+		val, err := args[0].Eval(sql.NewEmptyContext(), nil)
+		if err != nil {
+			return nil, err
+		}
+		precisionArg, err := sql.Int32.Convert(val)
 
 		if err != nil {
 			return nil, err
