@@ -2116,11 +2116,48 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 			"CREATE TABLE t28(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (t28.pk))",
 			[]sql.Row(nil),
 		)
-		_, _, err = e.Query(NewContext(harness), "INSERT INTO t28 (pk) VALUES (1), (2)")
+		ctx := NewContext(harness)
+		_, _, err = e.Query(ctx, "INSERT INTO t28 (pk) VALUES (1), (2)")
 		require.NoError(err)
 		TestQuery(t, harness, e,
 			"SELECT * FROM t28",
 			[]sql.Row{{1, 1}, {2, 2}},
+		)
+		t28, err := e.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")
+		require.NoError(err)
+		sch := t28.Schema()
+		require.Len(sch, 2)
+		require.Equal("v1", sch[1].Name)
+		require.NotContains(sch[1].Default.String(), "t28")
+	})
+
+	t.Run("Column referenced with name change", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t29(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (v1 + 1))",
+			[]sql.Row(nil),
+		)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t29 (pk, v1) VALUES (1, 2)")
+		require.NoError(err)
+		_, _, err = e.Query(NewContext(harness), "ALTER TABLE t29 RENAME COLUMN v1 to v1x")
+		require.NoError(err)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t29 (pk, v1x) VALUES (2, 3)")
+		require.NoError(err)
+		_, _, err = e.Query(NewContext(harness), "ALTER TABLE t29 CHANGE COLUMN v1x v1y BIGINT")
+		require.NoError(err)
+		_, _, err = e.Query(NewContext(harness), "INSERT INTO t29 (pk, v1y) VALUES (3, 4)")
+		require.NoError(err)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t29",
+			[]sql.Row{{1, 2, 3}, {2, 3, 4}, {3, 4, 5}},
+		)
+		TestQuery(t, harness, e,
+			"SHOW CREATE TABLE t29",
+			[]sql.Row{{"t29", "CREATE TABLE `t29` (\n" +
+				"  `pk` bigint NOT NULL,\n" +
+				"  `v1y` bigint,\n" +
+				"  `v2` bigint DEFAULT (v1y + 1),\n" +
+				"  PRIMARY KEY (`pk`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",}},
 		)
 	})
 
