@@ -505,7 +505,7 @@ func collationsRowIter(ctx *Context, c *Catalog) RowIter {
 	return RowsToRowIter(Row{
 		Collation_Default.String(),
 		Collation_Default.CharacterSet().String(),
-		int64(1),
+		Collation_Default.ID(),
 		"Yes",
 		"Yes",
 		int64(1),

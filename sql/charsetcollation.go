@@ -1163,6 +1163,13 @@ var (
 		CharacterSet_utf8mb4:  4,
 	}
 
+	collationToMySQLIDs = map[Collation]int64{
+		Collation_binary: 63,
+		Collation_utf8_general_ci: 33,
+		Collation_big5_chinese_ci: 1,
+		Collation_utf8mb4_0900_ai_ci: 255,
+	}
+
 	ErrCharacterSetNotSupported = errors.NewKind("Unknown character set: %v")
 	ErrCollationNotSupported    = errors.NewKind("Unknown collation: %v")
 )
@@ -1272,4 +1279,14 @@ func (c Collation) WorksWithCharacterSet(cs CharacterSet) bool {
 // String returns the string representation of the Collation.
 func (c Collation) String() string {
 	return string(c)
+}
+
+// ID returns the id of the Collation.
+func (c Collation) ID() int64 {
+	id, ok := collationToMySQLIDs[c]
+	if !ok {
+		// return Collation_utf8_general_ci id if not found
+		return 33
+	}
+	return id
 }
