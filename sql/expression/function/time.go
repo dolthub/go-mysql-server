@@ -17,7 +17,7 @@ var ErrInvalidArgument = errors.NewKind("invalid argument to function %s. %s.")
 var ErrInvalidArgumentType = errors.NewKind("function '%s' received invalid argument types")
 
 // ErrInvalidArgumentType is thrown when a function receives mismatched argument types
-var ErrArgumentTypeMisMatch = errors.NewKind("function '%s' received mismatched argument types of %T and %T")
+var ErrArgumentTypeMisMatch = errors.NewKind("function '%s' received mismatched argument types of %v and %v")
 
 // ErrTimeUnexpectedlyNil is thrown when a function encounters and unexpectedly nil time
 var ErrTimeUnexpectedlyNil = errors.NewKind("time in function '%s' unexpectedly nil")
@@ -1042,8 +1042,8 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		td.Right.Type() == sql.Timestamp || td.Right.Type() == sql.Datetime) {
 
 		// handle type mismatch
-		if td.Left.Type() != td.Right.Type() {
-			return nil, ErrArgumentTypeMisMatch.New("TIMEDIFF", td.Left, td.Right)
+		if td.Left.Type().Promote() != td.Right.Type().Promote() {
+			return nil, ErrArgumentTypeMisMatch.New("TIMEDIFF", td.Left.Type().Promote(), td.Right.Type().Promote())
 		}
 
 		left, err := td.Left.Eval(ctx, row)
@@ -1056,26 +1056,24 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		if left == nil || right == nil {
+		leftTime, err := sql.Datetime.Convert(left)
+		if err != nil {
+			return nil, err
+		}
+
+		rightTime, err := sql.Datetime.Convert(right)
+		if err != nil {
+			return nil, err
+		}
+
+		if leftTime == nil || rightTime == nil {
 			return nil, ErrTimeUnexpectedlyNil.New("TIMEDIFF")
 		}
 
-		var leftTime time.Time
-		var rightTime time.Time
-		switch left.(type) {
-		case int64:
-			leftTime = time.Unix(0, left.(int64))
-			rightTime = time.Unix(0, right.(int64))
-		case time.Time:
-			leftTime = left.(time.Time)
-			rightTime = right.(time.Time)
-		default:
-			return nil, ErrUnknownType.New("TIMEDIFF", left)
-		}
-
-		duration := elapsed(leftTime, rightTime)
+		duration := elapsed(leftTime.(time.Time), rightTime.(time.Time))
 		return sql.Time.Convert(duration)
 	}
+
 	return nil, ErrInvalidArgumentType.New("TIMEDIFF")
 }
 

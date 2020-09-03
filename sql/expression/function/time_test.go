@@ -406,41 +406,69 @@ func TestDate(t *testing.T) {
 }
 
 func TestTimeDiff(t *testing.T) {
-	require := require.New(t)
-
-	date := time.Date(2018, time.December, 2, 16, 25, 0, 0, time.Local)
-	testNowFunc := func() time.Time {
-		return date
+	ctx := sql.NewEmptyContext()
+	testCases := []struct {
+		name     string
+		from     sql.Expression
+		to       sql.Expression
+		expected string
+		err      bool
+	}{
+		{
+			"invalid type",
+			expression.NewLiteral("100000000", sql.Text),
+			expression.NewLiteral(time.Date(2008, time.December, 30, 1, 1, 1, 2, time.Local), sql.Time),
+			"",
+			true,
+		},
+		{
+			"type mismatch",
+			expression.NewLiteral(time.Date(2008, time.December, 29, 1, 1, 1, 2, time.Local), sql.Timestamp),
+			expression.NewLiteral(time.Date(2008, time.December, 30, 1, 1, 1, 2, time.Local), sql.Time),
+			"",
+			true,
+		},
+		{
+			"valid mismatch",
+			expression.NewLiteral(time.Date(2008, time.December, 29, 1, 1, 1, 2, time.Local), sql.Timestamp),
+			expression.NewLiteral(time.Date(2008, time.December, 30, 1, 1, 1, 2, time.Local), sql.Datetime),
+			"-24:00:00",
+			false,
+		},
+		{
+			"timestamp types",
+			expression.NewLiteral(time.Date(2018, time.May, 2, 0, 0, 0, 0, time.Local), sql.Timestamp),
+			expression.NewLiteral(time.Date(2018, time.May, 2, 0, 0, 1, 0, time.Local), sql.Timestamp),
+			"-00:00:01",
+			false,
+		},
+		{
+			"time types",
+			expression.NewLiteral(time.Date(2008, time.December, 31, 23, 59, 59, 1, time.Local), sql.Time),
+			expression.NewLiteral(time.Date(2008, time.December, 30, 1, 1, 1, 2, time.Local), sql.Time),
+			"46:58:57.999999",
+			false,
+		},
+		{
+			"datetime types",
+			expression.NewLiteral(time.Date(2008, time.December, 29, 0, 0, 0, 0, time.Local), sql.Time),
+			expression.NewLiteral(time.Date(2008, time.December, 30, 0, 0, 0, 0, time.Local), sql.Time),
+			"-24:00:00",
+			false,
+		},
 	}
 
-	var ctx *sql.Context
-	err := sql.RunWithNowFunc(testNowFunc, func() error {
-		ctx = sql.NewEmptyContext()
-		return nil
-	})
-	require.NoError(err)
-
-	from := time.Date(2018, time.May, 2, 0, 0, 0, 0, time.Local)
-	to := time.Date(2018, time.May, 2, 0, 0, 1, 0, time.Local)
-	diff := NewTimeDiff(expression.NewLiteral(from, sql.Timestamp), expression.NewLiteral(to, sql.Timestamp))
-	result, err := diff.Eval(ctx, nil)
-	require.NoError(err)
-	expected := "-00:00:01"
-	require.Equal(expected, result)
-
-	from = time.Date(2008, time.December, 31, 23, 59, 59, 1, time.Local)
-	to = time.Date(2008, time.December, 30, 1, 1, 1, 2, time.Local)
-	diff = NewTimeDiff(expression.NewLiteral(from.UnixNano(), sql.Time), expression.NewLiteral(to.UnixNano(), sql.Time))
-	result, err = diff.Eval(ctx, nil)
-	require.NoError(err)
-	expected = "46:58:57.999999"
-	require.Equal(expected, result)
-
-	from = time.Date(2008, time.December, 29, 0, 0, 0, 0, time.Local)
-	to = time.Date(2008, time.December, 30, 0, 0, 0, 0, time.Local)
-	diff = NewTimeDiff(expression.NewLiteral(from.UnixNano(), sql.Time), expression.NewLiteral(to.UnixNano(), sql.Time))
-	result, err = diff.Eval(ctx, nil)
-	require.NoError(err)
-	expected = "-24:00:00"
-	require.Equal(expected, result)
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			diff := NewTimeDiff(tt.from, tt.to)
+			result, err := diff.Eval(ctx, nil)
+			if tt.err {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+				require.Equal(tt.expected, result)
+			}
+		})
+	}
 }
