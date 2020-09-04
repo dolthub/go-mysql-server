@@ -25,6 +25,7 @@ type InsertInto struct {
 	BinaryNode
 	ColumnNames []string
 	IsReplace   bool
+	Columns     []sql.Expression
 }
 
 // NewInsertInto creates an InsertInto node.
@@ -42,11 +43,12 @@ func (p *InsertInto) Schema() sql.Schema {
 }
 
 type insertIter struct {
-	schema    sql.Schema
-	inserter  sql.RowInserter
-	replacer  sql.RowReplacer
-	rowSource sql.RowIter
-	ctx       *sql.Context
+	schema     sql.Schema
+	inserter   sql.RowInserter
+	replacer   sql.RowReplacer
+	rowSource  sql.RowIter
+	ctx        *sql.Context
+	projection []sql.Expression
 }
 
 func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
@@ -75,7 +77,7 @@ func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
 	}
 }
 
-func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, isReplace bool, row sql.Row) (*insertIter, error) {
+func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, isReplace bool, columns []sql.Expression, row sql.Row) (*insertIter, error) {
 	dstSchema := table.Schema()
 
 	insertable, err := GetInsertable(table)
@@ -97,11 +99,12 @@ func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, isReplace 
 	}
 
 	return &insertIter{
-		schema:    dstSchema,
-		inserter:  inserter,
-		replacer:  replacer,
-		rowSource: rowIter,
-		ctx:       ctx,
+		schema:     dstSchema,
+		inserter:   inserter,
+		replacer:   replacer,
+		rowSource:  rowIter,
+		projection: columns,
+		ctx:        ctx,
 	}, nil
 }
 
@@ -122,18 +125,9 @@ func (i insertIter) Next() (sql.Row, error) {
 		return nil, err
 	}
 
-	// Convert values to the destination schema type
-	for colIdx, oldValue := range row {
-		dstColType := i.schema[colIdx].Type
-
-		if oldValue != nil {
-			newValue, err := dstColType.Convert(oldValue)
-			if err != nil {
-				return nil, err
-			}
-
-			row[colIdx] = newValue
-		}
+	row, err = ProjectRow(i.ctx, i.projection, row)
+	if err != nil {
+		return nil, err
 	}
 
 	if i.replacer != nil {
@@ -181,7 +175,7 @@ func (i insertIter) Close() error {
 
 // RowIter implements the Node interface.
 func (p *InsertInto) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return newInsertIter(ctx, p.Left, p.Right, p.IsReplace, row)
+	return newInsertIter(ctx, p.Left, p.Right, p.IsReplace, p.Columns, row)
 }
 
 // WithChildren implements the Node interface.
@@ -190,7 +184,17 @@ func (p *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 2)
 	}
 
-	return NewInsertInto(children[0], children[1], p.IsReplace, p.ColumnNames), nil
+	np := *p
+	np.Left, np.Right = children[0], children[1]
+	return &np, nil
+}
+
+// WithColumsn returns a copy of this node with the given column expressions applied.
+// TODO: replace with sql.Expressioner?
+func (p *InsertInto) WithColumns(columns []sql.Expression) (sql.Node, error) {
+	np := *p
+	np.Columns = columns
+	return &np, nil
 }
 
 func (p InsertInto) String() string {

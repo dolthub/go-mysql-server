@@ -20,7 +20,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
-func applyInsertRowSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	insert, ok := n.(*plan.InsertInto)
 	if !ok {
 		return n, nil
@@ -79,12 +79,12 @@ func applyInsertRowSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		}
 	}
 
-	rowSource, err := rowSource(insert.Right, projExprs)
+	err = validateRowSource(insert.Right, projExprs)
 	if err != nil {
 		return nil, err
 	}
 
-	return insert.WithChildren(insert.Left, rowSource)
+	return insert.WithColumns(projExprs)
 }
 
 func validateColumns(columnNames []string, dstSchema sql.Schema) error {
@@ -146,20 +146,18 @@ func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) erro
 	return nil
 }
 
-func rowSource(values sql.Node, projExprs []sql.Expression) (sql.Node, error) {
+func validateRowSource(values sql.Node, projExprs []sql.Expression) error {
 	if exchange, ok := values.(*plan.Exchange); ok {
 		values = exchange.Child
 	}
 
 	switch n := values.(type) {
 	case *plan.Values:
-		return plan.NewProject(projExprs, n), nil
+		// already verified
+		return nil
 	case *plan.ResolvedTable, *plan.Project, *plan.InnerJoin, *plan.Filter:
-		if err := assertCompatibleSchemas(projExprs, n.Schema()); err != nil {
-			return nil, err
-		}
-		return plan.NewProject(projExprs, n), nil
+		return assertCompatibleSchemas(projExprs, n.Schema())
 	default:
-		return nil, plan.ErrInsertIntoUnsupportedValues.New(n)
+		return plan.ErrInsertIntoUnsupportedValues.New(n)
 	}
 }
