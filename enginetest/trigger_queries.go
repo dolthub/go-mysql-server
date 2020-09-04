@@ -30,4 +30,73 @@ var TriggerTests = []ScriptTest{
 			{2}, {4}, {6},
 		},
 	},
+	{
+		Name: "trigger after insert, delete from other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into b values (0), (2), (4), (6), (8)",
+			"create trigger insert_into_b after insert on a for each row delete from b where y = (new.x + 1)",
+			"insert into a values (1), (3), (5)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{0}, {8},
+		},
+	},
+	{
+		Name: "trigger after insert, update other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into b values (0), (2), (4), (6), (8)",
+			"create trigger insert_into_b after insert on a for each row update b set y = new.x where y = new.x + 1",
+			"insert into a values (1), (3), (5)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{0}, {1}, {3}, {5}, {8},
+		},
+	},
+	{
+		Name: "trigger before insert, insert into other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"create trigger insert_into_b before insert on a for each row insert into b values (new.x + 1)",
+			"insert into a values (1), (3), (5)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{2}, {4}, {6},
+		},
+	},
+	{
+		Name: "trigger before insert, delete from other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into b values (0), (2), (4), (6), (8)",
+			"create trigger insert_into_b before insert on a for each row delete from b where y = (new.x + 1)",
+			"insert into a values (1), (3), (5)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{0}, {8},
+		},
+	},
+	{
+		Name: "trigger after before, update other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into b values (0), (2), (4), (6), (8)",
+			"create trigger insert_into_b before insert on a for each row update b set y = new.x where y = new.x + 1",
+			"insert into a values (1), (3), (5)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{0}, {1}, {3}, {5}, {8},
+		},
+	},
 }
