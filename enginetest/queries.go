@@ -1640,9 +1640,33 @@ var QueryTests = []QueryTest{
 	{
 		`SHOW COLLATION`,
 		[]sql.Row{
-			{sql.Collation_binary.String(), "binary", sql.CollationToMySQLIDs[sql.Collation_binary], "No", "Yes", 1, "PAD SPACE"},
-			{sql.Collation_utf8mb3_general_ci.String(), "utf8mb3", sql.CollationToMySQLIDs[sql.Collation_utf8mb3_general_ci], "No", "Yes", 1, "PAD SPACE"},
-			{sql.Collation_utf8mb4_0900_ai_ci.String(), "utf8mb4", sql.CollationToMySQLIDs[sql.Collation_utf8mb4_0900_ai_ci], "Yes", "Yes", int64(1), "PAD SPACE"},
+			{
+				sql.Collation_binary.String(),
+				"binary",
+				sql.CollationToMySQLVals[sql.Collation_binary].ID,
+				sql.CollationToMySQLVals[sql.Collation_binary].IsDefault,
+				sql.CollationToMySQLVals[sql.Collation_binary].IsCompiled,
+				sql.CollationToMySQLVals[sql.Collation_binary].SortLen,
+				sql.CollationToMySQLVals[sql.Collation_binary].PadSpace,
+			},
+			{
+				sql.Collation_utf8_general_ci.String(),
+				"utf8mb3",
+				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].ID,
+				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].IsDefault,
+				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].IsCompiled,
+				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].SortLen,
+				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].PadSpace,
+			},
+			{
+				sql.Collation_utf8mb4_0900_ai_ci.String(),
+				"utf8mb4",
+				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci].ID,
+				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci].IsDefault,
+				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci].IsCompiled,
+				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci].SortLen,
+				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci].PadSpace,
+			},
 		},
 	},
 	{
@@ -1652,8 +1676,24 @@ var QueryTests = []QueryTest{
 	{
 		`SHOW COLLATION LIKE 'utf8%'`,
 		[]sql.Row{
-			{sql.Collation_utf8mb3_general_ci.String(), "utf8mb3", sql.CollationToMySQLIDs[sql.Collation_utf8mb3_general_ci], "No", "Yes", 1, "PAD SPACE"},
-			{sql.Collation_utf8mb4_0900_ai_ci.String(), "utf8mb4", sql.CollationToMySQLIDs[sql.Collation_utf8mb4_0900_ai_ci], "Yes", "Yes", int64(1), "PAD SPACE"},
+			{
+				sql.Collation_utf8_general_ci.String(),
+				"utf8mb3",
+				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].ID,
+				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].IsDefault,
+				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].IsCompiled,
+				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].SortLen,
+				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].PadSpace,
+			},
+			{
+				sql.Collation_utf8mb4_0900_ai_ci.String(),
+				"utf8mb4",
+				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci].ID,
+				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci].IsDefault,
+				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci].IsCompiled,
+				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci].SortLen,
+				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci].PadSpace,
+			},
 		},
 	},
 	{
@@ -1662,7 +1702,35 @@ var QueryTests = []QueryTest{
 	},
 	{
 		"SHOW COLLATION WHERE `Default` = 'Yes'",
-		[]sql.Row{{sql.Collation_utf8mb4_0900_ai_ci.String(), "utf8mb4", sql.CollationToMySQLIDs[sql.Collation_utf8mb4_0900_ai_ci], "Yes", "Yes", int64(1), "PAD SPACE"}},
+		[]sql.Row{
+			{
+				sql.Collation_binary.String(),
+				"binary",
+				sql.CollationToMySQLVals[sql.Collation_binary].ID,
+				sql.CollationToMySQLVals[sql.Collation_binary].IsDefault,
+				sql.CollationToMySQLVals[sql.Collation_binary].IsCompiled,
+				sql.CollationToMySQLVals[sql.Collation_binary].SortLen,
+				sql.CollationToMySQLVals[sql.Collation_binary].PadSpace,
+			},
+			{
+				sql.Collation_utf8_general_ci.String(),
+				"utf8mb3",
+				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].ID,
+				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].IsDefault,
+				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].IsCompiled,
+				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].SortLen,
+				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].PadSpace,
+			},
+			{
+				sql.Collation_utf8mb4_0900_ai_ci.String(),
+				"utf8mb4",
+				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci].ID,
+				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci].IsDefault,
+				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci].IsCompiled,
+				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci].SortLen,
+				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci].PadSpace,
+			},
+		},
 	},
 	{
 		"ROLLBACK",
