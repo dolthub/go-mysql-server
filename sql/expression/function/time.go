@@ -699,6 +699,10 @@ func NewNow(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("TIMESTAMP", 1, len(args))
 	} else if len(args) == 1 {
+		argType := args[0].Type().Promote()
+		if argType != sql.Int64 && argType != sql.Uint64 {
+			return nil, sql.ErrInvalidType.New(args[0].Type().String())
+		}
 		val, err := args[0].Eval(sql.NewEmptyContext(), nil)
 		if err != nil {
 			return nil, err
@@ -710,6 +714,9 @@ func NewNow(args ...sql.Expression) (sql.Expression, error) {
 		}
 
 		n := int(precisionArg.(int32))
+		if n < 0 || n > 6 {
+			return nil, sql.ErrOutOfRange.New("precision", "now")
+		}
 		precision = &n
 	}
 
@@ -799,12 +806,18 @@ type UTCTimestamp struct {
 	precision *int
 }
 
+var _ sql.FunctionExpression = (*UTCTimestamp)(nil)
+
 // NewUTCTimestamp returns a new UTCTimestamp node.
 func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	var precision *int
 	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("UTC_TIMESTAMP", 1, len(args))
 	} else if len(args) == 1 {
+		argType := args[0].Type().Promote()
+		if argType != sql.Int64 && argType != sql.Uint64 {
+			return nil, sql.ErrInvalidType.New(args[0].Type().String())
+		}
 		val, err := args[0].Eval(sql.NewEmptyContext(), nil)
 		if err != nil {
 			return nil, err
@@ -816,10 +829,17 @@ func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
 		}
 
 		n := int(precisionArg.(int32))
+		if n < 0 || n > 6 {
+			return nil, sql.ErrOutOfRange.New("precision", "utc_timestamp")
+		}
 		precision = &n
 	}
 
 	return &UTCTimestamp{precision}, nil
+}
+
+func (ut *UTCTimestamp) FunctionName() string {
+	return "utc_timestamp"
 }
 
 // Type implements the sql.Expression interface.
@@ -1010,6 +1030,8 @@ type TimeDiff struct {
 	expression.BinaryExpression
 }
 
+var _ sql.FunctionExpression = (*TimeDiff)(nil)
+
 // NewTimeDiff creates a new NewTimeDiff expression.
 func NewTimeDiff(e1, e2 sql.Expression) sql.Expression {
 	return &TimeDiff{
@@ -1018,6 +1040,10 @@ func NewTimeDiff(e1, e2 sql.Expression) sql.Expression {
 			Right: e2,
 		},
 	}
+}
+
+func (td *TimeDiff) FunctionName() string {
+	return "timediff"
 }
 
 // Type implements the Expression interface.
@@ -1040,44 +1066,41 @@ func (td *TimeDiff) WithChildren(children ...sql.Expression) (sql.Expression, er
 
 // Eval implements the Expression interface.
 func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// check for valid types
-	if (td.Left.Type() == sql.Timestamp || td.Left.Type() == sql.Datetime) &&
-		( td.Right.Type() == sql.Timestamp || td.Right.Type() == sql.Datetime) {
-
-		// handle type mismatch
-		if td.Left.Type().Promote() != td.Right.Type().Promote() {
-			return nil, ErrArgumentTypeMisMatch.New("TIMEDIFF", td.Left.Type().Promote(), td.Right.Type().Promote())
-		}
-
-		left, err := td.Left.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-
-		right, err := td.Right.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-
-		leftTime, err := sql.Datetime.Convert(left)
-		if err != nil {
-			return nil, err
-		}
-
-		rightTime, err := sql.Datetime.Convert(right)
-		if err != nil {
-			return nil, err
-		}
-
-		if leftTime == nil || rightTime == nil {
-			return nil, ErrTimeUnexpectedlyNil.New("TIMEDIFF")
-		}
-
-		duration := elapsed(leftTime.(time.Time), rightTime.(time.Time))
-		return sql.Time.Convert(duration)
+	left, err := td.Left.Eval(ctx, row)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, ErrInvalidArgumentType.New("TIMEDIFF")
+	right, err := td.Right.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if left == nil || right == nil {
+		return nil, ErrTimeUnexpectedlyNil.New("TIMEDIFF")
+	}
+
+	if leftDatetimeInt, err := sql.Datetime.Convert(left); err == nil {
+		rightDatetimeInt, err := sql.Datetime.Convert(right)
+		if err != nil {
+			return nil, err
+		}
+		leftDatetime := leftDatetimeInt.(time.Time)
+		rightDatetime := rightDatetimeInt.(time.Time)
+		if leftDatetime.Location() != rightDatetime.Location() {
+			rightDatetime = rightDatetime.In(leftDatetime.Location())
+		}
+		return sql.Time.Convert(leftDatetime.Sub(rightDatetime))
+	} else if leftTime, err := sql.Time.ConvertToTimeDuration(left); err == nil {
+		rightTime, err := sql.Time.ConvertToTimeDuration(right)
+		if err != nil {
+			return nil, err
+		}
+		resTime := leftTime - rightTime
+		return sql.Time.Convert(resTime)
+	} else {
+		return nil, ErrInvalidArgumentType.New("timediff")
+	}
 }
 
 func elapsed(left, right time.Time) time.Duration {

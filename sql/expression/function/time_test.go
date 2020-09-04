@@ -1,9 +1,11 @@
 package function
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -346,12 +348,61 @@ func TestNow(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	f, err := NewNow()
-	require.NoError(t, err)
+	tests := []struct {
+		args []sql.Expression
+		result time.Time
+		expectErr bool
+	}{
+		{
+			args:      nil,
+			result:    date,
+			expectErr: false,
+		},
+		{
+			args:      []sql.Expression{expression.NewLiteral(0, sql.Int8)},
+			result:    date,
+			expectErr: false,
+		},
+		{
+			args:      []sql.Expression{expression.NewLiteral(0, sql.Int64)},
+			result:    date,
+			expectErr: false,
+		},
+		{
+			args:      []sql.Expression{expression.NewLiteral(6, sql.Uint8)},
+			result:    date,
+			expectErr: false,
+		},
+		{
+			args:      []sql.Expression{expression.NewLiteral(7, sql.Int8)},
+			result:    time.Time{},
+			expectErr: true,
+		},
+		{
+			args:      []sql.Expression{expression.NewLiteral(-1, sql.Int8)},
+			result:    time.Time{},
+			expectErr: true,
+		},
+		{
+			args:      []sql.Expression{expression.NewConvert(expression.NewLiteral("2020-10-10 01:02:03", sql.Text), expression.ConvertToDatetime)},
+			result:    time.Time{},
+			expectErr: true,
+		},
+	}
 
-	result, err := f.Eval(ctx, nil)
-	require.NoError(t, err)
-	require.Equal(t, date, result)
+	for _, test := range tests {
+		t.Run(fmt.Sprint(test.args), func(t *testing.T) {
+			ut, err := NewNow(test.args...)
+			if !test.expectErr {
+				require.NoError(t, err)
+				val, err := ut.Eval(ctx, nil)
+				require.NoError(t, err)
+				assert.Equal(t, test.result, val)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
 }
 
 func TestUTCTimestamp(t *testing.T) {
@@ -367,12 +418,61 @@ func TestUTCTimestamp(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	f, err := NewUTCTimestamp()
-	require.NoError(t, err)
+	tests := []struct {
+		args []sql.Expression
+		result time.Time
+		expectErr bool
+	}{
+		{
+			args:      nil,
+			result:    date,
+			expectErr: false,
+		},
+		{
+			args:      []sql.Expression{expression.NewLiteral(0, sql.Int8)},
+			result:    date,
+			expectErr: false,
+		},
+		{
+			args:      []sql.Expression{expression.NewLiteral(0, sql.Int64)},
+			result:    date,
+			expectErr: false,
+		},
+		{
+			args:      []sql.Expression{expression.NewLiteral(6, sql.Uint8)},
+			result:    date,
+			expectErr: false,
+		},
+		{
+			args:      []sql.Expression{expression.NewLiteral(7, sql.Int8)},
+			result:    time.Time{},
+			expectErr: true,
+		},
+		{
+			args:      []sql.Expression{expression.NewLiteral(-1, sql.Int8)},
+			result:    time.Time{},
+			expectErr: true,
+		},
+		{
+			args:      []sql.Expression{expression.NewConvert(expression.NewLiteral("2020-10-10 01:02:03", sql.Text), expression.ConvertToDatetime)},
+			result:    time.Time{},
+			expectErr: true,
+		},
+	}
 
-	result, err := f.Eval(ctx, nil)
-	require.NoError(t, err)
-	require.Equal(t, date.UTC(), result)
+	for _, test := range tests {
+		t.Run(fmt.Sprint(test.args), func(t *testing.T) {
+			ut, err := NewUTCTimestamp(test.args...)
+			if !test.expectErr {
+				require.NoError(t, err)
+				val, err := ut.Eval(ctx, nil)
+				require.NoError(t, err)
+				assert.Equal(t, test.result.UTC(), val)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
 }
 
 func TestDate(t *testing.T) {
@@ -406,15 +506,6 @@ func TestDate(t *testing.T) {
 }
 
 func TestTimeDiff(t *testing.T) {
-	// This is here so that it doesn't pollute the namespace
-	//parseDuration := func(str string) time.Duration {
-	//	d, err := time.ParseDuration(str)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	return d
-	//}
-
 	ctx := sql.NewEmptyContext()
 	testCases := []struct {
 		name     string
@@ -424,20 +515,34 @@ func TestTimeDiff(t *testing.T) {
 		err      bool
 	}{
 		{
-			"invalid type",
-			expression.NewLiteral("100000000", sql.Text),
-			expression.NewLiteral(time.Date(2008, time.December, 30, 1, 1, 1, 2, time.Local), sql.Time),
+			"invalid type text",
+			expression.NewLiteral("hello there", sql.Text),
+			expression.NewConvert(expression.NewLiteral("01:00:00", sql.Text), expression.ConvertToTime),
 			"",
 			true,
 		},
-		// TODO fix sql.Time doesnt work
-		//{
-		//	"type mismatch",
-		//	expression.NewLiteral(time.Date(2008, time.December, 29, 1, 1, 1, 2, time.Local), sql.Timestamp),
-		//	expression.NewLiteral(time.Date(2008, time.December, 30, 1, 1, 1, 2, time.Local), sql.Time),
-		//	"",
-		//	true,
-		//},
+		//TODO: handle Date properly
+		/*{
+			"invalid type date",
+			expression.NewConvert(expression.NewLiteral("2020-01-03", sql.Text), expression.ConvertToDate),
+			expression.NewConvert(expression.NewLiteral("2020-01-04", sql.Text), expression.ConvertToDate),
+			"",
+			true,
+		},*/
+		{
+			"type mismatch 1",
+			expression.NewLiteral(time.Date(2008, time.December, 29, 1, 1, 1, 2, time.Local), sql.Timestamp),
+			expression.NewConvert(expression.NewLiteral("01:00:00", sql.Text), expression.ConvertToTime),
+			"",
+			true,
+		},
+		{
+			"type mismatch 2",
+			expression.NewLiteral("00:00:00.2", sql.Text),
+			expression.NewLiteral("2020-10-10 10:10:10", sql.Text),
+			"",
+			true,
+		},
 		{
 			"valid mismatch",
 			expression.NewLiteral(time.Date(2008, time.December, 29, 1, 1, 1, 2, time.Local), sql.Timestamp),
@@ -453,24 +558,44 @@ func TestTimeDiff(t *testing.T) {
 			false,
 		},
 		{
-			"timestamptypes 2",
+			"timestamp types 2",
 			expression.NewLiteral(time.Date(2008, time.December, 31, 23, 59, 59, 1, time.Local), sql.Timestamp),
 			expression.NewLiteral(time.Date(2008, time.December, 30, 1, 1, 1, 2, time.Local), sql.Timestamp),
 			"46:58:57.999999",
 			false,
 		},
-		// TODO fix sql.Time doesnt work
-		//{
-		//	"time types",
-		//	expression.NewLiteral(sql.Time.MustConvert(parseDuration("100ms")), sql.Time),
-		//	expression.NewLiteral(sql.Time.MustConvert(parseDuration("200ms")), sql.Time),
-		//	"-00:00:00.100000",
-		//	false,
-		//},
+		{
+			"time types 1",
+			expression.NewConvert(expression.NewLiteral("00:00:00.1", sql.Text), expression.ConvertToTime),
+			expression.NewConvert(expression.NewLiteral("00:00:00.2", sql.Text), expression.ConvertToTime),
+			"-00:00:00.100000",
+			false,
+		},
+		{
+			"time types 2",
+			expression.NewLiteral("00:00:00.2", sql.Text),
+			expression.NewLiteral("00:00:00.4", sql.Text),
+			"-00:00:00.200000",
+			false,
+		},
 		{
 			"datetime types",
 			expression.NewLiteral(time.Date(2008, time.December, 29, 0, 0, 0, 0, time.Local), sql.Datetime),
 			expression.NewLiteral(time.Date(2008, time.December, 30, 0, 0, 0, 0, time.Local), sql.Datetime),
+			"-24:00:00",
+			false,
+		},
+		{
+			"datetime string types",
+			expression.NewLiteral("2008-12-29 00:00:00", sql.Text),
+			expression.NewLiteral("2008-12-30 00:00:00", sql.Text),
+			"-24:00:00",
+			false,
+		},
+		{
+			"datetime string mix types",
+			expression.NewLiteral(time.Date(2008, time.December, 29, 0, 0, 0, 0, time.UTC), sql.Datetime),
+			expression.NewLiteral("2008-12-30 00:00:00", sql.Text),
 			"-24:00:00",
 			false,
 		},
