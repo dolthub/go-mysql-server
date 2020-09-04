@@ -16,9 +16,6 @@ var ErrInvalidArgument = errors.NewKind("invalid argument to function %s. %s.")
 // ErrInvalidArgumentType is thrown when a function receives invalid argument types
 var ErrInvalidArgumentType = errors.NewKind("function '%s' received invalid argument types")
 
-// ErrInvalidArgumentType is thrown when a function receives mismatched argument types
-var ErrArgumentTypeMisMatch = errors.NewKind("function '%s' received mismatched argument types of %v and %v")
-
 // ErrTimeUnexpectedlyNil is thrown when a function encounters and unexpectedly nil time
 var ErrTimeUnexpectedlyNil = errors.NewKind("time in function '%s' unexpectedly nil")
 
@@ -1101,11 +1098,4 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	} else {
 		return nil, ErrInvalidArgumentType.New("timediff")
 	}
-}
-
-func elapsed(left, right time.Time) time.Duration {
-	if left.Location() != right.Location() {
-		right = right.In(right.Location())
-	}
-	return left.Sub(right)
 }
