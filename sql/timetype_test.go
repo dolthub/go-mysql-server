@@ -157,6 +157,36 @@ func TestTimeConvert(t *testing.T) {
 	}
 }
 
+func TestTimeConvertToTimeDuration(t *testing.T) {
+	// This is here so that it doesn't pollute the namespace
+	parseDuration := func(str string) time.Duration {
+		d, err := time.ParseDuration(str)
+		if err != nil {
+			panic(err)
+		}
+		return d
+	}
+
+	tests := []struct {
+		val         string
+		expectedVal time.Duration
+	}{
+		{"-00:00:01", parseDuration("-1s")},
+		{"00:00:59", parseDuration("59s")},
+		{"62:22:48.379247", parseDuration("62h22m48s379247µs")},
+		{"00:10:02", parseDuration("10m2s")},
+		{"00:59:58", parseDuration("59m58s")},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v %v", test.val, test.expectedVal), func(t *testing.T) {
+			val, err := Time.ConvertToTimeDuration(test.val)
+			require.NoError(t, err)
+			assert.Equal(t, test.expectedVal, val)
+		})
+	}
+}
+
 func TestTimeString(t *testing.T) {
 	require.Equal(t, "TIME", Time.String())
 }
