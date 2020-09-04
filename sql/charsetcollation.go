@@ -56,7 +56,7 @@ const (
 	CharacterSet_utf16    CharacterSet = "utf16"
 	CharacterSet_utf16le  CharacterSet = "utf16le"
 	CharacterSet_utf32    CharacterSet = "utf32"
-	CharacterSet_utf8                  = CharacterSet_utf8mb3
+	CharacterSet_utf8     CharacterSet = "utf8"
 	CharacterSet_utf8mb3  CharacterSet = "utf8mb3"
 	CharacterSet_utf8mb4  CharacterSet = "utf8mb4"
 
@@ -230,7 +230,7 @@ const (
 	Collation_utf32_croatian_ci           Collation = "utf32_croatian_ci"
 	Collation_utf32_unicode_520_ci        Collation = "utf32_unicode_520_ci"
 	Collation_utf32_vietnamese_ci         Collation = "utf32_vietnamese_ci"
-	Collation_utf8_general_ci                       = Collation_utf8mb3_general_ci
+	Collation_utf8_general_ci             Collation = "utf8"
 	Collation_utf8_tolower_ci                       = Collation_utf8mb3_tolower_ci
 	Collation_utf8_bin                              = Collation_utf8mb3_bin
 	Collation_utf8_unicode_ci                       = Collation_utf8mb3_unicode_ci
@@ -1073,6 +1073,8 @@ var (
 		Collation_utf8mb4_ru_0900_as_cs:       CharacterSet_utf8mb4,
 		Collation_utf8mb4_zh_0900_as_cs:       CharacterSet_utf8mb4,
 		Collation_utf8mb4_0900_bin:            CharacterSet_utf8mb4,
+		Collation_utf8_general_ci:             CharacterSet_utf8,
+
 	}
 
 	characterSetDescriptions = map[CharacterSet]string{

@@ -1651,7 +1651,7 @@ var QueryTests = []QueryTest{
 			},
 			{
 				sql.Collation_utf8_general_ci.String(),
-				"utf8mb3",
+				"utf8",
 				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].ID,
 				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].IsDefault,
 				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].IsCompiled,
@@ -1678,7 +1678,7 @@ var QueryTests = []QueryTest{
 		[]sql.Row{
 			{
 				sql.Collation_utf8_general_ci.String(),
-				"utf8mb3",
+				"utf8",
 				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].ID,
 				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].IsDefault,
 				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].IsCompiled,
@@ -1714,7 +1714,7 @@ var QueryTests = []QueryTest{
 			},
 			{
 				sql.Collation_utf8_general_ci.String(),
-				"utf8mb3",
+				"utf8",
 				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].ID,
 				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].IsDefault,
 				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci].IsCompiled,
