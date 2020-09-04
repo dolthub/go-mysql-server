@@ -23,6 +23,7 @@ import (
 // for report to the client.
 func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	// TODO: update, delete
+	// TODO: handle inserts in triggers better
 	if insert, ok := n.(*plan.InsertInto); ok {
 		return plan.NewRowUpdateAccumulator(insert), nil
 	}

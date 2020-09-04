@@ -57,6 +57,8 @@ func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
 		return node, nil
 	case *ResolvedTable:
 		return getInsertableTable(node.Table)
+	case *prependNode:
+		return GetInsertable(node.Child)
 	default:
 		return nil, ErrInsertIntoNotSupported.New()
 	}
@@ -73,7 +75,7 @@ func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
 	}
 }
 
-func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, isReplace bool) (*insertIter, error) {
+func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, isReplace bool, row sql.Row) (*insertIter, error) {
 	dstSchema := table.Schema()
 
 	insertable, err := GetInsertable(table)
@@ -89,7 +91,7 @@ func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, isReplace 
 		inserter = insertable.(sql.InsertableTable).Inserter(ctx)
 	}
 
-	rowIter, err := values.RowIter(ctx, nil)
+	rowIter, err := values.RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +181,7 @@ func (i insertIter) Close() error {
 
 // RowIter implements the Node interface.
 func (p *InsertInto) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return newInsertIter(ctx, p.Left, p.Right, p.IsReplace)
+	return newInsertIter(ctx, p.Left, p.Right, p.IsReplace, row)
 }
 
 // WithChildren implements the Node interface.

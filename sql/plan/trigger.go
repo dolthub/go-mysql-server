@@ -54,6 +54,13 @@ func (t *TriggerExecutor) String() string {
 	return pr.String()
 }
 
+func (t *TriggerExecutor) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("TRIGGER(%s)", t.TriggerDefinition.CreateStatement)
+	_ = pr.WriteChildren(sql.DebugString(t.Left), sql.DebugString(t.Right))
+	return pr.String()
+}
+
 func (t *TriggerExecutor) Schema() sql.Schema {
 	return t.Left.Schema()
 }
