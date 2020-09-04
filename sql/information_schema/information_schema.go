@@ -504,11 +504,17 @@ func schemataRowIter(ctx *Context, c *Catalog) RowIter {
 func collationsRowIter(ctx *Context, c *Catalog) RowIter {
 	var rows []Row
 	for c := range CollationToMySQLIDs {
+		var isDefault string
+		if c == Collation_Default {
+			isDefault = "Yes"
+		} else {
+			isDefault = "No"
+		}
 		rows = append(rows, Row{
 			c.String(),
 			c.CharacterSet().String(),
 			c.ID(),
-			"Yes",
+			isDefault,
 			"Yes",
 			int64(1),
 			"PAD SPACE",

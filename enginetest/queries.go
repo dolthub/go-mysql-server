@@ -1639,7 +1639,11 @@ var QueryTests = []QueryTest{
 	},
 	{
 		`SHOW COLLATION`,
-		[]sql.Row{{"utf8mb4_0900_ai_ci", "utf8mb4", sql.Collation_Default.ID(), "Yes", "Yes", int64(1), "PAD SPACE"}},
+		[]sql.Row{
+			{sql.Collation_binary.String(), "binary", sql.CollationToMySQLIDs[sql.Collation_binary], "No", "Yes", 1, "PAD SPACE"},
+			{sql.Collation_utf8mb3_general_ci.String(), "utf8mb3", sql.CollationToMySQLIDs[sql.Collation_utf8mb3_general_ci], "No", "Yes", 1, "PAD SPACE"},
+			{sql.Collation_utf8mb4_0900_ai_ci.String(), "utf8mb4", sql.CollationToMySQLIDs[sql.Collation_utf8mb4_0900_ai_ci], "Yes", "Yes", int64(1), "PAD SPACE"},
+		},
 	},
 	{
 		`SHOW COLLATION LIKE 'foo'`,
@@ -1647,7 +1651,10 @@ var QueryTests = []QueryTest{
 	},
 	{
 		`SHOW COLLATION LIKE 'utf8%'`,
-		[]sql.Row{{"utf8mb4_0900_ai_ci", "utf8mb4", sql.Collation_Default.ID(), "Yes", "Yes", int64(1), "PAD SPACE"}},
+		[]sql.Row{
+			{sql.Collation_utf8mb3_general_ci.String(), "utf8mb3", sql.CollationToMySQLIDs[sql.Collation_utf8mb3_general_ci], "No", "Yes", 1, "PAD SPACE"},
+			{sql.Collation_utf8mb4_0900_ai_ci.String(), "utf8mb4", sql.CollationToMySQLIDs[sql.Collation_utf8mb4_0900_ai_ci], "Yes", "Yes", int64(1), "PAD SPACE"},
+		},
 	},
 	{
 		`SHOW COLLATION WHERE charset = 'foo'`,
@@ -1655,7 +1662,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		"SHOW COLLATION WHERE `Default` = 'Yes'",
-		[]sql.Row{{"utf8mb4_0900_ai_ci", "utf8mb4", sql.Collation_Default.ID(), "Yes", "Yes", int64(1), "PAD SPACE"}},
+		[]sql.Row{{sql.Collation_utf8mb4_0900_ai_ci.String(), "utf8mb4", sql.CollationToMySQLIDs[sql.Collation_utf8mb4_0900_ai_ci], "Yes", "Yes", int64(1), "PAD SPACE"}},
 	},
 	{
 		"ROLLBACK",
