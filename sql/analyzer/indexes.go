@@ -831,6 +831,11 @@ func containsColumns(e sql.Expression) bool {
 	sql.Inspect(e, func(e sql.Expression) bool {
 		if _, ok := e.(*expression.GetField); ok {
 			result = true
+			return false
+		}
+		if _, ok := e.(*triggerColumnRef); ok {
+			result = true
+			return false
 		}
 		return true
 	})

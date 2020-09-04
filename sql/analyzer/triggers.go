@@ -37,13 +37,17 @@ func (r *triggerColumnRef) Type() sql.Type {
 func resolveNewAndOldReferences(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	switch n.(type) {
 	case *plan.CreateTrigger:
-		return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+		// For create triggers, we just want to verify that the trigger is correctly defined before creating it. If it
+		// is, we replace the UnresolvedColumn expressions with placeholder expressions that say they are Resolved().
+		// TODO: validate columns better
+		// TODO: this might work badly for databases with tables named new and old. Needs tests.
+		return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
 			switch e := e.(type) {
+			case *expression.UnresolvedColumn:
+				if e.Table() == "new" || e.Table() == "old" {
+					return &triggerColumnRef{e}, nil
+				}
 			case *deferredColumn:
-				// For create triggers, we just want to verify that the trigger is correctly defined before creating it. If it
-				// is, we replace the UnresolvedColumn expressions with placeholder expressions that say they are Resolved().
-				// TODO: validate columns better (although mysql does not do this on trigger creation)
-				// TODO: this might work badly for databases with tables named new and old. Needs tests.
 				if e.Table() == "new" || e.Table() == "old" {
 					return &triggerColumnRef{e.UnresolvedColumn}, nil
 				}

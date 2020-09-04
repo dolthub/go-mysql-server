@@ -276,6 +276,10 @@ func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
 func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression, error) {
 	switch col := e.(type) {
 	case column:
+		if col.Resolved() {
+			return col, nil
+		}
+
 		// Skip this step for global and session variables
 		if isGlobalOrSessionColumn(col) {
 			return col, nil

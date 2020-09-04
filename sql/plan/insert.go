@@ -119,15 +119,25 @@ func (i insertIter) Next() (sql.Row, error) {
 		return nil, err
 	}
 
+	row, err = ProjectRow(i.ctx, i.projection, row)
+	if err != nil {
+		return nil, err
+	}
+
 	err = validateNullability(i.schema, row)
 	if err != nil {
 		_ = i.rowSource.Close()
 		return nil, err
 	}
 
-	row, err = ProjectRow(i.ctx, i.projection, row)
-	if err != nil {
-		return nil, err
+	// Do any necessary type conversions to the target schema
+	for i, col := range i.schema {
+		if row[i] != nil {
+			row[i], err = col.Type.Convert(row[i])
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	if i.replacer != nil {
