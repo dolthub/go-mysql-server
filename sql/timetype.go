@@ -18,18 +18,20 @@ var (
 
 	ErrConvertingToTimeType = errors.NewKind("value %v is not a valid Time")
 
-	timespanRegex               = regexp.MustCompile(`^-?(\d{1,3}):(\d{1,2})(:(\d{1,2})(\.(\d{1,9}))?)?$`)
-	timespanMinimum       int64 = -3020399000000
-	timespanMaximum       int64 = 3020399000000
-	microsecondsPerSecond int64 = 1000000
-	microsecondsPerMinute int64 = 60000000
-	microsecondsPerHour   int64 = 3600000000
+	timespanRegex                   = regexp.MustCompile(`^-?(\d{1,3}):(\d{1,2})(:(\d{1,2})(\.(\d{1,9}))?)?$`)
+	timespanMinimum           int64 = -3020399000000
+	timespanMaximum           int64 = 3020399000000
+	microsecondsPerSecond     int64 = 1000000
+	microsecondsPerMinute     int64 = 60000000
+	microsecondsPerHour       int64 = 3600000000
+	nanosecondsPerMicrosecond int64 = 1000
 )
 
 // Represents the TIME type.
 // https://dev.mysql.com/doc/refman/8.0/en/time.html
 type TimeType interface {
 	Type
+	ConvertToTimeDuration(v interface{}) (time.Duration, error)
 	//TODO: move this out of go-mysql-server and into the Dolt layer
 	Marshal(v interface{}) (int64, error)
 	Unmarshal(v int64) string
@@ -184,6 +186,14 @@ func (t timespanType) ConvertToTimespanImpl(v interface{}) (timespanImpl, error)
 	return timespanImpl{}, ErrConvertingToTimeType.New(v)
 }
 
+func (t timespanType) ConvertToTimeDuration(v interface{}) (time.Duration, error) {
+	val, err := t.ConvertToTimespanImpl(v)
+	if err != nil {
+		return time.Duration(0), err
+	}
+	return val.AsTimeDuration(), nil
+}
+
 // Promote implements the Type interface.
 func (t timespanType) Promote() Type {
 	return t
@@ -335,4 +345,8 @@ func (t timespanImpl) AsMicroseconds() int64 {
 		(int64(t.seconds) * microsecondsPerSecond) +
 		(int64(t.minutes) * microsecondsPerMinute) +
 		(int64(t.hours) * microsecondsPerHour))
+}
+
+func (t timespanImpl) AsTimeDuration() time.Duration {
+	return time.Duration(t.AsMicroseconds() * nanosecondsPerMicrosecond)
 }

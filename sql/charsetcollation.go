@@ -56,7 +56,7 @@ const (
 	CharacterSet_utf16    CharacterSet = "utf16"
 	CharacterSet_utf16le  CharacterSet = "utf16le"
 	CharacterSet_utf32    CharacterSet = "utf32"
-	CharacterSet_utf8                  = CharacterSet_utf8mb3
+	CharacterSet_utf8     CharacterSet = "utf8"
 	CharacterSet_utf8mb3  CharacterSet = "utf8mb3"
 	CharacterSet_utf8mb4  CharacterSet = "utf8mb4"
 
@@ -230,7 +230,7 @@ const (
 	Collation_utf32_croatian_ci           Collation = "utf32_croatian_ci"
 	Collation_utf32_unicode_520_ci        Collation = "utf32_unicode_520_ci"
 	Collation_utf32_vietnamese_ci         Collation = "utf32_vietnamese_ci"
-	Collation_utf8_general_ci                       = Collation_utf8mb3_general_ci
+	Collation_utf8_general_ci             Collation = "utf8"
 	Collation_utf8_tolower_ci                       = Collation_utf8mb3_tolower_ci
 	Collation_utf8_bin                              = Collation_utf8mb3_bin
 	Collation_utf8_unicode_ci                       = Collation_utf8mb3_unicode_ci
@@ -1073,6 +1073,8 @@ var (
 		Collation_utf8mb4_ru_0900_as_cs:       CharacterSet_utf8mb4,
 		Collation_utf8mb4_zh_0900_as_cs:       CharacterSet_utf8mb4,
 		Collation_utf8mb4_0900_bin:            CharacterSet_utf8mb4,
+		Collation_utf8_general_ci:             CharacterSet_utf8,
+
 	}
 
 	characterSetDescriptions = map[CharacterSet]string{
@@ -1166,6 +1168,27 @@ var (
 	ErrCharacterSetNotSupported = errors.NewKind("Unknown character set: %v")
 	ErrCollationNotSupported    = errors.NewKind("Unknown collation: %v")
 )
+
+const (
+	Y = "Yes"
+	N = "No"
+	NoPad = "NO PAD"
+	PadSpace = "PAD SPACE"
+)
+
+type mysqlCollationRow struct {
+	ID int64
+	IsDefault string
+	IsCompiled string
+	SortLen int64
+	PadSpace string
+}
+
+var CollationToMySQLVals = map[Collation]mysqlCollationRow{
+	Collation_binary: {63, Y, Y, 0, NoPad},
+	Collation_utf8_general_ci: {33, Y, Y, 1,PadSpace},
+	Collation_utf8mb4_0900_ai_ci: {255, Y, Y, 0, NoPad},
+}
 
 // ParseCharacterSet takes in a string representing a CharacterSet and
 // returns the result if a match is found, or an error if not.
@@ -1272,4 +1295,50 @@ func (c Collation) WorksWithCharacterSet(cs CharacterSet) bool {
 // String returns the string representation of the Collation.
 func (c Collation) String() string {
 	return string(c)
+}
+
+// ID returns the id of the Collation.
+func (c Collation) ID() int64 {
+	s, ok := CollationToMySQLVals[c]
+	if !ok {
+		s := CollationToMySQLVals[Collation_Default]
+		return s.ID
+	}
+	return s.ID
+}
+
+// IsDefault returns string specifying id collation is default.
+func (c Collation) IsDefault() string {
+	s, ok := CollationToMySQLVals[c]
+	if !ok {
+		return Y
+	}
+	return s.IsDefault
+}
+
+// IsCompiled returns string specifying id collation is compiled.
+func (c Collation) IsCompiled() string {
+	s, ok := CollationToMySQLVals[c]
+	if !ok {
+		return Y
+	}
+	return s.IsCompiled
+}
+
+// SortLen returns sort len of the collation.
+func (c Collation) SortLen() int64 {
+	s, ok := CollationToMySQLVals[c]
+	if !ok {
+		return 1
+	}
+	return s.SortLen
+}
+
+// PadSpace returns pad space of the collation.
+func (c Collation) PadSpace() string {
+	s, ok := CollationToMySQLVals[c]
+	if !ok {
+		return PadSpace
+	}
+	return s.PadSpace
 }

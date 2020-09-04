@@ -13,6 +13,15 @@ import (
 
 var ErrInvalidArgument = errors.NewKind("invalid argument to function %s. %s.")
 
+// ErrInvalidArgumentType is thrown when a function receives invalid argument types
+var ErrInvalidArgumentType = errors.NewKind("function '%s' received invalid argument types")
+
+// ErrTimeUnexpectedlyNil is thrown when a function encounters and unexpectedly nil time
+var ErrTimeUnexpectedlyNil = errors.NewKind("time in function '%s' unexpectedly nil")
+
+// ErrUnknownType is thrown when a function encounters and unknown type
+var ErrUnknownType = errors.NewKind("function '%s' encountered unknown type %T")
+
 func getDate(ctx *sql.Context,
 	u expression.UnaryExpression,
 	row sql.Row) (interface{}, error) {
@@ -687,6 +696,10 @@ func NewNow(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("TIMESTAMP", 1, len(args))
 	} else if len(args) == 1 {
+		argType := args[0].Type().Promote()
+		if argType != sql.Int64 && argType != sql.Uint64 {
+			return nil, sql.ErrInvalidType.New(args[0].Type().String())
+		}
 		val, err := args[0].Eval(sql.NewEmptyContext(), nil)
 		if err != nil {
 			return nil, err
@@ -698,6 +711,9 @@ func NewNow(args ...sql.Expression) (sql.Expression, error) {
 		}
 
 		n := int(precisionArg.(int32))
+		if n < 0 || n > 6 {
+			return nil, sql.ErrOutOfRange.New("precision", "now")
+		}
 		precision = &n
 	}
 
@@ -780,6 +796,81 @@ func (n *Now) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 // WithChildren implements the Expression interface.
 func (n *Now) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewNow(children...)
+}
+
+// UTCTimestamp is a function that returns the current time.
+type UTCTimestamp struct {
+	precision *int
+}
+
+var _ sql.FunctionExpression = (*UTCTimestamp)(nil)
+
+// NewUTCTimestamp returns a new UTCTimestamp node.
+func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
+	var precision *int
+	if len(args) > 1 {
+		return nil, sql.ErrInvalidArgumentNumber.New("UTC_TIMESTAMP", 1, len(args))
+	} else if len(args) == 1 {
+		argType := args[0].Type().Promote()
+		if argType != sql.Int64 && argType != sql.Uint64 {
+			return nil, sql.ErrInvalidType.New(args[0].Type().String())
+		}
+		val, err := args[0].Eval(sql.NewEmptyContext(), nil)
+		if err != nil {
+			return nil, err
+		}
+		precisionArg, err := sql.Int32.Convert(val)
+
+		if err != nil {
+			return nil, err
+		}
+
+		n := int(precisionArg.(int32))
+		if n < 0 || n > 6 {
+			return nil, sql.ErrOutOfRange.New("precision", "utc_timestamp")
+		}
+		precision = &n
+	}
+
+	return &UTCTimestamp{precision}, nil
+}
+
+func (ut *UTCTimestamp) FunctionName() string {
+	return "utc_timestamp"
+}
+
+// Type implements the sql.Expression interface.
+func (ut *UTCTimestamp) Type() sql.Type {
+	return sql.Datetime
+}
+
+func (ut *UTCTimestamp) String() string {
+	if ut.precision == nil {
+		return "UTC_TIMESTAMP()"
+	}
+
+	return fmt.Sprintf("UTC_TIMESTAMP(%d)", *ut.precision)
+}
+
+// IsNullable implements the sql.Expression interface.
+func (ut *UTCTimestamp) IsNullable() bool { return false }
+
+// Resolved implements the sql.Expression interface.
+func (ut *UTCTimestamp) Resolved() bool { return true }
+
+// Children implements the sql.Expression interface.
+func (ut *UTCTimestamp) Children() []sql.Expression { return nil }
+
+// Eval implements the sql.Expression interface.
+func (ut *UTCTimestamp) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	t := ctx.QueryTime()
+	// TODO: Now should return a string formatted depending on context.  This code handles string formatting
+	return t.UTC(), nil
+}
+
+// WithChildren implements the Expression interface.
+func (ut *UTCTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewUTCTimestamp(children...)
 }
 
 func currTimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
@@ -929,4 +1020,82 @@ func timeToSecFuncLogic(t time.Time) (interface{}, error) {
 func weekFuncLogic(t time.Time) (interface{}, error) {
 	_, wk := t.ISOWeek()
 	return wk, nil
+}
+
+// TimeDiff subtracts the second argument from the first expressed as a time value.
+type TimeDiff struct {
+	expression.BinaryExpression
+}
+
+var _ sql.FunctionExpression = (*TimeDiff)(nil)
+
+// NewTimeDiff creates a new NewTimeDiff expression.
+func NewTimeDiff(e1, e2 sql.Expression) sql.Expression {
+	return &TimeDiff{
+		expression.BinaryExpression{
+			Left:  e1,
+			Right: e2,
+		},
+	}
+}
+
+func (td *TimeDiff) FunctionName() string {
+	return "timediff"
+}
+
+// Type implements the Expression interface.
+func (td *TimeDiff) Type() sql.Type { return sql.Time }
+
+// IsNullable implements the Expression interface.
+func (td *TimeDiff) IsNullable() bool { return false }
+
+func (td *TimeDiff) String() string {
+	return fmt.Sprintf("TIMEDIFF(%s, %s)", td.Left, td.Right)
+}
+
+// WithChildren implements the Expression interface.
+func (td *TimeDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(td, len(children), 2)
+	}
+	return NewTimeDiff(children[0], children[1]), nil
+}
+
+// Eval implements the Expression interface.
+func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	left, err := td.Left.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := td.Right.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if left == nil || right == nil {
+		return nil, ErrTimeUnexpectedlyNil.New("TIMEDIFF")
+	}
+
+	if leftDatetimeInt, err := sql.Datetime.Convert(left); err == nil {
+		rightDatetimeInt, err := sql.Datetime.Convert(right)
+		if err != nil {
+			return nil, err
+		}
+		leftDatetime := leftDatetimeInt.(time.Time)
+		rightDatetime := rightDatetimeInt.(time.Time)
+		if leftDatetime.Location() != rightDatetime.Location() {
+			rightDatetime = rightDatetime.In(leftDatetime.Location())
+		}
+		return sql.Time.Convert(leftDatetime.Sub(rightDatetime))
+	} else if leftTime, err := sql.Time.ConvertToTimeDuration(left); err == nil {
+		rightTime, err := sql.Time.ConvertToTimeDuration(right)
+		if err != nil {
+			return nil, err
+		}
+		resTime := leftTime - rightTime
+		return sql.Time.Convert(resTime)
+	} else {
+		return nil, ErrInvalidArgumentType.New("timediff")
+	}
 }

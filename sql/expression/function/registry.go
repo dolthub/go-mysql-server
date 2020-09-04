@@ -120,6 +120,8 @@ var Defaults = []sql.Function{
 	sql.Function1{Name: "ucase", Fn: NewUpper},
 	NewUnaryFunc("unhex", sql.Text, UnhexFunc),
 	sql.FunctionN{Name: "unix_timestamp", Fn: NewUnixTimestamp},
+	sql.FunctionN{Name: "utc_timestamp", Fn: NewUTCTimestamp},
+	sql.Function2{Name: "timediff", Fn: NewTimeDiff},
 	sql.Function1{Name: "upper", Fn: NewUpper},
 	sql.NewFunction0("user", sql.LongText, userFuncLogic),
 	sql.FunctionN{Name: "week", Fn: NewWeek},

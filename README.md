@@ -160,12 +160,14 @@ examples on how to connect to go-mysql-server using them.
 |`SUBSTRING_INDEX(str, delim, count)` | Returns a substring after `count` appearances of `delim`. If `count` is negative, counts from the right side of the string. |
 |`SUM(expr)`| returns the sum of `expr` in all rows.|
 |`TAN(expr)`| returns the tangent of the expression given. |
+|`TIMEDIFF(expr1, expr2)`| returns expr1 − expr2 expressed as a time value. expr1 and expr2 are time or date-and-time expressions, but both must be of the same type.|
 |`TIMESTAMP(expr)`| returns a timestamp value for the expression given (e.g. the string '2020-01-02'). |
 |`TO_BASE64(str)`| encodes the string `str` in base64 format.|
 |`TRIM(str)`| returns the string `str` with all spaces removed.|
 |`UNIX_TIMESTAMP(expr?)`| returns the datetime argument to the number of seconds since the Unix epoch. With nor argument, returns the number of execonds since the Unix epoch for the current time. |
 |`UPPER(str)`| returns the string `str` with all characters in upper case.|
 |`USER()`| returns the current user name. |
+|`UTC_TIMESTAMP()`| returns the current UTC timestamp. |
 |`WEEKDAY(date)`| returns the weekday of the given `date`.|
 |`YEAR(date)`| returns the year of the given `date`.|
 |`YEARWEEK(date, mode)`| returns year and week for a date. The year in the result may be different from the year in the date argument for the first and the last week of the year.|
