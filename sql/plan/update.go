@@ -2,7 +2,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -15,13 +14,13 @@ var ErrUpdateUnexpectedSetResult = errors.NewKind("attempted to set field but ex
 
 // Update is a node for updating rows on tables.
 type Update struct {
-	sql.Node
+	UnaryNode
 	UpdateExprs []sql.Expression
 }
 
 // NewUpdate creates an Update node.
 func NewUpdate(n sql.Node, updateExprs []sql.Expression) *Update {
-	return &Update{n, updateExprs}
+	return &Update{UnaryNode{n}, updateExprs}
 }
 
 // Expressions implements the Expressioner interface.
@@ -29,14 +28,9 @@ func (p *Update) Expressions() []sql.Expression {
 	return p.UpdateExprs
 }
 
-// Schema implements the Node interface.
-func (p *Update) Schema() sql.Schema {
-	return sql.OkResultSchema
-}
-
 // Resolved implements the Resolvable interface.
 func (p *Update) Resolved() bool {
-	if !p.Node.Resolved() {
+	if !p.Child.Resolved() {
 		return false
 	}
 	for _, updateExpr := range p.UpdateExprs {
@@ -45,10 +39,6 @@ func (p *Update) Resolved() bool {
 		}
 	}
 	return true
-}
-
-func (p *Update) Children() []sql.Node {
-	return []sql.Node{p.Node}
 }
 
 func getUpdatable(node sql.Node) (sql.UpdatableTable, error) {
@@ -78,61 +68,6 @@ func getUpdatableTable(t sql.Table) (sql.UpdatableTable, error) {
 	}
 }
 
-// Execute inserts the rows in the database.
-func (p *Update) Execute(ctx *sql.Context) (int, int, error) {
-	updatable, err := getUpdatable(p.Node)
-	if err != nil {
-		return 0, 0, err
-	}
-	schema := p.Node.Schema()
-
-	iter, err := p.Node.RowIter(ctx, nil)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	updater := updatable.Updater(ctx)
-
-	rowsMatched := 0
-	rowsUpdated := 0
-	for {
-		oldRow, err := iter.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			_ = iter.Close()
-			return rowsMatched, rowsUpdated, err
-		}
-		rowsMatched++
-
-		newRow, err := p.applyUpdates(ctx, oldRow)
-		if err != nil {
-			_ = iter.Close()
-			return rowsMatched, rowsUpdated, err
-		}
-		if equals, err := oldRow.Equals(newRow, schema); err == nil {
-			if !equals {
-				err = updater.Update(ctx, oldRow, newRow)
-				if err != nil {
-					_ = iter.Close()
-					return rowsMatched, rowsUpdated, err
-				}
-				rowsUpdated++
-			}
-		} else {
-			_ = iter.Close()
-			return rowsMatched, rowsUpdated, err
-		}
-	}
-
-	if err := updater.Close(ctx); err != nil {
-		return 0, 0, err
-	}
-
-	return rowsMatched, rowsUpdated, nil
-}
-
 // UpdateInfo is the Info for OKResults returned by Update nodes.
 type UpdateInfo struct {
 	Matched, Updated, Warnings int
@@ -143,19 +78,86 @@ func (ui UpdateInfo) String() string {
 	return fmt.Sprintf("Rows matched: %d  Changed: %d  Warnings: %d", ui.Matched, ui.Updated, ui.Warnings)
 }
 
-// RowIter implements the Node interface.
-func (p *Update) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	matched, updated, err := p.Execute(ctx)
+type updateIter struct {
+	childIter   sql.RowIter
+	updateExprs []sql.Expression
+	schema sql.Schema
+	updater     sql.RowUpdater
+	ctx         *sql.Context
+}
+
+func (u *updateIter) Next() (sql.Row, error) {
+	oldRow, err := u.childIter.Next()
 	if err != nil {
 		return nil, err
 	}
 
-	info := UpdateInfo{matched, updated, 0}
-	return sql.RowsToRowIter(sql.NewRow(sql.OkResult{
-		RowsAffected: uint64(updated),
-		InsertID:     0,
-		Info:         info,
-	})), nil
+	// TODO: update rows matched, updated here
+	newRow, err := u.applyUpdates(oldRow)
+	if equals, err := oldRow.Equals(newRow, u.schema); err == nil {
+		if !equals {
+			err = u.updater.Update(u.ctx, oldRow, newRow)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		return nil, err
+	}
+
+	return newRow, nil
+}
+
+func (u *updateIter) applyUpdates(row sql.Row) (sql.Row, error) {
+	var ok bool
+	prev := row
+	for _, updateExpr := range u.updateExprs {
+		val, err := updateExpr.Eval(u.ctx, prev)
+		if err != nil {
+			return nil, err
+		}
+		prev, ok = val.(sql.Row)
+		if !ok {
+			return nil, ErrUpdateUnexpectedSetResult.New(val)
+		}
+	}
+	return prev, nil
+}
+
+
+func (u *updateIter) Close() error {
+	if err := u.updater.Close(u.ctx); err != nil {
+		return err
+	}
+	return u.childIter.Close()
+}
+
+func newUpdateIter(childIter sql.RowIter, updateExprs []sql.Expression, schema sql.Schema, updater sql.RowUpdater, ctx *sql.Context) *updateIter {
+	return &updateIter{
+		childIter:   childIter,
+		updateExprs: updateExprs,
+		updater:     updater,
+		schema:      schema,
+		ctx:         ctx,
+	}
+}
+
+// RowIter implements the Node interface.
+func (p *Update) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	updatable, err := getUpdatable(p.Child)
+	if err != nil {
+		return nil, err
+	}
+	schema := p.Child.Schema()
+
+	iter, err := p.Child.RowIter(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	updater := updatable.Updater(ctx)
+
+	return newUpdateIter(iter, p.UpdateExprs, schema, updater, ctx), nil
 }
 
 // WithChildren implements the Node interface.
@@ -171,13 +173,13 @@ func (p *Update) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
 	if len(newExprs) != len(p.UpdateExprs) {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(p.UpdateExprs), 1)
 	}
-	return NewUpdate(p.Node, newExprs), nil
+	return NewUpdate(p.Child, newExprs), nil
 }
 
 func (p Update) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Update")
-	_ = pr.WriteChildren(p.Node.String())
+	_ = pr.WriteChildren(p.Child.String())
 	var children []string
 	for _, updateExpr := range p.UpdateExprs {
 		children = append(children, updateExpr.String())
@@ -193,27 +195,11 @@ func (p Update) DebugString() string {
 		updateExprs = append(updateExprs, sql.DebugString(e))
 	}
 	_ = pr.WriteNode(fmt.Sprintf("Update(%s)", strings.Join(updateExprs, ",")))
-	_ = pr.WriteChildren(sql.DebugString(p.Node))
+	_ = pr.WriteChildren(sql.DebugString(p.Child))
 	var children []string
 	for _, updateExpr := range p.UpdateExprs {
 		children = append(children, sql.DebugString(updateExpr))
 	}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
-}
-
-func (p *Update) applyUpdates(ctx *sql.Context, row sql.Row) (sql.Row, error) {
-	var ok bool
-	prev := row
-	for _, updateExpr := range p.UpdateExprs {
-		val, err := updateExpr.Eval(ctx, prev)
-		if err != nil {
-			return nil, err
-		}
-		prev, ok = val.(sql.Row)
-		if !ok {
-			return nil, ErrUpdateUnexpectedSetResult.New(val)
-		}
-	}
-	return prev, nil
 }

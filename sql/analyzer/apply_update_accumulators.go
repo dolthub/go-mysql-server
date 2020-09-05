@@ -22,10 +22,9 @@ import (
 // applyUpdateAccumulators wraps any Insert, Update, or Delete nodes with RowUpdateAccumulators to tally the results
 // for report to the client.
 func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	// TODO: update
 	// TODO: handle inserts in triggers better
 	switch n := n.(type) {
-	case *plan.InsertInto, *plan.DeleteFrom:
+	case *plan.InsertInto, *plan.DeleteFrom, *plan.Update:
 			return plan.NewRowUpdateAccumulator(n), nil
 	default:
 		return n, nil
