@@ -92,13 +92,23 @@ type replaceRowHandler struct {
 	rowsAffected int
 }
 
-func (i *replaceRowHandler) handleRowUpdate(_ sql.Row) error {
-	i.rowsAffected++
+func (r *replaceRowHandler) handleRowUpdate(row sql.Row) error {
+	r.rowsAffected++
+
+	// If a row was deleted as well as inserted, increment the counter again. A row was deleted if at least one column in
+	// the first half of the row is non-null.
+	for i := 0; i < len(row) / 2; i++ {
+		if row[i] != nil {
+			r.rowsAffected++
+			break
+		}
+	}
+
 	return nil
 }
 
-func (i *replaceRowHandler) okResult() sql.OkResult {
-	return sql.NewOkResult(i.rowsAffected)
+func (r *replaceRowHandler) okResult() sql.OkResult {
+	return sql.NewOkResult(r.rowsAffected)
 }
 
 type updateRowHandler struct {

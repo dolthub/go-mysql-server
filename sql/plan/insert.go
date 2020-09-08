@@ -37,8 +37,13 @@ func NewInsertInto(dst, src sql.Node, isReplace bool, cols []string) *InsertInto
 	}
 }
 
-// Schema implements the Node interface.
+// Schema implements the sql.Node interface.
+// Insert nodes return rows that are inserted. Replaces return a concatenation of the deleted row and the inserted row.
+// If no row was deleted, the value of those columns is nil.
 func (p *InsertInto) Schema() sql.Schema {
+	if p.IsReplace {
+		return append(p.Left.Schema(), p.Left.Schema()...)
+	}
 	return p.Left.Schema()
 }
 
@@ -141,26 +146,30 @@ func (i insertIter) Next() (sql.Row, error) {
 	}
 
 	if i.replacer != nil {
+		toReturn := row.Append(row)
 		if err = i.replacer.Delete(i.ctx, row); err != nil {
 			if !sql.ErrDeleteRowNotFound.Is(err) {
 				_ = i.rowSource.Close()
 				return nil, err
 			}
+			// if the row was not found during deletion, write nils into the toReturn row
+			for i := range row {
+				toReturn[i] = nil
+			}
 		}
-		// TODO: row update count should go up here for the delete
 
 		if err = i.replacer.Insert(i.ctx, row); err != nil {
 			_ = i.rowSource.Close()
 			return nil, err
 		}
+		return toReturn, nil
 	} else {
 		if err := i.inserter.Insert(i.ctx, row); err != nil {
 			_ = i.rowSource.Close()
 			return nil, err
 		}
+		return row, nil
 	}
-
-	return row, nil
 }
 
 func (i insertIter) Close() error {

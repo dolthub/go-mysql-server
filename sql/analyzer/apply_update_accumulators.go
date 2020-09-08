@@ -25,6 +25,9 @@ func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 	// TODO: handle inserts in triggers better
 	switch n := n.(type) {
 	case *plan.InsertInto:
+		if n.IsReplace {
+			return plan.NewRowUpdateAccumulator(n, plan.UpdateTypeReplace), nil
+		}
 		return plan.NewRowUpdateAccumulator(n, plan.UpdateTypeInsert), nil
 	case *plan.DeleteFrom:
 		return plan.NewRowUpdateAccumulator(n, plan.UpdateTypeDelete), nil
