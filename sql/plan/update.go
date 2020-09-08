@@ -28,6 +28,11 @@ func (p *Update) Expressions() []sql.Expression {
 	return p.UpdateExprs
 }
 
+// Schema implements sql.Node. The schema of an update is a concatenation of the old and new rows.
+func (p *Update) Schema() sql.Schema {
+	return append(p.Child.Schema(), p.Child.Schema()...)
+}
+
 // Resolved implements the Resolvable interface.
 func (p *Update) Resolved() bool {
 	if !p.Child.Resolved() {
@@ -81,7 +86,7 @@ func (ui UpdateInfo) String() string {
 type updateIter struct {
 	childIter   sql.RowIter
 	updateExprs []sql.Expression
-	schema sql.Schema
+	schema      sql.Schema
 	updater     sql.RowUpdater
 	ctx         *sql.Context
 }
@@ -92,7 +97,6 @@ func (u *updateIter) Next() (sql.Row, error) {
 		return nil, err
 	}
 
-	// TODO: update rows matched, updated here
 	newRow, err := u.applyUpdates(oldRow)
 	if equals, err := oldRow.Equals(newRow, u.schema); err == nil {
 		if !equals {
@@ -105,7 +109,7 @@ func (u *updateIter) Next() (sql.Row, error) {
 		return nil, err
 	}
 
-	return newRow, nil
+	return oldRow.Append(newRow), nil
 }
 
 func (u *updateIter) applyUpdates(row sql.Row) (sql.Row, error) {

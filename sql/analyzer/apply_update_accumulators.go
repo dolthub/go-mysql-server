@@ -24,8 +24,12 @@ import (
 func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	// TODO: handle inserts in triggers better
 	switch n := n.(type) {
-	case *plan.InsertInto, *plan.DeleteFrom, *plan.Update:
-			return plan.NewRowUpdateAccumulator(n), nil
+	case *plan.InsertInto:
+		return plan.NewRowUpdateAccumulator(n, plan.UpdateTypeInsert), nil
+	case *plan.DeleteFrom:
+		return plan.NewRowUpdateAccumulator(n, plan.UpdateTypeDelete), nil
+	case *plan.Update:
+		return plan.NewRowUpdateAccumulator(n, plan.UpdateTypeUpdate), nil
 	default:
 		return n, nil
 	}

@@ -15,24 +15,36 @@
 package plan
 
 import (
+	"fmt"
 	"io"
 	"sync"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
+type RowUpdateType int
+
+const (
+	UpdateTypeInsert RowUpdateType = iota
+	UpdateTypeReplace
+	UpdateTypeUpdate
+	UpdateTypeDelete
+)
+
 // RowUpdateAccumulator wraps other nodes that update tables, and returns their results as OKResults with the appropriate
 // fields set.
 type RowUpdateAccumulator struct {
 	UnaryNode
+	RowUpdateType
 }
 
 // NewRowUpdateResult returns a new RowUpdateResult with the given node to wrap.
-func NewRowUpdateAccumulator(n sql.Node) *RowUpdateAccumulator {
+func NewRowUpdateAccumulator(n sql.Node, updateType RowUpdateType) *RowUpdateAccumulator {
 	return &RowUpdateAccumulator{
 		UnaryNode: UnaryNode{
 			Child: n,
 		},
+		RowUpdateType: updateType,
 	}
 }
 
@@ -44,7 +56,7 @@ func (r RowUpdateAccumulator) WithChildren(children ...sql.Node) (sql.Node, erro
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, 1, len(children))
 	}
-	return NewRowUpdateAccumulator(children[0]), nil
+	return NewRowUpdateAccumulator(children[0], r.RowUpdateType), nil
 }
 
 func (r RowUpdateAccumulator) String() string {
@@ -58,9 +70,85 @@ func (r RowUpdateAccumulator) DebugString() string {
 	return pr.String()
 }
 
+type accumulatorRowHandler interface {
+	handleRowUpdate(row sql.Row) error
+	okResult()sql.OkResult
+}
+
+type insertRowHandler struct {
+	rowsAffected int
+}
+
+func (i *insertRowHandler) handleRowUpdate(_ sql.Row) error {
+	i.rowsAffected++
+	return nil
+}
+
+func (i *insertRowHandler) okResult() sql.OkResult {
+	return sql.NewOkResult(i.rowsAffected)
+}
+
+type replaceRowHandler struct {
+	rowsAffected int
+}
+
+func (i *replaceRowHandler) handleRowUpdate(_ sql.Row) error {
+	i.rowsAffected++
+	return nil
+}
+
+func (i *replaceRowHandler) okResult() sql.OkResult {
+	return sql.NewOkResult(i.rowsAffected)
+}
+
+type updateRowHandler struct {
+	rowsMatched int
+	rowsAffected int
+	schema sql.Schema
+}
+
+func (u *updateRowHandler) handleRowUpdate(row sql.Row) error {
+	u.rowsMatched++
+	oldRow := row[:len(row)/2]
+	newRow := row[len(row)/2:]
+	if equals, err := oldRow.Equals(newRow, u.schema); err == nil {
+		if !equals {
+			u.rowsAffected++
+		}
+	} else {
+		return err
+	}
+	return nil
+}
+
+func (u *updateRowHandler) okResult() sql.OkResult {
+	return sql.OkResult{
+		RowsAffected: uint64(u.rowsAffected),
+		Info:         UpdateInfo{
+			Matched:  u.rowsMatched,
+			Updated:  u.rowsAffected,
+			Warnings: 0,
+		},
+	}
+}
+
+type deleteRowHandler struct {
+	rowsAffected int
+}
+
+func (u *deleteRowHandler) handleRowUpdate(row sql.Row) error {
+	u.rowsAffected++
+	return nil
+}
+
+func (u *deleteRowHandler) okResult() sql.OkResult {
+	return sql.NewOkResult(u.rowsAffected)
+}
+
 type accumulatorIter struct {
-	iter sql.RowIter
-	once sync.Once
+	iter             sql.RowIter
+	once             sync.Once
+	updateRowHandler accumulatorRowHandler
 }
 
 func (a *accumulatorIter) Next() (sql.Row, error) {
@@ -73,18 +161,20 @@ func (a *accumulatorIter) Next() (sql.Row, error) {
 		return nil, io.EOF
 	}
 
-	var rowsAffected int
 	for {
-		_, err := a.iter.Next()
+		row, err := a.iter.Next()
 		if err == io.EOF {
-			return sql.NewRow(sql.NewOkResult(rowsAffected)), nil
+			return sql.NewRow(a.updateRowHandler.okResult()), nil
 		}
 
 		if err != nil {
 			return nil, err
 		}
 
-		rowsAffected += 1 // TODO: sometimes this is greater than 1
+		err = a.updateRowHandler.handleRowUpdate(row)
+		if err != nil {
+			return nil, err
+		}
 	}
 }
 
@@ -98,5 +188,25 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 		return nil, err
 	}
 
-	return &accumulatorIter{iter: rowIter}, nil
+	var rowHandler accumulatorRowHandler
+	switch r.RowUpdateType {
+	case UpdateTypeInsert:
+		rowHandler = &insertRowHandler{}
+	case UpdateTypeReplace:
+		rowHandler = &replaceRowHandler{}
+	case UpdateTypeUpdate:
+		schema := r.Child.Schema()
+		// the schema of the update node is a self-concatenation of the underlying table's, so split it in half for new /
+		// old row comparison purposes
+		rowHandler = &updateRowHandler{schema: schema[:len(schema)/2]}
+	case UpdateTypeDelete:
+		rowHandler = &deleteRowHandler{}
+	default:
+		panic(fmt.Sprintf("Unrecognized RowUpdateType %d", r.RowUpdateType))
+	}
+
+	return &accumulatorIter{
+		iter:             rowIter,
+		updateRowHandler: rowHandler,
+	}, nil
 }
