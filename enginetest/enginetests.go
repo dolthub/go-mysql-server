@@ -2147,7 +2147,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 				"  `v1y` bigint,\n" +
 				"  `v2` bigint DEFAULT (v1y + 1),\n" +
 				"  PRIMARY KEY (`pk`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",}},
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
 		)
 	})
 
