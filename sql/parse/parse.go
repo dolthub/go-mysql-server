@@ -844,8 +844,9 @@ func convertDropView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 }
 
 func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
-	if len(i.OnDup) > 0 {
-		return nil, ErrUnsupportedFeature.New("ON DUPLICATE KEY")
+	onDupExprs, err := updateExprsToExpressions(ctx, sqlparser.UpdateExprs(i.OnDup))
+	if err != nil {
+		return nil, err
 	}
 
 	if len(i.Ignore) > 0 {
@@ -864,6 +865,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 		src,
 		isReplace,
 		columnsToStrings(i.Columns),
+		onDupExprs,
 	), nil
 }
 

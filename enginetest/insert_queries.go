@@ -233,6 +233,18 @@ var InsertQueries = []WriteQueryTest{
 			{int64(14), "third row new"},
 		},
 	},
+	{
+		"INSERT INTO mytable (i,s) values (1, 'hello') ON DUPLICATE KEY UPDATE s='hello'",
+		[]sql.Row{{sql.NewOkResult(2)}},
+		"SELECT * FROM mytable WHERE i = 1",
+		[]sql.Row{{int64(1), "hello"}},
+	},
+	{
+		"INSERT INTO mytable (i,s) values (10, 'hello') ON DUPLICATE KEY UPDATE s='hello'",
+		[]sql.Row{{sql.NewOkResult(1)}},
+		"SELECT * FROM mytable WHERE i = 10",
+		[]sql.Row{{int64(10), "hello"}},
+	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{

@@ -26,14 +26,16 @@ type InsertInto struct {
 	BinaryNode
 	ColumnNames []string
 	IsReplace   bool
+	OnDupExprs  []sql.Expression
 }
 
 // NewInsertInto creates an InsertInto node.
-func NewInsertInto(dst, src sql.Node, isReplace bool, cols []string) *InsertInto {
+func NewInsertInto(dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression) *InsertInto {
 	return &InsertInto{
 		BinaryNode:  BinaryNode{Left: dst, Right: src},
 		ColumnNames: cols,
 		IsReplace:   isReplace,
+		OnDupExprs:  onDupExprs,
 	}
 }
 
@@ -186,8 +188,35 @@ func (p *InsertInto) Execute(ctx *sql.Context) (int, error) {
 			}
 		} else {
 			if err := inserter.Insert(ctx, row); err != nil {
-				_ = iter.Close()
-				return i, err
+				if !sql.ErrUniqueKeyViolation.Is(err) || len(p.OnDupExprs) <= 0 {
+					_ = iter.Close()
+					return i, err
+				}
+
+				// ON DUPLICATE KEY UPDATE ...
+				// build expression for filtering the update node
+				var pkExpression sql.Expression
+				for i, colName := range p.ColumnNames {
+					for index, col := range p.Left.Schema() {
+						if col.Name == colName && col.PrimaryKey {
+							if v, ok := p.Right.(*Values); ok {
+								value := v.Expressions()[i]
+								exp := expression.NewEquals(expression.NewGetField(index, col.Type, col.Name, col.Nullable), value)
+								if pkExpression != nil {
+									pkExpression = expression.NewAnd(pkExpression, exp)
+								} else {
+									pkExpression = exp
+								}
+							}
+						}
+					}
+				}
+
+				update := NewUpdate(NewFilter(pkExpression, p.Left), p.OnDupExprs)
+				_, i, err = update.Execute(ctx)
+				if err != nil {
+					return i, err
+				}
 			}
 		}
 		i++
@@ -243,7 +272,7 @@ func (p *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 2)
 	}
 
-	return NewInsertInto(children[0], children[1], p.IsReplace, p.ColumnNames), nil
+	return NewInsertInto(children[0], children[1], p.IsReplace, p.ColumnNames, p.OnDupExprs), nil
 }
 
 func (p InsertInto) String() string {
@@ -340,4 +369,45 @@ func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) erro
 		}
 	}
 	return nil
+}
+
+func (p *InsertInto) applyUpdates(ctx *sql.Context, row sql.Row) (sql.Row, error) {
+	var ok bool
+	prev := row
+	for _, updateExpr := range p.OnDupExprs {
+		val, err := updateExpr.Eval(ctx, prev)
+		if err != nil {
+			return nil, err
+		}
+		prev, ok = val.(sql.Row)
+		if !ok {
+			return nil, ErrUpdateUnexpectedSetResult.New(val)
+		}
+	}
+	return prev, nil
+}
+
+func (p *InsertInto) Expressions() []sql.Expression {
+	return p.OnDupExprs
+}
+
+func (p *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
+	if len(newExprs) != len(p.OnDupExprs) {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(p.OnDupExprs), 1)
+	}
+
+	return NewInsertInto(p.Left, p.Right, p.IsReplace, p.ColumnNames, newExprs), nil
+}
+
+// Resolved implements the Resolvable interface.
+func (p *InsertInto) Resolved() bool {
+	if !p.Left.Resolved() {
+		return false
+	}
+	for _, updateExpr := range p.OnDupExprs {
+		if !updateExpr.Resolved() {
+			return false
+		}
+	}
+	return true
 }
