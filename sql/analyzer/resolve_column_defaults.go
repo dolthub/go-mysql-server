@@ -444,6 +444,17 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 					return nil, sql.ErrInvalidTextBlobColumnDefault.New()
 				}
 				var err error
+				newDefault.Expression, err = expression.TransformUp(newDefault.Expression, func(e sql.Expression) (sql.Expression, error) {
+					if expr, ok := e.(*expression.GetField); ok {
+						// Default values can only reference their host table, so we can remove the table name, removing
+						// the necessity to update default values on table renames.
+						return expr.WithTable(""), nil
+					}
+					return e, nil
+				})
+				if err != nil {
+					return nil, err
+				}
 				sql.Inspect(newDefault.Expression, func(e sql.Expression) bool {
 					switch expr := e.(type) {
 					case sql.FunctionExpression:

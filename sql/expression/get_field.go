@@ -51,6 +51,13 @@ func (p *GetField) WithTable(table string) *GetField {
 	return &p2
 }
 
+// WithName returns a copy of this expression with the field name given.
+func (p *GetField) WithName(name string) *GetField {
+	p2 := *p
+	p2.name = name
+	return &p2
+}
+
 // Resolved implements the Expression interface.
 func (p *GetField) Resolved() bool {
 	return true
