@@ -1010,6 +1010,7 @@ var fixtures = map[string]sql.Node{
 		}}),
 		false,
 		[]string{"col1", "col2"},
+		[]sql.Expression{},
 	),
 	`REPLACE INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
 		plan.NewUnresolvedTable("t1", ""),
@@ -1019,6 +1020,7 @@ var fixtures = map[string]sql.Node{
 		}}),
 		true,
 		[]string{"col1", "col2"},
+		[]sql.Expression{},
 	),
 	`SHOW TABLES`:                           plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
 	`SHOW FULL TABLES`:                      plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
@@ -2151,6 +2153,7 @@ var fixtures = map[string]sql.Node{
 					),
 					false,
 					[]string{"a", "b"},
+					[]sql.Expression{},
 				),
 			},
 		), "",
