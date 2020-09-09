@@ -233,6 +233,41 @@ var InsertQueries = []WriteQueryTest{
 			{int64(14), "third row new"},
 		},
 	},
+	{
+		"INSERT INTO mytable (i,s) values (1, 'hello') ON DUPLICATE KEY UPDATE s='hello'",
+		[]sql.Row{{sql.NewOkResult(2)}},
+		"SELECT * FROM mytable WHERE i = 1",
+		[]sql.Row{{int64(1), "hello"}},
+	},
+	{
+		"INSERT INTO mytable (i,s) values (1, 'hello2') ON DUPLICATE KEY UPDATE s='hello3'",
+		[]sql.Row{{sql.NewOkResult(2)}},
+		"SELECT * FROM mytable WHERE i = 1",
+		[]sql.Row{{int64(1), "hello3"}},
+	},
+	{
+		"INSERT INTO mytable (i,s) values (1, 'hello') ON DUPLICATE KEY UPDATE i=10",
+		[]sql.Row{{sql.NewOkResult(2)}},
+		"SELECT * FROM mytable WHERE i = 10",
+		[]sql.Row{{int64(10), "first row"}},
+	},
+	{
+		"INSERT INTO mytable (i,s) values (1, 'hello2') ON DUPLICATE KEY UPDATE s='hello3'",
+		[]sql.Row{{sql.NewOkResult(2)}},
+		"SELECT * FROM mytable WHERE i = 1",
+		[]sql.Row{{int64(1), "hello3"}},
+	},
+	{
+		"INSERT INTO mytable (i,s) values (10, 'hello') ON DUPLICATE KEY UPDATE s='hello'",
+		[]sql.Row{{sql.NewOkResult(1)}},
+		"SELECT * FROM mytable ORDER BY 1",
+		[]sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{10, "hello"},
+		},
+	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{
