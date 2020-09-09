@@ -208,7 +208,7 @@ func (p *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &np, nil
 }
 
-// WithColumsn returns a copy of this node with the given column expressions applied.
+// WithColumns returns a copy of this node with the given column expressions applied.
 // TODO: replace with sql.Expressioner?
 func (p *InsertInto) WithColumns(columns []sql.Expression) (sql.Node, error) {
 	np := *p

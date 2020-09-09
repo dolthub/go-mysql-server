@@ -75,10 +75,10 @@ func (d *deleteIter) Next() (sql.Row, error) {
 		return nil, err
 	}
 
-	// Reduce the row to the length of the schema. The length can differ when the some update values come from an outer
+	// Reduce the row to the length of the schema. The length can differ when some update values come from an outer
 	// scope, which will be the first N values in the row.
 	// TODO: handle this in the analyzer instead?
-	if len(d.schema) != len(row) {
+	if len(d.schema) < len(row) {
 		row = row[len(row)-len(d.schema):]
 	}
 

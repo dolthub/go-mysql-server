@@ -99,10 +99,10 @@ func (u *updateIter) Next() (sql.Row, error) {
 
 	newRow, err := u.applyUpdates(oldRow)
 
-	// Reduce the row to the length of the schema. The length can differ when the some update values come from an outer
+	// Reduce the row to the length of the schema. The length can differ when some update values come from an outer
 	// scope, which will be the first N values in the row.
 	// TODO: handle this in the analyzer instead?
-	if len(u.schema) != len(newRow) {
+	if len(u.schema) < len(newRow) {
 		newRow = newRow[len(newRow)-len(u.schema):]
 		oldRow = oldRow[len(oldRow)-len(u.schema):]
 	}
