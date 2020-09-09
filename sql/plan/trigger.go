@@ -15,16 +15,17 @@
 package plan
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"io"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 type TriggerEvent string
 
 const (
 	InsertTrigger TriggerEvent = "insert"
-	UpdateTrigger = "update"
-	DeleteTrigger = "delete"
+	UpdateTrigger              = "update"
+	DeleteTrigger              = "delete"
 )
 
 // TriggerExecutor is node that wraps, or is wrapped by, an INSERT, UPDATE, or DELETE node to execute defined trigger
@@ -74,9 +75,9 @@ func (t *TriggerExecutor) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 type triggerIter struct {
-	child sql.RowIter
+	child          sql.RowIter
 	executionLogic sql.Node
-	ctx *sql.Context
+	ctx            *sql.Context
 }
 
 func (t *triggerIter) Next() (row sql.Row, returnErr error) {

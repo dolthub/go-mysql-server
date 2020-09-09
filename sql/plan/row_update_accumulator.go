@@ -72,7 +72,7 @@ func (r RowUpdateAccumulator) DebugString() string {
 
 type accumulatorRowHandler interface {
 	handleRowUpdate(row sql.Row) error
-	okResult()sql.OkResult
+	okResult() sql.OkResult
 }
 
 type insertRowHandler struct {
@@ -97,7 +97,7 @@ func (r *replaceRowHandler) handleRowUpdate(row sql.Row) error {
 
 	// If a row was deleted as well as inserted, increment the counter again. A row was deleted if at least one column in
 	// the first half of the row is non-null.
-	for i := 0; i < len(row) / 2; i++ {
+	for i := 0; i < len(row)/2; i++ {
 		if row[i] != nil {
 			r.rowsAffected++
 			break
@@ -112,9 +112,9 @@ func (r *replaceRowHandler) okResult() sql.OkResult {
 }
 
 type updateRowHandler struct {
-	rowsMatched int
+	rowsMatched  int
 	rowsAffected int
-	schema sql.Schema
+	schema       sql.Schema
 }
 
 func (u *updateRowHandler) handleRowUpdate(row sql.Row) error {
@@ -134,7 +134,7 @@ func (u *updateRowHandler) handleRowUpdate(row sql.Row) error {
 func (u *updateRowHandler) okResult() sql.OkResult {
 	return sql.OkResult{
 		RowsAffected: uint64(u.rowsAffected),
-		Info:         UpdateInfo{
+		Info: UpdateInfo{
 			Matched:  u.rowsMatched,
 			Updated:  u.rowsAffected,
 			Warnings: 0,

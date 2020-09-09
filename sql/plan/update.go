@@ -137,7 +137,6 @@ func (u *updateIter) applyUpdates(row sql.Row) (sql.Row, error) {
 	return prev, nil
 }
 
-
 func (u *updateIter) Close() error {
 	if err := u.updater.Close(u.ctx); err != nil {
 		return err
