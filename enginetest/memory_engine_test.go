@@ -103,17 +103,18 @@ func TestSingleQuery(t *testing.T) {
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
 	var test enginetest.ScriptTest
-	test = enginetest.ScriptTest{
-		Name: "trigger after insert, insert into other table",
+	test = enginetest.ScriptTest	{
+		Name: "trigger after insert, update other table",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
 			"create table b (y int primary key)",
-			"create trigger insert_into_b after insert on a for each row insert into b values (new.x + 1)",
+			"insert into b values (0), (2), (4), (6), (8)",
+			"create trigger insert_into_b after insert on a for each row update b set y = new.x where y = new.x + 1",
 			"insert into a values (1), (3), (5)",
 		},
 		Query: "select y from b order by 1",
 		Expected: []sql.Row{
-			{2}, {4}, {6},
+			{0}, {1}, {3}, {5}, {8},
 		},
 	}
 

@@ -92,7 +92,10 @@ func (t *triggerIter) Next() (row sql.Row, returnErr error) {
 		return nil, err
 	}
 
-	logicIter, err := logic.RowIter(t.ctx, childRow)
+	// We can't use the same context for trigger logic execution, because it will cause the entire outer context to get
+	// canceled once the iterator finishes. Instead, we use a new empty context for each loop iteration.
+	subCtx := sql.NewEmptyContext()
+	logicIter, err := logic.RowIter(subCtx, childRow)
 	if err != nil {
 		return nil, err
 	}
