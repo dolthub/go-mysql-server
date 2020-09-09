@@ -2129,18 +2129,15 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 			"CREATE TABLE t29(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (v1 + 1))",
 			[]sql.Row(nil),
 		)
-		_, _, err = e.Query(NewContext(harness), "INSERT INTO t29 (pk, v1) VALUES (1, 2)")
-		require.NoError(err)
-		_, _, err = e.Query(NewContext(harness), "ALTER TABLE t29 RENAME COLUMN v1 to v1x")
-		require.NoError(err)
-		_, _, err = e.Query(NewContext(harness), "INSERT INTO t29 (pk, v1x) VALUES (2, 3)")
-		require.NoError(err)
-		_, _, err = e.Query(NewContext(harness), "ALTER TABLE t29 CHANGE COLUMN v1x v1y BIGINT")
-		require.NoError(err)
-		_, _, err = e.Query(NewContext(harness), "INSERT INTO t29 (pk, v1y) VALUES (3, 4)")
-		require.NoError(err)
+
+		RunQuery(t, e, harness, "INSERT INTO t29 (pk, v1) VALUES (1, 2)")
+		RunQuery(t, e, harness, "ALTER TABLE t29 RENAME COLUMN v1 to v1x")
+		RunQuery(t, e, harness, "INSERT INTO t29 (pk, v1x) VALUES (2, 3)")
+		RunQuery(t, e, harness, "ALTER TABLE t29 CHANGE COLUMN v1x v1y BIGINT")
+		RunQuery(t, e, harness, "INSERT INTO t29 (pk, v1y) VALUES (3, 4)")
+
 		TestQuery(t, harness, e,
-			"SELECT * FROM t29",
+			"SELECT * FROM t29 ORDER BY 1",
 			[]sql.Row{{1, 2, 3}, {2, 3, 4}, {3, 4, 5}},
 		)
 		TestQuery(t, harness, e,
