@@ -59,11 +59,12 @@ func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 	deleter := deletable.Deleter(ctx)
 
-	return newDeleteIter(iter, deleter, ctx), nil
+	return newDeleteIter(iter, deleter, deletable.Schema(), ctx), nil
 }
 
 type deleteIter struct {
 	deleter   sql.RowDeleter
+	schema    sql.Schema
 	childIter sql.RowIter
 	ctx       *sql.Context
 }
@@ -72,6 +73,13 @@ func (d *deleteIter) Next() (sql.Row, error) {
 	row, err := d.childIter.Next()
 	if err != nil {
 		return nil, err
+	}
+
+	// Reduce the row to the length of the schema. The length can differ when the some update values come from an outer
+	// scope, which will be the first N values in the row.
+	// TODO: handle this in the analyzer instead?
+	if len(d.schema) != len(row) {
+		row = row[len(row)-len(d.schema):]
 	}
 
 	return row, d.deleter.Delete(d.ctx, row)
@@ -84,8 +92,8 @@ func (d *deleteIter) Close() error {
 	return d.childIter.Close()
 }
 
-func newDeleteIter(childIter sql.RowIter, deleter sql.RowDeleter, ctx *sql.Context) *deleteIter {
-	return &deleteIter{deleter: deleter, childIter: childIter, ctx: ctx}
+func newDeleteIter(childIter sql.RowIter, deleter sql.RowDeleter, schema sql.Schema, ctx *sql.Context) *deleteIter {
+	return &deleteIter{deleter: deleter, childIter: childIter, schema: schema, ctx: ctx}
 }
 
 // WithChildren implements the Node interface.

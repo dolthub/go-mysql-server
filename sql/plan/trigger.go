@@ -102,7 +102,7 @@ func (t *triggerIter) Next() (row sql.Row, returnErr error) {
 
 	defer func() {
 		err := logicIter.Close()
-		if returnErr != nil {
+		if returnErr == nil {
 			returnErr = err
 		}
 	}()
