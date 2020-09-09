@@ -260,8 +260,13 @@ var InsertQueries = []WriteQueryTest{
 	{
 		"INSERT INTO mytable (i,s) values (10, 'hello') ON DUPLICATE KEY UPDATE s='hello'",
 		[]sql.Row{{sql.NewOkResult(1)}},
-		"SELECT * FROM mytable WHERE i = 10",
-		[]sql.Row{{int64(10), "hello"}},
+		"SELECT * FROM mytable ORDER BY 1",
+		[]sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{10, "hello"},
+		},
 	},
 }
 

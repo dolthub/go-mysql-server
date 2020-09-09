@@ -371,22 +371,6 @@ func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) erro
 	return nil
 }
 
-func (p *InsertInto) applyUpdates(ctx *sql.Context, row sql.Row) (sql.Row, error) {
-	var ok bool
-	prev := row
-	for _, updateExpr := range p.OnDupExprs {
-		val, err := updateExpr.Eval(ctx, prev)
-		if err != nil {
-			return nil, err
-		}
-		prev, ok = val.(sql.Row)
-		if !ok {
-			return nil, ErrUpdateUnexpectedSetResult.New(val)
-		}
-	}
-	return prev, nil
-}
-
 func (p *InsertInto) Expressions() []sql.Expression {
 	return p.OnDupExprs
 }
