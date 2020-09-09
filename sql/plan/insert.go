@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"io"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 // ErrInsertIntoNotSupported is thrown when a table doesn't support inserts
 var ErrInsertIntoNotSupported = errors.NewKind("table doesn't support INSERT INTO")
 var ErrReplaceIntoNotSupported = errors.NewKind("table doesn't support REPLACE INTO")
+var ErrOnDuplicateKeyUpdateNotSupported = errors.NewKind("table doesn't support ON DUPLICATE KEY UPDATE")
 var ErrInsertIntoMismatchValueCount = errors.NewKind("number of values does not match number of columns provided")
 var ErrInsertIntoUnsupportedValues = errors.NewKind("%T is unsupported for inserts")
 var ErrInsertIntoDuplicateColumn = errors.NewKind("duplicate column name %v")
@@ -50,12 +52,15 @@ func (p *InsertInto) Schema() sql.Schema {
 }
 
 type insertIter struct {
-	schema     sql.Schema
-	inserter   sql.RowInserter
-	replacer   sql.RowReplacer
-	rowSource  sql.RowIter
-	ctx        *sql.Context
-	projection []sql.Expression
+	schema      sql.Schema
+	inserter    sql.RowInserter
+	replacer    sql.RowReplacer
+	updater     sql.RowUpdater
+	rowSource   sql.RowIter
+	ctx         *sql.Context
+	projection  []sql.Expression
+	updateExprs []sql.Expression
+	tableNode   sql.Node
 }
 
 func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
@@ -84,7 +89,15 @@ func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
 	}
 }
 
-func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, isReplace bool, columns []sql.Expression, row sql.Row) (*insertIter, error) {
+func newInsertIter(
+		ctx *sql.Context,
+		table sql.Node,
+		values sql.Node,
+		isReplace bool,
+		onDupUpdateExpr []sql.Expression,
+		columns []sql.Expression,
+		row sql.Row,
+) (*insertIter, error) {
 	dstSchema := table.Schema()
 
 	insertable, err := GetInsertable(table)
@@ -94,10 +107,15 @@ func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, isReplace 
 
 	var inserter sql.RowInserter
 	var replacer sql.RowReplacer
+	var updater sql.RowUpdater
+	// These type casts have already been asserted in the analyzer
 	if isReplace {
 		replacer = insertable.(sql.ReplaceableTable).Replacer(ctx)
 	} else {
-		inserter = insertable.(sql.InsertableTable).Inserter(ctx)
+		inserter = insertable.Inserter(ctx)
+		if len(onDupUpdateExpr) > 0 {
+			updater = insertable.(sql.UpdatableTable).Updater(ctx)
+		}
 	}
 
 	rowIter, err := values.RowIter(ctx, row)
@@ -106,16 +124,19 @@ func newInsertIter(ctx *sql.Context, table sql.Node, values sql.Node, isReplace 
 	}
 
 	return &insertIter{
-		schema:     dstSchema,
-		inserter:   inserter,
-		replacer:   replacer,
-		rowSource:  rowIter,
-		projection: columns,
-		ctx:        ctx,
+		schema:      dstSchema,
+		tableNode:   table,
+		inserter:    inserter,
+		replacer:    replacer,
+		updater:     updater,
+		rowSource:   rowIter,
+		projection:  columns,
+		updateExprs: onDupUpdateExpr,
+		ctx:         ctx,
 	}, nil
 }
 
-func (i insertIter) Next() (sql.Row, error) {
+func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 	row, err := i.rowSource.Next()
 	if err == io.EOF {
 		return nil, err
@@ -167,40 +188,62 @@ func (i insertIter) Next() (sql.Row, error) {
 		return toReturn, nil
 	} else {
 		if err := i.inserter.Insert(i.ctx, row); err != nil {
-			// if !sql.ErrUniqueKeyViolation.Is(err) || len(p.OnDupExprs) <= 0 {
+			if !sql.ErrUniqueKeyViolation.Is(err) || i.updateExprs == nil {
 				_ = i.rowSource.Close()
 				return nil, err
-			// }
+			}
 
-			// TODO: fix this
-			// ON DUPLICATE KEY UPDATE ...
-			// build expression for filtering the update node
-			// var pkExpression sql.Expression
-			// for i, colName := range p.ColumnNames {
-			// 	for index, col := range p.Left.Schema() {
-			// 		if col.Name == colName && col.PrimaryKey {
-			// 			if v, ok := p.Right.(*Values); ok {
-			// 				value := v.Expressions()[i]
-			// 				exp := expression.NewEquals(expression.NewGetField(index, col.Type, col.Name, col.Nullable), value)
-			// 				if pkExpression != nil {
-			// 					pkExpression = expression.NewAnd(pkExpression, exp)
-			// 				} else {
-			// 					pkExpression = exp
-			// 				}
-			// 			}
-			// 		}
-			// 	}
-			// }
-			//
-			// update := NewUpdate(NewFilter(pkExpression, p.Left), p.OnDupExprs)
-			// _, i, err = update.Execute(ctx)
-			// if err != nil {
-			// 	return i, err
-			// }
+			// A unique key violation can handled either by throwing the error, or by converting this insert into an update
+			// via the ON DUPLICATE KEY UPDATE clause.
+			// TODO: this won't work for other kinds of duplicate key failures, only primary keys. It would be better to get
+			//  the conflicting row from the duplicate key err
+			var pkExpression sql.Expression
+			for index, col := range i.schema {
+				if col.PrimaryKey {
+					value := row[index]
+					exp := expression.NewEquals(expression.NewGetField(index, col.Type, col.Name, col.Nullable), expression.NewLiteral(value, col.Type))
+					if pkExpression != nil {
+						pkExpression = expression.NewAnd(pkExpression, exp)
+					} else {
+						pkExpression = exp
+					}
+				}
+			}
+
+			filter := NewFilter(pkExpression, i.tableNode)
+			filterIter, err := filter.RowIter(i.ctx, row)
+			if err != nil {
+				return nil, err
+			}
+
+			defer func() {
+				err := filterIter.Close()
+				if returnErr == nil {
+					returnErr = err
+				}
+			}()
+
+			// By definition, there can only be a single row here
+			rowToUpdate, err := filterIter.Next()
+			if err != nil {
+				return nil, err
+			}
+
+			newRow, err := applyUpdateExpressions(i.ctx, i.updateExprs, rowToUpdate)
+			if err != nil {
+				return nil, err
+			}
+
+			err = i.updater.Update(i.ctx, rowToUpdate, newRow)
+			if err != nil {
+				return nil, err
+			}
+
+			return newRow, nil
 		}
-
-		return row, nil
 	}
+
+	return row, nil
 }
 
 func (i insertIter) Close() error {
@@ -211,6 +254,11 @@ func (i insertIter) Close() error {
 	}
 	if i.replacer != nil {
 		if err := i.replacer.Close(i.ctx); err != nil {
+			return err
+		}
+	}
+	if i.updater != nil {
+		if err := i.updater.Close(i.ctx); err != nil {
 			return err
 		}
 	}
@@ -225,7 +273,7 @@ func (i insertIter) Close() error {
 
 // RowIter implements the Node interface.
 func (p *InsertInto) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return newInsertIter(ctx, p.Left, p.Right, p.IsReplace, p.Columns, row)
+	return newInsertIter(ctx, p.Left, p.Right, p.IsReplace, p.OnDupExprs, p.Columns, row)
 }
 
 // WithChildren implements the Node interface.

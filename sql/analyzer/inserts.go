@@ -39,6 +39,14 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		}
 	}
 
+	if len(insert.OnDupExprs) > 0 {
+		var ok bool
+		_, ok = insertable.(sql.UpdatableTable)
+		if !ok {
+			return nil, plan.ErrOnDuplicateKeyUpdateNotSupported.New()
+		}
+	}
+
 	dstSchema := insertable.Schema()
 
 	// If no columns are given, use the full schema

@@ -97,7 +97,7 @@ func (u *updateIter) Next() (sql.Row, error) {
 		return nil, err
 	}
 
-	newRow, err := u.applyUpdates(oldRow)
+	newRow, err := applyUpdateExpressions(u.ctx, u.updateExprs, oldRow)
 
 	// Reduce the row to the length of the schema. The length can differ when some update values come from an outer
 	// scope, which will be the first N values in the row.
@@ -121,11 +121,13 @@ func (u *updateIter) Next() (sql.Row, error) {
 	return oldRow.Append(newRow), nil
 }
 
-func (u *updateIter) applyUpdates(row sql.Row) (sql.Row, error) {
+// Applies the update expressions given to the row given, returning the new resultant row.
+// TODO: a set of update expressions should probably be its own expression type with an Eval method that does this
+func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row sql.Row) (sql.Row, error) {
 	var ok bool
 	prev := row
-	for _, updateExpr := range u.updateExprs {
-		val, err := updateExpr.Eval(u.ctx, prev)
+	for _, updateExpr := range updateExprs {
+		val, err := updateExpr.Eval(ctx, prev)
 		if err != nil {
 			return nil, err
 		}
