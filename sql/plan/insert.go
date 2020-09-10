@@ -1,13 +1,13 @@
 package plan
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"io"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 // ErrInsertIntoNotSupported is thrown when a table doesn't support inserts
@@ -90,13 +90,13 @@ func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
 }
 
 func newInsertIter(
-		ctx *sql.Context,
-		table sql.Node,
-		values sql.Node,
-		isReplace bool,
-		onDupUpdateExpr []sql.Expression,
-		columns []sql.Expression,
-		row sql.Row,
+	ctx *sql.Context,
+	table sql.Node,
+	values sql.Node,
+	isReplace bool,
+	onDupUpdateExpr []sql.Expression,
+	columns []sql.Expression,
+	row sql.Row,
 ) (*insertIter, error) {
 	dstSchema := table.Schema()
 
@@ -225,7 +225,7 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 
 			// By definition, there can only be a single row here. And only one row should ever be updated according to the
 			// spec:
-		  // https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html
+			// https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html
 			rowToUpdate, err := filterIter.Next()
 			if err != nil {
 				return nil, err

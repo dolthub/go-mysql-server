@@ -114,7 +114,7 @@ func (r *replaceRowHandler) okResult() sql.OkResult {
 
 type onDuplicateUpdateHandler struct {
 	rowsAffected int
-	schema sql.Schema
+	schema       sql.Schema
 }
 
 func (o *onDuplicateUpdateHandler) handleRowUpdate(row sql.Row) error {
