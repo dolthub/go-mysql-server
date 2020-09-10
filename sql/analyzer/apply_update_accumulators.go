@@ -33,6 +33,8 @@ func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 	case *plan.InsertInto:
 		if n.IsReplace {
 			return plan.NewRowUpdateAccumulator(n, plan.UpdateTypeReplace), nil
+		} else if len(n.OnDupExprs) > 0 {
+			return plan.NewRowUpdateAccumulator(n, plan.UpdateTypeDuplicateKeyUpdate), nil
 		}
 		return plan.NewRowUpdateAccumulator(n, plan.UpdateTypeInsert), nil
 	case *plan.DeleteFrom:

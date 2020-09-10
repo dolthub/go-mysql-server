@@ -27,6 +27,7 @@ type RowUpdateType int
 const (
 	UpdateTypeInsert RowUpdateType = iota
 	UpdateTypeReplace
+	UpdateTypeDuplicateKeyUpdate
 	UpdateTypeUpdate
 	UpdateTypeDelete
 )
@@ -109,6 +110,37 @@ func (r *replaceRowHandler) handleRowUpdate(row sql.Row) error {
 
 func (r *replaceRowHandler) okResult() sql.OkResult {
 	return sql.NewOkResult(r.rowsAffected)
+}
+
+type onDuplicateUpdateHandler struct {
+	rowsAffected int
+	schema sql.Schema
+}
+
+func (o *onDuplicateUpdateHandler) handleRowUpdate(row sql.Row) error {
+	// See https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html for row count semantics
+	// If a row was inserted, increment by 1
+	if len(row) == len(o.schema) {
+		o.rowsAffected++
+		return nil
+	}
+
+	// Otherwise (a row was updated), increment by 2 if the row changed, 0 if not
+	oldRow := row[:len(row)/2]
+	newRow := row[len(row)/2:]
+	if equals, err := oldRow.Equals(newRow, o.schema); err == nil {
+		if !equals {
+			o.rowsAffected += 2
+		}
+	} else {
+		o.rowsAffected++
+	}
+
+	return nil
+}
+
+func (o *onDuplicateUpdateHandler) okResult() sql.OkResult {
+	return sql.NewOkResult(o.rowsAffected)
 }
 
 type updateRowHandler struct {
@@ -204,6 +236,8 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 		rowHandler = &insertRowHandler{}
 	case UpdateTypeReplace:
 		rowHandler = &replaceRowHandler{}
+	case UpdateTypeDuplicateKeyUpdate:
+		rowHandler = &onDuplicateUpdateHandler{schema: r.Child.Schema()}
 	case UpdateTypeUpdate:
 		schema := r.Child.Schema()
 		// the schema of the update node is a self-concatenation of the underlying table's, so split it in half for new /

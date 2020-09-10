@@ -223,7 +223,9 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 				}
 			}()
 
-			// By definition, there can only be a single row here
+			// By definition, there can only be a single row here. And only one row should ever be updated according to the
+			// spec:
+		  // https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html
 			rowToUpdate, err := filterIter.Next()
 			if err != nil {
 				return nil, err
@@ -239,7 +241,8 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 				return nil, err
 			}
 
-			return newRow, nil
+			// In the case that we attempted an update, return a concatenated [old,new] row just like update.
+			return rowToUpdate.Append(newRow), nil
 		}
 	}
 
