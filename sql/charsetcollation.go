@@ -1074,7 +1074,6 @@ var (
 		Collation_utf8mb4_zh_0900_as_cs:       CharacterSet_utf8mb4,
 		Collation_utf8mb4_0900_bin:            CharacterSet_utf8mb4,
 		Collation_utf8_general_ci:             CharacterSet_utf8,
-
 	}
 
 	characterSetDescriptions = map[CharacterSet]string{
@@ -1170,23 +1169,23 @@ var (
 )
 
 const (
-	Y = "Yes"
-	N = "No"
-	NoPad = "NO PAD"
+	Y        = "Yes"
+	N        = "No"
+	NoPad    = "NO PAD"
 	PadSpace = "PAD SPACE"
 )
 
 type mysqlCollationRow struct {
-	ID int64
-	IsDefault string
+	ID         int64
+	IsDefault  string
 	IsCompiled string
-	SortLen int64
-	PadSpace string
+	SortLen    int64
+	PadSpace   string
 }
 
 var CollationToMySQLVals = map[Collation]mysqlCollationRow{
-	Collation_binary: {63, Y, Y, 0, NoPad},
-	Collation_utf8_general_ci: {33, Y, Y, 1,PadSpace},
+	Collation_binary:             {63, Y, Y, 0, NoPad},
+	Collation_utf8_general_ci:    {33, Y, Y, 1, PadSpace},
 	Collation_utf8mb4_0900_ai_ci: {255, Y, Y, 0, NoPad},
 }
 

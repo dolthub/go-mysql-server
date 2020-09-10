@@ -2156,7 +2156,12 @@ var fixtures = map[string]sql.Node{
 					[]sql.Expression{},
 				),
 			},
-		), "",
+		), `CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW 
+   BEGIN 
+     UPDATE bar SET x = old.y WHERE z = new.y;
+		 DELETE FROM baz WHERE a = old.b;
+		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
+   END`,
 	),
 	`SELECT 2 UNION SELECT 3`: plan.NewUnion(
 		plan.NewProject(

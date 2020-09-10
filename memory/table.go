@@ -602,7 +602,7 @@ func checkRow(schema sql.Schema, row sql.Row) error {
 	return nil
 }
 
-// String implements the sql.Table inteface.
+// String implements the sql.Table interface.
 func (t *Table) String() string {
 	p := sql.NewTreePrinter()
 

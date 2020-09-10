@@ -258,6 +258,17 @@ var InsertQueries = []WriteQueryTest{
 		[]sql.Row{{int64(1), "hello3"}},
 	},
 	{
+		"INSERT INTO mytable (i,s) values (1, 'hello2'), (2, 'hello3'), (4, 'no conflict') ON DUPLICATE KEY UPDATE s='hello4'",
+		[]sql.Row{{sql.NewOkResult(5)}},
+		"SELECT * FROM mytable ORDER BY 1",
+		[]sql.Row{
+			{1, "hello4"},
+			{2, "hello4"},
+			{3, "third row"},
+			{4, "no conflict"},
+		},
+	},
+	{
 		"INSERT INTO mytable (i,s) values (10, 'hello') ON DUPLICATE KEY UPDATE s='hello'",
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT * FROM mytable ORDER BY 1",
@@ -334,5 +345,9 @@ var InsertErrorTests = []GenericErrorQueryTest{
 	{
 		"duplicate keys",
 		"INSERT INTO mytable SELECT * from mytable",
+	},
+	{
+		"bad column in on duplicate key update clause",
+		"INSERT INTO mytable values (10, 'b') ON DUPLICATE KEY UPDATE notExist = 1",
 	},
 }

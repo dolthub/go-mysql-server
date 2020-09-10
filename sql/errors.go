@@ -90,4 +90,10 @@ var (
 
 	// ErrDropColumnReferencedInDefault is returned when a column cannot be dropped as it is referenced by another column's default value.
 	ErrDropColumnReferencedInDefault = errors.NewKind(`cannot drop column "%s" as default value of column "%s" references it`)
+
+	// ErrTriggersNotSupported is returned when attepting to create a trigger on a database that doesn't support them
+	ErrTriggersNotSupported = errors.NewKind(`database "%s" doesn't support triggers`)
+
+	// ErrTriggerCreateStatementInvalid is returned when a TriggerDatabase returns a CREATE TRIGGER statement that is invalid
+	ErrTriggerCreateStatementInvalid = errors.NewKind(`Invalid CREATE TRIGGER statement: %s`)
 )

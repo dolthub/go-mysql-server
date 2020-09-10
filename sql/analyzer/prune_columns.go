@@ -37,7 +37,8 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 	// table2), all columns from the select are used for the insert, and error checking for schema compatibility
 	// happens at execution time. Otherwise the logic below will convert a Project to a ResolvedTable for the selected
 	// table, which can alter the column order of the select.
-	if _, ok := n.(*plan.InsertInto); ok {
+	switch n := n.(type) {
+	case *plan.InsertInto, *plan.CreateTrigger:
 		return n, nil
 	}
 

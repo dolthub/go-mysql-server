@@ -349,8 +349,8 @@ func TestNow(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		args []sql.Expression
-		result time.Time
+		args      []sql.Expression
+		result    time.Time
 		expectErr bool
 	}{
 		{
@@ -419,8 +419,8 @@ func TestUTCTimestamp(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		args []sql.Expression
-		result time.Time
+		args      []sql.Expression
+		result    time.Time
 		expectErr bool
 	}{
 		{

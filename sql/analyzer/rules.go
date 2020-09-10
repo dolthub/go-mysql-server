@@ -19,6 +19,7 @@ var DefaultRules = []Rule{
 	{"resolve_orderby_literals", resolveOrderByLiterals},
 	{"pushdown_sort", pushdownSort},
 	{"pushdown_groupby_aliases", pushdownGroupByAliases},
+	{"resolve_new_and_old_in_triggers", resolveNewAndOldReferences},
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
 	{"resolve_database", resolveDatabase},
@@ -51,6 +52,9 @@ var OnceAfterDefault = []Rule{
 	// previous rules.
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},
 	{"cache_subquery_results", cacheSubqueryResults},
+	{"resolve_insert_rows", resolveInsertRows},
+	{"apply_triggers", applyTriggers},
+	{"apply_row_update_accumulators", applyUpdateAccumulators},
 }
 
 // OnceAfterAll contains the rules to be applied just once after all other

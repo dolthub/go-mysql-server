@@ -90,6 +90,10 @@ func (a *Arithmetic) String() string {
 	return fmt.Sprintf("%s %s %s", a.Left, a.Op, a.Right)
 }
 
+func (a *Arithmetic) DebugString() string {
+	return fmt.Sprintf("%s %s %s", sql.DebugString(a.Left), a.Op, sql.DebugString(a.Right))
+}
+
 // IsNullable implements the sql.Expression interface.
 func (a *Arithmetic) IsNullable() bool {
 	if a.Type() == sql.Timestamp || a.Type() == sql.Datetime {

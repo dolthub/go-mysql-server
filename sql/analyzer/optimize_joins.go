@@ -210,6 +210,9 @@ func findTableName(node sql.Node) string {
 		case *plan.ResolvedTable:
 			tableName = node.Name()
 			return false
+		case *plan.UnresolvedTable:
+			tableName = node.Name()
+			return false
 		}
 		return true
 	})

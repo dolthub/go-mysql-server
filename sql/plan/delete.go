@@ -1,8 +1,6 @@
 package plan
 
 import (
-	"io"
-
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -12,26 +10,12 @@ var ErrDeleteFromNotSupported = errors.NewKind("table doesn't support DELETE FRO
 
 // DeleteFrom is a node describing a deletion from some table.
 type DeleteFrom struct {
-	sql.Node
+	UnaryNode
 }
 
 // NewDeleteFrom creates a DeleteFrom node.
 func NewDeleteFrom(n sql.Node) *DeleteFrom {
-	return &DeleteFrom{n}
-}
-
-// Schema implements the Node interface.
-func (p *DeleteFrom) Schema() sql.Schema {
-	return sql.OkResultSchema
-}
-
-// Resolved implements the Resolvable interface.
-func (p *DeleteFrom) Resolved() bool {
-	return p.Node.Resolved()
-}
-
-func (p *DeleteFrom) Children() []sql.Node {
-	return []sql.Node{p.Node}
+	return &DeleteFrom{UnaryNode{n}}
 }
 
 func getDeletable(node sql.Node) (sql.DeletableTable, error) {
@@ -61,57 +45,55 @@ func getDeletableTable(t sql.Table) (sql.DeletableTable, error) {
 	}
 }
 
-// Execute deletes the rows in the database.
-func (p *DeleteFrom) Execute(ctx *sql.Context) (int, error) {
-	deletable, err := getDeletable(p.Node)
-	if err != nil {
-		return 0, err
-	}
-
-	iter, err := p.Node.RowIter(ctx, nil)
-	if err != nil {
-		return 0, err
-	}
-
-	deleter := deletable.Deleter(ctx)
-
-	i := 0
-	for {
-		row, err := iter.Next()
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			_ = iter.Close()
-			return i, err
-		}
-
-		if err := deleter.Delete(ctx, row); err != nil {
-			_ = iter.Close()
-			return i, err
-		}
-
-		i++
-	}
-
-	if err := deleter.Close(ctx); err != nil {
-		return 0, err
-	}
-
-	return i, nil
-}
-
 // RowIter implements the Node interface.
 func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	updated, err := p.Execute(ctx)
+	deletable, err := getDeletable(p.Child)
 	if err != nil {
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.OkResult{
-		RowsAffected: uint64(updated),
-	})), nil
+	iter, err := p.Child.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	deleter := deletable.Deleter(ctx)
+
+	return newDeleteIter(iter, deleter, deletable.Schema(), ctx), nil
+}
+
+type deleteIter struct {
+	deleter   sql.RowDeleter
+	schema    sql.Schema
+	childIter sql.RowIter
+	ctx       *sql.Context
+}
+
+func (d *deleteIter) Next() (sql.Row, error) {
+	row, err := d.childIter.Next()
+	if err != nil {
+		return nil, err
+	}
+
+	// Reduce the row to the length of the schema. The length can differ when some update values come from an outer
+	// scope, which will be the first N values in the row.
+	// TODO: handle this in the analyzer instead?
+	if len(d.schema) < len(row) {
+		row = row[len(row)-len(d.schema):]
+	}
+
+	return row, d.deleter.Delete(d.ctx, row)
+}
+
+func (d *deleteIter) Close() error {
+	if err := d.deleter.Close(d.ctx); err != nil {
+		return err
+	}
+	return d.childIter.Close()
+}
+
+func newDeleteIter(childIter sql.RowIter, deleter sql.RowDeleter, schema sql.Schema, ctx *sql.Context) *deleteIter {
+	return &deleteIter{deleter: deleter, childIter: childIter, schema: schema, ctx: ctx}
 }
 
 // WithChildren implements the Node interface.
@@ -125,13 +107,13 @@ func (p *DeleteFrom) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (p DeleteFrom) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Delete")
-	_ = pr.WriteChildren(p.Node.String())
+	_ = pr.WriteChildren(p.Child.String())
 	return pr.String()
 }
 
 func (p DeleteFrom) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Delete")
-	_ = pr.WriteChildren(sql.DebugString(p.Node))
+	_ = pr.WriteChildren(sql.DebugString(p.Child))
 	return pr.String()
 }

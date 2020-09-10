@@ -34,7 +34,7 @@ type Engine struct {
 
 type ColumnWithRawDefault struct {
 	SqlColumn *sql.Column
-	Default string
+	Default   string
 }
 
 var (

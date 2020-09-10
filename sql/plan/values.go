@@ -65,7 +65,7 @@ func (p *Values) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		vals := make([]interface{}, len(et))
 		for j, e := range et {
 			var err error
-			vals[j], err = e.Eval(ctx, nil)
+			vals[j], err = e.Eval(ctx, row)
 			if err != nil {
 				return nil, err
 			}
@@ -85,10 +85,10 @@ func (p *Values) DebugString() string {
 	var sb strings.Builder
 	sb.WriteString("Values(")
 	for i, tuple := range p.ExpressionTuples {
-		sb.WriteRune('[')
 		if i > 0 {
 			sb.WriteString(",\n")
 		}
+		sb.WriteRune('[')
 		for j, e := range tuple {
 			if j > 0 {
 				sb.WriteString(",")

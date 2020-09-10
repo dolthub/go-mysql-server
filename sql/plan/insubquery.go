@@ -90,6 +90,10 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				return nil, err
 			}
 
+			if !rightNull && val == nil {
+				rightNull = true
+			}
+
 			cmp, err := typ.Compare(left, val)
 			if err != nil {
 				return nil, err

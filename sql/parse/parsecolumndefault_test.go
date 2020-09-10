@@ -1,17 +1,19 @@
 package parse
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
 func TestStringToColumnDefaultValue(t *testing.T) {
-	tests := []struct{
-		exprStr string
+	tests := []struct {
+		exprStr      string
 		expectedExpr sql.Expression
 	}{
 		{
