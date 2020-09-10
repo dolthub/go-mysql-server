@@ -86,7 +86,7 @@ var TriggerTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "trigger after insert, update other table",
+		Name: "trigger before insert, update other table",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
 			"create table b (y int primary key)",

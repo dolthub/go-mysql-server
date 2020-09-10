@@ -20,7 +20,7 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 
 	// don't do pushdown on certain queries
 	switch n.(type) {
-	case *plan.RowUpdateAccumulator, *plan.InsertInto, *plan.DeleteFrom, *plan.Update, *plan.CreateIndex:
+	case *plan.RowUpdateAccumulator, *plan.InsertInto, *plan.DeleteFrom, *plan.Update, *plan.CreateIndex, *plan.CreateTrigger:
 		return n, nil
 	}
 
