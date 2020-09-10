@@ -118,7 +118,7 @@ func (c *createTriggerIter) Next() (sql.Row, error) {
 
 	tdb, ok := c.db.(sql.TriggerDatabase)
 	if !ok {
-
+		return nil, sql.ErrTriggersNotSupported.New(c.db.Name())
 	}
 
 	err := tdb.CreateTrigger(c.ctx, c.definition)

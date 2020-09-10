@@ -530,12 +530,7 @@ func testScript(t *testing.T, harness Harness, script ScriptTest) bool {
 				}
 			}
 
-			_, iter, err := e.Query(NewContext(harness), statement)
-			require.NoError(t, err)
-
-			// important to drain and close the iterator here for inserts / updates to work correctly
-			_, err = sql.RowIterToRows(iter)
-			require.NoError(t, err)
+			RunQuery(t, e, harness, statement)
 		}
 
 		TestQuery(t, harness, e, script.Query, script.Expected)
