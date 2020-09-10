@@ -99,4 +99,17 @@ var TriggerTests = []ScriptTest{
 			{0}, {1}, {3}, {5}, {8},
 		},
 	},
+	// TODO: fix
+	// {
+	// 	Name: "trigger before insert, alter inserted value",
+	// 	SetUpScript: []string{
+	// 		"create table a (x int primary key)",
+	// 		"create trigger insert_into_a before insert on a for each row set new.x = new.x + 1",
+	// 		"insert into a values (1)",
+	// 	},
+	// 	Query: "select x from a order by 1",
+	// 	Expected: []sql.Row{
+	// 		{2},
+	// 	},
+	// },
 }
