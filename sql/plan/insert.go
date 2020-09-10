@@ -188,15 +188,12 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 		return toReturn, nil
 	} else {
 		if err := i.inserter.Insert(i.ctx, row); err != nil {
-			if !sql.ErrUniqueKeyViolation.Is(err) || i.updateExprs == nil {
+			if !sql.ErrUniqueKeyViolation.Is(err) || len(i.updateExprs) == 0 {
 				_ = i.rowSource.Close()
 				return nil, err
 			}
 
-			// A unique key violation can handled either by throwing the error, or by converting this insert into an update
-			// via the ON DUPLICATE KEY UPDATE clause.
-			// TODO: this won't work for other kinds of duplicate key failures, only primary keys. It would be better to get
-			//  the conflicting row from the duplicate key err
+			// Handle ON DUPLICATE KEY UPDATE clause
 			var pkExpression sql.Expression
 			for index, col := range i.schema {
 				if col.PrimaryKey {
