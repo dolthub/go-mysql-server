@@ -98,6 +98,9 @@ func (u *updateIter) Next() (sql.Row, error) {
 	}
 
 	newRow, err := applyUpdateExpressions(u.ctx, u.updateExprs, oldRow)
+	if err != nil {
+		return nil, err
+	}
 
 	// Reduce the row to the length of the schema. The length can differ when some update values come from an outer
 	// scope, which will be the first N values in the row.

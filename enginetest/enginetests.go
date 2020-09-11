@@ -403,6 +403,11 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 
 	for _, tt := range errorQueries {
 		t.Run(tt.Query, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(tt.Query) {
+					t.Skipf("skipping query %s", tt.Query)
+				}
+			}
 			AssertErr(t, engine, harness, tt.Query, tt.ExpectedErr)
 		})
 	}
@@ -426,6 +431,11 @@ func TestInsertInto(t *testing.T, harness Harness) {
 func TestInsertIntoErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range InsertErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(expectedFailure.Query) {
+					t.Skipf("skipping query %s", expectedFailure.Query)
+				}
+			}
 			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
 		})
 	}
@@ -449,6 +459,11 @@ func TestReplaceInto(t *testing.T, harness Harness) {
 func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range ReplaceErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(expectedFailure.Query) {
+					t.Skipf("skipping query %s", expectedFailure.Query)
+				}
+			}
 			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
 		})
 	}
@@ -472,6 +487,11 @@ func TestUpdate(t *testing.T, harness Harness) {
 func TestUpdateErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range UpdateErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(expectedFailure.Query) {
+					t.Skipf("skipping query %s", expectedFailure.Query)
+				}
+			}
 			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
 		})
 	}
@@ -495,6 +515,11 @@ func TestDelete(t *testing.T, harness Harness) {
 func TestDeleteErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range DeleteErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(expectedFailure.Query) {
+					t.Skipf("skipping query %s", expectedFailure.Query)
+				}
+			}
 			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
 		})
 	}
