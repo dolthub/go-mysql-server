@@ -10,7 +10,7 @@ require (
 	github.com/jehiah/go-strftime v0.0.0-20171201141054-1d33003b3869 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/lestrrat-go/strftime v1.0.1
-	github.com/liquidata-inc/vitess v0.0.0-20200828190113-f278600fb87c
+	github.com/liquidata-inc/vitess v0.0.0-20200911213404-87f76781a7c7
 	github.com/mitchellh/hashstructure v1.0.0
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852
 	github.com/opentracing/opentracing-go v1.1.0
@@ -29,5 +29,7 @@ require (
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 	gopkg.in/yaml.v2 v2.2.4
 )
+
+// replace github.com/liquidata-inc/vitess => ../vitess
 
 go 1.13
