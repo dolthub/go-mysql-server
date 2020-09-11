@@ -235,7 +235,7 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 			return nil, err
 		}
 
-		name := strings.TrimSpace(e.Name.Lowered())
+		name := strings.TrimSpace(e.Name.Name.Lowered())
 		expr, err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
 			if _, ok := e.(*expression.DefaultColumn); ok {
 				return e, nil
@@ -844,7 +844,7 @@ func convertDropView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 }
 
 func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
-	onDupExprs, err := updateExprsToExpressions(ctx, sqlparser.UpdateExprs(i.OnDup))
+	onDupExprs, err := updateExprsToExpressions(ctx, sqlparser.SetExprs(i.OnDup))
 	if err != nil {
 		return nil, err
 	}
@@ -1916,7 +1916,7 @@ func intervalExprToExpression(ctx *sql.Context, e *sqlparser.IntervalExpr) (sql.
 	return expression.NewInterval(expr, e.Unit), nil
 }
 
-func updateExprsToExpressions(ctx *sql.Context, e sqlparser.UpdateExprs) ([]sql.Expression, error) {
+func updateExprsToExpressions(ctx *sql.Context, e sqlparser.SetExprs) ([]sql.Expression, error) {
 	res := make([]sql.Expression, len(e))
 	for i, updateExpr := range e {
 		colName, err := exprToExpression(ctx, updateExpr.Name)

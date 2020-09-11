@@ -1615,23 +1615,23 @@ var fixtures = map[string]sql.Node{
 			Value: expression.NewLiteral("bar", sql.LongText),
 		},
 	),
-	`SET autocommit=ON, on="1"`: plan.NewSet(
+	`SET autocommit=ON, blah="1"`: plan.NewSet(
 		plan.SetVariable{
 			Name:  "autocommit",
 			Value: expression.NewLiteral(int64(1), sql.Int64),
 		},
 		plan.SetVariable{
-			Name:  "on",
+			Name:  "blah",
 			Value: expression.NewLiteral("1", sql.LongText),
 		},
 	),
-	`SET @@session.autocommit=OFF, off="0"`: plan.NewSet(
+	`SET @@session.autocommit=OFF, blah="0"`: plan.NewSet(
 		plan.SetVariable{
 			Name:  "@@session.autocommit",
 			Value: expression.NewLiteral(int64(0), sql.Int64),
 		},
 		plan.SetVariable{
-			Name:  "off",
+			Name:  "blah",
 			Value: expression.NewLiteral("0", sql.LongText),
 		},
 	),

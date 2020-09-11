@@ -176,6 +176,22 @@ var UpdateErrorTests = []GenericErrorQueryTest{
 		"UPDATE doesnotexist SET i = 0;",
 	},
 	{
+		"wrong number of columns",
+		`UPDATE mytable SET i = ("one", "two");`,
+	},
+	{
+		"type mismatch: string -> int",
+		`UPDATE mytable SET i = "one"`,
+	},
+	{
+		"type mismatch: string -> float",
+		`UPDATE floattable SET f64 = "one"`,
+	},
+	{
+		"type mismatch: string -> uint",
+		`UPDATE typestable SET f64 = "one"`,
+	},
+	{
 		"invalid column set",
 		"UPDATE mytable SET z = 0;",
 	},
