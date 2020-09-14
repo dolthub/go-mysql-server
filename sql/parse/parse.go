@@ -228,64 +228,61 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 		return nil, ErrUnsupportedFeature.New("SET global variables")
 	}
 
-	var variables = make([]plan.SetVariable, len(n.Exprs))
-	for i, e := range n.Exprs {
-		expr, err := exprToExpression(ctx, e.Expr)
-		if err != nil {
-			return nil, err
-		}
-
-		name := strings.TrimSpace(e.Name.Name.Lowered())
-		expr, err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
-			if _, ok := e.(*expression.DefaultColumn); ok {
-				return e, nil
-			}
-
-			if !e.Resolved() || !sql.IsTextOnly(e.Type()) {
-				return e, nil
-			}
-
-			txt, err := e.Eval(ctx, nil)
-			if err != nil {
-				return nil, err
-			}
-
-			val, ok := txt.(string)
-			if !ok {
-				return nil, ErrUnsupportedFeature.New("invalid qualifiers in set variable names")
-			}
-
-			switch strings.ToLower(val) {
-			case sqlparser.KeywordString(sqlparser.ON):
-				return expression.NewLiteral(int64(1), sql.Int64), nil
-			case sqlparser.KeywordString(sqlparser.TRUE):
-				return expression.NewLiteral(true, sql.Boolean), nil
-			case sqlparser.KeywordString(sqlparser.OFF):
-				return expression.NewLiteral(int64(0), sql.Int64), nil
-			case sqlparser.KeywordString(sqlparser.FALSE):
-				return expression.NewLiteral(false, sql.Boolean), nil
-			}
-
-			return e, nil
-		})
-
-		if err != nil {
-			return nil, err
-		}
-
-		// special case: for system variables, MySQL allows naked strings (without quotes), which get interpreted as
-		// unresolved columns.
-		if uc, ok := expr.(*expression.UnresolvedColumn); ok && uc.Table() == "" {
-			expr = expression.NewLiteral(uc.Name(), sql.LongText)
-		}
-
-		variables[i] = plan.SetVariable{
-			Name:  name,
-			Value: expr,
-		}
+	exprs, err := updateExprsToExpressions(ctx, n.Exprs)
+	if err != nil {
+		return nil, err
 	}
 
-	return plan.NewSet(variables...), nil
+	// name := strings.TrimSpace(e.Name.Name.Lowered())
+	// expr, err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
+	// 	if _, ok := e.(*expression.DefaultColumn); ok {
+	// 		return e, nil
+	// 	}
+	//
+	// 	if !e.Resolved() || !sql.IsTextOnly(e.Type()) {
+	// 		return e, nil
+	// 	}
+	//
+	// 	txt, err := e.Eval(ctx, nil)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	//
+	// 	val, ok := txt.(string)
+	// 	if !ok {
+	// 		return nil, ErrUnsupportedFeature.New("invalid qualifiers in set variable names")
+	// 	}
+	//
+	// 	switch strings.ToLower(val) {
+	// 	case sqlparser.KeywordString(sqlparser.ON):
+	// 		return expression.NewLiteral(int64(1), sql.Int64), nil
+	// 	case sqlparser.KeywordString(sqlparser.TRUE):
+	// 		return expression.NewLiteral(true, sql.Boolean), nil
+	// 	case sqlparser.KeywordString(sqlparser.OFF):
+	// 		return expression.NewLiteral(int64(0), sql.Int64), nil
+	// 	case sqlparser.KeywordString(sqlparser.FALSE):
+	// 		return expression.NewLiteral(false, sql.Boolean), nil
+	// 	}
+	//
+	// 	return e, nil
+	// })
+	//
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//
+	// // special case: for system variables, MySQL allows naked strings (without quotes), which get interpreted as
+	// // unresolved columns.
+	// if uc, ok := expr.(*expression.UnresolvedColumn); ok && uc.Table() == "" {
+	// 	expr = expression.NewLiteral(uc.Name(), sql.LongText)
+	// }
+	//
+	// variables[i] = plan.SetVariable{
+	// 	Name:  name,
+	// 	Value: expr,
+	// }
+
+	return plan.NewSet(exprs...), nil
 }
 
 func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, error) {

@@ -12,28 +12,22 @@ import (
 
 // Set configuration variables. Right now, only session variables are supported.
 type Set struct {
-	Variables []SetVariable
-}
-
-// SetVariable is a key-value pair to represent the value that will be set on
-// a variable.
-type SetVariable struct {
-	Name  string
-	Value sql.Expression
+	Exprs []sql.Expression
 }
 
 // NewSet creates a new Set node.
-func NewSet(vars ...SetVariable) *Set {
+func NewSet(vars ...sql.Expression) *Set {
 	return &Set{vars}
 }
 
 // Resolved implements the sql.Node interface.
 func (s *Set) Resolved() bool {
-	for _, v := range s.Variables {
-		if _, ok := v.Value.(*expression.DefaultColumn); ok {
-			continue
-		}
-		if !v.Value.Resolved() {
+	for _, v := range s.Exprs {
+		// TODO (maybe)?
+		// if _, ok := v.Right.(*expression.DefaultColumn); ok {
+		// 	continue
+		// }
+		if !v.Resolved() {
 			return false
 		}
 	}
@@ -43,7 +37,7 @@ func (s *Set) Resolved() bool {
 // Children implements the sql.Node interface.
 func (s *Set) Children() []sql.Node { return nil }
 
-// WithChildren implements the Node interface.
+// WithChildren implements the sql.Node interface.
 func (s *Set) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
@@ -52,30 +46,18 @@ func (s *Set) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return s, nil
 }
 
-// WithExpressions implements the Expressioner interface.
+// WithExpressions implements the sql.Expressioner interface.
 func (s *Set) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != len(s.Variables) {
-		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.Variables))
+	if len(exprs) != len(s.Exprs) {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.Exprs))
 	}
 
-	var vars = make([]SetVariable, len(s.Variables))
-	for i, v := range s.Variables {
-		vars[i] = SetVariable{
-			Name:  v.Name,
-			Value: exprs[i],
-		}
-	}
-
-	return NewSet(vars...), nil
+	return NewSet(exprs...), nil
 }
 
 // Expressions implements the sql.Expressioner interface.
 func (s *Set) Expressions() []sql.Expression {
-	var exprs = make([]sql.Expression, len(s.Variables))
-	for i, v := range s.Variables {
-		exprs[i] = v.Value
-	}
-	return exprs
+	return s.Exprs
 }
 
 // RowIter implements the sql.Node interface.
@@ -87,35 +69,44 @@ func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		sessionPrefix = sqlparser.SessionStr + "."
 		globalPrefix  = sqlparser.GlobalStr + "."
 	)
-	for _, v := range s.Variables {
+	for _, v := range s.Exprs {
+		switch v.(type) {
+		case *expression.SetField:
+			// OK, continue
+		default:
+			panic("unrecognized type")
+		}
+
+		setField := v.(*expression.SetField)
+
 		var (
 			value interface{}
 			typ   sql.Type
 			err   error
 		)
 
-		name := strings.TrimPrefix(
-			strings.TrimPrefix(strings.TrimLeft(v.Name, "@"), sessionPrefix),
+		varName := strings.TrimPrefix(
+			strings.TrimPrefix(strings.TrimLeft(setField.Left.String(), "@"), sessionPrefix),
 			globalPrefix,
 		)
 
-		switch v.Value.(type) {
+		switch setField.Right.(type) {
 		case *expression.DefaultColumn:
-			valtyp, ok := sql.DefaultSessionConfig()[name]
+			valtyp, ok := sql.DefaultSessionConfig()[varName]
 			if !ok {
 				continue
 			}
 			value, typ = valtyp.Value, valtyp.Typ
 		default:
 			// TODO: value checking for system variables. Each one has specific lists of acceptable values.
-			value, err = v.Value.Eval(ctx, nil)
+			value, err = setField.Right.Eval(ctx, row)
 			if err != nil {
 				return nil, err
 			}
-			typ = v.Value.Type()
+			typ = setField.Left.Type()
 		}
 
-		err = ctx.Set(ctx, name, typ, value)
+		err = ctx.Set(ctx, varName, typ, value)
 
 		if err != nil {
 			return nil, err
@@ -131,8 +122,8 @@ func (s *Set) Schema() sql.Schema { return nil }
 func (s *Set) String() string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("Set")
-	var children = make([]string, len(s.Variables))
-	for i, v := range s.Variables {
+	var children = make([]string, len(s.Exprs))
+	for i, v := range s.Exprs {
 		children[i] = fmt.Sprintf("%s = %s", v.Name, v.Value)
 	}
 	_ = p.WriteChildren(children...)
