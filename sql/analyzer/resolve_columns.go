@@ -280,8 +280,8 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 			return col, nil
 		}
 
-		// Skip this step for global and session variables
-		if isGlobalOrSessionColumn(col) {
+		// Skip this step for variables
+		if isSystemVariable(col) || isUserVariable(col) {
 			return col, nil
 		}
 
@@ -461,8 +461,10 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 				return e, nil
 			}
 
-			if isGlobalOrSessionColumn(uc) {
-				return resolveGlobalOrSessionColumn(ctx, a, uc)
+			if isSystemVariable(uc) {
+				return resolveSystemVariable(ctx, a, uc)
+			} else if isUserVariable(uc) {
+				return resolveUserVariable(ctx, a, uc)
 			}
 
 			return resolveColumnExpression(ctx, a, uc, columns)
@@ -561,7 +563,7 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) map[t
 	return columns
 }
 
-func resolveGlobalOrSessionColumn(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {
+func resolveSystemVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {
 	if col.Table() != "" && strings.ToLower(col.Table()) != sessionTable {
 		return nil, errGlobalVariablesNotSupported.New(col)
 	}
@@ -571,6 +573,18 @@ func resolveGlobalOrSessionColumn(ctx *sql.Context, a *Analyzer, col column) (sq
 	typ, value := ctx.Get(name)
 
 	a.Log("resolved column %s to session field %s (type %s)", col, value, typ)
+	return expression.NewGetSessionField(name, typ, value), nil
+}
+
+func resolveUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {
+	// user vars can have . in them, and just get treated as a unified string name
+	colStr := col.String()
+
+	name := strings.TrimLeft(colStr, "@")
+	typ, value := ctx.Get(name)
+
+	a.Log("resolved column %s to session field %s (type %s)", col, value, typ)
+	// TODO: differentiate user vars from session vars
 	return expression.NewGetSessionField(name, typ, value), nil
 }
 
@@ -762,6 +776,12 @@ func findAllColumns(e sql.Expression) []string {
 	return cols
 }
 
-func isGlobalOrSessionColumn(col column) bool {
+func isSystemVariable(col column) bool {
 	return strings.HasPrefix(col.Name(), "@@") || strings.HasPrefix(col.Table(), "@@")
 }
+
+func isUserVariable(col column) bool {
+	return !isSystemVariable(col) &&
+		(strings.HasPrefix(col.Name(), "@") || strings.HasPrefix(col.Table(), "@"))
+}
+

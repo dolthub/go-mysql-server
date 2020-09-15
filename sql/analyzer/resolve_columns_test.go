@@ -90,7 +90,7 @@ func TestQualifyVariables(t *testing.T) {
 	)
 	col, ok := node.Projections[0].(*expression.UnresolvedColumn)
 	assert.True(ok)
-	assert.Truef(isGlobalOrSessionColumn(col), "@@max_allowed_packet is not global or session column")
+	assert.Truef(isSystemVariable(col), "@@max_allowed_packet is not global or session column")
 
 	expected := plan.NewProject(
 		[]sql.Expression{
@@ -111,7 +111,7 @@ func TestQualifyVariables(t *testing.T) {
 	)
 	col, ok = node.Projections[0].(*expression.UnresolvedColumn)
 	assert.True(ok)
-	assert.Truef(isGlobalOrSessionColumn(col), "@@autocommit is not global or session column")
+	assert.Truef(isSystemVariable(col), "@@autocommit is not global or session column")
 
 	expected = plan.NewProject(
 		[]sql.Expression{

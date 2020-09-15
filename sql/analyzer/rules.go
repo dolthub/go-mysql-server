@@ -9,6 +9,7 @@ import (
 var OnceBeforeDefault = []Rule{
 	{"resolve_views", resolveViews},
 	{"resolve_tables", resolveTables},
+	{"resolve_system_variables", resolveSetVariables},
 	{"resolve_subqueries", resolveSubqueries},
 	{"check_aliases", checkAliases},
 }

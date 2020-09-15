@@ -233,6 +233,21 @@ type (
 	}
 )
 
+var SystemVariables = map[string]struct{}{
+	"auto_increment_increment": {},
+	"time_zone":                {},
+	"system_time_zone":         {},
+	"max_allowed_packet":       {},
+	"sql_mode":                 {},
+	"gtid_mode":                {},
+	"collation_database":       {},
+	"ndbinfo_version":          {},
+	"sql_select_limit":         {},
+	"transaction_isolation":    {},
+	"version":                  {},
+	"version_comment":          {},
+}
+
 // DefaultSessionConfig returns default values for session variables
 func DefaultSessionConfig() map[string]TypedValue {
 	return map[string]TypedValue{

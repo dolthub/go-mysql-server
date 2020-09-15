@@ -69,6 +69,7 @@ func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		sessionPrefix = sqlparser.SessionStr + "."
 		globalPrefix  = sqlparser.GlobalStr + "."
 	)
+
 	for _, v := range s.Exprs {
 		switch v.(type) {
 		case *expression.SetField:
@@ -120,12 +121,17 @@ func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 func (s *Set) Schema() sql.Schema { return nil }
 
 func (s *Set) String() string {
-	p := sql.NewTreePrinter()
-	_ = p.WriteNode("Set")
 	var children = make([]string, len(s.Exprs))
 	for i, v := range s.Exprs {
-		children[i] = fmt.Sprintf("%s = %s", v.Name, v.Value)
+		children[i] = fmt.Sprintf(v.String())
 	}
-	_ = p.WriteChildren(children...)
-	return p.String()
+	return fmt.Sprintf("SET %s", strings.Join(children, ", "))
+}
+
+func (s *Set) DebugString() string {
+	var children = make([]string, len(s.Exprs))
+	for i, v := range s.Exprs {
+		children[i] = fmt.Sprintf(sql.DebugString(v))
+	}
+	return fmt.Sprintf("SET %s", strings.Join(children, ", "))
 }

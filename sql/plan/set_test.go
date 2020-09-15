@@ -16,8 +16,10 @@ func TestSet(t *testing.T) {
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
 
 	s := NewSet(
-		SetVariable{"foo", expression.NewLiteral("bar", sql.LongText)},
-		SetVariable{"@@baz", expression.NewLiteral(int64(1), sql.Int64)},
+		[]sql.Expression {
+			expression.NewSetField(expression.NewUnresolvedColumn("foo"), expression.NewLiteral("bar", sql.LongText)),
+			expression.NewSetField(expression.NewUnresolvedColumn("@@baz"), expression.NewLiteral(int64(1), sql.Int64)),
+		}...,
 	)
 
 	_, err := s.RowIter(ctx, nil)
@@ -38,8 +40,10 @@ func TestSetDesfault(t *testing.T) {
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
 
 	s := NewSet(
-		SetVariable{"auto_increment_increment", expression.NewLiteral(int64(123), sql.Int64)},
-		SetVariable{"@@sql_select_limit", expression.NewLiteral(int64(1), sql.Int64)},
+		[]sql.Expression{
+			expression.NewSetField(expression.NewUnresolvedColumn("auto_increment_increment"), expression.NewLiteral(int64(123), sql.Int64)),
+			expression.NewSetField(expression.NewUnresolvedColumn("@@sql_select_limit"), expression.NewLiteral(int64(1), sql.Int64)),
+		}...,
 	)
 
 	_, err := s.RowIter(ctx, nil)
@@ -54,8 +58,8 @@ func TestSetDesfault(t *testing.T) {
 	require.Equal(int64(1), v)
 
 	s = NewSet(
-		SetVariable{"auto_increment_increment", expression.NewDefaultColumn("")},
-		SetVariable{"@@sql_select_limit", expression.NewDefaultColumn("")},
+		expression.NewSetField(expression.NewUnresolvedColumn("auto_increment_increment"), expression.NewDefaultColumn("")),
+		expression.NewSetField(expression.NewUnresolvedColumn("@@sql_select_limit"), expression.NewDefaultColumn("")),
 	)
 
 	_, err = s.RowIter(ctx, nil)
