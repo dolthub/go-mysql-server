@@ -573,7 +573,7 @@ func resolveSystemVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Expre
 	typ, value := ctx.Get(name)
 
 	a.Log("resolved column %s to session field %s (type %s)", col, value, typ)
-	return expression.NewGetSessionField(name, typ, value), nil
+	return expression.NewGetSessionVar(name, typ, value), nil
 }
 
 func resolveUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {
@@ -584,8 +584,8 @@ func resolveUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Express
 	typ, value := ctx.Get(name)
 
 	a.Log("resolved column %s to session field %s (type %s)", col, value, typ)
-	// TODO: differentiate user vars from session vars
-	return expression.NewGetSessionField(name, typ, value), nil
+	// TODO: differentiate user vars from system vars
+	return expression.NewGetSessionVar(name, typ, value), nil
 }
 
 func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns map[tableCol]indexedCol) (sql.Expression, error) {
