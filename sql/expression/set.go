@@ -24,6 +24,10 @@ func (s *SetField) String() string {
 	return fmt.Sprintf("SET %s = %s", s.Left, s.Right)
 }
 
+func (s *SetField) DebugString() string {
+	return fmt.Sprintf("SET %s = %s", sql.DebugString(s.Left), sql.DebugString(s.Right))
+}
+
 // Type implements the Expression interface.
 func (s *SetField) Type() sql.Type {
 	return s.Left.Type()

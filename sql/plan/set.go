@@ -116,7 +116,7 @@ func (s *Set) String() string {
 	for i, v := range s.Exprs {
 		children[i] = fmt.Sprintf(v.String())
 	}
-	return fmt.Sprintf("SET %s", strings.Join(children, ", "))
+	return strings.Join(children, ", ")
 }
 
 func (s *Set) DebugString() string {
@@ -124,5 +124,5 @@ func (s *Set) DebugString() string {
 	for i, v := range s.Exprs {
 		children[i] = fmt.Sprintf(sql.DebugString(v))
 	}
-	return fmt.Sprintf("SET %s", strings.Join(children, ", "))
+	return strings.Join(children, ", ")
 }

@@ -88,29 +88,48 @@ func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expressi
 		return expression.NewLiteral(value, typ), nil
 	}
 
-	if !e.Resolved() || !sql.IsTextOnly(e.Type()) {
+	if !e.Resolved() {
 		return e, nil
 	}
 
-	txt, err := e.Eval(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
+	if sql.IsTextOnly(e.Type()) {
+		txt, err := e.Eval(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
 
-	val, ok := txt.(string)
-	if !ok {
-		return nil, parse.ErrUnsupportedFeature.New("invalid qualifiers in set variable names")
-	}
+		val, ok := txt.(string)
+		if !ok {
+			// TODO: better error message
+			return nil, parse.ErrUnsupportedFeature.New("invalid set variable")
+		}
 
-	switch strings.ToLower(val) {
-	case sqlparser.KeywordString(sqlparser.ON):
-		return expression.NewLiteral(int64(1), sql.Int64), nil
-	case sqlparser.KeywordString(sqlparser.TRUE):
-		return expression.NewLiteral(true, sql.Boolean), nil
-	case sqlparser.KeywordString(sqlparser.OFF):
-		return expression.NewLiteral(int64(0), sql.Int64), nil
-	case sqlparser.KeywordString(sqlparser.FALSE):
-		return expression.NewLiteral(false, sql.Boolean), nil
+		switch strings.ToLower(val) {
+		case sqlparser.KeywordString(sqlparser.ON):
+			return expression.NewLiteral(1, sql.Boolean), nil
+		case sqlparser.KeywordString(sqlparser.TRUE):
+			return expression.NewLiteral(1, sql.Boolean), nil
+		case sqlparser.KeywordString(sqlparser.OFF):
+			return expression.NewLiteral(0, sql.Boolean), nil
+		case sqlparser.KeywordString(sqlparser.FALSE):
+			return expression.NewLiteral(0, sql.Boolean), nil
+		}
+	} else if e.Type() == sql.Boolean {
+		val, err := e.Eval(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		b, ok := val.(bool)
+		if !ok {
+			return e, nil
+		}
+
+		if b {
+			return expression.NewLiteral(1, sql.Boolean), nil
+		} else {
+			return expression.NewLiteral(0, sql.Boolean), nil
+		}
 	}
 
 	return e, nil

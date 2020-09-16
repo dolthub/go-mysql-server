@@ -14,13 +14,17 @@
 
 package enginetest
 
-import "github.com/liquidata-inc/go-mysql-server/sql"
+import (
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"gopkg.in/src-d/go-errors.v1"
+)
 
 type ScriptTest struct {
 	Name        string
 	SetUpScript []string
 	Query       string
 	Expected    []sql.Row
+	ExpectedErr *errors.Kind
 }
 
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of

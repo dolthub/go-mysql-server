@@ -49,16 +49,12 @@ func TestSessionSelectLimit(t *testing.T) {
 	enginetest.TestSessionSelectLimit(t, newDefaultMemoryHarness())
 }
 
-func TestSessionDefaults(t *testing.T) {
-	enginetest.TestSessionDefaults(t, newDefaultMemoryHarness())
+func TestVariables(t *testing.T) {
+	enginetest.TestVariables(t, newDefaultMemoryHarness())
 }
 
-func TestSessionVariables(t *testing.T) {
-	enginetest.TestSessionVariables(t, newDefaultMemoryHarness())
-}
-
-func TestSessionVariablesONOFF(t *testing.T) {
-	enginetest.TestSessionVariablesONOFF(t, newDefaultMemoryHarness())
+func TestVariableErrors(t *testing.T) {
+	enginetest.TestVariableErrors(t, newDefaultMemoryHarness())
 }
 
 func TestWarnings(t *testing.T) {

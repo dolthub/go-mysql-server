@@ -1420,71 +1420,17 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 	)
 }
 
-func TestSessionVariables(t *testing.T, harness Harness) {
-	require := require.New(t)
-	e := NewEngine(t, harness)
-
-	ctx := NewContext(harness)
-	_, iter, err := e.Query(ctx, `set autocommit=1, sql_mode = concat(@@sql_mode,',STRICT_TRANS_TABLES')`)
-	require.NoError(err)
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	_, iter, err = e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode`)
-	require.NoError(err)
-	rows, err = sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	require.Equal([]sql.Row{{int8(1), ",STRICT_TRANS_TABLES"}}, rows)
+func TestVariables(t *testing.T, harness Harness) {
+	for _, query := range VariableQueries {
+		testScript(t, harness, query)
+	}
 }
 
-func TestSessionVariablesONOFF(t *testing.T, harness Harness) {
+func TestVariableErrors(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
-	RunQuery(t, e, harness,`set autocommit=ON, sql_mode = OFF, sql_select_limit=1`)
-	TestQuery(t, harness, e,
-		`SELECT @@autocommit, @@session.sql_mode, @@sql_select_limit`,
-		[]sql.Row{{int64(1), int64(0), int64(1)}},
-	)
-}
-
-func TestSessionDefaults(t *testing.T, harness Harness) {
-	q := `SET @@auto_increment_increment=DEFAULT,
-			  @@max_allowed_packet=DEFAULT,
-			  @@sql_select_limit=DEFAULT,
-			  @@ndbinfo_version=DEFAULT`
-
-	e := NewEngine(t, harness)
-
-	ctx := NewContext(harness)
-	err := ctx.Session.Set(ctx, "auto_increment_increment", sql.Int64, 0)
-	require.NoError(t, err)
-	err = ctx.Session.Set(ctx, "max_allowed_packet", sql.Int64, 0)
-	require.NoError(t, err)
-	err = ctx.Session.Set(ctx, "sql_select_limit", sql.Int64, 0)
-	require.NoError(t, err)
-	err = ctx.Session.Set(ctx, "ndbinfo_version", sql.Text, "non default value")
-	require.NoError(t, err)
-
-	defaults := sql.DefaultSessionConfig()
-
-	RunQuery(t, e, harness, q)
-
-	assert := assert.New(t)
-	typ, val := ctx.Get("auto_increment_increment")
-	assert.Equal(defaults["auto_increment_increment"].Typ, typ)
-	assert.Equal(defaults["auto_increment_increment"].Value, val)
-
-	typ, val = ctx.Get("max_allowed_packet")
-	assert.Equal(defaults["max_allowed_packet"].Typ, typ)
-	assert.Equal(defaults["max_allowed_packet"].Value, val)
-
-	typ, val = ctx.Get("sql_select_limit")
-	assert.Equal(defaults["sql_select_limit"].Typ, typ)
-	assert.Equal(defaults["sql_select_limit"].Value, val)
-
-	typ, val = ctx.Get("ndbinfo_version")
-	assert.Equal(defaults["ndbinfo_version"].Typ, typ)
-	assert.Equal(defaults["ndbinfo_version"].Value, val)
+	for _, test := range VariableErrorTests {
+		AssertErr(t, e, harness, test.Query, test.ExpectedErr)
+	}
 }
 
 func TestWarnings(t *testing.T, harness Harness) {

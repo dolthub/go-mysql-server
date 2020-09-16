@@ -1369,6 +1369,7 @@ var QueryTests = []QueryTest{
 	{
 		`SHOW VARIABLES`,
 		[]sql.Row{
+			{"autocommit", int64(1)},
 			{"auto_increment_increment", int64(1)},
 			{"time_zone", "SYSTEM"},
 			{"system_time_zone", time.Now().UTC().Location().String()},
@@ -1475,10 +1476,6 @@ var QueryTests = []QueryTest{
 	},
 	{
 		`SHOW WARNINGS LIMIT 0`,
-		nil,
-	},
-	{
-		`SET SESSION NET_READ_TIMEOUT= 700, SESSION NET_WRITE_TIMEOUT= 700`,
 		nil,
 	},
 	{

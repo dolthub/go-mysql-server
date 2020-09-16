@@ -576,6 +576,7 @@ func resolveSystemVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Expre
 }
 
 func trimVarName(name string) string {
+	name = strings.ToLower(name)
 	name = strings.TrimLeft(name, "@")
 	name = strings.TrimPrefix(strings.TrimPrefix(name, globalPrefix), sessionPrefix)
 	return name
