@@ -233,7 +233,7 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 		return nil, err
 	}
 
-	return plan.NewSet(exprs...), nil
+	return plan.NewSet(exprs), nil
 }
 
 func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, error) {

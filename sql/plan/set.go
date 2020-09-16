@@ -16,7 +16,7 @@ type Set struct {
 }
 
 // NewSet creates a new Set node.
-func NewSet(vars ...sql.Expression) *Set {
+func NewSet(vars []sql.Expression) *Set {
 	return &Set{vars}
 }
 
@@ -52,7 +52,7 @@ func (s *Set) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.Exprs))
 	}
 
-	return NewSet(exprs...), nil
+	return NewSet(exprs), nil
 }
 
 // Expressions implements the sql.Expressioner interface.

@@ -1585,14 +1585,16 @@ var fixtures = map[string]sql.Node{
 	`SELECT @@allowed_max_packet`: plan.NewProject([]sql.Expression{
 		expression.NewUnresolvedColumn("@@allowed_max_packet"),
 	}, plan.NewUnresolvedTable("dual", "")),
-	`SET autocommit=1, foo="bar"`: plan.NewSet(
-		plan.SetVariable{
-			Name:  "autocommit",
-			Value: expression.NewLiteral(int8(1), sql.Int8),
-		},
-		plan.SetVariable{
-			Name:  "foo",
-			Value: expression.NewLiteral("bar", sql.LongText),
+	`SET autocommit=1, foo="bar", baz=ON, qux=bareword`: plan.NewSet(
+		[]sql.Expression{
+			expression.NewSetField(expression.NewUnresolvedColumn("autocommit"), expression.NewLiteral(int8(1), sql.Int8)),
+			expression.NewSetField(expression.NewUnresolvedColumn("foo"), expression.NewLiteral(int8(1), sql.Int8)),
+			expression.NewSetField(expression.NewUnresolvedColumn("baz"), expression.NewLiteral(int8(1), sql.Int8)),
+			expression.NewSetField(expression.NewUnresolvedColumn("qux"), expression.NewLiteral(int8(1), sql.Int8)),
+			plan.SetVariable{
+				Name:  "foo",
+				Value: expression.NewLiteral("bar", sql.LongText),
+			},
 		},
 	),
 	`SET autocommit=1, foo=bar`: plan.NewSet(
