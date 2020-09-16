@@ -1439,22 +1439,12 @@ func TestSessionVariables(t *testing.T, harness Harness) {
 }
 
 func TestSessionVariablesONOFF(t *testing.T, harness Harness) {
-	require := require.New(t)
-
 	e := NewEngine(t, harness)
-
-	ctx := NewContext(harness)
-	_, iter, err := e.Query(ctx, `set autocommit=ON, sql_mode = OFF, autoformat="true"`)
-	require.NoError(err)
-	rows, err := sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	_, iter, err = e.Query(ctx, `SELECT @@autocommit, @@session.sql_mode, @@autoformat`)
-	require.NoError(err)
-	rows, err = sql.RowIterToRows(iter)
-	require.NoError(err)
-
-	require.Equal([]sql.Row{{int64(1), int64(0), true}}, rows)
+	RunQuery(t, e, harness,`set autocommit=ON, sql_mode = OFF, sql_select_limit=1`)
+	TestQuery(t, harness, e,
+		`SELECT @@autocommit, @@session.sql_mode, @@sql_select_limit`,
+		[]sql.Row{{int64(1), int64(0), int64(1)}},
+	)
 }
 
 func TestSessionDefaults(t *testing.T, harness Harness) {

@@ -233,6 +233,7 @@ type (
 	}
 )
 
+// TODO: allow integrators to specify system variables too
 var SystemVariables = map[string]struct{}{
 	"auto_increment_increment": {},
 	"time_zone":                {},
@@ -246,6 +247,7 @@ var SystemVariables = map[string]struct{}{
 	"transaction_isolation":    {},
 	"version":                  {},
 	"version_comment":          {},
+	"autocommit":               {},
 }
 
 // DefaultSessionConfig returns default values for session variables

@@ -75,7 +75,7 @@ func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		case *expression.SetField:
 			// OK, continue
 		default:
-			panic("unrecognized type")
+			panic(fmt.Sprintf("unrecognized type %T", v))
 		}
 
 		setField := v.(*expression.SetField)

@@ -568,12 +568,17 @@ func resolveSystemVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Expre
 		return nil, errGlobalVariablesNotSupported.New(col)
 	}
 
-	name := strings.TrimLeft(col.Name(), "@")
-	name = strings.TrimPrefix(strings.TrimPrefix(name, globalPrefix), sessionPrefix)
+	name := trimVarName(col.Name())
 	typ, value := ctx.Get(name)
 
 	a.Log("resolved column %s to session field %s (type %s)", col, value, typ)
 	return expression.NewGetSessionVar(name, typ, value), nil
+}
+
+func trimVarName(name string) string {
+	name = strings.TrimLeft(name, "@")
+	name = strings.TrimPrefix(strings.TrimPrefix(name, globalPrefix), sessionPrefix)
+	return name
 }
 
 func resolveUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {

@@ -49,6 +49,7 @@ var parallelVals = []int{
 // 2) Mergeable / unmergeable / native / no indexes
 // 3) Parallelism on / off
 func TestQueries(t *testing.T) {
+	t.Skip()
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexBehavior := range indexBehaviors {
 			for _, parallelism := range parallelVals {

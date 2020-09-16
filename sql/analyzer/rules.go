@@ -9,7 +9,7 @@ import (
 var OnceBeforeDefault = []Rule{
 	{"resolve_views", resolveViews},
 	{"resolve_tables", resolveTables},
-	{"resolve_system_variables", resolveSetVariables},
+	{"resolve_set_variables", resolveSetVariables},
 	{"resolve_subqueries", resolveSubqueries},
 	{"check_aliases", checkAliases},
 }
@@ -23,6 +23,7 @@ var DefaultRules = []Rule{
 	{"resolve_new_and_old_in_triggers", resolveNewAndOldReferences},
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
+	{"resolve_set_columns", resolveSetColumns},
 	{"resolve_database", resolveDatabase},
 	{"expand_stars", expandStars},
 	{"resolve_functions", resolveFunctions},
