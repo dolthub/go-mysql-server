@@ -21,7 +21,7 @@ func NewSetField(colName, expr sql.Expression) sql.Expression {
 }
 
 func (s *SetField) String() string {
-	return fmt.Sprintf("SETFIELD %s = %s", s.Left, s.Right)
+	return fmt.Sprintf("SET %s = %s", s.Left, s.Right)
 }
 
 // Type implements the Expression interface.
@@ -67,4 +67,16 @@ func (s *SetField) WithChildren(children ...sql.Expression) (sql.Expression, err
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 2)
 	}
 	return NewSetField(children[0], children[1]), nil
+}
+
+// SetDefault is a simple wrapper for DefaultColumn that allows us to resolve the default for a system variable at
+// execution time. It is always Resolved().
+type SetDefault struct {
+	*DefaultColumn
+}
+
+var _ *SetDefault = (*SetDefault)(nil)
+
+func (s *SetDefault) Resolved() bool {
+	return true
 }

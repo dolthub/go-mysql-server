@@ -35,7 +35,8 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			return e, nil
 		}
 
-		setVal, err := getSetVal(ctx, sf.Right)
+		varName := trimVarName(sf.Left.String())
+		setVal, err := getSetVal(ctx, varName, sf.Right)
 		if err != nil {
 			return nil, err
 		}
@@ -53,8 +54,9 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		// set @sql_mode = "abc"
 		if uc, ok := sf.Left.(*expression.UnresolvedColumn); ok {
 			if isSystemVariable(uc) {
-				varName := trimVarName(uc.String())
-				if _, ok := sql.SystemVariables[varName]; !ok {
+				// TODO: this is gross, we need a better interface for system vars than this
+				valtyp, ok := sql.DefaultSessionConfig()[varName]
+				if !ok {
 					return nil, sql.ErrUnknownSystemVariable.New(varName)
 				}
 
@@ -64,7 +66,7 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 					setVal = expression.NewLiteral(uc.Name(), sql.LongText)
 				}
 
-				return sf.WithChildren(expression.NewSystemVar(varName), setVal)
+				return sf.WithChildren(expression.NewSystemVar(varName, valtyp.Typ), setVal)
 			}
 			if isUserVariable(uc) {
 				return sf.WithChildren(expression.NewUserVar(uc.String()), setVal)
@@ -76,9 +78,14 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 }
 
 // getSetVal evaluates the right hand side of a SetField expression and returns an evaluated value as appropriate
-func getSetVal(ctx *sql.Context, e sql.Expression) (sql.Expression, error) {
+func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expression, error) {
 	if _, ok := e.(*expression.DefaultColumn); ok {
-		return e, nil
+		valtyp, ok := sql.DefaultSessionConfig()[varName]
+		if !ok {
+			return nil, sql.ErrUnknownSystemVariable.New(varName)
+		}
+		value, typ := valtyp.Value, valtyp.Typ
+		return expression.NewLiteral(value, typ), nil
 	}
 
 	if !e.Resolved() || !sql.IsTextOnly(e.Type()) {
@@ -121,7 +128,8 @@ func resolveSetColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			return e, nil
 		}
 
-		setVal, err := getSetVal(ctx, sf.Right)
+		varName := trimVarName(sf.Left.String())
+		setVal, err := getSetVal(ctx, varName, sf.Right)
 		if err != nil {
 			return nil, err
 		}
@@ -130,7 +138,8 @@ func resolveSetColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		// So treat it as a naked system variable and see if it exists
 		if uc, ok := sf.Left.(*deferredColumn); ok {
 			varName := trimVarName(uc.String())
-			if _, ok := sql.SystemVariables[varName]; !ok {
+			valtyp, ok := sql.DefaultSessionConfig()[varName]
+			if !ok {
 				return nil, sql.ErrUnknownSystemVariable.New(varName)
 			}
 
@@ -140,7 +149,7 @@ func resolveSetColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 				setVal = expression.NewLiteral(uc.Name(), sql.LongText)
 			}
 
-			return sf.WithChildren(expression.NewSystemVar(varName), setVal)
+			return sf.WithChildren(expression.NewSystemVar(varName, valtyp.Typ), setVal)
 		}
 
 		return sf, nil

@@ -91,24 +91,15 @@ func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			globalPrefix,
 		)
 
-		switch setField.Right.(type) {
-		case *expression.DefaultColumn:
-			valtyp, ok := sql.DefaultSessionConfig()[varName]
-			if !ok {
-				continue
-			}
-			value, typ = valtyp.Value, valtyp.Typ
-		default:
-			// TODO: value checking for system variables. Each one has specific lists of acceptable values.
-			value, err = setField.Right.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
-			typ = setField.Left.Type()
+		// TODO: value checking for system variables. Each one has specific lists of acceptable values.
+		value, err = setField.Right.Eval(ctx, row)
+		if err != nil {
+			return nil, err
 		}
+		typ = setField.Left.Type()
 
+		// TODO: differentiate between system and user vars here
 		err = ctx.Set(ctx, varName, typ, value)
-
 		if err != nil {
 			return nil, err
 		}

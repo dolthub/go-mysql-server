@@ -1466,27 +1466,25 @@ func TestSessionDefaults(t *testing.T, harness Harness) {
 	require.NoError(t, err)
 
 	defaults := sql.DefaultSessionConfig()
-	t.Run(q, func(t *testing.T) {
-		require := require.New(t)
-		_, _, err := e.Query(ctx, q)
-		require.NoError(err)
 
-		typ, val := ctx.Get("auto_increment_increment")
-		require.Equal(defaults["auto_increment_increment"].Typ, typ)
-		require.Equal(defaults["auto_increment_increment"].Value, val)
+	RunQuery(t, e, harness, q)
 
-		typ, val = ctx.Get("max_allowed_packet")
-		require.Equal(defaults["max_allowed_packet"].Typ, typ)
-		require.Equal(defaults["max_allowed_packet"].Value, val)
+	assert := assert.New(t)
+	typ, val := ctx.Get("auto_increment_increment")
+	assert.Equal(defaults["auto_increment_increment"].Typ, typ)
+	assert.Equal(defaults["auto_increment_increment"].Value, val)
 
-		typ, val = ctx.Get("sql_select_limit")
-		require.Equal(defaults["sql_select_limit"].Typ, typ)
-		require.Equal(defaults["sql_select_limit"].Value, val)
+	typ, val = ctx.Get("max_allowed_packet")
+	assert.Equal(defaults["max_allowed_packet"].Typ, typ)
+	assert.Equal(defaults["max_allowed_packet"].Value, val)
 
-		typ, val = ctx.Get("ndbinfo_version")
-		require.Equal(defaults["ndbinfo_version"].Typ, typ)
-		require.Equal(defaults["ndbinfo_version"].Value, val)
-	})
+	typ, val = ctx.Get("sql_select_limit")
+	assert.Equal(defaults["sql_select_limit"].Typ, typ)
+	assert.Equal(defaults["sql_select_limit"].Value, val)
+
+	typ, val = ctx.Get("ndbinfo_version")
+	assert.Equal(defaults["ndbinfo_version"].Typ, typ)
+	assert.Equal(defaults["ndbinfo_version"].Value, val)
 }
 
 func TestWarnings(t *testing.T, harness Harness) {

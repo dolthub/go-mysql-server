@@ -265,6 +265,7 @@ func DefaultSessionConfig() map[string]TypedValue {
 		"transaction_isolation":    TypedValue{LongText, "READ UNCOMMITTED"},
 		"version":                  TypedValue{LongText, ""},
 		"version_comment":          TypedValue{LongText, ""},
+		"autocommit":               TypedValue{Int8, 1},
 	}
 }
 
