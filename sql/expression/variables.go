@@ -67,7 +67,7 @@ func (f *GetSessionVar) WithChildren(children ...sql.Expression) (sql.Expression
 // SystemVar is an expression that returns the name of a system variable. It's used as the expression on the left hand
 // side of a SET statement.
 type SystemVar struct {
-	name string
+	Name string
 	typ  sql.Type
 }
 
@@ -81,7 +81,7 @@ func (v *SystemVar) Children() []sql.Expression { return nil }
 
 // Eval implements the sql.Expression interface.
 func (v *SystemVar) Eval(*sql.Context, sql.Row) (interface{}, error) {
-	return v.name, nil
+	return v.Name, nil
 }
 
 // Type implements the sql.Expression interface.
@@ -94,10 +94,10 @@ func (v *SystemVar) IsNullable() bool { return false }
 func (v *SystemVar) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
-func (v *SystemVar) String() string { return "@@" + v.name }
+func (v *SystemVar) String() string { return "@@" + v.Name }
 
 func (v *SystemVar) DebugString() string {
-	return fmt.Sprintf("@@%s (%s)", v.name, v.typ)
+	return fmt.Sprintf("@@%s (%s)", v.Name, v.typ)
 }
 
 // WithChildren implements the Expression interface.

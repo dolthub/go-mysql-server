@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/liquidata-inc/vitess/go/vt/sqlparser"
-
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
@@ -23,10 +21,6 @@ func NewSet(vars []sql.Expression) *Set {
 // Resolved implements the sql.Node interface.
 func (s *Set) Resolved() bool {
 	for _, v := range s.Exprs {
-		// TODO (maybe)?
-		// if _, ok := v.Right.(*expression.DefaultColumn); ok {
-		// 	continue
-		// }
 		if !v.Resolved() {
 			return false
 		}
@@ -65,11 +59,6 @@ func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Set")
 	defer span.Finish()
 
-	const (
-		sessionPrefix = sqlparser.SessionStr + "."
-		globalPrefix  = sqlparser.GlobalStr + "."
-	)
-
 	for _, v := range s.Exprs {
 		switch v.(type) {
 		case *expression.SetField:
@@ -86,10 +75,13 @@ func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			err   error
 		)
 
-		varName := strings.TrimPrefix(
-			strings.TrimPrefix(strings.TrimLeft(setField.Left.String(), "@"), sessionPrefix),
-			globalPrefix,
-		)
+		var varName string
+		switch left := setField.Left.(type) {
+		case *expression.SystemVar:
+			varName = left.Name
+		default:
+			panic(fmt.Sprintf("Unsupported type for set: %T", left))
+		}
 
 		// TODO: value checking for system variables. Each one has specific lists of acceptable values.
 		value, err = setField.Right.Eval(ctx, row)
