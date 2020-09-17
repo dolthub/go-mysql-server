@@ -81,6 +81,48 @@ var VariableQueries = []ScriptTest {
 			{1, 0},
 		},
 	},
+	{
+		Name: "set system variable with expressions",
+		SetUpScript: []string{
+			`set sql_mode = "123", @@auto_increment_increment = 1`,
+			`set sql_mode = concat(@@sql_mode, "456"), @@auto_increment_increment = @@auto_increment_increment + 3`,
+		},
+		Query: "SELECT @@sql_mode, @@auto_increment_increment",
+		Expected: []sql.Row{
+			{"123456", 4},
+		},
+	},
+	{
+		Name: "set system variable to another system variable",
+		SetUpScript: []string{
+			`set @@auto_increment_increment = 123`,
+			`set @@sql_select_limit = @@auto_increment_increment`,
+		},
+		Query: "SELECT @@sql_select_limit",
+		Expected: []sql.Row{
+			{123},
+		},
+	},
+	{
+		Name: "set system variable to bareword",
+		SetUpScript: []string{
+			`set @@sql_mode = some_mode`,
+		},
+		Query: "SELECT @@sql_mode",
+		Expected: []sql.Row{
+			{"some_mode"},
+		},
+	},
+	{
+		Name: "set system variable to bareword, unqualified",
+		SetUpScript: []string{
+			`set sql_mode = some_mode`,
+		},
+		Query: "SELECT @@sql_mode",
+		Expected: []sql.Row{
+			{"some_mode"},
+		},
+	},
 }
 
 var VariableErrorTests = []QueryErrorTest {

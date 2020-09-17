@@ -17,6 +17,7 @@ package analyzer
 import (
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/liquidata-inc/go-mysql-server/sql/expression/function"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"math"
 	"testing"
@@ -41,7 +42,53 @@ func TestResolveSetVariables(t *testing.T) {
 				},
 			),
 		},
+		{
+			name: "set defaults with @@session",
+			node: plan.NewSet(
+				[]sql.Expression{
+					expression.NewSetField(uc("@@session.auto_increment_increment"), expression.NewDefaultColumn("")),
+					expression.NewSetField(uc("@@session.sql_select_limit"), expression.NewDefaultColumn("")),
+				},
+			),
+			expected: plan.NewSet(
+				[]sql.Expression{
+					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
+					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.Int32), expression.NewLiteral(math.MaxInt32, sql.Int32)),
+				},
+			),
+		},
+		{
+			name: "set defaults with @@session and mixed case",
+			node: plan.NewSet(
+				[]sql.Expression{
+					expression.NewSetField(uc("@@session.auto_increment_INCREMENT"), expression.NewDefaultColumn("")),
+					expression.NewSetField(uc("@@sql_select_LIMIT"), expression.NewDefaultColumn("")),
+				},
+			),
+			expected: plan.NewSet(
+				[]sql.Expression{
+					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
+					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.Int32), expression.NewLiteral(math.MaxInt32, sql.Int32)),
+				},
+			),
+		},
+		{
+			name: "set expression",
+			node: plan.NewSet(
+				[]sql.Expression{
+					expression.NewSetField(uc("@@auto_increment_increment"), expression.NewArithmetic(lit(2), lit(3), "+")),
+					expression.NewSetField(uc("@@sql_mode"), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
+				},
+			),
+			expected: plan.NewSet(
+				[]sql.Expression{
+					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.Int64), expression.NewArithmetic(lit(2), lit(3), "+")),
+					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.LongText), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
+				},
+			),
+		},
 	}
 
 	runTestCases(t, nil, testCases, nil, *rule)
 }
+
