@@ -228,7 +228,7 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 		return nil, ErrUnsupportedFeature.New("SET global variables")
 	}
 
-	exprs, err := updateExprsToExpressions(ctx, n.Exprs)
+	exprs, err := setExprsToExpressions(ctx, n.Exprs)
 	if err != nil {
 		return nil, err
 	}
@@ -792,7 +792,7 @@ func convertDropView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 }
 
 func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
-	onDupExprs, err := updateExprsToExpressions(ctx, sqlparser.SetExprs(i.OnDup))
+	onDupExprs, err := setExprsToExpressions(ctx, sqlparser.SetExprs(i.OnDup))
 	if err != nil {
 		return nil, err
 	}
@@ -861,7 +861,7 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 		return nil, err
 	}
 
-	updateExprs, err := updateExprsToExpressions(ctx, d.Exprs)
+	updateExprs, err := setExprsToExpressions(ctx, d.Exprs)
 	if err != nil {
 		return nil, err
 	}
@@ -1864,7 +1864,7 @@ func intervalExprToExpression(ctx *sql.Context, e *sqlparser.IntervalExpr) (sql.
 	return expression.NewInterval(expr, e.Unit), nil
 }
 
-func updateExprsToExpressions(ctx *sql.Context, e sqlparser.SetExprs) ([]sql.Expression, error) {
+func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetExprs) ([]sql.Expression, error) {
 	res := make([]sql.Expression, len(e))
 	for i, updateExpr := range e {
 		colName, err := exprToExpression(ctx, updateExpr.Name)

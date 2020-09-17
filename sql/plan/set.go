@@ -8,7 +8,7 @@ import (
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
-// Set configuration variables. Right now, only session variables are supported.
+// Set represents a set statement. This can be variables, but in some instances can also refer to row values.
 type Set struct {
 	Exprs []sql.Expression
 }
@@ -59,49 +59,68 @@ func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Set")
 	defer span.Finish()
 
+	var updateExprs []sql.Expression
 	for _, v := range s.Exprs {
-		switch v.(type) {
-		case *expression.SetField:
-			// OK, continue
-		default:
-			panic(fmt.Sprintf("unrecognized type %T", v))
+		setField, ok := v.(*expression.SetField)
+		if !ok {
+			return nil, fmt.Errorf("unsupported type for set: %T", v)
 		}
 
-		setField := v.(*expression.SetField)
-
-		var (
-			value interface{}
-			typ   sql.Type
-			err   error
-		)
-
-		var varName string
 		switch left := setField.Left.(type) {
 		case *expression.SystemVar:
-			varName = left.Name
+			_, err := setSystemVar(ctx, left, setField.Right, row)
+			if err != nil {
+				return nil, err
+			}
+		case *expression.GetField:
+			updateExprs = append(updateExprs, setField)
 		default:
-			panic(fmt.Sprintf("Unsupported type for set: %T", left))
-		}
-
-		// TODO: value checking for system variables. Each one has specific lists of acceptable values.
-		value, err = setField.Right.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		typ = setField.Left.Type()
-
-		// TODO: differentiate between system and user vars here
-		err = ctx.Set(ctx, varName, typ, value)
-		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unsupported type for set: %T", left)
 		}
 	}
 
-	return sql.RowsToRowIter(), nil
+	var resultRow sql.Row
+	if len(updateExprs) > 0 {
+		newRow, err := applyUpdateExpressions(ctx, updateExprs, row)
+		if err != nil {
+			return nil, err
+		}
+		copy(resultRow, row)
+		resultRow = row.Append(newRow)
+	}
+
+	return sql.RowsToRowIter(resultRow), nil
+}
+
+func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expression, row sql.Row) (interface{}, error) {
+	var (
+		value interface{}
+		typ   sql.Type
+		err   error
+	)
+
+	var varName = sysVar.Name
+
+	// TODO: value checking for system variables. Each one has specific lists of acceptable values.
+	value, err = right.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	typ = sysVar.Type()
+
+	// TODO: differentiate between system and user vars here
+	err = ctx.Set(ctx, varName, typ, value)
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
 }
 
 // Schema implements the sql.Node interface.
-func (s *Set) Schema() sql.Schema { return nil }
+func (s *Set) Schema() sql.Schema {
+	return nil
+}
 
 func (s *Set) String() string {
 	var children = make([]string, len(s.Exprs))

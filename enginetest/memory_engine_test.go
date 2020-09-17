@@ -75,7 +75,7 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
@@ -106,30 +106,28 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 
 	var test enginetest.ScriptTest
-	// test = enginetest.ScriptTest{
-	// 	Name: "trigger after insert, delete from other table",
-	// 	SetUpScript: []string{
-	// 		"create table a (x int primary key)",
-	// 		"create table b (y int primary key)",
-	// 		"insert into b values (0), (2), (4), (6), (8)",
-	// 		"create trigger insert_into_b after insert on a for each row delete from b where y = (new.x + 1)",
-	// 		"insert into a values (1), (3), (5)",
-	// 	},
-	// 	Query: "select y from b order by 1",
-	// 	Expected: []sql.Row{
-	// 		{0}, {8},
-	// 	},
-	// }
 	test = enginetest.ScriptTest{
-		Name: "set system variable to bareword, unqualified",
+		Name: "trigger before insert, alter inserted value",
 		SetUpScript: []string{
-			`set sql_mode = some_mode`,
+			"create table a (x int primary key)",
+			"create trigger insert_into_a before insert on a for each row set new.x = new.x + 1",
+			"insert into a values (1)",
 		},
-		Query: "SELECT @@sql_mode",
+		Query: "select x from a order by 1",
 		Expected: []sql.Row{
-			{"some_mode"},
+			{2},
 		},
 	}
+	// test = enginetest.ScriptTest{
+	// 	Name: "set system variable to bareword, unqualified",
+	// 	SetUpScript: []string{
+	// 		`set sql_mode = some_mode`,
+	// 	},
+	// 	Query: "SELECT @@sql_mode",
+	// 	Expected: []sql.Row{
+	// 		{"some_mode"},
+	// 	},
+	// }
 
 	fmt.Sprintf("%v", test)
 

@@ -72,15 +72,3 @@ func (s *SetField) WithChildren(children ...sql.Expression) (sql.Expression, err
 	}
 	return NewSetField(children[0], children[1]), nil
 }
-
-// SetDefault is a simple wrapper for DefaultColumn that allows us to resolve the default for a system variable at
-// execution time. It is always Resolved().
-type SetDefault struct {
-	*DefaultColumn
-}
-
-var _ *SetDefault = (*SetDefault)(nil)
-
-func (s *SetDefault) Resolved() bool {
-	return true
-}
