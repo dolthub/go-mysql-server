@@ -15,54 +15,33 @@
 package analyzer
 
 import (
-	"context"
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-	"github.com/stretchr/testify/require"
+	"math"
 	"testing"
 )
 
-func TestSetDefault(t *testing.T) {
-	require := require.New(t)
+func TestResolveSetVariables(t *testing.T) {
+	rule := getRuleFrom(OnceBeforeDefault, "resolve_set_variables")
 
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
-
-	s := plan.NewSet(
-		[]sql.Expression{
-			expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.Int64), expression.NewLiteral(int64(123), sql.Int64)),
-			expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
+	var testCases = []analyzerFnTestCase{
+		{
+			name: "set defaults",
+			node: plan.NewSet(
+				[]sql.Expression{
+					expression.NewSetField(uc("@@auto_increment_increment"), expression.NewDefaultColumn("")),
+					expression.NewSetField(uc("@@sql_select_limit"), expression.NewDefaultColumn("")),
+				},
+			),
+			expected: plan.NewSet(
+				[]sql.Expression{
+					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
+					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.Int32), expression.NewLiteral(math.MaxInt32, sql.Int32)),
+				},
+			),
 		},
-	)
+	}
 
-	_, err := s.RowIter(ctx, nil)
-	require.NoError(err)
-
-	typ, v := ctx.Get("auto_increment_increment")
-	require.Equal(sql.Int64, typ)
-	require.Equal(int64(123), v)
-
-	typ, v = ctx.Get("sql_select_limit")
-	require.Equal(sql.Int64, typ)
-	require.Equal(int64(1), v)
-
-	s = plan.NewSet(
-		[]sql.Expression{
-			expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.Int64), expression.NewDefaultColumn("")),
-			expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.Int64), expression.NewDefaultColumn("")),
-		},
-	)
-
-	_, err = s.RowIter(ctx, nil)
-	require.NoError(err)
-
-	defaults := sql.DefaultSessionConfig()
-
-	typ, v = ctx.Get("auto_increment_increment")
-	require.Equal(defaults["auto_increment_increment"].Typ, typ)
-	require.Equal(defaults["auto_increment_increment"].Value, v)
-
-	typ, v = ctx.Get("sql_select_limit")
-	require.Equal(defaults["sql_select_limit"].Typ, typ)
-	require.Equal(defaults["sql_select_limit"].Value, v)
+	runTestCases(t, nil, testCases, nil, *rule)
 }

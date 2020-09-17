@@ -2,10 +2,10 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/pmezard/go-difflib/difflib"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -158,22 +158,22 @@ func ensureSubquerySchema(n sql.Node) {
 // assertNodesEqualWithDiff asserts the two nodes given to be equal and prints any diff according to their DebugString
 // methods.
 func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
-	expectedStr := sql.DebugString(expected)
-	actualStr := sql.DebugString(actual)
-	diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
-		A:        difflib.SplitLines(expectedStr),
-		B:        difflib.SplitLines(actualStr),
-		FromFile: "expected",
-		FromDate: "",
-		ToFile:   "actual",
-		ToDate:   "",
-		Context:  1,
-	})
-	require.NoError(t, err)
+	if !assert.Equal(t, expected, actual) {
+		expectedStr := sql.DebugString(expected)
+		actualStr := sql.DebugString(actual)
+		diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+			A:        difflib.SplitLines(expectedStr),
+			B:        difflib.SplitLines(actualStr),
+			FromFile: "expected",
+			FromDate: "",
+			ToFile:   "actual",
+			ToDate:   "",
+			Context:  1,
+		})
+		require.NoError(t, err)
 
-	if len(diff) > 0 {
-		fmt.Println(diff)
+		if len(diff) > 0 {
+			fmt.Println(diff)
+		}
 	}
-
-	assert.Equal(t, expected, actual)
 }

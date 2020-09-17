@@ -97,7 +97,7 @@ func (v *SystemVar) Resolved() bool { return true }
 func (v *SystemVar) String() string { return "@@" + v.name }
 
 func (v *SystemVar) DebugString() string {
-	return fmt.Sprintf("@@%s", v.name)
+	return fmt.Sprintf("@@%s (%s)", v.name, v.typ)
 }
 
 // WithChildren implements the Expression interface.
