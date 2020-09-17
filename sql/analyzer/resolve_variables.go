@@ -70,6 +70,7 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 
 				return sf.WithChildren(expression.NewSystemVar(varName, valtyp.Typ), setVal)
 			}
+
 			if isUserVariable(uc) {
 				return sf.WithChildren(expression.NewUserVar(uc.String()), setVal)
 			}
@@ -166,7 +167,7 @@ func resolveSetColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 
 			// Special case: for system variables, MySQL allows naked strings (without quotes), which get interpreted as
 			// unresolved columns.
-			if uc, ok := setVal.(*expression.UnresolvedColumn); ok && uc.Table() == "" {
+			if uc, ok := setVal.(column); ok && uc.Table() == "" {
 				if !isSystemVariable(uc) && !isUserVariable(uc) {
 					setVal = expression.NewLiteral(uc.Name(), sql.LongText)
 				}
