@@ -117,24 +117,9 @@ func TestResolveSetVariables(t *testing.T) {
 }
 
 func TestResolveBarewordSetVariables(t *testing.T) {
-	rule := getRuleFrom(OnceBeforeDefault, "resolve_bareword_set_variables")
+	rule := getRuleFrom(DefaultRules, "resolve_bareword_set_variables")
 
 	var testCases = []analyzerFnTestCase{
-		{
-			name: "set expression with barewords",
-			node: plan.NewSet(
-				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.Int64), expression.NewArithmetic(lit(2), lit(3), "+")),
-					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.LongText), &deferredColumn{uc("hello")}),
-				},
-			),
-			expected: plan.NewSet(
-				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.Int64), expression.NewArithmetic(lit(2), lit(3), "+")),
-					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.LongText), expression.NewLiteral("hello", sql.LongText)),
-				},
-			),
-		},
 		{
 			name: "var name and expression both barewords",
 			node: plan.NewSet(
