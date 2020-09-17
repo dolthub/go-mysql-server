@@ -23,6 +23,9 @@ import (
 	"strings"
 )
 
+// resolveSetVariables replaces SET @@var and SET @var expressions with appropriately resolved expressions for the
+// left-hand side, and evaluate the right-hand side where possible, including filling in defaults. Also validates that
+// system variables are known to the system.
 func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	_, ok := n.(*plan.Set)
 	if !ok || n.Resolved() {
@@ -138,7 +141,10 @@ func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expressi
 	return e, nil
 }
 
-func resolveSetColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+// resolveUnquotedSetVariables does a similar pass as resolveSetVariables, but handles system vars that were provided
+// as barewords (vars not prefixed with @@, and string values unquoted). These will have been deferred into
+// deferredColumns by the resolve_columns rule.
+func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	_, ok := n.(*plan.Set)
 	if !ok || n.Resolved() {
 		return n, nil

@@ -23,7 +23,7 @@ var DefaultRules = []Rule{
 	{"resolve_new_and_old_in_triggers", resolveNewAndOldReferences},
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
-	{"resolve_set_columns", resolveSetColumns},
+	{"resolve_bareword_set_variables", resolveBarewordSetVariables},
 	{"resolve_database", resolveDatabase},
 	{"expand_stars", expandStars},
 	{"resolve_functions", resolveFunctions},

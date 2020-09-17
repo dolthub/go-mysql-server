@@ -87,8 +87,68 @@ func TestResolveSetVariables(t *testing.T) {
 				},
 			),
 		},
+		{
+			name: "set expression with barewords",
+			node: plan.NewSet(
+				[]sql.Expression{
+					expression.NewSetField(uc("auto_increment_increment"), expression.NewArithmetic(lit(2), lit(3), "+")),
+					expression.NewSetField(uc("@@sql_mode"), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
+				},
+			),
+			expected: plan.NewSet(
+				[]sql.Expression{
+					expression.NewSetField(uc("auto_increment_increment"), expression.NewArithmetic(lit(2), lit(3), "+")),
+					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.LongText), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
+				},
+			),
+		},
+		{
+			name: "set all barewords",
+			node: plan.NewSet(
+				[]sql.Expression{
+					expression.NewSetField(uc("auto_increment_increment"), expression.NewArithmetic(lit(2), lit(3), "+")),
+					expression.NewSetField(uc("sql_mode"), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
+				},
+			),
+		},
 	}
 
 	runTestCases(t, nil, testCases, nil, *rule)
 }
 
+func TestResolveBarewordSetVariables(t *testing.T) {
+	rule := getRuleFrom(OnceBeforeDefault, "resolve_bareword_set_variables")
+
+	var testCases = []analyzerFnTestCase{
+		{
+			name: "set expression with barewords",
+			node: plan.NewSet(
+				[]sql.Expression{
+					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.Int64), expression.NewArithmetic(lit(2), lit(3), "+")),
+					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.LongText), &deferredColumn{uc("hello")}),
+				},
+			),
+			expected: plan.NewSet(
+				[]sql.Expression{
+					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.Int64), expression.NewArithmetic(lit(2), lit(3), "+")),
+					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.LongText), expression.NewLiteral("hello", sql.LongText)),
+				},
+			),
+		},
+		{
+			name: "var name and expression both barewords",
+			node: plan.NewSet(
+				[]sql.Expression{
+					expression.NewSetField(&deferredColumn{uc("sql_mode")}, &deferredColumn{uc("hello")}),
+				},
+			),
+			expected: plan.NewSet(
+				[]sql.Expression{
+					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.LongText), expression.NewLiteral("hello", sql.LongText)),
+				},
+			),
+		},
+	}
+
+	runTestCases(t, nil, testCases, nil, *rule)
+}
