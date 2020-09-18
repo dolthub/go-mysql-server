@@ -62,6 +62,6 @@ func (f inspector) Visit(expr Expression) Visitor {
 // f(expr); expr must not be nil. If f returns true, Inspect invokes f
 // recursively for each of the children of expr, followed by a call of
 // f(nil).
-func Inspect(expr Expression, f func(Expression) bool) {
+func Inspect(expr Expression, f func(expr Expression) bool) {
 	Walk(inspector(f), expr)
 }

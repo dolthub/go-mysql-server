@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"io"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -108,17 +109,49 @@ func (t *triggerIter) Next() (row sql.Row, returnErr error) {
 		}
 	}()
 
+	var logicRow sql.Row
 	for {
-		_, err := logicIter.Next()
+		row, err := logicIter.Next()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			return nil, err
 		}
+		logicRow = row
+	}
+
+	// For some logic statements, we want to return the result of the logic operation as our row, e.g. a Set that alters
+	// the fields of the new row
+	if ok, returnRow := shouldUseLogicResult(logic, logicRow); ok {
+		return returnRow, nil
 	}
 
 	return childRow, nil
+}
+
+func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
+	if qp, ok := logic.(*QueryProcess); ok {
+		logic = qp.Child
+	}
+
+	switch logic := logic.(type) {
+	// TODO: are there other statement types that we should use here?
+	case *Set:
+		hasSetField := false
+		for _, expr := range logic.Exprs {
+			sql.Inspect(expr.(*expression.SetField).Left, func(e sql.Expression) bool {
+				if _, ok := e.(*expression.GetField); ok {
+					hasSetField = true
+					return false
+				}
+				return true
+			})
+		}
+		return hasSetField, row[len(row)/2:]
+	default:
+		return false, nil
+	}
 }
 
 func (t *triggerIter) Close() error {

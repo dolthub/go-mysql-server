@@ -103,7 +103,7 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var test enginetest.ScriptTest
 	test = enginetest.ScriptTest{
@@ -118,16 +118,6 @@ func TestSingleScript(t *testing.T) {
 			{2},
 		},
 	}
-	// test = enginetest.ScriptTest{
-	// 	Name: "set system variable to bareword, unqualified",
-	// 	SetUpScript: []string{
-	// 		`set sql_mode = some_mode`,
-	// 	},
-	// 	Query: "SELECT @@sql_mode",
-	// 	Expected: []sql.Row{
-	// 		{"some_mode"},
-	// 	},
-	// }
 
 	fmt.Sprintf("%v", test)
 
