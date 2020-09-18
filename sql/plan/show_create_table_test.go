@@ -103,13 +103,14 @@ func TestShowCreateTableWithIndexAndForeignKeys(t *testing.T) {
 			unique: true,
 		},
 		&mockIndex{
-			db:    "testdb",
-			table: "test-table",
-			id:    "zug",
-			exprs: []sql.Expression{
+			db:      "testdb",
+			table:   "test-table",
+			id:      "zug",
+			exprs:   []sql.Expression{
 				expression.NewGetFieldWithTable(4, sql.Int64, "test-table", "pok", true),
 				expression.NewGetFieldWithTable(3, sql.Int64, "test-table", "foo", true),
 			},
+			comment: "test comment",
 		},
 	}
 
@@ -128,7 +129,7 @@ func TestShowCreateTableWithIndexAndForeignKeys(t *testing.T) {
 			"  `pok` char(123),\n"+
 			"  PRIMARY KEY (`baz`,`zab`),\n"+
 			"  UNIQUE KEY `qux` (`foo`),\n"+
-			"  KEY `zug` (`pok`,`foo`),\n"+
+			"  KEY `zug` (`pok`,`foo`) COMMENT 'test comment',\n"+
 			"  CONSTRAINT `fk1` FOREIGN KEY (`baz`,`zab`) REFERENCES `otherTable` (`a`,`b`) ON DELETE CASCADE,\n"+
 			"  CONSTRAINT `fk2` FOREIGN KEY (`foo`) REFERENCES `otherTable` (`b`) ON UPDATE RESTRICT,\n"+
 			"  CONSTRAINT `fk3` FOREIGN KEY (`bza`) REFERENCES `otherTable` (`c`)\n"+

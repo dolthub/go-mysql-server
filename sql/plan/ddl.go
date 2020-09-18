@@ -69,6 +69,7 @@ type CreateTable struct {
 	ifNotExists bool
 	fkDefs      []*sql.ForeignKeyConstraint
 	idxDefs     []*IndexDefinition
+	like        string
 }
 
 var _ sql.Databaser = (*CreateTable)(nil)
@@ -88,6 +89,16 @@ func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists
 		ifNotExists: ifNotExists,
 		idxDefs:     idxDefs,
 		fkDefs:      fkDefs,
+	}
+}
+
+// NewCreateTableLike creates a new CreateTable node for CREATE TABLE LIKE statements
+func NewCreateTableLike(db sql.Database, name string, likeName string, ifNotExists bool) *CreateTable {
+	return &CreateTable{
+		ddlNode:     ddlNode{db},
+		name:        name,
+		ifNotExists: ifNotExists,
+		like:        likeName,
 	}
 }
 
@@ -184,6 +195,18 @@ func (c *CreateTable) Expressions() []sql.Expression {
 		exprs[i] = expression.WrapExpression(col.Default)
 	}
 	return exprs
+}
+
+func (c *CreateTable) Like() string {
+	return c.like
+}
+
+func (c *CreateTable) Name() string {
+	return c.name
+}
+
+func (c *CreateTable) IfNotExists() bool {
+	return c.ifNotExists
 }
 
 func (c *CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {

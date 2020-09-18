@@ -20,8 +20,10 @@ type Column struct {
 	Source string
 	// PrimaryKey is true if the column is part of the primary key for its table.
 	PrimaryKey bool
-	// Comment contains the string comment for this column
+	// Comment contains the string comment for this column.
 	Comment string
+	// Extra contains any additional information to put in the `extra` column under `information_schema.columns`.
+	Extra string
 }
 
 // Check ensures the value is correct for this column.
