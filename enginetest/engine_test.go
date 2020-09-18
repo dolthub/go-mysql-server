@@ -255,9 +255,8 @@ func TestAnalyzer(t *testing.T) {
 				timestamp, err := function.NewTimestamp(
 					expression.NewLiteral("20200101:120000Z", sql.LongText),
 				)
-				convert := expression.NewConvert(timestamp, "datetime")
 				require.NoError(t, err)
-				return plan.NewShowTables(db, false, convert)
+				return plan.NewShowTables(db, false, timestamp)
 			},
 		},
 	}
