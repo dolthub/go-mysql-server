@@ -467,9 +467,9 @@ func columnsRowIter(ctx *Context, cat *Catalog) RowIter {
 					collName,                         // collation_name
 					strings.ToLower(c.Type.String()), // column_type
 					"",                               // column_key
-					"",                               // extra
+					c.Extra,                          // extra
 					"select",                         // privileges
-					"",                               // column_comment
+					c.Comment,                        // column_comment
 					"",                               // generation_expression
 				})
 			}

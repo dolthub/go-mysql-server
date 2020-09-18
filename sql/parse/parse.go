@@ -701,6 +701,11 @@ func convertDropTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 }
 
 func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
+	if c.OptLike != nil {
+		return plan.NewCreateTableLike(
+			sql.UnresolvedDatabase(""), c.Table.Name.String(), c.OptLike.LikeTable.Name.String(), c.IfNotExists), nil
+	}
+
 	schema, err := TableSpecToSchema(nil, c.TableSpec)
 	if err != nil {
 		return nil, err
