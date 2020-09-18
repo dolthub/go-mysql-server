@@ -15,11 +15,12 @@
 package enginetest
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"math"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
-var VariableQueries = []ScriptTest {
+var VariableQueries = []ScriptTest{
 	{
 		Name: "set system variables",
 		SetUpScript: []string{
@@ -125,9 +126,9 @@ var VariableQueries = []ScriptTest {
 	},
 }
 
-var VariableErrorTests = []QueryErrorTest {
+var VariableErrorTests = []QueryErrorTest{
 	{
-		Query: "set @@does_not_exist = 100",
+		Query:       "set @@does_not_exist = 100",
 		ExpectedErr: sql.ErrUnknownSystemVariable,
 	},
 }

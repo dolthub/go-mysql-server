@@ -790,4 +790,3 @@ func isUserVariable(col column) bool {
 	return !isSystemVariable(col) &&
 		(strings.HasPrefix(col.Name(), "@") || strings.HasPrefix(col.Table(), "@"))
 }
-

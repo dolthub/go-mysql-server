@@ -1601,8 +1601,8 @@ var fixtures = map[string]sql.Node{
 	),
 	`SET SESSION NET_READ_TIMEOUT= 700, SESSION NET_WRITE_TIMEOUT= 700`: plan.NewSet(
 		[]sql.Expression{
-			expression.NewSetField(expression.NewUnresolvedColumn("@@session.NET_READ_TIMEOUT"),  expression.NewLiteral(int16(700), sql.Int16)),
-			expression.NewSetField(expression.NewUnresolvedColumn("@@session.NET_WRITE_TIMEOUT"),  expression.NewLiteral(int16(700), sql.Int16)),
+			expression.NewSetField(expression.NewUnresolvedColumn("@@session.NET_READ_TIMEOUT"), expression.NewLiteral(int16(700), sql.Int16)),
+			expression.NewSetField(expression.NewUnresolvedColumn("@@session.NET_WRITE_TIMEOUT"), expression.NewLiteral(int16(700), sql.Int16)),
 		},
 	),
 	`SET gtid_mode=DEFAULT`: plan.NewSet(

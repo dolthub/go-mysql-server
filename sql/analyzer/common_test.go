@@ -2,10 +2,10 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/pmezard/go-difflib/difflib"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 

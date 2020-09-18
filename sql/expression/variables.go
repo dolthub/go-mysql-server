@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
@@ -111,7 +112,7 @@ func (v *SystemVar) WithChildren(children ...sql.Expression) (sql.Expression, er
 // UserVar is an expression that returns the name of a user variable. It's used as the expression on the left hand
 // side of a SET statement.
 type UserVar struct {
-	name  string
+	name string
 }
 
 // NewUserVar creates a new UserVar expression.

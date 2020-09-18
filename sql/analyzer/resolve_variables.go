@@ -15,12 +15,14 @@
 package analyzer
 
 import (
+	"strings"
+
+	"github.com/liquidata-inc/vitess/go/vt/sqlparser"
+
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 	"github.com/liquidata-inc/go-mysql-server/sql/parse"
 	"github.com/liquidata-inc/go-mysql-server/sql/plan"
-	"github.com/liquidata-inc/vitess/go/vt/sqlparser"
-	"strings"
 )
 
 // resolveSetVariables replaces SET @@var and SET @var expressions with appropriately resolved expressions for the
@@ -127,7 +129,6 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		return sf, nil
 	})
 }
-
 
 // getSetVal evaluates the right hand side of a SetField expression and returns an evaluated value as appropriate
 func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expression, error) {

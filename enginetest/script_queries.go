@@ -15,8 +15,9 @@
 package enginetest
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 type ScriptTest struct {

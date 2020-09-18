@@ -16,7 +16,7 @@ func TestSet(t *testing.T) {
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
 
 	s := NewSet(
-		[]sql.Expression {
+		[]sql.Expression{
 			expression.NewSetField(expression.NewSystemVar("foo", sql.LongText), expression.NewLiteral("bar", sql.LongText)),
 			expression.NewSetField(expression.NewSystemVar("baz", sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
 		},

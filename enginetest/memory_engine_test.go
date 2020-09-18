@@ -111,7 +111,7 @@ func TestSingleScript(t *testing.T) {
 			"create table x (a int primary key, b int, c int)",
 			"set @@auto_increment_increment = 1",
 			"create trigger insert_into_x before insert on x for each row " +
-					"set new.a = new.a + 1, new.b = new.c, new.c = 0, @@auto_increment_increment = @@auto_increment_increment + 1",
+				"set new.a = new.a + 1, new.b = new.c, new.c = 0, @@auto_increment_increment = @@auto_increment_increment + 1",
 			"insert into x values (1, 10, 100), (2, 20, 200)",
 		},
 		Query: "select *, @@auto_increment_increment from x order by 1",
