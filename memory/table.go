@@ -790,7 +790,7 @@ func (t *Table) DropForeignKey(ctx *sql.Context, fkName string) error {
 	return nil
 }
 
-func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint sql.IndexConstraint) (sql.Index, error) {
+func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint sql.IndexConstraint, comment string) (sql.Index, error) {
 	if t.indexes[name] != nil {
 		// TODO: extract a standard error type for this
 		return nil, fmt.Errorf("Error: index already exists")
@@ -811,6 +811,7 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 			Exprs:      exprs,
 			Name:       name,
 			Unique:     constraint == sql.IndexConstraint_Unique,
+			CommentStr: comment,
 		},
 	}, nil
 }
@@ -837,7 +838,7 @@ func (t *Table) CreateIndex(ctx *sql.Context, indexName string, using sql.IndexU
 		t.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(indexName, columns, constraint)
+	index, err := t.createIndex(indexName, columns, constraint, comment)
 	if err != nil {
 		return err
 	}

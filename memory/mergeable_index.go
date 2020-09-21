@@ -16,6 +16,7 @@ type MergeableIndex struct {
 	Exprs      []sql.Expression
 	Name       string
 	Unique     bool
+	CommentStr string
 }
 
 var _ sql.Index = (*MergeableIndex)(nil)
@@ -41,7 +42,7 @@ func (i *MergeableIndex) IsUnique() bool {
 }
 
 func (i *MergeableIndex) Comment() string {
-	return "" // TODO: implement
+	return i.CommentStr
 }
 
 func (i *MergeableIndex) IndexType() string {

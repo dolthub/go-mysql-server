@@ -10,6 +10,7 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_views", resolveViews},
 	{"resolve_tables", resolveTables},
 	{"resolve_set_variables", resolveSetVariables},
+	{"resolve_create_like", resolveCreateLike},
 	{"resolve_subqueries", resolveSubqueries},
 	{"check_aliases", checkAliases},
 }

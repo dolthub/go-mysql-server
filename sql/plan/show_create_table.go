@@ -197,6 +197,10 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 		}
 
 		key := fmt.Sprintf("  %sKEY `%s` (%s)", unique, index.ID(), strings.Join(indexCols, ","))
+		if index.Comment() != "" {
+			key = fmt.Sprintf("%s COMMENT '%s'", key, index.Comment())
+		}
+
 		colStmts = append(colStmts, key)
 	}
 

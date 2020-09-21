@@ -606,122 +606,208 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 }
 
 func TestCreateTable(t *testing.T, harness Harness) {
-	require := require.New(t)
-
 	e := NewEngine(t, harness)
-
-	TestQuery(t, harness, e,
-		"CREATE TABLE t1(a INTEGER, b TEXT, c DATE, "+
-			"d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, "+
-			"b1 BOOL, b2 BOOLEAN NOT NULL, g DATETIME, h CHAR(40))",
-		[]sql.Row(nil),
-	)
-
-	db, err := e.Catalog.Database("mydb")
-	require.NoError(err)
-
 	ctx := NewContext(harness)
-	testTable, ok, err := db.GetTableInsensitive(ctx, "t1")
-	require.NoError(err)
-	require.True(ok)
 
-	s := sql.Schema{
-		{Name: "a", Type: sql.Int32, Nullable: true, Source: "t1"},
-		{Name: "b", Type: sql.Text, Nullable: true, Source: "t1"},
-		{Name: "c", Type: sql.Date, Nullable: true, Source: "t1"},
-		{Name: "d", Type: sql.Timestamp, Nullable: true, Source: "t1"},
-		{Name: "e", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "t1"},
-		{Name: "f", Type: sql.Blob, Source: "t1"},
-		{Name: "b1", Type: sql.Boolean, Nullable: true, Source: "t1"},
-		{Name: "b2", Type: sql.Boolean, Source: "t1"},
-		{Name: "g", Type: sql.Datetime, Nullable: true, Source: "t1"},
-		{Name: "h", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 40), Nullable: true, Source: "t1"},
-	}
+	t.Run("Assortment of types without pk", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t1(a INTEGER, b TEXT, c DATE, "+
+				"d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, "+
+				"b1 BOOL, b2 BOOLEAN NOT NULL, g DATETIME, h CHAR(40))",
+			[]sql.Row(nil),
+		)
 
-	require.Equal(s, testTable.Schema())
+		db, err := e.Catalog.Database("mydb")
+		require.NoError(t, err)
 
-	TestQuery(t, harness, e,
-		"CREATE TABLE t2 (a INTEGER NOT NULL PRIMARY KEY, "+
-			"b VARCHAR(10) NOT NULL)",
-		[]sql.Row(nil),
-	)
+		ctx := NewContext(harness)
+		testTable, ok, err := db.GetTableInsensitive(ctx, "t1")
+		require.NoError(t, err)
+		require.True(t, ok)
 
-	db, err = e.Catalog.Database("mydb")
-	require.NoError(err)
+		s := sql.Schema{
+			{Name: "a", Type: sql.Int32, Nullable: true, Source: "t1"},
+			{Name: "b", Type: sql.Text, Nullable: true, Source: "t1"},
+			{Name: "c", Type: sql.Date, Nullable: true, Source: "t1"},
+			{Name: "d", Type: sql.Timestamp, Nullable: true, Source: "t1"},
+			{Name: "e", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "t1"},
+			{Name: "f", Type: sql.Blob, Source: "t1"},
+			{Name: "b1", Type: sql.Boolean, Nullable: true, Source: "t1"},
+			{Name: "b2", Type: sql.Boolean, Source: "t1"},
+			{Name: "g", Type: sql.Datetime, Nullable: true, Source: "t1"},
+			{Name: "h", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 40), Nullable: true, Source: "t1"},
+		}
 
-	testTable, ok, err = db.GetTableInsensitive(ctx, "t2")
-	require.NoError(err)
-	require.True(ok)
+		require.Equal(t, s, testTable.Schema())
+	})
 
-	s = sql.Schema{
-		{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t2"},
-		{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: false, Source: "t2"},
-	}
+	t.Run("Primary key declared in column", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t2 (a INTEGER NOT NULL PRIMARY KEY, "+
+				"b VARCHAR(10) NOT NULL)",
+			[]sql.Row(nil),
+		)
 
-	require.Equal(s, testTable.Schema())
+		db, err := e.Catalog.Database("mydb")
+		require.NoError(t, err)
 
-	TestQuery(t, harness, e,
-		"CREATE TABLE t3(a INTEGER NOT NULL,"+
+		testTable, ok, err := db.GetTableInsensitive(ctx, "t2")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		s := sql.Schema{
+			{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t2"},
+			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: false, Source: "t2"},
+		}
+
+		require.Equal(t, s, testTable.Schema())
+	})
+
+	t.Run("Multiple primary keys", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t3(a INTEGER NOT NULL,"+
+				"b TEXT NOT NULL,"+
+				"c bool, primary key (a,b))",
+			[]sql.Row(nil),
+		)
+
+		db, err := e.Catalog.Database("mydb")
+		require.NoError(t, err)
+
+		testTable, ok, err := db.GetTableInsensitive(ctx, "t3")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		s := sql.Schema{
+			{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t3"},
+			{Name: "b", Type: sql.Text, Nullable: false, PrimaryKey: true, Source: "t3"},
+			{Name: "c", Type: sql.Boolean, Nullable: true, Source: "t3"},
+		}
+
+		require.Equal(t, s, testTable.Schema())
+	})
+
+	t.Run("Including comment", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t4(a INTEGER,"+
+				"b TEXT NOT NULL COMMENT 'comment',"+
+				"c bool, primary key (a))",
+			[]sql.Row(nil),
+		)
+
+		db, err := e.Catalog.Database("mydb")
+		require.NoError(t, err)
+
+		testTable, ok, err := db.GetTableInsensitive(ctx, "t4")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		s := sql.Schema{
+			{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t4"},
+			{Name: "b", Type: sql.Text, Nullable: false, PrimaryKey: false, Source: "t4", Comment: "comment"},
+			{Name: "c", Type: sql.Boolean, Nullable: true, Source: "t4"},
+		}
+
+		require.Equal(t, s, testTable.Schema())
+	})
+
+	t.Run("If not exists", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE IF NOT EXISTS t4(a INTEGER,"+
+				"b TEXT NOT NULL,"+
+				"c bool, primary key (a))",
+			[]sql.Row(nil),
+		)
+
+		_, _, err := e.Query(NewContext(harness), "CREATE TABLE t4(a INTEGER,"+
 			"b TEXT NOT NULL,"+
-			"c bool, primary key (a,b))",
-		[]sql.Row(nil),
-	)
+			"c bool, primary key (a))")
+		require.Error(t, err)
+		require.True(t, sql.ErrTableAlreadyExists.Is(err))
+	})
 
-	db, err = e.Catalog.Database("mydb")
-	require.NoError(err)
+	t.Run("With default", func(t *testing.T) {
+		//TODO: NOW(millseconds) must match timestamp(milliseconds), else it's an error
+		_, _, err := e.Query(NewContext(harness), "CREATE TABLE t5(a INTEGER,"+
+			"`create_time` timestamp(6) NOT NULL DEFAULT NOW(6),"+
+			"primary key (a))")
+		require.NoError(t, err)
+	})
 
-	testTable, ok, err = db.GetTableInsensitive(ctx, "t3")
-	require.NoError(err)
-	require.True(ok)
+	t.Run("CREATE LIKE assortment of types without primary key", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t6 LIKE t1",
+			[]sql.Row(nil),
+		)
 
-	s = sql.Schema{
-		{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t3"},
-		{Name: "b", Type: sql.Text, Nullable: false, PrimaryKey: true, Source: "t3"},
-		{Name: "c", Type: sql.Boolean, Nullable: true, Source: "t3"},
-	}
+		db, err := e.Catalog.Database("mydb")
+		require.NoError(t, err)
 
-	require.Equal(s, testTable.Schema())
+		testTable, ok, err := db.GetTableInsensitive(ctx, "t6")
+		require.NoError(t, err)
+		require.True(t, ok)
 
-	TestQuery(t, harness, e,
-		"CREATE TABLE t4(a INTEGER,"+
-			"b TEXT NOT NULL COMMENT 'comment',"+
-			"c bool, primary key (a))",
-		[]sql.Row(nil),
-	)
+		s := sql.Schema{
+			{Name: "a", Type: sql.Int32, Nullable: true, Source: "t6"},
+			{Name: "b", Type: sql.Text, Nullable: true, Source: "t6"},
+			{Name: "c", Type: sql.Date, Nullable: true, Source: "t6"},
+			{Name: "d", Type: sql.Timestamp, Nullable: true, Source: "t6"},
+			{Name: "e", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "t6"},
+			{Name: "f", Type: sql.Blob, Source: "t6"},
+			{Name: "b1", Type: sql.Boolean, Nullable: true, Source: "t6"},
+			{Name: "b2", Type: sql.Boolean, Source: "t6"},
+			{Name: "g", Type: sql.Datetime, Nullable: true, Source: "t6"},
+			{Name: "h", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 40), Nullable: true, Source: "t6"},
+		}
 
-	db, err = e.Catalog.Database("mydb")
-	require.NoError(err)
+		require.Equal(t, s, testTable.Schema())
+	})
 
-	testTable, ok, err = db.GetTableInsensitive(ctx, "t4")
-	require.NoError(err)
-	require.True(ok)
+	t.Run("CREATE LIKE with indexes, default, and comments", func(t *testing.T) {
+		_, iter, err := e.Query(ctx, "CREATE TABLE t7pre("+
+			"pk bigint primary key,"+
+			"v1 bigint default (2) comment 'hi there',"+
+			"index idx_v1 (v1) comment 'index here'"+
+			")")
+		if plan.ErrNotIndexable.Is(err) {
+			t.Skip("test requires index creation")
+		}
+		require.NoError(t, err)
+		_, err = sql.RowIterToRows(iter)
+		require.NoError(t, err)
+		TestQuery(t, harness, e,
+			"CREATE TABLE t7 LIKE t7pre",
+			[]sql.Row(nil),
+		)
 
-	s = sql.Schema{
-		{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t4"},
-		{Name: "b", Type: sql.Text, Nullable: false, PrimaryKey: false, Source: "t4", Comment: "comment"},
-		{Name: "c", Type: sql.Boolean, Nullable: true, Source: "t4"},
-	}
+		db, err := e.Catalog.Database("mydb")
+		require.NoError(t, err)
+		testTable, ok, err := db.GetTableInsensitive(ctx, "t7")
+		require.NoError(t, err)
+		require.True(t, ok)
+		indexableTable, ok := testTable.(sql.IndexedTable)
+		require.True(t, ok)
 
-	require.Equal(s, testTable.Schema())
+		s := sql.Schema{
+			{Name: "pk", Type: sql.Int64, PrimaryKey: true, Nullable: false, Source: "t7"},
+			{Name: "v1", Type: sql.Int64, Nullable: true, Source: "t7",
+				Default: parse.MustStringToColumnDefaultValue(ctx, "(2)", sql.Int64, true), Comment: "hi there"},
+		}
+		require.Equal(t, s, indexableTable.Schema())
 
-	TestQuery(t, harness, e,
-		"CREATE TABLE IF NOT EXISTS t4(a INTEGER,"+
-			"b TEXT NOT NULL,"+
-			"c bool, primary key (a))",
-		[]sql.Row(nil),
-	)
-
-	_, _, err = e.Query(NewContext(harness), "CREATE TABLE t4(a INTEGER,"+
-		"b TEXT NOT NULL,"+
-		"c bool, primary key (a))")
-	require.Error(err)
-	require.True(sql.ErrTableAlreadyExists.Is(err))
-
-	//TODO: NOW(millseconds) must match timestamp(milliseconds), else it's an error
-	_, _, err = e.Query(NewContext(harness), "CREATE TABLE t10(a INTEGER,"+
-		"`create_time` timestamp(6) NOT NULL DEFAULT NOW(6),"+
-		"primary key (a))")
-	require.NoError(err)
+		indexes, err := indexableTable.GetIndexes(ctx)
+		require.NoError(t, err)
+		indexFound := false
+		for _, index := range indexes {
+			if index.ID() == "idx_v1" {
+				indexFound = true
+				require.Len(t, index.Expressions(), 1)
+				require.True(t, strings.HasSuffix(index.Expressions()[0], "v1"))
+				require.Equal(t, "index here", index.Comment())
+			}
+		}
+		require.True(t, indexFound)
+	})
 }
 
 func TestDropTable(t *testing.T, harness Harness) {

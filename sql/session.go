@@ -527,11 +527,14 @@ func (c *Context) Warn(code int, msg string, args ...interface{}) {
 }
 
 // NewSpanIter creates a RowIter executed in the given span.
+// Currently inactive, returns the iter returned unaltered.
 func NewSpanIter(span opentracing.Span, iter RowIter) RowIter {
-	return &spanIter{
-		span: span,
-		iter: iter,
-	}
+	return iter
+	// TODO: return span iters when performance profiling is requested by a session var
+	// return &spanIter{
+	// 	span: span,
+	// 	iter: iter,
+	// }
 }
 
 type spanIter struct {
