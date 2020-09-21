@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"github.com/liquidata-inc/vitess/go/vt/sqlparser"
+	"strings"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
@@ -62,11 +63,18 @@ func resolveNewAndOldReferences(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	var affectedTables []string
+	var triggerEvent plan.TriggerEvent
 	plan.Inspect(n, func(n sql.Node) bool {
-		// TODO: update, delete
 		switch n := n.(type) {
 		case *plan.InsertInto:
 			affectedTables = append(affectedTables, findTableName(n))
+			triggerEvent = plan.InsertTrigger
+		case *plan.Update:
+			affectedTables = append(affectedTables, findTableName(n))
+			triggerEvent = plan.UpdateTrigger
+		case *plan.DeleteFrom:
+			affectedTables = append(affectedTables, findTableName(n))
+			triggerEvent = plan.DeleteTrigger
 		}
 		return true
 	})
@@ -102,7 +110,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 			}
 
 			triggerTable := findTableName(ct.Table)
-			if stringContains(affectedTables, triggerTable) {
+			if stringContains(affectedTables, triggerTable) && triggerEventsMatch(triggerEvent, ct.TriggerEvent) {
 				// TODO: ordering of multiple triggers
 				affectedTriggers = append(affectedTriggers, ct)
 			}
@@ -116,14 +124,35 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	// TODO: multiple triggers
 	trigger := affectedTriggers[0]
 
+	var triggerLogic sql.Node
+
 	// For the reference to the row in the trigger table, we use the scope mechanism. This is a little strange because
 	// scopes for subqueries work with the child schemas of a scope node, but we don't have such a node here. Instead we
 	// fabricate one with the right properties (its child schema matches the table schema, with the right aliased name)
-	scopeNode := plan.NewProject(
-		[]sql.Expression{expression.NewStar()},
-		plan.NewTableAlias("new", getResolvedTable(n)),
-	)
-	triggerLogic, err := a.Analyze(ctx, trigger.Body, ((*Scope)(nil)).newScope(scopeNode))
+	switch triggerEvent {
+	case plan.InsertTrigger:
+		scopeNode := plan.NewProject(
+			[]sql.Expression{expression.NewStar()},
+			plan.NewTableAlias("new", getResolvedTable(n)),
+		)
+		triggerLogic, err = a.Analyze(ctx, trigger.Body, ((*Scope)(nil)).newScope(scopeNode))
+	case plan.UpdateTrigger:
+		scopeNode := plan.NewProject(
+			[]sql.Expression{expression.NewStar()},
+			plan.NewCrossJoin(
+				plan.NewTableAlias("old", getResolvedTable(n)),
+				plan.NewTableAlias("new", getResolvedTable(n)),
+			),
+		)
+		triggerLogic, err = a.Analyze(ctx, trigger.Body, ((*Scope)(nil)).newScope(scopeNode))
+	case plan.DeleteTrigger:
+		scopeNode := plan.NewProject(
+			[]sql.Expression{expression.NewStar()},
+			plan.NewTableAlias("old", getResolvedTable(n)),
+		)
+		triggerLogic, err = a.Analyze(ctx, trigger.Body, ((*Scope)(nil)).newScope(scopeNode))
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -143,8 +172,38 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 					CreateStatement: trigger.CreateTriggerString,
 				}), nil
 			}
+		case *plan.Update:
+			if trigger.TriggerTime == sqlparser.BeforeStr {
+				triggerExecutor := plan.NewTriggerExecutor(n.Child, triggerLogic, plan.InsertTrigger, sql.TriggerDefinition{
+					Name:            trigger.TriggerName,
+					CreateStatement: trigger.CreateTriggerString,
+				})
+				return n.WithChildren(triggerExecutor)
+			} else {
+				return plan.NewTriggerExecutor(n, triggerLogic, plan.InsertTrigger, sql.TriggerDefinition{
+					Name:            trigger.TriggerName,
+					CreateStatement: trigger.CreateTriggerString,
+				}), nil
+			}
+		case *plan.DeleteFrom:
+			if trigger.TriggerTime == sqlparser.BeforeStr {
+				triggerExecutor := plan.NewTriggerExecutor(n.Child, triggerLogic, plan.InsertTrigger, sql.TriggerDefinition{
+					Name:            trigger.TriggerName,
+					CreateStatement: trigger.CreateTriggerString,
+				})
+				return n.WithChildren(triggerExecutor)
+			} else {
+				return plan.NewTriggerExecutor(n, triggerLogic, plan.InsertTrigger, sql.TriggerDefinition{
+					Name:            trigger.TriggerName,
+					CreateStatement: trigger.CreateTriggerString,
+				}), nil
+			}
 		}
 
 		return n, nil
 	})
+}
+
+func triggerEventsMatch(event plan.TriggerEvent, event2 string) bool {
+	return strings.ToLower((string)(event)) == strings.ToLower(event2)
 }
