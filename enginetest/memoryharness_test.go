@@ -29,6 +29,7 @@ type memoryHarness struct {
 	numTablePartitions     int
 	indexDriverInitializer indexDriverInitalizer
 	nativeIndexSupport     bool
+	session                sql.Session
 }
 
 type indexBehaviorTestParams struct {
@@ -87,9 +88,13 @@ func (m *memoryHarness) Parallelism() int {
 }
 
 func (m *memoryHarness) NewContext() *sql.Context {
+	if m.session == nil {
+		m.session = enginetest.NewBaseSession()
+	}
+
 	return sql.NewContext(
 		context.Background(),
-		sql.WithSession(enginetest.NewBaseSession()),
+		sql.WithSession(m.session),
 	)
 }
 

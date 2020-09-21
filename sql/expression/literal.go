@@ -55,6 +55,24 @@ func (p *Literal) String() string {
 	}
 }
 
+func (p *Literal) DebugString() string {
+	typeStr := p.fieldType.String()
+	switch v := p.value.(type) {
+	case string:
+		return fmt.Sprintf("%s (%s)", v, typeStr)
+	case []byte:
+		return fmt.Sprintf("BLOB(%s)", string(v))
+	case nil:
+		return fmt.Sprintf("NULL (%s)", typeStr)
+	case int, uint, int8, uint8, int16, uint16, int32, uint32, int64, uint64:
+		return fmt.Sprintf("%d (%s)", v, typeStr)
+	case float32, float64:
+		return fmt.Sprintf("%f (%s)", v, typeStr)
+	default:
+		return fmt.Sprintf("%s (%s)", v, typeStr)
+	}
+}
+
 // WithChildren implements the Expression interface.
 func (p *Literal) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {

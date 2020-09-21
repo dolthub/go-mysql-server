@@ -4,36 +4,24 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/liquidata-inc/vitess/go/vt/sqlparser"
-
 	"github.com/liquidata-inc/go-mysql-server/sql"
 	"github.com/liquidata-inc/go-mysql-server/sql/expression"
 )
 
-// Set configuration variables. Right now, only session variables are supported.
+// Set represents a set statement. This can be variables, but in some instances can also refer to row values.
 type Set struct {
-	Variables []SetVariable
-}
-
-// SetVariable is a key-value pair to represent the value that will be set on
-// a variable.
-type SetVariable struct {
-	Name  string
-	Value sql.Expression
+	Exprs []sql.Expression
 }
 
 // NewSet creates a new Set node.
-func NewSet(vars ...SetVariable) *Set {
+func NewSet(vars []sql.Expression) *Set {
 	return &Set{vars}
 }
 
 // Resolved implements the sql.Node interface.
 func (s *Set) Resolved() bool {
-	for _, v := range s.Variables {
-		if _, ok := v.Value.(*expression.DefaultColumn); ok {
-			continue
-		}
-		if !v.Value.Resolved() {
+	for _, v := range s.Exprs {
+		if !v.Resolved() {
 			return false
 		}
 	}
@@ -43,7 +31,7 @@ func (s *Set) Resolved() bool {
 // Children implements the sql.Node interface.
 func (s *Set) Children() []sql.Node { return nil }
 
-// WithChildren implements the Node interface.
+// WithChildren implements the sql.Node interface.
 func (s *Set) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
@@ -52,30 +40,18 @@ func (s *Set) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return s, nil
 }
 
-// WithExpressions implements the Expressioner interface.
+// WithExpressions implements the sql.Expressioner interface.
 func (s *Set) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != len(s.Variables) {
-		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.Variables))
+	if len(exprs) != len(s.Exprs) {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.Exprs))
 	}
 
-	var vars = make([]SetVariable, len(s.Variables))
-	for i, v := range s.Variables {
-		vars[i] = SetVariable{
-			Name:  v.Name,
-			Value: exprs[i],
-		}
-	}
-
-	return NewSet(vars...), nil
+	return NewSet(exprs), nil
 }
 
 // Expressions implements the sql.Expressioner interface.
 func (s *Set) Expressions() []sql.Expression {
-	var exprs = make([]sql.Expression, len(s.Variables))
-	for i, v := range s.Variables {
-		exprs[i] = v.Value
-	}
-	return exprs
+	return s.Exprs
 }
 
 // RowIter implements the sql.Node interface.
@@ -83,58 +59,81 @@ func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Set")
 	defer span.Finish()
 
-	const (
-		sessionPrefix = sqlparser.SessionStr + "."
-		globalPrefix  = sqlparser.GlobalStr + "."
-	)
-	for _, v := range s.Variables {
-		var (
-			value interface{}
-			typ   sql.Type
-			err   error
-		)
+	var updateExprs []sql.Expression
+	for _, v := range s.Exprs {
+		setField, ok := v.(*expression.SetField)
+		if !ok {
+			return nil, fmt.Errorf("unsupported type for set: %T", v)
+		}
 
-		name := strings.TrimPrefix(
-			strings.TrimPrefix(strings.TrimLeft(v.Name, "@"), sessionPrefix),
-			globalPrefix,
-		)
-
-		switch v.Value.(type) {
-		case *expression.DefaultColumn:
-			valtyp, ok := sql.DefaultSessionConfig()[name]
-			if !ok {
-				continue
-			}
-			value, typ = valtyp.Value, valtyp.Typ
-		default:
-			// TODO: value checking for system variables. Each one has specific lists of acceptable values.
-			value, err = v.Value.Eval(ctx, nil)
+		switch left := setField.Left.(type) {
+		case *expression.SystemVar:
+			_, err := setSystemVar(ctx, left, setField.Right, row)
 			if err != nil {
 				return nil, err
 			}
-			typ = v.Value.Type()
+		case *expression.GetField:
+			updateExprs = append(updateExprs, setField)
+		default:
+			return nil, fmt.Errorf("unsupported type for set: %T", left)
 		}
+	}
 
-		err = ctx.Set(ctx, name, typ, value)
-
+	var resultRow sql.Row
+	if len(updateExprs) > 0 {
+		newRow, err := applyUpdateExpressions(ctx, updateExprs, row)
 		if err != nil {
 			return nil, err
 		}
+		copy(resultRow, row)
+		resultRow = row.Append(newRow)
 	}
 
-	return sql.RowsToRowIter(), nil
+	return sql.RowsToRowIter(resultRow), nil
+}
+
+func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expression, row sql.Row) (interface{}, error) {
+	var (
+		value interface{}
+		typ   sql.Type
+		err   error
+	)
+
+	var varName = sysVar.Name
+
+	// TODO: value checking for system variables. Each one has specific lists of acceptable values.
+	value, err = right.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	typ = sysVar.Type()
+
+	// TODO: differentiate between system and user vars here
+	err = ctx.Set(ctx, varName, typ, value)
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
 }
 
 // Schema implements the sql.Node interface.
-func (s *Set) Schema() sql.Schema { return nil }
+func (s *Set) Schema() sql.Schema {
+	return nil
+}
 
 func (s *Set) String() string {
-	p := sql.NewTreePrinter()
-	_ = p.WriteNode("Set")
-	var children = make([]string, len(s.Variables))
-	for i, v := range s.Variables {
-		children[i] = fmt.Sprintf("%s = %s", v.Name, v.Value)
+	var children = make([]string, len(s.Exprs))
+	for i, v := range s.Exprs {
+		children[i] = fmt.Sprintf(v.String())
 	}
-	_ = p.WriteChildren(children...)
-	return p.String()
+	return strings.Join(children, ", ")
+}
+
+func (s *Set) DebugString() string {
+	var children = make([]string, len(s.Exprs))
+	for i, v := range s.Exprs {
+		children[i] = fmt.Sprintf(sql.DebugString(v))
+	}
+	return strings.Join(children, ", ")
 }

@@ -1585,112 +1585,34 @@ var fixtures = map[string]sql.Node{
 	`SELECT @@allowed_max_packet`: plan.NewProject([]sql.Expression{
 		expression.NewUnresolvedColumn("@@allowed_max_packet"),
 	}, plan.NewUnresolvedTable("dual", "")),
-	`SET autocommit=1, foo="bar"`: plan.NewSet(
-		plan.SetVariable{
-			Name:  "autocommit",
-			Value: expression.NewLiteral(int8(1), sql.Int8),
-		},
-		plan.SetVariable{
-			Name:  "foo",
-			Value: expression.NewLiteral("bar", sql.LongText),
+	`SET autocommit=1, foo="bar", baz=ON, qux=bareword`: plan.NewSet(
+		[]sql.Expression{
+			expression.NewSetField(expression.NewUnresolvedColumn("autocommit"), expression.NewLiteral(int8(1), sql.Int8)),
+			expression.NewSetField(expression.NewUnresolvedColumn("foo"), expression.NewLiteral("bar", sql.LongText)),
+			expression.NewSetField(expression.NewUnresolvedColumn("baz"), expression.NewLiteral("on", sql.LongText)),
+			expression.NewSetField(expression.NewUnresolvedColumn("qux"), expression.NewUnresolvedColumn("bareword")),
 		},
 	),
-	`SET autocommit=1, foo=bar`: plan.NewSet(
-		plan.SetVariable{
-			Name:  "autocommit",
-			Value: expression.NewLiteral(int8(1), sql.Int8),
-		},
-		plan.SetVariable{
-			Name:  "foo",
-			Value: expression.NewLiteral("bar", sql.LongText),
-		},
-	),
-	`SET @@session.autocommit=1, foo="bar"`: plan.NewSet(
-		plan.SetVariable{
-			Name:  "@@session.autocommit",
-			Value: expression.NewLiteral(int8(1), sql.Int8),
-		},
-		plan.SetVariable{
-			Name:  "foo",
-			Value: expression.NewLiteral("bar", sql.LongText),
-		},
-	),
-	`SET autocommit=ON, blah="1"`: plan.NewSet(
-		plan.SetVariable{
-			Name:  "autocommit",
-			Value: expression.NewLiteral(int64(1), sql.Int64),
-		},
-		plan.SetVariable{
-			Name:  "blah",
-			Value: expression.NewLiteral("1", sql.LongText),
-		},
-	),
-	`SET @@session.autocommit=OFF, blah="0"`: plan.NewSet(
-		plan.SetVariable{
-			Name:  "@@session.autocommit",
-			Value: expression.NewLiteral(int64(0), sql.Int64),
-		},
-		plan.SetVariable{
-			Name:  "blah",
-			Value: expression.NewLiteral("0", sql.LongText),
-		},
-	),
-	`SET @@session.autocommit=ON`: plan.NewSet(
-		plan.SetVariable{
-			Name:  "@@session.autocommit",
-			Value: expression.NewLiteral(int64(1), sql.Int64),
-		},
-	),
-	`SET autocommit=off`: plan.NewSet(
-		plan.SetVariable{
-			Name:  "autocommit",
-			Value: expression.NewLiteral(int64(0), sql.Int64),
-		},
-	),
-	`SET autocommit=true`: plan.NewSet(
-		plan.SetVariable{
-			Name:  "autocommit",
-			Value: expression.NewLiteral(true, sql.Boolean),
-		},
-	),
-	`SET autocommit="true"`: plan.NewSet(
-		plan.SetVariable{
-			Name:  "autocommit",
-			Value: expression.NewLiteral(true, sql.Boolean),
-		},
-	),
-	`SET autocommit=false`: plan.NewSet(
-		plan.SetVariable{
-			Name:  "autocommit",
-			Value: expression.NewLiteral(false, sql.Boolean),
-		},
-	),
-	`SET autocommit="false"`: plan.NewSet(
-		plan.SetVariable{
-			Name:  "autocommit",
-			Value: expression.NewLiteral(false, sql.Boolean),
+	`SET @@session.autocommit=1, foo="true"`: plan.NewSet(
+		[]sql.Expression{
+			expression.NewSetField(expression.NewUnresolvedColumn("@@session.autocommit"), expression.NewLiteral(int8(1), sql.Int8)),
+			expression.NewSetField(expression.NewUnresolvedColumn("foo"), expression.NewLiteral("true", sql.LongText)),
 		},
 	),
 	`SET SESSION NET_READ_TIMEOUT= 700, SESSION NET_WRITE_TIMEOUT= 700`: plan.NewSet(
-		plan.SetVariable{
-			Name:  "@@session.net_read_timeout",
-			Value: expression.NewLiteral(int16(700), sql.Int16),
-		},
-		plan.SetVariable{
-			Name:  "@@session.net_write_timeout",
-			Value: expression.NewLiteral(int16(700), sql.Int16),
+		[]sql.Expression{
+			expression.NewSetField(expression.NewUnresolvedColumn("@@session.NET_READ_TIMEOUT"), expression.NewLiteral(int16(700), sql.Int16)),
+			expression.NewSetField(expression.NewUnresolvedColumn("@@session.NET_WRITE_TIMEOUT"), expression.NewLiteral(int16(700), sql.Int16)),
 		},
 	),
 	`SET gtid_mode=DEFAULT`: plan.NewSet(
-		plan.SetVariable{
-			Name:  "gtid_mode",
-			Value: expression.NewDefaultColumn(""),
+		[]sql.Expression{
+			expression.NewSetField(expression.NewUnresolvedColumn("gtid_mode"), expression.NewDefaultColumn("")),
 		},
 	),
 	`SET @@sql_select_limit=default`: plan.NewSet(
-		plan.SetVariable{
-			Name:  "@@sql_select_limit",
-			Value: expression.NewDefaultColumn(""),
+		[]sql.Expression{
+			expression.NewSetField(expression.NewUnresolvedColumn("@@sql_select_limit"), expression.NewDefaultColumn("")),
 		},
 	),
 	`/*!40101 SET NAMES utf8 */`: plan.Nothing,

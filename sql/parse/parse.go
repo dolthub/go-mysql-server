@@ -228,64 +228,12 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 		return nil, ErrUnsupportedFeature.New("SET global variables")
 	}
 
-	var variables = make([]plan.SetVariable, len(n.Exprs))
-	for i, e := range n.Exprs {
-		expr, err := exprToExpression(ctx, e.Expr)
-		if err != nil {
-			return nil, err
-		}
-
-		name := strings.TrimSpace(e.Name.Name.Lowered())
-		expr, err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
-			if _, ok := e.(*expression.DefaultColumn); ok {
-				return e, nil
-			}
-
-			if !e.Resolved() || !sql.IsTextOnly(e.Type()) {
-				return e, nil
-			}
-
-			txt, err := e.Eval(ctx, nil)
-			if err != nil {
-				return nil, err
-			}
-
-			val, ok := txt.(string)
-			if !ok {
-				return nil, ErrUnsupportedFeature.New("invalid qualifiers in set variable names")
-			}
-
-			switch strings.ToLower(val) {
-			case sqlparser.KeywordString(sqlparser.ON):
-				return expression.NewLiteral(int64(1), sql.Int64), nil
-			case sqlparser.KeywordString(sqlparser.TRUE):
-				return expression.NewLiteral(true, sql.Boolean), nil
-			case sqlparser.KeywordString(sqlparser.OFF):
-				return expression.NewLiteral(int64(0), sql.Int64), nil
-			case sqlparser.KeywordString(sqlparser.FALSE):
-				return expression.NewLiteral(false, sql.Boolean), nil
-			}
-
-			return e, nil
-		})
-
-		if err != nil {
-			return nil, err
-		}
-
-		// special case: for system variables, MySQL allows naked strings (without quotes), which get interpreted as
-		// unresolved columns.
-		if uc, ok := expr.(*expression.UnresolvedColumn); ok && uc.Table() == "" {
-			expr = expression.NewLiteral(uc.Name(), sql.LongText)
-		}
-
-		variables[i] = plan.SetVariable{
-			Name:  name,
-			Value: expr,
-		}
+	exprs, err := setExprsToExpressions(ctx, n.Exprs)
+	if err != nil {
+		return nil, err
 	}
 
-	return plan.NewSet(variables...), nil
+	return plan.NewSet(exprs), nil
 }
 
 func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, error) {
@@ -849,7 +797,7 @@ func convertDropView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 }
 
 func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
-	onDupExprs, err := updateExprsToExpressions(ctx, sqlparser.SetExprs(i.OnDup))
+	onDupExprs, err := setExprsToExpressions(ctx, sqlparser.SetExprs(i.OnDup))
 	if err != nil {
 		return nil, err
 	}
@@ -918,7 +866,7 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 		return nil, err
 	}
 
-	updateExprs, err := updateExprsToExpressions(ctx, d.Exprs)
+	updateExprs, err := setExprsToExpressions(ctx, d.Exprs)
 	if err != nil {
 		return nil, err
 	}
@@ -1921,7 +1869,7 @@ func intervalExprToExpression(ctx *sql.Context, e *sqlparser.IntervalExpr) (sql.
 	return expression.NewInterval(expr, e.Unit), nil
 }
 
-func updateExprsToExpressions(ctx *sql.Context, e sqlparser.SetExprs) ([]sql.Expression, error) {
+func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetExprs) ([]sql.Expression, error) {
 	res := make([]sql.Expression, len(e))
 	for i, updateExpr := range e {
 		colName, err := exprToExpression(ctx, updateExpr.Name)

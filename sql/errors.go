@@ -96,4 +96,7 @@ var (
 
 	// ErrTriggerCreateStatementInvalid is returned when a TriggerDatabase returns a CREATE TRIGGER statement that is invalid
 	ErrTriggerCreateStatementInvalid = errors.NewKind(`Invalid CREATE TRIGGER statement: %s`)
+
+	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
+	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)
 )

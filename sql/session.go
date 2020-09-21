@@ -233,6 +233,23 @@ type (
 	}
 )
 
+// TODO: allow integrators to specify system variables too
+var SystemVariables = map[string]struct{}{
+	"auto_increment_increment": {},
+	"time_zone":                {},
+	"system_time_zone":         {},
+	"max_allowed_packet":       {},
+	"sql_mode":                 {},
+	"gtid_mode":                {},
+	"collation_database":       {},
+	"ndbinfo_version":          {},
+	"sql_select_limit":         {},
+	"transaction_isolation":    {},
+	"version":                  {},
+	"version_comment":          {},
+	"autocommit":               {},
+}
+
 // DefaultSessionConfig returns default values for session variables
 func DefaultSessionConfig() map[string]TypedValue {
 	return map[string]TypedValue{
@@ -248,6 +265,7 @@ func DefaultSessionConfig() map[string]TypedValue {
 		"transaction_isolation":    TypedValue{LongText, "READ UNCOMMITTED"},
 		"version":                  TypedValue{LongText, ""},
 		"version_comment":          TypedValue{LongText, ""},
+		"autocommit":               TypedValue{Int8, 1},
 	}
 }
 

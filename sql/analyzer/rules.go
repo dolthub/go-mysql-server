@@ -9,6 +9,7 @@ import (
 var OnceBeforeDefault = []Rule{
 	{"resolve_views", resolveViews},
 	{"resolve_tables", resolveTables},
+	{"resolve_set_variables", resolveSetVariables},
 	{"resolve_create_like", resolveCreateLike},
 	{"resolve_subqueries", resolveSubqueries},
 	{"check_aliases", checkAliases},
@@ -23,6 +24,7 @@ var DefaultRules = []Rule{
 	{"resolve_new_and_old_in_triggers", resolveNewAndOldReferences},
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
+	{"resolve_bareword_set_variables", resolveBarewordSetVariables},
 	{"resolve_database", resolveDatabase},
 	{"expand_stars", expandStars},
 	{"resolve_functions", resolveFunctions},
@@ -45,7 +47,6 @@ var OnceAfterDefault = []Rule{
 	{"assign_catalog", assignCatalog},
 	{"assign_info_schema", assignInfoSchema},
 	{"prune_columns", pruneColumns},
-	{"convert_dates", convertDates},
 	{"pushdown_filters", pushdownFilters},
 	{"optimize_joins", optimizeJoins},
 	{"erase_projection", eraseProjection},

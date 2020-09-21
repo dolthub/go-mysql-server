@@ -49,16 +49,12 @@ func TestSessionSelectLimit(t *testing.T) {
 	enginetest.TestSessionSelectLimit(t, newDefaultMemoryHarness())
 }
 
-func TestSessionDefaults(t *testing.T) {
-	enginetest.TestSessionDefaults(t, newDefaultMemoryHarness())
+func TestVariables(t *testing.T) {
+	enginetest.TestVariables(t, newDefaultMemoryHarness())
 }
 
-func TestSessionVariables(t *testing.T) {
-	enginetest.TestSessionVariables(t, newDefaultMemoryHarness())
-}
-
-func TestSessionVariablesONOFF(t *testing.T) {
-	enginetest.TestSessionVariablesONOFF(t, newDefaultMemoryHarness())
+func TestVariableErrors(t *testing.T) {
+	enginetest.TestVariableErrors(t, newDefaultMemoryHarness())
 }
 
 func TestWarnings(t *testing.T) {
@@ -259,9 +255,8 @@ func TestAnalyzer(t *testing.T) {
 				timestamp, err := function.NewTimestamp(
 					expression.NewLiteral("20200101:120000Z", sql.LongText),
 				)
-				convert := expression.NewConvert(timestamp, "datetime")
 				require.NoError(t, err)
-				return plan.NewShowTables(db, false, convert)
+				return plan.NewShowTables(db, false, timestamp)
 			},
 		},
 	}

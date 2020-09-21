@@ -99,17 +99,44 @@ var TriggerTests = []ScriptTest{
 			{0}, {1}, {3}, {5}, {8},
 		},
 	},
-	// TODO: fix
+	{
+		Name: "trigger before insert, alter inserted value",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create trigger insert_into_a before insert on a for each row set new.x = new.x + 1",
+			"insert into a values (1)",
+		},
+		Query: "select x from a order by 1",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
+		Name: "trigger before insert, alter inserted value, multiple columns",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+			"create trigger insert_into_x before insert on x for each row set new.a = new.a + 1, new.b = new.c, new.c = 0",
+			"insert into x values (1, 10, 100)",
+		},
+		Query: "select * from x order by 1",
+		Expected: []sql.Row{
+			{2, 100, 0},
+		},
+	},
+	// TODO: this doesn't work
 	// {
-	// 	Name: "trigger before insert, alter inserted value",
+	// 	Name: "trigger before insert, alter inserted value, multiple columns, system var",
 	// 	SetUpScript: []string{
-	// 		"create table a (x int primary key)",
-	// 		"create trigger insert_into_a before insert on a for each row set new.x = new.x + 1",
-	// 		"insert into a values (1)",
+	// 		"create table x (a int primary key, b int, c int)",
+	// 		"set @@auto_increment_increment = 1",
+	// 		"create trigger insert_into_x before insert on x for each row " +
+	// 			"set new.a = new.a + 1, new.b = new.c, new.c = 0, @@auto_increment_increment = @@auto_increment_increment + 1",
+	// 		"insert into x values (1, 10, 100), (2, 20, 200)",
 	// 	},
-	// 	Query: "select x from a order by 1",
+	// 	Query: "select *, @@auto_increment_increment from x order by 1",
 	// 	Expected: []sql.Row{
-	// 		{2},
+	// 		{2, 100, 0, 3},
+	// 		{3, 200, 0, 3},
 	// 	},
 	// },
 }
