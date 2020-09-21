@@ -35,7 +35,8 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			return e, nil
 		}
 
-		subqueryCtx := ctx.NewSubContext(ctx.Context)
+		subqueryCtx, cancelFunc := ctx.NewSubContext()
+		defer cancelFunc()
 		subScope := scope.newScope(n)
 
 		analyzed, err := a.Analyze(subqueryCtx, s.Query, subScope)
