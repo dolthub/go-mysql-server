@@ -14,7 +14,10 @@
 
 package enginetest
 
-import "github.com/liquidata-inc/go-mysql-server/sql"
+import (
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
+)
 
 var TriggerTests = []ScriptTest{
 	{
@@ -138,4 +141,43 @@ var TriggerTests = []ScriptTest{
 			{3, 200, 0, 3},
 		},
 	},
+}
+
+var TriggerErrorTests = []ScriptTest{
+	{
+		Name:        "table doesn't exist",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger not_found before insert on y for each row set new.a = new.a + 1",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Name:        "trigger errors on execution",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int)",
+			"create table y (c int primary key not null)",
+			"create trigger trigger_has_error before insert on x for each row insert into y values (null)",
+		},
+		Query: "insert into x values (1,2)",
+		ExpectedErr: plan.ErrInsertIntoNonNullableProvidedNull,
+	},
+	// TODO: this should fail analysis
+	// {
+	// 	Name:        "reference to old row on insert",
+	// 	SetUpScript: []string{
+	// 		"create table x (a int primary key, b int, c int)",
+	// 	},
+	// 	Query:       "create trigger old_on_insert before insert on x for each row set new.c = old.a + 1",
+	// 	ExpectedErr: sql.ErrTableNotFound,
+	// },
+	// TODO: mysql doesn't consider this an error until execution time, but we could catch it earlier
+	// {
+	// 	Name:        "column doesn't exist",
+	// 	SetUpScript: []string{
+	// 		"create table x (a int primary key, b int, c int)",
+	// 	},
+	// 	Query:       "create trigger not_found before insert on x for each row set new.d = new.a + 1",
+	// 	ExpectedErr: sql.ErrTableColumnNotFound,
+	// },
 }

@@ -537,6 +537,12 @@ func TestTriggers(t *testing.T, harness Harness) {
 	}
 }
 
+func TestTriggerErrors(t *testing.T, harness Harness) {
+	for _, script := range TriggerErrorTests {
+		testScript(t, harness, script)
+	}
+}
+
 func testScript(t *testing.T, harness Harness, script ScriptTest) bool {
 	return t.Run(script.Name, func(t *testing.T) {
 		myDb := harness.NewDatabase("mydb")
@@ -558,7 +564,11 @@ func testScript(t *testing.T, harness Harness, script ScriptTest) bool {
 			RunQuery(t, e, harness, statement)
 		}
 
-		TestQuery(t, harness, e, script.Query, script.Expected)
+		if script.ExpectedErr != nil {
+			AssertErr(t, e, harness, script.Query, script.ExpectedErr)
+		} else {
+			TestQuery(t, harness, e, script.Query, script.Expected)
+		}
 	})
 }
 
@@ -1758,7 +1768,7 @@ func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expe
 	}
 	require.Error(t, err)
 	if expectedErrKind != nil {
-		require.True(t, expectedErrKind.Is(err), "Expected error of type %T but got %T", expectedErrKind, err)
+		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
 	}
 }
 
