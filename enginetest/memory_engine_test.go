@@ -121,12 +121,12 @@ func TestSingleScript(t *testing.T) {
 	// }
 
 	test = enginetest.ScriptTest{
-		Name: "trigger after update, insert into other table",
+		Name: "trigger before update, insert into other table",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
 			"create table b (y int primary key)",
 			"insert into a values (1), (3), (5)",
-			"create trigger insert_into_b after update on a for each row insert into b values (old.x + new.x + 1)",
+			"create trigger insert_into_b before update on a for each row insert into b values (old.x + new.x + 1)",
 			"update a set x = x + 1 where x in (1, 3)",
 		},
 		Query: "select y from b order by 1",

@@ -161,39 +161,39 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 		switch n := n.(type) {
 		case *plan.InsertInto:
 			if trigger.TriggerTime == sqlparser.BeforeStr {
-				triggerExecutor := plan.NewTriggerExecutor(n.Right, triggerLogic, plan.InsertTrigger, sql.TriggerDefinition{
+				triggerExecutor := plan.NewTriggerExecutor(n.Right, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				})
 				return n.WithChildren(n.Left, triggerExecutor)
 			} else {
-				return plan.NewTriggerExecutor(n, triggerLogic, plan.InsertTrigger, sql.TriggerDefinition{
+				return plan.NewTriggerExecutor(n.Right, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				}), nil
 			}
 		case *plan.Update:
 			if trigger.TriggerTime == sqlparser.BeforeStr {
-				triggerExecutor := plan.NewTriggerExecutor(n.Child, triggerLogic, plan.InsertTrigger, sql.TriggerDefinition{
+				triggerExecutor := plan.NewTriggerExecutor(n.Child, triggerLogic, plan.UpdateTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				})
 				return n.WithChildren(triggerExecutor)
 			} else {
-				return plan.NewTriggerExecutor(n, triggerLogic, plan.InsertTrigger, sql.TriggerDefinition{
+				return plan.NewTriggerExecutor(n, triggerLogic, plan.UpdateTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				}), nil
 			}
 		case *plan.DeleteFrom:
 			if trigger.TriggerTime == sqlparser.BeforeStr {
-				triggerExecutor := plan.NewTriggerExecutor(n.Child, triggerLogic, plan.InsertTrigger, sql.TriggerDefinition{
+				triggerExecutor := plan.NewTriggerExecutor(n.Child, triggerLogic, plan.DeleteTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				})
 				return n.WithChildren(triggerExecutor)
 			} else {
-				return plan.NewTriggerExecutor(n, triggerLogic, plan.InsertTrigger, sql.TriggerDefinition{
+				return plan.NewTriggerExecutor(n, triggerLogic, plan.DeleteTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				}), nil

@@ -30,22 +30,31 @@ const (
 	DeleteTrigger              = "delete"
 )
 
+type TriggerTime string
+
+const (
+	BeforeTrigger TriggerTime = "before"
+	AfterTrigger              = "after"
+)
+
 // TriggerExecutor is node that wraps, or is wrapped by, an INSERT, UPDATE, or DELETE node to execute defined trigger
 // logic either before or after that operation. When a table has multiple triggers defined, TriggerExecutor nodes can
 // wrap each other as well.
 type TriggerExecutor struct {
 	BinaryNode        // Left = wrapped node, Right = trigger execution logic
 	TriggerEvent      TriggerEvent
+	TriggerTime       TriggerTime
 	TriggerDefinition sql.TriggerDefinition
 }
 
-func NewTriggerExecutor(child, triggerLogic sql.Node, triggerEvent TriggerEvent, triggerDefinition sql.TriggerDefinition) *TriggerExecutor {
+func NewTriggerExecutor(child, triggerLogic sql.Node, triggerEvent TriggerEvent, triggerTime TriggerTime, triggerDefinition sql.TriggerDefinition) *TriggerExecutor {
 	return &TriggerExecutor{
 		BinaryNode: BinaryNode{
 			Left:  child,
 			Right: triggerLogic,
 		},
 		TriggerEvent:      triggerEvent,
+		TriggerTime:       triggerTime,
 		TriggerDefinition: triggerDefinition,
 	}
 }
@@ -73,12 +82,14 @@ func (t *TriggerExecutor) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 2)
 	}
 
-	return NewTriggerExecutor(children[0], children[1], t.TriggerEvent, t.TriggerDefinition), nil
+	return NewTriggerExecutor(children[0], children[1], t.TriggerEvent, t.TriggerTime, t.TriggerDefinition), nil
 }
 
 type triggerIter struct {
 	child          sql.RowIter
 	executionLogic sql.Node
+	triggerTime    TriggerTime
+	triggerEvent   TriggerEvent
 	ctx            *sql.Context
 }
 
@@ -89,7 +100,14 @@ func (t *triggerIter) Next() (row sql.Row, returnErr error) {
 	}
 
 	// Wrap the execution logic with the current child row before executing it
-	// TODO: for update, this needs to get the old row and then the new row both appended
+	// For update triggers that happen before the update, we need to double the input row to get old and new inputs.
+	// Update triggers that happen after update don't have this issue, since they wrap an Update node that already has
+	// the right schema.
+	// TODO: this won't work in all cases for executing multiple triggers
+	if t.triggerEvent == UpdateTrigger && t.triggerTime == BeforeTrigger {
+		childRow = childRow.Append(childRow)
+	}
+
 	logic, err := TransformUp(t.executionLogic, prependRowInPlan(childRow))
 	if err != nil {
 		return nil, err
@@ -169,6 +187,8 @@ func (t *TriggerExecutor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 
 	return &triggerIter{
 		child:          childIter,
+		triggerTime:    t.TriggerTime,
+		triggerEvent:   t.TriggerEvent,
 		executionLogic: t.Right,
 		ctx:            ctx,
 	}, nil
