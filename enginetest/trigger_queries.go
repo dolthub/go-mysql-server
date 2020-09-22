@@ -142,6 +142,95 @@ var TriggerTests = []ScriptTest{
 			{3, 200, 0, 3},
 		},
 	},
+	// UPDATE triggers
+	{
+		Name: "trigger after update, insert into other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into a values (1), (3), (5)",
+			"create trigger insert_into_b after update on a for each row insert into b values (old.x + new.x + 1)",
+			"update a set x = x + 1 where x in (1, 3)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{4}, {8},
+		},
+	},
+	{
+		Name: "trigger after update, delete from other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into a values (0), (2), (4), (6), (8)",
+			"insert into b values (1), (3), (5), (7), (9)",
+			"create trigger delete_from_b after update on a for each row delete from b where y = old.x + new.x",
+			"update a set x = x + 1 where x in (2,4)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{1}, {3}, {7},
+		},
+	},
+	{
+		Name: "trigger after update, update other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into a values (0), (2), (4), (6), (8)",
+			"insert into b values (0), (2), (4), (8)",
+			"create trigger update_b after update on a for each row update b set y = old.x + new.x + 1 where y = old.x",
+			"update a set x = x + 1 where x in (2, 4)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{0}, {6}, {8}, {10},
+		},
+	},
+	{
+		Name: "trigger before update, insert into other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into a values (1), (3), (5)",
+			"create trigger insert_into_b before update on a for each row insert into b values (old.x + new.x + 1)",
+			"update a set x = x + 1 where x in (1, 3)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{4}, {8},
+		},
+	},
+	{
+		Name: "trigger before update, delete from other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into a values (0), (2), (4), (6), (8)",
+			"insert into b values (0), (2), (4), (6), (8)",
+			"create trigger delete_from_b before update on a for each row delete from b where y = old.x + new.x",
+			"delete from a where x in (2,4)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{0}, {2}, {6},
+		},
+	},
+	{
+		Name: "trigger before update, update other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into a values (0), (2), (4), (6), (8)",
+			"insert into b values (0), (2), (4), (8)",
+			"create trigger update_b before update on a for each row update b set y = old.x + new.x + 1 where y = old.x",
+			"update a set x = x + 1 where x in (2, 4)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{0}, {6}, {8}, {10},
+		},
+	},
 	// DELETE triggers
 	{
 		Name: "trigger after delete, insert into other table",
