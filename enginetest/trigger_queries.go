@@ -228,7 +228,7 @@ var TriggerTests = []ScriptTest{
 		},
 		Query: "select y from b order by 1",
 		Expected: []sql.Row{
-			{1}, {9},
+			{1}, {2}, {4}, {6}, {9},
 		},
 	},
 }

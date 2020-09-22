@@ -32,6 +32,18 @@ type ScriptTest struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		Name: "delete with in clause",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"insert into a values (1), (3), (5)",
+			"delete from a where x in (1, 3)",
+		},
+		Query: "select x from a order by 1",
+		Expected: []sql.Row{
+			{5},
+		},
+	},
+	{
 		Name: "sqllogictest evidence/slt_lang_aggfunc.test",
 		SetUpScript: []string{
 			"CREATE TABLE t1( x INTEGER, y VARCHAR(8) )",

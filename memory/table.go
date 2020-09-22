@@ -118,8 +118,13 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 		}
 	}
 
+	// The slice could be altered by other operations taking place during iteration (such as deletion or insertion), so
+	// make a copy of the values as they exist when execution begins.
+	rowsCopy := make([]sql.Row, len(rows))
+	copy(rowsCopy, rows)
+
 	return &tableIter{
-		rows:        rows,
+		rows:        rowsCopy,
 		columns:     t.columns,
 		filters:     t.filters,
 		indexValues: values,

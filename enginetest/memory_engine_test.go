@@ -105,19 +105,31 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 
 	var test enginetest.ScriptTest
+	// test = enginetest.ScriptTest	{
+	// 	Name: "trigger after delete, insert into other table",
+	// 	SetUpScript: []string{
+	// 		"create table a (x int primary key)",
+	// 		"create table b (y int primary key)",
+	// 		"insert into a values (1), (3), (5)",
+	// 		"create trigger insert_into_b after delete on a for each row insert into b values (old.x + 1)",
+	// 		"delete from a where x in (1, 3)",
+	// 	},
+	// 	Query: "select y from b order by 1",
+	// 	Expected: []sql.Row{
+	// 		{2}, {4},
+	// 	},
+	// }
+
 	test = enginetest.ScriptTest{
-		Name: "trigger before insert, alter inserted value, multiple columns, system var",
+		Name: "trigger after delete, insert into other table",
 		SetUpScript: []string{
-			"create table x (a int primary key, b int, c int)",
-			"set @@auto_increment_increment = 1",
-			"create trigger insert_into_x before insert on x for each row " +
-				"set new.a = new.a + 1, new.b = new.c, new.c = 0, @@auto_increment_increment = @@auto_increment_increment + 1",
-			"insert into x values (1, 10, 100), (2, 20, 200)",
+			"create table a (x int primary key)",
+			"insert into a values (1), (3), (5)",
+			"delete from a where x in (1, 3)",
 		},
-		Query: "select *, @@auto_increment_increment from x order by 1",
+		Query: "select x from a order by 1",
 		Expected: []sql.Row{
-			{2, 100, 0, 3},
-			{3, 200, 0, 3},
+			{5},
 		},
 	}
 
