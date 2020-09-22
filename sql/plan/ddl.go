@@ -69,7 +69,7 @@ type CreateTable struct {
 	ifNotExists bool
 	fkDefs      []*sql.ForeignKeyConstraint
 	idxDefs     []*IndexDefinition
-	like        string
+	like        sql.Node
 }
 
 var _ sql.Databaser = (*CreateTable)(nil)
@@ -93,12 +93,12 @@ func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists
 }
 
 // NewCreateTableLike creates a new CreateTable node for CREATE TABLE LIKE statements
-func NewCreateTableLike(db sql.Database, name string, likeName string, ifNotExists bool) *CreateTable {
+func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifNotExists bool) *CreateTable {
 	return &CreateTable{
 		ddlNode:     ddlNode{db},
 		name:        name,
 		ifNotExists: ifNotExists,
-		like:        likeName,
+		like:        likeTable,
 	}
 }
 
@@ -176,9 +176,25 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	return nil, ErrCreateTableNotSupported.New(c.db.Name())
 }
 
+// Children implements the Node interface.
+func (c *CreateTable) Children() []sql.Node {
+	if c.like != nil {
+		return []sql.Node{c.like}
+	}
+	return nil
+}
+
 // WithChildren implements the Node interface.
 func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(c, children...)
+	if len(children) == 0 {
+		return c, nil
+	} else if len(children) == 1 {
+		nc := *c
+		nc.like = children[0]
+		return &nc, nil
+	} else {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
+	}
 }
 
 func (c *CreateTable) String() string {
@@ -197,7 +213,7 @@ func (c *CreateTable) Expressions() []sql.Expression {
 	return exprs
 }
 
-func (c *CreateTable) Like() string {
+func (c *CreateTable) Like() sql.Node {
 	return c.like
 }
 

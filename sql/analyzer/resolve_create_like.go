@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -9,14 +10,14 @@ import (
 
 func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	planCreate, ok := n.(*plan.CreateTable)
-	if !ok || planCreate.Like() == "" {
+	if !ok || planCreate.Like() == nil {
 		return n, nil
 	}
-	db := ctx.GetCurrentDatabase()
-	likeTable, err := a.Catalog.Table(ctx, db, planCreate.Like())
-	if err != nil {
-		return nil, err
+	resolvedLikeTable, ok := planCreate.Like().(*plan.ResolvedTable)
+	if !ok {
+		return nil, fmt.Errorf("attempted to resolve CREATE LIKE, expected `ResolvedTable` but received `%T`", planCreate.Like())
 	}
+	likeTable := resolvedLikeTable.Table
 	var idxDefs []*plan.IndexDefinition
 	if indexableTable, ok := likeTable.(sql.IndexedTable); ok {
 		indexes, err := indexableTable.GetIndexes(ctx)
