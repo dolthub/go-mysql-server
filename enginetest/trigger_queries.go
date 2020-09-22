@@ -20,6 +20,7 @@ import (
 )
 
 var TriggerTests = []ScriptTest{
+	// INSERT triggers
 	{
 		Name: "trigger after insert, insert into other table",
 		SetUpScript: []string{
@@ -139,6 +140,95 @@ var TriggerTests = []ScriptTest{
 		Expected: []sql.Row{
 			{2, 100, 0, 3},
 			{3, 200, 0, 3},
+		},
+	},
+	// DELETE triggers
+	{
+		Name: "trigger after delete, insert into other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into a values (1), (3), (5)",
+			"create trigger insert_into_b after delete on a for each row insert into b values (old.x + 1)",
+			"delete from a where x in (1, 3)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{2}, {4},
+		},
+	},
+	{
+		Name: "trigger after delete, delete from other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into a values (0), (2), (4), (6), (8)",
+			"insert into b values (0), (2), (4), (6), (8)",
+			"create trigger delete_from_b after delete on a for each row delete from b where y = old.x",
+			"delete from a where x in (2,4,6)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{0}, {8},
+		},
+	},
+	{
+		Name: "trigger after delete, update other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into a values (0), (2), (4), (6), (8)",
+			"insert into b values (0), (2), (4), (6), (8)",
+			"create trigger update_b after delete on a for each row update b set y = old.x + 1 where y = old.x",
+			"delete from a where x in (2,4,6)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{0}, {3}, {5}, {7}, {8},
+		},
+	},
+	{
+		Name: "trigger before delete, insert into other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into a values (0), (2), (4), (6), (8)",
+			"create trigger insert_into_b before delete on a for each row insert into b values (old.x + 1)",
+			"delete from a where x in (2, 4, 6)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{3}, {5}, {7},
+		},
+	},
+	{
+		Name: "trigger before delete, delete from other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into a values (0), (2), (4), (6), (8)",
+			"insert into b values (1), (3), (5), (7), (9)",
+			"create trigger delete_from_b before delete on a for each row delete from b where y = (old.x + 1)",
+			"delete from a where x in (2, 4, 6)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{1}, {9},
+		},
+	},
+	{
+		Name: "trigger before delete, update other table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into a values (0), (2), (4), (6), (8)",
+			"insert into b values (1), (3), (5), (7), (9)",
+			"create trigger update_b before delete on a for each row update b set y = old.x where y = old.x + 1",
+			"delete from a where x in (2, 4, 6)",
+		},
+		Query: "select y from b order by 1",
+		Expected: []sql.Row{
+			{1}, {9},
 		},
 	},
 }
