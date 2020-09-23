@@ -103,10 +103,10 @@ func TestShowCreateTableWithIndexAndForeignKeys(t *testing.T) {
 			unique: true,
 		},
 		&mockIndex{
-			db:      "testdb",
-			table:   "test-table",
-			id:      "zug",
-			exprs:   []sql.Expression{
+			db:    "testdb",
+			table: "test-table",
+			id:    "zug",
+			exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(4, sql.Int64, "test-table", "pok", true),
 				expression.NewGetFieldWithTable(3, sql.Int64, "test-table", "foo", true),
 			},
