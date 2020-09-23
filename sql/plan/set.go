@@ -72,6 +72,11 @@ func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			if err != nil {
 				return nil, err
 			}
+		case *expression.UserVar:
+			_, err := setUserVar(ctx, left, setField.Right, row)
+			if err != nil {
+				return nil, err
+			}
 		case *expression.GetField:
 			updateExprs = append(updateExprs, setField)
 		default:
@@ -90,6 +95,28 @@ func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	}
 
 	return sql.RowsToRowIter(resultRow), nil
+}
+
+func setUserVar(ctx *sql.Context, userVar *expression.UserVar, right sql.Expression, row sql.Row) (interface{}, error) {
+	var (
+		value interface{}
+		err   error
+	)
+
+	var varName = userVar.Name
+
+	value, err = right.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: differentiate between system and user vars here
+	err = ctx.Set(ctx, varName, right.Type(), value)
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
 }
 
 func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expression, row sql.Row) (interface{}, error) {

@@ -77,7 +77,7 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			}
 
 			if isUserVariable(uc) {
-				return sf.WithChildren(expression.NewUserVar(uc.String()), setVal)
+				return sf.WithChildren(expression.NewUserVar(varName), setVal)
 			}
 		}
 

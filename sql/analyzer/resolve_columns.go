@@ -569,10 +569,10 @@ func resolveSystemVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Expre
 	}
 
 	name := trimVarName(col.Name())
-	typ, value := ctx.Get(name)
+	typ, _ := ctx.Get(name)
 
-	a.Log("resolved column %s to session field %s (type %s)", col, value, typ)
-	return expression.NewGetSessionVar(name, typ, value), nil
+	a.Log("resolved column %s to session variable (type %s)", col, typ)
+	return expression.NewGetSessionVar(name, typ), nil
 }
 
 func trimVarName(name string) string {
@@ -587,11 +587,9 @@ func resolveUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Express
 	colStr := col.String()
 
 	name := strings.TrimLeft(colStr, "@")
-	typ, value := ctx.Get(name)
 
-	a.Log("resolved column %s to session field %s (type %s)", col, value, typ)
-	// TODO: differentiate user vars from system vars
-	return expression.NewGetSessionVar(name, typ, value), nil
+	a.Log("resolved column to user var %s", name)
+	return expression.NewUserVar(name), nil
 }
 
 func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns map[tableCol]indexedCol) (sql.Expression, error) {

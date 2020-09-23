@@ -24,28 +24,27 @@ import (
 type GetSessionVar struct {
 	name  string
 	typ   sql.Type
-	value interface{}
 }
 
 // NewGetSessionVar creates a new GetSessionField expression.
-func NewGetSessionVar(name string, typ sql.Type, value interface{}) *GetSessionVar {
-	return &GetSessionVar{name, typ, value}
+func NewGetSessionVar(varname string, typ sql.Type) *GetSessionVar {
+	return &GetSessionVar{varname, typ}
 }
 
 // Children implements the sql.Expression interface.
 func (f *GetSessionVar) Children() []sql.Expression { return nil }
 
 // Eval implements the sql.Expression interface.
-func (f *GetSessionVar) Eval(*sql.Context, sql.Row) (interface{}, error) {
-	// TODO: fill in from ctx, not value at analysis time
-	return f.value, nil
+func (f *GetSessionVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	_, val := ctx.Get(f.name)
+	return val, nil
 }
 
 // Type implements the sql.Expression interface.
 func (f *GetSessionVar) Type() sql.Type { return f.typ }
 
 // IsNullable implements the sql.Expression interface.
-func (f *GetSessionVar) IsNullable() bool { return f.value == nil }
+func (f *GetSessionVar) IsNullable() bool { return true }
 
 // Resolved implements the sql.Expression interface.
 func (f *GetSessionVar) Resolved() bool { return true }
@@ -54,7 +53,7 @@ func (f *GetSessionVar) Resolved() bool { return true }
 func (f *GetSessionVar) String() string { return "@@" + f.name }
 
 func (f *GetSessionVar) DebugString() string {
-	return fmt.Sprintf("@@%s, type=%s, val=%v", f.name, f.typ, f.value)
+	return fmt.Sprintf("@@%s, type=%s", f.name, f.typ)
 }
 
 // WithChildren implements the Expression interface.
@@ -112,7 +111,7 @@ func (v *SystemVar) WithChildren(children ...sql.Expression) (sql.Expression, er
 // UserVar is an expression that returns the name of a user variable. It's used as the expression on the left hand
 // side of a SET statement.
 type UserVar struct {
-	name string
+	Name string
 }
 
 // NewUserVar creates a new UserVar expression.
@@ -124,8 +123,9 @@ func NewUserVar(name string) *UserVar {
 func (v *UserVar) Children() []sql.Expression { return nil }
 
 // Eval implements the sql.Expression interface.
-func (v *UserVar) Eval(*sql.Context, sql.Row) (interface{}, error) {
-	return v.name, nil
+func (v *UserVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	_, val := ctx.Get(v.Name)
+	return val, nil
 }
 
 // Type implements the sql.Expression interface.
@@ -133,16 +133,16 @@ func (v *UserVar) Eval(*sql.Context, sql.Row) (interface{}, error) {
 func (v *UserVar) Type() sql.Type { return sql.Boolean }
 
 // IsNullable implements the sql.Expression interface.
-func (v *UserVar) IsNullable() bool { return false }
+func (v *UserVar) IsNullable() bool { return true }
 
 // Resolved implements the sql.Expression interface.
 func (v *UserVar) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
-func (v *UserVar) String() string { return "@" + v.name }
+func (v *UserVar) String() string { return "@" + v.Name }
 
 func (v *UserVar) DebugString() string {
-	return fmt.Sprintf("@%s", v.name)
+	return fmt.Sprintf("@%s", v.Name)
 }
 
 // WithChildren implements the Expression interface.
