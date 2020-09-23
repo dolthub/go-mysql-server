@@ -571,8 +571,8 @@ func resolveSystemVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Expre
 	name := trimVarName(col.Name())
 	typ, _ := ctx.Get(name)
 
-	a.Log("resolved column %s to session variable (type %s)", col, typ)
-	return expression.NewGetSessionVar(name, typ), nil
+	a.Log("resolved column %s to system variable (type %s)", col, typ)
+	return expression.NewSystemVar(name, typ), nil
 }
 
 func trimVarName(name string) string {

@@ -612,6 +612,7 @@ func TestResolveColumnsSession(t *testing.T) {
 			uc("@@foo_bar"),
 			uc("@@bar_baz"),
 			uc("@@autocommit"),
+			uc("@myvar"),
 		},
 		plan.NewResolvedTable(dualTable),
 	)
@@ -621,9 +622,10 @@ func TestResolveColumnsSession(t *testing.T) {
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewGetSessionVar("foo_bar", sql.Int64),
-			expression.NewGetSessionVar("bar_baz", sql.Null),
-			expression.NewGetSessionVar("autocommit", sql.Boolean),
+			expression.NewSystemVar("foo_bar", sql.Int64),
+			expression.NewSystemVar("bar_baz", sql.Null),
+			expression.NewSystemVar("autocommit", sql.Boolean),
+			expression.NewUserVar("myvar"),
 		},
 		plan.NewResolvedTable(dualTable),
 	)
