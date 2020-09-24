@@ -156,16 +156,6 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
-		Name: "set user var, floating point",
-		SetUpScript: []string{
-			`set @myvar = 123.4`,
-		},
-		Query: "SELECT @myvar",
-		Expected: []sql.Row{
-			{123.4},
-		},
-	},
-	{
 		Name: "set user var and sys var in same statement",
 		SetUpScript: []string{
 			`set @myvar = 123.4, @@auto_increment_increment = 1234`,
