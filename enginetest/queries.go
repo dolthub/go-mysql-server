@@ -1382,6 +1382,10 @@ var QueryTests = []QueryTest{
 			{"transaction_isolation", "READ UNCOMMITTED"},
 			{"version", ""},
 			{"version_comment", ""},
+			{"character_set_client", sql.Collation_Default.CharacterSet().String()},
+			{"character_set_connection", sql.Collation_Default.CharacterSet().String()},
+			{"character_set_results", sql.Collation_Default.CharacterSet().String()},
+			{"collation_connection", sql.Collation_Default.String()},
 		},
 	},
 	{

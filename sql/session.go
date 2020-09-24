@@ -266,6 +266,10 @@ func DefaultSessionConfig() map[string]TypedValue {
 		"version":                  TypedValue{LongText, ""},
 		"version_comment":          TypedValue{LongText, ""},
 		"autocommit":               TypedValue{Int8, 0},
+		"character_set_client":     TypedValue{LongText, Collation_Default.CharacterSet().String()},
+		"character_set_connection": TypedValue{LongText, Collation_Default.CharacterSet().String()},
+		"character_set_results":    TypedValue{LongText, Collation_Default.CharacterSet().String()},
+		"collation_connection":     TypedValue{LongText, Collation_Default.String()},
 	}
 }
 
