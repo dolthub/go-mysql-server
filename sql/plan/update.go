@@ -167,7 +167,7 @@ func (p *Update) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	}
 	schema := p.Child.Schema()
 
-	iter, err := p.Child.RowIter(ctx, nil)
+	iter, err := p.Child.RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}
