@@ -228,12 +228,43 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 		return nil, ErrUnsupportedFeature.New("SET global variables")
 	}
 
+	// Special case: SET NAMES expands to 3 different system variables. The parser doesn't yet support the optional
+	// collation string, which is fine since our support for it is mostly fake anyway.
+	// See https://dev.mysql.com/doc/refman/8.0/en/set-names.html
+	if isSetNames(n.Exprs) {
+		return convertSet(ctx, &sqlparser.Set{
+			Exprs: sqlparser.SetExprs{
+				&sqlparser.SetExpr{
+					Name: sqlparser.NewColName("character_set_client"),
+					Expr: n.Exprs[0].Expr,
+				},
+				&sqlparser.SetExpr{
+					Name: sqlparser.NewColName("character_set_connection"),
+					Expr: n.Exprs[0].Expr,
+				},
+				&sqlparser.SetExpr{
+					Name: sqlparser.NewColName("character_set_results"),
+					Expr: n.Exprs[0].Expr,
+				},
+				// TODO: this should also set the collation_connection to the default collation for the character set named
+			},
+		})
+	}
+
 	exprs, err := setExprsToExpressions(ctx, n.Exprs)
 	if err != nil {
 		return nil, err
 	}
 
 	return plan.NewSet(exprs), nil
+}
+
+func isSetNames(exprs sqlparser.SetExprs) bool {
+	if len(exprs) != 1 {
+		return false
+	}
+
+	return strings.ToLower(exprs[0].Name.String()) == "names"
 }
 
 func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, error) {

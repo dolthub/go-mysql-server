@@ -15,9 +15,8 @@
 package enginetest
 
 import (
-	"math"
-
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"math"
 )
 
 var VariableQueries = []ScriptTest{
@@ -105,6 +104,27 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "set names",
+		SetUpScript: []string{
+			`set names utf8mb4`,
+		},
+		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
+		Expected: []sql.Row{
+			{"utf8mb4", "utf8mb4", "utf8mb4"},
+		},
+	},
+	// TODO: we should validate the character set here
+	{
+		Name: "set names quoted",
+		SetUpScript: []string{
+			`set NAMES "charset"`,
+		},
+		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
+		Expected: []sql.Row{
+			{"charset", "charset", "charset"},
+		},
+	},
+	{
 		Name: "set system variable to bareword",
 		SetUpScript: []string{
 			`set @@sql_mode = some_mode`,
@@ -122,6 +142,18 @@ var VariableQueries = []ScriptTest{
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
 			{"some_mode"},
+		},
+	},
+	// TODO: for compatibility, we allow unknown system variables to be set as well. For full MySQL emulation, we need to
+	//  list every system variable MySQL supports and reject all others.
+	{
+		Name: "set unknown system variable",
+		SetUpScript: []string{
+			`set dne = "hello"`,
+		},
+		Query: "SELECT @@dne",
+		Expected: []sql.Row{
+			{"hello"},
 		},
 	},
 	// User variables
@@ -179,10 +211,12 @@ var VariableQueries = []ScriptTest{
 }
 
 var VariableErrorTests = []QueryErrorTest{
-	{
-		Query:       "set @@does_not_exist = 100",
-		ExpectedErr: sql.ErrUnknownSystemVariable,
-	},
+	// TODO: for compatibility, we allow unknown system variables to be set as well. For full MySQL emulation, we need to
+	//  list every system variable MySQL supports and reject all others.
+	// {
+	// 	Query:       "set @@does_not_exist = 100",
+	// 	ExpectedErr: sql.ErrUnknownSystemVariable,
+	// },
 	{
 		Query:       "set @myvar = bareword",
 		ExpectedErr: sql.ErrColumnNotFound,
