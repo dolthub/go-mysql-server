@@ -1369,7 +1369,7 @@ var QueryTests = []QueryTest{
 	{
 		`SHOW VARIABLES`,
 		[]sql.Row{
-			{"autocommit", int64(1)},
+			{"autocommit", int64(0)},
 			{"auto_increment_increment", int64(1)},
 			{"time_zone", "SYSTEM"},
 			{"system_time_zone", time.Now().UTC().Location().String()},

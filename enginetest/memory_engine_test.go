@@ -106,18 +106,13 @@ func TestSingleScript(t *testing.T) {
 
 	var test enginetest.ScriptTest
 	test = enginetest.ScriptTest{
-		Name: "trigger before insert, alter inserted value, multiple columns, system var",
+		Name: "set system variables",
 		SetUpScript: []string{
-			"create table x (a int primary key, b int, c int)",
-			"set @@auto_increment_increment = 1",
-			"create trigger insert_into_x before insert on x for each row " +
-				"set new.a = new.a + 1, new.b = new.c, new.c = 0, @@auto_increment_increment = @@auto_increment_increment + 1",
-			"insert into x values (1, 10, 100), (2, 20, 200)",
+			"set @@auto_increment_increment = 100, sql_select_limit = 1",
 		},
-		Query: "select *, @@auto_increment_increment from x order by 1",
+		Query: "SELECT @@auto_increment_increment, @@sql_select_limit",
 		Expected: []sql.Row{
-			{2, 100, 0, 3},
-			{3, 200, 0, 3},
+			{100, 1},
 		},
 	}
 

@@ -124,11 +124,67 @@ var VariableQueries = []ScriptTest{
 			{"some_mode"},
 		},
 	},
+	// User variables
+	{
+		Name: "set user var",
+		SetUpScript: []string{
+			`set @myvar = "hello"`,
+		},
+		Query: "SELECT @myvar",
+		Expected: []sql.Row{
+			{"hello"},
+		},
+	},
+	{
+		Name: "set user var, integer type",
+		SetUpScript: []string{
+			`set @myvar = 123`,
+		},
+		Query: "SELECT @myvar",
+		Expected: []sql.Row{
+			{123},
+		},
+	},
+	{
+		Name: "set user var, floating point",
+		SetUpScript: []string{
+			`set @myvar = 123.4`,
+		},
+		Query: "SELECT @myvar",
+		Expected: []sql.Row{
+			{123.4},
+		},
+	},
+	{
+		Name: "set user var and sys var in same statement",
+		SetUpScript: []string{
+			`set @myvar = 123.4, @@auto_increment_increment = 1234`,
+		},
+		Query: "SELECT @myvar, @@auto_increment_increment",
+		Expected: []sql.Row{
+			{123.4, 1234},
+		},
+	},
+	{
+		Name: "set sys var to user var",
+		SetUpScript: []string{
+			`set @myvar = 1234`,
+			`set auto_increment_increment = @myvar`,
+		},
+		Query: "SELECT @myvar, @@auto_increment_increment",
+		Expected: []sql.Row{
+			{1234, 1234},
+		},
+	},
 }
 
 var VariableErrorTests = []QueryErrorTest{
 	{
 		Query:       "set @@does_not_exist = 100",
 		ExpectedErr: sql.ErrUnknownSystemVariable,
+	},
+	{
+		Query:       "set @myvar = bareword",
+		ExpectedErr: sql.ErrColumnNotFound,
 	},
 }
