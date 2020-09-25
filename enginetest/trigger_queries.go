@@ -212,9 +212,19 @@ var TriggerTests = []ScriptTest{
 			"create trigger insert_into_b after update on a for each row insert into b values (old.x + new.x + 1)",
 			"update a set x = x + 1 where x in (1, 3)",
 		},
-		Query: "select y from b order by 1",
-		Expected: []sql.Row{
-			{4}, {8},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{2}, {4}, {5},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{4}, {8},
+				},
+			},
 		},
 	},
 	{
@@ -227,9 +237,19 @@ var TriggerTests = []ScriptTest{
 			"create trigger delete_from_b after update on a for each row delete from b where y = old.x + new.x",
 			"update a set x = x + 1 where x in (2,4)",
 		},
-		Query: "select y from b order by 1",
-		Expected: []sql.Row{
-			{1}, {3}, {7},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{0}, {3}, {5}, {6}, {8},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{1}, {3}, {7},
+				},
+			},
 		},
 	},
 	{
@@ -242,9 +262,19 @@ var TriggerTests = []ScriptTest{
 			"create trigger update_b after update on a for each row update b set y = old.x + new.x + 1 where y = old.x",
 			"update a set x = x + 1 where x in (2, 4)",
 		},
-		Query: "select y from b order by 1",
-		Expected: []sql.Row{
-			{0}, {6}, {8}, {10},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{0}, {3}, {5}, {6}, {8},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{0}, {6}, {8}, {10},
+				},
+			},
 		},
 	},
 	{
@@ -256,9 +286,19 @@ var TriggerTests = []ScriptTest{
 			"create trigger insert_into_b before update on a for each row insert into b values (old.x + new.x + 1)",
 			"update a set x = x + 1 where x in (1, 3)",
 		},
-		Query: "select y from b order by 1",
-		Expected: []sql.Row{
-			{4}, {8},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{2}, {4}, {5},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{4}, {8},
+				},
+			},
 		},
 	},
 	{
@@ -271,9 +311,19 @@ var TriggerTests = []ScriptTest{
 			"create trigger delete_from_b before update on a for each row delete from b where y = old.x + new.x",
 			"update a set x = x + 1 where x in (2,4)",
 		},
-		Query: "select y from b order by 1",
-		Expected: []sql.Row{
-			{1}, {3}, {7},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{0}, {3}, {5}, {6}, {8},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{1}, {3}, {7},
+				},
+			},
 		},
 	},
 	{
@@ -286,9 +336,19 @@ var TriggerTests = []ScriptTest{
 			"create trigger update_b before update on a for each row update b set y = old.x + new.x + 1 where y = old.x",
 			"update a set x = x + 1 where x in (2, 4)",
 		},
-		Query: "select y from b order by 1",
-		Expected: []sql.Row{
-			{0}, {6}, {8}, {10},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{0}, {3}, {5}, {6}, {8},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{0}, {6}, {8}, {10},
+				},
+			},
 		},
 	},
 	{
@@ -355,9 +415,19 @@ var TriggerTests = []ScriptTest{
 			"create trigger insert_into_b after delete on a for each row insert into b values (old.x + 1)",
 			"delete from a where x in (1, 3)",
 		},
-		Query: "select y from b order by 1",
-		Expected: []sql.Row{
-			{2}, {4},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{5},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{2}, {4},
+				},
+			},
 		},
 	},
 	{
@@ -370,9 +440,19 @@ var TriggerTests = []ScriptTest{
 			"create trigger delete_from_b after delete on a for each row delete from b where y = old.x",
 			"delete from a where x in (2,4,6)",
 		},
-		Query: "select y from b order by 1",
-		Expected: []sql.Row{
-			{0}, {8},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{0}, {8},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{0}, {8},
+				},
+			},
 		},
 	},
 	{
@@ -385,9 +465,19 @@ var TriggerTests = []ScriptTest{
 			"create trigger update_b after delete on a for each row update b set y = old.x + 1 where y = old.x",
 			"delete from a where x in (2,4,6)",
 		},
-		Query: "select y from b order by 1",
-		Expected: []sql.Row{
-			{0}, {3}, {5}, {7}, {8},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{0}, {8},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{0}, {3}, {5}, {7}, {8},
+				},
+			},
 		},
 	},
 	{
@@ -399,9 +489,19 @@ var TriggerTests = []ScriptTest{
 			"create trigger insert_into_b before delete on a for each row insert into b values (old.x + 1)",
 			"delete from a where x in (2, 4, 6)",
 		},
-		Query: "select y from b order by 1",
-		Expected: []sql.Row{
-			{3}, {5}, {7},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{0}, {8},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{3}, {5}, {7},
+				},
+			},
 		},
 	},
 	{
@@ -414,9 +514,19 @@ var TriggerTests = []ScriptTest{
 			"create trigger delete_from_b before delete on a for each row delete from b where y = (old.x + 1)",
 			"delete from a where x in (2, 4, 6)",
 		},
-		Query: "select y from b order by 1",
-		Expected: []sql.Row{
-			{1}, {9},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{0}, {8},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{1}, {9},
+				},
+			},
 		},
 	},
 	{
@@ -429,9 +539,19 @@ var TriggerTests = []ScriptTest{
 			"create trigger update_b before delete on a for each row update b set y = old.x where y = old.x + 1",
 			"delete from a where x in (2, 4, 6)",
 		},
-		Query: "select y from b order by 1",
-		Expected: []sql.Row{
-			{1}, {2}, {4}, {6}, {9},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{0}, {8},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{1}, {2}, {4}, {6}, {9},
+				},
+			},
 		},
 	},
 }
