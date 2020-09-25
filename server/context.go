@@ -4,10 +4,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/liquidata-inc/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // SessionBuilder creates sessions given a MySQL connection and a server address.

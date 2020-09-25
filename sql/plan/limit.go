@@ -5,7 +5,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Limit is a node that only allows up to N rows to be retrieved.

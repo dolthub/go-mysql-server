@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Substring is a function to return a part of a string.

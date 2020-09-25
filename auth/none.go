@@ -1,9 +1,9 @@
 package auth
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 
-	"github.com/liquidata-inc/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 // None is an Auth method that always succeeds.

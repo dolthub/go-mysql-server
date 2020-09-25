@@ -3,7 +3,7 @@ package function
 import (
 	"fmt"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // If function returns the second value if the first is true, the third value otherwise.

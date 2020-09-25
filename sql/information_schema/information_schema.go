@@ -6,8 +6,8 @@ import (
 	"io"
 	"strings"
 
-	. "github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/parse"
+	. "github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/parse"
 )
 
 const (

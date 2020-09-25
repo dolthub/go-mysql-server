@@ -3,7 +3,7 @@ package plan
 import (
 	"sort"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // ShowTables is a node that shows the database tables.

@@ -6,7 +6,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // CrossJoin is a cross join between two tables.

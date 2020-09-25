@@ -14,7 +14,7 @@
 
 package enginetest
 
-import "github.com/liquidata-inc/go-mysql-server/sql"
+import "github.com/dolthub/go-mysql-server/sql"
 
 // Harness provides a way for database integrators to validate their implementation against the standard set of queries
 // used to develop and test the engine itself. See memory_engine_test.go for an example.

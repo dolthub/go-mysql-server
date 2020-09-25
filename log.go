@@ -1,8 +1,8 @@
 package sqle
 
 import (
+	vtlog "github.com/dolthub/vitess/go/vt/log"
 	"github.com/golang/glog"
-	vtlog "github.com/liquidata-inc/vitess/go/vt/log"
 	"github.com/sirupsen/logrus"
 )
 

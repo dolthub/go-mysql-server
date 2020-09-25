@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/liquidata-inc/go-mysql-server/internal/regex"
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/internal/regex"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Like performs pattern matching against two strings.

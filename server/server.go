@@ -3,11 +3,11 @@ package server
 import (
 	"time"
 
-	"github.com/liquidata-inc/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/opentracing/opentracing-go"
 
-	sqle "github.com/liquidata-inc/go-mysql-server"
-	"github.com/liquidata-inc/go-mysql-server/auth"
+	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/auth"
 )
 
 // Server is a MySQL server for SQLe engines.

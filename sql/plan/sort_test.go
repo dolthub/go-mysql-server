@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/liquidata-inc/go-mysql-server/memory"
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 
 	"github.com/stretchr/testify/require"
 )
