@@ -564,10 +564,23 @@ func testScript(t *testing.T, harness Harness, script ScriptTest) bool {
 			RunQuery(t, e, harness, statement)
 		}
 
-		if script.ExpectedErr != nil {
-			AssertErr(t, e, harness, script.Query, script.ExpectedErr)
-		} else {
-			TestQuery(t, harness, e, script.Query, script.Expected)
+		var assertions []ScriptTestAssertion
+		if len(script.Assertions) == 0 {
+			assertions = []ScriptTestAssertion{
+				{
+					Query:       script.Query,
+					Expected:    script.Expected,
+					ExpectedErr: script.ExpectedErr,
+				},
+			}
+		}
+
+		for _, assertion := range assertions {
+			if assertion.ExpectedErr != nil {
+				AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+			} else {
+				TestQuery(t, harness, e, assertion.Query, assertion.Expected)
+			}
 		}
 	})
 }
