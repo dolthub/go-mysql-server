@@ -3,8 +3,8 @@ package function
 import (
 	"fmt"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // IfNull function returns the specified value IF the expression is NULL, otherwise return the expression.

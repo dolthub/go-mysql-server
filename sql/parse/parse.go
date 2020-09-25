@@ -9,15 +9,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/liquidata-inc/vitess/go/vt/sqlparser"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression/function"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression/function/aggregation"
-	"github.com/liquidata-inc/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 var (

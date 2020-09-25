@@ -9,8 +9,8 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	errors "gopkg.in/src-d/go-errors.v1"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // ErrGroupBy is returned when the aggregation is not supported.

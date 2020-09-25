@@ -1,7 +1,7 @@
 package plan
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // ShowWarnings is a node that shows the session warnings

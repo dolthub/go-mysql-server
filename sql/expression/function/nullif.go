@@ -3,8 +3,8 @@ package function
 import (
 	"fmt"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // NullIf function compares two expressions and returns NULL if they are equal. Otherwise, the first expression is returned.

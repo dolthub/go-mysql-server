@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // A very dumb index that iterates over the rows of a table, evaluates its matching expressions against each row, and

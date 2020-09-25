@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type Releaser struct {

@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/liquidata-inc/vitess/go/mysql"
-	"github.com/liquidata-inc/vitess/go/sqltypes"
-	"github.com/liquidata-inc/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/require"
 
-	sqle "github.com/liquidata-inc/go-mysql-server"
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestHandlerOutput(t *testing.T) {

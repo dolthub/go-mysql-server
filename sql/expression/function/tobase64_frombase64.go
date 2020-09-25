@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // ToBase64 is a function to encode a string to the Base64 format

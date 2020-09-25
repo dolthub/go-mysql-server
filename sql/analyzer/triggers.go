@@ -15,12 +15,12 @@
 package analyzer
 
 import (
-	"github.com/liquidata-inc/vitess/go/vt/sqlparser"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
-	"github.com/liquidata-inc/go-mysql-server/sql/parse"
-	"github.com/liquidata-inc/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/parse"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 type triggerColumnRef struct {

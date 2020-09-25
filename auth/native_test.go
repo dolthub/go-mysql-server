@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/liquidata-inc/go-mysql-server/auth"
+	"github.com/dolthub/go-mysql-server/auth"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
