@@ -16,6 +16,7 @@ package enginetest_test
 
 import (
 	"fmt"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"testing"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -74,20 +75,19 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
-	var test enginetest.QueryTest
-	test = enginetest.QueryTest{
-		`SELECT pk,
-						(SELECT sum(pk1+pk2) FROM two_pk WHERE pk1+pk2 IN (SELECT pk1+pk2 FROM two_pk WHERE pk1+pk2 = pk)) AS sum,
-						(SELECT min(pk2) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE pk2 = pk)) AS equal
-						FROM one_pk ORDER BY pk;`,
+	var test enginetest.WriteQueryTest
+	test = enginetest.WriteQueryTest	{
+		"UPDATE mytable SET s = 'updated';",
 		[]sql.Row{
-			{0, 0.0, 0},
-			{1, 2.0, 1},
-			{2, 2.0, nil},
-			{3, nil, nil},
+			{sql.OkResult{
+			RowsAffected: uint64(3),
+			Info:         plan.UpdateInfo{3, 3, 0},
+		}},
 		},
+		"SELECT * FROM mytable;",
+		[]sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
 	}
 
 	fmt.Sprintf("%v", test)
@@ -97,7 +97,8 @@ func TestSingleQuery(t *testing.T) {
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
 
-	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected)
+	enginetest.TestQuery(t, harness, engine, test.WriteQuery, test.ExpectedWriteResult)
+	enginetest.TestQuery(t, harness, engine, test.SelectQuery, test.ExpectedSelect)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
