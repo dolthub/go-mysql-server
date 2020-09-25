@@ -231,6 +231,60 @@ var TriggerTests = []ScriptTest{
 			{0}, {6}, {8}, {10},
 		},
 	},
+	{
+		Name: "trigger before update, set new value",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"insert into a values (1), (10)",
+			"create trigger update_a before update on a for each row set new.x = new.x + old.x",
+			"update a set x = x + 1",
+		},
+		Query: "select x from a order by 1",
+		Expected: []sql.Row{
+			{3}, {21},
+		},
+	},
+	{
+		Name: "trigger before update, set new value to old value",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"insert into a values (1), (10)",
+			"create trigger no_step_on_snek before update on a for each row set new.x = old.x",
+			"update a set x = x + 1",
+		},
+		Query: "select x from a order by 1",
+		Expected: []sql.Row{
+			{1}, {10},
+		},
+	},
+	{
+		Name: "trigger before update, set new values, multiple cols",
+		SetUpScript: []string{
+			"create table a (x int primary key, y int)",
+			"insert into a values (1,3), (10,20)",
+			"create trigger update_a before update on a for each row set new.x = new.x + old.y, new.y = new.y + old.x",
+			"update a set x = x + 1, y = y + 1",
+		},
+		Query: "select x, y from a order by 1",
+		Expected: []sql.Row{
+			{5, 5},
+			{31, 31},
+		},
+	},
+	{
+		Name: "trigger before update, set new values, multiple cols (2)",
+		SetUpScript: []string{
+			"create table a (x int primary key, y int)",
+			"insert into a values (1,3), (10,20)",
+			"create trigger update_a before update on a for each row set new.x = new.x + new.y, new.y = new.y + old.y",
+			"update a set x = x + 1, y = y + 1",
+		},
+		Query: "select x, y from a order by 1",
+		Expected: []sql.Row{
+			{6, 7},
+			{32, 41},
+		},
+	},
 	// DELETE triggers
 	{
 		Name: "trigger after delete, insert into other table",
