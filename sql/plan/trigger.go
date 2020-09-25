@@ -100,12 +100,6 @@ func (t *triggerIter) Next() (row sql.Row, returnErr error) {
 	}
 
 	// Wrap the execution logic with the current child row before executing it.
-	// Update triggers have [old, new] prepended to them. Other triggers just get [old|new] prepended to them. This
-	// matches the analyzer logic in analyzer/triggers.go.
-	if t.triggerEvent == UpdateTrigger {
-		childRow = childRow.Append(childRow)
-	}
-
 	logic, err := TransformUp(t.executionLogic, prependRowInPlan(childRow))
 	if err != nil {
 		return nil, err

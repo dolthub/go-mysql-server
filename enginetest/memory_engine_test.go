@@ -121,18 +121,19 @@ func TestSingleScript(t *testing.T) {
 	// 	},
 	// }
 
-	test = enginetest.ScriptTest{
-		Name: "trigger after insert, update other table",
+	test = enginetest.ScriptTest		{
+		Name: "trigger before update, delete from other table",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
 			"create table b (y int primary key)",
+			"insert into a values (0), (2), (4), (6), (8)",
 			"insert into b values (0), (2), (4), (6), (8)",
-			"create trigger insert_into_b after insert on a for each row update b set y = new.x where y = new.x + 1",
-			"insert into a values (1), (3), (5)",
+			"create trigger delete_from_b before update on a for each row delete from b where y = old.x + new.x",
+			"update a set x = x + 1 where x in (2,4)",
 		},
 		Query: "select y from b order by 1",
 		Expected: []sql.Row{
-			{0}, {1}, {3}, {5}, {8},
+			{0}, {2}, {6},
 		},
 	}
 
