@@ -68,14 +68,14 @@ func TestQueries(t *testing.T) {
 	}
 }
 
-// TestQueriesSimple runs the canonical tests queries with against a single index enabled harness.
+// TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestQueriesSimple(t *testing.T) {
 	enginetest.TestQueries(t, newMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var test enginetest.WriteQueryTest
 	test = enginetest.WriteQueryTest	{
@@ -103,24 +103,9 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var test enginetest.ScriptTest
-	// test = enginetest.ScriptTest	{
-	// 	Name: "trigger after delete, insert into other table",
-	// 	SetUpScript: []string{
-	// 		"create table a (x int primary key)",
-	// 		"create table b (y int primary key)",
-	// 		"insert into a values (1), (3), (5)",
-	// 		"create trigger insert_into_b after delete on a for each row insert into b values (old.x + 1)",
-	// 		"delete from a where x in (1, 3)",
-	// 	},
-	// 	Query: "select y from b order by 1",
-	// 	Expected: []sql.Row{
-	// 		{2}, {4},
-	// 	},
-	// }
-
 	test = enginetest.ScriptTest		{
 		Name: "trigger before update, delete from other table",
 		SetUpScript: []string{

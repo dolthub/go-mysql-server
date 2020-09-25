@@ -818,6 +818,39 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		}
 		require.True(t, indexFound)
 	})
+
+	t.Run("CREATE LIKE table in other database", func(t *testing.T) {
+		ctx.SetCurrentDatabase("foo")
+		_, iter, err := e.Query(ctx, "CREATE TABLE t8pre("+
+			"pk bigint primary key,"+
+			"v1 bigint default (7) comment 'greetings'"+
+			")")
+		require.NoError(t, err)
+		_, err = sql.RowIterToRows(iter)
+		require.NoError(t, err)
+		ctx.SetCurrentDatabase("mydb")
+		TestQuery(t, harness, e,
+			"CREATE TABLE t8 LIKE foo.t8pre",
+			[]sql.Row(nil),
+		)
+
+		db, err := e.Catalog.Database("mydb")
+		require.NoError(t, err)
+		testTable, ok, err := db.GetTableInsensitive(ctx, "t8")
+		require.NoError(t, err)
+		require.True(t, ok)
+		indexableTable, ok := testTable.(sql.IndexedTable)
+		require.True(t, ok)
+
+		s := sql.Schema{
+			{Name: "pk", Type: sql.Int64, PrimaryKey: true, Nullable: false, Source: "t8"},
+			{Name: "v1", Type: sql.Int64, Nullable: true, Source: "t8",
+				Default: parse.MustStringToColumnDefaultValue(ctx, "(7)", sql.Int64, true), Comment: "greetings"},
+		}
+		require.Equal(t, s, indexableTable.Schema())
+	})
+
+	//TODO: Implement "CREATE TABLE otherDb.tableName"
 }
 
 func TestDropTable(t *testing.T, harness Harness) {

@@ -62,7 +62,10 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 				// TODO: clean up distinction between system and user vars in this interface
 				typ, _ := ctx.Session.Get(varName)
 				if typ == sql.Null {
-					return nil, sql.ErrUnknownSystemVariable.New(varName)
+					// TODO: since we don't support all system variables supported by MySQL yet, for compatibility reasons we
+					//  will just accept them all here. But we should reject unknown ones.
+					// return nil, sql.ErrUnknownSystemVariable.New(varName)
+					typ = sf.Right.Type()
 				}
 
 				// Special case: for system variables, MySQL allows naked strings (without quotes), which get interpreted as
@@ -77,7 +80,7 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			}
 
 			if isUserVariable(uc) {
-				return sf.WithChildren(expression.NewUserVar(uc.String()), setVal)
+				return sf.WithChildren(expression.NewUserVar(varName), setVal)
 			}
 		}
 
@@ -112,7 +115,10 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			varName := trimVarName(uc.String())
 			typ, _ := ctx.Session.Get(varName)
 			if typ == sql.Null {
-				return nil, sql.ErrUnknownSystemVariable.New(varName)
+				// TODO: since we don't support all system variables supported by MySQL yet, for compatibility reasons we
+				//  will just accept them all here. But we should reject unknown ones.
+				// return nil, sql.ErrUnknownSystemVariable.New(varName)
+				typ = sf.Right.Type()
 			}
 
 			// Special case: for system variables, MySQL allows naked strings (without quotes), which get interpreted as

@@ -15,9 +15,8 @@
 package enginetest
 
 import (
-	"math"
-
 	"github.com/liquidata-inc/go-mysql-server/sql"
+	"math"
 )
 
 var VariableQueries = []ScriptTest{
@@ -105,6 +104,27 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "set names",
+		SetUpScript: []string{
+			`set names utf8mb4`,
+		},
+		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
+		Expected: []sql.Row{
+			{"utf8mb4", "utf8mb4", "utf8mb4"},
+		},
+	},
+	// TODO: we should validate the character set here
+	{
+		Name: "set names quoted",
+		SetUpScript: []string{
+			`set NAMES "charset"`,
+		},
+		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
+		Expected: []sql.Row{
+			{"charset", "charset", "charset"},
+		},
+	},
+	{
 		Name: "set system variable to bareword",
 		SetUpScript: []string{
 			`set @@sql_mode = some_mode`,
@@ -124,11 +144,81 @@ var VariableQueries = []ScriptTest{
 			{"some_mode"},
 		},
 	},
+	// TODO: for compatibility, we allow unknown system variables to be set as well. For full MySQL emulation, we need to
+	//  list every system variable MySQL supports and reject all others.
+	{
+		Name: "set unknown system variable",
+		SetUpScript: []string{
+			`set dne = "hello"`,
+		},
+		Query: "SELECT @@dne",
+		Expected: []sql.Row{
+			{"hello"},
+		},
+	},
+	// User variables
+	{
+		Name: "set user var",
+		SetUpScript: []string{
+			`set @myvar = "hello"`,
+		},
+		Query: "SELECT @myvar",
+		Expected: []sql.Row{
+			{"hello"},
+		},
+	},
+	{
+		Name: "set user var, integer type",
+		SetUpScript: []string{
+			`set @myvar = 123`,
+		},
+		Query: "SELECT @myvar",
+		Expected: []sql.Row{
+			{123},
+		},
+	},
+	{
+		Name: "set user var, floating point",
+		SetUpScript: []string{
+			`set @myvar = 123.4`,
+		},
+		Query: "SELECT @myvar",
+		Expected: []sql.Row{
+			{123.4},
+		},
+	},
+	{
+		Name: "set user var and sys var in same statement",
+		SetUpScript: []string{
+			`set @myvar = 123.4, @@auto_increment_increment = 1234`,
+		},
+		Query: "SELECT @myvar, @@auto_increment_increment",
+		Expected: []sql.Row{
+			{123.4, 1234},
+		},
+	},
+	{
+		Name: "set sys var to user var",
+		SetUpScript: []string{
+			`set @myvar = 1234`,
+			`set auto_increment_increment = @myvar`,
+		},
+		Query: "SELECT @myvar, @@auto_increment_increment",
+		Expected: []sql.Row{
+			{1234, 1234},
+		},
+	},
 }
 
 var VariableErrorTests = []QueryErrorTest{
+	// TODO: for compatibility, we allow unknown system variables to be set as well. For full MySQL emulation, we need to
+	//  list every system variable MySQL supports and reject all others.
+	// {
+	// 	Query:       "set @@does_not_exist = 100",
+	// 	ExpectedErr: sql.ErrUnknownSystemVariable,
+	// },
 	{
-		Query:       "set @@does_not_exist = 100",
-		ExpectedErr: sql.ErrUnknownSystemVariable,
+		Query:       "set @myvar = bareword",
+		ExpectedErr: sql.ErrColumnNotFound,
 	},
 }
