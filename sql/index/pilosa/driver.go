@@ -24,8 +24,8 @@ import (
 	"github.com/sirupsen/logrus"
 	errors "gopkg.in/src-d/go-errors.v1"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/index"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/index"
 )
 
 const (

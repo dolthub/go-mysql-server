@@ -17,7 +17,7 @@ package enginetest
 import (
 	"math"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // TODO: none of these tests insert into tables without primary key columns, which have different semantics for

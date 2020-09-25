@@ -5,8 +5,8 @@ import (
 	"math"
 	"reflect"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // Ceil returns the smallest integer value not less than X.

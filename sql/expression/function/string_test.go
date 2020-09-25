@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestAsciiFunc(t *testing.T) {

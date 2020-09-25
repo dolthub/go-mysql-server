@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Tuple is a fixed-size collection of expressions.

@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	errors "gopkg.in/src-d/go-errors.v1"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestCompare(t *testing.T) {

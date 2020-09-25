@@ -3,7 +3,7 @@ package plan
 import (
 	errors "gopkg.in/src-d/go-errors.v1"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 var errDropViewChild = errors.NewKind("any child of DropView must be of type SingleDropView")

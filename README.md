@@ -45,21 +45,21 @@ What's the use case of **go-mysql-server**?
 
 2. Providing access to aribtrary data sources with SQL queries by
    implementing a handful of interfaces. The most complete real-world
-   implementation is [Dolt](https://github.com/liquidata-inc/dolt).
+   implementation is [Dolt](https://github.com/dolthub/dolt).
 
 ## Installation
 
-The import path for the package is `github.com/liquidata-inc/go-mysql-server`.
+The import path for the package is `github.com/dolthub/go-mysql-server`.
 
 To install it, run:
 
 ```
-go get github.com/liquidata-inc/go-mysql-server
+go get github.com/dolthub/go-mysql-server
 ```
 
 ## Go Documentation
 
-* [go-mysql-server godoc](https://godoc.org/github.com/liquidata-inc/go-mysql-server)
+* [go-mysql-server godoc](https://godoc.org/github.com/dolthub/go-mysql-server)
 
 ## SQL syntax
 
@@ -209,11 +209,11 @@ database implementation:
 import (
     "time"
 
-    "github.com/liquidata-inc/go-mysql-server/auth"
-    "github.com/liquidata-inc/go-mysql-server/memory"
-    "github.com/liquidata-inc/go-mysql-server/server"
-    "github.com/liquidata-inc/go-mysql-server/sql"
-    sqle "github.com/liquidata-inc/go-mysql-server"
+    "github.com/dolthub/go-mysql-server/auth"
+    "github.com/dolthub/go-mysql-server/memory"
+    "github.com/dolthub/go-mysql-server/server"
+    "github.com/dolthub/go-mysql-server/sql"
+    sqle "github.com/dolthub/go-mysql-server"
 )
 
 func main() {
@@ -574,7 +574,7 @@ different requirements.
 
 ## Powered by go-mysql-server
 
-* [dolt](https://github.com/liquidata-inc/dolt)
+* [dolt](https://github.com/dolthub/dolt)
 * [gitbase](https://github.com/src-d/gitbase) (defunct)
 
 ## Acknowledgements

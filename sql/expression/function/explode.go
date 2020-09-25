@@ -3,7 +3,7 @@ package function
 import (
 	"fmt"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Explode is a function that generates a row for each value of its child.

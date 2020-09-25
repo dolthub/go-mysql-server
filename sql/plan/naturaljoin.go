@@ -1,6 +1,6 @@
 package plan
 
-import "github.com/liquidata-inc/go-mysql-server/sql"
+import "github.com/dolthub/go-mysql-server/sql"
 
 // NaturalJoin is a join that automatically joins by all the columns with the
 // same name.

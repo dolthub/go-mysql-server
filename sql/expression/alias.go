@@ -3,7 +3,7 @@ package expression
 import (
 	"fmt"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Alias is a node that gives a name to an expression.

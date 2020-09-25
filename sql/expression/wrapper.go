@@ -3,7 +3,7 @@ package expression
 import (
 	"fmt"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Wrapper simply acts as a wrapper for another expression. If a nil expression is wrapped, then the wrapper functions

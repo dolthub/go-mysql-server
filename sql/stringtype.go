@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/liquidata-inc/vitess/go/sqltypes"
-	"github.com/liquidata-inc/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/spf13/cast"
 	"gopkg.in/src-d/go-errors.v1"
 )

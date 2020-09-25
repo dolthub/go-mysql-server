@@ -3,7 +3,7 @@ package expression
 import (
 	"fmt"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Not is a node that negates an expression.

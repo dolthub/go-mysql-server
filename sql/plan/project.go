@@ -5,8 +5,8 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
-	"github.com/liquidata-inc/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // Project is a projection of certain expression from the children node.

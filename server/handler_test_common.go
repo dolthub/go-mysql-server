@@ -9,12 +9,12 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/liquidata-inc/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/stretchr/testify/require"
 
-	sqle "github.com/liquidata-inc/go-mysql-server"
-	"github.com/liquidata-inc/go-mysql-server/memory"
-	"github.com/liquidata-inc/go-mysql-server/sql"
+	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func setupMemDB(require *require.Assertions) *sqle.Engine {
