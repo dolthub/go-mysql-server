@@ -31,7 +31,7 @@ type ScriptTest struct {
 	Query       string
 	// For tests that make a single assertion, Expected can be set for the single assertion
 	Expected    []sql.Row
-	// For tests that make a singel assertion, ExpectedErrr can be set for the expected error
+	// For tests that make a single assertion, ExpectedErr can be set for the expected error
 	ExpectedErr *errors.Kind
 }
 

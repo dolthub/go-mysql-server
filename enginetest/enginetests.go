@@ -564,8 +564,8 @@ func testScript(t *testing.T, harness Harness, script ScriptTest) bool {
 			RunQuery(t, e, harness, statement)
 		}
 
-		var assertions []ScriptTestAssertion
-		if len(script.Assertions) == 0 {
+		assertions := script.Assertions
+		if len(assertions) == 0 {
 			assertions = []ScriptTestAssertion{
 				{
 					Query:       script.Query,
