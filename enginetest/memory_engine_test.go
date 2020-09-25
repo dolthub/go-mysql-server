@@ -16,12 +16,11 @@ package enginetest_test
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql"
-
 	"github.com/dolthub/go-mysql-server/enginetest"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
