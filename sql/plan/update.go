@@ -65,7 +65,7 @@ type updateIter struct {
 }
 
 func (u *updateIter) Next() (sql.Row, error) {
-	oldAndNewRow, err := u.childIter.Next()
+ 	oldAndNewRow, err := u.childIter.Next()
 	if err != nil {
 		return nil, err
 	}

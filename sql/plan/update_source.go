@@ -90,7 +90,7 @@ func (u *UpdateSource) DebugString() string {
 type updateSourceIter struct {
 	childIter   sql.RowIter
 	updateExprs []sql.Expression
-	schema      sql.Schema
+	tableSchema sql.Schema
 	ctx         *sql.Context
 }
 
@@ -108,9 +108,10 @@ func (u *updateSourceIter) Next() (sql.Row, error) {
 	// Reduce the row to the length of the schema. The length can differ when some update values come from an outer
 	// scope, which will be the first N values in the row.
 	// TODO: handle this in the analyzer instead?
-	if len(u.schema) < len(newRow) {
-		newRow = newRow[len(newRow)-len(u.schema):]
-		oldRow = oldRow[len(oldRow)-len(u.schema):]
+	expectedSchemaLen := len(u.tableSchema)
+	if expectedSchemaLen < len(oldRow) {
+		oldRow = oldRow[len(oldRow)-expectedSchemaLen:]
+		newRow = newRow[len(newRow)-expectedSchemaLen:]
 	}
 
 	return oldRow.Append(newRow), nil
@@ -126,10 +127,15 @@ func (u *UpdateSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		return nil, err
 	}
 
+	table, err := getUpdatable(u.Child)
+	if err != nil {
+		return nil, err
+	}
+
 	return &updateSourceIter{
 		childIter:   rowIter,
 		updateExprs: u.UpdateExprs,
-		schema:      u.Schema(),
+		tableSchema: table.Schema(),
 		ctx:         ctx,
 	}, nil
 }

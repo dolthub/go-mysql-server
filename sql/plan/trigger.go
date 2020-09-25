@@ -99,12 +99,10 @@ func (t *triggerIter) Next() (row sql.Row, returnErr error) {
 		return nil, err
 	}
 
-	// Wrap the execution logic with the current child row before executing it
-	// For update triggers that happen before the update, we need to double the input row to get old and new inputs.
-	// Update triggers that happen after update don't have this issue, since they wrap an Update node that already has
-	// the right schema.
-	// TODO: this won't work in all cases for executing multiple triggers
-	if t.triggerEvent == UpdateTrigger && t.triggerTime == BeforeTrigger {
+	// Wrap the execution logic with the current child row before executing it.
+	// Update triggers have [old, new] prepended to them. Other triggers just get [old|new] prepended to them. This
+	// matches the analyzer logic in analyzer/triggers.go.
+	if t.triggerEvent == UpdateTrigger {
 		childRow = childRow.Append(childRow)
 	}
 
