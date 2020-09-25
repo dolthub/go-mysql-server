@@ -15,8 +15,9 @@
 package plan
 
 import (
-	"github.com/liquidata-inc/go-mysql-server/sql"
 	"strings"
+
+	"github.com/liquidata-inc/go-mysql-server/sql"
 )
 
 // UpdateSource is the source of updates for an Update node. Its schema is the concatenation of the old and new rows,
@@ -146,6 +147,3 @@ func (u *UpdateSource) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 	return NewUpdateSource(children[0], u.UpdateExprs), nil
 }
-
-
-

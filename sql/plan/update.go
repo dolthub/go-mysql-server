@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/liquidata-inc/go-mysql-server/sql"
@@ -58,14 +59,14 @@ func (ui UpdateInfo) String() string {
 }
 
 type updateIter struct {
-	childIter   sql.RowIter
-	schema      sql.Schema
-	updater     sql.RowUpdater
-	ctx         *sql.Context
+	childIter sql.RowIter
+	schema    sql.Schema
+	updater   sql.RowUpdater
+	ctx       *sql.Context
 }
 
 func (u *updateIter) Next() (sql.Row, error) {
- 	oldAndNewRow, err := u.childIter.Next()
+	oldAndNewRow, err := u.childIter.Next()
 	if err != nil {
 		return nil, err
 	}
@@ -112,10 +113,10 @@ func (u *updateIter) Close() error {
 
 func newUpdateIter(childIter sql.RowIter, schema sql.Schema, updater sql.RowUpdater, ctx *sql.Context) *updateIter {
 	return &updateIter{
-		childIter:   childIter,
-		updater:     updater,
-		schema:      schema,
-		ctx:         ctx,
+		childIter: childIter,
+		updater:   updater,
+		schema:    schema,
+		ctx:       ctx,
 	}
 }
 

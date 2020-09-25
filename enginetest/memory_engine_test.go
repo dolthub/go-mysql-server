@@ -16,12 +16,11 @@ package enginetest_test
 
 import (
 	"fmt"
-	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 	"testing"
 
-	"github.com/liquidata-inc/go-mysql-server/sql"
-
 	"github.com/liquidata-inc/go-mysql-server/enginetest"
+	"github.com/liquidata-inc/go-mysql-server/sql"
+	"github.com/liquidata-inc/go-mysql-server/sql/plan"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -78,13 +77,13 @@ func TestSingleQuery(t *testing.T) {
 	t.Skip()
 
 	var test enginetest.WriteQueryTest
-	test = enginetest.WriteQueryTest	{
+	test = enginetest.WriteQueryTest{
 		"UPDATE mytable SET s = 'updated';",
 		[]sql.Row{
 			{sql.OkResult{
-			RowsAffected: uint64(3),
-			Info:         plan.UpdateInfo{3, 3, 0},
-		}},
+				RowsAffected: uint64(3),
+				Info:         plan.UpdateInfo{3, 3, 0},
+			}},
 		},
 		"SELECT * FROM mytable;",
 		[]sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
@@ -106,7 +105,7 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 
 	var test enginetest.ScriptTest
-	test = enginetest.ScriptTest		{
+	test = enginetest.ScriptTest{
 		Name: "trigger before update, delete from other table",
 		SetUpScript: []string{
 			"create table a (x int primary key)",

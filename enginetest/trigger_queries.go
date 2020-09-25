@@ -558,7 +558,7 @@ var TriggerTests = []ScriptTest{
 
 var TriggerErrorTests = []ScriptTest{
 	{
-		Name:        "table doesn't exist",
+		Name: "table doesn't exist",
 		SetUpScript: []string{
 			"create table x (a int primary key, b int, c int)",
 		},
@@ -566,13 +566,13 @@ var TriggerErrorTests = []ScriptTest{
 		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
-		Name:        "trigger errors on execution",
+		Name: "trigger errors on execution",
 		SetUpScript: []string{
 			"create table x (a int primary key, b int)",
 			"create table y (c int primary key not null)",
 			"create trigger trigger_has_error before insert on x for each row insert into y values (null)",
 		},
-		Query: "insert into x values (1,2)",
+		Query:       "insert into x values (1,2)",
 		ExpectedErr: plan.ErrInsertIntoNonNullableProvidedNull,
 	},
 	// TODO: this should fail analysis

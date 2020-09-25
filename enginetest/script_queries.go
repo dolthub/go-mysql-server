@@ -22,15 +22,15 @@ import (
 
 type ScriptTest struct {
 	// Name of the script test
-	Name        string
+	Name string
 	// The sql statements to execute as setup, in order. Results are not checked, but statements must not error.
 	SetUpScript []string
 	// The set of assertions to make after setup, in order
-	Assertions  []ScriptTestAssertion
+	Assertions []ScriptTestAssertion
 	// For tests that make a single assertion, Query can be set for the single assertion
-	Query       string
+	Query string
 	// For tests that make a single assertion, Expected can be set for the single assertion
-	Expected    []sql.Row
+	Expected []sql.Row
 	// For tests that make a single assertion, ExpectedErr can be set for the expected error
 	ExpectedErr *errors.Kind
 }

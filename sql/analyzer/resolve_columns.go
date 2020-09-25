@@ -580,7 +580,7 @@ func trimVarName(name string) string {
 	name = strings.TrimLeft(name, "@")
 	name = strings.TrimPrefix(strings.TrimPrefix(name, globalPrefix), sessionPrefix)
 	return name
-} 
+}
 
 func resolveUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {
 	// user vars can have . in them, and just get treated as a unified string name
