@@ -80,12 +80,17 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		return n, nil
 	}
 
-	// Remove QueryProcess nodes from the subqueries. Otherwise, the process
-	// will be marked as done as soon as a subquery finishes.
+	// Remove QueryProcess nodes from the subqueries and trigger bodies. Otherwise, the process
+	// will be marked as done as soon as a subquery / trigger finishes.
 	node, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		if sq, ok := n.(*plan.SubqueryAlias); ok {
 			if qp, ok := sq.Child.(*plan.QueryProcess); ok {
 				return sq.WithChildren(qp.Child)
+			}
+		}
+		if t, ok := n.(*plan.TriggerExecutor); ok {
+			if qp, ok := t.Right.(*plan.QueryProcess); ok {
+				return t.WithChildren(t.Left, qp.Child)
 			}
 		}
 		return n, nil

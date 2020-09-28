@@ -21,8 +21,21 @@ import (
 )
 
 type ScriptTest struct {
-	Name        string
+	// Name of the script test
+	Name string
+	// The sql statements to execute as setup, in order. Results are not checked, but statements must not error.
 	SetUpScript []string
+	// The set of assertions to make after setup, in order
+	Assertions []ScriptTestAssertion
+	// For tests that make a single assertion, Query can be set for the single assertion
+	Query string
+	// For tests that make a single assertion, Expected can be set for the single assertion
+	Expected []sql.Row
+	// For tests that make a single assertion, ExpectedErr can be set for the expected error
+	ExpectedErr *errors.Kind
+}
+
+type ScriptTestAssertion struct {
 	Query       string
 	Expected    []sql.Row
 	ExpectedErr *errors.Kind
@@ -31,6 +44,18 @@ type ScriptTest struct {
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
 // the tests.
 var ScriptTests = []ScriptTest{
+	{
+		Name: "delete with in clause",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"insert into a values (1), (3), (5)",
+			"delete from a where x in (1, 3)",
+		},
+		Query: "select x from a order by 1",
+		Expected: []sql.Row{
+			{5},
+		},
+	},
 	{
 		Name: "sqllogictest evidence/slt_lang_aggfunc.test",
 		SetUpScript: []string{

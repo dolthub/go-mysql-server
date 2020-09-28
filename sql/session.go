@@ -233,24 +233,8 @@ type (
 	}
 )
 
-// TODO: allow integrators to specify system variables too
-var SystemVariables = map[string]struct{}{
-	"auto_increment_increment": {},
-	"time_zone":                {},
-	"system_time_zone":         {},
-	"max_allowed_packet":       {},
-	"sql_mode":                 {},
-	"gtid_mode":                {},
-	"collation_database":       {},
-	"ndbinfo_version":          {},
-	"sql_select_limit":         {},
-	"transaction_isolation":    {},
-	"version":                  {},
-	"version_comment":          {},
-	"autocommit":               {},
-}
-
 // DefaultSessionConfig returns default values for session variables
+// TODO: allow integrators to specify defaults for their system variables
 func DefaultSessionConfig() map[string]TypedValue {
 	return map[string]TypedValue{
 		"auto_increment_increment": TypedValue{Int64, int64(1)},
@@ -469,9 +453,10 @@ func (c *Context) Span(
 	}
 }
 
-// NewSubContext creates a new sub-context with the given contex.Context, which should be a parent of the current
-// context.Context.
-func (c *Context) NewSubContext(ctx context.Context) *Context {
+// NewSubContext creates a new sub-context with the current context as parent. Returns the resulting context.CancelFunc
+// as well as the new *sql.Context, which be used to cancel the new context before the parent is finished.
+func (c *Context) NewSubContext() (*Context, context.CancelFunc) {
+	ctx, cancelFunc := context.WithCancel(c.Context)
 	return &Context{
 		Context:       ctx,
 		Session:       c.Session,
@@ -483,7 +468,7 @@ func (c *Context) NewSubContext(ctx context.Context) *Context {
 		queryTime:     c.queryTime,
 		tracer:        c.tracer,
 		rootSpan:      c.rootSpan,
-	}
+	}, cancelFunc
 }
 
 func (c *Context) WithCurrentDB(db string) *Context {

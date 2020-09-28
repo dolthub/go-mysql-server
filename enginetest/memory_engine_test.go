@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql"
-
 	"github.com/dolthub/go-mysql-server/enginetest"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -67,7 +67,7 @@ func TestQueries(t *testing.T) {
 	}
 }
 
-// TestQueriesSimple runs the canonical tests queries with against a single index enabled harness.
+// TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestQueriesSimple(t *testing.T) {
 	enginetest.TestQueries(t, newMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
@@ -76,18 +76,17 @@ func TestQueriesSimple(t *testing.T) {
 func TestSingleQuery(t *testing.T) {
 	t.Skip()
 
-	var test enginetest.QueryTest
-	test = enginetest.QueryTest{
-		`SELECT pk,
-						(SELECT sum(pk1+pk2) FROM two_pk WHERE pk1+pk2 IN (SELECT pk1+pk2 FROM two_pk WHERE pk1+pk2 = pk)) AS sum,
-						(SELECT min(pk2) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE pk2 = pk)) AS equal
-						FROM one_pk ORDER BY pk;`,
+	var test enginetest.WriteQueryTest
+	test = enginetest.WriteQueryTest{
+		"UPDATE mytable SET s = 'updated';",
 		[]sql.Row{
-			{0, 0.0, 0},
-			{1, 2.0, 1},
-			{2, 2.0, nil},
-			{3, nil, nil},
+			{sql.OkResult{
+				RowsAffected: uint64(3),
+				Info:         plan.UpdateInfo{3, 3, 0},
+			}},
 		},
+		"SELECT * FROM mytable;",
+		[]sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
 	}
 
 	fmt.Sprintf("%v", test)
@@ -97,7 +96,8 @@ func TestSingleQuery(t *testing.T) {
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
 
-	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected)
+	enginetest.TestQuery(t, harness, engine, test.WriteQuery, test.ExpectedWriteResult)
+	enginetest.TestQuery(t, harness, engine, test.SelectQuery, test.ExpectedSelect)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
@@ -106,13 +106,18 @@ func TestSingleScript(t *testing.T) {
 
 	var test enginetest.ScriptTest
 	test = enginetest.ScriptTest{
-		Name: "set system variables",
+		Name: "trigger before update, delete from other table",
 		SetUpScript: []string{
-			"set @@auto_increment_increment = 100, sql_select_limit = 1",
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into a values (0), (2), (4), (6), (8)",
+			"insert into b values (0), (2), (4), (6), (8)",
+			"create trigger delete_from_b before update on a for each row delete from b where y = old.x + new.x",
+			"update a set x = x + 1 where x in (2,4)",
 		},
-		Query: "SELECT @@auto_increment_increment, @@sql_select_limit",
+		Query: "select y from b order by 1",
 		Expected: []sql.Row{
-			{100, 1},
+			{0}, {2}, {6},
 		},
 	}
 
@@ -224,6 +229,10 @@ func TestScripts(t *testing.T) {
 
 func TestTriggers(t *testing.T) {
 	enginetest.TestTriggers(t, newDefaultMemoryHarness())
+}
+
+func TestTriggersErrors(t *testing.T) {
+	enginetest.TestTriggerErrors(t, newDefaultMemoryHarness())
 }
 
 func TestCreateTable(t *testing.T) {

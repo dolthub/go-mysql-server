@@ -66,6 +66,12 @@ var DeleteTests = []WriteQueryTest{
 		nil,
 	},
 	{
+		"DELETE FROM mytable WHERE i in (2,3);",
+		[]sql.Row{{sql.NewOkResult(2)}},
+		"SELECT * FROM mytable;",
+		[]sql.Row{{int64(1), "first row"}},
+	},
+	{
 		"DELETE FROM mytable WHERE s LIKE '%row';",
 		[]sql.Row{{sql.NewOkResult(3)}},
 		"SELECT * FROM mytable;",
