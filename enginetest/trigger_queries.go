@@ -16,7 +16,6 @@ package enginetest
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 var TriggerTests = []ScriptTest{
@@ -555,7 +554,7 @@ var TriggerTests = []ScriptTest{
 		},
 	},
 	// Complex trigger scripts
-	{
+  {
 		Name: "trigger before insert, multiple triggers defined",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
@@ -591,27 +590,45 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
-
 }
 
 var TriggerErrorTests = []ScriptTest{
-	{
-		Name: "table doesn't exist",
+	// {
+	// 	Name: "table doesn't exist",
+	// 	SetUpScript: []string{
+	// 		"create table x (a int primary key, b int, c int)",
+	// 	},
+	// 	Query:       "create trigger not_found before insert on y for each row set new.a = new.a + 1",
+	// 	ExpectedErr: sql.ErrTableNotFound,
+	// },
+	// {
+	// 	Name: "trigger errors on execution",
+	// 	SetUpScript: []string{
+	// 		"create table x (a int primary key, b int)",
+	// 		"create table y (c int primary key not null)",
+	// 		"create trigger trigger_has_error before insert on x for each row insert into y values (null)",
+	// 	},
+	// 	Query:       "insert into x values (1,2)",
+	// 	ExpectedErr: plan.ErrInsertIntoNonNullableProvidedNull,
+	// },
+	{		Name: "circular dependency",
 		SetUpScript: []string{
-			"create table x (a int primary key, b int, c int)",
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"create trigger a1 before insert on a for each row insert into b values (new.x * 2)",
+			"create trigger b1 before insert on b for each row insert into a values (new.y * 7)",
+			"insert into a values (1), (2), (3)",
 		},
-		Query:       "create trigger not_found before insert on y for each row set new.a = new.a + 1",
-		ExpectedErr: sql.ErrTableNotFound,
+		ExpectedErr: sql.ErrTriggerTableInUse,
 	},
 	{
-		Name: "trigger errors on execution",
+		Name: "self update",
 		SetUpScript: []string{
-			"create table x (a int primary key, b int)",
-			"create table y (c int primary key not null)",
-			"create trigger trigger_has_error before insert on x for each row insert into y values (null)",
+			"create table a (x int primary key)",
+			"create trigger a1 before insert on a for each row insert into a values (new.x * 2)",
+			"insert into a values (1), (2), (3)",
 		},
-		Query:       "insert into x values (1,2)",
-		ExpectedErr: plan.ErrInsertIntoNonNullableProvidedNull,
+		ExpectedErr: sql.ErrTriggerTableInUse,
 	},
 	// TODO: this should fail analysis
 	// {

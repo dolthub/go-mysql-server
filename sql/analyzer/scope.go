@@ -25,18 +25,37 @@ type Scope struct {
 	// Stack of nested node scopes, with innermost scope first. A scope node is the node in which the subquery is
 	// defined, or an appropriate sibling.
 	nodes []sql.Node
+	// Memo nodes are nodes in the execution context that shouldn't be considered for name resolution, but are still
+	// important for analysis.
+	memos []sql.Node
 }
 
 // newScope creates a new Scope object with the additional innermost Node context. When constructing with a subquery,
 // the Node given should be the sibling Node of the subquery.
 func (s *Scope) newScope(node sql.Node) *Scope {
 	if s == nil {
-		return &Scope{[]sql.Node{node}}
+		return &Scope{nodes: []sql.Node{node}}
 	}
 	var newNodes []sql.Node
 	newNodes = append(newNodes, node)
 	newNodes = append(newNodes, s.nodes...)
-	return &Scope{newNodes}
+	return &Scope{nodes: newNodes, memos: s.memos}
+}
+
+// memo creates a new Scope object with the memo node given. Memo nodes don't affect name resolution, but are used in
+// other parts of analysis, such as error handling for trigger / procedure execution.
+func (s *Scope) memo(node sql.Node) *Scope {
+	if s == nil {
+		return &Scope{memos: []sql.Node{node}}
+	}
+	var newNodes []sql.Node
+	newNodes = append(newNodes, node)
+	newNodes = append(newNodes, s.memos...)
+	return &Scope{memos: newNodes, nodes: s.nodes}
+}
+
+func (s *Scope) MemoNodes() []sql.Node {
+	return s.memos
 }
 
 // InnerToOuter returns the scope Nodes in order of innermost scope to outermost scope. When using these nodes for

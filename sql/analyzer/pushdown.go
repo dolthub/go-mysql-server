@@ -275,34 +275,6 @@ func withTable(node NameableNode, table sql.Table) (sql.Node, error) {
 	})
 }
 
-// Finds first table node that is a descendant of the node given
-func getTable(node sql.Node) sql.Table {
-	var table sql.Table
-	plan.Inspect(node, func(node sql.Node) bool {
-		switch n := node.(type) {
-		case *plan.ResolvedTable:
-			table = n.Table
-			return false
-		}
-		return true
-	})
-	return table
-}
-
-// Finds first ResolvedTable node that is a descendant of the node given
-func getResolvedTable(node sql.Node) *plan.ResolvedTable {
-	var table *plan.ResolvedTable
-	plan.Inspect(node, func(node sql.Node) bool {
-		switch n := node.(type) {
-		case *plan.ResolvedTable:
-			table = n
-			return false
-		}
-		return true
-	})
-	return table
-}
-
 // removePushedDownPredicates removes all handled filter predicates from the filter given and returns. If all
 // predicates have been handled, it replaces the filter with its child.
 func removePushedDownPredicates(

@@ -144,8 +144,8 @@ func analyzeJoinIndexes(
 	joinType plan.JoinType,
 ) (primary sql.Node, secondary sql.Node, primaryTableExpr []sql.Expression, secondaryTableIndex sql.Index, err error) {
 
-	leftTableName := findTableName(node.Left)
-	rightTableName := findTableName(node.Right)
+	leftTableName := getTableName(node.Left)
+	rightTableName := getTableName(node.Right)
 
 	exprByTable := joinExprsByTable(splitConjunction(cond))
 
@@ -197,27 +197,6 @@ IndexExpressions:
 	}
 
 	return keyExprs
-}
-
-// Returns the underlying table name for the node given
-func findTableName(node sql.Node) string {
-	var tableName string
-	plan.Inspect(node, func(node sql.Node) bool {
-		switch node := node.(type) {
-		case *plan.TableAlias:
-			tableName = node.Name()
-			return false
-		case *plan.ResolvedTable:
-			tableName = node.Name()
-			return false
-		case *plan.UnresolvedTable:
-			tableName = node.Name()
-			return false
-		}
-		return true
-	})
-
-	return tableName
 }
 
 // index munging

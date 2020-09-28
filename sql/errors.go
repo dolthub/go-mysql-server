@@ -97,6 +97,9 @@ var (
 	// ErrTriggerCreateStatementInvalid is returned when a TriggerDatabase returns a CREATE TRIGGER statement that is invalid
 	ErrTriggerCreateStatementInvalid = errors.NewKind(`Invalid CREATE TRIGGER statement: %s`)
 
+	// ErrTriggerTableInUse is returned when trigger execution calls for a table that invoked a trigger being updated by it
+	ErrTriggerTableInUse = errors.NewKind("Can't update table %s in stored function/trigger because it is already used by statement which invoked this stored function/trigger")
+
 	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
 	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)
 )

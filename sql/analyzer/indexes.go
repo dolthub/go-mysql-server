@@ -282,27 +282,6 @@ func indexHasExpression(indexLookups map[string]*indexLookup, expr sql.Expressio
 	return false
 }
 
-// Returns the tables used in the expression given
-func findTables(e sql.Expression) []string {
-	tables := make(map[string]bool)
-	sql.Inspect(e, func(e sql.Expression) bool {
-		switch e := e.(type) {
-		case *expression.GetField:
-			tables[e.Table()] = true
-			return false
-		default:
-			return true
-		}
-	})
-
-	var names []string
-	for table := range tables {
-		names = append(names, table)
-	}
-
-	return names
-}
-
 func betweenIndexLookup(index sql.Index, upper, lower []interface{}) (sql.IndexLookup, error) {
 	// TODO: Since AscendRange and DescendRange both accept an upper and lower bound, there is no good reason to require
 	//  both implementations from an index. One will do fine, no need to require both and merge them.

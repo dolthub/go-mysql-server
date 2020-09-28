@@ -63,18 +63,23 @@ func resolveNewAndOldReferences(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 }
 
 func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	// Skip this step for CreateTrigger statements
+	if _, ok := n.(*plan.CreateTrigger); ok {
+		return n, nil
+	}
+
 	var affectedTables []string
 	var triggerEvent plan.TriggerEvent
 	plan.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.InsertInto:
-			affectedTables = append(affectedTables, findTableName(n))
+			affectedTables = append(affectedTables, getTableName(n))
 			triggerEvent = plan.InsertTrigger
 		case *plan.Update:
-			affectedTables = append(affectedTables, findTableName(n))
+			affectedTables = append(affectedTables, getTableName(n))
 			triggerEvent = plan.UpdateTrigger
 		case *plan.DeleteFrom:
-			affectedTables = append(affectedTables, findTableName(n))
+			affectedTables = append(affectedTables, getTableName(n))
 			triggerEvent = plan.DeleteTrigger
 		}
 		return true
@@ -110,7 +115,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 				return nil, sql.ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
 			}
 
-			triggerTable := findTableName(ct.Table)
+			triggerTable := getTableName(ct.Table)
 			if stringContains(affectedTables, triggerTable) && triggerEventsMatch(triggerEvent, ct.TriggerEvent) {
 				// TODO: ordering of multiple triggers
 				affectedTriggers = append(affectedTriggers, ct)
@@ -136,7 +141,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("new", getResolvedTable(n)),
 		)
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, ((*Scope)(nil)).newScope(scopeNode))
+		triggerLogic, err = a.Analyze(ctx, trigger.Body, ((*Scope)(nil)).newScope(scopeNode).memo(n))
 	case plan.UpdateTrigger:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
@@ -145,17 +150,36 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 				plan.NewTableAlias("new", getResolvedTable(n)),
 			),
 		)
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, ((*Scope)(nil)).newScope(scopeNode))
+		triggerLogic, err = a.Analyze(ctx, trigger.Body, ((*Scope)(nil)).newScope(scopeNode).memo(n))
 	case plan.DeleteTrigger:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("old", getResolvedTable(n)),
 		)
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, ((*Scope)(nil)).newScope(scopeNode))
+		triggerLogic, err = a.Analyze(ctx, trigger.Body, ((*Scope)(nil)).newScope(scopeNode).memo(n))
 	}
 
 	if err != nil {
 		return nil, err
+	}
+
+	// Make sure that the trigger logic doesn't attempt to update the table that invoked it
+	var circularRef error
+	plan.Inspect(triggerLogic, func(node sql.Node) bool {
+		switch node := node.(type) {
+		case *plan.Update, *plan.InsertInto, *plan.DeleteFrom:
+			updatedTable := getTable(node)
+			invokingTableName := getTableName(trigger.Table)
+			// TODO: need to compare DB as well
+			if updatedTable.Name() == invokingTableName {
+				circularRef = sql.ErrTriggerTableInUse.New(invokingTableName)
+			}
+		}
+		return true
+	})
+
+	if circularRef != nil {
+		return nil, circularRef
 	}
 
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
