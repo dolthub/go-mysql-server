@@ -554,6 +554,44 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	// Complex trigger scripts
+	{
+		Name: "trigger before insert, multiple triggers defined",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"create table c (z int primary key)",
+			// Only one of these triggers should run for each table
+			"create trigger a1 before insert on a for each row insert into b values (new.x * 2)",
+			"create trigger a2 before update on a for each row insert into b values (new.x * 3)",
+			"create trigger a3 before delete on a for each row insert into b values (old.x * 5)",
+			"create trigger b1 before insert on b for each row insert into c values (new.y * 7)",
+			"create trigger b2 before update on b for each row insert into c values (new.y * 11)",
+			"create trigger b3 before delete on b for each row insert into c values (old.y * 13)",
+			"insert into a values (1), (2), (3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{1}, {2}, {3},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{2}, {4}, {6},
+				},
+			},
+			{
+				Query: "select z from c order by 1",
+				Expected: []sql.Row{
+					{14}, {28}, {42},
+				},
+			},
+		},
+	},
+
 }
 
 var TriggerErrorTests = []ScriptTest{
