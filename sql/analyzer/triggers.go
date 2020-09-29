@@ -175,60 +175,20 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 		return n, nil
 	}
 
-	// TODO: multiple triggers
-	trigger := affectedTriggers[0]
+	triggers := orderTriggers(affectedTriggers)
+	trigger := triggers[0]
 
-	// Make sure that the trigger logic doesn't attempt to update the table that invoked it (or any table being updated
-	// in an outer scope of this analysis)
-	var circularRef error
-	plan.Inspect(trigger.Body, func(node sql.Node) bool {
-		switch node := node.(type) {
-		case *plan.Update, *plan.InsertInto, *plan.DeleteFrom:
-			for _, n := range append([]sql.Node{n}, scope.MemoNodes()...) {
-				invokingTableName := getUnaliasedTableName(n)
-				updatedTable := getUnaliasedTableName(node)
-				// TODO: need to compare DB as well
-				if updatedTable == invokingTableName {
-					circularRef = sql.ErrTriggerTableInUse.New(updatedTable)
-					return false
-				}
-			}
-		}
-		return true
-	})
-
-	if circularRef != nil {
-		return nil, circularRef
+	err = validateNoCircularUpdates(trigger, n, scope)
+	if err != nil {
+		return nil, err
 	}
 
-	// For the reference to the row in the trigger table, we use the scope mechanism. This is a little strange because
-	// scopes for subqueries work with the child schemas of a scope node, but we don't have such a node here. Instead we
-	// fabricate one with the right properties (its child schema matches the table schema, with the right aliased name)
-	var triggerLogic sql.Node
-	switch triggerEvent {
-	case plan.InsertTrigger:
-		scopeNode := plan.NewProject(
-			[]sql.Expression{expression.NewStar()},
-			plan.NewTableAlias("new", getResolvedTable(n)),
-		)
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
-	case plan.UpdateTrigger:
-		scopeNode := plan.NewProject(
-			[]sql.Expression{expression.NewStar()},
-			plan.NewCrossJoin(
-				plan.NewTableAlias("old", getResolvedTable(n)),
-				plan.NewTableAlias("new", getResolvedTable(n)),
-			),
-		)
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
-	case plan.DeleteTrigger:
-		scopeNode := plan.NewProject(
-			[]sql.Expression{expression.NewStar()},
-			plan.NewTableAlias("old", getResolvedTable(n)),
-		)
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
-	}
+	return applyTrigger(ctx, a, n, scope, trigger)
+}
 
+// applyTrigger applies the trigger given to the node given, returning the resulting node
+func applyTrigger(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, trigger *plan.CreateTrigger) (sql.Node, error) {
+	triggerLogic, err := getTriggerLogic(ctx, a, n, scope, trigger)
 	if err != nil {
 		return nil, err
 	}
@@ -278,6 +238,67 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 
 		return n, nil
 	})
+}
+
+// getTriggerLogic analyzes and returns the Node representing the trigger body for the trigger given, applied to the
+// plan node given, which must be an insert, update, or delete.
+func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, trigger *plan.CreateTrigger) (sql.Node, error) {
+	// For the reference to the row in the trigger table, we use the scope mechanism. This is a little strange because
+	// scopes for subqueries work with the child schemas of a scope node, but we don't have such a node here. Instead we
+	// fabricate one with the right properties (its child schema matches the table schema, with the right aliased name)
+	var triggerLogic sql.Node
+	var err error
+	switch trigger.TriggerEvent {
+	case sqlparser.InsertStr:
+		scopeNode := plan.NewProject(
+			[]sql.Expression{expression.NewStar()},
+			plan.NewTableAlias("new", getResolvedTable(n)),
+		)
+		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
+	case sqlparser.UpdateStr:
+		scopeNode := plan.NewProject(
+			[]sql.Expression{expression.NewStar()},
+			plan.NewCrossJoin(
+				plan.NewTableAlias("old", getResolvedTable(n)),
+				plan.NewTableAlias("new", getResolvedTable(n)),
+			),
+		)
+		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
+	case sqlparser.DeleteStr:
+		scopeNode := plan.NewProject(
+			[]sql.Expression{expression.NewStar()},
+			plan.NewTableAlias("old", getResolvedTable(n)),
+		)
+		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
+	}
+	return triggerLogic, err
+}
+
+// validateNoCircularUpdates returns an error if the trigger logic attempts to update the table that invoked it (or any
+// table being updated in an outer scope of this analysis)
+func validateNoCircularUpdates(trigger *plan.CreateTrigger, n sql.Node, scope *Scope) error {
+	var circularRef error
+	plan.Inspect(trigger.Body, func(node sql.Node) bool {
+		switch node := node.(type) {
+		case *plan.Update, *plan.InsertInto, *plan.DeleteFrom:
+			for _, n := range append([]sql.Node{n}, scope.MemoNodes()...) {
+				invokingTableName := getUnaliasedTableName(n)
+				updatedTable := getUnaliasedTableName(node)
+				// TODO: need to compare DB as well
+				if updatedTable == invokingTableName {
+					circularRef = sql.ErrTriggerTableInUse.New(updatedTable)
+					return false
+				}
+			}
+		}
+		return true
+	})
+
+	return circularRef
+}
+
+func orderTriggers(triggers []*plan.CreateTrigger) []*plan.CreateTrigger {
+	return triggers
 }
 
 func triggerEventsMatch(event plan.TriggerEvent, event2 string) bool {
