@@ -105,4 +105,10 @@ var (
 
 	// ErrInvalidUseOfOldNew is returned when a trigger attempts to make use of OLD or NEW references when they don't exist
 	ErrInvalidUseOfOldNew = errors.NewKind("There is no %s row in on %s trigger")
+
+	// ErrInvalidUpdateOfOldRow is returned when a trigger attempts to assign to an old row's value with SET
+	ErrInvalidUpdateOfOldRow = errors.NewKind("Updating of old row is not allowed in trigger")
+
+	// ErrInvalidUpdateInAfterTrigger is returned when a trigger attempts to assign to a new row in an AFTER trigger
+	ErrInvalidUpdateInAfterTrigger = errors.NewKind("Updating of new row is not allowed in after trigger")
 )

@@ -661,6 +661,30 @@ var TriggerErrorTests = []ScriptTest{
 		Query:       "create trigger new_on_delete before delete on x for each row set new.c = old.a + 1",
 		ExpectedErr: sql.ErrInvalidUseOfOldNew,
 	},
+	{
+		Name:        "set old row on update",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger update_old before update on x for each row set old.c = new.a + 1",
+		ExpectedErr: sql.ErrInvalidUpdateOfOldRow,
+	},
+	{
+		Name:        "set new row after insert",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger update_new after insert on x for each row set new.c = new.a + 1",
+		ExpectedErr: sql.ErrInvalidUpdateInAfterTrigger,
+	},
+	{
+		Name:        "set new row after update",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger update_new after update on x for each row set new.c = new.a + 1",
+		ExpectedErr: sql.ErrInvalidUpdateInAfterTrigger,
+	},
 	// TODO: mysql doesn't consider this an error until execution time, but we could catch it earlier
 	// {
 	// 	Name:        "column doesn't exist",
