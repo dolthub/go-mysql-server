@@ -115,7 +115,7 @@ func TestSingleScript(t *testing.T) {
 			"create trigger b1 before insert on b for each row insert into c values (new.y * 5)",
 			"create trigger c1 before insert on c for each row insert into a values (new.z * 7)",
 		},
-		Query: "insert into a values (1), (2), (3)",
+		Query:       "insert into a values (1), (2), (3)",
 		ExpectedErr: sql.ErrTriggerTableInUse,
 	}
 

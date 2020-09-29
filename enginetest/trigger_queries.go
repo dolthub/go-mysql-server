@@ -555,7 +555,7 @@ var TriggerTests = []ScriptTest{
 		},
 	},
 	// Complex trigger scripts
-  {
+	{
 		Name: "trigger before insert, multiple triggers defined",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
@@ -618,7 +618,7 @@ var TriggerErrorTests = []ScriptTest{
 			"create table a (x int primary key)",
 			"create trigger a1 before insert on a for each row insert into a values (new.x * 2)",
 		},
-		Query: "insert into a values (1), (2), (3)",
+		Query:       "insert into a values (1), (2), (3)",
 		ExpectedErr: sql.ErrTriggerTableInUse,
 	},
 	{
@@ -629,7 +629,7 @@ var TriggerErrorTests = []ScriptTest{
 			"create trigger a1 before insert on a for each row insert into b values (new.x * 2)",
 			"create trigger b1 before insert on b for each row insert into a values (new.y * 7)",
 		},
-		Query: "insert into a values (1), (2), (3)",
+		Query:       "insert into a values (1), (2), (3)",
 		ExpectedErr: sql.ErrTriggerTableInUse,
 	},
 	{
@@ -642,11 +642,11 @@ var TriggerErrorTests = []ScriptTest{
 			"create trigger b1 before insert on b for each row insert into c values (new.y * 5)",
 			"create trigger c1 before insert on c for each row insert into a values (new.z * 7)",
 		},
-		Query: "insert into a values (1), (2), (3)",
+		Query:       "insert into a values (1), (2), (3)",
 		ExpectedErr: sql.ErrTriggerTableInUse,
 	},
 	{
-		Name:        "reference to old on insert",
+		Name: "reference to old on insert",
 		SetUpScript: []string{
 			"create table x (a int primary key, b int, c int)",
 		},
@@ -654,7 +654,7 @@ var TriggerErrorTests = []ScriptTest{
 		ExpectedErr: sql.ErrInvalidUseOfOldNew,
 	},
 	{
-		Name:        "reference to new on delete",
+		Name: "reference to new on delete",
 		SetUpScript: []string{
 			"create table x (a int primary key, b int, c int)",
 		},
@@ -662,7 +662,7 @@ var TriggerErrorTests = []ScriptTest{
 		ExpectedErr: sql.ErrInvalidUseOfOldNew,
 	},
 	{
-		Name:        "set old row on update",
+		Name: "set old row on update",
 		SetUpScript: []string{
 			"create table x (a int primary key, b int, c int)",
 		},
@@ -670,7 +670,7 @@ var TriggerErrorTests = []ScriptTest{
 		ExpectedErr: sql.ErrInvalidUpdateOfOldRow,
 	},
 	{
-		Name:        "set old row on update, begin block",
+		Name: "set old row on update, begin block",
 		SetUpScript: []string{
 			"create table x (a int primary key, b int, c int)",
 		},
@@ -678,7 +678,7 @@ var TriggerErrorTests = []ScriptTest{
 		ExpectedErr: sql.ErrInvalidUpdateOfOldRow,
 	},
 	{
-		Name:        "set new row after insert",
+		Name: "set new row after insert",
 		SetUpScript: []string{
 			"create table x (a int primary key, b int, c int)",
 		},
@@ -686,7 +686,7 @@ var TriggerErrorTests = []ScriptTest{
 		ExpectedErr: sql.ErrInvalidUpdateInAfterTrigger,
 	},
 	{
-		Name:        "set new row after update",
+		Name: "set new row after update",
 		SetUpScript: []string{
 			"create table x (a int primary key, b int, c int)",
 		},
@@ -694,7 +694,7 @@ var TriggerErrorTests = []ScriptTest{
 		ExpectedErr: sql.ErrInvalidUpdateInAfterTrigger,
 	},
 	{
-		Name:        "set new row after update, begin block",
+		Name: "set new row after update, begin block",
 		SetUpScript: []string{
 			"create table x (a int primary key, b int, c int)",
 		},
