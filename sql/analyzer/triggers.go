@@ -38,7 +38,7 @@ func (r *triggerColumnRef) Type() sql.Type {
 }
 
 func resolveNewAndOldReferences(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	switch n.(type) {
+	switch n := n.(type) {
 	case *plan.CreateTrigger:
 		// For create triggers, we just want to verify that the trigger is correctly defined before creating it. If it
 		// is, we replace the UnresolvedColumn expressions with placeholder expressions that say they are Resolved().
@@ -47,11 +47,29 @@ func resolveNewAndOldReferences(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
 			switch e := e.(type) {
 			case *expression.UnresolvedColumn:
-				if e.Table() == "new" || e.Table() == "old" {
+				if strings.ToLower(e.Table()) == "new" {
+					if n.TriggerEvent == sqlparser.DeleteStr {
+						return nil, sql.ErrInvalidUseOfOldNew.New("new", n.TriggerEvent)
+					}
+					return &triggerColumnRef{e}, nil
+				}
+				if strings.ToLower(e.Table()) == "old" {
+					if n.TriggerEvent == sqlparser.InsertStr {
+						return nil, sql.ErrInvalidUseOfOldNew.New("old", n.TriggerEvent)
+					}
 					return &triggerColumnRef{e}, nil
 				}
 			case *deferredColumn:
-				if e.Table() == "new" || e.Table() == "old" {
+				if strings.ToLower(e.Table()) == "new" {
+					if n.TriggerEvent == sqlparser.DeleteStr {
+						return nil, sql.ErrInvalidUseOfOldNew.New("new", n.TriggerEvent)
+					}
+					return &triggerColumnRef{e.UnresolvedColumn}, nil
+				}
+				if strings.ToLower(e.Table()) == "old" {
+					if n.TriggerEvent == sqlparser.InsertStr {
+						return nil, sql.ErrInvalidUseOfOldNew.New("old", n.TriggerEvent)
+					}
 					return &triggerColumnRef{e.UnresolvedColumn}, nil
 				}
 			}

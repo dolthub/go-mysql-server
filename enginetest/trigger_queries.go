@@ -645,15 +645,22 @@ var TriggerErrorTests = []ScriptTest{
 		Query: "insert into a values (1), (2), (3)",
 		ExpectedErr: sql.ErrTriggerTableInUse,
 	},
-	// TODO: this should fail analysis
-	// {
-	// 	Name:        "reference to old row on insert",
-	// 	SetUpScript: []string{
-	// 		"create table x (a int primary key, b int, c int)",
-	// 	},
-	// 	Query:       "create trigger old_on_insert before insert on x for each row set new.c = old.a + 1",
-	// 	ExpectedErr: sql.ErrTableNotFound,
-	// },
+	{
+		Name:        "reference to old on insert",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger old_on_insert before insert on x for each row set new.c = old.a + 1",
+		ExpectedErr: sql.ErrInvalidUseOfOldNew,
+	},
+	{
+		Name:        "reference to new on delete",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger new_on_delete before delete on x for each row set new.c = old.a + 1",
+		ExpectedErr: sql.ErrInvalidUseOfOldNew,
+	},
 	// TODO: mysql doesn't consider this an error until execution time, but we could catch it earlier
 	// {
 	// 	Name:        "column doesn't exist",

@@ -102,4 +102,7 @@ var (
 
 	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
 	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)
+
+	// ErrInvalidUseOfOldNew is returned when a trigger attempts to make use of OLD or NEW references when they don't exist
+	ErrInvalidUseOfOldNew = errors.NewKind("There is no %s row in on %s trigger")
 )
