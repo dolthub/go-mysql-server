@@ -55,6 +55,9 @@ func (s *Scope) memo(node sql.Node) *Scope {
 }
 
 func (s *Scope) MemoNodes() []sql.Node {
+	if s == nil {
+		return nil
+	}
 	return s.memos
 }
 

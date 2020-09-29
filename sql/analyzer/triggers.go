@@ -130,11 +130,33 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	// TODO: multiple triggers
 	trigger := affectedTriggers[0]
 
-	var triggerLogic sql.Node
+	// Make sure that the trigger logic doesn't attempt to update the table that invoked it (or any table being updated
+	// in an outer scope of this analysis)
+	var circularRef error
+	plan.Inspect(trigger.Body, func(node sql.Node) bool {
+		switch node := node.(type) {
+		case *plan.Update, *plan.InsertInto, *plan.DeleteFrom:
+			for _, n := range append([]sql.Node{n}, scope.MemoNodes()...) {
+				invokingTableName := getUnaliasedTableName(n)
+				updatedTable := getUnaliasedTableName(node)
+				// TODO: need to compare DB as well
+				if updatedTable == invokingTableName {
+					circularRef = sql.ErrTriggerTableInUse.New(updatedTable)
+					return false
+				}
+			}
+		}
+		return true
+	})
+
+	if circularRef != nil {
+		return nil, circularRef
+	}
 
 	// For the reference to the row in the trigger table, we use the scope mechanism. This is a little strange because
 	// scopes for subqueries work with the child schemas of a scope node, but we don't have such a node here. Instead we
 	// fabricate one with the right properties (its child schema matches the table schema, with the right aliased name)
+	var triggerLogic sql.Node
 	switch triggerEvent {
 	case plan.InsertTrigger:
 		scopeNode := plan.NewProject(
@@ -161,25 +183,6 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 
 	if err != nil {
 		return nil, err
-	}
-
-	// Make sure that the trigger logic doesn't attempt to update the table that invoked it
-	var circularRef error
-	plan.Inspect(triggerLogic, func(node sql.Node) bool {
-		switch node := node.(type) {
-		case *plan.Update, *plan.InsertInto, *plan.DeleteFrom:
-			updatedTable := getTable(node)
-			invokingTableName := getTableName(trigger.Table)
-			// TODO: need to compare DB as well
-			if updatedTable.Name() == invokingTableName {
-				circularRef = sql.ErrTriggerTableInUse.New(invokingTableName)
-			}
-		}
-		return true
-	})
-
-	if circularRef != nil {
-		return nil, circularRef
 	}
 
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
