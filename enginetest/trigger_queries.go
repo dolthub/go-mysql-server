@@ -670,6 +670,14 @@ var TriggerErrorTests = []ScriptTest{
 		ExpectedErr: sql.ErrInvalidUpdateOfOldRow,
 	},
 	{
+		Name:        "set old row on update, begin block",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger update_old before update on x for each row BEGIN set old.c = new.a + 1; END",
+		ExpectedErr: sql.ErrInvalidUpdateOfOldRow,
+	},
+	{
 		Name:        "set new row after insert",
 		SetUpScript: []string{
 			"create table x (a int primary key, b int, c int)",
@@ -683,6 +691,14 @@ var TriggerErrorTests = []ScriptTest{
 			"create table x (a int primary key, b int, c int)",
 		},
 		Query:       "create trigger update_new after update on x for each row set new.c = new.a + 1",
+		ExpectedErr: sql.ErrInvalidUpdateInAfterTrigger,
+	},
+	{
+		Name:        "set new row after update, begin block",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger update_new after update on x for each row BEGIN set new.c = new.a + 1; END",
 		ExpectedErr: sql.ErrInvalidUpdateInAfterTrigger,
 	},
 	// TODO: mysql doesn't consider this an error until execution time, but we could catch it earlier
