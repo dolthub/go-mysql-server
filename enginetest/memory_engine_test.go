@@ -106,17 +106,29 @@ func TestSingleScript(t *testing.T) {
 
 	var test enginetest.ScriptTest
 	test = enginetest.ScriptTest{
-		Name: "circular dependency, nested two deep",
+		Name: "triggers before and after insert",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
 			"create table b (y int primary key)",
-			"create table c (z int primary key)",
-			"create trigger a1 before insert on a for each row insert into b values (new.x * 2)",
-			"create trigger b1 before insert on b for each row insert into c values (new.y * 5)",
-			"create trigger c1 before insert on c for each row insert into a values (new.z * 7)",
+			// Only one of these triggers should run for each table
+			"create trigger a1 before insert on a for each row insert into b values (NEW.x * 7)",
+			"create trigger a1 after insert on a for each row insert into b values (New.x * 11)",
+			"insert into a values (2), (3), (5)",
 		},
-		Query:       "insert into a values (1), (2), (3)",
-		ExpectedErr: sql.ErrTriggerTableInUse,
+		Assertions: []enginetest.ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{2}, {3}, {5},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{14}, {21}, {22}, {33}, {35}, {55},
+				},
+			},
+		},
 	}
 
 	fmt.Sprintf("%v", test)

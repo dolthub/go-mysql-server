@@ -42,6 +42,12 @@ var TriggerTests = []ScriptTest{
 					{2}, {4}, {6},
 				},
 			},
+			{
+				Query: "insert into a values (7), (9)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
 		},
 	},
 	{
@@ -64,6 +70,12 @@ var TriggerTests = []ScriptTest{
 				Query: "select y from b order by 1",
 				Expected: []sql.Row{
 					{0}, {8},
+				},
+			},
+			{
+				Query: "insert into a values (7), (9)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
 				},
 			},
 		},
@@ -113,6 +125,12 @@ var TriggerTests = []ScriptTest{
 					{2}, {4}, {6},
 				},
 			},
+			{
+				Query: "insert into a values (7), (9)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
 		},
 	},
 	{
@@ -135,6 +153,12 @@ var TriggerTests = []ScriptTest{
 				Query: "select y from b order by 1",
 				Expected: []sql.Row{
 					{0}, {8},
+				},
+			},
+			{
+				Query: "insert into a values (7), (9)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
 				},
 			},
 		},
@@ -225,6 +249,18 @@ var TriggerTests = []ScriptTest{
 					{4}, {8},
 				},
 			},
+			{
+				Query: "update a set x = x + 1 where x = 5",
+				Expected: []sql.Row{
+					{sql.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						},
+					}},
+				},
+			},
 		},
 	},
 	{
@@ -297,6 +333,18 @@ var TriggerTests = []ScriptTest{
 				Query: "select y from b order by 1",
 				Expected: []sql.Row{
 					{4}, {8},
+				},
+			},
+			{
+				Query: "update a set x = x + 1 where x = 5",
+				Expected: []sql.Row{
+					{sql.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						},
+					}},
 				},
 			},
 		},
@@ -428,6 +476,12 @@ var TriggerTests = []ScriptTest{
 					{2}, {4},
 				},
 			},
+			{
+				Query: "delete from a where x = 5",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
 		},
 	},
 	{
@@ -500,6 +554,12 @@ var TriggerTests = []ScriptTest{
 				Query: "select y from b order by 1",
 				Expected: []sql.Row{
 					{3}, {5}, {7},
+				},
+			},
+			{
+				Query: "delete from a where x = 0",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
 				},
 			},
 		},
