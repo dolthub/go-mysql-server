@@ -163,7 +163,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("new", getResolvedTable(n)),
 		)
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, ((*Scope)(nil)).newScope(scopeNode).memo(n))
+		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
 	case plan.UpdateTrigger:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
@@ -172,13 +172,13 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 				plan.NewTableAlias("new", getResolvedTable(n)),
 			),
 		)
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, ((*Scope)(nil)).newScope(scopeNode).memo(n))
+		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
 	case plan.DeleteTrigger:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("old", getResolvedTable(n)),
 		)
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, ((*Scope)(nil)).newScope(scopeNode).memo(n))
+		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
 	}
 
 	if err != nil {

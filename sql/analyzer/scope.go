@@ -54,6 +54,14 @@ func (s *Scope) memo(node sql.Node) *Scope {
 	return &Scope{memos: newNodes, nodes: s.nodes}
 }
 
+// withMemos returns a new scope object identical to the receiver, but with its memos replaced with the ones given.
+func (s *Scope) withMemos(memoNodes []sql.Node) *Scope {
+	if s == nil {
+		return &Scope{memos: memoNodes}
+	}
+	return &Scope{memos: memoNodes, nodes: s.nodes}
+}
+
 func (s *Scope) MemoNodes() []sql.Node {
 	if s == nil {
 		return nil

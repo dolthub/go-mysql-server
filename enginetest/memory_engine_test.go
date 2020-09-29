@@ -102,17 +102,20 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 
 	var test enginetest.ScriptTest
-	test = enginetest.ScriptTest{		Name: "circular dependency",
+	test = enginetest.ScriptTest{
+		Name: "circular dependency, nested two deep",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
 			"create table b (y int primary key)",
+			"create table c (z int primary key)",
 			"create trigger a1 before insert on a for each row insert into b values (new.x * 2)",
-			"create trigger b1 before insert on b for each row insert into a values (new.y * 7)",
-			"insert into a values (1), (2), (3)",
+			"create trigger b1 before insert on b for each row insert into c values (new.y * 5)",
+			"create trigger c1 before insert on c for each row insert into a values (new.z * 7)",
 		},
+		Query: "insert into a values (1), (2), (3)",
 		ExpectedErr: sql.ErrTriggerTableInUse,
 	}
 
