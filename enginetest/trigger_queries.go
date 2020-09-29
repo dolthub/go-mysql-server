@@ -254,9 +254,9 @@ var TriggerTests = []ScriptTest{
 				Expected: []sql.Row{
 					{sql.OkResult{
 						RowsAffected: 1,
-						Info:         plan.UpdateInfo{
-							Matched:  1,
-							Updated:  1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
 						},
 					}},
 				},
@@ -340,9 +340,9 @@ var TriggerTests = []ScriptTest{
 				Expected: []sql.Row{
 					{sql.OkResult{
 						RowsAffected: 1,
-						Info:         plan.UpdateInfo{
-							Matched:  1,
-							Updated:  1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
 						},
 					}},
 				},

@@ -131,7 +131,6 @@ func TestSingleScript(t *testing.T) {
 		},
 	}
 
-
 	fmt.Sprintf("%v", test)
 
 	harness := newMemoryHarness("", 1, testNumPartitions, true, nil)
