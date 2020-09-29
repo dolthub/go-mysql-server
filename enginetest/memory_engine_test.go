@@ -102,7 +102,7 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var test enginetest.ScriptTest
 	test = enginetest.ScriptTest{
@@ -126,11 +126,7 @@ func TestSingleScript(t *testing.T) {
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
 
-	for _, statement := range test.SetUpScript {
-		enginetest.RunQuery(t, engine, harness, statement)
-	}
-
-	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected)
+	enginetest.TestScriptWithEngine(t, engine, harness, test)
 }
 
 func TestBrokenQueries(t *testing.T) {
