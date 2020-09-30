@@ -639,6 +639,54 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "triggers before and after update",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"create trigger a1 before update on a for each row insert into b values (old.x * 7)",
+			"create trigger a2 after update on a for each row insert into b values (old.x * 11)",
+			"insert into a values (2), (3), (5)",
+			"update a set x = x * 2",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{4}, {6}, {10},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{14}, {21}, {22}, {33}, {35}, {55},
+				},
+			},
+		},
+	},
+	{
+		Name: "triggers before and after delete",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"create trigger a1 before delete on a for each row insert into b values (old.x * 7)",
+			"create trigger a2 after delete on a for each row insert into b values (old.x * 11)",
+			"insert into a values (2), (3), (5)",
+			"delete from a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{14}, {21}, {22}, {33}, {35}, {55},
+				},
+			},
+		},
+	},
 	// Complex trigger scripts
 	{
 		Name: "trigger before insert, multiple triggers defined",
