@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -30,18 +32,34 @@ func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 	}
 
 	switch n := n.(type) {
-	case *plan.InsertInto:
-		if n.IsReplace {
-			return plan.NewRowUpdateAccumulator(n, plan.UpdateTypeReplace), nil
-		} else if len(n.OnDupExprs) > 0 {
-			return plan.NewRowUpdateAccumulator(n, plan.UpdateTypeDuplicateKeyUpdate), nil
+	case *plan.TriggerExecutor, *plan.InsertInto, *plan.DeleteFrom, *plan.Update:
+		accumulatorType, err := getUpdateAccumulatorType(n)
+		if err != nil {
+			return nil, err
 		}
-		return plan.NewRowUpdateAccumulator(n, plan.UpdateTypeInsert), nil
-	case *plan.DeleteFrom:
-		return plan.NewRowUpdateAccumulator(n, plan.UpdateTypeDelete), nil
-	case *plan.Update:
-		return plan.NewRowUpdateAccumulator(n, plan.UpdateTypeUpdate), nil
+		return plan.NewRowUpdateAccumulator(n, accumulatorType), nil
 	default:
 		return n, nil
 	}
+}
+
+// getUpdateAccumulatorType returns the type of accumulator needed for the node given, or an error if there's no match.
+func getUpdateAccumulatorType(n sql.Node) (plan.RowUpdateType, error) {
+	switch n := n.(type) {
+	case *plan.TriggerExecutor:
+		return getUpdateAccumulatorType(n.Left)
+	case *plan.InsertInto:
+		if n.IsReplace {
+			return plan.UpdateTypeReplace, nil
+		} else if len(n.OnDupExprs) > 0 {
+			return plan.UpdateTypeDuplicateKeyUpdate, nil
+		}
+		return plan.UpdateTypeInsert, nil
+	case *plan.DeleteFrom:
+		return plan.UpdateTypeDelete, nil
+	case *plan.Update:
+		return plan.UpdateTypeUpdate, nil
+	}
+
+	return -1, fmt.Errorf("unexpected node type: %T", n)
 }

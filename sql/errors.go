@@ -97,6 +97,18 @@ var (
 	// ErrTriggerCreateStatementInvalid is returned when a TriggerDatabase returns a CREATE TRIGGER statement that is invalid
 	ErrTriggerCreateStatementInvalid = errors.NewKind(`Invalid CREATE TRIGGER statement: %s`)
 
+	// ErrTriggerTableInUse is returned when trigger execution calls for a table that invoked a trigger being updated by it
+	ErrTriggerTableInUse = errors.NewKind("Can't update table %s in stored function/trigger because it is already used by statement which invoked this stored function/trigger")
+
 	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
 	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)
+
+	// ErrInvalidUseOfOldNew is returned when a trigger attempts to make use of OLD or NEW references when they don't exist
+	ErrInvalidUseOfOldNew = errors.NewKind("There is no %s row in on %s trigger")
+
+	// ErrInvalidUpdateOfOldRow is returned when a trigger attempts to assign to an old row's value with SET
+	ErrInvalidUpdateOfOldRow = errors.NewKind("Updating of old row is not allowed in trigger")
+
+	// ErrInvalidUpdateInAfterTrigger is returned when a trigger attempts to assign to a new row in an AFTER trigger
+	ErrInvalidUpdateInAfterTrigger = errors.NewKind("Updating of new row is not allowed in after trigger")
 )

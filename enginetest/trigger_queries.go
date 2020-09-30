@@ -42,6 +42,12 @@ var TriggerTests = []ScriptTest{
 					{2}, {4}, {6},
 				},
 			},
+			{
+				Query: "insert into a values (7), (9)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
 		},
 	},
 	{
@@ -64,6 +70,12 @@ var TriggerTests = []ScriptTest{
 				Query: "select y from b order by 1",
 				Expected: []sql.Row{
 					{0}, {8},
+				},
+			},
+			{
+				Query: "insert into a values (7), (9)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
 				},
 			},
 		},
@@ -113,6 +125,12 @@ var TriggerTests = []ScriptTest{
 					{2}, {4}, {6},
 				},
 			},
+			{
+				Query: "insert into a values (7), (9)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
 		},
 	},
 	{
@@ -135,6 +153,12 @@ var TriggerTests = []ScriptTest{
 				Query: "select y from b order by 1",
 				Expected: []sql.Row{
 					{0}, {8},
+				},
+			},
+			{
+				Query: "insert into a values (7), (9)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
 				},
 			},
 		},
@@ -225,6 +249,18 @@ var TriggerTests = []ScriptTest{
 					{4}, {8},
 				},
 			},
+			{
+				Query: "update a set x = x + 1 where x = 5",
+				Expected: []sql.Row{
+					{sql.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						},
+					}},
+				},
+			},
 		},
 	},
 	{
@@ -297,6 +333,18 @@ var TriggerTests = []ScriptTest{
 				Query: "select y from b order by 1",
 				Expected: []sql.Row{
 					{4}, {8},
+				},
+			},
+			{
+				Query: "update a set x = x + 1 where x = 5",
+				Expected: []sql.Row{
+					{sql.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						},
+					}},
 				},
 			},
 		},
@@ -428,6 +476,12 @@ var TriggerTests = []ScriptTest{
 					{2}, {4},
 				},
 			},
+			{
+				Query: "delete from a where x = 5",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
 		},
 	},
 	{
@@ -502,6 +556,12 @@ var TriggerTests = []ScriptTest{
 					{3}, {5}, {7},
 				},
 			},
+			{
+				Query: "delete from a where x = 0",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
 		},
 	},
 	{
@@ -554,6 +614,43 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	// Complex trigger scripts
+	{
+		Name: "trigger before insert, multiple triggers defined",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"create table c (z int primary key)",
+			// Only one of these triggers should run for each table
+			"create trigger a1 before insert on a for each row insert into b values (new.x * 2)",
+			"create trigger a2 before update on a for each row insert into b values (new.x * 3)",
+			"create trigger a3 before delete on a for each row insert into b values (old.x * 5)",
+			"create trigger b1 before insert on b for each row insert into c values (new.y * 7)",
+			"create trigger b2 before update on b for each row insert into c values (new.y * 11)",
+			"create trigger b3 before delete on b for each row insert into c values (old.y * 13)",
+			"insert into a values (1), (2), (3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{1}, {2}, {3},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{2}, {4}, {6},
+				},
+			},
+			{
+				Query: "select z from c order by 1",
+				Expected: []sql.Row{
+					{14}, {28}, {42},
+				},
+			},
+		},
+	},
 }
 
 var TriggerErrorTests = []ScriptTest{
@@ -575,15 +672,95 @@ var TriggerErrorTests = []ScriptTest{
 		Query:       "insert into x values (1,2)",
 		ExpectedErr: plan.ErrInsertIntoNonNullableProvidedNull,
 	},
-	// TODO: this should fail analysis
-	// {
-	// 	Name:        "reference to old row on insert",
-	// 	SetUpScript: []string{
-	// 		"create table x (a int primary key, b int, c int)",
-	// 	},
-	// 	Query:       "create trigger old_on_insert before insert on x for each row set new.c = old.a + 1",
-	// 	ExpectedErr: sql.ErrTableNotFound,
-	// },
+	{
+		Name: "self update",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create trigger a1 before insert on a for each row insert into a values (new.x * 2)",
+		},
+		Query:       "insert into a values (1), (2), (3)",
+		ExpectedErr: sql.ErrTriggerTableInUse,
+	},
+	{
+		Name: "circular dependency",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"create trigger a1 before insert on a for each row insert into b values (new.x * 2)",
+			"create trigger b1 before insert on b for each row insert into a values (new.y * 7)",
+		},
+		Query:       "insert into a values (1), (2), (3)",
+		ExpectedErr: sql.ErrTriggerTableInUse,
+	},
+	{
+		Name: "circular dependency, nested two deep",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"create table c (z int primary key)",
+			"create trigger a1 before insert on a for each row insert into b values (new.x * 2)",
+			"create trigger b1 before insert on b for each row insert into c values (new.y * 5)",
+			"create trigger c1 before insert on c for each row insert into a values (new.z * 7)",
+		},
+		Query:       "insert into a values (1), (2), (3)",
+		ExpectedErr: sql.ErrTriggerTableInUse,
+	},
+	{
+		Name: "reference to old on insert",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger old_on_insert before insert on x for each row set new.c = old.a + 1",
+		ExpectedErr: sql.ErrInvalidUseOfOldNew,
+	},
+	{
+		Name: "reference to new on delete",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger new_on_delete before delete on x for each row set new.c = old.a + 1",
+		ExpectedErr: sql.ErrInvalidUseOfOldNew,
+	},
+	{
+		Name: "set old row on update",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger update_old before update on x for each row set old.c = new.a + 1",
+		ExpectedErr: sql.ErrInvalidUpdateOfOldRow,
+	},
+	{
+		Name: "set old row on update, begin block",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger update_old before update on x for each row BEGIN set old.c = new.a + 1; END",
+		ExpectedErr: sql.ErrInvalidUpdateOfOldRow,
+	},
+	{
+		Name: "set new row after insert",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger update_new after insert on x for each row set new.c = new.a + 1",
+		ExpectedErr: sql.ErrInvalidUpdateInAfterTrigger,
+	},
+	{
+		Name: "set new row after update",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger update_new after update on x for each row set new.c = new.a + 1",
+		ExpectedErr: sql.ErrInvalidUpdateInAfterTrigger,
+	},
+	{
+		Name: "set new row after update, begin block",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger update_new after update on x for each row BEGIN set new.c = new.a + 1; END",
+		ExpectedErr: sql.ErrInvalidUpdateInAfterTrigger,
+	},
 	// TODO: mysql doesn't consider this an error until execution time, but we could catch it earlier
 	// {
 	// 	Name:        "column doesn't exist",
