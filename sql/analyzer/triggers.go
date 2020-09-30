@@ -199,7 +199,18 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 		return nil, err
 	}
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUpWithParent(n, func(n sql.Node, parent sql.Node, childNum int) (sql.Node, error) {
+		// Don't double-apply trigger executors to the bodies of triggers. To avoid this, don't apply the trigger if the
+		// parent is a trigger body.
+		// TODO: this won't work for BEGIN END blocks, stored procedures, etc. For those, we need to examine all ancestors,
+		//  not just the immediate parent. Alternately, we could do something like not walk all children of some node types
+		//  (probably better).
+		if _, ok := parent.(*plan.TriggerExecutor); ok {
+			if childNum == 1 { // Right child is the trigger execution logic
+				return n, nil
+			}
+		}
+
 		switch n := n.(type) {
 		case *plan.InsertInto:
 			if trigger.TriggerTime == sqlparser.BeforeStr {
@@ -277,6 +288,11 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tr
 		)
 		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
 	}
+
+	if qp, ok := triggerLogic.(*plan.QueryProcess); ok {
+		triggerLogic = qp.Child
+	}
+
 	return triggerLogic, err
 }
 

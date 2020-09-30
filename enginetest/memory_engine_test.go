@@ -110,7 +110,6 @@ func TestSingleScript(t *testing.T) {
 		SetUpScript: []string{
 			"create table a (x int primary key)",
 			"create table b (y int primary key)",
-			// Only one of these triggers should run for each table
 			"create trigger a1 before insert on a for each row insert into b values (new.x * 7)",
 			"create trigger a2 after insert on a for each row insert into b values (new.x * 11)",
 			"insert into a values (2), (3), (5)",
