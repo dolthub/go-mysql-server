@@ -183,7 +183,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 			return nil, err
 		}
 
-		n, err = applyTrigger(ctx, a, n, scope, trigger)
+		n, err = applyTrigger(ctx, a, originalNode, n, scope, trigger)
 		if err != nil {
 			return nil, err
 		}
@@ -193,8 +193,8 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 }
 
 // applyTrigger applies the trigger given to the node given, returning the resulting node
-func applyTrigger(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, trigger *plan.CreateTrigger) (sql.Node, error) {
-	triggerLogic, err := getTriggerLogic(ctx, a, n, scope, trigger)
+func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope *Scope, trigger *plan.CreateTrigger) (sql.Node, error) {
+	triggerLogic, err := getTriggerLogic(ctx, a, originalNode, scope, trigger)
 	if err != nil {
 		return nil, err
 	}
