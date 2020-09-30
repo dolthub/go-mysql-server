@@ -165,7 +165,6 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 
 			triggerTable := getTableName(ct.Table)
 			if stringContains(affectedTables, triggerTable) && triggerEventsMatch(triggerEvent, ct.TriggerEvent) {
-				// TODO: ordering of multiple triggers
 				affectedTriggers = append(affectedTriggers, ct)
 			}
 		}
@@ -176,14 +175,21 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	}
 
 	triggers := orderTriggers(affectedTriggers)
-	trigger := triggers[0]
+	originalNode := n
 
-	err = validateNoCircularUpdates(trigger, n, scope)
-	if err != nil {
-		return nil, err
+	for _, trigger := range triggers {
+		err = validateNoCircularUpdates(trigger, originalNode, scope)
+		if err != nil {
+			return nil, err
+		}
+
+		n, err = applyTrigger(ctx, a, n, scope, trigger)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return applyTrigger(ctx, a, n, scope, trigger)
+	return n, nil
 }
 
 // applyTrigger applies the trigger given to the node given, returning the resulting node
