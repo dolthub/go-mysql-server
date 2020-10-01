@@ -106,26 +106,34 @@ func TestSingleScript(t *testing.T) {
 
 	var test enginetest.ScriptTest
 	test = enginetest.ScriptTest{
-		Name: "triggers before and after insert",
+		Name: "multiple triggers before and after insert, with precedes / follows",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
 			"create table b (y int primary key)",
-			// Only one of these triggers should run for each table
-			"create trigger a1 before insert on a for each row insert into b values (NEW.x * 7)",
-			"create trigger a1 after insert on a for each row insert into b values (New.x * 11)",
-			"insert into a values (2), (3), (5)",
+			"insert into b values (1), (3)",
+			"create trigger a1 before insert on a for each row set new.x = New.x + 1",
+			"create trigger a2 before insert on a for each row precedes a1 set new.x = New.x * 2",
+			"create trigger a3 before insert on a for each row precedes a2 set new.x = New.x - 5",
+			"create trigger a4 before insert on a for each row follows a2 set new.x = New.x * 3",
+			// order of execution should be: a3, a2, a4, a1
+			"create trigger a5 after insert on a for each row update b set y = y + 1",
+			"create trigger a6 after insert on a for each row precedes a5 update b set y = y * 2",
+			"create trigger a7 after insert on a for each row precedes a6 update b set y = y - 5",
+			"create trigger a8 after insert on a for each row follows a6 update b set y = y * 3",
+			// order of execution should be: a7, a6, a8, a5
+			"insert into a values (1), (3)",
 		},
 		Assertions: []enginetest.ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
 				Expected: []sql.Row{
-					{2}, {3}, {5},
+					{-23}, {-11},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
 				Expected: []sql.Row{
-					{14}, {21}, {22}, {33}, {35}, {55},
+					{-23}, {-11},
 				},
 			},
 		},
@@ -138,11 +146,7 @@ func TestSingleScript(t *testing.T) {
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
 
-	for _, statement := range test.SetUpScript {
-		enginetest.RunQuery(t, engine, harness, statement)
-	}
-
-	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected)
+	enginetest.TestScriptWithEngine(t, engine, harness, test)
 }
 
 func TestBrokenQueries(t *testing.T) {

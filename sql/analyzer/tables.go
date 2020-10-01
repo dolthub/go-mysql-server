@@ -77,6 +77,12 @@ func getTable(node sql.Node) sql.Table {
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
 	plan.Inspect(node, func(node sql.Node) bool {
+		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
+		// only want the first ResolvedTable match.
+		if table != nil {
+			return false
+		}
+
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
 			table = n

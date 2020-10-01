@@ -13,11 +13,10 @@ type Visitor interface {
 	Visit(node sql.Node) Visitor
 }
 
-// Walk traverses the plan tree in depth-first order. It starts by calling
-// v.Visit(node); node must not be nil. If the visitor returned by
-// v.Visit(node) is not nil, Walk is invoked recursively with the returned
-// visitor for each children of the node, followed by a call of v.Visit(nil)
-// to the returned visitor.
+// Walk traverses the plan tree in depth-first order. It starts by calling v.Visit(node); node must not be nil. If the
+// visitor returned by  v.Visit(node) is not nil, Walk is invoked recursively with the returned visitor for each
+// children of the node, followed by a call of v.Visit(nil) to the returned visitor. If v.Visit(node) returns non-nil,
+// then all children are walked, even if one of them returns nil for v.Visit().
 func Walk(v Visitor, node sql.Node) {
 	if v = v.Visit(node); v == nil {
 		return

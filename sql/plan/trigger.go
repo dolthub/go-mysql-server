@@ -61,14 +61,14 @@ func NewTriggerExecutor(child, triggerLogic sql.Node, triggerEvent TriggerEvent,
 
 func (t *TriggerExecutor) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("TRIGGER(%s)", t.TriggerDefinition.CreateStatement)
+	_ = pr.WriteNode("Trigger(%s)", t.TriggerDefinition.CreateStatement)
 	_ = pr.WriteChildren(t.Left.String())
 	return pr.String()
 }
 
 func (t *TriggerExecutor) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("TRIGGER(%s)", t.TriggerDefinition.CreateStatement)
+	_ = pr.WriteNode("Trigger(%s)", t.TriggerDefinition.CreateStatement)
 	_ = pr.WriteChildren(sql.DebugString(t.Left), sql.DebugString(t.Right))
 	return pr.String()
 }

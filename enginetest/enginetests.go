@@ -527,23 +527,24 @@ func TestDeleteErrors(t *testing.T, harness Harness) {
 
 func TestScripts(t *testing.T, harness Harness) {
 	for _, script := range ScriptTests {
-		testScript(t, harness, script)
+		TestScript(t, harness, script)
 	}
 }
 
 func TestTriggers(t *testing.T, harness Harness) {
 	for _, script := range TriggerTests {
-		testScript(t, harness, script)
+		TestScript(t, harness, script)
 	}
 }
 
 func TestTriggerErrors(t *testing.T, harness Harness) {
 	for _, script := range TriggerErrorTests {
-		testScript(t, harness, script)
+		TestScript(t, harness, script)
 	}
 }
 
-func testScript(t *testing.T, harness Harness, script ScriptTest) bool {
+// TestScript runs the test script given, making any assertions given
+func TestScript(t *testing.T, harness Harness, script ScriptTest) bool {
 	return t.Run(script.Name, func(t *testing.T) {
 		myDb := harness.NewDatabase("mydb")
 		databases := []sql.Database{myDb}
@@ -554,35 +555,40 @@ func testScript(t *testing.T, harness Harness, script ScriptTest) bool {
 		}
 		e := NewEngineWithDbs(t, harness, databases, idxDriver)
 
-		for _, statement := range script.SetUpScript {
-			if sh, ok := harness.(SkippingHarness); ok {
-				if sh.SkipQueryTest(statement) {
-					t.Skip()
-				}
-			}
-
-			RunQuery(t, e, harness, statement)
-		}
-
-		assertions := script.Assertions
-		if len(assertions) == 0 {
-			assertions = []ScriptTestAssertion{
-				{
-					Query:       script.Query,
-					Expected:    script.Expected,
-					ExpectedErr: script.ExpectedErr,
-				},
-			}
-		}
-
-		for _, assertion := range assertions {
-			if assertion.ExpectedErr != nil {
-				AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
-			} else {
-				TestQuery(t, harness, e, assertion.Query, assertion.Expected)
-			}
-		}
+		TestScriptWithEngine(t, e, harness, script)
 	})
+}
+
+// TestScriptWithEngine runs the test script given with the engine provided.
+func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script ScriptTest) {
+	for _, statement := range script.SetUpScript {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(statement) {
+				t.Skip()
+			}
+		}
+
+		RunQuery(t, e, harness, statement)
+	}
+
+	assertions := script.Assertions
+	if len(assertions) == 0 {
+		assertions = []ScriptTestAssertion{
+			{
+				Query:       script.Query,
+				Expected:    script.Expected,
+				ExpectedErr: script.ExpectedErr,
+			},
+		}
+	}
+
+	for _, assertion := range assertions {
+		if assertion.ExpectedErr != nil {
+			AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+		} else {
+			TestQuery(t, harness, e, assertion.Query, assertion.Expected)
+		}
+	}
 }
 
 func TestViews(t *testing.T, harness Harness) {
@@ -1564,7 +1570,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 
 func TestVariables(t *testing.T, harness Harness) {
 	for _, query := range VariableQueries {
-		testScript(t, harness, query)
+		TestScript(t, harness, query)
 	}
 }
 
