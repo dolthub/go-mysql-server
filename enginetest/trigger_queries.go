@@ -687,6 +687,44 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "multiple triggers before insert",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create trigger a1 before insert on a for each row set new.x = New.x + 1",
+			"create trigger a2 before insert on a for each row set new.x = New.x * 2",
+			"create trigger a3 before insert on a for each row set new.x = New.x - 5",
+			"insert into a values (1), (3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{-1}, {3},
+				},
+			},
+		},
+	},
+	{
+		Name: "multiple triggers before insert, with precedes / follows",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create trigger a1 before insert on a for each row set new.x = New.x + 1",
+			"create trigger a2 before insert on a for each row precedes a1 set new.x = New.x * 2",
+			"create trigger a3 before insert on a for each row precedes a2 set new.x = New.x - 5",
+			"create trigger a4 before insert on a for each row follows a2 set new.x = New.x * 3",
+			// order of execution should be: a3, a2, a4, a1
+			"insert into a values (1), (3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{-23}, {-11},
+				},
+			},
+		},
+	},
 	// Complex trigger scripts
 	{
 		Name: "trigger before insert, multiple triggers defined",

@@ -10,7 +10,7 @@ import (
 type Database struct {
 	name     string
 	tables   map[string]sql.Table
-	triggers map[string]sql.TriggerDefinition
+	triggers []sql.TriggerDefinition
 }
 
 var _ sql.Database = (*Database)(nil)
@@ -24,7 +24,6 @@ func NewDatabase(name string) *Database {
 	return &Database{
 		name:     name,
 		tables:   map[string]sql.Table{},
-		triggers: map[string]sql.TriggerDefinition{},
 	}
 }
 
@@ -158,11 +157,16 @@ func (d *Database) GetTriggers(ctx *sql.Context) ([]sql.TriggerDefinition, error
 }
 
 func (d *Database) CreateTrigger(ctx *sql.Context, definition sql.TriggerDefinition) error {
-	d.triggers[definition.Name] = definition
+	d.triggers = append(d.triggers, definition)
 	return nil
 }
 
 func (d *Database) DropTrigger(ctx *sql.Context, name string) error {
-	delete(d.triggers, name)
+	for i, trigger := range d.triggers {
+		if trigger.Name == name {
+			d.triggers = append(d.triggers[:i], d.triggers[i+1:]...)
+			break
+		}
+	}
 	return nil
 }
