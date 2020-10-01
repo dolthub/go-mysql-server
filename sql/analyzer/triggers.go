@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -320,7 +321,55 @@ func validateNoCircularUpdates(trigger *plan.CreateTrigger, n sql.Node, scope *S
 }
 
 func orderTriggers(triggers []*plan.CreateTrigger) []*plan.CreateTrigger {
-	return triggers
+	orderedTriggers := make([]*plan.CreateTrigger, len(triggers))
+	copy(orderedTriggers, triggers)
+
+Top:
+	for i, trigger := range triggers {
+		if trigger.TriggerOrder != nil {
+			ref := trigger.TriggerOrder.OtherTriggerName
+			// remove the trigger from the slice
+			orderedTriggers = append(orderedTriggers[:i], orderedTriggers[i+1:]...)
+			// then find where to reinsert it
+			for j, t := range orderedTriggers {
+				if t.TriggerName == ref {
+					if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.PrecedesStr {
+						orderedTriggers = append(orderedTriggers[:j], append(triggers[i:i+1], orderedTriggers[j:]...)...)
+					} else if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.FollowsStr {
+						if len(orderedTriggers) == j - 1 {
+							orderedTriggers = append(orderedTriggers, triggers[i])
+						} else {
+							orderedTriggers = append(orderedTriggers[:j+1], append(triggers[i:i+1], orderedTriggers[j+1:]...)...)
+						}
+					} else {
+						panic("unexpected value for trigger order")
+					}
+					continue Top
+				}
+			}
+			panic(fmt.Sprintf("Referenced trigger %s not found", ref))
+		}
+	}
+
+	// Now that we have ordered the triggers according to precedence, split them into BEFORE / AFTER triggers
+	var beforeTriggers []*plan.CreateTrigger
+	var afterTriggers []*plan.CreateTrigger
+	for _, trigger := range orderedTriggers {
+		if trigger.TriggerTime == sqlparser.BeforeStr {
+			beforeTriggers = append(beforeTriggers, trigger)
+		} else {
+			afterTriggers = append(afterTriggers, trigger)
+		}
+	}
+
+	// Reverse the order of after triggers. This is because we always apply them to the Insert / Update / Delete node
+	// that initiated the trigger, so after triggers, which wrap the Insert, need be applied in reverse order for them to
+	// run in the correct order.
+	for left, right := 0, len(afterTriggers)-1; left < right; left, right = left+1, right-1 {
+		afterTriggers[left], afterTriggers[right] = afterTriggers[right], afterTriggers[left]
+	}
+
+	return append(beforeTriggers, afterTriggers...)
 }
 
 func triggerEventsMatch(event plan.TriggerEvent, event2 string) bool {
