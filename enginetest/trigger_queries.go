@@ -622,9 +622,14 @@ var TriggerTests = []ScriptTest{
 			"create table b (y int primary key)",
 			"create trigger a1 before insert on a for each row insert into b values (NEW.x * 7)",
 			"create trigger a2 after insert on a for each row insert into b values (New.x * 11)",
-			"insert into a values (2), (3), (5)",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a values (2), (3), (5)",
+				Expected: []sql.Row{
+					{sql.NewOkResult(3)},
+				},
+			},
 			{
 				Query: "select x from a order by 1",
 				Expected: []sql.Row{
@@ -647,9 +652,20 @@ var TriggerTests = []ScriptTest{
 			"create trigger a1 before update on a for each row insert into b values (old.x * 7)",
 			"create trigger a2 after update on a for each row insert into b values (old.x * 11)",
 			"insert into a values (2), (3), (5)",
-			"update a set x = x * 2",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update a set x = x * 2",
+				Expected: []sql.Row{
+					{sql.OkResult{
+						RowsAffected: 3,
+						Info:         plan.UpdateInfo{
+							Matched:  3,
+							Updated:  3,
+						},
+					}},
+				},
+			},
 			{
 				Query: "select x from a order by 1",
 				Expected: []sql.Row{
@@ -672,9 +688,14 @@ var TriggerTests = []ScriptTest{
 			"create trigger a1 before delete on a for each row insert into b values (old.x * 7)",
 			"create trigger a2 after delete on a for each row insert into b values (old.x * 11)",
 			"insert into a values (2), (3), (5)",
-			"delete from a",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query: "delete from a",
+				Expected: []sql.Row{
+					{sql.NewOkResult(3)},
+				},
+			},
 			{
 				Query: "select x from a order by 1",
 				Expected: []sql.Row{},
@@ -694,9 +715,14 @@ var TriggerTests = []ScriptTest{
 			"create trigger a1 before insert on a for each row set new.x = New.x + 1",
 			"create trigger a2 before insert on a for each row set new.x = New.x * 2",
 			"create trigger a3 before insert on a for each row set new.x = New.x - 5",
-			"insert into a values (1), (3)",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a values (1), (3)",
+				Expected: []sql.Row{
+					{sql.NewOkResult(2)},
+				},
+			},
 			{
 				Query: "select x from a order by 1",
 				Expected: []sql.Row{
@@ -714,9 +740,14 @@ var TriggerTests = []ScriptTest{
 			"create trigger a3 before insert on a for each row precedes a2 set new.x = New.x - 5",
 			"create trigger a4 before insert on a for each row follows a2 set new.x = New.x * 3",
 			// order of execution should be: a3, a2, a4, a1
-			"insert into a values (1), (3)",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a values (1), (3)",
+				Expected: []sql.Row{
+					{sql.NewOkResult(2)},
+				},
+			},
 			{
 				Query: "select x from a order by 1",
 				Expected: []sql.Row{
@@ -741,9 +772,14 @@ var TriggerTests = []ScriptTest{
 			"create trigger a7 after insert on a for each row precedes a6 update b set y = y - 5",
 			"create trigger a8 after insert on a for each row follows a6 update b set y = y * 3",
 			// order of execution should be: a7, a6, a8, a5
-			"insert into a values (1), (3)",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a values (1), (3)",
+				Expected: []sql.Row{
+					{sql.NewOkResult(2)},
+				},
+			},
 			{
 				Query: "select x from a order by 1",
 				Expected: []sql.Row{
