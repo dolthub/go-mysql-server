@@ -175,7 +175,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 		return n, nil
 	}
 
-	triggers := orderTriggers(affectedTriggers)
+	triggers := OrderTriggers(affectedTriggers)
 	originalNode := n
 
 	for _, trigger := range triggers {
@@ -320,7 +320,7 @@ func validateNoCircularUpdates(trigger *plan.CreateTrigger, n sql.Node, scope *S
 	return circularRef
 }
 
-func orderTriggers(triggers []*plan.CreateTrigger) []*plan.CreateTrigger {
+func OrderTriggers(triggers []*plan.CreateTrigger) []*plan.CreateTrigger {
 	orderedTriggers := make([]*plan.CreateTrigger, len(triggers))
 	copy(orderedTriggers, triggers)
 
@@ -336,7 +336,7 @@ Top:
 					if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.PrecedesStr {
 						orderedTriggers = append(orderedTriggers[:j], append(triggers[i:i+1], orderedTriggers[j:]...)...)
 					} else if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.FollowsStr {
-						if len(orderedTriggers) == j - 1 {
+						if len(orderedTriggers) == j-1 {
 							orderedTriggers = append(orderedTriggers, triggers[i])
 						} else {
 							orderedTriggers = append(orderedTriggers[:j+1], append(triggers[i:i+1], orderedTriggers[j+1:]...)...)
