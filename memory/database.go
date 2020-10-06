@@ -22,8 +22,8 @@ var _ sql.TriggerDatabase = (*Database)(nil)
 // NewDatabase creates a new database with the given name.
 func NewDatabase(name string) *Database {
 	return &Database{
-		name:     name,
-		tables:   map[string]sql.Table{},
+		name:   name,
+		tables: map[string]sql.Table{},
 	}
 }
 

@@ -15,6 +15,8 @@
 package enginetest
 
 import (
+	"time"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -676,7 +678,7 @@ var TriggerTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select x from a order by 1",
+				Query:    "select x from a order by 1",
 				Expected: []sql.Row{},
 			},
 			{
@@ -793,6 +795,490 @@ var TriggerTests = []ScriptTest{
 				Query: "select z from c order by 1",
 				Expected: []sql.Row{
 					{14}, {28}, {42},
+				},
+			},
+		},
+	},
+	// Information schema scripts
+	{
+		Name: "infoschema for multiple triggers before and after insert, with precedes / follows",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"insert into b values (1), (3)",
+			"create trigger a1 before insert on a for each row set new.x = New.x + 1",
+			"create trigger a2 before insert on a for each row precedes a1 set new.x = New.x * 2",
+			"create trigger a3 before insert on a for each row precedes a2 set new.x = New.x - 5",
+			"create trigger a4 before insert on a for each row follows a2 set new.x = New.x * 3",
+			// order of execution should be: a3, a2, a4, a1
+			"create trigger a5 after insert on a for each row update b set y = y + 1",
+			"create trigger a6 after insert on a for each row precedes a5 update b set y = y * 2",
+			"create trigger a7 after insert on a for each row precedes a6 update b set y = y - 5",
+			"create trigger a8 after insert on a for each row follows a6 update b set y = y * 3",
+			// order of execution should be: a7, a6, a8, a5
+			"insert into a values (1), (3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from information_schema.triggers",
+				Expected: []sql.Row{
+					{
+						"def",                   // trigger_catalog
+						"mydb",                  // trigger_schema
+						"a1",                    // trigger_name
+						"INSERT",                // event_manipulation
+						"def",                   // event_object_catalog
+						"mydb",                  // event_object_schema
+						"a",                     // event_object_table
+						int64(4),                // action_order
+						nil,                     // action_condition
+						"set new.x = New.x + 1", // action_statement
+						"ROW",                   // action_orientation
+						"BEFORE",                // action_timing
+						nil,                     // action_reference_old_table
+						nil,                     // action_reference_new_table
+						"OLD",                   // action_reference_old_row
+						"NEW",                   // action_reference_new_row
+						time.Unix(0, 0).UTC(),   // created
+						"",                      // sql_mode
+						"",                      // definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // database_collation
+					},
+					{
+						"def",                   // trigger_catalog
+						"mydb",                  // trigger_schema
+						"a2",                    // trigger_name
+						"INSERT",                // event_manipulation
+						"def",                   // event_object_catalog
+						"mydb",                  // event_object_schema
+						"a",                     // event_object_table
+						int64(2),                // action_order
+						nil,                     // action_condition
+						"set new.x = New.x * 2", // action_statement
+						"ROW",                   // action_orientation
+						"BEFORE",                // action_timing
+						nil,                     // action_reference_old_table
+						nil,                     // action_reference_new_table
+						"OLD",                   // action_reference_old_row
+						"NEW",                   // action_reference_new_row
+						time.Unix(0, 0).UTC(),   // created
+						"",                      // sql_mode
+						"",                      // definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // database_collation
+					},
+					{
+						"def",                   // trigger_catalog
+						"mydb",                  // trigger_schema
+						"a3",                    // trigger_name
+						"INSERT",                // event_manipulation
+						"def",                   // event_object_catalog
+						"mydb",                  // event_object_schema
+						"a",                     // event_object_table
+						int64(1),                // action_order
+						nil,                     // action_condition
+						"set new.x = New.x - 5", // action_statement
+						"ROW",                   // action_orientation
+						"BEFORE",                // action_timing
+						nil,                     // action_reference_old_table
+						nil,                     // action_reference_new_table
+						"OLD",                   // action_reference_old_row
+						"NEW",                   // action_reference_new_row
+						time.Unix(0, 0).UTC(),   // created
+						"",                      // sql_mode
+						"",                      // definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // database_collation
+					},
+					{
+						"def",                   // trigger_catalog
+						"mydb",                  // trigger_schema
+						"a4",                    // trigger_name
+						"INSERT",                // event_manipulation
+						"def",                   // event_object_catalog
+						"mydb",                  // event_object_schema
+						"a",                     // event_object_table
+						int64(3),                // action_order
+						nil,                     // action_condition
+						"set new.x = New.x * 3", // action_statement
+						"ROW",                   // action_orientation
+						"BEFORE",                // action_timing
+						nil,                     // action_reference_old_table
+						nil,                     // action_reference_new_table
+						"OLD",                   // action_reference_old_row
+						"NEW",                   // action_reference_new_row
+						time.Unix(0, 0).UTC(),   // created
+						"",                      // sql_mode
+						"",                      // definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // database_collation
+					},
+					{
+						"def",                    // trigger_catalog
+						"mydb",                   // trigger_schema
+						"a5",                     // trigger_name
+						"INSERT",                 // event_manipulation
+						"def",                    // event_object_catalog
+						"mydb",                   // event_object_schema
+						"a",                      // event_object_table
+						int64(4),                 // action_order
+						nil,                      // action_condition
+						"update b set y = y + 1", // action_statement
+						"ROW",                    // action_orientation
+						"AFTER",                  // action_timing
+						nil,                      // action_reference_old_table
+						nil,                      // action_reference_new_table
+						"OLD",                    // action_reference_old_row
+						"NEW",                    // action_reference_new_row
+						time.Unix(0, 0).UTC(),    // created
+						"",                       // sql_mode
+						"",                       // definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // database_collation
+					},
+					{
+						"def",                    // trigger_catalog
+						"mydb",                   // trigger_schema
+						"a6",                     // trigger_name
+						"INSERT",                 // event_manipulation
+						"def",                    // event_object_catalog
+						"mydb",                   // event_object_schema
+						"a",                      // event_object_table
+						int64(2),                 // action_order
+						nil,                      // action_condition
+						"update b set y = y * 2", // action_statement
+						"ROW",                    // action_orientation
+						"AFTER",                  // action_timing
+						nil,                      // action_reference_old_table
+						nil,                      // action_reference_new_table
+						"OLD",                    // action_reference_old_row
+						"NEW",                    // action_reference_new_row
+						time.Unix(0, 0).UTC(),    // created
+						"",                       // sql_mode
+						"",                       // definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // database_collation
+					},
+					{
+						"def",                    // trigger_catalog
+						"mydb",                   // trigger_schema
+						"a7",                     // trigger_name
+						"INSERT",                 // event_manipulation
+						"def",                    // event_object_catalog
+						"mydb",                   // event_object_schema
+						"a",                      // event_object_table
+						int64(1),                 // action_order
+						nil,                      // action_condition
+						"update b set y = y - 5", // action_statement
+						"ROW",                    // action_orientation
+						"AFTER",                  // action_timing
+						nil,                      // action_reference_old_table
+						nil,                      // action_reference_new_table
+						"OLD",                    // action_reference_old_row
+						"NEW",                    // action_reference_new_row
+						time.Unix(0, 0).UTC(),    // created
+						"",                       // sql_mode
+						"",                       // definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // database_collation
+					},
+					{
+						"def",                    // trigger_catalog
+						"mydb",                   // trigger_schema
+						"a8",                     // trigger_name
+						"INSERT",                 // event_manipulation
+						"def",                    // event_object_catalog
+						"mydb",                   // event_object_schema
+						"a",                      // event_object_table
+						int64(3),                 // action_order
+						nil,                      // action_condition
+						"update b set y = y * 3", // action_statement
+						"ROW",                    // action_orientation
+						"AFTER",                  // action_timing
+						nil,                      // action_reference_old_table
+						nil,                      // action_reference_new_table
+						"OLD",                    // action_reference_old_row
+						"NEW",                    // action_reference_new_row
+						time.Unix(0, 0).UTC(),    // created
+						"",                       // sql_mode
+						"",                       // definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // database_collation
+					},
+				},
+			},
+		},
+	},
+	// SHOW CREATE TRIGGER scripts
+	{
+		Name: "show create triggers",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create trigger a1 before insert on a for each row set new.x = new.x + 1",
+			"create table b (y int primary key)",
+			"create trigger b1 before insert on b for each row set new.x = new.x + 2",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create trigger a1",
+				Expected: []sql.Row{
+					{
+						"a1", // Trigger
+						"",   // sql_mode
+						"create trigger a1 before insert on a for each row set new.x = new.x + 1", // SQL Original Statement
+						sql.Collation_Default.CharacterSet().String(),                             // character_set_client
+						sql.Collation_Default.String(),                                            // collation_connection
+						sql.Collation_Default.String(),                                            // Database Collation
+						time.Unix(0, 0).UTC(),                                                     // Created
+					},
+				},
+			},
+			{
+				Query: "show create trigger b1",
+				Expected: []sql.Row{
+					{
+						"b1", // Trigger
+						"",   // sql_mode
+						"create trigger b1 before insert on b for each row set new.x = new.x + 2", // SQL Original Statement
+						sql.Collation_Default.CharacterSet().String(),                             // character_set_client
+						sql.Collation_Default.String(),                                            // collation_connection
+						sql.Collation_Default.String(),                                            // Database Collation
+						time.Unix(0, 0).UTC(),                                                     // Created
+					},
+				},
+			},
+			{
+				Query:       "show create trigger b2",
+				ExpectedErr: sql.ErrTriggerDoesNotExist,
+			},
+		},
+	},
+	// SHOW TRIGGERS scripts
+	{
+		Name: "show triggers",
+		SetUpScript: []string{
+			"create table abb (x int primary key)",
+			"create table acc (y int primary key)",
+			"create trigger t1 before insert on abb for each row set new.x = new.x + 1",
+			"create trigger t2 before insert on abb for each row set new.x = new.x + 2",
+			"create trigger t3 after insert on acc for each row insert into abb values (new.y)",
+			"create trigger t4 before update on acc for each row set new.y = old.y + 2",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show triggers",
+				Expected: []sql.Row{
+					{
+						"t1",                    // Trigger
+						"INSERT",                // Event
+						"abb",                   // Table
+						"set new.x = new.x + 1", // Statement
+						"BEFORE",                // Timing
+						time.Unix(0, 0).UTC(),   // Created
+						"",                      // sql_mode
+						"",                      // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+					{
+						"t2",                    // Trigger
+						"INSERT",                // Event
+						"abb",                   // Table
+						"set new.x = new.x + 2", // Statement
+						"BEFORE",                // Timing
+						time.Unix(0, 0).UTC(),   // Created
+						"",                      // sql_mode
+						"",                      // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+					{
+						"t3",                             // Trigger
+						"INSERT",                         // Event
+						"acc",                            // Table
+						"insert into abb values (new.y)", // Statement
+						"AFTER",                          // Timing
+						time.Unix(0, 0).UTC(),            // Created
+						"",                               // sql_mode
+						"",                               // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+					{
+						"t4",                    // Trigger
+						"UPDATE",                // Event
+						"acc",                   // Table
+						"set new.y = old.y + 2", // Statement
+						"BEFORE",                // Timing
+						time.Unix(0, 0).UTC(),   // Created
+						"",                      // sql_mode
+						"",                      // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+				},
+			},
+			{
+				Query: "show triggers from mydb",
+				Expected: []sql.Row{
+					{
+						"t1",                    // Trigger
+						"INSERT",                // Event
+						"abb",                   // Table
+						"set new.x = new.x + 1", // Statement
+						"BEFORE",                // Timing
+						time.Unix(0, 0).UTC(),   // Created
+						"",                      // sql_mode
+						"",                      // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+					{
+						"t2",                    // Trigger
+						"INSERT",                // Event
+						"abb",                   // Table
+						"set new.x = new.x + 2", // Statement
+						"BEFORE",                // Timing
+						time.Unix(0, 0).UTC(),   // Created
+						"",                      // sql_mode
+						"",                      // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+					{
+						"t3",                             // Trigger
+						"INSERT",                         // Event
+						"acc",                            // Table
+						"insert into abb values (new.y)", // Statement
+						"AFTER",                          // Timing
+						time.Unix(0, 0).UTC(),            // Created
+						"",                               // sql_mode
+						"",                               // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+					{
+						"t4",                    // Trigger
+						"UPDATE",                // Event
+						"acc",                   // Table
+						"set new.y = old.y + 2", // Statement
+						"BEFORE",                // Timing
+						time.Unix(0, 0).UTC(),   // Created
+						"",                      // sql_mode
+						"",                      // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+				},
+			},
+			{
+				Query: "show triggers like '%cc'",
+				Expected: []sql.Row{
+					{
+						"t3",                             // Trigger
+						"INSERT",                         // Event
+						"acc",                            // Table
+						"insert into abb values (new.y)", // Statement
+						"AFTER",                          // Timing
+						time.Unix(0, 0).UTC(),            // Created
+						"",                               // sql_mode
+						"",                               // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+					{
+						"t4",                    // Trigger
+						"UPDATE",                // Event
+						"acc",                   // Table
+						"set new.y = old.y + 2", // Statement
+						"BEFORE",                // Timing
+						time.Unix(0, 0).UTC(),   // Created
+						"",                      // sql_mode
+						"",                      // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+				},
+			},
+			{
+				Query: "show triggers where event = 'INSERT'",
+				Expected: []sql.Row{
+					{
+						"t1",                    // Trigger
+						"INSERT",                // Event
+						"abb",                   // Table
+						"set new.x = new.x + 1", // Statement
+						"BEFORE",                // Timing
+						time.Unix(0, 0).UTC(),   // Created
+						"",                      // sql_mode
+						"",                      // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+					{
+						"t2",                    // Trigger
+						"INSERT",                // Event
+						"abb",                   // Table
+						"set new.x = new.x + 2", // Statement
+						"BEFORE",                // Timing
+						time.Unix(0, 0).UTC(),   // Created
+						"",                      // sql_mode
+						"",                      // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+					{
+						"t3",                             // Trigger
+						"INSERT",                         // Event
+						"acc",                            // Table
+						"insert into abb values (new.y)", // Statement
+						"AFTER",                          // Timing
+						time.Unix(0, 0).UTC(),            // Created
+						"",                               // sql_mode
+						"",                               // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+				},
+			},
+			{
+				Query: "show triggers where timing = 'AFTER'",
+				Expected: []sql.Row{
+					{
+						"t3",                             // Trigger
+						"INSERT",                         // Event
+						"acc",                            // Table
+						"insert into abb values (new.y)", // Statement
+						"AFTER",                          // Timing
+						time.Unix(0, 0).UTC(),            // Created
+						"",                               // sql_mode
+						"",                               // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
 				},
 			},
 		},
