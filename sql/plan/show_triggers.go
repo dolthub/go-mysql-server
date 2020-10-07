@@ -28,6 +28,20 @@ type ShowTriggers struct {
 var _ sql.Databaser = (*ShowTriggers)(nil)
 var _ sql.Node = (*ShowTriggers)(nil)
 
+var showTriggersSchema = sql.Schema{
+	&sql.Column{Name: "Trigger", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "Event", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "Table", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "Statement", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "Timing", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "Created", Type: sql.Datetime, Nullable: false},
+	&sql.Column{Name: "sql_mode", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "Definer", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "character_set_client", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "collation_connection", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "Database Collation", Type: sql.LongText, Nullable: false},
+}
+
 // NewShowCreateTrigger creates a new ShowCreateTrigger node for SHOW TRIGGER statements.
 func NewShowTriggers(db sql.Database) *ShowTriggers {
 	return &ShowTriggers{
@@ -53,19 +67,7 @@ func (s *ShowTriggers) Children() []sql.Node {
 
 // Schema implements the sql.Node interface.
 func (s *ShowTriggers) Schema() sql.Schema {
-	return sql.Schema{
-		&sql.Column{Name: "Trigger", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Event", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Table", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Statement", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Timing", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Created", Type: sql.Datetime, Nullable: false},
-		&sql.Column{Name: "sql_mode", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Definer", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "character_set_client", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "collation_connection", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Database Collation", Type: sql.LongText, Nullable: false},
-	}
+	return showTriggersSchema
 }
 
 // RowIter implements the sql.Node interface.
@@ -86,8 +88,8 @@ func (s *ShowTriggers) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 			time.Unix(0, 0).UTC(),          // Created
 			"",                             // sql_mode
 			"",                             // Definer
-			characterSetClient,             // character_set_client
-			collationConnection,            // collation_connection
+			characterSetClient,             // character_set_client //TODO: allow these to be retrieved from integrators
+			collationConnection,            // collation_connection //TODO: allow these to be retrieved from integrators
 			sql.Collation_Default.String(), // Database Collation
 		})
 	}

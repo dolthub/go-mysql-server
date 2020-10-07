@@ -1281,6 +1281,37 @@ var TriggerTests = []ScriptTest{
 					},
 				},
 			},
+			{
+				Query: "show triggers where timing = 'BEFORE' and `Table` like '%bb'",
+				Expected: []sql.Row{
+					{
+						"t1",                    // Trigger
+						"INSERT",                // Event
+						"abb",                   // Table
+						"set new.x = new.x + 1", // Statement
+						"BEFORE",                // Timing
+						time.Unix(0, 0).UTC(),   // Created
+						"",                      // sql_mode
+						"",                      // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+					{
+						"t2",                    // Trigger
+						"INSERT",                // Event
+						"abb",                   // Table
+						"set new.x = new.x + 2", // Statement
+						"BEFORE",                // Timing
+						time.Unix(0, 0).UTC(),   // Created
+						"",                      // sql_mode
+						"",                      // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+				},
+			},
 		},
 	},
 }

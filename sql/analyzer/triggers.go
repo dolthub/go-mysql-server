@@ -175,7 +175,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 		return n, nil
 	}
 
-	triggers := OrderTriggers(affectedTriggers)
+	triggers := orderTriggersAndReverseAfter(affectedTriggers)
 	originalNode := n
 
 	for _, trigger := range triggers {
@@ -320,7 +320,20 @@ func validateNoCircularUpdates(trigger *plan.CreateTrigger, n sql.Node, scope *S
 	return circularRef
 }
 
-func OrderTriggers(triggers []*plan.CreateTrigger) []*plan.CreateTrigger {
+func orderTriggersAndReverseAfter(triggers []*plan.CreateTrigger) []*plan.CreateTrigger {
+	beforeTriggers, afterTriggers := OrderTriggers(triggers)
+
+	// Reverse the order of after triggers. This is because we always apply them to the Insert / Update / Delete node
+	// that initiated the trigger, so after triggers, which wrap the Insert, need be applied in reverse order for them to
+	// run in the correct order.
+	for left, right := 0, len(afterTriggers)-1; left < right; left, right = left+1, right-1 {
+		afterTriggers[left], afterTriggers[right] = afterTriggers[right], afterTriggers[left]
+	}
+
+	return append(beforeTriggers, afterTriggers...)
+}
+
+func OrderTriggers(triggers []*plan.CreateTrigger) (beforeTriggers []*plan.CreateTrigger, afterTriggers []*plan.CreateTrigger) {
 	orderedTriggers := make([]*plan.CreateTrigger, len(triggers))
 	copy(orderedTriggers, triggers)
 
@@ -352,8 +365,6 @@ Top:
 	}
 
 	// Now that we have ordered the triggers according to precedence, split them into BEFORE / AFTER triggers
-	var beforeTriggers []*plan.CreateTrigger
-	var afterTriggers []*plan.CreateTrigger
 	for _, trigger := range orderedTriggers {
 		if trigger.TriggerTime == sqlparser.BeforeStr {
 			beforeTriggers = append(beforeTriggers, trigger)
@@ -362,14 +373,7 @@ Top:
 		}
 	}
 
-	// Reverse the order of after triggers. This is because we always apply them to the Insert / Update / Delete node
-	// that initiated the trigger, so after triggers, which wrap the Insert, need be applied in reverse order for them to
-	// run in the correct order.
-	for left, right := 0, len(afterTriggers)-1; left < right; left, right = left+1, right-1 {
-		afterTriggers[left], afterTriggers[right] = afterTriggers[right], afterTriggers[left]
-	}
-
-	return append(beforeTriggers, afterTriggers...)
+	return beforeTriggers, afterTriggers
 }
 
 func triggerEventsMatch(event plan.TriggerEvent, event2 string) bool {

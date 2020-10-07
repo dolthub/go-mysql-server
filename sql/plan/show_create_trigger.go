@@ -30,6 +30,16 @@ type ShowCreateTrigger struct {
 var _ sql.Databaser = (*ShowCreateTrigger)(nil)
 var _ sql.Node = (*ShowCreateTrigger)(nil)
 
+var showCreateTriggerSchema = sql.Schema{
+	&sql.Column{Name: "Trigger", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "sql_mode", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "SQL Original Statement", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "character_set_client", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "collation_connection", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "Database Collation", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "Created", Type: sql.Datetime, Nullable: false},
+}
+
 // NewShowCreateTrigger creates a new ShowCreateTrigger node for SHOW CREATE TRIGGER statements.
 func NewShowCreateTrigger(db sql.Database, trigger string) *ShowCreateTrigger {
 	return &ShowCreateTrigger{
@@ -56,15 +66,7 @@ func (s *ShowCreateTrigger) Children() []sql.Node {
 
 // Schema implements the sql.Node interface.
 func (s *ShowCreateTrigger) Schema() sql.Schema {
-	return sql.Schema{
-		&sql.Column{Name: "Trigger", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "sql_mode", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "SQL Original Statement", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "character_set_client", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "collation_connection", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Database Collation", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Created", Type: sql.Datetime, Nullable: false},
-	}
+	return showCreateTriggerSchema
 }
 
 // RowIter implements the sql.Node interface.
@@ -85,8 +87,8 @@ func (s *ShowCreateTrigger) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 				trigger.Name,                   // Trigger
 				"",                             // sql_mode
 				trigger.CreateStatement,        // SQL Original Statement
-				characterSetClient,             // character_set_client
-				collationConnection,            // collation_connection
+				characterSetClient,             // character_set_client //TODO: allow these to be retrieved from integrators
+				collationConnection,            // collation_connection //TODO: allow these to be retrieved from integrators
 				sql.Collation_Default.String(), // Database Collation //TODO: add support for databases to set collation
 				time.Unix(0, 0).UTC(),          // Created
 			}), nil
