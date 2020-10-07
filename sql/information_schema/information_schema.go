@@ -542,37 +542,36 @@ func triggersRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 				triggerPlans = append(triggerPlans, triggerPlan)
 			}
 
-			triggerPlans = analyzer.OrderTriggers(triggerPlans)
+			beforeTriggers, afterTriggers := analyzer.OrderTriggers(triggerPlans)
 			var beforeDelete []*plan.CreateTrigger
 			var beforeInsert []*plan.CreateTrigger
 			var beforeUpdate []*plan.CreateTrigger
 			var afterDelete []*plan.CreateTrigger
 			var afterInsert []*plan.CreateTrigger
 			var afterUpdate []*plan.CreateTrigger
-			for _, triggerPlan := range triggerPlans {
-				switch triggerPlan.TriggerTime {
-				case sqlparser.BeforeStr:
-					switch triggerPlan.TriggerEvent {
-					case sqlparser.DeleteStr:
-						beforeDelete = append(beforeDelete, triggerPlan)
-					case sqlparser.InsertStr:
-						beforeInsert = append(beforeInsert, triggerPlan)
-					case sqlparser.UpdateStr:
-						beforeUpdate = append(beforeUpdate, triggerPlan)
-					}
-				case sqlparser.AfterStr:
-					// OrderTriggers reverses AFTER, so we must reverse them again
-					switch triggerPlan.TriggerEvent {
-					case sqlparser.DeleteStr:
-						afterDelete = append([]*plan.CreateTrigger{triggerPlan}, afterDelete...)
-					case sqlparser.InsertStr:
-						afterInsert = append([]*plan.CreateTrigger{triggerPlan}, afterInsert...)
-					case sqlparser.UpdateStr:
-						afterUpdate = append([]*plan.CreateTrigger{triggerPlan}, afterUpdate...)
-					}
+			for _, triggerPlan := range beforeTriggers {
+				switch triggerPlan.TriggerEvent {
+				case sqlparser.DeleteStr:
+					beforeDelete = append(beforeDelete, triggerPlan)
+				case sqlparser.InsertStr:
+					beforeInsert = append(beforeInsert, triggerPlan)
+				case sqlparser.UpdateStr:
+					beforeUpdate = append(beforeUpdate, triggerPlan)
+				}
+			}
+			for _, triggerPlan := range afterTriggers {
+				switch triggerPlan.TriggerEvent {
+				case sqlparser.DeleteStr:
+					afterDelete = append(afterDelete, triggerPlan)
+				case sqlparser.InsertStr:
+					afterInsert = append(afterInsert, triggerPlan)
+				case sqlparser.UpdateStr:
+					afterUpdate = append(afterUpdate, triggerPlan)
 				}
 			}
 
+			// These are grouped as such just to use the index as the action order. No special importance on the arrangement,
+			// or the fact that these are slices in a larger slice rather than separate counts.
 			for _, planGroup := range [][]*plan.CreateTrigger{beforeDelete, beforeInsert, beforeUpdate, afterDelete, afterInsert, afterUpdate} {
 				for order, triggerPlan := range planGroup {
 					triggerEvent := strings.ToUpper(triggerPlan.TriggerEvent)
@@ -600,8 +599,8 @@ func triggersRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 						time.Unix(0, 0).UTC(),      // created
 						"",                         // sql_mode
 						"",                         // definer
-						characterSetClient,         // character_set_client
-						collationConnection,        // collation_connection
+						characterSetClient,         // character_set_client //TODO: allow these to be retrieved from integrators
+						collationConnection,        // collation_connection //TODO: allow these to be retrieved from integrators
 						Collation_Default.String(), // database_collation //TODO: add support for databases to set collation
 					})
 				}
