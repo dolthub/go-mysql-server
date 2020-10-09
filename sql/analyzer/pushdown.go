@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -211,6 +212,8 @@ func pushdownToTable(
 		return tableNode, nil
 	}
 
+	var newTableNode sql.Node = tableNode
+
 	if ft, ok := table.(sql.FilteredTable); ok && len(filters[tableNode.Name()]) > 0 {
 		tableFilters := filters[tableNode.Name()]
 		handled := ft.HandledFilters(normalizeExpressions(exprAliases, tableAliases, subtractExprSet(tableFilters, *handledFilters)...))
@@ -222,6 +225,8 @@ func pushdownToTable(
 		}
 
 		table = ft.WithFilters(handled)
+		newTableNode = plan.NewDecoratedNode(newTableNode, fmt.Sprintf("filtered on %v", handled))
+
 		a.Log(
 			"table %q transformed with pushdown of filters, %d filters handled of %d",
 			tableNode.Name(),
@@ -236,6 +241,8 @@ func pushdownToTable(
 			table = pt.WithProjection(projectedFields)
 			usedProjections[tableNode.Name()] = projectedFields
 		}
+
+		newTableNode = plan.NewDecoratedNode(newTableNode, fmt.Sprintf("projected on %v", fieldsByTable[tableNode.Name()]))
 		a.Log("table %q transformed with pushdown of projection", tableNode.Name())
 	}
 
@@ -243,15 +250,44 @@ func pushdownToTable(
 		indexLookup, ok := indexes[tableNode.Name()]
 		if ok {
 			table = it.WithIndexLookup(indexLookup.lookup)
+			newTableNode = plan.NewDecoratedNode(newTableNode, fmt.Sprintf("indexed access on %v", indexLookup.lookup))
 			a.Log("table %q transformed with pushdown of index", tableNode.Name())
 		}
 	}
 
+	var pushedDownFilterExpression sql.Expression
+	if len(filters[tableNode.Name()]) > 0 {
+		tableFilters := filters[tableNode.Name()]
+		leftToHandle := subtractExprSet(tableFilters, *handledFilters)
+		*handledFilters = append(*handledFilters, leftToHandle...)
+		schema := tableNode.Schema()
+		handled, err := FixFieldIndexesOnExpressions(schema, leftToHandle...)
+		if err != nil {
+			return nil, err
+		}
+
+		pushedDownFilterExpression = expression.JoinAnd(handled...)
+
+		a.Log(
+			"pushed down filters to table %q, %d filters handled of %d",
+			tableNode.Name(),
+			len(handled),
+			len(tableFilters),
+		)
+	}
+
 	switch tableNode.(type) {
-	case *plan.ResolvedTable:
-		return plan.NewResolvedTable(table), nil
-	case *plan.TableAlias:
-		return withTable(tableNode, table)
+	case *plan.ResolvedTable, *plan.TableAlias:
+		node, err := withTable(newTableNode, table)
+		if err != nil {
+			return nil, err
+		}
+
+		if pushedDownFilterExpression != nil {
+			return plan.NewFilter(pushedDownFilterExpression, node), nil
+		}
+
+		return node, nil
 	default:
 		return nil, ErrInvalidNodeType.New("pushdown", tableNode)
 	}
@@ -259,7 +295,7 @@ func pushdownToTable(
 
 // Transforms the node given bottom up by setting resolve tables to reference the table given. Returns an error if more
 // than one table was set in this way.
-func withTable(node NameableNode, table sql.Table) (sql.Node, error) {
+func withTable(node sql.Node, table sql.Table) (sql.Node, error) {
 	foundTable := false
 	return plan.TransformUp(node, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
