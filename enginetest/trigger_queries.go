@@ -1314,6 +1314,130 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	// DROP TRIGGER
+	{
+		Name: "drop trigger",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create trigger t1 before insert on a for each row set new.x = new.x * 1",
+			"create trigger t2 before insert on a for each row follows t1 set new.x = new.x * 2",
+			"create trigger t3 before insert on a for each row set new.x = new.x * 3",
+			"create trigger t4 before insert on a for each row precedes t3 set new.x = new.x * 5",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "drop trigger t1",
+				ExpectedErr: sql.ErrTriggerCannotBeDropped,
+			},
+			{
+				Query:       "drop trigger t3",
+				ExpectedErr: sql.ErrTriggerCannotBeDropped,
+			},
+			{
+				Query:    "drop trigger t4",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "drop trigger t3",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "drop trigger if exists t5",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "drop trigger t5",
+				ExpectedErr: sql.ErrTriggerDoesNotExist,
+			},
+			{
+				Query: "select trigger_name from information_schema.triggers order by 1",
+				Expected: []sql.Row{
+					{"t1"},
+					{"t2"},
+				},
+			},
+			{
+				Query:    "drop trigger if exists t2",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select trigger_name from information_schema.triggers order by 1",
+				Expected: []sql.Row{
+					{"t1"},
+				},
+			},
+		},
+	},
+	// DROP TABLE referenced in triggers
+	{
+		Name: "drop table referenced in triggers",
+		SetUpScript: []string{
+			"create table a (w int primary key)",
+			"create table b (x int primary key)",
+			"create table c (y int primary key)",
+			"create table d (z int primary key)",
+			"create trigger t1 before insert on a for each row set new.w = new.w",
+			"create trigger t2 before insert on a for each row set new.w = new.w * 100",
+			"create trigger t3 before insert on b for each row set new.x = new.x",
+			"create trigger t4 before insert on b for each row set new.x = new.x * 100",
+			"create trigger t5 before insert on c for each row set new.y = new.y",
+			"create trigger t6 before insert on c for each row set new.y = new.y * 100",
+			"create trigger t7 before insert on d for each row set new.z = new.z",
+			"create trigger t8 before insert on d for each row set new.z = new.z * 100",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "drop table a",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select trigger_name from information_schema.triggers order by 1",
+				Expected: []sql.Row{
+					{"t3"},
+					{"t4"},
+					{"t5"},
+					{"t6"},
+					{"t7"},
+					{"t8"},
+				},
+			},
+			{
+				Query:    "drop table if exists b, d, e",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select trigger_name from information_schema.triggers order by 1",
+				Expected: []sql.Row{
+					{"t5"},
+					{"t6"},
+				},
+			},
+		},
+	},
+	{
+		Name: "drop table referenced in triggers with follows/precedes",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create trigger t1 before insert on a for each row set new.x = new.x",
+			"create trigger t2 before insert on a for each row follows t1 set new.x = new.x * 10",
+			"create trigger t3 before insert on a for each row precedes t1 set new.x = new.x * 100",
+			"create trigger t4 before insert on a for each row follows t3 set new.x = new.x * 1000",
+			"create trigger t5 before insert on a for each row precedes t2 set new.x = new.x * 10000",
+			"create trigger t6 before insert on a for each row follows t4 set new.x = new.x * 100000",
+			"create trigger t7 before insert on a for each row precedes t1 set new.x = new.x * 1000000",
+			"create trigger t8 before insert on a for each row follows t6 set new.x = new.x * 10000000",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "drop table a",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "show triggers",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var TriggerErrorTests = []ScriptTest{

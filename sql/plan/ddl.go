@@ -257,8 +257,9 @@ func (c *CreateTable) validateDefaultPosition() error {
 // DropTable is a node describing dropping one or more tables
 type DropTable struct {
 	ddlNode
-	names    []string
-	ifExists bool
+	names        []string
+	ifExists     bool
+	triggerNames []string
 }
 
 var _ sql.Node = (*DropTable)(nil)
@@ -278,6 +279,18 @@ func (d *DropTable) WithDatabase(db sql.Database) (sql.Node, error) {
 	nc := *d
 	nc.db = db
 	return &nc, nil
+}
+
+// WithTriggers returns this node but with the given triggers.
+func (d *DropTable) WithTriggers(triggers []string) sql.Node {
+	nd := *d
+	nd.triggerNames = triggers
+	return &nd
+}
+
+// TableNames returns the names of the tables to drop.
+func (d *DropTable) TableNames() []string {
+	return d.names
 }
 
 // RowIter implements the Node interface.
@@ -305,6 +318,20 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		err = droppable.DropTable(ctx, tbl.Name())
 		if err != nil {
 			return nil, err
+		}
+	}
+
+	if len(d.triggerNames) > 0 {
+		//TODO: if dropping any triggers fail, then we'll be left in a state where triggers exist for a table that was dropped
+		triggerDb, ok := d.db.(sql.TriggerDatabase)
+		if !ok {
+			return nil, fmt.Errorf(`tables %v are referenced in triggers %v, but database does not support triggers`, d.names, d.triggerNames)
+		}
+		for _, trigger := range d.triggerNames {
+			err = triggerDb.DropTrigger(ctx, trigger)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
