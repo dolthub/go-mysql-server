@@ -5,9 +5,14 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	. "github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/parse"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 const (
@@ -56,7 +61,7 @@ type informationSchemaTable struct {
 	name    string
 	schema  Schema
 	catalog *Catalog
-	rowIter func(*Context, *Catalog) RowIter
+	rowIter func(*Context, *Catalog) (RowIter, error)
 }
 
 type informationSchemaPartition struct {
@@ -355,7 +360,7 @@ var userPrivilegesSchema = Schema{
 	{Name: "is_grantable", Type: LongText, Default: nil, Nullable: false, Source: UserPrivilegesTableName},
 }
 
-func tablesRowIter(ctx *Context, cat *Catalog) RowIter {
+func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
 		tableType := "BASE TABLE"
@@ -421,16 +426,15 @@ func tablesRowIter(ctx *Context, cat *Catalog) RowIter {
 			})
 		}
 
-		// TODO: fix panics
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 	}
 
-	return RowsToRowIter(rows...)
+	return RowsToRowIter(rows...), nil
 }
 
-func columnsRowIter(ctx *Context, cat *Catalog) RowIter {
+func columnsRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
@@ -476,15 +480,14 @@ func columnsRowIter(ctx *Context, cat *Catalog) RowIter {
 			return true, nil
 		})
 
-		// TODO: fix panics
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 	}
-	return RowsToRowIter(rows...)
+	return RowsToRowIter(rows...), nil
 }
 
-func schemataRowIter(ctx *Context, c *Catalog) RowIter {
+func schemataRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	dbs := c.AllDatabases()
 
 	var rows []Row
@@ -498,10 +501,10 @@ func schemataRowIter(ctx *Context, c *Catalog) RowIter {
 		})
 	}
 
-	return RowsToRowIter(rows...)
+	return RowsToRowIter(rows...), nil
 }
 
-func collationsRowIter(ctx *Context, c *Catalog) RowIter {
+func collationsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	var rows []Row
 	for c := range CollationToMySQLVals {
 		rows = append(rows, Row{
@@ -514,11 +517,101 @@ func collationsRowIter(ctx *Context, c *Catalog) RowIter {
 			c.PadSpace(),
 		})
 	}
-	return RowsToRowIter(rows...)
+	return RowsToRowIter(rows...), nil
 }
 
-func emptyRowIter(ctx *Context, c *Catalog) RowIter {
-	return RowsToRowIter()
+func triggersRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range c.AllDatabases() {
+		triggerDb, ok := db.(TriggerDatabase)
+		if ok {
+			triggers, err := triggerDb.GetTriggers(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var triggerPlans []*plan.CreateTrigger
+			for _, trigger := range triggers {
+				parsedTrigger, err := parse.Parse(ctx, trigger.CreateStatement)
+				if err != nil {
+					return nil, err
+				}
+				triggerPlan, ok := parsedTrigger.(*plan.CreateTrigger)
+				if !ok {
+					return nil, ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
+				}
+				triggerPlans = append(triggerPlans, triggerPlan)
+			}
+
+			beforeTriggers, afterTriggers := analyzer.OrderTriggers(triggerPlans)
+			var beforeDelete []*plan.CreateTrigger
+			var beforeInsert []*plan.CreateTrigger
+			var beforeUpdate []*plan.CreateTrigger
+			var afterDelete []*plan.CreateTrigger
+			var afterInsert []*plan.CreateTrigger
+			var afterUpdate []*plan.CreateTrigger
+			for _, triggerPlan := range beforeTriggers {
+				switch triggerPlan.TriggerEvent {
+				case sqlparser.DeleteStr:
+					beforeDelete = append(beforeDelete, triggerPlan)
+				case sqlparser.InsertStr:
+					beforeInsert = append(beforeInsert, triggerPlan)
+				case sqlparser.UpdateStr:
+					beforeUpdate = append(beforeUpdate, triggerPlan)
+				}
+			}
+			for _, triggerPlan := range afterTriggers {
+				switch triggerPlan.TriggerEvent {
+				case sqlparser.DeleteStr:
+					afterDelete = append(afterDelete, triggerPlan)
+				case sqlparser.InsertStr:
+					afterInsert = append(afterInsert, triggerPlan)
+				case sqlparser.UpdateStr:
+					afterUpdate = append(afterUpdate, triggerPlan)
+				}
+			}
+
+			// These are grouped as such just to use the index as the action order. No special importance on the arrangement,
+			// or the fact that these are slices in a larger slice rather than separate counts.
+			for _, planGroup := range [][]*plan.CreateTrigger{beforeDelete, beforeInsert, beforeUpdate, afterDelete, afterInsert, afterUpdate} {
+				for order, triggerPlan := range planGroup {
+					triggerEvent := strings.ToUpper(triggerPlan.TriggerEvent)
+					triggerTime := strings.ToUpper(triggerPlan.TriggerTime)
+					tableName := triggerPlan.Table.(*plan.UnresolvedTable).Name()
+					_, characterSetClient := ctx.Get("character_set_client")
+					_, collationConnection := ctx.Get("collation_connection")
+					rows = append(rows, Row{
+						"def",                      // trigger_catalog
+						triggerDb.Name(),           // trigger_schema
+						triggerPlan.TriggerName,    // trigger_name
+						triggerEvent,               // event_manipulation
+						"def",                      // event_object_catalog
+						triggerDb.Name(),           // event_object_schema //TODO: table may be in a different db
+						tableName,                  // event_object_table
+						int64(order+1),             // action_order
+						nil,                        // action_condition
+						triggerPlan.BodyString,     // action_statement
+						"ROW",                      // action_orientation
+						triggerTime,                // action_timing
+						nil,                        // action_reference_old_table
+						nil,                        // action_reference_new_table
+						"OLD",                      // action_reference_old_row
+						"NEW",                      // action_reference_new_row
+						time.Unix(0, 0).UTC(),      // created
+						"",                         // sql_mode
+						"",                         // definer
+						characterSetClient,         // character_set_client //TODO: allow these to be retrieved from integrators
+						collationConnection,        // collation_connection //TODO: allow these to be retrieved from integrators
+						Collation_Default.String(), // database_collation //TODO: add support for databases to set collation
+					})
+				}
+			}
+		}
+	}
+	return RowsToRowIter(rows...), nil
+}
+
+func emptyRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+	return RowsToRowIter(), nil
 }
 
 // NewInformationSchemaDatabase creates a new INFORMATION_SCHEMA Database.
@@ -588,7 +681,7 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				name:    TriggersTableName,
 				schema:  triggersSchema,
 				catalog: cat,
-				rowIter: emptyRowIter,
+				rowIter: triggersRowIter,
 			},
 			EventsTableName: &informationSchemaTable{
 				name:    EventsTableName,
@@ -618,7 +711,7 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 	}
 }
 
-func viewRowIter(context *Context, catalog *Catalog) RowIter {
+func viewRowIter(context *Context, catalog *Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range catalog.AllDatabases() {
 		database := db.Name()
@@ -637,7 +730,7 @@ func viewRowIter(context *Context, catalog *Catalog) RowIter {
 			})
 		}
 	}
-	return RowsToRowIter(rows...)
+	return RowsToRowIter(rows...), nil
 }
 
 // Name implements the sql.Database interface.
@@ -686,7 +779,7 @@ func (t *informationSchemaTable) PartitionRows(ctx *Context, partition Partition
 		return RowsToRowIter(), nil
 	}
 
-	return t.rowIter(ctx, t.catalog), nil
+	return t.rowIter(ctx, t.catalog)
 }
 
 // PartitionCount implements the sql.PartitionCounter interface.

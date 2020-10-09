@@ -35,10 +35,11 @@ type CreateTrigger struct {
 	Table               sql.Node
 	Body                sql.Node
 	CreateTriggerString string
+	BodyString          string
 	CreateDatabase      sql.Database
 }
 
-func NewCreateTrigger(triggerName, triggerTime, triggerEvent string, triggerOrder *TriggerOrder, table sql.Node, body sql.Node, createTriggerString string) *CreateTrigger {
+func NewCreateTrigger(triggerName, triggerTime, triggerEvent string, triggerOrder *TriggerOrder, table sql.Node, body sql.Node, createTriggerString, bodyString string) *CreateTrigger {
 	return &CreateTrigger{
 		TriggerName:         triggerName,
 		TriggerTime:         triggerTime,
@@ -46,6 +47,7 @@ func NewCreateTrigger(triggerName, triggerTime, triggerEvent string, triggerOrde
 		TriggerOrder:        triggerOrder,
 		Table:               table,
 		Body:                body,
+		BodyString:          bodyString,
 		CreateTriggerString: createTriggerString,
 	}
 }

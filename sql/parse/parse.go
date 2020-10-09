@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/opentracing/opentracing-go"
@@ -280,6 +281,39 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			sql.UnresolvedDatabase(s.Database),
 			s.IfNotExists,
 		), nil
+	case "create trigger":
+		return plan.NewShowCreateTrigger(
+			sql.UnresolvedDatabase(s.Table.Qualifier.String()),
+			s.Table.Name.String(),
+		), nil
+	case "triggers":
+		var dbName string
+		var filter sql.Expression
+
+		if s.ShowTablesOpt != nil {
+			dbName = s.ShowTablesOpt.DbName
+			if s.ShowTablesOpt.Filter != nil {
+				if s.ShowTablesOpt.Filter.Filter != nil {
+					var err error
+					filter, err = exprToExpression(ctx, s.ShowTablesOpt.Filter.Filter)
+					if err != nil {
+						return nil, err
+					}
+				} else if s.ShowTablesOpt.Filter.Like != "" {
+					filter = expression.NewLike(
+						expression.NewUnresolvedColumn("Table"),
+						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.LongText),
+					)
+				}
+			}
+		}
+
+		var node sql.Node = plan.NewShowTriggers(sql.UnresolvedDatabase(dbName))
+		if filter != nil {
+			node = plan.NewFilter(filter, node)
+		}
+
+		return node, nil
 	case "index":
 		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Database)), nil
 	case sqlparser.KeywordString(sqlparser.TABLES):
@@ -467,6 +501,9 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 		}
 		return convertCreateTable(ctx, c)
 	case sqlparser.DropStr:
+		if c.TriggerSpec != nil {
+			return plan.NewDropTrigger(sql.UnresolvedDatabase(""), c.TriggerSpec.Name, c.IfExists), nil
+		}
 		if len(c.FromViews) != 0 {
 			return convertDropView(ctx, c)
 		}
@@ -487,15 +524,21 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 			PrecedesOrFollows: c.TriggerSpec.Order.PrecedesOrFollows,
 			OtherTriggerName:  c.TriggerSpec.Order.OtherTriggerName,
 		}
+	} else {
+		//TODO: fix vitess->sql.y, in CREATE TRIGGER, if trigger_order_opt evaluates to empty then SubStatementPositionStart swallows the first token of the body
+		beforeSwallowedToken := strings.LastIndexFunc(strings.TrimRightFunc(query[:c.SubStatementPositionStart], unicode.IsSpace), unicode.IsSpace)
+		if beforeSwallowedToken != -1 {
+			c.SubStatementPositionStart = beforeSwallowedToken
+		}
 	}
 
-	bodyStr := query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
+	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 	body, err := convert(ctx, c.TriggerSpec.Body, bodyStr)
 	if err != nil {
 		return nil, err
 	}
 
-	return plan.NewCreateTrigger(c.TriggerSpec.Name, c.TriggerSpec.Time, c.TriggerSpec.Event, triggerOrder, tableNameToUnresolvedTable(c.Table), body, query), nil
+	return plan.NewCreateTrigger(c.TriggerSpec.Name, c.TriggerSpec.Time, c.TriggerSpec.Event, triggerOrder, tableNameToUnresolvedTable(c.Table), body, query, bodyStr), nil
 }
 
 func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {

@@ -91,14 +91,20 @@ var (
 	// ErrDropColumnReferencedInDefault is returned when a column cannot be dropped as it is referenced by another column's default value.
 	ErrDropColumnReferencedInDefault = errors.NewKind(`cannot drop column "%s" as default value of column "%s" references it`)
 
-	// ErrTriggersNotSupported is returned when attepting to create a trigger on a database that doesn't support them
+	// ErrTriggersNotSupported is returned when attempting to create a trigger on a database that doesn't support them
 	ErrTriggersNotSupported = errors.NewKind(`database "%s" doesn't support triggers`)
 
 	// ErrTriggerCreateStatementInvalid is returned when a TriggerDatabase returns a CREATE TRIGGER statement that is invalid
 	ErrTriggerCreateStatementInvalid = errors.NewKind(`Invalid CREATE TRIGGER statement: %s`)
 
+	// ErrTriggerDoesNotExist is returned when a trigger does not exist.
+	ErrTriggerDoesNotExist = errors.NewKind(`trigger "%s" does not exist`)
+
 	// ErrTriggerTableInUse is returned when trigger execution calls for a table that invoked a trigger being updated by it
 	ErrTriggerTableInUse = errors.NewKind("Can't update table %s in stored function/trigger because it is already used by statement which invoked this stored function/trigger")
+
+	// ErrTriggerCannotBeDropped is returned when dropping a trigger would cause another trigger to reference a non-existent trigger.
+	ErrTriggerCannotBeDropped = errors.NewKind(`trigger "%s" cannot be dropped as it is referenced by trigger "%s"`)
 
 	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
 	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)
