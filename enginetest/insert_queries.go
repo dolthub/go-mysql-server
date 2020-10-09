@@ -234,6 +234,53 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
+		"INSERT INTO mytable (i,s) SELECT CHAR_LENGTH(s), concat('numrows: ', count(*)) from mytable group by 1",
+		[]sql.Row{{sql.NewOkResult(2)}},
+		"SELECT * FROM mytable ORDER BY i, s",
+		[]sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{9, "numrows: 2"},
+			{10, "numrows: 1"},
+		},
+	},
+	{
+		"INSERT INTO mytable (i,s) SELECT CHAR_LENGTH(s), concat('numrows: ', count(*)) from mytable group by 1 HAVING CHAR_LENGTH(s)  > 9",
+		[]sql.Row{{sql.NewOkResult(1)}},
+		"SELECT * FROM mytable ORDER BY i, s",
+		[]sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{10, "numrows: 1"},
+		},
+	},
+	{
+		"INSERT INTO mytable (i,s) SELECT i * 2, concat(s,s) from mytable order by 1 desc limit 1",
+		[]sql.Row{{sql.NewOkResult(1)}},
+		"SELECT * FROM mytable ORDER BY i, s",
+		[]sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{6, "third rowthird row"},
+		},
+	},
+	{
+		"INSERT INTO mytable (i,s) SELECT i + 3, concat(s,s) from mytable order by 1 desc",
+		[]sql.Row{{sql.NewOkResult(3)}},
+		"SELECT * FROM mytable ORDER BY i, s",
+		[]sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{4, "first rowfirst row"},
+			{5, "second rowsecond row"},
+			{6, "third rowthird row"},
+		},
+	},
+	{
 		"INSERT INTO mytable (i,s) values (1, 'hello') ON DUPLICATE KEY UPDATE s='hello'",
 		[]sql.Row{{sql.NewOkResult(2)}},
 		"SELECT * FROM mytable WHERE i = 1",
