@@ -433,6 +433,7 @@ type TriggerDatabase interface {
 	CreateTrigger(ctx *Context, definition TriggerDefinition) error
 
 	// DropTrigger is called when a trigger should no longer be stored. The name has already been validated.
+	// Returns ErrTriggerDoesNotExist if the trigger was not found.
 	DropTrigger(ctx *Context, name string) error
 }
 

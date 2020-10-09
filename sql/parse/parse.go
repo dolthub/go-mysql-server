@@ -501,6 +501,9 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 		}
 		return convertCreateTable(ctx, c)
 	case sqlparser.DropStr:
+		if c.TriggerSpec != nil {
+			return plan.NewDropTrigger(sql.UnresolvedDatabase(""), c.TriggerSpec.Name, c.IfExists), nil
+		}
 		if len(c.FromViews) != 0 {
 			return convertDropView(ctx, c)
 		}

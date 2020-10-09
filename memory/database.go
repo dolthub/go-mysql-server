@@ -162,11 +162,16 @@ func (d *Database) CreateTrigger(ctx *sql.Context, definition sql.TriggerDefinit
 }
 
 func (d *Database) DropTrigger(ctx *sql.Context, name string) error {
+	found := false
 	for i, trigger := range d.triggers {
 		if trigger.Name == name {
 			d.triggers = append(d.triggers[:i], d.triggers[i+1:]...)
+			found = true
 			break
 		}
+	}
+	if !found {
+		return sql.ErrTriggerDoesNotExist.New(name)
 	}
 	return nil
 }

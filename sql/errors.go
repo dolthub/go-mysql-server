@@ -103,6 +103,9 @@ var (
 	// ErrTriggerTableInUse is returned when trigger execution calls for a table that invoked a trigger being updated by it
 	ErrTriggerTableInUse = errors.NewKind("Can't update table %s in stored function/trigger because it is already used by statement which invoked this stored function/trigger")
 
+	// ErrTriggerCannotBeDropped is returned when dropping a trigger would cause another trigger to reference a non-existent trigger.
+	ErrTriggerCannotBeDropped = errors.NewKind(`trigger "%s" cannot be dropped as it is referenced by trigger "%s"`)
+
 	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
 	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)
 
