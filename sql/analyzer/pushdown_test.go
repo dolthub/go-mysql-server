@@ -12,10 +12,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func TestPushdownProjectionAndFilters(t *testing.T) {
-	require := require.New(t)
-	f := getRule("pushdown_filters")
-
+func TestPushdownProjection(t *testing.T) {
 	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
@@ -36,104 +33,199 @@ func TestPushdownProjectionAndFilters(t *testing.T) {
 	catalog.AddDatabase(db)
 	a := NewDefault(catalog)
 
-	node := plan.NewProject(
-		[]sql.Expression{
-			expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
-		},
-		plan.NewFilter(
-			expression.NewAnd(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-					expression.NewLiteral(3.14, sql.Float64),
-				),
-				expression.NewIsNull(
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
-				),
-			),
-			plan.NewCrossJoin(
-				plan.NewResolvedTable(table),
-				plan.NewResolvedTable(table2),
-			),
-		),
-	)
-
-	expected := plan.NewProject(
-		[]sql.Expression{
-			expression.NewGetFieldWithTable(1, sql.Text, "mytable2", "t2", false),
-		},
-		plan.NewCrossJoin(
-			plan.NewResolvedTable(
-				table.WithFilters([]sql.Expression{
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-						expression.NewLiteral(3.14, sql.Float64),
+	tests := []analyzerFnTestCase {
+		{
+			name: "pushdown projections to tables",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
+				},
+				plan.NewFilter(
+					expression.NewOr(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+						expression.NewIsNull(
+							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+						),
 					),
-				}).(*memory.Table).WithProjection([]string{"f"}),
-			),
-			plan.NewResolvedTable(
-				table2.WithFilters([]sql.Expression{
-					expression.NewIsNull(
-						expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+					plan.NewCrossJoin(
+						plan.NewResolvedTable(table),
+						plan.NewResolvedTable(table2),
 					),
-				}).(*memory.Table).WithProjection([]string{"t2", "i2"}),
+				),
 			),
-		),
-	)
-
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
-	result, err := f.Apply(ctx, a, node, nil)
-	require.NoError(err)
-	require.Equal(expected, result)
-
-	node = plan.NewProject(
-		[]sql.Expression{
-			expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(1, sql.Text, "mytable2", "t2", false),
+				},
+				plan.NewFilter(
+					expression.NewOr(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(0, sql.Float64, "mytable", "f", false),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+						expression.NewIsNull(
+							expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "i2", false),
+						),
+					),
+					plan.NewCrossJoin(
+						plan.NewDecoratedNode(
+							plan.NewResolvedTable(
+								table.WithProjection([]string{"f"}),
+							),
+							"projected on [f]",
+						),
+						plan.NewDecoratedNode(
+							plan.NewResolvedTable(
+								table2.WithProjection([]string{"t2", "i2"}),
+							),
+							"projected on [t2 i2]",
+						),
+					),
+				),
+			),
 		},
-		plan.NewFilter(
-			expression.NewOr(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-					expression.NewLiteral(3.14, sql.Float64),
-				),
-				expression.NewIsNull(
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+		{
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
+				},
+				plan.NewCrossJoin(
+					plan.NewDecoratedNode(
+						plan.NewResolvedTable(
+							table.WithFilters([]sql.Expression{
+								expression.NewEquals(
+									expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+									expression.NewLiteral(3.14, sql.Float64),
+								),
+							}),
+						),
+						"filtered on [mytable.f = 3.14]",
+					),
+					plan.NewDecoratedNode(
+						plan.NewResolvedTable(
+							table2.WithFilters([]sql.Expression{
+								expression.NewIsNull(
+									expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+								),
+							}),
+						),
+						"filtered on [mytable2.i2 IS NULL]",
+					),
 				),
 			),
-			plan.NewCrossJoin(
-				plan.NewResolvedTable(table),
-				plan.NewResolvedTable(table2),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
+				},
+				plan.NewCrossJoin(
+					plan.NewDecoratedNode(
+						plan.NewResolvedTable(
+							table.WithFilters([]sql.Expression{
+								expression.NewEquals(
+									expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+									expression.NewLiteral(3.14, sql.Float64),
+								),
+							}),
+						),
+						"filtered on [mytable.f = 3.14]",
+					),
+					plan.NewDecoratedNode(
+						plan.NewResolvedTable(
+							table2.WithFilters([]sql.Expression{
+								expression.NewIsNull(
+									expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+								),
+							}),
+						),
+						"filtered on [mytable2.i2 IS NULL]",
+					),
+				),
 			),
-		),
-	)
-
-	expected = plan.NewProject(
-		[]sql.Expression{
-			expression.NewGetFieldWithTable(1, sql.Text, "mytable2", "t2", false),
 		},
-		plan.NewFilter(
-			expression.NewOr(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Float64, "mytable", "f", false),
-					expression.NewLiteral(3.14, sql.Float64),
-				),
-				expression.NewIsNull(
-					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "i2", false),
-				),
-			),
-			plan.NewCrossJoin(
-				plan.NewResolvedTable(
-					table.WithProjection([]string{"f"}),
-				),
-				plan.NewResolvedTable(
-					table2.WithProjection([]string{"t2", "i2"}),
-				),
-			),
-		),
-	)
+	}
 
-	result, err = f.Apply(ctx, a, node, nil)
-	require.NoError(err)
-	require.Equal(expected, result)
+	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule("pushdown_projections"))
+}
+
+func TestPushdownFilter(t *testing.T) {
+	table := memory.NewTable("mytable", sql.Schema{
+		{Name: "i", Type: sql.Int32, Source: "mytable"},
+		{Name: "f", Type: sql.Float64, Source: "mytable"},
+		{Name: "t", Type: sql.Text, Source: "mytable"},
+	})
+
+	table2 := memory.NewTable("mytable2", sql.Schema{
+		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
+		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
+		{Name: "t2", Type: sql.Text, Source: "mytable2"},
+	})
+
+	db := memory.NewDatabase("mydb")
+	db.AddTable("mytable", table)
+	db.AddTable("mytable2", table2)
+
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
+	a := NewDefault(catalog)
+
+	tests := []analyzerFnTestCase{
+		{
+			name: "pushdown filter to tables",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
+				},
+				plan.NewFilter(
+					expression.NewAnd(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+						expression.NewIsNull(
+							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+						),
+					),
+					plan.NewCrossJoin(
+						plan.NewResolvedTable(table),
+						plan.NewResolvedTable(table2),
+					),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
+				},
+				plan.NewCrossJoin(
+					plan.NewDecoratedNode(
+						plan.NewResolvedTable(
+							table.WithFilters([]sql.Expression{
+								expression.NewEquals(
+									expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+									expression.NewLiteral(3.14, sql.Float64),
+								),
+							}),
+						),
+						"filtered on [mytable.f = 3.14]",
+					),
+					plan.NewDecoratedNode(
+						plan.NewResolvedTable(
+							table2.WithFilters([]sql.Expression{
+								expression.NewIsNull(
+									expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+								),
+							}),
+						),
+						"filtered on [mytable2.i2 IS NULL]",
+					),
+				),
+			),
+		},
+	}
+
+	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule("pushdown_filters"))
 }
 
 func TestPushdownIndexable(t *testing.T) {
