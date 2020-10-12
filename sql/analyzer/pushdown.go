@@ -44,24 +44,10 @@ func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, nil
 	}
 
-	// First step is to find all col exprs and group them by the table they mention.
-	// Even if they appear multiple times, only the first one will be used.
-	filters := getFiltersByTable(ctx, n)
-
-	indexes, err := getIndexesByTable(ctx, a, n)
-	if err != nil {
-		return nil, err
-	}
-
-	exprAliases := getExpressionAliases(n)
-	tableAliases, err := getTableAliases(n)
-	if err != nil {
-		return nil, err
-	}
-
-	return transformPushdownFilters(a, n, filters, indexes, exprAliases, tableAliases)
+	return transformPushdownProjections(ctx , a, n)
 }
 
+// canDoPushdown returns whether the node given can safely be analyzed for pushdown
 func canDoPushdown(n sql.Node, scope *Scope, a *Analyzer) bool {
 	if !n.Resolved() {
 		return false
@@ -117,7 +103,6 @@ func canDoPushdown(n sql.Node, scope *Scope, a *Analyzer) bool {
 
 	return true
 }
-
 
 func transformPushdownFilters(
 		a *Analyzer,
@@ -337,7 +322,6 @@ func pushdownProjectionsToTable(
 		return nil, ErrInvalidNodeType.New("pushdown", tableNode)
 	}
 }
-
 
 // removePushedDownPredicates removes all handled filter predicates from the filter given and returns. If all
 // predicates have been handled, it replaces the filter with its child.
