@@ -245,6 +245,8 @@ var InsertQueries = []WriteQueryTest{
 			{10, "numrows: 1"},
 		},
 	},
+	// TODO: this doesn't match MySQL. MySQL requires giving an alias to the expression to use it in a HAVING clause,
+	//  but that causes an error in our engine. Needs work
 	{
 		"INSERT INTO mytable (i,s) SELECT CHAR_LENGTH(s), concat('numrows: ', count(*)) from mytable group by 1 HAVING CHAR_LENGTH(s)  > 9",
 		[]sql.Row{{sql.NewOkResult(1)}},
