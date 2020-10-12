@@ -71,10 +71,10 @@ func TestPushdownProjection(t *testing.T) {
 						),
 					),
 					plan.NewCrossJoin(
-						plan.NewDecoratedNode("projected on [f]", plan.NewResolvedTable(
+						plan.NewDecoratedNode("Projected table access on [f]", plan.NewResolvedTable(
 							table.WithProjection([]string{"f"}),
 						)),
-						plan.NewDecoratedNode("projected on [t2 i2]", plan.NewResolvedTable(
+						plan.NewDecoratedNode("Projected table access on [t2 i2]", plan.NewResolvedTable(
 							table2.WithProjection([]string{"t2", "i2"}),
 						)),
 					),
@@ -88,7 +88,7 @@ func TestPushdownProjection(t *testing.T) {
 					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode("filtered on [mytable.f = 3.14]", plan.NewResolvedTable(
+					plan.NewDecoratedNode("Filtered table access on [mytable.f = 3.14]", plan.NewResolvedTable(
 						table.WithFilters([]sql.Expression{
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
@@ -96,7 +96,7 @@ func TestPushdownProjection(t *testing.T) {
 							),
 						}),
 					)),
-					plan.NewDecoratedNode("filtered on [mytable2.i2 IS NULL]", plan.NewResolvedTable(
+					plan.NewDecoratedNode("Filtered table access on [mytable2.i2 IS NULL]", plan.NewResolvedTable(
 						table2.WithFilters([]sql.Expression{
 							expression.NewIsNull(
 								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
@@ -110,7 +110,7 @@ func TestPushdownProjection(t *testing.T) {
 					expression.NewGetFieldWithTable(3, sql.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode("filtered on [mytable.f = 3.14]", plan.NewResolvedTable(
+					plan.NewDecoratedNode("Filtered table access on [mytable.f = 3.14]", plan.NewResolvedTable(
 						table.WithFilters([]sql.Expression{
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
@@ -118,14 +118,14 @@ func TestPushdownProjection(t *testing.T) {
 							),
 						}),
 					)),
-					plan.NewDecoratedNode("filtered on [mytable2.i2 IS NULL]",
-						plan.NewDecoratedNode("projected on [t2]",
+					plan.NewDecoratedNode("Filtered table access on [mytable2.i2 IS NULL]",
+						plan.NewDecoratedNode("Projected table access on [t2]",
 							plan.NewResolvedTable(
 								table2.WithFilters([]sql.Expression{
 									expression.NewIsNull(
 										expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
 									),
-								}),
+								}).(*memory.Table).WithProjection([]string{"t2"}),
 							),
 						),
 					),
@@ -186,7 +186,7 @@ func TestPushdownFilter(t *testing.T) {
 					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode("filtered on [mytable.f = 3.14]", plan.NewResolvedTable(
+					plan.NewDecoratedNode("Filtered table access on [mytable.f = 3.14]", plan.NewResolvedTable(
 						table.WithFilters([]sql.Expression{
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
@@ -194,7 +194,7 @@ func TestPushdownFilter(t *testing.T) {
 							),
 						}),
 					)),
-					plan.NewDecoratedNode("filtered on [mytable2.i2 IS NULL]", plan.NewResolvedTable(
+					plan.NewDecoratedNode("Filtered table access on [mytable2.i2 IS NULL]", plan.NewResolvedTable(
 						table2.WithFilters([]sql.Expression{
 							expression.NewIsNull(
 								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
