@@ -1,7 +1,6 @@
 package analyzer
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -267,20 +266,38 @@ func TestPushdownFilter(t *testing.T) {
 	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule("pushdown_filters"))
 }
 
-func TestPushdownIndexable(t *testing.T) {
+func TestPushdownIndex(t *testing.T) {
 	require := require.New(t)
 
 	table := memory.NewTable("mytable", sql.Schema{
-		{Name: "i", Type: sql.Int32, Source: "mytable"},
+		{Name: "i", Type: sql.Int32, Source: "mytable", PrimaryKey: true},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
 	})
 
+	table.EnablePrimaryKeyIndexes()
+	err := table.CreateIndex(sql.NewEmptyContext(), "f", sql.IndexUsing_BTree, sql.IndexConstraint_None, []sql.IndexColumn{
+		{
+			Name:   "f",
+			Length: 0,
+		},
+	}, "")
+	require.NoError(err)
+
+	table1Idxes, err := table.GetIndexes(sql.NewEmptyContext())
+	require.NoError(err)
+	idx1, idx2 := table1Idxes[0], table1Idxes[1]
+
 	table2 := memory.NewTable("mytable2", sql.Schema{
-		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
+		{Name: "i2", Type: sql.Int32, Source: "mytable2", PrimaryKey: true},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
 	})
+
+	table2.EnablePrimaryKeyIndexes()
+	table2Idxes, err := table2.GetIndexes(sql.NewEmptyContext())
+	require.NoError(err)
+	idx3 := table2Idxes[0]
 
 	db := memory.NewDatabase("")
 	db.AddTable("mytable", table)
@@ -288,132 +305,76 @@ func TestPushdownIndexable(t *testing.T) {
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
-	idxReg := sql.NewIndexRegistry()
+	a := NewDefault(catalog)
 
-	idx1 := &memory.MergeableIndex{
-		TableName: "mytable",
-		Exprs: []sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-		},
-	}
-	done, ready, err := idxReg.AddIndex(idx1)
-	require.NoError(err)
-	close(done)
-	<-ready
-
-	idx2 := &memory.MergeableIndex{
-		TableName: "mytable",
-		Exprs: []sql.Expression{
-			expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-		},
-	}
-	done, ready, err = idxReg.AddIndex(idx2)
-	require.NoError(err)
-	close(done)
-	<-ready
-
-	idx3 := &memory.MergeableIndex{
-		TableName: "mytable2",
-		Exprs: []sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
-		},
-	}
-	done, ready, err = idxReg.AddIndex(idx3)
-
-	require.NoError(err)
-	close(done)
-	<-ready
-
-	a := withoutProcessTracking(NewDefault(catalog))
-
-	node := plan.NewProject(
-		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("mytable", "i"),
-		},
-		plan.NewFilter(
-			expression.NewAnd(
-				expression.NewAnd(
-					expression.NewEquals(
-						expression.NewUnresolvedQualifiedColumn("mytable", "f"),
-						expression.NewLiteral(3.14, sql.Float64),
+	tests := []analyzerFnTestCase{
+		{
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+				},
+				plan.NewFilter(
+					expression.NewAnd(
+						expression.NewAnd(
+							expression.NewEquals(
+								expression.NewUnresolvedQualifiedColumn("mytable", "f"),
+								expression.NewLiteral(3.14, sql.Float64),
+							),
+							expression.NewGreaterThan(
+								expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+								expression.NewLiteral(1, sql.Int32),
+							),
+						),
+						expression.NewNot(
+							expression.NewEquals(
+								expression.NewUnresolvedQualifiedColumn("mytable2", "i2"),
+								expression.NewLiteral(2, sql.Int32),
+							),
+						),
 					),
-					expression.NewGreaterThan(
-						expression.NewUnresolvedQualifiedColumn("mytable", "i"),
-						expression.NewLiteral(1, sql.Int32),
-					),
-				),
-				expression.NewNot(
-					expression.NewEquals(
-						expression.NewUnresolvedQualifiedColumn("mytable2", "i2"),
-						expression.NewLiteral(2, sql.Int32),
+					plan.NewCrossJoin(
+						plan.NewResolvedTable(table),
+						plan.NewResolvedTable(table2),
 					),
 				),
 			),
-			plan.NewCrossJoin(
-				plan.NewResolvedTable(table),
-				plan.NewResolvedTable(table2),
-			),
-		),
-	)
-
-	expected := plan.NewProject(
-		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-		},
-		plan.NewCrossJoin(
-			plan.NewResolvedTable(
-				table.WithFilters([]sql.Expression{
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-						expression.NewLiteral(3.14, sql.Float64),
-					),
-					expression.NewGreaterThan(
-						expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-						expression.NewLiteral(1, sql.Int32),
-					),
-				}).(*memory.Table).
-					WithProjection([]string{"i", "f"}).(*memory.Table).
-					WithIndexLookup(
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+				},
+				plan.NewCrossJoin(
+					plan.NewResolvedTable(table.WithIndexLookup(
 						// TODO: These two indexes should not be mergeable, and fetching the values of
 						//  them will not yield correct results with the current implementation of these indexes.
 						&memory.MergedIndexLookup{
 							Intersections: []sql.IndexLookup{
 								&memory.MergeableIndexLookup{
 									Key:   []interface{}{float64(3.14)},
-									Index: idx2,
+									Index: idx2.(memory.ExpressionsIndex),
 								},
 								&memory.DescendIndexLookup{
 									Gt:    []interface{}{1},
-									Index: idx1,
+									Index: idx1.(memory.ExpressionsIndex),
 								},
 							},
-							Index: idx2,
+							Index: idx2.(memory.ExpressionsIndex),
 						},
 					),
-			),
-			plan.NewResolvedTable(
-				table2.WithFilters([]sql.Expression{
-					expression.NewNot(
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
-							expression.NewLiteral(2, sql.Int32),
-						),
 					),
-				}).(*memory.Table).
-					WithProjection([]string{"i2"}).(*memory.Table).
-					WithIndexLookup(&memory.NegateIndexLookup{
-						Lookup: &memory.MergeableIndexLookup{
-							Key:   []interface{}{2},
-							Index: idx3,
-						},
-						Index: idx3,
-					}),
+					plan.NewResolvedTable(
+						table2.WithIndexLookup(&memory.NegateIndexLookup{
+							Lookup: &memory.MergeableIndexLookup{
+								Key:   []interface{}{2},
+								Index: idx3.(memory.ExpressionsIndex),
+							},
+							Index: idx3.(memory.ExpressionsIndex),
+						}),
+					),
+				),
 			),
-		),
-	)
+		},
+	}
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry()))
-	result, err := a.Analyze(ctx, node, nil)
-	require.NoError(err)
-	require.Equal(expected, result)
+
+	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule("pushdown_filters"))
 }
