@@ -628,7 +628,7 @@ func (t *Table) String() string {
 		kind = ": " + kind
 	}
 
-	_ = p.WriteNode("Table(%s)%s", t.name, kind)
+	_ = p.WriteNode("%s%s", t.name, kind)
 	return p.String()
 }
 

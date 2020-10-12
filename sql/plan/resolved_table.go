@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -19,6 +20,14 @@ func NewResolvedTable(table sql.Table) *ResolvedTable {
 // Resolved implements the Resolvable interface.
 func (*ResolvedTable) Resolved() bool {
 	return true
+}
+
+func (t *ResolvedTable) String() string {
+	return fmt.Sprintf("Table(%s)", t.Table.Name())
+}
+
+func (t *ResolvedTable) DebugString() string {
+	return fmt.Sprintf("Table(%s)", sql.DebugString(t.Table))
 }
 
 // Children implements the Node interface.

@@ -71,76 +71,63 @@ func TestPushdownProjection(t *testing.T) {
 						),
 					),
 					plan.NewCrossJoin(
-						plan.NewDecoratedNode(
-							plan.NewResolvedTable(
-								table.WithProjection([]string{"f"}),
-							),
-							"projected on [f]",
-						),
-						plan.NewDecoratedNode(
-							plan.NewResolvedTable(
-								table2.WithProjection([]string{"t2", "i2"}),
-							),
-							"projected on [t2 i2]",
-						),
+						plan.NewDecoratedNode("projected on [f]", plan.NewResolvedTable(
+							table.WithProjection([]string{"f"}),
+						)),
+						plan.NewDecoratedNode("projected on [t2 i2]", plan.NewResolvedTable(
+							table2.WithProjection([]string{"t2", "i2"}),
+						)),
 					),
 				),
 			),
 		},
 		{
+			name: "pushing projections down onto a filtered table",
 			node: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode(
-						plan.NewResolvedTable(
-							table.WithFilters([]sql.Expression{
-								expression.NewEquals(
-									expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-									expression.NewLiteral(3.14, sql.Float64),
-								),
-							}),
-						),
-						"filtered on [mytable.f = 3.14]",
-					),
-					plan.NewDecoratedNode(
-						plan.NewResolvedTable(
-							table2.WithFilters([]sql.Expression{
-								expression.NewIsNull(
-									expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
-								),
-							}),
-						),
-						"filtered on [mytable2.i2 IS NULL]",
-					),
+					plan.NewDecoratedNode("filtered on [mytable.f = 3.14]", plan.NewResolvedTable(
+						table.WithFilters([]sql.Expression{
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+								expression.NewLiteral(3.14, sql.Float64),
+							),
+						}),
+					)),
+					plan.NewDecoratedNode("filtered on [mytable2.i2 IS NULL]", plan.NewResolvedTable(
+						table2.WithFilters([]sql.Expression{
+							expression.NewIsNull(
+								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+							),
+						}),
+					)),
 				),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(3, sql.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode(
-						plan.NewResolvedTable(
-							table.WithFilters([]sql.Expression{
-								expression.NewEquals(
-									expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-									expression.NewLiteral(3.14, sql.Float64),
-								),
-							}),
+					plan.NewDecoratedNode("filtered on [mytable.f = 3.14]", plan.NewResolvedTable(
+						table.WithFilters([]sql.Expression{
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+								expression.NewLiteral(3.14, sql.Float64),
+							),
+						}),
+					)),
+					plan.NewDecoratedNode("filtered on [mytable2.i2 IS NULL]",
+						plan.NewDecoratedNode("projected on [t2]",
+							plan.NewResolvedTable(
+								table2.WithFilters([]sql.Expression{
+									expression.NewIsNull(
+										expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+									),
+								}),
+							),
 						),
-						"filtered on [mytable.f = 3.14]",
-					),
-					plan.NewDecoratedNode(
-						plan.NewResolvedTable(
-							table2.WithFilters([]sql.Expression{
-								expression.NewIsNull(
-									expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
-								),
-							}),
-						),
-						"filtered on [mytable2.i2 IS NULL]",
 					),
 				),
 			),
@@ -199,27 +186,21 @@ func TestPushdownFilter(t *testing.T) {
 					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode(
-						plan.NewResolvedTable(
-							table.WithFilters([]sql.Expression{
-								expression.NewEquals(
-									expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-									expression.NewLiteral(3.14, sql.Float64),
-								),
-							}),
-						),
-						"filtered on [mytable.f = 3.14]",
-					),
-					plan.NewDecoratedNode(
-						plan.NewResolvedTable(
-							table2.WithFilters([]sql.Expression{
-								expression.NewIsNull(
-									expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
-								),
-							}),
-						),
-						"filtered on [mytable2.i2 IS NULL]",
-					),
+					plan.NewDecoratedNode("filtered on [mytable.f = 3.14]", plan.NewResolvedTable(
+						table.WithFilters([]sql.Expression{
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+								expression.NewLiteral(3.14, sql.Float64),
+							),
+						}),
+					)),
+					plan.NewDecoratedNode("filtered on [mytable2.i2 IS NULL]", plan.NewResolvedTable(
+						table2.WithFilters([]sql.Expression{
+							expression.NewIsNull(
+								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+							),
+						}),
+					)),
 				),
 			),
 		},

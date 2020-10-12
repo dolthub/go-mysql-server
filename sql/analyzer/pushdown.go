@@ -203,7 +203,7 @@ func pushdownFiltersToTable(
 		indexLookup, ok := indexes[tableNode.Name()]
 		if ok {
 			table = it.WithIndexLookup(indexLookup.lookup)
-			newTableNode = plan.NewDecoratedNode(newTableNode, fmt.Sprintf("indexed access on %v", indexLookup.lookup))
+			newTableNode = plan.NewDecoratedNode(fmt.Sprintf("indexed access on %v", indexLookup.lookup), newTableNode)
 			a.Log("table %q transformed with pushdown of index", tableNode.Name())
 		}
 	}
@@ -219,7 +219,7 @@ func pushdownFiltersToTable(
 		}
 
 		table = ft.WithFilters(handled)
-		newTableNode = plan.NewDecoratedNode(newTableNode, fmt.Sprintf("filtered on %v", handled))
+		newTableNode = plan.NewDecoratedNode(fmt.Sprintf("filtered on %v", handled), newTableNode)
 
 		a.Log(
 			"table %q transformed with pushdown of filters, %d filters handled of %d",
@@ -306,7 +306,7 @@ func pushdownProjectionsToTable(
 			usedProjections[tableNode.Name()] = projectedFields
 		}
 
-		newTableNode = plan.NewDecoratedNode(newTableNode, fmt.Sprintf("projected on %v", fieldsByTable[tableNode.Name()]))
+		newTableNode = plan.NewDecoratedNode(fmt.Sprintf("projected on %v", fieldsByTable[tableNode.Name()]), newTableNode)
 		a.Log("table %q transformed with pushdown of projection", tableNode.Name())
 	}
 
