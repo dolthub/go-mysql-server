@@ -204,6 +204,64 @@ func TestPushdownFilter(t *testing.T) {
 				),
 			),
 		},
+		{
+			name: "push filters down onto projected table",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(1, sql.Text, "mytable2", "t2", false),
+				},
+				plan.NewFilter(
+					expression.NewAnd(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(0, sql.Float64, "mytable", "f", false),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+						expression.NewIsNull(
+							expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "i2", false),
+						),
+					),
+					plan.NewCrossJoin(
+						plan.NewDecoratedNode("Projected table access on [f]",
+							plan.NewResolvedTable(
+								table.WithProjection([]string{"f"}),
+							),
+						),
+						plan.NewDecoratedNode("Projected table access on [t2 i2]",
+							plan.NewResolvedTable(
+								table2.WithProjection([]string{"t2", "i2"}),
+							),
+						),
+					),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(1, sql.Text, "mytable2", "t2", false),
+				},
+				plan.NewCrossJoin(
+					plan.NewDecoratedNode("Projected table access on [f]",
+						plan.NewDecoratedNode("Filtered table access on [mytable.f = 3.14]",
+							plan.NewResolvedTable(
+								table.WithProjection([]string{"f"}).
+								(*memory.Table).WithFilters([]sql.Expression{
+									eq(expression.NewGetFieldWithTable(0, sql.Float64, "mytable", "f", false), expression.NewLiteral(3.14, sql.Float64)),
+								}),
+							),
+						),
+					),
+					plan.NewDecoratedNode("Projected table access on [t2 i2]",
+						plan.NewDecoratedNode("Filtered table access on [mytable2.i2 IS NULL]",
+							plan.NewResolvedTable(
+								table2.WithProjection([]string{"t2", "i2"}).
+								(*memory.Table).WithFilters([]sql.Expression{
+									expression.NewIsNull(expression.NewGetFieldWithTable(1, sql.Int32, "mytable2", "i2", false)),
+								}),
+							),
+						),
+					),
+				),
+			),
+		},
 	}
 
 	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule("pushdown_filters"))

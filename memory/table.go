@@ -7,6 +7,7 @@ import (
 	"io"
 	"sort"
 	"strconv"
+	"strings"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 
@@ -618,6 +619,38 @@ func (t *Table) String() string {
 
 	if len(t.filters) > 0 {
 		kind += "Filtered "
+	}
+
+	if t.lookup != nil {
+		kind += "Indexed"
+	}
+
+	if kind != "" {
+		kind = ": " + kind
+	}
+
+	_ = p.WriteNode("%s%s", t.name, kind)
+	return p.String()
+}
+
+func (t *Table) DebugString() string {
+	p := sql.NewTreePrinter()
+
+	kind := ""
+	if len(t.columns) > 0 {
+		var projections []string
+		for _, column := range t.columns {
+			projections = append(projections, fmt.Sprintf("%d", column))
+		}
+		kind += fmt.Sprintf("Projected on [%s] ", strings.Join(projections, ", "))
+	}
+
+	if len(t.filters) > 0 {
+		var filters []string
+		for _, filter := range t.filters {
+			filters = append(filters, fmt.Sprintf("%s", sql.DebugString(filter)))
+		}
+		kind += fmt.Sprintf("Filtered on [%s]", strings.Join(filters, ", "))
 	}
 
 	if t.lookup != nil {
