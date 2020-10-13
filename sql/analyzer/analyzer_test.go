@@ -66,11 +66,11 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		plan.NewUnresolvedTable("mytable", ""),
 	)
 	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
-	var expected sql.Node = plan.NewResolvedTable(
+	var expected sql.Node = plan.NewDecoratedNode("Projected table access on [i]", plan.NewResolvedTable(
 		table.WithProjection([]string{"i"}),
-	)
+	))
 	require.NoError(err)
-	require.Equal(expected, analyzed)
+	assertNodesEqualWithDiff(t, expected, analyzed)
 
 	notAnalyzed = plan.NewDescribe(
 		plan.NewUnresolvedTable("mytable", ""),
@@ -80,7 +80,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		plan.NewResolvedTable(table),
 	)
 	require.NoError(err)
-	require.Equal(expected, analyzed)
+	assertNodesEqualWithDiff(t, expected, analyzed)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
@@ -88,10 +88,9 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	require.NoError(err)
-	require.Equal(
-		plan.NewResolvedTable(table.WithProjection([]string{"i", "t"})),
-		analyzed,
-	)
+
+	expected = plan.NewDecoratedNode("Projected table access on [i t]", plan.NewResolvedTable( table.WithProjection([]string{"i", "t"})))
+	assertNodesEqualWithDiff(t, expected, analyzed)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
@@ -102,10 +101,9 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	require.NoError(err)
-	require.Equal(
-		plan.NewResolvedTable(table.WithProjection([]string{"i", "t"})),
-		analyzed,
-	)
+
+	expected = plan.NewDecoratedNode("Projected table access on [i t]", plan.NewResolvedTable(table.WithProjection([]string{"i", "t"})))
+	assertNodesEqualWithDiff(t, expected, analyzed)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{
@@ -118,10 +116,11 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		[]sql.Expression{
 			expression.NewAlias("foo", expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false)),
 		},
-		plan.NewResolvedTable(table.WithProjection([]string{"i"})),
+		plan.NewDecoratedNode("Projected table access on [i]",
+			plan.NewResolvedTable(table.WithProjection([]string{"i"}))),
 	)
 	require.NoError(err)
-	require.Equal(expected, analyzed)
+	assertNodesEqualWithDiff(t, expected, analyzed)
 
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{expression.NewUnresolvedColumn("i")},
@@ -134,18 +133,21 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		),
 	)
 	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
-	expected = plan.NewResolvedTable(
-		table.WithFilters([]sql.Expression{
-			expression.NewEquals(
-				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-				expression.NewLiteral(int32(1), sql.Int32),
+	expected = plan.NewDecoratedNode("Filtered table access on [mytable.i = 1]",
+		plan.NewDecoratedNode("Projected table access on [i]",
+			plan.NewResolvedTable(
+				table.WithFilters([]sql.Expression{
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
+						expression.NewLiteral(int32(1), sql.Int32),
+					),
+				}).(*memory.PushdownTable).WithProjection([]string{"i"}),
 			),
-		}).(*memory.PushdownTable).WithProjection([]string{"i"}),
+		),
 	)
 	require.NoError(err)
-	require.Equal(expected, analyzed)
+	assertNodesEqualWithDiff(t, expected, analyzed)
 
-	//
 	notAnalyzed = plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("i"),
@@ -158,11 +160,11 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	)
 	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	expected = plan.NewCrossJoin(
-		plan.NewResolvedTable(table.WithProjection([]string{"i"})),
-		plan.NewResolvedTable(table2.WithProjection([]string{"i2"})),
+		plan.NewDecoratedNode("Projected table access on [i]", plan.NewResolvedTable(table.WithProjection([]string{"i"}))),
+		plan.NewDecoratedNode("Projected table access on [i2]", plan.NewResolvedTable(table2.WithProjection([]string{"i2"}))),
 	)
 	require.NoError(err)
-	require.Equal(expected, analyzed)
+	assertNodesEqualWithDiff(t, expected, analyzed)
 
 	notAnalyzed = plan.NewLimit(int64(1),
 		plan.NewProject(
@@ -175,10 +177,11 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	expected = plan.NewLimit(
 		int64(1),
-		plan.NewResolvedTable(table.WithProjection([]string{"i"})),
+		plan.NewDecoratedNode("Projected table access on [i]",
+			plan.NewResolvedTable(table.WithProjection([]string{"i"}))),
 	)
 	require.NoError(err)
-	require.Equal(expected, analyzed)
+	assertNodesEqualWithDiff(t, expected, analyzed)
 }
 
 func TestMaxIterations(t *testing.T) {
@@ -326,14 +329,14 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 		},
 		plan.NewInnerJoin(
 			plan.NewInnerJoin(
-				plan.NewResolvedTable(table.WithProjection([]string{"i", "f", "t"})),
-				plan.NewResolvedTable(table2.WithProjection([]string{"f2", "i2", "t2"})),
+				plan.NewDecoratedNode("Projected table access on [i f t]", plan.NewResolvedTable(table.WithProjection([]string{"i", "f", "t"}))),
+				plan.NewDecoratedNode("Projected table access on [f2 i2 t2]", plan.NewResolvedTable(table2.WithProjection([]string{"f2", "i2", "t2"}))),
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 					expression.NewGetFieldWithTable(4, sql.Int32, "mytable2", "i2", false),
 				),
 			),
-			plan.NewResolvedTable(table3.WithProjection([]string{"t3", "i", "f2"})),
+			plan.NewDecoratedNode("Projected table access on [t3 i f2]", plan.NewResolvedTable(table3.WithProjection([]string{"t3", "i", "f2"}))),
 			expression.NewAnd(
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),

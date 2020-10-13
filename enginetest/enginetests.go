@@ -1787,6 +1787,7 @@ func TestTracing(t *testing.T, harness Harness) {
 		"plan.Sort",
 		"plan.Distinct",
 		"plan.Project",
+		"plan.Filter",
 		"plan.ResolvedTable",
 	}
 
