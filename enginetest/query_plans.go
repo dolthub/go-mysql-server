@@ -93,8 +93,7 @@ var PlanTests = []QueryPlanTest{
 			" ├─ Filter(mytable.i > 2)\n" +
 			" │   └─ Filter(mt.i > 2)\n" +
 			" │       └─ TableAlias(mt)\n" +
-			// TODO: this seems like a bug
-			" │           └─ Indexed table access on \n" +
+			" │           └─ Indexed table access on mytable.i\n" +
 			" │               └─ Table(mytable)\n" +
 			" └─ TableAlias(ot)\n" +
 			"     └─ Table(othertable)\n" +
@@ -537,8 +536,7 @@ var PlanTests = []QueryPlanTest{
 			"         └─ CrossJoin\n" +
 			"             ├─ Filter(t1.pk = 1)\n" +
 			"             │   └─ TableAlias(t1)\n" +
-			// TODO: this doesn't seem right
-			"             │       └─ Indexed table access on 1\n" +
+			"             │       └─ Indexed table access on one_pk.pk\n" +
 			"             │           └─ Table(one_pk)\n" +
 			"             └─ Filter(t2.pk2 = 1)\n" +
 			"                 └─ TableAlias(t2)\n" +

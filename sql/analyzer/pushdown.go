@@ -5,6 +5,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"strings"
 )
 
 // pushdownFilters attempts to push conditions in filters down to individual tables. Tables that implement
@@ -203,7 +204,13 @@ func pushdownFiltersToTable(
 		indexLookup, ok := indexes[tableNode.Name()]
 		if ok {
 			table = it.WithIndexLookup(indexLookup.lookup)
-			newTableNode = plan.NewDecoratedNode(fmt.Sprintf("Indexed table access on %v", indexLookup.lookup), newTableNode)
+			var indexDisplayStr []string
+			for _, index := range indexLookup.indexes {
+				for _, e := range index.Expressions() {
+					indexDisplayStr = append(indexDisplayStr, e)
+				}
+			}
+			newTableNode = plan.NewDecoratedNode(fmt.Sprintf("Indexed table access on %s", strings.Join(indexDisplayStr, ", ")), newTableNode)
 			a.Log("table %q transformed with pushdown of index", tableNode.Name())
 		}
 	}
