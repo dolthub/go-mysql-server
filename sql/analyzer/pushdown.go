@@ -60,8 +60,19 @@ func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	if !canDoPushdown(n, scope, a) {
 		return n, nil
 	}
+	if !canProject(n) {
+		return n, nil
+	}
 
 	return transformPushdownProjections(ctx, a, n)
+}
+
+func canProject(n sql.Node) bool {
+	switch n.(type) {
+	case *plan.Update, *plan.RowUpdateAccumulator, *plan.DeleteFrom:
+		return false
+	}
+	return true
 }
 
 // canDoPushdown returns whether the node given can safely be analyzed for pushdown
@@ -72,7 +83,7 @@ func canDoPushdown(n sql.Node, scope *Scope, a *Analyzer) bool {
 
 	// don't do pushdown on certain queries
 	switch n.(type) {
-	case *plan.RowUpdateAccumulator, *plan.InsertInto, *plan.DeleteFrom, *plan.Update, *plan.CreateIndex, *plan.CreateTrigger:
+	case *plan.InsertInto, *plan.CreateIndex, *plan.CreateTrigger:
 		return false
 	}
 
