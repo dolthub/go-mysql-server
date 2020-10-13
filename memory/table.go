@@ -1036,6 +1036,18 @@ func (t *Table) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
 	return &nt
 }
 
+// WithIndexLookup implements the sql.IndexAddressableTable interface.
+func (t *PushdownTable) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
+	if lookup == nil {
+		return t
+	}
+
+	nt := *t
+	nt.lookup = lookup
+
+	return &nt
+}
+
 // IndexKeyValues implements the sql.IndexableTable interface.
 func (t *Table) IndexKeyValues(
 	ctx *sql.Context,
