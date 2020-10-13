@@ -16,12 +16,12 @@ import (
 func TestAnalyzer_Analyze(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("mytable", sql.Schema{
+	table := memory.NewPushdownTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
 	})
 
-	table2 := memory.NewTable("mytable2", sql.Schema{
+	table2 := memory.NewPushdownTable("mytable2", sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 	})
 
@@ -140,7 +140,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 				expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 				expression.NewLiteral(int32(1), sql.Int32),
 			),
-		}).(*memory.Table).WithProjection([]string{"i"}),
+		}).(*memory.PushdownTable).WithProjection([]string{"i"}),
 	)
 	require.NoError(err)
 	require.Equal(expected, analyzed)
@@ -270,19 +270,19 @@ func countRules(batches []*Batch) int {
 func TestMixInnerAndNaturalJoins(t *testing.T) {
 	var require = require.New(t)
 
-	table := memory.NewTable("mytable", sql.Schema{
+	table := memory.NewPushdownTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
 	})
 
-	table2 := memory.NewTable("mytable2", sql.Schema{
+	table2 := memory.NewPushdownTable("mytable2", sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
 	})
 
-	table3 := memory.NewTable("mytable3", sql.Schema{
+	table3 := memory.NewPushdownTable("mytable3", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable3"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable3"},
 		{Name: "t3", Type: sql.Text, Source: "mytable3"},

@@ -12,13 +12,13 @@ import (
 )
 
 func TestPushdownProjection(t *testing.T) {
-	table := memory.NewTable("mytable", sql.Schema{
+	table := memory.NewPushdownTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
 	})
 
-	table2 := memory.NewTable("mytable2", sql.Schema{
+	table2 := memory.NewPushdownTable("mytable2", sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
@@ -124,7 +124,7 @@ func TestPushdownProjection(t *testing.T) {
 									expression.NewIsNull(
 										expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
 									),
-								}).(*memory.Table).WithProjection([]string{"t2"}),
+								}).(*memory.PushdownTable).WithProjection([]string{"t2"}),
 							),
 						),
 					),
@@ -137,13 +137,13 @@ func TestPushdownProjection(t *testing.T) {
 }
 
 func TestPushdownFilter(t *testing.T) {
-	table := memory.NewTable("mytable", sql.Schema{
+	table := memory.NewPushdownTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
 	})
 
-	table2 := memory.NewTable("mytable2", sql.Schema{
+	table2 := memory.NewPushdownTable("mytable2", sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
@@ -242,7 +242,7 @@ func TestPushdownFilter(t *testing.T) {
 						plan.NewDecoratedNode("Filtered table access on [mytable.f = 3.14]",
 							plan.NewResolvedTable(
 								table.WithProjection([]string{"f"}).
-								(*memory.Table).WithFilters([]sql.Expression{
+								(*memory.PushdownTable).WithFilters([]sql.Expression{
 									eq(expression.NewGetFieldWithTable(0, sql.Float64, "mytable", "f", false), expression.NewLiteral(3.14, sql.Float64)),
 								}),
 							),
@@ -252,7 +252,7 @@ func TestPushdownFilter(t *testing.T) {
 						plan.NewDecoratedNode("Filtered table access on [mytable2.i2 IS NULL]",
 							plan.NewResolvedTable(
 								table2.WithProjection([]string{"t2", "i2"}).
-								(*memory.Table).WithFilters([]sql.Expression{
+								(*memory.PushdownTable).WithFilters([]sql.Expression{
 									expression.NewIsNull(expression.NewGetFieldWithTable(1, sql.Int32, "mytable2", "i2", false)),
 								}),
 							),

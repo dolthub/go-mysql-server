@@ -17,20 +17,23 @@ import (
 
 // Table represents an in-memory database table.
 type Table struct {
-	name       string
-	schema     sql.Schema
+	// Schema and related info
+	name             string
+	schema           sql.Schema
+	columns          []int
+	indexes          map[string]sql.Index
+	foreignKeys      []sql.ForeignKeyConstraint
+	pkIndexesEnabled bool
+
+	// Data storage
 	partitions map[string][]sql.Row
 	keys       [][]byte
 
+	// Insert bookkeeping
 	insert int
 
-	filters          []sql.Expression
-	projection       []string
-	columns          []int
-	lookup           sql.IndexLookup
-	indexes          map[string]sql.Index
-	pkIndexesEnabled bool
-	foreignKeys      []sql.ForeignKeyConstraint
+	// Indexed lookups
+	lookup sql.IndexLookup
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -38,8 +41,6 @@ var _ sql.InsertableTable = (*Table)(nil)
 var _ sql.UpdatableTable = (*Table)(nil)
 var _ sql.DeletableTable = (*Table)(nil)
 var _ sql.ReplaceableTable = (*Table)(nil)
-var _ sql.FilteredTable = (*Table)(nil)
-var _ sql.ProjectedTable = (*Table)(nil)
 var _ sql.DriverIndexableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
 var _ sql.IndexAlterableTable = (*Table)(nil)
@@ -47,9 +48,27 @@ var _ sql.IndexedTable = (*Table)(nil)
 var _ sql.ForeignKeyAlterableTable = (*Table)(nil)
 var _ sql.ForeignKeyTable = (*Table)(nil)
 
+// PushdownTable is an extension to Table that implements sql.FilteredTable and sql.ProjectedTable. This is mostly just
+// for demonstration and testing purposes -- these new interfaces do not significantly speed up query execution.
+// The implementation is kept separate since it affects the optimization of query plans by the analyzer, and most
+// integrators won't implement these two interfaces.
+type PushdownTable struct {
+	Table
+	filters          []sql.Expression
+	projection       []string
+}
+
+var _ sql.FilteredTable = (*PushdownTable)(nil)
+var _ sql.ProjectedTable = (*PushdownTable)(nil)
+
 // NewTable creates a new Table with the given name and schema.
 func NewTable(name string, schema sql.Schema) *Table {
 	return NewPartitionedTable(name, schema, 0)
+}
+
+// NewPushdownTable creates a new PushdownTable with the given name and schema
+func NewPushdownTable(name string, schema sql.Schema) *PushdownTable {
+	return NewPartitionedPushdownTable(name, schema, 0)
 }
 
 // NewPartitionedTable creates a new Table with the given name, schema and number of partitions.
@@ -72,6 +91,31 @@ func NewPartitionedTable(name string, schema sql.Schema, numPartitions int) *Tab
 		schema:     schema,
 		partitions: partitions,
 		keys:       keys,
+	}
+}
+
+// NewPartitionedPushdownTable creates a new PushdownTable with the given name, schema and number of partitions.
+func NewPartitionedPushdownTable(name string, schema sql.Schema, numPartitions int) *PushdownTable {
+	var keys [][]byte
+	var partitions = map[string][]sql.Row{}
+
+	if numPartitions < 1 {
+		numPartitions = 1
+	}
+
+	for i := 0; i < numPartitions; i++ {
+		key := strconv.Itoa(i)
+		keys = append(keys, []byte(key))
+		partitions[key] = []sql.Row{}
+	}
+
+	return &PushdownTable{
+		Table: Table{
+			name:       name,
+			schema:     schema,
+			partitions: partitions,
+			keys:       keys,
+		},
 	}
 }
 
@@ -103,6 +147,34 @@ func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 
 // PartitionRows implements the sql.PartitionRows interface.
 func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+	rows, ok := t.partitions[string(partition.Key())]
+	if !ok {
+		return nil, fmt.Errorf(
+			"partition not found: %q", partition.Key(),
+		)
+	}
+
+	var values sql.IndexValueIter
+	if t.lookup != nil {
+		var err error
+		values, err = t.lookup.(sql.DriverIndexLookup).Values(partition)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// The slice could be altered by other operations taking place during iteration (such as deletion or insertion), so
+	// make a copy of the values as they exist when execution begins.
+	rowsCopy := make([]sql.Row, len(rows))
+	copy(rowsCopy, rows)
+
+	return &tableIter{
+		rows:        rowsCopy,
+		indexValues: values,
+	}, nil
+}
+
+func (t *PushdownTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	rows, ok := t.partitions[string(partition.Key())]
 	if !ok {
 		return nil, fmt.Errorf(
@@ -617,6 +689,27 @@ func (t *Table) String() string {
 		kind += "Projected "
 	}
 
+	if t.lookup != nil {
+		kind += "Indexed"
+	}
+
+	if kind != "" {
+		kind = ": " + kind
+	}
+
+	_ = p.WriteNode("%s%s", t.name, kind)
+	return p.String()
+}
+
+// String implements the sql.Table interface.
+func (t *PushdownTable) String() string {
+	p := sql.NewTreePrinter()
+
+	kind := ""
+	if len(t.columns) > 0 {
+		kind += "Projected "
+	}
+
 	if len(t.filters) > 0 {
 		kind += "Filtered "
 	}
@@ -634,6 +727,30 @@ func (t *Table) String() string {
 }
 
 func (t *Table) DebugString() string {
+	p := sql.NewTreePrinter()
+
+	kind := ""
+	if len(t.columns) > 0 {
+		var projections []string
+		for _, column := range t.columns {
+			projections = append(projections, fmt.Sprintf("%d", column))
+		}
+		kind += fmt.Sprintf("Projected on [%s] ", strings.Join(projections, ", "))
+	}
+
+	if t.lookup != nil {
+		kind += "Indexed"
+	}
+
+	if kind != "" {
+		kind = ": " + kind
+	}
+
+	_ = p.WriteNode("%s%s", t.name, kind)
+	return p.String()
+}
+
+func (t *PushdownTable) DebugString() string {
 	p := sql.NewTreePrinter()
 
 	kind := ""
@@ -665,6 +782,7 @@ func (t *Table) DebugString() string {
 	return p.String()
 }
 
+
 // HandledFilters implements the sql.FilteredTable interface.
 func (t *Table) HandledFilters(filters []sql.Expression) []sql.Expression {
 	var handled []sql.Expression
@@ -689,7 +807,7 @@ func (t *Table) HandledFilters(filters []sql.Expression) []sql.Expression {
 }
 
 // WithFilters implements the sql.FilteredTable interface.
-func (t *Table) WithFilters(filters []sql.Expression) sql.Table {
+func (t *PushdownTable) WithFilters(filters []sql.Expression) sql.Table {
 	if len(filters) == 0 {
 		return t
 	}
@@ -700,7 +818,7 @@ func (t *Table) WithFilters(filters []sql.Expression) sql.Table {
 }
 
 // WithProjection implements the sql.ProjectedTable interface.
-func (t *Table) WithProjection(colNames []string) sql.Table {
+func (t *PushdownTable) WithProjection(colNames []string) sql.Table {
 	if len(colNames) == 0 {
 		return t
 	}
@@ -942,12 +1060,12 @@ func (t *Table) IndexKeyValues(
 }
 
 // Projection implements the sql.ProjectedTable interface.
-func (t *Table) Projection() []string {
+func (t *PushdownTable) Projection() []string {
 	return t.projection
 }
 
 // Filters implements the sql.FilteredTable interface.
-func (t *Table) Filters() []sql.Expression {
+func (t *PushdownTable) Filters() []sql.Expression {
 	return t.filters
 }
 
