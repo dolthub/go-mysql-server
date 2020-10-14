@@ -21,7 +21,7 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 
 	// First step is to find all col exprs and group them by the table they mention.
 	// Even if they appear multiple times, only the first one will be used.
-	filters := getFiltersByTable(ctx, n)
+	filters := newFilterSet(getFiltersByTable(ctx, n))
 	indexes, err := getIndexesByTable(ctx, a, n)
 	if err != nil {
 		return nil, err
@@ -105,32 +105,23 @@ func canDoPushdown(n sql.Node, scope *Scope, a *Analyzer) bool {
 	return true
 }
 
-func transformPushdownFilters(
-		a *Analyzer,
-		n sql.Node,
-		filters filtersByTable,
-		indexes indexLookupsByTable,
-		exprAliases ExprAliases,
-		tableAliases TableAliases,
-) (sql.Node, error) {
-	var handledFilters []sql.Expression
-
+func transformPushdownFilters(a *Analyzer, n sql.Node, filters *filterSet, indexes indexLookupsByTable, exprAliases ExprAliases, tableAliases TableAliases, ) (sql.Node, error) {
 	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
 		switch node := node.(type) {
 		case *plan.Filter:
-			n, err := removePushedDownPredicates(a, node, handledFilters, exprAliases, tableAliases)
+			n, err := removePushedDownPredicates(a, node, filters, exprAliases, tableAliases)
 			if err != nil {
 				return nil, err
 			}
 			return FixFieldIndexesForExpressions(n)
 		case *plan.TableAlias:
-			table, err := pushdownFiltersToTable(a, node, filters, &handledFilters, indexes, exprAliases, tableAliases)
+			table, err := pushdownFiltersToTable(a, node, filters, indexes, exprAliases, tableAliases)
 			if err != nil {
 				return nil, err
 			}
 			return FixFieldIndexesForExpressions(table)
 		case *plan.ResolvedTable:
-			table, err := pushdownFiltersToTable(a, node, filters, &handledFilters, indexes, exprAliases, tableAliases)
+			table, err := pushdownFiltersToTable(a, node, filters, indexes, exprAliases, tableAliases)
 			if err != nil {
 				return nil, err
 			}
@@ -186,8 +177,7 @@ type NameableNode interface {
 func pushdownFiltersToTable(
 		a *Analyzer,
 		tableNode NameableNode,
-		filters filtersByTable,
-		handledFilters *[]sql.Expression,
+		filters *filterSet,
 		indexes map[string]*indexLookup,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
@@ -200,7 +190,7 @@ func pushdownFiltersToTable(
 
 	var newTableNode sql.Node = tableNode
 
-	// First attempt to apply any indexes
+	// First attempt to apply any possible indexes to the table
 	if it, ok := table.(sql.IndexAddressableTable); ok {
 		indexLookup, ok := indexes[tableNode.Name()]
 		if ok {
@@ -211,17 +201,22 @@ func pushdownFiltersToTable(
 					indexDisplayStr = append(indexDisplayStr, e)
 				}
 			}
-			newTableNode = plan.NewDecoratedNode(fmt.Sprintf("Indexed table access on %s", strings.Join(indexDisplayStr, ", ")), newTableNode)
+
+			newTableNode = plan.NewDecoratedNode(
+				fmt.Sprintf("Indexed table access on %s", strings.Join(indexDisplayStr, ", ")),
+				newTableNode)
 			a.Log("table %q transformed with pushdown of index", tableNode.Name())
+			// TODO: mark index exprs as handled filters
 		}
 	}
 
-	// Then push the filter onto the table itself if it's a sql.FilteredTable
-	if ft, ok := table.(sql.FilteredTable); ok && len(filters[tableNode.Name()]) > 0 {
-		tableFilters := filters[tableNode.Name()]
-		handled := ft.HandledFilters(normalizeExpressions(exprAliases, tableAliases, subtractExprSet(tableFilters, *handledFilters)...))
-		*handledFilters = append(*handledFilters, handled...)
+	// Then push remaining filters onto the table itself if it's a sql.FilteredTable
+	if ft, ok := table.(sql.FilteredTable); ok && len(filters.availableFiltersForTable(tableNode.Name())) > 0 {
+		tableFilters := filters.availableFiltersForTable(tableNode.Name())
+		handled := ft.HandledFilters(normalizeExpressions(exprAliases, tableAliases, tableFilters...))
+		filters.markFiltersHandled(handled...)
 		schema := table.Schema()
+
 		handled, err := FixFieldIndexesOnExpressions(schema, handled...)
 		if err != nil {
 			return nil, err
@@ -240,12 +235,12 @@ func pushdownFiltersToTable(
 
 	// Finally, move any remaining filters for the table directly above the table itself
 	var pushedDownFilterExpression sql.Expression
-	if len(filters[tableNode.Name()]) > 0 {
-		tableFilters := filters[tableNode.Name()]
-		leftToHandle := subtractExprSet(tableFilters, *handledFilters)
-		*handledFilters = append(*handledFilters, leftToHandle...)
+	if len(filters.availableFiltersForTable(tableNode.Name())) > 0 {
+		tableFilters := filters.availableFiltersForTable(tableNode.Name())
+		filters.markFiltersHandled(tableFilters...)
+
 		schema := tableNode.Schema()
-		handled, err := FixFieldIndexesOnExpressions(schema, leftToHandle...)
+		handled, err := FixFieldIndexesOnExpressions(schema, tableFilters...)
 		if err != nil {
 			return nil, err
 		}
@@ -253,7 +248,7 @@ func pushdownFiltersToTable(
 		pushedDownFilterExpression = expression.JoinAnd(handled...)
 
 		a.Log(
-			"pushed down filters to table %q, %d filters handled of %d",
+			"pushed down filters above table %q, %d filters handled of %d",
 			tableNode.Name(),
 			len(handled),
 			len(tableFilters),
@@ -317,22 +312,15 @@ func pushdownProjectionsToTable(
 
 // removePushedDownPredicates removes all handled filter predicates from the filter given and returns. If all
 // predicates have been handled, it replaces the filter with its child.
-func removePushedDownPredicates(
-	a *Analyzer,
-	node *plan.Filter,
-	handledFilters []sql.Expression,
-	exprAliases ExprAliases,
-	tableAliases TableAliases,
-) (sql.Node, error) {
-
-	if len(handledFilters) == 0 {
+func removePushedDownPredicates(a *Analyzer, node *plan.Filter, filters *filterSet, exprAliases ExprAliases, tableAliases TableAliases, ) (sql.Node, error) {
+	if len(filters.handledFilters) == 0 {
 		a.Log("no handled filters, leaving filter untouched")
 		return node, nil
 	}
 
 	unhandled := subtractExprSet(
 		normalizeExpressions(exprAliases, tableAliases, splitConjunction(node.Expression)...),
-		handledFilters,
+		filters.handledFilters,
 	)
 
 	if len(unhandled) == 0 {
@@ -342,7 +330,7 @@ func removePushedDownPredicates(
 
 	a.Log(
 		"%d handled filters removed from filter node, filter has now %d filters",
-		len(handledFilters),
+		len(filters.handledFilters),
 		len(unhandled),
 	)
 

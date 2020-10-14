@@ -80,8 +80,8 @@ func (fs *filterSet) availableFiltersForTable(table string) []sql.Expression {
 }
 
 // markFilterUsed marks the filter given as handled, so it will no longer be returned by availableFiltersForTable
-func (fs *filterSet) markFilterHandled(e sql.Expression) {
-	fs.handledFilters = append(fs.handledFilters, e)
+func (fs *filterSet) markFiltersHandled(exprs ...sql.Expression) {
+	fs.handledFilters = append(fs.handledFilters, exprs...)
 }
 
 // splitConjunction breaks AND expressions into their left and right parts, recursively
