@@ -58,6 +58,32 @@ func exprToTableFilters(expr sql.Expression) filtersByTable {
 	return filtersByTable
 }
 
+type filterSet struct {
+	filtersByTable filtersByTable
+	handledFilters []sql.Expression
+}
+
+func newFilterSet(filtersByTable filtersByTable) *filterSet {
+	return &filterSet{
+		filtersByTable: filtersByTable,
+	}
+}
+
+// availableFiltersForTable returns the filters that are still available for the table given (not previous marked
+// handled)
+func (fs *filterSet) availableFiltersForTable(table string) []sql.Expression {
+	filters, ok := fs.filtersByTable[table]
+	if !ok {
+		return nil
+	}
+	return subtractExprSet(filters, fs.handledFilters)
+}
+
+// markFilterUsed marks the filter given as handled, so it will no longer be returned by availableFiltersForTable
+func (fs *filterSet) markFilterHandled(e sql.Expression) {
+	fs.handledFilters = append(fs.handledFilters, e)
+}
+
 // splitConjunction breaks AND expressions into their left and right parts, recursively
 func splitConjunction(expr sql.Expression) []sql.Expression {
 	and, ok := expr.(*expression.And)

@@ -132,6 +132,24 @@ func withTable(node sql.Node, table sql.Table) (sql.Node, error) {
 	})
 }
 
+type fieldsByTable map[string][]string
+
+// add adds the table and field given if not already present
+func (f fieldsByTable) add(table, field string) {
+	if !stringContains(f[table], field) {
+		f[table] = append(f[table], field)
+	}
+}
+
+// addAll adds the tables and fields given if not already present
+func (f fieldsByTable) addAll(f2 fieldsByTable) {
+	for table, fields := range f2 {
+		for _, field := range fields {
+			f.add(table, field)
+		}
+	}
+}
+
 // getFieldsByTable returns a map of table name to set of field names in the node provided
 func getFieldsByTable(ctx *sql.Context, n sql.Node) fieldsByTable {
 	colSpan, _ := ctx.Span("getFieldsByTable")

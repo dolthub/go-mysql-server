@@ -171,7 +171,11 @@ func (u *UnmergeableIndex) Has(partition sql.Partition, key ...interface{}) (boo
 }
 
 func (u *UnmergeableIndexLookup) String() string {
-	return strings.Join(u.idx.Expressions(), ", ")
+	var idxes = make([]string, len(u.key))
+	for i, e := range u.key {
+		idxes[i] = fmt.Sprintf("%s %v", u.idx.Expressions()[i], e)
+	}
+	return strings.Join(idxes, ", ")
 }
 
 func (u *UnmergeableIndex) Table() string {

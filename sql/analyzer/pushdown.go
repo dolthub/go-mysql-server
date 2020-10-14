@@ -200,6 +200,7 @@ func pushdownFiltersToTable(
 
 	var newTableNode sql.Node = tableNode
 
+	// First attempt to apply any indexes
 	if it, ok := table.(sql.IndexAddressableTable); ok {
 		indexLookup, ok := indexes[tableNode.Name()]
 		if ok {
@@ -215,6 +216,7 @@ func pushdownFiltersToTable(
 		}
 	}
 
+	// Then push the filter onto the table itself if it's a sql.FilteredTable
 	if ft, ok := table.(sql.FilteredTable); ok && len(filters[tableNode.Name()]) > 0 {
 		tableFilters := filters[tableNode.Name()]
 		handled := ft.HandledFilters(normalizeExpressions(exprAliases, tableAliases, subtractExprSet(tableFilters, *handledFilters)...))
@@ -236,6 +238,7 @@ func pushdownFiltersToTable(
 		)
 	}
 
+	// Finally, move any remaining filters for the table directly above the table itself
 	var pushedDownFilterExpression sql.Expression
 	if len(filters[tableNode.Name()]) > 0 {
 		tableFilters := filters[tableNode.Name()]
@@ -271,24 +274,6 @@ func pushdownFiltersToTable(
 		return node, nil
 	default:
 		return nil, ErrInvalidNodeType.New("pushdown", tableNode)
-	}
-}
-
-type fieldsByTable map[string][]string
-
-// add adds the table and field given if not already present
-func (f fieldsByTable) add(table, field string) {
-	if !stringContains(f[table], field) {
-		f[table] = append(f[table], field)
-	}
-}
-
-// addAll adds the tables and fields given if not already present
-func (f fieldsByTable) addAll(f2 fieldsByTable) {
-	for table, fields := range f2 {
-		for _, field := range fields {
-			f.add(table, field)
-		}
 	}
 }
 

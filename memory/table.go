@@ -690,7 +690,7 @@ func (t *Table) String() string {
 	}
 
 	if t.lookup != nil {
-		kind += "Indexed"
+		kind += "Indexed "
 	}
 
 	if kind != "" {
@@ -715,7 +715,7 @@ func (t *PushdownTable) String() string {
 	}
 
 	if t.lookup != nil {
-		kind += "Indexed"
+		kind += "Indexed "
 	}
 
 	if kind != "" {
@@ -739,7 +739,7 @@ func (t *Table) DebugString() string {
 	}
 
 	if t.lookup != nil {
-		kind += "Indexed"
+		kind += fmt.Sprintf("Indexed on %s", t.lookup)
 	}
 
 	if kind != "" {
