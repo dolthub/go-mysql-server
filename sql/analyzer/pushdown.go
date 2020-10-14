@@ -30,7 +30,6 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		return n, nil
 	}
 
-	filters := newFilterSet(filtersByTable)
 	indexes, err := getIndexesByTable(ctx, a, n)
 	if err != nil {
 		return nil, err
@@ -41,6 +40,8 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	if err != nil {
 		return nil, err
 	}
+
+	filters := newFilterSet(filtersByTable, exprAliases, tableAliases)
 
 	return transformPushdownFilters(a, n, filters, indexes, exprAliases, tableAliases)
 }

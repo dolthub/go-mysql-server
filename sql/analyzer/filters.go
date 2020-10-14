@@ -82,11 +82,17 @@ type filterSet struct {
 	filtersByTable      filtersByTable
 	handledFilters      []sql.Expression
 	handledIndexFilters []string
+	aliases             ExprAliases
+	tableAliases        TableAliases
 }
 
-func newFilterSet(filtersByTable filtersByTable) *filterSet {
+// newFilterSet returns a new filter set that will track available filters with the filters and aliases given. Aliases
+// are necessary to normalize expressions from indexes when in the presence of aliases.
+func newFilterSet(filtersByTable filtersByTable, aliases ExprAliases, tableAliases TableAliases) *filterSet {
 	return &filterSet{
 		filtersByTable: filtersByTable,
+		aliases: aliases,
+		tableAliases: tableAliases,
 	}
 }
 
@@ -97,14 +103,20 @@ func (fs *filterSet) availableFiltersForTable(table string) []sql.Expression {
 	if !ok {
 		return nil
 	}
-	return subtractExprStrs(subtractExprSet(filters, fs.handledFilters), fs.handledIndexFilters)
+	return subtractExprStrs(
+		normalizeExpressions(fs.aliases, fs.tableAliases, subtractExprSet(filters, fs.handledFilters)...),
+		fs.handledIndexFilters,
+	)
 }
 
 // availableFilters returns the filters that are still available (not previously marked handled)
 func (fs *filterSet) availableFilters() []sql.Expression {
 	var available []sql.Expression
 	for _, es := range fs.filtersByTable {
-		available = append(available, subtractExprStrs(subtractExprSet(es, fs.handledFilters), fs.handledIndexFilters)...)
+		available = append(available, subtractExprStrs(
+			normalizeExpressions(fs.aliases, fs.tableAliases, subtractExprSet(es, fs.handledFilters)...),
+			fs.handledIndexFilters,
+		)...)
 	}
 	return available
 }
