@@ -90,11 +90,11 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: "SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2",
 		ExpectedPlan: "IndexedJoin(mt.i = ot.i2)\n" +
-			" ├─ Filter(mytable.i > 2)\n" +
-			" │   └─ Filter(mt.i > 2)\n" +
-			" │       └─ TableAlias(mt)\n" +
-			" │           └─ Indexed table access on mytable.i\n" +
-			" │               └─ Table(mytable)\n" +
+			// TODO: this filter should be removed, handled by the index
+			" ├─ Filter(mt.i > 2)\n" +
+			" │   └─ TableAlias(mt)\n" +
+			" │       └─ Indexed table access on index [mytable.i]\n" +
+			" │           └─ Table(mytable)\n" +
 			" └─ TableAlias(ot)\n" +
 			"     └─ Table(othertable)\n" +
 			"",
@@ -532,15 +532,13 @@ var PlanTests = []QueryPlanTest{
 		Query: "SELECT pk,pk2 FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2",
 		ExpectedPlan: "Sort(t1.pk ASC, t2.pk2 ASC)\n" +
 			" └─ Project(t1.pk, t2.pk2)\n" +
-			"     └─ Filter(one_pk.pk = 1 AND two_pk.pk2 = 1)\n" +
-			"         └─ CrossJoin\n" +
-			"             ├─ Filter(t1.pk = 1)\n" +
-			"             │   └─ TableAlias(t1)\n" +
-			"             │       └─ Indexed table access on one_pk.pk\n" +
-			"             │           └─ Table(one_pk)\n" +
-			"             └─ Filter(t2.pk2 = 1)\n" +
-			"                 └─ TableAlias(t2)\n" +
-			"                     └─ Table(two_pk)\n" +
-			"",
+			"     └─ CrossJoin\n" +
+			"         ├─ Filter(t1.pk = 1)\n" +
+			"         │   └─ TableAlias(t1)\n" +
+			"         │       └─ Indexed table access on index [one_pk.pk]\n" +
+			"         │           └─ Table(one_pk)\n" +
+			"         └─ Filter(t2.pk2 = 1)\n" +
+			"             └─ TableAlias(t2)\n" +
+			"                 └─ Table(two_pk)\n",
 	},
 }

@@ -327,7 +327,7 @@ func TestPushdownIndex(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
-				plan.NewDecoratedNode("Indexed table access on [mytable.f = 3.14]",
+				plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 					plan.NewResolvedTable(
 						table.WithIndexLookup(
 							mustIndexLookup(idx2.Get(3.14)),

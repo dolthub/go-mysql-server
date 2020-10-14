@@ -204,15 +204,14 @@ func pushdownFiltersToTable(
 		indexLookup, ok := indexes[tableNode.Name()]
 		if ok {
 			table = it.WithIndexLookup(indexLookup.lookup)
-			var indexDisplayStr []string
-			for _, index := range indexLookup.indexes {
-				for _, e := range index.Expressions() {
-					indexDisplayStr = append(indexDisplayStr, e)
-				}
-			}
+			indexStrs := formatIndexDecoratorString(indexLookup)
 
+			indexNoun := "index"
+			if len(indexStrs) > 1 {
+				indexNoun = "indexes"
+			}
 			newTableNode = plan.NewDecoratedNode(
-				fmt.Sprintf("Indexed table access on [%s]", strings.Join(indexDisplayStr, ", ")),
+				fmt.Sprintf("Indexed table access on %s %s", indexNoun, strings.Join(indexStrs, ", ")),
 				newTableNode)
 			a.Log("table %q transformed with pushdown of index", tableNode.Name())
 
@@ -280,6 +279,18 @@ func pushdownFiltersToTable(
 	default:
 		return nil, ErrInvalidNodeType.New("pushdown", tableNode)
 	}
+}
+
+func formatIndexDecoratorString(indexLookup *indexLookup) []string {
+	var indexStrs []string
+	for _, idx := range indexLookup.indexes {
+		var expStrs []string
+		for _, e := range idx.Expressions() {
+			expStrs = append(expStrs, e)
+		}
+		indexStrs = append(indexStrs, fmt.Sprintf("[%s]", strings.Join(expStrs, ",")))
+	}
+	return indexStrs
 }
 
 func pushdownProjectionsToTable(
