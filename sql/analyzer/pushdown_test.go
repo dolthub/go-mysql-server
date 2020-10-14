@@ -369,8 +369,12 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 						),
 					),
 					plan.NewCrossJoin(
-						plan.NewResolvedTable(table),
-						plan.NewResolvedTable(table2),
+						plan.NewTableAlias("t1",
+							plan.NewResolvedTable(table),
+						),
+						plan.NewTableAlias("t2",
+							plan.NewResolvedTable(table2),
+						),
 					),
 				),
 			),
@@ -407,7 +411,8 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 			),
 		},
 		{
-			name: "no pushdown possible, filter contains join condition",
+			// TODO: we could push down only the non-join predicates, but we currently just pass entirely
+			name: "filter contains join condition (no pushdown currently possible, but see TODO)",
 			node: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
