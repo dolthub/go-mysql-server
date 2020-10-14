@@ -59,8 +59,9 @@ func exprToTableFilters(expr sql.Expression) filtersByTable {
 }
 
 type filterSet struct {
-	filtersByTable filtersByTable
-	handledFilters []sql.Expression
+	filtersByTable      filtersByTable
+	handledFilters      []sql.Expression
+	handledIndexFilters []string
 }
 
 func newFilterSet(filtersByTable filtersByTable) *filterSet {
@@ -76,12 +77,18 @@ func (fs *filterSet) availableFiltersForTable(table string) []sql.Expression {
 	if !ok {
 		return nil
 	}
-	return subtractExprSet(filters, fs.handledFilters)
+	return subtractExprStrs(subtractExprSet(filters, fs.handledFilters), fs.handledIndexFilters)
 }
 
 // markFilterUsed marks the filter given as handled, so it will no longer be returned by availableFiltersForTable
 func (fs *filterSet) markFiltersHandled(exprs ...sql.Expression) {
 	fs.handledFilters = append(fs.handledFilters, exprs...)
+}
+
+func (fs *filterSet) markIndexesHandled(indexes []sql.Index) {
+	for _, index := range indexes {
+		fs.handledIndexFilters = append(fs.handledIndexFilters, index.Expressions()...)
+	}
 }
 
 // splitConjunction breaks AND expressions into their left and right parts, recursively
@@ -117,3 +124,26 @@ func subtractExprSet(all, toSubtract []sql.Expression) []sql.Expression {
 
 	return remainder
 }
+
+// subtractExprStrs returns all expressions in the first parameter that aren't present in the second parameter, using
+// string representations of expressions to compare.
+func subtractExprStrs(all []sql.Expression, toSubtract []string) []sql.Expression {
+	var remainder []sql.Expression
+
+	for _, e := range all {
+		var found bool
+		for _, s := range toSubtract {
+			if e.String() == s {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			remainder = append(remainder, e)
+		}
+	}
+
+	return remainder
+}
+

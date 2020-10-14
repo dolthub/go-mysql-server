@@ -173,7 +173,7 @@ type NameableNode interface {
 	sql.Node
 }
 
-// pushdownFiltersToTable attempts to push filters, projections, and indexes to tables that can accept them
+// pushdownFiltersToTable attempts to push filters to tables that can accept them
 func pushdownFiltersToTable(
 		a *Analyzer,
 		tableNode NameableNode,
@@ -203,10 +203,11 @@ func pushdownFiltersToTable(
 			}
 
 			newTableNode = plan.NewDecoratedNode(
-				fmt.Sprintf("Indexed table access on %s", strings.Join(indexDisplayStr, ", ")),
+				fmt.Sprintf("Indexed table access on [%s]", strings.Join(indexDisplayStr, ", ")),
 				newTableNode)
 			a.Log("table %q transformed with pushdown of index", tableNode.Name())
-			// TODO: mark index exprs as handled filters
+
+			filters.markIndexesHandled(indexLookup.indexes)
 		}
 	}
 
@@ -293,7 +294,9 @@ func pushdownProjectionsToTable(
 			usedProjections[tableNode.Name()] = projectedFields
 		}
 
-		newTableNode = plan.NewDecoratedNode(fmt.Sprintf("Projected table access on %v", fieldsByTable[tableNode.Name()]), newTableNode)
+		newTableNode = plan.NewDecoratedNode(
+			fmt.Sprintf("Projected table access on %v",
+				fieldsByTable[tableNode.Name()]), newTableNode)
 		a.Log("table %q transformed with pushdown of projection", tableNode.Name())
 	}
 
@@ -318,9 +321,11 @@ func removePushedDownPredicates(a *Analyzer, node *plan.Filter, filters *filterS
 		return node, nil
 	}
 
-	unhandled := subtractExprSet(
-		normalizeExpressions(exprAliases, tableAliases, splitConjunction(node.Expression)...),
-		filters.handledFilters,
+	unhandled := subtractExprStrs(
+		subtractExprSet(
+			normalizeExpressions(exprAliases, tableAliases, splitConjunction(node.Expression)...),
+			filters.handledFilters),
+		filters.handledIndexFilters,
 	)
 
 	if len(unhandled) == 0 {
