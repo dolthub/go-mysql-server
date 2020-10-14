@@ -91,8 +91,8 @@ type filterSet struct {
 func newFilterSet(filtersByTable filtersByTable, aliases ExprAliases, tableAliases TableAliases) *filterSet {
 	return &filterSet{
 		filtersByTable: filtersByTable,
-		aliases: aliases,
-		tableAliases: tableAliases,
+		aliases:        aliases,
+		tableAliases:   tableAliases,
 	}
 }
 

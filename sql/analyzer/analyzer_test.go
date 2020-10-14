@@ -89,7 +89,7 @@ func TestAnalyzer_Analyze(t *testing.T) {
 	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
 	require.NoError(err)
 
-	expected = plan.NewDecoratedNode("Projected table access on [i t]", plan.NewResolvedTable( table.WithProjection([]string{"i", "t"})))
+	expected = plan.NewDecoratedNode("Projected table access on [i t]", plan.NewResolvedTable(table.WithProjection([]string{"i", "t"})))
 	assertNodesEqualWithDiff(t, expected, analyzed)
 
 	notAnalyzed = plan.NewProject(

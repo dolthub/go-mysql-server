@@ -44,4 +44,3 @@ func (n *DecoratedNode) DebugString() string {
 	_ = pr.WriteChildren(sql.DebugString(n.UnaryNode.Child))
 	return pr.String()
 }
-

@@ -2,11 +2,11 @@ package parse
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"math"
 	"testing"
 
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -2086,47 +2086,45 @@ var fixtures = map[string]sql.Node{
 		 DELETE FROM baz WHERE a = old.b;
 		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
    END`,
-   		`BEGIN 
+		`BEGIN 
      UPDATE bar SET x = old.y WHERE z = new.y;
 		 DELETE FROM baz WHERE a = old.b;
 		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
    END`,
 	),
-	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`:
-		plan.NewCreateTrigger("myTrigger", "before", "update", nil,
-			plan.NewUnresolvedTable("foo", ""),
-			plan.NewInsertInto(
-				plan.NewUnresolvedTable("zzz", ""),
-				plan.NewValues([][]sql.Expression{{
-					expression.NewUnresolvedQualifiedColumn("old", "a"),
-					expression.NewUnresolvedQualifiedColumn("old", "b"),
-				}},
-				),
-				false,
-				[]string{"a", "b"},
-				[]sql.Expression{},
+	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update", nil,
+		plan.NewUnresolvedTable("foo", ""),
+		plan.NewInsertInto(
+			plan.NewUnresolvedTable("zzz", ""),
+			plan.NewValues([][]sql.Expression{{
+				expression.NewUnresolvedQualifiedColumn("old", "a"),
+				expression.NewUnresolvedQualifiedColumn("old", "b"),
+			}},
 			),
-			`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
-			`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+			false,
+			[]string{"a", "b"},
+			[]sql.Expression{},
 		),
-	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`:
-	plan.NewCreateTrigger("myTrigger", "before", "update",
+		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+	),
+	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update",
 		&plan.TriggerOrder{PrecedesOrFollows: sqlparser.FollowsStr, OtherTriggerName: "yourTrigger"},
 		plan.NewUnresolvedTable("foo", ""),
-			plan.NewInsertInto(
-				plan.NewUnresolvedTable("zzz", ""),
-				plan.NewValues([][]sql.Expression{{
-					expression.NewUnresolvedQualifiedColumn("old", "a"),
-					expression.NewUnresolvedQualifiedColumn("old", "b"),
-				}},
-				),
-				false,
-				[]string{"a", "b"},
-				[]sql.Expression{},
+		plan.NewInsertInto(
+			plan.NewUnresolvedTable("zzz", ""),
+			plan.NewValues([][]sql.Expression{{
+				expression.NewUnresolvedQualifiedColumn("old", "a"),
+				expression.NewUnresolvedQualifiedColumn("old", "b"),
+			}},
 			),
-			`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
-			`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+			false,
+			[]string{"a", "b"},
+			[]sql.Expression{},
 		),
+		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+	),
 	`SELECT 2 UNION SELECT 3`: plan.NewUnion(
 		plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},

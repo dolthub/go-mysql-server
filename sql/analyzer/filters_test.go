@@ -1,14 +1,14 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
-	"github.com/stretchr/testify/assert"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 )
 
 func TestFiltersMerge(t *testing.T) {

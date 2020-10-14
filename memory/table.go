@@ -54,8 +54,8 @@ var _ sql.ForeignKeyTable = (*Table)(nil)
 // integrators won't implement these two interfaces.
 type PushdownTable struct {
 	Table
-	filters          []sql.Expression
-	projection       []string
+	filters    []sql.Expression
+	projection []string
 }
 
 var _ sql.FilteredTable = (*PushdownTable)(nil)
@@ -781,7 +781,6 @@ func (t *PushdownTable) DebugString() string {
 	_ = p.WriteNode("%s%s", t.name, kind)
 	return p.String()
 }
-
 
 // HandledFilters implements the sql.FilteredTable interface.
 func (t *Table) HandledFilters(filters []sql.Expression) []sql.Expression {

@@ -2,10 +2,11 @@ package analyzer
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"strings"
 )
 
 // pushdownFilters attempts to push conditions in filters down to individual tables. Tables that implement
@@ -55,7 +56,7 @@ func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, nil
 	}
 
-	return transformPushdownProjections(ctx , a, n)
+	return transformPushdownProjections(ctx, a, n)
 }
 
 // canDoPushdown returns whether the node given can safely be analyzed for pushdown
@@ -115,7 +116,7 @@ func canDoPushdown(n sql.Node, scope *Scope, a *Analyzer) bool {
 	return true
 }
 
-func transformPushdownFilters(a *Analyzer, n sql.Node, filters *filterSet, indexes indexLookupsByTable, exprAliases ExprAliases, tableAliases TableAliases, ) (sql.Node, error) {
+func transformPushdownFilters(a *Analyzer, n sql.Node, filters *filterSet, indexes indexLookupsByTable, exprAliases ExprAliases, tableAliases TableAliases) (sql.Node, error) {
 	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
 		switch node := node.(type) {
 		case *plan.Filter:
@@ -185,12 +186,12 @@ type NameableNode interface {
 
 // pushdownFiltersToTable attempts to push filters to tables that can accept them
 func pushdownFiltersToTable(
-		a *Analyzer,
-		tableNode NameableNode,
-		filters *filterSet,
-		indexes map[string]*indexLookup,
-		exprAliases ExprAliases,
-		tableAliases TableAliases,
+	a *Analyzer,
+	tableNode NameableNode,
+	filters *filterSet,
+	indexes map[string]*indexLookup,
+	exprAliases ExprAliases,
+	tableAliases TableAliases,
 ) (sql.Node, error) {
 
 	table := getTable(tableNode)
@@ -295,10 +296,10 @@ func formatIndexDecoratorString(indexLookup *indexLookup) []string {
 }
 
 func pushdownProjectionsToTable(
-		a *Analyzer,
-		tableNode NameableNode,
-		fieldsByTable fieldsByTable,
-		usedProjections fieldsByTable,
+	a *Analyzer,
+	tableNode NameableNode,
+	fieldsByTable fieldsByTable,
+	usedProjections fieldsByTable,
 ) (sql.Node, error) {
 
 	table := getTable(tableNode)
@@ -336,7 +337,7 @@ func pushdownProjectionsToTable(
 
 // removePushedDownPredicates removes all handled filter predicates from the filter given and returns. If all
 // predicates have been handled, it replaces the filter with its child.
-func removePushedDownPredicates(a *Analyzer, node *plan.Filter, filters *filterSet, exprAliases ExprAliases, tableAliases TableAliases, ) (sql.Node, error) {
+func removePushedDownPredicates(a *Analyzer, node *plan.Filter, filters *filterSet, exprAliases ExprAliases, tableAliases TableAliases) (sql.Node, error) {
 	if filters.handledCount() == 0 {
 		a.Log("no handled filters, leaving filter untouched")
 		return node, nil

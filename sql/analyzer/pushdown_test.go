@@ -32,7 +32,7 @@ func TestPushdownProjectionToTables(t *testing.T) {
 	catalog.AddDatabase(db)
 	a := NewDefault(catalog)
 
-	tests := []analyzerFnTestCase {
+	tests := []analyzerFnTestCase{
 		{
 			name: "pushdown projections to tables",
 			node: plan.NewProject(
@@ -241,8 +241,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 					plan.NewDecoratedNode("Projected table access on [f]",
 						plan.NewDecoratedNode("Filtered table access on [mytable.f = 3.14]",
 							plan.NewResolvedTable(
-								table.WithProjection([]string{"f"}).
-								(*memory.PushdownTable).WithFilters([]sql.Expression{
+								table.WithProjection([]string{"f"}).(*memory.PushdownTable).WithFilters([]sql.Expression{
 									eq(expression.NewGetFieldWithTable(0, sql.Float64, "mytable", "f", false), expression.NewLiteral(3.14, sql.Float64)),
 								}),
 							),
@@ -251,8 +250,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 					plan.NewDecoratedNode("Projected table access on [t2 i2]",
 						plan.NewDecoratedNode("Filtered table access on [mytable2.i2 IS NULL]",
 							plan.NewResolvedTable(
-								table2.WithProjection([]string{"t2", "i2"}).
-								(*memory.PushdownTable).WithFilters([]sql.Expression{
+								table2.WithProjection([]string{"t2", "i2"}).(*memory.PushdownTable).WithFilters([]sql.Expression{
 									expression.NewIsNull(expression.NewGetFieldWithTable(1, sql.Int32, "mytable2", "i2", false)),
 								}),
 							),

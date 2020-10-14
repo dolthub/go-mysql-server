@@ -15,9 +15,10 @@
 package plan
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	"strings"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type ShowTriggers struct {
