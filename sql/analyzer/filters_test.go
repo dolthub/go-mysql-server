@@ -1,6 +1,8 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -106,7 +108,6 @@ func TestSubtractExprSet(t *testing.T) {
 }
 
 func TestExprToTableFilters(t *testing.T) {
-	require := require.New(t)
 	expr := expression.NewAnd(
 		expression.NewAnd(
 			expression.NewAnd(
@@ -163,5 +164,32 @@ func TestExprToTableFilters(t *testing.T) {
 		},
 	}
 
-	require.Equal(expected, exprToTableFilters(expr))
+	filters, err := exprToTableFilters(expr)
+	require.NoError(t, err)
+	assert.Equal(t, expected, filters)
+
+	// Test various error conditions -- anytime we can't neatly split the expressions into tables
+	_, err = exprToTableFilters(expression.NewAnd(
+		lit(0),
+		expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
+	))
+	assert.Error(t, err)
+
+	_, err = exprToTableFilters(expression.NewAnd(
+		expression.NewLiteral(nil, sql.Null),
+		expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
+	))
+	assert.Error(t, err)
+
+	_, err = exprToTableFilters(expression.NewAnd(
+		expression.NewEquals(lit(1), mustExpr(function.NewRand())),
+		expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
+	))
+	assert.Error(t, err)
+
+	_, err = exprToTableFilters(expression.NewOr(
+		expression.NewLiteral(nil, sql.Null),
+		expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
+	))
+	assert.NoError(t, err)
 }

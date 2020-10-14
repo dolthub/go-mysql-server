@@ -20,7 +20,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -74,19 +73,12 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
-	var test enginetest.WriteQueryTest
-	test = enginetest.WriteQueryTest{
-		"UPDATE mytable SET s = 'updated';",
-		[]sql.Row{
-			{sql.OkResult{
-				RowsAffected: uint64(3),
-				Info:         plan.UpdateInfo{3, 3, 0},
-			}},
-		},
-		"SELECT * FROM mytable;",
-		[]sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
+	var test enginetest.QueryTest
+	test = enginetest.QueryTest{
+		`SELECT * FROM mytable WHERE NULL AND i = 3`,
+		nil,
 	}
 
 	fmt.Sprintf("%v", test)
@@ -96,8 +88,7 @@ func TestSingleQuery(t *testing.T) {
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
 
-	enginetest.TestQuery(t, harness, engine, test.WriteQuery, test.ExpectedWriteResult)
-	enginetest.TestQuery(t, harness, engine, test.SelectQuery, test.ExpectedSelect)
+	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
