@@ -103,20 +103,14 @@ func (fs *filterSet) availableFiltersForTable(table string) []sql.Expression {
 	if !ok {
 		return nil
 	}
-	return subtractExprStrs(
-		normalizeExpressions(fs.aliases, fs.tableAliases, subtractExprSet(filters, fs.handledFilters)...),
-		fs.handledIndexFilters,
-	)
+	return fs.subtractUsedIndexes(subtractExprSet(filters, fs.handledFilters))
 }
 
 // availableFilters returns the filters that are still available (not previously marked handled)
 func (fs *filterSet) availableFilters() []sql.Expression {
 	var available []sql.Expression
 	for _, es := range fs.filtersByTable {
-		available = append(available, subtractExprStrs(
-			normalizeExpressions(fs.aliases, fs.tableAliases, subtractExprSet(es, fs.handledFilters)...),
-			fs.handledIndexFilters,
-		)...)
+		available = append(available, fs.subtractUsedIndexes(subtractExprSet(es, fs.handledFilters))...)
 	}
 	return available
 }
@@ -173,12 +167,16 @@ func subtractExprSet(all, toSubtract []sql.Expression) []sql.Expression {
 	return remainder
 }
 
-// subtractExprStrs returns all expressions in the first parameter that aren't present in the second parameter, using
-// string representations of expressions to compare.
-func subtractExprStrs(all []sql.Expression, toSubtract []string) []sql.Expression {
+// subtractUsedIndexes returns the filter expressions given with used indexes subtracted off.
+func (fs *filterSet) subtractUsedIndexes(all []sql.Expression) []sql.Expression {
 	var remainder []sql.Expression
 
-	for _, e := range all {
+	// Careful: index expressions are always normalized (contain actual table names), whereas filter expressions can
+	// contain aliases for both expressions and table names. We want to normalize all expressions for comparison, but
+	// return the original expressions.
+	normalized := normalizeExpressions(fs.aliases, fs.tableAliases, all...)
+
+	for i, e := range normalized {
 		var found bool
 
 		cmpStr := e.String()
@@ -192,7 +190,7 @@ func subtractExprStrs(all []sql.Expression, toSubtract []string) []sql.Expressio
 			}
 		}
 
-		for _, s := range toSubtract {
+		for _, s := range fs.handledIndexFilters {
 			if cmpStr == s {
 				found = true
 				break
@@ -200,10 +198,9 @@ func subtractExprStrs(all []sql.Expression, toSubtract []string) []sql.Expressio
 		}
 
 		if !found {
-			remainder = append(remainder, e)
+			remainder = append(remainder, all[i])
 		}
 	}
 
 	return remainder
 }
-

@@ -266,6 +266,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule("pushdown_filters"))
 }
 
+// TODO: this needs tests for pushing a merged index lookup down to a table
 func TestPushdownIndex(t *testing.T) {
 	require := require.New(t)
 
@@ -700,11 +701,12 @@ func TestPushdownIndex(t *testing.T) {
 							),
 						),
 					),
-					plan.NewTableAlias("t2",
-						plan.NewFilter(expression.NewEquals(
+					plan.NewFilter(
+						expression.NewEquals(
 							expression.NewGetFieldWithTable(2, sql.Text, "t2", "t2", true),
 							expression.NewLiteral("goodbye", sql.Text),
 						),
+						plan.NewTableAlias("t2",
 							plan.NewDecoratedNode("Indexed table access on index [mytable2.i2]",
 								plan.NewResolvedTable(table2.WithIndexLookup(
 									mustIndexLookup(idxTable2I2.Get(21))),
@@ -715,72 +717,6 @@ func TestPushdownIndex(t *testing.T) {
 				),
 			),
 		},
-		// {
-		// 	name: "multiple indexes",
-		// 	node: plan.NewProject(
-		// 		[]sql.Expression{
-		// 			expression.NewUnresolvedQualifiedColumn("mytable", "i"),
-		// 		},
-		// 		plan.NewFilter(
-		// 			expression.NewAnd(
-		// 				expression.NewAnd(
-		// 					expression.NewEquals(
-		// 						expression.NewUnresolvedQualifiedColumn("mytable", "f"),
-		// 						expression.NewLiteral(3.14, sql.Float64),
-		// 					),
-		// 					expression.NewGreaterThan(
-		// 						expression.NewUnresolvedQualifiedColumn("mytable", "i"),
-		// 						expression.NewLiteral(1, sql.Int32),
-		// 					),
-		// 				),
-		// 				expression.NewNot(
-		// 					expression.NewEquals(
-		// 						expression.NewUnresolvedQualifiedColumn("mytable2", "i2"),
-		// 						expression.NewLiteral(2, sql.Int32),
-		// 					),
-		// 				),
-		// 			),
-		// 			plan.NewCrossJoin(
-		// 				plan.NewResolvedTable(table),
-		// 				plan.NewResolvedTable(table2),
-		// 			),
-		// 		),
-		// 	),
-		// 	expected: plan.NewProject(
-		// 		[]sql.Expression{
-		// 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-		// 		},
-		// 		plan.NewCrossJoin(
-		// 			plan.NewResolvedTable(table.WithIndexLookup(
-		// 				// TODO: These two indexes should not be mergeable, and fetching the values of
-		// 				//  them will not yield correct results with the current implementation of these indexes.
-		// 				&memory.MergedIndexLookup{
-		// 					Intersections: []sql.IndexLookup{
-		// 						&memory.MergeableIndexLookup{
-		// 							Key:   []interface{}{float64(3.14)},
-		// 							Index: idx2.(memory.ExpressionsIndex),
-		// 						},
-		// 						&memory.DescendIndexLookup{
-		// 							Gt:    []interface{}{1},
-		// 							Index: idx1.(memory.ExpressionsIndex),
-		// 						},
-		// 					},
-		// 					Index: idx2.(memory.ExpressionsIndex),
-		// 				},
-		// 			),
-		// 			),
-		// 			plan.NewResolvedTable(
-		// 				table2.WithIndexLookup(&memory.NegateIndexLookup{
-		// 					Lookup: &memory.MergeableIndexLookup{
-		// 						Key:   []interface{}{2},
-		// 						Index: idx3.(memory.ExpressionsIndex),
-		// 					},
-		// 					Index: idx3.(memory.ExpressionsIndex),
-		// 				}),
-		// 			),
-		// 		),
-		// 	),
-		// },
 	}
 
 	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule("pushdown_filters"))
