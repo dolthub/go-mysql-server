@@ -266,6 +266,181 @@ func TestPushdownFilterToTables(t *testing.T) {
 	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule("pushdown_filters"))
 }
 
+func TestPushdownFiltersAboveTables(t *testing.T) {
+	table := memory.NewTable("mytable", sql.Schema{
+		{Name: "i", Type: sql.Int32, Source: "mytable"},
+		{Name: "f", Type: sql.Float64, Source: "mytable"},
+		{Name: "t", Type: sql.Text, Source: "mytable"},
+	})
+
+	table2 := memory.NewTable("mytable2", sql.Schema{
+		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
+		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
+		{Name: "t2", Type: sql.Text, Source: "mytable2"},
+	})
+
+	db := memory.NewDatabase("mydb")
+	db.AddTable("mytable", table)
+	db.AddTable("mytable2", table2)
+
+	catalog := sql.NewCatalog()
+	catalog.AddDatabase(db)
+	a := NewDefault(catalog)
+
+	tests := []analyzerFnTestCase{
+		{
+			name: "pushdown filters to under join node",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+				},
+				plan.NewFilter(
+					and(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+						and(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
+								expression.NewLiteral(21, sql.Int32),
+							),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(5, sql.Int32, "mytable2", "t2", true),
+								expression.NewLiteral("hello", sql.Text),
+							),
+						),
+					),
+					plan.NewCrossJoin(
+						plan.NewResolvedTable(table),
+						plan.NewResolvedTable(table2),
+					),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+				},
+				plan.NewCrossJoin(
+					plan.NewFilter(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+						plan.NewResolvedTable(table),
+					),
+					plan.NewFilter(
+						and(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
+								expression.NewLiteral(21, sql.Int32),
+							),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "t2", true),
+								expression.NewLiteral("hello", sql.Text),
+							),
+						),
+						plan.NewResolvedTable(table2),
+					),
+				),
+			),
+		},
+		{
+			name: "pushdown filters to under join node, aliased tables",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+				},
+				plan.NewFilter(
+					and(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+						and(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(3, sql.Int32, "t2", "i2", true),
+								expression.NewLiteral(21, sql.Int32),
+							),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(5, sql.Int32, "t2", "t2", true),
+								expression.NewLiteral("hello", sql.Text),
+							),
+						),
+					),
+					plan.NewCrossJoin(
+						plan.NewResolvedTable(table),
+						plan.NewResolvedTable(table2),
+					),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+				},
+				plan.NewCrossJoin(
+					plan.NewFilter(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+						plan.NewTableAlias("t1",
+							plan.NewResolvedTable(table),
+						),
+					),
+					plan.NewFilter(
+						and(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
+								expression.NewLiteral(21, sql.Int32),
+							),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(2, sql.Int32, "t2", "t2", true),
+								expression.NewLiteral("hello", sql.Text),
+							),
+						),
+						plan.NewTableAlias("t2",
+							plan.NewResolvedTable(table2),
+						),
+					),
+				),
+			),
+		},
+		{
+			name: "no pushdown possible, filter contains join condition",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+				},
+				plan.NewFilter(
+					and(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+						and(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(2, sql.Int32, "mytable", "i", true),
+								expression.NewGetFieldWithTable(5, sql.Int32, "mytable2", "i2", true),
+							),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(5, sql.Int32, "mytable2", "i2", true),
+								expression.NewLiteral(20, sql.Int32),
+							),
+						),
+					),
+					plan.NewCrossJoin(
+						plan.NewResolvedTable(table),
+						plan.NewResolvedTable(table2),
+					),
+				),
+			),
+		},
+	}
+
+	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule("pushdown_filters"))
+}
+
 // TODO: this needs tests for pushing a merged index lookup down to a table
 func TestPushdownIndex(t *testing.T) {
 	require := require.New(t)
