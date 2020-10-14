@@ -287,7 +287,7 @@ func TestPushdownIndex(t *testing.T) {
 	table1Idxes, err := table.GetIndexes(sql.NewEmptyContext())
 	require.NoError(err)
 	// idx1 := table1Idxes[0]
-	idx2 := table1Idxes[1]
+	idxTable1F := table1Idxes[1]
 
 	table2 := memory.NewTable("mytable2", sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2", PrimaryKey: true},
@@ -296,9 +296,9 @@ func TestPushdownIndex(t *testing.T) {
 	})
 
 	table2.EnablePrimaryKeyIndexes()
-	// table2Idxes, err := table2.GetIndexes(sql.NewEmptyContext())
+	table2Idxes, err := table2.GetIndexes(sql.NewEmptyContext())
 	require.NoError(err)
-	// idx3 := table2Idxes[0]
+	idxTable2I2 := table2Idxes[0]
 
 	db := memory.NewDatabase("")
 	db.AddTable("mytable", table)
@@ -330,12 +330,103 @@ func TestPushdownIndex(t *testing.T) {
 				plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 					plan.NewResolvedTable(
 						table.WithIndexLookup(
-							mustIndexLookup(idx2.Get(3.14)),
+							mustIndexLookup(idxTable1F.Get(3.14)),
 						),
 					),
 				),
 			),
 		},
+		{
+			name: "single index to each of two tables",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+				},
+				plan.NewFilter(
+					and(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
+							expression.NewLiteral(21, sql.Int32),
+						),
+					),
+					plan.NewCrossJoin(
+						plan.NewResolvedTable(table),
+						plan.NewResolvedTable(table2),
+					),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+				},
+				plan.NewCrossJoin(
+					plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
+						plan.NewResolvedTable(table.WithIndexLookup(
+							mustIndexLookup(idxTable1F.Get(3.14))),
+						),
+					),
+					plan.NewDecoratedNode("Indexed table access on index [mytable2.i2]",
+						plan.NewResolvedTable(table2.WithIndexLookup(
+							mustIndexLookup(idxTable2I2.Get(21))),
+						),
+					),
+				),
+			),
+		},
+		{
+			name: "single index to each of two aliased tables",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+				},
+				plan.NewFilter(
+					and(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(3, sql.Int32, "t2", "i2", true),
+							expression.NewLiteral(21, sql.Int32),
+						),
+					),
+					plan.NewCrossJoin(
+						plan.NewTableAlias("t1",
+							plan.NewResolvedTable(table),
+						),
+						plan.NewTableAlias("t2",
+							plan.NewResolvedTable(table2),
+						),
+					),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+				},
+				plan.NewCrossJoin(
+					plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
+						plan.NewTableAlias("t1",
+							plan.NewResolvedTable(table.WithIndexLookup(
+								mustIndexLookup(idxTable1F.Get(3.14))),
+							),
+						),
+					),
+					plan.NewDecoratedNode("Indexed table access on index [mytable2.i2]",
+						plan.NewTableAlias("t2",
+							plan.NewResolvedTable(table2.WithIndexLookup(
+								mustIndexLookup(idxTable2I2.Get(21))),
+							),
+						),
+					),
+				),
+			),
+		},
+
 		// {
 		// 	name: "multiple indexes",
 		// 	node: plan.NewProject(
