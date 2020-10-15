@@ -246,8 +246,7 @@ func pushdownFiltersToTable(
 
 	// Finally, move any remaining filters for the table directly above the table itself
 	var pushedDownFilterExpression sql.Expression
-	if len(filters.availableFiltersForTable(tableNode.Name())) > 0 {
-		tableFilters := filters.availableFiltersForTable(tableNode.Name())
+	if tableFilters := filters.availableFiltersForTable(tableNode.Name()); len(tableFilters) > 0 {
 		filters.markFiltersHandled(tableFilters...)
 
 		schema := tableNode.Schema()
