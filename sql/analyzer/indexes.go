@@ -32,7 +32,7 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node) (indexLooku
 		return nil, err
 	}
 
-	var indexes map[string]*indexLookup
+	var indexes indexLookupsByTable
 	var errInAnalysis error
 	plan.Inspect(node, func(node sql.Node) bool {
 		filter, ok := node.(*plan.Filter)
@@ -47,13 +47,13 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node) (indexLooku
 		}
 		defer indexAnalyzer.releaseUsedIndexes()
 
-		var result map[string]*indexLookup
+		var result indexLookupsByTable
 		result, err = getIndexes(ctx, a, indexAnalyzer, filter.Expression, exprAliases, tableAliases)
 		if err != nil {
 			return false
 		}
 
-		indexes = indexesIntersection(ctx, a, indexes, result)
+		indexes = indexesIntersection(indexes, result)
 		return true
 	})
 
@@ -71,8 +71,8 @@ func getIndexes(
 	e sql.Expression,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
-) (map[string]*indexLookup, error) {
-	var result = make(map[string]*indexLookup)
+) (indexLookupsByTable, error) {
+	var result = make(indexLookupsByTable)
 	switch e := e.(type) {
 	case *expression.Or:
 		// If more than one table is involved in a disjunction, we can't use indexed lookups. This is because we will
@@ -248,11 +248,14 @@ func getIndexes(
 				return nil, err
 			}
 
-			// Merge this index in with the multi-column indexes if possible
-			// TODO: this doesn't properly handle unmerge-able indexes and might lead to incorrect results in some cases.
-			//  Probably not because it's an AND (we should be able to handle any part of an AND expression independently and
-			//  leave the rest to the filters), but the behavior is poorly defined.
-			result = indexesIntersection(ctx, a, result, indexes)
+			// Merge this index if possible. If at any time we cannot merge the result, then we simply return nil. Returning
+			// an indexed lookup for only part of an expression leads to incorrect results, e.g. (col = 1 AND col = 2) can
+			// either return a merged index lookup for both values, or for neither. Returning either one leads to incorrect
+			// results.
+			if !canMergeIndexLookups(result, indexes) {
+				return nil, nil
+			}
+			result = indexesIntersection(result, indexes)
 		}
 
 		return result, nil
@@ -263,7 +266,7 @@ func getIndexes(
 
 // Returns whether the given index contains the given expression as one of its terms. The expression should be
 // normalized (table names unaliased) to ensure matching the index's declaration.
-func indexHasExpression(indexLookups map[string]*indexLookup, expr sql.Expression) bool {
+func indexHasExpression(indexLookups indexLookupsByTable, expr sql.Expression) bool {
 	getField := extractGetField(expr)
 	if getField == nil {
 		return false
@@ -412,7 +415,7 @@ func getNegatedIndexes(
 	not *expression.Not,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
-) (map[string]*indexLookup, error) {
+) (indexLookupsByTable, error) {
 
 	switch e := not.Child.(type) {
 	case *expression.Not:
@@ -448,7 +451,7 @@ func getNegatedIndexes(
 			return nil, err
 		}
 
-		result := map[string]*indexLookup{
+		result := indexLookupsByTable{
 			idx.Table(): {
 				indexes: []sql.Index{idx},
 				lookup:  lookup,
@@ -497,7 +500,7 @@ func getNegatedIndexes(
 					lookup = lookup.(sql.MergeableIndexLookup).Intersection(lookup2)
 				}
 
-				return map[string]*indexLookup{
+				return indexLookupsByTable{
 					idx.Table(): {
 						indexes: []sql.Index{idx},
 						lookup:  lookup,
@@ -545,13 +548,8 @@ func getNegatedIndexes(
 	}
 }
 
-func indexesIntersection(
-	ctx *sql.Context,
-	a *Analyzer,
-	left, right map[string]*indexLookup,
-) map[string]*indexLookup {
-
-	var result = make(map[string]*indexLookup)
+func indexesIntersection(left, right indexLookupsByTable) indexLookupsByTable {
+	var result = make(indexLookupsByTable)
 
 	for table, idx := range left {
 		if idx2, ok := right[table]; ok && canMergeIndexes(idx.lookup, idx2.lookup) {
@@ -580,9 +578,9 @@ func getMultiColumnIndexes(
 	ia *indexAnalyzer,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
-) (map[string]*indexLookup, error) {
+) (indexLookupsByTable, error) {
 
-	result := make(map[string]*indexLookup)
+	result := make(indexLookupsByTable)
 	columnExprs := columnExprsByTable(exprs)
 	for table, exps := range columnExprs {
 		exprsByOp := groupExpressionsByOperator(exps)
@@ -611,7 +609,7 @@ func getMultiColumnIndexes(
 
 				if lookup != nil {
 					if _, ok := result[table]; ok {
-						result = indexesIntersection(ctx, a, result, map[string]*indexLookup{
+						result = indexesIntersection(result, indexLookupsByTable{
 							table: &indexLookup{lookup, []sql.Index{index}},
 						})
 					} else {
@@ -835,6 +833,17 @@ func containsSubquery(e sql.Expression) bool {
 
 func isEvaluable(e sql.Expression) bool {
 	return !containsColumns(e) && !containsSubquery(e)
+}
+
+func canMergeIndexLookups(leftIndexes, rightIndexes indexLookupsByTable) bool {
+	for table, leftIdx := range leftIndexes {
+		if rightIdx, ok := rightIndexes[table]; ok {
+			if !canMergeIndexes(leftIdx.lookup, rightIdx.lookup) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func canMergeIndexes(a, b sql.IndexLookup) bool {

@@ -77,13 +77,13 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		`SELECT * FROM mytable WHERE NULL AND i = 3`,
+		"SELECT * FROM mytable WHERE i = 1 AND i = 2",
 		nil,
 	}
 
 	fmt.Sprintf("%v", test)
 
-	harness := newMemoryHarness("", 1, testNumPartitions, true, nil)
+	harness := newMemoryHarness("", 1, testNumPartitions, false, unmergableIndexDriver)
 	engine := enginetest.NewEngine(t, harness)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
