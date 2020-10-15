@@ -4,8 +4,6 @@ import (
 	"context"
 	dsql "database/sql"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -20,7 +18,7 @@ import (
 
 const port = 3336
 
-func authEngine(au auth.Auth) (string, *sqle.Engine, *sql.IndexRegistry, error) {
+func authEngine(au auth.Auth) (*sqle.Engine, *sql.IndexRegistry, error) {
 	db := memory.NewDatabase("test")
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
@@ -35,27 +33,16 @@ func authEngine(au auth.Auth) (string, *sqle.Engine, *sql.IndexRegistry, error) 
 
 	db.AddTable(tblName, table)
 
-	tmpDir, err := ioutil.TempDir(os.TempDir(), "pilosa-test")
-	if err != nil {
-		return "", nil, nil, err
-	}
-
-	err = os.MkdirAll(tmpDir, 0644)
-	if err != nil {
-		return "", nil, nil, err
-	}
-
 	a := analyzer.NewBuilder(catalog).Build()
 	config := &sqle.Config{Auth: au}
 
-	return tmpDir, sqle.New(catalog, a, config), idxReg, nil
+	return sqle.New(catalog, a, config), idxReg, nil
 }
 
-func authServer(a auth.Auth) (string, *server.Server, *sql.IndexRegistry, error) {
-	tmpDir, engine, idxReg, err := authEngine(a)
+func authServer(a auth.Auth) (*server.Server, *sql.IndexRegistry, error) {
+	engine, idxReg, err := authEngine(a)
 	if err != nil {
-		os.RemoveAll(tmpDir)
-		return "", nil, nil, err
+		return nil, nil, err
 	}
 
 	config := server.Config{
@@ -67,13 +54,12 @@ func authServer(a auth.Auth) (string, *server.Server, *sql.IndexRegistry, error)
 
 	s, err := server.NewDefaultServer(config, engine)
 	if err != nil {
-		os.RemoveAll(tmpDir)
-		return "", nil, nil, err
+		return nil, nil, err
 	}
 
 	go s.Start()
 
-	return tmpDir, s, idxReg, nil
+	return s, idxReg, nil
 }
 
 func connString(user, password string) string {
@@ -95,9 +81,8 @@ func testAuthentication(
 	t.Helper()
 	req := require.New(t)
 
-	tmpDir, s, _, err := authServer(a)
+	s, _, err := authServer(a)
 	req.NoError(err)
-	defer os.RemoveAll(tmpDir)
 
 	for _, c := range tests {
 		t.Run(fmt.Sprintf("%s-%s", c.user, c.password), func(t *testing.T) {
@@ -152,9 +137,8 @@ func testAuthorization(
 	t.Helper()
 	req := require.New(t)
 
-	tmpDir, e, idxReg, err := authEngine(a)
+	e, idxReg, err := authEngine(a)
 	req.NoError(err)
-	defer os.RemoveAll(tmpDir)
 
 	for i, c := range tests {
 		t.Run(fmt.Sprintf("%s-%s", c.user, c.query), func(t *testing.T) {
@@ -193,9 +177,8 @@ func testAudit(
 	t.Helper()
 	req := require.New(t)
 
-	tmpDir, s, _, err := authServer(a)
+	s, _, err := authServer(a)
 	req.NoError(err)
-	defer os.RemoveAll(tmpDir)
 
 	for _, c := range tests {
 		t.Run(c.user, func(t *testing.T) {

@@ -25,7 +25,6 @@ These are the goals of **go-mysql-server**:
   optimizations.
 - Support indexed lookups and joins on data tables that support them.
 - Support external index driver implementations such as pilosa.
-- Provide a common index driver implementation.
 - With few caveats and using a full database implementation, be a
   drop-in MySQL database replacement.
 
@@ -191,8 +190,6 @@ SET <variable name> = <value>
 |`inmemory_joins`|session|If set it will perform all joins in memory. Default is off. This has precedence over `INMEMORY_JOINS`.|
 |`MAX_MEMORY`|environment|The maximum number of memory, in megabytes, that can be consumed by go-mysql-server. Any in-memory caches or computations will no longer try to use memory when the limit is reached. Note that this may cause certain queries to fail if there is not enough memory available, such as queries using DISTINCT, ORDER BY or GROUP BY with groupings.|
 |`DEBUG_ANALYZER`|environment|If set, the analyzer will print debug messages. Default is off.|
-|`PILOSA_INDEX_THREADS`|environment|Number of threads used in index creation. Default is the number of cores available in the machine.|
-|`pilosa_index_threads`|environment|Number of threads used in index creation. Default is the number of cores available in the machine. This has precedence over `PILOSA_INDEX_THREADS`.|
 <!-- END CONFIG -->
 
 ## Example
@@ -392,7 +389,7 @@ additional capabilities:
 ## Custom index driver implementation
 
 Index drivers provide different backends for storing and querying
-indexes, without the need for a table to storing and querying its own
+indexes, without the need for a table to store and query its own
 native indexes. To implement a custom index driver you need to
 implement a few things:
 
@@ -404,17 +401,10 @@ implement a few things:
   corruption in indexes.
 - `sql.Index` interface, returned by your driver when an index is
   loaded or created.
-  - Your `sql.Index` may optionally implement the `sql.AscendIndex`
-    and/or `sql.DescendIndex` interfaces, if you want to support more
-    comparison operators like `>`, `<`, `>=`, `<=` or `BETWEEN`.
-- `sql.IndexLookup` interface, returned by your index in any of the implemented operations to get a subset of the indexed values.
-  - Your `sql.IndexLookup` may optionally implement the
-    `sql.Mergeable` and `sql.SetOperations` interfaces if you want to
-    support set operations to merge your index lookups.
 - `sql.IndexValueIter` interface, which will be returned by your
   `sql.IndexLookup` and should return the values of the index.
-- Don't forget to register the index driver in your `sql.Catalog`
-  using `catalog.RegisterIndexDriver(mydriver)` to be able to use it.
+- Don't forget to register the index driver in your `sql.Context`
+  using `context.RegisterIndexDriver(mydriver)` to be able to use it.
 
 To create indexes using your custom index driver you need to use
 extension syntax `USING driverid` on the index creation statement. For
@@ -424,20 +414,19 @@ example:
 CREATE INDEX foo ON table USING driverid (col1, col2)
 ```
 
-You can see an example of a driver implementation inside the
-`sql/index/pilosa` package, where the pilosa driver is implemented.
+go-mysql-server does not provide a production index driver
+implementation. We previously provided a pilosa implementation, but
+removed it due to the difficulty of supporting it on all platforms
+(pilosa doesn't work on Windows).
 
-## Included `pilosa` index driver
-
-**go-mysql-server** includes on index driver, `pilosa`, which does not
-require an external pilosa server. `pilosa` is not supported on
-Windows.
+You can see an example of a driver implementation in the memory
+package.
 
 ### Metrics
 
 `go-mysql-server` utilizes `github.com/go-kit/kit/metrics` module to
 expose metrics (counters, gauges, histograms) for certain packages (so
-far for `engine`, `analyzer`, `regex`, `pilosa`). If you already have
+far for `engine`, `analyzer`, `regex`). If you already have
 metrics server (prometheus, statsd/statsite, influxdb, etc.) and you
 want to gather metrics also from `go-mysql-server` components, you
 will need to initialize some global variables by particular
@@ -530,39 +519,6 @@ regex.MatchHistogram = prometheus.NewHistogramFrom(promopts.HistogramOpts{
     Name:      "match_histogram",
 }, []string{
     "string",
-    "duration",
-})
-
-// pilosa index driver metrics
-pilosa.RowsGauge = prometheus.NewGaugeFrom(promopts.GaugeOpts{
-    Namespace: "go_mysql_server",
-    Subsystem: "index",
-    Name:      "indexed_rows_gauge",
-}, []string{
-    "driver",
-})
-pilosa.TotalHistogram = prometheus.NewHistogramFrom(promopts.HistogramOpts{
-    Namespace: "go_mysql_server",
-    Subsystem: "index",
-    Name:      "index_created_total_histogram",
-}, []string{
-    "driver",
-    "duration",
-})
-pilosa.MappingHistogram = prometheus.NewHistogramFrom(promopts.HistogramOpts{
-    Namespace: "go_mysql_server",
-    Subsystem: "index",
-    Name:      "index_created_mapping_histogram",
-}, []string{
-    "driver",
-    "duration",
-})
-pilosa.BitmapHistogram = prometheus.NewHistogramFrom(promopts.HistogramOpts{
-    Namespace: "go_mysql_server",
-    Subsystem: "index",
-    Name:      "index_created_bitmap_histogram",
-}, []string{
-    "driver",
     "duration",
 })
 ```

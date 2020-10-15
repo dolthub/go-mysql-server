@@ -73,17 +73,17 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		"SELECT * FROM mytable WHERE i = 1 AND i = 2",
+		"SELECT * FROM mytable WHERE i = 2 AND s = 'third row'",
 		nil,
 	}
 
 	fmt.Sprintf("%v", test)
 
-	harness := newMemoryHarness("", 1, testNumPartitions, false, unmergableIndexDriver)
+	harness := newMemoryHarness("", 1, testNumPartitions, false, mergableIndexDriver)
 	engine := enginetest.NewEngine(t, harness)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
