@@ -709,9 +709,9 @@ var TriggerTests = []ScriptTest{
 				Expected: []sql.Row{
 					{sql.OkResult{
 						RowsAffected: 3,
-						Info:         plan.UpdateInfo{
-							Matched:  3,
-							Updated:  3,
+						Info: plan.UpdateInfo{
+							Matched: 3,
+							Updated: 3,
 						},
 					}},
 				},
@@ -747,9 +747,9 @@ var TriggerTests = []ScriptTest{
 				Expected: []sql.Row{
 					{sql.OkResult{
 						RowsAffected: 3,
-						Info:         plan.UpdateInfo{
-							Matched:  3,
-							Updated:  3,
+						Info: plan.UpdateInfo{
+							Matched: 3,
+							Updated: 3,
 						},
 					}},
 				},
@@ -785,7 +785,7 @@ var TriggerTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "select x from a order by 1",
+				Query:    "select x from a order by 1",
 				Expected: []sql.Row{},
 			},
 			{
@@ -815,7 +815,7 @@ var TriggerTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "select x from a order by 1",
+				Query:    "select x from a order by 1",
 				Expected: []sql.Row{},
 			},
 			{

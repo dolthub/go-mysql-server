@@ -229,7 +229,6 @@ func TestReadOnly(t *testing.T, harness Harness) {
 
 	writingQueries := []string{
 		`CREATE INDEX foo USING BTREE ON mytable (i, s)`,
-		`CREATE INDEX foo USING pilosa ON mytable (i, s)`,
 		`DROP INDEX foo ON mytable`,
 		`INSERT INTO mytable (i, s) VALUES(42, 'yolo')`,
 		`CREATE VIEW myview AS SELECT i FROM mytable`,
@@ -1787,6 +1786,7 @@ func TestTracing(t *testing.T, harness Harness) {
 		"plan.Sort",
 		"plan.Distinct",
 		"plan.Project",
+		"plan.Filter",
 		"plan.ResolvedTable",
 	}
 

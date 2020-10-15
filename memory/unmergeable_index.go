@@ -3,6 +3,7 @@ package memory
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -170,7 +171,11 @@ func (u *UnmergeableIndex) Has(partition sql.Partition, key ...interface{}) (boo
 }
 
 func (u *UnmergeableIndexLookup) String() string {
-	return u.idx.ID()
+	var idxes = make([]string, len(u.key))
+	for i, e := range u.key {
+		idxes[i] = fmt.Sprintf("%s %v", u.idx.Expressions()[i], e)
+	}
+	return strings.Join(idxes, ", ")
 }
 
 func (u *UnmergeableIndex) Table() string {

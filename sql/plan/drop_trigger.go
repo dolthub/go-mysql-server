@@ -2,8 +2,9 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type DropTrigger struct {

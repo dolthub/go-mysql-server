@@ -36,6 +36,10 @@ func (e IsNull) String() string {
 	return e.Child.String() + " IS NULL"
 }
 
+func (e IsNull) DebugString() string {
+	return sql.DebugString(e.Child) + " IS NULL"
+}
+
 // WithChildren implements the Expression interface.
 func (e *IsNull) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {

@@ -75,17 +75,6 @@ Implementation of all the functions available in go-mysql-server.
 Implementation of all the aggregation functions available in
 go-mysql-server.
 
-### `sql/index`
-
-Contains the index driver configuration file implementation and other
-utilities for dealing with index drivers.
-
-### `sql/index/pilosa`
-
-Actual implementation of an index driver. Underneath, it's using a
-bitmap database called pilosa (hence the name) to implement bitmap
-indexes.
-
 ### `sql/parse`
 
 This package exposes the `Parse` function, which parses a SQL query

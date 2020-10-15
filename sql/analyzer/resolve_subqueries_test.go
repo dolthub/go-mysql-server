@@ -13,14 +13,14 @@ import (
 )
 
 func TestResolveSubqueries(t *testing.T) {
-	foo := memory.NewTable("foo", sql.Schema{
+	foo := memory.NewPushdownTable("foo", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 	})
-	bar := memory.NewTable("bar", sql.Schema{
+	bar := memory.NewPushdownTable("bar", sql.Schema{
 		{Name: "b", Type: sql.Int64, Source: "bar"},
 		{Name: "k", Type: sql.Int64, Source: "bar"},
 	})
-	baz := memory.NewTable("baz", sql.Schema{
+	baz := memory.NewPushdownTable("baz", sql.Schema{
 		{Name: "c", Type: sql.Int64, Source: "baz"},
 	})
 	db := memory.NewDatabase("mydb")
@@ -72,13 +72,15 @@ func TestResolveSubqueries(t *testing.T) {
 					plan.NewCrossJoin(
 						plan.NewSubqueryAlias(
 							"t1", "",
-							plan.NewResolvedTable(foo.WithProjection([]string{"a"})),
+							plan.NewDecoratedNode("Projected table access on [a]",
+								plan.NewResolvedTable(foo.WithProjection([]string{"a"}))),
 						),
 						plan.NewSubqueryAlias(
 							"t2", "",
 							plan.NewSubqueryAlias(
 								"t2alias", "",
-								plan.NewResolvedTable(bar.WithProjection([]string{"b"})),
+								plan.NewDecoratedNode("Projected table access on [b]",
+									plan.NewResolvedTable(bar.WithProjection([]string{"b"}))),
 							),
 						),
 					),

@@ -587,7 +587,7 @@ func triggersRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 						"def",                      // event_object_catalog
 						triggerDb.Name(),           // event_object_schema //TODO: table may be in a different db
 						tableName,                  // event_object_table
-						int64(order+1),             // action_order
+						int64(order + 1),           // action_order
 						nil,                        // action_condition
 						triggerPlan.BodyString,     // action_statement
 						"ROW",                      // action_orientation

@@ -20,77 +20,81 @@ type QueryPlanTest struct {
 }
 
 // QueryPlanTest is a test of generating the right query plans for different queries in the presence of indexes and
-// other features.
-// TODO: the query plan printing behavior relies on integrator specific methods (sql.Table.String()), which makes it
-//  non-portable. Fix that.
+// other features. These tests are fragile because they rely on string representations of query plans, but they're much
+// easier to construct this way.
 var PlanTests = []QueryPlanTest{
 	{
 		Query: "SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2",
-		ExpectedPlan: "IndexedJoin(mytable.i = othertable.i2)\n" +
-			" ├─ Table(mytable): Projected \n" +
-			" └─ Table(othertable): Projected \n" +
+		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			" └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"     ├─ Table(mytable)\n" +
+			"     └─ Table(othertable)\n" +
 			"",
 	},
 	{
 		Query: "SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2",
 		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
 			" └─ IndexedJoin(mytable.i = othertable.i2)\n" +
-			"     ├─ Table(mytable): Projected \n" +
-			"     └─ Table(othertable): Projected \n" +
+			"     ├─ Table(mytable)\n" +
+			"     └─ Table(othertable)\n" +
 			"",
 	},
 	{
 		Query: "SELECT i, i2, s2 FROM othertable JOIN mytable ON i = i2",
 		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
 			" └─ IndexedJoin(mytable.i = othertable.i2)\n" +
-			"     ├─ Table(othertable): Projected \n" +
-			"     └─ Table(mytable): Projected \n" +
+			"     ├─ Table(othertable)\n" +
+			"     └─ Table(mytable)\n" +
 			"",
 	},
 	{
 		Query: "SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2",
-		ExpectedPlan: "IndexedJoin(mytable.i = othertable.i2)\n" +
-			" ├─ Table(othertable): Projected \n" +
-			" └─ Table(mytable): Projected \n" +
+		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+			" └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"     ├─ Table(othertable)\n" +
+			"     └─ Table(mytable)\n" +
 			"",
 	},
 	{
 		Query: "SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i2 = i",
-		ExpectedPlan: "IndexedJoin(othertable.i2 = mytable.i)\n" +
-			" ├─ Table(mytable): Projected \n" +
-			" └─ Table(othertable): Projected \n" +
+		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ Table(mytable)\n" +
+			"     └─ Table(othertable)\n" +
 			"",
 	},
 	{
 		Query: "SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i2 = i",
 		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
 			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
-			"     ├─ Table(mytable): Projected \n" +
-			"     └─ Table(othertable): Projected \n" +
+			"     ├─ Table(mytable)\n" +
+			"     └─ Table(othertable)\n" +
 			"",
 	},
 	{
 		Query: "SELECT i, i2, s2 FROM othertable JOIN mytable ON i2 = i",
 		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
 			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
-			"     ├─ Table(othertable): Projected \n" +
-			"     └─ Table(mytable): Projected \n" +
+			"     ├─ Table(othertable)\n" +
+			"     └─ Table(mytable)\n" +
 			"",
 	},
 	{
 		Query: "SELECT s2, i2, i FROM othertable JOIN mytable ON i2 = i",
-		ExpectedPlan: "IndexedJoin(othertable.i2 = mytable.i)\n" +
-			" ├─ Table(othertable): Projected \n" +
-			" └─ Table(mytable): Projected \n" +
+		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ Table(othertable)\n" +
+			"     └─ Table(mytable)\n" +
 			"",
 	},
 	{
 		Query: "SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2",
 		ExpectedPlan: "IndexedJoin(mt.i = ot.i2)\n" +
 			" ├─ TableAlias(mt)\n" +
-			" │   └─ Table(mytable): Projected Filtered Indexed\n" +
+			" │   └─ Indexed table access on index [mytable.i]\n" +
+			" │       └─ Table(mytable)\n" +
 			" └─ TableAlias(ot)\n" +
-			"     └─ Table(othertable): Projected \n" +
+			"     └─ Table(othertable)\n" +
 			"",
 	},
 	{
@@ -103,18 +107,20 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2",
-		ExpectedPlan: "IndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
-			" ├─ Table(one_pk): Projected \n" +
-			" └─ Table(two_pk): Projected \n" +
+		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ IndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ Table(two_pk)\n" +
 			"",
 	},
 	{
 		Query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2",
-		ExpectedPlan: "IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
-			" ├─ TableAlias(opk)\n" +
-			" │   └─ Table(one_pk): Projected \n" +
-			" └─ TableAlias(tpk)\n" +
-			"     └─ Table(two_pk): Projected \n" +
+		ExpectedPlan: "Project(opk.pk, tpk.pk1, tpk.pk2)\n" +
+			" └─ IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
+			"     ├─ TableAlias(opk)\n" +
+			"     │   └─ Table(one_pk)\n" +
+			"     └─ TableAlias(tpk)\n" +
+			"         └─ Table(two_pk)\n" +
 			"",
 	},
 	{
@@ -135,9 +141,10 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: "SELECT i,pk1,pk2 FROM mytable JOIN two_pk ON i-1=pk1 AND i-2=pk2",
-		ExpectedPlan: "IndexedJoin(mytable.i - 1 = two_pk.pk1 AND mytable.i - 2 = two_pk.pk2)\n" +
-			" ├─ Table(mytable): Projected \n" +
-			" └─ Table(two_pk): Projected \n" +
+		ExpectedPlan: "Project(mytable.i, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ IndexedJoin(mytable.i - 1 = two_pk.pk1 AND mytable.i - 2 = two_pk.pk2)\n" +
+			"     ├─ Table(mytable)\n" +
+			"     └─ Table(two_pk)\n" +
 			"",
 	},
 	{
@@ -220,71 +227,78 @@ var PlanTests = []QueryPlanTest{
 		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1",
 		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
 			" └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
-			"     ├─ Table(two_pk): Projected \n" +
-			"     └─ Table(one_pk): Projected \n",
+			"     ├─ Table(two_pk)\n" +
+			"     └─ Table(one_pk)\n" +
+			"",
 	},
 	{
 		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
 		ExpectedPlan: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			" └─ IndexedJoin(a.pk1 = b.pk1 AND a.pk2 = b.pk2)\n" +
-			"     ├─ TableAlias(a)\n" +
-			"     │   └─ Table(two_pk): Projected \n" +
-			"     └─ TableAlias(b)\n" +
-			"         └─ Table(two_pk): Projected \n" +
+			" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
+			"     └─ IndexedJoin(a.pk1 = b.pk1 AND a.pk2 = b.pk2)\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ Table(two_pk)\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ Table(two_pk)\n" +
 			"",
 	},
 	{
 		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
 		ExpectedPlan: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			" └─ IndexedJoin(a.pk1 = b.pk2 AND a.pk2 = b.pk1)\n" +
-			"     ├─ TableAlias(a)\n" +
-			"     │   └─ Table(two_pk): Projected \n" +
-			"     └─ TableAlias(b)\n" +
-			"         └─ Table(two_pk): Projected \n" +
+			" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
+			"     └─ IndexedJoin(a.pk1 = b.pk2 AND a.pk2 = b.pk1)\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ Table(two_pk)\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ Table(two_pk)\n" +
 			"",
 	},
 	{
 		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON b.pk1=a.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
 		ExpectedPlan: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			" └─ IndexedJoin(b.pk1 = a.pk1 AND a.pk2 = b.pk2)\n" +
-			"     ├─ TableAlias(a)\n" +
-			"     │   └─ Table(two_pk): Projected \n" +
-			"     └─ TableAlias(b)\n" +
-			"         └─ Table(two_pk): Projected \n" +
+			" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
+			"     └─ IndexedJoin(b.pk1 = a.pk1 AND a.pk2 = b.pk2)\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ Table(two_pk)\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ Table(two_pk)\n" +
 			"",
 	},
 	{
 		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1+1=b.pk1 AND a.pk2+1=b.pk2 ORDER BY 1,2,3",
 		ExpectedPlan: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			" └─ IndexedJoin(a.pk1 + 1 = b.pk1 AND a.pk2 + 1 = b.pk2)\n" +
-			"     ├─ TableAlias(a)\n" +
-			"     │   └─ Table(two_pk): Projected \n" +
-			"     └─ TableAlias(b)\n" +
-			"         └─ Table(two_pk): Projected \n" +
+			" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
+			"     └─ IndexedJoin(a.pk1 + 1 = b.pk1 AND a.pk2 + 1 = b.pk2)\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ Table(two_pk)\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ Table(two_pk)\n" +
 			"",
 	},
 	{
 		// TODO: this should use an index. CrossJoin needs to be converted to InnerJoin, where clause to join cond
 		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
 		ExpectedPlan: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			" └─ Filter(a.pk1 = b.pk1 AND a.pk2 = b.pk2)\n" +
-			"     └─ CrossJoin\n" +
-			"         ├─ TableAlias(a)\n" +
-			"         │   └─ Table(two_pk): Projected \n" +
-			"         └─ TableAlias(b)\n" +
-			"             └─ Table(two_pk): Projected \n" +
+			" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
+			"     └─ Filter(a.pk1 = b.pk1 AND a.pk2 = b.pk2)\n" +
+			"         └─ CrossJoin\n" +
+			"             ├─ TableAlias(a)\n" +
+			"             │   └─ Table(two_pk)\n" +
+			"             └─ TableAlias(b)\n" +
+			"                 └─ Table(two_pk)\n" +
 			"",
 	},
 	{
 		// TODO: this should use an index. CrossJoin needs to be converted to InnerJoin, where clause to join cond
 		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
 		ExpectedPlan: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			" └─ Filter(a.pk1 = b.pk2 AND a.pk2 = b.pk1)\n" +
-			"     └─ CrossJoin\n" +
-			"         ├─ TableAlias(a)\n" +
-			"         │   └─ Table(two_pk): Projected \n" +
-			"         └─ TableAlias(b)\n" +
-			"             └─ Table(two_pk): Projected \n" +
+			" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
+			"     └─ Filter(a.pk1 = b.pk2 AND a.pk2 = b.pk1)\n" +
+			"         └─ CrossJoin\n" +
+			"             ├─ TableAlias(a)\n" +
+			"             │   └─ Table(two_pk)\n" +
+			"             └─ TableAlias(b)\n" +
+			"                 └─ Table(two_pk)\n" +
 			"",
 	},
 	{
@@ -292,8 +306,8 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Sort(one_pk.c5 ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
 			" └─ Project(one_pk.c5, two_pk.pk1, two_pk.pk2)\n" +
 			"     └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
-			"         ├─ Table(two_pk): Projected \n" +
-			"         └─ Table(one_pk): Projected \n" +
+			"         ├─ Table(two_pk)\n" +
+			"         └─ Table(one_pk)\n" +
 			"",
 	},
 	{
@@ -302,9 +316,9 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
 			"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
 			"         ├─ TableAlias(tpk)\n" +
-			"         │   └─ Table(two_pk): Projected \n" +
+			"         │   └─ Table(two_pk)\n" +
 			"         └─ TableAlias(opk)\n" +
-			"             └─ Table(one_pk): Projected \n" +
+			"             └─ Table(one_pk)\n" +
 			"",
 	},
 	{
@@ -313,9 +327,9 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
 			"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
 			"         ├─ TableAlias(tpk)\n" +
-			"         │   └─ Table(two_pk): Projected \n" +
+			"         │   └─ Table(two_pk)\n" +
 			"         └─ TableAlias(opk)\n" +
-			"             └─ Table(one_pk): Projected \n" +
+			"             └─ Table(one_pk)\n" +
 			"",
 	},
 	{
@@ -325,9 +339,9 @@ var PlanTests = []QueryPlanTest{
 			"     └─ Filter(opk.pk = tpk.pk1)\n" +
 			"         └─ CrossJoin\n" +
 			"             ├─ TableAlias(opk)\n" +
-			"             │   └─ Table(one_pk): Projected \n" +
+			"             │   └─ Table(one_pk)\n" +
 			"             └─ TableAlias(tpk)\n" +
-			"                 └─ Table(two_pk): Projected \n" +
+			"                 └─ Table(two_pk)\n" +
 			"",
 	},
 	{
@@ -337,8 +351,8 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(one_pk.c5, two_pk.pk1, two_pk.pk2)\n" +
 			"     └─ Filter(one_pk.pk = two_pk.pk1)\n" +
 			"         └─ CrossJoin\n" +
-			"             ├─ Table(one_pk): Projected \n" +
-			"             └─ Table(two_pk): Projected \n" +
+			"             ├─ Table(one_pk)\n" +
+			"             └─ Table(two_pk)\n" +
 			"",
 	},
 	{
@@ -412,24 +426,28 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
 		ExpectedPlan: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			" └─ IndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
-			"     ├─ Table(one_pk): Projected \n" +
-			"     └─ Table(two_pk): Projected \n" +
+			" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+			"     └─ IndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
+			"         ├─ Table(one_pk)\n" +
+			"         └─ Table(two_pk)\n" +
 			"",
 	},
 	{
 		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk1-pk>0 AND pk2<1",
-		ExpectedPlan: "InnerJoin(two_pk.pk1 - one_pk.pk > 0)\n" +
-			" ├─ Table(one_pk): Projected \n" +
-			" └─ Table(two_pk): Projected Filtered \n" +
+		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ InnerJoin(two_pk.pk1 - one_pk.pk > 0)\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ Filter(two_pk.pk2 < 1)\n" +
+			"         └─ Table(two_pk)\n" +
 			"",
 	},
 	{
 		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ORDER BY 1,2,3",
 		ExpectedPlan: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			" └─ CrossJoin\n" +
-			"     ├─ Table(one_pk): Projected \n" +
-			"     └─ Table(two_pk): Projected \n" +
+			" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ Table(one_pk)\n" +
+			"         └─ Table(two_pk)\n" +
 			"",
 	},
 	{
@@ -462,21 +480,23 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
 		ExpectedPlan: "Sort(opk.pk ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-			" └─ IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
-			"     ├─ TableAlias(opk)\n" +
-			"     │   └─ Table(one_pk): Projected \n" +
-			"     └─ TableAlias(tpk)\n" +
-			"         └─ Table(two_pk): Projected \n" +
+			" └─ Project(opk.pk, tpk.pk1, tpk.pk2)\n" +
+			"     └─ IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ Table(one_pk)\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ Table(two_pk)\n" +
 			"",
 	},
 	{
 		Query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=tpk.pk1 AND pk=tpk.pk2 ORDER BY 1,2,3",
 		ExpectedPlan: "Sort(opk.pk ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-			" └─ IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
-			"     ├─ TableAlias(opk)\n" +
-			"     │   └─ Table(one_pk): Projected \n" +
-			"     └─ TableAlias(tpk)\n" +
-			"         └─ Table(two_pk): Projected \n" +
+			" └─ Project(opk.pk, tpk.pk1, tpk.pk2)\n" +
+			"     └─ IndexedJoin(opk.pk = tpk.pk1 AND opk.pk = tpk.pk2)\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ Table(one_pk)\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ Table(two_pk)\n" +
 			"",
 	},
 	{
@@ -485,35 +505,38 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
 			"     └─ Filter(one_pk.c1 = two_pk.c1)\n" +
 			"         └─ CrossJoin\n" +
-			"             ├─ Table(one_pk): Projected \n" +
-			"             └─ Table(two_pk): Projected \n" +
-			"",
+			"             ├─ Table(one_pk)\n" +
+			"             └─ Table(two_pk)\n",
 	},
 	{
 		Query: "SELECT pk,pk1,pk2,one_pk.c1 AS foo, two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
 		ExpectedPlan: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
 			" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2, one_pk.c1 as foo, two_pk.c1 as bar)\n" +
 			"     └─ InnerJoin(one_pk.c1 = two_pk.c1)\n" +
-			"         ├─ Table(one_pk): Projected \n" +
-			"         └─ Table(two_pk): Projected \n" +
+			"         ├─ Table(one_pk)\n" +
+			"         └─ Table(two_pk)\n" +
 			"",
 	},
 	{
 		Query: "SELECT pk,pk1,pk2,one_pk.c1 AS foo,two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE one_pk.c1=10",
 		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2, one_pk.c1 as foo, two_pk.c1 as bar)\n" +
 			" └─ InnerJoin(one_pk.c1 = two_pk.c1)\n" +
-			"     ├─ Table(one_pk): Projected Filtered \n" +
-			"     └─ Table(two_pk): Projected \n" +
+			"     ├─ Filter(one_pk.c1 = 10)\n" +
+			"     │   └─ Table(one_pk)\n" +
+			"     └─ Table(two_pk)\n" +
 			"",
 	},
 	{
 		Query: "SELECT pk,pk2 FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2",
 		ExpectedPlan: "Sort(t1.pk ASC, t2.pk2 ASC)\n" +
-			" └─ CrossJoin\n" +
-			"     ├─ TableAlias(t1)\n" +
-			"     │   └─ Table(one_pk): Projected Filtered Indexed\n" +
-			"     └─ TableAlias(t2)\n" +
-			"         └─ Table(two_pk): Projected Filtered \n" +
+			" └─ Project(t1.pk, t2.pk2)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ TableAlias(t1)\n" +
+			"         │   └─ Indexed table access on index [one_pk.pk]\n" +
+			"         │       └─ Table(one_pk)\n" +
+			"         └─ Filter(t2.pk2 = 1)\n" +
+			"             └─ TableAlias(t2)\n" +
+			"                 └─ Table(two_pk)\n" +
 			"",
 	},
 }

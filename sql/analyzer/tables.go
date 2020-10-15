@@ -113,3 +113,57 @@ func findTables(e sql.Expression) []string {
 
 	return names
 }
+
+// Transforms the node given bottom up by setting resolve tables to reference the table given. Returns an error if more
+// than one table was set in this way.
+func withTable(node sql.Node, table sql.Table) (sql.Node, error) {
+	foundTable := false
+	return plan.TransformUp(node, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.ResolvedTable:
+			if foundTable {
+				return nil, ErrInAnalysis.New("attempted to set more than one table in withTable()")
+			}
+			foundTable = true
+			return plan.NewResolvedTable(table), nil
+		default:
+			return n, nil
+		}
+	})
+}
+
+type fieldsByTable map[string][]string
+
+// add adds the table and field given if not already present
+func (f fieldsByTable) add(table, field string) {
+	if !stringContains(f[table], field) {
+		f[table] = append(f[table], field)
+	}
+}
+
+// addAll adds the tables and fields given if not already present
+func (f fieldsByTable) addAll(f2 fieldsByTable) {
+	for table, fields := range f2 {
+		for _, field := range fields {
+			f.add(table, field)
+		}
+	}
+}
+
+// getFieldsByTable returns a map of table name to set of field names in the node provided
+func getFieldsByTable(ctx *sql.Context, n sql.Node) fieldsByTable {
+	colSpan, _ := ctx.Span("getFieldsByTable")
+	defer colSpan.Finish()
+
+	var fieldsByTable = make(fieldsByTable)
+	plan.InspectExpressionsWithNode(n, func(n sql.Node, e sql.Expression) bool {
+		if gf, ok := e.(*expression.GetField); ok {
+			fieldsByTable.add(gf.Table(), gf.Name())
+		}
+		if s, ok := e.(*plan.Subquery); ok {
+			fieldsByTable.addAll(getFieldsByTable(ctx, s.Query))
+		}
+		return true
+	})
+	return fieldsByTable
+}

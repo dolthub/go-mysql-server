@@ -30,16 +30,13 @@ func TestTableName(t *testing.T) {
 	require.Equal("test", table.name)
 }
 
-const expectedString = `Table(foo)
-`
-
 func TestTableString(t *testing.T) {
 	require := require.New(t)
 	table := NewTable("foo", sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
 		{Name: "col2", Type: sql.Int64, Nullable: false},
 	})
-	require.Equal(expectedString, table.String())
+	require.Equal("foo\n", table.String())
 }
 
 type indexKeyValue struct {
@@ -232,7 +229,7 @@ func TestFiltered(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 
-			table := NewPartitionedTable(test.name, test.schema, test.numPartitions)
+			table := NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
@@ -254,7 +251,7 @@ func TestProjected(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 
-			table := NewPartitionedTable(test.name, test.schema, test.numPartitions)
+			table := NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
@@ -276,13 +273,13 @@ func TestFilterAndProject(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 
-			table := NewPartitionedTable(test.name, test.schema, test.numPartitions)
+			table := NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
 			filtered := table.WithFilters(test.filters)
-			projected := filtered.(*Table).WithProjection(test.columns)
+			projected := filtered.(*PushdownTable).WithProjection(test.columns)
 			require.ElementsMatch(projected.Schema(), test.expectedSchema)
 
 			rows := testFlatRows(t, projected)
@@ -299,14 +296,14 @@ func TestIndexed(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 
-			table := NewPartitionedTable(test.name, test.schema, test.numPartitions)
+			table := NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
 			filtered := table.WithFilters(test.filters)
-			projected := filtered.(*Table).WithProjection(test.columns)
-			indexed := projected.(*Table).WithIndexLookup(test.lookup)
+			projected := filtered.(*PushdownTable).WithProjection(test.columns)
+			indexed := projected.(*PushdownTable).WithIndexLookup(test.lookup)
 
 			require.ElementsMatch(indexed.Schema(), test.expectedSchema)
 

@@ -381,6 +381,10 @@ var QueryTests = []QueryTest{
 		[]sql.Row{{int64(1)}, {int64(3)}},
 	},
 	{
+		"SELECT * FROM mytable WHERE i = 1 AND i = 2",
+		nil,
+	},
+	{
 		"SELECT i FROM mytable WHERE i >= 2 ORDER BY 1",
 		[]sql.Row{{int64(2)}, {int64(3)}},
 	},
@@ -467,6 +471,10 @@ var QueryTests = []QueryTest{
 	{
 		"SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC;",
 		[]sql.Row{{int64(1)}},
+	},
+	{
+		"SELECT * FROM mytable WHERE i = 2 AND s = 'third row'",
+		nil,
 	},
 	{
 		"SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT 1;",
