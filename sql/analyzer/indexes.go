@@ -33,8 +33,13 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node) (indexLooku
 	}
 
 	var indexes indexLookupsByTable
+	cont := true
 	var errInAnalysis error
 	plan.Inspect(node, func(node sql.Node) bool {
+		if !cont || errInAnalysis != nil {
+			return false
+		}
+
 		filter, ok := node.(*plan.Filter)
 		if !ok {
 			return true
@@ -50,6 +55,12 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node) (indexLooku
 		var result indexLookupsByTable
 		result, err = getIndexes(ctx, a, indexAnalyzer, filter.Expression, exprAliases, tableAliases)
 		if err != nil {
+			return false
+		}
+
+		if !canMergeIndexLookups(indexes, result) {
+			indexes = nil
+			cont = false
 			return false
 		}
 
@@ -609,9 +620,14 @@ func getMultiColumnIndexes(
 
 				if lookup != nil {
 					if _, ok := result[table]; ok {
-						result = indexesIntersection(result, indexLookupsByTable{
+						newResult := indexLookupsByTable{
 							table: &indexLookup{lookup, []sql.Index{index}},
-						})
+						}
+						if !canMergeIndexLookups(result, newResult) {
+							return nil, nil
+						}
+
+						result = indexesIntersection(result, newResult)
 					} else {
 						result[table] = &indexLookup{lookup, []sql.Index{index}}
 					}
