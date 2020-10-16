@@ -799,6 +799,21 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		})
 	}
 
+	for _, colDef := range c.TableSpec.Columns {
+		if colDef.Type.KeyOpt == colKeyUnique || colDef.Type.KeyOpt == colKeyUniqueKey {
+			idxDefs = append(idxDefs, &plan.IndexDefinition{
+				IndexName:  "",
+				Using:      sql.IndexUsing_Default,
+				Constraint: sql.IndexConstraint_Unique,
+				Comment:    "",
+				Columns:    []sql.IndexColumn{{
+					Name:   colDef.Name.String(),
+					Length: 0,
+				}},
+			})
+		}
+	}
+
 	return plan.NewCreateTable(
 		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema, c.IfNotExists, idxDefs, fkDefs), nil
 }
