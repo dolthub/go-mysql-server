@@ -868,6 +868,64 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		require.Equal(t, s, indexableTable.Schema())
 	})
 
+	t.Run("UNIQUE constraint in column definition", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE TABLE t9 (a INTEGER NOT NULL PRIMARY KEY, "+
+				"b VARCHAR(10) UNIQUE)",
+			[]sql.Row(nil),
+		)
+		TestQuery(t, harness, e,
+			"CREATE TABLE t9a (a INTEGER NOT NULL PRIMARY KEY, "+
+				"b VARCHAR(10) UNIQUE KEY)",
+			[]sql.Row(nil),
+		)
+
+		db, err := e.Catalog.Database("mydb")
+		require.NoError(t, err)
+
+		t9Table, ok, err := db.GetTableInsensitive(ctx, "t9")
+		require.NoError(t, err)
+		require.True(t, ok)
+		t9aTable, ok, err := db.GetTableInsensitive(ctx, "t9a")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		require.Equal(t, sql.Schema{
+			{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t9"},
+			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: true, Source: "t9"},
+		}, t9Table.Schema())
+		require.Equal(t, sql.Schema{
+			{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t9a"},
+			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: true, Source: "t9a"},
+		}, t9aTable.Schema())
+
+		t9TableIndexable, ok := t9Table.(sql.IndexedTable)
+		require.True(t, ok)
+		t9aTableIndexable, ok := t9aTable.(sql.IndexedTable)
+		require.True(t, ok)
+		t9Indexes, err := t9TableIndexable.GetIndexes(ctx)
+		require.NoError(t, err)
+		indexFound := false
+		for _, index := range t9Indexes {
+			// Since no name is provided, integrator can name index whatever they want. As no other indexes are declared,
+			// we can just see if a unique index is present, which should be sufficient. We do not check count as
+			// integrator may return their own internally-created indexes.
+			if index.IsUnique() {
+				indexFound = true
+			}
+		}
+		require.True(t, indexFound)
+		t9aIndexes, err := t9aTableIndexable.GetIndexes(ctx)
+		require.NoError(t, err)
+		indexFound = false
+		for _, index := range t9aIndexes {
+			if index.IsUnique() {
+				indexFound = true
+			}
+		}
+		require.True(t, indexFound)
+	})
+
 	//TODO: Implement "CREATE TABLE otherDb.tableName"
 }
 
