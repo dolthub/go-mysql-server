@@ -2936,11 +2936,33 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE f IS NULL AND pk < 2 ORDER BY 1",
+		[]sql.Row{
+			{0, nil, nil},
+			{1, 1, nil},
+		},
+	},
+	{
 		"SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
 		[]sql.Row{
 			{nil, nil, 5.0},
 			{nil, int64(4), 4.0},
 			{nil, int64(6), 6.0},
+		},
+	},
+	{
+		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1 ORDER BY 1",
+		[]sql.Row{
+			{2, 2, nil},
+			{3, 3, nil},
+		},
+	},
+	{
+		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
+		[]sql.Row{
+			{nil, 4, 4.0},
+			{nil, 5, 5.0},
+			{nil, 6, 6.0},
 		},
 	},
 	{
