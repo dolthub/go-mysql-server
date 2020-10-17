@@ -79,9 +79,10 @@ func TestSingleQuery(t *testing.T) {
 	test = enginetest.QueryTest	{
 		"SELECT t1.i,t1.i2 FROM niltable t1 LEFT JOIN niltable t2 ON t1.i=t2.i2 WHERE t2.f IS NULL ORDER BY 1,2",
 		[]sql.Row{
-			{nil, nil, 5.0},
-			{nil, int64(4), 4.0},
-			{nil, int64(6), 6.0},
+			{1, nil},
+			{2, 2},
+			{3, nil},
+			{5, nil},
 		},
 	}
 

@@ -150,12 +150,15 @@ func analyzeJoinIndexes(
 
 	exprByTable := joinExprsByTable(splitConjunction(cond))
 
+	rightIdx := indexes[normalizeTableName(tableAliases, rightTableName)]
+	leftIdx := indexes[normalizeTableName(tableAliases, leftTableName)]
+	leftTableExprs := exprByTable[leftTableName]
+	rightTableExprs := exprByTable[rightTableName]
+
 	// Choose a primary and secondary table based on available indexes. We can't choose the left table as secondary for a
 	// left join, or the right as secondary for a right join.
-	rightIdx := indexes[normalizeTableName(tableAliases, rightTableName)]
-	leftTableExprs := exprByTable[leftTableName]
 	if rightIdx != nil && leftTableExprs != nil && joinType != plan.JoinTypeRight &&
-		indexExpressionPresent(rightIdx, leftTableExprs) {
+		indexExpressionPresent(rightIdx, rightTableExprs) {
 		primaryTableExpr, err := FixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(rightIdx, leftTableExprs, exprAliases, tableAliases)...)
 		if err != nil {
 			return nil, nil, nil, nil, err
@@ -163,10 +166,8 @@ func analyzeJoinIndexes(
 		return node.Left, node.Right, primaryTableExpr, rightIdx, nil
 	}
 
-	leftIdx := indexes[normalizeTableName(tableAliases, leftTableName)]
-	rightTableExprs := exprByTable[rightTableName]
 	if leftIdx != nil && rightTableExprs != nil && joinType != plan.JoinTypeLeft &&
-		indexExpressionPresent(leftIdx, rightTableExprs) {
+		indexExpressionPresent(leftIdx, leftTableExprs) {
 		primaryTableExpr, err := FixFieldIndexesOnExpressions(node.Right.Schema(), createPrimaryTableExpr(leftIdx, rightTableExprs, exprAliases, tableAliases)...)
 		if err != nil {
 			return nil, nil, nil, nil, err
@@ -200,6 +201,9 @@ func indexExpressionPresent(index sql.Index, colExprs []*columnExpr) bool {
 }
 
 func indexExpressionMatches(indexExpr string, expr *columnExpr) bool {
+	// TODO: this string matching on index expressions is pretty fragile, won't handle tables with "." in their names,
+	//  etc. Would be nice to normalize the indexes into a better data structure than just strings to make them easier to
+	//  work with.
 	return strings.ToLower(expr.col.Name()) == indexExpr[strings.Index(indexExpr, ".")+1:]
 }
 
