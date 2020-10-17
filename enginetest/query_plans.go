@@ -197,6 +197,24 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 > 1",
+		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				" └─ Filter(NOT(niltable.f IS NULL))\n" +
+				"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+				"         ├─ Table(one_pk)\n" +
+				"         └─ Table(niltable)\n" +
+				"",
+	},
+	{
+		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1",
+		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+				" └─ Filter(NOT(niltable.f IS NULL))\n" +
+				"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+				"         ├─ Table(one_pk)\n" +
+				"         └─ Table(niltable)\n" +
+				"",
+	},
+	{
 		Query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL",
 		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
 			" └─ Filter(NOT(niltable.f IS NULL))\n" +

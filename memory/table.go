@@ -697,6 +697,10 @@ func (t *Table) String() string {
 		kind = ": " + kind
 	}
 
+	if len(kind) == 0 {
+		return t.name
+	}
+
 	_ = p.WriteNode("%s%s", t.name, kind)
 	return p.String()
 }
@@ -722,6 +726,10 @@ func (t *PushdownTable) String() string {
 		kind = ": " + kind
 	}
 
+	if len(kind) == 0 {
+		return t.name
+	}
+
 	_ = p.WriteNode("%s%s", t.name, kind)
 	return p.String()
 }
@@ -744,6 +752,10 @@ func (t *Table) DebugString() string {
 
 	if kind != "" {
 		kind = ": " + kind
+	}
+
+	if len(kind) == 0 {
+		return t.name
 	}
 
 	_ = p.WriteNode("%s%s", t.name, kind)
@@ -776,6 +788,10 @@ func (t *PushdownTable) DebugString() string {
 
 	if kind != "" {
 		kind = ": " + kind
+	}
+
+	if len(kind) == 0 {
+		return t.name
 	}
 
 	_ = p.WriteNode("%s%s", t.name, kind)

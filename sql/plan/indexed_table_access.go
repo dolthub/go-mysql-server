@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"fmt"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -40,6 +41,10 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 	}
 
 	return sql.NewTableRowIter(ctx, i.indexedTable, partIter), nil
+}
+
+func (i *IndexedTableAccess) DebugString() string {
+	return fmt.Sprintf("IndexedTableAccess(%s)", i.Name())
 }
 
 func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error) {
