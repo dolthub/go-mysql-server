@@ -87,6 +87,9 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 		case *plan.ResolvedTable:
 			table = n
 			return false
+		case *plan.IndexedTableAccess:
+			table = n.ResolvedTable
+			return false
 		}
 		return true
 	})

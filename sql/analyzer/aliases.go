@@ -43,6 +43,9 @@ func getTableAliases(n sql.Node) (TableAliases, error) {
 			case *plan.DecoratedNode:
 				rt := getResolvedTable(at.Child)
 				aliases.add(at, rt)
+			case *plan.IndexedTableAccess:
+				rt := getResolvedTable(at.Child)
+				aliases.add(at, rt)
 			case *plan.UnresolvedTable:
 				panic("Table not resolved")
 			default:

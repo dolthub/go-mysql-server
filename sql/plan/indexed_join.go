@@ -26,6 +26,11 @@ type IndexedJoin struct {
 	joinType JoinType
 }
 
+// JoinType returns the join type for this indexed join
+func (ij *IndexedJoin) JoinType() JoinType {
+	return ij.joinType
+}
+
 func NewIndexedJoin(primaryTable, indexedTable sql.Node, joinType JoinType, cond sql.Expression, primaryTableExpr []sql.Expression, index sql.Index) *IndexedJoin {
 	return &IndexedJoin{
 		BinaryNode:       BinaryNode{primaryTable, indexedTable},
@@ -47,6 +52,20 @@ func (ij *IndexedJoin) String() string {
 	}
 	_ = pr.WriteNode("%sIndexedJoin(%s)", joinType, ij.Cond)
 	_ = pr.WriteChildren(ij.Left.String(), ij.Right.String())
+	return pr.String()
+}
+
+func (ij *IndexedJoin) DebugString() string {
+	pr := sql.NewTreePrinter()
+	joinType := ""
+	switch ij.joinType {
+	case JoinTypeLeft:
+		joinType = "Left"
+	case JoinTypeRight:
+		joinType = "Right"
+	}
+	_ = pr.WriteNode("%sIndexedJoin(%s)", joinType, sql.DebugString(ij.Cond))
+	_ = pr.WriteChildren(sql.DebugString(ij.Left), sql.DebugString(ij.Right))
 	return pr.String()
 }
 

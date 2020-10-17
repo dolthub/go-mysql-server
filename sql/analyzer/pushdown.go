@@ -44,6 +44,11 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 
 	filters := newFilterSet(filtersByTable, exprAliases, tableAliases)
 
+	n, err = convertFiltersToIndexedAccess(a, n, filters, indexes, exprAliases, tableAliases)
+	if err != nil {
+		return nil, err
+	}
+
 	return transformPushdownFilters(a, n, filters, indexes, exprAliases, tableAliases)
 }
 
@@ -87,6 +92,8 @@ func canDoPushdown(n sql.Node, scope *Scope, a *Analyzer) bool {
 		switch node.(type) {
 		case *plan.LeftJoin, *plan.RightJoin:
 			incompatibleJoin = true
+		// case *plan.IndexedJoin:
+		// 	incompatibleJoin = n.JoinType() == plan.JoinTypeLeft || n.JoinType() == plan.JoinTypeRight
 		}
 		return true
 	})
@@ -126,13 +133,57 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, filters *filterSet, index
 			}
 			return FixFieldIndexesForExpressions(n)
 		case *plan.TableAlias:
-			table, err := pushdownFiltersToTable(a, node, filters, indexes, exprAliases, tableAliases)
+			table, err := pushdownFiltersToTable(a, node, filters, exprAliases, tableAliases)
 			if err != nil {
 				return nil, err
 			}
 			return FixFieldIndexesForExpressions(table)
 		case *plan.ResolvedTable:
-			table, err := pushdownFiltersToTable(a, node, filters, indexes, exprAliases, tableAliases)
+			table, err := pushdownFiltersToTable(a, node, filters, exprAliases, tableAliases)
+			if err != nil {
+				return nil, err
+			}
+			return FixFieldIndexesForExpressions(table)
+		default:
+			return FixFieldIndexesForExpressions(node)
+		}
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return node, nil
+}
+
+func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, filters *filterSet, indexes indexLookupsByTable, exprAliases ExprAliases, tableAliases TableAliases) (sql.Node, error) {
+	selector := func(parent sql.Node, child sql.Node, childNum int) bool {
+		switch parent.(type) {
+		// For IndexedJoins, we already are using indexed access during query execution for the secondary table, so
+		// replacing the secondary table with an indexed lookup will have no effect on the result of the join, but *will*
+		// inappropriately remove the filter from the predicate.
+		case *plan.IndexedJoin:
+			return childNum == 0
+		}
+		return true
+	}
+
+	node, err := plan.TransformUpWithSelector(n, selector, func(node sql.Node) (sql.Node, error) {
+		switch node := node.(type) {
+		case *plan.Filter:
+			n, err := removePushedDownPredicates(a, node, filters, exprAliases, tableAliases)
+			if err != nil {
+				return nil, err
+			}
+			return FixFieldIndexesForExpressions(n)
+		case *plan.TableAlias:
+			table, err := pushdownIndexesToTable(a, node, filters, indexes)
+			if err != nil {
+				return nil, err
+			}
+			return FixFieldIndexesForExpressions(table)
+		case *plan.ResolvedTable:
+			table, err := pushdownIndexesToTable(a, node, filters, indexes)
 			if err != nil {
 				return nil, err
 			}
@@ -186,12 +237,11 @@ type NameableNode interface {
 
 // pushdownFiltersToTable attempts to push filters to tables that can accept them
 func pushdownFiltersToTable(
-	a *Analyzer,
-	tableNode NameableNode,
-	filters *filterSet,
-	indexes map[string]*indexLookup,
-	exprAliases ExprAliases,
-	tableAliases TableAliases,
+		a *Analyzer,
+		tableNode NameableNode,
+		filters *filterSet,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
 ) (sql.Node, error) {
 
 	table := getTable(tableNode)
@@ -201,27 +251,7 @@ func pushdownFiltersToTable(
 
 	var newTableNode sql.Node = tableNode
 
-	// First attempt to apply any possible indexes to the table
-	if it, ok := table.(sql.IndexAddressableTable); ok {
-		indexLookup, ok := indexes[tableNode.Name()]
-		if ok {
-			table = it.WithIndexLookup(indexLookup.lookup)
-			indexStrs := formatIndexDecoratorString(indexLookup)
-
-			indexNoun := "index"
-			if len(indexStrs) > 1 {
-				indexNoun = "indexes"
-			}
-			newTableNode = plan.NewDecoratedNode(
-				fmt.Sprintf("Indexed table access on %s %s", indexNoun, strings.Join(indexStrs, ", ")),
-				newTableNode)
-			a.Log("table %q transformed with pushdown of index", tableNode.Name())
-
-			filters.markIndexesHandled(indexLookup.indexes)
-		}
-	}
-
-	// Then push remaining filters onto the table itself if it's a sql.FilteredTable
+	// First push remaining filters onto the table itself if it's a sql.FilteredTable
 	if ft, ok := table.(sql.FilteredTable); ok && len(filters.availableFiltersForTable(tableNode.Name())) > 0 {
 		tableFilters := filters.availableFiltersForTable(tableNode.Name())
 		handled := ft.HandledFilters(normalizeExpressions(exprAliases, tableAliases, tableFilters...))
@@ -244,7 +274,7 @@ func pushdownFiltersToTable(
 		)
 	}
 
-	// Finally, move any remaining filters for the table directly above the table itself
+	// Then move any remaining filters for the table directly above the table itself
 	var pushedDownFilterExpression sql.Expression
 	if tableFilters := filters.availableFiltersForTable(tableNode.Name()); len(tableFilters) > 0 {
 		filters.markFiltersHandled(tableFilters...)
@@ -281,6 +311,55 @@ func pushdownFiltersToTable(
 		return nil, ErrInvalidNodeType.New("pushdown", tableNode)
 	}
 }
+
+// pushdownIndexesToTable attempts to convert filters to indexes on tables that can accept them
+func pushdownIndexesToTable(
+		a *Analyzer,
+		tableNode NameableNode,
+		filters *filterSet,
+		indexes map[string]*indexLookup,
+) (sql.Node, error) {
+
+	table := getTable(tableNode)
+	if table == nil {
+		return tableNode, nil
+	}
+
+	var newTableNode sql.Node = tableNode
+
+	// First attempt to apply any possible indexes to the table
+	if it, ok := table.(sql.IndexAddressableTable); ok {
+		indexLookup, ok := indexes[tableNode.Name()]
+		if ok {
+			table = it.WithIndexLookup(indexLookup.lookup)
+			indexStrs := formatIndexDecoratorString(indexLookup)
+
+			indexNoun := "index"
+			if len(indexStrs) > 1 {
+				indexNoun = "indexes"
+			}
+			newTableNode = plan.NewDecoratedNode(
+				fmt.Sprintf("Indexed table access on %s %s", indexNoun, strings.Join(indexStrs, ", ")),
+				newTableNode)
+			a.Log("table %q transformed with pushdown of index", tableNode.Name())
+
+			filters.markIndexesHandled(indexLookup.indexes)
+		}
+	}
+
+	switch tableNode.(type) {
+	case *plan.ResolvedTable, *plan.TableAlias:
+		node, err := withTable(newTableNode, table)
+		if err != nil {
+			return nil, err
+		}
+
+		return node, nil
+	default:
+		return nil, ErrInvalidNodeType.New("pushdown", tableNode)
+	}
+}
+
 
 func formatIndexDecoratorString(indexLookup *indexLookup) []string {
 	var indexStrs []string

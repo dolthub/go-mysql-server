@@ -1149,6 +1149,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		`SELECT * FROM othertable ot INNER JOIN mytable mt ON mt.i = ot.i2 AND mt.i > 2`,
+		[]sql.Row{
+			{"first", int64(3), int64(3), "third row"},
+		},
+	},
+	{
 		`SELECT i AS foo FROM mytable ORDER BY i DESC`,
 		[]sql.Row{
 			{int64(3)},
@@ -2931,6 +2937,14 @@ var QueryTests = []QueryTest{
 	},
 	{
 		"SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
+		[]sql.Row{
+			{nil, nil, 5.0},
+			{nil, int64(4), 4.0},
+			{nil, int64(6), 6.0},
+		},
+	},
+	{
+		"SELECT t1.i,t1.i2 FROM niltable t1 LEFT JOIN niltable t2 ON t1.i=t2.i2 WHERE t2.f IS NULL ORDER BY 2,3",
 		[]sql.Row{
 			{nil, nil, 5.0},
 			{nil, int64(4), 4.0},
