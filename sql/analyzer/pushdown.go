@@ -106,7 +106,7 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, filters *filterSet, exprA
 	// Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a predicate on
 	// the secondary table below the join, we end up not evaluating it in all cases (since the secondary table result is
 	// sometimes null in these types of joins). It must be evaluated only after the join result is computed.
-	selector := func(parent sql.Node, child sql.Node, childNum int) bool {
+	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
 		switch n := parent.(type) {
 		case *plan.IndexedJoin:
 			if n.JoinType() == plan.JoinTypeLeft || n.JoinType() == plan.JoinTypeRight {
@@ -121,7 +121,7 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, filters *filterSet, exprA
 		return true
 	}
 
-	node, err := plan.TransformUpWithSelector(n, selector, func(node sql.Node) (sql.Node, error) {
+	node, err := plan.TransformUpWithSelector(n, childSelector, func(node sql.Node) (sql.Node, error) {
 		switch node := node.(type) {
 		case *plan.Filter:
 			n, err := removePushedDownPredicates(a, node, filters)
@@ -161,7 +161,7 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, filters *filterSet, exprA
 
 // convertFiltersToIndexedAccess attempts to replace filter predicates with indexed accesses where possible
 func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, filters *filterSet, indexes indexLookupsByTable) (sql.Node, error) {
-	selector := func(parent sql.Node, child sql.Node, childNum int) bool {
+	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
 		switch parent.(type) {
 		// For IndexedJoins, we already are using indexed access during query execution for the secondary table, so
 		// replacing the secondary table with an indexed lookup will have no effect on the result of the join, but *will*
@@ -169,11 +169,17 @@ func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, filters *filterSet, 
 		// TODO: the analyzer should combine these indexed lookups better
 		case *plan.IndexedJoin:
 			return childNum == 0
+		// Left and right joins can push down indexes for the primary table, but not the secondary. See comment
+		// on transformPushdownFilters
+		case *plan.LeftJoin:
+			return childNum == 0
+		case *plan.RightJoin:
+			return childNum == 1
 		}
 		return true
 	}
 
-	node, err := plan.TransformUpWithSelector(n, selector, func(node sql.Node) (sql.Node, error) {
+	node, err := plan.TransformUpWithSelector(n, childSelector, func(node sql.Node) (sql.Node, error) {
 		switch node := node.(type) {
 		case *plan.Filter:
 			n, err := removePushedDownPredicates(a, node, filters)
