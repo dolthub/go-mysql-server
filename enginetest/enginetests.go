@@ -132,7 +132,7 @@ func TestQueryPlan(t *testing.T, ctx *sql.Context, engine *sqle.Engine, query st
 
 	node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
 	require.NoError(t, err)
-	assert.Equal(t, expectedPlan, extractQueryNode(node).String())
+	assert.Equal(t, expectedPlan, extractQueryNode(node).String(), "Unexpected result for query: " + query)
 }
 
 func extractQueryNode(node sql.Node) sql.Node {

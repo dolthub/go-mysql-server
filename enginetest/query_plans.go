@@ -199,7 +199,7 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 > 1",
 		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
-				" └─ Filter(NOT(niltable.f IS NULL))\n" +
+				" └─ Filter(niltable.i2 > 1)\n" +
 				"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
 				"         ├─ Table(one_pk)\n" +
 				"         └─ Table(niltable)\n" +
@@ -208,28 +208,37 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1",
 		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
-				" └─ Filter(NOT(niltable.f IS NULL))\n" +
+				" └─ Filter(niltable.i > 1)\n" +
 				"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
 				"         ├─ Table(one_pk)\n" +
 				"         └─ Table(niltable)\n" +
 				"",
 	},
 	{
+		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE c1 > 10",
+		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"     ├─ Filter(one_pk.c1 > 10)\n" +
+			"     │   └─ Table(one_pk)\n" +
+			"     └─ Table(niltable)\n" +
+			"",
+	},
+	{
 		Query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL",
 		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
-			" └─ Filter(NOT(niltable.f IS NULL))\n" +
-			"     └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
-			"         ├─ Table(niltable)\n" +
-			"         └─ Table(one_pk)\n" +
+			" └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"     ├─ Filter(NOT(niltable.f IS NULL))\n" +
+			"     │   └─ Table(niltable)\n" +
+			"     └─ Table(one_pk)\n" +
 			"",
 	},
 	{
 		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1",
 		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
-			" └─ Filter(one_pk.pk > 1)\n" +
-			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
-			"         ├─ Table(one_pk)\n" +
-			"         └─ Table(niltable)\n" +
+			" └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"     ├─ Indexed table access on index [one_pk.pk]\n" +
+			"     │   └─ Table(one_pk)\n" +
+			"     └─ Table(niltable)\n" +
 			"",
 	},
 	{
@@ -396,10 +405,10 @@ var PlanTests = []QueryPlanTest{
 		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1 ORDER BY 1",
 		ExpectedPlan: "Sort(one_pk.pk ASC)\n" +
 			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
-			"     └─ Filter(one_pk.pk > 1)\n" +
-			"         └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
-			"             ├─ Table(one_pk)\n" +
-			"             └─ Table(niltable)\n" +
+			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"         ├─ Indexed table access on index [one_pk.pk]\n" +
+			"         │   └─ Table(one_pk)\n" +
+			"         └─ Table(niltable)\n" +
 			"",
 	},
 	{
@@ -415,10 +424,10 @@ var PlanTests = []QueryPlanTest{
 		Query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
 		ExpectedPlan: "Sort(niltable.i ASC, niltable.f ASC)\n" +
 			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
-			"     └─ Filter(NOT(niltable.f IS NULL))\n" +
-			"         └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
-			"             ├─ Table(niltable)\n" +
-			"             └─ Table(one_pk)\n" +
+			"     └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"         ├─ Filter(NOT(niltable.f IS NULL))\n" +
+			"         │   └─ Table(niltable)\n" +
+			"         └─ Table(one_pk)\n" +
 			"",
 	},
 	{
