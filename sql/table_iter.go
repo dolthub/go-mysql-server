@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"context"
 	"io"
 )
 
@@ -20,10 +19,8 @@ func NewTableRowIter(ctx *Context, table Table, partitions PartitionIter) *Table
 }
 
 func (i *TableRowIter) Next() (Row, error) {
-	select {
-	case <-i.ctx.Done():
-		return nil, context.Canceled
-	default:
+	if i.ctx.Err() != nil {
+		return nil, i.ctx.Err()
 	}
 
 	if i.partition == nil {
