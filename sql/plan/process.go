@@ -1,8 +1,6 @@
 package plan
 
 import (
-	"io"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -242,19 +240,16 @@ func (i *trackedIndexKeyValueIter) done() {
 }
 
 func (i *trackedIndexKeyValueIter) Close() (err error) {
-	i.done()
 	if i.iter != nil {
 		err = i.iter.Close()
 	}
+	i.done()
 	return err
 }
 
 func (i *trackedIndexKeyValueIter) Next() ([]interface{}, []byte, error) {
 	v, k, err := i.iter.Next()
 	if err != nil {
-		if err == io.EOF {
-			i.done()
-		}
 		return nil, nil, err
 	}
 
