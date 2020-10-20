@@ -177,9 +177,6 @@ func (i *trackedRowIter) done() {
 func (i *trackedRowIter) Next() (sql.Row, error) {
 	row, err := i.iter.Next()
 	if err != nil {
-		if err == io.EOF {
-			i.done()
-		}
 		return nil, err
 	}
 
@@ -191,8 +188,9 @@ func (i *trackedRowIter) Next() (sql.Row, error) {
 }
 
 func (i *trackedRowIter) Close() error {
+	err := i.iter.Close()
 	i.done()
-	return i.iter.Close()
+	return err
 }
 
 type trackedPartitionIndexKeyValueIter struct {

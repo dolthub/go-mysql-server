@@ -61,6 +61,7 @@ type insertIter struct {
 	projection  []sql.Expression
 	updateExprs []sql.Expression
 	tableNode   sql.Node
+	closed      bool
 }
 
 func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
@@ -247,27 +248,29 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 }
 
 func (i insertIter) Close() error {
-	if i.inserter != nil {
-		if err := i.inserter.Close(i.ctx); err != nil {
-			return err
+	if !i.closed {
+		i.closed = true
+		if i.inserter != nil {
+			if err := i.inserter.Close(i.ctx); err != nil {
+				return err
+			}
+		}
+		if i.replacer != nil {
+			if err := i.replacer.Close(i.ctx); err != nil {
+				return err
+			}
+		}
+		if i.updater != nil {
+			if err := i.updater.Close(i.ctx); err != nil {
+				return err
+			}
+		}
+		if i.rowSource != nil {
+			if err := i.rowSource.Close(); err != nil {
+				return err
+			}
 		}
 	}
-	if i.replacer != nil {
-		if err := i.replacer.Close(i.ctx); err != nil {
-			return err
-		}
-	}
-	if i.updater != nil {
-		if err := i.updater.Close(i.ctx); err != nil {
-			return err
-		}
-	}
-	if i.rowSource != nil {
-		if err := i.rowSource.Close(); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
