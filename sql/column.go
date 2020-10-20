@@ -13,6 +13,8 @@ type Column struct {
 	Type Type
 	// Default contains the default value of the column or nil if it was not explicitly defined. A nil instance is valid, thus calls do not error.
 	Default *ColumnDefaultValue
+	// AutoIncrement is true if the column auto-increments.
+	AutoIncrement bool
 	// Nullable is true if the column can contain NULL values, or false
 	// otherwise.
 	Nullable bool
