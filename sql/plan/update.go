@@ -63,6 +63,7 @@ type updateIter struct {
 	schema    sql.Schema
 	updater   sql.RowUpdater
 	ctx       *sql.Context
+	closed    bool
 }
 
 func (u *updateIter) Next() (sql.Row, error) {
@@ -105,10 +106,14 @@ func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row 
 }
 
 func (u *updateIter) Close() error {
-	if err := u.updater.Close(u.ctx); err != nil {
-		return err
+	if !u.closed {
+		u.closed = true
+		if err := u.updater.Close(u.ctx); err != nil {
+			return err
+		}
+		return u.childIter.Close()
 	}
-	return u.childIter.Close()
+	return nil
 }
 
 func newUpdateIter(childIter sql.RowIter, schema sql.Schema, updater sql.RowUpdater, ctx *sql.Context) *updateIter {

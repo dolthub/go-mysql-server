@@ -67,6 +67,7 @@ type deleteIter struct {
 	schema    sql.Schema
 	childIter sql.RowIter
 	ctx       *sql.Context
+	closed    bool
 }
 
 func (d *deleteIter) Next() (sql.Row, error) {
@@ -86,10 +87,14 @@ func (d *deleteIter) Next() (sql.Row, error) {
 }
 
 func (d *deleteIter) Close() error {
-	if err := d.deleter.Close(d.ctx); err != nil {
-		return err
+	if !d.closed {
+		d.closed = true
+		if err := d.deleter.Close(d.ctx); err != nil {
+			return err
+		}
+		return d.childIter.Close()
 	}
-	return d.childIter.Close()
+	return nil
 }
 
 func newDeleteIter(childIter sql.RowIter, deleter sql.RowDeleter, schema sql.Schema, ctx *sql.Context) *deleteIter {

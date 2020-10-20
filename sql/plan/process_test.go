@@ -148,6 +148,7 @@ func TestProcessIndexableTable(t *testing.T) {
 		for {
 			v, _, err := kviter.Next()
 			if err == io.EOF {
+				kviter.Close()
 				break
 			}
 			values = append(values, v)
