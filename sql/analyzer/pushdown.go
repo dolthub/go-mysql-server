@@ -181,12 +181,8 @@ func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, filters *filterSet, 
 
 	node, err := plan.TransformUpWithSelector(n, childSelector, func(node sql.Node) (sql.Node, error) {
 		switch node := node.(type) {
-		case *plan.Filter:
-			n, err := removePushedDownPredicates(a, node, filters)
-			if err != nil {
-				return nil, err
-			}
-			return FixFieldIndexesForExpressions(n)
+		// TODO: some indexes, once pushed down, can be safely removed from the filter. But not all of them, as currently
+		//  implemented -- some indexes return more values than strictly match.
 		case *plan.TableAlias:
 			table, err := pushdownIndexesToTable(a, node, filters, indexes)
 			if err != nil {
@@ -325,7 +321,6 @@ func pushdownIndexesToTable(
 				newTableNode)
 			a.Log("table %q transformed with pushdown of index", tableNode.Name())
 
-			filters.markIndexesHandled(indexLookup.indexes)
 			replacedTable = true
 		}
 	}
