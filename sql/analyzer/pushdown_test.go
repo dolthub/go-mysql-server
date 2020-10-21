@@ -409,6 +409,96 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 			),
 		},
 		{
+			name: "pushdown filter to left join",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
+				},
+				plan.NewFilter(
+					expression.NewAnd(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+						expression.NewIsNull(
+							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+						),
+					),
+					plan.NewLeftJoin(
+						plan.NewResolvedTable(table),
+						plan.NewResolvedTable(table2),
+						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
+					),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
+				},
+				plan.NewFilter(
+					expression.NewIsNull(
+						expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
+					),
+					plan.NewLeftJoin(
+						plan.NewFilter(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+								expression.NewLiteral(3.14, sql.Float64),
+							),
+							plan.NewResolvedTable(table),
+						),
+						plan.NewResolvedTable(table2),
+						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
+					),
+				),
+			),
+		},
+		{
+			name: "pushdown filter to right join",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
+				},
+				plan.NewFilter(
+					expression.NewAnd(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+						expression.NewIsNull(
+							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+						),
+					),
+					plan.NewRightJoin(
+						plan.NewResolvedTable(table),
+						plan.NewResolvedTable(table2),
+						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
+					),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
+				},
+				plan.NewFilter(
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+						expression.NewLiteral(3.14, sql.Float64),
+					),
+					plan.NewRightJoin(
+							plan.NewResolvedTable(table),
+						plan.NewFilter(
+							expression.NewIsNull(
+								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+							),
+						plan.NewResolvedTable(table2),
+						),
+						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
+					),
+				),
+			),
+		},
+		{
 			// TODO: we could push down only the non-join predicates, but we currently just pass entirely
 			name: "filter contains join condition (no pushdown currently possible, but see TODO)",
 			node: plan.NewProject(
