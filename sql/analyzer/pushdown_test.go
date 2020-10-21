@@ -487,12 +487,12 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 						expression.NewLiteral(3.14, sql.Float64),
 					),
 					plan.NewRightJoin(
-							plan.NewResolvedTable(table),
+						plan.NewResolvedTable(table),
 						plan.NewFilter(
 							expression.NewIsNull(
 								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
 							),
-						plan.NewResolvedTable(table2),
+							plan.NewResolvedTable(table2),
 						),
 						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
 					),
@@ -607,11 +607,11 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral(3.14, sql.Float64),
 						),
 						plan.NewResolvedTable(
-						table.WithIndexLookup(
-							mustIndexLookup(idxTable1F.Get(3.14)),
+							table.WithIndexLookup(
+								mustIndexLookup(idxTable1F.Get(3.14)),
+							),
 						),
 					),
-				),
 				),
 			),
 		},
@@ -690,24 +690,24 @@ func TestPushdownIndex(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
-					plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
-						plan.NewFilter(
-							and(
+				plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
+					plan.NewFilter(
+						and(
 							and(
 								expression.NewEquals(
 									expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
 									expression.NewLiteral(3.14, sql.Float64),
 								),
-									expression.NewEquals(
-										expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
-										expression.NewLiteral("hello", sql.Text),
-									),
+								expression.NewEquals(
+									expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
+									expression.NewLiteral("hello", sql.Text),
+								),
 							),
-									expression.NewEquals(
-										expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
-										expression.NewLiteral("goodbye", sql.Text),
-									),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
+								expression.NewLiteral("goodbye", sql.Text),
 							),
+						),
 						plan.NewResolvedTable(
 							table.WithIndexLookup(
 								mustIndexLookup(idxTable1F.Get(3.14)),
@@ -747,27 +747,27 @@ func TestPushdownIndex(t *testing.T) {
 				plan.NewCrossJoin(
 					plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 						plan.NewFilter(
-								expression.NewEquals(
-									expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-									expression.NewLiteral(3.14, sql.Float64),
-								),
-								plan.NewResolvedTable(table.WithIndexLookup(
-							mustIndexLookup(idxTable1F.Get(3.14))),
-						),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+								expression.NewLiteral(3.14, sql.Float64),
+							),
+							plan.NewResolvedTable(table.WithIndexLookup(
+								mustIndexLookup(idxTable1F.Get(3.14))),
+							),
 						),
 					),
 					plan.NewDecoratedNode("Indexed table access on index [mytable2.i2]",
 						plan.NewFilter(
-								expression.NewEquals(
-									expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
-									expression.NewLiteral(21, sql.Int32),
-								),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
+								expression.NewLiteral(21, sql.Int32),
+							),
 							plan.NewResolvedTable(table2.WithIndexLookup(
-							mustIndexLookup(idxTable2I2.Get(21))),
+								mustIndexLookup(idxTable2I2.Get(21))),
+							),
 						),
-						),
+					),
 				),
-			),
 			),
 		},
 		{
@@ -806,27 +806,27 @@ func TestPushdownIndex(t *testing.T) {
 				plan.NewCrossJoin(
 					plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 						plan.NewFilter(
-								expression.NewEquals(
-									expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-									expression.NewLiteral(3.14, sql.Float64),
-								),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+								expression.NewLiteral(3.14, sql.Float64),
+							),
 							plan.NewResolvedTable(table.WithIndexLookup(
-							mustIndexLookup(idxTable1F.Get(3.14))),
+								mustIndexLookup(idxTable1F.Get(3.14))),
+							),
 						),
 					),
-					),
-						plan.NewDecoratedNode("Indexed table access on index [mytable2.i2]",
-							plan.NewFilter(
-									and(
-										expression.NewEquals(
-											expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
-											expression.NewLiteral(21, sql.Int32),
-										),
-										expression.NewEquals(
-											expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "t2", true),
-											expression.NewLiteral("hello", sql.Text),
-										),
-									),
+					plan.NewDecoratedNode("Indexed table access on index [mytable2.i2]",
+						plan.NewFilter(
+							and(
+								expression.NewEquals(
+									expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
+									expression.NewLiteral(21, sql.Int32),
+								),
+								expression.NewEquals(
+									expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "t2", true),
+									expression.NewLiteral("hello", sql.Text),
+								),
+							),
 							plan.NewResolvedTable(table2.WithIndexLookup(
 								mustIndexLookup(idxTable2I2.Get(21))),
 							),
@@ -860,13 +860,13 @@ func TestPushdownIndex(t *testing.T) {
 						expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
 						expression.NewLiteral(3.14, sql.Float64),
 					),
-				plan.NewTableAlias("t1",
-					plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
+					plan.NewTableAlias("t1",
+						plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 							plan.NewResolvedTable(
-							table.WithIndexLookup(
-								mustIndexLookup(idxTable1F.Get(3.14)),
+								table.WithIndexLookup(
+									mustIndexLookup(idxTable1F.Get(3.14)),
+								),
 							),
-						),
 						),
 					),
 				),
@@ -954,31 +954,31 @@ func TestPushdownIndex(t *testing.T) {
 				},
 				plan.NewCrossJoin(
 					plan.NewFilter(
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-								expression.NewLiteral(3.14, sql.Float64),
-							),
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
 						plan.NewTableAlias("t1",
-						plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
-							plan.NewResolvedTable(table.WithIndexLookup(
-								mustIndexLookup(idxTable1F.Get(3.14))),
+							plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
+								plan.NewResolvedTable(table.WithIndexLookup(
+									mustIndexLookup(idxTable1F.Get(3.14))),
+								),
 							),
 						),
-					),
 					),
 					plan.NewFilter(
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
-								expression.NewLiteral(21, sql.Int32),
-							),
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
+							expression.NewLiteral(21, sql.Int32),
+						),
 						plan.NewTableAlias("t2",
-						plan.NewDecoratedNode("Indexed table access on index [mytable2.i2]",
-							plan.NewResolvedTable(table2.WithIndexLookup(
-								mustIndexLookup(idxTable2I2.Get(21))),
+							plan.NewDecoratedNode("Indexed table access on index [mytable2.i2]",
+								plan.NewResolvedTable(table2.WithIndexLookup(
+									mustIndexLookup(idxTable2I2.Get(21))),
+								),
 							),
 						),
 					),
-				),
 				),
 			),
 		},
@@ -1028,14 +1028,14 @@ func TestPushdownIndex(t *testing.T) {
 				plan.NewCrossJoin(
 					plan.NewFilter(
 						and(
-								expression.NewEquals(
-									expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-									expression.NewLiteral(3.14, sql.Float64),
-								),
-								expression.NewEquals(
-									expression.NewGetFieldWithTable(2, sql.Text, "t1", "t", true),
-									expression.NewLiteral("hello", sql.Text),
-								),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
+								expression.NewLiteral(3.14, sql.Float64),
+							),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(2, sql.Text, "t1", "t", true),
+								expression.NewLiteral("hello", sql.Text),
+							),
 						),
 						plan.NewTableAlias("t1",
 							plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
@@ -1047,13 +1047,13 @@ func TestPushdownIndex(t *testing.T) {
 					),
 					plan.NewFilter(
 						and(
-								expression.NewEquals(
-									expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
-									expression.NewLiteral(21, sql.Int32),
-								),
-								expression.NewEquals(
-									expression.NewGetFieldWithTable(2, sql.Text, "t2", "t2", true),
-									expression.NewLiteral("goodbye", sql.Text),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
+								expression.NewLiteral(21, sql.Int32),
+							),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(2, sql.Text, "t2", "t2", true),
+								expression.NewLiteral("goodbye", sql.Text),
 							),
 						),
 						plan.NewTableAlias("t2",
@@ -1077,10 +1077,10 @@ func TestPushdownIndex(t *testing.T) {
 				},
 				plan.NewFilter(
 					and(
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(3, sql.Int32, "t2", "i2", true),
-								expression.NewLiteral(21, sql.Int32),
-							),
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(3, sql.Int32, "t2", "i2", true),
+							expression.NewLiteral(21, sql.Int32),
+						),
 						and(
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(0, sql.Text, "t1", "i", true),
@@ -1112,19 +1112,19 @@ func TestPushdownIndex(t *testing.T) {
 				},
 				plan.NewIndexedJoin(
 					plan.NewFilter(
-								expression.NewEquals(
-									expression.NewGetFieldWithTable(0, sql.Text, "t1", "i", true),
-									expression.NewLiteral(100, sql.Int32),
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(0, sql.Text, "t1", "i", true),
+							expression.NewLiteral(100, sql.Int32),
 						),
 						plan.NewTableAlias("t1",
-						plan.NewDecoratedNode("Indexed table access on index [mytable.i]",
-							plan.NewResolvedTable(
-								table.WithIndexLookup(
-									mustIndexLookup(idxtable1I.Get(100)),
+							plan.NewDecoratedNode("Indexed table access on index [mytable.i]",
+								plan.NewResolvedTable(
+									table.WithIndexLookup(
+										mustIndexLookup(idxtable1I.Get(100)),
+									),
 								),
 							),
 						),
-					),
 					),
 					plan.NewFilter(
 						and(

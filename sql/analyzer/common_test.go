@@ -176,7 +176,7 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) bool {
 			fmt.Println(diff)
 		} else {
 			// No textual diff found, but not equal. Ugh. Let's at least figure out which node in the plans isn't equal.
-			Top:
+		Top:
 			for {
 				for i := range expected.Children() {
 					if !assertNodesEqualWithDiff(t, expected.Children()[i], actual.Children()[i]) {

@@ -214,11 +214,11 @@ type NameableNode interface {
 
 // pushdownFiltersToTable attempts to push filters to tables that can accept them
 func pushdownFiltersToTable(
-		a *Analyzer,
-		tableNode NameableNode,
-		filters *filterSet,
-		exprAliases ExprAliases,
-		tableAliases TableAliases,
+	a *Analyzer,
+	tableNode NameableNode,
+	filters *filterSet,
+	exprAliases ExprAliases,
+	tableAliases TableAliases,
 ) (sql.Node, error) {
 
 	table := getTable(tableNode)
@@ -292,10 +292,10 @@ func pushdownFiltersToTable(
 // pushdownIndexesToTable attempts to convert filter predicates to indexes on tables that implement
 // sql.IndexAddressableTable
 func pushdownIndexesToTable(
-		a *Analyzer,
-		tableNode NameableNode,
-		filters *filterSet,
-		indexes map[string]*indexLookup,
+	a *Analyzer,
+	tableNode NameableNode,
+	filters *filterSet,
+	indexes map[string]*indexLookup,
 ) (sql.Node, error) {
 
 	table := getTable(tableNode)

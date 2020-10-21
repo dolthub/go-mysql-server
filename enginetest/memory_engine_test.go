@@ -76,11 +76,11 @@ func TestSingleQuery(t *testing.T) {
 	//t.Skip()
 
 	var test enginetest.QueryTest
-	test = enginetest.QueryTest	{
+	test = enginetest.QueryTest{
 		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1 ORDER BY 1",
 		[]sql.Row{
-			{2,2,nil},
-			{3,3,nil},
+			{2, 2, nil},
+			{3, 3, nil},
 		},
 	}
 
