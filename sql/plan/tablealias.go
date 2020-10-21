@@ -72,3 +72,10 @@ func (t TableAlias) String() string {
 	_ = pr.WriteChildren(t.Child.String())
 	return pr.String()
 }
+
+func (t TableAlias) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("TableAlias(%s)", t.name)
+	_ = pr.WriteChildren(sql.DebugString(t.Child))
+	return pr.String()
+}

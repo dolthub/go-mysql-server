@@ -64,7 +64,7 @@ func (ij *IndexedJoin) DebugString() string {
 	case JoinTypeRight:
 		joinType = "Right"
 	}
-	_ = pr.WriteNode("%sIndexedJoin(%s)", joinType, sql.DebugString(ij.Cond))
+	_ = pr.WriteNode("%sIndexedJoin(%s), using index(%s)", joinType, sql.DebugString(ij.Cond), ij.Index.ID())
 	_ = pr.WriteChildren(sql.DebugString(ij.Left), sql.DebugString(ij.Right))
 	return pr.String()
 }
