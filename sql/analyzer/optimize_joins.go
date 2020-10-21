@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -149,20 +150,25 @@ func analyzeJoinIndexes(
 
 	exprByTable := joinExprsByTable(splitConjunction(cond))
 
+	rightIdx := indexes[normalizeTableName(tableAliases, rightTableName)]
+	leftIdx := indexes[normalizeTableName(tableAliases, leftTableName)]
+	leftTableExprs := exprByTable[leftTableName]
+	rightTableExprs := exprByTable[rightTableName]
+
 	// Choose a primary and secondary table based on available indexes. We can't choose the left table as secondary for a
 	// left join, or the right as secondary for a right join.
-	rightIdx := indexes[normalizeTableName(tableAliases, rightTableName)]
-	if rightIdx != nil && exprByTable[leftTableName] != nil && joinType != plan.JoinTypeRight {
-		primaryTableExpr, err := FixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(rightIdx, exprByTable[leftTableName], exprAliases, tableAliases)...)
+	if rightIdx != nil && leftTableExprs != nil && joinType != plan.JoinTypeRight &&
+		indexExpressionPresent(rightIdx, rightTableExprs) {
+		primaryTableExpr, err := FixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(rightIdx, leftTableExprs, exprAliases, tableAliases)...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
 		return node.Left, node.Right, primaryTableExpr, rightIdx, nil
 	}
 
-	leftIdx := indexes[normalizeTableName(tableAliases, leftTableName)]
-	if leftIdx != nil && exprByTable[rightTableName] != nil && joinType != plan.JoinTypeLeft {
-		primaryTableExpr, err := FixFieldIndexesOnExpressions(node.Right.Schema(), createPrimaryTableExpr(leftIdx, exprByTable[rightTableName], exprAliases, tableAliases)...)
+	if leftIdx != nil && rightTableExprs != nil && joinType != plan.JoinTypeLeft &&
+		indexExpressionPresent(leftIdx, leftTableExprs) {
+		primaryTableExpr, err := FixFieldIndexesOnExpressions(node.Right.Schema(), createPrimaryTableExpr(leftIdx, rightTableExprs, exprAliases, tableAliases)...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -170,6 +176,35 @@ func analyzeJoinIndexes(
 	}
 
 	return nil, nil, nil, nil, errors.New("couldn't determine suitable indexes to use for tables")
+}
+
+// indexExpressionPresent returns whether the index expression given occurs in the column expressions given. This check
+// is necessary in the case of joining a table to itself, since index expressions always use the original table name,
+// and join expressions use the aliased table name.
+func indexExpressionPresent(index sql.Index, colExprs []*columnExpr) bool {
+	// every expression in the join has to be found in the column expressions being considered (although there could be
+	// other column expressions as well)
+	for _, indexExpr := range index.Expressions() {
+		found := false
+		for _, colExpr := range colExprs {
+			if indexExpressionMatches(indexExpr, colExpr) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+
+	return true
+}
+
+func indexExpressionMatches(indexExpr string, expr *columnExpr) bool {
+	// TODO: this string matching on index expressions is pretty fragile, won't handle tables with "." in their names,
+	//  etc. Would be nice to normalize the indexes into a better data structure than just strings to make them easier to
+	//  work with.
+	return strings.ToLower(expr.col.Name()) == strings.ToLower(indexExpr[strings.Index(indexExpr, ".")+1:])
 }
 
 // createPrimaryTableExpr returns a slice of expressions to be used when evaluating a row in the primary table to

@@ -127,6 +127,7 @@ func (fs *filterSet) markFiltersHandled(exprs ...sql.Expression) {
 
 // markIndexesHandled marks the indexes given as handled, so expressions on them will no longer be returned by
 // availableFiltersForTable
+// TODO: this is currently unused because we can't safely remove indexed predicates from the filter in all cases
 func (fs *filterSet) markIndexesHandled(indexes []sql.Index) {
 	for _, index := range indexes {
 		fs.handledIndexFilters = append(fs.handledIndexFilters, index.Expressions()...)

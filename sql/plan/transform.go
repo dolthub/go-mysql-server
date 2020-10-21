@@ -72,6 +72,42 @@ func transformUpWithParent(node sql.Node, parent sql.Node, childNum int, f Trans
 	return f(node, parent, childNum)
 }
 
+// ChildSelector is a func that returns whether the child of a parent node should be walked as part of a transformation.
+// If not, that child and its portion of the subtree is skipped.
+type ChildSelector func(parent sql.Node, child sql.Node, childNum int) bool
+
+// TransformUpWithSelector works like TransformUp, but allows the caller to decide which children of a node are walked.
+func TransformUpWithSelector(node sql.Node, selector ChildSelector, f sql.TransformNodeFunc) (sql.Node, error) {
+	if o, ok := node.(sql.OpaqueNode); ok && o.Opaque() {
+		return f(node)
+	}
+
+	children := node.Children()
+	if len(children) == 0 {
+		return f(node)
+	}
+
+	newChildren := make([]sql.Node, len(children))
+	for i, c := range children {
+		if selector(node, c, i) {
+			c, err := TransformUpWithSelector(c, selector, f)
+			if err != nil {
+				return nil, err
+			}
+			newChildren[i] = c
+		} else {
+			newChildren[i] = c
+		}
+	}
+
+	node, err := node.WithChildren(newChildren...)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(node)
+}
+
 // TransformExpressionsUp applies a transformation function to all expressions
 // on the given tree from the bottom up.
 func TransformExpressionsUpWithNode(node sql.Node, f expression.TransformExprWithNodeFunc) (sql.Node, error) {

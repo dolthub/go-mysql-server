@@ -36,7 +36,7 @@ func TestTableString(t *testing.T) {
 		{Name: "col1", Type: sql.Text, Nullable: true},
 		{Name: "col2", Type: sql.Int64, Nullable: false},
 	})
-	require.Equal("foo\n", table.String())
+	require.Equal("foo", table.String())
 }
 
 type indexKeyValue struct {
