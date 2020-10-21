@@ -127,7 +127,8 @@ func transformJoins(
 			// TODO: should we just do this for every query plan as a final part of the analysis?
 			//  This would involve enforcing that every type of Node implement Expressioner.
 			a.Log("transforming node of type: %T", node)
-			return FixFieldIndexesForExpressions(node)
+			// TODO: need the scope here
+			return FixFieldIndexesForExpressions(node, nil)
 		})
 	}
 

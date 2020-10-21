@@ -44,12 +44,12 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 
 	filters := newFilterSet(filtersByTable, exprAliases, tableAliases)
 
-	n, err = convertFiltersToIndexedAccess(a, n, filters, indexes)
+	n, err = convertFiltersToIndexedAccess(a, n, scope, filters, indexes)
 	if err != nil {
 		return nil, err
 	}
 
-	return transformPushdownFilters(a, n, filters, exprAliases, tableAliases)
+	return transformPushdownFilters(a, n, scope, filters, exprAliases, tableAliases)
 }
 
 // pushdownProjections attempts to push projections down to individual tables that implement sql.ProjectTable
@@ -61,7 +61,7 @@ func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, nil
 	}
 
-	return transformPushdownProjections(ctx, a, n)
+	return transformPushdownProjections(ctx, a, n, scope)
 }
 
 // canDoPushdown returns whether the node given can safely be analyzed for pushdown
@@ -73,11 +73,6 @@ func canDoPushdown(n sql.Node, scope *Scope, a *Analyzer) bool {
 	// don't do pushdown on certain queries
 	switch n.(type) {
 	case *plan.RowUpdateAccumulator, *plan.InsertInto, *plan.DeleteFrom, *plan.Update, *plan.CreateIndex, *plan.CreateTrigger:
-		return false
-	}
-
-	if len(scope.Schema()) > 0 {
-		// TODO: field index rewriting is broken for subqueries, skip it for now
 		return false
 	}
 
@@ -102,7 +97,7 @@ func canDoPushdown(n sql.Node, scope *Scope, a *Analyzer) bool {
 	return true
 }
 
-func transformPushdownFilters(a *Analyzer, n sql.Node, filters *filterSet, exprAliases ExprAliases, tableAliases TableAliases) (sql.Node, error) {
+func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, filters *filterSet, exprAliases ExprAliases, tableAliases TableAliases) (sql.Node, error) {
 	// Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a predicate on
 	// the secondary table below the join, we end up not evaluating it in all cases (since the secondary table result is
 	// sometimes null in these types of joins). It must be evaluated only after the join result is computed.
@@ -128,27 +123,27 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, filters *filterSet, exprA
 			if err != nil {
 				return nil, err
 			}
-			return FixFieldIndexesForExpressions(n)
+			return FixFieldIndexesForExpressions(n, scope)
 		case *plan.TableAlias:
 			table, err := pushdownFiltersToTable(a, node, filters, exprAliases, tableAliases)
 			if err != nil {
 				return nil, err
 			}
-			return FixFieldIndexesForExpressions(table)
+			return FixFieldIndexesForExpressions(table, scope)
 		case *plan.ResolvedTable:
 			table, err := pushdownFiltersToTable(a, node, filters, exprAliases, tableAliases)
 			if err != nil {
 				return nil, err
 			}
-			return FixFieldIndexesForExpressions(table)
+			return FixFieldIndexesForExpressions(table, scope)
 		case *plan.IndexedTableAccess:
 			table, err := pushdownFiltersToTable(a, node, filters, exprAliases, tableAliases)
 			if err != nil {
 				return nil, err
 			}
-			return FixFieldIndexesForExpressions(table)
+			return FixFieldIndexesForExpressions(table, scope)
 		default:
-			return FixFieldIndexesForExpressions(node)
+			return FixFieldIndexesForExpressions(node, scope)
 		}
 	})
 
@@ -160,7 +155,7 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, filters *filterSet, exprA
 }
 
 // convertFiltersToIndexedAccess attempts to replace filter predicates with indexed accesses where possible
-func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, filters *filterSet, indexes indexLookupsByTable) (sql.Node, error) {
+func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, scope *Scope, filters *filterSet, indexes indexLookupsByTable) (sql.Node, error) {
 	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
 		switch parent.(type) {
 		// For IndexedJoins, we already are using indexed access during query execution for the secondary table, so
@@ -188,15 +183,15 @@ func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, filters *filterSet, 
 			if err != nil {
 				return nil, err
 			}
-			return FixFieldIndexesForExpressions(table)
+			return FixFieldIndexesForExpressions(table, scope)
 		case *plan.ResolvedTable:
 			table, err := pushdownIndexesToTable(a, node, filters, indexes)
 			if err != nil {
 				return nil, err
 			}
-			return FixFieldIndexesForExpressions(table)
+			return FixFieldIndexesForExpressions(table, scope)
 		default:
-			return FixFieldIndexesForExpressions(node)
+			return FixFieldIndexesForExpressions(node, scope)
 		}
 	})
 
@@ -402,7 +397,7 @@ func pushdownProjectionsToTable(
 	}
 }
 
-func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, error) {
+func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	usedFieldsByTable := make(fieldsByTable)
 	fieldsByTable := getFieldsByTable(ctx, n)
 
@@ -413,15 +408,15 @@ func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node) (sq
 			if err != nil {
 				return nil, err
 			}
-			return FixFieldIndexesForExpressions(table)
+			return FixFieldIndexesForExpressions(table, scope)
 		case *plan.ResolvedTable:
 			table, err := pushdownProjectionsToTable(a, node, fieldsByTable, usedFieldsByTable)
 			if err != nil {
 				return nil, err
 			}
-			return FixFieldIndexesForExpressions(table)
+			return FixFieldIndexesForExpressions(table, scope)
 		default:
-			return FixFieldIndexesForExpressions(node)
+			return FixFieldIndexesForExpressions(node, scope)
 		}
 	})
 

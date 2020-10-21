@@ -47,7 +47,7 @@ func FixFieldIndexes(schema sql.Schema, exp sql.Expression) (sql.Expression, err
 }
 
 // Transforms the expressions in the Node given, fixing the field indexes.
-func FixFieldIndexesForExpressions(node sql.Node) (sql.Node, error) {
+func FixFieldIndexesForExpressions(node sql.Node, scope *Scope) (sql.Node, error) {
 	if _, ok := node.(sql.Expressioner); !ok {
 		return node, nil
 	}
@@ -63,7 +63,7 @@ func FixFieldIndexesForExpressions(node sql.Node) (sql.Node, error) {
 
 	n, err := plan.TransformExpressions(node, func(e sql.Expression) (sql.Expression, error) {
 		for _, schema := range schemas {
-			fixed, err := FixFieldIndexes(schema, e)
+			fixed, err := FixFieldIndexes(append(scope.Schema(), schema...), e)
 			if err == nil {
 				return fixed, nil
 			}
@@ -84,21 +84,21 @@ func FixFieldIndexesForExpressions(node sql.Node) (sql.Node, error) {
 
 	switch j := n.(type) {
 	case *plan.InnerJoin:
-		cond, err := FixFieldIndexes(j.Schema(), j.Cond)
+		cond, err := FixFieldIndexes(append(scope.Schema(), j.Schema()...), j.Cond)
 		if err != nil {
 			return nil, err
 		}
 
 		n = plan.NewInnerJoin(j.Left, j.Right, cond)
 	case *plan.RightJoin:
-		cond, err := FixFieldIndexes(j.Schema(), j.Cond)
+		cond, err := FixFieldIndexes(append(scope.Schema(), j.Schema()...), j.Cond)
 		if err != nil {
 			return nil, err
 		}
 
 		n = plan.NewRightJoin(j.Left, j.Right, cond)
 	case *plan.LeftJoin:
-		cond, err := FixFieldIndexes(j.Schema(), j.Cond)
+		cond, err := FixFieldIndexes(append(scope.Schema(), j.Schema()...), j.Cond)
 		if err != nil {
 			return nil, err
 		}
