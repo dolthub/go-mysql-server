@@ -166,7 +166,7 @@ func TestVersionedQueries(t *testing.T) {
 // the right indexes are being used for joining tables.
 func TestQueryPlans(t *testing.T) {
 	indexBehaviors := []*indexBehaviorTestParams{
-		{"unmergableIndexes", unmergableIndexDriver, false},
+		{"unmergableIndexes", unmergableIndexDriver, true},
 		{"nativeIndexes", nil, true},
 		{"nativeAndMergable", mergableIndexDriver, true},
 	}

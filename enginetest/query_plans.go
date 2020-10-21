@@ -107,6 +107,17 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		// Test of case-insensitivity when matching indexes to column expressions
+		Query: "SELECT t1.timestamp FROM reservedWordsTable t1 JOIN reservedWordsTable t2 ON t1.TIMESTAMP = t2.tImEstamp",
+		ExpectedPlan: "Project(t1.Timestamp)\n" +
+				" └─ IndexedJoin(t1.Timestamp = t2.Timestamp)\n" +
+				"     ├─ TableAlias(t1)\n" +
+				"     │   └─ Table(reservedWordsTable)\n" +
+				"     └─ TableAlias(t2)\n" +
+				"         └─ Table(reservedWordsTable)\n" +
+				"",
+	},
+	{
 		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2",
 		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
 			" └─ IndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +

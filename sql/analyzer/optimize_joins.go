@@ -180,10 +180,10 @@ func analyzeJoinIndexes(
 
 // indexExpressionPresent returns whether the index expression given occurs in the column expressions given. This check
 // is necessary in the case of joining a table to itself, since index expressions always use the original table name,
-// and join expressions can use the table name.
+// and join expressions use the aliased table name.
 func indexExpressionPresent(index sql.Index, colExprs []*columnExpr) bool {
 	// every expression in the join has to be found in the column expressions being considered (although there could be
-	// other column expresisons as well)
+	// other column expressions as well)
 	for _, indexExpr := range index.Expressions() {
 		found := false
 		for _, colExpr := range colExprs {
@@ -204,7 +204,7 @@ func indexExpressionMatches(indexExpr string, expr *columnExpr) bool {
 	// TODO: this string matching on index expressions is pretty fragile, won't handle tables with "." in their names,
 	//  etc. Would be nice to normalize the indexes into a better data structure than just strings to make them easier to
 	//  work with.
-	return strings.ToLower(expr.col.Name()) == indexExpr[strings.Index(indexExpr, ".")+1:]
+	return strings.ToLower(expr.col.Name()) == strings.ToLower(indexExpr[strings.Index(indexExpr, ".")+1:])
 }
 
 // createPrimaryTableExpr returns a slice of expressions to be used when evaluating a row in the primary table to
