@@ -73,14 +73,14 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1 ORDER BY 1",
+		`SELECT i FROM mytable WHERE i IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 2) ORDER BY i`,
 		[]sql.Row{
-			{2, 2, nil},
-			{3, 3, nil},
+			{int64(1)},
+			{int64(2)},
 		},
 	}
 

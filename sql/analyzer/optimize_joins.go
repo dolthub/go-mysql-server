@@ -50,15 +50,16 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 		return nil, err
 	}
 
-	return transformJoins(a, n, indexes, exprAliases, tableAliases)
+	return transformJoins(a, n, scope, indexes, exprAliases, tableAliases)
 }
 
 func transformJoins(
-	a *Analyzer,
-	n sql.Node,
-	indexes map[string]sql.Index,
-	exprAliases ExprAliases,
-	tableAliases TableAliases,
+		a *Analyzer,
+		n sql.Node,
+		scope *Scope,
+		indexes map[string]sql.Index,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
 ) (sql.Node, error) {
 
 	var replacedIndexedJoin bool
@@ -94,7 +95,7 @@ func transformJoins(
 			}
 
 			joinSchema := append(primaryTable.Schema(), secondaryTable.Schema()...)
-			joinCond, err := FixFieldIndexes(joinSchema, cond)
+			joinCond, err := FixFieldIndexes(scope, joinSchema, cond)
 			if err != nil {
 				return nil, err
 			}
