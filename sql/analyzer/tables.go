@@ -67,6 +67,9 @@ func getTable(node sql.Node) sql.Table {
 		case *plan.ResolvedTable:
 			table = n.Table
 			return false
+		case *plan.IndexedTableAccess:
+			table = n.Table
+			return false
 		}
 		return true
 	})
@@ -86,6 +89,9 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
 			table = n
+			return false
+		case *plan.IndexedTableAccess:
+			table = n.ResolvedTable
 			return false
 		}
 		return true
@@ -126,6 +132,12 @@ func withTable(node sql.Node, table sql.Table) (sql.Node, error) {
 			}
 			foundTable = true
 			return plan.NewResolvedTable(table), nil
+		case *plan.IndexedTableAccess:
+			if foundTable {
+				return nil, ErrInAnalysis.New("attempted to set more than one table in withTable()")
+			}
+			foundTable = true
+			return plan.NewIndexedTable(plan.NewResolvedTable(table)), nil
 		default:
 			return n, nil
 		}

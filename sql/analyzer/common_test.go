@@ -157,7 +157,7 @@ func ensureSubquerySchema(n sql.Node) {
 
 // assertNodesEqualWithDiff asserts the two nodes given to be equal and prints any diff according to their DebugString
 // methods.
-func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
+func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) bool {
 	if !assert.Equal(t, expected, actual) {
 		expectedStr := sql.DebugString(expected)
 		actualStr := sql.DebugString(actual)
@@ -174,6 +174,24 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
 
 		if len(diff) > 0 {
 			fmt.Println(diff)
+		} else {
+			// No textual diff found, but not equal. Ugh. Let's at least figure out which node in the plans isn't equal.
+		Top:
+			for {
+				for i := range expected.Children() {
+					if !assertNodesEqualWithDiff(t, expected.Children()[i], actual.Children()[i]) {
+						expected, actual = expected.Children()[i], actual.Children()[i]
+						continue Top
+					}
+				}
+				// Either no children, or all children were equal. This must the node that's different. Probably should add
+				// enough information in DebugPrint for this node that it shows up in the textual diff.
+				fmt.Printf("Non-textual difference found in node %s -- implement a better DebugPrint?\n", sql.DebugString(expected))
+				break
+			}
 		}
+
+		return false
 	}
+	return true
 }

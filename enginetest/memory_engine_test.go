@@ -77,13 +77,16 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		"SELECT * FROM mytable WHERE i = 2 AND s = 'third row'",
-		nil,
+		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1 ORDER BY 1",
+		[]sql.Row{
+			{2, 2, nil},
+			{3, 3, nil},
+		},
 	}
 
 	fmt.Sprintf("%v", test)
 
-	harness := newMemoryHarness("", 1, testNumPartitions, false, mergableIndexDriver)
+	harness := newMemoryHarness("", 1, testNumPartitions, true, nil)
 	engine := enginetest.NewEngine(t, harness)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
@@ -163,7 +166,7 @@ func TestVersionedQueries(t *testing.T) {
 // the right indexes are being used for joining tables.
 func TestQueryPlans(t *testing.T) {
 	indexBehaviors := []*indexBehaviorTestParams{
-		{"unmergableIndexes", unmergableIndexDriver, false},
+		{"unmergableIndexes", unmergableIndexDriver, true},
 		{"nativeIndexes", nil, true},
 		{"nativeAndMergable", mergableIndexDriver, true},
 	}

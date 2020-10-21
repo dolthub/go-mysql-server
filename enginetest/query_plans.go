@@ -90,9 +90,10 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: "SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2",
 		ExpectedPlan: "IndexedJoin(mt.i = ot.i2)\n" +
-			" ├─ TableAlias(mt)\n" +
-			" │   └─ Indexed table access on index [mytable.i]\n" +
-			" │       └─ Table(mytable)\n" +
+			" ├─ Filter(mt.i > 2)\n" +
+			" │   └─ TableAlias(mt)\n" +
+			" │       └─ Indexed table access on index [mytable.i]\n" +
+			" │           └─ Table(mytable)\n" +
 			" └─ TableAlias(ot)\n" +
 			"     └─ Table(othertable)\n" +
 			"",
@@ -104,6 +105,17 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(othertable)\n" +
 			"     └─ Table(mytable)\n" +
 			"",
+	},
+	{
+		// Test of case-insensitivity when matching indexes to column expressions
+		Query: "SELECT t1.timestamp FROM reservedWordsTable t1 JOIN reservedWordsTable t2 ON t1.TIMESTAMP = t2.tImEstamp",
+		ExpectedPlan: "Project(t1.Timestamp)\n" +
+				" └─ IndexedJoin(t1.Timestamp = t2.Timestamp)\n" +
+				"     ├─ TableAlias(t1)\n" +
+				"     │   └─ Table(reservedWordsTable)\n" +
+				"     └─ TableAlias(t2)\n" +
+				"         └─ Table(reservedWordsTable)\n" +
+				"",
 	},
 	{
 		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2",
@@ -197,21 +209,49 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 > 1",
+		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ Filter(niltable.i2 > 1)\n" +
+			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"         ├─ Table(one_pk)\n" +
+			"         └─ Table(niltable)\n" +
+			"",
+	},
+	{
+		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1",
+		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ Filter(niltable.i > 1)\n" +
+			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"         ├─ Table(one_pk)\n" +
+			"         └─ Table(niltable)\n" +
+			"",
+	},
+	{
+		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE c1 > 10",
+		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"     ├─ Filter(one_pk.c1 > 10)\n" +
+			"     │   └─ Table(one_pk)\n" +
+			"     └─ Table(niltable)\n" +
+			"",
+	},
+	{
 		Query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL",
 		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
-			" └─ Filter(NOT(niltable.f IS NULL))\n" +
-			"     └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
-			"         ├─ Table(niltable)\n" +
-			"         └─ Table(one_pk)\n" +
+			" └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"     ├─ Filter(NOT(niltable.f IS NULL))\n" +
+			"     │   └─ Table(niltable)\n" +
+			"     └─ Table(one_pk)\n" +
 			"",
 	},
 	{
 		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1",
 		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
-			" └─ Filter(one_pk.pk > 1)\n" +
-			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
-			"         ├─ Table(one_pk)\n" +
-			"         └─ Table(niltable)\n" +
+			" └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"     ├─ Indexed table access on index [one_pk.pk]\n" +
+			"     │   └─ Filter(one_pk.pk > 1)\n" +
+			"     │       └─ Table(one_pk)\n" +
+			"     └─ Table(niltable)\n" +
 			"",
 	},
 	{
@@ -378,11 +418,11 @@ var PlanTests = []QueryPlanTest{
 		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1 ORDER BY 1",
 		ExpectedPlan: "Sort(one_pk.pk ASC)\n" +
 			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
-			"     └─ Filter(one_pk.pk > 1)\n" +
-			"         └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
-			"             ├─ Table(one_pk)\n" +
-			"             └─ Table(niltable)\n" +
-			"",
+			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"         ├─ Indexed table access on index [one_pk.pk]\n" +
+			"         │   └─ Filter(one_pk.pk > 1)\n" +
+			"         │       └─ Table(one_pk)\n" +
+			"         └─ Table(niltable)\n",
 	},
 	{
 		Query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i ORDER BY 2,3",
@@ -397,10 +437,10 @@ var PlanTests = []QueryPlanTest{
 		Query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
 		ExpectedPlan: "Sort(niltable.i ASC, niltable.f ASC)\n" +
 			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
-			"     └─ Filter(NOT(niltable.f IS NULL))\n" +
-			"         └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
-			"             ├─ Table(niltable)\n" +
-			"             └─ Table(one_pk)\n" +
+			"     └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
+			"         ├─ Filter(NOT(niltable.f IS NULL))\n" +
+			"         │   └─ Table(niltable)\n" +
+			"         └─ Table(one_pk)\n" +
 			"",
 	},
 	{
@@ -531,9 +571,10 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Sort(t1.pk ASC, t2.pk2 ASC)\n" +
 			" └─ Project(t1.pk, t2.pk2)\n" +
 			"     └─ CrossJoin\n" +
-			"         ├─ TableAlias(t1)\n" +
-			"         │   └─ Indexed table access on index [one_pk.pk]\n" +
-			"         │       └─ Table(one_pk)\n" +
+			"         ├─ Filter(t1.pk = 1)\n" +
+			"         │   └─ TableAlias(t1)\n" +
+			"         │       └─ Indexed table access on index [one_pk.pk]\n" +
+			"         │           └─ Table(one_pk)\n" +
 			"         └─ Filter(t2.pk2 = 1)\n" +
 			"             └─ TableAlias(t2)\n" +
 			"                 └─ Table(two_pk)\n" +

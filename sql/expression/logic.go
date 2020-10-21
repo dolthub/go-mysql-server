@@ -36,6 +36,10 @@ func (a *And) String() string {
 	return fmt.Sprintf("%s AND %s", a.Left, a.Right)
 }
 
+func (a *And) DebugString() string {
+	return fmt.Sprintf("%s AND %s", sql.DebugString(a.Left), sql.DebugString(a.Right))
+}
+
 // Type implements the Expression interface.
 func (*And) Type() sql.Type {
 	return sql.Boolean

@@ -1149,6 +1149,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		`SELECT * FROM othertable ot INNER JOIN mytable mt ON mt.i = ot.i2 AND mt.i > 2`,
+		[]sql.Row{
+			{"first", int64(3), int64(3), "third row"},
+		},
+	},
+	{
 		`SELECT i AS foo FROM mytable ORDER BY i DESC`,
 		[]sql.Row{
 			{int64(3)},
@@ -2930,11 +2936,62 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE f IS NULL AND pk < 2 ORDER BY 1",
+		[]sql.Row{
+			{0, nil, nil},
+			{1, 1, nil},
+		},
+	},
+	{
 		"SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
 		[]sql.Row{
 			{nil, nil, 5.0},
 			{nil, int64(4), 4.0},
 			{nil, int64(6), 6.0},
+		},
+	},
+	{
+		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1 ORDER BY 1",
+		[]sql.Row{
+			{2, 2, nil},
+			{3, 3, nil},
+		},
+	},
+	{
+		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 > 1 ORDER BY 1",
+		[]sql.Row{
+			{2, 2, nil},
+		},
+	},
+	{
+		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1 ORDER BY 1",
+		[]sql.Row{
+			{2, 2, nil},
+			{3, 3, nil},
+		},
+	},
+	{
+		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE c1 > 10 ORDER BY 1",
+		[]sql.Row{
+			{2, 2, nil},
+			{3, 3, nil},
+		},
+	},
+	{
+		"SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
+		[]sql.Row{
+			{nil, 4, 4.0},
+			{nil, 5, 5.0},
+			{nil, 6, 6.0},
+		},
+	},
+	{
+		"SELECT t1.i,t1.i2 FROM niltable t1 LEFT JOIN niltable t2 ON t1.i=t2.i2 WHERE t2.f IS NULL ORDER BY 1,2",
+		[]sql.Row{
+			{1, nil},
+			{2, 2},
+			{3, nil},
+			{5, nil},
 		},
 	},
 	{
