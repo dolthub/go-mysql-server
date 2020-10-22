@@ -68,6 +68,17 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return nil, err
 	}
 
+	project, err  := wrapRowSource(insert, dstSchema, columnNames)
+	if err != nil {
+		return nil, err
+	}
+
+	return insert.WithChildren(insert.Left, project)
+}
+
+// wrapRowSource wraps the original row source in a projection so that its schema matches the full schema of the
+// underlying table, in the same order.
+func wrapRowSource(insert *plan.InsertInto, dstSchema sql.Schema, columnNames []string) (sql.Node, error) {
 	projExprs := make([]sql.Expression, len(dstSchema))
 	for i, f := range dstSchema {
 		found := false
@@ -87,12 +98,13 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		}
 	}
 
-	err = validateRowSource(insert.Right, projExprs)
+	err := validateRowSource(insert.Right, projExprs)
 	if err != nil {
-		return nil, err
+		return nil,err
 	}
 
-	return insert.WithColumns(projExprs)
+	project := plan.NewProject(projExprs, insert.Right)
+	return project, nil
 }
 
 func validateColumns(columnNames []string, dstSchema sql.Schema) error {

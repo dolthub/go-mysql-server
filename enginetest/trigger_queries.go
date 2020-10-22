@@ -136,6 +136,28 @@ var TriggerTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "trigger before insert, modify values",
+		SetUpScript: []string{
+			"create table a (x int primary key, y int)",
+			"create trigger a1 before insert on a for each row set new.x = new.x * 2, new.y = new.y * 3",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a (y, x) values (5,7), (9,11)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query: "select x, y from a order by 1",
+				Expected: []sql.Row{
+					{14, 15},
+					{22, 27},
+				},
+			},
+		},
+	},
+	{
 		Name: "trigger before insert, delete from other table",
 		SetUpScript: []string{
 			"create table a (x int primary key)",

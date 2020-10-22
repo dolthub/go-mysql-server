@@ -96,38 +96,31 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var test enginetest.ScriptTest
 	test = enginetest.ScriptTest{
-		Name: "multiple triggers before and after insert, with precedes / follows",
+		Name: "trigger before insert, modify values",
 		SetUpScript: []string{
-			"create table a (x int primary key)",
-			"create table b (y int primary key)",
-			"insert into b values (1), (3)",
-			"create trigger a1 before insert on a for each row set new.x = New.x + 1",
-			"create trigger a2 before insert on a for each row precedes a1 set new.x = New.x * 2",
-			"create trigger a3 before insert on a for each row precedes a2 set new.x = New.x - 5",
-			"create trigger a4 before insert on a for each row follows a2 set new.x = New.x * 3",
-			// order of execution should be: a3, a2, a4, a1
-			"create trigger a5 after insert on a for each row update b set y = y + 1",
-			"create trigger a6 after insert on a for each row precedes a5 update b set y = y * 2",
-			"create trigger a7 after insert on a for each row precedes a6 update b set y = y - 5",
-			"create trigger a8 after insert on a for each row follows a6 update b set y = y * 3",
-			// order of execution should be: a7, a6, a8, a5
-			"insert into a values (1), (3)",
+			"create table a (x int primary key, y int)",
+			"create trigger a1 before insert on a for each row set new.x = new.x * 2, new.y = new.y * 3",
 		},
 		Assertions: []enginetest.ScriptTestAssertion{
 			{
-				Query: "select x from a order by 1",
+				Query: "select x, y from a order by 1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "insert into a (y, x) values (5,7), (9,11)",
 				Expected: []sql.Row{
-					{-23}, {-11},
+					{sql.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
-				Query: "select y from b order by 1",
+				Query: "select x, y from a order by 1",
 				Expected: []sql.Row{
-					{-23}, {-11},
+					{14, 15},
+					{22, 27},
 				},
 			},
 		},
