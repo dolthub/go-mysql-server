@@ -61,21 +61,6 @@ func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, nil
 	}
 
-	return transformPushdownProjections(ctx, a, n, scope)
-}
-
-// canDoPushdown returns whether the node given can safely be analyzed for pushdown
-func canDoPushdown(n sql.Node, a *Analyzer) bool {
-	if !n.Resolved() {
-		return false
-	}
-
-	// don't do pushdown on certain queries
-	switch n.(type) {
-	case *plan.RowUpdateAccumulator, *plan.InsertInto, *plan.DeleteFrom, *plan.Update, *plan.CreateIndex, *plan.CreateTrigger:
-		return false
-	}
-
 	// Pushdown of projections interferes with subqueries on the same table: the table gets two different sets of
 	// projected columns pushed down, once for its alias in the subquery and once for its alias outside. For that reason,
 	// skip pushdown for any query with a subquery in it.
@@ -91,6 +76,21 @@ func canDoPushdown(n sql.Node, a *Analyzer) bool {
 
 	if containsSubquery {
 		a.Log("skipping pushdown for query with subquery")
+		return n, nil
+	}
+
+	return transformPushdownProjections(ctx, a, n, scope)
+}
+
+// canDoPushdown returns whether the node given can safely be analyzed for pushdown
+func canDoPushdown(n sql.Node, a *Analyzer) bool {
+	if !n.Resolved() {
+		return false
+	}
+
+	// don't do pushdown on certain queries
+	switch n.(type) {
+	case *plan.RowUpdateAccumulator, *plan.InsertInto, *plan.DeleteFrom, *plan.Update, *plan.CreateIndex, *plan.CreateTrigger:
 		return false
 	}
 
