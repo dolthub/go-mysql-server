@@ -16,7 +16,7 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	span, ctx := ctx.Span("pushdown_filters")
 	defer span.Finish()
 
-	if !canDoPushdown(n, scope, a) {
+	if !canDoPushdown(n, a) {
 		return n, nil
 	}
 
@@ -57,7 +57,7 @@ func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	span, ctx := ctx.Span("pushdown_projections")
 	defer span.Finish()
 
-	if !canDoPushdown(n, scope, a) {
+	if !canDoPushdown(n, a) {
 		return n, nil
 	}
 
@@ -65,7 +65,7 @@ func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 }
 
 // canDoPushdown returns whether the node given can safely be analyzed for pushdown
-func canDoPushdown(n sql.Node, scope *Scope, a *Analyzer) bool {
+func canDoPushdown(n sql.Node, a *Analyzer) bool {
 	if !n.Resolved() {
 		return false
 	}
