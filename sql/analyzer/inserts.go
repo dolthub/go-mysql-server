@@ -15,8 +15,10 @@
 package analyzer
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -80,10 +82,18 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		}
 
 		if !found {
-			if !f.Nullable && f.Default == nil {
+			if !f.Nullable && f.Default == nil && !f.AutoIncrement {
 				return nil, plan.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
-			projExprs[i] = f.Default
+			if f.AutoIncrement {
+				inc, err := makeAutoIncrement(ctx, a, f, insertable)
+				if err != nil {
+					return nil, err
+				}
+				projExprs[i] = inc
+			} else {
+				projExprs[i] = f.Default
+			}
 		}
 	}
 
@@ -168,4 +178,22 @@ func validateRowSource(values sql.Node, projExprs []sql.Expression) error {
 	default:
 		return plan.ErrInsertIntoUnsupportedValues.New(n)
 	}
+}
+
+func makeAutoIncrement(ctx *sql.Context, a *Analyzer, col *sql.Column, insertable sql.InsertableTable) (sql.Expression, error) {
+	subquery := fmt.Sprintf("SELECT max(%s) FROM %s", col.Name, insertable.Name())
+
+	parsed, err := parse.Parse(ctx, subquery)
+	if err != nil {
+		return nil, err
+	}
+
+	analyzed, err := a.Analyze(ctx, parsed, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	sq := plan.NewSubquery(analyzed, subquery)
+
+	return expression.NewAutoIncrement(sq), nil
 }

@@ -14,6 +14,7 @@ import (
 var ErrInsertIntoNotSupported = errors.NewKind("table doesn't support INSERT INTO")
 var ErrReplaceIntoNotSupported = errors.NewKind("table doesn't support REPLACE INTO")
 var ErrOnDuplicateKeyUpdateNotSupported = errors.NewKind("table doesn't support ON DUPLICATE KEY UPDATE")
+var ErrAutoIncrementNotSupported = errors.NewKind("table doesn't support AUTO_INCREMENT")
 var ErrInsertIntoMismatchValueCount = errors.NewKind("number of values does not match number of columns provided")
 var ErrInsertIntoUnsupportedValues = errors.NewKind("%T is unsupported for inserts")
 var ErrInsertIntoDuplicateColumn = errors.NewKind("duplicate column name %v")

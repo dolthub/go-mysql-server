@@ -328,6 +328,29 @@ var InsertQueries = []WriteQueryTest{
 			{10, "hello"},
 		},
 	},
+	{
+		"INSERT INTO auto_increment_tbl (c0) values (44)",
+		[]sql.Row{{sql.NewOkResult(1)}},
+		"SELECT * FROM auto_increment_tbl ORDER BY pk",
+		[]sql.Row{
+			{1, 11},
+			{2, 22},
+			{3, 33},
+			{4, 44},
+		},
+	},
+	{
+		"INSERT INTO auto_increment_tbl (c0) values (44),(55)",
+		[]sql.Row{{sql.NewOkResult(2)}},
+		"SELECT * FROM auto_increment_tbl ORDER BY pk",
+		[]sql.Row{
+			{1, 11},
+			{2, 22},
+			{3, 33},
+			{4, 44},
+			{5, 55},
+		},
+	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{

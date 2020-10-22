@@ -1082,12 +1082,13 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 	}
 
 	return &sql.Column{
-		Nullable:   !isPkey && !bool(cd.Type.NotNull),
-		Type:       internalTyp,
-		Name:       cd.Name.String(),
-		PrimaryKey: isPkey,
-		Default:    defaultVal,
-		Comment:    comment,
+		Nullable:      !isPkey && !bool(cd.Type.NotNull),
+		Type:          internalTyp,
+		Name:          cd.Name.String(),
+		PrimaryKey:    isPkey,
+		Default:       defaultVal,
+		AutoIncrement: bool(cd.Type.Autoincrement),
+		Comment:       comment,
 	}, nil
 }
 
