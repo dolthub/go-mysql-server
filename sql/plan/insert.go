@@ -104,6 +104,7 @@ func newInsertIter(
 	}
 
 	var inserter sql.RowInserter
+
 	var replacer sql.RowReplacer
 	var updater sql.RowUpdater
 	// These type casts have already been asserted in the analyzer
@@ -142,6 +143,12 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 	if err != nil {
 		_ = i.rowSource.Close()
 		return nil, err
+	}
+
+	// Prune the row down to the size of the schema. It can be larger in the case of running with an outer scope, in which
+	// case the additional scope variables are prepended to the row.
+	if len(row) > len(i.schema) {
+		row = row[len(row)-len(i.schema):]
 	}
 
 	err = validateNullability(i.schema, row)
