@@ -580,4 +580,36 @@ var PlanTests = []QueryPlanTest{
 			"                 └─ Table(two_pk)\n" +
 			"",
 	},
+	{
+		Query: "DELETE FROM two_pk WHERE c1 > 1",
+		ExpectedPlan: "Delete\n" +
+			" └─ Filter(two_pk.c1 > 1)\n" +
+			"     └─ Table(two_pk)\n" +
+			"",
+	},
+	{
+		Query: "DELETE FROM two_pk WHERE pk1 = 1 AND pk2 = 2",
+		ExpectedPlan: "Delete\n" +
+			" └─ Indexed table access on index [two_pk.pk1,two_pk.pk2]\n" +
+			"     └─ Filter(two_pk.pk1 = 1 AND two_pk.pk2 = 2)\n" +
+			"         └─ Table(two_pk)\n" +
+			"",
+	},
+	{
+		Query: "UPDATE two_pk SET c1 = 1 WHERE c1 > 1",
+		ExpectedPlan: "Update\n" +
+			" └─ UpdateSource(SET two_pk.c1 = 1)\n" +
+			"     └─ Filter(two_pk.c1 > 1)\n" +
+			"         └─ Table(two_pk)\n" +
+			"",
+	},
+	{
+		Query: "UPDATE two_pk SET c1 = 1 WHERE pk1 = 1 AND pk2 = 2",
+		ExpectedPlan: "Update\n" +
+			" └─ UpdateSource(SET two_pk.c1 = 1)\n" +
+			"     └─ Indexed table access on index [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ Filter(two_pk.pk1 = 1 AND two_pk.pk2 = 2)\n" +
+			"             └─ Table(two_pk)\n" +
+			"",
+	},
 }
