@@ -41,7 +41,7 @@ func (i *AutoIncrement) IsNullable() bool {
 
 // Type implements the Expression interface.
 func (i *AutoIncrement) Type() sql.Type {
-	return i.Right.Type()
+	return i.Left.Type()
 }
 
 func (i *AutoIncrement) evalLastIdOnce(ctx *sql.Context) error {
