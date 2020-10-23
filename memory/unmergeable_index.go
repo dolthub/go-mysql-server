@@ -114,6 +114,10 @@ func (u *indexValIter) initValues() error {
 
 func getType(val interface{}) (interface{}, sql.Type) {
 	switch val := val.(type) {
+	case int:
+		return int64(val), sql.Int64
+	case uint:
+		return int64(val), sql.Int64
 	case int8:
 		return int64(val), sql.Int64
 	case uint8:
@@ -136,6 +140,8 @@ func getType(val interface{}) (interface{}, sql.Type) {
 		return float64(val), sql.Float64
 	case string:
 		return val, sql.LongText
+	case nil:
+		return nil, sql.Null
 	default:
 		panic(fmt.Sprintf("Unsupported type for %v of type %T", val, val))
 	}
@@ -148,7 +154,8 @@ func (u *indexValIter) Close() error {
 func (u *UnmergeableIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	var exprs []sql.Expression
 	for exprI, expr := range u.idx.Exprs {
-		exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(u.key[exprI], expr.Type())))
+		lit, typ := getType(u.key[exprI])
+		exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(lit, typ)))
 	}
 
 	return &indexValIter{
