@@ -41,7 +41,7 @@ func (i *AutoIncrement) IsNullable() bool {
 
 // Type implements the Expression interface.
 func (i *AutoIncrement) Type() sql.Type {
-	return i.Left.Type()
+	return i.Right.Type()
 }
 
 func (i *AutoIncrement) evalLastIdOnce(ctx *sql.Context) error {
@@ -71,7 +71,13 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, err
 	}
 
-	if val == nil || val == i.Type().Zero() {
+	// todo: |val| is int8 while |i.Right.Zero()| is int64
+	cmp, err := i.Type().Compare(val, i.Type().Zero())
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil || cmp == 0 {
 		// provide AUTO_INCREMENT value
 		one := NewLiteral(sql.NumericUnaryValue(i.Type()), i.Type())
 		id, err := NewPlus(i.lastInsertId, one).Eval(ctx, row)

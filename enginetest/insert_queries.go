@@ -363,6 +363,17 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
+		"INSERT INTO auto_increment_tbl values (0, 44)",
+		[]sql.Row{{sql.NewOkResult(1)}},
+		"SELECT * FROM auto_increment_tbl ORDER BY pk",
+		[]sql.Row{
+			{1, 11},
+			{2, 22},
+			{3, 33},
+			{4, 44},
+		},
+	},
+	{
 		"INSERT INTO auto_increment_tbl values (5, 44)",
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT * FROM auto_increment_tbl ORDER BY pk",
