@@ -15,7 +15,6 @@
 package plan
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -101,14 +100,16 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(n, parent sql.Node, c
 	return func(n, parent sql.Node, childNum int) (sql.Node, error) {
 		switch n := n.(type) {
 		case *Project:
-			// Only prepend rows for projects that aren't the input to inserts
-			if _, ok := parent.(*InsertInto); !ok {
+			// Only prepend rows for projects that aren't the input to inserts and other triggers
+			switch parent.(type) {
+			case *InsertInto, *TriggerExecutor:
+				return n, nil
+			default:
 				return &prependNode{
 					UnaryNode: UnaryNode{Child: n},
 					row:       row,
 				}, nil
 			}
-			return n, nil
 		case *ResolvedTable, *IndexedTableAccess:
 			return &prependNode{
 				UnaryNode: UnaryNode{Child: n},
@@ -126,15 +127,11 @@ func (t *triggerIter) Next() (row sql.Row, returnErr error) {
 		return nil, err
 	}
 
-	fmt.Printf("original logic: %s", sql.DebugString(t.executionLogic))
-
 	// Wrap the execution logic with the current child row before executing it.
 	logic, err := TransformUpWithParent(t.executionLogic, prependRowInPlanForTriggerExecution(childRow))
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Printf("transformed logic: %s", sql.DebugString(logic))
 
 	// We don't do anything interesting with this subcontext yet, but it's a good idea to cancel it independently of the
 	// parent context if something goes wrong in trigger execution.
