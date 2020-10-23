@@ -351,6 +351,44 @@ var InsertQueries = []WriteQueryTest{
 			{5, 55},
 		},
 	},
+	{
+		"INSERT INTO auto_increment_tbl values (NULL, 44)",
+		[]sql.Row{{sql.NewOkResult(1)}},
+		"SELECT * FROM auto_increment_tbl ORDER BY pk",
+		[]sql.Row{
+			{1, 11},
+			{2, 22},
+			{3, 33},
+			{4, 44},
+		},
+	},
+	{
+		"INSERT INTO auto_increment_tbl values (5, 44)",
+		[]sql.Row{{sql.NewOkResult(1)}},
+		"SELECT * FROM auto_increment_tbl ORDER BY pk",
+		[]sql.Row{
+			{1, 11},
+			{2, 22},
+			{3, 33},
+			{5, 44},
+		},
+	},
+	{
+		"INSERT INTO auto_increment_tbl values " +
+			"(NULL, 44), (NULL, 55), (9, 99), (NULL, 110), (NULL, 121)",
+		[]sql.Row{{sql.NewOkResult(5)}},
+		"SELECT * FROM auto_increment_tbl ORDER BY pk",
+		[]sql.Row{
+			{1, 11},
+			{2, 22},
+			{3, 33},
+			{4, 44},
+			{5, 55},
+			{9, 99},
+			{10, 110},
+			{11, 121},
+		},
+	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{

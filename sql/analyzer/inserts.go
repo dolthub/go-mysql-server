@@ -70,7 +70,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return nil, err
 	}
 
-	project, err := wrapRowSource(insert, dstSchema, columnNames)
+	project, err := wrapRowSource(ctx, a, insert, dstSchema, insertable.Name(), columnNames)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 
 // wrapRowSource wraps the original row source in a projection so that its schema matches the full schema of the
 // underlying table, in the same order.
-func wrapRowSource(insert *plan.InsertInto, dstSchema sql.Schema, columnNames []string) (sql.Node, error) {
+func wrapRowSource(ctx *sql.Context, a *Analyzer, insert *plan.InsertInto, dstSchema sql.Schema, tableName string, columnNames []string) (sql.Node, error) {
 	projExprs := make([]sql.Expression, len(dstSchema))
 	for i, f := range dstSchema {
 		found := false
@@ -96,15 +96,15 @@ func wrapRowSource(insert *plan.InsertInto, dstSchema sql.Schema, columnNames []
 			if !f.Nullable && f.Default == nil && !f.AutoIncrement {
 				return nil, plan.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
-			if f.AutoIncrement {
-				inc, err := makeAutoIncrement(ctx, a, f, insertable)
-				if err != nil {
-					return nil, err
-				}
-				projExprs[i] = inc
-			} else {
-				projExprs[i] = f.Default
+			projExprs[i] = f.Default
+		}
+
+		if f.AutoIncrement {
+			ai, err := makeAutoIncrement(ctx, a, projExprs[i], f.Name, tableName)
+			if err != nil {
+				return nil, err
 			}
+			projExprs[i] = ai
 		}
 	}
 
@@ -192,8 +192,8 @@ func validateRowSource(values sql.Node, projExprs []sql.Expression) error {
 	}
 }
 
-func makeAutoIncrement(ctx *sql.Context, a *Analyzer, col *sql.Column, insertable sql.InsertableTable) (sql.Expression, error) {
-	subquery := fmt.Sprintf("SELECT max(%s) FROM %s", col.Name, insertable.Name())
+func makeAutoIncrement(ctx *sql.Context, a *Analyzer, child sql.Expression, colName, tableName string) (sql.Expression, error) {
+	subquery := fmt.Sprintf("SELECT greatest(0, round(ifnull(max(%s), 0))) FROM %s", colName, tableName)
 
 	parsed, err := parse.Parse(ctx, subquery)
 	if err != nil {
@@ -207,5 +207,5 @@ func makeAutoIncrement(ctx *sql.Context, a *Analyzer, col *sql.Column, insertabl
 
 	sq := plan.NewSubquery(analyzed, subquery)
 
-	return expression.NewAutoIncrement(sq), nil
+	return expression.NewAutoIncrement(sq, child)
 }
