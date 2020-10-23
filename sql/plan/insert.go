@@ -28,7 +28,6 @@ type InsertInto struct {
 	BinaryNode
 	ColumnNames []string
 	IsReplace   bool
-	Columns     []sql.Expression
 	OnDupExprs  []sql.Expression
 }
 
@@ -59,7 +58,6 @@ type insertIter struct {
 	updater     sql.RowUpdater
 	rowSource   sql.RowIter
 	ctx         *sql.Context
-	projection  []sql.Expression
 	updateExprs []sql.Expression
 	tableNode   sql.Node
 	closed      bool
@@ -97,7 +95,6 @@ func newInsertIter(
 	values sql.Node,
 	isReplace bool,
 	onDupUpdateExpr []sql.Expression,
-	columns []sql.Expression,
 	row sql.Row,
 ) (*insertIter, error) {
 	dstSchema := table.Schema()
@@ -108,6 +105,7 @@ func newInsertIter(
 	}
 
 	var inserter sql.RowInserter
+
 	var replacer sql.RowReplacer
 	var updater sql.RowUpdater
 	// These type casts have already been asserted in the analyzer
@@ -132,7 +130,6 @@ func newInsertIter(
 		replacer:    replacer,
 		updater:     updater,
 		rowSource:   rowIter,
-		projection:  columns,
 		updateExprs: onDupUpdateExpr,
 		ctx:         ctx,
 	}, nil
@@ -149,9 +146,10 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 		return nil, err
 	}
 
-	row, err = ProjectRow(i.ctx, i.projection, row)
-	if err != nil {
-		return nil, err
+	// Prune the row down to the size of the schema. It can be larger in the case of running with an outer scope, in which
+	// case the additional scope variables are prepended to the row.
+	if len(row) > len(i.schema) {
+		row = row[len(row)-len(i.schema):]
 	}
 
 	err = validateNullability(i.schema, row)
@@ -277,7 +275,7 @@ func (i insertIter) Close() error {
 
 // RowIter implements the Node interface.
 func (p *InsertInto) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return newInsertIter(ctx, p.Left, p.Right, p.IsReplace, p.OnDupExprs, p.Columns, row)
+	return newInsertIter(ctx, p.Left, p.Right, p.IsReplace, p.OnDupExprs, row)
 }
 
 // WithChildren implements the Node interface.
@@ -288,14 +286,6 @@ func (p *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 	np := *p
 	np.Left, np.Right = children[0], children[1]
-	return &np, nil
-}
-
-// WithColumns returns a copy of this node with the given column expressions applied.
-// TODO: replace with sql.Expressioner?
-func (p *InsertInto) WithColumns(columns []sql.Expression) (sql.Node, error) {
-	np := *p
-	np.Columns = columns
 	return &np, nil
 }
 
@@ -312,10 +302,11 @@ func (p InsertInto) String() string {
 
 func (p InsertInto) DebugString() string {
 	pr := sql.NewTreePrinter()
+	var columnNames []string
 	if p.IsReplace {
-		_ = pr.WriteNode("Replace(%s)", strings.Join(p.ColumnNames, ", "))
+		_ = pr.WriteNode("Replace(%s)", strings.Join(columnNames, ", "))
 	} else {
-		_ = pr.WriteNode("Insert(%s)", strings.Join(p.ColumnNames, ", "))
+		_ = pr.WriteNode("Insert(%s)", strings.Join(columnNames, ", "))
 	}
 	_ = pr.WriteChildren(sql.DebugString(p.Left), sql.DebugString(p.Right))
 	return pr.String()

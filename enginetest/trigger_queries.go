@@ -228,6 +228,50 @@ var TriggerTests = []ScriptTest{
 			{3, 200, 0, 3},
 		},
 	},
+	{
+		Name: "trigger before insert, alter inserted value, out of order insertion",
+		SetUpScript: []string{
+			"create table a (x int primary key, y int)",
+			"create trigger a1 before insert on a for each row set new.x = new.x * 2, new.y = new.y * 3",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a (y, x) values (5,7), (9,11)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query: "select x, y from a order by 1",
+				Expected: []sql.Row{
+					{14, 15},
+					{22, 27},
+				},
+			},
+		},
+	},
+	{
+		Name: "trigger before insert, alter inserted value, incomplete insertion",
+		SetUpScript: []string{
+			"create table a (x int primary key, y int, z int default 5)",
+			"create trigger a1 before insert on a for each row set new.x = new.x * 2, new.y = new.y * 3, new.z = new.z * 5",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a (y, x) values (5,7), (9,11)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query: "select x, y, z from a order by 1",
+				Expected: []sql.Row{
+					{14, 15, 25},
+					{22, 27, 25},
+				},
+			},
+		},
+	},
 	// UPDATE triggers
 	{
 		Name: "trigger after update, insert into other table",

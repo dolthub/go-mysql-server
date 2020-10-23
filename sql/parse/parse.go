@@ -806,7 +806,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 				Using:      sql.IndexUsing_Default,
 				Constraint: sql.IndexConstraint_Unique,
 				Comment:    "",
-				Columns:    []sql.IndexColumn{{
+				Columns: []sql.IndexColumn{{
 					Name:   colDef.Name.String(),
 					Length: 0,
 				}},
