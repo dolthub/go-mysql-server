@@ -425,6 +425,9 @@ func TestInsertInto(t *testing.T, harness Harness) {
 		}
 		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect)
 	}
+	for _, script := range InsertScripts {
+		TestScript(t, harness, script)
+	}
 }
 
 func TestInsertIntoErrors(t *testing.T, harness Harness) {
@@ -437,6 +440,9 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 			}
 			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
 		})
+	}
+	for _, script := range InsertErrorScripts {
+		TestScript(t, harness, script)
 	}
 }
 

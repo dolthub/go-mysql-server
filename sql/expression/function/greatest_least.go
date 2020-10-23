@@ -171,7 +171,7 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 }
 
 // Greatest returns the argument with the greatest numerical or string value. It allows for
-// numeric (ints anf floats) and string arguments and will return the used type
+// numeric (ints and floats) and string arguments and will return the used type
 // when all arguments are of the same type or floats if there are numerically
 // convertible strings or integers mixed with floats. When ints or floats
 // are mixed with non numerically convertible strings, those are ignored.
