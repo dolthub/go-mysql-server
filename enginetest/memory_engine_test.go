@@ -100,15 +100,18 @@ func TestSingleScript(t *testing.T) {
 
 	var test enginetest.ScriptTest
 	test = enginetest.ScriptTest{
-		Name: "trigger after insert, insert into other table",
+		Name: "trigger before insert, multiple triggers defined",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
 			"create table b (y int primary key)",
-			"create trigger insert_into_b after insert on a for each row insert into b values (new.x + 1)",
+			"create table c (z int primary key)",
+			// Only one of these triggers should run for each table
+			"create trigger a1 before insert on a for each row insert into b values (new.x * 2)",
+			"create trigger b1 before insert on b for each row insert into c values (new.y * 7)",
 		},
 		Assertions: []enginetest.ScriptTestAssertion{
 			{
-				Query: "insert into a values (1), (3), (5)",
+				Query: "insert into a values (1), (2), (3)",
 				Expected: []sql.Row{
 					{sql.NewOkResult(3)},
 				},
@@ -116,7 +119,7 @@ func TestSingleScript(t *testing.T) {
 			{
 				Query: "select x from a order by 1",
 				Expected: []sql.Row{
-					{1}, {3}, {5},
+					{1}, {2}, {3},
 				},
 			},
 			{
@@ -126,9 +129,9 @@ func TestSingleScript(t *testing.T) {
 				},
 			},
 			{
-				Query: "insert into a values (7), (9)",
+				Query: "select z from c order by 1",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{14}, {28}, {42},
 				},
 			},
 		},

@@ -93,6 +93,32 @@ type triggerIter struct {
 	ctx            *sql.Context
 }
 
+// prependRowInPlanForTriggerExecution returns a transformation function that prepends the row given to any row source in a query
+// plan. Any source of rows, as well as any node that alters the schema of its children, will be wrapped so that its
+// result rows are prepended with the row given.
+func prependRowInPlanForTriggerExecution(row sql.Row) func(n, parent sql.Node, childNum int) (sql.Node, error) {
+	return func(n, parent sql.Node, childNum int) (sql.Node, error) {
+		switch n := n.(type) {
+		case *Project:
+			// Only prepend rows for projects that aren't the input to inserts
+			if _, ok := parent.(*InsertInto); !ok {
+				return &prependNode{
+					UnaryNode: UnaryNode{Child: n},
+					row:       row,
+				}, nil
+			}
+			return n, nil
+		case *ResolvedTable, *IndexedTableAccess:
+			return &prependNode{
+				UnaryNode: UnaryNode{Child: n},
+				row:       row,
+			}, nil
+		default:
+			return n, nil
+		}
+	}
+}
+
 func (t *triggerIter) Next() (row sql.Row, returnErr error) {
 	childRow, err := t.child.Next()
 	if err != nil {
@@ -100,7 +126,7 @@ func (t *triggerIter) Next() (row sql.Row, returnErr error) {
 	}
 
 	// Wrap the execution logic with the current child row before executing it.
-	logic, err := TransformUp(t.executionLogic, prependRowInPlan(childRow))
+	logic, err := TransformUpWithParent(t.executionLogic, prependRowInPlanForTriggerExecution(childRow))
 	if err != nil {
 		return nil, err
 	}
