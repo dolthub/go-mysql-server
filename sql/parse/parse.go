@@ -41,6 +41,8 @@ var (
 
 	ErrUnknownIndexColumn = errors.NewKind("unknown column: '%s' in %s index '%s'")
 
+	ErrInvalidAutoIncCols = errors.NewKind("there can be only one auto column and it must be defined as a key")
+
 	ErrUnknownConstraintDefinition = errors.NewKind("unknown constraint definition: %s, %T")
 )
 
@@ -1005,6 +1007,12 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Sc
 		return nil, err
 	}
 
+	err = validateAutoIncrement(tableSpec)
+
+	if err != nil {
+		return nil, err
+	}
+
 	var schema sql.Schema
 	for _, cd := range tableSpec.Columns {
 		column, err := columnDefinitionToColumn(ctx, cd, tableSpec.Indexes)
@@ -1032,6 +1040,28 @@ func validateIndexes(tableSpec *sqlparser.TableSpec) error {
 		}
 	}
 
+	return nil
+}
+
+func validateAutoIncrement(tableSpec *sqlparser.TableSpec) error {
+	seen := false
+	for _, col := range tableSpec.Columns {
+		if col.Type.Autoincrement {
+			if col.Type.KeyOpt != colKeyPrimary {
+				// AUTO_INCREMENT col must be a pk
+				return ErrInvalidAutoIncCols.New()
+			}
+			if col.Type.Default != nil {
+				// AUTO_INCREMENT col cannot have default
+				return ErrInvalidAutoIncCols.New()
+			}
+			if seen {
+				// there can be at most one AUTO_INCREMENT col
+				return ErrInvalidAutoIncCols.New()
+			}
+			seen = true
+		}
+	}
 	return nil
 }
 
