@@ -44,7 +44,7 @@ func (i *AutoIncrement) Type() sql.Type {
 	return i.Left.Type()
 }
 
-func (i *AutoIncrement) init(ctx *sql.Context) error {
+func (i *AutoIncrement) evalLastIdOnce(ctx *sql.Context) error {
 	var err error
 	i.Once.Do(func() {
 		var base interface{}
@@ -60,7 +60,7 @@ func (i *AutoIncrement) init(ctx *sql.Context) error {
 
 // Eval implements the Expression interface.
 func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	err := i.init(ctx)
+	err := i.evalLastIdOnce(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, err
 	}
 
-	if val == nil {
+	if val == nil || val == i.Type().Zero() {
 		// provide AUTO_INCREMENT value
 		one := NewLiteral(sql.NumericUnaryValue(i.Type()), i.Type())
 		id, err := NewPlus(i.lastInsertId, one).Eval(ctx, row)

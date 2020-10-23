@@ -41,7 +41,7 @@ var (
 
 	ErrUnknownIndexColumn = errors.NewKind("unknown column: '%s' in %s index '%s'")
 
-	ErrInvalidAutoIncCols = errors.NewKind("there can be only one auto column and it must be defined as a key")
+	ErrInvalidAutoIncCols = errors.NewKind("there can be only one auto_increment column and it must be defined as a key")
 
 	ErrUnknownConstraintDefinition = errors.NewKind("unknown constraint definition: %s, %T")
 )
