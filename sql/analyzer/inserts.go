@@ -68,7 +68,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return nil, err
 	}
 
-	project, err  := wrapRowSource(insert, dstSchema, columnNames)
+	project, err := wrapRowSource(insert, dstSchema, columnNames)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func wrapRowSource(insert *plan.InsertInto, dstSchema sql.Schema, columnNames []
 
 	err := validateRowSource(insert.Right, projExprs)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	project := plan.NewProject(projExprs, insert.Right)

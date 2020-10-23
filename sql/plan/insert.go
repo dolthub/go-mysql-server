@@ -89,12 +89,12 @@ func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
 }
 
 func newInsertIter(
-		ctx *sql.Context,
-		table sql.Node,
-		values sql.Node,
-		isReplace bool,
-		onDupUpdateExpr []sql.Expression,
-		row sql.Row,
+	ctx *sql.Context,
+	table sql.Node,
+	values sql.Node,
+	isReplace bool,
+	onDupUpdateExpr []sql.Expression,
+	row sql.Row,
 ) (*insertIter, error) {
 	dstSchema := table.Schema()
 
