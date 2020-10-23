@@ -100,34 +100,38 @@ func TestSingleScript(t *testing.T) {
 
 	var test enginetest.ScriptTest
 	test = enginetest.ScriptTest{
-		Name: "multiple triggers before and after insert, with precedes / follows",
+		Name: "trigger before insert, multiple triggers defined",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
 			"create table b (y int primary key)",
-			"insert into b values (1), (3)",
-			"create trigger a1 before insert on a for each row set new.x = New.x + 1",
-			"create trigger a2 before insert on a for each row precedes a1 set new.x = New.x * 2",
-			"create trigger a3 before insert on a for each row precedes a2 set new.x = New.x - 5",
-			"create trigger a4 before insert on a for each row follows a2 set new.x = New.x * 3",
-			// order of execution should be: a3, a2, a4, a1
-			"create trigger a5 after insert on a for each row update b set y = y + 1",
-			"create trigger a6 after insert on a for each row precedes a5 update b set y = y * 2",
-			"create trigger a7 after insert on a for each row precedes a6 update b set y = y - 5",
-			"create trigger a8 after insert on a for each row follows a6 update b set y = y * 3",
-			// order of execution should be: a7, a6, a8, a5
-			"insert into a values (1), (3)",
+			"create table c (z int primary key)",
+			// Only one of these triggers should run for each table
+			"create trigger a1 before insert on a for each row insert into b values (new.x * 2)",
+			"create trigger b1 before insert on b for each row insert into c values (new.y * 7)",
 		},
 		Assertions: []enginetest.ScriptTestAssertion{
 			{
+				Query: "insert into a values (1), (2), (3)",
+				Expected: []sql.Row{
+					{sql.NewOkResult(3)},
+				},
+			},
+			{
 				Query: "select x from a order by 1",
 				Expected: []sql.Row{
-					{-23}, {-11},
+					{1}, {2}, {3},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
 				Expected: []sql.Row{
-					{-23}, {-11},
+					{2}, {4}, {6},
+				},
+			},
+			{
+				Query: "select z from c order by 1",
+				Expected: []sql.Row{
+					{14}, {28}, {42},
 				},
 			},
 		},
