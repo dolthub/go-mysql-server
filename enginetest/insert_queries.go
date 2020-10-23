@@ -18,6 +18,7 @@ import (
 	"math"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/parse"
 )
 
 var InsertQueries = []WriteQueryTest{
@@ -402,6 +403,27 @@ var InsertQueries = []WriteQueryTest{
 	},
 }
 
+var InsertScripts = []ScriptTest{
+	{
+		Name: "insert into sparse auto_increment table",
+		SetUpScript: []string{
+			"create table auto (pk int primary key auto_increment)",
+			"insert into auto values (10), (20), (30)",
+			"insert into auto values (NULL)",
+			"insert into auto values (40)",
+			"insert into auto values (0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto",
+				Expected: []sql.Row{
+					{10}, {20}, {30}, {31}, {40}, {41},
+				},
+			},
+		},
+	},
+}
+
 var InsertErrorTests = []GenericErrorQueryTest{
 	{
 		"too few values",
@@ -470,5 +492,23 @@ var InsertErrorTests = []GenericErrorQueryTest{
 	{
 		"bad column in on duplicate key update clause",
 		"INSERT INTO mytable values (10, 'b') ON DUPLICATE KEY UPDATE notExist = 1",
+	},
+}
+
+var InsertErrorScripts = []ScriptTest{
+	{
+		Name: "create table with non-pk auto_increment column",
+		Query: "create table bad (pk int primary key, c0 int auto_increment);",
+		ExpectedErr: parse.ErrInvalidAutoIncCols,
+	},
+	{
+		Name: "create multiple auto_increment columns",
+		Query: "create table bad (pk1 int auto_increment, pk2 int auto_increment, primary key (pk1,pk2));",
+		ExpectedErr: parse.ErrInvalidAutoIncCols,
+	},
+	{
+		Name: "create auto_increment column with default",
+		Query: "create table bad (pk1 int auto_increment default 10, c0 int);",
+		ExpectedErr: parse.ErrInvalidAutoIncCols,
 	},
 }

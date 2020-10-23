@@ -29,11 +29,6 @@ func NewAutoIncrement(lastInsertId, given sql.Expression) (*AutoIncrement, error
 	}, nil
 }
 
-// Resolved implements the Expression interface.
-func (i *AutoIncrement) Resolved() bool {
-	return i.BinaryExpression.Resolved()
-}
-
 // IsNullable implements the Expression interface.
 func (i *AutoIncrement) IsNullable() bool {
 	return false
