@@ -84,12 +84,6 @@ var DeleteTests = []WriteQueryTest{
 		[]sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 	},
 	{
-		"DELETE FROM mytable WHERE i = 'invalid';",
-		[]sql.Row{{sql.NewOkResult(0)}},
-		"SELECT * FROM mytable;",
-		[]sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
-	},
-	{
 		"DELETE FROM mytable ORDER BY i ASC LIMIT 2;",
 		[]sql.Row{{sql.NewOkResult(2)}},
 		"SELECT * FROM mytable;",
@@ -129,5 +123,9 @@ var DeleteErrorTests = []GenericErrorQueryTest{
 	{
 		"missing keyword from",
 		"DELETE mytable WHERE id = 1;",
+	},
+	{
+		"mismatched types on indexed column",
+		"DELETE FROM mytable WHERE i = 'invalid';",
 	},
 }

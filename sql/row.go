@@ -1,7 +1,9 @@
 package sql
 
 import (
+	"fmt"
 	"io"
+	"strings"
 )
 
 // Row is a tuple of values.
@@ -49,6 +51,20 @@ func (r Row) Equals(row Row, schema Schema) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// FormatRow returns a formatted string representing this row's values
+func FormatRow(row Row) string {
+	var sb strings.Builder
+	sb.WriteRune('[')
+	for i, v := range row {
+		if i > 0 {
+			sb.WriteRune(',')
+		}
+		sb.WriteString(fmt.Sprintf("%v", v))
+	}
+	sb.WriteRune(']')
+	return sb.String()
 }
 
 // RowIter is an iterator that produces rows.

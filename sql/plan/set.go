@@ -15,7 +15,7 @@ type Set struct {
 
 // NewSet creates a new Set node.
 func NewSet(vars []sql.Expression) *Set {
-	return &Set{vars}
+	return &Set{Exprs: vars}
 }
 
 // Resolved implements the sql.Node interface.

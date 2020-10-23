@@ -110,12 +110,12 @@ var PlanTests = []QueryPlanTest{
 		// Test of case-insensitivity when matching indexes to column expressions
 		Query: "SELECT t1.timestamp FROM reservedWordsTable t1 JOIN reservedWordsTable t2 ON t1.TIMESTAMP = t2.tImEstamp",
 		ExpectedPlan: "Project(t1.Timestamp)\n" +
-				" └─ IndexedJoin(t1.Timestamp = t2.Timestamp)\n" +
-				"     ├─ TableAlias(t1)\n" +
-				"     │   └─ Table(reservedWordsTable)\n" +
-				"     └─ TableAlias(t2)\n" +
-				"         └─ Table(reservedWordsTable)\n" +
-				"",
+			" └─ IndexedJoin(t1.Timestamp = t2.Timestamp)\n" +
+			"     ├─ TableAlias(t1)\n" +
+			"     │   └─ Table(reservedWordsTable)\n" +
+			"     └─ TableAlias(t2)\n" +
+			"         └─ Table(reservedWordsTable)\n" +
+			"",
 	},
 	{
 		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2",
@@ -578,6 +578,38 @@ var PlanTests = []QueryPlanTest{
 			"         └─ Filter(t2.pk2 = 1)\n" +
 			"             └─ TableAlias(t2)\n" +
 			"                 └─ Table(two_pk)\n" +
+			"",
+	},
+	{
+		Query: "DELETE FROM two_pk WHERE c1 > 1",
+		ExpectedPlan: "Delete\n" +
+			" └─ Filter(two_pk.c1 > 1)\n" +
+			"     └─ Table(two_pk)\n" +
+			"",
+	},
+	{
+		Query: "DELETE FROM two_pk WHERE pk1 = 1 AND pk2 = 2",
+		ExpectedPlan: "Delete\n" +
+			" └─ Indexed table access on index [two_pk.pk1,two_pk.pk2]\n" +
+			"     └─ Filter(two_pk.pk1 = 1 AND two_pk.pk2 = 2)\n" +
+			"         └─ Table(two_pk)\n" +
+			"",
+	},
+	{
+		Query: "UPDATE two_pk SET c1 = 1 WHERE c1 > 1",
+		ExpectedPlan: "Update\n" +
+			" └─ UpdateSource(SET two_pk.c1 = 1)\n" +
+			"     └─ Filter(two_pk.c1 > 1)\n" +
+			"         └─ Table(two_pk)\n" +
+			"",
+	},
+	{
+		Query: "UPDATE two_pk SET c1 = 1 WHERE pk1 = 1 AND pk2 = 2",
+		ExpectedPlan: "Update\n" +
+			" └─ UpdateSource(SET two_pk.c1 = 1)\n" +
+			"     └─ Indexed table access on index [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ Filter(two_pk.pk1 = 1 AND two_pk.pk2 = 2)\n" +
+			"             └─ Table(two_pk)\n" +
 			"",
 	},
 }

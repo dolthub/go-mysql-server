@@ -74,6 +74,13 @@ func (p *prependNode) String() string {
 	return p.Child.String()
 }
 
+func (p *prependNode) DebugString() string {
+	tp := sql.NewTreePrinter()
+	_ = tp.WriteNode("Prepend(%s)", sql.FormatRow(p.row))
+	_ = tp.WriteChildren(sql.DebugString(p.Child))
+	return tp.String()
+}
+
 func (p *prependNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	childIter, err := p.Child.RowIter(ctx, row)
 	if err != nil {
