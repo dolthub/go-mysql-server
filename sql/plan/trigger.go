@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -125,11 +126,15 @@ func (t *triggerIter) Next() (row sql.Row, returnErr error) {
 		return nil, err
 	}
 
+	fmt.Printf("original logic: %s", sql.DebugString(t.executionLogic))
+
 	// Wrap the execution logic with the current child row before executing it.
 	logic, err := TransformUpWithParent(t.executionLogic, prependRowInPlanForTriggerExecution(childRow))
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Printf("transformed logic: %s", sql.DebugString(logic))
 
 	// We don't do anything interesting with this subcontext yet, but it's a good idea to cancel it independently of the
 	// parent context if something goes wrong in trigger execution.
