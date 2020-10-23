@@ -216,19 +216,19 @@ func TestReplaceIntoErrors(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	enginetest.TestUpdate(t, newDefaultMemoryHarness())
+	enginetest.TestUpdate(t, newMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestUpdateErrors(t *testing.T) {
-	enginetest.TestUpdateErrors(t, newDefaultMemoryHarness())
+	enginetest.TestUpdateErrors(t, newMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestDeleteFrom(t *testing.T) {
-	enginetest.TestDelete(t, newDefaultMemoryHarness())
+	enginetest.TestDelete(t, newMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestDeleteFromErrors(t *testing.T) {
-	enginetest.TestDeleteErrors(t, newDefaultMemoryHarness())
+	enginetest.TestDeleteErrors(t, newMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestScripts(t *testing.T) {
