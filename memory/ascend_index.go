@@ -34,8 +34,8 @@ func (l *AscendIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	return ok
 }
 
-func (l *AscendIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return union(l.Index, l, lookups...)
+func (l *AscendIndexLookup) Union(lookups ...sql.IndexLookup) (sql.IndexLookup, error) {
+	return union(l.Index, l, lookups...), nil
 }
 
 func (l *AscendIndexLookup) EvalExpression() sql.Expression {
@@ -69,10 +69,6 @@ func (l *AscendIndexLookup) EvalExpression() sql.Expression {
 	return and(columnExprs...)
 }
 
-func (*AscendIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
-	panic("ascendIndexLookup.Difference is not implemented")
-}
-
-func (l *AscendIndexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return intersection(l.Index, l, lookups...)
+func (l *AscendIndexLookup) Intersection(lookups ...sql.IndexLookup) (sql.IndexLookup, error) {
+	return intersection(l.Index, l, lookups...), nil
 }

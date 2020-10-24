@@ -497,18 +497,18 @@ var InsertErrorTests = []GenericErrorQueryTest{
 
 var InsertErrorScripts = []ScriptTest{
 	{
-		Name: "create table with non-pk auto_increment column",
-		Query: "create table bad (pk int primary key, c0 int auto_increment);",
+		Name:        "create table with non-pk auto_increment column",
+		Query:       "create table bad (pk int primary key, c0 int auto_increment);",
 		ExpectedErr: parse.ErrInvalidAutoIncCols,
 	},
 	{
-		Name: "create multiple auto_increment columns",
-		Query: "create table bad (pk1 int auto_increment, pk2 int auto_increment, primary key (pk1,pk2));",
+		Name:        "create multiple auto_increment columns",
+		Query:       "create table bad (pk1 int auto_increment, pk2 int auto_increment, primary key (pk1,pk2));",
 		ExpectedErr: parse.ErrInvalidAutoIncCols,
 	},
 	{
-		Name: "create auto_increment column with default",
-		Query: "create table bad (pk1 int auto_increment default 10, c0 int);",
+		Name:        "create auto_increment column with default",
+		Query:       "create table bad (pk1 int auto_increment default 10, c0 int);",
 		ExpectedErr: parse.ErrInvalidAutoIncCols,
 	},
 }
