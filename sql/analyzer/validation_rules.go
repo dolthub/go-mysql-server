@@ -437,12 +437,12 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 			return true
 		}
 
-		outerScopeRowLen := len(schema(n.Children()))
+		outerScopeRowLen := len(schemas(n.Children()))
 		plan.InspectExpressionsWithNode(s.Query, func(n sql.Node, e sql.Expression) bool {
 			if gf, ok := e.(*expression.GetField); ok {
-				if gf.Index() >= outerScopeRowLen+len(schema(n.Children())) {
+				if gf.Index() >= outerScopeRowLen+len(schemas(n.Children())) {
 					outOfRangeIndexExpression = gf
-					outOfRangeColumns = outerScopeRowLen + len(schema(n.Children()))
+					outOfRangeColumns = outerScopeRowLen + len(schemas(n.Children()))
 					return false
 				}
 			}
@@ -457,14 +457,6 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 	}
 
 	return n, nil
-}
-
-func schema(nodes []sql.Node) sql.Schema {
-	var schema sql.Schema
-	for _, n := range nodes {
-		schema = append(schema, n.Schema()...)
-	}
-	return schema
 }
 
 func stringContains(strs []string, target string) bool {

@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -34,7 +35,7 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return nil, err
 	}
 
-	indexes, err := getOuterScopeIndexes(ctx, a, n, scope, exprAliases, tableAliases)
+	_, err = getOuterScopeIndexes(ctx, a, n, scope, exprAliases, tableAliases)
 	if err != nil {
 		return nil, err
 	}
@@ -51,17 +52,7 @@ func getOuterScopeIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 	var err error
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
-		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
-
-			var cond sql.Expression
-			switch node := node.(type) {
-			case *plan.InnerJoin:
-				cond = node.Cond
-			case *plan.LeftJoin:
-				cond = node.Cond
-			case *plan.RightJoin:
-				cond = node.Cond
-			}
+		case *plan.Filter:
 
 			var indexAnalyzer *indexAnalyzer
 			indexAnalyzer, err = getIndexesForNode(ctx, a, node)
@@ -70,7 +61,7 @@ func getOuterScopeIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 			}
 			defer indexAnalyzer.releaseUsedIndexes()
 
-			indexes, err = getJoinIndexes(ctx, a, indexAnalyzer, cond, exprAliases, tableAliases)
+			indexes, err = getSubqueryIndexes(ctx, a, node.Expression, scope, indexAnalyzer, exprAliases, tableAliases)
 			if err != nil {
 				return false
 			}
@@ -82,4 +73,77 @@ func getOuterScopeIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 	return indexes, err
 }
 
+func getSubqueryIndexes(
+		ctx *sql.Context,
+		a *Analyzer,
+		e sql.Expression,
+		scope *Scope,
+		ia *indexAnalyzer,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
+) (map[string]sql.Index, error) {
 
+	scopeLen := len(scope.Schema())
+
+	// build a list of candidate predicate expressions, those that might be used for an index lookup
+	var candidatePredicates []sql.Expression
+
+	for _, e := range splitConjunction(e) {
+		// We are only interested in expressions that involve an outer scope variable (those whose index is less than the
+		// scope length)
+		isScopeExpr := false
+		sql.Inspect(e, func(e sql.Expression) bool {
+			if gf, ok := e.(*expression.GetField); ok {
+				if gf.Index() < scopeLen {
+					isScopeExpr = true
+					return false
+				}
+			}
+			return true
+		})
+
+		if isScopeExpr {
+			candidatePredicates = append(candidatePredicates, e)
+		}
+	}
+
+	tablesInScope := tablesInScope(scope)
+
+	// group them by the table they reference
+	exprsByTable := joinExprsByTable(candidatePredicates)
+
+	result := make(map[string]sql.Index)
+	for _, table := range tablesInScope {
+		indexCol := exprsByTable[table]
+		if indexCol != nil {
+			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(),
+				normalizeExpressions(exprAliases, tableAliases, extractExpressions(indexCol)...)...)
+			if idx != nil {
+				result[normalizeTableName(tableAliases, table)] = idx
+			}
+		}
+	}
+	for table, cols := range exprsByTable {
+		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, extractExpressions(cols)...)...)
+		if idx != nil {
+			result[normalizeTableName(tableAliases, table)] = idx
+		}
+	}
+
+
+	return nil, nil
+}
+
+func tablesInScope(scope *Scope) []string {
+	tables := make(map[string]bool)
+	for _, node := range scope.InnerToOuter() {
+		for _, col := range schemas(node.Children()) {
+			tables[col.Source] = true
+		}
+	}
+	var tableSlice []string
+	for table := range tables {
+		tableSlice = append(tableSlice, table)
+	}
+	return tableSlice
+}
