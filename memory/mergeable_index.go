@@ -176,12 +176,8 @@ func (i *MergeableIndexLookup) Indexes() []string {
 	return idxes
 }
 
-func (i *MergeableIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
-	panic("not implemented")
-}
-
-func (i *MergeableIndexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return intersection(i.Index, i, lookups...)
+func (i *MergeableIndexLookup) Intersection(lookups ...sql.IndexLookup) (sql.IndexLookup, error) {
+	return intersection(i.Index, i, lookups...), nil
 }
 
 // Intersects the lookups given together, collapsing redundant layers of intersections for lookups that have previously
@@ -207,8 +203,8 @@ func intersection(idx ExpressionsIndex, left sql.IndexLookup, lookups ...sql.Ind
 	}
 }
 
-func (i *MergeableIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return union(i.Index, i, lookups...)
+func (i *MergeableIndexLookup) Union(lookups ...sql.IndexLookup) (sql.IndexLookup, error) {
+	return union(i.Index, i, lookups...), nil
 }
 
 // Unions the lookups given together, collapsing redundant layers of unions for lookups that have previously been
@@ -262,16 +258,12 @@ func (m *MergedIndexLookup) EvalExpression() sql.Expression {
 	panic("either Unions or Intersections must be non-nil")
 }
 
-func (m *MergedIndexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return intersection(m.Index, m, lookups...)
+func (m *MergedIndexLookup) Intersection(lookups ...sql.IndexLookup) (sql.IndexLookup, error) {
+	return intersection(m.Index, m, lookups...), nil
 }
 
-func (m *MergedIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return union(m.Index, m, lookups...)
-}
-
-func (m *MergedIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
-	panic("not implemented")
+func (m *MergedIndexLookup) Union(lookups ...sql.IndexLookup) (sql.IndexLookup, error) {
+	return union(m.Index, m, lookups...), nil
 }
 
 func (m *MergedIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {

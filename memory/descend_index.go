@@ -67,14 +67,10 @@ func (l *DescendIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	return ok
 }
 
-func (l *DescendIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return union(l.Index, l, lookups...)
+func (l *DescendIndexLookup) Union(lookups ...sql.IndexLookup) (sql.IndexLookup, error) {
+	return union(l.Index, l, lookups...), nil
 }
 
-func (*DescendIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
-	panic("descendIndexLookup.Difference is not implemented")
-}
-
-func (l *DescendIndexLookup) Intersection(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return intersection(l.Index, l, lookups...)
+func (l *DescendIndexLookup) Intersection(lookups ...sql.IndexLookup) (sql.IndexLookup, error) {
+	return intersection(l.Index, l, lookups...), nil
 }

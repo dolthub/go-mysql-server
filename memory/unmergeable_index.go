@@ -39,15 +39,11 @@ func (u *UnmergeableIndexLookup) IsMergeable(_ sql.IndexLookup) bool {
 	return false
 }
 
-func (u *UnmergeableIndexLookup) Intersection(_ ...sql.IndexLookup) sql.IndexLookup {
+func (u *UnmergeableIndexLookup) Intersection(_ ...sql.IndexLookup) (sql.IndexLookup, error) {
 	panic("not mergeable!")
 }
 
-func (u *UnmergeableIndexLookup) Union(_ ...sql.IndexLookup) sql.IndexLookup {
-	panic("not mergeable!")
-}
-
-func (u *UnmergeableIndexLookup) Difference(_ ...sql.IndexLookup) sql.IndexLookup {
+func (u *UnmergeableIndexLookup) Union(_ ...sql.IndexLookup) (sql.IndexLookup, error) {
 	panic("not mergeable!")
 }
 

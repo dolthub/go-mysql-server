@@ -1180,6 +1180,8 @@ func TestIndexesIntersection(t *testing.T) {
 		"d": &indexLookup{&memory.MergeableIndexLookup{Key: []interface{}{"d"}}, nil},
 	}
 
+	lookupsByTable, err := indexesIntersection(left, right)
+	require.NoError(err)
 	require.Equal(
 		indexLookupsByTable{
 			"a": &indexLookup{&memory.MergeableIndexLookup{Key: []interface{}{"a"}}, nil},
@@ -1199,7 +1201,7 @@ func TestIndexesIntersection(t *testing.T) {
 			"c": &indexLookup{new(DummyIndexLookup), nil},
 			"d": &indexLookup{&memory.MergeableIndexLookup{Key: []interface{}{"d"}}, nil},
 		},
-		indexesIntersection(left, right),
+		lookupsByTable,
 	)
 }
 
