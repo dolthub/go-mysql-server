@@ -149,7 +149,8 @@ func (i *MergeableIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 func (i *MergeableIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, error) {
 	var exprs []sql.Expression
 	for exprI, expr := range i.Index.ColumnExpressions() {
-		exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(i.Key[exprI], expr.Type())))
+		lit, typ := getType(i.Key[exprI])
+		exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(lit, typ)))
 	}
 
 	return &indexValIter{
