@@ -50,6 +50,7 @@ var OnceAfterDefault = []Rule{
 	{"prune_columns", pruneColumns},
 	{"optimize_joins", optimizeJoins},
 	{"pushdown_filters", pushdownFilters},
+	{"subquery_indexes", applyIndexesFromOuterScope},
 	{"pushdown_projections", pushdownProjections},
 	{"erase_projection", eraseProjection},
 	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by

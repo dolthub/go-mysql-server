@@ -30,6 +30,7 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	}
 
 	exprAliases := getExpressionAliases(n)
+	// this isn't good enough: we need to consider aliases defined in the outer scope as well for this analysis
 	tableAliases, err := getTableAliases(n)
 	if err != nil {
 		return nil, err
@@ -144,13 +145,15 @@ func getSubqueryIndexes(
 	exprsByTable := joinExprsByTable(candidatePredicates)
 
 	result := make(map[string]sql.Index)
+	// For every predicate inolving a table in the outer scope, see if there's an index lookup possible on its comparands
+	// (the tables in this scope)
 	for _, table := range tablesInScope {
 		indexCols := exprsByTable[table]
 		if indexCols != nil {
 			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(),
-				normalizeExpressions(exprAliases, tableAliases, extractExpressions(indexCols)...)...)
+				normalizeExpressions(exprAliases, tableAliases, extractComparands(indexCols)...)...)
 			if idx != nil {
-				result[normalizeTableName(tableAliases, table)] = idx
+				result[normalizeTableName(tableAliases, indexCols[0].comparandCol.Table())] = idx
 			}
 		}
 	}

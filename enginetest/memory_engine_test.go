@@ -77,10 +77,11 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		`SELECT i FROM mytable WHERE i IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 2) ORDER BY i`,
+		`SELECT i FROM mytable mt WHERE (SELECT i FROM mytable where i = mt.i) IS NOT NULL ORDER BY i`,
 		[]sql.Row{
 			{int64(1)},
 			{int64(2)},
+			{int64(3)},
 		},
 	}
 

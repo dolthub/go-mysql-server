@@ -365,6 +365,15 @@ func extractExpressions(colExprs []*columnExpr) []sql.Expression {
 	return result
 }
 
+// extractComparands returns the comparand Expressions in the slice of columnExprs given.
+func extractComparands(colExprs []*columnExpr) []sql.Expression {
+	result := make([]sql.Expression, len(colExprs))
+	for i, expr := range colExprs {
+		result[i] = expr.comparand
+	}
+	return result
+}
+
 // joinExprsByTable returns a map of the expressions given keyed by their table name.
 func joinExprsByTable(exprs []sql.Expression) map[string][]*columnExpr {
 	var result = make(map[string][]*columnExpr)
@@ -397,8 +406,20 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *columnExpr, rightCol *col
 			return nil, nil
 		}
 
-		leftCol = &columnExpr{leftField, left, right, e}
-		rightCol = &columnExpr{rightField, right, left, e}
+		leftCol = &columnExpr{
+			col: leftField,
+			colExpr: left,
+			comparand: right,
+			comparandCol: rightField,
+			comparison: e,
+		}
+		rightCol = &columnExpr{
+			col: rightField,
+			colExpr: right,
+			comparand: left,
+			comparandCol: leftField,
+			comparison: e,
+		}
 		return leftCol, rightCol
 	default:
 		return nil, nil
