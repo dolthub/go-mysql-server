@@ -43,11 +43,25 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	return n, nil
 }
 
-func getOuterScopeIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, exprAliases ExprAliases, tableAliases TableAliases, ) (map[string]sql.Index, error) {
+type subqueryIndexLookup struct {
+	table string
+	keyExpr []sql.Expression
+	index sql.Index
+}
+
+func getOuterScopeIndexes(
+		ctx *sql.Context,
+		a *Analyzer,
+		node sql.Node,
+		scope *Scope,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
+) ([]subqueryIndexLookup, error) {
 	indexSpan, _ := ctx.Span("getOuterScopeIndexes")
 	defer indexSpan.Finish()
 
 	var indexes map[string]sql.Index
+	var exprsByTable map[string][]*columnExpr
 
 	var err error
 	plan.Inspect(node, func(node sql.Node) bool {
@@ -61,7 +75,7 @@ func getOuterScopeIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 			}
 			defer indexAnalyzer.releaseUsedIndexes()
 
-			indexes, err = getSubqueryIndexes(ctx, a, node.Expression, scope, indexAnalyzer, exprAliases, tableAliases)
+			indexes, exprsByTable, err = getSubqueryIndexes(ctx, a, node.Expression, scope, indexAnalyzer, exprAliases, tableAliases)
 			if err != nil {
 				return false
 			}
@@ -70,7 +84,23 @@ func getOuterScopeIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 		return true
 	})
 
-	return indexes, err
+	if len(indexes) == 0 {
+		return nil,nil
+	}
+
+	var lookups []subqueryIndexLookup
+
+	for table, idx := range indexes {
+		if exprsByTable[table] != nil {
+			lookups = append(lookups, subqueryIndexLookup{
+				table:   table,
+				keyExpr: createPrimaryTableExpr(idx, exprsByTable[table], exprAliases, tableAliases),
+				index:   idx,
+			})
+		}
+	}
+
+	return lookups, nil
 }
 
 func getSubqueryIndexes(
@@ -81,7 +111,7 @@ func getSubqueryIndexes(
 		ia *indexAnalyzer,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
-) (map[string]sql.Index, error) {
+) (map[string]sql.Index, map[string][]*columnExpr, error) {
 
 	scopeLen := len(scope.Schema())
 
@@ -110,28 +140,22 @@ func getSubqueryIndexes(
 	tablesInScope := tablesInScope(scope)
 
 	// group them by the table they reference
+	// TODO: this only works for equality, make it work for other operands
 	exprsByTable := joinExprsByTable(candidatePredicates)
 
 	result := make(map[string]sql.Index)
 	for _, table := range tablesInScope {
-		indexCol := exprsByTable[table]
-		if indexCol != nil {
+		indexCols := exprsByTable[table]
+		if indexCols != nil {
 			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(),
-				normalizeExpressions(exprAliases, tableAliases, extractExpressions(indexCol)...)...)
+				normalizeExpressions(exprAliases, tableAliases, extractExpressions(indexCols)...)...)
 			if idx != nil {
 				result[normalizeTableName(tableAliases, table)] = idx
 			}
 		}
 	}
-	for table, cols := range exprsByTable {
-		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, extractExpressions(cols)...)...)
-		if idx != nil {
-			result[normalizeTableName(tableAliases, table)] = idx
-		}
-	}
 
-
-	return nil, nil
+	return result, exprsByTable, nil
 }
 
 func tablesInScope(scope *Scope) []string {
