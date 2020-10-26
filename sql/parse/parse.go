@@ -1007,12 +1007,6 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Sc
 		return nil, err
 	}
 
-	err = validateAutoIncrement(tableSpec)
-
-	if err != nil {
-		return nil, err
-	}
-
 	var schema sql.Schema
 	for _, cd := range tableSpec.Columns {
 		column, err := columnDefinitionToColumn(ctx, cd, tableSpec.Indexes)
@@ -1021,6 +1015,12 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Sc
 		}
 
 		schema = append(schema, column)
+	}
+
+	err = validateAutoIncrement(schema)
+
+	if err != nil {
+		return nil, err
 	}
 
 	return schema, nil
@@ -1043,15 +1043,15 @@ func validateIndexes(tableSpec *sqlparser.TableSpec) error {
 	return nil
 }
 
-func validateAutoIncrement(tableSpec *sqlparser.TableSpec) error {
+func validateAutoIncrement(schema sql.Schema) error {
 	seen := false
-	for _, col := range tableSpec.Columns {
-		if col.Type.Autoincrement {
-			if col.Type.KeyOpt != colKeyPrimary {
+	for _, col := range schema {
+		if col.AutoIncrement {
+			if !col.PrimaryKey {
 				// AUTO_INCREMENT col must be a pk
 				return ErrInvalidAutoIncCols.New()
 			}
-			if col.Type.Default != nil {
+			if col.Default != nil {
 				// AUTO_INCREMENT col cannot have default
 				return ErrInvalidAutoIncCols.New()
 			}
