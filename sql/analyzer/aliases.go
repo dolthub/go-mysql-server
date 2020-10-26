@@ -12,6 +12,8 @@ import (
 type ExprAliases map[string]sql.Expression
 type TableAliases map[string]sql.Nameable
 
+// add adds the given table alias referring to the node given. Adding a case insensitive alias that already exists
+// returns an error.
 func (ta TableAliases) add(alias *plan.TableAlias, target sql.Nameable) error {
 	lowerName := strings.ToLower(alias.Name())
 	if _, ok := ta[lowerName]; ok {
@@ -22,9 +24,16 @@ func (ta TableAliases) add(alias *plan.TableAlias, target sql.Nameable) error {
 	return nil
 }
 
+// putAll adds all aliases in the given aliases to the receiver. Silently overwrites existing entries.
+func (ta TableAliases) putAll(other TableAliases) {
+	for alias, target := range other {
+		ta[alias] = target
+	}
+}
+
 // getTableAliases returns a map of all aliases of resolved tables / subqueries in the node, keyed by their alias name
 func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
-	aliases := make(TableAliases)
+	var passAliases TableAliases
 	var aliasFn func(node sql.Node) bool
 	var analysisErr error
 
@@ -36,16 +45,16 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 		if at, ok := node.(*plan.TableAlias); ok {
 			switch t := at.Child.(type) {
 			case *plan.ResolvedTable, *plan.SubqueryAlias:
-				analysisErr = aliases.add(at, t.(sql.Nameable))
+				analysisErr = passAliases.add(at, t.(sql.Nameable))
 				if analysisErr != nil {
 					return false
 				}
 			case *plan.DecoratedNode:
 				rt := getResolvedTable(at.Child)
-				aliases.add(at, rt)
+				passAliases.add(at, rt)
 			case *plan.IndexedTableAccess:
 				rt := getResolvedTable(at.Child)
-				aliases.add(at, rt)
+				passAliases.add(at, rt)
 			case *plan.UnresolvedTable:
 				panic("Table not resolved")
 			default:
@@ -57,7 +66,25 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 		return true
 	}
 
+	// Inspect all of the scopes, outer to inner. Within a single scope, a name conflict is an error. But an inner scope
+	// can overwrite a name in an outer scope, and it's not an error.
+	aliases := make(TableAliases)
+	for _, scopeNode := range scope.OuterToInner() {
+		passAliases = make(TableAliases)
+		plan.Inspect(scopeNode, aliasFn)
+		if analysisErr != nil {
+			return nil, analysisErr
+		}
+		aliases.putAll(passAliases)
+	}
+
+	passAliases = make(TableAliases)
 	plan.Inspect(n, aliasFn)
+	if analysisErr != nil {
+		return nil, analysisErr
+	}
+	aliases.putAll(passAliases)
+
 	return aliases, analysisErr
 }
 
