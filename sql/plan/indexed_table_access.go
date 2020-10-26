@@ -18,6 +18,7 @@ var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, co
 type IndexedTableAccess struct {
 	*ResolvedTable
 	index sql.Index
+	keyExprs []sql.Expression
 }
 
 var _ sql.Node = (*IndexedTableAccess)(nil)
@@ -28,7 +29,16 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 		return nil, ErrNoIndexableTable.New(i.ResolvedTable)
 	}
 
-	key := row[:len(i.index.Expressions())]
+	// evaluate the key expressions against the row given to obtain the key for an index lookup
+	key := make([]interface{}, len(i.keyExprs))
+	for i, keyExpr := range i.keyExprs {
+		var err error
+		key[i], err = keyExpr.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	lookup, err := i.index.Get(key...)
 	if err != nil {
 		return nil, err
@@ -58,12 +68,13 @@ func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error
 		return nil, sql.ErrInvalidChildType.New(i, children[0], (*ResolvedTable)(nil))
 	}
 
-	return NewIndexedTable(resolvedTable, i.index), nil
+	return NewIndexedTable(resolvedTable, i.index, i.keyExprs), nil
 }
 
-func NewIndexedTable(resolvedTable *ResolvedTable, index sql.Index) *IndexedTableAccess {
+func NewIndexedTable(resolvedTable *ResolvedTable, index sql.Index, keyExprs []sql.Expression) *IndexedTableAccess {
 	return &IndexedTableAccess{
 		ResolvedTable: resolvedTable,
-		index: index,
+		index:         index,
+		keyExprs:      keyExprs,
 	}
 }

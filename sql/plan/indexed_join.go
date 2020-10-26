@@ -168,18 +168,8 @@ func (i *indexedJoinIter) loadPrimary() error {
 
 func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 	if i.secondary == nil {
-		// evaluate the primary row against the primary table expression to get the secondary table lookup key
-		var key []interface{}
-		for _, expr := range i.primaryTableExpr {
-			col, err := expr.Eval(i.ctx, i.primaryRow)
-			if err != nil {
-				return nil, err
-			}
-			key = append(key, col)
-		}
-
 		span, ctx := i.ctx.Span("plan.IndexedJoin indexed lookup")
-		rowIter, err := i.secondaryProvider.RowIter(ctx, key)
+		rowIter, err := i.secondaryProvider.RowIter(ctx, i.primaryRow)
 		if err != nil {
 			span.Finish()
 			return nil, err

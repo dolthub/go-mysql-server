@@ -36,10 +36,19 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return nil, err
 	}
 
-	_, err = getOuterScopeIndexes(ctx, a, n, scope, exprAliases, tableAliases)
+	indexLookups, err := getOuterScopeIndexes(ctx, a, n, scope, exprAliases, tableAliases)
 	if err != nil {
 		return nil, err
 	}
+
+	if len(indexLookups) == 0 {
+		return n, nil
+	}
+
+	// replace the tables in the index lookups with indexed lookups of the same
+	// for _, idxLookup := range indexLookups {
+	//
+	// }
 
 	return n, nil
 }
