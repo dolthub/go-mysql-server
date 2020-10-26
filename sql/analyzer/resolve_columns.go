@@ -18,7 +18,7 @@ func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 	span, _ := ctx.Span("check_aliases")
 	defer span.Finish()
 
-	tableAliases, err := getTableAliases(n)
+	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
 		return nil, err
 	}

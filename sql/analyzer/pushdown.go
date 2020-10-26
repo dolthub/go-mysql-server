@@ -31,13 +31,13 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		return n, nil
 	}
 
-	indexes, err := getIndexesByTable(ctx, a, n)
+	indexes, err := getIndexesByTable(ctx, a, n, scope)
 	if err != nil {
 		return nil, err
 	}
 
 	exprAliases := getExpressionAliases(n)
-	tableAliases, err := getTableAliases(n)
+	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
 		return nil, err
 	}

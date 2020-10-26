@@ -22,12 +22,12 @@ type indexLookup struct {
 type indexLookupsByTable map[string]*indexLookup
 
 // getIndexesByTable returns applicable index lookups for each table named in the query node given
-func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node) (indexLookupsByTable, error) {
+func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (indexLookupsByTable, error) {
 	indexSpan, _ := ctx.Span("getIndexesByTable")
 	defer indexSpan.Finish()
 
 	exprAliases := getExpressionAliases(node)
-	tableAliases, err := getTableAliases(node)
+	tableAliases, err := getTableAliases(node, scope)
 	if err != nil {
 		return nil, err
 	}

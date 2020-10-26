@@ -23,7 +23,7 @@ func (ta TableAliases) add(alias *plan.TableAlias, target sql.Nameable) error {
 }
 
 // getTableAliases returns a map of all aliases of resolved tables / subqueries in the node, keyed by their alias name
-func getTableAliases(n sql.Node) (TableAliases, error) {
+func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 	aliases := make(TableAliases)
 	var aliasFn func(node sql.Node) bool
 	var analysisErr error

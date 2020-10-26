@@ -31,7 +31,7 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 	exprAliases := getExpressionAliases(n)
 	// this isn't good enough: we need to consider aliases defined in the outer scope as well for this analysis
-	tableAliases, err := getTableAliases(n)
+	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
 		return nil, err
 	}
