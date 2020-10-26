@@ -76,7 +76,7 @@ func (g *GroupBy) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		"aggregates": len(g.SelectedExprs),
 	})
 
-	i, err := g.Child.RowIter(ctx, nil)
+	i, err := g.Child.RowIter(ctx, row)
 	if err != nil {
 		span.Finish()
 		return nil, err

@@ -57,7 +57,7 @@ func (t *TableAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 	span, ctx := ctx.Span("sql.TableAlias", opentracing.Tag{Key: "table", Value: table})
 
-	iter, err := t.Child.RowIter(ctx, nil)
+	iter, err := t.Child.RowIter(ctx, row)
 	if err != nil {
 		span.Finish()
 		return nil, err

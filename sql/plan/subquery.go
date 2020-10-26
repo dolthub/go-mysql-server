@@ -180,7 +180,7 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 		return nil, err
 	}
 
-	iter, err := q.RowIter(ctx, nil)
+	iter, err := q.RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}

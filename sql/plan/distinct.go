@@ -27,7 +27,7 @@ func (d *Distinct) Resolved() bool {
 func (d *Distinct) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Distinct")
 
-	it, err := d.Child.RowIter(ctx, nil)
+	it, err := d.Child.RowIter(ctx, row)
 	if err != nil {
 		span.Finish()
 		return nil, err

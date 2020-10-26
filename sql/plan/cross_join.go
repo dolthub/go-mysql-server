@@ -54,7 +54,7 @@ func (p *CrossJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		"right": right,
 	})
 
-	li, err := p.Left.RowIter(ctx, nil)
+	li, err := p.Left.RowIter(ctx, row)
 	if err != nil {
 		span.Finish()
 		return nil, err
@@ -115,7 +115,7 @@ func (i *crossJoinIterator) Next() (sql.Row, error) {
 		}
 
 		if i.r == nil {
-			iter, err := i.rp.RowIter(i.s, nil)
+			iter, err := i.rp.RowIter(i.s, i.leftRow)
 			if err != nil {
 				return nil, err
 			}

@@ -178,18 +178,8 @@ func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 			key = append(key, col)
 		}
 
-		lookup, err := i.index.Get(key...)
-		if err != nil {
-			return nil, err
-		}
-
-		err = i.secondaryIndexAccess.SetIndexLookup(i.ctx, lookup)
-		if err != nil {
-			return nil, err
-		}
-
 		span, ctx := i.ctx.Span("plan.IndexedJoin indexed lookup")
-		rowIter, err := i.secondaryProvider.RowIter(ctx, nil)
+		rowIter, err := i.secondaryProvider.RowIter(ctx, key)
 		if err != nil {
 			span.Finish()
 			return nil, err

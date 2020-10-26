@@ -104,7 +104,7 @@ func transformJoins(
 			secondaryTable, err = plan.TransformUp(secondaryTable, func(node sql.Node) (sql.Node, error) {
 				if rt, ok := node.(*plan.ResolvedTable); ok {
 					a.Log("replacing resolve table %s with IndexedTable", rt.Name())
-					return plan.NewIndexedTable(rt), nil
+					return plan.NewIndexedTable(rt, secondaryTableIndex), nil
 				}
 				return node, nil
 			})

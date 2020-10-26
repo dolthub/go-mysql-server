@@ -52,7 +52,7 @@ func (j *InnerJoin) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (j *InnerJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return joinRowIter(ctx, JoinTypeInner, j.Left, j.Right, j.Cond)
+	return joinRowIter(ctx, JoinTypeInner, j.Left, j.Right, j.Cond, row)
 }
 
 // WithChildren implements the Node interface.
@@ -114,7 +114,7 @@ func (j *LeftJoin) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (j *LeftJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return joinRowIter(ctx, JoinTypeLeft, j.Left, j.Right, j.Cond)
+	return joinRowIter(ctx, JoinTypeLeft, j.Left, j.Right, j.Cond, row)
 }
 
 // WithChildren implements the Node interface.
@@ -176,7 +176,7 @@ func (j *RightJoin) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (j *RightJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return joinRowIter(ctx, JoinTypeRight, j.Left, j.Right, j.Cond)
+	return joinRowIter(ctx, JoinTypeRight, j.Left, j.Right, j.Cond, row)
 }
 
 // WithChildren implements the Node interface.
@@ -230,12 +230,7 @@ func (t JoinType) String() string {
 	}
 }
 
-func joinRowIter(
-	ctx *sql.Context,
-	typ JoinType,
-	left, right sql.Node,
-	cond sql.Expression,
-) (sql.RowIter, error) {
+func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.Expression, row sql.Row, ) (sql.RowIter, error) {
 	var leftName, rightName string
 	if leftTable, ok := left.(sql.Nameable); ok {
 		leftName = leftTable.Name()
@@ -267,7 +262,7 @@ func joinRowIter(
 
 	cache, dispose := ctx.Memory.NewRowsCache()
 	if typ == JoinTypeRight {
-		r, err := right.RowIter(ctx, nil)
+		r, err := right.RowIter(ctx, row)
 		if err != nil {
 			span.Finish()
 			return nil, err
@@ -282,10 +277,11 @@ func joinRowIter(
 			secondaryRows:     cache,
 			rowSize:           len(left.Schema()) + len(right.Schema()),
 			dispose:           dispose,
+			originalRow:       row,
 		}), nil
 	}
 
-	l, err := left.RowIter(ctx, nil)
+	l, err := left.RowIter(ctx, row)
 	if err != nil {
 		span.Finish()
 		return nil, err
@@ -301,6 +297,7 @@ func joinRowIter(
 		secondaryRows:     cache,
 		rowSize:           len(left.Schema()) + len(right.Schema()),
 		dispose:           dispose,
+		originalRow:       row,
 	}), nil
 }
 
@@ -336,6 +333,9 @@ type joinIter struct {
 	foundMatch bool
 	rowSize    int
 
+	// scope variables from outer scope
+	originalRow   sql.Row
+
 	// used to compute in-memory
 	mode          joinMode
 	secondaryRows sql.RowsCache
@@ -368,7 +368,7 @@ func (i *joinIter) loadPrimary() error {
 }
 
 func (i *joinIter) loadSecondaryInMemory() error {
-	iter, err := i.secondaryProvider.RowIter(i.ctx, nil)
+	iter, err := i.secondaryProvider.RowIter(i.ctx, i.primaryRow)
 	if err != nil {
 		return err
 	}
@@ -415,7 +415,7 @@ func (i *joinIter) loadSecondary() (row sql.Row, err error) {
 
 	if i.secondary == nil {
 		var iter sql.RowIter
-		iter, err = i.secondaryProvider.RowIter(i.ctx, nil)
+		iter, err = i.secondaryProvider.RowIter(i.ctx, i.primaryRow)
 		if err != nil {
 			return nil, err
 		}
