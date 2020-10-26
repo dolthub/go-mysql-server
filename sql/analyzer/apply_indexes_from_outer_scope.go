@@ -95,13 +95,39 @@ func getOuterScopeIndexes(
 		if exprsByTable[table] != nil {
 			lookups = append(lookups, subqueryIndexLookup{
 				table:   table,
-				keyExpr: createPrimaryTableExpr(idx, exprsByTable[table], exprAliases, tableAliases),
+				keyExpr: createIndexKeyExpr(idx, exprsByTable[table], exprAliases, tableAliases),
 				index:   idx,
 			})
 		}
 	}
 
 	return lookups, nil
+}
+
+// createIndexKeyExpr returns a slice of expressions to be used when creating an index lookup key for the table given.
+func createIndexKeyExpr(
+		idx sql.Index,
+		joinExprs []*columnExpr,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
+) []sql.Expression {
+
+	keyExprs := make([]sql.Expression, len(idx.Expressions()))
+
+IndexExpressions:
+	for i, idxExpr := range idx.Expressions() {
+		for j := range joinExprs {
+			if idxExpr == normalizeExpression(exprAliases, tableAliases, joinExprs[j].comparand).String() {
+				keyExprs[i] = joinExprs[j].comparand
+				continue IndexExpressions
+			}
+		}
+
+		// If we finished the loop, we didn't match this index expression
+		return nil
+	}
+
+	return keyExprs
 }
 
 func getSubqueryIndexes(
@@ -145,7 +171,7 @@ func getSubqueryIndexes(
 	exprsByTable := joinExprsByTable(candidatePredicates)
 
 	result := make(map[string]sql.Index)
-	// For every predicate inolving a table in the outer scope, see if there's an index lookup possible on its comparands
+	// For every predicate involving a table in the outer scope, see if there's an index lookup possible on its comparands
 	// (the tables in this scope)
 	for _, table := range tablesInScope {
 		indexCols := exprsByTable[table]
