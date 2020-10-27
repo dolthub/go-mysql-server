@@ -15,7 +15,12 @@ var (
 	ParallelQueryCounter = discard.NewCounter()
 )
 
-func shouldParallelize(node sql.Node) bool {
+func shouldParallelize(node sql.Node, scope *Scope) bool {
+	// Don't parallelize subqueries, this can blow up the execution graph quickly
+	if len(scope.Schema()) > 0 {
+		return false
+	}
+
 	// Do not try to parallelize index operations or schema operations
 	switch node.(type) {
 	case *plan.CreateForeignKey, *plan.DropForeignKey, *plan.AlterIndex, *plan.CreateIndex, *plan.Describe, *plan.DropIndex, *plan.ShowCreateTable:
@@ -31,7 +36,7 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sq
 	}
 
 	proc, ok := node.(*plan.QueryProcess)
-	if (ok && !shouldParallelize(proc.Child)) || !shouldParallelize(node) {
+	if (ok && !shouldParallelize(proc.Child, nil)) || !shouldParallelize(node, scope) {
 		return node, nil
 	}
 
@@ -95,6 +100,11 @@ func isParallelizable(node sql.Node) bool {
 			*plan.Project,
 			*plan.TableAlias,
 			*plan.Exchange:
+		// IndexedTablesAccess already uses an index for lookups, so parallelizing it won't help in most cases (and can
+		// blow up the query execution graph)
+		case *plan.IndexedTableAccess:
+			ok = false
+			return false
 		case sql.Table:
 			lastWasTable = true
 			tableSeen = true
