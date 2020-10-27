@@ -153,7 +153,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	result := rows[0][col]
 	if s.canCacheResults {
 		s.cacheMu.Lock()
-		if s.resultsCached == false {
+		if !s.resultsCached {
 			s.cache, s.resultsCached = result, true
 		}
 		s.cacheMu.Unlock()
