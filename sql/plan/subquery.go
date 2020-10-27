@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"sync"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 
@@ -38,6 +39,8 @@ type Subquery struct {
 	resultsCached bool
 	// Cached results, if any
 	cache interface{}
+
+	cacheMu sync.Mutex
 }
 
 // NewSubquery returns a new subquery expression.
@@ -105,7 +108,10 @@ func (p *prependNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // Eval implements the Expression interface.
 func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if s.resultsCached {
+	s.cacheMu.Lock()
+	cached := s.resultsCached
+	s.cacheMu.Unlock()
+	if cached {
 		return s.cache, nil
 	}
 
@@ -146,7 +152,11 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	result := rows[0][col]
 	if s.canCacheResults {
-		s.cache, s.resultsCached = result, true
+		s.cacheMu.Lock()
+		if s.resultsCached == false {
+			s.cache, s.resultsCached = result, true
+		}
+		s.cacheMu.Unlock()
 	}
 
 	return result, nil
@@ -171,7 +181,10 @@ func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, error) {
 
 // EvalMultiple returns all rows returned by a subquery.
 func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
-	if s.resultsCached {
+	s.cacheMu.Lock()
+	cached := s.resultsCached
+	s.cacheMu.Unlock()
+	if cached {
 		return s.cache.([]interface{}), nil
 	}
 
@@ -207,7 +220,11 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 	}
 
 	if s.canCacheResults {
-		s.cache, s.resultsCached = result, true
+		s.cacheMu.Lock()
+		if s.resultsCached == false {
+			s.cache, s.resultsCached = result, true
+		}
+		s.cacheMu.Unlock()
 	}
 
 	return result, nil
