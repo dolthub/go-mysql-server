@@ -65,6 +65,8 @@ func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration) *Handler {
 // AddNetConnection is used to add the net.Conn to the Handler when available (usually on the
 // Listener.Accept() method)
 func (h *Handler) AddNetConnection(c *net.Conn) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.lc = append(h.lc, c)
 }
 
@@ -172,7 +174,9 @@ func (h *Handler) ComQuery(
 		return err
 	}
 
+	h.mu.Lock()
 	nc, ok := h.c[c.ConnectionID]
+	h.mu.Unlock()
 	if !ok {
 		return ErrConnectionWasClosed.New()
 	}

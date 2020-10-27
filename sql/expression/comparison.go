@@ -25,11 +25,10 @@ var ErrNilOperand = errors.NewKind("nil operand found in comparison")
 
 type comparison struct {
 	BinaryExpression
-	compareType sql.Type
 }
 
 func newComparison(left, right sql.Expression) comparison {
-	return comparison{BinaryExpression{left, right}, nil}
+	return comparison{BinaryExpression{left, right}}
 }
 
 // Compare the two given values using the types of the expressions in the comparison.
@@ -49,12 +48,13 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return c.Left().Type().Compare(left, right)
 	}
 
-	left, right, err = c.castLeftAndRight(left, right)
+	var compareType sql.Type
+	left, right, compareType, err = c.castLeftAndRight(left, right)
 	if err != nil {
 		return 0, err
 	}
 
-	return c.compareType.Compare(left, right)
+	return compareType.Compare(left, right)
 }
 
 func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
@@ -71,7 +71,7 @@ func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{
 	return left, right, nil
 }
 
-func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, interface{}, error) {
+func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, interface{}, sql.Type, error) {
 	leftType := c.Left().Type()
 	rightType := c.Right().Type()
 	if sql.IsNumber(leftType) || sql.IsNumber(rightType) {
@@ -79,53 +79,48 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 			//TODO: We need to set to the actual DECIMAL type
 			l, r, err := convertLeftAndRight(left, right, ConvertToDecimal)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			if sql.IsDecimal(leftType) {
-				c.compareType = leftType
+				return l, r, leftType, nil
 			} else {
-				c.compareType = rightType
+				return l, r, rightType, nil
 			}
-			return l, r, nil
 		}
 
 		if sql.IsFloat(leftType) || sql.IsFloat(rightType) {
 			l, r, err := convertLeftAndRight(left, right, ConvertToDouble)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
-			c.compareType = sql.Float64
-			return l, r, nil
+			return l, r, sql.Float64, nil
 		}
 
 		if sql.IsSigned(leftType) || sql.IsSigned(rightType) {
 			l, r, err := convertLeftAndRight(left, right, ConvertToSigned)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
-			c.compareType = sql.Int64
-			return l, r, nil
+			return l, r, sql.Int64, nil
 		}
 
 		l, r, err := convertLeftAndRight(left, right, ConvertToUnsigned)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
-		c.compareType = sql.Uint64
-		return l, r, nil
+		return l, r, sql.Uint64, nil
 	}
 
 	left, right, err := convertLeftAndRight(left, right, ConvertToChar)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	c.compareType = sql.LongText
-	return left, right, nil
+	return left, right, sql.LongText, nil
 }
 
 func convertLeftAndRight(left, right interface{}, convertTo string) (interface{}, interface{}, error) {
@@ -198,6 +193,7 @@ type Regexp struct {
 	comparison
 	pool   *sync.Pool
 	cached bool
+	once   sync.Once
 }
 
 // NewRegexp creates a new Regexp expression.
@@ -214,6 +210,7 @@ func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
 		comparison: newComparison(left, right),
 		pool:       nil,
 		cached:     cached,
+		once:       sync.Once{},
 	}
 }
 
@@ -253,51 +250,61 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 	var (
 		matcher  regex.Matcher
 		disposer regex.Disposer
-		right    interface{}
 	)
-	// eval right and convert to text
-	if !re.cached || re.pool == nil {
-		right, err = re.Right().Eval(ctx, row)
-		if err != nil || right == nil {
-			return nil, err
-		}
-		right, err = sql.LongText.Convert(right)
-		if err != nil {
-			return nil, err
-		}
-	}
-	// for non-cached regex every time create a new matcher
+
 	if !re.cached {
-		matcher, disposer, err = regex.New(regex.Default(), right.(string))
+		right, rerr := re.evalRight(ctx, row)
+		if rerr != nil || right == nil {
+			return right, rerr
+		}
+		matcher, disposer, err = regex.New(regex.Default(), *right)
 	} else {
-		if re.pool == nil {
+		re.once.Do(func() {
+			right, err := re.evalRight(ctx, row)
 			re.pool = &sync.Pool{
 				New: func() interface{} {
-					r, _, e := regex.New(regex.Default(), right.(string))
+					if err != nil || right == nil {
+						return matcherErrTuple{nil, err}
+					}
+					r, _, e := regex.New(regex.Default(), *right)
 					return matcherErrTuple{r, e}
 				},
 			}
-		}
-
-		if obj := re.pool.Get(); obj != nil {
-			met := obj.(matcherErrTuple)
-			matcher = met.matcher
-			err = met.err
-		}
+		})
+		met := re.pool.Get().(matcherErrTuple)
+		matcher, err = met.matcher, met.err
 	}
 
-	if matcher == nil {
+	if err != nil {
 		return nil, ErrInvalidRegexp.New(err.Error())
+	} else if matcher == nil {
+		return nil, nil
 	}
 
 	ok := matcher.Match(left.(string))
 
 	if !re.cached {
 		disposer.Dispose()
-	} else if re.pool != nil {
-		re.pool.Put(matcher)
+	} else {
+		re.pool.Put(matcherErrTuple{matcher, nil})
 	}
 	return ok, nil
+}
+
+func (re *Regexp) evalRight(ctx *sql.Context, row sql.Row) (*string, error) {
+	right, err := re.Right().Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if right == nil {
+		return nil, nil
+	}
+	right, err = sql.LongText.Convert(right)
+	if err != nil {
+		return nil, err
+	}
+	s := right.(string)
+	return &s, nil
 }
 
 // WithChildren implements the Expression interface.
