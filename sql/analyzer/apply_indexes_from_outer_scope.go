@@ -15,9 +15,11 @@
 package analyzer
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"strings"
 )
 
 // applyIndexesFromOuterScope attempts to apply an indexed lookup to a subquery using variables from the outer scope.
@@ -45,12 +47,76 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return n, nil
 	}
 
-	// replace the tables in the index lookups with indexed lookups of the same
-	// for _, idxLookup := range indexLookups {
-	//
-	// }
+	// replace the tables with possible index lookups with indexed access
+	for _, idxLookup := range indexLookups {
+		n, err = plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+			switch n := n.(type) {
+			case *plan.TableAlias:
+				if strings.ToLower(n.Name()) == idxLookup.table {
+					return pushdownIndexToTable(a, n, idxLookup.index, idxLookup.keyExpr)
+				}
+				return n, nil
+			case *plan.ResolvedTable:
+				if strings.ToLower(n.Name()) == idxLookup.table {
+					return pushdownIndexToTable(a, n, idxLookup.index, idxLookup.keyExpr)
+				}
+				return n, nil
+			default:
+				return n, nil
+			}
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return n, nil
+}
+
+// pushdownIndexToTable attempts to push the index given down to the table given, if it implements
+// sql.IndexAddressableTable
+func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, keyExpr []sql.Expression) (sql.Node, error) {
+	table := getTable(tableNode)
+	if table == nil {
+		return tableNode, nil
+	}
+
+	resolvedTable := getResolvedTable(tableNode)
+	var newTableNode sql.Node
+
+	replacedTable := false
+	if _, ok := table.(sql.IndexAddressableTable); ok {
+		newTableNode = plan.NewIndexedTable(resolvedTable, index, keyExpr)
+		newTableNode = plan.NewDecoratedNode(
+			fmt.Sprintf("Indexed table access on %s", formatIndexDecoratorString(index)),
+			newTableNode)
+		a.Log("table %q transformed with pushdown of index", tableNode.Name())
+		replacedTable = true
+	}
+
+	if !replacedTable {
+		return tableNode, nil
+	}
+
+	switch tableNode.(type) {
+	case *plan.ResolvedTable, *plan.TableAlias:
+		node, err := withTable(newTableNode, table)
+		if err != nil {
+			return nil, err
+		}
+
+		return node, nil
+	default:
+		return nil, ErrInvalidNodeType.New("pushdown", tableNode)
+	}
+}
+
+func joinExprStrings(keyExpr []sql.Expression) string {
+	var expStrs []string
+	for _, expr := range keyExpr {
+		expStrs = append(expStrs, expr.String())
+	}
+	return fmt.Sprintf("[%s]", strings.Join(expStrs, ","))
 }
 
 type subqueryIndexLookup struct {

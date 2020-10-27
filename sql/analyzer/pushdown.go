@@ -191,13 +191,13 @@ func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, scope *Scope, filter
 		// TODO: some indexes, once pushed down, can be safely removed from the filter. But not all of them, as currently
 		//  implemented -- some indexes return more values than strictly match.
 		case *plan.TableAlias:
-			table, err := pushdownIndexesToTable(a, node, filters, indexes)
+			table, err := pushdownIndexesToTable(a, node, indexes)
 			if err != nil {
 				return nil, err
 			}
 			return FixFieldIndexesForExpressions(table, scope)
 		case *plan.ResolvedTable:
-			table, err := pushdownIndexesToTable(a, node, filters, indexes)
+			table, err := pushdownIndexesToTable(a, node, indexes)
 			if err != nil {
 				return nil, err
 			}
@@ -298,12 +298,7 @@ func pushdownFiltersToTable(
 
 // pushdownIndexesToTable attempts to convert filter predicates to indexes on tables that implement
 // sql.IndexAddressableTable
-func pushdownIndexesToTable(
-	a *Analyzer,
-	tableNode NameableNode,
-	filters *filterSet,
-	indexes map[string]*indexLookup,
-) (sql.Node, error) {
+func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[string]*indexLookup) (sql.Node, error) {
 
 	table := getTable(tableNode)
 	if table == nil {
@@ -317,7 +312,7 @@ func pushdownIndexesToTable(
 		indexLookup, ok := indexes[tableNode.Name()]
 		if ok {
 			table = it.WithIndexLookup(indexLookup.lookup)
-			indexStrs := formatIndexDecoratorString(indexLookup)
+			indexStrs := formatIndexDecoratorString(indexLookup.indexes...)
 
 			indexNoun := "index"
 			if len(indexStrs) > 1 {
@@ -349,9 +344,9 @@ func pushdownIndexesToTable(
 	}
 }
 
-func formatIndexDecoratorString(indexLookup *indexLookup) []string {
+func formatIndexDecoratorString(indexes ...sql.Index) []string {
 	var indexStrs []string
-	for _, idx := range indexLookup.indexes {
+	for _, idx := range indexes {
 		var expStrs []string
 		for _, e := range idx.Expressions() {
 			expStrs = append(expStrs, e)
