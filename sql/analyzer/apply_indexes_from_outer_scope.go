@@ -84,17 +84,13 @@ func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, 
 	resolvedTable := getResolvedTable(tableNode)
 	var newTableNode sql.Node
 
-	replacedTable := false
 	if _, ok := table.(sql.IndexAddressableTable); ok {
 		newTableNode = plan.NewIndexedTable(resolvedTable, index, keyExpr)
 		newTableNode = plan.NewDecoratedNode(
 			fmt.Sprintf("Indexed table access on %s", formatIndexDecoratorString(index)),
 			newTableNode)
 		a.Log("table %q transformed with pushdown of index", tableNode.Name())
-		replacedTable = true
-	}
-
-	if !replacedTable {
+	} else {
 		return tableNode, nil
 	}
 
@@ -168,9 +164,15 @@ func getOuterScopeIndexes(
 
 	for table, idx := range indexes {
 		if exprsByTable[table] != nil {
+			// creating a key expression can fail in some cases, just skip this table
+			keyExpr := createIndexKeyExpr(idx, exprsByTable[table], exprAliases, tableAliases)
+			if keyExpr == nil {
+				continue
+			}
+
 			lookups = append(lookups, subqueryIndexLookup{
 				table:   table,
-				keyExpr: createIndexKeyExpr(idx, exprsByTable[table], exprAliases, tableAliases),
+				keyExpr: keyExpr,
 				index:   idx,
 			})
 		}
@@ -192,7 +194,7 @@ func createIndexKeyExpr(
 IndexExpressions:
 	for i, idxExpr := range idx.Expressions() {
 		for j := range joinExprs {
-			if idxExpr == normalizeExpression(exprAliases, tableAliases, joinExprs[j].comparand).String() {
+			if idxExpr == normalizeExpression(exprAliases, tableAliases, joinExprs[j].colExpr).String() {
 				keyExprs[i] = joinExprs[j].comparand
 				continue IndexExpressions
 			}
@@ -254,7 +256,7 @@ func getSubqueryIndexes(
 			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(),
 				normalizeExpressions(exprAliases, tableAliases, extractComparands(indexCols)...)...)
 			if idx != nil {
-				result[normalizeTableName(tableAliases, indexCols[0].comparandCol.Table())] = idx
+				result[indexCols[0].comparandCol.Table()] = idx
 			}
 		}
 	}

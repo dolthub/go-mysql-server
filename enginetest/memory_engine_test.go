@@ -77,13 +77,22 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		`SELECT i FROM mytable mt WHERE (SELECT i FROM mytable where i = mt.i) IS NOT NULL ORDER BY i`,
+		`SELECT i FROM mytable mt WHERE (SELECT i FROM mytable where i = mt.i and i > 2) IS NOT NULL
+						and (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
+						ORDER BY i`,
 		[]sql.Row{
-			{int64(1)},
-			{int64(2)},
 			{int64(3)},
 		},
 	}
+	// test = enginetest.QueryTest{
+	// 	`SELECT i FROM mytable mt WHERE (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
+	// 					ORDER BY i`,
+	// 	[]sql.Row{
+	// 		{int64(1)},
+	// 		{int64(2)},
+	// 		{int64(3)},
+	// 	},
+	// }
 
 	fmt.Sprintf("%v", test)
 
