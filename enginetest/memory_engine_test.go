@@ -73,7 +73,7 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
@@ -84,15 +84,6 @@ func TestSingleQuery(t *testing.T) {
 			{int64(3)},
 		},
 	}
-	// test = enginetest.QueryTest{
-	// 	`SELECT i FROM mytable mt WHERE (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
-	// 					ORDER BY i`,
-	// 	[]sql.Row{
-	// 		{int64(1)},
-	// 		{int64(2)},
-	// 		{int64(3)},
-	// 	},
-	// }
 
 	fmt.Sprintf("%v", test)
 

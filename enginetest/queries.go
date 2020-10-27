@@ -300,6 +300,7 @@ var QueryTests = []QueryTest{
 		"SELECT 100 NOT IN (SELECT i2 FROM niltable)",
 		[]sql.Row{{nil}},
 	},
+
 	{
 		"SELECT 1 IN (2,3,4,null)",
 		[]sql.Row{{nil}},
@@ -2195,6 +2196,49 @@ var QueryTests = []QueryTest{
 		[]sql.Row{
 			{2},
 			{3},
+		},
+	},
+	{
+		`SELECT i FROM mytable mt 
+						 WHERE (SELECT i FROM mytable where i = mt.i and i > 2) IS NOT NULL
+						 AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
+						 ORDER BY i`,
+		[]sql.Row{
+			{3},
+		},
+	},
+	{
+		`SELECT i FROM mytable mt 
+						 WHERE (SELECT i FROM mytable where i = mt.i and i > 1) IS NOT NULL
+						 AND (SELECT i2 FROM othertable where i2 = i and i < 3) IS NOT NULL
+						 ORDER BY i`,
+		[]sql.Row{
+			{2},
+		},
+	},
+	{
+		`SELECT i FROM mytable mt 
+						 WHERE (SELECT i FROM mytable where i = mt.i) IS NOT NULL
+						 AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
+						 ORDER BY i`,
+		[]sql.Row{
+			{1}, {2}, {3},
+		},
+	},
+	{
+		`SELECT i FROM mytable 
+						 WHERE (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
+						 ORDER BY i`,
+		[]sql.Row{
+			{1}, {2}, {3},
+		},
+	},
+	{
+		`SELECT i FROM mytable mt 
+						 WHERE (SELECT i2 FROM othertable ot where ot.i2 = mt.i) IS NOT NULL
+						 ORDER BY i`,
+		[]sql.Row{
+			{1}, {2}, {3},
 		},
 	},
 	{

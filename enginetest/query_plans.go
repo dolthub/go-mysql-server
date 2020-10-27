@@ -581,6 +581,24 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT i FROM mytable mt
+		WHERE (SELECT i FROM mytable where i = mt.i and i > 2) IS NOT NULL
+		AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL`,
+		ExpectedPlan: "Project(mt.i)\n" +
+			" └─ Filter(NOT((Project(mytable.i)\n" +
+			"     └─ Filter(mytable.i = mt.i AND mytable.i > 2)\n" +
+			"         └─ Indexed table access on [[mytable.i]]\n" +
+			"             └─ Table(mytable)\n" +
+			"    ) IS NULL) AND NOT((Project(othertable.i2)\n" +
+			"     └─ Filter(othertable.i2 = mt.i)\n" +
+			"         └─ Indexed table access on [[othertable.i2]]\n" +
+			"             └─ Table(othertable)\n" +
+			"    ) IS NULL))\n" +
+			"     └─ TableAlias(mt)\n" +
+			"         └─ Table(mytable)\n" +
+			"",
+	},
+	{
 		Query: "DELETE FROM two_pk WHERE c1 > 1",
 		ExpectedPlan: "Delete\n" +
 			" └─ Filter(two_pk.c1 > 1)\n" +
