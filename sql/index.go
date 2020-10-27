@@ -79,10 +79,7 @@ type MergeableIndexLookup interface {
 	// two operands.
 	IsMergeable(IndexLookup) bool
 	// Intersection returns a new IndexLookup with the intersection of the current IndexLookup and the ones given.
-	Intersection(...IndexLookup) IndexLookup
+	Intersection(...IndexLookup) (IndexLookup, error)
 	// Union returns a new IndexLookup with the union of the current IndexLookup and the ones given.
-	Union(...IndexLookup) IndexLookup
-	// Difference returns a new IndexLookup with the difference between the current IndexLookup and the ones given.
-	// Currently unused.
-	Difference(...IndexLookup) IndexLookup
+	Union(...IndexLookup) (IndexLookup, error)
 }

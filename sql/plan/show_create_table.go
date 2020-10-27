@@ -155,6 +155,10 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 			stmt = fmt.Sprintf("%s NOT NULL", stmt)
 		}
 
+		if col.AutoIncrement {
+			stmt = fmt.Sprintf("%s AUTO_INCREMENT", stmt)
+		}
+
 		if col.Default != nil {
 			stmt = fmt.Sprintf("%s DEFAULT %s", stmt, col.Default.String())
 		}

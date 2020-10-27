@@ -37,14 +37,10 @@ func (*NegateIndexLookup) IsMergeable(lookup sql.IndexLookup) bool {
 	return ok
 }
 
-func (l *NegateIndexLookup) Union(lookups ...sql.IndexLookup) sql.IndexLookup {
-	return union(l.Index, l, lookups...)
+func (l *NegateIndexLookup) Union(lookups ...sql.IndexLookup) (sql.IndexLookup, error) {
+	return union(l.Index, l, lookups...), nil
 }
 
-func (*NegateIndexLookup) Difference(...sql.IndexLookup) sql.IndexLookup {
-	panic("negateIndexLookup.Difference is not implemented")
-}
-
-func (l *NegateIndexLookup) Intersection(indexes ...sql.IndexLookup) sql.IndexLookup {
-	return intersection(l.Index, l, indexes...)
+func (l *NegateIndexLookup) Intersection(indexes ...sql.IndexLookup) (sql.IndexLookup, error) {
+	return intersection(l.Index, l, indexes...), nil
 }

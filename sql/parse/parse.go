@@ -41,6 +41,8 @@ var (
 
 	ErrUnknownIndexColumn = errors.NewKind("unknown column: '%s' in %s index '%s'")
 
+	ErrInvalidAutoIncCols = errors.NewKind("there can be only one auto_increment column and it must be defined as a key")
+
 	ErrUnknownConstraintDefinition = errors.NewKind("unknown constraint definition: %s, %T")
 )
 
@@ -1015,6 +1017,12 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Sc
 		schema = append(schema, column)
 	}
 
+	err = validateAutoIncrement(schema)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return schema, nil
 }
 
@@ -1032,6 +1040,28 @@ func validateIndexes(tableSpec *sqlparser.TableSpec) error {
 		}
 	}
 
+	return nil
+}
+
+func validateAutoIncrement(schema sql.Schema) error {
+	seen := false
+	for _, col := range schema {
+		if col.AutoIncrement {
+			if !col.PrimaryKey {
+				// AUTO_INCREMENT col must be a pk
+				return ErrInvalidAutoIncCols.New()
+			}
+			if col.Default != nil {
+				// AUTO_INCREMENT col cannot have default
+				return ErrInvalidAutoIncCols.New()
+			}
+			if seen {
+				// there can be at most one AUTO_INCREMENT col
+				return ErrInvalidAutoIncCols.New()
+			}
+			seen = true
+		}
+	}
 	return nil
 }
 
@@ -1082,12 +1112,13 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 	}
 
 	return &sql.Column{
-		Nullable:   !isPkey && !bool(cd.Type.NotNull),
-		Type:       internalTyp,
-		Name:       cd.Name.String(),
-		PrimaryKey: isPkey,
-		Default:    defaultVal,
-		Comment:    comment,
+		Nullable:      !isPkey && !bool(cd.Type.NotNull),
+		Type:          internalTyp,
+		Name:          cd.Name.String(),
+		PrimaryKey:    isPkey,
+		Default:       defaultVal,
+		AutoIncrement: bool(cd.Type.Autoincrement),
+		Comment:       comment,
 	}, nil
 }
 

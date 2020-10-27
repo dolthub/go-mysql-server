@@ -86,6 +86,38 @@ func MustCreateNumberType(baseType query.Type) NumberType {
 	return nt
 }
 
+func NumericUnaryValue(t Type) interface{} {
+	nt := t.(numberTypeImpl)
+	switch nt.baseType {
+	case sqltypes.Int8:
+		return int8(1)
+	case sqltypes.Uint8:
+		return uint8(1)
+	case sqltypes.Int16:
+		return int16(1)
+	case sqltypes.Uint16:
+		return uint16(1)
+	case sqltypes.Int24:
+		return int32(1)
+	case sqltypes.Uint24:
+		return uint32(1)
+	case sqltypes.Int32:
+		return int32(1)
+	case sqltypes.Uint32:
+		return uint32(1)
+	case sqltypes.Int64:
+		return int64(1)
+	case sqltypes.Uint64:
+		return uint64(1)
+	case sqltypes.Float32:
+		return float32(1)
+	case sqltypes.Float64:
+		return float64(1)
+	default:
+		panic(fmt.Sprintf("%v is not a valid number base type", nt.baseType.String()))
+	}
+}
+
 // Compare implements Type interface.
 func (t numberTypeImpl) Compare(a interface{}, b interface{}) (int, error) {
 	switch t.baseType {

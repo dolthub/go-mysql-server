@@ -358,6 +358,23 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		}
 	}
 
+	if includeTable(includedTables, "auto_increment_tbl") {
+		table, err = harness.NewTable(myDb, "auto_increment_tbl", sql.Schema{
+			{Name: "pk", Type: sql.Int64, Source: "auto_increment_tbl", PrimaryKey: true, AutoIncrement: true},
+			{Name: "c0", Type: sql.Int64, Source: "auto_increment_tbl", Nullable: true},
+		})
+
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow(1, 11),
+				sql.NewRow(2, 22),
+				sql.NewRow(3, 33),
+			)
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "auto_increment_tbl", err)
+		}
+	}
+
 	if versionedHarness, ok := harness.(VersionedDBHarness); ok &&
 		includeTable(includedTables, "myhistorytable") {
 		versionedDb, ok := myDb.(sql.VersionedDatabase)

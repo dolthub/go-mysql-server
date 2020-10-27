@@ -1,7 +1,7 @@
 package sql
 
 import (
-	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -117,7 +117,7 @@ func TestViewsInDatabase(t *testing.T) {
 
 	for _, db := range databases {
 		for i := 0; i < db.numViews; i++ {
-			view := NewView(viewName+fmt.Sprint(i), nil, "")
+			view := NewView(viewName+strconv.Itoa(i), nil, "")
 			err := registry.Register(db.name, view)
 			require.NoError(err)
 		}

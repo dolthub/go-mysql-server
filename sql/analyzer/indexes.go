@@ -64,7 +64,11 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 			return false
 		}
 
-		indexes = indexesIntersection(indexes, result)
+		indexes, err = indexesIntersection(indexes, result)
+		if err != nil {
+			errInAnalysis = err
+			return false
+		}
 		return true
 	})
 
@@ -112,7 +116,10 @@ func getIndexes(
 			foundRightIdx := false
 			if rightIdx, ok := rightIndexes[table]; ok {
 				if canMergeIndexes(leftIdx.lookup, rightIdx.lookup) {
-					leftIdx.lookup = leftIdx.lookup.(sql.MergeableIndexLookup).Union(rightIdx.lookup)
+					leftIdx.lookup, err = leftIdx.lookup.(sql.MergeableIndexLookup).Union(rightIdx.lookup)
+					if err != nil {
+						return nil, err
+					}
 					leftIdx.indexes = append(leftIdx.indexes, rightIdx.indexes...)
 					result[table] = leftIdx
 					foundRightIdx = true
@@ -173,7 +180,10 @@ func getIndexes(
 						return nil, nil
 					}
 
-					lookup = lookup.(sql.MergeableIndexLookup).Union(lookup2)
+					lookup, err = lookup.(sql.MergeableIndexLookup).Union(lookup2)
+					if err != nil {
+						return nil, err
+					}
 				}
 
 				result[idx.Table()] = &indexLookup{
@@ -266,7 +276,10 @@ func getIndexes(
 			if !canMergeIndexLookups(result, indexes) {
 				return nil, nil
 			}
-			result = indexesIntersection(result, indexes)
+			result, err = indexesIntersection(result, indexes)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		return result, nil
@@ -314,7 +327,7 @@ func betweenIndexLookup(index sql.Index, upper, lower []interface{}) (sql.IndexL
 
 		m, ok := ascendLookup.(sql.MergeableIndexLookup)
 		if ok && m.IsMergeable(descendLookup) {
-			return ascendLookup.(sql.MergeableIndexLookup).Union(descendLookup), nil
+			return ascendLookup.(sql.MergeableIndexLookup).Union(descendLookup)
 		}
 	}
 
@@ -508,7 +521,10 @@ func getNegatedIndexes(
 						return nil, nil
 					}
 
-					lookup = lookup.(sql.MergeableIndexLookup).Intersection(lookup2)
+					lookup, err = lookup.(sql.MergeableIndexLookup).Intersection(lookup2)
+					if err != nil {
+						return nil, err
+					}
 				}
 
 				return indexLookupsByTable{
@@ -559,12 +575,16 @@ func getNegatedIndexes(
 	}
 }
 
-func indexesIntersection(left, right indexLookupsByTable) indexLookupsByTable {
+func indexesIntersection(left, right indexLookupsByTable) (indexLookupsByTable, error) {
+	var err error
 	var result = make(indexLookupsByTable)
 
 	for table, idx := range left {
 		if idx2, ok := right[table]; ok && canMergeIndexes(idx.lookup, idx2.lookup) {
-			idx.lookup = idx.lookup.(sql.MergeableIndexLookup).Intersection(idx2.lookup)
+			idx.lookup, err = idx.lookup.(sql.MergeableIndexLookup).Intersection(idx2.lookup)
+			if err != nil {
+				return nil, err
+			}
 			idx.indexes = append(idx.indexes, idx2.indexes...)
 		}
 
@@ -579,7 +599,7 @@ func indexesIntersection(left, right indexLookupsByTable) indexLookupsByTable {
 		}
 	}
 
-	return result
+	return result, nil
 }
 
 func getMultiColumnIndexes(
@@ -627,7 +647,10 @@ func getMultiColumnIndexes(
 							return nil, nil
 						}
 
-						result = indexesIntersection(result, newResult)
+						result, err = indexesIntersection(result, newResult)
+						if err != nil {
+							return nil, err
+						}
 					} else {
 						result[table] = &indexLookup{lookup, []sql.Index{index}}
 					}
