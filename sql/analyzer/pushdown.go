@@ -44,7 +44,7 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 
 	filters := newFilterSet(filtersByTable, exprAliases, tableAliases)
 
-	n, err = convertFiltersToIndexedAccess(a, n, scope, filters, indexes)
+	n, err = convertFiltersToIndexedAccess(a, n, scope, indexes)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, filters *fi
 }
 
 // convertFiltersToIndexedAccess attempts to replace filter predicates with indexed accesses where possible
-func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, scope *Scope, filters *filterSet, indexes indexLookupsByTable) (sql.Node, error) {
+func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, scope *Scope, indexes indexLookupsByTable) (sql.Node, error) {
 	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
 		switch parent.(type) {
 		// For IndexedJoins, we already are using indexed access during query execution for the secondary table, so
