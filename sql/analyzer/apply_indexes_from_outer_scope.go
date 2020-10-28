@@ -107,14 +107,6 @@ func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, 
 	}
 }
 
-func joinExprStrings(keyExpr []sql.Expression) string {
-	var expStrs []string
-	for _, expr := range keyExpr {
-		expStrs = append(expStrs, expr.String())
-	}
-	return fmt.Sprintf("[%s]", strings.Join(expStrs, ","))
-}
-
 type subqueryIndexLookup struct {
 	table string
 	keyExpr []sql.Expression
