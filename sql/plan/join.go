@@ -230,7 +230,7 @@ func (t JoinType) String() string {
 	}
 }
 
-func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.Expression, row sql.Row, ) (sql.RowIter, error) {
+func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.Expression, row sql.Row) (sql.RowIter, error) {
 	var leftName, rightName string
 	if leftTable, ok := left.(sql.Nameable); ok {
 		leftName = leftTable.Name()
@@ -334,7 +334,7 @@ type joinIter struct {
 	rowSize    int
 
 	// scope variables from outer scope
-	originalRow   sql.Row
+	originalRow sql.Row
 
 	// used to compute in-memory
 	mode          joinMode

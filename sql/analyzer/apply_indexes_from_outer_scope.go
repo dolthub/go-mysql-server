@@ -16,10 +16,11 @@ package analyzer
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"strings"
 )
 
 // applyIndexesFromOuterScope attempts to apply an indexed lookup to a subquery using variables from the outer scope.
@@ -108,18 +109,18 @@ func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, 
 }
 
 type subqueryIndexLookup struct {
-	table string
+	table   string
 	keyExpr []sql.Expression
-	index sql.Index
+	index   sql.Index
 }
 
 func getOuterScopeIndexes(
-		ctx *sql.Context,
-		a *Analyzer,
-		node sql.Node,
-		scope *Scope,
-		exprAliases ExprAliases,
-		tableAliases TableAliases,
+	ctx *sql.Context,
+	a *Analyzer,
+	node sql.Node,
+	scope *Scope,
+	exprAliases ExprAliases,
+	tableAliases TableAliases,
 ) ([]subqueryIndexLookup, error) {
 	indexSpan, _ := ctx.Span("getOuterScopeIndexes")
 	defer indexSpan.Finish()
@@ -149,7 +150,7 @@ func getOuterScopeIndexes(
 	})
 
 	if len(indexes) == 0 {
-		return nil,nil
+		return nil, nil
 	}
 
 	var lookups []subqueryIndexLookup
@@ -175,10 +176,10 @@ func getOuterScopeIndexes(
 
 // createIndexKeyExpr returns a slice of expressions to be used when creating an index lookup key for the table given.
 func createIndexKeyExpr(
-		idx sql.Index,
-		joinExprs []*columnExpr,
-		exprAliases ExprAliases,
-		tableAliases TableAliases,
+	idx sql.Index,
+	joinExprs []*columnExpr,
+	exprAliases ExprAliases,
+	tableAliases TableAliases,
 ) []sql.Expression {
 
 	keyExprs := make([]sql.Expression, len(idx.Expressions()))
@@ -200,13 +201,13 @@ IndexExpressions:
 }
 
 func getSubqueryIndexes(
-		ctx *sql.Context,
-		a *Analyzer,
-		e sql.Expression,
-		scope *Scope,
-		ia *indexAnalyzer,
-		exprAliases ExprAliases,
-		tableAliases TableAliases,
+	ctx *sql.Context,
+	a *Analyzer,
+	e sql.Expression,
+	scope *Scope,
+	ia *indexAnalyzer,
+	exprAliases ExprAliases,
+	tableAliases TableAliases,
 ) (map[string]sql.Index, map[string][]*columnExpr, error) {
 
 	scopeLen := len(scope.Schema())

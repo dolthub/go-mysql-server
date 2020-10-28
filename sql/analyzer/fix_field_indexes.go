@@ -32,7 +32,7 @@ func FixFieldIndexes(scope *Scope, schema sql.Schema, exp sql.Expression) (sql.E
 			for i, col := range schema {
 				if e.Name() == col.Name && e.Table() == col.Source {
 					return expression.NewGetFieldWithTable(
-						scopeLen + i,
+						scopeLen+i,
 						e.Type(),
 						e.Table(),
 						e.Name(),
@@ -50,7 +50,7 @@ func FixFieldIndexes(scope *Scope, schema sql.Schema, exp sql.Expression) (sql.E
 				for i, col := range schema {
 					if e.Name() == col.Name && e.Table() == col.Source {
 						return expression.NewGetFieldWithTable(
-							scopeLen - offset + i,
+							scopeLen-offset+i,
 							e.Type(),
 							e.Table(),
 							e.Name(),

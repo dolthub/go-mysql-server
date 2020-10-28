@@ -436,7 +436,7 @@ var InsertScripts = []ScriptTest{
 			{
 				Query: "select * from auto",
 				Expected: []sql.Row{
-					{1,10}, {2,20}, {3,30},
+					{1, 10}, {2, 20}, {3, 30},
 				},
 			},
 		},

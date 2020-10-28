@@ -17,7 +17,7 @@ var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, co
 // (wrapping) a ResolvedTable.
 type IndexedTableAccess struct {
 	*ResolvedTable
-	index sql.Index
+	index    sql.Index
 	keyExprs []sql.Expression
 }
 

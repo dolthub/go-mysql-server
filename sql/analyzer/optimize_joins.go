@@ -54,12 +54,12 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 }
 
 func transformJoins(
-		a *Analyzer,
-		n sql.Node,
-		scope *Scope,
-		indexes map[string]sql.Index,
-		exprAliases ExprAliases,
-		tableAliases TableAliases,
+	a *Analyzer,
+	n sql.Node,
+	scope *Scope,
+	indexes map[string]sql.Index,
+	exprAliases ExprAliases,
+	tableAliases TableAliases,
 ) (sql.Node, error) {
 
 	var replacedIndexedJoin bool
@@ -407,18 +407,18 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *columnExpr, rightCol *col
 		}
 
 		leftCol = &columnExpr{
-			col: leftField,
-			colExpr: left,
-			comparand: right,
+			col:          leftField,
+			colExpr:      left,
+			comparand:    right,
 			comparandCol: rightField,
-			comparison: e,
+			comparison:   e,
 		}
 		rightCol = &columnExpr{
-			col: rightField,
-			colExpr: right,
-			comparand: left,
+			col:          rightField,
+			colExpr:      right,
+			comparand:    left,
 			comparandCol: leftField,
-			comparison: e,
+			comparison:   e,
 		}
 		return leftCol, rightCol
 	default:

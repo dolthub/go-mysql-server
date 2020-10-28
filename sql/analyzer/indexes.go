@@ -830,11 +830,11 @@ func extractColumnExpr(e sql.Expression) (string, *columnExpr) {
 		}
 
 		return leftCol.Table(), &columnExpr{
-			col: leftCol,
-			colExpr: left,
-			comparand: right,
+			col:          leftCol,
+			colExpr:      left,
+			comparand:    right,
 			comparandCol: rightCol,
-			comparison: e,
+			comparison:   e,
 		}
 	case *expression.Between:
 		if !isEvaluable(e.Upper) || !isEvaluable(e.Lower) || isEvaluable(e.Val) {
