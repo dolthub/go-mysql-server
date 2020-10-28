@@ -248,7 +248,10 @@ func pushdownFiltersToTable(
 		}
 
 		table = ft.WithFilters(handled)
-		newTableNode = plan.NewDecoratedNode(fmt.Sprintf("Filtered table access on %v", handled), newTableNode)
+		newTableNode = plan.NewDecoratedNode(
+			plan.DecorationTypeFilteredAccess,
+			fmt.Sprintf("Filtered table access on %v", handled),
+			newTableNode)
 
 		a.Log(
 			"table %q transformed with pushdown of filters, %d filters handled of %d",
@@ -319,6 +322,7 @@ func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[str
 				indexNoun = "indexes"
 			}
 			newTableNode = plan.NewDecoratedNode(
+				plan.DecorationTypeIndexedAccess,
 				fmt.Sprintf("Indexed table access on %s %s", indexNoun, strings.Join(indexStrs, ", ")),
 				newTableNode)
 			a.Log("table %q transformed with pushdown of index", tableNode.Name())
@@ -380,6 +384,7 @@ func pushdownProjectionsToTable(
 		}
 
 		newTableNode = plan.NewDecoratedNode(
+			plan.DecorationTypeProjectedAccess,
 			fmt.Sprintf("Projected table access on %v",
 				fieldsByTable[tableNode.Name()]), newTableNode)
 		a.Log("table %q transformed with pushdown of projection", tableNode.Name())

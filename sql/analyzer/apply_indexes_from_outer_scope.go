@@ -88,6 +88,7 @@ func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, 
 	if _, ok := table.(sql.IndexAddressableTable); ok {
 		newTableNode = plan.NewIndexedTable(resolvedTable, index, keyExpr)
 		newTableNode = plan.NewDecoratedNode(
+			plan.DecorationTypeIndexedAccess,
 			fmt.Sprintf("Indexed table access on %s", formatIndexDecoratorString(index)),
 			newTableNode)
 		a.Log("table %q transformed with pushdown of index", tableNode.Name())

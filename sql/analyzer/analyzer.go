@@ -16,7 +16,7 @@ import (
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"
 
-const maxAnalysisIterations = 1000
+const maxAnalysisIterations = 8
 
 // ErrMaxAnalysisIters is thrown when the analysis iterations are exceeded
 var ErrMaxAnalysisIters = errors.NewKind("exceeded max analysis iterations (%d)")
@@ -274,9 +274,6 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node
 		if err != nil {
 			a.Log("Encountered error: %v", err)
 			a.PopDebugContext()
-			if ErrMaxAnalysisIters.Is(err) {
-				continue
-			}
 			return n, err
 		}
 		a.PopDebugContext()
