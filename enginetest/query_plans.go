@@ -587,10 +587,28 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project(mt.i)\n" +
 			" └─ Filter(NOT((Project(mytable.i)\n" +
 			"     └─ Filter(mytable.i = mt.i AND mytable.i > 2)\n" +
-			"         └─ Indexed table access on [[mytable.i]]\n" +
+			"         └─ Indexed table access on index [mytable.i]\n" +
 			"             └─ Table(mytable)\n" +
 			"    ) IS NULL) AND NOT((Project(othertable.i2)\n" +
 			"     └─ Filter(othertable.i2 = mt.i)\n" +
+			"         └─ Indexed table access on [[othertable.i2]]\n" +
+			"             └─ Table(othertable)\n" +
+			"    ) IS NULL))\n" +
+			"     └─ TableAlias(mt)\n" +
+			"         └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT i FROM mytable mt
+		WHERE (SELECT i FROM mytable where i = mt.i) IS NOT NULL
+		AND (SELECT i2 FROM othertable where i2 = i and i > 2) IS NOT NULL`,
+		ExpectedPlan: "Project(mt.i)\n" +
+			" └─ Filter(NOT((Project(mytable.i)\n" +
+			"     └─ Filter(mytable.i = mt.i)\n" +
+			"         └─ Indexed table access on [[mytable.i]]\n" +
+			"             └─ Table(mytable)\n" +
+			"    ) IS NULL) AND NOT((Project(othertable.i2)\n" +
+			"     └─ Filter(othertable.i2 = mt.i AND mt.i > 2)\n" +
 			"         └─ Indexed table access on [[othertable.i2]]\n" +
 			"             └─ Table(othertable)\n" +
 			"    ) IS NULL))\n" +

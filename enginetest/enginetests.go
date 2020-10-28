@@ -130,9 +130,6 @@ func TestQueryPlan(t *testing.T, ctx *sql.Context, engine *sqle.Engine, query st
 	parsed, err := parse.Parse(ctx, query)
 	require.NoError(t, err)
 
-	engine.Analyzer.Verbose = true
-	engine.Analyzer.Debug = true
-
 	node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
 	require.NoError(t, err)
 	assert.Equal(t, expectedPlan, extractQueryNode(node).String(), "Unexpected result for query: "+query)

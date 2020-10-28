@@ -20,17 +20,6 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		return n, nil
 	}
 
-	// First step is to find all col exprs and group them by the table they mention.
-	// Even if they appear multiple times, only the first one will be used.
-	filtersByTable, err := getFiltersByTable(ctx, n)
-
-	// An error returned by getFiltersByTable means that we can't cleanly separate all the filters into tables.
-	// In that case, skip pushing down the filters.
-	// TODO: we could also handle this by keeping track of the filters we can't handle and re-applying them at the end
-	if err != nil {
-		return n, nil
-	}
-
 	indexes, err := getIndexesByTable(ctx, a, n, scope)
 	if err != nil {
 		return nil, err
@@ -42,14 +31,12 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		return nil, err
 	}
 
-	filters := newFilterSet(filtersByTable, exprAliases, tableAliases)
-
 	n, err = convertFiltersToIndexedAccess(a, n, scope, indexes)
 	if err != nil {
 		return nil, err
 	}
 
-	return transformPushdownFilters(a, n, scope, filters, exprAliases, tableAliases)
+	return transformPushdownFilters(a, n, scope, exprAliases, tableAliases)
 }
 
 // pushdownProjections attempts to push projections down to individual tables that implement sql.ProjectTable
@@ -109,7 +96,8 @@ func canDoPushdown(n sql.Node, a *Analyzer) bool {
 	return true
 }
 
-func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, filters *filterSet, exprAliases ExprAliases, tableAliases TableAliases) (sql.Node, error) {
+func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, exprAliases ExprAliases, tableAliases TableAliases) (sql.Node, error) {
+
 	// Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a predicate on
 	// the secondary table below the join, we end up not evaluating it in all cases (since the secondary table result is
 	// sometimes null in these types of joins). It must be evaluated only after the join result is computed.
@@ -128,42 +116,63 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, filters *fi
 		return true
 	}
 
-	node, err := plan.TransformUpWithSelector(n, childSelector, func(node sql.Node) (sql.Node, error) {
-		switch node := node.(type) {
-		case *plan.Filter:
-			n, err := removePushedDownPredicates(a, node, filters)
-			if err != nil {
-				return nil, err
-			}
-			return FixFieldIndexesForExpressions(n, scope)
-		case *plan.TableAlias:
-			table, err := pushdownFiltersToTable(a, node, filters, exprAliases, tableAliases)
-			if err != nil {
-				return nil, err
-			}
-			return FixFieldIndexesForExpressions(table, scope)
-		case *plan.ResolvedTable:
-			table, err := pushdownFiltersToTable(a, node, filters, exprAliases, tableAliases)
-			if err != nil {
-				return nil, err
-			}
-			return FixFieldIndexesForExpressions(table, scope)
-		case *plan.IndexedTableAccess:
-			table, err := pushdownFiltersToTable(a, node, filters, exprAliases, tableAliases)
-			if err != nil {
-				return nil, err
-			}
-			return FixFieldIndexesForExpressions(table, scope)
-		default:
-			return FixFieldIndexesForExpressions(node, scope)
-		}
-	})
+	var filters *filterSet
 
-	if err != nil {
-		return nil, err
+	transformFilterNode := func(n *plan.Filter) (sql.Node, error) {
+		return plan.TransformUpWithSelector(n, childSelector, func(node sql.Node) (sql.Node, error) {
+			switch node := node.(type) {
+			case *plan.Filter:
+				n, err := removePushedDownPredicates(a, node, filters)
+				if err != nil {
+					return nil, err
+				}
+				return FixFieldIndexesForExpressions(n, scope)
+			case *plan.TableAlias:
+				table, err := pushdownFiltersToTable(a, node, filters, exprAliases, tableAliases)
+				if err != nil {
+					return nil, err
+				}
+				return FixFieldIndexesForExpressions(table, scope)
+			case *plan.ResolvedTable:
+				table, err := pushdownFiltersToTable(a, node, filters, exprAliases, tableAliases)
+				if err != nil {
+					return nil, err
+				}
+				return FixFieldIndexesForExpressions(table, scope)
+			case *plan.IndexedTableAccess:
+				table, err := pushdownFiltersToTable(a, node, filters, exprAliases, tableAliases)
+				if err != nil {
+					return nil, err
+				}
+				return FixFieldIndexesForExpressions(table, scope)
+			default:
+				return FixFieldIndexesForExpressions(node, scope)
+			}
+		})
 	}
 
-	return node, nil
+	// For each filter node, we want to push its predicates as low as possible.
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.Filter:
+			// First step is to find all col exprs and group them by the table they mention.
+			// Even if they appear multiple times, only the first one will be used.
+			filtersByTable, err := getFiltersByTable(n)
+
+			// An error returned by getFiltersByTable means that we can't cleanly separate all the filters into tables.
+			// In that case, skip pushing down the filters.
+			// TODO: we could also handle this by keeping track of the filters we can't handle and re-applying them at the end
+			if err != nil {
+				return n, nil
+			}
+
+			filters = newFilterSet(filtersByTable, exprAliases, tableAliases)
+
+			return transformFilterNode(n)
+		default:
+			return n, nil
+		}
+	})
 }
 
 // convertFiltersToIndexedAccess attempts to replace filter predicates with indexed accesses where possible

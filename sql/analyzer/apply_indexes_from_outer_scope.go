@@ -48,9 +48,18 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return n, nil
 	}
 
+	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
+		switch parent := parent.(type) {
+		// We can't push any indexes down a branch that have already had an index pushed down it
+		case *plan.DecoratedNode:
+			return parent.DecorationType != plan.DecorationTypeIndexedAccess
+		}
+		return true
+	}
+
 	// replace the tables with possible index lookups with indexed access
 	for _, idxLookup := range indexLookups {
-		n, err = plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		n, err = plan.TransformUpWithSelector(n, childSelector, func(n sql.Node) (sql.Node, error) {
 			switch n := n.(type) {
 			case *plan.TableAlias:
 				if strings.ToLower(n.Name()) == idxLookup.table {

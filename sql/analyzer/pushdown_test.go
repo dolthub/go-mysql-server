@@ -514,11 +514,11 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 						),
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Int32, "mytable", "i", true),
-								expression.NewGetFieldWithTable(5, sql.Int32, "mytable2", "i2", true),
+								expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+								expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(5, sql.Int32, "mytable2", "i2", true),
+								expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
 								expression.NewLiteral(20, sql.Int32),
 							),
 						),
@@ -741,6 +741,92 @@ func TestPushdownIndex(t *testing.T) {
 				),
 			),
 			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+				},
+				plan.NewCrossJoin(
+					plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess,"Indexed table access on index [mytable.f]",
+						plan.NewFilter(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+								expression.NewLiteral(3.14, sql.Float64),
+							),
+							plan.NewResolvedTable(table.WithIndexLookup(
+								mustIndexLookup(idxTable1F.Get(3.14))),
+							),
+						),
+					),
+					plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess,"Indexed table access on index [mytable2.i2]",
+						plan.NewFilter(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
+								expression.NewLiteral(21, sql.Int32),
+							),
+							plan.NewResolvedTable(table2.WithIndexLookup(
+								mustIndexLookup(idxTable2I2.Get(21))),
+							),
+						),
+					),
+				),
+			),
+		},
+		{
+			// This scenario can't happen in the current analyzer rule ordering. But the rule should behave correctly anyway.
+			name: "single index to each of two tables, filters already pushed down",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+				},
+				plan.NewCrossJoin(
+					plan.NewFilter(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+						plan.NewResolvedTable(table),
+					),
+					plan.NewFilter(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
+							expression.NewLiteral(21, sql.Int32),
+						),
+						plan.NewResolvedTable(table2),
+					),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+				},
+				plan.NewCrossJoin(
+					plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess,"Indexed table access on index [mytable.f]",
+						plan.NewFilter(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+								expression.NewLiteral(3.14, sql.Float64),
+							),
+							plan.NewResolvedTable(table.WithIndexLookup(
+								mustIndexLookup(idxTable1F.Get(3.14))),
+							),
+						),
+					),
+					plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess,"Indexed table access on index [mytable2.i2]",
+						plan.NewFilter(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
+								expression.NewLiteral(21, sql.Int32),
+							),
+							plan.NewResolvedTable(table2.WithIndexLookup(
+								mustIndexLookup(idxTable2I2.Get(21))),
+							),
+						),
+					),
+				),
+			),
+		},
+		{
+			name: "Index already pushed down, no change to plan",
+			node: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
