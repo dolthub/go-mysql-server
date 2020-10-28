@@ -169,7 +169,7 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, filters *fi
 // convertFiltersToIndexedAccess attempts to replace filter predicates with indexed accesses where possible
 func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, scope *Scope, indexes indexLookupsByTable) (sql.Node, error) {
 	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
-		switch parent.(type) {
+		switch parent := parent.(type) {
 		// For IndexedJoins, we already are using indexed access during query execution for the secondary table, so
 		// replacing the secondary table with an indexed lookup will have no effect on the result of the join, but *will*
 		// inappropriately remove the filter from the predicate.
@@ -182,6 +182,9 @@ func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, scope *Scope, indexe
 			return childNum == 0
 		case *plan.RightJoin:
 			return childNum == 1
+		// We can't push any indexes down a branch that have already had an index pushed down it
+		case *plan.DecoratedNode:
+			return parent.DecorationType != plan.DecorationTypeIndexedAccess
 		}
 		return true
 	}
