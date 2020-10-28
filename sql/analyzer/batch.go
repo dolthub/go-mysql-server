@@ -48,6 +48,10 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	}
 
 	for i := 1; !nodesEqual(prev, cur); {
+		if i >= b.Iterations {
+			return cur, ErrMaxAnalysisIters.New(b.Iterations)
+		}
+
 		prev = cur
 		a.PushDebugContext(strconv.Itoa(i))
 		cur, err = b.evalOnce(ctx, a, cur, scope)
@@ -57,9 +61,6 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		}
 
 		i++
-		if i >= b.Iterations {
-			return cur, ErrMaxAnalysisIters.New(b.Iterations)
-		}
 	}
 
 	return cur, nil

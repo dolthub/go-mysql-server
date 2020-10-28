@@ -218,17 +218,18 @@ func TestMaxIterations(t *testing.T) {
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
 	notAnalyzed := plan.NewUnresolvedTable(tName, "")
 	analyzed, err := a.Analyze(ctx, notAnalyzed, nil)
-	require.NoError(err)
+	require.Error(err)
+	require.True(ErrMaxAnalysisIters.Is(err))
 	require.Equal(
 		plan.NewResolvedTable(
-			memory.NewTable("mytable-1000", sql.Schema{
-				{Name: "i", Type: sql.Int32, Source: "mytable-1000"},
-				{Name: "t", Type: sql.Text, Source: "mytable-1000"},
+			memory.NewTable("mytable-8", sql.Schema{
+				{Name: "i", Type: sql.Int32, Source: "mytable-8"},
+				{Name: "t", Type: sql.Text, Source: "mytable-8"},
 			}),
 		),
 		analyzed,
 	)
-	require.Equal(1000, count)
+	require.Equal(maxAnalysisIterations, count)
 }
 
 func TestAddRule(t *testing.T) {
