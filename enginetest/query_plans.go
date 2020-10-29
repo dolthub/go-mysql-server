@@ -619,21 +619,21 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: "SELECT pk,pk2, (SELECT pk from one_pk where pk = 1 limit 1) FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2",
 		ExpectedPlan: "Sort(t1.pk ASC, t2.pk2 ASC)\n" +
-				" └─ Project(t1.pk, t2.pk2, (Limit(1)\n" +
-				"     └─ Project(one_pk.pk)\n" +
-				"         └─ Indexed table access on index [one_pk.pk]\n" +
-				"             └─ Filter(one_pk.pk = 1)\n" +
-				"                 └─ Table(one_pk)\n" +
-				"    ))\n" +
-				"     └─ CrossJoin\n" +
-				"         ├─ Filter(t1.pk = 1)\n" +
-				"         │   └─ TableAlias(t1)\n" +
-				"         │       └─ Indexed table access on index [one_pk.pk]\n" +
-				"         │           └─ Table(one_pk)\n" +
-				"         └─ Filter(t2.pk2 = 1)\n" +
-				"             └─ TableAlias(t2)\n" +
-				"                 └─ Table(two_pk)\n" +
-				"",
+			" └─ Project(t1.pk, t2.pk2, (Limit(1)\n" +
+			"     └─ Project(one_pk.pk)\n" +
+			"         └─ Indexed table access on index [one_pk.pk]\n" +
+			"             └─ Filter(one_pk.pk = 1)\n" +
+			"                 └─ Table(one_pk)\n" +
+			"    ))\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ Filter(t1.pk = 1)\n" +
+			"         │   └─ TableAlias(t1)\n" +
+			"         │       └─ Indexed table access on index [one_pk.pk]\n" +
+			"         │           └─ Table(one_pk)\n" +
+			"         └─ Filter(t2.pk2 = 1)\n" +
+			"             └─ TableAlias(t2)\n" +
+			"                 └─ Table(two_pk)\n" +
+			"",
 	},
 	{
 		Query: "DELETE FROM two_pk WHERE c1 > 1",

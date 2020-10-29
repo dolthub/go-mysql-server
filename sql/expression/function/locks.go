@@ -130,11 +130,11 @@ func (i *IsFreeLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 func (i *IsFreeLock) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-		if len(children) != 1 {
-			return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
-		}
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
+	}
 
-		return NewIsFreeLock(i.ls)(children[0]), nil
+	return NewIsFreeLock(i.ls)(children[0]), nil
 }
 
 type IsUsedLock struct {
@@ -333,7 +333,7 @@ func NewReleaseAllLocks(ls *sql.LockSubsystem) func() sql.Expression {
 	return func() sql.Expression {
 		return ReleaseAllLocks{
 			NoArgFunc: NoArgFunc{"release_all_locks", sql.Int32},
-			ls: ls,
+			ls:        ls,
 		}
 	}
 }

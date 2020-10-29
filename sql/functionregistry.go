@@ -89,7 +89,7 @@ type (
 type EvalLogic func(*Context, Row) (interface{}, error)
 
 func NewFunction0(name string, fn func() Expression) Function0 {
-	return  Function0{
+	return Function0{
 		Name: name,
 		Fn:   fn,
 	}
