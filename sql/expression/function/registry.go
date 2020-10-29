@@ -126,9 +126,9 @@ var Defaults = []sql.Function{
 func GetLockingFuncs(ls *sql.LockSubsystem) []sql.Function {
 	return []sql.Function{
 		sql.Function2{Name: "get_lock", Fn: CreateNewGetLock(ls)},
-		NewNamedLockFunc(ls, "is_free_lock", sql.Int8, IsFreeLockFunc),
-		NewNamedLockFunc(ls, "is_used_lock", sql.Uint32, IsUsedLockFunc),
+		sql.Function1{Name: "is_free_lock", Fn: NewIsFreeLock(ls)},
+		sql.Function1{Name: "is_used_lock", Fn: NewIsUsedLock(ls)},
 		sql.NewFunction0("release_all_locks", NewReleaseAllLocks(ls)),
-		NewNamedLockFunc(ls, "release_lock", sql.Int8, ReleaseLockFunc),
+		sql.Function1{Name: "release_lock", Fn: NewReleaseLock(ls)},
 	}
 }

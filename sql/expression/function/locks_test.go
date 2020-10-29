@@ -40,8 +40,8 @@ func TestGetLock(t *testing.T) {
 
 func TestLockIsFree(t *testing.T) {
 	ls := sql.NewLockSubsystem()
-	isFreeLock := NewNamedLockFunc(ls, "is_free_lock", sql.Int8, IsFreeLockFunc)
-	tf := NewTestFactory(isFreeLock.Fn)
+	isFreeLock := NewIsFreeLock(ls)
+	tf := NewTestFactory(isFreeLock)
 
 	user0 := sql.NewEmptyContext()
 	err := ls.Lock(user0, alreadyLocked, 0)
@@ -62,8 +62,8 @@ func TestLockIsFree(t *testing.T) {
 
 func TestLockIsUsed(t *testing.T) {
 	ls := sql.NewLockSubsystem()
-	isUsed := NewNamedLockFunc(ls, "is_used_lock", sql.Uint32, IsUsedLockFunc)
-	tf := NewTestFactory(isUsed.Fn)
+	isUsed := NewIsUsedLock(ls)
+	tf := NewTestFactory(isUsed)
 
 	user0 := sql.NewEmptyContext()
 	err := ls.Lock(user0, alreadyLocked, 0)
@@ -84,8 +84,8 @@ func TestLockIsUsed(t *testing.T) {
 
 func TestReleaseLock(t *testing.T) {
 	ls := sql.NewLockSubsystem()
-	releaseLock := NewNamedLockFunc(ls, "release_lock", sql.Int8, ReleaseLockFunc)
-	tf := NewTestFactory(releaseLock.Fn)
+	releaseLock := NewReleaseLock(ls)
+	tf := NewTestFactory(releaseLock)
 
 	user0 := sql.NewEmptyContext()
 	err := ls.Lock(user0, alreadyLocked, 0)

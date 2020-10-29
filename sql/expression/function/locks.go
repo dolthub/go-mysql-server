@@ -30,18 +30,6 @@ type NamedLockFunction struct {
 	ls       *sql.LockSubsystem
 	funcName string
 	retType  sql.Type
-	logic    NamedLockFuncLogic
-}
-
-var _ sql.FunctionExpression = (*NamedLockFunction)(nil)
-
-// NewNamedLockFunc creates a NamedLockFunction
-func NewNamedLockFunc(ls *sql.LockSubsystem, funcName string, retType sql.Type, logic NamedLockFuncLogic) sql.Function1 {
-	fn := func(e sql.Expression) sql.Expression {
-		return &NamedLockFunction{expression.UnaryExpression{Child: e}, ls, funcName, retType, logic}
-	}
-
-	return sql.Function1{Name: funcName, Fn: fn}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -50,28 +38,28 @@ func (nl *NamedLockFunction) FunctionName() string {
 }
 
 // Eval implements the Expression interface.
-func (nl *NamedLockFunction) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (nl *NamedLockFunction) GetLockName(ctx *sql.Context, row sql.Row) (string, error) {
 	if nl.Child == nil {
-		return nil, nil
+		return "", nil
 	}
 
 	val, err := nl.Child.Eval(ctx, row)
 
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	if val == nil {
-		return nil, nil
+		return "", nil
 	}
 
 	lockName, ok := val.(string)
 
 	if !ok {
-		return nil, ErrIllegalLockNameArgType.New(nl.Child.Type().String(), nl.funcName)
+		return "", ErrIllegalLockNameArgType.New(nl.Child.Type().String(), nl.funcName)
 	}
 
-	return nl.logic(ctx, nl.ls, lockName)
+	return lockName, nil
 }
 
 // String implements the fmt.Stringer interface.
@@ -85,13 +73,13 @@ func (nl *NamedLockFunction) IsNullable() bool {
 }
 
 // WithChildren implements the Expression interface.
-func (nl *NamedLockFunction) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(nl, len(children), 1)
-	}
-
-	return &NamedLockFunction{expression.UnaryExpression{Child: children[0]}, nl.ls, nl.funcName, nl.retType, nl.logic}, nil
-}
+// func NamedLockFnWithChildren(lockFn sql.Expression, children ...sql.Expression) (sql.Expression, error) {
+// 	if len(children) != 1 {
+// 		return nil, sql.ErrInvalidChildrenNumber.New(nl, len(children), 1)
+// 	}
+//
+// 	return &NamedLockFunction{expression.UnaryExpression{Child: children[0]}, nl.ls, nl.funcName, nl.retType, nl.logic}, nil
+// }
 
 // Type implements the Expression interface.
 func (nl *NamedLockFunction) Type() sql.Type {
@@ -113,6 +101,114 @@ func ReleaseLockFunc(ctx *sql.Context, ls *sql.LockSubsystem, lockName string) (
 	}
 
 	return int8(1), nil
+}
+
+type IsFreeLock struct {
+	NamedLockFunction
+}
+
+var _ sql.FunctionExpression = &IsFreeLock{}
+
+func NewIsFreeLock(ls *sql.LockSubsystem) func(e sql.Expression) sql.Expression {
+	return func(e sql.Expression) sql.Expression {
+		return &IsFreeLock{
+			NamedLockFunction: NamedLockFunction{
+				UnaryExpression: expression.UnaryExpression{e},
+				ls:              ls,
+				funcName:        "is_free_lock",
+				retType:         sql.Int8,
+			},
+		}
+	}
+}
+
+func (i *IsFreeLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	lock, err := i.GetLockName(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	return IsFreeLockFunc(ctx, i.ls, lock)
+}
+
+func (i *IsFreeLock) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+		if len(children) != 1 {
+			return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
+		}
+
+		return NewIsFreeLock(i.ls)(children[0]), nil
+}
+
+type IsUsedLock struct {
+	NamedLockFunction
+}
+
+var _ sql.FunctionExpression = &IsUsedLock{}
+
+func NewIsUsedLock(ls *sql.LockSubsystem) func(e sql.Expression) sql.Expression {
+	return func(e sql.Expression) sql.Expression {
+		return &IsUsedLock{
+			NamedLockFunction: NamedLockFunction{
+				UnaryExpression: expression.UnaryExpression{e},
+				ls:              ls,
+				funcName:        "is_used_lock",
+				retType:         sql.Int32,
+			},
+		}
+	}
+}
+
+func (i *IsUsedLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	lock, err := i.GetLockName(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	return IsUsedLockFunc(ctx, i.ls, lock)
+}
+
+func (i *IsUsedLock) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
+	}
+
+	return NewIsUsedLock(i.ls)(children[0]), nil
+}
+
+type ReleaseLock struct {
+	NamedLockFunction
+}
+
+var _ sql.FunctionExpression = &ReleaseLock{}
+
+func NewReleaseLock(ls *sql.LockSubsystem) func(e sql.Expression) sql.Expression {
+	return func(e sql.Expression) sql.Expression {
+		return &ReleaseLock{
+			NamedLockFunction: NamedLockFunction{
+				UnaryExpression: expression.UnaryExpression{e},
+				ls:              ls,
+				funcName:        "release_lock",
+				retType:         sql.Int8,
+			},
+		}
+	}
+}
+
+func (i *ReleaseLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	lock, err := i.GetLockName(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	return ReleaseLockFunc(ctx, i.ls, lock)
+}
+
+func (i *ReleaseLock) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
+	}
+
+	return NewReleaseLock(i.ls)(children[0]), nil
 }
 
 // IsFreeLockFunc is the function logic that is executed when the is_free_lock function is called.
