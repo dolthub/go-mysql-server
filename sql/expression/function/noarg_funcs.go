@@ -57,9 +57,15 @@ type CurrDate struct {
 
 var _ sql.FunctionExpression = CurrDate{}
 
-func NewCurrDate() CurrDate {
+func NewCurrDate() sql.Expression {
 	return CurrDate{
 		NoArgFunc: NoArgFunc{"curdate", sql.LongText},
+	}
+}
+
+func NewCurrentDate() sql.Expression {
+	return CurrDate{
+		NoArgFunc: NoArgFunc{"curentdate", sql.LongText},
 	}
 }
 
@@ -77,9 +83,9 @@ type ConnectionID struct {
 
 var _ sql.FunctionExpression = ConnectionID{}
 
-func NewConnectionID() CurrDate {
-	return CurrDate{
-		NoArgFunc: NoArgFunc{"connection_id", sql.LongText},
+func NewConnectionID() sql.Expression {
+	return ConnectionID{
+		NoArgFunc: NoArgFunc{"connection_id", sql.Uint32},
 	}
 }
 
