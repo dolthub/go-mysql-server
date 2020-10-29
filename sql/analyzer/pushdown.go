@@ -16,7 +16,7 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	span, ctx := ctx.Span("pushdown_filters")
 	defer span.Finish()
 
-	if !canDoPushdown(n, a) {
+	if !canDoPushdown(n) {
 		return n, nil
 	}
 
@@ -44,7 +44,7 @@ func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	span, ctx := ctx.Span("pushdown_projections")
 	defer span.Finish()
 
-	if !canDoPushdown(n, a) {
+	if !canDoPushdown(n) {
 		return n, nil
 	}
 	if !canProject(n, a) {
@@ -74,7 +74,7 @@ func canProject(n sql.Node, a *Analyzer) bool {
 	})
 
 	if containsSubquery {
-		a.Log("skipping pushdown for query with subquery")
+		a.Log("skipping pushdown of projection for query with subquery")
 		return false
 	}
 
@@ -82,7 +82,7 @@ func canProject(n sql.Node, a *Analyzer) bool {
 }
 
 // canDoPushdown returns whether the node given can safely be analyzed for pushdown
-func canDoPushdown(n sql.Node, a *Analyzer) bool {
+func canDoPushdown(n sql.Node) bool {
 	if !n.Resolved() {
 		return false
 	}
@@ -128,19 +128,19 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, exprAliases
 				}
 				return FixFieldIndexesForExpressions(n, scope)
 			case *plan.TableAlias:
-				table, err := pushdownFiltersToTable(a, node, filters, exprAliases, tableAliases)
+				table, err := pushdownFiltersToTable(a, node, scope, filters, exprAliases, tableAliases)
 				if err != nil {
 					return nil, err
 				}
 				return FixFieldIndexesForExpressions(table, scope)
 			case *plan.ResolvedTable:
-				table, err := pushdownFiltersToTable(a, node, filters, exprAliases, tableAliases)
+				table, err := pushdownFiltersToTable(a, node, scope, filters, exprAliases, tableAliases)
 				if err != nil {
 					return nil, err
 				}
 				return FixFieldIndexesForExpressions(table, scope)
 			case *plan.IndexedTableAccess:
-				table, err := pushdownFiltersToTable(a, node, filters, exprAliases, tableAliases)
+				table, err := pushdownFiltersToTable(a, node, scope, filters, exprAliases, tableAliases)
 				if err != nil {
 					return nil, err
 				}
@@ -235,6 +235,7 @@ type NameableNode interface {
 func pushdownFiltersToTable(
 	a *Analyzer,
 	tableNode NameableNode,
+	scope *Scope,
 	filters *filterSet,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
@@ -254,7 +255,7 @@ func pushdownFiltersToTable(
 		filters.markFiltersHandled(handled...)
 		schema := table.Schema()
 
-		handled, err := FixFieldIndexesOnExpressions(schema, handled...)
+		handled, err := FixFieldIndexesOnExpressions(scope, schema, handled...)
 		if err != nil {
 			return nil, err
 		}
@@ -279,7 +280,7 @@ func pushdownFiltersToTable(
 		filters.markFiltersHandled(tableFilters...)
 
 		schema := tableNode.Schema()
-		handled, err := FixFieldIndexesOnExpressions(schema, tableFilters...)
+		handled, err := FixFieldIndexesOnExpressions(scope, schema, tableFilters...)
 		if err != nil {
 			return nil, err
 		}

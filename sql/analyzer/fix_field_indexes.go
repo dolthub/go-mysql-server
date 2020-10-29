@@ -7,11 +7,11 @@ import (
 )
 
 // FixFieldIndexesOnExpressions executes FixFieldIndexes on a list of exprs.
-func FixFieldIndexesOnExpressions(schema sql.Schema, expressions ...sql.Expression) ([]sql.Expression, error) {
+func FixFieldIndexesOnExpressions(scope *Scope, schema sql.Schema, expressions ...sql.Expression) ([]sql.Expression, error) {
 	var result = make([]sql.Expression, len(expressions))
 	for i, e := range expressions {
 		var err error
-		result[i], err = FixFieldIndexes(nil, schema, e)
+		result[i], err = FixFieldIndexes(scope, schema, e)
 		if err != nil {
 			return nil, err
 		}

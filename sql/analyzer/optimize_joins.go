@@ -87,7 +87,7 @@ func transformJoins(
 			}
 
 			primaryTable, secondaryTable, primaryTableExpr, secondaryTableIndex, err :=
-				analyzeJoinIndexes(bnode, cond, indexes, exprAliases, tableAliases, joinType)
+				analyzeJoinIndexes(scope, bnode, cond, indexes, exprAliases, tableAliases, joinType)
 
 			if err != nil {
 				a.Log("Cannot apply index to join: %s", err.Error())
@@ -128,8 +128,7 @@ func transformJoins(
 			// TODO: should we just do this for every query plan as a final part of the analysis?
 			//  This would involve enforcing that every type of Node implement Expressioner.
 			a.Log("transforming node of type: %T", node)
-			// TODO: need the scope here
-			return FixFieldIndexesForExpressions(node, nil)
+			return FixFieldIndexesForExpressions(node, scope)
 		})
 	}
 
@@ -139,6 +138,7 @@ func transformJoins(
 // Analyzes the join's tables and condition to select a left and right table, and an index to use for lookups in the
 // right table. Returns an error if no suitable index can be found.
 func analyzeJoinIndexes(
+	scope *Scope,
 	node plan.BinaryNode,
 	cond sql.Expression,
 	indexes map[string]sql.Index,
@@ -161,7 +161,7 @@ func analyzeJoinIndexes(
 	// left join, or the right as secondary for a right join.
 	if rightIdx != nil && leftTableExprs != nil && joinType != plan.JoinTypeRight &&
 		indexExpressionPresent(rightIdx, rightTableExprs) {
-		primaryTableExpr, err := FixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(rightIdx, leftTableExprs, exprAliases, tableAliases)...)
+		primaryTableExpr, err := FixFieldIndexesOnExpressions(scope, node.Left.Schema(), createPrimaryTableExpr(rightIdx, leftTableExprs, exprAliases, tableAliases)...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -170,7 +170,7 @@ func analyzeJoinIndexes(
 
 	if leftIdx != nil && rightTableExprs != nil && joinType != plan.JoinTypeLeft &&
 		indexExpressionPresent(leftIdx, leftTableExprs) {
-		primaryTableExpr, err := FixFieldIndexesOnExpressions(node.Right.Schema(), createPrimaryTableExpr(leftIdx, rightTableExprs, exprAliases, tableAliases)...)
+		primaryTableExpr, err := FixFieldIndexesOnExpressions(scope, node.Right.Schema(), createPrimaryTableExpr(leftIdx, rightTableExprs, exprAliases, tableAliases)...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}

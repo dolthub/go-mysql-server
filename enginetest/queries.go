@@ -3224,6 +3224,26 @@ var BrokenQueries = []QueryTest{
 			{3, nil, 15.0},
 		},
 	},
+	// Indexed joins in subqueries are broken
+	{
+		`SELECT pk,pk2, 
+							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1 LIMIT 1) 
+							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
+		[]sql.Row{
+			{1, 1, 4},
+			{1, 1, 4},
+		},
+	},
+	// Non-indexed joins in subqueries are broken
+	{
+		`SELECT pk,pk2, 
+							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON opk.c5=tpk.c5 ORDER BY 1 LIMIT 1) 
+							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
+		[]sql.Row{
+			{1, 1, 4},
+			{1, 1, 4},
+		},
+	},
 }
 
 var VersionedQueries = []QueryTest{
