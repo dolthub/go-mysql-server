@@ -15,6 +15,7 @@
 package function
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"strings"
 )
@@ -69,6 +70,11 @@ func NewCurrentDate() sql.Expression {
 	}
 }
 
+func currDateLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	t := ctx.QueryTime()
+	return fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day()), nil
+}
+
 func (c CurrDate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return currDateLogic(ctx, row)
 }
@@ -93,6 +99,11 @@ func NewCurrentTime() sql.Expression {
 	return CurrTime{
 		NoArgFunc: NoArgFunc{"current_time", sql.LongText},
 	}
+}
+
+func currTimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	t := ctx.QueryTime()
+	return fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second()), nil
 }
 
 func (c CurrTime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

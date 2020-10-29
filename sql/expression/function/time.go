@@ -873,16 +873,6 @@ func (ut *UTCTimestamp) WithChildren(children ...sql.Expression) (sql.Expression
 	return NewUTCTimestamp(children...)
 }
 
-func currTimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	t := ctx.QueryTime()
-	return fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second()), nil
-}
-
-func currDateLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	t := ctx.QueryTime()
-	return fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day()), nil
-}
-
 func currDatetimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 	return ctx.QueryTime(), nil
 }

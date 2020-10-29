@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
@@ -89,7 +88,7 @@ type (
 
 type EvalLogic func(*Context, Row) (interface{}, error)
 
-func NewFunction0(name string, fn func() sql.Expression) Function0 {
+func NewFunction0(name string, fn func() Expression) Function0 {
 	return  Function0{
 		Name: name,
 		Fn:   fn,
