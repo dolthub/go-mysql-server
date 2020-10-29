@@ -65,7 +65,7 @@ func NewCurrDate() sql.Expression {
 
 func NewCurrentDate() sql.Expression {
 	return CurrDate{
-		NoArgFunc: NoArgFunc{"curentdate", sql.LongText},
+		NoArgFunc: NoArgFunc{"current_date", sql.LongText},
 	}
 }
 
@@ -74,6 +74,32 @@ func (c CurrDate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 func (c CurrDate) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
+	return NoArgFuncWithChildren(c, expressions)
+}
+
+type CurrTime struct {
+	NoArgFunc
+}
+
+var _ sql.FunctionExpression = CurrTime{}
+
+func NewCurrTime() sql.Expression {
+	return CurrTime{
+		NoArgFunc: NoArgFunc{"curtime", sql.LongText},
+	}
+}
+
+func NewCurrentTime() sql.Expression {
+	return CurrTime{
+		NoArgFunc: NoArgFunc{"current_time", sql.LongText},
+	}
+}
+
+func (c CurrTime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return currTimeLogic(ctx, row)
+}
+
+func (c CurrTime) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
 	return NoArgFuncWithChildren(c, expressions)
 }
 
@@ -94,5 +120,31 @@ func (c ConnectionID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 func (c ConnectionID) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
+	return NoArgFuncWithChildren(c, expressions)
+}
+
+type User struct {
+	NoArgFunc
+}
+
+var _ sql.FunctionExpression = User{}
+
+func NewUser() sql.Expression {
+	return User{
+		NoArgFunc: NoArgFunc{"user", sql.LongText},
+	}
+}
+
+func NewCurrentUser() sql.Expression {
+	return User{
+		NoArgFunc: NoArgFunc{"current_user", sql.LongText},
+	}
+}
+
+func (c User) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return connIDFuncLogic(ctx, row)
+}
+
+func (c User) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
 	return NoArgFuncWithChildren(c, expressions)
 }
