@@ -77,10 +77,9 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		`SELECT pk,pk2, (SELECT pk from one_pk where pk = 1 limit 1) FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
+		`SELECT USER()`,
 		[]sql.Row{
-			{1,1,1},
-			{1,1,1},
+			{"user"},
 		},
 	}
 

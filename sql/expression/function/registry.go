@@ -39,7 +39,7 @@ var Defaults = []sql.Function{
 	NewUnaryFunc("cot", sql.Float64, CotFunc),
 	sql.Function1{Name: "count", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewCount(e) }},
 	NewUnaryFunc("crc32", sql.Uint32, Crc32Func),
-	sql.NewFunction0("curdate", sql.LongText, currDateLogic),
+	sql.NewFunction0("curdate", NewCurrDa),
 	sql.NewFunction0("current_date", sql.LongText, currDateLogic),
 	sql.NewFunction0("current_time", sql.LongText, currTimeLogic),
 	sql.NewFunction0("current_timestamp", sql.Datetime, currDatetimeLogic),
