@@ -237,3 +237,27 @@ func (gl *GetLock) WithChildren(children ...sql.Expression) (sql.Expression, err
 func (gl *GetLock) Type() sql.Type {
 	return sql.Int8
 }
+
+type ReleaseAllLocks struct {
+	NoArgFunc
+	ls *sql.LockSubsystem
+}
+
+var _ sql.FunctionExpression = ReleaseAllLocks{}
+
+func NewReleaseAllLocks(ls *sql.LockSubsystem) func() sql.Expression {
+	return func() sql.Expression {
+		return ReleaseAllLocks{
+			NoArgFunc: NoArgFunc{"release_all_locks", sql.Int32},
+			ls: ls,
+		}
+	}
+}
+
+func (r ReleaseAllLocks) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return r.ls.ReleaseAll(ctx)
+}
+
+func (r ReleaseAllLocks) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
+	return NoArgFuncWithChildren(r, expressions)
+}

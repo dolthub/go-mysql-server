@@ -191,27 +191,3 @@ func (c User) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func (c User) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
 	return NoArgFuncWithChildren(c, expressions)
 }
-
-type ReleaseAllLocks struct {
-	NoArgFunc
-	ls *sql.LockSubsystem
-}
-
-var _ sql.FunctionExpression = ReleaseAllLocks{}
-
-func NewReleaseAllLocks(ls *sql.LockSubsystem) func() sql.Expression {
-	return func() sql.Expression {
-		return ReleaseAllLocks{
-			NoArgFunc: NoArgFunc{"release_all_locks", sql.Int32},
-			ls: ls,
-		}
-	}
-}
-
-func (c ReleaseAllLocks) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return c.ls.ReleaseAll(ctx)
-}
-
-func (c ReleaseAllLocks) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
-	return NoArgFuncWithChildren(c, expressions)
-}
