@@ -126,8 +126,12 @@ func NewCurrTimestamp() sql.Expression {
 	}
 }
 
+func currDatetimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	return ctx.QueryTime(), nil
+}
+
 func (c CurrTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return currTimeLogic(ctx, row)
+	return currDatetimeLogic(ctx, row)
 }
 
 func (c CurrTimestamp) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {

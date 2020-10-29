@@ -873,10 +873,6 @@ func (ut *UTCTimestamp) WithChildren(children ...sql.Expression) (sql.Expression
 	return NewUTCTimestamp(children...)
 }
 
-func currDatetimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	return ctx.QueryTime(), nil
-}
-
 // Date a function takes the DATE part out from a datetime expression.
 type Date struct {
 	expression.UnaryExpression

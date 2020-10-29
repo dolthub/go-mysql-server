@@ -11,7 +11,7 @@ import (
 )
 
 func TestUser(t *testing.T) {
-	userFunc := sql.NewFunction0("user", sql.LongText, userFuncLogic)
+	userFunc := sql.NewFunction0("user", NewUser)
 	fn := userFunc.Fn
 
 	session := sql.NewSession("server", "client", "root", 0)
