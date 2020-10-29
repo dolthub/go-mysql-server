@@ -22,6 +22,8 @@ func getDeletable(node sql.Node) (sql.DeletableTable, error) {
 	switch node := node.(type) {
 	case sql.DeletableTable:
 		return node, nil
+	case *IndexedTableAccess:
+		return getDeletable(node.ResolvedTable)
 	case *ResolvedTable:
 		return getDeletableTable(node.Table)
 	}
