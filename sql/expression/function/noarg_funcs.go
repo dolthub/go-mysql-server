@@ -103,8 +103,32 @@ func (c CurrTime) WithChildren(expressions ...sql.Expression) (sql.Expression, e
 	return NoArgFuncWithChildren(c, expressions)
 }
 
+type CurrTimestamp struct {
+	NoArgFunc
+}
+
+var _ sql.FunctionExpression = CurrTimestamp{}
+
+func NewCurrTimestamp() sql.Expression {
+	return CurrTimestamp{
+		NoArgFunc: NoArgFunc{"current_timestamp", sql.Datetime},
+	}
+}
+
+func (c CurrTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return currTimeLogic(ctx, row)
+}
+
+func (c CurrTimestamp) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
+	return NoArgFuncWithChildren(c, expressions)
+}
+
 type ConnectionID struct {
 	NoArgFunc
+}
+
+func connIDFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	return ctx.ID(), nil
 }
 
 var _ sql.FunctionExpression = ConnectionID{}
@@ -127,6 +151,10 @@ type User struct {
 	NoArgFunc
 }
 
+func userFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	return ctx.Client().User, nil
+}
+
 var _ sql.FunctionExpression = User{}
 
 func NewUser() sql.Expression {
@@ -142,9 +170,33 @@ func NewCurrentUser() sql.Expression {
 }
 
 func (c User) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return connIDFuncLogic(ctx, row)
+	return userFuncLogic(ctx, row)
 }
 
 func (c User) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
+	return NoArgFuncWithChildren(c, expressions)
+}
+
+type ReleaseAllLocks struct {
+	NoArgFunc
+	ls *sql.LockSubsystem
+}
+
+var _ sql.FunctionExpression = ReleaseAllLocks{}
+
+func NewReleaseAllLocks(ls *sql.LockSubsystem) func() sql.Expression {
+	return func() sql.Expression {
+		return ReleaseAllLocks{
+			NoArgFunc: NoArgFunc{"release_all_locks", sql.Int32},
+			ls: ls,
+		}
+	}
+}
+
+func (c ReleaseAllLocks) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return c.ls.ReleaseAll(ctx)
+}
+
+func (c ReleaseAllLocks) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
 	return NoArgFuncWithChildren(c, expressions)
 }

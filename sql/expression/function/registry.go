@@ -7,14 +7,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 )
 
-func connIDFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	return ctx.ID(), nil
-}
-
-func userFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	return ctx.Client().User, nil
-}
-
 // Defaults is the function map with all the default functions.
 var Defaults = []sql.Function{
 	// elt, find_in_set, insert, load_file, locate
@@ -42,7 +34,7 @@ var Defaults = []sql.Function{
 	sql.NewFunction0("curdate", NewCurrDate),
 	sql.NewFunction0("current_date", NewCurrentDate),
 	sql.NewFunction0("current_time", NewCurrentTime),
-	sql.NewFunction0("current_timestamp", sql.Datetime, currDatetimeLogic),
+	sql.NewFunction0("current_timestamp", NewCurrTimestamp),
 	sql.NewFunction0("current_user", NewCurrentUser),
 	sql.NewFunction0("curtime", NewCurrTime),
 	sql.Function1{Name: "date", Fn: NewDate},
@@ -136,7 +128,7 @@ func GetLockingFuncs(ls *sql.LockSubsystem) []sql.Function {
 		sql.Function2{Name: "get_lock", Fn: CreateNewGetLock(ls)},
 		NewNamedLockFunc(ls, "is_free_lock", sql.Int8, IsFreeLockFunc),
 		NewNamedLockFunc(ls, "is_used_lock", sql.Uint32, IsUsedLockFunc),
-		sql.NewFunction0("release_all_locks", sql.Int32, ReleaseAllLocksForLS(ls)),
+		sql.NewFunction0("release_all_locks", NewReleaseAllLocks(ls)),
 		NewNamedLockFunc(ls, "release_lock", sql.Int8, ReleaseLockFunc),
 	}
 }
