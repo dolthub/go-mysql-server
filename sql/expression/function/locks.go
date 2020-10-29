@@ -72,15 +72,6 @@ func (nl *NamedLockFunction) IsNullable() bool {
 	return nl.Child.IsNullable()
 }
 
-// WithChildren implements the Expression interface.
-// func NamedLockFnWithChildren(lockFn sql.Expression, children ...sql.Expression) (sql.Expression, error) {
-// 	if len(children) != 1 {
-// 		return nil, sql.ErrInvalidChildrenNumber.New(nl, len(children), 1)
-// 	}
-//
-// 	return &NamedLockFunction{expression.UnaryExpression{Child: children[0]}, nl.ls, nl.funcName, nl.retType, nl.logic}, nil
-// }
-
 // Type implements the Expression interface.
 func (nl *NamedLockFunction) Type() sql.Type {
 	return nl.retType
@@ -109,7 +100,7 @@ type IsFreeLock struct {
 
 var _ sql.FunctionExpression = &IsFreeLock{}
 
-func NewIsFreeLock(ls *sql.LockSubsystem) func(e sql.Expression) sql.Expression {
+func NewIsFreeLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
 	return func(e sql.Expression) sql.Expression {
 		return &IsFreeLock{
 			NamedLockFunction: NamedLockFunction{
@@ -145,7 +136,7 @@ type IsUsedLock struct {
 
 var _ sql.FunctionExpression = &IsUsedLock{}
 
-func NewIsUsedLock(ls *sql.LockSubsystem) func(e sql.Expression) sql.Expression {
+func NewIsUsedLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
 	return func(e sql.Expression) sql.Expression {
 		return &IsUsedLock{
 			NamedLockFunction: NamedLockFunction{
@@ -181,7 +172,7 @@ type ReleaseLock struct {
 
 var _ sql.FunctionExpression = &ReleaseLock{}
 
-func NewReleaseLock(ls *sql.LockSubsystem) func(e sql.Expression) sql.Expression {
+func NewReleaseLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
 	return func(e sql.Expression) sql.Expression {
 		return &ReleaseLock{
 			NamedLockFunction: NamedLockFunction{
