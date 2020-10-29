@@ -13,7 +13,7 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	defer span.Finish()
 
 	var replacements = make(map[tableCol]tableCol)
-	tableAliases, err := getTableAliases(n)
+	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
 		return nil, err
 	}

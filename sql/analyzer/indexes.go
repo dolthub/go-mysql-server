@@ -22,12 +22,12 @@ type indexLookup struct {
 type indexLookupsByTable map[string]*indexLookup
 
 // getIndexesByTable returns applicable index lookups for each table named in the query node given
-func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node) (indexLookupsByTable, error) {
+func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (indexLookupsByTable, error) {
 	indexSpan, _ := ctx.Span("getIndexesByTable")
 	defer indexSpan.Finish()
 
 	exprAliases := getExpressionAliases(node)
-	tableAliases, err := getTableAliases(node)
+	tableAliases, err := getTableAliases(node, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -756,6 +756,7 @@ func groupExpressionsByOperator(exprs []columnExpr) [][]columnExpr {
 // col refers to `col1`
 // colExpr refers to `col1 + 1`
 // comparand refers to `col2 - 1`
+// comparandCol refers to `col2`
 // comparision refers to `col1 + 1 > col2 - 1`
 type columnExpr struct {
 	// The field (column) being evaluated, which may not be the entire term in the comparison
@@ -764,6 +765,8 @@ type columnExpr struct {
 	colExpr sql.Expression
 	// The expression this field is being compared to (the other term in the comparison)
 	comparand sql.Expression
+	// The other field (column) this field is being compared to (the other term in the comparison)
+	comparandCol *expression.GetField
 	// The comparison expression in which this columnExpr is one term
 	comparison sql.Expression
 }
@@ -797,6 +800,7 @@ func extractColumnExpr(e sql.Expression) (string, *columnExpr) {
 	case *expression.Not:
 		table, colExpr := extractColumnExpr(e.Child)
 		if colExpr != nil {
+			// TODO: handle this better
 			colExpr = &columnExpr{
 				col:        colExpr.col,
 				comparand:  colExpr.comparand,
@@ -820,23 +824,30 @@ func extractColumnExpr(e sql.Expression) (string, *columnExpr) {
 			return "", nil
 		}
 
-		col, ok := left.(*expression.GetField)
-		if !ok {
+		leftCol, rightCol := extractGetField(left), extractGetField(right)
+		if leftCol == nil {
 			return "", nil
 		}
 
-		return col.Table(), &columnExpr{col, left, right, e}
+		return leftCol.Table(), &columnExpr{
+			col:          leftCol,
+			colExpr:      left,
+			comparand:    right,
+			comparandCol: rightCol,
+			comparison:   e,
+		}
 	case *expression.Between:
 		if !isEvaluable(e.Upper) || !isEvaluable(e.Lower) || isEvaluable(e.Val) {
 			return "", nil
 		}
 
-		col, ok := e.Val.(*expression.GetField)
-		if !ok {
+		col := extractGetField(e)
+		if col == nil {
 			return "", nil
 		}
 
-		return col.Table(), &columnExpr{col, nil, nil, e}
+		// TODO: handle this better
+		return col.Table(), &columnExpr{col: col, comparison: e}
 	default:
 		return "", nil
 	}

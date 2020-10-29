@@ -40,7 +40,7 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	}
 
 	exprAliases := getExpressionAliases(n)
-	tableAliases, err := getTableAliases(n)
+	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -50,12 +50,13 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 		return nil, err
 	}
 
-	return transformJoins(a, n, indexes, exprAliases, tableAliases)
+	return transformJoins(a, n, scope, indexes, exprAliases, tableAliases)
 }
 
 func transformJoins(
 	a *Analyzer,
 	n sql.Node,
+	scope *Scope,
 	indexes map[string]sql.Index,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
@@ -86,7 +87,7 @@ func transformJoins(
 			}
 
 			primaryTable, secondaryTable, primaryTableExpr, secondaryTableIndex, err :=
-				analyzeJoinIndexes(bnode, cond, indexes, exprAliases, tableAliases, joinType)
+				analyzeJoinIndexes(scope, bnode, cond, indexes, exprAliases, tableAliases, joinType)
 
 			if err != nil {
 				a.Log("Cannot apply index to join: %s", err.Error())
@@ -94,7 +95,7 @@ func transformJoins(
 			}
 
 			joinSchema := append(primaryTable.Schema(), secondaryTable.Schema()...)
-			joinCond, err := FixFieldIndexes(joinSchema, cond)
+			joinCond, err := FixFieldIndexes(scope, joinSchema, cond)
 			if err != nil {
 				return nil, err
 			}
@@ -103,7 +104,7 @@ func transformJoins(
 			secondaryTable, err = plan.TransformUp(secondaryTable, func(node sql.Node) (sql.Node, error) {
 				if rt, ok := node.(*plan.ResolvedTable); ok {
 					a.Log("replacing resolve table %s with IndexedTable", rt.Name())
-					return plan.NewIndexedTable(rt), nil
+					return plan.NewIndexedTable(rt, secondaryTableIndex, primaryTableExpr), nil
 				}
 				return node, nil
 			})
@@ -127,7 +128,7 @@ func transformJoins(
 			// TODO: should we just do this for every query plan as a final part of the analysis?
 			//  This would involve enforcing that every type of Node implement Expressioner.
 			a.Log("transforming node of type: %T", node)
-			return FixFieldIndexesForExpressions(node)
+			return FixFieldIndexesForExpressions(node, scope)
 		})
 	}
 
@@ -137,6 +138,7 @@ func transformJoins(
 // Analyzes the join's tables and condition to select a left and right table, and an index to use for lookups in the
 // right table. Returns an error if no suitable index can be found.
 func analyzeJoinIndexes(
+	scope *Scope,
 	node plan.BinaryNode,
 	cond sql.Expression,
 	indexes map[string]sql.Index,
@@ -159,7 +161,7 @@ func analyzeJoinIndexes(
 	// left join, or the right as secondary for a right join.
 	if rightIdx != nil && leftTableExprs != nil && joinType != plan.JoinTypeRight &&
 		indexExpressionPresent(rightIdx, rightTableExprs) {
-		primaryTableExpr, err := FixFieldIndexesOnExpressions(node.Left.Schema(), createPrimaryTableExpr(rightIdx, leftTableExprs, exprAliases, tableAliases)...)
+		primaryTableExpr, err := FixFieldIndexesOnExpressions(scope, node.Left.Schema(), createPrimaryTableExpr(rightIdx, leftTableExprs, exprAliases, tableAliases)...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -168,7 +170,7 @@ func analyzeJoinIndexes(
 
 	if leftIdx != nil && rightTableExprs != nil && joinType != plan.JoinTypeLeft &&
 		indexExpressionPresent(leftIdx, leftTableExprs) {
-		primaryTableExpr, err := FixFieldIndexesOnExpressions(node.Right.Schema(), createPrimaryTableExpr(leftIdx, rightTableExprs, exprAliases, tableAliases)...)
+		primaryTableExpr, err := FixFieldIndexesOnExpressions(scope, node.Right.Schema(), createPrimaryTableExpr(leftIdx, rightTableExprs, exprAliases, tableAliases)...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -363,6 +365,15 @@ func extractExpressions(colExprs []*columnExpr) []sql.Expression {
 	return result
 }
 
+// extractComparands returns the comparand Expressions in the slice of columnExprs given.
+func extractComparands(colExprs []*columnExpr) []sql.Expression {
+	result := make([]sql.Expression, len(colExprs))
+	for i, expr := range colExprs {
+		result[i] = expr.comparand
+	}
+	return result
+}
+
 // joinExprsByTable returns a map of the expressions given keyed by their table name.
 func joinExprsByTable(exprs []sql.Expression) map[string][]*columnExpr {
 	var result = make(map[string][]*columnExpr)
@@ -395,8 +406,20 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *columnExpr, rightCol *col
 			return nil, nil
 		}
 
-		leftCol = &columnExpr{leftField, left, right, e}
-		rightCol = &columnExpr{rightField, right, left, e}
+		leftCol = &columnExpr{
+			col:          leftField,
+			colExpr:      left,
+			comparand:    right,
+			comparandCol: rightField,
+			comparison:   e,
+		}
+		rightCol = &columnExpr{
+			col:          rightField,
+			colExpr:      right,
+			comparand:    left,
+			comparandCol: leftField,
+			comparison:   e,
+		}
 		return leftCol, rightCol
 	default:
 		return nil, nil

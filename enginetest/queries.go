@@ -300,6 +300,7 @@ var QueryTests = []QueryTest{
 		"SELECT 100 NOT IN (SELECT i2 FROM niltable)",
 		[]sql.Row{{nil}},
 	},
+
 	{
 		"SELECT 1 IN (2,3,4,null)",
 		[]sql.Row{{nil}},
@@ -2198,6 +2199,56 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		`SELECT i FROM mytable mt 
+						 WHERE (SELECT i FROM mytable where i = mt.i and i > 2) IS NOT NULL
+						 AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
+						 ORDER BY i`,
+		[]sql.Row{
+			{3},
+		},
+	},
+	{
+		`SELECT i FROM mytable mt 
+						 WHERE (SELECT i FROM mytable where i = mt.i and i > 1) IS NOT NULL
+						 AND (SELECT i2 FROM othertable where i2 = i and i < 3) IS NOT NULL
+						 ORDER BY i`,
+		[]sql.Row{
+			{2},
+		},
+	},
+	{
+		`SELECT i FROM mytable mt 
+						 WHERE (SELECT i FROM mytable where i = mt.i) IS NOT NULL
+						 AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
+						 ORDER BY i`,
+		[]sql.Row{
+			{1}, {2}, {3},
+		},
+	},
+	{
+		`SELECT pk,pk2, (SELECT pk from one_pk where pk = 1 limit 1) FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
+		[]sql.Row{
+			{1, 1, 1},
+			{1, 1, 1},
+		},
+	},
+	{
+		`SELECT i FROM mytable 
+						 WHERE (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
+						 ORDER BY i`,
+		[]sql.Row{
+			{1}, {2}, {3},
+		},
+	},
+	{
+		`SELECT i FROM mytable mt 
+						 WHERE (SELECT i2 FROM othertable ot where ot.i2 = mt.i) IS NOT NULL
+						 ORDER BY i`,
+		[]sql.Row{
+			{1}, {2}, {3},
+		},
+	},
+	{
 		`SELECT (SELECT i FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
 		[]sql.Row{{int64(1)}},
 	},
@@ -3171,6 +3222,26 @@ var BrokenQueries = []QueryTest{
 			{1, 50.0, 10.0},
 			{2, 30.0, 15.0},
 			{3, nil, 15.0},
+		},
+	},
+	// Indexed joins in subqueries are broken
+	{
+		`SELECT pk,pk2, 
+							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1 LIMIT 1) 
+							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
+		[]sql.Row{
+			{1, 1, 4},
+			{1, 1, 4},
+		},
+	},
+	// Non-indexed joins in subqueries are broken
+	{
+		`SELECT pk,pk2, 
+							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON opk.c5=tpk.c5 ORDER BY 1 LIMIT 1) 
+							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
+		[]sql.Row{
+			{1, 1, 4},
+			{1, 1, 4},
 		},
 	},
 }

@@ -21,7 +21,7 @@ func (f filtersByTable) merge(f2 filtersByTable) {
 // getFiltersByTable returns a map of table name to filter expressions on that table for the node provided. Returns an
 // error only the case that the filters contained in the node given cannot all be separated into tables (some of them
 // have more than one table, or no table)
-func getFiltersByTable(_ *sql.Context, n sql.Node) (filtersByTable, error) {
+func getFiltersByTable(n sql.Node) (filtersByTable, error) {
 	filters := make(filtersByTable)
 	var err error
 	plan.Inspect(n, func(node sql.Node) bool {

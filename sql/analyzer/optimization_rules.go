@@ -94,7 +94,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 		left, right := join.Left, join.Right
 		if len(leftFilters) > 0 {
-			leftFilters, err := FixFieldIndexes(left.Schema(), expression.JoinAnd(leftFilters...))
+			leftFilters, err := FixFieldIndexes(scope, left.Schema(), expression.JoinAnd(leftFilters...))
 			if err != nil {
 				return nil, err
 			}
@@ -103,7 +103,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 
 		if len(rightFilters) > 0 {
-			rightFilters, err := FixFieldIndexes(right.Schema(), expression.JoinAnd(rightFilters...))
+			rightFilters, err := FixFieldIndexes(scope, right.Schema(), expression.JoinAnd(rightFilters...))
 			if err != nil {
 				return nil, err
 			}

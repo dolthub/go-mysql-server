@@ -35,7 +35,7 @@ func (u *Union) Schema() sql.Schema {
 // RowIter implements the Node interface.
 func (u *Union) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Union")
-	li, err := u.Left.RowIter(ctx, nil)
+	li, err := u.Left.RowIter(ctx, row)
 	if err != nil {
 		span.Finish()
 		return nil, err
@@ -43,7 +43,7 @@ func (u *Union) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	ui := &unionIter{
 		li,
 		func() (sql.RowIter, error) {
-			return u.Right.RowIter(ctx, nil)
+			return u.Right.RowIter(ctx, row)
 		},
 	}
 	return sql.NewSpanIter(span, ui), nil

@@ -77,16 +77,15 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		"SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1 ORDER BY 1",
+		`SELECT USER()`,
 		[]sql.Row{
-			{2, 2, nil},
-			{3, 3, nil},
+			{"user"},
 		},
 	}
 
 	fmt.Sprintf("%v", test)
 
-	harness := newMemoryHarness("", 1, testNumPartitions, true, nil)
+	harness := newMemoryHarness("", 1, testNumPartitions, true, mergableIndexDriver)
 	engine := enginetest.NewEngine(t, harness)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true

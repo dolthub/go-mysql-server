@@ -1,8 +1,6 @@
 package sql
 
 import (
-	"strings"
-
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
@@ -90,53 +88,11 @@ type (
 
 type EvalLogic func(*Context, Row) (interface{}, error)
 
-type NoArgFunc struct {
-	Name    string
-	SQLType Type
-	Logic   EvalLogic
-}
-
-var _ FunctionExpression = NoArgFunc{}
-
-// NewFunction0 returns a sql function that takes 0 arguments
-func NewFunction0(name string, sqlType Type, logic EvalLogic) Function0 {
-	fn := func() Expression {
-		return NoArgFunc{name, sqlType, logic}
+func NewFunction0(name string, fn func() Expression) Function0 {
+	return Function0{
+		Name: name,
+		Fn:   fn,
 	}
-
-	return Function0{Name: name, Fn: fn}
-}
-
-// FunctionName implements sql.FunctionExpression
-func (fn NoArgFunc) FunctionName() string {
-	return fn.Name
-}
-
-// Type implements the Expression interface.
-func (fn NoArgFunc) Type() Type { return fn.SQLType }
-
-func (fn NoArgFunc) String() string { return strings.ToUpper(fn.Name) + "()" }
-
-// IsNullable implements the Expression interface.
-func (fn NoArgFunc) IsNullable() bool { return false }
-
-// Resolved implements the Expression interface.
-func (fn NoArgFunc) Resolved() bool { return true }
-
-// Children implements the Expression interface.
-func (fn NoArgFunc) Children() []Expression { return nil }
-
-// Eval implements the Expression interface.
-func (fn NoArgFunc) Eval(ctx *Context, r Row) (interface{}, error) {
-	return fn.Logic(ctx, r)
-}
-
-// WithChildren implements the Expression interface.
-func (fn NoArgFunc) WithChildren(children ...Expression) (Expression, error) {
-	if len(children) != 0 {
-		return nil, ErrInvalidChildrenNumber.New(fn, len(children), 0)
-	}
-	return fn, nil
 }
 
 // Call implements the Function interface.

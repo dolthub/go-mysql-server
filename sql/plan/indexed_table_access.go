@@ -10,7 +10,6 @@ import (
 
 var ErrNoIndexableTable = errors.NewKind("expected an IndexableTable, couldn't find one in %v")
 var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, couldn't find one in %v")
-var ErrIndexedTableAccessNotInitialized = errors.NewKind("IndexedTableAccess must be initialized before RowIter is called")
 
 // IndexedTableAccess represents an indexed lookup of a particular ResolvedTable. Unlike other kinds of UnaryNodes,
 // this node supports being repeatedly initialized and being iterated over multiple times, potentially with different
@@ -18,30 +17,41 @@ var ErrIndexedTableAccessNotInitialized = errors.NewKind("IndexedTableAccess mus
 // (wrapping) a ResolvedTable.
 type IndexedTableAccess struct {
 	*ResolvedTable
-	indexedTable sql.Table
+	index    sql.Index
+	keyExprs []sql.Expression
 }
 
-func (i *IndexedTableAccess) SetIndexLookup(ctx *sql.Context, lookup sql.IndexLookup) error {
-	resolvedTable, ok := i.ResolvedTable.Table.(sql.IndexAddressableTable)
-	if !ok {
-		return ErrNoIndexableTable.New(i.ResolvedTable)
-	}
-
-	i.indexedTable = resolvedTable.WithIndexLookup(lookup)
-	return nil
-}
+var _ sql.Node = (*IndexedTableAccess)(nil)
 
 func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	if i.indexedTable == nil {
-		return nil, ErrIndexedTableAccessNotInitialized.New()
+	resolvedTable, ok := i.ResolvedTable.Table.(sql.IndexAddressableTable)
+	if !ok {
+		return nil, ErrNoIndexableTable.New(i.ResolvedTable)
 	}
 
-	partIter, err := i.indexedTable.Partitions(ctx)
+	// evaluate the key expressions against the row given to obtain the key for an index lookup
+	key := make([]interface{}, len(i.keyExprs))
+	for i, keyExpr := range i.keyExprs {
+		var err error
+		key[i], err = keyExpr.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	lookup, err := i.index.Get(key...)
 	if err != nil {
 		return nil, err
 	}
 
-	return sql.NewTableRowIter(ctx, i.indexedTable, partIter), nil
+	indexedTable := resolvedTable.WithIndexLookup(lookup)
+
+	partIter, err := indexedTable.Partitions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewTableRowIter(ctx, indexedTable, partIter), nil
 }
 
 func (i *IndexedTableAccess) DebugString() string {
@@ -58,13 +68,13 @@ func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error
 		return nil, sql.ErrInvalidChildType.New(i, children[0], (*ResolvedTable)(nil))
 	}
 
-	return NewIndexedTable(resolvedTable), nil
+	return NewIndexedTable(resolvedTable, i.index, i.keyExprs), nil
 }
 
-func NewIndexedTable(resolvedTable *ResolvedTable) *IndexedTableAccess {
+func NewIndexedTable(resolvedTable *ResolvedTable, index sql.Index, keyExprs []sql.Expression) *IndexedTableAccess {
 	return &IndexedTableAccess{
 		ResolvedTable: resolvedTable,
+		index:         index,
+		keyExprs:      keyExprs,
 	}
 }
-
-var _ sql.Node = (*IndexedTableAccess)(nil)

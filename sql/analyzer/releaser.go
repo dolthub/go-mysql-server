@@ -21,7 +21,7 @@ func (r *Releaser) Children() []sql.Node {
 }
 
 func (r *Releaser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	iter, err := r.Child.RowIter(ctx, nil)
+	iter, err := r.Child.RowIter(ctx, row)
 	if err != nil {
 		r.Release()
 		return nil, err

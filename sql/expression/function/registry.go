@@ -7,14 +7,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 )
 
-func connIDFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	return ctx.ID(), nil
-}
-
-func userFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	return ctx.Client().User, nil
-}
-
 // Defaults is the function map with all the default functions.
 var Defaults = []sql.Function{
 	// elt, find_in_set, insert, load_file, locate
@@ -34,17 +26,17 @@ var Defaults = []sql.Function{
 	sql.FunctionN{Name: "coalesce", Fn: NewCoalesce},
 	sql.FunctionN{Name: "concat", Fn: NewConcat},
 	sql.FunctionN{Name: "concat_ws", Fn: NewConcatWithSeparator},
-	sql.NewFunction0("connection_id", sql.Uint32, connIDFuncLogic),
+	sql.NewFunction0("connection_id", NewConnectionID),
 	NewUnaryFunc("cos", sql.Float64, CosFunc),
 	NewUnaryFunc("cot", sql.Float64, CotFunc),
 	sql.Function1{Name: "count", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewCount(e) }},
 	NewUnaryFunc("crc32", sql.Uint32, Crc32Func),
-	sql.NewFunction0("curdate", sql.LongText, currDateLogic),
-	sql.NewFunction0("current_date", sql.LongText, currDateLogic),
-	sql.NewFunction0("current_time", sql.LongText, currTimeLogic),
-	sql.NewFunction0("current_timestamp", sql.Datetime, currDatetimeLogic),
-	sql.NewFunction0("current_user", sql.LongText, userFuncLogic),
-	sql.NewFunction0("curtime", sql.LongText, currTimeLogic),
+	sql.NewFunction0("curdate", NewCurrDate),
+	sql.NewFunction0("current_date", NewCurrentDate),
+	sql.NewFunction0("current_time", NewCurrentTime),
+	sql.NewFunction0("current_timestamp", NewCurrTimestamp),
+	sql.NewFunction0("current_user", NewCurrentUser),
+	sql.NewFunction0("curtime", NewCurrTime),
 	sql.Function1{Name: "date", Fn: NewDate},
 	sql.FunctionN{Name: "date_add", Fn: NewDateAdd},
 	sql.Function2{Name: "date_format", Fn: NewDateFormat},
@@ -123,7 +115,7 @@ var Defaults = []sql.Function{
 	sql.FunctionN{Name: "utc_timestamp", Fn: NewUTCTimestamp},
 	sql.Function2{Name: "timediff", Fn: NewTimeDiff},
 	sql.Function1{Name: "upper", Fn: NewUpper},
-	sql.NewFunction0("user", sql.LongText, userFuncLogic),
+	sql.NewFunction0("user", NewUser),
 	sql.FunctionN{Name: "week", Fn: NewWeek},
 	sql.Function1{Name: "weekday", Fn: NewWeekday},
 	NewUnaryDatetimeFunc("weekofyear", sql.Uint64, weekFuncLogic),
@@ -134,9 +126,9 @@ var Defaults = []sql.Function{
 func GetLockingFuncs(ls *sql.LockSubsystem) []sql.Function {
 	return []sql.Function{
 		sql.Function2{Name: "get_lock", Fn: CreateNewGetLock(ls)},
-		NewNamedLockFunc(ls, "is_free_lock", sql.Int8, IsFreeLockFunc),
-		NewNamedLockFunc(ls, "is_used_lock", sql.Uint32, IsUsedLockFunc),
-		sql.NewFunction0("release_all_locks", sql.Int32, ReleaseAllLocksForLS(ls)),
-		NewNamedLockFunc(ls, "release_lock", sql.Int8, ReleaseLockFunc),
+		sql.Function1{Name: "is_free_lock", Fn: NewIsFreeLock(ls)},
+		sql.Function1{Name: "is_used_lock", Fn: NewIsUsedLock(ls)},
+		sql.NewFunction0("release_all_locks", NewReleaseAllLocks(ls)),
+		sql.Function1{Name: "release_lock", Fn: NewReleaseLock(ls)},
 	}
 }
