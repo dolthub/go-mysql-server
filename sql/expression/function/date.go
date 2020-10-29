@@ -365,3 +365,36 @@ func (ut *UnixTimestamp) String() string {
 		return "UNIX_TIMESTAMP()"
 	}
 }
+
+type CurrDate struct {
+	NoArgFunc
+}
+
+var _ sql.FunctionExpression = CurrDate{}
+
+func NewCurrDate() sql.Expression {
+	return CurrDate{
+		NoArgFunc: NoArgFunc{"curdate", sql.LongText},
+	}
+}
+
+func NewCurrentDate() sql.Expression {
+	return CurrDate{
+		NoArgFunc: NoArgFunc{"current_date", sql.LongText},
+	}
+}
+
+func currDateLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	t := ctx.QueryTime()
+	return fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day()), nil
+}
+
+// Eval implements sql.Expression
+func (c CurrDate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return currDateLogic(ctx, row)
+}
+
+// WithChildren implements sql.Expression
+func (c CurrDate) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
+	return NoArgFuncWithChildren(c, expressions)
+}

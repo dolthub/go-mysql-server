@@ -1085,3 +1085,62 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, ErrInvalidArgumentType.New("timediff")
 	}
 }
+
+type CurrTime struct {
+	NoArgFunc
+}
+
+var _ sql.FunctionExpression = CurrTime{}
+
+func NewCurrTime() sql.Expression {
+	return CurrTime{
+		NoArgFunc: NoArgFunc{"curtime", sql.LongText},
+	}
+}
+
+func NewCurrentTime() sql.Expression {
+	return CurrTime{
+		NoArgFunc: NoArgFunc{"current_time", sql.LongText},
+	}
+}
+
+func currTimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	t := ctx.QueryTime()
+	return fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second()), nil
+}
+
+// Eval implements sql.Expression
+func (c CurrTime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return currTimeLogic(ctx, row)
+}
+
+// WithChildren implements sql.Expression
+func (c CurrTime) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
+	return NoArgFuncWithChildren(c, expressions)
+}
+
+type CurrTimestamp struct {
+	NoArgFunc
+}
+
+var _ sql.FunctionExpression = CurrTimestamp{}
+
+func NewCurrTimestamp() sql.Expression {
+	return CurrTimestamp{
+		NoArgFunc: NoArgFunc{"current_timestamp", sql.Datetime},
+	}
+}
+
+func currDatetimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	return ctx.QueryTime(), nil
+}
+
+// Eval implements sql.Expression
+func (c CurrTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return currDatetimeLogic(ctx, row)
+}
+
+// WithChildren implements sql.Expression
+func (c CurrTimestamp) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
+	return NoArgFuncWithChildren(c, expressions)
+}

@@ -15,11 +15,12 @@
 package function
 
 import (
-	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"strings"
 )
 
+// NoArgFunc is a helper type to reduce boilerplate in functions that take no arguments. Implements most of
+// sql.FunctionExpression.
 type NoArgFunc struct {
 	Name    string
 	SQLType sql.Type
@@ -50,144 +51,4 @@ func NoArgFuncWithChildren(fn sql.Expression, children []sql.Expression) (sql.Ex
 		return nil, sql.ErrInvalidChildrenNumber.New(fn, len(children), 0)
 	}
 	return fn, nil
-}
-
-type CurrDate struct {
-	NoArgFunc
-}
-
-var _ sql.FunctionExpression = CurrDate{}
-
-func NewCurrDate() sql.Expression {
-	return CurrDate{
-		NoArgFunc: NoArgFunc{"curdate", sql.LongText},
-	}
-}
-
-func NewCurrentDate() sql.Expression {
-	return CurrDate{
-		NoArgFunc: NoArgFunc{"current_date", sql.LongText},
-	}
-}
-
-func currDateLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	t := ctx.QueryTime()
-	return fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day()), nil
-}
-
-func (c CurrDate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return currDateLogic(ctx, row)
-}
-
-func (c CurrDate) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
-	return NoArgFuncWithChildren(c, expressions)
-}
-
-type CurrTime struct {
-	NoArgFunc
-}
-
-var _ sql.FunctionExpression = CurrTime{}
-
-func NewCurrTime() sql.Expression {
-	return CurrTime{
-		NoArgFunc: NoArgFunc{"curtime", sql.LongText},
-	}
-}
-
-func NewCurrentTime() sql.Expression {
-	return CurrTime{
-		NoArgFunc: NoArgFunc{"current_time", sql.LongText},
-	}
-}
-
-func currTimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	t := ctx.QueryTime()
-	return fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second()), nil
-}
-
-func (c CurrTime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return currTimeLogic(ctx, row)
-}
-
-func (c CurrTime) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
-	return NoArgFuncWithChildren(c, expressions)
-}
-
-type CurrTimestamp struct {
-	NoArgFunc
-}
-
-var _ sql.FunctionExpression = CurrTimestamp{}
-
-func NewCurrTimestamp() sql.Expression {
-	return CurrTimestamp{
-		NoArgFunc: NoArgFunc{"current_timestamp", sql.Datetime},
-	}
-}
-
-func currDatetimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	return ctx.QueryTime(), nil
-}
-
-func (c CurrTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return currDatetimeLogic(ctx, row)
-}
-
-func (c CurrTimestamp) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
-	return NoArgFuncWithChildren(c, expressions)
-}
-
-type ConnectionID struct {
-	NoArgFunc
-}
-
-func connIDFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	return ctx.ID(), nil
-}
-
-var _ sql.FunctionExpression = ConnectionID{}
-
-func NewConnectionID() sql.Expression {
-	return ConnectionID{
-		NoArgFunc: NoArgFunc{"connection_id", sql.Uint32},
-	}
-}
-
-func (c ConnectionID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return connIDFuncLogic(ctx, row)
-}
-
-func (c ConnectionID) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
-	return NoArgFuncWithChildren(c, expressions)
-}
-
-type User struct {
-	NoArgFunc
-}
-
-func userFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	return ctx.Client().User, nil
-}
-
-var _ sql.FunctionExpression = User{}
-
-func NewUser() sql.Expression {
-	return User{
-		NoArgFunc: NoArgFunc{"user", sql.LongText},
-	}
-}
-
-func NewCurrentUser() sql.Expression {
-	return User{
-		NoArgFunc: NoArgFunc{"current_user", sql.LongText},
-	}
-}
-
-func (c User) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return userFuncLogic(ctx, row)
-}
-
-func (c User) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
-	return NoArgFuncWithChildren(c, expressions)
 }
