@@ -25,6 +25,8 @@ func getUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 	switch node := node.(type) {
 	case sql.UpdatableTable:
 		return node, nil
+	case *IndexedTableAccess:
+		return getUpdatable(node.ResolvedTable)
 	case *ResolvedTable:
 		return getUpdatableTable(node.Table)
 	}
