@@ -21,9 +21,21 @@ func shouldParallelize(node sql.Node, scope *Scope) bool {
 		return false
 	}
 
-	// Do not try to parallelize index operations or schema operations
+	// Do not try to parallelize DDL or descriptive operations
 	switch node.(type) {
-	case *plan.CreateForeignKey, *plan.DropForeignKey, *plan.AlterIndex, *plan.CreateIndex, *plan.Describe, *plan.DropIndex, *plan.ShowCreateTable:
+	case *plan.CreateTable,*plan.DropTable,
+		*plan.AddColumn,*plan.ModifyColumn,*plan.DropColumn,
+		*plan.RenameTable, *plan.RenameColumn,
+		*plan.CreateIndex,*plan.AlterIndex,*plan.DropIndex,
+		*plan.CreateForeignKey,*plan.DropForeignKey,
+		*plan.CreateTrigger,*plan.DropTrigger,
+		*plan.ShowTables, *plan.ShowCreateTable,
+		*plan.ShowTriggers,*plan.ShowCreateTrigger,
+		*plan.ShowDatabases, *plan.ShowCreateDatabase,
+		*plan.ShowColumns, *plan.ShowIndexes,
+		*plan.ShowProcessList, *plan.ShowTableStatus,
+		*plan.ShowVariables, *plan.ShowWarnings,
+		*plan.Describe:
 		return false
 	default:
 		return true

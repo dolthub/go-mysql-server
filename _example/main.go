@@ -8,6 +8,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 )
 
 // Example of how to implement a MySQL server based on a Engine:
@@ -26,7 +27,7 @@ import (
 func main() {
 	engine := sqle.NewDefault()
 	engine.AddDatabase(createTestDatabase())
-	engine.AddDatabase(sql.NewInformationSchemaDatabase(engine.Catalog))
+	engine.AddDatabase(information_schema.NewInformationSchemaDatabase(engine.Catalog))
 
 	config := server.Config{
 		Protocol: "tcp",

@@ -11,6 +11,10 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dolthub/vitess v0.0.0-20201009075426-dab8291dcb1b h1:cc/rikSvXHuZaXjF2mxgUJzHE7MntbXqm31aIYKRZPg=
 github.com/dolthub/vitess v0.0.0-20201009075426-dab8291dcb1b/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
+github.com/dolthub/vitess v0.0.0-20201029194225-fde3230ed7ff h1:FITQHnMxA+bNgNoZuxSVoir+HTXrqbCflHze1Z+DP4g=
+github.com/dolthub/vitess v0.0.0-20201029194225-fde3230ed7ff/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
+github.com/dolthub/vitess v0.0.0-20201030211154-aac4fea7230f h1:My5J2+UejT0tivbgBYBePhr+7Xc5FoOW5ENU5ZwmKf8=
+github.com/dolthub/vitess v0.0.0-20201030211154-aac4fea7230f/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/fastly/go-utils v0.0.0-20180712184237-d95a45783239 h1:Ghm4eQYC0nEPnSJdVkTrXpu9KtoVCSo1hg7mtI7G9KU=

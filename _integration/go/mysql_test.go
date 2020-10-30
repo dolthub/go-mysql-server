@@ -77,12 +77,12 @@ func TestGrafana(t *testing.T) {
 			[][]string{{""}},
 		},
 		{
-			`describe table mytable`,
+			`describe mytable`,
 			[][]string{
-				{"name", "TEXT"},
-				{"email", "TEXT"},
-				{"phone_numbers", "JSON"},
-				{"created_at", "TIMESTAMP"},
+				{"name", "text", "NO", "", "", ""},
+				{"email", "text", "NO", "", "", ""},
+				{"phone_numbers", "json", "NO", "", "", ""},
+				{"created_at", "timestamp", "NO", "", "", ""},
 			},
 		},
 		{
