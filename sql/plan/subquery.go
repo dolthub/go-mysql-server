@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"github.com/cespare/xxhash"
 	"hash"
+	"io"
 	"sync"
 
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -205,25 +206,24 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 		return nil, err
 	}
 
-	rows, err := sql.RowIterToRows(iter)
-	if err != nil {
+	// Reduce the result row to the size of the expected schema. This means chopping off the first len(row) columns.
+	col := len(row)
+	var result []interface{}
+	for {
+		row, err := iter.Next()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, row[col])
+	}
+
+	if err := iter.Close(); err != nil {
 		return nil, err
-	}
-
-	if len(rows) == 0 {
-		return nil, nil
-	}
-
-	// TODO: fix this. This should always be true, but isn't, because we don't consistently pass the scope row in all
-	//  parts of the engine.
-	col := 0
-	if len(row) < len(rows[0]) {
-		col = len(row)
-	}
-
-	var result = make([]interface{}, len(rows))
-	for i, row := range rows {
-		result[i] = row[col]
 	}
 
 	if s.canCacheResults {
