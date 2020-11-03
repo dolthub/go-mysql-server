@@ -196,6 +196,23 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 		return s.cache.([]interface{}), nil
 	}
 
+	result, err := s.evalMultiple(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if s.canCacheResults {
+		s.cacheMu.Lock()
+		if s.resultsCached == false {
+			s.cache, s.resultsCached = result, true
+		}
+		s.cacheMu.Unlock()
+	}
+
+	return result, nil
+}
+
+func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
 	q, err := TransformUp(s.Query, prependRowInPlan(row))
 	if err != nil {
 		return nil, err
@@ -226,14 +243,6 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 		return nil, err
 	}
 
-	if s.canCacheResults {
-		s.cacheMu.Lock()
-		if s.resultsCached == false {
-			s.cache, s.resultsCached = result, true
-		}
-		s.cacheMu.Unlock()
-	}
-
 	return result, nil
 }
 
@@ -246,14 +255,7 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 		return s.hashCache, nil
 	}
 
-	rows, err := s.EvalMultiple(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: we need to clean up the row cache at some point
-	hashCache, _ := ctx.Memory.NewHistoryCache()
-	err = putAllRows(hashCache, rows)
+	result, err := s.evalMultiple(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -261,12 +263,20 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 	if s.canCacheResults {
 		s.cacheMu.Lock()
 		defer s.cacheMu.Unlock()
-		if s.resultsCached == false || s.hashCache == nil {
-			s.cache, s.hashCache, s.resultsCached = rows, hashCache, true
+		if !s.resultsCached || s.hashCache == nil {
+			// TODO: we need to clean up the row cache at some point
+			hashCache, _ := ctx.Memory.NewHistoryCache()
+			err = putAllRows(hashCache, result)
+			if err != nil {
+				return nil, err
+			}
+			s.cache, s.hashCache, s.resultsCached = result, hashCache, true
 		}
+		return s.hashCache, nil
 	}
 
-	return hashCache, nil
+	cache := sql.NewMapCache()
+	return cache, putAllRows(cache, result)
 }
 
 func putAllRows(cache sql.KeyValueCache, vals []interface{}) error {

@@ -87,6 +87,29 @@ func (c *rowsCache) Dispose() {
 	c.rows = nil
 }
 
+type mapCache struct {
+	cache map[uint64]interface{}
+}
+
+func (m mapCache) Put(u uint64, i interface{}) error {
+	m.cache[u] = i
+	return nil
+}
+
+func (m mapCache) Get(u uint64) (interface{}, error) {
+	return m.cache[u], nil
+}
+
+func (m mapCache) Size() int {
+	return len(m.cache)
+}
+
+func NewMapCache() mapCache {
+	return mapCache{
+		cache: make(map[uint64]interface{}),
+	}
+}
+
 type historyCache struct {
 	memory   Freeable
 	reporter Reporter
