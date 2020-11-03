@@ -64,7 +64,10 @@ func (n *ShowIndexes) Schema() sql.Schema {
 func (n *ShowIndexes) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	table, ok := n.Child.(*ResolvedTable)
 	if !ok {
-		panic(fmt.Sprintf("unexpected type %T", n.Child))
+		table, ok = n.Child.Children()[0].(*ResolvedTable)
+		if !ok {
+			panic(fmt.Sprintf("unexpected type %T", n.Child))
+		}
 	}
 
 	return &showIndexesIter{

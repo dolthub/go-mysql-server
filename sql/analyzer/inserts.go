@@ -15,11 +15,8 @@
 package analyzer
 
 import (
-	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -71,7 +68,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return nil, err
 	}
 
-	project, err := wrapRowSource(ctx, a, insert, dstSchema, insertable.Name(), columnNames)
+	project, err := wrapRowSource(ctx, insert, insertable, columnNames)
 	if err != nil {
 		return nil, err
 	}
@@ -81,9 +78,9 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 
 // wrapRowSource wraps the original row source in a projection so that its schema matches the full schema of the
 // underlying table, in the same order.
-func wrapRowSource(ctx *sql.Context, a *Analyzer, insert *plan.InsertInto, dstSchema sql.Schema, tableName string, columnNames []string) (sql.Node, error) {
-	projExprs := make([]sql.Expression, len(dstSchema))
-	for i, f := range dstSchema {
+func wrapRowSource(ctx *sql.Context, insert *plan.InsertInto, destTbl sql.Table, columnNames []string) (sql.Node, error) {
+	projExprs := make([]sql.Expression, len(destTbl.Schema()))
+	for i, f := range destTbl.Schema() {
 		found := false
 		for j, col := range columnNames {
 			if f.Name == col {
@@ -101,7 +98,7 @@ func wrapRowSource(ctx *sql.Context, a *Analyzer, insert *plan.InsertInto, dstSc
 		}
 
 		if f.AutoIncrement {
-			ai, err := makeAutoIncrement(ctx, a, projExprs[i], f.Name, tableName)
+			ai, err := expression.NewAutoIncrement(ctx, destTbl, projExprs[i])
 			if err != nil {
 				return nil, err
 			}
@@ -191,22 +188,4 @@ func validateRowSource(values sql.Node, projExprs []sql.Expression) error {
 	default:
 		return plan.ErrInsertIntoUnsupportedValues.New(n)
 	}
-}
-
-func makeAutoIncrement(ctx *sql.Context, a *Analyzer, child sql.Expression, colName, tableName string) (sql.Expression, error) {
-	subquery := fmt.Sprintf("SELECT greatest(0, round(ifnull(max(%s), 0))) FROM %s", colName, tableName)
-
-	parsed, err := parse.Parse(ctx, subquery)
-	if err != nil {
-		return nil, err
-	}
-
-	analyzed, err := a.Analyze(ctx, parsed, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	sq := plan.NewSubquery(analyzed, subquery)
-
-	return expression.NewAutoIncrement(sq, child)
 }

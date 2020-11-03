@@ -339,6 +339,15 @@ type RowDeleter interface {
 	Closer
 }
 
+// AutoIncrementTable is a table that supports an AUTO_INCREMENT column
+type AutoIncrementTable interface {
+	Table
+	// GetAutoIncrementValue gets the last AUTO_INCREMENT value
+	GetAutoIncrementValue(*Context) (interface{}, error)
+	// SetAutoIncrementValue sets a new AUTO_INCREMENT value
+	SetAutoIncrementValue(*Context, interface{}) error
+}
+
 type Closer interface {
 	Close(*Context) error
 }

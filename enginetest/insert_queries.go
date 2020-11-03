@@ -423,6 +423,23 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "auto increment table handles deletes",
+		SetUpScript: []string{
+			"create table auto (pk int primary key auto_increment)",
+			"insert into auto values (10)",
+			"delete from auto where pk = 10",
+			"insert into auto values (NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto",
+				Expected: []sql.Row{
+					{11},
+				},
+			},
+		},
+	},
+	{
 		Name: "create auto_increment table with out-of-line primary key def",
 		SetUpScript: []string{
 			`create table auto (

@@ -364,13 +364,17 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "c0", Type: sql.Int64, Source: "auto_increment_tbl", Nullable: true},
 		})
 
-		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+		autoTbl, ok := table.(sql.AutoIncrementTable)
+
+		if err == nil && ok {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, autoTbl),
 				sql.NewRow(1, 11),
 				sql.NewRow(2, 22),
 				sql.NewRow(3, 33),
 			)
-		} else {
+			err = autoTbl.SetAutoIncrementValue(NewContext(harness), int64(3))
+			require.NoError(t, err)
+			} else {
 			t.Logf("Warning: could not create table %s: %s", "auto_increment_tbl", err)
 		}
 	}
