@@ -41,7 +41,7 @@ type Subquery struct {
 	// Whether results have been cached
 	resultsCached bool
 	// Cached results, if any
-	cache interface{}
+	cache []interface{}
 	// Cached hash results, if any
 	hashCache sql.KeyValueCache
 	// Dispose function for the cache, if any. This would appear to violate the rule that nodes must be comparable by
@@ -119,55 +119,35 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	s.cacheMu.Lock()
 	cached := s.resultsCached
 	s.cacheMu.Unlock()
+
 	if cached {
-		return s.cache, nil
+		if len(s.cache) == 0 {
+			return nil, nil
+		}
+		return s.cache[0], nil
 	}
 
-	scopeRow := row
-
-	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
-	// result rows are prepended with the scope row.
-	q, err := TransformUp(s.Query, prependRowInPlan(scopeRow))
-
+	rows, err := s.evalMultiple(ctx, row)
 	if err != nil {
 		return nil, err
-	}
-
-	iter, err := q.RowIter(ctx, scopeRow)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := sql.RowIterToRows(iter)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(rows) == 0 {
-		return nil, nil
 	}
 
 	if len(rows) > 1 {
 		return nil, errExpectedSingleRow.New()
 	}
 
-	// TODO: fix this. This should always be true, but isn't, because we don't consistently pass the scope row in all
-	//  parts of the engine.
-	col := 0
-	if len(scopeRow) < len(rows[0]) {
-		col = len(scopeRow)
-	}
-
-	result := rows[0][col]
 	if s.canCacheResults {
 		s.cacheMu.Lock()
 		if !s.resultsCached {
-			s.cache, s.resultsCached = result, true
+			s.cache, s.resultsCached = rows, true
 		}
 		s.cacheMu.Unlock()
 	}
 
-	return result, nil
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	return rows[0], nil
 }
 
 // prependRowInPlan returns a transformation function that prepends the row given to any row source in a query
@@ -176,7 +156,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, error) {
 	return func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
-		case *Project, sql.Table:
+		case *Project, *GroupBy, *Having, sql.Table:
 			return &prependNode{
 				UnaryNode: UnaryNode{Child: n},
 				row:       row,
@@ -193,7 +173,7 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 	cached := s.resultsCached
 	s.cacheMu.Unlock()
 	if cached {
-		return s.cache.([]interface{}), nil
+		return s.cache, nil
 	}
 
 	result, err := s.evalMultiple(ctx, row)
@@ -213,6 +193,8 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 }
 
 func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
+	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
+	// result rows are prepended with the scope row.
 	q, err := TransformUp(s.Query, prependRowInPlan(row))
 	if err != nil {
 		return nil, err

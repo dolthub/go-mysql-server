@@ -87,6 +87,7 @@ func (c *rowsCache) Dispose() {
 	c.rows = nil
 }
 
+// mapCache is a simple in-memory implementation of a cache
 type mapCache struct {
 	cache map[uint64]interface{}
 }
