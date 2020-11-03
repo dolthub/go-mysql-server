@@ -67,7 +67,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		matcher, disposer, err = regex.New("go", *right)
 	} else {
-		l.once.Do(func () {
+		l.once.Do(func() {
 			right, err := l.evalRight(ctx, row)
 			l.pool = &sync.Pool{
 				New: func() interface{} {

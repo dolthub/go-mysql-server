@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+
 	"github.com/cespare/xxhash"
 
 	"github.com/dolthub/go-mysql-server/sql"

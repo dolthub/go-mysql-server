@@ -16,11 +16,11 @@ package plan
 
 import (
 	"fmt"
-	"github.com/cespare/xxhash"
 	"hash"
 	"io"
 	"sync"
 
+	"github.com/cespare/xxhash"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -275,7 +275,7 @@ func putAllRows(cache sql.KeyValueCache, vals []interface{}) error {
 }
 
 func rowKey(hash hash.Hash64, row sql.Row) uint64 {
-	for _ , v := range row {
+	for _, v := range row {
 		// TODO: surely there are much faster ways to do this
 		hash.Write(([]byte)(fmt.Sprintf("%#v", v)))
 	}
