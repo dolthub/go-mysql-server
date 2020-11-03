@@ -75,7 +75,7 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		// If there are any values in the right-hand side, and the left-hand side is nil, IN evaluates to NULL
+		// NULL IN (list) returns NULL. NULL IN (empty list) returns 0
 		if leftNull {
 			if values.Size() == 0 {
 				return false, nil

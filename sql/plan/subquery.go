@@ -228,7 +228,8 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 	return result, nil
 }
 
-// EvalMultiple returns all rows returned by a subquery.
+// HashMultiple returns all rows returned by a subquery, backed by a sql.KeyValueCache. Keys are constructed using the
+// 64-bit hash of the values stored.
 func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCache, error) {
 	s.cacheMu.Lock()
 	cached := s.resultsCached && s.hashCache != nil
@@ -246,13 +247,12 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 		s.cacheMu.Lock()
 		defer s.cacheMu.Unlock()
 		if !s.resultsCached || s.hashCache == nil {
-			// TODO: we need to clean up the row cache at some point
-			hashCache, _ := ctx.Memory.NewHistoryCache()
+			hashCache, disposeFn := ctx.Memory.NewHistoryCache()
 			err = putAllRows(hashCache, result)
 			if err != nil {
 				return nil, err
 			}
-			s.cache, s.hashCache, s.resultsCached = result, hashCache, true
+			s.cache, s.hashCache, s.disposeFunc, s.resultsCached = result, hashCache, disposeFn, true
 		}
 		return s.hashCache, nil
 	}
@@ -335,4 +335,12 @@ func (s *Subquery) WithCachedResults() *Subquery {
 	ns := *s
 	ns.canCacheResults = true
 	return &ns
+}
+
+// Dispose implements sql.Disposable
+func (s *Subquery) Dispose() {
+	if s.disposeFunc != nil {
+		s.disposeFunc()
+		s.disposeFunc = nil
+	}
 }
