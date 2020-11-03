@@ -2,6 +2,7 @@ module github.com/dolthub/go-mysql-server
 
 require (
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
+	github.com/cespare/xxhash v1.1.0
 	github.com/dolthub/vitess v0.0.0-20201030211154-aac4fea7230f
 	github.com/fastly/go-utils v0.0.0-20180712184237-d95a45783239 // indirect
 	github.com/go-kit/kit v0.9.0
