@@ -28,6 +28,8 @@ type KeyValueCache interface {
 	Put(uint64, interface{}) error
 	// Get the value with the given key.
 	Get(uint64) (interface{}, error)
+	// Size returns the number of elements in the cache.
+	Size() int
 }
 
 // RowsCache is a cache of rows.

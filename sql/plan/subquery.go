@@ -16,6 +16,8 @@ package plan
 
 import (
 	"fmt"
+	"github.com/cespare/xxhash"
+	"hash"
 	"sync"
 
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -39,7 +41,12 @@ type Subquery struct {
 	resultsCached bool
 	// Cached results, if any
 	cache interface{}
-
+	// Cached hash results, if any
+	hashCache sql.KeyValueCache
+	// Dispose function for the cache, if any. This would appear to violate the rule that nodes must be comparable by
+	// reflect.DeepEquals, but it's safe in practice because the function is always nil until execution.
+	disposeFunc sql.DisposeFunc
+	// Mutex to guard the caches
 	cacheMu sync.Mutex
 }
 
@@ -228,6 +235,59 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 	}
 
 	return result, nil
+}
+
+// EvalMultiple returns all rows returned by a subquery.
+func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCache, error) {
+	s.cacheMu.Lock()
+	cached := s.resultsCached && s.hashCache != nil
+	s.cacheMu.Unlock()
+	if cached {
+		return s.hashCache, nil
+	}
+
+	rows, err := s.EvalMultiple(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: we need to clean up the row cache at some point
+	hashCache, _ := ctx.Memory.NewHistoryCache()
+	err = putAllRows(hashCache, rows)
+	if err != nil {
+		return nil, err
+	}
+
+	if s.canCacheResults {
+		s.cacheMu.Lock()
+		defer s.cacheMu.Unlock()
+		if s.resultsCached == false || s.hashCache == nil {
+			s.cache, s.hashCache, s.resultsCached = rows, hashCache, true
+		}
+	}
+
+	return hashCache, nil
+}
+
+func putAllRows(cache sql.KeyValueCache, vals []interface{}) error {
+	hash := xxhash.New()
+	for _, val := range vals {
+		rowKey := rowKey(hash, sql.NewRow(val))
+		hash.Reset()
+		err := cache.Put(rowKey, val)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func rowKey(hash hash.Hash64, row sql.Row) uint64 {
+	for _ , v := range row {
+		// TODO: surely there are much faster ways to do this
+		hash.Write(([]byte)(fmt.Sprintf("%#v", v)))
+	}
+	return hash.Sum64()
 }
 
 // IsNullable implements the Expression interface.

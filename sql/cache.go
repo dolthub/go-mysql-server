@@ -27,6 +27,10 @@ type lruCache struct {
 	cache    *lru.Cache
 }
 
+func (l *lruCache) Size() int {
+	return l.size
+}
+
 func newLRUCache(memory Freeable, r Reporter, size uint) *lruCache {
 	lru, _ := lru.New(int(size))
 	return &lruCache{memory, r, int(size), lru}
@@ -87,6 +91,10 @@ type historyCache struct {
 	memory   Freeable
 	reporter Reporter
 	cache    map[uint64]interface{}
+}
+
+func (h *historyCache) Size() int {
+	return len(h.cache)
 }
 
 func newHistoryCache(memory Freeable, r Reporter) *historyCache {
