@@ -2,10 +2,10 @@ package plan
 
 import (
 	"fmt"
-	"hash/crc64"
 	"io"
 	"strings"
 
+	"github.com/cespare/xxhash"
 	opentracing "github.com/opentracing/opentracing-go"
 	errors "gopkg.in/src-d/go-errors.v1"
 
@@ -315,25 +315,24 @@ func (i *groupByGroupingIter) Close() error {
 	return i.child.Close()
 }
 
-var table = crc64.MakeTable(crc64.ISO)
-
 func groupingKey(
 	ctx *sql.Context,
 	exprs []sql.Expression,
 	row sql.Row,
 ) (uint64, error) {
-	vals := make([]string, 0, len(exprs))
-
+	hash := xxhash.New()
 	for _, expr := range exprs {
 		v, err := expr.Eval(ctx, row)
 		if err != nil {
 			return 0, err
 		}
-		vals = append(vals, fmt.Sprintf("%#v", v))
+		_, err = hash.Write(([]byte)(fmt.Sprintf("%#v,", v)))
+		if err != nil {
+			return 0, err
+		}
 	}
 
-	// TODO: use a faster hash func
-	return crc64.Checksum([]byte(strings.Join(vals, ",")), table), nil
+	return hash.Sum64(), nil
 }
 
 func fillBuffer(expr sql.Expression) sql.Row {

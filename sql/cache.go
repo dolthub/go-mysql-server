@@ -2,19 +2,24 @@ package sql
 
 import (
 	"fmt"
-	"hash/crc64"
 	"runtime"
+
+	"github.com/cespare/xxhash"
 
 	lru "github.com/hashicorp/golang-lru"
 	errors "gopkg.in/src-d/go-errors.v1"
 )
 
-var table = crc64.MakeTable(crc64.ISO)
-
-// CacheKey returns a hash of the given value to be used as key in
-// a cache.
-func CacheKey(v interface{}) uint64 {
-	return crc64.Checksum([]byte(fmt.Sprintf("%#v", v)), table)
+// HashOf returns a hash of the given value to be used as key in a cache.
+func HashOf(v Row) (uint64, error) {
+	hash := xxhash.New()
+	for _, x := range v {
+		// TODO: probably much faster to do this with a type switch
+		if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", x))); err != nil {
+			return 0, err
+		}
+	}
+	return hash.Sum64(), nil
 }
 
 // ErrKeyNotFound is returned when the key could not be found in the cache.

@@ -16,11 +16,9 @@ package plan
 
 import (
 	"fmt"
-	"hash"
 	"io"
 	"sync"
 
-	"github.com/cespare/xxhash"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -262,24 +260,17 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 }
 
 func putAllRows(cache sql.KeyValueCache, vals []interface{}) error {
-	hash := xxhash.New()
 	for _, val := range vals {
-		rowKey := rowKey(hash, sql.NewRow(val))
-		hash.Reset()
-		err := cache.Put(rowKey, val)
+		rowKey, err := sql.HashOf(sql.NewRow(val))
+		if err != nil {
+			return err
+		}
+		err = cache.Put(rowKey, val)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func rowKey(hash hash.Hash64, row sql.Row) uint64 {
-	for _, v := range row {
-		// TODO: surely there are much faster ways to do this
-		hash.Write(([]byte)(fmt.Sprintf("%#v", v)))
-	}
-	return hash.Sum64()
 }
 
 // IsNullable implements the Expression interface.
