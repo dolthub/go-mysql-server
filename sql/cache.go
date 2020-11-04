@@ -2,19 +2,22 @@ package sql
 
 import (
 	"fmt"
-	"hash/crc64"
+	"github.com/cespare/xxhash"
 	"runtime"
 
 	lru "github.com/hashicorp/golang-lru"
 	errors "gopkg.in/src-d/go-errors.v1"
 )
 
-var table = crc64.MakeTable(crc64.ISO)
-
 // CacheKey returns a hash of the given value to be used as key in
 // a cache.
-func CacheKey(v interface{}) uint64 {
-	return crc64.Checksum([]byte(fmt.Sprintf("%#v", v)), table)
+func CacheKey(v interface{}) (uint64, error) {
+	hash := xxhash.New()
+	if _, err := hash.Write([]byte(fmt.Sprintf("%#v", v))); err != nil {
+		return 0, err
+	}
+
+	return hash.Sum64(), nil
 }
 
 // ErrKeyNotFound is returned when the key could not be found in the cache.

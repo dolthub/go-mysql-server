@@ -6,11 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCacheKey(t *testing.T) {
-	k := CacheKey(1)
-	require.Equal(t, uint64(0x4320000000000000), k)
-}
-
 func TestLRUCache(t *testing.T) {
 	t.Run("basic methods", func(t *testing.T) {
 		require := require.New(t)
