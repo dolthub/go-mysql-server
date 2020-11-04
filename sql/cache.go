@@ -2,8 +2,9 @@ package sql
 
 import (
 	"fmt"
-	"github.com/cespare/xxhash"
 	"runtime"
+
+	"github.com/cespare/xxhash"
 
 	lru "github.com/hashicorp/golang-lru"
 	errors "gopkg.in/src-d/go-errors.v1"

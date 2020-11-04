@@ -2,10 +2,10 @@ package plan
 
 import (
 	"fmt"
-	"github.com/cespare/xxhash"
 	"io"
 	"strings"
 
+	"github.com/cespare/xxhash"
 	opentracing "github.com/opentracing/opentracing-go"
 	errors "gopkg.in/src-d/go-errors.v1"
 
