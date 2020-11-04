@@ -458,6 +458,186 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "auto increment on tinyint",
+		SetUpScript: []string{
+			"create table auto (pk tinyint primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto",
+				Expected: []sql.Row{
+					{1},{10},{11},
+				},
+			},
+		},
+	},
+	{
+		Name: "auto increment on smallint",
+		SetUpScript: []string{
+			"create table auto (pk smallint primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto",
+				Expected: []sql.Row{
+					{1},{10},{11},
+				},
+			},
+		},
+	},
+	{
+		Name: "auto increment on mediumint",
+		SetUpScript: []string{
+			"create table auto (pk mediumint primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto",
+				Expected: []sql.Row{
+					{1},{10},{11},
+				},
+			},
+		},
+	},
+	{
+		Name: "auto increment on int",
+		SetUpScript: []string{
+			"create table auto (pk int primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto",
+				Expected: []sql.Row{
+					{1},{10},{11},
+				},
+			},
+		},
+	},
+	{
+		Name: "auto increment on bigint",
+		SetUpScript: []string{
+			"create table auto (pk bigint primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto",
+				Expected: []sql.Row{
+					{1},{10},{11},
+				},
+			},
+		},
+	},
+	{
+		Name: "auto increment on tinyint unsigned",
+		SetUpScript: []string{
+			"create table auto (pk tinyint unsigned primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto",
+				Expected: []sql.Row{
+					{uint64(1)},{uint64(10)},{uint64(11)},
+				},
+			},
+		},
+	},
+	{
+		Name: "auto increment on smallint unsigned",
+		SetUpScript: []string{
+			"create table auto (pk smallint unsigned primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto",
+				Expected: []sql.Row{
+					{uint64(1)},{uint64(10)},{uint64(11)},
+				},
+			},
+		},
+	},
+	{
+		Name: "auto increment on mediumint unsigned",
+		SetUpScript: []string{
+			"create table auto (pk mediumint unsigned primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto",
+				Expected: []sql.Row{
+					{uint64(1)},{uint64(10)},{uint64(11)},
+				},
+			},
+		},
+	},
+	{
+		Name: "auto increment on int unsigned",
+		SetUpScript: []string{
+			"create table auto (pk int unsigned primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto",
+				Expected: []sql.Row{
+					{uint64(1)},{uint64(10)},{uint64(11)},
+				},
+			},
+		},
+	},
+	{
+		Name: "auto increment on bigint unsigned",
+		SetUpScript: []string{
+			"create table auto (pk bigint unsigned primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto",
+				Expected: []sql.Row{
+					{uint64(1)},{uint64(10)},{uint64(11)},
+				},
+			},
+		},
+	},
+	{
+		Name: "auto increment on float",
+		SetUpScript: []string{
+			"create table auto (pk float primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto",
+				Expected: []sql.Row{
+					{float64(1)},{float64(10)},{float64(11)},
+				},
+			},
+		},
+	},
+	{
+		Name: "auto increment on double",
+		SetUpScript: []string{
+			"create table auto (pk double primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto",
+				Expected: []sql.Row{
+					{float64(1)},{float64(10)},{float64(11)},
+				},
+			},
+		},
+	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{
