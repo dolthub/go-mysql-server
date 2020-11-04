@@ -82,7 +82,11 @@ func (di *distinctIter) Next() (sql.Row, error) {
 			return nil, err
 		}
 
-		hash := sql.CacheKey(row)
+		hash, err := sql.CacheKey(row)
+		if err != nil {
+			return nil, err
+		}
+
 		if _, err := di.seen.Get(hash); err == nil {
 			continue
 		}

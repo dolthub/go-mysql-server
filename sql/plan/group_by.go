@@ -326,7 +326,7 @@ func groupingKey(
 		if err != nil {
 			return 0, err
 		}
-		_, err = hash.Write(([]byte)(fmt.Sprintf("%#v", v)))
+		_, err = hash.Write(([]byte)(fmt.Sprintf("%#v,", v)))
 		if err != nil {
 			return 0, err
 		}

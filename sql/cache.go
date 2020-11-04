@@ -11,12 +11,14 @@ import (
 
 // CacheKey returns a hash of the given value to be used as key in
 // a cache.
-func CacheKey(v interface{}) (uint64, error) {
+func CacheKey(v Row) (uint64, error) {
 	hash := xxhash.New()
-	if _, err := hash.Write([]byte(fmt.Sprintf("%#v", v))); err != nil {
-		return 0, err
+	for _, x := range v {
+		// TODO: probably much faster to do this with a type switch
+		if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", x))); err != nil {
+			return 0, err
+		}
 	}
-
 	return hash.Sum64(), nil
 }
 

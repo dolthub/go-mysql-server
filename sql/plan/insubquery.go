@@ -17,8 +17,6 @@ package plan
 import (
 	"fmt"
 
-	"github.com/cespare/xxhash"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -41,6 +39,8 @@ func (in *InSubquery) Type() sql.Type {
 func NewInSubquery(left sql.Expression, right sql.Expression) *InSubquery {
 	return &InSubquery{expression.BinaryExpression{Left: left, Right: right}}
 }
+
+var nilKey, _ = sql.CacheKey(sql.NewRow(nil))
 
 // Eval implements the Expression interface.
 func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -84,9 +84,14 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, nil
 		}
 
-		val, notFoundErr := values.Get(rowKey(xxhash.New(), sql.NewRow(left)))
+		key, err := sql.CacheKey(sql.NewRow(left))
+		if err != nil {
+			return nil, err
+		}
+
+		val, notFoundErr := values.Get(key)
 		if notFoundErr != nil {
-			if _, nilValNotFoundErr := values.Get(rowKey(xxhash.New(), sql.NewRow(nil))); nilValNotFoundErr == nil {
+			if _, nilValNotFoundErr := values.Get(nilKey); nilValNotFoundErr == nil {
 				return nil, nil
 			}
 			return false, nil
