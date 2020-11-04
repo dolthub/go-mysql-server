@@ -10,9 +10,8 @@ import (
 	errors "gopkg.in/src-d/go-errors.v1"
 )
 
-// CacheKey returns a hash of the given value to be used as key in
-// a cache.
-func CacheKey(v Row) (uint64, error) {
+// HashOf returns a hash of the given value to be used as key in a cache.
+func HashOf(v Row) (uint64, error) {
 	hash := xxhash.New()
 	for _, x := range v {
 		// TODO: probably much faster to do this with a type switch

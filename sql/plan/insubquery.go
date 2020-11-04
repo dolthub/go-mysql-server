@@ -40,7 +40,7 @@ func NewInSubquery(left sql.Expression, right sql.Expression) *InSubquery {
 	return &InSubquery{expression.BinaryExpression{Left: left, Right: right}}
 }
 
-var nilKey, _ = sql.CacheKey(sql.NewRow(nil))
+var nilKey, _ = sql.HashOf(sql.NewRow(nil))
 
 // Eval implements the Expression interface.
 func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -84,7 +84,7 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, nil
 		}
 
-		key, err := sql.CacheKey(sql.NewRow(left))
+		key, err := sql.HashOf(sql.NewRow(left))
 		if err != nil {
 			return nil, err
 		}

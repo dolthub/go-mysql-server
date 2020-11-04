@@ -261,7 +261,7 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 
 func putAllRows(cache sql.KeyValueCache, vals []interface{}) error {
 	for _, val := range vals {
-		rowKey, err := sql.CacheKey(sql.NewRow(val))
+		rowKey, err := sql.HashOf(sql.NewRow(val))
 		if err != nil {
 			return err
 		}
