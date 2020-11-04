@@ -37,6 +37,7 @@ type Table struct {
 
 	// AUTO_INCREMENT bookkeeping
 	autoIncVal interface{}
+	autoColIdx int
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -91,9 +92,11 @@ func NewPartitionedTable(name string, schema sql.Schema, numPartitions int) *Tab
 	}
 
 	var autoIncVal interface{}
-	for _, c := range schema {
+	autoIncIdx := -1
+	for i, c := range schema {
 		if c.AutoIncrement {
 			autoIncVal = c.Type.Zero()
+			autoIncIdx = i
 			break
 		}
 	}
@@ -104,6 +107,7 @@ func NewPartitionedTable(name string, schema sql.Schema, numPartitions int) *Tab
 		partitions: partitions,
 		keys:       keys,
 		autoIncVal: autoIncVal,
+		autoColIdx: autoIncIdx,
 	}
 }
 
@@ -402,6 +406,20 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 	}
 
 	t.table.partitions[key] = append(t.table.partitions[key], row)
+
+	idx := t.table.autoColIdx
+	if idx >= 0 {
+		// autoIncVal = max(autoIncVal, insertVal)
+		autoCol := t.table.schema[idx]
+		cmp, err := autoCol.Type.Compare(row[idx], t.table.autoIncVal)
+		if err != nil {
+			return err
+		}
+		if cmp > 0 {
+			t.table.autoIncVal = row[idx]
+		}
+	}
+
 	return nil
 }
 

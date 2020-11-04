@@ -90,16 +90,7 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		i.lastInsertId = NewLiteral(given, i.Type())
 	}
 
-	val, err := i.lastInsertId.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	// send the new auto-increment value back to the table
-	if err = i.autoTbl.SetAutoIncrementValue(ctx, val); err != nil {
-		return nil, err
-	}
-
-	return val, nil
+	return i.lastInsertId.Eval(ctx, row)
 }
 
 func (i *AutoIncrement) String() string {
