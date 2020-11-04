@@ -35,7 +35,7 @@ func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		return nil, err
 	}
 
-	return &trackedRowIter{iter: iter, onDone: p.Notify}, nil
+	return &trackedRowIter{node: p.Child, iter: iter, onDone: p.Notify}, nil
 }
 
 func (p *QueryProcess) String() string { return p.Child.String() }
@@ -160,6 +160,7 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 }
 
 type trackedRowIter struct {
+	node   sql.Node
 	iter   sql.RowIter
 	onDone NotifyFunc
 	onNext NotifyFunc
@@ -170,6 +171,27 @@ func (i *trackedRowIter) done() {
 		i.onDone()
 		i.onDone = nil
 	}
+	if i.node != nil {
+		i.Dispose()
+		i.node = nil
+	}
+}
+
+func (i *trackedRowIter) Dispose() {
+	if i.node != nil {
+		Inspect(i.node, func(node sql.Node) bool {
+			if d, ok := node.(sql.Disposable); ok {
+				d.Dispose()
+			}
+			return true
+		})
+	}
+	InspectExpressions(i.node, func(e sql.Expression) bool {
+		if d, ok := e.(sql.Disposable); ok {
+			d.Dispose()
+		}
+		return true
+	})
 }
 
 func (i *trackedRowIter) Next() (sql.Row, error) {

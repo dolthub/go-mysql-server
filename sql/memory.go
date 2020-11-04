@@ -10,7 +10,9 @@ import (
 )
 
 // Disposable objects can erase all their content when they're no longer in use.
-// They should not be used again after they've been disposed.
+// Expressions and Nodes that implement Disposable will have Dispose called on them as a final stage of query
+// execution. This can be used to clean up cached memory that wouldn't get caught via the normal garbage collection
+// process.
 type Disposable interface {
 	// Dispose the contents.
 	Dispose()
@@ -28,6 +30,8 @@ type KeyValueCache interface {
 	Put(uint64, interface{}) error
 	// Get the value with the given key.
 	Get(uint64) (interface{}, error)
+	// Size returns the number of elements in the cache.
+	Size() int
 }
 
 // RowsCache is a cache of rows.

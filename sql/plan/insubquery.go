@@ -17,6 +17,8 @@ package plan
 import (
 	"fmt"
 
+	"github.com/cespare/xxhash"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -55,7 +57,6 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// also if no match is found in the list and one of the expressions in the list is NULL.
 	// However, there's a strange edge case. NULL IN (empty list) return 0, not NULL.
 	leftNull := left == nil
-	rightNull := false
 
 	left, err = typ.Convert(left)
 	if err != nil {
@@ -65,50 +66,44 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch right := in.Right.(type) {
 	case *Subquery:
 		if leftElems > 1 {
+			// TODO: support more than one element in IN
 			return nil, expression.ErrInvalidOperandColumns.New(leftElems, 1)
 		}
 
 		typ := right.Type()
-		values, err := right.EvalMultiple(ctx, row)
+		values, err := right.HashMultiple(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, val := range values {
-			// If there are any values in the right-hand side, and the left-hand side is nil, IN evaluates to NULL
-			if leftNull {
-				return nil, nil
+		// NULL IN (list) returns NULL. NULL IN (empty list) returns 0
+		if leftNull {
+			if values.Size() == 0 {
+				return false, nil
 			}
-
-			if !rightNull && val == nil {
-				rightNull = true
-				continue
-			}
-
-			val, err = typ.Convert(val)
-			if err != nil {
-				return nil, err
-			}
-
-			if !rightNull && val == nil {
-				rightNull = true
-			}
-
-			cmp, err := typ.Compare(left, val)
-			if err != nil {
-				return nil, err
-			}
-
-			if cmp == 0 {
-				return true, nil
-			}
-		}
-
-		if rightNull {
 			return nil, nil
 		}
 
-		return false, nil
+		val, notFoundErr := values.Get(rowKey(xxhash.New(), sql.NewRow(left)))
+		if notFoundErr != nil {
+			if _, nilValNotFoundErr := values.Get(rowKey(xxhash.New(), sql.NewRow(nil))); nilValNotFoundErr == nil {
+				return nil, nil
+			}
+			return false, nil
+		}
+
+		val, err = typ.Convert(val)
+		if err != nil {
+			return nil, err
+		}
+
+		cmp, err := typ.Compare(left, val)
+		if err != nil {
+			return nil, err
+		}
+
+		return cmp == 0, nil
+
 	default:
 		return nil, expression.ErrUnsupportedInOperand.New(right)
 	}

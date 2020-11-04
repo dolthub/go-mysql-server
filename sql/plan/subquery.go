@@ -16,8 +16,11 @@ package plan
 
 import (
 	"fmt"
+	"hash"
+	"io"
 	"sync"
 
+	"github.com/cespare/xxhash"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -38,8 +41,13 @@ type Subquery struct {
 	// Whether results have been cached
 	resultsCached bool
 	// Cached results, if any
-	cache interface{}
-
+	cache []interface{}
+	// Cached hash results, if any
+	hashCache sql.KeyValueCache
+	// Dispose function for the cache, if any. This would appear to violate the rule that nodes must be comparable by
+	// reflect.DeepEquals, but it's safe in practice because the function is always nil until execution.
+	disposeFunc sql.DisposeFunc
+	// Mutex to guard the caches
 	cacheMu sync.Mutex
 }
 
@@ -111,55 +119,35 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	s.cacheMu.Lock()
 	cached := s.resultsCached
 	s.cacheMu.Unlock()
+
 	if cached {
-		return s.cache, nil
+		if len(s.cache) == 0 {
+			return nil, nil
+		}
+		return s.cache[0], nil
 	}
 
-	scopeRow := row
-
-	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
-	// result rows are prepended with the scope row.
-	q, err := TransformUp(s.Query, prependRowInPlan(scopeRow))
-
+	rows, err := s.evalMultiple(ctx, row)
 	if err != nil {
 		return nil, err
-	}
-
-	iter, err := q.RowIter(ctx, scopeRow)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := sql.RowIterToRows(iter)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(rows) == 0 {
-		return nil, nil
 	}
 
 	if len(rows) > 1 {
 		return nil, errExpectedSingleRow.New()
 	}
 
-	// TODO: fix this. This should always be true, but isn't, because we don't consistently pass the scope row in all
-	//  parts of the engine.
-	col := 0
-	if len(scopeRow) < len(rows[0]) {
-		col = len(scopeRow)
-	}
-
-	result := rows[0][col]
 	if s.canCacheResults {
 		s.cacheMu.Lock()
 		if !s.resultsCached {
-			s.cache, s.resultsCached = result, true
+			s.cache, s.resultsCached = rows, true
 		}
 		s.cacheMu.Unlock()
 	}
 
-	return result, nil
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	return rows[0], nil
 }
 
 // prependRowInPlan returns a transformation function that prepends the row given to any row source in a query
@@ -168,7 +156,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, error) {
 	return func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
-		case *Project, sql.Table:
+		case *Project, *GroupBy, *Having, sql.Table:
 			return &prependNode{
 				UnaryNode: UnaryNode{Child: n},
 				row:       row,
@@ -185,38 +173,12 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 	cached := s.resultsCached
 	s.cacheMu.Unlock()
 	if cached {
-		return s.cache.([]interface{}), nil
+		return s.cache, nil
 	}
 
-	q, err := TransformUp(s.Query, prependRowInPlan(row))
+	result, err := s.evalMultiple(ctx, row)
 	if err != nil {
 		return nil, err
-	}
-
-	iter, err := q.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := sql.RowIterToRows(iter)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(rows) == 0 {
-		return nil, nil
-	}
-
-	// TODO: fix this. This should always be true, but isn't, because we don't consistently pass the scope row in all
-	//  parts of the engine.
-	col := 0
-	if len(row) < len(rows[0]) {
-		col = len(row)
-	}
-
-	var result = make([]interface{}, len(rows))
-	for i, row := range rows {
-		result[i] = row[col]
 	}
 
 	if s.canCacheResults {
@@ -228,6 +190,96 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 	}
 
 	return result, nil
+}
+
+func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
+	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
+	// result rows are prepended with the scope row.
+	q, err := TransformUp(s.Query, prependRowInPlan(row))
+	if err != nil {
+		return nil, err
+	}
+
+	iter, err := q.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// Reduce the result row to the size of the expected schema. This means chopping off the first len(row) columns.
+	col := len(row)
+	var result []interface{}
+	for {
+		row, err := iter.Next()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, row[col])
+	}
+
+	if err := iter.Close(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// HashMultiple returns all rows returned by a subquery, backed by a sql.KeyValueCache. Keys are constructed using the
+// 64-bit hash of the values stored.
+func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCache, error) {
+	s.cacheMu.Lock()
+	cached := s.resultsCached && s.hashCache != nil
+	s.cacheMu.Unlock()
+	if cached {
+		return s.hashCache, nil
+	}
+
+	result, err := s.evalMultiple(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if s.canCacheResults {
+		s.cacheMu.Lock()
+		defer s.cacheMu.Unlock()
+		if !s.resultsCached || s.hashCache == nil {
+			hashCache, disposeFn := ctx.Memory.NewHistoryCache()
+			err = putAllRows(hashCache, result)
+			if err != nil {
+				return nil, err
+			}
+			s.cache, s.hashCache, s.disposeFunc, s.resultsCached = result, hashCache, disposeFn, true
+		}
+		return s.hashCache, nil
+	}
+
+	cache := sql.NewMapCache()
+	return cache, putAllRows(cache, result)
+}
+
+func putAllRows(cache sql.KeyValueCache, vals []interface{}) error {
+	hash := xxhash.New()
+	for _, val := range vals {
+		rowKey := rowKey(hash, sql.NewRow(val))
+		hash.Reset()
+		err := cache.Put(rowKey, val)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func rowKey(hash hash.Hash64, row sql.Row) uint64 {
+	for _, v := range row {
+		// TODO: surely there are much faster ways to do this
+		hash.Write(([]byte)(fmt.Sprintf("%#v", v)))
+	}
+	return hash.Sum64()
 }
 
 // IsNullable implements the Expression interface.
@@ -283,4 +335,12 @@ func (s *Subquery) WithCachedResults() *Subquery {
 	ns := *s
 	ns.canCacheResults = true
 	return &ns
+}
+
+// Dispose implements sql.Disposable
+func (s *Subquery) Dispose() {
+	if s.disposeFunc != nil {
+		s.disposeFunc()
+		s.disposeFunc = nil
+	}
 }

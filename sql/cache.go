@@ -27,6 +27,10 @@ type lruCache struct {
 	cache    *lru.Cache
 }
 
+func (l *lruCache) Size() int {
+	return l.size
+}
+
 func newLRUCache(memory Freeable, r Reporter, size uint) *lruCache {
 	lru, _ := lru.New(int(size))
 	return &lruCache{memory, r, int(size), lru}
@@ -83,10 +87,38 @@ func (c *rowsCache) Dispose() {
 	c.rows = nil
 }
 
+// mapCache is a simple in-memory implementation of a cache
+type mapCache struct {
+	cache map[uint64]interface{}
+}
+
+func (m mapCache) Put(u uint64, i interface{}) error {
+	m.cache[u] = i
+	return nil
+}
+
+func (m mapCache) Get(u uint64) (interface{}, error) {
+	return m.cache[u], nil
+}
+
+func (m mapCache) Size() int {
+	return len(m.cache)
+}
+
+func NewMapCache() mapCache {
+	return mapCache{
+		cache: make(map[uint64]interface{}),
+	}
+}
+
 type historyCache struct {
 	memory   Freeable
 	reporter Reporter
 	cache    map[uint64]interface{}
+}
+
+func (h *historyCache) Size() int {
+	return len(h.cache)
 }
 
 func newHistoryCache(memory Freeable, r Reporter) *historyCache {
