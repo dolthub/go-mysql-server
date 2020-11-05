@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sqllogictest
+package harness
 
 import (
 	"fmt"
@@ -22,9 +22,9 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
 	"io"
-	"math/rand"
 	"strconv"
 	"strings"
+	"sync/atomic"
 )
 
 type memoryHarness struct {
@@ -38,6 +38,10 @@ func NewMemoryHarness(harness enginetest.Harness) *memoryHarness {
 	}
 }
 
+func (h *memoryHarness) EngineStr() string {
+	return "mysql"
+}
+
 func (h *memoryHarness) Init() error {
 	h.engine = sqle.NewDefault()
 	db := h.harness.NewDatabase("mydb")
@@ -46,7 +50,7 @@ func (h *memoryHarness) Init() error {
 }
 
 func (h *memoryHarness) ExecuteStatement(statement string) error {
-	ctx := h.harness.NewContext()
+	ctx := h.newContext()
 
 	_, rowIter, err := h.engine.Query(ctx, statement)
 	if err != nil {
@@ -56,9 +60,16 @@ func (h *memoryHarness) ExecuteStatement(statement string) error {
 	return drainIterator(rowIter)
 }
 
+var pid uint32
+
+func (h *memoryHarness) newContext() *sql.Context {
+	ctx := h.harness.NewContext().WithCurrentDB("mydb")
+	ctx.ApplyOpts(sql.WithPid(uint64(atomic.AddUint32(&pid, 1))))
+	return ctx
+}
+
 func (h *memoryHarness) ExecuteQuery(statement string) (schema string, results []string, err error) {
-	pid := rand.Uint32()
-	ctx := h.harness.NewContext()
+	ctx := h.newContext()
 
 	var sch sql.Schema
 	var rowIter sql.RowIter
