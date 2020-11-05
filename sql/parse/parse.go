@@ -616,19 +616,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		}
 	}
 	if ddl.AutoIncSpec != nil {
-		val, ok := ddl.AutoIncSpec.Value.(*sqlparser.SQLVal)
-		if !ok || val.Type != sqlparser.IntVal {
-			return nil, ErrInvalidSQLValType.New(ddl.AutoIncSpec.Value)
-		}
-		autoVal, err := strconv.ParseInt(string(val.Val), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-
-		return plan.NewAlterAutoIncrement(
-			plan.NewUnresolvedTable(ddl.Table.Name.String(), ddl.Table.Qualifier.String()),
-			autoVal,
-			), nil
+		return convertAlterAutoIncrement(ddl)
 	}
 	return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
 }
@@ -697,6 +685,35 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	default:
 		return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
 	}
+}
+
+func convertAlterAutoIncrement(ddl *sqlparser.DDL) (sql.Node, error) {
+	val, ok := ddl.AutoIncSpec.Value.(*sqlparser.SQLVal)
+	if !ok {
+		return nil, ErrInvalidSQLValType.New(ddl.AutoIncSpec.Value)
+	}
+
+	var autoVal int64
+	if val.Type == sqlparser.IntVal {
+		i, err := strconv.ParseInt(string(val.Val), 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		autoVal = i
+	} else if val.Type == sqlparser.FloatVal {
+		f, err := strconv.ParseFloat(string(val.Val), 10)
+		if err != nil {
+			return nil, err
+		}
+		autoVal = int64(f)
+	} else {
+		return nil, ErrInvalidSQLValType.New(ddl.AutoIncSpec.Value)
+	}
+
+	return plan.NewAlterAutoIncrement(
+		plan.NewUnresolvedTable(ddl.Table.Name.String(), ddl.Table.Qualifier.String()),
+		autoVal,
+	), nil
 }
 
 func convertExternalCreateIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
