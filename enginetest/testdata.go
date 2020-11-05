@@ -364,13 +364,15 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "c0", Type: sql.Int64, Source: "auto_increment_tbl", Nullable: true},
 		})
 
-		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+		autoTbl, ok := table.(sql.AutoIncrementTable)
+
+		if err == nil && ok {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, autoTbl),
 				sql.NewRow(1, 11),
 				sql.NewRow(2, 22),
 				sql.NewRow(3, 33),
 			)
-		} else {
+			} else {
 			t.Logf("Warning: could not create table %s: %s", "auto_increment_tbl", err)
 		}
 	}
@@ -446,7 +448,8 @@ func InsertRows(t *testing.T, ctx *sql.Context, table sql.InsertableTable, rows 
 	for _, r := range rows {
 		require.NoError(t, inserter.Insert(ctx, r))
 	}
-	require.NoError(t, inserter.Close(ctx))
+	err := inserter.Close(ctx)
+	require.NoError(t, err)
 }
 
 func DeleteRows(t *testing.T, ctx *sql.Context, table sql.DeletableTable, rows ...sql.Row) {
