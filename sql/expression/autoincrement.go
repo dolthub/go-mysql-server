@@ -1,11 +1,19 @@
 package expression
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
+)
+
+var (
+	// ErrAutoIncrementUnsupported is returned when table does not support AUTO_INCREMENT.
+	ErrAutoIncrementUnsupported = errors.NewKind("table %s does not support AUTO_INCREMENT columns")
+	// ErrNoAutoIncrementCols is returned when table has no AUTO_INCREMENT columns.
+	ErrNoAutoIncrementCols = errors.NewKind("table %s has no AUTO_INCREMENT columns")
 )
 
 // AutoIncrement implements AUTO_INCREMENT
@@ -21,7 +29,7 @@ type AutoIncrement struct {
 func NewAutoIncrement(ctx *sql.Context, table sql.Table, given sql.Expression) (*AutoIncrement, error) {
 	autoTbl, ok := table.(sql.AutoIncrementTable)
 	if !ok {
-		return nil, errors.New("this table does not support AUTO_INCREMENT columns")
+		return nil, ErrAutoIncrementUnsupported.New(table.Name())
 	}
 
 	last, err := autoTbl.GetAutoIncrementValue(ctx)
@@ -35,6 +43,9 @@ func NewAutoIncrement(ctx *sql.Context, table sql.Table, given sql.Expression) (
 			autoCol = c
 			break
 		}
+	}
+	if autoCol == nil {
+		return nil, ErrNoAutoIncrementCols.New(table.Name())
 	}
 
 	return &AutoIncrement{
