@@ -595,26 +595,42 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			}
 		}
 	}
-	switch strings.ToLower(ddl.ColumnAction) {
-	case sqlparser.AddStr:
-		sch, err := TableSpecToSchema(ctx, ddl.TableSpec)
-		if err != nil {
-			return nil, err
+	if ddl.ColumnAction != "" {
+		switch strings.ToLower(ddl.ColumnAction) {
+		case sqlparser.AddStr:
+			sch, err := TableSpecToSchema(ctx, ddl.TableSpec)
+			if err != nil {
+				return nil, err
+			}
+			return plan.NewAddColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), sch[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+		case sqlparser.DropStr:
+			return plan.NewDropColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String()), nil
+		case sqlparser.RenameStr:
+			return plan.NewRenameColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String(), ddl.ToColumn.String()), nil
+		case sqlparser.ModifyStr, sqlparser.ChangeStr:
+			sch, err := TableSpecToSchema(nil, ddl.TableSpec)
+			if err != nil {
+				return nil, err
+			}
+			return plan.NewModifyColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String(), sch[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 		}
-		return plan.NewAddColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), sch[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
-	case sqlparser.DropStr:
-		return plan.NewDropColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String()), nil
-	case sqlparser.RenameStr:
-		return plan.NewRenameColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String(), ddl.ToColumn.String()), nil
-	case sqlparser.ModifyStr, sqlparser.ChangeStr:
-		sch, err := TableSpecToSchema(nil, ddl.TableSpec)
-		if err != nil {
-			return nil, err
-		}
-		return plan.NewModifyColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String(), sch[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
-	default:
-		return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
 	}
+	if ddl.AutoIncSpec != nil {
+		val, ok := ddl.AutoIncSpec.Value.(*sqlparser.SQLVal)
+		if !ok || val.Type != sqlparser.IntVal {
+			return nil, ErrInvalidSQLValType.New(ddl.AutoIncSpec.Value)
+		}
+		autoVal, err := strconv.ParseInt(string(val.Val), 10, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		return plan.NewAlterAutoIncrement(
+			plan.NewUnresolvedTable(ddl.Table.Name.String(), ddl.Table.Qualifier.String()),
+			autoVal,
+			), nil
+	}
+	return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
 }
 
 func tableNameToUnresolvedTable(tableName sqlparser.TableName) *plan.UnresolvedTable {

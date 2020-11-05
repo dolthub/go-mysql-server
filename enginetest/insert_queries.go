@@ -459,6 +459,27 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "alter auto_increment value",
+		SetUpScript: []string{
+			`create table auto (
+				pk int auto_increment,
+				c0 int,
+				primary key(pk)
+			);`,
+			"insert into auto values (NULL,10), (NULL,20), (NULL,30)",
+			"alter table auto auto_increment = 9;",
+			"insert into auto values (NULL,90)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto",
+				Expected: []sql.Row{
+					{1,10}, {2,20}, {3,30}, {9,90},
+				},
+			},
+		},
+	},
+	{
 		Name: "auto increment on tinyint",
 		SetUpScript: []string{
 			"create table auto (pk tinyint primary key auto_increment)",
