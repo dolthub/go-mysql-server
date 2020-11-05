@@ -430,6 +430,10 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 
 func increment(v interface{}) interface{} {
 	switch val := v.(type) {
+	case int:
+		return val + 1
+	case uint:
+		return val + 1
 	case int8:
 		return val + 1
 	case int16:

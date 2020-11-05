@@ -375,7 +375,7 @@ func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
 		y2k, _ := Timestamp.Convert("2000-01-01 00:00:00")
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 
-			autoVal := getAutoIncremnetValue(ctx, t)
+			autoVal := getAutoIncrementValue(ctx, t)
 			rows = append(rows, Row{
 				"def",                      // table_catalog
 				db.Name(),                  // table_schema
@@ -828,7 +828,7 @@ func partitionKey(tableName string) []byte {
 	return []byte(InformationSchemaDatabaseName + "." + tableName)
 }
 
-func getAutoIncremnetValue(ctx *Context, t Table) (val interface{}) {
+func getAutoIncrementValue(ctx *Context, t Table) (val interface{}) {
 	for _, c := range t.Schema() {
 		if c.AutoIncrement {
 			val, _ = t.(AutoIncrementTable).GetAutoIncrementValue(ctx)
