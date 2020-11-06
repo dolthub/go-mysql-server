@@ -143,9 +143,9 @@ var tablesSchema = Schema{
 	{Name: "index_length", Type: Uint64, Default: nil, Nullable: true, Source: TablesTableName},
 	{Name: "data_free", Type: Uint64, Default: nil, Nullable: true, Source: TablesTableName},
 	{Name: "auto_increment", Type: Uint64, Default: nil, Nullable: true, Source: TablesTableName},
-	{Name: "create_time", Type: Date, Default: nil, Nullable: true, Source: TablesTableName},
-	{Name: "update_time", Type: Date, Default: nil, Nullable: true, Source: TablesTableName},
-	{Name: "check_time", Type: Date, Default: nil, Nullable: true, Source: TablesTableName},
+	{Name: "create_time", Type: Timestamp, Default: nil, Nullable: true, Source: TablesTableName},
+	{Name: "update_time", Type: Timestamp, Default: nil, Nullable: true, Source: TablesTableName},
+	{Name: "check_time", Type: Timestamp, Default: nil, Nullable: true, Source: TablesTableName},
 	{Name: "table_collation", Type: LongText, Default: nil, Nullable: true, Source: TablesTableName},
 	{Name: "checksum", Type: Uint64, Default: nil, Nullable: true, Source: TablesTableName},
 	{Name: "create_options", Type: LongText, Default: nil, Nullable: true, Source: TablesTableName},
@@ -372,7 +372,10 @@ func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
 			rowFormat = "Fixed"
 		}
 
+		y2k, _ := Timestamp.Convert("2000-01-01 00:00:00")
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
+
+			autoVal := getAutoIncrementValue(ctx, t)
 			rows = append(rows, Row{
 				"def",                      // table_catalog
 				db.Name(),                  // table_schema
@@ -387,9 +390,9 @@ func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
 				nil,                        // max_data_length
 				nil,                        // max_data_length
 				nil,                        // data_free
-				nil,                        // auto_increment
-				nil,                        // create_time
-				nil,                        // update_time
+				autoVal,                    // auto_increment
+				y2k,                        // create_time
+				y2k,                        // update_time
 				nil,                        // check_time
 				Collation_Default.String(), // table_collation
 				nil,                        // checksum
@@ -823,4 +826,15 @@ func printTable(name string, tableSchema Schema) string {
 
 func partitionKey(tableName string) []byte {
 	return []byte(InformationSchemaDatabaseName + "." + tableName)
+}
+
+func getAutoIncrementValue(ctx *Context, t Table) (val interface{}) {
+	for _, c := range t.Schema() {
+		if c.AutoIncrement {
+			val, _ = t.(AutoIncrementTable).GetAutoIncrementValue(ctx)
+			// ignore errors
+			break
+		}
+	}
+	return
 }

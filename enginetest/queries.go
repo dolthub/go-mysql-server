@@ -3298,6 +3298,7 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		`SHOW TABLE STATUS FROM mydb`,
 		[]sql.Row{
+			{"auto_increment_tbl", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
@@ -3328,6 +3329,7 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		`SHOW TABLE STATUS`,
 		[]sql.Row{
+			{"auto_increment_tbl", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"tabletest", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
@@ -3341,6 +3343,7 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		"SHOW TABLES",
 		[]sql.Row{
+			{"auto_increment_tbl"},
 			{"bigtable"},
 			{"floattable"},
 			{"fk_tbl"},
@@ -3355,6 +3358,7 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		"SHOW FULL TABLES",
 		[]sql.Row{
+			{"auto_increment_tbl", "BASE TABLE"},
 			{"bigtable", "BASE TABLE"},
 			{"fk_tbl", "BASE TABLE"},
 			{"floattable", "BASE TABLE"},
@@ -3470,6 +3474,7 @@ var InfoSchemaQueries = []QueryTest{
 		ORDER BY 1
 		`,
 		[]sql.Row{
+			{"auto_increment_tbl"},
 			{"bigtable"},
 			{"floattable"},
 			{"fk_tbl"},
@@ -3597,6 +3602,22 @@ var InfoSchemaQueries = []QueryTest{
 				"  PRIMARY KEY (`pk`),\n" +
 				"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+		},
+	},
+	{
+
+		"SELECT table_name, `auto_increment` FROM information_schema.tables " +
+			"WHERE TABLE_SCHEMA='mydb' AND TABLE_TYPE='BASE TABLE' ORDER BY 1",
+		[]sql.Row{
+			{"auto_increment_tbl", 4},
+			{"bigtable", nil},
+			{"fk_tbl", nil},
+			{"floattable", nil},
+			{"mytable", nil},
+			{"newlinetable", nil},
+			{"niltable", nil},
+			{"othertable", nil},
+			{"tabletest", nil},
 		},
 	},
 }
