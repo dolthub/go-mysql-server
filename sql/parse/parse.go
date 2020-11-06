@@ -710,10 +710,7 @@ func convertAlterAutoIncrement(ddl *sqlparser.DDL) (sql.Node, error) {
 		return nil, ErrInvalidSQLValType.New(ddl.AutoIncSpec.Value)
 	}
 
-	return plan.NewAlterAutoIncrement(
-		plan.NewUnresolvedTable(ddl.Table.Name.String(), ddl.Table.Qualifier.String()),
-		autoVal,
-	), nil
+	return plan.NewAlterAutoIncrement(tableNameToUnresolvedTable(ddl.Table), autoVal), nil
 }
 
 func convertExternalCreateIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
