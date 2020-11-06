@@ -415,7 +415,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto",
+				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{10}, {20}, {30}, {31}, {40}, {41},
 				},
@@ -432,7 +432,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto",
+				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{11},
 				},
@@ -451,9 +451,51 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto",
+				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{1, 10}, {2, 20}, {3, 30},
+				},
+			},
+		},
+	},
+	{
+		Name: "alter auto_increment value",
+		SetUpScript: []string{
+			`create table auto (
+				pk int auto_increment,
+				c0 int,
+				primary key(pk)
+			);`,
+			"insert into auto values (NULL,10), (NULL,20), (NULL,30)",
+			"alter table auto auto_increment 9;",
+			"insert into auto values (NULL,90)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{1,10}, {2,20}, {3,30}, {9,90},
+				},
+			},
+		},
+	},
+	{
+		Name: "alter auto_increment value to float",
+		SetUpScript: []string{
+			`create table auto (
+				pk int auto_increment,
+				c0 int,
+				primary key(pk)
+			);`,
+			"insert into auto values (NULL,10), (NULL,20), (NULL,30)",
+			"alter table auto auto_increment = 19.9;",
+			"insert into auto values (NULL,190)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{1,10}, {2,20}, {3,30}, {19,190},
 				},
 			},
 		},
@@ -466,7 +508,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto",
+				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{1},{10},{11},
 				},
@@ -481,7 +523,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto",
+				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{1},{10},{11},
 				},
@@ -496,7 +538,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto",
+				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{1},{10},{11},
 				},
@@ -511,7 +553,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto",
+				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{1},{10},{11},
 				},
@@ -526,7 +568,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto",
+				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{1},{10},{11},
 				},
@@ -541,7 +583,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto",
+				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{uint64(1)},{uint64(10)},{uint64(11)},
 				},
@@ -556,7 +598,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto",
+				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{uint64(1)},{uint64(10)},{uint64(11)},
 				},
@@ -571,7 +613,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto",
+				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{uint64(1)},{uint64(10)},{uint64(11)},
 				},
@@ -586,7 +628,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto",
+				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{uint64(1)},{uint64(10)},{uint64(11)},
 				},
@@ -601,7 +643,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto",
+				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{uint64(1)},{uint64(10)},{uint64(11)},
 				},
@@ -616,7 +658,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto",
+				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{float64(1)},{float64(10)},{float64(11)},
 				},
@@ -631,7 +673,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto",
+				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{float64(1)},{float64(10)},{float64(11)},
 				},

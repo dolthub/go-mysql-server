@@ -19,9 +19,9 @@ var (
 // AutoIncrement implements AUTO_INCREMENT
 type AutoIncrement struct {
 	UnaryExpression
-	lastInsertId *Literal
-	autoTbl      sql.AutoIncrementTable
-	autoCol      *sql.Column
+	autoIncVal *Literal
+	autoTbl    sql.AutoIncrementTable
+	autoCol    *sql.Column
 	sync.Once
 }
 
@@ -50,7 +50,7 @@ func NewAutoIncrement(ctx *sql.Context, table sql.Table, given sql.Expression) (
 
 	return &AutoIncrement{
 		UnaryExpression{Child: given},
-		&Literal{last, given.Type()},
+		&Literal{last, autoCol.Type},
 		autoTbl,
 		autoCol,
 		sync.Once{},
@@ -81,27 +81,31 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, err
 	}
 
-	if given == nil || cmp == 0 {
-		// provide AUTO_INCREMENT value
-		one := NewLiteral(sql.NumericUnaryValue(i.Type()), i.Type())
-		id, err := NewPlus(i.lastInsertId, one).Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		i.lastInsertId = NewLiteral(id, i.Type())
-	} else {
-		// last_insert_id = max(given, last_insert_id)
-		cmp, err := i.Type().Compare(given, i.lastInsertId.value)
+	if given != nil && cmp != 0 {
+		// check if the given value is greater than autoIncVal
+		cmp, err := i.Type().Compare(given, i.autoIncVal.value)
 		if err != nil {
 			return nil, err
 		}
 		if cmp <= 0 {
+			// if it's less, return it and don't increment
 			return given, nil
 		}
-		i.lastInsertId = NewLiteral(given, i.Type())
+		i.autoIncVal = NewLiteral(given, i.Type())
 	}
 
-	return i.lastInsertId.Eval(ctx, row)
+	val, err := i.autoIncVal.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	nextVal, err := NewIncrement(i.autoIncVal).Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	i.autoIncVal = NewLiteral(nextVal, i.Type())
+
+	return val, nil
 }
 
 func (i *AutoIncrement) String() string {
@@ -115,7 +119,7 @@ func (i *AutoIncrement) WithChildren(children ...sql.Expression) (sql.Expression
 	}
 	return &AutoIncrement{
 		UnaryExpression{Child: children[0]},
-		i.lastInsertId,
+		i.autoIncVal,
 		i.autoTbl,
 		i.autoCol,
 		sync.Once{},

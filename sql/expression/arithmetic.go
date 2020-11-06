@@ -36,6 +36,11 @@ func NewPlus(left, right sql.Expression) *Arithmetic {
 	return NewArithmetic(left, right, sqlparser.PlusStr)
 }
 
+func NewIncrement(left sql.Expression) *Arithmetic {
+	one := NewLiteral(sql.NumericUnaryValue(left.Type()), left.Type())
+	return NewArithmetic(left, one, sqlparser.PlusStr)
+}
+
 // NewMinus creates a new Arithmetic - sql.Expression.
 func NewMinus(left, right sql.Expression) *Arithmetic {
 	return NewArithmetic(left, right, sqlparser.MinusStr)
