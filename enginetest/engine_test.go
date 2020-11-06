@@ -46,29 +46,29 @@ import (
 // memory_engine_test.go
 
 func TestSessionSelectLimit(t *testing.T) {
-	enginetest.TestSessionSelectLimit(t, newDefaultMemoryHarness())
+	enginetest.TestSessionSelectLimit(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestVariables(t *testing.T) {
-	enginetest.TestVariables(t, newDefaultMemoryHarness())
+	enginetest.TestVariables(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestVariableErrors(t *testing.T) {
-	enginetest.TestVariableErrors(t, newDefaultMemoryHarness())
+	enginetest.TestVariableErrors(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestWarnings(t *testing.T) {
 	t.Run("sequential", func(t *testing.T) {
-		enginetest.TestWarnings(t, newDefaultMemoryHarness())
+		enginetest.TestWarnings(t, enginetest.NewDefaultMemoryHarness())
 	})
 
 	t.Run("parallel", func(t *testing.T) {
-		enginetest.TestWarnings(t, newMemoryHarness("parallel", 2, testNumPartitions, false, nil))
+		enginetest.TestWarnings(t, enginetest.NewMemoryHarness("parallel", 2, testNumPartitions, false, nil))
 	})
 }
 
 func TestClearWarnings(t *testing.T) {
-	enginetest.TestClearWarnings(t, newDefaultMemoryHarness())
+	enginetest.TestClearWarnings(t, enginetest.NewDefaultMemoryHarness())
 }
 
 // TODO: this should be expanded and filled in (test of describe for lots of queries), and moved to enginetests, but
@@ -81,7 +81,7 @@ func TestDescribe(t *testing.T) {
 		`EXPLAIN SELECT * FROM mytable`,
 	}
 
-	harness := newDefaultMemoryHarness()
+	harness := enginetest.NewDefaultMemoryHarness()
 	e := enginetest.NewEngine(t, harness)
 	t.Run("sequential", func(t *testing.T) {
 		for _, q := range queries {
@@ -91,7 +91,7 @@ func TestDescribe(t *testing.T) {
 		}
 	})
 
-	parallelHarness := newMemoryHarness("parallel", 2, testNumPartitions, false, nil)
+	parallelHarness := enginetest.NewMemoryHarness("parallel", 2, testNumPartitions, false, nil)
 	ep := enginetest.NewEngine(t, parallelHarness)
 	t.Run("parallel", func(t *testing.T) {
 		for _, q := range queries {
@@ -104,11 +104,11 @@ func TestDescribe(t *testing.T) {
 }
 
 func TestUse(t *testing.T) {
-	enginetest.TestUse(t, newDefaultMemoryHarness())
+	enginetest.TestUse(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestTracing(t *testing.T) {
-	enginetest.TestTracing(t, newDefaultMemoryHarness())
+	enginetest.TestTracing(t, enginetest.NewDefaultMemoryHarness())
 }
 
 // TODO: it's not currently possible to test this via harness, because the underlying table implementations are added to
@@ -131,13 +131,13 @@ func TestLocks(t *testing.T) {
 	analyzer := analyzer.NewDefault(catalog)
 	engine := sqle.New(catalog, analyzer, new(sqle.Config))
 
-	_, iter, err := engine.Query(enginetest.NewContext(newDefaultMemoryHarness()).WithCurrentDB("db"), "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
+	_, iter, err := engine.Query(enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db"), "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
 	require.NoError(err)
 
 	_, err = sql.RowIterToRows(iter)
 	require.NoError(err)
 
-	_, iter, err = engine.Query(enginetest.NewContext(newDefaultMemoryHarness()).WithCurrentDB("db"), "UNLOCK TABLES")
+	_, iter, err = engine.Query(enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db"), "UNLOCK TABLES")
 	require.NoError(err)
 
 	_, err = sql.RowIterToRows(iter)
@@ -161,7 +161,7 @@ func (m *mockSpan) Finish() {
 }
 
 func TestRootSpanFinish(t *testing.T) {
-	harness := newDefaultMemoryHarness()
+	harness := enginetest.NewDefaultMemoryHarness()
 	e := enginetest.NewEngine(t, harness)
 	fakeSpan := &mockSpan{Span: opentracing.NoopTracer{}.StartSpan("")}
 	ctx := sql.NewContext(
@@ -263,7 +263,7 @@ func TestAnalyzer(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			harness := newDefaultMemoryHarness()
+			harness := enginetest.NewDefaultMemoryHarness()
 			e := enginetest.NewEngine(t, harness)
 
 			ctx := enginetest.NewContext(harness)
