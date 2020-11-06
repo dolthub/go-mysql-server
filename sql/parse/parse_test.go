@@ -1268,7 +1268,7 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{expression.NewStar()},
 		plan.NewFilter(
 			expression.NewEquals(
-				expression.NewLiteral(":foo_id", sql.LongText),
+				expression.NewBindVar("foo_id"),
 				expression.NewLiteral(int8(2), sql.Int8),
 			),
 			plan.NewUnresolvedTable("foo", ""),

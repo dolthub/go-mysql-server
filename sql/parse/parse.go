@@ -1786,7 +1786,7 @@ func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {
 		}
 		return expression.NewLiteral(val, sql.LongBlob), nil
 	case sqlparser.ValArg:
-		return expression.NewLiteral(string(v.Val), sql.LongText), nil
+		return expression.NewBindVar(strings.TrimPrefix(string(v.Val), ":")), nil
 	case sqlparser.BitVal:
 		return expression.NewLiteral(v.Val[0] == '1', sql.Boolean), nil
 	}
