@@ -240,13 +240,22 @@ IndexExpressions:
 
 // Assign indexes to the join conditions and returns the sql.Indexes assigned, as well as returning any aliases used by
 // join conditions
-func findJoinIndexes(ctx *sql.Context, node sql.Node, exprAliases ExprAliases, tableAliases TableAliases, a *Analyzer) (map[string]sql.Index, error) {
+func findJoinIndexes(
+		ctx *sql.Context,
+		node sql.Node,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
+		a *Analyzer,
+) (map[string]sql.Index, error) {
 	indexSpan, _ := ctx.Span("find_join_indexes")
 	defer indexSpan.Finish()
 
 	var indexes map[string]sql.Index
 
 	var err error
+	var conds []sql.Expression
+
+	// collect all the conds together
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
@@ -260,7 +269,15 @@ func findJoinIndexes(ctx *sql.Context, node sql.Node, exprAliases ExprAliases, t
 			case *plan.RightJoin:
 				cond = node.Cond
 			}
+			conds = append(conds, cond)
+		}
+		return true
 
+	})
+
+	plan.Inspect(node, func(node sql.Node) bool {
+		switch node := node.(type) {
+		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
 			var indexAnalyzer *indexAnalyzer
 			indexAnalyzer, err = getIndexesForNode(ctx, a, node)
 			if err != nil {
@@ -268,7 +285,8 @@ func findJoinIndexes(ctx *sql.Context, node sql.Node, exprAliases ExprAliases, t
 			}
 			defer indexAnalyzer.releaseUsedIndexes()
 
-			indexes, err = getJoinIndexes(ctx, a, indexAnalyzer, cond, exprAliases, tableAliases)
+			// then get all possible indexes based on the conds for all tables (using the topmost table as a starting point)
+			indexes, err = getJoinIndexesMany(ctx, a, indexAnalyzer, conds, exprAliases, tableAliases)
 			if err != nil {
 				return false
 			}
@@ -278,6 +296,25 @@ func findJoinIndexes(ctx *sql.Context, node sql.Node, exprAliases ExprAliases, t
 	})
 
 	return indexes, err
+}
+
+func getJoinIndexesMany(ctx *sql.Context,
+		a *Analyzer,
+		ia *indexAnalyzer,
+		exprs []sql.Expression,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
+) (map[string]sql.Index, error) {
+
+	result := make(map[string]sql.Index)
+	for _, e := range exprs {
+		indexes, err := getJoinIndexes(ctx, a, ia, e, exprAliases, tableAliases)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return result, nil
 }
 
 // Returns the left and right indexes for the two sides of the equality expression given.
