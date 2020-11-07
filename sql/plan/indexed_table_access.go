@@ -11,10 +11,8 @@ import (
 var ErrNoIndexableTable = errors.NewKind("expected an IndexableTable, couldn't find one in %v")
 var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, couldn't find one in %v")
 
-// IndexedTableAccess represents an indexed lookup of a particular ResolvedTable. Unlike other kinds of UnaryNodes,
-// this node supports being repeatedly initialized and being iterated over multiple times, potentially with different
-// values returned every iteration. Used during analysis as part of the process of optimizing joins, replacing
-// (wrapping) a ResolvedTable.
+// IndexedTableAccess represents an indexed lookup of a particular ResolvedTable. The key used to access the indexed
+// table is provided in RowIter().
 type IndexedTableAccess struct {
 	*ResolvedTable
 	index    sql.Index
