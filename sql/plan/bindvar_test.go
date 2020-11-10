@@ -17,71 +17,70 @@ func TestApplyBindings(t *testing.T) {
 		Expected sql.Node
 	}
 	cases := []tc{
-		tc {
+		tc{
 			"SingleV1",
 			NewProject(
-		                []sql.Expression{
+				[]sql.Expression{
 					expression.NewStar(),
-		                },
+				},
 				NewFilter(
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("foo"),
 						expression.NewBindVar("v1"),
 					),
-                        		NewUnresolvedTable("t1", ""),
+					NewUnresolvedTable("t1", ""),
 				),
 			),
 			map[string]sql.Expression{
 				"v1": expression.NewLiteral("Four score and seven years ago...", sql.LongText),
 			},
 			NewProject(
-		                []sql.Expression{
+				[]sql.Expression{
 					expression.NewStar(),
-		                },
+				},
 				NewFilter(
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("foo"),
 						expression.NewLiteral("Four score and seven years ago...", sql.LongText),
 					),
-                        		NewUnresolvedTable("t1", ""),
+					NewUnresolvedTable("t1", ""),
 				),
 			),
 		},
-		tc {
+		tc{
 			"VarNotBound",
 			NewProject(
-		                []sql.Expression{
+				[]sql.Expression{
 					expression.NewStar(),
-		                },
+				},
 				NewFilter(
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("foo"),
 						expression.NewBindVar("v1"),
 					),
-                        		NewUnresolvedTable("t1", ""),
+					NewUnresolvedTable("t1", ""),
 				),
 			),
-			map[string]sql.Expression{
-			},
+			map[string]sql.Expression{},
 			NewProject(
-		                []sql.Expression{
+				[]sql.Expression{
 					expression.NewStar(),
-		                },
+				},
 				NewFilter(
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("foo"),
 						expression.NewBindVar("v1"),
 					),
-                        		NewUnresolvedTable("t1", ""),
+					NewUnresolvedTable("t1", ""),
 				),
 			),
 		},
-		tc {
+		tc{
 			"SameVarMultipleTimes",
 			NewProject(
-		                []sql.Expression{
+				[]sql.Expression{
 					expression.NewStar(),
-		                },
+				},
 				NewFilter(
 					expression.NewOr(
 						expression.NewAnd(
@@ -99,7 +98,7 @@ func TestApplyBindings(t *testing.T) {
 							expression.NewBindVar("intvar"),
 						),
 					),
-                        		NewUnresolvedTable("t1", ""),
+					NewUnresolvedTable("t1", ""),
 				),
 			),
 			map[string]sql.Expression{
@@ -107,9 +106,9 @@ func TestApplyBindings(t *testing.T) {
 				"intvar": expression.NewLiteral(int8(10), sql.Int8),
 			},
 			NewProject(
-		                []sql.Expression{
+				[]sql.Expression{
 					expression.NewStar(),
-		                },
+				},
 				NewFilter(
 					expression.NewOr(
 						expression.NewAnd(
@@ -127,7 +126,55 @@ func TestApplyBindings(t *testing.T) {
 							expression.NewLiteral(int8(10), sql.Int8),
 						),
 					),
-                        		NewUnresolvedTable("t1", ""),
+					NewUnresolvedTable("t1", ""),
+				),
+			),
+		},
+		tc{
+			"Subquery",
+			NewProject(
+				[]sql.Expression{
+					expression.NewStar(),
+				},
+				NewSubqueryAlias(
+					"a",
+					"select * from foo where bar = :v1",
+					NewProject(
+						[]sql.Expression{
+							expression.NewStar(),
+						},
+						NewFilter(
+							expression.NewEquals(
+								expression.NewUnresolvedColumn("bar"),
+								expression.NewBindVar("v1"),
+							),
+							NewUnresolvedTable("foo", ""),
+						),
+					),
+				),
+			),
+			map[string]sql.Expression{
+				"v1": expression.NewLiteral("Four score and seven years ago...", sql.LongText),
+			},
+			NewProject(
+				[]sql.Expression{
+					expression.NewStar(),
+				},
+				NewSubqueryAlias(
+					"a",
+					"select * from foo where bar = :v1",
+					NewProject(
+						[]sql.Expression{
+							expression.NewStar(),
+						},
+						NewFilter(
+							expression.NewEquals(
+								expression.NewUnresolvedColumn("bar"),
+								expression.NewLiteral("Four score and seven years ago...", sql.LongText),
+							),
+							NewUnresolvedTable("foo", ""),
+						),
+					),
 				),
 			),
 		},

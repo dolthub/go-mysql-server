@@ -209,15 +209,14 @@ var QueryTests = []QueryTest{
 			{2, 1, 2}},
 		nil,
 	},
-// TODO(aaron): Fix TransformExpressionUp across subqueries?
-//	{
-//		"SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
-//		[]sql.Row{
-//			{2, 1, 2}},
-//		map[string]sql.Expression{
-//			"v1": expression.NewLiteral(int64(2), sql.Int64),
-//		},
-//	},
+	{
+		"SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
+		[]sql.Row{
+			{2, 1, 2}},
+		map[string]sql.Expression{
+			"v1": expression.NewLiteral(int64(2), sql.Int64),
+		},
+	},
 	{
 		"SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 1 ORDER BY foo, i;",
 		[]sql.Row{},

@@ -852,6 +852,27 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
+	`SELECT * FROM (SELECT * FROM foo WHERE bar = ?) a;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewStar(),
+		},
+		plan.NewSubqueryAlias(
+			"a",
+			"select * from foo where bar = :v1",
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewStar(),
+				},
+				plan.NewFilter(
+					expression.NewEquals(
+						expression.NewUnresolvedColumn("bar"),
+						expression.NewBindVar("v1"),
+					),
+					plan.NewUnresolvedTable("foo", ""),
+				),
+			),
+		),
+	),
 	`SELECT foo, bar FROM foo WHERE foo = :var;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("foo"),
