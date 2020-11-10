@@ -839,6 +839,32 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
+	`SELECT foo, bar FROM foo WHERE foo = ?;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("foo"),
+			expression.NewUnresolvedColumn("bar"),
+		},
+		plan.NewFilter(
+			expression.NewEquals(
+				expression.NewUnresolvedColumn("foo"),
+				expression.NewBindVar("v1"),
+			),
+			plan.NewUnresolvedTable("foo", ""),
+		),
+	),
+	`SELECT foo, bar FROM foo WHERE foo = :var;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("foo"),
+			expression.NewUnresolvedColumn("bar"),
+		},
+		plan.NewFilter(
+			expression.NewEquals(
+				expression.NewUnresolvedColumn("foo"),
+				expression.NewBindVar("var"),
+			),
+			plan.NewUnresolvedTable("foo", ""),
+		),
+	),
 	`SELECT * FROM foo WHERE foo != 'bar';`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewStar(),
@@ -1012,6 +1038,26 @@ var fixtures = map[string]sql.Node{
 		false,
 		[]string{"col1", "col2"},
 		[]sql.Expression{},
+	),
+	`INSERT INTO t1 (col1, col2) VALUES (?, ?)`: plan.NewInsertInto(
+		plan.NewUnresolvedTable("t1", ""),
+		plan.NewValues([][]sql.Expression{{
+			expression.NewBindVar("v1"),
+			expression.NewBindVar("v2"),
+		}}),
+		false,
+		[]string{"col1", "col2"},
+		[]sql.Expression{},
+	),
+	`UPDATE t1 SET col1 = ?, col2 = ? WHERE id = ?`: plan.NewUpdate(
+		plan.NewFilter(
+			expression.NewEquals(expression.NewUnresolvedColumn("id"), expression.NewBindVar("v3")),
+			plan.NewUnresolvedTable("t1", ""),
+		),
+		[]sql.Expression{
+			expression.NewSetField(expression.NewUnresolvedColumn("col1"), expression.NewBindVar("v1")),
+			expression.NewSetField(expression.NewUnresolvedColumn("col2"), expression.NewBindVar("v2")),
+		},
 	),
 	`REPLACE INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
 		plan.NewUnresolvedTable("t1", ""),
@@ -1270,6 +1316,28 @@ var fixtures = map[string]sql.Node{
 			expression.NewEquals(
 				expression.NewBindVar("foo_id"),
 				expression.NewLiteral(int8(2), sql.Int8),
+			),
+			plan.NewUnresolvedTable("foo", ""),
+		),
+	),
+	`SELECT * FROM foo WHERE ? = 2 and foo.s = ? and ? <> foo.i`: plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewFilter(
+			expression.NewAnd(
+				expression.NewAnd(
+					expression.NewEquals(
+						expression.NewBindVar("v1"),
+						expression.NewLiteral(int8(2), sql.Int8),
+					),
+					expression.NewEquals(
+						expression.NewUnresolvedQualifiedColumn("foo", "s"),
+						expression.NewBindVar("v2"),
+					),
+				),
+				expression.NewNot(expression.NewEquals(
+					expression.NewBindVar("v3"),
+					expression.NewUnresolvedQualifiedColumn("foo", "i"),
+				)),
 			),
 			plan.NewUnresolvedTable("foo", ""),
 		),
