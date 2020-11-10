@@ -85,6 +85,9 @@ func TestInfoSchema(t *testing.T, harness Harness) {
 	for _, tt := range InfoSchemaQueries {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected)
 	}
+	for _, script := range InfoSchemaScripts {
+		TestScript(t, harness, script)
+	}
 }
 
 func createIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
