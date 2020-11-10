@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -11,6 +12,8 @@ func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, er
 			val, found := bindings[bv.Name]
 			if found {
 				return val, nil
+			} else {
+				panic(fmt.Sprintf("%s, %v", bv.Name, bindings))
 			}
 		}
 		return e, nil

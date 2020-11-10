@@ -91,6 +91,7 @@ func TestSingleQuery(t *testing.T) {
 		[]sql.Row{
 			{"user"},
 		},
+		nil,
 	}
 
 	fmt.Sprintf("%v", test)
@@ -100,7 +101,7 @@ func TestSingleQuery(t *testing.T) {
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
 
-	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected)
+	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected, test.Bindings)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.

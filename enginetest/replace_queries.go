@@ -28,48 +28,56 @@ var ReplaceQueries = []WriteQueryTest{
 		[]sql.Row{{sql.NewOkResult(2)}},
 		"SELECT s FROM mytable WHERE i = 1;",
 		[]sql.Row{{"first row"}},
+		nil,
 	},
 	{
 		"REPLACE INTO mytable SET i = 1, s = 'first row';",
 		[]sql.Row{{sql.NewOkResult(2)}},
 		"SELECT s FROM mytable WHERE i = 1;",
 		[]sql.Row{{"first row"}},
+		nil,
 	},
 	{
 		"REPLACE INTO mytable VALUES (1, 'new row same i');",
 		[]sql.Row{{sql.NewOkResult(2)}},
 		"SELECT s FROM mytable WHERE i = 1;",
 		[]sql.Row{{"new row same i"}},
+		nil,
 	},
 	{
 		"REPLACE INTO mytable SET i = 1, s = 'new row same i';",
 		[]sql.Row{{sql.NewOkResult(2)}},
 		"SELECT s FROM mytable WHERE i = 1;",
 		[]sql.Row{{"new row same i"}},
+		nil,
 	},
 	{
 		"REPLACE INTO mytable (s, i) VALUES ('x', 999);",
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT i FROM mytable WHERE s = 'x';",
 		[]sql.Row{{int64(999)}},
+		nil,
 	},
 	{
 		"REPLACE INTO mytable SET s = 'x', i = 999;",
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT i FROM mytable WHERE s = 'x';",
 		[]sql.Row{{int64(999)}},
+		nil,
 	},
 	{
 		"REPLACE INTO mytable VALUES (999, 'x');",
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT i FROM mytable WHERE s = 'x';",
 		[]sql.Row{{int64(999)}},
+		nil,
 	},
 	{
 		"REPLACE INTO mytable SET i = 999, s = 'x';",
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT i FROM mytable WHERE s = 'x';",
 		[]sql.Row{{int64(999)}},
+		nil,
 	},
 	{
 		`REPLACE INTO typestable VALUES (
@@ -88,6 +96,7 @@ var ReplaceQueries = []WriteQueryTest{
 			sql.Timestamp.MustConvert("2037-04-05 12:51:36"), sql.Date.MustConvert("2231-11-07"),
 			"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
 		}},
+		nil,
 	},
 	{
 		`REPLACE INTO typestable SET
@@ -106,6 +115,7 @@ var ReplaceQueries = []WriteQueryTest{
 			sql.Timestamp.MustConvert("2037-04-05 12:51:36"), sql.Date.MustConvert("2231-11-07"),
 			"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
 		}},
+		nil,
 	},
 	{
 		`REPLACE INTO typestable VALUES (
@@ -124,6 +134,7 @@ var ReplaceQueries = []WriteQueryTest{
 			sql.Timestamp.Zero(), sql.Date.Zero(),
 			"", sql.False, ([]byte)(`""`), "",
 		}},
+		nil,
 	},
 	{
 		`REPLACE INTO typestable SET
@@ -142,6 +153,7 @@ var ReplaceQueries = []WriteQueryTest{
 			sql.Timestamp.Zero(), sql.Date.Zero(),
 			"", sql.False, ([]byte)(`""`), "",
 		}},
+		nil,
 	},
 	{
 		`REPLACE INTO typestable VALUES (999, null, null, null, null, null, null, null, null,
@@ -149,6 +161,7 @@ var ReplaceQueries = []WriteQueryTest{
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT * FROM typestable WHERE id = 999;",
 		[]sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
+		nil,
 	},
 	{
 		`REPLACE INTO typestable SET id=999, i8=null, i16=null, i32=null, i64=null, u8=null, u16=null, u32=null, u64=null,
@@ -156,6 +169,7 @@ var ReplaceQueries = []WriteQueryTest{
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT * FROM typestable WHERE id = 999;",
 		[]sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
+		nil,
 	},
 }
 
@@ -163,45 +177,56 @@ var ReplaceErrorTests = []GenericErrorQueryTest{
 	{
 		"too few values",
 		"REPLACE INTO mytable (s, i) VALUES ('x');",
+		nil,
 	},
 	{
 		"too many values one column",
 		"REPLACE INTO mytable (s) VALUES ('x', 999);",
+		nil,
 	},
 	{
 		"too many values two columns",
 		"REPLACE INTO mytable (i, s) VALUES (999, 'x', 'y');",
+		nil,
 	},
 	{
 		"too few values no columns specified",
 		"REPLACE INTO mytable VALUES (999);",
+		nil,
 	},
 	{
 		"too many values no columns specified",
 		"REPLACE INTO mytable VALUES (999, 'x', 'y');",
+		nil,
 	},
 	{
 		"non-existent column values",
 		"REPLACE INTO mytable (i, s, z) VALUES (999, 'x', 999);",
+		nil,
 	},
 	{
 		"non-existent column set",
 		"REPLACE INTO mytable SET i = 999, s = 'x', z = 999;",
+		nil,
 	},
 	{
 		"duplicate column values",
 		"REPLACE INTO mytable (i, s, s) VALUES (999, 'x', 'x');",
+		nil,
 	},
 	{
 		"duplicate column set",
 		"REPLACE INTO mytable SET i = 999, s = 'y', s = 'y';",
+		nil,
 	},
 	{
 		"null given to non-nullable values",
 		"INSERT INTO mytable (i, s) VALUES (null, 'y');",
+		nil,
 	},
 	{
 		"null given to non-nullable set",
 		"INSERT INTO mytable SET i = null, s = 'y';",
+		nil,
 	},
 }

@@ -154,14 +154,12 @@ func bindingsToSql(bindings map[string]*query.BindVariable) (map[string]sql.Expr
 		}
 		switch {
 		case v.Type() == sqltypes.Year:
-			logrus.Infof("Converting Year")
 			v, err := sql.Year.Convert(string(v.ToBytes()))
 			if err != nil {
 				return nil, err
 			}
 			res[k] = expression.NewLiteral(v, sql.Year)
 		case sqltypes.IsSigned(v.Type()):
-			logrus.Infof("Converting Signed")
 	                v, err := strconv.ParseInt(string(v.ToBytes()), 0, 64)
 			if err != nil {
 	                        return nil, err
@@ -173,7 +171,6 @@ func bindingsToSql(bindings map[string]*query.BindVariable) (map[string]sql.Expr
 			}
 	                res[k] = expression.NewLiteral(c, t)
 		case sqltypes.IsUnsigned(v.Type()):
-			logrus.Infof("Converting Unsigned")
 	                v, err := strconv.ParseUint(string(v.ToBytes()), 0, 64)
 			if err != nil {
 	                        return nil, err
@@ -185,7 +182,6 @@ func bindingsToSql(bindings map[string]*query.BindVariable) (map[string]sql.Expr
 			}
 	                res[k] = expression.NewLiteral(c, t)
 		case sqltypes.IsFloat(v.Type()):
-			logrus.Infof("Converting Float")
 	                v, err := strconv.ParseFloat(string(v.ToBytes()), 64)
 			if err != nil {
 	                        return nil, err
@@ -197,7 +193,6 @@ func bindingsToSql(bindings map[string]*query.BindVariable) (map[string]sql.Expr
 			}
 	                res[k] = expression.NewLiteral(c, t)
 		case v.Type() == sqltypes.Decimal:
-			logrus.Infof("Converting Decimal")
 			t := sql.MustCreateDecimalType(sql.DecimalTypeMaxPrecision, sql.DecimalTypeMaxScale)
 			v, err := t.Convert(string(v.ToBytes()))
 			if err != nil {
@@ -205,7 +200,6 @@ func bindingsToSql(bindings map[string]*query.BindVariable) (map[string]sql.Expr
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Bit:
-			logrus.Infof("Converting Bit")
 			t := sql.MustCreateBitType(sql.BitTypeMaxBits)
 			v, err := t.Convert(v.ToBytes())
 			if err != nil {
@@ -213,10 +207,8 @@ func bindingsToSql(bindings map[string]*query.BindVariable) (map[string]sql.Expr
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Null:
-			logrus.Infof("Converting Null")
 			res[k] = expression.NewLiteral(nil, sql.Null)
 		case v.Type() == sqltypes.Blob || v.Type() == sqltypes.VarBinary || v.Type() == sqltypes.Binary:
-			logrus.Infof("Converting Binary")
 			t, err := sql.CreateBinary(v.Type(), int64(len(v.ToBytes())))
 			if err != nil {
 				return nil, err
@@ -227,7 +219,6 @@ func bindingsToSql(bindings map[string]*query.BindVariable) (map[string]sql.Expr
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Text || v.Type() == sqltypes.VarChar || v.Type() == sqltypes.Char:
-			logrus.Infof("Converting Text")
 			t, err := sql.CreateStringWithDefaults(v.Type(), int64(len(v.ToBytes())))
 			if err != nil {
 				return nil, err
@@ -238,7 +229,6 @@ func bindingsToSql(bindings map[string]*query.BindVariable) (map[string]sql.Expr
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Date || v.Type() == sqltypes.Datetime || v.Type() == sqltypes.Timestamp:
-			logrus.Infof("Converting Datetime")
 			t, err := sql.CreateDatetimeType(v.Type())
 			if err != nil {
 				return nil, err
@@ -249,7 +239,6 @@ func bindingsToSql(bindings map[string]*query.BindVariable) (map[string]sql.Expr
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Time:
-			logrus.Infof("Converting Time")
 			t := sql.Time
 			v, err := t.Convert(string(v.ToBytes()))
 			if err != nil {

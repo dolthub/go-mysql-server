@@ -18,6 +18,7 @@ import (
 	"math"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 )
 
@@ -27,30 +28,45 @@ var InsertQueries = []WriteQueryTest{
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT i FROM mytable WHERE s = 'x';",
 		[]sql.Row{{int64(999)}},
+		nil,
 	},
 	{
 		"INSERT INTO niltable (i, f) VALUES (10, 10.0), (12, 12.0);",
 		[]sql.Row{{sql.NewOkResult(2)}},
 		"SELECT i,f FROM niltable WHERE f IN (10.0, 12.0) ORDER BY f;",
 		[]sql.Row{{int64(10), 10.0}, {int64(12), 12.0}},
+		nil,
 	},
 	{
 		"INSERT INTO mytable SET s = 'x', i = 999;",
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT i FROM mytable WHERE s = 'x';",
 		[]sql.Row{{int64(999)}},
+		nil,
 	},
 	{
 		"INSERT INTO mytable VALUES (999, 'x');",
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT i FROM mytable WHERE s = 'x';",
 		[]sql.Row{{int64(999)}},
+		nil,
+	},
+	{
+		"INSERT INTO mytable VALUES (?, ?);",
+		[]sql.Row{{sql.NewOkResult(1)}},
+		"SELECT i FROM mytable WHERE s = 'x';",
+		[]sql.Row{{int64(999)}},
+		map[string]sql.Expression{
+			"v1": expression.NewLiteral(int64(999), sql.Int64),
+			"v2": expression.NewLiteral("x", sql.Text),
+		},
 	},
 	{
 		"INSERT INTO mytable SET i = 999, s = 'x';",
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT i FROM mytable WHERE s = 'x';",
 		[]sql.Row{{int64(999)}},
+		nil,
 	},
 	{
 		`INSERT INTO typestable VALUES (
@@ -69,6 +85,7 @@ var InsertQueries = []WriteQueryTest{
 			sql.Timestamp.MustConvert("2037-04-05 12:51:36"), sql.Date.MustConvert("2231-11-07"),
 			"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
 		}},
+		nil,
 	},
 	{
 		`INSERT INTO typestable SET
@@ -87,6 +104,7 @@ var InsertQueries = []WriteQueryTest{
 			sql.Timestamp.MustConvert("2037-04-05 12:51:36"), sql.Date.MustConvert("2231-11-07"),
 			"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
 		}},
+		nil,
 	},
 	{
 		`INSERT INTO typestable VALUES (
@@ -105,6 +123,7 @@ var InsertQueries = []WriteQueryTest{
 			sql.Timestamp.Zero(), sql.Date.Zero(),
 			"", sql.False, ([]byte)(`""`), "",
 		}},
+		nil,
 	},
 	{
 		`INSERT INTO typestable SET
@@ -123,12 +142,14 @@ var InsertQueries = []WriteQueryTest{
 			sql.Timestamp.Zero(), sql.Date.Zero(),
 			"", sql.False, ([]byte)(`""`), "",
 		}},
+		nil,
 	},
 	{
 		`INSERT INTO mytable (i,s) VALUES (10, 'NULL')`,
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT * FROM mytable WHERE i = 10;",
 		[]sql.Row{{int64(10), "NULL"}},
+		nil,
 	},
 	{
 		`INSERT INTO typestable VALUES (999, null, null, null, null, null, null, null, null,
@@ -136,6 +157,7 @@ var InsertQueries = []WriteQueryTest{
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT * FROM typestable WHERE id = 999;",
 		[]sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
+		nil,
 	},
 	{
 		`INSERT INTO typestable SET id=999, i8=null, i16=null, i32=null, i64=null, u8=null, u16=null, u32=null, u64=null,
@@ -143,6 +165,7 @@ var InsertQueries = []WriteQueryTest{
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT * FROM typestable WHERE id = 999;",
 		[]sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
+		nil,
 	},
 	{
 		"INSERT INTO mytable SELECT i+100,s FROM mytable",
@@ -156,6 +179,7 @@ var InsertQueries = []WriteQueryTest{
 			{int64(102), "second row"},
 			{int64(103), "third row"},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO emptytable SELECT * FROM mytable",
@@ -166,6 +190,7 @@ var InsertQueries = []WriteQueryTest{
 			{int64(2), "second row"},
 			{int64(3), "third row"},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO emptytable SELECT * FROM mytable where mytable.i > 2",
@@ -174,6 +199,7 @@ var InsertQueries = []WriteQueryTest{
 		[]sql.Row{
 			{int64(3), "third row"},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO mytable (i,s) SELECT i+10, 'new' FROM mytable",
@@ -187,6 +213,7 @@ var InsertQueries = []WriteQueryTest{
 			{int64(12), "new"},
 			{int64(13), "new"},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO mytable SELECT i2+100, s2 FROM othertable",
@@ -200,6 +227,7 @@ var InsertQueries = []WriteQueryTest{
 			{int64(102), "second"},
 			{int64(103), "first"},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO emptytable (s,i) SELECT * FROM othertable",
@@ -210,6 +238,7 @@ var InsertQueries = []WriteQueryTest{
 			{int64(2), "second"},
 			{int64(3), "first"},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO emptytable (s,i) SELECT concat(m.s, o.s2), m.i FROM othertable o JOIN mytable m ON m.i=o.i2",
@@ -220,6 +249,7 @@ var InsertQueries = []WriteQueryTest{
 			{int64(2), "second rowsecond"},
 			{int64(3), "third rowfirst"},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO mytable (i,s) SELECT (i + 10.0) / 10.0 + 10 + i, concat(s, ' new') FROM mytable",
@@ -233,6 +263,7 @@ var InsertQueries = []WriteQueryTest{
 			{int64(13), "second row new"},
 			{int64(14), "third row new"},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO mytable (i,s) SELECT CHAR_LENGTH(s), concat('numrows: ', count(*)) from mytable group by 1",
@@ -245,6 +276,7 @@ var InsertQueries = []WriteQueryTest{
 			{9, "numrows: 2"},
 			{10, "numrows: 1"},
 		},
+		nil,
 	},
 	// TODO: this doesn't match MySQL. MySQL requires giving an alias to the expression to use it in a HAVING clause,
 	//  but that causes an error in our engine. Needs work
@@ -258,6 +290,7 @@ var InsertQueries = []WriteQueryTest{
 			{3, "third row"},
 			{10, "numrows: 1"},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO mytable (i,s) SELECT i * 2, concat(s,s) from mytable order by 1 desc limit 1",
@@ -269,6 +302,7 @@ var InsertQueries = []WriteQueryTest{
 			{3, "third row"},
 			{6, "third rowthird row"},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO mytable (i,s) SELECT i + 3, concat(s,s) from mytable order by 1 desc",
@@ -282,30 +316,35 @@ var InsertQueries = []WriteQueryTest{
 			{5, "second rowsecond row"},
 			{6, "third rowthird row"},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO mytable (i,s) values (1, 'hello') ON DUPLICATE KEY UPDATE s='hello'",
 		[]sql.Row{{sql.NewOkResult(2)}},
 		"SELECT * FROM mytable WHERE i = 1",
 		[]sql.Row{{int64(1), "hello"}},
+		nil,
 	},
 	{
 		"INSERT INTO mytable (i,s) values (1, 'hello2') ON DUPLICATE KEY UPDATE s='hello3'",
 		[]sql.Row{{sql.NewOkResult(2)}},
 		"SELECT * FROM mytable WHERE i = 1",
 		[]sql.Row{{int64(1), "hello3"}},
+		nil,
 	},
 	{
 		"INSERT INTO mytable (i,s) values (1, 'hello') ON DUPLICATE KEY UPDATE i=10",
 		[]sql.Row{{sql.NewOkResult(2)}},
 		"SELECT * FROM mytable WHERE i = 10",
 		[]sql.Row{{int64(10), "first row"}},
+		nil,
 	},
 	{
 		"INSERT INTO mytable (i,s) values (1, 'hello2') ON DUPLICATE KEY UPDATE s='hello3'",
 		[]sql.Row{{sql.NewOkResult(2)}},
 		"SELECT * FROM mytable WHERE i = 1",
 		[]sql.Row{{int64(1), "hello3"}},
+		nil,
 	},
 	{
 		"INSERT INTO mytable (i,s) values (1, 'hello2'), (2, 'hello3'), (4, 'no conflict') ON DUPLICATE KEY UPDATE s='hello4'",
@@ -317,6 +356,7 @@ var InsertQueries = []WriteQueryTest{
 			{3, "third row"},
 			{4, "no conflict"},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO mytable (i,s) values (10, 'hello') ON DUPLICATE KEY UPDATE s='hello'",
@@ -328,6 +368,7 @@ var InsertQueries = []WriteQueryTest{
 			{3, "third row"},
 			{10, "hello"},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO auto_increment_tbl (c0) values (44)",
@@ -339,6 +380,7 @@ var InsertQueries = []WriteQueryTest{
 			{3, 33},
 			{4, 44},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO auto_increment_tbl (c0) values (44),(55)",
@@ -351,6 +393,7 @@ var InsertQueries = []WriteQueryTest{
 			{4, 44},
 			{5, 55},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO auto_increment_tbl values (NULL, 44)",
@@ -362,6 +405,7 @@ var InsertQueries = []WriteQueryTest{
 			{3, 33},
 			{4, 44},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO auto_increment_tbl values (0, 44)",
@@ -373,6 +417,7 @@ var InsertQueries = []WriteQueryTest{
 			{3, 33},
 			{4, 44},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO auto_increment_tbl values (5, 44)",
@@ -384,6 +429,7 @@ var InsertQueries = []WriteQueryTest{
 			{3, 33},
 			{5, 44},
 		},
+		nil,
 	},
 	{
 		"INSERT INTO auto_increment_tbl values " +
@@ -400,6 +446,7 @@ var InsertQueries = []WriteQueryTest{
 			{10, 110},
 			{11, 121},
 		},
+		nil,
 	},
 }
 
@@ -686,70 +733,92 @@ var InsertErrorTests = []GenericErrorQueryTest{
 	{
 		"too few values",
 		"INSERT INTO mytable (s, i) VALUES ('x');",
+		nil,
 	},
 	{
 		"too many values one column",
 		"INSERT INTO mytable (s) VALUES ('x', 999);",
+		nil,
+	},
+	{
+		"missing binding",
+		"INSERT INTO mytable (s) VALUES (?);",
+		nil,
 	},
 	{
 		"too many values two columns",
 		"INSERT INTO mytable (i, s) VALUES (999, 'x', 'y');",
+		nil,
 	},
 	{
 		"too few values no columns specified",
 		"INSERT INTO mytable VALUES (999);",
+		nil,
 	},
 	{
 		"too many values no columns specified",
 		"INSERT INTO mytable VALUES (999, 'x', 'y');",
+		nil,
 	},
 	{
 		"non-existent column values",
 		"INSERT INTO mytable (i, s, z) VALUES (999, 'x', 999);",
+		nil,
 	},
 	{
 		"non-existent column set",
 		"INSERT INTO mytable SET i = 999, s = 'x', z = 999;",
+		nil,
 	},
 	{
 		"duplicate column",
 		"INSERT INTO mytable (i, s, s) VALUES (999, 'x', 'x');",
+		nil,
 	},
 	{
 		"duplicate column set",
 		"INSERT INTO mytable SET i = 999, s = 'y', s = 'y';",
+		nil,
 	},
 	{
 		"null given to non-nullable",
 		"INSERT INTO mytable (i, s) VALUES (null, 'y');",
+		nil,
 	},
 	{
 		"incompatible types",
 		"INSERT INTO mytable (i, s) select * FROM othertable",
+		nil,
 	},
 	{
 		"column count mismatch in select",
 		"INSERT INTO mytable (i) select * FROM othertable",
+		nil,
 	},
 	{
 		"column count mismatch in select",
 		"INSERT INTO mytable select s FROM othertable",
+		nil,
 	},
 	{
 		"column count mismatch in join select",
 		"INSERT INTO mytable (s,i) SELECT * FROM othertable o JOIN mytable m ON m.i=o.i2",
+		nil,
 	},
 	{
 		"duplicate key",
 		"INSERT INTO mytable (i,s) values (1, 'hello')",
+		nil,
 	},
 	{
 		"duplicate keys",
 		"INSERT INTO mytable SELECT * from mytable",
+		nil,
 	},
 	{
 		"bad column in on duplicate key update clause",
 		"INSERT INTO mytable values (10, 'b') ON DUPLICATE KEY UPDATE notExist = 1",
+		nil,
 	},
 }
 
