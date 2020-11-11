@@ -360,12 +360,14 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 	if includeTable(includedTables, "auto_increment_tbl") {
 		table, err = harness.NewTable(myDb, "auto_increment_tbl", sql.Schema{
-			{Name: "pk", Type: sql.Int64, Source: "auto_increment_tbl", PrimaryKey: true, AutoIncrement: true},
+			{Name: "pk", Type: sql.Int64, Source: "auto_increment_tbl", PrimaryKey: true, AutoIncrement: true, Extra: "auto_increment"},
 			{Name: "c0", Type: sql.Int64, Source: "auto_increment_tbl", Nullable: true},
 		})
 
-		if err == nil {
-			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+		autoTbl, ok := table.(sql.AutoIncrementTable)
+
+		if err == nil && ok {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, autoTbl),
 				sql.NewRow(1, 11),
 				sql.NewRow(2, 22),
 				sql.NewRow(3, 33),
@@ -446,7 +448,8 @@ func InsertRows(t *testing.T, ctx *sql.Context, table sql.InsertableTable, rows 
 	for _, r := range rows {
 		require.NoError(t, inserter.Insert(ctx, r))
 	}
-	require.NoError(t, inserter.Close(ctx))
+	err := inserter.Close(ctx)
+	require.NoError(t, err)
 }
 
 func DeleteRows(t *testing.T, ctx *sql.Context, table sql.DeletableTable, rows ...sql.Row) {

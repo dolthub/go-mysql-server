@@ -34,6 +34,10 @@ type Table struct {
 
 	// Indexed lookups
 	lookup sql.IndexLookup
+
+	// AUTO_INCREMENT bookkeeping
+	autoIncVal interface{}
+	autoColIdx int
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -47,6 +51,7 @@ var _ sql.IndexAlterableTable = (*Table)(nil)
 var _ sql.IndexedTable = (*Table)(nil)
 var _ sql.ForeignKeyAlterableTable = (*Table)(nil)
 var _ sql.ForeignKeyTable = (*Table)(nil)
+var _ sql.AutoIncrementTable = (*Table)(nil)
 
 // PushdownTable is an extension to Table that implements sql.FilteredTable and sql.ProjectedTable. This is mostly just
 // for demonstration and testing purposes -- these new interfaces do not significantly speed up query execution.
@@ -86,11 +91,23 @@ func NewPartitionedTable(name string, schema sql.Schema, numPartitions int) *Tab
 		partitions[key] = []sql.Row{}
 	}
 
+	var autoIncVal interface{}
+	autoIncIdx := -1
+	for i, c := range schema {
+		if c.AutoIncrement {
+			autoIncVal = sql.NumericUnaryValue(c.Type)
+			autoIncIdx = i
+			break
+		}
+	}
+
 	return &Table{
 		name:       name,
 		schema:     schema,
 		partitions: partitions,
 		keys:       keys,
+		autoIncVal: autoIncVal,
+		autoColIdx: autoIncIdx,
 	}
 }
 
@@ -363,6 +380,10 @@ func (t *Table) Deleter(*sql.Context) sql.RowDeleter {
 	return &tableEditor{t}
 }
 
+func (t *Table) AutoIncrementSetter(*sql.Context) sql.AutoIncrementSetter {
+	return &tableEditor{t}
+}
+
 // Convenience method to avoid having to create an inserter in test setup
 func (t *Table) Insert(ctx *sql.Context, row sql.Row) error {
 	inserter := t.Inserter(ctx)
@@ -389,7 +410,52 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 	}
 
 	t.table.partitions[key] = append(t.table.partitions[key], row)
+
+	idx := t.table.autoColIdx
+	if idx >= 0 {
+		// autoIncVal = max(autoIncVal, insertVal)
+		autoCol := t.table.schema[idx]
+		cmp, err := autoCol.Type.Compare(row[idx], t.table.autoIncVal)
+		if err != nil {
+			return err
+		}
+		if cmp > 0 {
+			t.table.autoIncVal = row[idx]
+		}
+		t.table.autoIncVal = increment(t.table.autoIncVal)
+	}
+
 	return nil
+}
+
+func increment(v interface{}) interface{} {
+	switch val := v.(type) {
+	case int:
+		return val + 1
+	case uint:
+		return val + 1
+	case int8:
+		return val + 1
+	case int16:
+		return val + 1
+	case int32:
+		return val + 1
+	case int64:
+		return val + 1
+	case uint8:
+		return val + 1
+	case uint16:
+		return val + 1
+	case uint32:
+		return val + 1
+	case uint64:
+		return val + 1
+	case float32:
+		return val + 1
+	case float64:
+		return val + 1
+	}
+	return v
 }
 
 // Delete the given row from the table.
@@ -475,6 +541,12 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 	return nil
 }
 
+// SetAutoIncrementValue sets a new AUTO_INCREMENT value
+func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val interface{}) error {
+	t.table.autoIncVal = val
+	return nil
+}
+
 func (t *tableEditor) checkUniquenessConstraints(row sql.Row) error {
 	pkColIdxes := t.pkColumnIndexes()
 
@@ -515,6 +587,12 @@ func columnsMatch(colIndexes []int, row sql.Row, row2 sql.Row) bool {
 		}
 	}
 	return true
+}
+
+
+// GetAutoIncrementValue gets the last AUTO_INCREMENT value
+func (t *Table) GetAutoIncrementValue(*sql.Context) (interface{}, error) {
+	return t.autoIncVal, nil
 }
 
 func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {

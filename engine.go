@@ -111,10 +111,36 @@ func NewDefault() *Engine {
 	return New(c, a, nil)
 }
 
+// AnalyzeQuery analyzes a query and returns its Schema.
+func (e *Engine) AnalyzeQuery(
+	ctx *sql.Context,
+	query string,
+) (sql.Schema, error) {
+	parsed, err := parse.Parse(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return analyzed.Schema(), nil
+}
+
 // Query executes a query.
 func (e *Engine) Query(
 	ctx *sql.Context,
 	query string,
+) (sql.Schema, sql.RowIter, error) {
+	return e.QueryWithBindings(ctx, query, nil)
+}
+
+func (e *Engine) QueryWithBindings(
+	ctx *sql.Context,
+	query string,
+	bindings map[string]sql.Expression,
 ) (sql.Schema, sql.RowIter, error) {
 	var (
 		parsed, analyzed sql.Node
@@ -157,6 +183,13 @@ func (e *Engine) Query(
 
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if len(bindings) > 0 {
+		parsed, err = plan.ApplyBindings(parsed, bindings)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
