@@ -23,6 +23,8 @@ github.com/dolthub/vitess v0.0.0-20201105222715-09545a377901 h1:lszgRBIWYyAVdBtS
 github.com/dolthub/vitess v0.0.0-20201105222715-09545a377901/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
 github.com/dolthub/vitess v0.0.0-20201105231317-8886950f2053 h1:d1IcMtRAas14KQWTLG3vh6hWhYTwZYvdtp1bUwVfdIU=
 github.com/dolthub/vitess v0.0.0-20201105231317-8886950f2053/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
+github.com/dolthub/vitess v0.0.0-20201111232835-de121b254639 h1:zCse34nACeJiO+JUPwp4tbGY0ci4V1iPO3CrdYwKS3A=
+github.com/dolthub/vitess v0.0.0-20201111232835-de121b254639/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/fastly/go-utils v0.0.0-20180712184237-d95a45783239 h1:Ghm4eQYC0nEPnSJdVkTrXpu9KtoVCSo1hg7mtI7G9KU=
