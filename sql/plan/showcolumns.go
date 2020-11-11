@@ -102,11 +102,11 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 				strings.ToLower(col.Type.String()),
 				collation,
 				null,
-				key, // Key
+				key,
 				defaultVal,
-				"",          // Extra
+				col.Extra,
 				"",          // Privileges
-				col.Comment, // Comment
+				col.Comment,
 			}
 		} else {
 			row = sql.Row{
@@ -115,7 +115,7 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 				null,
 				key,
 				defaultVal,
-				"", // Extra
+				col.Extra,
 			}
 		}
 
