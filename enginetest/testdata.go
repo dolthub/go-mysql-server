@@ -372,7 +372,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 				sql.NewRow(2, 22),
 				sql.NewRow(3, 33),
 			)
-			} else {
+		} else {
 			t.Logf("Warning: could not create table %s: %s", "auto_increment_tbl", err)
 		}
 	}

@@ -1692,72 +1692,72 @@ func TestVariableErrors(t *testing.T, harness Harness) {
 func TestWarnings(t *testing.T, harness Harness) {
 	var queries = []QueryTest{
 		{
-			`
+			Query: `
 			SHOW WARNINGS
 			`,
-			[]sql.Row{
+			Expected: []sql.Row{
 				{"", 3, ""},
 				{"", 2, ""},
 				{"", 1, ""},
 			},
-			nil,
+			Bindings: nil,
 		},
 		{
-			`
+			Query: `
 			SHOW WARNINGS LIMIT 1
 			`,
-			[]sql.Row{
+			Expected: []sql.Row{
 				{"", 3, ""},
 			},
-			nil,
+			Bindings: nil,
 		},
 		{
-			`
+			Query: `
 			SHOW WARNINGS LIMIT 1,2
 			`,
-			[]sql.Row{
+			Expected: []sql.Row{
 				{"", 2, ""},
 				{"", 1, ""},
 			},
-			nil,
+			Bindings: nil,
 		},
 		{
-			`
+			Query: `
 			SHOW WARNINGS LIMIT 0
 			`,
-			[]sql.Row{
+			Expected: []sql.Row{
 				{"", 3, ""},
 				{"", 2, ""},
 				{"", 1, ""},
 			},
-			nil,
+			Bindings: nil,
 		},
 		{
-			`
+			Query: `
 			SHOW WARNINGS LIMIT 2,0
 			`,
-			[]sql.Row{
+			Expected: []sql.Row{
 				{"", 1, ""},
 			},
-			nil,
+			Bindings: nil,
 		},
 		{
-			`
+			Query: `
 			SHOW WARNINGS LIMIT 10
 			`,
-			[]sql.Row{
+			Expected: []sql.Row{
 				{"", 3, ""},
 				{"", 2, ""},
 				{"", 1, ""},
 			},
-			nil,
+			Bindings: nil,
 		},
 		{
-			`
+			Query: `
 			SHOW WARNINGS LIMIT 10,1
 			`,
-			nil,
-			nil,
+			Expected: nil,
+			Bindings: nil,
 		},
 	}
 
@@ -1844,22 +1844,22 @@ func TestUse(t *testing.T, harness Harness) {
 func TestSessionSelectLimit(t *testing.T, harness Harness) {
 	q := []QueryTest{
 		{
-			"SELECT * FROM mytable ORDER BY i",
-			[]sql.Row{{int64(1), "first row"}},
-			nil,
+			Query:    "SELECT * FROM mytable ORDER BY i",
+			Expected: []sql.Row{{int64(1), "first row"}},
+			Bindings: nil,
 		},
 		{
-			"SELECT * FROM mytable ORDER BY i LIMIT 2",
-			[]sql.Row{
+			Query: "SELECT * FROM mytable ORDER BY i LIMIT 2",
+			Expected: []sql.Row{
 				{int64(1), "first row"},
 				{int64(2), "second row"},
 			},
-			nil,
+			Bindings: nil,
 		},
 		{
-			"SELECT i FROM (SELECT i FROM mytable LIMIT 2) t ORDER BY i",
-			[]sql.Row{{int64(1)}},
-			nil,
+			Query:    "SELECT i FROM (SELECT i FROM mytable LIMIT 2) t ORDER BY i",
+			Expected: []sql.Row{{int64(1)}},
+			Bindings: nil,
 		},
 		// TODO: this is broken: the session limit is applying inappropriately to the subquery
 		// {

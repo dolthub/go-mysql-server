@@ -87,11 +87,11 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		`SELECT USER()`,
-		[]sql.Row{
+		Query: `SELECT USER()`,
+		Expected: []sql.Row{
 			{"user"},
 		},
-		nil,
+		Bindings: nil,
 	}
 
 	fmt.Sprintf("%v", test)
