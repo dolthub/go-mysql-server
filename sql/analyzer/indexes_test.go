@@ -256,13 +256,13 @@ func TestGetIndexes(t *testing.T) {
 		&memory.MergeableIndex{
 			TableName: "t2",
 			Exprs: []sql.Expression{
-				col(0, "t2", "foo"),
 				col(0, "t2", "bar"),
 			},
 		},
 		&memory.MergeableIndex{
 			TableName: "t2",
 			Exprs: []sql.Expression{
+				col(0, "t2", "foo"),
 				col(0, "t2", "bar"),
 			},
 		},
@@ -515,6 +515,34 @@ func TestGetIndexes(t *testing.T) {
 				},
 				"t2": &indexLookup{
 					mergeableIndexLookup("t2", "bar", 0, int64(4)),
+					[]sql.Index{indexes[1]},
+				},
+			},
+			true,
+		},
+		{
+			and(
+				eq(
+					col(0, "t2", "bar"),
+					lit(2),
+				),
+				eq(
+					col(0, "t2", "foo"),
+					lit(1),
+				),
+			),
+			indexLookupsByTable{
+				"t2": &indexLookup{
+					&memory.MergeableIndexLookup{
+						Key: []interface{}{int64(1), int64(2)},
+						Index: &memory.MergeableIndex{
+							TableName: "t2",
+							Exprs: []sql.Expression{
+								col(0, "t2", "foo"),
+								col(0, "t2", "bar"),
+							},
+						},
+					},
 					[]sql.Index{indexes[2]},
 				},
 			},
@@ -559,7 +587,7 @@ func TestGetIndexes(t *testing.T) {
 							},
 						},
 					},
-					[]sql.Index{indexes[1]},
+					[]sql.Index{indexes[2]},
 				},
 			},
 			true,
@@ -868,7 +896,7 @@ func TestGetIndexes(t *testing.T) {
 						Index:  mergeableIndex("t2", "bar", 0),
 					},
 					[]sql.Index{
-						indexes[2],
+						indexes[1],
 					},
 				},
 			},
