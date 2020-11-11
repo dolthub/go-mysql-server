@@ -89,14 +89,20 @@ func (r *indexAnalyzer) IndexesByTable(ctx *sql.Context, db, table string) []sql
 // IndexByExpression returns an index by the given expression. It will return nil if no index is found. If more than
 // one expression is given, all of them must match for the index to be matched.
 func (r *indexAnalyzer) IndexByExpression(ctx *sql.Context, db string, expr ...sql.Expression) sql.Index {
-	exprStrs := make([]string, len(expr))
-	for i, e := range expr {
-		exprStrs[i] = e.String()
+	// Multiple expressions may be the same so we filter out duplicates
+	distinctExprs := make(map[string]struct{})
+	var exprStrs []string
+	for _, e := range expr {
+		es := e.String()
+		if _, ok := distinctExprs[es]; !ok {
+			distinctExprs[es] = struct{}{}
+			exprStrs = append(exprStrs, es)
+		}
 	}
 
 	for _, idxes := range r.indexesByTable {
 		for _, idx := range idxes {
-			if isSublist(idx.Expressions(), exprStrs) {
+			if exprListsEqual(idx.Expressions(), exprStrs) {
 				return idx
 			}
 		}
@@ -170,8 +176,12 @@ func (r *indexAnalyzer) releaseUsedIndexes() {
 	}
 }
 
-// isSublist returns whether a is a sublist of b (order-independent)
-func isSublist(a, b []string) bool {
+// exprListsEqual returns whether a and b have the same items.
+func exprListsEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
 	var visited = make([]bool, len(b))
 
 	for _, va := range a {
