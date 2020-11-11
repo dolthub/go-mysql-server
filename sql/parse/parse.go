@@ -1141,11 +1141,6 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		}
 	}
 
-	extra := ""
-	if cd.Type.Autoincrement {
-		extra = "auto_increment"
-	}
-
 	return &sql.Column{
 		Nullable:      !isPkey && !bool(cd.Type.NotNull),
 		Type:          internalTyp,
@@ -1154,7 +1149,6 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		Default:       defaultVal,
 		AutoIncrement: bool(cd.Type.Autoincrement),
 		Comment:       comment,
-		Extra:         extra,
 	}, nil
 }
 

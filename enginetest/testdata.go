@@ -360,7 +360,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 	if includeTable(includedTables, "auto_increment_tbl") {
 		table, err = harness.NewTable(myDb, "auto_increment_tbl", sql.Schema{
-			{Name: "pk", Type: sql.Int64, Source: "auto_increment_tbl", PrimaryKey: true, AutoIncrement: true, Extra: "auto_increment"},
+			{Name: "pk", Type: sql.Int64, Source: "auto_increment_tbl", PrimaryKey: true, AutoIncrement: true},
 			{Name: "c0", Type: sql.Int64, Source: "auto_increment_tbl", Nullable: true},
 		})
 
