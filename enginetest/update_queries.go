@@ -26,7 +26,6 @@ var UpdateTests = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = ?;",
@@ -42,77 +41,66 @@ var UpdateTests = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(0, 0)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated' WHERE i = 1;",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "second row"}, {int64(3), "third row"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated' WHERE i <> 9999;",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "UPDATE floattable SET f32 = f32 + f32, f64 = f32 * f64 WHERE i = 2;",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM floattable WHERE i = 2;",
 		ExpectedSelect:      []sql.Row{{int64(2), float32(3.0), float64(4.5)}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "UPDATE floattable SET f32 = 5, f32 = 4 WHERE i = 1;",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT f32 FROM floattable WHERE i = 1;",
 		ExpectedSelect:      []sql.Row{{float32(4.0)}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'first row' WHERE i = 1;",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 0)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "UPDATE niltable SET b = NULL WHERE f IS NULL;",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 2)}},
 		SelectQuery:         "SELECT i,b FROM niltable WHERE f IS NULL;",
 		ExpectedSelect:      []sql.Row{{int64(1), nil}, {int64(2), nil}, {int64(3), nil}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated' ORDER BY i ASC LIMIT 2;",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "third row"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated' ORDER BY i DESC LIMIT 2;",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "updated"}, {int64(3), "updated"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated' ORDER BY i LIMIT 1 OFFSET 1;",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "updated"}, {int64(3), "third row"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated';",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "UPDATE typestable SET ti = '2020-03-06 00:00:00';",
@@ -136,7 +124,6 @@ var UpdateTests = []WriteQueryTest{
 			false,
 			nil,
 			nil}},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "UPDATE typestable SET ti = '2020-03-06 00:00:00', da = '2020-03-06';",
@@ -160,7 +147,6 @@ var UpdateTests = []WriteQueryTest{
 			false,
 			nil,
 			nil}},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "UPDATE typestable SET da = '0000-00-00', ti = '0000-00-00 00:00:00';",
@@ -184,7 +170,6 @@ var UpdateTests = []WriteQueryTest{
 			false,
 			nil,
 			nil}},
-		Bindings: nil,
 	},
 }
 
@@ -199,66 +184,53 @@ var UpdateErrorTests = []GenericErrorQueryTest{
 	{
 		Name:     "invalid table",
 		Query:    "UPDATE doesnotexist SET i = 0;",
-		Bindings: nil,
 	},
 	{
 		Name:     "missing binding",
 		Query:    "UPDATE mytable SET i = ?;",
-		Bindings: nil,
 	},
 	{
 		Name:     "wrong number of columns",
 		Query:    `UPDATE mytable SET i = ("one", "two");`,
-		Bindings: nil,
 	},
 	{
 		Name:     "type mismatch: string -> int",
 		Query:    `UPDATE mytable SET i = "one"`,
-		Bindings: nil,
 	},
 	{
 		Name:     "type mismatch: string -> float",
 		Query:    `UPDATE floattable SET f64 = "one"`,
-		Bindings: nil,
 	},
 	{
 		Name:     "type mismatch: string -> uint",
 		Query:    `UPDATE typestable SET f64 = "one"`,
-		Bindings: nil,
 	},
 	{
 		Name:     "invalid column set",
 		Query:    "UPDATE mytable SET z = 0;",
-		Bindings: nil,
 	},
 	{
 		Name:     "invalid column set value",
 		Query:    "UPDATE mytable SET i = z;",
-		Bindings: nil,
 	},
 	{
 		Name:     "invalid column where",
 		Query:    "UPDATE mytable SET s = 'hi' WHERE z = 1;",
-		Bindings: nil,
 	},
 	{
 		Name:     "invalid column order by",
 		Query:    "UPDATE mytable SET s = 'hi' ORDER BY z;",
-		Bindings: nil,
 	},
 	{
 		Name:     "negative limit",
 		Query:    "UPDATE mytable SET s = 'hi' LIMIT -1;",
-		Bindings: nil,
 	},
 	{
 		Name:     "negative offset",
 		Query:    "UPDATE mytable SET s = 'hi' LIMIT 1 OFFSET -1;",
-		Bindings: nil,
 	},
 	{
 		Name:     "set null on non-nullable",
 		Query:    "UPDATE mytable SET s = NULL;",
-		Bindings: nil,
 	},
 }

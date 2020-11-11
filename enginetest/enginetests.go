@@ -1700,7 +1700,6 @@ func TestWarnings(t *testing.T, harness Harness) {
 				{"", 2, ""},
 				{"", 1, ""},
 			},
-			Bindings: nil,
 		},
 		{
 			Query: `
@@ -1709,7 +1708,6 @@ func TestWarnings(t *testing.T, harness Harness) {
 			Expected: []sql.Row{
 				{"", 3, ""},
 			},
-			Bindings: nil,
 		},
 		{
 			Query: `
@@ -1719,7 +1717,6 @@ func TestWarnings(t *testing.T, harness Harness) {
 				{"", 2, ""},
 				{"", 1, ""},
 			},
-			Bindings: nil,
 		},
 		{
 			Query: `
@@ -1730,7 +1727,6 @@ func TestWarnings(t *testing.T, harness Harness) {
 				{"", 2, ""},
 				{"", 1, ""},
 			},
-			Bindings: nil,
 		},
 		{
 			Query: `
@@ -1739,7 +1735,6 @@ func TestWarnings(t *testing.T, harness Harness) {
 			Expected: []sql.Row{
 				{"", 1, ""},
 			},
-			Bindings: nil,
 		},
 		{
 			Query: `
@@ -1750,14 +1745,12 @@ func TestWarnings(t *testing.T, harness Harness) {
 				{"", 2, ""},
 				{"", 1, ""},
 			},
-			Bindings: nil,
 		},
 		{
 			Query: `
 			SHOW WARNINGS LIMIT 10,1
 			`,
 			Expected: nil,
-			Bindings: nil,
 		},
 	}
 
@@ -1846,7 +1839,6 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 		{
 			Query:    "SELECT * FROM mytable ORDER BY i",
 			Expected: []sql.Row{{int64(1), "first row"}},
-			Bindings: nil,
 		},
 		{
 			Query: "SELECT * FROM mytable ORDER BY i LIMIT 2",
@@ -1854,12 +1846,10 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 				{int64(1), "first row"},
 				{int64(2), "second row"},
 			},
-			Bindings: nil,
 		},
 		{
 			Query:    "SELECT i FROM (SELECT i FROM mytable LIMIT 2) t ORDER BY i",
 			Expected: []sql.Row{{int64(1)}},
-			Bindings: nil,
 		},
 		// TODO: this is broken: the session limit is applying inappropriately to the subquery
 		// {

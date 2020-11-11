@@ -28,28 +28,24 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO niltable (i, f) VALUES (10, 10.0), (12, 12.0);",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
 		SelectQuery:         "SELECT i,f FROM niltable WHERE f IN (10.0, 12.0) ORDER BY f;",
 		ExpectedSelect:      []sql.Row{{int64(10), 10.0}, {int64(12), 12.0}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable SET s = 'x', i = 999;",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable VALUES (999, 'x');",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable VALUES (?, ?);",
@@ -76,7 +72,6 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery: `INSERT INTO typestable VALUES (
@@ -95,7 +90,6 @@ var InsertQueries = []WriteQueryTest{
 			sql.Timestamp.MustConvert("2037-04-05 12:51:36"), sql.Date.MustConvert("2231-11-07"),
 			"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
 		}},
-		Bindings: nil,
 	},
 	{
 		WriteQuery: `INSERT INTO typestable SET
@@ -114,7 +108,6 @@ var InsertQueries = []WriteQueryTest{
 			sql.Timestamp.MustConvert("2037-04-05 12:51:36"), sql.Date.MustConvert("2231-11-07"),
 			"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
 		}},
-		Bindings: nil,
 	},
 	{
 		WriteQuery: `INSERT INTO typestable VALUES (
@@ -133,7 +126,6 @@ var InsertQueries = []WriteQueryTest{
 			sql.Timestamp.Zero(), sql.Date.Zero(),
 			"", sql.False, ([]byte)(`""`), "",
 		}},
-		Bindings: nil,
 	},
 	{
 		WriteQuery: `INSERT INTO typestable SET
@@ -152,14 +144,12 @@ var InsertQueries = []WriteQueryTest{
 			sql.Timestamp.Zero(), sql.Date.Zero(),
 			"", sql.False, ([]byte)(`""`), "",
 		}},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          `INSERT INTO mytable (i,s) VALUES (10, 'NULL')`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 10;",
 		ExpectedSelect:      []sql.Row{{int64(10), "NULL"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery: `INSERT INTO typestable VALUES (999, null, null, null, null, null, null, null, null,
@@ -167,7 +157,6 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
 		ExpectedSelect:      []sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery: `INSERT INTO typestable SET id=999, i8=null, i16=null, i32=null, i64=null, u8=null, u16=null, u32=null, u64=null,
@@ -175,7 +164,6 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
 		ExpectedSelect:      []sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable SELECT i+100,s FROM mytable",
@@ -189,7 +177,6 @@ var InsertQueries = []WriteQueryTest{
 			{int64(102), "second row"},
 			{int64(103), "third row"},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO emptytable SELECT * FROM mytable",
@@ -200,7 +187,6 @@ var InsertQueries = []WriteQueryTest{
 			{int64(2), "second row"},
 			{int64(3), "third row"},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO emptytable SELECT * FROM mytable where mytable.i > 2",
@@ -209,7 +195,6 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedSelect: []sql.Row{
 			{int64(3), "third row"},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) SELECT i+10, 'new' FROM mytable",
@@ -223,7 +208,6 @@ var InsertQueries = []WriteQueryTest{
 			{int64(12), "new"},
 			{int64(13), "new"},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable SELECT i2+100, s2 FROM othertable",
@@ -237,7 +221,6 @@ var InsertQueries = []WriteQueryTest{
 			{int64(102), "second"},
 			{int64(103), "first"},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO emptytable (s,i) SELECT * FROM othertable",
@@ -248,7 +231,6 @@ var InsertQueries = []WriteQueryTest{
 			{int64(2), "second"},
 			{int64(3), "first"},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO emptytable (s,i) SELECT concat(m.s, o.s2), m.i FROM othertable o JOIN mytable m ON m.i=o.i2",
@@ -259,7 +241,6 @@ var InsertQueries = []WriteQueryTest{
 			{int64(2), "second rowsecond"},
 			{int64(3), "third rowfirst"},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) SELECT (i + 10.0) / 10.0 + 10 + i, concat(s, ' new') FROM mytable",
@@ -273,7 +254,6 @@ var InsertQueries = []WriteQueryTest{
 			{int64(13), "second row new"},
 			{int64(14), "third row new"},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) SELECT CHAR_LENGTH(s), concat('numrows: ', count(*)) from mytable group by 1",
@@ -286,7 +266,6 @@ var InsertQueries = []WriteQueryTest{
 			{9, "numrows: 2"},
 			{10, "numrows: 1"},
 		},
-		Bindings: nil,
 	},
 	// TODO: this doesn't match MySQL. MySQL requires giving an alias to the expression to use it in a HAVING clause,
 	//  but that causes an error in our engine. Needs work
@@ -300,7 +279,6 @@ var InsertQueries = []WriteQueryTest{
 			{3, "third row"},
 			{10, "numrows: 1"},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) SELECT i * 2, concat(s,s) from mytable order by 1 desc limit 1",
@@ -312,7 +290,6 @@ var InsertQueries = []WriteQueryTest{
 			{3, "third row"},
 			{6, "third rowthird row"},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) SELECT i + 3, concat(s,s) from mytable order by 1 desc",
@@ -326,35 +303,30 @@ var InsertQueries = []WriteQueryTest{
 			{5, "second rowsecond row"},
 			{6, "third rowthird row"},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hello') ON DUPLICATE KEY UPDATE s='hello'",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
 		ExpectedSelect:      []sql.Row{{int64(1), "hello"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hello2') ON DUPLICATE KEY UPDATE s='hello3'",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
 		ExpectedSelect:      []sql.Row{{int64(1), "hello3"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hello') ON DUPLICATE KEY UPDATE i=10",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 10",
 		ExpectedSelect:      []sql.Row{{int64(10), "first row"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hello2') ON DUPLICATE KEY UPDATE s='hello3'",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
 		ExpectedSelect:      []sql.Row{{int64(1), "hello3"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hello2'), (2, 'hello3'), (4, 'no conflict') ON DUPLICATE KEY UPDATE s='hello4'",
@@ -366,7 +338,6 @@ var InsertQueries = []WriteQueryTest{
 			{3, "third row"},
 			{4, "no conflict"},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (10, 'hello') ON DUPLICATE KEY UPDATE s='hello'",
@@ -378,7 +349,6 @@ var InsertQueries = []WriteQueryTest{
 			{3, "third row"},
 			{10, "hello"},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl (c0) values (44)",
@@ -390,7 +360,6 @@ var InsertQueries = []WriteQueryTest{
 			{3, 33},
 			{4, 44},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl (c0) values (44),(55)",
@@ -403,7 +372,6 @@ var InsertQueries = []WriteQueryTest{
 			{4, 44},
 			{5, 55},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl values (NULL, 44)",
@@ -415,7 +383,6 @@ var InsertQueries = []WriteQueryTest{
 			{3, 33},
 			{4, 44},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl values (0, 44)",
@@ -427,7 +394,6 @@ var InsertQueries = []WriteQueryTest{
 			{3, 33},
 			{4, 44},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl values (5, 44)",
@@ -439,7 +405,6 @@ var InsertQueries = []WriteQueryTest{
 			{3, 33},
 			{5, 44},
 		},
-		Bindings: nil,
 	},
 	{
 		WriteQuery: "INSERT INTO auto_increment_tbl values " +
@@ -456,7 +421,6 @@ var InsertQueries = []WriteQueryTest{
 			{10, 110},
 			{11, 121},
 		},
-		Bindings: nil,
 	},
 }
 
@@ -743,92 +707,74 @@ var InsertErrorTests = []GenericErrorQueryTest{
 	{
 		Name:     "too few values",
 		Query:    "INSERT INTO mytable (s, i) VALUES ('x');",
-		Bindings: nil,
 	},
 	{
 		Name:     "too many values one column",
 		Query:    "INSERT INTO mytable (s) VALUES ('x', 999);",
-		Bindings: nil,
 	},
 	{
 		Name:     "missing binding",
 		Query:    "INSERT INTO mytable (s) VALUES (?);",
-		Bindings: nil,
 	},
 	{
 		Name:     "too many values two columns",
 		Query:    "INSERT INTO mytable (i, s) VALUES (999, 'x', 'y');",
-		Bindings: nil,
 	},
 	{
 		Name:     "too few values no columns specified",
 		Query:    "INSERT INTO mytable VALUES (999);",
-		Bindings: nil,
 	},
 	{
 		Name:     "too many values no columns specified",
 		Query:    "INSERT INTO mytable VALUES (999, 'x', 'y');",
-		Bindings: nil,
 	},
 	{
 		Name:     "non-existent column values",
 		Query:    "INSERT INTO mytable (i, s, z) VALUES (999, 'x', 999);",
-		Bindings: nil,
 	},
 	{
 		Name:     "non-existent column set",
 		Query:    "INSERT INTO mytable SET i = 999, s = 'x', z = 999;",
-		Bindings: nil,
 	},
 	{
 		Name:     "duplicate column",
 		Query:    "INSERT INTO mytable (i, s, s) VALUES (999, 'x', 'x');",
-		Bindings: nil,
 	},
 	{
 		Name:     "duplicate column set",
 		Query:    "INSERT INTO mytable SET i = 999, s = 'y', s = 'y';",
-		Bindings: nil,
 	},
 	{
 		Name:     "null given to non-nullable",
 		Query:    "INSERT INTO mytable (i, s) VALUES (null, 'y');",
-		Bindings: nil,
 	},
 	{
 		Name:     "incompatible types",
 		Query:    "INSERT INTO mytable (i, s) select * FROM othertable",
-		Bindings: nil,
 	},
 	{
 		Name:     "column count mismatch in select",
 		Query:    "INSERT INTO mytable (i) select * FROM othertable",
-		Bindings: nil,
 	},
 	{
 		Name:     "column count mismatch in select",
 		Query:    "INSERT INTO mytable select s FROM othertable",
-		Bindings: nil,
 	},
 	{
 		Name:     "column count mismatch in join select",
 		Query:    "INSERT INTO mytable (s,i) SELECT * FROM othertable o JOIN mytable m ON m.i=o.i2",
-		Bindings: nil,
 	},
 	{
 		Name:     "duplicate key",
 		Query:    "INSERT INTO mytable (i,s) values (1, 'hello')",
-		Bindings: nil,
 	},
 	{
 		Name:     "duplicate keys",
 		Query:    "INSERT INTO mytable SELECT * from mytable",
-		Bindings: nil,
 	},
 	{
 		Name:     "bad column in on duplicate key update clause",
 		Query:    "INSERT INTO mytable values (10, 'b') ON DUPLICATE KEY UPDATE notExist = 1",
-		Bindings: nil,
 	},
 }
 

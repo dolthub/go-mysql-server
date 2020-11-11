@@ -91,7 +91,6 @@ func TestSingleQuery(t *testing.T) {
 		Expected: []sql.Row{
 			{"user"},
 		},
-		Bindings: nil,
 	}
 
 	fmt.Sprintf("%v", test)

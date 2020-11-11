@@ -28,56 +28,48 @@ var ReplaceQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
 		SelectQuery:         "SELECT s FROM mytable WHERE i = 1;",
 		ExpectedSelect:      []sql.Row{{"first row"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "REPLACE INTO mytable SET i = 1, s = 'first row';",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
 		SelectQuery:         "SELECT s FROM mytable WHERE i = 1;",
 		ExpectedSelect:      []sql.Row{{"first row"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "REPLACE INTO mytable VALUES (1, 'new row same i');",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
 		SelectQuery:         "SELECT s FROM mytable WHERE i = 1;",
 		ExpectedSelect:      []sql.Row{{"new row same i"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "REPLACE INTO mytable SET i = 1, s = 'new row same i';",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
 		SelectQuery:         "SELECT s FROM mytable WHERE i = 1;",
 		ExpectedSelect:      []sql.Row{{"new row same i"}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "REPLACE INTO mytable (s, i) VALUES ('x', 999);",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "REPLACE INTO mytable SET s = 'x', i = 999;",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "REPLACE INTO mytable VALUES (999, 'x');",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery:          "REPLACE INTO mytable SET i = 999, s = 'x';",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery: `REPLACE INTO typestable VALUES (
@@ -96,7 +88,6 @@ var ReplaceQueries = []WriteQueryTest{
 			sql.Timestamp.MustConvert("2037-04-05 12:51:36"), sql.Date.MustConvert("2231-11-07"),
 			"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
 		}},
-		Bindings: nil,
 	},
 	{
 		WriteQuery: `REPLACE INTO typestable SET
@@ -115,7 +106,6 @@ var ReplaceQueries = []WriteQueryTest{
 			sql.Timestamp.MustConvert("2037-04-05 12:51:36"), sql.Date.MustConvert("2231-11-07"),
 			"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
 		}},
-		Bindings: nil,
 	},
 	{
 		WriteQuery: `REPLACE INTO typestable VALUES (
@@ -134,7 +124,6 @@ var ReplaceQueries = []WriteQueryTest{
 			sql.Timestamp.Zero(), sql.Date.Zero(),
 			"", sql.False, ([]byte)(`""`), "",
 		}},
-		Bindings: nil,
 	},
 	{
 		WriteQuery: `REPLACE INTO typestable SET
@@ -153,7 +142,6 @@ var ReplaceQueries = []WriteQueryTest{
 			sql.Timestamp.Zero(), sql.Date.Zero(),
 			"", sql.False, ([]byte)(`""`), "",
 		}},
-		Bindings: nil,
 	},
 	{
 		WriteQuery: `REPLACE INTO typestable VALUES (999, null, null, null, null, null, null, null, null,
@@ -161,7 +149,6 @@ var ReplaceQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
 		ExpectedSelect:      []sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
-		Bindings:            nil,
 	},
 	{
 		WriteQuery: `REPLACE INTO typestable SET id=999, i8=null, i16=null, i32=null, i64=null, u8=null, u16=null, u32=null, u64=null,
@@ -169,7 +156,6 @@ var ReplaceQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
 		ExpectedSelect:      []sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
-		Bindings:            nil,
 	},
 }
 
@@ -177,56 +163,45 @@ var ReplaceErrorTests = []GenericErrorQueryTest{
 	{
 		Name:     "too few values",
 		Query:    "REPLACE INTO mytable (s, i) VALUES ('x');",
-		Bindings: nil,
 	},
 	{
 		Name:     "too many values one column",
 		Query:    "REPLACE INTO mytable (s) VALUES ('x', 999);",
-		Bindings: nil,
 	},
 	{
 		Name:     "too many values two columns",
 		Query:    "REPLACE INTO mytable (i, s) VALUES (999, 'x', 'y');",
-		Bindings: nil,
 	},
 	{
 		Name:     "too few values no columns specified",
 		Query:    "REPLACE INTO mytable VALUES (999);",
-		Bindings: nil,
 	},
 	{
 		Name:     "too many values no columns specified",
 		Query:    "REPLACE INTO mytable VALUES (999, 'x', 'y');",
-		Bindings: nil,
 	},
 	{
 		Name:     "non-existent column values",
 		Query:    "REPLACE INTO mytable (i, s, z) VALUES (999, 'x', 999);",
-		Bindings: nil,
 	},
 	{
 		Name:     "non-existent column set",
 		Query:    "REPLACE INTO mytable SET i = 999, s = 'x', z = 999;",
-		Bindings: nil,
 	},
 	{
 		Name:     "duplicate column values",
 		Query:    "REPLACE INTO mytable (i, s, s) VALUES (999, 'x', 'x');",
-		Bindings: nil,
 	},
 	{
 		Name:     "duplicate column set",
 		Query:    "REPLACE INTO mytable SET i = 999, s = 'y', s = 'y';",
-		Bindings: nil,
 	},
 	{
 		Name:     "null given to non-nullable values",
 		Query:    "INSERT INTO mytable (i, s) VALUES (null, 'y');",
-		Bindings: nil,
 	},
 	{
 		Name:     "null given to non-nullable set",
 		Query:    "INSERT INTO mytable SET i = null, s = 'y';",
-		Bindings: nil,
 	},
 }
