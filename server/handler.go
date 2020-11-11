@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/internal/sockstate"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 var regKillCmd = regexp.MustCompile(`^kill (?:(query|connection) )?(\d+)$`)
@@ -32,6 +33,8 @@ var ErrRowTimeout = errors.NewKind("row read wait bigger than connection timeout
 
 // ErrConnectionWasClosed will be returned if we try to use a previously closed connection
 var ErrConnectionWasClosed = errors.NewKind("connection was closed")
+
+var ErrUnsupportedOperation = errors.NewKind("unsupported operation")
 
 // TODO parametrize
 const rowsBatch = 100
@@ -96,11 +99,19 @@ func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
 }
 
 func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error) {
-	panic("prepared statements are not implemented")
+	ctx, err := h.sm.NewContextWithQuery(c, query)
+	if err != nil {
+		return nil, err
+	}
+	schema, err := h.e.AnalyzeQuery(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	return schemaToFields(schema), nil
 }
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
-	panic("prepared statements are not implemented")
+	return h.doQuery(c, prepare.PrepareStmt, prepare.BindVars, callback)
 }
 
 func (h *Handler) ComResetConnection(c *mysql.Conn) {
@@ -130,7 +141,123 @@ func (h *Handler) ComQuery(
 	c *mysql.Conn,
 	query string,
 	callback func(*sqltypes.Result) error,
-) (err error) {
+) error {
+	return h.doQuery(c, query, nil, callback)
+}
+
+func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Expression, error) {
+	res := make(map[string]sql.Expression, len(bindings))
+	for k, v := range bindings {
+		v, err := sqltypes.NewValue(v.Type, v.Value)
+		if err != nil {
+			return nil, err
+		}
+		switch {
+		case v.Type() == sqltypes.Year:
+			v, err := sql.Year.Convert(string(v.ToBytes()))
+			if err != nil {
+				return nil, err
+			}
+			res[k] = expression.NewLiteral(v, sql.Year)
+		case sqltypes.IsSigned(v.Type()):
+	                v, err := strconv.ParseInt(string(v.ToBytes()), 0, 64)
+			if err != nil {
+	                        return nil, err
+			}
+			t := sql.Int64
+			c, err := t.Convert(v)
+			if err != nil {
+				return nil, err
+			}
+	                res[k] = expression.NewLiteral(c, t)
+		case sqltypes.IsUnsigned(v.Type()):
+	                v, err := strconv.ParseUint(string(v.ToBytes()), 0, 64)
+			if err != nil {
+	                        return nil, err
+			}
+			t := sql.Uint64
+			c, err := t.Convert(v)
+			if err != nil {
+				return nil, err
+			}
+	                res[k] = expression.NewLiteral(c, t)
+		case sqltypes.IsFloat(v.Type()):
+	                v, err := strconv.ParseFloat(string(v.ToBytes()), 64)
+			if err != nil {
+	                        return nil, err
+			}
+			t := sql.Float64
+			c, err := t.Convert(v)
+			if err != nil {
+				return nil, err
+			}
+	                res[k] = expression.NewLiteral(c, t)
+		case v.Type() == sqltypes.Decimal:
+			t := sql.MustCreateDecimalType(sql.DecimalTypeMaxPrecision, sql.DecimalTypeMaxScale)
+			v, err := t.Convert(string(v.ToBytes()))
+			if err != nil {
+				return nil, err
+			}
+			res[k] = expression.NewLiteral(v, t)
+		case v.Type() == sqltypes.Bit:
+			t := sql.MustCreateBitType(sql.BitTypeMaxBits)
+			v, err := t.Convert(v.ToBytes())
+			if err != nil {
+				return nil, err
+			}
+			res[k] = expression.NewLiteral(v, t)
+		case v.Type() == sqltypes.Null:
+			res[k] = expression.NewLiteral(nil, sql.Null)
+		case v.Type() == sqltypes.Blob || v.Type() == sqltypes.VarBinary || v.Type() == sqltypes.Binary:
+			t, err := sql.CreateBinary(v.Type(), int64(len(v.ToBytes())))
+			if err != nil {
+				return nil, err
+			}
+			v, err := t.Convert(v.ToBytes())
+			if err != nil {
+				return nil, err
+			}
+			res[k] = expression.NewLiteral(v, t)
+		case v.Type() == sqltypes.Text || v.Type() == sqltypes.VarChar || v.Type() == sqltypes.Char:
+			t, err := sql.CreateStringWithDefaults(v.Type(), int64(len(v.ToBytes())))
+			if err != nil {
+				return nil, err
+			}
+			v, err := t.Convert(v.ToBytes())
+			if err != nil {
+				return nil, err
+			}
+			res[k] = expression.NewLiteral(v, t)
+		case v.Type() == sqltypes.Date || v.Type() == sqltypes.Datetime || v.Type() == sqltypes.Timestamp:
+			t, err := sql.CreateDatetimeType(v.Type())
+			if err != nil {
+				return nil, err
+			}
+			v, err := t.Convert(string(v.ToBytes()))
+			if err != nil {
+				return nil, err
+			}
+			res[k] = expression.NewLiteral(v, t)
+		case v.Type() == sqltypes.Time:
+			t := sql.Time
+			v, err := t.Convert(string(v.ToBytes()))
+			if err != nil {
+				return nil, err
+			}
+			res[k] = expression.NewLiteral(v, t)
+		default:
+			return nil, ErrUnsupportedOperation.New()
+		}
+	}
+	return res, nil
+}
+
+func (h *Handler) doQuery(
+	c *mysql.Conn,
+	query string,
+	bindings map[string]*query.BindVariable,
+	callback func(*sqltypes.Result) error,
+) error {
 	logrus.Tracef("received query %s", query)
 
 	ctx, err := h.sm.NewContextWithQuery(c, query)
@@ -162,8 +289,17 @@ func (h *Handler) ComQuery(
 	// for execution.
 	// TODO: unify parser logic so we don't have to parse twice
 	parsedQuery, parseErr := sqlparser.Parse(query)
-
-	schema, rows, err := h.e.Query(ctx, query)
+	var schema sql.Schema
+	var rows sql.RowIter
+	if len(bindings) == 0 {
+		schema, rows, err = h.e.Query(ctx, query)
+	} else {
+		sqlBindings, err := bindingsToExprs(bindings)
+		if err != nil {
+			return err
+		}
+		schema, rows, err = h.e.QueryWithBindings(ctx, query, sqlBindings)
+	}
 	defer func() {
 		if q, ok := h.e.Auth.(*auth.Audit); ok {
 			q.Query(ctx, time.Since(start), err)
@@ -280,7 +416,8 @@ rowLoop:
 	}
 	close(quit)
 
-	if err := rows.Close(); err != nil {
+	err = rows.Close()
+	if err != nil {
 		return err
 	}
 

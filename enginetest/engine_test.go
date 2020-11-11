@@ -87,7 +87,7 @@ func TestDescribe(t *testing.T) {
 		for _, q := range queries {
 			enginetest.TestQuery(t, harness, e, q, []sql.Row{
 				sql.NewRow("Table(mytable)"),
-			})
+			}, nil)
 		}
 	})
 
@@ -98,7 +98,7 @@ func TestDescribe(t *testing.T) {
 			enginetest.TestQuery(t, parallelHarness, ep, q, []sql.Row{
 				{"Exchange(parallelism=2)"},
 				{" └─ Table(mytable)"},
-			})
+			}, nil)
 		}
 	})
 }
