@@ -194,6 +194,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = :var) AS a WHERE bar = :var ORDER BY foo, i",
+		Expected: []sql.Row{
+			{2, 1, 2}},
+		Bindings: map[string]sql.Expression{
+			"var": expression.NewLiteral(int64(2), sql.Int64),
+		},
+	},
+	{
 		Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 1 ORDER BY foo, i;",
 		Expected: []sql.Row{},
 	},
