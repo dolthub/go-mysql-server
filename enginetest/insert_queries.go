@@ -62,6 +62,16 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
+		"INSERT INTO mytable VALUES (:col1, :col2);",
+		[]sql.Row{{sql.NewOkResult(1)}},
+		"SELECT i FROM mytable WHERE s = 'x';",
+		[]sql.Row{{int64(999)}},
+		map[string]sql.Expression{
+			"col1": expression.NewLiteral(int64(999), sql.Int64),
+			"col2": expression.NewLiteral("x", sql.Text),
+		},
+	},
+	{
 		"INSERT INTO mytable SET i = 999, s = 'x';",
 		[]sql.Row{{sql.NewOkResult(1)}},
 		"SELECT i FROM mytable WHERE s = 'x';",

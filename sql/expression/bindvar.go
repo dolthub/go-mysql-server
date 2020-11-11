@@ -1,8 +1,6 @@
 package expression
 
 import (
-	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -31,7 +29,7 @@ func (bv *BindVar) IsNullable() bool {
 }
 
 func (bv *BindVar) Eval(*sql.Context, sql.Row) (interface{}, error) {
-	return nil, fmt.Errorf("attempt to evaluate unbound placeholder variable %s", bv.Name)
+	return nil, sql.ErrUnboundPreparedStatementVariable.New(bv.Name)
 }
 
 func (bv *BindVar) Children() []sql.Expression {

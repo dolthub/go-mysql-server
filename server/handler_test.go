@@ -306,7 +306,7 @@ func TestOkClosedConnection(t *testing.T) {
 	require.NoError(err)
 }
 
-func TestBindingsToSql(t *testing.T) {
+func TestBindingsToExprs(t *testing.T) {
 	type tc struct {
 		Name     string
 		Bindings map[string]*query.BindVariable
@@ -415,7 +415,7 @@ func TestBindingsToSql(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
-			res, err := bindingsToSql(c.Bindings)
+			res, err := bindingsToExprs(c.Bindings)
 			if !c.Err {
 				require.NoError(t, err)
 				require.Equal(t, c.Result, res)

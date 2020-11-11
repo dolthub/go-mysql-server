@@ -230,6 +230,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		"SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = :bar AND foo = :foo ORDER BY foo, i;",
+		[]sql.Row{},
+		map[string]sql.Expression{
+			"bar": expression.NewLiteral(int64(1), sql.Int64),
+			"foo": expression.NewLiteral(int64(1), sql.Int64),
+		},
+	},
+	{
 		"SELECT timestamp FROM reservedWordsTable;",
 		[]sql.Row{{"1"}},
 		nil,
@@ -4323,6 +4331,14 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       "SELECT i FROM myhistorytable AS OF MAX(abc)",
 		ExpectedErr: sql.ErrInvalidAsOfExpression,
+	},
+	{
+		Query:       "SELECT pk FROM one_pk WHERE pk > ?",
+		ExpectedErr: sql.ErrUnboundPreparedStatementVariable,
+	},
+	{
+		Query:       "SELECT pk FROM one_pk WHERE pk > :pk",
+		ExpectedErr: sql.ErrUnboundPreparedStatementVariable,
 	},
 	// TODO: Bug: the having column must appear in the select list
 	// {

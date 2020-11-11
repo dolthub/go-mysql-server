@@ -145,7 +145,7 @@ func (h *Handler) ComQuery(
 	return h.doQuery(c, query, nil, callback)
 }
 
-func bindingsToSql(bindings map[string]*query.BindVariable) (map[string]sql.Expression, error) {
+func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Expression, error) {
 	res := make(map[string]sql.Expression, len(bindings))
 	for k, v := range bindings {
 		v, err := sqltypes.NewValue(v.Type, v.Value)
@@ -294,7 +294,7 @@ func (h *Handler) doQuery(
 	if len(bindings) == 0 {
 		schema, rows, err = h.e.Query(ctx, query)
 	} else {
-		sqlBindings, err := bindingsToSql(bindings)
+		sqlBindings, err := bindingsToExprs(bindings)
 		if err != nil {
 			return err
 		}
