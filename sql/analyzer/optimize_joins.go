@@ -183,7 +183,7 @@ func analyzeJoinIndexes(
 // indexExpressionPresent returns whether the index expression given occurs in the column expressions given. This check
 // is necessary in the case of joining a table to itself, since index expressions always use the original table name,
 // and join expressions use the aliased table name.
-func indexExpressionPresent(index sql.Index, colExprs []*columnExpr) bool {
+func indexExpressionPresent(index sql.Index, colExprs []*joinColExpr) bool {
 	// every expression in the join has to be found in the column expressions being considered (although there could be
 	// other column expressions as well)
 	for _, indexExpr := range index.Expressions() {
@@ -202,7 +202,7 @@ func indexExpressionPresent(index sql.Index, colExprs []*columnExpr) bool {
 	return true
 }
 
-func indexExpressionMatches(indexExpr string, expr *columnExpr) bool {
+func indexExpressionMatches(indexExpr string, expr *joinColExpr) bool {
 	// TODO: this string matching on index expressions is pretty fragile, won't handle tables with "." in their names,
 	//  etc. Would be nice to normalize the indexes into a better data structure than just strings to make them easier to
 	//  work with.
@@ -213,7 +213,7 @@ func indexExpressionMatches(indexExpr string, expr *columnExpr) bool {
 // assemble a lookup key in the secondary table. Column expressions must match the declared column order of the index.
 func createPrimaryTableExpr(
 	idx sql.Index,
-	primaryTableEqualityExprs []*columnExpr,
+	primaryTableEqualityExprs []*joinColExpr,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) []sql.Expression {
@@ -303,6 +303,11 @@ func findJoinIndexes(
 // index for statements like FROM a JOIN b on a.x = b.z and a.y = 1 (on an index a(x,y))
 type joinIndexes map[string]sql.Index
 
+type joinEdge struct {
+	tableFrom string
+	tableTo string
+}
+
 func getJoinIndexesMany(ctx *sql.Context,
 		a *Analyzer,
 		ia *indexAnalyzer,
@@ -344,6 +349,7 @@ func getJoinEqualityIndex(
 	if isEvaluable(e.Left()) || isEvaluable(e.Right()) {
 		return nil, nil
 	}
+
 
 	leftIdx, rightIdx =
 		ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Left())...),
@@ -406,7 +412,7 @@ func getMultiColumnJoinIndex(
 }
 
 // extractExpressions returns the Expressions in the slice of columnExprs given.
-func extractExpressions(colExprs []*columnExpr) []sql.Expression {
+func extractExpressions(colExprs []*joinColExpr) []sql.Expression {
 	result := make([]sql.Expression, len(colExprs))
 	for i, expr := range colExprs {
 		result[i] = expr.colExpr
@@ -415,7 +421,7 @@ func extractExpressions(colExprs []*columnExpr) []sql.Expression {
 }
 
 // extractComparands returns the comparand Expressions in the slice of columnExprs given.
-func extractComparands(colExprs []*columnExpr) []sql.Expression {
+func extractComparands(colExprs []*joinColExpr) []sql.Expression {
 	result := make([]sql.Expression, len(colExprs))
 	for i, expr := range colExprs {
 		result[i] = expr.comparand
@@ -423,9 +429,11 @@ func extractComparands(colExprs []*columnExpr) []sql.Expression {
 	return result
 }
 
+type joinExpressionsByTable map[string][]*joinColExpr
+
 // joinExprsByTable returns a map of the expressions given keyed by their table name.
-func joinExprsByTable(exprs []sql.Expression) map[string][]*columnExpr {
-	var result = make(map[string][]*columnExpr)
+func joinExprsByTable(exprs []sql.Expression) joinExpressionsByTable {
+	var result = make(joinExpressionsByTable)
 
 	for _, expr := range exprs {
 		leftExpr, rightExpr := extractJoinColumnExpr(expr)
@@ -442,7 +450,7 @@ func joinExprsByTable(exprs []sql.Expression) map[string][]*columnExpr {
 }
 
 // Extracts a pair of column expressions from a join condition, which must be an equality on two columns.
-func extractJoinColumnExpr(e sql.Expression) (leftCol *columnExpr, rightCol *columnExpr) {
+func extractJoinColumnExpr(e sql.Expression) (leftCol *joinColExpr, rightCol *joinColExpr) {
 	switch e := e.(type) {
 	case *expression.Equals:
 		left, right := e.Left(), e.Right()
@@ -455,14 +463,14 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *columnExpr, rightCol *col
 			return nil, nil
 		}
 
-		leftCol = &columnExpr{
+		leftCol = &joinColExpr{
 			col:          leftField,
 			colExpr:      left,
 			comparand:    right,
 			comparandCol: rightField,
 			comparison:   e,
 		}
-		rightCol = &columnExpr{
+		rightCol = &joinColExpr{
 			col:          rightField,
 			colExpr:      right,
 			comparand:    left,

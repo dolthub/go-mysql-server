@@ -667,7 +667,7 @@ func getMultiColumnIndexForExpressions(
 	a *Analyzer,
 	ia *indexAnalyzer,
 	selected []sql.Expression,
-	exprs []columnExpr,
+	exprs []joinColExpr,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) (index sql.Index, lookup sql.IndexLookup, err error) {
@@ -728,8 +728,8 @@ func getMultiColumnIndexForExpressions(
 	return
 }
 
-func groupExpressionsByOperator(exprs []columnExpr) [][]columnExpr {
-	var result [][]columnExpr
+func groupExpressionsByOperator(exprs []joinColExpr) [][]joinColExpr {
+	var result [][]joinColExpr
 
 	for _, e := range exprs {
 		var found bool
@@ -744,21 +744,22 @@ func groupExpressionsByOperator(exprs []columnExpr) [][]columnExpr {
 		}
 
 		if !found {
-			result = append(result, []columnExpr{e})
+			result = append(result, []joinColExpr{e})
 		}
 	}
 
 	return result
 }
 
-// A column expression captures a GetField expression used in a comparison, as well as some additional contextual
+// A joinColExpr  captures a GetField expression used in a comparison, as well as some additional contextual
 // information. Example, for the base expression col1 + 1 > col2 - 1:
 // col refers to `col1`
 // colExpr refers to `col1 + 1`
 // comparand refers to `col2 - 1`
 // comparandCol refers to `col2`
-// comparision refers to `col1 + 1 > col2 - 1`
-type columnExpr struct {
+// comparison refers to `col1 + 1 > col2 - 1`
+// indexes contains any indexes onto col1's table that can be used during the join
+type joinColExpr struct {
 	// The field (column) being evaluated, which may not be the entire term in the comparison
 	col *expression.GetField
 	// The entire expression on this side of the comparison
@@ -767,11 +768,13 @@ type columnExpr struct {
 	comparand sql.Expression
 	// The other field (column) this field is being compared to (the other term in the comparison)
 	comparandCol *expression.GetField
-	// The comparison expression in which this columnExpr is one term
+	// The comparison expression in which this joinColExpr is one term
 	comparison sql.Expression
+	// Any indexes that can be applied to the col
+	indexes []sql.Index
 }
 
-func findColumn(cols []columnExpr, column string) *columnExpr {
+func findColumn(cols []joinColExpr, column string) *joinColExpr {
 	for _, col := range cols {
 		if col.col.String() == column {
 			return &col
@@ -780,8 +783,8 @@ func findColumn(cols []columnExpr, column string) *columnExpr {
 	return nil
 }
 
-func columnExprsByTable(exprs []sql.Expression) map[string][]columnExpr {
-	var result = make(map[string][]columnExpr)
+func columnExprsByTable(exprs []sql.Expression) map[string][]joinColExpr {
+	var result = make(map[string][]joinColExpr)
 
 	for _, expr := range exprs {
 		table, colExpr := extractColumnExpr(expr)
@@ -795,13 +798,13 @@ func columnExprsByTable(exprs []sql.Expression) map[string][]columnExpr {
 	return result
 }
 
-func extractColumnExpr(e sql.Expression) (string, *columnExpr) {
+func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 	switch e := e.(type) {
 	case *expression.Not:
 		table, colExpr := extractColumnExpr(e.Child)
 		if colExpr != nil {
 			// TODO: handle this better
-			colExpr = &columnExpr{
+			colExpr = &joinColExpr{
 				col:        colExpr.col,
 				comparand:  colExpr.comparand,
 				comparison: expression.NewNot(colExpr.comparison),
@@ -829,7 +832,7 @@ func extractColumnExpr(e sql.Expression) (string, *columnExpr) {
 			return "", nil
 		}
 
-		return leftCol.Table(), &columnExpr{
+		return leftCol.Table(), &joinColExpr{
 			col:          leftCol,
 			colExpr:      left,
 			comparand:    right,
@@ -847,7 +850,7 @@ func extractColumnExpr(e sql.Expression) (string, *columnExpr) {
 		}
 
 		// TODO: handle this better
-		return col.Table(), &columnExpr{col: col, comparison: e}
+		return col.Table(), &joinColExpr{col: col, comparison: e}
 	default:
 		return "", nil
 	}

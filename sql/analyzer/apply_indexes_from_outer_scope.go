@@ -136,7 +136,7 @@ func getOuterScopeIndexes(
 	defer indexSpan.Finish()
 
 	var indexes map[string]sql.Index
-	var exprsByTable map[string][]*columnExpr
+	var exprsByTable map[string][]*joinColExpr
 
 	var err error
 	plan.Inspect(node, func(node sql.Node) bool {
@@ -187,7 +187,7 @@ func getOuterScopeIndexes(
 // createIndexKeyExpr returns a slice of expressions to be used when creating an index lookup key for the table given.
 func createIndexKeyExpr(
 	idx sql.Index,
-	joinExprs []*columnExpr,
+	joinExprs []*joinColExpr,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) []sql.Expression {
@@ -218,7 +218,7 @@ func getSubqueryIndexes(
 	ia *indexAnalyzer,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
-) (map[string]sql.Index, map[string][]*columnExpr, error) {
+) (map[string]sql.Index, map[string][]*joinColExpr, error) {
 
 	scopeLen := len(scope.Schema())
 
