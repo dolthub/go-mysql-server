@@ -141,7 +141,7 @@ func analyzeJoinIndexes(
 	scope *Scope,
 	node plan.BinaryNode,
 	cond sql.Expression,
-	indexes map[string]sql.Index,
+	indexes joinIndexes,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
 	joinType plan.JoinType,
@@ -246,11 +246,11 @@ func findJoinIndexes(
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
 		a *Analyzer,
-) (map[string]sql.Index, error) {
+) (joinIndexes, error) {
 	indexSpan, _ := ctx.Span("find_join_indexes")
 	defer indexSpan.Finish()
 
-	var indexes map[string]sql.Index
+	var indexes joinIndexes
 
 	var err error
 	var conds []sql.Expression
@@ -298,23 +298,35 @@ func findJoinIndexes(
 	return indexes, err
 }
 
+// joinIndexes record a potential index to use based on the join clause between two tables. At most a single index per
+// table is recorded, and only predicates that touch 2 tables are considered (which means we currently miss using an
+// index for statements like FROM a JOIN b on a.x = b.z and a.y = 1 (on an index a(x,y))
+type joinIndexes map[string]sql.Index
+
 func getJoinIndexesMany(ctx *sql.Context,
 		a *Analyzer,
 		ia *indexAnalyzer,
 		exprs []sql.Expression,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
-) (map[string]sql.Index, error) {
+) (joinIndexes, error) {
 
-	result := make(map[string]sql.Index)
+	result := make(joinIndexes)
 	for _, e := range exprs {
 		indexes, err := getJoinIndexes(ctx, a, ia, e, exprAliases, tableAliases)
 		if err != nil {
 			return nil, err
 		}
+
+		result.merge(indexes)
 	}
 
 	return result, nil
+}
+
+// merge merges the indexes with the one given
+func (ji joinIndexes) merge(other joinIndexes) {
+
 }
 
 // Returns the left and right indexes for the two sides of the equality expression given.
@@ -345,11 +357,11 @@ func getJoinIndexes(ctx *sql.Context,
 	e sql.Expression,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
-) (map[string]sql.Index, error) {
+) (joinIndexes, error) {
 
 	switch e := e.(type) {
 	case *expression.Equals:
-		result := make(map[string]sql.Index)
+		result := make(joinIndexes)
 		leftIdx, rightIdx := getJoinEqualityIndex(ctx, a, ia, e, exprAliases, tableAliases)
 		if leftIdx != nil {
 			result[leftIdx.Table()] = leftIdx
@@ -379,8 +391,8 @@ func getMultiColumnJoinIndex(
 	ia *indexAnalyzer,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
-) map[string]sql.Index {
-	result := make(map[string]sql.Index)
+) joinIndexes {
+	result := make(joinIndexes)
 
 	exprsByTable := joinExprsByTable(exprs)
 	for table, cols := range exprsByTable {
