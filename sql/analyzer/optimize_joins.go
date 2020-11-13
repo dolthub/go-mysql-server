@@ -45,12 +45,12 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 		return nil, err
 	}
 
-	indexes, err := findJoinIndexes(ctx, n, exprAliases, tableAliases, a)
+	joinExprsByTable, err := findJoinExprsByTable(ctx, n, exprAliases, tableAliases, a)
 	if err != nil {
 		return nil, err
 	}
 
-	return transformJoins(a, n, scope, indexes, exprAliases, tableAliases)
+	return transformJoins(a, n, scope, joinExprsByTable, exprAliases, tableAliases)
 }
 
 func transformJoins(
@@ -244,9 +244,9 @@ IndexExpressions:
 	return keyExprs
 }
 
-// Assign indexes to the join conditions and returns the sql.Indexes assigned, as well as returning any aliases used by
-// join conditions
-func findJoinIndexes(
+// findJoinExprsByTable inspects the Node given for Join nodes, groups all join conditions by table, and assigns
+// potential indexes to them.
+func findJoinExprsByTable(
 		ctx *sql.Context,
 		node sql.Node,
 		exprAliases ExprAliases,
@@ -256,16 +256,13 @@ func findJoinIndexes(
 	indexSpan, _ := ctx.Span("find_join_indexes")
 	defer indexSpan.Finish()
 
-	var indexes joinExpressionsByTable
-
 	var err error
 	var conds []sql.Expression
 
-	// collect all the conds together
+	// collect all the conds for the entire tree together
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
-
 			var cond sql.Expression
 			switch node := node.(type) {
 			case *plan.InnerJoin:
@@ -278,9 +275,9 @@ func findJoinIndexes(
 			conds = append(conds, cond)
 		}
 		return true
-
 	})
 
+	var joinExprsByTable joinExpressionsByTable
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
@@ -292,24 +289,19 @@ func findJoinIndexes(
 			defer indexAnalyzer.releaseUsedIndexes()
 
 			// then get all possible indexes based on the conds for all tables (using the topmost table as a starting point)
-			indexes, err = getJoinIndexesMany(ctx, a, indexAnalyzer, conds, exprAliases, tableAliases)
-			if err != nil {
-				return false
-			}
+			joinExprsByTable, err = getIndexableJoinExprsByTable(ctx, a, indexAnalyzer, conds, exprAliases, tableAliases)
+			return false
 		}
 
 		return true
 	})
 
-	return indexes, err
+	return joinExprsByTable, err
 }
 
-// joinIndexes record a potential index to use based on the join clause between two tables. At most a single index per
-// table is recorded, and only predicates that touch 2 tables are considered (which means we currently miss using an
-// index for statements like FROM a JOIN b on a.x = b.z and a.y = 1 (on an index a(x,y))
-type joinIndexes map[string]sql.Index
-
-func getJoinIndexesMany(ctx *sql.Context,
+// getIndexableJoinExprsByTable returns a map of table name to a slice of joinColExpr on that table, with any potential
+// indexes assigned to the expression.
+func getIndexableJoinExprsByTable(ctx *sql.Context,
 		a *Analyzer,
 		ia *indexAnalyzer,
 		exprs []sql.Expression,
@@ -319,7 +311,7 @@ func getJoinIndexesMany(ctx *sql.Context,
 
 	result := make(joinExpressionsByTable)
 	for _, e := range exprs {
-		indexes, err := getJoinIndexes(ctx, a, ia, e, exprAliases, tableAliases)
+		indexes, err := getIndexableJoinExprs(ctx, a, ia, e, exprAliases, tableAliases)
 		if err != nil {
 			return nil, err
 		}
@@ -372,7 +364,11 @@ func getJoinEqualityIndex(
 	return leftCol, rightCol
 }
 
-func getJoinIndexes(ctx *sql.Context,
+// getIndexableJoinExprs examines the join condition expression given and returns it mapped by table name with
+// potential indexes assigned. Only = and AND expressions composed solely of = predicates are supported.
+// TODO: any conjunctions will only get an index applied if their terms correspond 1:1 with the columns of an index on
+//  that table. We could also attempt to apply individual terms of such conjunctions to indexes.
+func getIndexableJoinExprs(ctx *sql.Context,
 	a *Analyzer,
 	ia *indexAnalyzer,
 	e sql.Expression,
@@ -405,6 +401,9 @@ func getJoinIndexes(ctx *sql.Context,
 	return nil, nil
 }
 
+// getMultiColumnJoinIndex examines the join predicates given and attempts to use all the predicates mentioning each
+// table to apply a single, multi-column index on that table. Expressions without indexes assigned are returned if no
+// indexes for a particular table can be applied.
 func getMultiColumnJoinIndex(
 	ctx *sql.Context,
 	exprs []sql.Expression,
@@ -427,7 +426,7 @@ func getMultiColumnJoinIndex(
 	return exprsByTable
 }
 
-// extractExpressions returns the Expressions in the slice of columnExprs given.
+// extractExpressions returns the Expressions in the slice of joinColExpr given.
 func extractExpressions(colExprs []*joinColExpr) []sql.Expression {
 	result := make([]sql.Expression, len(colExprs))
 	for i, expr := range colExprs {
@@ -436,7 +435,7 @@ func extractExpressions(colExprs []*joinColExpr) []sql.Expression {
 	return result
 }
 
-// extractComparands returns the comparand Expressions in the slice of columnExprs given.
+// extractComparands returns the comparand Expressions in the slice of joinColExpr given.
 func extractComparands(colExprs []*joinColExpr) []sql.Expression {
 	result := make([]sql.Expression, len(colExprs))
 	for i, expr := range colExprs {
@@ -465,7 +464,8 @@ func joinExprsByTable(exprs []sql.Expression) joinExpressionsByTable {
 	return result
 }
 
-// Extracts a pair of column expressions from a join condition, which must be an equality on two columns.
+// extractJoinColumnExpr extracts a pair of joinColExprs from a join condition, one each for the left and right side of
+// the expression. Returns nil if either side of the expression doesn't reference a table column.
 func extractJoinColumnExpr(e sql.Expression) (leftCol *joinColExpr, rightCol *joinColExpr) {
 	switch e := e.(type) {
 	case *expression.Equals:
