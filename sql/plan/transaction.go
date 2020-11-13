@@ -2,11 +2,42 @@ package plan
 
 import "github.com/dolthub/go-mysql-server/sql"
 
+// Begin starts a transaction. This is provided just for compatibility with SQL clients and is a no-op.
+type Begin struct{}
+
+// NewBegin creates a new Begin node.
+func NewBegin() *Begin { return new(Begin) }
+
+// RowIter implements the sql.Node interface.
+func (*Begin) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) {
+	return sql.RowsToRowIter(), nil
+}
+
+func (*Begin) String() string { return "BEGIN" }
+
+// WithChildren implements the Node interface.
+func (b *Begin) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(b, len(children), 0)
+	}
+
+	return b, nil
+}
+
+// Resolved implements the sql.Node interface.
+func (*Begin) Resolved() bool { return true }
+
+// Children implements the sql.Node interface.
+func (*Begin) Children() []sql.Node { return nil }
+
+// Schema implements the sql.Node interface.
+func (*Begin) Schema() sql.Schema { return nil }
+
 // Commit commits the changes performed in a transaction. This is provided just for compatibility with SQL clients and
 // is a no-op.
 type Commit struct{}
 
-// NewRollback creates a new Rollback node.
+// NewCommit creates a new Commit node.
 func NewCommit() *Commit { return new(Commit) }
 
 // RowIter implements the sql.Node interface.
@@ -14,15 +45,15 @@ func (*Commit) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
 }
 
-func (*Commit) String() string { return "ROLLBACK" }
+func (*Commit) String() string { return "COMMIT" }
 
 // WithChildren implements the Node interface.
-func (r *Commit) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *Commit) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 0)
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 0)
 	}
 
-	return r, nil
+	return c, nil
 }
 
 // Resolved implements the sql.Node interface.
