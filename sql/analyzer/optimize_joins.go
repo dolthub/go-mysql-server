@@ -57,7 +57,7 @@ func transformJoins(
 		a *Analyzer,
 		n sql.Node,
 		scope *Scope,
-		indexes joinExpressionsByTable,
+		joinExprs joinExpressionsByTable,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
 ) (sql.Node, error) {
@@ -87,7 +87,7 @@ func transformJoins(
 			}
 
 			primaryTable, secondaryTable, primaryTableExpr, secondaryTableIndex, err :=
-				analyzeJoinIndexes(scope, bnode, indexes, exprAliases, tableAliases, joinType)
+				analyzeJoinIndexes(scope, bnode, joinExprs, exprAliases, tableAliases, joinType)
 
 			if err != nil {
 				a.Log("Cannot apply index to join: %s", err.Error())
@@ -140,7 +140,7 @@ func transformJoins(
 func analyzeJoinIndexes(
 		scope *Scope,
 		node plan.BinaryNode,
-		indexes joinExpressionsByTable,
+		joinExprs joinExpressionsByTable,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
 		joinType plan.JoinType,
@@ -149,21 +149,21 @@ func analyzeJoinIndexes(
 	leftTableName := getTableName(node.Left)
 	rightTableName := getTableName(node.Right)
 
-	// TODO: this needs some work now that we have potentially multiple indexes available per column here
+	// TODO: handle multiple join exprs, indexes available per table
 	var leftIdx sql.Index
+	leftJoinExprs := joinExprs[leftTableName]
+	if len(leftJoinExprs) > 0 && len(leftJoinExprs[0].indexes) == 1 {
+		leftIdx = leftJoinExprs[0].indexes[0]
+	}
+
 	var rightIdx sql.Index
-	leftIdxes := indexes[leftTableName]
-	if len(leftIdxes) > 0 && len(leftIdxes[0].indexes) > 0 {
-		leftIdx = leftIdxes[0].indexes[0]
+	rightJoinExprs := joinExprs[rightTableName]
+	if len(rightJoinExprs) > 0 && len(rightJoinExprs[0].indexes) == 1 {
+		rightIdx = rightJoinExprs[0].indexes[0]
 	}
 
-	rightIdxes := indexes[rightTableName]
-	if len(rightIdxes) > 0 && len(rightIdxes[0].indexes) > 0 {
-		rightIdx = rightIdxes[0].indexes[0]
-	}
-
-	leftTableExprs := indexes[leftTableName]
-	rightTableExprs := indexes[rightTableName]
+	leftTableExprs := joinExprs[leftTableName]
+	rightTableExprs := joinExprs[rightTableName]
 
 	// Choose a primary and secondary table based on available indexes. We can't choose the left table as secondary for a
 	// left join, or the right as secondary for a right join.
