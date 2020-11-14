@@ -770,6 +770,8 @@ type joinColExpr struct {
 	comparandCol *expression.GetField
 	// The comparison expression in which this joinColExpr is one term
 	comparison sql.Expression
+	// The entire join expression this joinColExpr is derived from
+	joinCondition sql.Expression
 	// Any indexes that can be applied to the col
 	indexes []sql.Index
 }

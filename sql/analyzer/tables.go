@@ -18,6 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"strings"
 )
 
 // Returns the underlying table name for the node given
@@ -60,6 +61,41 @@ func getTableNames(node sql.Node) []string {
 	})
 
 	return tableNames
+}
+
+type NameableNode interface {
+	sql.Nameable
+	sql.Node
+}
+
+// getTableNames returns all tables in the node given
+func getTables(node sql.Node) []NameableNode {
+	var tables []NameableNode
+	plan.Inspect(node, func(node sql.Node) bool {
+		switch node := node.(type) {
+		case *plan.TableAlias:
+			tables = append(tables, node)
+			return false
+		case *plan.ResolvedTable:
+			tables = append(tables, node)
+			return false
+		case *plan.UnresolvedTable:
+			tables = append(tables, node)
+			return false
+		}
+		return true
+	})
+
+	return tables
+}
+
+// byLowerCaseName returns all the nodes given mapped by their lowercase name.
+func byLowerCaseName(nodes []NameableNode) map[string]NameableNode {
+	byName := make(map[string]NameableNode)
+	for _, n := range nodes {
+		byName[strings.ToLower(n.Name())] = n
+	}
+	return byName
 }
 
 // getUnaliasedTableNames returns the names of all tables in the node given. Aliases aren't considered.

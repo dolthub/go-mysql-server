@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"errors"
+	"sort"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -131,6 +132,16 @@ func replaceWithIndexedJoins(
 		tableAliases TableAliases,
 ) (sql.Node, error) {
 
+	// Find all the tables
+	tables := getTables(node)
+	tablesByName := byLowerCaseName(tables)
+
+	// Arrange the tables in order of last-accessed to first-accessed. All tables but the first should use indexed access
+	// if possible. The original query planner constructs N-table joins like join(join(table1, table2), table3), with
+	// nested join nodes always on the left. We reverse this, so that primary tables are always on the left and secondary
+	// tables (including nested joins) are on the right.
+	orderedTables := joinOrderForTables(tablesByName, joinExprs, exprAliases, tableAliases)
+
 	primaryTable, secondaryTable, primaryTableExpr, secondaryTableIndex, err :=
 			analyzeJoinIndexes(scope, node, joinExprs, exprAliases, tableAliases)
 
@@ -157,6 +168,66 @@ func replaceWithIndexedJoins(
 	}
 
 	return plan.NewIndexedJoin(primaryTable, secondaryTable, node.JoinType(), joinCond, primaryTableExpr, secondaryTableIndex), nil
+}
+
+func joinOrderForTables(
+		scope *Scope,
+		tablesByName map[string]NameableNode,
+		exprs joinExpressionsByTable,
+		aliases ExprAliases,
+		tableAliases TableAliases,
+) []tableAccess {
+	tableOrder := make([]string, len(tablesByName))
+	for table := range tablesByName {
+		tableOrder = append(tableOrder, table)
+	}
+
+	// Order the tables based on whether they have a usable index.
+	// Tables with indexes come after those without.
+	sort.Slice(tableOrder, func(i, j int) bool {
+		tableIExprs := exprs[tableOrder[i]]
+		tableJExprs := exprs[tableOrder[j]]
+		if len(tableIExprs) == 0 {
+			return true
+		}
+		if len(tableJExprs) == 0 {
+			return false
+		}
+		tableIExpr := tableIExprs[0]
+		tableJExpr := tableJExprs[0]
+		if len(tableIExpr.indexes) == 0 {
+			return true
+		}
+		if len(tableJExpr.indexes) == 0 {
+			return false
+		}
+		return true
+	})
+
+	tableAccesses := make([]tableAccess, len(tablesByName))
+	for i, table := range tableOrder {
+		tableAccesses[i] = tableAccess{
+			table:           tablesByName[table],
+			index:           extractIndex(exprs[table][0]),
+			joinCond:        exprs[table][0].joinCondition, // TODO: this won't work in all cases
+		}
+	}
+
+	return nil
+}
+
+func extractIndex(expr *joinColExpr) sql.Index {
+	// TODO: handle multiple index options better
+	if len(expr.indexes) > 0 {
+		return expr.indexes[0]
+	}
+	return nil
+}
+
+type tableAccess struct {
+	table NameableNode
+	index sql.Index
+	joinCond sql.Expression
 }
 
 // indexExpressionPresent returns whether the index expression given occurs in the column expressions given. This check
@@ -311,6 +382,8 @@ func getJoinEqualityIndex(
 		return nil, nil
 	}
 
+	leftCol.joinCondition, rightCol.joinCondition = e, e
+
 	leftIdx, rightIdx :=
 		ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Left())...),
 		ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Right())...)
@@ -357,7 +430,7 @@ func getIndexableJoinExprs(ctx *sql.Context,
 			}
 		}
 
-		return getMultiColumnJoinIndex(ctx, exprs, a, ia, exprAliases, tableAliases), nil
+		return getMultiColumnJoinIndex(ctx, e, exprs, a, ia, exprAliases, tableAliases), nil
 	}
 
 	return nil, nil
@@ -367,12 +440,13 @@ func getIndexableJoinExprs(ctx *sql.Context,
 // table to apply a single, multi-column index on that table. Expressions without indexes assigned are returned if no
 // indexes for a particular table can be applied.
 func getMultiColumnJoinIndex(
-	ctx *sql.Context,
-	exprs []sql.Expression,
-	a *Analyzer,
-	ia *indexAnalyzer,
-	exprAliases ExprAliases,
-	tableAliases TableAliases,
+		ctx *sql.Context,
+		joinCond *expression.And,
+		exprs []sql.Expression,
+		a *Analyzer,
+		ia *indexAnalyzer,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
 ) joinExpressionsByTable {
 
 	exprsByTable := joinExprsByTable(exprs)
@@ -381,6 +455,7 @@ func getMultiColumnJoinIndex(
 		if idx != nil {
 			for _, col := range cols {
 				col.indexes = append(col.indexes, idx)
+				col.joinCondition = joinCond
 			}
 		}
 	}
