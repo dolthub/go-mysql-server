@@ -78,8 +78,10 @@ func analyzeJoinIndexes(
 		tableAliases TableAliases,
 ) (primary sql.Node, secondary sql.Node, primaryTableExpr []sql.Expression, secondaryTableIndex sql.Index, err error) {
 
-	leftTableName := getTableName(node.LeftBranch())
-	rightTableName := getTableName(node.RightBranch())
+	leftTableNames := getTableNames(node.LeftBranch())
+	rightTableNames := getTableNames(node.RightBranch())
+	leftTableName := leftTableNames[0]
+	rightTableName := rightTableNames[0]
 
 	// TODO: handle multiple join exprs, indexes available per table
 	var leftIdx sql.Index

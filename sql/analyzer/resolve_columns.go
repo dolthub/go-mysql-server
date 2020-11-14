@@ -23,7 +23,7 @@ func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		return nil, err
 	}
 
-	tableNames := getTableNames(n)
+	tableNames := getUnaliasedTableNames(n)
 	for _, tableName := range tableNames {
 		if _, ok := tableAliases[strings.ToLower(tableName)]; ok {
 			return nil, sql.ErrDuplicateAliasOrTable.New(tableName)
@@ -403,23 +403,6 @@ func getColumnsInNodes(nodes []sql.Node, names availableNames, nestingLevel int)
 			getColumnsInNodes(n.Children(), names, nestingLevel)
 		}
 	}
-}
-
-// GetTableNames returns the names of all tables in the node given. Aliases aren't considered.
-func getTableNames(n sql.Node) []string {
-	names := make([]string, 0)
-	plan.Inspect(n, func(node sql.Node) bool {
-		switch x := node.(type) {
-		case *plan.UnresolvedTable:
-			names = append(names, x.Name())
-		case *plan.ResolvedTable:
-			names = append(names, x.Name())
-		}
-
-		return true
-	})
-
-	return names
 }
 
 var errGlobalVariablesNotSupported = errors.NewKind("can't resolve global variable, %s was requested")

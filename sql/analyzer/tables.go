@@ -41,6 +41,44 @@ func getTableName(node sql.Node) string {
 	return tableName
 }
 
+// getTableNames returns all table names in the node given
+func getTableNames(node sql.Node) []string {
+	var tableNames []string
+	plan.Inspect(node, func(node sql.Node) bool {
+		switch node := node.(type) {
+		case *plan.TableAlias:
+			tableNames = append(tableNames, node.Name())
+			return false
+		case *plan.ResolvedTable:
+			tableNames = append(tableNames, node.Name())
+			return false
+		case *plan.UnresolvedTable:
+			tableNames = append(tableNames, node.Name())
+			return false
+		}
+		return true
+	})
+
+	return tableNames
+}
+
+// getUnaliasedTableNames returns the names of all tables in the node given. Aliases aren't considered.
+func getUnaliasedTableNames(n sql.Node) []string {
+	names := make([]string, 0)
+	plan.Inspect(n, func(node sql.Node) bool {
+		switch x := node.(type) {
+		case *plan.UnresolvedTable:
+			names = append(names, x.Name())
+		case *plan.ResolvedTable:
+			names = append(names, x.Name())
+		}
+
+		return true
+	})
+
+	return names
+}
+
 // Returns the underlying table name for the node given, ignoring table aliases
 func getUnaliasedTableName(node sql.Node) string {
 	var tableName string
