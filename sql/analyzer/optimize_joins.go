@@ -62,92 +62,40 @@ func transformJoins(
 		tableAliases TableAliases,
 ) (sql.Node, error) {
 
-	var replacedIndexedJoin bool
-	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
-		switch node := node.(type) {
+	selector := func(parent sql.Node, child sql.Node, childNum int) bool {
+		// We only want the top-most join node, so don't examine anything beneath join nodes
+		switch parent.(type) {
 		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
+			return false
+		default:
+			return true
+		}
+	}
 
-			var cond sql.Expression
-			var bnode plan.BinaryNode
-			var joinType plan.JoinType
-
-			switch node := node.(type) {
-			case *plan.InnerJoin:
-				cond = node.Cond
-				bnode = node.BinaryNode
-				joinType = plan.JoinTypeInner
-			case *plan.LeftJoin:
-				cond = node.Cond
-				bnode = node.BinaryNode
-				joinType = plan.JoinTypeLeft
-			case *plan.RightJoin:
-				cond = node.Cond
-				bnode = node.BinaryNode
-				joinType = plan.JoinTypeRight
-			}
-
-			primaryTable, secondaryTable, primaryTableExpr, secondaryTableIndex, err :=
-				analyzeJoinIndexes(scope, bnode, joinExprs, exprAliases, tableAliases, joinType)
-
-			if err != nil {
-				a.Log("Cannot apply index to join: %s", err.Error())
-				return node, nil
-			}
-
-			joinSchema := append(primaryTable.Schema(), secondaryTable.Schema()...)
-			joinCond, err := FixFieldIndexes(scope, joinSchema, cond)
-			if err != nil {
-				return nil, err
-			}
-			replacedIndexedJoin = true
-
-			secondaryTable, err = plan.TransformUp(secondaryTable, func(node sql.Node) (sql.Node, error) {
-				if rt, ok := node.(*plan.ResolvedTable); ok {
-					a.Log("replacing resolve table %s with IndexedTable", rt.Name())
-					return plan.NewIndexedTable(rt, secondaryTableIndex, primaryTableExpr), nil
-				}
-				return node, nil
-			})
-			if err != nil {
-				return nil, err
-			}
-
-			return plan.NewIndexedJoin(primaryTable, secondaryTable, joinType, joinCond, primaryTableExpr, secondaryTableIndex), nil
+	return plan.TransformUpWithSelector(n, selector, func(node sql.Node) (sql.Node, error) {
+		switch node := node.(type) {
+		case *plan.IndexedJoin:
+			return node, nil
+		case plan.JoinNode:
+				return replaceWithIndexedJoins(node, a, scope, joinExprs, exprAliases, tableAliases)
 		default:
 			return node, nil
 		}
 	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	if replacedIndexedJoin {
-		// Fix the field indexes as necessary
-		node, err = plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
-			// TODO: should we just do this for every query plan as a final part of the analysis?
-			//  This would involve enforcing that every type of Node implement Expressioner.
-			a.Log("transforming node of type: %T", node)
-			return FixFieldIndexesForExpressions(node, scope)
-		})
-	}
-
-	return node, err
 }
 
 // Analyzes the join's tables and condition to select a left and right table, and an index to use for lookups in the
 // right table. Returns an error if no suitable index can be found.
 func analyzeJoinIndexes(
 		scope *Scope,
-		node plan.BinaryNode,
+		node plan.JoinNode,
 		joinExprs joinExpressionsByTable,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
-		joinType plan.JoinType,
 ) (primary sql.Node, secondary sql.Node, primaryTableExpr []sql.Expression, secondaryTableIndex sql.Index, err error) {
 
-	leftTableName := getTableName(node.Left)
-	rightTableName := getTableName(node.Right)
+	leftTableName := getTableName(node.LeftBranch())
+	rightTableName := getTableName(node.RightBranch())
 
 	// TODO: handle multiple join exprs, indexes available per table
 	var leftIdx sql.Index
@@ -167,25 +115,62 @@ func analyzeJoinIndexes(
 
 	// Choose a primary and secondary table based on available indexes. We can't choose the left table as secondary for a
 	// left join, or the right as secondary for a right join.
-	if rightIdx != nil && leftTableExprs != nil && joinType != plan.JoinTypeRight &&
+	if rightIdx != nil && leftTableExprs != nil && node.JoinType() != plan.JoinTypeRight &&
 		indexExpressionPresent(rightIdx, rightTableExprs) {
-		primaryTableExpr, err := FixFieldIndexesOnExpressions(scope, node.Left.Schema(), createPrimaryTableExpr(rightIdx, leftTableExprs, exprAliases, tableAliases)...)
+		primaryTableExpr, err := FixFieldIndexesOnExpressions(scope, node.LeftBranch().Schema(), createPrimaryTableExpr(rightIdx, leftTableExprs, exprAliases, tableAliases)...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
-		return node.Left, node.Right, primaryTableExpr, rightIdx, nil
+		return node.LeftBranch(), node.RightBranch(), primaryTableExpr, rightIdx, nil
 	}
 
-	if leftIdx != nil && rightTableExprs != nil && joinType != plan.JoinTypeLeft &&
+	if leftIdx != nil && rightTableExprs != nil && node.JoinType() != plan.JoinTypeLeft &&
 		indexExpressionPresent(leftIdx, leftTableExprs) {
-		primaryTableExpr, err := FixFieldIndexesOnExpressions(scope, node.Right.Schema(), createPrimaryTableExpr(leftIdx, rightTableExprs, exprAliases, tableAliases)...)
+		primaryTableExpr, err := FixFieldIndexesOnExpressions(scope, node.RightBranch().Schema(), createPrimaryTableExpr(leftIdx, rightTableExprs, exprAliases, tableAliases)...)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
-		return node.Right, node.Left, primaryTableExpr, leftIdx, nil
+		return node.RightBranch(), node.LeftBranch(), primaryTableExpr, leftIdx, nil
 	}
 
 	return nil, nil, nil, nil, errors.New("couldn't determine suitable indexes to use for tables")
+}
+
+func replaceWithIndexedJoins(
+		node plan.JoinNode,
+		a *Analyzer,
+		scope *Scope,
+		joinExprs joinExpressionsByTable,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
+) (sql.Node, error) {
+
+	primaryTable, secondaryTable, primaryTableExpr, secondaryTableIndex, err :=
+			analyzeJoinIndexes(scope, node, joinExprs, exprAliases, tableAliases)
+
+	if err != nil {
+		a.Log("Cannot apply index to join: %s", err.Error())
+		return node, nil
+	}
+
+	joinSchema := append(primaryTable.Schema(), secondaryTable.Schema()...)
+	joinCond, err := FixFieldIndexes(scope, joinSchema, node.JoinCond())
+	if err != nil {
+		return nil, err
+	}
+
+	secondaryTable, err = plan.TransformUp(secondaryTable, func(node sql.Node) (sql.Node, error) {
+		if rt, ok := node.(*plan.ResolvedTable); ok {
+			a.Log("replacing resolve table %s with IndexedTable", rt.Name())
+			return plan.NewIndexedTable(rt, secondaryTableIndex, primaryTableExpr), nil
+		}
+		return node, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewIndexedJoin(primaryTable, secondaryTable, node.JoinType(), joinCond, primaryTableExpr, secondaryTableIndex), nil
 }
 
 // indexExpressionPresent returns whether the index expression given occurs in the column expressions given. This check

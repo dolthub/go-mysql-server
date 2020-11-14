@@ -23,10 +23,26 @@ func shouldUseMemoryJoinsByEnv() bool {
 	return v == "on" || v == "1"
 }
 
+type JoinNode interface {
+	sql.Node
+	LeftBranch() sql.Node
+	RightBranch() sql.Node
+	JoinCond() sql.Expression
+	JoinType() JoinType
+}
+
 // InnerJoin is an inner join between two tables.
 type InnerJoin struct {
 	BinaryNode
 	Cond sql.Expression
+}
+
+func (j *InnerJoin) JoinType() JoinType {
+	return JoinTypeInner
+}
+
+func (j *InnerJoin) JoinCond() sql.Expression {
+	return j.Cond
 }
 
 // NewInnerJoin creates a new inner join node from two tables.
@@ -91,6 +107,14 @@ type LeftJoin struct {
 	Cond sql.Expression
 }
 
+func (j *LeftJoin) JoinType() JoinType {
+	return JoinTypeLeft
+}
+
+func (j *LeftJoin) JoinCond() sql.Expression {
+	return j.Cond
+}
+
 // NewLeftJoin creates a new left join node from two tables.
 func NewLeftJoin(left, right sql.Node, cond sql.Expression) *LeftJoin {
 	return &LeftJoin{
@@ -151,6 +175,14 @@ func (j *LeftJoin) Expressions() []sql.Expression {
 type RightJoin struct {
 	BinaryNode
 	Cond sql.Expression
+}
+
+func (j *RightJoin) JoinType() JoinType {
+	return JoinTypeRight
+}
+
+func (j *RightJoin) JoinCond() sql.Expression {
+	return j.Cond
 }
 
 // NewRightJoin creates a new right join node from two tables.

@@ -46,6 +46,14 @@ type BinaryNode struct {
 	Right sql.Node
 }
 
+func (n BinaryNode) LeftBranch() sql.Node {
+	return n.Left
+}
+
+func (n BinaryNode) RightBranch() sql.Node {
+	return n.Right
+}
+
 // Children implements the Node interface.
 func (n BinaryNode) Children() []sql.Node {
 	return []sql.Node{n.Left, n.Right}
