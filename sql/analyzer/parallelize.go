@@ -22,6 +22,10 @@ func shouldParallelize(node sql.Node, scope *Scope) bool {
 	}
 
 	// Do not try to parallelize DDL or descriptive operations
+	return !isDdlNode(node)
+}
+
+func isDdlNode(node sql.Node) bool {
 	switch node.(type) {
 	case *plan.CreateTable, *plan.DropTable,
 		*plan.AddColumn, *plan.ModifyColumn, *plan.DropColumn,
@@ -36,9 +40,9 @@ func shouldParallelize(node sql.Node, scope *Scope) bool {
 		*plan.ShowProcessList, *plan.ShowTableStatus,
 		*plan.ShowVariables, *plan.ShowWarnings,
 		*plan.Describe:
-		return false
-	default:
 		return true
+	default:
+		return false
 	}
 }
 

@@ -114,7 +114,11 @@ func (m *MemoryHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
 }
 
 func (m *MemoryHarness) NewDatabase(name string) sql.Database {
-	return memory.NewHistoryDatabase(name)
+	database := memory.NewHistoryDatabase(name)
+	if m.nativeIndexSupport {
+		database.EnablePrimaryKeyIndexes()
+	}
+	return database
 }
 
 func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.Schema) (sql.Table, error) {

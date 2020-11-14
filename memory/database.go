@@ -8,9 +8,10 @@ import (
 
 // Database is an in-memory database.
 type Database struct {
-	name     string
-	tables   map[string]sql.Table
-	triggers []sql.TriggerDefinition
+	name              string
+	tables            map[string]sql.Table
+	triggers          []sql.TriggerDefinition
+	primaryKeyIndexes bool
 }
 
 var _ sql.Database = (*Database)(nil)
@@ -25,6 +26,11 @@ func NewDatabase(name string) *Database {
 		name:   name,
 		tables: map[string]sql.Table{},
 	}
+}
+
+// EnablePrimaryKeyIndexes causes every table created in this database to use an index on its primary keys
+func (d *Database) EnablePrimaryKeyIndexes() {
+	d.primaryKeyIndexes = true
 }
 
 // Name returns the database name.
@@ -114,7 +120,11 @@ func (d *Database) CreateTable(ctx *sql.Context, name string, schema sql.Schema)
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
-	d.tables[name] = NewTable(name, schema)
+	table := NewTable(name, schema)
+	if d.primaryKeyIndexes {
+		table.EnablePrimaryKeyIndexes()
+	}
+	d.tables[name] = table
 	return nil
 }
 

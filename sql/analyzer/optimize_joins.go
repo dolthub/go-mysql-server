@@ -19,23 +19,7 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 		return n, nil
 	}
 
-	// skip certain queries (list is probably incomplete)
-	switch n.(type) {
-	case *plan.CreateForeignKey, *plan.DropForeignKey, *plan.AlterIndex, *plan.CreateIndex, *plan.InsertInto:
-		return n, nil
-	}
-
-	numTables := 0
-	plan.Inspect(n, func(node sql.Node) bool {
-		switch node.(type) {
-		case *plan.ResolvedTable:
-			numTables++
-		}
-		return true
-	})
-
-	if numTables > 2 {
-		a.Log("skipping join optimization, more than 2 tables")
+	if isDdlNode(n) {
 		return n, nil
 	}
 
@@ -247,17 +231,8 @@ func findJoinExprsByTable(
 	// collect all the conds for the entire tree together
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
-		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
-			var cond sql.Expression
-			switch node := node.(type) {
-			case *plan.InnerJoin:
-				cond = node.Cond
-			case *plan.LeftJoin:
-				cond = node.Cond
-			case *plan.RightJoin:
-				cond = node.Cond
-			}
-			conds = append(conds, cond)
+		case plan.JoinNode:
+			conds = append(conds, node.JoinCond())
 		}
 		return true
 	})
