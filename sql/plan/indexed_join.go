@@ -17,10 +17,6 @@ type IndexedJoin struct {
 	BinaryNode
 	// The join condition.
 	Cond sql.Expression
-	// The index to use when looking up rows in the secondary table.
-	Index sql.Index
-	// The expression to evaluate to extract a key value from a row in the primary table.
-	primaryTableExpr []sql.Expression
 	// The type of join. Left and right refer to the lexical position in the written query, not primary / secondary. In
 	// the case of a right join, the right table will always be the primary.
 	joinType JoinType
@@ -31,13 +27,11 @@ func (ij *IndexedJoin) JoinType() JoinType {
 	return ij.joinType
 }
 
-func NewIndexedJoin(primaryTable, indexedTable sql.Node, joinType JoinType, cond sql.Expression, primaryTableExpr []sql.Expression, index sql.Index) *IndexedJoin {
+func NewIndexedJoin(primaryTable, indexedTable sql.Node, joinType JoinType, cond sql.Expression) *IndexedJoin {
 	return &IndexedJoin{
 		BinaryNode:       BinaryNode{primaryTable, indexedTable},
 		joinType:         joinType,
 		Cond:             cond,
-		Index:            index,
-		primaryTableExpr: primaryTableExpr,
 	}
 }
 
@@ -64,7 +58,7 @@ func (ij *IndexedJoin) DebugString() string {
 	case JoinTypeRight:
 		joinType = "Right"
 	}
-	_ = pr.WriteNode("%sIndexedJoin(%s), using index(%s)", joinType, sql.DebugString(ij.Cond), ij.Index.ID())
+	_ = pr.WriteNode("%sIndexedJoin(%s)", joinType, sql.DebugString(ij.Cond))
 	_ = pr.WriteChildren(sql.DebugString(ij.Left), sql.DebugString(ij.Right))
 	return pr.String()
 }
@@ -94,7 +88,7 @@ func (ij *IndexedJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(ij, len(children), 2)
 	}
-	return NewIndexedJoin(children[0], children[1], ij.joinType, ij.Cond, ij.primaryTableExpr, ij.Index), nil
+	return NewIndexedJoin(children[0], children[1], ij.joinType, ij.Cond), nil
 }
 
 func indexedJoinRowIter(

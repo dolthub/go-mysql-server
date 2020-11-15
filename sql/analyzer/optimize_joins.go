@@ -167,7 +167,7 @@ func replaceWithIndexedJoins(
 		return nil, err
 	}
 
-	return plan.NewIndexedJoin(primaryTable, secondaryTable, node.JoinType(), joinCond, primaryTableExpr, secondaryTableIndex), nil
+	return plan.NewIndexedJoin(primaryTable, secondaryTable, node.JoinType(), joinCond), nil
 }
 
 func joinOrderForTables(
@@ -203,6 +203,36 @@ func joinOrderForTables(
 		}
 		return true
 	})
+
+	// TODO: solution search the graph for table order. Build the join tree in the order above, top down, preferring
+	//  earlier tables to later ones. Check each candidate join tree to see if it can satisfy the join conditions (with
+	//  the schema beneath it), back out of the search if not. Each right branch of the tree needs to have the row being
+	//  assembled so far (which can contain needed columns for either indexed lookups or join condition evaluation)
+	//  prepended to its schema. IndexedJoin needs to become just another implementation of Join, one that provides any
+	//  child join nodes with the row being built in RowIter(), the same as already happens with IndexedTableAccess. This
+	//  mechanism needs to be generalized and made robust. Might need a concept of a "scopedNode" to let the analyzer be
+	//  able to handle nodes that get schema info injected, rather than from the schema of their children. Such nodes have
+	//  implicit schemas including scope for analysis, but don't the rows they return don't include the scope schema.
+
+	// OK, so there's two ways we could approach the problem of building a join tree. The above option is top down and
+	// requires injecting partial row info into the right-hand branches of trees so that they can look up their key info
+	// correctly. This should work fine, but it really complicates the analyzer, since these nodes will rely on columns
+	// that are not part of their children's schemas. Basically they will have "embedded scope." The analyzer will have
+	// to change to accommodate this.
+	// The other option is to make the IndexedJoin more flexible and go bottom up. Consider the sample query:
+	// `select * from a join b on (a=b) join c on (b=c)`.
+	// Given indexes on the columns for B and C, we would like a table access order of A, B, C. The original parse tree
+	// looks like: Join(Join(a, b, a=b), c, b=c). With this ordering the join conditions can be evaluated with columns in
+	// the child nodes. The table order is already correct. If we want this to be indexed, it's pretty easy.
+	// This also works fine if we have indexes on B and C: just swap the left and right to get:
+	// Join(c, Join(b, a=b), b=c). Works just fine.
+	// But it breaks if we have indexes on A and C. There we want table order B, A, C. There's no way to get this table
+	// order and keep the same join expressions. You end up with something like:
+	// Join(b, join(a,c, c=b), a=b). The outer join expression is satisfied by child columns, the inner one is not.
+	// Therefore, we either need to pull the inner join condition up a level so it can be satisfied by child columns,
+	// OR, we need to inject the columns of B via the scope mechanism. This is appealing because we're already doing this
+	// via node.RowIter(row) -- we have to give the right-hand branch of the tree access to the row being assembled so
+	// that is can assemble its index key based on it. And it brings us back to the top option.
 
 	tableAccesses := make([]tableAccess, len(tablesByName))
 	for i, table := range tableOrder {
