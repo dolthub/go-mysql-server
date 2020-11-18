@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"errors"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -173,7 +174,7 @@ func replaceWithIndexedJoins(
 func joinOrderForTables(
 		scope *Scope,
 		tablesByName map[string]NameableNode,
-		exprs joinExpressionsByTable,
+		joinExprs joinExpressionsByTable,
 		aliases ExprAliases,
 		tableAliases TableAliases,
 ) []tableAccess {
@@ -184,9 +185,10 @@ func joinOrderForTables(
 
 	// Order the tables based on whether they have a usable index.
 	// Tables with indexes come after those without.
+	// TODO: tables with indexes need to come after the tables that provide those keys
 	sort.Slice(tableOrder, func(i, j int) bool {
-		tableIExprs := exprs[tableOrder[i]]
-		tableJExprs := exprs[tableOrder[j]]
+		tableIExprs := joinExprs[tableOrder[i]]
+		tableJExprs := joinExprs[tableOrder[j]]
 		if len(tableIExprs) == 0 {
 			return true
 		}
@@ -234,16 +236,194 @@ func joinOrderForTables(
 	// via node.RowIter(row) -- we have to give the right-hand branch of the tree access to the row being assembled so
 	// that is can assemble its index key based on it. And it brings us back to the top option.
 
+	joinTree := buildJoinTree(tableOrder, joinExprs.flatten(), joinExprs, nil, false)
+
 	tableAccesses := make([]tableAccess, len(tablesByName))
 	for i, table := range tableOrder {
 		tableAccesses[i] = tableAccess{
-			table:           tablesByName[table],
-			index:           extractIndex(exprs[table][0]),
-			joinCond:        exprs[table][0].joinCondition, // TODO: this won't work in all cases
+			table:    tablesByName[table],
+			index:    extractIndex(joinExprs[table][0]),
+			joinCond: joinExprs[table][0].joinCondition, // TODO: this won't work in all cases
 		}
 	}
 
 	return nil
+}
+
+// joinSearch is a simple struct to track available tables and join conditions during a join search
+type joinSearch struct {
+	tableOrder []string
+	tables []string
+	joinConds []sql.Expression
+}
+
+func (js *joinSearch) copy() *joinSearch {
+	tablesCopy := make([]string, len(js.tables))
+	copy(tablesCopy, js.tables)
+	joinCondsCopy := make([]sql.Expression, len(js.joinConds))
+	copy(joinCondsCopy, js.joinConds)
+	return &joinSearch{
+		tableOrder: js.tableOrder,
+		tables:     tablesCopy,
+		joinConds:  joinCondsCopy,
+	}
+}
+
+// A joinSearchNode is a simplified type representing a join tree node, which is either an internal node (a join) or a
+// leaf node (a table). The top level node in a join tree is always an internal node. Every internal node has both a
+// left and a right child.
+type joinSearchNode struct {
+	table string // empty if this is an internal node
+	joinCond sql.Expression // nil if this is a leaf node
+	parent *joinSearchNode // nil if this is the root node
+	left *joinSearchNode // nil if this is a leaf node
+	right *joinSearchNode // nil if this is a leaf node
+	joinSearch *joinSearch // search params
+}
+
+// used to mark the left or right branch of a node as being targeted for assignment
+var sentryNode = &joinSearchNode{}
+
+// tableOrder returns the order of the tables in this part of the tree, using an in-order traversal
+func (n *joinSearchNode) tableOrder() []string {
+	if n == nil {
+		return nil
+	}
+
+	if len(n.table) > 0 {
+		return []string{n.table}
+	}
+
+	var tables []string
+	tables = append(tables, n.left.tableOrder()...)
+	tables = append(tables, n.right.tableOrder()...)
+	return tables
+}
+
+func (n *joinSearchNode) joinConditionSatisfied() bool {
+	if n == nil {
+		return true
+	}
+
+	if len(n.table) > 0 {
+		return true
+	}
+
+	joinCondTables := findTables(n.joinCond)
+	childTables := n.tableOrder()
+	// TODO: case sensitivity
+	if !containsAll(joinCondTables, childTables) {
+		return false
+	}
+
+	return n.left.joinConditionSatisfied() && n.right.joinConditionSatisfied()
+}
+
+func containsAll(needles []string, haystack []string) bool {
+	for _, needle := range needles {
+		if indexOf(needle, haystack) < 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func searchJoins(params *joinSearch) []*joinSearchNode {
+	// Our goal is to construct all possible nodes the search params given. All legal subtrees should be returned from
+	// here.
+	nodes := make([]*joinSearchNode, 0)
+
+	// tables are always valid to return as nodes, return them all
+	for i, table := range params.tables {
+		paramsCopy := params.copy()
+		paramsCopy.tables = append(paramsCopy.tables[:i], paramsCopy.tables[i+1:]...)
+		nodes = append(nodes, &joinSearchNode{
+			table:      table,
+			joinSearch: paramsCopy,
+		})
+	}
+
+	// now for each of the join nodes
+	for i, cond := range params.joinConds {
+		node := &joinSearchNode{
+			joinCond:   cond,
+		}
+		paramsCopy := params.copy()
+		paramsCopy.joinConds = append(paramsCopy.joinConds[:i], paramsCopy.joinConds[i+1:]...)
+
+		// For each of the left and right branch, find all possible children
+		candidateChildren := searchJoins(paramsCopy)
+
+	}
+
+	return nodes
+}
+
+func isValidJoinTree(search *joinSearch, node joinSearchNode) bool {
+	// Two constraints define a valid tree:
+	// 1) An in-order traversal has tables in the correct order
+	tableOrder := node.tableOrder()
+	prevIdx := -1
+	for _, table := range tableOrder {
+		idx := indexOf(table, search.tableOrder)
+		if idx <= prevIdx {
+			return false
+		}
+		prevIdx = idx
+	}
+
+	// 2) The conditions for all internal nodes can be satisfied by their child columns
+	return node.joinConditionSatisfied()
+}
+
+func indexOf(str string, strs []string) int {
+	for i, s := range strs {
+		if s == str {
+			return i
+		}
+	}
+	return -1
+}
+
+func buildJoinTree(
+		tableOrder []string,
+		joinExprs []sql.Expression,
+		joinExprsByTable joinExpressionsByTable,
+		parent sql.Node,
+		left bool,
+) *joinSearchNode {
+
+	for i, candExpr := range joinExprs {
+
+		rem = append(joinExprs[:i], joinExprs[i+1:]...)
+
+		// then pick left and right nodes for it
+		left := buildJoinTree(tableOrder, joinExprs, joinExprsByTable, nil, true)
+		right := buildJoinTree(tableOrder, joinExprs[1:], joinExprsByTable, nil, true)
+	}
+
+	return nil
+}
+
+func (je joinExpressionsByTable) flatten() []sql.Expression {
+	joinConditions := make([]sql.Expression, 0)
+	for _, exprs := range je {
+		for _, e := range exprs {
+			if containsExpr(e.joinCondition, joinConditions) {
+				joinConditions = append(joinConditions, e.joinCondition)
+			}
+		}
+	}
+	return joinConditions
+}
+
+func containsExpr(e sql.Expression, es []sql.Expression) bool {
+	for _, e2 := range es {
+		if reflect.DeepEqual(e, e2) {
+			return true
+		}
+	}
+	return false
 }
 
 func extractIndex(expr *joinColExpr) sql.Index {
