@@ -28,6 +28,11 @@ func TestBuildJoinTree(t *testing.T) {
 		joinTree *joinSearchNode
 	}
 
+	// These tests are a little fragile: for many of these joins, there is more than one correct join tree.
+	// For example, a join on tables A, B, C that wants the tables visited in that order has two solutions:
+	// join(A, join(B, C, B=C), A=B), OR join(join(A, B, A=B), C, B=C)
+	// The test cases obviously choose the one actually produced by the current algorithm, but it's very arbitrary which
+	// one is returned.
 	testCases := []joinTreeTest{
 		{
 			name: "linear join, ABC",
@@ -40,16 +45,16 @@ func TestBuildJoinTree(t *testing.T) {
 				table:    "",
 				joinCond: jc("A", "B"),
 				left: &joinSearchNode{
-					joinCond: jc("B", "C"),
-					left: &joinSearchNode{
-						table: "A",
-					},
-					right: &joinSearchNode{
-						table: "B",
-					},
+					table: "A",
 				},
 				right: &joinSearchNode{
-					table: "C",
+					joinCond: jc("B", "C"),
+					left: &joinSearchNode{
+						table: "B",
+					},
+					right: &joinSearchNode{
+						table: "C",
+					},
 				},
 			},
 		},

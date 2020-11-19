@@ -338,13 +338,13 @@ func (n *joinSearchNode) copy() *joinSearchNode {
 
 func (n *joinSearchNode) targetLeft() *joinSearchNode {
 	nn := n.copy()
-	n.left = childTargetNode
+	nn.left = childTargetNode
 	return nn
 }
 
 func (n *joinSearchNode) targetRight() *joinSearchNode {
 	nn := n.copy()
-	n.right = childTargetNode
+	nn.right = childTargetNode
 	return nn
 }
 
@@ -362,7 +362,7 @@ func (n *joinSearchNode) withChild(child *joinSearchNode) *joinSearchNode {
 }
 
 func (n *joinSearchNode) accumulateAllUsed() *joinSearchParams {
-	if n == nil {
+	if n == nil || n.params == nil {
 		return &joinSearchParams{}
 	}
 
@@ -381,6 +381,26 @@ func (n *joinSearchNode) accumulateAllUsed() *joinSearchParams {
 	result.usedTableIndexes = append(result.usedJoinCondsIndexes, rightParams.usedTableIndexes...)
 
 	return result
+}
+
+func (n *joinSearchNode) String() string {
+	if n == nil {
+		return "nil"
+	}
+
+	if n == childTargetNode {
+		return "childTargetNode"
+	}
+
+	if len(n.table) > 0 {
+		return n.table
+	}
+
+	tp := sql.NewTreePrinter()
+	_ = tp.WriteNode("%s", sql.DebugString(n.joinCond))
+	_ = tp.WriteChildren(n.left.String(), n.right.String())
+
+	return tp.String()
 }
 
 func containsAll(needles []string, haystack []string) bool {
@@ -448,18 +468,18 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 		leftChildren := searchJoins(candidate, paramsCopy)
 		// pay attention to variable shadowing in this block
 		for _, left := range leftChildren {
-			if !isValidJoinTree(left) {
+			if !isValidJoinSubTree(left) {
 				continue
 			}
 			candidate := candidate.withChild(left).targetRight()
 			candidate.params = candidate.accumulateAllUsed()
 			rightChildren := searchJoins(candidate, paramsCopy)
 			for _, right := range rightChildren {
-				if !isValidJoinTree(right) {
+				if !isValidJoinSubTree(right) {
 					continue
 				}
 				candidate := candidate.withChild(right)
-				if isValidJoinTree(candidate) {
+				if isValidJoinSubTree(candidate) {
 					children = append(children, candidate)
 				}
 			}
@@ -469,7 +489,7 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 	return children
 }
 
-func isValidJoinTree(node *joinSearchNode) bool {
+func isValidJoinSubTree(node *joinSearchNode) bool {
 	// Two constraints define a valid tree:
 	// 1) An in-order traversal has tables in the correct order
 	if !tableOrderCorrect(node) {
@@ -478,6 +498,10 @@ func isValidJoinTree(node *joinSearchNode) bool {
 
 	// 2) The conditions for all internal nodes can be satisfied by their child columns
 	return node.joinConditionSatisfied()
+}
+
+func isValidJoinTree(node *joinSearchNode) bool {
+	return isValidJoinSubTree(node) && strArraysEqual(node.tableOrder(), node.params.tables)
 }
 
 func tableOrderCorrect(node *joinSearchNode) bool {
@@ -489,6 +513,18 @@ func tableOrderCorrect(node *joinSearchNode) bool {
 			return false
 		}
 		prevIdx = idx
+	}
+	return true
+}
+
+func strArraysEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
 	}
 	return true
 }
@@ -521,9 +557,12 @@ func buildJoinTree(
 		joinConds: joinExprs,
 	})
 
-	if len(rootNodes) > 0 {
-		// TODO: this would be the place to use table statistics to determine the most effective join plan
-		return rootNodes[0]
+	for _, tree := range rootNodes {
+		// The search function here can return valid sub trees that don't have all the tables in the full join, so we need
+		// to check them for validity as an entire tree
+		if isValidJoinTree(tree) {
+			return tree
+		}
 	}
 
 	return nil
