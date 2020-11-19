@@ -141,7 +141,7 @@ func replaceWithIndexedJoins(
 	// if possible. The original query planner constructs N-table joins like join(join(table1, table2), table3), with
 	// nested join nodes always on the left. We reverse this, so that primary tables are always on the left and secondary
 	// tables (including nested joins) are on the right.
-	orderedTables := joinOrderForTables(tablesByName, joinExprs, exprAliases, tableAliases)
+	joinOrderForTables(tablesByName, joinExprs)
 
 	primaryTable, secondaryTable, primaryTableExpr, secondaryTableIndex, err :=
 			analyzeJoinIndexes(scope, node, joinExprs, exprAliases, tableAliases)
@@ -172,11 +172,8 @@ func replaceWithIndexedJoins(
 }
 
 func joinOrderForTables(
-		scope *Scope,
 		tablesByName map[string]NameableNode,
 		joinExprs joinExpressionsByTable,
-		aliases ExprAliases,
-		tableAliases TableAliases,
 ) []tableAccess {
 	tableOrder := make([]string, len(tablesByName))
 	for table := range tablesByName {
