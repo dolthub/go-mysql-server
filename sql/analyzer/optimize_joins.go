@@ -252,20 +252,28 @@ func joinOrderForTables(
 
 // joinSearchParams is a simple struct to track available tables and join conditions during a join search
 type joinSearchParams struct {
-	tableOrder []string
-	tables []string
-	joinConds []sql.Expression
+	tableOrder           []string
+	tables               []string
+	usedTableIndexes     []int
+	joinConds            []sql.Expression
+	usedJoinCondsIndexes []int
 }
 
 func (js *joinSearchParams) copy() *joinSearchParams {
 	tablesCopy := make([]string, len(js.tables))
 	copy(tablesCopy, js.tables)
+	usedTableIndexesCopy := make([]int, len(js.usedTableIndexes))
+	copy(usedTableIndexesCopy, js.usedTableIndexes)
 	joinCondsCopy := make([]sql.Expression, len(js.joinConds))
 	copy(joinCondsCopy, js.joinConds)
+	usedJoinCondIndexesCopy := make([]int, len(js.usedJoinCondsIndexes))
+	copy(usedJoinCondIndexesCopy, js.usedJoinCondsIndexes)
 	return &joinSearchParams{
-		tableOrder: js.tableOrder,
-		tables:     tablesCopy,
-		joinConds:  joinCondsCopy,
+		tableOrder:           js.tableOrder,
+		tables:               tablesCopy,
+		usedTableIndexes:     usedTableIndexesCopy,
+		joinConds:            joinCondsCopy,
+		usedJoinCondsIndexes: usedJoinCondIndexesCopy,
 	}
 }
 
@@ -278,7 +286,7 @@ type joinSearchNode struct {
 	parent   *joinSearchNode   // nil if this is the root node
 	left     *joinSearchNode   // nil if this is a leaf node
 	right    *joinSearchNode   // nil if this is a leaf node
-	params   *joinSearchParams // search params
+	params   *joinSearchParams // search params that assembled this node
 }
 
 // used to mark the left or right branch of a node as being targeted for assignment
@@ -302,7 +310,7 @@ func (n *joinSearchNode) tableOrder() []string {
 
 func (n *joinSearchNode) joinConditionSatisfied() bool {
 	if n == nil {
-		return true
+		return false
 	}
 
 	if len(n.table) > 0 {
@@ -354,6 +362,25 @@ func (n *joinSearchNode) targetRight() *joinSearchNode {
 	return nn
 }
 
+func (n *joinSearchNode) accumulateAllUsed() *joinSearchParams {
+	if n == nil {
+		return &joinSearchParams{}
+	}
+
+	if len(n.table) > 0 {
+		return n.params
+	}
+
+	leftParams := n.left.accumulateAllUsed()
+	rightParams := n.right.accumulateAllUsed()
+
+	result := leftParams.copy()
+	result.usedJoinCondsIndexes = append(result.usedJoinCondsIndexes, rightParams.usedJoinCondsIndexes...)
+	result.usedTableIndexes = append(result.usedJoinCondsIndexes, rightParams.usedTableIndexes...)
+
+	return result
+}
+
 func containsAll(needles []string, haystack []string) bool {
 	for _, needle := range needles {
 		if indexOf(needle, haystack) < 0 {
@@ -375,7 +402,7 @@ func searchJoins(parent *joinSearchNode) []*joinSearchNode {
 
 	// Our goal is to construct all possible nodes from the search params given. All legal subtrees should be returned
 	// from here.
-	nodes := make([]*joinSearchNode, 0)
+	children := make([]*joinSearchNode, 0)
 
 	// Tables are valid to return if they are mentioned in a join condition higher in the tree.
 	for i, table := range parent.params.tables {
@@ -391,7 +418,7 @@ func searchJoins(parent *joinSearchNode) []*joinSearchNode {
 			parent: parent.copy(),
 		}
 		if tableOrderCorrect(parent.withChild(childNode)) {
-			nodes = append(nodes, childNode)
+			children = append(children, childNode)
 		}
 	}
 
@@ -406,26 +433,25 @@ func searchJoins(parent *joinSearchNode) []*joinSearchNode {
 			params:   paramsCopy,
 		}
 
-		// For each of the left and right branch, find all possible children
+		// For each of the left and right branch, find all possible children, add all valid subtrees to the list
 		leftCandidate := candidate.targetLeft()
 		leftCandidates := searchJoins(leftCandidate)
 		for _, left := range leftCandidates {
 			candidate := leftCandidate.withChild(left)
 			if isValidJoinTree(candidate) {
 				rightCandidate := candidate.targetRight()
-				// TODO: right candidate search space needs to be reduced by used options in left branch
 				rightCandidates := searchJoins(rightCandidate)
 				for _, right := range rightCandidates {
-					candidate := rightCandidate.withChild(right)
+					candidate := candidate.withChild(right)
 					if isValidJoinTree(candidate) {
-						nodes = append(nodes, candidate)
+						children = append(children, candidate)
 					}
 				}
 			}
 		}
 	}
 
-	return nodes
+	return children
 }
 
 func isValidJoinTree(node *joinSearchNode) bool {
@@ -456,6 +482,15 @@ func indexOf(str string, strs []string) int {
 	for i, s := range strs {
 		if s == str {
 			return i
+		}
+	}
+	return -1
+}
+
+func indexOfInt(i int, is []int) int {
+	for j, k := range is {
+		if k == i {
+			return j
 		}
 	}
 	return -1
