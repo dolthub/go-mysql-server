@@ -252,7 +252,6 @@ func joinOrderForTables(
 
 // joinSearchParams is a simple struct to track available tables and join conditions during a join search
 type joinSearchParams struct {
-	tableOrder           []string
 	tables               []string
 	usedTableIndexes     []int
 	joinConds            []sql.Expression
@@ -260,21 +259,24 @@ type joinSearchParams struct {
 }
 
 func (js *joinSearchParams) copy() *joinSearchParams {
-	tablesCopy := make([]string, len(js.tables))
-	copy(tablesCopy, js.tables)
 	usedTableIndexesCopy := make([]int, len(js.usedTableIndexes))
 	copy(usedTableIndexesCopy, js.usedTableIndexes)
-	joinCondsCopy := make([]sql.Expression, len(js.joinConds))
-	copy(joinCondsCopy, js.joinConds)
 	usedJoinCondIndexesCopy := make([]int, len(js.usedJoinCondsIndexes))
 	copy(usedJoinCondIndexesCopy, js.usedJoinCondsIndexes)
 	return &joinSearchParams{
-		tableOrder:           js.tableOrder,
-		tables:               tablesCopy,
+		tables:               js.tables,
 		usedTableIndexes:     usedTableIndexesCopy,
-		joinConds:            joinCondsCopy,
+		joinConds:            js.joinConds,
 		usedJoinCondsIndexes: usedJoinCondIndexesCopy,
 	}
+}
+
+func (js *joinSearchParams) tableIndexUsed(i int) bool {
+	return indexOfInt(i, js.usedTableIndexes) >= 0
+}
+
+func (js *joinSearchParams) joinCondIndexUsed(i int) bool {
+	return indexOfInt(i, js.usedJoinCondsIndexes) >= 0
 }
 
 // A joinSearchNode is a simplified type representing a join tree node, which is either an internal node (a join) or a
@@ -337,6 +339,18 @@ func (n *joinSearchNode) copy() *joinSearchNode {
 	return &nn
 }
 
+func (n *joinSearchNode) targetLeft() *joinSearchNode {
+	nn := n.copy()
+	n.left = childTargetNode
+	return nn
+}
+
+func (n *joinSearchNode) targetRight() *joinSearchNode {
+	nn := n.copy()
+	n.right = childTargetNode
+	return nn
+}
+
 func (n *joinSearchNode) withChild(child *joinSearchNode) *joinSearchNode {
 	nn := n.copy()
 	if nn.left == childTargetNode {
@@ -348,18 +362,6 @@ func (n *joinSearchNode) withChild(child *joinSearchNode) *joinSearchNode {
 	} else {
 		panic("withChild couldn't find a child to assign")
 	}
-}
-
-func (n *joinSearchNode) targetLeft() *joinSearchNode {
-	nn := n.copy()
-	n.left = childTargetNode
-	return nn
-}
-
-func (n *joinSearchNode) targetRight() *joinSearchNode {
-	nn := n.copy()
-	n.right = childTargetNode
-	return nn
 }
 
 func (n *joinSearchNode) accumulateAllUsed() *joinSearchParams {
@@ -374,8 +376,11 @@ func (n *joinSearchNode) accumulateAllUsed() *joinSearchParams {
 	leftParams := n.left.accumulateAllUsed()
 	rightParams := n.right.accumulateAllUsed()
 
-	result := leftParams.copy()
+	result := n.params.copy()
+	// TODO: eliminate duplicates from these lists, or use sets
+	result.usedJoinCondsIndexes = append(result.usedJoinCondsIndexes, leftParams.usedJoinCondsIndexes...)
 	result.usedJoinCondsIndexes = append(result.usedJoinCondsIndexes, rightParams.usedJoinCondsIndexes...)
+	result.usedTableIndexes = append(result.usedJoinCondsIndexes, leftParams.usedTableIndexes...)
 	result.usedTableIndexes = append(result.usedJoinCondsIndexes, rightParams.usedTableIndexes...)
 
 	return result
@@ -391,8 +396,13 @@ func containsAll(needles []string, haystack []string) bool {
 }
 
 func searchJoins(parent *joinSearchNode) []*joinSearchNode {
+	// Our goal is to construct all possible child nodes for the parent given. Every permutation of a legal subtree should
+	// go into this list.
+	children := make([]*joinSearchNode, 0)
+
 	// Find all tables mentioned in join nodes up to the root of the tree. We can't add any tables that aren't in this
-	// list.
+	// list
+	// TODO: this might be a premature optimization, need to validate
 	var validChildTables []string
 	n := parent
 	for n != nil {
@@ -400,17 +410,13 @@ func searchJoins(parent *joinSearchNode) []*joinSearchNode {
 		n = n.parent
 	}
 
-	// Our goal is to construct all possible nodes from the search params given. All legal subtrees should be returned
-	// from here.
-	children := make([]*joinSearchNode, 0)
-
 	// Tables are valid to return if they are mentioned in a join condition higher in the tree.
 	for i, table := range parent.params.tables {
-		if indexOf(table, validChildTables) < 0 {
+		if indexOf(table, validChildTables) < 0 || parent.params.tableIndexUsed(i) {
 			continue
 		}
 		paramsCopy := parent.params.copy()
-		paramsCopy.tables = append(paramsCopy.tables[:i], paramsCopy.tables[i+1:]...)
+		paramsCopy.usedTableIndexes = append(paramsCopy.usedTableIndexes, i)
 
 		childNode := &joinSearchNode{
 			table:  table,
@@ -422,10 +428,14 @@ func searchJoins(parent *joinSearchNode) []*joinSearchNode {
 		}
 	}
 
-	// now for each of the join nodes
+	// now for each of the available join nodes
 	for i, cond := range parent.params.joinConds {
+		if parent.params.joinCondIndexUsed(i) {
+			continue
+		}
+
 		paramsCopy := parent.params.copy()
-		paramsCopy.joinConds = append(paramsCopy.joinConds[:i], paramsCopy.joinConds[i+1:]...)
+		paramsCopy.usedJoinCondsIndexes = append(paramsCopy.usedJoinCondsIndexes, i)
 
 		candidate := &joinSearchNode{
 			joinCond: cond,
@@ -434,18 +444,23 @@ func searchJoins(parent *joinSearchNode) []*joinSearchNode {
 		}
 
 		// For each of the left and right branch, find all possible children, add all valid subtrees to the list
-		leftCandidate := candidate.targetLeft()
-		leftCandidates := searchJoins(leftCandidate)
-		for _, left := range leftCandidates {
-			candidate := leftCandidate.withChild(left)
-			if isValidJoinTree(candidate) {
-				rightCandidate := candidate.targetRight()
-				rightCandidates := searchJoins(rightCandidate)
-				for _, right := range rightCandidates {
-					candidate := candidate.withChild(right)
-					if isValidJoinTree(candidate) {
-						children = append(children, candidate)
-					}
+		candidate = candidate.targetLeft()
+		leftChildren := searchJoins(candidate)
+		// pay attention to variable shadowing in this block
+		for _, left := range leftChildren {
+			if !isValidJoinTree(left) {
+				continue
+			}
+			candidate := candidate.withChild(left).targetRight()
+			candidate.params = candidate.accumulateAllUsed()
+			rightChildren := searchJoins(candidate)
+			for _, right := range rightChildren {
+				if !isValidJoinTree(right) {
+					continue
+				}
+				candidate := candidate.withChild(right)
+				if isValidJoinTree(candidate) {
+					children = append(children, candidate)
 				}
 			}
 		}
@@ -469,7 +484,7 @@ func tableOrderCorrect(node *joinSearchNode) bool {
 	tableOrder := node.tableOrder()
 	prevIdx := -1
 	for _, table := range tableOrder {
-		idx := indexOf(table, node.params.tableOrder)
+		idx := indexOf(table, node.params.tables)
 		if idx <= prevIdx {
 			return false
 		}
