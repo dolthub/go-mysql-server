@@ -173,18 +173,20 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	return table
 }
 
-// Returns the tables used in the expression given
-func findTables(e sql.Expression) []string {
+// Returns the tables used in the expressions given
+func findTables(exprs ...sql.Expression) []string {
 	tables := make(map[string]bool)
-	sql.Inspect(e, func(e sql.Expression) bool {
-		switch e := e.(type) {
-		case *expression.GetField:
-			tables[e.Table()] = true
-			return false
-		default:
-			return true
-		}
-	})
+	for _, e := range exprs {
+		sql.Inspect(e, func(e sql.Expression) bool {
+			switch e := e.(type) {
+			case *expression.GetField:
+				tables[e.Table()] = true
+				return false
+			default:
+				return true
+			}
+		})
+	}
 
 	var names []string
 	for table := range tables {

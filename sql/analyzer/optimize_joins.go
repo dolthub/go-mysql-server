@@ -250,19 +250,19 @@ func joinOrderForTables(
 	return nil
 }
 
-// joinSearch is a simple struct to track available tables and join conditions during a join search
-type joinSearch struct {
+// joinSearchParams is a simple struct to track available tables and join conditions during a join search
+type joinSearchParams struct {
 	tableOrder []string
 	tables []string
 	joinConds []sql.Expression
 }
 
-func (js *joinSearch) copy() *joinSearch {
+func (js *joinSearchParams) copy() *joinSearchParams {
 	tablesCopy := make([]string, len(js.tables))
 	copy(tablesCopy, js.tables)
 	joinCondsCopy := make([]sql.Expression, len(js.joinConds))
 	copy(joinCondsCopy, js.joinConds)
-	return &joinSearch{
+	return &joinSearchParams{
 		tableOrder: js.tableOrder,
 		tables:     tablesCopy,
 		joinConds:  joinCondsCopy,
@@ -273,16 +273,16 @@ func (js *joinSearch) copy() *joinSearch {
 // leaf node (a table). The top level node in a join tree is always an internal node. Every internal node has both a
 // left and a right child.
 type joinSearchNode struct {
-	table string // empty if this is an internal node
-	joinCond sql.Expression // nil if this is a leaf node
-	parent *joinSearchNode // nil if this is the root node
-	left *joinSearchNode // nil if this is a leaf node
-	right *joinSearchNode // nil if this is a leaf node
-	joinSearch *joinSearch // search params
+	table    string            // empty if this is an internal node
+	joinCond sql.Expression    // nil if this is a leaf node
+	parent   *joinSearchNode   // nil if this is the root node
+	left     *joinSearchNode   // nil if this is a leaf node
+	right    *joinSearchNode   // nil if this is a leaf node
+	params   *joinSearchParams // search params
 }
 
 // used to mark the left or right branch of a node as being targeted for assignment
-var sentryNode = &joinSearchNode{}
+var childTargetNode = &joinSearchNode{}
 
 // tableOrder returns the order of the tables in this part of the tree, using an in-order traversal
 func (n *joinSearchNode) tableOrder() []string {
@@ -319,6 +319,41 @@ func (n *joinSearchNode) joinConditionSatisfied() bool {
 	return n.left.joinConditionSatisfied() && n.right.joinConditionSatisfied()
 }
 
+func (n *joinSearchNode) copy() *joinSearchNode {
+	if n == nil {
+		return nil
+	}
+
+	nn := *n
+	nn.params = nn.params.copy()
+	return &nn
+}
+
+func (n *joinSearchNode) withChild(child *joinSearchNode) *joinSearchNode {
+	nn := n.copy()
+	if nn.left == childTargetNode {
+		nn.left = child
+		return nn
+	} else if nn.right == childTargetNode {
+		nn.right = child
+		return nn
+	} else {
+		panic("withChild couldn't find a child to assign")
+	}
+}
+
+func (n *joinSearchNode) targetLeft() *joinSearchNode {
+	nn := n.copy()
+	n.left = childTargetNode
+	return nn
+}
+
+func (n *joinSearchNode) targetRight() *joinSearchNode {
+	nn := n.copy()
+	n.right = childTargetNode
+	return nn
+}
+
 func containsAll(needles []string, haystack []string) bool {
 	for _, needle := range needles {
 		if indexOf(needle, haystack) < 0 {
@@ -328,52 +363,93 @@ func containsAll(needles []string, haystack []string) bool {
 	return true
 }
 
-func searchJoins(params *joinSearch) []*joinSearchNode {
-	// Our goal is to construct all possible nodes the search params given. All legal subtrees should be returned from
-	// here.
+func searchJoins(parent *joinSearchNode) []*joinSearchNode {
+	// Find all tables mentioned in join nodes up to the root of the tree. We can't add any tables that aren't in this
+	// list.
+	var validChildTables []string
+	n := parent
+	for n != nil {
+		validChildTables = append(validChildTables, findTables(n.joinCond)...)
+		n = n.parent
+	}
+
+	// Our goal is to construct all possible nodes from the search params given. All legal subtrees should be returned
+	// from here.
 	nodes := make([]*joinSearchNode, 0)
 
-	// tables are always valid to return as nodes, return them all
-	for i, table := range params.tables {
-		paramsCopy := params.copy()
+	// Tables are valid to return if they are mentioned in a join condition higher in the tree.
+	for i, table := range parent.params.tables {
+		if indexOf(table, validChildTables) < 0 {
+			continue
+		}
+		paramsCopy := parent.params.copy()
 		paramsCopy.tables = append(paramsCopy.tables[:i], paramsCopy.tables[i+1:]...)
-		nodes = append(nodes, &joinSearchNode{
-			table:      table,
-			joinSearch: paramsCopy,
-		})
+
+		childNode := &joinSearchNode{
+			table:  table,
+			params: paramsCopy,
+			parent: parent.copy(),
+		}
+		if tableOrderCorrect(parent.withChild(childNode)) {
+			nodes = append(nodes, childNode)
+		}
 	}
 
 	// now for each of the join nodes
-	for i, cond := range params.joinConds {
-		node := &joinSearchNode{
-			joinCond:   cond,
-		}
-		paramsCopy := params.copy()
+	for i, cond := range parent.params.joinConds {
+		paramsCopy := parent.params.copy()
 		paramsCopy.joinConds = append(paramsCopy.joinConds[:i], paramsCopy.joinConds[i+1:]...)
 
-		// For each of the left and right branch, find all possible children
-		candidateChildren := searchJoins(paramsCopy)
+		candidate := &joinSearchNode{
+			joinCond: cond,
+			parent:   parent,
+			params:   paramsCopy,
+		}
 
+		// For each of the left and right branch, find all possible children
+		leftCandidate := candidate.targetLeft()
+		leftCandidates := searchJoins(leftCandidate)
+		for _, left := range leftCandidates {
+			candidate := leftCandidate.withChild(left)
+			if isValidJoinTree(candidate) {
+				rightCandidate := candidate.targetRight()
+				// TODO: right candidate search space needs to be reduced by used options in left branch
+				rightCandidates := searchJoins(rightCandidate)
+				for _, right := range rightCandidates {
+					candidate := rightCandidate.withChild(right)
+					if isValidJoinTree(candidate) {
+						nodes = append(nodes, candidate)
+					}
+				}
+			}
+		}
 	}
 
 	return nodes
 }
 
-func isValidJoinTree(search *joinSearch, node joinSearchNode) bool {
+func isValidJoinTree(node *joinSearchNode) bool {
 	// Two constraints define a valid tree:
 	// 1) An in-order traversal has tables in the correct order
+	if !tableOrderCorrect(node) {
+		return false
+	}
+
+	// 2) The conditions for all internal nodes can be satisfied by their child columns
+	return node.joinConditionSatisfied()
+}
+
+func tableOrderCorrect(node *joinSearchNode) bool {
 	tableOrder := node.tableOrder()
 	prevIdx := -1
 	for _, table := range tableOrder {
-		idx := indexOf(table, search.tableOrder)
+		idx := indexOf(table, node.params.tableOrder)
 		if idx <= prevIdx {
 			return false
 		}
 		prevIdx = idx
 	}
-
-	// 2) The conditions for all internal nodes can be satisfied by their child columns
-	return node.joinConditionSatisfied()
+	return true
 }
 
 func indexOf(str string, strs []string) int {
@@ -393,14 +469,6 @@ func buildJoinTree(
 		left bool,
 ) *joinSearchNode {
 
-	for i, candExpr := range joinExprs {
-
-		rem = append(joinExprs[:i], joinExprs[i+1:]...)
-
-		// then pick left and right nodes for it
-		left := buildJoinTree(tableOrder, joinExprs, joinExprsByTable, nil, true)
-		right := buildJoinTree(tableOrder, joinExprs[1:], joinExprsByTable, nil, true)
-	}
 
 	return nil
 }
