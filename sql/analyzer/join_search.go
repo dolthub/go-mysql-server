@@ -17,7 +17,46 @@ package analyzer
 import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"sort"
 )
+
+type tableAccess struct {
+	table NameableNode
+	index sql.Index
+	joinCond sql.Expression
+}
+
+func orderTables(tablesByName map[string]NameableNode, joinExprs joinExpressionsByTable) []string {
+	tableOrder := make([]string, len(tablesByName))
+	for table := range tablesByName {
+		tableOrder = append(tableOrder, table)
+	}
+
+	// Order the tables based on whether they have a usable index.
+	// Tables with indexes come after those without.
+	// TODO: tables with indexes need to come after the tables that provide those keys
+	sort.Slice(tableOrder, func(i, j int) bool {
+		tableIExprs := joinExprs[tableOrder[i]]
+		tableJExprs := joinExprs[tableOrder[j]]
+		if len(tableIExprs) == 0 {
+			return true
+		}
+		if len(tableJExprs) == 0 {
+			return false
+		}
+		tableIExpr := tableIExprs[0]
+		tableJExpr := tableJExprs[0]
+		if len(tableIExpr.indexes) == 0 {
+			return true
+		}
+		if len(tableJExpr.indexes) == 0 {
+			return false
+		}
+		return true
+	})
+
+	return tableOrder
+}
 
 // joinSearchParams is a simple struct to track available tables and join conditions during a join search
 type joinSearchParams struct {

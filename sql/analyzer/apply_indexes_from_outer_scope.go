@@ -136,7 +136,7 @@ func getOuterScopeIndexes(
 	defer indexSpan.Finish()
 
 	var indexes map[string]sql.Index
-	var exprsByTable map[string][]*joinColExpr
+	var exprsByTable joinExpressionsByTable
 
 	var err error
 	plan.Inspect(node, func(node sql.Node) bool {
@@ -218,7 +218,7 @@ func getSubqueryIndexes(
 	ia *indexAnalyzer,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
-) (map[string]sql.Index, map[string][]*joinColExpr, error) {
+) (map[string]sql.Index, joinExpressionsByTable, error) {
 
 	scopeLen := len(scope.Schema())
 

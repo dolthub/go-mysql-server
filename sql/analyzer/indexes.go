@@ -776,6 +776,28 @@ type joinColExpr struct {
 	indexes []sql.Index
 }
 
+type joinColExprs []*joinColExpr
+
+type joinExpressionsByTable map[string]joinColExprs
+
+// extractExpressions returns the Expressions in the slice of joinColExpr given.
+func extractExpressions(colExprs []*joinColExpr) []sql.Expression {
+	result := make([]sql.Expression, len(colExprs))
+	for i, expr := range colExprs {
+		result[i] = expr.colExpr
+	}
+	return result
+}
+
+// extractComparands returns the comparand Expressions in the slice of joinColExpr given.
+func extractComparands(colExprs []*joinColExpr) []sql.Expression {
+	result := make([]sql.Expression, len(colExprs))
+	for i, expr := range colExprs {
+		result[i] = expr.comparand
+	}
+	return result
+}
+
 func findColumn(cols []joinColExpr, column string) *joinColExpr {
 	for _, col := range cols {
 		if col.col.String() == column {
