@@ -210,6 +210,160 @@ func TestBuildJoinTree(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:       "linear join, BCDA",
+			tableOrder: []string{"B", "C", "D", "A"},
+			joinConds: []sql.Expression{
+				jc("A", "B"),
+				jc("B", "C"),
+				jc("C", "D"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("A", "B"),
+				left: &joinSearchNode{
+					joinCond: jc("B", "C"),
+					left:     jt("B"),
+					right: &joinSearchNode{
+						joinCond: jc("C", "D"),
+						left:     jt("C"),
+						right:    jt("D"),
+					},
+				},
+				right: jt("A"),
+			},
+		},
+		{
+			name:       "linear join, DABC",
+			tableOrder: []string{"D", "A", "B", "C"},
+			joinConds: []sql.Expression{
+				jc("A", "B"),
+				jc("B", "C"),
+				jc("C", "D"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("C", "D"),
+				left: jt("D"),
+				right: &joinSearchNode{
+					joinCond: jc("A", "B"),
+					left:     jt("A"),
+					right: &joinSearchNode{
+						joinCond: jc("B", "C"),
+						left:     jt("B"),
+						right:    jt("C"),
+					},
+				},
+			},
+		},
+		{
+			name:       "linear join, CDBA",
+			tableOrder: []string{"C", "D", "B", "A"},
+			joinConds: []sql.Expression{
+				jc("A", "B"),
+				jc("B", "C"),
+				jc("C", "D"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("A", "B"),
+				left: &joinSearchNode{
+					joinCond: jc("B", "C"),
+					left: &joinSearchNode{
+						joinCond: jc("C", "D"),
+						left:     jt("C"),
+						right:    jt("D"),
+					},
+					right: jt("B"),
+				},
+				right: jt("A"),
+			},
+		},
+		{
+			name:       "all joined to A, ABCD",
+			tableOrder: []string{"A", "B", "C", "D"},
+			joinConds: []sql.Expression{
+				jc("A", "B"),
+				jc("A", "C"),
+				jc("A", "D"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("A", "D"),
+				left: &joinSearchNode{
+					joinCond: jc("A", "C"),
+					left: &joinSearchNode{
+						joinCond: jc("A", "B"),
+						left:     jt("A"),
+						right:    jt("B"),
+					},
+					right: jt("C"),
+				},
+				right:     jt("D"),
+			},
+		},
+		{
+			name:       "all joined to A, BDAC",
+			tableOrder: []string{"B", "D", "A", "C"},
+			joinConds: []sql.Expression{
+				jc("A", "B"),
+				jc("A", "C"),
+				jc("A", "D"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("A", "B"),
+				left: jt("B"),
+				right: &joinSearchNode{
+					joinCond: jc("A", "C"),
+					left: &joinSearchNode{
+						joinCond: jc("A", "D"),
+						left:     jt("D"),
+						right:    jt("A"),
+					},
+					right: jt("C"),
+				},
+			},
+		},
+		{
+			name:       "all joined to A, CABD",
+			tableOrder: []string{"C", "A", "B", "D"},
+			joinConds: []sql.Expression{
+				jc("A", "B"),
+				jc("A", "C"),
+				jc("A", "D"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("A", "C"),
+				left: jt("C"),
+				right: &joinSearchNode{
+					joinCond: jc("A", "D"),
+					left: &joinSearchNode{
+						joinCond: jc("A", "B"),
+						left:     jt("A"),
+						right:    jt("B"),
+					},
+					right: jt("D"),
+				},
+			},
+		},
+		{
+			name:       "all joined to A, DCBA",
+			tableOrder: []string{"D", "C", "B", "A"},
+			joinConds: []sql.Expression{
+				jc("A", "B"),
+				jc("A", "C"),
+				jc("A", "D"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("A", "D"),
+				left: jt("D"),
+				right: &joinSearchNode{
+					joinCond: jc("A", "C"),
+					left: jt("C"),
+					right: &joinSearchNode{
+						joinCond: jc("A", "B"),
+						left:     jt("B"),
+						right:    jt("A"),
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range testCases {
