@@ -189,6 +189,40 @@ func TestBuildJoinTree(t *testing.T) {
 			},
 		},
 		{
+			name:       "A to B, A+B to C",
+			tableOrder: []string{"A", "B", "C"},
+			joinConds: []sql.Expression{
+				jc("A", "B"),
+				and(jc("A", "C"), jc("B", "C")),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: and(jc("A", "C"), jc("B", "C")),
+				left: &joinSearchNode{
+					joinCond: jc("A", "B"),
+					left:     jt("A"),
+					right:    jt("B"),
+				},
+				right: jt("C"),
+			},
+		},
+		{
+			name:       "B to A, A+B to C",
+			tableOrder: []string{"B", "A", "C"},
+			joinConds: []sql.Expression{
+				jc("A", "B"),
+				and(jc("A", "C"), jc("B", "C")),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: and(jc("A", "C"), jc("B", "C")),
+				left: &joinSearchNode{
+					joinCond: jc("A", "B"),
+					left:     jt("B"),
+					right:    jt("A"),
+				},
+				right: jt("C"),
+			},
+		},
+		{
 			name:       "linear join, ABCD",
 			tableOrder: []string{"A", "B", "C", "D"},
 			joinConds: []sql.Expression{
@@ -362,6 +396,28 @@ func TestBuildJoinTree(t *testing.T) {
 						right:    jt("A"),
 					},
 				},
+			},
+		},
+		{
+			name:       "A to B, A+B to C, A+B+C to D",
+			tableOrder: []string{"A", "B", "C", "D"},
+			joinConds: []sql.Expression{
+				jc("A", "B"),
+				and(jc("A", "C"), jc("B", "C")),
+				and(jc("A", "D"), and(jc("B", "D"), jc("C", "D"))),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: and(jc("A", "D"), and(jc("B", "D"), jc("C", "D"))),
+				left: &joinSearchNode{
+					joinCond: and(jc("A", "C"), jc("B", "C")),
+					left: &joinSearchNode{
+						joinCond: jc("A", "B"),
+						left:     jt("A"),
+						right:    jt("B"),
+					},
+					right: jt("C"),
+				},
+				right: jt("D"),
 			},
 		},
 		{
