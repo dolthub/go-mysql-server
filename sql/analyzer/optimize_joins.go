@@ -408,7 +408,7 @@ func (n *joinSearchNode) String() string {
 	}
 
 	tp := sql.NewTreePrinter()
-	_ = tp.WriteNode("%s (usedJoins = %v, usedTables = %v", n.joinCond, usedJoins, usedTables)
+	_ = tp.WriteNode("%s (usedJoins = %v, usedTables = %v)", n.joinCond, usedJoins, usedTables)
 	_ = tp.WriteChildren(n.left.String(), n.right.String())
 
 	return tp.String()
@@ -508,12 +508,16 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 		}
 	}
 
-	fmt.Print("Returning\n")
+	debugLog("Returning\n")
 	return children
 }
 
+const debugJoinPlan = false
+
 func debugLog(msg string, args ...interface{}) {
-	fmt.Printf(msg, args...)
+	if debugJoinPlan {
+		fmt.Printf(msg, args...)
+	}
 }
 
 func isValidJoinSubTree(node *joinSearchNode) bool {

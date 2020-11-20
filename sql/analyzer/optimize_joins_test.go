@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -42,7 +43,6 @@ func TestBuildJoinTree(t *testing.T) {
 				jc("B", "C"),
 			},
 			joinTree: &joinSearchNode{
-				table:    "",
 				joinCond: jc("A", "B"),
 				left: &joinSearchNode{
 					table: "A",
@@ -59,6 +59,52 @@ func TestBuildJoinTree(t *testing.T) {
 			},
 		},
 		{
+			name: "linear join, ACB", // 👩‍⚖️
+			tableOrder: []string{"A", "C", "B"},
+			joinConds:  []sql.Expression{
+				jc("A", "B"),
+				jc("B", "C"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("A", "B"),
+				left: &joinSearchNode{
+					table: "A",
+				},
+				right: &joinSearchNode{
+					joinCond: jc("B", "C"),
+					left: &joinSearchNode{
+						table: "C",
+					},
+					right: &joinSearchNode{
+						table: "B",
+					},
+				},
+			},
+		},
+		{
+			name: "linear join, BAC",
+			tableOrder: []string{"B", "A", "C"},
+			joinConds:  []sql.Expression{
+				jc("A", "B"),
+				jc("B", "C"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("B", "C"),
+				left: &joinSearchNode{
+					joinCond: jc("A", "B"),
+					left: &joinSearchNode{
+						table: "B",
+					},
+					right: &joinSearchNode{
+						table: "A",
+					},
+				},
+				right: &joinSearchNode{
+					table: "C",
+				},
+			},
+		},
+		{
 			name: "linear join, BCA",
 			tableOrder: []string{"B", "C", "A"},
 			joinConds:  []sql.Expression{
@@ -66,7 +112,6 @@ func TestBuildJoinTree(t *testing.T) {
 				jc("B", "C"),
 			},
 			joinTree: &joinSearchNode{
-				table:    "",
 				joinCond: jc("A", "B"),
 				left: &joinSearchNode{
 					joinCond: jc("B", "C"),
@@ -82,13 +127,61 @@ func TestBuildJoinTree(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "linear join, CAB",
+			tableOrder: []string{"C", "A", "B"},
+			joinConds:  []sql.Expression{
+				jc("A", "B"),
+				jc("B", "C"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("B", "C"),
+				left: &joinSearchNode{
+					table: "C",
+				},
+				right: &joinSearchNode{
+					joinCond: jc("A", "B"),
+					left: &joinSearchNode{
+						table: "A",
+					},
+					right: &joinSearchNode{
+						table: "B",
+					},
+				},
+			},
+		},
+		{
+			name: "linear join, CBA",
+			tableOrder: []string{"C", "B", "A"},
+			joinConds:  []sql.Expression{
+				jc("A", "B"),
+				jc("B", "C"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("A", "B"),
+				left: &joinSearchNode{
+					joinCond: jc("B", "C"),
+					left: &joinSearchNode{
+						table: "C",
+					},
+					right: &joinSearchNode{
+						table: "B",
+					},
+				},
+				right: &joinSearchNode{
+					table: "A",
+				},
+			},
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			joinTree := buildJoinTree(tt.tableOrder, tt.joinConds)
 			pruneParamsAndParent(joinTree)
-			assert.Equal(t, tt.joinTree, joinTree)
+			if !assert.Equal(t, tt.joinTree, joinTree) {
+				fmt.Printf("Expected %s, but got %s", tt.joinTree, joinTree)
+			}
 		})
 	}
 }
