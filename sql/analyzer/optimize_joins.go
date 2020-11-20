@@ -408,7 +408,12 @@ func (n *joinSearchNode) String() string {
 	}
 
 	tp := sql.NewTreePrinter()
-	_ = tp.WriteNode("%s (usedJoins = %v, usedTables = %v)", n.joinCond, usedJoins, usedTables)
+	if len(usedTables) + len(usedJoins) > 0 {
+		_ = tp.WriteNode("%s (usedJoins = %v, usedTables = %v)", n.joinCond, usedJoins, usedTables)
+	} else {
+		_ = tp.WriteNode("%s", n.joinCond)
+	}
+
 	_ = tp.WriteChildren(n.left.String(), n.right.String())
 
 	return tp.String()

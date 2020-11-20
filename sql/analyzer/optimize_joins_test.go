@@ -36,55 +36,43 @@ func TestBuildJoinTree(t *testing.T) {
 	// one is returned.
 	testCases := []joinTreeTest{
 		{
-			name: "linear join, ABC",
-			tableOrder: []string{"A","B","C"},
-			joinConds:  []sql.Expression{
+			name:       "linear join, ABC",
+			tableOrder: []string{"A", "B", "C"},
+			joinConds: []sql.Expression{
 				jc("A", "B"),
 				jc("B", "C"),
 			},
 			joinTree: &joinSearchNode{
 				joinCond: jc("A", "B"),
-				left: &joinSearchNode{
-					table: "A",
-				},
+				left:     jt("A"),
 				right: &joinSearchNode{
 					joinCond: jc("B", "C"),
-					left: &joinSearchNode{
-						table: "B",
-					},
-					right: &joinSearchNode{
-						table: "C",
-					},
+					left:     jt("B"),
+					right:    jt("C"),
 				},
 			},
 		},
 		{
-			name: "linear join, ACB", // 👩‍⚖️
+			name:       "linear join, ACB", // 👩‍⚖️
 			tableOrder: []string{"A", "C", "B"},
-			joinConds:  []sql.Expression{
+			joinConds: []sql.Expression{
 				jc("A", "B"),
 				jc("B", "C"),
 			},
 			joinTree: &joinSearchNode{
 				joinCond: jc("A", "B"),
-				left: &joinSearchNode{
-					table: "A",
-				},
+				left:     jt("A"),
 				right: &joinSearchNode{
 					joinCond: jc("B", "C"),
-					left: &joinSearchNode{
-						table: "C",
-					},
-					right: &joinSearchNode{
-						table: "B",
-					},
+					left:     jt("C"),
+					right:    jt("B"),
 				},
 			},
 		},
 		{
-			name: "linear join, BAC",
+			name:       "linear join, BAC",
 			tableOrder: []string{"B", "A", "C"},
-			joinConds:  []sql.Expression{
+			joinConds: []sql.Expression{
 				jc("A", "B"),
 				jc("B", "C"),
 			},
@@ -92,22 +80,16 @@ func TestBuildJoinTree(t *testing.T) {
 				joinCond: jc("B", "C"),
 				left: &joinSearchNode{
 					joinCond: jc("A", "B"),
-					left: &joinSearchNode{
-						table: "B",
-					},
-					right: &joinSearchNode{
-						table: "A",
-					},
+					left:     jt("B"),
+					right:    jt("A"),
 				},
-				right: &joinSearchNode{
-					table: "C",
-				},
+				right: jt("C"),
 			},
 		},
 		{
-			name: "linear join, BCA",
+			name:       "linear join, BCA",
 			tableOrder: []string{"B", "C", "A"},
-			joinConds:  []sql.Expression{
+			joinConds: []sql.Expression{
 				jc("A", "B"),
 				jc("B", "C"),
 			},
@@ -115,45 +97,33 @@ func TestBuildJoinTree(t *testing.T) {
 				joinCond: jc("A", "B"),
 				left: &joinSearchNode{
 					joinCond: jc("B", "C"),
-					left: &joinSearchNode{
-						table: "B",
-					},
-					right: &joinSearchNode{
-						table: "C",
-					},
+					left:     jt("B"),
+					right:    jt("C"),
 				},
-				right: &joinSearchNode{
-					table: "A",
-				},
+				right: jt("A"),
 			},
 		},
 		{
-			name: "linear join, CAB",
+			name:       "linear join, CAB",
 			tableOrder: []string{"C", "A", "B"},
-			joinConds:  []sql.Expression{
+			joinConds: []sql.Expression{
 				jc("A", "B"),
 				jc("B", "C"),
 			},
 			joinTree: &joinSearchNode{
 				joinCond: jc("B", "C"),
-				left: &joinSearchNode{
-					table: "C",
-				},
+				left:     jt("C"),
 				right: &joinSearchNode{
 					joinCond: jc("A", "B"),
-					left: &joinSearchNode{
-						table: "A",
-					},
-					right: &joinSearchNode{
-						table: "B",
-					},
+					left:     jt("A"),
+					right:    jt("B"),
 				},
 			},
 		},
 		{
-			name: "linear join, CBA",
+			name:       "linear join, CBA",
 			tableOrder: []string{"C", "B", "A"},
-			joinConds:  []sql.Expression{
+			joinConds: []sql.Expression{
 				jc("A", "B"),
 				jc("B", "C"),
 			},
@@ -161,15 +131,31 @@ func TestBuildJoinTree(t *testing.T) {
 				joinCond: jc("A", "B"),
 				left: &joinSearchNode{
 					joinCond: jc("B", "C"),
-					left: &joinSearchNode{
-						table: "C",
-					},
-					right: &joinSearchNode{
-						table: "B",
-					},
+					left:     jt("C"),
+					right:    jt("B"),
 				},
+				right: jt("A"),
+			},
+		},
+		{
+			name:       "linear join, ABCD",
+			tableOrder: []string{"A", "B", "C", "D"},
+			joinConds: []sql.Expression{
+				jc("A", "B"),
+				jc("B", "C"),
+				jc("C", "D"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("A", "B"),
+				left:     jt("A"),
 				right: &joinSearchNode{
-					table: "A",
+					joinCond: jc("B", "C"),
+					left:     jt("B"),
+					right: &joinSearchNode{
+						joinCond: jc("C", "D"),
+						left:     jt("C"),
+						right:    jt("D"),
+					},
 				},
 			},
 		},
@@ -199,4 +185,10 @@ func pruneParamsAndParent(node *joinSearchNode) {
 
 func jc(leftTable, rightTable string) sql.Expression {
 	return eq(gf(0, leftTable, "col"), gf(0, rightTable, "col"))
+}
+
+func jt(name string) *joinSearchNode {
+	return &joinSearchNode{
+		table:    name,
+	}
 }
