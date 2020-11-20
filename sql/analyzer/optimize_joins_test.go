@@ -58,6 +58,30 @@ func TestBuildJoinTree(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "linear join, BCA",
+			tableOrder: []string{"B", "C", "A"},
+			joinConds:  []sql.Expression{
+				jc("A", "B"),
+				jc("B", "C"),
+			},
+			joinTree: &joinSearchNode{
+				table:    "",
+				joinCond: jc("A", "B"),
+				left: &joinSearchNode{
+					joinCond: jc("B", "C"),
+					left: &joinSearchNode{
+						table: "B",
+					},
+					right: &joinSearchNode{
+						table: "C",
+					},
+				},
+				right: &joinSearchNode{
+					table: "A",
+				},
+			},
+		},
 	}
 
 	for _, tt := range testCases {

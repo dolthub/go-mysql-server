@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"sort"
 	"strings"
@@ -377,8 +378,8 @@ func (n *joinSearchNode) accumulateAllUsed() *joinSearchParams {
 	// TODO: eliminate duplicates from these lists, or use sets
 	result.usedJoinCondsIndexes = append(result.usedJoinCondsIndexes, leftParams.usedJoinCondsIndexes...)
 	result.usedJoinCondsIndexes = append(result.usedJoinCondsIndexes, rightParams.usedJoinCondsIndexes...)
-	result.usedTableIndexes = append(result.usedJoinCondsIndexes, leftParams.usedTableIndexes...)
-	result.usedTableIndexes = append(result.usedJoinCondsIndexes, rightParams.usedTableIndexes...)
+	result.usedTableIndexes = append(result.usedTableIndexes, leftParams.usedTableIndexes...)
+	result.usedTableIndexes = append(result.usedTableIndexes, rightParams.usedTableIndexes...)
 
 	return result
 }
@@ -396,8 +397,18 @@ func (n *joinSearchNode) String() string {
 		return n.table
 	}
 
+	usedJoins := ""
+	if n.params != nil && len(n.params.usedJoinCondsIndexes) > 0 {
+		usedJoins = fmt.Sprintf("%v", n.params.usedJoinCondsIndexes)
+	}
+
+	usedTables := ""
+	if n.params != nil && len(n.params.usedTableIndexes) > 0 {
+		usedTables = fmt.Sprintf("%v", n.params.usedTableIndexes)
+	}
+
 	tp := sql.NewTreePrinter()
-	_ = tp.WriteNode("%s", sql.DebugString(n.joinCond))
+	_ = tp.WriteNode("%s (usedJoins = %v, usedTables = %v", n.joinCond, usedJoins, usedTables)
 	_ = tp.WriteChildren(n.left.String(), n.right.String())
 
 	return tp.String()
@@ -417,6 +428,8 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 	// go into this list.
 	children := make([]*joinSearchNode, 0)
 
+	debugLog("parent %s\n", parent)
+
 	// If we have a parent to assign them to, consider returning tables as nodes. Otherwise, skip them.
 	if parent != nil {
 		// Find all tables mentioned in join nodes up to the root of the tree. We can't add any tables that aren't in this
@@ -434,7 +447,7 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 			if indexOf(table, validChildTables) < 0 || parent.params.tableIndexUsed(i) {
 				continue
 			}
-			paramsCopy := parent.params.copy()
+			paramsCopy := params.copy()
 			paramsCopy.usedTableIndexes = append(paramsCopy.usedTableIndexes, i)
 
 			childNode := &joinSearchNode{
@@ -443,6 +456,7 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 				parent: parent.copy(),
 			}
 			if tableOrderCorrect(parent.withChild(childNode)) {
+				debugLog("adding child %s\n", childNode)
 				children = append(children, childNode)
 			}
 		}
@@ -457,6 +471,7 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 		paramsCopy := params.copy()
 		paramsCopy.usedJoinCondsIndexes = append(paramsCopy.usedJoinCondsIndexes, i)
 
+		debugLog("Using cond %s\n", cond)
 		candidate := &joinSearchNode{
 			joinCond: cond,
 			parent:   parent,
@@ -465,28 +480,40 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 
 		// For each of the left and right branch, find all possible children, add all valid subtrees to the list
 		candidate = candidate.targetLeft()
+		debugLog("searching left on %s\n", cond)
 		leftChildren := searchJoins(candidate, paramsCopy)
 		// pay attention to variable shadowing in this block
 		for _, left := range leftChildren {
 			if !isValidJoinSubTree(left) {
+				debugLog("rejected left subtree %s\n", left)
 				continue
 			}
 			candidate := candidate.withChild(left).targetRight()
 			candidate.params = candidate.accumulateAllUsed()
+			debugLog("searching right on %s using left = %s\n", cond, left)
 			rightChildren := searchJoins(candidate, paramsCopy)
 			for _, right := range rightChildren {
 				if !isValidJoinSubTree(right) {
+					debugLog("rejected right subtree %s\n", right)
 					continue
 				}
 				candidate := candidate.withChild(right)
 				if isValidJoinSubTree(candidate) {
+					debugLog("adding child %s\n", candidate)
 					children = append(children, candidate)
+				} else {
+					debugLog("rejected child %s\n", candidate)
 				}
 			}
 		}
 	}
 
+	fmt.Print("Returning\n")
 	return children
+}
+
+func debugLog(msg string, args ...interface{}) {
+	fmt.Printf(msg, args...)
 }
 
 func isValidJoinSubTree(node *joinSearchNode) bool {
