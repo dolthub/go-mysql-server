@@ -364,6 +364,114 @@ func TestBuildJoinTree(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:       "linear join, ABCDE",
+			tableOrder: []string{"A", "B", "C", "D", "E"},
+			joinConds: []sql.Expression{
+				jc("A", "B"),
+				jc("B", "C"),
+				jc("C", "D"),
+				jc("D", "E"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("A", "B"),
+				left: jt("A"),
+				right: &joinSearchNode{
+					joinCond: jc("B", "C"),
+					left: jt("B"),
+					right: &joinSearchNode{
+						joinCond: jc("C", "D"),
+						left:     jt("C"),
+						right: &joinSearchNode{
+							joinCond: jc("D", "E"),
+							left:     jt("D"),
+							right:    jt("E"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "linear join, ECBAD",
+			tableOrder: []string{"E", "C", "B", "A", "D"},
+			joinConds: []sql.Expression{
+				jc("A", "B"),
+				jc("B", "C"),
+				jc("C", "D"),
+				jc("D", "E"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("D", "E"),
+				left: jt("E"),
+				right: &joinSearchNode{
+					joinCond: jc("C", "D"),
+					left: &joinSearchNode{
+						joinCond: jc("A", "B"),
+						left: &joinSearchNode{
+							joinCond: jc("B", "C"),
+							left:     jt("C"),
+							right:    jt("B"),
+						},
+						right: jt("A"),
+					},
+					right: jt("D"),
+				},
+			},
+		},
+		{
+			name:       "star join with C in middle, BDACE",
+			tableOrder: []string{"B", "D", "A", "C", "E"},
+			joinConds: []sql.Expression{
+				jc("A", "C"),
+				jc("B", "C"),
+				jc("D", "C"),
+				jc("E", "C"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("B", "C"),
+				left: jt("B"),
+				right: &joinSearchNode{
+					joinCond: jc("D", "C"),
+					left: jt("D"),
+					right: &joinSearchNode{
+						joinCond: jc("A", "C"),
+						left: jt("A"),
+						right: &joinSearchNode{
+							joinCond: jc("E", "C"),
+							left:     jt("C"),
+							right:    jt("E"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "branching join, EBDCA",
+			tableOrder: []string{"E", "B", "D", "C", "A"},
+			joinConds: []sql.Expression{
+				jc("A", "C"),
+				jc("B", "C"),
+				jc("B", "E"),
+				jc("B", "D"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("A", "C"),
+				left: &joinSearchNode{
+					joinCond: jc("B", "C"),
+					left: &joinSearchNode{
+						joinCond: jc("B", "E"),
+						left: jt("E"),
+						right: &joinSearchNode{
+							joinCond: jc("B", "D"),
+							left:     jt("B"),
+							right:    jt("D"),
+						},
+					},
+					right: jt("C"),
+				},
+				right: jt("A"),
+			},
+		},
 	}
 
 	for _, tt := range testCases {
