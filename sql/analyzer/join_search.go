@@ -26,16 +26,17 @@ type tableAccess struct {
 	joinCond sql.Expression
 }
 
+// orderTables returns an access order for the tables provided, such that early tables provide the join keys for later
+// tables.
 func orderTables(tablesByName map[string]NameableNode, joinExprs joinExpressionsByTable) []string {
 	tableOrder := make([]string, len(tablesByName))
 	for table := range tablesByName {
 		tableOrder = append(tableOrder, table)
 	}
 
-	// Order the tables based on whether they have a usable index.
+	// First pass: order the tables based on whether they have a usable index.
 	// Tables with indexes come after those without.
-	// TODO: tables with indexes need to come after the tables that provide those keys
-	sort.Slice(tableOrder, func(i, j int) bool {
+	sort.SliceStable(tableOrder, func(i, j int) bool {
 		tableIExprs := joinExprs[tableOrder[i]]
 		tableJExprs := joinExprs[tableOrder[j]]
 		if len(tableIExprs) == 0 {
@@ -55,7 +56,68 @@ func orderTables(tablesByName map[string]NameableNode, joinExprs joinExpressions
 		return true
 	})
 
+	// Next pass: the comparands used for index access must precede the tables being accessed
+	for {
+		for i := len(tableOrder) - 1; i > 0; i-- {
+			tableExprs := joinExprs[tableOrder[i]]
+			if !tableExprs.hasIndex() {
+				continue
+			}
+
+		}
+		break
+	}
+
 	return tableOrder
+}
+
+// Scores the table order based on expected cost. Lower numbers are better.
+// We could do this better if we had table and key statistics.
+func estimateTableOrderCost(
+		tables []string,
+		tablesByName map[string]NameableNode,
+		accessOrder []int,
+		joinExprs joinExpressionsByTable,
+) int {
+	cost := 1
+	var availableSchemaForKeys sql.Schema
+	for i, idx := range accessOrder {
+		table := tables[idx]
+		availableSchemaForKeys = append(availableSchemaForKeys, tablesByName[table].Schema()...)
+		if i == 0 || !joinExprs[table].hasUsableIndex(availableSchemaForKeys) {
+			cost *= 1000
+		}
+	}
+	return cost
+}
+
+// Generates all permutations of the slice given.
+func permutations(ints []int) [][]int{
+	var helper func([]int, int)
+	var res [][]int
+
+	helper = func(arr []int, n int){
+		if n == 1{
+			tmp := make([]int, len(arr))
+			copy(tmp, arr)
+			res = append(res, tmp)
+		} else {
+			for i := 0; i < n; i++{
+				helper(arr, n - 1)
+				if n % 2 == 1{
+					tmp := arr[i]
+					arr[i] = arr[n - 1]
+					arr[n - 1] = tmp
+				} else {
+					tmp := arr[0]
+					arr[0] = arr[n - 1]
+					arr[n - 1] = tmp
+				}
+			}
+		}
+	}
+	helper(ints, len(ints))
+	return res
 }
 
 // joinSearchParams is a simple struct to track available tables and join conditions during a join search

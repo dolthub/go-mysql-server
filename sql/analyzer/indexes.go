@@ -798,6 +798,24 @@ func extractComparands(colExprs []*joinColExpr) []sql.Expression {
 	return result
 }
 
+func (jce joinColExprs) hasIndex() bool {
+	for _, expr := range jce {
+		if len(expr.indexes) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func (jce joinColExprs) hasUsableIndex(schema sql.Schema) bool {
+	for _, colExpr := range jce {
+		for _, index := range colExpr.indexes {
+			// find the comparands for this index
+		}
+	}
+	return false
+}
+
 func findColumn(cols []joinColExpr, column string) *joinColExpr {
 	for _, col := range cols {
 		if col.col.String() == column {
