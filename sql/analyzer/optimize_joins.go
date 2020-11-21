@@ -133,14 +133,10 @@ func replaceWithIndexedJoins(
 ) (sql.Node, error) {
 
 	// Find all the tables
-	tables := getTables(node)
-	tablesByName := byLowerCaseName(tables)
+	// tables := getTables(node)
+	// tablesByName := byLowerCaseName(tables)
 
-	// Arrange the tables in order of last-accessed to first-accessed. All tables but the first should use indexed access
-	// if possible. The original query planner constructs N-table joins like join(join(table1, table2), table3), with
-	// nested join nodes always on the left. We reverse this, so that primary tables are always on the left and secondary
-	// tables (including nested joins) are on the right.
-	joinOrderForTables(tablesByName, joinExprs)
+	// joinOrderForTables(tablesByName, joinExprs)
 
 	primaryTable, secondaryTable, primaryTableExpr, secondaryTableIndex, err :=
 			analyzeJoinIndexes(scope, node, joinExprs, exprAliases, tableAliases)
@@ -175,7 +171,7 @@ func joinOrderForTables(
 		joinExprs joinExpressionsByTable,
 ) []tableAccess {
 
-	tableOrder := orderTables(tablesByName, joinExprs)
+	tableOrder := orderTables(tablesByName, nil)
 
 	// TODO: solution search the graph for table order. Build the join tree in the order above, top down, preferring
 	//  earlier tables to later ones. Check each candidate join tree to see if it can satisfy the join conditions (with

@@ -42,6 +42,7 @@ func orderTables(tablesByName map[string]NameableNode, joinIndexes joinIndexesBy
 	lowestCost := math.MaxInt32
 	lowestCostIdx := 0
 	for i, accessOrder := range accessOrders {
+		// TODO: consider LEFT, RIGHT joins in order
 		cost := estimateTableOrderCost(tables, tablesByName, accessOrder, joinIndexes, lowestCost)
 		if cost < lowestCost {
 			lowestCost = cost

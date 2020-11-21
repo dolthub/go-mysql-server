@@ -21,7 +21,7 @@ import (
 	"strings"
 )
 
-// A joinIndex captures an index to use in a join between two tables.
+// A joinIndex captures an index to use in a join between two or more tables.
 type joinIndex struct {
 	// The table this index applies to
 	table 				 string
@@ -29,9 +29,11 @@ type joinIndex struct {
 	index          sql.Index
 	// The join condition
 	joinCond       sql.Expression
+	// The join type
+	joinType 			 plan.JoinType
 	// The columns of the target table -- will match the index, if present
 	cols           []*expression.GetField
-	// The expression for the target table in the join condition, in the same order as cols
+	// The expressions for the target table in the join condition, in the same order as cols
 	colExprs       []sql.Expression
 	// The columns of other tables, in the same order as cols
 	comparandCols  []*expression.GetField
@@ -40,6 +42,7 @@ type joinIndex struct {
 }
 
 type joinIndexes []*joinIndex
+type joinIndexesByTable map[string]joinIndexes
 
 // hasUsableIndex returns whether any of the indexes given can be satisfied by the schema provided
 func (j joinIndexes) hasUsableIndex(schema sql.Schema) bool {
@@ -75,11 +78,14 @@ func schemaContainsField(schema sql.Schema, field *expression.GetField) bool {
 	return false
 }
 
-type joinIndexesByTable map[string]joinIndexes
+type joinCond struct {
+	cond sql.Expression
+	joinType plan.JoinType
+}
 
 // findJoinExprsByTable inspects the Node given for Join nodes, groups all join conditions by table, and assigns
 // potential indexes to them.
-func findJoinExprsByTable2(
+func findJoinIndexesByTable(
 		ctx *sql.Context,
 		node sql.Node,
 		exprAliases ExprAliases,
@@ -101,7 +107,7 @@ func findJoinExprsByTable2(
 		return true
 	})
 
-	var joinExprsByTable joinIndexesByTable
+	var joinIndexesByTable joinIndexesByTable
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
@@ -113,14 +119,14 @@ func findJoinExprsByTable2(
 			defer indexAnalyzer.releaseUsedIndexes()
 
 			// then get all possible indexes based on the conds for all tables (using the topmost table as a starting point)
-			joinExprsByTable, err = getJoinIndexesByTable(ctx, a, indexAnalyzer, conds, exprAliases, tableAliases)
+			joinIndexesByTable, err = getJoinIndexesByTable(ctx, a, indexAnalyzer, conds, exprAliases, tableAliases)
 			return false
 		}
 
 		return true
 	})
 
-	return joinExprsByTable, err
+	return joinIndexesByTable, err
 }
 
 // getIndexableJoinExprsByTable returns a map of table name to a slice of joinColExpr on that table, with any potential
