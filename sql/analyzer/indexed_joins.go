@@ -18,6 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"strings"
 )
 
 // A joinIndex captures an index to use in a join between two tables.
@@ -38,7 +39,43 @@ type joinIndex struct {
 	comparandExprs []sql.Expression
 }
 
-type joinIndexesByTable map[string][]*joinIndex
+type joinIndexes []*joinIndex
+
+// hasUsableIndex returns whether any of the indexes given can be satisfied by the schema provided
+func (j joinIndexes) hasUsableIndex(schema sql.Schema) bool {
+	for _, joinIndex := range j {
+		if joinIndex.index == nil {
+			continue
+		}
+		// If every comparand for this join index is present in the schema given, we can use the corresponding index
+		allFound := true
+		for _, cmpCol := range joinIndex.comparandCols {
+			// TODO: this is needlessly expensive for large schemas
+			if !schemaContainsField(schema, cmpCol) {
+				allFound = false
+				break
+			}
+		}
+
+		if allFound {
+			return true
+		}
+	}
+
+	return false
+}
+
+func schemaContainsField(schema sql.Schema, field *expression.GetField) bool {
+	for _, col := range schema {
+		if strings.ToLower(col.Source) == strings.ToLower(field.Table()) &&
+			strings.ToLower(col.Name) == strings.ToLower(field.Name()) {
+			return true
+		}
+	}
+	return false
+}
+
+type joinIndexesByTable map[string]joinIndexes
 
 // findJoinExprsByTable inspects the Node given for Join nodes, groups all join conditions by table, and assigns
 // potential indexes to them.

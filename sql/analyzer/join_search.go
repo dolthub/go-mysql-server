@@ -77,17 +77,18 @@ func estimateTableOrderCost(
 		tables []string,
 		tablesByName map[string]NameableNode,
 		accessOrder []int,
-		joinExprs joinExpressionsByTable,
+		joinIndexes joinIndexesByTable,
 ) int {
 	cost := 1
 	var availableSchemaForKeys sql.Schema
 	for i, idx := range accessOrder {
 		table := tables[idx]
 		availableSchemaForKeys = append(availableSchemaForKeys, tablesByName[table].Schema()...)
-		if i == 0 || !joinExprs[table].hasUsableIndex(availableSchemaForKeys) {
+		if i == 0 || !joinIndexes[table].hasUsableIndex(availableSchemaForKeys) {
 			cost *= 1000
 		}
 	}
+
 	return cost
 }
 
