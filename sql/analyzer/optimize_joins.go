@@ -221,6 +221,7 @@ func joinOrderForTables(
 	return nil
 }
 
+
 func (je joinExpressionsByTable) flatten() []sql.Expression {
 	joinConditions := make([]sql.Expression, 0)
 	for _, exprs := range je {

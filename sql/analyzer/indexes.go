@@ -808,11 +808,11 @@ func (jce joinColExprs) hasIndex() bool {
 }
 
 func (jce joinColExprs) hasUsableIndex(schema sql.Schema) bool {
-	for _, colExpr := range jce {
-		for _, index := range colExpr.indexes {
-			// find the comparands for this index
-		}
-	}
+	// for _, colExpr := range jce {
+	// 	for _, index := range colExpr.indexes {
+	// 		// find the comparands for this index
+	// 	}
+	// }
 	return false
 }
 
