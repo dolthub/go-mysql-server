@@ -17,7 +17,7 @@ package analyzer
 import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
-	"sort"
+	"math"
 )
 
 type tableAccess struct {
@@ -26,64 +26,55 @@ type tableAccess struct {
 	joinCond sql.Expression
 }
 
-// orderTables returns an access order for the tables provided, such that early tables provide the join keys for later
-// tables.
-func orderTables(tablesByName map[string]NameableNode, joinExprs joinExpressionsByTable) []string {
-	tableOrder := make([]string, len(tablesByName))
+// orderTables returns an access order for the tables provided, attempting to minimize total query cost
+func orderTables(tablesByName map[string]NameableNode, joinIndexes joinIndexesByTable) []string {
+	tables := make([]string, len(tablesByName))
+	indexes := make([]int, len(tablesByName))
+	i := 0
 	for table := range tablesByName {
-		tableOrder = append(tableOrder, table)
+		tables = append(tables, table)
+		indexes[i] = i
+		i++
 	}
 
-	// First pass: order the tables based on whether they have a usable index.
-	// Tables with indexes come after those without.
-	sort.SliceStable(tableOrder, func(i, j int) bool {
-		tableIExprs := joinExprs[tableOrder[i]]
-		tableJExprs := joinExprs[tableOrder[j]]
-		if len(tableIExprs) == 0 {
-			return true
+	// generate all permutations of table order
+	accessOrders := permutations(indexes)
+	lowestCost := math.MaxInt32
+	lowestCostIdx := 0
+	for i, accessOrder := range accessOrders {
+		cost := estimateTableOrderCost(tables, tablesByName, accessOrder, joinIndexes, lowestCost)
+		if cost < lowestCost {
+			lowestCost = cost
+			lowestCostIdx = i
 		}
-		if len(tableJExprs) == 0 {
-			return false
-		}
-		tableIExpr := tableIExprs[0]
-		tableJExpr := tableJExprs[0]
-		if len(tableIExpr.indexes) == 0 {
-			return true
-		}
-		if len(tableJExpr.indexes) == 0 {
-			return false
-		}
-		return true
-	})
-
-	// Next pass: the comparands used for index access must precede the tables being accessed
-	for {
-		for i := len(tableOrder) - 1; i > 0; i-- {
-			tableExprs := joinExprs[tableOrder[i]]
-			if !tableExprs.hasIndex() {
-				continue
-			}
-
-		}
-		break
 	}
 
-	return tableOrder
+	cheapestOrder := make([]string, len(tables))
+	for i, j := range accessOrders[lowestCostIdx] {
+		cheapestOrder[i] = tables[j]
+	}
+
+	return cheapestOrder
 }
 
-// Scores the table order based on expected cost. Lower numbers are better.
-// We could do this better if we had table and key statistics.
+// Estimates the cost of the table ordering given. Lower numbers are better. Bails out and returns cost so far if cost
+// exceeds lowest found so far. We could do this better if we had table and key statistics.
 func estimateTableOrderCost(
 		tables []string,
-		tablesByName map[string]NameableNode,
+		tableNodes map[string]NameableNode,
 		accessOrder []int,
 		joinIndexes joinIndexesByTable,
+		lowestCost int,
 ) int {
 	cost := 1
 	var availableSchemaForKeys sql.Schema
 	for i, idx := range accessOrder {
+		if cost >= lowestCost {
+			return cost
+		}
+
 		table := tables[idx]
-		availableSchemaForKeys = append(availableSchemaForKeys, tablesByName[table].Schema()...)
+		availableSchemaForKeys = append(availableSchemaForKeys, tableNodes[table].Schema()...)
 		if i == 0 || !joinIndexes[table].hasUsableIndex(availableSchemaForKeys) {
 			cost *= 1000
 		}
