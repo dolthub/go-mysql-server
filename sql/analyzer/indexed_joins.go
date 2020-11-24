@@ -96,25 +96,59 @@ func replanJoin(
 	tableOrder := orderTables(tablesByName, joinIndexes)
 	joinTree := buildJoinTree(tableOrder, joinIndexes.flattenJoinConds())
 
-	return joinTreeToNodes(node, joinTree, a, scope, joinIndexes, exprAliases, tableAliases)
+	joinNode := joinTreeToNodes(joinTree, tablesByName)
+
+	return plan.TransformUp(joinNode, func(node sql.Node) (sql.Node, error) {
+		// Transform right-hand table accesses to IndexTableAccess where possible.
+		return nil, nil
+	})
 }
 
-func joinTreeToNodes(
-		node plan.JoinNode,
-		tree *joinSearchNode,
-		a *Analyzer,
-		scope *Scope,
-		indexes joinIndexesByTable,
-		exprAliases ExprAliases,
-		tableAliases TableAliases,
-) (sql.Node, error) {
-	if tree == nil {
-		return node, nil
+func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode) sql.Node {
+	if len(tree.table) > 0 {
+		return tablesByName[tree.table]
 	}
 
-	return node, nil
+	left := joinTreeToNodes(tree.left, tablesByName)
+	right := joinTreeToNodes(tree.right, tablesByName)
+
+	// TODO: need join condition in join search nodes
+	return plan.NewIndexedJoin(left, right, 0, tree.joinCond)
 }
 
+// createPrimaryTableExpr returns a slice of expressions to be used when evaluating a row in the primary table to
+// assemble a lookup key in a secondary table. Column expressions must match the declared column order of the index.
+func createIndexLookupKeyExpression(
+		joinIndexes joinIndexes,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
+) []sql.Expression {
+
+	for _, ji := range joinIndexes {
+		if ji.index == nil {
+			continue
+		}
+
+		keyExprs := make([]sql.Expression, len(ji.index.Expressions()))
+IndexExpressions:
+		for i, idxExpr := range ji.index.Expressions() {
+			for j, col := range ji.cols {
+				if idxExpr == normalizeExpression(exprAliases, tableAliases, col).String() {
+					keyExprs[i] = ji.comparandExprs[j]
+					continue IndexExpressions
+				}
+			}
+
+			// If we finished this loop, we didn't find a column of the index in the join expression.
+			// This should be impossible.
+			return nil
+		}
+
+		return keyExprs
+	}
+
+	return nil
+}
 
 // A joinIndex captures an index to use in a join between two or more tables.
 type joinIndex struct {
@@ -126,7 +160,7 @@ type joinIndex struct {
 	joinCond       sql.Expression
 	// The join type
 	joinType 			 plan.JoinType
-	// The columns of the target table -- will match the index, if present
+	// The columns of the target table -- will contain all the columns of the index, if present
 	cols           []*expression.GetField
 	// The expressions for the target table in the join condition, in the same order as cols
 	colExprs       []sql.Expression
