@@ -21,6 +21,101 @@ import (
 	"strings"
 )
 
+// optimizeJoins takes two-table InnerJoins where the join condition is an equality on an index of one of the tables,
+// and replaces it with an equivalent IndexedJoin of the same two tables.
+func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	span, ctx := ctx.Span("construct_join_plan")
+	defer span.Finish()
+
+	if !n.Resolved() {
+		return n, nil
+	}
+
+	if isDdlNode(n) {
+		return n, nil
+	}
+
+	exprAliases := getExpressionAliases(n)
+	tableAliases, err := getTableAliases(n, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	joinIndexesByTable, err := findJoinIndexesByTable(ctx, n, exprAliases, tableAliases, a)
+	if err != nil {
+		return nil, err
+	}
+
+	return replaceJoinPlans(a, n, scope, joinIndexesByTable, exprAliases, tableAliases)
+}
+
+func replaceJoinPlans(
+		a *Analyzer,
+		n sql.Node,
+		scope *Scope,
+		joinIndexes joinIndexesByTable,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
+) (sql.Node, error) {
+
+	selector := func(parent sql.Node, child sql.Node, childNum int) bool {
+		// We only want the top-most join node, so don't examine anything beneath join nodes
+		switch parent.(type) {
+		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
+			return false
+		default:
+			return true
+		}
+	}
+
+	return plan.TransformUpWithSelector(n, selector, func(node sql.Node) (sql.Node, error) {
+		switch node := node.(type) {
+		case *plan.IndexedJoin:
+			return node, nil
+		case plan.JoinNode:
+			return replanJoin(node, a, scope, joinIndexes, exprAliases, tableAliases)
+		default:
+			return node, nil
+		}
+	})
+}
+
+func replanJoin(
+		node plan.JoinNode,
+		a *Analyzer,
+		scope *Scope,
+		joinIndexes joinIndexesByTable,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
+) (sql.Node, error) {
+
+	// Collect all tables and find an access order for them
+	tables := getTables(node)
+	tablesByName := byLowerCaseName(tables)
+
+	tableOrder := orderTables(tablesByName, joinIndexes)
+	joinTree := buildJoinTree(tableOrder, joinIndexes.flattenJoinConds())
+
+	return joinTreeToNodes(node, joinTree, a, scope, joinIndexes, exprAliases, tableAliases)
+}
+
+func joinTreeToNodes(
+		node plan.JoinNode,
+		tree *joinSearchNode,
+		a *Analyzer,
+		scope *Scope,
+		indexes joinIndexesByTable,
+		exprAliases ExprAliases,
+		tableAliases TableAliases,
+) (sql.Node, error) {
+	if tree == nil {
+		return node, nil
+	}
+
+	return node, nil
+}
+
+
 // A joinIndex captures an index to use in a join between two or more tables.
 type joinIndex struct {
 	// The table this index applies to
@@ -160,6 +255,19 @@ func (ji joinIndexesByTable) merge(other joinIndexesByTable) {
 	for table, indices := range other {
 		ji[table] = append(ji[table], indices...)
 	}
+}
+
+// flattenJoinConds returns the set of distinct join conditions in the collection in an arbitrary order.
+func (ji joinIndexesByTable) flattenJoinConds() []sql.Expression {
+	joinConditions := make([]sql.Expression, 0)
+	for _, joinIndexes := range ji {
+		for _, joinIndex := range joinIndexes {
+			if !containsExpr(joinIndex.joinCond, joinConditions) {
+				joinConditions = append(joinConditions, joinIndex.joinCond)
+			}
+		}
+	}
+	return joinConditions
 }
 
 // getIndexableJoinExprs examines the join condition expression given and returns it mapped by table name with

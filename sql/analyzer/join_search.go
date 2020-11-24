@@ -58,6 +58,28 @@ func orderTables(tablesByName map[string]NameableNode, joinIndexes joinIndexesBy
 	return cheapestOrder
 }
 
+// buildJoinTree builds a join plan for the tables in the access order given, using the join expressions given.
+func buildJoinTree(
+		tableOrder []string,
+		joinExprs []sql.Expression,
+) *joinSearchNode {
+
+	rootNodes := searchJoins(nil, &joinSearchParams{
+		tables:    tableOrder,
+		joinConds: joinExprs,
+	})
+
+	for _, tree := range rootNodes {
+		// The search function here can return valid sub trees that don't have all the tables in the full join, so we need
+		// to check them for validity as an entire tree
+		if isValidJoinTree(tree) {
+			return tree
+		}
+	}
+
+	return nil
+}
+
 // Estimates the cost of the table ordering given. Lower numbers are better. Bails out and returns cost so far if cost
 // exceeds lowest found so far. We could do this better if we had table and key statistics.
 func estimateTableOrderCost(
@@ -293,6 +315,10 @@ func containsAll(needles []string, haystack []string) bool {
 	return true
 }
 
+// searchJoins is the recursive helper function for buildJoinTree. It returns all possible join trees that satisfy the
+// search parameters given. It calls itself recursively to generate subtrees as well. All nodes returned are valid
+// subtrees (join conditions and table sub ordering satisfied), but may not be valid as an entire tree. Callers should
+// verify this themselves using isValidJoinTree() on the result.
 func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearchNode {
 	// Our goal is to construct all possible child nodes for the parent given. Every permutation of a legal subtree should
 	// go into this list.
@@ -390,17 +416,16 @@ func debugLog(msg string, args ...interface{}) {
 	}
 }
 
+// isValidJoinSubTree returns whether the node given satisfies all the constraints of a join subtree. Subtrees are not
+// necessarily complete join plans, since they may not contain all tables. Use isValidJoinTree to verify that.
 func isValidJoinSubTree(node *joinSearchNode) bool {
 	// Two constraints define a valid tree:
 	// 1) An in-order traversal has tables in the correct order
-	if !tableOrderCorrect(node) {
-		return false
-	}
-
 	// 2) The conditions for all internal nodes can be satisfied by their child columns
-	return node.joinConditionSatisfied()
+	return tableOrderCorrect(node) && node.joinConditionSatisfied()
 }
 
+// isValidJoinTree returns whether the join node given is a valid subtree and contains all the tables in the join.
 func isValidJoinTree(node *joinSearchNode) bool {
 	return isValidJoinSubTree(node) && strArraysEqual(node.tableOrder(), node.params.tables)
 }
@@ -446,25 +471,4 @@ func indexOfInt(i int, is []int) int {
 		}
 	}
 	return -1
-}
-
-func buildJoinTree(
-		tableOrder []string,
-		joinExprs []sql.Expression,
-) *joinSearchNode {
-
-	rootNodes := searchJoins(nil, &joinSearchParams{
-		tables:    tableOrder,
-		joinConds: joinExprs,
-	})
-
-	for _, tree := range rootNodes {
-		// The search function here can return valid sub trees that don't have all the tables in the full join, so we need
-		// to check them for validity as an entire tree
-		if isValidJoinTree(tree) {
-			return tree
-		}
-	}
-
-	return nil
 }
