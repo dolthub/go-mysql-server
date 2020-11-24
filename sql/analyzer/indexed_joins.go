@@ -96,13 +96,16 @@ func findJoinIndexesByTable(
 	defer indexSpan.Finish()
 
 	var err error
-	var conds []sql.Expression
+	var conds []joinCond
 
 	// collect all the conds for the entire tree together
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case plan.JoinNode:
-			conds = append(conds, node.JoinCond())
+			conds = append(conds, joinCond{
+				cond:     node.JoinCond(),
+				joinType: node.JoinType(),
+			})
 		}
 		return true
 	})
@@ -131,17 +134,18 @@ func findJoinIndexesByTable(
 
 // getIndexableJoinExprsByTable returns a map of table name to a slice of joinColExpr on that table, with any potential
 // indexes assigned to the expression.
-func getJoinIndexesByTable(ctx *sql.Context,
+func getJoinIndexesByTable(
+		ctx *sql.Context,
 		a *Analyzer,
 		ia *indexAnalyzer,
-		joinConds []sql.Expression,
+		joinConds []joinCond,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
 ) (joinIndexesByTable, error) {
 
 	result := make(joinIndexesByTable)
-	for _, e := range joinConds {
-		indexes, err := getJoinIndexes(ctx, a, ia, e, exprAliases, tableAliases)
+	for _, cond := range joinConds {
+		indexes, err := getJoinIndexes(ctx, a, ia, cond, exprAliases, tableAliases)
 		if err != nil {
 			return nil, err
 		}
@@ -166,12 +170,12 @@ func getJoinIndexes(
 		ctx *sql.Context,
 		a *Analyzer,
 		ia *indexAnalyzer,
-		joinCond sql.Expression,
+		joinCond joinCond,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
 ) (joinIndexesByTable, error) {
 
-	switch joinCond := joinCond.(type) {
+	switch joinCond.cond.(type) {
 	case *expression.Equals:
 		result := make(joinIndexesByTable)
 		left, right := getEqualityIndexes(ctx, a, ia, joinCond, exprAliases, tableAliases)
@@ -183,14 +187,14 @@ func getJoinIndexes(
 		}
 		return result, nil
 	case *expression.And:
-		exprs := splitConjunction(joinCond)
+		exprs := splitConjunction(joinCond.cond)
 		for _, expr := range exprs {
 			if _, ok := expr.(*expression.Equals); !ok {
 				return nil, nil
 			}
 		}
 
-		return getJoinIndex(ctx, joinCond, exprs, a, ia, exprAliases, tableAliases), nil
+		return getJoinIndex(ctx, joinCond, exprs, ia, exprAliases, tableAliases), nil
 	}
 
 	return nil, nil
@@ -201,29 +205,35 @@ func getEqualityIndexes(
 		ctx *sql.Context,
 		a *Analyzer,
 		ia *indexAnalyzer,
-		joinCond *expression.Equals,
+		joinCond joinCond,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
 ) (left *joinIndex, right *joinIndex) {
 
-	// Only handle column expressions for these join indexes. Evaluable expression like `col=literal` will get pushed
-	// down where possible.
-	if isEvaluable(joinCond.Left()) || isEvaluable(joinCond.Right()) {
+	cond, ok := joinCond.cond.(*expression.Equals)
+	if !ok {
 		return nil, nil
 	}
 
-	leftCol, rightCol := extractJoinColumnExpr(joinCond)
+	// Only handle column expressions for these join indexes. Evaluable expression like `col=literal` will get pushed
+	// down where possible.
+	if isEvaluable(cond.Left()) || isEvaluable(cond.Right()) {
+		return nil, nil
+	}
+
+	leftCol, rightCol := extractJoinColumnExpr(cond)
 	if leftCol == nil || rightCol == nil {
 		return nil, nil
 	}
 
 	leftIdx, rightIdx :=
-			ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, joinCond.Left())...),
-			ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, joinCond.Right())...)
+			ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, cond.Left())...),
+			ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, cond.Right())...)
 
 	leftJoinIndex := &joinIndex{
 		index:          leftIdx,
-		joinCond:       joinCond,
+		joinCond:       joinCond.cond,
+		joinType:       joinCond.joinType,
 		cols:           []*expression.GetField{leftCol.col},
 		colExprs:       []sql.Expression{leftCol.colExpr},
 		comparandCols:  []*expression.GetField{leftCol.comparandCol},
@@ -232,7 +242,8 @@ func getEqualityIndexes(
 
 	rightJoinIndex := &joinIndex{
 		index:          rightIdx,
-		joinCond:       joinCond,
+		joinCond:       joinCond.cond,
+		joinType:       joinCond.joinType,
 		cols:           []*expression.GetField{rightCol.col},
 		colExprs:       []sql.Expression{rightCol.colExpr},
 		comparandCols:  []*expression.GetField{rightCol.comparandCol},
@@ -247,9 +258,8 @@ func getEqualityIndexes(
 // indexes for a particular table can be applied.
 func getJoinIndex(
 		ctx *sql.Context,
-		joinCond *expression.And,
+		joinCond joinCond,
 		joinCondPredicates []sql.Expression,
-		a *Analyzer,
 		ia *indexAnalyzer,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
@@ -266,7 +276,7 @@ func getJoinIndex(
 }
 
 // converts a slice of joinColExpr on a single table to a single *joinIndex
-func colExprsToJoinIndex(table string, idx sql.Index, joinCond sql.Expression, colExprs joinColExprs) *joinIndex {
+func colExprsToJoinIndex(table string, idx sql.Index, joinCond joinCond, colExprs joinColExprs) *joinIndex {
 	cols := make([]*expression.GetField, len(colExprs))
 	cmpCols := make([]*expression.GetField, len(colExprs))
 	exprs := make([]sql.Expression, len(colExprs))
@@ -281,7 +291,8 @@ func colExprsToJoinIndex(table string, idx sql.Index, joinCond sql.Expression, c
 	return &joinIndex{
 		index:          idx,
 		table:          table,
-		joinCond:       joinCond,
+		joinCond:       joinCond.cond,
+		joinType:       joinCond.joinType,
 		cols:           cols,
 		colExprs:       exprs,
 		comparandCols:  cmpCols,
