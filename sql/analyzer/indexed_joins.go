@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -93,16 +94,56 @@ func replanJoin(
 	// Collect all tables and find an access order for them
 	tables := getTables(node)
 	tablesByName := byLowerCaseName(tables)
-
 	tableOrder := orderTables(tablesByName, joinIndexes)
-	joinTree := buildJoinTree(tableOrder, joinIndexes.flattenJoinConds())
 
+	// Then use that order to construct a join tree
+	joinTree := buildJoinTree(tableOrder, joinIndexes.flattenJoinConds())
 	joinNode := joinTreeToNodes(joinTree, tablesByName)
 
-	return plan.TransformUp(joinNode, func(node sql.Node) (sql.Node, error) {
-		// Transform right-hand table accesses to IndexTableAccess where possible.
-		return nil, nil
-	})
+	// Finally, replace table access with indexed access where possible. We can't do a standard bottom-up transformation
+	// here, because we need information that isn't accessible in the node itself or in the parent.
+	var f func(node sql.Node, schema sql.Schema) (sql.Node, error)
+
+	f = func(node sql.Node, schema sql.Schema) (sql.Node, error) {
+		switch node := node.(type) {
+		case *plan.TableAlias, *plan.ResolvedTable:
+			// If the available schema makes an index on this table possible, use it, replacing the table with indexed access
+			indexes := joinIndexes[node.(sql.Nameable).Name()]
+			indexToApply := indexes.getUsableIndex(schema)
+			if indexToApply == nil {
+				return node, nil
+			}
+
+			keyExprs := createIndexLookupKeyExpression(indexToApply, exprAliases, tableAliases)
+			return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
+				switch node := node.(type) {
+				case *plan.ResolvedTable:
+					// TODO: check for indexability of table here?
+					return plan.NewIndexedTable(node, indexToApply.index, keyExprs), nil
+				default:
+					return node, nil
+				}
+			})
+		case *plan.IndexedJoin:
+			// Recurse the down the left side with the input schema
+			left, err := f(node.LeftBranch(), schema)
+			if err != nil {
+				return nil, err
+			}
+
+			// then the right side, appending the schema from the left
+			right, err := f(node.RightBranch(), append(schema, left.Schema()...))
+			if err != nil {
+				return nil, err
+			}
+			return plan.NewIndexedJoin(left, right, node.JoinType(), node.Cond), nil
+		default:
+			// TODO: check for this earlier
+			panic(fmt.Sprintf("Unrecognized node type %T", node))
+		}
+	}
+
+	return f(joinNode, nil)
 }
 
 func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode) sql.Node {
@@ -112,23 +153,16 @@ func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode)
 
 	left := joinTreeToNodes(tree.left, tablesByName)
 	right := joinTreeToNodes(tree.right, tablesByName)
-
-	// TODO: need join condition in join search nodes
 	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond)
 }
 
 // createPrimaryTableExpr returns a slice of expressions to be used when evaluating a row in the primary table to
 // assemble a lookup key in a secondary table. Column expressions must match the declared column order of the index.
 func createIndexLookupKeyExpression(
-		joinIndexes joinIndexes,
+		ji *joinIndex,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
 ) []sql.Expression {
-
-	for _, ji := range joinIndexes {
-		if ji.index == nil {
-			continue
-		}
 
 		keyExprs := make([]sql.Expression, len(ji.index.Expressions()))
 IndexExpressions:
@@ -145,10 +179,7 @@ IndexExpressions:
 			return nil
 		}
 
-		return keyExprs
-	}
-
-	return nil
+	return keyExprs
 }
 
 // A joinIndex captures an index to use in a join between two or more tables.
@@ -174,8 +205,7 @@ type joinIndex struct {
 type joinIndexes []*joinIndex
 type joinIndexesByTable map[string]joinIndexes
 
-// hasUsableIndex returns whether any of the indexes given can be satisfied by the schema provided
-func (j joinIndexes) hasUsableIndex(schema sql.Schema) bool {
+func (j joinIndexes) getUsableIndex(schema sql.Schema) *joinIndex {
 	for _, joinIndex := range j {
 		if joinIndex.index == nil {
 			continue
@@ -191,11 +221,11 @@ func (j joinIndexes) hasUsableIndex(schema sql.Schema) bool {
 		}
 
 		if allFound {
-			return true
+			return joinIndex
 		}
 	}
 
-	return false
+	return nil
 }
 
 func schemaContainsField(schema sql.Schema, field *expression.GetField) bool {

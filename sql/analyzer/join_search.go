@@ -92,7 +92,7 @@ func estimateTableOrderCost(
 
 		table := tables[idx]
 		availableSchemaForKeys = append(availableSchemaForKeys, tableNodes[table].Schema()...)
-		if i == 0 || !joinIndexes[table].hasUsableIndex(availableSchemaForKeys) {
+		if i == 0 || joinIndexes[table].getUsableIndex(availableSchemaForKeys) == nil {
 			cost *= 1000
 		}
 	}
