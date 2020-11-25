@@ -169,9 +169,9 @@ func replaceWithIndexedJoins(
 func joinOrderForTables(
 		tablesByName map[string]NameableNode,
 		joinExprs joinExpressionsByTable,
-) []tableAccess {
+) {
 
-	tableOrder := orderTables(tablesByName, nil)
+	// tableOrder := orderTables(tablesByName, nil)
 
 	// TODO: solution search the graph for table order. Build the join tree in the order above, top down, preferring
 	//  earlier tables to later ones. Check each candidate join tree to see if it can satisfy the join conditions (with
@@ -203,18 +203,18 @@ func joinOrderForTables(
 	// via node.RowIter(row) -- we have to give the right-hand branch of the tree access to the row being assembled so
 	// that is can assemble its index key based on it. And it brings us back to the top option.
 
-	buildJoinTree(tableOrder, joinExprs.flatten())
-
-	tableAccesses := make([]tableAccess, len(tablesByName))
-	for i, table := range tableOrder {
-		tableAccesses[i] = tableAccess{
-			table:    tablesByName[table],
-			index:    extractIndex(joinExprs[table][0]),
-			joinCond: joinExprs[table][0].joinCondition, // TODO: this won't work in all cases
-		}
-	}
-
-	return nil
+	// buildJoinTree(tableOrder, joinExprs.flatten())
+	//
+	// tableAccesses := make([]tableAccess, len(tablesByName))
+	// for i, table := range tableOrder {
+	// 	tableAccesses[i] = tableAccess{
+	// 		table:    tablesByName[table],
+	// 		index:    extractIndex(joinExprs[table][0]),
+	// 		joinCond: joinExprs[table][0].joinCondition, // TODO: this won't work in all cases
+	// 	}
+	// }
+	//
+	// return nil
 }
 
 

@@ -18,6 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"reflect"
 	"strings"
 )
 
@@ -113,7 +114,7 @@ func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode)
 	right := joinTreeToNodes(tree.right, tablesByName)
 
 	// TODO: need join condition in join search nodes
-	return plan.NewIndexedJoin(left, right, 0, tree.joinCond)
+	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond)
 }
 
 // createPrimaryTableExpr returns a slice of expressions to be used when evaluating a row in the primary table to
@@ -292,16 +293,25 @@ func (ji joinIndexesByTable) merge(other joinIndexesByTable) {
 }
 
 // flattenJoinConds returns the set of distinct join conditions in the collection in an arbitrary order.
-func (ji joinIndexesByTable) flattenJoinConds() []sql.Expression {
-	joinConditions := make([]sql.Expression, 0)
+func (ji joinIndexesByTable) flattenJoinConds() []*joinCond {
+	joinConditions := make([]*joinCond, 0)
 	for _, joinIndexes := range ji {
 		for _, joinIndex := range joinIndexes {
-			if !containsExpr(joinIndex.joinCond, joinConditions) {
-				joinConditions = append(joinConditions, joinIndex.joinCond)
+			if !joinCondPresent(joinIndex.joinCond, joinConditions) {
+				joinConditions = append(joinConditions, &joinCond{joinIndex.joinCond, joinIndex.joinType})
 			}
 		}
 	}
 	return joinConditions
+}
+
+func joinCondPresent(e sql.Expression, es []*joinCond) bool {
+	for _, e2 := range es {
+		if reflect.DeepEqual(e, e2) {
+			return true
+		}
+	}
+	return false
 }
 
 // getIndexableJoinExprs examines the join condition expression given and returns it mapped by table name with

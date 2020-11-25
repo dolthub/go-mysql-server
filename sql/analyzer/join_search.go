@@ -20,12 +20,6 @@ import (
 	"math"
 )
 
-type tableAccess struct {
-	table NameableNode
-	index sql.Index
-	joinCond sql.Expression
-}
-
 // orderTables returns an access order for the tables provided, attempting to minimize total query cost
 func orderTables(tablesByName map[string]NameableNode, joinIndexes joinIndexesByTable) []string {
 	tables := make([]string, len(tablesByName))
@@ -61,12 +55,12 @@ func orderTables(tablesByName map[string]NameableNode, joinIndexes joinIndexesBy
 // buildJoinTree builds a join plan for the tables in the access order given, using the join expressions given.
 func buildJoinTree(
 		tableOrder []string,
-		joinExprs []sql.Expression,
+		joinConds []*joinCond,
 ) *joinSearchNode {
 
 	rootNodes := searchJoins(nil, &joinSearchParams{
 		tables:    tableOrder,
-		joinConds: joinExprs,
+		joinConds: joinConds,
 	})
 
 	for _, tree := range rootNodes {
@@ -139,7 +133,7 @@ func permutations(ints []int) [][]int{
 type joinSearchParams struct {
 	tables               []string
 	usedTableIndexes     []int
-	joinConds            []sql.Expression
+	joinConds            []*joinCond
 	usedJoinCondsIndexes []int
 }
 
@@ -169,7 +163,7 @@ func (js *joinSearchParams) joinCondIndexUsed(i int) bool {
 // left and a right child.
 type joinSearchNode struct {
 	table    string            // empty if this is an internal node
-	joinCond sql.Expression    // nil if this is a leaf node
+	joinCond *joinCond    // nil if this is a leaf node
 	parent   *joinSearchNode   // nil if this is the root node
 	left     *joinSearchNode   // nil if this is a leaf node
 	right    *joinSearchNode   // nil if this is a leaf node
@@ -204,7 +198,7 @@ func (n *joinSearchNode) joinConditionSatisfied() bool {
 		return true
 	}
 
-	joinCondTables := findTables(n.joinCond)
+	joinCondTables := findTables(n.joinCond.cond)
 	childTables := n.tableOrder()
 	// TODO: case sensitivity
 	if !containsAll(joinCondTables, childTables) {
@@ -296,9 +290,9 @@ func (n *joinSearchNode) String() string {
 
 	tp := sql.NewTreePrinter()
 	if len(usedTables)+len(usedJoins) > 0 {
-		_ = tp.WriteNode("%s (usedJoins = %v, usedTables = %v)", n.joinCond, usedJoins, usedTables)
+		_ = tp.WriteNode("%s (usedJoins = %v, usedTables = %v)", n.joinCond.cond, usedJoins, usedTables)
 	} else {
-		_ = tp.WriteNode("%s", n.joinCond)
+		_ = tp.WriteNode("%s", n.joinCond.cond)
 	}
 
 	_ = tp.WriteChildren(n.left.String(), n.right.String())
@@ -334,7 +328,7 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 		var validChildTables []string
 		n := parent
 		for n != nil {
-			validChildTables = append(validChildTables, findTables(n.joinCond)...)
+			validChildTables = append(validChildTables, findTables(n.joinCond.cond)...)
 			n = n.parent
 		}
 
@@ -367,7 +361,7 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 		paramsCopy := params.copy()
 		paramsCopy.usedJoinCondsIndexes = append(paramsCopy.usedJoinCondsIndexes, i)
 
-		debugLog("Using cond %s\n", cond)
+		debugLog("Using cond %s\n", cond.cond)
 		candidate := &joinSearchNode{
 			joinCond: cond,
 			parent:   parent,
@@ -376,7 +370,7 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 
 		// For each of the left and right branch, find all possible children, add all valid subtrees to the list
 		candidate = candidate.targetLeft()
-		debugLog("searching left on %s\n", cond)
+		debugLog("searching left on %s\n", cond.cond)
 		leftChildren := searchJoins(candidate, paramsCopy)
 		// pay attention to variable shadowing in this block
 		for _, left := range leftChildren {
@@ -386,7 +380,7 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 			}
 			candidate := candidate.withChild(left).targetRight()
 			candidate.params = candidate.accumulateAllUsed()
-			debugLog("searching right on %s using left = %s\n", cond, left)
+			debugLog("searching right on %s using left = %s\n", cond.cond, left)
 			rightChildren := searchJoins(candidate, paramsCopy)
 			for _, right := range rightChildren {
 				if !isValidJoinSubTree(right) {
