@@ -90,6 +90,22 @@ func replanJoin(
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
 ) (sql.Node, error) {
+	// Inspect the node for eligibility. The join planner rewrites the tree beneath this node, and for this to be correct
+	// only certain nodes can be below it.
+	eligible := true
+	plan.Inspect(node, func(node sql.Node) bool {
+		switch node.(type) {
+		case plan.JoinNode, *plan.ResolvedTable, *plan.TableAlias:
+		default:
+			a.Log("Skipping join replanning because of incompatible node: %T", node)
+			eligible = false
+		}
+		return true
+	})
+
+	if !eligible {
+		return node, nil
+	}
 
 	// Collect all tables and find an access order for them
 	tables := getTables(node)
@@ -101,7 +117,11 @@ func replanJoin(
 	joinNode := joinTreeToNodes(joinTree, tablesByName)
 
 	// Finally, replace table access with indexed access where possible. We can't do a standard bottom-up transformation
-	// here, because we need information that isn't accessible in the node itself or in the parent.
+	// here, because we need information that isn't accessible in the node itself or in the parent. Specifically, the
+	// available schema to right-hand branches of the tree is constructed at runtime as the concatenation of the parent
+	// row (passed into row.Iter()) and the row returned by the left-hand branch of the join. This is basically an
+	// in-order concatenation of columns in all tables to the left of the one being examined, including from the left
+	// branches of parent nodes, which means there is no way to construct it given just the parent node.
 	var f func(node sql.Node, schema sql.Schema) (sql.Node, error)
 
 	f = func(node sql.Node, schema sql.Schema) (sql.Node, error) {
@@ -114,7 +134,6 @@ func replanJoin(
 				return node, nil
 			}
 
-			keyExprs := createIndexLookupKeyExpression(indexToApply, exprAliases, tableAliases)
 			return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
 				switch node := node.(type) {
 				case *plan.ResolvedTable:
@@ -122,6 +141,7 @@ func replanJoin(
 						return node, nil
 					}
 
+					keyExprs := createIndexLookupKeyExpression(indexToApply, exprAliases, tableAliases)
 					keyExprs, err := FixFieldIndexesOnExpressions(scope, schema, keyExprs...)
 					if err != nil {
 						return nil, err
@@ -153,8 +173,7 @@ func replanJoin(
 
 			return plan.NewIndexedJoin(left, right, node.JoinType(), cond), nil
 		default:
-			// TODO: check for this earlier
-			panic(fmt.Sprintf("Unrecognized node type %T", node))
+			panic(fmt.Sprintf("Unhandled node type %T", node))
 		}
 	}
 
