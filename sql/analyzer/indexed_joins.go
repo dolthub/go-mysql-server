@@ -453,6 +453,7 @@ func getEqualityIndexes(
 			ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, cond.Right())...)
 
 	leftJoinIndex := &joinIndex{
+		table: 					leftCol.col.Table(),
 		index:          leftIdx,
 		joinCond:       joinCond.cond,
 		joinType:       joinCond.joinType,
@@ -463,6 +464,7 @@ func getEqualityIndexes(
 	}
 
 	rightJoinIndex := &joinIndex{
+		table: 					rightCol.col.Table(),
 		index:          rightIdx,
 		joinCond:       joinCond.cond,
 		joinType:       joinCond.joinType,
