@@ -118,7 +118,15 @@ func replanJoin(
 			return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
 				switch node := node.(type) {
 				case *plan.ResolvedTable:
-					// TODO: check for indexability of table here?
+					if _, ok := node.Table.(sql.IndexAddressableTable); !ok {
+						return node, nil
+					}
+
+					keyExprs, err := FixFieldIndexesOnExpressions(scope, schema, keyExprs...)
+					if err != nil {
+						return nil, err
+					}
+
 					return plan.NewIndexedTable(node, indexToApply.index, keyExprs), nil
 				default:
 					return node, nil
@@ -136,7 +144,14 @@ func replanJoin(
 			if err != nil {
 				return nil, err
 			}
-			return plan.NewIndexedJoin(left, right, node.JoinType(), node.Cond), nil
+
+			// the condition's field indexes might need adjusting if the order of tables changed
+			cond, err := FixFieldIndexes(scope, append(left.Schema(), right.Schema()...), node.Cond)
+			if err != nil {
+				return nil, err
+			}
+
+			return plan.NewIndexedJoin(left, right, node.JoinType(), cond), nil
 		default:
 			// TODO: check for this earlier
 			panic(fmt.Sprintf("Unrecognized node type %T", node))
