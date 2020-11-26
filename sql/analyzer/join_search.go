@@ -26,7 +26,7 @@ func orderTables(tablesByName map[string]NameableNode, joinIndexes joinIndexesBy
 	indexes := make([]int, len(tablesByName))
 	i := 0
 	for table := range tablesByName {
-		tables = append(tables, table)
+		tables[i] = table
 		indexes[i] = i
 		i++
 	}

@@ -95,7 +95,7 @@ func replanJoin(
 	eligible := true
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node.(type) {
-		case plan.JoinNode, *plan.ResolvedTable, *plan.TableAlias:
+		case plan.JoinNode, *plan.ResolvedTable, *plan.TableAlias, nil:
 		default:
 			a.Log("Skipping join replanning because of incompatible node: %T", node)
 			eligible = false
@@ -114,6 +114,12 @@ func replanJoin(
 
 	// Then use that order to construct a join tree
 	joinTree := buildJoinTree(tableOrder, joinIndexes.flattenJoinConds())
+
+	// This shouldn't happen, but better to fail gracefully if it does
+	if joinTree == nil {
+		return node, nil
+	}
+
 	joinNode := joinTreeToNodes(joinTree, tablesByName)
 
 	// Finally, replace table access with indexed access where possible. We can't do a standard bottom-up transformation

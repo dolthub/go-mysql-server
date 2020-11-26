@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -50,6 +51,18 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 	}
 
 	return sql.NewTableRowIter(ctx, indexedTable, partIter), nil
+}
+
+func (i *IndexedTableAccess) String() string {
+	return fmt.Sprintf("IndexedTableAccess(%s on %s)", i.Name(), formatIndexDecoratorString(i.index))
+}
+
+func formatIndexDecoratorString(idx sql.Index) string {
+	var expStrs []string
+	for _, e := range idx.Expressions() {
+		expStrs = append(expStrs, e)
+	}
+	return fmt.Sprintf("[%s]", strings.Join(expStrs, ","))
 }
 
 func (i *IndexedTableAccess) DebugString() string {
