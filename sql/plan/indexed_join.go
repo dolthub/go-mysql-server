@@ -27,9 +27,9 @@ func (ij *IndexedJoin) JoinType() JoinType {
 	return ij.joinType
 }
 
-func NewIndexedJoin(primaryTable, indexedTable sql.Node, joinType JoinType, cond sql.Expression) *IndexedJoin {
+func NewIndexedJoin(left, right sql.Node, joinType JoinType, cond sql.Expression) *IndexedJoin {
 	return &IndexedJoin{
-		BinaryNode:       BinaryNode{primaryTable, indexedTable},
+		BinaryNode:       BinaryNode{left, right},
 		joinType:         joinType,
 		Cond:             cond,
 	}
@@ -81,7 +81,7 @@ func (ij *IndexedJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		return nil, ErrNoIndexedTableAccess.New(ij.Right)
 	}
 
-	return indexedJoinRowIter(ctx, ij.Left, ij.Right, ij.Cond, ij.joinType)
+	return indexedJoinRowIter(ctx, row, ij.Left, ij.Right, ij.Cond, ij.joinType)
 }
 
 func (ij *IndexedJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -93,6 +93,7 @@ func (ij *IndexedJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func indexedJoinRowIter(
 		ctx *sql.Context,
+		parentRow sql.Row,
 		left sql.Node,
 		right sql.Node,
 		cond sql.Expression,
@@ -116,24 +117,26 @@ func indexedJoinRowIter(
 		"right": rightName,
 	})
 
-	l, err := left.RowIter(ctx, nil)
+	l, err := left.RowIter(ctx, parentRow)
 	if err != nil {
 		span.Finish()
 		return nil, err
 	}
 	return sql.NewSpanIter(span, &indexedJoinIter{
-		primary:              l,
-		secondaryProvider:    right,
-		ctx:                  ctx,
-		cond:                 cond,
-		joinType:             joinType,
-		rowSize:              len(left.Schema()) + len(right.Schema()),
+		parentRow:         parentRow,
+		primary:           l,
+		secondaryProvider: right,
+		ctx:               ctx,
+		cond:              cond,
+		joinType:          joinType,
+		rowSize:           len(left.Schema()) + len(right.Schema()),
 	}), nil
 }
 
 // indexedJoinIter is an iterator that iterates over every row in the primary table and performs an index lookup in
 // the secondary table for each value
 type indexedJoinIter struct {
+	parentRow            sql.Row
 	primary              sql.RowIter
 	primaryRow           sql.Row
 	secondaryProvider    sql.Node
@@ -162,7 +165,7 @@ func (i *indexedJoinIter) loadPrimary() error {
 
 func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 	if i.secondary == nil {
-		rowIter, err := i.secondaryProvider.RowIter(i.ctx, i.primaryRow)
+		rowIter, err := i.secondaryProvider.RowIter(i.ctx, i.parentRow.Append(i.primaryRow))
 		if err != nil {
 			return nil, err
 		}
