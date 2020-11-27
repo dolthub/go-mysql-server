@@ -66,7 +66,11 @@ func formatIndexDecoratorString(idx sql.Index) string {
 }
 
 func (i *IndexedTableAccess) DebugString() string {
-	return fmt.Sprintf("IndexedTableAccess(%s)", i.Name())
+	keyExprs := make([]string, len(i.keyExprs))
+	for j := range i.keyExprs {
+		keyExprs[j] = sql.DebugString(i.keyExprs[j])
+	}
+	return fmt.Sprintf("IndexedTableAccess(%s, using fields %s)", i.Name(), strings.Join(keyExprs, ", "))
 }
 
 func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error) {

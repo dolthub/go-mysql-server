@@ -185,7 +185,7 @@ func replanJoin(
 		}
 	}
 
-	toReturn, err := f(joinNode, nil)
+	final, err := f(joinNode, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func replanJoin(
 		return node, nil
 	}
 
-	return toReturn, err
+	return final, err
 }
 
 // lexicalTableOrder returns the names of the tables under the join node given, in the original lexical order. This is
