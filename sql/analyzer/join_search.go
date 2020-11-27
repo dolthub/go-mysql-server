@@ -18,17 +18,16 @@ import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"math"
+	"strings"
 )
 
 // orderTables returns an access order for the tables provided, attempting to minimize total query cost
-func orderTables(tablesByName map[string]NameableNode, joinIndexes joinIndexesByTable) []string {
-	tables := make([]string, len(tablesByName))
+func orderTables(tables []NameableNode, tablesByName map[string]NameableNode, joinIndexes joinIndexesByTable) []string {
+	tableNames := make([]string, len(tablesByName))
 	indexes := make([]int, len(tablesByName))
-	i := 0
-	for table := range tablesByName {
-		tables[i] = table
+	for i, table := range tables {
+		tableNames[i] = strings.ToLower(table.Name())
 		indexes[i] = i
-		i++
 	}
 
 	// generate all permutations of table order
@@ -37,16 +36,16 @@ func orderTables(tablesByName map[string]NameableNode, joinIndexes joinIndexesBy
 	lowestCostIdx := 0
 	for i, accessOrder := range accessOrders {
 		// TODO: consider LEFT, RIGHT joins in order
-		cost := estimateTableOrderCost(tables, tablesByName, accessOrder, joinIndexes, lowestCost)
+		cost := estimateTableOrderCost(tableNames, tablesByName, accessOrder, joinIndexes, lowestCost)
 		if cost < lowestCost {
 			lowestCost = cost
 			lowestCostIdx = i
 		}
 	}
 
-	cheapestOrder := make([]string, len(tables))
+	cheapestOrder := make([]string, len(tableNames))
 	for i, j := range accessOrders[lowestCostIdx] {
-		cheapestOrder[i] = tables[j]
+		cheapestOrder[i] = tableNames[j]
 	}
 
 	return cheapestOrder

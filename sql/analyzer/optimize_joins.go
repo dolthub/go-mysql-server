@@ -155,7 +155,7 @@ func replaceWithIndexedJoins(
 	secondaryTable, err = plan.TransformUp(secondaryTable, func(node sql.Node) (sql.Node, error) {
 		if rt, ok := node.(*plan.ResolvedTable); ok {
 			a.Log("replacing resolve table %s with IndexedTable", rt.Name())
-			return plan.NewIndexedTable(rt, secondaryTableIndex, primaryTableExpr), nil
+			return plan.NewIndexedTableAccess(rt, secondaryTableIndex, primaryTableExpr), nil
 		}
 		return node, nil
 	})

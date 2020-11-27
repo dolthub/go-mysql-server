@@ -79,10 +79,10 @@ func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error
 		return nil, sql.ErrInvalidChildType.New(i, children[0], (*ResolvedTable)(nil))
 	}
 
-	return NewIndexedTable(resolvedTable, i.index, i.keyExprs), nil
+	return NewIndexedTableAccess(resolvedTable, i.index, i.keyExprs), nil
 }
 
-func NewIndexedTable(resolvedTable *ResolvedTable, index sql.Index, keyExprs []sql.Expression) *IndexedTableAccess {
+func NewIndexedTableAccess(resolvedTable *ResolvedTable, index sql.Index, keyExprs []sql.Expression) *IndexedTableAccess {
 	return &IndexedTableAccess{
 		ResolvedTable: resolvedTable,
 		index:         index,

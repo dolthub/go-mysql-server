@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -61,6 +60,8 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	for _, idxLookup := range indexLookups {
 		n, err = plan.TransformUpWithSelector(n, childSelector, func(n sql.Node) (sql.Node, error) {
 			switch n := n.(type) {
+			case *plan.IndexedTableAccess:
+				return n, nil
 			case *plan.TableAlias:
 				if strings.ToLower(n.Name()) == idxLookup.table {
 					return pushdownIndexToTable(a, n, idxLookup.index, idxLookup.keyExpr)
@@ -95,11 +96,7 @@ func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, 
 	var newTableNode sql.Node
 
 	if _, ok := table.(sql.IndexAddressableTable); ok {
-		newTableNode = plan.NewIndexedTable(resolvedTable, index, keyExpr)
-		newTableNode = plan.NewDecoratedNode(
-			plan.DecorationTypeIndexedAccess,
-			fmt.Sprintf("Indexed table access on %s", formatIndexDecoratorString(index)),
-			newTableNode)
+		newTableNode = plan.NewIndexedTableAccess(resolvedTable, index, keyExpr)
 		a.Log("table %q transformed with pushdown of index", tableNode.Name())
 	} else {
 		return tableNode, nil

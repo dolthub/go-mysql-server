@@ -108,9 +108,9 @@ func replanJoin(
 	}
 
 	// Collect all tables and find an access order for them
-	tables := getTables(node)
+	tables := lexicalTableOrder(node)
 	tablesByName := byLowerCaseName(tables)
-	tableOrder := orderTables(tablesByName, joinIndexes)
+	tableOrder := orderTables(tables, tablesByName, joinIndexes)
 
 	// Then use that order to construct a join tree
 	joinTree := buildJoinTree(tableOrder, joinIndexes.flattenJoinConds())
@@ -130,6 +130,7 @@ func replanJoin(
 	// branches of parent nodes, which means there is no way to construct it given just the parent node.
 	var f func(node sql.Node, schema sql.Schema) (sql.Node, error)
 
+	replacedTableWithIndexedAccess := false
 	f = func(node sql.Node, schema sql.Schema) (sql.Node, error) {
 		switch node := node.(type) {
 		case *plan.TableAlias, *plan.ResolvedTable:
@@ -153,7 +154,8 @@ func replanJoin(
 						return nil, err
 					}
 
-					return plan.NewIndexedTable(node, indexToApply.index, keyExprs), nil
+					replacedTableWithIndexedAccess = true
+					return plan.NewIndexedTableAccess(node, indexToApply.index, keyExprs), nil
 				default:
 					return node, nil
 				}
@@ -183,7 +185,36 @@ func replanJoin(
 		}
 	}
 
-	return f(joinNode, nil)
+	toReturn, err := f(joinNode, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// If we didn't replace any tables with indexed accesses, throw our work away and fall back to the default join
+	// implementation (which can be faster for tables that fit into memory). Over time, we should join these two
+	// implementations.
+	if !replacedTableWithIndexedAccess {
+		return node, nil
+	}
+
+	return toReturn, err
+}
+
+// lexicalTableOrder returns the names of the tables under the join node given, in the original lexical order. This is
+// possible to reconstruct because the parser assembles joins in left-bound fashion, so that the first two tables are
+// the most deeply nested node on the left branch. Each additional join wraps this original join node, with the
+// original on the left and the new table being joined on the right.
+func lexicalTableOrder(node sql.Node) []NameableNode {
+	switch node := node.(type) {
+	case *plan.TableAlias:
+		return []NameableNode{node}
+	case *plan.ResolvedTable:
+		return []NameableNode{node}
+	case plan.JoinNode:
+		return append(lexicalTableOrder(node.LeftBranch()), lexicalTableOrder(node.RightBranch())...)
+	default:
+		panic(fmt.Sprintf("unexpected node type: %t", node))
+	}
 }
 
 func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode) sql.Node {
