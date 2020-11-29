@@ -132,7 +132,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ TableAlias(opk)\n" +
 			"     │   └─ Table(one_pk)\n" +
 			"     └─ TableAlias(tpk)\n" +
-			"         └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			"         └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
 	{
@@ -205,7 +205,7 @@ var PlanTests = []QueryPlanTest{
 			" └─ Filter(NOT(niltable.f IS NULL))\n" +
 			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"         ├─ Table(one_pk)\n" +
-			"         └─ IndexedTableAccess(niltable on [niltable.i]\n" +
+			"         └─ IndexedTableAccess(niltable on [niltable.i])\n" +
 			"",
 	},
 	{
@@ -554,7 +554,7 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2, one_pk.c1 as foo, two_pk.c1 as bar)\n" +
 			"     └─ InnerJoin(one_pk.c1 = two_pk.c1)\n" +
 			"         ├─ Table(one_pk)\n" +
-			"         └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"         └─ Table(two_pk)\n" +
 			"",
 	},
 	{
@@ -591,8 +591,7 @@ var PlanTests = []QueryPlanTest{
 			"             └─ Table(mytable)\n" +
 			"    ) IS NULL) AND NOT((Project(othertable.i2)\n" +
 			"     └─ Filter(othertable.i2 = mt.i)\n" +
-			"         └─ Indexed table access on [[othertable.i2]]\n" +
-			"             └─ Table(othertable)\n" +
+			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"    ) IS NULL))\n" +
 			"     └─ TableAlias(mt)\n" +
 			"         └─ Table(mytable)\n" +
@@ -605,12 +604,10 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project(mt.i)\n" +
 			" └─ Filter(NOT((Project(mytable.i)\n" +
 			"     └─ Filter(mytable.i = mt.i)\n" +
-			"         └─ Indexed table access on [[mytable.i]]\n" +
-			"             └─ Table(mytable)\n" +
+			"         └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"    ) IS NULL) AND NOT((Project(othertable.i2)\n" +
 			"     └─ Filter(othertable.i2 = mt.i AND mt.i > 2)\n" +
-			"         └─ Indexed table access on [[othertable.i2]]\n" +
-			"             └─ Table(othertable)\n" +
+			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"    ) IS NULL))\n" +
 			"     └─ TableAlias(mt)\n" +
 			"         └─ Table(mytable)\n" +

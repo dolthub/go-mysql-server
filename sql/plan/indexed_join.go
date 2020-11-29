@@ -68,19 +68,6 @@ func (ij *IndexedJoin) Schema() sql.Schema {
 }
 
 func (ij *IndexedJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var indexedTable *IndexedTableAccess
-	Inspect(ij.Right, func(node sql.Node) bool {
-		if it, ok := node.(*IndexedTableAccess); ok {
-			indexedTable = it
-			return false
-		}
-		return true
-	})
-
-	if indexedTable == nil {
-		return nil, ErrNoIndexedTableAccess.New(ij.Right)
-	}
-
 	return indexedJoinRowIter(ctx, row, ij.Left, ij.Right, ij.Cond, ij.joinType)
 }
 

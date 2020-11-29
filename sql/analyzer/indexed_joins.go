@@ -406,9 +406,9 @@ func (ji joinIndexesByTable) flattenJoinConds() []*joinCond {
 	return joinConditions
 }
 
-func joinCondPresent(e sql.Expression, es []*joinCond) bool {
-	for _, e2 := range es {
-		if reflect.DeepEqual(e, e2) {
+func joinCondPresent(e sql.Expression, jcs []*joinCond) bool {
+	for _, jc := range jcs {
+		if reflect.DeepEqual(e, jc.cond) {
 			return true
 		}
 	}

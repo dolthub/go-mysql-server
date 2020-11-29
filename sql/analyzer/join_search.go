@@ -371,6 +371,7 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 		candidate = candidate.targetLeft()
 		debugLog("searching left on %s\n", cond.cond)
 		leftChildren := searchJoins(candidate, paramsCopy)
+
 		// pay attention to variable shadowing in this block
 		for _, left := range leftChildren {
 			if !isValidJoinSubTree(left) {

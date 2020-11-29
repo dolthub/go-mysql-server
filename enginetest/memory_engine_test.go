@@ -105,7 +105,7 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-//	t.Skip()
+	//t.Skip()
 
 	var scripts = []enginetest.ScriptTest {
 		{
@@ -274,6 +274,27 @@ func TestSingleScript(t *testing.T) {
 				},
 			},
 		},
+		{
+			Name: "5 tables, complex join conditions",
+			SetUpScript: []string{
+				"create table a (xa int primary key, ya int)",
+				"create table b (xb int primary key, yb int)",
+				"create table c (xc int primary key, yc int)",
+				"create table d (xd int primary key, yd int)",
+				"create table e (xe int, ye int, primary key(xe, ye))",
+				"insert into a values (1,1)",
+				"insert into b values (1,1)",
+				"insert into c values (1,1)",
+				"insert into d values (1,1)",
+				"insert into e values (1,1)",
+			},
+			Assertions: []enginetest.ScriptTestAssertion{
+				{
+					Query: "select xa from a join b on ya = xb join c on xc = ya join d on xd = yb join e on xe = yb and ye = yc",
+					Expected: []sql.Row{{1}},
+				},
+			},
+		},
 	}
 
 	for _, test := range scripts {
@@ -309,9 +330,9 @@ func TestVersionedQueries(t *testing.T) {
 // the right indexes are being used for joining tables.
 func TestQueryPlans(t *testing.T) {
 	indexBehaviors := []*indexBehaviorTestParams{
-		{"unmergableIndexes", unmergableIndexDriver, true},
+		// {"unmergableIndexes", unmergableIndexDriver, true},
 		{"nativeIndexes", nil, true},
-		{"nativeAndMergable", mergableIndexDriver, true},
+		// {"nativeAndMergable", mergableIndexDriver, true},
 	}
 
 	for _, indexInit := range indexBehaviors {
