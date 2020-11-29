@@ -263,6 +263,8 @@ type joinIndex struct {
 	joinCond       sql.Expression
 	// The join type
 	joinType 			 plan.JoinType
+	// The position of this table in the join, left or right
+	joinPosition 	 plan.JoinType
 	// The columns of the target table -- will contain all the columns of the index, if present
 	cols           []*expression.GetField
 	// The expressions for the target table in the join condition, in the same order as cols
@@ -310,8 +312,9 @@ func schemaContainsField(schema sql.Schema, field *expression.GetField) bool {
 }
 
 type joinCond struct {
-	cond sql.Expression
-	joinType plan.JoinType
+	cond           sql.Expression
+	joinType       plan.JoinType
+	rightHandTable string
 }
 
 // findJoinExprsByTable inspects the Node given for Join nodes, groups all join conditions by table, and assigns
@@ -334,8 +337,9 @@ func findJoinIndexesByTable(
 		switch node := node.(type) {
 		case plan.JoinNode:
 			conds = append(conds, joinCond{
-				cond:     node.JoinCond(),
-				joinType: node.JoinType(),
+				cond:           node.JoinCond(),
+				joinType:       node.JoinType(),
+				rightHandTable: strings.ToLower(node.RightBranch().String()),
 			})
 		}
 		return true
@@ -398,8 +402,9 @@ func (ji joinIndexesByTable) flattenJoinConds() []*joinCond {
 	joinConditions := make([]*joinCond, 0)
 	for _, joinIndexes := range ji {
 		for _, joinIndex := range joinIndexes {
-			if !joinCondPresent(joinIndex.joinCond, joinConditions) {
-				joinConditions = append(joinConditions, &joinCond{joinIndex.joinCond, joinIndex.joinType})
+			// TODO: isPresent may be redundant after adding join position check
+			if joinIndex.joinPosition != plan.JoinTypeRight && !joinCondPresent(joinIndex.joinCond, joinConditions) {
+				joinConditions = append(joinConditions, &joinCond{joinIndex.joinCond, joinIndex.joinType, joinIndex.table})
 			}
 		}
 	}
@@ -483,11 +488,19 @@ func getEqualityIndexes(
 			ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, cond.Left())...),
 			ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, cond.Right())...)
 
+	// Figure out which table is on the left and right in the join
+	leftJoinPosition := plan.JoinTypeLeft
+	rightJoinPosition := plan.JoinTypeRight
+	if strings.ToLower(rightCol.col.Table()) != joinCond.rightHandTable {
+		leftJoinPosition, rightJoinPosition = rightJoinPosition, leftJoinPosition
+	}
+
 	leftJoinIndex := &joinIndex{
 		table: 					leftCol.col.Table(),
 		index:          leftIdx,
 		joinCond:       joinCond.cond,
 		joinType:       joinCond.joinType,
+		joinPosition:   leftJoinPosition,
 		cols:           []*expression.GetField{leftCol.col},
 		colExprs:       []sql.Expression{leftCol.colExpr},
 		comparandCols:  []*expression.GetField{leftCol.comparandCol},
@@ -499,6 +512,7 @@ func getEqualityIndexes(
 		index:          rightIdx,
 		joinCond:       joinCond.cond,
 		joinType:       joinCond.joinType,
+		joinPosition:   rightJoinPosition,
 		cols:           []*expression.GetField{rightCol.col},
 		colExprs:       []sql.Expression{rightCol.colExpr},
 		comparandCols:  []*expression.GetField{rightCol.comparandCol},
@@ -536,6 +550,13 @@ func colExprsToJoinIndex(table string, idx sql.Index, joinCond joinCond, colExpr
 	cmpCols := make([]*expression.GetField, len(colExprs))
 	exprs := make([]sql.Expression, len(colExprs))
 	cmpExprs := make([]sql.Expression, len(colExprs))
+
+	// Figure out which table is on the left and right in the join
+	joinPosition := plan.JoinTypeLeft
+	if strings.ToLower(table) == joinCond.rightHandTable {
+		joinPosition = plan.JoinTypeRight
+	}
+
 	for i, col := range colExprs {
 		cols[i] = col.col
 		cmpCols[i] = col.comparandCol
@@ -548,6 +569,7 @@ func colExprsToJoinIndex(table string, idx sql.Index, joinCond joinCond, colExpr
 		table:          table,
 		joinCond:       joinCond.cond,
 		joinType:       joinCond.joinType,
+		joinPosition:   joinPosition,
 		cols:           cols,
 		colExprs:       exprs,
 		comparandCols:  cmpCols,
