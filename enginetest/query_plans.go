@@ -95,7 +95,7 @@ var PlanTests = []QueryPlanTest{
 			" │       └─ Indexed table access on index [mytable.i]\n" +
 			" │           └─ Table(mytable)\n" +
 			" └─ TableAlias(ot)\n" +
-			"     └─ Table(othertable)\n" +
+			"     └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
 	},
 	{

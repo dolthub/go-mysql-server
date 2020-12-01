@@ -73,53 +73,39 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 		leftSources := nodeSources(join.Left)
 		rightSources := nodeSources(join.Right)
-		var leftFilters, rightFilters, condFilters []sql.Expression
+		var nonJoinFilters, condFilters []sql.Expression
 		for _, e := range splitConjunction(join.Cond) {
 			sources := expressionSources(e)
 
-			canMoveLeft := containsSources(leftSources, sources)
-			if canMoveLeft {
-				leftFilters = append(leftFilters, e)
-			}
+			belongsToLeftTable := containsSources(leftSources, sources)
+			belongsToRightTable := containsSources(rightSources, sources)
 
-			canMoveRight := containsSources(rightSources, sources)
-			if canMoveRight {
-				rightFilters = append(rightFilters, e)
-			}
-
-			if !canMoveLeft && !canMoveRight {
+			if belongsToLeftTable || belongsToRightTable {
+				nonJoinFilters = append(nonJoinFilters, e)
+			} else {
 				condFilters = append(condFilters, e)
 			}
 		}
 
+		if len(nonJoinFilters) == 0 {
+			return n, nil
+		}
+
 		left, right := join.Left, join.Right
-		if len(leftFilters) > 0 {
-			leftFilters, err := FixFieldIndexes(scope, left.Schema(), expression.JoinAnd(leftFilters...))
-			if err != nil {
-				return nil, err
-			}
-
-			left = plan.NewFilter(leftFilters, left)
-		}
-
-		if len(rightFilters) > 0 {
-			rightFilters, err := FixFieldIndexes(scope, right.Schema(), expression.JoinAnd(rightFilters...))
-			if err != nil {
-				return nil, err
-			}
-
-			right = plan.NewFilter(rightFilters, right)
-		}
 
 		if len(condFilters) > 0 {
-			return plan.NewInnerJoin(
-				left, right,
-				expression.JoinAnd(condFilters...),
+			return plan.NewFilter(expression.JoinAnd(nonJoinFilters...),
+				plan.NewInnerJoin(
+					left, right,
+					expression.JoinAnd(condFilters...),
+				),
 			), nil
 		}
 
 		// if there are no cond filters left we can just convert it to a cross join
-		return plan.NewCrossJoin(left, right), nil
+		return plan.NewFilter(expression.JoinAnd(nonJoinFilters...),
+			plan.NewCrossJoin(left, right),
+		), nil
 	})
 }
 
