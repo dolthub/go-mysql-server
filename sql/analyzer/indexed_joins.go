@@ -174,6 +174,12 @@ func replaceTableAccessWithIndexedAccess(
 			return nil, err
 		}
 		return node.WithChildren(newChild)
+	case *plan.Filter:
+		newChild, err := replaceTableAccessWithIndexedAccess(node.Child, schema, scope, joinIndexes, exprAliases, tableAliases)
+		if err != nil {
+			return nil, err
+		}
+		return node.WithChildren(newChild)
 	case *plan.Project:
 		newChild, err := replaceTableAccessWithIndexedAccess(node.Child, schema, scope, joinIndexes, exprAliases, tableAliases)
 		if err != nil {

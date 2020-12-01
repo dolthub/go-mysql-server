@@ -241,7 +241,7 @@ var PlanTests = []QueryPlanTest{
 			" └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"     ├─ Filter(NOT(niltable.f IS NULL))\n" +
 			"     │   └─ Table(niltable)\n" +
-			"     └─ Table(one_pk)\n" +
+			"     └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
 	{
@@ -260,7 +260,7 @@ var PlanTests = []QueryPlanTest{
 			" └─ Filter(one_pk.pk > 0)\n" +
 			"     └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"         ├─ Table(niltable)\n" +
-			"         └─ Table(one_pk)\n" +
+			"         └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
 	{
@@ -430,7 +430,7 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
 			"     └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"         ├─ Table(niltable)\n" +
-			"         └─ IndexedTableAccess(one_pk on [one_pk.pk]\n" +
+			"         └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
 	{
@@ -440,7 +440,7 @@ var PlanTests = []QueryPlanTest{
 			"     └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"         ├─ Filter(NOT(niltable.f IS NULL))\n" +
 			"         │   └─ Table(niltable)\n" +
-			"         └─ IndexedTableAccess(one_pk on [one_pk.pk]\n" +
+			"         └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
 	{
@@ -450,7 +450,7 @@ var PlanTests = []QueryPlanTest{
 			"     └─ Filter(one_pk.pk > 0)\n" +
 			"         └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"             ├─ Table(niltable)\n" +
-			"             └─ IndexedTableAccess(one_pk on [one_pk.pk]\n" +
+			"             └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
 	{
@@ -514,7 +514,7 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
 			"     └─ RightIndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
 			"         ├─ Table(two_pk)\n" +
-			"         └─ IndexedTableAccess(one_pk on [one_pk.pk]\n" +
+			"         └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
 	{
