@@ -83,7 +83,7 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-//	t.Skip()
+	t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
@@ -105,7 +105,7 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var scripts = []enginetest.ScriptTest {
 		{
@@ -121,176 +121,6 @@ func TestSingleScript(t *testing.T) {
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
 					Query: "select xa from a join b on ya = xb join c on xc = xb",
-					Expected: []sql.Row{{1}},
-				},
-			},
-		},
-		{
-			Name: "3 tables, v join",
-			SetUpScript: []string{
-				"create table a (xa int primary key, ya int)",
-				"create table b (xb int primary key, yb int)",
-				"create table c (xc int primary key, yc int)",
-				"insert into a values (1,1)",
-				"insert into b values (1,1)",
-				"insert into c values (1,1)",
-			},
-			Assertions: []enginetest.ScriptTestAssertion{
-				{
-					Query: "select xa from a join b on ya = xb join c on xa = xc",
-					Expected: []sql.Row{{1}},
-				},
-			},
-		},
-		{
-			Name: "3 tables, linear join, indexes on A,C",
-			SetUpScript: []string{
-				"create table a (xa int primary key, ya int)",
-				"create table b (xb int primary key, yb int)",
-				"create table c (xc int primary key, yc int)",
-				"insert into a values (1,1)",
-				"insert into b values (1,1)",
-				"insert into c values (1,1)",
-			},
-			Assertions: []enginetest.ScriptTestAssertion{
-				{
-					Query: "select xa from a join b on xa = yb join c on yb = xc",
-					Expected: []sql.Row{{1}},
-				},
-			},
-		},
-		{
-			Name: "4 tables, linear join",
-			SetUpScript: []string{
-				"create table a (xa int primary key, ya int)",
-				"create table b (xb int primary key, yb int)",
-				"create table c (xc int primary key, yc int)",
-				"create table d (xd int primary key, yd int)",
-				"insert into a values (1,1)",
-				"insert into b values (1,1)",
-				"insert into c values (1,1)",
-				"insert into d values (1,1)",
-			},
-			Assertions: []enginetest.ScriptTestAssertion{
-				{
-					Query: "select xa from a join b on ya = xb join c on xb = xc join d on xc = xd",
-					Expected: []sql.Row{{1}},
-				},
-			},
-		},
-		{
-			Name: "4 tables, linear join, index on D",
-			SetUpScript: []string{
-				"create table a (xa int primary key, ya int)",
-				"create table b (xb int primary key, yb int)",
-				"create table c (xc int primary key, yc int)",
-				"create table d (xd int primary key, yd int)",
-				"insert into a values (1,1)",
-				"insert into b values (1,1)",
-				"insert into c values (1,1)",
-				"insert into d values (1,1)",
-			},
-			Assertions: []enginetest.ScriptTestAssertion{
-				{
-					Query: "select xa from a join b on ya = yb join c on yb = yc join d on yc = xd",
-					Expected: []sql.Row{{1}},
-				},
-			},
-		},
-		{
-			Name: "4 tables, linear join, index on B, D",
-			SetUpScript: []string{
-				"create table a (xa int primary key, ya int)",
-				"create table b (xb int primary key, yb int)",
-				"create table c (xc int primary key, yc int)",
-				"create table d (xd int primary key, yd int)",
-				"insert into a values (1,1)",
-				"insert into b values (1,1)",
-				"insert into c values (1,1)",
-				"insert into d values (1,1)",
-			},
-			Assertions: []enginetest.ScriptTestAssertion{
-				{
-					Query: "select xa from a join b on ya = xb join c on xb = yc join d on yc = xd",
-					Expected: []sql.Row{{1}},
-				},
-			},
-		},
-		{
-			Name: "4 tables, all joined to A",
-			SetUpScript: []string{
-				"create table a (xa int primary key, ya int)",
-				"create table b (xb int primary key, yb int)",
-				"create table c (xc int primary key, yc int)",
-				"create table d (xd int primary key, yd int)",
-				"insert into a values (1,1)",
-				"insert into b values (1,1)",
-				"insert into c values (1,1)",
-				"insert into d values (1,1)",
-			},
-			Assertions: []enginetest.ScriptTestAssertion{
-				{
-					Query: "select xa from a join b on ya = xb join c on ya = xc join d on ya = xd",
-					Expected: []sql.Row{{1}},
-				},
-			},
-		},
-		// {
-		// 	Name: "4 tables, all joined to D",
-		// 	SetUpScript: []string{
-		// 		"create table a (xa int primary key, ya int)",
-		// 		"create table b (xb int primary key, yb int)",
-		// 		"create table c (xc int primary key, yc int)",
-		// 		"create table d (xd int primary key, yd int)",
-		// 		"insert into a values (1,1)",
-		// 		"insert into b values (1,1)",
-		// 		"insert into c values (1,1)",
-		// 		"insert into d values (1,1)",
-		// 	},
-		// 	Assertions: []enginetest.ScriptTestAssertion{
-		// 		{
-		// 			// gives an error in mysql, a needs an alias
-		// 			Query: "select xa from d join a on yd = xa join c on yd = xc join a on xa = yd",
-		// 			Expected: []sql.Row{{1}},
-		// 		},
-		// 	},
-		// },
-		{
-			Name: "4 tables, all joined to D",
-			SetUpScript: []string{
-				"create table a (xa int primary key, ya int)",
-				"create table b (xb int primary key, yb int)",
-				"create table c (xc int primary key, yc int)",
-				"create table d (xd int primary key, yd int)",
-				"insert into a values (1,1)",
-				"insert into b values (1,1)",
-				"insert into c values (1,1)",
-				"insert into d values (1,1)",
-			},
-			Assertions: []enginetest.ScriptTestAssertion{
-				{
-					Query: "select xa from d join a on yd = xa join c on yd = xc join b on xb = yd",
-					Expected: []sql.Row{{1}},
-				},
-			},
-		},
-		{
-			Name: "5 tables, complex join conditions",
-			SetUpScript: []string{
-				"create table a (xa int primary key, ya int)",
-				"create table b (xb int primary key, yb int)",
-				"create table c (xc int primary key, yc int)",
-				"create table d (xd int primary key, yd int)",
-				"create table e (xe int, ye int, primary key(xe, ye))",
-				"insert into a values (1,1)",
-				"insert into b values (1,1)",
-				"insert into c values (1,1)",
-				"insert into d values (1,1)",
-				"insert into e values (1,1)",
-			},
-			Assertions: []enginetest.ScriptTestAssertion{
-				{
-					Query: "select xa from a join b on ya = xb join c on xc = ya join d on xd = yb join e on xe = yb and ye = yc",
 					Expected: []sql.Row{{1}},
 				},
 			},
