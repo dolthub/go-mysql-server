@@ -70,26 +70,148 @@ func replaceJoinPlans(
 		}
 	}
 
-	return plan.TransformUpWithSelector(n, selector, func(node sql.Node) (sql.Node, error) {
+	joinPlan, err := plan.TransformUpWithSelector(n, selector, func(node sql.Node) (sql.Node, error) {
 		switch node := node.(type) {
 		case *plan.IndexedJoin:
 			return node, nil
 		case plan.JoinNode:
-			return replanJoin(node, a, scope, joinIndexes, exprAliases, tableAliases)
+			return replanJoin(node, a, joinIndexes)
 		default:
 			return node, nil
 		}
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	withIndexedTableAccess, err := replaceTableAccessWithIndexedAccess(joinPlan, nil, scope, joinIndexes, exprAliases, tableAliases)
+	if err != nil {
+		return nil, err
+	}
+
+	replacedTableWithIndexedAccess := false
+	plan.Inspect(withIndexedTableAccess, func(node sql.Node) bool {
+		if _, ok := node.(*plan.IndexedTableAccess); ok {
+			replacedTableWithIndexedAccess = true
+		}
+		return true
+	})
+
+	// If we didn't replace any tables with indexed accesses, throw our work away and fall back to the default join
+	// implementation (which can be faster for tables that fit into memory). Over time, we should join these two
+	// implementations.
+	if !replacedTableWithIndexedAccess {
+		return n, nil
+	}
+
+	return withIndexedTableAccess, nil
 }
 
-func replanJoin(
-		node plan.JoinNode,
-		a *Analyzer,
+// replaceTableAccessWithIndexedAccess replaces table access with indexed access where possible. This can't be a
+// standard bottom-up transformation, because we need information that isn't accessible in the node itself or in the
+// parent. Specifically, the available schema to right-hand branches of the tree is constructed at runtime as the
+// concatenation of the parent row (passed into row.Iter()) and the row returned by the left-hand branch of the join.
+// This is basically an in-order concatenation of columns in all tables to the left of the one being examined, including
+// from the left branches of parent nodes, which means there is no way to construct it given just the parent node.
+func replaceTableAccessWithIndexedAccess(
+		node sql.Node,
+		schema sql.Schema,
 		scope *Scope,
 		joinIndexes joinIndexesByTable,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
 ) (sql.Node, error) {
+	switch node := node.(type) {
+	case *plan.TableAlias, *plan.ResolvedTable:
+		// If the available schema makes an index on this table possible, use it, replacing the table with indexed access
+		indexes := joinIndexes[node.(sql.Nameable).Name()]
+		indexToApply := indexes.getUsableIndex(schema)
+		if indexToApply == nil {
+			return node, nil
+		}
+
+		return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
+			switch node := node.(type) {
+			case *plan.ResolvedTable:
+				if _, ok := node.Table.(sql.IndexAddressableTable); !ok {
+					return node, nil
+				}
+
+				keyExprs := createIndexLookupKeyExpression(indexToApply, exprAliases, tableAliases)
+				keyExprs, err := FixFieldIndexesOnExpressions(scope, schema, keyExprs...)
+				if err != nil {
+					return nil, err
+				}
+
+				return plan.NewIndexedTableAccess(node, indexToApply.index, keyExprs), nil
+			default:
+				return node, nil
+			}
+		})
+	case *plan.IndexedJoin:
+		// Recurse the down the left side with the input schema
+		left, err := replaceTableAccessWithIndexedAccess(node.LeftBranch(), schema, scope, joinIndexes, exprAliases, tableAliases)
+		if err != nil {
+			return nil, err
+		}
+
+		// then the right side, appending the schema from the left
+		right, err := replaceTableAccessWithIndexedAccess(node.RightBranch(), append(schema, left.Schema()...), scope, joinIndexes, exprAliases, tableAliases)
+		if err != nil {
+			return nil, err
+		}
+
+		// the condition's field indexes might need adjusting if the order of tables changed
+		cond, err := FixFieldIndexes(scope, append(schema, append(left.Schema(), right.Schema()...)...), node.Cond)
+		if err != nil {
+			return nil, err
+		}
+
+		return plan.NewIndexedJoin(left, right, node.JoinType(), cond), nil
+	case *plan.Sort:
+		newChild, err := replaceTableAccessWithIndexedAccess(node.Child, schema, scope, joinIndexes, exprAliases, tableAliases)
+		if err != nil {
+			return nil, err
+		}
+		return node.WithChildren(newChild)
+	case *plan.Project:
+		newChild, err := replaceTableAccessWithIndexedAccess(node.Child, schema, scope, joinIndexes, exprAliases, tableAliases)
+		if err != nil {
+			return nil, err
+		}
+		return node.WithChildren(newChild)
+	case *plan.GroupBy:
+		newChild, err := replaceTableAccessWithIndexedAccess(node.Child, schema, scope, joinIndexes, exprAliases, tableAliases)
+		if err != nil {
+			return nil, err
+		}
+		return node.WithChildren(newChild)
+	case *plan.Distinct:
+		newChild, err := replaceTableAccessWithIndexedAccess(node.Child, schema, scope, joinIndexes, exprAliases, tableAliases)
+		if err != nil {
+			return nil, err
+		}
+		return node.WithChildren(newChild)
+	case *plan.Union:
+		newRight, err := replaceTableAccessWithIndexedAccess(node.Right, append(schema, node.Left.Schema()...), scope, joinIndexes, exprAliases, tableAliases)
+		if err != nil {
+			return nil, err
+		}
+		return node.WithChildren(node.Left, newRight)
+	case *plan.CrossJoin:
+		// TODO: be more principled about integrating cross joins into the overall join plan, no reason to keep them separate
+		newRight, err := replaceTableAccessWithIndexedAccess(node.Right, append(schema, node.Left.Schema()...), scope, joinIndexes, exprAliases, tableAliases)
+		if err != nil {
+			return nil, err
+		}
+		return node.WithChildren(node.Left, newRight)
+	default:
+		// For an unhandled node type, just skip this transformation
+		return node, nil
+	}
+}
+
+func replanJoin(node plan.JoinNode, a *Analyzer, joinIndexes joinIndexesByTable, ) (sql.Node, error) {
 	// Inspect the node for eligibility. The join planner rewrites the tree beneath this node, and for this to be correct
 	// only certain nodes can be below it.
 	eligible := true
@@ -122,82 +244,7 @@ func replanJoin(
 
 	joinNode := joinTreeToNodes(joinTree, tablesByName)
 
-	// Finally, replace table access with indexed access where possible. We can't do a standard bottom-up transformation
-	// here, because we need information that isn't accessible in the node itself or in the parent. Specifically, the
-	// available schema to right-hand branches of the tree is constructed at runtime as the concatenation of the parent
-	// row (passed into row.Iter()) and the row returned by the left-hand branch of the join. This is basically an
-	// in-order concatenation of columns in all tables to the left of the one being examined, including from the left
-	// branches of parent nodes, which means there is no way to construct it given just the parent node.
-	var f func(node sql.Node, schema sql.Schema) (sql.Node, error)
-
-	replacedTableWithIndexedAccess := false
-	f = func(node sql.Node, schema sql.Schema) (sql.Node, error) {
-		switch node := node.(type) {
-		case *plan.TableAlias, *plan.ResolvedTable:
-			// If the available schema makes an index on this table possible, use it, replacing the table with indexed access
-			indexes := joinIndexes[node.(sql.Nameable).Name()]
-			indexToApply := indexes.getUsableIndex(schema)
-			if indexToApply == nil {
-				return node, nil
-			}
-
-			return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
-				switch node := node.(type) {
-				case *plan.ResolvedTable:
-					if _, ok := node.Table.(sql.IndexAddressableTable); !ok {
-						return node, nil
-					}
-
-					keyExprs := createIndexLookupKeyExpression(indexToApply, exprAliases, tableAliases)
-					keyExprs, err := FixFieldIndexesOnExpressions(scope, schema, keyExprs...)
-					if err != nil {
-						return nil, err
-					}
-
-					replacedTableWithIndexedAccess = true
-					return plan.NewIndexedTableAccess(node, indexToApply.index, keyExprs), nil
-				default:
-					return node, nil
-				}
-			})
-		case *plan.IndexedJoin:
-			// Recurse the down the left side with the input schema
-			left, err := f(node.LeftBranch(), schema)
-			if err != nil {
-				return nil, err
-			}
-
-			// then the right side, appending the schema from the left
-			right, err := f(node.RightBranch(), append(schema, left.Schema()...))
-			if err != nil {
-				return nil, err
-			}
-
-			// the condition's field indexes might need adjusting if the order of tables changed
-			cond, err := FixFieldIndexes(scope, append(left.Schema(), right.Schema()...), node.Cond)
-			if err != nil {
-				return nil, err
-			}
-
-			return plan.NewIndexedJoin(left, right, node.JoinType(), cond), nil
-		default:
-			panic(fmt.Sprintf("Unhandled node type %T", node))
-		}
-	}
-
-	final, err := f(joinNode, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// If we didn't replace any tables with indexed accesses, throw our work away and fall back to the default join
-	// implementation (which can be faster for tables that fit into memory). Over time, we should join these two
-	// implementations.
-	if !replacedTableWithIndexedAccess {
-		return node, nil
-	}
-
-	return final, err
+	return joinNode, nil
 }
 
 // lexicalTableOrder returns the names of the tables under the join node given, in the original lexical order. This is

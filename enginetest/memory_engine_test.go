@@ -83,13 +83,21 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+//	t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT USER()`,
+		Query: `SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2`,
 		Expected: []sql.Row{
-			{"user"},
+			{int64(1), "first row", int64(1), "first row", "third", int64(1)},
+			{int64(1), "first row", int64(2), "second row", "second", int64(2)},
+			{int64(1), "first row", int64(3), "third row", "first", int64(3)},
+			{int64(2), "second row", int64(1), "first row", "third", int64(1)},
+			{int64(2), "second row", int64(2), "second row", "second", int64(2)},
+			{int64(2), "second row", int64(3), "third row", "first", int64(3)},
+			{int64(3), "third row", int64(1), "first row", "third", int64(1)},
+			{int64(3), "third row", int64(2), "second row", "second", int64(2)},
+			{int64(3), "third row", int64(3), "third row", "first", int64(3)},
 		},
 	}
 
@@ -330,9 +338,9 @@ func TestVersionedQueries(t *testing.T) {
 // the right indexes are being used for joining tables.
 func TestQueryPlans(t *testing.T) {
 	indexBehaviors := []*indexBehaviorTestParams{
-		// {"unmergableIndexes", unmergableIndexDriver, true},
+		{"unmergableIndexes", unmergableIndexDriver, true},
 		{"nativeIndexes", nil, true},
-		// {"nativeAndMergable", mergableIndexDriver, true},
+		{"nativeAndMergable", mergableIndexDriver, true},
 	}
 
 	for _, indexInit := range indexBehaviors {

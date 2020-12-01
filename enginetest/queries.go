@@ -1146,6 +1146,20 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT * FROM tabletest join mytable mt INNER JOIN othertable ot ON tabletest.i = ot.i2 order by 1,3,6`,
+		Expected: []sql.Row{
+			{int64(1), "first row", int64(1), "first row", "third", int64(1)},
+			{int64(1), "first row", int64(2), "second row", "third", int64(1)},
+			{int64(1), "first row", int64(3), "third row", "third", int64(1)},
+			{int64(2), "second row", int64(1), "first row", "second", int64(2)},
+			{int64(2), "second row", int64(2), "second row", "second", int64(2)},
+			{int64(2), "second row", int64(3), "third row", "second", int64(2)},
+			{int64(3), "third row", int64(1), "first row", "first", int64(3)},
+			{int64(3), "third row", int64(2), "second row", "first", int64(3)},
+			{int64(3), "third row", int64(3), "third row", "first", int64(3)},
+		},
+	},
+	{
 		Query: `SELECT split(s," ") FROM mytable`,
 		Expected: []sql.Row{
 			sql.NewRow([]interface{}{"first", "row"}),

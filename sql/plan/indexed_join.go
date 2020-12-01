@@ -116,7 +116,7 @@ func indexedJoinRowIter(
 		ctx:               ctx,
 		cond:              cond,
 		joinType:          joinType,
-		rowSize:           len(left.Schema()) + len(right.Schema()),
+		rowSize:           len(parentRow) + len(left.Schema()) + len(right.Schema()),
 	}), nil
 }
 
@@ -143,7 +143,7 @@ func (i *indexedJoinIter) loadPrimary() error {
 			return err
 		}
 
-		i.primaryRow = r
+		i.primaryRow = i.parentRow.Append(r)
 		i.foundMatch = false
 	}
 
@@ -152,7 +152,7 @@ func (i *indexedJoinIter) loadPrimary() error {
 
 func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 	if i.secondary == nil {
-		rowIter, err := i.secondaryProvider.RowIter(i.ctx, i.parentRow.Append(i.primaryRow))
+		rowIter, err := i.secondaryProvider.RowIter(i.ctx, i.primaryRow)
 		if err != nil {
 			return nil, err
 		}
@@ -184,7 +184,8 @@ func (i *indexedJoinIter) Next() (sql.Row, error) {
 		if err != nil {
 			if err == io.EOF {
 				if !i.foundMatch && (i.joinType == JoinTypeLeft || i.joinType == JoinTypeRight) {
-					return i.buildRow(primary, nil), nil
+					row := i.buildRow(primary, nil)
+					return row[len(i.parentRow):], nil
 				}
 				continue
 			}
@@ -202,7 +203,7 @@ func (i *indexedJoinIter) Next() (sql.Row, error) {
 		}
 
 		i.foundMatch = true
-		return row, nil
+		return row[len(i.parentRow):], nil
 	}
 }
 
