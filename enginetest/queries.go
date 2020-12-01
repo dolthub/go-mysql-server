@@ -1300,6 +1300,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query:    "SELECT SIN(0)",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
 		Query:    "SELECT * FROM mytable WHERE 1 > 5",
 		Expected: nil,
 	},

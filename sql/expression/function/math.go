@@ -129,15 +129,41 @@ func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return rand.New(rand.NewSource(seed)).Float64(), nil
 }
 
-// SinFunc implements the sin function logic
-func SinFunc(_ *sql.Context, val interface{}) (interface{}, error) {
-	n, err := sql.Float64.Convert(val)
+type Sin struct {
+	*UnaryFunc
+}
+var _ sql.FunctionExpression = (*Sin)(nil)
 
+// NewSin returns a new SIN function expression
+func NewSin(arg sql.Expression) sql.Expression {
+	return &Sin{NewUnaryFunc(arg, "SIN", sql.Float64)}
+}
+
+// Eval implements sql.Expression
+func (s *Sin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := s.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	n, err := sql.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
 
 	return math.Sin(n.(float64)), nil
+}
+
+// WithChildren implements sql.Expression
+func (s *Sin) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
+	}
+	return NewSin(children[0]), nil
 }
 
 // CosFunc implements the cos function logic

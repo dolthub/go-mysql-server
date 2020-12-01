@@ -95,7 +95,7 @@ var Defaults = []sql.Function{
 	sql.Function1{Name: "rtrim", Fn: NewTrimFunc(rTrimType)},
 	sql.Function1{Name: "second", Fn: NewSecond},
 	NewUnaryFunc("sign", sql.Int8, SignFunc),
-	NewUnaryFunc("sin", sql.Float64, SinFunc),
+	sql.Function1{Name: "sin", Fn: NewSin},
 	sql.Function1{Name: "sleep", Fn: NewSleep},
 	sql.Function1{Name: "soundex", Fn: NewSoundex},
 	sql.Function2{Name: "split", Fn: NewSplit},

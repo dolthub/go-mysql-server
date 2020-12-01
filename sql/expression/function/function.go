@@ -16,6 +16,14 @@ type UnaryFunc struct {
 	RetType sql.Type
 }
 
+func NewUnaryFunc(arg sql.Expression, name string, returnType sql.Type) *UnaryFunc {
+	return &UnaryFunc{
+		UnaryExpression: expression.UnaryExpression{Child: arg},
+		Name:            name,
+		RetType:         returnType,
+	}
+}
+
 // FunctionName implements sql.FunctionExpression
 func (uf *UnaryFunc) FunctionName() string {
 	return uf.Name
@@ -27,13 +35,7 @@ func (uf *UnaryFunc) EvalChild(ctx *sql.Context, row sql.Row) (interface{}, erro
 		return nil, nil
 	}
 
-	val, err := uf.Child.Eval(ctx, row)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return val, nil
+	return uf.Child.Eval(ctx, row)
 }
 
 // String implements the fmt.Stringer interface.
