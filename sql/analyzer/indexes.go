@@ -770,14 +770,9 @@ type joinColExpr struct {
 	comparandCol *expression.GetField
 	// The comparison expression in which this joinColExpr is one term
 	comparison sql.Expression
-	// The entire join expression this joinColExpr is derived from
-	joinCondition sql.Expression
-	// Any indexes that can be applied to the col
-	indexes []sql.Index
 }
 
 type joinColExprs []*joinColExpr
-
 type joinExpressionsByTable map[string]joinColExprs
 
 // extractExpressions returns the Expressions in the slice of joinColExpr given.
@@ -796,24 +791,6 @@ func extractComparands(colExprs []*joinColExpr) []sql.Expression {
 		result[i] = expr.comparand
 	}
 	return result
-}
-
-func (jce joinColExprs) hasIndex() bool {
-	for _, expr := range jce {
-		if len(expr.indexes) > 0 {
-			return true
-		}
-	}
-	return false
-}
-
-func (jce joinColExprs) hasUsableIndex(schema sql.Schema) bool {
-	// for _, colExpr := range jce {
-	// 	for _, index := range colExpr.indexes {
-	// 		// find the comparands for this index
-	// 	}
-	// }
-	return false
 }
 
 func findColumn(cols []joinColExpr, column string) *joinColExpr {
@@ -896,6 +873,84 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 	default:
 		return "", nil
 	}
+}
+
+// joinExprsByTable returns a map of the expressions given keyed by their table name.
+func joinExprsByTable(exprs []sql.Expression) joinExpressionsByTable {
+	var result = make(joinExpressionsByTable)
+
+	for _, expr := range exprs {
+		leftExpr, rightExpr := extractJoinColumnExpr(expr)
+		if leftExpr != nil {
+			result[leftExpr.col.Table()] = append(result[leftExpr.col.Table()], leftExpr)
+		}
+
+		if rightExpr != nil {
+			result[rightExpr.col.Table()] = append(result[rightExpr.col.Table()], rightExpr)
+		}
+	}
+
+	return result
+}
+
+// extractJoinColumnExpr extracts a pair of joinColExprs from a join condition, one each for the left and right side of
+// the expression. Returns nils if either side of the expression doesn't reference a table column.
+func extractJoinColumnExpr(e sql.Expression) (leftCol *joinColExpr, rightCol *joinColExpr) {
+	switch e := e.(type) {
+	case *expression.Equals:
+		left, right := e.Left(), e.Right()
+		if isEvaluable(left) || isEvaluable(right) {
+			return nil, nil
+		}
+
+		leftField, rightField := extractGetField(left), extractGetField(right)
+		if leftField == nil || rightField == nil {
+			return nil, nil
+		}
+
+		leftCol = &joinColExpr{
+			col:          leftField,
+			colExpr:      left,
+			comparand:    right,
+			comparandCol: rightField,
+			comparison:   e,
+		}
+		rightCol = &joinColExpr{
+			col:          rightField,
+			colExpr:      right,
+			comparand:    left,
+			comparandCol: leftField,
+			comparison:   e,
+		}
+		return leftCol, rightCol
+	default:
+		return nil, nil
+	}
+}
+
+func extractGetField(e sql.Expression) *expression.GetField {
+	var field *expression.GetField
+	var foundMultipleTables bool
+	sql.Inspect(e, func(expr sql.Expression) bool {
+		if f, ok := expr.(*expression.GetField); ok {
+			if field == nil {
+				field = f
+			} else if field.Table() != f.Table() {
+				// If there are multiple tables involved in the expression, then we can't use it to evaluate a row from just
+				// the one table (to build a lookup key for the primary table).
+				foundMultipleTables = true
+				return false
+			}
+			return true
+		}
+		return true
+	})
+
+	if foundMultipleTables {
+		return nil
+	}
+
+	return field
 }
 
 func containsColumns(e sql.Expression) bool {

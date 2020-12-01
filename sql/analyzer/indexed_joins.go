@@ -23,8 +23,7 @@ import (
 	"strings"
 )
 
-// optimizeJoins takes two-table InnerJoins where the join condition is an equality on an index of one of the tables,
-// and replaces it with an equivalent IndexedJoin of the same two tables.
+// constructJoinPlan finds an optimal table ordering and access plan for the tables in the query.
 func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("construct_join_plan")
 	defer span.Finish()
