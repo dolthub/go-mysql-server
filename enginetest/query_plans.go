@@ -180,7 +180,7 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
 			" └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"     ├─ Table(niltable)\n" +
-			"     └─ Table(one_pk)\n" +
+			"     └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
 	{

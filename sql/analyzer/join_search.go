@@ -17,6 +17,8 @@ package analyzer
 import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"math"
 	"strings"
 )
@@ -91,12 +93,38 @@ func estimateTableOrderCost(
 
 		table := tables[idx]
 		availableSchemaForKeys = append(availableSchemaForKeys, tableNodes[table].Schema()...)
-		if i == 0 || joinIndexes[table].getUsableIndex(availableSchemaForKeys) == nil {
+		indexes := joinIndexes[table]
+
+		// If this table is part of a left or a right join, assert that tables are in the correct order. No table
+		// referenced in the join condition can precede this one in that case.
+		for _, idx := range indexes {
+			if (idx.joinType == plan.JoinTypeLeft && idx.joinPosition == plan.JoinTypeLeft) ||
+					(idx.joinType == plan.JoinTypeRight && idx.joinPosition == plan.JoinTypeRight) {
+				for j := 0; j < i; j++ {
+					otherTable := tables[accessOrder[j]]
+					if colsIncludeTable(idx.comparandCols, otherTable) {
+						return math.MaxInt32
+					}
+				}
+			}
+		}
+
+		if i == 0 || indexes.getUsableIndex(availableSchemaForKeys) == nil {
 			cost *= 1000
 		}
 	}
 
 	return cost
+}
+
+// colsIncludeTable returns whether the columns given contain the table given
+func colsIncludeTable(cols []*expression.GetField, table string) bool {
+	for _, col := range cols {
+		if strings.ToLower(col.Table()) == table {
+			return true
+		}
+	}
+	return false
 }
 
 // Generates all permutations of the slice given.

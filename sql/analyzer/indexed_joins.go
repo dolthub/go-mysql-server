@@ -386,7 +386,7 @@ func findJoinIndexesByTable(
 			conds = append(conds, joinCond{
 				cond:           node.JoinCond(),
 				joinType:       node.JoinType(),
-				rightHandTable: strings.ToLower(node.RightBranch().String()),
+				rightHandTable: strings.ToLower(getTableName(node.RightBranch())),
 			})
 		}
 		return true
@@ -519,6 +519,9 @@ func getEqualityIndexes(
 	if !ok {
 		return nil, nil
 	}
+
+	// TODO: this needs to be made more fool proof. Every table needs a join condition, but not necessarily an index. Or
+	//  else we need to guarantee that we return the original tree if we have a miss here.
 
 	// Only handle column expressions for these join indexes. Evaluable expression like `col=literal` will get pushed
 	// down where possible.
