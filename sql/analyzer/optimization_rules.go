@@ -134,7 +134,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			return plan.NewFilter(
 					expression.JoinAnd(append([]sql.Expression{node.Expression}, nonJoinFilters...)...),
 					node.Child), nil
-		case *plan.InnerJoin:
+		case *plan.InnerJoin, *plan.CrossJoin:
 			return plan.NewFilter(
 					expression.JoinAnd(nonJoinFilters...),
 					node), nil

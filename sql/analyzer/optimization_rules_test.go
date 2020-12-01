@@ -150,25 +150,25 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
-	var expected sql.Node = plan.NewInnerJoin(
-		plan.NewFilter(
+	var expected sql.Node = plan.NewFilter(
+		expression.JoinAnd(
+			eq(col(2, "t2", "c"), col(4, "t3", "e")),
 			eq(col(0, "t1", "a"), lit(5)),
-			plan.NewResolvedTable(t1),
 		),
-		plan.NewFilter(
-			eq(col(0, "t2", "c"), col(2, "t3", "e")),
+		plan.NewInnerJoin(
+			plan.NewResolvedTable(t1),
 			plan.NewCrossJoin(
 				plan.NewResolvedTable(t2),
 				plan.NewResolvedTable(t3),
 			),
-		),
-		and(
-			eq(col(0, "t1", "a"), col(2, "t2", "c")),
-			eq(col(0, "t1", "a"), col(4, "t3", "e")),
+			and(
+				eq(col(0, "t1", "a"), col(2, "t2", "c")),
+				eq(col(0, "t1", "a"), col(4, "t3", "e")),
+			),
 		),
 	)
 
-	require.Equal(expected, result)
+	assertNodesEqualWithDiff(t, expected, result)
 
 	node = plan.NewInnerJoin(
 		plan.NewResolvedTable(t1),
@@ -185,13 +185,13 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 	result, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
-	expected = plan.NewCrossJoin(
-		plan.NewFilter(
+	expected = plan.NewFilter(
+		expression.JoinAnd(
+			eq(col(0, "t2", "c"), col(0, "t3", "e")),
 			eq(col(0, "t1", "a"), lit(5)),
-			plan.NewResolvedTable(t1),
 		),
-		plan.NewFilter(
-			eq(col(0, "t2", "c"), col(2, "t3", "e")),
+		plan.NewCrossJoin(
+			plan.NewResolvedTable(t1),
 			plan.NewCrossJoin(
 				plan.NewResolvedTable(t2),
 				plan.NewResolvedTable(t3),
@@ -199,7 +199,48 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 		),
 	)
 
-	require.Equal(result, expected)
+	assertNodesEqualWithDiff(t, expected, result)
+
+	node = plan.NewInnerJoin(
+		plan.NewResolvedTable(t1),
+		plan.NewInnerJoin(
+			plan.NewResolvedTable(t2),
+			plan.NewResolvedTable(t3),
+			expression.JoinAnd(
+				eq(col(0, "t2", "c"), col(0, "t3", "e")),
+				eq(col(0, "t3", "a"), lit(5)),
+			),
+		),
+		expression.JoinAnd(
+			eq(col(0, "t1", "c"), col(0, "t2", "e")),
+			eq(col(0, "t1", "a"), lit(10)),
+		),
+	)
+
+	result, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	require.NoError(err)
+
+	expected = plan.NewFilter(
+		expression.JoinAnd(
+			eq(col(0, "t3", "a"), lit(5)),
+			eq(col(0, "t1", "a"), lit(10)),
+		),
+		plan.NewInnerJoin(
+			plan.NewResolvedTable(t1),
+			plan.NewInnerJoin(
+				plan.NewResolvedTable(t2),
+				plan.NewResolvedTable(t3),
+				expression.JoinAnd(
+					eq(col(0, "t2", "c"), col(0, "t3", "e")),
+				),
+			),
+			expression.JoinAnd(
+				eq(col(0, "t1", "c"), col(0, "t2", "e")),
+			),
+		),
+	)
+
+	assertNodesEqualWithDiff(t, expected, result)
 }
 
 func TestEvalFilter(t *testing.T) {
