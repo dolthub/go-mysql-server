@@ -74,6 +74,10 @@ func uqc(table, name string) *expression.UnresolvedColumn {
 	return expression.NewUnresolvedQualifiedColumn(table, name)
 }
 
+func null(col sql.Expression) sql.Expression {
+	return expression.NewIsNull(col)
+}
+
 // Creates a new top-level scope from the node given
 func newScope(n sql.Node) *Scope {
 	return (*Scope)(nil).newScope(n)
