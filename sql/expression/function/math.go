@@ -241,10 +241,28 @@ func (t *Tan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewTan(children[0]), nil
 }
 
-// ASinFunc implements the asin function logic
-func ASinFunc(_ *sql.Context, val interface{}) (interface{}, error) {
-	n, err := sql.Float64.Convert(val)
+type Asin struct {
+	*UnaryFunc
+}
+var _ sql.FunctionExpression = (*Asin)(nil)
 
+// NewAsin returns a new ASIN function expression
+func NewAsin(arg sql.Expression) sql.Expression {
+	return &Asin{NewUnaryFunc(arg, "ASIN", sql.Float64)}
+}
+
+// Eval implements sql.Expression
+func (a *Asin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := a.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	n, err := sql.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -252,10 +270,36 @@ func ASinFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	return math.Asin(n.(float64)), nil
 }
 
-// ACosFunc implements the acos function logic
-func ACosFunc(_ *sql.Context, val interface{}) (interface{}, error) {
-	n, err := sql.Float64.Convert(val)
+// WithChildren implements sql.Expression
+func (a *Asin) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
+	}
+	return NewAsin(children[0]), nil
+}
 
+type Acos struct {
+	*UnaryFunc
+}
+var _ sql.FunctionExpression = (*Acos)(nil)
+
+// NewAcos returns a new ACOS function expression
+func NewAcos(arg sql.Expression) sql.Expression {
+	return &Acos{NewUnaryFunc(arg, "ACOS", sql.Float64)}
+}
+
+// Eval implements sql.Expression
+func (a *Acos) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := a.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	n, err := sql.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -263,21 +307,73 @@ func ACosFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	return math.Acos(n.(float64)), nil
 }
 
-// ATanFunc implements the atan function logic
-func ATanFunc(_ *sql.Context, val interface{}) (interface{}, error) {
-	n, err := sql.Float64.Convert(val)
+// WithChildren implements sql.Expression
+func (a *Acos) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
+	}
+	return NewAcos(children[0]), nil
+}
 
+type Atan struct {
+	*UnaryFunc
+}
+var _ sql.FunctionExpression = (*Atan)(nil)
+
+// NewAtan returns a new ATAN function expression
+func NewAtan(arg sql.Expression) sql.Expression {
+	return &Atan{NewUnaryFunc(arg, "ATAN", sql.Float64)}
+}
+
+// Eval implements sql.Expression
+func (a *Atan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := a.EvalChild(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	return math.Atan(n.(float64)), nil
+	if val == nil {
+		return nil, nil
+	}
+
+	n, err := sql.Float64.Convert(val)
+	if err != nil {
+		return nil, err
+	}
+
+	return math.Acos(n.(float64)), nil
 }
 
-// CotFunc implements the cot function logic
-func CotFunc(_ *sql.Context, val interface{}) (interface{}, error) {
-	n, err := sql.Float64.Convert(val)
+// WithChildren implements sql.Expression
+func (a *Atan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
+	}
+	return NewAtan(children[0]), nil
+}
 
+type Cot struct {
+	*UnaryFunc
+}
+var _ sql.FunctionExpression = (*Cot)(nil)
+
+// NewCot returns a new COT function expression
+func NewCot(arg sql.Expression) sql.Expression {
+	return &Cot{NewUnaryFunc(arg, "COT", sql.Float64)}
+}
+
+// Eval implements sql.Expression
+func (c *Cot) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := c.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	n, err := sql.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -285,10 +381,36 @@ func CotFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	return 1.0 / math.Tan(n.(float64)), nil
 }
 
-// DegreesFunc implements the degrees function logic
-func DegreesFunc(_ *sql.Context, val interface{}) (interface{}, error) {
-	n, err := sql.Float64.Convert(val)
+// WithChildren implements sql.Expression
+func (c *Cot) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
+	}
+	return NewCot(children[0]), nil
+}
 
+type Degrees struct {
+	*UnaryFunc
+}
+var _ sql.FunctionExpression = (*Degrees)(nil)
+
+// NewDegrees returns a new DEGREES function expression
+func NewDegrees(arg sql.Expression) sql.Expression {
+	return &Degrees{NewUnaryFunc(arg, "DEGREES", sql.Float64)}
+}
+
+// Eval implements sql.Expression
+func (d *Degrees) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := d.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	n, err := sql.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -296,15 +418,49 @@ func DegreesFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	return (n.(float64) * 180.0) / math.Pi, nil
 }
 
-// RadiansFunc implements the radians function logic
-func RadiansFunc(_ *sql.Context, val interface{}) (interface{}, error) {
-	n, err := sql.Float64.Convert(val)
+// WithChildren implements sql.Expression
+func (d *Degrees) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
+	}
+	return NewDegrees(children[0]), nil
+}
 
+type Radians struct {
+	*UnaryFunc
+}
+var _ sql.FunctionExpression = (*Radians)(nil)
+
+// NewRadians returns a new RADIANS function expression
+func NewRadians(arg sql.Expression) sql.Expression {
+	return &Radians{NewUnaryFunc(arg, "RADIANS", sql.Float64)}
+}
+
+// Eval implements sql.Expression
+func (r *Radians) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := r.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	n, err := sql.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
 
 	return (n.(float64) * math.Pi) / 180.0, nil
+}
+
+// WithChildren implements sql.Expression
+func (r *Radians) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 1)
+	}
+	return NewRadians(children[0]), nil
 }
 
 func asBytes(arg interface{}) ([]byte, error) {

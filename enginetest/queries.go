@@ -1300,7 +1300,55 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT SIN(0)",
+		Query:    "SELECT SIN(i) from mytable order by i",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query:    "SELECT COS(i) from mytable order by i",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query:    "SELECT TAN(i) from mytable order by i",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query:    "SELECT ASIN(i) from mytable order by i",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query:    "SELECT ACOS(i) from mytable order by i",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query:    "SELECT ATAN(i) from mytable order by i",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query:    "SELECT COT(i) from mytable order by i",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query:    "SELECT DEGREES(i) from mytable order by i",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query:    "SELECT RADIANS(i) from mytable order by i",
 		Expected: []sql.Row{
 			{0},
 		},
