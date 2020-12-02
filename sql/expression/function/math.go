@@ -129,6 +129,7 @@ func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return rand.New(rand.NewSource(seed)).Float64(), nil
 }
 
+// Sin is the SIN function
 type Sin struct {
 	*UnaryFunc
 }
@@ -166,10 +167,28 @@ func (s *Sin) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewSin(children[0]), nil
 }
 
-// CosFunc implements the cos function logic
-func CosFunc(_ *sql.Context, val interface{}) (interface{}, error) {
-	n, err := sql.Float64.Convert(val)
+type Cos struct {
+	*UnaryFunc
+}
+var _ sql.FunctionExpression = (*Cos)(nil)
 
+// NewCos returns a new COS function expression
+func NewCos(arg sql.Expression) sql.Expression {
+	return &Cos{NewUnaryFunc(arg, "COS", sql.Float64)}
+}
+
+// Eval implements sql.Expression
+func (s *Cos) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := s.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	n, err := sql.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -177,15 +196,49 @@ func CosFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	return math.Cos(n.(float64)), nil
 }
 
-// TanFunc implements the tan function logic
-func TanFunc(_ *sql.Context, val interface{}) (interface{}, error) {
-	n, err := sql.Float64.Convert(val)
+// WithChildren implements sql.Expression
+func (c *Cos) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
+	}
+	return NewCos(children[0]), nil
+}
 
+type Tan struct {
+	*UnaryFunc
+}
+var _ sql.FunctionExpression = (*Tan)(nil)
+
+// NewTan returns a new TAN function expression
+func NewTan(arg sql.Expression) sql.Expression {
+	return &Tan{NewUnaryFunc(arg, "TAN", sql.Float64)}
+}
+
+// Eval implements sql.Expression
+func (t *Tan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := t.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	n, err := sql.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
 
 	return math.Tan(n.(float64)), nil
+}
+
+// WithChildren implements sql.Expression
+func (t *Tan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
+	}
+	return NewTan(children[0]), nil
 }
 
 // ASinFunc implements the asin function logic
