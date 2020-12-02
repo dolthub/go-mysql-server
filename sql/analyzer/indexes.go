@@ -53,7 +53,11 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 		defer indexAnalyzer.releaseUsedIndexes()
 
 		var result indexLookupsByTable
-		result, err = getIndexes(ctx, a, indexAnalyzer, filter.Expression, exprAliases, tableAliases)
+		filterExpression, err := convertIsNullForIndexes(filter.Expression)
+		if err != nil {
+			return false
+		}
+		result, err = getIndexes(ctx, a, indexAnalyzer, filterExpression, exprAliases, tableAliases)
 		if err != nil {
 			return false
 		}
@@ -205,6 +209,19 @@ func getIndexes(
 		result[idx.Table()] = &indexLookup{
 			indexes: []sql.Index{idx},
 			lookup:  lookup,
+		}
+	case *expression.IsNull:
+		return getIndexes(ctx, a, ia, expression.NewEquals(e.Child, expression.NewLiteral(nil, sql.Null)), exprAliases, tableAliases)
+		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Child)...)
+		if idx != nil {
+			lookup, err := idx.Get(nil)
+			if err != nil {
+				return result, err
+			}
+			result[idx.Table()] = &indexLookup{
+				indexes: []sql.Index{idx},
+				lookup:  lookup,
+			}
 		}
 	case *expression.Not:
 		r, err := getNegatedIndexes(ctx, a, ia, e, exprAliases, tableAliases)
@@ -537,6 +554,39 @@ func getNegatedIndexes(
 		}
 
 		return nil, nil
+	case *expression.IsNull:
+		return getNegatedIndexes(ctx, a, ia,
+			expression.NewNot(
+				expression.NewEquals(
+					e.Child,
+					expression.NewLiteral(nil, sql.Null),
+				),
+			),
+			exprAliases, tableAliases)
+
+		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e)...)
+		if idx == nil {
+			return nil, nil
+		}
+
+		index, ok := idx.(sql.NegateIndex)
+		if !ok {
+			return nil, nil
+		}
+
+		lookup, err := index.Not(nil)
+		if err != nil || lookup == nil {
+			return nil, err
+		}
+
+		result := indexLookupsByTable{
+			idx.Table(): {
+				indexes: []sql.Index{idx},
+				lookup:  lookup,
+			},
+		}
+
+		return result, nil
 	case *expression.GreaterThan:
 		lte := expression.NewLessThanOrEqual(e.Left(), e.Right())
 		return getIndexes(ctx, a, ia, lte, exprAliases, tableAliases)
@@ -903,4 +953,16 @@ func canMergeIndexes(a, b sql.IndexLookup) bool {
 	}
 
 	return m.IsMergeable(b)
+}
+
+// convertIsNullForIndexes converts all nested IsNull(col) expressions to Equals(col, nil) expressions, as they are
+// equivalent as far as the index interfaces are concerned.
+func convertIsNullForIndexes(e sql.Expression) (sql.Expression, error) {
+	return expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
+		isNull, ok := e.(*expression.IsNull)
+		if !ok {
+			return e, nil
+		}
+		return expression.NewEquals(isNull.Child, expression.NewLiteral(nil, sql.Null)), nil
+	})
 }
