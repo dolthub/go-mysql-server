@@ -1354,6 +1354,18 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query:    "SELECT CRC32(i) from mytable order by i",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query:    "SELECT SIGN(i) from mytable order by i",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
 		Query:    "SELECT * FROM mytable WHERE 1 > 5",
 		Expected: nil,
 	},

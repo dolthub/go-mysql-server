@@ -15,8 +15,6 @@
 package function
 
 import (
-	"bytes"
-	"encoding/binary"
 	"fmt"
 	"hash/crc32"
 	"math"
@@ -463,30 +461,27 @@ func (r *Radians) WithChildren(children ...sql.Expression) (sql.Expression, erro
 	return NewRadians(children[0]), nil
 }
 
-func asBytes(arg interface{}) ([]byte, error) {
-	buf := bytes.NewBuffer(nil)
-	err := binary.Write(buf, binary.LittleEndian, arg)
+type Crc32 struct {
+	*UnaryFunc
+}
+var _ sql.FunctionExpression = (*Crc32)(nil)
 
+// NewCrc32 returns a new CRC32 function expression
+func NewCrc32(arg sql.Expression) sql.Expression {
+	return &Crc32{NewUnaryFunc(arg, "CRC32", sql.Uint32)}
+}
+
+// Eval implements sql.Expression
+func (c *Crc32) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	arg, err := c.EvalChild(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	return buf.Bytes(), nil
-}
-
-func floatToString(f float64) string {
-	s := strconv.FormatFloat(f, 'f', -1, 32)
-	idx := strings.IndexRune(s, '.')
-
-	if idx == -1 {
-		s += ".0"
+	if arg == nil {
+		return nil, nil
 	}
 
-	return s
-}
-
-// Crc32Func implement the sql crc32 function logic
-func Crc32Func(_ *sql.Context, arg interface{}) (interface{}, error) {
 	var bytes []byte
 	switch val := arg.(type) {
 	case string:
@@ -526,10 +521,49 @@ func Crc32Func(_ *sql.Context, arg interface{}) (interface{}, error) {
 	return crc32.ChecksumIEEE(bytes), nil
 }
 
+// WithChildren implements sql.Expression
+func (c *Crc32) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
+	}
+	return NewCrc32(children[0]), nil
+}
+
+func floatToString(f float64) string {
+	s := strconv.FormatFloat(f, 'f', -1, 32)
+	idx := strings.IndexRune(s, '.')
+
+	if idx == -1 {
+		s += ".0"
+	}
+
+	return s
+}
+
+type Sign struct {
+	*UnaryFunc
+}
+var _ sql.FunctionExpression = (*Sign)(nil)
+
+// NewSign returns a new SIGN function expression
+func NewSign(arg sql.Expression) sql.Expression {
+	return &Sign{NewUnaryFunc(arg, "SIGN", sql.Int8)}
+}
+
 var negativeSignRegex = regexp.MustCompile(`^-[0-9]*\.?[0-9]*[1-9]`)
 var positiveSignRegex = regexp.MustCompile(`^+?[0-9]*\.?[0-9]*[1-9]`)
 
-func SignFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
+// Eval implements sql.Expression
+func (s *Sign) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	arg, err := s.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if arg == nil {
+		return nil, nil
+	}
+
 	switch typedVal := arg.(type) {
 	case int8, int16, int32, int64, float64, float32, int, decimal.Decimal:
 		val, err := sql.Int64.Convert(arg)
@@ -582,4 +616,12 @@ func SignFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
 	}
 
 	return int8(0), nil
+}
+
+// WithChildren implements sql.Expression
+func (s *Sign) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
+	}
+	return NewSign(children[0]), nil
 }
