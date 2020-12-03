@@ -29,7 +29,7 @@ func (uf *UnaryFunc) FunctionName() string {
 	return uf.Name
 }
 
-// Eval implements the Expression interface.
+// EvalChild is a convenience function for safely evaluating a child expression
 func (uf *UnaryFunc) EvalChild(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if uf.Child == nil {
 		return nil, nil
