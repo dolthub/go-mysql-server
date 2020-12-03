@@ -13,8 +13,28 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// AsciiFunc implements the sql function "ascii" which returns the numeric value of the leftmost character
-func AsciiFunc(_ *sql.Context, val interface{}) (interface{}, error) {
+// Ascii implements the sql function "ascii" which returns the numeric value of the leftmost character
+type Ascii struct {
+	*UnaryFunc
+}
+
+var _ sql.FunctionExpression = (*Ascii)(nil)
+
+func NewAscii(arg sql.Expression) sql.Expression {
+	return &Ascii{NewUnaryFunc(arg, "ASCII", sql.Uint8)}
+}
+
+// Eval implements the sql.Expression interface
+func (a *Ascii) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := a.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
 	switch x := val.(type) {
 	case bool:
 		if x {
@@ -37,43 +57,36 @@ func AsciiFunc(_ *sql.Context, val interface{}) (interface{}, error) {
 	return s[0], nil
 }
 
-func hexChar(b byte) byte {
-	if b > 9 {
-		return b - 10 + byte('A')
+// WithChildren implements the sql.Expression interface
+func (a *Ascii) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
 	}
-
-	return b + byte('0')
+	return NewAscii(children[0]), nil
 }
 
-// MySQL expects the 64 bit 2s complement representation for negative integer values. Typical methods for converting a
-// number to a string don't handle negative integer values in this way (strconv.FormatInt and fmt.Sprintf for example).
-func hexForNegativeInt64(n int64) string {
-	// get a pointer to the int64s memory
-	mem := (*[8]byte)(unsafe.Pointer(&n))
-	// make a copy of the data that I can manipulate
-	bytes := *mem
-	// reverse the order for printing
-	for i := 0; i < 4; i++ {
-		bytes[i], bytes[7-i] = bytes[7-i], bytes[i]
-	}
-	// print the hex encoded bytes
-	return fmt.Sprintf("%X", bytes)
+// Hex implements the sql function "hex" which returns the hexadecimal representation of the string or numeric value
+type Hex struct {
+	*UnaryFunc
 }
 
-func hexForFloat(f float64) (string, error) {
-	if f < 0 {
-		f -= 0.5
-		n := int64(f)
-		return hexForNegativeInt64(n), nil
-	}
+var _ sql.FunctionExpression = (*Hex)(nil)
 
-	f += 0.5
-	n := uint64(f)
-	return fmt.Sprintf("%X", n), nil
+func NewHex(arg sql.Expression) sql.Expression {
+	return &Hex{NewUnaryFunc(arg, "HEX", sql.Text)}
 }
 
-// HexFunc implements the sql function "hex" which returns the hexidecimal representation of the string or numeric value
-func HexFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
+// Eval implements the sql.Expression interface
+func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	arg, err := h.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if arg == nil {
+		return nil, nil
+	}
+
 	switch val := arg.(type) {
 	case string:
 		return hexForString(val), nil
@@ -128,6 +141,49 @@ func HexFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
 	}
 }
 
+// WithChildren implements the sql.Expression interface
+func (h *Hex) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(h, len(children), 1)
+	}
+	return NewHex(children[0]), nil
+}
+
+func hexChar(b byte) byte {
+	if b > 9 {
+		return b - 10 + byte('A')
+	}
+
+	return b + byte('0')
+}
+
+// MySQL expects the 64 bit 2s complement representation for negative integer values. Typical methods for converting a
+// number to a string don't handle negative integer values in this way (strconv.FormatInt and fmt.Sprintf for example).
+func hexForNegativeInt64(n int64) string {
+	// get a pointer to the int64s memory
+	mem := (*[8]byte)(unsafe.Pointer(&n))
+	// make a copy of the data that I can manipulate
+	bytes := *mem
+	// reverse the order for printing
+	for i := 0; i < 4; i++ {
+		bytes[i], bytes[7-i] = bytes[7-i], bytes[i]
+	}
+	// print the hex encoded bytes
+	return fmt.Sprintf("%X", bytes)
+}
+
+func hexForFloat(f float64) (string, error) {
+	if f < 0 {
+		f -= 0.5
+		n := int64(f)
+		return hexForNegativeInt64(n), nil
+	}
+
+	f += 0.5
+	n := uint64(f)
+	return fmt.Sprintf("%X", n), nil
+}
+
 func hexForString(val string) string {
 	buf := make([]byte, 0, 2*len(val))
 	for _, c := range val {
@@ -140,7 +196,28 @@ func hexForString(val string) string {
 	return string(buf)
 }
 
-func UnhexFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
+// Unhex implements the sql function "unhex" which returns the integer representation of a hexadecimal string
+type Unhex struct {
+	*UnaryFunc
+}
+
+var _ sql.FunctionExpression = (*Unhex)(nil)
+
+func NewUnhex(arg sql.Expression) sql.Expression {
+	return &Unhex{NewUnaryFunc(arg, "UNHEX", sql.Text)}
+}
+
+// Eval implements the sql.Expression interface
+func (h *Unhex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	arg, err := h.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if arg == nil {
+		return nil, nil
+	}
+
 	val, err := sql.Text.Convert(arg)
 
 	if err != nil {
@@ -168,6 +245,14 @@ func UnhexFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
 	return string(res), nil
 }
 
+// WithChildren implements the sql.Expression interface
+func (h *Unhex) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(h, len(children), 1)
+	}
+	return NewUnhex(children[0]), nil
+}
+
 // MySQL expects the 64 bit 2s complement representation for negative integer values. Typical methods for converting a
 // number to a string don't handle negative integer values in this way (strconv.FormatInt and fmt.Sprintf for example).
 func binForNegativeInt64(n int64) string {
@@ -184,8 +269,28 @@ func binForNegativeInt64(n int64) string {
 	return s
 }
 
-// BinFunc implements the sql function "bin" which returns the binary representation of a number
-func BinFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
+// Bin implements the sql function "bin" which returns the binary representation of a number
+type Bin struct {
+	*UnaryFunc
+}
+
+var _ sql.FunctionExpression = (*Bin)(nil)
+
+func NewBin(arg sql.Expression) sql.Expression {
+	return &Bin{NewUnaryFunc(arg, "BIN", sql.Text)}
+}
+
+// Eval implements the sql.Expression interface
+func (h *Bin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	arg, err := h.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if arg == nil {
+		return nil, nil
+	}
+
 	switch val := arg.(type) {
 	case time.Time:
 		return strconv.FormatUint(uint64(val.Year()), 2), nil
@@ -207,8 +312,36 @@ func BinFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
 	}
 }
 
-// BitLengthFunc implements the sql function "bit_length" which returns the length of the argument in bits
-func BitLengthFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
+// WithChildren implements the sql.Expression interface
+func (h *Bin) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(h, len(children), 1)
+	}
+	return NewBin(children[0]), nil
+}
+
+// Bitlength implements the sql function "bit_length" which returns the data length of the argument in bits
+type Bitlength struct {
+	*UnaryFunc
+}
+
+var _ sql.FunctionExpression = (*Bitlength)(nil)
+
+func NewBitlength(arg sql.Expression) sql.Expression {
+	return &Bitlength{NewUnaryFunc(arg, "BIT_LENGTH", sql.Int32)}
+}
+
+// Eval implements the sql.Expression interface
+func (h *Bitlength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	arg, err := h.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if arg == nil {
+		return nil, nil
+	}
+
 	switch val := arg.(type) {
 	case uint8, int8, bool:
 		return 8, nil
@@ -225,4 +358,12 @@ func BitLengthFunc(_ *sql.Context, arg interface{}) (interface{}, error) {
 	}
 
 	return nil, ErrInvalidArgument.New("bit_length", fmt.Sprint(arg))
+}
+
+// WithChildren implements the sql.Expression interface
+func (h *Bitlength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(h, len(children), 1)
+	}
+	return NewBitlength(children[0]), nil
 }

@@ -9,7 +9,7 @@ import (
 )
 
 func TestAsciiFunc(t *testing.T) {
-	f := NewUnaryFunc("ascii", sql.Uint8, AsciiFunc)
+	f := sql.Function1{Name: "ascii", Fn: NewAscii}
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
 	tf.AddSucceeding(uint8(115), "string")
@@ -22,7 +22,7 @@ func TestAsciiFunc(t *testing.T) {
 }
 
 func TestHexFunc(t *testing.T) {
-	f := NewUnaryFunc("hex", sql.Text, HexFunc)
+	f := sql.Function1{Name: "hex", Fn: NewHex}
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
 	tf.AddSignedVariations("FFFFFFFFFFFFFFFF", -1)
@@ -45,7 +45,7 @@ func TestHexFunc(t *testing.T) {
 }
 
 func TestUnhexFunc(t *testing.T) {
-	f := NewUnaryFunc("unhex", sql.Text, UnhexFunc)
+	f := sql.Function1{Name: "unhex", Fn: NewUnhex}
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
 	tf.AddSucceeding("MySQL", "4D7953514C")
@@ -61,7 +61,7 @@ func TestUnhexFunc(t *testing.T) {
 }
 
 func TestBinFunc(t *testing.T) {
-	f := NewUnaryFunc("bin", sql.Text, BinFunc)
+	f := sql.Function1{Name: "bin", Fn: NewBin}
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
 	tf.AddSucceeding("1100", "12")
@@ -76,7 +76,7 @@ func TestBinFunc(t *testing.T) {
 }
 
 func TestBitLength(t *testing.T) {
-	f := NewUnaryFunc("bin", sql.Int32, BitLengthFunc)
+	f := sql.Function1{Name: "bin", Fn: NewBitlength}
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
 	tf.AddSucceeding(32, "test")

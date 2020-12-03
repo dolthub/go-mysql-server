@@ -339,7 +339,7 @@ func (a *Atan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return math.Acos(n.(float64)), nil
+	return math.Atan(n.(float64)), nil
 }
 
 // WithChildren implements sql.Expression

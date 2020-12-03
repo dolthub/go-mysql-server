@@ -172,10 +172,10 @@ func TestCRC32(t *testing.T) {
 func TestTrigFunctions(t *testing.T) {
 	asin := sql.Function1{Name: "asin", Fn: NewAsin}
 	acos := sql.Function1{Name: "acos", Fn: NewAcos}
-	atan := sql.Function1{Name: "tan", Fn: NewAtan}
+	atan := sql.Function1{Name: "atan", Fn: NewAtan}
 	sin := sql.Function1{Name: "sin", Fn: NewSin}
 	cos := sql.Function1{Name: "cos", Fn: NewCos}
-	tan := sql.Function1{Name: "atan", Fn: NewTan}
+	tan := sql.Function1{Name: "tan", Fn: NewTan}
 
 	const numChecks = 24
 	delta := (2 * math.Pi) / float64(numChecks)
