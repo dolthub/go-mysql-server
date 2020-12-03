@@ -87,9 +87,9 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT USER()`,
+		Query: `SELECT HEX(123)`,
 		Expected: []sql.Row{
-			{"user"},
+			{"7B"},
 		},
 	}
 
