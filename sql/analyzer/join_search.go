@@ -34,7 +34,7 @@ func orderTables(tables []NameableNode, tablesByName map[string]NameableNode, jo
 
 	// generate all permutations of table order
 	accessOrders := permutations(indexes)
-	lowestCost := math.MaxInt32
+	lowestCost := int64(math.MaxInt64)
 	lowestCostIdx := 0
 	for i, accessOrder := range accessOrders {
 		cost := estimateTableOrderCost(tableNames, tablesByName, accessOrder, joinIndexes, lowestCost)
@@ -81,9 +81,9 @@ func estimateTableOrderCost(
 		tableNodes map[string]NameableNode,
 		accessOrder []int,
 		joinIndexes joinIndexesByTable,
-		lowestCost int,
-) int {
-	cost := 1
+		lowestCost int64,
+) int64 {
+	cost := int64(1)
 	var availableSchemaForKeys sql.Schema
 	for i, idx := range accessOrder {
 		if cost >= lowestCost {
@@ -102,14 +102,18 @@ func estimateTableOrderCost(
 				for j := 0; j < i; j++ {
 					otherTable := tables[accessOrder[j]]
 					if colsIncludeTable(idx.comparandCols, otherTable) {
-						return math.MaxInt32
+						return math.MaxInt64
 					}
 				}
 			}
 		}
 
 		if i == 0 || indexes.getUsableIndex(availableSchemaForKeys) == nil {
+			// TODO: estimate number of rows in table
 			cost *= 1000
+		} else {
+			// TODO: estimate number of rows from index lookup based on cardinality
+			cost += 1
 		}
 	}
 
