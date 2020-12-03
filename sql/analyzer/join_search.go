@@ -193,7 +193,7 @@ func (js *joinSearchParams) joinCondIndexUsed(i int) bool {
 // left and a right child.
 type joinSearchNode struct {
 	table    string            // empty if this is an internal node
-	joinCond *joinCond    // nil if this is a leaf node
+	joinCond *joinCond         // nil if this is a leaf node
 	parent   *joinSearchNode   // nil if this is the root node
 	left     *joinSearchNode   // nil if this is a leaf node
 	right    *joinSearchNode   // nil if this is a leaf node
@@ -209,7 +209,7 @@ func (n *joinSearchNode) tableOrder() []string {
 		return nil
 	}
 
-	if len(n.table) > 0 {
+	if n.isLeaf() {
 		return []string{n.table}
 	}
 
@@ -219,12 +219,14 @@ func (n *joinSearchNode) tableOrder() []string {
 	return tables
 }
 
-func (n *joinSearchNode) joinConditionSatisfied() bool {
-	if n == nil {
-		return false
-	}
+// isLeaf returns whether this node is a table node
+func (n *joinSearchNode) isLeaf() bool {
+	return len(n.table) > 0
+}
 
-	if len(n.table) > 0 {
+// joinConditionSatisfied returns whether all the tables mentioned in this join node are present in descendants.
+func (n *joinSearchNode) joinConditionSatisfied() bool {
+	if n.isLeaf() {
 		return true
 	}
 
@@ -238,28 +240,29 @@ func (n *joinSearchNode) joinConditionSatisfied() bool {
 	return n.left.joinConditionSatisfied() && n.right.joinConditionSatisfied()
 }
 
+// copy returns a copy of this node
 func (n *joinSearchNode) copy() *joinSearchNode {
-	if n == nil {
-		return nil
-	}
-
 	nn := *n
 	nn.params = nn.params.copy()
 	return &nn
 }
 
+// targetLeft returns a copy of this node with the left child marked for replacement by withChild
 func (n *joinSearchNode) targetLeft() *joinSearchNode {
 	nn := n.copy()
 	nn.left = childTargetNode
 	return nn
 }
 
+// targetRight returns a copy of this node with the right child marked for replacement by withChild
 func (n *joinSearchNode) targetRight() *joinSearchNode {
 	nn := n.copy()
 	nn.right = childTargetNode
 	return nn
 }
 
+// withChild returns a copy of this node with the previously marked child replaced by the node given.
+// See targetLeft, targetRight
 func (n *joinSearchNode) withChild(child *joinSearchNode) *joinSearchNode {
 	nn := n.copy()
 	if nn.left == childTargetNode {
@@ -273,12 +276,13 @@ func (n *joinSearchNode) withChild(child *joinSearchNode) *joinSearchNode {
 	}
 }
 
+// accumulateAllUsed rolls up joinSearchParams from this node and all descendants, combining their used tallies
 func (n *joinSearchNode) accumulateAllUsed() *joinSearchParams {
 	if n == nil || n.params == nil {
 		return &joinSearchParams{}
 	}
 
-	if len(n.table) > 0 {
+	if n.isLeaf() {
 		return n.params
 	}
 
@@ -304,7 +308,7 @@ func (n *joinSearchNode) String() string {
 		return "childTargetNode"
 	}
 
-	if len(n.table) > 0 {
+	if n.isLeaf() {
 		return n.table
 	}
 
@@ -330,15 +334,6 @@ func (n *joinSearchNode) String() string {
 	return tp.String()
 }
 
-func containsAll(needles []string, haystack []string) bool {
-	for _, needle := range needles {
-		if indexOf(needle, haystack) < 0 {
-			return false
-		}
-	}
-	return true
-}
-
 // searchJoins is the recursive helper function for buildJoinTree. It returns all possible join trees that satisfy the
 // search parameters given. It calls itself recursively to generate subtrees as well. All nodes returned are valid
 // subtrees (join conditions and table sub ordering satisfied), but may not be valid as an entire tree. Callers should
@@ -354,7 +349,6 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 	if parent != nil {
 		// Find all tables mentioned in join nodes up to the root of the tree. We can't add any tables that aren't in this
 		// list
-		// TODO: this might be a premature optimization, need to validate
 		var validChildTables []string
 		n := parent
 		for n != nil {
@@ -375,7 +369,7 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 				params: paramsCopy,
 				parent: parent.copy(),
 			}
-			if tableOrderCorrect(parent.withChild(childNode)) {
+			if parent.withChild(childNode).tableOrderCorrect() {
 				debugLog("adding child %s\n", childNode)
 				children = append(children, childNode)
 			}
@@ -434,11 +428,24 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 }
 
 const debugJoinPlan = false
-
 func debugLog(msg string, args ...interface{}) {
 	if debugJoinPlan {
 		fmt.Printf(msg, args...)
 	}
+}
+
+// tableOrderCorrect returns whether the tables in this subtree appear in a valid order.
+func (n *joinSearchNode) tableOrderCorrect() bool {
+	tableOrder := n.tableOrder()
+	prevIdx := -1
+	for _, table := range tableOrder {
+		idx := indexOf(table, n.params.tables)
+		if idx <= prevIdx {
+			return false
+		}
+		prevIdx = idx
+	}
+	return true
 }
 
 // isValidJoinSubTree returns whether the node given satisfies all the constraints of a join subtree. Subtrees are not
@@ -447,7 +454,7 @@ func isValidJoinSubTree(node *joinSearchNode) bool {
 	// Two constraints define a valid tree:
 	// 1) An in-order traversal has tables in the correct order
 	// 2) The conditions for all internal nodes can be satisfied by their child columns
-	return tableOrderCorrect(node) && node.joinConditionSatisfied()
+	return node.tableOrderCorrect() && node.joinConditionSatisfied()
 }
 
 // isValidJoinTree returns whether the join node given is a valid subtree and contains all the tables in the join.
@@ -455,15 +462,11 @@ func isValidJoinTree(node *joinSearchNode) bool {
 	return isValidJoinSubTree(node) && strArraysEqual(node.tableOrder(), node.params.tables)
 }
 
-func tableOrderCorrect(node *joinSearchNode) bool {
-	tableOrder := node.tableOrder()
-	prevIdx := -1
-	for _, table := range tableOrder {
-		idx := indexOf(table, node.params.tables)
-		if idx <= prevIdx {
+func containsAll(needles []string, haystack []string) bool {
+	for _, needle := range needles {
+		if indexOf(needle, haystack) < 0 {
 			return false
 		}
-		prevIdx = idx
 	}
 	return true
 }
