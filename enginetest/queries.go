@@ -588,6 +588,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(4)}, {int64(5)}},
 	},
 	{
+		Query:    "SELECT i FROM niltable WHERE i2 IS NULL ORDER BY 1",
+		Expected: []sql.Row{{int64(1)}, {int64(3)}, {int64(5)}},
+	},
+	{
+		Query:    "SELECT i FROM niltable WHERE i2 IS NOT NULL ORDER BY 1",
+		Expected: []sql.Row{{int64(2)}, {int64(4)}, {int64(6)}},
+	},
+	{
 		Query:    "SELECT COUNT(*) FROM mytable;",
 		Expected: []sql.Row{{int64(3)}},
 	},

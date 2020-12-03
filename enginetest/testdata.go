@@ -471,6 +471,7 @@ func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
 		"create index othertable_s2 on othertable (s2)",
 		"create index othertable_s2_i2 on othertable (s2,i2)",
 		"create index floattable_f on floattable (f64)",
+		"create index niltable_i2 on niltable (i2)",
 	}
 
 	for _, q := range createIndexes {

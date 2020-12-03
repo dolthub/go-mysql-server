@@ -123,27 +123,27 @@ var DeleteTests = []WriteQueryTest{
 
 var DeleteErrorTests = []GenericErrorQueryTest{
 	{
-		Name:     "invalid table",
-		Query:    "DELETE FROM invalidtable WHERE x < 1;",
+		Name:  "invalid table",
+		Query: "DELETE FROM invalidtable WHERE x < 1;",
 	},
 	{
-		Name:     "invalid column",
-		Query:    "DELETE FROM mytable WHERE z = 'dne';",
+		Name:  "invalid column",
+		Query: "DELETE FROM mytable WHERE z = 'dne';",
 	},
 	{
-		Name:     "missing binding",
-		Query:    "DELETE FROM mytable WHERE i = ?;",
+		Name:  "missing binding",
+		Query: "DELETE FROM mytable WHERE i = ?;",
 	},
 	{
-		Name:     "negative limit",
-		Query:    "DELETE FROM mytable LIMIT -1;",
+		Name:  "negative limit",
+		Query: "DELETE FROM mytable LIMIT -1;",
 	},
 	{
-		Name:     "negative offset",
-		Query:    "DELETE FROM mytable LIMIT 1 OFFSET -1;",
+		Name:  "negative offset",
+		Query: "DELETE FROM mytable LIMIT 1 OFFSET -1;",
 	},
 	{
-		Name:     "missing keyword from",
-		Query:    "DELETE mytable WHERE id = 1;",
+		Name:  "missing keyword from",
+		Query: "DELETE mytable WHERE id = 1;",
 	},
 }

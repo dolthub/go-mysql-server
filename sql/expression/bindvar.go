@@ -38,7 +38,7 @@ func (bv *BindVar) Children() []sql.Expression {
 
 func (bv *BindVar) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
-                return nil, sql.ErrInvalidChildrenNumber.New(bv, len(children), 0)
+		return nil, sql.ErrInvalidChildrenNumber.New(bv, len(children), 0)
 
 	}
 	return bv, nil
