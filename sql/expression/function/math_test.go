@@ -86,7 +86,7 @@ func TestRandWithSeed(t *testing.T) {
 }
 
 func TestRadians(t *testing.T) {
-	f := NewUnaryFunc("radians", sql.Float64, RadiansFunc)
+	f := sql.Function1{Name: "radians", Fn: NewRadians}
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(0.0, "0")
 	tf.AddSucceeding(-math.Pi, "-180")
@@ -108,7 +108,7 @@ func TestDegrees(t *testing.T) {
 		{"float32 3*pi/2", float32(3.0 * math.Pi / 2.0), 270.0},
 	}
 
-	f := NewUnaryFunc("degrees", sql.Float64, DegreesFunc)
+	f := sql.Function1{Name: "degrees", Fn: NewDegrees}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -146,7 +146,7 @@ func TestCRC32(t *testing.T) {
 		{"CRC32(float64 6.0)", float64(6.0), 4068047280},
 	}
 
-	f := NewUnaryFunc("crc32", sql.Uint32, Crc32Func)
+	f := sql.Function1{Name: "crc32", Fn: NewCrc32}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -170,12 +170,12 @@ func TestCRC32(t *testing.T) {
 }
 
 func TestTrigFunctions(t *testing.T) {
-	asin := NewUnaryFunc("asin", sql.Float64, ASinFunc)
-	acos := NewUnaryFunc("acos", sql.Float64, ACosFunc)
-	atan := NewUnaryFunc("tan", sql.Float64, ATanFunc)
-	sin := NewUnaryFunc("sin", sql.Float64, SinFunc)
-	cos := NewUnaryFunc("cos", sql.Float64, CosFunc)
-	tan := NewUnaryFunc("atan", sql.Float64, TanFunc)
+	asin := sql.Function1{Name: "asin", Fn: NewAsin}
+	acos := sql.Function1{Name: "acos", Fn: NewAcos}
+	atan := sql.Function1{Name: "tan", Fn: NewAtan}
+	sin := sql.Function1{Name: "sin", Fn: NewSin}
+	cos := sql.Function1{Name: "cos", Fn: NewCos}
+	tan := sql.Function1{Name: "atan", Fn: NewTan}
 
 	const numChecks = 24
 	delta := (2 * math.Pi) / float64(numChecks)
@@ -222,7 +222,7 @@ func withinRoundingErr(v1, v2 float64) bool {
 }
 
 func TestSignFunc(t *testing.T) {
-	f := NewUnaryFunc("sign", sql.Int8, SignFunc)
+	f := sql.Function1{Name: "sign", Fn: NewSign}
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
 	tf.AddSignedVariations(int8(-1), -10)
