@@ -1366,6 +1366,36 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query:    "SELECT ASCII(s) from mytable order by i",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query:    "SELECT HEX(s) from mytable order by i",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query:    "SELECT UNHEX(s) from mytable order by i",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query:    "SELECT BIN(i) from mytable order by i",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query:    "SELECT BIT_LENGTH(i) from mytable order by i",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
 		Query:    "SELECT * FROM mytable WHERE 1 > 5",
 		Expected: nil,
 	},
