@@ -73,8 +73,8 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			return n, nil
 		}
 
-		leftSources := nodeSources(join.Left)
-		rightSources := nodeSources(join.Right)
+		leftSources := nodeSources(join.Left())
+		rightSources := nodeSources(join.Right())
 		filtersMoved := 0
 		var condFilters []sql.Expression
 		for _, e := range splitConjunction(join.Cond) {
@@ -95,7 +95,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			return n, nil
 		}
 
-		left, right := join.Left, join.Right
+		left, right := join.Left(), join.Right()
 
 		if len(condFilters) > 0 {
 			topJoin = plan.NewInnerJoin(

@@ -36,12 +36,12 @@ func resolveNaturalJoin(
 ) (sql.Node, error) {
 	// Both sides of the natural join need to be resolved in order to resolve
 	// the natural join itself.
-	if !n.Left.Resolved() || !n.Right.Resolved() {
+	if !n.Left().Resolved() || !n.Right().Resolved() {
 		return n, nil
 	}
 
-	leftSchema := n.Left.Schema()
-	rightSchema := n.Right.Schema()
+	leftSchema := n.Left().Schema()
+	rightSchema := n.Right().Schema()
 
 	var conditions, common, left, right []sql.Expression
 	for i, lcol := range leftSchema {
@@ -77,7 +77,7 @@ func resolveNaturalJoin(
 	}
 
 	if len(conditions) == 0 {
-		return plan.NewCrossJoin(n.Left, n.Right), nil
+		return plan.NewCrossJoin(n.Left(), n.Right()), nil
 	}
 
 	for i, col := range rightSchema {
@@ -99,7 +99,7 @@ func resolveNaturalJoin(
 
 	return plan.NewProject(
 		append(append(common, left...), right...),
-		plan.NewInnerJoin(n.Left, n.Right, expression.JoinAnd(conditions...)),
+		plan.NewInnerJoin(n.Left(), n.Right(), expression.JoinAnd(conditions...)),
 	), nil
 }
 

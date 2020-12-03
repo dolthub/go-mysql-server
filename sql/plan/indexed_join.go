@@ -45,7 +45,7 @@ func (ij *IndexedJoin) String() string {
 		joinType = "Right"
 	}
 	_ = pr.WriteNode("%sIndexedJoin(%s)", joinType, ij.Cond)
-	_ = pr.WriteChildren(ij.Left.String(), ij.Right.String())
+	_ = pr.WriteChildren(ij.left.String(), ij.right.String())
 	return pr.String()
 }
 
@@ -59,16 +59,16 @@ func (ij *IndexedJoin) DebugString() string {
 		joinType = "Right"
 	}
 	_ = pr.WriteNode("%sIndexedJoin(%s)", joinType, sql.DebugString(ij.Cond))
-	_ = pr.WriteChildren(sql.DebugString(ij.Left), sql.DebugString(ij.Right))
+	_ = pr.WriteChildren(sql.DebugString(ij.left), sql.DebugString(ij.right))
 	return pr.String()
 }
 
 func (ij *IndexedJoin) Schema() sql.Schema {
-	return append(ij.Left.Schema(), ij.Right.Schema()...)
+	return append(ij.left.Schema(), ij.right.Schema()...)
 }
 
 func (ij *IndexedJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return indexedJoinRowIter(ctx, row, ij.Left, ij.Right, ij.Cond, ij.joinType)
+	return indexedJoinRowIter(ctx, row, ij.left, ij.right, ij.Cond, ij.joinType)
 }
 
 func (ij *IndexedJoin) WithChildren(children ...sql.Node) (sql.Node, error) {

@@ -149,13 +149,13 @@ func replaceTableAccessWithIndexedAccess(
 		})
 	case *plan.IndexedJoin:
 		// Recurse the down the left side with the input schema
-		left, err := replaceTableAccessWithIndexedAccess(node.LeftBranch(), schema, scope, joinIndexes, exprAliases, tableAliases)
+		left, err := replaceTableAccessWithIndexedAccess(node.Left(), schema, scope, joinIndexes, exprAliases, tableAliases)
 		if err != nil {
 			return nil, err
 		}
 
 		// then the right side, appending the schema from the left
-		right, err := replaceTableAccessWithIndexedAccess(node.RightBranch(), append(schema, left.Schema()...), scope, joinIndexes, exprAliases, tableAliases)
+		right, err := replaceTableAccessWithIndexedAccess(node.Right(), append(schema, left.Schema()...), scope, joinIndexes, exprAliases, tableAliases)
 		if err != nil {
 			return nil, err
 		}
@@ -198,18 +198,18 @@ func replaceTableAccessWithIndexedAccess(
 		}
 		return node.WithChildren(newChild)
 	case *plan.Union:
-		newRight, err := replaceTableAccessWithIndexedAccess(node.Right, append(schema, node.Left.Schema()...), scope, joinIndexes, exprAliases, tableAliases)
+		newRight, err := replaceTableAccessWithIndexedAccess(node.Right(), append(schema, node.Left().Schema()...), scope, joinIndexes, exprAliases, tableAliases)
 		if err != nil {
 			return nil, err
 		}
-		return node.WithChildren(node.Left, newRight)
+		return node.WithChildren(node.Left(), newRight)
 	case *plan.CrossJoin:
 		// TODO: be more principled about integrating cross joins into the overall join plan, no reason to keep them separate
-		newRight, err := replaceTableAccessWithIndexedAccess(node.Right, append(schema, node.Left.Schema()...), scope, joinIndexes, exprAliases, tableAliases)
+		newRight, err := replaceTableAccessWithIndexedAccess(node.Right(), append(schema, node.Left().Schema()...), scope, joinIndexes, exprAliases, tableAliases)
 		if err != nil {
 			return nil, err
 		}
-		return node.WithChildren(node.Left, newRight)
+		return node.WithChildren(node.Left(), newRight)
 	default:
 		// For an unhandled node type, just skip this transformation
 		return node, nil
@@ -263,7 +263,7 @@ func lexicalTableOrder(node sql.Node) []NameableNode {
 	case *plan.ResolvedTable:
 		return []NameableNode{node}
 	case plan.JoinNode:
-		return append(lexicalTableOrder(node.LeftBranch()), lexicalTableOrder(node.RightBranch())...)
+		return append(lexicalTableOrder(node.Left()), lexicalTableOrder(node.Right())...)
 	default:
 		panic(fmt.Sprintf("unexpected node type: %t", node))
 	}
@@ -391,7 +391,7 @@ func findJoinIndexesByTable(
 			conds = append(conds, joinCond{
 				cond:           node.JoinCond(),
 				joinType:       node.JoinType(),
-				rightHandTable: strings.ToLower(getTableName(node.RightBranch())),
+				rightHandTable: strings.ToLower(getTableName(node.Right())),
 			})
 		}
 		return true

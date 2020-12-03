@@ -31,7 +31,7 @@ func (NaturalJoin) Resolved() bool { return false }
 func (j NaturalJoin) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("NaturalJoin")
-	_ = pr.WriteChildren(j.Left.String(), j.Right.String())
+	_ = pr.WriteChildren(j.left.String(), j.right.String())
 	return pr.String()
 }
 

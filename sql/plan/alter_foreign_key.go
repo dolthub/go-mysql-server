@@ -66,7 +66,7 @@ func getForeignKeyAlterableTable(t sql.Table) (sql.ForeignKeyAlterableTable, err
 
 // Execute inserts the rows in the database.
 func (p *CreateForeignKey) Execute(ctx *sql.Context) error {
-	fkAlterable, err := getForeignKeyAlterable(p.BinaryNode.Left)
+	fkAlterable, err := getForeignKeyAlterable(p.BinaryNode.left)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (p *CreateForeignKey) Execute(ctx *sql.Context) error {
 
 	// Make sure that the ref columns exist
 	for _, refCol := range p.FkDef.ReferencedColumns {
-		if !p.Right.Schema().Contains(refCol, p.FkDef.ReferencedTable) {
+		if !p.right.Schema().Contains(refCol, p.FkDef.ReferencedTable) {
 			return sql.ErrTableColumnNotFound.New(refCol)
 		}
 	}
@@ -161,9 +161,9 @@ func (p CreateForeignKey) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("AddForeignKey(%s)", p.FkDef.Name)
 	_ = pr.WriteChildren(
-		fmt.Sprintf("Table(%s)", p.BinaryNode.Left.String()),
+		fmt.Sprintf("Table(%s)", p.BinaryNode.left.String()),
 		fmt.Sprintf("Columns(%s)", strings.Join(p.FkDef.Columns, ", ")),
-		fmt.Sprintf("ReferencedTable(%s)", p.BinaryNode.Right.String()),
+		fmt.Sprintf("ReferencedTable(%s)", p.BinaryNode.right.String()),
 		fmt.Sprintf("ReferencedColumns(%s)", strings.Join(p.FkDef.ReferencedColumns, ", ")),
 		fmt.Sprintf("OnUpdate(%s)", p.FkDef.OnUpdate),
 		fmt.Sprintf("OnDelete(%s)", p.FkDef.OnDelete))

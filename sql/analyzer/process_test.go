@@ -53,12 +53,12 @@ func TestTrackProcess(t *testing.T) {
 	join, ok := proc.Child.(*plan.InnerJoin)
 	require.True(ok)
 
-	lhs, ok := join.Left.(*plan.ResolvedTable)
+	lhs, ok := join.Left().(*plan.ResolvedTable)
 	require.True(ok)
 	_, ok = lhs.Table.(*plan.ProcessTable)
 	require.True(ok)
 
-	rhs, ok := join.Right.(*plan.ResolvedTable)
+	rhs, ok := join.Right().(*plan.ResolvedTable)
 	require.True(ok)
 	_, ok = rhs.Table.(*plan.ProcessIndexableTable)
 	require.True(ok)

@@ -25,6 +25,8 @@ func shouldParallelize(node sql.Node, scope *Scope) bool {
 	return !isDdlNode(node)
 }
 
+// isDdlNode returns whether the node given is a DDL operation, which includes things like SHOW commands. In general,
+// these are nodes that interact only with schema and the catalog, not with any table rows.
 func isDdlNode(node sql.Node) bool {
 	switch node.(type) {
 	case *plan.CreateTable, *plan.DropTable,
