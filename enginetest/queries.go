@@ -1300,99 +1300,99 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT SIN(i) from mytable order by i",
+		Query:    "SELECT SIN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{0.8414709848078965},
 		},
 	},
 	{
-		Query:    "SELECT COS(i) from mytable order by i",
+		Query:    "SELECT COS(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{0.5403023058681398},
 		},
 	},
 	{
-		Query:    "SELECT TAN(i) from mytable order by i",
+		Query:    "SELECT TAN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{1.557407724654902},
 		},
 	},
 	{
-		Query:    "SELECT ASIN(i) from mytable order by i",
+		Query:    "SELECT ASIN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{1.5707963267948966},
 		},
 	},
 	{
-		Query:    "SELECT ACOS(i) from mytable order by i",
+		Query:    "SELECT ACOS(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{0.0},
 		},
 	},
 	{
-		Query:    "SELECT ATAN(i) from mytable order by i",
+		Query:    "SELECT ATAN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{0.7853981633974483},
 		},
 	},
 	{
-		Query:    "SELECT COT(i) from mytable order by i",
+		Query:    "SELECT COT(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{0.6420926159343308},
 		},
 	},
 	{
-		Query:    "SELECT DEGREES(i) from mytable order by i",
+		Query:    "SELECT DEGREES(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{57.29577951308232},
 		},
 	},
 	{
-		Query:    "SELECT RADIANS(i) from mytable order by i",
+		Query:    "SELECT RADIANS(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{0.017453292519943295},
 		},
 	},
 	{
-		Query:    "SELECT CRC32(i) from mytable order by i",
+		Query:    "SELECT CRC32(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{uint64(0x83dcefb7)},
 		},
 	},
 	{
-		Query:    "SELECT SIGN(i) from mytable order by i",
+		Query:    "SELECT SIGN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{1},
 		},
 	},
 	{
-		Query:    "SELECT ASCII(s) from mytable order by i",
+		Query:    "SELECT ASCII(s) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{uint64(0x66)},
 		},
 	},
 	{
-		Query:    "SELECT HEX(s) from mytable order by i",
+		Query:    "SELECT HEX(s) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{"666972737420726F77"},
 		},
 	},
 	{
-		Query:    "SELECT UNHEX(s) from mytable order by i",
+		Query:    "SELECT UNHEX(s) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{nil},
 		},
 	},
 	{
-		Query:    "SELECT BIN(i) from mytable order by i",
+		Query:    "SELECT BIN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{"1"},
 		},
 	},
 	{
-		Query:    "SELECT BIT_LENGTH(i) from mytable order by i",
+		Query:    "SELECT BIT_LENGTH(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{0},
+			{64},
 		},
 	},
 	// TODO: add additional tests for other functions
