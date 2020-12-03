@@ -1395,6 +1395,7 @@ var QueryTests = []QueryTest{
 			{0},
 		},
 	},
+	// TODO: add additional tests for other functions
 	{
 		Query:    "SELECT * FROM mytable WHERE 1 > 5",
 		Expected: nil,
