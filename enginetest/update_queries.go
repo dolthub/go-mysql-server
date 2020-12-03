@@ -182,55 +182,55 @@ func newUpdateResult(matched, updated int) sql.OkResult {
 
 var UpdateErrorTests = []GenericErrorQueryTest{
 	{
-		Name:     "invalid table",
-		Query:    "UPDATE doesnotexist SET i = 0;",
+		Name:  "invalid table",
+		Query: "UPDATE doesnotexist SET i = 0;",
 	},
 	{
-		Name:     "missing binding",
-		Query:    "UPDATE mytable SET i = ?;",
+		Name:  "missing binding",
+		Query: "UPDATE mytable SET i = ?;",
 	},
 	{
-		Name:     "wrong number of columns",
-		Query:    `UPDATE mytable SET i = ("one", "two");`,
+		Name:  "wrong number of columns",
+		Query: `UPDATE mytable SET i = ("one", "two");`,
 	},
 	{
-		Name:     "type mismatch: string -> int",
-		Query:    `UPDATE mytable SET i = "one"`,
+		Name:  "type mismatch: string -> int",
+		Query: `UPDATE mytable SET i = "one"`,
 	},
 	{
-		Name:     "type mismatch: string -> float",
-		Query:    `UPDATE floattable SET f64 = "one"`,
+		Name:  "type mismatch: string -> float",
+		Query: `UPDATE floattable SET f64 = "one"`,
 	},
 	{
-		Name:     "type mismatch: string -> uint",
-		Query:    `UPDATE typestable SET f64 = "one"`,
+		Name:  "type mismatch: string -> uint",
+		Query: `UPDATE typestable SET f64 = "one"`,
 	},
 	{
-		Name:     "invalid column set",
-		Query:    "UPDATE mytable SET z = 0;",
+		Name:  "invalid column set",
+		Query: "UPDATE mytable SET z = 0;",
 	},
 	{
-		Name:     "invalid column set value",
-		Query:    "UPDATE mytable SET i = z;",
+		Name:  "invalid column set value",
+		Query: "UPDATE mytable SET i = z;",
 	},
 	{
-		Name:     "invalid column where",
-		Query:    "UPDATE mytable SET s = 'hi' WHERE z = 1;",
+		Name:  "invalid column where",
+		Query: "UPDATE mytable SET s = 'hi' WHERE z = 1;",
 	},
 	{
-		Name:     "invalid column order by",
-		Query:    "UPDATE mytable SET s = 'hi' ORDER BY z;",
+		Name:  "invalid column order by",
+		Query: "UPDATE mytable SET s = 'hi' ORDER BY z;",
 	},
 	{
-		Name:     "negative limit",
-		Query:    "UPDATE mytable SET s = 'hi' LIMIT -1;",
+		Name:  "negative limit",
+		Query: "UPDATE mytable SET s = 'hi' LIMIT -1;",
 	},
 	{
-		Name:     "negative offset",
-		Query:    "UPDATE mytable SET s = 'hi' LIMIT 1 OFFSET -1;",
+		Name:  "negative offset",
+		Query: "UPDATE mytable SET s = 'hi' LIMIT 1 OFFSET -1;",
 	},
 	{
-		Name:     "set null on non-nullable",
-		Query:    "UPDATE mytable SET s = NULL;",
+		Name:  "set null on non-nullable",
+		Query: "UPDATE mytable SET s = NULL;",
 	},
 }

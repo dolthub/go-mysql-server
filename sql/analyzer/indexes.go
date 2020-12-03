@@ -53,10 +53,7 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 		defer indexAnalyzer.releaseUsedIndexes()
 
 		var result indexLookupsByTable
-		filterExpression, err := convertIsNullForIndexes(filter.Expression)
-		if err != nil {
-			return false
-		}
+		filterExpression := convertIsNullForIndexes(filter.Expression)
 		result, err = getIndexes(ctx, a, indexAnalyzer, filterExpression, exprAliases, tableAliases)
 		if err != nil {
 			return false
@@ -212,17 +209,6 @@ func getIndexes(
 		}
 	case *expression.IsNull:
 		return getIndexes(ctx, a, ia, expression.NewEquals(e.Child, expression.NewLiteral(nil, sql.Null)), exprAliases, tableAliases)
-		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e.Child)...)
-		if idx != nil {
-			lookup, err := idx.Get(nil)
-			if err != nil {
-				return result, err
-			}
-			result[idx.Table()] = &indexLookup{
-				indexes: []sql.Index{idx},
-				lookup:  lookup,
-			}
-		}
 	case *expression.Not:
 		r, err := getNegatedIndexes(ctx, a, ia, e, exprAliases, tableAliases)
 		if err != nil {
@@ -563,30 +549,6 @@ func getNegatedIndexes(
 				),
 			),
 			exprAliases, tableAliases)
-
-		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(exprAliases, tableAliases, e)...)
-		if idx == nil {
-			return nil, nil
-		}
-
-		index, ok := idx.(sql.NegateIndex)
-		if !ok {
-			return nil, nil
-		}
-
-		lookup, err := index.Not(nil)
-		if err != nil || lookup == nil {
-			return nil, err
-		}
-
-		result := indexLookupsByTable{
-			idx.Table(): {
-				indexes: []sql.Index{idx},
-				lookup:  lookup,
-			},
-		}
-
-		return result, nil
 	case *expression.GreaterThan:
 		lte := expression.NewLessThanOrEqual(e.Left(), e.Right())
 		return getIndexes(ctx, a, ia, lte, exprAliases, tableAliases)
@@ -957,12 +919,13 @@ func canMergeIndexes(a, b sql.IndexLookup) bool {
 
 // convertIsNullForIndexes converts all nested IsNull(col) expressions to Equals(col, nil) expressions, as they are
 // equivalent as far as the index interfaces are concerned.
-func convertIsNullForIndexes(e sql.Expression) (sql.Expression, error) {
-	return expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
+func convertIsNullForIndexes(e sql.Expression) sql.Expression {
+	expr, _ := expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
 		isNull, ok := e.(*expression.IsNull)
 		if !ok {
 			return e, nil
 		}
 		return expression.NewEquals(isNull.Child, expression.NewLiteral(nil, sql.Null)), nil
 	})
+	return expr
 }

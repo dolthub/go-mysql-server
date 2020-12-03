@@ -151,7 +151,11 @@ func (u *UnmergeableIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, er
 	var exprs []sql.Expression
 	for exprI, expr := range u.idx.Exprs {
 		lit, typ := getType(u.key[exprI])
-		exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(lit, typ)))
+		if typ == sql.Null {
+			exprs = append(exprs, expression.NewIsNull(expr))
+		} else {
+			exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(lit, typ)))
+		}
 	}
 
 	return &indexValIter{
