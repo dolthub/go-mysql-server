@@ -88,7 +88,7 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT HEX(123)`,
+		Query: `SELECT utc_timestamp`,
 		Expected: []sql.Row{
 			{"7B"},
 		},

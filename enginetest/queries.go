@@ -1526,6 +1526,18 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT CURRENT_USER()`,
+		Expected: []sql.Row{
+			{"user"},
+		},
+	},
+	{
+		Query: `SELECT CURRENT_USER`,
+		Expected: []sql.Row{
+			{"user"},
+		},
+	},
+	{
 		Query: `SHOW VARIABLES`,
 		Expected: []sql.Row{
 			{"autocommit", int64(0)},
