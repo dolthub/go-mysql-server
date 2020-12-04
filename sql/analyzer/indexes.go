@@ -759,6 +759,7 @@ func groupExpressionsByOperator(exprs []joinColExpr) [][]joinColExpr {
 // comparandCol refers to `col2`
 // comparison refers to `col1 + 1 > col2 - 1`
 // indexes contains any indexes onto col1's table that can be used during the join
+// TODO: rename
 type joinColExpr struct {
 	// The field (column) being evaluated, which may not be the entire term in the comparison
 	col *expression.GetField

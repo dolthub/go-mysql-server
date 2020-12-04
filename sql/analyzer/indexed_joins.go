@@ -269,8 +269,9 @@ func lexicalTableOrder(node sql.Node) []NameableNode {
 	}
 }
 
+// joinTreeToNodes transforms the simplified join tree given into a real tree of IndexedJoin nodes.
 func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode) sql.Node {
-	if len(tree.table) > 0 {
+	if tree.isLeaf() {
 		return tablesByName[tree.table]
 	}
 
@@ -279,8 +280,8 @@ func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode)
 	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond)
 }
 
-// createPrimaryTableExpr returns a slice of expressions to be used when evaluating a row in the primary table to
-// assemble a lookup key in a secondary table. Column expressions must match the declared column order of the index.
+// createIndexLookupKeyExpression returns a slice of expressions to be used when evaluating the context row given to the
+// RowIter method of an IndexedTableAccess node. Column expressions must match the declared column order of the index.
 func createIndexLookupKeyExpression(
 		ji *joinIndex,
 		exprAliases ExprAliases,
@@ -330,6 +331,7 @@ type joinIndex struct {
 type joinIndexes []*joinIndex
 type joinIndexesByTable map[string]joinIndexes
 
+// getUsableIndex returns an index that can be satisfied by the schema given, or nil if no such index exists.
 func (j joinIndexes) getUsableIndex(schema sql.Schema) *joinIndex {
 	for _, joinIndex := range j {
 		if joinIndex.index == nil {
@@ -353,6 +355,7 @@ func (j joinIndexes) getUsableIndex(schema sql.Schema) *joinIndex {
 	return nil
 }
 
+// schemaContainsField returns whether the schema given has a GetField expression with the column and table name given.
 func schemaContainsField(schema sql.Schema, field *expression.GetField) bool {
 	for _, col := range schema {
 		if strings.ToLower(col.Source) == strings.ToLower(field.Table()) &&
@@ -363,14 +366,15 @@ func schemaContainsField(schema sql.Schema, field *expression.GetField) bool {
 	return false
 }
 
+// joinCond is a simplified structure to capture information about a join relevant to query planning.
 type joinCond struct {
 	cond           sql.Expression
 	joinType       plan.JoinType
 	rightHandTable string
 }
 
-// findJoinExprsByTable inspects the Node given for Join nodes, groups all join conditions by table, and assigns
-// potential indexes to them.
+// findJoinIndexesByTable inspects the Node given for Join nodes, and returns a slice of joinIndexes for each table
+// present.
 func findJoinIndexesByTable(
 		ctx *sql.Context,
 		node sql.Node,
@@ -419,8 +423,7 @@ func findJoinIndexesByTable(
 	return joinIndexesByTable, err
 }
 
-// getIndexableJoinExprsByTable returns a map of table name to a slice of joinColExpr on that table, with any potential
-// indexes assigned to the expression.
+// getJoinIndexesByTable returns a map of table name to a slice of joinIndex on that table
 func getJoinIndexesByTable(
 		ctx *sql.Context,
 		a *Analyzer,
@@ -454,7 +457,6 @@ func (ji joinIndexesByTable) flattenJoinConds() []*joinCond {
 	joinConditions := make([]*joinCond, 0)
 	for _, joinIndexes := range ji {
 		for _, joinIndex := range joinIndexes {
-			// TODO: isPresent may be redundant after adding join position check
 			if joinIndex.joinPosition != plan.JoinTypeRight && !joinCondPresent(joinIndex.joinCond, joinConditions) {
 				joinConditions = append(joinConditions, &joinCond{joinIndex.joinCond, joinIndex.joinType, joinIndex.table})
 			}
@@ -463,6 +465,7 @@ func (ji joinIndexesByTable) flattenJoinConds() []*joinCond {
 	return joinConditions
 }
 
+// joinCondPresent returns whether a join condition with the expression given is present in the slice given
 func joinCondPresent(e sql.Expression, jcs []*joinCond) bool {
 	for _, jc := range jcs {
 		if reflect.DeepEqual(e, jc.cond) {
@@ -472,10 +475,10 @@ func joinCondPresent(e sql.Expression, jcs []*joinCond) bool {
 	return false
 }
 
-// getIndexableJoinExprs examines the join condition expression given and returns it mapped by table name with
+// getJoinIndexes examines the join condition expression given and returns it mapped by table name with
 // potential indexes assigned. Only = and AND expressions composed solely of = predicates are supported.
 // TODO: any conjunctions will only get an index applied if their terms correspond 1:1 with the columns of an index on
-//  that table. We could also attempt to apply individual terms of such conjunctions to indexes.
+//  that table. We could also attempt to apply subsets of the terms of such conjunctions to indexes.
 func getJoinIndexes(
 		ctx *sql.Context,
 		a *Analyzer,
@@ -510,7 +513,7 @@ func getJoinIndexes(
 	return nil, nil
 }
 
-// Returns the left and right indexes for the two sides of the equality expression given.
+// getEqualityIndexes returns the left and right indexes for the two sides of the equality expression given.
 func getEqualityIndexes(
 		ctx *sql.Context,
 		a *Analyzer,
@@ -577,9 +580,9 @@ func getEqualityIndexes(
 	return leftJoinIndex, rightJoinIndex
 }
 
-// getMultiColumnJoinIndex examines the join predicates given and attempts to use all the predicates mentioning each
-// table to apply a single, multi-column index on that table. Expressions without indexes assigned are returned if no
-// indexes for a particular table can be applied.
+// getJoinIndex examines the join predicates given and attempts to use all the predicates mentioning each table to
+// apply a single, multi-column index on that table. Then a single joinIndex for each table mentioned in the predicates
+// is returned in a map, keyed by the table name.
 func getJoinIndex(
 		ctx *sql.Context,
 		joinCond joinCond,
@@ -599,7 +602,7 @@ func getJoinIndex(
 	return indexesByTable
 }
 
-// converts a slice of joinColExpr on a single table to a single *joinIndex
+// colExprsToJoinIndex converts a slice of joinColExpr on a single table to a single *joinIndex
 func colExprsToJoinIndex(table string, idx sql.Index, joinCond joinCond, colExprs joinColExprs) *joinIndex {
 	cols := make([]*expression.GetField, len(colExprs))
 	cmpCols := make([]*expression.GetField, len(colExprs))
