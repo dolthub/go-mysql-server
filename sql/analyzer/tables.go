@@ -105,8 +105,10 @@ func getUnaliasedTableNames(n sql.Node) []string {
 		switch x := node.(type) {
 		case *plan.UnresolvedTable:
 			names = append(names, x.Name())
+			return false
 		case *plan.ResolvedTable:
 			names = append(names, x.Name())
+			return false
 		}
 
 		return true
