@@ -131,31 +131,21 @@ func colsIncludeTable(cols []*expression.GetField, table string) bool {
 }
 
 // Generates all permutations of the slice given.
-func permutations(ints []int) [][]int{
-	var helper func([]int, int)
-	var res [][]int
-
-	helper = func(arr []int, n int){
-		if n == 1{
-			tmp := make([]int, len(arr))
-			copy(tmp, arr)
-			res = append(res, tmp)
+func permutations(a []int) (res [][]int) {
+	var helper func(n int)
+	helper = func(n int) {
+		if n > len(a) {
+			res = append(res, append([]int(nil), a...))
 		} else {
-			for i := 0; i < n; i++{
-				helper(arr, n - 1)
-				if n % 2 == 1{
-					tmp := arr[i]
-					arr[i] = arr[n - 1]
-					arr[n - 1] = tmp
-				} else {
-					tmp := arr[0]
-					arr[0] = arr[n - 1]
-					arr[n - 1] = tmp
-				}
+			helper(n + 1)
+			for i := n + 1; i < len(a); i++ {
+				a[n], a[i] = a[i], a[n]
+				helper(n + 1)
+				a[i], a[n] = a[n], a[i]
 			}
 		}
 	}
-	helper(ints, len(ints))
+	helper(0)
 	return res
 }
 
@@ -343,8 +333,6 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 	// go into this list.
 	children := make([]*joinSearchNode, 0)
 
-	debugLog("parent %s\n", parent)
-
 	// If we have a parent to assign them to, consider returning tables as nodes. Otherwise, skip them.
 	if parent != nil {
 		// Find all tables mentioned in join nodes up to the root of the tree. We can't add any tables that aren't in this
@@ -370,7 +358,6 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 				parent: parent.copy(),
 			}
 			if parent.withChild(childNode).tableOrderCorrect() {
-				debugLog("adding child %s\n", childNode)
 				children = append(children, childNode)
 			}
 		}
@@ -385,7 +372,6 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 		paramsCopy := params.copy()
 		paramsCopy.usedJoinCondsIndexes = append(paramsCopy.usedJoinCondsIndexes, i)
 
-		debugLog("Using cond %s\n", cond.cond)
 		candidate := &joinSearchNode{
 			joinCond: cond,
 			parent:   parent,
@@ -394,44 +380,29 @@ func searchJoins(parent *joinSearchNode, params *joinSearchParams) []*joinSearch
 
 		// For each of the left and right branch, find all possible children, add all valid subtrees to the list
 		candidate = candidate.targetLeft()
-		debugLog("searching left on %s\n", cond.cond)
 		leftChildren := searchJoins(candidate, paramsCopy)
 
 		// pay attention to variable shadowing in this block
 		for _, left := range leftChildren {
 			if !isValidJoinSubTree(left) {
-				debugLog("rejected left subtree %s\n", left)
 				continue
 			}
 			candidate := candidate.withChild(left).targetRight()
 			candidate.params = candidate.accumulateAllUsed()
-			debugLog("searching right on %s using left = %s\n", cond.cond, left)
 			rightChildren := searchJoins(candidate, paramsCopy)
 			for _, right := range rightChildren {
 				if !isValidJoinSubTree(right) {
-					debugLog("rejected right subtree %s\n", right)
 					continue
 				}
 				candidate := candidate.withChild(right)
 				if isValidJoinSubTree(candidate) {
-					debugLog("adding child %s\n", candidate)
 					children = append(children, candidate)
-				} else {
-					debugLog("rejected child %s\n", candidate)
 				}
 			}
 		}
 	}
 
-	debugLog("Returning\n")
 	return children
-}
-
-const debugJoinPlan = false
-func debugLog(msg string, args ...interface{}) {
-	if debugJoinPlan {
-		fmt.Printf(msg, args...)
-	}
 }
 
 // tableOrderCorrect returns whether the tables in this subtree appear in a valid order.
