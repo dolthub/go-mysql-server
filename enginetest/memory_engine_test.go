@@ -105,23 +105,23 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var scripts = []enginetest.ScriptTest {
 		{
 			Name: "3 tables, linear join",
 			SetUpScript: []string{
-				"create table a (xa int primary key, ya int)",
-				"create table b (xb int primary key, yb int)",
-				"create table c (xc int primary key, yc int)",
-				"insert into a values (1,1)",
-				"insert into b values (1,1)",
-				"insert into c values (1,1)",
+				"create table a (xa int primary key, ya int, za int)",
+				"create table b (xb int primary key, yb int, zb int)",
+				"create table c (xc int primary key, yc int, zc int)",
+				"insert into a values (1,2,3)",
+				"insert into b values (1,2,3)",
+				"insert into c values (1,2,3)",
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query: "select xa from a join b on ya = xb join c on xc = xb",
-					Expected: []sql.Row{{1}},
+					Query: "select ya from a join b on ya - 1= xb join c on xc = zb - 2",
+					Expected: []sql.Row{{2}},
 				},
 			},
 		},
@@ -226,7 +226,7 @@ func TestDeleteFromErrors(t *testing.T) {
 }
 
 func TestScripts(t *testing.T) {
-	enginetest.TestScripts(t, enginetest.NewDefaultMemoryHarness())
+	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestTriggers(t *testing.T) {
