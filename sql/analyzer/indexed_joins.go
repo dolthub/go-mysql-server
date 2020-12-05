@@ -47,6 +47,12 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return nil, err
 	}
 
+	// If we didn't identify a join condition for every table, we can't construct a join plan safely (we would be missing
+	// some tables / conditions)
+	if len(joinIndexesByTable) != len(getTables(n)) {
+		return n, nil
+	}
+
 	return replaceJoinPlans(a, n, scope, joinIndexesByTable, exprAliases, tableAliases)
 }
 
@@ -420,7 +426,7 @@ func findJoinIndexesByTable(
 			defer indexAnalyzer.releaseUsedIndexes()
 
 			// then get all possible indexes based on the conds for all tables (using the topmost table as a starting point)
-			joinIndexesByTable, err = getJoinIndexesByTable(ctx, a, indexAnalyzer, conds, exprAliases, tableAliases)
+			joinIndexesByTable = getJoinIndexesByTable(ctx, a, indexAnalyzer, conds, exprAliases, tableAliases)
 			return false
 		}
 
@@ -438,18 +444,19 @@ func getJoinIndexesByTable(
 		joinConds []joinCond,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
-) (joinIndexesByTable, error) {
+) joinIndexesByTable {
 
 	result := make(joinIndexesByTable)
 	for _, cond := range joinConds {
-		indexes, err := getJoinIndexes(ctx, a, ia, cond, exprAliases, tableAliases)
-		if err != nil {
-			return nil, err
+		indexes := getJoinIndexes(ctx, a, ia, cond, exprAliases, tableAliases)
+		// If we can't find a join index for any condition, abandon the optimization
+		if len(indexes) == 0 {
+			return nil
 		}
 		result.merge(indexes)
 	}
 
-	return result, nil
+	return result
 }
 
 // merge merges the indexes with the ones given
@@ -493,31 +500,34 @@ func getJoinIndexes(
 		joinCond joinCond,
 		exprAliases ExprAliases,
 		tableAliases TableAliases,
-) (joinIndexesByTable, error) {
+) joinIndexesByTable {
 
 	switch joinCond.cond.(type) {
 	case *expression.Equals:
 		result := make(joinIndexesByTable)
 		left, right := getEqualityIndexes(ctx, a, ia, joinCond, exprAliases, tableAliases)
-		if left != nil {
-			result[left.table] = append(result[left.table], left)
+
+		// If we can't identify a join index for this condition, return nothing.
+		if left == nil || right == nil {
+			return nil
 		}
-		if right != nil {
-			result[right.table] = append(result[right.table], right)
-		}
-		return result, nil
+
+		result[left.table] = append(result[left.table], left)
+		result[right.table] = append(result[right.table], right)
+		return result
 	case *expression.And:
 		exprs := splitConjunction(joinCond.cond)
 		for _, expr := range exprs {
 			if _, ok := expr.(*expression.Equals); !ok {
-				return nil, nil
+				return nil
 			}
 		}
 
-		return getJoinIndex(ctx, joinCond, exprs, ia, exprAliases, tableAliases), nil
+		return getJoinIndex(ctx, joinCond, exprs, ia, exprAliases, tableAliases)
 	}
+	// TODO: handle additional kinds of expressions other than equality
 
-	return nil, nil
+	return nil
 }
 
 // getEqualityIndexes returns the left and right indexes for the two sides of the equality expression given.
@@ -534,9 +544,6 @@ func getEqualityIndexes(
 	if !ok {
 		return nil, nil
 	}
-
-	// TODO: this needs to be made more fool proof. Every table needs a join condition, but not necessarily an index. Or
-	//  else we need to guarantee that we return the original tree if we have a miss here.
 
 	// Only handle column expressions for these join indexes. Evaluable expression like `col=literal` will get pushed
 	// down where possible.
