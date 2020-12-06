@@ -3047,8 +3047,17 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
-						JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk-1=tpk.pk2 
-						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1
+						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2 
+						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
+						ORDER BY 1`,
+		Expected: []sql.Row{
+			{1, 1, 0, 0, 1},
+		},
+	},
+	{
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
+						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2 
+						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
 						ORDER BY 1`,
 		Expected: []sql.Row{
 			{1, 1, 0, 0, 1},

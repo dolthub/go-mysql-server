@@ -166,6 +166,22 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
+						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2 
+						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
+						ORDER BY 1`,
+		ExpectedPlan: "Sort(one_pk.pk ASC)\n" +
+			" └─ Project(one_pk.pk, tpk.pk1, tpk2.pk1, tpk.pk2, tpk2.pk2)\n" +
+			"     └─ IndexedJoin(one_pk.pk - 1 = tpk2.pk1 AND one_pk.pk = tpk2.pk2)\n" +
+			"         ├─ IndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk - 1 = tpk.pk2)\n" +
+			"         │   ├─ Table(one_pk)\n" +
+			"         │   └─ TableAlias(tpk)\n" +
+			"         │       └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"         └─ TableAlias(tpk2)\n" +
+			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"",
+	},
+	{
 		Query: `SELECT pk FROM one_pk
 						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
