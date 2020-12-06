@@ -15,10 +15,9 @@
 package enginetest
 
 import (
+	"gopkg.in/src-d/go-errors.v1"
 	"math"
 	"time"
-
-	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -2251,7 +2250,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT i FROM mytable mt 
+		Query: `SELECT i FROM mytable mt
 						 WHERE (SELECT i FROM mytable where i = mt.i and i > 2) IS NOT NULL
 						 AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
 						 ORDER BY i`,
@@ -2260,7 +2259,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT i FROM mytable mt 
+		Query: `SELECT i FROM mytable mt
 						 WHERE (SELECT i FROM mytable where i = mt.i and i > 1) IS NOT NULL
 						 AND (SELECT i2 FROM othertable where i2 = i and i < 3) IS NOT NULL
 						 ORDER BY i`,
@@ -2269,7 +2268,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT i FROM mytable mt 
+		Query: `SELECT i FROM mytable mt
 						 WHERE (SELECT i FROM mytable where i = mt.i) IS NOT NULL
 						 AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
 						 ORDER BY i`,
@@ -2285,7 +2284,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT i FROM mytable 
+		Query: `SELECT i FROM mytable
 						 WHERE (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
 						 ORDER BY i`,
 		Expected: []sql.Row{
@@ -2293,7 +2292,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT i FROM mytable mt 
+		Query: `SELECT i FROM mytable mt
 						 WHERE (SELECT i2 FROM othertable ot where ot.i2 = mt.i) IS NOT NULL
 						 ORDER BY i`,
 		Expected: []sql.Row{
@@ -2366,7 +2365,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk),
 					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk)
 					FROM one_pk opk ORDER BY 1;`,
@@ -2378,10 +2377,10 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
 					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
-					FROM one_pk opk 
+					FROM one_pk opk
 					WHERE (SELECT min(pk) FROM one_pk WHERE pk > opk.pk) IS NOT NULL
 					ORDER BY max;`,
 		Expected: []sql.Row{
@@ -2391,9 +2390,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min 
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk) > 0
 					ORDER BY min;`,
@@ -2405,9 +2404,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min 
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk > opk.pk) > 0
 					ORDER BY min;`,
@@ -2418,9 +2417,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min 
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk > opk.pk) > 0
 					ORDER BY max;`,
@@ -2444,9 +2443,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min 
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
 					FROM one_pk opk ORDER BY min;`,
 		Expected: []sql.Row{
 			{3, 2, nil},
@@ -2465,9 +2464,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min 
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk)
 					ORDER BY min;`,
@@ -2557,7 +2556,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) IS NOT NULL ORDER BY x`,
 		Expected: []sql.Row{
 			{1, 0},
@@ -2566,7 +2565,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) IS NOT NULL ORDER BY max`,
 		Expected: []sql.Row{
 			{1, 0},
@@ -2575,7 +2574,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0 ORDER BY x`,
 		Expected: []sql.Row{
 			{2, 1},
@@ -2583,8 +2582,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
-						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
+						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
 						GROUP BY x ORDER BY x`,
 		Expected: []sql.Row{
 			{2, 1},
@@ -2592,8 +2591,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
-						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
+						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
 						GROUP BY (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
 		Expected: []sql.Row{
 			{2, 1},
@@ -2601,7 +2600,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk > opk.pk) > 0 ORDER BY x`,
 		Expected: []sql.Row{
 			{0, nil},
@@ -2610,12 +2609,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT min(pk) FROM one_pk WHERE pk < opk.pk) > 0 ORDER BY x`,
 		Expected: []sql.Row{},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT min(pk) FROM one_pk WHERE pk > opk.pk) > 0 ORDER BY x`,
 		Expected: []sql.Row{
 			{0, nil},
@@ -2624,9 +2623,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk1) FROM two_pk WHERE pk1 < pk) AS max,
-					(SELECT min(pk2) FROM two_pk WHERE pk2 > pk) AS min 
+					(SELECT min(pk2) FROM two_pk WHERE pk2 > pk) AS min
 					FROM one_pk ORDER BY min, pk;`,
 		Expected: []sql.Row{
 			{1, 0, nil},
@@ -2913,6 +2912,27 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{0, 0, 0},
 			{1, 1, 1},
+		},
+	},
+	{
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
+						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk-1=tpk.pk2 
+						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1
+						ORDER BY 1`,
+		Expected: []sql.Row{
+			{0,nil,nil,nil,nil},
+			{1,1,0,0,1},
+			{2,nil,nil, nil, nil},
+			{3,nil,nil, nil, nil},
+		},
+	},
+	{
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
+						JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk-1=tpk.pk2 
+						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1
+						ORDER BY 1`,
+		Expected: []sql.Row{
+			{1,1,0,0,1},
 		},
 	},
 	{
@@ -3303,6 +3323,32 @@ var BrokenQueries = []QueryTest{
 		Expected: []sql.Row{
 			{1, 1, 4},
 			{1, 1, 4},
+		},
+	},
+	// 3+ table joins with one LEFT join, one INNER join, have the wrong semantics according to MySQL. Should be 2 rows,
+	// but get 4.
+	{
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
+						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2 
+						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
+		Expected: []sql.Row{
+			{0,0,0,0,0},
+			{1,1,1,1,1},
+		},
+	},
+	// More broken RIGHT / LEFT semantics. Mysql gives these results, we give different ones.
+	{
+		Query: `SELECT pk,nt.i,nt2.i FROM one_pk
+						RIGHT JOIN niltable nt ON pk=nt.i
+						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
+						ORDER BY 3`,
+		Expected: []sql.Row {
+			{nil, nil, 1},
+			{1, 1, 2},
+			{2, 2, 3},
+			{3, 3, 4},
+			{nil, nil, 5},
+			{nil, nil, 6},
 		},
 	},
 }

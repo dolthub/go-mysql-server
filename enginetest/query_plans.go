@@ -152,6 +152,77 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT pk FROM one_pk
+						JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
+						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
+		ExpectedPlan: "Project(one_pk.pk)\n" +
+				" └─ IndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
+				"     ├─ Table(one_pk)\n" +
+				"     └─ IndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
+				"         ├─ TableAlias(tpk)\n" +
+				"         │   └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+				"         └─ TableAlias(tpk2)\n" +
+				"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+				"",
+	},
+	{
+		Query: `SELECT pk FROM one_pk
+						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
+						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
+		ExpectedPlan: "Project(one_pk.pk)\n" +
+			" └─ LeftIndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ LeftIndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
+			"         ├─ TableAlias(tpk)\n" +
+			"         │   └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"         └─ TableAlias(tpk2)\n" +
+			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"",
+	},
+	// TODO: this query actually produces an incorrect result, but the plan looks reasonable.
+	{
+		Query: `SELECT pk FROM one_pk
+						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
+						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
+		ExpectedPlan: "Project(one_pk.pk)\n" +
+				" └─ LeftIndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
+				"     ├─ Table(one_pk)\n" +
+				"     └─ IndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
+				"         ├─ TableAlias(tpk)\n" +
+				"         │   └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+				"         └─ TableAlias(tpk2)\n" +
+				"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+				"",
+	},
+	{
+		Query: `SELECT pk FROM one_pk
+						JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
+						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
+		ExpectedPlan: "Project(one_pk.pk)\n" +
+			" └─ IndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ LeftIndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
+			"         ├─ TableAlias(tpk)\n" +
+			"         │   └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"         └─ TableAlias(tpk2)\n" +
+			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT pk FROM one_pk 
+						RIGHT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
+						RIGHT JOIN two_pk tpk2 ON tpk.pk1=TPk2.pk2 AND tpk.pk2=TPK2.pk1`,
+		ExpectedPlan: "Project(one_pk.pk)\n" +
+			" └─ RightIndexedJoin(tpk.pk1 = tpk2.pk2 AND tpk.pk2 = tpk2.pk1)\n" +
+			"     ├─ TableAlias(tpk2)\n" +
+			"     │   └─ Table(two_pk)\n" +
+			"     └─ RightIndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
+			"         ├─ TableAlias(tpk)\n" +
+			"         │   └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"         └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			"",
+	},
+	{
 		Query: "SELECT i,pk1,pk2 FROM mytable JOIN two_pk ON i-1=pk1 AND i-2=pk2",
 		ExpectedPlan: "Project(mytable.i, two_pk.pk1, two_pk.pk2)\n" +
 			" └─ IndexedJoin(mytable.i - 1 = two_pk.pk1 AND mytable.i - 2 = two_pk.pk2)\n" +
@@ -181,6 +252,20 @@ var PlanTests = []QueryPlanTest{
 			" └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"     ├─ Table(niltable)\n" +
 			"     └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			"",
+	},
+	{
+		Query: `SELECT pk,nt.i,nt2.i FROM one_pk 
+						RIGHT JOIN niltable nt ON pk=nt.i
+						RIGHT JOIN niltable nt2 ON pk=nt2.i + 1`,
+		ExpectedPlan: "Project(one_pk.pk, nt.i, nt2.i)\n" +
+			" └─ RightIndexedJoin(one_pk.pk = nt.i)\n" +
+			"     ├─ TableAlias(nt)\n" +
+			"     │   └─ Table(niltable)\n" +
+			"     └─ RightIndexedJoin(one_pk.pk = nt2.i + 1)\n" +
+			"         ├─ TableAlias(nt2)\n" +
+			"         │   └─ Table(niltable)\n" +
+			"         └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
 	{

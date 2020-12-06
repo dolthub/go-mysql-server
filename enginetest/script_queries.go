@@ -198,6 +198,25 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "4 tables, left join, indexes on all tables",
+		SetUpScript: []string{
+			"create table a (xa int primary key, ya int, za int)",
+			"create table b (xb int primary key, yb int, zb int)",
+			"create table c (xc int primary key, yc int, zc int)",
+			"create table d (xd int primary key, yd int, zd int)",
+			"insert into a values (1,2,3)",
+			"insert into b values (1,2,3)",
+			"insert into c values (1,2,3)",
+			"insert into d values (1,2,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select xa from a left join b on ya = yb left join c on yb = yc left join d on yc - 1 = xd",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
 		Name: "4 tables, linear join, index on B, D",
 		SetUpScript: []string{
 			"create table a (xa int primary key, ya int, za int)",

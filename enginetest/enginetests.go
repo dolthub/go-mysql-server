@@ -2669,7 +2669,7 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 	widenedRows := WidenRows(rows)
 	widenedExpected := WidenRows(expected)
 
-	orderBy := strings.Contains(strings.ToUpper(q), " ORDER BY ")
+	orderBy := strings.Contains(strings.ToUpper(q), "ORDER BY ")
 
 	// .Equal gives better error messages than .ElementsMatch, so use it when possible
 	if orderBy || len(expected) <= 1 {

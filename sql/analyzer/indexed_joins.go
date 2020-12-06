@@ -253,7 +253,7 @@ func replanJoin(node plan.JoinNode, a *Analyzer, joinIndexes joinIndexesByTable,
 	tableOrder := orderTables(tables, tablesByName, joinIndexes)
 
 	// Then use that order to construct a join tree
-	joinTree := buildJoinTree(tableOrder, joinIndexes.flattenJoinConds())
+	joinTree := buildJoinTree(tableOrder, joinIndexes.flattenJoinConds(tableOrder))
 
 	// This shouldn't happen, but better to fail gracefully if it does
 	if joinTree == nil {
@@ -466,11 +466,16 @@ func (ji joinIndexesByTable) merge(other joinIndexesByTable) {
 	}
 }
 
-// flattenJoinConds returns the set of distinct join conditions in the collection in an arbitrary order.
-func (ji joinIndexesByTable) flattenJoinConds() []*joinCond {
+// flattenJoinConds returns the set of distinct join conditions in the collection. A table order must be given to ensure
+// that the order of the conditions returned is deterministic for a given table order.
+func (ji joinIndexesByTable) flattenJoinConds(tableOrder []string) []*joinCond {
+	if len(tableOrder) != len(ji) {
+		panic("Inconsistent table order for flattenJoinConds")
+	}
+
 	joinConditions := make([]*joinCond, 0)
-	for _, joinIndexes := range ji {
-		for _, joinIndex := range joinIndexes {
+	for _, table := range tableOrder {
+		for _, joinIndex := range ji[table] {
 			if joinIndex.joinPosition != plan.JoinTypeRight && !joinCondPresent(joinIndex.joinCond, joinConditions) {
 				joinConditions = append(joinConditions, &joinCond{joinIndex.joinCond, joinIndex.joinType, joinIndex.table})
 			}
