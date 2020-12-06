@@ -1018,7 +1018,7 @@ var QueryTests = []QueryTest{
 			FROM mytable tbl
 		) t
 		GROUP BY fi
-		ORDER BY COUNT(*) ASC`,
+		ORDER BY COUNT(*) ASC, fi`,
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(1)},
@@ -1031,7 +1031,7 @@ var QueryTests = []QueryTest{
 			FROM mytable tbl
 		) t
 		GROUP BY fi
-		ORDER BY COUNT(*) ASC`,
+		ORDER BY COUNT(*) ASC, fi`,
 		Expected: []sql.Row{
 			{int64(1), "first row"},
 			{int64(1), "second row"},
@@ -2010,7 +2010,7 @@ var QueryTests = []QueryTest{
 			FROM mytable
 			GROUP BY i
 		) AS q
-		ORDER BY foo DESC
+		ORDER BY foo DESC, i ASC
 		`,
 		Expected: []sql.Row{
 			{int64(1), int64(1)},
@@ -2253,7 +2253,7 @@ var QueryTests = []QueryTest{
 		) AS expr_qry
 		GROUP BY s
 		HAVING ((AVG(i) > 0))
-		ORDER BY count DESC
+		ORDER BY count DESC, s ASC
 		LIMIT 10000`,
 		Expected: []sql.Row{
 			{"first row", int64(1), float64(1)},
@@ -3718,8 +3718,8 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"auto_increment_tbl"},
 			{"bigtable"},
-			{"floattable"},
 			{"fk_tbl"},
+			{"floattable"},
 			{"mytable"},
 			{"myview"},
 			{"newlinetable"},
