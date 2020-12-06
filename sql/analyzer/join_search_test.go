@@ -16,17 +16,19 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestBuildJoinTree(t *testing.T) {
 	type joinTreeTest struct {
-		name string
+		name       string
 		tableOrder []string
 		joinConds  []*joinCond
-		joinTree *joinSearchNode
+		joinTree   *joinSearchNode
 	}
 
 	// These tests are a little fragile: for many of these joins, there is more than one correct join tree.
@@ -163,7 +165,7 @@ func TestBuildJoinTree(t *testing.T) {
 			},
 			joinTree: &joinSearchNode{
 				joinCond: jc("A", "C"),
-				left: jt("C"),
+				left:     jt("C"),
 				right: &joinSearchNode{
 					joinCond: jc("A", "B"),
 					left:     jt("B"),
@@ -180,7 +182,7 @@ func TestBuildJoinTree(t *testing.T) {
 			},
 			joinTree: &joinSearchNode{
 				joinCond: jc("A", "B"),
-				left: jt("B"),
+				left:     jt("B"),
 				right: &joinSearchNode{
 					joinCond: jc("A", "C"),
 					left:     jt("A"),
@@ -276,7 +278,7 @@ func TestBuildJoinTree(t *testing.T) {
 			},
 			joinTree: &joinSearchNode{
 				joinCond: jc("C", "D"),
-				left: jt("D"),
+				left:     jt("D"),
 				right: &joinSearchNode{
 					joinCond: jc("A", "B"),
 					left:     jt("A"),
@@ -329,7 +331,7 @@ func TestBuildJoinTree(t *testing.T) {
 					},
 					right: jt("C"),
 				},
-				right:     jt("D"),
+				right: jt("D"),
 			},
 		},
 		{
@@ -342,7 +344,7 @@ func TestBuildJoinTree(t *testing.T) {
 			},
 			joinTree: &joinSearchNode{
 				joinCond: jc("A", "B"),
-				left: jt("B"),
+				left:     jt("B"),
 				right: &joinSearchNode{
 					joinCond: jc("A", "C"),
 					left: &joinSearchNode{
@@ -364,7 +366,7 @@ func TestBuildJoinTree(t *testing.T) {
 			},
 			joinTree: &joinSearchNode{
 				joinCond: jc("A", "C"),
-				left: jt("C"),
+				left:     jt("C"),
 				right: &joinSearchNode{
 					joinCond: jc("A", "D"),
 					left: &joinSearchNode{
@@ -386,10 +388,10 @@ func TestBuildJoinTree(t *testing.T) {
 			},
 			joinTree: &joinSearchNode{
 				joinCond: jc("A", "D"),
-				left: jt("D"),
+				left:     jt("D"),
 				right: &joinSearchNode{
 					joinCond: jc("A", "C"),
-					left: jt("C"),
+					left:     jt("C"),
 					right: &joinSearchNode{
 						joinCond: jc("A", "B"),
 						left:     jt("B"),
@@ -431,10 +433,10 @@ func TestBuildJoinTree(t *testing.T) {
 			},
 			joinTree: &joinSearchNode{
 				joinCond: jc("A", "B"),
-				left: jt("A"),
+				left:     jt("A"),
 				right: &joinSearchNode{
 					joinCond: jc("B", "C"),
-					left: jt("B"),
+					left:     jt("B"),
 					right: &joinSearchNode{
 						joinCond: jc("C", "D"),
 						left:     jt("C"),
@@ -458,7 +460,7 @@ func TestBuildJoinTree(t *testing.T) {
 			},
 			joinTree: &joinSearchNode{
 				joinCond: jc("D", "E"),
-				left: jt("E"),
+				left:     jt("E"),
 				right: &joinSearchNode{
 					joinCond: jc("C", "D"),
 					left: &joinSearchNode{
@@ -485,13 +487,13 @@ func TestBuildJoinTree(t *testing.T) {
 			},
 			joinTree: &joinSearchNode{
 				joinCond: jc("B", "C"),
-				left: jt("B"),
+				left:     jt("B"),
 				right: &joinSearchNode{
 					joinCond: jc("D", "C"),
-					left: jt("D"),
+					left:     jt("D"),
 					right: &joinSearchNode{
 						joinCond: jc("A", "C"),
-						left: jt("A"),
+						left:     jt("A"),
 						right: &joinSearchNode{
 							joinCond: jc("E", "C"),
 							left:     jt("C"),
@@ -516,7 +518,7 @@ func TestBuildJoinTree(t *testing.T) {
 					joinCond: jc("B", "C"),
 					left: &joinSearchNode{
 						joinCond: jc("B", "E"),
-						left: jt("E"),
+						left:     jt("E"),
 						right: &joinSearchNode{
 							joinCond: jc("B", "D"),
 							left:     jt("B"),
@@ -573,6 +575,6 @@ func jceq(leftTable string, rightTable string) sql.Expression {
 // jt == join table
 func jt(name string) *joinSearchNode {
 	return &joinSearchNode{
-		table:    name,
+		table: name,
 	}
 }

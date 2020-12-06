@@ -108,7 +108,7 @@ func TestSingleQuery(t *testing.T) {
 func TestSingleScript(t *testing.T) {
 	t.Skip()
 
-	var scripts = []enginetest.ScriptTest {
+	var scripts = []enginetest.ScriptTest{
 		{
 			Name: "4 tables, linear join, index on D",
 			SetUpScript: []string{
@@ -123,7 +123,7 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query: "select xa from a join b on ya = yb join c on yb = yc join d on yc - 1 = xd",
+					Query:    "select xa from a join b on ya = yb join c on yb = yc join d on yc - 1 = xd",
 					Expected: []sql.Row{{1}},
 				},
 			},

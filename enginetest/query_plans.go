@@ -156,14 +156,14 @@ var PlanTests = []QueryPlanTest{
 						JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
 		ExpectedPlan: "Project(one_pk.pk)\n" +
-				" └─ IndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
-				"     ├─ Table(one_pk)\n" +
-				"     └─ IndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
-				"         ├─ TableAlias(tpk)\n" +
-				"         │   └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
-				"         └─ TableAlias(tpk2)\n" +
-				"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
-				"",
+			" └─ IndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ IndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
+			"         ├─ TableAlias(tpk)\n" +
+			"         │   └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"         └─ TableAlias(tpk2)\n" +
+			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"",
 	},
 	{
 		Query: `SELECT pk FROM one_pk
@@ -185,14 +185,14 @@ var PlanTests = []QueryPlanTest{
 						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
 		ExpectedPlan: "Project(one_pk.pk)\n" +
-				" └─ LeftIndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
-				"     ├─ Table(one_pk)\n" +
-				"     └─ IndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
-				"         ├─ TableAlias(tpk)\n" +
-				"         │   └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
-				"         └─ TableAlias(tpk2)\n" +
-				"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
-				"",
+			" └─ LeftIndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ IndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
+			"         ├─ TableAlias(tpk)\n" +
+			"         │   └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"         └─ TableAlias(tpk2)\n" +
+			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"",
 	},
 	{
 		Query: `SELECT pk FROM one_pk

@@ -16,11 +16,12 @@ package analyzer
 
 import (
 	"fmt"
+	"math"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"math"
-	"strings"
 )
 
 // orderTables returns an access order for the tables provided, attempting to minimize total query cost
@@ -54,8 +55,8 @@ func orderTables(tables []NameableNode, tablesByName map[string]NameableNode, jo
 
 // buildJoinTree builds a join plan for the tables in the access order given, using the join expressions given.
 func buildJoinTree(
-		tableOrder []string,
-		joinConds []*joinCond,
+	tableOrder []string,
+	joinConds []*joinCond,
 ) *joinSearchNode {
 
 	rootNodes := searchJoins(nil, &joinSearchParams{
@@ -77,11 +78,11 @@ func buildJoinTree(
 // Estimates the cost of the table ordering given. Lower numbers are better. Bails out and returns cost so far if cost
 // exceeds lowest found so far. We could do this better if we had table and key statistics.
 func estimateTableOrderCost(
-		tables []string,
-		tableNodes map[string]NameableNode,
-		accessOrder []int,
-		joinIndexes joinIndexesByTable,
-		lowestCost int64,
+	tables []string,
+	tableNodes map[string]NameableNode,
+	accessOrder []int,
+	joinIndexes joinIndexesByTable,
+	lowestCost int64,
 ) int64 {
 	cost := int64(1)
 	var availableSchemaForKeys sql.Schema
@@ -98,7 +99,7 @@ func estimateTableOrderCost(
 		// referenced in the join condition can precede this one in that case.
 		for _, idx := range indexes {
 			if (idx.joinType == plan.JoinTypeLeft && idx.joinPosition == plan.JoinTypeLeft) ||
-					(idx.joinType == plan.JoinTypeRight && idx.joinPosition == plan.JoinTypeRight) {
+				(idx.joinType == plan.JoinTypeRight && idx.joinPosition == plan.JoinTypeRight) {
 				for j := 0; j < i; j++ {
 					otherTable := tables[accessOrder[j]]
 					if colsIncludeTable(idx.comparandCols, otherTable) {

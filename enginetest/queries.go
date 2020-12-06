@@ -15,9 +15,10 @@
 package enginetest
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
 	"math"
 	"time"
+
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -1321,97 +1322,97 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT SIN(i) from mytable order by i limit 1",
+		Query: "SELECT SIN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{0.8414709848078965},
 		},
 	},
 	{
-		Query:    "SELECT COS(i) from mytable order by i limit 1",
+		Query: "SELECT COS(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{0.5403023058681398},
 		},
 	},
 	{
-		Query:    "SELECT TAN(i) from mytable order by i limit 1",
+		Query: "SELECT TAN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{1.557407724654902},
 		},
 	},
 	{
-		Query:    "SELECT ASIN(i) from mytable order by i limit 1",
+		Query: "SELECT ASIN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{1.5707963267948966},
 		},
 	},
 	{
-		Query:    "SELECT ACOS(i) from mytable order by i limit 1",
+		Query: "SELECT ACOS(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{0.0},
 		},
 	},
 	{
-		Query:    "SELECT ATAN(i) from mytable order by i limit 1",
+		Query: "SELECT ATAN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{0.7853981633974483},
 		},
 	},
 	{
-		Query:    "SELECT COT(i) from mytable order by i limit 1",
+		Query: "SELECT COT(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{0.6420926159343308},
 		},
 	},
 	{
-		Query:    "SELECT DEGREES(i) from mytable order by i limit 1",
+		Query: "SELECT DEGREES(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{57.29577951308232},
 		},
 	},
 	{
-		Query:    "SELECT RADIANS(i) from mytable order by i limit 1",
+		Query: "SELECT RADIANS(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{0.017453292519943295},
 		},
 	},
 	{
-		Query:    "SELECT CRC32(i) from mytable order by i limit 1",
+		Query: "SELECT CRC32(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{uint64(0x83dcefb7)},
 		},
 	},
 	{
-		Query:    "SELECT SIGN(i) from mytable order by i limit 1",
+		Query: "SELECT SIGN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{1},
 		},
 	},
 	{
-		Query:    "SELECT ASCII(s) from mytable order by i limit 1",
+		Query: "SELECT ASCII(s) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{uint64(0x66)},
 		},
 	},
 	{
-		Query:    "SELECT HEX(s) from mytable order by i limit 1",
+		Query: "SELECT HEX(s) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{"666972737420726F77"},
 		},
 	},
 	{
-		Query:    "SELECT UNHEX(s) from mytable order by i limit 1",
+		Query: "SELECT UNHEX(s) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{nil},
 		},
 	},
 	{
-		Query:    "SELECT BIN(i) from mytable order by i limit 1",
+		Query: "SELECT BIN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{"1"},
 		},
 	},
 	{
-		Query:    "SELECT BIT_LENGTH(i) from mytable order by i limit 1",
+		Query: "SELECT BIT_LENGTH(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{64},
 		},
@@ -3038,10 +3039,10 @@ var QueryTests = []QueryTest{
 						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1
 						ORDER BY 1`,
 		Expected: []sql.Row{
-			{0,nil,nil,nil,nil},
-			{1,1,0,0,1},
-			{2,nil,nil, nil, nil},
-			{3,nil,nil, nil, nil},
+			{0, nil, nil, nil, nil},
+			{1, 1, 0, 0, 1},
+			{2, nil, nil, nil, nil},
+			{3, nil, nil, nil, nil},
 		},
 	},
 	{
@@ -3050,7 +3051,7 @@ var QueryTests = []QueryTest{
 						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1
 						ORDER BY 1`,
 		Expected: []sql.Row{
-			{1,1,0,0,1},
+			{1, 1, 0, 0, 1},
 		},
 	},
 	{
@@ -3450,8 +3451,8 @@ var BrokenQueries = []QueryTest{
 						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2 
 						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
 		Expected: []sql.Row{
-			{0,0,0,0,0},
-			{1,1,1,1,1},
+			{0, 0, 0, 0, 0},
+			{1, 1, 1, 1, 1},
 		},
 	},
 	// More broken RIGHT / LEFT semantics. Mysql gives these results, we give different ones.
@@ -3460,7 +3461,7 @@ var BrokenQueries = []QueryTest{
 						RIGHT JOIN niltable nt ON pk=nt.i
 						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
 						ORDER BY 3`,
-		Expected: []sql.Row {
+		Expected: []sql.Row{
 			{nil, nil, 1},
 			{1, 1, 2},
 			{2, 2, 3},

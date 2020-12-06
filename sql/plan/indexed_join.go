@@ -29,9 +29,9 @@ func (ij *IndexedJoin) JoinType() JoinType {
 
 func NewIndexedJoin(left, right sql.Node, joinType JoinType, cond sql.Expression) *IndexedJoin {
 	return &IndexedJoin{
-		BinaryNode:       BinaryNode{left, right},
-		joinType:         joinType,
-		Cond:             cond,
+		BinaryNode: BinaryNode{left, right},
+		joinType:   joinType,
+		Cond:       cond,
 	}
 }
 
@@ -79,12 +79,12 @@ func (ij *IndexedJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 func indexedJoinRowIter(
-		ctx *sql.Context,
-		parentRow sql.Row,
-		left sql.Node,
-		right sql.Node,
-		cond sql.Expression,
-		joinType JoinType,
+	ctx *sql.Context,
+	parentRow sql.Row,
+	left sql.Node,
+	right sql.Node,
+	cond sql.Expression,
+	joinType JoinType,
 ) (sql.RowIter, error) {
 	var leftName, rightName string
 	if leftTable, ok := left.(sql.Nameable); ok {
@@ -123,13 +123,13 @@ func indexedJoinRowIter(
 // indexedJoinIter is an iterator that iterates over every row in the primary table and performs an index lookup in
 // the secondary table for each value
 type indexedJoinIter struct {
-	parentRow            sql.Row
-	primary              sql.RowIter
-	primaryRow           sql.Row
-	secondaryProvider    sql.Node
-	secondary            sql.RowIter
-	cond                 sql.Expression
-	joinType             JoinType
+	parentRow         sql.Row
+	primary           sql.RowIter
+	primaryRow        sql.Row
+	secondaryProvider sql.Node
+	secondary         sql.RowIter
+	cond              sql.Expression
+	joinType          JoinType
 
 	ctx        *sql.Context
 	foundMatch bool

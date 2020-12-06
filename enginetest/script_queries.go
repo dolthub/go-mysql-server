@@ -120,7 +120,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select ya from a join b on ya - 1= xb join c on xc = zb - 2",
+				Query:    "select ya from a join b on ya - 1= xb join c on xc = zb - 2",
 				Expected: []sql.Row{{2}},
 			},
 		},
@@ -137,7 +137,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select za from a join b on ya - 1 = xb join c on xa = xc",
+				Query:    "select za from a join b on ya - 1 = xb join c on xa = xc",
 				Expected: []sql.Row{{3}},
 			},
 		},
@@ -154,7 +154,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select xa from a join b on xa = yb - 1 join c on yb - 1 = xc",
+				Query:    "select xa from a join b on xa = yb - 1 join c on yb - 1 = xc",
 				Expected: []sql.Row{{1}},
 			},
 		},
@@ -173,7 +173,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select xa from a join b on ya - 1 = xb join c on xb = xc join d on xc = xd",
+				Query:    "select xa from a join b on ya - 1 = xb join c on xb = xc join d on xc = xd",
 				Expected: []sql.Row{{1}},
 			},
 		},
@@ -192,7 +192,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select xa from a join b on ya = yb join c on yb = yc join d on yc - 1 = xd",
+				Query:    "select xa from a join b on ya = yb join c on yb = yc join d on yc - 1 = xd",
 				Expected: []sql.Row{{1}},
 			},
 		},
@@ -211,7 +211,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select xa from a left join b on ya = yb left join c on yb = yc left join d on yc - 1 = xd",
+				Query:    "select xa from a left join b on ya = yb left join c on yb = yc left join d on yc - 1 = xd",
 				Expected: []sql.Row{{1}},
 			},
 		},
@@ -230,7 +230,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select xa from a join b on ya - 1 = xb join c on yc = za - 1 join d on yc - 1 = xd",
+				Query:    "select xa from a join b on ya - 1 = xb join c on yc = za - 1 join d on yc - 1 = xd",
 				Expected: []sql.Row{{1}},
 			},
 		},
@@ -249,7 +249,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select xa from a join b on xa = xb join c on ya - 1 = xc join d on za - 2 = xd",
+				Query:    "select xa from a join b on xa = xb join c on ya - 1 = xc join d on za - 2 = xd",
 				Expected: []sql.Row{{1}},
 			},
 		},
@@ -288,7 +288,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select xa from d join a on yd - 1 = xa join c on zd - 2 = xc join b on xb = zd - 2",
+				Query:    "select xa from d join a on yd - 1 = xa join c on zd - 2 = xc join b on xb = zd - 2",
 				Expected: []sql.Row{{1}},
 			},
 		},

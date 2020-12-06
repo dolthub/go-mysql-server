@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -13,7 +14,7 @@ type AlterAutoIncrement struct {
 func NewAlterAutoIncrement(table sql.Node, autoVal int64) *AlterAutoIncrement {
 	return &AlterAutoIncrement{
 		UnaryNode: UnaryNode{Child: table},
-		autoVal:     autoVal,
+		autoVal:   autoVal,
 	}
 }
 
@@ -50,7 +51,7 @@ func (p *AlterAutoIncrement) WithChildren(children ...sql.Node) (sql.Node, error
 	return NewAlterAutoIncrement(children[0], p.autoVal), nil
 }
 
-func (p *AlterAutoIncrement) Schema() sql.Schema   { return nil }
+func (p *AlterAutoIncrement) Schema() sql.Schema { return nil }
 
 func (p AlterAutoIncrement) String() string {
 	pr := sql.NewTreePrinter()
