@@ -176,6 +176,8 @@ func replaceTableAccessWithIndexedAccess(
 		}
 
 		return plan.NewIndexedJoin(left, right, node.JoinType(), cond), replacedLeft || replacedRight, nil
+	case *plan.DescribeQuery:
+		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, exprAliases, tableAliases)
 	case *plan.Sort:
 		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, exprAliases, tableAliases)
 	case *plan.Filter:

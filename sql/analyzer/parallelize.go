@@ -40,8 +40,7 @@ func isDdlNode(node sql.Node) bool {
 		*plan.ShowDatabases, *plan.ShowCreateDatabase,
 		*plan.ShowColumns, *plan.ShowIndexes,
 		*plan.ShowProcessList, *plan.ShowTableStatus,
-		*plan.ShowVariables, *plan.ShowWarnings,
-		*plan.Describe:
+		*plan.ShowVariables, *plan.ShowWarnings:
 		return true
 	default:
 		return false
