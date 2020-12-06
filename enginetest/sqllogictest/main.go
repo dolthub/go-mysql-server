@@ -15,10 +15,12 @@
 package main
 
 import (
+	"os"
+
+	"github.com/dolthub/sqllogictest/go/logictest"
+
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/sqllogictest/harness"
-	"github.com/dolthub/sqllogictest/go/logictest"
-	"os"
 )
 
 func main() {

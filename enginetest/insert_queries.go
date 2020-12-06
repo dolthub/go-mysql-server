@@ -705,76 +705,76 @@ var InsertScripts = []ScriptTest{
 
 var InsertErrorTests = []GenericErrorQueryTest{
 	{
-		Name:     "too few values",
-		Query:    "INSERT INTO mytable (s, i) VALUES ('x');",
+		Name:  "too few values",
+		Query: "INSERT INTO mytable (s, i) VALUES ('x');",
 	},
 	{
-		Name:     "too many values one column",
-		Query:    "INSERT INTO mytable (s) VALUES ('x', 999);",
+		Name:  "too many values one column",
+		Query: "INSERT INTO mytable (s) VALUES ('x', 999);",
 	},
 	{
-		Name:     "missing binding",
-		Query:    "INSERT INTO mytable (s) VALUES (?);",
+		Name:  "missing binding",
+		Query: "INSERT INTO mytable (s) VALUES (?);",
 	},
 	{
-		Name:     "too many values two columns",
-		Query:    "INSERT INTO mytable (i, s) VALUES (999, 'x', 'y');",
+		Name:  "too many values two columns",
+		Query: "INSERT INTO mytable (i, s) VALUES (999, 'x', 'y');",
 	},
 	{
-		Name:     "too few values no columns specified",
-		Query:    "INSERT INTO mytable VALUES (999);",
+		Name:  "too few values no columns specified",
+		Query: "INSERT INTO mytable VALUES (999);",
 	},
 	{
-		Name:     "too many values no columns specified",
-		Query:    "INSERT INTO mytable VALUES (999, 'x', 'y');",
+		Name:  "too many values no columns specified",
+		Query: "INSERT INTO mytable VALUES (999, 'x', 'y');",
 	},
 	{
-		Name:     "non-existent column values",
-		Query:    "INSERT INTO mytable (i, s, z) VALUES (999, 'x', 999);",
+		Name:  "non-existent column values",
+		Query: "INSERT INTO mytable (i, s, z) VALUES (999, 'x', 999);",
 	},
 	{
-		Name:     "non-existent column set",
-		Query:    "INSERT INTO mytable SET i = 999, s = 'x', z = 999;",
+		Name:  "non-existent column set",
+		Query: "INSERT INTO mytable SET i = 999, s = 'x', z = 999;",
 	},
 	{
-		Name:     "duplicate column",
-		Query:    "INSERT INTO mytable (i, s, s) VALUES (999, 'x', 'x');",
+		Name:  "duplicate column",
+		Query: "INSERT INTO mytable (i, s, s) VALUES (999, 'x', 'x');",
 	},
 	{
-		Name:     "duplicate column set",
-		Query:    "INSERT INTO mytable SET i = 999, s = 'y', s = 'y';",
+		Name:  "duplicate column set",
+		Query: "INSERT INTO mytable SET i = 999, s = 'y', s = 'y';",
 	},
 	{
-		Name:     "null given to non-nullable",
-		Query:    "INSERT INTO mytable (i, s) VALUES (null, 'y');",
+		Name:  "null given to non-nullable",
+		Query: "INSERT INTO mytable (i, s) VALUES (null, 'y');",
 	},
 	{
-		Name:     "incompatible types",
-		Query:    "INSERT INTO mytable (i, s) select * FROM othertable",
+		Name:  "incompatible types",
+		Query: "INSERT INTO mytable (i, s) select * FROM othertable",
 	},
 	{
-		Name:     "column count mismatch in select",
-		Query:    "INSERT INTO mytable (i) select * FROM othertable",
+		Name:  "column count mismatch in select",
+		Query: "INSERT INTO mytable (i) select * FROM othertable",
 	},
 	{
-		Name:     "column count mismatch in select",
-		Query:    "INSERT INTO mytable select s FROM othertable",
+		Name:  "column count mismatch in select",
+		Query: "INSERT INTO mytable select s FROM othertable",
 	},
 	{
-		Name:     "column count mismatch in join select",
-		Query:    "INSERT INTO mytable (s,i) SELECT * FROM othertable o JOIN mytable m ON m.i=o.i2",
+		Name:  "column count mismatch in join select",
+		Query: "INSERT INTO mytable (s,i) SELECT * FROM othertable o JOIN mytable m ON m.i=o.i2",
 	},
 	{
-		Name:     "duplicate key",
-		Query:    "INSERT INTO mytable (i,s) values (1, 'hello')",
+		Name:  "duplicate key",
+		Query: "INSERT INTO mytable (i,s) values (1, 'hello')",
 	},
 	{
-		Name:     "duplicate keys",
-		Query:    "INSERT INTO mytable SELECT * from mytable",
+		Name:  "duplicate keys",
+		Query: "INSERT INTO mytable SELECT * from mytable",
 	},
 	{
-		Name:     "bad column in on duplicate key update clause",
-		Query:    "INSERT INTO mytable values (10, 'b') ON DUPLICATE KEY UPDATE notExist = 1",
+		Name:  "bad column in on duplicate key update clause",
+		Query: "INSERT INTO mytable values (10, 'b') ON DUPLICATE KEY UPDATE notExist = 1",
 	},
 }
 

@@ -160,38 +160,38 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			}
 			res[k] = expression.NewLiteral(v, sql.Year)
 		case sqltypes.IsSigned(v.Type()):
-	                v, err := strconv.ParseInt(string(v.ToBytes()), 0, 64)
+			v, err := strconv.ParseInt(string(v.ToBytes()), 0, 64)
 			if err != nil {
-	                        return nil, err
+				return nil, err
 			}
 			t := sql.Int64
 			c, err := t.Convert(v)
 			if err != nil {
 				return nil, err
 			}
-	                res[k] = expression.NewLiteral(c, t)
+			res[k] = expression.NewLiteral(c, t)
 		case sqltypes.IsUnsigned(v.Type()):
-	                v, err := strconv.ParseUint(string(v.ToBytes()), 0, 64)
+			v, err := strconv.ParseUint(string(v.ToBytes()), 0, 64)
 			if err != nil {
-	                        return nil, err
+				return nil, err
 			}
 			t := sql.Uint64
 			c, err := t.Convert(v)
 			if err != nil {
 				return nil, err
 			}
-	                res[k] = expression.NewLiteral(c, t)
+			res[k] = expression.NewLiteral(c, t)
 		case sqltypes.IsFloat(v.Type()):
-	                v, err := strconv.ParseFloat(string(v.ToBytes()), 64)
+			v, err := strconv.ParseFloat(string(v.ToBytes()), 64)
 			if err != nil {
-	                        return nil, err
+				return nil, err
 			}
 			t := sql.Float64
 			c, err := t.Convert(v)
 			if err != nil {
 				return nil, err
 			}
-	                res[k] = expression.NewLiteral(c, t)
+			res[k] = expression.NewLiteral(c, t)
 		case v.Type() == sqltypes.Decimal:
 			t := sql.MustCreateDecimalType(sql.DecimalTypeMaxPrecision, sql.DecimalTypeMaxScale)
 			v, err := t.Convert(string(v.ToBytes()))

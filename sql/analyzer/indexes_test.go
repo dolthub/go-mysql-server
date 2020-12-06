@@ -282,6 +282,61 @@ func TestGetIndexes(t *testing.T) {
 		ok       bool
 	}{
 		{
+			null(
+				col(0, "t2", "bar"),
+			),
+			indexLookupsByTable{
+				"t2": &indexLookup{
+					mergeableIndexLookup("t2", "bar", 0, nil),
+					[]sql.Index{indexes[1]},
+				},
+			},
+			true,
+		},
+		{
+			and(
+				null(
+					col(0, "t2", "bar"),
+				),
+				null(
+					col(0, "t2", "foo"),
+				),
+			),
+			indexLookupsByTable{
+				"t2": &indexLookup{
+					&memory.MergeableIndexLookup{
+						Key: []interface{}{nil, nil},
+						Index: &memory.MergeableIndex{
+							TableName: "t2",
+							Exprs: []sql.Expression{
+								col(0, "t2", "foo"),
+								col(0, "t2", "bar"),
+							},
+						},
+					},
+					[]sql.Index{indexes[2]},
+				},
+			},
+			true,
+		},
+		{
+			not(
+				null(
+					col(0, "t2", "bar"),
+				),
+			),
+			indexLookupsByTable{
+				"t2": &indexLookup{
+					&memory.NegateIndexLookup{
+						Lookup: mergeableIndexLookup("t2", "bar", 0, nil),
+						Index:  mergeableIndex("t2", "bar", 0),
+					},
+					[]sql.Index{indexes[1]},
+				},
+			},
+			true,
+		},
+		{
 			eq(
 				col(0, "t1", "bar"),
 				col(1, "t1", "baz"),
@@ -958,8 +1013,9 @@ func TestGetIndexes(t *testing.T) {
 			ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
 			ia, err := getIndexesForNode(ctx, a, nil)
 			require.NoError(err)
+			testExpr := convertIsNullForIndexes(tt.expr)
 
-			result, err := getIndexes(ctx, a, ia, tt.expr, nil, nil)
+			result, err := getIndexes(ctx, a, ia, testExpr, nil, nil)
 			if tt.ok {
 				require.NoError(err)
 				require.Equal(tt.expected, result)

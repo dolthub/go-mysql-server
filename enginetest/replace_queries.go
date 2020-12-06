@@ -161,47 +161,47 @@ var ReplaceQueries = []WriteQueryTest{
 
 var ReplaceErrorTests = []GenericErrorQueryTest{
 	{
-		Name:     "too few values",
-		Query:    "REPLACE INTO mytable (s, i) VALUES ('x');",
+		Name:  "too few values",
+		Query: "REPLACE INTO mytable (s, i) VALUES ('x');",
 	},
 	{
-		Name:     "too many values one column",
-		Query:    "REPLACE INTO mytable (s) VALUES ('x', 999);",
+		Name:  "too many values one column",
+		Query: "REPLACE INTO mytable (s) VALUES ('x', 999);",
 	},
 	{
-		Name:     "too many values two columns",
-		Query:    "REPLACE INTO mytable (i, s) VALUES (999, 'x', 'y');",
+		Name:  "too many values two columns",
+		Query: "REPLACE INTO mytable (i, s) VALUES (999, 'x', 'y');",
 	},
 	{
-		Name:     "too few values no columns specified",
-		Query:    "REPLACE INTO mytable VALUES (999);",
+		Name:  "too few values no columns specified",
+		Query: "REPLACE INTO mytable VALUES (999);",
 	},
 	{
-		Name:     "too many values no columns specified",
-		Query:    "REPLACE INTO mytable VALUES (999, 'x', 'y');",
+		Name:  "too many values no columns specified",
+		Query: "REPLACE INTO mytable VALUES (999, 'x', 'y');",
 	},
 	{
-		Name:     "non-existent column values",
-		Query:    "REPLACE INTO mytable (i, s, z) VALUES (999, 'x', 999);",
+		Name:  "non-existent column values",
+		Query: "REPLACE INTO mytable (i, s, z) VALUES (999, 'x', 999);",
 	},
 	{
-		Name:     "non-existent column set",
-		Query:    "REPLACE INTO mytable SET i = 999, s = 'x', z = 999;",
+		Name:  "non-existent column set",
+		Query: "REPLACE INTO mytable SET i = 999, s = 'x', z = 999;",
 	},
 	{
-		Name:     "duplicate column values",
-		Query:    "REPLACE INTO mytable (i, s, s) VALUES (999, 'x', 'x');",
+		Name:  "duplicate column values",
+		Query: "REPLACE INTO mytable (i, s, s) VALUES (999, 'x', 'x');",
 	},
 	{
-		Name:     "duplicate column set",
-		Query:    "REPLACE INTO mytable SET i = 999, s = 'y', s = 'y';",
+		Name:  "duplicate column set",
+		Query: "REPLACE INTO mytable SET i = 999, s = 'y', s = 'y';",
 	},
 	{
-		Name:     "null given to non-nullable values",
-		Query:    "INSERT INTO mytable (i, s) VALUES (null, 'y');",
+		Name:  "null given to non-nullable values",
+		Query: "INSERT INTO mytable (i, s) VALUES (null, 'y');",
 	},
 	{
-		Name:     "null given to non-nullable set",
-		Query:    "INSERT INTO mytable SET i = null, s = 'y';",
+		Name:  "null given to non-nullable set",
+		Query: "INSERT INTO mytable SET i = null, s = 'y';",
 	},
 }

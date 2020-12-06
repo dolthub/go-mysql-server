@@ -914,8 +914,6 @@ func (d *Date) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	return NewDate(children[0]), nil
 }
 
-type datetimeFuncLogic func(time.Time) (interface{}, error)
-
 // UnaryDatetimeFunc is a sql.Function which takes a single datetime argument
 type UnaryDatetimeFunc struct {
 	expression.UnaryExpression
@@ -923,18 +921,10 @@ type UnaryDatetimeFunc struct {
 	Name string
 	// SQLType is the return type of the function
 	SQLType sql.Type
-	// Logic is a function containing the actual sql function logic
-	Logic datetimeFuncLogic
 }
 
-var _ sql.FunctionExpression = (*UnaryDatetimeFunc)(nil)
-
-func NewUnaryDatetimeFunc(name string, sqlType sql.Type, logic datetimeFuncLogic) sql.Function1 {
-	fn := func(e sql.Expression) sql.Expression {
-		return &UnaryDatetimeFunc{expression.UnaryExpression{Child: e}, name, sqlType, logic}
-	}
-
-	return sql.Function1{Name: name, Fn: fn}
+func NewUnaryDatetimeFunc(arg sql.Expression, name string, sqlType sql.Type) *UnaryDatetimeFunc {
+	return &UnaryDatetimeFunc{expression.UnaryExpression{Child: arg}, name, sqlType}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -942,8 +932,7 @@ func (dtf *UnaryDatetimeFunc) FunctionName() string {
 	return dtf.Name
 }
 
-// Eval implements the Expression interface.
-func (dtf *UnaryDatetimeFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (dtf *UnaryDatetimeFunc) EvalChild(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := dtf.Child.Eval(ctx, row)
 
 	if err != nil {
@@ -954,13 +943,7 @@ func (dtf *UnaryDatetimeFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 		return nil, nil
 	}
 
-	val, err = sql.Datetime.Convert(val)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return dtf.Logic(val.(time.Time))
+	return sql.Datetime.Convert(val)
 }
 
 // String implements the fmt.Stringer interface.
@@ -968,44 +951,150 @@ func (dtf *UnaryDatetimeFunc) String() string {
 	return fmt.Sprintf("%s(%s)", strings.ToUpper(dtf.Name), dtf.Child.String())
 }
 
-// IsNullable implements the Expression interface.
-func (dtf *UnaryDatetimeFunc) IsNullable() bool {
-	return dtf.Child.IsNullable()
-}
-
-// WithChildren implements the Expression interface.
-func (dtf *UnaryDatetimeFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(dtf, len(children), 1)
-	}
-
-	return &UnaryDatetimeFunc{expression.UnaryExpression{Child: children[0]}, dtf.Name, dtf.SQLType, dtf.Logic}, nil
-}
-
 // Type implements the Expression interface.
 func (dtf *UnaryDatetimeFunc) Type() sql.Type {
 	return dtf.SQLType
 }
 
-func dayNameFuncLogic(t time.Time) (interface{}, error) {
+// DayName implements the DAYNAME function
+type DayName struct {
+	*UnaryDatetimeFunc
+}
+
+var _ sql.FunctionExpression = (*DayName)(nil)
+
+func NewDayName(arg sql.Expression) sql.Expression {
+	return &DayName{NewUnaryDatetimeFunc(arg, "DAYNAME", sql.Text)}
+}
+
+func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := d.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	t := val.(time.Time)
 	return t.Weekday().String(), nil
 }
 
-func microsecondFuncLogic(t time.Time) (interface{}, error) {
+func (d *DayName) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
+	}
+	return NewDayName(children[0]), nil
+}
+
+// Microsecond implements the MICROSECOND function
+type Microsecond struct {
+	*UnaryDatetimeFunc
+}
+
+var _ sql.FunctionExpression = (*Microsecond)(nil)
+
+func NewMicrosecond(arg sql.Expression) sql.Expression {
+	return &Microsecond{NewUnaryDatetimeFunc(arg, "MICROSECOND", sql.Uint64)}
+}
+
+func (m *Microsecond) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := m.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	t := val.(time.Time)
 	return uint64(t.Nanosecond()) / uint64(time.Microsecond), nil
 }
 
-func monthNameFuncLogic(t time.Time) (interface{}, error) {
+func (m *Microsecond) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
+	}
+	return NewMicrosecond(children[0]), nil
+}
+
+// MonthName implements the MONTHNAME function
+type MonthName struct {
+	*UnaryDatetimeFunc
+}
+
+var _ sql.FunctionExpression = (*MonthName)(nil)
+
+func NewMonthName(arg sql.Expression) sql.Expression {
+	return &MonthName{NewUnaryDatetimeFunc(arg, "MONTHNAME", sql.Text)}
+}
+
+func (d *MonthName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := d.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	t := val.(time.Time)
 	return t.Month().String(), nil
 }
 
-func timeToSecFuncLogic(t time.Time) (interface{}, error) {
+func (d *MonthName) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
+	}
+	return NewMonthName(children[0]), nil
+}
+
+// TimeToSec implements the time_to_sec function
+type TimeToSec struct {
+	*UnaryDatetimeFunc
+}
+
+var _ sql.FunctionExpression = (*TimeToSec)(nil)
+
+func NewTimeToSec(arg sql.Expression) sql.Expression {
+	return &TimeToSec{NewUnaryDatetimeFunc(arg, "TIME_TO_SEC", sql.Uint64)}
+}
+
+func (m *TimeToSec) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := m.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	t := val.(time.Time)
 	return uint64(t.Hour()*3600 + t.Minute()*60 + t.Second()), nil
 }
 
-func weekFuncLogic(t time.Time) (interface{}, error) {
+func (m *TimeToSec) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
+	}
+	return NewTimeToSec(children[0]), nil
+}
+
+// WeekOfYear implements the weekofyear function
+type WeekOfYear struct {
+	*UnaryDatetimeFunc
+}
+
+var _ sql.FunctionExpression = (*WeekOfYear)(nil)
+
+func NewWeekOfYear(arg sql.Expression) sql.Expression {
+	return &WeekOfYear{NewUnaryDatetimeFunc(arg, "WEEKOFYEAR", sql.Uint64)}
+}
+
+func (m *WeekOfYear) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := m.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	t := val.(time.Time)
 	_, wk := t.ISOWeek()
 	return wk, nil
+}
+
+func (m *WeekOfYear) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
+	}
+	return NewWeekOfYear(children[0]), nil
 }
 
 // TimeDiff subtracts the second argument from the first expressed as a time value.

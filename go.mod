@@ -4,7 +4,7 @@ require (
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/cespare/xxhash v1.1.0
 	github.com/dolthub/sqllogictest/go v0.0.0-20201105013724-5123fc66e12c
-	github.com/dolthub/vitess v0.0.0-20201111232835-de121b254639
+	github.com/dolthub/vitess v0.0.0-20201204232015-9e3805156304
 	github.com/fastly/go-utils v0.0.0-20180712184237-d95a45783239 // indirect
 	github.com/go-kit/kit v0.9.0
 	github.com/go-sql-driver/mysql v1.4.1

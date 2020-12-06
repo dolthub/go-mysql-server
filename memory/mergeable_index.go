@@ -150,7 +150,11 @@ func (i *MergeableIndexLookup) Values(p sql.Partition) (sql.IndexValueIter, erro
 	var exprs []sql.Expression
 	for exprI, expr := range i.Index.ColumnExpressions() {
 		lit, typ := getType(i.Key[exprI])
-		exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(lit, typ)))
+		if typ == sql.Null {
+			exprs = append(exprs, expression.NewIsNull(expr))
+		} else {
+			exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(lit, typ)))
+		}
 	}
 
 	return &indexValIter{
@@ -164,7 +168,11 @@ func (i *MergeableIndexLookup) EvalExpression() sql.Expression {
 	var exprs []sql.Expression
 	for exprI, expr := range i.Index.ColumnExpressions() {
 		lit, typ := getType(i.Key[exprI])
-		exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(lit, typ)))
+		if typ == sql.Null {
+			exprs = append(exprs, expression.NewIsNull(expr))
+		} else {
+			exprs = append(exprs, expression.NewEquals(expr, expression.NewLiteral(lit, typ)))
+		}
 	}
 	return and(exprs...)
 }

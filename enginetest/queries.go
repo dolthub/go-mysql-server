@@ -587,6 +587,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(4)}, {int64(5)}},
 	},
 	{
+		Query:    "SELECT i FROM niltable WHERE i2 IS NULL ORDER BY 1",
+		Expected: []sql.Row{{int64(1)}, {int64(3)}, {int64(5)}},
+	},
+	{
+		Query:    "SELECT i FROM niltable WHERE i2 IS NOT NULL ORDER BY 1",
+		Expected: []sql.Row{{int64(2)}, {int64(4)}, {int64(6)}},
+	},
+	{
 		Query:    "SELECT COUNT(*) FROM mytable;",
 		Expected: []sql.Row{{int64(3)}},
 	},
@@ -1313,6 +1321,104 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query:    "SELECT SIN(i) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{0.8414709848078965},
+		},
+	},
+	{
+		Query:    "SELECT COS(i) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{0.5403023058681398},
+		},
+	},
+	{
+		Query:    "SELECT TAN(i) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{1.557407724654902},
+		},
+	},
+	{
+		Query:    "SELECT ASIN(i) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{1.5707963267948966},
+		},
+	},
+	{
+		Query:    "SELECT ACOS(i) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{0.0},
+		},
+	},
+	{
+		Query:    "SELECT ATAN(i) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{0.7853981633974483},
+		},
+	},
+	{
+		Query:    "SELECT COT(i) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{0.6420926159343308},
+		},
+	},
+	{
+		Query:    "SELECT DEGREES(i) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{57.29577951308232},
+		},
+	},
+	{
+		Query:    "SELECT RADIANS(i) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{0.017453292519943295},
+		},
+	},
+	{
+		Query:    "SELECT CRC32(i) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{uint64(0x83dcefb7)},
+		},
+	},
+	{
+		Query:    "SELECT SIGN(i) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query:    "SELECT ASCII(s) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{uint64(0x66)},
+		},
+	},
+	{
+		Query:    "SELECT HEX(s) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{"666972737420726F77"},
+		},
+	},
+	{
+		Query:    "SELECT UNHEX(s) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query:    "SELECT BIN(i) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{"1"},
+		},
+	},
+	{
+		Query:    "SELECT BIT_LENGTH(i) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{64},
+		},
+	},
+	// TODO: add additional tests for other functions. Every function needs an engine test to ensure it works correctly
+	//  with the analyzer.
+	{
 		Query:    "SELECT * FROM mytable WHERE 1 > 5",
 		Expected: nil,
 	},
@@ -1428,6 +1534,18 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT USER()`,
+		Expected: []sql.Row{
+			{"user"},
+		},
+	},
+	{
+		Query: `SELECT CURRENT_USER()`,
+		Expected: []sql.Row{
+			{"user"},
+		},
+	},
+	{
+		Query: `SELECT CURRENT_USER`,
 		Expected: []sql.Row{
 			{"user"},
 		},

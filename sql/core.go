@@ -44,14 +44,14 @@ type Expression interface {
 	// IsNullable returns whether the expression can be null.
 	IsNullable() bool
 	// Eval evaluates the given row and returns a result.
-	Eval(*Context, Row) (interface{}, error)
+	Eval(ctx *Context, row Row) (interface{}, error)
 	// Children returns the children expressions of this expression.
 	Children() []Expression
 	// WithChildren returns a copy of the expression with children replaced.
 	// It will return an error if the number of children is different than
 	// the current number of children. They must be given in the same order
 	// as they are returned by Children.
-	WithChildren(...Expression) (Expression, error)
+	WithChildren(children ...Expression) (Expression, error)
 }
 
 // FunctionExpression is an Expression that represents a function.

@@ -16,9 +16,10 @@ package enginetest_test
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"testing"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -342,6 +343,8 @@ func unmergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 		"niltable": {
 			newUnmergableIndex(dbs, "niltable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
+			newUnmergableIndex(dbs, "niltable",
+				expression.NewGetFieldWithTable(1, sql.Int64, "niltable", "i2", true)),
 		},
 		"one_pk": {
 			newUnmergableIndex(dbs, "one_pk",
@@ -387,6 +390,8 @@ func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 		"niltable": {
 			newMergableIndex(dbs, "niltable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
+			newMergableIndex(dbs, "niltable",
+				expression.NewGetFieldWithTable(1, sql.Int64, "niltable", "i2", true)),
 		},
 		"one_pk": {
 			newMergableIndex(dbs, "one_pk",
