@@ -215,11 +215,11 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 		switch n := n.(type) {
 		case *plan.InsertInto:
 			if trigger.TriggerTime == sqlparser.BeforeStr {
-				triggerExecutor := plan.NewTriggerExecutor(n.Right, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
+				triggerExecutor := plan.NewTriggerExecutor(n.Right(), triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				})
-				return n.WithChildren(n.Left, triggerExecutor)
+				return n.WithChildren(n.Left(), triggerExecutor)
 			} else {
 				return plan.NewTriggerExecutor(n, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,

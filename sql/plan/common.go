@@ -42,18 +42,26 @@ func (n UnaryNode) Children() []sql.Node {
 
 // BinaryNode is a node with two children.
 type BinaryNode struct {
-	Left  sql.Node
-	Right sql.Node
+	left  sql.Node
+	right sql.Node
+}
+
+func (n BinaryNode) Left() sql.Node {
+	return n.left
+}
+
+func (n BinaryNode) Right() sql.Node {
+	return n.right
 }
 
 // Children implements the Node interface.
 func (n BinaryNode) Children() []sql.Node {
-	return []sql.Node{n.Left, n.Right}
+	return []sql.Node{n.left, n.right}
 }
 
 // Resolved implements the Resolvable interface.
 func (n BinaryNode) Resolved() bool {
-	return n.Left.Resolved() && n.Right.Resolved()
+	return n.left.Resolved() && n.right.Resolved()
 }
 
 func expressionsResolved(exprs ...sql.Expression) bool {

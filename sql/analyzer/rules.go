@@ -48,7 +48,7 @@ var OnceAfterDefault = []Rule{
 	{"assign_catalog", assignCatalog},
 	{"assign_info_schema", assignInfoSchema},
 	{"prune_columns", pruneColumns},
-	{"optimize_joins", optimizeJoins},
+	{"optimize_joins", constructJoinPlan},
 	{"pushdown_filters", pushdownFilters},
 	{"subquery_indexes", applyIndexesFromOuterScope},
 	{"pushdown_projections", pushdownProjections},

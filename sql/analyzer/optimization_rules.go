@@ -65,61 +65,82 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return n, nil
 	}
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	var nonJoinFilters []sql.Expression
+	var topJoin sql.Node
+	node, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		join, ok := n.(*plan.InnerJoin)
 		if !ok {
 			return n, nil
 		}
 
-		leftSources := nodeSources(join.Left)
-		rightSources := nodeSources(join.Right)
-		var leftFilters, rightFilters, condFilters []sql.Expression
+		leftSources := nodeSources(join.Left())
+		rightSources := nodeSources(join.Right())
+		filtersMoved := 0
+		var condFilters []sql.Expression
 		for _, e := range splitConjunction(join.Cond) {
 			sources := expressionSources(e)
 
-			canMoveLeft := containsSources(leftSources, sources)
-			if canMoveLeft {
-				leftFilters = append(leftFilters, e)
-			}
+			belongsToLeftTable := containsSources(leftSources, sources)
+			belongsToRightTable := containsSources(rightSources, sources)
 
-			canMoveRight := containsSources(rightSources, sources)
-			if canMoveRight {
-				rightFilters = append(rightFilters, e)
-			}
-
-			if !canMoveLeft && !canMoveRight {
+			if belongsToLeftTable || belongsToRightTable {
+				nonJoinFilters = append(nonJoinFilters, e)
+				filtersMoved++
+			} else {
 				condFilters = append(condFilters, e)
 			}
 		}
 
-		left, right := join.Left, join.Right
-		if len(leftFilters) > 0 {
-			leftFilters, err := FixFieldIndexes(scope, left.Schema(), expression.JoinAnd(leftFilters...))
-			if err != nil {
-				return nil, err
-			}
-
-			left = plan.NewFilter(leftFilters, left)
+		if filtersMoved == 0 {
+			return n, nil
 		}
 
-		if len(rightFilters) > 0 {
-			rightFilters, err := FixFieldIndexes(scope, right.Schema(), expression.JoinAnd(rightFilters...))
-			if err != nil {
-				return nil, err
-			}
-
-			right = plan.NewFilter(rightFilters, right)
-		}
+		left, right := join.Left(), join.Right()
 
 		if len(condFilters) > 0 {
-			return plan.NewInnerJoin(
+			topJoin = plan.NewInnerJoin(
 				left, right,
 				expression.JoinAnd(condFilters...),
-			), nil
+			)
+			return topJoin, nil
 		}
 
 		// if there are no cond filters left we can just convert it to a cross join
-		return plan.NewCrossJoin(left, right), nil
+		topJoin = plan.NewCrossJoin(left, right)
+		return topJoin, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(nonJoinFilters) == 0 {
+		return node, nil
+	}
+
+	// Add a new filter node with all removed predicates above the top level InnerJoin. Or, if there is a filter node
+	// above that, combine into a new filter.
+	selector := func(parent sql.Node, child sql.Node, childNum int) bool {
+		switch parent.(type) {
+		case *plan.Filter:
+			return false
+		}
+		return parent != topJoin
+	}
+
+	return plan.TransformUpWithSelector(node, selector, func(node sql.Node) (sql.Node, error) {
+		switch node := node.(type) {
+		case *plan.Filter:
+			return plan.NewFilter(
+				expression.JoinAnd(append([]sql.Expression{node.Expression}, nonJoinFilters...)...),
+				node.Child), nil
+		case *plan.InnerJoin, *plan.CrossJoin:
+			return plan.NewFilter(
+				expression.JoinAnd(nonJoinFilters...),
+				node), nil
+		default:
+			return node, nil
+		}
 	})
 }
 

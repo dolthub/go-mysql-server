@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -11,10 +12,8 @@ import (
 var ErrNoIndexableTable = errors.NewKind("expected an IndexableTable, couldn't find one in %v")
 var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, couldn't find one in %v")
 
-// IndexedTableAccess represents an indexed lookup of a particular ResolvedTable. Unlike other kinds of UnaryNodes,
-// this node supports being repeatedly initialized and being iterated over multiple times, potentially with different
-// values returned every iteration. Used during analysis as part of the process of optimizing joins, replacing
-// (wrapping) a ResolvedTable.
+// IndexedTableAccess represents an indexed lookup of a particular ResolvedTable. The key used to access the indexed
+// table is provided in RowIter().
 type IndexedTableAccess struct {
 	*ResolvedTable
 	index    sql.Index
@@ -54,8 +53,24 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 	return sql.NewTableRowIter(ctx, indexedTable, partIter), nil
 }
 
+func (i *IndexedTableAccess) String() string {
+	return fmt.Sprintf("IndexedTableAccess(%s on %s)", i.Name(), formatIndexDecoratorString(i.index))
+}
+
+func formatIndexDecoratorString(idx sql.Index) string {
+	var expStrs []string
+	for _, e := range idx.Expressions() {
+		expStrs = append(expStrs, e)
+	}
+	return fmt.Sprintf("[%s]", strings.Join(expStrs, ","))
+}
+
 func (i *IndexedTableAccess) DebugString() string {
-	return fmt.Sprintf("IndexedTableAccess(%s)", i.Name())
+	keyExprs := make([]string, len(i.keyExprs))
+	for j := range i.keyExprs {
+		keyExprs[j] = sql.DebugString(i.keyExprs[j])
+	}
+	return fmt.Sprintf("IndexedTableAccess(%s, using fields %s)", i.Name(), strings.Join(keyExprs, ", "))
 }
 
 func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -68,10 +83,10 @@ func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error
 		return nil, sql.ErrInvalidChildType.New(i, children[0], (*ResolvedTable)(nil))
 	}
 
-	return NewIndexedTable(resolvedTable, i.index, i.keyExprs), nil
+	return NewIndexedTableAccess(resolvedTable, i.index, i.keyExprs), nil
 }
 
-func NewIndexedTable(resolvedTable *ResolvedTable, index sql.Index, keyExprs []sql.Expression) *IndexedTableAccess {
+func NewIndexedTableAccess(resolvedTable *ResolvedTable, index sql.Index, keyExprs []sql.Expression) *IndexedTableAccess {
 	return &IndexedTableAccess{
 		ResolvedTable: resolvedTable,
 		index:         index,

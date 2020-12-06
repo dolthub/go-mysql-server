@@ -26,7 +26,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return n, nil
 	}
 
-	insertable, err := plan.GetInsertable(insert.Left)
+	insertable, err := plan.GetInsertable(insert.Left())
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		}
 	}
 
-	err = validateValueCount(columnNames, insert.Right)
+	err = validateValueCount(columnNames, insert.Right())
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return nil, err
 	}
 
-	return insert.WithChildren(insert.Left, project)
+	return insert.WithChildren(insert.Left(), project)
 }
 
 // wrapRowSource wraps the original row source in a projection so that its schema matches the full schema of the
@@ -106,12 +106,12 @@ func wrapRowSource(ctx *sql.Context, insert *plan.InsertInto, destTbl sql.Table,
 		}
 	}
 
-	err := validateRowSource(insert.Right, projExprs)
+	err := validateRowSource(insert.Right(), projExprs)
 	if err != nil {
 		return nil, err
 	}
 
-	project := plan.NewProject(projExprs, insert.Right)
+	project := plan.NewProject(projExprs, insert.Right())
 	return project, nil
 }
 

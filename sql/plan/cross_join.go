@@ -18,35 +18,35 @@ type CrossJoin struct {
 func NewCrossJoin(left sql.Node, right sql.Node) *CrossJoin {
 	return &CrossJoin{
 		BinaryNode: BinaryNode{
-			Left:  left,
-			Right: right,
+			left:  left,
+			right: right,
 		},
 	}
 }
 
 // Schema implements the Node interface.
 func (p *CrossJoin) Schema() sql.Schema {
-	return append(p.Left.Schema(), p.Right.Schema()...)
+	return append(p.left.Schema(), p.right.Schema()...)
 }
 
 // Resolved implements the Resolvable interface.
 func (p *CrossJoin) Resolved() bool {
-	return p.Left.Resolved() && p.Right.Resolved()
+	return p.left.Resolved() && p.right.Resolved()
 }
 
 // RowIter implements the Node interface.
 func (p *CrossJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var left, right string
-	if leftTable, ok := p.Left.(sql.Nameable); ok {
+	if leftTable, ok := p.left.(sql.Nameable); ok {
 		left = leftTable.Name()
 	} else {
-		left = reflect.TypeOf(p.Left).String()
+		left = reflect.TypeOf(p.left).String()
 	}
 
-	if rightTable, ok := p.Right.(sql.Nameable); ok {
+	if rightTable, ok := p.right.(sql.Nameable); ok {
 		right = rightTable.Name()
 	} else {
-		right = reflect.TypeOf(p.Right).String()
+		right = reflect.TypeOf(p.right).String()
 	}
 
 	span, ctx := ctx.Span("plan.CrossJoin", opentracing.Tags{
@@ -54,7 +54,7 @@ func (p *CrossJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		"right": right,
 	})
 
-	li, err := p.Left.RowIter(ctx, row)
+	li, err := p.left.RowIter(ctx, row)
 	if err != nil {
 		span.Finish()
 		return nil, err
@@ -62,7 +62,7 @@ func (p *CrossJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 
 	return sql.NewSpanIter(span, &crossJoinIterator{
 		l:  li,
-		rp: p.Right,
+		rp: p.right,
 		s:  ctx,
 	}), nil
 }
@@ -79,14 +79,14 @@ func (p *CrossJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (p *CrossJoin) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("CrossJoin")
-	_ = pr.WriteChildren(p.Left.String(), p.Right.String())
+	_ = pr.WriteChildren(p.left.String(), p.right.String())
 	return pr.String()
 }
 
 func (p *CrossJoin) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("CrossJoin")
-	_ = pr.WriteChildren(sql.DebugString(p.Left), sql.DebugString(p.Right))
+	_ = pr.WriteChildren(sql.DebugString(p.left), sql.DebugString(p.right))
 	return pr.String()
 }
 

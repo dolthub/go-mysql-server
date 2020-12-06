@@ -104,7 +104,7 @@ var Defaults = []sql.Function{
 	sql.FunctionN{Name: "substring", Fn: NewSubstring},
 	sql.Function3{Name: "substring_index", Fn: NewSubstringIndex},
 	sql.Function1{Name: "sum", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewSum(e) }},
-	sql.Function1{Name: "tan", Fn:   NewTan},
+	sql.Function1{Name: "tan", Fn: NewTan},
 	sql.Function1{Name: "time_to_sec", Fn: NewTimeToSec},
 	sql.FunctionN{Name: "timestamp", Fn: NewTimestamp},
 	sql.Function1{Name: "to_base64", Fn: NewToBase64},

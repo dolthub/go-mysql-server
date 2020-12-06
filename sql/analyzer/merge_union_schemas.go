@@ -24,7 +24,7 @@ func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 	}
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		if u, ok := n.(*plan.Union); ok {
-			ls, rs := u.Left.Schema(), u.Right.Schema()
+			ls, rs := u.Left().Schema(), u.Right().Schema()
 			if len(ls) != len(rs) {
 				return nil, ErrUnionSchemasDifferentLength.New(len(ls), len(rs))
 			}
@@ -48,8 +48,8 @@ func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			}
 			if hasdiff {
 				return u.WithChildren(
-					plan.NewProject(les, u.Left),
-					plan.NewProject(res, u.Right),
+					plan.NewProject(les, u.Left()),
+					plan.NewProject(res, u.Right()),
 				)
 			} else {
 				return u, nil

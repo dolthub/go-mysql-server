@@ -88,9 +88,9 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT utc_timestamp`,
+		Query: `SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2`,
 		Expected: []sql.Row{
-			{"7B"},
+			{int64(3), "third row", "first", int64(3)},
 		},
 	}
 
@@ -108,53 +108,36 @@ func TestSingleQuery(t *testing.T) {
 func TestSingleScript(t *testing.T) {
 	t.Skip()
 
-	var test enginetest.ScriptTest
-	test = enginetest.ScriptTest{
-		Name: "trigger before insert, multiple triggers defined",
-		SetUpScript: []string{
-			"create table a (x int primary key)",
-			"create table b (y int primary key)",
-			"create table c (z int primary key)",
-			// Only one of these triggers should run for each table
-			"create trigger a1 before insert on a for each row insert into b values (new.x * 2)",
-			"create trigger b1 before insert on b for each row insert into c values (new.y * 7)",
-		},
-		Assertions: []enginetest.ScriptTestAssertion{
-			{
-				Query: "insert into a values (1), (2), (3)",
-				Expected: []sql.Row{
-					{sql.NewOkResult(3)},
-				},
+	var scripts = []enginetest.ScriptTest{
+		{
+			Name: "4 tables, linear join, index on D",
+			SetUpScript: []string{
+				"create table a (xa int primary key, ya int, za int)",
+				"create table b (xb int primary key, yb int, zb int)",
+				"create table c (xc int primary key, yc int, zc int)",
+				"create table d (xd int primary key, yd int, zd int)",
+				"insert into a values (1,2,3)",
+				"insert into b values (1,2,3)",
+				"insert into c values (1,2,3)",
+				"insert into d values (1,2,3)",
 			},
-			{
-				Query: "select x from a order by 1",
-				Expected: []sql.Row{
-					{1}, {2}, {3},
-				},
-			},
-			{
-				Query: "select y from b order by 1",
-				Expected: []sql.Row{
-					{2}, {4}, {6},
-				},
-			},
-			{
-				Query: "select z from c order by 1",
-				Expected: []sql.Row{
-					{14}, {28}, {42},
+			Assertions: []enginetest.ScriptTestAssertion{
+				{
+					Query:    "select xa from a join b on ya = yb join c on yb = yc join d on yc - 1 = xd",
+					Expected: []sql.Row{{1}},
 				},
 			},
 		},
 	}
 
-	fmt.Sprintf("%v", test)
+	for _, test := range scripts {
+		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		engine := enginetest.NewEngine(t, harness)
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	engine := enginetest.NewEngine(t, harness)
-	engine.Analyzer.Debug = true
-	engine.Analyzer.Verbose = true
-
-	enginetest.TestScriptWithEngine(t, engine, harness, test)
+		enginetest.TestScriptWithEngine(t, engine, harness, test)
+	}
 }
 
 func TestBrokenQueries(t *testing.T) {
@@ -246,7 +229,7 @@ func TestDeleteFromErrors(t *testing.T) {
 }
 
 func TestScripts(t *testing.T) {
-	enginetest.TestScripts(t, enginetest.NewDefaultMemoryHarness())
+	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestTriggers(t *testing.T) {

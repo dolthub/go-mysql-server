@@ -14,13 +14,13 @@ type Union struct {
 // NewUnion creates a new Union node with the given children.
 func NewUnion(left, right sql.Node) *Union {
 	return &Union{
-		BinaryNode: BinaryNode{Left: left, Right: right},
+		BinaryNode: BinaryNode{left: left, right: right},
 	}
 }
 
 func (u *Union) Schema() sql.Schema {
-	ls := u.Left.Schema()
-	rs := u.Right.Schema()
+	ls := u.left.Schema()
+	rs := u.right.Schema()
 	ret := make([]*sql.Column, len(ls))
 	for i := range ls {
 		c := *ls[i]
@@ -35,7 +35,7 @@ func (u *Union) Schema() sql.Schema {
 // RowIter implements the Node interface.
 func (u *Union) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Union")
-	li, err := u.Left.RowIter(ctx, row)
+	li, err := u.left.RowIter(ctx, row)
 	if err != nil {
 		span.Finish()
 		return nil, err
@@ -43,7 +43,7 @@ func (u *Union) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	ui := &unionIter{
 		li,
 		func() (sql.RowIter, error) {
-			return u.Right.RowIter(ctx, row)
+			return u.right.RowIter(ctx, row)
 		},
 	}
 	return sql.NewSpanIter(span, ui), nil
@@ -60,7 +60,7 @@ func (u *Union) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (u Union) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Union")
-	_ = pr.WriteChildren(u.Left.String(), u.Right.String())
+	_ = pr.WriteChildren(u.left.String(), u.right.String())
 	return pr.String()
 }
 

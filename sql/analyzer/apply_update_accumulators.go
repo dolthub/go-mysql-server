@@ -47,7 +47,7 @@ func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 func getUpdateAccumulatorType(n sql.Node) (plan.RowUpdateType, error) {
 	switch n := n.(type) {
 	case *plan.TriggerExecutor:
-		return getUpdateAccumulatorType(n.Left)
+		return getUpdateAccumulatorType(n.Left())
 	case *plan.InsertInto:
 		if n.IsReplace {
 			return plan.UpdateTypeReplace, nil

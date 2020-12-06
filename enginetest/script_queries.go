@@ -108,4 +108,214 @@ var ScriptTests = []ScriptTest{
 			{7},
 		},
 	},
+	{
+		Name: "3 tables, linear join",
+		SetUpScript: []string{
+			"create table a (xa int primary key, ya int, za int)",
+			"create table b (xb int primary key, yb int, zb int)",
+			"create table c (xc int primary key, yc int, zc int)",
+			"insert into a values (1,2,3)",
+			"insert into b values (1,2,3)",
+			"insert into c values (1,2,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select ya from a join b on ya - 1= xb join c on xc = zb - 2",
+				Expected: []sql.Row{{2}},
+			},
+		},
+	},
+	{
+		Name: "3 tables, v join",
+		SetUpScript: []string{
+			"create table a (xa int primary key, ya int, za int)",
+			"create table b (xb int primary key, yb int, zb int)",
+			"create table c (xc int primary key, yc int, zc int)",
+			"insert into a values (1,2,3)",
+			"insert into b values (1,2,3)",
+			"insert into c values (1,2,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select za from a join b on ya - 1 = xb join c on xa = xc",
+				Expected: []sql.Row{{3}},
+			},
+		},
+	},
+	{
+		Name: "3 tables, linear join, indexes on A,C",
+		SetUpScript: []string{
+			"create table a (xa int primary key, ya int, za int)",
+			"create table b (xb int primary key, yb int, zb int)",
+			"create table c (xc int primary key, yc int, zc int)",
+			"insert into a values (1,2,3)",
+			"insert into b values (1,2,3)",
+			"insert into c values (1,2,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select xa from a join b on xa = yb - 1 join c on yb - 1 = xc",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "4 tables, linear join",
+		SetUpScript: []string{
+			"create table a (xa int primary key, ya int, za int)",
+			"create table b (xb int primary key, yb int, zb int)",
+			"create table c (xc int primary key, yc int, zc int)",
+			"create table d (xd int primary key, yd int, zd int)",
+			"insert into a values (1,2,3)",
+			"insert into b values (1,2,3)",
+			"insert into c values (1,2,3)",
+			"insert into d values (1,2,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select xa from a join b on ya - 1 = xb join c on xb = xc join d on xc = xd",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "4 tables, linear join, index on D",
+		SetUpScript: []string{
+			"create table a (xa int primary key, ya int, za int)",
+			"create table b (xb int primary key, yb int, zb int)",
+			"create table c (xc int primary key, yc int, zc int)",
+			"create table d (xd int primary key, yd int, zd int)",
+			"insert into a values (1,2,3)",
+			"insert into b values (1,2,3)",
+			"insert into c values (1,2,3)",
+			"insert into d values (1,2,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select xa from a join b on ya = yb join c on yb = yc join d on yc - 1 = xd",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "4 tables, left join, indexes on all tables",
+		SetUpScript: []string{
+			"create table a (xa int primary key, ya int, za int)",
+			"create table b (xb int primary key, yb int, zb int)",
+			"create table c (xc int primary key, yc int, zc int)",
+			"create table d (xd int primary key, yd int, zd int)",
+			"insert into a values (1,2,3)",
+			"insert into b values (1,2,3)",
+			"insert into c values (1,2,3)",
+			"insert into d values (1,2,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select xa from a left join b on ya = yb left join c on yb = yc left join d on yc - 1 = xd",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "4 tables, linear join, index on B, D",
+		SetUpScript: []string{
+			"create table a (xa int primary key, ya int, za int)",
+			"create table b (xb int primary key, yb int, zb int)",
+			"create table c (xc int primary key, yc int, zc int)",
+			"create table d (xd int primary key, yd int, zd int)",
+			"insert into a values (1,2,3)",
+			"insert into b values (1,2,3)",
+			"insert into c values (1,2,3)",
+			"insert into d values (1,2,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select xa from a join b on ya - 1 = xb join c on yc = za - 1 join d on yc - 1 = xd",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "4 tables, all joined to A",
+		SetUpScript: []string{
+			"create table a (xa int primary key, ya int, za int)",
+			"create table b (xb int primary key, yb int, zb int)",
+			"create table c (xc int primary key, yc int, zc int)",
+			"create table d (xd int primary key, yd int, zd int)",
+			"insert into a values (1,2,3)",
+			"insert into b values (1,2,3)",
+			"insert into c values (1,2,3)",
+			"insert into d values (1,2,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select xa from a join b on xa = xb join c on ya - 1 = xc join d on za - 2 = xd",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	// {
+	// 	Name: "4 tables, all joined to D",
+	// 	SetUpScript: []string{
+	// 		"create table a (xa int primary key, ya int, za int)",
+	// 		"create table b (xb int primary key, yb int, zb int)",
+	// 		"create table c (xc int primary key, yc int, zc int)",
+	// 		"create table d (xd int primary key, yd int, zd int)",
+	// 		"insert into a values (1,2,3)",
+	// 		"insert into b values (1,2,3)",
+	// 		"insert into c values (1,2,3)",
+	// 		"insert into d values (1,2,3)",
+	// 	},
+	// 	Assertions: []ScriptTestAssertion{
+	// 		{
+	// 			// gives an error in mysql, a needs an alias
+	// 			Query: "select xa from d join a on yd = xa join c on yd = xc join a on xa = yd",
+	// 			Expected: []sql.Row{{1}},
+	// 		},
+	// 	},
+	// },
+	{
+		Name: "4 tables, all joined to D",
+		SetUpScript: []string{
+			"create table a (xa int primary key, ya int, za int)",
+			"create table b (xb int primary key, yb int, zb int)",
+			"create table c (xc int primary key, yc int, zc int)",
+			"create table d (xd int primary key, yd int, zd int)",
+			"insert into a values (1,2,3)",
+			"insert into b values (1,2,3)",
+			"insert into c values (1,2,3)",
+			"insert into d values (1,2,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select xa from d join a on yd - 1 = xa join c on zd - 2 = xc join b on xb = zd - 2",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "5 tables, complex join conditions",
+		SetUpScript: []string{
+			"create table a (xa int primary key, ya int, za int)",
+			"create table b (xb int primary key, yb int, zb int)",
+			"create table c (xc int primary key, yc int, zc int)",
+			"create table d (xd int primary key, yd int, zd int)",
+			"create table e (xe int, ye int, ze int, primary key(xe, ye))",
+			"insert into a values (1,2,3)",
+			"insert into b values (1,2,3)",
+			"insert into c values (1,2,3)",
+			"insert into d values (1,2,3)",
+			"insert into e values (1,2,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select xa from a 
+									join b on ya - 1 = xb 
+									join c on xc = za - 2 
+									join d on xd = yb - 1 
+									join e on xe = zb - 2 and ye = yc`,
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
 }

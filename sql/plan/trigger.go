@@ -50,8 +50,8 @@ type TriggerExecutor struct {
 func NewTriggerExecutor(child, triggerLogic sql.Node, triggerEvent TriggerEvent, triggerTime TriggerTime, triggerDefinition sql.TriggerDefinition) *TriggerExecutor {
 	return &TriggerExecutor{
 		BinaryNode: BinaryNode{
-			Left:  child,
-			Right: triggerLogic,
+			left:  child,
+			right: triggerLogic,
 		},
 		TriggerEvent:      triggerEvent,
 		TriggerTime:       triggerTime,
@@ -62,19 +62,19 @@ func NewTriggerExecutor(child, triggerLogic sql.Node, triggerEvent TriggerEvent,
 func (t *TriggerExecutor) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Trigger(%s)", t.TriggerDefinition.CreateStatement)
-	_ = pr.WriteChildren(t.Left.String())
+	_ = pr.WriteChildren(t.left.String())
 	return pr.String()
 }
 
 func (t *TriggerExecutor) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Trigger(%s)", t.TriggerDefinition.CreateStatement)
-	_ = pr.WriteChildren(sql.DebugString(t.Left), sql.DebugString(t.Right))
+	_ = pr.WriteChildren(sql.DebugString(t.left), sql.DebugString(t.right))
 	return pr.String()
 }
 
 func (t *TriggerExecutor) Schema() sql.Schema {
-	return t.Left.Schema()
+	return t.left.Schema()
 }
 
 func (t *TriggerExecutor) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -200,7 +200,7 @@ func (t *triggerIter) Close() error {
 }
 
 func (t *TriggerExecutor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	childIter, err := t.Left.RowIter(ctx, row)
+	childIter, err := t.left.RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +209,7 @@ func (t *TriggerExecutor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 		child:          childIter,
 		triggerTime:    t.TriggerTime,
 		triggerEvent:   t.TriggerEvent,
-		executionLogic: t.Right,
+		executionLogic: t.right,
 		ctx:            ctx,
 	}, nil
 }

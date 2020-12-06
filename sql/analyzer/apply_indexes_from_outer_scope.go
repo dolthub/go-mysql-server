@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -61,6 +60,8 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	for _, idxLookup := range indexLookups {
 		n, err = plan.TransformUpWithSelector(n, childSelector, func(n sql.Node) (sql.Node, error) {
 			switch n := n.(type) {
+			case *plan.IndexedTableAccess:
+				return n, nil
 			case *plan.TableAlias:
 				if strings.ToLower(n.Name()) == idxLookup.table {
 					return pushdownIndexToTable(a, n, idxLookup.index, idxLookup.keyExpr)
@@ -95,11 +96,7 @@ func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, 
 	var newTableNode sql.Node
 
 	if _, ok := table.(sql.IndexAddressableTable); ok {
-		newTableNode = plan.NewIndexedTable(resolvedTable, index, keyExpr)
-		newTableNode = plan.NewDecoratedNode(
-			plan.DecorationTypeIndexedAccess,
-			fmt.Sprintf("Indexed table access on %s", formatIndexDecoratorString(index)),
-			newTableNode)
+		newTableNode = plan.NewIndexedTableAccess(resolvedTable, index, keyExpr)
 		a.Log("table %q transformed with pushdown of index", tableNode.Name())
 	} else {
 		return tableNode, nil
@@ -136,7 +133,7 @@ func getOuterScopeIndexes(
 	defer indexSpan.Finish()
 
 	var indexes map[string]sql.Index
-	var exprsByTable map[string][]*columnExpr
+	var exprsByTable joinExpressionsByTable
 
 	var err error
 	plan.Inspect(node, func(node sql.Node) bool {
@@ -187,7 +184,7 @@ func getOuterScopeIndexes(
 // createIndexKeyExpr returns a slice of expressions to be used when creating an index lookup key for the table given.
 func createIndexKeyExpr(
 	idx sql.Index,
-	joinExprs []*columnExpr,
+	joinExprs []*joinColExpr,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) []sql.Expression {
@@ -218,7 +215,7 @@ func getSubqueryIndexes(
 	ia *indexAnalyzer,
 	exprAliases ExprAliases,
 	tableAliases TableAliases,
-) (map[string]sql.Index, map[string][]*columnExpr, error) {
+) (map[string]sql.Index, joinExpressionsByTable, error) {
 
 	scopeLen := len(scope.Schema())
 

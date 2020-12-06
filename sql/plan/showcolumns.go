@@ -105,7 +105,7 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 				key,
 				defaultVal,
 				col.Extra,
-				"",          // Privileges
+				"", // Privileges
 				col.Comment,
 			}
 		} else {

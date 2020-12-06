@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -39,6 +41,81 @@ func getTableName(node sql.Node) string {
 	})
 
 	return tableName
+}
+
+// getTableNames returns all table names in the node given
+func getTableNames(node sql.Node) []string {
+	var tableNames []string
+	plan.Inspect(node, func(node sql.Node) bool {
+		switch node := node.(type) {
+		case *plan.TableAlias:
+			tableNames = append(tableNames, node.Name())
+			return false
+		case *plan.ResolvedTable:
+			tableNames = append(tableNames, node.Name())
+			return false
+		case *plan.UnresolvedTable:
+			tableNames = append(tableNames, node.Name())
+			return false
+		}
+		return true
+	})
+
+	return tableNames
+}
+
+type NameableNode interface {
+	sql.Nameable
+	sql.Node
+}
+
+// getTableNames returns all tables in the node given
+func getTables(node sql.Node) []NameableNode {
+	var tables []NameableNode
+	plan.Inspect(node, func(node sql.Node) bool {
+		switch node := node.(type) {
+		case *plan.TableAlias:
+			tables = append(tables, node)
+			return false
+		case *plan.ResolvedTable:
+			tables = append(tables, node)
+			return false
+		case *plan.UnresolvedTable:
+			tables = append(tables, node)
+			return false
+		}
+		return true
+	})
+
+	return tables
+}
+
+// byLowerCaseName returns all the nodes given mapped by their lowercase name.
+func byLowerCaseName(nodes []NameableNode) map[string]NameableNode {
+	byName := make(map[string]NameableNode)
+	for _, n := range nodes {
+		byName[strings.ToLower(n.Name())] = n
+	}
+	return byName
+}
+
+// getUnaliasedTableNames returns the names of all tables in the node given. Aliases aren't considered.
+func getUnaliasedTableNames(n sql.Node) []string {
+	names := make([]string, 0)
+	plan.Inspect(n, func(node sql.Node) bool {
+		switch x := node.(type) {
+		case *plan.UnresolvedTable:
+			names = append(names, x.Name())
+			return false
+		case *plan.ResolvedTable:
+			names = append(names, x.Name())
+			return false
+		}
+
+		return true
+	})
+
+	return names
 }
 
 // Returns the underlying table name for the node given, ignoring table aliases
@@ -99,18 +176,20 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	return table
 }
 
-// Returns the tables used in the expression given
-func findTables(e sql.Expression) []string {
+// Returns the tables used in the expressions given
+func findTables(exprs ...sql.Expression) []string {
 	tables := make(map[string]bool)
-	sql.Inspect(e, func(e sql.Expression) bool {
-		switch e := e.(type) {
-		case *expression.GetField:
-			tables[e.Table()] = true
-			return false
-		default:
-			return true
-		}
-	})
+	for _, e := range exprs {
+		sql.Inspect(e, func(e sql.Expression) bool {
+			switch e := e.(type) {
+			case *expression.GetField:
+				tables[e.Table()] = true
+				return false
+			default:
+				return true
+			}
+		})
+	}
 
 	var names []string
 	for table := range tables {

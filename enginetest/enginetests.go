@@ -16,7 +16,6 @@ package enginetest
 
 import (
 	"context"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -30,6 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -2694,7 +2694,7 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 	widenedRows := WidenRows(rows)
 	widenedExpected := WidenRows(expected)
 
-	orderBy := strings.Contains(strings.ToUpper(q), " ORDER BY ")
+	orderBy := strings.Contains(strings.ToUpper(q), "ORDER BY ")
 
 	// .Equal gives better error messages than .ElementsMatch, so use it when possible
 	if orderBy || len(expected) <= 1 {

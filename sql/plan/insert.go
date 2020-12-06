@@ -34,7 +34,7 @@ type InsertInto struct {
 // NewInsertInto creates an InsertInto node.
 func NewInsertInto(dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression) *InsertInto {
 	return &InsertInto{
-		BinaryNode:  BinaryNode{Left: dst, Right: src},
+		BinaryNode:  BinaryNode{left: dst, right: src},
 		ColumnNames: cols,
 		IsReplace:   isReplace,
 		OnDupExprs:  onDupExprs,
@@ -46,9 +46,9 @@ func NewInsertInto(dst, src sql.Node, isReplace bool, cols []string, onDupExprs 
 // If no row was deleted, the value of those columns is nil.
 func (p *InsertInto) Schema() sql.Schema {
 	if p.IsReplace {
-		return append(p.Left.Schema(), p.Left.Schema()...)
+		return append(p.left.Schema(), p.left.Schema()...)
 	}
-	return p.Left.Schema()
+	return p.left.Schema()
 }
 
 type insertIter struct {
@@ -275,7 +275,7 @@ func (i insertIter) Close() error {
 
 // RowIter implements the Node interface.
 func (p *InsertInto) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return newInsertIter(ctx, p.Left, p.Right, p.IsReplace, p.OnDupExprs, row)
+	return newInsertIter(ctx, p.left, p.right, p.IsReplace, p.OnDupExprs, row)
 }
 
 // WithChildren implements the Node interface.
@@ -285,7 +285,7 @@ func (p *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	np := *p
-	np.Left, np.Right = children[0], children[1]
+	np.left, np.right = children[0], children[1]
 	return &np, nil
 }
 
@@ -296,7 +296,7 @@ func (p InsertInto) String() string {
 	} else {
 		_ = pr.WriteNode("Insert(%s)", strings.Join(p.ColumnNames, ", "))
 	}
-	_ = pr.WriteChildren(p.Left.String(), p.Right.String())
+	_ = pr.WriteChildren(p.left.String(), p.right.String())
 	return pr.String()
 }
 
@@ -308,7 +308,7 @@ func (p InsertInto) DebugString() string {
 	} else {
 		_ = pr.WriteNode("Insert(%s)", strings.Join(columnNames, ", "))
 	}
-	_ = pr.WriteChildren(sql.DebugString(p.Left), sql.DebugString(p.Right))
+	_ = pr.WriteChildren(sql.DebugString(p.left), sql.DebugString(p.right))
 	return pr.String()
 }
 
@@ -330,12 +330,12 @@ func (p *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, erro
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(p.OnDupExprs), 1)
 	}
 
-	return NewInsertInto(p.Left, p.Right, p.IsReplace, p.ColumnNames, newExprs), nil
+	return NewInsertInto(p.left, p.right, p.IsReplace, p.ColumnNames, newExprs), nil
 }
 
 // Resolved implements the Resolvable interface.
 func (p *InsertInto) Resolved() bool {
-	if !p.Left.Resolved() {
+	if !p.left.Resolved() {
 		return false
 	}
 	for _, updateExpr := range p.OnDupExprs {

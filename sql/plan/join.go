@@ -23,18 +23,34 @@ func shouldUseMemoryJoinsByEnv() bool {
 	return v == "on" || v == "1"
 }
 
+type JoinNode interface {
+	sql.Node
+	Left() sql.Node
+	Right() sql.Node
+	JoinCond() sql.Expression
+	JoinType() JoinType
+}
+
 // InnerJoin is an inner join between two tables.
 type InnerJoin struct {
 	BinaryNode
 	Cond sql.Expression
 }
 
+func (j *InnerJoin) JoinType() JoinType {
+	return JoinTypeInner
+}
+
+func (j *InnerJoin) JoinCond() sql.Expression {
+	return j.Cond
+}
+
 // NewInnerJoin creates a new inner join node from two tables.
 func NewInnerJoin(left, right sql.Node, cond sql.Expression) *InnerJoin {
 	return &InnerJoin{
 		BinaryNode: BinaryNode{
-			Left:  left,
-			Right: right,
+			left:  left,
+			right: right,
 		},
 		Cond: cond,
 	}
@@ -42,17 +58,17 @@ func NewInnerJoin(left, right sql.Node, cond sql.Expression) *InnerJoin {
 
 // Schema implements the Node interface.
 func (j *InnerJoin) Schema() sql.Schema {
-	return append(j.Left.Schema(), j.Right.Schema()...)
+	return append(j.left.Schema(), j.right.Schema()...)
 }
 
 // Resolved implements the Resolvable interface.
 func (j *InnerJoin) Resolved() bool {
-	return j.Left.Resolved() && j.Right.Resolved() && j.Cond.Resolved()
+	return j.left.Resolved() && j.right.Resolved() && j.Cond.Resolved()
 }
 
 // RowIter implements the Node interface.
 func (j *InnerJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return joinRowIter(ctx, JoinTypeInner, j.Left, j.Right, j.Cond, row)
+	return joinRowIter(ctx, JoinTypeInner, j.left, j.right, j.Cond, row)
 }
 
 // WithChildren implements the Node interface.
@@ -70,13 +86,13 @@ func (j *InnerJoin) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(j, len(exprs), 1)
 	}
 
-	return NewInnerJoin(j.Left, j.Right, exprs[0]), nil
+	return NewInnerJoin(j.left, j.right, exprs[0]), nil
 }
 
 func (j *InnerJoin) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("InnerJoin(%s)", j.Cond)
-	_ = pr.WriteChildren(j.Left.String(), j.Right.String())
+	_ = pr.WriteChildren(j.left.String(), j.right.String())
 	return pr.String()
 }
 
@@ -91,12 +107,20 @@ type LeftJoin struct {
 	Cond sql.Expression
 }
 
+func (j *LeftJoin) JoinType() JoinType {
+	return JoinTypeLeft
+}
+
+func (j *LeftJoin) JoinCond() sql.Expression {
+	return j.Cond
+}
+
 // NewLeftJoin creates a new left join node from two tables.
 func NewLeftJoin(left, right sql.Node, cond sql.Expression) *LeftJoin {
 	return &LeftJoin{
 		BinaryNode: BinaryNode{
-			Left:  left,
-			Right: right,
+			left:  left,
+			right: right,
 		},
 		Cond: cond,
 	}
@@ -104,17 +128,17 @@ func NewLeftJoin(left, right sql.Node, cond sql.Expression) *LeftJoin {
 
 // Schema implements the Node interface.
 func (j *LeftJoin) Schema() sql.Schema {
-	return append(j.Left.Schema(), makeNullable(j.Right.Schema())...)
+	return append(j.left.Schema(), makeNullable(j.right.Schema())...)
 }
 
 // Resolved implements the Resolvable interface.
 func (j *LeftJoin) Resolved() bool {
-	return j.Left.Resolved() && j.Right.Resolved() && j.Cond.Resolved()
+	return j.left.Resolved() && j.right.Resolved() && j.Cond.Resolved()
 }
 
 // RowIter implements the Node interface.
 func (j *LeftJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return joinRowIter(ctx, JoinTypeLeft, j.Left, j.Right, j.Cond, row)
+	return joinRowIter(ctx, JoinTypeLeft, j.left, j.right, j.Cond, row)
 }
 
 // WithChildren implements the Node interface.
@@ -132,13 +156,13 @@ func (j *LeftJoin) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(j, len(exprs), 1)
 	}
 
-	return NewLeftJoin(j.Left, j.Right, exprs[0]), nil
+	return NewLeftJoin(j.left, j.right, exprs[0]), nil
 }
 
 func (j *LeftJoin) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("LeftJoin(%s)", j.Cond)
-	_ = pr.WriteChildren(j.Left.String(), j.Right.String())
+	_ = pr.WriteChildren(j.left.String(), j.right.String())
 	return pr.String()
 }
 
@@ -153,12 +177,20 @@ type RightJoin struct {
 	Cond sql.Expression
 }
 
+func (j *RightJoin) JoinType() JoinType {
+	return JoinTypeRight
+}
+
+func (j *RightJoin) JoinCond() sql.Expression {
+	return j.Cond
+}
+
 // NewRightJoin creates a new right join node from two tables.
 func NewRightJoin(left, right sql.Node, cond sql.Expression) *RightJoin {
 	return &RightJoin{
 		BinaryNode: BinaryNode{
-			Left:  left,
-			Right: right,
+			left:  left,
+			right: right,
 		},
 		Cond: cond,
 	}
@@ -166,17 +198,17 @@ func NewRightJoin(left, right sql.Node, cond sql.Expression) *RightJoin {
 
 // Schema implements the Node interface.
 func (j *RightJoin) Schema() sql.Schema {
-	return append(makeNullable(j.Left.Schema()), j.Right.Schema()...)
+	return append(makeNullable(j.left.Schema()), j.right.Schema()...)
 }
 
 // Resolved implements the Resolvable interface.
 func (j *RightJoin) Resolved() bool {
-	return j.Left.Resolved() && j.Right.Resolved() && j.Cond.Resolved()
+	return j.left.Resolved() && j.right.Resolved() && j.Cond.Resolved()
 }
 
 // RowIter implements the Node interface.
 func (j *RightJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return joinRowIter(ctx, JoinTypeRight, j.Left, j.Right, j.Cond, row)
+	return joinRowIter(ctx, JoinTypeRight, j.left, j.right, j.Cond, row)
 }
 
 // WithChildren implements the Node interface.
@@ -194,13 +226,13 @@ func (j *RightJoin) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(j, len(exprs), 1)
 	}
 
-	return NewRightJoin(j.Left, j.Right, exprs[0]), nil
+	return NewRightJoin(j.left, j.right, exprs[0]), nil
 }
 
 func (j *RightJoin) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("RightJoin(%s)", j.Cond)
-	_ = pr.WriteChildren(j.Left.String(), j.Right.String())
+	_ = pr.WriteChildren(j.left.String(), j.right.String())
 	return pr.String()
 }
 

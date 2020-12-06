@@ -17,10 +17,6 @@ type IndexedJoin struct {
 	BinaryNode
 	// The join condition.
 	Cond sql.Expression
-	// The index to use when looking up rows in the secondary table.
-	Index sql.Index
-	// The expression to evaluate to extract a key value from a row in the primary table.
-	primaryTableExpr []sql.Expression
 	// The type of join. Left and right refer to the lexical position in the written query, not primary / secondary. In
 	// the case of a right join, the right table will always be the primary.
 	joinType JoinType
@@ -31,13 +27,11 @@ func (ij *IndexedJoin) JoinType() JoinType {
 	return ij.joinType
 }
 
-func NewIndexedJoin(primaryTable, indexedTable sql.Node, joinType JoinType, cond sql.Expression, primaryTableExpr []sql.Expression, index sql.Index) *IndexedJoin {
+func NewIndexedJoin(left, right sql.Node, joinType JoinType, cond sql.Expression) *IndexedJoin {
 	return &IndexedJoin{
-		BinaryNode:       BinaryNode{primaryTable, indexedTable},
-		joinType:         joinType,
-		Cond:             cond,
-		Index:            index,
-		primaryTableExpr: primaryTableExpr,
+		BinaryNode: BinaryNode{left, right},
+		joinType:   joinType,
+		Cond:       cond,
 	}
 }
 
@@ -51,7 +45,7 @@ func (ij *IndexedJoin) String() string {
 		joinType = "Right"
 	}
 	_ = pr.WriteNode("%sIndexedJoin(%s)", joinType, ij.Cond)
-	_ = pr.WriteChildren(ij.Left.String(), ij.Right.String())
+	_ = pr.WriteChildren(ij.left.String(), ij.right.String())
 	return pr.String()
 }
 
@@ -64,40 +58,34 @@ func (ij *IndexedJoin) DebugString() string {
 	case JoinTypeRight:
 		joinType = "Right"
 	}
-	_ = pr.WriteNode("%sIndexedJoin(%s), using index(%s)", joinType, sql.DebugString(ij.Cond), ij.Index.ID())
-	_ = pr.WriteChildren(sql.DebugString(ij.Left), sql.DebugString(ij.Right))
+	_ = pr.WriteNode("%sIndexedJoin(%s)", joinType, sql.DebugString(ij.Cond))
+	_ = pr.WriteChildren(sql.DebugString(ij.left), sql.DebugString(ij.right))
 	return pr.String()
 }
 
 func (ij *IndexedJoin) Schema() sql.Schema {
-	return append(ij.Left.Schema(), ij.Right.Schema()...)
+	return append(ij.left.Schema(), ij.right.Schema()...)
 }
 
 func (ij *IndexedJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var indexedTable *IndexedTableAccess
-	Inspect(ij.Right, func(node sql.Node) bool {
-		if it, ok := node.(*IndexedTableAccess); ok {
-			indexedTable = it
-			return false
-		}
-		return true
-	})
-
-	if indexedTable == nil {
-		return nil, ErrNoIndexedTableAccess.New(ij.Right)
-	}
-
-	return indexedJoinRowIter(ctx, ij.Left, ij.Right, indexedTable, ij.primaryTableExpr, ij.Cond, ij.Index, ij.joinType)
+	return indexedJoinRowIter(ctx, row, ij.left, ij.right, ij.Cond, ij.joinType)
 }
 
 func (ij *IndexedJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(ij, len(children), 2)
 	}
-	return NewIndexedJoin(children[0], children[1], ij.joinType, ij.Cond, ij.primaryTableExpr, ij.Index), nil
+	return NewIndexedJoin(children[0], children[1], ij.joinType, ij.Cond), nil
 }
 
-func indexedJoinRowIter(ctx *sql.Context, left sql.Node, right sql.Node, indexAccess *IndexedTableAccess, primaryTableExpr []sql.Expression, cond sql.Expression, index sql.Index, joinType JoinType) (sql.RowIter, error) {
+func indexedJoinRowIter(
+	ctx *sql.Context,
+	parentRow sql.Row,
+	left sql.Node,
+	right sql.Node,
+	cond sql.Expression,
+	joinType JoinType,
+) (sql.RowIter, error) {
 	var leftName, rightName string
 	if leftTable, ok := left.(sql.Nameable); ok {
 		leftName = leftTable.Name()
@@ -116,36 +104,32 @@ func indexedJoinRowIter(ctx *sql.Context, left sql.Node, right sql.Node, indexAc
 		"right": rightName,
 	})
 
-	l, err := left.RowIter(ctx, nil)
+	l, err := left.RowIter(ctx, parentRow)
 	if err != nil {
 		span.Finish()
 		return nil, err
 	}
 	return sql.NewSpanIter(span, &indexedJoinIter{
-		primary:              l,
-		secondaryProvider:    right,
-		secondaryIndexAccess: indexAccess,
-		ctx:                  ctx,
-		cond:                 cond,
-		primaryTableExpr:     primaryTableExpr,
-		index:                index,
-		joinType:             joinType,
-		rowSize:              len(left.Schema()) + len(right.Schema()),
+		parentRow:         parentRow,
+		primary:           l,
+		secondaryProvider: right,
+		ctx:               ctx,
+		cond:              cond,
+		joinType:          joinType,
+		rowSize:           len(parentRow) + len(left.Schema()) + len(right.Schema()),
 	}), nil
 }
 
 // indexedJoinIter is an iterator that iterates over every row in the primary table and performs an index lookup in
 // the secondary table for each value
 type indexedJoinIter struct {
-	primary              sql.RowIter
-	primaryRow           sql.Row
-	index                sql.Index
-	secondaryIndexAccess *IndexedTableAccess
-	secondaryProvider    sql.Node
-	secondary            sql.RowIter
-	primaryTableExpr     []sql.Expression
-	cond                 sql.Expression
-	joinType             JoinType
+	parentRow         sql.Row
+	primary           sql.RowIter
+	primaryRow        sql.Row
+	secondaryProvider sql.Node
+	secondary         sql.RowIter
+	cond              sql.Expression
+	joinType          JoinType
 
 	ctx        *sql.Context
 	foundMatch bool
@@ -159,7 +143,7 @@ func (i *indexedJoinIter) loadPrimary() error {
 			return err
 		}
 
-		i.primaryRow = r
+		i.primaryRow = i.parentRow.Append(r)
 		i.foundMatch = false
 	}
 
@@ -168,14 +152,12 @@ func (i *indexedJoinIter) loadPrimary() error {
 
 func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 	if i.secondary == nil {
-		span, ctx := i.ctx.Span("plan.IndexedJoin indexed lookup")
-		rowIter, err := i.secondaryProvider.RowIter(ctx, i.primaryRow)
+		rowIter, err := i.secondaryProvider.RowIter(i.ctx, i.primaryRow)
 		if err != nil {
-			span.Finish()
 			return nil, err
 		}
 
-		i.secondary = sql.NewSpanIter(span, rowIter)
+		i.secondary = rowIter
 	}
 
 	secondaryRow, err := i.secondary.Next()
@@ -202,7 +184,8 @@ func (i *indexedJoinIter) Next() (sql.Row, error) {
 		if err != nil {
 			if err == io.EOF {
 				if !i.foundMatch && (i.joinType == JoinTypeLeft || i.joinType == JoinTypeRight) {
-					return i.buildRow(primary, nil), nil
+					row := i.buildRow(primary, nil)
+					return row[len(i.parentRow):], nil
 				}
 				continue
 			}
@@ -220,7 +203,7 @@ func (i *indexedJoinIter) Next() (sql.Row, error) {
 		}
 
 		i.foundMatch = true
-		return row, nil
+		return row[len(i.parentRow):], nil
 	}
 }
 

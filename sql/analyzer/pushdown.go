@@ -226,11 +226,6 @@ func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, scope *Scope, indexe
 	return node, nil
 }
 
-type NameableNode interface {
-	sql.Nameable
-	sql.Node
-}
-
 // pushdownFiltersToTable attempts to push filters to tables that can accept them
 func pushdownFiltersToTable(
 	a *Analyzer,

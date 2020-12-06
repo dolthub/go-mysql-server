@@ -1018,7 +1018,7 @@ var QueryTests = []QueryTest{
 			FROM mytable tbl
 		) t
 		GROUP BY fi
-		ORDER BY COUNT(*) ASC`,
+		ORDER BY COUNT(*) ASC, fi`,
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(1)},
@@ -1031,7 +1031,7 @@ var QueryTests = []QueryTest{
 			FROM mytable tbl
 		) t
 		GROUP BY fi
-		ORDER BY COUNT(*) ASC`,
+		ORDER BY COUNT(*) ASC, fi`,
 		Expected: []sql.Row{
 			{int64(1), "first row"},
 			{int64(1), "second row"},
@@ -1150,6 +1150,20 @@ var QueryTests = []QueryTest{
 			{int64(2), "second row", int64(3), "third row", "first", int64(3)},
 			{int64(3), "third row", int64(1), "first row", "third", int64(1)},
 			{int64(3), "third row", int64(2), "second row", "second", int64(2)},
+			{int64(3), "third row", int64(3), "third row", "first", int64(3)},
+		},
+	},
+	{
+		Query: `SELECT * FROM tabletest join mytable mt INNER JOIN othertable ot ON tabletest.i = ot.i2 order by 1,3,6`,
+		Expected: []sql.Row{
+			{int64(1), "first row", int64(1), "first row", "third", int64(1)},
+			{int64(1), "first row", int64(2), "second row", "third", int64(1)},
+			{int64(1), "first row", int64(3), "third row", "third", int64(1)},
+			{int64(2), "second row", int64(1), "first row", "second", int64(2)},
+			{int64(2), "second row", int64(2), "second row", "second", int64(2)},
+			{int64(2), "second row", int64(3), "third row", "second", int64(2)},
+			{int64(3), "third row", int64(1), "first row", "first", int64(3)},
+			{int64(3), "third row", int64(2), "second row", "first", int64(3)},
 			{int64(3), "third row", int64(3), "third row", "first", int64(3)},
 		},
 	},
@@ -1308,97 +1322,97 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT SIN(i) from mytable order by i limit 1",
+		Query: "SELECT SIN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{0.8414709848078965},
 		},
 	},
 	{
-		Query:    "SELECT COS(i) from mytable order by i limit 1",
+		Query: "SELECT COS(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{0.5403023058681398},
 		},
 	},
 	{
-		Query:    "SELECT TAN(i) from mytable order by i limit 1",
+		Query: "SELECT TAN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{1.557407724654902},
 		},
 	},
 	{
-		Query:    "SELECT ASIN(i) from mytable order by i limit 1",
+		Query: "SELECT ASIN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{1.5707963267948966},
 		},
 	},
 	{
-		Query:    "SELECT ACOS(i) from mytable order by i limit 1",
+		Query: "SELECT ACOS(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{0.0},
 		},
 	},
 	{
-		Query:    "SELECT ATAN(i) from mytable order by i limit 1",
+		Query: "SELECT ATAN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{0.7853981633974483},
 		},
 	},
 	{
-		Query:    "SELECT COT(i) from mytable order by i limit 1",
+		Query: "SELECT COT(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{0.6420926159343308},
 		},
 	},
 	{
-		Query:    "SELECT DEGREES(i) from mytable order by i limit 1",
+		Query: "SELECT DEGREES(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{57.29577951308232},
 		},
 	},
 	{
-		Query:    "SELECT RADIANS(i) from mytable order by i limit 1",
+		Query: "SELECT RADIANS(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{0.017453292519943295},
 		},
 	},
 	{
-		Query:    "SELECT CRC32(i) from mytable order by i limit 1",
+		Query: "SELECT CRC32(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{uint64(0x83dcefb7)},
 		},
 	},
 	{
-		Query:    "SELECT SIGN(i) from mytable order by i limit 1",
+		Query: "SELECT SIGN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{1},
 		},
 	},
 	{
-		Query:    "SELECT ASCII(s) from mytable order by i limit 1",
+		Query: "SELECT ASCII(s) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{uint64(0x66)},
 		},
 	},
 	{
-		Query:    "SELECT HEX(s) from mytable order by i limit 1",
+		Query: "SELECT HEX(s) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{"666972737420726F77"},
 		},
 	},
 	{
-		Query:    "SELECT UNHEX(s) from mytable order by i limit 1",
+		Query: "SELECT UNHEX(s) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{nil},
 		},
 	},
 	{
-		Query:    "SELECT BIN(i) from mytable order by i limit 1",
+		Query: "SELECT BIN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{"1"},
 		},
 	},
 	{
-		Query:    "SELECT BIT_LENGTH(i) from mytable order by i limit 1",
+		Query: "SELECT BIT_LENGTH(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{64},
 		},
@@ -1996,7 +2010,7 @@ var QueryTests = []QueryTest{
 			FROM mytable
 			GROUP BY i
 		) AS q
-		ORDER BY foo DESC
+		ORDER BY foo DESC, i ASC
 		`,
 		Expected: []sql.Row{
 			{int64(1), int64(1)},
@@ -2239,7 +2253,7 @@ var QueryTests = []QueryTest{
 		) AS expr_qry
 		GROUP BY s
 		HAVING ((AVG(i) > 0))
-		ORDER BY count DESC
+		ORDER BY count DESC, s ASC
 		LIMIT 10000`,
 		Expected: []sql.Row{
 			{"first row", int64(1), float64(1)},
@@ -2355,7 +2369,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT i FROM mytable mt 
+		Query: `SELECT i FROM mytable mt
 						 WHERE (SELECT i FROM mytable where i = mt.i and i > 2) IS NOT NULL
 						 AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
 						 ORDER BY i`,
@@ -2364,7 +2378,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT i FROM mytable mt 
+		Query: `SELECT i FROM mytable mt
 						 WHERE (SELECT i FROM mytable where i = mt.i and i > 1) IS NOT NULL
 						 AND (SELECT i2 FROM othertable where i2 = i and i < 3) IS NOT NULL
 						 ORDER BY i`,
@@ -2373,7 +2387,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT i FROM mytable mt 
+		Query: `SELECT i FROM mytable mt
 						 WHERE (SELECT i FROM mytable where i = mt.i) IS NOT NULL
 						 AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
 						 ORDER BY i`,
@@ -2389,7 +2403,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT i FROM mytable 
+		Query: `SELECT i FROM mytable
 						 WHERE (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
 						 ORDER BY i`,
 		Expected: []sql.Row{
@@ -2397,7 +2411,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT i FROM mytable mt 
+		Query: `SELECT i FROM mytable mt
 						 WHERE (SELECT i2 FROM othertable ot where ot.i2 = mt.i) IS NOT NULL
 						 ORDER BY i`,
 		Expected: []sql.Row{
@@ -2470,7 +2484,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk),
 					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk)
 					FROM one_pk opk ORDER BY 1;`,
@@ -2482,10 +2496,10 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
 					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
-					FROM one_pk opk 
+					FROM one_pk opk
 					WHERE (SELECT min(pk) FROM one_pk WHERE pk > opk.pk) IS NOT NULL
 					ORDER BY max;`,
 		Expected: []sql.Row{
@@ -2495,9 +2509,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min 
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk) > 0
 					ORDER BY min;`,
@@ -2509,9 +2523,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min 
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk > opk.pk) > 0
 					ORDER BY min;`,
@@ -2522,9 +2536,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min 
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk > opk.pk) > 0
 					ORDER BY max;`,
@@ -2548,9 +2562,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min 
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
 					FROM one_pk opk ORDER BY min;`,
 		Expected: []sql.Row{
 			{3, 2, nil},
@@ -2569,9 +2583,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min 
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk)
 					ORDER BY min;`,
@@ -2661,7 +2675,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) IS NOT NULL ORDER BY x`,
 		Expected: []sql.Row{
 			{1, 0},
@@ -2670,7 +2684,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) IS NOT NULL ORDER BY max`,
 		Expected: []sql.Row{
 			{1, 0},
@@ -2679,7 +2693,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0 ORDER BY x`,
 		Expected: []sql.Row{
 			{2, 1},
@@ -2687,8 +2701,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
-						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
+						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
 						GROUP BY x ORDER BY x`,
 		Expected: []sql.Row{
 			{2, 1},
@@ -2696,8 +2710,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
-						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
+						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
 						GROUP BY (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
 		Expected: []sql.Row{
 			{2, 1},
@@ -2705,7 +2719,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk > opk.pk) > 0 ORDER BY x`,
 		Expected: []sql.Row{
 			{0, nil},
@@ -2714,12 +2728,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT min(pk) FROM one_pk WHERE pk < opk.pk) > 0 ORDER BY x`,
 		Expected: []sql.Row{},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT min(pk) FROM one_pk WHERE pk > opk.pk) > 0 ORDER BY x`,
 		Expected: []sql.Row{
 			{0, nil},
@@ -2728,9 +2742,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk, 
+		Query: `SELECT pk,
 					(SELECT max(pk1) FROM two_pk WHERE pk1 < pk) AS max,
-					(SELECT min(pk2) FROM two_pk WHERE pk2 > pk) AS min 
+					(SELECT min(pk2) FROM two_pk WHERE pk2 > pk) AS min
 					FROM one_pk ORDER BY min, pk;`,
 		Expected: []sql.Row{
 			{1, 0, nil},
@@ -3017,6 +3031,36 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{0, 0, 0},
 			{1, 1, 1},
+		},
+	},
+	{
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
+						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk-1=tpk.pk2 
+						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1
+						ORDER BY 1`,
+		Expected: []sql.Row{
+			{0, nil, nil, nil, nil},
+			{1, 1, 0, 0, 1},
+			{2, nil, nil, nil, nil},
+			{3, nil, nil, nil, nil},
+		},
+	},
+	{
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
+						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2 
+						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
+						ORDER BY 1`,
+		Expected: []sql.Row{
+			{1, 1, 0, 0, 1},
+		},
+	},
+	{
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
+						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2 
+						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
+						ORDER BY 1`,
+		Expected: []sql.Row{
+			{1, 1, 0, 0, 1},
 		},
 	},
 	{
@@ -3409,6 +3453,32 @@ var BrokenQueries = []QueryTest{
 			{1, 1, 4},
 		},
 	},
+	// 3+ table joins with one LEFT join, one INNER join, have the wrong semantics according to MySQL. Should be 2 rows,
+	// but get 4.
+	{
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
+						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2 
+						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
+		Expected: []sql.Row{
+			{0, 0, 0, 0, 0},
+			{1, 1, 1, 1, 1},
+		},
+	},
+	// More broken RIGHT / LEFT semantics. Mysql gives these results, we give different ones.
+	{
+		Query: `SELECT pk,nt.i,nt2.i FROM one_pk
+						RIGHT JOIN niltable nt ON pk=nt.i
+						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
+						ORDER BY 3`,
+		Expected: []sql.Row{
+			{nil, nil, 1},
+			{1, 1, 2},
+			{2, 2, 3},
+			{3, 3, 4},
+			{nil, nil, 5},
+			{nil, nil, 6},
+		},
+	},
 }
 
 var VersionedQueries = []QueryTest{
@@ -3648,8 +3718,8 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"auto_increment_tbl"},
 			{"bigtable"},
-			{"floattable"},
 			{"fk_tbl"},
+			{"floattable"},
 			{"mytable"},
 			{"myview"},
 			{"newlinetable"},

@@ -263,8 +263,8 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 	var firstmismatch []string
 	plan.Inspect(n, func(n sql.Node) bool {
 		if u, ok := n.(*plan.Union); ok {
-			ls := u.Left.Schema()
-			rs := u.Right.Schema()
+			ls := u.Left().Schema()
+			rs := u.Right().Schema()
 			if len(ls) != len(rs) {
 				firstmismatch = []string{
 					fmt.Sprintf("%d columns", len(ls)),

@@ -89,8 +89,8 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 			}
 		}
 		if t, ok := n.(*plan.TriggerExecutor); ok {
-			if qp, ok := t.Right.(*plan.QueryProcess); ok {
-				return t.WithChildren(t.Left, qp.Child)
+			if qp, ok := t.Right().(*plan.QueryProcess); ok {
+				return t.WithChildren(t.Left(), qp.Child)
 			}
 		}
 		return n, nil

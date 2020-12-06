@@ -131,6 +131,7 @@ func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 type Sin struct {
 	*UnaryFunc
 }
+
 var _ sql.FunctionExpression = (*Sin)(nil)
 
 // NewSin returns a new SIN function expression
@@ -168,6 +169,7 @@ func (s *Sin) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 type Cos struct {
 	*UnaryFunc
 }
+
 var _ sql.FunctionExpression = (*Cos)(nil)
 
 // NewCos returns a new COS function expression
@@ -205,6 +207,7 @@ func (c *Cos) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 type Tan struct {
 	*UnaryFunc
 }
+
 var _ sql.FunctionExpression = (*Tan)(nil)
 
 // NewTan returns a new TAN function expression
@@ -242,6 +245,7 @@ func (t *Tan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 type Asin struct {
 	*UnaryFunc
 }
+
 var _ sql.FunctionExpression = (*Asin)(nil)
 
 // NewAsin returns a new ASIN function expression
@@ -279,6 +283,7 @@ func (a *Asin) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 type Acos struct {
 	*UnaryFunc
 }
+
 var _ sql.FunctionExpression = (*Acos)(nil)
 
 // NewAcos returns a new ACOS function expression
@@ -316,6 +321,7 @@ func (a *Acos) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 type Atan struct {
 	*UnaryFunc
 }
+
 var _ sql.FunctionExpression = (*Atan)(nil)
 
 // NewAtan returns a new ATAN function expression
@@ -353,6 +359,7 @@ func (a *Atan) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 type Cot struct {
 	*UnaryFunc
 }
+
 var _ sql.FunctionExpression = (*Cot)(nil)
 
 // NewCot returns a new COT function expression
@@ -390,6 +397,7 @@ func (c *Cot) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 type Degrees struct {
 	*UnaryFunc
 }
+
 var _ sql.FunctionExpression = (*Degrees)(nil)
 
 // NewDegrees returns a new DEGREES function expression
@@ -427,6 +435,7 @@ func (d *Degrees) WithChildren(children ...sql.Expression) (sql.Expression, erro
 type Radians struct {
 	*UnaryFunc
 }
+
 var _ sql.FunctionExpression = (*Radians)(nil)
 
 // NewRadians returns a new RADIANS function expression
@@ -464,6 +473,7 @@ func (r *Radians) WithChildren(children ...sql.Expression) (sql.Expression, erro
 type Crc32 struct {
 	*UnaryFunc
 }
+
 var _ sql.FunctionExpression = (*Crc32)(nil)
 
 // NewCrc32 returns a new CRC32 function expression
@@ -543,6 +553,7 @@ func floatToString(f float64) string {
 type Sign struct {
 	*UnaryFunc
 }
+
 var _ sql.FunctionExpression = (*Sign)(nil)
 
 // NewSign returns a new SIGN function expression
