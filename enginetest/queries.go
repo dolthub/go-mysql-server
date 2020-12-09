@@ -332,7 +332,6 @@ var QueryTests = []QueryTest{
 		Query:    "SELECT 100 NOT IN (SELECT i2 FROM niltable)",
 		Expected: []sql.Row{{nil}},
 	},
-
 	{
 		Query:    "SELECT 1 IN (2,3,4,null)",
 		Expected: []sql.Row{{nil}},
@@ -760,7 +759,8 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT id FROM typestable WHERE da < date_sub('2020-01-01', INTERVAL 1 DAY)",
 		Expected: nil,
-	}, {
+	},
+	{
 		Query: "SELECT i,v from stringandtable WHERE i",
 		Expected: []sql.Row{
 			{int64(1), "1"},
@@ -3390,6 +3390,43 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT POW(2,3) FROM dual",
 		Expected: []sql.Row{{float64(8)}},
+	},
+}
+
+var KeylessQueries = []QueryTest{
+	{
+		Query: "SELECT * FROM keyless ORDER BY c0",
+		Expected: []sql.Row{
+			{0, 0},
+			{1, 1},
+			{1, 1},
+			{2, 2},
+		},
+	},
+	{
+		Query: "SELECT * FROM keyless ORDER BY c1 DESC",
+		Expected: []sql.Row{
+			{2, 2},
+			{1, 1},
+			{1, 1},
+			{0, 0},
+		},
+	},
+	{
+		Query:    "SELECT * FROM keyless JOIN myTable where c0 = i",
+		Expected: []sql.Row{
+			{1, 1, 1, "first row"},
+			{1, 1, 1, "first row"},
+			{2, 2, 2, "second row"},
+		},
+	},
+	{
+		Query:    "SELECT * FROM myTable JOIN keyless WHERE i = c0 ORDER BY i",
+		Expected: []sql.Row{
+			{1, "first row", 1, 1},
+			{1, "first row", 1, 1},
+			{2, "second row", 2, 2},
+		},
 	},
 }
 

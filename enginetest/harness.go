@@ -80,3 +80,10 @@ type VersionedDBHarness interface {
 	// NewTableAsOf might do all the necessary work to create such snapshots, so this could be a no-op.
 	SnapshotTable(db sql.VersionedDatabase, name string, asOf interface{}) error
 }
+
+// KeylessTableHarness is an extension to Harness that lets an integrator test their implementation with keyless tables.
+type KeylessTableHarness interface {
+	Harness
+	// SupportsKeylessTables indicates integrator support for keyless tables.
+	SupportsKeylessTables() bool
+}
