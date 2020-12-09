@@ -59,6 +59,7 @@ var _ IndexDriverHarness = (*MemoryHarness)(nil)
 var _ IndexHarness = (*MemoryHarness)(nil)
 var _ VersionedDBHarness = (*MemoryHarness)(nil)
 var _ ForeignKeyHarness = (*MemoryHarness)(nil)
+var _ KeylessTableHarness = (*MemoryHarness)(nil)
 var _ SkippingHarness = (*SkippingMemoryHarness)(nil)
 
 type SkippingMemoryHarness struct {
@@ -74,6 +75,10 @@ func (m *MemoryHarness) SupportsNativeIndexCreation() bool {
 }
 
 func (m *MemoryHarness) SupportsForeignKeys() bool {
+	return true
+}
+
+func (m *MemoryHarness) SupportsKeylessTables() bool {
 	return true
 }
 

@@ -3393,6 +3393,18 @@ var QueryTests = []QueryTest{
 	},
 }
 
+var KeylessQueries = []QueryTest{
+	{
+		Query:    "SELECT * FROM keyless",
+		Expected: []sql.Row{
+			{0, 0},
+			{1, 1},
+			{1, 1},
+			{2, 2},
+		},
+	},
+}
+
 // Queries that are known to be broken in the engine.
 var BrokenQueries = []QueryTest{
 	{

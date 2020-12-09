@@ -45,6 +45,12 @@ func TestQueries(t *testing.T, harness Harness) {
 	for _, tt := range QueryTests {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.Bindings)
 	}
+
+	if _, ok := harness.(KeylessTableHarness); ok {
+		for _, tt := range KeylessQueries {
+			TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.Bindings)
+		}
+	}
 }
 
 // Runs the query tests given after setting up the engine. Useful for testing out a smaller subset of queries during

@@ -421,6 +421,24 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		require.NoError(t, versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-02"))
 	}
 
+	if _, ok := harness.(KeylessTableHarness); ok &&
+		includeTable(includedTables, "keyless") {
+		table, err = harness.NewTable(myDb, "keyless", sql.Schema{
+			{Name: "c0", Type: sql.Int64, Source: "keyless", Nullable: true},
+			{Name: "c1", Type: sql.Int64, Source: "keyless", Nullable: true},
+		})
+
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow(int64(0), int64(0)),
+				sql.NewRow(int64(1), int64(1)),
+				sql.NewRow(int64(1), int64(1)),
+				sql.NewRow(int64(2), int64(2)))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "keyless", err)
+		}
+	}
+
 	return []sql.Database{myDb, foo}
 }
 
