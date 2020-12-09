@@ -421,7 +421,8 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		require.NoError(t, versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-02"))
 	}
 
-	if _, ok := harness.(KeylessTableHarness); ok &&
+	if keyless, ok := harness.(KeylessTableHarness); ok &&
+		keyless.SupportsKeylessTables() &&
 		includeTable(includedTables, "keyless") {
 		table, err = harness.NewTable(myDb, "keyless", sql.Schema{
 			{Name: "c0", Type: sql.Int64, Source: "keyless", Nullable: true},

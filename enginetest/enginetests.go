@@ -46,7 +46,7 @@ func TestQueries(t *testing.T, harness Harness) {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.Bindings)
 	}
 
-	if _, ok := harness.(KeylessTableHarness); ok {
+	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables(){
 		for _, tt := range KeylessQueries {
 			TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.Bindings)
 		}

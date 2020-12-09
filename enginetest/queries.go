@@ -3395,7 +3395,7 @@ var QueryTests = []QueryTest{
 
 var KeylessQueries = []QueryTest{
 	{
-		Query: "SELECT * FROM keyless",
+		Query: "SELECT * FROM keyless ORDER BY c0",
 		Expected: []sql.Row{
 			{0, 0},
 			{1, 1},
@@ -3421,7 +3421,7 @@ var KeylessQueries = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT * FROM myTable JOIN keyless where i = c0",
+		Query:    "SELECT * FROM myTable JOIN keyless WHERE i = c0 ORDER BY i",
 		Expected: []sql.Row{
 			{1, "first row", 1, 1},
 			{1, "first row", 1, 1},
