@@ -119,6 +119,12 @@ var DeleteTests = []WriteQueryTest{
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(3), "third row"}},
 	},
+	{
+		WriteQuery:          "DELETE FROM mytable WHERE (i,s) = (1, 'first row');",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM mytable;",
+		ExpectedSelect:      []sql.Row{{int64(2), "second row"}, {int64(3), "third row"}},
+	},
 }
 
 var DeleteErrorTests = []GenericErrorQueryTest{
