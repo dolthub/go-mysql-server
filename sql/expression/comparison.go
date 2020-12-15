@@ -44,7 +44,7 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return 0, ErrNilOperand.New()
 	}
 
-	if c.Left().Type() == c.Right().Type() {
+	if sql.TypesEqual(c.Left().Type(), c.Right().Type()) {
 		return c.Left().Type().Compare(left, right)
 	}
 
@@ -74,6 +74,9 @@ func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{
 func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, interface{}, sql.Type, error) {
 	leftType := c.Left().Type()
 	rightType := c.Right().Type()
+	if sql.IsTuple(leftType) && sql.IsTuple(rightType) {
+		return left, right, c.Left().Type(), nil
+	}
 	if sql.IsNumber(leftType) || sql.IsNumber(rightType) {
 		if sql.IsDecimal(leftType) || sql.IsDecimal(rightType) {
 			//TODO: We need to set to the actual DECIMAL type
