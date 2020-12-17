@@ -120,10 +120,7 @@ func replaceExpressionsForNaturalJoin(
 	return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
 		switch e := e.(type) {
 		case *expression.GetField, *expression.UnresolvedColumn:
-			var tableName = e.(sql.Tableable).Table()
-			if t, ok := tableAliases[strings.ToLower(tableName)]; ok {
-				tableName = t.Name()
-			}
+			var tableName = strings.ToLower(e.(sql.Tableable).Table())
 
 			name := e.(sql.Nameable).Name()
 			if col, ok := replacements[tableCol{strings.ToLower(tableName), strings.ToLower(name)}]; ok {

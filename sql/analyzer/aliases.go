@@ -10,14 +10,14 @@ import (
 )
 
 type ExprAliases map[string]sql.Expression
-type TableAliases map[string]sql.Nameable
+type TableAliases map[string]sql.Node
 
 // add adds the given table alias referring to the node given. Adding a case insensitive alias that already exists
 // returns an error.
-func (ta TableAliases) add(alias *plan.TableAlias, target sql.Nameable) error {
+func (ta TableAliases) add(alias sql.Nameable, target sql.Node) error {
 	lowerName := strings.ToLower(alias.Name())
 	if _, ok := ta[lowerName]; ok {
-		return sql.ErrDuplicateAliasOrTable.New(target.Name())
+		return sql.ErrDuplicateAliasOrTable.New(alias.Name())
 	}
 
 	ta[lowerName] = target
@@ -42,10 +42,11 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			return false
 		}
 
+
 		if at, ok := node.(*plan.TableAlias); ok {
 			switch t := at.Child.(type) {
 			case *plan.ResolvedTable, *plan.SubqueryAlias:
-				analysisErr = passAliases.add(at, t.(sql.Nameable))
+				analysisErr = passAliases.add(at, t)
 				if analysisErr != nil {
 					return false
 				}
@@ -61,6 +62,22 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 				panic(fmt.Sprintf("Unexpected child type of TableAlias: %T", at.Child))
 			}
 			return false
+		}
+
+		switch node := node.(type) {
+		case *plan.ResolvedTable, *plan.SubqueryAlias:
+			analysisErr = passAliases.add(node.(sql.Nameable), node)
+			if analysisErr != nil {
+				return false
+			}
+		case *plan.DecoratedNode:
+			rt := getResolvedTable(node.Child)
+			passAliases.add(rt, node)
+		case *plan.IndexedTableAccess:
+			rt := getResolvedTable(node.ResolvedTable)
+			passAliases.add(rt, node)
+		case *plan.UnresolvedTable:
+			panic("Table not resolved")
 		}
 
 		return true
@@ -121,7 +138,7 @@ func getExpressionAliases(node sql.Node) ExprAliases {
 // normalizeTableName returns the underlying table for the aliased table name given, if it's an alias.
 func normalizeTableName(tableAliases TableAliases, tableName string) string {
 	if rt, ok := tableAliases[tableName]; ok {
-		return rt.Name()
+		return nodeName(rt)
 	}
 
 	return tableName
@@ -161,7 +178,7 @@ func normalizeExpression(exprAliases ExprAliases, tableAliases TableAliases, e s
 		if field, ok := e.(*expression.GetField); ok {
 			table := field.Table()
 			if rt, ok := tableAliases[table]; ok {
-				return field.WithTable(rt.Name()), nil
+				return field.WithTable(nodeName(rt)), nil
 			}
 		}
 
@@ -169,4 +186,11 @@ func normalizeExpression(exprAliases ExprAliases, tableAliases TableAliases, e s
 	})
 
 	return normalized
+}
+
+func nodeName(node sql.Node) string {
+	if nameable, ok := node.(sql.Nameable); ok {
+		return nameable.Name()
+	}
+	return node.String()
 }

@@ -55,21 +55,20 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.N
 func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, schema sql.Schema, tableAliases TableAliases) ([]sql.Expression, error) {
 	var expressions []sql.Expression
 	for _, e := range exprs {
-		if s, ok := e.(*expression.Star); ok {
+		if star, ok := e.(*expression.Star); ok {
 			var exprs []sql.Expression
 			for i, col := range schema {
 				lowerSource := strings.ToLower(col.Source)
-				lowerTable := strings.ToLower(s.Table)
-				if s.Table == "" || lowerTable == lowerSource ||
-					(tableAliases[lowerSource] != nil && strings.ToLower(tableAliases[lowerSource].Name()) == lowerTable) {
+				lowerTable := strings.ToLower(star.Table)
+				if star.Table == "" || lowerTable == lowerSource {
 					exprs = append(exprs, expression.NewGetFieldWithTable(
 						i, col.Type, col.Source, col.Name, col.Nullable,
 					))
 				}
 			}
 
-			if len(exprs) == 0 && s.Table != "" {
-				return nil, sql.ErrTableNotFound.New(s.Table)
+			if len(exprs) == 0 && star.Table != "" {
+				return nil, sql.ErrTableNotFound.New(star.Table)
 			}
 
 			expressions = append(expressions, exprs...)

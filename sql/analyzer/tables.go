@@ -99,25 +99,6 @@ func byLowerCaseName(nodes []NameableNode) map[string]NameableNode {
 	return byName
 }
 
-// getUnaliasedTableNames returns the names of all tables in the node given. Aliases aren't considered.
-func getUnaliasedTableNames(n sql.Node) []string {
-	names := make([]string, 0)
-	plan.Inspect(n, func(node sql.Node) bool {
-		switch x := node.(type) {
-		case *plan.UnresolvedTable:
-			names = append(names, x.Name())
-			return false
-		case *plan.ResolvedTable:
-			names = append(names, x.Name())
-			return false
-		}
-
-		return true
-	})
-
-	return names
-}
-
 // Returns the underlying table name for the node given, ignoring table aliases
 func getUnaliasedTableName(node sql.Node) string {
 	var tableName string

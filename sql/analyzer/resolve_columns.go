@@ -18,16 +18,10 @@ func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 	span, _ := ctx.Span("check_aliases")
 	defer span.Finish()
 
-	tableAliases, err := getTableAliases(n, scope)
+	// getTableAliases will error if any tables name is repeated
+	_, err := getTableAliases(n, scope)
 	if err != nil {
 		return nil, err
-	}
-
-	tableNames := getUnaliasedTableNames(n)
-	for _, tableName := range tableNames {
-		if _, ok := tableAliases[strings.ToLower(tableName)]; ok {
-			return nil, sql.ErrDuplicateAliasOrTable.New(tableName)
-		}
 	}
 
 	plan.Inspect(n, func(node sql.Node) bool {
