@@ -82,6 +82,22 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{3}, {2}, {1}},
 	},
 	{
+		Query:    "SELECT i AS s, mt.s FROM mytable mt ORDER BY i DESC",
+		Expected: []sql.Row{
+			{3, "third row"},
+			{2, "second row"},
+			{1, "first row"},
+		},
+	},
+	{
+		Query:    "SELECT i AS s, s FROM mytable mt ORDER BY i DESC",
+		Expected: []sql.Row{
+			{3, "third row"},
+			{2, "second row"},
+			{1, "first row"},
+		},
+	},
+	{
 		Query:    "SELECT i AS x FROM mytable ORDER BY x DESC",
 		Expected: []sql.Row{{3}, {2}, {1}},
 	},

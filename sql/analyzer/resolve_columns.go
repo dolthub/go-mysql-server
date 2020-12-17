@@ -38,7 +38,7 @@ func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 
 		aliases := lookForAliasDeclarations(p)
 		for alias := range aliases {
-			if isAliasUsed(p, alias) {
+			if aliasUsedInNode(p, alias) {
 				err = sql.ErrMisusedAlias.New(alias)
 			}
 		}
@@ -68,7 +68,7 @@ func lookForAliasDeclarations(node sql.Expressioner) map[string]struct{} {
 	return aliases
 }
 
-func isAliasUsed(node sql.Expressioner, alias string) bool {
+func aliasUsedInNode(node sql.Expressioner, alias string) bool {
 	var found bool
 	for _, e := range node.Expressions() {
 		sql.Inspect(e, func(expr sql.Expression) bool {
@@ -81,6 +81,13 @@ func isAliasUsed(node sql.Expressioner, alias string) bool {
 			}
 
 			if n, ok := expr.(sql.Nameable); ok && n.Name() == alias {
+				// Qualified column expressions are not a match for an alias
+				col, ok := n.(column)
+				if ok {
+					found = len(col.Table()) == 0
+					return false
+				}
+
 				found = true
 				return false
 			}
