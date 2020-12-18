@@ -188,7 +188,7 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 		return toReturn, nil
 	} else {
 		if err := i.inserter.Insert(i.ctx, row); err != nil {
-			if !sql.ErrUniqueKeyViolation.Is(err) || len(i.updateExprs) == 0 {
+			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err)) || len(i.updateExprs) == 0 {
 				_ = i.rowSource.Close()
 				return nil, err
 			}

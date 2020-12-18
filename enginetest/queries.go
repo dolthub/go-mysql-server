@@ -3413,7 +3413,7 @@ var KeylessQueries = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT * FROM keyless JOIN myTable where c0 = i",
+		Query: "SELECT * FROM keyless JOIN myTable where c0 = i",
 		Expected: []sql.Row{
 			{1, 1, 1, "first row"},
 			{1, 1, 1, "first row"},
@@ -3421,7 +3421,7 @@ var KeylessQueries = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT * FROM myTable JOIN keyless WHERE i = c0 ORDER BY i",
+		Query: "SELECT * FROM myTable JOIN keyless WHERE i = c0 ORDER BY i",
 		Expected: []sql.Row{
 			{1, "first row", 1, 1},
 			{1, "first row", 1, 1},

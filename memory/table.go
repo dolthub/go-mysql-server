@@ -554,7 +554,7 @@ func (t *tableEditor) checkUniquenessConstraints(row sql.Row) error {
 		for _, partition := range t.table.partitions {
 			for _, partitionRow := range partition {
 				if columnsMatch(pkColIdxes, partitionRow, row) {
-					return sql.ErrUniqueKeyViolation.New(pkColIdxes)
+					return sql.ErrPrimaryKeyViolation.New(pkColIdxes)
 				}
 			}
 		}
