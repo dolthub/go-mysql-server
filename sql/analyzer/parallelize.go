@@ -29,7 +29,7 @@ func shouldParallelize(node sql.Node, scope *Scope) bool {
 // these are nodes that interact only with schema and the catalog, not with any table rows.
 func isDdlNode(node sql.Node) bool {
 	switch node.(type) {
-	case *plan.CreateTable, *plan.DropTable,
+	case *plan.CreateTable, *plan.DropTable, *plan.Truncate,
 		*plan.AddColumn, *plan.ModifyColumn, *plan.DropColumn,
 		*plan.RenameTable, *plan.RenameColumn,
 		*plan.CreateIndex, *plan.AlterIndex, *plan.DropIndex,

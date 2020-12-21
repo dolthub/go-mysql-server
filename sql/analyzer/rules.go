@@ -42,6 +42,7 @@ var DefaultRules = []Rule{
 // DefaultRules.
 var OnceAfterDefault = []Rule{
 	{"load_triggers", loadTriggers},
+	{"process_truncate", processTruncate},
 	{"resolve_column_defaults", resolveColumnDefaults},
 	{"resolve_generators", resolveGenerators},
 	{"remove_unnecessary_converts", removeUnnecessaryConverts},

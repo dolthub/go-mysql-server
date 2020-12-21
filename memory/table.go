@@ -45,6 +45,7 @@ var _ sql.InsertableTable = (*Table)(nil)
 var _ sql.UpdatableTable = (*Table)(nil)
 var _ sql.DeletableTable = (*Table)(nil)
 var _ sql.ReplaceableTable = (*Table)(nil)
+var _ sql.TruncateableTable = (*Table)(nil)
 var _ sql.DriverIndexableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
 var _ sql.IndexAlterableTable = (*Table)(nil)
@@ -382,6 +383,15 @@ func (t *Table) Deleter(*sql.Context) sql.RowDeleter {
 
 func (t *Table) AutoIncrementSetter(*sql.Context) sql.AutoIncrementSetter {
 	return &tableEditor{t}
+}
+
+func (t *Table) Truncate(ctx *sql.Context) (int, error) {
+	count := 0
+	for key := range t.partitions {
+		count += len(t.partitions[key])
+		t.partitions[key] = nil
+	}
+	return count, nil
 }
 
 // Convenience method to avoid having to create an inserter in test setup

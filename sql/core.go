@@ -339,6 +339,15 @@ type RowDeleter interface {
 	Closer
 }
 
+// TruncateableTable is a table that can process the deletion of all rows.
+type TruncateableTable interface {
+	Table
+	// Truncate removes all rows from the table. If the table also implements DeletableTable and it is determined that
+	// truncate would be equivalent to a DELETE which spans the entire table, then this function will be called instead.
+	// Returns the number of rows that were removed.
+	Truncate(*Context) (int, error)
+}
+
 // AutoIncrementTable is a table that supports AUTO_INCREMENT.
 // Getter and Setter methods access the table's AUTO_INCREMENT
 // sequence. These methods should only be used for tables with

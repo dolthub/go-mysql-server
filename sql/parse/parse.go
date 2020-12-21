@@ -516,6 +516,8 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 		return convertAlterTable(ctx, c)
 	case sqlparser.RenameStr:
 		return convertRenameTable(ctx, c)
+	case sqlparser.TruncateStr:
+		return convertTruncateTable(ctx, c)
 	default:
 		return nil, ErrUnsupportedSyntax.New(sqlparser.String(c))
 	}
@@ -754,6 +756,13 @@ func convertDropTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		tableNames[i] = t.Name.String()
 	}
 	return plan.NewDropTable(sql.UnresolvedDatabase(""), c.IfExists, tableNames...), nil
+}
+
+func convertTruncateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
+	return plan.NewTruncate(
+		c.Table.Qualifier.String(),
+		tableNameToUnresolvedTable(c.Table),
+	), nil
 }
 
 func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
