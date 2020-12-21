@@ -3592,6 +3592,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"fk_tbl", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"people", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 		},
 	},
 	{
@@ -3623,6 +3624,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"people", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 		},
 	},
 	{
@@ -3638,6 +3640,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"niltable"},
 			{"othertable"},
 			{"tabletest"},
+			{"people"},
 		},
 	},
 	{
@@ -3653,6 +3656,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"niltable", "BASE TABLE"},
 			{"othertable", "BASE TABLE"},
 			{"tabletest", "BASE TABLE"},
+			{"people", "BASE TABLE"},
 		},
 	},
 	{
@@ -3775,6 +3779,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"newlinetable"},
 			{"niltable"},
 			{"othertable"},
+			{"people"},
 			{"tabletest"},
 		},
 	},
@@ -3909,6 +3914,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"newlinetable", nil},
 			{"niltable", nil},
 			{"othertable", nil},
+			{"people", nil},
 			{"tabletest", nil},
 		},
 	},

@@ -79,6 +79,7 @@ var infoSchemaTables = []string{
 	"other_table",
 	"fk_tbl",
 	"auto_increment_tbl",
+	"people",
 }
 
 // Runs tests of the information_schema database.
