@@ -540,6 +540,441 @@ func TestDeleteErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func TestTruncate(t *testing.T, harness Harness) {
+	e := NewEngine(t, harness)
+	ctx := NewContext(harness)
+
+	t.Run("Standard TRUNCATE", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t1 (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX(v1))")
+		RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1), (2,2), (3,3)")
+		TestQuery(t, harness, e,
+			"SELECT * FROM t1 ORDER BY 1",
+			[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}, {int64(3), int64(3)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"TRUNCATE t1",
+			[]sql.Row{{sql.NewOkResult(3)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t1 ORDER BY 1",
+			[]sql.Row(nil),
+			nil,
+		)
+
+		RunQuery(t, e, harness, "INSERT INTO t1 VALUES (4,4), (5,5)")
+		TestQuery(t, harness, e,
+			"SELECT * FROM t1 WHERE v1 > 0 ORDER BY 1",
+			[]sql.Row{{int64(4), int64(4)}, {int64(5), int64(5)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"TRUNCATE TABLE t1",
+			[]sql.Row{{sql.NewOkResult(2)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t1 ORDER BY 1",
+			[]sql.Row(nil),
+			nil,
+		)
+	})
+
+	t.Run("Foreign Key References", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t2parent (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1))")
+		RunQuery(t, e, harness, "CREATE TABLE t2child (pk BIGINT PRIMARY KEY, v1 BIGINT, "+
+			"FOREIGN KEY (v1) REFERENCES t2parent (v1))")
+		_, _, err := e.Query(ctx, "TRUNCATE t2parent")
+		require.True(t, sql.ErrTruncateReferencedFromForeignKey.Is(err))
+	})
+
+	t.Run("ON DELETE Triggers", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t3 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQuery(t, e, harness, "CREATE TABLE t3i (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQuery(t, e, harness, "CREATE TRIGGER trig_t3 BEFORE DELETE ON t3 FOR EACH ROW INSERT INTO t3i VALUES (old.pk, old.v1)")
+		RunQuery(t, e, harness, "INSERT INTO t3 VALUES (1,1), (3,3)")
+		TestQuery(t, harness, e,
+			"SELECT * FROM t3 ORDER BY 1",
+			[]sql.Row{{int64(1), int64(1)}, {int64(3), int64(3)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"TRUNCATE t3",
+			[]sql.Row{{sql.NewOkResult(2)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t3 ORDER BY 1",
+			[]sql.Row{},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t3i ORDER BY 1",
+			[]sql.Row{},
+			nil,
+		)
+	})
+
+	t.Run("auto_increment column", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t4 (pk BIGINT AUTO_INCREMENT PRIMARY KEY, v1 BIGINT)")
+		RunQuery(t, e, harness, "INSERT INTO t4(v1) VALUES (5), (6)")
+		TestQuery(t, harness, e,
+			"SELECT * FROM t4 ORDER BY 1",
+			[]sql.Row{{int64(1), int64(5)}, {int64(2), int64(6)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"TRUNCATE t4",
+			[]sql.Row{{sql.NewOkResult(2)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t4 ORDER BY 1",
+			[]sql.Row(nil),
+			nil,
+		)
+		RunQuery(t, e, harness, "INSERT INTO t4(v1) VALUES (7)")
+		TestQuery(t, harness, e,
+			"SELECT * FROM t4 ORDER BY 1",
+			[]sql.Row{{int64(1), int64(7)}},
+			nil,
+		)
+	})
+
+	t.Run("Naked DELETE", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t5 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQuery(t, e, harness, "INSERT INTO t5 VALUES (1,1), (2,2)")
+		TestQuery(t, harness, e,
+			"SELECT * FROM t5 ORDER BY 1",
+			[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}},
+			nil,
+		)
+
+		deleteStr := "DELETE FROM t5"
+		parsed, err := parse.Parse(ctx, deleteStr)
+		require.NoError(t, err)
+		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
+		require.NoError(t, err)
+		truncateFound := false
+		plan.Inspect(analyzed, func(n sql.Node) bool {
+			switch n.(type) {
+			case *plan.Truncate:
+				truncateFound = true
+				return false
+			}
+			return true
+		})
+		if !truncateFound {
+			require.FailNow(t, "DELETE did not convert to TRUNCATE",
+				"Expected Truncate Node, got:\n%s", analyzed.String())
+		}
+
+		TestQuery(t, harness, e,
+			deleteStr,
+			[]sql.Row{{sql.NewOkResult(2)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t5 ORDER BY 1",
+			[]sql.Row(nil),
+			nil,
+		)
+	})
+
+	t.Run("Naked DELETE with Foreign Key References", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t6parent (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1))")
+		RunQuery(t, e, harness, "CREATE TABLE t6child (pk BIGINT PRIMARY KEY, v1 BIGINT, "+
+			"FOREIGN KEY (v1) REFERENCES t6parent (v1))")
+		RunQuery(t, e, harness, "INSERT INTO t6parent VALUES (1,1), (2,2)")
+		RunQuery(t, e, harness, "INSERT INTO t6child VALUES (1,1), (2,2)")
+
+		parsed, err := parse.Parse(ctx, "DELETE FROM t6parent")
+		require.NoError(t, err)
+		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
+		require.NoError(t, err)
+		truncateFound := false
+		plan.Inspect(analyzed, func(n sql.Node) bool {
+			switch n.(type) {
+			case *plan.Truncate:
+				truncateFound = true
+				return false
+			}
+			return true
+		})
+		if truncateFound {
+			require.FailNow(t, "Incorrectly converted DELETE with fks to TRUNCATE")
+		}
+	})
+
+	t.Run("Naked DELETE with ON DELETE Triggers", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t7 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQuery(t, e, harness, "CREATE TABLE t7i (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQuery(t, e, harness, "CREATE TRIGGER trig_t7 BEFORE DELETE ON t7 FOR EACH ROW INSERT INTO t7i VALUES (old.pk, old.v1)")
+		RunQuery(t, e, harness, "INSERT INTO t7 VALUES (1,1), (3,3)")
+		RunQuery(t, e, harness, "DELETE FROM t7 WHERE pk = 3")
+		TestQuery(t, harness, e,
+			"SELECT * FROM t7 ORDER BY 1",
+			[]sql.Row{{int64(1), int64(1)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t7i ORDER BY 1",
+			[]sql.Row{{int64(3), int64(3)}},
+			nil,
+		)
+
+		deleteStr := "DELETE FROM t7"
+		parsed, err := parse.Parse(ctx, deleteStr)
+		require.NoError(t, err)
+		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
+		require.NoError(t, err)
+		truncateFound := false
+		plan.Inspect(analyzed, func(n sql.Node) bool {
+			switch n.(type) {
+			case *plan.Truncate:
+				truncateFound = true
+				return false
+			}
+			return true
+		})
+		if truncateFound {
+			require.FailNow(t, "Incorrectly converted DELETE with triggers to TRUNCATE")
+		}
+
+		TestQuery(t, harness, e,
+			deleteStr,
+			[]sql.Row{{sql.NewOkResult(1)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t7 ORDER BY 1",
+			[]sql.Row{},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t7i ORDER BY 1",
+			[]sql.Row{{int64(1), int64(1)}, {int64(3), int64(3)}},
+			nil,
+		)
+	})
+
+	t.Run("Naked DELETE with auto_increment column", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t8 (pk BIGINT AUTO_INCREMENT PRIMARY KEY, v1 BIGINT)")
+		RunQuery(t, e, harness, "INSERT INTO t8(v1) VALUES (4), (5)")
+		TestQuery(t, harness, e,
+			"SELECT * FROM t8 ORDER BY 1",
+			[]sql.Row{{int64(1), int64(4)}, {int64(2), int64(5)}},
+			nil,
+		)
+
+		deleteStr := "DELETE FROM t8"
+		parsed, err := parse.Parse(ctx, deleteStr)
+		require.NoError(t, err)
+		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
+		require.NoError(t, err)
+		truncateFound := false
+		plan.Inspect(analyzed, func(n sql.Node) bool {
+			switch n.(type) {
+			case *plan.Truncate:
+				truncateFound = true
+				return false
+			}
+			return true
+		})
+		if truncateFound {
+			require.FailNow(t, "Incorrectly converted DELETE with auto_increment cols to TRUNCATE")
+		}
+
+		TestQuery(t, harness, e,
+			deleteStr,
+			[]sql.Row{{sql.NewOkResult(2)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t8 ORDER BY 1",
+			[]sql.Row(nil),
+			nil,
+		)
+		RunQuery(t, e, harness, "INSERT INTO t8(v1) VALUES (6)")
+		TestQuery(t, harness, e,
+			"SELECT * FROM t8 ORDER BY 1",
+			[]sql.Row{{int64(3), int64(6)}},
+			nil,
+		)
+	})
+
+	t.Run("DELETE with WHERE clause", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t9 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQuery(t, e, harness, "INSERT INTO t9 VALUES (7,7), (8,8)")
+		TestQuery(t, harness, e,
+			"SELECT * FROM t9 ORDER BY 1",
+			[]sql.Row{{int64(7), int64(7)}, {int64(8), int64(8)}},
+			nil,
+		)
+
+		deleteStr := "DELETE FROM t9 WHERE pk > 0"
+		parsed, err := parse.Parse(ctx, deleteStr)
+		require.NoError(t, err)
+		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
+		require.NoError(t, err)
+		truncateFound := false
+		plan.Inspect(analyzed, func(n sql.Node) bool {
+			switch n.(type) {
+			case *plan.Truncate:
+				truncateFound = true
+				return false
+			}
+			return true
+		})
+		if truncateFound {
+			require.FailNow(t, "Incorrectly converted DELETE with WHERE clause to TRUNCATE")
+		}
+
+		TestQuery(t, harness, e,
+			deleteStr,
+			[]sql.Row{{sql.NewOkResult(2)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t9 ORDER BY 1",
+			[]sql.Row(nil),
+			nil,
+		)
+	})
+
+	t.Run("DELETE with LIMIT clause", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t10 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQuery(t, e, harness, "INSERT INTO t10 VALUES (8,8), (9,9)")
+		TestQuery(t, harness, e,
+			"SELECT * FROM t10 ORDER BY 1",
+			[]sql.Row{{int64(8), int64(8)}, {int64(9), int64(9)}},
+			nil,
+		)
+
+		deleteStr := "DELETE FROM t10 LIMIT 1000"
+		parsed, err := parse.Parse(ctx, deleteStr)
+		require.NoError(t, err)
+		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
+		require.NoError(t, err)
+		truncateFound := false
+		plan.Inspect(analyzed, func(n sql.Node) bool {
+			switch n.(type) {
+			case *plan.Truncate:
+				truncateFound = true
+				return false
+			}
+			return true
+		})
+		if truncateFound {
+			require.FailNow(t, "Incorrectly converted DELETE with LIMIT clause to TRUNCATE")
+		}
+
+		TestQuery(t, harness, e,
+			deleteStr,
+			[]sql.Row{{sql.NewOkResult(2)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t10 ORDER BY 1",
+			[]sql.Row(nil),
+			nil,
+		)
+	})
+
+	t.Run("DELETE with ORDER BY clause", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t11 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQuery(t, e, harness, "INSERT INTO t11 VALUES (1,1), (9,9)")
+		TestQuery(t, harness, e,
+			"SELECT * FROM t11 ORDER BY 1",
+			[]sql.Row{{int64(1), int64(1)}, {int64(9), int64(9)}},
+			nil,
+		)
+
+		deleteStr := "DELETE FROM t11 ORDER BY 1"
+		parsed, err := parse.Parse(ctx, deleteStr)
+		require.NoError(t, err)
+		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
+		require.NoError(t, err)
+		truncateFound := false
+		plan.Inspect(analyzed, func(n sql.Node) bool {
+			switch n.(type) {
+			case *plan.Truncate:
+				truncateFound = true
+				return false
+			}
+			return true
+		})
+		if truncateFound {
+			require.FailNow(t, "Incorrectly converted DELETE with ORDER BY clause to TRUNCATE")
+		}
+
+		TestQuery(t, harness, e,
+			deleteStr,
+			[]sql.Row{{sql.NewOkResult(2)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t11 ORDER BY 1",
+			[]sql.Row(nil),
+			nil,
+		)
+	})
+
+	t.Run("Multi-table DELETE", func(t *testing.T) {
+		t.Skip("Multi-table DELETE currently broken")
+
+		RunQuery(t, e, harness, "CREATE TABLE t12a (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQuery(t, e, harness, "CREATE TABLE t12b (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQuery(t, e, harness, "INSERT INTO t12a VALUES (1,1), (2,2)")
+		RunQuery(t, e, harness, "INSERT INTO t12b VALUES (1,1), (2,2)")
+		TestQuery(t, harness, e,
+			"SELECT * FROM t12a ORDER BY 1",
+			[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t12b ORDER BY 1",
+			[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}},
+			nil,
+		)
+
+		deleteStr := "DELETE t12a, t12b FROM t12a INNER JOIN t12b WHERE t12a.pk=t12b.pk"
+		parsed, err := parse.Parse(ctx, deleteStr)
+		require.NoError(t, err)
+		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
+		require.NoError(t, err)
+		truncateFound := false
+		plan.Inspect(analyzed, func(n sql.Node) bool {
+			switch n.(type) {
+			case *plan.Truncate:
+				truncateFound = true
+				return false
+			}
+			return true
+		})
+		if truncateFound {
+			require.FailNow(t, "Incorrectly converted DELETE with WHERE clause to TRUNCATE")
+		}
+
+		TestQuery(t, harness, e,
+			deleteStr,
+			[]sql.Row{{sql.NewOkResult(4)}},
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t12a ORDER BY 1",
+			[]sql.Row(nil),
+			nil,
+		)
+		TestQuery(t, harness, e,
+			"SELECT * FROM t12b ORDER BY 1",
+			[]sql.Row(nil),
+			nil,
+		)
+	})
+}
+
 func TestScripts(t *testing.T, harness Harness) {
 	for _, script := range ScriptTests {
 		TestScript(t, harness, script)
