@@ -881,10 +881,10 @@ var TriggerTests = []ScriptTest{
 			"create trigger a3 before insert on a for each row precedes a2 set new.x = New.x - 5",
 			"create trigger a4 before insert on a for each row follows a2 set new.x = New.x * 3",
 			// order of execution should be: a3, a2, a4, a1
-			"create trigger a5 after insert on a for each row update b set y = y + 1",
-			"create trigger a6 after insert on a for each row precedes a5 update b set y = y * 2",
-			"create trigger a7 after insert on a for each row precedes a6 update b set y = y - 5",
-			"create trigger a8 after insert on a for each row follows a6 update b set y = y * 3",
+			"create trigger a5 after insert on a for each row update b set y = y + 1 order by y asc",
+			"create trigger a6 after insert on a for each row precedes a5 update b set y = y * 2 order by y asc",
+			"create trigger a7 after insert on a for each row precedes a6 update b set y = y - 5 order by y asc",
+			"create trigger a8 after insert on a for each row follows a6 update b set y = y * 3 order by y asc",
 			// order of execution should be: a7, a6, a8, a5
 		},
 		Assertions: []ScriptTestAssertion{
@@ -959,10 +959,10 @@ var TriggerTests = []ScriptTest{
 			"create trigger a3 before insert on a for each row precedes a2 set new.x = New.x - 5",
 			"create trigger a4 before insert on a for each row follows a2 set new.x = New.x * 3",
 			// order of execution should be: a3, a2, a4, a1
-			"create trigger a5 after insert on a for each row update b set y = y + 1",
-			"create trigger a6 after insert on a for each row precedes a5 update b set y = y * 2",
-			"create trigger a7 after insert on a for each row precedes a6 update b set y = y - 5",
-			"create trigger a8 after insert on a for each row follows a6 update b set y = y * 3",
+			"create trigger a5 after insert on a for each row update b set y = y + 1 order by y asc",
+			"create trigger a6 after insert on a for each row precedes a5 update b set y = y * 2 order by y asc",
+			"create trigger a7 after insert on a for each row precedes a6 update b set y = y - 5 order by y asc",
+			"create trigger a8 after insert on a for each row follows a6 update b set y = y * 3 order by y asc",
 			// order of execution should be: a7, a6, a8, a5
 			"insert into a values (1), (3)",
 		},
@@ -1067,97 +1067,97 @@ var TriggerTests = []ScriptTest{
 						sql.Collation_Default.String(),                // database_collation
 					},
 					{
-						"def",                    // trigger_catalog
-						"mydb",                   // trigger_schema
-						"a5",                     // trigger_name
-						"INSERT",                 // event_manipulation
-						"def",                    // event_object_catalog
-						"mydb",                   // event_object_schema
-						"a",                      // event_object_table
-						int64(4),                 // action_order
-						nil,                      // action_condition
-						"update b set y = y + 1", // action_statement
-						"ROW",                    // action_orientation
-						"AFTER",                  // action_timing
-						nil,                      // action_reference_old_table
-						nil,                      // action_reference_new_table
-						"OLD",                    // action_reference_old_row
-						"NEW",                    // action_reference_new_row
-						time.Unix(0, 0).UTC(),    // created
-						"",                       // sql_mode
-						"",                       // definer
+						"def",                                   // trigger_catalog
+						"mydb",                                  // trigger_schema
+						"a5",                                    // trigger_name
+						"INSERT",                                // event_manipulation
+						"def",                                   // event_object_catalog
+						"mydb",                                  // event_object_schema
+						"a",                                     // event_object_table
+						int64(4),                                // action_order
+						nil,                                     // action_condition
+						"update b set y = y + 1 order by y asc", // action_statement
+						"ROW",                                   // action_orientation
+						"AFTER",                                 // action_timing
+						nil,                                     // action_reference_old_table
+						nil,                                     // action_reference_new_table
+						"OLD",                                   // action_reference_old_row
+						"NEW",                                   // action_reference_new_row
+						time.Unix(0, 0).UTC(),                   // created
+						"",                                      // sql_mode
+						"",                                      // definer
 						sql.Collation_Default.CharacterSet().String(), // character_set_client
 						sql.Collation_Default.String(),                // collation_connection
 						sql.Collation_Default.String(),                // database_collation
 					},
 					{
-						"def",                    // trigger_catalog
-						"mydb",                   // trigger_schema
-						"a6",                     // trigger_name
-						"INSERT",                 // event_manipulation
-						"def",                    // event_object_catalog
-						"mydb",                   // event_object_schema
-						"a",                      // event_object_table
-						int64(2),                 // action_order
-						nil,                      // action_condition
-						"update b set y = y * 2", // action_statement
-						"ROW",                    // action_orientation
-						"AFTER",                  // action_timing
-						nil,                      // action_reference_old_table
-						nil,                      // action_reference_new_table
-						"OLD",                    // action_reference_old_row
-						"NEW",                    // action_reference_new_row
-						time.Unix(0, 0).UTC(),    // created
-						"",                       // sql_mode
-						"",                       // definer
+						"def",                                   // trigger_catalog
+						"mydb",                                  // trigger_schema
+						"a6",                                    // trigger_name
+						"INSERT",                                // event_manipulation
+						"def",                                   // event_object_catalog
+						"mydb",                                  // event_object_schema
+						"a",                                     // event_object_table
+						int64(2),                                // action_order
+						nil,                                     // action_condition
+						"update b set y = y * 2 order by y asc", // action_statement
+						"ROW",                                   // action_orientation
+						"AFTER",                                 // action_timing
+						nil,                                     // action_reference_old_table
+						nil,                                     // action_reference_new_table
+						"OLD",                                   // action_reference_old_row
+						"NEW",                                   // action_reference_new_row
+						time.Unix(0, 0).UTC(),                   // created
+						"",                                      // sql_mode
+						"",                                      // definer
 						sql.Collation_Default.CharacterSet().String(), // character_set_client
 						sql.Collation_Default.String(),                // collation_connection
 						sql.Collation_Default.String(),                // database_collation
 					},
 					{
-						"def",                    // trigger_catalog
-						"mydb",                   // trigger_schema
-						"a7",                     // trigger_name
-						"INSERT",                 // event_manipulation
-						"def",                    // event_object_catalog
-						"mydb",                   // event_object_schema
-						"a",                      // event_object_table
-						int64(1),                 // action_order
-						nil,                      // action_condition
-						"update b set y = y - 5", // action_statement
-						"ROW",                    // action_orientation
-						"AFTER",                  // action_timing
-						nil,                      // action_reference_old_table
-						nil,                      // action_reference_new_table
-						"OLD",                    // action_reference_old_row
-						"NEW",                    // action_reference_new_row
-						time.Unix(0, 0).UTC(),    // created
-						"",                       // sql_mode
-						"",                       // definer
+						"def",                                   // trigger_catalog
+						"mydb",                                  // trigger_schema
+						"a7",                                    // trigger_name
+						"INSERT",                                // event_manipulation
+						"def",                                   // event_object_catalog
+						"mydb",                                  // event_object_schema
+						"a",                                     // event_object_table
+						int64(1),                                // action_order
+						nil,                                     // action_condition
+						"update b set y = y - 5 order by y asc", // action_statement
+						"ROW",                                   // action_orientation
+						"AFTER",                                 // action_timing
+						nil,                                     // action_reference_old_table
+						nil,                                     // action_reference_new_table
+						"OLD",                                   // action_reference_old_row
+						"NEW",                                   // action_reference_new_row
+						time.Unix(0, 0).UTC(),                   // created
+						"",                                      // sql_mode
+						"",                                      // definer
 						sql.Collation_Default.CharacterSet().String(), // character_set_client
 						sql.Collation_Default.String(),                // collation_connection
 						sql.Collation_Default.String(),                // database_collation
 					},
 					{
-						"def",                    // trigger_catalog
-						"mydb",                   // trigger_schema
-						"a8",                     // trigger_name
-						"INSERT",                 // event_manipulation
-						"def",                    // event_object_catalog
-						"mydb",                   // event_object_schema
-						"a",                      // event_object_table
-						int64(3),                 // action_order
-						nil,                      // action_condition
-						"update b set y = y * 3", // action_statement
-						"ROW",                    // action_orientation
-						"AFTER",                  // action_timing
-						nil,                      // action_reference_old_table
-						nil,                      // action_reference_new_table
-						"OLD",                    // action_reference_old_row
-						"NEW",                    // action_reference_new_row
-						time.Unix(0, 0).UTC(),    // created
-						"",                       // sql_mode
-						"",                       // definer
+						"def",                                   // trigger_catalog
+						"mydb",                                  // trigger_schema
+						"a8",                                    // trigger_name
+						"INSERT",                                // event_manipulation
+						"def",                                   // event_object_catalog
+						"mydb",                                  // event_object_schema
+						"a",                                     // event_object_table
+						int64(3),                                // action_order
+						nil,                                     // action_condition
+						"update b set y = y * 3 order by y asc", // action_statement
+						"ROW",                                   // action_orientation
+						"AFTER",                                 // action_timing
+						nil,                                     // action_reference_old_table
+						nil,                                     // action_reference_new_table
+						"OLD",                                   // action_reference_old_row
+						"NEW",                                   // action_reference_new_row
+						time.Unix(0, 0).UTC(),                   // created
+						"",                                      // sql_mode
+						"",                                      // definer
 						sql.Collation_Default.CharacterSet().String(), // character_set_client
 						sql.Collation_Default.String(),                // collation_connection
 						sql.Collation_Default.String(),                // database_collation
