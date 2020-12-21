@@ -218,17 +218,17 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			{Name: "first_name", Type: sql.Text, Source: "people", PrimaryKey: true},
 			{Name: "last_name", Type: sql.Text, Source: "people", PrimaryKey: true},
 			{Name: "middle_name", Type: sql.Text, Source: "people", PrimaryKey: true},
-			{Name: "height_inches", Type: sql.Uint8, Source: "people", Nullable: false},
-			{Name: "gender", Type: sql.Uint8, Source: "people", Nullable: false},
+			{Name: "height_inches", Type: sql.Int64, Source: "people", Nullable: false},
+			{Name: "gender", Type: sql.Int64, Source: "people", Nullable: false},
 		})
 
 		if err == nil {
 			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-				sql.NewRow(dob(1970, 12, 1), "jon", "smith", "", 72, 0),
-				sql.NewRow(dob(1980, 1, 11), "jon", "smith", "", 67, 0),
-				sql.NewRow(dob(1990, 2, 21), "jane", "doe", "", 68, 1),
-				sql.NewRow(dob(2000, 12, 31), "frank", "franklin", "", 70, 2),
-				sql.NewRow(dob(2010, 3, 15), "jane", "doe", "", 69, 1))
+				sql.NewRow(dob(1970, 12, 1), "jon", "smith", "", int64(72), int64(0)),
+				sql.NewRow(dob(1980, 1, 11), "jon", "smith", "", int64(67), int64(0)),
+				sql.NewRow(dob(1990, 2, 21), "jane", "doe", "", int64(68), int64(1)),
+				sql.NewRow(dob(2000, 12, 31), "frank", "franklin", "", int64(70), int64(2)),
+				sql.NewRow(dob(2010, 3, 15), "jane", "doe", "", int64(69), int64(1)))
 		} else {
 			t.Logf("Warning: could not create table %s: %s", "niltable", err)
 		}

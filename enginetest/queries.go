@@ -3394,8 +3394,8 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT * FROM people WHERE last_name='doe' and first_name='jane' order by dob",
 		Expected: []sql.Row{
-			sql.NewRow(dob(1990, 2, 21), "jane", "doe", "", uint64(68), uint64(1)),
-			sql.NewRow(dob(2010, 3, 15), "jane", "doe", "", uint64(69), uint64(1)),
+			sql.NewRow(dob(1990, 2, 21), "jane", "doe", "", int64(68), int64(1)),
+			sql.NewRow(dob(2010, 3, 15), "jane", "doe", "", int64(69), int64(1)),
 		},
 	},
 	{
