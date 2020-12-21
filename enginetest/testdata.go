@@ -212,6 +212,28 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		}
 	}
 
+	if includeTable(includedTables, "people") {
+		table, err = harness.NewTable(myDb, "people", sql.Schema{
+			{Name: "dob", Type: sql.Date, Source: "people", PrimaryKey: true},
+			{Name: "first_name", Type: sql.Text, Source: "people", PrimaryKey: true},
+			{Name: "last_name", Type: sql.Text, Source: "people", PrimaryKey: true},
+			{Name: "middle_name", Type: sql.Text, Source: "people", PrimaryKey: true},
+			{Name: "height_inches", Type: sql.Uint8, Source: "people", Nullable: false},
+			{Name: "gender", Type: sql.Uint8, Source: "people", Nullable: false},
+		})
+
+		if err == nil {
+			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+				sql.NewRow(dob(1970, 12, 1), "jon", "smith", "", 72, 0),
+				sql.NewRow(dob(1980, 1, 11), "jon", "smith", "", 67, 0),
+				sql.NewRow(dob(1990, 2, 21), "jane", "doe", "", 68, 1),
+				sql.NewRow(dob(2000, 12, 31), "frank", "franklin", "", 70, 2),
+				sql.NewRow(dob(2010, 3, 15), "jane", "doe", "", 69, 1))
+		} else {
+			t.Logf("Warning: could not create table %s: %s", "niltable", err)
+		}
+	}
+
 	if includeTable(includedTables, "niltable") {
 		table, err = harness.NewTable(myDb, "niltable", sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "niltable", PrimaryKey: true},
@@ -491,6 +513,7 @@ func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
 		"create index othertable_s2_i2 on othertable (s2,i2)",
 		"create index floattable_f on floattable (f64)",
 		"create index niltable_i2 on niltable (i2)",
+		"create index people_l_f on people (last_name,first_name)",
 	}
 
 	for _, q := range createIndexes {
@@ -502,4 +525,8 @@ func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
 	}
 
 	return nil
+}
+
+func dob(year, month, day int) time.Time {
+	return time.Date(year, time.Month(month), day, 0,0,0,0,time.UTC)
 }
