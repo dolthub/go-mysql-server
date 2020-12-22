@@ -31,7 +31,8 @@ func (ta TableAliases) putAll(other TableAliases) {
 	}
 }
 
-// getTableAliases returns a map of all aliases of resolved tables / subqueries in the node, keyed by their alias name
+// getTableAliases returns a map of all aliases of resolved tables / subqueries in the node, keyed by their alias name.
+// Unaliased tables are returned keyed by their original lower-cased name.
 func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 	var passAliases TableAliases
 	var aliasFn func(node sql.Node) bool
@@ -50,17 +51,13 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			switch t := at.Child.(type) {
 			case *plan.ResolvedTable, *plan.SubqueryAlias:
 				analysisErr = passAliases.add(at, t)
-				if analysisErr != nil {
-					return false
-				}
 				return false
 			case *plan.DecoratedNode:
 				rt := getResolvedTable(at.Child)
-				passAliases.add(at, rt)
+				analysisErr = passAliases.add(at, rt)
 				return false
 			case *plan.IndexedTableAccess:
-				rt := getResolvedTable(at.Child)
-				passAliases.add(at, rt)
+				analysisErr = passAliases.add(at, at.Child)
 				return false
 			case *plan.UnresolvedTable:
 				panic("Table not resolved")
@@ -77,17 +74,14 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			return false
 		case *plan.ResolvedTable, *plan.SubqueryAlias:
 			analysisErr = passAliases.add(node.(sql.Nameable), node)
-			if analysisErr != nil {
-				return false
-			}
 			return false
 		case *plan.DecoratedNode:
 			rt := getResolvedTable(node.Child)
-			passAliases.add(rt, node)
+			analysisErr = passAliases.add(rt, rt)
 			return false
 		case *plan.IndexedTableAccess:
 			rt := getResolvedTable(node.ResolvedTable)
-			passAliases.add(rt, node)
+			analysisErr = passAliases.add(rt, node)
 			return false
 		case *plan.UnresolvedTable:
 			panic("Table not resolved")

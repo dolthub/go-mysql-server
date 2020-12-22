@@ -895,15 +895,14 @@ var QueryTests = []QueryTest{
 			{int64(3), int64(3), "first"},
 		},
 	},
-	// TODO: this should work, but generates a table name conflict right now
-	// {
-	// 	Query: "SELECT i, i2, s2 FROM mytable as OTHERTABLE INNER JOIN othertable as MYTABLE ON i = i2 ORDER BY i",
-	// 	Expected: []sql.Row{
-	// 		{int64(1), int64(1), "third"},
-	// 		{int64(2), int64(2), "second"},
-	// 		{int64(3), int64(3), "first"},
-	// 	},
-	// },
+	{
+		Query: "SELECT i, i2, s2 FROM mytable as OTHERTABLE INNER JOIN othertable as MYTABLE ON i = i2 ORDER BY i",
+		Expected: []sql.Row{
+			{int64(1), int64(1), "third"},
+			{int64(2), int64(2), "second"},
+			{int64(3), int64(3), "first"},
+		},
+	},
 	{
 		Query: `SELECT s2, i2 FROM othertable WHERE s2 >= "first" AND i2 >= 2 ORDER BY 1`,
 		Expected: []sql.Row{
@@ -3781,7 +3780,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"tabletest"},
 		},
 	},
-	// TODO: these type names should be upper cased
 	{
 		Query: `
 		SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS
@@ -4038,6 +4036,10 @@ var errorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrDuplicateAliasOrTable,
 	},
 	{
+		Query:       "SELECT * FROM mytable AS t UNION SELECT * FROM mytable AS t, othertable AS t", // duplicate alias in union
+		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	},
+	{
 		Query:       "SELECT * FROM mytable AS OTHERTABLE, othertable", // alias / table conflict
 		ExpectedErr: sql.ErrDuplicateAliasOrTable,
 	},
@@ -4046,7 +4048,7 @@ var errorQueries = []QueryErrorTest{
 		ExpectedErr: expression.ErrInvalidRegexp,
 	},
 	{
-		Query:       `SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(sub_s, 2, 3) AS sub_sub_s FROM mytable`,
+		Query:       `SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(SUB_S, 2, 3) AS sub_sub_s FROM mytable`,
 		ExpectedErr: sql.ErrMisusedAlias,
 	},
 	{
