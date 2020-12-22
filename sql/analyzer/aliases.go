@@ -118,6 +118,27 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 	return aliases, analysisErr
 }
 
+// aliasesDefinedInNode returns the expression aliases that are defined in the node given
+func aliasesDefinedInNode(n sql.Node) []string {
+	var exprs []sql.Expression
+	switch n := n.(type) {
+	case *plan.GroupBy:
+		exprs = n.SelectedExprs
+	case sql.Expressioner:
+		exprs = n.Expressions()
+	}
+
+	var aliases []string
+	for _, e := range exprs {
+		alias, ok := e.(*expression.Alias)
+		if ok {
+			aliases = append(aliases, strings.ToLower(alias.Name()))
+		}
+	}
+
+	return aliases
+}
+
 // getExpressionAliases returns a map of all expressions aliased in the SELECT clause, keyed by their alias name
 func getExpressionAliases(node sql.Node) ExprAliases {
 	aliases := make(ExprAliases)

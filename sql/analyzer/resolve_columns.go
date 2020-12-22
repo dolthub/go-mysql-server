@@ -14,87 +14,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func checkAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	span, _ := ctx.Span("check_aliases")
-	defer span.Finish()
-
+func checkUniqueTableNames(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	// getTableAliases will error if any table name / alias is repeated
 	_, err := getTableAliases(n, scope)
 	if err != nil {
 		return nil, err
 	}
 
-	plan.Inspect(n, func(node sql.Node) bool {
-		p, ok := node.(*plan.Project)
-		if !ok {
-			return true
-		}
-
-		aliases := lookForAliasDeclarations(p)
-		for alias := range aliases {
-			if aliasUsedInNode(p, alias) {
-				err = sql.ErrMisusedAlias.New(alias)
-			}
-		}
-
-		return true
-	})
-
 	return n, err
-}
-
-func lookForAliasDeclarations(node sql.Expressioner) map[string]struct{} {
-	var (
-		aliases = map[string]struct{}{}
-		in      = struct{}{}
-	)
-
-	for _, e := range node.Expressions() {
-		sql.Inspect(e, func(expr sql.Expression) bool {
-			if alias, ok := expr.(*expression.Alias); ok {
-				aliases[alias.Name()] = in
-			}
-
-			return true
-		})
-	}
-
-	return aliases
-}
-
-func aliasUsedInNode(node sql.Expressioner, alias string) bool {
-	var found bool
-	for _, e := range node.Expressions() {
-		sql.Inspect(e, func(expr sql.Expression) bool {
-			if a, ok := expr.(*expression.Alias); ok {
-				if a.Name() == alias {
-					return false
-				}
-
-				return true
-			}
-
-			if n, ok := expr.(sql.Nameable); ok && n.Name() == alias {
-				// Qualified column expressions are not a match for an alias
-				col, ok := n.(column)
-				if ok {
-					found = len(col.Table()) == 0
-					return false
-				}
-
-				found = true
-				return false
-			}
-
-			return true
-		})
-
-		if found {
-			break
-		}
-	}
-
-	return found
 }
 
 // deferredColumn is a wrapper on UnresolvedColumn used to defer the resolution of the column because it may require
@@ -439,7 +366,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 		}
 
 		columns := indexColumns(ctx, a, n, scope)
-		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
+		return plan.TransformExpressionsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
 				return e, nil
@@ -451,7 +378,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 				return resolveUserVariable(ctx, a, uc)
 			}
 
-			return resolveColumnExpression(ctx, a, uc, columns)
+			return resolveColumnExpression(ctx, a, n, uc, columns)
 		})
 	})
 }
@@ -576,7 +503,7 @@ func resolveUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Express
 	return expression.NewUserVar(name), nil
 }
 
-func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns map[tableCol]indexedCol) (sql.Expression, error) {
+func resolveColumnExpression(ctx *sql.Context, a *Analyzer, n sql.Node, e column, columns map[tableCol]indexedCol) (sql.Expression, error) {
 	name := strings.ToLower(e.Name())
 	table := strings.ToLower(e.Table())
 	col, ok := columns[tableCol{table, name}]
@@ -590,6 +517,13 @@ func resolveColumnExpression(ctx *sql.Context, a *Analyzer, e column, columns ma
 		default:
 			if table != "" {
 				return nil, sql.ErrTableColumnNotFound.New(e.Table(), e.Name())
+			}
+
+			// This means the expression is either a non-existent column or an alias defined in the same projection.
+			// Check for the latter first.
+			aliasesInNode := aliasesDefinedInNode(n)
+			if stringContains(aliasesInNode, name) {
+				return nil, sql.ErrMisusedAlias.New(name)
 			}
 
 			return nil, sql.ErrColumnNotFound.New(e.Name())
