@@ -3391,6 +3391,19 @@ var QueryTests = []QueryTest{
 		Query:    "SELECT POW(2,3) FROM dual",
 		Expected: []sql.Row{{float64(8)}},
 	},
+	{
+		Query:    "SELECT * FROM people WHERE last_name='doe' and first_name='jane' order by dob",
+		Expected: []sql.Row{
+			sql.NewRow(dob(1990, 2, 21), "jane", "doe", "", int64(68), int64(1)),
+			sql.NewRow(dob(2010, 3, 15), "jane", "doe", "", int64(69), int64(1)),
+		},
+	},
+	{
+		Query:    "SELECT count(*) FROM people WHERE last_name='doe' and first_name='jane' order by dob",
+		Expected: []sql.Row{
+			sql.NewRow(2),
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -3579,6 +3592,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"fk_tbl", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"people", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 		},
 	},
 	{
@@ -3610,6 +3624,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"floattable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+			{"people", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 		},
 	},
 	{
@@ -3625,6 +3640,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"niltable"},
 			{"othertable"},
 			{"tabletest"},
+			{"people"},
 		},
 	},
 	{
@@ -3640,6 +3656,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"niltable", "BASE TABLE"},
 			{"othertable", "BASE TABLE"},
 			{"tabletest", "BASE TABLE"},
+			{"people", "BASE TABLE"},
 		},
 	},
 	{
@@ -3762,6 +3779,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"newlinetable"},
 			{"niltable"},
 			{"othertable"},
+			{"people"},
 			{"tabletest"},
 		},
 	},
@@ -3896,6 +3914,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"newlinetable", nil},
 			{"niltable", nil},
 			{"othertable", nil},
+			{"people", nil},
 			{"tabletest", nil},
 		},
 	},
