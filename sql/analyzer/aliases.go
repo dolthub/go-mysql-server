@@ -10,11 +10,11 @@ import (
 )
 
 type ExprAliases map[string]sql.Expression
-type TableAliases map[string]sql.Node
+type TableAliases map[string]sql.Nameable
 
 // add adds the given table alias referring to the node given. Adding a case insensitive alias that already exists
 // returns an error.
-func (ta TableAliases) add(alias sql.Nameable, target sql.Node) error {
+func (ta TableAliases) add(alias sql.Nameable, target sql.Nameable) error {
 	lowerName := strings.ToLower(alias.Name())
 	if _, ok := ta[lowerName]; ok {
 		return sql.ErrDuplicateAliasOrTable.New(alias.Name())
@@ -50,15 +50,12 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 		if at, ok := node.(*plan.TableAlias); ok {
 			switch t := at.Child.(type) {
 			case *plan.ResolvedTable, *plan.SubqueryAlias:
-				analysisErr = passAliases.add(at, t)
-				return false
+				analysisErr = passAliases.add(at, t.(NameableNode))
 			case *plan.DecoratedNode:
 				rt := getResolvedTable(at.Child)
 				analysisErr = passAliases.add(at, rt)
-				return false
 			case *plan.IndexedTableAccess:
-				analysisErr = passAliases.add(at, at.Child)
-				return false
+				analysisErr = passAliases.add(at, t)
 			case *plan.UnresolvedTable:
 				panic("Table not resolved")
 			default:
@@ -68,12 +65,17 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 		}
 
 		switch node := node.(type) {
+		case *plan.CreateTrigger:
+			// trigger bodies are evaluated separately
+			rt := getResolvedTable(node.Table)
+			analysisErr = passAliases.add(rt, rt)
+			return false
 		case *plan.InsertInto:
 			rt := getResolvedTable(node.Left())
-			passAliases.add(rt, rt)
+			analysisErr = passAliases.add(rt, rt)
 			return false
 		case *plan.ResolvedTable, *plan.SubqueryAlias:
-			analysisErr = passAliases.add(node.(sql.Nameable), node)
+			analysisErr = passAliases.add(node.(sql.Nameable), node.(sql.Nameable))
 			return false
 		case *plan.DecoratedNode:
 			rt := getResolvedTable(node.Child)
@@ -163,15 +165,6 @@ func getExpressionAliases(node sql.Node) ExprAliases {
 	return aliases
 }
 
-// normalizeTableName returns the underlying table for the aliased table name given, if it's an alias.
-func normalizeTableName(tableAliases TableAliases, tableName string) string {
-	if rt, ok := tableAliases[tableName]; ok {
-		return nodeName(rt)
-	}
-
-	return tableName
-}
-
 // normalizeExpressions returns the expressions given after normalizing them to replace table and expression aliases
 // with their underlying names. This is necessary to match such expressions against those declared by implementors of
 // various interfaces that declare expressions to handle, such as Index.Expressions(), FilteredTable, etc.
@@ -206,7 +199,7 @@ func normalizeExpression(exprAliases ExprAliases, tableAliases TableAliases, e s
 		if field, ok := e.(*expression.GetField); ok {
 			table := field.Table()
 			if rt, ok := tableAliases[table]; ok {
-				return field.WithTable(nodeName(rt)), nil
+				return field.WithTable(rt.Name()), nil
 			}
 		}
 
@@ -214,11 +207,4 @@ func normalizeExpression(exprAliases ExprAliases, tableAliases TableAliases, e s
 	})
 
 	return normalized
-}
-
-func nodeName(node sql.Node) string {
-	if nameable, ok := node.(sql.Nameable); ok {
-		return nameable.Name()
-	}
-	return node.String()
 }
