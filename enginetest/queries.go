@@ -1006,15 +1006,14 @@ var QueryTests = []QueryTest{
 			{int64(3)},
 		},
 	},
-	// TODO: this should work: either table alias should be usable in the select clause
-	// {
-	// 	Query: `SELECT t.i, test.s FROM mytable AS t NATURAL JOIN tabletest AS test`,
-	// 	Expected: []sql.Row{
-	// 		{int64(1), "first row"},
-	// 		{int64(2), "second row"},
-	// 		{int64(3), "third row"},
-	// 	},
-	// },
+	{
+		Query: `SELECT t.i, test.s FROM mytable AS t NATURAL JOIN tabletest AS test`,
+		Expected: []sql.Row{
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"},
+		},
+	},
 	{
 		Query: `SELECT COUNT(*) AS cnt, fi FROM (
 			SELECT tbl.s AS fi
