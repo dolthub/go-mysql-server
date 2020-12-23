@@ -1945,6 +1945,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"f", int64(1)}, {"s", int64(1)}, {"t", int64(1)}},
 	},
 	{
+		Query:    "SELECT substring(s, 1, 1) as x, count(*) FROM mytable GROUP BY X",
+		Expected: []sql.Row{{"f", int64(1)}, {"s", int64(1)}, {"t", int64(1)}},
+	},
+	{
 		Query:    "SELECT left(s, 1) as l FROM mytable ORDER BY l",
 		Expected: []sql.Row{{"f"}, {"s"}, {"t"}},
 	},
@@ -2034,6 +2038,10 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "SELECT n, COUNT(n) FROM bigtable GROUP BY n HAVING COUNT(n) > 2",
+		Expected: []sql.Row{{int64(1), int64(3)}, {int64(2), int64(3)}},
+	},
+	{
+		Query:    "SELECT n, COUNT(n) as cnt FROM bigtable GROUP BY n HAVING cnt > 2",
 		Expected: []sql.Row{{int64(1), int64(3)}, {int64(2), int64(3)}},
 	},
 	{
