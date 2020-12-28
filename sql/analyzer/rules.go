@@ -12,7 +12,8 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_set_variables", resolveSetVariables},
 	{"resolve_create_like", resolveCreateLike},
 	{"resolve_subqueries", resolveSubqueries},
-	{"check_aliases", checkAliases},
+	{"resolve_unions", resolveUnions},
+	{"check_unique_table_names", checkUniqueTableNames},
 }
 
 // DefaultRules to apply when analyzing nodes.

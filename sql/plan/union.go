@@ -32,6 +32,12 @@ func (u *Union) Schema() sql.Schema {
 	return ret
 }
 
+// Opaque implements the sql.OpaqueNode interface.
+// Like SubqueryAlias, the selects in a Union must be evaluated in isolation.
+func (u *Union) Opaque() bool {
+	return true
+}
+
 // RowIter implements the Node interface.
 func (u *Union) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Union")
@@ -61,6 +67,13 @@ func (u Union) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Union")
 	_ = pr.WriteChildren(u.left.String(), u.right.String())
+	return pr.String()
+}
+
+func (u Union) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Union")
+	_ = pr.WriteChildren(sql.DebugString(u.left), sql.DebugString(u.right))
 	return pr.String()
 }
 

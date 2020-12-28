@@ -1608,12 +1608,30 @@ var TriggerErrorTests = []ScriptTest{
 		ExpectedErr: plan.ErrInsertIntoNonNullableProvidedNull,
 	},
 	{
-		Name: "self update",
+		Name: "self update on insert",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
 			"create trigger a1 before insert on a for each row insert into a values (new.x * 2)",
 		},
 		Query:       "insert into a values (1), (2), (3)",
+		ExpectedErr: sql.ErrTriggerTableInUse,
+	},
+	{
+		Name: "self update on delete",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create trigger a1 before delete on a for each row delete from a",
+		},
+		Query:       "delete from a",
+		ExpectedErr: sql.ErrTriggerTableInUse,
+	},
+	{
+		Name: "self update on update",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create trigger a1 before update on a for each row update a set x = 1",
+		},
+		Query:       "update a set x = 2",
 		ExpectedErr: sql.ErrTriggerTableInUse,
 	},
 	{

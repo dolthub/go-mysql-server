@@ -127,27 +127,6 @@ func reorderSort(sort *plan.Sort, missingCols []string) (sql.Node, error) {
 	}
 }
 
-// aliasesDefinedInNode returns the expression aliases that are defined in the Project or GroupBy node given
-func aliasesDefinedInNode(n sql.Node) []string {
-	var exprs []sql.Expression
-	switch n := n.(type) {
-	case *plan.Project:
-		exprs = n.Projections
-	case *plan.GroupBy:
-		exprs = n.SelectedExprs
-	}
-
-	var cols []string
-	for _, e := range exprs {
-		alias, ok := e.(*expression.Alias)
-		if ok {
-			cols = append(cols, strings.ToLower(alias.Name()))
-		}
-	}
-
-	return cols
-}
-
 var errSortPushdown = errors.NewKind("unable to push plan.Sort node below %T")
 
 func pushSortDown(sort *plan.Sort) (sql.Node, error) {

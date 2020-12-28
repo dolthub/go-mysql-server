@@ -144,7 +144,7 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 
 	node := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("t2", "b"),
+			expression.NewUnresolvedQualifiedColumn("t2-alias", "b"),
 			expression.NewUnresolvedQualifiedColumn("t2-alias", "c"),
 		},
 		plan.NewNaturalJoin(
@@ -158,8 +158,8 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("t2", "b"),
-			expression.NewUnresolvedQualifiedColumn("t2-alias", "c"),
+			expression.NewUnresolvedQualifiedColumn("t1", "b"),
+			expression.NewUnresolvedQualifiedColumn("t1", "c"),
 		},
 		plan.NewProject(
 			[]sql.Expression{
@@ -216,7 +216,7 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 
 	node := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("t2", "b"),
+			expression.NewUnresolvedQualifiedColumn("t2-alias", "b"),
 			expression.NewUnresolvedQualifiedColumn("t2-alias", "c"),
 			expression.NewUnresolvedQualifiedColumn("t3-alias", "f"),
 		},
@@ -234,9 +234,9 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("t2", "b"),
-			expression.NewUnresolvedQualifiedColumn("t2-alias", "c"),
-			expression.NewUnresolvedQualifiedColumn("t3-alias", "f"),
+			expression.NewUnresolvedQualifiedColumn("t1", "b"),
+			expression.NewUnresolvedQualifiedColumn("t1", "c"),
+			expression.NewUnresolvedQualifiedColumn("t1", "f"),
 		},
 		plan.NewProject(
 			[]sql.Expression{

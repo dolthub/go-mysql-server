@@ -57,7 +57,7 @@ func TestQualifyColumnsProject(t *testing.T) {
 
 func TestMisusedAlias(t *testing.T) {
 	require := require.New(t)
-	f := getRule("check_aliases")
+	f := getRule("resolve_columns")
 
 	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32},
@@ -66,7 +66,8 @@ func TestMisusedAlias(t *testing.T) {
 	node := plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("alias_i", uc("i")),
-			uc("alias_i"),
+			// like most missing column error cases, this error takes 2 passes to manifest and gets deferred on the first pass
+			&deferredColumn{uc("alias_i")},
 		},
 		plan.NewResolvedTable(table),
 	)

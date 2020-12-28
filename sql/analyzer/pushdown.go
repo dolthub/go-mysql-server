@@ -103,6 +103,8 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, exprAliases
 	// sometimes null in these types of joins). It must be evaluated only after the join result is computed.
 	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
 		switch n := parent.(type) {
+		case *plan.TableAlias:
+			return false
 		case *plan.IndexedJoin:
 			if n.JoinType() == plan.JoinTypeLeft || n.JoinType() == plan.JoinTypeRight {
 				return childNum == 0
@@ -127,20 +129,8 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, exprAliases
 					return nil, err
 				}
 				return FixFieldIndexesForExpressions(n, scope)
-			case *plan.TableAlias:
-				table, err := pushdownFiltersToTable(a, node, scope, filters, exprAliases, tableAliases)
-				if err != nil {
-					return nil, err
-				}
-				return FixFieldIndexesForExpressions(table, scope)
-			case *plan.ResolvedTable:
-				table, err := pushdownFiltersToTable(a, node, scope, filters, exprAliases, tableAliases)
-				if err != nil {
-					return nil, err
-				}
-				return FixFieldIndexesForExpressions(table, scope)
-			case *plan.IndexedTableAccess:
-				table, err := pushdownFiltersToTable(a, node, scope, filters, exprAliases, tableAliases)
+			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess:
+				table, err := pushdownFiltersToTable(a, node.(NameableNode), scope, filters, exprAliases, tableAliases)
 				if err != nil {
 					return nil, err
 				}

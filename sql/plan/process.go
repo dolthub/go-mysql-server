@@ -40,7 +40,12 @@ func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 
 func (p *QueryProcess) String() string { return p.Child.String() }
 
-func (p *QueryProcess) DebugString() string { return sql.DebugString(p.Child) }
+func (p *QueryProcess) DebugString() string {
+	tp := sql.NewTreePrinter()
+	_ = tp.WriteNode("QueryProcess")
+	_ = tp.WriteChildren(sql.DebugString(p.Child))
+	return tp.String()
+}
 
 // ProcessIndexableTable is a wrapper for sql.Tables inside a query process
 // that support indexing.

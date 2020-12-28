@@ -14,10 +14,10 @@ type TableAliases map[string]sql.Nameable
 
 // add adds the given table alias referring to the node given. Adding a case insensitive alias that already exists
 // returns an error.
-func (ta TableAliases) add(alias *plan.TableAlias, target sql.Nameable) error {
+func (ta TableAliases) add(alias sql.Nameable, target sql.Nameable) error {
 	lowerName := strings.ToLower(alias.Name())
 	if _, ok := ta[lowerName]; ok {
-		return sql.ErrDuplicateAliasOrTable.New(target.Name())
+		return sql.ErrDuplicateAliasOrTable.New(alias.Name())
 	}
 
 	ta[lowerName] = target
@@ -31,7 +31,8 @@ func (ta TableAliases) putAll(other TableAliases) {
 	}
 }
 
-// getTableAliases returns a map of all aliases of resolved tables / subqueries in the node, keyed by their alias name
+// getTableAliases returns a map of all aliases of resolved tables / subqueries in the node, keyed by their alias name.
+// Unaliased tables are returned keyed by their original lower-cased name.
 func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 	var passAliases TableAliases
 	var aliasFn func(node sql.Node) bool
@@ -42,25 +43,50 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			return false
 		}
 
+		if opaque, ok := node.(sql.OpaqueNode); ok && opaque.Opaque() {
+			return false
+		}
+
 		if at, ok := node.(*plan.TableAlias); ok {
 			switch t := at.Child.(type) {
 			case *plan.ResolvedTable, *plan.SubqueryAlias:
-				analysisErr = passAliases.add(at, t.(sql.Nameable))
-				if analysisErr != nil {
-					return false
-				}
+				analysisErr = passAliases.add(at, t.(NameableNode))
 			case *plan.DecoratedNode:
 				rt := getResolvedTable(at.Child)
-				passAliases.add(at, rt)
+				analysisErr = passAliases.add(at, rt)
 			case *plan.IndexedTableAccess:
-				rt := getResolvedTable(at.Child)
-				passAliases.add(at, rt)
+				analysisErr = passAliases.add(at, t)
 			case *plan.UnresolvedTable:
 				panic("Table not resolved")
 			default:
 				panic(fmt.Sprintf("Unexpected child type of TableAlias: %T", at.Child))
 			}
 			return false
+		}
+
+		switch node := node.(type) {
+		case *plan.CreateTrigger:
+			// trigger bodies are evaluated separately
+			rt := getResolvedTable(node.Table)
+			analysisErr = passAliases.add(rt, rt)
+			return false
+		case *plan.InsertInto:
+			rt := getResolvedTable(node.Left())
+			analysisErr = passAliases.add(rt, rt)
+			return false
+		case *plan.ResolvedTable, *plan.SubqueryAlias:
+			analysisErr = passAliases.add(node.(sql.Nameable), node.(sql.Nameable))
+			return false
+		case *plan.DecoratedNode:
+			rt := getResolvedTable(node.Child)
+			analysisErr = passAliases.add(rt, rt)
+			return false
+		case *plan.IndexedTableAccess:
+			rt := getResolvedTable(node.ResolvedTable)
+			analysisErr = passAliases.add(rt, node)
+			return false
+		case *plan.UnresolvedTable:
+			panic("Table not resolved")
 		}
 
 		return true
@@ -86,6 +112,27 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 	aliases.putAll(passAliases)
 
 	return aliases, analysisErr
+}
+
+// aliasesDefinedInNode returns the expression aliases that are defined in the node given
+func aliasesDefinedInNode(n sql.Node) []string {
+	var exprs []sql.Expression
+	switch n := n.(type) {
+	case *plan.GroupBy:
+		exprs = n.SelectedExprs
+	case sql.Expressioner:
+		exprs = n.Expressions()
+	}
+
+	var aliases []string
+	for _, e := range exprs {
+		alias, ok := e.(*expression.Alias)
+		if ok {
+			aliases = append(aliases, strings.ToLower(alias.Name()))
+		}
+	}
+
+	return aliases
 }
 
 // getExpressionAliases returns a map of all expressions aliased in the SELECT clause, keyed by their alias name
@@ -116,15 +163,6 @@ func getExpressionAliases(node sql.Node) ExprAliases {
 
 	plan.Inspect(node, findAliasExpressionsFn)
 	return aliases
-}
-
-// normalizeTableName returns the underlying table for the aliased table name given, if it's an alias.
-func normalizeTableName(tableAliases TableAliases, tableName string) string {
-	if rt, ok := tableAliases[tableName]; ok {
-		return rt.Name()
-	}
-
-	return tableName
 }
 
 // normalizeExpressions returns the expressions given after normalizing them to replace table and expression aliases
