@@ -82,7 +82,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{3}, {2}, {1}},
 	},
 	{
-		Query:    "SELECT i AS s, mt.s FROM mytable mt ORDER BY i DESC",
+		Query: "SELECT i AS s, mt.s FROM mytable mt ORDER BY i DESC",
 		Expected: []sql.Row{
 			{3, "third row"},
 			{2, "second row"},
@@ -90,7 +90,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT i AS s, s FROM mytable mt ORDER BY i DESC",
+		Query: "SELECT i AS s, s FROM mytable mt ORDER BY i DESC",
 		Expected: []sql.Row{
 			{3, "third row"},
 			{2, "second row"},
@@ -3414,14 +3414,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{float64(8)}},
 	},
 	{
-		Query:    "SELECT * FROM people WHERE last_name='doe' and first_name='jane' order by dob",
+		Query: "SELECT * FROM people WHERE last_name='doe' and first_name='jane' order by dob",
 		Expected: []sql.Row{
 			sql.NewRow(dob(1990, 2, 21), "jane", "doe", "", int64(68), int64(1)),
 			sql.NewRow(dob(2010, 3, 15), "jane", "doe", "", int64(69), int64(1)),
 		},
 	},
 	{
-		Query:    "SELECT count(*) FROM people WHERE last_name='doe' and first_name='jane' order by dob",
+		Query: "SELECT count(*) FROM people WHERE last_name='doe' and first_name='jane' order by dob",
 		Expected: []sql.Row{
 			sql.NewRow(2),
 		},

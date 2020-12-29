@@ -15,11 +15,13 @@
 package analyzer
 
 import (
+	"reflect"
+
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"gopkg.in/src-d/go-errors.v1"
-	"reflect"
 )
 
 // resolveUnions resolves the left and right side of a union node in isolation.
