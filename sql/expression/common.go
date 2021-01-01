@@ -54,3 +54,32 @@ func (p *BinaryExpression) Resolved() bool {
 func (p *BinaryExpression) IsNullable() bool {
 	return p.Left.IsNullable() || p.Right.IsNullable()
 }
+
+type NaryExpression struct {
+	children []sql.Expression
+}
+
+// Children implements the Expression interface.
+func (n *NaryExpression) Children() []sql.Expression {
+	return n.children
+}
+
+// Resolved implements the Expression interface.
+func (n *NaryExpression) Resolved() bool {
+	for _, child := range n.Children() {
+		if !child.Resolved() {
+			return false
+		}
+	}
+	return true
+}
+
+// IsNullable returns whether the expression can be null.
+func (n *NaryExpression) IsNullable() bool {
+	for _, child := range n.Children() {
+		if child.IsNullable() {
+			return true
+		}
+	}
+	return false
+}
