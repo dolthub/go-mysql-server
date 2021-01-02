@@ -186,9 +186,11 @@ func hexForFloat(f float64) (string, error) {
 
 func hexForString(val string) string {
 	buf := make([]byte, 0, 2*len(val))
-	for _, c := range val {
-		high := byte(c / 16)
-		low := byte(c % 16)
+	// Do not change this to range, as range iterates over runes and not bytes
+	for i := 0; i < len(val); i++ {
+		c := val[i]
+		high := c / 16
+		low := c % 16
 
 		buf = append(buf, hexChar(high))
 		buf = append(buf, hexChar(low))
@@ -204,7 +206,7 @@ type Unhex struct {
 var _ sql.FunctionExpression = (*Unhex)(nil)
 
 func NewUnhex(arg sql.Expression) sql.Expression {
-	return &Unhex{NewUnaryFunc(arg, "UNHEX", sql.Text)}
+	return &Unhex{NewUnaryFunc(arg, "UNHEX", sql.LongBlob)}
 }
 
 // Eval implements the sql.Expression interface
@@ -218,7 +220,7 @@ func (h *Unhex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := sql.Text.Convert(arg)
+	val, err := sql.LongBlob.Convert(arg)
 
 	if err != nil {
 		return nil, err
@@ -226,7 +228,7 @@ func (h *Unhex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	s := val.(string)
 	if len(s)%2 != 0 {
-		return nil, nil
+		s = "0" + s
 	}
 
 	s = strings.ToUpper(s)

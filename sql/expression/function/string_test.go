@@ -1,9 +1,14 @@
 package function
 
 import (
+	"fmt"
 	"math"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/sql/expression"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -25,6 +30,7 @@ func TestHexFunc(t *testing.T) {
 	f := sql.Function1{Name: "hex", Fn: NewHex}
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
+	tf.AddSucceeding("8F", []byte("\x8f"))
 	tf.AddSignedVariations("FFFFFFFFFFFFFFFF", -1)
 	tf.AddUnsignedVariations("5", 5)
 	tf.AddFloatVariations("5", 4.5)
@@ -50,14 +56,44 @@ func TestUnhexFunc(t *testing.T) {
 	tf.AddSucceeding(nil, nil)
 	tf.AddSucceeding("MySQL", "4D7953514C")
 	tf.AddSucceeding("\x01#Eg\x89\xab\xcd\xef", "0123456789abcdef")
+	tf.AddSucceeding("\x8f", "8F")
+	tf.AddSucceeding("\x8f", "8f")
+	tf.AddSucceeding("\x0b", "B")
 	tf.AddSucceeding(nil, "gh")
 	tf.AddSignedVariations("5", 35)
+	tf.AddSignedVariations("\x01", 1)
 	tf.AddSignedVariations(nil, -1)
 	tf.AddUnsignedVariations("5", 35)
 	tf.AddFloatVariations(nil, 35.5)
 	tf.AddSucceeding(nil, time.Now())
 
 	tf.Test(t, nil, nil)
+}
+
+func TestHexRoundTrip(t *testing.T) {
+	tests := []struct {
+		val interface{}
+		typ sql.Type
+		out string
+	}{
+		{"1B", sql.Text, "1B"},
+		{"C", sql.Text, "0C"},
+		{"8F", sql.Text, "8F"},
+		{"ABCD", sql.Text, "ABCD"},
+		{int64(1), sql.Int64, "01"},
+		{int8(11), sql.Int64, "11"},
+		{uint16(375), sql.Int64, "0375"},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v %s", test.val, test.typ.String()), func(t *testing.T) {
+			lit := expression.NewLiteral(test.val, test.typ)
+			f := NewHex(NewUnhex(lit))
+			res, err := f.Eval(sql.NewEmptyContext(), nil)
+			require.NoError(t, err)
+			require.Equal(t, test.out, res)
+		})
+	}
 }
 
 func TestBinFunc(t *testing.T) {
