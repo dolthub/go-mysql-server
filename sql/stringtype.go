@@ -2,12 +2,13 @@ package sql
 
 import (
 	"fmt"
+	"github.com/shopspring/decimal"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/spf13/cast"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -204,12 +205,48 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 		return nil, nil
 	}
 
-	if ti, ok := v.(time.Time); ok {
-		v = ti.Format(TimestampDatetimeLayout)
-	}
-
-	val, err := cast.ToStringE(v)
-	if err != nil {
+	var val string
+	switch s := v.(type) {
+	case bool:
+		val = strconv.FormatBool(s)
+	case float64:
+		val = strconv.FormatFloat(s, 'f', -1, 64)
+	case float32:
+		val = strconv.FormatFloat(float64(s), 'f', -1, 32)
+	case int:
+		val = strconv.FormatInt(int64(s), 10)
+	case int8:
+		val = strconv.FormatInt(int64(s), 10)
+	case int16:
+		val = strconv.FormatInt(int64(s), 10)
+	case int32:
+		val = strconv.FormatInt(int64(s), 10)
+	case int64:
+		val = strconv.FormatInt(s, 10)
+	case uint:
+		val = strconv.FormatUint(uint64(s), 10)
+	case uint8:
+		val = strconv.FormatUint(uint64(s), 10)
+	case uint16:
+		val = strconv.FormatUint(uint64(s), 10)
+	case uint32:
+		val = strconv.FormatUint(uint64(s), 10)
+	case uint64:
+		val = strconv.FormatUint(s, 10)
+	case string:
+		val = s
+	case []byte:
+		val = string(s)
+	case time.Time:
+		val = s.Format(TimestampDatetimeLayout)
+	case decimal.Decimal:
+		val = s.String()
+	case decimal.NullDecimal:
+		if !s.Valid {
+			return nil, nil
+		}
+		val = s.Decimal.String()
+	default:
 		return nil, ErrConvertToSQL.New(t)
 	}
 

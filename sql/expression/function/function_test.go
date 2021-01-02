@@ -65,7 +65,7 @@ func assertResultType(t *testing.T, expectedType sql.Type, result interface{}) {
 	case float32:
 		assert.Equal(t, expectedType, sql.Float32)
 	case string:
-		assert.Equal(t, expectedType, sql.Text)
+		assert.True(t, sql.IsText(expectedType))
 	case time.Time:
 		assert.Equal(t, expectedType, sql.Datetime)
 	case bool:
@@ -301,6 +301,8 @@ func toLiteralExpression(input interface{}) *expression.Literal {
 		return expression.NewLiteral(val, sql.Text)
 	case time.Time:
 		return expression.NewLiteral(val, sql.Datetime)
+	case []byte:
+		return expression.NewLiteral(string(val), sql.Blob)
 	default:
 		panic("unsupported type")
 	}

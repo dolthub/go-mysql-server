@@ -3997,6 +3997,12 @@ var ExplodeQueries = []QueryTest{
 			{int64(3), "e", "third"},
 		},
 	},
+	{
+		Query: `SELECT HEX(UNHEX(375));`,
+		Expected: []sql.Row{
+			{"0375"},
+		},
+	},
 }
 
 type QueryErrorTest struct {
