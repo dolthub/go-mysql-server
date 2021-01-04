@@ -3463,6 +3463,33 @@ var KeylessQueries = []QueryTest{
 			{2, "second row", 2, 2},
 		},
 	},
+	{
+		Query: "DESCRIBE keyless",
+		Expected: []sql.Row{
+			{"c0", "bigint", "YES", "", "", ""},
+			{"c1", "bigint", "YES", "", "", ""},
+		},
+	},
+	{
+		Query: "SHOW COLUMNS FROM keyless",
+		Expected: []sql.Row{
+			{"c0", "bigint", "YES", "", "", ""},
+			{"c1", "bigint", "YES", "", "", ""},
+		},
+	},
+	{
+		Query: "SHOW FULL COLUMNS FROM keyless",
+		Expected: []sql.Row{
+			{"c0", "bigint", nil, "YES", "", "", "", "", ""},
+			{"c1", "bigint", nil, "YES", "", "", "", "", ""},
+		},
+	},
+	{
+		Query: "SHOW CREATE TABLE keyless",
+		Expected: []sql.Row{
+			{"keyless", "CREATE TABLE `keyless` (\n  `c0` bigint,\n  `c1` bigint\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+		},
+	},
 }
 
 // Queries that are known to be broken in the engine.
