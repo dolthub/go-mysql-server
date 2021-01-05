@@ -89,7 +89,7 @@ func canProject(n sql.Node, a *Analyzer) bool {
 	})
 
 	if containsIndexedJoin {
-		a.Log("skipping pushdown of projection for query indexed join")
+		a.Log("skipping pushdown of projection for query with an indexed join")
 		return false
 	}
 
