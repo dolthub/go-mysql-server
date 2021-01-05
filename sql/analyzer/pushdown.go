@@ -78,6 +78,21 @@ func canProject(n sql.Node, a *Analyzer) bool {
 		return false
 	}
 
+	containsIndexedJoin := false
+	plan.Inspect(n, func(node sql.Node) bool {
+		if _, ok := node.(*plan.IndexedJoin); ok {
+			containsIndexedJoin = true
+			return false
+		}
+		return true
+
+	})
+
+	if containsIndexedJoin {
+		a.Log("skipping pushdown of projection for query indexed join")
+		return false
+	}
+
 	return true
 }
 

@@ -204,7 +204,6 @@ type FilteredTable interface {
 	Table
 	HandledFilters(filters []Expression) []Expression
 	WithFilters(filters []Expression) Table
-	Filters() []Expression
 }
 
 // ProjectedTable is a table that can produce a specific RowIter
@@ -212,7 +211,6 @@ type FilteredTable interface {
 type ProjectedTable interface {
 	Table
 	WithProjection(colNames []string) Table
-	Projection() []string
 }
 
 // IndexUsing is the desired storage type.
