@@ -216,6 +216,13 @@ func (it *exchangeRowIter) iterPartitions(ch chan<- sql.Partition) {
 }
 
 func (it *exchangeRowIter) iterPartition(p sql.Partition) {
+	span, ctx := it.ctx.Span("exchange.IterPartition")
+	rowCount := 0
+	defer func() {
+		span.LogKV("num_rows", rowCount)
+		span.Finish()
+	}()
+
 	node, err := TransformUp(it.tree, func(n sql.Node) (sql.Node, error) {
 		if t, ok := n.(sql.Table); ok {
 			return &exchangePartition{p, t}, nil
@@ -228,7 +235,7 @@ func (it *exchangeRowIter) iterPartition(p sql.Partition) {
 		return
 	}
 
-	rows, err := node.RowIter(it.ctx, it.row)
+	rows, err := node.RowIter(ctx, it.row)
 	if err != nil {
 		it.err <- err
 		return
@@ -260,6 +267,7 @@ func (it *exchangeRowIter) iterPartition(p sql.Partition) {
 			return
 		}
 
+		rowCount++
 		it.rows <- row
 	}
 }
