@@ -429,9 +429,10 @@ func convertUnion(ctx *sql.Context, u *sqlparser.Union) (sql.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	if u.Type == sqlparser.UnionStr || u.Type == sqlparser.UnionAllStr {
+
+	if u.Type == sqlparser.UnionAllStr {
 		return plan.NewUnion(left, right), nil
-	} else if u.Type == sqlparser.UnionDistinctStr {
+	} else { // default is DISTINCT (either explicit or implicit)
 		return plan.NewDistinct(plan.NewUnion(left, right)), nil
 	}
 	return nil, ErrUnsupportedFeature.New(u.Type)
