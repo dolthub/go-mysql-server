@@ -257,7 +257,16 @@ func (it *exchangeRowIter) iterPartition(p sql.Partition) {
 		default:
 		}
 
-		row, err := rows.Next()
+		var row sql.Row
+		var err error
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = fmt.Errorf("panic in iterPartition: %v", r)
+				}
+			}()
+			row, err = rows.Next()
+		}()
 		if err != nil {
 			if err == io.EOF {
 				break
