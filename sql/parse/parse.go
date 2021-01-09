@@ -1184,10 +1184,8 @@ func columnsToStrings(cols sqlparser.Columns) []string {
 
 func insertRowsToNode(ctx *sql.Context, ir sqlparser.InsertRows) (sql.Node, error) {
 	switch v := ir.(type) {
-	case *sqlparser.Select:
-		return convertSelect(ctx, v)
-	case *sqlparser.Union:
-		return nil, ErrUnsupportedFeature.New("UNION")
+	case sqlparser.SelectStatement:
+		return convertSelectStatement(ctx, v)
 	case sqlparser.Values:
 		return valuesToValues(ctx, v)
 	default:

@@ -15,11 +15,10 @@
 package enginetest
 
 import (
-	"math"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
+	"math"
 )
 
 var InsertQueries = []WriteQueryTest{
@@ -240,6 +239,50 @@ var InsertQueries = []WriteQueryTest{
 			{int64(1), "first rowthird"},
 			{int64(2), "second rowsecond"},
 			{int64(3), "third rowfirst"},
+		},
+	},
+	{
+		WriteQuery:          `INSERT INTO emptytable (s,i) SELECT s,i from mytable where i = 1 
+			union select s,i from mytable where i = 3`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
+		ExpectedSelect: []sql.Row{
+			{int64(1), "first row"},
+			{int64(3), "third row"},
+		},
+	},
+	{
+		WriteQuery:          `INSERT INTO emptytable (s,i) SELECT s,i from mytable where i = 1 
+			union select s,i from mytable where i = 3 
+			union select s,i from mytable where i > 2`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
+		ExpectedSelect: []sql.Row{
+			{int64(1), "first row"},
+			{int64(3), "third row"},
+		},
+	},
+	{
+		WriteQuery:          `INSERT INTO emptytable (s,i) 
+			SELECT s,i from mytable where i = 1 
+			union all select s,i+1 from mytable where i < 2 
+			union all select s,i+2 from mytable where i in (1)`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
+		ExpectedSelect: []sql.Row{
+			{int64(1), "first row"},
+			{int64(2), "first row"},
+			{int64(3), "first row"},
+		},
+	},
+	{
+		WriteQuery:          "INSERT INTO emptytable (s,i) SELECT distinct s,i from mytable",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
+		ExpectedSelect: []sql.Row{
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"},
 		},
 	},
 	{

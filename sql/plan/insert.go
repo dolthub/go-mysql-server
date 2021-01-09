@@ -335,7 +335,7 @@ func (p *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, erro
 
 // Resolved implements the Resolvable interface.
 func (p *InsertInto) Resolved() bool {
-	if !p.left.Resolved() {
+	if !p.left.Resolved() || !p.right.Resolved() {
 		return false
 	}
 	for _, updateExpr := range p.OnDupExprs {
