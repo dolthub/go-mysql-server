@@ -433,9 +433,12 @@ func convertUnion(ctx *sql.Context, u *sqlparser.Union) (sql.Node, error) {
 	if u.Type == sqlparser.UnionAllStr {
 		return plan.NewUnion(left, right), nil
 	} else { // default is DISTINCT (either explicit or implicit)
+		// TODO: this creates redundant Distinct nodes that we can't easily remove after the fact. With this construct,
+		//  we can't in all cases tell the difference between `union distinct (select ...)` and
+		//  `union (select distinct ...)`. We need something like a Distinct property on Union nodes to be able to prune
+		//  redundant Distinct nodes and thereby avoid doing extra work.
 		return plan.NewDistinct(plan.NewUnion(left, right)), nil
 	}
-	return nil, ErrUnsupportedFeature.New(u.Type)
 }
 
 func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
