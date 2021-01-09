@@ -2214,27 +2214,7 @@ var fixtures = map[string]sql.Node{
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 	),
-	`SELECT 2 UNION SELECT 3`: plan.NewUnion(
-		plan.NewProject(
-			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
-		),
-		plan.NewProject(
-			[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
-		),
-	),
-	`(SELECT 2) UNION (SELECT 3)`: plan.NewUnion(
-		plan.NewProject(
-			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
-		),
-		plan.NewProject(
-			[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
-		),
-	),
-	`SELECT 2 UNION SELECT 3 UNION SELECT 4`: plan.NewUnion(
+	`SELECT 2 UNION SELECT 3`: plan.NewDistinct(
 		plan.NewUnion(
 			plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
@@ -2245,24 +2225,92 @@ var fixtures = map[string]sql.Node{
 				plan.NewUnresolvedTable("dual", ""),
 			),
 		),
+	),
+	`(SELECT 2) UNION (SELECT 3)`: plan.NewDistinct(
+		plan.NewUnion(
+			plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+			plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+		),
+	),
+	`SELECT 2 UNION ALL SELECT 3 UNION DISTINCT SELECT 4`: plan.NewDistinct(
+		plan.NewUnion(
+			plan.NewUnion(
+				plan.NewProject(
+					[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+					plan.NewUnresolvedTable("dual", ""),
+				),
+				plan.NewProject(
+					[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+					plan.NewUnresolvedTable("dual", ""),
+				),
+			),
+			plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+		),
+	),
+	`SELECT 2 UNION SELECT 3 UNION ALL SELECT 4`: plan.NewUnion(
+		plan.NewDistinct(
+			plan.NewUnion(
+				plan.NewProject(
+					[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+					plan.NewUnresolvedTable("dual", ""),
+				),
+				plan.NewProject(
+					[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+					plan.NewUnresolvedTable("dual", ""),
+				),
+			),
+		),
 		plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
 			plan.NewUnresolvedTable("dual", ""),
 		),
 	),
-	`SELECT 2 UNION (SELECT 3 UNION SELECT 4)`: plan.NewUnion(
-		plan.NewProject(
-			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
-		),
+	`SELECT 2 UNION SELECT 3 UNION SELECT 4`: plan.NewDistinct(
 		plan.NewUnion(
-			plan.NewProject(
-				[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
-				plan.NewUnresolvedTable("dual", ""),
+			plan.NewDistinct(
+				plan.NewUnion(
+					plan.NewProject(
+						[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+						plan.NewUnresolvedTable("dual", ""),
+					),
+					plan.NewProject(
+						[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+						plan.NewUnresolvedTable("dual", ""),
+					),
+				),
 			),
 			plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
 				plan.NewUnresolvedTable("dual", ""),
+			),
+		),
+	),
+	`SELECT 2 UNION (SELECT 3 UNION SELECT 4)`: plan.NewDistinct(
+		plan.NewUnion(
+			plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+				plan.NewUnresolvedTable("dual", ""),
+			),
+			plan.NewDistinct(
+				plan.NewUnion(
+					plan.NewProject(
+						[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+						plan.NewUnresolvedTable("dual", ""),
+					),
+					plan.NewProject(
+						[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+						plan.NewUnresolvedTable("dual", ""),
+					),
+				),
 			),
 		),
 	),

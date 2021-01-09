@@ -1,15 +1,16 @@
 package plan
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 var ErrTruncateNotSupported = errors.NewKind("table doesn't support TRUNCATE")
 
 // Truncate is a node describing the deletion of all rows from some table.
 type Truncate struct {
-	db  string
+	db string
 	UnaryNode
 }
 
@@ -152,4 +153,3 @@ func (p Truncate) DebugString() string {
 	_ = pr.WriteChildren(sql.DebugString(p.Child))
 	return pr.String()
 }
-

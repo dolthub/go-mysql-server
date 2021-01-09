@@ -243,6 +243,50 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
+		WriteQuery: `INSERT INTO emptytable (s,i) SELECT s,i from mytable where i = 1 
+			union select s,i from mytable where i = 3`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
+		ExpectedSelect: []sql.Row{
+			{int64(1), "first row"},
+			{int64(3), "third row"},
+		},
+	},
+	{
+		WriteQuery: `INSERT INTO emptytable (s,i) SELECT s,i from mytable where i = 1 
+			union select s,i from mytable where i = 3 
+			union select s,i from mytable where i > 2`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
+		ExpectedSelect: []sql.Row{
+			{int64(1), "first row"},
+			{int64(3), "third row"},
+		},
+	},
+	{
+		WriteQuery: `INSERT INTO emptytable (s,i) 
+			SELECT s,i from mytable where i = 1 
+			union all select s,i+1 from mytable where i < 2 
+			union all select s,i+2 from mytable where i in (1)`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
+		ExpectedSelect: []sql.Row{
+			{int64(1), "first row"},
+			{int64(2), "first row"},
+			{int64(3), "first row"},
+		},
+	},
+	{
+		WriteQuery:          "INSERT INTO emptytable (s,i) SELECT distinct s,i from mytable",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
+		ExpectedSelect: []sql.Row{
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"},
+		},
+	},
+	{
 		WriteQuery:          "INSERT INTO mytable (i,s) SELECT (i + 10.0) / 10.0 + 10 + i, concat(s, ' new') FROM mytable",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable ORDER BY i, s",

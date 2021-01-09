@@ -146,12 +146,11 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 				return plan.ErrInsertIntoMismatchValueCount.New()
 			}
 		}
-	case *plan.ResolvedTable, *plan.Project, *plan.InnerJoin, *plan.Filter, *plan.Limit, *plan.Having, *plan.GroupBy, *plan.Sort:
+	default:
+		// Parser assures us that this will be some form of SelectStatement, so no need to type check it
 		if len(columnNames) != len(values.Schema()) {
 			return plan.ErrInsertIntoMismatchValueCount.New()
 		}
-	default:
-		return plan.ErrInsertIntoUnsupportedValues.New(node)
 	}
 	return nil
 }
@@ -183,9 +182,8 @@ func validateRowSource(values sql.Node, projExprs []sql.Expression) error {
 	case *plan.Values:
 		// already verified
 		return nil
-	case *plan.ResolvedTable, *plan.Project, *plan.InnerJoin, *plan.Filter, *plan.Limit, *plan.Having, *plan.GroupBy, *plan.Sort:
-		return assertCompatibleSchemas(projExprs, n.Schema())
 	default:
-		return plan.ErrInsertIntoUnsupportedValues.New(n)
+		// Parser assures us that this will be some form of SelectStatement, so no need to type check it
+		return assertCompatibleSchemas(projExprs, n.Schema())
 	}
 }
