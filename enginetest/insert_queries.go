@@ -15,10 +15,11 @@
 package enginetest
 
 import (
+	"math"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
-	"math"
 )
 
 var InsertQueries = []WriteQueryTest{
@@ -242,7 +243,7 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery:          `INSERT INTO emptytable (s,i) SELECT s,i from mytable where i = 1 
+		WriteQuery: `INSERT INTO emptytable (s,i) SELECT s,i from mytable where i = 1 
 			union select s,i from mytable where i = 3`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
@@ -252,7 +253,7 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery:          `INSERT INTO emptytable (s,i) SELECT s,i from mytable where i = 1 
+		WriteQuery: `INSERT INTO emptytable (s,i) SELECT s,i from mytable where i = 1 
 			union select s,i from mytable where i = 3 
 			union select s,i from mytable where i > 2`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
@@ -263,7 +264,7 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery:          `INSERT INTO emptytable (s,i) 
+		WriteQuery: `INSERT INTO emptytable (s,i) 
 			SELECT s,i from mytable where i = 1 
 			union all select s,i+1 from mytable where i < 2 
 			union all select s,i+2 from mytable where i in (1)`,
