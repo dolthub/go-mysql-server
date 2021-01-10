@@ -197,6 +197,14 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
+		WriteQuery:          "INSERT INTO niltable (i,f) SELECT i+10, NULL FROM mytable where mytable.i > 2",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM niltable where i > 10 ORDER BY i",
+		ExpectedSelect: []sql.Row{
+			{13, nil, nil, nil},
+		},
+	},
+	{
 		WriteQuery:          "INSERT INTO mytable (i,s) SELECT i+10, 'new' FROM mytable",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable ORDER BY i",

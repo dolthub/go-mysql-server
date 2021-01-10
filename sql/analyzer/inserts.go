@@ -158,11 +158,15 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) error {
 	for _, expr := range projExprs {
 		switch e := expr.(type) {
-		case *expression.Literal:
+		case *expression.Literal, *sql.ColumnDefaultValue:
 			continue
 		case *expression.GetField:
 			otherCol := schema[e.Index()]
-			_, err := otherCol.Type.Convert(expr.Type().Zero())
+			// special case: null field type, will get checked at execution time
+			if otherCol.Type == sql.Null {
+				continue
+			}
+			_, err := expr.Type().Convert(otherCol.Type.Zero())
 			if err != nil {
 				return plan.ErrInsertIntoIncompatibleTypes.New(otherCol.Type.String(), expr.Type().String())
 			}
