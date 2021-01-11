@@ -56,12 +56,12 @@ func (p *BinaryExpression) IsNullable() bool {
 }
 
 type NaryExpression struct {
-	Expressions []sql.Expression
+	ChildExpressions []sql.Expression
 }
 
 // Children implements the Expression interface.
 func (n *NaryExpression) Children() []sql.Expression {
-	return n.Expressions
+	return n.ChildExpressions
 }
 
 // Resolved implements the Expression interface.
