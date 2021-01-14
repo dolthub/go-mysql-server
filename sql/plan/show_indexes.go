@@ -168,7 +168,7 @@ type idxToShow struct {
 }
 
 func (i *indexesToShow) next() (*idxToShow, error) {
-	if i.pos > len(i.indexes) {
+	if i.pos >= len(i.indexes) {
 		return nil, io.EOF
 	}
 
