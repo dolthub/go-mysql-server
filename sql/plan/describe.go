@@ -107,6 +107,13 @@ func (d *DescribeQuery) String() string {
 	return pr.String()
 }
 
+func (d *DescribeQuery) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("DescribeQuery(format=%s)", d.Format)
+	_ = pr.WriteChildren(sql.DebugString(d.Child))
+	return pr.String()
+}
+
 // WithChildren implements the Node interface.
 func (d *DescribeQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {

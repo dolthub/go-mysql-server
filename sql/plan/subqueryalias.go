@@ -40,7 +40,8 @@ func (n *SubqueryAlias) Schema() sql.Schema {
 // RowIter implements the Node interface.
 func (n *SubqueryAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.SubqueryAlias")
-	iter, err := n.Child.RowIter(ctx, row)
+	// subquery aliases are analyzed independently without a scope, so they do not receive any parent row context
+	iter, err := n.Child.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err

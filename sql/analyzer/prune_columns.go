@@ -54,7 +54,7 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 	columns := columnsUsedByNode(n)
 	findUsedColumns(columns, n)
 
-	n, err := pruneUnusedColumns(n, columns)
+	n, err := pruneUnusedColumns(a, n, columns)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func pruneSubqueryColumns(
 
 	findUsedColumns(columns, n.Child)
 
-	node, err := pruneUnusedColumns(n.Child, columns)
+	node, err := pruneUnusedColumns(a, n.Child, columns)
 	if err != nil {
 		return nil, err
 	}
@@ -196,43 +196,50 @@ func pruneSubqueries(
 	})
 }
 
-func pruneUnusedColumns(n sql.Node, columns usedColumns) (sql.Node, error) {
+func pruneUnusedColumns(a *Analyzer, n sql.Node, columns usedColumns) (sql.Node, error) {
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.Project:
-			return pruneProject(n, columns), nil
+			return pruneProject(a, n, columns), nil
 		case *plan.GroupBy:
-			return pruneGroupBy(n, columns), nil
+			return pruneGroupBy(a, n, columns), nil
 		default:
 			return n, nil
 		}
 	})
 }
 
-func pruneProject(n *plan.Project, columns usedColumns) sql.Node {
+func pruneProject(a *Analyzer, n *plan.Project, columns usedColumns) sql.Node {
 	var remaining []sql.Expression
 	for _, e := range n.Projections {
 		if !shouldPruneExpr(e, columns) {
 			remaining = append(remaining, e)
+		} else {
+			a.Log("Pruned project expression %s", e)
 		}
 	}
 
 	if len(remaining) == 0 {
+		a.Log("Replacing empty project %s node with child %s", n, n.Child)
 		return n.Child
 	}
 
 	return plan.NewProject(remaining, n.Child)
 }
 
-func pruneGroupBy(n *plan.GroupBy, columns usedColumns) sql.Node {
+func pruneGroupBy(a *Analyzer, n *plan.GroupBy, columns usedColumns) sql.Node {
 	var remaining []sql.Expression
 	for _, e := range n.SelectedExprs {
 		if !shouldPruneExpr(e, columns) {
 			remaining = append(remaining, e)
+		} else {
+			a.Log("Pruned groupby expression %s", e)
 		}
 	}
 
 	if len(remaining) == 0 {
+		a.Log("Replacing empty groupby %s node with child %s", n, n.Child)
+		// TODO: this seems wrong, even if all projections are now gone we still need to do a grouping
 		return n.Child
 	}
 
