@@ -14,7 +14,9 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
 			a.Log("found subquery %q with child of type %T", n.Name(), n.Child)
-			child, err := a.Analyze(ctx, n.Child, scope)
+
+			// subqueries do not have access to outer scope
+			child, err := a.Analyze(ctx, n.Child, nil)
 			if err != nil {
 				return nil, err
 			}

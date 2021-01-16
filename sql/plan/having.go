@@ -51,7 +51,7 @@ func (h *Having) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, NewFilterIter(ctx, h.Cond, iter, row)), nil
+	return sql.NewSpanIter(span, NewFilterIter(ctx, h.Cond, iter)), nil
 }
 
 func (h *Having) String() string {
