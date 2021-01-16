@@ -243,6 +243,9 @@ func tcpSocks(accept AcceptFn) ([]sockTabEntry, error) {
 		defer func() {
 			_ = f.Close()
 		}()
+		if os.IsNotExist(err) {
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
