@@ -262,6 +262,56 @@ func TestAddPostValidationRule(t *testing.T) {
 	require.Equal(countRules(a.Batches), defRulesCount+1)
 }
 
+func TestRemoveOnceBeforeRule(t *testing.T) {
+	require := require.New(t)
+
+	a := NewBuilder(nil).RemoveOnceBeforeRule("resolve_views").Build()
+
+	defRulesCount := countRules(NewDefault(nil).Batches)
+
+	require.Equal(countRules(a.Batches), defRulesCount-1)
+}
+
+func TestRemoveDefaultRule(t *testing.T) {
+	require := require.New(t)
+
+	a := NewBuilder(nil).RemoveDefaultRule("resolve_natural_joins").Build()
+
+	defRulesCount := countRules(NewDefault(nil).Batches)
+
+	require.Equal(countRules(a.Batches), defRulesCount-1)
+}
+
+func TestRemoveOnceAfterRule(t *testing.T) {
+	require := require.New(t)
+
+	a := NewBuilder(nil).RemoveOnceAfterRule("load_triggers").Build()
+
+	defRulesCount := countRules(NewDefault(nil).Batches)
+
+	require.Equal(countRules(a.Batches), defRulesCount-1)
+}
+
+func TestRemoveValidationRule(t *testing.T) {
+	require := require.New(t)
+
+	a := NewBuilder(nil).RemoveValidationRule(validateResolvedRule).Build()
+
+	defRulesCount := countRules(NewDefault(nil).Batches)
+
+	require.Equal(countRules(a.Batches), defRulesCount-1)
+}
+
+func TestRemoveAfterAllRule(t *testing.T) {
+	require := require.New(t)
+
+	a := NewBuilder(nil).RemoveAfterAllRule("track_process").Build()
+
+	defRulesCount := countRules(NewDefault(nil).Batches)
+
+	require.Equal(countRules(a.Batches), defRulesCount-1)
+}
+
 func countRules(batches []*Batch) int {
 	var count int
 	for _, b := range batches {
