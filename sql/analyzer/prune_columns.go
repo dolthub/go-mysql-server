@@ -124,7 +124,7 @@ func pruneSubqueryColumns(
 	return n.WithChildren(node)
 }
 
-func findUsedColumns(columns usedColumns, n sql.Node) {
+func  findUsedColumns(columns usedColumns, n sql.Node) {
 	plan.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.Project:
@@ -151,19 +151,26 @@ func findUsedColumns(columns usedColumns, n sql.Node) {
 func addUsedProjectColumns(columns usedColumns, projection []sql.Expression) {
 	var candidates []sql.Expression
 	for _, e := range projection {
-		// TODO: not all of the columns mentioned in the subquery are relevant, just the ones that reference the outer scope
-		if sub, ok := e.(*plan.Subquery); ok {
-			findUsedColumns(columns, sub.Query)
-			continue
-		}
-		// Only check for expressions that are not directly a GetField. This
-		// is because in a projection we only care about those that were used
-		// to compute new columns, such as aliases and so on. The fields that
-		// are just passed up in the tree will already be in some other part
-		// if they are really used.
-		if _, ok := e.(*expression.GetField); !ok {
-			candidates = append(candidates, e)
-		}
+		sql.Inspect(e, func(e sql.Expression) bool {
+			if e == nil {
+				return false
+			}
+
+			// TODO: not all of the columns mentioned in the subquery are relevant, just the ones that reference the outer scope
+			if sub, ok := e.(*plan.Subquery); ok {
+				findUsedColumns(columns, sub.Query)
+				return false
+			}
+			// Only check for expressions that are not directly a GetField. This
+			// is because in a projection we only care about those that were used
+			// to compute new columns, such as aliases and so on. The fields that
+			// are just passed up in the tree will already be in some other part
+			// if they are really used.
+			if _, ok := e.(*expression.GetField); !ok {
+				candidates = append(candidates, e)
+			}
+			return true
+		})
 	}
 
 	addUsedColumns(columns, candidates)
