@@ -33,6 +33,11 @@ type Builder struct {
 	postAnalyzeRules    []Rule
 	preValidationRules  []Rule
 	postValidationRules []Rule
+	onceBeforeRules     []Rule
+	defaultRules        []Rule
+	onceAfterRules      []Rule
+	validationRules     []Rule
+	afterAllRules       []Rule
 	catalog             *sql.Catalog
 	debug               bool
 	parallelism         int
@@ -41,7 +46,14 @@ type Builder struct {
 // NewBuilder creates a new Builder from a specific catalog.
 // This builder allow us add custom Rules and modify some internal properties.
 func NewBuilder(c *sql.Catalog) *Builder {
-	return &Builder{catalog: c}
+	return &Builder{
+		catalog:         c,
+		onceBeforeRules: OnceBeforeDefault,
+		defaultRules:    DefaultRules,
+		onceAfterRules:  OnceAfterDefault,
+		validationRules: DefaultValidationRules,
+		afterAllRules:   OnceAfterAll,
+	}
 }
 
 // WithDebug activates debug on the Analyzer.
@@ -85,6 +97,53 @@ func (ab *Builder) AddPostValidationRule(name string, fn RuleFunc) *Builder {
 	return ab
 }
 
+func duplicateRulesWithout(rules []Rule, excludedRuleName string) []Rule {
+	newRules := make([]Rule, 0, len(rules))
+
+	for _, rule := range rules {
+		if rule.Name != excludedRuleName {
+			newRules = append(newRules, rule)
+		}
+	}
+
+	return newRules
+}
+
+// RemoveOnceBeforeRule removes a default rule from the analyzer which would occur before other rules
+func (ab *Builder) RemoveOnceBeforeRule(name string) *Builder {
+	ab.onceBeforeRules = duplicateRulesWithout(ab.onceBeforeRules, name)
+
+	return ab
+}
+
+// RemoveDefaultRule removes a default rule from the analyzer that is executed as part of the analysis
+func (ab *Builder) RemoveDefaultRule(name string) *Builder {
+	ab.defaultRules = duplicateRulesWithout(ab.defaultRules, name)
+
+	return ab
+}
+
+// RemoveOnceAfterRule removes a default rule from the analyzer which would occur just once after the default analysis
+func (ab *Builder) RemoveOnceAfterRule(name string) *Builder {
+	ab.onceAfterRules = duplicateRulesWithout(ab.onceAfterRules, name)
+
+	return ab
+}
+
+// RemoveValidationRule removes a default rule from the analyzer which would occur as part of the validation rules
+func (ab *Builder) RemoveValidationRule(name string) *Builder {
+	ab.validationRules = duplicateRulesWithout(ab.validationRules, name)
+
+	return ab
+}
+
+// RemoveAfterAllRule removes a default rule from the analyzer which would occur after all other rules
+func (ab *Builder) RemoveAfterAllRule(name string) *Builder {
+	ab.afterAllRules = duplicateRulesWithout(ab.afterAllRules, name)
+
+	return ab
+}
+
 func init() {
 	logrus.SetFormatter(simpleLogFormatter{})
 }
@@ -101,17 +160,17 @@ func (ab *Builder) Build() *Analyzer {
 		&Batch{
 			Desc:       "once-before",
 			Iterations: 1,
-			Rules:      OnceBeforeDefault,
+			Rules:      ab.onceBeforeRules,
 		},
 		&Batch{
 			Desc:       "default-rules",
 			Iterations: maxAnalysisIterations,
-			Rules:      DefaultRules,
+			Rules:      ab.defaultRules,
 		},
 		&Batch{
 			Desc:       "once-after",
 			Iterations: 1,
-			Rules:      OnceAfterDefault,
+			Rules:      ab.onceAfterRules,
 		},
 		&Batch{
 			Desc:       "post-analyzer",
@@ -126,7 +185,7 @@ func (ab *Builder) Build() *Analyzer {
 		&Batch{
 			Desc:       "validation",
 			Iterations: 1,
-			Rules:      DefaultValidationRules,
+			Rules:      ab.validationRules,
 		},
 		&Batch{
 			Desc:       "post-validation",
@@ -136,7 +195,7 @@ func (ab *Builder) Build() *Analyzer {
 		&Batch{
 			Desc:       "after-all",
 			Iterations: 1,
-			Rules:      OnceAfterAll,
+			Rules:      ab.afterAllRules,
 		},
 	}
 
