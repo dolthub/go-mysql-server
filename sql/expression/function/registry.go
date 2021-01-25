@@ -121,6 +121,7 @@ var Defaults = []sql.Function{
 	sql.Function1{Name: "upper", Fn: NewUpper},
 	sql.NewFunction0("user", NewUser),
 	sql.FunctionN{Name: "week", Fn: NewWeek},
+	sql.Function1{Name: "values", Fn: NewValues},
 	sql.Function1{Name: "weekday", Fn: NewWeekday},
 	sql.Function1{Name: "weekofyear", Fn: NewWeekOfYear},
 	sql.Function1{Name: "year", Fn: NewYear},
