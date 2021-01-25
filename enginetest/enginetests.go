@@ -1758,6 +1758,11 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 		[]sql.Row(nil),
 		nil,
 	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE child ADD CONSTRAINT fk4 FOREIGN KEY (d) REFERENCES child(c)",
+		[]sql.Row(nil),
+		nil,
+	)
 
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
@@ -1781,6 +1786,14 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 			ReferencedColumns: []string{"b"},
 			OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
 			OnDelete:          sql.ForeignKeyReferenceOption_Cascade,
+		},
+		{
+			Name:              "fk4",
+			Columns:           []string{"d"},
+			ReferencedTable:   "child",
+			ReferencedColumns: []string{"c"},
+			OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
+			OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
 		},
 	}
 	assert.Equal(t, expected, fks)
