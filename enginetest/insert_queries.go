@@ -403,6 +403,24 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
+		WriteQuery:          "INSERT INTO mytable (i,s) values (1,'hi') ON DUPLICATE KEY UPDATE s=VALUES(s)",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
+		ExpectedSelect:      []sql.Row{{int64(1), "hi"}},
+	},
+	{
+		WriteQuery:          "INSERT INTO mytable (s,i) values ('dup',1) ON DUPLICATE KEY UPDATE s=CONCAT(VALUES(s), 'licate')",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
+		ExpectedSelect:      []sql.Row{{int64(1), "duplicate"}},
+	},
+	{
+		WriteQuery:          "INSERT INTO mytable (i,s) values (1,'maybe') ON DUPLICATE KEY UPDATE i=VALUES(i)+8000, s=VALUES(s)",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		SelectQuery:         "SELECT * FROM mytable WHERE i = 8001",
+		ExpectedSelect:      []sql.Row{{int64(8001), "maybe"}},
+	},
+	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl (c0) values (44)",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",

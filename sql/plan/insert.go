@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"fmt"
 	"io"
 	"strings"
 
@@ -8,6 +9,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 )
 
 // ErrInsertIntoNotSupported is thrown when a table doesn't support inserts
@@ -228,6 +230,11 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 				return nil, err
 			}
 
+			err = i.resolveValues(i.ctx, row)
+			if err != nil {
+				return nil, err
+			}
+
 			newRow, err := applyUpdateExpressions(i.ctx, i.updateExprs, rowToUpdate)
 			if err != nil {
 				return nil, err
@@ -245,6 +252,31 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 
 	return row, nil
 }
+
+// resolveValues resolves all VALUES functions.
+func (i insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
+	for _, updateExpr := range i.updateExprs {
+		var err error
+		sql.Inspect(updateExpr, func(expr sql.Expression) bool {
+			valuesExpr, ok := expr.(*function.Values)
+			if !ok {
+				return true
+			}
+			getField, ok := valuesExpr.Child.(*expression.GetField)
+			if !ok {
+				err = fmt.Errorf("VALUES functions may only contain column names")
+				return false
+			}
+			valuesExpr.Value = insertRow[getField.Index()]
+			return false
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 
 func (i insertIter) Close() error {
 	if !i.closed {

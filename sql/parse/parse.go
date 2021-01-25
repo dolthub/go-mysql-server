@@ -1731,6 +1731,12 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 	case *sqlparser.CollateExpr:
 		// TODO: handle collation
 		return exprToExpression(ctx, v.Expr)
+	case *sqlparser.ValuesFuncExpr:
+		col, err := exprToExpression(ctx, v.Name)
+		if err != nil {
+			return nil, err
+		}
+		return expression.NewUnresolvedFunction("values", false, col), nil
 	}
 }
 

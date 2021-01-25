@@ -3438,6 +3438,14 @@ var QueryTests = []QueryTest{
 			sql.NewRow(2),
 		},
 	},
+	{
+		Query: "SELECT VALUES(i) FROM mytable",
+		Expected: []sql.Row{
+			sql.NewRow(nil),
+			sql.NewRow(nil),
+			sql.NewRow(nil),
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
