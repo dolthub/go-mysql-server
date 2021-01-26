@@ -415,6 +415,12 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{int64(1), "duplicate"}},
 	},
 	{
+		WriteQuery:          "INSERT INTO mytable (i,s) values (1,'mar'), (2,'par') ON DUPLICATE KEY UPDATE s=CONCAT(VALUES(s), 'tial')",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(4)}},
+		SelectQuery:         "SELECT * FROM mytable WHERE i IN (1,2) ORDER BY i",
+		ExpectedSelect:      []sql.Row{{int64(1), "martial"},{int64(2), "partial"}},
+	},
+	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1,'maybe') ON DUPLICATE KEY UPDATE i=VALUES(i)+8000, s=VALUES(s)",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 8001",
