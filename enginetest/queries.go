@@ -134,6 +134,18 @@ var QueryTests = []QueryTest{
 			{"third row", int64(3)}},
 	},
 	{
+		Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+		},
+	},
+	{
+		Query: "SELECT (select s from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where i = 1) as sub;",
+		Expected: []sql.Row{
+			{"first row"},
+		},
+	},
+	{
 		Query: "SELECT s,i FROM MyTable ORDER BY 2",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
