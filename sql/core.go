@@ -213,6 +213,14 @@ type ProjectedTable interface {
 	WithProjection(colNames []string) Table
 }
 
+// StatisticsTable is a table that can provide information about its number of rows and other facts to improve query
+// planning performance.
+type StatisticsTable interface {
+	Table
+	// NumRows returns the unfiltered count of rows contained in the table
+	NumRows(*Context) (uint64, error)
+}
+
 // IndexUsing is the desired storage type.
 type IndexUsing byte
 
