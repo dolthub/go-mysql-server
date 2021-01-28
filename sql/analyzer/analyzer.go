@@ -273,9 +273,9 @@ func (a *Analyzer) LogNode(n sql.Node) {
 	if a != nil && n != nil && a.Verbose {
 		if len(a.contextStack) > 0 {
 			ctx := strings.Join(a.contextStack, "/")
-			fmt.Printf("%s:\n%s", ctx, sql.DebugString(n))
+			logrus.Infof("%s:\n%s", ctx, sql.DebugString(n))
 		} else {
-			fmt.Printf("%s", sql.DebugString(n))
+			logrus.Infof("%s", sql.DebugString(n))
 		}
 	}
 }
