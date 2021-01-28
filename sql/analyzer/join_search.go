@@ -25,7 +25,12 @@ import (
 )
 
 // orderTables returns an access order for the tables provided, attempting to minimize total query cost
-func orderTables(tables []NameableNode, tablesByName map[string]NameableNode, joinIndexes joinIndexesByTable) []string {
+func orderTables(
+	ctx *sql.Context,
+	tables []NameableNode,
+	tablesByName map[string]NameableNode,
+	joinIndexes joinIndexesByTable,
+) ([]string, error) {
 	tableNames := make([]string, len(tablesByName))
 	indexes := make([]int, len(tablesByName))
 	for i, table := range tables {
@@ -35,10 +40,13 @@ func orderTables(tables []NameableNode, tablesByName map[string]NameableNode, jo
 
 	// generate all permutations of table order
 	accessOrders := permutations(indexes)
-	lowestCost := int64(math.MaxInt64)
+	lowestCost := uint64(math.MaxUint64)
 	lowestCostIdx := 0
 	for i, accessOrder := range accessOrders {
-		cost := estimateTableOrderCost(tableNames, tablesByName, accessOrder, joinIndexes, lowestCost)
+		cost, err := estimateTableOrderCost(ctx, tableNames, tablesByName, accessOrder, joinIndexes, lowestCost)
+		if err != nil {
+			return nil, err
+		}
 		if cost < lowestCost {
 			lowestCost = cost
 			lowestCostIdx = i
@@ -50,7 +58,7 @@ func orderTables(tables []NameableNode, tablesByName map[string]NameableNode, jo
 		cheapestOrder[i] = tableNames[j]
 	}
 
-	return cheapestOrder
+	return cheapestOrder, nil
 }
 
 // buildJoinTree builds a join plan for the tables in the access order given, using the join expressions given.
@@ -78,17 +86,18 @@ func buildJoinTree(
 // Estimates the cost of the table ordering given. Lower numbers are better. Bails out and returns cost so far if cost
 // exceeds lowest found so far. We could do this better if we had table and key statistics.
 func estimateTableOrderCost(
+	ctx *sql.Context,
 	tables []string,
 	tableNodes map[string]NameableNode,
 	accessOrder []int,
 	joinIndexes joinIndexesByTable,
-	lowestCost int64,
-) int64 {
-	cost := int64(1)
+	lowestCost uint64,
+) (uint64, error) {
+	cost := uint64(1)
 	var availableSchemaForKeys sql.Schema
 	for i, idx := range accessOrder {
 		if cost >= lowestCost {
-			return cost
+			return cost, nil
 		}
 
 		table := tables[idx]
@@ -103,22 +112,32 @@ func estimateTableOrderCost(
 				for j := 0; j < i; j++ {
 					otherTable := tables[accessOrder[j]]
 					if colsIncludeTable(idx.comparandCols, otherTable) {
-						return math.MaxInt64
+						return math.MaxInt64, nil
 					}
 				}
 			}
 		}
 
+		tableNode := tableNodes[table]
 		if i == 0 || indexes.getUsableIndex(availableSchemaForKeys) == nil {
-			// TODO: estimate number of rows in table
-			cost *= 1000
+			rt := getResolvedTable(tableNode)
+			// TODO: also consider indexes which could be pushed down to this table, if it's the first one
+			if st, ok := rt.Table.(sql.StatisticsTable); ok {
+				numRows, err := st.NumRows(ctx)
+				if err != nil {
+					return 0, err
+				}
+				cost *= numRows
+			} else {
+				cost *= 1000
+			}
 		} else {
 			// TODO: estimate number of rows from index lookup based on cardinality
 			cost += 1
 		}
 	}
 
-	return cost
+	return cost, nil
 }
 
 // colsIncludeTable returns whether the columns given contain the table given
