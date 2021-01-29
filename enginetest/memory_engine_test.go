@@ -88,13 +88,12 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;`,
+		Query: "SELECT (select s from mytable mt where sub.i = mt.i) as subi FROM (select s,i,'hello' FROM mytable where i = 1) as sub;",
 		Expected: []sql.Row{
-			{"first row", int64(1)},
+			{"first row"},
 		},
 	}
-
-	fmt.Sprintf("%v", test)
+		fmt.Sprintf("%v", test)
 
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, mergableIndexDriver)
 	engine := enginetest.NewEngine(t, harness)
