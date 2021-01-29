@@ -2,6 +2,7 @@ package plan
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -57,20 +58,56 @@ func (p *Values) Resolved() bool {
 	return true
 }
 
+type etAndDestIndex struct {
+	idx int
+	et []sql.Expression
+}
+
+type rowAndDestIndex struct {
+	idx int
+	row sql.Row
+}
+
 // RowIter implements the Node interface.
 func (p *Values) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	const parallelism = 8
 	rows := make([]sql.Row, len(p.ExpressionTuples))
-	for i, et := range p.ExpressionTuples {
-		vals := make([]interface{}, len(et))
-		for j, e := range et {
-			var err error
-			vals[j], err = e.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
-		}
+	rowCh := make(chan rowAndDestIndex, len(p.ExpressionTuples))
+	etCh := make(chan etAndDestIndex, len(p.ExpressionTuples))
 
-		rows[i] = sql.NewRow(vals...)
+	wg := &sync.WaitGroup{}
+	wg.Add(parallelism)
+	for i := 0; i < parallelism; i++ {
+		go func() {
+			defer wg.Done()
+			for etAndIdx := range etCh {
+				et := etAndIdx.et
+				vals := make([]interface{}, len(et))
+				for j, e := range et {
+					var err error
+					vals[j], err = e.Eval(ctx, row)
+					if err != nil {
+						panic(err)
+					}
+				}
+
+				rowCh <- rowAndDestIndex{idx: etAndIdx.idx, row: sql.NewRow(vals...)}
+			}
+		}()
+	}
+
+	for i, et := range p.ExpressionTuples {
+		etCh <- etAndDestIndex{idx: i, et: et}
+	}
+
+	close(etCh)
+
+	wg.Wait()
+
+	close(rowCh)
+
+	for r := range rowCh {
+		rows[r.idx] = r.row
 	}
 
 	return sql.RowsToRowIter(rows...), nil

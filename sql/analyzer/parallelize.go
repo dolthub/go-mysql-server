@@ -48,6 +48,8 @@ func isDdlNode(node sql.Node) bool {
 }
 
 func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
+	return node, nil
+
 	if a.Parallelism <= 1 || !node.Resolved() {
 		return node, nil
 	}
