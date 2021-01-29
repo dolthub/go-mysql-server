@@ -54,10 +54,11 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return n, nil
 	}
 
-	return replaceJoinPlans(a, n, scope, joinIndexesByTable, exprAliases, tableAliases)
+	return replaceJoinPlans(ctx, a, n, scope, joinIndexesByTable, exprAliases, tableAliases)
 }
 
 func replaceJoinPlans(
+	ctx *sql.Context,
 	a *Analyzer,
 	n sql.Node,
 	scope *Scope,
@@ -81,7 +82,7 @@ func replaceJoinPlans(
 		case *plan.IndexedJoin:
 			return node, nil
 		case plan.JoinNode:
-			return replanJoin(node, a, joinIndexes)
+			return replanJoin(ctx, node, a, joinIndexes)
 		default:
 			return node, nil
 		}
@@ -232,7 +233,7 @@ func replaceIndexedAccessInUnaryNode(
 	return newNode, replaced, nil
 }
 
-func replanJoin(node plan.JoinNode, a *Analyzer, joinIndexes joinIndexesByTable) (sql.Node, error) {
+func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes joinIndexesByTable) (sql.Node, error) {
 	// Inspect the node for eligibility. The join planner rewrites the tree beneath this node, and for this to be correct
 	// only certain nodes can be below it.
 	eligible := true
@@ -253,7 +254,10 @@ func replanJoin(node plan.JoinNode, a *Analyzer, joinIndexes joinIndexesByTable)
 	// Collect all tables and find an access order for them
 	tables := lexicalTableOrder(node)
 	tablesByName := byLowerCaseName(tables)
-	tableOrder := orderTables(tables, tablesByName, joinIndexes)
+	tableOrder, err := orderTables(ctx, tables, tablesByName, joinIndexes)
+	if err != nil {
+		return nil, err
+	}
 
 	// Then use that order to construct a join tree
 	joinTree := buildJoinTree(tableOrder, joinIndexes.flattenJoinConds(tableOrder))

@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -78,7 +77,22 @@ func (p *Values) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 }
 
 func (p *Values) String() string {
-	return fmt.Sprintf("Values(%d tuples)", len(p.ExpressionTuples))
+	var sb strings.Builder
+	sb.WriteString("Values(")
+	for i, tuple := range p.ExpressionTuples {
+		if i > 0 {
+			sb.WriteString(",\n")
+		}
+		for j, e := range tuple {
+			if j > 0 {
+				sb.WriteString(",")
+			}
+			sb.WriteString(e.String())
+		}
+	}
+
+	sb.WriteString(")")
+	return sb.String()
 }
 
 func (p *Values) DebugString() string {
