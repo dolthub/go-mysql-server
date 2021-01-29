@@ -1,8 +1,12 @@
 package plan
 
 import (
+	"context"
+	"errors"
+	"io"
 	"strings"
-	"sync"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -58,59 +62,45 @@ func (p *Values) Resolved() bool {
 	return true
 }
 
-type etAndDestIndex struct {
-	idx int
-	et []sql.Expression
-}
-
-type rowAndDestIndex struct {
-	idx int
-	row sql.Row
-}
-
 // RowIter implements the Node interface.
-func (p *Values) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	const parallelism = 8
-	rows := make([]sql.Row, len(p.ExpressionTuples))
-	rowCh := make(chan rowAndDestIndex, len(p.ExpressionTuples))
-	etCh := make(chan etAndDestIndex, len(p.ExpressionTuples))
+func (p *Values) RowIter(sqlCtx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	eg, groupCtx := errgroup.WithContext(sqlCtx)
 
-	wg := &sync.WaitGroup{}
-	wg.Add(parallelism)
+	const parallelism = 8
+	count := len(p.ExpressionTuples)
+	inCh := make(chan []sql.Expression, count)
+	outCh := make(chan sql.Row, count)
+
 	for i := 0; i < parallelism; i++ {
-		go func() {
-			defer wg.Done()
-			for etAndIdx := range etCh {
-				et := etAndIdx.et
+		eg.Go(func() error {
+			for et := range inCh {
 				vals := make([]interface{}, len(et))
 				for j, e := range et {
 					var err error
-					vals[j], err = e.Eval(ctx, row)
+					vals[j], err = e.Eval(sqlCtx, row)
 					if err != nil {
-						panic(err)
+						return err
 					}
 				}
 
-				rowCh <- rowAndDestIndex{idx: etAndIdx.idx, row: sql.NewRow(vals...)}
+				select {
+					case outCh <- sql.NewRow(vals...):
+					case <-groupCtx.Done():
+						return groupCtx.Err()
+				}
 			}
-		}()
+
+			return nil
+		})
 	}
 
-	for i, et := range p.ExpressionTuples {
-		etCh <- etAndDestIndex{idx: i, et: et}
+	for _, et := range p.ExpressionTuples {
+		inCh <- et
 	}
 
-	close(etCh)
+	close(inCh)
 
-	wg.Wait()
-
-	close(rowCh)
-
-	for r := range rowCh {
-		rows[r.idx] = r.row
-	}
-
-	return sql.RowsToRowIter(rows...), nil
+	return &channelRowIter{eg: eg, ctx: groupCtx, ch: outCh, count: count}, nil
 }
 
 func (p *Values) String() string {
@@ -193,3 +183,40 @@ func (p *Values) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 
 	return NewValues(tuples), nil
 }
+
+var errAbortedChannelRowItr = errors.New("Aborted channelRowItr")
+
+type channelRowIter struct {
+	eg *errgroup.Group
+	ctx context.Context
+	ch chan sql.Row
+	count int
+	pos int
+}
+
+func (c *channelRowIter) Next() (sql.Row, error) {
+	if c.pos >= c.count {
+		return nil, io.EOF
+	}
+
+	select {
+	case r := <-c.ch:
+		c.pos++
+		return r, nil
+
+	case <-c.ctx.Done():
+		return nil, c.eg.Wait()
+	}
+}
+
+func (c channelRowIter) Close() error {
+	if c.pos < c.count {
+		c.eg.Go(func() error {
+			return errAbortedChannelRowItr
+		})
+	}
+
+	close(c.ch)
+	return c.eg.Wait()
+}
+
