@@ -194,19 +194,19 @@ func getIndexes(
 			}
 		}
 	case *expression.Equals,
-		*expression.LessThan,
-		*expression.GreaterThan,
-		*expression.LessThanOrEqual,
-		*expression.GreaterThanOrEqual:
-		idx, lookup, err := getComparisonIndex(ctx, a, ia, e.(expression.Comparer), exprAliases, tableAliases)
-		if err != nil || lookup == nil {
-			return result, err
-		}
+			*expression.LessThan,
+			*expression.GreaterThan,
+			*expression.LessThanOrEqual,
+			*expression.GreaterThanOrEqual:
+			idx, lookup, err := getComparisonIndex(ctx, a, ia, e.(expression.Comparer), exprAliases, tableAliases)
+			if err != nil || lookup == nil {
+					return result, err
+			}
 
-		result[idx.Table()] = &indexLookup{
-			indexes: []sql.Index{idx},
-			lookup:  lookup,
-		}
+			result[idx.Table()] = &indexLookup{
+					indexes: []sql.Index{idx},
+					lookup:  lookup,
+			}
 	case *expression.IsNull:
 		return getIndexes(ctx, a, ia, expression.NewEquals(e.Child, expression.NewLiteral(nil, sql.Null)), exprAliases, tableAliases)
 	case *expression.Not:

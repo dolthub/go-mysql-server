@@ -28,28 +28,50 @@ type indexAnalyzer struct {
 	registryIdxes  []sql.Index
 }
 
-// getIndexesForNode returns an analyzer for indexes available in the node given. These might come from either the
-// tables themselves natively, or else from an index driver that has indexes for the tables included in the nodes.
+// getIndexesForNode returns an analyzer for indexes available in the node given, keyed by the table name. These might
+// come from either the tables themselves natively, or else from an index driver that has indexes for the tables
+// included in the nodes. Indexes are keyed by the aliased name of the table, if applicable. These names must be
+// unaliased when matching against the names of tables in index definitions.
 func getIndexesForNode(ctx *sql.Context, a *Analyzer, n sql.Node) (*indexAnalyzer, error) {
 	var analysisErr error
 	indexes := make(map[string][]sql.Index)
 
+	var indexesForTable = func(name string, rt *plan.ResolvedTable) error {
+			it, ok := rt.Table.(sql.IndexedTable)
+			if !ok {
+					return nil
+			}
+
+			idxes, err := it.GetIndexes(ctx)
+			if err != nil {
+					return err
+			}
+
+			indexes[name] = append(indexes[name], idxes...)
+			return nil
+	}
+
 	// Find all of the native indexed tables in the node (those that don't require a driver)
 	if n != nil {
-		plan.Inspect(n, func(node sql.Node) bool {
-			switch x := node.(type) {
-			case *plan.ResolvedTable:
-				it, ok := x.Table.(sql.IndexedTable)
-				if !ok {
-					return false
-				}
+		plan.Inspect(n, func(n sql.Node) bool {
+			switch n := n.(type) {
+			case *plan.TableAlias:
+					rt, ok := n.Child.(*plan.ResolvedTable)
+					if !ok {
+							return false
+					}
 
-				idxes, err := it.GetIndexes(ctx)
-				if err != nil {
-					analysisErr = err
-					return false
-				}
-				indexes[it.Name()] = append(indexes[it.Name()], idxes...)
+					err := indexesForTable(n.Name(), rt)
+					if err != nil {
+							analysisErr = err
+							return false
+					}
+			case *plan.ResolvedTable:
+					err := indexesForTable(n.Name(), n)
+					if err != nil {
+							analysisErr = err
+							return false
+					}
 			}
 
 			return true
