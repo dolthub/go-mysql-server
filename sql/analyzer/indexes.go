@@ -203,7 +203,12 @@ func getIndexes(
 					return result, err
 			}
 
-			result[idx.Table()] = &indexLookup{
+			getField := extractGetField(e)
+			if getField == nil {
+					return result, nil
+			}
+
+			result[getField.Table()] = &indexLookup{
 					indexes: []sql.Index{idx},
 					lookup:  lookup,
 			}
