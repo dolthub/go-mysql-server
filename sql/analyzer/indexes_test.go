@@ -288,7 +288,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t2": &indexLookup{
 					exprs:  []sql.Expression{
-						null(col(0, "t2", "bar")),
+						col(0, "t2", "bar"),
 					},
 					lookup:  mergeableIndexLookup("t2", "bar", 0, nil),
 					indexes: []sql.Index{indexes[1]},
@@ -307,15 +307,9 @@ func TestGetIndexes(t *testing.T) {
 			),
 			expected: indexLookupsByTable{
 				"t2": &indexLookup{
-					exprs: []sql.Expression {
-						and(
-							null(
-								col(0, "t2", "bar"),
-							),
-							null(
-								col(0, "t2", "foo"),
-							),
-						),
+					exprs: []sql.Expression{
+						col(0, "t2", "foo"),
+						col(0, "t2", "bar"),
 					},
 					lookup: &memory.MergeableIndexLookup{
 						Key: []interface{}{nil, nil},
@@ -341,7 +335,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t2": &indexLookup{
 					exprs: []sql.Expression{
-						not(null(col(0, "t2", "bar"))),
+						col(0, "t2", "bar"),
 					},
 					lookup: &memory.NegateIndexLookup{
 						Lookup: mergeableIndexLookup("t2", "bar", 0, nil),
@@ -366,13 +360,9 @@ func TestGetIndexes(t *testing.T) {
 				lit(1),
 			),
 			expected: indexLookupsByTable{
-
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						eq(
 						col(0, "t1", "bar"),
-						lit(1),
-						),
 				},
 					lookup:  mergeableIndexLookup("t1", "bar", 0, int64(1)),
 					indexes: []sql.Index{indexes[0]},
@@ -394,16 +384,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						or(
-							eq(
 								col(0, "t1", "bar"),
-								lit(1),
-							),
-							eq(
-								col(0, "t1", "bar"),
-								lit(2),
-							),
-						),
 					},
 					lookup: &memory.MergedIndexLookup{
 						Unions: []sql.IndexLookup{
@@ -477,16 +458,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression {
-						and(
-							eq(
 								col(0, "t1", "bar"),
-								lit(1),
-							),
-							eq(
-								col(0, "t1", "bar"),
-								lit(10),
-							),
-						),
 					},
 					lookup: intersectionLookupWithKeys("t1", "bar", 0, int64(1), int64(10)),
 					indexes: []sql.Index{
@@ -523,28 +495,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-					and(
-						or(
-							eq(
 								col(0, "t1", "bar"),
-								lit(1),
-							),
-							eq(
-								col(0, "t1", "bar"),
-								lit(2),
-							),
-						),
-						or(
-							eq(
-								col(0, "t1", "bar"),
-								lit(3),
-							),
-							eq(
-								col(0, "t1", "bar"),
-								lit(4),
-							),
-						),
-					),
 				},
 					lookup: intersectionLookup("t1", "bar", 0,
 						unionLookup("t1", "bar", 0,
@@ -592,28 +543,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression {
-						or(
-							or(
-								eq(
 									col(0, "t1", "bar"),
-									lit(1),
-								),
-								eq(
-									col(0, "t1", "bar"),
-									lit(2),
-								),
-							),
-							or(
-								eq(
-									col(0, "t1", "bar"),
-									lit(3),
-								),
-								eq(
-									col(0, "t1", "bar"),
-									lit(4),
-								),
-							),
-						),
 					},
 					lookup: unionLookupWithKeys("t1", "bar", 0, int64(1), int64(2), int64(3), int64(4)),
 					indexes: []sql.Index{
@@ -673,32 +603,14 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						and(
-							eq(
 								col(0, "t1", "bar"),
-								lit(3),
-							),
-							eq(
-								col(0, "t2", "bar"),
-								lit(4),
-							),
-						),
 					},
 					lookup:  mergeableIndexLookup("t1", "bar", 0, int64(3)),
 					indexes: []sql.Index{indexes[0]},
 				},
 				"t2": &indexLookup{
 					exprs: []sql.Expression{
-						and(
-							eq(
-								col(0, "t1", "bar"),
-								lit(3),
-							),
-							eq(
 								col(0, "t2", "bar"),
-								lit(4),
-							),
-						),
 					},
 					lookup:  mergeableIndexLookup("t2", "bar", 0, int64(4)),
 					indexes: []sql.Index{indexes[1]},
@@ -720,16 +632,8 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t2": &indexLookup{
 					exprs: []sql.Expression{
-						and(
-							eq(
-								col(0, "t2", "bar"),
-								lit(2),
-							),
-							eq(
 								col(0, "t2", "foo"),
-								lit(1),
-							),
-						),
+						col(0, "t2", "bar"),
 					},
 					lookup: &memory.MergeableIndexLookup{
 						Key: []interface{}{int64(1), int64(2)},
@@ -772,56 +676,15 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						and(
-							eq(
-								col(0, "t2", "foo"),
-								lit(1),
-							),
-							and(
-								eq(
-									col(0, "t2", "baz"),
-									lit(4),
-								),
-								and(
-									eq(
-										col(0, "t2", "bar"),
-										lit(2),
-									),
-									eq(
 										col(0, "t1", "bar"),
-										lit(3),
-									),
-								),
-							),
-						),
 					},
 					lookup:  mergeableIndexLookup("t1", "bar", 0, int64(3)),
 					indexes: []sql.Index{indexes[0]},
 				},
 				"t2": &indexLookup{
 					exprs: []sql.Expression{
-						and(
-							eq(
 								col(0, "t2", "foo"),
-								lit(1),
-							),
-							and(
-								eq(
-									col(0, "t2", "baz"),
-									lit(4),
-								),
-								and(
-									eq(
 										col(0, "t2", "bar"),
-										lit(2),
-									),
-									eq(
-										col(0, "t1", "bar"),
-										lit(3),
-									),
-								),
-							),
-						),
 					},
 					lookup: &memory.MergeableIndexLookup{
 						Key: []interface{}{int64(1), int64(2)},
@@ -878,10 +741,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						gt(
 							col(0, "t1", "bar"),
-							lit(1),
-						),
 					},
 					lookup: &memory.DescendIndexLookup{
 						Gt:    []interface{}{int64(1)},
@@ -900,10 +760,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						lt(
 							col(0, "t1", "bar"),
-							lit(1),
-						),
 					},
 					lookup: &memory.AscendIndexLookup{
 						Lt:    []interface{}{int64(1)},
@@ -922,10 +779,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						gte(
 							col(0, "t1", "bar"),
-							lit(1),
-						),
 					},
 					lookup: &memory.AscendIndexLookup{
 						Gte:   []interface{}{int64(1)},
@@ -944,10 +798,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						lte(
 							col(0, "t1", "bar"),
-							lit(1),
-						),
 					},
 					lookup: &memory.DescendIndexLookup{
 						Lte:   []interface{}{int64(1)},
@@ -967,11 +818,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						expression.NewBetween(
 							col(0, "t1", "bar"),
-							lit(1),
-							lit(5),
-						),
 					},
 					lookup: unionLookup("t1", "bar", 0,
 						&memory.AscendIndexLookup{
@@ -1000,12 +847,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						not(
-							eq(
 								col(0, "t1", "bar"),
-								lit(1),
-							),
-						),
 					},
 					lookup: &memory.NegateIndexLookup{
 						Lookup: mergeableIndexLookup("t1", "bar", 0, int64(1)),
@@ -1027,12 +869,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						not(
-							gt(
 								col(0, "t1", "bar"),
-								lit(10),
-							),
-						),
 					},
 					lookup: &memory.DescendIndexLookup{
 						Lte:   []interface{}{int64(10)},
@@ -1054,12 +891,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						not(
-							gte(
 								col(0, "t1", "bar"),
-								lit(10),
-							),
-						),
 					},
 					lookup: &memory.AscendIndexLookup{
 						Lt:    []interface{}{int64(10)},
@@ -1081,12 +913,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						not(
-							lte(
 								col(0, "t1", "bar"),
-								lit(10),
-							),
-						),
 					},
 					lookup: &memory.DescendIndexLookup{
 						Gt:    []interface{}{int64(10)},
@@ -1108,12 +935,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						not(
-							lt(
 								col(0, "t1", "bar"),
-								lit(10),
-							),
-						),
 					},
 					lookup: &memory.AscendIndexLookup{
 						Gte:   []interface{}{int64(10)},
@@ -1140,18 +962,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						not(
-							and(
-								eq(
 									col(0, "t1", "bar"),
-									lit(10),
-								),
-								eq(
-									col(0, "t1", "bar"),
-									lit(11),
-								),
-							),
-						),
 					},
 					lookup: unionLookup("t1", "bar", 0,
 						&memory.NegateIndexLookup{
@@ -1187,18 +998,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						not(
-							or(
-								eq(
 									col(0, "t1", "bar"),
-									lit(10),
-								),
-								eq(
-									col(0, "t1", "bar"),
-									lit(11),
-								),
-							),
-						),
 					},
 					lookup: intersectionLookup("t1", "bar", 0,
 						&memory.NegateIndexLookup{
@@ -1237,18 +1037,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t2": &indexLookup{
 					exprs: []sql.Expression{
-						not(
-							or(
-								eq(
-									col(0, "t2", "foo"),
-									lit(100),
-								),
-								eq(
 									col(0, "t2", "bar"),
-									lit(110),
-								),
-							),
-						),
 					},
 					lookup: &memory.NegateIndexLookup{
 						Lookup: mergeableIndexLookup("t2", "bar", 0, int64(110)),
@@ -1274,15 +1063,7 @@ func TestGetIndexes(t *testing.T) {
 			expected: indexLookupsByTable{
 				"t1": &indexLookup{
 					exprs: []sql.Expression{
-						expression.NewNotInTuple(
 							col(0, "t1", "bar"),
-							expression.NewTuple(
-								lit(1),
-								lit(2),
-								lit(3),
-								lit(4),
-							),
-						),
 					},
 					lookup: intersectionLookup("t1", "bar", 0,
 						&memory.NegateIndexLookup{

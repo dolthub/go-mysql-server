@@ -246,7 +246,7 @@ func getIndexes(
 				}
 
 				result[idx.Table()] = &indexLookup{
-					exprs:   []sql.Expression{e},
+					exprs:   []sql.Expression{extractGetField(e)},
 					indexes: []sql.Index{idx},
 					lookup:  lookup,
 				}
@@ -371,7 +371,7 @@ func getComparisonIndexLookup(
 			}
 
 			return &indexLookup{
-				exprs:   []sql.Expression{e},
+				exprs:   []sql.Expression{left},
 				lookup:  lookup,
 				indexes: []sql.Index{idx},
 			}, nil
@@ -485,6 +485,7 @@ func getNegatedIndexes(
 
 		result := indexLookupsByTable{
 			idx.Table(): {
+				exprs: []sql.Expression{left},
 				indexes: []sql.Index{idx},
 				lookup:  lookup,
 			},
@@ -537,6 +538,7 @@ func getNegatedIndexes(
 
 				return indexLookupsByTable{
 					idx.Table(): {
+						exprs: []sql.Expression{e.Left()},
 						indexes: []sql.Index{idx},
 						lookup:  lookup,
 					},
@@ -759,7 +761,7 @@ func getMultiColumnIndexForExpressions(
 				return nil, err
 			}
 
-			expressions[i] = between
+			expressions[i] = extractGetField(between)
 		}
 
 		lookup, err := betweenIndexLookup(index, uppers, lowers)
