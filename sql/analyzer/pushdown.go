@@ -31,7 +31,7 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		return nil, err
 	}
 
-	n, err = convertFiltersToIndexedAccess(a, n, scope, indexes)
+	n, err = convertFiltersToIndexedAccess(a, n, scope, indexes, tableAliases, exprAliases)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,14 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, exprAliases
 }
 
 // convertFiltersToIndexedAccess attempts to replace filter predicates with indexed accesses where possible
-func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, scope *Scope, indexes indexLookupsByTable) (sql.Node, error) {
+func convertFiltersToIndexedAccess(
+	a *Analyzer,
+	n sql.Node,
+	scope *Scope,
+	indexes indexLookupsByTable,
+	aliases TableAliases,
+	exprAliases ExprAliases,
+) (sql.Node, error) {
 	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
 		switch  child.(type) {
 		// We can't push any indexes down to a table has already had an index pushed down it
@@ -218,13 +225,35 @@ func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, scope *Scope, indexe
 			if err != nil {
 				return nil, err
 			}
-			return FixFieldIndexesForExpressions(table, scope)
+
+			// Key expressions for aliased tables will have the name of the alias. Since the expression is on the table,
+			// not the alias, for consistency we should normalize them to the actual table name. This will allow other
+			// analyzer steps to match on them as necessary.
+			table, err = plan.TransformExpressionsUpWithNode(table, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+				if _, ok := n.(*plan.TableAlias); ok {
+					return e, nil
+				}
+				return normalizeExpression(exprAliases, aliases, e), nil
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			return plan.TransformUp(table, func(n sql.Node) (sql.Node, error) {
+				if _, ok := n.(*plan.IndexedTableAccess); !ok {
+					return n, nil
+				}
+				return FixFieldIndexesForTableNode(n, scope)
+			})
 		case *plan.ResolvedTable:
 			table, err := pushdownIndexesToTable(a, node, indexes)
 			if err != nil {
 				return nil, err
 			}
-			return FixFieldIndexesForExpressions(table, scope)
+
+			// We can't use FixFieldIndexesForExpressions here, because it uses the schema of children, and
+			// ResolvedTable doesn't have any.
+			return FixFieldIndexesForTableNode(table, scope)
 		default:
 			return FixFieldIndexesForExpressions(node, scope)
 		}

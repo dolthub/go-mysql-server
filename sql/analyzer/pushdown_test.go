@@ -715,302 +715,302 @@ func TestPushdownIndex(t *testing.T) {
 		// 			),
 		// 	),
 		// },
-		{
-			name: "single index to each of two tables",
-			node: plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
-				},
-				plan.NewFilter(
-					and(
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
-						),
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
-							expression.NewLiteral(21, sql.Int32),
-						),
-					),
-					plan.NewCrossJoin(
-						plan.NewResolvedTable(table),
-						plan.NewResolvedTable(table2),
-					),
-				),
-			),
-			expected: plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
-				},
-				plan.NewCrossJoin(
-					plan.NewFilter(
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
-						),
-						plan.NewStaticIndexedTableAccess(
-							plan.NewResolvedTable(table),
-							mustIndexLookup(idxTable1F.Get(3.14)),
-							idxTable1F,
-							[]sql.Expression{eq(gfCol(1, myTableF), litT(3.14, sql.Float64))},
-						),
-					),
-					plan.NewFilter(
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
-							expression.NewLiteral(21, sql.Int32),
-						),
-						plan.NewStaticIndexedTableAccess(
-							plan.NewResolvedTable(table2),
-							mustIndexLookup(idxTable2I2.Get(21)),
-							idxTable2I2,
-							[]sql.Expression{eq(gfCol(0, mytable2I), litT(21, sql.Int32))},
-						),
-					),
-				),
-			),
-		},
-		{
-			// This scenario can't happen in the current analyzer rule ordering. But the rule should behave correctly anyway.
-			name: "single index to each of two tables, filters already pushed down",
-			node: plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
-				},
-				plan.NewCrossJoin(
-					plan.NewFilter(
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
-						),
-						plan.NewResolvedTable(table),
-					),
-					plan.NewFilter(
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
-							expression.NewLiteral(21, sql.Int32),
-						),
-						plan.NewResolvedTable(table2),
-					),
-				),
-			),
-			expected: plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
-				},
-				plan.NewCrossJoin(
-					plan.NewFilter(
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
-						),
-						plan.NewStaticIndexedTableAccess(
-							plan.NewResolvedTable(table),
-							mustIndexLookup(idxTable1F.Get(3.14)),
-							idxTable1F,
-							[]sql.Expression{eq(gfCol(1, myTableF), litT(3.14, sql.Float64))},
-						),
-					),
-					plan.NewFilter(
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
-							expression.NewLiteral(21, sql.Int32),
-						),
-						plan.NewStaticIndexedTableAccess(
-							plan.NewResolvedTable(table2),
-							mustIndexLookup(idxTable2I2.Get(21)),
-							idxTable2I2,
-							[]sql.Expression{eq(gfCol(0, mytable2I), litT(21, sql.Int32))},
-						),
-					),
-				),
-			),
-		},
-		{
-			name: "Index already pushed down, no change to plan",
-			node: plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
-				},
-				plan.NewCrossJoin(
-						plan.NewFilter(
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-								expression.NewLiteral(3.14, sql.Float64),
-							),
-							plan.NewStaticIndexedTableAccess(
-								plan.NewResolvedTable(table),
-								mustIndexLookup(idxTable1F.Get(3.14)),
-								idxTable1F,
-								[]sql.Expression{eq(gfCol(1, myTableF), litT(3.14, sql.Float64))},
-							),
-						),
-						plan.NewFilter(
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
-								expression.NewLiteral(21, sql.Int32),
-							),
-							plan.NewStaticIndexedTableAccess(
-								plan.NewResolvedTable(table2),
-								mustIndexLookup(idxTable2I2.Get(21)),
-								idxTable2I2,
-								[]sql.Expression{eq(gfCol(0, mytable2I), litT(21, sql.Int32))},
-							),
-						),
-				),
-			),
-		},
-		{
-			name: "single index to each of two tables, extra predicates",
-			node: plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
-				},
-				plan.NewFilter(
-					and(
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
-						),
-						and(
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
-								expression.NewLiteral(21, sql.Int32),
-							),
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(5, sql.Int32, "mytable2", "t2", true),
-								expression.NewLiteral("hello", sql.Text),
-							),
-						),
-					),
-					plan.NewCrossJoin(
-						plan.NewResolvedTable(table),
-						plan.NewResolvedTable(table2),
-					),
-				),
-			),
-			expected: plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
-				},
-				plan.NewCrossJoin(
-						plan.NewFilter(
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-								expression.NewLiteral(3.14, sql.Float64),
-							),
-							plan.NewStaticIndexedTableAccess(
-								plan.NewResolvedTable(table),
-								mustIndexLookup(idxTable1F.Get(3.14)),
-								idxTable1F,
-								[]sql.Expression{eq(gfCol(1, myTableF), litT(3.14, sql.Float64))},
-							),
-						),
-						plan.NewFilter(
-							and(
-								expression.NewEquals(
-									expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
-									expression.NewLiteral(21, sql.Int32),
-								),
-								expression.NewEquals(
-									expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "t2", true),
-									expression.NewLiteral("hello", sql.Text),
-								),
-							),
-							plan.NewStaticIndexedTableAccess(
-								plan.NewResolvedTable(table2),
-								mustIndexLookup(idxTable2I2.Get(21)),
-								idxTable2I2,
-								[]sql.Expression{eq(gfCol(0, mytable2I), litT(21, sql.Int32))},
-							),
-						),
-					),
-			),
-		},
-		{
-			name: "single index on aliased table",
-			node: plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
-				},
-				plan.NewFilter(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-						expression.NewLiteral(3.14, sql.Float64),
-					),
-					plan.NewTableAlias("t1",
-						plan.NewResolvedTable(table),
-					),
-				),
-			),
-			expected: plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
-				},
-				plan.NewFilter(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-						expression.NewLiteral(3.14, sql.Float64),
-					),
-					plan.NewTableAlias("t1",
-						plan.NewStaticIndexedTableAccess(
-							plan.NewResolvedTable(table),
-							mustIndexLookup(idxTable1F.Get(3.14)),
-							idxTable1F,
-							[]sql.Expression{eq(gfCol(1, myTableF), litT(3.14, sql.Float64))},
-						),
-					),
-				),
-			),
-		},
-		{
-			name: "single index on aliased table, extra predicate",
-			node: plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
-				},
-				plan.NewFilter(
-					and(
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
-						),
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "t1", "t", true),
-							expression.NewLiteral("hello", sql.Text),
-						),
-					),
-					plan.NewTableAlias("t1",
-						plan.NewResolvedTable(table),
-					),
-				),
-			),
-			expected: plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
-				},
-				plan.NewFilter(
-					and(
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
-						),
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "t1", "t", true),
-							expression.NewLiteral("hello", sql.Text),
-						),
-					),
-					plan.NewTableAlias("t1",
-						plan.NewStaticIndexedTableAccess(
-							plan.NewResolvedTable(table),
-							mustIndexLookup(idxTable1F.Get(3.14)),
-							idxTable1F,
-							[]sql.Expression{eq(gfCol(1, myTableF), litT(3.14, sql.Float64))},
-						),
-					),
-				),
-			),
-		},
+		// {
+		// 	name: "single index to each of two tables",
+		// 	node: plan.NewProject(
+		// 		[]sql.Expression{
+		// 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+		// 		},
+		// 		plan.NewFilter(
+		// 			and(
+		// 				expression.NewEquals(
+		// 					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+		// 					expression.NewLiteral(3.14, sql.Float64),
+		// 				),
+		// 				expression.NewEquals(
+		// 					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
+		// 					expression.NewLiteral(21, sql.Int32),
+		// 				),
+		// 			),
+		// 			plan.NewCrossJoin(
+		// 				plan.NewResolvedTable(table),
+		// 				plan.NewResolvedTable(table2),
+		// 			),
+		// 		),
+		// 	),
+		// 	expected: plan.NewProject(
+		// 		[]sql.Expression{
+		// 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+		// 		},
+		// 		plan.NewCrossJoin(
+		// 			plan.NewFilter(
+		// 				expression.NewEquals(
+		// 					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+		// 					expression.NewLiteral(3.14, sql.Float64),
+		// 				),
+		// 				plan.NewStaticIndexedTableAccess(
+		// 					plan.NewResolvedTable(table),
+		// 					mustIndexLookup(idxTable1F.Get(3.14)),
+		// 					idxTable1F,
+		// 					[]sql.Expression{eq(gfCol(1, myTableF), litT(3.14, sql.Float64))},
+		// 				),
+		// 			),
+		// 			plan.NewFilter(
+		// 				expression.NewEquals(
+		// 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
+		// 					expression.NewLiteral(21, sql.Int32),
+		// 				),
+		// 				plan.NewStaticIndexedTableAccess(
+		// 					plan.NewResolvedTable(table2),
+		// 					mustIndexLookup(idxTable2I2.Get(21)),
+		// 					idxTable2I2,
+		// 					[]sql.Expression{eq(gfCol(0, mytable2I), litT(21, sql.Int32))},
+		// 				),
+		// 			),
+		// 		),
+		// 	),
+		// },
+		// {
+		// 	// This scenario can't happen in the current analyzer rule ordering. But the rule should behave correctly anyway.
+		// 	name: "single index to each of two tables, filters already pushed down",
+		// 	node: plan.NewProject(
+		// 		[]sql.Expression{
+		// 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+		// 		},
+		// 		plan.NewCrossJoin(
+		// 			plan.NewFilter(
+		// 				expression.NewEquals(
+		// 					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+		// 					expression.NewLiteral(3.14, sql.Float64),
+		// 				),
+		// 				plan.NewResolvedTable(table),
+		// 			),
+		// 			plan.NewFilter(
+		// 				expression.NewEquals(
+		// 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
+		// 					expression.NewLiteral(21, sql.Int32),
+		// 				),
+		// 				plan.NewResolvedTable(table2),
+		// 			),
+		// 		),
+		// 	),
+		// 	expected: plan.NewProject(
+		// 		[]sql.Expression{
+		// 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+		// 		},
+		// 		plan.NewCrossJoin(
+		// 			plan.NewFilter(
+		// 				expression.NewEquals(
+		// 					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+		// 					expression.NewLiteral(3.14, sql.Float64),
+		// 				),
+		// 				plan.NewStaticIndexedTableAccess(
+		// 					plan.NewResolvedTable(table),
+		// 					mustIndexLookup(idxTable1F.Get(3.14)),
+		// 					idxTable1F,
+		// 					[]sql.Expression{eq(gfCol(1, myTableF), litT(3.14, sql.Float64))},
+		// 				),
+		// 			),
+		// 			plan.NewFilter(
+		// 				expression.NewEquals(
+		// 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
+		// 					expression.NewLiteral(21, sql.Int32),
+		// 				),
+		// 				plan.NewStaticIndexedTableAccess(
+		// 					plan.NewResolvedTable(table2),
+		// 					mustIndexLookup(idxTable2I2.Get(21)),
+		// 					idxTable2I2,
+		// 					[]sql.Expression{eq(gfCol(0, mytable2I), litT(21, sql.Int32))},
+		// 				),
+		// 			),
+		// 		),
+		// 	),
+		// },
+		// {
+		// 	name: "Index already pushed down, no change to plan",
+		// 	node: plan.NewProject(
+		// 		[]sql.Expression{
+		// 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+		// 		},
+		// 		plan.NewCrossJoin(
+		// 				plan.NewFilter(
+		// 					expression.NewEquals(
+		// 						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+		// 						expression.NewLiteral(3.14, sql.Float64),
+		// 					),
+		// 					plan.NewStaticIndexedTableAccess(
+		// 						plan.NewResolvedTable(table),
+		// 						mustIndexLookup(idxTable1F.Get(3.14)),
+		// 						idxTable1F,
+		// 						[]sql.Expression{eq(gfCol(1, myTableF), litT(3.14, sql.Float64))},
+		// 					),
+		// 				),
+		// 				plan.NewFilter(
+		// 					expression.NewEquals(
+		// 						expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
+		// 						expression.NewLiteral(21, sql.Int32),
+		// 					),
+		// 					plan.NewStaticIndexedTableAccess(
+		// 						plan.NewResolvedTable(table2),
+		// 						mustIndexLookup(idxTable2I2.Get(21)),
+		// 						idxTable2I2,
+		// 						[]sql.Expression{eq(gfCol(0, mytable2I), litT(21, sql.Int32))},
+		// 					),
+		// 				),
+		// 		),
+		// 	),
+		// },
+		// {
+		// 	name: "single index to each of two tables, extra predicates",
+		// 	node: plan.NewProject(
+		// 		[]sql.Expression{
+		// 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+		// 		},
+		// 		plan.NewFilter(
+		// 			and(
+		// 				expression.NewEquals(
+		// 					expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+		// 					expression.NewLiteral(3.14, sql.Float64),
+		// 				),
+		// 				and(
+		// 					expression.NewEquals(
+		// 						expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
+		// 						expression.NewLiteral(21, sql.Int32),
+		// 					),
+		// 					expression.NewEquals(
+		// 						expression.NewGetFieldWithTable(5, sql.Int32, "mytable2", "t2", true),
+		// 						expression.NewLiteral("hello", sql.Text),
+		// 					),
+		// 				),
+		// 			),
+		// 			plan.NewCrossJoin(
+		// 				plan.NewResolvedTable(table),
+		// 				plan.NewResolvedTable(table2),
+		// 			),
+		// 		),
+		// 	),
+		// 	expected: plan.NewProject(
+		// 		[]sql.Expression{
+		// 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+		// 		},
+		// 		plan.NewCrossJoin(
+		// 				plan.NewFilter(
+		// 					expression.NewEquals(
+		// 						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+		// 						expression.NewLiteral(3.14, sql.Float64),
+		// 					),
+		// 					plan.NewStaticIndexedTableAccess(
+		// 						plan.NewResolvedTable(table),
+		// 						mustIndexLookup(idxTable1F.Get(3.14)),
+		// 						idxTable1F,
+		// 						[]sql.Expression{eq(gfCol(1, myTableF), litT(3.14, sql.Float64))},
+		// 					),
+		// 				),
+		// 				plan.NewFilter(
+		// 					and(
+		// 						expression.NewEquals(
+		// 							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
+		// 							expression.NewLiteral(21, sql.Int32),
+		// 						),
+		// 						expression.NewEquals(
+		// 							expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "t2", true),
+		// 							expression.NewLiteral("hello", sql.Text),
+		// 						),
+		// 					),
+		// 					plan.NewStaticIndexedTableAccess(
+		// 						plan.NewResolvedTable(table2),
+		// 						mustIndexLookup(idxTable2I2.Get(21)),
+		// 						idxTable2I2,
+		// 						[]sql.Expression{eq(gfCol(0, mytable2I), litT(21, sql.Int32))},
+		// 					),
+		// 				),
+		// 			),
+		// 	),
+		// },
+		// {
+		// 	name: "single index on aliased table",
+		// 	node: plan.NewProject(
+		// 		[]sql.Expression{
+		// 			expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+		// 		},
+		// 		plan.NewFilter(
+		// 			expression.NewEquals(
+		// 				expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
+		// 				expression.NewLiteral(3.14, sql.Float64),
+		// 			),
+		// 			plan.NewTableAlias("t1",
+		// 				plan.NewResolvedTable(table),
+		// 			),
+		// 		),
+		// 	),
+		// 	expected: plan.NewProject(
+		// 		[]sql.Expression{
+		// 			expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+		// 		},
+		// 		plan.NewFilter(
+		// 			expression.NewEquals(
+		// 				expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
+		// 				expression.NewLiteral(3.14, sql.Float64),
+		// 			),
+		// 			plan.NewTableAlias("t1",
+		// 				plan.NewStaticIndexedTableAccess(
+		// 					plan.NewResolvedTable(table),
+		// 					mustIndexLookup(idxTable1F.Get(3.14)),
+		// 					idxTable1F,
+		// 					[]sql.Expression{eq(gfCol(1, myTableF), litT(3.14, sql.Float64))},
+		// 				),
+		// 			),
+		// 		),
+		// 	),
+		// },
+		// {
+		// 	name: "single index on aliased table, extra predicate",
+		// 	node: plan.NewProject(
+		// 		[]sql.Expression{
+		// 			expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+		// 		},
+		// 		plan.NewFilter(
+		// 			and(
+		// 				expression.NewEquals(
+		// 					expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
+		// 					expression.NewLiteral(3.14, sql.Float64),
+		// 				),
+		// 				expression.NewEquals(
+		// 					expression.NewGetFieldWithTable(2, sql.Text, "t1", "t", true),
+		// 					expression.NewLiteral("hello", sql.Text),
+		// 				),
+		// 			),
+		// 			plan.NewTableAlias("t1",
+		// 				plan.NewResolvedTable(table),
+		// 			),
+		// 		),
+		// 	),
+		// 	expected: plan.NewProject(
+		// 		[]sql.Expression{
+		// 			expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+		// 		},
+		// 		plan.NewFilter(
+		// 			and(
+		// 				expression.NewEquals(
+		// 					expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
+		// 					expression.NewLiteral(3.14, sql.Float64),
+		// 				),
+		// 				expression.NewEquals(
+		// 					expression.NewGetFieldWithTable(2, sql.Text, "t1", "t", true),
+		// 					expression.NewLiteral("hello", sql.Text),
+		// 				),
+		// 			),
+		// 			plan.NewTableAlias("t1",
+		// 				plan.NewStaticIndexedTableAccess(
+		// 					plan.NewResolvedTable(table),
+		// 					mustIndexLookup(idxTable1F.Get(3.14)),
+		// 					idxTable1F,
+		// 					[]sql.Expression{eq(gfCol(1, myTableF), litT(3.14, sql.Float64))},
+		// 				),
+		// 			),
+		// 		),
+		// 	),
+		// },
 		{
 			name: "single index to each of two aliased tables",
 			node: plan.NewProject(

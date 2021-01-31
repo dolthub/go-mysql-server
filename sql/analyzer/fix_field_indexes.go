@@ -138,3 +138,30 @@ func FixFieldIndexesForExpressions(node sql.Node, scope *Scope) (sql.Node, error
 
 	return n, nil
 }
+
+// Transforms the expressions in the Node given, fixing the field indexes. This is useful for Table nodes that have
+// expressions but no children.
+func FixFieldIndexesForTableNode(node sql.Node, scope *Scope) (sql.Node, error) {
+	if _, ok := node.(sql.Expressioner); !ok {
+		return node, nil
+	}
+
+	n, err := plan.TransformExpressions(node, func(e sql.Expression) (sql.Expression, error) {
+		schema := node.Schema()
+		fixed, err := FixFieldIndexes(scope, schema, e)
+		if err != nil {
+			if ErrFieldMissing.Is(err) {
+				return e, nil
+			}
+			return nil, err
+		}
+
+		return fixed, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return n, nil
+}
