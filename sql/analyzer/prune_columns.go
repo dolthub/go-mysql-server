@@ -124,7 +124,7 @@ func pruneSubqueryColumns(
 	return n.WithChildren(node)
 }
 
-func  findUsedColumns(columns usedColumns, n sql.Node) {
+func findUsedColumns(columns usedColumns, n sql.Node) {
 	plan.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.Project:

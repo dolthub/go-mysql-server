@@ -104,7 +104,7 @@ func newExchangeRowIter(
 	return &exchangeRowIter{
 		ctx:         ctx,
 		parallelism: parallelism,
-		rows:        make(chan sql.Row, parallelism * 16),
+		rows:        make(chan sql.Row, parallelism*16),
 		err:         make(chan error, 1),
 		started:     false,
 		tree:        tree,

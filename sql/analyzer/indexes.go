@@ -195,21 +195,21 @@ func getIndexes(
 			}
 		}
 	case *expression.Equals,
-			*expression.LessThan,
-			*expression.GreaterThan,
-			*expression.LessThanOrEqual,
-			*expression.GreaterThanOrEqual:
-			lookup, err := getComparisonIndexLookup(ctx, a, ia, e.(expression.Comparer), exprAliases, tableAliases)
-			if err != nil || lookup == nil {
-					return result, err
-			}
+		*expression.LessThan,
+		*expression.GreaterThan,
+		*expression.LessThanOrEqual,
+		*expression.GreaterThanOrEqual:
+		lookup, err := getComparisonIndexLookup(ctx, a, ia, e.(expression.Comparer), exprAliases, tableAliases)
+		if err != nil || lookup == nil {
+			return result, err
+		}
 
-			getField := extractGetField(e)
-			if getField == nil {
-					return result, nil
-			}
+		getField := extractGetField(e)
+		if getField == nil {
+			return result, nil
+		}
 
-			result[getField.Table()] = lookup
+		result[getField.Table()] = lookup
 	case *expression.IsNull:
 		return getIndexes(ctx, a, ia, expression.NewEquals(e.Child, expression.NewLiteral(nil, sql.Null)), exprAliases, tableAliases)
 	case *expression.Not:
@@ -485,7 +485,7 @@ func getNegatedIndexes(
 
 		result := indexLookupsByTable{
 			idx.Table(): {
-				exprs: []sql.Expression{left},
+				exprs:   []sql.Expression{left},
 				indexes: []sql.Index{idx},
 				lookup:  lookup,
 			},
@@ -538,7 +538,7 @@ func getNegatedIndexes(
 
 				return indexLookupsByTable{
 					idx.Table(): {
-						exprs: []sql.Expression{e.Left()},
+						exprs:   []sql.Expression{e.Left()},
 						indexes: []sql.Index{idx},
 						lookup:  lookup,
 					},

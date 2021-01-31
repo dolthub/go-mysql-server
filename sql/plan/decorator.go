@@ -9,7 +9,7 @@ type DecorationType byte
 // DecoratedNode represents a plan node that has been decorated to illustrate some aspect of the query plan
 type DecoratedNode struct {
 	UnaryNode
-	decoration     string
+	decoration string
 }
 
 var _ sql.Node = (*DecoratedNode)(nil)
@@ -28,8 +28,8 @@ func (n *DecoratedNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 // NewDecoratedNode creates a new instance of DecoratedNode wrapping the node given, with the Deocration string given.
 func NewDecoratedNode(decoration string, node sql.Node) *DecoratedNode {
 	return &DecoratedNode{
-		UnaryNode:      UnaryNode{node},
-		decoration:     decoration,
+		UnaryNode:  UnaryNode{node},
+		decoration: decoration,
 	}
 }
 

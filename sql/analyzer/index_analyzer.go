@@ -37,18 +37,18 @@ func getIndexesForNode(ctx *sql.Context, a *Analyzer, n sql.Node) (*indexAnalyze
 	indexes := make(map[string][]sql.Index)
 
 	var indexesForTable = func(name string, rt *plan.ResolvedTable) error {
-			it, ok := rt.Table.(sql.IndexedTable)
-			if !ok {
-					return nil
-			}
-
-			idxes, err := it.GetIndexes(ctx)
-			if err != nil {
-					return err
-			}
-
-			indexes[name] = append(indexes[name], idxes...)
+		it, ok := rt.Table.(sql.IndexedTable)
+		if !ok {
 			return nil
+		}
+
+		idxes, err := it.GetIndexes(ctx)
+		if err != nil {
+			return err
+		}
+
+		indexes[name] = append(indexes[name], idxes...)
+		return nil
 	}
 
 	// Find all of the native indexed tables in the node (those that don't require a driver)
@@ -56,22 +56,22 @@ func getIndexesForNode(ctx *sql.Context, a *Analyzer, n sql.Node) (*indexAnalyze
 		plan.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
 			case *plan.TableAlias:
-					rt, ok := n.Child.(*plan.ResolvedTable)
-					if !ok {
-							return false
-					}
+				rt, ok := n.Child.(*plan.ResolvedTable)
+				if !ok {
+					return false
+				}
 
-					err := indexesForTable(n.Name(), rt)
-					if err != nil {
-							analysisErr = err
-							return false
-					}
+				err := indexesForTable(n.Name(), rt)
+				if err != nil {
+					analysisErr = err
+					return false
+				}
 			case *plan.ResolvedTable:
-					err := indexesForTable(n.Name(), n)
-					if err != nil {
-							analysisErr = err
-							return false
-					}
+				err := indexesForTable(n.Name(), n)
+				if err != nil {
+					analysisErr = err
+					return false
+				}
 			}
 
 			return true

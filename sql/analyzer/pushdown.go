@@ -190,7 +190,7 @@ func convertFiltersToIndexedAccess(
 	exprAliases ExprAliases,
 ) (sql.Node, error) {
 	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
-		switch  child.(type) {
+		switch child.(type) {
 		// We can't push any indexes down to a table has already had an index pushed down it
 		case *plan.IndexedTableAccess:
 			return false
