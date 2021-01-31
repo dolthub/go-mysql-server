@@ -62,8 +62,16 @@ func lit(n int64) sql.Expression {
 	return expression.NewLiteral(n, sql.Int64)
 }
 
+func litT(n interface{}, t sql.Type) sql.Expression {
+	return expression.NewLiteral(n, t)
+}
+
 func gf(idx int, table, name string) *expression.GetField {
 	return expression.NewGetFieldWithTable(idx, sql.Int64, table, name, false)
+}
+
+func gfCol(idx int, col *sql.Column) *expression.GetField {
+	return expression.NewGetFieldWithTable(idx, col.Type, col.Source, col.Name, true)
 }
 
 func uc(name string) *expression.UnresolvedColumn {

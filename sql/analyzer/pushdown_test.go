@@ -539,9 +539,10 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 func TestPushdownIndex(t *testing.T) {
 	require := require.New(t)
 
+	myTableF := &sql.Column{Name: "f", Type: sql.Float64, Source: "mytable"}
 	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable", PrimaryKey: true},
-		{Name: "f", Type: sql.Float64, Source: "mytable"},
+		myTableF,
 		{Name: "t", Type: sql.Text, Source: "mytable"},
 	})
 
@@ -579,8 +580,6 @@ func TestPushdownIndex(t *testing.T) {
 	catalog.AddDatabase(db)
 	a := NewDefault(catalog)
 
-	// TODO: the order of operations here means that the decorator node gets separated from the table it decorates
-	//  sometimes. Just a cosmetic issue, but should fix.
 	tests := []analyzerFnTestCase{
 		{
 			name: "single index",
@@ -600,19 +599,18 @@ func TestPushdownIndex(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
-				plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 					plan.NewFilter(
 						expression.NewEquals(
 							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
 							expression.NewLiteral(3.14, sql.Float64),
 						),
-						plan.NewResolvedTable(
-							table.WithIndexLookup(
-								mustIndexLookup(idxTable1F.Get(3.14)),
-							),
+						plan.NewStaticIndexedTableAccess(
+						plan.NewResolvedTable(table),
+							mustIndexLookup(idxTable1F.Get(3.14)),
+								idxTable1F,
+								[]sql.Expression{eq(gfCol(1, myTableF), litT(3.14, sql.Float64))},
 						),
 					),
-				),
 			),
 		},
 		{
