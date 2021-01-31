@@ -1219,6 +1219,10 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 
 	expected := indexLookupsByTable{
 		"t1": &indexLookup{
+			exprs: []sql.Expression{
+				col(2, "t1", "foo"),
+				col(2, "t1", "bar"),
+			},
 			lookup: &memory.MergeableIndexLookup{
 				Key:   []interface{}{int64(5), int64(6)},
 				Index: indexes[0],
@@ -1226,6 +1230,11 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 			indexes: []sql.Index{indexes[0]},
 		},
 		"t2": &indexLookup{
+			exprs: []sql.Expression{
+				col(2, "t2", "foo"),
+				col(2, "t2", "bar"),
+				col(2, "t2", "baz"),
+			},
 			lookup: &memory.MergeableIndexLookup{
 				Key:   []interface{}{int64(1), int64(2), int64(3)},
 				Index: indexes[1],
@@ -1233,6 +1242,10 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 			indexes: []sql.Index{indexes[1]},
 		},
 		"t4": &indexLookup{
+			exprs: []sql.Expression{
+				col(2, "t4", "foo"),
+				col(2, "t4", "bar"),
+			},
 			lookup: &memory.MergedIndexLookup{
 				Unions: []sql.IndexLookup{
 					&memory.AscendIndexLookup{
