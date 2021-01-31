@@ -48,10 +48,8 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	}
 
 	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
-		switch parent := parent.(type) {
+		switch parent.(type) {
 		// We can't push any indexes down a branch that have already had an index pushed down it
-		case *plan.DecoratedNode:
-			return parent.DecorationType != plan.DecorationTypeIndexedAccess
 		case *plan.IndexedTableAccess:
 			return false
 		}

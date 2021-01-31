@@ -183,22 +183,28 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, exprAliases
 // convertFiltersToIndexedAccess attempts to replace filter predicates with indexed accesses where possible
 func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, scope *Scope, indexes indexLookupsByTable) (sql.Node, error) {
 	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
+		switch  child.(type) {
+		// We can't push any indexes down to a table has already had an index pushed down it
+		case *plan.IndexedTableAccess:
+			return false
+		}
+
 		switch parent := parent.(type) {
-		// For IndexedJoins, we already are using indexed access during query execution for the secondary table, so
-		// replacing the secondary table with an indexed lookup will have no effect on the result of the join, but *will*
-		// inappropriately remove the filter from the predicate.
+		// For IndexedJoins, if we are already using indexed access during query execution for the secondary table,
+		// replacing the secondary table with an indexed lookup will have no effect on the result of the join, but
+		// *will* inappropriately remove the filter from the predicate.
 		// TODO: the analyzer should combine these indexed lookups better
 		case *plan.IndexedJoin:
-			return childNum == 0
+			if parent.JoinType() == plan.JoinTypeLeft || parent.JoinType() == plan.JoinTypeRight {
+				return childNum == 0
+			}
+			return true
 		// Left and right joins can push down indexes for the primary table, but not the secondary. See comment
 		// on transformPushdownFilters
 		case *plan.LeftJoin:
 			return childNum == 0
 		case *plan.RightJoin:
 			return childNum == 1
-		// We can't push any indexes down a branch that have already had an index pushed down it
-		case *plan.DecoratedNode:
-			return parent.DecorationType != plan.DecorationTypeIndexedAccess
 		}
 		return true
 	}
@@ -262,7 +268,6 @@ func pushdownFiltersToTable(
 
 		table = ft.WithFilters(handled)
 		newTableNode = plan.NewDecoratedNode(
-			plan.DecorationTypeFilteredAccess,
 			fmt.Sprintf("Filtered table access on %v", handled),
 			newTableNode)
 
@@ -332,7 +337,6 @@ func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[str
 		}
 		return n, nil
 	})
-
 }
 
 func formatIndexDecoratorString(indexes ...sql.Index) []string {
@@ -371,7 +375,6 @@ func pushdownProjectionsToTable(
 		}
 
 		newTableNode = plan.NewDecoratedNode(
-			plan.DecorationTypeProjectedAccess,
 			fmt.Sprintf("Projected table access on %v",
 				fieldsByTable[tableNode.Name()]), newTableNode)
 		a.Log("table %q transformed with pushdown of projection", tableNode.Name())

@@ -6,17 +6,10 @@ import (
 
 type DecorationType byte
 
-const (
-	DecorationTypeIndexedAccess DecorationType = iota
-	DecorationTypeFilteredAccess
-	DecorationTypeProjectedAccess
-)
-
 // DecoratedNode represents a plan node that has been decorated to illustrate some aspect of the query plan
 type DecoratedNode struct {
 	UnaryNode
 	decoration     string
-	DecorationType DecorationType
 }
 
 var _ sql.Node = (*DecoratedNode)(nil)
@@ -29,15 +22,14 @@ func (n *DecoratedNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
-	return NewDecoratedNode(n.DecorationType, n.decoration, children[0]), nil
+	return NewDecoratedNode(n.decoration, children[0]), nil
 }
 
 // NewDecoratedNode creates a new instance of DecoratedNode wrapping the node given, with the Deocration string given.
-func NewDecoratedNode(typ DecorationType, decoration string, node sql.Node) *DecoratedNode {
+func NewDecoratedNode(decoration string, node sql.Node) *DecoratedNode {
 	return &DecoratedNode{
 		UnaryNode:      UnaryNode{node},
 		decoration:     decoration,
-		DecorationType: typ,
 	}
 }
 
