@@ -1241,6 +1241,88 @@ func TestPushdownIndex(t *testing.T) {
 			),
 		},
 		{
+			name: "two aliased tables, indexed join, index on secondary table",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+				},
+				plan.NewFilter(
+					and(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(3, sql.Int32, "t2", "i2", true),
+							expression.NewLiteral(21, sql.Int32),
+						),
+						and(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+								expression.NewLiteral(100, sql.Int32),
+							),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(5, sql.Text, "t2", "t2", true),
+								expression.NewLiteral("goodbye", sql.Text),
+							),
+						),
+					),
+					plan.NewIndexedJoin(
+						plan.NewTableAlias("t1",
+							plan.NewResolvedTable(table),
+						),
+						plan.NewTableAlias("t2",
+							plan.NewIndexedTableAccess(
+								plan.NewResolvedTable(table2),
+								idxTable2I2,
+								[]sql.Expression{gf(0, "mytable", "i")},
+							),
+						),
+						plan.JoinTypeInner,
+						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
+					),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+				},
+				plan.NewIndexedJoin(
+					plan.NewFilter(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+							expression.NewLiteral(100, sql.Int32),
+						),
+						plan.NewTableAlias("t1",
+							plan.NewStaticIndexedTableAccess(
+								plan.NewResolvedTable(table),
+								mustIndexLookup(idxtable1I.Get(100)),
+								idxtable1I,
+								[]sql.Expression{eq(gfCol(0, myTableI), litT(100, sql.Int32))},
+							),
+						),
+					),
+					plan.NewFilter(
+						and(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
+								expression.NewLiteral(21, sql.Int32),
+							),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(2, sql.Text, "t2", "t2", true),
+								expression.NewLiteral("goodbye", sql.Text),
+							),
+						),
+						plan.NewTableAlias("t2",
+							plan.NewIndexedTableAccess(
+								plan.NewResolvedTable(table2),
+								idxTable2I2,
+								[]sql.Expression{gf(0, "mytable", "i")},
+							),
+						),
+					),
+					plan.JoinTypeInner,
+					eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
+				),
+			),
+		},
+		{
 			name: "two aliased tables, left indexed join",
 			node: plan.NewProject(
 				[]sql.Expression{
