@@ -12,15 +12,39 @@ import (
 var ErrNoIndexableTable = errors.NewKind("expected an IndexableTable, couldn't find one in %v")
 var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, couldn't find one in %v")
 
-// IndexedTableAccess represents an indexed lookup of a particular ResolvedTable. The key used to access the indexed
-// table is provided in RowIter().
+// IndexedTableAccess represents an indexed lookup of a particular ResolvedTable. The values for the key used to access
+// the indexed table is provided in RowIter(), or during static analysis.
 type IndexedTableAccess struct {
 	*ResolvedTable
 	index    sql.Index
 	keyExprs []sql.Expression
+	lookup   sql.IndexLookup
 }
 
 var _ sql.Node = (*IndexedTableAccess)(nil)
+var _ sql.Expressioner = (*IndexedTableAccess)(nil)
+
+// NewIndexedTableAccess returns a new IndexedTableAccess node with the index and key expressions given. An index
+// lookup will be calculated and applied for the row given in RowIter().
+func NewIndexedTableAccess(resolvedTable *ResolvedTable, index sql.Index, keyExprs []sql.Expression) *IndexedTableAccess {
+	return &IndexedTableAccess{
+		ResolvedTable: resolvedTable,
+		index:         index,
+		keyExprs:      keyExprs,
+	}
+}
+
+// NewStaticIndexedTableAccess returns a new IndexedTableAccess node with the indexlookup given. It will be applied in
+// RowIter() without consideration of the row given. The key expression should faithfully represent this lookup, but is
+// only for display purposes.
+func NewStaticIndexedTableAccess(resolvedTable *ResolvedTable, lookup sql.IndexLookup, index sql.Index, keyExprs []sql.Expression) *IndexedTableAccess {
+	return &IndexedTableAccess{
+		ResolvedTable: resolvedTable,
+		index:         index,
+		keyExprs:      keyExprs,
+		lookup:        lookup,
+	}
+}
 
 func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	resolvedTable, ok := i.ResolvedTable.Table.(sql.IndexAddressableTable)
@@ -28,7 +52,27 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 		return nil, ErrNoIndexableTable.New(i.ResolvedTable)
 	}
 
-	// evaluate the key expressions against the row given to obtain the key for an index lookup
+	lookup, err := i.getLookup(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	indexedTable := resolvedTable.WithIndexLookup(lookup)
+	partIter, err := indexedTable.Partitions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewTableRowIter(ctx, indexedTable, partIter), nil
+}
+
+func (i *IndexedTableAccess) getLookup(ctx *sql.Context, row sql.Row) (sql.IndexLookup, error) {
+	// if the lookup was provided at analysis time (static evaluation), use it.
+	if i.lookup != nil {
+		return i.lookup, nil
+	}
+
+	// otherwise, evaluate the key expressions against the row given to obtain the key for an index lookup
 	key := make([]interface{}, len(i.keyExprs))
 	for i, keyExpr := range i.keyExprs {
 		var err error
@@ -43,14 +87,7 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 		return nil, err
 	}
 
-	indexedTable := resolvedTable.WithIndexLookup(lookup)
-
-	partIter, err := indexedTable.Partitions(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.NewTableRowIter(ctx, indexedTable, partIter), nil
+	return lookup, nil
 }
 
 func (i *IndexedTableAccess) String() string {
@@ -83,13 +120,29 @@ func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error
 		return nil, sql.ErrInvalidChildType.New(i, children[0], (*ResolvedTable)(nil))
 	}
 
-	return NewIndexedTableAccess(resolvedTable, i.index, i.keyExprs), nil
-}
-
-func NewIndexedTableAccess(resolvedTable *ResolvedTable, index sql.Index, keyExprs []sql.Expression) *IndexedTableAccess {
 	return &IndexedTableAccess{
 		ResolvedTable: resolvedTable,
-		index:         index,
-		keyExprs:      keyExprs,
+		index:         i.index,
+		keyExprs:      i.keyExprs,
+		lookup:        i.lookup,
+	}, nil
+}
+
+// Expressions implements sql.Expressioner
+func (i *IndexedTableAccess) Expressions() []sql.Expression {
+	return i.keyExprs
+}
+
+// WithExpressions implements sql.Expressioner
+func (i *IndexedTableAccess) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(i.keyExprs) {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(exprs), len(i.keyExprs))
 	}
+
+	return &IndexedTableAccess{
+		ResolvedTable: i.ResolvedTable,
+		index:         i.index,
+		keyExprs:      exprs,
+		lookup:        i.lookup,
+	}, nil
 }

@@ -315,50 +315,24 @@ func pushdownFiltersToTable(
 // pushdownIndexesToTable attempts to convert filter predicates to indexes on tables that implement
 // sql.IndexAddressableTable
 func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[string]*indexLookup) (sql.Node, error) {
-
-	table := getTable(tableNode)
-	if table == nil {
-		return tableNode, nil
-	}
-
-	var newTableNode sql.Node = tableNode
-
-	replacedTable := false
-	if it, ok := table.(sql.IndexAddressableTable); ok {
-		indexLookup, ok := indexes[tableNode.Name()]
-		if ok {
-			table = it.WithIndexLookup(indexLookup.lookup)
-			indexStrs := formatIndexDecoratorString(indexLookup.indexes...)
-
-			indexNoun := "index"
-			if len(indexStrs) > 1 {
-				indexNoun = "indexes"
+	return plan.TransformUp(tableNode, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.ResolvedTable:
+			table := getTable(tableNode)
+			if table == nil {
+				return n, nil
 			}
-			newTableNode = plan.NewDecoratedNode(
-				plan.DecorationTypeIndexedAccess,
-				fmt.Sprintf("Indexed table access on %s %s", indexNoun, strings.Join(indexStrs, ", ")),
-				newTableNode)
-			a.Log("table %q transformed with pushdown of index", tableNode.Name())
-
-			replacedTable = true
+			if _, ok := table.(sql.IndexAddressableTable); ok {
+				indexLookup, ok := indexes[tableNode.Name()]
+				if ok {
+					a.Log("table %q transformed with pushdown of index", tableNode.Name())
+					return plan.NewStaticIndexedTableAccess(n, indexLookup.lookup, indexLookup.indexes[0], indexLookup.exprs), nil
+				}
+			}
 		}
-	}
+		return n, nil
+	})
 
-	if !replacedTable {
-		return tableNode, nil
-	}
-
-	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias:
-		node, err := withTable(newTableNode, table)
-		if err != nil {
-			return nil, err
-		}
-
-		return node, nil
-	default:
-		return nil, ErrInvalidNodeType.New("pushdown", tableNode)
-	}
 }
 
 func formatIndexDecoratorString(indexes ...sql.Index) []string {
