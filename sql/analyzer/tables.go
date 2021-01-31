@@ -36,6 +36,9 @@ func getTableName(node sql.Node) string {
 		case *plan.UnresolvedTable:
 			tableName = node.Name()
 			return false
+		case *plan.IndexedTableAccess:
+			tableName = node.Name()
+			return false
 		}
 		return true
 	})
@@ -43,33 +46,12 @@ func getTableName(node sql.Node) string {
 	return tableName
 }
 
-// getTableNames returns all table names in the node given
-func getTableNames(node sql.Node) []string {
-	var tableNames []string
-	plan.Inspect(node, func(node sql.Node) bool {
-		switch node := node.(type) {
-		case *plan.TableAlias:
-			tableNames = append(tableNames, node.Name())
-			return false
-		case *plan.ResolvedTable:
-			tableNames = append(tableNames, node.Name())
-			return false
-		case *plan.UnresolvedTable:
-			tableNames = append(tableNames, node.Name())
-			return false
-		}
-		return true
-	})
-
-	return tableNames
-}
-
 type NameableNode interface {
 	sql.Nameable
 	sql.Node
 }
 
-// getTableNames returns all tables in the node given
+// getTables returns all tables in the node given
 func getTables(node sql.Node) []NameableNode {
 	var tables []NameableNode
 	plan.Inspect(node, func(node sql.Node) bool {
@@ -81,6 +63,9 @@ func getTables(node sql.Node) []NameableNode {
 			tables = append(tables, node)
 			return false
 		case *plan.UnresolvedTable:
+			tables = append(tables, node)
+			return false
+		case *plan.IndexedTableAccess:
 			tables = append(tables, node)
 			return false
 		}
@@ -108,6 +93,9 @@ func getUnaliasedTableName(node sql.Node) string {
 			tableName = node.Name()
 			return false
 		case *plan.UnresolvedTable:
+			tableName = node.Name()
+			return false
+		case *plan.IndexedTableAccess:
 			tableName = node.Name()
 			return false
 		}
