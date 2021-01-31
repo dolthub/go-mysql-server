@@ -660,6 +660,30 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "trigger before delete, delete with index",
+		SetUpScript: []string{
+			"create table a (x int primary key, z int, unique key (z))",
+			"create table b (y int primary key)",
+			"insert into a values (0,1), (2,3), (4,5)",
+			"create trigger insert_b before delete on a for each row insert into b values (old.x * 2)",
+			"delete from a where z > 2",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{4}, {8},
+				},
+			},
+		},
+	},
 	// Multiple triggers defined
 	{
 		Name: "triggers before and after insert",
