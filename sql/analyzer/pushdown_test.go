@@ -71,10 +71,10 @@ func TestPushdownProjectionToTables(t *testing.T) {
 						),
 					),
 					plan.NewCrossJoin(
-						plan.NewDecoratedNode(plan.DecorationTypeProjectedAccess, "Projected table access on [f]", plan.NewResolvedTable(
+						plan.NewDecoratedNode("Projected table access on [f]", plan.NewResolvedTable(
 							table.WithProjection([]string{"f"}),
 						)),
-						plan.NewDecoratedNode(plan.DecorationTypeProjectedAccess, "Projected table access on [t2 i2]", plan.NewResolvedTable(
+						plan.NewDecoratedNode( "Projected table access on [t2 i2]", plan.NewResolvedTable(
 							table2.WithProjection([]string{"t2", "i2"}),
 						)),
 					),
@@ -88,7 +88,7 @@ func TestPushdownProjectionToTables(t *testing.T) {
 					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode(plan.DecorationTypeFilteredAccess, "Filtered table access on [mytable.f = 3.14]", plan.NewResolvedTable(
+					plan.NewDecoratedNode("Filtered table access on [mytable.f = 3.14]", plan.NewResolvedTable(
 						table.WithFilters([]sql.Expression{
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
@@ -96,7 +96,7 @@ func TestPushdownProjectionToTables(t *testing.T) {
 							),
 						}),
 					)),
-					plan.NewDecoratedNode(plan.DecorationTypeFilteredAccess, "Filtered table access on [mytable2.i2 IS NULL]", plan.NewResolvedTable(
+					plan.NewDecoratedNode( "Filtered table access on [mytable2.i2 IS NULL]", plan.NewResolvedTable(
 						table2.WithFilters([]sql.Expression{
 							expression.NewIsNull(
 								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
@@ -110,7 +110,7 @@ func TestPushdownProjectionToTables(t *testing.T) {
 					expression.NewGetFieldWithTable(3, sql.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode(plan.DecorationTypeFilteredAccess, "Filtered table access on [mytable.f = 3.14]", plan.NewResolvedTable(
+					plan.NewDecoratedNode("Filtered table access on [mytable.f = 3.14]", plan.NewResolvedTable(
 						table.WithFilters([]sql.Expression{
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
@@ -118,8 +118,8 @@ func TestPushdownProjectionToTables(t *testing.T) {
 							),
 						}),
 					)),
-					plan.NewDecoratedNode(plan.DecorationTypeFilteredAccess, "Filtered table access on [mytable2.i2 IS NULL]",
-						plan.NewDecoratedNode(plan.DecorationTypeProjectedAccess, "Projected table access on [t2]",
+					plan.NewDecoratedNode("Filtered table access on [mytable2.i2 IS NULL]",
+						plan.NewDecoratedNode( "Projected table access on [t2]",
 							plan.NewResolvedTable(
 								table2.WithFilters([]sql.Expression{
 									expression.NewIsNull(
@@ -186,7 +186,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode(plan.DecorationTypeFilteredAccess, "Filtered table access on [mytable.f = 3.14]", plan.NewResolvedTable(
+					plan.NewDecoratedNode( "Filtered table access on [mytable.f = 3.14]", plan.NewResolvedTable(
 						table.WithFilters([]sql.Expression{
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
@@ -194,7 +194,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 							),
 						}),
 					)),
-					plan.NewDecoratedNode(plan.DecorationTypeFilteredAccess, "Filtered table access on [mytable2.i2 IS NULL]", plan.NewResolvedTable(
+					plan.NewDecoratedNode("Filtered table access on [mytable2.i2 IS NULL]", plan.NewResolvedTable(
 						table2.WithFilters([]sql.Expression{
 							expression.NewIsNull(
 								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
@@ -221,12 +221,12 @@ func TestPushdownFilterToTables(t *testing.T) {
 						),
 					),
 					plan.NewCrossJoin(
-						plan.NewDecoratedNode(plan.DecorationTypeProjectedAccess, "Projected table access on [f]",
+						plan.NewDecoratedNode("Projected table access on [f]",
 							plan.NewResolvedTable(
 								table.WithProjection([]string{"f"}),
 							),
 						),
-						plan.NewDecoratedNode(plan.DecorationTypeProjectedAccess, "Projected table access on [t2 i2]",
+						plan.NewDecoratedNode("Projected table access on [t2 i2]",
 							plan.NewResolvedTable(
 								table2.WithProjection([]string{"t2", "i2"}),
 							),
@@ -239,8 +239,8 @@ func TestPushdownFilterToTables(t *testing.T) {
 					expression.NewGetFieldWithTable(1, sql.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode(plan.DecorationTypeProjectedAccess, "Projected table access on [f]",
-						plan.NewDecoratedNode(plan.DecorationTypeFilteredAccess, "Filtered table access on [mytable.f = 3.14]",
+					plan.NewDecoratedNode("Projected table access on [f]",
+						plan.NewDecoratedNode("Filtered table access on [mytable.f = 3.14]",
 							plan.NewResolvedTable(
 								table.WithProjection([]string{"f"}).(*memory.PushdownTable).WithFilters([]sql.Expression{
 									eq(expression.NewGetFieldWithTable(0, sql.Float64, "mytable", "f", false), expression.NewLiteral(3.14, sql.Float64)),
@@ -248,8 +248,8 @@ func TestPushdownFilterToTables(t *testing.T) {
 							),
 						),
 					),
-					plan.NewDecoratedNode(plan.DecorationTypeProjectedAccess, "Projected table access on [t2 i2]",
-						plan.NewDecoratedNode(plan.DecorationTypeFilteredAccess, "Filtered table access on [mytable2.i2 IS NULL]",
+					plan.NewDecoratedNode("Projected table access on [t2 i2]",
+						plan.NewDecoratedNode("Filtered table access on [mytable2.i2 IS NULL]",
 							plan.NewResolvedTable(
 								table2.WithProjection([]string{"t2", "i2"}).(*memory.PushdownTable).WithFilters([]sql.Expression{
 									expression.NewIsNull(expression.NewGetFieldWithTable(1, sql.Int32, "mytable2", "i2", false)),
@@ -600,7 +600,7 @@ func TestPushdownIndex(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
-				plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable.f]",
+				plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 					plan.NewFilter(
 						expression.NewEquals(
 							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
@@ -639,7 +639,7 @@ func TestPushdownIndex(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
-				plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable.f]",
+				plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 					plan.NewFilter(
 						and(
 							expression.NewEquals(
@@ -690,7 +690,7 @@ func TestPushdownIndex(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
-				plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable.f]",
+				plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 					plan.NewFilter(
 						and(
 							and(
@@ -745,7 +745,7 @@ func TestPushdownIndex(t *testing.T) {
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable.f]",
+					plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 						plan.NewFilter(
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
@@ -756,7 +756,7 @@ func TestPushdownIndex(t *testing.T) {
 							),
 						),
 					),
-					plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable2.i2]",
+					plan.NewDecoratedNode("Indexed table access on index [mytable2.i2]",
 						plan.NewFilter(
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
@@ -799,7 +799,7 @@ func TestPushdownIndex(t *testing.T) {
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable.f]",
+					plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 						plan.NewFilter(
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
@@ -810,7 +810,7 @@ func TestPushdownIndex(t *testing.T) {
 							),
 						),
 					),
-					plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable2.i2]",
+					plan.NewDecoratedNode("Indexed table access on index [mytable2.i2]",
 						plan.NewFilter(
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
@@ -831,7 +831,7 @@ func TestPushdownIndex(t *testing.T) {
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable.f]",
+					plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 						plan.NewFilter(
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
@@ -842,7 +842,7 @@ func TestPushdownIndex(t *testing.T) {
 							),
 						),
 					),
-					plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable2.i2]",
+					plan.NewDecoratedNode("Indexed table access on index [mytable2.i2]",
 						plan.NewFilter(
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
@@ -890,7 +890,7 @@ func TestPushdownIndex(t *testing.T) {
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable.f]",
+					plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 						plan.NewFilter(
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
@@ -901,7 +901,7 @@ func TestPushdownIndex(t *testing.T) {
 							),
 						),
 					),
-					plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable2.i2]",
+					plan.NewDecoratedNode("Indexed table access on index [mytable2.i2]",
 						plan.NewFilter(
 							and(
 								expression.NewEquals(
@@ -947,7 +947,7 @@ func TestPushdownIndex(t *testing.T) {
 						expression.NewLiteral(3.14, sql.Float64),
 					),
 					plan.NewTableAlias("t1",
-						plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable.f]",
+						plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 							plan.NewResolvedTable(
 								table.WithIndexLookup(
 									mustIndexLookup(idxTable1F.Get(3.14)),
@@ -996,7 +996,7 @@ func TestPushdownIndex(t *testing.T) {
 						),
 					),
 					plan.NewTableAlias("t1",
-						plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable.f]",
+						plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 							plan.NewResolvedTable(
 								table.WithIndexLookup(
 									mustIndexLookup(idxTable1F.Get(3.14)),
@@ -1045,7 +1045,7 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral(3.14, sql.Float64),
 						),
 						plan.NewTableAlias("t1",
-							plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable.f]",
+							plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 								plan.NewResolvedTable(table.WithIndexLookup(
 									mustIndexLookup(idxTable1F.Get(3.14))),
 								),
@@ -1058,7 +1058,7 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral(21, sql.Int32),
 						),
 						plan.NewTableAlias("t2",
-							plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable2.i2]",
+							plan.NewDecoratedNode("Indexed table access on index [mytable2.i2]",
 								plan.NewResolvedTable(table2.WithIndexLookup(
 									mustIndexLookup(idxTable2I2.Get(21))),
 								),
@@ -1124,7 +1124,7 @@ func TestPushdownIndex(t *testing.T) {
 							),
 						),
 						plan.NewTableAlias("t1",
-							plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable.f]",
+							plan.NewDecoratedNode("Indexed table access on index [mytable.f]",
 								plan.NewResolvedTable(table.WithIndexLookup(
 									mustIndexLookup(idxTable1F.Get(3.14))),
 								),
@@ -1143,7 +1143,7 @@ func TestPushdownIndex(t *testing.T) {
 							),
 						),
 						plan.NewTableAlias("t2",
-							plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable2.i2]",
+							plan.NewDecoratedNode("Indexed table access on index [mytable2.i2]",
 								plan.NewResolvedTable(table2.WithIndexLookup(
 									mustIndexLookup(idxTable2I2.Get(21))),
 								),
@@ -1199,7 +1199,7 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral(100, sql.Int32),
 						),
 						plan.NewTableAlias("t1",
-							plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable.i]",
+							plan.NewDecoratedNode("Indexed table access on index [mytable.i]",
 								plan.NewResolvedTable(
 									table.WithIndexLookup(
 										mustIndexLookup(idxtable1I.Get(100)),
@@ -1285,7 +1285,7 @@ func TestPushdownIndex(t *testing.T) {
 								expression.NewLiteral(100, sql.Int32),
 							),
 							plan.NewTableAlias("t1",
-								plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable.i]",
+								plan.NewDecoratedNode("Indexed table access on index [mytable.i]",
 									plan.NewResolvedTable(
 										table.WithIndexLookup(
 											mustIndexLookup(idxtable1I.Get(100)),
@@ -1360,7 +1360,7 @@ func TestPushdownIndex(t *testing.T) {
 								),
 							),
 							plan.NewTableAlias("t2",
-								plan.NewDecoratedNode(plan.DecorationTypeIndexedAccess, "Indexed table access on index [mytable2.i2]",
+								plan.NewDecoratedNode("Indexed table access on index [mytable2.i2]",
 									plan.NewResolvedTable(
 										table2.WithIndexLookup(
 											mustIndexLookup(idxTable2I2.Get(21)),
