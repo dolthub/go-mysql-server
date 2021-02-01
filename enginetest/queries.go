@@ -489,6 +489,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(3)}},
 	},
 	{
+		Query:    "SELECT i FROM mytable WHERE i+1 > 3",
+		Expected: []sql.Row{{int64(3)}},
+	},
+	{
 		Query:    "SELECT i FROM mytable WHERE i < 2",
 		Expected: []sql.Row{{int64(1)}},
 	},
@@ -916,6 +920,16 @@ var QueryTests = []QueryTest{
 			{"secon"},
 			{"first"},
 		},
+	},
+	{
+		Query: "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
+		Query: "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 3",
+		Expected: []sql.Row{},
 	},
 	{
 		Query: "SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",

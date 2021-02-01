@@ -24,6 +24,18 @@ type QueryPlanTest struct {
 // easier to construct this way.
 var PlanTests = []QueryPlanTest{
 	{
+		Query:        "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		ExpectedPlan: "Project(t1.i)\n" +
+			" └─ IndexedJoin(t1.i = t2.i + 1)\n" +
+			"     ├─ Filter(t2.i = 1)\n" +
+			"     │   └─ TableAlias(t2)\n" +
+			"     │       └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"     └─ Filter(t1.i = 2)\n" +
+			"         └─ TableAlias(t1)\n" +
+			"             └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
 		Query: "SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2",
 		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
 			" └─ IndexedJoin(mytable.i = othertable.i2)\n" +
