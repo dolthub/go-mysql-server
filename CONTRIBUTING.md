@@ -1,24 +1,18 @@
-# Liquidata Inc. Contributing Guidelines
+# Dolthub Inc. Contributing Guidelines
 
-Liquidata Inc. projects accept contributions via GitHub pull requests.
+Dolthub Inc. projects accept contributions via GitHub pull requests.
 This document outlines some of the conventions on development
 workflow, commit message formatting, contact points, and other
 resources to make it easier to get your contribution accepted.
 
-## Certificate of Origin
+## Contributor License Agreement (CLA)
 
-By contributing to this project you agree to the [Developer
-Certificate of Origin (DCO)](DCO). This document was created by the
-Linux Kernel community and is a simple statement that you, as a
-contributor, have the legal right to make the contribution.
-
-In order to show your agreement with the DCO you should include at the
-end of commit message, the following line: `Signed-off-by: John Doe
-<john.doe@example.com>`, using your real name.
-
-This can be done easily using the
-[`-s`](https://github.com/git/git/blob/b2c150d3aa82f6583b9aadfecc5f8fa1c74aca09/Documentation/git-commit.txt#L154-L161)
-flag on the `git commit`.
+By contributing to this project you agree to the Contributor License
+Agreement (CLA). This grants copyright of your work on the project to
+the project owners, Dolthub Inc, as well as waives certain other
+rights related to your contribution. The first time you submit a PR,
+you will be prompted to read and sign the CLA. We cannot accept
+contributions that do not sign the CLA.
 
 ## Support Channel
 
@@ -27,7 +21,7 @@ GitHub issues.
 
 ## How to Contribute
 
-Pull Requests (PRs) are exclusive way to contribute code to
+Pull Requests (PRs) are the exclusive way to contribute code to
 go-mysql-server.  In order for a PR to be accepted it needs to pass a
 list of requirements:
 
