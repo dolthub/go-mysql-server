@@ -216,7 +216,9 @@ func (c channelRowIter) Close() error {
 		})
 	}
 
+	err := c.eg.Wait()
 	close(c.ch)
-	return c.eg.Wait()
+
+	return err
 }
 
