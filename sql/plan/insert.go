@@ -277,7 +277,6 @@ func (i insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
 	return nil
 }
 
-
 func (i insertIter) Close() error {
 	if !i.closed {
 		i.closed = true

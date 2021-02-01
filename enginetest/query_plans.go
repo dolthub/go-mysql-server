@@ -24,6 +24,18 @@ type QueryPlanTest struct {
 // easier to construct this way.
 var PlanTests = []QueryPlanTest{
 	{
+		Query:        "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		ExpectedPlan: "Project(t1.i)\n" +
+			" └─ IndexedJoin(t1.i = t2.i + 1)\n" +
+			"     ├─ Filter(t2.i = 1)\n" +
+			"     │   └─ TableAlias(t2)\n" +
+			"     │       └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"     └─ Filter(t1.i = 2)\n" +
+			"         └─ TableAlias(t1)\n" +
+			"             └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
 		Query: "SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2",
 		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
 			" └─ IndexedJoin(mytable.i = othertable.i2)\n" +
@@ -92,8 +104,7 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "IndexedJoin(mt.i = ot.i2)\n" +
 			" ├─ Filter(mt.i > 2)\n" +
 			" │   └─ TableAlias(mt)\n" +
-			" │       └─ Indexed table access on index [mytable.i]\n" +
-			" │           └─ Table(mytable)\n" +
+			" │       └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			" └─ TableAlias(ot)\n" +
 			"     └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
@@ -349,9 +360,8 @@ var PlanTests = []QueryPlanTest{
 		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1",
 		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
 			" └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
-			"     ├─ Indexed table access on index [one_pk.pk]\n" +
-			"     │   └─ Filter(one_pk.pk > 1)\n" +
-			"     │       └─ Table(one_pk)\n" +
+			"     ├─ Filter(one_pk.pk > 1)\n" +
+			"     │   └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"     └─ IndexedTableAccess(niltable on [niltable.i])\n" +
 			"",
 	},
@@ -520,10 +530,10 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Sort(one_pk.pk ASC)\n" +
 			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
 			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
-			"         ├─ Indexed table access on index [one_pk.pk]\n" +
-			"         │   └─ Filter(one_pk.pk > 1)\n" +
-			"         │       └─ Table(one_pk)\n" +
-			"         └─ IndexedTableAccess(niltable on [niltable.i])\n",
+			"         ├─ Filter(one_pk.pk > 1)\n" +
+			"         │   └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			"         └─ IndexedTableAccess(niltable on [niltable.i])\n" +
+			"",
 	},
 	{
 		Query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i ORDER BY 2,3",
@@ -674,12 +684,24 @@ var PlanTests = []QueryPlanTest{
 			"     └─ CrossJoin\n" +
 			"         ├─ Filter(t1.pk = 1)\n" +
 			"         │   └─ TableAlias(t1)\n" +
-			"         │       └─ Indexed table access on index [one_pk.pk]\n" +
-			"         │           └─ Table(one_pk)\n" +
+			"         │       └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"         └─ Filter(t2.pk2 = 1)\n" +
 			"             └─ TableAlias(t2)\n" +
 			"                 └─ Table(two_pk)\n" +
 			"",
+	},
+	{
+		// TODO: This should use an index for two_pk as well
+		Query: "SELECT pk,pk1,pk2 FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 AND pk1=1 ORDER BY 1,2",
+		ExpectedPlan: "Sort(t1.pk ASC, t2.pk1 ASC)\n" +
+			" └─ Project(t1.pk, t2.pk1, t2.pk2)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ Filter(t1.pk = 1)\n" +
+			"         │   └─ TableAlias(t1)\n" +
+			"         │       └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			"         └─ Filter(t2.pk2 = 1 AND t2.pk1 = 1)\n" +
+			"             └─ TableAlias(t2)\n" +
+			"                 └─ Table(two_pk)\n",
 	},
 	{
 		Query: `SELECT i FROM mytable mt
@@ -688,8 +710,7 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project(mt.i)\n" +
 			" └─ Filter(NOT((Project(mytable.i)\n" +
 			"     └─ Filter(mytable.i = mt.i AND mytable.i > 2)\n" +
-			"         └─ Indexed table access on index [mytable.i]\n" +
-			"             └─ Table(mytable)\n" +
+			"         └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"    ) IS NULL) AND NOT((Project(othertable.i2)\n" +
 			"     └─ Filter(othertable.i2 = mt.i)\n" +
 			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
@@ -719,15 +740,13 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Sort(t1.pk ASC, t2.pk2 ASC)\n" +
 			" └─ Project(t1.pk, t2.pk2, (Limit(1)\n" +
 			"     └─ Project(one_pk.pk)\n" +
-			"         └─ Indexed table access on index [one_pk.pk]\n" +
-			"             └─ Filter(one_pk.pk = 1)\n" +
-			"                 └─ Table(one_pk)\n" +
+			"         └─ Filter(one_pk.pk = 1)\n" +
+			"             └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"    ))\n" +
 			"     └─ CrossJoin\n" +
 			"         ├─ Filter(t1.pk = 1)\n" +
 			"         │   └─ TableAlias(t1)\n" +
-			"         │       └─ Indexed table access on index [one_pk.pk]\n" +
-			"         │           └─ Table(one_pk)\n" +
+			"         │       └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"         └─ Filter(t2.pk2 = 1)\n" +
 			"             └─ TableAlias(t2)\n" +
 			"                 └─ Table(two_pk)\n" +
@@ -743,10 +762,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: "DELETE FROM two_pk WHERE pk1 = 1 AND pk2 = 2",
 		ExpectedPlan: "Delete\n" +
-			" └─ Indexed table access on index [two_pk.pk1,two_pk.pk2]\n" +
-			"     └─ Filter(two_pk.pk1 = 1 AND two_pk.pk2 = 2)\n" +
-			"         └─ Table(two_pk)\n" +
-			"",
+			" └─ Filter(two_pk.pk1 = 1 AND two_pk.pk2 = 2)\n" +
+			"     └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n",
 	},
 	{
 		Query: "UPDATE two_pk SET c1 = 1 WHERE c1 > 1",
@@ -760,9 +777,7 @@ var PlanTests = []QueryPlanTest{
 		Query: "UPDATE two_pk SET c1 = 1 WHERE pk1 = 1 AND pk2 = 2",
 		ExpectedPlan: "Update\n" +
 			" └─ UpdateSource(SET two_pk.c1 = 1)\n" +
-			"     └─ Indexed table access on index [two_pk.pk1,two_pk.pk2]\n" +
-			"         └─ Filter(two_pk.pk1 = 1 AND two_pk.pk2 = 2)\n" +
-			"             └─ Table(two_pk)\n" +
-			"",
+			"     └─ Filter(two_pk.pk1 = 1 AND two_pk.pk2 = 2)\n" +
+			"         └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n",
 	},
 }

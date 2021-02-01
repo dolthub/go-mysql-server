@@ -52,6 +52,13 @@ func (d Distinct) String() string {
 	return p.String()
 }
 
+func (d Distinct) DebugString() string {
+	p := sql.NewTreePrinter()
+	_ = p.WriteNode("Distinct")
+	_ = p.WriteChildren(sql.DebugString(d.Child))
+	return p.String()
+}
+
 // distinctIter keeps track of the hashes of all rows that have been emitted.
 // It does not emit any rows whose hashes have been seen already.
 // TODO: come up with a way to use less memory than keeping all hashes in memory.

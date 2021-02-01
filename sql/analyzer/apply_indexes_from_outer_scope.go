@@ -48,10 +48,10 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	}
 
 	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
-		switch parent := parent.(type) {
+		switch parent.(type) {
 		// We can't push any indexes down a branch that have already had an index pushed down it
-		case *plan.DecoratedNode:
-			return parent.DecorationType != plan.DecorationTypeIndexedAccess
+		case *plan.IndexedTableAccess:
+			return false
 		}
 		return true
 	}
@@ -87,32 +87,20 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 // pushdownIndexToTable attempts to push the index given down to the table given, if it implements
 // sql.IndexAddressableTable
 func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, keyExpr []sql.Expression) (sql.Node, error) {
-	table := getTable(tableNode)
-	if table == nil {
-		return tableNode, nil
-	}
-
-	resolvedTable := getResolvedTable(tableNode)
-	var newTableNode sql.Node
-
-	if _, ok := table.(sql.IndexAddressableTable); ok {
-		newTableNode = plan.NewIndexedTableAccess(resolvedTable, index, keyExpr)
-		a.Log("table %q transformed with pushdown of index", tableNode.Name())
-	} else {
-		return tableNode, nil
-	}
-
-	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias:
-		node, err := withTable(newTableNode, table)
-		if err != nil {
-			return nil, err
+	return plan.TransformUp(tableNode, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.ResolvedTable:
+			table := getTable(tableNode)
+			if table == nil {
+				return n, nil
+			}
+			if _, ok := table.(sql.IndexAddressableTable); ok {
+				a.Log("table %q transformed with pushdown of index", tableNode.Name())
+				return plan.NewIndexedTableAccess(n, index, keyExpr), nil
+			}
 		}
-
-		return node, nil
-	default:
-		return nil, ErrInvalidNodeType.New("pushdown", tableNode)
-	}
+		return n, nil
+	})
 }
 
 type subqueryIndexLookup struct {

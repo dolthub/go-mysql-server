@@ -96,6 +96,13 @@ func (j *InnerJoin) String() string {
 	return pr.String()
 }
 
+func (j *InnerJoin) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("InnerJoin(%s)", sql.DebugString(j.Cond))
+	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
+	return pr.String()
+}
+
 // Expressions implements the Expressioner interface.
 func (j *InnerJoin) Expressions() []sql.Expression {
 	return []sql.Expression{j.Cond}
@@ -166,6 +173,13 @@ func (j *LeftJoin) String() string {
 	return pr.String()
 }
 
+func (j *LeftJoin) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("LeftJoin(%s)", sql.DebugString(j.Cond))
+	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
+	return pr.String()
+}
+
 // Expressions implements the Expressioner interface.
 func (j *LeftJoin) Expressions() []sql.Expression {
 	return []sql.Expression{j.Cond}
@@ -233,6 +247,13 @@ func (j *RightJoin) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("RightJoin(%s)", j.Cond)
 	_ = pr.WriteChildren(j.left.String(), j.right.String())
+	return pr.String()
+}
+
+func (j *RightJoin) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("RightJoin(%s)", sql.DebugString(j.Cond))
+	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
 	return pr.String()
 }
 

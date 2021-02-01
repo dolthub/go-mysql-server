@@ -499,6 +499,31 @@ var TriggerTests = []ScriptTest{
 			{32, 41},
 		},
 	},
+	{
+		Name: "trigger before update, with indexed update",
+		SetUpScript: []string{
+			"create table a (x int primary key, y int, unique key (y))",
+			"create table b (z int primary key)",
+			"insert into a values (1,3), (10,20)",
+			"create trigger insert_b before update on a for each row insert into b values (old.x * 10)",
+			"update a set x = x + 1 where y = 20",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x, y from a order by 1",
+				Expected: []sql.Row{
+					{1, 3},
+					{11, 20},
+				},
+			},
+			{
+				Query: "select z from b",
+				Expected: []sql.Row{
+					{100},
+				},
+			},
+		},
+	},
 	// DELETE triggers
 	{
 		Name: "trigger after delete, insert into other table",
@@ -656,6 +681,30 @@ var TriggerTests = []ScriptTest{
 				Query: "select y from b order by 1",
 				Expected: []sql.Row{
 					{1}, {2}, {4}, {6}, {9},
+				},
+			},
+		},
+	},
+	{
+		Name: "trigger before delete, delete with index",
+		SetUpScript: []string{
+			"create table a (x int primary key, z int, unique key (z))",
+			"create table b (y int primary key)",
+			"insert into a values (0,1), (2,3), (4,5)",
+			"create trigger insert_b before delete on a for each row insert into b values (old.x * 2)",
+			"delete from a where z > 2",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{4}, {8},
 				},
 			},
 		},

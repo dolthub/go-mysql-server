@@ -31,7 +31,7 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		return nil, err
 	}
 
-	n, err = convertFiltersToIndexedAccess(a, n, scope, indexes)
+	n, err = convertFiltersToIndexedAccess(a, n, scope, indexes, tableAliases, exprAliases)
 	if err != nil {
 		return nil, err
 	}
@@ -181,24 +181,37 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, exprAliases
 }
 
 // convertFiltersToIndexedAccess attempts to replace filter predicates with indexed accesses where possible
-func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, scope *Scope, indexes indexLookupsByTable) (sql.Node, error) {
+func convertFiltersToIndexedAccess(
+	a *Analyzer,
+	n sql.Node,
+	scope *Scope,
+	indexes indexLookupsByTable,
+	aliases TableAliases,
+	exprAliases ExprAliases,
+) (sql.Node, error) {
 	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
+		switch child.(type) {
+		// We can't push any indexes down to a table has already had an index pushed down it
+		case *plan.IndexedTableAccess:
+			return false
+		}
+
 		switch parent := parent.(type) {
-		// For IndexedJoins, we already are using indexed access during query execution for the secondary table, so
-		// replacing the secondary table with an indexed lookup will have no effect on the result of the join, but *will*
-		// inappropriately remove the filter from the predicate.
+		// For IndexedJoins, if we are already using indexed access during query execution for the secondary table,
+		// replacing the secondary table with an indexed lookup will have no effect on the result of the join, but
+		// *will* inappropriately remove the filter from the predicate.
 		// TODO: the analyzer should combine these indexed lookups better
 		case *plan.IndexedJoin:
-			return childNum == 0
+			if parent.JoinType() == plan.JoinTypeLeft || parent.JoinType() == plan.JoinTypeRight {
+				return childNum == 0
+			}
+			return true
 		// Left and right joins can push down indexes for the primary table, but not the secondary. See comment
 		// on transformPushdownFilters
 		case *plan.LeftJoin:
 			return childNum == 0
 		case *plan.RightJoin:
 			return childNum == 1
-		// We can't push any indexes down a branch that have already had an index pushed down it
-		case *plan.DecoratedNode:
-			return parent.DecorationType != plan.DecorationTypeIndexedAccess
 		}
 		return true
 	}
@@ -212,13 +225,35 @@ func convertFiltersToIndexedAccess(a *Analyzer, n sql.Node, scope *Scope, indexe
 			if err != nil {
 				return nil, err
 			}
-			return FixFieldIndexesForExpressions(table, scope)
+
+			// Key expressions for aliased tables will have the name of the alias. Since the expression is on the table,
+			// not the alias, for consistency we should normalize them to the actual table name. This will allow other
+			// analyzer steps to match on them as necessary.
+			table, err = plan.TransformExpressionsUpWithNode(table, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+				if _, ok := n.(*plan.TableAlias); ok {
+					return e, nil
+				}
+				return normalizeExpression(exprAliases, aliases, e), nil
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			return plan.TransformUp(table, func(n sql.Node) (sql.Node, error) {
+				if _, ok := n.(*plan.IndexedTableAccess); !ok {
+					return n, nil
+				}
+				return FixFieldIndexesForTableNode(n, scope)
+			})
 		case *plan.ResolvedTable:
 			table, err := pushdownIndexesToTable(a, node, indexes)
 			if err != nil {
 				return nil, err
 			}
-			return FixFieldIndexesForExpressions(table, scope)
+
+			// We can't use FixFieldIndexesForExpressions here, because it uses the schema of children, and
+			// ResolvedTable doesn't have any.
+			return FixFieldIndexesForTableNode(table, scope)
 		default:
 			return FixFieldIndexesForExpressions(node, scope)
 		}
@@ -262,7 +297,6 @@ func pushdownFiltersToTable(
 
 		table = ft.WithFilters(handled)
 		newTableNode = plan.NewDecoratedNode(
-			plan.DecorationTypeFilteredAccess,
 			fmt.Sprintf("Filtered table access on %v", handled),
 			newTableNode)
 
@@ -315,50 +349,23 @@ func pushdownFiltersToTable(
 // pushdownIndexesToTable attempts to convert filter predicates to indexes on tables that implement
 // sql.IndexAddressableTable
 func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[string]*indexLookup) (sql.Node, error) {
-
-	table := getTable(tableNode)
-	if table == nil {
-		return tableNode, nil
-	}
-
-	var newTableNode sql.Node = tableNode
-
-	replacedTable := false
-	if it, ok := table.(sql.IndexAddressableTable); ok {
-		indexLookup, ok := indexes[tableNode.Name()]
-		if ok {
-			table = it.WithIndexLookup(indexLookup.lookup)
-			indexStrs := formatIndexDecoratorString(indexLookup.indexes...)
-
-			indexNoun := "index"
-			if len(indexStrs) > 1 {
-				indexNoun = "indexes"
+	return plan.TransformUp(tableNode, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.ResolvedTable:
+			table := getTable(tableNode)
+			if table == nil {
+				return n, nil
 			}
-			newTableNode = plan.NewDecoratedNode(
-				plan.DecorationTypeIndexedAccess,
-				fmt.Sprintf("Indexed table access on %s %s", indexNoun, strings.Join(indexStrs, ", ")),
-				newTableNode)
-			a.Log("table %q transformed with pushdown of index", tableNode.Name())
-
-			replacedTable = true
+			if _, ok := table.(sql.IndexAddressableTable); ok {
+				indexLookup, ok := indexes[tableNode.Name()]
+				if ok {
+					a.Log("table %q transformed with pushdown of index", tableNode.Name())
+					return plan.NewStaticIndexedTableAccess(n, indexLookup.lookup, indexLookup.indexes[0], indexLookup.exprs), nil
+				}
+			}
 		}
-	}
-
-	if !replacedTable {
-		return tableNode, nil
-	}
-
-	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias:
-		node, err := withTable(newTableNode, table)
-		if err != nil {
-			return nil, err
-		}
-
-		return node, nil
-	default:
-		return nil, ErrInvalidNodeType.New("pushdown", tableNode)
-	}
+		return n, nil
+	})
 }
 
 func formatIndexDecoratorString(indexes ...sql.Index) []string {
@@ -397,7 +404,6 @@ func pushdownProjectionsToTable(
 		}
 
 		newTableNode = plan.NewDecoratedNode(
-			plan.DecorationTypeProjectedAccess,
 			fmt.Sprintf("Projected table access on %v",
 				fieldsByTable[tableNode.Name()]), newTableNode)
 		a.Log("table %q transformed with pushdown of projection", tableNode.Name())

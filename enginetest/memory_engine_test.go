@@ -88,13 +88,12 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2`,
+		Query: "SELECT (select s from mytable mt where sub.i = mt.i) as subi FROM (select s,i,'hello' FROM mytable where i = 1) as sub;",
 		Expected: []sql.Row{
-			{int64(3), "third row", "first", int64(3)},
+			{"first row"},
 		},
 	}
-
-	fmt.Sprintf("%v", test)
+		fmt.Sprintf("%v", test)
 
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, mergableIndexDriver)
 	engine := enginetest.NewEngine(t, harness)
