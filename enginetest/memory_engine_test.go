@@ -1,4 +1,4 @@
-// Copyright 2020 Liquidata, Inc.
+// Copyright 2020-2021 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -84,16 +84,14 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "SELECT (select s from mytable mt where sub.i = mt.i) as subi FROM (select s,i,'hello' FROM mytable where i = 1) as sub;",
-		Expected: []sql.Row{
-			{"first row"},
-		},
+		Query:    "SELECT i FROM mytable WHERE i+1 > 3",
+		Expected: []sql.Row{{int64(3)}},
 	}
-		fmt.Sprintf("%v", test)
+	fmt.Sprintf("%v", test)
 
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, mergableIndexDriver)
 	engine := enginetest.NewEngine(t, harness)
@@ -109,20 +107,16 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name: "4 tables, linear join, index on D",
+			Name: "Naked DELETE with ON DELETE Triggers",
 			SetUpScript: []string{
-				"create table a (xa int primary key, ya int, za int)",
-				"create table b (xb int primary key, yb int, zb int)",
-				"create table c (xc int primary key, yc int, zc int)",
-				"create table d (xd int primary key, yd int, zd int)",
-				"insert into a values (1,2,3)",
-				"insert into b values (1,2,3)",
-				"insert into c values (1,2,3)",
-				"insert into d values (1,2,3)",
+				"CREATE TABLE t7 (pk BIGINT PRIMARY KEY, v1 BIGINT)",
+				"CREATE TABLE t7i (pk BIGINT PRIMARY KEY, v1 BIGINT)",
+				"CREATE TRIGGER trig_t7 BEFORE DELETE ON t7 FOR EACH ROW INSERT INTO t7i VALUES (old.pk, old.v1)",
+				"INSERT INTO t7 VALUES (1,1), (3,3)",
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query:    "select xa from a join b on ya = yb join c on yb = yc join d on yc - 1 = xd",
+					Query:    "DELETE FROM t7 WHERE pk = 3",
 					Expected: []sql.Row{{1}},
 				},
 			},
