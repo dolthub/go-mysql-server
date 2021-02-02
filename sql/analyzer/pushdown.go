@@ -100,7 +100,7 @@ func canProject(n sql.Node, a *Analyzer) bool {
 	// TODO: this is a hack, we shouldn't use decorator nodes for logic like this.
 	alreadyPushedDown := false
 	plan.Inspect(n, func(n sql.Node) bool {
-		if _, ok := n.(*plan.DecoratedNode); ok {
+		if n, ok := n.(*plan.DecoratedNode); ok && strings.Contains(n.String(), "Projected table access on") {
 			alreadyPushedDown = true
 			return false
 		}
