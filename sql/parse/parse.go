@@ -117,7 +117,7 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		s = s[:len(s)-1]
 	}
 
-	if s == "" {
+	if removeComments(s) == "" {
 		ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
 		return plan.Nothing, nil
 	}

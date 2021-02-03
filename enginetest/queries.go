@@ -1546,7 +1546,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `/*!40101 SET NAMES utf8 */`,
-		Expected: nil,
+		Expected: []sql.Row{},
 	},
 	{
 		Query:    `SHOW DATABASES`,
