@@ -107,7 +107,21 @@ func canProject(n sql.Node, a *Analyzer) bool {
 		return false
 	}
 
-	return true
+	// Because analysis runs more than once on subquery, it's possible for projection pushdown logic to be applied
+	// multiple times. It's totally undefined what happens when you push a projection down to a table that already has
+	// one, and shouldn't happen. We don't have the necessary interface to interrogate a projected table about its
+	// projection, so we do this for now.
+	// TODO: this is a hack, we shouldn't use decorator nodes for logic like this.
+	alreadyPushedDown := false
+	plan.Inspect(n, func(n sql.Node) bool {
+		if n, ok := n.(*plan.DecoratedNode); ok && strings.Contains(n.String(), "Projected table access on") {
+			alreadyPushedDown = true
+			return false
+		}
+		return true
+	})
+
+	return !alreadyPushedDown
 }
 
 // canDoPushdown returns whether the node given can safely be analyzed for pushdown

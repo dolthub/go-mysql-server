@@ -16,8 +16,6 @@ package expression
 
 import (
 	"fmt"
-	"sync"
-
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -36,7 +34,6 @@ type AutoIncrement struct {
 	autoIncVal *Literal
 	autoTbl    sql.AutoIncrementTable
 	autoCol    *sql.Column
-	sync.Once
 }
 
 // NewAutoIncrement creates a new AutoIncrement expression.
@@ -67,7 +64,6 @@ func NewAutoIncrement(ctx *sql.Context, table sql.Table, given sql.Expression) (
 		&Literal{last, autoCol.Type},
 		autoTbl,
 		autoCol,
-		sync.Once{},
 	}, nil
 }
 
@@ -136,7 +132,6 @@ func (i *AutoIncrement) WithChildren(children ...sql.Expression) (sql.Expression
 		i.autoIncVal,
 		i.autoTbl,
 		i.autoCol,
-		sync.Once{},
 	}, nil
 }
 
