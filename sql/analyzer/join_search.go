@@ -30,12 +30,30 @@ func orderTables(
 	tables []NameableNode,
 	tablesByName map[string]NameableNode,
 	joinIndexes joinIndexesByTable,
+	hint QueryHint,
 ) ([]string, error) {
 	tableNames := make([]string, len(tablesByName))
 	indexes := make([]int, len(tablesByName))
 	for i, table := range tables {
 		tableNames[i] = strings.ToLower(table.Name())
 		indexes[i] = i
+	}
+
+	// If we got a hint about table order, apply it instead of using heuristics.
+	// Only valid hint is specifying JOIN_ORDER for all tables in the join.
+	if hint != nil {
+		switch hint := hint.(type) {
+		case JoinOrder:
+			var nodeTables []string
+			for table, _ := range tablesByName {
+				nodeTables = append(nodeTables, table)
+			}
+			if len(hint.tables) == len(tables) && containsAll(hint.tables, nodeTables) {
+				return hint.tables, nil
+			}
+		default:
+			panic("unrecognized hint type")
+		}
 	}
 
 	// generate all permutations of table order

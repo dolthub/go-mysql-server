@@ -17,6 +17,7 @@ package analyzer
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -251,10 +252,12 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 		return node, nil
 	}
 
+	joinHint := extractJoinHint(node)
+
 	// Collect all tables and find an access order for them
 	tables := lexicalTableOrder(node)
 	tablesByName := byLowerCaseName(tables)
-	tableOrder, err := orderTables(ctx, tables, tablesByName, joinIndexes)
+	tableOrder, err := orderTables(ctx, tables, tablesByName, joinIndexes, joinHint)
 	if err != nil {
 		return nil, err
 	}
@@ -270,6 +273,65 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 	joinNode := joinTreeToNodes(joinTree, tablesByName)
 
 	return joinNode, nil
+}
+
+func extractJoinHint(node plan.JoinNode) QueryHint {
+	if node.Comment() != "" {
+		return parseJoinHint(node.Comment())
+	}
+	return nil
+}
+
+var hintRegex = regexp.MustCompile("(\\s*[a-z_]+\\([^\\(]+\\)\\s*)+")
+
+// TODO: this is pretty nasty. Should be done in the parser instead.
+func parseJoinHint(comment string) QueryHint {
+	comment = strings.TrimPrefix(comment, "/*+")
+	comment = strings.TrimSuffix(comment, "*/")
+	comment = strings.ToLower(strings.TrimSpace(comment))
+
+	hints := hintRegex.FindAll([]byte(comment), -1)
+
+	for _, hint := range hints {
+		hintStr := strings.TrimSpace(string(hint))
+		if strings.HasPrefix(string(hintStr), "join_order(") {
+			var tables []string
+			var table strings.Builder
+			for _, b := range hintStr[len("join_order("):] {
+				switch b {
+				case ',', ')':
+					tables = append(tables, strings.TrimSpace(table.String()))
+					table = strings.Builder{}
+				default:
+					table.WriteRune(b)
+				}
+			}
+
+			return JoinOrder{
+				tables: tables,
+			}
+		}
+	}
+
+	return nil
+}
+
+type QueryHint interface {
+	fmt.Stringer
+	HintType() string
+}
+
+type JoinOrder struct {
+	tables []string
+}
+
+func (j JoinOrder) String() string {
+	return "JOIN_ORDER(" + strings.Join(j.tables, ",") + ")"
+
+}
+
+func (j JoinOrder) HintType() string {
+	return "JOIN_ORDER"
 }
 
 // lexicalTableOrder returns the names of the tables under the join node given, in the original lexical order. This is
