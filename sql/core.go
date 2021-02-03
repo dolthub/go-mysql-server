@@ -117,6 +117,13 @@ type Node interface {
 	WithChildren(...Node) (Node, error)
 }
 
+// CommentedNode allows comments to be set and retrieved on it
+type CommentedNode interface {
+	Node
+	WithComment(string) Node
+	Comment() string
+}
+
 // DebugStringer is shared by implementors of Node and Expression, and is used for debugging the analyzer. It allows
 // a node or expression to be printed in greater detail than its default String() representation.
 type DebugStringer interface {

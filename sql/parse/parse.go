@@ -112,7 +112,7 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 	span, ctx := ctx.Span("parse", opentracing.Tag{Key: "query", Value: query})
 	defer span.Finish()
 
-	s := strings.TrimSpace(removeComments(query))
+	s := strings.TrimSpace(query)
 	if strings.HasSuffix(s, ";") {
 		s = s[:len(s)-1]
 	}
@@ -124,6 +124,7 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 
 	lowerQuery := strings.ToLower(s)
 
+	// TODO: get rid of all these custom parser options
 	switch true {
 	case showVariablesRegex.MatchString(lowerQuery):
 		return parseShowVariables(ctx, s)
@@ -459,6 +460,11 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 	node, err := tableExprsToTable(ctx, s.From)
 	if err != nil {
 		return nil, err
+	}
+
+	// If the top level node can store comments and one was provided, store it.
+	if cn, ok := node.(sql.CommentedNode); ok && len(s.Comments) > 0 {
+		node = cn.WithComment(string(s.Comments[0]))
 	}
 
 	if s.Where != nil {
