@@ -1720,11 +1720,39 @@ var fixtures = map[string]sql.Node{
 		},
 	),
 	`/*!40101 SET NAMES utf8 */`: plan.Nothing,
-	`SELECT /*!40101 SET NAMES utf8 */ * FROM foo`: plan.NewProject(
+	`SELECT /* a comment */ * FROM foo`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewStar(),
 		},
 		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT /*!40101 * from */ foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewStar(),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	// TODO: other optimizer hints than join_order are ignored for now
+	`SELECT /*+ JOIN_ORDER(a,b) */ * from foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewStar(),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT /*+ JOIN_ORDER(a,b) */ * FROM b join a on c = d limit 5`: plan.NewLimit(5,
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewStar(),
+			},
+			plan.NewInnerJoin(
+				plan.NewUnresolvedTable("b", ""),
+				plan.NewUnresolvedTable("a", ""),
+				expression.NewEquals(
+					expression.NewUnresolvedColumn("c"),
+					expression.NewUnresolvedColumn("d"),
+				),
+			).WithComment("/*+ JOIN_ORDER(a,b) */"),
+		),
 	),
 	`SHOW DATABASES`: plan.NewShowDatabases(),
 	`SELECT * FROM foo WHERE i LIKE 'foo'`: plan.NewProject(
