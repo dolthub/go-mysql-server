@@ -46,57 +46,30 @@ type JoinNode interface {
 	Comment() string
 }
 
-type JoinStruct struct {
+// joinStruct contains all the common data fields and implements the commom sql.Node getters for all join types.
+type joinStruct struct {
 	BinaryNode
 	Cond sql.Expression
 	CommentStr string
 }
 
-func (j JoinStruct) Expressions() []sql.Expression {
+// Expressions implements sql.Expression
+func (j joinStruct) Expressions() []sql.Expression {
 	return []sql.Expression{j.Cond}
 }
 
-func (j JoinStruct) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	nj := j
-	nj.Cond = exprs[0]
-	return nj, nil
-}
-
-func (j JoinStruct) String() string {
-	panic("must override String")
-}
-
-func (j JoinStruct) Schema() sql.Schema {
-	panic("must override Schema")
-}
-
-func (j JoinStruct) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	panic("must override RowIter")
-}
-
-func (j JoinStruct) WithChildren(children ...sql.Node) (sql.Node, error) {
-	nj := j
-	nj.BinaryNode = BinaryNode{children[0], children[1]}
-	return nj, nil
-}
-
-func (j JoinStruct) WithComment(comment string) sql.Node {
-	nj := j
-	nj.CommentStr = comment
-	return nj
-}
-
-func (j JoinStruct) JoinCond() sql.Expression {
+func (j joinStruct) JoinCond() sql.Expression {
 	return j.Cond
 }
 
-func (j JoinStruct) Comment() string {
+// Comment implements sql.CommentedNode
+func (j joinStruct) Comment() string {
 	return j.CommentStr
 }
 
 // InnerJoin is an inner join between two tables.
 type InnerJoin struct {
-	JoinStruct
+	joinStruct
 }
 
 var _ JoinNode = (*InnerJoin)(nil)
@@ -109,7 +82,7 @@ func (j *InnerJoin) JoinType() JoinType {
 // NewInnerJoin creates a new inner join node from two tables.
 func NewInnerJoin(left, right sql.Node, cond sql.Expression) *InnerJoin {
 	return &InnerJoin{
-		JoinStruct{
+		joinStruct{
 			BinaryNode: BinaryNode{
 				left:  left,
 				right: right,
@@ -177,14 +150,9 @@ func (j *InnerJoin) DebugString() string {
 	return pr.String()
 }
 
-// Expressions implements the Expressioner interface.
-func (j *InnerJoin) Expressions() []sql.Expression {
-	return []sql.Expression{j.Cond}
-}
-
 // LeftJoin is a left join between two tables.
 type LeftJoin struct {
-	JoinStruct
+	joinStruct
 }
 
 var _ JoinNode = (*LeftJoin)(nil)
@@ -197,7 +165,7 @@ func (j *LeftJoin) JoinType() JoinType {
 // NewLeftJoin creates a new left join node from two tables.
 func NewLeftJoin(left, right sql.Node, cond sql.Expression) *LeftJoin {
 	return &LeftJoin{
-		JoinStruct{
+		joinStruct{
 			BinaryNode: BinaryNode{
 				left:  left,
 				right: right,
@@ -265,14 +233,9 @@ func (j *LeftJoin) DebugString() string {
 	return pr.String()
 }
 
-// Expressions implements the Expressioner interface.
-func (j *LeftJoin) Expressions() []sql.Expression {
-	return []sql.Expression{j.Cond}
-}
-
 // RightJoin is a left join between two tables.
 type RightJoin struct {
-	JoinStruct
+	joinStruct
 }
 
 func (j *RightJoin) JoinType() JoinType {
@@ -285,7 +248,7 @@ var _ sql.CommentedNode = (*RightJoin)(nil)
 // NewRightJoin creates a new right join node from two tables.
 func NewRightJoin(left, right sql.Node, cond sql.Expression) *RightJoin {
 	return &RightJoin{
-		JoinStruct{
+		joinStruct{
 			BinaryNode: BinaryNode{
 				left:  left,
 				right: right,
@@ -351,11 +314,6 @@ func (j *RightJoin) DebugString() string {
 	_ = pr.WriteNode("RightJoin(%s)", sql.DebugString(j.Cond))
 	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
 	return pr.String()
-}
-
-// Expressions implements the Expressioner interface.
-func (j *RightJoin) Expressions() []sql.Expression {
-	return []sql.Expression{j.Cond}
 }
 
 type JoinType byte
