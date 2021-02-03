@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -23,16 +24,13 @@ import (
 
 // ShowVariables is a node that shows the global and session variables
 type ShowVariables struct {
-	config  map[string]sql.TypedValue
 	pattern string
 }
 
 // NewShowVariables returns a new ShowVariables reference.
-// config is a variables lookup table
 // like is a "like pattern". If like is an empty string it will return all variables.
-func NewShowVariables(config map[string]sql.TypedValue, like string) *ShowVariables {
+func NewShowVariables(like string) *ShowVariables {
 	return &ShowVariables{
-		config:  config,
 		pattern: like,
 	}
 }
@@ -85,7 +83,8 @@ func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 		)
 	}
 
-	for k, v := range sv.config {
+	seen := make(map[string]bool)
+	for k, v := range ctx.GetAll() {
 		if like != nil {
 			b, err := like.Eval(ctx, sql.NewRow(k, sv.pattern))
 			if err != nil {
@@ -97,7 +96,12 @@ func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 		}
 
 		rows = append(rows, sql.NewRow(k, v.Value))
+		seen[k] = true
 	}
+
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i][0].(string) < rows[j][0].(string)
+	})
 
 	return sql.RowsToRowIter(rows...), nil
 }

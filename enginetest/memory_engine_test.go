@@ -88,7 +88,7 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT /*+ JOIN_ORDER(b,a,c) */ * from mytable a join mytable b on a.i = b.i join mytable c on c.i = b.i`,
+		Query: `show variables`,
 		Expected: []sql.Row{},
 	}
 	fmt.Sprintf("%v", test)

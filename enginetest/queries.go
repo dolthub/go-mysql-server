@@ -1591,7 +1591,9 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    `/*!40101 SET NAMES utf8 */`,
+		Query: "/*!40101 SET NAMES " +
+			sql.Collation_Default.CharacterSet().String() +
+			" */",
 		Expected: []sql.Row{
 			{},
 		},
