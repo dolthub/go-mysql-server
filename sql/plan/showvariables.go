@@ -83,7 +83,6 @@ func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 		)
 	}
 
-	seen := make(map[string]bool)
 	for k, v := range ctx.GetAll() {
 		if like != nil {
 			b, err := like.Eval(ctx, sql.NewRow(k, sv.pattern))
@@ -96,7 +95,6 @@ func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 		}
 
 		rows = append(rows, sql.NewRow(k, v.Value))
-		seen[k] = true
 	}
 
 	sort.Slice(rows, func(i, j int) bool {
