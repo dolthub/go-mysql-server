@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math"
 	"math/bits"
+	"strconv"
 	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -357,6 +358,16 @@ func (t setType) convertStringToBitField(str string) (uint64, error) {
 		if originalVal, ok := t.compareToOriginal[compareVal]; ok {
 			bitField |= t.valToBit[originalVal]
 		} else {
+			asUint, err := strconv.ParseUint(val, 10, 64)
+			if err == nil {
+				if asUint == 0 {
+					continue
+				}
+				if _, ok := t.bitToVal[asUint]; ok {
+					bitField |= asUint
+					continue
+				}
+			}
 			return 0, ErrInvalidSetValue.New(val)
 		}
 	}

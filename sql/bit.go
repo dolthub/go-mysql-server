@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/shopspring/decimal"
+	"gopkg.in/src-d/go-errors.v1"
+
 	"encoding/binary"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -31,7 +34,10 @@ const (
 	BitTypeMaxBits = 64
 )
 
-var promotedBitType = MustCreateBitType(BitTypeMaxBits)
+var (
+	promotedBitType = MustCreateBitType(BitTypeMaxBits)
+	errBeyondMaxBit = errors.NewKind("%v is beyond the maximum value that can be held by %v bits")
+)
 
 // Represents the BIT type.
 // https://dev.mysql.com/doc/refman/8.0/en/bit-type.html
@@ -129,6 +135,15 @@ func (t bitType) Convert(v interface{}) (interface{}, error) {
 			return nil, fmt.Errorf(`negative floats cannot become bit values`)
 		}
 		value = uint64(val)
+	case decimal.Decimal:
+		val = val.Round(0)
+		if val.GreaterThan(dec_uint64_max) {
+			return nil, errBeyondMaxBit.New(val.String(), t.numOfBits)
+		}
+		if val.LessThan(dec_int64_min) {
+			return nil, errBeyondMaxBit.New(val.String(), t.numOfBits)
+		}
+		value = uint64(val.IntPart())
 	case string:
 		return t.Convert([]byte(val))
 	case []byte:
@@ -141,7 +156,7 @@ func (t bitType) Convert(v interface{}) (interface{}, error) {
 	}
 
 	if value > uint64(1<<t.numOfBits-1) {
-		return nil, fmt.Errorf("%v is beyond the maximum value that can be held by %v bits", value, t.numOfBits)
+		return nil, errBeyondMaxBit.New(value, t.numOfBits)
 	}
 	return value, nil
 }
