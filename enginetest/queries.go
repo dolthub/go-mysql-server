@@ -1587,8 +1587,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    `/*!40101 SET NAMES utf8 */`,
+		Query:    "",
 		Expected: []sql.Row{},
+	},
+	{
+		Query:    `/*!40101 SET NAMES utf8 */`,
+		Expected: []sql.Row{
+			{},
+		},
 	},
 	{
 		Query:    `SHOW DATABASES`,

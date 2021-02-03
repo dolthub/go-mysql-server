@@ -1719,7 +1719,15 @@ var fixtures = map[string]sql.Node{
 			expression.NewSetField(expression.NewUnresolvedColumn("@@sql_select_limit"), expression.NewDefaultColumn("")),
 		},
 	),
-	`/*!40101 SET NAMES utf8 */`: plan.Nothing,
+	"": plan.Nothing,
+	"/* just a comment */": plan.Nothing,
+	`/*!40101 SET NAMES utf8 */`: plan.NewSet(
+		[]sql.Expression{
+			expression.NewSetField(expression.NewUnresolvedColumn("character_set_client"), expression.NewLiteral("utf8", sql.LongText)),
+			expression.NewSetField(expression.NewUnresolvedColumn("character_set_connection"), expression.NewLiteral("utf8", sql.LongText)),
+			expression.NewSetField(expression.NewUnresolvedColumn("character_set_results"), expression.NewLiteral("utf8", sql.LongText)),
+		},
+	),
 	`SELECT /* a comment */ * FROM foo`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewStar(),
@@ -2457,55 +2465,6 @@ func TestParseErrors(t *testing.T) {
 			_, err := Parse(ctx, query)
 			require.Error(err)
 			require.True(expectedError.Is(err))
-		})
-	}
-}
-
-func TestRemoveComments(t *testing.T) {
-	testCases := []struct {
-		input  string
-		output string
-	}{
-		{
-			`/* FOO BAR BAZ */`,
-			``,
-		},
-		{
-			`SELECT 1 -- something`,
-			`SELECT 1 `,
-		},
-		{
-			`SELECT 1 --something`,
-			`SELECT 1 --something`,
-		},
-		{
-			`SELECT ' -- something'`,
-			`SELECT ' -- something'`,
-		},
-		{
-			`SELECT /* FOO */ 1;`,
-			`SELECT  1;`,
-		},
-		{
-			`SELECT '/* FOO */ 1';`,
-			`SELECT '/* FOO */ 1';`,
-		},
-		{
-			`SELECT "\"/* FOO */ 1\"";`,
-			`SELECT "\"/* FOO */ 1\"";`,
-		},
-		{
-			`SELECT '\'/* FOO */ 1\'';`,
-			`SELECT '\'/* FOO */ 1\'';`,
-		},
-	}
-	for _, tt := range testCases {
-		t.Run(tt.input, func(t *testing.T) {
-			require.Equal(
-				t,
-				tt.output,
-				removeComments(tt.input),
-			)
 		})
 	}
 }
