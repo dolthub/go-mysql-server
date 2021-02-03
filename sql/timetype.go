@@ -134,17 +134,22 @@ func (t timespanType) ConvertToTimespanImpl(v interface{}) (timespanImpl, error)
 			minutes := absValue / 100
 			seconds := absValue % 100
 			if minutes <= 59 && seconds <= 59 {
+				microseconds := (seconds*microsecondsPerSecond) + (minutes * microsecondsPerMinute)
 				if value < 0 {
-					return microsecondsToTimespan(-1*(seconds*microsecondsPerSecond) + (minutes * microsecondsPerMinute)), nil
+					return microsecondsToTimespan(-1*microseconds), nil
 				}
-				return microsecondsToTimespan((seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute)), nil
+				return microsecondsToTimespan(microseconds), nil
 			}
 		} else if absValue >= 10000 && absValue <= 9999999 {
-			hours := value / 10000
+			hours := absValue / 10000
 			minutes := (absValue / 100) % 100
 			seconds := absValue % 100
 			if minutes <= 59 && seconds <= 59 {
-				return microsecondsToTimespan((seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + (hours * microsecondsPerHour)), nil
+				microseconds := (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + (hours * microsecondsPerHour)
+				if value < 0 {
+					return microsecondsToTimespan(-1*microseconds), nil
+				}
+				return microsecondsToTimespan(microseconds), nil
 			}
 		}
 	case uint64:
@@ -153,25 +158,34 @@ func (t timespanType) ConvertToTimespanImpl(v interface{}) (timespanImpl, error)
 		return t.ConvertToTimespanImpl(float64(value))
 	case float64:
 		intValue := int64(value)
-		microseconds := int64(math.Round((value - float64(intValue)) * float64(microsecondsPerSecond)))
+		microseconds := int64Abs(int64(math.Round((value - float64(intValue)) * float64(microsecondsPerSecond))))
 		absValue := int64Abs(intValue)
 		if absValue >= -59 && absValue <= 59 {
-			return microsecondsToTimespan((intValue * microsecondsPerSecond) + microseconds), nil
+			totalMicroseconds := (absValue * microsecondsPerSecond) + microseconds
+			if value < 0 {
+				return microsecondsToTimespan(-1*totalMicroseconds), nil
+			}
+			return microsecondsToTimespan(totalMicroseconds), nil
 		} else if absValue >= 100 && absValue <= 9999 {
 			minutes := absValue / 100
 			seconds := absValue % 100
 			if minutes <= 59 && seconds <= 59 {
-				if intValue < 0 {
-					return microsecondsToTimespan(-1*(seconds*microsecondsPerSecond) + (minutes * microsecondsPerMinute) + microseconds), nil
+				totalMicroseconds := (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + microseconds
+				if value < 0 {
+					return microsecondsToTimespan(-1*totalMicroseconds), nil
 				}
-				return microsecondsToTimespan((seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + microseconds), nil
+				return microsecondsToTimespan(totalMicroseconds), nil
 			}
 		} else if absValue >= 10000 && absValue <= 9999999 {
-			hours := intValue / 10000
+			hours := absValue / 10000
 			minutes := (absValue / 100) % 100
 			seconds := absValue % 100
 			if minutes <= 59 && seconds <= 59 {
-				return microsecondsToTimespan((seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + (hours * microsecondsPerHour) + microseconds), nil
+				totalMicroseconds := (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + (hours * microsecondsPerHour) + microseconds
+				if value < 0 {
+					return microsecondsToTimespan(-1*totalMicroseconds), nil
+				}
+				return microsecondsToTimespan(totalMicroseconds), nil
 			}
 		}
 	case string:
