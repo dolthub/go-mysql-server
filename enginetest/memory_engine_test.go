@@ -84,12 +84,12 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query:    "SELECT i FROM mytable WHERE i+1 > 3",
-		Expected: []sql.Row{{int64(3)}},
+		Query: `show variables`,
+		Expected: []sql.Row{},
 	}
 	fmt.Sprintf("%v", test)
 

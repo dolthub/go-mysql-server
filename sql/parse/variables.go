@@ -68,5 +68,5 @@ func parseShowVariables(ctx *sql.Context, s string) (sql.Node, error) {
 		}
 	}
 
-	return plan.NewShowVariables(ctx.Session.GetAll(), pattern), nil
+	return plan.NewShowVariables(pattern), nil
 }

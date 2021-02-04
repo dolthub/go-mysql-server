@@ -18,6 +18,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -27,57 +28,49 @@ func TestShowVariables(t *testing.T) {
 	require := require.New(t)
 
 	ctx := sql.NewEmptyContext()
-	config := ctx.Session.GetAll()
-	sv := NewShowVariables(config, "")
+	sv := NewShowVariables("")
 	require.True(sv.Resolved())
 
 	it, err := sv.RowIter(ctx, nil)
 	require.NoError(err)
 
+	vars := ctx.GetAll()
 	for row, err := it.Next(); err == nil; row, err = it.Next() {
 		key := row[0].(string)
 		val := row[1]
 
 		t.Logf("key: %s\tval: %v\n", key, val)
 
-		require.Equal(config[key].Value, val)
-		delete(config, key)
-	}
-	if err != io.EOF {
-		require.NoError(err)
-	}
-	require.NoError(it.Close())
-	require.Equal(0, len(config))
-}
-
-func TestShowVariablesWithLike(t *testing.T) {
-	require := require.New(t)
-
-	vars := map[string]sql.TypedValue{
-		"int1": {Typ: sql.Int32, Value: 1},
-		"int2": {Typ: sql.Int32, Value: 2},
-		"txt":  {Typ: sql.LongText, Value: "abcdefghijklmnoprstuwxyz"},
-	}
-
-	sv := NewShowVariables(vars, "int%")
-	require.True(sv.Resolved())
-
-	it, err := sv.RowIter(sql.NewEmptyContext(), nil)
-	require.NoError(err)
-
-	for row, err := it.Next(); err == nil; row, err = it.Next() {
-		key := row[0].(string)
-		val := row[1]
 		require.Equal(vars[key].Value, val)
-		require.Equal(sql.Int32, vars[key].Typ)
 		delete(vars, key)
 	}
 	if err != io.EOF {
 		require.NoError(err)
 	}
 	require.NoError(it.Close())
-	require.Equal(1, len(vars))
+	require.Equal(0, len(vars))
+}
 
-	_, ok := vars["txt"]
-	require.True(ok)
+func TestShowVariablesWithLike(t *testing.T) {
+
+	sv := NewShowVariables("int%")
+	require.True(t, sv.Resolved())
+
+	context := sql.NewEmptyContext()
+	context.Set(context, "int1", sql.Int32, 1)
+	context.Set(context, "int2", sql.Int32, 2)
+	context.Set(context, "txt", sql.LongText, "abcdefghijklmnoprstuwxyz")
+
+	it, err := sv.RowIter(context, nil)
+	require.NoError(t, err)
+
+	rows, err := sql.RowIterToRows(it)
+	require.NoError(t, err)
+
+	expectedRows := []sql.Row{
+		{"int1", 1},
+		{"int2", 2},
+	}
+
+	assert.Equal(t, expectedRows, rows)
 }

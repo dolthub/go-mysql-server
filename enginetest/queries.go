@@ -928,6 +928,48 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT /*+ JOIN_ORDER(t1,t2) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
+		Query: "SELECT /*+ JOIN_ORDER(t2,t1) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
+		Query: "SELECT /*+ JOIN_ORDER(t1) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
+		Query: "SELECT /*+ JOIN_ORDER(t1, mytable) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
+		Query: "SELECT /*+ JOIN_ORDER(t1, not_exist) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
+		Query: "SELECT /*+ NOTHING(abc) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
+		Query: "SELECT /*+ JOIN_ORDER( */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
 		Query: "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 3",
 		Expected: []sql.Row{},
 	},
@@ -1545,8 +1587,16 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    `/*!40101 SET NAMES utf8 */`,
-		Expected: nil,
+		Query:    "",
+		Expected: []sql.Row{},
+	},
+	{
+		Query: "/*!40101 SET NAMES " +
+			sql.Collation_Default.CharacterSet().String() +
+			" */",
+		Expected: []sql.Row{
+			{},
+		},
 	},
 	{
 		Query:    `SHOW DATABASES`,

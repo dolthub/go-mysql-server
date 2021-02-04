@@ -112,18 +112,14 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 	span, ctx := ctx.Span("parse", opentracing.Tag{Key: "query", Value: query})
 	defer span.Finish()
 
-	s := strings.TrimSpace(removeComments(query))
+	s := strings.TrimSpace(query)
 	if strings.HasSuffix(s, ";") {
 		s = s[:len(s)-1]
 	}
 
-	if s == "" {
-		ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
-		return plan.Nothing, nil
-	}
-
 	lowerQuery := strings.ToLower(s)
 
+	// TODO: get rid of all these custom parser options
 	switch true {
 	case showVariablesRegex.MatchString(lowerQuery):
 		return parseShowVariables(ctx, s)
@@ -141,6 +137,10 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 
 	stmt, err := sqlparser.Parse(s)
 	if err != nil {
+		if err.Error() == "empty statement" {
+			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
+			return plan.Nothing, nil
+		}
 		return nil, err
 	}
 
@@ -459,6 +459,11 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 	node, err := tableExprsToTable(ctx, s.From)
 	if err != nil {
 		return nil, err
+	}
+
+	// If the top level node can store comments and one was provided, store it.
+	if cn, ok := node.(sql.CommentedNode); ok && len(s.Comments) > 0 {
+		node = cn.WithComment(string(s.Comments[0]))
 	}
 
 	if s.Where != nil {
@@ -2076,105 +2081,6 @@ func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetExprs) ([]sql.Expres
 		res[i] = expression.NewSetField(colName, innerExpr)
 	}
 	return res, nil
-}
-
-func removeComments(s string) string {
-	r := bufio.NewReader(strings.NewReader(s))
-	var result []rune
-	for {
-		ru, _, err := r.ReadRune()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			continue
-		}
-		switch ru {
-		case '\'', '"':
-			result = append(result, ru)
-			result = append(result, readString(r, ru == '\'')...)
-		case '-':
-			peeked, err := r.Peek(2)
-			if err == nil &&
-				len(peeked) == 2 &&
-				rune(peeked[0]) == '-' &&
-				rune(peeked[1]) == ' ' {
-				discardUntilEOL(r)
-			} else {
-				result = append(result, ru)
-			}
-		case '/':
-			peeked, err := r.Peek(1)
-			if err == nil &&
-				len(peeked) == 1 &&
-				rune(peeked[0]) == '*' {
-				// read the char we peeked
-				_, _, _ = r.ReadRune()
-				discardMultilineComment(r)
-			} else {
-				result = append(result, ru)
-			}
-		default:
-			result = append(result, ru)
-		}
-	}
-	return string(result)
-}
-func discardUntilEOL(r *bufio.Reader) {
-	for {
-		ru, _, err := r.ReadRune()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			continue
-		}
-		if ru == '\n' {
-			break
-		}
-	}
-}
-func discardMultilineComment(r *bufio.Reader) {
-	for {
-		ru, _, err := r.ReadRune()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			continue
-		}
-		if ru == '*' {
-			peeked, err := r.Peek(1)
-			if err == nil && len(peeked) == 1 && rune(peeked[0]) == '/' {
-				// read the rune we just peeked
-				_, _, _ = r.ReadRune()
-				break
-			}
-		}
-	}
-}
-func readString(r *bufio.Reader, single bool) []rune {
-	var result []rune
-	var escaped bool
-	for {
-		ru, _, err := r.ReadRune()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			continue
-		}
-		result = append(result, ru)
-		if (!single && ru == '"' && !escaped) ||
-			(single && ru == '\'' && !escaped) {
-			break
-		}
-		escaped = false
-		if ru == '\\' {
-			escaped = true
-		}
-	}
-	return result
 }
 
 func parseShowTableStatus(ctx *sql.Context, query string) (sql.Node, error) {
