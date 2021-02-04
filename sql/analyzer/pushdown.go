@@ -441,7 +441,7 @@ func pushdownProjectionsToTable(
 	}
 
 	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias:
+	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess:
 		node, err := withTable(newTableNode, table)
 		if err != nil {
 			return nil, err
@@ -458,20 +458,20 @@ func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 	fieldsByTable := getFieldsByTable(ctx, n)
 
 	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
-		switch node := node.(type) {
-		case *plan.TableAlias:
-			table, err := pushdownProjectionsToTable(a, node, fieldsByTable, usedFieldsByTable)
+		var nameable NameableNode
+
+		switch node.(type) {
+		case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess:
+			nameable = node.(NameableNode)
+		}
+
+		if nameable != nil {
+			table, err := pushdownProjectionsToTable(a, nameable, fieldsByTable, usedFieldsByTable)
 			if err != nil {
 				return nil, err
 			}
 			return FixFieldIndexesForExpressions(table, scope)
-		case *plan.ResolvedTable:
-			table, err := pushdownProjectionsToTable(a, node, fieldsByTable, usedFieldsByTable)
-			if err != nil {
-				return nil, err
-			}
-			return FixFieldIndexesForExpressions(table, scope)
-		default:
+		} else {
 			return FixFieldIndexesForExpressions(node, scope)
 		}
 	})
