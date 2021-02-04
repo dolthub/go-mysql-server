@@ -10,6 +10,10 @@ few interfaces.
 with the MySQL wire protocol. That means it is compatible with MySQL
 ODBC, JDBC, or the default MySQL client shell interface.
 
+[Dolt](https://www.doltdb.com), a SQL database with Git-style 
+versioning, is the main database implementation of this package. 
+Check out that project for reference implmenentations.
+
 ## Scope of this project
 
 These are the goals of **go-mysql-server**:
