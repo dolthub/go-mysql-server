@@ -203,6 +203,8 @@ from your source. Here you can see an example using the in-memory
 database implementation:
 
 ```go
+package main
+
 import (
     "time"
 
