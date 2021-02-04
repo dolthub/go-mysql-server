@@ -39,18 +39,17 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		return nil, err
 	}
 
-	exprAliases := getExpressionAliases(n)
 	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
 		return nil, err
 	}
 
-	n, err = convertFiltersToIndexedAccess(a, n, scope, indexes, tableAliases, exprAliases)
+	n, err = convertFiltersToIndexedAccess(a, n, scope, indexes, tableAliases)
 	if err != nil {
 		return nil, err
 	}
 
-	return transformPushdownFilters(a, n, scope, exprAliases, tableAliases)
+	return transformPushdownFilters(a, n, scope, tableAliases)
 }
 
 // pushdownProjections attempts to push projections down to individual tables that implement sql.ProjectTable
@@ -139,7 +138,7 @@ func canDoPushdown(n sql.Node) bool {
 	return true
 }
 
-func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, exprAliases ExprAliases, tableAliases TableAliases) (sql.Node, error) {
+func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, tableAliases TableAliases) (sql.Node, error) {
 
 	// Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a predicate on
 	// the secondary table below the join, we end up not evaluating it in all cases (since the secondary table result is
@@ -173,7 +172,7 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, exprAliases
 				}
 				return FixFieldIndexesForExpressions(n, scope)
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess:
-				table, err := pushdownFiltersToTable(a, node.(NameableNode), scope, filters, exprAliases, tableAliases)
+				table, err := pushdownFiltersToTable(a, node.(NameableNode), scope, filters, tableAliases)
 				if err != nil {
 					return nil, err
 				}
@@ -199,7 +198,7 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, exprAliases
 				return n, nil
 			}
 
-			filters = newFilterSet(filtersByTable, exprAliases, tableAliases)
+			filters = newFilterSet(filtersByTable, tableAliases)
 
 			return transformFilterNode(n)
 		default:
@@ -215,7 +214,6 @@ func convertFiltersToIndexedAccess(
 	scope *Scope,
 	indexes indexLookupsByTable,
 	aliases TableAliases,
-	exprAliases ExprAliases,
 ) (sql.Node, error) {
 	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
 		switch child.(type) {
@@ -261,7 +259,7 @@ func convertFiltersToIndexedAccess(
 				if _, ok := n.(*plan.TableAlias); ok {
 					return e, nil
 				}
-				return normalizeExpression(exprAliases, aliases, e), nil
+				return normalizeExpression(aliases, e), nil
 			})
 			if err != nil {
 				return nil, err
@@ -300,7 +298,6 @@ func pushdownFiltersToTable(
 	tableNode NameableNode,
 	scope *Scope,
 	filters *filterSet,
-	exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) (sql.Node, error) {
 
@@ -314,7 +311,7 @@ func pushdownFiltersToTable(
 	// First push remaining filters onto the table itself if it's a sql.FilteredTable
 	if ft, ok := table.(sql.FilteredTable); ok && len(filters.availableFiltersForTable(tableNode.Name())) > 0 {
 		tableFilters := filters.availableFiltersForTable(tableNode.Name())
-		handled := ft.HandledFilters(normalizeExpressions(exprAliases, tableAliases, tableFilters...))
+		handled := ft.HandledFilters(normalizeExpressions(tableAliases, tableFilters...))
 		filters.markFiltersHandled(handled...)
 		schema := table.Schema()
 

@@ -88,8 +88,12 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `show variables`,
-		Expected: []sql.Row{},
+		Query: "select mytable.i as i2, othertable.i2 as i from mytable join othertable on i = i2 order by 1",
+		Expected: []sql.Row{
+			{1,1},
+			{2,2},
+			{3,3},
+		},
 	}
 	fmt.Sprintf("%v", test)
 

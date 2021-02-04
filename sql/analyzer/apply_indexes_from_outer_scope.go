@@ -31,14 +31,13 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return n, nil
 	}
 
-	exprAliases := getExpressionAliases(n)
 	// this isn't good enough: we need to consider aliases defined in the outer scope as well for this analysis
 	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
 		return nil, err
 	}
 
-	indexLookups, err := getOuterScopeIndexes(ctx, a, n, scope, exprAliases, tableAliases)
+	indexLookups, err := getOuterScopeIndexes(ctx, a, n, scope, tableAliases)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +113,6 @@ func getOuterScopeIndexes(
 	a *Analyzer,
 	node sql.Node,
 	scope *Scope,
-	exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) ([]subqueryIndexLookup, error) {
 	indexSpan, _ := ctx.Span("getOuterScopeIndexes")
@@ -135,7 +133,7 @@ func getOuterScopeIndexes(
 			}
 			defer indexAnalyzer.releaseUsedIndexes()
 
-			indexes, exprsByTable, err = getSubqueryIndexes(ctx, a, node.Expression, scope, indexAnalyzer, exprAliases, tableAliases)
+			indexes, exprsByTable, err = getSubqueryIndexes(ctx, a, node.Expression, scope, indexAnalyzer, tableAliases)
 			if err != nil {
 				return false
 			}
@@ -153,7 +151,7 @@ func getOuterScopeIndexes(
 	for table, idx := range indexes {
 		if exprsByTable[table] != nil {
 			// creating a key expression can fail in some cases, just skip this table
-			keyExpr := createIndexKeyExpr(idx, exprsByTable[table], exprAliases, tableAliases)
+			keyExpr := createIndexKeyExpr(idx, exprsByTable[table], tableAliases)
 			if keyExpr == nil {
 				continue
 			}
@@ -170,19 +168,14 @@ func getOuterScopeIndexes(
 }
 
 // createIndexKeyExpr returns a slice of expressions to be used when creating an index lookup key for the table given.
-func createIndexKeyExpr(
-	idx sql.Index,
-	joinExprs []*joinColExpr,
-	exprAliases ExprAliases,
-	tableAliases TableAliases,
-) []sql.Expression {
+func createIndexKeyExpr(idx sql.Index, joinExprs []*joinColExpr, tableAliases TableAliases, ) []sql.Expression {
 
 	keyExprs := make([]sql.Expression, len(idx.Expressions()))
 
 IndexExpressions:
 	for i, idxExpr := range idx.Expressions() {
 		for j := range joinExprs {
-			if idxExpr == normalizeExpression(exprAliases, tableAliases, joinExprs[j].colExpr).String() {
+			if idxExpr == normalizeExpression(tableAliases, joinExprs[j].colExpr).String() {
 				keyExprs[i] = joinExprs[j].comparand
 				continue IndexExpressions
 			}
@@ -201,7 +194,6 @@ func getSubqueryIndexes(
 	e sql.Expression,
 	scope *Scope,
 	ia *indexAnalyzer,
-	exprAliases ExprAliases,
 	tableAliases TableAliases,
 ) (map[string]sql.Index, joinExpressionsByTable, error) {
 
@@ -242,7 +234,7 @@ func getSubqueryIndexes(
 		indexCols := exprsByTable[table]
 		if indexCols != nil {
 			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(),
-				normalizeExpressions(exprAliases, tableAliases, extractComparands(indexCols)...)...)
+				normalizeExpressions(tableAliases, extractComparands(indexCols)...)...)
 			if idx != nil {
 				result[indexCols[0].comparandCol.Table()] = idx
 			}

@@ -1125,7 +1125,7 @@ func TestGetIndexes(t *testing.T) {
 			require.NoError(err)
 			testExpr := convertIsNullForIndexes(tt.expr)
 
-			result, err := getIndexes(ctx, a, ia, testExpr, nil, nil)
+			result, err := getIndexes(ctx, a, ia, testExpr,  nil)
 			if tt.ok {
 				require.NoError(err)
 				require.Equal(tt.expected, result)
@@ -1228,7 +1228,7 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 	ia, err := getIndexesForNode(ctx, a, nil)
 	require.NoError(err)
 
-	result, err := getMultiColumnIndexes(ctx, exprs, a, ia, nil, nil)
+	result, err := getMultiColumnIndexes(ctx, exprs, a, ia, nil)
 	require.NoError(err)
 
 	expected := indexLookupsByTable{
