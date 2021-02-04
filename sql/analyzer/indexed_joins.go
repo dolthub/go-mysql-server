@@ -124,8 +124,9 @@ func replaceTableAccessWithIndexedAccess(
 	case *plan.TableAlias, *plan.ResolvedTable:
 		// If the available schema makes an index on this table possible, use it, replacing the table with indexed access
 		indexes := joinIndexes[node.(sql.Nameable).Name()]
+		_, isSubquery := node.(*plan.SubqueryAlias)
 		indexToApply := indexes.getUsableIndex(schema)
-		if indexToApply == nil {
+		if isSubquery || indexToApply == nil {
 			return node, false, nil
 		}
 
@@ -238,7 +239,7 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 	eligible := true
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node.(type) {
-		case plan.JoinNode, *plan.ResolvedTable, *plan.TableAlias, nil:
+		case plan.JoinNode, *plan.ResolvedTable, *plan.TableAlias, *plan.SubqueryAlias, nil:
 		default:
 			a.Log("Skipping join replanning because of incompatible node: %T", node)
 			eligible = false

@@ -137,7 +137,8 @@ func estimateTableOrderCost(
 		}
 
 		tableNode := tableNodes[table]
-		if i == 0 || indexes.getUsableIndex(availableSchemaForKeys) == nil {
+		_, isSubquery := tableNode.(*plan.SubqueryAlias)
+		if i == 0 || isSubquery || indexes.getUsableIndex(availableSchemaForKeys) == nil {
 			rt := getResolvedTable(tableNode)
 			// TODO: also consider indexes which could be pushed down to this table, if it's the first one
 			if st, ok := rt.Table.(sql.StatisticsTable); ok {
