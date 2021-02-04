@@ -96,16 +96,14 @@ type filterSet struct {
 	filtersByTable      filtersByTable
 	handledFilters      []sql.Expression
 	handledIndexFilters []string
-	aliases             ExprAliases
 	tableAliases        TableAliases
 }
 
 // newFilterSet returns a new filter set that will track available filters with the filters and aliases given. Aliases
 // are necessary to normalize expressions from indexes when in the presence of aliases.
-func newFilterSet(filtersByTable filtersByTable, aliases ExprAliases, tableAliases TableAliases) *filterSet {
+func newFilterSet(filtersByTable filtersByTable, tableAliases TableAliases) *filterSet {
 	return &filterSet{
 		filtersByTable: filtersByTable,
-		aliases:        aliases,
 		tableAliases:   tableAliases,
 	}
 }
@@ -189,7 +187,7 @@ func (fs *filterSet) subtractUsedIndexes(all []sql.Expression) []sql.Expression 
 	// Careful: index expressions are always normalized (contain actual table names), whereas filter expressions can
 	// contain aliases for both expressions and table names. We want to normalize all expressions for comparison, but
 	// return the original expressions.
-	normalized := normalizeExpressions(fs.aliases, fs.tableAliases, all...)
+	normalized := normalizeExpressions(fs.tableAliases, all...)
 
 	for i, e := range normalized {
 		var found bool
