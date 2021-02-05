@@ -38,23 +38,7 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return n, nil
 	}
 
-	tableAliases, err := getTableAliases(n, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	joinIndexesByTable, err := findJoinIndexesByTable(ctx, n, tableAliases, a)
-	if err != nil {
-		return nil, err
-	}
-
-	// If we didn't identify a join condition for every table, we can't construct a join plan safely (we would be missing
-	// some tables / conditions)
-	if len(joinIndexesByTable) != countTablesInSelect(n) {
-		return n, nil
-	}
-
-	return replaceJoinPlans(ctx, a, n, scope, joinIndexesByTable, tableAliases)
+	return replaceJoinPlans(ctx, a, n, scope)
 }
 
 // countTablesInSelect returns the number of tables in the select part of a query plan. This is different from
@@ -74,14 +58,7 @@ func countTablesInSelect(n sql.Node) int {
 	return len(getTables(selectNode))
 }
 
-func replaceJoinPlans(
-	ctx *sql.Context,
-	a *Analyzer,
-	n sql.Node,
-	scope *Scope,
-	joinIndexes joinIndexesByTable,
-	tableAliases TableAliases,
-) (sql.Node, error) {
+func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 
 	selector := func(parent sql.Node, child sql.Node, childNum int) bool {
 		// We only want the top-most join node, so don't examine anything beneath join nodes
@@ -93,34 +70,51 @@ func replaceJoinPlans(
 		}
 	}
 
-	joinPlan, err := plan.TransformUpWithSelector(n, selector, func(node sql.Node) (sql.Node, error) {
-		switch node := node.(type) {
+	return plan.TransformUpWithSelector(n, selector, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
 		case *plan.IndexedJoin:
-			return node, nil
+			return n, nil
 		case plan.JoinNode:
-			return replanJoin(ctx, node, a, joinIndexes)
+			tableAliases, err := getTableAliases(n, scope)
+			if err != nil {
+				return nil, err
+			}
+
+			joinIndexes, err := findJoinIndexesByTable(ctx, n, tableAliases, a)
+			if err != nil {
+				return nil, err
+			}
+
+			// If we didn't identify a join condition for every table, we can't construct a join plan safely (we would be missing
+			// some tables / conditions)
+			if len(joinIndexes) != countTablesInSelect(n) {
+				return n, nil
+			}
+
+			newJoin, err := replanJoin(ctx, n, a, joinIndexes)
+			if err != nil {
+				return nil, err
+			}
+
+			withIndexedTableAccess, replacedTableWithIndexedAccess, err := replaceTableAccessWithIndexedAccess(
+				newJoin, nil, scope, joinIndexes, tableAliases)
+			if err != nil {
+				return nil, err
+			}
+
+			// If we didn't replace any tables with indexed accesses, throw our work away and fall back to the default join
+			// implementation (which can be faster for tables that fit into memory). Over time, we should unify these two
+			// implementations.
+			if !replacedTableWithIndexedAccess {
+				return n, nil
+			}
+
+			return withIndexedTableAccess, nil
+
 		default:
-			return node, nil
+			return n, nil
 		}
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	withIndexedTableAccess, replacedTableWithIndexedAccess, err := replaceTableAccessWithIndexedAccess(
-		joinPlan, nil, scope, joinIndexes, tableAliases)
-	if err != nil {
-		return nil, err
-	}
-
-	// If we didn't replace any tables with indexed accesses, throw our work away and fall back to the default join
-	// implementation (which can be faster for tables that fit into memory). Over time, we should unify these two
-	// implementations.
-	if !replacedTableWithIndexedAccess {
-		return n, nil
-	}
-
-	return withIndexedTableAccess, nil
 }
 
 // replaceTableAccessWithIndexedAccess replaces table access with indexed access where possible. This can't be a
@@ -192,48 +186,6 @@ func replaceTableAccessWithIndexedAccess(
 		}
 
 		return plan.NewIndexedJoin(left, right, node.JoinType(), cond), replacedLeft || replacedRight, nil
-	case *plan.DescribeQuery:
-		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
-	case *plan.Limit:
-		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
-	case *plan.Sort:
-		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
-	case *plan.Filter:
-		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
-	case *plan.Project:
-		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
-	case *plan.GroupBy:
-		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
-	case *plan.Distinct:
-		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
-	case *plan.InsertInto:
-		right, replaced, err := replaceTableAccessWithIndexedAccess(node.Right(), schema, scope, joinIndexes, tableAliases)
-		if err != nil {
-			return nil, false, err
-		}
-
-		newInsert, err := node.WithChildren(node.Left(), right)
-		if err != nil {
-			return nil, false, err
-		}
-
-		return newInsert, replaced, nil
-	case *plan.Union:
-		// TODO: this needs more tests, might not be correct in all cases
-		newRight, replaced, err := replaceTableAccessWithIndexedAccess(node.Right(), append(schema, node.Left().Schema()...), scope, joinIndexes, tableAliases)
-		if err != nil {
-			return nil, false, err
-		}
-		newNode, err := node.WithChildren(node.Left(), newRight)
-		return newNode, replaced, err
-	case *plan.CrossJoin:
-		// TODO: be more principled about integrating cross joins into the overall join plan, no reason to keep them separate
-		newRight, replaced, err := replaceTableAccessWithIndexedAccess(node.Right(), append(schema, node.Left().Schema()...), scope, joinIndexes, tableAliases)
-		if err != nil {
-			return nil, false, err
-		}
-		newNode, err := node.WithChildren(node.Left(), newRight)
-		return newNode, replaced, err
 	default:
 		// For an unhandled node type, just skip this transformation
 		return node, false, nil
