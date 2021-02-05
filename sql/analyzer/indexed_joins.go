@@ -52,17 +52,20 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 		}
 	}
 
-	return plan.TransformUpWithSelector(n, selector, func(n sql.Node) (sql.Node, error) {
+	var tableAliases TableAliases
+	var joinIndexes joinIndexesByTable
+	newJoin, err := plan.TransformUpWithSelector(n, selector, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.IndexedJoin:
 			return n, nil
 		case plan.JoinNode:
-			tableAliases, err := getTableAliases(n, scope)
+			var err error
+			tableAliases, err = getTableAliases(n, scope)
 			if err != nil {
 				return nil, err
 			}
 
-			joinIndexes, err := findJoinIndexesByTable(ctx, n, tableAliases, a)
+			joinIndexes, err = findJoinIndexesByTable(ctx, n, tableAliases, a)
 			if err != nil {
 				return nil, err
 			}
@@ -73,29 +76,26 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 				return n, nil
 			}
 
-			newJoin, err := replanJoin(ctx, n, a, joinIndexes)
-			if err != nil {
-				return nil, err
-			}
-
-			withIndexedTableAccess, replacedTableWithIndexedAccess, err := replaceTableAccessWithIndexedAccess(
-				newJoin, nil, scope, joinIndexes, tableAliases)
-			if err != nil {
-				return nil, err
-			}
-
-			// If we didn't replace any tables with indexed accesses, throw our work away and fall back to the default join
-			// implementation (which can be faster for tables that fit into memory). Over time, we should unify these two
-			// implementations.
-			if !replacedTableWithIndexedAccess {
-				return n, nil
-			}
-
-			return withIndexedTableAccess, nil
+			return replanJoin(ctx, n, a, joinIndexes)
 		default:
 			return n, nil
 		}
 	})
+
+	withIndexedTableAccess, replacedTableWithIndexedAccess, err := replaceTableAccessWithIndexedAccess(
+		newJoin, nil, scope, joinIndexes, tableAliases)
+	if err != nil {
+		return nil, err
+	}
+
+	// If we didn't replace any tables with indexed accesses, throw our work away and fall back to the default join
+	// implementation (which can be faster for tables that fit into memory). Over time, we should unify these two
+	// implementations.
+	if !replacedTableWithIndexedAccess {
+		return n, nil
+	}
+
+	return withIndexedTableAccess, nil
 }
 
 // replaceTableAccessWithIndexedAccess replaces table access with indexed access where possible. This can't be a
@@ -167,6 +167,48 @@ func replaceTableAccessWithIndexedAccess(
 		}
 
 		return plan.NewIndexedJoin(left, right, node.JoinType(), cond), replacedLeft || replacedRight, nil
+	case *plan.InsertInto:
+		newRight, replaced, err := replaceTableAccessWithIndexedAccess(node.Right(), schema, scope, joinIndexes, tableAliases)
+		if err != nil {
+			return nil, false, err
+		}
+
+		newInsert, err := node.WithChildren(node.Left(), newRight)
+		if err != nil {
+			return nil, false, err
+		}
+
+		return newInsert, replaced, nil
+	case *plan.DescribeQuery:
+		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
+	case *plan.Limit:
+		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
+	case *plan.Sort:
+		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
+	case *plan.Filter:
+		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
+	case *plan.Project:
+		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
+	case *plan.GroupBy:
+		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
+	case *plan.Distinct:
+		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
+	case *plan.Union:
+		// TODO: this needs more tests, might not be correct in all cases
+		newRight, replaced, err := replaceTableAccessWithIndexedAccess(node.Right(), append(schema, node.Left().Schema()...), scope, joinIndexes, tableAliases)
+		if err != nil {
+			return nil, false, err
+		}
+		newNode, err := node.WithChildren(node.Left(), newRight)
+		return newNode, replaced, err
+	case *plan.CrossJoin:
+		// TODO: be more principled about integrating cross joins into the overall join plan, no reason to keep them separate
+		newRight, replaced, err := replaceTableAccessWithIndexedAccess(node.Right(), append(schema, node.Left().Schema()...), scope, joinIndexes, tableAliases)
+		if err != nil {
+			return nil, false, err
+		}
+		newNode, err := node.WithChildren(node.Left(), newRight)
+		return newNode, replaced, err
 	default:
 		// For an unhandled node type, just skip this transformation
 		return node, false, nil

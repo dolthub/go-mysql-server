@@ -188,6 +188,17 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: "SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2",
+		ExpectedPlan: "CrossJoin\n" +
+			" ├─ Table(tabletest)\n" +
+			" └─ IndexedJoin(mt.i = ot.i2)\n" +
+			"     ├─ TableAlias(mt)\n" +
+			"     │   └─ Table(mytable)\n" +
+			"     └─ TableAlias(ot)\n" +
+			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
 		// Test of case-insensitivity when matching indexes to column expressions
 		Query: "SELECT t1.timestamp FROM reservedWordsTable t1 JOIN reservedWordsTable t2 ON t1.TIMESTAMP = t2.tImEstamp",
 		ExpectedPlan: "Project(t1.Timestamp)\n" +
