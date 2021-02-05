@@ -81,6 +81,9 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			return n, nil
 		}
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	withIndexedTableAccess, replacedTableWithIndexedAccess, err := replaceTableAccessWithIndexedAccess(
 		newJoin, nil, scope, joinIndexes, tableAliases)
