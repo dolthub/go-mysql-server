@@ -494,6 +494,7 @@ func findJoinIndexesByTable(
 
 		return true
 	})
+	a.Log("found joinIndexesByTable %v", joinIndexesByTable)
 
 	return joinIndexesByTable, err
 }
@@ -568,7 +569,7 @@ func getJoinIndexes(
 ) joinIndexesByTable {
 
 	switch joinCond.cond.(type) {
-	case *expression.Equals:
+	case *expression.Equals, *expression.NullSafeEquals:
 		result := make(joinIndexesByTable)
 		left, right := getEqualityIndexes(ctx, a, ia, joinCond, tableAliases)
 
@@ -583,7 +584,9 @@ func getJoinIndexes(
 	case *expression.And:
 		exprs := splitConjunction(joinCond.cond)
 		for _, expr := range exprs {
-			if _, ok := expr.(*expression.Equals); !ok {
+			switch expr.(type) {
+			case *expression.Equals, *expression.NullSafeEquals:
+			default:
 				return nil
 			}
 		}
@@ -604,10 +607,13 @@ func getEqualityIndexes(
 	tableAliases TableAliases,
 ) (leftJoinIndex *joinIndex, rightJoinIndex *joinIndex) {
 
-	cond, ok := joinCond.cond.(*expression.Equals)
-	if !ok {
+	switch joinCond.cond.(type) {
+	case *expression.Equals, *expression.NullSafeEquals:
+	default:
 		return nil, nil
 	}
+
+	cond := joinCond.cond.(expression.Comparer)
 
 	// Only handle column expressions for these join indexes. Evaluable expression like `col=literal` will get pushed
 	// down where possible.

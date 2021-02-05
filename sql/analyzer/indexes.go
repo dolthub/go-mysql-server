@@ -207,6 +207,7 @@ func getIndexes(
 			}
 		}
 	case *expression.Equals,
+		*expression.NullSafeEquals,
 		*expression.LessThan,
 		*expression.GreaterThan,
 		*expression.LessThanOrEqual,
@@ -416,7 +417,7 @@ func comparisonIndexLookup(
 	values ...interface{},
 ) (sql.IndexLookup, error) {
 	switch c.(type) {
-	case *expression.Equals:
+	case *expression.Equals, *expression.NullSafeEquals:
 		return idx.Get(values...)
 	case *expression.GreaterThan:
 		index, ok := idx.(sql.DescendIndex)
@@ -462,11 +463,12 @@ func getNegatedIndexes(
 	switch e := not.Child.(type) {
 	case *expression.Not:
 		return getIndexes(ctx, a, ia, e.Child, tableAliases)
-	case *expression.Equals:
-		left, right := e.Left(), e.Right()
+	case *expression.Equals, *expression.NullSafeEquals:
+		cmp := e.(expression.Comparer)
+		left, right := cmp.Left(), cmp.Right()
 		// if the form is SOMETHING OP {INDEXABLE EXPR}, swap it, so it's {INDEXABLE EXPR} OP SOMETHING
 		if !isEvaluable(right) {
-			left, right, _ = swapTermsOfExpression(e)
+			left, right, _ = swapTermsOfExpression(cmp)
 		}
 
 		if isEvaluable(left) || !isEvaluable(right) {
@@ -720,6 +722,7 @@ func getMultiColumnIndexForExpressions(
 
 	switch e := first.(type) {
 	case *expression.Equals,
+		*expression.NullSafeEquals,
 		*expression.LessThan,
 		*expression.GreaterThan,
 		*expression.LessThanOrEqual,
@@ -892,6 +895,7 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 
 		return table, colExpr
 	case *expression.Equals,
+		*expression.NullSafeEquals,
 		*expression.GreaterThan,
 		*expression.LessThan,
 		*expression.GreaterThanOrEqual,
@@ -957,8 +961,9 @@ func joinExprsByTable(exprs []sql.Expression) joinExpressionsByTable {
 // the expression. Returns nils if either side of the expression doesn't reference a table column.
 func extractJoinColumnExpr(e sql.Expression) (leftCol *joinColExpr, rightCol *joinColExpr) {
 	switch e := e.(type) {
-	case *expression.Equals:
-		left, right := e.Left(), e.Right()
+	case *expression.Equals, *expression.NullSafeEquals:
+		cmp := e.(expression.Comparer)
+		left, right := cmp.Left(), cmp.Right()
 		if isEvaluable(left) || isEvaluable(right) {
 			return nil, nil
 		}
@@ -973,14 +978,14 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *joinColExpr, rightCol *jo
 			colExpr:      left,
 			comparand:    right,
 			comparandCol: rightField,
-			comparison:   e,
+			comparison:   cmp,
 		}
 		rightCol = &joinColExpr{
 			col:          rightField,
 			colExpr:      right,
 			comparand:    left,
 			comparandCol: leftField,
-			comparison:   e,
+			comparison:   cmp,
 		}
 		return leftCol, rightCol
 	default:

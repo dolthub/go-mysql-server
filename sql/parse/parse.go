@@ -1888,6 +1888,8 @@ func comparisonExprToExpression(ctx *sql.Context, c *sqlparser.ComparisonExpr) (
 		return expression.NewGreaterThan(left, right), nil
 	case sqlparser.GreaterEqualStr:
 		return expression.NewGreaterThanOrEqual(left, right), nil
+	case sqlparser.NullSafeEqualStr:
+		return expression.NewNullSafeEquals(left, right), nil
 	case sqlparser.NotEqualStr:
 		return expression.NewNot(
 			expression.NewEquals(left, right),
