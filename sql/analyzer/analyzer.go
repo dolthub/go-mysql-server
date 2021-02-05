@@ -336,7 +336,7 @@ func (a *Analyzer) PopDebugContext() {
 // transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("analyze", opentracing.Tags{
-		"plan": n.String(),
+		//"plan": , n.String(),
 	})
 
 	var err error
