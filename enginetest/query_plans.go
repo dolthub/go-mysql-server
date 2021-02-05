@@ -36,6 +36,19 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query:        "INSERT INTO mytable(i,s) SELECT t1.i, 'hello' FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		ExpectedPlan: "Insert(i, s)\n" +
+			" ├─ Table(mytable)\n" +
+			" └─ Project(i, s)\n" +
+			"     └─ Project(t1.i, \"hello\")\n" +
+			"         └─ Filter(t1.i = 2 AND t2.i = 1)\n" +
+			"             └─ IndexedJoin(t1.i = t2.i + 1)\n" +
+			"                 ├─ TableAlias(t2)\n" +
+			"                 │   └─ Table(mytable)\n" +
+			"                 └─ TableAlias(t1)\n" +
+			"                     └─ IndexedTableAccess(mytable on [mytable.i])\n",
+	},
+	{
 		Query:        "SELECT /*+ JOIN_ORDER(t1, t2) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
 		ExpectedPlan: "Project(t1.i)\n" +
 			" └─ InnerJoin(t1.i = t2.i + 1)\n" +
