@@ -87,10 +87,10 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			rt := getResolvedTable(node.Left())
 			analysisErr = passAliases.add(rt, rt)
 			return false
-		case *plan.InsertInto:
-			rt := getResolvedTable(node.Left())
-			analysisErr = passAliases.add(rt, rt)
-			return false
+		// case *plan.InsertInto:
+		// 	rt := getResolvedTable(node.Right())
+		// 	analysisErr = passAliases.add(rt, rt)
+		// 	return false
 		case *plan.ResolvedTable, *plan.SubqueryAlias:
 			analysisErr = passAliases.add(node.(sql.Nameable), node.(sql.Nameable))
 			return false

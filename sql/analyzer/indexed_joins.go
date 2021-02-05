@@ -50,11 +50,28 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 
 	// If we didn't identify a join condition for every table, we can't construct a join plan safely (we would be missing
 	// some tables / conditions)
-	if len(joinIndexesByTable) != len(getTables(n)) {
+	if len(joinIndexesByTable) != countTablesInSelect(n) {
 		return n, nil
 	}
 
 	return replaceJoinPlans(ctx, a, n, scope, joinIndexesByTable, tableAliases)
+}
+
+// countTablesInSelect returns the number of tables in the select part of a query plan. This is different from
+// getTables(n) because some nodes (like inserts) have tables that aren't part of a select
+func countTablesInSelect(n sql.Node) int {
+	selectNode := n
+	plan.Inspect(n, func(n sql.Node) bool {
+		switch n := n.(type) {
+		case *plan.InsertInto:
+			selectNode = n.Right()
+			return false
+		default:
+			return true
+		}
+	})
+
+	return len(getTables(selectNode))
 }
 
 func replaceJoinPlans(
@@ -189,6 +206,18 @@ func replaceTableAccessWithIndexedAccess(
 		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
 	case *plan.Distinct:
 		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
+	case *plan.InsertInto:
+		right, replaced, err := replaceTableAccessWithIndexedAccess(node.Right(), schema, scope, joinIndexes, tableAliases)
+		if err != nil {
+			return nil, false, err
+		}
+
+		newInsert, err := node.WithChildren(node.Left(), right)
+		if err != nil {
+			return nil, false, err
+		}
+
+		return newInsert, replaced, nil
 	case *plan.Union:
 		// TODO: this needs more tests, might not be correct in all cases
 		newRight, replaced, err := replaceTableAccessWithIndexedAccess(node.Right(), append(schema, node.Left().Schema()...), scope, joinIndexes, tableAliases)
