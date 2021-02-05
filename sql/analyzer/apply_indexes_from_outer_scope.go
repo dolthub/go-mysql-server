@@ -168,7 +168,7 @@ func getOuterScopeIndexes(
 }
 
 // createIndexKeyExpr returns a slice of expressions to be used when creating an index lookup key for the table given.
-func createIndexKeyExpr(idx sql.Index, joinExprs []*joinColExpr, tableAliases TableAliases, ) []sql.Expression {
+func createIndexKeyExpr(idx sql.Index, joinExprs []*joinColExpr, tableAliases TableAliases) []sql.Expression {
 
 	keyExprs := make([]sql.Expression, len(idx.Expressions()))
 
