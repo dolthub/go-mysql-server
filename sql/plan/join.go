@@ -49,7 +49,7 @@ type JoinNode interface {
 // joinStruct contains all the common data fields and implements the commom sql.Node getters for all join types.
 type joinStruct struct {
 	BinaryNode
-	Cond sql.Expression
+	Cond       sql.Expression
 	CommentStr string
 }
 

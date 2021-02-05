@@ -38,34 +38,10 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return n, nil
 	}
 
-	tableAliases, err := getTableAliases(n, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	joinIndexesByTable, err := findJoinIndexesByTable(ctx, n, tableAliases, a)
-	if err != nil {
-		return nil, err
-	}
-
-	// If we didn't identify a join condition for every table, we can't construct a join plan safely (we would be missing
-	// some tables / conditions)
-	if len(joinIndexesByTable) != len(getTables(n)) {
-		return n, nil
-	}
-
-	return replaceJoinPlans(ctx, a, n, scope, joinIndexesByTable, tableAliases)
+	return replaceJoinPlans(ctx, a, n, scope)
 }
 
-func replaceJoinPlans(
-	ctx *sql.Context,
-	a *Analyzer,
-	n sql.Node,
-	scope *Scope,
-	joinIndexes joinIndexesByTable,
-	tableAliases TableAliases,
-) (sql.Node, error) {
-
+func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	selector := func(parent sql.Node, child sql.Node, childNum int) bool {
 		// We only want the top-most join node, so don't examine anything beneath join nodes
 		switch parent.(type) {
@@ -76,14 +52,33 @@ func replaceJoinPlans(
 		}
 	}
 
-	joinPlan, err := plan.TransformUpWithSelector(n, selector, func(node sql.Node) (sql.Node, error) {
-		switch node := node.(type) {
+	var tableAliases TableAliases
+	var joinIndexes joinIndexesByTable
+	newJoin, err := plan.TransformUpWithSelector(n, selector, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
 		case *plan.IndexedJoin:
-			return node, nil
+			return n, nil
 		case plan.JoinNode:
-			return replanJoin(ctx, node, a, joinIndexes)
+			var err error
+			tableAliases, err = getTableAliases(n, scope)
+			if err != nil {
+				return nil, err
+			}
+
+			joinIndexes, err = findJoinIndexesByTable(ctx, n, tableAliases, a)
+			if err != nil {
+				return nil, err
+			}
+
+			// If we didn't identify a join condition for every table, we can't construct a join plan safely (we would be missing
+			// some tables / conditions)
+			if len(joinIndexes) != len(getTables(n)) {
+				return n, nil
+			}
+
+			return replanJoin(ctx, n, a, joinIndexes)
 		default:
-			return node, nil
+			return n, nil
 		}
 	})
 	if err != nil {
@@ -91,7 +86,7 @@ func replaceJoinPlans(
 	}
 
 	withIndexedTableAccess, replacedTableWithIndexedAccess, err := replaceTableAccessWithIndexedAccess(
-		joinPlan, nil, scope, joinIndexes, tableAliases)
+		newJoin, nil, scope, joinIndexes, tableAliases)
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +170,18 @@ func replaceTableAccessWithIndexedAccess(
 		}
 
 		return plan.NewIndexedJoin(left, right, node.JoinType(), cond), replacedLeft || replacedRight, nil
+	case *plan.InsertInto:
+		newRight, replaced, err := replaceTableAccessWithIndexedAccess(node.Right(), schema, scope, joinIndexes, tableAliases)
+		if err != nil {
+			return nil, false, err
+		}
+
+		newInsert, err := node.WithChildren(node.Left(), newRight)
+		if err != nil {
+			return nil, false, err
+		}
+
+		return newInsert, replaced, nil
 	case *plan.DescribeQuery:
 		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
 	case *plan.Limit:
@@ -362,7 +369,7 @@ func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode)
 
 // createIndexLookupKeyExpression returns a slice of expressions to be used when evaluating the context row given to the
 // RowIter method of an IndexedTableAccess node. Column expressions must match the declared column order of the index.
-func createIndexLookupKeyExpression(ji *joinIndex, tableAliases TableAliases, ) []sql.Expression {
+func createIndexLookupKeyExpression(ji *joinIndex, tableAliases TableAliases) []sql.Expression {
 
 	keyExprs := make([]sql.Expression, len(ji.index.Expressions()))
 IndexExpressions:
