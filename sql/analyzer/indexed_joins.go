@@ -41,25 +41,7 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 	return replaceJoinPlans(ctx, a, n, scope)
 }
 
-// countTablesInSelect returns the number of tables in the select part of a query plan. This is different from
-// getTables(n) because some nodes (like inserts) have tables that aren't part of a select
-func countTablesInSelect(n sql.Node) int {
-	selectNode := n
-	plan.Inspect(n, func(n sql.Node) bool {
-		switch n := n.(type) {
-		case *plan.InsertInto:
-			selectNode = n.Right()
-			return false
-		default:
-			return true
-		}
-	})
-
-	return len(getTables(selectNode))
-}
-
 func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-
 	selector := func(parent sql.Node, child sql.Node, childNum int) bool {
 		// We only want the top-most join node, so don't examine anything beneath join nodes
 		switch parent.(type) {
@@ -87,7 +69,7 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 
 			// If we didn't identify a join condition for every table, we can't construct a join plan safely (we would be missing
 			// some tables / conditions)
-			if len(joinIndexes) != countTablesInSelect(n) {
+			if len(joinIndexes) != len(getTables(n)) {
 				return n, nil
 			}
 
@@ -110,7 +92,6 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			}
 
 			return withIndexedTableAccess, nil
-
 		default:
 			return n, nil
 		}
