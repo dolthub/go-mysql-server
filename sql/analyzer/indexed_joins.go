@@ -494,7 +494,6 @@ func findJoinIndexesByTable(
 
 		return true
 	})
-	a.Log("found joinIndexesByTable %v", joinIndexesByTable)
 
 	return joinIndexesByTable, err
 }
