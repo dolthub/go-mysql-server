@@ -1125,7 +1125,7 @@ func TestGetIndexes(t *testing.T) {
 			require.NoError(err)
 			testExpr := convertIsNullForIndexes(tt.expr)
 
-			result, err := getIndexes(ctx, a, ia, testExpr,  nil)
+			result, err := getIndexes(ctx, a, ia, testExpr, nil)
 			if tt.ok {
 				require.NoError(err)
 				require.Equal(tt.expected, result)

@@ -88,11 +88,17 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "select mytable.i as i2, othertable.i2 as i from mytable join othertable on i = i2 order by 1",
+		Query: `SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2`,
 		Expected: []sql.Row{
-			{1,1},
-			{2,2},
-			{3,3},
+			{int64(1), "first row", int64(1), "first row", "third", int64(1)},
+			{int64(1), "first row", int64(2), "second row", "second", int64(2)},
+			{int64(1), "first row", int64(3), "third row", "first", int64(3)},
+			{int64(2), "second row", int64(1), "first row", "third", int64(1)},
+			{int64(2), "second row", int64(2), "second row", "second", int64(2)},
+			{int64(2), "second row", int64(3), "third row", "first", int64(3)},
+			{int64(3), "third row", int64(1), "first row", "third", int64(1)},
+			{int64(3), "third row", int64(2), "second row", "second", int64(2)},
+			{int64(3), "third row", int64(3), "third row", "first", int64(3)},
 		},
 	}
 	fmt.Sprintf("%v", test)

@@ -1719,7 +1719,7 @@ var fixtures = map[string]sql.Node{
 			expression.NewSetField(expression.NewUnresolvedColumn("@@sql_select_limit"), expression.NewDefaultColumn("")),
 		},
 	),
-	"": plan.Nothing,
+	"":                     plan.Nothing,
 	"/* just a comment */": plan.Nothing,
 	`/*!40101 SET NAMES utf8 */`: plan.NewSet(
 		[]sql.Expression{

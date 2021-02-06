@@ -24,7 +24,7 @@ type QueryPlanTest struct {
 // easier to construct this way.
 var PlanTests = []QueryPlanTest{
 	{
- 		Query:        "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		Query: "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
 		ExpectedPlan: "Project(t1.i)\n" +
 			" └─ IndexedJoin(t1.i = t2.i + 1)\n" +
 			"     ├─ Filter(t2.i = 1)\n" +
@@ -36,7 +36,20 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query:        "SELECT /*+ JOIN_ORDER(t1, t2) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		Query: "INSERT INTO mytable(i,s) SELECT t1.i, 'hello' FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		ExpectedPlan: "Insert(i, s)\n" +
+			" ├─ Table(mytable)\n" +
+			" └─ Project(i, s)\n" +
+			"     └─ Project(t1.i, \"hello\")\n" +
+			"         └─ Filter(t1.i = 2 AND t2.i = 1)\n" +
+			"             └─ IndexedJoin(t1.i = t2.i + 1)\n" +
+			"                 ├─ TableAlias(t2)\n" +
+			"                 │   └─ Table(mytable)\n" +
+			"                 └─ TableAlias(t1)\n" +
+			"                     └─ IndexedTableAccess(mytable on [mytable.i])\n",
+	},
+	{
+		Query: "SELECT /*+ JOIN_ORDER(t1, t2) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
 		ExpectedPlan: "Project(t1.i)\n" +
 			" └─ InnerJoin(t1.i = t2.i + 1)\n" +
 			"     ├─ Filter(t1.i = 2)\n" +
@@ -48,7 +61,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query:        "SELECT /*+ JOIN_ORDER(t1, mytable) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		Query: "SELECT /*+ JOIN_ORDER(t1, mytable) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
 		ExpectedPlan: "Project(t1.i)\n" +
 			" └─ IndexedJoin(t1.i = t2.i + 1)\n" +
 			"     ├─ Filter(t2.i = 1)\n" +
@@ -60,7 +73,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query:        "SELECT /*+ JOIN_ORDER(t1, t2, t3) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		Query: "SELECT /*+ JOIN_ORDER(t1, t2, t3) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
 		ExpectedPlan: "Project(t1.i)\n" +
 			" └─ IndexedJoin(t1.i = t2.i + 1)\n" +
 			"     ├─ Filter(t2.i = 1)\n" +
@@ -72,7 +85,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query:        "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+		Query: "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
 		ExpectedPlan: "Project(t1.i)\n" +
 			" └─ IndexedJoin(t1.i = t2.i + 1)\n" +
 			"     ├─ Filter(t2.i = 1)\n" +
@@ -185,6 +198,17 @@ var PlanTests = []QueryPlanTest{
 			" └─ RightIndexedJoin(mytable.i = othertable.i2 - 1)\n" +
 			"     ├─ Table(othertable)\n" +
 			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
+		Query: "SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2",
+		ExpectedPlan: "CrossJoin\n" +
+			" ├─ Table(tabletest)\n" +
+			" └─ IndexedJoin(mt.i = ot.i2)\n" +
+			"     ├─ TableAlias(mt)\n" +
+			"     │   └─ Table(mytable)\n" +
+			"     └─ TableAlias(ot)\n" +
+			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
 	},
 	{
