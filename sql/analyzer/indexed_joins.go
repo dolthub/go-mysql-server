@@ -72,7 +72,7 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 
 			// If we didn't identify a join condition for every table, we can't construct a join plan safely (we would be missing
 			// some tables / conditions)
-			if len(joinIndexes) != len(getTables(n)) {
+			if len(joinIndexes) != len(getTablesOrSubqueryAliases(n)) {
 				return n, nil
 			}
 
@@ -119,8 +119,9 @@ func replaceTableAccessWithIndexedAccess(
 	case *plan.TableAlias, *plan.ResolvedTable:
 		// If the available schema makes an index on this table possible, use it, replacing the table with indexed access
 		indexes := joinIndexes[node.(sql.Nameable).Name()]
+		_, isSubquery := node.(*plan.SubqueryAlias)
 		indexToApply := indexes.getUsableIndex(schema)
-		if indexToApply == nil {
+		if isSubquery || indexToApply == nil {
 			return node, false, nil
 		}
 
@@ -246,6 +247,12 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node.(type) {
 		case plan.JoinNode, *plan.ResolvedTable, *plan.TableAlias, nil:
+		case *plan.SubqueryAlias:
+			// The join planner can use the subquery alias as a
+			// table alias in join conditions, but the subquery
+			// itself has already been analyzed. Do not inspect
+			// below here.
+			return false
 		default:
 			a.Log("Skipping join replanning because of incompatible node: %T", node)
 			eligible = false
@@ -348,6 +355,8 @@ func lexicalTableOrder(node sql.Node) []NameableNode {
 	case *plan.TableAlias:
 		return []NameableNode{node}
 	case *plan.ResolvedTable:
+		return []NameableNode{node}
+	case *plan.SubqueryAlias:
 		return []NameableNode{node}
 	case plan.JoinNode:
 		return append(lexicalTableOrder(node.Left()), lexicalTableOrder(node.Right())...)
@@ -717,4 +726,30 @@ func colExprsToJoinIndex(table string, idx sql.Index, joinCond joinCond, colExpr
 		comparandCols:  cmpCols,
 		comparandExprs: cmpExprs,
 	}
+}
+
+func getTablesOrSubqueryAliases(node sql.Node) []NameableNode {
+	var tables []NameableNode
+	plan.Inspect(node, func(node sql.Node) bool {
+		switch node := node.(type) {
+		case *plan.SubqueryAlias:
+			tables = append(tables, node)
+			return false
+		case *plan.TableAlias:
+			tables = append(tables, node)
+			return false
+		case *plan.ResolvedTable:
+			tables = append(tables, node)
+			return false
+		case *plan.UnresolvedTable:
+			tables = append(tables, node)
+			return false
+		case *plan.IndexedTableAccess:
+			tables = append(tables, node)
+			return false
+		}
+		return true
+	})
+
+	return tables
 }
