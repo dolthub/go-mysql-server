@@ -221,6 +221,11 @@ func NewNullSafeEquals(left sql.Expression, right sql.Expression) *NullSafeEqual
 	return &NullSafeEquals{newComparison(left, right)}
 }
 
+// Type implements the Expression interface.
+func (e *NullSafeEquals) Type() sql.Type {
+	return sql.Int8
+}
+
 // Eval implements the Expression interface.
 func (e *NullSafeEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	result, err := e.Compare(ctx, row)

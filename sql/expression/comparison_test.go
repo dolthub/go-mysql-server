@@ -133,6 +133,37 @@ func TestEquals(t *testing.T) {
 	}
 }
 
+func TestNullSafeEquals(t *testing.T) {
+	require := require.New(t)
+	for resultType, cmpCase := range comparisonCases {
+		get0 := expression.NewGetField(0, resultType, "col1", true)
+		require.NotNil(get0)
+		get1 := expression.NewGetField(1, resultType, "col2", true)
+		require.NotNil(get1)
+		seq := expression.NewNullSafeEquals(get0, get1)
+		require.NotNil(seq)
+		require.Equal(sql.Int8, seq.Type())
+		for cmpResult, cases := range cmpCase {
+			for _, pair := range cases {
+				row := sql.NewRow(pair[0], pair[1])
+				require.NotNil(row)
+				cmp := eval(t, seq, row)
+				if cmpResult == testEqual {
+					require.Equal(1, cmp)
+				} else if cmpResult == testNil {
+					if pair[0] == nil && pair[1] == nil {
+						require.Equal(1, cmp)
+					} else {
+						require.Equal(0, cmp)
+					}
+				} else {
+					require.Equal(0, cmp)
+				}
+			}
+		}
+	}
+}
+
 func TestLessThan(t *testing.T) {
 	require := require.New(t)
 	for resultType, cmpCase := range comparisonCases {
