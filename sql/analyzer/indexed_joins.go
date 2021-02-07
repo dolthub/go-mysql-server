@@ -171,18 +171,6 @@ func replaceTableAccessWithIndexedAccess(
 		}
 
 		return plan.NewIndexedJoin(left, right, node.JoinType(), cond), replacedLeft || replacedRight, nil
-	case *plan.InsertInto:
-		newRight, replaced, err := replaceTableAccessWithIndexedAccess(node.Right(), schema, scope, joinIndexes, tableAliases)
-		if err != nil {
-			return nil, false, err
-		}
-
-		newInsert, err := node.WithChildren(node.Left(), newRight)
-		if err != nil {
-			return nil, false, err
-		}
-
-		return newInsert, replaced, nil
 	case *plan.DescribeQuery:
 		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
 	case *plan.Limit:
