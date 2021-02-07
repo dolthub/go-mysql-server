@@ -130,6 +130,7 @@ func canDoPushdown(n sql.Node) bool {
 	}
 
 	// don't do pushdown on certain queries
+	// TODO: we should definitely do pushdown to the SELECT of an INSERT if there is one
 	switch n.(type) {
 	case *plan.InsertInto, *plan.CreateIndex, *plan.CreateTrigger:
 		return false

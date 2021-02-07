@@ -2311,6 +2311,28 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 
+				FROM othertable ot INNER JOIN 
+					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub 
+				ON sub.i = ot.i2 order by 1`,
+		Expected: []sql.Row{
+			{1,1,"third",1,"third"},
+			{2,2,"second",2,"second"},
+			{3,3,"first",3,"first"},
+		},
+	},
+	{
+		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 
+				FROM (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
+				INNER JOIN othertable ot 
+				ON sub.i = ot.i2 order by 1`,
+		Expected: []sql.Row{
+			{1,1,"third",1,"third"},
+			{2,2,"second",2,"second"},
+			{3,3,"first",3,"first"},
+		},
+	},
+	{
 		Query:    `SELECT CHAR_LENGTH('áé'), LENGTH('àè')`,
 		Expected: []sql.Row{{int32(2), int32(4)}},
 	},

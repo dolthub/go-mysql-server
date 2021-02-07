@@ -357,6 +357,32 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
+		WriteQuery: `INSERT INTO mytable (i,s) SELECT sub.i + 10, ot.s2 
+				FROM othertable ot INNER JOIN 
+					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub 
+				ON sub.i = ot.i2 order by 1`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		SelectQuery:         "SELECT * FROM mytable where i > 10 ORDER BY i, s",
+		ExpectedSelect: []sql.Row{
+			{11,"third"},
+			{12,"second"},
+			{13,"first"},
+		},
+
+	},
+	{
+		WriteQuery: `INSERT INTO mytable (i,s) SELECT sub.i + 10, ot.s2 
+				FROM (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
+				INNER JOIN othertable ot ON sub.i = ot.i2 order by 1`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		SelectQuery:         "SELECT * FROM mytable where i > 10 ORDER BY i, s",
+		ExpectedSelect: []sql.Row{
+			{11,"third"},
+			{12,"second"},
+			{13,"first"},
+		},
+	},
+	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hello') ON DUPLICATE KEY UPDATE s='hello'",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
