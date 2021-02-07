@@ -88,17 +88,14 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2`,
+		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 
+				FROM othertable ot INNER JOIN 
+					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub 
+				ON sub.i = ot.i2 order by 1`,
 		Expected: []sql.Row{
-			{int64(1), "first row", int64(1), "first row", "third", int64(1)},
-			{int64(1), "first row", int64(2), "second row", "second", int64(2)},
-			{int64(1), "first row", int64(3), "third row", "first", int64(3)},
-			{int64(2), "second row", int64(1), "first row", "third", int64(1)},
-			{int64(2), "second row", int64(2), "second row", "second", int64(2)},
-			{int64(2), "second row", int64(3), "third row", "first", int64(3)},
-			{int64(3), "third row", int64(1), "first row", "third", int64(1)},
-			{int64(3), "third row", int64(2), "second row", "second", int64(2)},
-			{int64(3), "third row", int64(3), "third row", "first", int64(3)},
+			{1,1,"third",1,"third"},
+			{2,2,"second",2,"second"},
+			{3,3,"first",3,"first"},
 		},
 	}
 	fmt.Sprintf("%v", test)

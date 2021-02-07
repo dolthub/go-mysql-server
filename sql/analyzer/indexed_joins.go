@@ -197,14 +197,6 @@ func replaceTableAccessWithIndexedAccess(
 		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
 	case *plan.Distinct:
 		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
-	case *plan.Union:
-		// TODO: this needs more tests, might not be correct in all cases
-		newRight, replaced, err := replaceTableAccessWithIndexedAccess(node.Right(), append(schema, node.Left().Schema()...), scope, joinIndexes, tableAliases)
-		if err != nil {
-			return nil, false, err
-		}
-		newNode, err := node.WithChildren(node.Left(), newRight)
-		return newNode, replaced, err
 	case *plan.CrossJoin:
 		// TODO: be more principled about integrating cross joins into the overall join plan, no reason to keep them separate
 		newRight, replaced, err := replaceTableAccessWithIndexedAccess(node.Right(), append(schema, node.Left().Schema()...), scope, joinIndexes, tableAliases)
@@ -237,6 +229,14 @@ func replaceIndexedAccessInUnaryNode(
 	if err != nil {
 		return nil, false, err
 	}
+
+	// For nodes that were above the join node, the field indexes might be wrong in the case that tables got reordered
+	// by join planning. So fix them.
+	newNode, err = FixFieldIndexesForExpressions(newNode, scope)
+	if err != nil {
+		return nil, false, err
+	}
+
 	return newNode, replaced, nil
 }
 

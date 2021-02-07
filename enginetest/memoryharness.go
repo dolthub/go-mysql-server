@@ -45,7 +45,7 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 }
 
 func NewDefaultMemoryHarness() *MemoryHarness {
-	return NewMemoryHarness("default", 1, testNumPartitions, false, nil)
+	return NewMemoryHarness("default", 1, testNumPartitions, true, nil)
 }
 
 func NewSkippingMemoryHarness() *SkippingMemoryHarness {

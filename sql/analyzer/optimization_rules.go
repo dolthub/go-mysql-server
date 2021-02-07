@@ -109,18 +109,18 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			return n, nil
 		}
 
-		left, right := join.Left(), join.Right()
-
 		if len(condFilters) > 0 {
-			topJoin = plan.NewInnerJoin(
-				left, right,
-				expression.JoinAnd(condFilters...),
-			)
+			var err error
+			topJoin, err = join.WithExpressions(expression.JoinAnd(condFilters...))
+			if err != nil {
+				return nil, err
+			}
+
 			return topJoin, nil
 		}
 
 		// if there are no cond filters left we can just convert it to a cross join
-		topJoin = plan.NewCrossJoin(left, right)
+		topJoin = plan.NewCrossJoin(join.Left(), join.Right())
 		return topJoin, nil
 	})
 

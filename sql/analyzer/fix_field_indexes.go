@@ -133,21 +133,30 @@ func FixFieldIndexesForExpressions(node sql.Node, scope *Scope) (sql.Node, error
 			return nil, err
 		}
 
-		n = plan.NewInnerJoin(j.Left(), j.Right(), cond)
+		n, err = j.WithExpressions(cond)
+		if err != nil {
+			return nil, err
+		}
 	case *plan.RightJoin:
 		cond, err := FixFieldIndexes(scope, j.Schema(), j.Cond)
 		if err != nil {
 			return nil, err
 		}
 
-		n = plan.NewRightJoin(j.Left(), j.Right(), cond)
+		n, err = j.WithExpressions(cond)
+		if err != nil {
+			return nil, err
+		}
 	case *plan.LeftJoin:
 		cond, err := FixFieldIndexes(scope, j.Schema(), j.Cond)
 		if err != nil {
 			return nil, err
 		}
 
-		n = plan.NewLeftJoin(j.Left(), j.Right(), cond)
+		n, err = j.WithExpressions(cond)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return n, nil
