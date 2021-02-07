@@ -145,7 +145,7 @@ func (j *InnerJoin) String() string {
 
 func (j *InnerJoin) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("InnerJoin(%s)", sql.DebugString(j.Cond))
+	_ = pr.WriteNode("InnerJoin(%s), comment=%s", sql.DebugString(j.Cond), j.Comment())
 	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
 	return pr.String()
 }
