@@ -311,11 +311,19 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(2)}},
 	},
 	{
+		Query:    "SELECT i FROM mytable WHERE -i <=> -2;",
+		Expected: []sql.Row{{int64(2)}},
+	},
+	{
 		Query:    "SELECT i FROM mytable WHERE i = 2;",
 		Expected: []sql.Row{{int64(2)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE 2 = i;",
+		Expected: []sql.Row{{int64(2)}},
+	},
+	{
+		Query:    "SELECT i FROM mytable WHERE 2 <=> i;",
 		Expected: []sql.Row{{int64(2)}},
 	},
 	{
@@ -586,6 +594,14 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "SELECT i FROM niltable WHERE b IS NULL",
+		Expected: []sql.Row{{int64(1)}, {int64(4)}},
+	},
+	{
+		Query:    "SELECT i FROM niltable WHERE b <=> NULL",
+		Expected: []sql.Row{{int64(1)}, {int64(4)}},
+	},
+	{
+		Query:    "SELECT i FROM niltable WHERE NULL <=> b",
 		Expected: []sql.Row{{int64(1)}, {int64(4)}},
 	},
 	{
@@ -3544,6 +3560,10 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT 0.0 div 0.0 FROM dual",
 		Expected: []sql.Row{{sql.Null}},
+	},
+	{
+		Query:    "SELECT NULL <=> NULL FROM dual",
+		Expected: []sql.Row{{1}},
 	},
 	{
 		Query:    "SELECT POW(2,3) FROM dual",

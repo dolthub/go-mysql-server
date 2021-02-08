@@ -205,6 +205,79 @@ func (e *Equals) DebugString() string {
 	return fmt.Sprintf("%s = %s", sql.DebugString(e.Left()), sql.DebugString(e.Right()))
 }
 
+// NullSafeEquals is a comparison that checks an expression is equal to
+// another, where NULLs do not coalesce to NULL and two NULLs compare equal to
+// each other.
+type NullSafeEquals struct {
+	comparison
+}
+
+// NewNullSafeEquals returns a new NullSafeEquals expression.
+func NewNullSafeEquals(left sql.Expression, right sql.Expression) *NullSafeEquals {
+	return &NullSafeEquals{newComparison(left, right)}
+}
+
+// Type implements the Expression interface.
+func (e *NullSafeEquals) Type() sql.Type {
+	return sql.Int8
+}
+
+func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
+	left, right, err := e.evalLeftAndRight(ctx, row)
+	if err != nil {
+		return 0, err
+	}
+
+	if left == nil && right == nil {
+		return 0, nil
+	} else if left == nil {
+		return 1, nil
+	} else if right == nil {
+		return -1, nil
+	}
+
+	if sql.TypesEqual(e.Left().Type(), e.Right().Type()) {
+		return e.Left().Type().Compare(left, right)
+	}
+
+	var compareType sql.Type
+	left, right, compareType, err = e.castLeftAndRight(left, right)
+	if err != nil {
+		return 0, err
+	}
+
+	return compareType.Compare(left, right)
+}
+
+// Eval implements the Expression interface.
+func (e *NullSafeEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	result, err := e.Compare(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if result == 0 {
+		return 1, nil
+	}
+	return 0, nil
+}
+
+// WithChildren implements the Expression interface.
+func (e *NullSafeEquals) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 2)
+	}
+	return NewNullSafeEquals(children[0], children[1]), nil
+}
+
+func (e *NullSafeEquals) String() string {
+	return fmt.Sprintf("%s <=> %s", e.Left(), e.Right())
+}
+
+func (e *NullSafeEquals) DebugString() string {
+	return fmt.Sprintf("%s <=> %s", sql.DebugString(e.Left()), sql.DebugString(e.Right()))
+}
+
 // Regexp is a comparison that checks an expression matches a regexp.
 type Regexp struct {
 	comparison
