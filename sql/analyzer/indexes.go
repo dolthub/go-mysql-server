@@ -1038,7 +1038,19 @@ func containsSubquery(e sql.Expression) bool {
 }
 
 func isEvaluable(e sql.Expression) bool {
-	return !containsColumns(e) && !containsSubquery(e)
+	return !containsColumns(e) && !containsSubquery(e) && !containsBindvars(e)
+}
+
+func containsBindvars(e sql.Expression) bool {
+	var result bool
+	sql.Inspect(e, func(e sql.Expression) bool {
+		if _, ok := e.(*expression.BindVar); ok {
+			result = true
+			return false
+		}
+		return true
+	})
+	return result
 }
 
 func canMergeIndexLookups(leftIndexes, rightIndexes indexLookupsByTable) bool {

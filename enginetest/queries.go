@@ -267,6 +267,46 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query:    "SELECT :foo * 2",
+		Expected: []sql.Row{
+			{2},
+		},
+		Bindings: map[string]sql.Expression{
+			"foo": expression.NewLiteral(int64(1), sql.Int64),
+		},
+	},
+	{
+		Query:    "SELECT i from mytable where i in (:foo, :bar) order by 1",
+		Expected: []sql.Row{
+			{1},
+			{2},
+		},
+		Bindings: map[string]sql.Expression{
+			"foo": expression.NewLiteral(int64(1), sql.Int64),
+			"bar": expression.NewLiteral(int64(2), sql.Int64),
+		},
+	},
+	{
+		Query:    "SELECT i from mytable where i = :foo * 2",
+		Expected: []sql.Row{
+			{2},
+		},
+		Bindings: map[string]sql.Expression{
+			"foo": expression.NewLiteral(int64(1), sql.Int64),
+		},
+	},
+	{
+		Query:    "SELECT i from mytable where 4 = :foo * 2 order by 1",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+		Bindings: map[string]sql.Expression{
+			"foo": expression.NewLiteral(int64(2), sql.Int64),
+		},
+	},
+	{
 		Query:    "SELECT timestamp FROM reservedWordsTable;",
 		Expected: []sql.Row{{"1"}},
 	},

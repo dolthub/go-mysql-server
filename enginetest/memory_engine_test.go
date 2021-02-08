@@ -89,14 +89,14 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 
-				FROM othertable ot INNER JOIN 
-					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub 
-				ON sub.i = ot.i2 order by 1`,
+		Query:    "SELECT i from mytable where 4 = :foo * 2 order by 1",
 		Expected: []sql.Row{
-			{1, 1, "third", 1, "third"},
-			{2, 2, "second", 2, "second"},
-			{3, 3, "first", 3, "first"},
+			{1},
+			{2},
+			{3},
+		},
+		Bindings: map[string]sql.Expression{
+			"foo": expression.NewLiteral(int64(2), sql.Int64),
 		},
 	}
 	fmt.Sprintf("%v", test)
