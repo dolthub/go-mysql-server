@@ -1765,7 +1765,7 @@ var TriggerErrorTests = []ScriptTest{
 	},
 	// This isn't an error in MySQL until runtime, but we catch it earlier because why not
 	{
-		Name:        "source column doesn't exist",
+		Name: "source column doesn't exist",
 		SetUpScript: []string{
 			"create table x (a int primary key, b int, c int)",
 		},

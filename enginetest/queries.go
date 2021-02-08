@@ -2316,9 +2316,9 @@ var QueryTests = []QueryTest{
 					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub 
 				ON sub.i = ot.i2 order by 1`,
 		Expected: []sql.Row{
-			{1,1,"third",1,"third"},
-			{2,2,"second",2,"second"},
-			{3,3,"first",3,"first"},
+			{1, 1, "third", 1, "third"},
+			{2, 2, "second", 2, "second"},
+			{3, 3, "first", 3, "first"},
 		},
 	},
 	{
@@ -2327,9 +2327,9 @@ var QueryTests = []QueryTest{
 				INNER JOIN othertable ot 
 				ON sub.i = ot.i2 order by 1`,
 		Expected: []sql.Row{
-			{1,1,"third",1,"third"},
-			{2,2,"second",2,"second"},
-			{3,3,"first",3,"first"},
+			{1, 1, "third", 1, "third"},
+			{2, 2, "second", 2, "second"},
+			{3, 3, "first", 3, "first"},
 		},
 	},
 	{
