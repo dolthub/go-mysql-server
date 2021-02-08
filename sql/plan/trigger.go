@@ -190,6 +190,25 @@ func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
 			})
 		}
 		return hasSetField, row[len(row)/2:]
+	case *BeginEndBlock:
+		hasSetField := false
+		Inspect(logic, func(n sql.Node) bool {
+			set, ok := n.(*Set)
+			if !ok {
+				return true
+			}
+			for _, expr := range set.Exprs {
+				sql.Inspect(expr.(*expression.SetField).Left, func(e sql.Expression) bool {
+					if _, ok := e.(*expression.GetField); ok {
+						hasSetField = true
+						return false
+					}
+					return true
+				})
+			}
+			return !hasSetField
+		})
+		return hasSetField, row
 	default:
 		return false, nil
 	}
