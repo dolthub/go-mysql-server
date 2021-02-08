@@ -26,22 +26,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-type triggerColumnRef struct {
-	*expression.UnresolvedColumn
-}
-
-func (r *triggerColumnRef) Resolved() bool {
-	return true
-}
-
-func (r *triggerColumnRef) Type() sql.Type {
-	return sql.Boolean
-}
-
-// resolveNewAndOldReferences handles CreateTrigger nodes, resolving references to "old" and "new" table references in
+// validateCreateTrigger handles CreateTrigger nodes, resolving references to "old" and "new" table references in
 // the trigger body. Also validates that these old and new references are being used appropriately -- they are only
 // valid for certain kinds of triggers and certain statements.
-func resolveNewAndOldReferences(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
+func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
 	ct, ok := node.(*plan.CreateTrigger)
 	if !ok {
 		return node, nil
@@ -51,36 +39,32 @@ func resolveNewAndOldReferences(ctx *sql.Context, a *Analyzer, node sql.Node, sc
 	// UnresolvedColumn expressions with placeholder expressions that say they are Resolved().
 	// TODO: this might work badly for databases with tables named new and old. Needs tests.
 	var err error
-	node, err = plan.TransformExpressionsUp(ct, func(e sql.Expression) (sql.Expression, error) {
+	plan.InspectExpressions(ct, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.UnresolvedColumn:
 			if strings.ToLower(e.Table()) == "new" {
 				if ct.TriggerEvent == sqlparser.DeleteStr {
-					return nil, sql.ErrInvalidUseOfOldNew.New("new", ct.TriggerEvent)
+					err = sql.ErrInvalidUseOfOldNew.New("new", ct.TriggerEvent)
 				}
-				return &triggerColumnRef{e}, nil
 			}
 			if strings.ToLower(e.Table()) == "old" {
 				if ct.TriggerEvent == sqlparser.InsertStr {
-					return nil, sql.ErrInvalidUseOfOldNew.New("old", ct.TriggerEvent)
+					err = sql.ErrInvalidUseOfOldNew.New("old", ct.TriggerEvent)
 				}
-				return &triggerColumnRef{e}, nil
 			}
 		case *deferredColumn:
 			if strings.ToLower(e.Table()) == "new" {
 				if ct.TriggerEvent == sqlparser.DeleteStr {
-					return nil, sql.ErrInvalidUseOfOldNew.New("new", ct.TriggerEvent)
+					err = sql.ErrInvalidUseOfOldNew.New("new", ct.TriggerEvent)
 				}
-				return &triggerColumnRef{e.UnresolvedColumn}, nil
 			}
 			if strings.ToLower(e.Table()) == "old" {
 				if ct.TriggerEvent == sqlparser.InsertStr {
-					return nil, sql.ErrInvalidUseOfOldNew.New("old", ct.TriggerEvent)
+					err = sql.ErrInvalidUseOfOldNew.New("old", ct.TriggerEvent)
 				}
-				return &triggerColumnRef{e.UnresolvedColumn}, nil
 			}
 		}
-		return e, nil
+		return true
 	})
 
 	if err != nil {
@@ -88,31 +72,34 @@ func resolveNewAndOldReferences(ctx *sql.Context, a *Analyzer, node sql.Node, sc
 	}
 
 	// Check to see if the plan sets a value for "old" rows, or if an AFTER trigger assigns to NEW. Both are illegal.
-	_, err = plan.TransformExpressionsUpWithNode(node, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+	plan.InspectExpressionsWithNode(node, func(n sql.Node, e sql.Expression) bool {
 		if _, ok := n.(*plan.Set); !ok {
-			return e, nil
+			return true
 		}
 
 		switch e := e.(type) {
 		case *expression.SetField:
 			switch left := e.Left.(type) {
-			case *triggerColumnRef:
+			case column:
 				if strings.ToLower(left.Table()) == "old" {
-					return nil, sql.ErrInvalidUpdateOfOldRow.New()
+					err = sql.ErrInvalidUpdateOfOldRow.New()
 				}
 				if ct.TriggerTime == sqlparser.AfterStr && strings.ToLower(left.Table()) == "new" {
-					return nil, sql.ErrInvalidUpdateInAfterTrigger.New()
+					err = sql.ErrInvalidUpdateInAfterTrigger.New()
 				}
 			}
 		}
 
-		return e, nil
+		return true
 	})
 
 	if err != nil {
 		return nil, err
 	}
 
+	// Finally analyze the entire trigger body with an appropriate scope for any "old" and "new" table references. This
+	// will catch (most) other errors in a trigger body. We set the trigger body at the end to pass to final validation
+	// steps at the end of analysis.
 	scopeNode := plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
 		plan.NewCrossJoin(

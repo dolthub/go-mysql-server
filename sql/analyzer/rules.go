@@ -28,7 +28,7 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_subqueries", resolveSubqueries},
 	{"resolve_unions", resolveUnions},
 	{"check_unique_table_names", checkUniqueTableNames},
-	{"resolve_new_and_old_in_triggers", resolveNewAndOldReferences},
+	{"validate_create_trigger", validateCreateTrigger},
 }
 
 // DefaultRules to apply when analyzing nodes.

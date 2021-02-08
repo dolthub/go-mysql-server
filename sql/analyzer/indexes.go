@@ -1020,10 +1020,6 @@ func containsColumns(e sql.Expression) bool {
 			result = true
 			return false
 		}
-		if _, ok := e.(*triggerColumnRef); ok {
-			result = true
-			return false
-		}
 		return true
 	})
 	return result
