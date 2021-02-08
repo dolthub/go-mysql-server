@@ -109,11 +109,6 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			return nil, err
 		}
 
-		// If the right-hand side isn't resolved, we can't process this as a bareword variable assignment
-		if !setVal.Resolved() {
-			return sf, nil
-		}
-
 		// If this column expression was deferred, it means that it wasn't prefixed with @@ and can't be found in any table.
 		// So treat it as a naked system variable and see if it exists
 		if uc, ok := sf.Left.(*deferredColumn); ok {
@@ -123,6 +118,13 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 				// TODO: since we don't support all system variables supported by MySQL yet, for compatibility reasons we
 				//  will just accept them all here. But we should reject unknown ones.
 				// return nil, sql.ErrUnknownSystemVariable.New(varName)
+
+				// If the right-hand side isn't resolved, we can't process this as a bareword variable assignment
+				// because we don't know the type
+				if !setVal.Resolved() {
+					return sf, nil
+				}
+
 				typ = sf.Right.Type()
 			}
 
