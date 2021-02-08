@@ -84,8 +84,23 @@ func (i *describeIter) Close() error {
 
 // DescribeQuery returns the description of the query plan.
 type DescribeQuery struct {
-	UnaryNode
+	child  sql.Node
 	Format string
+}
+
+func (d *DescribeQuery) Resolved() bool {
+	return d.child.Resolved()
+}
+
+func (d *DescribeQuery) Children() []sql.Node {
+	return nil
+}
+
+func (d *DescribeQuery) WithChildren(node ...sql.Node) (sql.Node, error) {
+	if len(node) > 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(node), 0)
+	}
+	return d, nil
 }
 
 // DescribeSchema is the schema returned by a DescribeQuery node.
@@ -95,7 +110,7 @@ var DescribeSchema = sql.Schema{
 
 // NewDescribeQuery creates a new DescribeQuery node.
 func NewDescribeQuery(format string, child sql.Node) *DescribeQuery {
-	return &DescribeQuery{UnaryNode{Child: child}, format}
+	return &DescribeQuery{child, format}
 }
 
 // Schema implements the Node interface.
@@ -106,7 +121,7 @@ func (d *DescribeQuery) Schema() sql.Schema {
 // RowIter implements the Node interface.
 func (d *DescribeQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var rows []sql.Row
-	for _, l := range strings.Split(d.Child.String(), "\n") {
+	for _, l := range strings.Split(d.child.String(), "\n") {
 		if strings.TrimSpace(l) != "" {
 			rows = append(rows, sql.NewRow(l))
 		}
@@ -117,22 +132,23 @@ func (d *DescribeQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 func (d *DescribeQuery) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("DescribeQuery(format=%s)", d.Format)
-	_ = pr.WriteChildren(d.Child.String())
+	_ = pr.WriteChildren(d.child.String())
 	return pr.String()
 }
 
 func (d *DescribeQuery) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("DescribeQuery(format=%s)", d.Format)
-	_ = pr.WriteChildren(sql.DebugString(d.Child))
+	_ = pr.WriteChildren(sql.DebugString(d.child))
 	return pr.String()
 }
 
-// WithChildren implements the Node interface.
-func (d *DescribeQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
-	}
+// Query returns the query node being described
+func (d *DescribeQuery) Query() sql.Node {
+	return d.child
+}
 
-	return NewDescribeQuery(d.Format, children[0]), nil
+// WithQuery returns a copy of this node with the query node given
+func (d *DescribeQuery) WithQuery(child sql.Node) sql.Node {
+	return NewDescribeQuery(d.Format, child)
 }

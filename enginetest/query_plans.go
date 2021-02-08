@@ -41,10 +41,11 @@ var PlanTests = []QueryPlanTest{
 			" ├─ Table(mytable)\n" +
 			" └─ Project(i, s)\n" +
 			"     └─ Project(t1.i, \"hello\")\n" +
-			"         └─ Filter(t1.i = 2 AND t2.i = 1)\n" +
-			"             └─ IndexedJoin(t1.i = t2.i + 1)\n" +
-			"                 ├─ TableAlias(t2)\n" +
-			"                 │   └─ Table(mytable)\n" +
+			"         └─ IndexedJoin(t1.i = t2.i + 1)\n" +
+			"             ├─ Filter(t2.i = 1)\n" +
+			"             │   └─ TableAlias(t2)\n" +
+			"             │       └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"             └─ Filter(t1.i = 2)\n" +
 			"                 └─ TableAlias(t1)\n" +
 			"                     └─ IndexedTableAccess(mytable on [mytable.i])\n",
 	},
@@ -129,6 +130,21 @@ var PlanTests = []QueryPlanTest{
 			"     └─ TableAlias(ot)\n" +
 			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
+	},
+	{
+		Query: "INSERT INTO mytable SELECT sub.i + 10, ot.s2 FROM othertable ot INNER JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub ON sub.i = ot.i2",
+		ExpectedPlan: "Insert()\n" +
+			" ├─ Table(mytable)\n" +
+			" └─ Project(i, s)\n" +
+			"     └─ Project(sub.i + 10, ot.s2)\n" +
+			"         └─ IndexedJoin(sub.i = ot.i2)\n" +
+			"             ├─ SubqueryAlias(sub)\n" +
+			"             │   └─ Project(mytable.i)\n" +
+			"             │       └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"             │           ├─ Table(mytable)\n" +
+			"             │           └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"             └─ TableAlias(ot)\n" +
+			"                 └─ IndexedTableAccess(othertable on [othertable.i2])\n",
 	},
 	{
 		Query: "SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2",

@@ -27,7 +27,9 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_create_like", resolveCreateLike},
 	{"resolve_subqueries", resolveSubqueries},
 	{"resolve_unions", resolveUnions},
+	{"resolve_describe_query", resolveDescribeQuery},
 	{"check_unique_table_names", checkUniqueTableNames},
+	{"validate_create_trigger", validateCreateTrigger},
 }
 
 // DefaultRules to apply when analyzing nodes.
@@ -36,7 +38,6 @@ var DefaultRules = []Rule{
 	{"resolve_orderby_literals", resolveOrderByLiterals},
 	{"pushdown_sort", pushdownSort},
 	{"pushdown_groupby_aliases", pushdownGroupByAliases},
-	{"resolve_new_and_old_in_triggers", resolveNewAndOldReferences},
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
 	{"resolve_bareword_set_variables", resolveBarewordSetVariables},

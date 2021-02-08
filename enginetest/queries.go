@@ -267,6 +267,46 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query:    "SELECT :foo * 2",
+		Expected: []sql.Row{
+			{2},
+		},
+		Bindings: map[string]sql.Expression{
+			"foo": expression.NewLiteral(int64(1), sql.Int64),
+		},
+	},
+	{
+		Query:    "SELECT i from mytable where i in (:foo, :bar) order by 1",
+		Expected: []sql.Row{
+			{1},
+			{2},
+		},
+		Bindings: map[string]sql.Expression{
+			"foo": expression.NewLiteral(int64(1), sql.Int64),
+			"bar": expression.NewLiteral(int64(2), sql.Int64),
+		},
+	},
+	{
+		Query:    "SELECT i from mytable where i = :foo * 2",
+		Expected: []sql.Row{
+			{2},
+		},
+		Bindings: map[string]sql.Expression{
+			"foo": expression.NewLiteral(int64(1), sql.Int64),
+		},
+	},
+	{
+		Query:    "SELECT i from mytable where 4 = :foo * 2 order by 1",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+		Bindings: map[string]sql.Expression{
+			"foo": expression.NewLiteral(int64(2), sql.Int64),
+		},
+	},
+	{
 		Query:    "SELECT timestamp FROM reservedWordsTable;",
 		Expected: []sql.Row{{"1"}},
 	},
@@ -2332,9 +2372,9 @@ var QueryTests = []QueryTest{
 					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub 
 				ON sub.i = ot.i2 order by 1`,
 		Expected: []sql.Row{
-			{1,1,"third",1,"third"},
-			{2,2,"second",2,"second"},
-			{3,3,"first",3,"first"},
+			{1, 1, "third", 1, "third"},
+			{2, 2, "second", 2, "second"},
+			{3, 3, "first", 3, "first"},
 		},
 	},
 	{
@@ -2343,9 +2383,9 @@ var QueryTests = []QueryTest{
 				INNER JOIN othertable ot 
 				ON sub.i = ot.i2 order by 1`,
 		Expected: []sql.Row{
-			{1,1,"third",1,"third"},
-			{2,2,"second",2,"second"},
-			{3,3,"first",3,"first"},
+			{1, 1, "third", 1, "third"},
+			{2, 2, "second", 2, "second"},
+			{3, 3, "first", 3, "first"},
 		},
 	},
 	{

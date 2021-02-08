@@ -17,6 +17,7 @@ package enginetest_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -88,14 +89,14 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 
-				FROM othertable ot INNER JOIN 
-					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub 
-				ON sub.i = ot.i2 order by 1`,
+		Query:    "SELECT i from mytable where 4 = :foo * 2 order by 1",
 		Expected: []sql.Row{
-			{1,1,"third",1,"third"},
-			{2,2,"second",2,"second"},
-			{3,3,"first",3,"first"},
+			{1},
+			{2},
+			{3},
+		},
+		Bindings: map[string]sql.Expression{
+			"foo": expression.NewLiteral(int64(2), sql.Int64),
 		},
 	}
 	fmt.Sprintf("%v", test)
@@ -114,17 +115,45 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name: "Naked DELETE with ON DELETE Triggers",
+			Name: "show create triggers",
 			SetUpScript: []string{
-				"CREATE TABLE t7 (pk BIGINT PRIMARY KEY, v1 BIGINT)",
-				"CREATE TABLE t7i (pk BIGINT PRIMARY KEY, v1 BIGINT)",
-				"CREATE TRIGGER trig_t7 BEFORE DELETE ON t7 FOR EACH ROW INSERT INTO t7i VALUES (old.pk, old.v1)",
-				"INSERT INTO t7 VALUES (1,1), (3,3)",
+				"create table a (x int primary key)",
+				"create trigger a1 before insert on a for each row set new.x = new.x + 1",
+				"create table b (y int primary key)",
+				"create trigger b1 before insert on b for each row set new.x = new.x + 2",
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query:    "DELETE FROM t7 WHERE pk = 3",
-					Expected: []sql.Row{{1}},
+					Query: "show create trigger a1",
+					Expected: []sql.Row{
+						{
+							"a1", // Trigger
+							"",   // sql_mode
+							"create trigger a1 before insert on a for each row set new.x = new.x + 1", // SQL Original Statement
+							sql.Collation_Default.CharacterSet().String(),                             // character_set_client
+							sql.Collation_Default.String(),                                            // collation_connection
+							sql.Collation_Default.String(),                                            // Database Collation
+							time.Unix(0, 0).UTC(),                                                     // Created
+						},
+					},
+				},
+				{
+					Query: "show create trigger b1",
+					Expected: []sql.Row{
+						{
+							"b1", // Trigger
+							"",   // sql_mode
+							"create trigger b1 before insert on b for each row set new.x = new.x + 2", // SQL Original Statement
+							sql.Collation_Default.CharacterSet().String(),                             // character_set_client
+							sql.Collation_Default.String(),                                            // collation_connection
+							sql.Collation_Default.String(),                                            // Database Collation
+							time.Unix(0, 0).UTC(),                                                     // Created
+						},
+					},
+				},
+				{
+					Query:       "show create trigger b2",
+					ExpectedErr: sql.ErrTriggerDoesNotExist,
 				},
 			},
 		},

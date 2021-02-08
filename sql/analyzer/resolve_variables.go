@@ -118,6 +118,13 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 				// TODO: since we don't support all system variables supported by MySQL yet, for compatibility reasons we
 				//  will just accept them all here. But we should reject unknown ones.
 				// return nil, sql.ErrUnknownSystemVariable.New(varName)
+
+				// If the right-hand side isn't resolved, we can't process this as a bareword variable assignment
+				// because we don't know the type
+				if !setVal.Resolved() {
+					return sf, nil
+				}
+
 				typ = sf.Right.Type()
 			}
 

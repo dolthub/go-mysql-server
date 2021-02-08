@@ -1222,7 +1222,7 @@ var TriggerTests = []ScriptTest{
 			"create table a (x int primary key)",
 			"create trigger a1 before insert on a for each row set new.x = new.x + 1",
 			"create table b (y int primary key)",
-			"create trigger b1 before insert on b for each row set new.x = new.x + 2",
+			"create trigger b1 before insert on b for each row set new.y = new.y + 2",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1245,7 +1245,7 @@ var TriggerTests = []ScriptTest{
 					{
 						"b1", // Trigger
 						"",   // sql_mode
-						"create trigger b1 before insert on b for each row set new.x = new.x + 2", // SQL Original Statement
+						"create trigger b1 before insert on b for each row set new.y = new.y + 2", // SQL Original Statement
 						sql.Collation_Default.CharacterSet().String(),                             // character_set_client
 						sql.Collation_Default.String(),                                            // collation_connection
 						sql.Collation_Default.String(),                                            // Database Collation
@@ -1763,9 +1763,18 @@ var TriggerErrorTests = []ScriptTest{
 		Query:       "create trigger update_new after update on x for each row BEGIN set new.c = new.a + 1; END",
 		ExpectedErr: sql.ErrInvalidUpdateInAfterTrigger,
 	},
-	// TODO: mysql doesn't consider this an error until execution time, but we could catch it earlier
+	// This isn't an error in MySQL until runtime, but we catch it earlier because why not
+	{
+		Name: "source column doesn't exist",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger not_found before insert on x for each row set new.d = new.d + 1",
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	// TODO: this isn't an error in MySQL, but we could catch it and make it one
 	// {
-	// 	Name:        "column doesn't exist",
+	// 	Name:        "target column doesn't exist",
 	// 	SetUpScript: []string{
 	// 		"create table x (a int primary key, b int, c int)",
 	// 	},

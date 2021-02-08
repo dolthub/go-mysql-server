@@ -26,7 +26,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return n, nil
 	}
 
-	insertable, err := plan.GetInsertable(insert.Left())
+	insertable, err := plan.GetInsertable(insert.Destination)
 	if err != nil {
 		return nil, err
 	}
@@ -47,6 +47,14 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		}
 	}
 
+	// Analyze the source of the insert independently
+	source, err := a.Analyze(ctx, insert.Source, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	source = stripQueryProcess(source)
+
 	dstSchema := insertable.Schema()
 
 	// If no columns are given, use the full schema
@@ -63,22 +71,22 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		}
 	}
 
-	err = validateValueCount(columnNames, insert.Right())
+	err = validateValueCount(columnNames, source)
 	if err != nil {
 		return nil, err
 	}
 
-	project, err := wrapRowSource(ctx, insert, insertable, columnNames)
+	project, err := wrapRowSource(ctx, source, insertable, columnNames)
 	if err != nil {
 		return nil, err
 	}
 
-	return insert.WithChildren(insert.Left(), project)
+	return insert.WithSource(project), nil
 }
 
 // wrapRowSource wraps the original row source in a projection so that its schema matches the full schema of the
 // underlying table, in the same order.
-func wrapRowSource(ctx *sql.Context, insert *plan.InsertInto, destTbl sql.Table, columnNames []string) (sql.Node, error) {
+func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, columnNames []string) (sql.Node, error) {
 	projExprs := make([]sql.Expression, len(destTbl.Schema()))
 	for i, f := range destTbl.Schema() {
 		found := false
@@ -106,13 +114,12 @@ func wrapRowSource(ctx *sql.Context, insert *plan.InsertInto, destTbl sql.Table,
 		}
 	}
 
-	err := validateRowSource(insert.Right(), projExprs)
+	err := validateRowSource(insertSource, projExprs)
 	if err != nil {
 		return nil, err
 	}
 
-	project := plan.NewProject(projExprs, insert.Right())
-	return project, nil
+	return plan.NewProject(projExprs, insertSource), nil
 }
 
 func validateColumns(columnNames []string, dstSchema sql.Schema) error {

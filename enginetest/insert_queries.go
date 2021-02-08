@@ -364,11 +364,10 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable where i > 10 ORDER BY i, s",
 		ExpectedSelect: []sql.Row{
-			{11,"third"},
-			{12,"second"},
-			{13,"first"},
+			{11, "third"},
+			{12, "second"},
+			{13, "first"},
 		},
-
 	},
 	{
 		WriteQuery: `INSERT INTO mytable (i,s) SELECT sub.i + 10, ot.s2 
@@ -377,9 +376,9 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable where i > 10 ORDER BY i, s",
 		ExpectedSelect: []sql.Row{
-			{11,"third"},
-			{12,"second"},
-			{13,"first"},
+			{11, "third"},
+			{12, "second"},
+			{13, "first"},
 		},
 	},
 	{
