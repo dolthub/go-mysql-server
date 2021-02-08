@@ -36,6 +36,12 @@ func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, er
 				return nil, err
 			}
 			return n.WithChildren(child)
+		case *InsertInto:
+			source, err := ApplyBindings(n.Source, bindings)
+			if err != nil {
+				return nil, err
+			}
+			return n.WithSource(source), nil
 		default:
 			return n, nil
 		}

@@ -49,7 +49,6 @@ func resolveNewAndOldReferences(ctx *sql.Context, a *Analyzer, node sql.Node, sc
 
 	// We just want to verify that the trigger is correctly defined before creating it. If it is, we replace the
 	// UnresolvedColumn expressions with placeholder expressions that say they are Resolved().
-	// TODO: validate columns better
 	// TODO: this might work badly for databases with tables named new and old. Needs tests.
 	var err error
 	node, err = plan.TransformExpressionsUp(ct, func(e sql.Expression) (sql.Expression, error) {
@@ -89,7 +88,7 @@ func resolveNewAndOldReferences(ctx *sql.Context, a *Analyzer, node sql.Node, sc
 	}
 
 	// Check to see if the plan sets a value for "old" rows, or if an AFTER trigger assigns to NEW. Both are illegal.
-	return plan.TransformExpressionsUpWithNode(node, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+	_, err = plan.TransformExpressionsUpWithNode(node, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		if _, ok := n.(*plan.Set); !ok {
 			return e, nil
 		}
@@ -109,6 +108,25 @@ func resolveNewAndOldReferences(ctx *sql.Context, a *Analyzer, node sql.Node, sc
 
 		return e, nil
 	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	scopeNode := plan.NewProject(
+		[]sql.Expression{expression.NewStar()},
+		plan.NewCrossJoin(
+			plan.NewTableAlias("old", getResolvedTable(ct.Table)),
+			plan.NewTableAlias("new", getResolvedTable(ct.Table)),
+		),
+	)
+
+	triggerLogic, err := a.Analyze(ctx, ct.Body, (*Scope)(nil).newScope(scopeNode))
+	if err != nil {
+		return nil, err
+	}
+
+	return ct.WithChildren(ct.Table, stripQueryProcess(triggerLogic))
 }
 
 func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {

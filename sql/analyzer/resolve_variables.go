@@ -109,6 +109,11 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			return nil, err
 		}
 
+		// If the right-hand side isn't resolved, we can't process this as a bareword variable assignment
+		if !setVal.Resolved() {
+			return sf, nil
+		}
+
 		// If this column expression was deferred, it means that it wasn't prefixed with @@ and can't be found in any table.
 		// So treat it as a naked system variable and see if it exists
 		if uc, ok := sf.Left.(*deferredColumn); ok {

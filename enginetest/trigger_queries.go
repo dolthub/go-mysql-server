@@ -1763,9 +1763,18 @@ var TriggerErrorTests = []ScriptTest{
 		Query:       "create trigger update_new after update on x for each row BEGIN set new.c = new.a + 1; END",
 		ExpectedErr: sql.ErrInvalidUpdateInAfterTrigger,
 	},
-	// TODO: mysql doesn't consider this an error until execution time, but we could catch it earlier
+	// This isn't an error in MySQL until runtime, but we catch it earlier because why not
+	{
+		Name:        "source column doesn't exist",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger not_found before insert on x for each row set new.d = new.d + 1",
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	// TODO: this isn't an error in MySQL, but we could catch it and make it one
 	// {
-	// 	Name:        "column doesn't exist",
+	// 	Name:        "target column doesn't exist",
 	// 	SetUpScript: []string{
 	// 		"create table x (a int primary key, b int, c int)",
 	// 	},

@@ -72,6 +72,13 @@ type ProcessIndexableTable struct {
 	OnRowNext        NamedNotifyFunc
 }
 
+func (t *ProcessIndexableTable) DebugString() string {
+	tp := sql.NewTreePrinter()
+	_ = tp.WriteNode("ProcessIndexableTable")
+	_ = tp.WriteChildren(sql.DebugString(t.Underlying()))
+	return tp.String()
+}
+
 // NewProcessIndexableTable returns a new ProcessIndexableTable.
 func NewProcessIndexableTable(t sql.DriverIndexableTable, onPartitionDone, onPartitionStart, OnRowNext NamedNotifyFunc) *ProcessIndexableTable {
 	return &ProcessIndexableTable{t, onPartitionDone, onPartitionStart, OnRowNext}

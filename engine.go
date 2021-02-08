@@ -199,16 +199,16 @@ func (e *Engine) QueryWithBindings(
 		return nil, nil, err
 	}
 
-	if len(bindings) > 0 {
-		parsed, err = plan.ApplyBindings(parsed, bindings)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
 	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if len(bindings) > 0 {
+		analyzed, err = plan.ApplyBindings(analyzed, bindings)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	iter, err = analyzed.RowIter(ctx, nil)
