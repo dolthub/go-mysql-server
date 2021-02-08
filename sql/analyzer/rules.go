@@ -27,6 +27,7 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_create_like", resolveCreateLike},
 	{"resolve_subqueries", resolveSubqueries},
 	{"resolve_unions", resolveUnions},
+	{"resolve_describe_query", resolveDescribeQuery},
 	{"check_unique_table_names", checkUniqueTableNames},
 	{"validate_create_trigger", validateCreateTrigger},
 }

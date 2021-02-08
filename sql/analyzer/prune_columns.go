@@ -56,15 +56,6 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		return n, nil
 	}
 
-	if describe, ok := n.(*plan.DescribeQuery); ok {
-		pruned, err := pruneColumns(ctx, a, describe.Child, scope)
-		if err != nil {
-			return nil, err
-		}
-
-		return plan.NewDescribeQuery(describe.Format, pruned), nil
-	}
-
 	columns := columnsUsedByNode(n)
 	findUsedColumns(columns, n)
 
