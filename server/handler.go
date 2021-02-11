@@ -321,8 +321,9 @@ func (h *Handler) doQuery(
 	}()
 	if err != nil {
 		logrus.Tracef("Error running query %s: %s", query, err)
-		return err
+		return sql.CastSQLError(err)
 	}
+
 
 	h.mu.Lock()
 	nc, ok := h.c[c.ConnectionID]
