@@ -27,6 +27,7 @@ type Window struct {
 }
 
 var _ sql.Node = (*Window)(nil)
+var _ sql.Expressioner = (*Window)(nil)
 
 func NewWindow(selectExprs []sql.Expression, node sql.Node) *Window {
 	return &Window{
@@ -35,6 +36,7 @@ func NewWindow(selectExprs []sql.Expression, node sql.Node) *Window {
 	}
 }
 
+// Resolved implements sql.Node
 func (w *Window) Resolved() bool {
 	return w.UnaryNode.Child.Resolved() &&
 		expressionsResolved(w.SelectExprs...)
@@ -62,6 +64,7 @@ func (w *Window) DebugString() string {
 	return pr.String()
 }
 
+// Schema implements sql.Node
 func (w *Window) Schema() sql.Schema {
 	var s = make(sql.Schema, len(w.SelectExprs))
 	for i, e := range w.SelectExprs {
@@ -70,10 +73,7 @@ func (w *Window) Schema() sql.Schema {
 	return s
 }
 
-func (w *Window) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	panic("implement me")
-}
-
+// WithChildren implements sql.Node
 func (w *Window) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(w, len(children), 1)
@@ -82,4 +82,42 @@ func (w *Window) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewWindow(w.SelectExprs, children[0]), nil
 }
 
+// Expressions implements sql.Expressioner
+func (w *Window) Expressions() []sql.Expression {
+	return w.SelectExprs
+}
 
+// WithExpressions implements sql.Expressioner
+func (w *Window) WithExpressions(e ...sql.Expression) (sql.Node, error) {
+	if len(e) != len(w.SelectExprs) {
+		return nil, sql.ErrInvalidChildrenNumber.New(w, len(e), len(w.SelectExprs))
+	}
+
+	return NewWindow(e, w.Child), nil
+}
+
+// RowIter implements sql.Node
+func (w *Window) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	childIter, err := w.Child.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	return &windowIter{
+		selectExprs: w.SelectExprs,
+		childIter:   childIter,
+	}, nil
+}
+
+type windowIter struct {
+	selectExprs []sql.Expression
+	childIter sql.RowIter
+}
+
+func (w *windowIter) Next() (sql.Row, error) {
+	panic("implement me")
+}
+
+func (w *windowIter) Close() error {
+	return w.childIter.Close()
+}
