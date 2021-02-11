@@ -473,7 +473,7 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		}
 	}
 
-	node, err = selectToProjectOrGroupBy(ctx, s.SelectExprs, s.GroupBy, node)
+	node, err = selectToSelectionNode(ctx, s.SelectExprs, s.GroupBy, node)
 	if err != nil {
 		return nil, err
 	}
@@ -1354,28 +1354,36 @@ func whereToFilter(ctx *sql.Context, w *sqlparser.Where, child sql.Node) (*plan.
 }
 
 func orderByToSort(ctx *sql.Context, ob sqlparser.OrderBy, child sql.Node) (*plan.Sort, error) {
-	var sortFields []plan.SortField
+	sortFields, err := orderByToSortFields(ctx, ob)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewSort(sortFields, child), nil
+}
+
+func orderByToSortFields(ctx *sql.Context, ob sqlparser.OrderBy) ([]expression.SortField, error) {
+	var sortFields []expression.SortField
 	for _, o := range ob {
 		e, err := exprToExpression(ctx, o.Expr)
 		if err != nil {
 			return nil, err
 		}
 
-		var so plan.SortOrder
+		var so expression.SortOrder
 		switch strings.ToLower(o.Direction) {
 		default:
 			return nil, ErrInvalidSortOrder.New(o.Direction)
 		case sqlparser.AscScr:
-			so = plan.Ascending
+			so = expression.Ascending
 		case sqlparser.DescScr:
-			so = plan.Descending
+			so = expression.Descending
 		}
 
-		sf := plan.SortField{Column: e, Order: so}
+		sf := expression.SortField{Column: e, Order: so}
 		sortFields = append(sortFields, sf)
 	}
-
-	return plan.NewSort(sortFields, child), nil
+	return sortFields, nil
 }
 
 func limitToLimit(
@@ -1459,7 +1467,7 @@ func getInt64Value(ctx *sql.Context, expr sqlparser.Expr, errStr string) (int64,
 	return i.(int64), nil
 }
 
-func isAggregate(e sql.Expression) bool {
+func isAggregateExpr(e sql.Expression) bool {
 	var isAgg bool
 	sql.Inspect(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
@@ -1474,7 +1482,7 @@ func isAggregate(e sql.Expression) bool {
 	return isAgg
 }
 
-func selectToProjectOrGroupBy(
+func selectToSelectionNode(
 	ctx *sql.Context,
 	se sqlparser.SelectExprs,
 	g sqlparser.GroupBy,
@@ -1485,10 +1493,22 @@ func selectToProjectOrGroupBy(
 		return nil, err
 	}
 
+	isWindow := false
+	for _, e := range selectExprs {
+		if isWindowExpr(e) {
+			isWindow = true
+			break
+		}
+	}
+
+	if isWindow {
+		return plan.NewWindow(selectExprs, child), nil
+	}
+
 	isAgg := len(g) > 0
 	if !isAgg {
 		for _, e := range selectExprs {
-			if isAggregate(e) {
+			if isAggregateExpr(e) {
 				isAgg = true
 				break
 			}
@@ -1521,6 +1541,21 @@ func selectToProjectOrGroupBy(
 	}
 
 	return plan.NewProject(selectExprs, child), nil
+}
+
+func isWindowExpr(e sql.Expression) bool {
+	isWindow := false
+	sql.Inspect(e, func(e sql.Expression) bool {
+		if uf, ok := e.(*expression.UnresolvedFunction); ok {
+			if uf.Window != nil {
+				isWindow = true
+				return false
+			}
+		}
+		return true
+	})
+
+	return isWindow
 }
 
 func selectExprsToExpressions(ctx *sql.Context, se sqlparser.SelectExprs) ([]sql.Expression, error) {
@@ -1661,7 +1696,7 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		}
 
 		return expression.NewUnresolvedFunction(v.Name.Lowered(),
-			isAggregateFunc(v), exprs...), nil
+			isAggregateFunc(v), overToWindow(ctx, v.Over), exprs...), nil
 	case *sqlparser.ParenExpr:
 		return exprToExpression(ctx, v.Expr)
 	case *sqlparser.AndExpr:
@@ -1755,8 +1790,30 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		if err != nil {
 			return nil, err
 		}
-		return expression.NewUnresolvedFunction("values", false, col), nil
+		return expression.NewUnresolvedFunction("values", false, nil, col), nil
 	}
+}
+
+func overToWindow(ctx *sql.Context, over *sqlparser.Over) *expression.Window {
+	if over == nil {
+		return nil
+	}
+
+	sortFields, err := orderByToSortFields(ctx, over.OrderBy)
+	if err != nil {
+		return nil
+	}
+
+	partitions := make([]sql.Expression, len(over.PartitionBy))
+	for i, expr := range over.PartitionBy {
+		var err error
+		partitions[i], err = exprToExpression(ctx, expr)
+		if err != nil {
+			return nil
+		}
+	}
+
+	return expression.NewWindow(partitions, sortFields)
 }
 
 func isAggregateFunc(v *sqlparser.FuncExpr) bool {

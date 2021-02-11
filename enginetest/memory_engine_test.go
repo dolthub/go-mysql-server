@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2021 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -85,15 +85,15 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query:    "SELECT i from mytable where 4 = :foo * 2 order by 1",
+		Query:    "select i, row_number() over (order by i desc) = 1 as i_order, row_number() over (order by length(s)) as s_order from mytable order by 1;",
 		Expected: []sql.Row{
-			{1},
-			{2},
-			{3},
+			{1,3,2},
+			{2,2,3},
+			{3,1,1},
 		},
 		Bindings: map[string]sql.Expression{
 			"foo": expression.NewLiteral(int64(2), sql.Int64),

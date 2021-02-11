@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 )
 
 // Defaults is the function map with all the default functions.
@@ -106,6 +107,7 @@ var Defaults = []sql.Function{
 	sql.Function3{Name: "replace", Fn: NewReplace},
 	sql.Function1{Name: "reverse", Fn: NewReverse},
 	sql.FunctionN{Name: "round", Fn: NewRound},
+	sql.Function0{Name: "row_number", Fn: window.NewRowNumber},
 	sql.FunctionN{Name: "rpad", Fn: NewPadFunc(rPadType)},
 	sql.Function1{Name: "rtrim", Fn: NewTrimFunc(rTrimType)},
 	sql.Function1{Name: "second", Fn: NewSecond},

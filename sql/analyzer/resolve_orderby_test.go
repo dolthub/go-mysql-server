@@ -37,7 +37,7 @@ func TestPushdownSortProject(t *testing.T) {
 
 	require := require.New(t)
 	node := plan.NewSort(
-		[]plan.SortField{
+		[]expression.SortField{
 			{Column: expression.NewUnresolvedColumn("x")},
 		},
 		plan.NewProject(
@@ -54,7 +54,7 @@ func TestPushdownSortProject(t *testing.T) {
 	require.Equal(node, result)
 
 	node = plan.NewSort(
-		[]plan.SortField{
+		[]expression.SortField{
 			{Column: expression.NewUnresolvedColumn("a")},
 		},
 		plan.NewProject(
@@ -70,7 +70,7 @@ func TestPushdownSortProject(t *testing.T) {
 			expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 		},
 		plan.NewSort(
-			[]plan.SortField{
+			[]expression.SortField{
 				{Column: expression.NewUnresolvedColumn("a")},
 			},
 			plan.NewResolvedTable(table),
@@ -83,7 +83,7 @@ func TestPushdownSortProject(t *testing.T) {
 	require.Equal(expected, result)
 
 	node = plan.NewSort(
-		[]plan.SortField{
+		[]expression.SortField{
 			{Column: expression.NewUnresolvedColumn("a")},
 			{Column: expression.NewUnresolvedColumn("x")},
 		},
@@ -100,7 +100,7 @@ func TestPushdownSortProject(t *testing.T) {
 			expression.NewGetFieldWithTable(0, sql.Int64, "", "x", false),
 		},
 		plan.NewSort(
-			[]plan.SortField{
+			[]expression.SortField{
 				{Column: expression.NewUnresolvedColumn("a")},
 				{Column: expression.NewUnresolvedColumn("x")},
 			},
@@ -132,7 +132,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 
 	require := require.New(t)
 	node := plan.NewSort(
-		[]plan.SortField{
+		[]expression.SortField{
 			{Column: expression.NewUnresolvedColumn("x")},
 		},
 		plan.NewGroupBy(
@@ -152,7 +152,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 	require.Equal(node, result)
 
 	node = plan.NewSort(
-		[]plan.SortField{
+		[]expression.SortField{
 			{Column: expression.NewUnresolvedColumn("a")},
 		},
 		plan.NewGroupBy(
@@ -174,7 +174,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 			expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 		},
 		plan.NewSort(
-			[]plan.SortField{
+			[]expression.SortField{
 				{Column: expression.NewUnresolvedColumn("a")},
 			},
 			plan.NewResolvedTable(table),
@@ -187,7 +187,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 	require.Equal(expected, result)
 
 	node = plan.NewSort(
-		[]plan.SortField{
+		[]expression.SortField{
 			{Column: expression.NewUnresolvedColumn("a")},
 			{Column: expression.NewUnresolvedColumn("x")},
 		},
@@ -207,7 +207,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 			expression.NewGetFieldWithTable(0, sql.Int64, "", "x", false),
 		},
 		plan.NewSort(
-			[]plan.SortField{
+			[]expression.SortField{
 				{Column: expression.NewUnresolvedColumn("a")},
 				{Column: expression.NewUnresolvedColumn("x")},
 			},
@@ -240,7 +240,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 	})
 
 	node := plan.NewSort(
-		[]plan.SortField{
+		[]expression.SortField{
 			{Column: expression.NewLiteral(int64(2), sql.Int64)},
 			{Column: expression.NewLiteral(int64(1), sql.Int64)},
 		},
@@ -252,7 +252,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 
 	require.Equal(
 		plan.NewSort(
-			[]plan.SortField{
+			[]expression.SortField{
 				{Column: expression.NewUnresolvedQualifiedColumn("t", "b")},
 				{Column: expression.NewUnresolvedQualifiedColumn("t", "a")},
 			},
@@ -262,7 +262,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 	)
 
 	node = plan.NewSort(
-		[]plan.SortField{
+		[]expression.SortField{
 			{Column: expression.NewLiteral(int64(3), sql.Int64)},
 			{Column: expression.NewLiteral(int64(1), sql.Int64)},
 		},

@@ -93,6 +93,8 @@ type UnresolvedFunction struct {
 	name string
 	// IsAggregate or not.
 	IsAggregate bool
+	// Window is the window for this function, if present
+	Window *Window
 	// Children of the expression.
 	Arguments []sql.Expression
 }
@@ -101,9 +103,15 @@ type UnresolvedFunction struct {
 func NewUnresolvedFunction(
 	name string,
 	agg bool,
+	window *Window,
 	arguments ...sql.Expression,
 ) *UnresolvedFunction {
-	return &UnresolvedFunction{name, agg, arguments}
+	return &UnresolvedFunction{
+		name: name,
+		IsAggregate: agg,
+		Window: window,
+		Arguments: arguments,
+	}
 }
 
 // Children implements the Expression interface.
@@ -147,5 +155,5 @@ func (uf *UnresolvedFunction) WithChildren(children ...sql.Expression) (sql.Expr
 	if len(children) != len(uf.Arguments) {
 		return nil, sql.ErrInvalidChildrenNumber.New(uf, len(children), len(uf.Arguments))
 	}
-	return NewUnresolvedFunction(uf.name, uf.IsAggregate, children...), nil
+	return NewUnresolvedFunction(uf.name, uf.IsAggregate, uf.Window, children...), nil
 }

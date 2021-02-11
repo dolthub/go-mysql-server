@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -31,60 +32,11 @@ var ErrUnableSort = errors.NewKind("unable to sort")
 // Sort is the sort node.
 type Sort struct {
 	UnaryNode
-	SortFields []SortField
-}
-
-// SortOrder represents the order of the sort (ascending or descending).
-type SortOrder byte
-
-const (
-	// Ascending order.
-	Ascending SortOrder = 1
-	// Descending order.
-	Descending SortOrder = 2
-)
-
-func (s SortOrder) String() string {
-	switch s {
-	case Ascending:
-		return "ASC"
-	case Descending:
-		return "DESC"
-	default:
-		return "invalid SortOrder"
-	}
-}
-
-// NullOrdering represents how to order based on null values.
-type NullOrdering byte
-
-const (
-	// NullsFirst puts the null values before any other values.
-	NullsFirst NullOrdering = iota
-	// NullsLast puts the null values after all other values.
-	NullsLast NullOrdering = 2
-)
-
-// SortField is a field by which the query will be sorted.
-type SortField struct {
-	// Column to order by.
-	Column sql.Expression
-	// Order type.
-	Order SortOrder
-	// NullOrdering defining how nulls will be ordered.
-	NullOrdering NullOrdering
-}
-
-func (s SortField) DebugString() string {
-	nullOrdering := "nullsFirst"
-	if s.NullOrdering == NullsLast {
-		nullOrdering = "nullsLast"
-	}
-	return fmt.Sprintf("%s %s %s", sql.DebugString(s.Column), s.Order, nullOrdering)
+	SortFields []expression.SortField
 }
 
 // NewSort creates a new Sort node.
-func NewSort(sortFields []SortField, child sql.Node) *Sort {
+func NewSort(sortFields []expression.SortField, child sql.Node) *Sort {
 	return &Sort{
 		UnaryNode:  UnaryNode{child},
 		SortFields: sortFields,
@@ -160,9 +112,9 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.SortFields))
 	}
 
-	var fields = make([]SortField, len(s.SortFields))
+	var fields = make([]expression.SortField, len(s.SortFields))
 	for i, expr := range exprs {
-		fields[i] = SortField{
+		fields[i] = expression.SortField{
 			Column:       expr,
 			NullOrdering: s.SortFields[i].NullOrdering,
 			Order:        s.SortFields[i].Order,
@@ -246,7 +198,7 @@ func (i *sortIter) computeSortedRows() error {
 }
 
 type Sorter struct {
-	SortFields []SortField
+	SortFields []expression.SortField
 	Rows       []sql.Row
 	LastError  error
 	Ctx        *sql.Context
@@ -281,16 +233,16 @@ func (s *Sorter) Less(i, j int) bool {
 			return false
 		}
 
-		if sf.Order == Descending {
+		if sf.Order == expression.Descending {
 			av, bv = bv, av
 		}
 
 		if av == nil && bv == nil {
 			continue
 		} else if av == nil {
-			return sf.NullOrdering == NullsFirst
+			return sf.NullOrdering == expression.NullsFirst
 		} else if bv == nil {
-			return sf.NullOrdering != NullsFirst
+			return sf.NullOrdering != expression.NullsFirst
 		}
 
 		cmp, err := typ.Compare(av, bv)

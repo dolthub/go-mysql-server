@@ -189,7 +189,7 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 
 		schema := sort.Child.Schema()
 		var (
-			fields     = make([]plan.SortField, len(sort.SortFields))
+			fields     = make([]expression.SortField, len(sort.SortFields))
 			schemaCols = make([]*sql.Column, len(schema))
 		)
 		for i, col := range sort.Child.Schema() {
@@ -214,7 +214,7 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 					return nil, ErrOrderByColumnIndex.New(idx + 1)
 				}
 
-				fields[i] = plan.SortField{
+				fields[i] = expression.SortField{
 					Column:       expression.NewUnresolvedQualifiedColumn(schemaCols[idx].Source, schemaCols[idx].Name),
 					Order:        f.Order,
 					NullOrdering: f.NullOrdering,
@@ -228,7 +228,7 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 						name = nameable.Name()
 					}
 
-					fields[i] = plan.SortField{
+					fields[i] = expression.SortField{
 						Column:       expression.NewUnresolvedColumn(name),
 						Order:        f.Order,
 						NullOrdering: f.NullOrdering,
