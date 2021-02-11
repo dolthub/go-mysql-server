@@ -324,7 +324,6 @@ func (h *Handler) doQuery(
 		return sql.CastSQLError(err)
 	}
 
-
 	h.mu.Lock()
 	nc, ok := h.c[c.ConnectionID]
 	h.mu.Unlock()
