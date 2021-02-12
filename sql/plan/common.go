@@ -78,12 +78,3 @@ func (n BinaryNode) Resolved() bool {
 	return n.left.Resolved() && n.right.Resolved()
 }
 
-func expressionsResolved(exprs ...sql.Expression) bool {
-	for _, e := range exprs {
-		if !e.Resolved() {
-			return false
-		}
-	}
-
-	return true
-}

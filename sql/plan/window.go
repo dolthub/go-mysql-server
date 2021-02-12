@@ -42,7 +42,7 @@ func NewWindow(selectExprs []sql.Expression, node sql.Node) *Window {
 // Resolved implements sql.Node
 func (w *Window) Resolved() bool {
 	return w.UnaryNode.Child.Resolved() &&
-		expressionsResolved(w.SelectExprs...)
+		expression.ExpressionsResolved(w.SelectExprs...)
 }
 
 func (w *Window) String() string {

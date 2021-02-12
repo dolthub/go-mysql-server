@@ -37,7 +37,14 @@ func NewRowNumber() sql.Expression {
 
 // IsNullable implements sql.Expression
 func (r *RowNumber) Resolved() bool {
-	return true
+	return windowResolved(r.window)
+}
+
+func windowResolved(window *sql.Window) bool {
+	if window == nil {
+		return true
+	}
+	return expression.ExpressionsResolved(append(window.OrderBy.ToExpressions(), window.PartitionBy...)...)
 }
 
 func (r *RowNumber) String() string {
@@ -99,7 +106,7 @@ func (r *RowNumber) WithWindow(window *sql.Window) (sql.WindowAggregation, error
 
 // Add implements sql.WindowAggregation
 func (r *RowNumber) Add(ctx *sql.Context, row sql.Row) error {
-	r.rows = append(r.rows, append(row, r.pos))
+	r.rows = append(r.rows, append(row, r.pos+1))
 	r.pos++
 	return nil
 }

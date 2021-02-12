@@ -52,8 +52,8 @@ func NewGroupBy(selectedExprs, groupByExprs []sql.Expression, child sql.Node) *G
 // Resolved implements the Resolvable interface.
 func (g *GroupBy) Resolved() bool {
 	return g.UnaryNode.Child.Resolved() &&
-		expressionsResolved(g.SelectedExprs...) &&
-		expressionsResolved(g.GroupByExprs...)
+		expression.ExpressionsResolved(g.SelectedExprs...) &&
+		expression.ExpressionsResolved(g.GroupByExprs...)
 }
 
 // Schema implements the Node interface.
