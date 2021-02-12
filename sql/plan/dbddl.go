@@ -24,12 +24,13 @@ import (
 /// DBDDDL nodes have a reference to an inmemory database
 type dbddlNode struct {
 	db sql.Database
+	Catalog *sql.Catalog
 }
 
 // Resolved implements the Resolvable interface.
 func (c *dbddlNode) Resolved() bool {
-	_, ok := c.db.(sql.Database) // TODO: Wtf am i doing here
-	return ok
+	_, ok := c.db.(sql.UnresolvedDatabase)
+	return !ok
 }
 
 // Database implements the sql.Databaser interface.
@@ -71,6 +72,8 @@ func (c CreateDB) Children() []sql.Node {
 }
 
 func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	c.dbddlNode.Catalog.AddDatabase(c.db)
+
 	return sql.RowsToRowIter(), nil
 }
 
