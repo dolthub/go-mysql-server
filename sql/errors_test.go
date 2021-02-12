@@ -11,8 +11,8 @@ import (
 func TestSQLErrorCast(t *testing.T) {
 
 	tests := []struct {
-		err        error
-		code       int
+		err  error
+		code int
 	}{
 		{ErrTableNotFound.New("table not found err"), 1146},
 		{ErrInvalidType.New("unhandled mysql error"), 1105},
