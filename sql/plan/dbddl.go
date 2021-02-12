@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
@@ -82,10 +81,55 @@ func (c CreateDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 func NewCreateDatabase(dbName string, ifExists bool, collate string, charset string) *CreateDB {
-	db := memory.NewDatabase(dbName)
-
 	return &CreateDB{
-		dbddlNode: dbddlNode{db: db},
+		dbddlNode: dbddlNode{},
+		IfExists: ifExists,
+		Collate: collate,
+		Charset: charset,
+	}
+}
+
+type DropDB struct {
+	Catalog *sql.Catalog
+	dbName	string
+	IfExists bool
+	Collate  string
+	Charset  string
+}
+
+func (d DropDB) Resolved() bool {
+	return true
+}
+
+func (d DropDB) String() string {
+	ifExists := ""
+	if d.IfExists {
+		ifExists = " if exists"
+	}
+	return fmt.Sprintf("%s database%s %v", sqlparser.DeleteStr, ifExists, d.dbName)
+}
+
+func (d DropDB) Schema() sql.Schema {
+	return nil
+}
+
+func (d DropDB) Children() []sql.Node {
+	return nil
+}
+
+func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	d.Catalog.DropDatabase(d.dbName)
+
+	return sql.RowsToRowIter(), nil
+}
+
+func (d DropDB) WithChildren(children ...sql.Node) (sql.Node, error) {
+	return NillaryWithChildren(d, children...)
+}
+
+func NewDropDatabase(dbName string, ifExists bool, collate string, charset string) *DropDB {
+	return &DropDB{
+		dbName: dbName,
 		IfExists: ifExists,
 		Collate: collate,
 		Charset: charset,

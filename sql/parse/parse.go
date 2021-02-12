@@ -551,9 +551,9 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 func convertDBDDL(ctx *sql.Context, query string, c *sqlparser.DBDDL) (sql.Node, error) {
 	switch strings.ToLower(c.Action) {
 	case sqlparser.CreateStr:
-		return convertCreateDatabase(ctx, c)
+		return plan.NewCreateDatabase(c.DBName, c.IfExists, c.Collate, c.Charset), nil
 	case sqlparser.DropStr:
-		return nil, nil
+		return plan.NewDropDatabase(c.DBName, c.IfExists, c.Collate, c.Charset), nil
 	default:
 		return nil, ErrUnsupportedSyntax.New(sqlparser.String(c))
 	}
@@ -895,10 +895,6 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 
 	return plan.NewCreateTable(
 		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema, c.IfNotExists, idxDefs, fkDefs), nil
-}
-
-func convertCreateDatabase(ctx *sql.Context, c* sqlparser.DBDDL) (sql.Node, error) {
-	return plan.NewCreateDatabase(c.DBName, c.IfExists, c.Collate, c.Charset), nil
 }
 
 type namedConstraint struct {
