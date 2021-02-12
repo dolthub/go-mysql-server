@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // Nameable is something that has a name.
@@ -104,6 +106,9 @@ type Aggregation interface {
 // WindowAggregation is expected to track its input rows in the order received, and to return the value for the row
 // index given on demand.
 type WindowAggregation interface {
+	Expression
+	// WithWindow returns a version of this window aggregation with the window given
+	WithWindow(window *expression.Window) (WindowAggregation, error)
 	// Add updates the aggregation with the input row given. Implementors must keep track of rows added in order so
 	// that they can later be retrieved by EvalRow(int)
 	Add(ctx *Context, row Row) error
