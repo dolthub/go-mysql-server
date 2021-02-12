@@ -106,14 +106,14 @@ func (r *RowNumber) WithWindow(window *sql.Window) (sql.WindowAggregation, error
 
 // Add implements sql.WindowAggregation
 func (r *RowNumber) Add(ctx *sql.Context, row sql.Row) error {
-	r.rows = append(r.rows, append(row, r.pos+1))
+	r.rows = append(r.rows, append(row, nil, r.pos))
 	r.pos++
 	return nil
 }
 
 // Finish implements sql.WindowAggregation
 func (r *RowNumber) Finish(ctx *sql.Context) error {
-	if r.window != nil && r.window.OrderBy != nil {
+	if len(r.rows) > 0 && r.window != nil && r.window.OrderBy != nil {
 		sorter := &expression.Sorter{
 			SortFields: r.window.OrderBy,
 			Rows:       r.rows,
@@ -123,11 +123,24 @@ func (r *RowNumber) Finish(ctx *sql.Context) error {
 		if sorter.LastError != nil {
 			return sorter.LastError
 		}
+
+		// Now that we have the rows in sorted order, number them
+		rowNumIdx := len(r.rows[0]) - 2
+		originalOrderIdx := len(r.rows[0]) - 1
+		for i := range r.rows {
+			r.rows[i][rowNumIdx] = i+1
+		}
+
+		// And finally sort again by the original order
+		sort.SliceStable(r.rows, func(i, j int) bool {
+			return r.rows[i][originalOrderIdx].(int) < r.rows[j][originalOrderIdx].(int)
+		})
 	}
+
 	return nil
 }
 
 // EvalRow implements sql.WindowAggregation
 func (r *RowNumber) EvalRow(i int) (interface{}, error) {
-	return r.rows[i][len(r.rows[i])-1], nil
+	return r.rows[i][len(r.rows[i])-2], nil
 }
