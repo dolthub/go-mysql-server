@@ -94,7 +94,7 @@ type UnresolvedFunction struct {
 	// IsAggregate or not.
 	IsAggregate bool
 	// Window is the window for this function, if present
-	Window *Window
+	Window *sql.Window
 	// Children of the expression.
 	Arguments []sql.Expression
 }
@@ -103,7 +103,7 @@ type UnresolvedFunction struct {
 func NewUnresolvedFunction(
 	name string,
 	agg bool,
-	window *Window,
+	window *sql.Window,
 	arguments ...sql.Expression,
 ) *UnresolvedFunction {
 	return &UnresolvedFunction{

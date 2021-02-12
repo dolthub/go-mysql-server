@@ -21,8 +21,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // Nameable is something that has a name.
@@ -108,7 +106,7 @@ type Aggregation interface {
 type WindowAggregation interface {
 	Expression
 	// WithWindow returns a version of this window aggregation with the window given
-	WithWindow(window *expression.Window) (WindowAggregation, error)
+	WithWindow(window *Window) (WindowAggregation, error)
 	// Add updates the aggregation with the input row given. Implementors must keep track of rows added in order so
 	// that they can later be retrieved by EvalRow(int)
 	Add(ctx *Context, row Row) error
@@ -117,6 +115,17 @@ type WindowAggregation interface {
 	Finish(ctx *Context) error
 	// EvalRow returns the value of the expression for the row with the index given
 	EvalRow(i int) (interface{}, error)
+}
+
+// A Window specifies the window parameters of a window function
+type Window struct {
+	PartitionBy []Expression
+	OrderBy     SortFields
+	// TODO: window frame
+}
+
+func NewWindow(partitionBy []Expression, orderBy []SortField) *Window {
+	return &Window{PartitionBy: partitionBy, OrderBy: orderBy}
 }
 
 // Node is a node in the execution plan tree.

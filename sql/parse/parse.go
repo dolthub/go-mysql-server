@@ -1362,25 +1362,25 @@ func orderByToSort(ctx *sql.Context, ob sqlparser.OrderBy, child sql.Node) (*pla
 	return plan.NewSort(sortFields, child), nil
 }
 
-func orderByToSortFields(ctx *sql.Context, ob sqlparser.OrderBy) ([]expression.SortField, error) {
-	var sortFields []expression.SortField
+func orderByToSortFields(ctx *sql.Context, ob sqlparser.OrderBy) ([]sql.SortField, error) {
+	var sortFields []sql.SortField
 	for _, o := range ob {
 		e, err := exprToExpression(ctx, o.Expr)
 		if err != nil {
 			return nil, err
 		}
 
-		var so expression.SortOrder
+		var so sql.SortOrder
 		switch strings.ToLower(o.Direction) {
 		default:
 			return nil, ErrInvalidSortOrder.New(o.Direction)
 		case sqlparser.AscScr:
-			so = expression.Ascending
+			so = sql.Ascending
 		case sqlparser.DescScr:
-			so = expression.Descending
+			so = sql.Descending
 		}
 
-		sf := expression.SortField{Column: e, Order: so}
+		sf := sql.SortField{Column: e, Order: so}
 		sortFields = append(sortFields, sf)
 	}
 	return sortFields, nil
@@ -1794,7 +1794,7 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 	}
 }
 
-func overToWindow(ctx *sql.Context, over *sqlparser.Over) *expression.Window {
+func overToWindow(ctx *sql.Context, over *sqlparser.Over) *sql.Window {
 	if over == nil {
 		return nil
 	}
@@ -1813,7 +1813,7 @@ func overToWindow(ctx *sql.Context, over *sqlparser.Over) *expression.Window {
 		}
 	}
 
-	return expression.NewWindow(partitions, sortFields)
+	return sql.NewWindow(partitions, sortFields)
 }
 
 func isAggregateFunc(v *sqlparser.FuncExpr) bool {

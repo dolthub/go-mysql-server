@@ -15,12 +15,17 @@
 package window
 
 import (
+	"sort"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 type RowNumber struct {
-	window *expression.Window
+	window *sql.Window
+	// TODO support partitions (add a map here)
+	rows []sql.Row
+	pos  int
 }
 
 var _ sql.FunctionExpression = (*RowNumber)(nil)
@@ -61,20 +66,32 @@ func (r *RowNumber) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // Children implements sql.Expression
 func (r *RowNumber) Children() []sql.Expression {
-	return nil
+	if r.window == nil {
+		return nil
+	}
+	return append(r.window.OrderBy.ToExpressions(), r.window.PartitionBy...)
 }
 
 // WithChildren implements sql.Expression
 func (r *RowNumber) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) > 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 0)
+	if r.window == nil {
+		if len(children) > 0 {
+			return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 0)
+		}
 	}
 
-	return r, nil
+	if len(children) != len(r.window.OrderBy) +len(r.window.PartitionBy) {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), len(r.window.OrderBy) +len(r.window.PartitionBy))
+	}
+
+	nr := *r
+	nr.window.OrderBy = nr.window.OrderBy.FromExpressions(children[:len(nr.window.OrderBy)])
+	nr.window.PartitionBy = children[len(nr.window.OrderBy):]
+	return &nr, nil
 }
 
 // WithWindow implements sql.WindowAggregation
-func (r *RowNumber) WithWindow(window *expression.Window) (sql.WindowAggregation, error) {
+func (r *RowNumber) WithWindow(window *sql.Window) (sql.WindowAggregation, error) {
 	nr := *r
 	nr.window = window
 	return &nr, nil
@@ -82,15 +99,28 @@ func (r *RowNumber) WithWindow(window *expression.Window) (sql.WindowAggregation
 
 // Add implements sql.WindowAggregation
 func (r *RowNumber) Add(ctx *sql.Context, row sql.Row) error {
+	r.rows = append(r.rows, append(row, r.pos))
+	r.pos++
 	return nil
 }
 
 // Finish implements sql.WindowAggregation
 func (r *RowNumber) Finish(ctx *sql.Context) error {
-	panic("implement me")
+	if r.window != nil && r.window.OrderBy != nil {
+		sorter := &expression.Sorter{
+			SortFields: r.window.OrderBy,
+			Rows:       r.rows,
+			Ctx:        ctx,
+		}
+		sort.Stable(sorter)
+		if sorter.LastError != nil {
+			return sorter.LastError
+		}
+	}
+	return nil
 }
 
 // EvalRow implements sql.WindowAggregation
 func (r *RowNumber) EvalRow(i int) (interface{}, error) {
-	panic("implement me")
+	return r.rows[i][len(r.rows[i])-1], nil
 }

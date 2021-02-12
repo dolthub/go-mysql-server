@@ -173,6 +173,7 @@ func (i *windowIter) compute() error {
 		for j, expr := range i.selectExprs {
 			var err error
 
+			// TODO: handle aliases
 			if wa, ok := expr.(sql.WindowAggregation); ok {
 				err := wa.Add(i.ctx, row)
 				if err != nil {
@@ -192,7 +193,17 @@ func (i *windowIter) compute() error {
 			}
 		}
 
-		i.rows = append(i.rows, row)
+		i.rows = append(i.rows, outRow)
+	}
+
+	for _, expr := range i.selectExprs {
+		// TODO: handle aliases
+		if wa, ok := expr.(sql.WindowAggregation); ok {
+			err := wa.Finish(i.ctx)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil

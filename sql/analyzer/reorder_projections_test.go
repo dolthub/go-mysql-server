@@ -43,7 +43,7 @@ func TestReorderProjection(t *testing.T) {
 					expression.NewAlias("bar", lit(2)),
 				},
 				plan.NewSort(
-					[]expression.SortField{
+					[]sql.SortField{
 						{Column: uc("foo")},
 					},
 					plan.NewFilter(
@@ -62,7 +62,7 @@ func TestReorderProjection(t *testing.T) {
 					gf(2, "", "bar"),
 				},
 				plan.NewSort(
-					[]expression.SortField{{Column: gf(3, "", "foo")}},
+					[]sql.SortField{{Column: gf(3, "", "foo")}},
 					plan.NewProject(
 						[]sql.Expression{
 							gf(0, "mytable", "i"),
@@ -156,7 +156,7 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 		{
 			name: "no reorder needed",
 			node: plan.NewSort(
-				[]expression.SortField{
+				[]sql.SortField{
 					{Column: gf(0, "one_pk", "pk")},
 				}, plan.NewProject(
 					[]sql.Expression{
@@ -183,7 +183,7 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 		{
 			name: "subquery with an alias reference",
 			node: plan.NewSort(
-				[]expression.SortField{
+				[]sql.SortField{
 					{Column: gf(0, "one_pk", "pk")},
 				}, plan.NewProject(
 					[]sql.Expression{
@@ -206,7 +206,7 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 					}, plan.NewResolvedTable(onepk)),
 			),
 			expected: plan.NewSort(
-				[]expression.SortField{
+				[]sql.SortField{
 					{Column: gf(0, "one_pk", "pk")},
 				}, plan.NewProject(
 					[]sql.Expression{

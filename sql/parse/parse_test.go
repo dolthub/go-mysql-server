@@ -935,7 +935,7 @@ var fixtures = map[string]sql.Node{
 		),
 	),
 	`SELECT foo, bar FROM foo ORDER BY baz DESC;`: plan.NewSort(
-		[]expression.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
+		[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("foo"),
@@ -961,7 +961,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT foo, bar FROM foo ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(1,
 		plan.NewSort(
-			[]expression.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
+			[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("foo"),
@@ -973,7 +973,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT foo, bar FROM foo WHERE qux = 1 ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(1,
 		plan.NewSort(
-			[]expression.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
+			[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("foo"),
@@ -1508,7 +1508,7 @@ var fixtures = map[string]sql.Node{
 		),
 	),
 	`SELECT a, b FROM t ORDER BY 2, 1`: plan.NewSort(
-		[]expression.SortField{
+		[]sql.SortField{
 			{
 				Column:       expression.NewLiteral(int8(2), sql.Int8),
 				Order:        plan.Ascending,

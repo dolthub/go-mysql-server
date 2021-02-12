@@ -15,58 +15,70 @@
 package expression
 
 import (
-	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// SortField is a field by which the query will be sorted.
-type SortField struct {
-	// Column to order by.
-	Column sql.Expression
-	// Order type.
-	Order SortOrder
-	// NullOrdering defining how nulls will be ordered.
-	NullOrdering NullOrdering
+type Sorter struct {
+	SortFields []sql.SortField
+	Rows       []sql.Row
+	LastError  error
+	Ctx        *sql.Context
 }
 
-func (s SortField) DebugString() string {
-	nullOrdering := "nullsFirst"
-	if s.NullOrdering == NullsLast {
-		nullOrdering = "nullsLast"
+func (s *Sorter) Len() int {
+	return len(s.Rows)
+}
+
+func (s *Sorter) Swap(i, j int) {
+	s.Rows[i], s.Rows[j] = s.Rows[j], s.Rows[i]
+}
+
+func (s *Sorter) Less(i, j int) bool {
+	if s.LastError != nil {
+		return false
 	}
-	return fmt.Sprintf("%s %s %s", sql.DebugString(s.Column), s.Order, nullOrdering)
-}
 
-// SortOrder represents the order of the sort (ascending or descending).
-type SortOrder byte
+	a := s.Rows[i]
+	b := s.Rows[j]
+	for _, sf := range s.SortFields {
+		typ := sf.Column.Type()
+		av, err := sf.Column.Eval(s.Ctx, a)
+		if err != nil {
+			s.LastError = sql.ErrUnableSort.Wrap(err)
+			return false
+		}
 
-const (
-	// Ascending order.
-	Ascending SortOrder = 1
-	// Descending order.
-	Descending SortOrder = 2
-)
+		bv, err := sf.Column.Eval(s.Ctx, b)
+		if err != nil {
+			s.LastError = sql.ErrUnableSort.Wrap(err)
+			return false
+		}
 
-func (s SortOrder) String() string {
-	switch s {
-	case Ascending:
-		return "ASC"
-	case Descending:
-		return "DESC"
-	default:
-		return "invalid SortOrder"
+		if sf.Order == sql.Descending {
+			av, bv = bv, av
+		}
+
+		if av == nil && bv == nil {
+			continue
+		} else if av == nil {
+			return sf.NullOrdering == sql.NullsFirst
+		} else if bv == nil {
+			return sf.NullOrdering != sql.NullsFirst
+		}
+
+		cmp, err := typ.Compare(av, bv)
+		if err != nil {
+			s.LastError = err
+			return false
+		}
+
+		switch cmp {
+		case -1:
+			return true
+		case 1:
+			return false
+		}
 	}
+
+	return false
 }
-
-// NullOrdering represents how to order based on null values.
-type NullOrdering byte
-
-const (
-	// NullsFirst puts the null values before any other values.
-	NullsFirst NullOrdering = iota
-	// NullsLast puts the null values after all other values.
-	NullsLast NullOrdering = 2
-)
-
-
