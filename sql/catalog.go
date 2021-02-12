@@ -155,8 +155,9 @@ func (d *Databases) Delete(dbName string) {
 	}
 
 	if idx != -1 {
-		(*d)[idx] = (*d)[len(*d)-1]
-		*d = (*d)[:len(*d)-1]
+		dbs := *d
+		dbs[idx] = dbs[len(dbs)-1]
+		*d = dbs[:len(dbs)-1]
 	}
 }
 

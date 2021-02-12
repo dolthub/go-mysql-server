@@ -22,11 +22,11 @@ import (
 )
 
 type CreateDB struct {
-	Catalog *sql.Catalog
-	dbName string
-	IfExists bool
-	Collate  string
-	Charset  string
+	Catalog     *sql.Catalog
+	dbName      string
+	IfNotExists bool
+	Collate     string
+	Charset     string
 }
 
 func (c CreateDB) Resolved() bool {
@@ -35,7 +35,7 @@ func (c CreateDB) Resolved() bool {
 
 func (c CreateDB) String() string {
 	ifExists := ""
-	if c.IfExists {
+	if c.IfNotExists {
 		ifExists = " if exists"
 	}
 	return fmt.Sprintf("%s database%s %v", sqlparser.CreateStr, ifExists, c.dbName)
@@ -51,7 +51,7 @@ func (c CreateDB) Children() []sql.Node {
 
 func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	exists := c.Catalog.HasDB(c.dbName)
-	if c.IfExists && exists {
+	if c.IfNotExists && exists {
 		ctx.Session.Warn(&sql.Warning{
 			Level:   "Note",
 			Code:    1007,
@@ -73,12 +73,12 @@ func (c CreateDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(c, children...)
 }
 
-func NewCreateDatabase(dbName string, ifExists bool, collate string, charset string) *CreateDB {
+func NewCreateDatabase(dbName string, ifNotExists bool, collate string, charset string) *CreateDB {
 	return &CreateDB{
-		dbName: dbName,
-		IfExists: ifExists,
-		Collate: collate,
-		Charset: charset,
+		dbName:      dbName,
+		IfNotExists: ifNotExists,
+		Collate:     collate,
+		Charset:     charset,
 	}
 }
 
