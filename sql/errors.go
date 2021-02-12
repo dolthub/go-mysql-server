@@ -127,6 +127,9 @@ var (
 	// ErrTruncateReferencedFromForeignKey is returned when a table is referenced in a foreign key and TRUNCATE is called on it.
 	ErrTruncateReferencedFromForeignKey = errors.NewKind("cannot truncate table %s as it is referenced in foreign key %s on table %s")
 
-	// ErrDatabaseExists
+	// ErrDatabaseExists is returned when a CREATE DATABASE is called on a table that already exists.
 	ErrDatabaseExists = errors.NewKind("can't create database %s; database exists")
+
+	// ErrDatabaseDoesntExists is returned when a DROP DATABASE is callend when a table is dropped that doesn't exist.
+	ErrDatabaseDoesntExists = errors.NewKind("can't drop database %s; database doesn't exist")
 )

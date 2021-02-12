@@ -21,24 +21,8 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
-/// DBDDDL nodes have a reference to an inmemory database
-type dbddlNode struct {
-	Catalog *sql.Catalog
-}
-
-// Resolved implements the Resolvable interface.
-func (c *dbddlNode) Resolved() bool {
-	return true
-}
-
-// Schema implements the Node interface.
-func (*dbddlNode) Schema() sql.Schema { return nil }
-
-// Children implements the Node interface.
-func (*dbddlNode) Children() []sql.Node { return nil }
-
 type CreateDB struct {
-	dbddlNode
+	Catalog *sql.Catalog
 	dbName string
 	IfExists bool
 	Collate  string
@@ -46,7 +30,7 @@ type CreateDB struct {
 }
 
 func (c CreateDB) Resolved() bool {
-	return c.dbddlNode.Resolved()
+	return true
 }
 
 func (c CreateDB) String() string {
@@ -66,7 +50,7 @@ func (c CreateDB) Children() []sql.Node {
 }
 
 func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	exists := c.dbddlNode.Catalog.HasDB(c.dbName)
+	exists := c.Catalog.HasDB(c.dbName)
 	if c.IfExists && exists {
 		ctx.Session.Warn(&sql.Warning{
 			Level:   "Note",
@@ -80,7 +64,7 @@ func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	}
 
 	db := memory.NewDatabase(c.dbName)
-	c.dbddlNode.Catalog.AddDatabase(db)
+	c.Catalog.AddDatabase(db)
 
 	return sql.RowsToRowIter(), nil
 }
@@ -91,7 +75,6 @@ func (c CreateDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func NewCreateDatabase(dbName string, ifExists bool, collate string, charset string) *CreateDB {
 	return &CreateDB{
-		dbddlNode: dbddlNode{},
 		dbName: dbName,
 		IfExists: ifExists,
 		Collate: collate,
@@ -116,7 +99,7 @@ func (d DropDB) String() string {
 	if d.IfExists {
 		ifExists = " if exists"
 	}
-	return fmt.Sprintf("%s database%s %v", sqlparser.DeleteStr, ifExists, d.dbName)
+	return fmt.Sprintf("%s database%s %v", sqlparser.DropStr, ifExists, d.dbName)
 }
 
 func (d DropDB) Schema() sql.Schema {
@@ -128,6 +111,19 @@ func (d DropDB) Children() []sql.Node {
 }
 
 func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	exists := d.Catalog.HasDB(d.dbName)
+	if d.IfExists && !exists {
+		ctx.Session.Warn(&sql.Warning{
+			Level:   "Note",
+			Code:    1007,
+			Message: fmt.Sprintf("Can't drop database %s; database doesn't exist ", d.dbName),
+		})
+
+		return sql.RowsToRowIter(), nil
+	} else if !exists {
+		return nil, sql.ErrDatabaseDoesntExists.New(d.dbName)
+	}
+
 	d.Catalog.DropDatabase(d.dbName)
 
 	return sql.RowsToRowIter(), nil

@@ -176,7 +176,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		}
 		return convertDDL(ctx, query, ddl.(*sqlparser.DDL))
 	case *sqlparser.DBDDL:
-		return convertDBDDL(ctx, query, n)
+		return convertDBDDL(n)
 	case *sqlparser.Set:
 		return convertSet(ctx, n)
 	case *sqlparser.Use:
@@ -548,10 +548,10 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	}
 }
 
-func convertDBDDL(ctx *sql.Context, query string, c *sqlparser.DBDDL) (sql.Node, error) {
+func convertDBDDL(c *sqlparser.DBDDL) (sql.Node, error) {
 	switch strings.ToLower(c.Action) {
 	case sqlparser.CreateStr:
-		return plan.NewCreateDatabase(c.DBName, c.IfExists, c.Collate, c.Charset), nil
+		return plan.NewCreateDatabase(c.DBName, c.IfNotExists, c.Collate, c.Charset), nil
 	case sqlparser.DropStr:
 		return plan.NewDropDatabase(c.DBName, c.IfExists, c.Collate, c.Charset), nil
 	default:
