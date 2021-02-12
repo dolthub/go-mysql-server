@@ -17,8 +17,11 @@ package window
 import "github.com/dolthub/go-mysql-server/sql"
 
 type RowNumber struct {
-	
+
 }
+
+var _ sql.FunctionExpression = (*RowNumber)(nil)
+var _ sql.WindowAggregation = (*RowNumber)(nil)
 
 func NewRowNumber() sql.Expression {
 	return &RowNumber{}
@@ -30,6 +33,10 @@ func (r *RowNumber) Resolved() bool {
 
 func (r *RowNumber) String() string {
 	return "ROW_NUMBER()"
+}
+
+func (r *RowNumber) FunctionName() string {
+	return "ROW_NUMBER"
 }
 
 func (r *RowNumber) Type() sql.Type {
@@ -56,14 +63,14 @@ func (r *RowNumber) WithChildren(children ...sql.Expression) (sql.Expression, er
 	return r, nil
 }
 
-func (r *RowNumber) NewBuffer() sql.Row {
+func (r *RowNumber) Add(ctx *sql.Context, row sql.Row) error {
 	return nil
 }
 
-func (r *RowNumber) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	return nil
+func (r *RowNumber) EvalRow(i int) (interface{}, error) {
+	panic("implement me")
 }
 
-func (r *RowNumber) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	return nil
+func (r *RowNumber) Finish(ctx *sql.Context) error {
+	panic("implement me")
 }

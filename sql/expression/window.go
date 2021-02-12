@@ -24,7 +24,3 @@ type Window struct {
 	OrderBy []SortField
 	// TODO: window frame
 }
-
-func NewWindow(partitionBy []sql.Expression, orderBy []SortField) *Window {
-	return &Window{PartitionBy: partitionBy, OrderBy: orderBy}
-}

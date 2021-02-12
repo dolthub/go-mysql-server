@@ -34,6 +34,7 @@ func flattenGroupByAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
+		// TODO: add windows here too
 		case *plan.GroupBy:
 			if !hasHiddenAggregations(n.SelectedExprs...) {
 				return n, nil

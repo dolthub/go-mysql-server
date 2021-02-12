@@ -15,8 +15,11 @@
 package plan
 
 import (
+	"fmt"
+	"io"
 	"strings"
 
+	"github.com/cespare/xxhash"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -106,18 +109,109 @@ func (w *Window) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &windowIter{
 		selectExprs: w.SelectExprs,
 		childIter:   childIter,
+		ctx:         ctx,
 	}, nil
 }
 
 type windowIter struct {
 	selectExprs []sql.Expression
-	childIter sql.RowIter
+	childIter   sql.RowIter
+	ctx         *sql.Context
+	keys        []uint64
+	rows        []sql.Row
+	aggregates  []sql.Row
+	pos         int
 }
 
-func (w *windowIter) Next() (sql.Row, error) {
-	panic("implement me")
+func (i *windowIter) Next() (sql.Row, error) {
+	if i.rows == nil {
+		err := i.compute()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if i.pos >= len(i.rows) {
+		return nil, io.EOF
+	}
+
+	row := i.rows[i.pos]
+
+	for j, expr := range i.selectExprs {
+		var err error
+
+		if wa, ok := expr.(sql.WindowAggregation); ok {
+			row[j], err = wa.EvalRow(i.pos)
+			if err != nil {
+				return nil, err
+			}
+
+			continue
+		}
+
+		if _, ok := expr.(sql.Aggregation); ok {
+			// TODO: aggregate functions
+			continue
+		}
+	}
+
+	i.pos++
+	return row, nil
 }
 
-func (w *windowIter) Close() error {
-	return w.childIter.Close()
+func (i *windowIter) compute() error {
+	for {
+		row, err := i.childIter.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		outRow := make(sql.Row, len(i.selectExprs))
+		for j, expr := range i.selectExprs {
+			var err error
+
+			if wa, ok := expr.(sql.WindowAggregation); ok {
+				err := wa.Add(i.ctx, row)
+				if err != nil {
+					return err
+				}
+				continue
+			}
+
+			if _, ok := expr.(sql.Aggregation); ok {
+				// TODO: aggregate functions
+				continue
+			}
+
+			outRow[j], err = expr.Eval(i.ctx, row)
+			if err != nil {
+				return err
+			}
+		}
+
+		i.rows = append(i.rows, row)
+	}
+
+	return nil
+}
+
+func rowKey(
+	row sql.Row,
+) (uint64, error) {
+	hash := xxhash.New()
+	for _,v := range row {
+		_, err := hash.Write(([]byte)(fmt.Sprintf("%#v,", v)))
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	return hash.Sum64(), nil
+}
+
+func (i *windowIter) Close() error {
+	return i.childIter.Close()
 }
