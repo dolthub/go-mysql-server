@@ -144,6 +144,7 @@ func (d *Databases) Add(db Database) {
 	*d = append(*d, db)
 }
 
+// Delete removes a database.
 func (d *Databases) Delete(dbName string) {
 	idx := -1
 	for i, db := range *d {

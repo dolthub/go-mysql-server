@@ -16,25 +16,19 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 /// DBDDDL nodes have a reference to an inmemory database
 type dbddlNode struct {
-	db sql.Database
 	Catalog *sql.Catalog
 }
 
 // Resolved implements the Resolvable interface.
 func (c *dbddlNode) Resolved() bool {
-	_, ok := c.db.(sql.UnresolvedDatabase)
-	return !ok
-}
-
-// Database implements the sql.Databaser interface.
-func (c *dbddlNode) Database() sql.Database {
-	return c.db
+	return true
 }
 
 // Schema implements the Node interface.
@@ -45,6 +39,7 @@ func (*dbddlNode) Children() []sql.Node { return nil }
 
 type CreateDB struct {
 	dbddlNode
+	dbName string
 	IfExists bool
 	Collate  string
 	Charset  string
@@ -59,7 +54,7 @@ func (c CreateDB) String() string {
 	if c.IfExists {
 		ifExists = " if exists"
 	}
-	return fmt.Sprintf("%s database%s %v", sqlparser.CreateStr, ifExists, c.db.Name())
+	return fmt.Sprintf("%s database%s %v", sqlparser.CreateStr, ifExists, c.dbName)
 }
 
 func (c CreateDB) Schema() sql.Schema {
@@ -71,7 +66,21 @@ func (c CreateDB) Children() []sql.Node {
 }
 
 func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	c.dbddlNode.Catalog.AddDatabase(c.db)
+	exists := c.dbddlNode.Catalog.HasDB(c.dbName)
+	if c.IfExists && exists {
+		ctx.Session.Warn(&sql.Warning{
+			Level:   "Note",
+			Code:    1007,
+			Message: fmt.Sprintf("Can't create database %s; database exists ", c.dbName),
+		})
+
+		return sql.RowsToRowIter(), nil
+	} else if exists {
+		return nil, sql.ErrDatabaseExists.New(c.dbName)
+	}
+
+	db := memory.NewDatabase(c.dbName)
+	c.dbddlNode.Catalog.AddDatabase(db)
 
 	return sql.RowsToRowIter(), nil
 }
@@ -83,6 +92,7 @@ func (c CreateDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 func NewCreateDatabase(dbName string, ifExists bool, collate string, charset string) *CreateDB {
 	return &CreateDB{
 		dbddlNode: dbddlNode{},
+		dbName: dbName,
 		IfExists: ifExists,
 		Collate: collate,
 		Charset: charset,
