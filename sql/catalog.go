@@ -127,6 +127,10 @@ func (d Databases) Database(name string) (Database, error) {
 		return nil, ErrDatabaseNotFound.New(name)
 	}
 
+	if len(name) == 0 {
+		return nil, ErrNoDatabaseSelected.New()
+	}
+
 	name = strings.ToLower(name)
 	var dbNames []string
 	for _, db := range d {

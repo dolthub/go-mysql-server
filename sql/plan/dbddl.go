@@ -126,6 +126,11 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	d.Catalog.DropDatabase(d.dbName)
 
+	// Unsets the current database
+	if ctx.GetCurrentDatabase() == d.dbName {
+		ctx.SetCurrentDatabase("")
+	}
+
 	return sql.RowsToRowIter(), nil
 }
 
