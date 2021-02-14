@@ -46,98 +46,98 @@ func NewIndexedInSubqueryFilter(subquery *Subquery, child sql.Node, padding int,
 }
 
 type IndexedInSubqueryFilter struct {
-	Subquery *Subquery
-	Child    sql.Node
-	Padding  int
-	GetField *expression.GetField
-	Equals   bool
+	subquery *Subquery
+	child    sql.Node
+	padding  int
+	getField *expression.GetField
+	equals   bool
 }
 
 func (i *IndexedInSubqueryFilter) Resolved() bool {
-	return i.Subquery.Resolved() && i.Child.Resolved()
+	return i.subquery.Resolved() && i.child.Resolved()
 }
 
 func (i *IndexedInSubqueryFilter) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("IndexedInSubqueryFilter(%s IN (%s))", i.GetField, i.Subquery)
-	_ = pr.WriteChildren(i.Child.String())
+	_ = pr.WriteNode("IndexedInSubqueryFilter(%s IN (%s))", i.getField, i.subquery)
+	_ = pr.WriteChildren(i.child.String())
 	return pr.String()
 }
 
 func (i *IndexedInSubqueryFilter) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("IndexedInSubqueryFilter(%s IN (%s))", sql.DebugString(i.GetField), sql.DebugString(i.Subquery))
-	_ = pr.WriteChildren(sql.DebugString(i.Child))
+	_ = pr.WriteNode("IndexedInSubqueryFilter(%s IN (%s))", sql.DebugString(i.getField), sql.DebugString(i.subquery))
+	_ = pr.WriteChildren(sql.DebugString(i.child))
 	return pr.String()
 }
 
 func (i *IndexedInSubqueryFilter) Schema() sql.Schema {
-	return i.Child.Schema()
+	return i.child.Schema()
 }
 
 func (i *IndexedInSubqueryFilter) Children() []sql.Node {
-	return []sql.Node{i.Child}
+	return []sql.Node{i.child}
 }
 
 func (i *IndexedInSubqueryFilter) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewIndexedInSubqueryFilter(i.Subquery, children[0], i.Padding, i.GetField, i.Equals), nil
+	return NewIndexedInSubqueryFilter(i.subquery, children[0], i.padding, i.getField, i.equals), nil
 }
 
 func (i *IndexedInSubqueryFilter) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	padded := make(sql.Row, len(row)+i.Padding)
+	padded := make(sql.Row, len(row)+i.padding)
 	copy(padded[:], row[:])
 	var res []interface{}
 	var err error
-	if i.Equals {
-		resi, err := i.Subquery.Eval(ctx, padded)
+	if i.equals {
+		resi, err := i.subquery.Eval(ctx, padded)
 		if err != nil {
 			return nil, err
 		}
 		res = append(res, resi)
 	} else {
-		res, err = i.Subquery.EvalMultiple(ctx, padded)
+		res, err = i.subquery.EvalMultiple(ctx, padded)
 		if err != nil {
 			return nil, err
 		}
 	}
 	tupLits := make([]sql.Expression, len(res))
 	for j := range res {
-		tupLits[j] = expression.NewLiteral(res[j], i.Subquery.Type())
+		tupLits[j] = expression.NewLiteral(res[j], i.subquery.Type())
 	}
-	expr := expression.NewInTuple(i.GetField, expression.NewTuple(tupLits...))
-	return NewFilterIter(ctx, expr, &indexedInSubqueryIter{ctx, res, i.Child, nil, 0}), nil
+	expr := expression.NewInTuple(i.getField, expression.NewTuple(tupLits...))
+	return NewFilterIter(ctx, expr, &indexedInSubqueryIter{ctx, res, i.child, nil, 0}), nil
 }
 
 type indexedInSubqueryIter struct {
-	Ctx   *sql.Context
-	Rows  []interface{}
-	Child sql.Node
-	Cur   sql.RowIter
-	I     int
+	ctx   *sql.Context
+	rows  []interface{}
+	child sql.Node
+	cur   sql.RowIter
+	i     int
 }
 
-func (i *indexedInSubqueryIter) Next() (sql.Row, error) {
+func (iter *indexedInSubqueryIter) Next() (sql.Row, error) {
 	var ret sql.Row
 	err := io.EOF
 	for err == io.EOF {
-		if i.Cur == nil {
-			if i.I >= len(i.Rows) {
+		if iter.cur == nil {
+			if iter.i >= len(iter.rows) {
 				return nil, io.EOF
 			}
-			iter, err := i.Child.RowIter(i.Ctx, sql.NewRow(i.Rows[i.I]))
+			childIter, err := iter.child.RowIter(iter.ctx, sql.NewRow(iter.rows[iter.i]))
 			if err != nil {
 				return nil, err
 			}
-			i.I += 1
-			i.Cur = iter
+			iter.i += 1
+			iter.cur = childIter
 		}
-		ret, err = i.Cur.Next()
+		ret, err = iter.cur.Next()
 		if err == io.EOF {
-			cerr := i.Cur.Close()
-			i.Cur = nil
+			cerr := iter.cur.Close()
+			iter.cur = nil
 			if cerr != nil {
 				return nil, cerr
 			}
@@ -146,10 +146,10 @@ func (i *indexedInSubqueryIter) Next() (sql.Row, error) {
 	return ret, err
 }
 
-func (i *indexedInSubqueryIter) Close() error {
-	if i.Cur != nil {
-		err := i.Cur.Close()
-		i.Cur = nil
+func (iter *indexedInSubqueryIter) Close() error {
+	if iter.cur != nil {
+		err := iter.cur.Close()
+		iter.cur = nil
 		return err
 	}
 	return nil

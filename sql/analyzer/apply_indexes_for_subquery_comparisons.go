@@ -30,20 +30,19 @@ import (
 // 4. The Child is a *plan.ResolvedTable.
 // 5. The referenced field in the Child is indexed.
 func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	//	TODO: Work with aliases...
-	//	aliases, err := getTableAliases(n, scope)
-	//	if err != nil {
-	//		return nil, err
-	//	}
+	aliases, err := getTableAliases(n, scope)
+	if err != nil {
+		return nil, err
+	}
 
 	return plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
 		switch node := node.(type) {
 		case *plan.Filter:
 			var replacement sql.Node
 			if eq, isEqual := node.Expression.(*expression.Equals); isEqual {
-				replacement = getIndexedInSubqueryFilter(ctx, a, eq.Left(), eq.Right(), node, true, scope)
+				replacement = getIndexedInSubqueryFilter(ctx, a, eq.Left(), eq.Right(), node, true, scope, aliases)
 			} else if is, isInSubquery := node.Expression.(*plan.InSubquery); isInSubquery {
-				replacement = getIndexedInSubqueryFilter(ctx, a, is.Left, is.Right, node, false, scope)
+				replacement = getIndexedInSubqueryFilter(ctx, a, is.Left, is.Right, node, false, scope, aliases)
 			}
 			if replacement != nil {
 				return replacement, nil
@@ -53,14 +52,14 @@ func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Nod
 	})
 }
 
-func getIndexedInSubqueryFilter(ctx *sql.Context, a *Analyzer, left, right sql.Expression, node *plan.Filter, equals bool, scope *Scope) sql.Node {
+func getIndexedInSubqueryFilter(ctx *sql.Context, a *Analyzer, left, right sql.Expression, node *plan.Filter, equals bool, scope *Scope, tableAliases TableAliases) sql.Node {
 	gf, isGetField := left.(*expression.GetField)
 	subq, isSubquery := right.(*plan.Subquery)
 	rt, isResolved := node.Child.(*plan.ResolvedTable)
 	if !isGetField || !isSubquery || !isResolved {
 		return nil
 	}
-	referencesChildRow := nodeHasGetFieldReferenceBetween(subq.Query, len(scope.Schema()), len(scope.Schema())+len(node.Schema()))
+	referencesChildRow := nodeHasGetFieldReferenceBetween(subq.Query, len(scope.Schema()), len(scope.Schema())+len(node.Child.Schema()))
 	if referencesChildRow {
 		return nil
 	}
@@ -69,7 +68,7 @@ func getIndexedInSubqueryFilter(ctx *sql.Context, a *Analyzer, left, right sql.E
 		return nil
 	}
 	defer indexes.releaseUsedIndexes()
-	idx := indexes.IndexByExpression(ctx, ctx.GetCurrentDatabase(), gf)
+	idx := indexes.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(tableAliases, gf)...)
 	if idx == nil {
 		return nil
 	}
