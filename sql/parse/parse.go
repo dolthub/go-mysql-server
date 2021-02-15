@@ -551,9 +551,9 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 func convertDBDDL(c *sqlparser.DBDDL) (sql.Node, error) {
 	switch strings.ToLower(c.Action) {
 	case sqlparser.CreateStr:
-		return plan.NewCreateDatabase(c.DBName, c.IfNotExists, c.Collate, c.Charset), nil
+		return plan.NewCreateDatabase(c.DBName, c.IfNotExists), nil
 	case sqlparser.DropStr:
-		return plan.NewDropDatabase(c.DBName, c.IfExists, c.Collate, c.Charset), nil
+		return plan.NewDropDatabase(c.DBName, c.IfExists), nil
 	default:
 		return nil, ErrUnsupportedSyntax.New(sqlparser.String(c))
 	}

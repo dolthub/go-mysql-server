@@ -1736,6 +1736,195 @@ func TestDropColumn(t *testing.T, harness Harness) {
 	require.True(sql.ErrTableColumnNotFound.Is(err))
 }
 
+func TestCreateDatabase(t *testing.T, harness Harness) {
+	e := NewEngine(t, harness)
+	ctx := NewContext(harness)
+
+	t.Run("CREATE DATABASE and create table", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE DATABASE testdb",
+			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			nil,
+		)
+
+		db, err := e.Catalog.Database("testdb")
+		require.NoError(t, err)
+
+		TestQuery(t, harness, e,
+			"USE testdb",
+			[]sql.Row(nil),
+			nil,
+		)
+
+		require.Equal(t, ctx.GetCurrentDatabase(), "testdb")
+
+		ctx = NewContext(harness)
+		TestQuery(t, harness, e,
+			"CREATE TABLE test (pk int primary key)",
+			[]sql.Row(nil),
+			nil,
+		)
+
+		db, err = e.Catalog.Database("testdb")
+		require.NoError(t, err)
+
+		_, ok, err := db.GetTableInsensitive(ctx, "test")
+
+		require.NoError(t, err)
+		require.True(t, ok)
+	})
+
+	t.Run("CREATE DATABASE IF NOT EXISTS", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE DATABASE IF NOT EXISTS testdb2",
+			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			nil,
+		)
+
+		db, err := e.Catalog.Database("testdb2")
+		require.NoError(t, err)
+
+		TestQuery(t, harness, e,
+			"USE testdb2",
+			[]sql.Row(nil),
+			nil,
+		)
+
+		require.Equal(t, ctx.GetCurrentDatabase(), "testdb2")
+
+		ctx = NewContext(harness)
+		TestQuery(t, harness, e,
+			"CREATE TABLE test (pk int primary key)",
+			[]sql.Row(nil),
+			nil,
+		)
+
+		db, err = e.Catalog.Database("testdb2")
+		require.NoError(t, err)
+
+		_, ok, err := db.GetTableInsensitive(ctx, "test")
+
+		require.NoError(t, err)
+		require.True(t, ok)
+	})
+
+	t.Run("CREATE SCHEMA", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE SCHEMA testdb3",
+			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			nil,
+		)
+
+		db, err := e.Catalog.Database("testdb3")
+		require.NoError(t, err)
+
+		TestQuery(t, harness, e,
+			"USE testdb3",
+			[]sql.Row(nil),
+			nil,
+		)
+
+		require.Equal(t, ctx.GetCurrentDatabase(), "testdb3")
+
+		ctx = NewContext(harness)
+		TestQuery(t, harness, e,
+			"CREATE TABLE test (pk int primary key)",
+			[]sql.Row(nil),
+			nil,
+		)
+
+		db, err = e.Catalog.Database("testdb3")
+		require.NoError(t, err)
+
+		_, ok, err := db.GetTableInsensitive(ctx, "test")
+
+		require.NoError(t, err)
+		require.True(t, ok)
+	})
+
+	t.Run("CREATE DATABASE error handling", func(t *testing.T) {
+		AssertErr(t, e, harness, "CREATE DATABASE mydb", sql.ErrCannotCreateDatabaseExists)
+
+		AssertWarning(t, e, harness, "CREATE DATABASE IF NOT EXISTS mydb", 1007)
+	})
+}
+
+func TestDropDatabase(t *testing.T, harness Harness) {
+	e := NewEngine(t, harness)
+
+	t.Run("DROP DATABASE correctly works", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"DROP DATABASE mydb",
+			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			nil,
+		)
+
+		_, err := e.Catalog.Database("mydb")
+		require.Error(t, err)
+
+		AssertErr(t, e, harness, "SHOW TABLES", sql.ErrNoDatabaseSelected)
+	})
+
+	t.Run("DROP DATABASE works on newly created tables.", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE DATABASE testdb",
+			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			nil,
+		)
+
+		_, err := e.Catalog.Database("testdb")
+		require.NoError(t, err)
+
+		TestQuery(t, harness, e,
+			"DROP DATABASE testdb",
+			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			nil,
+		)
+
+		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
+	})
+
+	t.Run("DROP SCHEMA works on newly created tables.", func(t *testing.T) {
+		TestQuery(t, harness, e,
+			"CREATE SCHEMA testdb",
+			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			nil,
+		)
+
+		_, err := e.Catalog.Database("testdb")
+		require.NoError(t, err)
+
+		TestQuery(t, harness, e,
+			"DROP SCHEMA testdb",
+			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			nil,
+		)
+
+		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
+	})
+
+	t.Run("DROP DATABASE IF EXISTS correctly works.", func(t *testing.T) {
+		AssertWarning(t, e, harness, "DROP DATABASE IF EXISTS mydb", 1007)
+
+		TestQuery(t, harness, e,
+			"CREATE DATABASE testdb",
+			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			nil,
+		)
+
+		_, err := e.Catalog.Database("testdb")
+		require.NoError(t, err)
+
+		TestQuery(t, harness, e,
+			"DROP DATABASE IF EXISTS testdb",
+			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			nil,
+		)
+
+		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
+	})
+}
+
 func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	require := require.New(t)
 
@@ -2390,6 +2579,28 @@ func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expe
 		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
 	}
 }
+
+func AssertWarning(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedCode int) {
+	_, iter, err := e.Query(NewContext(harness), query)
+	require.NoError(t, err)
+
+	_, err = sql.RowIterToRows(iter)
+	require.NoError(t, err)
+
+	ctx := NewContext(harness)
+	require.True(t, len(ctx.Warnings()) > 0)
+
+	condition := false
+	for _, warning := range ctx.Warnings() {
+		if warning.Code == expectedCode {
+			condition = true
+			break
+		}
+	}
+
+	require.True(t, condition)
+}
+
 
 type customFunc struct {
 	expression.UnaryExpression
@@ -3049,9 +3260,13 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 var pid uint64
 
 func NewContext(harness Harness) *sql.Context {
-	ctx := harness.NewContext().WithCurrentDB("mydb")
+	ctx := harness.NewContext()
+	currentDB := ctx.GetCurrentDatabase()
+	if currentDB == "" {
+		currentDB = "mydb"
+	}
 
-	_ = ctx.ViewRegistry.Register("mydb",
+	_ = ctx.ViewRegistry.Register(currentDB,
 		plan.NewSubqueryAlias(
 			"myview",
 			"SELECT * FROM mytable",

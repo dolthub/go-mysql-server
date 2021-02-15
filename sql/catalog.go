@@ -81,8 +81,8 @@ func (c *Catalog) AddDatabase(db Database) {
 	c.mu.Unlock()
 }
 
-// DropDatabase removes a database to the catalog.
-func (c *Catalog) DropDatabase(dbName string) {
+// RemoveDatabase removes a database from the catalog.
+func (c *Catalog) RemoveDatabase(dbName string) {
 	c.mu.Lock()
 	c.dbs.Delete(dbName)
 	c.mu.Unlock()
@@ -159,9 +159,7 @@ func (d *Databases) Delete(dbName string) {
 	}
 
 	if idx != -1 {
-		dbs := *d
-		dbs[idx] = dbs[len(dbs)-1]
-		*d = dbs[:len(dbs)-1]
+		*d = append((*d)[:idx], (*d)[idx+1:]...)
 	}
 }
 

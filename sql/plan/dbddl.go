@@ -21,12 +21,11 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
+// CreateDB creates an in memory database that lasts the length of the process only.
 type CreateDB struct {
 	Catalog     *sql.Catalog
 	dbName      string
 	IfNotExists bool
-	Collate     string
-	Charset     string
 }
 
 func (c CreateDB) Resolved() bool {
@@ -34,15 +33,15 @@ func (c CreateDB) Resolved() bool {
 }
 
 func (c CreateDB) String() string {
-	ifExists := ""
+	ifNotExists := ""
 	if c.IfNotExists {
-		ifExists = " if exists"
+		ifNotExists = " if not exists"
 	}
-	return fmt.Sprintf("%s database%s %v", sqlparser.CreateStr, ifExists, c.dbName)
+	return fmt.Sprintf("%s database%s %v", sqlparser.CreateStr, ifNotExists, c.dbName)
 }
 
 func (c CreateDB) Schema() sql.Schema {
-	return nil
+	return sql.OkResultSchema
 }
 
 func (c CreateDB) Children() []sql.Node {
@@ -51,43 +50,44 @@ func (c CreateDB) Children() []sql.Node {
 
 func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	exists := c.Catalog.HasDB(c.dbName)
-	if c.IfNotExists && exists {
-		ctx.Session.Warn(&sql.Warning{
-			Level:   "Note",
-			Code:    1007,
-			Message: fmt.Sprintf("Can't create database %s; database exists ", c.dbName),
-		})
+	if exists {
+		if c.IfNotExists {
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Note",
+				Code:    1007,
+				Message: fmt.Sprintf("Can't create database %s; database exists ", c.dbName),
+			})
 
-		return sql.RowsToRowIter(), nil
-	} else if exists {
-		return nil, sql.ErrDatabaseExists.New(c.dbName)
+			return sql.RowsToRowIter(), nil
+		} else {
+			return nil, sql.ErrCannotCreateDatabaseExists.New(c.dbName)
+		}
 	}
 
 	db := memory.NewDatabase(c.dbName)
 	c.Catalog.AddDatabase(db)
 
-	return sql.RowsToRowIter(), nil
+	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
+
+	return sql.RowsToRowIter(rows...), nil
 }
 
 func (c CreateDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(c, children...)
 }
 
-func NewCreateDatabase(dbName string, ifNotExists bool, collate string, charset string) *CreateDB {
+func NewCreateDatabase(dbName string, ifNotExists bool) *CreateDB {
 	return &CreateDB{
 		dbName:      dbName,
 		IfNotExists: ifNotExists,
-		Collate:     collate,
-		Charset:     charset,
 	}
 }
 
+// DropDB removes a databases from the Catalog and updates the active database if it gets removed itself.
 type DropDB struct {
 	Catalog *sql.Catalog
 	dbName	string
 	IfExists bool
-	Collate  string
-	Charset  string
 }
 
 func (d DropDB) Resolved() bool {
@@ -103,7 +103,7 @@ func (d DropDB) String() string {
 }
 
 func (d DropDB) Schema() sql.Schema {
-	return nil
+	return sql.OkResultSchema
 }
 
 func (d DropDB) Children() []sql.Node {
@@ -112,37 +112,39 @@ func (d DropDB) Children() []sql.Node {
 
 func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	exists := d.Catalog.HasDB(d.dbName)
-	if d.IfExists && !exists {
-		ctx.Session.Warn(&sql.Warning{
-			Level:   "Note",
-			Code:    1007,
-			Message: fmt.Sprintf("Can't drop database %s; database doesn't exist ", d.dbName),
-		})
+	if !exists {
+		if d.IfExists {
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Note",
+				Code:    1007,
+				Message: fmt.Sprintf("Can't drop database %s; database doesn't exist ", d.dbName),
+			})
 
-		return sql.RowsToRowIter(), nil
-	} else if !exists {
-		return nil, sql.ErrDatabaseDoesntExists.New(d.dbName)
+			return sql.RowsToRowIter(), nil
+		} else {
+			return nil, sql.ErrCannotDropDatabaseDoesntExist.New(d.dbName)
+		}
 	}
 
-	d.Catalog.DropDatabase(d.dbName)
+	d.Catalog.RemoveDatabase(d.dbName)
 
 	// Unsets the current database
 	if ctx.GetCurrentDatabase() == d.dbName {
 		ctx.SetCurrentDatabase("")
 	}
 
-	return sql.RowsToRowIter(), nil
+	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
+
+	return sql.RowsToRowIter(rows...), nil
 }
 
 func (d DropDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
 }
 
-func NewDropDatabase(dbName string, ifExists bool, collate string, charset string) *DropDB {
+func NewDropDatabase(dbName string, ifExists bool) *DropDB {
 	return &DropDB{
 		dbName: dbName,
 		IfExists: ifExists,
-		Collate: collate,
-		Charset: charset,
 	}
 }
