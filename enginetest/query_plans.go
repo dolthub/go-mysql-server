@@ -171,6 +171,14 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: "SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2",
+		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+			" └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"     ├─ Table(othertable)\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
 		Query: "SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2 LIMIT 1",
 		ExpectedPlan: "Limit(1)\n" +
 			" └─ Project(othertable.s2, othertable.i2, mytable.i)\n" +
@@ -196,19 +204,29 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: "SELECT i, i2, s2 FROM othertable JOIN mytable ON i2 = i",
-		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
-			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
-			"     ├─ Table(othertable)\n" +
-			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+		Query: "SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i = (SELECT i2 FROM othertable LIMIT 1)",
+		ExpectedPlan: "IndexedInSubqueryFilter(mytable.i IN ((Limit(1)\n" +
+			" └─ Project(othertable.i2)\n" +
+			"     └─ Table(othertable)\n" +
+			")))\n" +
+			" └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"",
 	},
 	{
-		Query: "SELECT s2, i2, i FROM othertable JOIN mytable ON i2 = i",
-		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
-			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
-			"     ├─ Table(othertable)\n" +
-			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+		Query: "SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i IN (SELECT i2 FROM othertable)",
+		ExpectedPlan: "IndexedInSubqueryFilter(mytable.i IN ((Project(othertable.i2)\n" +
+			" └─ Table(othertable)\n" +
+			")))\n" +
+			" └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
+		Query: "SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i IN (SELECT i2 FROM othertable WHERE mytable.i = othertable.i2)",
+		ExpectedPlan: "Filter(mytable.i IN (Project(othertable.i2)\n" +
+			" └─ Filter(mytable.i = othertable.i2)\n" +
+			"     └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"))\n" +
+			" └─ Table(mytable)\n" +
 			"",
 	},
 	{
