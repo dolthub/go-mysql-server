@@ -3630,6 +3630,34 @@ var QueryTests = []QueryTest{
 			sql.NewRow(nil),
 		},
 	},
+	{
+		Query:    `select i, row_number() over (order by i desc), 
+				row_number() over (order by length(s),i) from mytable order by 1;`,
+		Expected: []sql.Row{
+			{1,3,1},
+			{2,2,3},
+			{3,1,2},
+		},
+	},
+	{
+		Query:    `select i, row_number() over (order by i desc) as i_num,
+				row_number() over (order by length(s),i) as s_num from mytable order by 1;`,
+		Expected: []sql.Row{
+			{1,3,1},
+			{2,2,3},
+			{3,1,2},
+		},
+	},
+	{
+		Query:    `select i, row_number() over (order by i desc) + 3,
+			row_number() over (order by length(s),i) / row_number() over (order by length(s) desc,i desc) + .01  
+			from mytable order by 1;`,
+		Expected: []sql.Row{
+			{1,5,1},
+			{2,5,3},
+			{3,4,2},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
