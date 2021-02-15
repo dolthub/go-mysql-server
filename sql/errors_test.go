@@ -2,6 +2,7 @@ package sql
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,16 +15,22 @@ func TestSQLErrorCast(t *testing.T) {
 		err  error
 		code int
 	}{
-		{ErrTableNotFound.New("table not found err"), 1146},
-		{ErrInvalidType.New("unhandled mysql error"), 1105},
-		{fmt.Errorf("generic error"), 1105},
+		{ErrTableNotFound.New("table not found err"), mysql.ERNoSuchTable},
+		{ErrInvalidType.New("unhandled mysql error"), mysql.ERUnknownError},
+		{fmt.Errorf("generic error"), mysql.ERUnknownError},
+		{nil, mysql.ERUnknownError},
 	}
 
 	for _, test := range tests {
+		var nilErr *mysql.SQLError = nil
 		t.Run(fmt.Sprintf("%v %v", test.err, test.code), func(t *testing.T) {
-			var err = CastSQLError(test.err)
-			require.Error(t, err)
-			assert.Equal(t, err.Number(), test.code)
+			err, ok := CastSQLError(test.err)
+			if !ok {
+				require.Error(t, err)
+				assert.Equal(t, err.Number(), test.code)
+			} else {
+				assert.Equal(t, err, nilErr)
+			}
 		})
 	}
 }

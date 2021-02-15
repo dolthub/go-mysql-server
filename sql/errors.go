@@ -131,14 +131,20 @@ var (
 	ErrTruncateReferencedFromForeignKey = errors.NewKind("cannot truncate table %s as it is referenced in foreign key %s on table %s")
 )
 
-func CastSQLError(err error) *mysql.SQLError {
+func CastSQLError(err error) (*mysql.SQLError, bool) {
+	if err == nil {
+		return nil, true
+	}
+
 	var code int
 	var sqlState string = ""
+
 	switch {
 	case ErrTableNotFound.Is(err):
 		code = mysql.ERNoSuchTable
 	default:
 		code = mysql.ERUnknownError
 	}
-	return mysql.NewSQLError(code, sqlState, err.Error())
+
+	return mysql.NewSQLError(code, sqlState, err.Error()), false
 }
