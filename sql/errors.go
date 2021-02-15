@@ -136,9 +136,9 @@ func CastSQLError(err error) *mysql.SQLError {
 	var sqlState string = ""
 	switch {
 	case ErrTableNotFound.Is(err):
-		code = 1146
+		code = mysql.ERNoSuchTable
 	default:
-		code = 1105
+		code = mysql.ERUnknownError
 	}
 	return mysql.NewSQLError(code, sqlState, err.Error())
 }

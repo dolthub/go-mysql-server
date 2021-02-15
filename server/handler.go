@@ -125,7 +125,10 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 }
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
-	return h.doQuery(c, prepare.PrepareStmt, prepare.BindVars, callback)
+	if err := h.doQuery(c, prepare.PrepareStmt, prepare.BindVars, callback); err != nil {
+		return sql.CastSQLError(err)
+	}
+	return nil
 }
 
 func (h *Handler) ComResetConnection(c *mysql.Conn) {
@@ -156,7 +159,10 @@ func (h *Handler) ComQuery(
 	query string,
 	callback func(*sqltypes.Result) error,
 ) error {
-	return h.doQuery(c, query, nil, callback)
+	if err := h.doQuery(c, query, nil, callback); err != nil {
+		return sql.CastSQLError(err)
+	}
+	return nil
 }
 
 func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Expression, error) {

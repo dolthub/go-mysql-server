@@ -268,7 +268,7 @@ func TestHandlerTimeout(t *testing.T) {
 	err := timeOutHandler.ComQuery(connTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result) error {
 		return nil
 	})
-	require.EqualError(err, "row read wait bigger than connection timeout")
+	require.EqualError(err, "row read wait bigger than connection timeout (errno 1105) (sqlstate HY000)")
 
 	err = timeOutHandler.ComQuery(connTimeout, "SELECT SLEEP(0.5)", func(res *sqltypes.Result) error {
 		return nil
