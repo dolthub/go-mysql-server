@@ -85,20 +85,17 @@ func buildJoinTree(
 	joinConds []*joinCond,
 ) *joinSearchNode {
 
-	rootNodes := searchJoins(nil, &joinSearchParams{
-		tables:    tableOrder,
-		joinConds: joinConds,
+	var found *joinSearchNode
+	visitJoinSearchNodes(tableOrder, func(n *joinSearchNode) bool {
+		assignConditions(n, joinConds)
+		if n.joinCond != nil {
+			found = n
+			return false
+		}
+		return true
 	})
 
-	for _, tree := range rootNodes {
-		// The search function here can return valid sub trees that don't have all the tables in the full join, so we need
-		// to check them for validity as an entire tree
-		if isValidJoinTree(tree) {
-			return tree
-		}
-	}
-
-	return nil
+	return found
 }
 
 // Estimates the cost of the table ordering given. Lower numbers are better. Bails out and returns cost so far if cost
@@ -215,6 +212,94 @@ func (js *joinSearchParams) tableIndexUsed(i int) bool {
 
 func (js *joinSearchParams) joinCondIndexUsed(i int) bool {
 	return indexOfInt(i, js.usedJoinCondsIndexes) >= 0
+}
+
+// visitJoinSearchNodes visits every possible joinSearchNode where the
+// in-order leaves are given by |tables|. If the callback returns
+// |false|, visits stop.
+func visitJoinSearchNodes(tables []string, cb func (n *joinSearchNode) bool) {
+	if len(tables) == 0 {
+		return
+	}
+	if len(tables) == 1 {
+		cb(&joinSearchNode{table: tables[0]})
+	}
+	for i := 1; i < len(tables); i++ {
+		left := []*joinSearchNode{}
+		visitJoinSearchNodes(tables[:i], func (n *joinSearchNode) bool {
+			left = append(left, n)
+			return true
+		})
+		right := []*joinSearchNode{}
+		visitJoinSearchNodes(tables[i:len(tables)], func (n *joinSearchNode) bool {
+			right = append(right, n)
+			return true
+		})
+		for _, l := range left {
+			for _, r := range right {
+				next := &joinSearchNode{left: l, right: r}
+				if !cb(next) {
+					return
+				}
+			}
+		}
+	}
+}
+
+// assignConditions attempts to assign the conditions in |conditions|
+// to the search tree in |root|, such that every condition is on an
+// internal node, and all of the trees referenced in the condition
+// appear in tables which are in the subtree of its internal node. If
+// it finds an assignment, leaves it in the |joinSearchNode.joinCond|
+// fields of the provided tree. Otherwise there is no valid assignment
+// and leaves the provided tree unmodified.
+func assignConditions(root *joinSearchNode, conditions []*joinCond) {
+	// A recursive helper which is going to assign conditions to
+	// subtrees, remove the assigned conditions from |conditions|
+	// and make a callback to |cb| for each such assignment that
+	// is found.
+	var helper func (n *joinSearchNode, cb func() bool) bool
+	helper = func (n *joinSearchNode, cb func() bool) bool {
+		if n.table != "" {
+			return cb()
+		}
+		// for each assignment of conditions to the left tree
+		return helper(n.left, func() bool {
+			// for each assignment of conditions to the right tree
+			return helper(n.right, func() bool {
+				tables := n.tableOrder()
+				// look at every remaining condition
+				for i := range conditions {
+					cond := conditions[i]
+					joinCondTables := findTables(cond.cond)
+					// if the condition only references tables in our subtree
+					if containsAll(joinCondTables, tables) {
+						n.joinCond = cond
+						copy(conditions[i:], conditions[i+1:])
+						conditions = conditions[:len(conditions)-1]
+						// continue the search with this assignment tried
+						if !cb() {
+							conditions = append(conditions, nil)
+							copy(conditions[i+1:], conditions[i:])
+							conditions[i] = n.joinCond
+							return false
+						}
+						conditions = append(conditions, nil)
+						copy(conditions[i+1:], conditions[i:])
+						conditions[i] = n.joinCond
+						n.joinCond = nil
+					}
+				}
+				return true
+			})
+		})
+	}
+	helper(root, func() bool {
+		if root.joinCond != nil && len(conditions) == 0 {
+			return false
+		}
+		return true
+	})
 }
 
 // A joinSearchNode is a simplified type representing a join tree node, which is either an internal node (a join) or a
