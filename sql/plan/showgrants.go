@@ -35,7 +35,7 @@ func NewShowGrants() *ShowGrants {
 // Schema implements the sql.Node interface.
 func (s *ShowGrants) Schema() sql.Schema {
 	return sql.Schema{{
-		Name: "Grants for root@",
+		Name: "Grants for root@%",
 		Type: sql.LongText,
 	}}
 }
