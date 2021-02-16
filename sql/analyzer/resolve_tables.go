@@ -102,9 +102,6 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 			a.Log("table resolved: %s", t.Name())
 			return plan.NewResolvedTable(dualTable), nil
 		}
-		if dbName == "" {
-			return nil, sql.ErrNoDatabaseSelected.New()
-		}
 	}
 
 	return nil, err

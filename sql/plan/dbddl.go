@@ -128,10 +128,10 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	d.Catalog.RemoveDatabase(d.dbName)
 
-	// Unsets the current database
-	if ctx.GetCurrentDatabase() == d.dbName {
-		ctx.SetCurrentDatabase("")
-	}
+	//// Unsets the current database
+	//if ctx.GetCurrentDatabase() == d.dbName {
+	//	ctx.SetCurrentDatabase("")
+	//}
 
 	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
 
