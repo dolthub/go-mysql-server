@@ -535,22 +535,11 @@ func TestBuildJoinTree(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			joinTree := buildJoinTree(tt.tableOrder, tt.joinConds)
-			pruneParamsAndParent(joinTree)
 			if !assert.Equal(t, tt.joinTree, joinTree) {
 				fmt.Printf("Expected:\n%s, but got:\n%s", tt.joinTree, joinTree)
 			}
 		})
 	}
-}
-
-func pruneParamsAndParent(node *joinSearchNode) {
-	if node == nil {
-		return
-	}
-	node.params = nil
-	node.parent = nil
-	pruneParamsAndParent(node.left)
-	pruneParamsAndParent(node.right)
 }
 
 // jc == join cond
