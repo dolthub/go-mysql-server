@@ -14,7 +14,10 @@
 
 package sql
 
-import "gopkg.in/src-d/go-errors.v1"
+import (
+	"github.com/dolthub/vitess/go/mysql"
+	"gopkg.in/src-d/go-errors.v1"
+)
 
 var (
 	// ErrInvalidType is thrown when there is an unexpected type at some part of
@@ -127,3 +130,21 @@ var (
 	// ErrTruncateReferencedFromForeignKey is returned when a table is referenced in a foreign key and TRUNCATE is called on it.
 	ErrTruncateReferencedFromForeignKey = errors.NewKind("cannot truncate table %s as it is referenced in foreign key %s on table %s")
 )
+
+func CastSQLError(err error) (*mysql.SQLError, bool) {
+	if err == nil {
+		return nil, true
+	}
+
+	var code int
+	var sqlState string = ""
+
+	switch {
+	case ErrTableNotFound.Is(err):
+		code = mysql.ERNoSuchTable
+	default:
+		code = mysql.ERUnknownError
+	}
+
+	return mysql.NewSQLError(code, sqlState, err.Error()), false
+}
