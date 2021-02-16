@@ -41,35 +41,3 @@ func (c ConnectionID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func (c ConnectionID) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
 	return NoArgFuncWithChildren(c, expressions)
 }
-
-type User struct {
-	NoArgFunc
-}
-
-func userFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	return ctx.Client().User, nil
-}
-
-var _ sql.FunctionExpression = User{}
-
-func NewUser() sql.Expression {
-	return User{
-		NoArgFunc: NoArgFunc{"user", sql.LongText},
-	}
-}
-
-func NewCurrentUser() sql.Expression {
-	return User{
-		NoArgFunc: NoArgFunc{"current_user", sql.LongText},
-	}
-}
-
-// Eval implements sql.Expression
-func (c User) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return userFuncLogic(ctx, row)
-}
-
-// WithChildren implements sql.Expression
-func (c User) WithChildren(expressions ...sql.Expression) (sql.Expression, error) {
-	return NoArgFuncWithChildren(c, expressions)
-}

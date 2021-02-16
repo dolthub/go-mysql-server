@@ -47,4 +47,7 @@ func TestUser(t *testing.T) {
 	user, err = fn().Eval(ctx, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "", user)
+
+	column := fn().String()
+	assert.Equal(t, "current_user", column)
 }
