@@ -43,7 +43,11 @@ func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		}
 
 		db, err := a.Catalog.Database(dbName)
-		if err != nil {
+		if sql.ErrDatabaseNotFound.Is(err) {
+			if dbName == "" {
+				return nil, sql.ErrNoDatabaseSelected.New()
+			}
+
 			return nil, err
 		}
 

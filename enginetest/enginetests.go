@@ -2601,7 +2601,6 @@ func AssertWarning(t *testing.T, e *sqle.Engine, harness Harness, query string, 
 	require.True(t, condition)
 }
 
-
 type customFunc struct {
 	expression.UnaryExpression
 }
