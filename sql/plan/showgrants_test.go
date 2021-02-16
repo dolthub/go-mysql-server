@@ -15,8 +15,6 @@
 package plan_test
 
 import (
-	"github.com/dolthub/go-mysql-server/memory"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -29,13 +27,7 @@ func TestShowGrants(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	table := NewResolvedTable(memory.NewTable("foo", sql.Schema{
-		{Name: "a", Source: "foo", Type: sql.Text, PrimaryKey: true},
-		{Name: "b", Source: "foo", Type: sql.Int64, Nullable: true},
-		{Name: "c", Source: "foo", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false)},
-	}))
-
-	iter, err := NewShowGrants(table).RowIter(ctx, nil)
+	iter, err := NewShowGrants().RowIter(ctx, nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(iter)

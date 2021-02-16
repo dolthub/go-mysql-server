@@ -19,30 +19,25 @@ import (
 )
 
 // ShowGrants shows the columns details of a table.
-type ShowGrants struct {
-	UnaryNode
-}
+type ShowGrants struct{}
 
 var (
 	showGrantsSchema = sql.Schema{
 		{Name: "Grants for root@", Type: sql.LongText},
 	}
-
 )
 
 // NewShowGrants creates a new ShowGrants node.
-func NewShowGrants(child sql.Node) *ShowGrants {
-	return &ShowGrants{UnaryNode: UnaryNode{Child: child}}
+func NewShowGrants() *ShowGrants {
+	return &ShowGrants{}
 }
-
-var _ sql.Node = (*ShowGrants)(nil)
 
 // Schema implements the sql.Node interface.
 func (s *ShowGrants) Schema() sql.Schema {
-    return sql.Schema{{
-        Name: "Grants for root@",
-        Type: sql.LongText,
-    }}
+	return sql.Schema{{
+		Name: "Grants for root@",
+		Type: sql.LongText,
+	}}
 }
 
 // RowIter creates a new ShowGrants node.
@@ -58,16 +53,19 @@ func (s *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 // WithChildren implements the Node interface.
 func (s *ShowGrants) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
-	}
-
-    return NewShowGrants(children[0]), nil
+	return NewShowGrants(), nil
 }
 
 func (s *ShowGrants) String() string {
 	p := sql.NewTreePrinter()
-    _ = p.WriteNode("ShowGrants")
-	_ = p.WriteChildren(s.Child.String())
+	_ = p.WriteNode("ShowGrants")
 	return p.String()
+}
+
+func (s *ShowGrants) Children() []sql.Node {
+	return nil
+}
+
+func (s *ShowGrants) Resolved() bool {
+	return true
 }

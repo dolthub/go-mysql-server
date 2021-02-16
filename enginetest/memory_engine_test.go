@@ -89,7 +89,7 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query:    "SELECT i from mytable where 4 = :foo * 2 order by 1",
+		Query: "SELECT i from mytable where 4 = :foo * 2 order by 1",
 		Expected: []sql.Row{
 			{1},
 			{2},
