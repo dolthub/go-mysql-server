@@ -193,26 +193,20 @@ func visitJoinSearchNodes(tables []string, cb func (n *joinSearchNode) bool) {
 	}
 	if len(tables) == 1 {
 		cb(&joinSearchNode{table: tables[0]})
+		return
 	}
-	for i := 1; i < len(tables); i++ {
-		left := []*joinSearchNode{}
-		visitJoinSearchNodes(tables[:i], func (n *joinSearchNode) bool {
-			left = append(left, n)
-			return true
-		})
-		right := []*joinSearchNode{}
-		visitJoinSearchNodes(tables[i:len(tables)], func (n *joinSearchNode) bool {
-			right = append(right, n)
-			return true
-		})
-		for _, l := range left {
-			for _, r := range right {
-				next := &joinSearchNode{left: l, right: r}
-				if !cb(next) {
-					return
+	var stop bool
+	for i := 1; i < len(tables) && !stop; i++ {
+		visitJoinSearchNodes(tables[:i], func (l *joinSearchNode) bool {
+			visitJoinSearchNodes(tables[i:len(tables)], func (r *joinSearchNode) bool {
+				if !cb(&joinSearchNode{left: l, right: r}) {
+					stop = true
+					return false
 				}
-			}
-		}
+				return true
+			})
+			return !stop
+		})
 	}
 }
 
