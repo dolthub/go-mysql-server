@@ -15,6 +15,7 @@
 package function
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -26,7 +27,11 @@ type User struct {
 var _ sql.FunctionExpression = (*User)(nil)
 
 func userFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	return ctx.Client().User, nil
+	user := ctx.Client().User
+	if user == "" {
+		return user, nil
+	}
+	return fmt.Sprintf("%s%s", user, "@%"), nil
 }
 
 func NewUser() sql.Expression {
