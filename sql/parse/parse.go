@@ -17,6 +17,7 @@ package parse
 import (
 	"bufio"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/memory"
 	"io"
 	"io/ioutil"
 	"regexp"
@@ -304,6 +305,11 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			sql.UnresolvedDatabase(s.Table.Qualifier.String()),
 			s.Table.Name.String(),
 		), nil
+	case "grants":
+		table := plan.NewResolvedTable(memory.NewTable(
+			"foo", sql.Schema{{Name: "a", Source: "foo", Type: sql.Text, PrimaryKey: true}},
+			))
+		return plan.NewShowGrants(table), nil
 	case "triggers":
 		var dbName string
 		var filter sql.Expression
