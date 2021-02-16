@@ -636,6 +636,33 @@ type Lockable interface {
 	Unlock(ctx *Context, id uint32) error
 }
 
+// StoredProcedureDetails are the details of the stored procedure. Integrators only need to store and retrieve the given
+// details for a stored procedure, as the engine handles all parsing and processing.
+type StoredProcedureDetails struct {
+	Name            string    // The name of this stored procedure. Names must be unique within a database.
+	CreateStatement string    // The CREATE statement for this stored procedure.
+	CreatedAt       time.Time // The time that the stored procedure was created.
+	ModifiedAt      time.Time // The time of the last modification to the stored procedure.
+}
+
+// StoredProcedureDatabase is a database that supports the creation and execution of stored procedures. The engine will
+// handle all parsing and execution logic for stored procedures. Integrators only need to store and retrieve
+// StoredProcedureDetails, while verifying that all stored procedures have a unique name without regard to
+// case-sensitivity.
+type StoredProcedureDatabase interface {
+	Database
+
+	// GetStoredProcedures returns all StoredProcedureDetails for the database.
+	GetStoredProcedures(ctx *Context) ([]StoredProcedureDetails, error)
+
+	// SaveStoredProcedure stores the given StoredProcedureDetails to the database. The integrator should verify that
+	// the name of the new stored procedure is unique amongst existing stored procedures.
+	SaveStoredProcedure(ctx *Context, spd StoredProcedureDetails) error
+
+	// DropStoredProcedure removes the StoredProcedureDetails with the matching name from the database.
+	DropStoredProcedure(ctx *Context, name string) error
+}
+
 // EvaluateCondition evaluates a condition, which is an expression whose value
 // will be coerced to boolean.
 func EvaluateCondition(ctx *Context, cond Expression, row Row) (bool, error) {
