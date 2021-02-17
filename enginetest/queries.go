@@ -1691,6 +1691,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}},
 	},
 	{
+		Query:    `SHOW GRANTS`,
+		Expected: []sql.Row{{"GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION"}},
+	},
+	{
 		Query: `SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA`,
 		Expected: []sql.Row{
 			{"information_schema", "utf8mb4", "utf8mb4_0900_ai_ci"},
