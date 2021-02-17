@@ -303,7 +303,7 @@ func (it *exchangeRowIter) Next() (sql.Row, error) {
 
 	select {
 	case err := <-it.err:
-		_ = it.Close(nil)
+		_ = it.Close(it.ctx)
 		return nil, err
 	case row, ok := <-it.rows:
 		if !ok {
