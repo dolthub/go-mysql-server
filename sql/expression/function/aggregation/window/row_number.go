@@ -16,6 +16,7 @@ package window
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -48,7 +49,23 @@ func windowResolved(window *sql.Window) bool {
 }
 
 func (r *RowNumber) String() string {
-	return "ROW_NUMBER()"
+	sb := strings.Builder{}
+	sb.WriteString("row_number()")
+	if r.window != nil {
+		sb.WriteString(" ")
+		sb.WriteString(r.window.String())
+	}
+	return sb.String()
+}
+
+func (r *RowNumber) DebugString() string {
+	sb := strings.Builder{}
+	sb.WriteString("row_number()")
+	if r.window != nil {
+		sb.WriteString(" ")
+		sb.WriteString(sql.DebugString(r.window))
+	}
+	return sb.String()
 }
 
 // IsNullable implements sql.FunctionExpression

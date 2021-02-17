@@ -117,17 +117,6 @@ type WindowAggregation interface {
 	EvalRow(i int) (interface{}, error)
 }
 
-// A Window specifies the window parameters of a window function
-type Window struct {
-	PartitionBy []Expression
-	OrderBy     SortFields
-	// TODO: window frame
-}
-
-func NewWindow(partitionBy []Expression, orderBy []SortField) *Window {
-	return &Window{PartitionBy: partitionBy, OrderBy: orderBy}
-}
-
 // Node is a node in the execution plan tree.
 type Node interface {
 	Resolvable

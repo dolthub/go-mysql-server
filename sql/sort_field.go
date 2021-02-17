@@ -52,12 +52,16 @@ func (sf SortFields) FromExpressions(exprs []Expression) SortFields {
 	return fields
 }
 
+func (s SortField) String() string {
+	return fmt.Sprintf("%s %s", DebugString(s.Column), s.Order)
+}
+
 func (s SortField) DebugString() string {
 	nullOrdering := "nullsFirst"
 	if s.NullOrdering == NullsLast {
 		nullOrdering = "nullsLast"
 	}
-	return fmt.Sprintf("%s %s %s", DebugString(s.Column), s.Order, nullOrdering)
+	return fmt.Sprintf("%s %s %s", DebugString(s.Column), DebugString(s.Order), nullOrdering)
 }
 
 // ErrUnableSort is thrown when something happens on sorting

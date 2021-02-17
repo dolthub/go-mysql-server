@@ -3650,12 +3650,23 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `select i, row_number() over (order by i desc) + 3,
-			row_number() over (order by length(s),i) / row_number() over (order by length(s) desc,i desc) + .01  
+			row_number() over (order by length(s),i) as s_asc, 
+			row_number() over (order by length(s) desc,i desc) as s_desc 
 			from mytable order by 1;`,
 		Expected: []sql.Row{
-			{1,5,1},
-			{2,5,3},
-			{3,4,2},
+			{1,6,1,3},
+			{2,5,3,1},
+			{3,4,2,2},
+		},
+	},
+	{
+		Query:    `select i, row_number() over (order by i desc) + 3,
+			row_number() over (order by length(s),i) + 0.0 / row_number() over (order by length(s) desc,i desc) + 0.0  
+			from mytable order by 1;`,
+		Expected: []sql.Row{
+			{1,6,1.0},
+			{2,5,3.0},
+			{3,4,2.0},
 		},
 	},
 }
