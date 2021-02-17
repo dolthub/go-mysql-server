@@ -12,25 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package memory
+package memory_test
 
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDatabase_Name(t *testing.T) {
 	require := require.New(t)
-	db := NewDatabase("test")
+	db := memory.NewDatabase("test")
 	require.Equal("test", db.Name())
 }
 
 func TestDatabase_AddTable(t *testing.T) {
 	require := require.New(t)
-	db := NewDatabase("test")
+	db := memory.NewDatabase("test")
 	tables := db.Tables()
 	require.Equal(0, len(tables))
 

@@ -175,6 +175,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 			return nil, err
 		}
 		return convertDDL(ctx, query, ddl.(*sqlparser.DDL))
+	case *sqlparser.DBDDL:
+		return convertDBDDL(n)
 	case *sqlparser.Set:
 		return convertSet(ctx, n)
 	case *sqlparser.Use:
@@ -543,6 +545,17 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 		return convertRenameTable(ctx, c)
 	case sqlparser.TruncateStr:
 		return convertTruncateTable(ctx, c)
+	default:
+		return nil, ErrUnsupportedSyntax.New(sqlparser.String(c))
+	}
+}
+
+func convertDBDDL(c *sqlparser.DBDDL) (sql.Node, error) {
+	switch strings.ToLower(c.Action) {
+	case sqlparser.CreateStr:
+		return plan.NewCreateDatabase(c.DBName, c.IfNotExists), nil
+	case sqlparser.DropStr:
+		return plan.NewDropDatabase(c.DBName, c.IfExists), nil
 	default:
 		return nil, ErrUnsupportedSyntax.New(sqlparser.String(c))
 	}
