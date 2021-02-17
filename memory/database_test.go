@@ -15,12 +15,11 @@
 package memory_test
 
 import (
-	"github.com/dolthub/go-mysql-server/memory"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDatabase_Name(t *testing.T) {
