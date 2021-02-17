@@ -16,10 +16,10 @@ package memory_test
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/memory"
 	"io"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -75,7 +75,7 @@ func (i *dummyLookup) Values(partition sql.Partition) (sql.IndexValueIter, error
 	key := string(partition.Key())
 	values, ok := i.values[key]
 	if !ok {
-		return nil, fmt.Errorf("wrong Partition key %q", key)
+		return nil, fmt.Errorf("wrong partition key %q", key)
 	}
 
 	return &dummyLookupIter{values: values}, nil

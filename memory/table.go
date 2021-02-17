@@ -191,7 +191,7 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	rows, ok := t.partitions[string(partition.Key())]
 	if !ok {
 		return nil, fmt.Errorf(
-			"Partition not found: %q", partition.Key(),
+			"partition not found: %q", partition.Key(),
 		)
 	}
 
@@ -219,7 +219,7 @@ func (t *PushdownTable) PartitionRows(ctx *sql.Context, partition sql.Partition)
 	rows, ok := t.partitions[string(partition.Key())]
 	if !ok {
 		return nil, fmt.Errorf(
-			"Partition not found: %q", partition.Key(),
+			"partition not found: %q", partition.Key(),
 		)
 	}
 
