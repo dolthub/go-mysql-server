@@ -304,6 +304,8 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			sql.UnresolvedDatabase(s.Table.Qualifier.String()),
 			s.Table.Name.String(),
 		), nil
+	case "grants":
+		return plan.NewShowGrants(), nil
 	case "triggers":
 		var dbName string
 		var filter sql.Expression
