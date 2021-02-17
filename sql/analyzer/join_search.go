@@ -187,7 +187,7 @@ func permutations(a []int) (res [][]int) {
 // visitJoinSearchNodes visits every possible joinSearchNode where the
 // in-order leaves are given by |tables|. If the callback returns
 // |false|, visits stop.
-func visitJoinSearchNodes(tables []string, cb func (n *joinSearchNode) bool) {
+func visitJoinSearchNodes(tables []string, cb func(n *joinSearchNode) bool) {
 	if len(tables) == 0 {
 		return
 	}
@@ -197,8 +197,8 @@ func visitJoinSearchNodes(tables []string, cb func (n *joinSearchNode) bool) {
 	}
 	var stop bool
 	for i := 1; i < len(tables) && !stop; i++ {
-		visitJoinSearchNodes(tables[:i], func (l *joinSearchNode) bool {
-			visitJoinSearchNodes(tables[i:len(tables)], func (r *joinSearchNode) bool {
+		visitJoinSearchNodes(tables[:i], func(l *joinSearchNode) bool {
+			visitJoinSearchNodes(tables[i:len(tables)], func(r *joinSearchNode) bool {
 				if !cb(&joinSearchNode{left: l, right: r}) {
 					stop = true
 					return false
@@ -222,9 +222,9 @@ func assignConditions(root *joinSearchNode, conditions []*joinCond) {
 	// subtrees, remove the assigned conditions from |conditions|
 	// and make a callback to |cb| for each such assignment that
 	// is found.
-	var helper func (n *joinSearchNode, cb func() bool) bool
-	helper = func (n *joinSearchNode, cb func() bool) bool {
-		if n.table != "" {
+	var helper func(n *joinSearchNode, cb func() bool) bool
+	helper = func(n *joinSearchNode, cb func() bool) bool {
+		if n.isLeaf() {
 			return cb()
 		}
 		// for each assignment of conditions to the left tree
@@ -239,8 +239,7 @@ func assignConditions(root *joinSearchNode, conditions []*joinCond) {
 					// if the condition only references tables in our subtree
 					if containsAll(joinCondTables, tables) {
 						n.joinCond = cond
-						copy(conditions[i:], conditions[i+1:])
-						conditions = conditions[:len(conditions)-1]
+						conditions = append(conditions[:i], conditions[i+1:]...)
 						// continue the search with this assignment tried
 						if !cb() {
 							conditions = append(conditions, nil)
@@ -270,10 +269,10 @@ func assignConditions(root *joinSearchNode, conditions []*joinCond) {
 // leaf node (a table). The top level node in a join tree is always an internal node. Every internal node has both a
 // left and a right child.
 type joinSearchNode struct {
-	table    string            // empty if this is an internal node
-	joinCond *joinCond         // nil if this is a leaf node
-	left     *joinSearchNode   // nil if this is a leaf node
-	right    *joinSearchNode   // nil if this is a leaf node
+	table    string          // empty if this is an internal node
+	joinCond *joinCond       // nil if this is a leaf node
+	left     *joinSearchNode // nil if this is a leaf node
+	right    *joinSearchNode // nil if this is a leaf node
 }
 
 // tableOrder returns the order of the tables in this part of the tree, using an in-order traversal
