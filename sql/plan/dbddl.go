@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
@@ -54,7 +55,7 @@ func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		if c.IfNotExists {
 			ctx.Session.Warn(&sql.Warning{
 				Level:   "Note",
-				Code:    1007,
+				Code:    mysql.ERDbCreateExists,
 				Message: fmt.Sprintf("Can't create database %s; database exists ", c.dbName),
 			})
 
@@ -116,7 +117,7 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		if d.IfExists {
 			ctx.Session.Warn(&sql.Warning{
 				Level:   "Note",
-				Code:    1007,
+				Code:    mysql.ERDbDropExists,
 				Message: fmt.Sprintf("Can't drop database %s; database doesn't exist ", d.dbName),
 			})
 

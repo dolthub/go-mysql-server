@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"context"
+	"github.com/dolthub/vitess/go/mysql"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -1845,7 +1846,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	t.Run("CREATE DATABASE error handling", func(t *testing.T) {
 		AssertErr(t, e, harness, "CREATE DATABASE mydb", sql.ErrCannotCreateDatabaseExists)
 
-		AssertWarning(t, e, harness, "CREATE DATABASE IF NOT EXISTS mydb", 1007)
+		AssertWarning(t, e, harness, "CREATE DATABASE IF NOT EXISTS mydb", mysql.ERDbCreateExists)
 	})
 }
 
@@ -1866,7 +1867,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		//AssertErr(t, e, harness, "SHOW TABLES", sql.ErrNoDatabaseSelected)
 	})
 
-	t.Run("DROP DATABASE works on newly created tables.", func(t *testing.T) {
+	t.Run("DROP DATABASE works on newly created databases.", func(t *testing.T) {
 		TestQuery(t, harness, e,
 			"CREATE DATABASE testdb",
 			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
@@ -1885,7 +1886,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
 	})
 
-	t.Run("DROP SCHEMA works on newly created tables.", func(t *testing.T) {
+	t.Run("DROP SCHEMA works on newly created databases.", func(t *testing.T) {
 		TestQuery(t, harness, e,
 			"CREATE SCHEMA testdb",
 			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
@@ -1905,7 +1906,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 	})
 
 	t.Run("DROP DATABASE IF EXISTS correctly works.", func(t *testing.T) {
-		AssertWarning(t, e, harness, "DROP DATABASE IF EXISTS mydb", 1007)
+		AssertWarning(t, e, harness, "DROP DATABASE IF EXISTS mydb", mysql.ERDbDropExists)
 
 		TestQuery(t, harness, e,
 			"CREATE DATABASE testdb",
@@ -1923,6 +1924,8 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		)
 
 		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
+
+		AssertWarning(t, e, harness, "DROP DATABASE IF EXISTS testdb", mysql.ERDbDropExists)
 	})
 }
 
