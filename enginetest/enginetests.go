@@ -16,7 +16,6 @@ package enginetest
 
 import (
 	"context"
-	"github.com/dolthub/vitess/go/mysql"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -35,6 +34,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/test"
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 // Tests a variety of queries against databases and tables provided by the given harness.
