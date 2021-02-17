@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package memory
+package memory_test
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/memory"
 	"io"
 	"testing"
 
@@ -28,7 +29,7 @@ import (
 
 func TestTablePartitionsCount(t *testing.T) {
 	require := require.New(t)
-	table := NewPartitionedTable("foo", nil, 5)
+	table := memory.NewPartitionedTable("foo", nil, 5)
 	count, err := table.PartitionCount(sql.NewEmptyContext())
 	require.NoError(err)
 	require.Equal(int64(5), count)
@@ -40,13 +41,13 @@ func TestTableName(t *testing.T) {
 		{Name: "col1", Type: sql.Text, Nullable: true},
 	}
 
-	table := NewTable("test", s)
-	require.Equal("test", table.name)
+	table := memory.NewTable("test", s)
+	require.Equal("test", table.Name())
 }
 
 func TestTableString(t *testing.T) {
 	require := require.New(t)
-	table := NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
 		{Name: "col2", Type: sql.Int64, Nullable: false},
 	})
@@ -55,11 +56,11 @@ func TestTableString(t *testing.T) {
 
 type indexKeyValue struct {
 	key   sql.Row
-	value *indexValue
+	value *memory.IndexValue
 }
 
 type dummyLookup struct {
-	values map[string][]*indexValue
+	values map[string][]*memory.IndexValue
 }
 
 var _ sql.DriverIndexLookup = (*dummyLookup)(nil)
@@ -74,14 +75,14 @@ func (i *dummyLookup) Values(partition sql.Partition) (sql.IndexValueIter, error
 	key := string(partition.Key())
 	values, ok := i.values[key]
 	if !ok {
-		return nil, fmt.Errorf("wrong partition key %q", key)
+		return nil, fmt.Errorf("wrong Partition key %q", key)
 	}
 
 	return &dummyLookupIter{values: values}, nil
 }
 
 type dummyLookupIter struct {
-	values []*indexValue
+	values []*memory.IndexValue
 	pos    int
 }
 
@@ -94,7 +95,7 @@ func (i *dummyLookupIter) Next() ([]byte, error) {
 
 	value := i.values[i.pos]
 	i.pos++
-	return encodeIndexValue(value)
+	return memory.EncodeIndexValue(value)
 }
 
 func (i *dummyLookupIter) Close() error { return nil }
@@ -118,7 +119,7 @@ var tests = []struct {
 	expectedKeyValues []*indexKeyValue
 
 	lookup          *dummyLookup
-	partition       *partition
+	partition       *memory.Partition
 	expectedIndexed []sql.Row
 }{
 	{
@@ -168,15 +169,15 @@ var tests = []struct {
 		},
 		indexColumns: []string{"col1", "col3"},
 		expectedKeyValues: []*indexKeyValue{
-			{sql.NewRow("a", int64(100)), &indexValue{Key: "0", Pos: 0}},
-			{sql.NewRow("c", int64(100)), &indexValue{Key: "0", Pos: 1}},
-			{sql.NewRow("e", int64(200)), &indexValue{Key: "0", Pos: 2}},
-			{sql.NewRow("b", int64(100)), &indexValue{Key: "1", Pos: 0}},
-			{sql.NewRow("d", int64(200)), &indexValue{Key: "1", Pos: 1}},
-			{sql.NewRow("f", int64(200)), &indexValue{Key: "1", Pos: 2}},
+			{sql.NewRow("a", int64(100)), &memory.IndexValue{Key: "0", Pos: 0}},
+			{sql.NewRow("c", int64(100)), &memory.IndexValue{Key: "0", Pos: 1}},
+			{sql.NewRow("e", int64(200)), &memory.IndexValue{Key: "0", Pos: 2}},
+			{sql.NewRow("b", int64(100)), &memory.IndexValue{Key: "1", Pos: 0}},
+			{sql.NewRow("d", int64(200)), &memory.IndexValue{Key: "1", Pos: 1}},
+			{sql.NewRow("f", int64(200)), &memory.IndexValue{Key: "1", Pos: 2}},
 		},
 		lookup: &dummyLookup{
-			values: map[string][]*indexValue{
+			values: map[string][]*memory.IndexValue{
 				"0": {
 					{Key: "0", Pos: 0},
 					{Key: "0", Pos: 1},
@@ -189,7 +190,7 @@ var tests = []struct {
 				},
 			},
 		},
-		partition: &partition{key: []byte("0")},
+		partition: memory.NewPartition([]byte("0")),
 		expectedIndexed: []sql.Row{
 			sql.NewRow(int64(100), "a"),
 			sql.NewRow(int64(200), "e"),
@@ -202,7 +203,7 @@ func TestTable(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 
-			table := NewPartitionedTable(test.name, test.schema, test.numPartitions)
+			table := memory.NewPartitionedTable(test.name, test.schema, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
@@ -223,7 +224,7 @@ func TestTable(t *testing.T) {
 				rows, err = sql.RowIterToRows(iter)
 				require.NoError(err)
 
-				expected := table.partitions[string(p.Key())]
+				expected := table.GetPartition(string(p.Key()))
 				require.Len(rows, len(expected))
 
 				for i, row := range rows {
@@ -243,7 +244,7 @@ func TestFiltered(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 
-			table := NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
+			table := memory.NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
@@ -265,7 +266,7 @@ func TestProjected(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 
-			table := NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
+			table := memory.NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
@@ -287,13 +288,13 @@ func TestFilterAndProject(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 
-			table := NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
+			table := memory.NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
 			filtered := table.WithFilters(test.filters)
-			projected := filtered.(*PushdownTable).WithProjection(test.columns)
+			projected := filtered.(*memory.PushdownTable).WithProjection(test.columns)
 			require.ElementsMatch(projected.Schema(), test.expectedSchema)
 
 			rows := testFlatRows(t, projected)
@@ -310,14 +311,14 @@ func TestIndexed(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 
-			table := NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
+			table := memory.NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
 			filtered := table.WithFilters(test.filters)
-			projected := filtered.(*PushdownTable).WithProjection(test.columns)
-			indexed := projected.(*PushdownTable).WithIndexLookup(test.lookup)
+			projected := filtered.(*memory.PushdownTable).WithProjection(test.columns)
+			indexed := projected.(*memory.PushdownTable).WithIndexLookup(test.lookup)
 
 			require.ElementsMatch(indexed.Schema(), test.expectedSchema)
 
@@ -369,7 +370,7 @@ func TestTableIndexKeyValueIter(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 
-			table := NewPartitionedTable(test.name, test.schema, test.numPartitions)
+			table := memory.NewPartitionedTable(test.name, test.schema, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
@@ -405,7 +406,7 @@ func TestTableIndexKeyValueIter(t *testing.T) {
 					require.NoError(err)
 				}
 
-				value, err := decodeIndexValue(data)
+				value, err := memory.DecodeIndexValue(data)
 				require.NoError(err)
 
 				idxKVs = append(idxKVs, &indexKeyValue{key: row, value: value})
