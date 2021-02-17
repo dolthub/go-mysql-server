@@ -41,7 +41,7 @@ func (i *TableRowIter) Next() (Row, error) {
 		partition, err := i.partitions.Next()
 		if err != nil {
 			if err == io.EOF {
-				if e := i.partitions.Close(); e != nil {
+				if e := i.partitions.Close(i.ctx); e != nil {
 					return nil, e
 				}
 			}
@@ -63,7 +63,7 @@ func (i *TableRowIter) Next() (Row, error) {
 
 	row, err := i.rows.Next()
 	if err != nil && err == io.EOF {
-		if err = i.rows.Close(); err != nil {
+		if err = i.rows.Close(i.ctx); err != nil {
 			return nil, err
 		}
 
@@ -75,12 +75,12 @@ func (i *TableRowIter) Next() (Row, error) {
 	return row, err
 }
 
-func (i *TableRowIter) Close() error {
+func (i *TableRowIter) Close(ctx *Context) error {
 	if i.rows != nil {
-		if err := i.rows.Close(); err != nil {
-			_ = i.partitions.Close()
+		if err := i.rows.Close(ctx); err != nil {
+			_ = i.partitions.Close(ctx)
 			return err
 		}
 	}
-	return i.partitions.Close()
+	return i.partitions.Close(ctx)
 }

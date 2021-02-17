@@ -75,16 +75,16 @@ type releaseIter struct {
 func (i *releaseIter) Next() (sql.Row, error) {
 	row, err := i.child.Next()
 	if err != nil {
-		_ = i.Close()
+		_ = i.Close(nil)
 		return nil, err
 	}
 	return row, nil
 }
 
-func (i *releaseIter) Close() (err error) {
+func (i *releaseIter) Close(ctx *sql.Context) (err error) {
 	i.once.Do(i.release)
 	if i.child != nil {
-		err = i.child.Close()
+		err = i.child.Close(ctx)
 	}
 	return err
 }

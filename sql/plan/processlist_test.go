@@ -57,7 +57,7 @@ func TestShowProcessList(t *testing.T) {
 
 	iter, err := n.RowIter(ctx, nil)
 	require.NoError(err)
-	rows, err := sql.RowIterToRows(iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{

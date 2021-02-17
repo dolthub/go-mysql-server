@@ -49,10 +49,11 @@ func TestQueryProcess(t *testing.T) {
 		},
 	)
 
-	iter, err := node.RowIter(sql.NewEmptyContext(), nil)
+	ctx := sql.NewEmptyContext()
+	iter, err := node.RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{
@@ -100,10 +101,11 @@ func TestProcessTable(t *testing.T) {
 		),
 	)
 
-	iter, err := node.RowIter(sql.NewEmptyContext(), nil)
+	ctx := sql.NewEmptyContext()
+	iter, err := node.RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{
@@ -148,7 +150,8 @@ func TestProcessIndexableTable(t *testing.T) {
 		},
 	)
 
-	iter, err := pt.IndexKeyValues(sql.NewEmptyContext(), []string{"a"})
+	ctx := sql.NewEmptyContext()
+	iter, err := pt.IndexKeyValues(ctx, []string{"a"})
 	require.NoError(err)
 
 	var values [][]interface{}
@@ -162,7 +165,7 @@ func TestProcessIndexableTable(t *testing.T) {
 		for {
 			v, _, err := kviter.Next()
 			if err == io.EOF {
-				kviter.Close()
+				kviter.Close(ctx)
 				break
 			}
 			values = append(values, v)

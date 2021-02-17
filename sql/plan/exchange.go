@@ -256,7 +256,7 @@ func (it *exchangeRowIter) iterPartition(p sql.Partition) {
 	}
 
 	defer func() {
-		if err := rows.Close(); err != nil {
+		if err := rows.Close(ctx); err != nil {
 			it.err <- err
 		}
 	}()
@@ -303,7 +303,7 @@ func (it *exchangeRowIter) Next() (sql.Row, error) {
 
 	select {
 	case err := <-it.err:
-		_ = it.Close()
+		_ = it.Close(nil)
 		return nil, err
 	case row, ok := <-it.rows:
 		if !ok {
@@ -319,7 +319,7 @@ func (it *exchangeRowIter) quit() chan struct{} {
 	return it.quitChan
 }
 
-func (it *exchangeRowIter) Close() error {
+func (it *exchangeRowIter) Close(ctx *sql.Context) error {
 	it.quitMut.Lock()
 	if it.quitChan != nil {
 		close(it.quitChan)
@@ -328,7 +328,7 @@ func (it *exchangeRowIter) Close() error {
 	it.quitMut.Unlock()
 
 	if it.partitions != nil {
-		return it.partitions.Close()
+		return it.partitions.Close(ctx)
 	}
 
 	return nil

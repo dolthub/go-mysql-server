@@ -136,13 +136,13 @@ func (i *generateIter) Next() (sql.Row, error) {
 	}
 }
 
-func (i *generateIter) Close() error {
+func (i *generateIter) Close(ctx *sql.Context) error {
 	if i.gen != nil {
 		if err := i.gen.Close(); err != nil {
-			_ = i.child.Close()
+			_ = i.child.Close(ctx)
 			return err
 		}
 	}
 
-	return i.child.Close()
+	return i.child.Close(ctx)
 }

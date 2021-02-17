@@ -109,7 +109,7 @@ func (t *testNodeIterator) Next() (Row, error) {
 	}
 }
 
-func (t *testNodeIterator) Close() error {
+func (t *testNodeIterator) Close(*Context) error {
 	panic("not implemented")
 }
 

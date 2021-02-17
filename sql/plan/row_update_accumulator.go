@@ -220,8 +220,8 @@ func (a *accumulatorIter) Next() (sql.Row, error) {
 	}
 }
 
-func (a *accumulatorIter) Close() error {
-	return a.iter.Close()
+func (a *accumulatorIter) Close(ctx *sql.Context) error {
+	return a.iter.Close(ctx)
 }
 
 func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {

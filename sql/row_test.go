@@ -33,7 +33,7 @@ func TestRowsToRowIterEmpty(t *testing.T) {
 	require.Equal(io.EOF, err)
 	require.Nil(r)
 
-	err = iter.Close()
+	err = iter.Close(nil)
 	require.NoError(err)
 }
 
@@ -61,6 +61,6 @@ func TestRowsToRowIter(t *testing.T) {
 	require.Equal(io.EOF, err)
 	require.Nil(r)
 
-	err = iter.Close()
+	err = iter.Close(nil)
 	require.NoError(err)
 }

@@ -365,8 +365,8 @@ func (i *EvalPartitionKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter
 	}, nil
 }
 
-func (i *EvalPartitionKeyValueIter) Close() error {
-	return i.iter.Close()
+func (i *EvalPartitionKeyValueIter) Close(ctx *sql.Context) error {
+	return i.iter.Close(ctx)
 }
 
 type evalKeyValueIter struct {
@@ -396,8 +396,8 @@ func (i *evalKeyValueIter) Next() ([]interface{}, []byte, error) {
 	return evals, loc, nil
 }
 
-func (i *evalKeyValueIter) Close() error {
-	return i.iter.Close()
+func (i *evalKeyValueIter) Close(ctx *sql.Context) error {
+	return i.iter.Close(ctx)
 }
 
 type loggingPartitionKeyValueIter struct {
@@ -428,8 +428,8 @@ func (i *loggingPartitionKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueI
 	return p, newLoggingKeyValueIter(i.ctx, i.log, iter, &i.rows), nil
 }
 
-func (i *loggingPartitionKeyValueIter) Close() error {
-	return i.iter.Close()
+func (i *loggingPartitionKeyValueIter) Close(ctx *sql.Context) error {
+	return i.iter.Close(ctx)
 }
 
 type loggingKeyValueIter struct {
@@ -493,6 +493,6 @@ func (i *loggingKeyValueIter) Next() ([]interface{}, []byte, error) {
 	return val, loc, err
 }
 
-func (i *loggingKeyValueIter) Close() error {
-	return i.iter.Close()
+func (i *loggingKeyValueIter) Close(ctx *sql.Context) error {
+	return i.iter.Close(ctx)
 }

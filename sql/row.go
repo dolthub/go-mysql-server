@@ -86,12 +86,11 @@ type RowIter interface {
 	// Next retrieves the next row. It will return io.EOF if it's the last row.
 	// After retrieving the last row, Close will be automatically closed.
 	Next() (Row, error)
-	// Close the iterator.
-	Close() error
+	Closer
 }
 
 // RowIterToRows converts a row iterator to a slice of rows.
-func RowIterToRows(i RowIter) ([]Row, error) {
+func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
 	var rows []Row
 	for {
 		row, err := i.Next()
@@ -106,7 +105,7 @@ func RowIterToRows(i RowIter) ([]Row, error) {
 		rows = append(rows, row)
 	}
 
-	return rows, i.Close()
+	return rows, i.Close(ctx)
 }
 
 // NodeToRows converts a node to a slice of rows.
@@ -116,7 +115,7 @@ func NodeToRows(ctx *Context, n Node) ([]Row, error) {
 		return nil, err
 	}
 
-	return RowIterToRows(i)
+	return RowIterToRows(ctx, i)
 }
 
 // RowsToRowIter creates a RowIter that iterates over the given rows.
@@ -139,7 +138,7 @@ func (i *sliceRowIter) Next() (Row, error) {
 	return r.Copy(), nil
 }
 
-func (i *sliceRowIter) Close() error {
+func (i *sliceRowIter) Close(*Context) error {
 	i.rows = nil
 	return nil
 }

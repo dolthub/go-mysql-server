@@ -45,7 +45,7 @@ func TestShowTableStatus(t *testing.T) {
 	iter, err := node.RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{
@@ -61,7 +61,7 @@ func TestShowTableStatus(t *testing.T) {
 	iter, err = node.RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err = sql.RowIterToRows(iter)
+	rows, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	expected = []sql.Row{

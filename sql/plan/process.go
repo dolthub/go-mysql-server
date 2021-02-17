@@ -233,8 +233,8 @@ func (i *trackedRowIter) Next() (sql.Row, error) {
 	return row, nil
 }
 
-func (i *trackedRowIter) Close() error {
-	err := i.iter.Close()
+func (i *trackedRowIter) Close(ctx *sql.Context) error {
+	err := i.iter.Close(ctx)
 	i.done()
 	return err
 }
@@ -287,9 +287,9 @@ func (i *trackedIndexKeyValueIter) done() {
 	}
 }
 
-func (i *trackedIndexKeyValueIter) Close() (err error) {
+func (i *trackedIndexKeyValueIter) Close(ctx *sql.Context) (err error) {
 	if i.iter != nil {
-		err = i.iter.Close()
+		err = i.iter.Close(ctx)
 	}
 	i.done()
 	return err

@@ -206,9 +206,9 @@ func (i *sortIter) Next() (sql.Row, error) {
 	return row, nil
 }
 
-func (i *sortIter) Close() error {
+func (i *sortIter) Close(ctx *sql.Context) error {
 	i.sortedRows = nil
-	return i.childIter.Close()
+	return i.childIter.Close(ctx)
 }
 
 func (i *sortIter) computeSortedRows() error {

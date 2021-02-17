@@ -157,7 +157,7 @@ func getType(val interface{}) (interface{}, sql.Type) {
 	}
 }
 
-func (u *indexValIter) Close() error {
+func (u *indexValIter) Close(_ *sql.Context) error {
 	return nil
 }
 

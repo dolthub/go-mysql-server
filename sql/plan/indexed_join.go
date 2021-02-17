@@ -241,18 +241,18 @@ func (i *indexedJoinIter) buildRow(primary, secondary sql.Row) sql.Row {
 	return row
 }
 
-func (i *indexedJoinIter) Close() (err error) {
+func (i *indexedJoinIter) Close(ctx *sql.Context) (err error) {
 	if i.primary != nil {
-		if err = i.primary.Close(); err != nil {
+		if err = i.primary.Close(ctx); err != nil {
 			if i.secondary != nil {
-				_ = i.secondary.Close()
+				_ = i.secondary.Close(ctx)
 			}
 			return err
 		}
 	}
 
 	if i.secondary != nil {
-		err = i.secondary.Close()
+		err = i.secondary.Close(ctx)
 		i.secondary = nil
 	}
 
