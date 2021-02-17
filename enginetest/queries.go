@@ -164,6 +164,26 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT mytable.s FROM mytable WHERE mytable.i IN (SELECT othertable.i2 FROM othertable) ORDER BY mytable.i ASC",
+		Expected: []sql.Row{
+			{"first row"},
+			{"second row"},
+			{"third row"},
+		},
+	},
+	{
+		Query: "SELECT mytable.s FROM mytable WHERE mytable.i = (SELECT othertable.i2 FROM othertable WHERE othertable.s2 = 'second')",
+		Expected: []sql.Row{
+			{"second row"},
+		},
+	},
+	{
+		Query: "SELECT mytable.s FROM mytable WHERE mytable.i IN (SELECT othertable.i2 FROM othertable WHERE CONCAT(othertable.s2, ' row') = mytable.s)",
+		Expected: []sql.Row{
+			{"second row"},
+		},
+	},
+	{
 		Query: "SELECT s,i FROM MyTable ORDER BY 2",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
@@ -267,7 +287,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT :foo * 2",
+		Query: "SELECT :foo * 2",
 		Expected: []sql.Row{
 			{2},
 		},
@@ -276,7 +296,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT i from mytable where i in (:foo, :bar) order by 1",
+		Query: "SELECT i from mytable where i in (:foo, :bar) order by 1",
 		Expected: []sql.Row{
 			{1},
 			{2},
@@ -287,7 +307,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT i from mytable where i = :foo * 2",
+		Query: "SELECT i from mytable where i = :foo * 2",
 		Expected: []sql.Row{
 			{2},
 		},
@@ -296,7 +316,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT i from mytable where 4 = :foo * 2 order by 1",
+		Query: "SELECT i from mytable where 4 = :foo * 2 order by 1",
 		Expected: []sql.Row{
 			{1},
 			{2},
