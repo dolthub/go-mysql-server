@@ -29,6 +29,32 @@ func NewWindow(partitionBy []Expression, orderBy []SortField) *Window {
 	return &Window{PartitionBy: partitionBy, OrderBy: orderBy}
 }
 
+// ToExpressions converts the PartitionBy and OrderBy expressions to a single slice of expressions suitable for
+// manipulation by analyzer rules.
+func (w *Window) ToExpressions() []Expression {
+	if w == nil {
+		return nil
+	}
+	return append(w.OrderBy.ToExpressions(), w.PartitionBy...)
+}
+
+// FromExpressions returns copy of this window with the given expressions taken to stand in for the partition and order
+// by fields. An error is returned if the lengths or types of these expressions are incompatible with this window.
+func (w *Window) FromExpressions(children []Expression) (*Window, error) {
+	if w == nil {
+		return nil, nil
+	}
+
+	if len(children) != len(w.OrderBy) +len(w.PartitionBy) {
+		return nil, ErrInvalidChildrenNumber.New(w, len(children), len(w.OrderBy) +len(w.PartitionBy))
+	}
+
+	nw := *w
+	nw.OrderBy = nw.OrderBy.FromExpressions(children[:len(nw.OrderBy)])
+	nw.PartitionBy = children[len(nw.OrderBy):]
+	return &nw, nil
+}
+
 func (w *Window) String() string {
 	if w == nil {
 		return ""

@@ -81,6 +81,13 @@ func (l *Length) String() string {
 	return fmt.Sprintf("CHAR_LENGTH(%s)", l.Child)
 }
 
+func (l *Length) DebugString() string {
+	if l.CountType == NumBytes {
+		return fmt.Sprintf("LENGTH(%s)", sql.DebugString(l.Child))
+	}
+	return fmt.Sprintf("CHAR_LENGTH(%s)", sql.DebugString(l.Child))
+}
+
 // Eval implements the sql.Expression interface.
 func (l *Length) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := l.Child.Eval(ctx, row)

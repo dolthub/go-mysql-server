@@ -89,7 +89,8 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query:    "select i, row_number() over (order by i desc), row_number() over (order by length(s),i) from mytable order by 1;",
+		Query:    `select i, row_number() over (order by i desc), 
+				row_number() over (order by length(s),i) from mytable order by 1;`,
 		Expected: []sql.Row{
 			{1,3,1},
 			{2,2,3},
@@ -98,7 +99,7 @@ func TestSingleQuery(t *testing.T) {
 	}
 	fmt.Sprintf("%v", test)
 
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, mergableIndexDriver)
+	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, mergableIndexDriver)
 	engine := enginetest.NewEngine(t, harness)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true

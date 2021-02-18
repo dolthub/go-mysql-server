@@ -90,28 +90,17 @@ func (r *RowNumber) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // Children implements sql.Expression
 func (r *RowNumber) Children() []sql.Expression {
-	if r.window == nil {
-		return nil
-	}
-	return append(r.window.OrderBy.ToExpressions(), r.window.PartitionBy...)
+	return r.window.ToExpressions()
 }
 
 // WithChildren implements sql.Expression
 func (r *RowNumber) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if r.window == nil {
-		if len(children) > 0 {
-			return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 0)
-		}
+	window, err := r.window.FromExpressions(children)
+	if err != nil {
+		return nil, err
 	}
 
-	if len(children) != len(r.window.OrderBy) +len(r.window.PartitionBy) {
-		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), len(r.window.OrderBy) +len(r.window.PartitionBy))
-	}
-
-	nr := *r
-	nr.window.OrderBy = nr.window.OrderBy.FromExpressions(children[:len(nr.window.OrderBy)])
-	nr.window.PartitionBy = children[len(nr.window.OrderBy):]
-	return &nr, nil
+	return r.WithWindow(window)
 }
 
 // WithWindow implements sql.WindowAggregation

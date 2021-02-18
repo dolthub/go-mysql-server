@@ -116,7 +116,7 @@ func NewUnresolvedFunction(
 
 // Children implements the Expression interface.
 func (uf *UnresolvedFunction) Children() []sql.Expression {
-	return uf.Arguments
+	return append(uf.Arguments, uf.Window.ToExpressions()...)
 }
 
 // Resolved implements the Expression interface.
@@ -142,7 +142,27 @@ func (uf *UnresolvedFunction) String() string {
 	for i, e := range uf.Arguments {
 		exprs[i] = e.String()
 	}
-	return fmt.Sprintf("%s(%s)", uf.name, strings.Join(exprs, ", "))
+
+	over := ""
+	if uf.Window != nil {
+		over = fmt.Sprintf(" %s", uf.Window)
+	}
+
+	return fmt.Sprintf("%s(%s)%s", uf.name, strings.Join(exprs, ", "), over)
+}
+
+func (uf *UnresolvedFunction) DebugString() string {
+	var exprs = make([]string, len(uf.Arguments))
+	for i, e := range uf.Arguments {
+		exprs[i] = sql.DebugString(e)
+	}
+
+	over := ""
+	if uf.Window != nil {
+		over = fmt.Sprintf(" %s", sql.DebugString(uf.Window))
+	}
+
+	return fmt.Sprintf("%s(%s)%s", uf.name, strings.Join(exprs, ", "), over)
 }
 
 // Eval implements the Expression interface.
@@ -152,8 +172,14 @@ func (*UnresolvedFunction) Eval(ctx *sql.Context, r sql.Row) (interface{}, error
 
 // WithChildren implements the Expression interface.
 func (uf *UnresolvedFunction) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != len(uf.Arguments) {
-		return nil, sql.ErrInvalidChildrenNumber.New(uf, len(children), len(uf.Arguments))
+	if len(children) != len(uf.Arguments) + len(uf.Window.ToExpressions()) {
+		return nil, sql.ErrInvalidChildrenNumber.New(uf, len(children), len(uf.Arguments) + len(uf.Window.ToExpressions()))
 	}
-	return NewUnresolvedFunction(uf.name, uf.IsAggregate, uf.Window, children...), nil
+
+	window, err := uf.Window.FromExpressions(children[len(uf.Arguments):])
+	if err != nil {
+		return nil, err
+	}
+
+	return NewUnresolvedFunction(uf.name, uf.IsAggregate, window, children[:len(uf.Arguments)]...), nil
 }
