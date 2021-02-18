@@ -233,9 +233,9 @@ func (i *groupByIter) Next() (sql.Row, error) {
 	return evalBuffers(i.ctx, i.buf, i.selectedExprs)
 }
 
-func (i *groupByIter) Close() error {
+func (i *groupByIter) Close(ctx *sql.Context) error {
 	i.buf = nil
-	return i.child.Close()
+	return i.child.Close(ctx)
 }
 
 type groupByGroupingIter struct {
@@ -324,9 +324,9 @@ func (i *groupByGroupingIter) compute() error {
 	return nil
 }
 
-func (i *groupByGroupingIter) Close() error {
+func (i *groupByGroupingIter) Close(ctx *sql.Context) error {
 	i.aggregations = nil
-	return i.child.Close()
+	return i.child.Close(ctx)
 }
 
 func groupingKey(

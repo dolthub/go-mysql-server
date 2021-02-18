@@ -59,7 +59,7 @@ func (h *memoryHarness) ExecuteStatement(statement string) error {
 		return err
 	}
 
-	return drainIterator(rowIter)
+	return drainIterator(ctx, rowIter)
 }
 
 var pid uint32
@@ -101,7 +101,7 @@ func (h *memoryHarness) ExecuteQuery(statement string) (schema string, results [
 	return schemaString, results, nil
 }
 
-func drainIterator(iter sql.RowIter) error {
+func drainIterator(ctx *sql.Context, iter sql.RowIter) error {
 	if iter == nil {
 		return nil
 	}
@@ -115,7 +115,7 @@ func drainIterator(iter sql.RowIter) error {
 		}
 	}
 
-	return iter.Close()
+	return iter.Close(ctx)
 }
 
 // This shouldn't be necessary -- the fact that an iterator can return an error but not clean up after itself in all

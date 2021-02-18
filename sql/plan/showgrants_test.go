@@ -30,7 +30,7 @@ func TestShowGrants(t *testing.T) {
 	iter, err := NewShowGrants().RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{

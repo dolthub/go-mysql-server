@@ -270,7 +270,7 @@ func (p *partitionIter) Next() (sql.Partition, error) {
 	return &Partition{key}, nil
 }
 
-func (p *partitionIter) Close() error { return nil }
+func (p *partitionIter) Close(_ *sql.Context) error { return nil }
 
 type tableIter struct {
 	columns []int
@@ -303,12 +303,12 @@ func (i *tableIter) Next() (sql.Row, error) {
 	return projectOnRow(i.columns, row), nil
 }
 
-func (i *tableIter) Close() error {
+func (i *tableIter) Close(ctx *sql.Context) error {
 	if i.indexValues == nil {
 		return nil
 	}
 
-	return i.indexValues.Close()
+	return i.indexValues.Close(ctx)
 }
 
 func (i *tableIter) getRow() (sql.Row, error) {
@@ -1239,8 +1239,8 @@ func (i *partitionIndexKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIte
 	}, nil
 }
 
-func (i *partitionIndexKeyValueIter) Close() error {
-	return i.iter.Close()
+func (i *partitionIndexKeyValueIter) Close(ctx *sql.Context) error {
+	return i.iter.Close(ctx)
 }
 
 var errColumnNotFound = errors.NewKind("could not find column %s")
@@ -1268,6 +1268,6 @@ func (i *indexKeyValueIter) Next() ([]interface{}, []byte, error) {
 	return projectOnRow(i.columns, row), data, nil
 }
 
-func (i *indexKeyValueIter) Close() error {
-	return i.iter.Close()
+func (i *indexKeyValueIter) Close(ctx *sql.Context) error {
+	return i.iter.Close(ctx)
 }

@@ -165,7 +165,7 @@ func GetColumnFromIndexExpr(expr string, table sql.Table) *sql.Column {
 	return nil
 }
 
-func (i *showIndexesIter) Close() error {
+func (i *showIndexesIter) Close(*sql.Context) error {
 	return nil
 }
 

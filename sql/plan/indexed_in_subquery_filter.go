@@ -136,7 +136,7 @@ func (iter *indexedInSubqueryIter) Next() (sql.Row, error) {
 		}
 		ret, err = iter.cur.Next()
 		if err == io.EOF {
-			cerr := iter.cur.Close()
+			cerr := iter.cur.Close(iter.ctx)
 			iter.cur = nil
 			if cerr != nil {
 				return nil, cerr
@@ -146,9 +146,9 @@ func (iter *indexedInSubqueryIter) Next() (sql.Row, error) {
 	return ret, err
 }
 
-func (iter *indexedInSubqueryIter) Close() error {
+func (iter *indexedInSubqueryIter) Close(ctx *sql.Context) error {
 	if iter.cur != nil {
-		err := iter.cur.Close()
+		err := iter.cur.Close(ctx)
 		iter.cur = nil
 		return err
 	}

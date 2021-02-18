@@ -98,7 +98,7 @@ func (i *dummyLookupIter) Next() ([]byte, error) {
 	return memory.EncodeIndexValue(value)
 }
 
-func (i *dummyLookupIter) Close() error { return nil }
+func (i *dummyLookupIter) Close(_ *sql.Context) error { return nil }
 
 var tests = []struct {
 	name          string
@@ -217,11 +217,12 @@ func TestTable(t *testing.T) {
 				require.NoError(err)
 
 				var iter sql.RowIter
-				iter, err = table.PartitionRows(sql.NewEmptyContext(), p)
+				ctx := sql.NewEmptyContext()
+				iter, err = table.PartitionRows(ctx, p)
 				require.NoError(err)
 
 				var rows []sql.Row
-				rows, err = sql.RowIterToRows(iter)
+				rows, err = sql.RowIterToRows(ctx, iter)
 				require.NoError(err)
 
 				expected := table.GetPartition(string(p.Key()))
@@ -322,10 +323,11 @@ func TestIndexed(t *testing.T) {
 
 			require.ElementsMatch(indexed.Schema(), test.expectedSchema)
 
-			iter, err := indexed.PartitionRows(sql.NewEmptyContext(), test.partition)
+			ctx := sql.NewEmptyContext()
+			iter, err := indexed.PartitionRows(ctx, test.partition)
 			require.NoError(err)
 
-			rows, err := sql.RowIterToRows(iter)
+			rows, err := sql.RowIterToRows(ctx, iter)
 			require.NoError(err)
 
 			require.Len(rows, len(test.expectedIndexed))
@@ -352,10 +354,11 @@ func testFlatRows(t *testing.T, table sql.Table) []sql.Row {
 			require.NoError(err)
 		}
 
-		iter, err := table.PartitionRows(sql.NewEmptyContext(), p)
+		ctx := sql.NewEmptyContext()
+		iter, err := table.PartitionRows(ctx, p)
 		require.NoError(err)
 
-		rows, err := sql.RowIterToRows(iter)
+		rows, err := sql.RowIterToRows(ctx, iter)
 		require.NoError(err)
 
 		flatRows = append(flatRows, rows...)

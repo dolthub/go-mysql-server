@@ -38,13 +38,14 @@ func TestGenerateRowIter(t *testing.T) {
 		),
 	)
 
+	ctx := sql.NewEmptyContext()
 	iter, err := NewGenerate(
 		child,
 		expression.NewGetFieldWithTable(1, sql.CreateArray(sql.Text), "foo", "b", false),
-	).RowIter(sql.NewEmptyContext(), nil)
+	).RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{

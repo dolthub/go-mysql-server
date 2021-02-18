@@ -24,6 +24,7 @@ import (
 func TestRowsToRowIterEmpty(t *testing.T) {
 	require := require.New(t)
 
+	ctx := NewEmptyContext()
 	iter := RowsToRowIter()
 	r, err := iter.Next()
 	require.Equal(io.EOF, err)
@@ -33,13 +34,14 @@ func TestRowsToRowIterEmpty(t *testing.T) {
 	require.Equal(io.EOF, err)
 	require.Nil(r)
 
-	err = iter.Close()
+	err = iter.Close(ctx)
 	require.NoError(err)
 }
 
 func TestRowsToRowIter(t *testing.T) {
 	require := require.New(t)
 
+	ctx := NewEmptyContext()
 	iter := RowsToRowIter(NewRow(1), NewRow(2), NewRow(3))
 	r, err := iter.Next()
 	require.NoError(err)
@@ -61,6 +63,6 @@ func TestRowsToRowIter(t *testing.T) {
 	require.Equal(io.EOF, err)
 	require.Nil(r)
 
-	err = iter.Close()
+	err = iter.Close(ctx)
 	require.NoError(err)
 }

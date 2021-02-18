@@ -124,6 +124,6 @@ func (i *FilterIter) Next() (sql.Row, error) {
 }
 
 // Close implements the RowIter interface.
-func (i *FilterIter) Close() error {
-	return i.childIter.Close()
+func (i *FilterIter) Close(ctx *sql.Context) error {
+	return i.childIter.Close(ctx)
 }

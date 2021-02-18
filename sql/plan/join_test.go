@@ -184,7 +184,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 			iter, err := n1.RowIter(ctx, nil)
 			require.NoError(err)
 
-			rows, err := sql.RowIterToRows(iter)
+			rows, err := sql.RowIterToRows(ctx, iter)
 			require.NoError(err)
 
 			require.Equal(expected, rows)
@@ -199,7 +199,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 			iter, err := n1.RowIter(ctx, nil)
 			require.NoError(err)
 
-			rows, err := sql.RowIterToRows(iter)
+			rows, err := sql.RowIterToRows(ctx, iter)
 			require.NoError(err)
 
 			require.Equal(expected, rows)
@@ -215,7 +215,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 			iter, err := n1.RowIter(ctx, nil)
 			require.NoError(err)
 
-			rows, err := sql.RowIterToRows(iter)
+			rows, err := sql.RowIterToRows(ctx, iter)
 			require.NoError(err)
 
 			require.Equal(expected, rows)
@@ -229,7 +229,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 			iter, err := n2.RowIter(ctx, nil)
 			require.NoError(err)
 
-			rows, err := sql.RowIterToRows(iter)
+			rows, err := sql.RowIterToRows(ctx, iter)
 			require.NoError(err)
 
 			require.Equal(expected, rows)
@@ -256,9 +256,10 @@ func TestLeftJoin(t *testing.T) {
 			expression.NewGetField(6, sql.Text, "rcol3", false),
 		))
 
-	iter, err := j.RowIter(sql.NewEmptyContext(), nil)
+	ctx := sql.NewEmptyContext()
+	iter, err := j.RowIter(ctx, nil)
 	require.NoError(err)
-	rows, err := sql.RowIterToRows(iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 	require.ElementsMatch([]sql.Row{
 		{"col1_1", "col2_1", int32(1), int64(2), "col1_2", "col2_2", int32(3), int64(4)},
@@ -285,9 +286,10 @@ func TestRightJoin(t *testing.T) {
 			expression.NewGetField(6, sql.Text, "rcol3", false),
 		))
 
-	iter, err := j.RowIter(sql.NewEmptyContext(), nil)
+	ctx := sql.NewEmptyContext()
+	iter, err := j.RowIter(ctx, nil)
 	require.NoError(err)
-	rows, err := sql.RowIterToRows(iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 	require.ElementsMatch([]sql.Row{
 		{nil, nil, nil, nil, "col1_1", "col2_1", int32(1), int64(2)},

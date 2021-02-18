@@ -51,5 +51,5 @@ func TestShowWarnings(t *testing.T) {
 	if err != io.EOF {
 		require.NoError(err)
 	}
-	require.NoError(it.Close())
+	require.NoError(it.Close(ctx))
 }

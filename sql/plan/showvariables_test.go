@@ -47,12 +47,11 @@ func TestShowVariables(t *testing.T) {
 	if err != io.EOF {
 		require.NoError(err)
 	}
-	require.NoError(it.Close())
+	require.NoError(it.Close(ctx))
 	require.Equal(0, len(vars))
 }
 
 func TestShowVariablesWithLike(t *testing.T) {
-
 	sv := NewShowVariables("int%")
 	require.True(t, sv.Resolved())
 
@@ -64,7 +63,7 @@ func TestShowVariablesWithLike(t *testing.T) {
 	it, err := sv.RowIter(context, nil)
 	require.NoError(t, err)
 
-	rows, err := sql.RowIterToRows(it)
+	rows, err := sql.RowIterToRows(context, it)
 	require.NoError(t, err)
 
 	expectedRows := []sql.Row{
