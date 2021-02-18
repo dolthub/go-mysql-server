@@ -2153,6 +2153,86 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo", ""),
 	),
+	`SELECT a, count(i) over (partition by s order by x) FROM foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewUnresolvedFunction("count", true, sql.NewWindow(
+				[]sql.Expression{
+					expression.NewUnresolvedColumn("s"),
+				},
+				sql.SortFields{
+					{
+						Column:       expression.NewUnresolvedColumn("x"),
+						Order:        sql.Ascending,
+						NullOrdering: sql.NullsFirst,
+					},
+				},
+			), expression.NewUnresolvedColumn("i")),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT a, count(i) over (order by x) FROM foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewUnresolvedFunction("count", true, sql.NewWindow(
+				[]sql.Expression{},
+				sql.SortFields{
+					{
+						Column:       expression.NewUnresolvedColumn("x"),
+						Order:        sql.Ascending,
+						NullOrdering: sql.NullsFirst,
+					},
+				},
+			), expression.NewUnresolvedColumn("i")),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT a, row_number() over (order by x), row_number() over (partition by y) FROM foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+				[]sql.Expression{},
+				sql.SortFields{
+					{
+						Column:       expression.NewUnresolvedColumn("x"),
+						Order:        sql.Ascending,
+						NullOrdering: sql.NullsFirst,
+					},
+				},
+			)),
+			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+				[]sql.Expression{
+					expression.NewUnresolvedColumn("y"),
+				},
+				nil,
+			)),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT a, row_number() over (order by x), max(b) over (partition by y) FROM foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+				[]sql.Expression{},
+				sql.SortFields{
+					{
+						Column:       expression.NewUnresolvedColumn("x"),
+						Order:        sql.Ascending,
+						NullOrdering: sql.NullsFirst,
+					},
+				},
+			)),
+			expression.NewUnresolvedFunction("max", true, sql.NewWindow(
+				[]sql.Expression{
+					expression.NewUnresolvedColumn("y"),
+				},
+				nil,
+				),
+				expression.NewUnresolvedColumn("b"),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
 	`SELECT -128, 127, 255, -32768, 32767, 65535, -2147483648, 2147483647, 4294967295, -9223372036854775808, 9223372036854775807, 18446744073709551615`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewLiteral(int8(math.MinInt8), sql.Int8),
@@ -2426,7 +2506,7 @@ func TestParse(t *testing.T) {
 
 // assertNodesEqualWithDiff asserts the two nodes given to be equal and prints any diff according to their DebugString
 // methods.
-func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
+func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) bool {
 	if !assert.Equal(t, expected, actual) {
 		expectedStr := sql.DebugString(expected)
 		actualStr := sql.DebugString(actual)
@@ -2441,16 +2521,28 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
 		})
 		require.NoError(t, err)
 
-		a := make([]string, 0, 2)
-		b := make([]string, 0, 1)
-		a = append(a, "a")
-		b = append(b, "a")
-		require.Equal(t, a, b)
-
 		if len(diff) > 0 {
 			fmt.Println(diff)
+		} else {
+			// No textual diff found, but not equal. Ugh. Let's at least figure out which node in the plans isn't equal.
+		Top:
+			for {
+				for i := range expected.Children() {
+					if !assertNodesEqualWithDiff(t, expected.Children()[i], actual.Children()[i]) {
+						expected, actual = expected.Children()[i], actual.Children()[i]
+						continue Top
+					}
+				}
+				// Either no children, or all children were equal. This must the node that's different. Probably should add
+				// enough information in DebugPrint for this node that it shows up in the textual diff.
+				fmt.Printf("Non-textual difference found in node %s -- implement a better DebugPrint?\n", sql.DebugString(expected))
+				break
+			}
 		}
+
+		return false
 	}
+	return true
 }
 
 var fixturesErrors = map[string]*errors.Kind{
