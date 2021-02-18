@@ -935,7 +935,7 @@ var fixtures = map[string]sql.Node{
 		),
 	),
 	`SELECT foo, bar FROM foo ORDER BY baz DESC;`: plan.NewSort(
-		[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
+		[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: sql.Descending, NullOrdering: sql.NullsFirst}},
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("foo"),
@@ -961,7 +961,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT foo, bar FROM foo ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(1,
 		plan.NewSort(
-			[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
+			[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: sql.Descending, NullOrdering: sql.NullsFirst}},
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("foo"),
@@ -973,7 +973,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT foo, bar FROM foo WHERE qux = 1 ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(1,
 		plan.NewSort(
-			[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
+			[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: sql.Descending, NullOrdering: sql.NullsFirst}},
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("foo"),
@@ -1033,7 +1033,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT COUNT(*) FROM t1;`: plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewUnresolvedFunction("count", true,
+			expression.NewUnresolvedFunction("count", true, nil,
 				expression.NewStar()),
 		},
 		[]sql.Expression{},
@@ -1346,6 +1346,7 @@ var fixtures = map[string]sql.Node{
 			expression.NewUnresolvedFunction(
 				"somefunc",
 				false,
+				nil,
 				expression.NewTuple(
 					expression.NewLiteral(int8(1), sql.Int8),
 					expression.NewLiteral(int8(2), sql.Int8),
@@ -1511,13 +1512,13 @@ var fixtures = map[string]sql.Node{
 		[]sql.SortField{
 			{
 				Column:       expression.NewLiteral(int8(2), sql.Int8),
-				Order:        plan.Ascending,
-				NullOrdering: plan.NullsFirst,
+				Order:        sql.Ascending,
+				NullOrdering: sql.NullsFirst,
 			},
 			{
 				Column:       expression.NewLiteral(int8(1), sql.Int8),
-				Order:        plan.Ascending,
-				NullOrdering: plan.NullsFirst,
+				Order:        sql.Ascending,
+				NullOrdering: sql.NullsFirst,
 			},
 		},
 		plan.NewProject(
@@ -1682,7 +1683,7 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{
 			expression.NewArithmetic(
 				expression.NewUnresolvedFunction(
-					"max", true, expression.NewUnresolvedColumn("i"),
+					"max", true, nil, expression.NewUnresolvedColumn("i"),
 				),
 				expression.NewLiteral(int8(2), sql.Int8),
 				"/",
@@ -2041,13 +2042,13 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT bar, AVG(baz) FROM foo GROUP BY bar HAVING COUNT(*) > 5`: plan.NewHaving(
 		expression.NewGreaterThan(
-			expression.NewUnresolvedFunction("count", true, expression.NewStar()),
+			expression.NewUnresolvedFunction("count", true, nil, expression.NewStar()),
 			expression.NewLiteral(int8(5), sql.Int8),
 		),
 		plan.NewGroupBy(
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("bar"),
-				expression.NewUnresolvedFunction("avg", true, expression.NewUnresolvedColumn("baz"))},
+				expression.NewUnresolvedFunction("avg", true, nil, expression.NewUnresolvedColumn("baz"))},
 			[]sql.Expression{expression.NewUnresolvedColumn("bar")},
 			plan.NewUnresolvedTable("foo", ""),
 		),
@@ -2065,11 +2066,11 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT COUNT(*) FROM foo GROUP BY a HAVING COUNT(*) > 5`: plan.NewHaving(
 		expression.NewGreaterThan(
-			expression.NewUnresolvedFunction("count", true, expression.NewStar()),
+			expression.NewUnresolvedFunction("count", true, nil, expression.NewStar()),
 			expression.NewLiteral(int8(5), sql.Int8),
 		),
 		plan.NewGroupBy(
-			[]sql.Expression{expression.NewUnresolvedFunction("count", true, expression.NewStar())},
+			[]sql.Expression{expression.NewUnresolvedFunction("count", true, nil, expression.NewStar())},
 			[]sql.Expression{expression.NewUnresolvedColumn("a")},
 			plan.NewUnresolvedTable("foo", ""),
 		),
@@ -2077,11 +2078,11 @@ var fixtures = map[string]sql.Node{
 	`SELECT DISTINCT COUNT(*) FROM foo GROUP BY a HAVING COUNT(*) > 5`: plan.NewDistinct(
 		plan.NewHaving(
 			expression.NewGreaterThan(
-				expression.NewUnresolvedFunction("count", true, expression.NewStar()),
+				expression.NewUnresolvedFunction("count", true, nil, expression.NewStar()),
 				expression.NewLiteral(int8(5), sql.Int8),
 			),
 			plan.NewGroupBy(
-				[]sql.Expression{expression.NewUnresolvedFunction("count", true, expression.NewStar())},
+				[]sql.Expression{expression.NewUnresolvedFunction("count", true, nil, expression.NewStar())},
 				[]sql.Expression{expression.NewUnresolvedColumn("a")},
 				plan.NewUnresolvedTable("foo", ""),
 			),
@@ -2133,14 +2134,14 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT FIRST(i) FROM foo`: plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewUnresolvedFunction("first", true, expression.NewUnresolvedColumn("i")),
+			expression.NewUnresolvedFunction("first", true, nil, expression.NewUnresolvedColumn("i")),
 		},
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT LAST(i) FROM foo`: plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewUnresolvedFunction("last", true, expression.NewUnresolvedColumn("i")),
+			expression.NewUnresolvedFunction("last", true, nil, expression.NewUnresolvedColumn("i")),
 		},
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo", ""),

@@ -26,7 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func TestFlattenGroupByAggregations(t *testing.T) {
+func TestFlattenAggregationExprs(t *testing.T) {
 	require := require.New(t)
 
 	table := memory.NewTable("foo", sql.Schema{
@@ -34,7 +34,7 @@ func TestFlattenGroupByAggregations(t *testing.T) {
 		{Name: "b", Type: sql.Int64, Source: "foo"},
 		{Name: "c", Type: sql.Int64, Source: "foo"},
 	})
-	rule := getRule("flatten_group_by_aggregations")
+	rule := getRule("flatten_aggregation_exprs")
 
 	tests := []struct {
 		name     string
