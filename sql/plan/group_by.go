@@ -353,8 +353,6 @@ func fillBuffer(expr sql.Expression) sql.Row {
 	switch n := expr.(type) {
 	case sql.Aggregation:
 		return n.NewBuffer()
-	case *expression.Alias:
-		return fillBuffer(n.Child)
 	default:
 		return nil
 	}
@@ -385,8 +383,6 @@ func updateBuffer(
 	switch n := expr.(type) {
 	case sql.Aggregation:
 		return n.Update(ctx, buffers[idx], row)
-	case *expression.Alias:
-		return updateBuffer(ctx, buffers, idx, n.Child, row)
 	default:
 		val, err := expr.Eval(ctx, row)
 		if err != nil {
@@ -423,8 +419,6 @@ func evalBuffer(
 	switch n := aggregation.(type) {
 	case sql.Aggregation:
 		return n.Eval(ctx, buffer)
-	case *expression.Alias:
-		return evalBuffer(ctx, n.Child, buffer)
 	default:
 		if len(buffer) > 0 {
 			return buffer[0], nil

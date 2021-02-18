@@ -63,6 +63,27 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT pk DIV 2, SUM(c3) as sum FROM one_pk GROUP BY 1 ORDER BY 1",
+		Expected: []sql.Row{
+			{int64(0), float64(14)},
+			{int64(1), float64(54)},
+		},
+	},
+	{
+		Query: "SELECT pk DIV 2, SUM(c3) + sum(c3) as sum FROM one_pk GROUP BY 1 ORDER BY 1",
+		Expected: []sql.Row{
+			{int64(0), float64(28)},
+			{int64(1), float64(108)},
+		},
+	},
+	{
+		Query: "SELECT pk DIV 2, SUM(c3) + min(c3) as sum_and_min FROM one_pk GROUP BY 1 ORDER BY 1",
+		Expected: []sql.Row{
+			{int64(0), float64(16)},
+			{int64(1), float64(76)},
+		},
+	},
+	{
 		Query: "SELECT pk1, SUM(c1) FROM two_pk GROUP BY pk1 ORDER BY pk1;",
 		Expected: []sql.Row{
 			{0, 10.0},
