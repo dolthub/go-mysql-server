@@ -15,8 +15,6 @@
 package sql
 
 import (
-	"io"
-
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -84,7 +82,7 @@ type PartitionIndexKeyValueIter interface {
 	// Next returns the next partition and the IndexKeyValueIter for that
 	// partition.
 	Next() (Partition, IndexKeyValueIter, error)
-	io.Closer
+	Closer
 }
 
 // IndexKeyValueIter is an iterator of index key values, that is, a tuple of
@@ -94,14 +92,14 @@ type IndexKeyValueIter interface {
 	// returned slice will be the same as the number of columns used to
 	// create this iterator. The second returned parameter is a repo's location.
 	Next() ([]interface{}, []byte, error)
-	io.Closer
+	Closer
 }
 
 // IndexValueIter is an iterator of index values.
 type IndexValueIter interface {
 	// Next returns the next value (repo's location) - see IndexKeyValueIter.
 	Next() ([]byte, error)
-	io.Closer
+	Closer
 }
 
 var (

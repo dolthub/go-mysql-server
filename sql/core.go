@@ -16,7 +16,6 @@ package sql
 
 import (
 	"fmt"
-	"io"
 	"math"
 	"strconv"
 	"strings"
@@ -183,7 +182,7 @@ type Partition interface {
 
 // PartitionIter is an iterator that retrieves partitions.
 type PartitionIter interface {
-	io.Closer
+	Closer
 	Next() (Partition, error)
 }
 

@@ -131,7 +131,7 @@ func (c *createTriggerIter) Next() (sql.Row, error) {
 	return sql.Row{sql.NewOkResult(0)}, nil
 }
 
-func (c *createTriggerIter) Close() error {
+func (c *createTriggerIter) Close(*sql.Context) error {
 	return nil
 }
 

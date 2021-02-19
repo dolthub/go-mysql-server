@@ -342,11 +342,11 @@ func TestCreateIndexWithIter(t *testing.T) {
 			vals[i] = append(vals[i], values...)
 		}
 
-		require.NoError(kviter.Close())
+		require.NoError(kviter.Close(ctx))
 
 		i++
 	}
-	require.NoError(iter.Close())
+	require.NoError(iter.Close(ctx))
 
 	require.Equal([][]interface{}{
 		{int64(3), int64(0)},

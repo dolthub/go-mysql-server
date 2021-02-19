@@ -312,6 +312,6 @@ func produceCreateViewStatement(view *SubqueryAlias) string {
 	)
 }
 
-func (i *showCreateTablesIter) Close() error {
+func (i *showCreateTablesIter) Close(*sql.Context) error {
 	return nil
 }

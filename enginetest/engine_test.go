@@ -131,16 +131,18 @@ func TestLocks(t *testing.T) {
 	analyzer := analyzer.NewDefault(catalog)
 	engine := sqle.New(catalog, analyzer, new(sqle.Config))
 
-	_, iter, err := engine.Query(enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db"), "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
+	ctx := enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db")
+	_, iter, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
 	require.NoError(err)
 
-	_, err = sql.RowIterToRows(iter)
+	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
-	_, iter, err = engine.Query(enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db"), "UNLOCK TABLES")
+	ctx = enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db")
+	_, iter, err = engine.Query(ctx, "UNLOCK TABLES")
 	require.NoError(err)
 
-	_, err = sql.RowIterToRows(iter)
+	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	require.Equal(1, t1.readLocks)
@@ -171,7 +173,7 @@ func TestRootSpanFinish(t *testing.T) {
 	_, iter, err := e.Query(ctx, "SELECT 1")
 	require.NoError(t, err)
 
-	_, err = sql.RowIterToRows(iter)
+	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(t, err)
 
 	require.True(t, fakeSpan.finished)

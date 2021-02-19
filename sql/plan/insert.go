@@ -164,7 +164,7 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 	}
 
 	if err != nil {
-		_ = i.rowSource.Close()
+		_ = i.rowSource.Close(i.ctx)
 		return nil, err
 	}
 
@@ -176,7 +176,7 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 
 	err = validateNullability(i.schema, row)
 	if err != nil {
-		_ = i.rowSource.Close()
+		_ = i.rowSource.Close(i.ctx)
 		return nil, err
 	}
 
@@ -194,7 +194,7 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 		toReturn := row.Append(row)
 		if err = i.replacer.Delete(i.ctx, row); err != nil {
 			if !sql.ErrDeleteRowNotFound.Is(err) {
-				_ = i.rowSource.Close()
+				_ = i.rowSource.Close(i.ctx)
 				return nil, err
 			}
 			// if the row was not found during deletion, write nils into the toReturn row
@@ -204,14 +204,14 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 		}
 
 		if err = i.replacer.Insert(i.ctx, row); err != nil {
-			_ = i.rowSource.Close()
+			_ = i.rowSource.Close(i.ctx)
 			return nil, err
 		}
 		return toReturn, nil
 	} else {
 		if err := i.inserter.Insert(i.ctx, row); err != nil {
 			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err)) || len(i.updateExprs) == 0 {
-				_ = i.rowSource.Close()
+				_ = i.rowSource.Close(i.ctx)
 				return nil, err
 			}
 
@@ -236,7 +236,7 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 			}
 
 			defer func() {
-				err := filterIter.Close()
+				err := filterIter.Close(i.ctx)
 				if returnErr == nil {
 					returnErr = err
 				}
@@ -297,26 +297,26 @@ func (i insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
 	return nil
 }
 
-func (i insertIter) Close() error {
+func (i insertIter) Close(ctx *sql.Context) error {
 	if !i.closed {
 		i.closed = true
 		if i.inserter != nil {
-			if err := i.inserter.Close(i.ctx); err != nil {
+			if err := i.inserter.Close(ctx); err != nil {
 				return err
 			}
 		}
 		if i.replacer != nil {
-			if err := i.replacer.Close(i.ctx); err != nil {
+			if err := i.replacer.Close(ctx); err != nil {
 				return err
 			}
 		}
 		if i.updater != nil {
-			if err := i.updater.Close(i.ctx); err != nil {
+			if err := i.updater.Close(ctx); err != nil {
 				return err
 			}
 		}
 		if i.rowSource != nil {
-			if err := i.rowSource.Close(); err != nil {
+			if err := i.rowSource.Close(ctx); err != nil {
 				return err
 			}
 		}

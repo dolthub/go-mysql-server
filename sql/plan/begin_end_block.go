@@ -96,7 +96,7 @@ func (i *blockIter) Next() (sql.Row, error) {
 		for {
 			newRow, err := subIter.Next()
 			if err == io.EOF {
-				err := subIter.Close()
+				err := subIter.Close(i.ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -111,7 +111,7 @@ func (i *blockIter) Next() (sql.Row, error) {
 	return row, nil
 }
 
-func (i *blockIter) Close() error {
+func (i *blockIter) Close(*sql.Context) error {
 	return nil
 }
 

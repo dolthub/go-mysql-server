@@ -132,6 +132,12 @@ var (
 
 	// ErrInvalidPrecisionSyntax is returned when a column type-definition has argument violations.
 	ErrInvalidPrecisionSyntax = errors.NewKind("column %s type definition is invalid: %s")
+
+	// ErrCannotCreateDatabaseExists is returned when a CREATE DATABASE is called on a table that already exists.
+	ErrCannotCreateDatabaseExists = errors.NewKind("can't create database %s; database exists")
+
+	// ErrCannotDropDatabaseDoesntExist is returned when a DROP DATABASE is callend when a table is dropped that doesn't exist.
+	ErrCannotDropDatabaseDoesntExist = errors.NewKind("can't drop database %s; database doesn't exist")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {

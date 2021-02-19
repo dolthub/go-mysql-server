@@ -2399,6 +2399,10 @@ var fixtures = map[string]sql.Node{
 			),
 		),
 	),
+	`CREATE DATABASE test`:               plan.NewCreateDatabase("test", false),
+	`CREATE DATABASE IF NOT EXISTS test`: plan.NewCreateDatabase("test", true),
+	`DROP DATABASE test`:                 plan.NewDropDatabase("test", false),
+	`DROP DATABASE IF EXISTS test`:       plan.NewDropDatabase("test", true),
 }
 
 func TestParse(t *testing.T) {
