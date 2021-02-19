@@ -3699,6 +3699,48 @@ var QueryTests = []QueryTest{
 			{3,4,2.0},
 		},
 	},
+	{
+		Query:    "select pk1, pk2, row_number() over (partition by pk1 order by c1 desc) from two_pk order by 1,2;",
+		Expected: []sql.Row{
+			{0,0,2},
+			{0,1,1},
+			{1,0,2},
+			{1,1,1},
+		},
+	},
+	{
+		Query:    `select pk1, pk2, 
+			row_number() over (partition by pk1 order by c1 desc) 
+			from two_pk order by 1,2;`,
+		Expected: []sql.Row{
+			{0,0,2},
+			{0,1,1},
+			{1,0,2},
+			{1,1,1},
+		},
+	},
+	{
+		Query:    `select pk1, pk2, 
+			row_number() over (partition by pk1 order by c1 desc), 
+			row_number() over (partition by pk2 order by 10 - c1)
+			from two_pk order by 1,2;`,
+		Expected: []sql.Row{
+			{0,0,2,2},
+			{0,1,1,2},
+			{1,0,2,1},
+			{1,1,1,1},
+		},
+	},
+	{
+		Query:    `select i,
+			row_number() over (partition by case when i > 2 then "under two" else "over two" end order by i desc) as s_asc
+			from mytable order by 1;`,
+		Expected: []sql.Row{
+			{1,2},
+			{2,1},
+			{3,1},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
