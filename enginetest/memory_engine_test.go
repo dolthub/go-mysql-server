@@ -85,11 +85,11 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query:    `select i, row_number() over (order by i desc), 
+		Query:    `select i, row_number() over (order by i desc),
 				row_number() over (order by length(s),i) from mytable order by 1;`,
 		Expected: []sql.Row{
 			{1,3,1},
