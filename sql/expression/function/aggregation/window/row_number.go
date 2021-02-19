@@ -68,7 +68,7 @@ func (r *RowNumber) DebugString() string {
 	return sb.String()
 }
 
-// IsNullable implements sql.FunctionExpression
+// FunctionName implements sql.FunctionExpression
 func (r *RowNumber) FunctionName() string {
 	return "ROW_NUMBER"
 }
@@ -121,7 +121,7 @@ func (r *RowNumber) Add(ctx *sql.Context, row sql.Row) error {
 func (r *RowNumber) Finish(ctx *sql.Context) error {
 	if len(r.rows) > 0 && r.window != nil && r.window.OrderBy != nil {
 		sorter := &expression.Sorter{
-			SortFields: r.window.OrderBy,
+			SortFields: append(paritionsToSortFields(r.window.PartitionBy), r.window.OrderBy...),
 			Rows:       r.rows,
 			Ctx:        ctx,
 		}
@@ -133,8 +133,22 @@ func (r *RowNumber) Finish(ctx *sql.Context) error {
 		// Now that we have the rows in sorted order, number them
 		rowNumIdx := len(r.rows[0]) - 2
 		originalOrderIdx := len(r.rows[0]) - 1
-		for i := range r.rows {
-			r.rows[i][rowNumIdx] = i+1
+		var last sql.Row
+		var rowNum int
+		for _, row := range r.rows {
+			// every time we encounter a new partition, start the count over
+			isNew, err := r.isNewPartition(ctx, last, row)
+			if err != nil {
+				return err
+			}
+			if isNew {
+				rowNum = 1
+			}
+
+			row[rowNumIdx] = rowNum
+
+			rowNum++
+			last = row
 		}
 
 		// And finally sort again by the original order
@@ -146,7 +160,59 @@ func (r *RowNumber) Finish(ctx *sql.Context) error {
 	return nil
 }
 
+
+func paritionsToSortFields(partitionExprs []sql.Expression) sql.SortFields {
+	sfs := make(sql.SortFields, len(partitionExprs))
+	for i, expr := range partitionExprs {
+		sfs[i] = sql.SortField{
+			Column:       expr,
+			Order:        sql.Ascending,
+		}
+	}
+	return sfs
+}
+
 // EvalRow implements sql.WindowAggregation
 func (r *RowNumber) EvalRow(i int) (interface{}, error) {
 	return r.rows[i][len(r.rows[i])-2], nil
+}
+
+func (r *RowNumber) isNewPartition(ctx *sql.Context, last sql.Row, row sql.Row) (bool, error) {
+	if len(last) == 0 {
+		return true, nil
+	}
+
+	if len(r.window.PartitionBy) == 0 {
+		return false, nil
+	}
+
+	lastExp, err := evalExprs(ctx, r.window.PartitionBy, last)
+	if err != nil {
+		return false, err
+	}
+
+	thisExp, err := evalExprs(ctx, r.window.PartitionBy, row)
+	if err != nil {
+		return false, err
+	}
+
+	for i := range lastExp {
+		if lastExp[i] != thisExp[i] {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, error) {
+	result := make(sql.Row, len(exprs))
+	for i, expr := range exprs {
+		var err error
+		result[i], err = expr.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }
