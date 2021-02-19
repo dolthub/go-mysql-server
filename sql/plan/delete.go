@@ -102,13 +102,13 @@ func (d *deleteIter) Next() (sql.Row, error) {
 	return row, d.deleter.Delete(d.ctx, row)
 }
 
-func (d *deleteIter) Close() error {
+func (d *deleteIter) Close(ctx *sql.Context) error {
 	if !d.closed {
 		d.closed = true
-		if err := d.deleter.Close(d.ctx); err != nil {
+		if err := d.deleter.Close(ctx); err != nil {
 			return err
 		}
-		return d.childIter.Close()
+		return d.childIter.Close(ctx)
 	}
 	return nil
 }

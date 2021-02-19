@@ -144,7 +144,7 @@ func (t *triggerIter) Next() (row sql.Row, returnErr error) {
 	}
 
 	defer func() {
-		err := logicIter.Close()
+		err := logicIter.Close(t.ctx)
 		if returnErr == nil {
 			returnErr = err
 		}
@@ -190,13 +190,32 @@ func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
 			})
 		}
 		return hasSetField, row[len(row)/2:]
+	case *BeginEndBlock:
+		hasSetField := false
+		Inspect(logic, func(n sql.Node) bool {
+			set, ok := n.(*Set)
+			if !ok {
+				return true
+			}
+			for _, expr := range set.Exprs {
+				sql.Inspect(expr.(*expression.SetField).Left, func(e sql.Expression) bool {
+					if _, ok := e.(*expression.GetField); ok {
+						hasSetField = true
+						return false
+					}
+					return true
+				})
+			}
+			return !hasSetField
+		})
+		return hasSetField, row
 	default:
 		return false, nil
 	}
 }
 
-func (t *triggerIter) Close() error {
-	return t.child.Close()
+func (t *triggerIter) Close(ctx *sql.Context) error {
+	return t.child.Close(ctx)
 }
 
 func (t *TriggerExecutor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {

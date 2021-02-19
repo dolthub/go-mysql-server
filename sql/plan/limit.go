@@ -95,6 +95,6 @@ func (li *limitIter) Next() (sql.Row, error) {
 	return childRow, nil
 }
 
-func (li *limitIter) Close() error {
-	return li.childIter.Close()
+func (li *limitIter) Close(ctx *sql.Context) error {
+	return li.childIter.Close(ctx)
 }

@@ -125,7 +125,7 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 }
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
-	return h.doQuery(c, prepare.PrepareStmt, prepare.BindVars, callback)
+	return h.errorWrappedDoQuery(c, prepare.PrepareStmt, prepare.BindVars, callback)
 }
 
 func (h *Handler) ComResetConnection(c *mysql.Conn) {
@@ -156,7 +156,7 @@ func (h *Handler) ComQuery(
 	query string,
 	callback func(*sqltypes.Result) error,
 ) error {
-	return h.doQuery(c, query, nil, callback)
+	return h.errorWrappedDoQuery(c, query, nil, callback)
 }
 
 func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Expression, error) {
@@ -430,7 +430,7 @@ rowLoop:
 	}
 	close(quit)
 
-	err = rows.Close()
+	err = rows.Close(ctx)
 	if err != nil {
 		return err
 	}
@@ -453,6 +453,22 @@ rowLoop:
 	}
 
 	return callback(r)
+}
+
+// Call doQuery and cast known errors to SQLError
+func (h *Handler) errorWrappedDoQuery(
+	c *mysql.Conn,
+	query string,
+	bindings map[string]*query.BindVariable,
+	callback func(*sqltypes.Result) error,
+) error {
+	err := h.doQuery(c, query, bindings, callback)
+	err, ok := sql.CastSQLError(err)
+	if ok {
+		return nil
+	} else {
+		return err
+	}
 }
 
 // Periodically polls the connection socket to determine if it is has been closed by the client, sending an error on

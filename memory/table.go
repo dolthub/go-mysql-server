@@ -161,6 +161,15 @@ func (t *Table) Schema() sql.Schema {
 	return t.schema
 }
 
+func (t *Table) GetPartition(key string) []sql.Row {
+	rows, ok := t.partitions[string(key)]
+	if ok {
+		return rows
+	}
+
+	return nil
+}
+
 // Partitions implements the sql.Table interface.
 func (t *Table) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	var keys [][]byte
@@ -236,11 +245,15 @@ func (t *PushdownTable) PartitionRows(ctx *sql.Context, partition sql.Partition)
 	}, nil
 }
 
-type partition struct {
+func NewPartition(key []byte) *Partition {
+	return &Partition{key: key}
+}
+
+type Partition struct {
 	key []byte
 }
 
-func (p *partition) Key() []byte { return p.key }
+func (p *Partition) Key() []byte { return p.key }
 
 type partitionIter struct {
 	keys [][]byte
@@ -254,10 +267,10 @@ func (p *partitionIter) Next() (sql.Partition, error) {
 
 	key := p.keys[p.pos]
 	p.pos++
-	return &partition{key}, nil
+	return &Partition{key}, nil
 }
 
-func (p *partitionIter) Close() error { return nil }
+func (p *partitionIter) Close(_ *sql.Context) error { return nil }
 
 type tableIter struct {
 	columns []int
@@ -290,12 +303,12 @@ func (i *tableIter) Next() (sql.Row, error) {
 	return projectOnRow(i.columns, row), nil
 }
 
-func (i *tableIter) Close() error {
+func (i *tableIter) Close(ctx *sql.Context) error {
 	if i.indexValues == nil {
 		return nil
 	}
 
-	return i.indexValues.Close()
+	return i.indexValues.Close(ctx)
 }
 
 func (i *tableIter) getRow() (sql.Row, error) {
@@ -331,7 +344,7 @@ func (i *tableIter) getFromIndex() (sql.Row, error) {
 		return nil, err
 	}
 
-	value, err := decodeIndexValue(data)
+	value, err := DecodeIndexValue(data)
 	if err != nil {
 		return nil, err
 	}
@@ -339,14 +352,14 @@ func (i *tableIter) getFromIndex() (sql.Row, error) {
 	return i.rows[value.Pos], nil
 }
 
-type indexValue struct {
+type IndexValue struct {
 	Key string
 	Pos int
 }
 
-func decodeIndexValue(data []byte) (*indexValue, error) {
+func DecodeIndexValue(data []byte) (*IndexValue, error) {
 	dec := gob.NewDecoder(bytes.NewReader(data))
-	var value indexValue
+	var value IndexValue
 	if err := dec.Decode(&value); err != nil {
 		return nil, err
 	}
@@ -354,7 +367,7 @@ func decodeIndexValue(data []byte) (*indexValue, error) {
 	return &value, nil
 }
 
-func encodeIndexValue(value *indexValue) ([]byte, error) {
+func EncodeIndexValue(value *IndexValue) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 	if err := enc.Encode(value); err != nil {
@@ -1226,8 +1239,8 @@ func (i *partitionIndexKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIte
 	}, nil
 }
 
-func (i *partitionIndexKeyValueIter) Close() error {
-	return i.iter.Close()
+func (i *partitionIndexKeyValueIter) Close(ctx *sql.Context) error {
+	return i.iter.Close(ctx)
 }
 
 var errColumnNotFound = errors.NewKind("could not find column %s")
@@ -1245,8 +1258,8 @@ func (i *indexKeyValueIter) Next() ([]interface{}, []byte, error) {
 		return nil, nil, err
 	}
 
-	value := &indexValue{Key: i.key, Pos: i.pos}
-	data, err := encodeIndexValue(value)
+	value := &IndexValue{Key: i.key, Pos: i.pos}
+	data, err := EncodeIndexValue(value)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1255,6 +1268,6 @@ func (i *indexKeyValueIter) Next() ([]interface{}, []byte, error) {
 	return projectOnRow(i.columns, row), data, nil
 }
 
-func (i *indexKeyValueIter) Close() error {
-	return i.iter.Close()
+func (i *indexKeyValueIter) Close(ctx *sql.Context) error {
+	return i.iter.Close(ctx)
 }

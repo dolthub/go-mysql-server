@@ -35,7 +35,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 				return nil, err
 			}
 
-			return n.WithChildren(child)
+			return n.WithChildren(stripQueryProcess(child))
 		default:
 			return n, nil
 		}

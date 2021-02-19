@@ -130,13 +130,13 @@ func TestBuildJoinTree(t *testing.T) {
 				jc("B", "C"),
 			},
 			joinTree: &joinSearchNode{
-				joinCond: jc("A", "B"),
-				left: &joinSearchNode{
-					joinCond: jc("B", "C"),
-					left:     jt("C"),
-					right:    jt("B"),
+				joinCond: jc("B", "C"),
+				left:     jt("C"),
+				right: &joinSearchNode{
+					joinCond: jc("A", "B"),
+					left:     jt("B"),
+					right:    jt("A"),
 				},
-				right: jt("A"),
 			},
 		},
 		{
@@ -299,17 +299,17 @@ func TestBuildJoinTree(t *testing.T) {
 				jc("C", "D"),
 			},
 			joinTree: &joinSearchNode{
-				joinCond: jc("A", "B"),
+				joinCond: jc("B", "C"),
 				left: &joinSearchNode{
-					joinCond: jc("B", "C"),
-					left: &joinSearchNode{
-						joinCond: jc("C", "D"),
-						left:     jt("C"),
-						right:    jt("D"),
-					},
-					right: jt("B"),
+					joinCond: jc("C", "D"),
+					left:     jt("C"),
+					right:    jt("D"),
 				},
-				right: jt("A"),
+				right: &joinSearchNode{
+					joinCond: jc("A", "B"),
+					left:     jt("B"),
+					right:    jt("A"),
+				},
 			},
 		},
 		{
@@ -346,13 +346,13 @@ func TestBuildJoinTree(t *testing.T) {
 				joinCond: jc("A", "B"),
 				left:     jt("B"),
 				right: &joinSearchNode{
-					joinCond: jc("A", "C"),
-					left: &joinSearchNode{
-						joinCond: jc("A", "D"),
-						left:     jt("D"),
-						right:    jt("A"),
+					joinCond: jc("A", "D"),
+					left:     jt("D"),
+					right: &joinSearchNode{
+						joinCond: jc("A", "C"),
+						left:     jt("A"),
+						right:    jt("C"),
 					},
-					right: jt("C"),
 				},
 			},
 		},
@@ -464,13 +464,13 @@ func TestBuildJoinTree(t *testing.T) {
 				right: &joinSearchNode{
 					joinCond: jc("C", "D"),
 					left: &joinSearchNode{
-						joinCond: jc("A", "B"),
-						left: &joinSearchNode{
-							joinCond: jc("B", "C"),
-							left:     jt("C"),
-							right:    jt("B"),
+						joinCond: jc("B", "C"),
+						left:     jt("C"),
+						right: &joinSearchNode{
+							joinCond: jc("A", "B"),
+							left:     jt("B"),
+							right:    jt("A"),
 						},
-						right: jt("A"),
 					},
 					right: jt("D"),
 				},
@@ -513,21 +513,21 @@ func TestBuildJoinTree(t *testing.T) {
 				jc("B", "D"),
 			},
 			joinTree: &joinSearchNode{
-				joinCond: jc("A", "C"),
-				left: &joinSearchNode{
+				joinCond: jc("B", "E"),
+				left:     jt("E"),
+				right: &joinSearchNode{
 					joinCond: jc("B", "C"),
 					left: &joinSearchNode{
-						joinCond: jc("B", "E"),
-						left:     jt("E"),
-						right: &joinSearchNode{
-							joinCond: jc("B", "D"),
-							left:     jt("B"),
-							right:    jt("D"),
-						},
+						joinCond: jc("B", "D"),
+						left:     jt("B"),
+						right:    jt("D"),
 					},
-					right: jt("C"),
+					right: &joinSearchNode{
+						joinCond: jc("A", "C"),
+						left:     jt("C"),
+						right:    jt("A"),
+					},
 				},
-				right: jt("A"),
 			},
 		},
 	}
@@ -535,22 +535,11 @@ func TestBuildJoinTree(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			joinTree := buildJoinTree(tt.tableOrder, tt.joinConds)
-			pruneParamsAndParent(joinTree)
 			if !assert.Equal(t, tt.joinTree, joinTree) {
 				fmt.Printf("Expected:\n%s, but got:\n%s", tt.joinTree, joinTree)
 			}
 		})
 	}
-}
-
-func pruneParamsAndParent(node *joinSearchNode) {
-	if node == nil {
-		return
-	}
-	node.params = nil
-	node.parent = nil
-	pruneParamsAndParent(node.left)
-	pruneParamsAndParent(node.right)
 }
 
 // jc == join cond

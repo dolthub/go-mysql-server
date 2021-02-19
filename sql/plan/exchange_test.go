@@ -62,10 +62,11 @@ func TestExchange(t *testing.T) {
 			require := require.New(t)
 
 			exchange := NewExchange(i, children)
-			iter, err := exchange.RowIter(sql.NewEmptyContext(), nil)
+			ctx := sql.NewEmptyContext()
+			iter, err := exchange.RowIter(ctx, nil)
 			require.NoError(err)
 
-			rows, err := sql.RowIterToRows(iter)
+			rows, err := sql.RowIterToRows(ctx, iter)
 			require.NoError(err)
 			require.ElementsMatch(expected, rows)
 		})
@@ -110,7 +111,7 @@ func TestExchangePanicRecover(t *testing.T) {
 	it := &partitionPanic{}
 	ex := newExchangeRowIter(ctx, 1, it, nil, nil)
 	ex.start()
-	it.Close()
+	it.Close(ctx)
 
 	require.True(t, it.closed)
 }
@@ -168,7 +169,7 @@ func (i *exchangePartitionIter) Next() (sql.Partition, error) {
 	return Partition(fmt.Sprint(i.num + 1)), nil
 }
 
-func (i *exchangePartitionIter) Close() error {
+func (i *exchangePartitionIter) Close(_ *sql.Context) error {
 	i.num = -1
 	return nil
 }
@@ -187,7 +188,7 @@ func (r *partitionRows) Next() (sql.Row, error) {
 	return sql.NewRow(string(r.Key()), int64(r.num+1)), nil
 }
 
-func (r *partitionRows) Close() error {
+func (r *partitionRows) Close(*sql.Context) error {
 	r.num = -1
 	return nil
 }
@@ -201,7 +202,7 @@ func (*partitionPanic) Next() (sql.Partition, error) {
 	panic("partitionPanic.Next")
 }
 
-func (p *partitionPanic) Close() error {
+func (p *partitionPanic) Close(_ *sql.Context) error {
 	p.closed = true
 	return nil
 }

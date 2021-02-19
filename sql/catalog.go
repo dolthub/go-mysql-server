@@ -81,6 +81,13 @@ func (c *Catalog) AddDatabase(db Database) {
 	c.mu.Unlock()
 }
 
+// RemoveDatabase removes a database from the catalog.
+func (c *Catalog) RemoveDatabase(dbName string) {
+	c.mu.Lock()
+	c.dbs.Delete(dbName)
+	c.mu.Unlock()
+}
+
 func (c *Catalog) HasDB(db string) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -135,6 +142,21 @@ func (d Databases) Database(name string) (Database, error) {
 // Add adds a new database.
 func (d *Databases) Add(db Database) {
 	*d = append(*d, db)
+}
+
+// Delete removes a database.
+func (d *Databases) Delete(dbName string) {
+	idx := -1
+	for i, db := range *d {
+		if db.Name() == dbName {
+			idx = i
+			break
+		}
+	}
+
+	if idx != -1 {
+		*d = append((*d)[:idx], (*d)[idx+1:]...)
+	}
 }
 
 // Table returns the Table with the given name if it exists.

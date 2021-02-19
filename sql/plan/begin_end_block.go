@@ -86,16 +86,17 @@ func (i *blockIter) Next() (sql.Row, error) {
 		return nil, io.EOF
 	}
 
+	row := i.row
 	for _, s := range i.statements {
-		subIter, err := s.RowIter(i.ctx, i.row)
+		subIter, err := s.RowIter(i.ctx, row)
 		if err != nil {
 			return nil, err
 		}
 
 		for {
-			_, err := subIter.Next()
+			newRow, err := subIter.Next()
 			if err == io.EOF {
-				err := subIter.Close()
+				err := subIter.Close(i.ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -103,13 +104,14 @@ func (i *blockIter) Next() (sql.Row, error) {
 			} else if err != nil {
 				return nil, err
 			}
+			row = newRow[len(newRow)/2:]
 		}
 	}
 
-	return nil, io.EOF
+	return row, nil
 }
 
-func (i *blockIter) Close() error {
+func (i *blockIter) Close(*sql.Context) error {
 	return nil
 }
 
@@ -117,6 +119,7 @@ func (b *BeginEndBlock) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 	return &blockIter{
 		statements: b.statements,
 		row:        row,
+		ctx:        ctx,
 		once:       &sync.Once{},
 	}, nil
 }

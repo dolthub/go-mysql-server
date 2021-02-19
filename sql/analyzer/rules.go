@@ -68,6 +68,7 @@ var OnceAfterDefault = []Rule{
 	{"optimize_joins", constructJoinPlan},
 	{"pushdown_filters", pushdownFilters},
 	{"subquery_indexes", applyIndexesFromOuterScope},
+	{"in_subquery_indexes", applyIndexesForSubqueryComparisons},
 	{"pushdown_projections", pushdownProjections},
 	{"erase_projection", eraseProjection},
 	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by

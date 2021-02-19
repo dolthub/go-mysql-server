@@ -57,6 +57,14 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 			nc := *node
 			nc.Catalog = a.Catalog
 			return &nc, nil
+		case *plan.CreateDB:
+			nc := *node
+			nc.Catalog = a.Catalog
+			return &nc, nil
+		case *plan.DropDB:
+			nc := *node
+			nc.Catalog = a.Catalog
+			return &nc, nil
 		case *plan.LockTables:
 			nc := *node
 			nc.Catalog = a.Catalog

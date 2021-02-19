@@ -272,6 +272,23 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "trigger before insert, begin block with multiple set statements",
+		SetUpScript: []string{
+			"CREATE TABLE test(pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"INSERT INTO test VALUES (0,2),(1,3)",
+			"CREATE TRIGGER tt BEFORE INSERT ON test FOR EACH ROW BEGIN SET NEW.v1 = NEW.v1 * 11; SET NEW.v1 = NEW.v1 * -10; END;",
+			"INSERT INTO test VALUES (2,4);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM test ORDER BY 1",
+				Expected: []sql.Row{
+					{0, 2}, {1, 3}, {2, -440},
+				},
+			},
+		},
+	},
 	// UPDATE triggers
 	{
 		Name: "trigger after update, insert into other table",
@@ -520,6 +537,23 @@ var TriggerTests = []ScriptTest{
 				Query: "select z from b",
 				Expected: []sql.Row{
 					{100},
+				},
+			},
+		},
+	},
+	{
+		Name: "trigger before update, begin block with multiple set statements",
+		SetUpScript: []string{
+			"CREATE TABLE test(pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"INSERT INTO test VALUES (0,2),(1,3)",
+			"CREATE TRIGGER tt BEFORE UPDATE ON test FOR EACH ROW BEGIN SET NEW.v1 = (OLD.v1 * 2) + NEW.v1; SET NEW.v1 = NEW.v1 * -10; END;",
+			"UPDATE test SET v1 = v1 + 1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM test ORDER BY 1",
+				Expected: []sql.Row{
+					{0, -70}, {1, -100},
 				},
 			},
 		},

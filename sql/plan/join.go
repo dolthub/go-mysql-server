@@ -619,14 +619,14 @@ func (i *joinIter) buildRow(primary, secondary sql.Row) sql.Row {
 	return row
 }
 
-func (i *joinIter) Close() (err error) {
+func (i *joinIter) Close(ctx *sql.Context) (err error) {
 	i.Dispose()
 	i.secondary = nil
 
 	if i.primary != nil {
-		if err = i.primary.Close(); err != nil {
+		if err = i.primary.Close(ctx); err != nil {
 			if i.secondary != nil {
-				_ = i.secondary.Close()
+				_ = i.secondary.Close(ctx)
 			}
 			return err
 		}
@@ -634,7 +634,7 @@ func (i *joinIter) Close() (err error) {
 	}
 
 	if i.secondary != nil {
-		err = i.secondary.Close()
+		err = i.secondary.Close(ctx)
 	}
 
 	return err

@@ -817,7 +817,7 @@ func (pit *informationSchemaPartitionIter) Next() (Partition, error) {
 }
 
 // Close implements single PartitionIter interface
-func (pit *informationSchemaPartitionIter) Close() error {
+func (pit *informationSchemaPartitionIter) Close(_ *Context) error {
 	pit.pos = 0
 	return nil
 }

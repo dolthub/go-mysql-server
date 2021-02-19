@@ -135,8 +135,8 @@ func (i *iter) Next() (sql.Row, error) {
 	return ProjectRow(i.ctx, i.p.Projections, childRow)
 }
 
-func (i *iter) Close() error {
-	return i.childIter.Close()
+func (i *iter) Close(ctx *sql.Context) error {
+	return i.childIter.Close(ctx)
 }
 
 // ProjectRow evaluates a set of projections.
