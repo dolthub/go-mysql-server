@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2021 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -129,6 +129,9 @@ var (
 
 	// ErrTruncateReferencedFromForeignKey is returned when a table is referenced in a foreign key and TRUNCATE is called on it.
 	ErrTruncateReferencedFromForeignKey = errors.NewKind("cannot truncate table %s as it is referenced in foreign key %s on table %s")
+
+	// ErrInvalidPrecisionSyntax is returned when a column type-definition has argument violations.
+	ErrInvalidPrecisionSyntax = errors.NewKind("column %s type definition is invalid: %s")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
