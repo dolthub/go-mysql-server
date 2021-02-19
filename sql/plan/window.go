@@ -223,6 +223,6 @@ func rowKey(
 	return hash.Sum64(), nil
 }
 
-func (i *windowIter) Close() error {
-	return i.childIter.Close()
+func (i *windowIter) Close(ctx *sql.Context) error {
+	return i.childIter.Close(ctx)
 }
