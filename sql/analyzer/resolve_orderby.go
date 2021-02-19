@@ -93,6 +93,8 @@ func reorderSort(sort *plan.Sort, missingCols []string) (sql.Node, error) {
 		expressions = child.Projections
 	case *plan.GroupBy:
 		expressions = child.SelectedExprs
+	case *plan.Window:
+		expressions = child.SelectExprs
 	default:
 		return nil, errSortPushdown.New(child)
 	}
@@ -136,6 +138,14 @@ func reorderSort(sort *plan.Sort, missingCols []string) (sql.Node, error) {
 				plan.NewGroupBy(newExpressions, child.GroupByExprs, child.Child),
 			),
 		), nil
+	case *plan.Window:
+		return plan.NewProject(
+			expressions,
+			plan.NewSort(
+				sort.SortFields,
+				plan.NewWindow(newExpressions, child.Child),
+			),
+		), nil
 	default:
 		return nil, errSortPushdown.New(child)
 	}
@@ -154,6 +164,11 @@ func pushSortDown(sort *plan.Sort) (sql.Node, error) {
 		return plan.NewGroupBy(
 			child.SelectedExprs,
 			child.GroupByExprs,
+			plan.NewSort(sort.SortFields, child.Child),
+		), nil
+	case *plan.Window:
+		return plan.NewWindow(
+			child.SelectExprs,
 			plan.NewSort(sort.SortFields, child.Child),
 		), nil
 	case *plan.ResolvedTable:
