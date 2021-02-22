@@ -42,6 +42,11 @@ func (sf SortFields) ToExpressions() []Expression {
 
 func (sf SortFields) FromExpressions(exprs []Expression) SortFields {
 	var fields = make(SortFields, len(sf))
+
+	if len(exprs) != len(fields) {
+		panic(fmt.Sprintf("Invalid expression slice. Wanted %d elements, got %d", len(fields), len(exprs)))
+	}
+
 	for i, expr := range exprs {
 		fields[i] = SortField{
 			Column:       expr,

@@ -121,7 +121,7 @@ func (r *RowNumber) Add(ctx *sql.Context, row sql.Row) error {
 func (r *RowNumber) Finish(ctx *sql.Context) error {
 	if len(r.rows) > 0 && r.window != nil && r.window.OrderBy != nil {
 		sorter := &expression.Sorter{
-			SortFields: append(paritionsToSortFields(r.window.PartitionBy), r.window.OrderBy...),
+			SortFields: append(partitionsToSortFields(r.window.PartitionBy), r.window.OrderBy...),
 			Rows:       r.rows,
 			Ctx:        ctx,
 		}
@@ -161,7 +161,7 @@ func (r *RowNumber) Finish(ctx *sql.Context) error {
 }
 
 
-func paritionsToSortFields(partitionExprs []sql.Expression) sql.SortFields {
+func partitionsToSortFields(partitionExprs []sql.Expression) sql.SortFields {
 	sfs := make(sql.SortFields, len(partitionExprs))
 	for i, expr := range partitionExprs {
 		sfs[i] = sql.SortField{
