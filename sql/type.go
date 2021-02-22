@@ -141,6 +141,21 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		}
 		return Int64, nil
 	case "float":
+		if ct.Scale != nil {
+			return nil, ErrInvalidColTypeDefinition.New(ct.String(), "Cannot set both precision and scale")
+		} else if ct.Length != nil {
+			precision, err := strconv.ParseInt(string(ct.Length.Val), 10, 8)
+			if err != nil {
+				return nil, err
+			}
+			if precision > 53 || precision < 0 {
+				return nil, ErrInvalidColTypeDefinition.New(ct.String(), "Valid range for precision is 0-24 or 25-53")
+			} else if precision > 24 {
+				return Float64, nil
+			} else {
+				return Float32, nil
+			}
+		}
 		return Float32, nil
 	case "double", "real", "double precision":
 		return Float64, nil

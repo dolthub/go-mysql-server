@@ -142,6 +142,9 @@ var (
 	// ErrTruncateReferencedFromForeignKey is returned when a table is referenced in a foreign key and TRUNCATE is called on it.
 	ErrTruncateReferencedFromForeignKey = errors.NewKind("cannot truncate table %s as it is referenced in foreign key %s on table %s")
 
+	// ErrInvalidColTypeDefinition is returned when a column type-definition has argument violations.
+	ErrInvalidColTypeDefinition = errors.NewKind("column %s type definition is invalid: %s")
+
 	// ErrCannotCreateDatabaseExists is returned when a CREATE DATABASE is called on a table that already exists.
 	ErrCannotCreateDatabaseExists = errors.NewKind("can't create database %s; database exists")
 
