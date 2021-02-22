@@ -39,7 +39,17 @@ var OkResultSchema = Schema{
 	},
 }
 
-// NewOKResult returns a new OkResult with the given number of rows affected.
+// NewOkResult returns a new OkResult with the given number of rows affected.
 func NewOkResult(rowsAffected int) OkResult {
 	return OkResult{RowsAffected: uint64(rowsAffected)}
+}
+
+// IsOkResult returns whether the given row represents an OkResult.
+func IsOkResult(row Row) bool {
+	if len(row) == 1 {
+		if _, ok := row[0].(OkResult); ok {
+			return true
+		}
+	}
+	return false
 }

@@ -269,6 +269,10 @@ func TestTriggers(t *testing.T) {
 	enginetest.TestTriggers(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestStoredProcedures(t *testing.T) {
+	enginetest.TestStoredProcedures(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestTriggersErrors(t *testing.T) {
 	enginetest.TestTriggerErrors(t, enginetest.NewDefaultMemoryHarness())
 }

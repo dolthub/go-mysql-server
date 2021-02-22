@@ -990,6 +990,12 @@ func TestTriggers(t *testing.T, harness Harness) {
 	}
 }
 
+func TestStoredProcedures(t *testing.T, harness Harness) {
+	for _, script := range ProcedureTests {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestTriggerErrors(t *testing.T, harness Harness) {
 	for _, script := range TriggerErrorTests {
 		TestScript(t, harness, script)

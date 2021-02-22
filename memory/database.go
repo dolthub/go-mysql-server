@@ -15,9 +15,8 @@
 package memory
 
 import (
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"strings"
 )
 
 // Database is an in-memory database.
@@ -25,6 +24,7 @@ type Database struct {
 	name              string
 	tables            map[string]sql.Table
 	triggers          []sql.TriggerDefinition
+	storedProcedures  []sql.StoredProcedureDetails
 	primaryKeyIndexes bool
 }
 
@@ -33,6 +33,7 @@ var _ sql.TableCreator = (*Database)(nil)
 var _ sql.TableDropper = (*Database)(nil)
 var _ sql.TableRenamer = (*Database)(nil)
 var _ sql.TriggerDatabase = (*Database)(nil)
+var _ sql.StoredProcedureDatabase = (*Database)(nil)
 
 // NewDatabase creates a new database with the given name.
 func NewDatabase(name string) *Database {
@@ -196,6 +197,44 @@ func (d *Database) DropTrigger(ctx *sql.Context, name string) error {
 	}
 	if !found {
 		return sql.ErrTriggerDoesNotExist.New(name)
+	}
+	return nil
+}
+
+// GetStoredProcedures implements sql.StoredProcedureDatabase
+func (d *Database) GetStoredProcedures(ctx *sql.Context) ([]sql.StoredProcedureDetails, error) {
+	var spds []sql.StoredProcedureDetails
+	for _, spd := range d.storedProcedures {
+		spds = append(spds, spd)
+	}
+	return spds, nil
+}
+
+// SaveStoredProcedure implements sql.StoredProcedureDatabase
+func (d *Database) SaveStoredProcedure(ctx *sql.Context, spd sql.StoredProcedureDetails) error {
+	loweredName := strings.ToLower(spd.Name)
+	for _, existingSpd := range d.storedProcedures {
+		if strings.ToLower(existingSpd.Name) == loweredName {
+			return sql.ErrStoredProcedureAlreadyExists.New(spd.Name)
+		}
+	}
+	d.storedProcedures = append(d.storedProcedures, spd)
+	return nil
+}
+
+// DropStoredProcedure implements sql.StoredProcedureDatabase
+func (d *Database) DropStoredProcedure(ctx *sql.Context, name string) error {
+	loweredName := strings.ToLower(name)
+	found := false
+	for i, spd := range d.storedProcedures {
+		if strings.ToLower(spd.Name) == loweredName {
+			d.storedProcedures = append(d.storedProcedures[:i], d.storedProcedures[i+1:]...)
+			found = true
+			break
+		}
+	}
+	if !found {
+		return sql.ErrStoredProcedureDoesNotExist.New(name)
 	}
 	return nil
 }
