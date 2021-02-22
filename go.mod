@@ -29,4 +29,6 @@ require (
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 )
 
+replace github.com/dolthub/vitess => /Users/vinairachakonda/go/src/dolthub/vitess
+
 go 1.13

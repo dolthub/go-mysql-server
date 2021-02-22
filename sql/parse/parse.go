@@ -191,6 +191,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertDelete(ctx, n)
 	case *sqlparser.Update:
 		return convertUpdate(ctx, n)
+	case *sqlparser.Load:
+		return convertLoad(ctx, n)
 	}
 }
 
@@ -1074,6 +1076,17 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 	}
 
 	return plan.NewUpdate(node, updateExprs), nil
+}
+
+func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
+	unresolvedTable := tableNameToUnresolvedTable(d.Table)
+
+	boolVal, err := sql.ConvertToBool(d.Local)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewLoadData(boolVal, d.Infile, unresolvedTable, columnsToStrings(d.Columns)), nil
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
