@@ -75,8 +75,8 @@ func (p *prependRowIter) Next() (sql.Row, error) {
 	return p.row.Append(next), nil
 }
 
-func (p *prependRowIter) Close() error {
-	return p.childIter.Close()
+func (p *prependRowIter) Close(ctx *sql.Context) error {
+	return p.childIter.Close(ctx)
 }
 
 func (p *prependNode) String() string {
@@ -219,7 +219,7 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 		result = append(result, row[col])
 	}
 
-	if err := iter.Close(); err != nil {
+	if err := iter.Close(ctx); err != nil {
 		return nil, err
 	}
 

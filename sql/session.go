@@ -621,9 +621,9 @@ func (i *spanIter) finishWithError(err error) {
 	i.done = true
 }
 
-func (i *spanIter) Close() error {
+func (i *spanIter) Close(ctx *Context) error {
 	if !i.done {
 		i.finish()
 	}
-	return i.iter.Close()
+	return i.iter.Close(ctx)
 }

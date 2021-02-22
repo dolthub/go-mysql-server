@@ -118,8 +118,8 @@ func (u *updateSourceIter) Next() (sql.Row, error) {
 	return oldRow.Append(newRow), nil
 }
 
-func (u *updateSourceIter) Close() error {
-	return u.childIter.Close()
+func (u *updateSourceIter) Close(ctx *sql.Context) error {
+	return u.childIter.Close(ctx)
 }
 
 func (u *UpdateSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {

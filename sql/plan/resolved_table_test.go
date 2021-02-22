@@ -33,10 +33,11 @@ func TestResolvedTable(t *testing.T) {
 	table := NewResolvedTable(newTableTest("test"))
 	require.NotNil(table)
 
-	iter, err := table.RowIter(sql.NewEmptyContext(), nil)
+	ctx := sql.NewEmptyContext()
+	iter, err := table.RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 	require.Len(rows, 9)
 
@@ -156,4 +157,4 @@ func (p *partitionIter) Next() (sql.Partition, error) {
 	return &partition{key}, nil
 }
 
-func (p *partitionIter) Close() error { return nil }
+func (p *partitionIter) Close(_ *sql.Context) error { return nil }

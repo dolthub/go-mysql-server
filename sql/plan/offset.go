@@ -90,6 +90,6 @@ func (i *offsetIter) Next() (sql.Row, error) {
 	return row, nil
 }
 
-func (i *offsetIter) Close() error {
-	return i.childIter.Close()
+func (i *offsetIter) Close(ctx *sql.Context) error {
+	return i.childIter.Close(ctx)
 }

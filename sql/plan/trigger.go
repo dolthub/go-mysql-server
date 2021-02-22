@@ -144,7 +144,7 @@ func (t *triggerIter) Next() (row sql.Row, returnErr error) {
 	}
 
 	defer func() {
-		err := logicIter.Close()
+		err := logicIter.Close(t.ctx)
 		if returnErr == nil {
 			returnErr = err
 		}
@@ -214,8 +214,8 @@ func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
 	}
 }
 
-func (t *triggerIter) Close() error {
-	return t.child.Close()
+func (t *triggerIter) Close(ctx *sql.Context) error {
+	return t.child.Close(ctx)
 }
 
 func (t *TriggerExecutor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {

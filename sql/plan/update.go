@@ -121,13 +121,13 @@ func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row 
 	return prev, nil
 }
 
-func (u *updateIter) Close() error {
+func (u *updateIter) Close(ctx *sql.Context) error {
 	if !u.closed {
 		u.closed = true
-		if err := u.updater.Close(u.ctx); err != nil {
+		if err := u.updater.Close(ctx); err != nil {
 			return err
 		}
-		return u.childIter.Close()
+		return u.childIter.Close(ctx)
 	}
 	return nil
 }

@@ -86,8 +86,8 @@ func NewCreateDatabase(dbName string, ifNotExists bool) *CreateDB {
 
 // DropDB removes a databases from the Catalog and updates the active database if it gets removed itself.
 type DropDB struct {
-	Catalog *sql.Catalog
-	dbName	string
+	Catalog  *sql.Catalog
+	dbName   string
 	IfExists bool
 }
 
@@ -145,7 +145,7 @@ func (d DropDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func NewDropDatabase(dbName string, ifExists bool) *DropDB {
 	return &DropDB{
-		dbName: dbName,
+		dbName:   dbName,
 		IfExists: ifExists,
 	}
 }

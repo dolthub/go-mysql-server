@@ -430,7 +430,7 @@ rowLoop:
 	}
 	close(quit)
 
-	err = rows.Close()
+	err = rows.Close(ctx)
 	if err != nil {
 		return err
 	}

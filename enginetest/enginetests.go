@@ -189,7 +189,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{
@@ -206,7 +206,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	)
 	require.NoError(err)
 
-	rows, err = sql.RowIterToRows(iter)
+	rows, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	require.Equal(expected, rows)
@@ -354,7 +354,8 @@ func TestColumnAliases(t *testing.T, harness Harness) {
 			require := require.New(t)
 			e := NewEngine(t, harness)
 
-			sch, rowIter, err := e.Query(NewContext(harness), tt.query)
+			ctx := NewContext(harness)
+			sch, rowIter, err := e.Query(ctx, tt.query)
 			var colNames []string
 			for _, col := range sch {
 				colNames = append(colNames, col.Name)
@@ -362,7 +363,7 @@ func TestColumnAliases(t *testing.T, harness Harness) {
 
 			require.NoError(err)
 			assert.Equal(t, tt.expectedColNames, colNames)
-			rows, err := sql.RowIterToRows(rowIter)
+			rows, err := sql.RowIterToRows(ctx, rowIter)
 			require.NoError(err)
 
 			orderBy := strings.Contains(strings.ToUpper(tt.query), " ORDER BY ")
@@ -989,6 +990,12 @@ func TestTriggers(t *testing.T, harness Harness) {
 	}
 }
 
+func TestStoredProcedures(t *testing.T, harness Harness) {
+	for _, script := range ProcedureTests {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestTriggerErrors(t *testing.T, harness Harness) {
 	for _, script := range TriggerErrorTests {
 		TestScript(t, harness, script)
@@ -1052,7 +1059,7 @@ func TestViews(t *testing.T, harness Harness) {
 	// nested views
 	_, iter, err := e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
 	require.NoError(err)
-	iter.Close()
+	iter.Close(ctx)
 
 	for _, testCase := range ViewTests {
 		t.Run(testCase.Query, func(t *testing.T) {
@@ -1072,12 +1079,12 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 	ctx := NewContext(harness)
 	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
 	require.NoError(err)
-	iter.Close()
+	iter.Close(ctx)
 
 	// nested views
 	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
 	require.NoError(err)
-	iter.Close()
+	iter.Close(ctx)
 
 	for _, testCase := range VersionedViewTests {
 		t.Run(testCase.Query, func(t *testing.T) {
@@ -1260,7 +1267,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			t.Skip("test requires index creation")
 		}
 		require.NoError(t, err)
-		_, err = sql.RowIterToRows(iter)
+		_, err = sql.RowIterToRows(ctx, iter)
 		require.NoError(t, err)
 		TestQuery(t, harness, e,
 			"CREATE TABLE t7 LIKE t7pre",
@@ -1304,7 +1311,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			"v1 bigint default (7) comment 'greetings'"+
 			")")
 		require.NoError(t, err)
-		_, err = sql.RowIterToRows(iter)
+		_, err = sql.RowIterToRows(ctx, iter)
 		require.NoError(t, err)
 		ctx.SetCurrentDatabase("mydb")
 		TestQuery(t, harness, e,
@@ -2424,40 +2431,40 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 
 	_, iter, err := e.Query(ctx, "-- some empty query as a comment")
 	require.NoError(err)
-	err = iter.Close()
+	err = iter.Close(ctx)
 	require.NoError(err)
 
 	_, iter, err = e.Query(ctx, "-- some empty query as a comment")
 	require.NoError(err)
-	err = iter.Close()
+	err = iter.Close(ctx)
 	require.NoError(err)
 
 	_, iter, err = e.Query(ctx, "-- some empty query as a comment")
 	require.NoError(err)
-	err = iter.Close()
+	err = iter.Close(ctx)
 	require.NoError(err)
 
 	_, iter, err = e.Query(ctx, "SHOW WARNINGS")
 	require.NoError(err)
-	rows, err := sql.RowIterToRows(iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
-	err = iter.Close()
+	err = iter.Close(ctx)
 	require.NoError(err)
 	require.Equal(3, len(rows))
 
 	_, iter, err = e.Query(ctx, "SHOW WARNINGS LIMIT 1")
 	require.NoError(err)
-	rows, err = sql.RowIterToRows(iter)
+	rows, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
-	err = iter.Close()
+	err = iter.Close(ctx)
 	require.NoError(err)
 	require.Equal(1, len(rows))
 
 	_, _, err = e.Query(ctx, "SELECT * FROM mytable LIMIT 1")
 	require.NoError(err)
-	_, err = sql.RowIterToRows(iter)
+	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
-	err = iter.Close()
+	err = iter.Close(ctx)
 	require.NoError(err)
 
 	require.Equal(0, len(ctx.Session.Warnings()))
@@ -2478,7 +2485,7 @@ func TestUse(t *testing.T, harness Harness) {
 	_, iter, err := e.Query(ctx, "USE foo")
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 	require.Len(rows, 0)
 
@@ -2536,7 +2543,7 @@ func TestTracing(t *testing.T, harness Harness) {
 		LIMIT 1`)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.Len(rows, 1)
 	require.NoError(err)
 
@@ -2566,17 +2573,19 @@ func TestTracing(t *testing.T, harness Harness) {
 
 // RunQuery runs the query given and asserts that it doesn't result in an error.
 func RunQuery(t *testing.T, e *sqle.Engine, harness Harness, query string) {
-	_, iter, err := e.Query(NewContext(harness), query)
+	ctx := NewContext(harness)
+	_, iter, err := e.Query(ctx, query)
 	require.NoError(t, err)
-	_, err = sql.RowIterToRows(iter)
+	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(t, err)
 }
 
 // AssertErr asserts that the given query returns an error during its execution, optionally specifying a type of error.
 func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedErrKind *errors.Kind) {
-	_, iter, err := e.Query(NewContext(harness), query)
+	ctx := NewContext(harness)
+	_, iter, err := e.Query(ctx, query)
 	if err == nil {
-		_, err = sql.RowIterToRows(iter)
+		_, err = sql.RowIterToRows(ctx, iter)
 	}
 	require.Error(t, err)
 	if expectedErrKind != nil {
@@ -2585,13 +2594,14 @@ func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expe
 }
 
 func AssertWarning(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedCode int) {
-	_, iter, err := e.Query(NewContext(harness), query)
-	require.NoError(t, err)
-
-	_, err = sql.RowIterToRows(iter)
-	require.NoError(t, err)
-
 	ctx := NewContext(harness)
+	_, iter, err := e.Query(ctx, query)
+	require.NoError(t, err)
+
+	_, err = sql.RowIterToRows(ctx, iter)
+	require.NoError(t, err)
+
+	ctx = NewContext(harness)
 	require.True(t, len(ctx.Warnings()) > 0)
 
 	condition := false
@@ -3362,7 +3372,7 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 	_, iter, err := e.QueryWithBindings(ctx, q, bindings)
 	require.NoError(err, "Unexpected error for query %s", q)
 
-	rows, err := sql.RowIterToRows(iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err, "Unexpected error for query %s", q)
 
 	widenedRows := WidenRows(rows)

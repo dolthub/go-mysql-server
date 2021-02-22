@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package plan
+package plan_test
 
 import (
 	"testing"
@@ -20,32 +20,22 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	. "github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func TestShowCreateDatabase(t *testing.T) {
+func TestShowGrants(t *testing.T) {
 	require := require.New(t)
-
-	node := NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true)
 	ctx := sql.NewEmptyContext()
-	iter, err := node.RowIter(ctx, nil)
+
+	iter, err := NewShowGrants().RowIter(ctx, nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
-	require.Equal([]sql.Row{
-		{"foo", "CREATE DATABASE /*!32312 IF NOT EXISTS*/ `foo` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */"},
-	}, rows)
+	expected := []sql.Row{
+		{"GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION"},
+	}
 
-	node = NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false)
-	ctx = sql.NewEmptyContext()
-	iter, err = node.RowIter(ctx, nil)
-	require.NoError(err)
-
-	rows, err = sql.RowIterToRows(ctx, iter)
-	require.NoError(err)
-
-	require.Equal([]sql.Row{
-		{"foo", "CREATE DATABASE `foo` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */"},
-	}, rows)
+	require.Equal(expected, rows)
 }

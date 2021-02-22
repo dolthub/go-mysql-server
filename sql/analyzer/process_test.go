@@ -79,7 +79,7 @@ func TestTrackProcess(t *testing.T) {
 
 	iter, err := proc.RowIter(ctx, nil)
 	require.NoError(err)
-	_, err = sql.RowIterToRows(iter)
+	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	require.Len(catalog.Processes(), 0)

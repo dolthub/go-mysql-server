@@ -120,9 +120,9 @@ func (di *distinctIter) Next() (sql.Row, error) {
 	}
 }
 
-func (di *distinctIter) Close() error {
+func (di *distinctIter) Close(ctx *sql.Context) error {
 	di.Dispose()
-	return di.childIter.Close()
+	return di.childIter.Close(ctx)
 }
 
 func (di *distinctIter) Dispose() {
@@ -213,6 +213,6 @@ func (di *orderedDistinctIter) Next() (sql.Row, error) {
 	}
 }
 
-func (di *orderedDistinctIter) Close() error {
-	return di.childIter.Close()
+func (di *orderedDistinctIter) Close(ctx *sql.Context) error {
+	return di.childIter.Close(ctx)
 }
