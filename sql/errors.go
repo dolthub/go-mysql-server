@@ -112,6 +112,18 @@ var (
 	// ErrTriggerCannotBeDropped is returned when dropping a trigger would cause another trigger to reference a non-existent trigger.
 	ErrTriggerCannotBeDropped = errors.NewKind(`trigger "%s" cannot be dropped as it is referenced by trigger "%s"`)
 
+	// ErrStoredProceduresNotSupported is returned when attempting to create a stored procedure on a database that doesn't support them.
+	ErrStoredProceduresNotSupported = errors.NewKind(`database "%s" doesn't support stored procedures`)
+
+	// ErrTriggerDoesNotExist is returned when a stored procedure does not exist.
+	ErrStoredProcedureAlreadyExists = errors.NewKind(`stored procedure "%s" already exists`)
+
+	// ErrTriggerDoesNotExist is returned when a stored procedure does not exist.
+	ErrStoredProcedureDoesNotExist = errors.NewKind(`stored procedure "%s" does not exist`)
+
+	// ErrProcedureCreateStatementInvalid is returned when a StoredProcedureDatabse returns a CREATE PROCEDURE statement that is invalid.
+	ErrProcedureCreateStatementInvalid = errors.NewKind(`Invalid CREATE PROCEDURE statement: %s`)
+
 	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
 	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)
 

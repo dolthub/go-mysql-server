@@ -30,6 +30,7 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_describe_query", resolveDescribeQuery},
 	{"check_unique_table_names", checkUniqueTableNames},
 	{"validate_create_trigger", validateCreateTrigger},
+	{"validate_stored_procedure", validateStoredProcedure},
 }
 
 // DefaultRules to apply when analyzing nodes.
@@ -77,6 +78,7 @@ var OnceAfterDefault = []Rule{
 	{"cache_subquery_results", cacheSubqueryResults},
 	{"resolve_insert_rows", resolveInsertRows},
 	{"apply_triggers", applyTriggers},
+	{"apply_procedures", applyProcedures},
 	{"apply_row_update_accumulators", applyUpdateAccumulators},
 }
 
