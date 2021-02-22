@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2020-2021 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -142,14 +142,14 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		return Int64, nil
 	case "float":
 		if ct.Scale != nil {
-			return nil, ErrInvalidPrecisionSyntax.New(ct.String(), "Cannot set both precision and scale")
+			return nil, ErrInvalidColTypeDefinition.New(ct.String(), "Cannot set both precision and scale")
 		} else if ct.Length != nil {
 			precision, err := strconv.ParseInt(string(ct.Length.Val), 10, 8)
 			if err != nil {
 				return nil, err
 			}
 			if precision > 53 || precision < 0 {
-				return nil, ErrInvalidPrecisionSyntax.New(ct.String(), "Valid range for precision is 0-24 or 25-53")
+				return nil, ErrInvalidColTypeDefinition.New(ct.String(), "Valid range for precision is 0-24 or 25-53")
 			} else if precision > 24 {
 				return Float64, nil
 			} else {
