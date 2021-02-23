@@ -1078,7 +1078,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 
 	isReplace := i.Action == sqlparser.ReplaceStr
 
-	src, err := insertRowsToNode(ctx, i.Rows)
+	src, err := InsertRowsToNode(ctx, i.Rows)
 	if err != nil {
 		return nil, err
 	}
@@ -1177,12 +1177,12 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 	unresolvedTable := tableNameToUnresolvedTable(d.Table)
 
-	boolVal, err := sql.ConvertToBool(d.Local)
-	if err != nil {
-		return nil, err
-	}
+	//boolVal, err := sql.ConvertToBool(d.Local)
+	//if err != nil {
+	//	return nil, err
+	//}
 
-	return plan.NewLoadData(boolVal, d.Infile, unresolvedTable, columnsToStrings(d.Columns)), nil
+	return plan.NewLoadData(false, d.Infile, unresolvedTable, columnsToStrings(d.Columns)), nil
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
@@ -1323,7 +1323,7 @@ func columnsToStrings(cols sqlparser.Columns) []string {
 	return res
 }
 
-func insertRowsToNode(ctx *sql.Context, ir sqlparser.InsertRows) (sql.Node, error) {
+func InsertRowsToNode(ctx *sql.Context, ir sqlparser.InsertRows) (sql.Node, error) {
 	switch v := ir.(type) {
 	case sqlparser.SelectStatement:
 		return convertSelectStatement(ctx, v)
