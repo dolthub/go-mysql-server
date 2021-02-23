@@ -28,96 +28,80 @@ import (
 func TestPushdownSortProject(t *testing.T) {
 	rule := getRule("pushdown_sort")
 	a := NewDefault(nil)
-	ctx := sql.NewEmptyContext()
 
 	table := memory.NewTable("foo", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Int64, Source: "foo"},
 	})
 
-	require := require.New(t)
-	node := plan.NewSort(
-		[]sql.SortField{
-			{Column: expression.NewUnresolvedColumn("x")},
+	tests := []analyzerFnTestCase{
+		{
+			name:     "no reorder needed",
+			node:     plan.NewSort(
+				[]sql.SortField{
+					{Column: expression.NewUnresolvedColumn("x")},
+				},
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+					},
+					plan.NewResolvedTable(table),
+				),
+			),
 		},
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
-			},
-			plan.NewResolvedTable(table),
-		),
-	)
-
-	result, err := rule.Apply(ctx, a, node, nil)
-	require.NoError(err)
-
-	require.Equal(node, result)
-
-	node = plan.NewSort(
-		[]sql.SortField{
-			{Column: expression.NewUnresolvedColumn("a")},
-		},
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
-			},
-			plan.NewResolvedTable(table),
-		),
-	)
-
-	expected := plan.NewProject(
-		[]sql.Expression{
-			expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
-		},
-		plan.NewSort(
-			[]sql.SortField{
-				{Column: expression.NewUnresolvedColumn("a")},
-			},
-			plan.NewResolvedTable(table),
-		),
-	)
-
-	result, err = rule.Apply(ctx, a, node, nil)
-	require.NoError(err)
-
-	require.Equal(expected, result)
-
-	node = plan.NewSort(
-		[]sql.SortField{
-			{Column: expression.NewUnresolvedColumn("a")},
-			{Column: expression.NewUnresolvedColumn("x")},
-		},
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
-			},
-			plan.NewResolvedTable(table),
-		),
-	)
-
-	expected = plan.NewProject(
-		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int64, "", "x", false),
-		},
-		plan.NewSort(
-			[]sql.SortField{
-				{Column: expression.NewUnresolvedColumn("a")},
-				{Column: expression.NewUnresolvedColumn("x")},
-			},
-			plan.NewProject(
+		{
+			name: "push sort below project, alias",
+			node: plan.NewSort(
+				[]sql.SortField{
+					{Column: expression.NewUnresolvedColumn("a")},
+				},
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+					},
+					plan.NewResolvedTable(table),
+				),
+			),
+			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
-					expression.NewUnresolvedColumn("a"),
 				},
-				plan.NewResolvedTable(table),
+				plan.NewSort(
+					[]sql.SortField{
+						{Column: expression.NewUnresolvedColumn("a")},
+					},
+					plan.NewResolvedTable(table),
+				),
 			),
-		),
-	)
+		},
+		{
+			name: "push sort below project, missing field",
+			node: plan.NewSort(
+				[]sql.SortField{
+					{Column: expression.NewUnresolvedColumn("a")},
+				},
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),
+					},
+					plan.NewResolvedTable(table),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),
+				},
+				plan.NewSort(
+					[]sql.SortField{
+						{Column: expression.NewUnresolvedColumn("a")},
+					},
+					plan.NewResolvedTable(table),
+				),
+			),
+		},
+	}
 
-	result, err = rule.Apply(ctx, a, node, nil)
-	require.NoError(err)
-
-	require.Equal(expected, result)
+	runTestCases(t, nil, tests, a, rule)
 }
 
 func TestPushdownSortGroupby(t *testing.T) {

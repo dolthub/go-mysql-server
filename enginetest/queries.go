@@ -3685,6 +3685,27 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query:    `select row_number() over (order by i desc), 
+				row_number() over (order by length(s),i) from mytable order by i;`,
+		Expected: []sql.Row{
+			{3,1},
+			{2,3},
+			{1,2},
+		},
+	},
+	{
+		Query:    `select row_number() over (order by i desc), 
+				row_number() over (order by length(s),i) 
+				from mytable mt join othertable ot 
+				on mt.i = ot.i2    
+				order by mt.i;`,
+		Expected: []sql.Row{
+			{3,1},
+			{2,3},
+			{1,2},
+		},
+	},
+	{
 		Query:    `select i, row_number() over (order by i desc), 
 				row_number() over (order by length(s),i) from mytable order by 1 desc;`,
 		Expected: []sql.Row{
