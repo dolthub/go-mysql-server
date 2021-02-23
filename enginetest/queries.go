@@ -3694,6 +3694,15 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query:    `select *, row_number() over (order by i desc), 
+				row_number() over (order by length(s),i) from mytable order by i;`,
+		Expected: []sql.Row{
+			{1, "first row", 3,1},
+			{2, "second row", 2,3},
+			{3, "third row", 1,2},
+		},
+	},
+	{
 		Query:    `select row_number() over (order by i desc), 
 				row_number() over (order by length(s),i) 
 				from mytable mt join othertable ot 
