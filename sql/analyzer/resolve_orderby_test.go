@@ -17,6 +17,7 @@ package analyzer
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -198,6 +199,145 @@ func TestPushdownSortGroupby(t *testing.T) {
 						},
 						plan.NewResolvedTable(table),
 					),
+				),
+			),
+		},
+	}
+
+	runTestCases(t, nil, tests, a, rule)
+}
+
+func TestPushdownSortWindow(t *testing.T) {
+	rule := getRule("pushdown_sort")
+	a := NewDefault(nil)
+
+	table := memory.NewTable("foo", sql.Schema{
+		{Name: "a", Type: sql.Int64, Source: "foo"},
+		{Name: "b", Type: sql.Int64, Source: "foo"},
+	})
+
+	tests := []analyzerFnTestCase{
+		{
+			name: "no change required",
+			node: plan.NewSort(
+				[]sql.SortField{
+					{Column: expression.NewUnresolvedColumn("x")},
+				},
+				plan.NewWindow(
+					[]sql.Expression{
+						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+							sql.NewWindow(
+								[]sql.Expression{
+									expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+								},
+								sql.SortFields{
+									{
+										Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+									},
+								},
+							),
+						)),
+					},
+					plan.NewResolvedTable(table),
+				),
+			),
+		},
+		{
+			name: "push sort below window, with alias",
+			node: plan.NewSort(
+				[]sql.SortField{
+					{Column: expression.NewUnresolvedColumn("a")},
+				},
+				plan.NewWindow(
+					[]sql.Expression{
+						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+							sql.NewWindow(
+								[]sql.Expression{
+									expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+								},
+								sql.SortFields{
+									{
+										Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+									},
+								},
+							),
+						)),
+					},
+					plan.NewResolvedTable(table),
+				),
+			),
+			expected: plan.NewWindow(
+				[]sql.Expression{
+					expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+						sql.NewWindow(
+							[]sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							},
+							sql.SortFields{
+								{
+									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+								},
+							},
+						),
+					)),
+				},
+				plan.NewSort(
+					[]sql.SortField{
+						{Column: expression.NewUnresolvedColumn("a")},
+					},
+					plan.NewResolvedTable(table),
+				),
+			),
+		},
+		{
+			name: "push sort below window, missing field",
+			node: plan.NewSort(
+				[]sql.SortField{
+					{Column: expression.NewUnresolvedColumn("a")},
+				},
+				plan.NewWindow(
+					[]sql.Expression{
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+							sql.NewWindow(
+								[]sql.Expression{
+									expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+								},
+								sql.SortFields{
+									{
+										Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+									},
+								},
+							),
+						)),
+					},
+					plan.NewResolvedTable(table),
+				),
+			),
+			expected: plan.NewWindow(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+						sql.NewWindow(
+							[]sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							},
+							sql.SortFields{
+								{
+									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+								},
+							},
+						),
+					)),
+				},
+				plan.NewSort(
+					[]sql.SortField{
+						{Column: expression.NewUnresolvedColumn("a")},
+					},
+					plan.NewResolvedTable(table),
 				),
 			),
 		},
