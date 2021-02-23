@@ -83,6 +83,45 @@ func stripQueryProcess(analyzed sql.Node) sql.Node {
 	return analyzed
 }
 
+func exprIsCacheable(expr sql.Expression, lowestAlloewdIdx int) bool {
+	cacheable := true
+	sql.Inspect(expr, func(e sql.Expression) bool {
+		if gf, ok := e.(*expression.GetField); ok {
+			if gf.Index() < lowestAlloewdIdx {
+				cacheable = false
+				return false
+			}
+		}
+		if nd, ok := e.(sql.NonDeterministicExpression); ok && nd.IsNonDeterministic() {
+			cacheable = false
+			return false
+		}
+		return true
+	})
+	return cacheable
+}
+
+func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
+	cacheable := true
+	plan.Inspect(n, func(node sql.Node) bool {
+		if er, ok := node.(sql.Expressioner); ok {
+			for _, expr := range er.Expressions() {
+				if !exprIsCacheable(expr, lowestAllowedIdx) {
+					cacheable = false
+					return false
+				}
+			}
+		} else if sa, ok := node.(*plan.SubqueryAlias); ok {
+			if !nodeIsCacheable(sa.Child, 0) {
+				cacheable = false
+			}
+			return false
+		}
+		return true
+	})
+	return cacheable
+}
+
 // cacheSubqueryResults determines whether it's safe to cache the results for any subquery expressions, and marks the
 // subquery as cacheable if so. Caching subquery results is safe in the case that no outer scope columns are referenced,
 // and if all expressions in the subquery are deterministic.
@@ -94,23 +133,7 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		}
 
 		scopeLen := len(scope.newScope(n).Schema())
-		cacheable := true
-
-		plan.InspectExpressions(s.Query, func(expr sql.Expression) bool {
-			if gf, ok := expr.(*expression.GetField); ok {
-				if gf.Index() < scopeLen {
-					cacheable = false
-					return false
-				}
-			}
-
-			if nd, ok := expr.(sql.NonDeterministicExpression); ok && nd.IsNonDeterministic() {
-				cacheable = false
-				return false
-			}
-
-			return true
-		})
+		cacheable := nodeIsCacheable(s.Query, scopeLen)
 
 		if cacheable {
 			return s.WithCachedResults(), nil
