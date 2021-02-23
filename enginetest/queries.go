@@ -1075,6 +1075,23 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `select row_number() over (order by i desc), mytable.i as i2 
+				from mytable join othertable on i = i2 order by 1`,
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+			{3, 1},
+		},
+	},
+	{
+		Query: `select row_number() over (order by i desc), mytable.i as i2 
+				from mytable join othertable on i = i2 
+				where mytable.i = 3 order by 1`,
+		Expected: []sql.Row{
+			{1, 3},
+		},
+	},
+	{
 		Query:    "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 3",
 		Expected: []sql.Row{},
 	},
