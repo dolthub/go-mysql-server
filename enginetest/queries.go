@@ -2721,6 +2721,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT i FROM mytable mt
+						 WHERE (SELECT row_number() over (order by ot.i2 desc) FROM othertable ot where ot.i2 = mt.i) = 2
+						 ORDER BY i`,
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
 		Query:    `SELECT (SELECT i FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
 		Expected: []sql.Row{{int64(1)}},
 	},
@@ -3725,6 +3733,20 @@ var QueryTests = []QueryTest{
 			{1,3,1},
 			{2,2,3},
 			{3,1,2},
+		},
+	},
+	{
+		Query:    `select i, row_number() over (order by i desc) from mytable where i = 2 order by 1;`,
+		Expected: []sql.Row{
+			{2,1},
+		},
+	},
+	{
+		Query:    `SELECT i, (SELECT row_number() over (order by ot.i2 desc) FROM othertable ot where ot.i2 = mt.i) from mytable mt order by 1;`,
+		Expected: []sql.Row{
+			{1,1},
+			{2,1},
+			{3,1},
 		},
 	},
 	{
