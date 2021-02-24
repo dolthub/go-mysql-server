@@ -2249,6 +2249,28 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
+		Query:    `SELECT i AS i FROM mytable GROUP BY s ORDER BY 1`,
+		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
+		Query:    `SELECT i AS x FROM mytable GROUP BY s ORDER BY x`,
+		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
+		Query:    `SELECT i as x, row_number() over (order by i DESC) FROM mytable ORDER BY x`,
+		Expected: []sql.Row{
+			{1,3},
+			{2,2},
+			{3,1}},
+	},
+	{
+		Query:    `SELECT i as i, row_number() over (order by i DESC) FROM mytable ORDER BY 1`,
+		Expected: []sql.Row{
+			{1,3},
+			{2,2},
+			{3,1}},
+	},
+	{
 		Query: `
 		SELECT
 			i,

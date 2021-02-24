@@ -341,6 +341,8 @@ func getColumnsInNodes(nodes []sql.Node, names availableNames, nestingLevel int)
 			indexExpressions(n.Projections)
 		case *plan.GroupBy:
 			indexExpressions(n.SelectedExprs)
+		case *plan.Window:
+			indexExpressions(n.SelectExprs)
 		default:
 			getColumnsInNodes(n.Children(), names, nestingLevel)
 		}

@@ -89,14 +89,16 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query:    `select row_number() over (order by i desc), 
-				row_number() over (order by length(s),i) from mytable order by i;`,
+		Query:    `SELECT i as i, row_number() over (order by s DESC) FROM mytable ORDER BY 1`,
 		Expected: []sql.Row{
-			{3,1},
-			{2,3},
-			{1,2},
-		},
+			{1,3},
+			{2,2},
+			{3,1}},
 	}
+	// test = enginetest.QueryTest{
+	// 	Query:    `SELECT i AS i FROM mytable GROUP BY s ORDER BY i`,
+	// 	Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	// }
 	fmt.Sprintf("%v", test)
 
 	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, mergableIndexDriver)
