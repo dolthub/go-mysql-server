@@ -19,6 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"os"
+	"strconv"
 )
 
 type LoadData struct {
@@ -26,6 +27,7 @@ type LoadData struct {
 	File string
 	Destination sql.Node
 	ColumnNames []string
+	ResponsePacketSent bool
 }
 
 func (l LoadData) Resolved() bool {
@@ -46,7 +48,17 @@ func (l LoadData) Children() []sql.Node {
 
 func (l LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// Get Files as an InsertRows
-	file, err := os.Open("/Users/vinairachakonda/Desktop/x.txt")
+	// 1. How do I attach a column name to an inserter (might need to use update iter instead)
+	// 2. How do i go through the non local path for discovering files
+	// 3. What's the best way to read the file?
+
+	// Structure: Wire protocol (derisk), server work, client testing
+	var fileName = l.File
+	if l.Local {
+		fileName = "/tmp/x"
+	}
+
+	file, err := os.Open(fileName)
 	if err != nil {
 		return nil, err
 	}
@@ -55,9 +67,15 @@ func (l LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	scanner := bufio.NewScanner(file)
 	var values [][]sql.Expression
 	for scanner.Scan() {
-		//split := strings.Split(scanner.Text(), ",")
+		txt := scanner.Text()
 		exprs := make([]sql.Expression, 1)
-		exprs[0] = expression.NewLiteral(0, sql.Int8)
+
+		val, err := strconv.ParseInt(txt, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		exprs[0] = expression.NewLiteral(val, sql.Int8)
 		values = append(values, exprs)
 	}
 
@@ -68,6 +86,10 @@ func (l LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	newValue := NewValues(values)
 
 	return newInsertIter(ctx, l.Destination, newValue, false, nil, row)
+}
+
+func getLoadPath(fileName string, local bool) string {
+	return ""
 }
 
 func (l LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {
