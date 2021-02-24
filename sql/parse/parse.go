@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -191,6 +192,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertDelete(ctx, n)
 	case *sqlparser.Update:
 		return convertUpdate(ctx, n)
+	case *sqlparser.Call:
+		return convertCall(ctx, n)
 	}
 }
 
@@ -527,6 +530,9 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 		if c.TriggerSpec != nil {
 			return convertCreateTrigger(ctx, query, c)
 		}
+		if c.ProcedureSpec != nil {
+			return convertCreateProcedure(ctx, query, c)
+		}
 		if !c.View.IsEmpty() {
 			return convertCreateView(ctx, query, c)
 		}
@@ -583,6 +589,94 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 	}
 
 	return plan.NewCreateTrigger(c.TriggerSpec.Name, c.TriggerSpec.Time, c.TriggerSpec.Event, triggerOrder, tableNameToUnresolvedTable(c.Table), body, query, bodyStr), nil
+}
+
+func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
+	var params []plan.ProcedureParam
+	for _, param := range c.ProcedureSpec.Params {
+		var direction plan.ProcedureParamDirection
+		switch param.Direction {
+		case sqlparser.ProcedureParamDirection_In:
+			direction = plan.ProcedureParamDirection_In
+		case sqlparser.ProcedureParamDirection_Inout:
+			direction = plan.ProcedureParamDirection_Inout
+		case sqlparser.ProcedureParamDirection_Out:
+			direction = plan.ProcedureParamDirection_Out
+		default:
+			return nil, fmt.Errorf("unknown procedure parameter direction: `%s`", string(param.Direction))
+		}
+		internalTyp, err := sql.ColumnTypeToType(&param.Type)
+		if err != nil {
+			return nil, err
+		}
+		params = append(params, plan.ProcedureParam{
+			Direction: direction,
+			Name:      param.Name,
+			Type:      internalTyp,
+		})
+	}
+
+	var characteristics []plan.Characteristic
+	securityType := plan.ProcedureSecurityType_Definer // Default Security Type
+	comment := ""
+	for _, characteristic := range c.ProcedureSpec.Characteristics {
+		switch characteristic.Type {
+		case sqlparser.CharacteristicValue_Comment:
+			comment = characteristic.Comment
+		case sqlparser.CharacteristicValue_LanguageSql:
+			characteristics = append(characteristics, plan.Characteristic_LanguageSql)
+		case sqlparser.CharacteristicValue_Deterministic:
+			characteristics = append(characteristics, plan.Characteristic_Deterministic)
+		case sqlparser.CharacteristicValue_NotDeterministic:
+			characteristics = append(characteristics, plan.Characteristic_NotDeterministic)
+		case sqlparser.CharacteristicValue_ContainsSql:
+			characteristics = append(characteristics, plan.Characteristic_ContainsSql)
+		case sqlparser.CharacteristicValue_NoSql:
+			characteristics = append(characteristics, plan.Characteristic_NoSql)
+		case sqlparser.CharacteristicValue_ReadsSqlData:
+			characteristics = append(characteristics, plan.Characteristic_ReadsSqlData)
+		case sqlparser.CharacteristicValue_ModifiesSqlData:
+			characteristics = append(characteristics, plan.Characteristic_ModifiesSqlData)
+		case sqlparser.CharacteristicValue_SqlSecurityDefiner:
+			// This is already the default value, so this prevents the default switch case
+		case sqlparser.CharacteristicValue_SqlSecurityInvoker:
+			securityType = plan.ProcedureSecurityType_Invoker
+		default:
+			return nil, fmt.Errorf("unknown procedure characteristic: `%s`", string(characteristic.Type))
+		}
+	}
+
+	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
+	body, err := convert(ctx, c.ProcedureSpec.Body, bodyStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewCreateProcedure(
+		c.ProcedureSpec.Name,
+		c.ProcedureSpec.Definer,
+		params,
+		time.Now(),
+		time.Now(),
+		securityType,
+		characteristics,
+		body,
+		comment,
+		query,
+		bodyStr,
+	), nil
+}
+
+func convertCall(ctx *sql.Context, c *sqlparser.Call) (sql.Node, error) {
+	params := make([]sql.Expression, len(c.Params))
+	for i, param := range c.Params {
+		expr, err := exprToExpression(ctx, param)
+		if err != nil {
+			return nil, err
+		}
+		params[i] = expr
+	}
+	return plan.NewCall(c.FuncName, params), nil
 }
 
 func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
