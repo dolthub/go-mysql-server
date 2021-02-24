@@ -641,6 +641,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(2)}},
 	},
 	{
+		Query:    "SELECT i FROM (SELECT 1 AS i FROM DUAL UNION SELECT 2 AS i FROM DUAL) some_is WHERE i NOT IN (SELECT i FROM (SELECT 1 as i FROM DUAL) different_is);",
+		Expected: []sql.Row{{int64(2)}},
+	},
+	{
 		Query:    "SELECT i FROM mytable ORDER BY i LIMIT 1,1;",
 		Expected: []sql.Row{{int64(2)}},
 	},
