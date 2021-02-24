@@ -310,7 +310,7 @@ func findProjectTuples(n sql.Node) (sql.Node, error) {
 	}
 
 	switch n := n.(type) {
-	case *plan.Project, *plan.GroupBy:
+	case *plan.Project, *plan.GroupBy, *plan.Window:
 		for i, e := range n.(sql.Expressioner).Expressions() {
 			if sql.IsTuple(e.Type()) {
 				return nil, ErrProjectTuple.New(i+1, sql.NumColumns(e.Type()))
