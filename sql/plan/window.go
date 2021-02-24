@@ -119,7 +119,7 @@ type windowIter struct {
 	ctx         *sql.Context
 	keys        []uint64
 	rows        []sql.Row
-	aggregates  []sql.Row
+	buffers     []sql.Row
 	pos         int
 }
 
@@ -141,7 +141,7 @@ func (i *windowIter) Next() (sql.Row, error) {
 		var err error
 
 		if wa, ok := expr.(sql.WindowAggregation); ok {
-			row[j], err = wa.EvalRow(i.pos)
+			row[j], err = wa.EvalRow(i.pos, i.buffers[j])
 			if err != nil {
 				return nil, err
 			}
@@ -160,6 +160,13 @@ func (i *windowIter) Next() (sql.Row, error) {
 }
 
 func (i *windowIter) compute() error {
+	i.buffers = make([]sql.Row, len(i.selectExprs))
+
+	for j, expr := range i.selectExprs {
+		i.buffers[j] = newBuffer(expr)
+	}
+
+
 	for {
 		row, err := i.childIter.Next()
 		if err == io.EOF {
@@ -173,7 +180,7 @@ func (i *windowIter) compute() error {
 		for j, expr := range i.selectExprs {
 			var err error
 			if wa, ok := expr.(sql.WindowAggregation); ok {
-				err := wa.Add(i.ctx, row)
+				err := wa.Add(i.ctx, i.buffers[j], row)
 				if err != nil {
 					return err
 				}
@@ -194,10 +201,10 @@ func (i *windowIter) compute() error {
 		i.rows = append(i.rows, outRow)
 	}
 
-	for _, expr := range i.selectExprs {
+	for j, expr := range i.selectExprs {
 		// TODO: handle aliases
 		if wa, ok := expr.(sql.WindowAggregation); ok {
-			err := wa.Finish(i.ctx)
+			err := wa.Finish(i.ctx, i.buffers[j])
 			if err != nil {
 				return err
 			}
@@ -205,6 +212,17 @@ func (i *windowIter) compute() error {
 	}
 
 	return nil
+}
+
+func newBuffer(expr sql.Expression) sql.Row {
+	switch n := expr.(type) {
+	case sql.Aggregation:
+		return n.NewBuffer()
+	case sql.WindowAggregation:
+		return n.NewBuffer()
+	default:
+		return nil
+	}
 }
 
 func rowKey(
@@ -222,13 +240,5 @@ func rowKey(
 }
 
 func (i *windowIter) Close(ctx *sql.Context) error {
-	for _, expr := range i.selectExprs {
-		if wa, ok := expr.(sql.WindowAggregation); ok {
-			err := wa.Reset(ctx)
-			if err != nil {
-				return err
-			}
-		}
-	}
 	return i.childIter.Close(ctx)
 }

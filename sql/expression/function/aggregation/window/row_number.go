@@ -24,8 +24,6 @@ import (
 
 type RowNumber struct {
 	window *sql.Window
-	// TODO support partitions (add a map here)
-	rows []sql.Row
 	pos  int
 }
 
@@ -46,6 +44,10 @@ func windowResolved(window *sql.Window) bool {
 		return true
 	}
 	return expression.ExpressionsResolved(append(window.OrderBy.ToExpressions(), window.PartitionBy...)...)
+}
+
+func (r *RowNumber) NewBuffer() sql.Row {
+	return sql.NewRow(make([]sql.Row, 0))
 }
 
 func (r *RowNumber) String() string {
@@ -111,24 +113,20 @@ func (r *RowNumber) WithWindow(window *sql.Window) (sql.WindowAggregation, error
 }
 
 // Add implements sql.WindowAggregation
-func (r *RowNumber) Add(ctx *sql.Context, row sql.Row) error {
-	r.rows = append(r.rows, append(row, nil, r.pos))
+func (r *RowNumber) Add(ctx *sql.Context, buffer, row sql.Row) error {
+	rows := buffer[0].([]sql.Row)
+	buffer[0] = append(rows, append(row, nil, r.pos))
 	r.pos++
 	return nil
 }
 
-func (r *RowNumber) Reset(ctx *sql.Context) error {
-	r.rows = nil
-	r.pos = 0
-	return nil
-}
-
 // Finish implements sql.WindowAggregation
-func (r *RowNumber) Finish(ctx *sql.Context) error {
-	if len(r.rows) > 0 && r.window != nil && r.window.OrderBy != nil {
+func (r *RowNumber) Finish(ctx *sql.Context, buffer sql.Row) error {
+	rows := buffer[0].([]sql.Row)
+	if len(rows) > 0 && r.window != nil && r.window.OrderBy != nil {
 		sorter := &expression.Sorter{
 			SortFields: append(partitionsToSortFields(r.window.PartitionBy), r.window.OrderBy...),
-			Rows:       r.rows,
+			Rows:       rows,
 			Ctx:        ctx,
 		}
 		sort.Stable(sorter)
@@ -137,11 +135,11 @@ func (r *RowNumber) Finish(ctx *sql.Context) error {
 		}
 
 		// Now that we have the rows in sorted order, number them
-		rowNumIdx := len(r.rows[0]) - 2
-		originalOrderIdx := len(r.rows[0]) - 1
+		rowNumIdx := len(rows[0]) - 2
+		originalOrderIdx := len(rows[0]) - 1
 		var last sql.Row
 		var rowNum int
-		for _, row := range r.rows {
+		for _, row := range rows {
 			// every time we encounter a new partition, start the count over
 			isNew, err := r.isNewPartition(ctx, last, row)
 			if err != nil {
@@ -158,8 +156,8 @@ func (r *RowNumber) Finish(ctx *sql.Context) error {
 		}
 
 		// And finally sort again by the original order
-		sort.SliceStable(r.rows, func(i, j int) bool {
-			return r.rows[i][originalOrderIdx].(int) < r.rows[j][originalOrderIdx].(int)
+		sort.SliceStable(rows, func(i, j int) bool {
+			return rows[i][originalOrderIdx].(int) < rows[j][originalOrderIdx].(int)
 		})
 	}
 
@@ -179,8 +177,9 @@ func partitionsToSortFields(partitionExprs []sql.Expression) sql.SortFields {
 }
 
 // EvalRow implements sql.WindowAggregation
-func (r *RowNumber) EvalRow(i int) (interface{}, error) {
-	return r.rows[i][len(r.rows[i])-2], nil
+func (r *RowNumber) EvalRow(i int, buffer sql.Row) (interface{}, error) {
+	rows := buffer[0].([]sql.Row)
+	return rows[i][len(rows[i])-2], nil
 }
 
 func (r *RowNumber) isNewPartition(ctx *sql.Context, last sql.Row, row sql.Row) (bool, error) {

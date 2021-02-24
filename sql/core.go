@@ -106,16 +106,16 @@ type WindowAggregation interface {
 	Expression
 	// WithWindow returns a version of this window aggregation with the window given
 	WithWindow(window *Window) (WindowAggregation, error)
-	// Reset resets any internal state for this aggregation
-	Reset(ctx *Context) error
+	// NewBuffer creates a new buffer and returns it as a Row. This buffer will be provided for all further operations.
+	NewBuffer() Row
 	// Add updates the aggregation with the input row given. Implementors must keep track of rows added in order so
 	// that they can later be retrieved by EvalRow(int)
-	Add(ctx *Context, row Row) error
+	Add(ctx *Context, buffer, row Row) error
 	// Finish gives aggregations that need to final computation once all rows have been added (like sorting their
 	// inputs) a chance to do before iteration begins
-	Finish(ctx *Context) error
+	Finish(ctx *Context, buffer Row) error
 	// EvalRow returns the value of the expression for the row with the index given
-	EvalRow(i int) (interface{}, error)
+	EvalRow(i int, buffer Row) (interface{}, error)
 }
 
 // Node is a node in the execution plan tree.

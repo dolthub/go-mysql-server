@@ -213,7 +213,7 @@ func (i *groupByIter) Next() (sql.Row, error) {
 	i.done = true
 
 	for j, a := range i.selectedExprs {
-		i.buf[j] = fillBuffer(a)
+		i.buf[j] = newAggregationBuffer(a)
 	}
 
 	for {
@@ -300,7 +300,7 @@ func (i *groupByGroupingIter) compute() error {
 		if _, err := i.aggregations.Get(key); err != nil {
 			var buf = make([]sql.Row, len(i.selectedExprs))
 			for j, a := range i.selectedExprs {
-				buf[j] = fillBuffer(a)
+				buf[j] = newAggregationBuffer(a)
 			}
 
 			if err := i.aggregations.Put(key, buf); err != nil {
@@ -349,7 +349,7 @@ func groupingKey(
 	return hash.Sum64(), nil
 }
 
-func fillBuffer(expr sql.Expression) sql.Row {
+func newAggregationBuffer(expr sql.Expression) sql.Row {
 	switch n := expr.(type) {
 	case sql.Aggregation:
 		return n.NewBuffer()

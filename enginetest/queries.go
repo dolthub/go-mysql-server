@@ -1079,7 +1079,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `select row_number() over (order by i desc), mytable.i as i2 
+		Query: `select row_number() over (order by i desc), mytable.i as i2
 				from mytable join othertable on i = i2 order by 1`,
 		Expected: []sql.Row{
 			{1, 3},
@@ -1088,8 +1088,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `select row_number() over (order by i desc), mytable.i as i2 
-				from mytable join othertable on i = i2 
+		Query: `select row_number() over (order by i desc), mytable.i as i2
+				from mytable join othertable on i = i2
 				where mytable.i = 3 order by 1`,
 		Expected: []sql.Row{
 			{1, 3},
