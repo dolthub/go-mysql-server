@@ -106,6 +106,8 @@ type WindowAggregation interface {
 	Expression
 	// WithWindow returns a version of this window aggregation with the window given
 	WithWindow(window *Window) (WindowAggregation, error)
+	// Reset resets any internal state for this aggregation
+	Reset(ctx *Context) error
 	// Add updates the aggregation with the input row given. Implementors must keep track of rows added in order so
 	// that they can later be retrieved by EvalRow(int)
 	Add(ctx *Context, row Row) error

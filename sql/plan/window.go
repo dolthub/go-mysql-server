@@ -172,8 +172,6 @@ func (i *windowIter) compute() error {
 		outRow := make(sql.Row, len(i.selectExprs))
 		for j, expr := range i.selectExprs {
 			var err error
-
-			// TODO: handle aliases
 			if wa, ok := expr.(sql.WindowAggregation); ok {
 				err := wa.Add(i.ctx, row)
 				if err != nil {
@@ -224,5 +222,13 @@ func rowKey(
 }
 
 func (i *windowIter) Close(ctx *sql.Context) error {
+	for _, expr := range i.selectExprs {
+		if wa, ok := expr.(sql.WindowAggregation); ok {
+			err := wa.Reset(ctx)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return i.childIter.Close(ctx)
 }

@@ -2724,8 +2724,16 @@ var QueryTests = []QueryTest{
 		Query: `SELECT i FROM mytable mt
 						 WHERE (SELECT row_number() over (order by ot.i2 desc) FROM othertable ot where ot.i2 = mt.i) = 2
 						 ORDER BY i`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query: `SELECT i FROM mytable mt
+						 WHERE (SELECT row_number() over (order by ot.i2 desc) FROM othertable ot where ot.i2 = mt.i) = 1
+						 ORDER BY i`,
 		Expected: []sql.Row{
 			{1},
+			{2},
+			{3},
 		},
 	},
 	{

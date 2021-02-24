@@ -117,6 +117,12 @@ func (r *RowNumber) Add(ctx *sql.Context, row sql.Row) error {
 	return nil
 }
 
+func (r *RowNumber) Reset(ctx *sql.Context) error {
+	r.rows = nil
+	r.pos = 0
+	return nil
+}
+
 // Finish implements sql.WindowAggregation
 func (r *RowNumber) Finish(ctx *sql.Context) error {
 	if len(r.rows) > 0 && r.window != nil && r.window.OrderBy != nil {
