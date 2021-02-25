@@ -1177,12 +1177,7 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 	unresolvedTable := tableNameToUnresolvedTable(d.Table)
 
-	//boolVal, err := sql.ConvertToBool(d.Local)
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	return plan.NewLoadData(false, d.Infile, unresolvedTable, columnsToStrings(d.Columns)), nil
+	return plan.NewLoadData(false, d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines), nil
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec

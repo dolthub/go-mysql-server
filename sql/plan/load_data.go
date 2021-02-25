@@ -16,10 +16,13 @@ package plan
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type LoadData struct {
@@ -28,7 +31,18 @@ type LoadData struct {
 	Destination sql.Node
 	ColumnNames []string
 	ResponsePacketSent bool
+	Fields *sqlparser.Fields
+	Lines *sqlparser.Lines
 }
+
+var (
+	fieldsTerminatedByDelim = "\t"
+	fieldsEnclosedByDelim = ""
+	fieldsOptionallyDelim = false
+	fieldsEscapedByDelim = "\\"
+	linesTerminatedByDelim = "\n"
+	linesStartingByDelim = ""
+)
 
 func (l LoadData) Resolved() bool {
 	return l.Destination.Resolved()
@@ -50,12 +64,16 @@ func (l LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// Get Files as an InsertRows
 	// 1. How do I attach a column name to an inserter (might need to use update iter instead)
 	// 2. How do i go through the non local path for discovering files
-	// 3. What's the best way to read the file?
+	// 3. Biggest Risk is nailing the parsing algorithm and getting the types correct
+	// TODO: Add the security variables for mysql
 
-	// Structure: Wire protocol (derisk), server work, client testing
+	// Start the parsing by grabbing all the config variables.
+	l.updateParsingConsts()
+
+	// TODO: Add tmpdir setting for mysql
 	var fileName = l.File
 	if l.Local {
-		fileName = "/tmp/x"
+		fileName = "/tmp/.LOADFILE"
 	}
 
 	file, err := os.Open(fileName)
@@ -64,8 +82,11 @@ func (l LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
+	//scanner := bufio.NewScanner(file)
+	//parseLines(scanner)
+
 	var values [][]sql.Expression
+	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		txt := scanner.Text()
 		exprs := make([]sql.Expression, 1)
@@ -88,6 +109,105 @@ func (l LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return newInsertIter(ctx, l.Destination, newValue, false, nil, row)
 }
 
+func (l LoadData) updateParsingConsts() {
+	if l.Lines != nil {
+		ll := l.Lines
+		if ll.StartingBy != "" {
+			linesStartingByDelim = ll.StartingBy
+		}
+		if ll.TerminatedBy != "" {
+			linesTerminatedByDelim = ll.TerminatedBy
+		}
+	}
+
+	if l.Fields != nil {
+		lf := l.Fields
+
+		if lf.TerminatedBy != "" {
+			fieldsTerminatedByDelim = lf.TerminatedBy
+		}
+
+		if lf.EscapedBy != "" {
+			fieldsEscapedByDelim = lf.EscapedBy
+		}
+
+		if lf.EnclosedBy != nil {
+			lfe := lf.EnclosedBy
+
+			if lfe.Optionally {
+				fieldsOptionallyDelim = true
+			}
+
+			if lfe.Delim != "" {
+				fieldsEnclosedByDelim = lfe.Delim
+			}
+		}
+
+	}
+}
+
+func parseLines(scanner *bufio.Scanner) string {
+	splitFunc := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		if atEOF {
+			return 0, nil, nil
+		}
+
+		// Find the prefix
+		startingDelimPos := -1
+		if linesStartingByDelim != "" {
+			startingDelimPos = strings.Index(string(data), linesTerminatedByDelim)
+		}
+
+		// Find the ending token
+		endingDelimPos := -1
+		if linesTerminatedByDelim != "" {
+			endingDelimPos = strings.Index(string(data), linesTerminatedByDelim)
+		}
+
+		// Throw an error if an ending token was expected but not given. TODO: make sure this correct
+		if endingDelimPos < 0 && linesTerminatedByDelim != "" {
+			return 0, nil, fmt.Errorf("error: data does not meet parsing criteria")
+		}
+
+		if linesStartingByDelim == "" {
+			if endingDelimPos >= 0 {
+				return endingDelimPos+len(linesTerminatedByDelim), data[0:endingDelimPos], nil
+			} else {
+				return len(data), data[0:], nil
+			}
+		}
+
+		// If the starting delimeter isn't found and is non-empty we need to skip this data.
+		if startingDelimPos < 0 {
+			// if the starting delim wasn't found and the ending delim wasn't found throw an error
+			if endingDelimPos < 0 {
+				return 0, nil, fmt.Errorf("error: data does not meet parsing criteria")
+			} else {
+				advancePos := endingDelimPos + len(linesTerminatedByDelim)
+
+				return advancePos, nil, nil
+			}
+		} else {
+			startPos := startingDelimPos + len(linesStartingByDelim)
+			if endingDelimPos < 0 {
+				return len(data), data[startPos:], nil
+			} else {
+				advancePos := endingDelimPos + len(linesTerminatedByDelim)
+				return advancePos, data[startPos:endingDelimPos], nil
+			}
+		}
+	}
+
+	scanner.Split(splitFunc)
+
+	for scanner.Scan() {
+		x := scanner.Text()
+		fmt.Println(x)
+	}
+
+	return ""
+}
+
 func getLoadPath(fileName string, local bool) string {
 	return ""
 }
@@ -101,11 +221,13 @@ func (l LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return l, nil
 }
 
-func NewLoadData(local bool, file string, destination sql.Node, cols []string) *LoadData {
+func NewLoadData(local bool, file string, destination sql.Node, cols []string, fields *sqlparser.Fields, lines *sqlparser.Lines) *LoadData {
 	return &LoadData{
 		Local: local,
 		File: file,
 		Destination: destination,
 		ColumnNames: cols,
+		Fields: fields,
+		Lines: lines,
 	}
 }
