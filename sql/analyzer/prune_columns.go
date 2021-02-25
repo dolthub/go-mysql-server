@@ -82,20 +82,9 @@ func pruneColumnsIsSafe(n sql.Node) bool {
 	// We do not run pruneColumns if there is a Subquery
 	// expression, because the field rewrites and scope handling
 	// in here are not principled.
-	plan.Inspect(n, func(n sql.Node) bool {
-		if exp, ok := n.(sql.Expressioner); ok {
-			for _, e := range exp.Expressions() {
-				sql.Inspect(e, func(e sql.Expression) bool {
-					if _, ok := e.(*plan.Subquery); ok {
-						isSafe = false
-						return false
-					}
-					return true
-				})
-				if !isSafe {
-					return false
-				}
-			}
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
+		if _, ok := e.(*plan.Subquery); ok {
+			isSafe = false
 		}
 		return isSafe
 	})
