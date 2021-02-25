@@ -357,7 +357,7 @@ func TestPruneColumns(t *testing.T) {
 			),
 		},
 		{
-			name: "Drop projected columns not in subquery",
+			name: "Keep projected columns when there is a subquery",
 			node: plan.NewProject(
 				[]sql.Expression{
 					gf(0, "t1", "foo"),
@@ -405,6 +405,7 @@ func TestPruneColumns(t *testing.T) {
 				plan.NewProject(
 					[]sql.Expression{
 						gf(0, "t1", "foo"),
+						gf(1, "t1", "bar"),
 					},
 					plan.NewResolvedTable(t1),
 				),
