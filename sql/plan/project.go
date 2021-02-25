@@ -50,7 +50,7 @@ func (p *Project) Schema() sql.Schema {
 // Resolved implements the Resolvable interface.
 func (p *Project) Resolved() bool {
 	return p.UnaryNode.Child.Resolved() &&
-		expressionsResolved(p.Projections...)
+		expression.ExpressionsResolved(p.Projections...)
 }
 
 // RowIter implements the Node interface.

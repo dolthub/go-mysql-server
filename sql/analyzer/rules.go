@@ -47,7 +47,7 @@ var DefaultRules = []Rule{
 	{"resolve_functions", resolveFunctions},
 	{"resolve_having", resolveHaving},
 	{"merge_union_schemas", mergeUnionSchemas},
-	{"flatten_group_by_aggregations", flattenGroupByAggregations},
+	{"flatten_aggregation_exprs", flattenAggregationExpressions},
 	{"reorder_projection", reorderProjection},
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},
 	{"move_join_conds_to_filter", moveJoinConditionsToFilter},

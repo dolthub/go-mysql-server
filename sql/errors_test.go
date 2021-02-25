@@ -2,8 +2,9 @@ package sql
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"testing"
+
+	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

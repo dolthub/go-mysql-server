@@ -98,6 +98,26 @@ type Aggregation interface {
 	Merge(ctx *Context, buffer, partial Row) error
 }
 
+// WindowAggregation implements a window aggregation expression. A WindowAggregation is similar to an Aggregation,
+// except that it returns a result row for every input row, as opposed to as single for the entire result set. Every
+// WindowAggregation is expected to track its input rows in the order received, and to return the value for the row
+// index given on demand.
+type WindowAggregation interface {
+	Expression
+	// WithWindow returns a version of this window aggregation with the window given
+	WithWindow(window *Window) (WindowAggregation, error)
+	// NewBuffer creates a new buffer and returns it as a Row. This buffer will be provided for all further operations.
+	NewBuffer() Row
+	// Add updates the aggregation with the input row given. Implementors must keep track of rows added in order so
+	// that they can later be retrieved by EvalRow(int)
+	Add(ctx *Context, buffer, row Row) error
+	// Finish gives aggregations that need to final computation once all rows have been added (like sorting their
+	// inputs) a chance to do before iteration begins
+	Finish(ctx *Context, buffer Row) error
+	// EvalRow returns the value of the expression for the row with the index given
+	EvalRow(i int, buffer Row) (interface{}, error)
+}
+
 // Node is a node in the execution plan tree.
 type Node interface {
 	Resolvable

@@ -24,12 +24,14 @@ import (
 )
 
 type ProcedureSecurityType byte
+
 const (
 	ProcedureSecurityType_Definer ProcedureSecurityType = iota
 	ProcedureSecurityType_Invoker
 )
 
 type ProcedureParamDirection byte
+
 const (
 	ProcedureParamDirection_In ProcedureParamDirection = iota
 	ProcedureParamDirection_Inout
@@ -43,6 +45,7 @@ type ProcedureParam struct {
 }
 
 type Characteristic byte
+
 const (
 	Characteristic_LanguageSql Characteristic = iota
 	Characteristic_Deterministic
