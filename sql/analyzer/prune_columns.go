@@ -56,6 +56,11 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		return n, nil
 	}
 
+	if !pruneColumnsIsSafe(n) {
+		a.Log("not pruning columns because it is not safe.")
+		return n, nil
+	}
+
 	columns := columnsUsedByNode(n)
 	findUsedColumns(columns, n)
 
@@ -70,6 +75,31 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 	}
 
 	return fixRemainingFieldsIndexes(n, scope)
+}
+
+func pruneColumnsIsSafe(n sql.Node) bool {
+	isSafe := true
+	// We do not run pruneColumns if there is a Subquery
+	// expression, because the field rewrites and scope handling
+	// in here are not principled.
+	plan.Inspect(n, func(n sql.Node) bool {
+		if exp, ok := n.(sql.Expressioner); ok {
+			for _, e := range exp.Expressions() {
+				sql.Inspect(e, func(e sql.Expression) bool {
+					if _, ok := e.(*plan.Subquery); ok {
+						isSafe = false
+						return false
+					}
+					return true
+				})
+				if !isSafe {
+					return false
+				}
+			}
+		}
+		return isSafe
+	})
+	return isSafe
 }
 
 func columnsUsedByNode(n sql.Node) usedColumns {
