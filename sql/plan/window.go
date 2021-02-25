@@ -15,11 +15,9 @@
 package plan
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
-	"github.com/cespare/xxhash"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -114,17 +112,16 @@ func (w *Window) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 }
 
 type windowIter struct {
-	selectExprs []sql.Expression
-	childIter   sql.RowIter
-	ctx         *sql.Context
-	keys        []uint64
-	rows        []sql.Row
-	buffers     []sql.Row
-	pos         int
+	ctx          *sql.Context
+	selectExprs  []sql.Expression
+	childIter    sql.RowIter
+	rows         []sql.Row
+	buffers      []sql.Row
+	pos          int
 }
 
 func (i *windowIter) Next() (sql.Row, error) {
-	if i.rows == nil {
+	if i.buffers == nil {
 		err := i.compute()
 		if err != nil {
 			return nil, err
@@ -139,19 +136,17 @@ func (i *windowIter) Next() (sql.Row, error) {
 
 	for j, expr := range i.selectExprs {
 		var err error
-
-		if wa, ok := expr.(sql.WindowAggregation); ok {
-			row[j], err = wa.EvalRow(i.pos, i.buffers[j])
+		switch expr := expr.(type) {
+		case sql.WindowAggregation:
+			row[j], err = expr.EvalRow(i.pos, i.buffers[j])
 			if err != nil {
 				return nil, err
 			}
-
-			continue
-		}
-
-		if _, ok := expr.(sql.Aggregation); ok {
-			// TODO: aggregate functions
-			continue
+		case sql.Aggregation:
+			row[j], err = expr.Eval(i.ctx, i.buffers[j])
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -166,7 +161,6 @@ func (i *windowIter) compute() error {
 		i.buffers[j] = newBuffer(expr)
 	}
 
-
 	for {
 		row, err := i.childIter.Next()
 		if err == io.EOF {
@@ -178,23 +172,22 @@ func (i *windowIter) compute() error {
 
 		outRow := make(sql.Row, len(i.selectExprs))
 		for j, expr := range i.selectExprs {
-			var err error
-			if wa, ok := expr.(sql.WindowAggregation); ok {
-				err := wa.Add(i.ctx, i.buffers[j], row)
+			switch expr := expr.(type) {
+			case sql.WindowAggregation:
+				err := expr.Add(i.ctx, i.buffers[j], row)
 				if err != nil {
 					return err
 				}
-				continue
-			}
-
-			if _, ok := expr.(sql.Aggregation); ok {
-				// TODO: aggregate functions
-				continue
-			}
-
-			outRow[j], err = expr.Eval(i.ctx, row)
-			if err != nil {
-				return err
+			case sql.Aggregation:
+				err = expr.Update(i.ctx, i.buffers[j], row)
+				if err != nil {
+					return err
+				}
+			default:
+				outRow[j], err = expr.Eval(i.ctx, row)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -202,7 +195,6 @@ func (i *windowIter) compute() error {
 	}
 
 	for j, expr := range i.selectExprs {
-		// TODO: handle aliases
 		if wa, ok := expr.(sql.WindowAggregation); ok {
 			err := wa.Finish(i.ctx, i.buffers[j])
 			if err != nil {
@@ -214,6 +206,7 @@ func (i *windowIter) compute() error {
 	return nil
 }
 
+
 func newBuffer(expr sql.Expression) sql.Row {
 	switch n := expr.(type) {
 	case sql.Aggregation:
@@ -223,20 +216,6 @@ func newBuffer(expr sql.Expression) sql.Row {
 	default:
 		return nil
 	}
-}
-
-func rowKey(
-	row sql.Row,
-) (uint64, error) {
-	hash := xxhash.New()
-	for _,v := range row {
-		_, err := hash.Write(([]byte)(fmt.Sprintf("%#v,", v)))
-		if err != nil {
-			return 0, err
-		}
-	}
-
-	return hash.Sum64(), nil
 }
 
 func (i *windowIter) Close(ctx *sql.Context) error {

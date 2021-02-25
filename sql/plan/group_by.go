@@ -326,6 +326,11 @@ func (i *groupByGroupingIter) compute() error {
 
 func (i *groupByGroupingIter) Close(ctx *sql.Context) error {
 	i.aggregations = nil
+	if i.dispose != nil {
+		i.dispose()
+		i.dispose = nil
+	}
+
 	return i.child.Close(ctx)
 }
 
